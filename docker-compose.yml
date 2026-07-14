@@ -1,0 +1,74 @@
+# Полный локальный стек: PostgreSQL + Ollama (локальный ИИ) + backend + frontend.
+#
+# После запуска загрузите модели:
+#   docker compose exec ollama ollama pull qwen3:8b
+#   docker compose exec ollama ollama pull qwen2.5vl:7b
+# Затем откройте http://localhost:8080
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: newsuser
+      POSTGRES_PASSWORD: newspass
+      POSTGRES_DB: newsdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U newsuser -d newsdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    # Для GPU раскомментируйте (нужен nvidia-container-toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://newsuser:newspass@postgres:5432/newsdb
+      OLLAMA_URL: http://ollama:11434
+      SUMMARIZER_BACKEND: ollama
+      VISION_BACKEND: ollama
+      MODEL: qwen3:8b
+      VISION_MODEL: qwen2.5vl:7b
+      SOURCE_MODE: live
+      MEDIA_DOWNLOAD: image
+      POLL_INTERVAL_SECONDS: "600"
+      INGEST_ON_START: "true"
+      CORS_ORIGINS: http://localhost:8080
+    volumes:
+      - media:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
+  ollama:
+  media:

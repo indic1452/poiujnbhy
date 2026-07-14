@@ -1,0 +1,38 @@
+# Web framework
+fastapi>=0.111
+uvicorn[standard]>=0.30
+
+# HTTP client (browser UA, async, HTTP/2)
+httpx[http2]>=0.27
+
+# Feeds & article/media extraction
+feedparser>=6.0.11
+trafilatura>=2.0
+selectolax>=0.3.21
+python-dateutil>=2.9
+
+# Near-duplicate clustering
+rapidfuzz>=3.9
+
+# Database (PostgreSQL, async)
+SQLAlchemy[asyncio]>=2.0.30
+asyncpg>=0.29
+alembic>=1.13
+
+# Images / media
+Pillow>=10.3
+
+# Scheduling & config
+APScheduler>=3.10
+pydantic-settings>=2.3
+PyYAML>=6.0
+
+# --- Optional (enabled via config, not required to run) ---
+# telethon>=1.36          # authenticated Telegram access (video/history)
+# transformers>=4.44      # NLLB-200 translation-only fallback
+# sentencepiece>=0.2
+
+# --- Test / dev ---
+pytest>=8.2
+pytest-asyncio>=0.23
+anyio>=4.4

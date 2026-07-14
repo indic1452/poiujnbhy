@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>"Ukraine energy strike" - Google News (fixture)</title>
+    <link>https://news.google.com/search</link>
+    <description>Google News search feed</description>
+    <item>
+      <title>Ukraine energy grid hit in overnight strikes - Reuters</title>
+      <link>https://news.google.com/rss/articles/CBMiK2h0dHBzABC123?oc=5</link>
+      <guid isPermaLink="false">gnews-reuters-strike-1</guid>
+      <pubDate>Tue, 14 Jul 2026 06:05:00 GMT</pubDate>
+      <description>Reuters reports strikes on Ukrainian power infrastructure overnight.</description>
+      <source url="https://www.reuters.com">Reuters</source>
+    </item>
+  </channel>
+</rss>

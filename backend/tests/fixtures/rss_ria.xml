@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>РИА Новости (fixture)</title>
+    <link>https://ria.ru/</link>
+    <description>Тестовая лента</description>
+    <item>
+      <title>Массированный удар по объектам энергетики Украины</title>
+      <link>https://ria.ru/20260714/energetika-1.html</link>
+      <guid>https://ria.ru/20260714/energetika-1.html</guid>
+      <pubDate>Tue, 14 Jul 2026 08:30:00 +0300</pubDate>
+      <description>Сообщается о серии ударов по энергетической инфраструктуре. Повреждены подстанции, введены аварийные отключения.</description>
+      <media:content url="https://ria.ru/media/energetika-1.jpg" type="image/jpeg" medium="image"/>
+    </item>
+    <item>
+      <title>МИД сообщил о новом раунде переговоров о перемирии</title>
+      <link>https://ria.ru/20260714/peregovory-2.html</link>
+      <guid>https://ria.ru/20260714/peregovory-2.html</guid>
+      <pubDate>Tue, 14 Jul 2026 07:10:00 +0300</pubDate>
+      <description>Дипломаты обсудят условия временного прекращения огня и обмен. Встреча запланирована на конец недели.</description>
+      <media:thumbnail url="https://ria.ru/media/peregovory-2.jpg"/>
+    </item>
+    <item>
+      <title>Прогноз погоды на выходные в Москве</title>
+      <link>https://ria.ru/20260714/pogoda-3.html</link>
+      <guid>https://ria.ru/20260714/pogoda-3.html</guid>
+      <pubDate>Tue, 14 Jul 2026 06:00:00 +0300</pubDate>
+      <description>Синоптики обещают тёплую погоду без осадков.</description>
+    </item>
+  </channel>
+</rss>

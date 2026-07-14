@@ -1,0 +1,110 @@
+# Список источников агрегатора. Правьте под себя.
+# type: rss | gnews | telegram
+# fixture: путь к локальному образцу (используется только при SOURCE_MODE=fixtures)
+
+sources:
+  # ---------- Российские (RU) ----------
+  - name: РИА Новости
+    type: rss
+    url: https://ria.ru/export/rss2/archive/index.xml
+    lang: ru
+    fixture: tests/fixtures/rss_ria.xml
+  - name: ТАСС
+    type: rss
+    url: https://tass.ru/rss/v2.xml
+    lang: ru
+  - name: РБК
+    type: rss
+    url: https://rssexport.rbc.ru/rbcnews/news/30/full.rss
+    lang: ru
+  - name: Коммерсантъ
+    type: rss
+    url: https://www.kommersant.ru/RSS/news.xml
+    lang: ru
+  - name: Интерфакс
+    type: rss
+    url: https://www.interfax.ru/rss.asp
+    lang: ru
+  - name: Lenta.ru
+    type: rss
+    url: https://lenta.ru/rss/news
+    lang: ru
+  - name: Gazeta.ru
+    type: rss
+    url: https://www.gazeta.ru/export/rss/lenta.xml
+    lang: ru
+  - name: Meduza
+    type: rss
+    url: https://meduza.io/rss/all
+    lang: ru
+
+  # ---------- Зарубежные (EN → перевод) ----------
+  - name: BBC World
+    type: rss
+    url: https://feeds.bbci.co.uk/news/world/rss.xml
+    lang: en
+    fixture: tests/fixtures/rss_bbc.xml
+  - name: Al Jazeera
+    type: rss
+    url: https://www.aljazeera.com/xml/rss/all.xml
+    lang: en
+  - name: The Guardian — Ukraine
+    type: rss
+    url: https://www.theguardian.com/world/ukraine/rss
+    lang: en
+  - name: Deutsche Welle
+    type: rss
+    url: https://rss.dw.com/rdf/rss-en-all
+    lang: en
+  - name: France 24
+    type: rss
+    url: https://www.france24.com/en/rss
+    lang: en
+  - name: POLITICO Europe
+    type: rss
+    url: https://www.politico.eu/feed/
+    lang: en
+
+  # ---------- Украинские (EN → перевод) ----------
+  - name: The Kyiv Independent
+    type: rss
+    url: https://kyivindependent.com/rss/
+    lang: en
+  - name: Ukrainska Pravda (EN)
+    type: rss
+    url: https://www.pravda.com.ua/eng/rss/
+    lang: en
+  - name: NV / New Voice (EN)
+    type: rss
+    url: https://english.nv.ua/rss
+    lang: en
+  - name: УНИАН
+    type: rss
+    url: https://rss.unian.net/site/news_rus.rss
+    lang: ru
+
+  # ---------- Reuters/AP через Google News (офиц. RSS нет) ----------
+  - name: Google News — Reuters (Украина)
+    type: gnews
+    query: allinurl:reuters.com Ukraine when:24h
+    hl: en-US
+    gl: US
+    ceid: US:en
+    lang: en
+    fixture: tests/fixtures/gnews.xml
+  - name: Google News — война Украина (RU)
+    type: gnews
+    query: война Украина
+    hl: ru
+    gl: RU
+    ceid: RU:ru
+    lang: ru
+
+  # ---------- Telegram-каналы (курируйте сами) ----------
+  # Укажите публичные каналы по военной тематике. Пример-заглушка с fixture
+  # для оффлайн-демо; замените на нужные вам username.
+  - name: Telegram — пример канала
+    type: telegram
+    username: example_war_channel
+    lang: ru
+    fixture: tests/fixtures/tme_channel.html

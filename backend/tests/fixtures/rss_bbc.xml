@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:media="http://search.yahoo.com/mrss/" version="2.0">
+  <channel>
+    <title>BBC News - World (fixture)</title>
+    <link>https://www.bbc.co.uk/news/world</link>
+    <description>Test feed</description>
+    <item>
+      <title>Ukraine reports large-scale strike on energy facilities</title>
+      <description>Officials say power substations were hit overnight, causing emergency blackouts across several regions.</description>
+      <link>https://www.bbc.co.uk/news/world-europe-strike-1</link>
+      <guid isPermaLink="true">https://www.bbc.co.uk/news/world-europe-strike-1</guid>
+      <pubDate>Tue, 14 Jul 2026 05:40:00 GMT</pubDate>
+      <media:thumbnail width="976" height="549" url="https://ichef.bbci.co.uk/news/strike-1.jpg"/>
+    </item>
+    <item>
+      <title>NATO allies pledge new weapons package for Kyiv</title>
+      <description>Western coalition members announced additional air defence systems and artillery ammunition.</description>
+      <link>https://www.bbc.co.uk/news/world-europe-nato-2</link>
+      <guid isPermaLink="true">https://www.bbc.co.uk/news/world-europe-nato-2</guid>
+      <pubDate>Tue, 14 Jul 2026 04:15:00 GMT</pubDate>
+      <media:thumbnail width="976" height="549" url="https://ichef.bbci.co.uk/news/nato-2.jpg"/>
+    </item>
+  </channel>
+</rss>

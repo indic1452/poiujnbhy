@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+backend/.venv/
+backend/media/
+*.session
+*.session-journal
+
+# Env
+.env
+backend/.env
+
+# Node / frontend
+node_modules/
+frontend/dist/
+
+# Postgres test artifacts / misc
+pgtest_*/
+.DS_Store
+*.log
