@@ -54,6 +54,19 @@ class Cluster(Base):
     source_count: Mapped[int] = mapped_column(Integer, default=1)
     primary_media_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Геолокация события (для карты)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    place_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    admin1: Mapped[str | None] = mapped_column(String(120), nullable=True)  # область/край
+    admin2: Mapped[str | None] = mapped_column(String(120), nullable=True)  # район
+    country: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    event_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    geo_source: Mapped[str | None] = mapped_column(String(30), nullable=True)  # text|object|vision|manual
+    geo_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    geo_needs_review: Mapped[bool] = mapped_column(Boolean, default=False)
+    locations: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # все извлечённые точки
+
     items: Mapped[list["Item"]] = relationship(back_populates="cluster")
 
 
@@ -76,6 +89,8 @@ class Item(Base):
     summary_ru: Mapped[str | None] = mapped_column(Text, nullable=True)
     key_points: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     category: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    event_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    locations: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     relevance: Mapped[float] = mapped_column(Float, default=0.0)
     is_relevant: Mapped[bool] = mapped_column(Boolean, default=False)
     model_used: Mapped[str | None] = mapped_column(String(80), nullable=True)

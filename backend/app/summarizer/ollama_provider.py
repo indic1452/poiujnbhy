@@ -10,9 +10,35 @@ import json
 
 import httpx
 
-from ..categories import CATEGORIES, DEFAULT_CATEGORY
+from ..categories import CATEGORIES, DEFAULT_CATEGORY, DEFAULT_EVENT_TYPE, EVENT_TYPES
 from ..config import settings
 from .base import ClusterSummary, ItemSummary, SourceDoc, SummarizerProvider
+
+_LOCATIONS_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "location_name": {"type": "string"},
+            "admin_region": {"type": "string"},
+            "specific_object": {"type": "string"},
+            "object_type": {
+                "type": "string",
+                "enum": [
+                    "refinery", "airfield", "power_plant", "substation", "depot",
+                    "bridge", "port", "factory", "settlement", "other",
+                ],
+            },
+            "country": {"type": "string", "enum": ["RU", "UA", "BY", "other"]},
+            "role": {
+                "type": "string",
+                "enum": ["strike_target", "mentioned", "origin", "unknown"],
+            },
+            "confidence": {"type": "number"},
+        },
+        "required": ["location_name"],
+    },
+}
 
 _ITEM_SCHEMA = {
     "type": "object",
@@ -21,6 +47,8 @@ _ITEM_SCHEMA = {
         "summary_ru": {"type": "string"},
         "category": {"type": "string", "enum": CATEGORIES},
         "key_points": {"type": "array", "items": {"type": "string"}},
+        "event_type": {"type": "string", "enum": EVENT_TYPES},
+        "locations": _LOCATIONS_SCHEMA,
     },
     "required": ["title_ru", "summary_ru", "category"],
 }
@@ -32,16 +60,26 @@ _CLUSTER_SCHEMA = {
         "digest_ru": {"type": "string"},
         "category": {"type": "string", "enum": CATEGORIES},
         "key_points": {"type": "array", "items": {"type": "string"}},
+        "event_type": {"type": "string", "enum": EVENT_TYPES},
+        "locations": _LOCATIONS_SCHEMA,
     },
     "required": ["headline_ru", "digest_ru", "category"],
 }
+
+_GEO_HINT = (
+    " Также определи event_type (тип события из списка) и locations — список упомянутых "
+    "мест: для каждого location_name (город/посёлок), admin_region (область/край), "
+    "specific_object (конкретный объект, напр. «Афипский НПЗ», если есть), object_type, "
+    "country (RU/UA/BY) и role (strike_target — если по объекту нанесён удар; иначе "
+    "mentioned/origin). Не выдумывай места, которых нет в тексте."
+)
 
 _SYS_ITEM = (
     "Ты — редактор новостной ленты о военных событиях (Украина, Россия, западная "
     "коалиция). Кратко и нейтрально изложи материал НА РУССКОМ ЯЗЫКЕ. Если исходный "
     "текст не на русском — переведи. Верни строго JSON по схеме: title_ru (краткий "
     "заголовок), summary_ru (2–3 предложения), category (одна из списка), key_points "
-    "(до 3 пунктов). Без выдумок — только то, что есть в тексте."
+    "(до 3 пунктов)." + _GEO_HINT + " Без выдумок — только то, что есть в тексте."
 )
 
 _SYS_CLUSTER = (
@@ -49,7 +87,8 @@ _SYS_CLUSTER = (
     "разных источников об ОДНОМ событии (возможно на разных языках). Сведи их в единую "
     "сводку НА РУССКОМ ЯЗЫКЕ, без повторов и без выдумок. Верни строго JSON: headline_ru "
     "(заголовок сюжета), digest_ru (связная сводка 3–5 предложений), category (одна из "
-    "списка), key_points (ключевые факты списком). Если приведены заметки по медиа — учти их."
+    "списка), key_points (ключевые факты списком)." + _GEO_HINT
+    + " Если приведены заметки по медиа — учти их."
 )
 
 
@@ -89,6 +128,8 @@ class OllamaSummarizer(SummarizerProvider):
             summary_ru=data.get("summary_ru") or "",
             category=data.get("category") or DEFAULT_CATEGORY,
             key_points=list(data.get("key_points") or []),
+            event_type=data.get("event_type") or DEFAULT_EVENT_TYPE,
+            locations=list(data.get("locations") or []),
         )
 
     async def summarize_cluster(
@@ -107,6 +148,8 @@ class OllamaSummarizer(SummarizerProvider):
             digest_ru=data.get("digest_ru") or "",
             category=data.get("category") or DEFAULT_CATEGORY,
             key_points=list(data.get("key_points") or []),
+            event_type=data.get("event_type") or DEFAULT_EVENT_TYPE,
+            locations=list(data.get("locations") or []),
         )
 
     async def health(self) -> bool:

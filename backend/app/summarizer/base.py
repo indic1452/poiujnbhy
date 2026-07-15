@@ -13,6 +13,8 @@ class ItemSummary:
     summary_ru: str
     category: str
     key_points: list[str] = field(default_factory=list)
+    event_type: str = "прочее"
+    locations: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -23,6 +25,8 @@ class ClusterSummary:
     digest_ru: str
     category: str
     key_points: list[str] = field(default_factory=list)
+    event_type: str = "прочее"
+    locations: list[dict] = field(default_factory=list)
 
 
 @dataclass

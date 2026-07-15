@@ -7,7 +7,7 @@ async def test_ria_feed_parses_items_and_media():
     async with httpx.AsyncClient() as c:
         src = RssSource("РИА", "https://ria.ru/x", "ru", fixture="tests/fixtures/rss_ria.xml")
         res = await src.fetch(c)
-    assert len(res.items) == 3
+    assert len(res.items) == 4
     energy = res.items[0]
     assert "энергетик" in energy.title.lower()
     assert energy.media and energy.media[0].type == "image"

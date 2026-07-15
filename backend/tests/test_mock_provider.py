@@ -29,6 +29,17 @@ async def test_mock_cluster_digest():
     assert res.headline_ru
 
 
+async def test_mock_extracts_event_type_and_locations():
+    s = MockSummarizer()
+    res = await s.summarize_item(
+        "Атака дронов на Афипский НПЗ", "Беспилотники ударили по заводу.", "ru"
+    )
+    assert res.event_type == "удар_дрон"
+    names = [loc["location_name"] for loc in res.locations]
+    assert any("Афипский" in n for n in names)
+    assert any(loc.get("role") == "strike_target" for loc in res.locations)
+
+
 async def test_mock_vision():
     v = MockVision()
     note = await v.analyze_image(b"\xff\xd8\xff" + b"0" * 2048, "image/jpeg", "удар по подстанции")

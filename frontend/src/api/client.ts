@@ -1,4 +1,4 @@
-import type { FeedResponse, SourceFull, Status } from "../types";
+import type { EventCollection, FeedResponse, SourceFull, Stats, Status } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -44,4 +44,35 @@ export async function triggerRefresh(): Promise<{ started: boolean; detail: stri
   const r = await fetch(`${API_BASE}/api/refresh`, { method: "POST" });
   if (!r.ok) throw new Error(`Ошибка обновления: ${r.status}`);
   return r.json();
+}
+
+export interface EventFilters {
+  since?: string;
+  event_type?: string;
+  region?: string;
+}
+
+function eventQuery(f: EventFilters): string {
+  const qs = new URLSearchParams();
+  if (f.since) qs.set("since", f.since);
+  if (f.event_type) qs.set("event_type", f.event_type);
+  if (f.region) qs.set("region", f.region);
+  return qs.toString();
+}
+
+export async function fetchEvents(f: EventFilters = {}): Promise<EventCollection> {
+  const r = await fetch(`${API_BASE}/api/events.geojson?${eventQuery(f)}`);
+  if (!r.ok) throw new Error(`Ошибка карты: ${r.status}`);
+  return r.json();
+}
+
+export async function fetchStats(f: EventFilters = {}): Promise<Stats> {
+  const r = await fetch(`${API_BASE}/api/stats?${eventQuery(f)}`);
+  if (!r.ok) throw new Error(`Ошибка статистики: ${r.status}`);
+  return r.json();
+}
+
+export function exportUrl(format: "geojson" | "csv" | "json", f: EventFilters = {}): string {
+  const qs = eventQuery(f);
+  return `${API_BASE}/api/export?format=${format}${qs ? "&" + qs : ""}`;
 }

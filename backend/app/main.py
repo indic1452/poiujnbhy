@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .api import admin, feed, sources
+from .api import admin, events, export, feed, sources, stats
 from .config import settings
 from .db import create_all, dispose_engine, get_sessionmaker
 from .pipeline.ingest import run_ingest
@@ -57,6 +57,22 @@ app.add_middleware(
 app.include_router(feed.router)
 app.include_router(sources.router)
 app.include_router(admin.router)
+app.include_router(events.router)
+app.include_router(stats.router)
+app.include_router(export.router)
+
+
+@app.get("/api/meta")
+async def meta() -> dict:
+    from .categories import CATEGORIES, EVENT_COLORS, EVENT_TYPES
+
+    return {
+        "categories": CATEGORIES,
+        "event_types": EVENT_TYPES,
+        "event_colors": EVENT_COLORS,
+        "tile_url": None,  # фронтенд берёт из VITE_TILE_URL
+        "tile_attribution": settings.map_tile_attribution,
+    }
 
 ensure_media_dir()
 app.mount("/media", StaticFiles(directory=str(settings.media_path)), name="media")

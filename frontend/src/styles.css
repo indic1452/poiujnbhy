@@ -330,6 +330,230 @@ body {
   font-size: 12px;
 }
 
+/* View tabs */
+.viewbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.viewtabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+}
+.vtab {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 7px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.vtab:hover {
+  color: var(--text);
+}
+.vtab.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Map */
+.map-count {
+  color: var(--muted);
+  font-size: 13px;
+  align-self: center;
+}
+.map-wrap {
+  position: relative;
+}
+.map-container {
+  height: 70vh;
+  min-height: 420px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #223;
+}
+.leaflet-container {
+  background: #1a1f27;
+  font-family: inherit;
+}
+.pin-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #0e1116;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+.pin-photo {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: 3px solid var(--accent);
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  background: #223;
+}
+.pin-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cluster-bubble {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(224, 86, 60, 0.85);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border: 2px solid #fff;
+}
+
+/* Event side-panel */
+.event-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 340px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  z-index: 1000;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+.panel-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+}
+.panel-tags {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.event-panel h3 {
+  margin: 4px 0 8px;
+  font-size: 16px;
+  padding-right: 18px;
+}
+.panel-meta {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.panel-media {
+  position: relative;
+  margin-bottom: 8px;
+}
+.panel-media img {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+.panel-media .play-badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.panel-digest {
+  font-size: 14px;
+  margin: 6px 0;
+}
+.panel-coords {
+  color: var(--muted);
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.review-badge {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--down);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Stats */
+.stat-cards {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.stat-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 22px;
+  text-align: center;
+  flex: 1 1 100px;
+}
+.stat-num {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.stat-lbl {
+  color: var(--muted);
+  font-size: 13px;
+}
+.chart-block {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.chart-block h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.export-btns {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.export-link {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--link);
+  text-decoration: none;
+  font-size: 13px;
+}
+.export-link:hover {
+  border-color: var(--accent);
+}
+
 @media (max-width: 560px) {
   .app-header h1 {
     font-size: 20px;

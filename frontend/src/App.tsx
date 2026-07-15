@@ -1,39 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchFeed, fetchSources, fetchStatus, triggerRefresh } from "./api/client";
-import type { Cluster, SourceFull, Status } from "./types";
+import { fetchStatus, triggerRefresh } from "./api/client";
+import type { Status } from "./types";
 import { Header } from "./components/Header";
 import { StatusBar } from "./components/StatusBar";
-import { CategoryTabs } from "./components/CategoryTabs";
-import { Feed } from "./components/Feed";
-import { RefreshButton, SearchBox, SourceFilter } from "./components/Controls";
+import { RefreshButton } from "./components/Controls";
+import { FeedView } from "./components/FeedView";
+import { MapView } from "./components/MapView";
+import { StatsView } from "./components/StatsView";
+
+type View = "feed" | "map" | "stats";
+
+const TABS: { k: View; label: string }[] = [
+  { k: "feed", label: "Лента" },
+  { k: "map", label: "Карта" },
+  { k: "stats", label: "Статистика" },
+];
 
 export default function App() {
+  const [view, setView] = useState<View>("feed");
   const [status, setStatus] = useState<Status | null>(null);
-  const [sources, setSources] = useState<SourceFull[]>([]);
-  const [clusters, setClusters] = useState<Cluster[]>([]);
-  const [category, setCategory] = useState<string | null>(null);
-  const [q, setQ] = useState("");
-  const [sourceId, setSourceId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadFeed = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchFeed({
-        category: category ?? undefined,
-        q: q || undefined,
-        source_id: sourceId ?? undefined,
-        limit: 50,
-      });
-      setClusters(data.clusters);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка загрузки");
-    } finally {
-      setLoading(false);
-    }
-  }, [category, q, sourceId]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -44,38 +30,46 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchSources().then(setSources).catch(() => undefined);
     loadStatus();
   }, [loadStatus]);
-
-  useEffect(() => {
-    const t = setTimeout(loadFeed, q ? 300 : 0);
-    return () => clearTimeout(t);
-  }, [loadFeed, q]);
 
   const onRefresh = useCallback(async () => {
     try {
       await triggerRefresh();
     } catch {
-      /* игнорируем — покажем текущую ленту */
+      /* покажем текущие данные */
     }
     await new Promise((r) => setTimeout(r, 1800));
-    await Promise.all([loadFeed(), loadStatus()]);
-  }, [loadFeed, loadStatus]);
+    setReloadKey((k) => k + 1);
+    await loadStatus();
+  }, [loadStatus]);
 
   return (
     <div className="app">
       <Header />
       <StatusBar status={status} />
-      <div className="toolbar">
-        <SearchBox value={q} onChange={setQ} />
-        <SourceFilter sources={sources} value={sourceId} onChange={setSourceId} />
+      <div className="viewbar">
+        <div className="viewtabs">
+          {TABS.map((t) => (
+            <button
+              key={t.k}
+              className={`vtab ${view === t.k ? "active" : ""}`}
+              onClick={() => setView(t.k)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
         <RefreshButton onRefresh={onRefresh} />
       </div>
-      <CategoryTabs value={category} onChange={setCategory} />
-      <Feed clusters={clusters} loading={loading} error={error} />
+
+      {view === "feed" && <FeedView reloadKey={reloadKey} />}
+      {view === "map" && <MapView reloadKey={reloadKey} />}
+      {view === "stats" && <StatsView reloadKey={reloadKey} />}
+
       <footer className="app-foot">
-        Локальный ИИ · без облака · агрегатор открытых источников
+        Локальный ИИ · без облака · агрегатор открытых источников · гео © GeoNames (CC BY 4.0),
+        © OpenStreetMap
       </footer>
     </div>
   );

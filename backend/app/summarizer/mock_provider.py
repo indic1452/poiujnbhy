@@ -5,8 +5,35 @@
 """
 from __future__ import annotations
 
-from ..categories import DEFAULT_CATEGORY, TOPIC_KEYWORDS
+from ..categories import DEFAULT_CATEGORY, TOPIC_KEYWORDS, guess_event_type
 from .base import ClusterSummary, ItemSummary, SourceDoc, SummarizerProvider
+
+
+def _mock_locations(text: str, event_type: str) -> list[dict]:
+    """Извлечь известные топонимы через геокодер (для оффлайн-демо карты)."""
+    try:
+        from ..geocoding import get_geocoder
+
+        geo = get_geocoder()
+    except Exception:  # noqa: BLE001
+        geo = None
+    if geo is None:
+        return []
+    names = geo.find_mentions(text)
+    strike = event_type.startswith("удар") or event_type in ("обстрел", "работа_ПВО")
+    out: list[dict] = []
+    for i, n in enumerate(names):
+        out.append(
+            {
+                "location_name": n,
+                "specific_object": n if any(
+                    k in n for k in ("НПЗ", "АЭС", "ГЭС", "мост", "Аэродром", "аэродром")
+                ) else "",
+                "role": "strike_target" if (i == 0 and strike) else "mentioned",
+                "confidence": 0.7,
+            }
+        )
+    return out
 
 
 def _first_sentences(text: str, n: int = 2, limit: int = 320) -> str:
@@ -51,11 +78,15 @@ class MockSummarizer(SummarizerProvider):
     async def summarize_item(self, title: str, text: str, lang: str = "ru") -> ItemSummary:
         prefix = "[перевод] " if lang != "ru" else ""
         summary = _first_sentences(text or title, n=2)
+        blob = f"{title} {text}"
+        etype = guess_event_type(blob)
         return ItemSummary(
             title_ru=f"{prefix}{title}".strip(),
             summary_ru=f"{prefix}{summary}".strip() or f"{prefix}{title}".strip(),
-            category=_guess_category(f"{title} {text}"),
+            category=_guess_category(blob),
             key_points=[p for p in _first_sentences(text, n=3).split(". ") if p][:3],
+            event_type=etype,
+            locations=_mock_locations(blob, etype),
         )
 
     async def summarize_cluster(
@@ -71,9 +102,12 @@ class MockSummarizer(SummarizerProvider):
             s = _first_sentences(d.text or d.title, n=1, limit=140)
             if s:
                 points.append(s)
+        etype = guess_event_type(joined)
         return ClusterSummary(
             headline_ru=head,
             digest_ru=digest or head,
             category=_guess_category(joined),
             key_points=points,
+            event_type=etype,
+            locations=_mock_locations(joined, etype),
         )

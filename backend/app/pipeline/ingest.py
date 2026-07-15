@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from .. import state
 from ..config import settings
+from ..geocoding import Geocoder, get_geocoder
 from ..models import Cluster, Item, Media, Source
 from ..sources.base import RawItem
 from ..sources.extract import extract_article
@@ -185,6 +186,8 @@ async def _process_item(
         item.summary_ru = summary.summary_ru
         item.category = summary.category
         item.key_points = summary.key_points
+        item.event_type = summary.event_type
+        item.locations = summary.locations
         item.model_used = summarizer.name
     except Exception as exc:  # noqa: BLE001
         log.warning("Ошибка суммаризации: %s", exc)
@@ -275,16 +278,71 @@ async def _recompute_cluster(
         cluster.digest_ru = it.summary_ru or ""
         cluster.category = it.category or "Прочее"
         cluster.key_points = it.key_points
+        cluster.event_type = it.event_type
+        cluster.locations = it.locations
+    else:
+        try:
+            summ = await summarizer.summarize_cluster(docs, vision_notes)
+            cluster.headline_ru = summ.headline_ru
+            cluster.digest_ru = summ.digest_ru
+            cluster.category = summ.category
+            cluster.key_points = summ.key_points
+            cluster.event_type = summ.event_type
+            cluster.locations = summ.locations
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Ошибка обобщения кластера: %s", exc)
+
+    _geocode_cluster(cluster, cluster.locations or [], vision_notes)
+
+
+def _geocode_cluster(
+    cluster: Cluster, locations: list[dict], vision_notes: list[str]
+) -> None:
+    """Определить координаты события: лучшая локация из текста → газеттир.
+
+    Приоритет — цель удара (role=strike_target), затем конкретный объект, затем
+    первая локация. Если из текста не вышло — пробуем подсказки vision (needs_review).
+    """
+    geo: Geocoder | None = get_geocoder()
+    if geo is None:
         return
 
-    try:
-        summ = await summarizer.summarize_cluster(docs, vision_notes)
-        cluster.headline_ru = summ.headline_ru
-        cluster.digest_ru = summ.digest_ru
-        cluster.category = summ.category
-        cluster.key_points = summ.key_points
-    except Exception as exc:  # noqa: BLE001
-        log.warning("Ошибка обобщения кластера: %s", exc)
+    best = next((l for l in locations if l.get("role") == "strike_target"), None)
+    if best is None:
+        best = next((l for l in locations if l.get("specific_object")), None)
+    if best is None and locations:
+        best = locations[0]
+
+    if best:
+        res = geo.geocode(
+            best.get("location_name", ""),
+            admin_hint=best.get("admin_region") or None,
+            country_hint=best.get("country") or None,
+            object_hint=best.get("specific_object") or None,
+        )
+        if res and res.confidence >= settings.geo_confidence_floor:
+            _apply_geo(cluster, res, needs_review=False)
+            return
+
+    # fallback: подсказки из анализа медиа (ассистируемо, требует проверки)
+    for note in vision_notes or []:
+        for name in geo.find_mentions(note):
+            res = geo.geocode(name)
+            if res and res.confidence >= settings.geo_confidence_floor:
+                _apply_geo(cluster, res, needs_review=True, source="vision")
+                return
+
+
+def _apply_geo(cluster: Cluster, res, needs_review: bool, source: str | None = None) -> None:
+    cluster.lat = res.lat
+    cluster.lon = res.lon
+    cluster.place_name = res.matched_name
+    cluster.admin1 = res.admin1
+    cluster.admin2 = res.admin2
+    cluster.country = res.country
+    cluster.geo_source = source or res.source
+    cluster.geo_confidence = min(res.confidence, 0.5) if needs_review else res.confidence
+    cluster.geo_needs_review = needs_review
 
 
 async def run_ingest(sessionmaker: async_sessionmaker[AsyncSession]) -> IngestStats:

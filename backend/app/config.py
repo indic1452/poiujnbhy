@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     cluster_similarity: int = 82
     cluster_window_hours: int = 48
 
+    # Геокодирование (карта событий)
+    geocoder_enabled: bool = True
+    geo_confidence_floor: float = 0.5
+    gazetteer_full_csv: str | None = None  # опц. полный газеттир (build_gazetteer.py)
+    map_tile_attribution: str = "© OpenStreetMap contributors, GeoNames (CC BY 4.0)"
+
     # Telegram (опционально)
     telegram_api_id: int | None = None
     telegram_api_hash: str | None = None

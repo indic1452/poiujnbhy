@@ -53,9 +53,18 @@ class ClusterOut(BaseModel):
     digest_ru: str
     key_points: list | None = None
     category: str
+    event_type: str | None = None
     first_seen: datetime
     last_updated: datetime
     source_count: int
+    lat: float | None = None
+    lon: float | None = None
+    place_name: str | None = None
+    admin1: str | None = None
+    admin2: str | None = None
+    country: str | None = None
+    geo_confidence: float = 0.0
+    geo_needs_review: bool = False
     primary_media: MediaOut | None = None
     sources: list[SourceBrief] = []
     items: list[ItemOut] = []

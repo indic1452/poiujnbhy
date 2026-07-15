@@ -22,3 +22,9 @@ const LANG_BADGE: Record<string, string> = { ru: "RU", en: "EN", uk: "UA" };
 export function langBadge(lang: string): string {
   return LANG_BADGE[lang] ?? lang.toUpperCase();
 }
+
+export function sinceFromPeriod(period: string): string | undefined {
+  const days: Record<string, number> = { "24h": 1, "7d": 7, "30d": 30 };
+  if (!(period in days)) return undefined;
+  return new Date(Date.now() - days[period] * 86400000).toISOString();
+}
