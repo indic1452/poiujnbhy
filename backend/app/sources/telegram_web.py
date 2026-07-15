@@ -1,8 +1,9 @@
 """Скрейпер публичных Telegram-каналов через веб-превью t.me/s/<channel>.
 
 Без ключей и авторизации. Извлекает текст, дату, фото и ВИДЕО (src/постер/
-длительность). Пагинация назад — параметр ?before=<message_id>; курсор —
-максимальный виденный message_id (опрашиваем только новое).
+длительность), источник пересылки. Многостраничная подкачка назад через
+?before=<message_id> — чтобы не терять новые посты при всплеске (>20 за опрос);
+курсор — максимальный виденный message_id.
 
 Селекторы Telegram могут меняться — они собраны в этом модуле, при поломке
 чинить здесь (сверять с живой страницей t.me/s/<channel>).
@@ -19,6 +20,7 @@ from .base import FetchResult, MediaRef, RawItem, Source
 from .fetch import get_content
 
 _BG_RE = re.compile(r"background-image\s*:\s*url\(['\"]?(.*?)['\"]?\)")
+_MAX_PAGES = 5
 
 
 def _bg_url(node: Node | None) -> str | None:
@@ -43,7 +45,7 @@ def _duration_seconds(text: str | None) -> int | None:
     return sec or None
 
 
-def _parse_message(node: Node, channel: str) -> RawItem | None:
+def _parse_message(node: Node, channel: str, lang: str) -> RawItem | None:
     data_post = node.attributes.get("data-post")
     if not data_post or "/" not in data_post:
         return None
@@ -51,6 +53,12 @@ def _parse_message(node: Node, channel: str) -> RawItem | None:
 
     text_node = node.css_first(".tgme_widget_message_text")
     text = text_node.text(separator=" ", strip=True) if text_node else ""
+
+    fwd_node = node.css_first(".tgme_widget_message_forwarded_from_name")
+    if fwd_node:
+        fwd = fwd_node.text(strip=True)
+        if fwd:
+            text = f"[переслано из {fwd}] {text}".strip()
 
     published_at: datetime | None = None
     time_node = node.css_first(".tgme_widget_message_date time")
@@ -85,7 +93,7 @@ def _parse_message(node: Node, channel: str) -> RawItem | None:
             )
         )
 
-    # Фото
+    # Фото (в т.ч. альбомы — несколько .tgme_widget_message_photo_wrap)
     for photo in node.css(".tgme_widget_message_photo_wrap"):
         url = _bg_url(photo)
         if url:
@@ -107,10 +115,26 @@ def _parse_message(node: Node, channel: str) -> RawItem | None:
         title=text[:120] if text else f"Сообщение {channel}/{msg_id}",
         text=text,
         url=f"https://t.me/{channel}/{msg_id}",
-        lang="ru",
+        lang=lang,
         published_at=published_at,
         media=media,
     )
+
+
+def parse_page(html: str, channel: str, lang: str) -> list[RawItem]:
+    """Разобрать одну страницу t.me/s в список RawItem (без фильтра по курсору)."""
+    tree = HTMLParser(html or "")
+    items: list[RawItem] = []
+    for node in tree.css(".tgme_widget_message"):
+        item = _parse_message(node, channel, lang)
+        if item is not None:
+            items.append(item)
+    return items
+
+
+def _mid(item: RawItem) -> int:
+    tail = item.external_id.split("/")[-1]
+    return int(tail) if tail.isdigit() else 0
 
 
 class TelegramWebSource(Source):
@@ -130,22 +154,31 @@ class TelegramWebSource(Source):
         last_modified: str | None = None,
         cursor: str | None = None,
     ) -> FetchResult:
-        url = f"https://t.me/s/{self.username}"
-        content = await get_content(client, url, fixture=self.fixture)
-        tree = HTMLParser(content.text)
-
-        items: list[RawItem] = []
+        base_url = f"https://t.me/s/{self.username}"
         max_id = int(cursor) if (cursor and cursor.isdigit()) else 0
         new_max = max_id
-        for node in tree.css(".tgme_widget_message"):
-            item = _parse_message(node, self.username)
-            if item is None:
-                continue
-            mid = item.external_id.split("/")[-1]
-            mid_int = int(mid) if mid.isdigit() else 0
-            if mid_int > new_max:
-                new_max = mid_int
-            if mid_int > max_id:
-                items.append(item)
+        collected: dict[int, RawItem] = {}
+        before: int | None = None
 
+        for _ in range(_MAX_PAGES):
+            url = base_url + (f"?before={before}" if before else "")
+            content = await get_content(client, url, fixture=self.fixture)
+            page = parse_page(content.text, self.username, self.lang)
+            if not page:
+                break
+            ids = [_mid(i) for i in page]
+            new_max = max(new_max, max(ids))
+            added = 0
+            for it in page:
+                mid = _mid(it)
+                if mid > max_id and mid not in collected:
+                    collected[mid] = it
+                    added += 1
+            page_min = min(ids)
+            # дальше листать назад только если на странице ещё могут быть новые
+            if page_min <= max_id or added == 0:
+                break
+            before = page_min
+
+        items = [collected[k] for k in sorted(collected)]
         return FetchResult(items=items, cursor=str(new_max) if new_max else cursor)

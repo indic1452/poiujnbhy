@@ -39,9 +39,20 @@ def load_source_records() -> list[dict]:
                 "category_hint": r.get("category_hint"),
                 "enabled": r.get("enabled", True),
                 "fixture": r.get("fixture"),
+                "method": r.get("method", "auto"),  # telegram: auto|telethon|web
             }
         )
     return records
+
+
+def _telegram_use_telethon(method: str) -> bool:
+    """Telethon, если так задано/auto и есть ключи; иначе web-скрейпер."""
+    if method == "web":
+        return False
+    has_keys = bool(settings.telegram_api_id and settings.telegram_api_hash)
+    if method == "telethon":
+        return has_keys
+    return has_keys  # auto
 
 
 def build_source(record: dict) -> Source:
@@ -51,6 +62,13 @@ def build_source(record: dict) -> Source:
     fixture = record.get("fixture")
     uou = record["url_or_username"]
     if typ == "telegram":
+        # В режиме fixtures всегда web (читаем локальный HTML-образец)
+        if settings.source_mode != "fixtures" and _telegram_use_telethon(
+            record.get("method", "auto")
+        ):
+            from .telegram_client import TelegramClientSource
+
+            return TelegramClientSource(name, uou, lang, fixture)
         return TelegramWebSource(name, uou, lang, fixture)
     if typ == "gnews":
         return GoogleNewsSource(name, uou, lang, fixture)

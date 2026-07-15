@@ -27,8 +27,11 @@ APScheduler>=3.10
 pydantic-settings>=2.3
 PyYAML>=6.0
 
+# Authenticated Telegram (video/history). Импорт ленивый — приложение
+# запускается без ключей; клиент создаётся только при наличии TELEGRAM_API_*.
+telethon>=1.36
+
 # --- Optional (enabled via config, not required to run) ---
-# telethon>=1.36          # authenticated Telegram access (video/history)
 # transformers>=4.44      # NLLB-200 translation-only fallback
 # sentencepiece>=0.2
 

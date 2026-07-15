@@ -100,11 +100,91 @@ sources:
     ceid: RU:ru
     lang: ru
 
-  # ---------- Telegram-каналы (курируйте сами) ----------
-  # Укажите публичные каналы по военной тематике. Пример-заглушка с fixture
-  # для оффлайн-демо; замените на нужные вам username.
+  # ---------- Telegram-каналы ----------
+  # method: auto (Telethon при наличии TELEGRAM_API_ID/HASH, иначе web-скрейпинг),
+  #         telethon | web — принудительно.
+  # ВАЖНО: проверьте актуальность username (могут меняться) и курируйте список
+  # под свои задачи. Часть каналов — государственные/пропагандистские или OSINT;
+  # оценка достоверности — на стороне пользователя.
+
+  # Пример-заглушка с fixture для оффлайн-демо (в live-режиме удалите):
   - name: Telegram — пример канала
     type: telegram
     username: example_war_channel
     lang: ru
     fixture: tests/fixtures/tme_channel.html
+
+  # Российские (официальные / медиа)
+  - name: РИА Новости (TG)
+    type: telegram
+    username: rian_ru
+    lang: ru
+    method: auto
+  - name: ТАСС (TG)
+    type: telegram
+    username: tass_agency
+    lang: ru
+    method: auto
+  - name: RT на русском (TG)
+    type: telegram
+    username: rt_russian
+    lang: ru
+    method: auto
+  - name: Минобороны России (TG)
+    type: telegram
+    username: mod_russia
+    lang: ru
+    method: auto
+  - name: Раньше всех. Ну почти. (TG)
+    type: telegram
+    username: bbbreaking
+    lang: ru
+    method: auto
+
+  # Российские независимые / эмигрантские
+  - name: Meduza (TG)
+    type: telegram
+    username: meduzalive
+    lang: ru
+    method: auto
+  - name: BBC News Русская служба (TG)
+    type: telegram
+    username: bbcrussian
+    lang: ru
+    method: auto
+
+  # Украинские (официальные / медиа)
+  - name: Володимир Зеленський (TG)
+    type: telegram
+    username: V_Zelenskiy_official
+    lang: uk
+    method: auto
+  - name: Українська правда (TG)
+    type: telegram
+    username: ukrpravda_news
+    lang: uk
+    method: auto
+  - name: Суспільне Новини (TG)
+    type: telegram
+    username: suspilnenews
+    lang: uk
+    method: auto
+
+  # OSINT / мониторинг (разные стороны)
+  - name: DeepState (TG)
+    type: telegram
+    username: DeepStateUA
+    lang: uk
+    method: auto
+  - name: Рыбарь (TG)
+    type: telegram
+    username: rybar
+    lang: ru
+    method: auto
+
+  # Английские
+  - name: The Kyiv Independent (TG)
+    type: telegram
+    username: kyivindependent_official
+    lang: en
+    method: auto

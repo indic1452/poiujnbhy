@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     telegram_api_id: int | None = None
     telegram_api_hash: str | None = None
     telegram_session: str = "tg.session"
+    telegram_method: str = "auto"  # auto | telethon | web
+    telegram_max_messages: int = 100
+    telegram_flood_cap: int = 300
 
     # HTTP
     user_agent: str = (

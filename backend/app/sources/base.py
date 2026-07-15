@@ -10,15 +10,22 @@ import httpx
 
 @dataclass
 class MediaRef:
-    """Ссылка на медиа, найденное в материале (ещё не скачано)."""
+    """Ссылка на медиа, найденное в материале.
+
+    Для web/RSS хранит URL (скачивается позже). Для Telethon медиа уже скачано —
+    байты передаются в ``data`` (файл) и ``poster_data`` (постер видео).
+    """
 
     type: str  # image | video
-    url: str  # URL картинки или постера
+    url: str = ""  # URL картинки или постера (может быть пустым, если есть data)
     video_url: str | None = None  # прямой URL видеофайла (mp4/webm), если есть
     duration: int | None = None  # длительность видео, сек
     width: int | None = None
     height: int | None = None
     mime: str | None = None
+    data: bytes | None = None  # готовые байты файла (Telethon)
+    poster_data: bytes | None = None  # готовые байты постера видео (Telethon)
+    forwarded_from: str | None = None  # источник пересылки (Telegram)
 
 
 @dataclass

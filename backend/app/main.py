@@ -41,6 +41,9 @@ async def lifespan(app: FastAPI):
     yield
 
     stop_scheduler()
+    from .sources.telegram_client import close_tg_client
+
+    await close_tg_client()
     await dispose_engine()
 
 

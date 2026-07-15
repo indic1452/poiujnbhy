@@ -104,25 +104,37 @@ async def store_media(
 
         if mode != "off":
             if ref.type == "image":
-                data = _fixture_bytes("image") if fixtures else await _download(client, ref.url)
+                if ref.data is not None:  # готовые байты (Telethon)
+                    data = ref.data
+                elif fixtures:
+                    data = _fixture_bytes("image")
+                else:
+                    data = await _download(client, ref.url)
                 if data:
                     saved = _save_image(data)
                     if saved:
                         media.local_path, media.width, media.height = saved
                         media.content_hash = hashlib.sha256(data).hexdigest()[:24]
             else:  # video
-                poster = ref.url
-                pdata = _fixture_bytes("image") if fixtures else await _download(client, poster)
+                if ref.poster_data is not None:  # постер уже скачан (Telethon)
+                    pdata = ref.poster_data
+                elif fixtures:
+                    pdata = _fixture_bytes("image")
+                else:
+                    pdata = await _download(client, ref.url)
                 if pdata:
                     saved = _save_image(pdata)
                     if saved:
                         media.poster_path = saved[0]
                 if mode == "all":
-                    vdata = (
-                        _fixture_bytes("video")
-                        if fixtures
-                        else (await _download(client, ref.video_url) if ref.video_url else None)
-                    )
+                    if ref.data is not None:  # видеофайл уже скачан (Telethon)
+                        vdata = ref.data
+                    elif fixtures:
+                        vdata = _fixture_bytes("video")
+                    elif ref.video_url:
+                        vdata = await _download(client, ref.video_url)
+                    else:
+                        vdata = None
                     if vdata:
                         media.local_path = _save_blob(vdata, ".mp4")
 
