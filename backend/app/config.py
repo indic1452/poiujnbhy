@@ -11,7 +11,9 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # абсолютный путь к backend/.env — грузится независимо от рабочей
+        # директории (важно при запуске из PyCharm «кнопкой Run»)
+        env_file=str(BACKEND_DIR / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,

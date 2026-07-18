@@ -114,6 +114,41 @@ docker compose exec ollama ollama pull qwen2.5vl:7b
 > Для CPU‑режима замените модель на `qwen2.5:7b` (переменная `MODEL`). Для GPU
 > раскомментируйте секцию `deploy.resources` у сервиса `ollama`.
 
+## Запуск в PyCharm (Windows) — «кнопкой Run»
+
+1. **PostgreSQL.** Через Docker Desktop:
+   ```
+   docker run --name news-pg -e POSTGRES_USER=newsuser -e POSTGRES_PASSWORD=newspass ^
+     -e POSTGRES_DB=newsdb -p 5432:5432 -d postgres:16
+   ```
+   Либо установщиком PostgreSQL для Windows (создайте БД `newsdb`, пользователя
+   `newsuser` с паролем `newspass`).
+2. **Открыть проект** в PyCharm (папка репозитория).
+3. **Интерпретатор:** Settings → Project → Python Interpreter → Add → New Virtualenv в
+   `backend\.venv` → затем в терминале PyCharm: `pip install -r backend\requirements.txt`.
+4. **`.env`:** скопируйте `backend\.env.example` → `backend\.env` и для быстрой проверки
+   (без Ollama и без интернета) поставьте:
+   ```
+   DATABASE_URL=postgresql+asyncpg://newsuser:newspass@localhost:5432/newsdb
+   SOURCE_MODE=fixtures
+   SUMMARIZER_BACKEND=mock
+   VISION_BACKEND=mock
+   AUTO_CREATE_TABLES=true
+   INGEST_ON_START=true
+   ```
+5. **Запуск backend:** откройте **`backend\run.py`** и нажмите зелёную кнопку **Run**
+   (с авто-перезагрузкой). API поднимется на `http://localhost:8000` — проверьте
+   `http://localhost:8000/api/feed`.
+   > Само приложение — `backend\app\main.py` (объект `app`); его не запускают «кнопкой»
+   > напрямую (внутри относительные импорты пакета `app`) — для этого и есть `run.py`.
+6. **Frontend:** в панели **npm** (или терминале) `cd frontend && npm install && npm run dev`
+   → откройте `http://localhost:5173`. Увидите ленту / карту / статистику на демо-данных.
+7. **Тесты:** правой кнопкой по `backend\tests` → Run pytest.
+
+> Когда захотите «вживую»: поставьте Ollama (`ollama pull qwen3:8b`, `qwen2.5vl:7b`),
+> в `.env` — `SUMMARIZER_BACKEND=ollama`, `VISION_BACKEND=ollama`, `SOURCE_MODE=live`,
+> при необходимости ключи Telegram (см. раздел «Telegram-каналы»).
+
 ## Ручной запуск (для разработки)
 
 ### 1. PostgreSQL

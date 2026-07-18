@@ -84,3 +84,8 @@ app.mount("/media", StaticFiles(directory=str(settings.media_path)), name="media
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+# Примечание: этот файл — ASGI-приложение (объект `app`), его нельзя запускать
+# «зелёной кнопкой» напрямую (внутри относительные импорты пакета `app`).
+# Для запуска используйте backend/run.py или команду `uvicorn app.main:app`.
