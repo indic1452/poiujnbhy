@@ -101,6 +101,54 @@ class GenerateTests(unittest.TestCase):
         self.assertIn("Внешние источники не привлекались.", result.markdown)
 
 
+class ParallelGenerationTests(unittest.TestCase):
+    """Генерация волнами: быстрее, но результат обязан совпадать с последовательной."""
+
+    def _report(self, parallel):
+        facts = FactPack.load(CASE)
+        outline = Outline.load(OUTLINE)
+        retriever = Retriever(BM25Index(load_corpus(CORPUS)))
+        return generate_report(
+            facts, outline, StubLLM(), retriever,
+            generated_at="2024-07-16", parallel_sections=parallel,
+        )
+
+    def test_wave_generation_matches_sequential(self):
+        sequential = self._report(1)
+        parallel = self._report(3)
+        self.assertEqual(
+            [s.spec.id for s in sequential.sections],
+            [s.spec.id for s in parallel.sections],
+        )
+        self.assertEqual(len(sequential.registry.chunks), len(parallel.registry.chunks))
+
+    def test_source_labels_are_unique_under_concurrency(self):
+        result = self._report(4)
+        labels = [label for label, _ in result.registry.items()]
+        self.assertEqual(len(labels), len(set(labels)))
+        self.assertEqual(labels, [f"S{i}" for i in range(1, len(labels) + 1)])
+
+    def test_zero_and_negative_fall_back_to_sequential(self):
+        for value in (0, -5):
+            result = self._report(value)
+            self.assertEqual(len(result.sections), 7)
+
+    def test_first_wave_has_no_previous_context(self):
+        seen = []
+
+        class Spy(StubLLM):
+            def complete(self, system, user, **kwargs):
+                seen.append("(это первый раздел отчёта)" in user)
+                return super().complete(system, user, **kwargs)
+
+        facts = FactPack.load(CASE)
+        generate_report(facts, Outline.load(OUTLINE), Spy(), None,
+                        generated_at="2024-07-16", parallel_sections=2)
+        # Обе секции первой волны стартуют без предыдущего контекста, дальше он есть.
+        self.assertEqual(seen[:2], [True, True])
+        self.assertFalse(any(seen[2:]))
+
+
 class SecondTemplateTests(unittest.TestCase):
     """Второй тип отчёта должен работать без изменений в коде — только шаблон."""
 

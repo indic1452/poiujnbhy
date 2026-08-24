@@ -13,6 +13,7 @@
   "llm_timeout": 900,
   "llm_seed": 0,
   "llm_temperature": 0.2,
+  "llm_parallel_sections": 2,
 
   "embed_enabled": true,
   "embed_base_url": "http://127.0.0.1:8001/v1",

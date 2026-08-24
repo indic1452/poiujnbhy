@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence
@@ -82,24 +83,26 @@ class StoredRegistry:
     def __init__(self, records: Iterable[SourceRecord] = ()):
         self._records: List[SourceRecord] = list(records)
         self._by_uid: Dict[str, SourceRecord] = {r.chunk_uid: r for r in self._records}
+        self._lock = threading.Lock()
 
     @classmethod
     def from_meta(cls, meta: Dict[str, Any]) -> "StoredRegistry":
         return cls(SourceRecord.from_dict(item) for item in meta.get("sources", []))
 
     def label(self, chunk: Chunk) -> str:
-        existing = self._by_uid.get(chunk.chunk_id)
-        if existing is not None:
-            return existing.label
-        record = SourceRecord(
-            label=f"S{len(self._records) + 1}",
-            chunk_uid=chunk.chunk_id,
-            citation=chunk.citation,
-            text=" ".join(chunk.text.split()),
-        )
-        self._records.append(record)
-        self._by_uid[record.chunk_uid] = record
-        return record.label
+        with self._lock:
+            existing = self._by_uid.get(chunk.chunk_id)
+            if existing is not None:
+                return existing.label
+            record = SourceRecord(
+                label=f"S{len(self._records) + 1}",
+                chunk_uid=chunk.chunk_id,
+                citation=chunk.citation,
+                text=" ".join(chunk.text.split()),
+            )
+            self._records.append(record)
+            self._by_uid[record.chunk_uid] = record
+            return record.label
 
     @property
     def records(self) -> List[SourceRecord]:
@@ -271,6 +274,7 @@ class ReportService:
             self.get_retriever(),
             top_k=top_k or self.settings.retrieval_top_k,
             index_version=self._index_version(),
+            parallel_sections=self.settings.llm_parallel_sections,
         )
         registry = StoredRegistry(
             SourceRecord(

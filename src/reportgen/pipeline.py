@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -86,12 +88,15 @@ class SourceRegistry:
     def __init__(self) -> None:
         self._by_chunk: Dict[str, str] = {}
         self._chunks: List[Chunk] = []
+        # Секции могут генерироваться параллельно и метить источники одновременно.
+        self._lock = threading.Lock()
 
     def label(self, chunk: Chunk) -> str:
-        if chunk.chunk_id not in self._by_chunk:
-            self._by_chunk[chunk.chunk_id] = f"S{len(self._chunks) + 1}"
-            self._chunks.append(chunk)
-        return self._by_chunk[chunk.chunk_id]
+        with self._lock:
+            if chunk.chunk_id not in self._by_chunk:
+                self._by_chunk[chunk.chunk_id] = f"S{len(self._chunks) + 1}"
+                self._chunks.append(chunk)
+            return self._by_chunk[chunk.chunk_id]
 
     @property
     def chunks(self) -> List[Chunk]:
@@ -227,8 +232,20 @@ def generate_report(
     top_k: int = 6,
     generated_at: str | None = None,
     index_version: str = "—",
+    parallel_sections: int = 1,
 ) -> ReportResult:
-    """Полный цикл: секции → сшивка → служебный блок → приложение источников."""
+    """Полный цикл: секции → сшивка → служебный блок → приложение источников.
+
+    ``parallel_sections`` — сколько секций писать одновременно. Секции идут
+    волнами: внутри волны они пишутся параллельно, а каждая следующая волна
+    видит краткое содержание всех предыдущих и потому не повторяется. Это
+    компромисс между скоростью и связностью: при одном GPU и батчинге в
+    llama.cpp волна из двух секций почти вдвое быстрее двух последовательных,
+    потому что веса модели читаются из памяти один раз на обе.
+
+    Порядок секций в результате всегда соответствует шаблону, поэтому отчёт
+    остаётся воспроизводимым (инвариант 1.4.3).
+    """
     if facts.report_type != outline.report_type:
         raise ValueError(
             f"тип отчёта в факт-пакете ('{facts.report_type}') не совпадает "
@@ -238,14 +255,28 @@ def generate_report(
     registry = SourceRegistry()
     generated: List[GeneratedSection] = []
     previously: List[tuple[str, str]] = []
+    wave_size = max(1, int(parallel_sections))
 
-    for spec in outline.sections:
-        section = generate_section(
-            spec, facts, retriever, llm,
-            previously=previously, registry=registry, top_k=top_k,
-        )
-        generated.append(section)
-        previously.append((spec.title, _summarize(section.text)))
+    for start in range(0, len(outline.sections), wave_size):
+        wave = outline.sections[start:start + wave_size]
+        if len(wave) == 1:
+            sections = [generate_section(
+                wave[0], facts, retriever, llm,
+                previously=previously, registry=registry, top_k=top_k,
+            )]
+        else:
+            seen = list(previously)
+            with ThreadPoolExecutor(max_workers=len(wave)) as pool:
+                sections = list(pool.map(
+                    lambda spec: generate_section(
+                        spec, facts, retriever, llm,
+                        previously=seen, registry=registry, top_k=top_k,
+                    ),
+                    wave,
+                ))
+        for spec, section in zip(wave, sections):
+            generated.append(section)
+            previously.append((spec.title, _summarize(section.text)))
 
     meta = {
         "case_id": facts.case_id,
