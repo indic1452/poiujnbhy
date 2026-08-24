@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 .venv/
 models/
+var/
+exports/
+*.db
+*.db-wal
+*.db-shm
