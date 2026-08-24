@@ -123,6 +123,9 @@ class BundleConfigTests(unittest.TestCase):
     def test_llama_keeps_spare_release(self):
         self.assertTrue(self.plan["llama_cpp"]["keep_previous"])
 
+    def test_llama_search_depth_set(self):
+        self.assertGreaterEqual(self.plan["llama_cpp"].get("search_depth", 0), 5)
+
     def test_python_version_matches_installer(self):
         python = [tool for tool in self.plan["tools"]["items"] if tool["id"] == "python"][0]
         url = python["sources"][0]["url"]
@@ -158,6 +161,18 @@ class PackScriptTests(unittest.TestCase):
         # Прогон тестов — единственная проверка установки без сети и модели.
         # Без httpx из requirements-dev.txt три модуля падают на импорте.
         self.assertIn("requirements-dev.txt", self.text)
+
+    def test_llama_release_is_chosen_by_assets(self):
+        # "Последний выпуск" llama.cpp по мнению GitHub бывает без сборок под
+        # Windows (например, v0.2.0). Брать его вслепую нельзя — нужно искать
+        # первый выпуск, в котором лежат нужные архивы.
+        self.assertNotIn("releases/latest", self.text)
+        self.assertIn("Find-LlamaRelease", self.text)
+
+    def test_llama_failure_shows_available_assets(self):
+        # Сообщение "нет файла по шаблону" без списка того, что есть,
+        # не даёт ничего починить.
+        self.assertIn("в нём есть:", self.text)
 
     def test_checksums_are_verified(self):
         self.assertIn("Test-Checksum", self.text)

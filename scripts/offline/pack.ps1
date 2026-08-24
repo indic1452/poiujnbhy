@@ -167,19 +167,32 @@ function Resolve-SourceForgeListing($source) {
 }
 
 function Resolve-GitHubRelease($source) {
-    $api = "https://api.github.com/repos/$($source.repo)/releases/latest"
-    if ($source.tag) { $api = "https://api.github.com/repos/$($source.repo)/releases/tags/$($source.tag)" }
-    $info = Invoke-Json $api
-    $asset = $info.assets | Where-Object { $_.name -like $source.pattern } | Select-Object -First 1
-    if (-not $asset) { throw "в выпуске $($info.tag_name) репозитория $($source.repo) нет файла '$($source.pattern)'" }
-    return [pscustomobject]@{
-        url      = $asset.browser_download_url
-        filename = $asset.name
-        md5      = $null
-        sha256   = $null
-        bytes    = $asset.size
-        note     = "GitHub/$($source.repo) $($info.tag_name)"
+    # Не берём «последний выпуск» вслепую: у проектов рядом с обычными
+    # сборками попадаются выпуски вообще без прикреплённых файлов. Идём от
+    # свежих к старым и берём первый, где нужный файл есть.
+    $releases = if ($source.tag) {
+        @(Invoke-Json "https://api.github.com/repos/$($source.repo)/releases/tags/$($source.tag)")
+    } else {
+        @(Invoke-Json "https://api.github.com/repos/$($source.repo)/releases?per_page=20")
     }
+    foreach ($info in $releases) {
+        $asset = $info.assets | Where-Object { $_.name -like $source.pattern } | Select-Object -First 1
+        if (-not $asset) { continue }
+        return [pscustomobject]@{
+            url      = $asset.browser_download_url
+            filename = $asset.name
+            md5      = $null
+            sha256   = $null
+            bytes    = $asset.size
+            note     = "GitHub/$($source.repo) $($info.tag_name)"
+        }
+    }
+    $newest = $releases | Where-Object { $_.assets.Count } | Select-Object -First 1
+    if ($newest) {
+        Note "в выпуске $($newest.tag_name) репозитория $($source.repo) есть:"
+        foreach ($name in ($newest.assets.name | Select-Object -First 10)) { Note "  $name" }
+    }
+    throw "в выпусках репозитория $($source.repo) нет файла '$($source.pattern)'"
 }
 
 function Resolve-GitHubRaw($source) {
@@ -213,6 +226,63 @@ function Resolve-TdfStable($source) {
         bytes    = $null
         note     = "documentfoundation.org $version"
     }
+}
+
+# --------------------------------------------------------------- llama.cpp --
+# «Последний выпуск» по мнению GitHub — не обязательно тот, в котором лежат
+# нужные архивы: у llama.cpp рядом с обычными сборками (b7xxx) появились
+# выпуски вида v0.2.0 вообще без бинарников под Windows. Поэтому перебираем
+# выпуски от свежих к старым и берём первый, где есть ВСЕ нужные файлы.
+
+function Select-LlamaAssets($release, $patterns) {
+    $found = @()
+    foreach ($pattern in $patterns) {
+        $asset = $release.assets |
+                 Where-Object { $_.name -like "*$pattern*" -and ($_.name -like '*x64*' -or $_.name -like '*amd64*') } |
+                 Select-Object -First 1
+        if (-not $asset) {
+            # Бывает, что разрядность в имя не вынесена, — пробуем без неё.
+            $asset = $release.assets | Where-Object { $_.name -like "*$pattern*" } | Select-Object -First 1
+        }
+        if (-not $asset) { return $null }
+        $found += $asset
+    }
+    return $found
+}
+
+function Get-LlamaReleases($plan) {
+    if ($plan.llama_cpp.release) {
+        return @(Invoke-Json "https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/$($plan.llama_cpp.release)")
+    }
+    $depth = if ($plan.llama_cpp.search_depth) { [int]$plan.llama_cpp.search_depth } else { 30 }
+    return @(Invoke-Json "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=$depth")
+}
+
+function Find-LlamaRelease($plan) {
+    # Возвращает список подходящих выпусков (свежие первыми) — второй нужен
+    # как запасной, если основная сборка не заведётся на этом драйвере.
+    $patterns = @($plan.llama_cpp.asset_patterns)
+    $matching = @()
+    $scanned = @()
+    foreach ($release in (Get-LlamaReleases $plan)) {
+        $scanned += $release
+        $assets = Select-LlamaAssets $release $patterns
+        if ($assets) { $matching += [pscustomobject]@{ release = $release; assets = $assets } }
+    }
+    if (-not $matching.Count) {
+        # Молчаливое «нет файла по шаблону» бесполезно: показываем, что в
+        # выпусках вообще лежит, чтобы шаблон можно было поправить сразу.
+        $withAssets = $scanned | Where-Object { $_.assets.Count } | Select-Object -First 1
+        if ($withAssets) {
+            Warn "в выпусках llama.cpp нет файлов по шаблонам: $($patterns -join ', ')"
+            Note "самый свежий выпуск с файлами — $($withAssets.tag_name), в нём есть:"
+            foreach ($name in ($withAssets.assets.name | Select-Object -First 20)) { Note "  $name" }
+        } else {
+            Warn 'ни в одном из просмотренных выпусков llama.cpp нет прикреплённых файлов'
+        }
+        throw "не найден выпуск llama.cpp с файлами по шаблонам: $($patterns -join ', ')"
+    }
+    return $matching
 }
 
 function Resolve-Url($source) {
@@ -341,19 +411,19 @@ if ($Probe) {
 
     if (Test-Wanted 'llama') {
         try {
-            $info = Invoke-Json 'https://api.github.com/repos/ggml-org/llama.cpp/releases/latest'
-            foreach ($pattern in $plan.llama_cpp.asset_patterns) {
-                $asset = $info.assets | Where-Object { $_.name -like "*$pattern*" -and $_.name -like '*x64*' } | Select-Object -First 1
-                if ($asset) {
-                    $rows += [pscustomobject]@{ Что = 'llama.cpp'; Файл = $asset.name; Источник = "GitHub $($info.tag_name)"; Ответ = 'OK (по API)' }
-                } else {
-                    $failed++
-                    $rows += [pscustomobject]@{ Что = 'llama.cpp'; Файл = $pattern; Источник = "GitHub $($info.tag_name)"; Ответ = 'НЕТ ФАЙЛА ПО ШАБЛОНУ' }
-                }
+            $candidates = @(Find-LlamaRelease $plan)
+            $chosen = $candidates[0]
+            foreach ($asset in $chosen.assets) {
+                $code = Test-Url $asset.browser_download_url
+                if ($code -ge 200 -and $code -lt 400) { $status = "OK $code" } else { $status = "ОШИБКА $code"; $failed++ }
+                $rows += [pscustomobject]@{ Что = 'llama.cpp'; Файл = $asset.name; Источник = "GitHub $($chosen.release.tag_name)"; Ответ = $status }
+            }
+            if ($plan.llama_cpp.keep_previous -and $candidates.Count -lt 2) {
+                Note 'запасного выпуска llama.cpp с нужными файлами не нашлось — поедет только основной'
             }
         } catch {
             $failed++
-            $rows += [pscustomobject]@{ Что = 'llama.cpp'; Файл = '—'; Источник = 'GitHub'; Ответ = "ОШИБКА: $($_.Exception.Message)" }
+            $rows += [pscustomobject]@{ Что = 'llama.cpp'; Файл = '—'; Источник = 'GitHub'; Ответ = "ОШИБКА: $($_.Exception.Message.Split([char]10)[0])" }
         }
     }
 
@@ -447,41 +517,30 @@ if (-not $SkipWheels -and (Test-Wanted 'wheels')) {
 # ------------------------------------------------------------ llama.cpp ----
 if (-not $SkipLlama -and (Test-Wanted 'llama')) {
     Step 'llama.cpp (сборка под CUDA) и библиотеки CUDA'
-    $release = $plan.llama_cpp.release
-    $api = if ($release) {
-        "https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/$release"
-    } else {
-        'https://api.github.com/repos/ggml-org/llama.cpp/releases/latest'
-    }
-    $info = Invoke-Json $api
-    Ok "выпуск $($info.tag_name)"
-    foreach ($pattern in $plan.llama_cpp.asset_patterns) {
-        $asset = $info.assets | Where-Object { $_.name -like "*$pattern*" -and $_.name -like '*x64*' } |
-                 Select-Object -First 1
-        if (-not $asset) { Warn "в выпуске нет файла по шаблону '$pattern' — скачайте вручную"; continue }
+    $candidates = @(Find-LlamaRelease $plan)
+    $chosen = $candidates[0]
+    Ok "выпуск $($chosen.release.tag_name)"
+    foreach ($asset in $chosen.assets) {
         Get-File $asset.browser_download_url (Join-Path $llamaDir $asset.name)
         Ok $asset.name
-        $catalog += [pscustomobject]@{ id = 'llama'; file = $asset.name; source = "GitHub $($info.tag_name)" }
+        $catalog += [pscustomobject]@{ id = 'llama'; file = $asset.name; source = "GitHub $($chosen.release.tag_name)" }
     }
-    Set-Content (Join-Path $llamaDir 'RELEASE.txt') $info.tag_name -Encoding UTF8
+    Set-Content (Join-Path $llamaDir 'RELEASE.txt') $chosen.release.tag_name -Encoding ASCII
 
     # Предыдущий выпуск как страховка: свежая сборка иногда не заводится на
     # конкретном драйвере, а на офлайн-машине скачать другую уже негде.
-    if ($plan.llama_cpp.keep_previous -and -not $release) {
+    if ($plan.llama_cpp.keep_previous -and $candidates.Count -ge 2) {
         try {
-            $all = Invoke-Json 'https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=5'
-            $previous = $all | Where-Object { $_.tag_name -ne $info.tag_name } | Select-Object -First 1
-            if ($previous) {
-                $prevDir = New-Dir (Join-Path $llamaDir 'previous')
-                foreach ($pattern in $plan.llama_cpp.asset_patterns) {
-                    $asset = $previous.assets | Where-Object { $_.name -like "*$pattern*" -and $_.name -like '*x64*' } |
-                             Select-Object -First 1
-                    if ($asset) { Get-File $asset.browser_download_url (Join-Path $prevDir $asset.name) }
-                }
-                Set-Content (Join-Path $prevDir 'RELEASE.txt') $previous.tag_name -Encoding UTF8
-                Ok "запасной выпуск $($previous.tag_name) — на случай, если свежий не заведётся"
+            $previous = $candidates[1]
+            $prevDir = New-Dir (Join-Path $llamaDir 'previous')
+            foreach ($asset in $previous.assets) {
+                Get-File $asset.browser_download_url (Join-Path $prevDir $asset.name)
             }
+            Set-Content (Join-Path $prevDir 'RELEASE.txt') $previous.release.tag_name -Encoding ASCII
+            Ok "запасной выпуск $($previous.release.tag_name) — на случай, если свежий не заведётся"
         } catch { Warn "запасной выпуск llama.cpp не скачан: $($_.Exception.Message)" }
+    } elseif ($plan.llama_cpp.keep_previous) {
+        Warn 'запасного выпуска llama.cpp с нужными файлами не нашлось'
     }
 }
 
