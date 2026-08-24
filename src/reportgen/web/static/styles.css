@@ -2254,3 +2254,13 @@ table.grid tr.is-focus td {
         max-width: 100%;
     }
 }
+
+/* Документ, исключённый из поиска (заменён, архив, проект). */
+.status-off {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+select.status-off {
+    background: var(--danger-soft);
+}

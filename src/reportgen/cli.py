@@ -15,7 +15,7 @@ from .llm import build_llm
 from .pipeline import Outline, check_facts_coverage, generate_report
 from .retrieval import BM25Index, Retriever
 from .store.db import Database
-from .store.models import ROLES
+from .store.models import DOC_STATUSES, ROLES
 from .store.repo import Repositories
 from .verify import blocking, summarize, verify_report
 
@@ -246,13 +246,27 @@ def cmd_library(args: argparse.Namespace) -> int:
         return 1
     for document in documents:
         domain = document.domain or "—"
+        mark = "" if document.status == "current" else f"  [{document.status}]"
         print(f"{document.doc_type:12} {domain:12} {document.chunk_count:5} чанков  "
-              f"{document.doc_id}")
+              f"{document.doc_id}{mark}")
     by_domain = repos.documents.domains()
     print("по направлениям: " + ", ".join(f"{name} {count}" for name, count in by_domain.items()))
     stats = repos.documents.stats()
     total = sum(item["chunks"] for item in stats.values())
     print(f"итого документов {len(documents)}, чанков {total}, векторов {repos.vectors.count()}")
+    return 0
+
+
+def cmd_doc_status(args: argparse.Namespace) -> int:
+    repos, _ = _open_repos(args)
+    if repos.documents.by_doc_id(args.doc_id) is None:
+        print(f"документ не найден: {args.doc_id}", file=sys.stderr)
+        return 1
+    repos.documents.set_status(args.doc_id, args.status, args.superseded_by or "")
+    repos.audit.log("library.status", object_type="document", object_id=args.doc_id,
+                    details={"status": args.status})
+    print(f"{args.doc_id}: статус «{args.status}»"
+          + (f", заменён на {args.superseded_by}" if args.superseded_by else ""))
     return 0
 
 
@@ -402,6 +416,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_lib.add_argument("--doc-type", default=None)
     p_lib.add_argument("--domain", default=None, help="фильтр по направлению техники")
     p_lib.set_defaults(func=cmd_library)
+
+    p_status = sub.add_parser("doc-status", help="отметить актуальность документа библиотеки")
+    p_status.add_argument("--doc-id", required=True)
+    p_status.add_argument("--status", required=True, choices=list(DOC_STATUSES))
+    p_status.add_argument("--superseded-by", default=None, help="doc_id новой редакции")
+    p_status.set_defaults(func=cmd_doc_status)
 
     p_embed = sub.add_parser("embed", help="построить векторы для плотного поиска")
     p_embed.add_argument("--force", action="store_true")

@@ -14,7 +14,13 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from ..corpus import DOC_TYPES
 from ..domains import registry as domain_registry
-from ..store.models import CONFIDENTIALITY, Case, Report
+from ..store.models import (
+    CONFIDENTIALITY,
+    DOC_STATUS_TITLES,
+    DOC_STATUSES,
+    Case,
+    Report,
+)
 from .auth import COOKIE_NAME, get_user, require_admin, require_editor, require_user
 from .service import ServiceError
 
@@ -160,6 +166,7 @@ def config(request: Request) -> Dict[str, Any]:
         "outlines": outlines,
         "doc_types": list(DOC_TYPES),
         "confidentiality": list(CONFIDENTIALITY),
+        "statuses": [{"id": key, "title": title} for key, title in DOC_STATUS_TITLES.items()],
         "llm": {"model": settings.llm_model, "base_url": settings.llm_base_url,
                 "kind": settings.llm_kind},
         "auth_enabled": settings.auth_enabled,
@@ -403,14 +410,15 @@ def export_docx(request: Request, report_id: int) -> FileResponse:
 
 @router.get("/library")
 def library(request: Request, doc_type: str | None = None,
-            domain: str | None = None) -> Dict[str, Any]:
+            domain: str | None = None, status: str | None = None) -> Dict[str, Any]:
     require_user(request)
     repos = _repos(request)
-    documents = repos.documents.list(doc_type, domain)
+    documents = repos.documents.list(doc_type, domain, status)
     return {
         "items": [document.to_dict() for document in documents],
         "stats": repos.documents.stats(),
         "domains": repos.documents.domains(),
+        "statuses": repos.documents.statuses(),
         "chunks": repos.chunks.count(),
         "embeddings": repos.vectors.count(),
     }
@@ -528,6 +536,7 @@ def search(request: Request, q: str = "", top_k: int = 10,
                 "chunk_uid": hit.chunk.chunk_id,
                 "doc_type": hit.chunk.doc_type,
                 "domain": hit.chunk.meta.get("domain", ""),
+                "status": hit.chunk.meta.get("status", "current"),
                 "citation": hit.chunk.citation,
                 "text": " ".join(hit.chunk.text.split())[:600],
                 "score": round(float(hit.score), 4),
@@ -547,6 +556,35 @@ def domains(request: Request) -> Dict[str, Any]:
         "items": _domains(request).to_dict(),
         "documents": _repos(request).documents.domains(),
     }
+
+
+@router.put("/library/{doc_id:path}/status")
+def set_document_status(request: Request, doc_id: str) -> Dict[str, Any]:
+    """Отметить актуальность документа.
+
+    Заменённый и архивный документ пропадает из поиска: цитировать отменённую
+    редакцию стандарта как действующую — прямая ошибка в отчёте заказчику.
+    Сам документ остаётся в библиотеке для разбора старых обращений.
+    """
+    user = require_editor(request)
+    payload = _body(request)
+    status = str(payload.get("status", "")).strip()
+    if status not in DOC_STATUSES:
+        raise ServiceError(
+            f"неизвестный статус '{status}' (допустимы: {', '.join(DOC_STATUSES)})", 400
+        )
+    superseded_by = str(payload.get("superseded_by", "")).strip()
+    repos = _repos(request)
+    if repos.documents.by_doc_id(doc_id) is None:
+        raise ServiceError("документ не найден", 404)
+    if superseded_by and repos.documents.by_doc_id(superseded_by) is None:
+        raise ServiceError(f"документ на замену не найден: {superseded_by}", 400)
+
+    repos.documents.set_status(doc_id, status, superseded_by)
+    repos.audit.log("library.status", user=user, object_type="document",
+                    object_id=doc_id, details={"status": status, "superseded_by": superseded_by})
+    _service(request).reset_retriever()
+    return {"ok": True, "document": repos.documents.by_doc_id(doc_id).to_dict()}
 
 
 @router.put("/library/{doc_id:path}/domain")

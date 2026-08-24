@@ -17,6 +17,21 @@ CASE_STATUSES = ("new", "draft", "review", "approved", "archived")
 REPORT_STATUSES = ("draft", "verified", "approved")
 CONFIDENTIALITY = ("public", "internal", "nda")
 
+#: Актуальность документа библиотеки.
+#: current    — действующий, участвует в поиске;
+#: superseded — заменён более новой редакцией, из поиска исключён;
+#: archived   — выведен из обращения, из поиска исключён;
+#: draft      — проект, ещё не введён в действие, из поиска исключён.
+DOC_STATUSES = ("current", "superseded", "archived", "draft")
+DOC_STATUS_TITLES = {
+    "current": "действующий",
+    "superseded": "заменён",
+    "archived": "архив",
+    "draft": "проект",
+}
+#: Что участвует в поиске по умолчанию.
+SEARCHABLE_STATUSES = ("current",)
+
 
 def _json(value: str | None, default: Any) -> Any:
     if not value:
@@ -75,6 +90,8 @@ class Document:
     sha256: str
     confidentiality: str = "internal"
     domain: str = ""
+    status: str = "current"
+    superseded_by: str = ""
     meta: Dict[str, Any] = field(default_factory=dict)
     chunk_count: int = 0
     indexed_at: str | None = None
@@ -91,6 +108,8 @@ class Document:
             sha256=row["sha256"],
             confidentiality=row["confidentiality"],
             domain=row["domain"] if "domain" in row.keys() else "",
+            status=row["status"] if "status" in row.keys() else "current",
+            superseded_by=row["superseded_by"] if "superseded_by" in row.keys() else "",
             meta=_json(row["meta_json"], {}),
             chunk_count=row["chunk_count"],
             indexed_at=row["indexed_at"],
@@ -106,6 +125,10 @@ class Document:
             "sha256": self.sha256[:12],
             "confidentiality": self.confidentiality,
             "domain": self.domain,
+            "status": self.status,
+            "status_title": DOC_STATUS_TITLES.get(self.status, self.status),
+            "superseded_by": self.superseded_by,
+            "searchable": self.status in SEARCHABLE_STATUSES,
             "chunk_count": self.chunk_count,
             "indexed_at": self.indexed_at,
             "meta": self.meta,

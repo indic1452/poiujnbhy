@@ -18,6 +18,7 @@ from ..corpus import Chunk
 from ..retrieval import tokenize
 from .db import Database, utcnow
 from .models import (
+    SEARCHABLE_STATUSES,
     AuditEntry,
     Case,
     Chat,
@@ -179,15 +180,18 @@ class DocumentRepo:
 
     def upsert(self, doc_id: str, doc_type: str, title: str, source_path: str,
                sha256: str, confidentiality: str = "internal",
-               meta: Dict[str, Any] | None = None, domain: str = "") -> Document:
+               meta: Dict[str, Any] | None = None, domain: str = "",
+               status: str = "current", superseded_by: str = "") -> Document:
         with self.db.transaction() as connection:
             connection.execute(
                 "INSERT INTO documents(doc_id, doc_type, title, source_path, sha256, "
-                "confidentiality, meta_json, domain, created_at) VALUES(?,?,?,?,?,?,?,?,?) "
+                "confidentiality, meta_json, domain, status, superseded_by, created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(doc_id) DO UPDATE SET doc_type=excluded.doc_type, "
                 "title=excluded.title, source_path=excluded.source_path, "
                 "sha256=excluded.sha256, confidentiality=excluded.confidentiality, "
                 "meta_json=excluded.meta_json, domain=excluded.domain, "
+                "status=excluded.status, superseded_by=excluded.superseded_by, "
                 # Файл изменился — прежние чанки устарели, отметку об индексации
                 # снимаем до того, как ChunkRepo их перезапишет.
                 "indexed_at=CASE WHEN documents.sha256 = excluded.sha256 "
@@ -195,7 +199,8 @@ class DocumentRepo:
                 "chunk_count=CASE WHEN documents.sha256 = excluded.sha256 "
                 "THEN documents.chunk_count ELSE 0 END",
                 (doc_id, doc_type, title, source_path, sha256, confidentiality,
-                 json.dumps(meta or {}, ensure_ascii=False), domain, utcnow()),
+                 json.dumps(meta or {}, ensure_ascii=False), domain, status,
+                 superseded_by, utcnow()),
             )
         document = self.by_doc_id(doc_id)
         assert document is not None
@@ -209,7 +214,8 @@ class DocumentRepo:
         row = self.db.query_one("SELECT * FROM documents WHERE sha256 = ?", (sha256,))
         return Document.from_row(row) if row else None
 
-    def list(self, doc_type: str | None = None, domain: str | None = None) -> List[Document]:
+    def list(self, doc_type: str | None = None, domain: str | None = None,
+             status: str | None = None) -> List[Document]:
         clauses, params = [], []
         if doc_type:
             clauses.append("doc_type = ?")
@@ -217,6 +223,9 @@ class DocumentRepo:
         if domain:
             clauses.append("domain = ?")
             params.append(domain)
+        if status:
+            clauses.append("status = ?")
+            params.append(status)
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
         rows = self.db.query(f"SELECT * FROM documents{where} ORDER BY doc_type, title", params)
         return rows_to(Document, rows)
@@ -231,6 +240,31 @@ class DocumentRepo:
                 "(SELECT id FROM documents WHERE doc_id = ?)",
                 (domain, doc_id),
             )
+
+    def set_status(self, doc_id: str, status: str, superseded_by: str = "") -> None:
+        """Отметить актуальность документа.
+
+        Заменённый и архивный документ исчезает из поиска: помощник и отчёты
+        не должны цитировать отменённую редакцию стандарта как действующую.
+        Сам документ остаётся в библиотеке — он нужен, чтобы разбирать старые
+        обращения, выполненные по прежней редакции.
+        """
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE documents SET status = ?, superseded_by = ? WHERE doc_id = ?",
+                (status, superseded_by, doc_id),
+            )
+            connection.execute(
+                "UPDATE chunks SET status = ? WHERE document_id = "
+                "(SELECT id FROM documents WHERE doc_id = ?)",
+                (status, doc_id),
+            )
+
+    def statuses(self) -> Dict[str, int]:
+        rows = self.db.query(
+            "SELECT status, count(*) AS documents FROM documents GROUP BY status"
+        )
+        return {row["status"]: row["documents"] for row in rows}
 
     def domains(self) -> Dict[str, int]:
         rows = self.db.query(
@@ -301,7 +335,7 @@ class ChunkRepo:
             for ordinal, chunk in enumerate(chunks):
                 connection.execute(
                     "INSERT INTO chunks(chunk_uid, document_id, ord, doc_type, title_path, "
-                    "text, meta_json, domain) VALUES(?,?,?,?,?,?,?,?)",
+                    "text, meta_json, domain, status) VALUES(?,?,?,?,?,?,?,?,?)",
                     (
                         chunk.chunk_id,
                         document.id,
@@ -311,6 +345,7 @@ class ChunkRepo:
                         chunk.text,
                         json.dumps(chunk.meta, ensure_ascii=False),
                         document.domain,
+                        document.status,
                     ),
                 )
                 connection.execute(
@@ -331,6 +366,8 @@ class ChunkRepo:
         meta = json.loads(row["meta_json"])
         if "domain" in keys and row["domain"]:
             meta.setdefault("domain", row["domain"])
+        if "status" in keys and row["status"]:
+            meta.setdefault("status", row["status"])
         return Chunk(
             chunk_id=row["chunk_uid"],
             doc_id=row["doc_id"] if "doc_id" in keys else row["chunk_uid"].split("#")[0],
@@ -375,6 +412,7 @@ class ChunkRepo:
     def search_lexical(
         self, query: str, limit: int = 50, doc_types: Iterable[str] | None = None,
         domains: Iterable[str] | None = None,
+        statuses: Iterable[str] | None = SEARCHABLE_STATUSES,
     ) -> List[Tuple[str, float]]:
         """Поиск по FTS5. Возвращает пары (chunk_uid, оценка), лучшие первыми.
 
@@ -399,6 +437,10 @@ class ChunkRepo:
         if areas:
             sql += f" AND c.domain IN ({','.join('?' * len(areas))})"
             params.extend(areas)
+        allowed_statuses = [s for s in (statuses or []) if s]
+        if allowed_statuses:
+            sql += f" AND c.status IN ({','.join('?' * len(allowed_statuses))})"
+            params.extend(allowed_statuses)
         sql += " ORDER BY rank LIMIT ?"
         params.append(int(limit))
         # bm25() в SQLite тем меньше, чем релевантнее; переводим в «больше = лучше».

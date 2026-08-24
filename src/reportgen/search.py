@@ -39,6 +39,7 @@ from .embeddings import Embedder, EmbeddingClient, EmbeddingError, top_cosine
 from .rerank import RerankError, build_reranker
 from .rerank import Reranker as RerankerProtocol
 from .retrieval import Hit, reciprocal_rank_fusion
+from .store.models import SEARCHABLE_STATUSES
 
 if TYPE_CHECKING:  # pragma: no cover — только для подсказок типов
     from .config import Settings
@@ -152,7 +153,7 @@ class DatabaseRetriever:
         areas = {d for d in (domains or []) if d} or None
 
         lexical = self._lexical(text, allowed, meta_filter, areas)
-        dense = self._dense(text, allowed, meta_filter, areas)
+        dense = self._dense(text, allowed, meta_filter, areas, set(SEARCHABLE_STATUSES))
 
         if lexical and dense:
             merged = reciprocal_rank_fusion(
@@ -203,6 +204,7 @@ class DatabaseRetriever:
         allowed: set[str] | None,
         meta_filter: Dict[str, str] | None,
         domains: set[str] | None = None,
+        statuses: set[str] | None = None,
     ) -> List[Hit]:
         """Второй канал: косинус между вектором запроса и векторами чанков.
 
@@ -234,7 +236,7 @@ class DatabaseRetriever:
         hits: List[Hit] = []
         for uid, score in scored:
             chunk = chunks.get(uid)
-            if chunk is None or not _matches(chunk, allowed, meta_filter, domains):
+            if chunk is None or not _matches(chunk, allowed, meta_filter, domains, statuses):
                 continue
             hits.append(Hit(chunk=chunk, score=float(score)))
             if len(hits) >= self.candidates:
@@ -302,11 +304,14 @@ def _matches(
     allowed: set[str] | None,
     meta_filter: Dict[str, str] | None,
     domains: set[str] | None = None,
+    statuses: set[str] | None = None,
 ) -> bool:
     """Те же правила отбора, что в :meth:`reportgen.retrieval.BM25Index.search`."""
     if allowed and chunk.doc_type not in allowed:
         return False
     if domains and chunk.meta.get("domain", "") not in domains:
+        return False
+    if statuses and chunk.meta.get("status", "current") not in statuses:
         return False
     if meta_filter and any(
         str(chunk.meta.get(key, "")).lower() != str(value).lower()

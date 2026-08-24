@@ -507,6 +507,48 @@ class LibraryTests(WebTestCase):
         ).json()
         self.assertTrue(all(item["doc_type"] == "reports" for item in body["items"]))
 
+    def test_superseded_document_disappears_from_search(self):
+        doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
+        found_before = self.client.get("/api/search", params={"q": "занимаемая полоса"}).json()
+        response = self.client.put(
+            f"/api/library/{doc_id}/status", json={"status": "superseded"}
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["document"]["status"], "superseded")
+        self.assertFalse(response.json()["document"]["searchable"])
+        found_after = self.client.get("/api/search", params={"q": "занимаемая полоса"}).json()
+        before = {item["chunk_uid"] for item in found_before["items"]}
+        after = {item["chunk_uid"] for item in found_after["items"]}
+        self.assertTrue(before)
+        self.assertFalse({uid for uid in after if uid.startswith(doc_id)})
+
+    def test_superseded_by_must_exist(self):
+        doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
+        response = self.client.put(
+            f"/api/library/{doc_id}/status",
+            json={"status": "superseded", "superseded_by": "нет/такого"},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_unknown_status_is_rejected(self):
+        doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
+        response = self.client.put(f"/api/library/{doc_id}/status", json={"status": "выдумка"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_status_change_requires_editor(self):
+        doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
+        self.login("viewer")
+        response = self.client.put(f"/api/library/{doc_id}/status", json={"status": "archived"})
+        self.assertEqual(response.status_code, 403)
+
+    def test_library_filters_by_status(self):
+        doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
+        self.client.put(f"/api/library/{doc_id}/status", json={"status": "archived"})
+        archived = self.client.get("/api/library", params={"status": "archived"}).json()
+        self.assertEqual([item["doc_id"] for item in archived["items"]], [doc_id])
+        current = self.client.get("/api/library", params={"status": "current"}).json()
+        self.assertNotIn(doc_id, [item["doc_id"] for item in current["items"]])
+
     def test_delete_document_requires_admin(self):
         doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
         self.login("engineer")

@@ -149,7 +149,9 @@ def _render_sources(hits: Sequence[Hit], registry: SourceRegistry, quote_chars: 
         # Переводы строк сохраняем: таблицы норм и поля кадров в одну строку
         # нечитаемы и для модели, и для инженера.
         text = _tidy_quote(hit.chunk.text, quote_chars)
-        blocks.append(f"[{label}] {hit.chunk.citation}\n{text}")
+        status = hit.chunk.meta.get("status", "current")
+        mark = "" if status == "current" else f" [ВНИМАНИЕ: документ не действующий — {status}]"
+        blocks.append(f"[{label}] {hit.chunk.citation}{mark}\n{text}")
     return "\n\n".join(blocks), labels
 
 

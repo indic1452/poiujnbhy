@@ -504,6 +504,13 @@
     }
 
     /** Выпадающий список направлений с первым пунктом «всё». */
+    const DEFAULT_STATUSES = [
+        { id: 'current', title: 'действующий' },
+        { id: 'superseded', title: 'заменён' },
+        { id: 'archived', title: 'архив' },
+        { id: 'draft', title: 'проект' },
+    ];
+
     function domainSelect(options) {
         const opts = options || {};
         return h('select', {
@@ -2681,6 +2688,7 @@
                     h('td', { class: 'mono small muted' }, item.doc_id),
                     h('td', { class: 'small' }, docTypeLabel(item.doc_type)),
                     h('td', {}, documentDomainCell(item)),
+                    h('td', {}, documentStatusCell(item)),
                     h('td', { class: 'num' }, item.chunk_count || 0),
                     h('td', { class: 'small muted nowrap' }, fmtDateTime(item.indexed_at)),
                     h('td', { class: 'small' }, CONFIDENTIALITY_LABEL[item.confidentiality] || item.confidentiality),
@@ -2694,6 +2702,7 @@
                     h('thead', {}, h('tr', {},
                         h('th', {}, 'Название'), h('th', {}, 'Идентификатор'), h('th', {}, 'Тип'),
                         h('th', {}, 'Направление'),
+                        h('th', {}, 'Актуальность'),
                         h('th', {}, 'Чанков'), h('th', {}, 'Проиндексирован'), h('th', {}, 'Гриф'), h('th', {}))),
                     body)));
 
@@ -2716,6 +2725,49 @@
             });
             select.classList.add('domain-select');
             return select;
+        }
+
+        /** Актуальность документа: заменённый стандарт исчезает из поиска. */
+        function documentStatusCell(item) {
+            const title = item.status_title || item.status || 'действующий';
+            if (!canEdit()) {
+                return h('span', {
+                    class: 'small' + (item.searchable === false ? ' status-off' : ''),
+                }, title);
+            }
+            const select = h('select', {
+                class: 'domain-select' + (item.searchable === false ? ' status-off' : ''),
+                title: 'Актуальность документа. Заменённый и архивный не участвуют в поиске.',
+                onchange: (event) => saveStatus(item, event.target.value, event.target),
+            }, (state.config.statuses || DEFAULT_STATUSES).map((entry) => h('option', {
+                value: entry.id, selected: (item.status || 'current') === entry.id,
+            }, entry.title)));
+            return select;
+        }
+
+        async function saveStatus(item, value, select) {
+            const previous = item.status || 'current';
+            let supersededBy = '';
+            if (value === 'superseded') {
+                supersededBy = (window.prompt(
+                    'Идентификатор документа новой редакции (можно оставить пустым):', '') || '').trim();
+            }
+            select.disabled = true;
+            try {
+                const data = await api.put('/api/library/' + encodePath(item.doc_id) + '/status',
+                    { status: value, superseded_by: supersededBy });
+                Object.assign(item, data.document || {});
+                select.classList.toggle('status-off', item.searchable === false);
+                toast('Документ «' + (item.title || item.doc_id) + '» — ' +
+                    (item.status_title || value) +
+                    (item.searchable === false ? ' (исключён из поиска)' : ''), 'ok');
+                if (libState.status && libState.status !== item.status) await loadLibrary();
+            } catch (error) {
+                select.value = previous;
+                toastError(error);
+            } finally {
+                select.disabled = false;
+            }
         }
 
         async function saveDomain(item, value, select) {

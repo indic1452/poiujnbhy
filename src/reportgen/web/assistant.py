@@ -143,6 +143,7 @@ class AssistantService:
                 "citation": hit.chunk.citation,
                 "doc_type": hit.chunk.doc_type,
                 "domain": hit.chunk.meta.get("domain", ""),
+                "status": hit.chunk.meta.get("status", "current"),
                 "text": _tidy(hit.chunk.text, SOURCE_CHARS),
             }
             for index, hit in enumerate(hits, start=1)
@@ -224,9 +225,12 @@ class AssistantService:
 def _render_sources(sources: Sequence[Dict[str, Any]]) -> str:
     if not sources:
         return "(в библиотеке ничего подходящего не нашлось)"
-    return "\n\n".join(
-        f"[{item['label']}] {item['citation']}\n{item['text']}" for item in sources
-    )
+    blocks = []
+    for item in sources:
+        mark = "" if item.get("status", "current") == "current" else \
+            f" [ВНИМАНИЕ: документ не действующий — {item['status']}]"
+        blocks.append(f"[{item['label']}] {item['citation']}{mark}\n{item['text']}")
+    return "\n\n".join(blocks)
 
 
 def _used_labels(text: str) -> set[str]:

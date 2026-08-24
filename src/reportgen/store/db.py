@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -19,6 +19,11 @@ SCHEMA_VERSION = "2"
 COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("documents", "domain", "TEXT NOT NULL DEFAULT ''"),
     ("chunks", "domain", "TEXT NOT NULL DEFAULT ''"),
+    # Актуальность документа: заменённый стандарт не должен цитироваться
+    # как действующий — это прямая ошибка в отчёте заказчику.
+    ("documents", "status", "TEXT NOT NULL DEFAULT 'current'"),
+    ("documents", "superseded_by", "TEXT NOT NULL DEFAULT ''"),
+    ("chunks", "status", "TEXT NOT NULL DEFAULT 'current'"),
 )
 
 

@@ -1,0 +1,36 @@
+{
+  "comment": "Что скачать в офлайн-комплект. Правьте под выбранные модели: точные имена репозиториев и файлов смотрите на huggingface.co (см. docs/11-windows.md, раздел 4). Поле sha256 необязательно — если указано, оно проверяется после скачивания.",
+  "models": [
+    {
+      "role": "llm",
+      "comment": "Основная модель. Вариант A из docs/11: плотная, влезает в 16 ГБ целиком.",
+      "repo": "Qwen/Qwen3-14B-GGUF",
+      "file": "Qwen3-14B-Q5_K_M.gguf",
+      "approx_gb": 10.5
+    },
+    {
+      "role": "embeddings",
+      "comment": "Смысловой поиск по библиотеке. Обязателен для качества поиска.",
+      "repo": "gpustack/bge-m3-GGUF",
+      "file": "bge-m3-Q8_0.gguf",
+      "approx_gb": 0.65
+    },
+    {
+      "role": "rerank",
+      "comment": "Реранкер: выбирает из полусотни найденных фрагментов действительно нужные.",
+      "repo": "gpustack/bge-reranker-v2-m3-GGUF",
+      "file": "bge-reranker-v2-m3-Q8_0.gguf",
+      "approx_gb": 0.65
+    }
+  ],
+  "llama_cpp": {
+    "comment": "Оставьте release пустым — возьмётся последний выпуск. Нужны ДВА архива: сборка win-cuda-x64 и cudart к ней.",
+    "release": "",
+    "asset_patterns": ["bin-win-cuda", "cudart-llama-bin-win"]
+  },
+  "python": {
+    "comment": "Установщик Python для офлайн-машины. Версия должна совпадать с той, на которой качались колёса.",
+    "version": "3.11.9",
+    "url": "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
+  }
+}
