@@ -468,6 +468,9 @@
         user: null,
         authEnabled: true,
         config: { outlines: [], doc_types: [], confidentiality: ['public', 'internal', 'nda'], llm: {} },
+        // Поддержка форматов зависит от того, какие программы установлены
+        // на этой машине, поэтому запрашивается у сервера, а не зашита.
+        formats: null,
         route: { name: 'cases', id: null },
     };
 
@@ -2521,7 +2524,34 @@
 
     const libState = { docType: '', domain: '', items: [], stats: {}, chunks: 0, embeddings: 0 };
 
+    /** Подсказка о поддерживаемых форматах и о том, чего не хватает. */
+    function formatsHint() {
+        const formats = state.formats;
+        if (!formats) return 'Конвертация, нарезка и индексация — при загрузке.';
+        const shown = (formats.available || []).map((item) => item.replace('.', '').toUpperCase());
+        let text = shown.slice(0, 14).join(', ');
+        if (shown.length > 14) text += ' и ещё ' + (shown.length - 14);
+        text += '. Конвертация, нарезка и индексация — при загрузке.';
+        const blocked = formats.blocked || [];
+        if (blocked.length) {
+            const missing = blocked.map((spec) => (spec.suffixes || []).join(' ')).join(', ');
+            text += ' Не читаются без доп. программ: ' + missing + '.';
+        }
+        return text;
+    }
+
+    async function loadFormats() {
+        if (state.formats) return state.formats;
+        try {
+            state.formats = await api.get('/api/formats');
+        } catch (error) {
+            state.formats = null;
+        }
+        return state.formats;
+    }
+
     async function renderLibrary(view, focusDocId) {
+        await loadFormats();
         clear(view);
         const page = h('div', { class: 'page' });
         view.appendChild(page);
@@ -2570,7 +2600,8 @@
 
         const fileInput = h('input', {
             type: 'file', multiple: true, style: { display: 'none' },
-            accept: '.pdf,.docx,.md,.markdown,.txt',
+            accept: (state.formats && state.formats.available || []).join(',') ||
+                '.pdf,.docx,.md,.markdown,.txt',
             onchange: (event) => {
                 handleFiles(Array.prototype.slice.call(event.target.files || []));
                 event.target.value = '';
@@ -2592,7 +2623,7 @@
             },
         },
             h('div', {}, h('b', {}, 'Перетащите файлы сюда'), ' или нажмите для выбора'),
-            h('div', { class: 'small' }, 'PDF, DOCX, Markdown, TXT. Конвертация, нарезка и индексация — при загрузке.'));
+            h('div', { class: 'small' }, formatsHint()));
 
         const searchInput = h('input', {
             type: 'search', class: 'grow', placeholder: 'Проверка поиска: запрос по библиотеке',
