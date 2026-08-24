@@ -728,7 +728,7 @@ registry.register(registry.ConverterSpec(
     name="image-ocr",
     suffixes=IMAGE_SUFFIXES,
     convert=convert_image,
-    requires=(registry.Requirement("binary", "tesseract", TESSERACT_HINT),),
+    requires=(registry.Requirement("binary", "tesseract", TESSERACT_HINT, locate=lambda: tesseract_binary()),),
     note="скан страницей-картинкой: распознавание tesseract (rus+eng), одна страница",
 ))
 
@@ -738,7 +738,7 @@ registry.register(registry.ConverterSpec(
     convert=convert_pdf_ocr,
     requires=(
         registry.Requirement("python", "pymupdf", PYMUPDF_HINT),
-        registry.Requirement("binary", "tesseract", TESSERACT_HINT),
+        registry.Requirement("binary", "tesseract", TESSERACT_HINT, locate=lambda: tesseract_binary()),
     ),
     priority=10,
     note=(

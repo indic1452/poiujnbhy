@@ -465,8 +465,10 @@ registry.register(registry.ConverterSpec(
     suffixes=DJVU_SUFFIXES,
     convert=convert_djvu,
     requires=(
-        registry.Requirement("binary", "djvutxt", DJVULIBRE_HINT),
-        registry.Requirement("binary", "ddjvu", DJVULIBRE_HINT),
+        registry.Requirement("binary", "djvutxt", DJVULIBRE_HINT,
+                             locate=lambda: djvu_binary("djvutxt")),
+        registry.Requirement("binary", "ddjvu", DJVULIBRE_HINT,
+                             locate=lambda: djvu_binary("ddjvu")),
     ),
     note=(
         "сканы книг: текстовый слой через djvutxt, страницы без слоя — "

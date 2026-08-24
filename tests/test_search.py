@@ -374,7 +374,7 @@ class CrossEncoderRerankerTests(unittest.TestCase):
                 {"index": 0, "relevance_score": 0.12},
             ]
         }))
-        with mock.patch("urllib.request.urlopen", opener):
+        with mock.patch("reportgen._http.urlopen", opener):
             scores = CrossEncoderReranker().score("полоса", ["первый", "второй"])
         self.assertEqual(scores, [0.12, 0.91])
         self.assertEqual(opener.payloads[0]["documents"], ["первый", "второй"])
@@ -384,13 +384,13 @@ class CrossEncoderRerankerTests(unittest.TestCase):
         opener = RecordingURLOpen(lambda payload: FakeResponse({
             "results": [{"index": 1}, {"index": 0}]
         }))
-        with mock.patch("urllib.request.urlopen", opener):
+        with mock.patch("reportgen._http.urlopen", opener):
             scores = CrossEncoderReranker().score("полоса", ["первый", "второй"])
         self.assertGreater(scores[1], scores[0])
 
     def test_empty_answer_keeps_input_order(self):
         opener = RecordingURLOpen(lambda payload: FakeResponse({"results": []}))
-        with mock.patch("urllib.request.urlopen", opener):
+        with mock.patch("reportgen._http.urlopen", opener):
             scores = CrossEncoderReranker().score("полоса", ["a", "b", "c"])
         self.assertEqual(scores, [3.0, 2.0, 1.0])
 
@@ -398,7 +398,7 @@ class CrossEncoderRerankerTests(unittest.TestCase):
         def boom(request, timeout=None):
             raise urllib.error.URLError("connection refused")
 
-        with mock.patch("urllib.request.urlopen", boom):
+        with mock.patch("reportgen._http.urlopen", boom):
             with self.assertRaises(RerankError):
                 CrossEncoderReranker(retries=1).score("полоса", ["a"])
 
@@ -451,7 +451,7 @@ class EmbeddingClientTests(unittest.TestCase):
             })
 
         opener = RecordingURLOpen(responder)
-        with mock.patch("urllib.request.urlopen", opener):
+        with mock.patch("reportgen._http.urlopen", opener):
             vectors = EmbeddingClient(batch=2).embed(["a", "b", "c", "d", "e"])
 
         self.assertEqual(opener.calls, 3)
@@ -463,7 +463,7 @@ class EmbeddingClientTests(unittest.TestCase):
         opener = RecordingURLOpen(
             lambda payload: FakeResponse({"data": [{"index": 0, "embedding": [3.0, 4.0]}]})
         )
-        with mock.patch("urllib.request.urlopen", opener):
+        with mock.patch("reportgen._http.urlopen", opener):
             client = EmbeddingClient()
             vector = client.embed_one("занимаемая полоса")
         self.assertAlmostEqual(vector[0], 0.6, places=6)
@@ -477,7 +477,7 @@ class EmbeddingClientTests(unittest.TestCase):
                 {"index": 0, "embedding": [1.0, 0.0]},
             ]
         }))
-        with mock.patch("urllib.request.urlopen", opener):
+        with mock.patch("reportgen._http.urlopen", opener):
             vectors = EmbeddingClient().embed(["первый", "второй"])
         self.assertEqual(vectors[0], [1.0, 0.0])
         self.assertEqual(vectors[1], [0.0, 1.0])
@@ -489,7 +489,7 @@ class EmbeddingClientTests(unittest.TestCase):
             attempts.append(1)
             raise urllib.error.URLError("connection refused")
 
-        with mock.patch("urllib.request.urlopen", boom), \
+        with mock.patch("reportgen._http.urlopen", boom), \
                 mock.patch("reportgen.embeddings.time.sleep") as sleeper:
             with self.assertRaises(EmbeddingError) as context:
                 EmbeddingClient(retries=3).embed(["a"])
@@ -499,7 +499,7 @@ class EmbeddingClientTests(unittest.TestCase):
 
     def test_malformed_answer_is_reported(self):
         opener = RecordingURLOpen(lambda payload: FakeResponse({"data": []}))
-        with mock.patch("urllib.request.urlopen", opener):
+        with mock.patch("reportgen._http.urlopen", opener):
             with self.assertRaises(EmbeddingError):
                 EmbeddingClient(retries=1).embed(["a"])
 

@@ -25,6 +25,8 @@ import re
 import time
 import urllib.error
 import urllib.request
+
+from . import _http
 from dataclasses import dataclass
 from typing import Any, Dict, List, Protocol, Sequence
 
@@ -107,7 +109,7 @@ class CrossEncoderReranker:
         last_error: Exception | None = None
         for attempt in range(max(1, self.retries)):
             try:
-                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                with _http.urlopen(request, timeout=self.timeout) as response:
                     body = json.loads(response.read().decode("utf-8"))
                 return self._parse(body, len(documents))
             except (urllib.error.URLError, TimeoutError, OSError,

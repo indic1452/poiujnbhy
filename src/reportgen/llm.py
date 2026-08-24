@@ -12,6 +12,8 @@ import json
 import time
 import urllib.error
 import urllib.request
+
+from . import _http
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Protocol
 
@@ -92,7 +94,7 @@ class OpenAICompatLLM:
         last_error: Exception | None = None
         for attempt in range(self.retries):
             try:
-                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                with _http.urlopen(request, timeout=self.timeout) as response:
                     body = json.loads(response.read().decode("utf-8"))
                 return body["choices"][0]["message"]["content"].strip()
             except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError) as error:
@@ -109,7 +111,7 @@ class OpenAICompatLLM:
             self._payload(system, user, max_tokens, temperature, history, stream=True)
         )
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            with _http.urlopen(request, timeout=self.timeout) as response:
                 for raw in response:
                     line = raw.decode("utf-8", errors="replace").strip()
                     if not line or not line.startswith("data:"):

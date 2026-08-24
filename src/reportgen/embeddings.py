@@ -28,6 +28,8 @@ import math
 import time
 import urllib.error
 import urllib.request
+
+from . import _http
 from collections import Counter
 from dataclasses import dataclass
 from typing import (
@@ -192,7 +194,8 @@ class EmbeddingClient:
 
     Так отвечают vLLM, llama.cpp server, Ollama и text-embeddings-inference,
     поэтому смена движка — это смена ``base_url``, а не кода. Наружу контура
-    ничего не уходит: адрес всегда локальный.
+    ничего не уходит: запрос идёт через :mod:`reportgen._http`, где системный
+    прокси отключён явно — одного локального адреса для этого мало.
 
     Повторные попытки с экспоненциальной паузой повторяют поведение
     :class:`reportgen.llm.OpenAICompatLLM`: локальный сервер может быть занят
@@ -261,7 +264,7 @@ class EmbeddingClient:
         last_error: Exception | None = None
         for attempt in range(max(1, self.retries)):
             try:
-                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                with _http.urlopen(request, timeout=self.timeout) as response:
                     body = json.loads(response.read().decode("utf-8"))
                 return self._parse(body, len(texts))
             except (urllib.error.URLError, TimeoutError, OSError,

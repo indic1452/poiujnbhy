@@ -498,6 +498,30 @@ def _unpack_zip(path: Path, root: Path, budget: _Budget) -> _Unpacked:
 
 # ------------------------------------------- внешние архиваторы (7z, rar) ---
 
+#: Куда установщик 7-Zip кладёт себя под Windows. В PATH он не прописывается,
+#: и без этого списка установленный архиватор остаётся невидимым.
+_WINDOWS_ARCHIVE_DIRS = (
+    r"C:\Program Files\7-Zip",
+    r"C:\Program Files (x86)\7-Zip",
+    r"C:\Program Files\WinRAR",
+    r"C:\Program Files (x86)\UnrarDLL",
+)
+
+
+def archive_binary(name: str) -> str | None:
+    """Путь к архиватору или ``None``: сначала PATH, затем каталоги Windows."""
+    found = shutil.which(name)
+    if found:
+        return found
+    if os.name != "nt":
+        return None
+    for directory in _WINDOWS_ARCHIVE_DIRS:
+        candidate = Path(directory) / f"{name}.exe"
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
+
 def _archive_tool(kind: str) -> str | None:
     """Путь к архиватору для формата или ``None``.
 
@@ -507,7 +531,7 @@ def _archive_tool(kind: str) -> str | None:
     """
     names = ("7z", "7za", "7zz") if kind == "7z" else ("unrar", "7z")
     for name in names:
-        found = shutil.which(name)
+        found = archive_binary(name)
         if found:
             return found
     return None
@@ -1027,7 +1051,8 @@ registry.register(registry.ConverterSpec(
     name="7z",
     suffixes=(".7z",),
     convert=convert_seven_zip,
-    requires=(registry.Requirement("binary", "7z", SEVEN_ZIP_HINT),),
+    requires=(registry.Requirement("binary", "7z", SEVEN_ZIP_HINT,
+                                 locate=lambda: archive_binary("7z")),),
     priority=0,
     note="7z через 7-Zip (7z)",
 ))
@@ -1036,7 +1061,8 @@ registry.register(registry.ConverterSpec(
     name="7z-7za",
     suffixes=(".7z",),
     convert=convert_seven_zip,
-    requires=(registry.Requirement("binary", "7za", SEVEN_ZIP_HINT),),
+    requires=(registry.Requirement("binary", "7za", SEVEN_ZIP_HINT,
+                                 locate=lambda: archive_binary("7za")),),
     priority=-1,
     note="7z через 7za (p7zip без плагинов)",
 ))
@@ -1045,7 +1071,8 @@ registry.register(registry.ConverterSpec(
     name="7z-7zz",
     suffixes=(".7z",),
     convert=convert_seven_zip,
-    requires=(registry.Requirement("binary", "7zz", SEVEN_ZIP_HINT),),
+    requires=(registry.Requirement("binary", "7zz", SEVEN_ZIP_HINT,
+                                 locate=lambda: archive_binary("7zz")),),
     priority=-2,
     note="7z через 7zz (официальная сборка 7-Zip для Linux)",
 ))
@@ -1054,7 +1081,8 @@ registry.register(registry.ConverterSpec(
     name="rar",
     suffixes=(".rar",),
     convert=convert_rar,
-    requires=(registry.Requirement("binary", "unrar", UNRAR_HINT),),
+    requires=(registry.Requirement("binary", "unrar", UNRAR_HINT,
+                                 locate=lambda: archive_binary("unrar")),),
     priority=0,
     note="RAR через unrar",
 ))
@@ -1063,7 +1091,8 @@ registry.register(registry.ConverterSpec(
     name="rar-7z",
     suffixes=(".rar",),
     convert=convert_rar,
-    requires=(registry.Requirement("binary", "7z", SEVEN_ZIP_HINT),),
+    requires=(registry.Requirement("binary", "7z", SEVEN_ZIP_HINT,
+                                 locate=lambda: archive_binary("7z")),),
     priority=-1,
     note="RAR через 7-Zip (нужен модуль p7zip-rar)",
 ))

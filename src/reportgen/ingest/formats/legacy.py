@@ -236,20 +236,11 @@ def soffice_binary(*, refresh: bool = False) -> str | None:
         return _BINARY_CACHE
 
 
-class _SofficeRequirement(registry.Requirement):
-    """Требование «установлен LibreOffice».
-
-    Обычная проверка требования смотрит в PATH, а в Windows LibreOffice себя
-    туда не прописывает — на рабочей машине с установленным пакетом система
-    сообщала бы, что старые форматы не поддерживаются. Поэтому доступность
-    проверяется тем же поиском, что и при конвертации.
-    """
-
-    def is_available(self) -> bool:
-        return soffice_binary() is not None
-
-
-_SOFFICE_REQUIRED = _SofficeRequirement("binary", "soffice", _SOFFICE_HINT)
+# В Windows LibreOffice себя в PATH не прописывает, поэтому доступность
+# проверяется тем же поиском, что и при конвертации.
+_SOFFICE_REQUIRED = registry.Requirement(
+    "binary", "soffice", _SOFFICE_HINT, locate=lambda: soffice_binary()
+)
 _DOCX_REQUIRED = registry.Requirement(
     "python", "docx", "pip install python-docx; в Windows — py -m pip install python-docx"
 )

@@ -39,15 +39,25 @@ FORMAT_MODULES = "reportgen.ingest.formats"
 class Requirement:
     """Что нужно, чтобы конвертер работал."""
 
-    kind: str          # "python" — пакет, "binary" — исполняемый файл в PATH
+    kind: str          # "python" — пакет, "binary" — исполняемый файл
     name: str
     hint: str          # как установить, по-русски
+    #: Как искать программу, если PATH недостаточно. Установщики под Windows
+    #: сплошь и рядом себя в PATH не прописывают: Tesseract, DjVuLibre и 7-Zip
+    #: ставятся в Program Files и остаются там. Без этого поля система
+    #: сообщала бы, что формат не поддерживается, при установленной программе.
+    locate: Callable[[], object] | None = field(default=None, compare=False, repr=False)
 
     def is_available(self) -> bool:
         if self.kind == "python":
             try:
                 return importlib.util.find_spec(self.name) is not None
             except (ImportError, ValueError):
+                return False
+        if self.locate is not None:
+            try:
+                return bool(self.locate())
+            except OSError:
                 return False
         return shutil.which(self.name) is not None
 

@@ -8,9 +8,11 @@
 """
 
 import json
+import os
 import re
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
@@ -359,6 +361,123 @@ class OfflineDocsTests(unittest.TestCase):
         # Проверка адресов до многочасовой закачки — главный приём этого
         # документа, он обязан быть описан.
         self.assertTrue("-Probe" in self.doc, "в docs/15-offline.md не описан ключ -Probe")
+
+
+class WindowsBinaryDiscoveryTests(unittest.TestCase):
+    """Программы, установленные под Windows, находятся без правки PATH.
+
+    Установщики Tesseract, DjVuLibre и 7-Zip в PATH себя не прописывают, а
+    тихая установка из комплекта тем более. Если реестр форматов проверяет
+    только PATH, то после успешной установки система заявит, что .djvu, .7z и
+    сканы не поддерживаются, и библиотека отсканированных методичек уйдёт в
+    базу пустой — молча, без единой ошибки.
+    """
+
+    def test_every_binary_requirement_knows_where_to_look(self):
+        from reportgen.ingest import registry
+
+        registry.ensure_loaded()
+        for spec in registry.all_specs():
+            for requirement in spec.requires:
+                if requirement.kind != "binary":
+                    continue
+                with self.subTest(converter=spec.name, binary=requirement.name):
+                    self.assertIsNotNone(
+                        requirement.locate,
+                        "требование ищет программу только в PATH — под Windows "
+                        "установленная программа останется невидимой",
+                    )
+
+    def test_locate_overrides_path_lookup(self):
+        from reportgen.ingest import registry
+
+        found = registry.Requirement("binary", "нетакой", "подсказка",
+                                     locate=lambda: r"C:\Program Files\X\x.exe")
+        absent = registry.Requirement("binary", "нетакой", "подсказка")
+        self.assertTrue(found.is_available())
+        self.assertFalse(absent.is_available())
+
+    def test_locate_does_not_leak_into_description(self):
+        from reportgen.ingest import registry
+
+        requirement = registry.Requirement("binary", "x", "y", locate=lambda: "z")
+        self.assertEqual({"kind", "name", "hint", "available"}, set(requirement.to_dict()))
+
+    def test_standard_windows_directories_are_listed(self):
+        from reportgen.ingest.formats import archive, djvu, ocr
+
+        self.assertTrue(any("Tesseract-OCR" in path for path in ocr._WINDOWS_TESSERACT))
+        self.assertTrue(any("DjVuLibre" in path for path in djvu._WINDOWS_DIRS))
+        self.assertTrue(any("7-Zip" in path for path in archive._WINDOWS_ARCHIVE_DIRS))
+
+    def test_archive_tool_looks_beyond_path(self):
+        from reportgen.ingest.formats import archive
+
+        target = r"C:\Program Files\7-Zip\7z.exe"
+
+        class WindowsPathStub:
+            def __init__(self, *parts):
+                self.text = "\\".join(str(part).rstrip("\\") for part in parts)
+
+            def __truediv__(self, other):
+                return WindowsPathStub(self.text, other)
+
+            def __str__(self):
+                return self.text
+
+            def is_file(self):
+                return self.text == target
+
+        with mock.patch.object(archive.shutil, "which", return_value=None), \
+             mock.patch.object(archive.os, "name", "nt"), \
+             mock.patch.object(archive, "Path", WindowsPathStub):
+            self.assertEqual(target, archive.archive_binary("7z"))
+            self.assertIsNone(archive.archive_binary("unrar"))
+
+
+class ProxyBypassTests(unittest.TestCase):
+    """Обращения к своей же модели не должны уходить в системный прокси.
+
+    Корпоративный образ Windows почти всегда приезжает с настроенным прокси, а
+    ``urllib`` по умолчанию его подхватывает — включая запросы на 127.0.0.1.
+    Исключение «<local>» не помогает: CPython обходит по нему только имена без
+    точки. Итог был бы такой: llama-server работает и отвечает в браузере, а
+    генерация отчёта висит до таймаута, и в логах модели — ни одного запроса.
+    """
+
+    def test_opener_has_no_proxies(self):
+        import urllib.request
+
+        from reportgen import _http
+
+        handlers = [h for h in _http._OPENER.handlers
+                    if isinstance(h, urllib.request.ProxyHandler)]
+        self.assertTrue(all(not handler.proxies for handler in handlers),
+                        "в опенере остался прокси-обработчик с адресами")
+
+    def test_environment_proxy_does_not_reach_the_opener(self):
+        import urllib.request
+
+        from reportgen import _http
+
+        with mock.patch.dict(os.environ, {"http_proxy": "http://127.0.0.1:9"}, clear=False):
+            default = urllib.request.build_opener()
+            default_proxies = [h.proxies for h in default.handlers
+                               if isinstance(h, urllib.request.ProxyHandler)]
+            self.assertTrue(any(p for p in default_proxies),
+                            "проверка бессмысленна: опенер по умолчанию тоже без прокси")
+            ours = [h.proxies for h in _http._OPENER.handlers
+                    if isinstance(h, urllib.request.ProxyHandler)]
+            self.assertFalse(any(p for p in ours))
+
+    def test_clients_use_the_shared_opener(self):
+        # Прямой вызов urllib.request.urlopen в клиентах вернул бы прокси
+        # обратно, причём незаметно: тесты с моками продолжали бы проходить.
+        for name in ("llm.py", "embeddings.py", "rerank.py"):
+            with self.subTest(module=name):
+                text = read(ROOT / "src" / "reportgen" / name)
+                self.assertNotIn("urllib.request.urlopen(", text)
+                self.assertIn("_http.urlopen(", text)
 
 
 if __name__ == "__main__":
