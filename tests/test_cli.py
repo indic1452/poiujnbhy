@@ -21,6 +21,65 @@ def run(argv):
     return code, out.getvalue()
 
 
+class DatabaseCliTests(unittest.TestCase):
+    """Команды, работающие с установленной системой (SQLite)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.db = str(Path(self._tmp.name) / "test.db")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_useradd_and_users(self):
+        code, out = run(["--db", self.db, "useradd", "--login", "admin",
+                         "--role", "admin", "--password", "пароль12345"])
+        self.assertEqual(code, 0, out)
+        code, out = run(["--db", self.db, "users"])
+        self.assertEqual(code, 0)
+        self.assertIn("admin", out)
+
+    def test_useradd_rejects_short_password(self):
+        code, out = run(["--db", self.db, "useradd", "--login", "u", "--password", "123"])
+        self.assertEqual(code, 1)
+        self.assertIn("8 символов", out)
+
+    def test_useradd_rejects_duplicate(self):
+        run(["--db", self.db, "useradd", "--login", "admin", "--password", "пароль12345"])
+        code, out = run(["--db", self.db, "useradd", "--login", "admin",
+                         "--password", "пароль12345"])
+        self.assertEqual(code, 1)
+        self.assertIn("уже существует", out)
+
+    def test_passwd_changes_password(self):
+        run(["--db", self.db, "useradd", "--login", "u1", "--password", "пароль12345"])
+        code, out = run(["--db", self.db, "passwd", "--login", "u1",
+                         "--password", "другойпароль"])
+        self.assertEqual(code, 0, out)
+
+    def test_passwd_unknown_user(self):
+        code, out = run(["--db", self.db, "passwd", "--login", "нет", "--password", "пароль12345"])
+        self.assertEqual(code, 1)
+
+    def test_users_on_empty_base(self):
+        code, out = run(["--db", self.db, "users"])
+        self.assertEqual(code, 1)
+        self.assertIn("useradd", out)
+
+    def test_library_on_empty_base(self):
+        code, out = run(["--db", self.db, "library"])
+        self.assertEqual(code, 1)
+        self.assertIn("пуста", out)
+
+    def test_stats_prints_json(self):
+        import json as _json
+
+        code, out = run(["--db", self.db, "stats"])
+        self.assertEqual(code, 0, out)
+        payload = _json.loads(out)
+        self.assertEqual(payload["cases"]["total"], 0)
+
+
 class CliTests(unittest.TestCase):
     def test_full_cycle(self):
         with tempfile.TemporaryDirectory() as tmp:

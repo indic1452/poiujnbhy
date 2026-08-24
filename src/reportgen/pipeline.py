@@ -97,6 +97,10 @@ class SourceRegistry:
     def chunks(self) -> List[Chunk]:
         return list(self._chunks)
 
+    def items(self) -> List[tuple[str, Chunk]]:
+        """Пары (метка, фрагмент) в порядке первого упоминания в отчёте."""
+        return [(self._by_chunk[chunk.chunk_id], chunk) for chunk in self._chunks]
+
     def render_appendix(self, quote_chars: int = 400) -> str:
         if not self._chunks:
             return "Внешние источники не привлекались."
