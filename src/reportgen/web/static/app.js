@@ -11,7 +11,10 @@
  *   6. экран «Кейс» — три панели (факты | отчёт | источники и замечания);
  *   7. экран «Библиотека»;
  *   8. экран «Метрики» и журнал действий;
- *   9. запуск.
+ *   9. разметка ответа помощника (упрощённый Markdown);
+ *  10. экран «Помощник» — три панели (разговоры | переписка | источники);
+ *  11. личный кабинет;
+ *  12. запуск.
  */
 
 'use strict';
@@ -81,8 +84,21 @@
         'library.upload': 'загружен документ',
         'library.reindex': 'переиндексация библиотеки',
         'library.delete': 'удалён документ',
+        'library.domain': 'изменено направление документа',
+        'chat.ask': 'вопрос помощнику',
+        'chat.delete': 'удалён разговор',
         'user.create': 'создан пользователь',
+        'user.password': 'смена пароля',
     };
+
+    /** Примеры вопросов для пустого экрана помощника — по разным направлениям. */
+    const CHAT_EXAMPLES = [
+        { domain: 'satellite', text: 'Как закладывают запас на дождевое затухание в спутниковой линии Ku-диапазона?' },
+        { domain: 'microwave', text: 'Что проверить на радиорелейном пролёте при частых кратковременных замираниях?' },
+        { domain: 'protocols', text: 'Из каких полей состоит кадр HDLC и по какому полиному считается FCS?' },
+        { domain: 'modulation', text: 'Какой предел EVM допустим для QPSK и как он связан с коэффициентом битовых ошибок?' },
+        { domain: 'measurement', text: 'По какой методике измеряется занимаемая полоса частот и какой процент мощности берут?' },
+    ];
 
     function $(selector, root) {
         return (root || document).querySelector(selector);
@@ -277,6 +293,7 @@
         get: (path) => request(path),
         post: (path, body) => request(path, { method: 'POST', body: body || {} }),
         put: (path, body) => request(path, { method: 'PUT', body: body || {} }),
+        patch: (path, body) => request(path, { method: 'PATCH', body: body || {} }),
         del: (path) => request(path, { method: 'DELETE' }),
         download: (path) => request(path, { expect: 'blob' }),
     };
@@ -475,6 +492,30 @@
         return DOC_TYPE_LABEL[value] || value;
     }
 
+    function domains() {
+        return state.config.domains || [];
+    }
+
+    /** Название направления по идентификатору; пустое значение — «все направления». */
+    function domainTitle(value) {
+        if (!value) return 'не указано';
+        const found = domains().find((item) => item.id === value);
+        return found ? found.title : value;
+    }
+
+    /** Выпадающий список направлений с первым пунктом «всё». */
+    function domainSelect(options) {
+        const opts = options || {};
+        return h('select', {
+            title: opts.title || 'Направление техники',
+            disabled: opts.disabled,
+            onchange: (event) => opts.onchange && opts.onchange(event.target.value),
+        }, h('option', { value: '', selected: !opts.value }, opts.anyLabel || 'Все направления'),
+            domains().map((item) => h('option', {
+                value: item.id, selected: opts.value === item.id,
+            }, item.title)));
+    }
+
     // -- темы ---------------------------------------------------------------
 
     const THEME_LABEL = { auto: 'авто', light: 'светлая', dark: 'тёмная' };
@@ -565,6 +606,8 @@
             const route = link.dataset.route;
             link.classList.toggle('is-active', route === name || (name === 'case' && route === 'cases'));
         });
+        const chip = $('#user-chip');
+        if (chip) chip.classList.toggle('is-active', name === 'me');
     }
 
     // -- маршрутизация ------------------------------------------------------
@@ -576,7 +619,14 @@
         const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
         if (!parts.length) return { name: 'cases', id: null };
         if (parts[0] === 'case' && parts[1]) return { name: 'case', id: parts[1] };
-        if (['cases', 'library', 'stats'].indexOf(parts[0]) !== -1) return { name: parts[0], id: null };
+        if (parts[0] === 'chat') return { name: 'chat', id: parts[1] ? decodeURIComponent(parts[1]) : null };
+        if (parts[0] === 'library' && parts.length > 1) {
+            // Идентификатор документа — путь вида «standards/obw-method».
+            return { name: 'library', id: parts.slice(1).map(decodeURIComponent).join('/') };
+        }
+        if (['cases', 'library', 'stats', 'me'].indexOf(parts[0]) !== -1) {
+            return { name: parts[0], id: null };
+        }
         return { name: 'cases', id: null };
     }
 
@@ -620,6 +670,9 @@
     }
 
     async function renderRoute(route) {
+        // Уходя с экрана помощника, обрываем незакрытый поток: его обработчики
+        // писали бы в узлы, которых на странице уже нет.
+        stopStreaming();
         state.route = route;
         setActiveNav(route.name);
         const view = $('#view');
@@ -628,8 +681,10 @@
         try {
             if (route.name === 'cases') await renderCases(view);
             else if (route.name === 'case') await renderCase(view, route.id);
-            else if (route.name === 'library') await renderLibrary(view);
+            else if (route.name === 'library') await renderLibrary(view, route.id);
             else if (route.name === 'stats') await renderStats(view);
+            else if (route.name === 'chat') await renderChat(view, route.id);
+            else if (route.name === 'me') await renderMe(view);
         } catch (error) {
             if (error instanceof ApiError && error.status === 401) return;
             clear(view);
@@ -646,6 +701,14 @@
     function navigate(hash) {
         if (location.hash === hash) onHashChange();
         else location.hash = hash;
+    }
+
+    /** Сменить адрес, не перерисовывая экран: нужно, чтобы поток ответа не оборвался. */
+    function replaceHash(hash) {
+        if (location.hash === hash) return;
+        restoringHash = true;
+        currentHash = hash;
+        location.hash = hash;
     }
 
     // =====================================================================
@@ -1762,6 +1825,11 @@
                     wb.case.title || reportTypeTitle(wb.case.report_type),
                     h('span', { class: 'case-id' }, wb.case.case_id)),
                 statusBadge(wb.case.status),
+                h('button', {
+                    class: 'btn btn--sm',
+                    title: 'Открыть разговор с помощником, привязанный к этому обращению',
+                    onclick: (event) => askAssistantAboutCase(event.currentTarget),
+                }, 'Спросить помощника'),
                 isAdmin() ? h('button', {
                     class: 'btn btn--sm btn--danger',
                     onclick: () => deleteCase(wb.case, () => navigate('#/cases')),
@@ -1784,6 +1852,21 @@
                 h('span', { style: { flex: '1' } }),
                 generateButton, verifyButton, exportButton, approveButton),
         ]);
+    }
+
+    /** Новый разговор с помощником, привязанный к текущему обращению. */
+    async function askAssistantAboutCase(button) {
+        if (button) button.disabled = true;
+        try {
+            const data = await api.post('/api/chats', {
+                title: 'Обращение ' + wb.case.case_id,
+                case_ref: wb.case.id,
+            });
+            navigate('#/chat/' + data.chat.id);
+        } catch (error) {
+            toastError(error);
+            if (button) button.disabled = false;
+        }
     }
 
     function renderSections() {
@@ -2429,12 +2512,19 @@
     // 7. Экран «Библиотека»
     // =====================================================================
 
-    const libState = { docType: '', items: [], stats: {}, chunks: 0, embeddings: 0 };
+    const libState = { docType: '', domain: '', items: [], stats: {}, chunks: 0, embeddings: 0 };
 
-    async function renderLibrary(view) {
+    async function renderLibrary(view, focusDocId) {
         clear(view);
         const page = h('div', { class: 'page' });
         view.appendChild(page);
+
+        // Переход из панели источников помощника: показываем нужный документ,
+        // сняв фильтры, иначе строки может не оказаться в таблице.
+        if (focusDocId) {
+            libState.docType = '';
+            libState.domain = '';
+        }
 
         const tableBox = h('div', { class: 'card' });
         const statsLine = h('div', { class: 'small muted' });
@@ -2450,6 +2540,15 @@
             (state.config.doc_types || []).map((type) =>
                 h('option', { value: type, selected: libState.docType === type }, docTypeLabel(type))));
 
+        const domainFilter = domainSelect({
+            value: libState.domain,
+            title: 'Фильтр по направлению техники',
+            onchange: (value) => {
+                libState.domain = value;
+                loadLibrary();
+            },
+        });
+
         const forceCheckbox = h('input', { type: 'checkbox' });
         const uploadType = h('select', {}, (state.config.doc_types || []).map((type) =>
             h('option', { value: type }, docTypeLabel(type))));
@@ -2457,6 +2556,10 @@
             .map((value) => h('option', {
                 value: value, selected: value === 'internal',
             }, CONFIDENTIALITY_LABEL[value] || value)));
+        const uploadDomain = domainSelect({
+            anyLabel: 'определить автоматически',
+            title: 'Направление загружаемых документов',
+        });
 
         const fileInput = h('input', {
             type: 'file', multiple: true, style: { display: 'none' },
@@ -2491,10 +2594,18 @@
             },
         });
         const topKInput = h('input', { type: 'number', value: '10', min: '1', max: '50', style: { width: '70px' } });
+        const searchDomain = domainSelect({ title: 'Ограничить поиск направлением' });
         const searchTypes = (state.config.doc_types || []).map((type) => {
             const checkbox = h('input', { type: 'checkbox', value: type });
             return { type: type, checkbox: checkbox, node: h('label', { class: 'inline' }, checkbox, docTypeLabel(type)) };
         });
+
+        const focusChip = !focusDocId ? null : h('span', { class: 'badge badge--accent' },
+            'показан документ ' + focusDocId,
+            h('button', {
+                class: 'btn btn--ghost btn--icon', title: 'Показать всю библиотеку',
+                onclick: () => navigate('#/library'),
+            }, '×'));
 
         append(page, [
             h('div', { class: 'page-head' },
@@ -2508,16 +2619,17 @@
                 h('div', { class: 'card-title' }, 'Загрузка документов'),
                 h('div', { class: 'toolbar' },
                     h('label', { class: 'inline' }, 'Тип:', uploadType),
-                    h('label', { class: 'inline' }, 'Гриф:', uploadConf)),
+                    h('label', { class: 'inline' }, 'Гриф:', uploadConf),
+                    h('label', { class: 'inline' }, 'Направление:', uploadDomain)),
                 dropzone, fileInput, uploadList) : null,
 
-            h('div', { class: 'toolbar', style: { marginTop: '14px' } }, typeFilter),
+            h('div', { class: 'toolbar', style: { marginTop: '14px' } }, typeFilter, domainFilter, focusChip),
             tableBox,
 
             h('div', { class: 'card card-pad', style: { marginTop: '14px' } },
                 h('div', { class: 'card-title' }, 'Проверка поиска'),
                 h('div', { class: 'toolbar' },
-                    searchInput, topKInput,
+                    searchInput, topKInput, searchDomain,
                     h('button', { class: 'btn btn--primary', onclick: () => runSearch() }, 'Найти')),
                 h('div', { class: 'toolbar small muted' }, 'типы:', searchTypes.map((item) => item.node)),
                 searchResults),
@@ -2527,8 +2639,10 @@
             clear(tableBox);
             tableBox.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' }), 'Загрузка…'));
             try {
-                const data = await api.get('/api/library' +
-                    (libState.docType ? '?doc_type=' + encodeURIComponent(libState.docType) : ''));
+                const query = [];
+                if (libState.docType) query.push('doc_type=' + encodeURIComponent(libState.docType));
+                if (libState.domain) query.push('domain=' + encodeURIComponent(libState.domain));
+                const data = await api.get('/api/library' + (query.length ? '?' + query.join('&') : ''));
                 libState.items = data.items || [];
                 libState.stats = data.stats || {};
                 libState.chunks = data.chunks || 0;
@@ -2559,10 +2673,14 @@
             }
             const body = h('tbody', {});
             libState.items.forEach((item) => {
-                body.appendChild(h('tr', {},
+                body.appendChild(h('tr', {
+                    id: domId('doc-', item.doc_id),
+                    class: focusDocId === item.doc_id ? 'is-focus' : '',
+                },
                     h('td', {}, item.title || item.doc_id),
                     h('td', { class: 'mono small muted' }, item.doc_id),
                     h('td', { class: 'small' }, docTypeLabel(item.doc_type)),
+                    h('td', {}, documentDomainCell(item)),
                     h('td', { class: 'num' }, item.chunk_count || 0),
                     h('td', { class: 'small muted nowrap' }, fmtDateTime(item.indexed_at)),
                     h('td', { class: 'small' }, CONFIDENTIALITY_LABEL[item.confidentiality] || item.confidentiality),
@@ -2575,8 +2693,47 @@
                 h('table', { class: 'grid' },
                     h('thead', {}, h('tr', {},
                         h('th', {}, 'Название'), h('th', {}, 'Идентификатор'), h('th', {}, 'Тип'),
+                        h('th', {}, 'Направление'),
                         h('th', {}, 'Чанков'), h('th', {}, 'Проиндексирован'), h('th', {}, 'Гриф'), h('th', {}))),
                     body)));
+
+            if (focusDocId) {
+                const row = document.getElementById(domId('doc-', focusDocId));
+                if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        /** Ячейка направления: инженеру — выпадающий список с сохранением, остальным — текст. */
+        function documentDomainCell(item) {
+            if (!canEdit()) {
+                return h('span', { class: 'small' + (item.domain ? '' : ' faint') }, domainTitle(item.domain));
+            }
+            const select = domainSelect({
+                value: item.domain,
+                anyLabel: 'не указано',
+                title: 'Направление документа',
+                onchange: (value) => saveDomain(item, value, select),
+            });
+            select.classList.add('domain-select');
+            return select;
+        }
+
+        async function saveDomain(item, value, select) {
+            const previous = item.domain || '';
+            select.disabled = true;
+            try {
+                const data = await api.put('/api/library/' + encodePath(item.doc_id) + '/domain',
+                    { domain: value });
+                item.domain = (data.document && data.document.domain) || value;
+                toast('Направление документа «' + (item.title || item.doc_id) + '» — ' +
+                    domainTitle(item.domain), 'ok');
+                if (libState.domain && libState.domain !== item.domain) await loadLibrary();
+            } catch (error) {
+                select.value = previous;
+                toastError(error);
+            } finally {
+                select.disabled = false;
+            }
         }
 
         async function handleFiles(files) {
@@ -2593,6 +2750,7 @@
                 form.append('file', file);
                 form.append('doc_type', uploadType.value);
                 form.append('confidentiality', uploadConf.value);
+                form.append('domain', uploadDomain.value);
                 try {
                     const data = await uploadFile('/api/library/upload', form, (fraction) => {
                         bar.style.width = Math.round(fraction * 100) + '%';
@@ -2671,10 +2829,12 @@
             try {
                 const url = '/api/search?q=' + encodeURIComponent(query) +
                     '&top_k=' + encodeURIComponent(topKInput.value || '10') +
-                    (types.length ? '&doc_types=' + encodeURIComponent(types.join(',')) : '');
+                    (types.length ? '&doc_types=' + encodeURIComponent(types.join(',')) : '') +
+                    (searchDomain.value ? '&domains=' + encodeURIComponent(searchDomain.value) : '');
                 const data = await api.get(url);
                 clear(searchResults);
                 if (data.note) searchResults.appendChild(h('div', { class: 'small muted' }, data.note));
+                if (data.warning) searchResults.appendChild(h('div', { class: 'small muted' }, data.warning));
                 const items = data.items || [];
                 if (!items.length) {
                     searchResults.appendChild(h('div', { class: 'empty' }, 'Ничего не найдено.'));
@@ -2685,6 +2845,7 @@
                         h('div', { class: 'head' },
                             h('b', {}, hit.citation || hit.chunk_uid),
                             h('span', { class: 'badge' }, docTypeLabel(hit.doc_type)),
+                            hit.domain ? h('span', { class: 'badge badge--info' }, domainTitle(hit.domain)) : null,
                             h('span', { class: 'faint small' }, 'вес ' + fmtNumber(hit.score, 3))),
                         h('div', { class: 'text' }, hit.text || '')));
                 });
@@ -2855,7 +3016,1160 @@
     }
 
     // =====================================================================
-    // 9. Запуск
+    // 9. Разметка ответа помощника (упрощённый Markdown)
+    // =====================================================================
+
+    /* Полноценный парсер тут не нужен и вреден: модель пишет заголовки, списки,
+       таблицы, код и выделение — этого набора достаточно. Внешних библиотек в
+       контуре нет, поэтому преобразование своё, а весь текст перед вставкой
+       экранируется. */
+
+    const MD_BULLET = /^\s*[-*•]\s+(.*)$/;
+    const MD_ORDERED = /^\s*\d+[.)]\s+(.*)$/;
+    const MD_HEADING = /^(#{1,6})\s+(.*)$/;
+    const MD_QUOTE = /^\s*>\s?(.*)$/;
+    const MD_RULE = /^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/;
+    const MD_FENCE = /^\s*```/;
+
+    function isTableRow(line) {
+        return /^\s*\|.*\|\s*$/.test(line);
+    }
+
+    function isTableSeparator(line) {
+        return isTableRow(line) && /^[\s|:-]+$/.test(line) && line.indexOf('-') !== -1;
+    }
+
+    function tableCells(line) {
+        return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
+    }
+
+    function startsBlock(line) {
+        return !line.trim() || MD_HEADING.test(line) || MD_BULLET.test(line) ||
+            MD_ORDERED.test(line) || MD_QUOTE.test(line) || MD_RULE.test(line) ||
+            MD_FENCE.test(line) || isTableRow(line);
+    }
+
+    /** Строчное оформление: код, жирный, курсив и ссылки [S1] на источники. */
+    function mdInline(text) {
+        let out = escapeHtml(text);
+        out = out.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+        out = out.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
+        out = out.replace(/(^|[\s([«—])\*([^*\n]+)\*/g, '$1<i>$2</i>');
+        out = out.replace(/(^|[\s([«—])_([^_\n]+)_/g, '$1<i>$2</i>');
+        out = out.replace(/\[(S\d+)\]/g,
+            '<button type="button" class="cite" data-label="$1" ' +
+            'title="Показать источник">[$1]</button>');
+        return out;
+    }
+
+    /** Текст ответа → узел с разметкой. */
+    function renderMarkdown(text) {
+        const root = h('div', { class: 'md' });
+        const lines = String(text === null || text === undefined ? '' : text)
+            .replace(/\r\n/g, '\n').split('\n');
+        let index = 0;
+
+        while (index < lines.length) {
+            const line = lines[index];
+
+            if (!line.trim()) {
+                index += 1;
+                continue;
+            }
+
+            if (MD_FENCE.test(line)) {
+                const code = [];
+                index += 1;
+                while (index < lines.length && !MD_FENCE.test(lines[index])) {
+                    code.push(lines[index]);
+                    index += 1;
+                }
+                index += 1;
+                root.appendChild(h('pre', {}, h('code', {}, code.join('\n'))));
+                continue;
+            }
+
+            if (MD_RULE.test(line)) {
+                root.appendChild(h('hr', {}));
+                index += 1;
+                continue;
+            }
+
+            const heading = MD_HEADING.exec(line);
+            if (heading) {
+                const level = Math.min(heading[1].length, 4) + 2;
+                root.appendChild(h('h' + level, { class: 'md-h', html: mdInline(heading[2]) }));
+                index += 1;
+                continue;
+            }
+
+            if (isTableRow(line)) {
+                const rows = [];
+                while (index < lines.length && isTableRow(lines[index])) {
+                    rows.push(lines[index]);
+                    index += 1;
+                }
+                root.appendChild(mdTable(rows));
+                continue;
+            }
+
+            if (MD_QUOTE.test(line)) {
+                const quote = [];
+                while (index < lines.length && MD_QUOTE.test(lines[index])) {
+                    quote.push(MD_QUOTE.exec(lines[index])[1]);
+                    index += 1;
+                }
+                root.appendChild(h('blockquote', { html: mdInline(quote.join(' ')) }));
+                continue;
+            }
+
+            if (MD_BULLET.test(line) || MD_ORDERED.test(line)) {
+                const ordered = !MD_BULLET.test(line);
+                const list = h(ordered ? 'ol' : 'ul', {});
+                while (index < lines.length) {
+                    const item = (ordered ? MD_ORDERED : MD_BULLET).exec(lines[index]);
+                    if (!item) break;
+                    list.appendChild(h('li', { html: mdInline(item[1]) }));
+                    index += 1;
+                }
+                root.appendChild(list);
+                continue;
+            }
+
+            const paragraph = [];
+            while (index < lines.length && !startsBlock(lines[index])) {
+                paragraph.push(lines[index].trim());
+                index += 1;
+            }
+            root.appendChild(h('p', { html: paragraph.map(mdInline).join('<br>') }));
+        }
+
+        return root;
+    }
+
+    function mdTable(rows) {
+        const head = [];
+        let body = rows;
+        if (rows.length > 1 && isTableSeparator(rows[1])) {
+            head.push(rows[0]);
+            body = rows.slice(2);
+        }
+        const table = h('table', { class: 'md-table' });
+        if (head.length) {
+            table.appendChild(h('thead', {}, h('tr', {},
+                tableCells(head[0]).map((cell) => h('th', { html: mdInline(cell) })))));
+        }
+        table.appendChild(h('tbody', {}, body.filter((row) => !isTableSeparator(row)).map((row) =>
+            h('tr', {}, tableCells(row).map((cell) => h('td', { html: mdInline(cell) }))))));
+        return h('div', { class: 'md-table-scroll' }, table);
+    }
+
+    // =====================================================================
+    // 10. Экран «Помощник»: разговоры | переписка | источники
+    // =====================================================================
+
+    const chat = {
+        chats: [],
+        archived: false,
+        query: '',
+        current: null,
+        messages: [],
+        caseInfo: null,
+        sourcesOf: null,
+        pendingSources: null,
+        activeLabel: null,
+        streaming: false,
+        controller: null,
+        nodes: {},
+    };
+
+    function resetChat() {
+        chat.current = null;
+        chat.messages = [];
+        chat.caseInfo = null;
+        chat.sourcesOf = null;
+        chat.pendingSources = null;
+        chat.activeLabel = null;
+        chat.streaming = false;
+        chat.controller = null;
+        chat.nodes = {};
+    }
+
+    /** Оборвать незакрытый поток ответа: вызывается и кнопкой «Стоп», и роутером. */
+    function stopStreaming() {
+        if (chat.controller) {
+            try {
+                chat.controller.abort();
+            } catch (error) {
+                /* поток уже закрыт */
+            }
+        }
+        chat.controller = null;
+        chat.streaming = false;
+    }
+
+    async function renderChat(view, chatId) {
+        stopStreaming();
+        resetChat();
+
+        const data = await api.get('/api/chats?archived=' + (chat.archived ? 'true' : 'false'));
+        chat.chats = data.items || [];
+
+        if (chatId) {
+            try {
+                const payload = await api.get('/api/chats/' + encodeURIComponent(chatId));
+                chat.current = payload.chat;
+                chat.messages = payload.messages || [];
+                const answers = chat.messages.filter((item) => item.role === 'assistant');
+                chat.sourcesOf = answers.length ? answers[answers.length - 1] : null;
+            } catch (error) {
+                if (error instanceof ApiError && error.status === 404) {
+                    toast('Разговор не найден: возможно, он удалён', 'error');
+                    navigate('#/chat');
+                    return;
+                }
+                throw error;
+            }
+            // Открыли архивный разговор из адресной строки — показываем архив,
+            // иначе его не видно в списке слева.
+            if (chat.current.archived !== chat.archived) {
+                chat.archived = chat.current.archived;
+                const again = await api.get('/api/chats?archived=' + (chat.archived ? 'true' : 'false'));
+                chat.chats = again.items || [];
+            }
+        }
+
+        clear(view);
+        view.appendChild(buildChatScreen());
+        renderChatList();
+        renderTalkHead();
+        renderFeed();
+        renderChatSources();
+        loadChatCase();
+        const input = chat.nodes.input;
+        if (input) input.focus();
+    }
+
+    function buildChatScreen() {
+        const screen = h('div', {
+            style: { flex: '1', display: 'flex', flexDirection: 'column', minHeight: '0' },
+        });
+        const bench = h('div', { class: 'chatbench', dataset: { panel: 'talk' } });
+        const switcher = h('div', { class: 'panel-switch' },
+            ['list', 'talk', 'side'].map((key) => h('button', {
+                class: 'btn btn--sm' + (key === 'talk' ? ' btn--primary' : ''),
+                dataset: { panel: key },
+                onclick: () => focusChatPanel(key),
+            }, { list: 'Разговоры', talk: 'Переписка', side: 'Источники' }[key])));
+
+        chat.nodes.bench = bench;
+        chat.nodes.switcher = switcher;
+        append(bench, [buildChatListPanel(), buildTalkPanel(), buildChatSidePanel()]);
+        append(screen, [switcher, bench]);
+        return screen;
+    }
+
+    function focusChatPanel(name) {
+        const bench = chat.nodes.bench;
+        if (!bench) return;
+        bench.dataset.panel = name;
+        $$('button', chat.nodes.switcher).forEach((button) => {
+            button.classList.toggle('btn--primary', button.dataset.panel === name);
+        });
+    }
+
+    // -- левая панель: список разговоров -------------------------------------
+
+    function buildChatListPanel() {
+        const list = h('div', { class: 'panel-body chat-list' });
+        chat.nodes.list = list;
+
+        const search = h('input', {
+            type: 'search', class: 'grow', placeholder: 'Поиск по названию',
+            value: chat.query,
+            oninput: debounce((event) => {
+                chat.query = event.target.value.trim().toLowerCase();
+                renderChatList();
+            }, 150),
+        });
+
+        const activeTab = h('button', {
+            class: 'btn btn--sm' + (chat.archived ? '' : ' btn--primary'),
+            onclick: () => switchArchived(false),
+        }, 'Активные');
+        const archiveTab = h('button', {
+            class: 'btn btn--sm' + (chat.archived ? ' btn--primary' : ''),
+            onclick: () => switchArchived(true),
+        }, 'Архив');
+        chat.nodes.activeTab = activeTab;
+        chat.nodes.archiveTab = archiveTab;
+
+        const head = h('div', { class: 'panel-head' },
+            h('div', { class: 'panel-head-row' },
+                h('span', { class: 'panel-title' }, 'Разговоры'),
+                h('button', {
+                    class: 'btn btn--sm btn--primary',
+                    title: 'Начать новый разговор',
+                    onclick: () => createChat(),
+                }, '+ Новый разговор')),
+            h('div', { class: 'panel-head-row' }, search),
+            h('div', { class: 'panel-head-row' }, activeTab, archiveTab));
+
+        return h('section', { class: 'panel panel--chatlist' }, head, list);
+    }
+
+    async function switchArchived(flag) {
+        if (chat.archived === flag) return;
+        chat.archived = flag;
+        chat.nodes.activeTab.classList.toggle('btn--primary', !flag);
+        chat.nodes.archiveTab.classList.toggle('btn--primary', flag);
+        await reloadChatList();
+    }
+
+    async function reloadChatList() {
+        try {
+            const data = await api.get('/api/chats?archived=' + (chat.archived ? 'true' : 'false'));
+            chat.chats = data.items || [];
+            renderChatList();
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
+    function renderChatList() {
+        const box = chat.nodes.list;
+        if (!box) return;
+        clear(box);
+        const items = !chat.query ? chat.chats : chat.chats.filter((item) =>
+            String(item.title || '').toLowerCase().indexOf(chat.query) !== -1);
+
+        if (!items.length) {
+            box.appendChild(h('div', { class: 'empty small' },
+                chat.chats.length ? 'Ничего не найдено.'
+                    : (chat.archived ? 'В архиве пусто.'
+                        : 'Разговоров пока нет — задайте первый вопрос.')));
+            return;
+        }
+        items.forEach((item) => box.appendChild(chatListItem(item)));
+    }
+
+    function chatListItem(item) {
+        const isCurrent = !!chat.current && chat.current.id === item.id;
+        const title = h('div', { class: 'title', title: 'Двойной клик — переименовать' }, item.title);
+        // Переход откладываем на четверть секунды: иначе первый щелчок двойного
+        // клика успевает перерисовать список, и переименование не начинается.
+        let pending = null;
+        const node = h('div', {
+            class: 'chat-item' + (isCurrent ? ' is-active' : ''),
+            onclick: (event) => {
+                if (event.target.closest('button') || event.target.tagName === 'INPUT') return;
+                clearTimeout(pending);
+                if (isCurrent) return;
+                pending = setTimeout(() => navigate('#/chat/' + item.id), 220);
+            },
+            ondblclick: (event) => {
+                if (event.target.tagName === 'INPUT') return;
+                clearTimeout(pending);
+                startRename(node, item, title);
+            },
+        },
+            title,
+            h('div', { class: 'meta' },
+                item.domain ? h('span', { class: 'badge badge--info' }, domainTitle(item.domain)) : null,
+                item.case_ref ? h('span', { class: 'badge badge--accent' }, 'кейс') : null,
+                h('span', { class: 'faint' }, item.message_count + ' ' +
+                    plural(item.message_count, 'сообщение', 'сообщения', 'сообщений')),
+                h('span', { class: 'faint' }, fmtDateTime(item.updated_at))),
+            h('div', { class: 'chat-item-actions' },
+                h('button', {
+                    class: 'btn btn--ghost btn--icon',
+                    title: item.archived ? 'Вернуть из архива' : 'Убрать в архив',
+                    onclick: () => toggleArchive(item),
+                }, item.archived ? '↥' : '↧'),
+                h('button', {
+                    class: 'btn btn--ghost btn--icon', title: 'Удалить разговор',
+                    onclick: () => removeChat(item),
+                }, '×')));
+        return node;
+    }
+
+    /** Переименование по двойному клику: поле прямо в строке списка. */
+    function startRename(node, item, titleNode) {
+        if ($('input.rename', node)) return;
+        const input = h('input', { type: 'text', class: 'rename', value: item.title });
+        node.replaceChild(input, titleNode);
+        input.focus();
+        input.select();
+
+        let closed = false;
+        const finish = async (save) => {
+            if (closed) return;
+            closed = true;
+            const value = input.value.trim();
+            if (input.parentNode === node) node.replaceChild(titleNode, input);
+            if (!save || !value || value === item.title) return;
+            try {
+                const data = await api.patch('/api/chats/' + item.id, { title: value });
+                item.title = data.chat.title;
+                titleNode.textContent = item.title;
+                if (chat.current && chat.current.id === item.id) {
+                    chat.current.title = item.title;
+                    renderTalkHead();
+                }
+            } catch (error) {
+                toastError(error);
+            }
+        };
+
+        input.addEventListener('keydown', (event) => {
+            event.stopPropagation();
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                finish(true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                finish(false);
+            }
+        });
+        input.addEventListener('blur', () => finish(true));
+    }
+
+    function renameChatDialog(item) {
+        const input = h('input', { type: 'text', class: 'grow', value: item.title });
+        const save = async () => {
+            const value = input.value.trim();
+            dialog.close();
+            if (!value || value === item.title) return;
+            try {
+                const data = await api.patch('/api/chats/' + item.id, { title: value });
+                item.title = data.chat.title;
+                if (chat.current && chat.current.id === item.id) chat.current.title = item.title;
+                upsertChatInList(item);
+                renderTalkHead();
+            } catch (error) {
+                toastError(error);
+            }
+        };
+        const dialog = openModal({
+            narrow: true,
+            title: 'Название разговора',
+            body: h('label', { class: 'field' }, 'Название', input),
+            footer: [
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                h('button', { class: 'btn btn--primary', onclick: save }, 'Сохранить'),
+            ],
+        });
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') save();
+        });
+        setTimeout(() => input.focus(), 30);
+    }
+
+    async function createChat() {
+        try {
+            const data = await api.post('/api/chats', {});
+            if (chat.archived) chat.archived = false;
+            navigate('#/chat/' + data.chat.id);
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
+    async function toggleArchive(item) {
+        try {
+            const data = await api.patch('/api/chats/' + item.id, { archived: !item.archived });
+            item.archived = data.chat.archived;
+            if (chat.current && chat.current.id === item.id) {
+                chat.current = data.chat;
+                renderTalkHead();
+            }
+            toast(item.archived ? 'Разговор убран в архив' : 'Разговор возвращён из архива', 'ok', 3000);
+            await reloadChatList();
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
+    async function removeChat(item) {
+        const ok = await confirmDialog({
+            title: 'Удалить разговор',
+            message: 'Разговор «' + item.title + '» будет удалён вместе со всеми сообщениями. ' +
+                'Действие необратимо.',
+            confirmText: 'Удалить',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del('/api/chats/' + item.id);
+            toast('Разговор удалён', 'ok');
+            if (chat.current && chat.current.id === item.id) {
+                navigate('#/chat');
+                return;
+            }
+            await reloadChatList();
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
+    function upsertChatInList(item) {
+        if (!item) return;
+        const index = chat.chats.findIndex((row) => row.id === item.id);
+        if (item.archived !== chat.archived) {
+            if (index !== -1) chat.chats.splice(index, 1);
+        } else if (index === -1) {
+            chat.chats.unshift(item);
+        } else {
+            chat.chats[index] = item;
+        }
+        renderChatList();
+    }
+
+    // -- центральная панель: переписка ---------------------------------------
+
+    function buildTalkPanel() {
+        const head = h('div', { class: 'panel-head' });
+        const feed = h('div', { class: 'panel-body chat-feed' });
+        chat.nodes.talkHead = head;
+        chat.nodes.feed = feed;
+        return h('section', { class: 'panel panel--talk' }, head, feed, buildComposer());
+    }
+
+    function renderTalkHead() {
+        const head = chat.nodes.talkHead;
+        if (!head) return;
+        clear(head);
+        const current = chat.current;
+        const count = chat.messages.length;
+
+        append(head, [
+            h('div', { class: 'panel-head-row' },
+                h('div', { class: 'chat-title', title: current ? current.title : '' },
+                    current ? current.title : 'Новый разговор'),
+                current && current.archived ? h('span', { class: 'badge' }, 'в архиве') : null,
+                h('span', { style: { flex: '1' } }),
+                current ? h('button', {
+                    class: 'btn btn--sm', onclick: () => renameChatDialog(current),
+                }, 'Переименовать') : null,
+                current ? h('button', {
+                    class: 'btn btn--sm', onclick: () => toggleArchive(current),
+                }, current.archived ? 'Из архива' : 'В архив') : null,
+                current ? h('button', {
+                    class: 'btn btn--sm btn--danger', onclick: () => removeChat(current),
+                }, 'Удалить') : null),
+            h('div', { class: 'panel-head-row small muted' },
+                h('span', {}, count + ' ' + plural(count, 'сообщение', 'сообщения', 'сообщений')),
+                current && current.domain
+                    ? h('span', { class: 'badge badge--info' }, domainTitle(current.domain))
+                    : h('span', { class: 'faint' }, 'поиск по всем направлениям'),
+                current ? h('span', { class: 'faint' }, 'изменён ' + fmtDateTime(current.updated_at)) : null),
+        ]);
+    }
+
+    function renderFeed() {
+        const feed = chat.nodes.feed;
+        if (!feed) return;
+        clear(feed);
+        if (!chat.messages.length) {
+            feed.appendChild(emptyChatState());
+            return;
+        }
+        chat.messages.forEach((message) => feed.appendChild(messageNode(message)));
+        scrollFeed();
+    }
+
+    function emptyChatState() {
+        return h('div', { class: 'empty chat-empty' },
+            h('h3', {}, 'Спросите помощника'),
+            h('div', {}, 'Ответ собирается по вашей библиотеке: каждое утверждение — со ссылкой ' +
+                'на фрагмент документа. Чего в библиотеке нет, помощник помечает как ' +
+                'непроверенное общее знание.'),
+            h('div', { class: 'chat-examples' }, CHAT_EXAMPLES.map((item) => h('button', {
+                class: 'example', title: 'Подставить вопрос в поле ввода',
+                onclick: () => useExample(item),
+            },
+                h('span', { class: 'badge badge--info' }, domainTitle(item.domain)),
+                h('span', { class: 'text' }, item.text)))));
+    }
+
+    function useExample(item) {
+        const input = chat.nodes.input;
+        if (!input) return;
+        input.value = item.text;
+        growComposer(input);
+        input.focus();
+    }
+
+    function messageNode(message) {
+        const isUser = message.role === 'user';
+        const body = h('div', { class: 'body' });
+        if (isUser) body.textContent = message.content;
+        else renderAnswer(body, message.content);
+
+        const sources = message.sources || [];
+        const who = isUser
+            ? (state.user ? (state.user.full_name || state.user.login) : 'Инженер')
+            : 'Помощник';
+
+        return h('div', {
+            class: 'msg msg--' + (isUser ? 'user' : 'assistant'),
+            dataset: { id: String(message.id || '') },
+        },
+            h('div', { class: 'who' }, who,
+                h('span', { class: 'faint' }, fmtDateTime(message.created_at))),
+            body,
+            !isUser && sources.length ? h('div', { class: 'msg-foot' },
+                h('button', {
+                    class: 'btn btn--sm btn--ghost',
+                    onclick: () => showSources(message),
+                }, 'источники: ' + sources.length),
+                message.meta && message.meta.found !== undefined
+                    ? h('span', { class: 'small faint' },
+                        'найдено фрагментов: ' + message.meta.found +
+                        ', процитировано: ' + (message.meta.cited || 0))
+                    : null) : null);
+    }
+
+    /** Вставить размеченный ответ и оживить ссылки [S1]. */
+    function renderAnswer(container, text) {
+        clear(container);
+        container.appendChild(renderMarkdown(text));
+        $$('.cite', container).forEach((button) => {
+            button.classList.toggle('is-active', button.dataset.label === chat.activeLabel);
+            button.addEventListener('click', () => selectSource(button.dataset.label, container));
+        });
+    }
+
+    function selectSource(label, container) {
+        const holder = container.closest('.msg');
+        const id = holder ? Number(holder.dataset.id) : 0;
+        const message = chat.messages.find((item) => item.id === id);
+        if (message) chat.sourcesOf = message;
+        chat.activeLabel = chat.activeLabel === label ? null : label;
+        renderChatSources();
+        markCites();
+        if (!chat.activeLabel) return;
+        focusChatPanel('side');
+        const card = document.getElementById(domId('csrc-', label));
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function markCites() {
+        if (!chat.nodes.feed) return;
+        $$('.cite', chat.nodes.feed).forEach((button) => {
+            button.classList.toggle('is-active', button.dataset.label === chat.activeLabel);
+        });
+    }
+
+    function showSources(message) {
+        chat.sourcesOf = message;
+        chat.pendingSources = null;
+        chat.activeLabel = null;
+        renderChatSources();
+        markCites();
+        focusChatPanel('side');
+    }
+
+    function scrollFeed() {
+        const feed = chat.nodes.feed;
+        if (feed) feed.scrollTop = feed.scrollHeight;
+    }
+
+    // -- поле ввода ----------------------------------------------------------
+
+    function growComposer(node) {
+        node.style.height = 'auto';
+        node.style.height = Math.min(node.scrollHeight + 2, 200) + 'px';
+    }
+
+    function buildComposer() {
+        const input = h('textarea', {
+            class: 'composer-input', rows: '1', spellcheck: 'false',
+            placeholder: 'Вопрос по библиотеке. Enter — отправить, Shift+Enter — новая строка',
+            oninput: (event) => growComposer(event.target),
+            onkeydown: (event) => {
+                event.stopPropagation();
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    send();
+                }
+            },
+        });
+        const sendButton = h('button', {
+            class: 'btn btn--primary', onclick: () => send(),
+        }, 'Спросить');
+        const stopButton = h('button', {
+            class: 'btn btn--danger', hidden: true,
+            title: 'Прервать генерацию ответа',
+            onclick: () => abortAnswer(),
+        }, 'Стоп');
+        const domainPick = domainSelect({
+            value: chat.current ? chat.current.domain : '',
+            title: 'Ограничить поиск направлением техники',
+            onchange: (value) => setChatDomain(value),
+        });
+        const caseLine = h('span', { class: 'case-plate' });
+
+        chat.nodes.input = input;
+        chat.nodes.send = sendButton;
+        chat.nodes.stop = stopButton;
+        chat.nodes.domain = domainPick;
+        chat.nodes.casePlate = caseLine;
+
+        return h('div', { class: 'composer' },
+            h('div', { class: 'composer-top' },
+                h('span', { class: 'small muted' }, 'Искать в:'), domainPick, caseLine),
+            h('div', { class: 'composer-row' }, input, sendButton, stopButton));
+    }
+
+    /** Плашка с номером обращения, если разговор привязан к кейсу. */
+    async function loadChatCase() {
+        const plate = chat.nodes.casePlate;
+        if (!plate || !chat.current || !chat.current.case_ref) return;
+        const reference = chat.current.case_ref;
+        clear(plate);
+        plate.appendChild(h('a', {
+            class: 'badge badge--accent', href: '#/case/' + reference,
+            title: 'Открыть кейс',
+        }, 'обращение #' + reference));
+        try {
+            const data = await api.get('/api/cases/' + reference);
+            chat.caseInfo = data.case;
+            if (chat.current && chat.current.case_ref === reference) {
+                clear(plate);
+                plate.appendChild(h('a', {
+                    class: 'badge badge--accent', href: '#/case/' + reference,
+                    title: 'Открыть кейс: ' + (chat.caseInfo.title || ''),
+                }, 'обращение ' + chat.caseInfo.case_id));
+            }
+        } catch (error) {
+            /* кейс мог быть удалён — оставляем плашку с номером */
+        }
+    }
+
+    async function setChatDomain(value) {
+        if (!chat.current) return;
+        try {
+            const data = await api.patch('/api/chats/' + chat.current.id, { domain: value });
+            chat.current = data.chat;
+            upsertChatInList(chat.current);
+            renderTalkHead();
+            toast(value ? 'Поиск ограничен направлением: ' + domainTitle(value)
+                : 'Поиск по всем направлениям', 'ok', 3000);
+        } catch (error) {
+            chat.nodes.domain.value = chat.current.domain || '';
+            toastError(error);
+        }
+    }
+
+    // -- правая панель: источники ответа -------------------------------------
+
+    function buildChatSidePanel() {
+        const body = h('div', { class: 'panel-body' });
+        chat.nodes.sideBody = body;
+        return h('section', { class: 'panel panel--chatside' },
+            h('div', { class: 'panel-head' },
+                h('div', { class: 'panel-head-row' },
+                    h('span', { class: 'panel-title' }, 'Источники ответа'))),
+            body);
+    }
+
+    function renderChatSources() {
+        const box = chat.nodes.sideBody;
+        if (!box) return;
+        clear(box);
+        const items = chat.pendingSources || (chat.sourcesOf ? chat.sourcesOf.sources : []) || [];
+        if (!items.length) {
+            box.appendChild(h('div', { class: 'empty small' },
+                'Здесь появятся фрагменты библиотеки, на которые опирался ответ: ' +
+                'цитата, документ и направление.'));
+            return;
+        }
+        items.forEach((source) => box.appendChild(sourceCard(source)));
+    }
+
+    function sourceCard(source) {
+        const docId = String(source.chunk_uid || '').split('#')[0];
+        const node = h('div', {
+            id: domId('csrc-', source.label),
+            class: 'source-item' + (chat.activeLabel === source.label ? ' is-active is-open' : ''),
+            onclick: (event) => {
+                if (event.target.closest('a')) return;
+                node.classList.toggle('is-open');
+            },
+        },
+            h('div', {},
+                h('span', { class: 'label' }, '[' + source.label + ']'),
+                h('span', { class: 'citation' }, source.citation || source.chunk_uid)),
+            h('div', { class: 'src-meta' },
+                h('span', { class: 'badge' }, docTypeLabel(source.doc_type)),
+                source.domain
+                    ? h('span', { class: 'badge badge--info' }, domainTitle(source.domain))
+                    : h('span', { class: 'badge' }, 'направление не указано'),
+                docId ? h('a', {
+                    class: 'small', href: '#/library/' + encodePath(docId),
+                    title: 'Показать документ в библиотеке',
+                }, docId) : null),
+            h('div', { class: 'quote' }, source.text || ''));
+        return node;
+    }
+
+    // -- вопрос и потоковый ответ --------------------------------------------
+
+    async function send() {
+        if (chat.streaming) return;
+        const input = chat.nodes.input;
+        const text = input.value.trim();
+        if (!text) {
+            toast('Введите вопрос', 'error', 3000);
+            return;
+        }
+
+        if (!chat.current) {
+            try {
+                const created = await api.post('/api/chats', { domain: chat.nodes.domain.value });
+                chat.current = created.chat;
+                upsertChatInList(chat.current);
+                renderTalkHead();
+                // Адрес меняем без перерисовки экрана: иначе поток оборвётся.
+                replaceHash('#/chat/' + chat.current.id);
+            } catch (error) {
+                toastError(error);
+                return;
+            }
+        }
+
+        input.value = '';
+        growComposer(input);
+        await streamAnswer(text);
+    }
+
+    function abortAnswer() {
+        if (!chat.streaming) return;
+        stopStreaming();
+        toast('Генерация прервана', 'ok', 3000);
+    }
+
+    function setStreaming(flag) {
+        chat.streaming = flag;
+        if (chat.nodes.send) {
+            chat.nodes.send.hidden = flag;
+            chat.nodes.send.disabled = flag;
+        }
+        if (chat.nodes.stop) chat.nodes.stop.hidden = !flag;
+    }
+
+    /** Разбор одного события SSE: строки «data: {json}». */
+    function parseEvent(raw) {
+        const payload = raw.split('\n')
+            .filter((line) => line.slice(0, 5) === 'data:')
+            .map((line) => line.slice(5).trim())
+            .join('');
+        if (!payload) return null;
+        try {
+            return JSON.parse(payload);
+        } catch (error) {
+            return { type: 'error', error: 'сервер прислал испорченное событие' };
+        }
+    }
+
+    async function streamAnswer(text) {
+        const feed = chat.nodes.feed;
+        const placeholder = $('.chat-empty', feed);
+        if (placeholder) placeholder.remove();
+
+        const asked = {
+            id: 0, role: 'user', content: text, sources: [],
+            created_at: new Date().toISOString(),
+        };
+        feed.appendChild(messageNode(asked));
+
+        const body = h('div', { class: 'body is-typing' });
+        const bubble = h('div', { class: 'msg msg--assistant' },
+            h('div', { class: 'who' }, 'Помощник', h('span', { class: 'faint' }, 'печатает…')),
+            body);
+        feed.appendChild(bubble);
+        scrollFeed();
+
+        chat.pendingSources = [];
+        chat.sourcesOf = null;
+        chat.activeLabel = null;
+        renderChatSources();
+
+        const controller = new AbortController();
+        chat.controller = controller;
+        setStreaming(true);
+
+        let answer = '';
+        let done = null;
+        let failed = '';
+        let aborted = false;
+        let painted = 0;
+
+        const paint = (force) => {
+            const now = Date.now();
+            if (!force && now - painted < 70) return;
+            painted = now;
+            renderAnswer(body, answer);
+            body.classList.add('is-typing');
+            scrollFeed();
+        };
+
+        try {
+            const response = await fetch('/api/chats/' + chat.current.id + '/stream', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+                body: JSON.stringify({ text: text }),
+                signal: controller.signal,
+            });
+            if (response.status === 401) {
+                goToLogin();
+                return;
+            }
+            if (!response.ok || !response.body) {
+                let message = 'ошибка сервера (код ' + response.status + ')';
+                try {
+                    const data = await response.json();
+                    if (data && data.error) message = data.error;
+                } catch (error) {
+                    /* тело не JSON — оставляем сообщение по коду */
+                }
+                throw new ApiError(response.status, message);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            while (true) {
+                const piece = await reader.read();
+                if (piece.done) break;
+                buffer += decoder.decode(piece.value, { stream: true }).replace(/\r\n/g, '\n');
+                let cut = buffer.indexOf('\n\n');
+                while (cut !== -1) {
+                    const event = parseEvent(buffer.slice(0, cut));
+                    buffer = buffer.slice(cut + 2);
+                    cut = buffer.indexOf('\n\n');
+                    if (!event) continue;
+                    if (event.type === 'question') {
+                        if (event.message && event.message.id) asked.id = event.message.id;
+                    } else if (event.type === 'sources') {
+                        chat.pendingSources = event.sources || [];
+                        renderChatSources();
+                    } else if (event.type === 'delta') {
+                        answer += event.text || '';
+                        paint(false);
+                    } else if (event.type === 'done') {
+                        done = event;
+                    } else if (event.type === 'error') {
+                        failed = event.error || 'модель не ответила';
+                    }
+                }
+            }
+        } catch (error) {
+            if (error && error.name === 'AbortError') aborted = true;
+            else failed = errorText(error);
+        } finally {
+            setStreaming(false);
+            chat.controller = null;
+        }
+
+        if (!bubble.isConnected) return;
+        body.classList.remove('is-typing');
+
+        if (done) {
+            chat.current = done.chat || chat.current;
+            chat.messages.push(done.question, done.answer);
+            chat.sourcesOf = done.answer;
+            chat.pendingSources = null;
+            renderFeed();
+            renderChatSources();
+            renderTalkHead();
+            upsertChatInList(chat.current);
+            return;
+        }
+
+        renderAnswer(body, answer);
+        if (failed) {
+            body.appendChild(h('div', { class: 'msg-error' }, 'Ошибка: ' + failed));
+        } else if (aborted) {
+            body.appendChild(h('div', { class: 'msg-note' },
+                'Генерация прервана инженером — ответ в историю разговора не записан.'));
+        } else {
+            body.appendChild(h('div', { class: 'msg-error' },
+                'Поток оборвался, не дойдя до конца ответа.'));
+        }
+        scrollFeed();
+    }
+
+    // =====================================================================
+    // 11. Личный кабинет
+    // =====================================================================
+
+    async function renderMe(view) {
+        clear(view);
+        const page = h('div', { class: 'page page--narrow' });
+        view.appendChild(page);
+
+        const data = await api.get('/api/me/summary');
+        const user = data.user || state.user || {};
+        const reports = data.reports || {};
+        const edits = data.edits || {};
+
+        const card = h('div', { class: 'card card-pad' },
+            h('div', { class: 'card-title' }, 'Учётная запись'),
+            h('dl', { class: 'kv' },
+                h('dt', {}, 'Логин'), h('dd', { class: 'mono' }, user.login || '—'),
+                h('dt', {}, 'ФИО'), h('dd', {}, user.full_name || '—'),
+                h('dt', {}, 'Роль'), h('dd', {}, roleLabel(user.role) +
+                    (state.authEnabled ? '' : ' · локальный режим без аутентификации')),
+                h('dt', {}, 'Права'), h('dd', { class: 'small muted' }, rolePowers(user.role))));
+
+        const cards = h('div', { class: 'stat-cards' },
+            statCard(data.cases || 0, 'кейсов создано вами'),
+            statCard(reports.total || 0, 'версий отчётов',
+                'утверждено: ' + (reports.approved || 0)),
+            statCard(edits.pairs || 0, 'пар «черновик → финал»',
+                'средняя правка: ' + fmtNumber(edits.mean_distance || 0, 3)),
+            statCard(data.chats || 0, 'разговоров с помощником',
+                'чужие разговоры недоступны никому'));
+
+        append(page, [
+            h('div', { class: 'page-head' },
+                h('h1', {}, 'Личный кабинет'),
+                h('button', { class: 'btn', onclick: () => renderRoute(state.route) }, 'Обновить')),
+            card,
+            cards,
+            passwordCard(),
+            themeCard(),
+        ]);
+    }
+
+    function rolePowers(role) {
+        return {
+            viewer: 'просмотр кейсов, отчётов, библиотеки и метрик, поиск по литературе',
+            engineer: 'создание кейсов, генерация, правка и утверждение отчётов, загрузка документов',
+            admin: 'всё перечисленное, плюс удаление кейсов и документов и журнал действий',
+        }[role] || '—';
+    }
+
+    function passwordCard() {
+        const box = h('div', { class: 'card card-pad' });
+        const note = h('div', { class: 'form-note' });
+        const current = h('input', { type: 'password', autocomplete: 'current-password' });
+        const fresh = h('input', { type: 'password', autocomplete: 'new-password' });
+        const repeat = h('input', { type: 'password', autocomplete: 'new-password' });
+        const button = h('button', { class: 'btn btn--primary', onclick: () => submit() }, 'Сменить пароль');
+
+        const fail = (message) => {
+            note.textContent = message;
+            note.className = 'form-note is-bad';
+        };
+        const ok = (message) => {
+            note.textContent = message;
+            note.className = 'form-note is-ok';
+        };
+
+        async function submit() {
+            const currentValue = current.value;
+            const freshValue = fresh.value;
+            if (!currentValue) {
+                fail('Введите текущий пароль.');
+                current.focus();
+                return;
+            }
+            if (freshValue.length < 8) {
+                fail('Новый пароль короче 8 символов.');
+                fresh.focus();
+                return;
+            }
+            if (freshValue !== repeat.value) {
+                fail('Новый пароль и повтор не совпадают.');
+                repeat.focus();
+                return;
+            }
+            if (freshValue === currentValue) {
+                fail('Новый пароль совпадает с текущим.');
+                fresh.focus();
+                return;
+            }
+            button.disabled = true;
+            try {
+                await api.post('/api/me/password', { current: currentValue, new: freshValue });
+                current.value = '';
+                fresh.value = '';
+                repeat.value = '';
+                ok('Пароль изменён. Остальные сессии закрыты, эта продолжает работать.');
+                toast('Пароль изменён', 'ok');
+            } catch (error) {
+                if (error instanceof ApiError && error.status === 403) {
+                    fail('Текущий пароль указан неверно.');
+                    current.focus();
+                    current.select();
+                } else {
+                    fail(errorText(error));
+                }
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        const onEnter = (event) => {
+            if (event.key === 'Enter') submit();
+        };
+        [current, fresh, repeat].forEach((field) => field.addEventListener('keydown', onEnter));
+
+        append(box, [
+            h('div', { class: 'card-title' }, 'Смена пароля'),
+            !state.authEnabled
+                ? h('div', { class: 'small muted' },
+                    'Аутентификация выключена настройками (локальный режим) — пароль не используется.')
+                : [
+                    h('div', { class: 'form-grid' },
+                        h('label', { class: 'field' }, 'Текущий пароль', current),
+                        h('label', { class: 'field' }, 'Новый пароль (не короче 8 символов)', fresh),
+                        h('label', { class: 'field' }, 'Повтор нового пароля', repeat)),
+                    note,
+                    h('div', { class: 'btn-row', style: { marginTop: '12px' } }, button),
+                ],
+        ]);
+        if (!state.authEnabled) {
+            [current, fresh, repeat, button].forEach((field) => { field.disabled = true; });
+        }
+        return box;
+    }
+
+    function themeCard() {
+        const box = h('div', { class: 'card card-pad' });
+        const buttons = ['auto', 'light', 'dark'].map((mode) => h('button', {
+            class: 'btn', dataset: { mode: mode },
+            onclick: () => {
+                storageSet('rg-theme', mode);
+                applyTheme(mode);
+                mark();
+            },
+        }, THEME_LABEL[mode]));
+
+        function mark() {
+            const active = storageGet('rg-theme', 'auto');
+            buttons.forEach((button) => {
+                button.classList.toggle('btn--primary', button.dataset.mode === active);
+            });
+        }
+
+        mark();
+        append(box, [
+            h('div', { class: 'card-title' }, 'Оформление'),
+            h('div', { class: 'small muted', style: { marginBottom: '10px' } },
+                'Режим «авто» следует настройке светлой или тёмной темы в операционной системе. ' +
+                'Выбор хранится в этом браузере.'),
+            h('div', { class: 'btn-row' }, buttons),
+        ]);
+        return box;
+    }
+
+    // =====================================================================
+    // 12. Запуск
     // =====================================================================
 
     async function start() {

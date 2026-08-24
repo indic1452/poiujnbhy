@@ -41,6 +41,31 @@ class Issue:
         return f"{self.level.upper():7} {self.code}{where}: {self.message}"
 
 
+def split_document(markdown: str) -> tuple[List[tuple[str, str]], str]:
+    """Делит отчёт на проверяемые разделы и приложение с источниками.
+
+    Границы определяются ПОЛОЖЕНИЕМ блока, а не текстом заголовка. Это принципиально:
+    заголовок внутри секции пишет модель или инженер, поэтому строка вида
+    «## Приложение А. Источники (рабочий список)» посреди текста не должна создавать
+    зону, свободную от проверки. Приложением считается только последний раздел
+    документа, оглавлением — только первый; всё остальное проверяется как текст.
+    """
+    sections = parse_sections(_strip_service(markdown))
+    titled = [(title.strip(), body) for title, body in sections if title.strip()]
+
+    appendix = ""
+    if titled and APPENDIX_MARKER in titled[-1][0]:
+        appendix = titled[-1][1]
+        titled = titled[:-1]
+    if titled and _is_contents(titled[0][0]):
+        titled = titled[1:]
+    return titled, appendix
+
+
+def _is_contents(title: str) -> bool:
+    return re.sub(r"^\d+\.\s*", "", title).strip().casefold() == "содержание"
+
+
 def parse_sections(markdown: str) -> List[tuple[str, str]]:
     """Разбирает отчёт на пары (заголовок, тело) по заголовкам второго уровня."""
     sections: List[tuple[str, str]] = []
@@ -71,18 +96,23 @@ def verify_report(
     *,
     glossary: Dict[str, str] | None = None,
     forbidden: Dict[str, str] | None = None,
+    sections: Sequence[tuple[str, str]] | None = None,
+    appendix: str | None = None,
 ) -> List[Issue]:
-    """Полная проверка готового отчёта. Возвращает список замечаний."""
+    """Полная проверка готового отчёта. Возвращает список замечаний.
+
+    ``sections`` и ``appendix`` можно передать явно — тогда разбор Markdown не
+    выполняется вовсе. Так делает веб-слой: тексты секций и список источников он
+    берёт из базы, то есть из данных, сформированных кодом, а не из документа,
+    который правили модель и инженер. Это закрывает подделку границ разделов.
+    """
     issues: List[Issue] = []
-    sections = parse_sections(_strip_service(markdown))
-    # Титульный блок (без заголовка), оглавление и приложение формирует код
-    # сборки, а не модель, — проверять в них нечего.
-    body_sections = [
-        (title, body)
-        for title, body in sections
-        if title.strip() and title.strip() != "Содержание" and APPENDIX_MARKER not in title
-    ]
-    appendix = "\n".join(b for t, b in sections if APPENDIX_MARKER in t)
+    if sections is None or appendix is None:
+        parsed_sections, parsed_appendix = split_document(markdown)
+        body_sections = list(sections) if sections is not None else parsed_sections
+        appendix = appendix if appendix is not None else parsed_appendix
+    else:
+        body_sections = list(sections)
 
     issues += _check_numbers(body_sections, facts, appendix)
     issues += _check_citations(body_sections, appendix)
@@ -105,7 +135,9 @@ def _check_numbers(
 
     issues: List[Issue] = []
     for title, body in sections:
-        for value in sorted(numbers.extract(body)):
+        # Заголовок раздела — такой же текст отчёта: и модель, и инженер могут
+        # написать в нём число или запрещённую формулировку.
+        for value in sorted(numbers.extract(f"{title}\n{body}")):
             if value in allowed_facts:
                 continue
             if value in from_sources:
@@ -133,7 +165,8 @@ def _check_numbers(
 def _check_citations(sections: Sequence[tuple[str, str]], appendix: str) -> List[Issue]:
     known = set(re.findall(r"\[(S\d+)\]", appendix))
     issues: List[Issue] = []
-    for title, body in sections:
+    for title, raw_body in sections:
+        body = f"{title}\n{raw_body}"
         for label in sorted(set(re.findall(r"\[(S\d+)\]", body))):
             if label not in known:
                 issues.append(
@@ -149,7 +182,8 @@ def _check_citations(sections: Sequence[tuple[str, str]], appendix: str) -> List
 
 def _check_placeholders(sections: Sequence[tuple[str, str]]) -> List[Issue]:
     issues: List[Issue] = []
-    for title, body in sections:
+    for title, raw_body in sections:
+        body = f"{title}\n{raw_body}"
         for match in re.finditer(r"\[ТРЕБУЕТ ПРОВЕРКИ[^\]]*\]", body):
             issues.append(
                 Issue("warning", "needs-review", f"требуется участие инженера: {match.group(0)}", title)
@@ -163,7 +197,8 @@ def _check_placeholders(sections: Sequence[tuple[str, str]]) -> List[Issue]:
 
 def _check_forbidden(sections: Sequence[tuple[str, str]], forbidden: Dict[str, str]) -> List[Issue]:
     issues: List[Issue] = []
-    for title, body in sections:
+    for title, raw_body in sections:
+        body = f"{title}\n{raw_body}"
         for pattern, reason in forbidden.items():
             match = re.search(pattern, body, re.IGNORECASE)
             if match:

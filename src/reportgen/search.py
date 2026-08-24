@@ -150,12 +150,9 @@ class DatabaseRetriever:
             return []
         allowed = set(doc_types) if doc_types else None
         areas = {d for d in (domains or []) if d} or None
-        if areas:
-            meta_filter = dict(meta_filter or {})
 
         lexical = self._lexical(text, allowed, meta_filter, areas)
-        dense = [hit for hit in self._dense(text, allowed, meta_filter)
-                 if not areas or hit.chunk.meta.get("domain", "") in areas]
+        dense = self._dense(text, allowed, meta_filter, areas)
 
         if lexical and dense:
             merged = reciprocal_rank_fusion(
@@ -193,7 +190,7 @@ class DatabaseRetriever:
         hits: List[Hit] = []
         for uid, score in pairs:
             chunk = chunks.get(uid)
-            if chunk is None or not _matches(chunk, allowed, meta_filter):
+            if chunk is None or not _matches(chunk, allowed, meta_filter, domains):
                 continue
             hits.append(Hit(chunk=chunk, score=float(score)))
             if len(hits) >= self.candidates:
@@ -205,8 +202,15 @@ class DatabaseRetriever:
         query: str,
         allowed: set[str] | None,
         meta_filter: Dict[str, str] | None,
+        domains: set[str] | None = None,
     ) -> List[Hit]:
-        """Второй канал: косинус между вектором запроса и векторами чанков."""
+        """Второй канал: косинус между вектором запроса и векторами чанков.
+
+        Направление отсекается здесь же, а не после возврата: иначе по редкому
+        направлению (сорок документов по релейкам против тысячи по спутнику)
+        плотный канал возвращал бы одни спутниковые фрагменты, они отсеивались
+        бы позже, и слияние молча вырождалось в чистый лексический поиск.
+        """
         if self.embedder is None:
             return []
         uids, matrix = self._vectors()
@@ -221,7 +225,7 @@ class DatabaseRetriever:
             return []
 
         pool = self.candidates
-        if allowed or meta_filter:
+        if allowed or meta_filter or domains:
             pool *= self.dense_pool_factor
         scored = top_cosine(query_vec, matrix, uids, k=pool)
         if not scored:
@@ -230,7 +234,7 @@ class DatabaseRetriever:
         hits: List[Hit] = []
         for uid, score in scored:
             chunk = chunks.get(uid)
-            if chunk is None or not _matches(chunk, allowed, meta_filter):
+            if chunk is None or not _matches(chunk, allowed, meta_filter, domains):
                 continue
             hits.append(Hit(chunk=chunk, score=float(score)))
             if len(hits) >= self.candidates:
@@ -297,9 +301,12 @@ def _matches(
     chunk: Chunk,
     allowed: set[str] | None,
     meta_filter: Dict[str, str] | None,
+    domains: set[str] | None = None,
 ) -> bool:
     """Те же правила отбора, что в :meth:`reportgen.retrieval.BM25Index.search`."""
     if allowed and chunk.doc_type not in allowed:
+        return False
+    if domains and chunk.meta.get("domain", "") not in domains:
         return False
     if meta_filter and any(
         str(chunk.meta.get(key, "")).lower() != str(value).lower()

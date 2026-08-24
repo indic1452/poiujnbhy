@@ -254,13 +254,42 @@ class ReportService:
             raise ServiceError("тип отчёта менять нельзя — создайте новый кейс", 400)
         facts = _validate_facts(raw)
         self.repos.cases.update_facts(case.id, raw, facts.digest(), customer=facts.customer)
+        # Изменились исходные данные — значит изменилось и множество чисел,
+        # которые отчёт имеет право называть. Все отчёты кейса перепроверяются
+        # сразу, иначе подписанный документ остался бы «утверждённым» с числами,
+        # которых в факт-пакете больше нет.
+        revoked = self.revalidate_case(case.id)
         self.repos.audit.log(
             "case.facts.update", user=user, object_type="case", object_id=case.case_id,
-            details={"digest": facts.digest()},
+            details={"digest": facts.digest(), "revoked": revoked},
         )
         updated = self.repos.cases.get(case.id)
         assert updated is not None
         return updated
+
+    def revalidate_case(self, case_ref: int) -> int:
+        """Перепроверить все отчёты кейса. Возвращает число снятых подписей."""
+        case = self.repos.cases.get(case_ref)
+        if case is None:
+            return 0
+        try:
+            facts = self.facts_of(case)
+            outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
+        except ServiceError:
+            return 0
+        revoked = 0
+        for stored in self.repos.reports.list_for_case(case_ref):
+            report = self.repos.reports.get(stored.id)
+            if report is None:
+                continue
+            sections, appendix = self._parts_of(report)
+            issues = self._verify(report.markdown, facts, outline,
+                                  sections=sections, appendix=appendix)
+            was_approved = report.status == "approved"
+            self._apply_issues(report, issues)
+            if was_approved and any(issue["level"] == "error" for issue in issues):
+                revoked += 1
+        return revoked
 
     # -- генерация ----------------------------------------------------------
 
@@ -287,7 +316,11 @@ class ReportService:
         )
         meta = dict(result.meta)
         meta["sources"] = registry.to_meta()
-        issues = self._verify(result.markdown, facts, outline)
+        issues = self._verify(
+            result.markdown, facts, outline,
+            sections=[(item.spec.title, item.text) for item in result.sections],
+            appendix=registry.render_appendix(),
+        )
 
         report = self.repos.reports.create(
             case_ref=case.id,
@@ -414,12 +447,13 @@ class ReportService:
                 )
             )
         markdown = assemble(facts, outline, generated, registry, report.meta)
-        issues = self._verify(markdown, facts, outline)
+        issues = self._verify(
+            markdown, facts, outline,
+            sections=[(item.spec.title, item.text) for item in generated],
+            appendix=registry.render_appendix(),
+        )
         self.repos.reports.update_markdown(report.id, markdown)
-        self.repos.reports.set_issues(report.id, issues)
-        if report.status == "approved" and any(i["level"] == "error" for i in issues):
-            # Правка сломала уже утверждённый отчёт — возвращаем его в черновики.
-            self.repos.reports.set_status(report.id, "draft")
+        self._apply_issues(report, issues)
         updated = self.repos.reports.get(report.id)
         assert updated is not None
         return updated
@@ -430,17 +464,53 @@ class ReportService:
             raise ServiceError("кейс отчёта не найден", 404)
         facts = self.facts_of(case)
         outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
-        issues = self._verify(report.markdown, facts, outline)
-        self.repos.reports.set_issues(report.id, issues)
+        sections, appendix = self._parts_of(report)
+        issues = self._verify(report.markdown, facts, outline,
+                              sections=sections, appendix=appendix)
+        self._apply_issues(report, issues)
         return issues
 
-    def _verify(self, markdown: str, facts: FactPack, outline: Outline) -> List[Dict[str, Any]]:
-        issues = verify_report(markdown, facts, outline, glossary=self.glossary)
+    def _verify(self, markdown: str, facts: FactPack, outline: Outline,
+                *, sections: List[tuple[str, str]] | None = None,
+                appendix: str | None = None) -> List[Dict[str, Any]]:
+        """Проверка отчёта. Секции и приложение берутся из базы, если они есть.
+
+        Разбор Markdown — крайний случай: границы разделов в документе задаёт
+        текст, который писали модель и инженер, а значит их можно подделать.
+        Тексты секций и список источников в базе сформировал код.
+        """
+        issues = verify_report(
+            markdown, facts, outline, glossary=self.glossary,
+            sections=sections, appendix=appendix,
+        )
         return [
             {"level": issue.level, "code": issue.code,
              "section": issue.section, "message": issue.message}
             for issue in issues
         ]
+
+    def _apply_issues(self, report: Report, issues: List[Dict[str, Any]]) -> None:
+        """Сохранить замечания и снять подпись, если появились ошибки.
+
+        Утверждённый отчёт не может оставаться утверждённым, когда верификатор
+        находит в нём число мимо факт-пакета: это главный инвариант системы
+        (док. 01, 1.4.1), и он не должен зависеть от того, каким путём отчёт
+        стал неверным — правкой секции или изменением исходных данных.
+        """
+        self.repos.reports.set_issues(report.id, issues)
+        has_errors = any(issue["level"] == "error" for issue in issues)
+        if has_errors and report.status == "approved":
+            self.repos.reports.set_status(report.id, "draft")
+            self.repos.audit.log(
+                "report.approval.revoked", object_type="report", object_id=str(report.id),
+                details={"errors": sum(1 for i in issues if i["level"] == "error")},
+            )
+
+    def _parts_of(self, report: Report) -> tuple[List[tuple[str, str]], str]:
+        """Тексты секций и приложение источников из базы — то, что проверяем."""
+        sections = [(section.title, section.text) for section in report.sections]
+        appendix = StoredRegistry.from_meta(report.meta).render_appendix()
+        return sections, appendix
 
     # -- утверждение --------------------------------------------------------
 
@@ -532,6 +602,7 @@ class ReportService:
                 "chunks": counts["chunks"],
                 "embeddings": self.repos.vectors.count(),
                 "by_type": self.repos.documents.stats(),
+                "by_domain": self.repos.documents.domains(),
             },
         }
 

@@ -37,6 +37,9 @@ class SectionSpec:
     findings_min_severity: str | None = None
     retrieval_queries: Sequence[str] = ()
     retrieval_doc_types: Sequence[str] = ()
+    #: Ограничить поиск направлениями (спутник, релейка, протоколы …).
+    #: Пусто — искать по всей библиотеке.
+    retrieval_domains: Sequence[str] = ()
     target_words: int = 250
     style: str = DEFAULT_STYLE
 
@@ -193,11 +196,18 @@ def generate_section(
 
     hits: List[Hit] = []
     if retriever is not None:
-        hits = retriever.search(
-            _section_query(spec, facts),
-            top_k=top_k,
-            doc_types=spec.retrieval_doc_types or None,
-        )
+        query = _section_query(spec, facts)
+        try:
+            hits = retriever.search(
+                query, top_k=top_k,
+                doc_types=spec.retrieval_doc_types or None,
+                domains=spec.retrieval_domains or None,
+            )
+        except TypeError:
+            # Поисковик старого образца, без направлений.
+            hits = retriever.search(
+                query, top_k=top_k, doc_types=spec.retrieval_doc_types or None
+            )
     sources_block, labels = _render_sources(hits, registry)
 
     previously_block = (

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+import urllib.parse
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -356,7 +357,7 @@ def export_markdown(request: Request, report_id: int) -> Response:
     return Response(
         content=report.markdown,
         media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": _disposition(filename)},
     )
 
 
@@ -762,14 +763,29 @@ def health(request: Request) -> Dict[str, Any]:
 
 # ------------------------------------------------------------- служебное ---
 
-_UNSAFE = re.compile(r"[^\w\s.()-]", re.UNICODE)
+# Пробел разрешён, а вот \s пропускал бы перевод строки — и тогда case_id
+# с переводом строки уезжал бы прямо в заголовок HTTP-ответа.
+_UNSAFE = re.compile(r"[^\w .()\-]", re.UNICODE)
 
 
 def _safe_name(name: str) -> str:
     """Имя файла без путей и управляющих символов, пригодное для ФС и заголовков."""
     name = unicodedata.normalize("NFC", name).replace("\\", "/").split("/")[-1]
+    name = "".join(ch for ch in name if ch.isprintable())
     name = _UNSAFE.sub("_", name).strip().strip(".")
     return name[:120]
+
+
+def _disposition(filename: str) -> str:
+    """Заголовок Content-Disposition, выдерживающий кириллицу в имени файла.
+
+    Заголовки HTTP кодируются в latin-1, поэтому «отчёт.md» напрямую положить
+    нельзя — Starlette упадёт. По RFC 5987 отдаём ASCII-запасной вариант и
+    процентное представление настоящего имени.
+    """
+    ascii_name = filename.encode("ascii", "replace").decode("ascii").replace("?", "_")
+    quoted = urllib.parse.quote(filename, safe="")
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8\'\'{quoted}"
 
 
 def _ingest_file(request: Request, path: Path, *, doc_type: str,

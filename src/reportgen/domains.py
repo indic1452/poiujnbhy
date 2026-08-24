@@ -29,6 +29,11 @@ class Domain:
     id: str
     title: str
     keywords: Sequence[str] = ()
+    #: Запасное направление выбирается, только если ни одно предметное не
+    #: набрало достаточно совпадений. Иначе слова «ГОСТ», «стандарт», «норма»
+    #: перетянули бы к себе любой отраслевой документ — и стандарт на
+    #: радиорелейную линию уехал бы из «релеек» в «нормативы».
+    fallback: bool = False
 
     def score(self, text: str) -> int:
         """Сколько характерных слов направления встретилось в тексте."""
@@ -62,6 +67,7 @@ class DomainRegistry:
                 id=str(item["id"]),
                 title=str(item.get("title", item["id"])),
                 keywords=tuple(str(k).lower() for k in item.get("keywords", ())),
+                fallback=bool(item.get("fallback", False)),
             ))
         return cls(domains=domains)
 
@@ -82,16 +88,24 @@ class DomainRegistry:
     def classify(self, *parts: str) -> str:
         """Определить направление по названию и тексту документа.
 
-        Возвращает пустую строку, если уверенности нет: лучше «не указано»,
-        чем неверное направление, из-за которого документ перестанет находиться
-        при фильтрации.
+        Возвращает пустую строку, если уверенности нет. Это осознанный размен:
+        неверное направление уводит документ в чужую выборку, а пустое делает
+        его невидимым для поиска С фильтром (без фильтра он находится всегда).
+        Неразмеченные документы видны в библиотеке — их доразмечают вручную.
         """
         text = " ".join(part for part in parts if part).lower()[:CLASSIFY_CHARS]
         if not text or not self.domains:
             return UNSET
-        scored = sorted(
-            ((domain.score(text), domain.id) for domain in self.domains), reverse=True
-        )
+
+        primary = [d for d in self.domains if not d.fallback]
+        chosen = self._best(primary, text)
+        if chosen:
+            return chosen
+        return self._best([d for d in self.domains if d.fallback], text)
+
+    @staticmethod
+    def _best(candidates: Sequence[Domain], text: str) -> str:
+        scored = sorted(((domain.score(text), domain.id) for domain in candidates), reverse=True)
         if not scored:
             return UNSET
         best_score, best_id = scored[0]

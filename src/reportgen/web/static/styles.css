@@ -45,6 +45,8 @@
     --radius-sm: 6px;
     --left-w: 400px;
     --right-w: 360px;
+    --chat-left-w: 288px;
+    --chat-right-w: 344px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1713,6 +1715,478 @@ body.login-page {
     line-height: 1.5;
 }
 
+/* -------------------------------------------------------------- помощник --- */
+
+.chatbench {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--chat-left-w) minmax(420px, 1fr) var(--chat-right-w);
+    background: var(--bg);
+}
+
+.panel--chatlist {
+    border-right: 1px solid var(--border);
+}
+
+.panel--chatside {
+    border-left: 1px solid var(--border);
+}
+
+.panel--talk {
+    background: var(--bg);
+}
+
+/* -- список разговоров -- */
+
+.chat-list {
+    padding: 8px;
+}
+
+.chat-item {
+    position: relative;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.chat-item:hover {
+    background: var(--panel-2);
+}
+
+.chat-item.is-active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+}
+
+.chat-item .title {
+    font-size: 13px;
+    font-weight: 600;
+    padding-right: 56px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-item .meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    font-size: 11px;
+}
+
+.chat-item-actions {
+    position: absolute;
+    top: 5px;
+    right: 4px;
+    display: none;
+    gap: 2px;
+}
+
+.chat-item:hover .chat-item-actions,
+.chat-item.is-active .chat-item-actions {
+    display: flex;
+}
+
+input.rename {
+    width: 100%;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.chat-title {
+    font-size: 14px;
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
+}
+
+/* -- лента сообщений -- */
+
+.chat-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+}
+
+.msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 820px;
+    width: 100%;
+}
+
+.msg--user {
+    align-self: flex-end;
+    max-width: 640px;
+}
+
+.msg .who {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.msg--user .who {
+    justify-content: flex-end;
+}
+
+.msg .body {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px 10px 10px 2px;
+    background: var(--panel);
+    box-shadow: var(--shadow-sm);
+    overflow-wrap: anywhere;
+}
+
+.msg--user .body {
+    border-color: transparent;
+    border-radius: 10px 10px 2px 10px;
+    background: var(--accent-soft);
+    box-shadow: none;
+    white-space: pre-wrap;
+}
+
+.msg-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.msg-error,
+.msg-note {
+    margin-top: 8px;
+    padding: 6px 9px;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+}
+
+.msg-error {
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.msg-note {
+    color: var(--warn);
+    background: var(--warn-soft);
+}
+
+/* Курсор набора: пока идёт поток, у последнего блока ответа мигает каретка. */
+.body.is-typing:empty::after,
+.body.is-typing .md > *:last-child::after {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 1em;
+    margin-left: 3px;
+    vertical-align: -2px;
+    background: var(--accent);
+    animation: caret 1s steps(2) infinite;
+}
+
+@keyframes caret {
+    50% {
+        opacity: 0;
+    }
+}
+
+/* -- разметка ответа -- */
+
+.md > *:first-child {
+    margin-top: 0;
+}
+
+.md > *:last-child {
+    margin-bottom: 0;
+}
+
+.md p {
+    margin: 0 0 8px;
+}
+
+.md h3 {
+    font-size: 15px;
+    margin: 14px 0 6px;
+}
+
+.md h4 {
+    font-size: 14px;
+    margin: 12px 0 5px;
+}
+
+.md h5 {
+    font-size: 13.5px;
+    margin: 11px 0 5px;
+}
+
+.md h6 {
+    font-size: 13px;
+    margin: 10px 0 4px;
+    color: var(--muted);
+}
+
+.md ul,
+.md ol {
+    margin: 0 0 8px;
+    padding-left: 22px;
+}
+
+.md li {
+    margin: 2px 0;
+}
+
+.md code {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    background: var(--field-2);
+    border-radius: 4px;
+    padding: 1px 4px;
+}
+
+.md pre {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    background: var(--field-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+}
+
+.md pre code {
+    background: none;
+    padding: 0;
+}
+
+.md blockquote {
+    margin: 0 0 8px;
+    padding: 2px 12px;
+    border-left: 3px solid var(--border-strong);
+    color: var(--muted);
+}
+
+.md hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 12px 0;
+}
+
+.md-table-scroll {
+    overflow-x: auto;
+    margin-bottom: 10px;
+}
+
+table.md-table {
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+table.md-table th,
+table.md-table td {
+    border: 1px solid var(--border);
+    padding: 5px 8px;
+    text-align: left;
+    vertical-align: top;
+}
+
+table.md-table th {
+    background: var(--panel-2);
+    font-weight: 600;
+}
+
+.cite {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0 4px;
+    cursor: pointer;
+}
+
+.cite:hover {
+    border-color: var(--accent);
+}
+
+.cite.is-active {
+    background: var(--mark-active);
+    color: #1c1607;
+}
+
+/* -- пустое состояние с примерами -- */
+
+.chat-empty {
+    max-width: 720px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.chat-empty h3 {
+    text-align: center;
+}
+
+.chat-examples {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.example {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.example:hover {
+    border-color: var(--accent);
+    background: var(--panel-2);
+}
+
+.example .badge {
+    flex: 0 0 auto;
+}
+
+/* -- поле ввода -- */
+
+.composer {
+    flex: 0 0 auto;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+}
+
+.composer-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.composer-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.composer-input {
+    flex: 1;
+    resize: none;
+    overflow-y: auto;
+    min-height: 38px;
+    max-height: 200px;
+    padding: 8px 10px;
+    font-size: 13.5px;
+    line-height: 1.45;
+}
+
+.case-plate a {
+    text-decoration: none;
+}
+
+/* -- панель источников ответа -- */
+
+.src-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 5px;
+}
+
+.src-meta a {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--border-strong);
+}
+
+.src-meta a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* ------------------------------------------------------ личный кабинет --- */
+
+.page--narrow {
+    width: 100%;
+    max-width: 940px;
+    margin: 0 auto;
+}
+
+.form-note {
+    margin-top: 10px;
+    min-height: 1.2em;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.form-note.is-bad {
+    color: var(--danger);
+}
+
+.form-note.is-ok {
+    color: var(--ok);
+}
+
+a.user-chip {
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    color: inherit;
+    text-decoration: none;
+}
+
+a.user-chip:hover {
+    background: var(--panel-2);
+}
+
+a.user-chip.is-active {
+    background: var(--accent-soft);
+}
+
+a.user-chip.is-active b {
+    color: var(--accent);
+}
+
+/* --------------------------------------------- направления в библиотеке --- */
+
+select.domain-select {
+    max-width: 200px;
+    font-size: 12px;
+}
+
+table.grid tr.is-focus {
+    background: var(--accent-soft);
+}
+
+table.grid tr.is-focus td {
+    border-bottom-color: var(--accent);
+}
+
 /* ------------------------------------------------------------ адаптив --- */
 
 @media (max-width: 1600px) {
@@ -1756,5 +2230,27 @@ body.login-page {
 
     .nav a {
         padding: 6px 8px;
+    }
+}
+
+@media (max-width: 1400px) {
+    .chatbench {
+        grid-template-columns: minmax(240px, var(--chat-left-w)) minmax(380px, 1fr) minmax(280px, var(--chat-right-w));
+    }
+}
+
+@media (max-width: 1279px) {
+    .chatbench {
+        grid-template-columns: 1fr;
+    }
+
+    .chatbench[data-panel="list"] .panel--chatlist,
+    .chatbench[data-panel="talk"] .panel--talk,
+    .chatbench[data-panel="side"] .panel--chatside {
+        display: flex;
+    }
+
+    .chat-title {
+        max-width: 100%;
     }
 }

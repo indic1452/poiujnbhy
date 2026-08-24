@@ -275,7 +275,8 @@ class DocumentRepo:
         }
 
 
-_FTS_SPECIAL = re.compile(r'[^\w]', re.UNICODE)
+# Точку сохраняем: номер пункта «5.3.2» ищется как фраза, а не как три числа.
+_FTS_SPECIAL = re.compile(r'[^\w.]', re.UNICODE)
 
 
 class ChunkRepo:

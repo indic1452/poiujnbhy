@@ -68,15 +68,25 @@ def extract(text: str, *, structural: bool = False) -> Set[str]:
     return found
 
 
-def extract_from_object(obj: object) -> Set[str]:
-    """Рекурсивно собирает числа из произвольной JSON-подобной структуры."""
+def extract_from_object(obj: object, *, skip_keys: Iterable[str] = ()) -> Set[str]:
+    """Рекурсивно собирает числа из произвольной JSON-подобной структуры.
+
+    Собираются только ЗНАЧЕНИЯ. Имена полей игнорируются намеренно: иначе поле
+    ``sha256`` разрешило бы в отчёте число 256, а ``phase_noise_1khz`` — единицу.
+    ``skip_keys`` дополнительно исключает значения служебных полей (хеши,
+    контрольные суммы): в них полно цифровых групп, которые ничего не значат,
+    но делают верификатор слепым к правдоподобной выдумке.
+    """
+    skip = {key.casefold() for key in skip_keys}
     found: Set[str] = set()
     stack = [obj]
     while stack:
         item = stack.pop()
         if isinstance(item, dict):
-            stack.extend(item.keys())
-            stack.extend(item.values())
+            stack.extend(
+                value for key, value in item.items()
+                if str(key).casefold() not in skip
+            )
         elif isinstance(item, (list, tuple, set)):
             stack.extend(item)
         elif isinstance(item, bool) or item is None:

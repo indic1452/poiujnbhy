@@ -177,6 +177,64 @@ class AuthTests(WebTestCase):
         self.assertTrue(body["auth_enabled"])
 
 
+class RequestGuardTests(WebTestCase):
+    """Тело запроса не должно читаться раньше проверки прав."""
+
+    def test_unauthenticated_upload_is_rejected_before_body(self):
+        self.client.cookies.clear()
+        response = self.client.post(
+            "/api/library/upload",
+            files={"file": ("x.md", b"a" * 4096, "text/markdown")},
+            data={"doc_type": "literature"},
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("error", response.json())
+
+    def test_unauthenticated_write_is_rejected_without_reading_body(self):
+        self.client.cookies.clear()
+        response = self.client.post("/api/cases", json={"report_type": "signal_issue"})
+        self.assertEqual(response.status_code, 401)
+
+    def test_oversized_json_is_rejected(self):
+        response = self.client.post(
+            "/api/cases",
+            content=b'{"x":"' + b"a" * (9 * 1024 * 1024) + b'"}',
+            headers={"content-type": "application/json"},
+        )
+        self.assertEqual(response.status_code, 413)
+
+    def test_login_stays_reachable_without_session(self):
+        self.client.cookies.clear()
+        response = self.client.post(
+            "/api/auth/login", json={"login": "admin", "password": "пароль123"}
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_reads_stay_open_to_session_check_in_handler(self):
+        self.client.cookies.clear()
+        # GET не перехватывается middleware — права проверяет сам обработчик.
+        self.assertEqual(self.client.get("/api/cases").status_code, 401)
+
+
+class FilenameTests(WebTestCase):
+    def test_control_characters_do_not_reach_headers(self):
+        from reportgen.web.api import _disposition, _safe_name
+
+        self.assertEqual(_safe_name("AB\r\nX-Injected: yes"), "ABX-Injected_ yes")
+        header = _disposition("отчёт v1.md")
+        self.assertNotIn("\n", header)
+        header.encode("latin-1")  # заголовок обязан кодироваться без исключения
+
+    def test_cyrillic_case_id_exports(self):
+        facts = json.loads(json.dumps(CASE))
+        facts["case_id"] = "ОБРАЩЕНИЕ-2024-118"
+        case = self.create_case(facts)
+        report = self.generate(case["id"])
+        response = self.client.get(f"/api/reports/{report['id']}/export.md")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("filename*=UTF-8", response.headers["content-disposition"])
+
+
 class NoAuthTests(WebTestCase):
     auth = False
 

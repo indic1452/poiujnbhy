@@ -240,12 +240,16 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 
 def cmd_library(args: argparse.Namespace) -> int:
     repos, _ = _open_repos(args)
-    documents = repos.documents.list(args.doc_type)
+    documents = repos.documents.list(args.doc_type, getattr(args, "domain", None))
     if not documents:
         print("библиотека пуста")
         return 1
     for document in documents:
-        print(f"{document.doc_type:12} {document.chunk_count:5} чанков  {document.doc_id}")
+        domain = document.domain or "—"
+        print(f"{document.doc_type:12} {domain:12} {document.chunk_count:5} чанков  "
+              f"{document.doc_id}")
+    by_domain = repos.documents.domains()
+    print("по направлениям: " + ", ".join(f"{name} {count}" for name, count in by_domain.items()))
     stats = repos.documents.stats()
     total = sum(item["chunks"] for item in stats.values())
     print(f"итого документов {len(documents)}, чанков {total}, векторов {repos.vectors.count()}")
@@ -396,6 +400,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_lib = sub.add_parser("library", help="что лежит в библиотеке")
     p_lib.add_argument("--doc-type", default=None)
+    p_lib.add_argument("--domain", default=None, help="фильтр по направлению техники")
     p_lib.set_defaults(func=cmd_library)
 
     p_embed = sub.add_parser("embed", help="построить векторы для плотного поиска")

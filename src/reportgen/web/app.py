@@ -24,6 +24,13 @@ from .service import ReportService, ServiceError
 STATIC_DIR = Path(__file__).parent / "static"
 logger = logging.getLogger("reportgen.web")
 
+#: Методы, меняющие состояние: их тело нельзя читать до проверки прав.
+WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+#: Пути, доступные без входа в систему.
+OPEN_PATHS = frozenset({"/api/auth/login", "/api/auth/logout"})
+#: Потолок для JSON-тел: факт-пакет — это килобайты, а не сотни мегабайт.
+MAX_JSON_BYTES = 8 * 1024 * 1024
+
 PLACEHOLDER = """<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><title>reportgen</title></head>
 <body style="font-family: system-ui; margin: 4rem auto; max-width: 40rem">
@@ -87,9 +94,44 @@ def _install_middleware(app: FastAPI) -> None:
     @app.middleware("http")
     async def parse_json_and_secure(request: Request, call_next: Any):
         request.state.json_body = None
+        settings = app.state.settings
+        path = request.url.path
         content_type = request.headers.get("content-type", "")
+
+        # Права проверяются ДО чтения тела. Иначе неаутентифицированный клиент
+        # заставляет сервер принять и сложить на диск сотни мегабайт, прежде чем
+        # получит 401: FastAPI разбирает форму раньше, чем вызывает обработчик,
+        # поэтому никакая зависимость этот порядок не меняет — только middleware.
+        if (request.method in WRITE_METHODS and path.startswith("/api/")
+                and path not in OPEN_PATHS and settings.auth_enabled):
+            token = request.cookies.get("rg_session")
+            user = app.state.repos.sessions.resolve(token) if token else None
+            if user is None:
+                return JSONResponse(
+                    status_code=401, content={"error": "требуется вход в систему"}
+                )
+
+        # Заявленный объём тоже отсекаем заранее, не читая тело.
+        declared = request.headers.get("content-length")
+        if declared and declared.isdigit():
+            size = int(declared)
+            limit = (MAX_JSON_BYTES if "application/json" in content_type
+                     else settings.max_upload_mb * 1024 * 1024)
+            if size > limit:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": f"тело запроса больше допустимых "
+                                      f"{limit // (1024 * 1024)} МБ"},
+                )
+
         if request.method in ("POST", "PUT", "PATCH") and "application/json" in content_type:
-            raw = await request.body()
+            raw = await _read_capped(request, MAX_JSON_BYTES)
+            if raw is None:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": f"тело JSON больше допустимых "
+                                      f"{MAX_JSON_BYTES // (1024 * 1024)} МБ"},
+                )
             if raw:
                 try:
                     parsed = json.loads(raw.decode("utf-8"))
@@ -110,6 +152,22 @@ def _install_middleware(app: FastAPI) -> None:
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "same-origin")
         return response
+
+
+async def _read_capped(request: Request, limit: int) -> bytes | None:
+    """Читает тело запроса, обрывая приём при превышении предела.
+
+    Нужно именно потоковое чтение: у запроса с chunked-передачей нет
+    Content-Length, и проверить объём заранее невозможно.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > limit:
+            return None
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _install_handlers(app: FastAPI) -> None:

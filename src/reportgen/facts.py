@@ -202,9 +202,20 @@ class FactPack:
 
     # -- контроль -----------------------------------------------------------
 
+    #: Поля, значения которых не дают права называть числа в отчёте: хеши и
+    #: контрольные суммы состоят из цифровых групп, не имеющих смысла.
+    OPAQUE_FIELDS = ("sha256", "sha1", "md5", "hash", "digest", "checksum", "crc", "uuid")
+
     def allowed_numbers(self) -> Set[str]:
-        """Числа, которые модель имеет право использовать в отчёте."""
-        values = numbers.extract_from_object(self.raw or self._as_dict())
+        """Числа, которые модель имеет право использовать в отчёте.
+
+        Только значения полей факт-пакета: измерения с погрешностями, методы,
+        примечания, находки, хронология, сведения об оборудовании и артефактах.
+        Имена полей и хеши исключены — см. :func:`reportgen.numbers.extract_from_object`.
+        """
+        values = numbers.extract_from_object(
+            self.raw or self._as_dict(), skip_keys=self.OPAQUE_FIELDS
+        )
         return values | numbers.derived_forms(values)
 
     def digest(self) -> str:
