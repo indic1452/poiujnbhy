@@ -670,3 +670,8 @@ sudo reportgen-cli library --doc-type standards  # и в правильном л
 journalctl -u reportgen -n 100 --no-pager
 journalctl -u llama-server -n 100 --no-pager
 ```
+
+> **После обновления кода переиндексируйте библиотеку.** Правила разбиения
+> текста на токены иногда меняются (например, номера пунктов «5.3.2» перестали
+> распадаться на три числа). Индекс, построенный старыми правилами, ищется
+> хуже — но молча. Команда: `reportgen ingest --force`, затем `reportgen embed`.
