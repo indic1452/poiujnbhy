@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from .convert import (
-    SUPPORTED_SUFFIXES,
     ConvertedDocument,
     MissingDependencyError,
     convert_file,
@@ -48,3 +47,12 @@ __all__ = [
     "sha256_file",
     "strip_page_markers",
 ]
+
+
+def __getattr__(name: str) -> object:
+    """SUPPORTED_SUFFIXES вычисляется по реестру, поэтому реэкспорт ленивый."""
+    if name == "SUPPORTED_SUFFIXES":
+        from .convert import supported_suffixes
+
+        return supported_suffixes()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

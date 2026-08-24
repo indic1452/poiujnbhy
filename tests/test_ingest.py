@@ -139,11 +139,22 @@ class ConvertTextTests(TempCase):
         self.assertEqual(converted.meta["source_format"], "text")
 
     def test_unsupported_suffix_gives_warning_not_crash(self):
-        path = self.write("literature/книга.rtf", "что-то")
+        # .dwg — чертёж AutoCAD: формат, который система не разбирает и не
+        # обещает разбирать. Проверяем, что это предупреждение, а не падение.
+        path = self.write("literature/чертёж.dwg", "что-то")
         converted = convert_file(path)
         self.assertEqual(converted.text, "")
         self.assertTrue(converted.warnings)
         self.assertIn("неподдерживаемый формат", converted.warnings[0])
+
+    def test_known_format_with_wrong_content_explains_itself(self):
+        # Файл с расширением поддерживаемого формата, но с чужим содержимым:
+        # конвертер обязан объяснить, что не так, а не молча вернуть пустоту.
+        path = self.write("literature/книга.rtf", "что-то")
+        converted = convert_file(path)
+        self.assertEqual(converted.text, "")
+        self.assertTrue(converted.warnings)
+        self.assertIn("RTF", converted.warnings[0])
 
     def test_missing_file_gives_warning(self):
         converted = convert_file(self.tmp / "нет-такого.md")

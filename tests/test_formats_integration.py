@@ -245,6 +245,59 @@ class MixedLibraryTests(unittest.TestCase):
 
 
 @unittest.skipUnless(shutil.which("soffice"), "LibreOffice не установлен")
+class CyrillicPathTests(unittest.TestCase):
+    """Внешние программы получают путь без кириллицы.
+
+    Регрессия: djvulibre и часть сборок tesseract и LibreOffice не открывают
+    файлы с кириллицей в пути и возвращают «файл не найден». В библиотеке
+    заказчика по-русски названо почти всё, поэтому такие файлы разбираются
+    по временной копии с латинским именем.
+    """
+
+    def test_helper_copies_only_when_needed(self):
+        from reportgen.ingest.convert import external_path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cyrillic = Path(tmp) / "скан книги.pbm"
+            cyrillic.write_bytes(b"P4\n1 1\n\x00")
+            with external_path(cyrillic) as safe:
+                self.assertTrue(str(safe).isascii())
+                self.assertTrue(safe.is_file())
+                self.assertEqual(safe.suffix, ".pbm")
+                copy = safe
+            self.assertFalse(copy.exists(), "временная копия не удалена")
+
+            plain = Path(tmp) / "scan.pbm"
+            plain.write_bytes(b"P4\n1 1\n\x00")
+            with external_path(plain) as safe:
+                self.assertEqual(safe, plain, "латинский путь копировать незачем")
+
+    @unittest.skipUnless(shutil.which("tesseract"), "tesseract не установлен")
+    def test_image_with_cyrillic_name_is_recognised(self):
+        if not registered(".png"):
+            self.skipTest("конвертер изображений не зарегистрирован")
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+        except ImportError:
+            self.skipTest("Pillow не установлен")
+        font_path = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+        if not font_path.is_file():
+            self.skipTest("нет шрифта для отрисовки текста")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Image.new("L", (1200, 200), 255)
+            draw = ImageDraw.Draw(image)
+            draw.text((30, 60), "Занимаемая полоса частот передатчика",
+                      font=ImageFont.truetype(str(font_path), 34), fill=0)
+            path = Path(tmp) / "скан страницы 12.png"
+            image.save(path)
+
+            result = convert_file(path)
+            self.assertNotIn("не найден", " ".join(result.warnings).lower())
+            self.assertTrue(result.text.strip(), f"текст не распознан: {result.warnings}")
+
+
+@unittest.skipUnless(shutil.which("soffice"), "LibreOffice не установлен")
 class LegacyFormatTests(unittest.TestCase):
     """Старые форматы: файл готовится самим LibreOffice из современного."""
 

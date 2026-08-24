@@ -25,9 +25,12 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
+import shutil
+import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any, Dict, Iterator, List, Sequence, Tuple
 
 from ..corpus import DOC_TYPES
 
@@ -35,6 +38,12 @@ __all__ = [
     "ConvertedDocument",
     "MissingDependencyError",
     "SUPPORTED_SUFFIXES",
+    "BUILTIN_SUFFIXES",
+    "read_text",
+    "clean_line",
+    "external_path",
+    "supported_suffixes",
+    "format_support",
     "convert_file",
     "first_page_number",
     "guess_doc_type",
@@ -44,7 +53,10 @@ __all__ = [
     "strip_page_markers",
 ]
 
-SUPPORTED_SUFFIXES = (".pdf", ".docx", ".md", ".markdown", ".txt")
+#: Расширения, которые разбирает само ядро, без модулей форматов и внешних
+#: программ. Полный список того, что система читает на этой машине, отдаёт
+#: supported_suffixes(); он же доступен как SUPPORTED_SUFFIXES (см. __getattr__).
+BUILTIN_SUFFIXES = (".pdf", ".docx", ".dotx", ".md", ".markdown", ".txt")
 DEFAULT_DOC_TYPE = "literature"
 
 #: Ниже этого числа символов на страницу PDF считается сканом (нужен OCR).
@@ -166,6 +178,30 @@ def guess_doc_type(path: str | Path, root: str | Path | None = None) -> str:
     return DEFAULT_DOC_TYPE
 
 
+@contextmanager
+def external_path(path: Path, suffix: str | None = None) -> Iterator[Path]:
+    """Путь к файлу, безопасный для сторонних программ.
+
+    Часть внешних инструментов (djvulibre, а в некоторых сборках tesseract и
+    LibreOffice) не открывает файлы, в имени или пути которых есть кириллица:
+    они собраны без поддержки юникода в аргументах и молча возвращают ошибку
+    «файл не найден». Проверено: cjb2 на файле «скан.pbm» падает, на «scan.pbm»
+    работает.
+
+    В библиотеке заказчика по-русски названо почти всё, поэтому перед вызовом
+    внешней программы файл при необходимости копируется во временный каталог
+    под латинским именем. Копия удаляется автоматически.
+    """
+    text = str(path)
+    if text.isascii():
+        yield path
+        return
+    with tempfile.TemporaryDirectory(prefix="reportgen-tool-") as directory:
+        target = Path(directory) / f"document{suffix or path.suffix.lower()}"
+        shutil.copyfile(path, target)
+        yield target
+
+
 def _resolve(path: Path) -> Path:
     try:
         return path.resolve()
@@ -191,7 +227,7 @@ def _join_wrapped(left: str, right: str) -> str:
     return f"{left} {right}"
 
 
-def _clean_line(text: str) -> str:
+def clean_line(text: str) -> str:
     """Нормализует строку: неразрывные пробелы, мягкие переносы, хвостовые пробелы."""
     text = text.replace("­", "").replace(" ", " ").replace("﻿", "")
     text = "".join(
@@ -259,7 +295,7 @@ def _pdf_page_blocks(page: Any) -> List[List[Tuple[str, float]]]:
             spans = [span for span in raw_line.get("spans", []) if span.get("text", "").strip()]
             if not spans:
                 continue
-            text = _clean_line("".join(span.get("text", "") for span in spans))
+            text = clean_line("".join(span.get("text", "") for span in spans))
             if not text:
                 continue
             size = max(float(span.get("size", 0.0)) for span in spans)
@@ -430,7 +466,7 @@ def _is_list_style(style: str) -> bool:
 
 
 def _cell_text(cell: Any) -> str:
-    lines = [_clean_line(paragraph.text) for paragraph in cell.paragraphs]
+    lines = [clean_line(paragraph.text) for paragraph in cell.paragraphs]
     text = " <br> ".join(line for line in lines if line)
     return text.replace("|", "\\|").strip()
 
@@ -505,7 +541,7 @@ def _convert_docx(path: Path) -> ConvertedDocument:
             if tag != "p":
                 continue
             paragraph = Paragraph(child, document)
-            text = _clean_line(paragraph.text)
+            text = clean_line(paragraph.text)
             count = _paragraph_images(child)
             if count:
                 for number in range(images + 1, images + count + 1):
@@ -572,7 +608,7 @@ def _merge_list_items(pieces: Sequence[str]) -> str:
 _ENCODINGS = ("utf-8", "cp1251", "koi8-r")
 
 
-def _read_text(path: Path) -> Tuple[str, str | None, str | None]:
+def read_text(path: Path) -> Tuple[str, str | None, str | None]:
     """Читает текстовый файл, перебирая кодировки. Возвращает (текст, кодировка, ошибка)."""
     try:
         raw = path.read_bytes()
@@ -604,7 +640,7 @@ def _convert_text(path: Path) -> ConvertedDocument:
     """Markdown и обычный текст берём как есть — их уже написал человек."""
     kind = "markdown" if path.suffix.lower() in (".md", ".markdown") else "text"
     result = ConvertedDocument(title=path.stem, meta={"source_format": kind})
-    text, encoding, problem = _read_text(path)
+    text, encoding, problem = read_text(path)
     if problem:
         result.warnings.append(problem)
     if encoding:
@@ -721,3 +757,20 @@ def convert_file(path: str | Path) -> ConvertedDocument:
             f"конвертер «{spec.name}» не справился с файлом: {_reason(error)}"
         )
         return result
+
+
+#: Старые имена: на них опираются модули форматов и внешний код.
+_read_text = read_text
+_clean_line = clean_line
+
+
+def __getattr__(name: str) -> object:
+    """SUPPORTED_SUFFIXES отдаёт настоящий список форматов этой установки.
+
+    Раньше это был кортеж из пяти расширений, зашитый в код. После перехода на
+    реестр конвертеров он стал врать: система читает шесть десятков форматов,
+    а константа обещала пять. Вычисляем на лету.
+    """
+    if name == "SUPPORTED_SUFFIXES":
+        return supported_suffixes()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
