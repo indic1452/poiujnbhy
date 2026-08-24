@@ -176,7 +176,13 @@ class DocumentRepo:
                 "ON CONFLICT(doc_id) DO UPDATE SET doc_type=excluded.doc_type, "
                 "title=excluded.title, source_path=excluded.source_path, "
                 "sha256=excluded.sha256, confidentiality=excluded.confidentiality, "
-                "meta_json=excluded.meta_json",
+                "meta_json=excluded.meta_json, "
+                # Файл изменился — прежние чанки устарели, отметку об индексации
+                # снимаем до того, как ChunkRepo их перезапишет.
+                "indexed_at=CASE WHEN documents.sha256 = excluded.sha256 "
+                "THEN documents.indexed_at ELSE NULL END, "
+                "chunk_count=CASE WHEN documents.sha256 = excluded.sha256 "
+                "THEN documents.chunk_count ELSE 0 END",
                 (doc_id, doc_type, title, source_path, sha256, confidentiality,
                  json.dumps(meta or {}, ensure_ascii=False), utcnow()),
             )

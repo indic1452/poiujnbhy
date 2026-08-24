@@ -1264,5 +1264,34 @@ class ModelsTests(StoreTestCase):
         self.assertIsInstance(self.repos.audit.list()[0], AuditEntry)
 
 
+
+class DocumentReindexInvalidationTests(unittest.TestCase):
+    """Смена содержимого файла обесценивает отметку об индексации."""
+
+    def setUp(self):
+        self.repos = Repositories(Database(":memory:"))
+
+    def test_same_sha_keeps_index_marks(self):
+        document = self.repos.documents.upsert("d1", "literature", "Книга", "/p", "sha-a")
+        self.repos.documents.mark_indexed("d1", 7)
+        again = self.repos.documents.upsert("d1", "literature", "Книга", "/p", "sha-a")
+        self.assertEqual(again.chunk_count, 7)
+        self.assertIsNotNone(again.indexed_at)
+        self.assertEqual(document.doc_id, again.doc_id)
+
+    def test_new_sha_clears_index_marks(self):
+        self.repos.documents.upsert("d1", "literature", "Книга", "/p", "sha-a")
+        self.repos.documents.mark_indexed("d1", 7)
+        changed = self.repos.documents.upsert("d1", "literature", "Книга", "/p", "sha-b")
+        self.assertIsNone(changed.indexed_at)
+        self.assertEqual(changed.chunk_count, 0)
+
+    def test_package_reexports_public_api(self):
+        import reportgen.store as store
+
+        for name in ("Database", "Repositories", "User", "Case", "Report",
+                     "normalized_edit_distance"):
+            self.assertTrue(hasattr(store, name), name)
+
 if __name__ == "__main__":
     unittest.main()
