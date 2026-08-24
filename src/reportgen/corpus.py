@@ -66,9 +66,13 @@ class Chunk:
 
     @property
     def citation(self) -> str:
+        """Ссылка вида «Документ, с. 42 — Глава → Раздел»."""
         page = self.meta.get("page")
         suffix = f", с. {page}" if page else ""
-        return f"{self.meta.get('title', self.doc_id)}{suffix} — {self.breadcrumbs}"
+        title = self.meta.get("title", self.doc_id)
+        # Первый элемент крошек — название документа, в ссылке оно уже есть.
+        path = " → ".join(self.title_path[1:]) if len(self.title_path) > 1 else ""
+        return f"{title}{suffix}" + (f" — {path}" if path else "")
 
     def to_dict(self) -> Dict[str, Any]:
         return {

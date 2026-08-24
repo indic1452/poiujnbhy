@@ -1,0 +1,87 @@
+# Веб-приложение reportgen (uvicorn на 127.0.0.1:8080, наружу — через nginx).
+#
+# Установка:
+#   sudo cp deploy/reportgen.service /etc/systemd/system/
+#   sudo cp .env.example /etc/reportgen/reportgen.env && sudoedit /etc/reportgen/reportgen.env
+#   sudo systemctl daemon-reload && sudo systemctl enable --now reportgen
+#   systemctl status reportgen && journalctl -u reportgen -f
+
+[Unit]
+Description=Генератор технических отчётов (веб-интерфейс)
+Documentation=file:///opt/reportgen/docs/09-web-app.md
+After=network-online.target llama-server.service
+# Wants, а не Requires: без модели интерфейс должен подниматься и честно
+# показывать, что генерация недоступна, — это лучше, чем каскадное падение.
+Wants=network-online.target llama-server.service
+
+# Защита от бесконечного цикла перезапусков при ошибке в конфигурации.
+# С systemd 229 эти ключи живут в [Unit], а не в [Service].
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=reportgen
+Group=reportgen
+WorkingDirectory=/opt/reportgen
+
+# Все настройки — переменными REPORTGEN_* (образец: .env.example в репозитории).
+# Права на файл 0640 root:reportgen — в нём REPORTGEN_SECRET_KEY.
+EnvironmentFile=/etc/reportgen/reportgen.env
+
+# reportgen-web поднимает uvicorn, читая host/port и остальное из окружения.
+ExecStart=/opt/reportgen/.venv/bin/reportgen-web
+# Эквивалент напрямую через uvicorn (если нужны его собственные флаги —
+# воркеры, лимиты, UNIX-сокет). Host и port тогда задаются здесь, а не в env:
+# ExecStart=/opt/reportgen/.venv/bin/uvicorn --factory reportgen.web.app:create_app \
+#     --host 127.0.0.1 --port 8080 --timeout-keep-alive 65 --proxy-headers
+#
+# Про число воркеров: их должно остаться ОДИН. База — SQLite в WAL, а генерация
+# всё равно упирается в единственный llama-server с двумя слотами; несколько
+# процессов uvicorn дадут только конкуренцию за запись и путаницу в журнале.
+
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGINT
+# Отчёт генерируется прямо в HTTP-запросе (docs/09 р. 9.8): даём успеть
+# дописать секцию и закрыть базу, а не рвать соединение инженеру.
+TimeoutStopSec=120
+Restart=always
+RestartSec=5
+
+LimitNOFILE=32768
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=reportgen
+
+# --- ограничения безопасности ----------------------------------------------
+# В базе лежат данные заказчиков (docs/07): процессу не нужно ничего, кроме
+# своего каталога данных.
+NoNewPrivileges=yes
+# Вся файловая система только на чтение…
+ProtectSystem=strict
+# …кроме каталога данных (база, библиотека, загрузки, экспорты).
+ReadWritePaths=/var/lib/reportgen
+ProtectHome=yes
+PrivateTmp=yes
+# GPU приложению не нужен — им занят llama-server.
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# Файлы отчётов и экспортов не должны читаться всеми подряд.
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,130 @@
+# Сервер инференса llama.cpp (OpenAI-совместимый API на 127.0.0.1:8000).
+#
+# Установка:
+#   sudo cp deploy/llama-server.service /etc/systemd/system/
+#   sudo install -m 0640 -o root -g reportgen /dev/null /etc/reportgen/llama.env
+#   sudoedit /etc/reportgen/llama.env      # содержимое — в блоке ниже
+#   sudo systemctl daemon-reload && sudo systemctl enable --now llama-server
+#   journalctl -u llama-server -f
+#
+# Файл /etc/reportgen/llama.env (создаётся руками, права 0640, root:reportgen):
+#   LLAMA_MODEL=/opt/models/gpt-oss-20b-mxfp4.gguf
+#   LLAMA_ALIAS=gpt-oss-20b-mxfp4
+#   LLAMA_HOST=127.0.0.1
+#   LLAMA_PORT=8000
+#   LLAMA_CTX=16384
+#   LLAMA_NGL=999
+#   LLAMA_N_CPU_MOE=0
+#   LLAMA_THREADS=14
+#   LLAMA_PARALLEL=2
+# Вынесение в EnvironmentFile нужно ровно для одного: подбирать --n-cpu-moe и
+# менять модель без правки юнита (`systemctl edit` при обновлениях не потеряется).
+
+[Unit]
+Description=llama.cpp server (локальный инференс для reportgen)
+Documentation=file:///opt/reportgen/docs/10-deployment.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=llama
+Group=llama
+EnvironmentFile=/etc/reportgen/llama.env
+WorkingDirectory=/opt/llama.cpp
+
+# Не стартовать с отсутствующей моделью: иначе Restart=always превратит опечатку
+# в путь к файлу в бесконечный цикл перезапусков.
+ExecStartPre=/usr/bin/test -r ${LLAMA_MODEL}
+
+# Флаги — из docs/02 р. 2.2 (RTX 4080 16 ГБ + Xeon E5-2680 + 64 ГБ):
+#   -ngl 999            все слои на GPU; что не влезет, останется в ОЗУ
+#   --n-cpu-moe N       N слоёв экспертов MoE держать на CPU — главный регулятор
+#                       баланса VRAM/скорость (процедура подбора — в конце файла)
+#   --cache-type-k/v q8_0  квантованный KV-кэш: вдвое меньше памяти под контекст
+#                       при незаметной потере качества
+#   --flash-attn        быстрое внимание, экономит VRAM (в сборках новее лета
+#                       2025 флаг стал значением: --flash-attn on)
+#   -c 16384            общий контекст; при --parallel 2 это 8192 токена на слот,
+#                       чего хватает посекционной генерации (docs/04)
+#   -t 14               по числу физических ядер Broadwell
+#   --parallel 2        два одновременных слота = две секции; держите это число
+#                       равным REPORTGEN_LLM_PARALLEL_SECTIONS
+#   --mlock              (опционально) не отдавать веса в своп; при 64 ГБ ОЗУ
+#                       и модели с выгрузкой экспертов обычно полезно
+ExecStart=/opt/llama.cpp/build/bin/llama-server \
+    -m ${LLAMA_MODEL} \
+    --alias ${LLAMA_ALIAS} \
+    --host ${LLAMA_HOST} --port ${LLAMA_PORT} \
+    -c ${LLAMA_CTX} \
+    -ngl ${LLAMA_NGL} \
+    --n-cpu-moe ${LLAMA_N_CPU_MOE} \
+    --cache-type-k q8_0 --cache-type-v q8_0 \
+    --flash-attn \
+    -t ${LLAMA_THREADS} \
+    --parallel ${LLAMA_PARALLEL} \
+    --metrics
+
+# Двухсокетный вариант Xeon: NUMA роняет llama.cpp в 1.5–2 раза (docs/02 р. 2.2).
+# Если `lscpu | grep "NUMA node(s)"` показывает 2, замените ExecStart на:
+# ExecStart=/usr/bin/numactl --cpunodebind=0 --membind=0 /opt/llama.cpp/build/bin/llama-server …
+
+# Загрузка 12–20 ГБ весов с NVMe в VRAM — до минуты; не считаем это зависанием.
+TimeoutStartSec=300
+TimeoutStopSec=30
+Restart=always
+RestartSec=5
+
+# Модель отображается в память целиком, лимит блокировок снимаем.
+LimitMEMLOCK=infinity
+LimitNOFILE=65535
+# Инференс не должен уводить машину в своп: OOM лучше и быстрее диагностируется.
+OOMScoreAdjust=-200
+
+Environment=CUDA_VISIBLE_DEVICES=0
+# Компиляция ядер CUDA кешируется — без этого каждый старт на минуту дольше.
+Environment=CUDA_CACHE_PATH=/var/cache/llama/cuda
+Environment=GGML_CUDA_ENABLE_UNIFIED_MEMORY=0
+
+# --- ограничения безопасности ----------------------------------------------
+# PrivateDevices здесь СТАВИТЬ НЕЛЬЗЯ: она скрывает /dev/nvidia*, и сервер
+# молча уедет на CPU (5 ток/с вместо 60). Это единственное послабление.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+ReadWritePaths=/var/cache/llama
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
+
+# ---------------------------------------------------------------------------
+# КАК ПОДБИРАТЬ --n-cpu-moe
+#
+# Смысл флага: столько слоёв MoE-экспертов остаётся считать процессору, а их
+# веса живут в ОЗУ, а не в VRAM. Ноль — вся модель на GPU (быстро, если влезает),
+# больше — медленнее, но помещается модель крупнее. Цель настройки: занять
+# ~14.5 из 16 ГБ VRAM, оставив запас на фрагментацию и рост KV-кэша (docs/02 р. 2.2).
+#
+# 1. Начните с LLAMA_N_CPU_MOE=0 (модель ~20B MXFP4 целиком влезает в 16 ГБ).
+# 2. Запустите сервис и посмотрите занятую память:
+#       nvidia-smi --query-gpu=memory.used,memory.total --format=csv
+# 3. Если сервер не стартовал с CUDA out of memory или занято больше 15 ГБ —
+#    увеличивайте на 4 (0 → 4 → 8 → 12 …), каждый раз перезапуская:
+#       sudo systemctl restart llama-server
+# 4. Если занято заметно меньше 14 ГБ — уменьшайте: каждый снятый с CPU слой
+#    прибавляет скорости.
+# 5. Проверяйте не только влезание, но и скорость под нагрузкой: занимайте оба
+#    слота и смотрите в журнале строки со скоростью:
+#       journalctl -u llama-server | grep -E "eval time|tokens per second"
+#
+# Ориентиры для этого железа: MoE ~20B в 4 битах — 0; MoE ~30B (Qwen3-30B-A3B
+# Q4_K_M) — 10–16. Точное число зависит от сборки llama.cpp и длины контекста,
+# поэтому подбирается на месте, а не берётся из документации.
+# ---------------------------------------------------------------------------

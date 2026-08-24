@@ -1,0 +1,118 @@
+# Развёртывание в Docker: инференс + приложение.
+#
+#   cd deploy && docker compose up -d
+#
+# ВАЖНО про GPU. Сервису llama-server нужен доступ к RTX 4080, то есть на хосте
+# должны быть установлены драйвер NVIDIA и nvidia-container-toolkit
+# (`docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi`
+# обязан печатать карту). Если этого нет и поставить нельзя — вариант с Docker
+# для инференса отпадает: поднимайте llama.cpp на хосте systemd-юнитом
+# deploy/llama-server.service, сервис llama-server отсюда удаляйте (вместе с
+# depends_on), а приложению укажите
+#   REPORTGEN_LLM_BASE_URL=http://host.docker.internal:8000/v1
+# и раскомментируйте extra_hosts у сервиса reportgen. Смешанный режим
+# (llama.cpp на хосте, приложение в контейнере) — рабочий и часто удобнее:
+# подбор --n-cpu-moe и обновление модели не требуют пересборки образов.
+#
+# Переменные берутся из .env рядом с этим файлом (см. ../.env.example).
+
+name: reportgen
+
+services:
+  # ---------------------------------------------------------------- инференс
+  llama-server:
+    # Официальный образ llama.cpp со сборкой под CUDA. Точка входа — llama-server,
+    # поэтому в command идут только его флаги. Зафиксируйте тег версии: обновление
+    # движка — это релиз (docs/07 р. 7.4), а не «подтянется само».
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: reportgen-llama
+    restart: unless-stopped
+    runtime: nvidia          # старый способ; если docker его не знает — см. deploy.resources ниже
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    # Современный синтаксис проброса GPU (docker compose v2):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    volumes:
+      # Модели — только на чтение (docs/07 р. 7.4). Каталог задаётся в .env.
+      - ${MODELS_DIR:-/opt/models}:/models:ro
+    ports:
+      # Наружу не публикуем: API слушает только петлевой интерфейс хоста.
+      - "127.0.0.1:8000:8000"
+    # Флаги — из docs/02 р. 2.2, те же, что в deploy/llama-server.service.
+    command: >
+      -m /models/${LLM_GGUF:-gpt-oss-20b-mxfp4.gguf}
+      --alias ${LLM_ALIAS:-gpt-oss-20b-mxfp4}
+      --host 0.0.0.0 --port 8000
+      -c 16384
+      -ngl 999
+      --n-cpu-moe ${N_CPU_MOE:-0}
+      --cache-type-k q8_0 --cache-type-v q8_0
+      --flash-attn
+      -t 14
+      --parallel 2
+    healthcheck:
+      # llama-server отдаёт 200 на /health, когда модель загружена и слоты готовы.
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      # Загрузка 12–20 ГБ весов с NVMe в VRAM занимает до минуты — до этого
+      # момента контейнер не должен считаться упавшим.
+      start_period: 180s
+      retries: 3
+    stop_grace_period: 30s
+    ulimits:
+      memlock: -1            # модель отображается в память целиком
+    shm_size: "1gb"
+
+  # -------------------------------------------------------------- приложение
+  reportgen:
+    build:
+      context: ..            # контекст — корень репозитория
+      dockerfile: deploy/Dockerfile
+      # args:
+      #   PIP_ARGS: "--no-index --find-links=/wheels"   # офлайн-сборка
+    image: reportgen:0.1.0
+    container_name: reportgen-app
+    restart: unless-stopped
+    depends_on:
+      llama-server:
+        # Приложение стартует после того, как модель реально загрузилась.
+        condition: service_healthy
+    env_file:
+      - ../.env              # копия ../.env.example с вашими значениями
+    environment:
+      # Внутри сети compose сервис доступен по имени, а не по 127.0.0.1.
+      REPORTGEN_LLM_BASE_URL: http://llama-server:8000/v1
+      REPORTGEN_HOST: 0.0.0.0
+      REPORTGEN_PORT: "8080"
+      REPORTGEN_DATA_DIR: /var/lib/reportgen
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"   # когда llama.cpp живёт на хосте
+    volumes:
+      # База, библиотека, загрузки и экспорты — единственное, что нужно бэкапить.
+      - reportgen-data:/var/lib/reportgen
+      # Шаблоны-планы правит инженер, поэтому держим их на хосте.
+      - ${TEMPLATES_DIR:-../templates}:/app/templates:ro
+    ports:
+      # Наружу смотрит nginx с TLS (deploy/nginx.conf), а не контейнер.
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  reportgen-data:
+    # Именованный том. Если данные должны лежать в конкретном каталоге хоста
+    # (обычно так и нужно — из-за бэкапов), замените на bind-монтирование
+    # /var/lib/reportgen:/var/lib/reportgen и выставьте владельца UID 10001.
+    driver: local

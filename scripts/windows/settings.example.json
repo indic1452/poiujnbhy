@@ -1,0 +1,40 @@
+{
+  "_комментарий": "Скопируйте в C:\\reportgen\\settings.json и правьте под себя. Пути — с двойными обратными слэшами.",
+
+  "data_dir": "C:\\reportgen\\data",
+  "templates_dir": "C:\\reportgen\\app\\templates",
+  "glossary_path": "C:\\reportgen\\app\\templates\\glossary.json",
+  "docx_template": null,
+
+  "llm_kind": "openai",
+  "llm_base_url": "http://127.0.0.1:8000/v1",
+  "llm_model": "local",
+  "llm_model_file": "",
+  "llm_timeout": 900,
+  "llm_seed": 0,
+  "llm_temperature": 0.2,
+
+  "embed_enabled": true,
+  "embed_base_url": "http://127.0.0.1:8001/v1",
+  "embed_model": "bge-m3",
+  "embed_batch": 16,
+
+  "rerank_enabled": true,
+  "rerank_base_url": "http://127.0.0.1:8002/v1",
+  "rerank_model": "bge-reranker-v2-m3",
+
+  "retrieval_candidates": 50,
+  "retrieval_top_k": 6,
+
+  "host": "127.0.0.1",
+  "port": 8080,
+  "auth_enabled": true,
+  "session_ttl_hours": 12,
+  "max_upload_mb": 200,
+
+  "brand_name": "Название вашей компании",
+  "brand_subtitle": "Отдел технической экспертизы",
+  "brand_accent": "#2563eb",
+  "brand_logo": null,
+  "report_footer": "Технический отчёт. Не является офертой."
+}

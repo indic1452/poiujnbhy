@@ -137,6 +137,13 @@ def _install_static(app: FastAPI) -> None:
         return FileResponse(STATIC_DIR / "index.html") if (STATIC_DIR / "index.html").is_file() \
             else HTMLResponse(PLACEHOLDER)
 
+    @app.get("/brand/logo", include_in_schema=False)
+    def brand_logo() -> Any:
+        logo = app.state.settings.brand_logo
+        if logo and Path(logo).is_file():
+            return FileResponse(logo)
+        return JSONResponse({"error": "логотип не задан"}, status_code=404)
+
     @app.get("/favicon.ico", include_in_schema=False)
     def favicon() -> Any:
         icon = STATIC_DIR / "favicon.ico"

@@ -152,7 +152,24 @@ def config(request: Request) -> Dict[str, Any]:
         "llm": {"model": settings.llm_model, "base_url": settings.llm_base_url,
                 "kind": settings.llm_kind},
         "auth_enabled": settings.auth_enabled,
+        "brand": {
+            "name": settings.brand_name,
+            "subtitle": settings.brand_subtitle,
+            "accent": settings.brand_accent,
+            "logo": "/brand/logo" if _logo_path(settings) else None,
+        },
+        "search": {
+            "dense": settings.embed_enabled,
+            "rerank": settings.rerank_enabled,
+        },
     }
+
+
+def _logo_path(settings) -> Path | None:
+    logo = settings.brand_logo
+    if logo and Path(logo).is_file():
+        return Path(logo)
+    return None
 
 
 # ----------------------------------------------------------------- кейсы ---

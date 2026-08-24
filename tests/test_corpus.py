@@ -49,6 +49,25 @@ class LoadCorpusTests(unittest.TestCase):
         chunk = load_corpus(EXAMPLES)[0]
         self.assertIn(chunk.breadcrumbs, chunk.indexed_text)
 
+    def test_citation_does_not_repeat_document_title(self):
+        chunk = next(c for c in load_corpus(EXAMPLES) if len(c.title_path) > 1)
+        title = chunk.meta["title"]
+        self.assertTrue(chunk.citation.startswith(title))
+        # Название документа встречается в ссылке ровно один раз.
+        self.assertEqual(chunk.citation.count(title), 1)
+        self.assertIn(chunk.title_path[1], chunk.citation)
+
+    def test_citation_includes_page_when_known(self):
+        chunk = load_corpus(EXAMPLES)[0]
+        chunk.meta["page"] = 42
+        self.assertIn("с. 42", chunk.citation)
+
+    def test_citation_without_subsections(self):
+        from reportgen.corpus import Chunk
+
+        chunk = Chunk("d#0", "d", "literature", ["Книга"], "текст", {"title": "Книга"})
+        self.assertEqual(chunk.citation, "Книга")
+
     def test_missing_root(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(FileNotFoundError):

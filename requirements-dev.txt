@@ -1,0 +1,13 @@
+# Зависимости разработки. На сервере заказчика не нужны.
+#
+#   pip install -r requirements.txt -r requirements-dev.txt
+#
+# Штатный прогон тестов — стандартный unittest (см. `make test`):
+#   PYTHONPATH=src:tests python3 -m unittest discover -s tests -v
+# pytest здесь для удобного выборочного запуска и вывода, а не как требование.
+
+-r requirements.txt
+
+pytest>=8.0               # альтернативный запуск тех же unittest-тестов
+httpx>=0.27               # тестовый клиент FastAPI (fastapi.testclient)
+ruff>=0.5                 # линтер и форматтер (make lint)
