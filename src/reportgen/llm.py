@@ -192,7 +192,17 @@ def _stub_answer(question: str, sources: str) -> str:
     """Ответ помощника для офлайн-режима: только по переданным источникам."""
     citations = [line.split("]")[0] + "]" for line in sources.splitlines() if line.startswith("[S")]
     lines = [f"По вопросу «{question.strip()[:200]}» в библиотеке найдено следующее."]
-    quoted = [line for line in sources.splitlines() if line and not line.startswith("[S")][:3]
+    # Берём осмысленный кусок первого источника, включая таблицы: в офлайн-режиме
+    # это единственный способ увидеть, как выглядит настоящий ответ.
+    quoted: list[str] = []
+    for line in sources.splitlines():
+        if line.startswith("[S") and quoted:
+            break
+        if line.startswith("[S"):
+            continue
+        quoted.append(line)
+        if len(quoted) >= 14:
+            break
     if quoted:
         lines.append("")
         lines.extend(quoted)

@@ -146,11 +146,23 @@ def _render_sources(hits: Sequence[Hit], registry: SourceRegistry, quote_chars: 
     for hit in hits:
         label = registry.label(hit.chunk)
         labels.append(label)
-        text = " ".join(hit.chunk.text.split())
-        if len(text) > quote_chars:
-            text = text[:quote_chars].rstrip() + "…"
+        # Переводы строк сохраняем: таблицы норм и поля кадров в одну строку
+        # нечитаемы и для модели, и для инженера.
+        text = _tidy_quote(hit.chunk.text, quote_chars)
         blocks.append(f"[{label}] {hit.chunk.citation}\n{text}")
     return "\n\n".join(blocks), labels
+
+
+def _tidy_quote(text: str, limit: int) -> str:
+    """Цитата для промпта: лишние пробелы убраны, строки сохранены."""
+    lines: List[str] = []
+    for raw in text.strip().splitlines():
+        line = " ".join(raw.split())
+        if not line and lines and not lines[-1]:
+            continue
+        lines.append(line)
+    quote = "\n".join(lines)
+    return quote if len(quote) <= limit else quote[:limit].rstrip() + "…"
 
 
 def _summarize(text: str, limit: int = 220) -> str:

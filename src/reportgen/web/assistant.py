@@ -143,7 +143,7 @@ class AssistantService:
                 "citation": hit.chunk.citation,
                 "doc_type": hit.chunk.doc_type,
                 "domain": hit.chunk.meta.get("domain", ""),
-                "text": _clip(" ".join(hit.chunk.text.split()), SOURCE_CHARS),
+                "text": _tidy(hit.chunk.text, SOURCE_CHARS),
             }
             for index, hit in enumerate(hits, start=1)
         ]
@@ -232,6 +232,23 @@ def _render_sources(sources: Sequence[Dict[str, Any]]) -> str:
 def _used_labels(text: str) -> set[str]:
     return set(re.findall(r"\[(S\d+)\]", text or ""))
 
+
+def _tidy(text: str, limit: int) -> str:
+    """Подготовить фрагмент к подаче в промпт, сохранив строки.
+
+    Схлопывать переводы строк нельзя: таблицы допусков в стандартах и поля
+    кадров в описаниях протоколов — это как раз то, ради чего фрагмент нашли,
+    а в одну строку они превращаются в нечитаемую кашу и для модели, и для
+    инженера в панели источников.
+    """
+    lines = [line.rstrip() for line in text.strip().splitlines()]
+    cleaned: list[str] = []
+    for line in lines:
+        if not line and cleaned and not cleaned[-1]:
+            continue
+        cleaned.append(" ".join(line.split()) if line else "")
+    result = "\n".join(cleaned)
+    return result if len(result) <= limit else result[:limit].rstrip() + "…"
 
 def _clip(text: str, limit: int) -> str:
     text = text.strip()
