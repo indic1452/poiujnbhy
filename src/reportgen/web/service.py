@@ -635,7 +635,7 @@ def _with_hint(spec: Any, hint: str) -> Any:
 
 def _load_glossary(path: Path) -> Dict[str, str]:
     try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
+        return json.loads(Path(path).read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         return {}
 

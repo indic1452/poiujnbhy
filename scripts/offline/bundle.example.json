@@ -1,0 +1,151 @@
+{
+  "comment": "Что скачивать в офлайн-комплект. Правьте под свои модели и версии. Каждой программе задан список источников: сборщик пробует их по порядку и берёт первый рабочий. Проверить все адреса, ничего не скачивая: pack.ps1 -Probe",
+
+  "models": [
+    {
+      "id": "llm",
+      "role": "llm",
+      "comment": "Основная модель. Вариант A из docs/11: плотная, влезает в 16 ГБ целиком.",
+      "repo": "Qwen/Qwen3-14B-GGUF",
+      "file": "Qwen3-14B-Q5_K_M.gguf",
+      "approx_gb": 10.5
+    },
+    {
+      "id": "llm-fallback",
+      "role": "llm",
+      "comment": "Запасная модель поменьше: если основная не влезает в видеопамять вместе с эмбеддером и реранкером, или машина оказалась слабее. Без неё поездка на объект может закончиться ничем.",
+      "repo": "Qwen/Qwen3-8B-GGUF",
+      "file": "Qwen3-8B-Q5_K_M.gguf",
+      "approx_gb": 5.8
+    },
+    {
+      "id": "embeddings",
+      "role": "embeddings",
+      "comment": "Смысловой поиск по библиотеке. Обязателен для качества поиска.",
+      "repo": "gpustack/bge-m3-GGUF",
+      "file": "bge-m3-Q8_0.gguf",
+      "approx_gb": 0.65
+    },
+    {
+      "id": "rerank",
+      "role": "rerank",
+      "comment": "Реранкер: выбирает из полусотни найденных фрагментов действительно нужные.",
+      "repo": "gpustack/bge-reranker-v2-m3-GGUF",
+      "file": "bge-reranker-v2-m3-Q8_0.gguf",
+      "approx_gb": 0.65
+    }
+  ],
+
+  "llama_cpp": {
+    "comment": "Оставьте release пустым — возьмётся последний выпуск. Нужны ДВА архива: сборка win-cuda-x64 и cudart к ней. keep_previous качает ещё и предыдущий выпуск: если свежая сборка не заведётся на вашем драйвере, на офлайн-машине не останется вариантов.",
+    "release": "",
+    "keep_previous": true,
+    "asset_patterns": ["bin-win-cuda", "cudart-llama-bin-win"]
+  },
+
+  "tools": {
+    "comment": "Внешние программы. sources пробуются по порядку: sourceforge (по API проекта), github-release (по шаблону имени файла), url (прямая ссылка). Поле install — как ставить тихо, check — по чему проверять, что встало.",
+    "items": [
+      {
+        "id": "python",
+        "name": "Python 3.11",
+        "why": "интерпретатор, если на офлайн-машине его нет; версия обязана совпасть с той, на которой собирались колёса",
+        "group": "base",
+        "approx_mb": 25,
+        "sources": [
+          { "kind": "url", "url": "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe" }
+        ],
+        "install": { "kind": "exe", "args": ["/quiet", "InstallAllUsers=1", "PrependPath=1", "Include_pip=1"] },
+        "check": ["python.exe"]
+      },
+      {
+        "id": "vcredist",
+        "name": "Visual C++ 2015-2022 Redistributable x64",
+        "why": "нужен llama.cpp и части колёс Python; на свежеустановленной Windows его часто нет",
+        "group": "base",
+        "approx_mb": 25,
+        "sources": [
+          { "kind": "url", "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe", "filename": "vc_redist.x64.exe" }
+        ],
+        "install": { "kind": "exe", "args": ["/install", "/quiet", "/norestart"] },
+        "check": ["C:\\Windows\\System32\\vcruntime140.dll"]
+      },
+      {
+        "id": "git",
+        "name": "Git for Windows",
+        "why": "без него на офлайн-машине нельзя применить git-бандл с обновлением: код придётся возить копированием и терять историю",
+        "group": "base",
+        "approx_mb": 70,
+        "sources": [
+          { "kind": "github-release", "repo": "git-for-windows/git", "pattern": "Git-*-64-bit.exe" }
+        ],
+        "install": { "kind": "exe", "args": ["/VERYSILENT", "/NORESTART", "/NOCANCEL", "/SP-"] },
+        "check": ["git.exe"]
+      },
+      {
+        "id": "libreoffice",
+        "name": "LibreOffice",
+        "why": "старые форматы: .doc, .xls, .ppt, .rtf, OpenDocument",
+        "group": "formats",
+        "approx_mb": 360,
+        "sources": [
+          { "kind": "tdf-stable", "template": "https://download.documentfoundation.org/libreoffice/stable/{version}/win/x86_64/LibreOffice_{version}_Win_x86-64.msi" },
+          { "kind": "url", "url": "https://downloads.sourceforge.net/project/libreoffice/libreoffice/stable/7.6.4/win/x86_64/LibreOffice_7.6.4_Win_x86-64.msi", "md5": "747ce5f0de21ce609313c32a9eee3cac", "bytes": 361619456, "note": "зеркало SourceForge, закреплённая версия 7.6.4" }
+        ],
+        "install": { "kind": "msi", "args": ["/qn", "/norestart"] },
+        "check": ["C:\\Program Files\\LibreOffice\\program\\soffice.exe"]
+      },
+      {
+        "id": "tesseract",
+        "name": "Tesseract OCR",
+        "why": "распознавание сканов: PDF без текстового слоя, DjVu, изображения",
+        "group": "formats",
+        "approx_mb": 27,
+        "sources": [
+          { "kind": "sourceforge", "project": "tesseract-ocr.mirror", "pattern": "tesseract-ocr-w64-setup-*.exe", "note": "зеркало сборки UB-Mannheim" },
+          { "kind": "github-release", "repo": "UB-Mannheim/tesseract", "pattern": "tesseract-ocr-w64-setup-*.exe" }
+        ],
+        "install": { "kind": "exe", "args": ["/S"], "note": "тихая установка ставит языки по умолчанию; русский докладывается файлами tessdata ниже" },
+        "check": ["C:\\Program Files\\Tesseract-OCR\\tesseract.exe"]
+      },
+      {
+        "id": "djvulibre",
+        "name": "DjVuLibre + DjView",
+        "why": "формат .djvu — в нём лежит бо́льшая часть отсканированной технической литературы",
+        "group": "formats",
+        "approx_mb": 24,
+        "sources": [
+          { "kind": "sourceforge", "project": "djvu", "pattern": "DjVuLibre*Setup.exe" }
+        ],
+        "install": { "kind": "exe", "args": ["/S"] },
+        "check": ["C:\\Program Files (x86)\\DjVuZone\\DjVuLibre\\ddjvu.exe", "C:\\Program Files\\DjVuZone\\DjVuLibre\\ddjvu.exe"]
+      },
+      {
+        "id": "sevenzip",
+        "name": "7-Zip",
+        "why": "архивы .7z и .rar, если заказчики присылают материалы архивом",
+        "group": "formats",
+        "approx_mb": 2,
+        "sources": [
+          { "kind": "sourceforge", "project": "sevenzip", "pattern": "7z*-x64.exe" },
+          { "kind": "url", "url": "https://www.7-zip.org/a/7z2601-x64.exe" }
+        ],
+        "install": { "kind": "exe", "args": ["/S"] },
+        "check": ["C:\\Program Files\\7-Zip\\7z.exe"]
+      }
+    ]
+  },
+
+  "tessdata": {
+    "comment": "Языковые файлы Tesseract. Тихая установка (/S) русский язык не ставит, поэтому файлы кладутся в комплект и копируются в tessdata после установки. best — точнее и медленнее, fast — быстрее и хуже; берём оба, чтобы на месте можно было выбрать.",
+    "target": "C:\\Program Files\\Tesseract-OCR\\tessdata",
+    "files": [
+      { "repo": "tesseract-ocr/tessdata_best", "ref": "main", "path": "rus.traineddata", "as": "best/rus.traineddata", "approx_mb": 15 },
+      { "repo": "tesseract-ocr/tessdata_best", "ref": "main", "path": "eng.traineddata", "as": "best/eng.traineddata", "approx_mb": 4 },
+      { "repo": "tesseract-ocr/tessdata_fast", "ref": "main", "path": "rus.traineddata", "as": "fast/rus.traineddata", "approx_mb": 4 },
+      { "repo": "tesseract-ocr/tessdata_fast", "ref": "main", "path": "eng.traineddata", "as": "fast/eng.traineddata", "approx_mb": 2 },
+      { "repo": "tesseract-ocr/tessdata_fast", "ref": "main", "path": "osd.traineddata", "as": "fast/osd.traineddata", "approx_mb": 3 }
+    ],
+    "install_from": "best"
+  }
+}

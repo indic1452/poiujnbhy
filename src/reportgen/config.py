@@ -109,7 +109,7 @@ class Settings:
         raw: Dict[str, Any] = {}
         config_path = path or os.environ.get(f"{ENV_PREFIX}CONFIG")
         if config_path and Path(config_path).is_file():
-            raw.update(json.loads(Path(config_path).read_text(encoding="utf-8")))
+            raw.update(json.loads(Path(config_path).read_text(encoding="utf-8-sig")))
 
         types = {f.name: f.type for f in fields(cls)}
         for name in types:

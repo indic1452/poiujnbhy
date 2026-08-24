@@ -55,7 +55,7 @@ class DomainRegistry:
         if not file.is_file():
             return cls(domains=[])
         try:
-            raw = json.loads(file.read_text(encoding="utf-8"))
+            raw = json.loads(file.read_text(encoding="utf-8-sig"))
         except json.JSONDecodeError as error:
             raise ValueError(f"справочник направлений {file} повреждён: {error}") from error
         items = raw.get("domains", raw) if isinstance(raw, dict) else raw

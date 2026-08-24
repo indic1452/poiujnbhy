@@ -67,7 +67,7 @@ class Outline:
 
     @classmethod
     def load(cls, path: str | Path) -> "Outline":
-        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+        raw = json.loads(Path(path).read_text(encoding="utf-8-sig"))
         return cls(
             report_type=raw["report_type"],
             title=raw["title"],

@@ -23,7 +23,7 @@ from .verify import blocking, summarize, verify_report
 def _load_glossary(path: str | None) -> Dict[str, str] | None:
     if not path:
         return None
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
 def cmd_index(args: argparse.Namespace) -> int:

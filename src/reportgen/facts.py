@@ -140,7 +140,7 @@ class FactPack:
 
     @classmethod
     def load(cls, path: str | Path) -> "FactPack":
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        data = json.loads(Path(path).read_text(encoding="utf-8-sig"))
         return cls.from_dict(data)
 
     # -- доступ -------------------------------------------------------------

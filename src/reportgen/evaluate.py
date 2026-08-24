@@ -369,7 +369,7 @@ def load_golden_set(path: str | Path) -> List[Dict[str, Any]]:
     if not manifest_path.is_file():
         raise EvalError(f"манифест золотого набора не найден: {manifest_path}")
     try:
-        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+        raw = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as error:
         raise EvalError(f"манифест {manifest_path} повреждён: {error}") from error
 

@@ -51,7 +51,9 @@ if (-not (Test-Path $script:Config)) {
     $dataPath = $script:Data -replace '\\', '\\'
     $text = $text -replace 'C:\\\\reportgen\\\\app', $appPath
     $text = $text -replace 'C:\\\\reportgen\\\\data', $dataPath
-    Set-Content $script:Config -Value $text -Encoding UTF8
+    # Без BOM: PowerShell 5.1 на "-Encoding UTF8" добавил бы его,
+    # и JSON стал бы нечитаемым для части разборщиков.
+    [System.IO.File]::WriteAllText($script:Config, $text, (New-Object System.Text.UTF8Encoding($false)))
     Write-Ok "создан $script:Config — откройте и впишите название компании"
 } else {
     Write-Ok "уже есть: $script:Config"

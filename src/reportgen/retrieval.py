@@ -152,7 +152,7 @@ class BM25Index:
 
     @classmethod
     def load(cls, path: str | Path) -> "BM25Index":
-        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        payload = json.loads(Path(path).read_text(encoding="utf-8-sig"))
         return cls([Chunk.from_dict(item) for item in payload["chunks"]])
 
 

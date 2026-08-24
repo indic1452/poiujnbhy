@@ -1,14 +1,17 @@
 ﻿<#
 .SYNOPSIS
     Запуск всего комплекса: модель, эмбеддинги, реранкер, веб-интерфейс.
+.PARAMETER Context
+    Размер контекста модели. Уменьшите (8192), если не хватает видеопамяти.
 .PARAMETER CpuMoe
     Для MoE-моделей: сколько слоёв экспертов держать в оперативной памяти.
 .PARAMETER NoEmbed
     Не запускать эмбеддинги и реранкер (экономит около 1.4 ГБ VRAM).
 #>
 param(
-    [string]$Model = '',
-    [int]$CpuMoe   = 0,
+    [string]$Model  = '',
+    [int]$Context   = 0,
+    [int]$CpuMoe    = 0,
     [switch]$NoEmbed
 )
 
@@ -16,8 +19,9 @@ param(
 
 Write-Step 'Основная модель (отдельное окно)'
 $llmArgs = @('-NoExit', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'start-llm.ps1'))
-if ($Model)  { $llmArgs += @('-Model', $Model) }
-if ($CpuMoe) { $llmArgs += @('-CpuMoe', $CpuMoe) }
+if ($Model)   { $llmArgs += @('-Model', $Model) }
+if ($Context) { $llmArgs += @('-Context', $Context) }
+if ($CpuMoe)  { $llmArgs += @('-CpuMoe', $CpuMoe) }
 Start-Process powershell -ArgumentList $llmArgs
 
 Write-Step 'Ожидание готовности модели (первый запуск — до 2 минут)'

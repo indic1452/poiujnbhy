@@ -24,7 +24,7 @@ Write-Host ("Проверка: {0}" -f $(if ($Quick) { 'только разме�
 
 $missing = 0; $damaged = 0; $done = 0
 foreach ($entry in $manifest.files) {
-    $path = Join-Path $bundle ($entry.path -replace '/', '\')
+    $path = Join-Path $bundle $entry.path
     $done++
     if ($done % 5 -eq 0 -or $entry.bytes -gt 500MB) {
         Write-Progress -Activity 'Проверка комплекта' -Status $entry.path `

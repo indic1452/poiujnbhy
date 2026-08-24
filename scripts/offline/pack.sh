@@ -6,14 +6,14 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEST="${1:-$PWD/reportgen-offline}"
-MODELS_JSON="${MODELS_JSON:-$ROOT/scripts/offline/models.example.json}"
+BUNDLE_JSON="${BUNDLE_JSON:-$ROOT/scripts/offline/bundle.example.json}"
 SKIP_MODELS="${SKIP_MODELS:-0}"
 
 step() { printf '\033[36m==> %s\033[0m\n' "$1"; }
 ok()   { printf '\033[32m  OK  %s\033[0m\n' "$1"; }
 warn() { printf '\033[33m  !   %s\033[0m\n' "$1"; }
 
-mkdir -p "$DEST"/{wheels,llama,models,tools,code}
+mkdir -p "$DEST"/{wheels,llama,models,tools,tessdata,code,docs}
 
 step "Код приложения"
 if [ -d "$ROOT/.git" ]; then
@@ -22,11 +22,21 @@ if [ -d "$ROOT/.git" ]; then
 fi
 rm -rf "$DEST/code/reportgen-src"
 mkdir -p "$DEST/code/reportgen-src"
+# Если каталог назначения лежит внутри репозитория (а по умолчанию так и
+# выходит при запуске из корня), tar начнёт паковать комплект сам в себя.
+EXCLUDE_DEST=""
+case "$DEST" in
+    "$ROOT"/*) EXCLUDE_DEST="--exclude=./${DEST#$ROOT/}" ;;
+esac
 tar -C "$ROOT" \
     --exclude=.git --exclude=var --exclude=build --exclude=__pycache__ \
     --exclude=.venv --exclude=wheels --exclude=backups \
+    --exclude=./reportgen-offline $EXCLUDE_DEST \
     -cf - . | tar -C "$DEST/code/reportgen-src" -xf -
 ok "исходники скопированы"
+
+cp "$ROOT"/docs/*.md "$ROOT/README.md" "$DEST/docs/" 2>/dev/null || true
+ok "документация скопирована"
 
 step "Колёса Python"
 python3 -m pip download --quiet --dest "$DEST/wheels" --requirement "$ROOT/requirements.txt"
@@ -46,7 +56,7 @@ fi
 
 if [ "$SKIP_MODELS" != "1" ]; then
     step "Модели GGUF (это надолго)"
-    python3 - "$MODELS_JSON" "$DEST/models" <<'PY'
+    python3 - "$BUNDLE_JSON" "$DEST/models" <<'PY'
 import json, subprocess, sys
 from pathlib import Path
 config = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
@@ -61,6 +71,32 @@ PY
 else
     warn "модели пропущены (SKIP_MODELS=1)"
 fi
+
+step "Языковые файлы Tesseract"
+python3 - "$BUNDLE_JSON" "$DEST/tessdata" <<'TESS'
+import json, subprocess, sys
+from pathlib import Path
+config = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+target = Path(sys.argv[2])
+block = config.get("tessdata")
+if not block:
+    raise SystemExit(0)
+for item in block["files"]:
+    url = f"https://raw.githubusercontent.com/{item['repo']}/{item.get('ref', 'main')}/{item['path']}"
+    out = target / item["as"]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["curl", "-sSL", "--fail", "--retry", "5", "-C", "-", "-o", str(out), url], check=True)
+    print(f"  {item['as']}")
+(target / "tessdata.json").write_text(json.dumps(
+    {"target": block.get("target"), "install_from": block.get("install_from")},
+    ensure_ascii=False), encoding="utf-8")
+TESS
+ok "языковые файлы скачаны"
+
+# Под Linux LibreOffice, Tesseract и DjVuLibre ставятся пакетами
+# дистрибутива: универсальных установщиков, как под Windows, у них нет.
+warn "внешние программы под Linux ставятся пакетами дистрибутива —"
+warn "соберите их локальный репозиторий отдельно (см. docs/15-offline.md)"
 
 step "Манифест и контрольные суммы"
 python3 - "$DEST" <<'PY'
@@ -89,6 +125,7 @@ print(f"  файлов: {len(entries)}, объём: {manifest['total_gb']} ГБ"
 PY
 
 cp "$ROOT/scripts/offline/install-offline.sh" "$ROOT/scripts/offline/verify.sh" "$DEST/" 2>/dev/null || true
+cp "$BUNDLE_JSON" "$DEST/bundle.json" 2>/dev/null || true
 chmod +x "$DEST"/*.sh 2>/dev/null || true
 cp "$ROOT/docs/15-offline.md" "$DEST/ЧИТАТЬ-ПЕРВЫМ.md" 2>/dev/null || true
 

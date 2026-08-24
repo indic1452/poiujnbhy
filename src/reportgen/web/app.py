@@ -134,7 +134,9 @@ def _install_middleware(app: FastAPI) -> None:
                 )
             if raw:
                 try:
-                    parsed = json.loads(raw.decode("utf-8"))
+                    # utf-8-sig, а не utf-8: файл, сохранённый Блокнотом,
+                    # приезжает с BOM, и обычный utf-8 на нём падает.
+                    parsed = json.loads(raw.decode("utf-8-sig"))
                 except (UnicodeDecodeError, json.JSONDecodeError):
                     return JSONResponse(
                         status_code=400, content={"error": "тело запроса не является корректным JSON"}
