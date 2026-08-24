@@ -372,6 +372,9 @@ def export_docx(request: Request, report_id: int) -> FileResponse:
             case_id=case.case_id, status=report.status,
             template=settings.docx_template,
         )
+    except ImportError as error:
+        # MissingDependencyError из export.docx — пакет не установлен.
+        raise ServiceError(f"экспорт в DOCX недоступен: {error}", 501) from error
     except Exception as error:  # noqa: BLE001 — показываем инженеру причину
         raise ServiceError(f"не удалось собрать DOCX: {error}", 500) from error
 
@@ -495,7 +498,9 @@ def search(request: Request, q: str = "", top_k: int = 10,
         return {"items": [], "note": "библиотека пуста — загрузите документы"}
     types = [t for t in (doc_types or "").split(",") if t] or None
     hits = retriever.search(query, top_k=min(top_k, 50), doc_types=types)
+    warning = getattr(retriever, "last_warning", "")
     return {
+        "warning": warning or None,
         "items": [
             {
                 "chunk_uid": hit.chunk.chunk_id,

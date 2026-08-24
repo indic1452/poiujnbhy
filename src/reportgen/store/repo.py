@@ -28,6 +28,15 @@ from .models import (
     rows_to,
 )
 
+# Предел числа параметров в одном запросе SQLite (в старых сборках — 999).
+SQL_PARAM_BATCH = 400
+
+
+def _batched(items: Sequence[Any], size: int = SQL_PARAM_BATCH) -> Iterable[Sequence[Any]]:
+    for start in range(0, len(items), size):
+        yield items[start:start + size]
+
+
 SCRYPT_N = 2 ** 14
 SCRYPT_R = 8
 SCRYPT_P = 1
@@ -283,11 +292,12 @@ class ChunkRepo:
                     "INSERT INTO chunks_fts(stemmed, chunk_uid, doc_type) VALUES(?,?,?)",
                     (" ".join(tokenize(chunk.indexed_text)), chunk.chunk_id, chunk.doc_type),
                 )
-        self.db.execute(
-            "UPDATE documents SET chunk_count = ?, indexed_at = ? WHERE id = ?",
-            (len(chunks), utcnow(), document.id),
-        )
-        self.db.commit()
+            # Счётчик и отметка об индексации — в той же транзакции, что и чанки:
+            # иначе при сбое документ выглядел бы проиндексированным без чанков.
+            connection.execute(
+                "UPDATE documents SET chunk_count = ?, indexed_at = ? WHERE id = ?",
+                (len(chunks), utcnow(), document.id),
+            )
         return len(chunks)
 
     @staticmethod
@@ -312,13 +322,15 @@ class ChunkRepo:
     def get_many(self, chunk_uids: Sequence[str]) -> List[Chunk]:
         if not chunk_uids:
             return []
-        placeholders = ",".join("?" * len(chunk_uids))
-        rows = self.db.query(
-            f"SELECT c.*, d.doc_id AS doc_id FROM chunks c "
-            f"JOIN documents d ON d.id = c.document_id WHERE c.chunk_uid IN ({placeholders})",
-            tuple(chunk_uids),
-        )
-        by_uid = {row["chunk_uid"]: self._to_chunk(row) for row in rows}
+        by_uid: Dict[str, Chunk] = {}
+        for batch in _batched(list(chunk_uids)):
+            placeholders = ",".join("?" * len(batch))
+            rows = self.db.query(
+                f"SELECT c.*, d.doc_id AS doc_id FROM chunks c "
+                f"JOIN documents d ON d.id = c.document_id WHERE c.chunk_uid IN ({placeholders})",
+                tuple(batch),
+            )
+            by_uid.update({row["chunk_uid"]: self._to_chunk(row) for row in rows})
         return [by_uid[uid] for uid in chunk_uids if uid in by_uid]
 
     def all_chunks(self, limit: int | None = None) -> List[Chunk]:
@@ -373,12 +385,15 @@ class VectorRepo:
     def get_many(self, chunk_uids: Sequence[str]) -> Dict[str, List[float]]:
         if not chunk_uids:
             return {}
-        placeholders = ",".join("?" * len(chunk_uids))
-        rows = self.db.query(
-            f"SELECT chunk_uid, vector FROM embeddings WHERE chunk_uid IN ({placeholders})",
-            tuple(chunk_uids),
-        )
-        return {row["chunk_uid"]: unpack_vector(row["vector"]) for row in rows}
+        found: Dict[str, List[float]] = {}
+        for batch in _batched(list(chunk_uids)):
+            placeholders = ",".join("?" * len(batch))
+            rows = self.db.query(
+                f"SELECT chunk_uid, vector FROM embeddings WHERE chunk_uid IN ({placeholders})",
+                tuple(batch),
+            )
+            found.update({row["chunk_uid"]: unpack_vector(row["vector"]) for row in rows})
+        return found
 
     def all_vectors(self, model: str | None = None) -> Tuple[List[str], List[List[float]]]:
         if model:

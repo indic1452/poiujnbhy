@@ -88,7 +88,7 @@ class Settings:
 
     def __post_init__(self) -> None:
         for name in ("data_dir", "db_path", "library_dir", "upload_dir", "export_dir",
-                     "templates_dir", "glossary_path", "docx_template"):
+                     "templates_dir", "glossary_path", "docx_template", "brand_logo"):
             value = getattr(self, name)
             if value is not None and not isinstance(value, Path):
                 setattr(self, name, Path(value))

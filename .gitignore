@@ -8,3 +8,5 @@ exports/
 *.db
 *.db-wal
 *.db-shm
+wheels/
+backups/

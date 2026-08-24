@@ -11,16 +11,35 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Tuple
 
+import secrets
+
 from fastapi import Request
 
 from ..store.models import User
+from ..store.repo import Repositories
 from .service import ServiceError
 
 COOKIE_NAME = "rg_session"
 
-# Пользователь, от имени которого работает система при auth_enabled = false
-# (одиночная установка на рабочей станции инженера).
-LOCAL_USER = User(id=0, login="local", full_name="Локальный режим", role="admin")
+LOCAL_LOGIN = "local"
+
+
+def ensure_local_user(repos: Repositories) -> User:
+    """Пользователь для режима без аутентификации (одиночная рабочая станция).
+
+    Он должен существовать в таблице ``users`` по-настоящему: на неё ссылаются
+    внешние ключи кейсов, отчётов, пар для датасета и журнала. Пароль
+    случайный и нигде не сохраняется, а запись помечена неактивной — войти под
+    ней нельзя, даже если позже включить аутентификацию.
+    """
+    existing = repos.users.by_login(LOCAL_LOGIN)
+    if existing is not None:
+        return existing
+    user = repos.users.create(
+        LOCAL_LOGIN, secrets.token_urlsafe(32), "Локальный режим (вход запрещён)", "admin"
+    )
+    repos.users.set_active(user.id, False)
+    return repos.users.by_login(LOCAL_LOGIN) or user
 
 
 @dataclass
@@ -62,7 +81,11 @@ def auth_enabled(request: Request) -> bool:
 def get_user(request: Request) -> User | None:
     """Текущий пользователь или None. При выключенной аутентификации — локальный."""
     if not auth_enabled(request):
-        return LOCAL_USER
+        local = getattr(request.app.state, "local_user", None)
+        if local is None:
+            local = ensure_local_user(request.app.state.repos)
+            request.app.state.local_user = local
+        return local
     token = request.cookies.get(COOKIE_NAME)
     if not token:
         return None

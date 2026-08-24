@@ -186,6 +186,29 @@ class NoAuthTests(WebTestCase):
         self.assertFalse(body["auth_enabled"])
         self.assertEqual(self.client.get("/api/cases").status_code, 200)
 
+    def test_local_mode_can_create_and_generate(self):
+        """Регрессия: встроенный пользователь должен существовать в базе.
+
+        Раньше LOCAL_USER имел id=0, которого нет в таблице users, и любая
+        запись со ссылкой на автора падала на внешнем ключе.
+        """
+        case = self.create_case()
+        report = self.generate(case["id"])
+        self.assertEqual(report["version"], 1)
+        self.assertEqual(self.repos.cases.count(), 1)
+
+    def test_local_user_exists_in_database_and_cannot_log_in(self):
+        user = self.repos.users.by_login("local")
+        self.assertIsNotNone(user)
+        self.assertFalse(user.active)
+        self.assertTrue(user.is_admin)
+        self.assertIsNone(self.repos.users.authenticate("local", "любой"))
+
+    def test_local_mode_records_author_in_audit(self):
+        self.create_case()
+        logins = {entry.login for entry in self.repos.audit.list()}
+        self.assertIn("local", logins)
+
     def test_login_is_rejected_when_disabled(self):
         response = self.client.post(
             "/api/auth/login", json={"login": "admin", "password": "x"}
@@ -412,6 +435,10 @@ class LibraryTests(WebTestCase):
         body = self.client.get("/api/search", params={"q": "занимаемая полоса"}).json()
         self.assertTrue(body["items"])
         self.assertIn("citation", body["items"][0])
+
+    def test_search_reports_degradation(self):
+        body = self.client.get("/api/search", params={"q": "полоса"}).json()
+        self.assertIn("warning", body)
 
     def test_search_requires_query(self):
         self.assertEqual(self.client.get("/api/search", params={"q": " "}).status_code, 400)

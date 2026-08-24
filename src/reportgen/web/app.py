@@ -17,7 +17,7 @@ from ..config import Settings
 from ..store.db import Database
 from ..store.repo import Repositories
 from .api import router
-from .auth import LoginThrottle
+from .auth import LoginThrottle, ensure_local_user
 from .service import ReportService, ServiceError
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -66,6 +66,9 @@ def create_app(settings: Settings | None = None,
     app.state.repos = repos
     app.state.service = service
     app.state.throttle = LoginThrottle()
+    # В локальном режиме работаем от имени настоящей записи в базе: на users(id)
+    # ссылаются кейсы, отчёты и журнал.
+    app.state.local_user = None if settings.auth_enabled else ensure_local_user(repos)
 
     _install_middleware(app)
     _install_handlers(app)
