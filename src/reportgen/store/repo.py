@@ -20,6 +20,8 @@ from .db import Database, utcnow
 from .models import (
     AuditEntry,
     Case,
+    Chat,
+    ChatMessage,
     Document,
     EditPair,
     Report,
@@ -177,15 +179,15 @@ class DocumentRepo:
 
     def upsert(self, doc_id: str, doc_type: str, title: str, source_path: str,
                sha256: str, confidentiality: str = "internal",
-               meta: Dict[str, Any] | None = None) -> Document:
+               meta: Dict[str, Any] | None = None, domain: str = "") -> Document:
         with self.db.transaction() as connection:
             connection.execute(
                 "INSERT INTO documents(doc_id, doc_type, title, source_path, sha256, "
-                "confidentiality, meta_json, created_at) VALUES(?,?,?,?,?,?,?,?) "
+                "confidentiality, meta_json, domain, created_at) VALUES(?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(doc_id) DO UPDATE SET doc_type=excluded.doc_type, "
                 "title=excluded.title, source_path=excluded.source_path, "
                 "sha256=excluded.sha256, confidentiality=excluded.confidentiality, "
-                "meta_json=excluded.meta_json, "
+                "meta_json=excluded.meta_json, domain=excluded.domain, "
                 # Файл изменился — прежние чанки устарели, отметку об индексации
                 # снимаем до того, как ChunkRepo их перезапишет.
                 "indexed_at=CASE WHEN documents.sha256 = excluded.sha256 "
@@ -193,7 +195,7 @@ class DocumentRepo:
                 "chunk_count=CASE WHEN documents.sha256 = excluded.sha256 "
                 "THEN documents.chunk_count ELSE 0 END",
                 (doc_id, doc_type, title, source_path, sha256, confidentiality,
-                 json.dumps(meta or {}, ensure_ascii=False), utcnow()),
+                 json.dumps(meta or {}, ensure_ascii=False), domain, utcnow()),
             )
         document = self.by_doc_id(doc_id)
         assert document is not None
@@ -207,14 +209,35 @@ class DocumentRepo:
         row = self.db.query_one("SELECT * FROM documents WHERE sha256 = ?", (sha256,))
         return Document.from_row(row) if row else None
 
-    def list(self, doc_type: str | None = None) -> List[Document]:
+    def list(self, doc_type: str | None = None, domain: str | None = None) -> List[Document]:
+        clauses, params = [], []
         if doc_type:
-            rows = self.db.query(
-                "SELECT * FROM documents WHERE doc_type = ? ORDER BY title", (doc_type,)
-            )
-        else:
-            rows = self.db.query("SELECT * FROM documents ORDER BY doc_type, title")
+            clauses.append("doc_type = ?")
+            params.append(doc_type)
+        if domain:
+            clauses.append("domain = ?")
+            params.append(domain)
+        where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        rows = self.db.query(f"SELECT * FROM documents{where} ORDER BY doc_type, title", params)
         return rows_to(Document, rows)
+
+    def set_domain(self, doc_id: str, domain: str) -> None:
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE documents SET domain = ? WHERE doc_id = ?", (domain, doc_id)
+            )
+            connection.execute(
+                "UPDATE chunks SET domain = ? WHERE document_id = "
+                "(SELECT id FROM documents WHERE doc_id = ?)",
+                (domain, doc_id),
+            )
+
+    def domains(self) -> Dict[str, int]:
+        rows = self.db.query(
+            "SELECT domain, count(*) AS documents FROM documents "
+            "GROUP BY domain ORDER BY documents DESC"
+        )
+        return {row["domain"] or "не указано": row["documents"] for row in rows}
 
     def mark_indexed(self, doc_id: str, chunk_count: int) -> None:
         with self.db.transaction() as connection:
@@ -277,7 +300,7 @@ class ChunkRepo:
             for ordinal, chunk in enumerate(chunks):
                 connection.execute(
                     "INSERT INTO chunks(chunk_uid, document_id, ord, doc_type, title_path, "
-                    "text, meta_json) VALUES(?,?,?,?,?,?,?)",
+                    "text, meta_json, domain) VALUES(?,?,?,?,?,?,?,?)",
                     (
                         chunk.chunk_id,
                         document.id,
@@ -286,6 +309,7 @@ class ChunkRepo:
                         json.dumps(chunk.title_path, ensure_ascii=False),
                         chunk.text,
                         json.dumps(chunk.meta, ensure_ascii=False),
+                        document.domain,
                     ),
                 )
                 connection.execute(
@@ -302,13 +326,17 @@ class ChunkRepo:
 
     @staticmethod
     def _to_chunk(row) -> Chunk:
+        keys = row.keys()
+        meta = json.loads(row["meta_json"])
+        if "domain" in keys and row["domain"]:
+            meta.setdefault("domain", row["domain"])
         return Chunk(
             chunk_id=row["chunk_uid"],
-            doc_id=row["doc_id"] if "doc_id" in row.keys() else row["chunk_uid"].split("#")[0],
+            doc_id=row["doc_id"] if "doc_id" in keys else row["chunk_uid"].split("#")[0],
             doc_type=row["doc_type"],
             title_path=json.loads(row["title_path"]),
             text=row["text"],
-            meta=json.loads(row["meta_json"]),
+            meta=meta,
         )
 
     def get(self, chunk_uid: str) -> Chunk | None:
@@ -344,21 +372,32 @@ class ChunkRepo:
         return int(self.db.scalar("SELECT count(*) FROM chunks") or 0)
 
     def search_lexical(
-        self, query: str, limit: int = 50, doc_types: Iterable[str] | None = None
+        self, query: str, limit: int = 50, doc_types: Iterable[str] | None = None,
+        domains: Iterable[str] | None = None,
     ) -> List[Tuple[str, float]]:
-        """Поиск по FTS5. Возвращает пары (chunk_uid, оценка), лучшие первыми."""
+        """Поиск по FTS5. Возвращает пары (chunk_uid, оценка), лучшие первыми.
+
+        Фильтры (тип документа, направление) применяются соединением с таблицей
+        chunks: виртуальную таблицу FTS5 нельзя расширять новыми колонками,
+        а направлений со временем станет больше.
+        """
         terms = [_FTS_SPECIAL.sub("", term) for term in tokenize(query)]
         terms = [term for term in terms if term]
         if not terms:
             return []
         match = " OR ".join(f'"{term}"' for term in terms)
         params: List[Any] = [match]
-        sql = ("SELECT chunk_uid, bm25(chunks_fts) AS rank FROM chunks_fts "
+        sql = ("SELECT f.chunk_uid AS chunk_uid, bm25(chunks_fts) AS rank "
+               "FROM chunks_fts f JOIN chunks c ON c.chunk_uid = f.chunk_uid "
                "WHERE chunks_fts MATCH ?")
         types = list(doc_types or [])
         if types:
-            sql += f" AND doc_type IN ({','.join('?' * len(types))})"
+            sql += f" AND c.doc_type IN ({','.join('?' * len(types))})"
             params.extend(types)
+        areas = [d for d in (domains or []) if d]
+        if areas:
+            sql += f" AND c.domain IN ({','.join('?' * len(areas))})"
+            params.extend(areas)
         sql += " ORDER BY rank LIMIT ?"
         params.append(int(limit))
         # bm25() в SQLite тем меньше, чем релевантнее; переводим в «больше = лучше».
@@ -673,6 +712,132 @@ class EditPairRepo:
         ]
 
 
+class ChatRepo:
+    """Личные разговоры с помощником.
+
+    Все методы принимают ``user_id`` и проверяют владельца: чужой чат нельзя
+    ни прочитать, ни изменить — в вопросах инженеров всплывают данные
+    заказчиков, а гриф на них тот же, что и на кейсах.
+    """
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def create(self, user_id: int, *, title: str = "Новый разговор",
+               domain: str = "", case_ref: int | None = None) -> Chat:
+        now = utcnow()
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO chats(user_id, title, domain, case_ref, created_at, updated_at) "
+                "VALUES(?,?,?,?,?,?)",
+                (user_id, title.strip() or "Новый разговор", domain, case_ref, now, now),
+            )
+        chat = self.get(int(cursor.lastrowid), user_id)  # type: ignore[arg-type]
+        assert chat is not None
+        return chat
+
+    def get(self, chat_id: int, user_id: int | None = None) -> Chat | None:
+        row = self.db.query_one(
+            "SELECT c.*, (SELECT count(*) FROM chat_messages m WHERE m.chat_id = c.id) "
+            "AS message_count FROM chats c WHERE c.id = ?",
+            (chat_id,),
+        )
+        if row is None:
+            return None
+        if user_id is not None and row["user_id"] != user_id:
+            return None
+        return Chat.from_row(row)
+
+    def for_user(self, user_id: int, *, archived: bool = False,
+                 limit: int = 100, offset: int = 0) -> List[Chat]:
+        rows = self.db.query(
+            "SELECT c.*, (SELECT count(*) FROM chat_messages m WHERE m.chat_id = c.id) "
+            "AS message_count FROM chats c WHERE c.user_id = ? AND c.archived = ? "
+            "ORDER BY c.updated_at DESC LIMIT ? OFFSET ?",
+            (user_id, int(archived), limit, offset),
+        )
+        return rows_to(Chat, rows)
+
+    def rename(self, chat_id: int, title: str) -> None:
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE chats SET title = ?, updated_at = ? WHERE id = ?",
+                (title.strip()[:200] or "Новый разговор", utcnow(), chat_id),
+            )
+
+    def update(self, chat_id: int, *, domain: str | None = None,
+               archived: bool | None = None) -> None:
+        with self.db.transaction() as connection:
+            if domain is not None:
+                connection.execute("UPDATE chats SET domain = ? WHERE id = ?", (domain, chat_id))
+            if archived is not None:
+                connection.execute(
+                    "UPDATE chats SET archived = ? WHERE id = ?", (int(archived), chat_id)
+                )
+            connection.execute(
+                "UPDATE chats SET updated_at = ? WHERE id = ?", (utcnow(), chat_id)
+            )
+
+    def delete(self, chat_id: int) -> None:
+        with self.db.transaction() as connection:
+            connection.execute("DELETE FROM chats WHERE id = ?", (chat_id,))
+
+    def add_message(self, chat_id: int, role: str, content: str, *,
+                    sources: Sequence[Dict[str, Any]] = (),
+                    meta: Dict[str, Any] | None = None) -> ChatMessage:
+        if role not in ("user", "assistant"):
+            raise ValueError(f"недопустимая роль сообщения: {role}")
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO chat_messages(chat_id, role, content, sources_json, meta_json, "
+                "created_at) VALUES(?,?,?,?,?,?)",
+                (chat_id, role, content,
+                 json.dumps(list(sources), ensure_ascii=False),
+                 json.dumps(meta or {}, ensure_ascii=False), utcnow()),
+            )
+            connection.execute(
+                "UPDATE chats SET updated_at = ? WHERE id = ?", (utcnow(), chat_id)
+            )
+        row = self.db.query_one(
+            "SELECT * FROM chat_messages WHERE id = ?", (int(cursor.lastrowid),)  # type: ignore[arg-type]
+        )
+        assert row is not None
+        return ChatMessage.from_row(row)
+
+    def messages(self, chat_id: int, limit: int = 500) -> List[ChatMessage]:
+        rows = self.db.query(
+            "SELECT * FROM chat_messages WHERE chat_id = ? ORDER BY id LIMIT ?",
+            (chat_id, limit),
+        )
+        return rows_to(ChatMessage, rows)
+
+    def tail(self, chat_id: int, count: int = 6) -> List[ChatMessage]:
+        """Последние сообщения — история, которая уходит модели в контекст."""
+        rows = self.db.query(
+            "SELECT * FROM chat_messages WHERE chat_id = ? ORDER BY id DESC LIMIT ?",
+            (chat_id, count),
+        )
+        return list(reversed(rows_to(ChatMessage, rows)))
+
+    def count_for_user(self, user_id: int, *, archived: bool = False) -> int:
+        return int(self.db.scalar(
+            "SELECT count(*) FROM chats WHERE user_id = ? AND archived = ?",
+            (user_id, int(archived)),
+        ) or 0)
+
+    def stats(self) -> Dict[str, int]:
+        """Обезличенная статистика: сколько разговоров и сообщений всего.
+
+        Содержимое чужих чатов недоступно никому, но объём использования
+        помощника администратору видеть полезно.
+        """
+        return {
+            "chats": int(self.db.scalar("SELECT count(*) FROM chats") or 0),
+            "messages": int(self.db.scalar("SELECT count(*) FROM chat_messages") or 0),
+            "users": int(self.db.scalar("SELECT count(DISTINCT user_id) FROM chats") or 0),
+        }
+
+
 class AuditRepo:
     def __init__(self, db: Database):
         self.db = db
@@ -733,6 +898,7 @@ class Repositories:
         self.cases = CaseRepo(db)
         self.reports = ReportRepo(db)
         self.edits = EditPairRepo(db)
+        self.chats = ChatRepo(db)
         self.audit = AuditRepo(db)
 
     @classmethod

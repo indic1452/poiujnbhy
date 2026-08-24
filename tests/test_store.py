@@ -1293,5 +1293,89 @@ class DocumentReindexInvalidationTests(unittest.TestCase):
                      "normalized_edit_distance"):
             self.assertTrue(hasattr(store, name), name)
 
+
+class ConcurrencyTests(unittest.TestCase):
+    """Одновременная работа нескольких инженеров.
+
+    Регрессия: раньше все запросы шли через одно общее соединение, поэтому
+    транзакции разных потоков перемешивались — чужой commit закрывал чужую
+    транзакцию, и часть записей терялась вместе с ошибками
+    «cannot start a transaction within a transaction».
+    """
+
+    def _run(self, database, threads=6, iterations=25):
+        import threading
+
+        repos = Repositories(database)
+        user = repos.users.create("u", "пароль123", "U", "engineer")
+        errors: list[str] = []
+
+        def worker(number: int) -> None:
+            try:
+                for index in range(iterations):
+                    name = f"C-{number}-{index}"
+                    repos.cases.create(
+                        name, "signal_issue",
+                        {"case_id": name, "report_type": "signal_issue"},
+                        user_id=user.id,
+                    )
+                    chat = repos.chats.create(user.id, title=f"чат {number}-{index}")
+                    repos.chats.add_message(chat.id, "user", "вопрос")
+                    repos.audit.log("test", user=user, object_id=name)
+            except Exception as error:  # noqa: BLE001 — собираем всё, что случилось
+                errors.append(f"{type(error).__name__}: {error}")
+
+        workers = [threading.Thread(target=worker, args=(n,)) for n in range(threads)]
+        for item in workers:
+            item.start()
+        for item in workers:
+            item.join()
+        return repos, errors, threads * iterations
+
+    def test_parallel_writes_to_file_database(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            database = Database(str(Path(tmp) / "concurrent.db"))
+            repos, errors, expected = self._run(database)
+            self.assertEqual(errors, [])
+            self.assertEqual(repos.cases.count(), expected)
+            self.assertEqual(repos.chats.stats()["messages"], expected)
+            database.close()
+
+    def test_parallel_writes_to_memory_database(self):
+        database = Database(":memory:")
+        repos, errors, expected = self._run(database, threads=4, iterations=15)
+        self.assertEqual(errors, [])
+        self.assertEqual(repos.cases.count(), expected)
+
+    def test_each_thread_gets_its_own_connection(self):
+        import tempfile
+        import threading
+
+        with tempfile.TemporaryDirectory() as tmp:
+            database = Database(str(Path(tmp) / "threads.db"))
+            seen: list[int] = []
+
+            def grab() -> None:
+                seen.append(id(database.connection))
+
+            workers = [threading.Thread(target=grab) for _ in range(4)]
+            for item in workers:
+                item.start()
+            for item in workers:
+                item.join()
+            self.assertEqual(len(set(seen)), 4)
+            database.close()
+
+    def test_rollback_does_not_leak_to_other_writes(self):
+        database = Database(":memory:")
+        repos = Repositories(database)
+        repos.users.create("first", "пароль123", "", "engineer")
+        with self.assertRaises(sqlite3.IntegrityError):
+            repos.users.create("first", "пароль123", "", "engineer")
+        repos.users.create("second", "пароль123", "", "engineer")
+        self.assertEqual(repos.users.count(), 2)
+
 if __name__ == "__main__":
     unittest.main()

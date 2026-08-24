@@ -136,16 +136,26 @@ class DatabaseRetriever:
         *,
         doc_types: Iterable[str] | None = None,
         meta_filter: Dict[str, str] | None = None,
+        domains: Iterable[str] | None = None,
     ) -> List[Hit]:
-        """Найти до ``top_k`` фрагментов. Ранги проставлены, лучший — первый."""
+        """Найти до ``top_k`` фрагментов. Ранги проставлены, лучший — первый.
+
+        ``domains`` ограничивает поиск направлением (спутник, релейка,
+        протоколы …) — по нему отсекается лексический канал прямо в SQL,
+        а плотный фильтруется по метаданным чанка.
+        """
         self.last_warning = None
         text = (query or "").strip()
         if not text or top_k <= 0:
             return []
         allowed = set(doc_types) if doc_types else None
+        areas = {d for d in (domains or []) if d} or None
+        if areas:
+            meta_filter = dict(meta_filter or {})
 
-        lexical = self._lexical(text, allowed, meta_filter)
-        dense = self._dense(text, allowed, meta_filter)
+        lexical = self._lexical(text, allowed, meta_filter, areas)
+        dense = [hit for hit in self._dense(text, allowed, meta_filter)
+                 if not areas or hit.chunk.meta.get("domain", "") in areas]
 
         if lexical and dense:
             merged = reciprocal_rank_fusion(
@@ -167,13 +177,15 @@ class DatabaseRetriever:
         query: str,
         allowed: set[str] | None,
         meta_filter: Dict[str, str] | None,
+        domains: set[str] | None = None,
     ) -> List[Hit]:
         """Первый канал: FTS5 по стеммированному тексту."""
         # Фильтр по meta накладывается уже после выборки, поэтому при нём
         # берём запас кандидатов — иначе отсев съест половину списка.
         limit = self.candidates * (self.dense_pool_factor if meta_filter else 1)
         pairs = self.repos.chunks.search_lexical(
-            query, limit=limit, doc_types=sorted(allowed) if allowed else None
+            query, limit=limit, doc_types=sorted(allowed) if allowed else None,
+            domains=sorted(domains) if domains else None,
         )
         if not pairs:
             return []

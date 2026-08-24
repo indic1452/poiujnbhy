@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
+
+# Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
+# (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
+# поэтому новые поля добавляются здесь — так база обновляется вместе с кодом,
+# без ручных ALTER на стороне заказчика.
+COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
+    ("documents", "domain", "TEXT NOT NULL DEFAULT ''"),
+    ("chunks", "domain", "TEXT NOT NULL DEFAULT ''"),
+)
 
 
 def utcnow() -> str:
@@ -22,20 +32,62 @@ class Database:
 
     def __init__(self, path: str | Path = ":memory:"):
         self.path = str(path)
-        if self.path != ":memory:":
+        # Веб-сервер обрабатывает запросы в пуле потоков. Одно общее соединение
+        # на всех означало бы, что транзакции разных запросов перемешиваются:
+        # чужой commit закрывает вашу транзакцию на середине. Поэтому у каждого
+        # потока своё соединение, а записи дополнительно сериализуются замком —
+        # так SQLite не отдаёт SQLITE_BUSY на параллельных вставках.
+        self._lock = threading.RLock()
+        self._local = threading.local()
+        self._connections: list[sqlite3.Connection] = []
+        self._shared: sqlite3.Connection | None = None
+
+        if self.path == ":memory:":
+            # База в памяти существует ровно в одном соединении, разделить её
+            # между потоками нельзя — значит, сериализуем вообще всё.
+            self._shared = self._connect()
+        else:
             Path(self.path).parent.mkdir(parents=True, exist_ok=True)
-        self.connection = sqlite3.connect(self.path, check_same_thread=False)
-        self.connection.row_factory = sqlite3.Row
-        self.connection.execute("PRAGMA foreign_keys = ON")
-        if self.path != ":memory:":
-            self.connection.execute("PRAGMA journal_mode = WAL")
-        self.connection.execute("PRAGMA busy_timeout = 10000")
         self.migrate()
+
+    # -- соединения ---------------------------------------------------------
+
+    def _connect(self) -> sqlite3.Connection:
+        connection = sqlite3.connect(self.path, check_same_thread=False, timeout=10.0)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON")
+        if self.path != ":memory:":
+            connection.execute("PRAGMA journal_mode = WAL")
+        connection.execute("PRAGMA busy_timeout = 10000")
+        self._connections.append(connection)
+        return connection
+
+    @property
+    def connection(self) -> sqlite3.Connection:
+        """Соединение текущего потока (для базы в памяти — единственное общее)."""
+        if self._shared is not None:
+            return self._shared
+        connection = getattr(self._local, "connection", None)
+        if connection is None:
+            with self._lock:
+                connection = self._connect()
+            self._local.connection = connection
+        return connection
+
+    @contextmanager
+    def _read_guard(self):
+        """Чтения из общей базы в памяти тоже нужно сериализовать."""
+        if self._shared is None:
+            yield
+        else:
+            with self._lock:
+                yield
 
     # -- схема --------------------------------------------------------------
 
     def migrate(self) -> None:
         self.connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        self._ensure_columns()
         self.connection.execute(
             "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -43,19 +95,34 @@ class Database:
         )
         self.connection.commit()
 
+    def _ensure_columns(self) -> None:
+        """Добавляет недостающие колонки в уже существующие таблицы."""
+        for table, column, declaration in COLUMN_MIGRATIONS:
+            existing = {
+                row["name"] for row in self.connection.execute(f"PRAGMA table_info({table})")
+            }
+            if column not in existing:
+                self.connection.execute(
+                    f"ALTER TABLE {table} ADD COLUMN {column} {declaration}"
+                )
+
     # -- выполнение ---------------------------------------------------------
 
     def execute(self, sql: str, params: Sequence[Any] = ()) -> sqlite3.Cursor:
-        return self.connection.execute(sql, params)
+        with self._lock:
+            return self.connection.execute(sql, params)
 
     def executemany(self, sql: str, rows: Sequence[Sequence[Any]]) -> sqlite3.Cursor:
-        return self.connection.executemany(sql, rows)
+        with self._lock:
+            return self.connection.executemany(sql, rows)
 
     def query(self, sql: str, params: Sequence[Any] = ()) -> list[sqlite3.Row]:
-        return self.connection.execute(sql, params).fetchall()
+        with self._read_guard():
+            return self.connection.execute(sql, params).fetchall()
 
     def query_one(self, sql: str, params: Sequence[Any] = ()) -> sqlite3.Row | None:
-        return self.connection.execute(sql, params).fetchone()
+        with self._read_guard():
+            return self.connection.execute(sql, params).fetchone()
 
     def scalar(self, sql: str, params: Sequence[Any] = ()) -> Any:
         row = self.query_one(sql, params)
@@ -63,25 +130,42 @@ class Database:
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
-        """Атомарный блок: при исключении изменения откатываются целиком."""
-        try:
-            yield self.connection
-        except Exception:
-            self.connection.rollback()
-            raise
-        else:
-            self.connection.commit()
+        """Атомарный блок: при исключении изменения откатываются целиком.
+
+        Замок держится на всё время блока: при одновременной работе нескольких
+        инженеров записи выстраиваются в очередь вместо того, чтобы портить
+        транзакции друг друга.
+        """
+        with self._lock:
+            connection = self.connection
+            try:
+                yield connection
+            except Exception:
+                connection.rollback()
+                raise
+            else:
+                connection.commit()
 
     def commit(self) -> None:
-        self.connection.commit()
+        with self._lock:
+            self.connection.commit()
 
     def close(self) -> None:
-        self.connection.close()
+        with self._lock:
+            for connection in self._connections:
+                try:
+                    connection.close()
+                except sqlite3.Error:
+                    pass
+            self._connections.clear()
+            self._shared = None
+            self._local = threading.local()
 
     # -- сервис -------------------------------------------------------------
 
     def vacuum(self) -> None:
-        self.connection.execute("VACUUM")
+        with self._lock:
+            self.connection.execute("VACUUM")
 
     def counts(self) -> dict[str, int]:
         tables = ("users", "documents", "chunks", "cases", "reports", "edit_pairs", "audit")

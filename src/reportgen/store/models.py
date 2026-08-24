@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Sequence
 
 ROLES = ("viewer", "engineer", "admin")
+CHAT_ROLES = ("user", "assistant")
 CASE_STATUSES = ("new", "draft", "review", "approved", "archived")
 REPORT_STATUSES = ("draft", "verified", "approved")
 CONFIDENTIALITY = ("public", "internal", "nda")
@@ -73,6 +74,7 @@ class Document:
     source_path: str
     sha256: str
     confidentiality: str = "internal"
+    domain: str = ""
     meta: Dict[str, Any] = field(default_factory=dict)
     chunk_count: int = 0
     indexed_at: str | None = None
@@ -88,6 +90,7 @@ class Document:
             source_path=row["source_path"],
             sha256=row["sha256"],
             confidentiality=row["confidentiality"],
+            domain=row["domain"] if "domain" in row.keys() else "",
             meta=_json(row["meta_json"], {}),
             chunk_count=row["chunk_count"],
             indexed_at=row["indexed_at"],
@@ -102,6 +105,7 @@ class Document:
             "title": self.title,
             "sha256": self.sha256[:12],
             "confidentiality": self.confidentiality,
+            "domain": self.domain,
             "chunk_count": self.chunk_count,
             "indexed_at": self.indexed_at,
             "meta": self.meta,
@@ -293,6 +297,81 @@ class EditPair:
             created_by=row["created_by"],
             created_at=row["created_at"],
         )
+
+
+@dataclass
+class Chat:
+    """Разговор с помощником. Принадлежит одному пользователю."""
+
+    id: int
+    user_id: int
+    title: str = "Новый разговор"
+    domain: str = ""
+    case_ref: int | None = None
+    archived: bool = False
+    created_at: str = ""
+    updated_at: str = ""
+    message_count: int = 0
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "Chat":
+        keys = row.keys()
+        return cls(
+            id=row["id"],
+            user_id=row["user_id"],
+            title=row["title"],
+            domain=row["domain"],
+            case_ref=row["case_ref"],
+            archived=bool(row["archived"]),
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+            message_count=row["message_count"] if "message_count" in keys else 0,
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "domain": self.domain,
+            "case_ref": self.case_ref,
+            "archived": self.archived,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "message_count": self.message_count,
+        }
+
+
+@dataclass
+class ChatMessage:
+    id: int
+    chat_id: int
+    role: str
+    content: str
+    sources: List[Dict[str, Any]] = field(default_factory=list)
+    meta: Dict[str, Any] = field(default_factory=dict)
+    created_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "ChatMessage":
+        return cls(
+            id=row["id"],
+            chat_id=row["chat_id"],
+            role=row["role"],
+            content=row["content"],
+            sources=_json(row["sources_json"], []),
+            meta=_json(row["meta_json"], {}),
+            created_at=row["created_at"],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "role": self.role,
+            "content": self.content,
+            "sources": self.sources,
+            "meta": self.meta,
+            "created_at": self.created_at,
+        }
 
 
 @dataclass

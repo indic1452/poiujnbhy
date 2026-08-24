@@ -204,8 +204,14 @@ def ingest_path(
     doc_type: str | None = None,
     confidentiality: str = "internal",
     force: bool = False,
+    domain: str | None = None,
 ) -> IngestResult:
     """Принимает один файл: SHA-256 → конвертация → чанки → база.
+
+    ``domain`` — направление техники (спутник, релейка, протоколы …). Если не
+    задано, определяется автоматически по названию и тексту документа
+    (:mod:`reportgen.domains`); при неуверенности остаётся пустым, и документ
+    просто не участвует в фильтрации по направлению.
 
     Если документ с тем же ``doc_id`` уже проиндексирован и его SHA-256 не
     изменился, файл пропускается (``skipped``) — кроме случая ``force=True``,
@@ -251,6 +257,9 @@ def ingest_path(
     resolved_type = doc_type or guess_doc_type(path, base)
     title = converted.title.strip() or doc_id.rsplit("/", 1)[-1]
     meta = _document_meta(converted, title=title, relative=_relative_for(path, base))
+    resolved_domain = domain if domain is not None else _detect_domain(title, converted.text)
+    if resolved_domain:
+        meta["domain"] = resolved_domain
 
     document = repos.documents.upsert(
         doc_id=doc_id,
@@ -260,6 +269,7 @@ def ingest_path(
         sha256=digest,
         confidentiality=confidentiality,
         meta=meta,
+        domain=resolved_domain,
     )
     chunks = chunks_from_markdown(converted.text, doc_id, resolved_type, meta)
     result.chunks = repos.chunks.replace_for_document(document, chunks)
@@ -269,6 +279,17 @@ def ingest_path(
     else:
         result.updated = 1
     return result
+
+
+def _detect_domain(title: str, text: str) -> str:
+    """Определить направление документа. Ошибка классификатора не критична:
+    при неуверенности возвращается пустая строка, и фильтр просто не применяется."""
+    try:
+        from ..domains import registry  # noqa: PLC0415
+
+        return registry().classify(title, text)
+    except Exception:  # noqa: BLE001 — справочник направлений не должен ломать приём
+        return ""
 
 
 def _document_meta(converted: ConvertedDocument, *, title: str, relative: str) -> Dict[str, Any]:
@@ -313,6 +334,7 @@ def ingest_directory(
     force: bool = False,
     progress: ProgressFn | None = None,
     confidentiality: str = "internal",
+    domain: str | None = None,
 ) -> IngestResult:
     """Принимает каталог библиотеки целиком.
 
@@ -338,6 +360,7 @@ def ingest_directory(
                 root=root,
                 force=force,
                 confidentiality=confidentiality,
+                domain=domain,
             )
         )
     return result

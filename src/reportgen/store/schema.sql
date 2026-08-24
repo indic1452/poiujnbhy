@@ -145,6 +145,33 @@ CREATE TABLE IF NOT EXISTS edit_pairs (
 );
 CREATE INDEX IF NOT EXISTS idx_edit_pairs_case ON edit_pairs(case_id);
 
+-- ----------------------------------------------------------- помощник ----
+
+-- Личные разговоры с помощником. Читать чужие чаты не может никто, включая
+-- администратора: в вопросах инженеров всплывают данные заказчиков.
+CREATE TABLE IF NOT EXISTS chats (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title      TEXT    NOT NULL DEFAULT 'Новый разговор',
+    domain     TEXT    NOT NULL DEFAULT '',   -- ограничение поиска по направлению
+    case_ref   INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+    archived   INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT    NOT NULL,
+    updated_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chats_user ON chats(user_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id           INTEGER PRIMARY KEY,
+    chat_id      INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    role         TEXT    NOT NULL,            -- user | assistant
+    content      TEXT    NOT NULL,
+    sources_json TEXT    NOT NULL DEFAULT '[]',
+    meta_json    TEXT    NOT NULL DEFAULT '{}',
+    created_at   TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_chat ON chat_messages(chat_id, id);
+
 -- --------------------------------------------------------------- журнал ---
 
 CREATE TABLE IF NOT EXISTS audit (

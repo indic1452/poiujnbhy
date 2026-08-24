@@ -99,14 +99,18 @@ class BM25Index:
         *,
         doc_types: Iterable[str] | None = None,
         meta_filter: Dict[str, str] | None = None,
+        domains: Iterable[str] | None = None,
     ) -> List[Hit]:
         terms = tokenize(query)
         if not terms:
             return []
         allowed_types = set(doc_types) if doc_types else None
+        allowed_domains = {d for d in (domains or []) if d} or None
         scores: List[tuple[float, int]] = []
         for index, chunk in enumerate(self.chunks):
             if allowed_types and chunk.doc_type not in allowed_types:
+                continue
+            if allowed_domains and chunk.meta.get("domain", "") not in allowed_domains:
                 continue
             if meta_filter and any(
                 str(chunk.meta.get(key, "")).lower() != str(value).lower()
@@ -201,9 +205,11 @@ class Retriever:
         *,
         doc_types: Iterable[str] | None = None,
         meta_filter: Dict[str, str] | None = None,
+        domains: Iterable[str] | None = None,
     ) -> List[Hit]:
         lexical = self.index.search(
-            query, top_k=self.candidates, doc_types=doc_types, meta_filter=meta_filter
+            query, top_k=self.candidates, doc_types=doc_types,
+            meta_filter=meta_filter, domains=domains,
         )
         rankings = [lexical]
         if self.dense_scorer is not None and lexical:

@@ -17,6 +17,7 @@ from ..config import Settings
 from ..store.db import Database
 from ..store.repo import Repositories
 from .api import router
+from .assistant import AssistantService
 from .auth import LoginThrottle, ensure_local_user
 from .service import ReportService, ServiceError
 
@@ -34,7 +35,8 @@ API при этом работает — проверьте <a href="/api/health
 
 def create_app(settings: Settings | None = None,
                repos: Repositories | None = None,
-               service: ReportService | None = None) -> FastAPI:
+               service: ReportService | None = None,
+               assistant: AssistantService | None = None) -> FastAPI:
     """Создать приложение. Все зависимости можно подменить — это нужно тестам."""
     settings = settings or Settings.load()
     settings.ensure_dirs()
@@ -43,6 +45,8 @@ def create_app(settings: Settings | None = None,
         repos = Repositories(Database(settings.db_path))
     if service is None:
         service = ReportService(repos=repos, settings=settings)
+    if assistant is None:
+        assistant = AssistantService(reports=service)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -65,6 +69,7 @@ def create_app(settings: Settings | None = None,
     app.state.settings = settings
     app.state.repos = repos
     app.state.service = service
+    app.state.assistant = assistant
     app.state.throttle = LoginThrottle()
     # В локальном режиме работаем от имени настоящей записи в базе: на users(id)
     # ссылаются кейсы, отчёты и журнал.

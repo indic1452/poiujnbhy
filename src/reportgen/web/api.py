@@ -9,9 +9,10 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from ..corpus import DOC_TYPES
+from ..domains import registry as domain_registry
 from ..store.models import CONFIDENTIALITY, Case, Report
 from .auth import COOKIE_NAME, get_user, require_admin, require_editor, require_user
 from .service import ServiceError
@@ -25,6 +26,15 @@ MAX_QUERY_LEN = 500
 
 def _service(request: Request):
     return request.app.state.service
+
+
+def _assistant(request: Request):
+    return request.app.state.assistant
+
+
+def _domains(request: Request):
+    settings = _settings(request)
+    return domain_registry(Path(settings.templates_dir) / "domains.json")
 
 
 def _repos(request: Request):
@@ -162,6 +172,7 @@ def config(request: Request) -> Dict[str, Any]:
             "dense": settings.embed_enabled,
             "rerank": settings.rerank_enabled,
         },
+        "domains": _domains(request).to_dict(),
     }
 
 
@@ -390,13 +401,15 @@ def export_docx(request: Request, report_id: int) -> FileResponse:
 # ------------------------------------------------------------ библиотека ---
 
 @router.get("/library")
-def library(request: Request, doc_type: str | None = None) -> Dict[str, Any]:
+def library(request: Request, doc_type: str | None = None,
+            domain: str | None = None) -> Dict[str, Any]:
     require_user(request)
     repos = _repos(request)
-    documents = repos.documents.list(doc_type)
+    documents = repos.documents.list(doc_type, domain)
     return {
         "items": [document.to_dict() for document in documents],
         "stats": repos.documents.stats(),
+        "domains": repos.documents.domains(),
         "chunks": repos.chunks.count(),
         "embeddings": repos.vectors.count(),
     }
@@ -408,6 +421,7 @@ def upload_document(
     file: UploadFile = File(...),
     doc_type: str = Form("literature"),
     confidentiality: str = Form("internal"),
+    domain: str = Form(""),
 ) -> Dict[str, Any]:
     user = require_editor(request)
     settings = _settings(request)
@@ -415,6 +429,8 @@ def upload_document(
         raise ServiceError(f"неизвестный тип документа '{doc_type}'", 400)
     if confidentiality not in CONFIDENTIALITY:
         raise ServiceError(f"неизвестный гриф '{confidentiality}'", 400)
+    if not _domains(request).is_known(domain):
+        raise ServiceError(f"неизвестное направление '{domain}'", 400)
 
     name = _safe_name(Path(file.filename or "документ").name)
     if not name:
@@ -441,7 +457,8 @@ def upload_document(
                 )
             stream.write(piece)
 
-    result = _ingest_file(request, target, doc_type=doc_type, confidentiality=confidentiality)
+    result = _ingest_file(request, target, doc_type=doc_type,
+                          confidentiality=confidentiality, domain=domain or None)
     repos = _repos(request)
     repos.audit.log("library.upload", user=user, object_type="document",
                     object_id=name, details={"doc_type": doc_type, "bytes": size})
@@ -488,7 +505,7 @@ def delete_document(request: Request, doc_id: str) -> Dict[str, Any]:
 
 @router.get("/search")
 def search(request: Request, q: str = "", top_k: int = 10,
-           doc_types: str | None = None) -> Dict[str, Any]:
+           doc_types: str | None = None, domains: str | None = None) -> Dict[str, Any]:
     require_user(request)
     query = q.strip()[:MAX_QUERY_LEN]
     if not query:
@@ -497,7 +514,11 @@ def search(request: Request, q: str = "", top_k: int = 10,
     if retriever is None:
         return {"items": [], "note": "библиотека пуста — загрузите документы"}
     types = [t for t in (doc_types or "").split(",") if t] or None
-    hits = retriever.search(query, top_k=min(top_k, 50), doc_types=types)
+    areas = [d for d in (domains or "").split(",") if d] or None
+    try:
+        hits = retriever.search(query, top_k=min(top_k, 50), doc_types=types, domains=areas)
+    except TypeError:
+        hits = retriever.search(query, top_k=min(top_k, 50), doc_types=types)
     warning = getattr(retriever, "last_warning", "")
     return {
         "warning": warning or None,
@@ -505,6 +526,7 @@ def search(request: Request, q: str = "", top_k: int = 10,
             {
                 "chunk_uid": hit.chunk.chunk_id,
                 "doc_type": hit.chunk.doc_type,
+                "domain": hit.chunk.meta.get("domain", ""),
                 "citation": hit.chunk.citation,
                 "text": " ".join(hit.chunk.text.split())[:600],
                 "score": round(float(hit.score), 4),
@@ -513,6 +535,196 @@ def search(request: Request, q: str = "", top_k: int = 10,
             for hit in hits
         ]
     }
+
+
+# ---------------------------------------------------------- направления ---
+
+@router.get("/domains")
+def domains(request: Request) -> Dict[str, Any]:
+    require_user(request)
+    return {
+        "items": _domains(request).to_dict(),
+        "documents": _repos(request).documents.domains(),
+    }
+
+
+@router.put("/library/{doc_id:path}/domain")
+def set_document_domain(request: Request, doc_id: str) -> Dict[str, Any]:
+    user = require_editor(request)
+    payload = _body(request)
+    domain = str(payload.get("domain", "")).strip()
+    if not _domains(request).is_known(domain):
+        raise ServiceError(f"неизвестное направление '{domain}'", 400)
+    repos = _repos(request)
+    if repos.documents.by_doc_id(doc_id) is None:
+        raise ServiceError("документ не найден", 404)
+    repos.documents.set_domain(doc_id, domain)
+    repos.audit.log("library.domain", user=user, object_type="document",
+                    object_id=doc_id, details={"domain": domain})
+    _service(request).reset_retriever()
+    return {"ok": True, "document": repos.documents.by_doc_id(doc_id).to_dict()}
+
+
+# -------------------------------------------------------------- помощник ---
+
+@router.get("/chats")
+def list_chats(request: Request, archived: bool = False) -> Dict[str, Any]:
+    user = require_user(request)
+    chats = _assistant(request).list_chats(user, archived=archived)
+    return {"items": [chat.to_dict() for chat in chats]}
+
+
+@router.post("/chats")
+def create_chat(request: Request) -> Dict[str, Any]:
+    user = require_user(request)
+    payload = getattr(request.state, "json_body", None) or {}
+    domain = str(payload.get("domain", "")).strip()
+    if not _domains(request).is_known(domain):
+        raise ServiceError(f"неизвестное направление '{domain}'", 400)
+    case_ref = payload.get("case_ref")
+    chat = _assistant(request).create_chat(
+        user,
+        title=str(payload.get("title", "Новый разговор")),
+        domain=domain,
+        case_ref=int(case_ref) if case_ref else None,
+    )
+    return {"chat": chat.to_dict()}
+
+
+@router.get("/chats/{chat_id}")
+def get_chat(request: Request, chat_id: int) -> Dict[str, Any]:
+    user = require_user(request)
+    assistant = _assistant(request)
+    chat = assistant.get_chat(user, chat_id)
+    return {
+        "chat": chat.to_dict(),
+        "messages": [message.to_dict() for message in assistant.messages(user, chat_id)],
+    }
+
+
+@router.patch("/chats/{chat_id}")
+def update_chat(request: Request, chat_id: int) -> Dict[str, Any]:
+    user = require_user(request)
+    payload = _body(request)
+    assistant = _assistant(request)
+    if "title" in payload:
+        assistant.rename(user, chat_id, str(payload["title"]))
+    domain = payload.get("domain")
+    if domain is not None and not _domains(request).is_known(str(domain)):
+        raise ServiceError(f"неизвестное направление '{domain}'", 400)
+    if domain is not None or "archived" in payload:
+        assistant.update(
+            user, chat_id,
+            domain=str(domain) if domain is not None else None,
+            archived=bool(payload["archived"]) if "archived" in payload else None,
+        )
+    return {"chat": assistant.get_chat(user, chat_id).to_dict()}
+
+
+@router.delete("/chats/{chat_id}")
+def delete_chat(request: Request, chat_id: int) -> Dict[str, Any]:
+    user = require_user(request)
+    _assistant(request).delete(user, chat_id)
+    return {"ok": True}
+
+
+@router.post("/chats/{chat_id}/ask")
+def ask(request: Request, chat_id: int) -> Dict[str, Any]:
+    user = require_user(request)
+    payload = _body(request)
+    text = str(payload.get("text", ""))
+    return _assistant(request).ask(user, chat_id, text)
+
+
+@router.post("/chats/{chat_id}/stream")
+def ask_stream(request: Request, chat_id: int) -> StreamingResponse:
+    """Потоковый ответ: события SSE — вопрос, источники, куски текста, итог."""
+    user = require_user(request)
+    payload = _body(request)
+    text = str(payload.get("text", ""))
+    assistant = _assistant(request)
+
+    def events():
+        try:
+            for event in assistant.ask_stream(user, chat_id, text):
+                yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+        except ServiceError as error:
+            yield "data: " + json.dumps(
+                {"type": "error", "error": str(error)}, ensure_ascii=False) + "\n\n"
+        except Exception as error:  # noqa: BLE001 — поток нельзя оборвать молча
+            yield "data: " + json.dumps(
+                {"type": "error", "error": f"ошибка модели: {error}"},
+                ensure_ascii=False) + "\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream; charset=utf-8",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# --------------------------------------------------------- личный кабинет --
+
+@router.get("/me/summary")
+def my_summary(request: Request) -> Dict[str, Any]:
+    user = require_user(request)
+    repos = _repos(request)
+    reports = repos.db.query_one(
+        "SELECT count(*) AS total, "
+        "sum(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved "
+        "FROM reports WHERE created_by = ?", (user.id,),
+    )
+    edits = repos.db.query_one(
+        "SELECT count(*) AS pairs, coalesce(avg(edit_distance), 0) AS mean "
+        "FROM edit_pairs WHERE created_by = ?", (user.id,),
+    )
+    return {
+        "user": user.to_dict(),
+        "cases": int(repos.db.scalar(
+            "SELECT count(*) FROM cases WHERE created_by = ?", (user.id,)) or 0),
+        "reports": {
+            "total": int(reports["total"] or 0),
+            "approved": int(reports["approved"] or 0),
+        },
+        "edits": {
+            "pairs": int(edits["pairs"] or 0),
+            "mean_distance": round(float(edits["mean"] or 0.0), 3),
+        },
+        "chats": repos.chats.count_for_user(user.id),
+    }
+
+
+@router.post("/me/password")
+def change_password(request: Request, response: Response) -> Dict[str, Any]:
+    user = require_user(request)
+    settings = _settings(request)
+    if not settings.auth_enabled:
+        raise ServiceError("аутентификация отключена настройками", 400)
+    payload = _body(request)
+    current = str(payload.get("current", ""))
+    fresh = str(payload.get("new", ""))
+    if len(fresh) < 8:
+        raise ServiceError("новый пароль короче 8 символов", 400)
+    if fresh == current:
+        raise ServiceError("новый пароль совпадает со старым", 400)
+
+    repos = _repos(request)
+    if repos.users.authenticate(user.login, current) is None:
+        raise ServiceError("текущий пароль указан неверно", 403)
+
+    repos.users.set_password(user.id, fresh)
+    # Все прежние сессии закрываем, текущую выдаём заново.
+    repos.sessions.delete_for_user(user.id)
+    token = repos.sessions.create(
+        user.id, settings.session_ttl_hours, request.headers.get("user-agent", "")
+    )
+    response.set_cookie(
+        COOKIE_NAME, token, httponly=True, samesite="lax",
+        secure=request.url.scheme == "https",
+        max_age=settings.session_ttl_hours * 3600, path="/",
+    )
+    repos.audit.log("user.password", user=user, object_type="user", object_id=user.login)
+    return {"ok": True}
 
 
 # ------------------------------------------------------- метрики и журнал --
@@ -561,7 +773,7 @@ def _safe_name(name: str) -> str:
 
 
 def _ingest_file(request: Request, path: Path, *, doc_type: str,
-                 confidentiality: str) -> Dict[str, Any]:
+                 confidentiality: str, domain: str | None = None) -> Dict[str, Any]:
     try:
         from ..ingest.pipeline import ingest_path  # noqa: PLC0415
     except ImportError as error:
@@ -570,7 +782,7 @@ def _ingest_file(request: Request, path: Path, *, doc_type: str,
     result = ingest_path(
         _repos(request), path,
         root=Path(settings.library_dir), doc_type=doc_type,
-        confidentiality=confidentiality, force=True,
+        confidentiality=confidentiality, force=True, domain=domain,
     )
     return _ingest_to_dict(result)
 
