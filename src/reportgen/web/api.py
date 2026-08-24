@@ -549,6 +549,21 @@ def search(request: Request, q: str = "", top_k: int = 10,
 
 # ---------------------------------------------------------- направления ---
 
+@router.get("/formats")
+def formats(request: Request) -> Dict[str, Any]:
+    """Поддержка форматов документов: что читается, чего не хватает."""
+    require_user(request)
+    from ..ingest.convert import format_support, supported_suffixes  # noqa: PLC0415
+
+    specs = format_support()
+    return {
+        "items": specs,
+        "available": list(supported_suffixes(only_available=True)),
+        "all": list(supported_suffixes()),
+        "blocked": [spec for spec in specs if not spec["available"]],
+    }
+
+
 @router.get("/domains")
 def domains(request: Request) -> Dict[str, Any]:
     require_user(request)

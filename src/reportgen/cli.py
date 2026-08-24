@@ -257,6 +257,31 @@ def cmd_library(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_formats(args: argparse.Namespace) -> int:
+    """Что система умеет читать прямо сейчас и чего для остального не хватает."""
+    from .ingest.convert import format_support  # noqa: PLC0415
+
+    specs = format_support()
+    ready = [spec for spec in specs if spec["available"]]
+    blocked = [spec for spec in specs if not spec["available"]]
+
+    print("Доступные форматы:")
+    for spec in ready:
+        print(f"  {' '.join(spec['suffixes']):32} {spec['name']:12} {spec['note']}")
+    if blocked:
+        print("\nНедоступны — не хватает инструментов:")
+        for spec in blocked:
+            missing = ", ".join(
+                f"{item['name']} ({item['hint']})"
+                for item in spec["requires"] if not item["available"]
+            )
+            print(f"  {' '.join(spec['suffixes']):32} {spec['name']:12} {missing}")
+    total = sum(len(spec["suffixes"]) for spec in ready)
+    print(f"\nИтого расширений: {total} доступно, "
+          f"{sum(len(spec['suffixes']) for spec in blocked)} требуют установки")
+    return 0 if ready else 1
+
+
 def cmd_doc_status(args: argparse.Namespace) -> int:
     repos, _ = _open_repos(args)
     if repos.documents.by_doc_id(args.doc_id) is None:
@@ -416,6 +441,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_lib.add_argument("--doc-type", default=None)
     p_lib.add_argument("--domain", default=None, help="фильтр по направлению техники")
     p_lib.set_defaults(func=cmd_library)
+
+    p_formats = sub.add_parser("formats", help="какие форматы документов система умеет читать")
+    p_formats.set_defaults(func=cmd_formats)
 
     p_status = sub.add_parser("doc-status", help="отметить актуальность документа библиотеки")
     p_status.add_argument("--doc-id", required=True)

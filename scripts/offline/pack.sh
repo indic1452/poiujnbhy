@@ -30,6 +30,8 @@ ok "исходники скопированы"
 
 step "Колёса Python"
 python3 -m pip download --quiet --dest "$DEST/wheels" --requirement "$ROOT/requirements.txt"
+[ -f "$ROOT/requirements-formats.txt" ] && python3 -m pip download --quiet --dest "$DEST/wheels" \
+    --requirement "$ROOT/requirements-formats.txt" || true
 python3 -m pip download --quiet --dest "$DEST/wheels" pip setuptools wheel
 python3 -c "import sys; print('%d.%d' % sys.version_info[:2])" > "$DEST/wheels/PYTHON-VERSION.txt"
 ok "колёс: $(find "$DEST/wheels" -type f -name '*.whl' -o -name '*.tar.gz' | wc -l)"

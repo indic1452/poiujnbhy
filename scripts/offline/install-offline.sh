@@ -27,6 +27,8 @@ python3 -m venv "$TARGET/app/.venv"
     --upgrade pip setuptools wheel >/dev/null
 "$TARGET/app/.venv/bin/python" -m pip install --no-index --find-links "$BUNDLE/wheels" \
     -r "$TARGET/app/requirements.txt"
+[ -f "$TARGET/app/requirements-formats.txt" ] && "$TARGET/app/.venv/bin/python" -m pip install \
+    --no-index --find-links "$BUNDLE/wheels" -r "$TARGET/app/requirements-formats.txt" || true
 "$TARGET/app/.venv/bin/python" -c "import fastapi, uvicorn, docx, pymupdf, numpy; print('пакеты на месте')"
 ok "зависимости установлены, сеть не использовалась"
 

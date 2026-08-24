@@ -624,35 +624,100 @@ def _convert_text(path: Path) -> ConvertedDocument:
 
 # ---------------------------------------------------------- диспетчер ----
 
+def _register_builtin_converters() -> None:
+    """Форматы, которые система разбирает сама, без сторонних инструментов."""
+    from . import registry
+
+    registry.register(registry.ConverterSpec(
+        name="pdf",
+        suffixes=(".pdf",),
+        convert=_convert_pdf,
+        requires=(registry.Requirement("python", "pymupdf", "pip install pymupdf"),),
+        note="текстовый слой PDF, заголовки по кеглю, номера страниц",
+    ))
+    registry.register(registry.ConverterSpec(
+        name="docx",
+        suffixes=(".docx", ".dotx"),
+        convert=_convert_docx,
+        requires=(registry.Requirement("python", "docx", "pip install python-docx"),),
+        note="Word 2007 и новее: заголовки по стилям, таблицы, списки",
+    ))
+    registry.register(registry.ConverterSpec(
+        name="text",
+        suffixes=(".md", ".markdown", ".txt"),
+        convert=_convert_text,
+        note="текст и Markdown, кодировка определяется автоматически",
+    ))
+
+
+_register_builtin_converters()
+
+
+def supported_suffixes(*, only_available: bool = False) -> Tuple[str, ...]:
+    """Все расширения, которые система умеет разбирать сейчас."""
+    from . import registry
+
+    return registry.supported_suffixes(only_available=only_available)
+
+
+def format_support() -> List[Dict[str, Any]]:
+    """Состояние поддержки форматов: что доступно, чего не хватает."""
+    from . import registry
+
+    return registry.report()
+
+
 def convert_file(path: str | Path) -> ConvertedDocument:
     """Конвертирует файл в Markdown по его расширению.
 
     Функция никогда не бросает исключений на содержимом файла: битый PDF или
     защищённый паролем DOCX дают пустой текст и предупреждение. Это осознанное
     решение — приём каталога на тысячу файлов не должен падать на одном.
+
+    Если формат известен, но инструмент для него не установлен, в
+    предупреждении будет сказано, что именно доложить — в изолированном
+    контуре это экономит часы выяснений.
     """
+    from . import registry
+
     path = Path(path)
     suffix = path.suffix.lower()
     if not path.is_file():
         result = ConvertedDocument(title=path.stem)
         result.warnings.append(f"файл не найден: {path}")
         return result
-    if suffix == ".pdf":
-        return _convert_pdf(path)
-    if suffix == ".docx":
-        return _convert_docx(path)
-    if suffix in (".md", ".markdown", ".txt"):
-        return _convert_text(path)
 
-    result = ConvertedDocument(title=path.stem, meta={"source_format": suffix.lstrip(".")})
-    if suffix == ".doc":
-        result.warnings.append(
-            "формат .doc не поддерживается — пересохраните файл как .docx "
-            "(например, через LibreOffice: soffice --convert-to docx)"
-        )
-    else:
+    spec = registry.find(suffix)
+    if spec is None:
+        result = ConvertedDocument(title=path.stem,
+                                   meta={"source_format": suffix.lstrip(".")})
+        available = ", ".join(registry.supported_suffixes(only_available=True))
         result.warnings.append(
             f"неподдерживаемый формат «{suffix or 'без расширения'}»: "
-            f"поддерживаются {', '.join(SUPPORTED_SUFFIXES)}"
+            f"сейчас доступны {available}"
         )
-    return result
+        return result
+
+    if not spec.is_available():
+        result = ConvertedDocument(title=path.stem,
+                                   meta={"source_format": suffix.lstrip(".")})
+        result.warnings.append(
+            f"формат «{suffix}» разбирается конвертером «{spec.name}», но "
+            f"{registry.missing_hint(spec)}"
+        )
+        return result
+
+    try:
+        return spec.convert(path)
+    except MissingDependencyError as error:
+        result = ConvertedDocument(title=path.stem,
+                                   meta={"source_format": suffix.lstrip(".")})
+        result.warnings.append(str(error))
+        return result
+    except Exception as error:  # noqa: BLE001 — один файл не должен ронять приём каталога
+        result = ConvertedDocument(title=path.stem,
+                                   meta={"source_format": suffix.lstrip(".")})
+        result.warnings.append(
+            f"конвертер «{spec.name}» не справился с файлом: {_reason(error)}"
+        )
+        return result

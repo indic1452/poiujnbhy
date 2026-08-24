@@ -40,7 +40,21 @@ __all__ = [
     "remove_document",
 ]
 
+#: Устаревшая константа: осталась для совместимости. Настоящий список форматов
+#: берётся из реестра конвертеров — см. library_patterns().
 DEFAULT_PATTERNS: Tuple[str, ...] = ("*.pdf", "*.docx", "*.md", "*.txt")
+
+
+def library_patterns(*, only_available: bool = True) -> Tuple[str, ...]:
+    """Маски файлов по всем зарегистрированным конвертерам.
+
+    По умолчанию берутся только доступные форматы: незачем поднимать со всего
+    каталога файлы, которые всё равно не разобрать без недостающего пакета.
+    """
+    from .convert import supported_suffixes
+
+    suffixes = supported_suffixes(only_available=only_available)
+    return tuple(f"*{suffix}" for suffix in suffixes) or DEFAULT_PATTERNS
 
 #: Служебные файлы, которые Word и файловые менеджеры оставляют рядом с документами.
 _SKIP_PREFIXES = ("~$", ".")
@@ -332,7 +346,7 @@ def ingest_directory(
     repos: "Repositories",
     root: str | Path,
     *,
-    patterns: Sequence[str] = DEFAULT_PATTERNS,
+    patterns: Sequence[str] | None = None,
     force: bool = False,
     progress: ProgressFn | None = None,
     confidentiality: str = "internal",
@@ -349,7 +363,7 @@ def ingest_directory(
     if not root.is_dir():
         raise FileNotFoundError(f"каталог корпуса не найден: {root}")
 
-    files = _iter_library_files(root, tuple(patterns))
+    files = _iter_library_files(root, tuple(patterns) if patterns else library_patterns())
     result = IngestResult()
     for number, path in enumerate(files, start=1):
         relative = _relative_for(path, root)
@@ -389,9 +403,9 @@ def library_stats(repos: "Repositories") -> Dict[str, Any]:
     }
 
 
-def iter_library_files(root: str | Path, patterns: Iterable[str] = DEFAULT_PATTERNS) -> List[Path]:
+def iter_library_files(root: str | Path, patterns: Iterable[str] | None = None) -> List[Path]:
     """Список файлов каталога, которые попадут в приём (для предпросмотра в UI)."""
     root = Path(root)
     if not root.is_dir():
         raise FileNotFoundError(f"каталог корпуса не найден: {root}")
-    return _iter_library_files(root, tuple(patterns))
+    return _iter_library_files(root, tuple(patterns) if patterns else library_patterns())

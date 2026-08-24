@@ -26,11 +26,51 @@
   "llama_cpp": {
     "comment": "Оставьте release пустым — возьмётся последний выпуск. Нужны ДВА архива: сборка win-cuda-x64 и cudart к ней.",
     "release": "",
-    "asset_patterns": ["bin-win-cuda", "cudart-llama-bin-win"]
+    "asset_patterns": [
+      "bin-win-cuda",
+      "cudart-llama-bin-win"
+    ]
   },
   "python": {
     "comment": "Установщик Python для офлайн-машины. Версия должна совпадать с той, на которой качались колёса.",
     "version": "3.11.9",
     "url": "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
+  },
+  "tools": {
+    "comment": "Внешние программы для разбора форматов библиотеки. Ссылки со временем меняются: у кого url пуст — скачайте установщик вручную и положите файл в каталог tools комплекта, установщик его подхватит. Проверить, что именно нужно, можно командой: reportgen formats",
+    "items": [
+      {
+        "name": "LibreOffice",
+        "why": "старые форматы: .doc, .xls, .ppt, .rtf, OpenDocument",
+        "required": false,
+        "url": "",
+        "manual": "https://www.libreoffice.org/download/download-libreoffice/ — Windows x86_64, файл .msi",
+        "approx_mb": 350
+      },
+      {
+        "name": "Tesseract OCR (с русским языком)",
+        "why": "распознавание сканов: PDF без текстового слоя, DjVu, изображения",
+        "required": false,
+        "url": "",
+        "manual": "https://github.com/UB-Mannheim/tesseract/wiki — установщик для Windows. При установке обязательно отметьте Russian в списке языков, иначе русские сканы распознаваться не будут",
+        "approx_mb": 80
+      },
+      {
+        "name": "DjVuLibre",
+        "why": "формат .djvu — в нём лежит большая часть отсканированной технической литературы",
+        "required": false,
+        "url": "",
+        "manual": "https://djvu.sourceforge.net/ — DjVuLibre+DjView для Windows",
+        "approx_mb": 20
+      },
+      {
+        "name": "7-Zip",
+        "why": "архивы .7z и .rar, если заказчики присылают материалы архивом",
+        "required": false,
+        "url": "",
+        "manual": "https://www.7-zip.org/download.html",
+        "approx_mb": 2
+      }
+    ]
   }
 }

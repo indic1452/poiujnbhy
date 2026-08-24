@@ -126,8 +126,45 @@ $wheels = Join-Path $bundle 'wheels'
 & $venvPython -m pip install --no-index --find-links $wheels --upgrade pip setuptools wheel 2>&1 | Out-Null
 & $venvPython -m pip install --no-index --find-links $wheels -r (Join-Path $app 'requirements.txt')
 if ($LASTEXITCODE -ne 0) { Fail 'не удалось поставить зависимости из локальных колёс' }
+$formats = Join-Path $app 'requirements-formats.txt'
+if (Test-Path $formats) {
+    & $venvPython -m pip install --no-index --find-links $wheels -r $formats
+    if ($LASTEXITCODE -ne 0) {
+        Warn 'пакеты поддержки форматов не встали — часть форматов читаться не будет'
+    } else {
+        Ok 'поддержка презентаций, Excel и RTF установлена'
+    }
+}
 & $venvPython -c "import fastapi, uvicorn, docx, pymupdf, numpy; print('пакеты на месте')"
 Ok 'зависимости установлены, сеть не использовалась'
+
+# ------------------------------------------- инструменты разбора форматов ---
+Step 'Программы для разбора форматов'
+$installers = Get-ChildItem (Join-Path $bundle 'tools') -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Extension -in '.exe', '.msi' -and $_.Name -notlike 'python-*' }
+if (-not $installers) {
+    Warn 'в комплекте нет установщиков LibreOffice, Tesseract и DjVuLibre —'
+    Warn 'система будет читать PDF, DOCX, презентации, Excel и текст, но не .doc, сканы и .djvu'
+} else {
+    foreach ($installer in $installers) {
+        Write-Host "  найден: $($installer.Name)"
+    }
+    $answer = Read-Host 'Запустить установщики сейчас? (д/н)'
+    if ($answer -match '^[дd]') {
+        foreach ($installer in $installers) {
+            Write-Host "  запускаю $($installer.Name)…"
+            if ($installer.Extension -eq '.msi') {
+                Start-Process msiexec -ArgumentList '/i', "`"$($installer.FullName)`"" -Wait
+            } else {
+                Start-Process $installer.FullName -Wait
+            }
+        }
+        Warn 'Для Tesseract при установке нужно было отметить русский язык.'
+        Warn 'После установки проверьте: reportgen formats'
+    } else {
+        Warn "установщики остались в $(Join-Path $bundle 'tools') — поставьте их позже вручную"
+    }
+}
 
 # -------------------------------------------------------------- настройка --
 Step 'Настройки и администратор'
@@ -158,5 +195,7 @@ Write-Host "  1) отключите резервную системную пам
 Write-Host "  2) cd $app\scripts\windows"
 Write-Host '  3) .\00-check.ps1   — проверка машины'
 Write-Host '  4) .\start-all.ps1  — запуск комплекса'
-Write-Host '  5) сложите документы в ' -NoNewline; Write-Host (Join-Path $Target 'data\library') -ForegroundColor Cyan
+Write-Host '  5) проверьте поддержку форматов: ' -NoNewline
+Write-Host '. .\_common.ps1 ; Invoke-Reportgen formats' -ForegroundColor Cyan
+Write-Host '  6) сложите документы в ' -NoNewline; Write-Host (Join-Path $Target 'data\library') -ForegroundColor Cyan
 Write-Host '     и выполните: . .\_common.ps1 ; Invoke-Reportgen ingest ; Invoke-Reportgen embed'

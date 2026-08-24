@@ -90,6 +90,12 @@ if (-not $SkipWheels) {
     if (-not (Test-Path $requirements)) { throw "не найден $requirements" }
     & python -m pip download --dest $wheels --requirement $requirements
     if ($LASTEXITCODE -ne 0) { throw 'не удалось скачать зависимости' }
+    # Поддержка форматов библиотеки: презентации, Excel, RTF, изображения.
+    $formats = Join-Path $Root 'requirements-formats.txt'
+    if (Test-Path $formats) {
+        & python -m pip download --dest $wheels --requirement $formats
+        if ($LASTEXITCODE -ne 0) { Warn 'часть пакетов для форматов не скачалась' }
+    }
     # pip нужен и на офлайн-машине — версия из колеса надёжнее системной.
     & python -m pip download --dest $wheels pip setuptools wheel
     Ok ("колёс: " + (Get-ChildItem $wheels -File).Count)
@@ -141,6 +147,35 @@ if ($config.python.url) {
     $name = Split-Path $config.python.url -Leaf
     Get-File $config.python.url (Join-Path $toolsDir $name)
     Ok $name
+}
+
+# ------------------------------------------- инструменты разбора форматов ---
+Step 'Программы для разбора форматов библиотеки'
+$manual = @()
+foreach ($tool in $config.tools.items) {
+    if ($tool.url) {
+        $name = Split-Path $tool.url -Leaf
+        Get-File $tool.url (Join-Path $toolsDir $name)
+        Ok "$($tool.name): $name"
+    } else {
+        $manual += $tool
+    }
+}
+if ($manual.Count) {
+    Write-Host ''
+    Warn 'Эти программы скачайте вручную и положите в каталог tools комплекта:'
+    foreach ($tool in $manual) {
+        Write-Host ("   * {0} (~{1} МБ) — {2}" -f $tool.name, $tool.approx_mb, $tool.why)
+        Write-Host ("     {0}" -f $tool.manual) -ForegroundColor DarkGray
+    }
+    Write-Host ''
+    Warn 'Без них система будет читать только PDF, DOCX, презентации, Excel и текст.'
+    Warn 'Проверить, чего не хватает, на любой машине: reportgen formats'
+    $answer = Read-Host 'Продолжить сборку без них? (д/н)'
+    if ($answer -notmatch '^[дd]') {
+        Write-Host 'Сборка прервана. Скачайте установщики, положите в tools и запустите снова.'
+        exit 1
+    }
 }
 
 # -------------------------------------------------------------- манифест ---
