@@ -69,7 +69,7 @@
           { "kind": "url", "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe", "filename": "vc_redist.x64.exe" }
         ],
         "install": { "kind": "exe", "args": ["/install", "/quiet", "/norestart"] },
-        "check": ["C:\\Windows\\System32\\vcruntime140.dll"]
+        "check": ["C:\\Windows\\System32\\vcruntime140_1.dll"]
       },
       {
         "id": "git",

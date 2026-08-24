@@ -176,6 +176,16 @@ class PackScriptTests(unittest.TestCase):
         # не даёт ничего починить.
         self.assertIn("в нём есть:", self.text)
 
+    def test_falls_back_when_download_fails(self):
+        # Мало определить адрес: зеркало может отдать обрыв или файл с неверной
+        # суммой — тогда нужен следующий источник, а не остановка сборки.
+        self.assertIn("Get-FromFirstWorking", self.text)
+
+    def test_python_installer_matches_wheels(self):
+        # Колёса под 3.11 и установщик 3.12 в одном комплекте — тупик на
+        # объекте: другого установщика взять негде.
+        self.assertIn("версии Python не совпадают", self.text)
+
     def test_checksums_are_verified(self):
         self.assertIn("Test-Checksum", self.text)
         self.assertIn("MD5", self.text)
@@ -224,6 +234,29 @@ class InstallScriptTests(unittest.TestCase):
 
     def test_installs_test_dependencies(self):
         self.assertIn("requirements-dev.txt", self.text)
+
+    def test_checks_administrator_rights(self):
+        # Без прав администратора тихая установка в Program Files не сработает,
+        # а скрипт дошёл бы до конца и отрапортовал об успехе.
+        self.assertIn("WindowsBuiltInRole", self.text)
+
+    def test_checks_free_space_before_copying(self):
+        self.assertIn("Get-PSDrive", self.text)
+
+    def test_installs_tools_before_deploying_code(self):
+        # Git из комплекта нужен уже при разворачивании кода: иначе
+        # клонирования из git-бандла не будет, и обещанный путь обновления
+        # через git pull не создастся никогда.
+        tools = self.text.index("Внешние программы для разбора форматов")
+        code = self.text.index('Step "Каталоги в $Target"')
+        self.assertLess(tools, code, "программы ставятся после разворачивания кода")
+
+    def test_refreshes_path_after_installing_tools(self):
+        # PATH текущего процесса после тихой установки ещё старый.
+        self.assertIn("Update-PathFromRegistry", self.text)
+
+    def test_checks_python_installer_exit_code(self):
+        self.assertRegex(self.text, r"установщик Python вернул код")
 
     def test_sets_home_for_non_default_target(self):
         # Скрипты запуска ищут установку по REPORTGEN_HOME, иначе смотрят в
@@ -478,6 +511,54 @@ class ProxyBypassTests(unittest.TestCase):
                 text = read(ROOT / "src" / "reportgen" / name)
                 self.assertNotIn("urllib.request.urlopen(", text)
                 self.assertIn("_http.urlopen(", text)
+
+
+class OfflineWebPagesTests(unittest.TestCase):
+    """Интерфейс не должен ничего грузить снаружи.
+
+    Штатные страницы FastAPI (/docs, /redoc) тянут swagger-ui с cdn.jsdelivr.net
+    и иконку с сайта проекта. В изолированном контуре это белая страница без
+    единой ошибки в логах.
+    """
+
+    def test_builtin_docs_pages_are_off(self):
+        from reportgen.web.app import create_app
+        from reportgen.config import Settings
+
+        with tempfile.TemporaryDirectory() as directory:
+            app = create_app(Settings(data_dir=Path(directory), auth_enabled=False))
+            self.assertIsNone(app.docs_url)
+            self.assertIsNone(app.redoc_url)
+
+    def test_own_docs_page_has_no_external_requests(self):
+        from reportgen.web.app import API_DOCS_PAGE
+
+        for host in ("cdn.", "jsdelivr", "unpkg", "googleapis", "tiangolo", "http://", "https://"):
+            with self.subTest(host=host):
+                self.assertNotIn(host, API_DOCS_PAGE)
+
+    def test_interface_files_have_no_external_requests(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        for path in sorted(static.rglob("*")):
+            if path.suffix not in {".html", ".css", ".js"}:
+                continue
+            text = read(path)
+            for host in ("cdn.", "jsdelivr", "unpkg", "fonts.googleapis", "//ajax."):
+                with self.subTest(file=path.name, host=host):
+                    self.assertNotIn(host, text)
+
+
+class DocxTemplateDocsTests(unittest.TestCase):
+    """Список стилей бланка в документации не должен разойтись с кодом."""
+
+    def test_documented_styles_match_the_exporter(self):
+        exporter = read(ROOT / "src" / "reportgen" / "export" / "docx.py")
+        doc = read(ROOT / "docs" / "15-offline.md")
+        used = set(re.findall(r'_style\(\s*"([^"]+)"', exporter))
+        used |= {name for name in re.findall(r'"(List (?:Bullet|Number))"', exporter)}
+        for style in sorted(used):
+            with self.subTest(style=style):
+                self.assertIn(style, doc, f"стиль {style} используется, но не описан в docs/15")
 
 
 if __name__ == "__main__":

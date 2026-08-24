@@ -70,7 +70,12 @@ def create_app(settings: Settings | None = None,
         title="Генератор технических отчётов",
         description="Локальная система подготовки технических отчётов по обращениям заказчиков",
         version="0.1.0",
-        docs_url="/api/docs",
+        # Штатные страницы FastAPI тянут swagger-ui и redoc с cdn.jsdelivr.net,
+        # а иконку — с сайта проекта. В изолированном контуре это пустая белая
+        # страница без единой ошибки в логах. Своя страница ниже рисует то же
+        # самое из локального openapi.json.
+        docs_url=None,
+        redoc_url=None,
         openapi_url="/api/openapi.json",
     )
     app.state.settings = settings
@@ -89,6 +94,68 @@ def create_app(settings: Settings | None = None,
 
     return app
 
+
+
+#: Описание API без единого внешнего запроса: swagger-ui и redoc тянут скрипты
+#: с CDN, которого в изолированном контуре нет.
+API_DOCS_PAGE = """<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<title>API — генератор технических отчётов</title>
+<style>
+ body { font: 15px/1.5 system-ui, "Segoe UI", sans-serif; margin: 0; padding: 2rem;
+        background: #f6f7f9; color: #1c1f23; }
+ h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+ p.sub { color: #5b6470; margin: 0 0 1.5rem; }
+ .op { background: #fff; border: 1px solid #dfe3e8; border-radius: 6px;
+       padding: .7rem .9rem; margin-bottom: .5rem; }
+ .m { display: inline-block; min-width: 4.5rem; font-weight: 600; font-size: .8rem;
+      text-transform: uppercase; }
+ .get { color: #1a7f37; } .post { color: #9a3412; } .put { color: #1e40af; }
+ .delete { color: #b91c1c; } .patch { color: #6b21a8; }
+ code { font-family: Consolas, "SF Mono", monospace; }
+ .sum { color: #5b6470; margin-left: .5rem; }
+ a { color: #1e40af; }
+</style></head><body>
+<h1>API генератора технических отчётов</h1>
+<p class="sub">Схема: <a href="/api/openapi.json">/api/openapi.json</a>.
+Страница собрана локально — в изолированном контуре внешние скрипты недоступны.</p>
+<div id="list">Загрузка…</div>
+<script>
+fetch('/api/openapi.json').then(r => r.json()).then(schema => {
+  const order = ['get', 'post', 'put', 'patch', 'delete'];
+  const rows = [];
+  for (const [path, item] of Object.entries(schema.paths || {})) {
+    for (const method of order) {
+      if (!item[method]) continue;
+      rows.push({ path, method, summary: item[method].summary || '' });
+    }
+  }
+  rows.sort((a, b) => a.path.localeCompare(b.path));
+  const list = document.getElementById('list');
+  list.textContent = '';
+  for (const row of rows) {
+    const box = document.createElement('div');
+    box.className = 'op';
+    const method = document.createElement('span');
+    method.className = 'm ' + row.method;
+    method.textContent = row.method;
+    const path = document.createElement('code');
+    path.textContent = row.path;
+    box.append(method, path);
+    if (row.summary) {
+      const sum = document.createElement('span');
+      sum.className = 'sum';
+      sum.textContent = row.summary;
+      box.append(sum);
+    }
+    list.append(box);
+  }
+  if (!rows.length) { list.textContent = 'В схеме нет ни одного маршрута.'; }
+}).catch(error => {
+  document.getElementById('list').textContent = 'Не удалось прочитать схему: ' + error;
+});
+</script></body></html>
+"""
 
 def _install_middleware(app: FastAPI) -> None:
     @app.middleware("http")
@@ -204,6 +271,10 @@ def _install_static(app: FastAPI) -> None:
             return FileResponse(page)
         return FileResponse(STATIC_DIR / "index.html") if (STATIC_DIR / "index.html").is_file() \
             else HTMLResponse(PLACEHOLDER)
+
+    @app.get("/api/docs", include_in_schema=False)
+    def api_docs() -> Any:
+        return HTMLResponse(API_DOCS_PAGE)
 
     @app.get("/brand/logo", include_in_schema=False)
     def brand_logo() -> Any:

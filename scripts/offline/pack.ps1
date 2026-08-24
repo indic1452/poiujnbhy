@@ -321,6 +321,35 @@ function Resolve-FirstWorking($sources, [string]$label) {
     throw ("не удалось определить адрес для '$label'`n        " + ($errors -join "`n        "))
 }
 
+function Get-FromFirstWorking($sources, [string]$label, [string]$directory) {
+    # Мало определить адрес: зеркало может отдать обрыв или файл с неверной
+    # суммой. Тогда нужно переходить к следующему источнику, а не бросать всю
+    # программу — иначе запасные адреса бесполезны.
+    $errors = @()
+    foreach ($source in $sources) {
+        $resolved = $null
+        try {
+            $resolved = Resolve-Source $source
+        } catch {
+            $errors += "$($source.kind): адрес не определён — $($_.Exception.Message)"
+            continue
+        }
+        $target = Join-Path $directory $resolved.filename
+        try {
+            Get-File $resolved.url $target
+            Test-Checksum $target $resolved
+            return $resolved
+        } catch {
+            $errors += "$($resolved.note): $($_.Exception.Message)"
+            # Битую или недокачанную половину файла оставлять нельзя: докачка
+            # при следующем запуске продолжит именно её.
+            if (Test-Path $target) { Remove-Item $target -Force -ErrorAction SilentlyContinue }
+            Warn "$label — источник не подошёл, пробую следующий"
+        }
+    }
+    throw ("не удалось скачать '$label'`n        " + ($errors -join "`n        "))
+}
+
 # ------------------------------------------------------------- скачивание ---
 
 function Test-Url([string]$url) {
@@ -512,6 +541,24 @@ if (-not $SkipWheels -and (Test-Wanted 'wheels')) {
     $version = (& python -c "import sys; print('%d.%d' % sys.version_info[:2])")
     Set-Content (Join-Path $wheels 'PYTHON-VERSION.txt') $version -Encoding ASCII
     Warn "колёса собраны для Python $version — на офлайн-машине нужна ровно та же версия"
+
+    # Установщик Python из комплекта обязан быть той же ветки: иначе на объекте
+    # тупик — колёса не встанут на установленный интерпретатор, а другого
+    # установщика взять негде.
+    $pythonTool = $plan.tools.items | Where-Object { $_.id -eq 'python' } | Select-Object -First 1
+    if ($pythonTool) {
+        $url = @($pythonTool.sources)[0].url
+        if ($url -match 'python-(\d+\.\d+)\.\d+') {
+            $bundled = $Matches[1]
+            if ($bundled -ne $version) {
+                Warn "в комплект кладётся установщик Python $bundled, а колёса собраны для $version"
+                Warn "поправьте ссылку на установщик в $Config или соберите комплект на Python $bundled"
+                if (-not $Only.Count) { throw "версии Python не совпадают: колёса $version, установщик $bundled" }
+            } else {
+                Ok "установщик Python в комплекте той же ветки ($bundled)"
+            }
+        }
+    }
 }
 
 # ------------------------------------------------------------ llama.cpp ----
@@ -566,12 +613,9 @@ if (-not $SkipTools) {
     foreach ($tool in $plan.tools.items) {
         if (-not (Test-Wanted $tool.id)) { Note "пропуск: $($tool.id)"; continue }
         try {
-            $resolved = Resolve-FirstWorking $tool.sources $tool.name
-            $target = Join-Path $toolsDir $resolved.filename
-            Write-Host "  $($tool.name) (~$($tool.approx_mb) МБ) — $($resolved.note)"
-            Get-File $resolved.url $target
-            Test-Checksum $target $resolved
-            Ok $resolved.filename
+            Write-Host "  $($tool.name) (~$($tool.approx_mb) МБ)"
+            $resolved = Get-FromFirstWorking $tool.sources $tool.name $toolsDir
+            Ok "$($resolved.filename) — $($resolved.note)"
             $catalog += [pscustomobject]@{ id = $tool.id; file = $resolved.filename; source = $resolved.note }
         } catch {
             $missing += $tool

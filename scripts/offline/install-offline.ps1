@@ -63,6 +63,40 @@ if (Test-Path $planPath) {
     $plan = Get-Content $planPath -Raw -Encoding UTF8 | ConvertFrom-Json
 }
 
+# ------------------------------------------------------- права и место -----
+Step 'Условия установки'
+$identity  = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    # Без прав администратора тихая установка программ в Program Files и
+    # запись REPORTGEN_HOME в машинную область просто не сработают, а скрипт
+    # дойдёт до конца и отрапортует об успехе.
+    Fail 'запустите PowerShell от имени администратора: без этого не встанут LibreOffice, Tesseract и DjVuLibre'
+}
+Ok 'права администратора есть'
+
+# Комплект копируется целиком: 17 ГБ моделей плюс распакованный llama.cpp.
+$needBytes = 0
+$manifestPath = Join-Path $bundle 'manifest.json'
+if (Test-Path $manifestPath) {
+    $manifest = Get-Content $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $needBytes = ($manifest.files | Measure-Object bytes -Sum).Sum
+}
+if ($needBytes) {
+    # С запасом: модели копируются, архивы llama.cpp ещё и распаковываются.
+    $needGb = [math]::Round(($needBytes * 1.4) / 1GB, 1)
+    $drive = (Split-Path $Target -Qualifier)
+    if (-not $drive) { $drive = (Get-Location).Drive.Name + ':' }
+    $free = (Get-PSDrive -Name $drive.TrimEnd(':') -ErrorAction SilentlyContinue).Free
+    if ($free) {
+        $freeGb = [math]::Round($free / 1GB, 1)
+        if ($free -lt $needBytes * 1.4) {
+            Fail "на диске $drive свободно $freeGb ГБ, а нужно не меньше $needGb ГБ"
+        }
+        Ok "на диске $drive свободно $freeGb ГБ, нужно около $needGb ГБ"
+    }
+}
+
 # ------------------------------------------------------------- проверка ----
 if (-not $SkipVerify) {
     Step 'Проверка комплекта'
@@ -84,7 +118,11 @@ if (-not $python) {
                  Select-Object -First 1
     if (-not $installer) { Fail 'Python не установлен, и установщика нет в комплекте (tools\python-*.exe)' }
     Warn "Ставлю Python из комплекта: $($installer.Name)"
-    Start-Process $installer.FullName -Wait -ArgumentList '/quiet', 'InstallAllUsers=1', 'PrependPath=1', 'Include_pip=1'
+    $process = Start-Process $installer.FullName -Wait -PassThru `
+        -ArgumentList '/quiet', 'InstallAllUsers=1', 'PrependPath=1', 'Include_pip=1'
+    if ($process.ExitCode -ne 0) {
+        Fail "установщик Python вернул код $($process.ExitCode) — установите Python вручную из $($installer.FullName)"
+    }
     Fail 'Python установлен. Закройте это окно, откройте новое (чтобы подхватился PATH) и запустите скрипт снова'
 }
 
@@ -96,125 +134,6 @@ if (Test-Path $expected) {
         Fail "колёса собраны для Python $want, а установлен $have — они не подойдут. Поставьте Python $want из tools или пересоберите комплект"
     }
 }
-
-# ----------------------------------------------------------------- код -----
-Step "Каталоги в $Target"
-New-Dir $Target | Out-Null
-$app = Join-Path $Target 'app'
-$gitBundle = Join-Path $bundle 'code\reportgen.bundle'
-$hasGit = [bool](Get-Command git -ErrorAction SilentlyContinue)
-
-if ((Test-Path (Join-Path $app '.git')) -and $hasGit) {
-    # Уже развёрнуто из бандла — обновляем через git, история сохраняется.
-    Push-Location $app
-    try {
-        & git pull $gitBundle 2>&1 | Out-Null
-        if ($LASTEXITCODE -eq 0) { Ok 'код обновлён из git-бандла, история сохранена' }
-        else { Later 'git pull из бандла не прошёл — обновите код вручную' }
-    } finally { Pop-Location }
-} elseif ($hasGit -and (Test-Path $gitBundle) -and -not (Test-Path (Join-Path $app 'src'))) {
-    # Клонируем из бандла: тогда следующее обновление ставится одной командой
-    # git pull новый.bundle, а не копированием файлов поверх.
-    $branch = 'main'
-    $branchFile = Join-Path $bundle 'code\BRANCH.txt'
-    if (Test-Path $branchFile) { $branch = (Get-Content $branchFile -Raw).Trim() }
-    & git clone --branch $branch $gitBundle $app 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        Ok "код склонирован из git-бандла (ветка $branch) — обновления ставятся командой git pull"
-    } else {
-        Warn 'клонирование из бандла не удалось, разворачиваю копированием'
-        New-Dir $app | Out-Null
-        Copy-Item (Join-Path $bundle 'code\reportgen-src\*') $app -Recurse -Force
-    }
-} else {
-    if (Test-Path (Join-Path $app 'src')) { Warn "код уже развёрнут в $app — обновляю файлы" } else { New-Dir $app | Out-Null }
-    Copy-Item (Join-Path $bundle 'code\reportgen-src\*') $app -Recurse -Force
-    if (-not $hasGit) { Later 'git не установлен: обновления придётся возить копированием, без истории' }
-    Ok 'код развёрнут'
-}
-
-foreach ($name in 'models', 'llama', 'data', 'logs') { New-Dir (Join-Path $Target $name) | Out-Null }
-foreach ($type in 'literature', 'standards', 'datasheets', 'reports', 'regulations') {
-    New-Dir (Join-Path $Target "data\library\$type") | Out-Null
-}
-
-# ------------------------------------------------------------ llama.cpp ----
-Step 'llama.cpp'
-$llamaTarget = Join-Path $Target 'llama'
-$archives = Get-ChildItem (Join-Path $bundle 'llama') -Filter '*.zip' -ErrorAction SilentlyContinue
-if (-not $archives) {
-    Later "в комплекте нет архивов llama.cpp — распакуйте сборку вручную в $llamaTarget"
-} else {
-    foreach ($archive in $archives) {
-        Expand-Archive -Path $archive.FullName -DestinationPath $llamaTarget -Force
-        Ok "распакован $($archive.Name)"
-    }
-    # В некоторых выпусках файлы лежат во вложенном каталоге build\bin.
-    $nested = Get-ChildItem $llamaTarget -Recurse -Filter 'llama-server.exe' | Select-Object -First 1
-    if ($nested -and $nested.DirectoryName -ne $llamaTarget) {
-        # Без -Recurse подкаталоги сборки (например, с библиотеками CUDA)
-        # молча не копируются, и сервер падает при запуске.
-        Copy-Item (Join-Path $nested.DirectoryName '*') $llamaTarget -Recurse -Force
-        Ok 'файлы подняты из вложенного каталога'
-    }
-    if (Test-Path (Join-Path $llamaTarget 'llama-server.exe')) {
-        Ok 'llama-server.exe на месте'
-    } else {
-        Fail "llama-server.exe не найден после распаковки в $llamaTarget"
-    }
-    # Запасной выпуск не распаковываем: он пригодится, только если основной не
-    # заведётся на этой видеокарте. Просто кладём рядом.
-    $previous = Join-Path $bundle 'llama\previous'
-    if (Test-Path $previous) {
-        $keep = New-Dir (Join-Path $Target 'llama-previous')
-        Copy-Item (Join-Path $previous '*') $keep -Force
-        Note "запасной выпуск llama.cpp лежит в $keep — распакуйте, если основной не запустится"
-    }
-}
-
-# --------------------------------------------------------------- модели ----
-Step 'Модели'
-$models = Get-ChildItem (Join-Path $bundle 'models') -Filter '*.gguf' -ErrorAction SilentlyContinue
-if (-not $models) {
-    Later "в комплекте нет моделей .gguf — положите их в $(Join-Path $Target 'models')"
-} else {
-    foreach ($model in $models) {
-        Copy-Item $model.FullName (Join-Path $Target 'models') -Force
-        Ok ("{0} ({1} ГБ)" -f $model.Name, [math]::Round($model.Length / 1GB, 1))
-    }
-}
-
-# ---------------------------------------------------------- зависимости ----
-Step 'Зависимости Python (только из комплекта, без сети)'
-$venv = Join-Path $app '.venv'
-if (-not (Test-Path $venv)) { & cmd /c "$python -m venv ""$venv""" }
-$venvPython = Join-Path $venv 'Scripts\python.exe'
-if (-not (Test-Path $venvPython)) { Fail "не создано окружение $venv" }
-$wheels = Join-Path $bundle 'wheels'
-
-& $venvPython -m pip install --no-index --find-links $wheels --upgrade pip setuptools wheel 2>&1 | Out-Null
-& $venvPython -m pip install --no-index --find-links $wheels -r (Join-Path $app 'requirements.txt')
-if ($LASTEXITCODE -ne 0) { Fail 'не удалось поставить зависимости из локальных колёс' }
-$formats = Join-Path $app 'requirements-formats.txt'
-if (Test-Path $formats) {
-    & $venvPython -m pip install --no-index --find-links $wheels -r $formats
-    if ($LASTEXITCODE -ne 0) {
-        Later 'пакеты поддержки форматов не встали — презентации, Excel и RTF читаться не будут'
-    } else {
-        Ok 'поддержка презентаций, Excel и RTF установлена'
-    }
-}
-# Набор тестов — единственная проверка установки, не требующая ни сети, ни
-# модели. Ему нужен httpx: без него три модуля падают на импорте.
-$dev = Join-Path $app 'requirements-dev.txt'
-if (Test-Path $dev) {
-    & $venvPython -m pip install --no-index --find-links $wheels -r $dev 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { Later 'пакеты для прогона тестов не встали — проверить установку тестами не выйдет' }
-    else { Ok 'пакеты для прогона тестов установлены' }
-}
-& $venvPython -c "import fastapi, uvicorn, docx, pymupdf, numpy; print('пакеты на месте')"
-if ($LASTEXITCODE -ne 0) { Fail 'зависимости встали не полностью' }
-Ok 'зависимости установлены, сеть не использовалась'
 
 # ------------------------------------------- внешние программы (тихо) ------
 function Test-ToolPresent($tool) {
@@ -357,6 +276,135 @@ if (Test-Path $tessSource) {
         }
     }
 }
+
+# После тихой установки PATH текущего процесса ещё старый: свежепоставленный
+# Git в нём не появится, пока не открыть новое окно. Перечитываем PATH из
+# реестра, иначе разворачивание кода не увидит только что поставленный git.
+function Update-PathFromRegistry {
+    $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $user    = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:Path = (@($machine, $user) | Where-Object { $_ }) -join ';'
+}
+Update-PathFromRegistry
+
+# ----------------------------------------------------------------- код -----
+Step "Каталоги в $Target"
+New-Dir $Target | Out-Null
+$app = Join-Path $Target 'app'
+$gitBundle = Join-Path $bundle 'code\reportgen.bundle'
+$hasGit = [bool](Get-Command git -ErrorAction SilentlyContinue)
+
+if ((Test-Path (Join-Path $app '.git')) -and $hasGit) {
+    # Уже развёрнуто из бандла — обновляем через git, история сохраняется.
+    Push-Location $app
+    try {
+        & git pull $gitBundle 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) { Ok 'код обновлён из git-бандла, история сохранена' }
+        else { Later 'git pull из бандла не прошёл — обновите код вручную' }
+    } finally { Pop-Location }
+} elseif ($hasGit -and (Test-Path $gitBundle) -and -not (Test-Path (Join-Path $app 'src'))) {
+    # Клонируем из бандла: тогда следующее обновление ставится одной командой
+    # git pull новый.bundle, а не копированием файлов поверх.
+    $branch = 'main'
+    $branchFile = Join-Path $bundle 'code\BRANCH.txt'
+    if (Test-Path $branchFile) { $branch = (Get-Content $branchFile -Raw).Trim() }
+    & git clone --branch $branch $gitBundle $app 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Ok "код склонирован из git-бандла (ветка $branch) — обновления ставятся командой git pull"
+    } else {
+        Warn 'клонирование из бандла не удалось, разворачиваю копированием'
+        New-Dir $app | Out-Null
+        Copy-Item (Join-Path $bundle 'code\reportgen-src\*') $app -Recurse -Force
+    }
+} else {
+    if (Test-Path (Join-Path $app 'src')) { Warn "код уже развёрнут в $app — обновляю файлы" } else { New-Dir $app | Out-Null }
+    Copy-Item (Join-Path $bundle 'code\reportgen-src\*') $app -Recurse -Force
+    if (-not $hasGit) { Later 'git не установлен: обновления придётся возить копированием, без истории' }
+    Ok 'код развёрнут'
+}
+
+foreach ($name in 'models', 'llama', 'data', 'logs') { New-Dir (Join-Path $Target $name) | Out-Null }
+foreach ($type in 'literature', 'standards', 'datasheets', 'reports', 'regulations') {
+    New-Dir (Join-Path $Target "data\library\$type") | Out-Null
+}
+
+# ------------------------------------------------------------ llama.cpp ----
+Step 'llama.cpp'
+$llamaTarget = Join-Path $Target 'llama'
+$archives = Get-ChildItem (Join-Path $bundle 'llama') -Filter '*.zip' -ErrorAction SilentlyContinue
+if (-not $archives) {
+    Later "в комплекте нет архивов llama.cpp — распакуйте сборку вручную в $llamaTarget"
+} else {
+    foreach ($archive in $archives) {
+        Expand-Archive -Path $archive.FullName -DestinationPath $llamaTarget -Force
+        Ok "распакован $($archive.Name)"
+    }
+    # В некоторых выпусках файлы лежат во вложенном каталоге build\bin.
+    $nested = Get-ChildItem $llamaTarget -Recurse -Filter 'llama-server.exe' | Select-Object -First 1
+    if ($nested -and $nested.DirectoryName -ne $llamaTarget) {
+        # Без -Recurse подкаталоги сборки (например, с библиотеками CUDA)
+        # молча не копируются, и сервер падает при запуске.
+        Copy-Item (Join-Path $nested.DirectoryName '*') $llamaTarget -Recurse -Force
+        Ok 'файлы подняты из вложенного каталога'
+    }
+    if (Test-Path (Join-Path $llamaTarget 'llama-server.exe')) {
+        Ok 'llama-server.exe на месте'
+    } else {
+        Fail "llama-server.exe не найден после распаковки в $llamaTarget"
+    }
+    # Запасной выпуск не распаковываем: он пригодится, только если основной не
+    # заведётся на этой видеокарте. Просто кладём рядом.
+    $previous = Join-Path $bundle 'llama\previous'
+    if (Test-Path $previous) {
+        $keep = New-Dir (Join-Path $Target 'llama-previous')
+        Copy-Item (Join-Path $previous '*') $keep -Force
+        Note "запасной выпуск llama.cpp лежит в $keep — распакуйте, если основной не запустится"
+    }
+}
+
+# --------------------------------------------------------------- модели ----
+Step 'Модели'
+$models = Get-ChildItem (Join-Path $bundle 'models') -Filter '*.gguf' -ErrorAction SilentlyContinue
+if (-not $models) {
+    Later "в комплекте нет моделей .gguf — положите их в $(Join-Path $Target 'models')"
+} else {
+    foreach ($model in $models) {
+        Copy-Item $model.FullName (Join-Path $Target 'models') -Force
+        Ok ("{0} ({1} ГБ)" -f $model.Name, [math]::Round($model.Length / 1GB, 1))
+    }
+}
+
+# ---------------------------------------------------------- зависимости ----
+Step 'Зависимости Python (только из комплекта, без сети)'
+$venv = Join-Path $app '.venv'
+if (-not (Test-Path $venv)) { & cmd /c "$python -m venv ""$venv""" }
+$venvPython = Join-Path $venv 'Scripts\python.exe'
+if (-not (Test-Path $venvPython)) { Fail "не создано окружение $venv" }
+$wheels = Join-Path $bundle 'wheels'
+
+& $venvPython -m pip install --no-index --find-links $wheels --upgrade pip setuptools wheel 2>&1 | Out-Null
+& $venvPython -m pip install --no-index --find-links $wheels -r (Join-Path $app 'requirements.txt')
+if ($LASTEXITCODE -ne 0) { Fail 'не удалось поставить зависимости из локальных колёс' }
+$formats = Join-Path $app 'requirements-formats.txt'
+if (Test-Path $formats) {
+    & $venvPython -m pip install --no-index --find-links $wheels -r $formats
+    if ($LASTEXITCODE -ne 0) {
+        Later 'пакеты поддержки форматов не встали — презентации, Excel и RTF читаться не будут'
+    } else {
+        Ok 'поддержка презентаций, Excel и RTF установлена'
+    }
+}
+# Набор тестов — единственная проверка установки, не требующая ни сети, ни
+# модели. Ему нужен httpx: без него три модуля падают на импорте.
+$dev = Join-Path $app 'requirements-dev.txt'
+if (Test-Path $dev) {
+    & $venvPython -m pip install --no-index --find-links $wheels -r $dev 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { Later 'пакеты для прогона тестов не встали — проверить установку тестами не выйдет' }
+    else { Ok 'пакеты для прогона тестов установлены' }
+}
+& $venvPython -c "import fastapi, uvicorn, docx, pymupdf, numpy; print('пакеты на месте')"
+if ($LASTEXITCODE -ne 0) { Fail 'зависимости встали не полностью' }
+Ok 'зависимости установлены, сеть не использовалась'
 
 # -------------------------------------------------------------- настройка --
 Step 'Настройки'

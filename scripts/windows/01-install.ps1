@@ -4,10 +4,18 @@
     зависимости, файл настроек, администратор.
 .PARAMETER SkipDeps
     Не переустанавливать зависимости Python (быстрый повторный прогон).
+.PARAMETER Wheels
+    Каталог с колёсами. Задан — pip ставит только из него и в сеть не ходит.
+    Нужен на изолированной машине: без этого ключа pip пойдёт в PyPI.
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\01-install.ps1
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File .\01-install.ps1 -Wheels D:\reportgen-offline\wheels
 #>
-param([switch]$SkipDeps)
+param(
+    [switch]$SkipDeps,
+    [string]$Wheels = ''
+)
 
 . "$PSScriptRoot\_common.ps1"
 
@@ -33,12 +41,34 @@ $python = Join-Path $script:Venv 'Scripts\python.exe'
 
 if (-not $SkipDeps) {
     Write-Step 'Зависимости Python'
-    & $python -m pip install --upgrade pip --quiet
+    # На изолированной машине pip молча уходит в PyPI и падает по таймауту, а
+    # скрипт раньше всё равно рапортовал «зависимости установлены» и «Готово».
+    $offline = @()
+    if ($Wheels) {
+        if (-not (Test-Path $Wheels)) { Write-Bad "не найден каталог колёс $Wheels"; exit 1 }
+        $offline = @('--no-index', '--find-links', $Wheels)
+        Write-Ok "ставлю только из $Wheels, сеть не используется"
+    }
+    & $python -m pip install @offline --upgrade pip --quiet
     $requirements = Join-Path $script:Root 'requirements.txt'
     if (Test-Path $requirements) {
-        & $python -m pip install -r $requirements
+        & $python -m pip install @offline -r $requirements
     } else {
-        & $python -m pip install fastapi "uvicorn[standard]" python-docx pymupdf numpy python-multipart
+        & $python -m pip install @offline fastapi "uvicorn[standard]" python-docx pymupdf numpy python-multipart
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Bad 'не удалось установить зависимости'
+        if (-not $Wheels) {
+            Write-Warn2 'на машине без интернета укажите каталог с колёсами: -Wheels D:\reportgen-offline\wheels'
+        }
+        exit 1
+    }
+    $formats = Join-Path $script:Root 'requirements-formats.txt'
+    if (Test-Path $formats) {
+        & $python -m pip install @offline -r $formats
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn2 'пакеты поддержки форматов не встали — презентации, Excel и RTF читаться не будут'
+        }
     }
     Write-Ok 'зависимости установлены'
 }
@@ -63,6 +93,7 @@ Write-Step 'Проверка установки'
 $env:PYTHONPATH = Join-Path $script:Root 'src'
 $env:REPORTGEN_CONFIG = $script:Config
 & $python -c "import fastapi, uvicorn, docx, pymupdf; print('пакеты на месте')"
+if ($LASTEXITCODE -ne 0) { Write-Bad 'зависимости встали не полностью — дальше идти нельзя'; exit 1 }
 
 Write-Step 'Администратор'
 $users = & $python -m reportgen --config $script:Config users 2>&1
