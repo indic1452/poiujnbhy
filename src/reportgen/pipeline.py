@@ -16,7 +16,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence
 
-from .corpus import Chunk
+from .corpus import Chunk, tidy_quote
+
+#: Сколько символов фрагмента подаётся модели. Приложение к отчёту берёт то же
+#: значение: см. SourceRegistry.render_appendix.
+PROMPT_QUOTE_CHARS = 700
 from .facts import FactPack
 from .llm import LLM
 from .prompts import SECTION_PROMPT, SYSTEM_PROMPT
@@ -109,15 +113,25 @@ class SourceRegistry:
         """Пары (метка, фрагмент) в порядке первого упоминания в отчёте."""
         return [(self._by_chunk[chunk.chunk_id], chunk) for chunk in self._chunks]
 
-    def render_appendix(self, quote_chars: int = 400) -> str:
+    def render_appendix(self, quote_chars: int = PROMPT_QUOTE_CHARS) -> str:
+        """Приложение «Источники» — то же, что видела модель.
+
+        Приложение обязано быть НЕ КОРОЧЕ фрагмента, поданного в промпт.
+        Верификатор считает числами из источника только то, что нашёл здесь:
+        если модель законно взяла «2048 kbit/s» из символов 400–700 плотной
+        английской таблицы, а в приложение попали первые 400, утверждение
+        отчёта падает с «число отсутствует в факт-пакете» — на числе, которое
+        инженер видит своими глазами в источнике. Причина при этом не видна
+        нигде, и правка текста не помогает.
+        """
         if not self._chunks:
             return "Внешние источники не привлекались."
+        limit = max(int(quote_chars), PROMPT_QUOTE_CHARS)
         lines: List[str] = []
         for chunk in self._chunks:
-            quote = " ".join(chunk.text.split())
-            if len(quote) > quote_chars:
-                quote = quote[:quote_chars].rstrip() + "…"
-            lines.append(f"**[{self._by_chunk[chunk.chunk_id]}]** {chunk.citation}\n\n> {quote}\n")
+            quote = tidy_quote(chunk.text, limit)
+            body = quote.replace("\n", "\n> ")
+            lines.append(f"**[{self._by_chunk[chunk.chunk_id]}]** {chunk.citation}\n\n> {body}\n")
         return "\n".join(lines)
 
 
@@ -138,7 +152,8 @@ class ReportResult:
     meta: Dict[str, Any]
 
 
-def _render_sources(hits: Sequence[Hit], registry: SourceRegistry, quote_chars: int = 700) -> tuple[str, List[str]]:
+def _render_sources(hits: Sequence[Hit], registry: SourceRegistry,
+                    quote_chars: int = PROMPT_QUOTE_CHARS) -> tuple[str, List[str]]:
     if not hits:
         return "(релевантных источников не найдено)", []
     blocks: List[str] = []
@@ -156,15 +171,8 @@ def _render_sources(hits: Sequence[Hit], registry: SourceRegistry, quote_chars: 
 
 
 def _tidy_quote(text: str, limit: int) -> str:
-    """Цитата для промпта: лишние пробелы убраны, строки сохранены."""
-    lines: List[str] = []
-    for raw in text.strip().splitlines():
-        line = " ".join(raw.split())
-        if not line and lines and not lines[-1]:
-            continue
-        lines.append(line)
-    quote = "\n".join(lines)
-    return quote if len(quote) <= limit else quote[:limit].rstrip() + "…"
+    """Цитата для промпта. См. :func:`reportgen.corpus.tidy_quote`."""
+    return tidy_quote(text, limit)
 
 
 def _summarize(text: str, limit: int = 220) -> str:

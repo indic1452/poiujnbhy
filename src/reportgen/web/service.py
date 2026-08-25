@@ -18,6 +18,7 @@ from ..corpus import Chunk
 from ..facts import FactPack, FactPackError
 from ..llm import LLM, build_llm
 from ..pipeline import (
+    PROMPT_QUOTE_CHARS,
     GeneratedSection,
     Outline,
     check_facts_coverage,
@@ -30,7 +31,10 @@ from ..store.models import Case, Report, ReportSection, User
 from ..store.repo import Repositories
 from ..verify import summarize, verify_report
 
-APPENDIX_QUOTE_CHARS = 400
+#: Предел обрезки цитаты в приложении к отчёту. Он обязан совпадать с тем,
+#: что видела модель, иначе верификатор блокирует число, законно взятое из
+#: хвоста фрагмента. Значение одно и живёт в pipeline.
+APPENDIX_QUOTE_CHARS = PROMPT_QUOTE_CHARS
 
 
 class ServiceError(RuntimeError):

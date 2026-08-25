@@ -1,54 +1,3575 @@
 {
-  "comment": "Двуязычный словарь: русский запрос → английские документы (RFC, паспорта микросхем).",
+  "comment": "Двуязычный словарь: русский запрос — английские документы (RFC, паспорта микросхем). Половина библиотеки написана по-английски, спрашивают по-русски, а словесный поиск язык не переступает. Как пополнять — docs/18-library.md, раздел 18.9a. Правки подхватываются сразу, перезапуск сервера не нужен.",
   "terms": [
+    {
+      "ru": "абонент",
+      "en": [
+        "subscriber"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "абонентск устройств",
+      "en": [
+        "user equipment",
+        "mobile station",
+        "handset"
+      ],
+      "risk": "нет",
+      "note": "расшифровка UE — сама аббревиатура короче 3 букв"
+    },
+    {
+      "ru": "авари",
+      "en": [
+        "alarm",
+        "outage",
+        "fault"
+      ],
+      "risk": "нет",
+      "note": "ловит авария/аварийный/аварийная сигнализация"
+    },
+    {
+      "ru": "автокорреляц",
+      "en": [
+        "autocorrelation",
+        "correlation peak"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "автоматическая регулировка усиления",
+      "en": [
+        "automatic gain control",
+        "agc"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "авторизац",
+      "en": [
+        "authorization",
+        "authorisation"
+      ],
+      "risk": "нет",
+      "note": "обе орфографии встречаются в спецификациях"
+    },
+    {
+      "ru": "агрегац несущ",
+      "en": [
+        "carrier aggregation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "адрес",
+      "en": [
+        "address",
+        "source address",
+        "destination address"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "азимут",
+      "en": [
+        "azimuth",
+        "antenna azimuth"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "амплитудно-частотная характеристика",
+      "en": [
+        "frequency response",
+        "magnitude response"
+      ],
+      "risk": "нет",
+      "note": "АЧХ почти никогда не переводится дословно"
+    },
+    {
+      "ru": "анализатор спектра",
+      "en": [
+        "spectrum analyzer",
+        "signal analyzer"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "аналого-цифровой преобразователь",
+      "en": [
+        "analog-to-digital converter",
+        "adc"
+      ],
+      "risk": "нет",
+      "note": "запрос обычно \"АЦП\""
+    },
+    {
+      "ru": "антенн",
+      "en": [
+        "antenna",
+        "aerial"
+      ],
+      "risk": "нет",
+      "note": "основа под все падежи"
+    },
+    {
+      "ru": "атмосферный волновод",
+      "en": [
+        "ducting",
+        "atmospheric duct"
+      ],
+      "risk": "нет",
+      "note": "причина глубоких замираний на приземных пролётах"
+    },
+    {
+      "ru": "аттенюатор",
+      "en": [
+        "attenuator"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "аттестация методики",
+      "en": [
+        "method validation",
+        "procedure validation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "аутентификац",
+      "en": [
+        "authentication"
+      ],
+      "risk": "нет",
+      "note": "часто путают с авторизацией, нужна отдельная пара"
+    },
+    {
+      "ru": "ацп",
+      "en": [
+        "adc",
+        "analog-to-digital converter"
+      ],
+      "risk": "нет",
+      "note": "русская аббревиатура отличается от английской, пара обязательна"
+    },
+    {
+      "ru": "базов станц",
+      "en": [
+        "base station",
+        "cell site"
+      ],
+      "risk": "нет",
+      "note": "основа ловит «базовой станции», «базовые станции»"
+    },
+    {
+      "ru": "битовая ошибка",
+      "en": [
+        "bit error",
+        "bit error rate"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "блок питания",
+      "en": [
+        "power supply",
+        "psu"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "боковой лепесток",
+      "en": [
+        "side lobe",
+        "sidelobe"
+      ],
+      "risk": "нет",
+      "note": "нужен при разборе помех от соседних станций"
+    },
+    {
+      "ru": "введен в действие",
+      "en": [
+        "entry into force",
+        "effective date"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "ввод в эксплуатацию",
+      "en": [
+        "commissioning",
+        "in-service activation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "вектор ошибки",
+      "en": [
+        "error vector magnitude",
+        "evm"
+      ],
+      "risk": "нет",
+      "note": "в РФ говорят «модуль вектора ошибки», в документах только EVM"
+    },
+    {
+      "ru": "векторный анализатор цепей",
+      "en": [
+        "vector network analyzer"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "взамен",
+      "en": [
+        "supersedes",
+        "replaces"
+      ],
+      "risk": "нет",
+      "note": "в RFC пишут obsoletes/supersedes"
+    },
+    {
+      "ru": "виртуальный канал",
+      "en": [
+        "virtual circuit",
+        "virtual channel"
+      ],
+      "risk": "нет",
+      "note": "X.25, ATM"
+    },
+    {
+      "ru": "внеполосное излучение",
+      "en": [
+        "out-of-band emission",
+        "spurious emission"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "вносимое затухание",
+      "en": [
+        "insertion loss"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "волновод",
+      "en": [
+        "waveguide"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "воспроизводимост",
+      "en": [
+        "reproducibility"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "восстановление тактовой частоты",
+      "en": [
+        "clock recovery",
+        "timing recovery"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "восходящ",
+      "en": [
+        "uplink"
+      ],
+      "risk": "нет",
+      "note": "ловит «восходящий канал», «в восходящем направлении»"
+    },
+    {
+      "ru": "восходящая линия",
+      "en": [
+        "uplink"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "временная диаграмма",
+      "en": [
+        "timing diagram",
+        "switching characteristics"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "время жизни",
+      "en": [
+        "time to live",
+        "hop limit"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "вставка бита",
+      "en": [
+        "bit stuffing"
+      ],
+      "risk": "нет",
+      "note": "HDLC/LAPB, вопросы про «размножение флагов»"
+    },
+    {
+      "ru": "вывод микросхемы",
+      "en": [
+        "pin",
+        "package pin"
+      ],
+      "risk": "омоним",
+      "note": "одиночное pin ловит крепёж и посторонние смыслы; \"вывод\" по-русски тоже многозначен"
+    },
+    {
+      "ru": "вызов",
+      "en": [
+        "call",
+        "call setup",
+        "call attempt"
+      ],
+      "risk": "омоним",
+      "note": "call в англ. чаще «вызов функции»; работает только в телефонном контексте"
+    },
+    {
+      "ru": "габаритные размеры",
+      "en": [
+        "package dimensions",
+        "outline dimensions",
+        "mechanical drawing"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "генератор сигналов",
+      "en": [
+        "signal generator"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "генератор, управляемый напряжением",
+      "en": [
+        "voltage controlled oscillator",
+        "vco"
+      ],
+      "risk": "нет",
+      "note": "также запрос \"ГУН\""
+    },
+    {
+      "ru": "геостационарн",
+      "en": [
+        "geostationary",
+        "geostationary orbit"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "гетеродин",
+      "en": [
+        "local oscillator",
+        "lo leakage"
+      ],
+      "risk": "нет",
+      "note": "аббревиатуру LO не даём — два символа, шум в выдаче"
+    },
+    {
+      "ru": "глазковая диаграмма",
+      "en": [
+        "eye diagram",
+        "eye pattern"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "грозозащит",
+      "en": [
+        "lightning protection",
+        "surge protection"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "групповая задержка",
+      "en": [
+        "group delay",
+        "group delay variation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "действующ",
+      "en": [
+        "in force",
+        "currently valid"
+      ],
+      "risk": "омоним",
+      "note": "«current» не берём — в связи это ток"
+    },
+    {
+      "ru": "дейтаграмм",
+      "en": [
+        "datagram",
+        "ip datagram"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "декодер витерби",
+      "en": [
+        "viterbi decoder",
+        "viterbi algorithm"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "делитель частоты",
+      "en": [
+        "frequency divider",
+        "prescaler"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "демодулятор",
+      "en": [
+        "demodulator"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "демодуляц",
+      "en": [
+        "demodulation",
+        "demodulator"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "демультиплексор",
+      "en": [
+        "demultiplexer",
+        "demux"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "джиттер",
+      "en": [
+        "jitter",
+        "timing jitter"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "диагностик",
+      "en": [
+        "diagnostics",
+        "fault diagnosis",
+        "fault isolation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "диаграмм направленност",
+      "en": [
+        "antenna pattern",
+        "radiation pattern"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "диаграмма направленности",
+      "en": [
+        "radiation pattern",
+        "antenna pattern"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "динамический диапазон",
+      "en": [
+        "dynamic range",
+        "spurious-free dynamic range"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "дисбаланс квадратур",
+      "en": [
+        "iq imbalance",
+        "quadrature error"
+      ],
+      "risk": "нет",
+      "note": "причина перекошенного созвездия"
+    },
+    {
+      "ru": "дискретизац",
+      "en": [
+        "sampling",
+        "sampling rate",
+        "sample rate"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "дифракц",
+      "en": [
+        "diffraction",
+        "diffraction loss"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "длин",
+      "en": [
+        "length",
+        "length field",
+        "total length"
+      ],
+      "risk": "омоним",
+      "note": "length в англ. тексте очень частое слово"
+    },
+    {
+      "ru": "добротность приемной системы",
+      "en": [
+        "figure of merit",
+        "g/t"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "доверительный интервал",
+      "en": [
+        "confidence interval",
+        "coverage interval"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "дождевое затухание",
+      "en": [
+        "rain attenuation",
+        "rain fade"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "доплеровск",
+      "en": [
+        "doppler shift",
+        "doppler spread"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "допплеровский сдвиг",
+      "en": [
+        "doppler shift"
+      ],
+      "risk": "нет",
+      "note": "актуален для негеостационарных спутников"
+    },
+    {
+      "ru": "допуск",
+      "en": [
+        "tolerance"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "доступ",
+      "en": [
+        "access"
+      ],
+      "risk": "омоним",
+      "note": "access очень частотно (доступ к памяти, к файлу)"
+    },
+    {
+      "ru": "дрожание",
+      "en": [
+        "jitter",
+        "timing jitter"
+      ],
+      "risk": "нет",
+      "note": "инженер печатает и «джиттер», и «дрожание»"
+    },
+    {
+      "ru": "емкость сот",
+      "en": [
+        "cell capacity"
+      ],
+      "risk": "нет",
+      "note": "вариант написания без ё — инженеры печатают именно так"
+    },
+    {
+      "ru": "журнал",
+      "en": [
+        "log",
+        "log file"
+      ],
+      "risk": "омоним",
+      "note": "log в английском — ещё и логарифм"
+    },
+    {
+      "ru": "журнал событий",
+      "en": [
+        "event log",
+        "syslog"
+      ],
+      "risk": "нет",
+      "note": "одиночный log слишком многозначен"
+    },
     {
       "ru": "заголов",
       "en": [
-        "header"
-      ],
-      "risk": "нет"
-    },
-    {
-      "ru": "поле заголов",
-      "en": [
+        "header",
         "header field"
       ],
-      "risk": "нет"
+      "risk": "нет",
+      "note": "основа ловит заголовок/заголовка/заголовке"
     },
     {
-      "ru": "поля заголов",
+      "ru": "загрузчик",
       "en": [
-        "header field"
+        "bootloader",
+        "boot loader"
       ],
-      "risk": "нет"
+      "risk": "нет",
+      "note": ""
     },
     {
-      "ru": "мультиплексор",
+      "ru": "задержк",
       "en": [
-        "multiplexer"
+        "delay",
+        "latency",
+        "round trip time"
       ],
-      "risk": "нет"
+      "risk": "омоним",
+      "note": "delay в англ. также общее «отложить/задержать»"
     },
     {
-      "ru": "приёмопередатчик",
+      "ru": "задержка распространения",
       "en": [
-        "transceiver"
+        "propagation delay",
+        "round trip delay"
       ],
-      "risk": "нет"
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "заземлени",
+      "en": [
+        "grounding",
+        "earthing"
+      ],
+      "risk": "нет",
+      "note": "US и британское написание расходятся"
+    },
+    {
+      "ru": "замирани",
+      "en": [
+        "fading",
+        "fade",
+        "fade margin"
+      ],
+      "risk": "нет",
+      "note": "основа под замирание/замирания/замираний"
+    },
+    {
+      "ru": "занимаемая полоса",
+      "en": [
+        "occupied bandwidth"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "запас на замирание",
+      "en": [
+        "fade margin",
+        "link margin"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "затухани",
+      "en": [
+        "attenuation",
+        "path loss",
+        "loss"
+      ],
+      "risk": "омоним",
+      "note": "голое loss не берём — слишком общее слово"
+    },
+    {
+      "ru": "затухание",
+      "en": [
+        "attenuation",
+        "insertion loss"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "захват частоты",
+      "en": [
+        "lock detect",
+        "frequency lock"
+      ],
+      "risk": "нет",
+      "note": "типовая жалоба: не захватывает"
+    },
+    {
+      "ru": "защита от перенапряжения",
+      "en": [
+        "overvoltage protection"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "звено сигнализации",
+      "en": [
+        "signaling link",
+        "signalling link"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "земная волна",
+      "en": [
+        "ground wave",
+        "surface wave"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "зеркало антенны",
+      "en": [
+        "reflector",
+        "parabolic dish"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "зон местоположен",
+      "en": [
+        "location area",
+        "tracking area"
+      ],
+      "risk": "нет",
+      "note": "LA в 2G/3G и TA в LTE/5G"
+    },
+    {
+      "ru": "зон обслуживан",
+      "en": [
+        "coverage area",
+        "service area"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "зона молчания",
+      "en": [
+        "skip zone",
+        "dead zone"
+      ],
+      "risk": "нет",
+      "note": "типовая жалоба «корреспондент не слышен на средних дальностях»"
+    },
+    {
+      "ru": "зона френеля",
+      "en": [
+        "fresnel zone",
+        "first fresnel zone"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "идентификатор абонент",
+      "en": [
+        "subscriber identity",
+        "subscriber identifier"
+      ],
+      "risk": "нет",
+      "note": "расшифровка IMSI в тексте RFC/3GPP"
+    },
+    {
+      "ru": "измерени",
+      "en": [
+        "measurement",
+        "measurement report"
+      ],
+      "risk": "нет",
+      "note": "основа ловит измерение/измерения/измерений"
+    },
+    {
+      "ru": "измеритель мощности",
+      "en": [
+        "power meter",
+        "power sensor"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "импульсная характеристика",
+      "en": [
+        "impulse response"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "инкапсуляц",
+      "en": [
+        "encapsulation",
+        "encapsulated"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "интенсивность дождя",
+      "en": [
+        "rain rate",
+        "rainfall rate"
+      ],
+      "risk": "нет",
+      "note": "нужна при расчёте готовности по ITU-R P.837"
+    },
+    {
+      "ru": "интервал",
+      "en": [
+        "hop",
+        "section"
+      ],
+      "risk": "омоним",
+      "note": "и русское, и английское слово многозначны; работает только в паре с контекстом трассы"
+    },
+    {
+      "ru": "интермодуляц",
+      "en": [
+        "intermodulation",
+        "intermodulation distortion",
+        "imd"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "интерфейс",
+      "en": [
+        "interface",
+        "interface index"
+      ],
+      "risk": "омоним",
+      "note": "interface в англ. также программный интерфейс/API"
+    },
+    {
+      "ru": "ионосфер",
+      "en": [
+        "ionosphere",
+        "ionospheric"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "испытани",
+      "en": [
+        "test",
+        "testing"
+      ],
+      "risk": "омоним",
+      "note": "test встречается в любом значении, включая программные тесты"
+    },
+    {
+      "ru": "кадр",
+      "en": [
+        "frame",
+        "frame format",
+        "radio frame"
+      ],
+      "risk": "омоним",
+      "note": "канальный уровень: HDLC, LAPB, Ethernet"
+    },
+    {
+      "ru": "калибровк",
+      "en": [
+        "calibration"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "канал",
+      "en": [
+        "channel"
+      ],
+      "risk": "омоним",
+      "note": "channel встречается в любом контексте, но без пары русский запрос не найдёт ничего"
+    },
+    {
+      "ru": "канал сигнализации",
+      "en": [
+        "signaling channel",
+        "d channel"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "канальный уровень",
+      "en": [
+        "data link layer",
+        "link layer"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "качеств обслуживан",
+      "en": [
+        "quality of service"
+      ],
+      "risk": "нет",
+      "note": "расшифровка QoS"
+    },
+    {
+      "ru": "качеств сигнал",
+      "en": [
+        "signal quality"
+      ],
+      "risk": "нет",
+      "note": "смысловая расшифровка RSRQ"
+    },
+    {
+      "ru": "квадратурн",
+      "en": [
+        "quadrature",
+        "i/q"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "квадратурная амплитудная модуляц",
+      "en": [
+        "quadrature amplitude modulation",
+        "qam"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "квантован",
+      "en": [
+        "quantization",
+        "quantization noise"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "кварцевый генератор",
+      "en": [
+        "crystal oscillator",
+        "tcxo"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "квитиров",
+      "en": [
+        "handshake",
+        "handshaking"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "ключев показател",
+      "en": [
+        "key performance indicator"
+      ],
+      "risk": "нет",
+      "note": "расшифровка KPI словами"
+    },
+    {
+      "ru": "код рида-соломона",
+      "en": [
+        "reed-solomon code",
+        "rs decoder"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "коммутатор",
+      "en": [
+        "switch",
+        "ethernet switch"
+      ],
+      "risk": "омоним",
+      "note": "switch — и переключатель, и оператор языка"
+    },
+    {
+      "ru": "коммутац",
+      "en": [
+        "switching",
+        "packet switching",
+        "circuit switching"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "контроллер базов станц",
+      "en": [
+        "base station controller",
+        "radio network controller"
+      ],
+      "risk": "нет",
+      "note": "BSC/RNC в англоязычных описаниях"
     },
     {
       "ru": "контрольная сумма",
       "en": [
-        "checksum"
+        "checksum",
+        "header checksum",
+        "frame check sequence"
       ],
-      "risk": "нет"
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "контрольная точка",
+      "en": [
+        "test point",
+        "checkpoint"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "коротковолнов",
+      "en": [
+        "shortwave",
+        "high frequency"
+      ],
+      "risk": "нет",
+      "note": "основа ловит коротковолновый/коротковолновая; в англ. документах почти всегда HF"
+    },
+    {
+      "ru": "корпус микросхемы",
+      "en": [
+        "package",
+        "package outline"
+      ],
+      "risk": "омоним",
+      "note": "package в софтверных документах — программный пакет"
+    },
+    {
+      "ru": "коэффициент битовых ошибок",
+      "en": [
+        "bit error rate",
+        "ber"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "коэффициент готовности",
+      "en": [
+        "availability",
+        "link availability"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "коэффициент нелинейных искажений",
+      "en": [
+        "total harmonic distortion",
+        "thd"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "коэффициент отражения",
+      "en": [
+        "return loss",
+        "reflection coefficient"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "коэффициент ошибок",
+      "en": [
+        "bit error rate",
+        "errored seconds",
+        "bit error ratio"
+      ],
+      "risk": "нет",
+      "note": "результат измерения BER"
+    },
+    {
+      "ru": "коэффициент скругления",
+      "en": [
+        "roll-off factor",
+        "excess bandwidth"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "коэффициент стоячей волны",
+      "en": [
+        "vswr",
+        "standing wave ratio",
+        "return loss"
+      ],
+      "risk": "нет",
+      "note": "запрос обычно \"КСВ\""
+    },
+    {
+      "ru": "коэффициент усиления",
+      "en": [
+        "gain"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "коэффициент шума",
+      "en": [
+        "noise figure",
+        "noise factor"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "критическая частота",
+      "en": [
+        "critical frequency"
+      ],
+      "risk": "нет",
+      "note": "параметр слоя F2 в прогнозах прохождения"
+    },
+    {
+      "ru": "кросс-плат",
+      "en": [
+        "backplane"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "кроссполяризационная развязка",
+      "en": [
+        "cross-polarization discrimination",
+        "xpd"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "ксвн",
+      "en": [
+        "vswr",
+        "voltage standing wave ratio"
+      ],
+      "risk": "нет",
+      "note": "русская и английская аббревиатуры не совпадают"
+    },
+    {
+      "ru": "ловушк",
+      "en": [
+        "trap",
+        "snmp trap"
+      ],
+      "risk": "омоним",
+      "note": "trap в англ. также аппаратное прерывание/исключение"
+    },
+    {
+      "ru": "магнитная буря",
+      "en": [
+        "geomagnetic storm",
+        "ionospheric storm"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "максимальная применимая частота",
+      "en": [
+        "maximum usable frequency",
+        "muf"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "малошумящий усилител",
+      "en": [
+        "low noise amplifier",
+        "lna"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "малошумящий усилитель",
+      "en": [
+        "low noise amplifier",
+        "lna",
+        "lnb"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "манипуляц",
+      "en": [
+        "shift keying",
+        "keying"
+      ],
+      "risk": "нет",
+      "note": "русская «манипуляция» = английское keying, а не manipulation"
+    },
+    {
+      "ru": "маршрут",
+      "en": [
+        "route",
+        "routing"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "маршрутизатор",
+      "en": [
+        "router"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "маска подсети",
+      "en": [
+        "subnet mask",
+        "netmask",
+        "prefix length"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "маска спектра",
+      "en": [
+        "spectrum emission mask",
+        "spectral mask"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "мачт",
+      "en": [
+        "mast",
+        "tower"
+      ],
+      "risk": "нет",
+      "note": "основа под мачта/мачты/мачтовый"
+    },
+    {
+      "ru": "межсимвольная интерференция",
+      "en": [
+        "intersymbol interference",
+        "isi"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "метк",
+      "en": [
+        "label",
+        "mpls label"
+      ],
+      "risk": "нет",
+      "note": "основа ловит метка/метки/меток"
+    },
+    {
+      "ru": "методик",
+      "en": [
+        "test method",
+        "measurement procedure",
+        "methodology"
+      ],
+      "risk": "нет",
+      "note": "основа ловит методика/методики/методике"
+    },
+    {
+      "ru": "микроконтроллер",
+      "en": [
+        "microcontroller",
+        "mcu"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "микросхем",
+      "en": [
+        "integrated circuit",
+        "chip"
+      ],
+      "risk": "нет",
+      "note": "основа ловит микросхема/микросхемы/микросхеме"
+    },
+    {
+      "ru": "многоадресн",
+      "en": [
+        "multicast",
+        "multicast group"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "многолуч",
+      "en": [
+        "multipath",
+        "multipath propagation"
+      ],
+      "risk": "нет",
+      "note": "основа под многолучёвость/многолучевой"
+    },
+    {
+      "ru": "многолучев",
+      "en": [
+        "multipath",
+        "multipath propagation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "модулятор",
+      "en": [
+        "modulator",
+        "quadrature modulator"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "модуляц",
+      "en": [
+        "modulation",
+        "modulator"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "мощност передатчик",
+      "en": [
+        "transmit power",
+        "output power"
+      ],
+      "risk": "нет",
+      "note": "в паспортах — output power"
+    },
+    {
+      "ru": "мультиплексор",
+      "en": [
+        "multiplexer",
+        "mux"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "мягкое решение",
+      "en": [
+        "soft decision",
+        "soft-decision decoding"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "наведение антенны",
+      "en": [
+        "antenna pointing",
+        "pointing error"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "нагрузк",
+      "en": [
+        "load",
+        "traffic load",
+        "cell load"
+      ],
+      "risk": "омоним",
+      "note": "load — и электрическая нагрузка, и загрузка ПО"
+    },
+    {
+      "ru": "наземная станция",
+      "en": [
+        "earth station",
+        "ground station"
+      ],
+      "risk": "нет",
+      "note": "в спутниковых документах почти всегда earth station"
+    },
+    {
+      "ru": "наклон антенн",
+      "en": [
+        "antenna tilt",
+        "electrical tilt",
+        "downtilt"
+      ],
+      "risk": "нет",
+      "note": "частая причина проблем с покрытием"
+    },
+    {
+      "ru": "наложение спектров",
+      "en": [
+        "aliasing",
+        "anti-aliasing filter"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "напряжение питания",
+      "en": [
+        "supply voltage"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "наработка на отказ",
+      "en": [
+        "mean time between failures",
+        "mtbf"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "неисправност",
+      "en": [
+        "fault",
+        "failure",
+        "malfunction"
+      ],
+      "risk": "омоним",
+      "note": "fault также про программные сбои и обработку исключений"
+    },
+    {
+      "ru": "ненумерованный кадр",
+      "en": [
+        "unnumbered frame"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "неопределенност",
+      "en": [
+        "measurement uncertainty",
+        "uncertainty"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "несоответстви",
+      "en": [
+        "non-conformance",
+        "nonconformity",
+        "deviation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "несущ",
+      "en": [
+        "carrier",
+        "carrier frequency"
+      ],
+      "risk": "омоним",
+      "note": "carrier в англ. текстах часто = оператор связи"
+    },
+    {
+      "ru": "несущая частота",
+      "en": [
+        "carrier frequency",
+        "carrier"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "нисходящ",
+      "en": [
+        "downlink"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "нисходящая линия",
+      "en": [
+        "downlink"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "номер вызываемого абонента",
+      "en": [
+        "called party number"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "номер вызывающего абонента",
+      "en": [
+        "calling party number"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "номер логического канала",
+      "en": [
+        "logical channel number"
+      ],
+      "risk": "нет",
+      "note": "X.25"
+    },
+    {
+      "ru": "нормативный документ",
+      "en": [
+        "normative document",
+        "normative reference"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "нормируемое значение",
+      "en": [
+        "specified limit",
+        "limit value"
+      ],
+      "risk": "омоним",
+      "note": "limit сам по себе повсюду, поэтому только пары из двух слов"
+    },
+    {
+      "ru": "область применения",
+      "en": [
+        "scope",
+        "field of application"
+      ],
+      "risk": "омоним",
+      "note": "scope в RFC также про область видимости адреса или идентификатора"
+    },
+    {
+      "ru": "облучатель",
+      "en": [
+        "feed horn",
+        "antenna feed"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "обратные потери",
+      "en": [
+        "return loss"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "огибающ",
+      "en": [
+        "envelope",
+        "envelope detector"
+      ],
+      "risk": "омоним",
+      "note": "envelope в протокольных документах — «конверт» сообщения"
+    },
+    {
+      "ru": "ограничение сигнала",
+      "en": [
+        "clipping",
+        "saturation"
+      ],
+      "risk": "нет",
+      "note": "жалоба «сигнал ограничивается / срезается»"
+    },
+    {
+      "ru": "окно",
+      "en": [
+        "window",
+        "receive window",
+        "congestion window"
+      ],
+      "risk": "омоним",
+      "note": "window в англ. также окно интерфейса/временное окно"
+    },
+    {
+      "ru": "окс-7",
+      "en": [
+        "signaling system no. 7",
+        "common channel signaling"
+      ],
+      "risk": "нет",
+      "note": "инженер печатает ОКС-7 или ОКС7 — учесть дефис"
+    },
+    {
+      "ru": "октет",
+      "en": [
+        "octet",
+        "byte"
+      ],
+      "risk": "нет",
+      "note": "в RFC размеры даются в octets, а не bytes"
+    },
+    {
+      "ru": "опорн сет",
+      "en": [
+        "core network",
+        "backbone network"
+      ],
+      "risk": "нет",
+      "note": "старый перевод core network"
+    },
+    {
+      "ru": "опорный генератор",
+      "en": [
+        "reference oscillator",
+        "reference clock"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "основной доступ",
+      "en": [
+        "basic rate interface",
+        "basic rate access"
+      ],
+      "risk": "нет",
+      "note": "ISDN BRI"
+    },
+    {
+      "ru": "осциллограф",
+      "en": [
+        "oscilloscope",
+        "digital storage oscilloscope"
+      ],
+      "risk": "нет",
+      "note": "«scope» не берём — слишком многозначно"
+    },
+    {
+      "ru": "отказ",
+      "en": [
+        "failure",
+        "outage"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "отменен",
+      "en": [
+        "withdrawn",
+        "cancelled",
+        "obsolete"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "отношение сигнал",
+      "en": [
+        "signal to interference plus noise ratio",
+        "signal to noise ratio",
+        "signal to interference ratio"
+      ],
+      "risk": "нет",
+      "note": "покрывает «сигнал/шум», «сигнала к помехе» — расшифровка SINR"
+    },
+    {
+      "ru": "отношение сигнал-шум",
+      "en": [
+        "signal-to-noise ratio",
+        "snr",
+        "carrier-to-noise ratio"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "отношение сигнал/шум",
+      "en": [
+        "signal-to-noise ratio",
+        "carrier-to-noise ratio",
+        "snr"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "отступ по мощности",
+      "en": [
+        "output back-off",
+        "input back-off"
+      ],
+      "risk": "нет",
+      "note": "режим работы ЛБВ транспондера"
+    },
+    {
+      "ru": "пакет",
+      "en": [
+        "packet"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "пейджинг",
+      "en": [
+        "paging"
+      ],
+      "risk": "нет",
+      "note": "paging также про память — но в мобильных доках однозначно"
+    },
+    {
+      "ru": "первичный доступ",
+      "en": [
+        "primary rate interface",
+        "primary rate access"
+      ],
+      "risk": "нет",
+      "note": "ISDN PRI"
+    },
+    {
+      "ru": "перегрузк",
+      "en": [
+        "congestion",
+        "congestion control",
+        "congestion avoidance"
+      ],
+      "risk": "нет",
+      "note": "типовая формулировка неисправности"
+    },
+    {
+      "ru": "передатчик",
+      "en": [
+        "transmitter",
+        "transmit power"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "перемежен",
+      "en": [
+        "interleaving",
+        "interleaver",
+        "deinterleaver"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "перерыв связи",
+      "en": [
+        "outage",
+        "link outage",
+        "unavailability"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "петлевой фильтр",
+      "en": [
+        "loop filter"
+      ],
+      "risk": "нет",
+      "note": "контекст ФАПЧ"
+    },
+    {
+      "ru": "печатная плата",
+      "en": [
+        "printed circuit board",
+        "pcb"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "пик-фактор",
+      "en": [
+        "peak-to-average power ratio",
+        "papr",
+        "crest factor"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "пилот-сигнал",
+      "en": [
+        "pilot tone",
+        "pilot signal"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "планировщик",
+      "en": [
+        "scheduler"
+      ],
+      "risk": "нет",
+      "note": "scheduler также про ОС — но в радиодоках это MAC scheduler"
+    },
+    {
+      "ru": "поверк",
+      "en": [
+        "verification",
+        "periodic verification"
+      ],
+      "risk": "омоним",
+      "note": "verification в RFC/паспортах чаще про проверку проекта или подписи, а не про метрологическую поверку"
+    },
+    {
+      "ru": "повторн передач",
+      "en": [
+        "retransmission"
+      ],
+      "risk": "нет",
+      "note": "HARQ/ARQ retransmission"
+    },
+    {
+      "ru": "повторная передача",
+      "en": [
+        "retransmission",
+        "retransmission timeout"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "повторяемост",
+      "en": [
+        "repeatability"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "поглощение",
+      "en": [
+        "absorption",
+        "ionospheric absorption"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "погрешност",
+      "en": [
+        "measurement error",
+        "accuracy"
+      ],
+      "risk": "омоним",
+      "note": "error сам по себе повсюду; берём только многословный эквивалент"
+    },
+    {
+      "ru": "поднесущ",
+      "en": [
+        "subcarrier",
+        "subcarrier spacing"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "подсистема передачи сообщений",
+      "en": [
+        "message transfer part"
+      ],
+      "risk": "нет",
+      "note": "MTP уровней 1-3 в стеке SS7"
+    },
+    {
+      "ru": "подтвержд",
+      "en": [
+        "acknowledgment",
+        "acknowledgement",
+        "ack"
+      ],
+      "risk": "нет",
+      "note": "в RFC встречаются оба написания acknowledgment/acknowledgement"
+    },
+    {
+      "ru": "покрыти",
+      "en": [
+        "coverage",
+        "radio coverage"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "поле",
+      "en": [
+        "field",
+        "header field"
+      ],
+      "risk": "омоним",
+      "note": "field встречается в англ. тексте повсюду; лучше искать вместе с соседним словом"
     },
     {
       "ru": "полезная нагрузка",
       "en": [
-        "payload"
+        "payload",
+        "payload field"
       ],
-      "risk": "нет"
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "полос пропускан",
+      "en": [
+        "bandwidth",
+        "channel bandwidth"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "полоса пропускания",
+      "en": [
+        "bandwidth",
+        "channel bandwidth",
+        "passband"
+      ],
+      "risk": "омоним",
+      "note": "bandwidth в сетевых документах часто значит пропускную способность канала, а не полосу частот"
+    },
+    {
+      "ru": "полосовой фильтр",
+      "en": [
+        "band pass filter",
+        "bandpass filter",
+        "band-pass filter"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "поляризац",
+      "en": [
+        "polarization",
+        "polarisation"
+      ],
+      "risk": "нет",
+      "note": "два написания: US и ITU/британское"
+    },
+    {
+      "ru": "помех",
+      "en": [
+        "interference"
+      ],
+      "risk": "нет",
+      "note": "основа под помеха/помехи/помеховый"
+    },
+    {
+      "ru": "помехоустойчивое кодирование",
+      "en": [
+        "forward error correction",
+        "channel coding"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "попытк вызов",
+      "en": [
+        "call attempt"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "порог приемника",
+      "en": [
+        "receiver threshold",
+        "threshold degradation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "порт",
+      "en": [
+        "port",
+        "port number",
+        "destination port"
+      ],
+      "risk": "омоним",
+      "note": "port в англ. также физический разъём и «портирование» ПО"
+    },
+    {
+      "ru": "порядковый номер",
+      "en": [
+        "sequence number"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "порядок байтов",
+      "en": [
+        "byte order",
+        "network byte order",
+        "endianness"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "порядок измерений",
+      "en": [
+        "measurement procedure",
+        "test procedure"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "постоянная составляющая",
+      "en": [
+        "dc offset",
+        "dc component"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "потеря пакетов",
+      "en": [
+        "packet loss",
+        "dropped packets"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "потеря синхронизации",
+      "en": [
+        "loss of frame",
+        "loss of synchronization",
+        "out of frame"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "потребляемая мощность",
+      "en": [
+        "power consumption",
+        "power dissipation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "правила кодирования",
+      "en": [
+        "basic encoding rules",
+        "encoding rules"
+      ],
+      "risk": "нет",
+      "note": "ASN.1/BER"
+    },
+    {
+      "ru": "преамбула",
+      "en": [
+        "preamble",
+        "sync word"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "предельно допустимые режимы",
+      "en": [
+        "absolute maximum ratings"
+      ],
+      "risk": "нет",
+      "note": "формулировка из паспортов микросхем"
+    },
+    {
+      "ru": "предельные режимы",
+      "en": [
+        "absolute maximum ratings"
+      ],
+      "risk": "нет",
+      "note": "также запрос \"предельно допустимые параметры\""
+    },
+    {
+      "ru": "предыскажение",
+      "en": [
+        "predistortion",
+        "digital predistortion"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "преобразование фурье",
+      "en": [
+        "fourier transform",
+        "fft"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "преобразователь напряжения",
+      "en": [
+        "dc-dc converter",
+        "switching regulator"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "прерывание",
+      "en": [
+        "interrupt",
+        "interrupt request"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "приемник",
+      "en": [
+        "receiver"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "приемо-сдаточные испытания",
+      "en": [
+        "acceptance test",
+        "acceptance testing"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "приемопередатчик",
+      "en": [
+        "transceiver"
+      ],
+      "risk": "нет",
+      "note": "инженеры пишут и \"приёмопередатчик\", и \"трансивер\" — стоит завести обе формы"
+    },
+    {
+      "ru": "программируемая логическая интегральная схема",
+      "en": [
+        "fpga",
+        "field programmable gate array"
+      ],
+      "risk": "нет",
+      "note": "запрос обычно \"ПЛИС\""
+    },
+    {
+      "ru": "пролет",
+      "en": [
+        "hop",
+        "microwave hop"
+      ],
+      "risk": "омоним",
+      "note": "hop в сетевых документах = маршрутный переход, даёт ложные срабатывания"
+    },
+    {
+      "ru": "промежуточная частота",
+      "en": [
+        "intermediate frequency"
+      ],
+      "risk": "нет",
+      "note": "аббревиатуру IF не даём — совпадает с ключевым словом if"
+    },
+    {
+      "ru": "пропускн способност",
+      "en": [
+        "throughput"
+      ],
+      "risk": "нет",
+      "note": "не bandwidth — в докладах о деградации пишут throughput"
+    },
+    {
+      "ru": "пропускная способност",
+      "en": [
+        "throughput",
+        "capacity"
+      ],
+      "risk": "омоним",
+      "note": "capacity также про ёмкость накопителя или пула"
+    },
+    {
+      "ru": "пропускная способность",
+      "en": [
+        "throughput",
+        "bandwidth",
+        "line rate"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "просвет трассы",
+      "en": [
+        "path clearance",
+        "clearance"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "прослеживаемост",
+      "en": [
+        "metrological traceability",
+        "traceability"
+      ],
+      "risk": "омоним",
+      "note": "traceability также означает трассировку требований и логов"
+    },
+    {
+      "ru": "пространственная волна",
+      "en": [
+        "sky wave",
+        "skywave"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "протокол измерений",
+      "en": [
+        "test report",
+        "measurement report"
+      ],
+      "risk": "нет",
+      "note": "одиночный «протокол» дал бы protocol — совсем другой смысл"
+    },
+    {
+      "ru": "профиль трассы",
+      "en": [
+        "path profile",
+        "terrain profile"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "прошивк",
+      "en": [
+        "firmware",
+        "firmware image"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "прямая видимость",
+      "en": [
+        "line of sight",
+        "line-of-sight"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "рабочая температура",
+      "en": [
+        "operating temperature",
+        "operating temperature range"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "радиатор",
+      "en": [
+        "heat sink",
+        "heatsink"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "радиоинтерфейс",
+      "en": [
+        "radio interface",
+        "air interface"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "радиорелейн",
+      "en": [
+        "microwave link",
+        "radio relay",
+        "microwave radio"
+      ],
+      "risk": "нет",
+      "note": "в англ. документах доминирует microwave link, дословный radio relay реже"
+    },
+    {
+      "ru": "развязка",
+      "en": [
+        "isolation",
+        "port-to-port isolation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "разнесенный прием",
+      "en": [
+        "diversity reception",
+        "space diversity",
+        "diversity"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "разрядность",
+      "en": [
+        "resolution",
+        "bit width"
+      ],
+      "risk": "омоним",
+      "note": "resolution часто про экран или про \"разрешение проблемы\""
+    },
+    {
+      "ru": "разъединени",
+      "en": [
+        "release",
+        "disconnect",
+        "call release"
+      ],
+      "risk": "нет",
+      "note": "Q.931: сообщения DISCONNECT/RELEASE"
+    },
+    {
+      "ru": "разъем",
+      "en": [
+        "connector"
+      ],
+      "risk": "нет",
+      "note": "часто пишут \"разъём\" — нужна и форма с ё"
+    },
+    {
+      "ru": "распространение радиоволн",
+      "en": [
+        "radio wave propagation",
+        "propagation"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "регенератор",
+      "en": [
+        "regenerator"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "регистр местоположен",
+      "en": [
+        "location register",
+        "home location register",
+        "visitor location register"
+      ],
+      "risk": "нет",
+      "note": "словесная расшифровка HLR/VLR"
+    },
+    {
+      "ru": "регистрац",
+      "en": [
+        "registration",
+        "attach"
+      ],
+      "risk": "нет",
+      "note": "в 3GPP процедура называется attach/registration"
+    },
+    {
+      "ru": "регламентные работы",
+      "en": [
+        "scheduled maintenance",
+        "routine maintenance"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "резервирование",
+      "en": [
+        "redundancy",
+        "protection switching",
+        "hot standby"
+      ],
+      "risk": "нет",
+      "note": "1+1, горячий резерв"
+    },
+    {
+      "ru": "результаты измерений",
+      "en": [
+        "measurement results",
+        "test results"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "рекомендац",
+      "en": [
+        "recommendation"
+      ],
+      "risk": "нет",
+      "note": "рекомендации ITU-T"
+    },
+    {
+      "ru": "ремонт",
+      "en": [
+        "repair"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "ресурсн блок",
+      "en": [
+        "resource block",
+        "physical resource block"
+      ],
+      "risk": "нет",
+      "note": "расшифровка PRB"
+    },
+    {
+      "ru": "рефракц",
+      "en": [
+        "refraction",
+        "refractivity"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "роуминг",
+      "en": [
+        "roaming"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "руководство по эксплуатации",
+      "en": [
+        "operating manual",
+        "user manual"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "сброс",
+      "en": [
+        "reset",
+        "power-on reset"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "сброс вызов",
+      "en": [
+        "call drop",
+        "dropped call"
+      ],
+      "risk": "нет",
+      "note": "ключевая формулировка при разборе жалоб"
+    },
+    {
+      "ru": "сброс соединения",
+      "en": [
+        "connection reset",
+        "reset segment"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "сверточн",
+      "en": [
+        "convolutional code",
+        "convolutional encoder"
+      ],
+      "risk": "нет",
+      "note": "писать без ё — поиск обычно нормализует ё→е"
+    },
+    {
+      "ru": "селективное замирание",
+      "en": [
+        "frequency selective fading",
+        "selective fading"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "сетевой уровень",
+      "en": [
+        "network layer"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "сеть",
+      "en": [
+        "network"
+      ],
+      "risk": "омоним",
+      "note": "network повсюду; нужна для расширения, но шумит"
+    },
+    {
+      "ru": "сигнализац",
+      "en": [
+        "signaling",
+        "signalling"
+      ],
+      "risk": "нет",
+      "note": "в документах ITU и IETF пишут по-разному, нужны оба варианта"
+    },
+    {
+      "ru": "сим-карт",
+      "en": [
+        "sim card",
+        "usim"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "символьная скорость",
+      "en": [
+        "symbol rate",
+        "baud rate"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "синтезатор частот",
+      "en": [
+        "frequency synthesizer",
+        "synthesizer"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "синхронизац",
+      "en": [
+        "synchronization",
+        "sync acquisition",
+        "synchronisation"
+      ],
+      "risk": "нет",
+      "note": "потеря синхронизации — частая авария базовой станции"
+    },
+    {
+      "ru": "скорость передачи",
+      "en": [
+        "bit rate",
+        "data rate"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "скремблирован",
+      "en": [
+        "scrambling",
+        "scrambler",
+        "descrambler"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "слежение за спутником",
+      "en": [
+        "satellite tracking",
+        "autotrack"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "смесител",
+      "en": [
+        "mixer",
+        "downconverter"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "смещени",
+      "en": [
+        "offset",
+        "fragment offset"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "смещение частоты",
+      "en": [
+        "frequency offset",
+        "carrier frequency offset",
+        "frequency error"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "согласование импеданса",
+      "en": [
+        "impedance matching",
+        "matching network"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "созвезди",
+      "en": [
+        "constellation",
+        "constellation diagram"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "солнечная активность",
+      "en": [
+        "solar activity",
+        "sunspot number",
+        "solar flux"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "соответстви",
+      "en": [
+        "compliance",
+        "conformance",
+        "conformity"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "соседн сот",
+      "en": [
+        "neighbour cell",
+        "neighbor cell",
+        "neighbour list"
+      ],
+      "risk": "нет",
+      "note": "обе орфографии — британская и американская"
+    },
+    {
+      "ru": "состояние линии",
+      "en": [
+        "link state",
+        "link status",
+        "line status"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "сота",
+      "en": [
+        "cell"
+      ],
+      "risk": "омоним",
+      "note": "cell в английских текстах — и ячейка таблицы, и элемент питания"
+    },
+    {
+      "ru": "спектр",
+      "en": [
+        "spectrum",
+        "spectral"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "спектральная плотность мощности",
+      "en": [
+        "power spectral density",
+        "psd"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "спутник",
+      "en": [
+        "satellite"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "средство измерений",
+      "en": [
+        "measuring instrument",
+        "test equipment"
+      ],
+      "risk": "нет",
+      "note": "СИ в метрологических документах"
+    },
+    {
+      "ru": "срыв синхронизации",
+      "en": [
+        "loss of lock",
+        "out of lock"
+      ],
+      "risk": "нет",
+      "note": "типовая формулировка неисправности"
+    },
+    {
+      "ru": "стабилизатор напряжения",
+      "en": [
+        "voltage regulator",
+        "ldo"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "стандарт",
+      "en": [
+        "standard",
+        "specification"
+      ],
+      "risk": "омоним",
+      "note": "слова встречаются в любом контексте, но без них не найти нормативку"
+    },
+    {
+      "ru": "статистик",
+      "en": [
+        "statistics",
+        "performance statistics"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "ствол",
+      "en": [
+        "transponder",
+        "satellite channel"
+      ],
+      "risk": "омоним",
+      "note": "русский жаргон для ретранслятора; английское channel встречается повсеместно в другом смысле"
+    },
+    {
+      "ru": "стойка",
+      "en": [
+        "rack",
+        "equipment rack"
+      ],
+      "risk": "нет",
+      "note": "формы стойки/стойке добавить отдельно — основа \"стойк\" ловит \"стойкость\""
+    },
+    {
+      "ru": "стояч волн",
+      "en": [
+        "standing wave ratio",
+        "voltage standing wave ratio"
+      ],
+      "risk": "нет",
+      "note": "КСВ/VSWR — типовая авария антенно-фидерного тракта"
+    },
+    {
+      "ru": "схема измерений",
+      "en": [
+        "measurement setup",
+        "test setup"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "счетчик",
+      "en": [
+        "counter",
+        "performance counter"
+      ],
+      "risk": "нет",
+      "note": "написание с ё"
+    },
+    {
+      "ru": "таблица маршрутизации",
+      "en": [
+        "routing table",
+        "forwarding table"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "таймаут",
+      "en": [
+        "timeout",
+        "timer expiry"
+      ],
+      "risk": "нет",
+      "note": "инженер печатает и «тайм-аут», и «таймаут» — учесть дефис"
+    },
+    {
+      "ru": "тепловое сопротивление",
+      "en": [
+        "thermal resistance",
+        "junction-to-ambient"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "термины и определения",
+      "en": [
+        "terms and definitions",
+        "terminology"
+      ],
+      "risk": "нет",
+      "note": "стандартный раздел стандартов и RFC"
+    },
+    {
+      "ru": "техническое обслуживание",
+      "en": [
+        "maintenance",
+        "preventive maintenance"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "техническое описание",
+      "en": [
+        "datasheet",
+        "data sheet"
+      ],
+      "risk": "нет",
+      "note": "русское \"паспорт микросхемы\" тоже стоит завести"
+    },
+    {
+      "ru": "тип-длина-значение",
+      "en": [
+        "type length value",
+        "tag length value"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "типовая схема включения",
+      "en": [
+        "typical application circuit",
+        "application circuit"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "типовое значение",
+      "en": [
+        "typical value",
+        "typ"
+      ],
+      "risk": "нет",
+      "note": "колонка typ в таблицах характеристик"
+    },
+    {
+      "ru": "ток потребления",
+      "en": [
+        "supply current",
+        "quiescent current"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "точка пересечения третьего порядка",
+      "en": [
+        "third-order intercept point",
+        "ip3",
+        "oip3"
+      ],
+      "risk": "нет",
+      "note": "частый параметр в паспортах ВЧ-микросхем"
+    },
+    {
+      "ru": "транспондер",
+      "en": [
+        "transponder"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "транспортн сет",
+      "en": [
+        "transport network",
+        "backhaul"
+      ],
+      "risk": "нет",
+      "note": "backhaul — как это реально пишут в паспортах"
+    },
+    {
+      "ru": "транспортный уровень",
+      "en": [
+        "transport layer"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "трассировк",
+      "en": [
+        "trace",
+        "signalling trace",
+        "call trace"
+      ],
+      "risk": "омоним",
+      "note": "trace — ещё и трассировка стека/дорожка платы"
+    },
+    {
+      "ru": "требовани",
+      "en": [
+        "requirement"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "туннел",
+      "en": [
+        "tunnel",
+        "tunneling",
+        "tunnel endpoint"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "угол места",
+      "en": [
+        "elevation angle",
+        "elevation"
+      ],
+      "risk": "омоним",
+      "note": "elevation в текстах часто = высота над уровнем моря, отметка местности"
+    },
+    {
+      "ru": "умножитель частоты",
+      "en": [
+        "frequency multiplier"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "управляющее поле",
+      "en": [
+        "control field"
+      ],
+      "risk": "нет",
+      "note": "поле управления кадра HDLC/LAPB/LAPD"
+    },
+    {
+      "ru": "уровень принимаем сигнал",
+      "en": [
+        "received signal level",
+        "signal strength",
+        "received power"
+      ],
+      "risk": "нет",
+      "note": "расшифровка RSRP/RSSI словами"
+    },
+    {
+      "ru": "уровень принимаемого сигнала",
+      "en": [
+        "received signal level",
+        "received power"
+      ],
+      "risk": "нет",
+      "note": "главный показатель при разборе аварии пролёта"
+    },
+    {
+      "ru": "уровень сигнала",
+      "en": [
+        "signal level",
+        "received power"
+      ],
+      "risk": "нет",
+      "note": "одиночное level слишком общее, поэтому пара многословная"
+    },
+    {
+      "ru": "уровень шума",
+      "en": [
+        "noise floor",
+        "noise level"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "усилен",
+      "en": [
+        "gain",
+        "amplification"
+      ],
+      "risk": "нет",
+      "note": "основа ловит усиление/усиления/усиленный"
+    },
+    {
+      "ru": "усилени антенн",
+      "en": [
+        "antenna gain"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "усиление антенны",
+      "en": [
+        "antenna gain"
+      ],
+      "risk": "нет",
+      "note": "одиночное gain брать нельзя — слишком общее"
+    },
+    {
+      "ru": "усилител",
+      "en": [
+        "amplifier",
+        "low-noise amplifier",
+        "power amplifier"
+      ],
+      "risk": "нет",
+      "note": "основа ловит усилитель/усилителя/усилители"
+    },
+    {
+      "ru": "усилитель мощности",
+      "en": [
+        "power amplifier"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "условия измерений",
+      "en": [
+        "measurement conditions",
+        "test conditions"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "условия эксплуатации",
+      "en": [
+        "operating conditions",
+        "recommended operating conditions",
+        "environmental conditions"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "установление соединения",
+      "en": [
+        "connection establishment",
+        "three-way handshake"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "устранение неисправностей",
+      "en": [
+        "troubleshooting",
+        "corrective maintenance"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "фазовая автоподстройка частоты",
+      "en": [
+        "phase locked loop",
+        "pll",
+        "phase-locked loop"
+      ],
+      "risk": "нет",
+      "note": "запрос обычно \"ФАПЧ\""
+    },
+    {
+      "ru": "фазовая манипуляц",
+      "en": [
+        "phase shift keying",
+        "psk",
+        "bpsk"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "фазовый шум",
+      "en": [
+        "phase noise"
+      ],
+      "risk": "нет",
+      "note": "ключевой параметр при разборе срыва синхронизации"
+    },
+    {
+      "ru": "фидер",
+      "en": [
+        "feeder",
+        "feed line",
+        "transmission line"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "физический уровень",
+      "en": [
+        "physical layer"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "фильтр",
+      "en": [
+        "filter"
+      ],
+      "risk": "омоним",
+      "note": "filter в софтверных и сетевых документах повсюду"
+    },
+    {
+      "ru": "фильтр нижних частот",
+      "en": [
+        "low pass filter",
+        "lowpass filter",
+        "low-pass filter"
+      ],
+      "risk": "нет",
+      "note": "в документах пишут через дефис и слитно"
+    },
+    {
+      "ru": "фильтр приподнятого косинуса",
+      "en": [
+        "raised cosine filter",
+        "root raised cosine"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "флаг",
+      "en": [
+        "flag",
+        "flag bit"
+      ],
+      "risk": "омоним",
+      "note": "flag в англ. также «признак» вообще и флаг командной строки"
+    },
+    {
+      "ru": "фрагментац",
+      "en": [
+        "fragmentation",
+        "ip fragmentation",
+        "reassembly"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "функциональная схема",
+      "en": [
+        "functional block diagram",
+        "block diagram"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "хендовер",
+      "en": [
+        "handover",
+        "handoff"
+      ],
+      "risk": "нет",
+      "note": "вторая частая русская орфография"
+    },
+    {
+      "ru": "хэндовер",
+      "en": [
+        "handover",
+        "handoff"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "цап",
+      "en": [
+        "dac",
+        "digital-to-analog converter"
+      ],
+      "risk": "нет",
+      "note": "русская аббревиатура отличается от английской"
+    },
+    {
+      "ru": "центр коммутац",
+      "en": [
+        "mobile switching centre",
+        "mobile switching center"
+      ],
+      "risk": "нет",
+      "note": "MSC, обе орфографии"
+    },
+    {
+      "ru": "циклический избыточный код",
+      "en": [
+        "cyclic redundancy check",
+        "crc"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "цифро-аналоговый преобразователь",
+      "en": [
+        "digital-to-analog converter",
+        "dac"
+      ],
+      "risk": "нет",
+      "note": "запрос обычно \"ЦАП\""
+    },
+    {
+      "ru": "цоколевк",
+      "en": [
+        "pinout",
+        "pin configuration",
+        "pin assignment"
+      ],
+      "risk": "нет",
+      "note": "также пишут \"цоколёвка\""
+    },
+    {
+      "ru": "частот",
+      "en": [
+        "frequency",
+        "carrier frequency"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "частота дискретизации",
+      "en": [
+        "sampling rate",
+        "sample rate",
+        "sampling frequency"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "частотная манипуляц",
+      "en": [
+        "frequency shift keying",
+        "fsk"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "частотное разнесение",
+      "en": [
+        "frequency diversity"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "чувствительност",
+      "en": [
+        "sensitivity",
+        "receiver sensitivity"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "чувствительность приемника",
+      "en": [
+        "receiver sensitivity",
+        "sensitivity level"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "шасси",
+      "en": [
+        "chassis"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "шина",
+      "en": [
+        "bus"
+      ],
+      "risk": "омоним",
+      "note": "bus встречается и вне электроники"
+    },
+    {
+      "ru": "шифрован",
+      "en": [
+        "ciphering",
+        "encryption"
+      ],
+      "risk": "нет",
+      "note": "в 3GPP пишут ciphering, в RFC — encryption"
+    },
+    {
+      "ru": "шлейф",
+      "en": [
+        "loopback",
+        "loopback test"
+      ],
+      "risk": "нет",
+      "note": "проверка линии заворотом"
+    },
+    {
+      "ru": "шлюз",
+      "en": [
+        "gateway",
+        "default gateway"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "шумовая температура",
+      "en": [
+        "noise temperature",
+        "system noise temperature"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "эквалайзер",
+      "en": [
+        "equalizer",
+        "equalization",
+        "adaptive equalizer"
+      ],
+      "risk": "нет",
+      "note": "также «выравниватель канала»"
+    },
+    {
+      "ru": "эквивалентная изотропно излучаемая мощность",
+      "en": [
+        "eirp",
+        "equivalent isotropically radiated power"
+      ],
+      "risk": "нет",
+      "note": "русская аббревиатура ЭИИМ не совпадает с EIRP"
+    },
+    {
+      "ru": "эквивалентный радиус земли",
+      "en": [
+        "effective earth radius",
+        "k-factor"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "эксплуатац",
+      "en": [
+        "operation",
+        "in-service"
+      ],
+      "risk": "омоним",
+      "note": "operation в RFC часто означает операцию протокола, а не эксплуатацию"
+    },
+    {
+      "ru": "электрические параметры",
+      "en": [
+        "electrical characteristics",
+        "electrical specifications"
+      ],
+      "risk": "нет",
+      "note": "раздел паспорта, куда инженер лезет при разборе неисправности"
+    },
+    {
+      "ru": "электростатический разряд",
+      "en": [
+        "esd",
+        "electrostatic discharge"
+      ],
+      "risk": "нет",
+      "note": "частая причина отказа входных цепей"
+    },
+    {
+      "ru": "энергетический бюджет линии",
+      "en": [
+        "link budget"
+      ],
+      "risk": "нет",
+      "note": ""
+    },
+    {
+      "ru": "эстафетн передач",
+      "en": [
+        "handover",
+        "handoff"
+      ],
+      "risk": "нет",
+      "note": "официальный русский термин из ГОСТ/переводов"
+    },
+    {
+      "ru": "эталон",
+      "en": [
+        "reference standard",
+        "calibration standard"
+      ],
+      "risk": "омоним",
+      "note": "standard в английском тексте повсюду в значении «стандарт»; многословный вариант надёжнее"
+    },
+    {
+      "ru": "ядро сети",
+      "en": [
+        "core network"
+      ],
+      "risk": "нет",
+      "note": ""
     }
   ]
 }

@@ -167,25 +167,58 @@ def _words_between(text: str, start: int, end: int) -> int:
     return len(_WORD.findall(text[start:end])) if end > start else 0
 
 
+#: Окончания, при которых слово НЕ множественное, хотя и кончается на «s».
+_NOT_PLURAL = ("ss", "us", "is", "os", "as")
+
+#: «bus» и «status» — обычные слова, множественное у них правильное
+#: («buses», «statuses»); «analysis» и «basis» — нет.
+
+#: После этих окончаний множественное число даёт «es», а не «s».
+_ES_ENDINGS = ("s", "sh", "ch", "x", "z")
+
+_VOWELS = "aeiou"
+
+
 def _plural_variants(word: str) -> List[str]:
     """«header field» и «header fields» — для поиска это разные слова.
 
     Стеммер в системе русский: английские окончания он не срезает, поэтому
     единственное и множественное число не сходятся сами. Добавляем обе формы —
     это дешевле, чем трогать стеммер и переиндексировать библиотеку.
+
+    Правило приходится писать аккуратно. Наивное «убрать s с конца» портит
+    «loss» в «los», «address» в «addres», «endianness» в «endiannes» — такие
+    обрубки не находят ничего и занимают место в и без того ограниченном
+    списке добавляемых слов.
     """
     out = [word]
     head, _, last = word.rpartition(" ")
-    if not last or len(last) < 4:
+
+    def add(form: str) -> None:
+        joined = f"{head} {form}".strip()
+        if joined and joined not in out:
+            out.append(joined)
+
+    if len(last) < 3:
         return out
-    if last.endswith("s"):
-        singular = last[:-1]
-        if len(singular) >= 3:
-            out.append(f"{head} {singular}".strip())
-    elif last.endswith(("sh", "ch", "x")):
-        out.append(f"{head} {last}es".strip())
-    elif not last.endswith(("y", "ss")):
-        out.append(f"{head} {last}s".strip())
+
+    if last.endswith("ies") and len(last) > 4:
+        add(last[:-3] + "y")
+    elif last.endswith("es") and last[:-2].endswith(_ES_ENDINGS):
+        add(last[:-2])
+    elif last.endswith("s") and not last.endswith(_NOT_PLURAL):
+        if len(last) > 3:
+            add(last[:-1])
+    elif last.endswith("is"):
+        # analysis → analyses, basis → bases: формы неправильные, и гадать
+        # тут дороже, чем промолчать.
+        pass
+    elif last.endswith("y") and last[-2] not in _VOWELS:
+        add(last[:-1] + "ies")
+    elif last.endswith(_ES_ENDINGS):
+        add(last + "es")
+    else:
+        add(last + "s")
     return out
 
 

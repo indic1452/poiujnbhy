@@ -255,21 +255,11 @@ def _used_labels(text: str) -> set[str]:
 
 
 def _tidy(text: str, limit: int) -> str:
-    """Подготовить фрагмент к подаче в промпт, сохранив строки.
+    """Фрагмент для промпта и панели источников. См. corpus.tidy_quote."""
+    from ..corpus import tidy_quote  # noqa: PLC0415 — не тянуть корпус при импорте
 
-    Схлопывать переводы строк нельзя: таблицы допусков в стандартах и поля
-    кадров в описаниях протоколов — это как раз то, ради чего фрагмент нашли,
-    а в одну строку они превращаются в нечитаемую кашу и для модели, и для
-    инженера в панели источников.
-    """
-    lines = [line.rstrip() for line in text.strip().splitlines()]
-    cleaned: list[str] = []
-    for line in lines:
-        if not line and cleaned and not cleaned[-1]:
-            continue
-        cleaned.append(" ".join(line.split()) if line else "")
-    result = "\n".join(cleaned)
-    return result if len(result) <= limit else result[:limit].rstrip() + "…"
+    return tidy_quote(text, limit)
+
 
 def _clip(text: str, limit: int) -> str:
     text = text.strip()

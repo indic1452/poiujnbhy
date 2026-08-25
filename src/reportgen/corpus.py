@@ -27,7 +27,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, Iterator, List, Sequence
 
 #: Типы документов библиотеки. «misc» — полка для того, что не относится
 #: ни к одному из остальных: без неё такие файлы молча становились
@@ -214,3 +214,96 @@ def load_corpus(root: str | Path, patterns: tuple[str, ...] = ("*.md", "*.txt"))
                 continue
             chunks.extend(load_file(path, root))
     return chunks
+
+
+# ------------------------------------------------- подготовка цитат ------
+
+#: Признаки того, что в строке значима не только последовательность слов, но и
+#: их положение: рамка диаграммы, разделитель таблицы, колонки, выровненные
+#: пробелами.
+_LAYOUT_MARKS = ("|", "+-", "-+", "──", "│", "┼")
+
+#: Столько пробелов подряд — это уже колонка, а не двойной пробел после точки.
+_COLUMN_GAP = 3
+
+#: Сколько строк с колонками должно набраться, чтобы считать фрагмент таблицей.
+#: Одна такая строка — обычно просто рваные пробелы после распознавания.
+_MIN_COLUMN_LINES = 2
+
+
+def _has_frame(line: str) -> bool:
+    """Рамка диаграммы или разделитель таблицы."""
+    stripped = line.strip()
+    return bool(stripped) and any(mark in stripped for mark in _LAYOUT_MARKS)
+
+
+def _has_columns(line: str) -> bool:
+    """Строка, разбитая на колонки пробелами."""
+    return " " * _COLUMN_GAP in line.strip()
+
+
+def _is_structured(lines: Sequence[str]) -> bool:
+    """Значимо ли во фрагменте положение символов, а не только их порядок."""
+    if any(_has_frame(line) for line in lines):
+        return True
+    return sum(1 for line in lines if _has_columns(line)) >= _MIN_COLUMN_LINES
+
+
+def tidy_quote(text: str, limit: int) -> str:
+    """Фрагмент документа для промпта и панели источников.
+
+    Схлопывать переводы строк нельзя: таблицы допусков в стандартах и поля
+    кадров в описаниях протоколов — это как раз то, ради чего фрагмент нашли.
+    Но и пробелы ВНУТРИ строки схлопывать нельзя ровно по той же причине, а
+    раньше они схлопывались. В RFC разрядность поля задана ШИРИНОЙ ячейки в
+    битовой диаграмме::
+
+        |V=2|P|X|  CC   |M|     PT      |       sequence number         |
+
+    После выравнивания по одному пробелу от неё остаётся ``|V=2|P|X| CC |M|
+    PT | sequence number |`` — ширины больше ничего не значат, и модели
+    приходится угадывать разрядность. А именно её инженер и спрашивал.
+    Колоночная таблица «Frame Count      8 bits     0..255» слипается в
+    «Frame Count 8 bits 0..255», где граница между многословным названием поля
+    и его длиной уже неопределима.
+
+    Поэтому строки с разметкой (рамки, разделители, колонки) сохраняются как
+    есть, а обычная проза по-прежнему выравнивается: в ней лишние пробелы —
+    это мусор распознавания, и они только занимают место в промпте.
+
+    Общий отступ блока снимается: он ничего не значит, а места занимает.
+    """
+    lines = [line.rstrip() for line in (text or "").strip("\n").splitlines()]
+    while lines and not lines[0]:
+        lines.pop(0)
+    while lines and not lines[-1]:
+        lines.pop()
+    if not lines:
+        return ""
+
+    indents = [len(line) - len(line.lstrip()) for line in lines if line.strip()]
+    common = min(indents) if indents else 0
+
+    # Решение принимается один раз на весь фрагмент. Построчно нельзя: линейка
+    # разрядов «0 1 2 3 4 5 …» набрана ОДИНОЧНЫМИ пробелами и признаков
+    # разметки в себе не несёт, но выровнена она по ячейкам диаграммы строкой
+    # ниже. Выправить её отдельно — значит сдвинуть на символ и соврать про
+    # номера битов.
+    structured = _is_structured([line[common:] if common else line for line in lines])
+
+    cleaned: List[str] = []
+    for line in lines:
+        if not line.strip():
+            if cleaned and not cleaned[-1]:
+                continue
+            cleaned.append("")
+            continue
+        body = line[common:] if common else line
+        cleaned.append(body if structured else " ".join(body.split()))
+
+    # strip() здесь применять нельзя: он срезал бы ведущий пробел ПЕРВОЙ
+    # строки, а в битовой диаграмме это сдвиг линейки разрядов относительно
+    # ячеек на один символ — то есть ровно та ошибка, от которой всё и
+    # затевалось.
+    quote = "\n".join(cleaned).strip("\n")
+    return quote if len(quote) <= limit else quote[:limit].rstrip() + "…"
