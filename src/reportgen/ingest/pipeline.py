@@ -19,6 +19,8 @@
 
 from __future__ import annotations
 
+import os
+from concurrent import futures
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Sequence, Tuple
@@ -33,6 +35,7 @@ if TYPE_CHECKING:  # pragma: no cover — только для подсказок
 
 __all__ = [
     "IngestResult",
+    "resolve_jobs",
     "DEFAULT_PATTERNS",
     "chunks_from_markdown",
     "ingest_path",
@@ -43,6 +46,26 @@ __all__ = [
 #: Устаревшая константа: осталась для совместимости. Настоящий список форматов
 #: берётся из реестра конвертеров — см. library_patterns().
 DEFAULT_PATTERNS: Tuple[str, ...] = ("*.pdf", "*.docx", "*.md", "*.txt")
+
+
+#: Сколько файлов разбирать одновременно, если число не задано явно.
+#: Оставляем ядро системе: приём не должен подвешивать машину, на которой
+#: одновременно крутится модель.
+def resolve_jobs(jobs: int | None = None) -> int:
+    """Число одновременно разбираемых файлов.
+
+    Разбор упирается в процессор — распознавание сканов, конвертация через
+    LibreOffice, разбор больших PDF, — а делался в один поток: на машине с
+    восемью ядрами загружено было одно. Отсюда ощущение, что «ресурсы не
+    задействованы».
+    """
+    if jobs and jobs > 0:
+        return int(jobs)
+    override = os.environ.get("REPORTGEN_INGEST_JOBS", "").strip()
+    if override.isdigit() and int(override) > 0:
+        return int(override)
+    cores = os.cpu_count() or 2
+    return max(1, min(8, cores - 1))
 
 
 def library_patterns(*, only_available: bool = True) -> Tuple[str, ...]:
@@ -279,6 +302,11 @@ def ingest_path(
     if resolved_domain:
         meta["domain"] = resolved_domain
 
+    year, year_source = _detect_year(converted, title=title, filename=path.name)
+    if year:
+        meta["year"] = year
+        meta["year_source"] = year_source
+
     document = repos.documents.upsert(
         doc_id=doc_id,
         doc_type=resolved_type,
@@ -288,6 +316,7 @@ def ingest_path(
         confidentiality=confidentiality,
         meta=meta,
         domain=resolved_domain,
+        year=year,
     )
     chunks = chunks_from_markdown(converted.text, doc_id, resolved_type, meta)
     result.chunks = repos.chunks.replace_for_document(document, chunks)
@@ -324,6 +353,18 @@ def _document_meta(converted: ConvertedDocument, *, title: str, relative: str) -
     return meta
 
 
+def _detect_year(converted: ConvertedDocument, *, title: str,
+                 filename: str) -> tuple[int | None, str]:
+    """Год издания документа. Ошибка определения не должна ронять приём."""
+    try:
+        from .dating import detect_year  # noqa: PLC0415
+
+        return detect_year(title=title, filename=filename,
+                           text=converted.text, meta=converted.meta)
+    except Exception:  # noqa: BLE001 — определение года не критично
+        return None, ""
+
+
 # ------------------------------------------------------- приём каталога ---
 
 def _iter_library_files(root: Path, patterns: Sequence[str]) -> List[Path]:
@@ -355,6 +396,7 @@ def ingest_directory(
     domain: str | None = None,
     doc_type: str | None = None,
     domains_path: str | Path | None = None,
+    jobs: int | None = None,
 ) -> IngestResult:
     """Принимает каталог библиотеки целиком.
 
@@ -373,22 +415,45 @@ def ingest_directory(
 
     files = _iter_library_files(root, tuple(patterns) if patterns else library_patterns())
     result = IngestResult()
-    for number, path in enumerate(files, start=1):
-        relative = _relative_for(path, root)
-        if progress is not None:
-            progress(f"[{number}/{len(files)}] {relative}")
-        result.merge(
-            ingest_path(
-                repos,
-                path,
-                root=root,
-                force=force,
-                confidentiality=confidentiality,
-                domain=domain,
-                doc_type=doc_type,
-                domains_path=domains_path,
-            )
+    workers = resolve_jobs(jobs)
+
+    def handle(path: Path) -> IngestResult:
+        return ingest_path(
+            repos, path, root=root, force=force, confidentiality=confidentiality,
+            domain=domain, doc_type=doc_type, domains_path=domains_path,
         )
+
+    if workers <= 1 or len(files) < 2:
+        for number, path in enumerate(files, start=1):
+            if progress is not None:
+                progress(f"[{number}/{len(files)}] {_relative_for(path, root)}")
+            result.merge(handle(path))
+        return result
+
+    # Разбор файла — это внешние программы (tesseract, soffice) и разбор
+    # больших PDF: и то, и другое отпускает GIL, поэтому потоки дают почти
+    # линейный выигрыш. Запись в базу при этом остаётся безопасной: у каждого
+    # потока своё соединение SQLite, а транзакции сериализует общий замок.
+    done = 0
+    with futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        pending = {pool.submit(handle, path): path for path in files}
+        for future in futures.as_completed(pending):
+            path = pending[future]
+            done += 1
+            try:
+                piece = future.result()
+            except Exception as error:  # noqa: BLE001 — один файл не роняет приём
+                piece = IngestResult(failed=1)
+                piece.warnings.append(
+                    f"{_relative_for(path, root)}: {type(error).__name__}: {error}"
+                )
+            if progress is not None:
+                progress(f"[{done}/{len(files)}] {_relative_for(path, root)}")
+            result.merge(piece)
+    # Порядок завершения у потоков произвольный — приводим списки к
+    # предсказуемому виду, иначе отчёт о приёме каждый раз выглядит иначе.
+    result.documents.sort()
+    result.warnings.sort()
     return result
 
 

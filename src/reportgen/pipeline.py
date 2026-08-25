@@ -242,7 +242,10 @@ def generate_section(
     text = llm.complete(
         SYSTEM_PROMPT,
         user,
-        max_tokens=max(400, int(spec.target_words * 3)),
+        # Русский текст — примерно 2.5 токена на слово, плюс запас на таблицы
+        # и ссылки. Скупой лимит обрывал раздел на середине фразы, и инженер
+        # видел это как «модель пишет мало».
+        max_tokens=max(900, int(spec.target_words * 4)),
     )
     return GeneratedSection(spec=spec, text=text.strip(), sources=labels, missing_facts=missing)
 

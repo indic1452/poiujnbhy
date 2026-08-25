@@ -85,7 +85,7 @@ class AssistantService:
         prepared = self._prepare(user, chat_id, question, top_k=top_k)
         text = self.reports.get_llm().complete(
             ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-            max_tokens=1600, temperature=0.3, history=prepared["history"],
+            max_tokens=3000, temperature=0.3, history=prepared["history"],
         )
         return self._finish(user, prepared, text)
 
@@ -105,12 +105,12 @@ class AssistantService:
         stream = getattr(llm, "stream", None)
         if stream is None:
             text = llm.complete(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                max_tokens=1600, temperature=0.3)
+                                max_tokens=3000, temperature=0.3)
             pieces.append(text)
             yield {"type": "delta", "text": text}
         else:
             for piece in stream(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                max_tokens=1600, temperature=0.3,
+                                max_tokens=3000, temperature=0.3,
                                 history=prepared["history"]):
                 pieces.append(piece)
                 yield {"type": "delta", "text": piece}

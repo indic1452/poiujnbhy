@@ -44,8 +44,9 @@ import re
 import shutil
 import subprocess
 import tempfile
+import zipfile
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 from .. import registry
 from ..convert import (
@@ -328,6 +329,25 @@ def ocr_image(
         return _run_tesseract(binary, safe, usable, psm, timeout, temporary)
 
 
+def _tesseract_env() -> Dict[str, str]:
+    """Окружение для tesseract: по одному потоку OpenMP на процесс.
+
+    По умолчанию tesseract разворачивает OpenMP на все ядра. На одной странице
+    это даёт около 20 % — а при параллельном приёме библиотеки превращается в
+    катастрофу: четыре процесса по четыре потока на четырёхъядерной машине
+    молотят друг друга, и распознавание, занимающее секунду, не заканчивается
+    и за девять минут. Измерено на этой сборке: 0.99 с против 0.80 с на одном
+    файле и полное зависание против 3 с на четырёх.
+
+    Параллелить надо процессами, а не потоками внутри процесса: страницы
+    независимы, и один поток на процесс даёт линейное ускорение.
+    """
+    env = dict(os.environ)
+    env.setdefault("OMP_THREAD_LIMIT", "1")
+    env.setdefault("OMP_NUM_THREADS", "1")
+    return env
+
+
 def _run_tesseract(
     binary: str,
     image: Path,
@@ -343,7 +363,8 @@ def _run_tesseract(
         command += ["--psm", str(int(psm))]
 
     try:
-        completed = subprocess.run(command, capture_output=True, timeout=timeout, check=False)
+        completed = subprocess.run(command, capture_output=True, timeout=timeout,
+                                   check=False, env=_tesseract_env())
     except subprocess.TimeoutExpired as error:
         raise OcrTimeoutError(
             f"tesseract не уложился в {float(timeout):.0f} с и был снят — "
@@ -606,6 +627,126 @@ def convert_image(path: Path) -> ConvertedDocument:
 
 
 # --------------------------------------------------- конвертер PDF + OCR ---
+
+
+# ------------------------------------------- картинки внутри документов ----
+
+#: Меньше этого картинку не распознаём: логотипы, маркеры списков, линейки.
+#: 200×80 — примерно подпись под схемой, ниже осмысленного текста не бывает.
+MIN_EMBEDDED_WIDTH = 200
+MIN_EMBEDDED_HEIGHT = 80
+
+#: Сколько картинок разбирать в одном документе. Презентация на двести
+#: слайдов иначе распознавалась бы полчаса.
+MAX_EMBEDDED_IMAGES = 40
+
+#: Где лежат вложенные картинки внутри контейнеров.
+EMBEDDED_MEDIA_DIRS = ("word/media/", "ppt/media/", "xl/media/", "Pictures/")
+
+_EMBEDDED_SUFFIXES = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif")
+
+
+def _embedded_size(payload: bytes) -> Tuple[int, int] | None:
+    """Размер картинки без её полной распаковки, если Pillow доступен."""
+    try:
+        import io  # noqa: PLC0415
+
+        from PIL import Image  # noqa: PLC0415
+    except ImportError:
+        return None
+    try:
+        with Image.open(io.BytesIO(payload)) as image:
+            return image.size
+    except Exception:  # noqa: BLE001 — битая картинка не должна ронять разбор
+        return None
+
+
+def ocr_embedded_images(
+    path: Path,
+    *,
+    languages: str = DEFAULT_LANGUAGES,
+    limit: int = MAX_EMBEDDED_IMAGES,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Tuple[List[Tuple[str, str]], List[str]]:
+    """Распознать картинки, вложенные в документ-контейнер.
+
+    В технических отчётах половина существенного лежит на иллюстрациях:
+    спектрограмма с подписанными частотами, снимок экрана анализатора,
+    отсканированная страница методики, вставленная в DOCX. Текст разбора
+    такие вставки не видел вовсе — в базу попадала подпись «рисунок 1».
+
+    Возвращает ``(распознанное, предупреждения)``. Ошибки не бросаются:
+    непрочитанная картинка — это меньше текста, а не сломанный документ.
+    """
+    found: List[Tuple[str, str]] = []
+    warnings: List[str] = []
+    if not ocr_available():
+        return found, warnings
+
+    try:
+        archive = zipfile.ZipFile(path)
+    except (OSError, zipfile.BadZipFile):
+        return found, warnings
+
+    skipped_small = 0
+    with archive:
+        names = [
+            name for name in archive.namelist()
+            if name.lower().endswith(_EMBEDDED_SUFFIXES)
+            and any(name.startswith(prefix) for prefix in EMBEDDED_MEDIA_DIRS)
+        ]
+        names.sort()
+        if len(names) > limit:
+            warnings.append(
+                f"картинок в документе {len(names)}, распознаны первые {limit}"
+            )
+            names = names[:limit]
+
+        for name in names:
+            try:
+                payload = archive.read(name)
+            except (OSError, zipfile.BadZipFile):
+                continue
+            size = _embedded_size(payload)
+            if size and (size[0] < MIN_EMBEDDED_WIDTH or size[1] < MIN_EMBEDDED_HEIGHT):
+                skipped_small += 1
+                continue
+            try:
+                text = ocr_image(payload, languages=languages, timeout=timeout)
+            except OcrError:
+                continue
+            text = _normalise(text).strip()
+            if len(text) >= 12:
+                found.append((Path(name).name, text))
+
+    if skipped_small:
+        warnings.append(
+            f"мелких изображений пропущено: {skipped_small} (логотипы и значки не распознаются)"
+        )
+    return found, warnings
+
+
+def embedded_images_block(found: Sequence[Tuple[str, str]]) -> str:
+    """Распознанное с картинок — отдельным разделом, честно помеченным.
+
+    Отдельным, а не вперемешку с текстом: распознанное машиной нельзя
+    подавать как написанное автором, иначе инженер не поймёт, что сверять.
+    """
+    if not found:
+        return ""
+    parts = [
+        "## Текст с иллюстраций (распознан машинно)",
+        "",
+        "Ниже — то, что удалось прочитать на вставленных в документ картинках. "
+        "Числа и обозначения отсюда перед использованием сверяйте с оригиналом.",
+        "",
+    ]
+    for name, text in found:
+        parts.append(f"### {name}")
+        parts.append("")
+        parts.append(text)
+        parts.append("")
+    return "\n".join(parts).rstrip() + "\n"
 
 def _split_pages(text: str) -> Tuple[str, Dict[int, str]]:
     """Размеченный маркерами Markdown → текст до первой страницы и текст по страницам."""

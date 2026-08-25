@@ -9,31 +9,52 @@
       "title": "Исходные данные и постановка задачи",
       "instruction": "Изложи суть обращения заказчика, перечисли полученные материалы и сформулируй задачу анализа. Не приводи результатов и выводов.",
       "required_facts": [],
-      "optional_facts": ["center_frequency", "modulation"],
-      "target_words": 180
+      "optional_facts": [
+        "center_frequency",
+        "modulation"
+      ],
+      "target_words": 310
     },
     {
       "id": "conditions",
       "title": "Условия и методика измерений",
       "instruction": "Опиши параметры записи и условия, в которых проводился анализ: центральная частота, частота дискретизации, длительность записи, использованный инструментарий. Отдельно укажи ограничения, накладываемые исходными материалами.",
-      "required_facts": ["center_frequency", "sample_rate", "capture_duration"],
-      "optional_facts": ["modulation", "symbol_rate"],
-      "retrieval_queries": ["методика измерений параметров сигнала по IQ-записи"],
-      "retrieval_doc_types": ["literature", "standards"],
-      "target_words": 220
+      "required_facts": [
+        "center_frequency",
+        "sample_rate",
+        "capture_duration"
+      ],
+      "optional_facts": [
+        "modulation",
+        "symbol_rate"
+      ],
+      "retrieval_queries": [
+        "методика измерений параметров сигнала по IQ-записи"
+      ],
+      "retrieval_doc_types": [
+        "literature",
+        "standards"
+      ],
+      "target_words": 370
     },
     {
       "id": "method",
       "title": "Применённая методика анализа",
       "instruction": "Опиши последовательность обработки: оценка спектра, определение занимаемой полосы, синхронизация и демодуляция, расчёт метрик качества. Каждый методический шаг сопровождай ссылкой на источник.",
       "required_facts": [],
-      "optional_facts": ["occupied_bandwidth", "symbol_rate"],
+      "optional_facts": [
+        "occupied_bandwidth",
+        "symbol_rate"
+      ],
       "retrieval_queries": [
         "занимаемая полоса частот 99 процентов мощности",
         "оценка качества модуляции EVM"
       ],
-      "retrieval_doc_types": ["literature", "standards"],
-      "target_words": 300
+      "retrieval_doc_types": [
+        "literature",
+        "standards"
+      ],
+      "target_words": 510
     },
     {
       "id": "results",
@@ -46,32 +67,55 @@
         "frequency_offset",
         "symbol_rate"
       ],
-      "optional_facts": ["phase_noise_1khz", "spurious_offset", "spurious_level", "ber", "fer"],
-      "target_words": 320
+      "optional_facts": [
+        "phase_noise_1khz",
+        "spurious_offset",
+        "spurious_level",
+        "ber",
+        "fer"
+      ],
+      "target_words": 540
     },
     {
       "id": "analysis",
       "title": "Анализ выявленных отклонений",
       "instruction": "Для каждой находки объясни, какое измерение её подтверждает и какому требованию она противоречит. Требования подкрепляй ссылками на источники. Разбери возможные причины, явно разделяя подтверждённые данными и предположительные.",
-      "required_facts": ["evm", "snr"],
-      "optional_facts": ["ber", "fer", "spurious_offset", "spurious_level", "phase_noise_1khz"],
+      "required_facts": [
+        "evm",
+        "snr"
+      ],
+      "optional_facts": [
+        "ber",
+        "fer",
+        "spurious_offset",
+        "spurious_level",
+        "phase_noise_1khz"
+      ],
       "findings_min_severity": "low",
       "retrieval_queries": [
         "допустимое значение EVM для QPSK",
         "влияние фазового шума на качество модуляции",
         "паразитные составляющие спектра передатчика"
       ],
-      "retrieval_doc_types": ["literature", "standards", "reports"],
-      "target_words": 450
+      "retrieval_doc_types": [
+        "literature",
+        "standards",
+        "reports"
+      ],
+      "target_words": 760
     },
     {
       "id": "conclusions",
       "title": "Выводы",
       "instruction": "Сформулируй выводы по каждой находке уровня medium и выше, строго опираясь на измерения. Ничего нового, чего не было в предыдущих разделах.",
       "required_facts": [],
-      "optional_facts": ["evm", "snr", "ber"],
+      "optional_facts": [
+        "evm",
+        "snr",
+        "ber"
+      ],
       "findings_min_severity": "medium",
-      "target_words": 200
+      "target_words": 340
     },
     {
       "id": "recommendations",
@@ -80,9 +124,14 @@
       "required_facts": [],
       "optional_facts": [],
       "findings_min_severity": "medium",
-      "retrieval_queries": ["устранение паразитных составляющих и смещения несущей"],
-      "retrieval_doc_types": ["literature", "reports"],
-      "target_words": 220
+      "retrieval_queries": [
+        "устранение паразитных составляющих и смещения несущей"
+      ],
+      "retrieval_doc_types": [
+        "literature",
+        "reports"
+      ],
+      "target_words": 370
     }
   ]
 }

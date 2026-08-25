@@ -15,6 +15,10 @@
 .PARAMETER Domain
     Направление техники для всех файлов: satellite, microwave, protocols,
     modulation, measurement, equipment, regulation.
+.PARAMETER Jobs
+    Сколько файлов разбирать одновременно. 0 — по числу ядер минус одно.
+    Разбор упирается в процессор, поэтому на многоядерной машине это главный
+    способ ускорить загрузку большой библиотеки.
 .PARAMETER Force
     Переиндексировать всё заново, даже неизменившиеся файлы.
 .PARAMETER NoEmbed
@@ -29,6 +33,7 @@ param(
     [ValidateSet('literature', 'standards', 'datasheets', 'reports', 'regulations')]
     [string]$DocType = '',
     [string]$Domain = '',
+    [int]$Jobs = 0,
     [switch]$Force,
     [switch]$NoEmbed
 )
@@ -71,6 +76,7 @@ Invoke-Reportgen formats
 Write-Step 'Разбор документов (сканы идут медленно, это нормально)'
 $arguments = @('ingest', $library)
 if ($Force)   { $arguments += '--force' }
+if ($Jobs)    { $arguments += @('--jobs', $Jobs) }
 if ($DocType) { $arguments += @('--doc-type', $DocType) }
 if ($Domain)  { $arguments += @('--domain', $Domain) }
 Invoke-Reportgen @arguments

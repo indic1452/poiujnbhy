@@ -1,122 +1,161 @@
 /* Интерфейс инженера: три панели, светлая и тёмная темы.
-   Без сборщиков и без внешних загрузок: шрифты системные, иконки — юникод и inline SVG. */
+
+   Оформление: приборное, а не «сайтовое». Структуру держат волосяные линейки,
+   а не тени и плавающие карточки; тень остаётся только за настоящими
+   всплывающими слоями. Плотность выбрана под работу с таблицами и числами:
+   строка таблицы 34 px, цифры моноширинные по разрядам.
+
+   Без сборщиков и без внешних загрузок: ни одного обращения наружу. Шрифты
+   системные — на Windows это Segoe UI Variable (10-я и 11-я), у которой полная
+   кириллица; веб-шрифт не кладём, потому что на изолированной машине лишние
+   400 КБ и ещё одна точка отказа не стоят мелкой разницы в рисунке букв. */
 
 /* ------------------------------------------------------------- палитра --- */
 
 :root {
     color-scheme: light;
 
-    --bg: #eef1f5;
+    /* Нейтрали. Фон холоднее панелей на пару градусов, чтобы белое поле
+       читалось как лист, а не как дырка. */
+    --bg: #f2f4f6;
     --panel: #ffffff;
-    --panel-2: #f5f7fa;
+    --panel-2: #f7f8fa;
     --field: #ffffff;
-    --field-2: #f2f4f7;
-    --border: #d4dae2;
-    --border-strong: #b6c0cc;
-    --text: #16202b;
-    --muted: #5e6c7c;
-    --faint: #8b98a6;
+    --field-2: #f4f6f8;
+    --border: #e0e4e9;
+    --border-strong: #c3cad3;
+    --text: #131a21;
+    --muted: #5a6773;
+    --faint: #8794a1;
 
-    --accent: #1f5fd0;
-    --accent-soft: #e4edfd;
+    /* Акцент — сталь, а не «ссылочная синь»: у прибора цвет служебный,
+       им отмечают действие, а не украшают экран. */
+    --accent: #15507e;
+    --accent-hover: #0f3f65;
+    --accent-soft: #e7eef5;
+    --accent-line: #b9cede;
     --accent-text: #ffffff;
+    --link: #14608f;
 
-    --danger: #c22e26;
-    --danger-soft: #fbe6e4;
-    --warn: #9a6100;
-    --warn-soft: #fdf0d8;
-    --ok: #16713c;
-    --ok-soft: #dff3e6;
-    --info: #345a7a;
-    --info-soft: #e6eef5;
+    --danger: #a8281f;
+    --danger-soft: #fbe9e7;
+    --warn: #7e5300;
+    --warn-soft: #fbf0d9;
+    --ok: #14663a;
+    --ok-soft: #e2f1e8;
+    --info: #2c5570;
+    --info-soft: #e8eff4;
 
-    --mark: #fff1a8;
-    --mark-active: #ffd23f;
+    --mark: #ffeeae;
+    --mark-active: #ffcf3d;
 
-    --shadow: 0 1px 2px rgba(16, 26, 38, .08), 0 8px 24px rgba(16, 26, 38, .08);
-    --shadow-sm: 0 1px 2px rgba(16, 26, 38, .10);
+    /* Тень только для всплывающих слоёв. Всё остальное держат линейки. */
+    --shadow: 0 2px 4px rgba(14, 22, 31, .06), 0 12px 32px rgba(14, 22, 31, .12);
+    --shadow-sm: 0 1px 3px rgba(14, 22, 31, .10);
 
-    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-        "Noto Sans", "Liberation Sans", Arial, sans-serif;
-    --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Segoe UI Mono",
-        "Liberation Mono", "DejaVu Sans Mono", Consolas, monospace;
+    /* Segoe UI Variable — стандартная на Windows 11, Segoe UI — на 10-й.
+       Обе с полной кириллицей, ставить ничего не нужно. */
+    --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+        BlinkMacSystemFont, Roboto, "Noto Sans", "Liberation Sans", Arial, sans-serif;
+    --font-display: "Segoe UI Variable Display", "Segoe UI Semibold", var(--font-ui);
+    --font-mono: ui-monospace, "Cascadia Mono", "Consolas", "SFMono-Regular",
+        "Segoe UI Mono", "Liberation Mono", "DejaVu Sans Mono", monospace;
 
-    --radius: 8px;
-    --radius-sm: 6px;
+    /* Типографическая шкала: шаги заметные, чтобы уровень читался сразу. */
+    --fs-xs: 11px;
+    --fs-sm: 12px;
+    --fs-base: 13.5px;
+    --fs-md: 15px;
+    --fs-lg: 18px;
+    --fs-xl: 22px;
+
+    /* Скругления мелкие: у приборной панели углы почти прямые. */
+    --radius: 5px;
+    --radius-sm: 4px;
+    --radius-lg: 8px;
+
     --left-w: 400px;
     --right-w: 360px;
     --chat-left-w: 288px;
     --chat-right-w: 344px;
+    --topbar-h: 54px;
+    --content-max: 1320px;
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
         color-scheme: dark;
 
-        --bg: #0e1319;
-        --panel: #161c24;
-        --panel-2: #1b232c;
-        --field: #10161d;
-        --field-2: #1b232c;
-        --border: #2a343f;
-        --border-strong: #3b4855;
-        --text: #e4ebf2;
-        --muted: #9aa8b6;
-        --faint: #74828f;
+        --bg: #0b0f14;
+        --panel: #141a21;
+        --panel-2: #1a212a;
+        --field: #0e141a;
+        --field-2: #1a212a;
+        --border: #262f3a;
+        --border-strong: #3a4552;
+        --text: #e6ecf2;
+        --muted: #98a5b3;
+        --faint: #71808e;
 
-        --accent: #5a9bff;
-        --accent-soft: #1a2a45;
-        --accent-text: #08111c;
+        --accent: #5fa3dd;
+        --accent-hover: #7db8ea;
+        --accent-soft: #16283a;
+        --accent-line: #2c4a66;
+        --accent-text: #07121c;
+        --link: #74b3e8;
 
-        --danger: #ff7a6e;
-        --danger-soft: #3a1c19;
-        --warn: #e8ab3c;
-        --warn-soft: #382a12;
-        --ok: #56cc8c;
-        --ok-soft: #12301f;
-        --info: #7fb4dc;
-        --info-soft: #16283a;
+        --danger: #f08379;
+        --danger-soft: #351a17;
+        --warn: #e0a63f;
+        --warn-soft: #332612;
+        --ok: #5cc98c;
+        --ok-soft: #112c1e;
+        --info: #83b3d6;
+        --info-soft: #142635;
 
-        --mark: #4a3f13;
+        --mark: #453a10;
         --mark-active: #8a7212;
 
-        --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 10px 30px rgba(0, 0, 0, .45);
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, .45);
+        --shadow: 0 2px 4px rgba(0, 0, 0, .45), 0 14px 36px rgba(0, 0, 0, .5);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, .5);
     }
 }
 
 :root[data-theme="dark"] {
     color-scheme: dark;
 
-    --bg: #0e1319;
-    --panel: #161c24;
-    --panel-2: #1b232c;
-    --field: #10161d;
-    --field-2: #1b232c;
-    --border: #2a343f;
-    --border-strong: #3b4855;
-    --text: #e4ebf2;
-    --muted: #9aa8b6;
-    --faint: #74828f;
+    --bg: #0b0f14;
+    --panel: #141a21;
+    --panel-2: #1a212a;
+    --field: #0e141a;
+    --field-2: #1a212a;
+    --border: #262f3a;
+    --border-strong: #3a4552;
+    --text: #e6ecf2;
+    --muted: #98a5b3;
+    --faint: #71808e;
 
-    --accent: #5a9bff;
-    --accent-soft: #1a2a45;
-    --accent-text: #08111c;
+    --accent: #5fa3dd;
+    --accent-hover: #7db8ea;
+    --accent-soft: #16283a;
+    --accent-line: #2c4a66;
+    --accent-text: #07121c;
+    --link: #74b3e8;
 
-    --danger: #ff7a6e;
-    --danger-soft: #3a1c19;
-    --warn: #e8ab3c;
-    --warn-soft: #382a12;
-    --ok: #56cc8c;
-    --ok-soft: #12301f;
-    --info: #7fb4dc;
-    --info-soft: #16283a;
+    --danger: #f08379;
+    --danger-soft: #351a17;
+    --warn: #e0a63f;
+    --warn-soft: #332612;
+    --ok: #5cc98c;
+    --ok-soft: #112c1e;
+    --info: #83b3d6;
+    --info-soft: #142635;
 
-    --mark: #4a3f13;
+    --mark: #453a10;
     --mark-active: #8a7212;
 
-    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 10px 30px rgba(0, 0, 0, .45);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .45);
+    --shadow: 0 2px 4px rgba(0, 0, 0, .45), 0 14px 36px rgba(0, 0, 0, .5);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, .5);
 }
 
 /* --------------------------------------------------------------- основа --- */
@@ -139,11 +178,12 @@ body {
 body {
     margin: 0;
     font-family: var(--font-ui);
-    font-size: 14px;
+    font-size: var(--fs-base);
     line-height: 1.5;
     color: var(--text);
     background: var(--bg);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
 }
 
 body.app {
@@ -157,21 +197,60 @@ h2,
 h3,
 h4 {
     margin: 0;
+    font-family: var(--font-display);
     font-weight: 600;
-    line-height: 1.3;
+    line-height: 1.25;
+    letter-spacing: -.01em;
+}
+
+h1 {
+    font-size: var(--fs-xl);
+    letter-spacing: -.02em;
+}
+
+h2 {
+    font-size: var(--fs-lg);
+}
+
+h3 {
+    font-size: var(--fs-md);
 }
 
 a {
-    color: var(--accent);
+    color: var(--link);
+    text-underline-offset: 2px;
+}
+
+a:hover {
+    color: var(--accent-hover);
 }
 
 ::selection {
-    background: var(--accent-soft);
+    background: var(--mark);
+    color: var(--text);
 }
 
 :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
+    border-radius: 2px;
+}
+
+/* Числа в интерфейсе почти всегда стоят столбиком — выравниваем по разрядам. */
+table,
+.metric-value,
+.num,
+time {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Служебная подпись над полем или группой: маленькая, спокойная, без капса.
+   Капслок с разрядкой читается хуже и выдаёт шаблон. */
+.label,
+.field-label {
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    color: var(--muted);
 }
 
 /* --------------------------------------------------------------- шапка --- */
@@ -179,70 +258,96 @@ a {
 .topbar {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 0 16px;
-    height: 52px;
+    gap: 18px;
+    padding: 0 18px;
+    height: var(--topbar-h);
     flex: 0 0 auto;
     background: var(--panel);
-    border-bottom: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
+    border-bottom: 1px solid var(--border-strong);
     z-index: 5;
 }
 
 .brand {
     display: flex;
     align-items: center;
-    gap: 9px;
-    font-weight: 650;
-    letter-spacing: .2px;
+    gap: 10px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--fs-md);
+    letter-spacing: -.01em;
     white-space: nowrap;
+    color: var(--text);
 }
 
 .brand svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     color: var(--accent);
+    flex: 0 0 auto;
 }
 
+/* Разделитель между маркой и разделами — тонкая линия, а не пустота:
+   так шапка читается как приборная панель с секциями. */
+.brand::after {
+    content: "";
+    width: 1px;
+    height: 22px;
+    margin-left: 8px;
+    background: var(--border);
+}
+
+/* Разделы — вкладки с подчёркиванием. Пилюли с заливкой выглядят как
+   кнопки и спорят с настоящими кнопками справа. */
 .nav {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     flex: 1;
+    align-self: stretch;
 }
 
 .nav a {
-    padding: 6px 12px;
-    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
     color: var(--muted);
     text-decoration: none;
     font-weight: 500;
     white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
 }
 
 .nav a:hover {
-    background: var(--panel-2);
     color: var(--text);
+    background: var(--panel-2);
 }
 
 .nav a.is-active {
-    background: var(--accent-soft);
-    color: var(--accent);
+    color: var(--text);
+    border-bottom-color: var(--accent);
+    background: none;
 }
 
 .topbar-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-sm);
     white-space: nowrap;
 }
 
 .user-chip {
     display: flex;
     flex-direction: column;
-    line-height: 1.2;
+    line-height: 1.25;
     text-align: right;
+    text-decoration: none;
+    color: inherit;
+}
+
+.user-chip:hover b {
+    color: var(--accent);
 }
 
 .user-chip b {
@@ -251,7 +356,7 @@ a {
 }
 
 .user-chip span {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--faint);
 }
 
@@ -273,11 +378,11 @@ button {
     border-radius: var(--radius-sm);
     background: var(--panel);
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--fs-base);
     font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
-    transition: background .12s, border-color .12s;
+    transition: background .12s, border-color .12s, color .12s;
 }
 
 .btn:hover:not(:disabled) {
@@ -297,8 +402,8 @@ button {
 }
 
 .btn--primary:hover:not(:disabled) {
-    background: var(--accent);
-    filter: brightness(1.08);
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
 }
 
 .btn--danger {
@@ -326,7 +431,7 @@ button {
 .btn--sm {
     padding: 3px 8px;
     min-height: 26px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
 }
 
 .btn--icon {
@@ -345,6 +450,17 @@ button {
     align-items: center;
 }
 
+/* Тихое удаление: красный крест в каждой строке кричит громче, чем содержимое
+   таблицы. Цвет появляется только под курсором. */
+.btn--danger-hover {
+    color: var(--faint);
+}
+
+.btn--danger-hover:hover:not(:disabled) {
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
 /* --------------------------------------------------------------- поля --- */
 
 input[type="text"],
@@ -354,14 +470,37 @@ input[type="number"],
 select,
 textarea {
     font: inherit;
-    font-size: 13px;
+    font-size: var(--fs-base);
     color: var(--text);
     background: var(--field);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm);
-    padding: 5px 8px;
+    padding: 5px 9px;
+    min-height: 30px;
     min-width: 0;
     max-width: 100%;
+    transition: border-color .12s, box-shadow .12s;
+}
+
+/* Свой треугольник вместо системного: браузерный рисуется по-разному в
+   каждой сборке и в таблице выглядит инородно. */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 26px;
+    background-image:
+        linear-gradient(45deg, transparent 50%, currentColor 50%),
+        linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+        calc(100% - 14px) calc(50% + 1px),
+        calc(100% - 9px) calc(50% + 1px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+select::-ms-expand {
+    display: none;
 }
 
 input:focus,
@@ -369,6 +508,7 @@ select:focus,
 textarea:focus {
     border-color: var(--accent);
     outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 input::placeholder,
@@ -381,13 +521,32 @@ textarea:disabled,
 select:disabled {
     background: var(--field-2);
     color: var(--muted);
+    cursor: default;
+}
+
+/* Тихое поле: в плотной таблице десяток рамок превращает строки в анкету.
+   Рамка появляется при наведении и фокусе, значение читается как текст. */
+.select--quiet {
+    border-color: transparent;
+    background-color: transparent;
+    padding-left: 4px;
+}
+
+.select--quiet:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    background-color: var(--field);
+}
+
+.select--quiet:focus {
+    background-color: var(--field);
 }
 
 label.field {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
+    font-weight: 500;
     color: var(--muted);
 }
 
@@ -395,14 +554,14 @@ label.inline {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 13px;
+    font-size: var(--fs-base);
     color: var(--muted);
     cursor: pointer;
 }
 
 .mono {
     font-family: var(--font-mono);
-    font-size: 12.5px;
+    font-size: var(--fs-sm);
 }
 
 /* --------------------------------------------------------------- бейджи --- */
@@ -464,41 +623,65 @@ label.inline {
     flex: 1;
     min-height: 0;
     overflow: auto;
-    padding: 18px 20px 40px;
+    padding: 22px 24px 48px;
+}
+
+/* Ограничитель ширины: на широком мониторе строка в 1400 px нечитаема, а
+   пустая страница выглядит недоделанной. Таблицы ограничитель не трогает —
+   у них своя, более широкая мера. */
+.page > * {
+    max-width: var(--content-max);
+}
+
+/* Таблице ограничитель мешает: столбцы начинают переносить слова. */
+.page > .table-wide,
+.page > .table-scroll {
+    max-width: none;
 }
 
 .page-head {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    align-items: baseline;
+    gap: 14px;
     flex-wrap: wrap;
-    margin-bottom: 14px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
 }
 
 .page-head h1 {
-    font-size: 19px;
     margin-right: auto;
 }
 
+/* Подпись под заголовком: чем занят раздел, одной строкой. */
+.page-head .page-note {
+    flex: 0 1 auto;
+    color: var(--muted);
+    font-size: var(--fs-sm);
+}
+
+/* Карточка — рамка, а не тень: несколько «парящих» блоков на сером фоне
+   и есть тот самый шаблонный вид. */
 .card {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
 }
 
 .card-pad {
-    padding: 14px 16px;
+    padding: 16px 18px;
 }
 
 .card + .card {
-    margin-top: 14px;
+    margin-top: 16px;
 }
 
 .card-title {
-    font-size: 14px;
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
     font-weight: 600;
-    margin-bottom: 10px;
+    letter-spacing: -.01em;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -509,12 +692,12 @@ label.inline {
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
 .toolbar .grow {
     flex: 1;
-    min-width: 160px;
+    min-width: 180px;
 }
 
 .muted {
@@ -526,7 +709,7 @@ label.inline {
 }
 
 .small {
-    font-size: 12px;
+    font-size: var(--fs-sm);
 }
 
 .nowrap {
@@ -534,14 +717,14 @@ label.inline {
 }
 
 .empty {
-    padding: 32px 16px;
+    padding: 48px 20px;
     text-align: center;
     color: var(--muted);
 }
 
 .empty h3 {
-    font-size: 15px;
-    margin-bottom: 6px;
+    font-size: var(--fs-md);
+    margin-bottom: 8px;
     color: var(--text);
 }
 
@@ -554,18 +737,18 @@ label.inline {
 table.grid {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: var(--fs-base);
 }
 
+/* Заголовок столбца — обычный строчный текст. Капслок с разрядкой читается
+   медленнее и сразу выдаёт шаблон. */
 table.grid th {
     text-align: left;
-    font-size: 11.5px;
-    text-transform: uppercase;
-    letter-spacing: .4px;
-    color: var(--faint);
+    font-size: var(--fs-sm);
+    color: var(--muted);
     font-weight: 600;
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--border);
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border-strong);
     white-space: nowrap;
     position: sticky;
     top: 0;
@@ -573,14 +756,32 @@ table.grid th {
     z-index: 1;
 }
 
+
+
 table.grid td {
-    padding: 8px 10px;
+    padding: 7px 12px;
     border-bottom: 1px solid var(--border);
     vertical-align: middle;
 }
 
+table.grid tbody tr:last-child td {
+    border-bottom: none;
+}
+
 table.grid tbody tr:hover {
     background: var(--panel-2);
+}
+
+/* Строка таблицы — не «карточка»: подсветка только на наведении, действия
+   в строке проявляются там же, а не мозолят глаза красным крестом. */
+table.grid .row-actions {
+    opacity: 0;
+    transition: opacity .12s;
+}
+
+table.grid tbody tr:hover .row-actions,
+table.grid tbody tr:focus-within .row-actions {
+    opacity: 1;
 }
 
 table.grid tr.clickable {
@@ -589,7 +790,12 @@ table.grid tr.clickable {
 
 table.grid td.num {
     text-align: right;
-    font-variant-numeric: tabular-nums;
+}
+
+/* Первый столбец обычно несёт название — ему больше веса. */
+table.grid td.primary {
+    font-weight: 500;
+    color: var(--text);
 }
 
 /* ------------------------------------------------------------ три панели --- */
@@ -632,11 +838,11 @@ table.grid td.num {
 }
 
 .panel-title {
-    font-size: 13px;
-    font-weight: 650;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    color: var(--faint);
+    font-family: var(--font-display);
+    font-size: var(--fs-base);
+    font-weight: 600;
+    letter-spacing: -.01em;
+    color: var(--text);
     margin-right: auto;
 }
 
@@ -677,10 +883,9 @@ table.grid td.num {
 }
 
 .facts-section > h4 {
-    font-size: 11.5px;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    color: var(--faint);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--muted);
     margin-bottom: 6px;
     display: flex;
     align-items: center;
@@ -708,30 +913,42 @@ table.grid td.num {
     color: var(--muted);
 }
 
+/* Чип — нейтральный переключатель. Красный контур раньше стоял у всех чипов
+   подряд, и вкладки «Текст целиком / Фрагменты» выглядели как предупреждение. */
 .chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     margin: 2px 4px 2px 0;
-    padding: 1px 7px;
+    padding: 2px 9px;
     border-radius: 999px;
-    border: 1px solid var(--danger);
-    color: var(--danger);
-    background: transparent;
-    font-family: var(--font-mono);
-    font-size: 11.5px;
+    border: 1px solid var(--border-strong);
+    color: var(--muted);
+    background: var(--panel);
+    font-size: var(--fs-sm);
     cursor: pointer;
 }
 
 .chip:hover {
-    background: var(--danger);
-    color: var(--panel);
+    border-color: var(--accent);
+    color: var(--text);
 }
 
+.chip.is-active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 500;
+}
+
+/* Ссылка на источник в тексте отчёта — моноширинная и заметная: по ней
+   инженер сверяет утверждение с фрагментом библиотеки. */
 .chip--src {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 600;
     border-color: var(--border-strong);
     color: var(--muted);
-    font-weight: 600;
 }
 
 .chip--src:hover,
@@ -805,10 +1022,8 @@ table.facts-table.is-compact th {
 
 table.facts-table th {
     text-align: left;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .3px;
-    color: var(--faint);
+    font-size: var(--fs-sm);
+    color: var(--muted);
     font-weight: 600;
     padding: 4px 4px;
     border-bottom: 1px solid var(--border);
@@ -1301,12 +1516,10 @@ input.is-bad {
 }
 
 .group-title {
-    font-size: 11.5px;
-    text-transform: uppercase;
-    letter-spacing: .4px;
-    color: var(--faint);
+    font-size: var(--fs-sm);
+    color: var(--muted);
     font-weight: 600;
-    margin: 10px 0 6px;
+    margin: 12px 0 6px;
 }
 
 .group-title:first-child {
@@ -1316,9 +1529,9 @@ input.is-bad {
 /* ----------------------------------------------------------- библиотека --- */
 
 .dropzone {
-    border: 2px dashed var(--border-strong);
+    border: 1px dashed var(--border-strong);
     border-radius: var(--radius);
-    padding: 20px;
+    padding: 22px 20px;
     text-align: center;
     color: var(--muted);
     cursor: pointer;
@@ -1335,6 +1548,15 @@ input.is-bad {
 
 .dropzone b {
     color: var(--text);
+}
+
+/* Перечень форматов — служебная строка, а не заголовок: приглушаем и
+   ограничиваем меру, иначе он растягивается на всю ширину экрана. */
+.dropzone .small {
+    max-width: 62ch;
+    margin: 6px auto 0;
+    color: var(--faint);
+    line-height: 1.5;
 }
 
 .dropzone.is-over b {
@@ -1654,65 +1876,110 @@ input.is-bad {
 
 /* ---------------------------------------------------------------- вход --- */
 
+/* Фон — едва различимая координатная сетка. Рисуется градиентами, ни одного
+   файла не грузит; на глаз это не «узор», а ощущение миллиметровки под
+   приборной панелью. */
 body.login-page {
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 24px;
     overflow: auto;
+    background-color: var(--bg);
+    background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 44px 44px, 44px 44px;
+    background-position: center;
+}
+
+.login-shell {
+    width: min(400px, 100%);
 }
 
 .login-card {
-    width: min(380px, 100%);
     background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
-    padding: 26px 26px 22px;
+    padding: 30px 30px 24px;
 }
 
+/* Знак крупно и отдельной строкой: это единственное место, где у системы
+   есть лицо, и мельчить тут незачем. */
 .login-card .brand {
-    justify-content: center;
-    margin-bottom: 4px;
-    font-size: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 6px;
+    font-size: var(--fs-lg);
+    letter-spacing: -.02em;
+}
+
+.login-card .brand::after {
+    display: none;
+}
+
+.login-card .brand svg {
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+    border: 1px solid var(--accent-line);
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+    color: var(--accent);
+    overflow: visible;
 }
 
 .login-card .sub {
-    text-align: center;
     color: var(--muted);
-    font-size: 12.5px;
-    margin-bottom: 18px;
+    font-size: var(--fs-sm);
+    margin-bottom: 22px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
 }
 
 .login-card form {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
 }
 
 .login-card input {
     padding: 8px 10px;
-    font-size: 14px;
+    min-height: 36px;
+    font-size: var(--fs-md);
 }
 
 .login-card .btn {
-    min-height: 36px;
+    min-height: 38px;
+    margin-top: 2px;
+    font-size: var(--fs-md);
 }
 
 .login-error {
     color: var(--danger);
     background: var(--danger-soft);
+    border: 1px solid currentColor;
     border-radius: var(--radius-sm);
     padding: 8px 10px;
-    font-size: 12.5px;
+    font-size: var(--fs-sm);
 }
 
 .login-note {
-    margin-top: 14px;
-    font-size: 11.5px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: var(--fs-xs);
     color: var(--faint);
-    text-align: center;
-    line-height: 1.5;
+    line-height: 1.6;
+}
+
+.login-note code {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    word-break: break-all;
 }
 
 /* -------------------------------------------------------------- помощник --- */
@@ -2175,8 +2442,71 @@ a.user-chip.is-active b {
 /* --------------------------------------------- направления в библиотеке --- */
 
 select.domain-select {
-    max-width: 200px;
-    font-size: 12px;
+    max-width: 220px;
+    width: 100%;
+    font-size: var(--fs-sm);
+}
+
+/* Ширины столбцов библиотеки заданы явно: иначе браузер отдаёт место
+   идентификатору (он длинный и моноширинный), а название рвётся на четыре
+   строки — при том, что название и есть главное в строке. */
+table.grid--library {
+    table-layout: fixed;
+    min-width: 1180px;
+}
+
+/* Заголовок столбца в узкой колонке обрезался многоточием — переносим. */
+table.grid--library th {
+    white-space: normal;
+}
+
+table.grid--library th:nth-child(1),
+table.grid--library td:nth-child(1) {
+    width: 24%;
+}
+
+table.grid--library th:nth-child(2),
+table.grid--library td:nth-child(2) {
+    width: 20%;
+}
+
+table.grid--library th:nth-child(3),
+table.grid--library td:nth-child(3) {
+    width: 88px;
+}
+
+table.grid--library th:nth-child(4),
+table.grid--library td:nth-child(4) {
+    width: 19%;
+}
+
+table.grid--library th:nth-child(5),
+table.grid--library td:nth-child(5) {
+    width: 150px;
+}
+
+table.grid--library th:nth-child(6),
+table.grid--library td:nth-child(6) {
+    width: 72px;
+}
+
+table.grid--library th:nth-child(7),
+table.grid--library td:nth-child(7) {
+    width: 120px;
+}
+
+table.grid--library th:nth-child(8),
+table.grid--library td:nth-child(8) {
+    width: 72px;
+}
+
+table.grid--library th:nth-child(9),
+table.grid--library td:nth-child(9) {
+    width: 40px;
+}
+
+table.grid--library td:nth-child(2) {
+    overflow-wrap: anywhere;
 }
 
 table.grid tr.is-focus {
@@ -2185,6 +2515,244 @@ table.grid tr.is-focus {
 
 table.grid tr.is-focus td {
     border-bottom-color: var(--accent);
+}
+
+/* ------------------------------------------------- чтение и правка раздела --- */
+
+/* Раздел по умолчанию показан разметкой: таблицы и списки в отчёте должны
+   выглядеть таблицами и списками, а не строками с вертикальными чертами.
+   Правка — по щелчку, поле ввода появляется на месте текста. */
+.section-read {
+    padding: 14px 16px;
+    cursor: text;
+}
+
+.section-card.is-editing .section-read {
+    display: none;
+}
+
+.section-card:not(.is-editing) .editor-wrap {
+    display: none;
+}
+
+.section-read .md > :first-child {
+    margin-top: 0;
+}
+
+.section-read .md > :last-child {
+    margin-bottom: 0;
+}
+
+/* -------------------------------------------------------- карточка документа --- */
+
+.modal-head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.modal-head .mono {
+    overflow-wrap: anywhere;
+}
+
+.doc-verdict {
+    border: 1px solid;
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    margin-bottom: 12px;
+}
+
+.doc-verdict--ok {
+    color: var(--ok);
+    background: var(--ok-soft);
+}
+
+.doc-verdict--warn {
+    color: var(--warn);
+    background: var(--warn-soft);
+}
+
+.doc-verdict--danger {
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.doc-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.doc-text {
+    margin: 0;
+    padding: 12px 14px;
+    max-height: 46vh;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    line-height: 1.6;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.doc-pane {
+    max-height: 46vh;
+    overflow: auto;
+}
+
+.doc-chunk {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.doc-chunk-head {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+
+.doc-chunk-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--muted);
+    font-size: var(--fs-sm);
+    line-height: 1.6;
+}
+
+/* Название документа в таблице — ссылка, а не просто текст. */
+.linklike {
+    border: 0;
+    background: none;
+    padding: 0;
+    font: inherit;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.linklike:hover {
+    color: var(--link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* ------------------------------------------------------------ сотрудники --- */
+
+.role-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.role-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+}
+
+table.grid--users {
+    min-width: 980px;
+}
+
+/* В таблице сотрудников действия — основная работа раздела, а не редкая
+   правка: прятать их до наведения незачем. */
+table.grid--users .row-actions {
+    opacity: 1;
+    display: flex;
+    gap: 6px;
+}
+
+/* Тихое поле ввода в таблице: рамка появляется под курсором. */
+.input--quiet {
+    width: 100%;
+    border-color: transparent;
+    background-color: transparent;
+}
+
+.input--quiet:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    background-color: var(--field);
+}
+
+.form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* ------------------------------------------------- изменяемые колонки --- */
+
+/* Граница столбца — область захвата шириной в шесть пикселей. Сама полоска
+   тонкая: широкая ручка на каждой границе превратила бы шапку в решётку. */
+/* Ручка целиком внутри своей ячейки. Если она выступает за правый край,
+   соседний заголовок (тоже sticky и позже в разметке) накрывает её собой, и
+   ручка перестаёт ловить курсор — видно её при этом прекрасно. */
+.col-grip {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 7px;
+    height: 100%;
+    cursor: col-resize;
+    touch-action: none;
+    z-index: 2;
+}
+
+.col-grip::after {
+    content: "";
+    position: absolute;
+    top: 20%;
+    right: 2px;
+    width: 1px;
+    height: 60%;
+    background: var(--border-strong);
+    opacity: 0;
+    transition: opacity .12s;
+}
+
+table.grid th:hover .col-grip::after,
+.col-grip:hover::after {
+    opacity: 1;
+}
+
+.col-grip:hover::after {
+    background: var(--accent);
+    width: 2px;
+    opacity: 1;
+}
+
+/* Ручке нужен собственный контекст позиционирования внутри ячейки. */
+table.grid th {
+    overflow: visible;
+}
+
+/* Во время перетаскивания курсор не должен «прыгать» на текст, а выделение —
+   тянуться через полтаблицы. */
+table.grid.is-resizing {
+    user-select: none;
+    cursor: col-resize;
+}
+
+table.grid.is-resizing td,
+table.grid.is-resizing th {
+    pointer-events: none;
+}
+
+table.grid.is-resizing .col-grip {
+    pointer-events: auto;
 }
 
 /* ------------------------------------------------------------ адаптив --- */

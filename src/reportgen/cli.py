@@ -249,7 +249,8 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     if target.is_dir():
         result = ingest_directory(repos, target, force=args.force, progress=print,
                                   doc_type=doc_type, domain=domain,
-                                  domains_path=settings.domains_path)
+                                  domains_path=settings.domains_path,
+                                  jobs=getattr(args, "jobs", 0) or None)
     else:
         result = ingest_path(repos, target, root=target.parent, force=args.force,
                              doc_type=doc_type, domain=domain,
@@ -459,6 +460,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--doc-type", default=None,
         help="тип для всех файлов: literature, standards, datasheets, reports, regulations. "
              "Без него тип берётся из имени каталога верхнего уровня",
+    )
+    p_ingest.add_argument(
+        "--jobs", type=int, default=0,
+        help="сколько файлов разбирать одновременно (0 — по числу ядер минус одно)",
     )
     p_ingest.add_argument(
         "--domain", default=None,

@@ -265,3 +265,155 @@ class UsersScriptTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EmbeddedImageTests(unittest.TestCase):
+    """Картинки внутри документов тоже должны попадать в базу.
+
+    В технических отчётах половина существенного лежит на иллюстрациях:
+    спектрограмма с подписанными частотами, снимок экрана анализатора,
+    вклеенная страница методики. Раньше в текст попадала только подпись
+    «рисунок 1» — то есть эти данные не искались вовсе.
+    """
+
+    def test_container_formats_are_listed(self):
+        from reportgen.ingest.convert import EMBEDDED_IMAGE_SUFFIXES
+
+        for suffix in (".docx", ".pptx", ".xlsx", ".odt", ".odp"):
+            with self.subTest(suffix=suffix):
+                self.assertIn(suffix, EMBEDDED_IMAGE_SUFFIXES)
+
+    def test_can_be_switched_off(self):
+        from reportgen.ingest.convert import embedded_ocr_enabled
+
+        for value, expected in (("0", False), ("false", False), ("off", False),
+                                ("1", True), ("yes", True)):
+            with self.subTest(value=value):
+                with mock.patch.dict(os.environ, {"REPORTGEN_OCR_EMBEDDED": value}):
+                    self.assertIs(expected, embedded_ocr_enabled())
+
+    def test_small_images_are_skipped(self):
+        # Логотип в шапке бланка и маркер списка распознавать незачем.
+        from reportgen.ingest.formats.ocr import MIN_EMBEDDED_HEIGHT, MIN_EMBEDDED_WIDTH
+
+        self.assertGreaterEqual(MIN_EMBEDDED_WIDTH, 100)
+        self.assertGreaterEqual(MIN_EMBEDDED_HEIGHT, 40)
+
+    def test_recognised_text_is_marked_as_machine_read(self):
+        from reportgen.ingest.formats.ocr import embedded_images_block
+
+        block = embedded_images_block([("shema.png", "Uroven signala -62 dBm")])
+        self.assertIn("распознан машинно", block)
+        self.assertIn("сверяйте с оригиналом", block)
+        self.assertIn("Uroven signala -62 dBm", block)
+
+    def test_no_images_no_block(self):
+        from reportgen.ingest.formats.ocr import embedded_images_block
+
+        self.assertEqual("", embedded_images_block([]))
+
+
+class UnreadableTextTests(unittest.TestCase):
+    """PDF без карты символов отдаёт заглушки вместо букв.
+
+    Формально разбор удаётся, предупреждений нет, и документ с заголовком
+    «······ ····» молча уезжает в базу. В библиотеке из старых переведённых
+    в PDF книг это встречается регулярно.
+    """
+
+    def test_placeholder_text_is_detected(self):
+        from reportgen.ingest.convert import readable_share
+
+        self.assertLess(readable_share("······ ··········· ·····"), 0.1)
+
+    def test_normal_text_passes(self):
+        from reportgen.ingest.convert import readable_share
+
+        self.assertGreater(readable_share("Основы спутниковой связи, модуляция QPSK."), 0.9)
+
+    def test_empty_text_is_not_an_error(self):
+        from reportgen.ingest.convert import readable_share
+
+        self.assertEqual(0.0, readable_share("   \n  "))
+
+
+class IngestSpeedTests(unittest.TestCase):
+    """Разбор упирается в процессор — и должен занимать больше одного ядра."""
+
+    def test_jobs_default_leaves_a_core_free(self):
+        from reportgen.ingest.pipeline import resolve_jobs
+
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("REPORTGEN_INGEST_JOBS", None)
+            with mock.patch("os.cpu_count", return_value=8):
+                self.assertEqual(7, resolve_jobs())
+            with mock.patch("os.cpu_count", return_value=1):
+                self.assertEqual(1, resolve_jobs())
+            # Больше восьми потоков смысла не имеет: упрёмся в диск.
+            with mock.patch("os.cpu_count", return_value=64):
+                self.assertEqual(8, resolve_jobs())
+
+    def test_explicit_jobs_win(self):
+        from reportgen.ingest.pipeline import resolve_jobs
+
+        self.assertEqual(3, resolve_jobs(3))
+
+    def test_environment_override(self):
+        from reportgen.ingest.pipeline import resolve_jobs
+
+        with mock.patch.dict(os.environ, {"REPORTGEN_INGEST_JOBS": "5"}):
+            self.assertEqual(5, resolve_jobs())
+
+    def test_tesseract_runs_single_threaded(self):
+        # По умолчанию tesseract разворачивает OpenMP на все ядра. При
+        # параллельном приёме четыре таких процесса на четырёхъядерной машине
+        # не заканчивают за девять минут работу, которая занимает три секунды.
+        from reportgen.ingest.formats.ocr import _tesseract_env
+
+        env = _tesseract_env()
+        self.assertEqual("1", env["OMP_THREAD_LIMIT"])
+        self.assertEqual("1", env["OMP_NUM_THREADS"])
+
+
+class ParallelIngestTests(unittest.TestCase):
+    """Параллельный приём обязан давать тот же результат, что и последовательный."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        library = self.dir / "library" / "literature"
+        library.mkdir(parents=True)
+        for index in range(12):
+            (library / f"файл-{index:02d}.md").write_text(
+                f"# Документ {index}\n\nПолоса частот и модуляция, запись {index}.\n" * 4,
+                encoding="utf-8",
+            )
+        self.library = self.dir / "library"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def ingest(self, jobs):
+        from reportgen.ingest.pipeline import ingest_directory
+        from reportgen.store.db import Database
+        from reportgen.store.repo import Repositories
+
+        repos = Repositories(Database(":memory:"))
+        result = ingest_directory(repos, self.library, jobs=jobs)
+        documents = {d.doc_id: d.chunk_count for d in repos.documents.list()}
+        return result, documents
+
+    def test_same_result_as_serial(self):
+        serial, serial_docs = self.ingest(1)
+        parallel, parallel_docs = self.ingest(4)
+        self.assertEqual(serial.added, parallel.added)
+        self.assertEqual(serial.chunks, parallel.chunks)
+        self.assertEqual(serial_docs, parallel_docs)
+        self.assertEqual(12, len(parallel_docs))
+
+    def test_report_is_stable(self):
+        # Потоки завершаются в произвольном порядке: списки в отчёте о приёме
+        # должны выглядеть одинаково от запуска к запуску.
+        first, _ = self.ingest(4)
+        second, _ = self.ingest(4)
+        self.assertEqual(first.documents, second.documents)

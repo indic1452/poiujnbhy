@@ -24,6 +24,10 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("documents", "status", "TEXT NOT NULL DEFAULT 'current'"),
     ("documents", "superseded_by", "TEXT NOT NULL DEFAULT ''"),
     ("chunks", "status", "TEXT NOT NULL DEFAULT 'current'"),
+    # Год издания: при прочих равных цитировать надо свежую редакцию, а не ту,
+    # что случайно оказалась выше в выдаче.
+    ("documents", "year", "INTEGER"),
+    ("chunks", "year", "INTEGER"),
 )
 
 

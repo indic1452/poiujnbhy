@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import unittest
+from urllib.parse import quote
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
@@ -613,3 +614,124 @@ class StatsTests(WebTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DocumentInspectionTests(WebTestCase):
+    """Открыть исходный файл и посмотреть, что из него вычитано."""
+
+    def test_text_shows_chunks_and_source(self):
+        doc_id = self.repos.documents.list()[0].doc_id
+        data = self.client.get(f"/api/library/{quote(doc_id, safe='')}/text").json()
+        self.assertIn("chunks", data)
+        self.assertIn("text", data)
+        self.assertIn("source_exists", data)
+        self.assertEqual(doc_id, data["document"]["doc_id"])
+
+    def test_missing_document_says_so(self):
+        response = self.client.get("/api/library/нет%2Fтакого/text")
+        self.assertEqual(404, response.status_code)
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("reportgen.ingest.pipeline"), "модуль приёма не установлен"
+    )
+    def test_file_is_served(self):
+        # Загружаем через интерфейс: только такие документы лежат внутри
+        # каталога библиотеки, а отдаём мы исключительно их.
+        uploaded = self.client.post(
+            "/api/library/upload",
+            files={"file": ("методика.md", "# Методика\n\nПолоса частот. " .encode() * 20,
+                            "text/markdown")},
+            data={"doc_type": "literature", "confidentiality": "internal"},
+        )
+        self.assertEqual(200, uploaded.status_code, uploaded.text)
+        doc_id = uploaded.json()["document"]["doc_id"]
+        response = self.client.get(f"/api/library/{quote(doc_id, safe='')}/file")
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertIn(b"\xd0", response.content)
+
+    def test_file_outside_library_is_refused_for_corpus(self):
+        # Демонстрационный корпус лежит вне каталога библиотеки, и отдавать
+        # его наружу нельзя: source_path приходит из базы, а не от пользователя.
+        doc_id = self.repos.documents.list()[0].doc_id
+        response = self.client.get(f"/api/library/{quote(doc_id, safe='')}/file")
+        self.assertIn(response.status_code, (403, 404))
+
+    def test_file_outside_library_is_refused(self):
+        # source_path приходит из базы: без проверки правка записи превратилась
+        # бы в чтение любого файла на машине.
+        doc_id = self.repos.documents.list()[0].doc_id
+        repos = self.repos
+        document = repos.documents.by_doc_id(doc_id)
+        repos.db.connection.execute(
+            "UPDATE documents SET source_path = ? WHERE id = ?",
+            ("/etc/passwd", document.id),
+        )
+        repos.db.connection.commit()
+        response = self.client.get(f"/api/library/{quote(doc_id, safe='')}/file")
+        self.assertIn(response.status_code, (403, 404))
+
+
+class UserManagementTests(WebTestCase):
+    """Сотрудники, роли и пароли — из интерфейса, а не только из командной строки."""
+
+    def test_only_admin_sees_the_list(self):
+        self.login("engineer")
+        self.assertEqual(403, self.client.get("/api/users").status_code)
+
+    def test_list_has_roles_with_explanations(self):
+        data = self.client.get("/api/users").json()
+        self.assertTrue(data["items"])
+        titles = {role["id"]: role for role in data["roles"]}
+        self.assertEqual({"viewer", "engineer", "admin"}, set(titles))
+        for role in data["roles"]:
+            self.assertTrue(role["note"], f"у роли {role['id']} нет пояснения")
+
+    def test_create_and_update(self):
+        created = self.client.post("/api/users", json={
+            "login": "petrov", "full_name": "Петров П.П.",
+            "password": "пароль12345", "role": "engineer",
+        })
+        self.assertEqual(200, created.status_code, created.text)
+        user = created.json()["user"]
+        self.assertEqual("Петров П.П.", user["full_name"])
+
+        patched = self.client.patch(f"/api/users/{user['id']}", json={"role": "viewer"})
+        self.assertEqual("viewer", patched.json()["user"]["role"])
+
+    def test_login_rules_are_enforced(self):
+        for bad in ("ab", "Петров", "with space", "x" * 40):
+            with self.subTest(login=bad):
+                response = self.client.post("/api/users", json={
+                    "login": bad, "password": "пароль12345", "role": "viewer"})
+                self.assertEqual(400, response.status_code)
+
+    def test_short_password_refused(self):
+        response = self.client.post("/api/users", json={
+            "login": "sidorov", "password": "коротк", "role": "viewer"})
+        self.assertEqual(400, response.status_code)
+
+    def test_duplicate_login_refused(self):
+        payload = {"login": "dublikat", "password": "пароль12345", "role": "viewer"}
+        self.assertEqual(200, self.client.post("/api/users", json=payload).status_code)
+        self.assertEqual(409, self.client.post("/api/users", json=payload).status_code)
+
+    def test_last_admin_cannot_be_demoted(self):
+        # Иначе управлять сотрудниками станет некому, а чинится это только
+        # командной строкой на самой машине.
+        admins = [u for u in self.client.get("/api/users").json()["items"]
+                  if u["role"] == "admin"]
+        self.assertEqual(1, len(admins), "в тесте ожидается один администратор")
+        response = self.client.patch(f"/api/users/{admins[0]['id']}", json={"role": "engineer"})
+        self.assertEqual(409, response.status_code)
+
+    def test_cannot_disable_self(self):
+        me = self.client.get("/api/me").json()["user"]
+        response = self.client.post(f"/api/users/{me['id']}/active", json={"active": False})
+        self.assertEqual(409, response.status_code)
+
+    def test_password_reset_closes_sessions(self):
+        created = self.client.post("/api/users", json={
+            "login": "smena", "password": "пароль12345", "role": "engineer"}).json()["user"]
+        response = self.client.post(f"/api/users/{created['id']}/password",
+                                    json={"password": "новыйпароль1"})
+        self.assertEqual(200, response.status_code)

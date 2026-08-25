@@ -18,6 +18,7 @@ from ..store.models import (
     CONFIDENTIALITY,
     DOC_STATUS_TITLES,
     DOC_STATUSES,
+    ROLES,
     Case,
     Report,
 )
@@ -424,6 +425,64 @@ def library(request: Request, doc_type: str | None = None,
     }
 
 
+@router.get("/library/{doc_id:path}/text")
+def document_text(request: Request, doc_id: str) -> Dict[str, Any]:
+    """Что система на самом деле вычитала из файла.
+
+    Главный инструмент проверки качества: по этому тексту видно, распознался
+    ли скан, не рассыпалась ли таблица и не приехали ли вместо букв заглушки.
+    Отдаём и текст целиком, и фрагменты — ровно те, по которым идёт поиск.
+    """
+    require_user(request)
+    repos = _repos(request)
+    document = repos.documents.by_doc_id(doc_id)
+    if document is None:
+        raise ServiceError(f"документ '{doc_id}' не найден", 404)
+    chunks = repos.chunks.for_document(document.id)
+    source = Path(document.source_path)
+    return {
+        "document": document.to_dict(),
+        "source_exists": source.is_file(),
+        "source_name": source.name,
+        "chunks": [
+            {
+                "chunk_id": chunk.chunk_id,
+                "title_path": list(chunk.title_path or []),
+                "text": chunk.text,
+                "chars": len(chunk.text),
+            }
+            for chunk in chunks
+        ],
+        "text": "\n\n".join(chunk.text for chunk in chunks),
+    }
+
+
+@router.get("/library/{doc_id:path}/file")
+def document_file(request: Request, doc_id: str):
+    """Отдать исходный файл — тот самый, что лежит в библиотеке на диске."""
+    require_user(request)
+    repos = _repos(request)
+    settings = _settings(request)
+    document = repos.documents.by_doc_id(doc_id)
+    if document is None:
+        raise ServiceError(f"документ '{doc_id}' не найден", 404)
+
+    source = Path(document.source_path)
+    # Отдаём только то, что лежит внутри библиотеки: source_path приходит из
+    # базы, и без этой проверки правка записи превратилась бы в чтение любого
+    # файла на машине.
+    library = Path(settings.library_dir).resolve()
+    try:
+        resolved = source.resolve()
+        resolved.relative_to(library)
+    except (OSError, ValueError) as error:
+        raise ServiceError("файл документа лежит вне каталога библиотеки", 403) from error
+    if not resolved.is_file():
+        raise ServiceError(f"исходный файл не найден: {source.name}", 404)
+
+    return FileResponse(resolved, filename=resolved.name)
+
+
 @router.post("/library/upload")
 def upload_document(
     request: Request,
@@ -495,7 +554,7 @@ def reindex(request: Request) -> Dict[str, Any]:
 
     settings.ensure_dirs()
     result = ingest_directory(_repos(request), settings.library_dir, force=force,
-                              domains_path=settings.domains_path)
+                              domains_path=settings.domains_path)  # jobs — по числу ядер
     _service(request).reset_retriever()
     _repos(request).audit.log("library.reindex", user=user, details={"force": force})
     return {"result": _ingest_to_dict(result)}
@@ -716,6 +775,139 @@ def ask_stream(request: Request, chat_id: int) -> StreamingResponse:
         media_type="text/event-stream; charset=utf-8",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ------------------------------------------------------------ сотрудники --
+
+#: Что роль позволяет делать — показывается прямо в форме, чтобы не гадать.
+ROLE_TITLES = {
+    "viewer": "Наблюдатель",
+    "engineer": "Инженер",
+    "admin": "Администратор",
+}
+
+ROLE_NOTES = {
+    "viewer": "Читает отчёты и библиотеку. Ничего не меняет.",
+    "engineer": "Ведёт обращения, правит и утверждает отчёты, пополняет библиотеку.",
+    "admin": "Всё, что инженер, плюс сотрудники, удаление документов и журнал действий.",
+}
+
+
+def _user_public(user) -> Dict[str, Any]:
+    data = user.to_dict()
+    data["role_title"] = ROLE_TITLES.get(user.role, user.role)
+    return data
+
+
+@router.get("/users")
+def list_users(request: Request) -> Dict[str, Any]:
+    require_admin(request)
+    repos = _repos(request)
+    return {
+        "items": [_user_public(user) for user in repos.users.list_all()],
+        "roles": [
+            {"id": role, "title": ROLE_TITLES.get(role, role), "note": ROLE_NOTES.get(role, "")}
+            for role in ROLES
+        ],
+        "admins": repos.users.count_admins(),
+    }
+
+
+@router.post("/users")
+def create_user(request: Request) -> Dict[str, Any]:
+    admin = require_admin(request)
+    repos = _repos(request)
+    payload = _body(request)
+
+    login = str(payload.get("login", "")).strip().lower()
+    if not re.fullmatch(r"[a-z0-9._-]{3,32}", login):
+        raise ServiceError(
+            "логин: от 3 до 32 знаков, латиница, цифры, точка, дефис или подчёркивание", 400
+        )
+    if repos.users.by_login(login) is not None:
+        raise ServiceError(f"пользователь '{login}' уже есть", 409)
+
+    password = str(payload.get("password", ""))
+    if len(password) < 8:
+        raise ServiceError("пароль короче 8 символов", 400)
+
+    role = str(payload.get("role", "engineer"))
+    if role not in ROLES:
+        raise ServiceError(f"неизвестная роль '{role}'", 400)
+
+    full_name = str(payload.get("full_name", "")).strip()
+    user = repos.users.create(login, password, full_name=full_name, role=role)
+    repos.audit.log("user.create", user=admin, object_type="user", object_id=user.login,
+                    details={"role": role})
+    return {"user": _user_public(user)}
+
+
+@router.patch("/users/{user_id}")
+def update_user(request: Request, user_id: int) -> Dict[str, Any]:
+    admin = require_admin(request)
+    repos = _repos(request)
+    user = repos.users.get(user_id)
+    if user is None:
+        raise ServiceError("пользователь не найден", 404)
+    payload = _body(request)
+
+    role = payload.get("role")
+    if role is not None:
+        if role not in ROLES:
+            raise ServiceError(f"неизвестная роль '{role}'", 400)
+        # Последнего администратора нельзя разжаловать: управлять сотрудниками
+        # станет некому, а чинится это только командной строкой на машине.
+        if user.role == "admin" and role != "admin" and repos.users.count_admins() <= 1:
+            raise ServiceError("это единственный администратор — сначала назначьте другого", 409)
+
+    full_name = payload.get("full_name")
+    updated = repos.users.update(
+        user_id,
+        full_name=None if full_name is None else str(full_name),
+        role=None if role is None else str(role),
+    )
+    repos.audit.log("user.update", user=admin, object_type="user", object_id=user.login,
+                    details={"role": role, "full_name": full_name})
+    return {"user": _user_public(updated)}
+
+
+@router.post("/users/{user_id}/password")
+def reset_user_password(request: Request, user_id: int) -> Dict[str, Any]:
+    admin = require_admin(request)
+    repos = _repos(request)
+    user = repos.users.get(user_id)
+    if user is None:
+        raise ServiceError("пользователь не найден", 404)
+    password = str(_body(request).get("password", ""))
+    if len(password) < 8:
+        raise ServiceError("пароль короче 8 символов", 400)
+    repos.users.set_password(user_id, password)
+    # Прежние сессии закрываем: смена пароля администратором — это и есть
+    # способ отобрать доступ у того, кто его больше иметь не должен.
+    repos.sessions.delete_for_user(user_id)
+    repos.audit.log("user.password", user=admin, object_type="user", object_id=user.login)
+    return {"ok": True}
+
+
+@router.post("/users/{user_id}/active")
+def set_user_active(request: Request, user_id: int) -> Dict[str, Any]:
+    admin = require_admin(request)
+    repos = _repos(request)
+    user = repos.users.get(user_id)
+    if user is None:
+        raise ServiceError("пользователь не найден", 404)
+    active = bool(_body(request).get("active", True))
+    if not active:
+        if user.id == admin.id:
+            raise ServiceError("нельзя отключить самого себя", 409)
+        if user.role == "admin" and repos.users.count_admins() <= 1:
+            raise ServiceError("это единственный администратор — сначала назначьте другого", 409)
+    repos.users.set_active(user_id, active)
+    if not active:
+        repos.sessions.delete_for_user(user_id)
+    repos.audit.log("user.active", user=admin, object_type="user", object_id=user.login,
+                    details={"active": active})
+    return {"user": _user_public(repos.users.get(user_id))}
 
 
 # --------------------------------------------------------- личный кабинет --

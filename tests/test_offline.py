@@ -583,3 +583,36 @@ class LlamaAssetMatchingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TableResizeTests(unittest.TestCase):
+    """Колонки таблиц тянутся мышью, и ручка обязана ловить курсор.
+
+    Ручка, выступающая за правый край ячейки, визуально на месте, но соседний
+    заголовок (тоже sticky и позже в разметке) накрывает её собой — курсор до
+    неё не доходит, и таблица «не тянется» без единой ошибки в консоли.
+    """
+
+    def setUp(self):
+        self.css = read(ROOT / "src" / "reportgen" / "web" / "static" / "styles.css")
+        self.js = read(ROOT / "src" / "reportgen" / "web" / "static" / "app.js")
+
+    def test_grip_stays_inside_the_cell(self):
+        block = self.css[self.css.index(".col-grip {"):]
+        block = block[:block.index("}")]
+        self.assertIn("right: 0", block)
+        self.assertNotIn("right: -", block, "ручка выступает за край и будет перекрыта")
+
+    def test_drag_listens_on_document(self):
+        # Указатель во время перетаскивания уходит за пределы ручки.
+        self.assertIn("document.addEventListener('pointermove'", self.js)
+
+    def test_width_is_remembered(self):
+        self.assertIn("reportgen.cols.", self.js)
+
+    def test_double_click_resets_column(self):
+        self.assertIn("dblclick", self.js)
+
+    def test_minimum_width_is_enforced(self):
+        # Иначе колонку можно утащить в ноль и потерять её насовсем.
+        self.assertIn("Math.max(56", self.js)

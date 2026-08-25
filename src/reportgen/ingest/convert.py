@@ -22,6 +22,8 @@ DOCX, заметки в .md и .txt), в единый Markdown, который �
 
 from __future__ import annotations
 
+import os
+
 import hashlib
 import re
 import unicodedata
@@ -703,6 +705,114 @@ def format_support() -> List[Dict[str, Any]]:
     return registry.report()
 
 
+#: Форматы-контейнеры, внутри которых бывают вставленные картинки.
+EMBEDDED_IMAGE_SUFFIXES = (
+    ".docx", ".dotx", ".pptx", ".potx", ".ppsx", ".xlsx", ".xlsm",
+    ".odt", ".ott", ".odp", ".otp", ".ods", ".ots",
+)
+
+
+def embedded_ocr_enabled() -> bool:
+    """Распознавать ли картинки внутри документов.
+
+    По умолчанию — да: в технических отчётах половина существенного лежит на
+    иллюстрациях (спектрограмма с подписанными частотами, снимок экрана
+    анализатора, вклеенная страница методики), и без распознавания всё это
+    в базу не попадает вовсе. Выключается переменной окружения, если приём
+    большой библиотеки нужно ускорить: REPORTGEN_OCR_EMBEDDED=0.
+    """
+    return os.environ.get("REPORTGEN_OCR_EMBEDDED", "1").strip().lower() not in (
+        "0", "false", "no", "off", ""
+    )
+
+
+def _add_embedded_images(result: "ConvertedDocument", path: Path) -> "ConvertedDocument":
+    """Дописать в документ текст, распознанный на вложенных картинках."""
+    if path.suffix.lower() not in EMBEDDED_IMAGE_SUFFIXES or not embedded_ocr_enabled():
+        return result
+    try:
+        from .formats.ocr import (  # noqa: PLC0415
+            embedded_images_block,
+            ocr_embedded_images,
+        )
+
+        found, warnings = ocr_embedded_images(path)
+    except Exception:  # noqa: BLE001 — распознавание картинок не критично
+        return result
+
+    result.warnings.extend(warnings)
+    if not found:
+        return result
+    block = embedded_images_block(found)
+    result.text = (result.text.rstrip() + "\n\n" + block) if result.text.strip() else block
+    result.meta["embedded_images_read"] = len(found)
+    # Прежнее предупреждение «изображения не извлекаются» теперь неверно:
+    # они как раз извлечены, и два противоречащих сообщения только путают.
+    result.warnings = [
+        text for text in result.warnings if "не извлекаются" not in text
+    ]
+    result.warnings.append(
+        f"текст распознан на иллюстрациях: {len(found)} "
+        "— числа оттуда сверяйте с оригиналом"
+    )
+    return result
+
+
+#: Доля осмысленных знаков, ниже которой текст считается нечитаемым.
+MIN_READABLE_SHARE = 0.35
+
+#: Символы-заглушки, которыми разборщики отмечают глифы без соответствия в
+#: юникоде: у старых PDF без карты символов ими оказывается весь текст.
+_PLACEHOLDER_CHARS = "·•\u00b7\ufffd\u25a0\u25a1\u2591\u2592\u2593?"
+
+
+def readable_share(text: str) -> float:
+    """Какая часть непробельных знаков — буквы или цифры.
+
+    У PDF без карты символов (ToUnicode) текст извлекается, но состоит из
+    заглушек: «······ ··········· ·····» вместо «Основы спутниковой связи».
+    Формально разбор удался, предупреждений нет, и такой документ молча
+    попадает в базу — вместе с заголовком из точек. В библиотеке из старых
+    переведённых в PDF книг это встречается регулярно.
+    """
+    meaningful = [ch for ch in text if not ch.isspace()]
+    if not meaningful:
+        return 0.0
+    good = sum(1 for ch in meaningful if ch.isalnum())
+    return good / len(meaningful)
+
+
+def _flag_unreadable(result: "ConvertedDocument", path: Path) -> "ConvertedDocument":
+    """Пометить документ, из которого извлеклась бессмыслица.
+
+    Заголовок из заглушек заменяется именем файла: в списке библиотеки строка
+    «······ ····» не говорит вообще ничего, а имя файла — говорит.
+    """
+    text = result.text or ""
+    # Короткие документы не проверяем: на десятке знаков доля ничего не значит.
+    if len(text.strip()) < 40:
+        return result
+    share = readable_share(text)
+    if share >= MIN_READABLE_SHARE:
+        return result
+    placeholders = sum(text.count(ch) for ch in _PLACEHOLDER_CHARS)
+    result.meta["readable_share"] = round(share, 3)
+    if placeholders > len(text) * 0.2:
+        result.warnings.append(
+            "текст извлёкся заглушками вместо букв: в файле нет карты символов "
+            "(ToUnicode). Такой документ ищется только по имени — пересохраните "
+            "его или распознайте как скан"
+        )
+    else:
+        result.warnings.append(
+            f"текст извлёкся неразборчиво (осмысленных знаков {share:.0%}): "
+            "проверьте файл, возможно, нужен скан с распознаванием"
+        )
+    if not result.title or readable_share(result.title) < MIN_READABLE_SHARE:
+        result.title = path.stem
+    return result
+
+
 def convert_file(path: str | Path) -> ConvertedDocument:
     """Конвертирует файл в Markdown по его расширению.
 
@@ -744,7 +854,7 @@ def convert_file(path: str | Path) -> ConvertedDocument:
         return result
 
     try:
-        return spec.convert(path)
+        return _flag_unreadable(_add_embedded_images(spec.convert(path), path), path)
     except MissingDependencyError as error:
         result = ConvertedDocument(title=path.stem,
                                    meta={"source_format": suffix.lstrip(".")})

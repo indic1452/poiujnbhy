@@ -77,6 +77,7 @@ class User:
             "full_name": self.full_name,
             "role": self.role,
             "active": self.active,
+            "created_at": self.created_at,
         }
 
 
@@ -92,6 +93,8 @@ class Document:
     domain: str = ""
     status: str = "current"
     superseded_by: str = ""
+    #: Год издания. None — определить не удалось.
+    year: int | None = None
     meta: Dict[str, Any] = field(default_factory=dict)
     chunk_count: int = 0
     indexed_at: str | None = None
@@ -110,6 +113,7 @@ class Document:
             domain=row["domain"] if "domain" in row.keys() else "",
             status=row["status"] if "status" in row.keys() else "current",
             superseded_by=row["superseded_by"] if "superseded_by" in row.keys() else "",
+            year=row["year"] if "year" in row.keys() else None,
             meta=_json(row["meta_json"], {}),
             chunk_count=row["chunk_count"],
             indexed_at=row["indexed_at"],
@@ -123,6 +127,7 @@ class Document:
             "doc_type": self.doc_type,
             "title": self.title,
             "sha256": self.sha256[:12],
+            "year": self.year,
             "confidentiality": self.confidentiality,
             "domain": self.domain,
             "status": self.status,

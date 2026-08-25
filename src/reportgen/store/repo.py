@@ -121,6 +121,34 @@ class UserRepo:
                 (hash_password(password), user_id),
             )
 
+    def update(self, user_id: int, full_name: str | None = None,
+               role: str | None = None) -> "User | None":
+        """Изменить ФИО и роль. Пустые значения оставляют поле как было."""
+        fields, values = [], []
+        if full_name is not None:
+            fields.append("full_name = ?")
+            values.append(full_name.strip())
+        if role is not None:
+            fields.append("role = ?")
+            values.append(role)
+        if fields:
+            values.append(user_id)
+            with self.db.transaction() as connection:
+                connection.execute(
+                    f"UPDATE users SET {', '.join(fields)} WHERE id = ?", tuple(values)
+                )
+        return self.get(user_id)
+
+    def count_admins(self, active_only: bool = True) -> int:
+        """Сколько администраторов осталось.
+
+        Нужно, чтобы нельзя было снять роль с последнего: иначе управлять
+        пользователями станет некому, а на изолированной машине это чинится
+        только командной строкой.
+        """
+        where = "role = 'admin'" + (" AND active = 1" if active_only else "")
+        return int(self.db.scalar(f"SELECT count(*) FROM users WHERE {where}") or 0)
+
     def set_active(self, user_id: int, active: bool) -> None:
         with self.db.transaction() as connection:
             connection.execute("UPDATE users SET active = ? WHERE id = ?", (int(active), user_id))
@@ -181,17 +209,19 @@ class DocumentRepo:
     def upsert(self, doc_id: str, doc_type: str, title: str, source_path: str,
                sha256: str, confidentiality: str = "internal",
                meta: Dict[str, Any] | None = None, domain: str = "",
-               status: str = "current", superseded_by: str = "") -> Document:
+               status: str = "current", superseded_by: str = "",
+               year: int | None = None) -> Document:
         with self.db.transaction() as connection:
             connection.execute(
                 "INSERT INTO documents(doc_id, doc_type, title, source_path, sha256, "
-                "confidentiality, meta_json, domain, status, superseded_by, created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?) "
+                "confidentiality, meta_json, domain, status, superseded_by, year, created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(doc_id) DO UPDATE SET doc_type=excluded.doc_type, "
                 "title=excluded.title, source_path=excluded.source_path, "
                 "sha256=excluded.sha256, confidentiality=excluded.confidentiality, "
                 "meta_json=excluded.meta_json, domain=excluded.domain, "
                 "status=excluded.status, superseded_by=excluded.superseded_by, "
+                "year=excluded.year, "
                 # Файл изменился — прежние чанки устарели, отметку об индексации
                 # снимаем до того, как ChunkRepo их перезапишет.
                 "indexed_at=CASE WHEN documents.sha256 = excluded.sha256 "
@@ -200,7 +230,7 @@ class DocumentRepo:
                 "THEN documents.chunk_count ELSE 0 END",
                 (doc_id, doc_type, title, source_path, sha256, confidentiality,
                  json.dumps(meta or {}, ensure_ascii=False), domain, status,
-                 superseded_by, utcnow()),
+                 superseded_by, year, utcnow()),
             )
         document = self.by_doc_id(doc_id)
         assert document is not None
@@ -335,7 +365,7 @@ class ChunkRepo:
             for ordinal, chunk in enumerate(chunks):
                 connection.execute(
                     "INSERT INTO chunks(chunk_uid, document_id, ord, doc_type, title_path, "
-                    "text, meta_json, domain, status) VALUES(?,?,?,?,?,?,?,?,?)",
+                    "text, meta_json, domain, status, year) VALUES(?,?,?,?,?,?,?,?,?,?)",
                     (
                         chunk.chunk_id,
                         document.id,
@@ -346,6 +376,7 @@ class ChunkRepo:
                         json.dumps(chunk.meta, ensure_ascii=False),
                         document.domain,
                         document.status,
+                        document.year,
                     ),
                 )
                 connection.execute(
@@ -368,6 +399,8 @@ class ChunkRepo:
             meta.setdefault("domain", row["domain"])
         if "status" in keys and row["status"]:
             meta.setdefault("status", row["status"])
+        if "year" in keys and row["year"]:
+            meta.setdefault("year", int(row["year"]))
         return Chunk(
             chunk_id=row["chunk_uid"],
             doc_id=row["doc_id"] if "doc_id" in keys else row["chunk_uid"].split("#")[0],
@@ -398,6 +431,18 @@ class ChunkRepo:
             )
             by_uid.update({row["chunk_uid"]: self._to_chunk(row) for row in rows})
         return [by_uid[uid] for uid in chunk_uids if uid in by_uid]
+
+    def for_document(self, document_id: int, limit: int = 400) -> List[Chunk]:
+        """Фрагменты одного документа по порядку — так, как их видит поиск.
+
+        Нужны инженеру для проверки качества разбора: по ним сразу видно,
+        распался ли скан на осмысленные куски или в базу уехал мусор.
+        """
+        rows = self.db.query(
+            "SELECT * FROM chunks WHERE document_id = ? ORDER BY ord LIMIT ?",
+            (document_id, limit),
+        )
+        return [self._to_chunk(row) for row in rows]
 
     def all_chunks(self, limit: int | None = None) -> List[Chunk]:
         sql = ("SELECT c.*, d.doc_id AS doc_id FROM chunks c "

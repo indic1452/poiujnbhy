@@ -96,6 +96,7 @@ class DatabaseRetriever:
         rerank_top_n: int = 20,
         rerank_max_chars: int = 1200,
         rrf_k: int = 60,
+        freshness_window: float = 0.12,
         dense_pool_factor: int = 5,
     ):
         self.repos = repos
@@ -106,6 +107,13 @@ class DatabaseRetriever:
         self.rerank_top_n = max(1, int(rerank_top_n))
         self.rerank_max_chars = max(100, int(rerank_max_chars))
         self.rrf_k = int(rrf_k)
+        #: Ширина «полки» релевантности, внутри которой решает год издания.
+        #: 0.12 — примерно восьмая часть разброса оценок в выдаче: тексты,
+        #: отличающиеся слабее, для инженера равнозначны.
+        self.freshness_window = float(freshness_window)
+        #: На сколько лет документ должен быть новее, чтобы это считалось
+        #: переизданием, а не просто соседним по времени источником.
+        self.freshness_min_gap = 3
         self.dense_pool_factor = max(1, int(dense_pool_factor))
         # Последняя нефатальная неприятность (недоступен сервис эмбеддингов
         # или реранка). Поиск при этом отработал в деградированном режиме.
@@ -163,10 +171,59 @@ class DatabaseRetriever:
             merged = list(lexical or dense)[: self.candidates]
 
         merged = self._rerank(text, merged)
+        merged = self._prefer_fresh(merged)
         hits = merged[:top_k]
         for rank, hit in enumerate(hits, start=1):
             hit.rank = rank
         return hits
+
+    def _prefer_fresh(self, hits: List[Hit]) -> List[Hit]:
+        """При почти одинаковой релевантности — свежая редакция вперёд.
+
+        В библиотеке рядом лежат ГОСТ 2009 года и он же 2024-го, методичка и
+        её переиздание. Формулировки в них почти совпадают, поэтому поиск
+        ставит их рядом, и какая окажется первой — дело случая. Для отчёта
+        заказчику это не случайность: ссылаться надо на действующую редакцию.
+
+        Правило намеренно слабое — один проход обменов соседей. Оно чинит
+        ровно тот случай, ради которого сделано (две редакции подряд), и не
+        может перетасовать выдачу: свежая, но менее подходящая книга не
+        поднимется выше точной старой больше чем на одну позицию за проход.
+        """
+        if len(hits) < 2 or self.freshness_window <= 0:
+            return hits
+
+        def year_of(hit: Hit) -> int:
+            raw = (hit.chunk.meta or {}).get("year")
+            try:
+                return int(raw) if raw else 0
+            except (TypeError, ValueError):
+                return 0
+
+        years = [year_of(hit) for hit in hits]
+        if len({year for year in years if year}) < 2:
+            return hits
+
+        scores = [hit.score for hit in hits]
+        span = (max(scores) - min(scores)) or 0.0
+        if span <= 0:
+            return hits
+        window = span * self.freshness_window
+
+        order = list(hits)
+        for index in range(len(order) - 1):
+            current, following = order[index], order[index + 1]
+            this_year, next_year = year_of(current), year_of(following)
+            if not this_year or not next_year:
+                continue
+            # Разница меньше трёх лет — это, скорее всего, не переиздание,
+            # а просто соседние по времени документы: не трогаем.
+            if next_year - this_year < self.freshness_min_gap:
+                continue
+            if abs(current.score - following.score) > window:
+                continue
+            order[index], order[index + 1] = following, current
+        return order
 
     # -- каналы -------------------------------------------------------------
 

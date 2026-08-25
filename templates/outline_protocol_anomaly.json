@@ -9,54 +9,84 @@
       "title": "Исходные данные и постановка задачи",
       "instruction": "Изложи суть обращения, перечисли полученные дампы и сформулируй задачу анализа.",
       "required_facts": [],
-      "optional_facts": ["capture_duration", "packet_count"],
-      "target_words": 180
+      "optional_facts": [
+        "capture_duration",
+        "packet_count"
+      ],
+      "target_words": 310
     },
     {
       "id": "conditions",
       "title": "Условия захвата и состав трафика",
       "instruction": "Опиши точку захвата, длительность, объём и состав трафика по уровням стека.",
-      "required_facts": ["packet_count", "capture_duration"],
-      "optional_facts": ["capture_point", "protocol_stack"],
-      "target_words": 220
+      "required_facts": [
+        "packet_count",
+        "capture_duration"
+      ],
+      "optional_facts": [
+        "capture_point",
+        "protocol_stack"
+      ],
+      "target_words": 370
     },
     {
       "id": "baseline",
       "title": "Эталонная модель обмена",
       "instruction": "Опиши, каким должен быть корректный обмен для данного протокола: последовательность сообщений, таймеры, обязательные поля. Каждое требование сопровождай ссылкой на источник.",
       "required_facts": [],
-      "optional_facts": ["protocol_stack"],
-      "retrieval_queries": ["последовательность установления соединения", "обязательные информационные элементы"],
-      "retrieval_doc_types": ["standards", "literature"],
-      "target_words": 350
+      "optional_facts": [
+        "protocol_stack"
+      ],
+      "retrieval_queries": [
+        "последовательность установления соединения",
+        "обязательные информационные элементы"
+      ],
+      "retrieval_doc_types": [
+        "standards",
+        "literature"
+      ],
+      "target_words": 600
     },
     {
       "id": "deviations",
       "title": "Выявленные отклонения от эталона",
       "instruction": "Перечисли отклонения: лишние, отсутствующие и переупорядоченные сообщения, нарушения таймеров, некорректные поля. Для каждого укажи номера кадров и подтверждающее измерение.",
-      "required_facts": ["anomaly_count"],
-      "optional_facts": ["retransmission_rate", "max_response_time"],
+      "required_facts": [
+        "anomaly_count"
+      ],
+      "optional_facts": [
+        "retransmission_rate",
+        "max_response_time"
+      ],
       "findings_min_severity": "low",
-      "retrieval_doc_types": ["standards", "reports"],
-      "target_words": 450
+      "retrieval_doc_types": [
+        "standards",
+        "reports"
+      ],
+      "target_words": 760
     },
     {
       "id": "impact",
       "title": "Влияние на работу системы",
       "instruction": "Объясни, к каким наблюдаемым эффектам приводят выявленные отклонения. Разделяй подтверждённое данными и предположительное.",
       "required_facts": [],
-      "optional_facts": ["retransmission_rate", "session_failures"],
+      "optional_facts": [
+        "retransmission_rate",
+        "session_failures"
+      ],
       "findings_min_severity": "medium",
-      "target_words": 250
+      "target_words": 420
     },
     {
       "id": "conclusions",
       "title": "Выводы",
       "instruction": "Сформулируй выводы строго по измерениям и находкам.",
       "required_facts": [],
-      "optional_facts": ["anomaly_count"],
+      "optional_facts": [
+        "anomaly_count"
+      ],
       "findings_min_severity": "medium",
-      "target_words": 200
+      "target_words": 340
     },
     {
       "id": "recommendations",
@@ -64,7 +94,7 @@
       "instruction": "Предложи технические действия и дополнительные измерения. Без коммерческих оценок и без указания конкретных моделей оборудования.",
       "required_facts": [],
       "optional_facts": [],
-      "target_words": 200
+      "target_words": 340
     }
   ]
 }

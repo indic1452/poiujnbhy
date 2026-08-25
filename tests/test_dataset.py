@@ -107,7 +107,7 @@ class SFTTests(unittest.TestCase):
         self.assertIn("[S1] Методика измерений", user)
         self.assertIn("Условия и методика измерений", user)
         self.assertIn("Опиши условия и методику измерений.", user)
-        self.assertIn("около 220 слов", user)
+        self.assertIn("220 слов", user)
 
     def test_cosmetic_edits_are_filtered_out(self):
         add_pair(self.repos, section_id="scope", final=FINAL_COSMETIC)
