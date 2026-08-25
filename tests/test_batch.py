@@ -288,5 +288,60 @@ class FastSkipTests(BatchCase):
         hashed.assert_not_called()
 
 
+class InterruptTests(BatchCase):
+    """Ctrl+C на большой пачке.
+
+    Инженер запустил приём тысячи сканов и увидел, что попал не в тот
+    каталог. Раньше Ctrl+C ничего не давал: все файлы уже отданы пулу
+    потоков, а выход из него дожидается очереди целиком — пачка
+    дорабатывалась до конца, отчёт терялся, на экране оставалась
+    трассировка.
+    """
+
+    def build(self, count: int = 8):
+        for index in range(count):
+            self.put(f"standards/д{index}.md", f"Документ {index}")
+
+    def load_with_interrupt(self, after: int = 2):
+        """Приём, прерванный после нескольких готовых файлов."""
+        from concurrent import futures as real_futures
+
+        original = real_futures.as_completed
+
+        def interrupting(pending, *args, **kwargs):
+            for number, future in enumerate(original(pending, *args, **kwargs), start=1):
+                if number > after:
+                    raise KeyboardInterrupt
+                yield future
+
+        with unittest.mock.patch(
+            "reportgen.ingest.pipeline.futures.as_completed", interrupting
+        ):
+            return self.load(jobs=4)
+
+    def test_interrupt_does_not_escape(self):
+        # Иначе инженер видит трассировку вместо отчёта.
+        self.build()
+        result = self.load_with_interrupt()
+        self.assertIsNotNone(result)
+
+    def test_partial_result_is_reported(self):
+        self.build()
+        result = self.load_with_interrupt()
+        self.assertTrue(any("прерван" in warning for warning in result.warnings),
+                        result.warnings)
+
+    def test_processed_documents_are_kept(self):
+        self.build()
+        self.load_with_interrupt()
+        self.assertTrue(self.repos.documents.list(), "разобранное потеряно")
+
+    def test_second_run_finishes_the_rest(self):
+        self.build()
+        self.load_with_interrupt()
+        self.load(jobs=4)
+        self.assertEqual(8, len(self.repos.documents.list()))
+
+
 if __name__ == "__main__":
     unittest.main()

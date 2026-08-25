@@ -648,21 +648,44 @@ def ingest_directory(
     # линейный выигрыш. Запись в базу при этом остаётся безопасной: у каждого
     # потока своё соединение SQLite, а транзакции сериализует общий замок.
     done = 0
-    with futures.ThreadPoolExecutor(max_workers=workers) as pool:
+    interrupted = False
+    pool = futures.ThreadPoolExecutor(max_workers=workers)
+    try:
         pending = {pool.submit(handle, path): path for path in files}
-        for future in futures.as_completed(pending):
-            path = pending[future]
-            done += 1
-            try:
-                piece = future.result()
-            except Exception as error:  # noqa: BLE001 — один файл не роняет приём
-                piece = IngestResult(failed=1)
-                piece.warnings.append(
-                    f"{_relative_for(path, root)}: {type(error).__name__}: {error}"
-                )
-            if progress is not None:
-                progress(f"[{done}/{len(files)}] {_relative_for(path, root)}")
-            result.merge(piece)
+        try:
+            for future in futures.as_completed(pending):
+                path = pending[future]
+                done += 1
+                try:
+                    piece = future.result()
+                except futures.CancelledError:
+                    continue
+                except Exception as error:  # noqa: BLE001 — один файл не роняет приём
+                    piece = IngestResult(failed=1)
+                    piece.warnings.append(
+                        f"{_relative_for(path, root)}: {type(error).__name__}: {error}"
+                    )
+                if progress is not None:
+                    progress(f"[{done}/{len(files)}] {_relative_for(path, root)}")
+                result.merge(piece)
+        except KeyboardInterrupt:
+            # Инженер запустил приём тысячной пачки сканов и увидел, что попал
+            # не в тот каталог. Раньше Ctrl+C ничего не давал: все файлы уже
+            # отданы пулу, а выход из него дожидается очереди целиком — пачка
+            # дорабатывалась до конца, отчёт терялся, на экране оставалась
+            # трассировка. Отменяем то, что ещё не начато, и отдаём частичный
+            # итог: разобранное уже в базе, повторный запуск доделает остаток.
+            interrupted = True
+            for future in pending:
+                future.cancel()
+    finally:
+        pool.shutdown(wait=not interrupted, cancel_futures=interrupted)
+
+    if interrupted:
+        result.warnings.append(
+            f"приём прерван: обработано {done} из {len(files)} — "
+            "разобранное сохранено, повторный запуск продолжит с остатка"
+        )
     _finish(repos, result, root, files, full_pass)
     # Порядок завершения у потоков произвольный — приводим списки к
     # предсказуемому виду, иначе отчёт о приёме каждый раз выглядит иначе.
