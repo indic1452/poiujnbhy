@@ -4,6 +4,7 @@
   "data_dir": "C:\\reportgen\\data",
   "templates_dir": "C:\\reportgen\\app\\templates",
   "glossary_path": "C:\\reportgen\\app\\templates\\glossary.json",
+  "domains_path": "C:\\reportgen\\app\\templates\\domains.json",
   "docx_template": null,
 
   "llm_kind": "openai",

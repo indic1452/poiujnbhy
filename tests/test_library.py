@@ -8,6 +8,8 @@
 
 import os
 import re
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -165,6 +167,100 @@ class LibraryDocsTests(unittest.TestCase):
         for command in re.findall(r"Invoke-Reportgen ([a-z-]+)", self.doc):
             with self.subTest(command=command):
                 self.assertIn(command, known, f"в CLI нет команды {command}")
+
+
+class LoadLibraryScriptTests(unittest.TestCase):
+    """Загрузка библиотеки — одной командой, без ручной сборки из кусков."""
+
+    def setUp(self):
+        self.script = ROOT / "scripts" / "windows" / "load-library.ps1"
+        self.text = self.script.read_text(encoding="utf-8")
+
+    def test_script_exists_and_has_bom(self):
+        # Без BOM Windows PowerShell 5.1 читает файл как ANSI, и русские
+        # сообщения превращаются в кракозябры.
+        self.assertTrue(self.script.is_file())
+        self.assertTrue(self.script.read_bytes().startswith(b"\xef\xbb\xbf"))
+
+    def test_refuses_to_run_before_installation_finished(self):
+        # Пока нет окружения и настроек, разбор всё равно не сработает —
+        # лучше сказать это сразу и назвать нужную команду.
+        self.assertIn("install-offline.ps1", self.text)
+
+    def test_covers_the_whole_sequence(self):
+        for command in ("formats", "ingest", "embed", "library"):
+            with self.subTest(command=command):
+                self.assertIn(command, self.text)
+
+    def test_exposes_the_same_switches_as_ingest(self):
+        for switch in ("$DocType", "$Domain", "$Force", "$NoEmbed"):
+            with self.subTest(switch=switch):
+                self.assertIn(switch, self.text)
+
+    def test_doc_type_values_match_the_code(self):
+        for doc_type in DOC_TYPES:
+            with self.subTest(doc_type=doc_type):
+                self.assertIn(f"'{doc_type}'", self.text)
+
+    def test_documented(self):
+        doc = (ROOT / "docs" / "18-library.md").read_text(encoding="utf-8")
+        self.assertIn("load-library.ps1", doc)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_script_parses(self):
+        check = (
+            "$e=$null;$t=$null;"
+            f"[System.Management.Automation.Language.Parser]::ParseFile('{self.script}',"
+            "[ref]$t,[ref]$e)|Out-Null; if($e.Count){$e|%{Write-Host $_.Message}; exit 1}"
+        )
+        done = subprocess.run(["pwsh", "-NoProfile", "-Command", check],
+                              capture_output=True, text=True, timeout=120)
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+
+
+class UsersScriptTests(unittest.TestCase):
+    """Забытый пароль администратора чинится на самой машине, без интерфейса."""
+
+    def setUp(self):
+        self.script = ROOT / "scripts" / "windows" / "users.ps1"
+        self.text = self.script.read_text(encoding="utf-8")
+
+    def test_script_exists_and_has_bom(self):
+        self.assertTrue(self.script.is_file())
+        self.assertTrue(self.script.read_bytes().startswith(b"\xef\xbb\xbf"))
+
+    def test_covers_list_add_and_reset(self):
+        for command in ("users", "useradd", "passwd"):
+            with self.subTest(command=command):
+                self.assertIn(command, self.text)
+
+    def test_roles_match_the_code(self):
+        from reportgen.store.models import ROLES
+
+        for role in ROLES:
+            with self.subTest(role=role):
+                self.assertIn(f"'{role}'", self.text)
+
+    def test_password_reset_needs_no_old_password(self):
+        # Пароль забыт — значит, старый спрашивать не у кого.
+        from reportgen.cli import build_parser
+
+        parser = build_parser()
+        passwd = [a for a in parser._actions if a.choices and "passwd" in a.choices][0].choices["passwd"]
+        options = {option for action in passwd._actions for option in action.option_strings}
+        self.assertNotIn("--old-password", options)
+        self.assertIn("--login", options)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_script_parses(self):
+        check = (
+            "$e=$null;$t=$null;"
+            f"[System.Management.Automation.Language.Parser]::ParseFile('{self.script}',"
+            "[ref]$t,[ref]$e)|Out-Null; if($e.Count){$e|%{Write-Host $_.Message}; exit 1}"
+        )
+        done = subprocess.run(["pwsh", "-NoProfile", "-Command", check],
+                              capture_output=True, text=True, timeout=120)
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
 
 
 if __name__ == "__main__":

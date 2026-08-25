@@ -234,11 +234,10 @@ cd C:\reportgen\app\scripts\windows
 Загрузка библиотеки:
 
 ```powershell
-. .\_common.ps1
-Invoke-Reportgen formats     # что система умеет читать на этой машине
-Invoke-Reportgen ingest      # разбор документов из data\library
-Invoke-Reportgen embed       # векторы для смыслового поиска (на GPU)
+.\load-library.ps1           # разбор документов, векторы и отчёт — одной командой
 ```
+
+Что в какую папку класть — [docs/18-library.md](18-library.md).
 
 ## 15.8. Установка на офлайн-машине (Linux)
 
