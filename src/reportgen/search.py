@@ -23,6 +23,8 @@
 
 from __future__ import annotations
 
+import re
+from difflib import SequenceMatcher
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -196,6 +198,12 @@ class DatabaseRetriever:
         ровно тот случай, ради которого сделано (две редакции подряд), и не
         может перетасовать выдачу: свежая, но менее подходящая книга не
         поднимется выше точной старой больше чем на одну позицию за проход.
+
+        И применяется оно только к РЕДАКЦИЯМ ОДНОГО документа. Иначе правило
+        систематически топит первоисточники: RFC 7230 — 2014 года, RFC 791 —
+        1981-го, а методичка отдела — 2021-го, и точный английский документ
+        уходил с первого места под русский, который просто новее. Это разные
+        документы, а не две редакции, и сравнивать их по свежести незачем.
         """
         if len(hits) < 2 or self.freshness_window <= 0:
             return hits
@@ -228,6 +236,8 @@ class DatabaseRetriever:
             if next_year - this_year < self.freshness_min_gap:
                 continue
             if abs(current.score - following.score) > window:
+                continue
+            if not _same_document(current, following):
                 continue
             order[index], order[index + 1] = following, current
         return order
@@ -372,6 +382,37 @@ class DatabaseRetriever:
             for chunk in self.repos.chunks.get_many(piece):
                 found[chunk.chunk_id] = chunk
         return found
+
+
+#: Насколько должны совпасть названия, чтобы считать документы редакциями
+#: одного и того же. 0.85 разводит «ГОСТ Р 53363-2009» и «ГОСТ Р 53363-2024»
+#: (одно) с «RFC 7230» и «Методика контроля излучения» (разное).
+_SAME_DOCUMENT_RATIO = 0.85
+
+_EDITION_NOISE = re.compile(r"\b(19|20)\d{2}\b|[^0-9a-zа-яё]+")
+
+
+def _document_title(hit: Hit) -> str:
+    meta = hit.chunk.meta or {}
+    title = str(meta.get("title") or "")
+    if not title and hit.chunk.title_path:
+        title = str(hit.chunk.title_path[0])
+    return title or hit.chunk.doc_id
+
+
+def _edition_key(hit: Hit) -> str:
+    """Название документа без года и знаков препинания."""
+    return _EDITION_NOISE.sub(" ", _document_title(hit).lower()).strip()
+
+
+def _same_document(first: Hit, second: Hit) -> bool:
+    """Похоже ли, что это две редакции одного документа."""
+    left, right = _edition_key(first), _edition_key(second)
+    if not left or not right:
+        return False
+    if left == right:
+        return True
+    return SequenceMatcher(None, left, right).ratio() >= _SAME_DOCUMENT_RATIO
 
 
 def _matches(

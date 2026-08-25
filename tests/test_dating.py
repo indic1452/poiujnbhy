@@ -61,10 +61,11 @@ class YearDetectionTests(unittest.TestCase):
         self.assertEqual((None, ""), detect_year(title="Без даты", filename="x.pdf", text="текст"))
 
 
-def hit(chunk_id: str, score: float, year: int | None) -> Hit:
+def hit(chunk_id: str, score: float, year: int | None, title: str = "Стандарт") -> Hit:
     meta = {"year": year} if year else {}
+    meta["title"] = title
     chunk = Chunk(chunk_id=chunk_id, doc_id="d", doc_type="standards",
-                  title_path=["Стандарт"], text="текст", meta=meta)
+                  title_path=[title], text="текст", meta=meta)
     return Hit(chunk=chunk, score=score)
 
 
@@ -107,6 +108,32 @@ class FreshnessTests(unittest.TestCase):
     def test_single_known_year_keeps_order(self):
         order = self.run_rule([hit("a", 0.90, None), hit("b", 0.89, 2024), hit("c", 0.10, None)])
         self.assertEqual(["a", "b", "c"], order)
+
+    def test_only_editions_of_one_document_are_swapped(self):
+        """RFC старше внутренних методичек — но это не переиздания.
+
+        RFC 7230 — 2014 года, RFC 791 — 1981-го, а методичка отдела —
+        2021-го. Правило «свежее вперёд» систематически уводило точный
+        первоисточник с первого места под русский документ, который просто
+        новее.
+        """
+        # Третий результат нужен, чтобы разброс оценок был настоящим: окно
+        # считается от него, и на паре из двух хитов правило не срабатывает
+        # никогда — проверка была бы пустой.
+        order = self.run_rule([
+            hit("rfc", 0.90, 2014, "RFC 7230. Hypertext Transfer Protocol (HTTP/1.1)"),
+            hit("методичка", 0.89, 2021, "Методика контроля излучения передатчика"),
+            hit("третий", 0.40, None, "Прочее"),
+        ])
+        self.assertEqual(["rfc", "методичка", "третий"], order)
+
+    def test_editions_of_one_standard_are_still_swapped(self):
+        order = self.run_rule([
+            hit("старая", 0.90, 2009, "ГОСТ Р 53363-2009. Цифровые радиорелейные линии"),
+            hit("новая", 0.89, 2024, "ГОСТ Р 53363-2024. Цифровые радиорелейные линии"),
+            hit("третий", 0.40, None, "Прочее"),
+        ])
+        self.assertEqual(["новая", "старая", "третий"], order)
 
     def test_rule_cannot_reshuffle_the_whole_list(self):
         # Один проход обменов соседей: документ не может подняться с конца
