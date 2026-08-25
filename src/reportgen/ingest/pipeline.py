@@ -274,7 +274,7 @@ def ingest_path(
         return result
 
     try:
-        digest = sha256_file(path)
+        stat = path.stat()
     except OSError as error:
         result.failed = 1
         result.warnings.append(f"{label}: файл не прочитан ({error})")
@@ -282,7 +282,32 @@ def ingest_path(
 
     doc_id = doc_id or _doc_id_for(path, base)
     existing = repos.documents.by_doc_id(doc_id)
+
+    # Размер и время правки совпали — файл не трогали, читать его незачем.
+    # Хеш обошёлся бы в чтение всего файла с диска: добавить пять документов к
+    # десяти тысячам не должно означать перечитывание всей библиотеки. На
+    # замере stat() дешевле SHA-256 примерно в сотню раз.
+    if (
+        existing is not None
+        and existing.indexed_at
+        and not force
+        and existing.size == stat.st_size
+        and existing.mtime_ns == stat.st_mtime_ns
+    ):
+        result.skipped = 1
+        return result
+
+    try:
+        digest = sha256_file(path)
+    except OSError as error:
+        result.failed = 1
+        result.warnings.append(f"{label}: файл не прочитан ({error})")
+        return result
     if existing is not None and existing.sha256 == digest and existing.indexed_at and not force:
+        # Хеш совпал — файл тот же. Записываем дешёвые приметы, чтобы
+        # следующий прогон обошёлся stat() вместо чтения файла целиком.
+        if existing.size != stat.st_size or existing.mtime_ns != stat.st_mtime_ns:
+            repos.documents.touch(doc_id, stat.st_size, stat.st_mtime_ns)
         result.skipped = 1
         return result
 
@@ -364,6 +389,8 @@ def ingest_path(
         year=year,
         status=status,
         superseded_by=superseded_by,
+        size=stat.st_size,
+        mtime_ns=stat.st_mtime_ns,
     )
     chunks = chunks_from_markdown(converted.text, doc_id, resolved_type, meta)
     result.chunks = repos.chunks.replace_for_document(document, chunks)

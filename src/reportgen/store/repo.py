@@ -210,18 +210,20 @@ class DocumentRepo:
                sha256: str, confidentiality: str = "internal",
                meta: Dict[str, Any] | None = None, domain: str = "",
                status: str = "current", superseded_by: str = "",
-               year: int | None = None) -> Document:
+               year: int | None = None, size: int | None = None,
+               mtime_ns: int | None = None) -> Document:
         with self.db.transaction() as connection:
             connection.execute(
                 "INSERT INTO documents(doc_id, doc_type, title, source_path, sha256, "
-                "confidentiality, meta_json, domain, status, superseded_by, year, created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?) "
+                "confidentiality, meta_json, domain, status, superseded_by, year, "
+                "size, mtime_ns, created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(doc_id) DO UPDATE SET doc_type=excluded.doc_type, "
                 "title=excluded.title, source_path=excluded.source_path, "
                 "sha256=excluded.sha256, confidentiality=excluded.confidentiality, "
                 "meta_json=excluded.meta_json, domain=excluded.domain, "
                 "status=excluded.status, superseded_by=excluded.superseded_by, "
-                "year=excluded.year, "
+                "year=excluded.year, size=excluded.size, mtime_ns=excluded.mtime_ns, "
                 # Файл изменился — прежние чанки устарели, отметку об индексации
                 # снимаем до того, как ChunkRepo их перезапишет.
                 "indexed_at=CASE WHEN documents.sha256 = excluded.sha256 "
@@ -230,11 +232,25 @@ class DocumentRepo:
                 "THEN documents.chunk_count ELSE 0 END",
                 (doc_id, doc_type, title, source_path, sha256, confidentiality,
                  json.dumps(meta or {}, ensure_ascii=False), domain, status,
-                 superseded_by, year, utcnow()),
+                 superseded_by, year, size, mtime_ns, utcnow()),
             )
         document = self.by_doc_id(doc_id)
         assert document is not None
         return document
+
+    def touch(self, doc_id: str, size: int, mtime_ns: int) -> None:
+        """Запомнить размер и дату файла без переиндексации.
+
+        Нужно там, где документ пропущен по совпадению SHA-256: сам хеш уже
+        стоил чтения всего файла, и если не записать дешёвые приметы, каждый
+        следующий прогон будет читать библиотеку целиком заново. Особенно это
+        важно для баз, заполненных до появления этих колонок.
+        """
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE documents SET size = ?, mtime_ns = ? WHERE doc_id = ?",
+                (int(size), int(mtime_ns), doc_id),
+            )
 
     def by_doc_id(self, doc_id: str) -> Document | None:
         row = self.db.query_one("SELECT * FROM documents WHERE doc_id = ?", (doc_id,))

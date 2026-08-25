@@ -97,6 +97,11 @@ class Document:
     year: int | None = None
     meta: Dict[str, Any] = field(default_factory=dict)
     chunk_count: int = 0
+    #: Размер и время правки файла на момент приёма. По ним приём решает, надо
+    #: ли вообще читать файл: считать SHA-256 всей библиотеки ради пяти новых
+    #: документов незачем.
+    size: int | None = None
+    mtime_ns: int | None = None
     indexed_at: str | None = None
     created_at: str = ""
 
@@ -116,6 +121,8 @@ class Document:
             year=row["year"] if "year" in row.keys() else None,
             meta=_json(row["meta_json"], {}),
             chunk_count=row["chunk_count"],
+            size=row["size"] if "size" in row.keys() else None,
+            mtime_ns=row["mtime_ns"] if "mtime_ns" in row.keys() else None,
             indexed_at=row["indexed_at"],
             created_at=row["created_at"],
         )

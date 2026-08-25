@@ -7,9 +7,12 @@
 не назывались вовсе.
 """
 
+import os
 import shutil
 import tempfile
+import time
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
@@ -213,6 +216,76 @@ class RepeatedLoadTests(BatchCase):
         self.assertEqual(1, result.added)
         self.assertEqual(4, result.skipped)
         self.assertEqual(0, result.failed)
+
+
+class FastSkipTests(BatchCase):
+    """Повторный прогон не должен перечитывать библиотеку с диска.
+
+    Приём считал SHA-256 каждого файла до всякой проверки, то есть читал все
+    гигабайты. Добавить пять документов к десяти тысячам означало перечитать
+    десять тысяч. На замере stat() дешевле хеша примерно в сотню раз.
+    """
+
+    def test_untouched_file_is_not_read(self):
+        path = self.put("standards/а.md", "А")
+        self.load()
+        stat = path.stat()
+        document = self.document("standards/а")
+        self.assertEqual(stat.st_size, document.size)
+        self.assertEqual(stat.st_mtime_ns, document.mtime_ns)
+
+        with unittest.mock.patch("reportgen.ingest.pipeline.sha256_file") as hashed:
+            result = self.load()
+        self.assertEqual(1, result.skipped)
+        hashed.assert_not_called()
+
+    def test_changed_file_is_reindexed(self):
+        self.put("standards/а.md", "А")
+        self.load()
+        (self.tmp / "standards" / "а.md").write_text(
+            f"# А, новая редакция\n\n{TEXT} Добавлен раздел 5.", encoding="utf-8")
+        result = self.load()
+        self.assertEqual(1, result.updated)
+        self.assertEqual("А, новая редакция", self.document("standards/а").title)
+
+    def test_touched_but_identical_file_is_skipped(self):
+        # Дата поменялась, содержимое нет: хеш совпадёт, и переиндексации не
+        # будет — но приметы надо обновить, иначе хеш считается каждый раз.
+        path = self.put("standards/а.md", "А")
+        self.load()
+        later = time.time() + 5
+        os.utime(path, (later, later))
+        result = self.load()
+        self.assertEqual(1, result.skipped)
+        self.assertEqual(0, result.updated)
+        self.assertEqual(path.stat().st_mtime_ns, self.document("standards/а").mtime_ns)
+
+    def test_force_reindexes_anyway(self):
+        self.put("standards/а.md", "А")
+        self.load()
+        result = self.load(force=True)
+        self.assertEqual(1, result.updated)
+
+    def test_old_database_gets_the_marks(self):
+        """База заказчика заполнена до появления этих колонок.
+
+        Без дозаписи ускорение не включилось бы никогда: пропуск по хешу
+        возвращается до записи документа, и приметы остались бы пустыми.
+        """
+        self.put("standards/а.md", "А")
+        self.load()
+        with self.repos.db.transaction() as connection:
+            connection.execute("UPDATE documents SET size = NULL, mtime_ns = NULL")
+
+        result = self.load()
+        self.assertEqual(1, result.skipped)
+        document = self.document("standards/а")
+        self.assertIsNotNone(document.size)
+        self.assertIsNotNone(document.mtime_ns)
+
+        with unittest.mock.patch("reportgen.ingest.pipeline.sha256_file") as hashed:
+            self.load()
+        hashed.assert_not_called()
 
 
 if __name__ == "__main__":

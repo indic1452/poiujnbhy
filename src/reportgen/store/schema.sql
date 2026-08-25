@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS documents (
     confidentiality TEXT    NOT NULL DEFAULT 'internal',  -- public|internal|nda
     meta_json       TEXT    NOT NULL DEFAULT '{}',
     chunk_count     INTEGER NOT NULL DEFAULT 0,
+    size            INTEGER,                     -- размер файла на момент приёма
+    mtime_ns        INTEGER,                     -- время правки файла на момент приёма
     indexed_at      TEXT,
     created_at      TEXT    NOT NULL
 );
