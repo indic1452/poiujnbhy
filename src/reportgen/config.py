@@ -39,6 +39,8 @@ class Settings:
     export_dir: Path | None = None
     templates_dir: Path = Path("templates")
     glossary_path: Path = Path("templates/glossary.json")
+    #: Справочник направлений техники. None — искать рядом с пакетом.
+    domains_path: Path | None = None
     docx_template: Path | None = None
 
     # -- языковая модель ---------------------------------------------------
@@ -88,7 +90,8 @@ class Settings:
 
     def __post_init__(self) -> None:
         for name in ("data_dir", "db_path", "library_dir", "upload_dir", "export_dir",
-                     "templates_dir", "glossary_path", "docx_template", "brand_logo"):
+                     "templates_dir", "glossary_path", "domains_path", "docx_template",
+                     "brand_logo"):
             value = getattr(self, name)
             if value is not None and not isinstance(value, Path):
                 setattr(self, name, Path(value))

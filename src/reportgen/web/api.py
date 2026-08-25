@@ -494,7 +494,8 @@ def reindex(request: Request) -> Dict[str, Any]:
         raise ServiceError("модуль приёма документов недоступен", 501) from error
 
     settings.ensure_dirs()
-    result = ingest_directory(_repos(request), settings.library_dir, force=force)
+    result = ingest_directory(_repos(request), settings.library_dir, force=force,
+                              domains_path=settings.domains_path)
     _service(request).reset_retriever()
     _repos(request).audit.log("library.reindex", user=user, details={"force": force})
     return {"result": _ingest_to_dict(result)}
@@ -852,6 +853,7 @@ def _ingest_file(request: Request, path: Path, *, doc_type: str,
         _repos(request), path,
         root=Path(settings.library_dir), doc_type=doc_type,
         confidentiality=confidentiality, force=True, domain=domain,
+        domains_path=settings.domains_path,
     )
     return _ingest_to_dict(result)
 

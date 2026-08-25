@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -20,6 +21,29 @@ from typing import Dict, List, Sequence
 
 DEFAULT_PATH = Path("templates/domains.json")
 UNSET = ""
+
+
+def default_path() -> Path:
+    """Где искать справочник направлений, если путь не задан явно.
+
+    Раньше это был просто ``templates/domains.json`` — то есть относительно
+    ТЕКУЩЕГО каталога. Инструкция велит запускать приём библиотеки из
+    ``scripts\\windows``, и там такого файла нет: справочник молча оказывался
+    пустым, а все документы — без направления. Поиск по направлению при этом
+    ничего не находил, и понять, почему, было невозможно.
+
+    Порядок: переменная окружения, затем каталог запуска (так работают тесты и
+    привычный запуск из корня), затем каталог рядом с установленным пакетом.
+    """
+    override = os.environ.get("REPORTGEN_DOMAINS_PATH")
+    if override:
+        return Path(override)
+    if DEFAULT_PATH.is_file():
+        return DEFAULT_PATH
+    beside_package = Path(__file__).resolve().parents[2] / "templates" / "domains.json"
+    if beside_package.is_file():
+        return beside_package
+    return DEFAULT_PATH
 CLASSIFY_CHARS = 20000
 MIN_HITS = 2
 
@@ -125,8 +149,8 @@ def _cached(path: str, stamp: float) -> DomainRegistry:
     return DomainRegistry.load(path)
 
 
-def registry(path: str | Path = DEFAULT_PATH) -> DomainRegistry:
+def registry(path: str | Path | None = None) -> DomainRegistry:
     """Справочник с перечитыванием файла при его изменении."""
-    file = Path(path)
+    file = Path(path) if path is not None else default_path()
     stamp = file.stat().st_mtime if file.is_file() else 0.0
     return _cached(str(file), stamp)

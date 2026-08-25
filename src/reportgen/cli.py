@@ -8,8 +8,9 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
+from . import domains
 from .config import Settings
-from .corpus import load_corpus
+from .corpus import DOC_TYPES, load_corpus
 from .facts import FactPack, FactPackError
 from .llm import build_llm
 from .pipeline import Outline, check_facts_coverage, generate_report
@@ -230,10 +231,29 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     if not target.exists():
         print(f"путь не найден: {target}", file=sys.stderr)
         return 1
+
+    doc_type = getattr(args, "doc_type", None)
+    if doc_type is not None and doc_type not in DOC_TYPES:
+        print(f"неизвестный тип документа '{doc_type}'; доступны: "
+              f"{', '.join(DOC_TYPES)}", file=sys.stderr)
+        return 1
+
+    domain = getattr(args, "domain", None)
+    if domain:
+        known = domains.registry(settings.domains_path).ids
+        if known and domain not in known:
+            print(f"неизвестное направление '{domain}'; доступны: {', '.join(known)}",
+                  file=sys.stderr)
+            return 1
+
     if target.is_dir():
-        result = ingest_directory(repos, target, force=args.force, progress=print)
+        result = ingest_directory(repos, target, force=args.force, progress=print,
+                                  doc_type=doc_type, domain=domain,
+                                  domains_path=settings.domains_path)
     else:
-        result = ingest_path(repos, target, root=target.parent, force=args.force)
+        result = ingest_path(repos, target, root=target.parent, force=args.force,
+                             doc_type=doc_type, domain=domain,
+                             domains_path=settings.domains_path)
     print(result.summary() if hasattr(result, "summary") else result)
     return 0
 
@@ -435,6 +455,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_ingest = sub.add_parser("ingest", help="загрузить документы библиотеки в базу")
     p_ingest.add_argument("path", nargs="?", default=None, help="файл или каталог")
     p_ingest.add_argument("--force", action="store_true", help="переиндексировать даже без изменений")
+    p_ingest.add_argument(
+        "--doc-type", default=None,
+        help="тип для всех файлов: literature, standards, datasheets, reports, regulations. "
+             "Без него тип берётся из имени каталога верхнего уровня",
+    )
+    p_ingest.add_argument(
+        "--domain", default=None,
+        help="направление техники для всех файлов (satellite, microwave, protocols …). "
+             "Без него определяется по тексту",
+    )
     p_ingest.set_defaults(func=cmd_ingest)
 
     p_lib = sub.add_parser("library", help="что лежит в библиотеке")

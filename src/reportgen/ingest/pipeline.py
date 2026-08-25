@@ -219,6 +219,7 @@ def ingest_path(
     confidentiality: str = "internal",
     force: bool = False,
     domain: str | None = None,
+    domains_path: str | Path | None = None,
 ) -> IngestResult:
     """Принимает один файл: SHA-256 → конвертация → чанки → база.
 
@@ -273,7 +274,8 @@ def ingest_path(
     resolved_type = doc_type or guess_doc_type(path, base)
     title = converted.title.strip() or doc_id.rsplit("/", 1)[-1]
     meta = _document_meta(converted, title=title, relative=_relative_for(path, base))
-    resolved_domain = domain if domain is not None else _detect_domain(title, converted.text)
+    resolved_domain = (domain if domain is not None
+                       else _detect_domain(title, converted.text, domains_path))
     if resolved_domain:
         meta["domain"] = resolved_domain
 
@@ -297,13 +299,13 @@ def ingest_path(
     return result
 
 
-def _detect_domain(title: str, text: str) -> str:
+def _detect_domain(title: str, text: str, domains_path: str | Path | None = None) -> str:
     """Определить направление документа. Ошибка классификатора не критична:
     при неуверенности возвращается пустая строка, и фильтр просто не применяется."""
     try:
         from ..domains import registry  # noqa: PLC0415
 
-        return registry().classify(title, text)
+        return registry(domains_path).classify(title, text)
     except Exception:  # noqa: BLE001 — справочник направлений не должен ломать приём
         return ""
 
@@ -351,11 +353,17 @@ def ingest_directory(
     progress: ProgressFn | None = None,
     confidentiality: str = "internal",
     domain: str | None = None,
+    doc_type: str | None = None,
+    domains_path: str | Path | None = None,
 ) -> IngestResult:
     """Принимает каталог библиотеки целиком.
 
     Тип документа берётся из имени каталога верхнего уровня
     (``standards/…`` → ``standards``), файлы в корне корпуса пропускаются.
+    ``doc_type`` перекрывает это правило для всего каталога: так загружают
+    папку, названную по-человечески («Стандарты по релейкам»), не переименовывая
+    её. ``domain`` — то же самое для направления техники: у книги по спутнику
+    ключевых слов может не хватить, а инженер знает точно.
     ``progress`` вызывается перед разбором каждого файла — CLI печатает это в
     консоль, веб пишет в журнал приёма.
     """
@@ -377,6 +385,8 @@ def ingest_directory(
                 force=force,
                 confidentiality=confidentiality,
                 domain=domain,
+                doc_type=doc_type,
+                domains_path=domains_path,
             )
         )
     return result
