@@ -169,8 +169,16 @@ class DatabaseRetriever:
         allowed = set(doc_types) if doc_types else None
         areas = {d for d in (domains or []) if d} or None
 
-        lexical = self._lexical(text, allowed, meta_filter, areas)
-        dense = self._dense(text, allowed, meta_filter, areas, set(SEARCHABLE_STATUSES))
+        # Мусор чистится ДО слияния, а не только на выходе. Иначе фрагмент,
+        # случайно попавший в оба канала, копит вклад дважды и обгоняет точный
+        # результат, который нашёл только один канал: русские методички,
+        # совпавшие по слову «поля», вытесняли английский RFC, найденный по
+        # смыслу. Слияние RRF так и задумано — согласие каналов есть довод, —
+        # но согласие с нулевым весом доводом не является.
+        lexical = _drop_worthless(self._lexical(text, allowed, meta_filter, areas))
+        dense = _drop_worthless(
+            self._dense(text, allowed, meta_filter, areas, set(SEARCHABLE_STATUSES))
+        )
 
         if lexical and dense:
             merged = reciprocal_rank_fusion(

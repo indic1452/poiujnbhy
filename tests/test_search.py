@@ -705,3 +705,64 @@ class ScoreCutoffTests(unittest.TestCase):
     def test_first_hit_is_never_dropped(self):
         # Пустая выдача хуже сомнительной.
         self.assertTrue(self.rule([0.001, 0.0005]))
+
+
+class FusionNoiseTests(unittest.TestCase):
+    """Мусор чистится до слияния каналов, а не только на выходе.
+
+    Фрагмент, случайно попавший в оба канала, копит вклад RRF дважды и
+    обгоняет точный результат, который нашёл только один канал: русские
+    методички, совпавшие по слову «поля», вытесняли английский RFC,
+    найденный по смыслу. Согласие каналов — довод, но согласие с нулевым
+    весом доводом не является.
+    """
+
+    RFC = (
+        "Internet Engineering Task Force (IETF)                  R. Fielding\n"
+        "Request for Comments: 7230                                    Adobe\n"
+        "Category: Standards Track                                 June 2014\n\n"
+        "  Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing\n\n"
+        "3.2.  Header Fields\n\n"
+        "   Each header field consists of a case-insensitive field name followed\n"
+        "   by a colon, optional leading whitespace, the field value.\n"
+    )
+    NOISE = "Поля таблицы заполняются по образцу. Поля формы обязательны. " * 8
+
+    def setUp(self):
+        import tempfile
+
+        from reportgen.ingest.pipeline import ingest_directory
+        from reportgen.store.db import Database
+        from reportgen.store.repo import Repositories
+
+        self._tmp = tempfile.TemporaryDirectory()
+        root = Path(self._tmp.name)
+        (root / "standards" / "rfc").mkdir(parents=True)
+        (root / "standards" / "rfc" / "rfc7230.txt").write_text(self.RFC, encoding="utf-8")
+        (root / "literature").mkdir()
+        for index in range(6):
+            (root / "literature" / f"м{index}.md").write_text(
+                f"# Методичка {index}\n\n{self.NOISE}", encoding="utf-8")
+        database = Database(":memory:")
+        database.migrate()
+        self.repos = Repositories(database)
+        ingest_directory(self.repos, root)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_russian_question_returns_only_the_rfc(self):
+        from reportgen.search import DatabaseRetriever
+
+        glossary = Path(__file__).resolve().parents[1] / "templates" / "terms.json"
+        hits = DatabaseRetriever(self.repos, terms_path=glossary).search(
+            "какие поля в заголовке и что в них лежит", top_k=8)
+        self.assertEqual(1, len(hits), [hit.chunk.doc_id for hit in hits])
+        self.assertEqual("standards/rfc/rfc7230", hits[0].chunk.doc_id)
+
+    def test_query_that_suits_everything_keeps_everything(self):
+        # Правило обязано молчать там, где все документы вправду подходят.
+        from reportgen.search import DatabaseRetriever
+
+        hits = DatabaseRetriever(self.repos).search("поля", top_k=8)
+        self.assertGreaterEqual(len(hits), 6)
