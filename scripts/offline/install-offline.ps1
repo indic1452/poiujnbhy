@@ -331,9 +331,27 @@ foreach ($type in 'literature', 'standards', 'datasheets', 'reports', 'regulatio
 # ------------------------------------------------------------ llama.cpp ----
 Step 'llama.cpp'
 $llamaTarget = Join-Path $Target 'llama'
-$archives = Get-ChildItem (Join-Path $bundle 'llama') -Filter '*.zip' -ErrorAction SilentlyContinue
+$llamaSource = Join-Path $bundle 'llama'
+$archives = Get-ChildItem $llamaSource -Filter '*.zip' -ErrorAction SilentlyContinue
+
+function Show-LlamaRecovery([string]$source, [string]$target) {
+    # Сообщение «не найден» без списка того, что есть, чинить нечем.
+    Note "в комплекте ($source) лежит:"
+    $present = Get-ChildItem $source -File -ErrorAction SilentlyContinue
+    if ($present) { foreach ($file in $present) { Note "  $($file.Name)" } }
+    else { Note '  (пусто)' }
+    Note ''
+    Note 'Нужны ДВА архива: сборка сервера и библиотеки CUDA к ней.'
+    Note 'Судя по именам выше, не хватает сборки сервера (llama-*-bin-win-cuda-*-x64.zip).'
+    Note 'На машине С ИНТЕРНЕТОМ доберите только его, не перекачивая весь комплект:'
+    Note '  .\pack.ps1 -Destination <тот же каталог комплекта> -Only llama'
+    Note 'затем перенесите каталог llama и повторите установку.'
+    Note "Либо скачайте архив вручную со страницы выпусков llama.cpp и положите в $source."
+}
+
 if (-not $archives) {
-    Later "в комплекте нет архивов llama.cpp — распакуйте сборку вручную в $llamaTarget"
+    Later "в комплекте нет архивов llama.cpp — модель запускать будет нечем"
+    Show-LlamaRecovery $llamaSource $llamaTarget
 } else {
     foreach ($archive in $archives) {
         Expand-Archive -Path $archive.FullName -DestinationPath $llamaTarget -Force
@@ -350,7 +368,10 @@ if (-not $archives) {
     if (Test-Path (Join-Path $llamaTarget 'llama-server.exe')) {
         Ok 'llama-server.exe на месте'
     } else {
-        Fail "llama-server.exe не найден после распаковки в $llamaTarget"
+        # Не обрываем установку: всё остальное — зависимости, настройки,
+        # библиотека — поставится, и потом останется только доложить архив.
+        Later "llama-server.exe не найден после распаковки в $llamaTarget — модель запускать будет нечем"
+        Show-LlamaRecovery $llamaSource $llamaTarget
     }
     # Запасной выпуск не распаковываем: он пригодится, только если основной не
     # заведётся на этой видеокарте. Просто кладём рядом.

@@ -234,16 +234,45 @@ function Resolve-TdfStable($source) {
 # выпуски вида v0.2.0 вообще без бинарников под Windows. Поэтому перебираем
 # выпуски от свежих к старым и берём первый, где есть ВСЕ нужные файлы.
 
-function Select-LlamaAssets($release, $patterns) {
-    $found = @()
-    foreach ($pattern in $patterns) {
-        $asset = $release.assets |
-                 Where-Object { $_.name -like "*$pattern*" -and ($_.name -like '*x64*' -or $_.name -like '*amd64*') } |
-                 Select-Object -First 1
-        if (-not $asset) {
-            # Бывает, что разрядность в имя не вынесена, — пробуем без неё.
-            $asset = $release.assets | Where-Object { $_.name -like "*$pattern*" } | Select-Object -First 1
+function Get-LlamaAssetRules($plan) {
+    # Имена архивов llama.cpp со временем менялись: bin-win-cuda-12.4-x64.zip,
+    # bin-win-cu12.4-x64.zip. Одного шаблона мало, поэтому у каждого нужного
+    # архива список вариантов и список того, что явно НЕ он: без исключения
+    # «cudart» подстрока bin-win-cu поймала бы библиотеки CUDA вместо сервера.
+    $rules = @()
+    foreach ($item in @($plan.llama_cpp.asset_patterns)) {
+        if ($item -is [string]) {
+            # Старый формат настроек — одна строка.
+            $rules += [pscustomobject]@{ id = $item; match = @($item); exclude = @() }
+        } else {
+            # Отсутствующее поле даёт @($null) — список ИЗ ОДНОГО пустого
+            # элемента, а шаблон "**" совпадает с чем угодно: правило без
+            # exclude отбрасывало бы все файлы подряд.
+            $rules += [pscustomobject]@{
+                id      = if ($item.id) { $item.id } else { @($item.match)[0] }
+                match   = @($item.match | Where-Object { $_ })
+                exclude = @($item.exclude | Where-Object { $_ })
+            }
         }
+    }
+    return $rules
+}
+
+function Select-LlamaAssets($release, $rules) {
+    $found = @()
+    foreach ($rule in $rules) {
+        $candidates = $release.assets | Where-Object {
+            $name = $_.name
+            $hit = $false
+            foreach ($pattern in $rule.match) { if ($name -like "*$pattern*") { $hit = $true } }
+            foreach ($pattern in $rule.exclude) { if ($name -like "*$pattern*") { $hit = $false } }
+            $hit -and $name -like '*.zip'
+        }
+        $asset = $candidates |
+                 Where-Object { $_.name -like '*x64*' -or $_.name -like '*amd64*' } |
+                 Select-Object -First 1
+        # Бывает, что разрядность в имя не вынесена, — пробуем без неё.
+        if (-not $asset) { $asset = $candidates | Select-Object -First 1 }
         if (-not $asset) { return $null }
         $found += $asset
     }
@@ -261,12 +290,12 @@ function Get-LlamaReleases($plan) {
 function Find-LlamaRelease($plan) {
     # Возвращает список подходящих выпусков (свежие первыми) — второй нужен
     # как запасной, если основная сборка не заведётся на этом драйвере.
-    $patterns = @($plan.llama_cpp.asset_patterns)
+    $rules = Get-LlamaAssetRules $plan
     $matching = @()
     $scanned = @()
     foreach ($release in (Get-LlamaReleases $plan)) {
         $scanned += $release
-        $assets = Select-LlamaAssets $release $patterns
+        $assets = Select-LlamaAssets $release $rules
         if ($assets) { $matching += [pscustomobject]@{ release = $release; assets = $assets } }
     }
     if (-not $matching.Count) {
@@ -274,13 +303,13 @@ function Find-LlamaRelease($plan) {
         # выпусках вообще лежит, чтобы шаблон можно было поправить сразу.
         $withAssets = $scanned | Where-Object { $_.assets.Count } | Select-Object -First 1
         if ($withAssets) {
-            Warn "в выпусках llama.cpp нет файлов по шаблонам: $($patterns -join ', ')"
+            Warn ("в выпусках llama.cpp нет архивов: " + (($rules | ForEach-Object { $_.id }) -join ', '))
             Note "самый свежий выпуск с файлами — $($withAssets.tag_name), в нём есть:"
             foreach ($name in ($withAssets.assets.name | Select-Object -First 20)) { Note "  $name" }
         } else {
             Warn 'ни в одном из просмотренных выпусков llama.cpp нет прикреплённых файлов'
         }
-        throw "не найден выпуск llama.cpp с файлами по шаблонам: $($patterns -join ', ')"
+        throw ("не найден выпуск llama.cpp с архивами: " + (($rules | ForEach-Object { $_.id }) -join ', '))
     }
     return $matching
 }

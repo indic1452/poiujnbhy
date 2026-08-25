@@ -10,6 +10,8 @@
 import json
 import os
 import re
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -559,6 +561,24 @@ class DocxTemplateDocsTests(unittest.TestCase):
         for style in sorted(used):
             with self.subTest(style=style):
                 self.assertIn(style, doc, f"стиль {style} используется, но не описан в docs/15")
+
+
+class LlamaAssetMatchingTests(unittest.TestCase):
+    """Подбор архивов llama.cpp — проверка настоящим PowerShell.
+
+    У заказчика в комплект попал только cudart, а сборка сервера — нет:
+    установка встала на «llama-server.exe не найден» уже на изолированной
+    машине. Выпуск без сборки сервера обязан отвергаться целиком.
+    """
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_asset_rules(self):
+        script = ROOT / "tests" / "powershell" / "test_llama_assets.ps1"
+        done = subprocess.run(
+            ["pwsh", "-NoProfile", "-File", str(script)],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=120,
+        )
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
 
 
 if __name__ == "__main__":
