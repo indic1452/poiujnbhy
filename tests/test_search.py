@@ -654,3 +654,54 @@ class BuildRetrieverTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ScoreCutoffTests(unittest.TestCase):
+    """Фрагменты, попавшие в выдачу по чистой случайности, в промпт не идут.
+
+    Запрос «какие поля в заголовке» находил нужное место в RFC с весом 6,95 —
+    и вместе с ним шесть методичек с весом 0,0000019: они совпали по слову
+    «поля», которое есть в каждом документе. Все семь уходили в промпт как
+    [S1]…[S7]: шесть источников мусора на один по делу, и ссылки в ответе
+    становились непроверяемыми.
+    """
+
+    def rule(self, scores):
+        from reportgen.corpus import Chunk
+        from reportgen.retrieval import Hit
+        from reportgen.search import _drop_worthless
+
+        hits = [
+            Hit(chunk=Chunk(chunk_id=f"c{index}", doc_id=f"d{index}",
+                            doc_type="standards", title_path=["Д"], text="т"),
+                score=score)
+            for index, score in enumerate(scores)
+        ]
+        return [hit.score for hit in _drop_worthless(hits)]
+
+    def test_huge_gap_is_cut(self):
+        self.assertEqual([6.95], self.rule([6.95, 1.9e-06, 1.9e-06, 1.9e-06]))
+
+    def test_normal_spread_is_untouched(self):
+        # У слияния RRF разброс в выдаче меньше чем вдвое.
+        scores = [0.0164, 0.0161, 0.0155, 0.0121, 0.0091]
+        self.assertEqual(scores, self.rule(scores))
+
+    def test_equal_scores_are_all_kept(self):
+        self.assertEqual([1.0, 1.0, 1.0], self.rule([1.0, 1.0, 1.0]))
+
+    def test_reranker_negatives_are_dropped_when_positives_exist(self):
+        # У bge-reranker минус означает «не по теме».
+        self.assertEqual([5.2, 1.1], self.rule([5.2, 1.1, -2.3, -7.0]))
+
+    def test_all_negative_scale_is_left_alone(self):
+        # Это шкала реранкера целиком, сравнивать долями нечего.
+        scores = [-1.0, -2.0, -3.0]
+        self.assertEqual(scores, self.rule(scores))
+
+    def test_single_hit_survives(self):
+        self.assertEqual([1.9e-06], self.rule([1.9e-06]))
+
+    def test_first_hit_is_never_dropped(self):
+        # Пустая выдача хуже сомнительной.
+        self.assertTrue(self.rule([0.001, 0.0005]))
