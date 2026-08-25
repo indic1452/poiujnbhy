@@ -594,6 +594,35 @@ class LibraryTests(WebTestCase):
         self.assertFalse((self.tmp.parent / "evil.md").exists())
 
 
+class DomainReferenceTests(WebTestCase):
+    """Справочник направлений в интерфейсе — тот же, что у приёма документов.
+
+    Приём читает `settings.domains_path`, а интерфейс брал
+    `templates_dir/domains.json`. Пока это один файл, разницы не видно; стоит
+    задать справочник отдельно (`REPORTGEN_DOMAINS_PATH` — так велит
+    инструкция) — и документы раскладываются верно, а в таблице у всех
+    «не указано» и список направлений пуст. Данные при этом целы: расходится
+    только показ, и найти причину неоткуда.
+    """
+
+    def test_reference_comes_from_the_configured_path(self):
+        own = self.tmp / "свой-справочник.json"
+        own.write_text(json.dumps({"domains": [
+            {"id": "hf", "title": "Только коротковолновая", "keywords": ["кв"]},
+        ]}, ensure_ascii=False), encoding="utf-8")
+        self.app.state.settings.domains_path = own
+
+        answer = self.client.get("/api/domains").json()
+        titles = [item["title"] for item in answer["items"]]
+        self.assertEqual(["Только коротковолновая"], titles)
+
+    def test_default_still_works_without_the_setting(self):
+        self.app.state.settings.domains_path = None
+        answer = self.client.get("/api/domains").json()
+        self.assertTrue(answer["items"], "справочник по умолчанию пуст")
+        self.assertIn("misc", {item["id"] for item in answer["items"]})
+
+
 class StatsTests(WebTestCase):
     def test_stats_shape(self):
         case = self.create_case()

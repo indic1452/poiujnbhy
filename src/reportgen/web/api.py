@@ -7,7 +7,7 @@ import re
 import unicodedata
 import urllib.parse
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -41,8 +41,19 @@ def _assistant(request: Request):
 
 
 def _domains(request: Request):
+    """Справочник направлений — тот же, по которому приём раскладывает документы.
+
+    Здесь стоял путь `templates_dir/domains.json`, а приём читает
+    `settings.domains_path`. Пока это один и тот же файл, разницы не видно; а
+    стоит задать справочник отдельно — и приём раскладывает документы верно,
+    зато в интерфейсе список направлений пуст и у всех документов «не
+    указано». Причём данные при этом целы: расходится только показ.
+    """
     settings = _settings(request)
-    return domain_registry(Path(settings.templates_dir) / "domains.json")
+    path = getattr(settings, "domains_path", None)
+    if not path:
+        path = Path(settings.templates_dir) / "domains.json"
+    return domain_registry(path)
 
 
 def _repos(request: Request):

@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Sequence,
 
 from .. import corpus
 from ..corpus import Chunk
+from ..store.models import DOC_STATUSES
 from . import convert
 from .convert import ConvertedDocument, convert_file, guess_doc_type, sha256_file
 
@@ -318,6 +319,12 @@ def ingest_path(
         meta["year"] = year
         meta["year_source"] = year_source
 
+    # Статус документа конвертер знает лучше всех: в шапке RFC написано, каким
+    # выпуском он отменён. Без переноса в колонку это оставалось пометкой в
+    # meta, а сам документ продолжал находиться поиском наравне с действующим —
+    # ровно то, ради чего разбор шапки и делался.
+    status, superseded_by = _resolve_status(meta, existing)
+
     document = repos.documents.upsert(
         doc_id=doc_id,
         doc_type=resolved_type,
@@ -328,6 +335,8 @@ def ingest_path(
         meta=meta,
         domain=resolved_domain,
         year=year,
+        status=status,
+        superseded_by=superseded_by,
     )
     chunks = chunks_from_markdown(converted.text, doc_id, resolved_type, meta)
     result.chunks = repos.chunks.replace_for_document(document, chunks)
@@ -337,6 +346,27 @@ def ingest_path(
     else:
         result.updated = 1
     return result
+
+
+def _resolve_status(meta: Dict[str, Any], existing: Any) -> Tuple[str, str]:
+    """Актуальность документа: из разбора файла, но не поверх решения человека.
+
+    Инженер, поставивший документу статус руками, знает про свою библиотеку
+    больше, чем разборщик шапки, — его выбор при повторном приёме сохраняется.
+    Меняет статус разбор только там, где человек его не трогал.
+    """
+    found = str(meta.get("status") or "").strip()
+    if found not in DOC_STATUSES:
+        found = ""
+    superseded_by = str(meta.get("superseded_by") or "").strip()
+
+    previous = str(getattr(existing, "status", "") or "")
+    if existing is not None and previous and previous != "current":
+        return previous, str(getattr(existing, "superseded_by", "") or "")
+
+    if not found:
+        return "current", ""
+    return found, superseded_by
 
 
 def _detect_domain(title: str, text: str, domains_path: str | Path | None = None) -> str:

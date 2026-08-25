@@ -558,6 +558,83 @@ class RfcTests(unittest.TestCase):
         self.assertEqual("protocols", found)
 
 
+class SupersededStatusTests(unittest.TestCase):
+    """Отменённая редакция обязана выпадать из поиска.
+
+    Разборщик RFC ставил пометку об отмене в meta, а колонка `status`
+    оставалась «действующий»: приём её не переносил. Пометка была видна в
+    карточке, поиск же продолжал выдавать RFC 2616 наравне с заменившим его
+    7230 — ровно та ошибка, ради которой разбор шапки и затевался.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self.library = self.dir / "library" / "standards" / "rfc"
+        self.library.mkdir(parents=True)
+        from reportgen.store.db import Database
+        from reportgen.store.repo import Repositories
+
+        database = Database(":memory:")
+        database.migrate()
+        self.repos = Repositories(database)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    OBSOLETE = (
+        "Network Working Group                                      R. Fielding\n"
+        "Request for Comments: 2616                                    UC Irvine\n"
+        "Obsoleted by: 7230, 7231\n"
+        "Obsoletes: 2068                                               June 1999\n\n"
+        "        Hypertext Transfer Protocol -- HTTP/1.1\n\n"
+        "1 Introduction\n\n   The Hypertext Transfer Protocol is an application-level"
+        " protocol for distributed, collaborative, hypermedia information systems.\n"
+    )
+    CURRENT = (
+        "Internet Engineering Task Force (IETF)                  R. Fielding\n"
+        "Request for Comments: 7230                                    Adobe\n"
+        "Obsoletes: 2145, 2616                                     June 2014\n\n"
+        "  Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing\n\n"
+        "Abstract\n\n   The Hypertext Transfer Protocol is a stateless application-level"
+        " protocol for distributed, collaborative, hypertext information systems.\n"
+    )
+
+    def ingest(self):
+        from reportgen.ingest.pipeline import ingest_directory
+
+        (self.library / "rfc2616.txt").write_text(self.OBSOLETE, encoding="utf-8")
+        (self.library / "rfc7230.txt").write_text(self.CURRENT, encoding="utf-8")
+        ingest_directory(self.repos, self.dir / "library")
+        return {doc.doc_id: doc for doc in self.repos.documents.list()}
+
+    def test_status_reaches_the_column_not_only_meta(self):
+        docs = self.ingest()
+        obsolete = docs["standards/rfc/rfc2616"]
+        self.assertEqual("superseded", obsolete.status)
+        self.assertEqual("standards/rfc/rfc7230", obsolete.superseded_by)
+        self.assertEqual("current", docs["standards/rfc/rfc7230"].status)
+
+    def test_superseded_document_is_not_found(self):
+        from reportgen.search import DatabaseRetriever
+
+        self.ingest()
+        found = DatabaseRetriever(self.repos).search(
+            "hypertext transfer protocol", top_k=10)
+        doc_ids = {getattr(hit, "doc_id", None) or hit.chunk.doc_id for hit in found}
+        self.assertIn("standards/rfc/rfc7230", doc_ids)
+        self.assertNotIn("standards/rfc/rfc2616", doc_ids)
+
+    def test_the_engineers_own_decision_is_not_overwritten(self):
+        # Инженер знает про свою библиотеку больше разборщика шапки: если он
+        # отправил документ в архив, повторный приём не должен это отменять.
+        self.ingest()
+        self.repos.documents.set_status("standards/rfc/rfc7230", "archived", "")
+        self.ingest()
+        docs = {doc.doc_id: doc for doc in self.repos.documents.list()}
+        self.assertEqual("archived", docs["standards/rfc/rfc7230"].status)
+
+
 class EnglishDomainTests(unittest.TestCase):
     """Направление у импортных документов.
 
