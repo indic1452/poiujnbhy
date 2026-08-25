@@ -37,8 +37,9 @@ import re
 import shutil
 import subprocess
 import tempfile
+from concurrent import futures
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 from .. import registry
 from ..convert import external_path, ConvertedDocument, _first_markdown_heading, _reason, page_marker
@@ -297,41 +298,76 @@ def _ocr_pages(
     """Распознать страницы без текстового слоя. Возвращает число распознанных."""
     recognised = 0
     failures = 0
+    workers = ocr.resolve_ocr_workers()
+    pages = list(pages)
+
     with tempfile.TemporaryDirectory(prefix="reportgen-djvu-") as directory:
-        for number in pages:
-            image = Path(directory) / f"page-{number:05d}.pnm"
-            try:
-                render_djvu_page(path, number, image)
-            except DjvuToolError as error:
-                result.warnings.append(f"страница {number}: {_reason(error)}")
-                failures += 1
-            else:
+        # Разворачивание страницы в PNM — доли секунды, распознавание —
+        # секунды. Разворачиваем по очереди (ddjvu — внешняя программа на
+        # одном файле), распознаём пачками параллельно: у скана книги это
+        # разница между часом и десятью минутами.
+        batch_size = max(1, workers * 2)
+        for start_index in range(0, len(pages), batch_size):
+            batch = pages[start_index:start_index + batch_size]
+            ready: List[Tuple[int, Path]] = []
+            for number in batch:
+                image = Path(directory) / f"page-{number:05d}.pnm"
                 try:
-                    raw = ocr.ocr_image(image, timeout=ocr.DEFAULT_TIMEOUT)
-                except ocr.OcrUnavailableError as error:
-                    result.warnings.append(str(error))
-                    break
-                except ocr.OcrError as error:
+                    render_djvu_page(path, number, image)
+                except DjvuToolError as error:
                     result.warnings.append(f"страница {number}: {_reason(error)}")
                     failures += 1
                 else:
-                    failures = 0
-                    body = ocr.ocr_text_to_markdown(raw)
-                    quality = ocr.page_quality_warning(number, body)
-                    if quality:
-                        result.warnings.append(quality)
-                    if body.strip():
-                        text_pages[number] = body
-                        recognised += 1
-                finally:
-                    try:
-                        image.unlink()
-                    except OSError:  # pragma: no cover — файла уже нет
-                        pass
+                    ready.append((number, image))
+
+            if not ready:
+                if failures >= MAX_CONSECUTIVE_FAILURES:
+                    break
+                continue
+
+            def recognise(item: Tuple[int, Path]):
+                number, image = item
+                try:
+                    return number, ocr.ocr_image(image, timeout=ocr.DEFAULT_TIMEOUT), None
+                except ocr.OcrUnavailableError as error:
+                    return number, None, error
+                except ocr.OcrError as error:
+                    return number, None, error
+
+            if workers <= 1 or len(ready) == 1:
+                outcomes = [recognise(item) for item in ready]
+            else:
+                with futures.ThreadPoolExecutor(max_workers=workers) as pool:
+                    outcomes = list(pool.map(recognise, ready))
+
+            stop = False
+            for number, raw, error in sorted(outcomes, key=lambda item: item[0]):
+                if isinstance(error, ocr.OcrUnavailableError):
+                    result.warnings.append(str(error))
+                    stop = True
+                    break
+                if error is not None:
+                    result.warnings.append(f"страница {number}: {_reason(error)}")
+                    failures += 1
+                    continue
+                failures = 0
+                body = ocr.ocr_text_to_markdown(raw)
+                quality = ocr.page_quality_warning(number, body)
+                if quality:
+                    result.warnings.append(quality)
+                if body.strip():
+                    text_pages[number] = body
+                    recognised += 1
+            if stop:
+                break
+            for _, image in ready:
+                try:
+                    image.unlink()
+                except OSError:
+                    pass
             if failures >= MAX_CONSECUTIVE_FAILURES:
                 result.warnings.append(
-                    f"распознавание прервано после {failures} неудач подряд — "
-                    "остальные страницы не обрабатывались"
+                    f"распознавание прервано после {failures} неудач подряд"
                 )
                 break
     return recognised

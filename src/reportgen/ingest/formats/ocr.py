@@ -43,10 +43,11 @@ import os
 import re
 import shutil
 import subprocess
+from concurrent import futures
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Callable, Dict, Iterable, List, Sequence, Tuple
 
 from .. import registry
 from ..convert import (
@@ -64,6 +65,7 @@ from ..convert import (
 __all__ = [
     "IMAGE_SUFFIXES",
     "MAX_OCR_PAGES",
+    "resolve_ocr_workers",
     "MIN_PAGE_CHARS",
     "OcrError",
     "OcrTimeoutError",
@@ -395,6 +397,35 @@ def render_pdf_page(document: object, number: int, scale: float = RENDER_SCALE) 
     return bytes(pixmap.tobytes("png"))
 
 
+def resolve_ocr_workers(workers: int | None = None) -> int:
+    """Сколько страниц распознавать одновременно.
+
+    Один большой скан — это сотни страниц по несколько секунд каждая, и без
+    параллелизма он занимает часы на одном ядре, пока остальные простаивают.
+    Значение по умолчанию совпадает с числом потоков приёма: ядро остаётся
+    системе и модели.
+    """
+    if workers and workers > 0:
+        return int(workers)
+    override = os.environ.get("REPORTGEN_OCR_WORKERS", "").strip()
+    if override.isdigit() and int(override) > 0:
+        return int(override)
+    cores = os.cpu_count() or 2
+    return max(1, min(8, cores - 1))
+
+
+def _ocr_or_note(image: bytes, number: int, languages: str, timeout: float,
+                 notes: List[str]) -> str | None:
+    """Распознать страницу. ``None`` — не получилось, причина уже в ``notes``."""
+    try:
+        return ocr_image(image, languages=languages, timeout=timeout)
+    except OcrUnavailableError:
+        raise
+    except OcrError as error:
+        notes.append(f"страница {number}: {_reason(error)}")
+        return None
+
+
 def ocr_pdf_pages(
     path: str | Path,
     pages: Iterable[int],
@@ -404,6 +435,7 @@ def ocr_pdf_pages(
     scale: float = RENDER_SCALE,
     max_pages: int = MAX_OCR_PAGES,
     warnings: List[str] | None = None,
+    progress: "Callable[[int, int], None] | None" = None,
 ) -> Dict[int, str]:
     """Распознать указанные страницы PDF. Возвращает текст по номерам страниц.
 
@@ -441,30 +473,61 @@ def ocr_pdf_pages(
     except Exception as error:  # noqa: BLE001 — содержимое файла не должно ронять приём
         raise OcrError(f"не удалось открыть PDF для распознавания: {_reason(error)}") from error
 
+    workers = resolve_ocr_workers()
     failures = 0
     try:
         total = int(getattr(document, "page_count", 0) or 0)
-        for number in wanted:
-            if total and number > total:
+        if total:
+            missing = [number for number in wanted if number > total]
+            for number in missing:
                 notes.append(f"страницы {number} в документе нет — распознавать нечего")
-                continue
-            try:
-                image = render_pdf_page(document, number, scale)
-            except Exception as error:  # noqa: BLE001 — сбой рендеринга одной страницы
-                notes.append(
-                    f"страница {number}: не удалось получить изображение ({_reason(error)})"
-                )
-                failures += 1
-            else:
+            wanted = [number for number in wanted if number <= total]
+
+        # Рендеринг страницы занимает сотые доли секунды, распознавание —
+        # секунды: всё время уходит в tesseract. Поэтому рендерим по очереди
+        # (документ PyMuPDF не потокобезопасен), а распознаём пачками
+        # параллельно. Пачка размером в два потока не даёт разрастись памяти:
+        # у большого скана страница в PNG весит около мегабайта.
+        batch_size = max(1, workers * 2)
+        for start in range(0, len(wanted), batch_size):
+            batch = wanted[start:start + batch_size]
+            images: List[Tuple[int, bytes]] = []
+            for number in batch:
                 try:
-                    collected[number] = ocr_image(image, languages=languages, timeout=timeout)
-                    failures = 0
-                    continue
-                except OcrUnavailableError:
-                    raise
-                except OcrError as error:
-                    notes.append(f"страница {number}: {_reason(error)}")
+                    images.append((number, render_pdf_page(document, number, scale)))
+                except Exception as error:  # noqa: BLE001 — сбой одной страницы
+                    notes.append(
+                        f"страница {number}: не удалось получить изображение ({_reason(error)})"
+                    )
                     failures += 1
+
+            if not images:
+                if failures >= MAX_CONSECUTIVE_FAILURES:
+                    break
+                continue
+
+            if workers <= 1 or len(images) == 1:
+                results = [(number, _ocr_or_note(image, number, languages, timeout, notes))
+                           for number, image in images]
+            else:
+                with futures.ThreadPoolExecutor(max_workers=workers) as pool:
+                    submitted = {
+                        pool.submit(_ocr_or_note, image, number, languages, timeout, notes): number
+                        for number, image in images
+                    }
+                    results = [(submitted[future], future.result())
+                               for future in futures.as_completed(submitted)]
+
+            for number, text in results:
+                if text is None:
+                    failures += 1
+                else:
+                    collected[number] = text
+                    failures = 0
+
+            if progress is not None:
+                progress(min(start + len(batch), len(wanted)), len(wanted))
+
             if failures >= MAX_CONSECUTIVE_FAILURES:
                 notes.append(
                     f"распознавание прервано после {failures} неудач подряд — "
@@ -581,33 +644,47 @@ def _image_meta(path: Path) -> Dict[str, object]:
         return {}
 
 
-def convert_image(path: Path) -> ConvertedDocument:
-    """Скан отдельной страницей (PNG, JPEG, TIFF, BMP) → распознанный Markdown."""
-    suffix = path.suffix.lower().lstrip(".")
-    result = ConvertedDocument(
-        title=path.stem,
-        page_count=1,
-        meta={"source_format": suffix or "image", "ocr": True, "page_count": 1},
-    )
-    result.meta.update(_image_meta(path))
+def image_frame_count(path: Path) -> int:
+    """Сколько кадров в файле. Для обычной картинки — один.
 
-    note = language_warning(DEFAULT_LANGUAGES)
-    if note:
-        result.warnings.append(note)
+    Многостраничный TIFF — штатный вывод сканера МФУ и факс-сервера, и в
+    библиотеке заказчика такие файлы обычные. Раньше весь такой файл уходил в
+    tesseract одним куском: 120-секундный таймаут был отведён на весь документ,
+    и скан протокола на сорок страниц пропадал целиком — ни одной страницы, с
+    предупреждением «страница слишком большая», уводящим не в ту сторону.
+    """
     try:
-        raw = ocr_image(path, languages=DEFAULT_LANGUAGES)
-    except OcrError as error:
-        result.needs_ocr = True
-        result.warnings.append(str(error))
-        return result
+        from PIL import Image  # noqa: PLC0415 — необязательная зависимость
+    except ImportError:
+        return 1
+    try:
+        with Image.open(path) as image:
+            return max(1, int(getattr(image, "n_frames", 1) or 1))
+    except Exception:  # noqa: BLE001 — битый файл разберёт основной путь
+        return 1
 
-    body = ocr_text_to_markdown(raw)
-    if body:
-        result.text = f"{page_marker(1)}\n\n{body}"
-    result.meta["ocr_languages"] = resolve_languages(DEFAULT_LANGUAGES)[0]
-    result.title = _first_markdown_heading(body) or path.stem
 
-    characters = len(body.strip())
+def _frame_to_png(path: Path, index: int) -> bytes | None:
+    """Кадр многостраничного изображения → PNG в памяти."""
+    try:
+        import io  # noqa: PLC0415
+
+        from PIL import Image  # noqa: PLC0415
+    except ImportError:
+        return None
+    try:
+        with Image.open(path) as image:
+            image.seek(index)
+            frame = image.convert("RGB") if image.mode not in ("RGB", "L") else image.copy()
+            buffer = io.BytesIO()
+            frame.save(buffer, format="PNG")
+            return buffer.getvalue()
+    except Exception:  # noqa: BLE001 — экзотический режим кадра
+        return None
+
+
+def _describe_ocr_quality(result: ConvertedDocument, characters: int) -> None:
+    """Единая формулировка о качестве распознавания."""
     if not characters:
         result.warnings.append(
             "текст не распознан: на изображении, похоже, нет читаемого текста "
@@ -623,6 +700,113 @@ def convert_image(path: Path) -> ConvertedDocument:
             "текст получен машинным распознаванием — числа и обозначения "
             "перед использованием сверяйте с оригиналом"
         )
+
+
+def convert_image(path: Path) -> ConvertedDocument:
+    """Скан (PNG, JPEG, TIFF, BMP) → распознанный Markdown.
+
+    Многокадровый TIFF разбирается постранично: свой таймаут на страницу, свои
+    маркеры и своё качество. Без маркеров ссылка «с. 17» в отчёте указывала бы
+    на первую страницу, и при сверке с бумажным оригиналом факт бы не нашёлся.
+    """
+    suffix = path.suffix.lower().lstrip(".")
+    frames = image_frame_count(path)
+    result = ConvertedDocument(
+        title=path.stem,
+        page_count=frames,
+        meta={"source_format": suffix or "image", "ocr": True, "page_count": frames},
+    )
+    result.meta.update(_image_meta(path))
+    result.meta["page_count"] = frames
+
+    note = language_warning(DEFAULT_LANGUAGES)
+    if note:
+        result.warnings.append(note)
+
+    if frames <= 1:
+        try:
+            raw = ocr_image(path, languages=DEFAULT_LANGUAGES)
+        except OcrError as error:
+            result.needs_ocr = True
+            result.warnings.append(str(error))
+            return result
+        body = ocr_text_to_markdown(raw)
+        if body:
+            result.text = f"{page_marker(1)}\n\n{body}"
+        result.meta["ocr_languages"] = resolve_languages(DEFAULT_LANGUAGES)[0]
+        result.title = _first_markdown_heading(body) or path.stem
+        _describe_ocr_quality(result, len(body.strip()))
+        return result
+
+    wanted = list(range(1, frames + 1))
+    if MAX_OCR_PAGES and frames > MAX_OCR_PAGES:
+        result.warnings.append(
+            f"распознавание ограничено {MAX_OCR_PAGES} страницами: пропущено страниц "
+            f"{frames - MAX_OCR_PAGES} — распознайте остаток отдельным файлом"
+        )
+        wanted = wanted[:MAX_OCR_PAGES]
+
+    workers = resolve_ocr_workers()
+    pieces: List[str] = []
+    recognised = 0
+    failures = 0
+    batch_size = max(1, workers * 2)
+
+    for start_index in range(0, len(wanted), batch_size):
+        batch = wanted[start_index:start_index + batch_size]
+        images: List[Tuple[int, bytes]] = []
+        for number in batch:
+            payload = _frame_to_png(path, number - 1)
+            if payload is None:
+                result.warnings.append(f"страница {number}: не удалось прочитать кадр")
+                failures += 1
+            else:
+                images.append((number, payload))
+
+        if images:
+            if workers <= 1 or len(images) == 1:
+                outcomes = [(number, _ocr_or_note(payload, number, DEFAULT_LANGUAGES,
+                                                  DEFAULT_TIMEOUT, result.warnings))
+                            for number, payload in images]
+            else:
+                with futures.ThreadPoolExecutor(max_workers=workers) as pool:
+                    submitted = {
+                        pool.submit(_ocr_or_note, payload, number, DEFAULT_LANGUAGES,
+                                    DEFAULT_TIMEOUT, result.warnings): number
+                        for number, payload in images
+                    }
+                    outcomes = [(submitted[future], future.result())
+                                for future in futures.as_completed(submitted)]
+
+            for number, raw in sorted(outcomes, key=lambda item: item[0]):
+                if raw is None:
+                    failures += 1
+                    continue
+                failures = 0
+                body = ocr_text_to_markdown(raw)
+                quality = page_quality_warning(number, body)
+                if quality:
+                    result.warnings.append(quality)
+                if body.strip():
+                    pieces.append(f"{page_marker(number)}\n\n{body}")
+                    recognised += 1
+
+        if failures >= MAX_CONSECUTIVE_FAILURES:
+            result.warnings.append(
+                f"распознавание прервано после {failures} неудач подряд — "
+                "остальные страницы не обрабатывались"
+            )
+            break
+
+    result.text = "\n\n".join(pieces)
+    result.meta["ocr_languages"] = resolve_languages(DEFAULT_LANGUAGES)[0]
+    result.meta["ocr_pages"] = recognised
+    result.title = _first_markdown_heading(result.text) or path.stem
+    result.needs_ocr = recognised == 0
+    result.warnings.append(
+        f"многостраничный скан: распознано страниц {recognised} из {len(wanted)}"
+    )
+    _describe_ocr_quality(result, len(result.text.strip()))
     return result
 
 
@@ -870,7 +1054,8 @@ registry.register(registry.ConverterSpec(
     suffixes=IMAGE_SUFFIXES,
     convert=convert_image,
     requires=(registry.Requirement("binary", "tesseract", TESSERACT_HINT, locate=lambda: tesseract_binary()),),
-    note="скан страницей-картинкой: распознавание tesseract (rus+eng), одна страница",
+    note="сканы-картинки: распознавание tesseract (rus+eng); многостраничный "
+         "TIFF разбирается постранично, страницы распознаются параллельно",
 ))
 
 registry.register(registry.ConverterSpec(

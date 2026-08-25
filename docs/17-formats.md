@@ -33,7 +33,7 @@ reportgen formats
 | `.odt`, `.ott`, `.fodt`, `.ods`, `.ots`, `.fods`, `.odp`, `.otp`, `.fodp` | opendocument-libreoffice | OpenDocument через LibreOffice — запасной путь к прямому разбору |
 | `.pdf` | pdf-ocr | PDF с распознаванием: сначала текстовый слой, затем OCR страниц без текста; без tesseract работает обычный конвертер «pdf» |
 | `.pdf` | pdf | текстовый слой PDF, заголовки по кеглю, номера страниц |
-| `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.bmp` | image-ocr | скан страницей-картинкой: распознавание tesseract (rus+eng), одна страница |
+| `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.bmp` | image-ocr | сканы-картинки: распознавание tesseract (rus+eng); многостраничный TIFF разбирается постранично |
 | `.ppt`, `.pps`, `.pot` | ppt-libreoffice | PowerPoint 97–2003: LibreOffice → PPTX → разбор со слайдами и заметками |
 | `.pptx`, `.pptm`, `.potx` | pptx | презентации PowerPoint: слайд — раздел, таблицы и заметки докладчика |
 | `.pub` | pub-libreoffice | Microsoft Publisher: LibreOffice → PDF → разбор с номерами страниц |

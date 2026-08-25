@@ -152,6 +152,25 @@ class LibraryDocsTests(unittest.TestCase):
             with self.subTest(domain=name):
                 self.assertIn(name, self.doc)
 
+    def test_company_categories_are_covered(self):
+        # Категории, которыми компания пользуется в работе.
+        ids = set(domains.registry(ROOT / "templates" / "domains.json").ids)
+        self.assertLessEqual(
+            {"hf", "satellite", "microwave", "mobile", "protocols",
+             "signal", "method", "software", "hardware", "standard"},
+            ids,
+        )
+
+    def test_renamed_domains_are_carried_over(self):
+        # Правка справочника не должна осиротить уже принятые документы.
+        from reportgen.store.db import DOMAIN_RENAMES
+
+        ids = set(domains.registry(ROOT / "templates" / "domains.json").ids)
+        for old_id, new_id in DOMAIN_RENAMES:
+            with self.subTest(old=old_id):
+                self.assertNotIn(old_id, ids, "старый идентификатор всё ещё в справочнике")
+                self.assertIn(new_id, ids, "новый идентификатор отсутствует")
+
     def test_document_statuses_documented(self):
         from reportgen.store.models import DOC_STATUSES
 

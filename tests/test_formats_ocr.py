@@ -500,16 +500,48 @@ class PdfOcrTests(TempCase):
         self.assertEqual([1], sorted(pages))
         self.assertTrue(any("99" in item for item in notes), notes)
 
-    def test_recognition_failures_stop_after_three_pages(self):
+    def test_recognition_failures_stop_the_document(self):
+        """Битый скан не должен молотиться до последней страницы.
+
+        Страницы распознаются пачками параллельно, поэтому счётчик неудач
+        проверяется после пачки, а не после каждой страницы: на пачке из шести
+        отработают шесть попыток, а не три. Существенно другое — что документ
+        на сотню страниц не будет перемалываться целиком.
+        """
         image = make_blank_image(self.directory / "пусто.png")
-        path = make_pdf(self.directory / "битый.pdf", [("image", image)] * 6)
+        path = make_pdf(self.directory / "битый.pdf", [("image", image)] * 40)
         notes = []
         failing = mock.Mock(side_effect=ocr.OcrError("tesseract упал"))
         with mock.patch.object(ocr, "ocr_image", failing):
-            pages = ocr.ocr_pdf_pages(path, range(1, 7), warnings=notes)
+            pages = ocr.ocr_pdf_pages(path, range(1, 41), warnings=notes)
         self.assertEqual({}, pages)
-        self.assertEqual(ocr.MAX_CONSECUTIVE_FAILURES, failing.call_count)
+        limit = max(ocr.MAX_CONSECUTIVE_FAILURES, ocr.resolve_ocr_workers() * 2)
+        self.assertLessEqual(failing.call_count, limit)
+        self.assertGreaterEqual(failing.call_count, ocr.MAX_CONSECUTIVE_FAILURES)
         self.assertTrue(any("прервано" in item for item in notes), notes)
+
+    def test_pages_are_recognised_in_parallel(self):
+        # Один большой скан — сотни страниц по несколько секунд: без
+        # параллелизма он занимает часы на одном ядре.
+        image = make_blank_image(self.directory / "пусто2.png")
+        path = make_pdf(self.directory / "многостраничный.pdf", [("image", image)] * 8)
+        seen = []
+        spy = mock.Mock(side_effect=lambda *a, **k: seen.append(1) or "строка")
+        with mock.patch.object(ocr, "ocr_image", spy):
+            pages = ocr.ocr_pdf_pages(path, range(1, 9), warnings=[])
+        self.assertEqual(list(range(1, 9)), sorted(pages))
+        self.assertEqual(8, len(seen))
+
+    def test_progress_is_reported(self):
+        # Двухчасовой файл не должен выглядеть как зависший.
+        image = make_blank_image(self.directory / "пусто3.png")
+        path = make_pdf(self.directory / "сдолгой.pdf", [("image", image)] * 5)
+        steps = []
+        with mock.patch.object(ocr, "ocr_image", mock.Mock(return_value="строка")):
+            ocr.ocr_pdf_pages(path, range(1, 6), warnings=[],
+                              progress=lambda done, total: steps.append((done, total)))
+        self.assertTrue(steps)
+        self.assertEqual((5, 5), steps[-1])
 
     @unittest.skipUnless(HAS_TESSERACT, "нет tesseract")
     def test_drawing_page_gets_quality_warning(self):
@@ -699,3 +731,100 @@ class DjvuTests(TempCase):
 
 if __name__ == "__main__":  # pragma: no cover — ручной запуск
     unittest.main()
+
+
+class MultipageTiffTests(unittest.TestCase):
+    """Многостраничный TIFF — штатный вывод сканера МФУ и факс-сервера.
+
+    Раньше весь такой файл уходил в tesseract одним куском: 120-секундный
+    таймаут был отведён на весь документ, и скан протокола на сорок страниц
+    пропадал целиком, с предупреждением «страница слишком большая», уводящим
+    не в ту сторону. А если укладывался — склеивался в одну страницу, и ссылка
+    «с. 17» в отчёте указывала на первую.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.directory = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def make_tiff(self, pages: int) -> Path:
+        from PIL import Image, ImageDraw
+
+        frames = []
+        for number in range(pages):
+            image = Image.new("RGB", (1200, 1600), "white")
+            draw = ImageDraw.Draw(image)
+            for line in range(12):
+                draw.text((60, 60 + line * 70),
+                          f"Stranica {number + 1} stroka {line + 1} uroven minus 62 dBm",
+                          fill="black")
+            frames.append(image)
+        path = self.directory / "протокол.tif"
+        frames[0].save(path, save_all=True, append_images=frames[1:])
+        return path
+
+    def test_frame_count_is_detected(self):
+        path = self.make_tiff(4)
+        self.assertEqual(4, ocr.image_frame_count(path))
+
+    def test_single_frame_stays_single(self):
+        from PIL import Image
+
+        path = self.directory / "одна.png"
+        Image.new("RGB", (300, 200), "white").save(path)
+        self.assertEqual(1, ocr.image_frame_count(path))
+
+    @unittest.skipUnless(HAS_TESSERACT, "нет tesseract")
+    def test_every_page_gets_its_own_marker(self):
+        path = self.make_tiff(4)
+        result = ocr.convert_image(path)
+        self.assertEqual(4, result.page_count)
+        self.assertEqual(4, result.meta["page_count"])
+        self.assertEqual(4, result.text.count("<!-- page:"))
+
+    @unittest.skipUnless(HAS_TESSERACT, "нет tesseract")
+    def test_chunks_keep_real_page_numbers(self):
+        # Иначе ссылка «с. 17» в отчёте указывает на первую страницу, и при
+        # сверке с бумажным оригиналом факт не находится.
+        from reportgen.ingest.pipeline import chunks_from_markdown
+
+        path = self.make_tiff(5)
+        result = ocr.convert_image(path)
+        chunks = chunks_from_markdown(result.text, "тест", "literature", result.meta)
+        pages = {chunk.meta.get("page") for chunk in chunks}
+        self.assertGreater(len(pages), 1, f"все фрагменты на одной странице: {pages}")
+        self.assertLessEqual(max(pages), 5)
+
+    @unittest.skipUnless(HAS_TESSERACT, "нет tesseract")
+    def test_reports_how_many_pages_were_read(self):
+        path = self.make_tiff(3)
+        result = ocr.convert_image(path)
+        self.assertEqual(3, result.meta["ocr_pages"])
+        self.assertTrue(any("распознано страниц 3 из 3" in item for item in result.warnings),
+                        result.warnings)
+
+    def test_page_limit_is_announced(self):
+        path = self.make_tiff(3)
+        with mock.patch.object(ocr, "MAX_OCR_PAGES", 2), \
+             mock.patch.object(ocr, "ocr_image", mock.Mock(return_value="строка текста")):
+            result = ocr.convert_image(path)
+        self.assertTrue(any("ограничено 2 страницами" in item for item in result.warnings),
+                        result.warnings)
+
+    def test_broken_frame_does_not_lose_the_document(self):
+        path = self.make_tiff(4)
+        calls = {"n": 0}
+
+        def flaky(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise ocr.OcrError("tesseract упал")
+            return "строка текста"
+
+        with mock.patch.object(ocr, "ocr_image", mock.Mock(side_effect=flaky)):
+            result = ocr.convert_image(path)
+        self.assertGreater(result.meta["ocr_pages"], 0)
+        self.assertTrue(any("страница 2" in item for item in result.warnings), result.warnings)

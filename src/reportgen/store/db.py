@@ -30,6 +30,15 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("chunks", "year", "INTEGER"),
 )
 
+#: Прежний идентификатор направления → нынешний. Пополняется при правке
+#: templates/domains.json, чтобы уже принятые документы не осиротели.
+DOMAIN_RENAMES: tuple[tuple[str, str], ...] = (
+    ("modulation", "signal"),
+    ("measurement", "method"),
+    ("equipment", "hardware"),
+    ("regulation", "standard"),
+)
+
 
 def utcnow() -> str:
     """Единый формат меток времени во всей системе."""
@@ -97,12 +106,33 @@ class Database:
     def migrate(self) -> None:
         self.connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         self._ensure_columns()
+        self._rename_domains()
         self.connection.execute(
             "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (SCHEMA_VERSION,),
         )
         self.connection.commit()
+
+    def _rename_domains(self) -> None:
+        """Переименование направлений при смене справочника.
+
+        Направления правятся под работу конкретной компании, и часть прежних
+        идентификаторов при этом исчезает. Без переноса уже проиндексированные
+        документы остались бы с направлением, которого больше нет: в списке
+        библиотеки — пусто, в поиске с фильтром — не находятся, и понять
+        причину нельзя. Переиндексация всей библиотеки ради этого не нужна.
+        """
+        for old_id, new_id in DOMAIN_RENAMES:
+            for table in ("documents", "chunks"):
+                columns = {
+                    row["name"] for row in self.connection.execute(f"PRAGMA table_info({table})")
+                }
+                if "domain" not in columns:
+                    continue
+                self.connection.execute(
+                    f"UPDATE {table} SET domain = ? WHERE domain = ?", (new_id, old_id)
+                )
 
     def _ensure_columns(self) -> None:
         """Добавляет недостающие колонки в уже существующие таблицы."""

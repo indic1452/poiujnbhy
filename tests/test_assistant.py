@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CASE = json.loads((ROOT / "examples" / "cases" / "case-2024-118.json").read_text(encoding="utf-8"))
 
 
-def fill_library(repos, *, domain: str = "modulation"):
+def fill_library(repos, *, domain: str = "signal"):
     by_doc: dict[str, list] = {}
     for chunk in load_corpus(ROOT / "examples" / "corpus"):
         by_doc.setdefault(chunk.doc_id, []).append(chunk)
@@ -33,7 +33,7 @@ def fill_library(repos, *, domain: str = "modulation"):
 
 
 class AssistantTestCase(unittest.TestCase):
-    library_domain = "modulation"
+    library_domain = "signal"
     with_library = True
 
     def setUp(self):
@@ -299,7 +299,7 @@ class AssistantHttpTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
 
     def test_full_cycle(self):
-        chat = self.client.post("/api/chats", json={"domain": "modulation"}).json()["chat"]
+        chat = self.client.post("/api/chats", json={"domain": "signal"}).json()["chat"]
         answer = self.client.post(f"/api/chats/{chat['id']}/ask", json={"text": "предел EVM"})
         self.assertEqual(answer.status_code, 200, answer.text)
         loaded = self.client.get(f"/api/chats/{chat['id']}").json()
@@ -360,7 +360,7 @@ class AssistantHttpTests(unittest.TestCase):
         domains = self.client.get("/api/domains").json()
         self.assertTrue(any(item["id"] == "protocols" for item in domains["items"]))
 
-        filtered = self.client.get("/api/library", params={"domain": "modulation"}).json()
+        filtered = self.client.get("/api/library", params={"domain": "signal"}).json()
         self.assertTrue(filtered["items"])
         empty = self.client.get("/api/library", params={"domain": "satellite"}).json()
         self.assertEqual(empty["items"], [])
