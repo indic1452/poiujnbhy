@@ -650,5 +650,67 @@ class RfcScriptTests(unittest.TestCase):
         self.assertNotIn("'standards\\rfc'", self.text)
 
 
+class StartGuideTests(unittest.TestCase):
+    """Сквозной маршрут docs/00-start.md.
+
+    Инструкция, в которой команда набрана с ошибкой, хуже отсутствующей:
+    человек на изолированной машине не может ни проверить её, ни спросить.
+    Поэтому каждое имя скрипта и каждый ключ в документе сверяются с самими
+    скриптами.
+    """
+
+    GUIDE = ROOT / "docs" / "00-start.md"
+    #: Ключи самого powershell.exe, а не разбираемого скрипта.
+    HOST_SWITCHES = {"executionpolicy", "file", "noprofile", "command"}
+
+    def setUp(self):
+        self.text = read(self.GUIDE)
+
+    def scripts(self):
+        return {path.name: path for path in (ROOT / "scripts").rglob("*.ps1")}
+
+    def test_every_script_mentioned_exists(self):
+        mentioned = set(re.findall(r"([\w][\w-]*\.ps1)", self.text))
+        self.assertTrue(mentioned, "в маршруте не осталось ни одной команды")
+        unknown = sorted(mentioned - set(self.scripts()))
+        self.assertFalse(unknown, f"в документе есть несуществующие скрипты: {unknown}")
+
+    def test_every_switch_is_declared(self):
+        scripts = self.scripts()
+        bad = []
+        for name, tail in re.findall(r"([\w][\w-]*\.ps1)((?:\s+-\w+(?:\s+[^\s\\|#]+)?)*)",
+                                     self.text):
+            path = scripts.get(name)
+            if path is None:
+                continue
+            block = re.search(r"^param\((.*?)^\)", read(path), re.S | re.M)
+            declared = {word.lower() for word in re.findall(r"\$(\w+)", block.group(1))} if block else set()
+            for switch in re.findall(r"-(\w+)", tail):
+                if switch.lower() in self.HOST_SWITCHES:
+                    continue
+                if switch.lower() not in declared:
+                    bad.append(f"{name} -{switch}")
+        self.assertFalse(sorted(set(bad)), f"ключей нет в самих скриптах: {sorted(set(bad))}")
+
+    def test_links_to_other_documents_resolve(self):
+        links = set(re.findall(r"\]\((\d\d-[\w-]+\.md)\)", self.text))
+        missing = sorted(link for link in links if not (ROOT / "docs" / link).exists())
+        self.assertFalse(missing, f"битые ссылки: {missing}")
+
+    def test_readme_points_at_the_guide(self):
+        self.assertIn("docs/00-start.md", read(ROOT / "README.md"))
+
+    def test_installer_sends_the_reader_to_the_guide(self):
+        # Установщик заканчивается списком «что дальше» — маршрут там должен быть.
+        self.assertIn("00-start.md", read(OFFLINE / "install-offline.ps1"))
+
+    def test_library_is_loaded_by_one_command(self):
+        # Прошлый совет «Invoke-Reportgen ingest ; Invoke-Reportgen embed» уже
+        # приводил к вопросу «откуда и что вызывать».
+        installer = read(OFFLINE / "install-offline.ps1")
+        self.assertIn("load-library.ps1", installer)
+        self.assertNotIn("Invoke-Reportgen ingest", installer)
+
+
 if __name__ == "__main__":
     unittest.main()

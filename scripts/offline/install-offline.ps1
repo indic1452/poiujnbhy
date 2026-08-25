@@ -494,4 +494,7 @@ Write-Host "  2) cd $app\scripts\windows"
 Write-Host '  3) .\00-check.ps1   — проверка машины'
 Write-Host '  4) .\start-all.ps1  — запуск комплекса'
 Write-Host '  5) сложите документы в ' -NoNewline; Write-Host (Join-Path $Target 'data\library') -ForegroundColor Cyan
-Write-Host '     и выполните: . .\_common.ps1 ; Invoke-Reportgen ingest ; Invoke-Reportgen embed'
+Write-Host '     и выполните: ' -NoNewline; Write-Host '.\load-library.ps1' -ForegroundColor Cyan
+Write-Host '     Раскладывать по папкам необязательно: тип определится по документу.'
+Write-Host ''
+Write-Host 'Полный путь от начала до конца — docs\00-start.md' -ForegroundColor Green
