@@ -98,7 +98,12 @@ class AssistantService:
         """
         prepared = self._prepare(user, chat_id, question, top_k=top_k)
         yield {"type": "question", "message": prepared["question_message"].to_dict()}
-        yield {"type": "sources", "sources": prepared["sources"]}
+        yield {
+            "type": "sources",
+            "sources": prepared["sources"],
+            "expansion": prepared.get("expansion") or None,
+            "warning": prepared.get("warning") or None,
+        }
 
         llm = self.reports.get_llm()
         pieces: List[str] = []
@@ -136,6 +141,14 @@ class AssistantService:
         question_message = self.repos.chats.add_message(chat.id, "user", question)
 
         hits = self._search(chat, question, history, top_k)
+        retriever = self.reports.get_retriever()
+        # Половина библиотеки английская, а спрашивают по-русски. Если запрос
+        # дополнен по двуязычному словарю — сказать об этом: иначе английский
+        # фрагмент в источниках выглядит взявшимся ниоткуда. Заодно доносим
+        # предупреждение поиска: падение службы эмбеддингов в чате раньше не
+        # было видно вовсе, а поиск при этом работал вполсилы.
+        expansion = list(getattr(retriever, "last_expansion", []) or [])
+        warning = getattr(retriever, "last_warning", "") or ""
         sources = [
             {
                 "label": f"S{index}",
@@ -159,6 +172,8 @@ class AssistantService:
             "question_message": question_message,
             "history": history,
             "sources": sources,
+            "expansion": expansion,
+            "warning": warning,
             "prompt": prompt,
         }
 
@@ -185,6 +200,8 @@ class AssistantService:
             "question": prepared["question_message"].to_dict(),
             "answer": answer.to_dict(),
             "chat": self.get_chat(user, chat.id).to_dict(),
+            "expansion": prepared.get("expansion") or None,
+            "warning": prepared.get("warning") or None,
         }
 
     def _search(self, chat: Chat, question: str, history: Sequence[Dict[str, str]],

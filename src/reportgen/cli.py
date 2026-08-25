@@ -291,7 +291,16 @@ def cmd_library(args: argparse.Namespace) -> int:
     print("по направлениям: " + ", ".join(f"{name} {count}" for name, count in by_domain.items()))
     stats = repos.documents.stats()
     total = sum(item["chunks"] for item in stats.values())
-    print(f"итого документов {len(documents)}, чанков {total}, векторов {repos.vectors.count()}")
+    vectors = repos.vectors.count()
+    print(f"итого документов {len(documents)}, чанков {total}, векторов {vectors}")
+    # «Векторов 2000» при 5000 фрагментов выглядит благополучно, а на деле три
+    # пятых библиотеки в смысловом поиске не участвуют — обычный итог упавшей
+    # службы эмбеддингов посреди большой пачки.
+    if total and vectors < total:
+        print(f"ВНИМАНИЕ: без векторов фрагментов {total - vectors} — "
+              "они находятся только словесным поиском.", file=sys.stderr)
+        print("Поднимите комплекс (.\\start-all.ps1) и выполните "
+              "«reportgen embed» ещё раз.", file=sys.stderr)
     return 0
 
 

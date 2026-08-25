@@ -103,7 +103,11 @@ if ($NoEmbed) {
     $health = ($embedUrl -replace '/v1/?$', '') + '/health'
     if (Wait-Http $health 5) {
         Invoke-Reportgen embed
-        if ($LASTEXITCODE -ne 0) { Write-Warn2 'построение векторов завершилось с ошибкой' }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn2 'построение векторов завершилось с ошибкой'
+            Write-Warn2 'часть библиотеки останется без векторов — сколько именно,'
+            Write-Warn2 'скажет строка «итого» ниже; смысловой поиск по ним не работает'
+        }
     } else {
         Write-Warn2 "эмбеддер не отвечает на $health"
         Write-Warn2 'запустите комплекс (.\start-all.ps1) и выполните этот скрипт снова —'

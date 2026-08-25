@@ -2988,9 +2988,22 @@
                 acc.chunks += libState.stats[type].chunks || 0;
                 return acc;
             }, { documents: 0, chunks: 0 });
-            statsLine.textContent = 'документов: ' + totals.documents + ' · чанков: ' +
-                (libState.chunks || totals.chunks) +
-                (libState.embeddings ? ' · векторов: ' + libState.embeddings : ' · векторов нет (плотный поиск выключен)');
+            // «Векторов 2000» при 5000 фрагментов выглядит благополучно, а на
+            // деле три пятых библиотеки в смысловом поиске не участвуют. Это
+            // обычный итог упавшей службы эмбеддингов посреди большой пачки,
+            // и заметить его иначе нечем.
+            const chunkCount = libState.chunks || totals.chunks;
+            let vectors;
+            if (!libState.embeddings) {
+                vectors = ' · векторов нет (плотный поиск выключен)';
+            } else if (chunkCount && libState.embeddings < chunkCount) {
+                vectors = ' · векторов: ' + libState.embeddings + ' из ' + chunkCount +
+                    ' — остальные фрагменты в смысловой поиск не попадают';
+            } else {
+                vectors = ' · векторов: ' + libState.embeddings;
+            }
+            statsLine.textContent = 'документов: ' + totals.documents +
+                ' · чанков: ' + chunkCount + vectors;
 
             clear(tableBox);
             if (!libState.items.length) {
@@ -4168,6 +4181,16 @@
         const box = chat.nodes.sideBody;
         if (!box) return;
         clear(box);
+        // Половина библиотеки английская, а спрашивают по-русски. Без этой
+        // строки английский фрагмент среди источников выглядит взявшимся
+        // ниоткуда, и доверия к ответу не прибавляет.
+        if (chat.pendingWarning) {
+            box.appendChild(h('div', { class: 'small muted' }, chat.pendingWarning));
+        }
+        if (chat.pendingExpansion && chat.pendingExpansion.length) {
+            box.appendChild(h('div', { class: 'small muted' },
+                'Искали также по английским терминам: ' + chat.pendingExpansion.join(', ')));
+        }
         const items = chat.pendingSources || (chat.sourcesOf ? chat.sourcesOf.sources : []) || [];
         if (!items.length) {
             box.appendChild(h('div', { class: 'empty small' },
@@ -4345,6 +4368,8 @@
                         if (event.message && event.message.id) asked.id = event.message.id;
                     } else if (event.type === 'sources') {
                         chat.pendingSources = event.sources || [];
+                        chat.pendingExpansion = event.expansion || null;
+                        chat.pendingWarning = event.warning || null;
                         renderChatSources();
                     } else if (event.type === 'delta') {
                         answer += event.text || '';
