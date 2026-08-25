@@ -265,6 +265,11 @@ time {
     background: var(--panel);
     border-bottom: 1px solid var(--border-strong);
     z-index: 5;
+    /* Без этого шапка не сжимается ни на пиксель и распирает страницу: на
+       ноутбуке 1024 правый край с именем и кнопкой «Выйти» уезжал за экран,
+       а вместе с ним и всё содержимое — появлялась горизонтальная прокрутка
+       страницы целиком. */
+    min-width: 0;
 }
 
 .brand {
@@ -301,8 +306,17 @@ time {
 .nav {
     display: flex;
     gap: 2px;
-    flex: 1;
+    flex: 1 1 auto;
     align-self: stretch;
+    min-width: 0;
+    /* Разделы важнее украшений справа: если места не хватает, прокручиваем
+       их, а не выталкиваем соседей за край экрана. */
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+    display: none;
 }
 
 .nav a {
@@ -335,6 +349,8 @@ time {
     color: var(--muted);
     font-size: var(--fs-sm);
     white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 .user-chip {
@@ -344,6 +360,15 @@ time {
     text-align: right;
     text-decoration: none;
     color: inherit;
+    min-width: 0;
+}
+
+/* Длинное ФИО обрезаем многоточием, а не выталкиваем кнопку «Выйти». */
+.user-chip b,
+.user-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .user-chip:hover b {
@@ -2487,7 +2512,7 @@ table.grid--library td:nth-child(5) {
 
 table.grid--library th:nth-child(6),
 table.grid--library td:nth-child(6) {
-    width: 72px;
+    width: 104px;
 }
 
 table.grid--library th:nth-child(7),
@@ -2821,6 +2846,124 @@ table.grid.is-resizing .col-grip {
     .chat-title {
         max-width: 100%;
     }
+}
+
+/* Библиотека на ноутбуке. Девять столбцов требуют 1180 px, и на экране 1366
+   с полями таблица уезжала за правый край: «Индексация» и «Гриф» видно
+   наполовину. Прокрутка внутри таблицы есть, но читается это как обрезанная
+   вёрстка, а не как «прокрути вправо».
+
+   Поэтому на узких экранах справочные столбцы убираются совсем, по одному,
+   в порядке возрастания важности. Дата индексации и гриф нужны при разборе
+   раз в месяц, а название, тип, направление и актуальность — каждый день. */
+@media (max-width: 1500px) {
+    table.grid--library {
+        min-width: 1060px;
+    }
+
+    table.grid--library th:nth-child(8),
+    table.grid--library td:nth-child(8) {
+        display: none;
+    }
+}
+
+@media (max-width: 1300px) {
+    table.grid--library {
+        min-width: 940px;
+    }
+
+    table.grid--library th:nth-child(7),
+    table.grid--library td:nth-child(7) {
+        display: none;
+    }
+}
+
+@media (max-width: 1120px) {
+    table.grid--library {
+        min-width: 820px;
+    }
+
+    table.grid--library th:nth-child(6),
+    table.grid--library td:nth-child(6) {
+        display: none;
+    }
+
+    table.grid--library th:nth-child(2),
+    table.grid--library td:nth-child(2) {
+        width: 24%;
+    }
+}
+
+/* На узком экране справочные подписи в шапке уходят первыми: имя
+   сотрудника и выход с них важнее, а марка модели нужна раз в месяц. */
+@media (max-width: 1400px) {
+    #llm-info {
+        display: none;
+    }
+}
+
+@media (max-width: 1100px) {
+    .topbar {
+        gap: 10px;
+        padding: 0 12px;
+    }
+
+    .brand span {
+        display: none;
+    }
+
+    .brand::after {
+        margin-left: 0;
+    }
+
+    .user-chip span {
+        display: none;
+    }
+}
+
+/* Поле пароля с кнопкой «показать». Вслепую пароль набирают с ошибками,
+   а на изолированной машине менеджера паролей нет. */
+.pw-field {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.pw-field input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Кнопка выглядит частью поля, а не отдельной деталью рядом: та же высота,
+   та же рамка, тот же радиус. */
+.pw-toggle {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    border: 1px solid var(--border-strong);
+    background: var(--field-2);
+    color: var(--muted);
+    min-width: 84px;
+    justify-content: center;
+}
+
+.pw-toggle:hover {
+    color: var(--text);
+    border-color: var(--accent);
+}
+
+/* Заголовок страницы с кнопками переносится, а не режется по краю. */
+.page-head {
+    flex-wrap: wrap;
+}
+
+/* Кнопки заголовка — единая группа: на узком экране они уезжают на новую
+   строку вместе, а не рассыпаются по одной, оставляя флажок у самого края. */
+.page-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    flex-wrap: wrap;
 }
 
 /* Документ, исключённый из поиска (заменён, архив, проект). */

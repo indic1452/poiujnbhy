@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <meta name="referrer" content="same-origin">
-    <title>Вход — генератор технических отчётов</title>
+    <title>Вход — Экспертиза связи</title>
     <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='20' height='20' rx='4' fill='%2315507e'/%3E%3Cpath d='M2.5 14.6 5.6 14.6 8 5.4 10.9 12.6 13.5 8.6 17.5 8.6' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="/static/styles.css">
@@ -22,10 +22,8 @@
                 <path d="M1.5 14.8 5 14.8 7.6 4.6 10.8 12.6 13.6 8.2 18.5 8.2" fill="none" stroke="currentColor"
                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            <span>Генератор технических отчётов</span>
+            <span>Экспертиза связи</span>
         </div>
-        <div class="sub">Локальная установка. Ни один документ и ни одно обращение
-            заказчика не покидают эту машину.</div>
 
         <form id="login-form" autocomplete="on">
             <div class="login-error" id="error" hidden></div>
@@ -34,16 +32,15 @@
                     spellcheck="false" required autofocus>
             </label>
             <label class="field">Пароль
-                <input type="password" id="password" name="password" autocomplete="current-password" required>
+                <div class="pw-field">
+                    <input type="password" id="password" name="password" autocomplete="current-password"
+                        required>
+                    <button class="btn btn--ghost btn--sm pw-toggle" type="button" id="pw-toggle"
+                        title="Показать пароль">Показать</button>
+                </div>
             </label>
             <button class="btn btn--primary" type="submit" id="submit">Войти</button>
         </form>
-
-        <div class="login-note">
-            Пользователей ещё нет? Администратор заводит первого на самой машине:
-            <code class="mono">scripts\windows\users.ps1 -Add admin</code>
-            Забытый пароль там же: <code class="mono">users.ps1 -Reset admin</code>
-        </div>
     </div>
     </div>
 
@@ -58,6 +55,18 @@
             const passwordInput = document.getElementById('password');
             const submit = document.getElementById('submit');
             const errorBox = document.getElementById('error');
+            const toggle = document.getElementById('pw-toggle');
+
+            // Пароль на изолированной машине набирают руками, без менеджера
+            // паролей: вслепую длинный пароль вводят с опечаткой и получают
+            // «неверный логин или пароль», не понимая, где ошиблись.
+            toggle.addEventListener('click', function () {
+                const shown = passwordInput.type === 'text';
+                passwordInput.type = shown ? 'password' : 'text';
+                toggle.textContent = shown ? 'Показать' : 'Скрыть';
+                toggle.title = shown ? 'Показать пароль' : 'Скрыть пароль';
+                passwordInput.focus();
+            });
 
             function nextUrl() {
                 const raw = new URLSearchParams(location.search).get('next') || '';

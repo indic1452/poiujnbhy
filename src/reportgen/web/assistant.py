@@ -20,7 +20,8 @@ from .service import ReportService, ServiceError
 
 HISTORY_DEPTH = 6
 HISTORY_CHARS = 1500
-SOURCE_CHARS = 900
+#: Запасное значение, если в настройках его нет (старый settings.json).
+SOURCE_CHARS = 1400
 MAX_QUESTION = 4000
 DEFAULT_TITLE = "Новый разговор"
 
@@ -85,7 +86,8 @@ class AssistantService:
         prepared = self._prepare(user, chat_id, question, top_k=top_k)
         text = self.reports.get_llm().complete(
             ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-            max_tokens=3000, temperature=0.3, history=prepared["history"],
+            max_tokens=self._max_tokens(), temperature=0.3,
+            history=prepared["history"],
         )
         return self._finish(user, prepared, text)
 
@@ -110,12 +112,12 @@ class AssistantService:
         stream = getattr(llm, "stream", None)
         if stream is None:
             text = llm.complete(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                max_tokens=3000, temperature=0.3)
+                                max_tokens=self._max_tokens(), temperature=0.3)
             pieces.append(text)
             yield {"type": "delta", "text": text}
         else:
             for piece in stream(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                max_tokens=3000, temperature=0.3,
+                                max_tokens=self._max_tokens(), temperature=0.3,
                                 history=prepared["history"]):
                 pieces.append(piece)
                 yield {"type": "delta", "text": piece}
@@ -157,7 +159,7 @@ class AssistantService:
                 "doc_type": hit.chunk.doc_type,
                 "domain": hit.chunk.meta.get("domain", ""),
                 "status": hit.chunk.meta.get("status", "current"),
-                "text": _tidy(hit.chunk.text, SOURCE_CHARS),
+                "text": _tidy(hit.chunk.text, self._source_chars()),
             }
             for index, hit in enumerate(hits, start=1)
         ]
@@ -203,6 +205,18 @@ class AssistantService:
             "expansion": prepared.get("expansion") or None,
             "warning": prepared.get("warning") or None,
         }
+
+    def _max_tokens(self) -> int:
+        """Потолок длины ответа. Настройка, а не число в коде."""
+        return int(getattr(self.settings, "assistant_max_tokens", 0) or 4000)
+
+    def _source_chars(self) -> int:
+        """Сколько знаков фрагмента видит модель.
+
+        Главный рычаг развёрнутости: короткий фрагмент обрывается на середине
+        таблицы допусков, и писать модели просто не из чего.
+        """
+        return int(getattr(self.settings, "assistant_source_chars", 0) or SOURCE_CHARS)
 
     def _search(self, chat: Chat, question: str, history: Sequence[Dict[str, str]],
                 top_k: int | None) -> List[Hit]:

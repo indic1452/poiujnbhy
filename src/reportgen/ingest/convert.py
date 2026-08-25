@@ -275,7 +275,64 @@ def _import_pymupdf():
             "для разбора PDF нужен пакет pymupdf (pip install pymupdf); "
             "установите его в изолированном контуре из локального зеркала"
         ) from error
+    _silence_mupdf(pymupdf)
     return pymupdf
+
+
+def _reset_mupdf_log(pymupdf) -> None:
+    """Очистить накопленные сообщения MuPDF перед разбором файла."""
+    tools = getattr(pymupdf, "TOOLS", None)
+    reset = getattr(tools, "reset_mupdf_warnings", None) if tools else None
+    if callable(reset):
+        try:
+            reset()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _mupdf_complaints(pymupdf) -> int:
+    """Сколько раз MuPDF пожаловался на разметку при разборе файла."""
+    tools = getattr(pymupdf, "TOOLS", None)
+    getter = getattr(tools, "mupdf_warnings", None) if tools else None
+    if not callable(getter):
+        return 0
+    try:
+        logged = getter()
+    except Exception:  # noqa: BLE001
+        return 0
+    if not logged:
+        return 0
+    if isinstance(logged, str):
+        return len([line for line in logged.splitlines() if line.strip()])
+    return len(logged)
+
+
+def _silence_mupdf(pymupdf) -> None:
+    """Убрать поток «MuPDF error: syntax error» из консоли.
+
+    Библиотека MuPDF пишет о каждой шероховатости разметки PDF прямо в
+    стандартный поток ошибок, минуя Python. На типографском файле, собранном
+    старым генератором, это сотни строк вида «syntax error in content stream»
+    и «unknown keyword: 'Tj21EB0A091j'» — при том, что MuPDF после каждой
+    успешно продолжает, и текст извлекается полностью.
+
+    Инженер видит экран, залитый красными строками, и решает, что приём
+    сломался. Настоящие сообщения — сколько файлов принято и что не
+    разобралось — в этом потоке теряются.
+
+    Сообщения не выбрасываются: они копятся внутри MuPDF, и разборщик PDF
+    забирает их числом («разметка PDF повреждена в N местах, текст извлечён»).
+    """
+    tools = getattr(pymupdf, "TOOLS", None)
+    if tools is None:  # pragma: no cover — очень старая сборка
+        return
+    for name in ("mupdf_display_errors", "mupdf_display_warnings"):
+        setter = getattr(tools, name, None)
+        if callable(setter):
+            try:
+                setter(False)
+            except Exception:  # noqa: BLE001 — молчание не стоит падения приёма
+                pass
 
 
 def _import_docx():
@@ -368,6 +425,7 @@ def _convert_pdf(path: Path) -> ConvertedDocument:
         result.warnings.append(str(error))
         return result
 
+    _reset_mupdf_log(pymupdf)
     try:
         document = pymupdf.open(str(path))
     except Exception as error:
@@ -402,6 +460,18 @@ def _convert_pdf(path: Path) -> ConvertedDocument:
             document.close()
         except Exception:  # pragma: no cover — закрытие уже закрытого документа
             pass
+
+    # MuPDF ругается на каждую шероховатость разметки, но после каждой
+    # успешно продолжает. Раньше это выливалось в консоль сотнями строк
+    # «syntax error in content stream» и топило настоящий вывод приёма.
+    # Теперь — одна строка в карточке документа, и та справочная.
+    complaints = _mupdf_complaints(pymupdf)
+    if complaints:
+        result.meta["pdf_repairs"] = complaints
+        result.warnings.append(
+            f"разметка PDF повреждена в {complaints} местах — MuPDF восстановил, "
+            "текст извлечён; сверьте выборочно числа и обозначения"
+        )
 
     samples = [
         (size, len(line))

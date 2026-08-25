@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import re
 import unittest
 from urllib.parse import quote
 from pathlib import Path
@@ -764,3 +765,81 @@ class UserManagementTests(WebTestCase):
         response = self.client.post(f"/api/users/{created['id']}/password",
                                     json={"password": "новыйпароль1"})
         self.assertEqual(200, response.status_code)
+
+
+class InterfaceCopyTests(unittest.TestCase):
+    """Подписи интерфейса: без жаргона и без разговоров ни о чём."""
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+        self.html = (static / "index.html").read_text(encoding="utf-8")
+        self.login = (static / "login.html").read_text(encoding="utf-8")
+
+    def strings(self, text: str) -> str:
+        """Только строковые литералы: комментарии в коде — не интерфейс."""
+        return " ".join(re.findall(r"'((?:[^'\\\n]|\\.)*)'", text))
+
+    def test_no_chunk_jargon(self):
+        # «Чанк» — слово из кода. Инженеру связи оно не говорит ничего, а в
+        # интерфейсе рядом уже есть «фрагмент».
+        self.assertNotIn("чанк", self.strings(self.js).lower())
+        self.assertNotIn("чанк", self.html.lower())
+
+    def test_no_verdict_when_everything_is_fine(self):
+        # «Разбор выглядит нормально» инженер читает каждый раз впустую:
+        # число фрагментов и так стоит на вкладке рядом.
+        self.assertNotIn("выглядит нормально", self.strings(self.js))
+
+    def test_password_can_be_shown(self):
+        # На изолированной машине менеджера паролей нет, а вслепую длинный
+        # пароль набирают с ошибками.
+        self.assertIn("passwordField", self.js)
+        self.assertIn("pw-toggle", self.js)
+
+    def test_submit_button_is_not_taken_from_the_event(self):
+        """event.currentTarget после await равен null.
+
+        Кнопку «Завести» включали обратно через него: сервер отклонял
+        короткий пароль, обработчик падал на «Cannot set properties of
+        null», и кнопка оставалась выключенной навсегда. Инженер исправлял
+        пароль и не мог отправить форму.
+        """
+        self.assertNotIn("event.currentTarget.disabled", self.js)
+
+
+class ResponsiveLayoutTests(unittest.TestCase):
+    """Вёрстка на ноутбуке.
+
+    Шапка не сжималась ни на пиксель: на 1024 правый край с именем и кнопкой
+    «Выйти» уезжал за экран, а вместе с ним и всё содержимое — появлялась
+    горизонтальная прокрутка страницы целиком.
+    """
+
+    def setUp(self):
+        self.css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+
+    def block(self, selector: str) -> str:
+        start = self.css.index(selector + " {")
+        return self.css[start:self.css.index("}", start)]
+
+    def test_topbar_can_shrink(self):
+        self.assertIn("min-width: 0", self.block(".topbar"))
+        self.assertIn("min-width: 0", self.block(".topbar-right"))
+
+    def test_nav_scrolls_instead_of_pushing(self):
+        self.assertIn("overflow-x: auto", self.block(".nav"))
+
+    def test_long_name_is_trimmed_not_pushing(self):
+        self.assertIn("text-overflow: ellipsis", self.css)
+
+    def test_library_table_sheds_columns_on_narrow_screens(self):
+        # Девять столбцов требуют 1180 px. На 1366 таблица уезжала за край, и
+        # это читалось как обрезанная вёрстка, а не как «прокрути вправо».
+        for width in ("1500px", "1300px", "1120px"):
+            with self.subTest(width=width):
+                self.assertIn(f"@media (max-width: {width})", self.css)
+
+    def test_page_head_wraps(self):
+        self.assertIn("flex-wrap: wrap", self.block(".page-head"))

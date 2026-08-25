@@ -229,6 +229,25 @@
         return String(value).split('/').map(encodeURIComponent).join('/');
     }
 
+    /** Поле пароля с кнопкой «показать»: вслепую его набирают с ошибками. */
+    function passwordField(placeholder) {
+        const input = h('input', { type: 'password', placeholder: placeholder || '' });
+        const toggle = h('button', {
+            class: 'btn btn--ghost btn--sm pw-toggle', type: 'button',
+            title: 'Показать пароль',
+            onclick: () => {
+                const shown = input.type === 'text';
+                input.type = shown ? 'password' : 'text';
+                toggle.textContent = shown ? 'Показать' : 'Скрыть';
+                toggle.title = shown ? 'Показать пароль' : 'Скрыть пароль';
+                input.focus();
+            },
+        }, 'Показать');
+        const box = h('div', { class: 'pw-field' }, input, toggle);
+        box.input = input;
+        return box;
+    }
+
     function domId(prefix, value) {
         return prefix + String(value).replace(/[^\w-]/g, '_');
     }
@@ -424,8 +443,9 @@
     /** Спросить одну строку. Для пароля — со скрытым вводом. */
     function promptDialog(options) {
         return new Promise((resolve) => {
-            const input = h('input', {
-                type: options.password ? 'password' : 'text',
+            const box = options.password ? passwordField(options.placeholder) : null;
+            const input = box ? box.input : h('input', {
+                type: 'text',
                 placeholder: options.placeholder || '',
                 value: options.value || '',
             });
@@ -444,7 +464,7 @@
                 narrow: true,
                 body: h('div', { class: 'form-grid' },
                     options.message ? h('div', { class: 'muted' }, options.message) : null,
-                    input),
+                    box || input),
                 footer: [
                     h('button', { class: 'btn', onclick: () => finish(null) }, 'Отмена'),
                     h('button', {
@@ -589,7 +609,7 @@
 
     // -- темы ---------------------------------------------------------------
 
-    const THEME_LABEL = { auto: 'авто', light: 'светлая', dark: 'тёмная' };
+    const THEME_LABEL = { auto: 'Авто', light: 'Светлая', dark: 'Тёмная' };
 
     function storageGet(key, fallback) {
         try {
@@ -686,7 +706,7 @@
         if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode);
         else root.removeAttribute('data-theme');
         const button = $('#theme-btn');
-        if (button) button.textContent = 'Тема: ' + (THEME_LABEL[mode] || 'авто');
+        if (button) button.textContent = THEME_LABEL[mode] || 'Авто';
     }
 
     function cycleTheme() {
@@ -713,7 +733,7 @@
         const llm = state.config.llm || {};
         const llmInfo = $('#llm-info');
         if (llmInfo) {
-            llmInfo.textContent = llm.model ? 'модель: ' + llm.model : '';
+            llmInfo.textContent = llm.model || '';
             llmInfo.title = llm.base_url ? 'сервер модели: ' + llm.base_url : '';
         }
 
@@ -939,7 +959,7 @@
                     h('h3', {}, casesState.items.length ? 'Ничего не найдено' : 'Кейсов пока нет'),
                     h('div', {}, casesState.items.length
                         ? 'Измените строку поиска или фильтр статуса.'
-                        : 'Создайте кейс: тип отчёта и факт-пакет из слоя анализа.')));
+                        : 'Создайте кейс, чтобы начать отчёт.')));
             } else {
                 const body = h('tbody', {});
                 items.forEach((item) => {
@@ -989,14 +1009,14 @@
                         casesState.offset = Math.max(0, casesState.offset - casesState.limit);
                         loadCases();
                     },
-                }, '← Предыдущие'),
+                }, 'Предыдущие'),
                 h('button', {
                     class: 'btn btn--sm', disabled: to >= casesState.total,
                     onclick: () => {
                         casesState.offset += casesState.limit;
                         loadCases();
                     },
-                }, 'Следующие →'),
+                }, 'Следующие'),
             ]);
         }
 
@@ -1610,9 +1630,6 @@
         }
 
         append(body, [
-            h('div', { class: 'small muted', style: { marginBottom: '8px' } },
-                'Ручной режим: правьте весь факт-пакет как JSON. ' +
-                'Идентификатор обращения и тип отчёта менять нельзя.'),
             editor, status,
         ]);
         check();
@@ -1704,9 +1721,7 @@
             canEdit() ? h('button', {
                 class: 'btn btn--sm', style: { marginTop: '8px' },
                 onclick: () => addMeasurement(''),
-            }, '+ измерение') : null,
-            h('div', { class: 'small faint', style: { marginTop: '6px' } },
-                'Единица отдельно от значения, погрешность — там, где она есть (док. 08).')));
+            }, '+ измерение') : null));
 
         // -- находки
         const findingsBox = h('div', {});
@@ -1726,8 +1741,7 @@
                 },
             }, '+ находка') : null));
 
-        body.appendChild(h('div', { class: 'small faint' },
-            'Поля equipment, artifacts и timeline правятся в режиме «Показать JSON».'));
+
     }
 
     function measurementRow(row, missing, detailed) {
@@ -2621,8 +2635,7 @@
                     : 'Появятся после генерации отчёта.')));
             return;
         }
-        body.appendChild(h('div', { class: 'small muted', style: { marginBottom: '8px' } },
-            'Клик по источнику подсвечивает ссылки [S…] в тексте разделов.'));
+
         sources.forEach((source) => {
             const active = wb.activeSource === source.label;
             body.appendChild(h('div', {
@@ -2722,7 +2735,7 @@
     /** Подсказка о поддерживаемых форматах и о том, чего не хватает. */
     function formatsHint() {
         const formats = state.formats;
-        if (!formats) return 'Конвертация, нарезка и индексация — при загрузке.';
+        if (!formats) return '';
         const shown = (formats.available || []).map((item) => item.replace('.', '').toUpperCase());
         // Перечислять шесть десятков расширений бессмысленно: называем те, что
         // встречаются в библиотеке чаще всего, остальное — числом.
@@ -2731,7 +2744,6 @@
         const rest = shown.length - head.length;
         let text = head.join(', ');
         if (rest > 0) text += ' и ещё ' + rest + ' форматов';
-        text += '. Конвертация, нарезка и индексация — при загрузке.';
         // Один формат объявляют несколько конвертеров (7z через 7z, 7za, 7zz),
         // поэтому без свёртки список повторялся: «.7z, .rar, .7z, .rar, .7z».
         const blocked = formats.blocked || [];
@@ -2740,7 +2752,7 @@
             if (missing.indexOf(suffix) < 0) missing.push(suffix);
         }));
         if (missing.length) {
-            text += ' Без дополнительных программ не читаются: ' + missing.join(', ') + '.';
+            text += '. Не читаются: ' + missing.join(', ');
         }
         return text;
     }
@@ -2794,26 +2806,28 @@
         const letters = (meaningful.match(/[\p{L}\p{N}]/gu) || []).length;
         const share = meaningful.length ? letters / meaningful.length : 0;
 
+        // Плашка показывается ТОЛЬКО когда с разбором что-то не так. Когда всё
+        // в порядке, сообщать об этом нечего: число фрагментов стоит на
+        // соседней вкладке, а рапорт об успехе инженер читает впустую каждый
+        // раз, когда открывает документ.
         const verdict = !chars
-            ? { text: 'Текст не извлёкся. Скорее всего, это скан без распознавания.', tone: 'danger' }
+            ? { text: 'Текст не извлёкся: скан без распознавания.', tone: 'danger' }
             : share < 0.35
-                ? { text: 'Текст извлёкся неразборчиво (' + Math.round(share * 100) +
-                        '% осмысленных знаков). Файл стоит пересохранить или распознать.', tone: 'danger' }
+                ? { text: 'Текст неразборчив: осмысленных знаков ' +
+                        Math.round(share * 100) + ' %. Пересохраните или распознайте файл.',
+                    tone: 'danger' }
                 : chars < 400
-                    ? { text: 'Текста мало (' + chars + ' знаков) — проверьте, весь ли документ разобран.',
+                    ? { text: 'Текста мало: ' + chars + ' знаков. Проверьте, весь ли документ разобран.',
                         tone: 'warn' }
-                    : { text: 'Разбор выглядит нормально: ' + chars + ' знаков, ' + chunks.length +
-                            ' ' + plural(chunks.length, 'фрагмент', 'фрагмента', 'фрагментов') + '.',
-                        tone: 'ok' };
+                    : null;
 
         clear(bodyBox);
         append(bodyBox, [
-            h('div', { class: 'doc-verdict doc-verdict--' + verdict.tone }, verdict.text),
+            verdict ? h('div', { class: 'doc-verdict doc-verdict--' + verdict.tone }, verdict.text) : null,
             !data.source_exists ? h('div', { class: 'doc-verdict doc-verdict--warn' },
-                'Исходного файла нет на диске: его переместили или удалили после индексации. ' +
-                'Открыть не получится, поиск при этом работает.') : null,
+                'Исходного файла нет на диске — открыть не получится.') : null,
             warnings.length ? h('div', { class: 'card card-pad' },
-                h('div', { class: 'card-title' }, 'Предупреждения при разборе'),
+                h('div', { class: 'card-title' }, 'При разборе'),
                 h('ul', {}, warnings.map((text) => h('li', {}, text)))) : null,
             h('div', { class: 'doc-tabs' },
                 h('button', { class: 'chip is-active', onclick: (e) => switchTab(e, 'text') }, 'Текст целиком'),
@@ -2912,7 +2926,7 @@
                 handleFiles(Array.prototype.slice.call(event.dataTransfer.files || []));
             },
         },
-            h('div', {}, h('b', {}, 'Перетащите файлы сюда'), ' или нажмите для выбора'),
+            h('div', {}, h('b', {}, 'Перетащите файлы'), ' или нажмите для выбора'),
             h('div', { class: 'small' }, formatsHint()));
 
         const searchInput = h('input', {
@@ -2939,9 +2953,12 @@
             h('div', { class: 'page-head' },
                 h('h1', {}, 'Библиотека'),
                 statsLine,
-                h('button', { class: 'btn', onclick: () => loadLibrary() }, 'Обновить'),
-                canEdit() ? h('label', { class: 'inline' }, forceCheckbox, 'принудительно') : null,
-                canEdit() ? h('button', { class: 'btn', onclick: () => reindex() }, 'Переиндексировать') : null),
+                // Кнопки держатся вместе: при переносе на узком экране они
+                // должны уезжать на новую строку группой, а не поодиночке.
+                h('div', { class: 'page-head-actions' },
+                    h('button', { class: 'btn', onclick: () => loadLibrary() }, 'Обновить'),
+                    canEdit() ? h('label', { class: 'inline' }, forceCheckbox, 'принудительно') : null,
+                    canEdit() ? h('button', { class: 'btn', onclick: () => reindex() }, 'Переиндексировать') : null)),
 
             canEdit() ? h('div', { class: 'card card-pad' },
                 h('div', { class: 'card-title' }, 'Загрузка документов'),
@@ -3003,7 +3020,7 @@
                 vectors = ' · векторов: ' + libState.embeddings;
             }
             statsLine.textContent = 'документов: ' + totals.documents +
-                ' · чанков: ' + chunkCount + vectors;
+                ' · фрагментов: ' + chunkCount + vectors;
 
             clear(tableBox);
             if (!libState.items.length) {
@@ -3042,7 +3059,7 @@
                         h('th', {}, 'Название'), h('th', {}, 'Идентификатор'), h('th', {}, 'Тип'),
                         h('th', {}, 'Направление'),
                         h('th', {}, 'Актуальность'),
-                        h('th', { class: 'num' }, 'Чанков'), h('th', {}, 'Индексация'),
+                        h('th', { class: 'num' }, 'Фрагментов'), h('th', {}, 'Индексация'),
                         h('th', {}, 'Гриф'), h('th', {}))),
                     body);
             tableBox.appendChild(h('div', { class: 'table-scroll' },
@@ -3154,7 +3171,7 @@
                     bar.style.width = '100%';
                     const result = data.result || {};
                     const chunks = result.chunks !== undefined && result.chunks !== null ? result.chunks : '—';
-                    status.textContent = 'готово, чанков: ' + chunks;
+                    status.textContent = 'готово, фрагментов: ' + chunks;
                     status.className = 'small';
                     if (result.failed) {
                         status.textContent = 'файл сохранён, но не проиндексирован';
@@ -3187,7 +3204,7 @@
                     ', обновлено ' + (result.updated || 0) +
                     ', пропущено ' + (result.skipped || 0) +
                     ', ошибок ' + (result.failed || 0) +
-                    ', чанков ' + (result.chunks || 0), (result.failed ? 'error' : 'ok'), 9000);
+                    ', фрагментов ' + (result.chunks || 0), (result.failed ? 'error' : 'ok'), 9000);
                 await loadLibrary();
                 // Счётчик «ошибок 3» не говорит, КАКИЕ файлы не попали в
                 // библиотеку и что с ними не так. Список показываем отдельно:
@@ -3229,7 +3246,7 @@
             const ok = await confirmDialog({
                 title: 'Удалить документ',
                 message: 'Документ «' + (item.title || item.doc_id) +
-                    '» и все его чанки будут удалены из индекса.',
+                    '» и все его фрагменты будут удалены из индекса.',
                 note: 'Уже сгенерированные отчёты сохраняют цитаты в своём приложении и не пострадают.',
                 confirmText: 'Удалить',
                 danger: true,
@@ -3315,7 +3332,7 @@
             statCard(fmtNumber(edits.mean_distance || 0, 3), 'средний edit distance',
                 'правок в наборе: ' + (edits.count || 0) + ' · чем меньше, тем ближе черновик к финалу'),
             statCard(library.documents || 0, 'документов в библиотеке',
-                'чанков: ' + (library.chunks || 0) +
+                'фрагментов: ' + (library.chunks || 0) +
                 (library.embeddings ? ' · векторов: ' + library.embeddings : ' · векторов нет')));
 
         const bySection = (edits.by_section || []).slice()
@@ -3323,10 +3340,7 @@
         const maxPairs = bySection.reduce((max, item) => Math.max(max, item.pairs || 0), 0) || 1;
 
         const editsCard = h('div', { class: 'card card-pad' },
-            h('div', { class: 'card-title' }, 'Какие разделы правят чаще всего'),
-            h('div', { class: 'small muted', style: { marginBottom: '10px' } },
-                'Главный график для руководства (док. 05): где модель систематически не попадает — ' +
-                'там надо править инструкцию раздела в шаблоне, а не модель.'));
+            h('div', { class: 'card-title' }, 'Какие разделы правят чаще всего'));
 
         if (!bySection.length) {
             editsCard.appendChild(h('div', { class: 'empty' },
@@ -3374,7 +3388,7 @@
             libCard.appendChild(h('div', { class: 'table-scroll' },
                 h('table', { class: 'grid' },
                     h('thead', {}, h('tr', {},
-                        h('th', {}, 'Тип'), h('th', {}, 'Документов'), h('th', {}, 'Чанков'))),
+                        h('th', {}, 'Тип'), h('th', {}, 'Документов'), h('th', {}, 'Фрагментов'))),
                     body)));
         }
 
@@ -3781,7 +3795,7 @@
             box.appendChild(h('div', { class: 'empty small' },
                 chat.chats.length ? 'Ничего не найдено.'
                     : (chat.archived ? 'В архиве пусто.'
-                        : 'Разговоров пока нет — задайте первый вопрос.')));
+                        : 'Разговоров пока нет.')));
             return;
         }
         items.forEach((item) => box.appendChild(chatListItem(item)));
@@ -4014,10 +4028,8 @@
 
     function emptyChatState() {
         return h('div', { class: 'empty chat-empty' },
-            h('h3', {}, 'Спросите помощника'),
-            h('div', {}, 'Ответ собирается по вашей библиотеке: каждое утверждение — со ссылкой ' +
-                'на фрагмент документа. Чего в библиотеке нет, помощник помечает как ' +
-                'непроверенное общее знание.'),
+            h('h3', {}, 'Вопрос по библиотеке'),
+            h('div', {}, 'Ответ со ссылками на документы библиотеки.'),
             h('div', { class: 'chat-examples' }, CHAT_EXAMPLES.map((item) => h('button', {
                 class: 'example', title: 'Подставить вопрос в поле ввода',
                 onclick: () => useExample(item),
@@ -4225,8 +4237,7 @@
         const items = chat.pendingSources || (chat.sourcesOf ? chat.sourcesOf.sources : []) || [];
         if (!items.length) {
             box.appendChild(h('div', { class: 'empty small' },
-                'Здесь появятся фрагменты библиотеки, на которые опирался ответ: ' +
-                'цитата, документ и направление.'));
+                'Фрагменты, на которые опирается ответ.'));
             return;
         }
         items.forEach((source) => box.appendChild(sourceCard(source)));
@@ -4583,46 +4594,53 @@
         async function addUser() {
             const login = h('input', { type: 'text', placeholder: 'petrov', autocapitalize: 'off' });
             const fullName = h('input', { type: 'text', placeholder: 'Петров П.П.' });
-            const password = h('input', { type: 'password', placeholder: 'не короче 8 символов' });
+            const passwordBox = passwordField('не короче 8 символов');
+            const password = passwordBox.input;
             const role = h('select', {}, data.roles.map((item) => h('option', {
                 value: item.id, selected: item.id === 'engineer',
             }, item.title)));
             const note = h('div', { class: 'small muted' }, roleNote('engineer'));
             role.addEventListener('change', () => { note.textContent = roleNote(role.value); });
 
+            // Кнопку держим в переменной. Раньше её включали обратно через
+            // event.currentTarget, а он после await равен null: сервер
+            // отклонял короткий пароль, обработчик падал на «Cannot set
+            // properties of null», и кнопка оставалась выключенной навсегда.
+            // Инженер исправлял пароль и не мог отправить форму.
+            const submit = h('button', {
+                class: 'btn btn--primary',
+                onclick: async () => {
+                    submit.disabled = true;
+                    try {
+                        await api.post('/api/users', {
+                            login: login.value.trim(),
+                            full_name: fullName.value.trim(),
+                            password: password.value,
+                            role: role.value,
+                        });
+                        dialog.close();
+                        toast('Сотрудник заведён');
+                        await reload();
+                    } catch (error) {
+                        toastError(error);
+                    } finally {
+                        submit.disabled = false;
+                    }
+                },
+            }, 'Завести');
+
             const dialog = openModal({
                 title: 'Новый сотрудник',
                 narrow: true,
                 body: h('div', { class: 'form-grid' },
                     h('label', { class: 'field' }, 'Логин для входа', login,
-                        h('span', { class: 'small faint' },
-                            'латиница, цифры, точка или дефис — от 3 до 32 знаков')),
-                    h('label', { class: 'field' }, 'Фамилия и инициалы', fullName,
-                        h('span', { class: 'small faint' }, 'показывается в шапке и в журнале действий')),
-                    h('label', { class: 'field' }, 'Первый пароль', password),
+                        h('span', { class: 'small faint' }, 'латиница, 3–32 знака')),
+                    h('label', { class: 'field' }, 'Фамилия и инициалы', fullName),
+                    h('label', { class: 'field' }, 'Первый пароль', passwordBox),
                     h('label', { class: 'field' }, 'Роль', role, note)),
                 footer: [
                     h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
-                    h('button', {
-                        class: 'btn btn--primary',
-                        onclick: async (event) => {
-                            event.currentTarget.disabled = true;
-                            try {
-                                await api.post('/api/users', {
-                                    login: login.value.trim(),
-                                    full_name: fullName.value.trim(),
-                                    password: password.value,
-                                    role: role.value,
-                                });
-                                dialog.close();
-                                toast('Сотрудник заведён');
-                                await reload();
-                            } catch (error) {
-                                toastError(error);
-                                event.currentTarget.disabled = false;
-                            }
-                        },
-                    }, 'Завести'),
+                    submit,
                 ],
             });
             login.focus();
@@ -4631,8 +4649,7 @@
         append(page, [
             h('div', { class: 'page-head' },
                 h('h1', {}, 'Сотрудники'),
-                h('span', { class: 'page-note' },
-                    'Кто может входить в систему и что каждому разрешено'),
+
                 h('button', { class: 'btn', onclick: () => reload() }, 'Обновить'),
                 h('button', { class: 'btn btn--primary', onclick: () => addUser() }, 'Завести сотрудника')),
             h('div', { class: 'card card-pad' },
@@ -4696,9 +4713,15 @@
     function passwordCard() {
         const box = h('div', { class: 'card card-pad' });
         const note = h('div', { class: 'form-note' });
-        const current = h('input', { type: 'password', autocomplete: 'current-password' });
-        const fresh = h('input', { type: 'password', autocomplete: 'new-password' });
-        const repeat = h('input', { type: 'password', autocomplete: 'new-password' });
+        const currentBox = passwordField();
+        const freshBox = passwordField('не короче 8 символов');
+        const repeatBox = passwordField();
+        const current = currentBox.input;
+        const fresh = freshBox.input;
+        const repeat = repeatBox.input;
+        current.autocomplete = 'current-password';
+        fresh.autocomplete = 'new-password';
+        repeat.autocomplete = 'new-password';
         const button = h('button', { class: 'btn btn--primary', onclick: () => submit() }, 'Сменить пароль');
 
         const fail = (message) => {
@@ -4766,9 +4789,9 @@
                     'Аутентификация выключена настройками (локальный режим) — пароль не используется.')
                 : [
                     h('div', { class: 'form-grid' },
-                        h('label', { class: 'field' }, 'Текущий пароль', current),
-                        h('label', { class: 'field' }, 'Новый пароль (не короче 8 символов)', fresh),
-                        h('label', { class: 'field' }, 'Повтор нового пароля', repeat)),
+                        h('label', { class: 'field' }, 'Текущий пароль', currentBox),
+                        h('label', { class: 'field' }, 'Новый пароль', freshBox),
+                        h('label', { class: 'field' }, 'Повтор нового пароля', repeatBox)),
                     note,
                     h('div', { class: 'btn-row', style: { marginTop: '12px' } }, button),
                 ],
