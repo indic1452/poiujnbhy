@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import re
 from difflib import SequenceMatcher
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -38,8 +39,8 @@ from typing import (
 
 from .corpus import Chunk
 from .embeddings import Embedder, EmbeddingClient, EmbeddingError, top_cosine
-from .rerank import RerankError, build_reranker
 from .rerank import Reranker as RerankerProtocol
+from .rerank import RerankError, build_reranker
 from .retrieval import Hit, reciprocal_rank_fusion
 from .store.models import SEARCHABLE_STATUSES
 
