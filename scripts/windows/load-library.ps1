@@ -81,7 +81,17 @@ if ($Jobs)    { $arguments += @('--jobs', $Jobs) }
 if ($DocType) { $arguments += @('--doc-type', $DocType) }
 if ($Domain)  { $arguments += @('--domain', $Domain) }
 Invoke-Reportgen @arguments
-if ($LASTEXITCODE -ne 0) { Write-Bad 'разбор документов завершился с ошибкой'; exit 1 }
+# Код 3 — часть файлов не принята, остальные разобраны. Это не повод бросать
+# пачку: векторы нужны тем, что прошли. Но и молчать нельзя — список файлов и
+# причин уже напечатан выше, а итог повторим в конце.
+$script:NotAccepted = ($LASTEXITCODE -eq 3)
+if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3) {
+    Write-Bad 'разбор документов завершился с ошибкой'
+    exit 1
+}
+if ($script:NotAccepted) {
+    Write-Warn2 'часть файлов не принята — причины перечислены выше'
+}
 
 # --------------------------------------------------------------- векторы ---
 if ($NoEmbed) {
@@ -112,4 +122,12 @@ Write-Host '  * строка «по направлениям» — если «н
 Write-Host '    разметьте папки ключом -Domain или поправьте templates\domains.json'
 Write-Host '  * последнее число «векторов» — если 0, смысловой поиск не работает'
 Write-Host ''
+if ($script:NotAccepted) {
+    Write-Warn2 'ЧАСТЬ ФАЙЛОВ В БИБЛИОТЕКУ НЕ ПОПАЛА.'
+    Write-Warn2 'Причины напечатаны выше, каждая с именем файла. Обычно это'
+    Write-Warn2 'скан без текстового слоя, пустой файл или подменённое расширение.'
+    Write-Warn2 'Исправьте и запустите этот скрипт снова — принятое не перечитывается.'
+    Write-Host ''
+}
 Write-Host 'Подробности: docs\18-library.md' -ForegroundColor DarkGray
+if ($script:NotAccepted) { exit 3 }

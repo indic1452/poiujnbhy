@@ -244,8 +244,12 @@ def ingest_path(
     force: bool = False,
     domain: str | None = None,
     domains_path: str | Path | None = None,
+    doc_id: str | None = None,
 ) -> IngestResult:
     """Принимает один файл: SHA-256 → конвертация → чанки → база.
+
+    ``doc_id`` задаётся приёмом каталога, когда обычный идентификатор занят
+    другим файлом (``otchet.md`` и ``otchet.txt`` дают один и тот же).
 
     ``domain`` — направление техники (спутник, релейка, протоколы …). Если не
     задано, определяется автоматически по названию и тексту документа
@@ -276,11 +280,34 @@ def ingest_path(
         result.warnings.append(f"{label}: файл не прочитан ({error})")
         return result
 
-    doc_id = _doc_id_for(path, base)
+    doc_id = doc_id or _doc_id_for(path, base)
     existing = repos.documents.by_doc_id(doc_id)
     if existing is not None and existing.sha256 == digest and existing.indexed_at and not force:
         result.skipped = 1
         return result
+
+    if existing is None:
+        moved = _same_content_elsewhere(repos, digest, path)
+        if moved is not None:
+            if Path(moved.source_path).is_file():
+                # Тот же файл лежит в библиотеке под другим именем. Принимать
+                # второй раз нельзя: в выдаче окажутся два одинаковых
+                # фрагмента вместо двух разных, а инженер решит, что нашёл
+                # подтверждение в двух источниках.
+                result.skipped = 1
+                result.warnings.append(
+                    f"{label}: тот же файл уже принят как «{moved.doc_id}» — "
+                    "второй раз не индексируется"
+                )
+                return result
+            # Прежнего файла на диске нет: документ переложили или
+            # переименовали. Это переезд записи, а не новый документ — иначе
+            # библиотека растёт дубликатами при каждой перекладке папок.
+            repos.documents.delete(moved.doc_id)
+            result.warnings.append(
+                f"{label}: документ переехал из «{moved.doc_id}» — "
+                "прежняя запись заменена"
+            )
     if existing is not None and Path(existing.source_path).suffix.lower() != path.suffix.lower():
         result.warnings.append(
             f"{label}: идентификатор документа «{doc_id}» уже занят файлом "
@@ -422,20 +449,116 @@ def _detect_year(converted: ConvertedDocument, *, title: str,
 
 def _iter_library_files(root: Path, patterns: Sequence[str]) -> List[Path]:
     """Файлы корпуса: рекурсивно, без служебных и без файлов в корне."""
+    return _scan_library(root, patterns)[0]
+
+
+def _scan_library(root: Path, patterns: Sequence[str]) -> Tuple[List[Path], List[str]]:
+    """Файлы корпуса и рассказ о том, что пропущено и почему.
+
+    Пропуски раньше были молчаливыми: инженер бросал новый ГОСТ прямо в корень
+    библиотеки (а не в подпапку) и клал рядом чертёж .dwg — приём проходил
+    «успешно», в отчёте значился один документ вместо трёх, и никакого следа
+    двух остальных не оставалось. Найти концы было невозможно.
+
+    Обход один: раньше дерево обходилось по разу на каждую маску формата, а
+    масок теперь больше полусотни. На сетевой шаре это заметно.
+    """
+    suffixes = {
+        pattern[1:].lower() for pattern in patterns if pattern.startswith("*.")
+    }
     found: Dict[str, Path] = {}
-    for pattern in patterns:
-        for path in root.rglob(pattern):
-            if not path.is_file():
-                continue
+    in_root: List[str] = []
+    unsupported: Dict[str, int] = {}
+
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
             relative = path.relative_to(root)
-            if len(relative.parts) == 1:
-                # Файлы в корне корпуса — это README и служебные заметки,
-                # в индекс они не попадают (как в corpus.load_corpus).
-                continue
-            if any(part.startswith(_SKIP_PREFIXES) for part in relative.parts):
-                continue
-            found[str(relative).replace("\\", "/")] = path
-    return [found[key] for key in sorted(found)]
+        except ValueError:
+            continue
+        if any(part.startswith(_SKIP_PREFIXES) for part in relative.parts):
+            continue
+        suffix = path.suffix.lower()
+        if len(relative.parts) == 1:
+            # Файлы в корне корпуса — это README и служебные заметки, в индекс
+            # они не попадают (как в corpus.load_corpus). Но если инженер
+            # положил туда документ, он должен об этом узнать.
+            if suffix in suffixes:
+                in_root.append(relative.name)
+            continue
+        if suffixes and suffix not in suffixes:
+            unsupported[suffix or "без расширения"] = (
+                unsupported.get(suffix or "без расширения", 0) + 1
+            )
+            continue
+        found[str(relative).replace("\\", "/")] = path
+
+    skipped: List[str] = []
+    if in_root:
+        names = ", ".join(sorted(in_root)[:10])
+        more = f" и ещё {len(in_root) - 10}" if len(in_root) > 10 else ""
+        skipped.append(
+            f"в корне библиотеки лежат документы ({len(in_root)}): {names}{more} — "
+            "приём их не берёт, разложите по подпапкам (standards, reports, …)"
+        )
+    if unsupported:
+        listed = ", ".join(
+            f"{suffix} — {count}"
+            for suffix, count in sorted(unsupported.items(), key=lambda item: -item[1])[:8]
+        )
+        total = sum(unsupported.values())
+        skipped.append(
+            f"формат не читается на этой машине, пропущено файлов: {total} "
+            f"({listed}) — что именно система умеет, показывает «reportgen formats»"
+        )
+    return [found[key] for key in sorted(found)], skipped
+
+
+def _same_content_elsewhere(repos: "Repositories", digest: str, path: Path):
+    """Документ с тем же содержимым под другим идентификатором, если он есть."""
+    found = repos.documents.by_sha256(digest)
+    if found is None:
+        return None
+    try:
+        same_file = Path(found.source_path).resolve() == path.resolve()
+    except OSError:
+        same_file = False
+    return None if same_file else found
+
+
+def _resolve_ids(files: Sequence[Path], root: Path) -> Tuple[Dict[Path, str], List[str]]:
+    """Идентификаторы документов с разведёнными столкновениями.
+
+    Идентификатор — путь без расширения, поэтому ``otchet.md`` и
+    ``otchet.txt`` в одной папке дают один и тот же. Обычное дело: исходник и
+    выгрузка, скан и распознанная версия. Раньше оба файла писались в одну
+    запись — отчёт бодро сообщал «добавлено 2», а в библиотеке оказывался
+    один документ, и содержимое второго пропадало молча. При параллельном
+    разборе не срабатывало даже предупреждение: оба потока видели пустую базу.
+
+    Столкнувшимся идентификатор дополняется расширением: ``reports/otchet.md``
+    и ``reports/otchet.txt``. Остальные файлы сохраняют прежний вид — иначе
+    пришлось бы переиндексировать всю библиотеку.
+    """
+    groups: Dict[str, List[Path]] = {}
+    for path in files:
+        groups.setdefault(_doc_id_for(path, root), []).append(path)
+
+    identifiers: Dict[Path, str] = {}
+    warnings: List[str] = []
+    for base_id, group in groups.items():
+        if len(group) == 1:
+            identifiers[group[0]] = base_id
+            continue
+        for path in group:
+            identifiers[path] = f"{base_id}{path.suffix.lower()}"
+        names = ", ".join(sorted(_relative_for(path, root) for path in group))
+        warnings.append(
+            f"{base_id}: один идентификатор на несколько файлов ({names}) — "
+            "приняты по отдельности, с расширением в идентификаторе"
+        )
+    return identifiers, warnings
 
 
 def ingest_directory(
@@ -466,21 +589,31 @@ def ingest_directory(
     if not root.is_dir():
         raise FileNotFoundError(f"каталог корпуса не найден: {root}")
 
-    files = _iter_library_files(root, tuple(patterns) if patterns else library_patterns())
+    files, skipped = _scan_library(
+        root, tuple(patterns) if patterns else library_patterns())
     result = IngestResult()
+    result.warnings.extend(skipped)
     workers = resolve_jobs(jobs)
+    identifiers, collisions = _resolve_ids(files, root)
+    result.warnings.extend(collisions)
 
     def handle(path: Path) -> IngestResult:
         return ingest_path(
             repos, path, root=root, force=force, confidentiality=confidentiality,
             domain=domain, doc_type=doc_type, domains_path=domains_path,
+            doc_id=identifiers.get(path),
         )
+
+    # Сверка базы с каталогом имеет смысл только на полном проходе: с
+    # маской -Pattern или по подпапке «пропавшим» окажется всё остальное.
+    full_pass = not patterns
 
     if workers <= 1 or len(files) < 2:
         for number, path in enumerate(files, start=1):
             if progress is not None:
                 progress(f"[{number}/{len(files)}] {_relative_for(path, root)}")
             result.merge(handle(path))
+        _finish(repos, result, root, files, full_pass)
         return result
 
     # Разбор файла — это внешние программы (tesseract, soffice) и разбор
@@ -503,11 +636,92 @@ def ingest_directory(
             if progress is not None:
                 progress(f"[{done}/{len(files)}] {_relative_for(path, root)}")
             result.merge(piece)
+    _finish(repos, result, root, files, full_pass)
     # Порядок завершения у потоков произвольный — приводим списки к
     # предсказуемому виду, иначе отчёт о приёме каждый раз выглядит иначе.
     result.documents.sort()
     result.warnings.sort()
     return result
+
+
+def _finish(repos: "Repositories", result: IngestResult, root: Path,
+            files: Sequence[Path], full_pass: bool) -> None:
+    """Сверки после прохода: дубликаты и исчезнувшие файлы."""
+    result.warnings.extend(_report_duplicates(repos, result.documents))
+    if full_pass:
+        result.warnings.extend(_archive_missing(repos, root, files))
+
+
+def _report_duplicates(repos: "Repositories", touched: Sequence[str]) -> List[str]:
+    """Документы с одинаковым содержимым под разными идентификаторами.
+
+    Последовательный приём такое ловит сам и второй файл не индексирует. Но
+    при разборе в несколько потоков оба потока видят пустую базу и оба
+    вставляют документ — гонка, которую не закрыть проверкой перед вставкой.
+    Поэтому сверяем ещё раз после прохода. Удалять ничего не удаляем: какая
+    из копий главная, решает инженер, а вот знать про них он обязан — иначе
+    в выдаче окажутся два одинаковых фрагмента вместо двух разных.
+    """
+    if not touched:
+        return []
+    seen: Dict[str, List[str]] = {}
+    for doc_id in touched:
+        document = repos.documents.by_doc_id(doc_id)
+        if document is not None and document.sha256:
+            seen.setdefault(document.sha256, []).append(doc_id)
+    warnings: List[str] = []
+    for group in seen.values():
+        if len(group) > 1:
+            names = ", ".join(f"«{name}»" for name in sorted(group))
+            warnings.append(
+                f"одинаковое содержимое у документов: {names} — "
+                "в выдачу попадут одинаковые фрагменты, лишние стоит убрать"
+            )
+    return sorted(warnings)
+
+
+def _archive_missing(repos: "Repositories", root: Path,
+                     seen: Sequence[Path]) -> List[str]:
+    """Документы, чей файл исчез из каталога, уводятся из поиска.
+
+    Инженер убрал устаревший файл и запустил приём снова. Обход идёт по
+    диску, базу с каталогом никто не сверял — документа нет, а его фрагменты
+    продолжали находиться и цитироваться в отчётах, и по ссылке «исходный
+    файл» открывалась пустота.
+
+    Запись не удаляется: по ней разбирают старые обращения, и решение
+    удалять принимает человек. Статус «архивный» просто убирает документ из
+    поиска — вернуть его можно одним щелчком в карточке.
+    """
+    try:
+        base = root.resolve()
+    except OSError:
+        return []
+    alive = set()
+    for path in seen:
+        try:
+            alive.add(path.resolve())
+        except OSError:
+            continue
+
+    warnings: List[str] = []
+    for document in repos.documents.list():
+        if document.status != "current" or not document.source_path:
+            continue
+        source = Path(document.source_path)
+        try:
+            resolved = source.resolve()
+            inside = resolved.is_relative_to(base)
+        except (OSError, ValueError):
+            continue
+        if not inside or resolved in alive or source.is_file():
+            continue
+        repos.documents.set_status(document.doc_id, "archived", "")
+        warnings.append(
+            f"{document.doc_id}: файла больше нет в каталоге — документ "
+            "переведён в архив и в поиск не попадает"
+        )
+    return sorted(warnings)
 
 
 def remove_document(repos: "Repositories", doc_id: str) -> bool:

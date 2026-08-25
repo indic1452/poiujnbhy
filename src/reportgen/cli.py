@@ -256,6 +256,23 @@ def cmd_ingest(args: argparse.Namespace) -> int:
                              doc_type=doc_type, domain=domain,
                              domains_path=settings.domains_path)
     print(result.summary() if hasattr(result, "summary") else result)
+
+    # Из пачки в пятьсот файлов три не разобрались — и раньше об этом
+    # говорила одна цифра в итоговой строке. КАКИЕ именно и что с ними не
+    # так, знал только список предупреждений, который не печатался нигде.
+    # Инженер не мог ни починить, ни даже узнать, что чинить.
+    warnings = list(getattr(result, "warnings", []) or [])
+    if warnings:
+        print(f"\nЗамечания ({len(warnings)}):", file=sys.stderr)
+        for warning in warnings:
+            print(f"  {warning}", file=sys.stderr)
+
+    failed = int(getattr(result, "failed", 0) or 0)
+    if failed:
+        # Ненулевой код нужен скриптам: load-library.ps1 обязан остановиться и
+        # сказать, что часть библиотеки не принята, а не рапортовать успех.
+        print(f"\nНе принято файлов: {failed}", file=sys.stderr)
+        return 3
     return 0
 
 
