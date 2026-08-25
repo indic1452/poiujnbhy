@@ -342,3 +342,45 @@ class PromptTests(unittest.TestCase):
                 numbers = [int(match) for match in re.findall(r"^(\d+)\.", text, re.M)]
                 self.assertEqual(list(range(1, len(numbers) + 1)), numbers,
                                  f"нумерация правил сбита: {numbers}")
+
+
+class DocumentationTests(unittest.TestCase):
+    """Обещания документа про словарь сверяются с кодом.
+
+    Раздел 18.9a объясняет инженеру, как пополнять справочник. Инструкция,
+    разошедшаяся с поведением, хуже отсутствующей: человек правит файл по
+    описанию и не понимает, почему не работает.
+    """
+
+    SECTION = "## 18.9a"
+
+    def setUp(self):
+        text = (ROOT / "docs" / "18-library.md").read_text(encoding="utf-8")
+        self.assertIn(self.SECTION, text, "раздел про английские документы исчез")
+        start = text.index(self.SECTION)
+        self.block = text[start:text.index("## 18.10")]
+        terms_module.forget()
+
+    def test_example_row_is_valid(self):
+        found = re.search(r'\{"ru".*?\}', self.block)
+        self.assertIsNotNone(found, "пример строки словаря пропал из документа")
+        row = json.loads(found.group(0))
+        glossary = terms_module.TermGlossary(
+            [terms_module.Term(ru=row["ru"], en=tuple(row["en"]))])
+        self.assertTrue(glossary.expand("занимаемая полоса пропускания"),
+                        "пример из документа не работает")
+
+    def test_stem_length_matches_the_text(self):
+        # В документе названо «от пяти букв».
+        self.assertEqual(5, terms_module.STEM_LENGTH)
+        self.assertIn("пяти букв", self.block)
+
+    def test_promised_behaviour_holds(self):
+        self.assertTrue(terms_module._hit("заголов", "поля заголовкам"))
+        self.assertTrue(terms_module._hit("ацп", "схема ацп"))
+        self.assertTrue(terms_module._hit("код", "кода ошибки"))
+        self.assertFalse(terms_module._hit("код", "кодировка файла"))
+
+    def test_glossary_path_is_the_one_documented(self):
+        self.assertIn("terms.json", self.block)
+        self.assertTrue(GLOSSARY.is_file())
