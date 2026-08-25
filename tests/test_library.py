@@ -436,3 +436,262 @@ class ParallelIngestTests(unittest.TestCase):
         first, _ = self.ingest(4)
         second, _ = self.ingest(4)
         self.assertEqual(first.documents, second.documents)
+
+
+class RfcTests(unittest.TestCase):
+    """RFC — главный источник по полям кадров и заголовков.
+
+    Как обычный .txt такой файл попадал в базу под названием «rfc791», без
+    года, без разделов и без пометки об отмене: система с равной охотой
+    сослалась бы и на RFC 2616, и на заменивший его 7230.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    HEADER = (
+        "Internet Engineering Task Force (IETF)                  R. Fielding, Ed.\n"
+        "Request for Comments: 7230                                         Adobe\n"
+        "Obsoletes: 2145, 2616                                    J. Reschke, Ed.\n"
+        "Updates: 2817, 2818                                           greenbytes\n"
+        "Category: Standards Track                                      June 2014\n"
+        "ISSN: 2070-1721\n\n\n"
+        "         Hypertext Transfer Protocol (HTTP/1.1): Message Syntax\n"
+        "                             and Routing\n\n"
+        "Abstract\n\n   Text of the abstract.\n\n"
+        "3.  Message Format\n\n   All HTTP/1.1 messages consist of a start-line.\n\n"
+        "3.2.  Header Fields\n\n   Each header field consists of a field name.\n\n"
+        "Fielding & Reschke           Standards Track                    [Page 1]\n"
+    )
+
+    def write(self, name: str, text: str) -> Path:
+        path = self.dir / name
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def test_recognised_by_header_not_by_name(self):
+        from reportgen.ingest.formats.rfc import is_rfc_text
+
+        self.assertTrue(is_rfc_text(self.HEADER))
+        self.assertFalse(is_rfc_text("Заметка инженера по пролёту Р-14."))
+
+    def test_title_and_number(self):
+        from reportgen.ingest.convert import convert_file
+
+        result = convert_file(self.write("какое-то-имя.txt", self.HEADER))
+        self.assertEqual(7230, result.meta["rfc"])
+        self.assertIn("Hypertext Transfer Protocol", result.title)
+        self.assertTrue(result.title.startswith("RFC 7230."))
+
+    def test_long_title_centred_close_to_the_margin(self):
+        # Длинное название в 72 колонках центруется почти вплотную к краю.
+        # Требование «заметный отступ» такое название теряло, и документ
+        # назывался просто «RFC 7230».
+        header = (
+            "Internet Engineering Task Force (IETF)                  R. Fielding\n"
+            "Request for Comments: 7230                                    Adobe\n"
+            "Category: Standards Track                                 June 2014\n\n"
+            "  Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing\n\n"
+            "Abstract\n\n   Text of the abstract.\n"
+        )
+        from reportgen.ingest.convert import convert_file
+
+        result = convert_file(self.write("rfc7230.txt", header))
+        self.assertEqual(
+            "RFC 7230. Hypertext Transfer Protocol (HTTP/1.1): "
+            "Message Syntax and Routing",
+            result.title,
+        )
+
+    def test_year_from_header(self):
+        from reportgen.ingest.convert import convert_file
+
+        result = convert_file(self.write("rfc7230.txt", self.HEADER))
+        self.assertEqual(2014, result.meta["year"])
+
+    def test_relations_are_kept(self):
+        from reportgen.ingest.convert import convert_file
+
+        result = convert_file(self.write("rfc7230.txt", self.HEADER))
+        self.assertEqual([2145, 2616], result.meta["obsoletes"])
+        self.assertEqual([2817, 2818], result.meta["updates"])
+
+    def test_obsoleted_rfc_is_marked_superseded(self):
+        # Ссылка на отменённый RFC в отчёте заказчику — прямая ошибка.
+        from reportgen.ingest.convert import convert_file
+
+        text = self.HEADER.replace("Obsoletes: 2145, 2616", "Obsoleted by: 7230, 7231")
+        result = convert_file(self.write("rfc2616.txt", text))
+        self.assertEqual("superseded", result.meta["status"])
+        self.assertIn("7230", result.meta["superseded_by"])
+        self.assertTrue(any("отменён" in item for item in result.warnings), result.warnings)
+
+    def test_sections_become_headings(self):
+        from reportgen.ingest.convert import convert_file
+
+        result = convert_file(self.write("rfc7230.txt", self.HEADER))
+        headings = [line for line in result.text.splitlines() if line.startswith("#")]
+        self.assertTrue(any("Message Format" in line for line in headings), headings)
+        self.assertTrue(any(line.startswith("### 3.2.") for line in headings), headings)
+
+    def test_plain_text_is_untouched(self):
+        # Заметка инженера не должна превратиться в «RFC 0».
+        from reportgen.ingest.convert import convert_file
+
+        result = convert_file(self.write("заметка.txt", "Уровень сигнала снизился на 6 дБ."))
+        self.assertEqual("text", result.meta["source_format"])
+        self.assertNotIn("rfc", result.meta)
+
+    def test_classified_as_protocols(self):
+        # Короткие латинские слова из других направлений («nr», «sim») не
+        # должны ловиться внутри английских слов.
+        from reportgen.domains import registry
+
+        found = registry(ROOT / "templates" / "domains.json").classify(
+            "RFC 7230. Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing",
+            "header fields, request line, status code, message format, transfer-encoding",
+        )
+        self.assertEqual("protocols", found)
+
+
+class EnglishDomainTests(unittest.TestCase):
+    """Направление у импортных документов.
+
+    Паспорта на микросхемы приёмопередатчиков и синтезаторов приходят от
+    производителя по-английски. В справочнике направлений у «аппаратно-
+    программных комплексов» и «методик» латинских слов не было вовсе, и такие
+    документы уезжали в «прочее».
+    """
+
+    def classify(self, title, text):
+        from reportgen.domains import registry
+
+        return registry(ROOT / "templates" / "domains.json").classify(title, text)
+
+    def test_english_datasheet_is_hardware(self):
+        found = self.classify(
+            "AD9361 RF Agile Transceiver Data Sheet",
+            "FEATURES RF 2x2 transceiver with integrated 12-bit DAC and ADC. "
+            "Fractional-N PLL synthesizer. Absolute maximum ratings.",
+        )
+        self.assertEqual("hardware", found)
+
+    def test_english_test_procedure_is_a_method(self):
+        found = self.classify(
+            "Test procedure for BER measurement",
+            "Test setup includes a signal generator and a spectrum analyzer. "
+            "Calibration is performed before each BER test.",
+        )
+        self.assertEqual("method", found)
+
+    def test_russian_documents_are_unaffected(self):
+        self.assertEqual("hardware", self.classify(
+            "Модем ХХ-100. Руководство по эксплуатации",
+            "Состав изделия, стойка, плата, разъём, блок питания, наработка на отказ."))
+        self.assertEqual("method", self.classify(
+            "Методика контроля излучения передатчика",
+            "Порядок измерений, анализатор спектра, погрешность, протокол измерений."))
+
+
+class AutoSortingTests(unittest.TestCase):
+    """Тип документа определяется по содержимому, когда каталог молчит.
+
+    Библиотеку приносят как есть: папка «Разное», выгрузка со старого
+    сервера. Раньше всё это уезжало в «литературу» и перемешивалось: паспорт
+    модема оказывался книгой, приказ по предприятию — тоже.
+    """
+
+    SAMPLES = (
+        ("standards", "ГОСТ Р 53363-2009", "gost.pdf",
+         "Настоящий стандарт распространяется на цифровые радиорелейные линии. "
+         "Нормативные ссылки. Термины и определения."),
+        ("datasheets", "Модем ХХ-100", "modem.pdf",
+         "Руководство по эксплуатации. Состав изделия. Технические характеристики. "
+         "Комплект поставки."),
+        ("reports", "Отчёт 2024-118", "otchet.docx",
+         "Технический отчёт по результатам анализа. Заказчик сообщил. "
+         "Выявлено несоответствие. Выводы."),
+        ("regulations", "Приказ №14", "prikaz.doc",
+         "УТВЕРЖДАЮ. Генеральный директор. Настоящий регламент вводится в действие."),
+        ("literature", "Основы спутниковой связи", "book.pdf",
+         "Учебное пособие. УДК 621.396. ISBN 978-5. Издательство. Оглавление. "
+         "Список литературы."),
+    )
+
+    def test_each_kind_is_recognised(self):
+        from reportgen.ingest.sorting import detect_doc_type
+
+        for expected, title, filename, text in self.SAMPLES:
+            with self.subTest(expected=expected):
+                found, why = detect_doc_type(title=title, filename=filename, text=text)
+                self.assertEqual(expected, found, why)
+
+    #: То же самое по-английски. Паспорта на микросхемы приёмопередатчиков и
+    #: синтезаторов производитель пишет только так, и без этих оборотов вся
+    #: импортная элементная база оказывалась в «прочем».
+    ENGLISH_SAMPLES = (
+        ("datasheets", "AD9361 RF Agile Transceiver Data Sheet", "ad9361.pdf",
+         "FEATURES. SPECIFICATIONS. ABSOLUTE MAXIMUM RATINGS. "
+         "PIN CONFIGURATION AND FUNCTION DESCRIPTIONS. ORDERING INFORMATION."),
+        ("datasheets", "", "ADRV9002.pdf",
+         "ADRV9002 Data Sheet. Electrical characteristics. "
+         "Recommended operating conditions. Functional block diagram."),
+        ("literature", "Digital Communications, 5th edition", "proakis.pdf",
+         "Preface. Table of contents. Chapter 1 Introduction. "
+         "Bibliography. Published by McGraw-Hill."),
+    )
+
+    def test_english_documents_are_recognised(self):
+        from reportgen.ingest.sorting import detect_doc_type
+
+        for expected, title, filename, text in self.ENGLISH_SAMPLES:
+            with self.subTest(expected=expected, filename=filename):
+                found, why = detect_doc_type(title=title, filename=filename, text=text)
+                self.assertEqual(expected, found, why)
+
+    def test_unknown_goes_to_misc(self):
+        from reportgen.ingest.sorting import detect_doc_type
+
+        found, why = detect_doc_type(title="Список телефонов", filename="phones.xlsx",
+                                     text="Иванов 101 Петров 102")
+        self.assertEqual("misc", found)
+        self.assertTrue(why)
+
+    def test_rfc_is_a_standard(self):
+        from reportgen.ingest.sorting import detect_doc_type
+
+        found, _ = detect_doc_type(title="RFC 7230", filename="rfc7230.txt",
+                                   text="Request for Comments: 7230", meta={"rfc": 7230})
+        self.assertEqual("standards", found)
+
+    def test_a_tie_is_not_a_guess(self):
+        from reportgen.ingest.sorting import detect_doc_type, score_doc_types
+
+        scores = score_doc_types(text="настоящий стандарт руководство по эксплуатации")
+        self.assertGreaterEqual(len(scores), 2)
+        found, why = detect_doc_type(text="")
+        self.assertEqual("misc", found)
+
+    def test_folder_wins_over_content(self):
+        # Если библиотека разложена, спорить с инженером незачем.
+        from reportgen.ingest.convert import guess_doc_type
+
+        root = Path("/лит")
+        self.assertEqual("standards", guess_doc_type(root / "standards" / "x.pdf", root))
+        self.assertIsNone(guess_doc_type(root / "Разное" / "x.pdf", root, default=None))
+
+    def test_misc_is_a_real_type(self):
+        from reportgen.corpus import DOC_TYPES
+
+        self.assertIn("misc", DOC_TYPES)
+
+    def test_misc_domain_catches_the_rest(self):
+        from reportgen.domains import registry
+
+        found = registry(ROOT / "templates" / "domains.json")
+        self.assertEqual("misc", found.catch_all_id())
+        self.assertEqual("misc", found.classify("Список телефонов", "Иванов 101 Петров 102"))

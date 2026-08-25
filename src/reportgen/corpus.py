@@ -29,7 +29,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterator, List
 
-DOC_TYPES = ("literature", "standards", "datasheets", "reports", "regulations")
+#: Типы документов библиотеки. «misc» — полка для того, что не относится
+#: ни к одному из остальных: без неё такие файлы молча становились
+#: «литературой» и портили выдачу по ней.
+DOC_TYPES = ("literature", "standards", "datasheets", "reports", "regulations", "misc")
 
 TARGET_CHARS = 2200
 OVERLAP_CHARS = 250

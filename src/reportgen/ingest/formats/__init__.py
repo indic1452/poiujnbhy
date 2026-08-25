@@ -22,6 +22,7 @@ _MODULES = (
     "ocr",
     "web",
     "archive",
+    "rfc",
 )
 
 for _name in _MODULES:

@@ -55,6 +55,7 @@
         datasheets: 'даташиты',
         reports: 'отчёты',
         regulations: 'регламенты',
+        misc: 'прочее',
     };
 
     const ROLE_ORDER = ['viewer', 'engineer', 'admin'];

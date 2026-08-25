@@ -138,6 +138,72 @@ class ConvertTextTests(TempCase):
         self.assertEqual(converted.meta["encoding"], "cp1251")
         self.assertEqual(converted.meta["source_format"], "text")
 
+    def test_title_comes_from_the_first_line_of_plain_text(self):
+        """В .txt разметки нет, но название почти всегда в первой строке.
+
+        Иначе паспорт микросхемы называется «ad9361», а методика —
+        «методика_v2_итог»: по такому названию документ не найти, и тип по
+        нему не определить (название весит втрое против текста).
+        """
+        path = self.write("datasheets/ad9361.txt",
+                          "AD9361 RF Agile Transceiver Data Sheet\n\nFEATURES\n"
+                          "RF 2x2 transceiver with integrated DAC and ADC.\n")
+        self.assertEqual("AD9361 RF Agile Transceiver Data Sheet",
+                         convert_file(path).title)
+
+    def test_first_line_that_is_not_a_title_is_not_used(self):
+        for name, body in (
+            ("абзац.txt", "Очень длинное начало документа, которое на самом деле "
+                          "является первым абзацем текста, а вовсе не названием, "
+                          "и потому названием становиться не должно\n"),
+            ("фраза.txt", "Позвонить в понедельник, уточнить срок поставки.\n"),
+            ("номер.txt", "2024-017\n\nОтчёт по обращению\n"),
+        ):
+            with self.subTest(name=name):
+                path = self.write(f"literature/{name}", body)
+                self.assertEqual(Path(name).stem, convert_file(path).title)
+
+    def test_legacy_cyrillic_encodings_are_recognised(self):
+        """Старые архивы приносят не только cp1251.
+
+        Однобайтовые кодировки ошибку декодирования НЕ дают: любой байт во
+        что-то да превратится. Поэтому «первая, которая не упала» всегда
+        давала бы cp1251, и файл в koi8-r молча становился бы «оБУФПСЭЙК
+        УФБОДБТФ» — с виду русский текст, в поиске бесполезный.
+        """
+        source = ("Настоящий стандарт распространяется на цифровые "
+                  "радиорелейные линии связи и устанавливает требования "
+                  "к показателям качества")
+        for encoding in ("cp1251", "koi8-r", "cp866", "iso8859-5", "mac-cyrillic"):
+            with self.subTest(encoding=encoding):
+                path = self.tmp / "standards" / f"{encoding}.txt"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(source.encode(encoding))
+                converted = convert_file(path)
+                self.assertEqual(source, converted.text.strip())
+                self.assertFalse(converted.warnings, converted.warnings)
+
+    def test_uppercase_title_is_not_mistaken_for_a_wrong_encoding(self):
+        # Титульный лист ГОСТа набран прописными целиком. Признак «сплошные
+        # прописные» выглядит подозрительно, но здесь он законен.
+        source = ("ГОСТ Р 53363-2009 ЦИФРОВЫЕ РАДИОРЕЛЕЙНЫЕ ЛИНИИ СВЯЗИ "
+                  "ПОКАЗАТЕЛИ КАЧЕСТВА ТРЕБОВАНИЯ")
+        path = self.tmp / "standards" / "титул.txt"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(source.encode("cp1251"))
+        converted = convert_file(path)
+        self.assertEqual(source, converted.text.strip())
+        self.assertEqual("cp1251", converted.meta["encoding"])
+
+    def test_utf16_is_read(self):
+        # Блокнот Windows до 2019 года сохранял «Юникод» именно так.
+        source = "Заметка о настройке мультиплексора"
+        path = self.tmp / "regulations" / "utf16.txt"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"\xff\xfe" + source.encode("utf-16-le"))
+        converted = convert_file(path)
+        self.assertEqual(source, converted.text.strip())
+
     def test_unsupported_suffix_gives_warning_not_crash(self):
         # .dwg — чертёж AutoCAD: формат, который система не разбирает и не
         # обещает разбирать. Проверяем, что это предупреждение, а не падение.
@@ -469,10 +535,29 @@ class IngestDirectoryTests(TempCase):
     def test_doc_type_from_top_directory(self):
         self.build_library()
         ingest_directory(self.repos, self.tmp)
-        types = {document.doc_id: document.doc_type for document in self.repos.documents.list()}
-        self.assertEqual(types["standards/обв"], "standards")
-        self.assertEqual(types["reports/2023-041"], "reports")
-        self.assertEqual(types["прочее/книга"], "literature")
+        docs = {document.doc_id: document for document in self.repos.documents.list()}
+        self.assertEqual(docs["standards/обв"].doc_type, "standards")
+        self.assertEqual(docs["reports/2023-041"].doc_type, "reports")
+        self.assertEqual(docs["standards/обв"].meta.get("doc_type_source"), "каталог")
+
+    def test_unknown_directory_falls_back_to_content(self):
+        """Каталог корпусу не известен — тип берётся из текста.
+
+        «Глава 1» в первой строке — примета книги, и файл «прочее/книга»
+        уезжает в literature по делу. А вот список телефонов не относится ни
+        к чему: его место на полке «прочее». Раньше полки не было, и такой
+        документ молча записывался в книги вместе со всем остальным.
+        """
+        self.build_library()
+        self.write("прочее/телефоны.txt",
+                   "Иванов 101\nПетров 102\nСидоров 103\nКузнецов 104\n"
+                   "Смирнов 105\nВасильев 106\nПопов 107\nСоколов 108\n")
+        ingest_directory(self.repos, self.tmp)
+        docs = {document.doc_id: document for document in self.repos.documents.list()}
+        self.assertEqual(docs["прочее/книга"].doc_type, "literature")
+        phones = docs["прочее/телефоны"]
+        self.assertEqual(phones.doc_type, "misc")
+        self.assertNotEqual(phones.meta.get("doc_type_source"), "каталог")
 
     def test_second_run_skips_everything(self):
         self.build_library()

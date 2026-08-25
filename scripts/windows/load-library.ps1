@@ -11,10 +11,11 @@
     (C:\reportgen\data\library).
 .PARAMETER DocType
     Тип для всех файлов: literature, standards, datasheets, reports,
-    regulations. Нужен, когда папка названа по-своему, а не по типу.
+    regulations, misc. Нужен, когда папка названа по-своему, а не по типу.
+    Без него тип определяется по содержимому самого документа.
 .PARAMETER Domain
-    Направление техники для всех файлов: satellite, microwave, protocols,
-    modulation, measurement, equipment, regulation.
+    Направление техники для всех файлов: hf, satellite, microwave, mobile,
+    protocols, signal, method, software, hardware, standard, misc.
 .PARAMETER Jobs
     Сколько файлов разбирать одновременно. 0 — по числу ядер минус одно.
     Разбор упирается в процессор, поэтому на многоядерной машине это главный
@@ -30,7 +31,7 @@
 #>
 param(
     [string]$Path = '',
-    [ValidateSet('literature', 'standards', 'datasheets', 'reports', 'regulations')]
+    [ValidateSet('literature', 'standards', 'datasheets', 'reports', 'regulations', 'misc')]
     [string]$DocType = '',
     [string]$Domain = '',
     [int]$Jobs = 0,

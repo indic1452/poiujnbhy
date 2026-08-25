@@ -581,10 +581,6 @@ class LlamaAssetMatchingTests(unittest.TestCase):
         self.assertEqual(0, done.returncode, done.stdout + done.stderr)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TableResizeTests(unittest.TestCase):
     """Колонки таблиц тянутся мышью, и ручка обязана ловить курсор.
 
@@ -616,3 +612,43 @@ class TableResizeTests(unittest.TestCase):
     def test_minimum_width_is_enforced(self):
         # Иначе колонку можно утащить в ноль и потерять её насовсем.
         self.assertIn("Math.max(56", self.js)
+
+
+class RfcScriptTests(unittest.TestCase):
+    """Скрипт выгрузки RFC.
+
+    RFC качается тысячами файлов по одному, и часть номеров никогда не
+    публиковалась — 404 по ним норма. Опасность в другом: если обрыв связи
+    засчитывать за «такого RFC нет», половина архива тихо не доедет, а отчёт
+    покажет успех.
+    """
+
+    def setUp(self):
+        self.text = read(OFFLINE / "rfc.ps1")
+
+    def test_missing_number_and_broken_link_are_counted_apart(self):
+        self.assertIn("$absent++", self.text)
+        self.assertIn("$broken++", self.text)
+        self.assertIn("if ($code -eq 404)", self.text)
+
+    def test_download_is_resumable(self):
+        # Повторный запуск обязан пропускать уже скачанное: качать 9800
+        # файлов заново из-за одного обрыва никто не станет.
+        self.assertIn("$skipped++", self.text)
+        self.assertIn("Test-Path $target", self.text)
+
+    def test_obsoleted_by_is_written_without_bom(self):
+        # Питон читает шапку сам; BOM в начале файла ломает разбор заголовка.
+        self.assertIn("UTF8Encoding($false)", self.text)
+        self.assertIn("Obsoleted by: ", self.text)
+
+    def test_source_can_be_switched(self):
+        # У части заказчиков rfc-editor.org закрыт корпоративным шлюзом.
+        self.assertIn("$BaseUrl", self.text)
+
+    def test_paths_are_joined_portably(self):
+        self.assertNotIn("'standards\\rfc'", self.text)
+
+
+if __name__ == "__main__":
+    unittest.main()

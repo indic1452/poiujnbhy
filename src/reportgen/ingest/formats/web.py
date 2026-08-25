@@ -32,12 +32,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple
 
 from .. import registry
-from ..convert import _ENCODINGS, ConvertedDocument, _clean_line, _read_text, _reason
+from ..convert import ConvertedDocument, _clean_line, _read_text, _reason, decode_bytes
 
 __all__ = [
     "HtmlText",
     "cell_text",
     "convert_eml",
+    "convert_mhtml",
     "convert_html",
     "convert_xml",
     "decode_markup",
@@ -561,16 +562,8 @@ def decode_markup(raw: bytes, path: Path | None = None) -> Tuple[str, str, str |
     if path is not None:
         text, encoding, problem = _read_text(path)
         return text, encoding or "utf-8", problem
-    for encoding in _ENCODINGS:
-        try:
-            return raw.decode(encoding), encoding, None
-        except UnicodeDecodeError:
-            continue
-    return (
-        raw.decode("utf-8", errors="replace"),
-        "utf-8/replace",
-        "кодировка не распознана, часть символов заменена",
-    )
+    text, encoding, problem = decode_bytes(raw)
+    return text, encoding or "utf-8", problem
 
 
 def _read_bytes(path: Path, result: ConvertedDocument) -> bytes | None:
@@ -646,20 +639,37 @@ def _header_value(message: Any, name: str) -> str:
 
 
 def _part_text(part: Any) -> str:
-    """Текст одной части письма с учётом её кодировки."""
+    """Текст одной части письма или архива страницы с учётом её кодировки.
+
+    Кодировку берём только оттуда, где она действительно объявлена. Если её
+    не объявили — определяем по содержимому. Полагаться на умолчание почтовой
+    библиотеки нельзя: по стандарту это us-ascii, и русский текст без
+    объявленной кодировки (обычное дело в сохранённых страницах и старых
+    письмах) превращался в сплошные знаки замены.
+    """
     try:
-        content = part.get_content()
-        if isinstance(content, str):
-            return content
-    except Exception:  # noqa: BLE001 — неизвестная кодировка, битый base64
-        pass
+        charset = part.get_content_charset()
+    except Exception:  # noqa: BLE001 — дефектная шапка части
+        charset = None
+
+    if charset:
+        try:
+            content = part.get_content()
+            if isinstance(content, str):
+                return content
+        except Exception:  # noqa: BLE001 — неизвестная кодировка, битый base64
+            pass
+
     try:
         payload = part.get_payload(decode=True)
     except Exception:  # noqa: BLE001
         payload = None
     if not payload:
-        return ""
-    charset = part.get_content_charset()
+        try:
+            content = part.get_content()
+            return content if isinstance(content, str) else ""
+        except Exception:  # noqa: BLE001
+            return ""
     if charset:
         try:
             return payload.decode(charset)
@@ -794,6 +804,82 @@ def convert_eml(path: Path) -> ConvertedDocument:
     return result
 
 
+
+# --------------------------------------------------- сохранённая страница ---
+
+def convert_mhtml(path: Path) -> ConvertedDocument:
+    """Сохранённая веб-страница ``.mht``/``.mhtml`` → Markdown.
+
+    Это письмо по формату (MIME-архив), но не письмо по смыслу: так браузер
+    сохраняет страницу целиком — разметку и все картинки в одном файле. Через
+    разборщик писем такой файл давал «письмо без темы» с полусотней «вложений»
+    (это картинки страницы) и предупреждением, что вложения не разобраны.
+
+    Поэтому здесь берётся HTML-часть и разбирается как страница, а служебные
+    картинки в перечень не выносятся: они — часть вёрстки, а не приложенные
+    документы. Тема письма у сохранённой страницы — это её заголовок,
+    Content-Location — исходный адрес.
+    """
+    result = ConvertedDocument(title=path.stem, meta={"source_format": "mhtml"})
+    raw = _read_bytes(path, result)
+    if raw is None:
+        return result
+    if not raw.strip():
+        result.warnings.append("файл пуст")
+        return result
+
+    import email  # noqa: PLC0415 — стандартная библиотека, но импорт небыстрый
+    import email.policy  # noqa: PLC0415
+
+    try:
+        message = email.message_from_bytes(raw, policy=email.policy.default)
+    except Exception:  # noqa: BLE001 — строгий разбор споткнулся, пробуем старый
+        try:
+            message = email.message_from_bytes(raw)
+        except Exception as error:  # noqa: BLE001
+            result.warnings.append(f"архив страницы не разобран: {_reason(error)}")
+            return result
+
+    _plain, html, _attachments = _mail_parts(message)
+    if html is None:
+        # Однокомпонентный .mht: HTML лежит прямо в теле, без multipart.
+        try:
+            if message.get_content_type() == "text/html":
+                html = message
+        except Exception:  # noqa: BLE001
+            html = None
+    if html is None:
+        result.warnings.append("в архиве страницы нет разметки — разбирать нечего")
+        return result
+
+    parsed = html_to_markdown(_part_text(html))
+    if parsed.images:
+        result.meta["images"] = parsed.images
+
+    address = (_header_value(message, "Snapshot-Content-Location")
+               or _header_value(message, "Content-Location"))
+    if address:
+        result.meta["source_url"] = address
+
+    saved = _header_value(message, "Date")
+    if saved:
+        result.meta["saved"] = saved
+
+    title = _clean_line(_header_value(message, "Subject")) or parsed.title or path.stem
+    pieces: List[str] = []
+    if not parsed.text.lstrip().startswith("# "):
+        pieces.append(f"# {title}")
+    if address:
+        pieces.append(f"Источник: {address}")
+    pieces.append(parsed.text)
+
+    result.text = merge_list_blocks([piece for piece in pieces if piece.strip()])
+    result.title = title
+    if not parsed.text.strip():
+        result.warnings.append("страница пуста: в разметке нет текста")
+    return result
+
+
 # ----------------------------------------------------------------- XML ----
 
 def _xml_local(tag: Any) -> str:
@@ -914,6 +1000,14 @@ registry.register(registry.ConverterSpec(
     convert=convert_eml,
     requires=(),
     note="письмо: шапка (тема, от, кому, дата), тело, перечень вложений",
+))
+
+registry.register(registry.ConverterSpec(
+    name="mhtml",
+    suffixes=(".mht", ".mhtml"),
+    convert=convert_mhtml,
+    requires=(),
+    note="сохранённая браузером страница целиком: разметка разбирается, адрес источника сохраняется",
 ))
 
 registry.register(registry.ConverterSpec(

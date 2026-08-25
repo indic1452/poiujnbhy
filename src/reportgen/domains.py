@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -48,6 +49,30 @@ CLASSIFY_CHARS = 20000
 MIN_HITS = 2
 
 
+#: Короче этого латинское слово ищется только целиком.
+SHORT_LATIN = 6
+
+_LATIN_RE = re.compile(r"^[a-z0-9][a-z0-9./-]*$")
+
+
+@lru_cache(maxsize=4096)
+def _needs_boundary(keyword: str) -> bool:
+    """Нужно ли искать это слово только целиком."""
+    stripped = keyword.strip()
+    return len(stripped) < SHORT_LATIN and bool(_LATIN_RE.match(stripped))
+
+
+@lru_cache(maxsize=4096)
+def _boundary_pattern(keyword: str) -> "re.Pattern[str]":
+    return re.compile(r"(?<![a-z0-9])" + re.escape(keyword.strip()) + r"(?![a-z0-9])")
+
+
+def _found(keyword: str, text: str) -> bool:
+    if _needs_boundary(keyword):
+        return bool(_boundary_pattern(keyword).search(text))
+    return keyword in text
+
+
 @dataclass(frozen=True)
 class Domain:
     id: str
@@ -58,10 +83,21 @@ class Domain:
     #: перетянули бы к себе любой отраслевой документ — и стандарт на
     #: радиорелейную линию уехал бы из «релеек» в «нормативы».
     fallback: bool = False
+    #: Полка «Прочее»: сюда попадает документ, у которого не набралось вообще
+    #: ничего. Пустое направление делало такие документы невидимыми для поиска
+    #: с фильтром и незаметными для инженера — их просто не было в списках.
+    catch_all: bool = False
 
     def score(self, text: str) -> int:
-        """Сколько характерных слов направления встретилось в тексте."""
-        return sum(1 for keyword in self.keywords if keyword in text)
+        """Сколько характерных слов направления встретилось в тексте.
+
+        Короткие латинские слова ищутся только целиком. Иначе «nr» находится
+        внутри «Internet», «sim» — внутри «similar», и англоязычный RFC про
+        HTTP уезжает в «Мобильные сети». Русские корни, наоборот, задаются
+        нарочно усечёнными («спутник» → «спутниковый»), и границу слова им
+        ставить нельзя.
+        """
+        return sum(1 for keyword in self.keywords if _found(keyword, text))
 
     def to_dict(self) -> Dict[str, object]:
         return {"id": self.id, "title": self.title, "keywords": list(self.keywords)}
@@ -92,6 +128,7 @@ class DomainRegistry:
                 title=str(item.get("title", item["id"])),
                 keywords=tuple(str(k).lower() for k in item.get("keywords", ())),
                 fallback=bool(item.get("fallback", False)),
+                catch_all=bool(item.get("catch_all", False)),
             ))
         return cls(domains=domains)
 
@@ -112,20 +149,31 @@ class DomainRegistry:
     def classify(self, *parts: str) -> str:
         """Определить направление по названию и тексту документа.
 
-        Возвращает пустую строку, если уверенности нет. Это осознанный размен:
-        неверное направление уводит документ в чужую выборку, а пустое делает
-        его невидимым для поиска С фильтром (без фильтра он находится всегда).
-        Неразмеченные документы видны в библиотеке — их доразмечают вручную.
+        Порядок такой: сначала предметные направления, затем запасные
+        (нормативы), затем полка «Прочее». Раньше на последнем шаге
+        возвращалась пустая строка — и документ становился невидимым для
+        поиска с фильтром и незаметным в списках. Отдельная полка честнее:
+        по ней сразу видно, сколько библиотеки осталось неразобранной.
         """
         text = " ".join(part for part in parts if part).lower()[:CLASSIFY_CHARS]
         if not text or not self.domains:
             return UNSET
 
-        primary = [d for d in self.domains if not d.fallback]
+        primary = [d for d in self.domains if not d.fallback and not d.catch_all]
         chosen = self._best(primary, text)
         if chosen:
             return chosen
-        return self._best([d for d in self.domains if d.fallback], text)
+        chosen = self._best([d for d in self.domains if d.fallback], text)
+        if chosen:
+            return chosen
+        return self.catch_all_id()
+
+    def catch_all_id(self) -> str:
+        """Идентификатор полки «Прочее», если она заведена."""
+        for domain in self.domains:
+            if domain.catch_all:
+                return domain.id
+        return UNSET
 
     @staticmethod
     def _best(candidates: Sequence[Domain], text: str) -> str:

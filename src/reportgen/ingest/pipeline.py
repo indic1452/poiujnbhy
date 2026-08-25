@@ -294,13 +294,24 @@ def ingest_path(
             result.warnings.append(f"{label}: не удалось извлечь текст")
         return result
 
-    resolved_type = doc_type or guess_doc_type(path, base)
     title = converted.title.strip() or doc_id.rsplit("/", 1)[-1]
+
+    # Каталог верхнего уровня главнее: если библиотека разложена, спорить с
+    # инженером незачем. Молчит каталог — смотрим в сам документ.
+    resolved_type = doc_type or guess_doc_type(path, base, default=None)
+    type_source = "каталог" if resolved_type else ""
+    if not resolved_type:
+        resolved_type, type_source = _detect_doc_type(converted, title=title,
+                                                      filename=path.name)
+
     meta = _document_meta(converted, title=title, relative=_relative_for(path, base))
     resolved_domain = (domain if domain is not None
                        else _detect_domain(title, converted.text, domains_path))
     if resolved_domain:
         meta["domain"] = resolved_domain
+
+    if type_source:
+        meta["doc_type_source"] = type_source
 
     year, year_source = _detect_year(converted, title=title, filename=path.name)
     if year:
@@ -351,6 +362,18 @@ def _document_meta(converted: ConvertedDocument, *, title: str, relative: str) -
     if converted.page_count:
         meta["page_count"] = converted.page_count
     return meta
+
+
+def _detect_doc_type(converted: ConvertedDocument, *, title: str,
+                     filename: str) -> tuple[str, str]:
+    """Тип документа по содержимому. Ошибка определения не роняет приём."""
+    try:
+        from .sorting import detect_doc_type  # noqa: PLC0415
+
+        return detect_doc_type(title=title, filename=filename,
+                               text=converted.text, meta=converted.meta)
+    except Exception:  # noqa: BLE001 — определение типа не критично
+        return "misc", "определить не удалось"
 
 
 def _detect_year(converted: ConvertedDocument, *, title: str,

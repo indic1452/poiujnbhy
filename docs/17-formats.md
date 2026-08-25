@@ -18,6 +18,9 @@ reportgen formats
 
 | Расширения | Конвертер | Что делает |
 |---|---|---|
+| `.7z` | 7z | 7z через 7-Zip (7z) |
+| `.7z` | 7z-7za | 7z через 7za (p7zip без плагинов) |
+| `.7z` | 7z-7zz | 7z через 7zz (официальная сборка 7-Zip для Linux) |
 | `.csv`, `.tsv` | csv | таблицы CSV и TSV: разделитель и кодировка определяются автоматически |
 | `.djvu`, `.djv` | djvu | сканы книг: текстовый слой через djvutxt, страницы без слоя — ddjvu в PNM и распознавание tesseract (нужен для сканов без слоя) |
 | `.doc`, `.dot`, `.wps` | doc-libreoffice | Word 97–2003 и Works: LibreOffice → DOCX → штатный разбор DOCX |
@@ -27,18 +30,23 @@ reportgen formats
 | `.fb2` | fb2 | FictionBook 2: название из description, секции заголовками |
 | `.html`, `.htm`, `.xhtml` | html | HTML и XHTML: заголовки, таблицы, списки, ссылки; только стандартная библиотека |
 | `.md`, `.markdown`, `.txt` | text | текст и Markdown, кодировка определяется автоматически |
+| `.mht`, `.mhtml` | mhtml | сохранённая браузером страница целиком: разметка разбирается, адрес источника сохраняется |
+| `.odg`, `.otg`, `.fodg` | opendocument-drawing | OpenDocument Draw: схемы сетей и стоек — подписи узлов, портов и связей |
 | `.odp`, `.otp`, `.fodp` | opendocument-presentation | OpenDocument Impress: слайд разделом, с заметками докладчика |
 | `.ods`, `.ots`, `.fods` | opendocument-spreadsheet | OpenDocument Calc: каждый лист разделом, таблица целиком |
-| `.odt`, `.ott`, `.fodt` | opendocument-text | OpenDocument Writer: заголовки по outline-level, списки, таблицы, сноски |
 | `.odt`, `.ott`, `.fodt`, `.ods`, `.ots`, `.fods`, `.odp`, `.otp`, `.fodp` | opendocument-libreoffice | OpenDocument через LibreOffice — запасной путь к прямому разбору |
-| `.pdf` | pdf-ocr | PDF с распознаванием: сначала текстовый слой, затем OCR страниц без текста; без tesseract работает обычный конвертер «pdf» |
+| `.odt`, `.ott`, `.fodt` | opendocument-text | OpenDocument Writer: заголовки по outline-level, списки, таблицы, сноски |
 | `.pdf` | pdf | текстовый слой PDF, заголовки по кеглю, номера страниц |
-| `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.bmp` | image-ocr | сканы-картинки: распознавание tesseract (rus+eng); многостраничный TIFF разбирается постранично |
+| `.pdf` | pdf-ocr | PDF с распознаванием: сначала текстовый слой, затем OCR страниц без текста; без tesseract работает обычный конвертер «pdf» |
+| `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.bmp` | image-ocr | сканы-картинки: распознавание tesseract (rus+eng); многостраничный TIFF разбирается постранично, страницы распознаются параллельно |
 | `.ppt`, `.pps`, `.pot` | ppt-libreoffice | PowerPoint 97–2003: LibreOffice → PPTX → разбор со слайдами и заметками |
 | `.pptx`, `.pptm`, `.potx` | pptx | презентации PowerPoint: слайд — раздел, таблицы и заметки докладчика |
 | `.pub` | pub-libreoffice | Microsoft Publisher: LibreOffice → PDF → разбор с номерами страниц |
+| `.rar` | rar | RAR через unrar |
+| `.rar` | rar-7z | RAR через 7-Zip (нужен модуль p7zip-rar) |
 | `.rtf` | rtf | RTF на чистом Python: таблицы, заголовки по стилям, разрывы страниц |
 | `.rtf` | rtf-libreoffice | RTF через LibreOffice → DOCX (запасной путь к striprtf) |
+| `.txt` | rfc | RFC: название и год из шапки, разделы, отменённые редакции исключаются из поиска |
 | `.xls` | xls | книги Excel 97–2003 (двоичный .xls), выгрузки старых приборов |
 | `.xls`, `.xlt` | xls-libreoffice | Excel 97–2003 через LibreOffice → XLSX (запасной путь к xlrd) |
 | `.xlsx`, `.xlsm`, `.xltx` | xlsx | книги Excel 2007 и новее: лист — раздел, значения формул вычисленные |

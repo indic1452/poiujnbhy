@@ -42,6 +42,7 @@ __all__ = [
     "SUPPORTED_SUFFIXES",
     "BUILTIN_SUFFIXES",
     "read_text",
+    "decode_bytes",
     "clean_line",
     "external_path",
     "supported_suffixes",
@@ -157,12 +158,17 @@ def sha256_file(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-def guess_doc_type(path: str | Path, root: str | Path | None = None) -> str:
+def guess_doc_type(path: str | Path, root: str | Path | None = None,
+                   default: str | None = DEFAULT_DOC_TYPE) -> str | None:
     """Тип документа по имени каталога верхнего уровня внутри корпуса.
 
     Правило то же, что в :func:`reportgen.corpus.load_file`: ``standards/ГОСТ.pdf``
     даёт ``standards``. Если каталог не опознан (или файл лежит прямо в корне
-    корпуса), возвращается ``literature`` — библиотека по умолчанию.
+    корпуса), возвращается ``default``.
+
+    ``default=None`` означает «каталог ничего не сказал» — по этому признаку
+    приём понимает, что тип надо определять по содержимому: библиотеку часто
+    приносят как есть, папкой «Разное» или выгрузкой со старого сервера.
     """
     path = Path(path)
     if root is not None:
@@ -173,11 +179,11 @@ def guess_doc_type(path: str | Path, root: str | Path | None = None) -> str:
         if relative is not None:
             if len(relative.parts) > 1 and relative.parts[0].lower() in DOC_TYPES:
                 return relative.parts[0].lower()
-            return DEFAULT_DOC_TYPE
+            return default
     for parent in _resolve(path).parents:
         if parent.name.lower() in DOC_TYPES:
             return parent.name.lower()
-    return DEFAULT_DOC_TYPE
+    return default
 
 
 @contextmanager
@@ -606,8 +612,95 @@ def _merge_list_items(pieces: Sequence[str]) -> str:
 
 # -------------------------------------------------------- текст и Markdown ---
 
-#: Порядок перебора кодировок: в контуре встречаются и старые файлы в cp1251.
-_ENCODINGS = ("utf-8", "cp1251", "koi8-r")
+#: Однобайтовые кодировки, которые встречаются в старых архивах связи. Порядок
+#: здесь ничего не решает — выбор делается по содержимому (см. _score_text):
+#: любая из них разбирает ЛЮБЫЕ байты без ошибки, поэтому «первая, которая не
+#: упала» всегда давала бы cp1251, а файл в koi8-r молча превращался бы в
+#: «оБУФПСЭЙК УФБОДБТФ».
+_SINGLE_BYTE = ("cp1251", "koi8-r", "cp866", "iso8859-5", "mac-cyrillic")
+
+#: Знаки, которых в русском техническом тексте не бывает. Их появление —
+#: верный признак того, что кодировку выбрали неправильно: типографский блок
+#: cp1251 (0x80–0x9F), псевдографика, редкие буквы других славянских языков.
+_JUNK = set(
+    "\u0402\u0403\u201a\u0453\u201e\u2026\u2020\u2021\u20ac\u2030\u0409\u2039"
+    "\u040a\u040c\u040b\u040f\u0452\u2018\u2019\u201c\u201d\u2022\u0459\u045a"
+    "\u045c\u045b\u045f\u040e\u045e\u0408\u00a4\u0490\u00a6\u00a7\u00a9\u0404"
+    "\u00ab\u00ac\u00ae\u0407\u00b0\u00b1\u0406\u0456\u0491\u00b5\u00b6\u00b7"
+    "\u0451\u2116\u0454\u00bb\u0458\u0405\u0455\u0457"
+    "\u2591\u2592\u2593\u2502\u2524\u2510\u2514\u2534\u252c\u251c\u2500\u253c"
+    "\u2550\u2551\u2557\u255d\u2560\u2563\u256c\u2588\u2584\u258c\u2590\u2580"
+)
+# «ё» и «№» в русском тексте законны — их из списка мусора убираем.
+_JUNK -= set("\u0451\u2116")
+
+#: Ниже этой доли осмысленных знаков считаем, что кодировка не подошла.
+_READABLE_MIN = 0.5
+
+#: Самые частые русские двубуквенные сочетания. Это и есть главный признак,
+#: по которому кодировка выбирается правильно: koi8-r и cp1251 — перестановки
+#: одного и того же алфавита, обе дают «настоящие» русские буквы, и отличить
+#: текст от каши по одним буквам нельзя. А вот сочетания «ст», «ов», «ни» в
+#: перестановке рассыпаются: в правильном чтении их около 50–75 на сотню букв,
+#: в неправильном — единицы.
+_BIGRAMS = (
+    "ст", "то", "ен", "ни", "ов", "ра", "не", "по", "ко", "на",
+    "ре", "ро", "ли", "ва", "ер", "ан", "ор", "та", "ат", "те",
+    "ол", "ес", "ка", "ит", "ти", "ых", "ия", "де", "пр", "го",
+)
+#: Столько сочетаний на букву даёт настоящий русский текст. Всё, что заметно
+#: ниже, — признак неверно выбранной кодировки.
+_BIGRAM_GOOD = 0.25
+#: Меньше этого числа русских букв — судить не по чему (короткая записка,
+#: английский документ, таблица из одних чисел).
+_BIGRAM_MIN_LETTERS = 20
+
+
+def _bigram_rate(text: str) -> float | None:
+    """Доля частых русских сочетаний. ``None`` — русского текста слишком мало."""
+    low = text.lower()
+    letters = sum(1 for char in low if "а" <= char <= "я" or char == "ё")
+    if letters < _BIGRAM_MIN_LETTERS:
+        return None
+    return sum(low.count(pair) for pair in _BIGRAMS) * 2 / letters
+
+
+def _score_text(text: str) -> float:
+    """Насколько текст похож на осмысленный. 1.0 — чистый текст, 0.0 — каша.
+
+    Однобайтовые кодировки не дают ошибки декодирования: любой байт во что-то
+    да превратится. Отличить настоящий текст от каши можно только по тому, что
+    получилось, — этим и занимается функция. Два признака:
+
+    * доля знаков, которых в техническом тексте не бывает (псевдографика,
+      типографский блок cp1251, редкие буквы других славянских языков);
+    * частота обычных русских буквосочетаний.
+
+    Второй признак и решает дело. Первый ловит cp866 и mac-cyrillic,
+    прочитанные как cp1251 (сплошные «Ґ», «§», «€»), но против пары
+    koi8-r/cp1251 бессилен: там все буквы настоящие.
+    """
+    if not text:
+        return 0.0
+    sample = text[:4000]
+    good = junk = 0
+    for char in sample:
+        if char in _JUNK:
+            junk += 1
+        elif (char.isspace() or char.isalnum()
+              or char in ".,:;!?()[]{}-–—«»\"'/\\+=*%№#@&_|<>$"):
+            good += 1
+        else:
+            junk += 1
+    total = good + junk
+    if not total:
+        return 0.0
+    score = good / total
+
+    rate = _bigram_rate(sample)
+    if rate is not None:
+        score *= max(0.1, min(1.0, rate / _BIGRAM_GOOD))
+    return score
 
 
 def read_text(path: Path) -> Tuple[str, str | None, str | None]:
@@ -616,13 +709,46 @@ def read_text(path: Path) -> Tuple[str, str | None, str | None]:
         raw = path.read_bytes()
     except OSError as error:
         return "", None, f"файл не прочитан: {_reason(error)}"
+    return decode_bytes(raw)
+
+
+def decode_bytes(raw: bytes) -> Tuple[str, str | None, str | None]:
+    """То же самое для содержимого, уже прочитанного в память.
+
+    Нужно там, где байты берутся не из файла: вложение письма, страница из
+    архива сохранённого сайта.
+    """
     if raw.startswith(b"\xef\xbb\xbf"):
         return raw.decode("utf-8-sig", errors="replace"), "utf-8-sig", None
-    for encoding in _ENCODINGS:
+    for bom, encoding in ((b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be")):
+        if raw.startswith(bom):
+            return raw[2:].decode(encoding, errors="replace"), encoding, None
+    # UTF-8 проверяется строгим разбором: он ошибку даёт, и если файл прошёл —
+    # это он и есть.
+    try:
+        return raw.decode("utf-8"), "utf-8", None
+    except UnicodeDecodeError:
+        pass
+
+    best_text, best_encoding, best_score = "", "", -1.0
+    for encoding in _SINGLE_BYTE:
         try:
-            return raw.decode(encoding), encoding, None
+            candidate = raw.decode(encoding)
         except UnicodeDecodeError:
             continue
+        score = _score_text(candidate)
+        if score > best_score:
+            best_text, best_encoding, best_score = candidate, encoding, score
+
+    if best_encoding and best_score >= _READABLE_MIN:
+        return best_text, best_encoding, None
+    if best_encoding:
+        return (
+            best_text,
+            best_encoding,
+            f"кодировка определена ненадёжно (выбрана {best_encoding}), "
+            "текст может быть искажён — проверьте документ",
+        )
     return (
         raw.decode("utf-8", errors="replace"),
         "utf-8/replace",
@@ -635,6 +761,33 @@ def _first_markdown_heading(text: str) -> str:
         stripped = line.strip()
         if stripped.startswith("#"):
             return stripped.lstrip("#").strip()
+    return ""
+
+
+#: Длиннее этого первая строка на название уже не тянет — это абзац.
+_TEXT_TITLE_MAX = 120
+
+
+def _first_text_line_as_title(text: str) -> str:
+    """Первая строка обычного текста, если она похожа на название.
+
+    В .txt разметки нет, и названием документа становилось имя файла:
+    паспорт микросхемы назывался «ad9361», методика — «методика_v2_итог».
+    Между тем первая строка почти всегда и есть название — надо только
+    отличить её от начала текста.
+    """
+    for line in text.splitlines()[:5]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if len(stripped) > _TEXT_TITLE_MAX:
+            return ""
+        # Название не заканчивается точкой и не состоит из одних цифр.
+        if stripped.endswith((".", ",", ";", ":")):
+            return ""
+        if not any(char.isalpha() for char in stripped):
+            return ""
+        return stripped
     return ""
 
 
@@ -654,7 +807,9 @@ def _convert_text(path: Path) -> ConvertedDocument:
     front, body = parse_front_matter(result.text)
     for key, value in front.items():
         result.meta.setdefault(key, value)
-    result.title = front.get("title") or _first_markdown_heading(body) or path.stem
+    result.title = (front.get("title") or _first_markdown_heading(body)
+                    or (_first_text_line_as_title(body) if kind == "text" else "")
+                    or path.stem)
     if not result.text.strip():
         result.warnings.append("файл пуст")
     return result

@@ -43,6 +43,7 @@ MIMETYPES = {
     "odt": "application/vnd.oasis.opendocument.text",
     "ods": "application/vnd.oasis.opendocument.spreadsheet",
     "odp": "application/vnd.oasis.opendocument.presentation",
+    "odg": "application/vnd.oasis.opendocument.graphics",
 }
 
 
@@ -96,6 +97,10 @@ def ods_body(inner: str) -> str:
 
 def odp_body(inner: str) -> str:
     return f"<office:presentation>{inner}</office:presentation>"
+
+
+def odg_body(inner: str) -> str:
+    return f"<office:drawing>{inner}</office:drawing>"
 
 
 def cell(text: str, repeat: int = 0) -> str:
@@ -611,6 +616,161 @@ class OdpTests(TempCase):
 
 
 # ------------------------------------------------------------------- FB2 ---
+
+class OdgTests(TempCase):
+    """Чертежи LibreOffice Draw.
+
+    Схемы трактов, сетей и стоек рисуют именно так. Ценность файла — не в
+    геометрии, а в подписях внутри фигур: названия узлов, номера портов,
+    адреса. Раньше .odg не читался вовсе — файл отвергался как формат, о
+    котором система не знает.
+    """
+
+    def make_drawing(self, name: str, inner: str, meta: str = "") -> Path:
+        return make_odf(self.path(name), "odg", odg_body(inner), meta=meta)
+
+    def test_shape_labels_become_text(self):
+        inner = (
+            '<draw:page draw:name="Схема тракта Е1">'
+            '<draw:custom-shape><text:p>Мультиплексор ХХ-100</text:p></draw:custom-shape>'
+            '<draw:frame><draw:text-box>'
+            '<text:p>Порт 1 — 2048 кбит/с</text:p><text:p>Порт 2 — резерв</text:p>'
+            '</draw:text-box></draw:frame>'
+            '<draw:connector><text:p>G.703</text:p></draw:connector>'
+            '</draw:page>'
+        )
+        result = opendoc.convert_odg(self.make_drawing("схема.odg", inner))
+        self.assertEqual("odg", result.meta["source_format"])
+        self.assertIn("## Лист 1. Схема тракта Е1", result.text)
+        self.assertIn("Мультиплексор ХХ-100", result.text)
+        self.assertIn("Порт 1 — 2048 кбит/с", result.text)
+        self.assertIn("Порт 2 — резерв", result.text)
+        self.assertIn("G.703", result.text)
+        self.assertFalse(result.warnings, result.warnings)
+
+    def test_grouped_shapes_are_walked(self):
+        # В схемах узел почти всегда группа: рамка, подпись и порты вместе.
+        inner = (
+            '<draw:page draw:name="page1">'
+            '<draw:g><draw:rect><text:p>Кросс 19"</text:p></draw:rect>'
+            '<draw:ellipse><text:p>ОРС-3</text:p></draw:ellipse></draw:g>'
+            '</draw:page>'
+        )
+        result = opendoc.convert_odg(self.make_drawing("группа.odg", inner))
+        self.assertIn('Кросс 19"', result.text)
+        self.assertIn("ОРС-3", result.text)
+
+    def test_repeated_labels_are_not_duplicated(self):
+        inner = (
+            '<draw:page draw:name="page1">'
+            '<draw:custom-shape><text:p>Порт 1</text:p></draw:custom-shape>'
+            '<draw:custom-shape><text:p>Порт 1</text:p></draw:custom-shape>'
+            '</draw:page>'
+        )
+        result = opendoc.convert_odg(self.make_drawing("повтор.odg", inner))
+        self.assertEqual(1, result.text.count("Порт 1"))
+
+    def test_sheets_are_counted_and_marked(self):
+        inner = (
+            '<draw:page draw:name="Тракт"><draw:custom-shape><text:p>Узел А</text:p>'
+            '</draw:custom-shape></draw:page>'
+            '<draw:page draw:name="page2"><draw:custom-shape><text:p>Стойка 4</text:p>'
+            '</draw:custom-shape></draw:page>'
+        )
+        result = opendoc.convert_odg(self.make_drawing("два.odg", inner))
+        self.assertEqual(2, result.meta["sheets"])
+        self.assertEqual(2, result.page_count)
+        # Маркеры страниц нужны, чтобы ссылка вела на конкретный лист.
+        self.assertIn("<!-- page: 1 -->", result.text)
+        self.assertIn("<!-- page: 2 -->", result.text)
+        # Безымянный лист не должен получать заголовок «page2».
+        self.assertIn("## Лист 2", result.text)
+        self.assertNotIn("page2", result.text)
+
+    def test_title_comes_from_metadata(self):
+        inner = ('<draw:page draw:name="page1"><draw:custom-shape><text:p>Узел</text:p>'
+                 '</draw:custom-shape></draw:page>')
+        result = opendoc.convert_odg(self.make_drawing(
+            "б.odg", inner, meta=meta_xml(title="Схема тракта Е1 Кемерово — Юрга")))
+        self.assertEqual("Схема тракта Е1 Кемерово — Юрга", result.title)
+
+    def test_empty_drawing_explains_itself(self):
+        inner = '<draw:page draw:name="page1"><draw:line/></draw:page>'
+        result = opendoc.convert_odg(self.make_drawing("пусто.odg", inner))
+        # Заголовок «## Лист 1» текстом документа не считается: иначе пустой
+        # чертёж выглядел бы принятым, а искать в нём нечего.
+        self.assertEqual(0, result.meta["labels"])
+        self.assertTrue(any("подписи" in warning for warning in result.warnings),
+                        result.warnings)
+
+    def test_registered_suffixes(self):
+        from reportgen.ingest.convert import supported_suffixes
+
+        supported = supported_suffixes()
+        for suffix in (".odg", ".otg", ".fodg"):
+            self.assertIn(suffix, supported)
+
+
+class MhtmlTests(TempCase):
+    """Страницы, сохранённые браузером «полностью» (.mht/.mhtml).
+
+    По формату это MIME-архив — тот же контейнер, что у письма. Через
+    разборщик писем такой файл давал «письмо без темы» с полусотней
+    «вложений»: вложениями считались картинки вёрстки.
+    """
+
+    PAGE = (
+        b"From: <Saved by Blink>\r\n"
+        b"Snapshot-Content-Location: https://example.org/docs/g703\r\n"
+        b"Subject: =?utf-8?B?0KDQtdC60L7QvNC10L3QtNCw0YbQuNGPIEcuNzAz?=\r\n"
+        b"Date: Mon, 12 Aug 2024 09:14:00 +0300\r\n"
+        b"MIME-Version: 1.0\r\n"
+        b'Content-Type: multipart/related; type="text/html"; boundary="--BOUND--"\r\n'
+        b"\r\n"
+        b"----BOUND--\r\n"
+        b"Content-Type: text/html\r\n"
+        b"Content-Transfer-Encoding: quoted-printable\r\n"
+        b"Content-Location: https://example.org/docs/g703\r\n"
+        b"\r\n"
+        b"<html><body><h1>=D0=A1=D1=82=D1=8B=D0=BA G.703</h1>"
+        b"<p>2048 =D0=BA=D0=B1=D0=B8=D1=82/=D1=81, HDB3.</p></body></html>\r\n"
+        b"----BOUND--\r\n"
+        b"Content-Type: image/png\r\n"
+        b"Content-Transfer-Encoding: base64\r\n"
+        b"Content-Location: https://example.org/docs/logo.png\r\n"
+        b"\r\n"
+        b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==\r\n"
+        b"----BOUND----\r\n"
+    )
+
+    def test_saved_page_is_read_as_a_page(self):
+        path = self.path("g703.mht")
+        path.write_bytes(self.PAGE)
+        result = web.convert_mhtml(path)
+        self.assertEqual("Рекомендация G.703", result.title)
+        self.assertEqual("mhtml", result.meta["source_format"])
+        self.assertEqual("https://example.org/docs/g703", result.meta["source_url"])
+        self.assertIn("Стык G.703", result.text)
+        self.assertIn("2048 кбит/с, HDB3.", result.text)
+        # Картинка вёрстки — не приложенный документ.
+        self.assertNotIn("## Вложения", result.text)
+        self.assertFalse(result.warnings, result.warnings)
+
+    def test_page_without_markup_says_so(self):
+        path = self.path("пусто.mht")
+        path.write_bytes(b"From: <x>\r\nMIME-Version: 1.0\r\n"
+                         b"Content-Type: text/plain\r\n\r\n"
+                         + "ни разметки, ни страницы\r\n".encode("utf-8"))
+        result = web.convert_mhtml(path)
+        self.assertTrue(result.warnings)
+
+    def test_registered_suffixes(self):
+        from reportgen.ingest.convert import supported_suffixes
+
+        supported = supported_suffixes()
+        self.assertIn(".mht", supported)
+        self.assertIn(".mhtml", supported)
+
 
 class Fb2Tests(TempCase):
     def setUp(self) -> None:

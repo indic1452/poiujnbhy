@@ -670,6 +670,66 @@ def _odp_frame_blocks(frame: Any, state: _Blocks) -> List[str]:
     return out
 
 
+def _odg_shape_texts(shape: Any, state: _Blocks) -> List[str]:
+    """Текст одной фигуры чертежа — включая вложенные группы."""
+    out: List[str] = []
+    name = _tag(shape)
+    if name in ("frame", "g"):
+        for child in shape:
+            if _tag(child) in _ODG_SHAPES:
+                out.extend(_odg_shape_texts(child, state))
+            elif _tag(child) == "image":
+                out.append(state.image())
+            elif _tag(child) == "table":
+                markdown = odf_table_markdown(child, state)
+                if markdown:
+                    out.append(markdown)
+        out.extend(_odp_frame_blocks(shape, state))
+        return out
+    for child in shape:
+        child_name = _tag(child)
+        if child_name in ("p", "h"):
+            text = _clean_block(_odf_inline(child, state))
+            if text:
+                out.append(text)
+        elif child_name == "list":
+            out.extend(_odf_list_texts(child, state))
+        elif child_name in _ODG_SHAPES:
+            out.extend(_odg_shape_texts(child, state))
+    return out
+
+
+def _render_odg(body: Any, state: _Blocks) -> Tuple[int, int]:
+    """Чертёж: каждый лист разделом, подписи фигур — строками.
+
+    Схемы сетей, стоек и трактов рисуют именно так. Геометрия в текст не
+    переносится (в поиске от неё толку нет), а вот подписи внутри фигур —
+    названия узлов, номера портов, адреса — переносятся: по ним потом и
+    находят, где стоит этот мультиплексор.
+
+    Возвращает (листов, подписей).
+    """
+    labels = 0
+    pages = _children(body, "page")
+    for number, page in enumerate(pages, start=1):
+        state.mark_page(number)
+        name = _clean_line(_attr(page, "name", "draw") or "")
+        title = name if name and not name.lower().startswith("page") else ""
+        state.add(f"## Лист {number}" + (f". {title}" if title else ""))
+        seen: List[str] = []
+        for shape in page:
+            if _tag(shape) not in _ODG_SHAPES:
+                continue
+            for block in _odg_shape_texts(shape, state):
+                # Одинаковые подписи на схеме (сноски, повторяющиеся метки)
+                # в текст дважды не нужны.
+                if block and block not in seen:
+                    seen.append(block)
+                    state.add(block)
+                    labels += 1
+    return len(pages), labels
+
+
 def _render_odp(body: Any, state: _Blocks) -> int:
     """Слайды разделами: «## Слайд N. Заголовок», текст, таблицы, заметки."""
     slides = _children(body, "page")
@@ -707,14 +767,23 @@ _ODF_BODY_KINDS = {
     "text": "odt",
     "spreadsheet": "ods",
     "presentation": "odp",
-    "drawing": "odp",
+    "drawing": "odg",
 }
 
 _ODF_KIND_NAMES = {
     "odt": "текстовый документ",
     "ods": "электронная таблица",
     "odp": "презентация",
+    "odg": "чертёж",
 }
+
+#: Фигуры чертежа, внутри которых бывает текст. В схеме сети именно он и
+#: ценен: названия узлов, номера портов, адреса, подписи связей.
+_ODG_SHAPES = (
+    "frame", "custom-shape", "g", "rect", "ellipse", "circle", "polygon",
+    "polyline", "line", "path", "connector", "caption", "measure", "text-box",
+    "regular-polygon",
+)
 
 
 def _convert_odf(path: Path, expected: str) -> ConvertedDocument:
@@ -757,6 +826,20 @@ def _convert_odf(path: Path, expected: str) -> ConvertedDocument:
             if empty:
                 result.warnings.append(
                     "пустые листы пропущены: " + ", ".join(f"«{name}»" for name in empty[:10])
+                )
+        elif kind == "odg":
+            sheets, labels = _render_odg(content, state)
+            result.page_count = sheets
+            result.meta["sheets"] = sheets
+            result.meta["labels"] = labels
+            if not labels:
+                # Заголовки листов текстом документа не считаются: чертёж без
+                # единой подписи в поиске бесполезен, и инженер должен это
+                # знать, а не думать, что документ принят.
+                result.warnings.append(
+                    "в чертеже нет ни одной подписи — искать в нём нечего; "
+                    "текст на схеме, вероятно, переведён в кривые, "
+                    "смотрите сам файл"
                 )
         else:
             slides = _render_odp(content, state)
@@ -810,6 +893,11 @@ def convert_ods(path: Path) -> ConvertedDocument:
 def convert_odp(path: Path) -> ConvertedDocument:
     """ODP → Markdown: каждый слайд отдельным разделом, с заметками докладчика."""
     return _convert_odf(path, "odp")
+
+
+def convert_odg(path: Path) -> ConvertedDocument:
+    """ODG → Markdown: лист разделом, подписи фигур строками."""
+    return _convert_odf(path, "odg")
 
 
 # ------------------------------------------------------------------- FB2 ---
@@ -1234,6 +1322,14 @@ registry.register(registry.ConverterSpec(
     convert=convert_odp,
     requires=(),
     note="OpenDocument Impress: слайд разделом, с заметками докладчика",
+))
+
+registry.register(registry.ConverterSpec(
+    name="opendocument-drawing",
+    suffixes=(".odg", ".otg", ".fodg"),
+    convert=convert_odg,
+    requires=(),
+    note="OpenDocument Draw: схемы сетей и стоек — подписи узлов, портов и связей",
 ))
 
 registry.register(registry.ConverterSpec(
