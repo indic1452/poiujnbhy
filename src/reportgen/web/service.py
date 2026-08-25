@@ -650,5 +650,7 @@ def _build_retriever(repos: Repositories, settings: Settings) -> Retriever | Non
         from ..search import build_retriever  # noqa: PLC0415
     except ImportError:
         chunks = repos.chunks.all_chunks()
-        return Retriever(BM25Index(chunks)) if chunks else None
+        return Retriever(BM25Index(chunks),
+                         terms_path=getattr(self.settings, "terms_path", None)) \
+            if chunks else None
     return build_retriever(repos, settings)

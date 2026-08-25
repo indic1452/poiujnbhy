@@ -45,7 +45,8 @@ def cmd_index(args: argparse.Namespace) -> int:
 
 
 def cmd_search(args: argparse.Namespace) -> int:
-    retriever = Retriever(BM25Index.load(args.index))
+    settings = _settings(args)
+    retriever = Retriever(BM25Index.load(args.index), terms_path=settings.terms_path)
     hits = retriever.search(args.query, top_k=args.top_k, doc_types=args.doc_types or None)
     if not hits:
         print("ничего не найдено")
@@ -70,9 +71,10 @@ def cmd_check_facts(args: argparse.Namespace) -> int:
 
 
 def cmd_generate(args: argparse.Namespace) -> int:
+    settings = _settings(args)
     facts = FactPack.load(args.facts)
     outline = Outline.load(args.outline)
-    retriever = Retriever(BM25Index.load(args.index)) if args.index else None
+    retriever = Retriever(BM25Index.load(args.index), terms_path=settings.terms_path) if args.index else None
 
     llm_kwargs = {}
     if args.llm != "stub":
@@ -400,7 +402,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
         "model": args.model or settings.llm_model,
     }
     llm = build_llm(args.llm, **llm_kwargs)
-    retriever = Retriever(BM25Index.load(args.index)) if args.index else None
+    retriever = Retriever(BM25Index.load(args.index), terms_path=settings.terms_path) if args.index else None
     cases = load_golden_set(args.golden)
     report = run_eval(cases, llm, Path(args.outlines or settings.templates_dir),
                       retriever=retriever, glossary=_load_glossary(args.glossary))

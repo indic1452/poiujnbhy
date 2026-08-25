@@ -14,7 +14,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Sequence
+from typing import Any, Callable, Dict, Iterable, List, Sequence
 
 from .corpus import Chunk
 
@@ -195,11 +195,18 @@ class Retriever:
         dense_scorer: DenseScorer | None = None,
         reranker: Reranker | None = None,
         candidates: int = 50,
+        terms_path: Any = None,
     ):
         self.index = index
         self.dense_scorer = dense_scorer
         self.reranker = reranker
         self.candidates = candidates
+        #: Двуязычный словарь. Этим поиском пользуются CLI («reportgen search»,
+        #: «generate --index») и запасной путь веб-сервиса; без словаря там не
+        #: было межъязыкового механизма вообще, и русский вопрос по английскому
+        #: RFC не находил ничего.
+        self.terms_path = terms_path
+        self.last_expansion: List[str] = []
 
     def search(
         self,
@@ -210,8 +217,11 @@ class Retriever:
         meta_filter: Dict[str, str] | None = None,
         domains: Iterable[str] | None = None,
     ) -> List[Hit]:
+        from .terms import expand_query  # noqa: PLC0415 — словарь не нужен при импорте
+
+        expanded, self.last_expansion = expand_query(query, self.terms_path)
         lexical = self.index.search(
-            query, top_k=self.candidates, doc_types=doc_types,
+            expanded, top_k=self.candidates, doc_types=doc_types,
             meta_filter=meta_filter, domains=domains,
         )
         rankings = [lexical]

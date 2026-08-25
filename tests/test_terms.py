@@ -384,3 +384,112 @@ class DocumentationTests(unittest.TestCase):
     def test_glossary_path_is_the_one_documented(self):
         self.assertIn("terms.json", self.block)
         self.assertTrue(GLOSSARY.is_file())
+
+
+class FallbackRetrieverTests(TempCase):
+    """Запасной поиск в памяти тоже знает словарь.
+
+    Им пользуются `reportgen search`, `generate --index` и веб-сервис, когда
+    модуль гибридного поиска недоступен. Без словаря межъязыкового механизма
+    там не было вовсе: русский вопрос по английскому RFC не находил ничего.
+    """
+
+    RFC = (
+        "3.2.  Header Fields\n\n"
+        "   Each header field consists of a case-insensitive field name followed\n"
+        "   by a colon, optional leading whitespace, the field value.\n"
+    )
+
+    def index(self):
+        from reportgen.corpus import Chunk
+        from reportgen.retrieval import BM25Index
+
+        return BM25Index([
+            Chunk(chunk_id="rfc#0", doc_id="standards/rfc/rfc7230",
+                  doc_type="standards", title_path=["RFC 7230"], text=self.RFC),
+            Chunk(chunk_id="ru#0", doc_id="literature/книга",
+                  doc_type="literature", title_path=["Книга"],
+                  text="Общие сведения о линиях связи и их устройстве."),
+        ])
+
+    def test_russian_question_finds_the_english_chunk(self):
+        from reportgen.retrieval import Retriever
+
+        bare = Retriever(self.index(), terms_path=self.tmp / "нет.json")
+        self.assertEqual([], bare.search("какие поля в заголовке", top_k=5))
+
+        smart = Retriever(self.index(), terms_path=GLOSSARY)
+        found = smart.search("какие поля в заголовке", top_k=5)
+        self.assertTrue(found, "запасной поиск по-прежнему не переступает язык")
+        self.assertEqual("standards/rfc/rfc7230", found[0].chunk.doc_id)
+
+    def test_expansion_is_remembered(self):
+        from reportgen.retrieval import Retriever
+
+        retriever = Retriever(self.index(), terms_path=GLOSSARY)
+        retriever.search("какие поля в заголовке", top_k=5)
+        self.assertTrue(retriever.last_expansion)
+
+
+class DenseWarningTests(TempCase):
+    """Отключённый смысловой поиск не должен молчать.
+
+    Без плотного канала английская половина библиотеки находится только по
+    словарю, а всё, что мимо словаря, не находится вовсе. Инженер видит
+    пустую выдачу и думает, что документа нет.
+    """
+
+    def library(self):
+        from reportgen.ingest.pipeline import ingest_directory
+        from reportgen.store.db import Database
+        from reportgen.store.repo import Repositories
+
+        library = self.tmp / "library" / "standards"
+        library.mkdir(parents=True)
+        (library / "гост.md").write_text(
+            "# ГОСТ\n\n" + "Измерения выполнены анализатором спектра. " * 8,
+            encoding="utf-8")
+        database = Database(":memory:")
+        database.migrate()
+        repos = Repositories(database)
+        ingest_directory(repos, self.tmp / "library")
+        return repos
+
+    def test_no_embedder_is_announced(self):
+        from reportgen.search import DatabaseRetriever
+
+        retriever = DatabaseRetriever(self.library())
+        retriever.search("измерения", top_k=3)
+        self.assertIn("смысловой поиск выключен", retriever.last_warning or "")
+
+    def test_no_vectors_is_announced(self):
+        from reportgen.search import DatabaseRetriever
+
+        class Embedder:
+            def embed_one(self, text):
+                return [0.1] * 4
+
+        retriever = DatabaseRetriever(self.library(), embedder=Embedder(),
+                                      embed_model="bge-m3")
+        retriever.search("измерения", top_k=3)
+        self.assertIn("векторы не построены", retriever.last_warning or "")
+
+    def test_model_mismatch_is_announced(self):
+        """Библиотеку проиндексировали под другим именем модели.
+
+        «BAAI/bge-m3» в приёме и «bge-m3» в настройках сервера — и поиск тихо
+        становится чисто лексическим, без единого слова.
+        """
+        from reportgen.search import DatabaseRetriever
+
+        repos = self.library()
+        uid = repos.db.query_one("SELECT chunk_uid FROM chunks LIMIT 1")["chunk_uid"]
+        repos.vectors.put_many("BAAI/bge-m3", {uid: [0.1, 0.2, 0.3, 0.4]})
+
+        class Embedder:
+            def embed_one(self, text):
+                return [0.1] * 4
+
+        retriever = DatabaseRetriever(repos, embedder=Embedder(), embed_model="bge-m3")
+        retriever.search("измерения", top_k=3)
+        self.assertIn("другой моделью", retriever.last_warning or "")
