@@ -600,8 +600,13 @@ def search(request: Request, q: str = "", top_k: int = 10,
     except TypeError:
         hits = retriever.search(query, top_k=min(top_k, 50), doc_types=types)
     warning = getattr(retriever, "last_warning", "")
+    # Чем дополнился запрос по двуязычному словарю. Без этого выдача на
+    # русский вопрос по английскому RFC выглядит необъяснимой: инженер видит
+    # английский текст и не понимает, почему он нашёлся.
+    expansion = list(getattr(retriever, "last_expansion", []) or [])
     return {
         "warning": warning or None,
+        "expansion": expansion or None,
         "items": [
             {
                 "chunk_uid": hit.chunk.chunk_id,

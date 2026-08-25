@@ -3218,6 +3218,13 @@
                 clear(searchResults);
                 if (data.note) searchResults.appendChild(h('div', { class: 'small muted' }, data.note));
                 if (data.warning) searchResults.appendChild(h('div', { class: 'small muted' }, data.warning));
+                // Половина библиотеки английская, спрашивают по-русски. Если
+                // запрос дополнен по словарю — сказать об этом: иначе
+                // английский текст в выдаче выглядит взявшимся ниоткуда.
+                if (data.expansion && data.expansion.length) {
+                    searchResults.appendChild(h('div', { class: 'small muted' },
+                        'Искали также по английским терминам: ' + data.expansion.join(', ')));
+                }
                 const items = data.items || [];
                 if (!items.length) {
                     searchResults.appendChild(h('div', { class: 'empty' }, 'Ничего не найдено.'));

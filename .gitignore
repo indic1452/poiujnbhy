@@ -8,5 +8,7 @@ exports/
 *.db
 *.db-wal
 *.db-shm
+*.sqlite3
+*.sqlite
 wheels/
 backups/

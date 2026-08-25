@@ -98,6 +98,7 @@ class DatabaseRetriever:
         rrf_k: int = 60,
         freshness_window: float = 0.12,
         dense_pool_factor: int = 5,
+        terms_path: str | Path | None = None,
     ):
         self.repos = repos
         self.embedder = embedder
@@ -115,6 +116,12 @@ class DatabaseRetriever:
         #: переизданием, а не просто соседним по времени источником.
         self.freshness_min_gap = 3
         self.dense_pool_factor = max(1, int(dense_pool_factor))
+        #: Двуязычный словарь: половина библиотеки английская, а спрашивают
+        #: по-русски. Расширяется только лексический запрос — плотный поиск
+        #: bge-m3 язык переступает сам.
+        self.terms_path = terms_path
+        #: Что добавилось к последнему запросу — показывается инженеру.
+        self.last_expansion: List[str] = []
         # Последняя нефатальная неприятность (недоступен сервис эмбеддингов
         # или реранка). Поиск при этом отработал в деградированном режиме.
         self.last_warning: str | None = None
@@ -234,7 +241,18 @@ class DatabaseRetriever:
         meta_filter: Dict[str, str] | None,
         domains: set[str] | None = None,
     ) -> List[Hit]:
-        """Первый канал: FTS5 по стеммированному тексту."""
+        """Первый канал: FTS5 по стеммированному тексту.
+
+        Запрос перед поиском расширяется английскими эквивалентами. Без этого
+        «какие поля в заголовке» не находит в RFC ровно ничего: BM25 ищет
+        буквальные слова, а RFC написан по-английски. Плотный поиск такой
+        запрос вытягивает, но он работает только когда построены векторы, —
+        а лексический канал как раз тот, который точно попадает в название
+        поля, то самое, что инженер и ищет.
+        """
+        from .terms import expand_query  # noqa: PLC0415 — словарь не нужен при импорте
+
+        query, self.last_expansion = expand_query(query, self.terms_path)
         # Фильтр по meta накладывается уже после выборки, поэтому при нём
         # берём запас кандидатов — иначе отсев съест половину списка.
         limit = self.candidates * (self.dense_pool_factor if meta_filter else 1)
@@ -410,4 +428,5 @@ def build_retriever(
         reranker=reranker,
         candidates=getattr(settings, "retrieval_candidates", 50),
         embed_model=settings.embed_model if embedder is not None else None,
+        terms_path=getattr(settings, "terms_path", None),
     )
