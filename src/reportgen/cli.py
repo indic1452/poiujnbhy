@@ -261,16 +261,29 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     # говорила одна цифра в итоговой строке. КАКИЕ именно и что с ними не
     # так, знал только список предупреждений, который не печатался нигде.
     # Инженер не мог ни починить, ни даже узнать, что чинить.
-    warnings = list(getattr(result, "warnings", []) or [])
-    if warnings:
-        print(f"\nЗамечания ({len(warnings)}):", file=sys.stderr)
-        for warning in warnings:
-            print(f"  {warning}", file=sys.stderr)
+    # Отказы и замечания печатаются РАЗДЕЛЬНО. В одном списке «файл пуст»
+    # (документа не будет) стоял вперемешку с «формат не читается» (так и
+    # задумано), да ещё отсортированный по алфавиту вместе с ним: даже
+    # добравшись до списка, инженер не мог отличить строки, требующие
+    # действий, от справочных.
+    failures = list(getattr(result, "failures", []) or [])
+    notes = list(getattr(result, "notes", []) or [])
+    if not failures and not notes:
+        notes = list(getattr(result, "warnings", []) or [])
+
+    if failures:
+        print(f"\nНЕ ПРИНЯТО, требует действий ({len(failures)}):", file=sys.stderr)
+        for line in failures:
+            print(f"  {line}", file=sys.stderr)
+    if notes:
+        print(f"\nЗамечания, к сведению ({len(notes)}):", file=sys.stderr)
+        for line in notes:
+            print(f"  {line}", file=sys.stderr)
 
     failed = int(getattr(result, "failed", 0) or 0)
     if failed:
-        # Ненулевой код нужен скриптам: load-library.ps1 обязан остановиться и
-        # сказать, что часть библиотеки не принята, а не рапортовать успех.
+        # Ненулевой код нужен скриптам: load-library.ps1 обязан сказать, что
+        # часть библиотеки не принята, а не рапортовать успех.
         print(f"\nНе принято файлов: {failed}", file=sys.stderr)
         return 3
     return 0

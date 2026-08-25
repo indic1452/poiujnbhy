@@ -3189,9 +3189,40 @@
                     ', ошибок ' + (result.failed || 0) +
                     ', чанков ' + (result.chunks || 0), (result.failed ? 'error' : 'ok'), 9000);
                 await loadLibrary();
+                // Счётчик «ошибок 3» не говорит, КАКИЕ файлы не попали в
+                // библиотеку и что с ними не так. Список показываем отдельно:
+                // всплывающее сообщение для него слишком коротко живёт.
+                showIngestReport(result);
             } catch (error) {
                 toastError(error);
             }
+        }
+
+        function showIngestReport(result) {
+            const failures = result.failures || [];
+            const notes = result.notes || [];
+            if (!failures.length && !notes.length) return;
+            const block = (title, lines, level) => lines.length ? h('div', {
+                style: { marginBottom: '14px' },
+            },
+                h('div', {},
+                    h('span', { class: 'badge badge--' + level }, title),
+                    h('span', { class: 'small muted', style: { marginLeft: '8px' } },
+                        lines.length)),
+                ...lines.map((line) => h('div', {
+                    class: 'small',
+                    style: { marginTop: '6px', whiteSpace: 'pre-wrap' },
+                }, line))) : null;
+            const dialog = openModal({
+                title: 'Итог загрузки библиотеки',
+                body: h('div', {},
+                    block('Не принято — требует действий', failures, 'danger'),
+                    block('Замечания — к сведению', notes, 'warn')),
+                footer: [h('button', {
+                    class: 'btn btn--primary',
+                    onclick: () => dialog.close(),
+                }, 'Понятно')],
+            });
         }
 
         async function removeDocument(item) {

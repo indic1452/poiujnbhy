@@ -345,3 +345,50 @@ class InterruptTests(BatchCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReportSplitTests(BatchCase):
+    """Отказы и замечания — разные списки.
+
+    «Файл пуст» (документа не будет, надо чинить) стоял вперемешку с «формат
+    не читается» (так и задумано), да ещё отсортированный по алфавиту вместе
+    с ним. Даже добравшись до списка, инженер не мог отличить строки,
+    требующие действий, от справочных.
+    """
+
+    def build(self):
+        self.put("standards/хороший.md", "Хороший")
+        (self.tmp / "standards" / "пустой.md").write_text("", encoding="utf-8")
+        (self.tmp / "standards" / "схема.dwg").write_text("чертёж", encoding="utf-8")
+        (self.tmp / "новый-гост.md").write_text(f"# В корне\n\n{TEXT}", encoding="utf-8")
+
+    def test_unaccepted_file_is_a_failure(self):
+        self.build()
+        result = self.load()
+        self.assertTrue(any("пустой" in line for line in result.failures), result.failures)
+        self.assertFalse(any("пустой" in line for line in result.notes))
+
+    def test_expected_skips_are_notes(self):
+        self.build()
+        result = self.load()
+        joined = " ".join(result.notes)
+        self.assertIn(".dwg", joined)
+        self.assertIn("в корне библиотеки", joined)
+        self.assertFalse(any(".dwg" in line for line in result.failures))
+
+    def test_accepted_with_a_remark_is_a_note(self):
+        # Документ принят, просто не целиком — чинить нечего.
+        import zipfile
+
+        path = self.tmp / "literature" / "архив.zip"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("книга.md", f"# Книга\n\n{TEXT}")
+        result = self.load()
+        self.assertEqual(0, result.failed)
+        self.assertEqual([], result.failures)
+
+    def test_combined_list_still_works(self):
+        self.build()
+        result = self.load()
+        self.assertEqual(result.failures + result.notes, result.warnings)

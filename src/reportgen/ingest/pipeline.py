@@ -97,7 +97,22 @@ class IngestResult:
     chunks: int = 0
     #: doc_id документов, которые были проиндексированы в этом запуске.
     documents: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    #: Файл в библиотеку НЕ ПОПАЛ — это требует действий инженера.
+    failures: List[str] = field(default_factory=list)
+    #: Документ принят, но с оговоркой, либо пропущено ожидаемое (чужой
+    #: формат, символьная ссылка внутри архива). Читать полезно, чинить нечего.
+    notes: List[str] = field(default_factory=list)
+
+    @property
+    def warnings(self) -> List[str]:
+        """Оба списка вместе — прежний вид итога.
+
+        Раньше список был один: «файл пуст» (документ не принят) стоял
+        вперемешку с «формат не читается» (так и задумано), да ещё
+        отсортированный по алфавиту вместе с ними. Даже добравшись до списка,
+        инженер не мог отличить строки, требующие действий, от справочных.
+        """
+        return self.failures + self.notes
 
     @property
     def total(self) -> int:
@@ -115,7 +130,8 @@ class IngestResult:
         self.failed += other.failed
         self.chunks += other.chunks
         self.documents.extend(other.documents)
-        self.warnings.extend(other.warnings)
+        self.failures.extend(other.failures)
+        self.notes.extend(other.notes)
         return self
 
     def summary(self) -> str:
@@ -270,14 +286,14 @@ def ingest_path(
 
     if not path.is_file():
         result.failed = 1
-        result.warnings.append(f"{label}: файл не найден")
+        result.failures.append(f"{label}: файл не найден")
         return result
 
     try:
         stat = path.stat()
     except OSError as error:
         result.failed = 1
-        result.warnings.append(f"{label}: файл не прочитан ({error})")
+        result.failures.append(f"{label}: файл не прочитан ({error})")
         return result
 
     doc_id = doc_id or _doc_id_for(path, base)
@@ -301,7 +317,7 @@ def ingest_path(
         digest = sha256_file(path)
     except OSError as error:
         result.failed = 1
-        result.warnings.append(f"{label}: файл не прочитан ({error})")
+        result.failures.append(f"{label}: файл не прочитан ({error})")
         return result
     if existing is not None and existing.sha256 == digest and existing.indexed_at and not force:
         # Хеш совпал — файл тот же. Записываем дешёвые приметы, чтобы
@@ -320,7 +336,7 @@ def ingest_path(
                 # фрагмента вместо двух разных, а инженер решит, что нашёл
                 # подтверждение в двух источниках.
                 result.skipped = 1
-                result.warnings.append(
+                result.notes.append(
                     f"{label}: тот же файл уже принят как «{moved.doc_id}» — "
                     "второй раз не индексируется"
                 )
@@ -329,23 +345,29 @@ def ingest_path(
             # переименовали. Это переезд записи, а не новый документ — иначе
             # библиотека растёт дубликатами при каждой перекладке папок.
             repos.documents.delete(moved.doc_id)
-            result.warnings.append(
+            result.notes.append(
                 f"{label}: документ переехал из «{moved.doc_id}» — "
                 "прежняя запись заменена"
             )
     if existing is not None and Path(existing.source_path).suffix.lower() != path.suffix.lower():
-        result.warnings.append(
+        result.notes.append(
             f"{label}: идентификатор документа «{doc_id}» уже занят файлом "
             f"{existing.source_path} — прежняя версия будет заменена"
         )
 
     converted = convert_file(path)
-    result.warnings.extend(f"{label}: {warning}" for warning in converted.warnings)
+    # Замечание конвертера бывает и приговором, и оговоркой: «файл не похож на
+    # RTF» означает, что документа не будет, а «изображений в документе: 12 —
+    # они не извлекаются» — что документ принят, просто не целиком. Куда
+    # отнести, решаем по тому, получился текст или нет.
+    remarks = [f"{label}: {warning}" for warning in converted.warnings]
     if converted.is_empty:
         result.failed = 1
-        if not converted.warnings:
-            result.warnings.append(f"{label}: не удалось извлечь текст")
+        result.failures.extend(remarks)
+        if not remarks:
+            result.failures.append(f"{label}: не удалось извлечь текст")
         return result
+    result.notes.extend(remarks)
 
     title = converted.title.strip() or doc_id.rsplit("/", 1)[-1]
 
@@ -619,10 +641,10 @@ def ingest_directory(
     files, skipped = _scan_library(
         root, tuple(patterns) if patterns else library_patterns())
     result = IngestResult()
-    result.warnings.extend(skipped)
+    result.notes.extend(skipped)
     workers = resolve_jobs(jobs)
     identifiers, collisions = _resolve_ids(files, root)
-    result.warnings.extend(collisions)
+    result.notes.extend(collisions)
 
     def handle(path: Path) -> IngestResult:
         return ingest_path(
@@ -662,7 +684,7 @@ def ingest_directory(
                     continue
                 except Exception as error:  # noqa: BLE001 — один файл не роняет приём
                     piece = IngestResult(failed=1)
-                    piece.warnings.append(
+                    piece.failures.append(
                         f"{_relative_for(path, root)}: {type(error).__name__}: {error}"
                     )
                 if progress is not None:
@@ -682,7 +704,7 @@ def ingest_directory(
         pool.shutdown(wait=not interrupted, cancel_futures=interrupted)
 
     if interrupted:
-        result.warnings.append(
+        result.notes.append(
             f"приём прерван: обработано {done} из {len(files)} — "
             "разобранное сохранено, повторный запуск продолжит с остатка"
         )
@@ -690,16 +712,17 @@ def ingest_directory(
     # Порядок завершения у потоков произвольный — приводим списки к
     # предсказуемому виду, иначе отчёт о приёме каждый раз выглядит иначе.
     result.documents.sort()
-    result.warnings.sort()
+    result.failures.sort()
+    result.notes.sort()
     return result
 
 
 def _finish(repos: "Repositories", result: IngestResult, root: Path,
             files: Sequence[Path], full_pass: bool) -> None:
     """Сверки после прохода: дубликаты и исчезнувшие файлы."""
-    result.warnings.extend(_report_duplicates(repos, result.documents))
+    result.notes.extend(_report_duplicates(repos, result.documents))
     if full_pass:
-        result.warnings.extend(_archive_missing(repos, root, files))
+        result.notes.extend(_archive_missing(repos, root, files))
 
 
 def _report_duplicates(repos: "Repositories", touched: Sequence[str]) -> List[str]:

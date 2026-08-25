@@ -629,7 +629,7 @@ class MissingDependencyTests(TempCase):
 class SummaryTests(unittest.TestCase):
     def test_summary_is_human_readable(self):
         result = IngestResult(added=2, updated=1, skipped=3, failed=1, chunks=42,
-                              warnings=["скан"])
+                              failures=["скан"])
         text = result.summary()
         self.assertIn("добавлено 2", text)
         self.assertIn("обновлено 1", text)
@@ -644,11 +644,33 @@ class SummaryTests(unittest.TestCase):
     def test_merge_accumulates(self):
         total = IngestResult()
         total.merge(IngestResult(added=1, chunks=3, documents=["a"]))
-        total.merge(IngestResult(skipped=1, warnings=["ой"]))
+        total.merge(IngestResult(skipped=1, notes=["ой"]))
         self.assertEqual((total.added, total.skipped, total.chunks), (1, 1, 3))
         self.assertEqual(total.documents, ["a"])
         self.assertEqual(total.total, 2)
         self.assertEqual(total.indexed, 1)
+
+    def test_failures_and_notes_are_kept_apart(self):
+        """«Файл пуст» и «формат не читается» — разные вещи.
+
+        Первое означает, что документа не будет и надо что-то делать; второе —
+        что так и задумано. В одном списке, да ещё отсортированном по алфавиту
+        вместе, инженер их не различал.
+        """
+        result = IngestResult(failed=1, failures=["а.md: файл пуст"],
+                              notes=["формат не читается: .dwg — 2"])
+        self.assertEqual(["а.md: файл пуст"], result.failures)
+        self.assertEqual(["формат не читается: .dwg — 2"], result.notes)
+        # Прежний общий список остаётся: им пользуются веб и старые вызовы.
+        self.assertEqual(2, len(result.warnings))
+        self.assertEqual(result.failures + result.notes, result.warnings)
+
+    def test_merge_keeps_the_two_lists_apart(self):
+        total = IngestResult()
+        total.merge(IngestResult(failed=1, failures=["а: файл пуст"]))
+        total.merge(IngestResult(notes=["формат не читается"]))
+        self.assertEqual(1, len(total.failures))
+        self.assertEqual(1, len(total.notes))
 
 
 if __name__ == "__main__":

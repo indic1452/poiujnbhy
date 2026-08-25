@@ -1069,7 +1069,8 @@ def _ingest_file(request: Request, path: Path, *, doc_type: str,
 def _ingest_to_dict(result: Any) -> Dict[str, Any]:
     if isinstance(result, dict):
         return result
-    keys = ("added", "updated", "skipped", "failed", "chunks", "documents", "warnings")
+    keys = ("added", "updated", "skipped", "failed", "chunks", "documents",
+            "warnings", "failures", "notes")
     return {key: getattr(result, key, None) for key in keys if hasattr(result, key)}
 
 
