@@ -558,6 +558,31 @@ class RfcTests(unittest.TestCase):
         self.assertEqual("protocols", found)
 
 
+class InterfaceDomainIdTests(unittest.TestCase):
+    """Направления, зашитые в интерфейсе, обязаны быть в справочнике.
+
+    После переименования направлений под категории компании примеры вопросов
+    у помощника остались со старыми: «modulation» и «measurement». Название
+    для них взять было неоткуда, и на первом же экране, который видит новый
+    сотрудник, вместо «Обработка сигналов» стояло английское слово из кода.
+    """
+
+    def known_ids(self):
+        from reportgen.domains import registry
+
+        return {item["id"] for item in registry(ROOT / "templates" / "domains.json").to_dict()}
+
+    def test_chat_examples_use_real_domains(self):
+        app_js = (ROOT / "src" / "reportgen" / "web" / "static" / "app.js").read_text(
+            encoding="utf-8")
+        block = app_js[app_js.index("const CHAT_EXAMPLES"):]
+        block = block[:block.index("];")]
+        used = set(re.findall(r"domain:\s*'([\w-]+)'", block))
+        self.assertTrue(used, "примеры вопросов исчезли из интерфейса")
+        unknown = sorted(used - self.known_ids())
+        self.assertFalse(unknown, f"направлений нет в справочнике: {unknown}")
+
+
 class SupersededStatusTests(unittest.TestCase):
     """Отменённая редакция обязана выпадать из поиска.
 
