@@ -53,7 +53,22 @@ MIN_TERM = 3
 #: побеждает тот, где случайно совпало больше общих слов.
 MAX_EXPANSIONS = 12
 
-_WORD = re.compile(r"[a-zа-яё0-9]+")
+_WORD = re.compile(r"[a-zа-я0-9]+")
+
+#: Сколько чужих слов допускается между словами составного термина. «Поля
+#: заголовка» и «какие поля в заголовке» — один и тот же вопрос, а между
+#: словами стоит предлог.
+GAP_WORDS = 3
+
+
+def normalize(text: str) -> str:
+    """Приводит к виду, в котором слова сравниваются.
+
+    «Ё» пишут через раз: инженер напечатает «приемопередатчик», а в словаре
+    стоит «приёмопередатчик» — и паспорта импортных микросхем перестанут
+    находиться из-за одной буквы. Сводим обе формы к «е».
+    """
+    return (text or "").lower().replace("ё", "е")
 
 #: Кэш собранных выражений: поиск идёт на каждый запрос, а словарь большой.
 _PATTERNS: Dict[str, "re.Pattern[str]"] = {}
@@ -109,13 +124,47 @@ def _pattern(word: str) -> "re.Pattern[str]":
     return found
 
 
-def _hit(word: str, text: str) -> bool:
-    """Встретился ли термин в тексте запроса."""
+def _word_hit(word: str, text: str) -> bool:
+    """Встретилось ли одно слово термина."""
     if len(word) >= STEM_LENGTH:
         # Основа достаточно длинная, чтобы искать подстрокой: так ловятся
         # все падежи разом и не нужен словарь окончаний.
         return word in text
     return bool(_pattern(word).search(text))
+
+
+def _hit(term: str, text: str) -> bool:
+    """Встретился ли термин в тексте запроса.
+
+    Составной термин ищется по словам, а не подстрокой: между «поля» и
+    «заголовка» инженер запросто поставит предлог, и требование стоять
+    вплотную оставило бы такой запрос без расширения. Слова должны быть все
+    и в том же порядке, но не обязательно рядом.
+    """
+    words = term.split()
+    if len(words) == 1:
+        return _word_hit(term, text)
+    position = 0
+    for index, word in enumerate(words):
+        found = _find_word(word, text, position)
+        if found < 0:
+            return False
+        if index and _words_between(text, position, found) > GAP_WORDS:
+            return False
+        position = found + len(word)
+    return True
+
+
+def _find_word(word: str, text: str, start: int) -> int:
+    """Где встретилось слово начиная с позиции. -1 — не встретилось."""
+    if len(word) >= STEM_LENGTH:
+        return text.find(word, start)
+    found = _pattern(word).search(text, start)
+    return found.start() if found else -1
+
+
+def _words_between(text: str, start: int, end: int) -> int:
+    return len(_WORD.findall(text[start:end])) if end > start else 0
 
 
 def _plural_variants(word: str) -> List[str]:
@@ -173,7 +222,7 @@ class TermGlossary:
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            ru = str(row.get("ru", "")).strip().lower()
+            ru = normalize(str(row.get("ru", "")).strip())
             english = row.get("en") or []
             if isinstance(english, str):
                 english = [english]
@@ -192,7 +241,7 @@ class TermGlossary:
 
     def matches(self, query: str) -> List[Term]:
         """Термины словаря, встретившиеся в запросе."""
-        text = (query or "").lower().replace("ё", "ё")
+        text = normalize(query)
         if not text:
             return []
         return [term for term in self.terms if _hit(term.ru, text)]
@@ -203,8 +252,7 @@ class TermGlossary:
         Уже написанное в запросе не дублируется: инженер вполне может спросить
         «поля заголовка header fields» — второй раз добавлять нечего.
         """
-        text = (query or "").lower()
-        already = set(_WORD.findall(text))
+        already = set(_WORD.findall(normalize(query)))
         out: List[str] = []
         seen: set[str] = set()
         for term in self.matches(query):
@@ -222,16 +270,33 @@ class TermGlossary:
         return out
 
 
-_cache: Dict[str, TermGlossary] = {}
+#: Разобранный словарь и время правки файла, по которому он прочитан.
+_cache: Dict[str, Tuple[float, TermGlossary]] = {}
+
+
+def _mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
 
 
 def glossary(path: str | Path | None = None) -> TermGlossary:
-    """Словарь с запоминанием: он читается на каждый запрос поиска."""
-    key = str(path or default_path())
-    found = _cache.get(key)
-    if found is None:
-        found = TermGlossary.load(path)
-        _cache[key] = found
+    """Словарь с запоминанием: он читается на каждый запрос поиска.
+
+    Запомненное сбрасывается, как только файл правили: справочник заявлен
+    пополняемым, и если дописанные термины начинают работать только после
+    перезапуска сервера, пополняемость существует лишь на словах. Сверка идёт
+    по времени правки — это дешевле разбора JSON.
+    """
+    resolved = Path(path) if path else default_path()
+    key = str(resolved)
+    stamp = _mtime(resolved)
+    remembered = _cache.get(key)
+    if remembered is not None and remembered[0] == stamp:
+        return remembered[1]
+    found = TermGlossary.load(resolved)
+    _cache[key] = (stamp, found)
     return found
 
 

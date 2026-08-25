@@ -7,6 +7,7 @@
 """
 
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -124,6 +125,67 @@ class ExpansionTests(TempCase):
         _, alone = terms_module.expand_query("схема adc", path)
         self.assertTrue(alone)
 
+    def test_yo_is_optional(self):
+        """«Ё» пишут через раз.
+
+        Инженер напечатает «приемопередатчик», а в словаре стоит
+        «приёмопередатчик» — и все паспорта импортных микросхем перестают
+        находиться из-за одной буквы.
+        """
+        path = self.write_glossary([{"ru": "приёмопередатчик", "en": ["transceiver"]}])
+        for query in ("приёмопередатчик AD9361", "приемопередатчик AD9361"):
+            with self.subTest(query=query):
+                _, added = terms_module.expand_query(query, path)
+                self.assertIn("transceiver", added, query)
+
+    def test_yo_in_the_query_finds_a_plain_key(self):
+        path = self.write_glossary([{"ru": "приемопередатчик", "en": ["transceiver"]}])
+        _, added = terms_module.expand_query("приёмопередатчик", path)
+        self.assertIn("transceiver", added)
+
+    def test_words_of_a_compound_term_need_not_touch(self):
+        """«Поля заголовка» и «какие поля в заголовке» — один вопрос.
+
+        Требование стоять вплотную оставляло без расширения ровно тот запрос,
+        ради которого словарь и заводился: между словами стоит предлог.
+        """
+        path = self.write_glossary([{"ru": "поля заголов", "en": ["header field"]}])
+        for query in ("поля заголовка", "какие поля в заголовке",
+                      "поля этого заголовка"):
+            with self.subTest(query=query):
+                _, added = terms_module.expand_query(query, path)
+                self.assertIn("header field", added, query)
+
+    def test_words_too_far_apart_do_not_count(self):
+        # Иначе любые два слова в длинном вопросе склеятся в термин.
+        path = self.write_glossary([{"ru": "поля заголов", "en": ["header field"]}])
+        _, added = terms_module.expand_query(
+            "поля в таблице описаны отдельно, а вот про заголовок ничего", path)
+        self.assertNotIn("header field", added)
+
+    def test_word_order_matters(self):
+        path = self.write_glossary([{"ru": "поля заголов", "en": ["header field"]}])
+        _, added = terms_module.expand_query("заголовок и поля", path)
+        self.assertNotIn("header field", added)
+
+    def test_edited_glossary_is_picked_up(self):
+        """Справочник заявлен пополняемым — значит, без перезапуска сервера."""
+        import os
+        import time
+
+        path = self.write_glossary([{"ru": "заголов", "en": ["header"]}])
+        _, before = terms_module.expand_query("заголовок и полоса пропускания", path)
+        self.assertNotIn("bandwidth", before)
+
+        self.write_glossary([
+            {"ru": "заголов", "en": ["header"]},
+            {"ru": "полоса пропускания", "en": ["bandwidth"]},
+        ])
+        later = time.time() + 2
+        os.utime(path, (later, later))
+        _, after = terms_module.expand_query("заголовок и полоса пропускания", path)
+        self.assertIn("bandwidth", after)
+
     def test_missing_file_is_not_fatal(self):
         # Поиск без словаря работает, просто хуже. Ронять его нельзя.
         query, added = terms_module.expand_query("заголовок", self.tmp / "нет.json")
@@ -234,3 +296,49 @@ class GlossaryFileTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PromptTests(unittest.TestCase):
+    """Что сказано модели про английские источники.
+
+    Половина библиотеки — RFC и паспорта импортных микросхем, а требование
+    «технический русский язык» модель понимает буквально и добросовестно
+    переводит названия полей: «Transfer-Encoding» превращается в «Кодирование
+    передачи». Инженер такого поля не найдёт ни в дампе, ни в самом RFC —
+    ответ становится не просто бесполезным, а вредным.
+    """
+
+    def prompts(self):
+        from reportgen import prompts
+
+        return {
+            "отчёт": prompts.SYSTEM_PROMPT,
+            "помощник": prompts.ASSISTANT_SYSTEM_PROMPT,
+        }
+
+    def test_original_names_are_required(self):
+        for name, text in self.prompts().items():
+            with self.subTest(prompt=name):
+                self.assertIn("оригинальн", text.lower(),
+                              "не сказано сохранять оригинальные названия")
+
+    def test_english_sources_are_announced(self):
+        for name, text in self.prompts().items():
+            with self.subTest(prompt=name):
+                self.assertIn("англий", text.lower(),
+                              "не сказано, что источники бывают английскими")
+
+    def test_units_are_not_recalculated(self):
+        from reportgen import prompts
+
+        text = " ".join(prompts.ASSISTANT_SYSTEM_PROMPT.split())
+        self.assertIn("не пересчитывая", text)
+
+    def test_rules_stay_numbered_in_order(self):
+        # Правила пронумерованы; сбитая нумерация после вставки читается моделью
+        # как две разные инструкции под одним номером.
+        for name, text in self.prompts().items():
+            with self.subTest(prompt=name):
+                numbers = [int(match) for match in re.findall(r"^(\d+)\.", text, re.M)]
+                self.assertEqual(list(range(1, len(numbers) + 1)), numbers,
+                                 f"нумерация правил сбита: {numbers}")
