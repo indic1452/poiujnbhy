@@ -1540,6 +1540,11 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("Правка снимет подпись", self.js)
         self.assertIn("Править и снять подпись", self.js)
 
+    def test_answer_without_sources_says_so(self):
+        # Строка со счётчиком пропадала, когда источников не нашлось вовсе,
+        # — а это самый важный случай: ответ написан по памяти модели.
+        self.assertIn("ответ не опирается на библиотеку", self.js)
+
     def test_deletion_says_what_it_does_not_remove(self):
         # Выгруженные DOCX лежат в каталоге выгрузок: инженер выгрузил их сам,
         # стирать их за него нельзя, но и молчать об этом тоже.

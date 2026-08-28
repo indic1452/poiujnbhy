@@ -5049,11 +5049,19 @@
                 ? h('div', { class: 'msg-note' },
                     'Ответ прерван: инженер закрыл вкладку или нажал «Стоп». '
                     + 'Спросите ещё раз, если нужен полный разбор.') : null,
-            !isUser && sources.length ? h('div', { class: 'msg-foot' },
-                h('button', {
+            // Строку со счётчиком показываем и когда источников нет вовсе.
+            // Раньше она в этом случае пропадала — а это самый важный
+            // случай: ответ написан по памяти модели, и сказать об этом
+            // нужно громче всего, а не тише.
+            !isUser && (sources.length || (message.meta && message.meta.found !== undefined))
+                ? h('div', { class: 'msg-foot' },
+                sources.length ? h('button', {
                     class: 'btn btn--sm btn--ghost',
                     onclick: () => showSources(message),
-                }, 'источники: ' + sources.length),
+                }, 'источники: ' + sources.length) : null,
+                message.meta && message.meta.found !== undefined && !message.meta.cited
+                    ? h('span', { class: 'badge badge--warn' },
+                        'ответ не опирается на библиотеку') : null,
                 message.meta && message.meta.found !== undefined
                     ? h('span', { class: 'small faint' },
                         'найдено фрагментов: ' + message.meta.found +
