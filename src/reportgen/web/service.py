@@ -458,17 +458,57 @@ class ReportService:
                     sources=section.sources, missing_facts=section.missing_facts,
                 )
             )
-        markdown = assemble(facts, outline, generated, registry, report.meta)
+        # Состояние документа идёт в шапку: утверждённый отчёт не должен
+        # уходить заказчику с надписью «ЧЕРНОВИК, требует подписи».
+        head = {**report.meta, **self._signature(report)}
+        markdown = assemble(facts, outline, generated, registry, head)
         issues = self._verify(
             markdown, facts, outline,
             sections=[(item.spec.title, item.text) for item in generated],
             appendix=registry.render_appendix(),
         )
+        # Второй проход — ради одной строки шапки: сколько ошибок нашлось,
+        # известно только после проверки. Сборка это склейка строк, дорого
+        # не стоит, а черновик уходит на печать с честной отметкой.
+        errors = sum(1 for issue in issues if issue.get("level") == "error")
+        if errors != int(head.get("errors") or 0):
+            markdown = assemble(facts, outline, generated, registry,
+                                {**head, "errors": errors})
         self.repos.reports.update_markdown(report.id, markdown)
         self._apply_issues(report, issues)
         updated = self.repos.reports.get(report.id)
         assert updated is not None
         return updated
+
+    def for_export(self, report: Report) -> Report:
+        """Отчёт с шапкой, отвечающей его состоянию.
+
+        Шапка пишется при сборке, а состояние меняется позже: отчёт
+        утверждают, проверяют, правят. Утверждённые до появления подписи
+        уходили заказчику с отметкой «ЧЕРНОВИК», а свежий черновик — без
+        числа несведённых ошибок. Текст отчёта величина производная, он
+        пересобирается из секций при каждой правке, поэтому здесь его
+        достаточно пересобрать, а не хранить особым образом.
+        """
+        from ..pipeline import status_line  # noqa: PLC0415 — только для сверки
+
+        expected = status_line({**self._signature(report), "errors": report.error_count})
+        if expected in report.markdown:
+            return report
+        return self.rebuild(report.id)
+
+    def _signature(self, report: Report) -> Dict[str, Any]:
+        """Кто и когда подписал отчёт — для шапки документа."""
+        signature: Dict[str, Any] = {
+            "status": report.status,
+            "approved_at": report.approved_at or "",
+            "approved_by_name": "",
+        }
+        if report.approved_by:
+            who = self.repos.users.get(report.approved_by)
+            if who is not None:
+                signature["approved_by_name"] = who.full_name or who.login
+        return signature
 
     def verify(self, report: Report) -> List[Dict[str, Any]]:
         case = self.repos.cases.get(report.case_ref)
@@ -543,6 +583,8 @@ class ReportService:
         pairs = self._collect_edit_pairs(report, case, user)
         self.repos.reports.approve(report.id, user.id if user else None)
         self.repos.cases.set_status(case.id, "approved")
+        # Пересобираем текст: в шапке стоит «ЧЕРНОВИК», а отчёт уже подписан.
+        self.rebuild(report.id)
         self.repos.audit.log(
             "report.approve", user=user, object_type="report", object_id=str(report.id),
             details={"case_id": case.case_id, "version": report.version, "edit_pairs": pairs},

@@ -514,7 +514,7 @@ def report_sources(request: Request, report_id: int) -> Dict[str, Any]:
 @router.get("/reports/{report_id}/export.md")
 def export_markdown(request: Request, report_id: int) -> Response:
     require_user(request)
-    report = _report_or_404(request, report_id)
+    report = _service(request).for_export(_report_or_404(request, report_id))
     case = _case_or_404(request, report.case_ref)
     filename = f"{_safe_name(case.case_id)}-v{report.version}.md"
     return Response(
@@ -527,7 +527,7 @@ def export_markdown(request: Request, report_id: int) -> Response:
 @router.get("/reports/{report_id}/export.docx")
 def export_docx(request: Request, report_id: int) -> FileResponse:
     user = require_user(request)
-    report = _report_or_404(request, report_id)
+    report = _service(request).for_export(_report_or_404(request, report_id))
     case = _case_or_404(request, report.case_ref)
     settings = _settings(request)
 

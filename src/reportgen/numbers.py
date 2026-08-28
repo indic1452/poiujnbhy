@@ -11,10 +11,16 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Iterable, Set
 
-# Число с необязательным знаком, разделителем разрядов (пробел/NBSP),
-# десятичной запятой или точкой и экспонентой.
+# Число с необязательным знаком, десятичной запятой или точкой и экспонентой.
+#
+# Пробел разделяет разряды только тогда, когда все группы после первой — по
+# три цифры: «1 000 000» и «2 400» это одно число, а «12 34» — два. Раньше
+# склеивалось всё подряд, и «значения 12 34» превращались в 1234: верификатор
+# блокировал отчёт из-за числа, которого никто не писал, а настоящие 12 и 34
+# при этом не проверял вовсе.
+_SPACES = "\u0020\u00a0\u202f\u2007"
 _NUMBER_RE = re.compile(
-    r"[-+]?\d[\d   ]*(?:[.,]\d+)?(?:[eE][-+]?\d+)?"
+    rf"[-+]?(?:\d{{1,3}}(?:[{_SPACES}]\d{{3}})+|\d+)(?:[.,]\d+)?(?:[eE][-+]?\d+)?"
 )
 
 # Структурная разметка, числа из которой не являются утверждениями о фактах.
@@ -34,19 +40,38 @@ def strip_structural(text: str) -> str:
     return text
 
 
+#: Предел на порядок числа. Ни одно измерение связи и близко такого не
+#: требует, а «1e999999» разворачивается в обычную запись длиной в миллион
+#: знаков — по такой строке на каждое вхождение в тексте. За пределом
+#: сохраняем исходную запись: число остаётся видимым верификатору, а
+#: строка — короткой.
+MAX_EXPONENT = 100
+
+
 def normalize(raw: str) -> str | None:
     """Приводит запись числа к канонической форме или возвращает None."""
-    cleaned = raw.strip().replace(" ", "").replace(" ", "")
-    cleaned = cleaned.replace(" ", "").replace(",", ".")
+    cleaned = raw.strip().replace("\u00a0", "").replace("\u202f", "")
+    cleaned = cleaned.replace("\u2007", "").replace(" ", "").replace(",", ".")
     if cleaned in {"", "+", "-", "."}:
         return None
     try:
         value = Decimal(cleaned)
     except InvalidOperation:
         return None
+    # Бесконечность и NaN — не измерения. Из текста отчёта они не приходят
+    # (выражение выше берёт только цифры), но факт-пакет правят и руками.
+    if not value.is_finite():
+        return None
+    # Порядок за пределами разумного разворачивать нельзя: decimal.Overflow
+    # ронял сохранение секции с ошибкой 500, а «1e-999999999» молча
+    # становился нулём и мог совпасть с настоящим нулём из фактов.
+    if value != 0 and abs(value.adjusted()) > MAX_EXPONENT:
+        return cleaned
     # normalize() даёт 1E+2 для 100 — приводим к обычной записи.
-    normalized = value.normalize()
-    text = format(normalized, "f")
+    try:
+        text = format(value.normalize(), "f")
+    except ArithmeticError:
+        return cleaned
     if "." in text:
         text = text.rstrip("0").rstrip(".")
     return text or "0"

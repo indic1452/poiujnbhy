@@ -333,6 +333,34 @@ def generate_report(
     )
 
 
+def status_line(meta: Dict[str, Any]) -> str:
+    """Строка о состоянии документа в шапке отчёта.
+
+    Утверждённый отчёт уходит заказчику. Пока строка была прибита гвоздями,
+    он уходил с надписью «ЧЕРНОВИК, требует проверки и подписи инженера» —
+    и в Markdown, и в DOCX. Для организации, которая этим отвечает на
+    входящее письмо, это хуже опечатки.
+    """
+    if str(meta.get("status") or "draft") != "approved":
+        line = "> Статус документа: **ЧЕРНОВИК**. Требует проверки и подписи инженера."
+        # Число несведённых ошибок пишем прямо в документ. Черновик выгружают
+        # и распечатывают — на бумаге не видно ни панели замечаний, ни того,
+        # что верификатор вообще запускался.
+        errors = int(meta.get("errors") or 0)
+        if errors:
+            line += (f" Верификатор нашёл ошибок: {errors} — числа в тексте"
+                     " не подтверждены измерениями.")
+        return line
+    parts = ["> Статус документа: **УТВЕРЖДЁН**."]
+    who = str(meta.get("approved_by_name") or "").strip()
+    when = str(meta.get("approved_at") or "").strip()
+    if who:
+        parts.append(f"Утвердил: {who}.")
+    if when:
+        parts.append(f"Дата утверждения: {when[:10]}.")
+    return " ".join(parts)
+
+
 def assemble(
     facts: FactPack,
     outline: Outline,
@@ -349,7 +377,7 @@ def assemble(
         lines.append(f"**Оборудование:** {equipment}  ")
     lines.append(f"**Дата:** {meta['generated_at']}")
     lines.append("")
-    lines.append("> Статус документа: **ЧЕРНОВИК**. Требует проверки и подписи инженера.")
+    lines.append(status_line(meta))
     lines.append("")
 
     lines.append("## Содержание")

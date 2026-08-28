@@ -449,6 +449,67 @@ class ReportFlowTests(WebTestCase):
         self.assertLessEqual(pair.edit_distance, 1.0)
         self.assertIn("facts", pair.context)
 
+    def test_approved_report_is_not_marked_a_draft(self):
+        """Утверждённый отчёт уходит заказчику — «ЧЕРНОВИК» в шапке недопустим.
+
+        Строка была прибита гвоздями при сборке, и подписанный документ
+        и в Markdown, и в DOCX сообщал «требует проверки и подписи
+        инженера». Для организации, которая этим отвечает на входящее
+        письмо, это хуже опечатки.
+        """
+        report_id = self.report["id"]
+        self.assertIn("ЧЕРНОВИК", self.client.get(
+            f"/api/reports/{report_id}/export.md").text)
+        self.client.post(f"/api/reports/{report_id}/approve")
+        text = self.client.get(f"/api/reports/{report_id}/export.md").text
+        self.assertNotIn("ЧЕРНОВИК", text)
+        self.assertIn("УТВЕРЖДЁН", text)
+        # В шапке видно, кто подписал: без этого «утверждён» ничего не значит.
+        self.assertIn("Утвердил:", text)
+
+    def test_report_approved_before_the_signature_existed_is_fixed_on_export(self):
+        """Отчёты, подписанные до появления подписи в шапке, чинятся при выгрузке.
+
+        Они лежат в базе с отметкой «ЧЕРНОВИК» и уходили заказчику с ней.
+        Текст отчёта — величина производная, он пересобирается из секций.
+        """
+        report_id = self.report["id"]
+        self.client.post(f"/api/reports/{report_id}/approve")
+        # Возвращаем в базу шапку, какой она была до исправления.
+        stale = self.repos.reports.get(report_id).markdown.replace(
+            "> Статус документа: **УТВЕРЖДЁН**.",
+            "> Статус документа: **ЧЕРНОВИК**. Требует проверки и подписи инженера.")
+        self.repos.reports.update_markdown(report_id, stale)
+        self.assertIn("ЧЕРНОВИК", self.repos.reports.get(report_id).markdown)
+
+        text = self.client.get(f"/api/reports/{report_id}/export.md").text
+        self.assertNotIn("ЧЕРНОВИК", text)
+        self.assertIn("УТВЕРЖДЁН", text)
+
+    def test_draft_export_carries_the_number_of_unresolved_errors(self):
+        """Черновик выгружают и печатают — на бумаге панели замечаний нет.
+
+        Верификатор блокирует утверждение, но не выгрузку: инженеру нужно
+        уметь распечатать черновик и вычитать его на бумаге. Значит, сам
+        документ обязан сказать, что он не проверен и сколько в нём
+        несведённых чисел.
+        """
+        section_id = self.report["sections"][5]["section_id"]
+        self.client.put(
+            f"/api/reports/{self.report['id']}/sections/{section_id}",
+            json={"text": "Запас по мощности составил 7.3 дБ."},
+        )
+        verify = self.client.post(f"/api/reports/{self.report['id']}/verify").json()
+        self.assertGreater(verify["errors"], 0)
+        text = self.client.get(f"/api/reports/{self.report['id']}/export.md").text
+        self.assertIn("ЧЕРНОВИК", text)
+        self.assertIn(f"Верификатор нашёл ошибок: {verify['errors']}", text)
+
+    def test_clean_draft_is_not_scared_with_a_zero(self):
+        text = self.client.get(f"/api/reports/{self.report['id']}/export.md").text
+        self.assertIn("ЧЕРНОВИК", text)
+        self.assertNotIn("Верификатор нашёл ошибок", text)
+
     def test_approve_is_idempotent(self):
         first = self.client.post(f"/api/reports/{self.report['id']}/approve")
         self.assertEqual(first.status_code, 200, first.text)
