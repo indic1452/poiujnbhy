@@ -775,6 +775,11 @@ class CaseRepo:
 
         Принимает только известные колонки — остальное молча игнорируется,
         чтобы содержимое запроса из браузера не превращалось в SQL.
+
+        Заказчик хранится в двух местах: колонкой письма и полем факт-пакета,
+        откуда он попадает в отчёт. Пишем сразу в оба, иначе правка в
+        карточке жила до первого сохранения фактов, а потом молча
+        возвращалась к прежнему значению.
         """
         allowed = ("title", "customer", "incoming_no", "incoming_date",
                    "deadline", "priority", "assignee_id", "note", "status")
@@ -785,6 +790,18 @@ class CaseRepo:
                 values.append(fields[name])
         if not parts:
             return self.get(case_ref)
+
+        facts_json = None
+        if fields.get("customer") is not None:
+            current = self.get(case_ref)
+            if current is not None:
+                facts = dict(current.facts)
+                facts["customer"] = fields["customer"]
+                facts_json = json.dumps(facts, ensure_ascii=False)
+        if facts_json is not None:
+            parts.append("facts_json = ?")
+            values.append(facts_json)
+
         values.extend([utcnow(), case_ref])
         with self.db.transaction() as connection:
             connection.execute(

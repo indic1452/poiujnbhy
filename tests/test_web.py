@@ -706,6 +706,23 @@ class LetterCardTests(WebTestCase):
         logins = {item["login"] for item in self.client.get("/api/staff").json()["items"]}
         self.assertNotIn("engineer", logins)
 
+    def test_customer_stays_in_step_with_the_fact_pack(self):
+        # Заказчик хранится и колонкой письма, и полем факт-пакета — оттуда
+        # он попадает в отчёт. Правка в карточке жила до первого сохранения
+        # фактов, а потом молча возвращалась к прежнему значению.
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}", json={"customer": "ПАО «Новый»"})
+        body = self.client.get(f"/api/cases/{case['id']}").json()["case"]
+        self.assertEqual("ПАО «Новый»", body["customer"])
+        self.assertEqual("ПАО «Новый»", body["facts"]["customer"])
+
+        # Сохранение фактов больше не откатывает правку.
+        facts = dict(body["facts"])
+        facts["request"] = "уточнение к обращению"
+        self.client.put(f"/api/cases/{case['id']}/facts", json={"facts": facts})
+        again = self.client.get(f"/api/cases/{case['id']}").json()["case"]
+        self.assertEqual("ПАО «Новый»", again["customer"])
+
     def test_unknown_assignee_is_refused(self):
         case = self.create_case()
         response = self.client.patch(f"/api/cases/{case['id']}", json={"assignee_id": 9999})

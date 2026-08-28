@@ -2059,10 +2059,13 @@
         const general = h('div', { class: 'facts-section' },
             h('h4', {}, 'Общие сведения'),
             h('div', { class: 'kv' },
-                h('dt', {}, 'обращение'), h('dd', { class: 'mono' }, wb.case.case_id),
+                h('dt', {}, 'учётный номер'), h('dd', { class: 'mono' }, wb.case.case_id),
+                wb.case.incoming_no ? h('dt', {}, 'входящий') : null,
+                wb.case.incoming_no
+                    ? h('dd', { class: 'mono' }, wb.case.incoming_no) : null,
                 h('dt', {}, 'тип отчёта'), h('dd', {}, reportTypeTitle(wb.case.report_type)),
-                h('dt', {}, 'статус'), h('dd', {}, CASE_STATUS[wb.case.status] || wb.case.status)),
-            h('label', { class: 'field', style: { marginTop: '8px' } }, 'Заказчик (обезличенный)',
+                h('dt', {}, 'состояние'), h('dd', {}, CASE_STATUS[wb.case.status] || wb.case.status)),
+            h('label', { class: 'field', style: { marginTop: '8px' } }, 'Заказчик',
                 h('input', {
                     type: 'text', value: wb.facts.customer || '', disabled: !canEdit(),
                     oninput: (event) => { wb.facts.customer = event.target.value; markFactsDirty(); },
