@@ -1643,6 +1643,7 @@
         wb.activeSource = null;
         wb.focused = null;
         wb.busy = false;
+        wb.coverageError = '';
         wb.nodes = {};
     }
 
@@ -1651,6 +1652,7 @@
         const data = await api.get('/api/cases/' + encodeURIComponent(caseRef));
         wb.case = data.case;
         wb.coverage = data.coverage || {};
+        wb.coverageError = data.coverage_error || '';
         wb.reports = (data.reports || []).slice().sort((a, b) => a.version - b.version);
         wb.facts = clone(wb.case.facts || {});
         rebuildFactRows();
@@ -2005,6 +2007,16 @@
 
     /** Блок «каких обязательных измерений не хватает» — красные ключи из coverage. */
     function buildCoverageBox() {
+        // Факт-пакет правили руками и сломали: расчёт покрытия не прошёл.
+        // Письмо при этом открывается — иначе чинить пакет было бы негде.
+        if (wb.coverageError) {
+            return h('div', { class: 'coverage-box coverage-box--bad' },
+                h('b', {}, 'Факт-пакет не разбирается'),
+                h('div', { class: 'small' }, wb.coverageError),
+                h('div', { class: 'small muted' },
+                    'Исправьте пакет в этой панели или в режиме JSON — '
+                    + 'до этого проверка обязательных измерений не работает.'));
+        }
         const coverage = localCoverage();
         if (!coverage.length) {
             return h('div', { class: 'badge badge--ok', style: { marginBottom: '12px' } },
@@ -2359,11 +2371,25 @@
             h('div', { class: 'line' },
                 h('div', { class: 'case-title' },
                     wb.case.title || reportTypeTitle(wb.case.report_type),
-                    h('span', { class: 'case-id' }, wb.case.case_id)),
+                    h('span', { class: 'case-id' },
+                        wb.case.incoming_no || wb.case.case_id)),
                 statusBadge(wb.case.status),
+                // Срок и исполнитель — то, что спрашивают о письме первым.
+                // Без них приходилось возвращаться в список.
+                wb.case.deadline ? deadlineCell(wb.case) : null,
+                h('span', { class: 'small muted nowrap' },
+                    wb.case.assignee_name || 'исполнитель не назначен'),
+                wb.case.customer
+                    ? h('span', { class: 'small muted' }, wb.case.customer) : null,
+                h('span', { class: 'spacer' }),
+                canEdit() ? h('button', {
+                    class: 'btn btn--sm',
+                    title: 'Исполнитель, срок ответа, входящий номер, состояние',
+                    onclick: () => openCaseCard(wb.case, () => renderRoute(state.route)),
+                }, 'Карточка письма') : null,
                 h('button', {
                     class: 'btn btn--sm',
-                    title: 'Открыть разговор с помощником, привязанный к этому обращению',
+                    title: 'Открыть разговор с помощником по этому письму',
                     onclick: (event) => askAssistantAboutCase(event.currentTarget),
                 }, 'Спросить помощника'),
                 isAdmin() ? h('button', {
@@ -2714,6 +2740,7 @@
         const data = await api.get('/api/cases/' + wb.case.id);
         wb.case = data.case;
         wb.coverage = data.coverage || {};
+        wb.coverageError = data.coverage_error || '';
         wb.reports = (data.reports || []).slice().sort((a, b) => a.version - b.version);
         if (!wb.factsDirty) {
             wb.facts = clone(wb.case.facts || {});

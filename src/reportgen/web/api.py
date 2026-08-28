@@ -346,9 +346,20 @@ def get_case(request: Request, case_ref: int) -> Dict[str, Any]:
     service = _service(request)
     repos = _repos(request)
     reports = repos.reports.list_for_case(case.id)
+    # Покрытие считается по факт-пакету, и на битом пакете расчёт падает.
+    # Раньше вместе с ним падал весь ответ, и письмо нельзя было даже
+    # открыть, чтобы пакет починить. Теперь письмо открывается, а вместо
+    # покрытия приходит причина.
+    try:
+        coverage = service.coverage(case)
+        coverage_error = ""
+    except ServiceError as error:
+        coverage, coverage_error = None, str(error)
+
     return {
         "case": case.to_dict(with_facts=True),
-        "coverage": service.coverage(case),
+        "coverage": coverage,
+        "coverage_error": coverage_error,
         "reports": [
             {
                 "id": report.id,

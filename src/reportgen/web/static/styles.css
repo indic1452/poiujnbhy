@@ -351,6 +351,14 @@ body.side-min .side {
 }
 
 /* Счётчик у раздела: сколько писем в работе, сколько просрочено. */
+/* ФИО в таблице нагрузки не переносим: столбец узкий, а перенос делает
+   строки разной высоты и список перестаёт читаться. */
+table.grid td > div:first-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .side-nav .side-count {
     margin-left: auto;
     font-size: var(--fs-xs);
@@ -3311,11 +3319,13 @@ select.status-off {
 }
 
 /* Плитки верхнего ряда дашборда: цифра, что это за цифра, чем помочь. */
+/* Шесть плиток должны укладываться в один ряд и на ноутбуке 1366: иначе
+   шестая уезжает на вторую строку и рядом с ней пустует полэкрана. */
 .tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(166px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
 }
 
 .tile {
@@ -3386,7 +3396,10 @@ select.status-off {
     min-width: 0;
 }
 
-@media (max-width: 1200px) {
+/* Две колонки дашборда требуют примерно 1500 px вместе с меню: в таблице
+   нагрузки пять столбцов, и на 1366 ФИО начинало переноситься на три
+   строки. Уже — складываем в одну колонку. */
+@media (max-width: 1500px) {
     .board-cols {
         grid-template-columns: 1fr;
     }
@@ -3472,6 +3485,14 @@ select.status-off {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Дата и фамилия исполнителя не переносятся: перенос фамилии на две строки
+   ломает выравнивание всего списка. */
+.due-list li > .due,
+.due-list li > .small {
+    flex: 0 0 auto;
     white-space: nowrap;
 }
 
@@ -3646,4 +3667,11 @@ table.grid .row-actions .btn--icon svg {
     gap: 6px;
     flex-wrap: wrap;
     margin-top: 6px;
+}
+
+/* Факт-пакет не разбирается: письмо открыто, но проверка не работает. */
+.coverage-box--bad {
+    border-color: var(--danger);
+    background: var(--danger-soft);
+    color: var(--danger);
 }
