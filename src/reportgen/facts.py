@@ -96,6 +96,9 @@ class FactPack:
 
     case_id: str
     report_type: str
+    #: Номер отправителя: числовой номер группы или части, откуда пришло
+    #: письмо. Поле называется customer по историческим причинам — так же
+    #: названа колонка в базе и ключ в факт-пакете уже принятых обращений.
     customer: str = ""
     equipment: Dict[str, Any] = field(default_factory=dict)
     request: str = ""
@@ -194,7 +197,7 @@ class FactPack:
         artifacts = ", ".join(a.get("name", "?") for a in self.artifacts) or "—"
         return (
             f"Обращение: {self.case_id}\n"
-            f"Заказчик: {self.customer or '—'}\n"
+            f"Отправитель: {self.customer or '—'}\n"
             f"Оборудование: {equipment}\n"
             f"Суть обращения: {self.request or '—'}\n"
             f"Полученные материалы: {artifacts}"

@@ -63,6 +63,26 @@ def _since_utc(days: int) -> str:
     return moment.isoformat(timespec="seconds")
 
 
+#: Номер отправителя: числовой номер группы или части, откуда пришло письмо.
+#: Разделители допускаем — в делопроизводстве встречаются номера вида «12/345»
+#: и «1274-3». Букв нет: поле числовое, так его и заводят.
+SENDER_RE = re.compile(r"\d[\d\s/.\-]*")
+
+
+def _sender_or_empty(value: Any) -> str:
+    """Номер отправителя либо пустая строка. Иначе — понятная ошибка."""
+    text = " ".join(str(value or "").split())
+    if not text:
+        return ""
+    if len(text) > 32:
+        raise ServiceError("номер отправителя длиннее 32 знаков", 400)
+    if not SENDER_RE.fullmatch(text):
+        raise ServiceError(
+            "номер отправителя: только цифры и разделители, например 1274 или 12/345", 400
+        )
+    return text
+
+
 def _date_or_empty(value: Any, field: str) -> str:
     """Дата вида ГГГГ-ММ-ДД либо пустая строка. Иначе — понятная ошибка."""
     text = str(value or "").strip()
@@ -284,9 +304,11 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
     payload = _body(request)
 
     fields: Dict[str, Any] = {}
-    for name in ("title", "customer", "incoming_no", "note"):
+    for name in ("title", "incoming_no", "note"):
         if name in payload:
             fields[name] = str(payload[name] or "").strip()
+    if "customer" in payload:
+        fields["customer"] = _sender_or_empty(payload["customer"])
     for name in ("incoming_date", "deadline"):
         if name in payload:
             fields[name] = _date_or_empty(payload[name], name)
@@ -331,6 +353,8 @@ def create_case(request: Request) -> Dict[str, Any]:
     if priority not in CASE_PRIORITIES:
         raise ServiceError(f"неизвестный приоритет '{priority}'", 400)
     payload["priority"] = priority
+    if "customer" in payload:
+        payload["customer"] = _sender_or_empty(payload["customer"])
     if payload.get("assignee_id"):
         assignee = _repos(request).users.get(int(payload["assignee_id"]))
         if assignee is None or not assignee.active:

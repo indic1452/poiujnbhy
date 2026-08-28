@@ -143,9 +143,15 @@ class LibraryDocsTests(unittest.TestCase):
         self.doc = (ROOT / "docs" / "18-library.md").read_text(encoding="utf-8")
 
     def test_all_doc_types_documented(self):
+        # Каталог инженер заводит сам — про него в инструкции должна быть
+        # строка вида `standards/`. Кроме «прочего»: каталога misc/ нет,
+        # этот тип система ставит сама, когда не поняла документ. Требовать
+        # для него косую черту значит требовать написать неправду.
         for doc_type in DOC_TYPES:
             with self.subTest(doc_type=doc_type):
-                self.assertIn(f"`{doc_type}/`", self.doc)
+                expected = f"`{doc_type}`" if doc_type == "misc" else f"`{doc_type}/`"
+                self.assertIn(expected, self.doc)
+        self.assertNotIn("`misc/`", self.doc, "каталога misc/ не существует")
 
     def test_all_domains_documented(self):
         for name in domains.registry(ROOT / "templates" / "domains.json").ids:

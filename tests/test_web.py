@@ -706,22 +706,57 @@ class LetterCardTests(WebTestCase):
         logins = {item["login"] for item in self.client.get("/api/staff").json()["items"]}
         self.assertNotIn("engineer", logins)
 
+    def test_sender_is_a_number(self):
+        # Отправитель — числовой номер группы или части, откуда пришло письмо,
+        # а не название организации.
+        case = self.create_case()
+        for good in ("1274", "12/345", "1274-3", "1 274"):
+            with self.subTest(value=good):
+                response = self.client.patch(f"/api/cases/{case['id']}",
+                                             json={"customer": good})
+                self.assertEqual(200, response.status_code, response.text)
+                self.assertEqual(good, response.json()["case"]["customer"])
+
+    def test_sender_refuses_text(self):
+        case = self.create_case()
+        for bad in ("ПАО «Ростелеком»", "в/ч 74326", "группа", "9" * 40):
+            with self.subTest(value=bad):
+                response = self.client.patch(f"/api/cases/{case['id']}",
+                                             json={"customer": bad})
+                self.assertEqual(400, response.status_code)
+                self.assertIn("отправител", response.json()["error"].lower())
+
+    def test_sender_is_checked_at_registration_too(self):
+        payload = dict(CASE)
+        response = self.client.post("/api/cases", json={
+            "report_type": payload["report_type"], "case_id": "SUP-НОМЕР",
+            "facts": {**payload, "case_id": "SUP-НОМЕР", "customer": ""},
+            "customer": "не число",
+        })
+        self.assertEqual(400, response.status_code)
+
+    def test_sender_extra_spaces_are_trimmed(self):
+        case = self.create_case()
+        fresh = self.client.patch(f"/api/cases/{case['id']}",
+                                  json={"customer": "  12   345  "}).json()["case"]
+        self.assertEqual("12 345", fresh["customer"])
+
     def test_customer_stays_in_step_with_the_fact_pack(self):
         # Заказчик хранится и колонкой письма, и полем факт-пакета — оттуда
         # он попадает в отчёт. Правка в карточке жила до первого сохранения
         # фактов, а потом молча возвращалась к прежнему значению.
         case = self.create_case()
-        self.client.patch(f"/api/cases/{case['id']}", json={"customer": "ПАО «Новый»"})
+        self.client.patch(f"/api/cases/{case['id']}", json={"customer": "4210"})
         body = self.client.get(f"/api/cases/{case['id']}").json()["case"]
-        self.assertEqual("ПАО «Новый»", body["customer"])
-        self.assertEqual("ПАО «Новый»", body["facts"]["customer"])
+        self.assertEqual("4210", body["customer"])
+        self.assertEqual("4210", body["facts"]["customer"])
 
         # Сохранение фактов больше не откатывает правку.
         facts = dict(body["facts"])
         facts["request"] = "уточнение к обращению"
         self.client.put(f"/api/cases/{case['id']}/facts", json={"facts": facts})
         again = self.client.get(f"/api/cases/{case['id']}").json()["case"]
-        self.assertEqual("ПАО «Новый»", again["customer"])
+        self.assertEqual("4210", again["customer"])
 
     def test_unknown_assignee_is_refused(self):
         case = self.create_case()

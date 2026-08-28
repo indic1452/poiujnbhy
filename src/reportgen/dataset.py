@@ -469,7 +469,8 @@ REVERSE_SYSTEM_PROMPT = """Ты — инженер-аналитик, котор�
 
 REVERSE_PROMPT_TEMPLATE = """### СХЕМА ФАКТ-ПАКЕТА
 
-Верхний уровень: case_id (строка), report_type (строка), customer (строка), \
+Верхний уровень: case_id (строка), report_type (строка), customer — номер \
+отправителя цифрами (строка), \
 request (строка), equipment (объект «название: значение»), keywords (список строк), \
 measurements (объект), findings (список), timeline (список объектов с полями date и event).
 
@@ -506,7 +507,7 @@ description, evidence, refs. Поля id, severity, title обязательны
 _SAMPLE_JSON = """{
   "case_id": "SUP-0000-000",
   "report_type": "signal_issue",
-  "customer": "ЗАКАЗЧИК_00",
+  "customer": "1274",
   "request": "краткая формулировка обращения",
   "equipment": {"линия": "...", "модем": "..."},
   "keywords": ["..."],

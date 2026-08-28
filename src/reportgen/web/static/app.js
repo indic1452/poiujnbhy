@@ -1068,8 +1068,9 @@
     // 5. Экран «Письма»
     // =====================================================================
 
-    /* Раздел ведёт входящие письма заказчиков: у каждого письма есть входящий
-       номер, срок ответа, исполнитель и подготовленный ответ — отчёт. */
+    /* Раздел ведёт входящие письма: у каждого есть входящий номер, номер
+       отправителя (числовой — группа или часть, откуда пришло), срок ответа,
+       исполнитель и подготовленный ответ — отчёт. */
 
     const casesState = {
         view: 'open',       // open | overdue | mine | all | архивные состояния
@@ -1114,7 +1115,7 @@
         const tabs = h('div', { class: 'seg' });
         const searchInput = h('input', {
             type: 'search',
-            placeholder: 'Входящий номер, тема, заказчик',
+            placeholder: 'Входящий номер, тема, отправитель',
             value: casesState.query,
             oninput: debounce((event) => {
                 casesState.query = event.target.value.trim();
@@ -1128,7 +1129,7 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('div', { class: 'page-note' }, 'Входящие обращения заказчиков и ответы на них'),
+                h('div', { class: 'page-note' }, 'Входящие письма и подготовленные ответы'),
                 h('div', { class: 'page-head-actions' },
                     h('button', { class: 'btn', onclick: () => loadCases() }, 'Обновить'),
                     canEdit() ? h('button', {
@@ -1207,7 +1208,8 @@
                             item.priority && item.priority !== 'normal'
                                 ? h('span', { class: 'tag tag--' + item.priority },
                                     CASE_PRIORITY[item.priority]) : null),
-                        h('td', { class: 'small' }, item.customer || '—'),
+                        h('td', { class: 'mono nowrap' },
+                            item.customer || h('span', { class: 'faint' }, '—')),
                         h('td', { class: 'small nowrap' },
                             item.assignee_name || h('span', { class: 'faint' }, 'не назначен')),
                         h('td', { class: 'nowrap' }, deadlineCell(item)),
@@ -1230,7 +1232,7 @@
                         h('thead', {}, h('tr', {},
                             h('th', {}, 'Входящий'),
                             h('th', {}, 'Тема'),
-                            h('th', {}, 'Заказчик'),
+                            h('th', {}, 'Отправитель'),
                             h('th', {}, 'Исполнитель'),
                             h('th', {}, 'Срок ответа'),
                             h('th', {}, 'Состояние'),
@@ -1324,7 +1326,11 @@
                 CASE_PRIORITY[key])));
         const status = h('select', {}, CASE_FLOW.map((key) =>
             h('option', { value: key, selected: item.status === key }, CASE_STATUS[key])));
-        const customer = h('input', { type: 'text', value: item.customer || '' });
+        const customer = h('input', {
+            type: 'text', class: 'mono', inputmode: 'numeric',
+            placeholder: '1274', value: item.customer || '',
+            title: 'Числовой номер группы или части, откуда пришло письмо',
+        });
         const note = h('textarea', { rows: '3' }, item.note || '');
 
         const save = h('button', { class: 'btn btn--primary', onclick: submit }, 'Сохранить');
@@ -1334,7 +1340,7 @@
                 h('div', { class: 'form-grid' },
                     h('label', { class: 'field' }, 'Входящий номер', incomingNo),
                     h('label', { class: 'field' }, 'Дата письма', incomingDate),
-                    h('label', { class: 'field' }, 'Заказчик', customer),
+                    h('label', { class: 'field' }, 'Отправитель (номер)', customer),
                     h('label', { class: 'field' }, 'Срок ответа', deadline),
                     h('label', { class: 'field' }, 'Исполнитель', assignee),
                     h('label', { class: 'field' }, 'Приоритет', priority),
@@ -1451,7 +1457,10 @@
             if (!jsonTouched) fillSkeleton();
         });
         const incomingDate = h('input', { type: 'date', value: todayIso() });
-        const customerInput = h('input', { type: 'text', placeholder: 'ПАО «Ростелеком»' });
+        const customerInput = h('input', {
+            type: 'text', class: 'mono', inputmode: 'numeric', placeholder: '1274',
+            title: 'Числовой номер группы или части, откуда пришло письмо',
+        });
         const deadlineInput = h('input', { type: 'date' });
         const priorityPick = h('select', {}, Object.keys(CASE_PRIORITY).map((key) =>
             h('option', { value: key }, CASE_PRIORITY[key])));
@@ -1538,7 +1547,8 @@
                 h('div', { class: 'form-grid' },
                     h('label', { class: 'field' }, 'Входящий номер', incomingNo),
                     h('label', { class: 'field' }, 'Дата письма', incomingDate),
-                    h('label', { class: 'field' }, 'Заказчик', customerInput),
+                    h('label', { class: 'field' }, 'Отправитель (номер)', customerInput,
+                        h('span', { class: 'small faint' }, 'номер группы или части')),
                     h('label', { class: 'field' }, 'Срок ответа', deadlineInput),
                     h('label', { class: 'field' }, 'Исполнитель', assigneePick),
                     h('label', { class: 'field' }, 'Приоритет', priorityPick)),
@@ -2065,9 +2075,11 @@
                     ? h('dd', { class: 'mono' }, wb.case.incoming_no) : null,
                 h('dt', {}, 'тип отчёта'), h('dd', {}, reportTypeTitle(wb.case.report_type)),
                 h('dt', {}, 'состояние'), h('dd', {}, CASE_STATUS[wb.case.status] || wb.case.status)),
-            h('label', { class: 'field', style: { marginTop: '8px' } }, 'Заказчик',
+            h('label', { class: 'field', style: { marginTop: '8px' } }, 'Отправитель (номер)',
                 h('input', {
-                    type: 'text', value: wb.facts.customer || '', disabled: !canEdit(),
+                    type: 'text', class: 'mono', inputmode: 'numeric', placeholder: '1274',
+                    value: wb.facts.customer || '', disabled: !canEdit(),
+                    title: 'Числовой номер группы или части, откуда пришло письмо',
                     oninput: (event) => { wb.facts.customer = event.target.value; markFactsDirty(); },
                 })),
             h('label', { class: 'field', style: { marginTop: '8px' } }, 'Суть обращения',
@@ -2395,7 +2407,8 @@
                 h('span', { class: 'small muted nowrap' },
                     wb.case.assignee_name || 'исполнитель не назначен'),
                 wb.case.customer
-                    ? h('span', { class: 'small muted' }, wb.case.customer) : null,
+                    ? h('span', { class: 'small muted mono' },
+                        'от ' + wb.case.customer) : null,
                 h('span', { class: 'spacer' }),
                 canEdit() ? h('button', {
                     class: 'btn btn--sm',
