@@ -2941,6 +2941,9 @@
             toast('В разделе нет несохранённых правок', 'info', 3000);
             return;
         }
+        // Правка подписанного отчёта снимает подпись — молча этого делать
+        // нельзя: инженер мог открыть раздел, чтобы просто перечитать.
+        if (!(await confirmUnsign())) return;
         const text = wb.drafts.get(sectionId);
         setSectionBusy(sectionId, true, 'Сохранение и пересборка отчёта');
         try {
@@ -2954,6 +2957,19 @@
         } finally {
             setSectionBusy(sectionId, false);
         }
+    }
+
+    /** Согласие снять подпись, если отчёт уже утверждён. */
+    async function confirmUnsign() {
+        if (!wb.report || wb.report.status !== 'approved') return true;
+        return confirmDialog({
+            title: 'Отчёт подписан',
+            message: 'Отчёт версии ' + wb.report.version + ' утверждён. '
+                + 'Правка снимет подпись: подпись стоит под тем текстом, '
+                + 'который прочитал утвердивший.',
+            note: 'После правки отчёт нужно будет утвердить заново.',
+            confirmText: 'Править и снять подпись',
+        });
     }
 
     async function regenerateSection(sectionId) {
@@ -2994,6 +3010,8 @@
             title: 'Вернуть черновик модели',
             message: 'Текущий текст раздела «' + section.title +
                 '» будет заменён исходным черновиком модели.',
+            note: wb.report.status === 'approved'
+                ? 'Отчёт утверждён — правка снимет подпись, утвердить придётся заново.' : '',
             confirmText: 'Вернуть черновик',
             danger: true,
         });

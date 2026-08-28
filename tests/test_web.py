@@ -1533,6 +1533,18 @@ class InterfaceCopyTests(unittest.TestCase):
         self.html = (static / "index.html").read_text(encoding="utf-8")
         self.login = (static / "login.html").read_text(encoding="utf-8")
 
+    def test_editing_a_signed_report_warns_before_removing_the_signature(self):
+        # Инженер мог открыть раздел, чтобы просто перечитать. Молча снимать
+        # подпись с отправленного отчёта нельзя.
+        self.assertIn("confirmUnsign", self.js)
+        self.assertIn("Правка снимет подпись", self.js)
+        self.assertIn("Править и снять подпись", self.js)
+
+    def test_deletion_says_what_it_does_not_remove(self):
+        # Выгруженные DOCX лежат в каталоге выгрузок: инженер выгрузил их сам,
+        # стирать их за него нельзя, но и молчать об этом тоже.
+        self.assertIn("Уже выгруженные файлы DOCX", self.js)
+
     def strings(self, text: str) -> str:
         """Только строковые литералы: комментарии в коде — не интерфейс."""
         return " ".join(re.findall(r"'((?:[^'\\\n]|\\.)*)'", text))
