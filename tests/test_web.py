@@ -123,6 +123,26 @@ class HealthAndConfigTests(WebTestCase):
         self.assertIn("signal_issue", types)
         self.assertIn("literature", body["doc_types"])
 
+    def test_health_without_login_says_only_that_it_is_alive(self):
+        """Признак жизни нужен скриптам запуска и без входа.
+
+        А сколько в отделе сотрудников, писем и отчётов — сведения о работе
+        организации: посторонним в них делать нечего. Адрес и имя модели —
+        тем более.
+        """
+        self.client.cookies.clear()
+        body = self.client.get("/api/health").json()
+        self.assertEqual("ok", body["status"])
+        self.assertNotIn("counts", body)
+        self.assertNotIn("llm", body)
+
+    def test_config_requires_login(self):
+        # Окно входа справочников не запрашивает: оформление оно берёт
+        # отдельным маршрутом. А состав шаблонов отчётов, перечень
+        # направлений работы и адрес модели постороннему знать незачем.
+        self.client.cookies.clear()
+        self.assertEqual(401, self.client.get("/api/config").status_code)
+
     def test_security_headers(self):
         response = self.client.get("/api/health")
         self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")

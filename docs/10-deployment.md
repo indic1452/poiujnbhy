@@ -310,7 +310,6 @@ sudoedit /etc/reportgen/reportgen.env
 
 | Переменная | Значение |
 |---|---|
-| `REPORTGEN_SECRET_KEY` | `openssl rand -hex 32` — без него cookie-сессии не подписаны |
 | `REPORTGEN_LLM_MODEL` | ровно то, что в `--alias` у llama-server: имя попадает в служебный блок отчёта (инвариант воспроизводимости, [docs/01 р. 1.4](01-architecture.md)) |
 | `REPORTGEN_BRAND_NAME`, `REPORTGEN_REPORT_FOOTER` | название компании и реквизиты в колонтитуле |
 
@@ -706,7 +705,7 @@ sudo reportgen-cli library --doc-type standards  # и в правильном л
 | `database is locked` | параллельная запись или копирование базы через `cp` | не запускать несколько воркеров uvicorn, для копий — только `deploy/backup.sh` |
 | `Permission denied` в `/var/lib/reportgen` | каталог создан от root или путь вне `ReadWritePaths=` | `chown -R reportgen:reportgen`, поправить юнит |
 | «Интерфейс не установлен» на главной | нет файлов в `src/reportgen/web/static` | API при этом работает; собрать интерфейс или обновить установку |
-| Не пускает после смены `REPORTGEN_SECRET_KEY` | все сессии инвалидированы | это ожидаемо, войти заново |
+| Не пускает после перезапуска | сессия истекла (`session_ttl_hours`, по умолчанию 12 ч) | войти заново |
 | CLI показывает пустую базу, а интерфейс — полную | команда запущена без настроек сервиса и создала свою базу в текущем каталоге | всегда через `reportgen-cli`; лишнюю базу `./var/reportgen.db` удалить |
 | В отчёте нет ссылок на источники | библиотека пуста или поиск ничего не вернул | см. предыдущий раздел; без источников секция помечается как ненадёжная |
 | `reportgen: command not found` | команды живут в venv | пользуйтесь обёрткой `reportgen-cli` (10.6) или полным путём `/opt/reportgen/.venv/bin/reportgen` |

@@ -217,6 +217,13 @@ def me(request: Request) -> Dict[str, Any]:
 
 @router.get("/config")
 def config(request: Request) -> Dict[str, Any]:
+    """Справочники интерфейса: шаблоны отчётов, типы документов, направления.
+
+    Требует входа. Окно входа этих сведений не запрашивает — оформление оно
+    берёт отдельным маршрутом, — а состав шаблонов, перечень направлений
+    работы и адрес модели постороннему знать незачем.
+    """
+    require_user(request)
     settings = _settings(request)
     service = _service(request)
     outlines = []
@@ -1521,6 +1528,12 @@ def audit(request: Request, limit: int = 200) -> Dict[str, Any]:
 
 @router.get("/health")
 def health(request: Request) -> Dict[str, Any]:
+    """Жив ли сервис. Отвечает и без входа — этим пользуются скрипты запуска.
+
+    Без входа отдаём только признак жизни. Сколько в отделе сотрудников,
+    писем и отчётов — сведения о работе организации, и посторонним в них
+    делать нечего; модель и её адрес — тем более.
+    """
     repos = _repos(request)
     settings = _settings(request)
     try:
@@ -1528,13 +1541,15 @@ def health(request: Request) -> Dict[str, Any]:
         database = "ok"
     except Exception as error:  # noqa: BLE001
         counts, database = {}, f"ошибка: {error}"
-    return {
+    body = {
         "status": "ok" if database == "ok" else "degraded",
         "database": database,
-        "counts": counts,
-        "llm": {"kind": settings.llm_kind, "model": settings.llm_model},
         "auth_enabled": settings.auth_enabled,
     }
+    if get_user(request) is not None or not settings.auth_enabled:
+        body["counts"] = counts
+        body["llm"] = {"kind": settings.llm_kind, "model": settings.llm_model}
+    return body
 
 
 # ------------------------------------------------------------- служебное ---

@@ -161,7 +161,6 @@ class Settings:
     auth_enabled: bool = True
     session_ttl_hours: int = 12
     max_upload_mb: int = 200
-    secret_key: str = ""
 
     def __post_init__(self) -> None:
         for name in ("data_dir", "db_path", "library_dir", "upload_dir", "export_dir",
@@ -213,7 +212,7 @@ class Settings:
 
     def public_dict(self) -> Dict[str, Any]:
         """Настройки без секретов — их можно отдавать в интерфейс."""
-        hidden = {"secret_key", "llm_api_key", "embed_api_key", "rerank_api_key"}
+        hidden = {"llm_api_key", "embed_api_key", "rerank_api_key"}
         return {k: v for k, v in self.to_dict().items() if k not in hidden}
 
 
