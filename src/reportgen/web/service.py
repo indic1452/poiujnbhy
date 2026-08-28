@@ -646,6 +646,10 @@ class ReportService:
         specs = {spec.id: spec for spec in outline.sections}
         facts = self.facts_of(case)
         sources = {record["label"]: record for record in report.meta.get("sources", [])}
+        # Отчёт могли утвердить, поправить и утвердить снова. В наборе
+        # остаётся только последнее утверждение: прежнее содержит вариант,
+        # который инженер сам же и забраковал.
+        self.repos.edits.drop_for_report(report.id)
         saved = 0
         for section in report.sections:
             if section.text.strip() == section.draft_text.strip():

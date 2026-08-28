@@ -1010,6 +1010,21 @@ class EditPairRepo:
             )
         return int(cursor.lastrowid)  # type: ignore[arg-type]
 
+    def drop_for_report(self, report_id: int) -> int:
+        """Убрать пары прошлого утверждения этого отчёта.
+
+        Отчёт утверждают, снимают подпись, правят и утверждают снова. Пары
+        от каждого утверждения копились: одна и та же секция попадала в
+        обучающий набор дважды, и первым — тот вариант, который инженер
+        потом сам же и забраковал. Учить на отклонённом тексте как на
+        «финале инженера» — ровно то, от чего предостерегает док. 03, 3.7.
+        """
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "DELETE FROM edit_pairs WHERE report_id = ?", (report_id,)
+            )
+        return cursor.rowcount or 0
+
     def list(self, limit: int = 500, offset: int = 0) -> List[EditPair]:
         rows = self.db.query(
             "SELECT * FROM edit_pairs ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset)

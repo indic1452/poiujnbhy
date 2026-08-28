@@ -559,6 +559,28 @@ class ReportFlowTests(WebTestCase):
         self.assertIn("ЧЕРНОВИК", text)
         self.assertNotIn("Верификатор нашёл ошибок", text)
 
+    def test_reapproval_replaces_the_pairs_and_not_appends(self):
+        """Забракованный вариант не должен остаться в обучающем наборе.
+
+        Отчёт утверждают, правят и утверждают снова. Пары от каждого
+        утверждения копились: секция попадала в набор дважды, и первым —
+        тот текст, который инженер сам же и забраковал. Учить на нём как
+        на «финале инженера» — ровно то, от чего предостерегает док. 03.
+        """
+        report_id = self.report["id"]
+        section_id = self.report["sections"][5]["section_id"]
+        self.client.put(f"/api/reports/{report_id}/sections/{section_id}",
+                        json={"text": "Первый вариант инженера."})
+        self.client.post(f"/api/reports/{report_id}/approve")
+        self.assertEqual(1, self.repos.edits.count())
+
+        self.client.put(f"/api/reports/{report_id}/sections/{section_id}",
+                        json={"text": "Окончательный вариант инженера."})
+        self.client.post(f"/api/reports/{report_id}/approve")
+        pairs = self.repos.edits.list()
+        self.assertEqual(1, len(pairs), "пары от прошлого утверждения остались")
+        self.assertEqual("Окончательный вариант инженера.", pairs[0].final)
+
     def test_approve_is_idempotent(self):
         first = self.client.post(f"/api/reports/{self.report['id']}/approve")
         self.assertEqual(first.status_code, 200, first.text)
