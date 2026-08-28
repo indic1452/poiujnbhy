@@ -15,13 +15,16 @@ from typing import Any, Dict, Iterator, List, Sequence
 
 from ..prompts import ASSISTANT_PROMPT, ASSISTANT_SYSTEM_PROMPT, ASSISTANT_TITLE_PROMPT
 from ..retrieval import Hit
-from ..store.models import Chat, ChatMessage, User
+from ..store.models import ATTACHMENT_TITLES, Chat, ChatMessage, User
 from .service import ReportService, ServiceError
 
 HISTORY_DEPTH = 6
 HISTORY_CHARS = 1500
 #: Сколько заголовков разделов показывать в оглавлении одного документа.
 OUTLINE_HEADINGS = 30
+#: Сколько знаков библиотеки остаётся при любых вложениях: без источников
+#: помощник превращается в обычную модель без ссылок на нормы.
+MIN_LIBRARY_CHARS = 6000
 #: Запасное значение, если в настройках его нет (старый settings.json).
 SOURCE_CHARS = 1400
 MAX_QUESTION = 4000
@@ -113,17 +116,27 @@ class AssistantService:
         llm = self.reports.get_llm()
         pieces: List[str] = []
         stream = getattr(llm, "stream", None)
-        if stream is None:
-            text = llm.complete(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                max_tokens=self._max_tokens(), temperature=0.3)
-            pieces.append(text)
-            yield {"type": "delta", "text": text}
-        else:
-            for piece in stream(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                max_tokens=self._max_tokens(), temperature=0.3,
-                                history=prepared["history"]):
-                pieces.append(piece)
-                yield {"type": "delta", "text": piece}
+        try:
+            if stream is None:
+                text = llm.complete(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
+                                    max_tokens=self._max_tokens(), temperature=0.3,
+                                    history=prepared["history"])
+                pieces.append(text)
+                yield {"type": "delta", "text": text}
+            else:
+                for piece in stream(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
+                                    max_tokens=self._max_tokens(), temperature=0.3,
+                                    history=prepared["history"]):
+                    pieces.append(piece)
+                    yield {"type": "delta", "text": piece}
+        except GeneratorExit:
+            # Браузер отсоединился: инженер закрыл вкладку или ушёл в другой
+            # раздел. Сгенерированное к этому моменту всё равно сохраняем —
+            # иначе минута работы модели пропадает бесследно, а в разговоре
+            # остаётся вопрос без ответа. Помечаем ответ как прерванный.
+            if pieces:
+                self._finish(user, prepared, "".join(pieces), interrupted=True)
+            raise
 
         result = self._finish(user, prepared, "".join(pieces))
         yield {"type": "done", **result}
@@ -145,7 +158,13 @@ class AssistantService:
         ]
         question_message = self.repos.chats.add_message(chat.id, "user", question)
 
-        hits = self._search(chat, question, history, top_k)
+        # Вложения привязываем к отправленному вопросу: в разговоре видно,
+        # с какими файлами он был задан.
+        attachments = self.repos.chats.attachments(chat.id, pending_only=True)
+        if attachments:
+            self.repos.chats.bind_attachments(chat.id, question_message.id)
+
+        hits = self._search(chat, question, history, top_k, attachments=attachments)
         retriever = self.reports.get_retriever()
         # Половина библиотеки английская, а спрашивают по-русски. Если запрос
         # дополнен по двуязычному словарю — сказать об этом: иначе английский
@@ -155,11 +174,13 @@ class AssistantService:
         expansion = list(getattr(retriever, "last_expansion", []) or [])
         warning = getattr(retriever, "last_warning", "") or ""
 
-        sources = self._build_sources(hits)
+        attachment_block, attachment_chars = self._attachment_block(attachments)
+        sources = self._build_sources(hits, reserved=attachment_chars)
         documents = self._document_cards(sources)
         prompt = ASSISTANT_PROMPT.format(
             question=question,
             case_block=self._case_block(chat),
+            attachments=attachment_block,
             library_map=_render_map(documents),
             sources=_render_sources(sources, documents),
             target_words=int(getattr(self.settings, "assistant_target_words", 0) or 500),
@@ -171,6 +192,7 @@ class AssistantService:
             "history": history,
             "sources": sources,
             "documents": documents,
+            "attachments": [item.to_dict() for item in attachments],
             "expansion": expansion,
             "warning": warning,
             "prompt": prompt,
@@ -178,7 +200,37 @@ class AssistantService:
 
     # -- сборка материала ---------------------------------------------------
 
-    def _build_sources(self, hits: Sequence[Hit]) -> List[Dict[str, Any]]:
+    def _attachment_block(self, attachments: Sequence[Any]) -> tuple[str, int]:
+        """Приложенные файлы для промпта и их вес в знаках.
+
+        Дамп на десятки мегабайт в окно модели не поместится никогда, поэтому
+        берём начало: там заголовки сессии и первые ошибки, по которым обычно
+        и понятно, что случилось. Об обрезке говорим прямо — иначе модель
+        сделает вывод «ошибок больше нет» по обрезанному хвосту.
+        """
+        if not attachments:
+            return "", 0
+        limit = int(getattr(self.settings, "assistant_attachment_chars", 0) or 8000)
+        blocks = []
+        for item in attachments:
+            text = (item.text or "").strip()
+            if not text:
+                blocks.append(
+                    f"[Файл: {item.name}] текст извлечь не удалось"
+                    + (f" — {item.note}" if item.note else "")
+                )
+                continue
+            cut = len(text) > limit
+            body = text[:limit].rstrip() + ("\n…(файл показан не целиком)" if cut else "")
+            head = f"[Файл: {item.name}, {ATTACHMENT_TITLES.get(item.kind, item.kind)}"
+            if cut:
+                head += f", показано {limit} из {len(text)} знаков"
+            head += "]"
+            blocks.append(f"{head}\n{body}")
+        block = "\n### ПРИЛОЖЕННЫЕ ФАЙЛЫ\n" + "\n\n".join(blocks) + "\n"
+        return block, len(block)
+
+    def _build_sources(self, hits: Sequence[Hit], *, reserved: int = 0) -> List[Dict[str, Any]]:
         """Фрагменты для промпта: с соседями и в пределах окна контекста.
 
         Три вещи, которых раньше не было.
@@ -200,7 +252,14 @@ class AssistantService:
         if not hits:
             return []
 
+        # Приложенные файлы уже заняли часть окна — остаток идёт библиотеке.
+        # Совсем без источников не оставляем: отвечать будет не на что даже
+        # по нормам, а именно за этим помощника и спрашивают. Но и выше
+        # настройки не поднимаемся: если окно модели маленькое и это задано
+        # осознанно, порог его не отменяет.
         budget = int(getattr(self.settings, "assistant_context_chars", 0) or 26000)
+        if reserved > 0:
+            budget = max(budget - reserved, min(MIN_LIBRARY_CHARS, budget))
         limit = int(getattr(self.settings, "assistant_source_chars", 0) or SOURCE_CHARS)
         radius = int(getattr(self.settings, "assistant_neighbours", 0) or 0)
         neighbour_top = int(getattr(self.settings, "assistant_neighbour_top", 0) or 0)
@@ -284,7 +343,8 @@ class AssistantService:
                     cards[doc_id]["outline"] = headings
         return [cards[doc_id] for doc_id in order]
 
-    def _finish(self, user: User, prepared: Dict[str, Any], text: str) -> Dict[str, Any]:
+    def _finish(self, user: User, prepared: Dict[str, Any], text: str,
+                *, interrupted: bool = False) -> Dict[str, Any]:
         chat: Chat = prepared["chat"]
         sources: List[Dict[str, Any]] = prepared["sources"]
         used = _used_labels(text)
@@ -299,7 +359,8 @@ class AssistantService:
             sources=kept,
             meta={"model": getattr(self.reports.get_llm(), "name", "unknown"),
                   "found": len(sources), "cited": len(used),
-                  "documents": len(prepared.get("documents") or [])},
+                  "documents": len(prepared.get("documents") or []),
+                  "interrupted": interrupted},
         )
         if chat.title == DEFAULT_TITLE:
             self.repos.chats.rename(chat.id, _make_title(prepared["question"]))
@@ -329,14 +390,18 @@ class AssistantService:
         return int(getattr(self.settings, "assistant_source_chars", 0) or SOURCE_CHARS)
 
     def _search(self, chat: Chat, question: str, history: Sequence[Dict[str, str]],
-                top_k: int | None) -> List[Hit]:
+                top_k: int | None, attachments: Sequence[Any] = ()) -> List[Hit]:
         retriever = self.reports.get_retriever()
         if retriever is None:
             return []
         # К запросу добавляем предыдущий вопрос инженера: «а для 16-QAM?» без
         # контекста не найдёт ничего.
         previous = [item["content"] for item in history if item["role"] == "user"][-1:]
-        query = " ".join([question, *previous])[:1000]
+        # Слова из приложенного файла тоже идут в запрос: по вопросу «что тут
+        # не так?» без них не найдётся ничего, а в дампе есть имена полей и
+        # коды ошибок, по которым библиотека находится сразу.
+        keywords = _attachment_keywords(attachments)
+        query = " ".join([question, *previous, keywords])[:1400]
         domains = [chat.domain] if chat.domain else None
         # Для разговора берём больше фрагментов, чем для отчёта: там материал
         # ограничен факт-пакетом, здесь — только вопросом. Лишнее всё равно
@@ -442,6 +507,34 @@ def _render_sources(sources: Sequence[Dict[str, Any]],
                 body = f"{body}\n\n(следующий фрагмент документа)\n{item['tail']}"
             blocks.append(f"[{item['label']}] {item['citation']}{mark}\n{body}")
     return "\n\n".join(blocks)
+
+
+#: Сколько разных слов берём из приложенных файлов в поисковый запрос.
+ATTACHMENT_KEYWORDS = 40
+
+
+def _attachment_keywords(attachments: Sequence[Any]) -> str:
+    """Разные слова из начала приложенных файлов.
+
+    Именно разные. Сырое начало дампа брать нельзя: в логе одна и та же
+    строка повторяется сотнями, запрос состоит из неё целиком, и поиск
+    находит не то, о чём спрашивали, а то, что чаще всего повторяется
+    в файле. Сам вопрос при этом тонет.
+    """
+    seen: List[str] = []
+    known = set()
+    for item in attachments:
+        for word in re.split(r"[^0-9A-Za-zА-Яа-яЁё_.-]+", (item.text or "")[:4000]):
+            if len(word) < 3:
+                continue
+            key = word.lower()
+            if key in known:
+                continue
+            known.add(key)
+            seen.append(word)
+            if len(seen) >= ATTACHMENT_KEYWORDS:
+                return " ".join(seen)
+    return " ".join(seen)
 
 
 def _split_neighbours(chunks: Sequence[Any], anchor_uid: str,

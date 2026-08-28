@@ -233,7 +233,7 @@ class ReportService:
             )
         self.outlines.get(report_type)  # type: ignore[union-attr]
         if self.repos.cases.by_case_id(case_id) is not None:
-            raise ServiceError(f"кейс '{case_id}' уже существует", 409)
+            raise ServiceError(f"письмо '{case_id}' уже зарегистрировано", 409)
 
         facts = _validate_facts(raw)
         case = self.repos.cases.create(
@@ -242,8 +242,16 @@ class ReportService:
             facts=raw,
             digest=facts.digest(),
             title=payload.get("title", ""),
-            customer=facts.customer,
+            # Заказчика берём из факт-пакета, а если его там нет — из формы:
+            # при регистрации письма факт-пакет обычно ещё пустой.
+            customer=facts.customer or str(payload.get("customer", "")).strip(),
             user_id=user.id if user else None,
+            incoming_no=str(payload.get("incoming_no", "")).strip(),
+            incoming_date=str(payload.get("incoming_date", "")).strip(),
+            deadline=str(payload.get("deadline", "")).strip(),
+            priority=str(payload.get("priority") or "normal"),
+            assignee_id=payload.get("assignee_id") or None,
+            note=str(payload.get("note", "")).strip(),
         )
         self.repos.audit.log("case.create", user=user, object_type="case", object_id=case.case_id)
         return case

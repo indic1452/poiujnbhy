@@ -206,6 +206,22 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_chat_messages_chat ON chat_messages(chat_id, id);
 
+-- Вложения к вопросу: дамп, лог, снимок экрана, документ. Текст извлекается
+-- при загрузке тем же конвертером, что и библиотека, и хранится здесь: файл
+-- на диске может быть удалён, а разбор в разговоре должен остаться.
+CREATE TABLE IF NOT EXISTS chat_attachments (
+    id         INTEGER PRIMARY KEY,
+    chat_id    INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    message_id INTEGER REFERENCES chat_messages(id) ON DELETE SET NULL,
+    name       TEXT    NOT NULL,
+    kind       TEXT    NOT NULL DEFAULT 'document',  -- dump | image | document
+    size       INTEGER NOT NULL DEFAULT 0,
+    text       TEXT    NOT NULL DEFAULT '',
+    note       TEXT    NOT NULL DEFAULT '',
+    created_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_attachments ON chat_attachments(chat_id, id);
+
 -- --------------------------------------------------------------- журнал ---
 
 CREATE TABLE IF NOT EXISTS audit (

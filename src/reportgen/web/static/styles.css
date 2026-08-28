@@ -1937,10 +1937,30 @@ input.is-bad {
     margin-right: auto;
 }
 
+/* Поля в окнах — в две колонки: карточка письма с восемью полями в один
+   столбец не помещается на экран и требует прокрутки внутри окна. */
 .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 12px 14px;
+    align-items: start;
+}
+
+/* Подряд идущие сетки полей не должны слипаться. */
+.form-grid + .form-grid,
+.form-grid + .field,
+.field + .form-grid {
+    margin-top: 12px;
+}
+
+.form-grid .field,
+.modal .field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    font-size: var(--fs-sm);
+    color: var(--muted);
 }
 
 /* -------------------------------------------------------------- прочее --- */
@@ -2917,12 +2937,6 @@ table.grid--users .row-actions {
     background-color: var(--field);
 }
 
-.form-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
 /* ------------------------------------------------- изменяемые колонки --- */
 
 /* Граница столбца — область захвата шириной в шесть пикселей. Сама полоска
@@ -3537,4 +3551,99 @@ table.grid .row-actions .btn--icon svg {
 
 .spacer {
     flex: 1 1 auto;
+}
+
+/* Сводка над списком источников: сколько документов сверил помощник. */
+.src-summary {
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-left: 2px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--text);
+    font-size: var(--fs-sm);
+    line-height: 1.45;
+}
+
+/* -------------------------------------------- вложения к вопросу -------- */
+
+.attach-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 0 0 8px;
+}
+
+.attach-bar .btn svg {
+    width: 14px;
+    height: 14px;
+    margin-right: 4px;
+}
+
+.attach-list {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+/* Приложенный файл: имя, объём разобранного текста, крестик. */
+.attach {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 320px;
+    padding: 2px 4px 2px 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--panel-2);
+    font-size: var(--fs-sm);
+}
+
+.attach b {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Текста в файле не нашлось — приложить можно, но помощнику он не поможет. */
+.attach--empty {
+    border-color: var(--warn);
+    background: var(--warn-soft);
+    color: var(--warn);
+}
+
+.attach--sent {
+    padding: 2px 8px;
+    background: var(--field-2);
+}
+
+.attach--sent svg {
+    width: 13px;
+    height: 13px;
+    opacity: .7;
+}
+
+.attach-drop {
+    border: 0;
+    background: none;
+    color: var(--faint);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 5px;
+    border-radius: 50%;
+}
+
+.attach-drop:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.msg-files {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
 }

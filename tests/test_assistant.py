@@ -264,16 +264,22 @@ class MaterialTests(AssistantTestCase):
     def test_context_budget_is_enforced(self):
         # Переполненное окно llama.cpp обрезает молча — вместе с системной
         # инструкцией. Материал обязан укладываться в бюджет сам.
+        wide = self.prepared()
         self.settings.assistant_context_chars = 900
-        prepared = self.prepared()
+        narrow = self.prepared()
+        self.assertLess(len(narrow["sources"]), len(wide["sources"]),
+                        "узкий бюджет обязан отсечь часть выдачи")
         material = sum(len(item["text"]) + len(item["lead"]) + len(item["tail"])
-                       for item in prepared["sources"])
-        self.assertLessEqual(material, 900 + 2000)
-        self.assertTrue(prepared["sources"], "бюджет не должен оставлять пустую выдачу")
+                       for item in narrow["sources"])
+        # Один фрагмент кладём всегда, даже если он один длиннее бюджета:
+        # иначе отвечать будет вовсе не на чем.
+        biggest = max(len(item["text"]) for item in narrow["sources"])
+        self.assertLessEqual(material, 900 + biggest)
+        self.assertTrue(narrow["sources"], "бюджет не должен оставлять пустую выдачу")
         # Метки идут подряд с первой: пропуск в нумерации читается как потеря.
         self.assertEqual(
-            [item["label"] for item in prepared["sources"]],
-            [f"S{index}" for index in range(1, len(prepared["sources"]) + 1)])
+            [item["label"] for item in narrow["sources"]],
+            [f"S{index}" for index in range(1, len(narrow["sources"]) + 1)])
 
     def test_tiny_budget_still_gives_one_source(self):
         self.settings.assistant_context_chars = 1
@@ -374,6 +380,145 @@ class StreamTests(AssistantTestCase):
         messages = self.assistant.messages(self.ivanov, chat.id)
         # Вопрос сохранён, недописанного ответа нет — чат пригоден к продолжению.
         self.assertEqual([m.role for m in messages], ["user"])
+
+
+class AttachmentTests(AssistantTestCase):
+    """Дамп, снимок экрана и документ, приложенные к вопросу."""
+
+    def setUp(self):
+        super().setUp()
+        self.chat = self.assistant.create_chat(self.ivanov)
+
+    def attach(self, name="dump.log", text="ERROR frame 118 checksum mismatch", kind="dump"):
+        return self.repos.chats.add_attachment(
+            self.chat.id, name, kind, size=len(text), text=text)
+
+    def prepared(self, question="Что не так в дампе?"):
+        return self.assistant._prepare(self.ivanov, self.chat.id, question, top_k=None)
+
+    def test_attachment_text_reaches_the_prompt(self):
+        self.attach()
+        prompt = self.prepared()["prompt"]
+        self.assertIn("### ПРИЛОЖЕННЫЕ ФАЙЛЫ", prompt)
+        self.assertIn("dump.log", prompt)
+        self.assertIn("checksum mismatch", prompt)
+
+    def test_long_attachment_is_cut_and_says_so(self):
+        # Дамп на десятки мегабайт в окно не влезет никогда. Молчать об
+        # обрезке нельзя: модель сделает вывод «ошибок больше нет».
+        self.settings.assistant_attachment_chars = 200
+        self.attach(text="строка дампа " * 500)
+        prompt = self.prepared()["prompt"]
+        self.assertIn("показано 200 из", prompt)
+        self.assertIn("файл показан не целиком", prompt)
+
+    def test_attachment_leaves_room_for_the_library(self):
+        # Вложение не должно вытеснить источники: без них помощник
+        # превращается в обычную модель без ссылок на нормы.
+        self.settings.assistant_attachment_chars = 40000
+        self.attach(text=("Занимаемая полоса частот измеряется методом 99 процентов "
+                          "мощности, спектр, модуляция, EVM. ") * 400)
+        prepared = self.prepared("Что не так в дампе?")
+        self.assertTrue(prepared["sources"], "библиотека вытеснена вложением")
+
+    def test_attachment_is_bound_to_the_question(self):
+        item = self.attach()
+        self.assertIsNone(item.message_id)
+        self.assistant.ask(self.ivanov, self.chat.id, "Что не так?")
+        again = self.repos.chats.attachment(item.id)
+        self.assertIsNotNone(again.message_id, "вложение не привязано к вопросу")
+        self.assertEqual([], self.repos.chats.attachments(self.chat.id, pending_only=True))
+
+    def test_repeated_dump_lines_do_not_drown_the_question(self):
+        # В логе одна строка повторяется сотнями. Если брать начало файла
+        # как есть, запрос состоит из неё целиком, и поиск находит не то,
+        # о чём спрашивали, а то, что чаще повторяется в файле.
+        from reportgen.web.assistant import _attachment_keywords
+
+        class Fake:
+            text = "ERROR checksum mismatch\n" * 300
+
+        keywords = _attachment_keywords([Fake()])
+        self.assertEqual(["ERROR", "checksum", "mismatch"], keywords.split())
+
+    def test_attachment_words_reach_the_search_query(self):
+        # По вопросу «что тут не так?» без содержимого файла не найдётся
+        # ничего: искать надо по кодам ошибок и именам полей из дампа.
+        seen = {}
+
+        class Spy(StubLLM):
+            pass
+
+        original = self.assistant._search
+
+        def watch(chat, question, history, top_k, attachments=()):
+            from reportgen.web.assistant import _attachment_keywords
+            seen["query"] = question + " " + _attachment_keywords(attachments)
+            return original(chat, question, history, top_k, attachments=attachments)
+
+        self.assistant._search = watch
+        self.attach(text="occupied bandwidth 99 percent power")
+        self.prepared("Что тут не так?")
+        self.assertIn("occupied bandwidth", seen["query"])
+
+    def test_unreadable_attachment_does_not_break_the_answer(self):
+        self.repos.chats.add_attachment(
+            self.chat.id, "скан.pdf", "document", size=10, text="",
+            note="в файле не нашлось текста")
+        prompt = self.prepared()["prompt"]
+        self.assertIn("текст извлечь не удалось", prompt)
+        self.assertIn("в файле не нашлось текста", prompt)
+
+
+class InterruptedStreamTests(AssistantTestCase):
+    """Уход со вкладки во время ответа не должен стирать работу модели."""
+
+    def setUp(self):
+        super().setUp()
+        self.chat = self.assistant.create_chat(self.ivanov)
+
+    def test_partial_answer_is_saved_when_client_disconnects(self):
+        class Slow(StubLLM):
+            def stream(self, system, prompt, **kwargs):
+                yield "Первая часть ответа. "
+                yield "Вторая часть ответа. "
+                yield "Третья часть — до неё не дойдёт."
+
+        self.reports.llm = Slow()
+        events = self.assistant.ask_stream(self.ivanov, self.chat.id, "Полоса частот?")
+        seen = []
+        for event in events:
+            seen.append(event["type"])
+            if seen.count("delta") == 2:
+                break                 # инженер ушёл со вкладки
+        events.close()                # так Starlette закрывает поток
+
+        messages = self.assistant.messages(self.ivanov, self.chat.id)
+        self.assertEqual(2, len(messages), "ответ модели должен остаться в разговоре")
+        answer = messages[-1]
+        self.assertEqual("assistant", answer.role)
+        self.assertIn("Первая часть", answer.content)
+        self.assertIn("Вторая часть", answer.content)
+        self.assertNotIn("Третья часть", answer.content)
+        self.assertTrue(answer.meta.get("interrupted"), "ответ не помечен как прерванный")
+
+    def test_completed_answer_is_not_marked_interrupted(self):
+        events = list(self.assistant.ask_stream(self.ivanov, self.chat.id, "Полоса частот?"))
+        self.assertEqual("done", events[-1]["type"])
+        answer = self.assistant.messages(self.ivanov, self.chat.id)[-1]
+        self.assertFalse(answer.meta.get("interrupted"))
+
+    def test_disconnect_before_any_text_leaves_no_empty_answer(self):
+        class Silent(StubLLM):
+            def stream(self, system, prompt, **kwargs):
+                return iter(())
+
+        self.reports.llm = Silent()
+        events = self.assistant.ask_stream(self.ivanov, self.chat.id, "Полоса частот?")
+        next(events)                  # question
+        events.close()
+        messages = self.assistant.messages(self.ivanov, self.chat.id)
+        self.assertEqual(1, len(messages), "пустой ответ сохранять незачем")
 
 
 class AssistantHttpTests(unittest.TestCase):

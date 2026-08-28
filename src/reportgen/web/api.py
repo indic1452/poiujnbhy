@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 import unicodedata
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict
 
@@ -43,7 +44,23 @@ DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 def _today() -> str:
+    """Сегодняшняя дата по местному времени.
+
+    Именно местная: сроки писем ставит человек, глядя на календарь на стене,
+    и «просрочено» должно совпадать с его представлением о дне. Метки времени
+    в базе при этом в UTC — для них есть _since_utc.
+    """
     return datetime.now().strftime("%Y-%m-%d")
+
+
+def _since_utc(days: int) -> str:
+    """Начало периода в том же виде, что метки created_at/updated_at.
+
+    Сравнивать местную дату со строкой в UTC нельзя: в Москве вечерние
+    письма попадали бы в следующие сутки, и «за неделю» считалось бы не то.
+    """
+    moment = datetime.now(timezone.utc) - timedelta(days=days)
+    return moment.isoformat(timespec="seconds")
 
 
 def _date_or_empty(value: Any, field: str) -> str:
@@ -253,7 +270,7 @@ def list_cases(request: Request, status: str | None = None,
         "items": [case.to_dict() for case in cases],
         "total": repos.cases.count(status, assignee_id=assignee),
         "open": repos.cases.count("open"),
-        "overdue": len(repos.cases.list(overdue_before=_today(), limit=500)),
+        "overdue": repos.board.deadline_counts(_today(), _today())["late"],
         "today": _today(),
     }
 
@@ -301,9 +318,24 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
 
 @router.post("/cases")
 def create_case(request: Request) -> Dict[str, Any]:
+    """Регистрация входящего письма."""
     user = require_editor(request)
     service = _service(request)
-    case = service.create_case(_body(request), user)
+    payload = _body(request)
+    # Даты и приоритет проверяем здесь: сервисному слою достаётся уже
+    # проверенное, а инженер видит понятную ошибку вместо отказа базы.
+    for field in ("incoming_date", "deadline"):
+        if field in payload:
+            payload[field] = _date_or_empty(payload[field], field)
+    priority = str(payload.get("priority") or "normal")
+    if priority not in CASE_PRIORITIES:
+        raise ServiceError(f"неизвестный приоритет '{priority}'", 400)
+    payload["priority"] = priority
+    if payload.get("assignee_id"):
+        assignee = _repos(request).users.get(int(payload["assignee_id"]))
+        if assignee is None or not assignee.active:
+            raise ServiceError("исполнитель не найден или отключён", 400)
+    case = service.create_case(payload, user)
     return {"case": case.to_dict(with_facts=True), "coverage": service.coverage(case)}
 
 
@@ -805,9 +837,11 @@ def get_chat(request: Request, chat_id: int) -> Dict[str, Any]:
     user = require_user(request)
     assistant = _assistant(request)
     chat = assistant.get_chat(user, chat_id)
+    repos = _repos(request)
     return {
         "chat": chat.to_dict(),
         "messages": [message.to_dict() for message in assistant.messages(user, chat_id)],
+        "attachments": [item.to_dict() for item in repos.chats.attachments(chat_id)],
     }
 
 
@@ -870,6 +904,130 @@ def ask_stream(request: Request, chat_id: int) -> StreamingResponse:
         media_type="text/event-stream; charset=utf-8",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ---------------------------------------------- вложения к вопросу --------
+
+#: Что можно приложить к вопросу. Расширение решает, как файл читать;
+#: сам разбор делает тот же конвертер, что и приём библиотеки.
+ATTACH_IMAGE = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
+ATTACH_DUMP = {".txt", ".log", ".csv", ".json", ".xml", ".pcap", ".pcapng", ".cap", ".har"}
+
+
+def _attachment_kind(suffix: str) -> str:
+    if suffix in ATTACH_IMAGE:
+        return "image"
+    if suffix in ATTACH_DUMP:
+        return "dump"
+    return "document"
+
+
+@router.post("/chats/{chat_id}/attachments")
+def attach_to_chat(request: Request, chat_id: int, file: UploadFile = File(...)) -> Dict[str, Any]:
+    """Приложить к вопросу дамп, снимок экрана или документ.
+
+    Файл разбирается сразу и текстом остаётся в разговоре: диск можно
+    чистить, а разбор инженеру ещё понадобится.
+    """
+    user = require_user(request)
+    assistant = _assistant(request)
+    assistant.get_chat(user, chat_id)          # чужой разговор — 404
+    settings = _settings(request)
+    repos = _repos(request)
+
+    name = _safe_name(Path(file.filename or "файл").name)
+    if not name:
+        raise ServiceError("некорректное имя файла", 400)
+
+    settings.ensure_dirs()
+    target = Path(settings.upload_dir) / f"chat-{chat_id}-{secrets.token_hex(6)}-{name}"
+    limit = settings.max_upload_mb * 1024 * 1024
+    size = 0
+    try:
+        with target.open("wb") as stream:
+            while True:
+                piece = file.file.read(1024 * 1024)
+                if not piece:
+                    break
+                size += len(piece)
+                if size > limit:
+                    stream.close()
+                    target.unlink(missing_ok=True)
+                    raise ServiceError(
+                        f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
+                stream.write(piece)
+
+        text, note = _extract_attachment(target)
+    finally:
+        # Разбор сохранён в базе, копия файла на диске больше не нужна:
+        # каталог загрузок иначе растёт от каждого заданного вопроса.
+        target.unlink(missing_ok=True)
+
+    item = repos.chats.add_attachment(
+        chat_id, name, _attachment_kind(Path(name).suffix.lower()),
+        size=size, text=text, note=note,
+    )
+    repos.audit.log("chat.attach", user=user, object_type="chat",
+                    object_id=str(chat_id), details={"name": name, "bytes": size})
+    return {"attachment": item.to_dict()}
+
+
+@router.delete("/chats/{chat_id}/attachments/{attachment_id}")
+def detach_from_chat(request: Request, chat_id: int, attachment_id: int) -> Dict[str, Any]:
+    user = require_user(request)
+    assistant = _assistant(request)
+    assistant.get_chat(user, chat_id)
+    repos = _repos(request)
+    item = repos.chats.attachment(attachment_id)
+    if item is None or item.chat_id != chat_id:
+        raise ServiceError("вложение не найдено", 404)
+    repos.chats.delete_attachment(attachment_id)
+    return {"ok": True}
+
+
+#: Расширения, которых нет в приёме библиотеки, но которые инженер приносит
+#: в разговор постоянно. Внутри это обычный текст, читаем как текст.
+PLAIN_ATTACH = {".log", ".json", ".har", ".ini", ".conf", ".cfg", ".yaml", ".yml", ".out"}
+
+#: Двоичные захваты. Разбирать их нечем, но сказать, что делать, можно.
+CAPTURE_ATTACH = {
+    ".pcap": "Wireshark: Файл → Экспортировать пакеты → Как обычный текст",
+    ".pcapng": "Wireshark: Файл → Экспортировать пакеты → Как обычный текст",
+    ".cap": "Wireshark: Файл → Экспортировать пакеты → Как обычный текст",
+}
+
+
+def _extract_attachment(path: Path) -> tuple[str, str]:
+    """Текст файла и, если что-то пошло не так, объяснение по-русски."""
+    suffix = path.suffix.lower()
+    if suffix in CAPTURE_ATTACH:
+        return "", (
+            "двоичный захват прочитать нечем — приложите текстовую выгрузку "
+            f"({CAPTURE_ATTACH[suffix]})"
+        )
+    try:
+        from ..ingest.convert import convert_file, decode_bytes  # noqa: PLC0415
+    except ImportError:
+        return "", "модуль разбора файлов недоступен"
+
+    if suffix in PLAIN_ATTACH:
+        # Внутри это текст, просто расширение приёму библиотеки незнакомо.
+        # Кодировку определяем так же, как для .txt: логи с изолированной
+        # машины приходят и в UTF-8, и в cp1251.
+        try:
+            text, _encoding, problem = decode_bytes(path.read_bytes())
+        except OSError as error:
+            return "", f"файл прочитать не удалось: {error}"
+        return text, problem or ""
+
+    try:
+        converted = convert_file(path)
+    except Exception as error:          # noqa: BLE001 — вопрос важнее вложения
+        return "", f"файл прочитать не удалось: {error}"
+    note = "; ".join(converted.warnings[:2])
+    if converted.is_empty and not note:
+        note = "в файле не нашлось текста — возможно, это скан без распознавания"
+    return converted.text, note
 
 
 # ------------------------------------------------------------ сотрудники --
@@ -1106,7 +1264,7 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
     repos = _repos(request)
     today = _today()
     period_days = min(max(int(days or 30), 1), 365)
-    since = _shift(today, -period_days)
+    since = _since_utc(period_days)
 
     staff = repos.board.workload(today)
     absent = repos.absences.on_date(today)
@@ -1137,19 +1295,22 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
         })
 
     statuses = repos.board.status_counts()
-    overdue = repos.cases.list(overdue_before=today, limit=500)
+    soon_until = _shift(today, 3)
+    # Счётчики считает база: списки ниже — только то, что показываем.
+    deadlines = repos.board.deadline_counts(today, soon_until)
+    overdue = repos.cases.list(overdue_before=today, limit=20)
     soon = [
-        case for case in repos.cases.list(status="open", limit=500)
-        if case.deadline and today <= case.deadline <= _shift(today, 3)
-    ]
+        case for case in repos.cases.list(status="open", limit=60)
+        if case.deadline and today <= case.deadline <= soon_until
+    ][:20]
 
     return {
         "today": today,
         "period_days": period_days,
         "totals": {
             "open": repos.cases.count("open"),
-            "overdue": len(overdue),
-            "soon": len(soon),
+            "overdue": deadlines["late"],
+            "soon": deadlines["soon"],
             "unassigned": repos.board.unassigned(),
             "staff": len(people),
             "away": len(away),
@@ -1162,12 +1323,12 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
         "people": people,
         "duty": [item.to_dict() for item in duty],
         "absent": [item.to_dict() for item in absent if item.kind != "duty"],
-        "overdue": [case.to_dict() for case in overdue[:20]],
-        "soon": [case.to_dict() for case in soon[:20]],
+        "overdue": [case.to_dict() for case in overdue],
+        "soon": [case.to_dict() for case in soon],
         "movement": {
             **repos.board.movement(since),
             "reports": repos.board.reports_in_period(since),
-            "since": since,
+            "since": _shift(today, -period_days),
         },
     }
 

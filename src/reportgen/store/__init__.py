@@ -2,9 +2,11 @@
 
 from .db import Database, utcnow
 from .models import (
+    Absence,
     AuditEntry,
     Case,
     Chat,
+    ChatAttachment,
     ChatMessage,
     Document,
     EditPair,
@@ -23,6 +25,8 @@ __all__ = [
     "Document",
     "Chat",
     "ChatMessage",
+    "ChatAttachment",
+    "Absence",
     "Case",
     "Report",
     "ReportSection",

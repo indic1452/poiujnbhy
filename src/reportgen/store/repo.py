@@ -26,6 +26,7 @@ from .models import (
     SEARCHABLE_STATUSES,
     Absence,
     AuditEntry,
+    ChatAttachment,
     Case,
     Chat,
     ChatMessage,
@@ -1110,6 +1111,46 @@ class ChatRepo:
         )
         return list(reversed(rows_to(ChatMessage, rows)))
 
+    # -- вложения -----------------------------------------------------------
+
+    def add_attachment(self, chat_id: int, name: str, kind: str, *, size: int = 0,
+                       text: str = "", note: str = "") -> ChatAttachment:
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO chat_attachments(chat_id, name, kind, size, text, note, created_at) "
+                "VALUES(?,?,?,?,?,?,?)",
+                (chat_id, name, kind, size, text, note, utcnow()),
+            )
+        return self.attachment(int(cursor.lastrowid))  # type: ignore[return-value]
+
+    def attachment(self, attachment_id: int) -> ChatAttachment | None:
+        row = self.db.query_one(
+            "SELECT * FROM chat_attachments WHERE id = ?", (attachment_id,))
+        return ChatAttachment.from_row(row) if row else None
+
+    def attachments(self, chat_id: int, *, pending_only: bool = False) -> List[ChatAttachment]:
+        """Вложения разговора. pending_only — ещё не привязанные к вопросу."""
+        clause = " AND message_id IS NULL" if pending_only else ""
+        rows = self.db.query(
+            f"SELECT * FROM chat_attachments WHERE chat_id = ?{clause} ORDER BY id",
+            (chat_id,),
+        )
+        return rows_to(ChatAttachment, rows)
+
+    def bind_attachments(self, chat_id: int, message_id: int) -> int:
+        """Привязать неприкреплённые вложения к отправленному вопросу."""
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "UPDATE chat_attachments SET message_id = ? "
+                "WHERE chat_id = ? AND message_id IS NULL",
+                (message_id, chat_id),
+            )
+        return cursor.rowcount or 0
+
+    def delete_attachment(self, attachment_id: int) -> None:
+        with self.db.transaction() as connection:
+            connection.execute("DELETE FROM chat_attachments WHERE id = ?", (attachment_id,))
+
     def count_for_user(self, user_id: int, *, archived: bool = False) -> int:
         return int(self.db.scalar(
             "SELECT count(*) FROM chats WHERE user_id = ? AND archived = ?",
@@ -1280,6 +1321,27 @@ class BoardRepo:
     def status_counts(self) -> Dict[str, int]:
         rows = self.db.query("SELECT status, count(*) AS n FROM cases GROUP BY status")
         return {row["status"]: int(row["n"]) for row in rows}
+
+    def deadline_counts(self, today: str, soon_until: str) -> Dict[str, int]:
+        """Сколько писем просрочено и сколько горит. Считаем в базе.
+
+        Раньше дашборд выбирал до 500 полных писем и мерил длину списка:
+        на пятьсот первом письме счётчик замирал и показывал неправду, а
+        ради двух чисел читалась половина таблицы.
+        """
+        marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
+        row = self.db.query_one(
+            "SELECT "
+            "  sum(CASE WHEN deadline <> '' AND deadline < ? THEN 1 ELSE 0 END) AS late, "
+            "  sum(CASE WHEN deadline <> '' AND deadline >= ? AND deadline <= ? "
+            "      THEN 1 ELSE 0 END) AS soon "
+            f"FROM cases WHERE status IN ({marks})",
+            (today, today, soon_until, *OPEN_CASE_STATUSES),
+        )
+        return {
+            "late": int((row["late"] if row else 0) or 0),
+            "soon": int((row["soon"] if row else 0) or 0),
+        }
 
     def unassigned(self) -> int:
         marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)

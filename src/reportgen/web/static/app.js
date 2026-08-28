@@ -191,6 +191,15 @@
             .replace(/"/g, '&quot;');
     }
 
+    /** Короткая устойчивая метка строки: нужна для ключей в localStorage. */
+    function hashString(text) {
+        let hash = 0;
+        for (let index = 0; index < text.length; index += 1) {
+            hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
+        }
+        return (hash >>> 0).toString(36);
+    }
+
     function plural(count, one, few, many) {
         const mod10 = count % 10;
         const mod100 = count % 100;
@@ -221,6 +230,7 @@
         edit: 'M11.4 2.6 13.4 4.6 5.5 12.5 2.5 13.5 3.5 10.5zM10 4l2 2',
         trash: 'M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.7 9h6.6l.7-9M6.5 7v4M9.5 7v4',
         plus: 'M8 3.5v9M3.5 8h9',
+        clip: 'M11.5 6.5 6.8 11.2a2.3 2.3 0 0 1-3.3-3.3l5.2-5.2a1.6 1.6 0 0 1 2.3 2.3l-5.2 5.2a.8.8 0 0 1-1.2-1.2l4.7-4.7',
         check: 'M3 8.5 6.5 12 13 4.5',
         close: 'M4 4l8 8M12 4l-8 8',
     };
@@ -693,7 +703,11 @@
         const headers = $$('thead th', table);
         if (headers.length < 2) return table;
 
-        const storageKey = 'reportgen.cols.' + key;
+        // В ключ входит состав заголовков: ширины хранятся по номеру
+        // столбца, и после удаления или перестановки столбца сохранённые
+        // значения съезжали на соседние. При смене набора начинаем заново.
+        const shape = headers.map((th) => (th.textContent || '').trim()).join('|');
+        const storageKey = 'reportgen.cols.' + key + '.' + hashString(shape);
         let saved = {};
         try {
             saved = JSON.parse(storageGet(storageKey, '{}')) || {};
@@ -995,9 +1009,9 @@
     }
 
     async function renderRoute(route) {
-        // Уходя с экрана помощника, обрываем незакрытый поток: его обработчики
-        // писали бы в узлы, которых на странице уже нет.
-        stopStreaming();
+        // Уходя с экрана помощника, отпускаем узлы страницы, но генерацию
+        // не трогаем: ответ дописывается в фоне и ждёт возвращения.
+        detachChat();
         state.route = route;
         setActiveNav(route.name);
         const view = $('#view');
@@ -1248,10 +1262,12 @@
         let note = '';
         if (!done && item.deadline < today) {
             cls = 'due due--late';
-            note = 'просрочено на ' + plural(daysBetween(item.deadline, today), 'день', 'дня', 'дней');
+            const late = daysBetween(item.deadline, today);
+            note = 'просрочено на ' + late + ' ' + plural(late, 'день', 'дня', 'дней');
         } else if (!done && daysBetween(today, item.deadline) <= 2) {
             cls = 'due due--soon';
-            note = 'осталось ' + plural(daysBetween(today, item.deadline), 'день', 'дня', 'дней');
+            const left = daysBetween(today, item.deadline);
+            note = 'осталось ' + left + ' ' + plural(left, 'день', 'дня', 'дней');
         }
         return h('span', { class: cls, title: note }, fmtDate(item.deadline));
     }
@@ -1267,17 +1283,6 @@
         const b = Date.parse(to + 'T00:00:00');
         if (isNaN(a) || isNaN(b)) return 0;
         return Math.round((b - a) / 86400000);
-    }
-
-    function plural(count, one, few, many) {
-        const abs = Math.abs(count) % 100;
-        const last = abs % 10;
-        let word = many;
-        if (abs < 11 || abs > 14) {
-            if (last === 1) word = one;
-            else if (last >= 2 && last <= 4) word = few;
-        }
-        return count + ' ' + word;
     }
 
     function statusBadge(status) {
@@ -1417,12 +1422,32 @@
             h('option', { value: outline.report_type }, outline.title + ' (' + outline.report_type + ')')));
 
         const caseInput = h('input', {
-            type: 'text', placeholder: 'например, SUP-2024-118', class: 'mono',
+            type: 'text', placeholder: 'заполнится по входящему номеру', class: 'mono',
             oninput: () => {
+                caseTouched = true;
                 if (!jsonTouched) fillSkeleton();
             },
         });
+        let caseTouched = false;
+        // Учётный номер по умолчанию повторяет входящий: два разных номера
+        // руками никто вводить не станет, а поле обязательное.
+        incomingNo.addEventListener('input', () => {
+            if (caseTouched) return;
+            caseInput.value = incomingNo.value.trim();
+            if (!jsonTouched) fillSkeleton();
+        });
         const titleInput = h('input', { type: 'text', placeholder: 'о чём письмо' });
+        const incomingNo = h('input', { type: 'text', class: 'mono', placeholder: 'ВХ-2026-0412' });
+        const incomingDate = h('input', { type: 'date', value: todayIso() });
+        const customerInput = h('input', { type: 'text', placeholder: 'ПАО «Ростелеком»' });
+        const deadlineInput = h('input', { type: 'date' });
+        const priorityPick = h('select', {}, Object.keys(CASE_PRIORITY).map((key) =>
+            h('option', { value: key }, CASE_PRIORITY[key])));
+        const assigneePick = h('select', {}, h('option', { value: '' }, 'назначить позже'));
+        // Список сотрудников подгружаем, не задерживая открытие окна.
+        staffList().then((staff) => staff.forEach((person) => assigneePick.appendChild(
+            h('option', { value: String(person.id) },
+                (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role)))));
 
         const status = h('div', { class: 'json-status' });
         const editor = h('textarea', {
@@ -1499,9 +1524,18 @@
             title: 'Регистрация письма',
             body: [
                 h('div', { class: 'form-grid' },
+                    h('label', { class: 'field' }, 'Входящий номер', incomingNo),
+                    h('label', { class: 'field' }, 'Дата письма', incomingDate),
+                    h('label', { class: 'field' }, 'Заказчик', customerInput),
+                    h('label', { class: 'field' }, 'Срок ответа', deadlineInput),
+                    h('label', { class: 'field' }, 'Исполнитель', assigneePick),
+                    h('label', { class: 'field' }, 'Приоритет', priorityPick)),
+                h('label', { class: 'field' }, 'Тема письма', titleInput),
+                h('div', { class: 'form-grid' },
                     h('label', { class: 'field' }, 'Тип отчёта', typeSelect),
-                    h('label', { class: 'field' }, 'Идентификатор обращения', caseInput)),
-                h('label', { class: 'field' }, 'Заголовок', titleInput),
+                    h('label', { class: 'field' }, 'Учётный номер', caseInput,
+                        h('span', { class: 'small faint' },
+                            'внутренний номер дела; можно повторить входящий'))),
                 h('div', {},
                     h('div', { class: 'toolbar', style: { marginBottom: '6px' } },
                         h('span', { class: 'small muted grow' },
@@ -1548,6 +1582,12 @@
                     case_id: caseId,
                     report_type: reportType,
                     title: titleInput.value.trim(),
+                    customer: customerInput.value.trim(),
+                    incoming_no: incomingNo.value.trim(),
+                    incoming_date: incomingDate.value,
+                    deadline: deadlineInput.value,
+                    priority: priorityPick.value,
+                    assignee_id: assigneePick.value ? Number(assigneePick.value) : null,
                     facts: facts,
                 });
                 dialog.close();
@@ -2156,13 +2196,18 @@
         renderFactsBody();
         const inputs = $$('.facts-table tbody tr input.key');
         const last = inputs[inputs.length - 1];
-        if (last) {
-            last.focus();
-            if (key) {
-                const valueInput = last.closest('tr').children[2].firstChild;
-                if (valueInput) valueInput.focus();
-            }
+        if (!last) return;
+        if (!key) {
+            last.focus();                    // ключ ещё не задан — с него и начинаем
+            return;
         }
+        // Ключ уже известен (строку добавили из списка недостающих) — курсор
+        // ставим в «Значение». Раньше искали столбец по номеру, но в сжатом
+        // виде таблицы третий столбец — «Ед.», и курсор попадал не туда.
+        const row = last.closest('tr');
+        const value = row ? $('input[data-field="value"]', row) : null;
+        if (value) value.focus();
+        else last.focus();
     }
 
     function findingCard(finding, index) {
@@ -3439,8 +3484,21 @@
             const previous = item.status || 'current';
             let supersededBy = '';
             if (value === 'superseded') {
-                supersededBy = (window.prompt(
-                    'Идентификатор документа новой редакции (можно оставить пустым):', '') || '').trim();
+                // Своё окно, а не системное window.prompt: то выглядит как
+                // сообщение браузера посреди программы и пугает.
+                const answer = await promptDialog({
+                    title: 'Чем заменён документ',
+                    message: 'Укажите идентификатор новой редакции — он есть в столбце '
+                        + '«Идентификатор». Можно оставить пустым: документ всё равно '
+                        + 'будет исключён из поиска.',
+                    placeholder: 'standards/obw-method-2024',
+                    confirmText: 'Отметить заменённым',
+                });
+                if (answer === null) {           // отменили — состояние не меняем
+                    select.value = previous;
+                    return;
+                }
+                supersededBy = String(answer).trim();
             }
             select.disabled = true;
             try {
@@ -3451,6 +3509,8 @@
                 toast('Документ «' + (item.title || item.doc_id) + '» — ' +
                     (item.status_title || value) +
                     (item.searchable === false ? ' (исключён из поиска)' : ''), 'ok');
+                // Фильтр по актуальности включён, а документ из него вышел —
+                // строку надо убрать со страницы, иначе она врёт.
                 if (libState.status && libState.status !== item.status) await loadLibrary();
             } catch (error) {
                 select.value = previous;
@@ -3659,7 +3719,7 @@
             },
         }, [7, 30, 90, 365].map((days) => h('option', {
             value: String(days), selected: boardState.days === days,
-        }, 'за ' + plural(days, 'день', 'дня', 'дней'))));
+        }, 'за ' + days + ' ' + plural(days, 'день', 'дня', 'дней'))));
 
         const head = h('div', { class: 'page-head' },
             h('div', { class: 'page-note' }, 'Что в отделе происходит сегодня'),
@@ -3754,7 +3814,8 @@
                                 h('span', { style: { width: Math.round((person.open || 0) / peak * 100) + '%' } })),
                             h('b', {}, String(person.open || 0)))),
                     h('td', { class: 'nowrap' }, person.late
-                        ? h('span', { class: 'due due--late' }, plural(person.late, 'просрочка', 'просрочки', 'просрочек'))
+                        ? h('span', { class: 'due due--late' }, person.late + ' ' +
+                            plural(person.late, 'просрочка', 'просрочки', 'просрочек'))
                         : h('span', { class: 'faint' }, '—')),
                     h('td', { class: 'nowrap small muted' },
                         person.next_deadline ? fmtDate(person.next_deadline) : '—')));
@@ -3926,8 +3987,9 @@
                 'утверждено: ' + (cases.approved || 0) + ' · черновиков: ' + (cases.draft || 0)),
             statCard(reports.total || 0, 'версий отчётов',
                 'утверждено: ' + (reports.approved || 0)),
-            statCard(fmtNumber(edits.mean_distance || 0, 3), 'средний edit distance',
-                'правок в наборе: ' + (edits.count || 0) + ' · чем меньше, тем ближе черновик к финалу'),
+            statCard(fmtNumber(edits.mean_distance || 0, 3), 'средняя доля правки',
+                'какую часть черновика инженер переписывает; правок в наборе: ' +
+                (edits.count || 0) + ' · чем меньше, тем ближе черновик к готовому'),
             statCard(library.documents || 0, 'документов в библиотеке',
                 'фрагментов: ' + (library.chunks || 0) +
                 (library.embeddings ? ' · векторов: ' + library.embeddings : ' · векторов нет')));
@@ -4227,21 +4289,79 @@
         caseInfo: null,
         sourcesOf: null,
         pendingSources: null,
+        pendingExpansion: null,
+        pendingWarning: null,
+        /* Приложенные к следующему вопросу файлы. */
+        attachments: [],
         activeLabel: null,
         streaming: false,
         controller: null,
         nodes: {},
+        /* Ответ, который печатается прямо сейчас. Живёт отдельно от узлов
+           страницы: инженер может уйти в «Письма» и вернуться — генерация
+           продолжится, а не начнётся заново и не пропадёт.
+           { chatId, question, answer, sources, expansion, warning } */
+        live: null,
     };
 
+    /* Где инженер был в разделе помощника и что не дописал. Хранится в
+       браузере: переход на другую вкладку и обратно раньше открывал пустой
+       экран «Новый разговор», хотя разговор никуда не девался. */
+    const CHAT_LAST_KEY = 'rg-chat-last';
+    const CHAT_DRAFT_KEY = 'rg-chat-draft';
+
+    function rememberChat(chatId) {
+        storageSet(CHAT_LAST_KEY, chatId ? String(chatId) : '');
+    }
+
+    function lastChatId() {
+        const value = storageGet(CHAT_LAST_KEY, '');
+        return value ? value : null;
+    }
+
+    function drafts() {
+        try {
+            return JSON.parse(storageGet(CHAT_DRAFT_KEY, '{}')) || {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function saveDraft(chatId, text) {
+        const all = drafts();
+        const key = String(chatId || 'new');
+        if (text) all[key] = text;
+        else delete all[key];
+        storageSet(CHAT_DRAFT_KEY, JSON.stringify(all));
+    }
+
+    function loadDraft(chatId) {
+        return drafts()[String(chatId || 'new')] || '';
+    }
+
+    /** Очистить экран разговора. Живой поток ответа при этом не трогаем. */
     function resetChat() {
         chat.current = null;
         chat.messages = [];
         chat.caseInfo = null;
         chat.sourcesOf = null;
         chat.pendingSources = null;
+        chat.pendingExpansion = null;
+        chat.pendingWarning = null;
+        chat.attachments = [];
+        chat.sentAttachments = [];
         chat.activeLabel = null;
-        chat.streaming = false;
-        chat.controller = null;
+        chat.nodes = {};
+    }
+
+    /** Уйти с экрана помощника, не обрывая ответ.
+     *
+     * Раньше маршрутизатор звал stopStreaming(): переход в «Письма» посреди
+     * ответа убивал генерацию, и минута работы модели пропадала. Теперь
+     * отпускаем только узлы страницы — поток продолжает писать в chat.live,
+     * а вернувшись в раздел, инженер видит ответ дописанным.
+     */
+    function detachChat() {
         chat.nodes = {};
     }
 
@@ -4259,27 +4379,46 @@
     }
 
     async function renderChat(view, chatId) {
-        stopStreaming();
         resetChat();
 
         const data = await api.get('/api/chats?archived=' + (chat.archived ? 'true' : 'false'));
         chat.chats = data.items || [];
+
+        // Пришли в раздел без номера разговора — открываем тот, где были.
+        // Проверяем по списку: разговор мог быть удалён или заархивирован.
+        if (!chatId) {
+            const remembered = lastChatId();
+            const known = chat.chats.some((item) => String(item.id) === String(remembered));
+            if (remembered && known) {
+                replaceHash('#/chat/' + remembered);
+                chatId = remembered;
+            }
+        }
 
         if (chatId) {
             try {
                 const payload = await api.get('/api/chats/' + encodeURIComponent(chatId));
                 chat.current = payload.chat;
                 chat.messages = payload.messages || [];
+                // Файлы, приложенные, но ещё не отправленные с вопросом:
+                // инженер приложил дамп, отвлёкся, вернулся — всё на месте.
+                const all = payload.attachments || [];
+                chat.attachments = all.filter((item) => !item.message_id);
+                chat.sentAttachments = all.filter((item) => item.message_id);
                 const answers = chat.messages.filter((item) => item.role === 'assistant');
                 chat.sourcesOf = answers.length ? answers[answers.length - 1] : null;
             } catch (error) {
                 if (error instanceof ApiError && error.status === 404) {
+                    // Разговор удалён — забываем его, иначе будем возвращаться
+                    // к нему при каждом заходе в раздел.
+                    rememberChat(null);
                     toast('Разговор не найден: возможно, он удалён', 'error');
                     navigate('#/chat');
                     return;
                 }
                 throw error;
             }
+            rememberChat(chat.current.id);
             // Открыли архивный разговор из адресной строки — показываем архив,
             // иначе его не видно в списке слева.
             if (chat.current.archived !== chat.archived) {
@@ -4295,9 +4434,23 @@
         renderTalkHead();
         renderFeed();
         renderChatSources();
+        renderAttachments();
         loadChatCase();
+        // Кнопки «Спросить»/«Стоп» приводим в соответствие потоку: он мог
+        // остаться работать с прошлого захода в раздел.
+        setStreaming(chat.streaming && liveIsHere());
         const input = chat.nodes.input;
-        if (input) input.focus();
+        if (input) {
+            input.value = loadDraft(chat.current ? chat.current.id : null);
+            growComposer(input);
+            input.focus();
+        }
+    }
+
+    /** Идёт ли прямо сейчас ответ в открытом разговоре. */
+    function liveIsHere() {
+        return !!(chat.live && chat.current &&
+            String(chat.live.chatId) === String(chat.current.id));
     }
 
     function buildChatScreen() {
@@ -4620,12 +4773,39 @@
         const feed = chat.nodes.feed;
         if (!feed) return;
         clear(feed);
-        if (!chat.messages.length) {
+        const live = liveIsHere() ? chat.live : null;
+        if (!chat.messages.length && !live) {
             feed.appendChild(emptyChatState());
             return;
         }
         chat.messages.forEach((message) => feed.appendChild(messageNode(message)));
+        if (live) feed.appendChild(liveNode(live));
         scrollFeed();
+    }
+
+    /** Пузырь недописанного ответа. Пересобирается при каждом возвращении
+     *  в раздел, поэтому узлы держим в chat.live, а не в замыкании. */
+    function liveNode(live) {
+        const box = h('div', {});
+        // Вопрос сохраняется на сервере сразу, ещё до первого куска ответа.
+        // Вернувшись в раздел, мы уже получили его в списке сообщений —
+        // второй раз рисовать не надо, иначе вопрос двоится на экране.
+        const already = chat.messages.some(
+            (item) => live.questionId && String(item.id) === String(live.questionId));
+        if (!already) {
+            box.appendChild(messageNode({
+                id: live.questionId || 0, role: 'user', content: live.question,
+                sources: [], created_at: live.askedAt, attachments: live.attachments,
+            }));
+        }
+        const body = h('div', { class: 'body' + (chat.streaming ? ' is-typing' : '') });
+        const note = h('span', { class: 'faint' }, chat.streaming ? 'печатает…' : '');
+        box.appendChild(h('div', { class: 'msg msg--assistant' },
+            h('div', { class: 'who' }, 'Помощник', note), body));
+        live.body = body;
+        live.note = note;
+        if (live.answer) renderAnswer(body, live.answer);
+        return box;
     }
 
     function emptyChatState() {
@@ -4659,6 +4839,10 @@
             ? (state.user ? (state.user.full_name || state.user.login) : 'Инженер')
             : 'Помощник';
 
+        // Приложенные файлы показываем под вопросом: через неделю иначе
+        // не понять, откуда в ответе взялись эти числа.
+        const files = attachmentsOf(message);
+
         return h('div', {
             class: 'msg msg--' + (isUser ? 'user' : 'assistant'),
             dataset: { id: String(message.id || '') },
@@ -4666,6 +4850,13 @@
             h('div', { class: 'who' }, who,
                 h('span', { class: 'faint' }, fmtDateTime(message.created_at))),
             body,
+            files.length ? h('div', { class: 'msg-files' }, files.map((item) =>
+                h('span', { class: 'attach attach--sent', title: item.note || '' },
+                    iconGlyph('clip'), h('b', {}, item.name)))) : null,
+            !isUser && message.meta && message.meta.interrupted
+                ? h('div', { class: 'msg-note' },
+                    'Ответ прерван: инженер закрыл вкладку или нажал «Стоп». '
+                    + 'Спросите ещё раз, если нужен полный разбор.') : null,
             !isUser && sources.length ? h('div', { class: 'msg-foot' },
                 h('button', {
                     class: 'btn btn--sm btn--ghost',
@@ -4674,8 +4865,17 @@
                 message.meta && message.meta.found !== undefined
                     ? h('span', { class: 'small faint' },
                         'найдено фрагментов: ' + message.meta.found +
+                        (message.meta.documents ? ' в ' + message.meta.documents + ' док.' : '') +
                         ', процитировано: ' + (message.meta.cited || 0))
                     : null) : null);
+    }
+
+    /** Файлы, приложенные к этому сообщению. */
+    function attachmentsOf(message) {
+        if (message.attachments) return message.attachments;
+        if (!message.id) return [];
+        return (chat.sentAttachments || []).filter(
+            (item) => String(item.message_id) === String(message.id));
     }
 
     /** Вставить размеченный ответ и оживить ссылки [S1]. */
@@ -4730,11 +4930,119 @@
         node.style.height = Math.min(node.scrollHeight + 2, 200) + 'px';
     }
 
+    /* Что можно приложить к вопросу. Список для окна выбора файла: без него
+       проводник показывает все файлы подряд, и инженер пробует приложить
+       архив, который всё равно не прочитается. */
+    const ATTACH_ACCEPT = [
+        '.txt', '.log', '.csv', '.json', '.xml', '.pcap', '.pcapng', '.cap', '.har',
+        '.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp',
+        '.pdf', '.docx', '.doc', '.xlsx', '.odt', '.md',
+    ].join(',');
+
+    const ATTACH_KIND_LABEL = {
+        dump: 'дамп или лог',
+        image: 'снимок экрана',
+        document: 'документ',
+    };
+
+    function buildAttachBar() {
+        const list = h('div', { class: 'attach-list' });
+        const picker = h('input', {
+            type: 'file', multiple: true, accept: ATTACH_ACCEPT,
+            style: { display: 'none' },
+            onchange: (event) => {
+                const files = Array.prototype.slice.call(event.target.files || []);
+                event.target.value = '';
+                files.forEach((file) => uploadAttachment(file));
+            },
+        });
+        const button = h('button', {
+            class: 'btn btn--sm',
+            title: 'Приложить дамп, лог, снимок экрана или документ. ' +
+                'Файл будет разобран и уйдёт помощнику вместе с вопросом.',
+            onclick: () => picker.click(),
+        }, iconGlyph('clip'), 'Приложить файл');
+
+        chat.nodes.attachList = list;
+        chat.nodes.attachButton = button;
+        return h('div', { class: 'attach-bar' }, button, list, picker);
+    }
+
+    function renderAttachments() {
+        const list = chat.nodes.attachList;
+        if (!list) return;
+        clear(list);
+        (chat.attachments || []).forEach((item) => {
+            const chip = h('span', {
+                class: 'attach' + (item.chars ? '' : ' attach--empty'),
+                title: item.note || (ATTACH_KIND_LABEL[item.kind] || item.kind) +
+                    ', разобрано знаков: ' + item.chars,
+            },
+                h('b', {}, item.name),
+                h('span', { class: 'faint' }, item.chars
+                    ? fmtNumber(item.chars, 0) + ' зн.'
+                    : 'текста нет'),
+                h('button', {
+                    class: 'attach-drop', title: 'Убрать', onclick: () => dropAttachment(item),
+                }, '×'));
+            list.appendChild(chip);
+        });
+    }
+
+    async function ensureChat() {
+        if (chat.current) return chat.current;
+        const created = await api.post('/api/chats', {
+            domain: chat.nodes.domain ? chat.nodes.domain.value : '',
+        });
+        chat.current = created.chat;
+        upsertChatInList(chat.current);
+        renderTalkHead();
+        rememberChat(chat.current.id);
+        replaceHash('#/chat/' + chat.current.id);
+        return chat.current;
+    }
+
+    async function uploadAttachment(file) {
+        const button = chat.nodes.attachButton;
+        if (button) button.disabled = true;
+        try {
+            await ensureChat();
+            const form = new FormData();
+            form.append('file', file);
+            const data = await uploadFile(
+                '/api/chats/' + chat.current.id + '/attachments', form);
+            chat.attachments = (chat.attachments || []).concat([data.attachment]);
+            renderAttachments();
+            if (!data.attachment.chars) {
+                toast('Файл «' + data.attachment.name + '» приложен, но текста в нём нет: ' +
+                    (data.attachment.note || 'формат не читается'), 'error', 6000);
+            }
+        } catch (error) {
+            toastError(error);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    }
+
+    async function dropAttachment(item) {
+        try {
+            await api.del('/api/chats/' + chat.current.id + '/attachments/' + item.id);
+            chat.attachments = (chat.attachments || []).filter((one) => one.id !== item.id);
+            renderAttachments();
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
     function buildComposer() {
         const input = h('textarea', {
             class: 'composer-input', rows: '1', spellcheck: 'false',
             placeholder: 'Вопрос по библиотеке. Enter — отправить, Shift+Enter — новая строка',
-            oninput: (event) => growComposer(event.target),
+            oninput: (event) => {
+                growComposer(event.target);
+                // Недописанный вопрос переживает переход на другую вкладку.
+                saveDraft(chat.current ? chat.current.id : null, event.target.value);
+            },
             onkeydown: (event) => {
                 event.stopPropagation();
                 if (event.key === 'Enter' && !event.shiftKey) {
@@ -4767,6 +5075,7 @@
         return h('div', { class: 'composer' },
             h('div', { class: 'composer-top' },
                 h('span', { class: 'small muted' }, 'Искать в:'), domainPick, caseLine),
+            buildAttachBar(),
             h('div', { class: 'composer-row' }, input, sendButton, stopButton));
     }
 
@@ -4842,7 +5151,28 @@
                 'Фрагменты, на которые опирается ответ.'));
             return;
         }
+        // Сколько документов сверил помощник — видно сразу, до чтения ответа.
+        const docs = documentsOf(items);
+        if (docs.length > 1) {
+            box.appendChild(h('div', { class: 'src-summary' },
+                'Ответ собран по ' + docs.length + ' ' +
+                plural(docs.length, 'документу', 'документам', 'документам') +
+                ': ' + docs.map((item) => item.title).join('; ')));
+        }
         items.forEach((source) => box.appendChild(sourceCard(source)));
+    }
+
+    /** Список документов, из которых взяты фрагменты, в порядке появления. */
+    function documentsOf(items) {
+        const seen = {};
+        const out = [];
+        (items || []).forEach((item) => {
+            const key = item.doc_id || item.citation || '';
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            out.push({ doc_id: key, title: item.title || key });
+        });
+        return out;
     }
 
     function sourceCard(source) {
@@ -4884,12 +5214,10 @@
 
         if (!chat.current) {
             try {
-                const created = await api.post('/api/chats', { domain: chat.nodes.domain.value });
-                chat.current = created.chat;
-                upsertChatInList(chat.current);
-                renderTalkHead();
-                // Адрес меняем без перерисовки экрана: иначе поток оборвётся.
-                replaceHash('#/chat/' + chat.current.id);
+                // Адрес внутри меняется без перерисовки экрана: иначе
+                // поток ответа оборвался бы на первом же событии.
+                await ensureChat();
+                saveDraft(null, '');
             } catch (error) {
                 toastError(error);
                 return;
@@ -4898,7 +5226,11 @@
 
         input.value = '';
         growComposer(input);
-        await streamAnswer(text);
+        saveDraft(chat.current.id, '');
+        const sentWith = chat.attachments || [];
+        chat.attachments = [];
+        renderAttachments();
+        await streamAnswer(text, sentWith);
     }
 
     function abortAnswer() {
@@ -4930,50 +5262,55 @@
         }
     }
 
-    async function streamAnswer(text) {
-        const feed = chat.nodes.feed;
-        const placeholder = $('.chat-empty', feed);
+    async function streamAnswer(text, attachments) {
+        const placeholder = chat.nodes.feed ? $('.chat-empty', chat.nodes.feed) : null;
         if (placeholder) placeholder.remove();
 
-        const asked = {
-            id: 0, role: 'user', content: text, sources: [],
-            created_at: new Date().toISOString(),
+        // Всё состояние ответа живёт здесь, а не в узлах страницы: инженер
+        // может уйти в другой раздел и вернуться, генерация не прервётся.
+        const live = {
+            chatId: chat.current.id,
+            question: text,
+            questionId: 0,
+            askedAt: new Date().toISOString(),
+            attachments: attachments || [],
+            answer: '',
+            body: null,
+            note: null,
         };
-        feed.appendChild(messageNode(asked));
-
-        const body = h('div', { class: 'body is-typing' });
-        const bubble = h('div', { class: 'msg msg--assistant' },
-            h('div', { class: 'who' }, 'Помощник', h('span', { class: 'faint' }, 'печатает…')),
-            body);
-        feed.appendChild(bubble);
-        scrollFeed();
+        chat.live = live;
 
         chat.pendingSources = [];
+        chat.pendingExpansion = null;
+        chat.pendingWarning = null;
         chat.sourcesOf = null;
         chat.activeLabel = null;
-        renderChatSources();
 
         const controller = new AbortController();
         chat.controller = controller;
         setStreaming(true);
+        renderFeed();
+        renderChatSources();
 
-        let answer = '';
         let done = null;
         let failed = '';
         let aborted = false;
         let painted = 0;
 
+        /* Рисуем не чаще раза в 70 мс и только если узлы на месте: пока
+           инженер в другом разделе, текст просто копится в live.answer. */
         const paint = (force) => {
             const now = Date.now();
             if (!force && now - painted < 70) return;
             painted = now;
-            renderAnswer(body, answer);
-            body.classList.add('is-typing');
+            if (!live.body || !live.body.isConnected) return;
+            renderAnswer(live.body, live.answer);
+            live.body.classList.add('is-typing');
             scrollFeed();
         };
 
         try {
-            const response = await fetch('/api/chats/' + chat.current.id + '/stream', {
+            const response = await fetch('/api/chats/' + live.chatId + '/stream', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
@@ -5009,14 +5346,15 @@
                     cut = buffer.indexOf('\n\n');
                     if (!event) continue;
                     if (event.type === 'question') {
-                        if (event.message && event.message.id) asked.id = event.message.id;
+                        if (event.message && event.message.id) live.questionId = event.message.id;
                     } else if (event.type === 'sources') {
                         chat.pendingSources = event.sources || [];
+                        chat.pendingDocuments = event.documents || [];
                         chat.pendingExpansion = event.expansion || null;
                         chat.pendingWarning = event.warning || null;
                         renderChatSources();
                     } else if (event.type === 'delta') {
-                        answer += event.text || '';
+                        live.answer += event.text || '';
                         paint(false);
                     } else if (event.type === 'done') {
                         done = event;
@@ -5029,33 +5367,50 @@
             if (error && error.name === 'AbortError') aborted = true;
             else failed = errorText(error);
         } finally {
-            setStreaming(false);
             chat.controller = null;
+            setStreaming(false);
         }
 
-        if (!bubble.isConnected) return;
-        body.classList.remove('is-typing');
+        chat.live = null;
 
         if (done) {
-            chat.current = done.chat || chat.current;
-            chat.messages.push(done.question, done.answer);
-            chat.sourcesOf = done.answer;
-            chat.pendingSources = null;
-            renderFeed();
-            renderChatSources();
-            renderTalkHead();
-            upsertChatInList(chat.current);
+            // Разговор мог быть закрыт или переключён, пока шёл ответ:
+            // в историю кладём только если инженер всё ещё здесь.
+            if (chat.current && String(chat.current.id) === String(live.chatId)) {
+                chat.current = done.chat || chat.current;
+                // Вопрос мог уже приехать в списке сообщений, если инженер
+                // возвращался в раздел, пока шёл ответ.
+                const have = {};
+                chat.messages.forEach((item) => { have[String(item.id)] = true; });
+                [done.question, done.answer].forEach((item) => {
+                    if (item && !have[String(item.id)]) chat.messages.push(item);
+                });
+                chat.sourcesOf = done.answer;
+                chat.pendingSources = null;
+                renderFeed();
+                renderChatSources();
+                renderTalkHead();
+            }
+            upsertChatInList(done.chat || chat.current);
             return;
         }
 
-        renderAnswer(body, answer);
+        if (!live.body || !live.body.isConnected) {
+            // Экран не на месте — сказать некому и негде. Ответ, если он
+            // успел появиться, сервер сохранил сам.
+            if (failed) toast('Помощник: ' + failed, 'error');
+            return;
+        }
+        live.body.classList.remove('is-typing');
+        if (live.note) live.note.textContent = '';
+        renderAnswer(live.body, live.answer);
         if (failed) {
-            body.appendChild(h('div', { class: 'msg-error' }, 'Ошибка: ' + failed));
+            live.body.appendChild(h('div', { class: 'msg-error' }, 'Ошибка: ' + failed));
         } else if (aborted) {
-            body.appendChild(h('div', { class: 'msg-note' },
-                'Генерация прервана инженером — ответ в историю разговора не записан.'));
+            live.body.appendChild(h('div', { class: 'msg-note' },
+                'Генерация прервана. Написанное до остановки сохранено в разговоре.'));
         } else {
-            body.appendChild(h('div', { class: 'msg-error' },
+            live.body.appendChild(h('div', { class: 'msg-error' },
                 'Поток оборвался, не дойдя до конца ответа.'));
         }
         scrollFeed();
@@ -5350,8 +5705,8 @@
             statCard(data.cases || 0, 'писем зарегистрировано вами'),
             statCard(reports.total || 0, 'версий отчётов',
                 'утверждено: ' + (reports.approved || 0)),
-            statCard(edits.pairs || 0, 'пар «черновик → финал»',
-                'средняя правка: ' + fmtNumber(edits.mean_distance || 0, 3)),
+            statCard(edits.pairs || 0, 'пар «черновик → готовое»',
+                'средняя доля правки: ' + fmtNumber(edits.mean_distance || 0, 3)),
             statCard(data.chats || 0, 'разговоров с помощником',
                 'чужие разговоры недоступны никому'));
 

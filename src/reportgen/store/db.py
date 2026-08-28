@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "4"
+SCHEMA_VERSION = "5"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -357,5 +357,6 @@ class Database:
             self.connection.execute("VACUUM")
 
     def counts(self) -> dict[str, int]:
-        tables = ("users", "documents", "chunks", "cases", "reports", "edit_pairs", "audit")
+        tables = ("users", "documents", "chunks", "cases", "reports", "edit_pairs",
+                  "chats", "chat_messages", "chat_attachments", "absences", "audit")
         return {name: int(self.scalar(f"SELECT count(*) FROM {name}") or 0) for name in tables}

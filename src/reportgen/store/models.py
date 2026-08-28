@@ -522,6 +522,60 @@ class ChatMessage:
         }
 
 
+#: Виды вложений к вопросу помощнику.
+ATTACHMENT_KINDS = ("dump", "image", "document")
+ATTACHMENT_TITLES = {
+    "dump": "дамп или лог",
+    "image": "снимок экрана",
+    "document": "документ",
+}
+
+
+@dataclass
+class ChatAttachment:
+    """Файл, приложенный к вопросу: дамп, снимок экрана, документ."""
+
+    id: int
+    chat_id: int
+    name: str
+    kind: str = "document"
+    size: int = 0
+    text: str = ""
+    note: str = ""
+    message_id: int | None = None
+    created_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "ChatAttachment":
+        return cls(
+            id=row["id"],
+            chat_id=row["chat_id"],
+            name=row["name"],
+            kind=row["kind"],
+            size=int(row["size"] or 0),
+            text=row["text"] or "",
+            note=row["note"] or "",
+            message_id=row["message_id"],
+            created_at=row["created_at"],
+        )
+
+    def to_dict(self, *, with_text: bool = False) -> Dict[str, Any]:
+        data = {
+            "id": self.id,
+            "chat_id": self.chat_id,
+            "name": self.name,
+            "kind": self.kind,
+            "kind_title": ATTACHMENT_TITLES.get(self.kind, self.kind),
+            "size": self.size,
+            "chars": len(self.text),
+            "note": self.note,
+            "message_id": self.message_id,
+        }
+        if with_text:
+            data["text"] = self.text
+        return data
+
+
 @dataclass
 class Absence:
     """Период отсутствия или дежурства сотрудника."""
