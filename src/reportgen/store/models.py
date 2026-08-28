@@ -542,19 +542,25 @@ class ChatAttachment:
     kind: str = "document"
     size: int = 0
     text: str = ""
+    #: Длина извлечённого текста. Отдельным полем — чтобы показать её, не
+    #: вычитывая сам текст: дамп занимает до 200 МБ, а на экране от него
+    #: нужно одно число.
+    chars: int = -1
     note: str = ""
     message_id: int | None = None
     created_at: str = ""
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "ChatAttachment":
+        text = _col(row, "text", "") or ""
         return cls(
             id=row["id"],
             chat_id=row["chat_id"],
             name=row["name"],
             kind=row["kind"],
             size=int(row["size"] or 0),
-            text=row["text"] or "",
+            text=text,
+            chars=int(_col(row, "chars", len(text)) or 0),
             note=row["note"] or "",
             message_id=row["message_id"],
             created_at=row["created_at"],
@@ -568,7 +574,7 @@ class ChatAttachment:
             "kind": self.kind,
             "kind_title": ATTACHMENT_TITLES.get(self.kind, self.kind),
             "size": self.size,
-            "chars": len(self.text),
+            "chars": self.chars if self.chars >= 0 else len(self.text),
             "note": self.note,
             "message_id": self.message_id,
         }

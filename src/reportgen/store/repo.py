@@ -1145,11 +1145,23 @@ class ChatRepo:
             "SELECT * FROM chat_attachments WHERE id = ?", (attachment_id,))
         return ChatAttachment.from_row(row) if row else None
 
-    def attachments(self, chat_id: int, *, pending_only: bool = False) -> List[ChatAttachment]:
-        """Вложения разговора. pending_only — ещё не привязанные к вопросу."""
+    #: Колонки вложения без самого текста: для списка на экране его читать
+    #: незачем, а весит он до сотен мегабайт на файл.
+    _ATTACH_HEAD = ("id, chat_id, name, kind, size, note, message_id, created_at, "
+                    "length(text) AS chars")
+
+    def attachments(self, chat_id: int, *, pending_only: bool = False,
+                    with_text: bool = True) -> List[ChatAttachment]:
+        """Вложения разговора. pending_only — ещё не привязанные к вопросу.
+
+        ``with_text`` выключают там, где нужен только список: открытие
+        разговора читало в память полный текст каждого дампа, чтобы показать
+        его длину.
+        """
         clause = " AND message_id IS NULL" if pending_only else ""
+        columns = "*" if with_text else self._ATTACH_HEAD
         rows = self.db.query(
-            f"SELECT * FROM chat_attachments WHERE chat_id = ?{clause} ORDER BY id",
+            f"SELECT {columns} FROM chat_attachments WHERE chat_id = ?{clause} ORDER BY id",
             (chat_id,),
         )
         return rows_to(ChatAttachment, rows)

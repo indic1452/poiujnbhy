@@ -889,7 +889,9 @@ def get_chat(request: Request, chat_id: int) -> Dict[str, Any]:
     return {
         "chat": chat.to_dict(),
         "messages": [message.to_dict() for message in assistant.messages(user, chat_id)],
-        "attachments": [item.to_dict() for item in repos.chats.attachments(chat_id)],
+        # Без текста: на экране от вложения нужны имя, вид и длина.
+        "attachments": [item.to_dict()
+                        for item in repos.chats.attachments(chat_id, with_text=False)],
     }
 
 

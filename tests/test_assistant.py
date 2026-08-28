@@ -567,6 +567,21 @@ class AttachmentTests(AssistantTestCase):
         self.assertTrue([w for w in words if w.startswith("альфа")])
         self.assertTrue([w for w in words if w.startswith("бета")], "второй файл не в запросе")
 
+    def test_listing_attachments_does_not_read_the_dump(self):
+        """Открытие разговора не тянет в память текст каждого дампа.
+
+        Показать нужно имя, вид и длину. Текст файла — до сотен мегабайт,
+        и читался он целиком ради одного числа.
+        """
+        self.attach(name="big.log", text="строка дампа " * 5000)
+        listed = self.repos.chats.attachments(self.chat.id, with_text=False)
+        self.assertEqual("", listed[0].text)
+        # Длина при этом честная: её считает сама база.
+        self.assertEqual(len("строка дампа " * 5000), listed[0].to_dict()["chars"])
+        # А там, где текст нужен модели, он на месте.
+        full = self.repos.chats.attachments(self.chat.id, pending_only=True)
+        self.assertTrue(full[0].text.startswith("строка дампа"))
+
     def test_attachment_is_bound_to_the_question(self):
         item = self.attach()
         self.assertIsNone(item.message_id)
