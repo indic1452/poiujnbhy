@@ -712,6 +712,7 @@ class CaseRepo:
 
     def list(self, status: str | None = None, limit: int = 100, offset: int = 0,
              assignee_id: int | None = None, overdue_before: str | None = None,
+             deadline_from: str | None = None, deadline_to: str | None = None,
              query: str = "") -> List[Case]:
         """Письма по фильтрам. Сортировка: сначала просроченные и срочные.
 
@@ -736,6 +737,20 @@ class CaseRepo:
             )
             params.append(overdue_before)
             params.extend(OPEN_CASE_STATUSES)
+        if deadline_from or deadline_to:
+            # Отбор по сроку делает база, а не выборка «первых N с фильтром
+            # на стороне кода»: сортировка ставит наверх просроченные, и на
+            # отделе с полусотней просрочек список «горящих» выходил пустым
+            # при ненулевой плитке над ним.
+            marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
+            where.append(f"c.deadline <> '' AND c.status IN ({marks})")
+            params.extend(OPEN_CASE_STATUSES)
+            if deadline_from:
+                where.append("c.deadline >= ?")
+                params.append(deadline_from)
+            if deadline_to:
+                where.append("c.deadline <= ?")
+                params.append(deadline_to)
         if query.strip():
             like = f"%{query.strip().lower()}%"
             where.append(

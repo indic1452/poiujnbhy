@@ -972,6 +972,11 @@ class LetterCardTests(WebTestCase):
         self.assertEqual(near["case_id"], items[0]["case_id"])
 
 
+def _shift_days(day: str, delta: int) -> str:
+    from datetime import date, timedelta
+    return (date.fromisoformat(day) + timedelta(days=delta)).isoformat()
+
+
 class BoardTests(WebTestCase):
     """Дашборд: нагрузка, сроки, дежурство, движение за период."""
 
@@ -1008,6 +1013,46 @@ class BoardTests(WebTestCase):
         person = [item for item in body["people"] if item["id"] == self.engineer.id][0]
         self.assertTrue(person["on_duty"])
         self.assertEqual("", person["away"], "дежурство — это не отсутствие")
+
+    def test_burning_letters_are_listed_even_behind_many_overdue(self):
+        """Список «горящих» не должен вытесняться просроченными.
+
+        Он собирался из первых 60 писем с фильтром на стороне кода, а
+        сортировка ставит наверх просроченные: на отделе с полусотней
+        просрочек список выходил пустым при ненулевой плитке над ним.
+        """
+        today = self.client.get("/api/board").json()["today"]
+        soon = _shift_days(today, 2)
+        long_ago = _shift_days(today, -400)
+        for number in range(70):
+            self.repos.db.execute(
+                "INSERT INTO cases(case_id, report_type, title, customer, status, "
+                "facts_json, facts_digest, deadline, created_at, updated_at) "
+                "VALUES(?,?,'','','draft','{}','',?,?,?)",
+                (f"L-ПРОСРОК-{number}", "signal_issue", long_ago, today, today),
+            )
+        self.repos.db.execute(
+            "INSERT INTO cases(case_id, report_type, title, customer, status, "
+            "facts_json, facts_digest, deadline, created_at, updated_at) "
+            "VALUES(?,?,'Горящее','','draft','{}','',?,?,?)",
+            ("L-ГОРИТ-1", "signal_issue", soon, today, today),
+        )
+        body = self.client.get("/api/board").json()
+        self.assertGreaterEqual(body["totals"]["soon"], 1)
+        self.assertTrue(body["soon"], "плитка считает, а список пуст")
+        self.assertIn("L-ГОРИТ-1", {case["case_id"] for case in body["soon"]})
+
+    def test_two_duty_records_for_one_person_count_once(self):
+        # Дежурство и подмена на те же сутки: записей две, человек один.
+        # Плитка показывала «на дежурстве: 2» при одной фамилии в списке.
+        today = self.client.get("/api/board").json()["today"]
+        for note in ("суточное", "подмена"):
+            self.client.post("/api/absences", json={
+                "user_id": self.engineer.id, "kind": "duty",
+                "date_from": today, "date_to": today, "note": note})
+        body = self.client.get("/api/board").json()
+        self.assertEqual(1, body["totals"]["on_duty"])
+        self.assertEqual(1, len(body["duty"]))
 
     def test_vacation_marks_person_as_away(self):
         today = self.client.get("/api/board").json()["today"]

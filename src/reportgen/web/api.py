@@ -9,7 +9,7 @@ import unicodedata
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Iterable
 
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -1338,6 +1338,16 @@ def delete_absence(request: Request, absence_id: int) -> Dict[str, Any]:
 
 # ------------------------------------------------------------- дашборд ----
 
+def _one_per_person(records: Iterable[Any]) -> Dict[int, Any]:
+    """По одной записи на человека — той, что кончается позже."""
+    chosen: Dict[int, Any] = {}
+    for item in records:
+        current = chosen.get(item.user_id)
+        if current is None or item.date_to > current.date_to:
+            chosen[item.user_id] = item
+    return chosen
+
+
 @router.get("/board")
 def board(request: Request, days: int = 30) -> Dict[str, Any]:
     """Сводка отдела: люди, нагрузка, сроки, дежурство, движение за период."""
@@ -1349,18 +1359,14 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
 
     staff = repos.board.workload(today)
     records = repos.absences.on_date(today)
-    duty = [item for item in records if item.kind == "duty"]
-    # По человеку — одна запись, та, что кончается позже. У одного сотрудника
-    # может быть отмечен и больничный, и следом отпуск: в списке они выглядели
-    # как два отсутствующих, а счётчик считал людей — и расходился со списком.
-    away: Dict[int, Any] = {}
-    for item in records:
-        if item.kind == "duty":
-            continue
-        current = away.get(item.user_id)
-        if current is None or item.date_to > current.date_to:
-            away[item.user_id] = item
+    # По человеку — одна запись, та, что кончается позже. И у отсутствия, и у
+    # дежурства: сотруднику отмечают больничный и следом отпуск, дежурство и
+    # подмену на те же сутки. Записей две, а человек один — счётчик обязан
+    # считать людей, иначе «на дежурстве: 2» при одной фамилии в списке.
+    away = _one_per_person(item for item in records if item.kind != "duty")
+    on_duty = _one_per_person(item for item in records if item.kind == "duty")
     absent = sorted(away.values(), key=lambda item: (item.full_name, item.date_to))
+    duty = sorted(on_duty.values(), key=lambda item: (item.full_name, item.date_to))
 
     people = []
     for row in staff:
@@ -1390,10 +1396,7 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
     # Счётчики считает база: списки ниже — только то, что показываем.
     deadlines = repos.board.deadline_counts(today, soon_until)
     overdue = repos.cases.list(overdue_before=today, limit=20)
-    soon = [
-        case for case in repos.cases.list(status="open", limit=60)
-        if case.deadline and today <= case.deadline <= soon_until
-    ][:20]
+    soon = repos.cases.list(deadline_from=today, deadline_to=soon_until, limit=20)
 
     return {
         "today": today,
