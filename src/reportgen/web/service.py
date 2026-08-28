@@ -208,7 +208,7 @@ class ReportService:
         try:
             return FactPack.from_dict(case.facts)
         except FactPackError as error:
-            raise ServiceError(f"факт-пакет кейса некорректен: {error}", 400) from error
+            raise ServiceError(f"факт-пакет письма некорректен: {error}", 400) from error
 
     def coverage(self, case: Case) -> Dict[str, List[str]]:
         """Каких обязательных измерений не хватает по шаблону (док. 04, 4.3)."""
@@ -263,7 +263,7 @@ class ReportService:
         if raw["case_id"] != case.case_id:
             raise ServiceError("идентификатор обращения менять нельзя", 400)
         if raw["report_type"] != case.report_type:
-            raise ServiceError("тип отчёта менять нельзя — создайте новый кейс", 400)
+            raise ServiceError("тип отчёта менять нельзя — зарегистрируйте новое письмо", 400)
         facts = _validate_facts(raw)
         self.repos.cases.update_facts(case.id, raw, facts.digest(), customer=facts.customer)
         # Изменились исходные данные — значит изменилось и множество чисел,
@@ -363,7 +363,7 @@ class ReportService:
                            *, hint: str = "", top_k: int | None = None) -> ReportSection:
         case = self.repos.cases.get(report.case_ref)
         if case is None:
-            raise ServiceError("кейс отчёта не найден", 404)
+            raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
         facts = self.facts_of(case)
         outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
         spec = next((s for s in outline.sections if s.id == section_id), None)
@@ -441,7 +441,7 @@ class ReportService:
             raise ServiceError("отчёт не найден", 404)
         case = self.repos.cases.get(report.case_ref)
         if case is None:
-            raise ServiceError("кейс отчёта не найден", 404)
+            raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
         facts = self.facts_of(case)
         outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
         registry = StoredRegistry.from_meta(report.meta)
@@ -473,7 +473,7 @@ class ReportService:
     def verify(self, report: Report) -> List[Dict[str, Any]]:
         case = self.repos.cases.get(report.case_ref)
         if case is None:
-            raise ServiceError("кейс отчёта не найден", 404)
+            raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
         facts = self.facts_of(case)
         outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
         sections, appendix = self._parts_of(report)
@@ -538,7 +538,7 @@ class ReportService:
             )
         case = self.repos.cases.get(report.case_ref)
         if case is None:
-            raise ServiceError("кейс отчёта не найден", 404)
+            raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
 
         pairs = self._collect_edit_pairs(report, case, user)
         self.repos.reports.approve(report.id, user.id if user else None)

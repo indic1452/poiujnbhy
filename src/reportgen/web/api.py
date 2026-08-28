@@ -122,7 +122,7 @@ def _body(request: Request) -> Dict[str, Any]:
 def _case_or_404(request: Request, case_ref: int) -> Case:
     case = _repos(request).cases.get(case_ref)
     if case is None:
-        raise ServiceError("кейс не найден", 404)
+        raise ServiceError("письмо не найдено", 404)
     return case
 
 
@@ -414,7 +414,7 @@ def latest_report(request: Request, case_ref: int) -> Dict[str, Any]:
     case = _case_or_404(request, case_ref)
     report = _repos(request).reports.latest_for_case(case.id)
     if report is None:
-        raise ServiceError("для кейса ещё не сгенерирован отчёт", 404)
+        raise ServiceError("по этому письму отчёт ещё не готовили", 404)
     return {"report": _report_payload(_service(request), report)}
 
 

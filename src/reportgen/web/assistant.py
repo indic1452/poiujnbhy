@@ -53,7 +53,7 @@ class AssistantService:
     def create_chat(self, user: User, *, title: str = DEFAULT_TITLE,
                     domain: str = "", case_ref: int | None = None) -> Chat:
         if case_ref is not None and self.repos.cases.get(case_ref) is None:
-            raise ServiceError("кейс, к которому привязывается разговор, не найден", 404)
+            raise ServiceError("письмо, к которому привязывается разговор, не найдено", 404)
         return self.repos.chats.create(user.id, title=title, domain=domain, case_ref=case_ref)
 
     def get_chat(self, user: User, chat_id: int) -> Chat:
