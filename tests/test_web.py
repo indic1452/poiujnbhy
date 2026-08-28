@@ -57,9 +57,11 @@ class WebTestCase(unittest.TestCase):
         self.app, self.repos, self.service = make_app(self.tmp, auth=self.auth)
         self.client = TestClient(self.app)
         if self.auth:
-            self.repos.users.create("admin", "пароль123", "Админ", "admin")
-            self.repos.users.create("engineer", "пароль123", "Инженер", "engineer")
-            self.repos.users.create("viewer", "пароль123", "Наблюдатель", "viewer")
+            # Логины совпадают с должностями только для читаемости тестов.
+            self.repos.users.create("admin", "пароль123", "Хозяев Х. Х.", "owner")
+            self.repos.users.create("nachalnik", "пароль123", "Начальников Н. Н.", "head")
+            self.repos.users.create("gruppa", "пароль123", "Группин Г. Г.", "lead")
+            self.repos.users.create("engineer", "пароль123", "Инженеров И. И.", "engineer")
             self.login("admin")
 
     def tearDown(self):
@@ -157,12 +159,18 @@ class AuthTests(WebTestCase):
         )
         self.assertEqual(response.status_code, 429)
 
-    def test_viewer_cannot_create_case(self):
-        self.login("viewer")
+    def test_engineer_can_create_case(self):
+        # Письма ведут все штатные должности: инженер отдела — тоже.
+        self.login("engineer")
         response = self.client.post(
             "/api/cases", json={"report_type": "signal_issue", "case_id": "X-1", "facts": CASE}
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+
+    def test_group_lead_is_an_administrator(self):
+        # «Все до начальника группы» — значит, начальник группы тоже.
+        self.login("gruppa")
+        self.assertEqual(self.client.get("/api/users").status_code, 200)
 
     def test_engineer_cannot_delete_case(self):
         case = self.create_case()
@@ -176,6 +184,7 @@ class AuthTests(WebTestCase):
     def test_me_reports_current_user(self):
         body = self.client.get("/api/me").json()
         self.assertEqual(body["user"]["login"], "admin")
+        self.assertEqual("owner", body["user"]["role"])
         self.assertTrue(body["auth_enabled"])
 
 
@@ -537,11 +546,11 @@ class LibraryTests(WebTestCase):
         response = self.client.put(f"/api/library/{doc_id}/status", json={"status": "выдумка"})
         self.assertEqual(response.status_code, 400)
 
-    def test_status_change_requires_editor(self):
+    def test_status_change_requires_login(self):
         doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
-        self.login("viewer")
+        self.client.post("/api/auth/logout", json={})
         response = self.client.put(f"/api/library/{doc_id}/status", json={"status": "archived"})
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
 
     def test_library_filters_by_status(self):
         doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
@@ -702,7 +711,7 @@ class DocumentInspectionTests(WebTestCase):
 
 
 class UserManagementTests(WebTestCase):
-    """Сотрудники, роли и пароли — из интерфейса, а не только из командной строки."""
+    """Сотрудники, должности и пароли — из интерфейса, а не только из CLI."""
 
     def test_only_admin_sees_the_list(self):
         self.login("engineer")
@@ -712,9 +721,21 @@ class UserManagementTests(WebTestCase):
         data = self.client.get("/api/users").json()
         self.assertTrue(data["items"])
         titles = {role["id"]: role for role in data["roles"]}
-        self.assertEqual({"viewer", "engineer", "admin"}, set(titles))
+        self.assertEqual(
+            {"owner", "head", "deputy", "lead", "senior", "engineer"}, set(titles)
+        )
         for role in data["roles"]:
-            self.assertTrue(role["note"], f"у роли {role['id']} нет пояснения")
+            self.assertTrue(role["note"], f"у должности {role['id']} нет пояснения")
+            self.assertTrue(role["title"], f"у должности {role['id']} нет названия")
+        # Права администратора — до начальника группы включительно.
+        self.assertTrue(all(titles[key]["is_admin"]
+                            for key in ("owner", "head", "deputy", "lead")))
+        self.assertFalse(any(titles[key]["is_admin"] for key in ("senior", "engineer")))
+
+    def test_local_service_record_is_hidden(self):
+        # Запись «local» — служебная, в списке личного состава ей не место.
+        logins = {item["login"] for item in self.client.get("/api/users").json()["items"]}
+        self.assertNotIn("local", logins)
 
     def test_create_and_update(self):
         created = self.client.post("/api/users", json={
@@ -725,34 +746,66 @@ class UserManagementTests(WebTestCase):
         user = created.json()["user"]
         self.assertEqual("Петров П.П.", user["full_name"])
 
-        patched = self.client.patch(f"/api/users/{user['id']}", json={"role": "viewer"})
-        self.assertEqual("viewer", patched.json()["user"]["role"])
+        patched = self.client.patch(f"/api/users/{user['id']}", json={
+            "role": "senior", "department": "Отдел связи", "team": "1 группа"})
+        self.assertEqual("senior", patched.json()["user"]["role"])
+        self.assertEqual("Отдел связи", patched.json()["user"]["department"])
+        self.assertEqual("Старший инженер отдела", patched.json()["user"]["role_title"])
 
     def test_login_rules_are_enforced(self):
         for bad in ("ab", "Петров", "with space", "x" * 40):
             with self.subTest(login=bad):
                 response = self.client.post("/api/users", json={
-                    "login": bad, "password": "пароль12345", "role": "viewer"})
+                    "login": bad, "password": "пароль12345", "role": "engineer"})
                 self.assertEqual(400, response.status_code)
 
     def test_short_password_refused(self):
         response = self.client.post("/api/users", json={
-            "login": "sidorov", "password": "коротк", "role": "viewer"})
+            "login": "sidorov", "password": "коротк", "role": "engineer"})
         self.assertEqual(400, response.status_code)
 
     def test_duplicate_login_refused(self):
-        payload = {"login": "dublikat", "password": "пароль12345", "role": "viewer"}
+        payload = {"login": "dublikat", "password": "пароль12345", "role": "engineer"}
         self.assertEqual(200, self.client.post("/api/users", json=payload).status_code)
         self.assertEqual(409, self.client.post("/api/users", json=payload).status_code)
 
-    def test_last_admin_cannot_be_demoted(self):
-        # Иначе управлять сотрудниками станет некому, а чинится это только
-        # командной строкой на самой машине.
-        admins = [u for u in self.client.get("/api/users").json()["items"]
-                  if u["role"] == "admin"]
-        self.assertEqual(1, len(admins), "в тесте ожидается один администратор")
-        response = self.client.patch(f"/api/users/{admins[0]['id']}", json={"role": "engineer"})
-        self.assertEqual(409, response.status_code)
+    def test_owner_cannot_be_demoted_by_anyone(self):
+        # Создателя не разжалует никто, включая его самого: иначе система
+        # остаётся без владельца, а чинится это только командной строкой.
+        me = self.client.get("/api/me").json()["user"]
+        response = self.client.patch(f"/api/users/{me['id']}", json={"role": "engineer"})
+        self.assertEqual(403, response.status_code)
+
+    def test_admins_are_counted_by_position(self):
+        # Создатель, начальник отдела и начальник группы — администраторы;
+        # старший инженер и инженер — нет.
+        self.assertEqual(3, self.repos.users.count_admins())
+        engineer = self.repos.users.by_login("engineer")
+        self.assertFalse(engineer.is_admin)
+
+    def test_nobody_can_demote_themselves(self):
+        # Разжаловать можно только младшего по должности. Значит, сам
+        # администратор администратором и остаётся — отдельной проверки
+        # «остался последний» не требуется.
+        head = [u for u in self.client.get("/api/users").json()["items"]
+                if u["role"] == "head"][0]
+        self.login("nachalnik")
+        response = self.client.patch(f"/api/users/{head['id']}", json={"role": "engineer"})
+        self.assertEqual(403, response.status_code)
+
+    def test_lead_cannot_touch_the_head(self):
+        # Начальник группы — администратор, но не над своим начальником.
+        head = [u for u in self.client.get("/api/users").json()["items"]
+                if u["role"] == "head"][0]
+        self.login("gruppa")
+        response = self.client.patch(f"/api/users/{head['id']}", json={"role": "engineer"})
+        self.assertEqual(403, response.status_code)
+
+    def test_role_above_own_is_refused(self):
+        self.login("gruppa")
+        response = self.client.post("/api/users", json={
+            "login": "vyshe", "password": "пароль12345", "role": "head"})
+        self.assertEqual(403, response.status_code)
 
     def test_cannot_disable_self(self):
         me = self.client.get("/api/me").json()["user"]
@@ -809,12 +862,7 @@ class InterfaceCopyTests(unittest.TestCase):
 
 
 class ResponsiveLayoutTests(unittest.TestCase):
-    """Вёрстка на ноутбуке.
-
-    Шапка не сжималась ни на пиксель: на 1024 правый край с именем и кнопкой
-    «Выйти» уезжал за экран, а вместе с ним и всё содержимое — появлялась
-    горизонтальная прокрутка страницы целиком.
-    """
+    """Вёрстка: во всю ширину монитора и без обрезки на ноутбуке."""
 
     def setUp(self):
         self.css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
@@ -824,19 +872,36 @@ class ResponsiveLayoutTests(unittest.TestCase):
         start = self.css.index(selector + " {")
         return self.css[start:self.css.index("}", start)]
 
+    def test_content_width_is_not_capped(self):
+        # Ограничитель в 1320 px оставлял треть 24-дюймового монитора пустой:
+        # раздел выглядел обрезанным, хотя место было.
+        self.assertNotIn("--content-max", self.css)
+        self.assertNotIn(".page > * {", self.css)
+
+    def test_readable_measure_is_opt_in(self):
+        # Мера строки осталась, но только там, где сплошной текст.
+        self.assertIn("max-width: 78ch", self.block(".prose"))
+
     def test_topbar_can_shrink(self):
         self.assertIn("min-width: 0", self.block(".topbar"))
         self.assertIn("min-width: 0", self.block(".topbar-right"))
 
-    def test_nav_scrolls_instead_of_pushing(self):
-        self.assertIn("overflow-x: auto", self.block(".nav"))
+    def test_side_menu_collapses_to_icons(self):
+        # На ноутбуке 1280 меню само сворачивается в значки, не отнимая
+        # ширину у таблицы.
+        self.assertIn("@media (max-width: 1240px)", self.css)
+        self.assertIn("var(--side-w-min)", self.css)
+
+    def test_side_menu_becomes_a_drawer_on_narrow_screens(self):
+        self.assertIn("@media (max-width: 900px)", self.css)
+        self.assertIn("body.side-open .side", self.css)
 
     def test_long_name_is_trimmed_not_pushing(self):
         self.assertIn("text-overflow: ellipsis", self.css)
 
     def test_library_table_sheds_columns_on_narrow_screens(self):
-        # Девять столбцов требуют 1180 px. На 1366 таблица уезжала за край, и
-        # это читалось как обрезанная вёрстка, а не как «прокрути вправо».
+        # Столбцы требуют места; на 1366 таблица уезжала за край, и это
+        # читалось как обрезанная вёрстка, а не как «прокрути вправо».
         for width in ("1500px", "1300px", "1120px"):
             with self.subTest(width=width):
                 self.assertIn(f"@media (max-width: {width})", self.css)

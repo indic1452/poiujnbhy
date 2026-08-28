@@ -33,11 +33,26 @@ class DatabaseCliTests(unittest.TestCase):
 
     def test_useradd_and_users(self):
         code, out = run(["--db", self.db, "useradd", "--login", "admin",
-                         "--role", "admin", "--password", "пароль12345"])
+                         "--role", "owner", "--password", "пароль12345"])
         self.assertEqual(code, 0, out)
         code, out = run(["--db", self.db, "users"])
         self.assertEqual(code, 0)
         self.assertIn("admin", out)
+        # В списке видно должность по-русски, а не служебный owner.
+        self.assertIn("Создатель системы", out)
+
+    def test_useradd_records_department_and_team(self):
+        code, out = run(["--db", self.db, "useradd", "--login", "ivanov",
+                         "--role", "engineer", "--password", "пароль12345",
+                         "--name", "Иванов И. И.", "--department", "Отдел связи",
+                         "--team", "1 группа"])
+        self.assertEqual(code, 0, out)
+        from reportgen.store.repo import Repositories
+        repos = Repositories.open(self.db)
+        user = repos.users.by_login("ivanov")
+        self.assertEqual("Отдел связи", user.department)
+        self.assertEqual("1 группа", user.team)
+        repos.close()
 
     def test_useradd_rejects_short_password(self):
         code, out = run(["--db", self.db, "useradd", "--login", "u", "--password", "123"])

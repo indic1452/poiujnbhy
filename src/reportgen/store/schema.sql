@@ -15,11 +15,31 @@ CREATE TABLE IF NOT EXISTS users (
     id            INTEGER PRIMARY KEY,
     login         TEXT    NOT NULL UNIQUE,
     full_name     TEXT    NOT NULL DEFAULT '',
-    role          TEXT    NOT NULL DEFAULT 'engineer',  -- viewer | engineer | admin
+    -- Штатная должность: owner | head | deputy | lead | senior | engineer.
+    -- Права администратора — до начальника группы включительно.
+    role          TEXT    NOT NULL DEFAULT 'engineer',
+    department    TEXT    NOT NULL DEFAULT '',   -- отдел
+    team          TEXT    NOT NULL DEFAULT '',   -- группа внутри отдела
     password_hash TEXT    NOT NULL,
     active        INTEGER NOT NULL DEFAULT 1,
     created_at    TEXT    NOT NULL
 );
+
+-- Отсутствия: дежурство, отпуск, больничный, командировка. Отдельная таблица,
+-- а не пара колонок в users: у одного человека бывает несколько периодов,
+-- и нужна история — по ней дашборд показывает движение за период.
+CREATE TABLE IF NOT EXISTS absences (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind       TEXT    NOT NULL,            -- duty | vacation | sick | trip | study
+    date_from  TEXT    NOT NULL,            -- ГГГГ-ММ-ДД включительно
+    date_to    TEXT    NOT NULL,            -- ГГГГ-ММ-ДД включительно
+    note       TEXT    NOT NULL DEFAULT '',
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_absences_user ON absences(user_id, date_from);
+CREATE INDEX IF NOT EXISTS idx_absences_range ON absences(date_from, date_to);
 
 CREATE TABLE IF NOT EXISTS sessions (
     token      TEXT PRIMARY KEY,
@@ -80,22 +100,34 @@ CREATE TABLE IF NOT EXISTS embeddings (
     vector    BLOB    NOT NULL     -- float32, little-endian, L2-нормированный
 );
 
--- ---------------------------------------------------------------- кейсы ---
+-- --------------------------------------------------------------- письма ---
 
+-- Таблица называется cases по историческим причинам: так же названы API и
+-- код. В интерфейсе это «письма» — обращение заказчика и подготовленный на
+-- него ответ. Переименовывать таблицу на работающей установке дороже, чем
+-- один раз объяснить это здесь.
 CREATE TABLE IF NOT EXISTS cases (
-    id           INTEGER PRIMARY KEY,
-    case_id      TEXT    NOT NULL UNIQUE,
-    report_type  TEXT    NOT NULL,
-    title        TEXT    NOT NULL DEFAULT '',
-    customer     TEXT    NOT NULL DEFAULT '',
-    status       TEXT    NOT NULL DEFAULT 'new',  -- new|draft|review|approved|archived
-    facts_json   TEXT    NOT NULL,
-    facts_digest TEXT    NOT NULL DEFAULT '',
-    created_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    created_at   TEXT    NOT NULL,
-    updated_at   TEXT    NOT NULL
+    id            INTEGER PRIMARY KEY,
+    case_id       TEXT    NOT NULL UNIQUE,
+    report_type   TEXT    NOT NULL,
+    title         TEXT    NOT NULL DEFAULT '',
+    customer      TEXT    NOT NULL DEFAULT '',
+    status        TEXT    NOT NULL DEFAULT 'new',  -- new|draft|review|approved|archived
+    incoming_no   TEXT    NOT NULL DEFAULT '',     -- входящий номер письма
+    incoming_date TEXT    NOT NULL DEFAULT '',     -- дата письма, ГГГГ-ММ-ДД
+    deadline      TEXT    NOT NULL DEFAULT '',     -- срок ответа, ГГГГ-ММ-ДД
+    priority      TEXT    NOT NULL DEFAULT 'normal',  -- normal | high | urgent
+    assignee_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    note          TEXT    NOT NULL DEFAULT '',
+    facts_json    TEXT    NOT NULL,
+    facts_digest  TEXT    NOT NULL DEFAULT '',
+    created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at    TEXT    NOT NULL,
+    updated_at    TEXT    NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_cases_status ON cases(status);
+CREATE INDEX IF NOT EXISTS idx_cases_status   ON cases(status);
+CREATE INDEX IF NOT EXISTS idx_cases_assignee ON cases(assignee_id);
+CREATE INDEX IF NOT EXISTS idx_cases_deadline ON cases(deadline);
 
 CREATE TABLE IF NOT EXISTS reports (
     id          INTEGER PRIMARY KEY,

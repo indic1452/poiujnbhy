@@ -36,7 +36,7 @@ def ensure_local_user(repos: Repositories) -> User:
     if existing is not None:
         return existing
     user = repos.users.create(
-        LOCAL_LOGIN, secrets.token_urlsafe(32), "Локальный режим (вход запрещён)", "admin"
+        LOCAL_LOGIN, secrets.token_urlsafe(32), "Локальный режим (вход запрещён)", "owner"
     )
     repos.users.set_active(user.id, False)
     return repos.users.by_login(LOCAL_LOGIN) or user
@@ -100,14 +100,28 @@ def require_user(request: Request) -> User:
 
 
 def require_editor(request: Request) -> User:
+    """Работа с письмами и отчётами: доступна всем штатным должностям."""
     user = require_user(request)
     if not user.can_edit:
-        raise ServiceError("недостаточно прав: нужна роль инженера", 403)
+        raise ServiceError("недостаточно прав для этого действия", 403)
     return user
 
 
 def require_admin(request: Request) -> User:
+    """Управление сотрудниками, библиотекой и журналом.
+
+    Права администратора — у должностей до начальника группы включительно.
+    """
     user = require_user(request)
     if not user.is_admin:
-        raise ServiceError("недостаточно прав: нужна роль администратора", 403)
+        raise ServiceError(
+            "недостаточно прав: нужна должность не ниже начальника группы", 403
+        )
+    return user
+
+
+def require_owner(request: Request) -> User:
+    user = require_user(request)
+    if not user.is_owner:
+        raise ServiceError("это может только создатель системы", 403)
     return user

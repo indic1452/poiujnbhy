@@ -361,14 +361,38 @@ class UserRepoTests(StoreTestCase):
         self.assertEqual(self.repos.users.count(), 2)
 
     def test_role_properties(self):
-        admin = self.repos.users.create("admin", "пароль-123", role="admin")
-        viewer = self.repos.users.create("viewer", "пароль-123", role="viewer")
-        engineer = self.repos.users.create("engineer", "пароль-123")
-        self.assertTrue(admin.is_admin)
-        self.assertTrue(admin.can_edit)
-        self.assertTrue(engineer.can_edit)
-        self.assertFalse(engineer.is_admin)
-        self.assertFalse(viewer.can_edit)
+        # Права администратора — до начальника группы включительно;
+        # письма и отчёты ведут все штатные должности.
+        made = {
+            role: self.repos.users.create(role, "пароль-123", role=role)
+            for role in ("owner", "head", "deputy", "lead", "senior", "engineer")
+        }
+        for role, user in made.items():
+            with self.subTest(role=role):
+                self.assertTrue(user.can_edit)
+                self.assertEqual(role in ("owner", "head", "deputy", "lead"), user.is_admin)
+        self.assertTrue(made["owner"].is_owner)
+        self.assertFalse(made["head"].is_owner)
+        # Старшинство: начальник группы младше начальника отдела.
+        self.assertGreater(made["head"].rank, made["lead"].rank)
+        self.assertGreater(made["owner"].rank, made["head"].rank)
+
+    def test_legacy_roles_are_migrated(self):
+        # На уже работающей установке роли viewer/engineer/admin должны
+        # превратиться в должности, иначе сотрудник теряет доступ целиком.
+        self.repos.db.execute(
+            "INSERT INTO users(login, full_name, role, password_hash, active, created_at) "
+            "VALUES('starii', '', 'admin', 'x', 1, '2024-01-01')"
+        )
+        self.repos.db.execute(
+            "INSERT INTO users(login, full_name, role, password_hash, active, created_at) "
+            "VALUES('chitatel', '', 'viewer', 'x', 1, '2024-01-01')"
+        )
+        self.repos.db.execute("DELETE FROM meta WHERE key = 'schema_version'")
+        self.repos.db.commit()
+        self.repos.db.migrate()
+        self.assertEqual("owner", self.repos.users.by_login("starii").role)
+        self.assertEqual("engineer", self.repos.users.by_login("chitatel").role)
 
 
 # --------------------------------------------------------- SessionRepo ----

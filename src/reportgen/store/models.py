@@ -11,9 +11,73 @@ import sqlite3
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Sequence
 
-ROLES = ("viewer", "engineer", "admin")
+#: Штатные должности. Идентификатор в базе — латиницей, потому что по нему
+#: сверяются права в коде; человеку везде показывается название из ROLE_TITLES.
+#:
+#: owner    — создатель системы: полные права, включая разжалование других
+#:            администраторов и безвозвратное удаление сотрудников;
+#: head     — начальник отдела;
+#: deputy   — заместитель начальника отдела;
+#: lead     — начальник группы;
+#: senior   — старший инженер отдела;
+#: engineer — инженер отдела.
+ROLES = ("owner", "head", "deputy", "lead", "senior", "engineer")
+
+ROLE_TITLES = {
+    "owner": "Создатель системы",
+    "head": "Начальник отдела",
+    "deputy": "Заместитель начальника отдела",
+    "lead": "Начальник группы",
+    "senior": "Старший инженер отдела",
+    "engineer": "Инженер отдела",
+}
+
+ROLE_NOTES = {
+    "owner": "Полные права: сотрудники, библиотека, журнал, настройки. "
+             "Отключить или разжаловать создателя нельзя.",
+    "head": "Ведёт письма и отчёты, заводит и отключает сотрудников, "
+            "видит нагрузку всего отдела.",
+    "deputy": "То же, что начальник отдела.",
+    "lead": "Ведёт письма и отчёты, заводит и отключает сотрудников своей группы.",
+    "senior": "Ведёт письма, готовит и утверждает отчёты, пополняет библиотеку.",
+    "engineer": "Ведёт письма, готовит отчёты, пополняет библиотеку.",
+}
+
+#: Должности с правами администратора: заводят сотрудников, удаляют документы,
+#: читают журнал действий. Начальник группы — последняя такая должность.
+ADMIN_ROLES = ("owner", "head", "deputy", "lead")
+
+#: Старшинство: больше — выше. Нужно, чтобы начальник группы не менял роль
+#: начальнику отдела, а заместитель — создателю.
+ROLE_RANK = {"owner": 50, "head": 40, "deputy": 30, "lead": 20, "senior": 10, "engineer": 0}
+
+#: Как читать роли, оставшиеся от прежней версии. viewer был «только чтение»,
+#: а в штатном расписании компании такой должности нет — становится инженером.
+LEGACY_ROLES = {"viewer": "engineer", "admin": "head"}
 CHAT_ROLES = ("user", "assistant")
 CASE_STATUSES = ("new", "draft", "review", "approved", "archived")
+CASE_STATUS_TITLES = {
+    "new": "принято",
+    "draft": "в работе",
+    "review": "на проверке",
+    "approved": "отправлено",
+    "archived": "в архиве",
+}
+#: Письма, которые считаются работой в текущий момент.
+OPEN_CASE_STATUSES = ("new", "draft", "review")
+
+CASE_PRIORITIES = ("normal", "high", "urgent")
+CASE_PRIORITY_TITLES = {"normal": "обычный", "high": "важный", "urgent": "срочный"}
+
+#: Виды отсутствия и дежурства.
+ABSENCE_KINDS = ("duty", "vacation", "sick", "trip", "study")
+ABSENCE_TITLES = {
+    "duty": "дежурство",
+    "vacation": "отпуск",
+    "sick": "больничный",
+    "trip": "командировка",
+    "study": "учёба",
+}
 REPORT_STATUSES = ("draft", "verified", "approved")
 CONFIDENTIALITY = ("public", "internal", "nda")
 
@@ -33,6 +97,11 @@ DOC_STATUS_TITLES = {
 SEARCHABLE_STATUSES = ("current",)
 
 
+def _col(row: sqlite3.Row, name: str, default: Any) -> Any:
+    """Значение колонки, которой может не быть в старой базе."""
+    return row[name] if name in row.keys() else default
+
+
 def _json(value: str | None, default: Any) -> Any:
     if not value:
         return default
@@ -48,16 +117,33 @@ class User:
     login: str
     full_name: str = ""
     role: str = "engineer"
+    department: str = ""
+    team: str = ""
     active: bool = True
     created_at: str = ""
 
     @property
     def can_edit(self) -> bool:
-        return self.role in ("engineer", "admin")
+        """Может вести письма и править отчёты. Это все штатные должности."""
+        return self.role in ROLES
 
     @property
     def is_admin(self) -> bool:
-        return self.role == "admin"
+        """Заводит и отключает сотрудников, удаляет документы, читает журнал."""
+        return self.role in ADMIN_ROLES
+
+    @property
+    def is_owner(self) -> bool:
+        """Создатель системы: права без ограничений."""
+        return self.role == "owner"
+
+    @property
+    def rank(self) -> int:
+        return ROLE_RANK.get(self.role, 0)
+
+    @property
+    def role_title(self) -> str:
+        return ROLE_TITLES.get(self.role, self.role)
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "User":
@@ -66,6 +152,8 @@ class User:
             login=row["login"],
             full_name=row["full_name"],
             role=row["role"],
+            department=_col(row, "department", ""),
+            team=_col(row, "team", ""),
             active=bool(row["active"]),
             created_at=row["created_at"],
         )
@@ -76,6 +164,11 @@ class User:
             "login": self.login,
             "full_name": self.full_name,
             "role": self.role,
+            "role_title": self.role_title,
+            "department": self.department,
+            "team": self.team,
+            "is_admin": self.is_admin,
+            "is_owner": self.is_owner,
             "active": self.active,
             "created_at": self.created_at,
         }
@@ -155,11 +248,21 @@ class Case:
     title: str = ""
     customer: str = ""
     status: str = "new"
+    #: Входящий номер и дата письма заказчика.
+    incoming_no: str = ""
+    incoming_date: str = ""
+    #: Срок ответа, ГГГГ-ММ-ДД. Пусто — срок не задан.
+    deadline: str = ""
+    priority: str = "normal"
+    assignee_id: int | None = None
+    note: str = ""
     facts: Dict[str, Any] = field(default_factory=dict)
     facts_digest: str = ""
     created_by: int | None = None
     created_at: str = ""
     updated_at: str = ""
+    #: ФИО исполнителя. Заполняется выборкой со связкой, в таблице не хранится.
+    assignee_name: str = ""
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Case":
@@ -170,11 +273,18 @@ class Case:
             title=row["title"],
             customer=row["customer"],
             status=row["status"],
+            incoming_no=_col(row, "incoming_no", ""),
+            incoming_date=_col(row, "incoming_date", ""),
+            deadline=_col(row, "deadline", ""),
+            priority=_col(row, "priority", "normal") or "normal",
+            assignee_id=_col(row, "assignee_id", None),
+            note=_col(row, "note", ""),
             facts=_json(row["facts_json"], {}),
             facts_digest=row["facts_digest"],
             created_by=row["created_by"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            assignee_name=_col(row, "assignee_name", "") or "",
         )
 
     def to_dict(self, *, with_facts: bool = False) -> Dict[str, Any]:
@@ -185,6 +295,13 @@ class Case:
             "title": self.title,
             "customer": self.customer,
             "status": self.status,
+            "incoming_no": self.incoming_no,
+            "incoming_date": self.incoming_date,
+            "deadline": self.deadline,
+            "priority": self.priority,
+            "assignee_id": self.assignee_id,
+            "assignee_name": self.assignee_name,
+            "note": self.note,
             "facts_digest": self.facts_digest,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
@@ -406,6 +523,52 @@ class ChatMessage:
             "sources": self.sources,
             "meta": self.meta,
             "created_at": self.created_at,
+        }
+
+
+@dataclass
+class Absence:
+    """Период отсутствия или дежурства сотрудника."""
+
+    id: int
+    user_id: int
+    kind: str
+    date_from: str
+    date_to: str
+    note: str = ""
+    created_by: int | None = None
+    created_at: str = ""
+    #: ФИО и должность подтягиваются выборкой со связкой.
+    full_name: str = ""
+    role: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "Absence":
+        return cls(
+            id=row["id"],
+            user_id=row["user_id"],
+            kind=row["kind"],
+            date_from=row["date_from"],
+            date_to=row["date_to"],
+            note=_col(row, "note", ""),
+            created_by=_col(row, "created_by", None),
+            created_at=_col(row, "created_at", ""),
+            full_name=_col(row, "full_name", "") or "",
+            role=_col(row, "role", "") or "",
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "kind": self.kind,
+            "kind_title": ABSENCE_TITLES.get(self.kind, self.kind),
+            "date_from": self.date_from,
+            "date_to": self.date_to,
+            "note": self.note,
+            "full_name": self.full_name,
+            "role": self.role,
+            "role_title": ROLE_TITLES.get(self.role, self.role),
         }
 
 

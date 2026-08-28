@@ -20,7 +20,11 @@ from ..corpus import Chunk
 from ..retrieval import tokenize
 from .db import Database, utcnow
 from .models import (
+    ADMIN_ROLES,
+    OPEN_CASE_STATUSES,
+    ROLES,
     SEARCHABLE_STATUSES,
+    Absence,
     AuditEntry,
     Case,
     Chat,
@@ -93,12 +97,13 @@ class UserRepo:
         self.db = db
 
     def create(self, login: str, password: str, full_name: str = "",
-               role: str = "engineer") -> User:
+               role: str = "engineer", department: str = "", team: str = "") -> User:
         with self.db.transaction() as connection:
             cursor = connection.execute(
-                "INSERT INTO users(login, full_name, role, password_hash, active, created_at) "
-                "VALUES(?,?,?,?,1,?)",
-                (login.strip().lower(), full_name, role, hash_password(password), utcnow()),
+                "INSERT INTO users(login, full_name, role, department, team, "
+                "password_hash, active, created_at) VALUES(?,?,?,?,?,?,1,?)",
+                (login.strip().lower(), full_name, role, department.strip(), team.strip(),
+                 hash_password(password), utcnow()),
             )
         return self.get(int(cursor.lastrowid))  # type: ignore[arg-type]
 
@@ -126,8 +131,9 @@ class UserRepo:
             )
 
     def update(self, user_id: int, full_name: str | None = None,
-               role: str | None = None) -> "User | None":
-        """Изменить ФИО и роль. Пустые значения оставляют поле как было."""
+               role: str | None = None, department: str | None = None,
+               team: str | None = None) -> "User | None":
+        """Изменить ФИО, должность, отдел и группу. None оставляет поле как было."""
         fields, values = [], []
         if full_name is not None:
             fields.append("full_name = ?")
@@ -135,6 +141,12 @@ class UserRepo:
         if role is not None:
             fields.append("role = ?")
             values.append(role)
+        if department is not None:
+            fields.append("department = ?")
+            values.append(department.strip())
+        if team is not None:
+            fields.append("team = ?")
+            values.append(team.strip())
         if fields:
             values.append(user_id)
             with self.db.transaction() as connection:
@@ -150,15 +162,30 @@ class UserRepo:
         пользователями станет некому, а на изолированной машине это чинится
         только командной строкой.
         """
-        where = "role = 'admin'" + (" AND active = 1" if active_only else "")
-        return int(self.db.scalar(f"SELECT count(*) FROM users WHERE {where}") or 0)
+        marks = ", ".join("?" for _ in ADMIN_ROLES)
+        where = f"role IN ({marks})" + (" AND active = 1" if active_only else "")
+        return int(self.db.scalar(
+            f"SELECT count(*) FROM users WHERE {where}", tuple(ADMIN_ROLES)) or 0)
 
     def set_active(self, user_id: int, active: bool) -> None:
         with self.db.transaction() as connection:
             connection.execute("UPDATE users SET active = ? WHERE id = ?", (int(active), user_id))
 
-    def list_all(self) -> List[User]:
-        return rows_to(User, self.db.query("SELECT * FROM users ORDER BY login"))
+    def list_all(self, active_only: bool = False) -> List[User]:
+        """Личный состав. Сортировка — по старшинству должности, потом по ФИО:
+        так список читается как штатное расписание, а не как выгрузка."""
+        order = "CASE role " + " ".join(
+            f"WHEN '{role}' THEN {index}" for index, role in enumerate(ROLES)
+        ) + f" ELSE {len(ROLES)} END, full_name, login"
+        where = " WHERE active = 1" if active_only else ""
+        return rows_to(User, self.db.query(f"SELECT * FROM users{where} ORDER BY {order}"))
+
+    def departments(self) -> List[str]:
+        rows = self.db.query(
+            "SELECT DISTINCT department FROM users "
+            "WHERE department <> '' ORDER BY department"
+        )
+        return [row["department"] for row in rows]
 
     def count(self) -> int:
         return int(self.db.scalar("SELECT count(*) FROM users") or 0)
@@ -586,37 +613,81 @@ class CaseRepo:
     def __init__(self, db: Database):
         self.db = db
 
+    #: Выборка письма вместе с ФИО исполнителя: список писем без исполнителя
+    #: бесполезен, а второй запрос на строку — это N+1 на ровном месте.
+    _SELECT = (
+        "SELECT c.*, coalesce(u.full_name, u.login, '') AS assignee_name "
+        "FROM cases c LEFT JOIN users u ON u.id = c.assignee_id"
+    )
+
     def create(self, case_id: str, report_type: str, facts: Dict[str, Any],
                digest: str = "", title: str = "", customer: str = "",
-               user_id: int | None = None) -> Case:
+               user_id: int | None = None, *, incoming_no: str = "",
+               incoming_date: str = "", deadline: str = "", priority: str = "normal",
+               assignee_id: int | None = None, note: str = "") -> Case:
         now = utcnow()
         with self.db.transaction() as connection:
             cursor = connection.execute(
-                "INSERT INTO cases(case_id, report_type, title, customer, status, facts_json, "
-                "facts_digest, created_by, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO cases(case_id, report_type, title, customer, status, "
+                "incoming_no, incoming_date, deadline, priority, assignee_id, note, "
+                "facts_json, facts_digest, created_by, created_at, updated_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (case_id, report_type, title, customer, "new",
+                 incoming_no, incoming_date, deadline, priority, assignee_id, note,
                  json.dumps(facts, ensure_ascii=False), digest, user_id, now, now),
             )
         return self.get(int(cursor.lastrowid))  # type: ignore[arg-type]
 
     def get(self, case_ref: int) -> Case | None:
-        row = self.db.query_one("SELECT * FROM cases WHERE id = ?", (case_ref,))
+        row = self.db.query_one(f"{self._SELECT} WHERE c.id = ?", (case_ref,))
         return Case.from_row(row) if row else None
 
     def by_case_id(self, case_id: str) -> Case | None:
-        row = self.db.query_one("SELECT * FROM cases WHERE case_id = ?", (case_id,))
+        row = self.db.query_one(f"{self._SELECT} WHERE c.case_id = ?", (case_id,))
         return Case.from_row(row) if row else None
 
-    def list(self, status: str | None = None, limit: int = 100, offset: int = 0) -> List[Case]:
-        if status:
-            rows = self.db.query(
-                "SELECT * FROM cases WHERE status = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?",
-                (status, limit, offset),
+    def list(self, status: str | None = None, limit: int = 100, offset: int = 0,
+             assignee_id: int | None = None, overdue_before: str | None = None,
+             query: str = "") -> List[Case]:
+        """Письма по фильтрам. Сортировка: сначала просроченные и срочные.
+
+        Порядок «по дате правки» показывал наверху то, чего только что
+        коснулись, а не то, что горит. Отделу нужно обратное.
+        """
+        where, params = [], []
+        if status == "open":
+            marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
+            where.append(f"c.status IN ({marks})")
+            params.extend(OPEN_CASE_STATUSES)
+        elif status:
+            where.append("c.status = ?")
+            params.append(status)
+        if assignee_id is not None:
+            where.append("c.assignee_id = ?")
+            params.append(assignee_id)
+        if overdue_before:
+            marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
+            where.append(
+                f"c.deadline <> '' AND c.deadline < ? AND c.status IN ({marks})"
             )
-        else:
-            rows = self.db.query(
-                "SELECT * FROM cases ORDER BY updated_at DESC LIMIT ? OFFSET ?", (limit, offset)
+            params.append(overdue_before)
+            params.extend(OPEN_CASE_STATUSES)
+        if query.strip():
+            like = f"%{query.strip().lower()}%"
+            where.append(
+                "(rulower(c.title) LIKE ? OR rulower(c.customer) LIKE ? "
+                "OR rulower(c.case_id) LIKE ? OR rulower(c.incoming_no) LIKE ?)"
             )
+            params.extend([like, like, like, like])
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+        order = (
+            " ORDER BY CASE WHEN c.status IN ('approved', 'archived') THEN 1 ELSE 0 END, "
+            "CASE WHEN c.deadline = '' THEN 1 ELSE 0 END, c.deadline, "
+            "CASE c.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 ELSE 2 END, "
+            "c.updated_at DESC"
+        )
+        params.extend([limit, offset])
+        rows = self.db.query(f"{self._SELECT}{clause}{order} LIMIT ? OFFSET ?", tuple(params))
         return rows_to(Case, rows)
 
     def update_facts(self, case_ref: int, facts: Dict[str, Any], digest: str,
@@ -635,14 +706,47 @@ class CaseRepo:
                 (status, utcnow(), case_ref),
             )
 
+    def update_card(self, case_ref: int, **fields: Any) -> Case | None:
+        """Изменить карточку письма: исполнитель, срок, входящий номер и прочее.
+
+        Принимает только известные колонки — остальное молча игнорируется,
+        чтобы содержимое запроса из браузера не превращалось в SQL.
+        """
+        allowed = ("title", "customer", "incoming_no", "incoming_date",
+                   "deadline", "priority", "assignee_id", "note", "status")
+        parts, values = [], []
+        for name in allowed:
+            if name in fields and fields[name] is not None:
+                parts.append(f"{name} = ?")
+                values.append(fields[name])
+        if not parts:
+            return self.get(case_ref)
+        values.extend([utcnow(), case_ref])
+        with self.db.transaction() as connection:
+            connection.execute(
+                f"UPDATE cases SET {', '.join(parts)}, updated_at = ? WHERE id = ?",
+                tuple(values),
+            )
+        return self.get(case_ref)
+
     def delete(self, case_ref: int) -> None:
         with self.db.transaction() as connection:
             connection.execute("DELETE FROM cases WHERE id = ?", (case_ref,))
 
-    def count(self, status: str | None = None) -> int:
-        if status:
-            return int(self.db.scalar("SELECT count(*) FROM cases WHERE status = ?", (status,)) or 0)
-        return int(self.db.scalar("SELECT count(*) FROM cases") or 0)
+    def count(self, status: str | None = None, assignee_id: int | None = None) -> int:
+        where, params = [], []
+        if status == "open":
+            marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
+            where.append(f"status IN ({marks})")
+            params.extend(OPEN_CASE_STATUSES)
+        elif status:
+            where.append("status = ?")
+            params.append(status)
+        if assignee_id is not None:
+            where.append("assignee_id = ?")
+            params.append(assignee_id)
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+        return int(self.db.scalar(f"SELECT count(*) FROM cases{clause}", tuple(params)) or 0)
 
 
 class ReportRepo:
@@ -1019,6 +1123,136 @@ def normalized_edit_distance(left: str, right: str) -> float:
     return round(previous[-1] / max(len(source), len(target), 1), 4)
 
 
+class AbsenceRepo:
+    """Дежурства, отпуска и командировки."""
+
+    _SELECT = (
+        "SELECT a.*, coalesce(u.full_name, u.login, '') AS full_name, u.role AS role "
+        "FROM absences a JOIN users u ON u.id = a.user_id"
+    )
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def add(self, user_id: int, kind: str, date_from: str, date_to: str,
+            note: str = "", created_by: int | None = None) -> Absence:
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO absences(user_id, kind, date_from, date_to, note, "
+                "created_by, created_at) VALUES(?,?,?,?,?,?,?)",
+                (user_id, kind, date_from, date_to, note, created_by, utcnow()),
+            )
+        return self.get(int(cursor.lastrowid))  # type: ignore[arg-type,return-value]
+
+    def get(self, absence_id: int) -> Absence | None:
+        row = self.db.query_one(f"{self._SELECT} WHERE a.id = ?", (absence_id,))
+        return Absence.from_row(row) if row else None
+
+    def delete(self, absence_id: int) -> None:
+        with self.db.transaction() as connection:
+            connection.execute("DELETE FROM absences WHERE id = ?", (absence_id,))
+
+    def on_date(self, day: str, kind: str | None = None) -> List[Absence]:
+        """Кто отсутствует или дежурит в этот день. Границы включительно."""
+        params: List[Any] = [day, day]
+        clause = " WHERE a.date_from <= ? AND a.date_to >= ?"
+        if kind:
+            clause += " AND a.kind = ?"
+            params.append(kind)
+        rows = self.db.query(f"{self._SELECT}{clause} ORDER BY a.kind, full_name", tuple(params))
+        return rows_to(Absence, rows)
+
+    def in_period(self, date_from: str, date_to: str) -> List[Absence]:
+        """Все периоды, пересекающиеся с промежутком."""
+        rows = self.db.query(
+            f"{self._SELECT} WHERE a.date_from <= ? AND a.date_to >= ? "
+            "ORDER BY a.date_from, full_name",
+            (date_to, date_from),
+        )
+        return rows_to(Absence, rows)
+
+    def for_user(self, user_id: int, limit: int = 50) -> List[Absence]:
+        rows = self.db.query(
+            f"{self._SELECT} WHERE a.user_id = ? ORDER BY a.date_from DESC LIMIT ?",
+            (user_id, limit),
+        )
+        return rows_to(Absence, rows)
+
+
+class BoardRepo:
+    """Сводка для дашборда: одна выборка на показатель, без N+1.
+
+    Все запросы читающие: дашборд открывают часто, и он не должен ни писать
+    в базу, ни держать блокировку дольше одного SELECT.
+    """
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def workload(self, today: str) -> List[Dict[str, Any]]:
+        """Нагрузка по людям: сколько писем в работе, сколько просрочено."""
+        marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
+        rows = self.db.query(
+            "SELECT u.id, u.login, u.full_name, u.role, u.department, u.team, u.active, "
+            f"  sum(CASE WHEN c.status IN ({marks}) THEN 1 ELSE 0 END) AS open_count, "
+            f"  sum(CASE WHEN c.status IN ({marks}) AND c.deadline <> '' "
+            "        AND c.deadline < ? THEN 1 ELSE 0 END) AS late_count, "
+            f"  sum(CASE WHEN c.status IN ({marks}) AND c.deadline <> '' "
+            "        AND c.deadline >= ? AND c.deadline <= ? THEN 1 ELSE 0 END) AS soon_count, "
+            "  sum(CASE WHEN c.status = 'approved' THEN 1 ELSE 0 END) AS done_count, "
+            "  min(CASE WHEN c.status IN (" + marks + ") AND c.deadline <> '' "
+            "        THEN c.deadline END) AS next_deadline "
+            "FROM users u LEFT JOIN cases c ON c.assignee_id = u.id "
+            "WHERE u.active = 1 AND u.login <> 'local' "
+            "GROUP BY u.id ORDER BY late_count DESC, open_count DESC, u.full_name",
+            # Порядок подстановок повторяет порядок «?» в запросе:
+            # открытые, просроченные, ближайшие, следующий срок.
+            tuple(OPEN_CASE_STATUSES)
+            + tuple(OPEN_CASE_STATUSES) + (today,)
+            + tuple(OPEN_CASE_STATUSES) + (today, _shift_days(today, 3))
+            + tuple(OPEN_CASE_STATUSES),
+        )
+        return [dict(row) for row in rows]
+
+    def status_counts(self) -> Dict[str, int]:
+        rows = self.db.query("SELECT status, count(*) AS n FROM cases GROUP BY status")
+        return {row["status"]: int(row["n"]) for row in rows}
+
+    def unassigned(self) -> int:
+        marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
+        return int(self.db.scalar(
+            f"SELECT count(*) FROM cases WHERE assignee_id IS NULL AND status IN ({marks})",
+            tuple(OPEN_CASE_STATUSES)) or 0)
+
+    def movement(self, date_from: str) -> Dict[str, int]:
+        """Движение за период: сколько принято, отправлено, в работе."""
+        row = self.db.query_one(
+            "SELECT "
+            "  sum(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS came, "
+            "  sum(CASE WHEN updated_at >= ? AND status = 'approved' THEN 1 ELSE 0 END) AS sent "
+            "FROM cases",
+            (date_from, date_from),
+        )
+        return {
+            "came": int((row["came"] if row else 0) or 0),
+            "sent": int((row["sent"] if row else 0) or 0),
+        }
+
+    def reports_in_period(self, date_from: str) -> int:
+        return int(self.db.scalar(
+            "SELECT count(*) FROM reports WHERE created_at >= ?", (date_from,)) or 0)
+
+
+def _shift_days(day: str, days: int) -> str:
+    """Дата через N дней. На нечитаемой дате возвращаем её же — фильтр по
+    «скоро» тогда просто ничего не найдёт, а страница откроется."""
+    try:
+        base = datetime.strptime(day[:10], "%Y-%m-%d")
+    except ValueError:
+        return day
+    return (base + timedelta(days=days)).strftime("%Y-%m-%d")
+
+
 class Repositories:
     """Единая точка доступа ко всем репозиториям."""
 
@@ -1033,6 +1267,8 @@ class Repositories:
         self.reports = ReportRepo(db)
         self.edits = EditPairRepo(db)
         self.chats = ChatRepo(db)
+        self.absences = AbsenceRepo(db)
+        self.board = BoardRepo(db)
         self.audit = AuditRepo(db)
 
     @classmethod

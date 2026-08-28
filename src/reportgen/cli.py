@@ -16,7 +16,7 @@ from .llm import build_llm
 from .pipeline import Outline, check_facts_coverage, generate_report
 from .retrieval import BM25Index, Retriever
 from .store.db import Database
-from .store.models import DOC_STATUSES, ROLES
+from .store.models import DOC_STATUSES, ROLE_TITLES, ROLES
 from .store.repo import Repositories
 from .verify import blocking, summarize, verify_report
 
@@ -184,10 +184,11 @@ def cmd_useradd(args: argparse.Namespace) -> int:
     if len(password) < 8:
         print("пароль короче 8 символов — так нельзя", file=sys.stderr)
         return 1
-    user = repos.users.create(args.login, password, args.name or "", args.role)
+    user = repos.users.create(args.login, password, args.name or "", args.role,
+                              department=args.department or "", team=args.team or "")
     repos.audit.log("user.create", object_type="user", object_id=user.login,
                     details={"role": user.role})
-    print(f"создан пользователь {user.login} с ролью {user.role}")
+    print(f"создан сотрудник {user.login} — {ROLE_TITLES.get(user.role, user.role)}")
     return 0
 
 
@@ -213,11 +214,13 @@ def cmd_users(args: argparse.Namespace) -> int:
     repos, _ = _open_repos(args)
     users = repos.users.list_all()
     if not users:
-        print("пользователей нет — создайте администратора: reportgen useradd --login admin --role admin")
+        print("сотрудников нет — заведите создателя системы: "
+              "reportgen useradd --login admin --role owner")
         return 1
     for user in users:
-        state = "активен" if user.active else "заблокирован"
-        print(f"{user.login:20} {user.role:10} {state:12} {user.full_name}")
+        state = "работает" if user.active else "отключён"
+        title = ROLE_TITLES.get(user.role, user.role)
+        print(f"{user.login:20} {title:30} {state:10} {user.full_name}")
     return 0
 
 
@@ -489,7 +492,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_useradd = sub.add_parser("useradd", help="создать пользователя")
     p_useradd.add_argument("--login", required=True)
     p_useradd.add_argument("--name", default="")
-    p_useradd.add_argument("--role", default="engineer", choices=list(ROLES))
+    p_useradd.add_argument(
+        "--role", default="engineer", choices=list(ROLES),
+        help="должность: " + "; ".join(f"{role} — {ROLE_TITLES[role]}" for role in ROLES),
+    )
+    p_useradd.add_argument("--department", default="", help="отдел")
+    p_useradd.add_argument("--team", default="", help="группа внутри отдела")
     p_useradd.add_argument("--password", default=None, help="если не задан — будет запрошен")
     p_useradd.set_defaults(func=cmd_useradd)
 

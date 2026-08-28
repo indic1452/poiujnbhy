@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "3"
+SCHEMA_VERSION = "4"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -33,6 +33,27 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     # всей библиотеки с диска. stat() дешевле хеша примерно в сотню раз.
     ("documents", "size", "INTEGER"),
     ("documents", "mtime_ns", "INTEGER"),
+    # Отдел и группа сотрудника: без них дашборд не может показать ни
+    # списочный состав отдела, ни нагрузку по группам.
+    ("users", "department", "TEXT NOT NULL DEFAULT ''"),
+    ("users", "team", "TEXT NOT NULL DEFAULT ''"),
+    # Письмо заказчика: кто исполнитель, к какому числу, входящий номер.
+    # Без исполнителя и срока нельзя ни распределить работу, ни увидеть
+    # просрочку — а это первое, что спрашивают с отдела.
+    ("cases", "assignee_id", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+    ("cases", "deadline", "TEXT NOT NULL DEFAULT ''"),
+    ("cases", "incoming_no", "TEXT NOT NULL DEFAULT ''"),
+    ("cases", "incoming_date", "TEXT NOT NULL DEFAULT ''"),
+    ("cases", "priority", "TEXT NOT NULL DEFAULT 'normal'"),
+    ("cases", "note", "TEXT NOT NULL DEFAULT ''"),
+)
+
+#: Прежнее значение роли → нынешнее. Роли viewer/engineer/admin заменены
+#: штатными должностями компании. Без переноса сотрудник с ролью, которой
+#: больше нет, теряет права полностью: в интерфейсе пусто, в API — 403.
+ROLE_RENAMES: tuple[tuple[str, str], ...] = (
+    ("viewer", "engineer"),
+    ("admin", "head"),
 )
 
 #: Прежний идентификатор направления → нынешний. Пополняется при правке
@@ -43,6 +64,16 @@ DOMAIN_RENAMES: tuple[tuple[str, str], ...] = (
     ("equipment", "hardware"),
     ("regulation", "standard"),
 )
+
+
+def _lower(value: Any) -> Any:
+    """Регистронезависимость для кириллицы.
+
+    Встроенный lower() в SQLite умеет только латиницу: «Спектр» и «спектр»
+    для него разные слова, и поиск письма по названию не находил ничего,
+    пока не угадаешь регистр. Питоновский lower() знает Юникод целиком.
+    """
+    return value.lower() if isinstance(value, str) else value
 
 
 def utcnow() -> str:
@@ -82,6 +113,7 @@ class Database:
         if self.path != ":memory:":
             connection.execute("PRAGMA journal_mode = WAL")
         connection.execute("PRAGMA busy_timeout = 10000")
+        connection.create_function("rulower", 1, _lower, deterministic=True)
         self._connections.append(connection)
         return connection
 
@@ -130,6 +162,7 @@ class Database:
             self.connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
             self._ensure_columns()
             self._rename_domains()
+            self._rename_roles()
             self.connection.execute(
                 "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -186,6 +219,35 @@ class Database:
                 self.connection.execute(
                     f"UPDATE {table} SET domain = ? WHERE domain = ?", (new_id, old_id)
                 )
+
+    def _rename_roles(self) -> None:
+        """Перевод сотрудников на штатные должности.
+
+        Первый по счёту администратор — тот, кто разворачивал систему, — и
+        есть её создатель: он получает полные права. Остальные становятся
+        начальниками отдела, тоже с правами администратора. Прав никто не
+        теряет: разбираться, почему после обновления не открывается раздел
+        сотрудников, придётся на изолированной машине без разработчика.
+        """
+        columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(users)")}
+        if "role" not in columns:
+            return
+        first_admin = self.connection.execute(
+            "SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1"
+        ).fetchone()
+        if first_admin is not None:
+            self.connection.execute(
+                "UPDATE users SET role = 'owner' WHERE id = ?", (first_admin["id"],)
+            )
+        for old_role, new_role in ROLE_RENAMES:
+            stale = self.connection.execute(
+                "SELECT 1 FROM users WHERE role = ? LIMIT 1", (old_role,)
+            ).fetchone()
+            if stale is None:
+                continue
+            self.connection.execute(
+                "UPDATE users SET role = ? WHERE role = ?", (new_role, old_role)
+            )
 
     def _ensure_columns(self) -> None:
         """Добавляет недостающие колонки в уже существующие таблицы."""

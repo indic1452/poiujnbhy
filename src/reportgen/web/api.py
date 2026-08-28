@@ -6,6 +6,7 @@ import json
 import re
 import unicodedata
 import urllib.parse
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict
 
@@ -15,9 +16,18 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from ..corpus import DOC_TYPES
 from ..domains import registry as domain_registry
 from ..store.models import (
+    ABSENCE_KINDS,
+    ABSENCE_TITLES,
+    ADMIN_ROLES,
+    CASE_PRIORITIES,
+    CASE_STATUSES,
     CONFIDENTIALITY,
     DOC_STATUS_TITLES,
+    CASE_STATUS_TITLES,
     DOC_STATUSES,
+    ROLE_NOTES,
+    ROLE_RANK,
+    ROLE_TITLES,
     ROLES,
     Case,
     Report,
@@ -28,6 +38,27 @@ from .service import ServiceError
 router = APIRouter(prefix="/api")
 
 MAX_QUERY_LEN = 500
+
+#: Формат дат в карточке письма и в отсутствиях.
+DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _today() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def _date_or_empty(value: Any, field: str) -> str:
+    """Дата вида ГГГГ-ММ-ДД либо пустая строка. Иначе — понятная ошибка."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if not DATE_RE.fullmatch(text):
+        raise ServiceError(f"{field}: дата в виде ГГГГ-ММ-ДД", 400)
+    try:
+        datetime.strptime(text, "%Y-%m-%d")
+    except ValueError:
+        raise ServiceError(f"{field}: такой даты не существует", 400) from None
+    return text
 
 
 # ------------------------------------------------------------- служебное ---
@@ -207,14 +238,67 @@ def _logo_path(settings) -> Path | None:
 
 @router.get("/cases")
 def list_cases(request: Request, status: str | None = None,
-               limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+               limit: int = 100, offset: int = 0, assignee: int | None = None,
+               overdue: bool = False, q: str = "") -> Dict[str, Any]:
+    """Список писем. status=open — всё, что в работе; overdue — просроченные."""
     require_user(request)
     repos = _repos(request)
-    cases = repos.cases.list(status=status, limit=min(limit, 500), offset=max(offset, 0))
+    cases = repos.cases.list(
+        status=status,
+        limit=min(limit, 500),
+        offset=max(offset, 0),
+        assignee_id=assignee,
+        overdue_before=_today() if overdue else None,
+        query=q[:MAX_QUERY_LEN],
+    )
     return {
         "items": [case.to_dict() for case in cases],
-        "total": repos.cases.count(status),
+        "total": repos.cases.count(status, assignee_id=assignee),
+        "open": repos.cases.count("open"),
+        "overdue": len(repos.cases.list(overdue_before=_today(), limit=500)),
+        "today": _today(),
     }
+
+
+@router.patch("/cases/{case_ref}")
+def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
+    """Карточка письма: исполнитель, срок, входящий номер, приоритет, статус."""
+    user = require_editor(request)
+    case = _case_or_404(request, case_ref)
+    repos = _repos(request)
+    payload = _body(request)
+
+    fields: Dict[str, Any] = {}
+    for name in ("title", "customer", "incoming_no", "note"):
+        if name in payload:
+            fields[name] = str(payload[name] or "").strip()
+    for name in ("incoming_date", "deadline"):
+        if name in payload:
+            fields[name] = _date_or_empty(payload[name], name)
+    if "priority" in payload:
+        priority = str(payload["priority"] or "normal")
+        if priority not in CASE_PRIORITIES:
+            raise ServiceError(f"неизвестный приоритет '{priority}'", 400)
+        fields["priority"] = priority
+    if "status" in payload:
+        status = str(payload["status"] or "")
+        if status not in CASE_STATUSES:
+            raise ServiceError(f"неизвестное состояние '{status}'", 400)
+        fields["status"] = status
+    if "assignee_id" in payload:
+        raw = payload["assignee_id"]
+        if raw in (None, "", 0):
+            fields["assignee_id"] = None
+        else:
+            assignee = repos.users.get(int(raw))
+            if assignee is None or not assignee.active:
+                raise ServiceError("исполнитель не найден или отключён", 400)
+            fields["assignee_id"] = assignee.id
+
+    updated = repos.cases.update_card(case.id, **fields)
+    repos.audit.log("case.update", user=user, object_type="case",
+                    object_id=case.case_id, details=fields)
+    return {"case": updated.to_dict() if updated else None}
 
 
 @router.post("/cases")
@@ -796,35 +880,48 @@ def ask_stream(request: Request, chat_id: int) -> StreamingResponse:
 # ------------------------------------------------------------ сотрудники --
 
 #: Что роль позволяет делать — показывается прямо в форме, чтобы не гадать.
-ROLE_TITLES = {
-    "viewer": "Наблюдатель",
-    "engineer": "Инженер",
-    "admin": "Администратор",
-}
-
-ROLE_NOTES = {
-    "viewer": "Читает отчёты и библиотеку. Ничего не меняет.",
-    "engineer": "Ведёт обращения, правит и утверждает отчёты, пополняет библиотеку.",
-    "admin": "Всё, что инженер, плюс сотрудники, удаление документов и журнал действий.",
-}
-
-
 def _user_public(user) -> Dict[str, Any]:
-    data = user.to_dict()
-    data["role_title"] = ROLE_TITLES.get(user.role, user.role)
-    return data
+    return user.to_dict()
+
+
+def _may_manage(actor, target) -> bool:
+    """Может ли actor менять запись target.
+
+    Правило одно: своё старшинство должно быть строго выше. Начальник группы
+    не переназначает начальника отдела, заместитель не трогает создателя.
+    Создателя не может тронуть никто, включая его самого, — иначе система
+    остаётся без владельца, а чинить это на изолированной машине нечем.
+    """
+    if target.role == "owner":
+        return False
+    return actor.rank > target.rank or actor.is_owner
 
 
 @router.get("/users")
 def list_users(request: Request) -> Dict[str, Any]:
-    require_admin(request)
+    actor = require_admin(request)
     repos = _repos(request)
+    items = []
+    for user in repos.users.list_all():
+        if user.login == "local":
+            continue          # служебная запись режима без входа
+        data = _user_public(user)
+        data["may_manage"] = _may_manage(actor, user)
+        items.append(data)
     return {
-        "items": [_user_public(user) for user in repos.users.list_all()],
+        "items": items,
         "roles": [
-            {"id": role, "title": ROLE_TITLES.get(role, role), "note": ROLE_NOTES.get(role, "")}
+            {
+                "id": role,
+                "title": ROLE_TITLES.get(role, role),
+                "note": ROLE_NOTES.get(role, ""),
+                "is_admin": role in ADMIN_ROLES,
+                # Должность выше собственной назначить нельзя.
+                "allowed": actor.is_owner or ROLE_RANK.get(role, 0) < actor.rank,
+            }
             for role in ROLES
         ],
+        "departments": repos.users.departments(),
         "admins": repos.users.count_admins(),
     }
 
@@ -849,10 +946,18 @@ def create_user(request: Request) -> Dict[str, Any]:
 
     role = str(payload.get("role", "engineer"))
     if role not in ROLES:
-        raise ServiceError(f"неизвестная роль '{role}'", 400)
+        raise ServiceError(f"неизвестная должность '{role}'", 400)
+    if role == "owner":
+        raise ServiceError("создатель системы в единственном числе", 403)
+    if not admin.is_owner and ROLE_RANK.get(role, 0) >= admin.rank:
+        raise ServiceError("нельзя назначить должность выше собственной", 403)
 
     full_name = str(payload.get("full_name", "")).strip()
-    user = repos.users.create(login, password, full_name=full_name, role=role)
+    user = repos.users.create(
+        login, password, full_name=full_name, role=role,
+        department=str(payload.get("department", "")).strip(),
+        team=str(payload.get("team", "")).strip(),
+    )
     repos.audit.log("user.create", user=admin, object_type="user", object_id=user.login,
                     details={"role": role})
     return {"user": _user_public(user)}
@@ -864,26 +969,38 @@ def update_user(request: Request, user_id: int) -> Dict[str, Any]:
     repos = _repos(request)
     user = repos.users.get(user_id)
     if user is None:
-        raise ServiceError("пользователь не найден", 404)
+        raise ServiceError("сотрудник не найден", 404)
     payload = _body(request)
 
     role = payload.get("role")
-    if role is not None:
+    if role is not None and role != user.role:
         if role not in ROLES:
-            raise ServiceError(f"неизвестная роль '{role}'", 400)
-        # Последнего администратора нельзя разжаловать: управлять сотрудниками
-        # станет некому, а чинится это только командной строкой на машине.
-        if user.role == "admin" and role != "admin" and repos.users.count_admins() <= 1:
-            raise ServiceError("это единственный администратор — сначала назначьте другого", 409)
+            raise ServiceError(f"неизвестная должность '{role}'", 400)
+        if not _may_manage(admin, user):
+            raise ServiceError("нельзя менять должность сотруднику своего уровня или выше", 403)
+        if role == "owner":
+            raise ServiceError("создатель системы в единственном числе", 403)
+        if not admin.is_owner and ROLE_RANK.get(role, 0) >= admin.rank:
+            raise ServiceError("нельзя назначить должность выше собственной", 403)
+        # Отдельная проверка «остался последний администратор» больше не нужна:
+        # разжаловать можно только того, кто младше, значит сам разжалующий
+        # администратором и остаётся. А создателя не трогает вообще никто.
+    elif role is not None:
+        role = None           # должность не меняется
 
-    full_name = payload.get("full_name")
+    if not _may_manage(admin, user) and admin.id != user.id:
+        raise ServiceError("недостаточно прав для правки этой записи", 403)
+
     updated = repos.users.update(
         user_id,
-        full_name=None if full_name is None else str(full_name),
+        full_name=_opt_str(payload, "full_name"),
         role=None if role is None else str(role),
+        department=_opt_str(payload, "department"),
+        team=_opt_str(payload, "team"),
     )
     repos.audit.log("user.update", user=admin, object_type="user", object_id=user.login,
-                    details={"role": role, "full_name": full_name})
+                    details={k: payload.get(k) for k in ("role", "full_name", "department", "team")
+                             if k in payload})
     return {"user": _user_public(updated)}
 
 
@@ -893,7 +1010,9 @@ def reset_user_password(request: Request, user_id: int) -> Dict[str, Any]:
     repos = _repos(request)
     user = repos.users.get(user_id)
     if user is None:
-        raise ServiceError("пользователь не найден", 404)
+        raise ServiceError("сотрудник не найден", 404)
+    if not _may_manage(admin, user) and admin.id != user.id:
+        raise ServiceError("недостаточно прав для смены этого пароля", 403)
     password = str(_body(request).get("password", ""))
     if len(password) < 8:
         raise ServiceError("пароль короче 8 символов", 400)
@@ -911,19 +1030,164 @@ def set_user_active(request: Request, user_id: int) -> Dict[str, Any]:
     repos = _repos(request)
     user = repos.users.get(user_id)
     if user is None:
-        raise ServiceError("пользователь не найден", 404)
+        raise ServiceError("сотрудник не найден", 404)
     active = bool(_body(request).get("active", True))
     if not active:
         if user.id == admin.id:
             raise ServiceError("нельзя отключить самого себя", 409)
-        if user.role == "admin" and repos.users.count_admins() <= 1:
-            raise ServiceError("это единственный администратор — сначала назначьте другого", 409)
+        if not _may_manage(admin, user):
+            raise ServiceError("недостаточно прав, чтобы отключить этого сотрудника", 403)
     repos.users.set_active(user_id, active)
     if not active:
         repos.sessions.delete_for_user(user_id)
     repos.audit.log("user.active", user=admin, object_type="user", object_id=user.login,
                     details={"active": active})
     return {"user": _user_public(repos.users.get(user_id))}
+
+
+# ------------------------------------------------- дежурства и отсутствия --
+
+@router.get("/absences")
+def list_absences(request: Request, date_from: str = "", date_to: str = "") -> Dict[str, Any]:
+    """Отсутствия за период. По умолчанию — ближайший месяц от сегодня."""
+    require_user(request)
+    repos = _repos(request)
+    start = _date_or_empty(date_from, "date_from") or _today()
+    finish = _date_or_empty(date_to, "date_to") or _shift(start, 30)
+    return {
+        "items": [item.to_dict() for item in repos.absences.in_period(start, finish)],
+        "kinds": [{"id": kind, "title": ABSENCE_TITLES[kind]} for kind in ABSENCE_KINDS],
+        "date_from": start,
+        "date_to": finish,
+    }
+
+
+@router.post("/absences")
+def add_absence(request: Request) -> Dict[str, Any]:
+    admin = require_admin(request)
+    repos = _repos(request)
+    payload = _body(request)
+
+    user = repos.users.get(int(payload.get("user_id") or 0))
+    if user is None:
+        raise ServiceError("сотрудник не найден", 404)
+    kind = str(payload.get("kind", ""))
+    if kind not in ABSENCE_KINDS:
+        raise ServiceError(f"неизвестный вид '{kind}'", 400)
+    start = _date_or_empty(payload.get("date_from"), "date_from")
+    finish = _date_or_empty(payload.get("date_to"), "date_to") or start
+    if not start:
+        raise ServiceError("не указана дата начала", 400)
+    if finish < start:
+        raise ServiceError("дата окончания раньше даты начала", 400)
+
+    item = repos.absences.add(user.id, kind, start, finish,
+                              note=str(payload.get("note", "")).strip(),
+                              created_by=admin.id)
+    repos.audit.log("absence.add", user=admin, object_type="user", object_id=user.login,
+                    details={"kind": kind, "from": start, "to": finish})
+    return {"absence": item.to_dict() if item else None}
+
+
+@router.delete("/absences/{absence_id}")
+def delete_absence(request: Request, absence_id: int) -> Dict[str, Any]:
+    admin = require_admin(request)
+    repos = _repos(request)
+    item = repos.absences.get(absence_id)
+    if item is None:
+        raise ServiceError("запись не найдена", 404)
+    repos.absences.delete(absence_id)
+    repos.audit.log("absence.delete", user=admin, object_type="user",
+                    object_id=str(item.user_id), details={"kind": item.kind})
+    return {"ok": True}
+
+
+# ------------------------------------------------------------- дашборд ----
+
+@router.get("/board")
+def board(request: Request, days: int = 30) -> Dict[str, Any]:
+    """Сводка отдела: люди, нагрузка, сроки, дежурство, движение за период."""
+    require_user(request)
+    repos = _repos(request)
+    today = _today()
+    period_days = min(max(int(days or 30), 1), 365)
+    since = _shift(today, -period_days)
+
+    staff = repos.board.workload(today)
+    absent = repos.absences.on_date(today)
+    away = {item.user_id: item for item in absent if item.kind != "duty"}
+    duty = [item for item in absent if item.kind == "duty"]
+
+    people = []
+    for row in staff:
+        gone = away.get(row["id"])
+        people.append({
+            "id": row["id"],
+            "login": row["login"],
+            "full_name": row["full_name"] or row["login"],
+            "role": row["role"],
+            "role_title": ROLE_TITLES.get(row["role"], row["role"]),
+            "department": row["department"],
+            "team": row["team"],
+            "open": int(row["open_count"] or 0),
+            "late": int(row["late_count"] or 0),
+            "soon": int(row["soon_count"] or 0),
+            "done": int(row["done_count"] or 0),
+            "next_deadline": row["next_deadline"] or "",
+            # Чем занят прямо сейчас: отсутствие важнее дежурства.
+            "away": gone.kind if gone else "",
+            "away_title": ABSENCE_TITLES.get(gone.kind, "") if gone else "",
+            "away_until": gone.date_to if gone else "",
+            "on_duty": any(item.user_id == row["id"] for item in duty),
+        })
+
+    statuses = repos.board.status_counts()
+    overdue = repos.cases.list(overdue_before=today, limit=500)
+    soon = [
+        case for case in repos.cases.list(status="open", limit=500)
+        if case.deadline and today <= case.deadline <= _shift(today, 3)
+    ]
+
+    return {
+        "today": today,
+        "period_days": period_days,
+        "totals": {
+            "open": repos.cases.count("open"),
+            "overdue": len(overdue),
+            "soon": len(soon),
+            "unassigned": repos.board.unassigned(),
+            "staff": len(people),
+            "away": len(away),
+            "on_duty": len(duty),
+        },
+        "statuses": [
+            {"id": key, "title": CASE_STATUS_TITLES.get(key, key), "count": value}
+            for key, value in sorted(statuses.items())
+        ],
+        "people": people,
+        "duty": [item.to_dict() for item in duty],
+        "absent": [item.to_dict() for item in absent if item.kind != "duty"],
+        "overdue": [case.to_dict() for case in overdue[:20]],
+        "soon": [case.to_dict() for case in soon[:20]],
+        "movement": {
+            **repos.board.movement(since),
+            "reports": repos.board.reports_in_period(since),
+            "since": since,
+        },
+    }
+
+
+def _shift(day: str, days: int) -> str:
+    try:
+        base = datetime.strptime(day[:10], "%Y-%m-%d")
+    except ValueError:
+        return day
+    return (base + timedelta(days=days)).strftime("%Y-%m-%d")
+
+
+def _opt_str(payload: Dict[str, Any], name: str) -> str | None:
+    """Значение поля, если оно вообще пришло. None — «не менять»."""
+    return None if name not in payload else str(payload[name] or "").strip()
 
 
 # --------------------------------------------------------- личный кабинет --

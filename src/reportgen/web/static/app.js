@@ -25,12 +25,48 @@
     // 1. Утилиты и словари
     // =====================================================================
 
+    /* Состояния письма. Формулировки — как в журнале входящих: «принято»,
+       а не «новый», «отправлено», а не «утверждён». */
     const CASE_STATUS = {
-        new: 'новый',
-        draft: 'черновик',
+        new: 'принято',
+        draft: 'в работе',
         review: 'на проверке',
-        approved: 'утверждён',
+        approved: 'отправлено',
         archived: 'в архиве',
+    };
+
+    /* Порядок движения письма: следующее состояние — соседнее справа. */
+    const CASE_FLOW = ['new', 'draft', 'review', 'approved', 'archived'];
+
+    const CASE_PRIORITY = { normal: 'обычный', high: 'важный', urgent: 'срочный' };
+
+    /* Штатные должности. Права: до начальника группы включительно —
+       администраторы, остальные ведут письма и отчёты. */
+    const ROLE_LABEL = {
+        owner: 'Создатель системы',
+        head: 'Начальник отдела',
+        deputy: 'Заместитель начальника отдела',
+        lead: 'Начальник группы',
+        senior: 'Старший инженер отдела',
+        engineer: 'Инженер отдела',
+    };
+
+    /* Короткая форма для таблиц: полное название в столбце не помещается. */
+    const ROLE_SHORT = {
+        owner: 'создатель',
+        head: 'нач. отдела',
+        deputy: 'зам. нач. отдела',
+        lead: 'нач. группы',
+        senior: 'ст. инженер',
+        engineer: 'инженер',
+    };
+
+    const ABSENCE_LABEL = {
+        duty: 'дежурство',
+        vacation: 'отпуск',
+        sick: 'больничный',
+        trip: 'командировка',
+        study: 'учёба',
     };
 
     const REPORT_STATUS = {
@@ -193,6 +229,36 @@
         const pad = (n) => String(n).padStart(2, '0');
         return pad(date.getDate()) + '.' + pad(date.getMonth() + 1) + '.' + date.getFullYear() +
             ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    }
+
+    /** Дата ГГГГ-ММ-ДД → ДД.ММ.ГГГГ. Пустая строка остаётся пустой. */
+    function fmtDate(value) {
+        const text = String(value || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return '';
+        const parts = text.split('-');
+        return parts[2] + '.' + parts[1] + '.' + parts[0];
+    }
+
+    /* Значки в кнопках-иконках: текстовый крестик читался как опечатка. */
+    const GLYPHS = {
+        edit: 'M11.4 2.6 13.4 4.6 5.5 12.5 2.5 13.5 3.5 10.5zM10 4l2 2',
+        trash: 'M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.7 9h6.6l.7-9M6.5 7v4M9.5 7v4',
+        plus: 'M8 3.5v9M3.5 8h9',
+        check: 'M3 8.5 6.5 12 13 4.5',
+        close: 'M4 4l8 8M12 4l-8 8',
+    };
+
+    function iconGlyph(name) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 16 16');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '1.4');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.innerHTML = '<path d="' + (GLYPHS[name] || '') + '"/>';
+        return svg;
     }
 
     function fmtNumber(value, digits) {
@@ -717,12 +783,79 @@
         applyTheme(next);
     }
 
-    // -- шапка --------------------------------------------------------------
+    // -- каркас: боковое меню и шапка ---------------------------------------
+
+    /* Значки разделов. Рисуем контуром в одном стиле: заливка спорит
+       с текстом, а готовых наборов в изолированном контуре нет. */
+    const ICONS = {
+        board: '<path d="M2.5 2.5h5v5h-5zM10 2.5h5.5v3h-5.5zM10 8h5.5v5.5h-5.5zM2.5 10h5v3.5h-5z"/>',
+        letters: '<path d="M2 4.5h14v9H2zM2 4.5l7 5 7-5"/>',
+        chat: '<path d="M2.5 3.5h13v8.5h-8L4 15v-3H2.5z"/>',
+        library: '<path d="M3 2.5h3v13H3zM7 2.5h3v13H7zM11.4 3.2l2.8.8-3.2 12.5-2.8-.8z"/>',
+        stats: '<path d="M2.5 13.5h13M4.5 13.5V8M8 13.5V3.5M11.5 13.5V6.5M15 13.5v-3"/>',
+        users: '<path d="M6.2 8.5a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2zM1.8 15c0-2.4 2-4 4.4-4s4.4 1.6 4.4 4M11.5 4a2.3 2.3 0 0 1 0 4.6M13 11.2c1.6.5 2.7 1.8 2.7 3.8"/>',
+    };
+
+    /** Разделы бокового меню. Порядок — от «что сегодня» к справочникам. */
+    const SECTIONS = [
+        { route: 'board', href: '#/board', title: 'Дашборд', icon: 'board' },
+        { route: 'cases', href: '#/cases', title: 'Письма', icon: 'letters', count: 'letters' },
+        { route: 'chat', href: '#/chat', title: 'Помощник', icon: 'chat' },
+        { route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
+        { route: 'stats', href: '#/stats', title: 'Метрики', icon: 'stats' },
+        { route: 'users', href: '#/users', title: 'Сотрудники', icon: 'users', adminOnly: true },
+    ];
+
+    /** Какой пункт меню подсвечивать для вложенного экрана. */
+    const SECTION_OF = { case: 'cases' };
+
+    function icon(name) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 18 18');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '1.4');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.innerHTML = ICONS[name] || '';
+        return svg;
+    }
+
+    function buildNav() {
+        const nav = $('#nav');
+        if (!nav) return;
+        clear(nav);
+        SECTIONS.forEach((section) => {
+            if (section.adminOnly && !isAdmin()) return;
+            const link = h('a', {
+                href: section.href,
+                dataset: { route: section.route },
+                title: section.title,
+            }, icon(section.icon), h('span', {}, section.title));
+            if (section.count) {
+                link.appendChild(h('b', { class: 'side-count', hidden: true, dataset: { count: section.count } }));
+            }
+            nav.appendChild(link);
+        });
+        setActiveNav(state.route ? state.route.name : 'board');
+    }
+
+    /** Показать счётчик у раздела: сколько писем в работе и сколько просрочено. */
+    function setNavCount(name, value, late) {
+        const badge = $('#nav .side-count[data-count="' + name + '"]');
+        if (!badge) return;
+        const number = Number(value) || 0;
+        badge.hidden = number === 0;
+        badge.textContent = String(number);
+        badge.classList.toggle('is-late', !!late);
+        badge.title = late ? 'из них просрочено: ' + late : '';
+    }
 
     function renderChrome() {
         const brand = (state.config && state.config.brand) || null;
         if (brand && brand.name) {
-            const label = $('.brand span');
+            const label = $('.side-brand span');
             if (label) label.textContent = brand.name;
             document.title = brand.name;
         }
@@ -730,24 +863,26 @@
             document.documentElement.style.setProperty('--accent', brand.accent);
         }
 
+        // Модель — точка состояния: зелёная, когда сервер модели отвечает.
         const llm = state.config.llm || {};
-        const llmInfo = $('#llm-info');
-        if (llmInfo) {
-            llmInfo.textContent = llm.model || '';
-            llmInfo.title = llm.base_url ? 'сервер модели: ' + llm.base_url : '';
+        const dot = $('#llm-info');
+        if (dot) {
+            const up = llm.available !== false;
+            dot.classList.toggle('is-up', up);
+            dot.title = (up ? 'Модель отвечает' : 'Модель недоступна') +
+                (llm.model ? ': ' + llm.model : '');
         }
 
-        // Раздел сотрудников показываем только тому, кто им управляет.
-        const navUsers = $('#nav-users');
-        if (navUsers) navUsers.hidden = !isAdmin();
+        buildNav();
 
         const chip = $('#user-chip');
         const logout = $('#logout-btn');
         if (state.user) {
             chip.hidden = false;
-            $('#user-name').textContent = state.user.full_name || state.user.login;
-            $('#user-role').textContent = roleLabel(state.user.role) +
-                (state.authEnabled ? '' : ' · локальный режим');
+            const name = state.user.full_name || state.user.login;
+            $('#user-name').textContent = name;
+            $('#user-initials').textContent = initials(name);
+            $('#user-role').textContent = roleLabel(state.user.role);
         } else {
             chip.hidden = true;
         }
@@ -761,21 +896,60 @@
             location.href = '/login';
         };
 
-        const themeButton = $('#theme-btn');
-        themeButton.onclick = cycleTheme;
+        $('#theme-btn').onclick = cycleTheme;
+        bindSidebar();
+    }
+
+    /** Инициалы для кружка рядом с именем: «Петров И. С.» → «ПИ». */
+    function initials(name) {
+        const words = String(name || '').trim().split(/[\s.]+/).filter(Boolean);
+        if (!words.length) return '—';
+        const first = words[0].charAt(0);
+        const second = words.length > 1 ? words[1].charAt(0) : '';
+        return (first + second).toUpperCase();
+    }
+
+    function bindSidebar() {
+        const collapse = $('#side-btn');
+        if (collapse && !collapse.dataset.bound) {
+            collapse.dataset.bound = '1';
+            collapse.onclick = () => {
+                const min = !document.body.classList.contains('side-min');
+                document.body.classList.toggle('side-min', min);
+                storageSet('rg-side-min', min ? '1' : '0');
+                collapse.title = min ? 'Развернуть меню' : 'Свернуть меню';
+            };
+        }
+        const open = $('#side-open');
+        if (open && !open.dataset.bound) {
+            open.dataset.bound = '1';
+            open.onclick = () => document.body.classList.toggle('side-open');
+        }
+        const scrim = $('#side-scrim');
+        if (scrim && !scrim.dataset.bound) {
+            scrim.dataset.bound = '1';
+            scrim.onclick = () => document.body.classList.remove('side-open');
+        }
     }
 
     function roleLabel(role) {
-        return { viewer: 'наблюдатель', engineer: 'инженер', admin: 'администратор' }[role] || role;
+        return ROLE_LABEL[role] || role;
     }
 
     function setActiveNav(name) {
+        const section = SECTION_OF[name] || name;
         $$('#nav a').forEach((link) => {
-            const route = link.dataset.route;
-            link.classList.toggle('is-active', route === name || (name === 'case' && route === 'cases'));
+            link.classList.toggle('is-active', link.dataset.route === section);
         });
         const chip = $('#user-chip');
         if (chip) chip.classList.toggle('is-active', name === 'me');
+        const title = $('#topbar-title');
+        if (title) {
+            const found = SECTIONS.filter((item) => item.route === section)[0];
+            title.textContent = name === 'me' ? 'Личный кабинет' : (found ? found.title : '');
+        }
+        // На узком экране меню закрывается сразу после выбора раздела.
+        document.body.classList.remove('side-open');
     }
 
     // -- маршрутизация ------------------------------------------------------
@@ -881,35 +1055,62 @@
     }
 
     // =====================================================================
-    // 5. Экран «Кейсы»
+    // 5. Экран «Письма»
     // =====================================================================
 
-    const casesState = { status: '', query: '', limit: 100, offset: 0, total: 0, items: [] };
+    /* Раздел ведёт входящие письма заказчиков: у каждого письма есть входящий
+       номер, срок ответа, исполнитель и подготовленный ответ — отчёт. */
+
+    const casesState = {
+        view: 'open',       // open | overdue | mine | all | архивные состояния
+        query: '',
+        limit: 100,
+        offset: 0,
+        total: 0,
+        open: 0,
+        overdue: 0,
+        today: '',
+        items: [],
+        staff: [],
+    };
+
+    /* Наборы писем на кнопках-фильтрах. */
+    const CASE_VIEWS = [
+        { id: 'open', title: 'В работе', params: { status: 'open' } },
+        { id: 'overdue', title: 'Просроченные', params: { overdue: '1' } },
+        { id: 'mine', title: 'Мои', params: { status: 'open', mine: true } },
+        { id: 'approved', title: 'Отправленные', params: { status: 'approved' } },
+        { id: 'all', title: 'Все', params: {} },
+    ];
+
+    /** Список сотрудников для выбора исполнителя. Читается один раз на сеанс. */
+    async function staffList() {
+        if (casesState.staff.length) return casesState.staff;
+        if (!isAdmin()) return [];
+        try {
+            const data = await api.get('/api/users');
+            casesState.staff = (data.items || []).filter((item) => item.active);
+        } catch (error) {
+            casesState.staff = [];
+        }
+        return casesState.staff;
+    }
 
     async function renderCases(view) {
         clear(view);
         const page = h('div', { class: 'page' });
         view.appendChild(page);
 
-        const statusSelect = h('select', {
-            onchange: (event) => {
-                casesState.status = event.target.value;
-                casesState.offset = 0;
-                loadCases();
-            },
-        }, h('option', { value: '' }, 'Все статусы'),
-            Object.keys(CASE_STATUS).map((key) =>
-                h('option', { value: key, selected: casesState.status === key }, CASE_STATUS[key])));
-
+        const tabs = h('div', { class: 'seg' });
         const searchInput = h('input', {
             type: 'search',
-            class: 'grow',
-            placeholder: 'Поиск: обращение, заголовок, заказчик',
+            placeholder: 'Входящий номер, тема, заказчик',
             value: casesState.query,
             oninput: debounce((event) => {
-                casesState.query = event.target.value.trim().toLowerCase();
-                renderCasesTable();
-            }, 200),
+                casesState.query = event.target.value.trim();
+                casesState.offset = 0;
+                loadCases();
+            }, 250),
         });
 
         const tableBox = h('div', { class: 'card' });
@@ -917,27 +1118,54 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('h1', {}, 'Кейсы'),
-                h('button', {
-                    class: 'btn', onclick: () => loadCases(),
-                }, 'Обновить'),
-                canEdit() ? h('button', {
-                    class: 'btn btn--primary', onclick: () => openNewCaseDialog(),
-                }, '+ Новый кейс') : null),
-            h('div', { class: 'toolbar' }, statusSelect, searchInput),
+                h('h1', {}, 'Письма'),
+                h('div', { class: 'page-head-actions' },
+                    h('button', { class: 'btn', onclick: () => loadCases() }, 'Обновить'),
+                    canEdit() ? h('button', {
+                        class: 'btn btn--primary', onclick: () => openNewCaseDialog(),
+                    }, 'Зарегистрировать письмо') : null)),
+            h('div', { class: 'toolbar' }, tabs, h('span', { class: 'grow' }), searchInput),
             tableBox,
             footer,
         ]);
 
+        function renderTabs() {
+            clear(tabs);
+            CASE_VIEWS.forEach((item) => {
+                let badge = null;
+                if (item.id === 'open' && casesState.open) badge = String(casesState.open);
+                if (item.id === 'overdue' && casesState.overdue) badge = String(casesState.overdue);
+                tabs.appendChild(h('button', {
+                    class: 'seg-item' + (casesState.view === item.id ? ' is-active' : '') +
+                        (item.id === 'overdue' && casesState.overdue ? ' is-late' : ''),
+                    onclick: () => {
+                        casesState.view = item.id;
+                        casesState.offset = 0;
+                        loadCases();
+                    },
+                }, item.title, badge ? h('b', {}, badge) : null));
+            });
+        }
+
         async function loadCases() {
+            renderTabs();
             clear(tableBox);
-            tableBox.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' }), 'Загрузка кейсов…'));
+            tableBox.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' })));
+            const chosen = CASE_VIEWS.filter((item) => item.id === casesState.view)[0] || CASE_VIEWS[0];
+            const params = ['limit=' + casesState.limit, 'offset=' + casesState.offset];
+            if (chosen.params.status) params.push('status=' + chosen.params.status);
+            if (chosen.params.overdue) params.push('overdue=1');
+            if (chosen.params.mine && state.user) params.push('assignee=' + state.user.id);
+            if (casesState.query) params.push('q=' + encodeURIComponent(casesState.query));
             try {
-                const query = '/api/cases?limit=' + casesState.limit + '&offset=' + casesState.offset +
-                    (casesState.status ? '&status=' + encodeURIComponent(casesState.status) : '');
-                const data = await api.get(query);
+                const data = await api.get('/api/cases?' + params.join('&'));
                 casesState.items = data.items || [];
                 casesState.total = data.total || 0;
+                casesState.open = data.open || 0;
+                casesState.overdue = data.overdue || 0;
+                casesState.today = data.today || '';
+                setNavCount('letters', casesState.open, casesState.overdue);
+                renderTabs();
                 renderCasesTable();
             } catch (error) {
                 clear(tableBox);
@@ -946,20 +1174,14 @@
         }
 
         function renderCasesTable() {
-            const query = casesState.query;
-            const items = !query ? casesState.items : casesState.items.filter((item) => {
-                const haystack = [item.case_id, item.title, item.customer, item.report_type]
-                    .join(' ').toLowerCase();
-                return haystack.indexOf(query) !== -1;
-            });
-
+            const items = casesState.items;
             clear(tableBox);
             if (!items.length) {
                 tableBox.appendChild(h('div', { class: 'empty' },
-                    h('h3', {}, casesState.items.length ? 'Ничего не найдено' : 'Кейсов пока нет'),
-                    h('div', {}, casesState.items.length
-                        ? 'Измените строку поиска или фильтр статуса.'
-                        : 'Создайте кейс, чтобы начать отчёт.')));
+                    h('h3', {}, casesState.query ? 'Ничего не найдено' : 'Писем нет'),
+                    h('div', { class: 'muted' }, casesState.query
+                        ? 'Проверьте строку поиска или выберите другой набор.'
+                        : 'Зарегистрируйте входящее письмо, чтобы начать работу.')));
             } else {
                 const body = h('tbody', {});
                 items.forEach((item) => {
@@ -970,38 +1192,48 @@
                             navigate('#/case/' + item.id);
                         },
                     },
-                        h('td', { class: 'mono nowrap' }, item.case_id),
-                        h('td', {}, item.title || h('span', { class: 'faint' }, '—')),
-                        h('td', { class: 'small muted' }, reportTypeTitle(item.report_type)),
+                        h('td', { class: 'mono nowrap' }, item.incoming_no || item.case_id),
+                        h('td', {}, h('div', {}, item.title || h('span', { class: 'faint' }, 'без темы')),
+                            item.priority && item.priority !== 'normal'
+                                ? h('span', { class: 'tag tag--' + item.priority },
+                                    CASE_PRIORITY[item.priority]) : null),
                         h('td', { class: 'small' }, item.customer || '—'),
+                        h('td', { class: 'small nowrap' },
+                            item.assignee_name || h('span', { class: 'faint' }, 'не назначен')),
+                        h('td', { class: 'nowrap' }, deadlineCell(item)),
                         h('td', {}, statusBadge(item.status)),
-                        h('td', { class: 'small muted nowrap' }, fmtDateTime(item.updated_at)),
-                        h('td', { class: 'nowrap' }, isAdmin() ? h('button', {
-                            class: 'btn btn--icon btn--danger',
-                            title: 'Удалить кейс',
-                            onclick: () => deleteCase(item, loadCases),
-                        }, '×') : null)));
+                        h('td', { class: 'small muted nowrap' }, fmtDate(item.incoming_date) || '—'),
+                        h('td', { class: 'row-actions nowrap' },
+                            canEdit() ? h('button', {
+                                class: 'btn btn--icon',
+                                title: 'Карточка письма: исполнитель, срок, состояние',
+                                onclick: () => openCaseCard(item, loadCases),
+                            }, iconGlyph('edit')) : null,
+                            isAdmin() ? h('button', {
+                                class: 'btn btn--icon btn--danger-hover',
+                                title: 'Удалить письмо вместе с отчётами',
+                                onclick: () => deleteCase(item, loadCases),
+                            }, iconGlyph('trash')) : null)));
                 });
                 tableBox.appendChild(h('div', { class: 'table-scroll' },
-                    h('table', { class: 'grid' },
+                    h('table', { class: 'grid grid--letters' },
                         h('thead', {}, h('tr', {},
-                            h('th', {}, 'Обращение'),
-                            h('th', {}, 'Заголовок'),
-                            h('th', {}, 'Тип отчёта'),
+                            h('th', {}, 'Входящий'),
+                            h('th', {}, 'Тема'),
                             h('th', {}, 'Заказчик'),
-                            h('th', {}, 'Статус'),
-                            h('th', {}, 'Изменён'),
+                            h('th', {}, 'Исполнитель'),
+                            h('th', {}, 'Срок ответа'),
+                            h('th', {}, 'Состояние'),
+                            h('th', {}, 'Дата письма'),
                             h('th', {}))),
                         body)));
             }
 
             clear(footer);
             const from = casesState.total ? casesState.offset + 1 : 0;
-            const to = casesState.offset + casesState.items.length;
+            const to = casesState.offset + items.length;
             append(footer, [
-                h('span', { class: 'small muted' },
-                    'показаны ' + from + '–' + to + ' из ' + casesState.total +
-                    (query ? ' · фильтр применён к загруженной странице' : '')),
+                h('span', { class: 'small muted' }, 'показаны ' + from + '–' + to + ' из ' + casesState.total),
                 h('span', { class: 'grow' }),
                 h('button', {
                     class: 'btn btn--sm', disabled: casesState.offset <= 0,
@@ -1009,18 +1241,59 @@
                         casesState.offset = Math.max(0, casesState.offset - casesState.limit);
                         loadCases();
                     },
-                }, 'Предыдущие'),
+                }, 'Назад'),
                 h('button', {
                     class: 'btn btn--sm', disabled: to >= casesState.total,
                     onclick: () => {
                         casesState.offset += casesState.limit;
                         loadCases();
                     },
-                }, 'Следующие'),
+                }, 'Дальше'),
             ]);
         }
 
         await loadCases();
+    }
+
+    /** Срок с пометкой: просрочен, сегодня-завтра или спокойно. */
+    function deadlineCell(item) {
+        if (!item.deadline) return h('span', { class: 'faint' }, 'не задан');
+        const today = casesState.today || todayIso();
+        const done = item.status === 'approved' || item.status === 'archived';
+        let cls = 'due';
+        let note = '';
+        if (!done && item.deadline < today) {
+            cls = 'due due--late';
+            note = 'просрочено на ' + plural(daysBetween(item.deadline, today), 'день', 'дня', 'дней');
+        } else if (!done && daysBetween(today, item.deadline) <= 2) {
+            cls = 'due due--soon';
+            note = 'осталось ' + plural(daysBetween(today, item.deadline), 'день', 'дня', 'дней');
+        }
+        return h('span', { class: cls, title: note }, fmtDate(item.deadline));
+    }
+
+    function todayIso() {
+        const now = new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        return now.getFullYear() + '-' + month + '-' + String(now.getDate()).padStart(2, '0');
+    }
+
+    function daysBetween(from, to) {
+        const a = Date.parse(from + 'T00:00:00');
+        const b = Date.parse(to + 'T00:00:00');
+        if (isNaN(a) || isNaN(b)) return 0;
+        return Math.round((b - a) / 86400000);
+    }
+
+    function plural(count, one, few, many) {
+        const abs = Math.abs(count) % 100;
+        const last = abs % 10;
+        let word = many;
+        if (abs < 11 || abs > 14) {
+            if (last === 1) word = one;
+            else if (last >= 2 && last <= 4) word = few;
+        }
+        return count + ' ' + word;
     }
 
     function statusBadge(status) {
@@ -1028,19 +1301,90 @@
         return h('span', { class: 'badge' + (kind ? ' badge--' + kind : '') }, CASE_STATUS[status] || status);
     }
 
+    /** Карточка письма: исполнитель, срок, состояние, приоритет — без ухода со списка. */
+    async function openCaseCard(item, after) {
+        const staff = await staffList();
+        const assignee = h('select', {},
+            h('option', { value: '' }, 'не назначен'),
+            staff.map((person) => h('option', {
+                value: String(person.id),
+                selected: person.id === item.assignee_id,
+            }, (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role))));
+        if (!staff.length) {
+            assignee.disabled = true;
+            assignee.title = 'Назначать исполнителя может начальник группы и выше';
+        }
+
+        const deadline = h('input', { type: 'date', value: item.deadline || '' });
+        const incomingNo = h('input', { type: 'text', class: 'mono', value: item.incoming_no || '' });
+        const incomingDate = h('input', { type: 'date', value: item.incoming_date || '' });
+        const priority = h('select', {}, Object.keys(CASE_PRIORITY).map((key) =>
+            h('option', { value: key, selected: (item.priority || 'normal') === key },
+                CASE_PRIORITY[key])));
+        const status = h('select', {}, CASE_FLOW.map((key) =>
+            h('option', { value: key, selected: item.status === key }, CASE_STATUS[key])));
+        const customer = h('input', { type: 'text', value: item.customer || '' });
+        const note = h('textarea', { rows: '3' }, item.note || '');
+
+        const save = h('button', { class: 'btn btn--primary', onclick: submit }, 'Сохранить');
+        const dialog = openModal({
+            title: 'Письмо ' + (item.incoming_no || item.case_id),
+            body: [
+                h('div', { class: 'form-grid' },
+                    h('label', { class: 'field' }, 'Входящий номер', incomingNo),
+                    h('label', { class: 'field' }, 'Дата письма', incomingDate),
+                    h('label', { class: 'field' }, 'Заказчик', customer),
+                    h('label', { class: 'field' }, 'Срок ответа', deadline),
+                    h('label', { class: 'field' }, 'Исполнитель', assignee),
+                    h('label', { class: 'field' }, 'Приоритет', priority),
+                    h('label', { class: 'field' }, 'Состояние', status)),
+                h('label', { class: 'field' }, 'Примечание', note),
+            ],
+            footer: [
+                h('span', { class: 'spacer' }),
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                save,
+            ],
+            focus: 'input',
+        });
+
+        async function submit() {
+            save.disabled = true;
+            try {
+                await api.patch('/api/cases/' + item.id, {
+                    incoming_no: incomingNo.value.trim(),
+                    incoming_date: incomingDate.value,
+                    customer: customer.value.trim(),
+                    deadline: deadline.value,
+                    assignee_id: assignee.value ? Number(assignee.value) : null,
+                    priority: priority.value,
+                    status: status.value,
+                    note: note.value.trim(),
+                });
+                dialog.close();
+                toast('Карточка письма сохранена', 'ok');
+                if (after) after();
+            } catch (error) {
+                toastError(error);
+            } finally {
+                save.disabled = false;
+            }
+        }
+    }
+
     async function deleteCase(item, after) {
         const ok = await confirmDialog({
-            title: 'Удалить кейс',
-            message: 'Кейс ' + item.case_id + ' будет удалён вместе со всеми версиями отчёта. ' +
-                'Действие необратимо.',
-            note: 'Сохранённые пары «черновик → финал» в обучающем наборе не удаляются.',
+            title: 'Удалить письмо',
+            message: 'Письмо ' + (item.incoming_no || item.case_id) +
+                ' будет удалено вместе со всеми версиями отчёта. Действие необратимо.',
+            note: 'Сохранённые пары «черновик → правка» в обучающем наборе остаются.',
             confirmText: 'Удалить',
             danger: true,
         });
         if (!ok) return;
         try {
             await api.del('/api/cases/' + item.id);
-            toast('Кейс ' + item.case_id + ' удалён', 'ok');
+            toast('Письмо удалено', 'ok');
             if (after) after();
         } catch (error) {
             toastError(error);
