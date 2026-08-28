@@ -426,7 +426,7 @@ New-NetFirewallRule -DisplayName "Reportgen 8080" -Direction Inbound `
     -Protocol TCP -LocalPort 8080 -Action Allow -Profile Domain,Private
 ```
 
-3. Убедитесь, что `"auth_enabled": true`. В письмах лежат материалы заказчиков —
+3. Убедитесь, что `"auth_enabled": true`. В письмах лежат служебные материалы —
    открывать их в сеть без входа по паролю нельзя.
 4. Заведите коллегам учётные записи:
 
