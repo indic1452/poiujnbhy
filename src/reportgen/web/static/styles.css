@@ -2576,6 +2576,13 @@ table.md-table th {
     color: #1c1607;
 }
 
+/* Спокойная врезка вместо красной: когда требовать нечего. */
+.coverage-box--calm {
+    border-color: var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+}
+
 /* Выбор файла в диалоге: своя кнопка вместо системной. */
 .file-pick {
     display: flex;

@@ -2143,6 +2143,16 @@
 
     /** Блок «каких обязательных измерений не хватает» — красные ключи из coverage. */
     function buildCoverageBox() {
+        // Письмо заведено под сданный файлом отчёт: факт-пакета за ним нет и
+        // не нужно. Требовать измерения не за чем — по этому письму никто не
+        // собирается собирать отчёт системой.
+        if (wb.report && wb.report.uploaded) {
+            return h('div', { class: 'coverage-box coverage-box--calm' },
+                h('b', {}, 'Отчёт сдан готовым файлом'),
+                h('div', { class: 'small muted' },
+                    'Измерения нужны, только когда отчёт собирает система. '
+                    + 'Заполните их, если решите собрать свой вариант.'));
+        }
         // Факт-пакет правили руками и сломали: расчёт покрытия не прошёл.
         // Письмо при этом открывается — иначе чинить пакет было бы негде.
         if (wb.coverageError) {
@@ -2794,7 +2804,21 @@
         container.appendChild(stepStrip());
         report.sections.forEach((section) => container.appendChild(sectionCard(section)));
         if (!report.sections.length) {
-            container.appendChild(h('div', { class: 'empty' }, 'В отчёте нет секций.'));
+            // У сданного файлом отчёта секций и не бывает: это не сборка по
+            // шаблону, а документ, который инженер написал сам.
+            container.appendChild(report.uploaded
+                ? h('div', { class: 'empty' },
+                    h('h3', {}, 'Отчёт сдан файлом'),
+                    h('div', {}, report.file_name || 'файл'),
+                    h('div', { class: 'small muted', style: { marginTop: '6px' } },
+                        'Разделов у него нет — это готовый документ. '
+                        + 'Откройте его кнопкой «Скачать файл».'),
+                    h('div', { class: 'btn-row', style: { justifyContent: 'center', marginTop: '14px' } },
+                        h('button', {
+                            class: 'btn btn--primary',
+                            onclick: () => downloadReportFile(report),
+                        }, 'Скачать файл')))
+                : h('div', { class: 'empty' }, 'В отчёте нет секций.'));
         }
         body.appendChild(container);
         $$('.editor', container).forEach(autosize);
