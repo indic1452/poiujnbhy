@@ -69,10 +69,20 @@
         study: 'учёба',
     };
 
+    /* Путь отчёта: готовит исполнитель, проверяет начальник отдела или зам. */
     const REPORT_STATUS = {
-        draft: 'черновик',
-        verified: 'проверен',
-        approved: 'утверждён',
+        draft: 'в работе',
+        review: 'на проверке',
+        rework: 'требует исправления',
+        approved: 'проверен',
+    };
+
+    /* Каким значком показывать состояние отчёта в списке и в карточке. */
+    const REPORT_STATUS_TONE = {
+        draft: '',
+        review: 'badge--info',
+        rework: 'badge--danger',
+        approved: 'badge--ok',
     };
 
     const SEVERITIES = ['info', 'low', 'medium', 'high', 'critical'];
@@ -497,11 +507,12 @@
     function promptDialog(options) {
         return new Promise((resolve) => {
             const box = options.password ? passwordField(options.placeholder) : null;
-            const input = box ? box.input : h('input', {
-                type: 'text',
-                placeholder: options.placeholder || '',
-                value: options.value || '',
-            });
+            // Замечание проверяющего в одну строку не помещается: это текст
+            // «что исправить», а не значение поля.
+            const input = box ? box.input : h(options.multiline ? 'textarea' : 'input',
+                Object.assign(
+                    { placeholder: options.placeholder || '', value: options.value || '' },
+                    options.multiline ? { rows: '4' } : { type: 'text' }));
             let answered = false;
             const finish = (value) => {
                 if (answered) return;
@@ -510,14 +521,16 @@
                 resolve(value);
             };
             input.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') finish(input.value);
+                // В многострочном поле Enter — это перевод строки.
+                if (event.key === 'Enter' && !options.multiline) finish(input.value);
             });
             const dialog = openModal({
                 title: options.title || 'Введите значение',
                 narrow: true,
                 body: h('div', { class: 'form-grid' },
                     options.message ? h('div', { class: 'muted' }, options.message) : null,
-                    box || input),
+                    box || input,
+                    options.note ? h('div', { class: 'small muted' }, options.note) : null),
                 footer: [
                     h('button', { class: 'btn', onclick: () => finish(null) }, 'Отмена'),
                     h('button', {
@@ -616,6 +629,15 @@
 
     function isAdmin() {
         return !!state.user && state.user.is_admin === true;
+    }
+
+    /** Может ли этот человек проверять отчёты: начальник отдела или зам.
+     *
+     * Это не то же самое, что права администратора: начальник группы заводит
+     * людей, а отчёты проверяет не он.
+     */
+    function canReview() {
+        return !!state.user && state.user.can_review === true;
     }
 
     function isOwner() {
@@ -1089,6 +1111,8 @@
     const CASE_VIEWS = [
         { id: 'open', title: 'В работе', params: { status: 'open' } },
         { id: 'overdue', title: 'Просроченные', params: { overdue: '1' } },
+        // Начальнику это первый набор, за которым он сюда заходит.
+        { id: 'review', title: 'На проверке', params: { status: 'review' } },
         { id: 'mine', title: 'Мои', params: { status: 'open', mine: true } },
         { id: 'approved', title: 'Отправленные', params: { status: 'approved' } },
         { id: 'all', title: 'Все', params: {} },
@@ -1133,6 +1157,11 @@
                 h('div', { class: 'page-head-actions' },
                     h('button', { class: 'btn', onclick: () => loadCases() }, 'Обновить'),
                     canEdit() ? h('button', {
+                        class: 'btn',
+                        title: 'Загрузить свой готовый отчёт файлом на проверку начальнику',
+                        onclick: () => openUploadReportDialog(loadCases),
+                    }, 'Сдать готовый отчёт') : null,
+                    canEdit() ? h('button', {
                         class: 'btn btn--primary', onclick: () => openNewCaseDialog(),
                     }, 'Зарегистрировать письмо') : null)),
             h('div', { class: 'toolbar' }, tabs, h('span', { class: 'grow' }), searchInput),
@@ -1158,7 +1187,91 @@
             });
         }
 
-        async function loadCases() {
+        /** Кнопка «Сдать готовый отчёт» и её диалог: реквизиты и файл. */
+    async function openUploadReportDialog(after) {
+        const staff = await staffList();
+        const me = state.user || {};
+        const incoming = h('input', { type: 'text', placeholder: 'ВХ-2026-0423' });
+        const group = h('input', { type: 'text', placeholder: '1274 или 1-я группа' });
+        const title = h('input', { type: 'text', placeholder: 'о чём письмо' });
+        const incomingDate = h('input', { type: 'date' });
+        const deadline = h('input', { type: 'date' });
+        const priority = h('select', {}, ...Object.keys(CASE_PRIORITY).map((id) =>
+            h('option', { value: id }, CASE_PRIORITY[id])));
+        const assignee = h('select', {},
+            h('option', { value: String(me.id || '') }, (me.full_name || me.login || 'я') + ' (я)'),
+            ...staff.filter((person) => person.id !== me.id).map((person) =>
+                h('option', { value: String(person.id) },
+                    person.full_name || person.login)));
+        // Системную кнопку выбора файла прячем: она подписана по-английски
+        // и в остальном интерфейсе такой нет.
+        const chosen = h('span', { class: 'small muted' }, 'файл не выбран');
+        const picker = h('input', {
+            type: 'file',
+            accept: '.docx,.doc,.pdf,.rtf,.odt,.md,.txt',
+            style: { display: 'none' },
+            onchange: () => {
+                const file = (picker.files || [])[0];
+                chosen.textContent = file ? file.name : 'файл не выбран';
+                chosen.className = file ? 'small' : 'small muted';
+            },
+        });
+        const pickButton = h('div', { class: 'file-pick' },
+            h('button', {
+                class: 'btn btn--sm', type: 'button',
+                onclick: () => picker.click(),
+            }, iconGlyph('clip'), 'Выбрать файл'),
+            chosen, picker);
+
+        const dialog = openModal({
+            title: 'Сдать готовый отчёт',
+            body: h('div', { class: 'form-grid' },
+                h('div', { class: 'muted', style: { gridColumn: '1 / -1' } },
+                    'Отчёт уйдёт на проверку начальнику отдела. Числа в нём система '
+                    + 'не сверяет: факт-пакета за таким отчётом нет, читает его человек.'),
+                h('label', { class: 'field' }, 'Файл отчёта', pickButton),
+                h('label', { class: 'field' }, 'Входящий номер', incoming),
+                h('label', { class: 'field' }, 'Номер группы', group),
+                h('label', { class: 'field' }, 'Тема', title),
+                h('label', { class: 'field' }, 'Дата письма', incomingDate),
+                h('label', { class: 'field' }, 'Срок ответа', deadline),
+                h('label', { class: 'field' }, 'Важность', priority),
+                h('label', { class: 'field' }, 'Исполнитель', assignee)),
+            footer: [
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                h('button', { class: 'btn btn--primary', onclick: () => send() }, 'Сдать на проверку'),
+            ],
+        });
+        setTimeout(() => incoming.focus(), 30);
+
+        async function send() {
+            const file = (picker.files || [])[0];
+            if (!file) { toast('Выберите файл отчёта', 'error'); return; }
+            if (!incoming.value.trim()) { toast('Укажите входящий номер', 'error'); return; }
+            const form = new FormData();
+            form.append('file', file);
+            form.append('case_id', incoming.value.trim());
+            form.append('incoming_no', incoming.value.trim());
+            form.append('group_no', group.value.trim());
+            form.append('title', title.value.trim());
+            form.append('incoming_date', incomingDate.value || '');
+            form.append('deadline', deadline.value || '');
+            form.append('priority', priority.value);
+            form.append('assignee_id', assignee.value || '');
+            try {
+                const data = await uploadFile('/api/reports/upload', form);
+                dialog.close();
+                toast(data.note
+                    ? 'Отчёт сдан на проверку. Текст прочитать не удалось: ' + data.note
+                    : 'Отчёт сдан на проверку', data.note ? 'info' : 'ok', 6000);
+                if (after) after();
+            } catch (error) {
+                toastError(error);
+            }
+        }
+    }
+
+    async function loadCases() {
             renderTabs();
             clear(tableBox);
             tableBox.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' })));
@@ -1208,8 +1321,8 @@
                             item.priority && item.priority !== 'normal'
                                 ? h('span', { class: 'tag tag--' + item.priority },
                                     CASE_PRIORITY[item.priority]) : null),
-                        h('td', { class: 'mono nowrap' },
-                            item.customer || h('span', { class: 'faint' }, '—')),
+                        h('td', { class: 'small nowrap' },
+                            item.group_no || h('span', { class: 'faint' }, '—')),
                         h('td', { class: 'small nowrap' },
                             item.assignee_name || h('span', { class: 'faint' }, 'не назначен')),
                         h('td', { class: 'nowrap' }, deadlineCell(item)),
@@ -1232,7 +1345,7 @@
                         h('thead', {}, h('tr', {},
                             h('th', {}, 'Входящий'),
                             h('th', {}, 'Тема'),
-                            h('th', {}, 'Отправитель'),
+                            h('th', {}, 'Номер группы'),
                             h('th', {}, 'Исполнитель'),
                             h('th', {}, 'Срок ответа'),
                             h('th', {}, 'Состояние'),
@@ -1326,9 +1439,9 @@
                 CASE_PRIORITY[key])));
         const status = h('select', {}, CASE_FLOW.map((key) =>
             h('option', { value: key, selected: item.status === key }, CASE_STATUS[key])));
-        const customer = h('input', {
+        const groupInput = h('input', {
             type: 'text', class: 'mono', inputmode: 'numeric',
-            placeholder: '1274', value: item.customer || '',
+            placeholder: '1274 или 1-я группа', value: item.group_no || '',
             title: 'Числовой номер группы или части, откуда пришло письмо',
         });
         const note = h('textarea', { rows: '3' }, item.note || '');
@@ -1340,7 +1453,7 @@
                 h('div', { class: 'form-grid' },
                     h('label', { class: 'field' }, 'Входящий номер', incomingNo),
                     h('label', { class: 'field' }, 'Дата письма', incomingDate),
-                    h('label', { class: 'field' }, 'Отправитель (номер)', customer),
+                    h('label', { class: 'field' }, 'Номер группы', groupInput),
                     h('label', { class: 'field' }, 'Срок ответа', deadline),
                     h('label', { class: 'field' }, 'Исполнитель', assignee),
                     h('label', { class: 'field' }, 'Приоритет', priority),
@@ -1361,7 +1474,7 @@
                 await api.patch('/api/cases/' + item.id, {
                     incoming_no: incomingNo.value.trim(),
                     incoming_date: incomingDate.value,
-                    customer: customer.value.trim(),
+                    group_no: groupInput.value.trim(),
                     deadline: deadline.value,
                     assignee_id: assignee.value ? Number(assignee.value) : null,
                     priority: priority.value,
@@ -1415,7 +1528,7 @@
         return {
             case_id: caseId || '',
             report_type: outline ? outline.report_type : '',
-            customer: '',
+            group_no: '',
             request: '',
             equipment: {},
             keywords: [],
@@ -1458,7 +1571,7 @@
             if (!jsonTouched) fillSkeleton();
         });
         const incomingDate = h('input', { type: 'date', value: todayIso() });
-        const customerInput = h('input', {
+        const groupNoInput = h('input', {
             type: 'text', class: 'mono', inputmode: 'numeric', placeholder: '1274',
             title: 'Числовой номер группы или части, откуда пришло письмо',
         });
@@ -1548,7 +1661,7 @@
                 h('div', { class: 'form-grid' },
                     h('label', { class: 'field' }, 'Входящий номер', incomingNo),
                     h('label', { class: 'field' }, 'Дата письма', incomingDate),
-                    h('label', { class: 'field' }, 'Отправитель (номер)', customerInput,
+                    h('label', { class: 'field' }, 'Номер группы', groupNoInput,
                         h('span', { class: 'small faint' }, 'номер группы или части')),
                     h('label', { class: 'field' }, 'Срок ответа', deadlineInput),
                     h('label', { class: 'field' }, 'Исполнитель', assigneePick),
@@ -1605,7 +1718,7 @@
                     case_id: caseId,
                     report_type: reportType,
                     title: titleInput.value.trim(),
-                    customer: customerInput.value.trim(),
+                    group_no: groupNoInput.value.trim(),
                     incoming_no: incomingNo.value.trim(),
                     incoming_date: incomingDate.value,
                     deadline: deadlineInput.value,
@@ -2076,12 +2189,12 @@
                     ? h('dd', { class: 'mono' }, wb.case.incoming_no) : null,
                 h('dt', {}, 'тип отчёта'), h('dd', {}, reportTypeTitle(wb.case.report_type)),
                 h('dt', {}, 'состояние'), h('dd', {}, CASE_STATUS[wb.case.status] || wb.case.status)),
-            h('label', { class: 'field', style: { marginTop: '8px' } }, 'Отправитель (номер)',
+            h('label', { class: 'field', style: { marginTop: '8px' } }, 'Номер группы',
                 h('input', {
                     type: 'text', class: 'mono', inputmode: 'numeric', placeholder: '1274',
-                    value: wb.facts.customer || '', disabled: !canEdit(),
+                    value: wb.facts.group_no || '', disabled: !canEdit(),
                     title: 'Числовой номер группы или части, откуда пришло письмо',
-                    oninput: (event) => { wb.facts.customer = event.target.value; markFactsDirty(); },
+                    oninput: (event) => { wb.facts.group_no = event.target.value; markFactsDirty(); },
                 })),
             h('label', { class: 'field', style: { marginTop: '8px' } }, 'Суть обращения',
                 h('textarea', {
@@ -2392,14 +2505,40 @@
         }, 'Экспорт в DOCX');
 
         const errors = report ? report.errors || 0 : 0;
-        const approveButton = h('button', {
+        const uploaded = !!(report && report.uploaded);
+        const status = report ? report.status : '';
+
+        /* Сдать отчёт начальнику может любой сотрудник — свои отчёты в отдел
+           сдают все. У сданного файлом отчёта чисел не сверяют: факт-пакета
+           за ним нет, читает его человек. */
+        const submitButton = h('button', {
+            class: 'btn' + (status === 'draft' || status === 'rework' ? ' btn--primary' : ''),
+            disabled: !report || !editable || wb.busy
+                || status === 'review' || status === 'approved'
+                || (!uploaded && errors > 0),
+            title: (!uploaded && errors > 0)
+                ? 'Сначала снимите ошибки верификатора: ' + errors
+                : 'Отправить отчёт начальнику отдела на проверку',
+            onclick: () => submitReport(),
+        }, status === 'review' ? 'На проверке у начальника' : 'Отправить на проверку');
+
+        /* Проверяет начальник отдела или заместитель. Остальным кнопки не
+           показываем вовсе: несуществующее право не должно дразнить. */
+        const approveButton = canReview() ? h('button', {
             class: 'btn btn--primary',
-            disabled: !report || !editable || errors > 0 || report.status === 'approved' || wb.busy,
-            title: errors > 0
-                ? 'Утверждение заблокировано: верификатор нашёл ошибок — ' + errors
-                : 'Подписать отчёт и сохранить правки в обучающий набор',
+            disabled: !report || (!uploaded && errors > 0) || status === 'approved' || wb.busy,
+            title: (!uploaded && errors > 0)
+                ? 'Проверка заблокирована: верификатор нашёл ошибок — ' + errors
+                : 'Отметить отчёт проверенным',
             onclick: () => approveReport(),
-        }, report && report.status === 'approved' ? 'Утверждён' : 'Утвердить');
+        }, status === 'approved' ? 'Проверен' : 'Отметить проверенным') : null;
+
+        const reworkButton = canReview() ? h('button', {
+            class: 'btn btn--danger-hover',
+            disabled: !report || wb.busy || (status !== 'review' && status !== 'approved'),
+            title: 'Вернуть исполнителю с замечанием',
+            onclick: () => reworkReport(),
+        }, 'Вернуть на исправление') : null;
 
         append(head, [
             h('div', { class: 'line' },
@@ -2413,9 +2552,9 @@
                 wb.case.deadline ? deadlineCell(wb.case) : null,
                 h('span', { class: 'small muted nowrap' },
                     wb.case.assignee_name || 'исполнитель не назначен'),
-                wb.case.customer
-                    ? h('span', { class: 'small muted mono' },
-                        'от ' + wb.case.customer) : null,
+                wb.case.group_no
+                    ? h('span', { class: 'small muted' },
+                        'группа ' + wb.case.group_no) : null,
                 h('span', { class: 'spacer' }),
                 canEdit() ? h('button', {
                     class: 'btn btn--sm',
@@ -2433,22 +2572,48 @@
                 }, 'Удалить письмо') : null),
             h('div', { class: 'line' },
                 wb.reports.length ? versionSelect : h('span', { class: 'small muted' }, 'версий отчёта нет'),
-                report ? h('span', { class: 'badge badge--' + (
-                    report.status === 'approved' ? 'ok' : report.status === 'verified' ? 'info' : ''
-                ) }, REPORT_STATUS[report.status] || report.status) : null,
-                report ? h('button', {
+                report ? reportStatusBadge(report) : null,
+                // У сданного файлом отчёта факт-пакета нет: числа в нём не
+                // сверялись ни с чем, и молчать об этом нельзя.
+                uploaded ? h('span', {
+                    class: 'badge badge--warn',
+                    title: 'Отчёт написан вручную и загружен файлом. Числа в нём '
+                        + 'система не сверяла — проверяет человек.',
+                }, 'загружен файлом') : null,
+                report && !uploaded ? h('button', {
                     class: 'counter' + (errors ? ' has-errors' : ''),
                     title: 'Показать замечания',
                     onclick: () => { setTab('issues'); focusSidePanel(); },
                 }, '● ошибок: ' + errors) : null,
-                report ? h('button', {
+                report && !uploaded ? h('button', {
                     class: 'counter' + (report.warnings ? ' has-warnings' : ''),
                     title: 'Показать предупреждения',
                     onclick: () => { setTab('issues'); focusSidePanel(); },
                 }, '▲ предупреждений: ' + (report.warnings || 0)) : null,
                 h('span', { style: { flex: '1' } }),
-                generateButton, verifyButton, exportButton, approveButton),
+                uploaded ? null : generateButton,
+                uploaded ? null : verifyButton,
+                uploaded ? h('button', {
+                    class: 'btn', disabled: wb.busy,
+                    title: 'Скачать файл, каким его сдали',
+                    onclick: () => downloadReportFile(report),
+                }, 'Скачать файл') : exportButton,
+                submitButton, reworkButton, approveButton),
+            // Замечание проверяющего видит весь отдел, и в первую очередь
+            // исполнитель: без него «требует исправления» ничего не значит.
+            report && report.review_note
+                ? h('div', { class: 'review-note' },
+                    h('b', {}, 'Возвращено на исправление'),
+                    h('div', {}, report.review_note))
+                : null,
         ]);
+    }
+
+    /** Значок состояния отчёта: в работе, на проверке, требует исправления. */
+    function reportStatusBadge(report) {
+        const tone = REPORT_STATUS_TONE[report.status] || '';
+        return h('span', { class: 'badge' + (tone ? ' ' + tone : '') },
+            REPORT_STATUS[report.status] || report.status);
     }
 
     /** Новый разговор с помощником, привязанный к текущему обращению. */
@@ -2469,21 +2634,53 @@
     /* Порядок работы над письмом. Четыре шага, всегда одни и те же:
        без такой полосы инженер, открывший письмо впервые, не понимал, что
        делать раньше — заполнять измерения или жать «Сгенерировать». */
+    /* Путь отчёта, который система собирает сама. */
     const CASE_STEPS = [
         { id: 'facts', title: 'Внести измерения' },
         { id: 'draft', title: 'Получить черновик' },
         { id: 'check', title: 'Проверить и поправить' },
-        { id: 'done', title: 'Утвердить и выгрузить' },
+        { id: 'review', title: 'Сдать начальнику' },
+        { id: 'done', title: 'Проверено' },
+    ];
+
+    /* Путь отчёта, который написали руками и сдали файлом: шаблона и
+       факт-пакета за ним нет, значит и шагов меньше. */
+    const UPLOAD_STEPS = [
+        { id: 'review', title: 'Сдан на проверку' },
+        { id: 'done', title: 'Проверено' },
     ];
 
     /** Какой шаг сейчас и что на нём делать. */
     function caseStep() {
         const report = wb.report;
+
+        // Сданный файлом отчёт по шаблону не собирается: у него свой,
+        // короткий путь — сдан и проверен.
+        if (report && report.uploaded) {
+            if (report.status === 'approved') {
+                return {
+                    id: 'done', done: true, uploaded: true,
+                    hint: 'Отчёт проверен начальником. Письмо переведено '
+                        + 'в состояние «отправлено».',
+                };
+            }
+            if (report.status === 'rework') {
+                return {
+                    id: 'review', errors: 1, uploaded: true,
+                    hint: 'Начальник вернул отчёт: ' + (report.review_note || 'см. замечание')
+                        + ' Исправьте документ и сдайте его заново — новой версией.',
+                };
+            }
+            return {
+                id: 'review', uploaded: true,
+                hint: 'Отчёт сдан файлом и ждёт начальника отдела. Числа в нём '
+                    + 'система не сверяла: факт-пакета за таким отчётом нет.',
+            };
+        }
+
         // Факт-пакет не разбирается — говорить «измерения на месте, сейчас
         // напишем черновик» нельзя: генерация всё равно откажет, а инженер
-        // будет искать причину в другом месте. Такое бывает и на старых
-        // письмах: например, отправитель записан названием организации, а
-        // не номером.
+        // будет искать причину в другом месте.
         if (wb.coverageError) {
             return {
                 id: 'facts', broken: true,
@@ -2512,8 +2709,22 @@
         if (report.status === 'approved') {
             return {
                 id: 'done', done: true,
-                hint: 'Отчёт утверждён. Выгрузите его в DOCX и отправьте ответ; '
-                    + 'письмо переведено в состояние «отправлено».',
+                hint: 'Отчёт проверен начальником. Выгрузите его в DOCX и отправьте '
+                    + 'ответ; письмо переведено в состояние «отправлено».',
+            };
+        }
+        if (report.status === 'review') {
+            return {
+                id: 'review',
+                hint: 'Отчёт у начальника отдела на проверке. Правка вернёт его вам: '
+                    + 'начальник должен читать то, что сдали.',
+            };
+        }
+        if (report.status === 'rework') {
+            return {
+                id: 'check', errors: 1,
+                hint: 'Начальник вернул отчёт: ' + (report.review_note || 'см. замечание')
+                    + ' Поправьте разделы и отправьте на проверку заново.',
             };
         }
         const errors = report.errors || 0;
@@ -2521,22 +2732,23 @@
             return {
                 id: 'check', errors: errors,
                 hint: 'Проверка нашла ошибок: ' + errors + '. Пока они не сняты, '
-                    + 'утвердить отчёт нельзя — числа в тексте должны совпадать '
-                    + 'с измерениями. Замечания справа.',
+                    + 'отчёт не отправить начальнику — числа в тексте должны '
+                    + 'совпадать с измерениями. Замечания справа.',
             };
         }
         return {
-            id: 'check',
+            id: 'review',
             hint: 'Черновик готов, ошибок нет. Прочитайте разделы, поправьте '
-                + 'формулировки — и утверждайте.',
+                + 'формулировки — и отправляйте начальнику на проверку.',
         };
     }
 
     function stepStrip() {
         const step = caseStep();
-        const index = CASE_STEPS.map((item) => item.id).indexOf(step.id);
+        const steps = step.uploaded ? UPLOAD_STEPS : CASE_STEPS;
+        const index = steps.map((item) => item.id).indexOf(step.id);
         const strip = h('div', { class: 'steps' });
-        CASE_STEPS.forEach((item, position) => {
+        steps.forEach((item, position) => {
             const state = step.done || position < index ? ' is-past'
                 : position === index ? ' is-now' : '';
             strip.appendChild(h('div', { class: 'step' + state },
@@ -3079,31 +3291,91 @@
         }
     }
 
-    async function approveReport() {
+    /** Сдать отчёт начальнику отдела на проверку. Может любой сотрудник. */
+    async function submitReport() {
         if (!wb.report) return;
-        if ((wb.report.errors || 0) > 0) {
-            toast('Утверждение заблокировано: сначала устраните ошибки верификатора', 'error');
-            return;
-        }
         if (wb.dirty.size) {
             toast('Сначала сохраните правки разделов: ' + wb.dirty.size, 'error');
             return;
         }
+        if (!wb.report.uploaded && (wb.report.errors || 0) > 0) {
+            toast('Сначала снимите ошибки верификатора: ' + wb.report.errors, 'error');
+            return;
+        }
         const ok = await confirmDialog({
-            title: 'Утвердить отчёт',
-            message: 'Отчёт версии ' + wb.report.version + ' по письму ' + wb.case.case_id +
-                ' будет подписан. Письмо перейдёт в состояние «отправлено».',
-            note: 'Разделы, которые вы переписали, сохранятся парами «черновик модели → ваш текст»: '
-                + 'по ним потом дообучают модель.',
-            confirmText: 'Утвердить',
+            title: 'Отправить на проверку',
+            message: 'Отчёт версии ' + wb.report.version + ' по письму ' + wb.case.case_id
+                + ' уйдёт на проверку начальнику отдела. Письмо перейдёт '
+                + 'в состояние «на проверке».',
+            note: 'Правка отчёта после отправки вернёт его вам: начальник должен '
+                + 'читать то, что сдали.',
+            confirmText: 'Отправить',
         });
         if (!ok) return;
         try {
-            const data = await withOverlay('Утверждение отчёта', 'Сохраняются правки для обучающего набора.',
+            const data = await api.post('/api/reports/' + wb.report.id + '/submit', {});
+            wb.report = normalizeReport(data.report) || wb.report;
+            await reloadCase(wb.report.id);
+            toast('Отчёт отправлен на проверку', 'ok');
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
+    /** Вернуть отчёт исполнителю с замечанием. Только начальник или зам. */
+    async function reworkReport() {
+        if (!wb.report) return;
+        const note = await promptDialog({
+            multiline: true,
+            title: 'Вернуть на исправление',
+            message: 'Что исправить в отчёте версии ' + wb.report.version
+                + ' по письму ' + wb.case.case_id + '?',
+            note: 'Замечание увидит исполнитель и весь отдел — пишите так, '
+                + 'чтобы по нему можно было работать.',
+            placeholder: 'например: в выводах нет ссылки на методику измерений',
+            confirmText: 'Вернуть исполнителю',
+        });
+        if (!note) return;
+        try {
+            const data = await api.post('/api/reports/' + wb.report.id + '/rework',
+                { note: note });
+            wb.report = normalizeReport(data.report) || wb.report;
+            await reloadCase(wb.report.id);
+            toast('Отчёт возвращён исполнителю', 'ok');
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
+    /** Скачать сданный файлом отчёт таким, каким его сдали. */
+    function downloadReportFile(report) {
+        window.open('/api/reports/' + report.id + '/file', '_blank');
+    }
+
+    /** Отметить отчёт проверенным. Только начальник отдела или заместитель. */
+    async function approveReport() {
+        if (!wb.report) return;
+        if (!wb.report.uploaded && (wb.report.errors || 0) > 0) {
+            toast('Проверка заблокирована: сначала снимите ошибки верификатора', 'error');
+            return;
+        }
+        const ok = await confirmDialog({
+            title: 'Отметить проверенным',
+            message: 'Отчёт версии ' + wb.report.version + ' по письму ' + wb.case.case_id +
+                ' будет отмечен проверенным. Письмо перейдёт в состояние «отправлено».',
+            note: wb.report.uploaded
+                ? 'Отчёт сдан файлом: числа в нём система не сверяла, вы проверяете сами.'
+                : 'Разделы, которые переписал исполнитель, сохранятся парами '
+                  + '«черновик модели → текст инженера»: по ним потом дообучают модель.',
+            confirmText: 'Проверен',
+        });
+        if (!ok) return;
+        try {
+            const data = await withOverlay('Проверка отчёта', 'Сохраняются правки для обучающего набора.',
                 () => api.post('/api/reports/' + wb.report.id + '/approve', {}));
             wb.report = normalizeReport(data.report) || wb.report;
             await reloadCase(wb.report.id);
-            toast('Отчёт утверждён', 'ok');
+            toast('Отчёт отмечен проверенным', 'ok');
         } catch (error) {
             toastError(error);
         }

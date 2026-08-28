@@ -190,6 +190,7 @@ class User:
             "department": self.department,
             "team": self.team,
             "is_admin": self.is_admin,
+            "can_review": self.can_review,
             "is_owner": self.is_owner,
             "active": self.active,
             "created_at": self.created_at,

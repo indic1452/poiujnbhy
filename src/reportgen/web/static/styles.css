@@ -2576,6 +2576,37 @@ table.md-table th {
     color: #1c1607;
 }
 
+/* Выбор файла в диалоге: своя кнопка вместо системной. */
+.file-pick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.file-pick > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Замечание проверяющего. Видно всем: исполнитель должен знать, что
+   править, а отдел — что происходит с отчётом. */
+.review-note {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--danger);
+    background: var(--danger-soft);
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+}
+
+.review-note b {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--danger);
+}
+
 /* Ссылка на фрагмент, которого в подборке нет: модель её выдумала.
    Гасим, но не убираем — инженер должен видеть, что здесь сослались
    в никуда, а не считать это подтверждённым утверждением. */
