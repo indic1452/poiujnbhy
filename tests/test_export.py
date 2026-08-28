@@ -106,11 +106,11 @@ class MarkdownStructureTests(ExportTestCase):
 
     def test_hard_line_break_keeps_single_paragraph(self):
         # Титульный блок конвейера: строки заканчиваются двумя пробелами.
-        document = self.build("**Обращение:** SUP-2024-118  \n**Заказчик:** ЗАКАЗЧИК_07")
+        document = self.build("**Обращение:** SUP-2024-118  \n**Отправитель:** 1274")
         self.assertEqual(len(document.paragraphs), 1)
         self.assertEqual(
             document.paragraphs[0].text,
-            "Обращение: SUP-2024-118\nЗаказчик: ЗАКАЗЧИК_07",
+            "Обращение: SUP-2024-118\nОтправитель: 1274",
         )
 
     def test_table_shape_and_bold_header(self):

@@ -431,6 +431,52 @@ class UserRepoTests(StoreTestCase):
         self.assertNotEqual("owner", roles["local"])
         database.close()
 
+    def test_organisation_names_are_cleared_from_the_sender_field(self):
+        """Отправитель стал числовым номером — старые письма надо починить.
+
+        До обновления в этом поле держали название организации. Такой
+        факт-пакет проверку больше не проходит: письмо открывается, но
+        черновик по нему не построить, а разбираться с этим на изолированной
+        машине будет некому.
+        """
+        import json as _json
+
+        for number, (case_id, customer) in enumerate([
+            ("L-100", "ПАО «Ростелеком»"),
+            ("L-101", "1274"),
+            ("L-102", "ООО «Связь-21»"),
+        ], start=1):
+            facts = {"case_id": case_id, "report_type": "signal_issue",
+                     "customer": customer, "measurements": {}}
+            self.repos.db.execute(
+                "INSERT INTO cases(case_id, report_type, title, customer, status, "
+                "facts_json, facts_digest, created_at, updated_at) "
+                "VALUES(?,?,'',?,'new',?,'','2024-01-01','2024-01-01')",
+                (case_id, "signal_issue", customer,
+                 _json.dumps(facts, ensure_ascii=False)),
+            )
+        self.repos.db.execute("DELETE FROM meta WHERE key = 'schema_version'")
+        self.repos.db.migrate()
+
+        rows = {row["case_id"]: row for row in self.repos.db.query(
+            "SELECT case_id, customer, facts_json FROM cases WHERE case_id LIKE 'L-10%'")}
+        self.assertEqual("", rows["L-100"]["customer"])
+        self.assertEqual("1274", rows["L-101"]["customer"], "номер стирать нельзя")
+        # Цифры из названия не выдёргиваем: отправителя 21 никто не присылал.
+        self.assertEqual("", rows["L-102"]["customer"])
+        # Факт-пакет чинится вместе с колонкой — иначе он не пройдёт проверку.
+        self.assertEqual("", _json.loads(rows["L-100"]["facts_json"])["customer"])
+        self.assertEqual("1274", _json.loads(rows["L-101"]["facts_json"])["customer"])
+        # И починенный пакет действительно разбирается.
+        from reportgen.facts import FactPack
+        FactPack.from_dict(_json.loads(rows["L-100"]["facts_json"]))
+        # Стёртое название не пропало: оно в примечании к письму, и номер
+        # по нему инженер восстановит сам.
+        notes = {row["case_id"]: row["note"] for row in self.repos.db.query(
+            "SELECT case_id, note FROM cases WHERE case_id LIKE 'L-10%'")}
+        self.assertIn("ПАО «Ростелеком»", notes["L-100"])
+        self.assertEqual("", notes["L-101"] or "", "у письма с номером примечание не трогаем")
+
     def test_legacy_roles_are_migrated(self):
         # На уже работающей установке роли viewer/engineer/admin должны
         # превратиться в должности, иначе сотрудник теряет доступ целиком.

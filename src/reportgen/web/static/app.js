@@ -2365,11 +2365,17 @@
             value: item.id, selected: report && item.id === report.id,
         }, 'версия ' + item.version + ' · ' + (REPORT_STATUS[item.status] || item.status))));
 
+        // Со сломанным факт-пакетом генерация всё равно откажет: кнопку
+        // гасим и говорим почему, а не отправляем инженера за ошибкой.
+        const broken = !!wb.coverageError;
         const generateButton = h('button', {
-            class: 'btn' + (report ? '' : ' btn--primary'), disabled: !editable || wb.busy,
-            title: report
-                ? 'Написать все разделы заново новой версией (прежние сохранятся)'
-                : 'Пройти по разделам шаблона и написать черновик ответа',
+            class: 'btn' + (report ? '' : ' btn--primary'),
+            disabled: !editable || wb.busy || broken,
+            title: broken
+                ? 'Сначала исправьте факт-пакет: ' + wb.coverageError
+                : (report
+                    ? 'Написать все разделы заново новой версией (прежние сохранятся)'
+                    : 'Пройти по разделам шаблона и написать черновик ответа'),
             onclick: () => generateReport(),
         }, report ? 'Переписать заново' : 'Подготовить черновик');
 
@@ -2472,6 +2478,19 @@
     /** Какой шаг сейчас и что на нём делать. */
     function caseStep() {
         const report = wb.report;
+        // Факт-пакет не разбирается — говорить «измерения на месте, сейчас
+        // напишем черновик» нельзя: генерация всё равно откажет, а инженер
+        // будет искать причину в другом месте. Такое бывает и на старых
+        // письмах: например, отправитель записан названием организации, а
+        // не номером.
+        if (wb.coverageError) {
+            return {
+                id: 'facts', broken: true,
+                hint: 'Факт-пакет не разбирается: ' + wb.coverageError
+                    + ' Пока это не исправлено, черновик не построить — '
+                    + 'поправьте пакет слева или в режиме JSON.',
+            };
+        }
         const missing = localCoverage().reduce((sum, item) => sum + item.keys.length, 0);
         if (!report) {
             return missing
@@ -2540,7 +2559,10 @@
                     h('h3', {}, 'Ответ ещё не готовили'),
                     h('div', { class: 'btn-row', style: { justifyContent: 'center', marginTop: '14px' } },
                         h('button', {
-                            class: 'btn btn--primary', disabled: !canEdit(),
+                            class: 'btn btn--primary',
+                            disabled: !canEdit() || !!wb.coverageError,
+                            title: wb.coverageError
+                                ? 'Сначала исправьте факт-пакет: ' + wb.coverageError : '',
                             onclick: () => generateReport(),
                         }, 'Подготовить черновик')))));
             return;

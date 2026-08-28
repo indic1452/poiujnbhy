@@ -343,7 +343,7 @@ def assemble(
     """Сшивка: титул, служебный блок, оглавление, разделы, приложение."""
     lines: List[str] = [f"# {outline.title}", ""]
     lines.append(f"**Обращение:** {facts.case_id}  ")
-    lines.append(f"**Заказчик:** {facts.customer or '—'}  ")
+    lines.append(f"**Отправитель:** {facts.customer or '—'}  ")
     if facts.equipment:
         equipment = ", ".join(f"{k}: {v}" for k, v in facts.equipment.items())
         lines.append(f"**Оборудование:** {equipment}  ")

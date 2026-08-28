@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 from contextlib import contextmanager
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "5"
+SCHEMA_VERSION = "6"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -179,6 +180,7 @@ class Database:
             self._ensure_columns()
             self._rename_domains()
             self._rename_roles()
+            self._normalize_senders()
             self.connection.execute(
                 "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -274,6 +276,79 @@ class Database:
             # администраторы стали начальниками отдела.
             self.connection.execute(
                 "INSERT INTO meta(key, value) VALUES('roles_migrated_at', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (utcnow(),),
+            )
+
+    def _normalize_senders(self) -> None:
+        """Отправитель письма стал числовым номером группы.
+
+        Раньше в этом поле держали название организации («ПАО Ростелеком»):
+        оно так и называлось — «заказчик». После обновления такой факт-пакет
+        перестаёт проходить проверку, и письмо, открывшись, отказывается
+        строить черновик — причём на изолированной машине разбираться с этим
+        будет некому.
+
+        Поэтому чиним при первом запуске: номер оставляем как есть, название
+        стираем. Цифры из названия не выдёргиваем — «Связь-21» превратилась
+        бы в отправителя 21, которого никто не присылал, а выдуманным числам
+        в системе места нет. Стёртое название дописываем в примечание к
+        письму: терять сведения молча нельзя, а номер по названию инженер
+        восстановит сам.
+        """
+        from ..facts import FactPackError, check_sender  # noqa: PLC0415
+
+        columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(cases)")}
+        if not columns or "customer" not in columns:
+            return
+        has_note = "note" in columns
+        rows = self.connection.execute(
+            f"SELECT id, customer, facts_json{', note' if has_note else ''} FROM cases"
+        ).fetchall()
+        cleaned = 0
+        for row in rows:
+            customer = row["customer"] or ""
+            try:
+                kept = check_sender(customer)
+            except FactPackError:
+                kept = ""
+            facts_text = row["facts_json"] or ""
+            facts_kept = facts_text
+            if facts_text:
+                try:
+                    facts = json.loads(facts_text)
+                except (json.JSONDecodeError, TypeError):
+                    facts = None
+                if isinstance(facts, dict) and "customer" in facts:
+                    try:
+                        inner = check_sender(facts["customer"])
+                    except FactPackError:
+                        inner = ""
+                    if inner != facts["customer"]:
+                        facts["customer"] = inner
+                        facts_kept = json.dumps(facts, ensure_ascii=False)
+            if kept == customer and facts_kept == facts_text:
+                continue
+            if has_note and customer and not kept:
+                note = (row["note"] or "").strip()
+                mark = f"Отправитель до обновления: {customer}"
+                if mark not in note:
+                    note = f"{note}\n{mark}".strip() if note else mark
+                self.connection.execute(
+                    "UPDATE cases SET customer = ?, facts_json = ?, note = ? WHERE id = ?",
+                    (kept, facts_kept, note, row["id"]),
+                )
+            else:
+                self.connection.execute(
+                    "UPDATE cases SET customer = ?, facts_json = ? WHERE id = ?",
+                    (kept, facts_kept, row["id"]),
+                )
+            cleaned += 1
+        if cleaned:
+            # Отметка в базе: через год иначе не объяснить, куда делись
+            # названия организаций из писем.
+            self.connection.execute(
+                "INSERT INTO meta(key, value) VALUES('senders_migrated_at', ?) "
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                 (utcnow(),),
             )

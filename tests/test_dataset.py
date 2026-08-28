@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTLINE = ROOT / "templates" / "outline_signal_issue.json"
 
 CONTEXT = {
-    "header": "Обращение: SUP-2024-118\nЗаказчик: ЗАКАЗЧИК_07",
+    "header": "Обращение: SUP-2024-118\nОтправитель: 1274",
     "instruction": "Опиши условия и методику измерений.",
     "title": "Условия и методика измерений",
     "target_words": 220,
