@@ -5434,6 +5434,14 @@
                 [done.question, done.answer].forEach((item) => {
                     if (item && !have[String(item.id)]) chat.messages.push(item);
                 });
+                // Приложенные файлы привязываем к отправленному вопросу:
+                // без этого они пропадали с экрана сразу после ответа и
+                // возвращались только при следующем открытии разговора.
+                if (done.question && live.attachments.length) {
+                    chat.sentAttachments = (chat.sentAttachments || []).concat(
+                        live.attachments.map((item) => Object.assign(
+                            {}, item, { message_id: done.question.id })));
+                }
                 chat.sourcesOf = done.answer;
                 chat.pendingSources = null;
                 renderFeed();
