@@ -2368,10 +2368,10 @@
         const generateButton = h('button', {
             class: 'btn' + (report ? '' : ' btn--primary'), disabled: !editable || wb.busy,
             title: report
-                ? 'Создать новую версию отчёта целиком (старые версии сохраняются)'
-                : 'Пройти по секциям шаблона и написать черновик',
+                ? 'Написать все разделы заново новой версией (прежние сохранятся)'
+                : 'Пройти по разделам шаблона и написать черновик ответа',
             onclick: () => generateReport(),
-        }, report ? 'Перегенерировать всё' : 'Сгенерировать отчёт');
+        }, report ? 'Переписать заново' : 'Подготовить черновик');
 
         const verifyButton = h('button', {
             class: 'btn', disabled: !report || wb.busy,
@@ -2459,25 +2459,95 @@
         }
     }
 
+    /* Порядок работы над письмом. Четыре шага, всегда одни и те же:
+       без такой полосы инженер, открывший письмо впервые, не понимал, что
+       делать раньше — заполнять измерения или жать «Сгенерировать». */
+    const CASE_STEPS = [
+        { id: 'facts', title: 'Внести измерения' },
+        { id: 'draft', title: 'Получить черновик' },
+        { id: 'check', title: 'Проверить и поправить' },
+        { id: 'done', title: 'Утвердить и выгрузить' },
+    ];
+
+    /** Какой шаг сейчас и что на нём делать. */
+    function caseStep() {
+        const report = wb.report;
+        const missing = localCoverage().reduce((sum, item) => sum + item.keys.length, 0);
+        if (!report) {
+            return missing
+                ? {
+                    id: 'facts', missing: missing,
+                    hint: 'Шаблон отчёта требует измерений, которых пока нет: ' + missing +
+                        '. Внесите их слева — иначе разделы выйдут с пометкой '
+                        + '«не хватает данных». Можно и сгенерировать как есть, '
+                        + 'чтобы посмотреть структуру.',
+                }
+                : {
+                    id: 'draft',
+                    hint: 'Измерения на месте. Система пройдёт по разделам шаблона '
+                        + '«' + reportTypeTitle(wb.case.report_type) + '», подберёт '
+                        + 'фрагменты библиотеки и напишет черновик.',
+                };
+        }
+        if (report.status === 'approved') {
+            return {
+                id: 'done', done: true,
+                hint: 'Отчёт утверждён. Выгрузите его в DOCX и отправьте ответ; '
+                    + 'письмо переведено в состояние «отправлено».',
+            };
+        }
+        const errors = report.errors || 0;
+        if (errors) {
+            return {
+                id: 'check', errors: errors,
+                hint: 'Проверка нашла ошибок: ' + errors + '. Пока они не сняты, '
+                    + 'утвердить отчёт нельзя — числа в тексте должны совпадать '
+                    + 'с измерениями. Замечания справа.',
+            };
+        }
+        return {
+            id: 'check',
+            hint: 'Черновик готов, ошибок нет. Прочитайте разделы, поправьте '
+                + 'формулировки — и утверждайте.',
+        };
+    }
+
+    function stepStrip() {
+        const step = caseStep();
+        const index = CASE_STEPS.map((item) => item.id).indexOf(step.id);
+        const strip = h('div', { class: 'steps' });
+        CASE_STEPS.forEach((item, position) => {
+            const state = step.done || position < index ? ' is-past'
+                : position === index ? ' is-now' : '';
+            strip.appendChild(h('div', { class: 'step' + state },
+                h('b', {}, String(position + 1)),
+                h('span', {}, item.title)));
+        });
+        return h('div', { class: 'step-box' + (step.errors ? ' step-box--bad' : '') },
+            strip,
+            h('div', { class: 'step-hint' }, step.hint));
+    }
+
     function renderSections() {
         const body = wb.nodes.reportBody;
         clear(body);
         const report = wb.report;
 
         if (!report) {
-            body.appendChild(h('div', { class: 'empty' },
-                h('h3', {}, 'Отчёт ещё не сгенерирован'),
-                h('div', {}, 'Конвейер пройдёт по секциям шаблона «' + reportTypeTitle(wb.case.report_type) +
-                    '», подберёт фрагменты библиотеки и напишет черновик.'),
-                h('div', { class: 'btn-row', style: { justifyContent: 'center', marginTop: '14px' } },
-                    h('button', {
-                        class: 'btn btn--primary', disabled: !canEdit(),
-                        onclick: () => generateReport(),
-                    }, 'Сгенерировать отчёт'))));
+            body.appendChild(h('div', { class: 'sections' },
+                stepStrip(),
+                h('div', { class: 'empty' },
+                    h('h3', {}, 'Ответ ещё не готовили'),
+                    h('div', { class: 'btn-row', style: { justifyContent: 'center', marginTop: '14px' } },
+                        h('button', {
+                            class: 'btn btn--primary', disabled: !canEdit(),
+                            onclick: () => generateReport(),
+                        }, 'Подготовить черновик')))));
             return;
         }
 
         const container = h('div', { class: 'sections' });
+        container.appendChild(stepStrip());
         report.sections.forEach((section) => container.appendChild(sectionCard(section)));
         if (!report.sections.length) {
             container.appendChild(h('div', { class: 'empty' }, 'В отчёте нет секций.'));

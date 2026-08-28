@@ -3701,3 +3701,80 @@ table.grid .row-actions .btn--icon svg {
     background: var(--danger-soft);
     color: var(--danger);
 }
+
+/* ------------------------------------------ порядок работы над письмом --- */
+
+/* Четыре шага: измерения → черновик → проверка → утверждение. Полоса стоит
+   над отчётом всегда: инженер, открывший письмо впервые, иначе не понимал,
+   что делать раньше — заполнять факты или жать «Сгенерировать». */
+.step-box {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: 12px 14px;
+}
+
+.step-box--bad {
+    border-left-color: var(--danger);
+}
+
+.steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-bottom: 8px;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--faint);
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+}
+
+.step b {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    flex: 0 0 auto;
+}
+
+/* Пройденный шаг — спокойный, текущий — акцентный. */
+.step.is-past {
+    color: var(--ok);
+}
+
+.step.is-past b {
+    background: var(--ok-soft);
+    border-color: var(--ok);
+}
+
+.step.is-now {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.step.is-now b {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+
+.step-hint {
+    color: var(--muted);
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+}
+
+.step-box--bad .step-hint {
+    color: var(--danger);
+}
