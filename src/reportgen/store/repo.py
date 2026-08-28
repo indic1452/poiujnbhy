@@ -1375,8 +1375,14 @@ class BoardRepo:
             "  min(CASE WHEN c.status IN (" + marks + ") AND c.deadline <> '' "
             "        THEN c.deadline END) AS next_deadline "
             "FROM users u LEFT JOIN cases c ON c.assignee_id = u.id "
-            "WHERE u.active = 1 AND u.login <> 'local' "
-            "GROUP BY u.id ORDER BY late_count DESC, open_count DESC, u.full_name",
+            # Отключённый сотрудник остаётся в списке, пока за ним числятся
+            # письма в работе. Иначе они исчезали отовсюду: из нагрузки —
+            # вместе с человеком, а в «без исполнителя» не попадали, потому
+            # что исполнитель у них есть. Три письма отдела не видел никто.
+            "WHERE u.login <> 'local' AND (u.active = 1 OR c.id IS NOT NULL) "
+            "GROUP BY u.id "
+            "HAVING u.active = 1 OR open_count > 0 "
+            "ORDER BY late_count DESC, open_count DESC, u.full_name",
             # Порядок подстановок повторяет порядок «?» в запросе:
             # открытые, просроченные, ближайшие, следующий срок.
             tuple(OPEN_CASE_STATUSES)

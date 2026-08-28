@@ -1384,7 +1384,8 @@
             title: 'Удалить письмо',
             message: 'Письмо ' + (item.incoming_no || item.case_id) +
                 ' будет удалено вместе со всеми версиями отчёта. Действие необратимо.',
-            note: 'Сохранённые пары «черновик → правка» в обучающем наборе остаются.',
+            note: 'Сохранённые пары «черновик → правка» в обучающем наборе остаются. '
+                + 'Уже выгруженные файлы DOCX лежат в каталоге выгрузок и удаляются вручную.',
             confirmText: 'Удалить',
             danger: true,
         });
@@ -3956,7 +3957,8 @@
             people.forEach((person) => {
                 rows.appendChild(h('tr', {},
                     h('td', {},
-                        h('div', {}, person.full_name),
+                        h('div', { class: person.active === false ? 'muted' : '' },
+                            person.full_name),
                         h('div', { class: 'small faint' },
                             (ROLE_SHORT[person.role] || person.role) +
                             (person.team ? ' · ' + person.team : ''))),
@@ -3986,6 +3988,14 @@
         }
 
         function personState(person) {
+            // Отключённый сотрудник попадает в список, только пока за ним
+            // числятся письма: их надо передать живому человеку. Это
+            // важнее и отпуска, и дежурства — потому и первым.
+            if (person.active === false) {
+                return h('span', { class: 'badge badge--danger', title:
+                    'Учётная запись отключена, а письма за ней числятся: '
+                    + 'передайте их другому исполнителю' }, 'отключён');
+            }
             if (person.away) {
                 return h('span', { class: 'badge badge--warn' },
                     person.away_title + (person.away_until ? ' до ' + fmtDate(person.away_until) : ''));

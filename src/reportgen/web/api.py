@@ -1382,6 +1382,9 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
             "id": row["id"],
             "login": row["login"],
             "full_name": row["full_name"] or row["login"],
+            # Отключённый сотрудник остаётся в списке, пока за ним числятся
+            # письма: их надо передать живому человеку, и это должно быть видно.
+            "active": bool(row["active"]),
             "role": row["role"],
             "role_title": ROLE_TITLES.get(row["role"], row["role"]),
             "department": row["department"],

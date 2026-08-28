@@ -1077,6 +1077,33 @@ class BoardTests(WebTestCase):
         self.assertEqual(1, person["late"])
         self.assertEqual("2000-01-01", person["next_deadline"])
 
+    def test_letters_of_a_disabled_employee_do_not_vanish(self):
+        """Письма отключённого сотрудника исчезали отовсюду.
+
+        Из нагрузки — вместе с человеком, а в «без исполнителя» они не
+        попадали, потому что исполнитель у них есть. Отдел не видел их
+        никак, хотя отвечать по ним всё равно кому-то придётся.
+        """
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}",
+                          json={"assignee_id": self.engineer.id})
+        self.repos.users.set_active(self.engineer.id, False)
+
+        body = self.client.get("/api/board").json()
+        row = [p for p in body["people"] if p["id"] == self.engineer.id]
+        self.assertTrue(row, "отключённый исполнитель пропал из нагрузки")
+        self.assertFalse(row[0]["active"], "в списке не видно, что он отключён")
+        self.assertEqual(1, row[0]["open"])
+        # Сумма по людям и «без исполнителя» покрывают все письма в работе.
+        by_people = sum(p["open"] for p in body["people"])
+        self.assertEqual(body["totals"]["open"],
+                         by_people + body["totals"]["unassigned"])
+
+    def test_disabled_employee_without_letters_is_not_listed(self):
+        self.repos.users.set_active(self.engineer.id, False)
+        body = self.client.get("/api/board").json()
+        self.assertNotIn(self.engineer.id, {p["id"] for p in body["people"]})
+
     def test_service_record_is_not_counted_as_staff(self):
         logins = {item["login"] for item in self.client.get("/api/board").json()["people"]}
         self.assertNotIn("local", logins)
