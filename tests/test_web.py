@@ -1229,5 +1229,18 @@ class ResponsiveLayoutTests(unittest.TestCase):
             with self.subTest(width=width):
                 self.assertIn(f"@media (max-width: {width})", self.css)
 
+    def test_board_folds_into_one_column_before_the_table_is_squeezed(self):
+        """Таблица нагрузки не должна уезжать под горизонтальную прокрутку.
+
+        Оценка «две колонки помещаются от 1500» была занижена: на 1600
+        таблице оставалось 739 px при нужных 807, и главную таблицу
+        дашборда приходилось листать вбок. Замерено в браузере на
+        1366/1440/1600/1920/2560.
+        """
+        self.assertIn("@media (max-width: 1750px)", self.css)
+        fold = self.css.split("@media (max-width: 1750px)", 1)[1][:200]
+        self.assertIn(".board-cols", fold)
+        self.assertIn("grid-template-columns: 1fr", fold)
+
     def test_page_head_wraps(self):
         self.assertIn("flex-wrap: wrap", self.block(".page-head"))
