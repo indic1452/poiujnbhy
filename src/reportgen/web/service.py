@@ -432,6 +432,7 @@ class ReportService:
             raise ServiceError(f"секция '{section_id}' не найдена", 404)
         edited = text.strip() != section.draft_text.strip()
         self.repos.reports.update_section_text(report.id, section_id, text, edited=edited)
+        self._unsign(report, "section.edit", section_id)
         self.rebuild(report.id)
         self.repos.audit.log(
             "report.section.edit", user=user, object_type="report", object_id=str(report.id),
@@ -449,6 +450,7 @@ class ReportService:
         self.repos.reports.update_section_text(
             report.id, section_id, section.draft_text, edited=False
         )
+        self._unsign(report, "section.restore", section_id)
         self.rebuild(report.id)
         self.repos.audit.log(
             "report.section.restore", user=user, object_type="report",
@@ -566,6 +568,25 @@ class ReportService:
              "section": issue.section, "message": issue.message}
             for issue in issues
         ]
+
+    def _unsign(self, report: Report, reason: str, section_id: str = "") -> None:
+        """Снять подпись с отчёта, текст которого изменили.
+
+        Подпись стоит под тем текстом, который человек прочитал. Раньше её
+        снимал только верификатор — если правка добавляла число мимо
+        факт-пакета. Правка, ошибок не добавившая, оставляла отчёт
+        утверждённым: в шапке «Утвердил: Иванов», а раздел переписан после
+        него и, возможно, не им. Утвердить заново — одно нажатие, а вот
+        отличить подписанный документ от подправленного после подписи было
+        нельзя ничем.
+        """
+        if report.status != "approved":
+            return
+        self.repos.reports.set_status(report.id, "draft")
+        self.repos.audit.log(
+            "report.approval.revoked", object_type="report", object_id=str(report.id),
+            details={"reason": reason, "section": section_id},
+        )
 
     def _apply_issues(self, report: Report, issues: List[Dict[str, Any]]) -> None:
         """Сохранить замечания и снять подпись, если появились ошибки.

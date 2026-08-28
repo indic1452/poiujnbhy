@@ -577,14 +577,50 @@ class ReportFlowTests(WebTestCase):
         self.assertEqual(response.json()["report"]["status"], "draft")
         self.assertGreater(response.json()["report"]["errors"], 0)
 
-    def test_warning_does_not_revoke_approval(self):
+    def test_any_edit_of_a_signed_report_removes_the_signature(self):
+        """Подпись стоит под тем текстом, который человек прочитал.
+
+        Раньше её снимал только верификатор — если правка добавляла число
+        мимо факт-пакета. Правка, ошибок не добавившая, оставляла отчёт
+        утверждённым: в шапке «Утвердил: Иванов», а раздел переписан после
+        него и, возможно, не им. Утвердить заново — одно нажатие, а вот
+        отличить подписанный документ от подправленного после подписи было
+        нельзя ничем.
+        """
         self.client.post(f"/api/reports/{self.report['id']}/approve")
         section_id = self.report["sections"][0]["section_id"]
         response = self.client.put(
             f"/api/reports/{self.report['id']}/sections/{section_id}",
-            json={"text": "Короткий текст."},
+            json={"text": "Короткий текст без единого числа."},
         )
-        self.assertEqual(response.json()["report"]["status"], "approved")
+        self.assertEqual("draft", response.json()["report"]["status"])
+        self.assertEqual(0, response.json()["report"]["errors"])
+        # И в выгрузке документ снова черновик, а не подписанный отчёт.
+        text = self.client.get(f"/api/reports/{self.report['id']}/export.md").text
+        self.assertIn("ЧЕРНОВИК", text)
+        self.assertNotIn("УТВЕРЖДЁН", text)
+
+    def test_returning_the_model_draft_also_removes_the_signature(self):
+        section_id = self.report["sections"][0]["section_id"]
+        self.client.put(f"/api/reports/{self.report['id']}/sections/{section_id}",
+                        json={"text": "Правка инженера без чисел."})
+        self.client.post(f"/api/reports/{self.report['id']}/approve")
+        response = self.client.post(
+            f"/api/reports/{self.report['id']}/sections/{section_id}/restore")
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual("draft", self.repos.reports.get(self.report["id"]).status)
+
+    def test_warning_from_changed_facts_does_not_revoke_approval(self):
+        # Замечание-предупреждение подписи не снимает: снимает её ошибка,
+        # то есть число в тексте мимо факт-пакета.
+        self.client.post(f"/api/reports/{self.report['id']}/approve")
+        case = self.client.get(f"/api/cases/{self.case['id']}").json()["case"]
+        facts = dict(case["facts"])
+        facts["request"] = "уточнение к обращению без единого числа"
+        response = self.client.put(f"/api/cases/{self.case['id']}/facts",
+                                   json={"facts": facts})
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual("approved", self.repos.reports.get(self.report["id"]).status)
 
     def test_sources_endpoint(self):
         body = self.client.get(f"/api/reports/{self.report['id']}/sources").json()
