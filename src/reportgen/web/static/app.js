@@ -4475,6 +4475,8 @@
         pendingWarning: null,
         /* Приложенные к следующему вопросу файлы. */
         attachments: [],
+        /* Идущее создание разговора: чтобы две загрузки не завели два. */
+        creating: null,
         activeLabel: null,
         /* Идёт ли ответ в ОТКРЫТОМ разговоре. Признак экранный: сам поток
            живёт при chat.live и переключением разговора не прерывается. */
@@ -5166,10 +5168,14 @@
         const picker = h('input', {
             type: 'file', multiple: true, accept: ATTACH_ACCEPT,
             style: { display: 'none' },
-            onchange: (event) => {
+            onchange: async (event) => {
                 const files = Array.prototype.slice.call(event.target.files || []);
                 event.target.value = '';
-                files.forEach((file) => uploadAttachment(file));
+                // По одному и по очереди. Разом — это две беды сразу: файлы
+                // выстраивались в порядке ответа сервера, а не выбора, и в
+                // пустом разговоре каждая загрузка успевала создать свой
+                // чат — файлы расходились по разным разговорам.
+                for (const file of files) await uploadAttachment(file);
             },
         });
         const button = h('button', {
@@ -5207,6 +5213,13 @@
 
     async function ensureChat() {
         if (chat.current) return chat.current;
+        // Второй вызов, пока идёт первый, ждёт его, а не заводит свой чат.
+        if (chat.creating) return chat.creating;
+        chat.creating = _createChat().finally(() => { chat.creating = null; });
+        return chat.creating;
+    }
+
+    async function _createChat() {
         const created = await api.post('/api/chats', {
             domain: chat.nodes.domain ? chat.nodes.domain.value : '',
         });

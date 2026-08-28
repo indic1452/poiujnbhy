@@ -1540,6 +1540,19 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("Правка снимет подпись", self.js)
         self.assertIn("Править и снять подпись", self.js)
 
+    def test_files_are_uploaded_one_after_another(self):
+        """Разом — это две беды сразу.
+
+        Файлы выстраивались в порядке ответа сервера, а не выбора, и в
+        пустом разговоре каждая загрузка успевала создать свой чат: два
+        файла расходились по двум разговорам. Проверено в браузере —
+        со старым кодом создавалось два разговора, с новым один.
+        """
+        self.assertIn("for (const file of files) await uploadAttachment(file)", self.js)
+        self.assertNotIn("files.forEach((file) => uploadAttachment(file))", self.js)
+        # Второй вызов ждёт первый, а не заводит свой разговор.
+        self.assertIn("if (chat.creating) return chat.creating", self.js)
+
     def test_answer_without_sources_says_so(self):
         # Строка со счётчиком пропадала, когда источников не нашлось вовсе,
         # — а это самый важный случай: ответ написан по памяти модели.
