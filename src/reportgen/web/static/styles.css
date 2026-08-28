@@ -499,6 +499,12 @@ body.side-min .side-collapse {
     background: var(--ok);
 }
 
+/* Сервер модели не отвечает — видно сразу, а не после первого вопроса. */
+.llm-dot.is-down {
+    background: var(--danger);
+    box-shadow: 0 0 0 3px var(--danger-soft);
+}
+
 .user-chip {
     display: flex;
     align-items: center;
@@ -971,8 +977,11 @@ table.grid tbody tr:hover {
 
 /* Строка таблицы — не «карточка»: подсветка только на наведении, действия
    в строке проявляются там же, а не мозолят глаза красным крестом. */
+/* Кнопки строки видны всегда, просто приглушены. Пока они появлялись
+   только при наведении, инженер не знал, что документ вообще можно убрать:
+   искал кнопку глазами по всей странице. */
 table.grid .row-actions {
-    opacity: 0;
+    opacity: .45;
     transition: opacity .12s;
 }
 

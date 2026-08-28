@@ -52,6 +52,25 @@ class OpenAICompatLLM:
     def name(self) -> str:
         return f"{self.model} @ {self.base_url}"
 
+    def available(self, timeout: float = 2.0) -> bool:
+        """Отвечает ли сервер модели прямо сейчас.
+
+        Проверка нужна интерфейсу: инженер должен видеть, что llama-server
+        не поднят, до того как задаст вопрос и прождёт минуту впустую.
+        Спрашиваем список моделей — самый дешёвый запрос, без генерации.
+        Ждём недолго и без повторов: это индикатор, а не работа.
+        """
+        request = urllib.request.Request(
+            url=f"{self.base_url.rstrip('/')}/models",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            method="GET",
+        )
+        try:
+            with _http.urlopen(request, timeout=timeout) as response:
+                return 200 <= response.status < 300
+        except Exception:          # noqa: BLE001 — любой сбой значит «недоступен»
+            return False
+
     def _payload(self, system: str, user: str, max_tokens: int, temperature: float,
                  history: List[Dict[str, str]] | None = None,
                  stream: bool = False) -> Dict[str, Any]:
@@ -145,6 +164,9 @@ class StubLLM:
     """
 
     name: str = "stub"
+
+    def available(self, timeout: float = 2.0) -> bool:
+        return True
 
     def stream(self, system: str, user: str, *, max_tokens: int = 1200,
                temperature: float = 0.2,

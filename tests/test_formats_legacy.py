@@ -363,6 +363,19 @@ class ConvertWithSofficeTest(unittest.TestCase):
     def setUp(self):
         self.workdir = Path(tempfile.mkdtemp(prefix="reportgen-test-"))
         self.addCleanup(shutil.rmtree, str(self.workdir), True)
+
+        # Свой каталог для временных файлов на время теста. Уборку мы
+        # проверяем перечислением каталогов reportgen-soffice-* в системном
+        # temp, а туда пишут и соседние тесты — приёма библиотеки, например,
+        # который конвертирует файлы в рабочих потоках. Чужой каталог,
+        # созданный между снимком «до» и проверкой «после», роняет тест,
+        # и выглядит это как случайный сбой раз в несколько прогонов.
+        self.temproot = Path(tempfile.mkdtemp(prefix="reportgen-temproot-"))
+        self.addCleanup(shutil.rmtree, str(self.temproot), True)
+        previous = tempfile.tempdir
+        tempfile.tempdir = str(self.temproot)
+        self.addCleanup(setattr, tempfile, "tempdir", previous)
+
         self.source = self.workdir / "исходный.doc"
         self.source.write_bytes(b"old binary document")
         self.payload = self.workdir / "payload.docx"

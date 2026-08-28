@@ -687,6 +687,25 @@ class LetterCardTests(WebTestCase):
                                   json={"deadline": ""}).json()["case"]
         self.assertEqual("", fresh["deadline"])
 
+    def test_any_employee_can_pick_the_assignee_list(self):
+        # Взять письмо на себя вправе любой инженер, а раздел сотрудников
+        # ему закрыт — поэтому список исполнителей отдаётся отдельно.
+        self.login("engineer")
+        self.assertEqual(403, self.client.get("/api/users").status_code)
+        response = self.client.get("/api/staff")
+        self.assertEqual(200, response.status_code)
+        logins = {item["login"] for item in response.json()["items"]}
+        self.assertIn("nachalnik", logins)
+        self.assertNotIn("local", logins, "служебной записи в списке быть не должно")
+        for item in response.json()["items"]:
+            self.assertNotIn("password_hash", item)
+
+    def test_disabled_employee_is_not_offered(self):
+        victim = self.repos.users.by_login("engineer")
+        self.repos.users.set_active(victim.id, False)
+        logins = {item["login"] for item in self.client.get("/api/staff").json()["items"]}
+        self.assertNotIn("engineer", logins)
+
     def test_unknown_assignee_is_refused(self):
         case = self.create_case()
         response = self.client.patch(f"/api/cases/{case['id']}", json={"assignee_id": 9999})

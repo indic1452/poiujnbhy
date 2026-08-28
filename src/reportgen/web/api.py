@@ -747,6 +747,24 @@ def search(request: Request, q: str = "", top_k: int = 10,
 
 # ---------------------------------------------------------- направления ---
 
+@router.get("/llm/status")
+def llm_status(request: Request) -> Dict[str, Any]:
+    """Отвечает ли сервер модели. Спрашивает интерфейс при открытии.
+
+    Отдельным запросом, а не в /api/config: проверка ходит по сети, и
+    задерживать из-за неё показ первого экрана незачем.
+    """
+    require_user(request)
+    llm = _service(request).get_llm()
+    probe = getattr(llm, "available", None)
+    settings = _settings(request)
+    return {
+        "available": bool(probe()) if callable(probe) else True,
+        "model": settings.llm_model,
+        "base_url": settings.llm_base_url,
+    }
+
+
 @router.get("/formats")
 def formats(request: Request) -> Dict[str, Any]:
     """Поддержка форматов документов: что читается, чего не хватает."""
@@ -1087,6 +1105,32 @@ def list_users(request: Request) -> Dict[str, Any]:
         ],
         "departments": repos.users.departments(),
         "admins": repos.users.count_admins(),
+    }
+
+
+@router.get("/staff")
+def staff(request: Request) -> Dict[str, Any]:
+    """Список сотрудников для выбора исполнителя.
+
+    Отдельно от /api/users: тот доступен только администратору и отдаёт
+    полную запись, а назначить исполнителя письма вправе любой сотрудник —
+    в том числе взять письмо на себя. Здесь только то, что нужно списку.
+    """
+    require_user(request)
+    return {
+        "items": [
+            {
+                "id": user.id,
+                "login": user.login,
+                "full_name": user.full_name or user.login,
+                "role": user.role,
+                "role_title": user.role_title,
+                "department": user.department,
+                "team": user.team,
+            }
+            for user in _repos(request).users.list_all(active_only=True)
+            if user.login != "local"
+        ]
     }
 
 

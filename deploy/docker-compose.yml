@@ -50,7 +50,7 @@ services:
       -m /models/${LLM_GGUF:-gpt-oss-20b-mxfp4.gguf}
       --alias ${LLM_ALIAS:-gpt-oss-20b-mxfp4}
       --host 0.0.0.0 --port 8000
-      -c 16384
+      -c ${LLAMA_CTX:-32768}
       -ngl 999
       --n-cpu-moe ${N_CPU_MOE:-0}
       --cache-type-k q8_0 --cache-type-v q8_0

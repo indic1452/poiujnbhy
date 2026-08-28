@@ -35,6 +35,7 @@
   "assistant_neighbours": 1,
   "assistant_neighbour_top": 4,
   "assistant_outlines": true,
+  "assistant_attachment_chars": 8000,
   "assistant_max_tokens": 4000,
   "assistant_target_words": 500,
 

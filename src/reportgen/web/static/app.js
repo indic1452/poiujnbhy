@@ -860,14 +860,26 @@
             document.documentElement.style.setProperty('--accent', brand.accent);
         }
 
-        // Модель — точка состояния: зелёная, когда сервер модели отвечает.
-        const llm = state.config.llm || {};
+        // Модель — точка состояния. Пока состояние не выяснено, точка серая
+        // и подписана «проверяем»: зелёная по умолчанию врала бы про
+        // неподнятый llama-server, и инженер узнавал бы об этом, только
+        // прождав минуту после первого вопроса.
         const dot = $('#llm-info');
-        if (dot) {
-            const up = llm.available !== false;
-            dot.classList.toggle('is-up', up);
-            dot.title = (up ? 'Модель отвечает' : 'Модель недоступна') +
-                (llm.model ? ': ' + llm.model : '');
+        if (dot && !dot.dataset.asked) {
+            dot.dataset.asked = '1';
+            const llm = state.config.llm || {};
+            dot.title = 'Проверяем сервер модели' + (llm.model ? ': ' + llm.model : '');
+            api.get('/api/llm/status').then((data) => {
+                dot.classList.toggle('is-up', !!data.available);
+                dot.classList.toggle('is-down', !data.available);
+                dot.title = (data.available
+                    ? 'Модель отвечает'
+                    : 'Сервер модели не отвечает — запустите start-llm.ps1') +
+                    (data.model ? ': ' + data.model : '') +
+                    (data.base_url ? ' (' + data.base_url + ')' : '');
+            }).catch(() => {
+                dot.title = 'Состояние сервера модели неизвестно';
+            });
         }
 
         buildNav();
@@ -1081,13 +1093,13 @@
         { id: 'all', title: 'Все', params: {} },
     ];
 
-    /** Список сотрудников для выбора исполнителя. Читается один раз на сеанс. */
+    /** Список сотрудников для выбора исполнителя. Читается раз на сеанс.
+     *  Доступен всем: взять письмо на себя вправе любой инженер. */
     async function staffList() {
         if (casesState.staff.length) return casesState.staff;
-        if (!isAdmin()) return [];
         try {
-            const data = await api.get('/api/users');
-            casesState.staff = (data.items || []).filter((item) => item.active);
+            const data = await api.get('/api/staff');
+            casesState.staff = data.items || [];
         } catch (error) {
             casesState.staff = [];
         }
@@ -1301,7 +1313,7 @@
             }, (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role))));
         if (!staff.length) {
             assignee.disabled = true;
-            assignee.title = 'Назначать исполнителя может начальник группы и выше';
+            assignee.title = 'Список сотрудников получить не удалось';
         }
 
         const deadline = h('input', { type: 'date', value: item.deadline || '' });
@@ -2954,7 +2966,8 @@
             title: 'Утвердить отчёт',
             message: 'Отчёт версии ' + wb.report.version + ' по письму ' + wb.case.case_id +
                 ' будет подписан. Письмо перейдёт в состояние «отправлено».',
-            note: 'Пары «черновик модели → финал инженера» по изменённым разделам уйдут в обучающий набор.',
+            note: 'Разделы, которые вы переписали, сохранятся парами «черновик модели → ваш текст»: '
+                + 'по ним потом дообучают модель.',
             confirmText: 'Утвердить',
         });
         if (!ok) return;
@@ -3332,7 +3345,10 @@
                 if (event.key === 'Enter') runSearch();
             },
         });
-        const topKInput = h('input', { type: 'number', value: '10', min: '1', max: '50', style: { width: '70px' } });
+        const topKInput = h('input', {
+            type: 'number', value: '10', min: '1', max: '50',
+            title: 'Сколько фрагментов показать', style: { width: '64px' },
+        });
         const searchDomain = domainSelect({ title: 'Ограничить поиск направлением' });
         const searchTypes = (state.config.doc_types || []).map((type) => {
             const checkbox = h('input', { type: 'checkbox', value: type });
@@ -3378,7 +3394,9 @@
             h('div', { class: 'card card-pad', style: { marginTop: '14px' } },
                 h('div', { class: 'card-title' }, 'Поиск по библиотеке'),
                 h('div', { class: 'toolbar' },
-                    searchInput, topKInput, searchDomain,
+                    searchInput,
+                    h('label', { class: 'inline' }, 'показать', topKInput, 'шт.'),
+                    searchDomain,
                     h('button', { class: 'btn btn--primary', onclick: () => runSearch() }, 'Найти')),
                 h('div', { class: 'toolbar small muted' }, 'типы:', searchTypes.map((item) => item.node)),
                 searchResults),
@@ -4011,7 +4029,7 @@
 
         const cards = h('div', { class: 'stat-cards' },
             statCard(cases.total || 0, 'писем всего',
-                'утверждено: ' + (cases.approved || 0) + ' · черновиков: ' + (cases.draft || 0)),
+                'отправлено: ' + (cases.approved || 0) + ' · в работе: ' + (cases.draft || 0)),
             statCard(reports.total || 0, 'версий отчётов',
                 'утверждено: ' + (reports.approved || 0)),
             statCard(fmtNumber(edits.mean_distance || 0, 3), 'средняя доля правки',
@@ -4030,7 +4048,8 @@
 
         if (!bySection.length) {
             editsCard.appendChild(h('div', { class: 'empty' },
-                'Пар «черновик → финал» ещё нет: они появляются при утверждении отчётов с правками.'));
+                'Правок ещё нет: они появляются, когда инженер меняет черновик модели '
+                + 'и утверждает отчёт. По ним видно, какие разделы модель пишет хуже всего.'));
         } else {
             const body = h('tbody', {});
             bySection.forEach((item) => {
@@ -5757,7 +5776,7 @@
         const base = 'письма и отчёты, пополнение библиотеки, помощник';
         const admin = base + '; сотрудники, удаление документов, журнал действий';
         return {
-            owner: admin + '; полные права без ограничений',
+            owner: admin + '; может менять должность любому сотруднику',
             head: admin,
             deputy: admin,
             lead: admin,
@@ -5931,7 +5950,7 @@
         }, 150));
         document.addEventListener('keydown', onKeyDown);
 
-        if (!location.hash) location.hash = '#/cases';
+        if (!location.hash) location.hash = '#/board';
         currentHash = location.hash;
         await renderRoute(parseHash(currentHash));
     }
