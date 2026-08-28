@@ -109,15 +109,56 @@ class Database:
     # -- схема --------------------------------------------------------------
 
     def migrate(self) -> None:
-        self.connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-        self._ensure_columns()
-        self._rename_domains()
-        self.connection.execute(
-            "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
-            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            (SCHEMA_VERSION,),
-        )
-        self.connection.commit()
+        """Привести схему к нужному виду. На готовой базе НИЧЕГО не пишет.
+
+        Раньше писала всегда: executescript со схемой, UPDATE по всем
+        документам ради переименования направлений и INSERT версии схемы — на
+        каждом открытии соединения. А соединение открывает каждый процесс:
+        веб-сервер, приём библиотеки, любая команда CLI.
+
+        Стоило запустить загрузку библиотеки, не закрыв интерфейс, — и веб при
+        первом же обращении падал с «database is locked», потому что приём
+        держал запись. Ошибка вылезала на записи в журнал действий, хотя к
+        журналу отношения не имела.
+
+        Теперь сначала проверяем, надо ли что-то менять, и пишем только если
+        надо. На готовой базе всё сводится к одному чтению.
+        """
+        if self._schema_is_current():
+            return
+        with self._lock:
+            self.connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+            self._ensure_columns()
+            self._rename_domains()
+            self.connection.execute(
+                "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (SCHEMA_VERSION,),
+            )
+            self.connection.commit()
+
+    def _schema_is_current(self) -> bool:
+        """Готова ли база к работе без единой записи."""
+        try:
+            row = self.connection.execute(
+                "SELECT value FROM meta WHERE key = 'schema_version'"
+            ).fetchone()
+        except sqlite3.Error:
+            return False          # таблицы meta ещё нет — база новая
+        if row is None or str(row["value"]) != str(SCHEMA_VERSION):
+            return False
+        # Версия совпала, но колонки могли не доехать (база правилась руками).
+        for table, column, _ in COLUMN_MIGRATIONS:
+            try:
+                names = {
+                    item["name"]
+                    for item in self.connection.execute(f"PRAGMA table_info({table})")
+                }
+            except sqlite3.Error:
+                return False
+            if names and column not in names:
+                return False
+        return True
 
     def _rename_domains(self) -> None:
         """Переименование направлений при смене справочника.
@@ -134,6 +175,13 @@ class Database:
                     row["name"] for row in self.connection.execute(f"PRAGMA table_info({table})")
                 }
                 if "domain" not in columns:
+                    continue
+                # Сначала смотрим, есть ли кого переименовывать: UPDATE по всей
+                # таблице берёт блокировку записи, даже когда меняет ноль строк.
+                stale = self.connection.execute(
+                    f"SELECT 1 FROM {table} WHERE domain = ? LIMIT 1", (old_id,)
+                ).fetchone()
+                if stale is None:
                     continue
                 self.connection.execute(
                     f"UPDATE {table} SET domain = ? WHERE domain = ?", (new_id, old_id)

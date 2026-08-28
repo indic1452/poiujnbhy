@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import secrets
+import sqlite3
 from array import array
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
@@ -30,6 +32,8 @@ from .models import (
     User,
     rows_to,
 )
+
+log = logging.getLogger(__name__)
 
 # Предел числа параметров в одном запросе SQLite (в старых сборках — 999).
 SQL_PARAM_BATCH = 400
@@ -964,14 +968,24 @@ class AuditRepo:
 
     def log(self, action: str, *, user: User | None = None, object_type: str = "",
             object_id: str = "", details: Dict[str, Any] | None = None) -> None:
-        with self.db.transaction() as connection:
-            connection.execute(
-                "INSERT INTO audit(ts, user_id, login, action, object_type, object_id, "
-                "details_json) VALUES(?,?,?,?,?,?,?)",
-                (utcnow(), user.id if user else None, user.login if user else "",
-                 action, object_type, str(object_id),
-                 json.dumps(details or {}, ensure_ascii=False)),
-            )
+        """Записать действие в журнал. Неудача журнала не ломает само действие.
+
+        Журнал — вещь служебная. Если база в этот момент занята (идёт загрузка
+        библиотеки в соседнем окне), инженер не должен получить ошибку на
+        сохранении отчёта из-за того, что не удалось записать строку «отчёт
+        сохранён». Пропуск записи хуже, чем потерянная работа, но несравнимо.
+        """
+        try:
+            with self.db.transaction() as connection:
+                connection.execute(
+                    "INSERT INTO audit(ts, user_id, login, action, object_type, object_id, "
+                    "details_json) VALUES(?,?,?,?,?,?,?)",
+                    (utcnow(), user.id if user else None, user.login if user else "",
+                     action, object_type, str(object_id),
+                     json.dumps(details or {}, ensure_ascii=False)),
+                )
+        except sqlite3.Error as error:
+            log.warning("запись в журнал действий не удалась (%s): %s", action, error)
 
     def list(self, limit: int = 200) -> List[AuditEntry]:
         rows = self.db.query("SELECT * FROM audit ORDER BY id DESC LIMIT ?", (limit,))

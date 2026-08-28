@@ -8,6 +8,7 @@
 import sqlite3
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
@@ -1379,3 +1380,107 @@ class ConcurrencyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConcurrentAccessTests(unittest.TestCase):
+    """Загрузка библиотеки и открытый интерфейс не мешают друг другу.
+
+    Инженер запускал load-library.ps1, не закрыв браузер, и получал
+    «database is locked» — причём на записи в журнал действий, к которому
+    ошибка отношения не имела.
+    """
+
+    def setUp(self):
+        import tempfile
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.path = str(Path(self._tmp.name) / "base.db")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    WRITING = ("INSERT", "UPDATE", "DELETE", "ALTER", "CREATE", "DROP", "REPLACE")
+
+    def executed(self, database) -> list:
+        """Записывает SQL, который база выполнила. Трассировка самого SQLite."""
+        seen: list[str] = []
+        database.connection.set_trace_callback(seen.append)
+        return seen
+
+    def writes(self, statements) -> list:
+        out = []
+        for text in statements:
+            head = text.strip().split(None, 1)
+            if head and head[0].upper() in self.WRITING:
+                out.append(" ".join(text.split())[:70])
+        return out
+
+    def test_opening_a_ready_database_writes_nothing(self):
+        """Главная причина: migrate() писала при каждом открытии соединения.
+
+        executescript со схемой, UPDATE по всем документам ради переименования
+        направлений и INSERT версии схемы выполнялись всегда — а соединение
+        открывает каждый процесс: веб-сервер, приём, любая команда CLI.
+        Стоило запустить загрузку библиотеки, не закрыв интерфейс, — и веб
+        падал с «database is locked».
+        """
+        Database(self.path).migrate()
+
+        opened = Database(self.path)
+        statements = self.executed(opened)
+        opened.migrate()
+        opened.connection.set_trace_callback(None)
+        self.assertEqual([], self.writes(statements),
+                         "открытие готовой базы всё ещё пишет")
+
+    def test_second_process_can_read_while_the_first_writes(self):
+        import threading
+        import time
+
+        Database(self.path).migrate()
+        errors = []
+
+        def hold():
+            writer = Database(self.path)
+            with writer.transaction() as connection:
+                connection.execute(
+                    "INSERT INTO documents(doc_id, doc_type, title, source_path, sha256,"
+                    " confidentiality, meta_json, created_at)"
+                    " VALUES('x','standards','Т','/x','s','internal','{}','2026-01-01')")
+                time.sleep(1.5)
+
+        def read():
+            time.sleep(0.3)
+            try:
+                Repositories(Database(self.path)).documents.list()
+            except Exception as error:  # noqa: BLE001 — нам важен сам факт
+                errors.append(f"{type(error).__name__}: {error}")
+
+        writer = threading.Thread(target=hold)
+        reader = threading.Thread(target=read)
+        writer.start()
+        reader.start()
+        reader.join()
+        writer.join()
+        self.assertEqual([], errors)
+
+    def test_audit_failure_does_not_break_the_action(self):
+        # Журнал — вещь служебная: потерять строку «отчёт сохранён» не так
+        # страшно, как отказать инженеру в сохранении отчёта.
+        database = Database(self.path)
+        database.migrate()
+        repos = Repositories(database)
+        user = repos.users.create("ivanov", "parol12345", "Иванов И.И.", "engineer")
+
+        with mock.patch.object(type(database), "transaction",
+                               side_effect=sqlite3.OperationalError("database is locked")):
+            repos.audit.log("report.save", user=user, object_type="report", object_id="1")
+
+    def test_domain_rename_does_not_lock_when_nothing_to_rename(self):
+        # UPDATE по всей таблице берёт блокировку записи, даже меняя ноль строк.
+        database = Database(self.path)
+        database.migrate()
+        statements = self.executed(database)
+        database._rename_domains()
+        database.connection.set_trace_callback(None)
+        self.assertEqual([], self.writes(statements))
