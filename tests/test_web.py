@@ -818,6 +818,20 @@ class BoardTests(WebTestCase):
         self.assertEqual("vacation", person["away"])
         self.assertEqual("отпуск", person["away_title"])
 
+    def test_two_absences_for_one_person_count_once(self):
+        # У сотрудника отмечены и больничный, и следом отпуск. Счётчик
+        # считает людей, список показывал записи — и они расходились.
+        today = self.client.get("/api/board").json()["today"]
+        for kind, until in (("sick", today), ("vacation", "2099-01-01")):
+            self.client.post("/api/absences", json={
+                "user_id": self.engineer.id, "kind": kind,
+                "date_from": today, "date_to": until})
+        body = self.client.get("/api/board").json()
+        self.assertEqual(1, body["totals"]["away"])
+        self.assertEqual(1, len(body["absent"]))
+        # Показываем ту запись, что кончается позже: она и есть текущая.
+        self.assertEqual("vacation", body["absent"][0]["kind"])
+
     def test_absence_needs_admin_rights(self):
         today = self.client.get("/api/board").json()["today"]
         self.login("engineer")

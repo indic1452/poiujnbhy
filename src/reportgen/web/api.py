@@ -1322,9 +1322,19 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
     since = _since_utc(period_days)
 
     staff = repos.board.workload(today)
-    absent = repos.absences.on_date(today)
-    away = {item.user_id: item for item in absent if item.kind != "duty"}
-    duty = [item for item in absent if item.kind == "duty"]
+    records = repos.absences.on_date(today)
+    duty = [item for item in records if item.kind == "duty"]
+    # По человеку — одна запись, та, что кончается позже. У одного сотрудника
+    # может быть отмечен и больничный, и следом отпуск: в списке они выглядели
+    # как два отсутствующих, а счётчик считал людей — и расходился со списком.
+    away: Dict[int, Any] = {}
+    for item in records:
+        if item.kind == "duty":
+            continue
+        current = away.get(item.user_id)
+        if current is None or item.date_to > current.date_to:
+            away[item.user_id] = item
+    absent = sorted(away.values(), key=lambda item: (item.full_name, item.date_to))
 
     people = []
     for row in staff:
@@ -1377,7 +1387,7 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
         ],
         "people": people,
         "duty": [item.to_dict() for item in duty],
-        "absent": [item.to_dict() for item in absent if item.kind != "duty"],
+        "absent": [item.to_dict() for item in absent],
         "overdue": [case.to_dict() for case in overdue],
         "soon": [case.to_dict() for case in soon],
         "movement": {
