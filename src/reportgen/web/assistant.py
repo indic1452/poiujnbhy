@@ -20,6 +20,8 @@ from .service import ReportService, ServiceError
 
 HISTORY_DEPTH = 6
 HISTORY_CHARS = 1500
+#: Сколько заголовков разделов показывать в оглавлении одного документа.
+OUTLINE_HEADINGS = 30
 #: Запасное значение, если в настройках его нет (старый settings.json).
 SOURCE_CHARS = 1400
 MAX_QUESTION = 4000
@@ -103,6 +105,7 @@ class AssistantService:
         yield {
             "type": "sources",
             "sources": prepared["sources"],
+            "documents": prepared.get("documents") or [],
             "expansion": prepared.get("expansion") or None,
             "warning": prepared.get("warning") or None,
         }
@@ -151,22 +154,15 @@ class AssistantService:
         # было видно вовсе, а поиск при этом работал вполсилы.
         expansion = list(getattr(retriever, "last_expansion", []) or [])
         warning = getattr(retriever, "last_warning", "") or ""
-        sources = [
-            {
-                "label": f"S{index}",
-                "chunk_uid": hit.chunk.chunk_id,
-                "citation": hit.chunk.citation,
-                "doc_type": hit.chunk.doc_type,
-                "domain": hit.chunk.meta.get("domain", ""),
-                "status": hit.chunk.meta.get("status", "current"),
-                "text": _tidy(hit.chunk.text, self._source_chars()),
-            }
-            for index, hit in enumerate(hits, start=1)
-        ]
+
+        sources = self._build_sources(hits)
+        documents = self._document_cards(sources)
         prompt = ASSISTANT_PROMPT.format(
             question=question,
             case_block=self._case_block(chat),
-            sources=_render_sources(sources),
+            library_map=_render_map(documents),
+            sources=_render_sources(sources, documents),
+            target_words=int(getattr(self.settings, "assistant_target_words", 0) or 500),
         )
         return {
             "chat": chat,
@@ -174,10 +170,119 @@ class AssistantService:
             "question_message": question_message,
             "history": history,
             "sources": sources,
+            "documents": documents,
             "expansion": expansion,
             "warning": warning,
             "prompt": prompt,
         }
+
+    # -- сборка материала ---------------------------------------------------
+
+    def _build_sources(self, hits: Sequence[Hit]) -> List[Dict[str, Any]]:
+        """Фрагменты для промпта: с соседями и в пределах окна контекста.
+
+        Три вещи, которых раньше не было.
+
+        Соседи. Найденный фрагмент — это окно в 1800 знаков, вырезанное из
+        документа механически. Таблица параметров или описание поля кадра
+        в него не помещается: начало осталось в предыдущем куске, конец — в
+        следующем. Модель видела середину и отвечала по середине.
+
+        Порядок. Фрагменты идут группами по документам, а не вперемешку по
+        весу: так видно, что стандарт говорит одно, а паспорт микросхемы
+        другое, и их можно сопоставить.
+
+        Бюджет. Материал обрезается по assistant_context_chars — иначе
+        llama.cpp молча выбрасывает начало промпта вместе с системной
+        инструкцией, и модель перестаёт ставить ссылки. Обрезаем с конца
+        выдачи: там уже хвост относимости.
+        """
+        if not hits:
+            return []
+
+        budget = int(getattr(self.settings, "assistant_context_chars", 0) or 26000)
+        limit = int(getattr(self.settings, "assistant_source_chars", 0) or SOURCE_CHARS)
+        radius = int(getattr(self.settings, "assistant_neighbours", 0) or 0)
+        neighbour_top = int(getattr(self.settings, "assistant_neighbour_top", 0) or 0)
+
+        around: Dict[str, List[Any]] = {}
+        if radius > 0 and neighbour_top > 0:
+            anchors = [hit.chunk.chunk_id for hit in hits[:neighbour_top]]
+            try:
+                around = self.repos.chunks.neighbours(anchors, radius=radius)
+            except Exception:      # noqa: BLE001 — соседи не обязательны
+                around = {}
+
+        # Сосед, который и сам попал в выдачу, второй раз не нужен: тот же
+        # текст занимал бы окно дважды. На демонстрационной библиотеке это
+        # съедало примерно четверть материала.
+        found = {hit.chunk.chunk_id for hit in hits}
+
+        sources: List[Dict[str, Any]] = []
+        spent = 0
+        for hit in hits:
+            chunk = hit.chunk
+            text = _tidy(chunk.text, limit)
+            before, after = _split_neighbours(
+                around.get(chunk.chunk_id, []), chunk.chunk_id, skip=found)
+            # Соседям хватает половины меры: они нужны как продолжение, а не
+            # как самостоятельный источник.
+            half = max(limit // 2, 300)
+            lead = _tidy(before, half) if before else ""
+            tail = _tidy(after, half) if after else ""
+
+            cost = len(text) + len(lead) + len(tail) + len(chunk.citation) + 40
+            if sources and spent + cost > budget:
+                break                    # хвост выдачи в окно уже не влезает
+            spent += cost
+
+            sources.append({
+                "label": f"S{len(sources) + 1}",
+                "chunk_uid": chunk.chunk_id,
+                "doc_id": chunk.doc_id,
+                "citation": chunk.citation,
+                "doc_type": chunk.doc_type,
+                "domain": chunk.meta.get("domain", ""),
+                "status": chunk.meta.get("status", "current"),
+                "year": chunk.meta.get("year"),
+                "title": chunk.meta.get("title", chunk.doc_id),
+                "breadcrumbs": chunk.breadcrumbs,
+                "text": text,
+                "lead": lead,
+                "tail": tail,
+            })
+        return sources
+
+    def _document_cards(self, sources: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Карточки документов: чем каждый полезен и что в нём ещё есть."""
+        if not sources:
+            return []
+        order: List[str] = []
+        cards: Dict[str, Dict[str, Any]] = {}
+        for item in sources:
+            doc_id = item["doc_id"]
+            if doc_id not in cards:
+                order.append(doc_id)
+                cards[doc_id] = {
+                    "doc_id": doc_id,
+                    "title": item["title"],
+                    "doc_type": item["doc_type"],
+                    "year": item["year"],
+                    "status": item["status"],
+                    "labels": [],
+                    "outline": [],
+                }
+            cards[doc_id]["labels"].append(item["label"])
+
+        if getattr(self.settings, "assistant_outlines", True):
+            try:
+                outlines = self.repos.chunks.outline(order, limit=OUTLINE_HEADINGS)
+            except Exception:          # noqa: BLE001 — оглавление не обязательно
+                outlines = {}
+            for doc_id, headings in outlines.items():
+                if doc_id in cards:
+                    cards[doc_id]["outline"] = headings
+        return [cards[doc_id] for doc_id in order]
 
     def _finish(self, user: User, prepared: Dict[str, Any], text: str) -> Dict[str, Any]:
         chat: Chat = prepared["chat"]
@@ -186,11 +291,15 @@ class AssistantService:
         # В историю кладём только те источники, на которые ответ реально сослался,
         # иначе панель источников заполняется мусором.
         kept = [item for item in sources if item["label"] in used] or sources[:3]
+        # Соседние куски нужны были модели, в панель источников они не идут:
+        # инженер открывает документ целиком одним нажатием.
+        kept = [{k: v for k, v in item.items() if k not in ("lead", "tail")} for item in kept]
         answer = self.repos.chats.add_message(
             chat.id, "assistant", text.strip(),
             sources=kept,
             meta={"model": getattr(self.reports.get_llm(), "name", "unknown"),
-                  "found": len(sources), "cited": len(used)},
+                  "found": len(sources), "cited": len(used),
+                  "documents": len(prepared.get("documents") or [])},
         )
         if chat.title == DEFAULT_TITLE:
             self.repos.chats.rename(chat.id, _make_title(prepared["question"]))
@@ -202,6 +311,7 @@ class AssistantService:
             "question": prepared["question_message"].to_dict(),
             "answer": answer.to_dict(),
             "chat": self.get_chat(user, chat.id).to_dict(),
+            "documents": prepared.get("documents") or [],
             "expansion": prepared.get("expansion") or None,
             "warning": prepared.get("warning") or None,
         }
@@ -228,13 +338,17 @@ class AssistantService:
         previous = [item["content"] for item in history if item["role"] == "user"][-1:]
         query = " ".join([question, *previous])[:1000]
         domains = [chat.domain] if chat.domain else None
+        # Для разговора берём больше фрагментов, чем для отчёта: там материал
+        # ограничен факт-пакетом, здесь — только вопросом. Лишнее всё равно
+        # отсечёт бюджет окна в _build_sources.
+        wanted = top_k or int(
+            getattr(self.settings, "assistant_top_k", 0) or self.settings.retrieval_top_k
+        )
         try:
-            return retriever.search(
-                query, top_k=top_k or self.settings.retrieval_top_k, domains=domains,
-            )
+            return retriever.search(query, top_k=wanted, domains=domains)
         except TypeError:
             # Поисковик без поддержки направлений (лексический запасной вариант).
-            return retriever.search(query, top_k=top_k or self.settings.retrieval_top_k)
+            return retriever.search(query, top_k=wanted)
 
     def _case_block(self, chat: Chat) -> str:
         if not chat.case_ref:
@@ -253,15 +367,105 @@ class AssistantService:
         )
 
 
-def _render_sources(sources: Sequence[Dict[str, Any]]) -> str:
+#: Как называется тип документа в карточке для модели.
+_DOC_TYPE_TITLES = {
+    "literature": "литература",
+    "standards": "стандарт",
+    "datasheets": "паспорт микросхемы",
+    "reports": "прошлый отчёт",
+    "regulations": "регламент",
+    "misc": "прочее",
+}
+_STATUS_TITLES = {
+    "current": "действующий",
+    "superseded": "ЗАМЕНЁН более новой редакцией",
+    "archived": "выведен из обращения",
+    "draft": "проект, не введён в действие",
+}
+
+
+def _render_map(documents: Sequence[Dict[str, Any]]) -> str:
+    """Карта найденного: какие документы попали в выдачу и что в них есть.
+
+    Без неё модель видит десяток разрозненных кусков и не знает ни того, из
+    скольких документов они взяты, ни того, что в этих документах есть ещё.
+    """
+    if not documents:
+        return "(ничего не нашлось)"
+    blocks = []
+    for card in documents:
+        head = f"{card['title']} — {_DOC_TYPE_TITLES.get(card['doc_type'], card['doc_type'])}"
+        if card.get("year"):
+            head += f", {card['year']} г."
+        head += f", {_STATUS_TITLES.get(card.get('status', 'current'), card.get('status'))}"
+        head += f". Фрагменты: {', '.join(card['labels'])}"
+        lines = [head]
+        if card.get("outline"):
+            lines.append("  Разделы документа: " + "; ".join(card["outline"]))
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
+
+
+def _render_sources(sources: Sequence[Dict[str, Any]],
+                    documents: Sequence[Dict[str, Any]] | None = None) -> str:
+    """Фрагменты для промпта, сгруппированные по документам.
+
+    Порядок по документам, а не по весу выдачи: сопоставить стандарт с
+    паспортом микросхемы можно, только когда они не перемешаны.
+    """
     if not sources:
         return "(в библиотеке ничего подходящего не нашлось)"
-    blocks = []
+    order = [card["doc_id"] for card in (documents or [])] or []
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
     for item in sources:
-        mark = "" if item.get("status", "current") == "current" else \
-            f" [ВНИМАНИЕ: документ не действующий — {item['status']}]"
-        blocks.append(f"[{item['label']}] {item['citation']}{mark}\n{item['text']}")
+        grouped.setdefault(item.get("doc_id", ""), []).append(item)
+    for doc_id in grouped:
+        if doc_id not in order:
+            order.append(doc_id)
+
+    blocks = []
+    for doc_id in order:
+        items = grouped.get(doc_id) or []
+        if not items:
+            continue
+        title = items[0].get("title") or doc_id
+        blocks.append(f"— — — ДОКУМЕНТ: {title} — — —")
+        for item in items:
+            mark = "" if item.get("status", "current") == "current" else \
+                f" [ВНИМАНИЕ: документ не действующий — {item['status']}]"
+            body = item["text"]
+            # Соседние куски помечаем: модель не должна цитировать «…» как
+            # часть найденного фрагмента.
+            if item.get("lead"):
+                body = f"(предыдущий фрагмент документа)\n{item['lead']}\n\n{body}"
+            if item.get("tail"):
+                body = f"{body}\n\n(следующий фрагмент документа)\n{item['tail']}"
+            blocks.append(f"[{item['label']}] {item['citation']}{mark}\n{body}")
     return "\n\n".join(blocks)
+
+
+def _split_neighbours(chunks: Sequence[Any], anchor_uid: str,
+                      skip: set[str] | None = None) -> tuple[str, str]:
+    """Разложить соседей на текст «до» и текст «после».
+
+    Идентификатор фрагмента — «doc_id#0007» с ведущими нулями, поэтому
+    сравнение строк совпадает со сравнением номеров: отдельного поля ord
+    у Chunk нет, а тянуть его сюда ради одного сравнения незачем.
+
+    ``skip`` — фрагменты, которые и сами попали в выдачу: их текст уже есть
+    в промпте отдельным источником, повторять его нельзя.
+
+    При radius > 1 соседей с каждой стороны несколько — склеиваем их по
+    порядку, иначе дальние возвращались бы молча выброшенными.
+    """
+    skip = skip or set()
+    before: List[str] = []
+    after: List[str] = []
+    for chunk in sorted(chunks, key=lambda item: item.chunk_id):
+        if chunk.chunk_id in skip:
+            continue
+        (before if chunk.chunk_id < anchor_uid else after).append(chunk.text)
+    return "\n\n".join(before), "\n\n".join(after)
 
 
 def _used_labels(text: str) -> set[str]:

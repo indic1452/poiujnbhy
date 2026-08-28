@@ -79,7 +79,6 @@ ABSENCE_TITLES = {
     "study": "учёба",
 }
 REPORT_STATUSES = ("draft", "verified", "approved")
-CONFIDENTIALITY = ("public", "internal", "nda")
 
 #: Актуальность документа библиотеки.
 #: current    — действующий, участвует в поиске;
@@ -182,7 +181,6 @@ class Document:
     title: str
     source_path: str
     sha256: str
-    confidentiality: str = "internal"
     domain: str = ""
     status: str = "current"
     superseded_by: str = ""
@@ -207,7 +205,6 @@ class Document:
             title=row["title"],
             source_path=row["source_path"],
             sha256=row["sha256"],
-            confidentiality=row["confidentiality"],
             domain=row["domain"] if "domain" in row.keys() else "",
             status=row["status"] if "status" in row.keys() else "current",
             superseded_by=row["superseded_by"] if "superseded_by" in row.keys() else "",
@@ -228,7 +225,6 @@ class Document:
             "title": self.title,
             "sha256": self.sha256[:12],
             "year": self.year,
-            "confidentiality": self.confidentiality,
             "domain": self.domain,
             "status": self.status,
             "status_title": DOC_STATUS_TITLES.get(self.status, self.status),

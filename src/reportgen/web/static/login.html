@@ -13,6 +13,148 @@
 </head>
 
 <body class="login-page">
+    <!-- Спутник над Землёй и луч на наземную станцию. Векторная сцена прямо
+         в разметке: изолированная машина ничего не подгружает извне, а SVG
+         остаётся резким на любом мониторе. -->
+    <svg class="sky" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+            <radialGradient id="space" cx="62%" cy="26%" r="86%">
+                <stop offset="0" stop-color="#16304f" />
+                <stop offset="45%" stop-color="#0a1524" />
+                <stop offset="100%" stop-color="#04070d" />
+            </radialGradient>
+            <!-- Освещённый край планеты: солнце слева сверху. -->
+            <radialGradient id="globe" cx="34%" cy="14%" r="78%">
+                <stop offset="0" stop-color="#2f6f9e" />
+                <stop offset="38%" stop-color="#16405f" />
+                <stop offset="72%" stop-color="#0b2337" />
+                <stop offset="100%" stop-color="#050d16" />
+            </radialGradient>
+            <!-- Атмосфера: тонкая светящаяся кромка над горизонтом. -->
+            <radialGradient id="air" cx="50%" cy="50%" r="50%">
+                <stop offset="96%" stop-color="rgba(90,170,235,0)" />
+                <stop offset="98.2%" stop-color="rgba(120,190,250,.42)" />
+                <stop offset="100%" stop-color="rgba(150,205,255,0)" />
+            </radialGradient>
+            <!-- Луч связи: плотный у антенны, размытый у поверхности. -->
+            <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="rgba(150,205,255,.42)" />
+                <stop offset="55%" stop-color="rgba(120,180,240,.16)" />
+                <stop offset="100%" stop-color="rgba(110,170,230,.03)" />
+            </linearGradient>
+            <clipPath id="limb">
+                <circle cx="800" cy="1560" r="820" />
+            </clipPath>
+            <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#1d3f66" />
+                <stop offset="50%" stop-color="#2b5c92" />
+                <stop offset="100%" stop-color="#16304f" />
+            </linearGradient>
+        </defs>
+
+        <rect width="1600" height="900" fill="url(#space)" />
+
+        <!-- Звёзды. Немного и разной яркости: ровная россыпь выглядит обоями. -->
+        <g fill="#dce8f6">
+            <circle cx="120" cy="90" r="1.5" opacity=".8" />
+            <circle cx="300" cy="160" r="1" opacity=".5" />
+            <circle cx="460" cy="70" r="1.2" opacity=".65" />
+            <circle cx="640" cy="140" r="0.9" opacity=".45" />
+            <circle cx="820" cy="60" r="1.6" opacity=".85" />
+            <circle cx="980" cy="200" r="1" opacity=".5" />
+            <circle cx="1150" cy="110" r="1.3" opacity=".7" />
+            <circle cx="1320" cy="185" r="1" opacity=".45" />
+            <circle cx="1480" cy="80" r="1.5" opacity=".75" />
+            <circle cx="200" cy="300" r="1" opacity=".4" />
+            <circle cx="520" cy="270" r="1.2" opacity=".55" />
+            <circle cx="1420" cy="330" r="1.1" opacity=".5" />
+            <circle cx="70" cy="420" r="1" opacity=".35" />
+            <circle cx="1540" cy="470" r="1.2" opacity=".45" />
+            <circle cx="380" cy="420" r="0.8" opacity=".3" />
+        </g>
+
+        <!-- Земля: видна только верхушка шара, как из космоса. -->
+        <g>
+            <circle cx="800" cy="1560" r="820" fill="url(#globe)" />
+            <!-- Суша обрезана по кромке планеты: без этого пятна вылезали
+                 за горизонт и висели в пустоте отдельно от шара. -->
+            <g clip-path="url(#limb)">
+                <g fill="#245c48" opacity=".5">
+                    <path d="M470 860c60-22 128-18 182 10 46 24 96 22 146 8 48-14 96-8 132 18 30 22 22 50-16 60
+                             -74 18-162 20-246 10-70-8-132-26-174-52-16-10-18-42-24-54z" />
+                    <path d="M880 838c66-26 146-20 206 16 44 26 92 28 142 16 38-10 72 2 88 28 12 20-4 42-38 50
+                             -92 20-198 16-292-8-60-16-106-42-118-72-6-12 0-26 12-30z" />
+                    <path d="M600 962c44-12 92-8 134 12 32 16 68 16 104 6 28-8 54 2 66 22H556c10-18 26-32 44-40z" />
+                </g>
+                <!-- Облачные полосы: тонкие, светлые, поперёк широт. -->
+                <g fill="#dfeaf6" opacity=".13">
+                    <ellipse cx="700" cy="800" rx="190" ry="16" />
+                    <ellipse cx="1010" cy="852" rx="150" ry="13" />
+                    <ellipse cx="560" cy="900" rx="120" ry="11" />
+                    <ellipse cx="1180" cy="920" rx="140" ry="12" />
+                </g>
+                <!-- Терминатор: мягкая тень на ночной стороне справа. -->
+                <path d="M1180 700 L1700 700 L1700 1100 L1060 1100 Z" fill="#04080e" opacity=".38" />
+            </g>
+            <!-- Кромка атмосферы поверх всего: тонкая светящаяся дуга. -->
+            <circle cx="800" cy="1560" r="822" fill="none" stroke="rgba(140,200,255,.55)"
+                stroke-width="3" />
+            <circle cx="800" cy="1560" r="836" fill="url(#air)" />
+        </g>
+
+        <!-- Луч на наземную станцию. Раскрыв к поверхности — так и работает
+             диаграмма направленности бортовой антенны. -->
+        <path d="M1102 268 L1028 792 L1198 792 Z" fill="url(#beam)" />
+        <path d="M1102 268 L1028 792 M1102 268 L1198 792" stroke="rgba(150,205,255,.30)"
+            stroke-width="1" fill="none" />
+
+        <!-- Фронты волны вдоль луча. -->
+        <g stroke="rgba(160,210,255,.30)" fill="none" stroke-linecap="round">
+            <path d="M1066 480 A 74 74 0 0 0 1140 480" stroke-width="1.4" />
+            <path d="M1050 600 A 100 100 0 0 0 1156 600" stroke-width="1.2" opacity=".75" />
+            <path d="M1034 720 A 128 128 0 0 0 1172 720" stroke-width="1" opacity=".5" />
+        </g>
+
+        <!-- Наземная станция: зеркало на опоре, развёрнутое к спутнику. -->
+        <g transform="translate(1113 792) scale(1.5)">
+            <ellipse cx="0" cy="6" rx="54" ry="9" fill="rgba(120,180,240,.16)" />
+            <path d="M-2 4 L-2 -22 L4 -22 L4 4 Z" fill="#8fa8bf" />
+            <path d="M-16 4 L16 4 L10 10 L-10 10 Z" fill="#6f8599" />
+            <g transform="rotate(-34 0 -24)">
+                <path d="M-26 -24 A 26 26 0 0 1 26 -24 L0 -24 Z" fill="#c3d6ea" />
+                <path d="M-26 -24 A 26 26 0 0 1 26 -24" fill="none" stroke="#dfeaf6" stroke-width="2" />
+                <line x1="0" y1="-24" x2="0" y2="-40" stroke="#8fa8bf" stroke-width="2" />
+                <circle cx="0" cy="-42" r="3" fill="#dfeaf6" />
+            </g>
+        </g>
+
+        <!-- Спутник: корпус, две панели солнечных батарей, антенна вниз. -->
+        <g transform="translate(1102 236)">
+            <line x1="-136" y1="0" x2="-40" y2="0" stroke="#7f93a8" stroke-width="3" />
+            <line x1="40" y1="0" x2="136" y2="0" stroke="#7f93a8" stroke-width="3" />
+            <g fill="url(#panel)" stroke="#5b83ad" stroke-width="1.5">
+                <rect x="-232" y="-38" width="96" height="76" rx="3" />
+                <rect x="136" y="-38" width="96" height="76" rx="3" />
+            </g>
+            <g stroke="#4a6f96" stroke-width="1" opacity=".9">
+                <line x1="-200" y1="-38" x2="-200" y2="38" />
+                <line x1="-168" y1="-38" x2="-168" y2="38" />
+                <line x1="-232" y1="0" x2="-136" y2="0" />
+                <line x1="168" y1="-38" x2="168" y2="38" />
+                <line x1="200" y1="-38" x2="200" y2="38" />
+                <line x1="136" y1="0" x2="232" y2="0" />
+            </g>
+            <rect x="-40" y="-34" width="80" height="68" rx="6" fill="#c9d7e6" stroke="#8ea6bd"
+                stroke-width="2" />
+            <rect x="-40" y="-34" width="80" height="20" rx="6" fill="#e4edf6" />
+            <rect x="-26" y="4" width="52" height="14" rx="3" fill="#8ea6bd" opacity=".7" />
+            <!-- Бортовая антенна смотрит на Землю. -->
+            <path d="M-34 34 A 34 34 0 0 0 34 34 Z" fill="#dfeaf6" stroke="#a8bdd2" stroke-width="1.5" />
+            <line x1="0" y1="34" x2="0" y2="52" stroke="#8ea6bd" stroke-width="2.5" />
+            <circle cx="0" cy="54" r="4.5" fill="#e8f2fb" />
+        </g>
+    </svg>
+
     <div class="login-shell">
     <div class="login-card">
         <div class="brand">

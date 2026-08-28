@@ -63,5 +63,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 # reportgen-web поднимает uvicorn с настройками из REPORTGEN_*.
 # Разовые команды запускаются тем же образом:
-#   docker compose run --rm reportgen reportgen useradd --login admin --role admin
+#   docker compose run --rm reportgen reportgen useradd --login admin --role owner
 CMD ["reportgen-web"]

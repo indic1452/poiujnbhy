@@ -823,13 +823,17 @@ label.inline {
     max-width: 78ch;
 }
 
+/* Полоса под шапкой: слева одной строкой — чем занят раздел, справа кнопки.
+   Заголовок раздела не повторяем: он уже стоит в шапке и виден всегда, а на
+   странице отнимал 50 px высоты у таблицы. */
 .page-head {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 14px;
     flex-wrap: wrap;
-    margin-bottom: 18px;
-    padding-bottom: 12px;
+    min-height: 32px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--border);
 }
 
@@ -837,9 +841,10 @@ label.inline {
     margin-right: auto;
 }
 
-/* Подпись под заголовком: чем занят раздел, одной строкой. */
+/* Чем занят раздел — одной строкой, спокойным тоном. */
 .page-head .page-note {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
     color: var(--muted);
     font-size: var(--fs-sm);
 }
@@ -1410,12 +1415,16 @@ input.is-bad {
     border-color: transparent;
 }
 
+/* Текст отчёта — сплошная проза, читаемая мера строки ему нужна. Но
+   ограничитель в 1000 px оставлял правую половину панели пустой, а таблицы
+   параметров в разделах при этом сжимались. Мера теперь в знаках и заметно
+   шире: на панели 1200 px отчёт занимает её целиком. */
 .sections {
     padding: 14px;
     display: flex;
     flex-direction: column;
     gap: 14px;
-    max-width: 1000px;
+    max-width: 100ch;
     margin: 0 auto;
     width: 100%;
 }
@@ -2063,64 +2072,79 @@ input.is-bad {
 /* Фон — едва различимая координатная сетка. Рисуется градиентами, ни одного
    файла не грузит; на глаз это не «узор», а ощущение миллиметровки под
    приборной панелью. */
+/* ------------------------------------------------------------- вход ------ */
+
+/* Фон окна входа — спутник над Землёй и луч на наземную станцию: то, чем
+   отдел занимается каждый день. Картинка нарисована прямо здесь и в
+   login.html вектором: изолированная машина ничего не подгружает, а SVG
+   не мылится ни на каком разрешении и весит килобайты.
+
+   Тёмный фон здесь свой, не из темы оформления: небо со спутником в светлой
+   гамме не бывает, а карточка входа поверх него читается в любом случае. */
 body.login-page {
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 24px;
-    overflow: auto;
-    background-color: var(--bg);
-    background-image:
-        linear-gradient(var(--border) 1px, transparent 1px),
-        linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 44px 44px, 44px 44px;
-    background-position: center;
+    overflow: hidden;
+    position: relative;
+    background: #060b14;
+}
+
+.sky {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    /* Сцена нарисована для 16:9. На других пропорциях её обрезает по краям
+       атрибут preserveAspectRatio="slice" в самой разметке: object-fit тут
+       не работает — встроенный <svg> не замещаемый элемент. */
+    pointer-events: none;
 }
 
 .login-shell {
+    position: relative;
+    z-index: 1;
     width: min(400px, 100%);
 }
 
 .login-card {
-    background: var(--panel);
-    border: 1px solid var(--border-strong);
+    /* Карточка приподнята над сценой, но не глухая: сквозь неё виден фон.
+       Матовое стекло без размытия — размытие на слабой видеокарте
+       заметно тормозит перерисовку. */
+    background: rgba(15, 23, 35, .88);
+    border: 1px solid rgba(120, 160, 200, .28);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-    padding: 30px 30px 24px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .55);
+    padding: 30px 30px 26px;
+    color: #e8eef6;
 }
 
 /* Знак крупно и отдельной строкой: это единственное место, где у системы
    есть лицо, и мельчить тут незачем. */
 .login-card .brand {
+    display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 14px;
-    margin-bottom: 6px;
+    margin-bottom: 22px;
+    font-family: var(--font-display);
+    font-weight: 600;
     font-size: var(--fs-lg);
     letter-spacing: -.02em;
-}
-
-.login-card .brand::after {
-    display: none;
+    color: #f2f6fb;
 }
 
 .login-card .brand svg {
     width: 40px;
     height: 40px;
     padding: 8px;
-    border: 1px solid var(--accent-line);
+    border: 1px solid rgba(120, 170, 220, .45);
     border-radius: var(--radius);
-    background: var(--accent-soft);
-    color: var(--accent);
+    background: rgba(30, 90, 150, .35);
+    color: #8fc2ee;
     overflow: visible;
-}
-
-.login-card .sub {
-    color: var(--muted);
-    font-size: var(--fs-sm);
-    margin-bottom: 22px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
 }
 
 .login-card form {
@@ -2129,41 +2153,61 @@ body.login-page {
     gap: 14px;
 }
 
-.login-card input {
-    padding: 8px 10px;
-    min-height: 36px;
-    font-size: var(--fs-md);
+.login-card .field {
+    color: #b6c6d8;
+    font-size: var(--fs-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 
-.login-card .btn {
+.login-card input {
+    padding: 8px 10px;
     min-height: 38px;
-    margin-top: 2px;
     font-size: var(--fs-md);
+    color: #f2f6fb;
+    background: rgba(8, 14, 22, .75);
+    border: 1px solid rgba(120, 160, 200, .35);
+    border-radius: var(--radius);
+}
+
+.login-card input:focus {
+    outline: 2px solid #6aa9e0;
+    outline-offset: 0;
+    border-color: transparent;
+}
+
+.login-card .pw-toggle {
+    background: rgba(8, 14, 22, .75);
+    border-color: rgba(120, 160, 200, .35);
+    color: #b6c6d8;
+}
+
+.login-card .pw-toggle:hover {
+    color: #f2f6fb;
+    border-color: #6aa9e0;
+}
+
+.login-card .btn--primary {
+    min-height: 40px;
+    margin-top: 4px;
+    font-size: var(--fs-md);
+    background: #1f6bb0;
+    border-color: #2a7cc6;
+    color: #fff;
+}
+
+.login-card .btn--primary:hover:not(:disabled) {
+    background: #2a7cc6;
 }
 
 .login-error {
-    color: var(--danger);
-    background: var(--danger-soft);
-    border: 1px solid currentColor;
+    color: #ffd9d4;
+    background: rgba(140, 32, 24, .55);
+    border: 1px solid rgba(224, 120, 108, .6);
     border-radius: var(--radius-sm);
     padding: 8px 10px;
     font-size: var(--fs-sm);
-}
-
-.login-note {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-    font-size: var(--fs-xs);
-    color: var(--faint);
-    line-height: 1.6;
-}
-
-.login-note code {
-    display: block;
-    margin-top: 4px;
-    color: var(--muted);
-    word-break: break-all;
 }
 
 /* -------------------------------------------------------------- помощник --- */
@@ -2267,16 +2311,18 @@ input.rename {
     padding: 16px;
 }
 
+/* Ответ помощника — та же проза: мера в знаках, а не в пикселях. Развёрнутый
+   разбор с таблицами в 820 px не помещался и переносил каждую ячейку. */
 .msg {
     display: flex;
     flex-direction: column;
-    max-width: 820px;
+    max-width: 100ch;
     width: 100%;
 }
 
 .msg--user {
     align-self: flex-end;
-    max-width: 640px;
+    max-width: 70ch;
 }
 
 .msg .who {
@@ -2979,10 +3025,6 @@ table.grid.is-resizing .col-grip {
     .form-grid {
         grid-template-columns: 1fr;
     }
-
-    .nav a {
-        padding: 6px 8px;
-    }
 }
 
 @media (max-width: 1400px) {
@@ -3007,26 +3049,18 @@ table.grid.is-resizing .col-grip {
     }
 }
 
-/* Библиотека на ноутбуке. Девять столбцов требуют 1180 px, и на экране 1366
-   с полями таблица уезжала за правый край: «Индексация» и «Гриф» видно
-   наполовину. Прокрутка внутри таблицы есть, но читается это как обрезанная
-   вёрстка, а не как «прокрути вправо».
+/* Библиотека на ноутбуке. Восемь столбцов требуют около 1060 px, и на экране
+   1366 с полями таблица уезжала за правый край. Прокрутка внутри таблицы
+   есть, но читается это как обрезанная вёрстка, а не как «прокрути вправо».
 
    Поэтому на узких экранах справочные столбцы убираются совсем, по одному,
-   в порядке возрастания важности. Дата индексации и гриф нужны при разборе
-   раз в месяц, а название, тип, направление и актуальность — каждый день. */
+   в порядке возрастания важности: дата чтения и число фрагментов нужны при
+   разборе раз в месяц, а название, тип, направление и актуальность — каждый
+   день. Последний столбец — кнопки, он не прячется никогда.
+
+   Порядок столбцов: 1 название, 2 идентификатор, 3 тип, 4 направление,
+   5 актуальность, 6 фрагментов, 7 прочитан, 8 кнопки. */
 @media (max-width: 1500px) {
-    table.grid--library {
-        min-width: 1060px;
-    }
-
-    table.grid--library th:nth-child(8),
-    table.grid--library td:nth-child(8) {
-        display: none;
-    }
-}
-
-@media (max-width: 1300px) {
     table.grid--library {
         min-width: 940px;
     }
@@ -3037,19 +3071,25 @@ table.grid.is-resizing .col-grip {
     }
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1300px) {
     table.grid--library {
-        min-width: 820px;
+        min-width: 840px;
     }
 
     table.grid--library th:nth-child(6),
     table.grid--library td:nth-child(6) {
         display: none;
     }
+}
+
+@media (max-width: 1120px) {
+    table.grid--library {
+        min-width: 700px;
+    }
 
     table.grid--library th:nth-child(2),
     table.grid--library td:nth-child(2) {
-        width: 24%;
+        display: none;
     }
 }
 
@@ -3189,4 +3229,312 @@ table.grid.is-resizing .col-grip {
 
 select.status-off {
     background: var(--danger-soft);
+}
+
+/* ======================================================= дашборд и письма == */
+
+/* Переключатель наборов: «В работе», «Просроченные», «Мои». Кнопки в одной
+   обойме читаются как один орган управления, а не как четыре кнопки подряд. */
+.seg {
+    display: flex;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--panel);
+}
+
+.seg-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    height: 30px;
+    border: 0;
+    border-right: 1px solid var(--border);
+    background: none;
+    color: var(--muted);
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.seg-item:last-child {
+    border-right: 0;
+}
+
+.seg-item:hover {
+    background: var(--panel-2);
+    color: var(--text);
+}
+
+.seg-item.is-active {
+    background: var(--accent);
+    color: var(--accent-text);
+}
+
+.seg-item b {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    background: var(--field-2);
+    color: var(--muted);
+    border-radius: 9px;
+    padding: 0 5px;
+}
+
+.seg-item.is-active b {
+    background: rgba(255, 255, 255, .22);
+    color: var(--accent-text);
+}
+
+.seg-item.is-late b {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.seg-item.is-active.is-late b {
+    background: rgba(255, 255, 255, .22);
+    color: var(--accent-text);
+}
+
+/* Плитки верхнего ряда дашборда: цифра, что это за цифра, чем помочь. */
+.tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.tile {
+    display: block;
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border-strong);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: inherit;
+}
+
+.tile:hover {
+    border-color: var(--accent-line);
+    border-left-color: var(--accent);
+    color: inherit;
+}
+
+.tile--bad {
+    border-left-color: var(--danger);
+}
+
+.tile--warn {
+    border-left-color: var(--warn);
+}
+
+.tile--ok {
+    border-left-color: var(--ok);
+}
+
+.tile-value {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.tile--bad .tile-value {
+    color: var(--danger);
+}
+
+.tile-label {
+    margin-top: 2px;
+    font-weight: 500;
+}
+
+.tile-note {
+    margin-top: 4px;
+    font-size: var(--fs-sm);
+    color: var(--faint);
+}
+
+/* Две колонки дашборда. На ноутбуке складываются в одну. */
+.board-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.board-cols > div {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+@media (max-width: 1200px) {
+    .board-cols {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Полоса нагрузки. */
+.bar {
+    flex: 1 1 auto;
+    height: 8px;
+    min-width: 50px;
+    background: var(--field-2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.bar > span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+}
+
+.w-bar {
+    width: 200px;
+}
+
+.bar-cell > b {
+    font-variant-numeric: tabular-nums;
+    min-width: 22px;
+    text-align: right;
+}
+
+/* Срок ответа: спокойный, горящий, просроченный. */
+.due {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.due--soon {
+    color: var(--warn);
+    font-weight: 600;
+}
+
+.due--late {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.due-group + .due-group {
+    margin-top: 12px;
+}
+
+.due-group-title {
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+.due-list,
+.plain-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.due-list li,
+.plain-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.due-list li:last-child,
+.plain-list li:last-child {
+    border-bottom: 0;
+}
+
+.due-list li > a {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.plain-list li > b {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 500;
+}
+
+.kv-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.chip--flat {
+    background: var(--accent-soft);
+    border-color: var(--accent-line);
+    color: var(--accent);
+    cursor: default;
+}
+
+/* Распределение писем по состояниям. */
+.flow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.flow-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.flow-name {
+    width: 110px;
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: var(--fs-sm);
+}
+
+.flow-row > b {
+    width: 34px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Пометка приоритета рядом с темой письма. */
+.tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 0 6px;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    vertical-align: 1px;
+}
+
+.tag--high {
+    background: var(--warn-soft);
+    color: var(--warn);
+}
+
+.tag--urgent {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+/* Кнопки-значки в строке таблицы. */
+table.grid .row-actions .btn--icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.spacer {
+    flex: 1 1 auto;
 }

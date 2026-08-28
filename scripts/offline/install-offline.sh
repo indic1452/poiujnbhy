@@ -90,4 +90,4 @@ echo
 printf '\033[32mГотово.\033[0m Дальше: собрать llama.cpp (docs/10), запустить сервер модели,\n'
 echo "затем создать администратора:"
 echo "  cd $TARGET/app"
-echo "  PYTHONPATH=src REPORTGEN_CONFIG=$CONFIG .venv/bin/python -m reportgen useradd --login admin --role admin"
+echo "  PYTHONPATH=src REPORTGEN_CONFIG=$CONFIG .venv/bin/python -m reportgen useradd --login admin --role owner"

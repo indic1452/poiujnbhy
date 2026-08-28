@@ -329,7 +329,7 @@ sudo reportgen-cli --help
 ### Администратор
 
 ```bash
-sudo reportgen-cli useradd --login admin --role admin
+sudo reportgen-cli useradd --login admin --role owner
 # пароль спросит интерактивно; короче 8 символов не примет
 sudo reportgen-cli users
 ```

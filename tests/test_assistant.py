@@ -202,6 +202,111 @@ class AnswerTests(AssistantTestCase):
         self.assertIn("SUP-2024-118", prompts[0])
 
 
+class MaterialTests(AssistantTestCase):
+    """Из чего собирается материал для модели.
+
+    Пользователь просил, чтобы помощник «полностью знал содержимое файлов,
+    несмотря на их размеры», сопоставлял источники и взаимодополнял их.
+    Отвечает за это сборка промпта, а не сама модель, — её и проверяем.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.chat = self.assistant.create_chat(self.ivanov)
+
+    def prepared(self, question="Как измеряется занимаемая полоса частот?"):
+        return self.assistant._prepare(self.ivanov, self.chat.id, question, top_k=None)
+
+    def test_sources_are_grouped_by_document(self):
+        # Фрагменты одного документа идут подряд: сопоставить стандарт
+        # с паспортом микросхемы можно, только когда они не перемешаны.
+        prepared = self.prepared()
+        block = prepared["prompt"].split("### ИСТОЧНИКИ", 1)[1]
+        seen, order = set(), []
+        for line in block.splitlines():
+            if line.startswith("— — — ДОКУМЕНТ:"):
+                order.append(line)
+        self.assertGreater(len(order), 1, "в выдаче ожидается несколько документов")
+        for line in order:
+            self.assertNotIn(line, seen, "документ встретился в промпте дважды")
+            seen.add(line)
+
+    def test_prompt_carries_document_map_with_outline(self):
+        prepared = self.prepared()
+        self.assertIn("### ЧТО НАШЛОСЬ В БИБЛИОТЕКЕ", prepared["prompt"])
+        self.assertIn("Разделы документа:", prepared["prompt"])
+        self.assertTrue(prepared["documents"])
+        card = prepared["documents"][0]
+        self.assertTrue(card["labels"], "у документа не перечислены его фрагменты")
+        self.assertTrue(card["outline"], "у документа нет оглавления")
+
+    def test_document_card_names_type_year_and_status(self):
+        # Модель должна отличать действующий стандарт от заменённого,
+        # иначе в отчёт уедет отменённая норма.
+        text = self.prepared()["prompt"]
+        self.assertIn("действующий", text)
+        self.assertRegex(text, r"— (литература|стандарт|прошлый отчёт|регламент)")
+
+    def test_neighbours_are_added_but_not_duplicated(self):
+        # Сосед, который и сам попал в выдачу, второй раз не нужен: тот же
+        # текст занимал бы окно дважды.
+        prepared = self.prepared()
+        texts = [item["text"] for item in prepared["sources"]]
+        for item in prepared["sources"]:
+            for extra in (item["lead"], item["tail"]):
+                if not extra:
+                    continue
+                for text in texts:
+                    self.assertNotEqual(
+                        extra.strip(), text.strip(),
+                        "соседний фрагмент повторяет отдельный источник")
+
+    def test_context_budget_is_enforced(self):
+        # Переполненное окно llama.cpp обрезает молча — вместе с системной
+        # инструкцией. Материал обязан укладываться в бюджет сам.
+        self.settings.assistant_context_chars = 900
+        prepared = self.prepared()
+        material = sum(len(item["text"]) + len(item["lead"]) + len(item["tail"])
+                       for item in prepared["sources"])
+        self.assertLessEqual(material, 900 + 2000)
+        self.assertTrue(prepared["sources"], "бюджет не должен оставлять пустую выдачу")
+        # Метки идут подряд с первой: пропуск в нумерации читается как потеря.
+        self.assertEqual(
+            [item["label"] for item in prepared["sources"]],
+            [f"S{index}" for index in range(1, len(prepared["sources"]) + 1)])
+
+    def test_tiny_budget_still_gives_one_source(self):
+        self.settings.assistant_context_chars = 1
+        prepared = self.prepared()
+        self.assertEqual(1, len(prepared["sources"]))
+
+    def test_neighbours_can_be_switched_off(self):
+        self.settings.assistant_neighbours = 0
+        prepared = self.prepared()
+        self.assertTrue(all(not item["lead"] and not item["tail"]
+                            for item in prepared["sources"]))
+
+    def test_outline_can_be_switched_off(self):
+        self.settings.assistant_outlines = False
+        prepared = self.prepared()
+        self.assertNotIn("Разделы документа:", prepared["prompt"])
+        self.assertTrue(all(not card["outline"] for card in prepared["documents"]))
+
+    def test_assistant_asks_for_more_sources_than_the_report(self):
+        # В отчёте материал ограничен факт-пакетом, в разговоре — только
+        # вопросом, поэтому фрагментов берём больше.
+        self.assertGreater(self.settings.assistant_top_k, self.settings.retrieval_top_k)
+
+    def test_panel_does_not_get_neighbour_text(self):
+        # Соседи нужны модели, инженеру в панели источников они ни к чему:
+        # документ открывается целиком одним нажатием.
+        self.assistant.ask(self.ivanov, self.chat.id, "Занимаемая полоса?")
+        messages = self.assistant.messages(self.ivanov, self.chat.id)
+        for item in messages[-1].sources:
+            self.assertNotIn("lead", item)
+            self.assertNotIn("tail", item)
+
+
 class DomainFilterTests(AssistantTestCase):
     def test_domain_narrows_search(self):
         prompts: list[str] = []

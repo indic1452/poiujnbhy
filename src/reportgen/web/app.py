@@ -60,8 +60,8 @@ def create_app(settings: Settings | None = None,
         repos.sessions.purge_expired()
         if settings.auth_enabled and repos.users.count() == 0:
             logger.warning(
-                "В системе нет ни одного пользователя. Создайте администратора: "
-                "reportgen useradd --login admin --role admin"
+                "В системе нет ни одного сотрудника. Заведите создателя системы: "
+                "reportgen useradd --login admin --role owner"
             )
         yield
 

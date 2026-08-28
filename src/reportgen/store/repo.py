@@ -238,20 +238,23 @@ class DocumentRepo:
         self.db = db
 
     def upsert(self, doc_id: str, doc_type: str, title: str, source_path: str,
-               sha256: str, confidentiality: str = "internal",
-               meta: Dict[str, Any] | None = None, domain: str = "",
+               sha256: str, meta: Dict[str, Any] | None = None, domain: str = "",
                status: str = "current", superseded_by: str = "",
                year: int | None = None, size: int | None = None,
                mtime_ns: int | None = None) -> Document:
+        # Колонка confidentiality («гриф») осталась в таблице от прежней
+        # версии и здесь не заполняется: значение по умолчанию поставит
+        # SQLite. Удалять колонку на работающей установке незачем — она
+        # никем не читается.
         with self.db.transaction() as connection:
             connection.execute(
                 "INSERT INTO documents(doc_id, doc_type, title, source_path, sha256, "
-                "confidentiality, meta_json, domain, status, superseded_by, year, "
+                "meta_json, domain, status, superseded_by, year, "
                 "size, mtime_ns, created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(doc_id) DO UPDATE SET doc_type=excluded.doc_type, "
                 "title=excluded.title, source_path=excluded.source_path, "
-                "sha256=excluded.sha256, confidentiality=excluded.confidentiality, "
+                "sha256=excluded.sha256, "
                 "meta_json=excluded.meta_json, domain=excluded.domain, "
                 "status=excluded.status, superseded_by=excluded.superseded_by, "
                 "year=excluded.year, size=excluded.size, mtime_ns=excluded.mtime_ns, "
@@ -261,7 +264,7 @@ class DocumentRepo:
                 "THEN documents.indexed_at ELSE NULL END, "
                 "chunk_count=CASE WHEN documents.sha256 = excluded.sha256 "
                 "THEN documents.chunk_count ELSE 0 END",
-                (doc_id, doc_type, title, source_path, sha256, confidentiality,
+                (doc_id, doc_type, title, source_path, sha256,
                  json.dumps(meta or {}, ensure_ascii=False), domain, status,
                  superseded_by, year, size, mtime_ns, utcnow()),
             )
@@ -506,6 +509,66 @@ class ChunkRepo:
             (document_id, limit),
         )
         return [self._to_chunk(row) for row in rows]
+
+    def neighbours(self, chunk_uids: Sequence[str], radius: int = 1) -> Dict[str, List[Chunk]]:
+        """Соседние фрагменты тех же документов — по radius в каждую сторону.
+
+        Поиск возвращает кусок в 1800 знаков, а таблица допусков или описание
+        поля кадра в него не помещаются: начало осталось в предыдущем куске,
+        продолжение — в следующем. Модель видит середину и отвечает по
+        середине. Соседи достраивают связный отрывок.
+
+        Ключ ответа — chunk_uid найденного фрагмента, значение — соседи по
+        порядку следования в документе (сам фрагмент не включён).
+        """
+        if not chunk_uids or radius <= 0:
+            return {}
+        marks = ", ".join("?" for _ in chunk_uids)
+        anchors = self.db.query(
+            f"SELECT chunk_uid, document_id, ord FROM chunks WHERE chunk_uid IN ({marks})",
+            tuple(chunk_uids),
+        )
+        result: Dict[str, List[Chunk]] = {}
+        for anchor in anchors:
+            rows = self.db.query(
+                "SELECT c.*, d.doc_id AS doc_id FROM chunks c "
+                "JOIN documents d ON d.id = c.document_id "
+                "WHERE c.document_id = ? AND c.ord BETWEEN ? AND ? AND c.ord <> ? "
+                "ORDER BY c.ord",
+                (anchor["document_id"], anchor["ord"] - radius,
+                 anchor["ord"] + radius, anchor["ord"]),
+            )
+            if rows:
+                result[anchor["chunk_uid"]] = [self._to_chunk(row) for row in rows]
+        return result
+
+    def outline(self, doc_ids: Sequence[str], limit: int = 40) -> Dict[str, List[str]]:
+        """Оглавление документов: заголовки разделов по порядку.
+
+        Без него модель видит несколько кусков и не знает, что ещё есть в
+        документе. С оглавлением она может сказать «порог задан в разделе 5.2,
+        а методика измерения — в приложении Б» и подсказать, куда смотреть.
+        """
+        if not doc_ids:
+            return {}
+        marks = ", ".join("?" for _ in doc_ids)
+        rows = self.db.query(
+            "SELECT d.doc_id AS doc_id, c.ord AS ord, c.title_path AS title_path "
+            f"FROM chunks c JOIN documents d ON d.id = c.document_id "
+            f"WHERE d.doc_id IN ({marks}) ORDER BY d.doc_id, c.ord",
+            tuple(doc_ids),
+        )
+        result: Dict[str, List[str]] = {}
+        for row in rows:
+            path = json.loads(row["title_path"] or "[]")
+            if not path:
+                continue
+            # Первый элемент крошек — название документа, в оглавлении лишний.
+            heading = " → ".join(path[1:]) if len(path) > 1 else path[0]
+            bucket = result.setdefault(row["doc_id"], [])
+            if heading and (not bucket or bucket[-1] != heading) and len(bucket) < limit:
+                bucket.append(heading)
+        return result
 
     def all_chunks(self, limit: int | None = None) -> List[Chunk]:
         sql = ("SELECT c.*, d.doc_id AS doc_id FROM chunks c "

@@ -21,7 +21,6 @@ from ..store.models import (
     ADMIN_ROLES,
     CASE_PRIORITIES,
     CASE_STATUSES,
-    CONFIDENTIALITY,
     DOC_STATUS_TITLES,
     CASE_STATUS_TITLES,
     DOC_STATUSES,
@@ -208,7 +207,6 @@ def config(request: Request) -> Dict[str, Any]:
     return {
         "outlines": outlines,
         "doc_types": list(DOC_TYPES),
-        "confidentiality": list(CONFIDENTIALITY),
         "statuses": [{"id": key, "title": title} for key, title in DOC_STATUS_TITLES.items()],
         "llm": {"model": settings.llm_model, "base_url": settings.llm_base_url,
                 "kind": settings.llm_kind},
@@ -583,15 +581,12 @@ def upload_document(
     request: Request,
     file: UploadFile = File(...),
     doc_type: str = Form("literature"),
-    confidentiality: str = Form("internal"),
     domain: str = Form(""),
 ) -> Dict[str, Any]:
     user = require_editor(request)
     settings = _settings(request)
     if doc_type not in DOC_TYPES:
         raise ServiceError(f"неизвестный тип документа '{doc_type}'", 400)
-    if confidentiality not in CONFIDENTIALITY:
-        raise ServiceError(f"неизвестный гриф '{confidentiality}'", 400)
     if not _domains(request).is_known(domain):
         raise ServiceError(f"неизвестное направление '{domain}'", 400)
 
@@ -621,7 +616,7 @@ def upload_document(
             stream.write(piece)
 
     result = _ingest_file(request, target, doc_type=doc_type,
-                          confidentiality=confidentiality, domain=domain or None)
+                          domain=domain or None)
     repos = _repos(request)
     repos.audit.log("library.upload", user=user, object_type="document",
                     object_id=name, details={"doc_type": doc_type, "bytes": size})
@@ -1315,7 +1310,7 @@ def _disposition(filename: str) -> str:
 
 
 def _ingest_file(request: Request, path: Path, *, doc_type: str,
-                 confidentiality: str, domain: str | None = None) -> Dict[str, Any]:
+                 domain: str | None = None) -> Dict[str, Any]:
     try:
         from ..ingest.pipeline import ingest_path  # noqa: PLC0415
     except ImportError as error:
@@ -1324,7 +1319,7 @@ def _ingest_file(request: Request, path: Path, *, doc_type: str,
     result = ingest_path(
         _repos(request), path,
         root=Path(settings.library_dir), doc_type=doc_type,
-        confidentiality=confidentiality, force=True, domain=domain,
+        force=True, domain=domain,
         domains_path=settings.domains_path,
     )
     return _ingest_to_dict(result)

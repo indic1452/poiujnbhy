@@ -55,7 +55,7 @@ index:  ## переиндексация библиотеки в базу (инк
 	@echo "если включён REPORTGEN_EMBED_ENABLED, постройте векторы: reportgen-cli embed"
 
 admin:  ## создать администратора (пароль спросит интерактивно)
-	$(LOADENV) $(RUN) useradd --login $(LOGIN) --name "$(NAME)" --role admin
+	$(LOADENV) $(RUN) useradd --login $(LOGIN) --name "$(NAME)" --role owner
 
 backup:  ## резервная копия базы, библиотеки и экспортов с проверкой восстановления
 	deploy/backup.sh

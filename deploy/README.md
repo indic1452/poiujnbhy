@@ -40,7 +40,7 @@ sudo systemctl enable --now llama-server reportgen
    из шапки `llama-server.service`, поднять `llama-server`, проверить `curl`.
 3. `make install` в `/opt/reportgen`, завести обёртку `reportgen-cli`
    (docs/10 р. 10.6) и создать администратора:
-   `sudo reportgen-cli useradd --login admin --role admin`.
+   `sudo reportgen-cli useradd --login admin --role owner`.
 4. Библиотека в `/var/lib/reportgen/library/<тип>/`, затем `sudo reportgen-cli ingest`.
 5. Поднять `reportgen`, подключить nginx с сертификатом, проверить вход.
 6. Поставить `backup.sh` в расписание и один раз прогнать руками.

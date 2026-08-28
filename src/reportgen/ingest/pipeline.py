@@ -256,7 +256,6 @@ def ingest_path(
     *,
     root: str | Path | None = None,
     doc_type: str | None = None,
-    confidentiality: str = "internal",
     force: bool = False,
     domain: str | None = None,
     domains_path: str | Path | None = None,
@@ -405,7 +404,6 @@ def ingest_path(
         title=title,
         source_path=str(path.resolve()),
         sha256=digest,
-        confidentiality=confidentiality,
         meta=meta,
         domain=resolved_domain,
         year=year,
@@ -617,7 +615,6 @@ def ingest_directory(
     patterns: Sequence[str] | None = None,
     force: bool = False,
     progress: ProgressFn | None = None,
-    confidentiality: str = "internal",
     domain: str | None = None,
     doc_type: str | None = None,
     domains_path: str | Path | None = None,
@@ -648,7 +645,7 @@ def ingest_directory(
 
     def handle(path: Path) -> IngestResult:
         return ingest_path(
-            repos, path, root=root, force=force, confidentiality=confidentiality,
+            repos, path, root=root, force=force,
             domain=domain, doc_type=doc_type, domains_path=domains_path,
             doc_id=identifiers.get(path),
         )

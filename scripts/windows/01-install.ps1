@@ -101,7 +101,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host 'Создайте администратора (пароль не короче 8 символов):' -ForegroundColor Yellow
     $login = Read-Host 'Логин'
     if ($login) {
-        Invoke-Reportgen useradd --login $login --role admin
+        Invoke-Reportgen useradd --login $login --role owner
     }
 } else {
     Write-Ok 'пользователи уже заведены'

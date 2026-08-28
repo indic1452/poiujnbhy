@@ -7,8 +7,8 @@
  *   2. клиент REST API;
  *   3. общие элементы: уведомления, модальные окна, индикатор длинных операций;
  *   4. шапка, темы, маршрутизация;
- *   5. экран «Кейсы»;
- *   6. экран «Кейс» — три панели (факты | отчёт | источники и замечания);
+ *   5. экран «Письма»;
+ *   6. экран письма — три панели (факты | отчёт | источники и замечания);
  *   7. экран «Библиотека»;
  *   8. экран «Метрики» и журнал действий;
  *   9. разметка ответа помощника (упрощённый Markdown);
@@ -94,34 +94,6 @@
         misc: 'прочее',
     };
 
-    const ROLE_ORDER = ['viewer', 'engineer', 'admin'];
-
-    const ROLE_TITLE = {
-        viewer: 'Наблюдатель',
-        engineer: 'Инженер',
-        admin: 'Администратор',
-    };
-
-    const ROLE_NOTE = {
-        viewer: 'Читает отчёты и библиотеку. Ничего не меняет.',
-        engineer: 'Ведёт обращения, правит и утверждает отчёты, пополняет библиотеку.',
-        admin: 'Всё, что инженер, плюс сотрудники, удаление документов и журнал действий.',
-    };
-
-    const CONFIDENTIALITY_LABEL = {
-        public: 'открыто',
-        internal: 'для внутреннего пользования',
-        nda: 'по соглашению о конфиденциальности',
-    };
-
-    // В таблице библиотеки полная формулировка грифа занимает три строки в
-    // каждой строке списка. Полный текст остаётся подсказкой при наведении.
-    const CONFIDENTIALITY_SHORT = {
-        public: 'открыто',
-        internal: 'внутр.',
-        nda: 'NDA',
-    };
-
     const LEVEL_LABEL = {
         error: 'Ошибки',
         warning: 'Предупреждения',
@@ -131,8 +103,8 @@
     const AUDIT_LABEL = {
         'auth.login': 'вход в систему',
         'auth.fail': 'неудачная попытка входа',
-        'case.create': 'создан кейс',
-        'case.delete': 'удалён кейс',
+        'case.create': 'зарегистрировано письмо',
+        'case.delete': 'удалено письмо',
         'case.facts.update': 'изменён факт-пакет',
         'report.generate': 'сгенерирован отчёт',
         'report.section.save': 'сохранена секция',
@@ -146,8 +118,13 @@
         'library.domain': 'изменено направление документа',
         'chat.ask': 'вопрос помощнику',
         'chat.delete': 'удалён разговор',
-        'user.create': 'создан пользователь',
+        'user.create': 'заведён сотрудник',
+        'user.update': 'изменена запись сотрудника',
+        'user.active': 'изменён доступ сотрудника',
         'user.password': 'смена пароля',
+        'case.update': 'изменена карточка письма',
+        'absence.add': 'отмечено дежурство или отсутствие',
+        'absence.delete': 'снята отметка об отсутствии',
     };
 
     /** Примеры вопросов для пустого экрана помощника — по разным направлениям. */
@@ -339,7 +316,7 @@
     function goToLogin() {
         if (leavingToLogin) return;
         leavingToLogin = true;
-        const next = encodeURIComponent(location.hash || '#/cases');
+        const next = encodeURIComponent(location.hash || '#/board');
         location.href = '/login?next=' + next;
     }
 
@@ -614,19 +591,25 @@
     const state = {
         user: null,
         authEnabled: true,
-        config: { outlines: [], doc_types: [], confidentiality: ['public', 'internal', 'nda'], llm: {} },
+        config: { outlines: [], doc_types: [], llm: {} },
         // Поддержка форматов зависит от того, какие программы установлены
         // на этой машине, поэтому запрашивается у сервера, а не зашита.
         formats: null,
-        route: { name: 'cases', id: null },
+        route: { name: 'board', id: null },
     };
 
+    /* Права приходят с сервера вместе с записью сотрудника: держать здесь
+       второй список должностей — верный способ разойтись с бэкендом. */
     function canEdit() {
-        return !!state.user && (state.user.role === 'engineer' || state.user.role === 'admin');
+        return !!state.user;
     }
 
     function isAdmin() {
-        return !!state.user && state.user.role === 'admin';
+        return !!state.user && state.user.is_admin === true;
+    }
+
+    function isOwner() {
+        return !!state.user && state.user.is_owner === true;
     }
 
     function outlineFor(reportType) {
@@ -954,22 +937,22 @@
 
     // -- маршрутизация ------------------------------------------------------
 
-    let currentHash = '#/cases';
+    let currentHash = '#/board';
     let restoringHash = false;
 
     function parseHash(hash) {
         const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
-        if (!parts.length) return { name: 'cases', id: null };
+        if (!parts.length) return { name: 'board', id: null };
         if (parts[0] === 'case' && parts[1]) return { name: 'case', id: parts[1] };
         if (parts[0] === 'chat') return { name: 'chat', id: parts[1] ? decodeURIComponent(parts[1]) : null };
         if (parts[0] === 'library' && parts.length > 1) {
             // Идентификатор документа — путь вида «standards/obw-method».
             return { name: 'library', id: parts.slice(1).map(decodeURIComponent).join('/') };
         }
-        if (['cases', 'library', 'stats', 'me', 'users'].indexOf(parts[0]) !== -1) {
+        if (['board', 'cases', 'library', 'stats', 'me', 'users'].indexOf(parts[0]) !== -1) {
             return { name: parts[0], id: null };
         }
-        return { name: 'cases', id: null };
+        return { name: 'board', id: null };
     }
 
     function hasUnsaved() {
@@ -990,11 +973,11 @@
             restoringHash = false;
             return;
         }
-        const next = location.hash || '#/cases';
+        const next = location.hash || '#/board';
         if (hasUnsaved()) {
             const ok = await confirmDialog({
                 title: 'Есть несохранённые правки',
-                message: 'В кейсе остались несохранённые изменения (' + unsavedMessage() +
+                message: 'В письме остались несохранённые изменения (' + unsavedMessage() +
                     '). Уйти со страницы и потерять их?',
                 confirmText: 'Уйти без сохранения',
                 danger: true,
@@ -1021,7 +1004,8 @@
         clear(view);
         view.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' }), 'Загрузка…'));
         try {
-            if (route.name === 'cases') await renderCases(view);
+            if (route.name === 'board') await renderBoard(view);
+            else if (route.name === 'cases') await renderCases(view);
             else if (route.name === 'case') await renderCase(view, route.id);
             else if (route.name === 'library') await renderLibrary(view, route.id);
             else if (route.name === 'stats') await renderStats(view);
@@ -1037,7 +1021,7 @@
                     h('div', { class: 'muted' }, errorText(error)),
                     h('div', { class: 'btn-row', style: { marginTop: '12px' } },
                         h('button', { class: 'btn', onclick: () => renderRoute(state.route) }, 'Повторить'),
-                        h('a', { class: 'btn', href: '#/cases' }, 'К списку кейсов')))));
+                        h('a', { class: 'btn', href: '#/board' }, 'На дашборд')))));
         }
     }
 
@@ -1118,7 +1102,7 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('h1', {}, 'Письма'),
+                h('div', { class: 'page-note' }, 'Входящие обращения заказчиков и ответы на них'),
                 h('div', { class: 'page-head-actions' },
                     h('button', { class: 'btn', onclick: () => loadCases() }, 'Обновить'),
                     canEdit() ? h('button', {
@@ -1391,7 +1375,7 @@
         }
     }
 
-    // -- модальное окно «Новый кейс» ----------------------------------------
+    // -- модальное окно «Новое письмо» ---------------------------------------
 
     function factsSkeleton(outline, caseId) {
         const keys = [];
@@ -1438,7 +1422,7 @@
                 if (!jsonTouched) fillSkeleton();
             },
         });
-        const titleInput = h('input', { type: 'text', placeholder: 'краткий заголовок кейса (необязательно)' });
+        const titleInput = h('input', { type: 'text', placeholder: 'о чём письмо' });
 
         const status = h('div', { class: 'json-status' });
         const editor = h('textarea', {
@@ -1509,10 +1493,10 @@
             }
         }
 
-        const createButton = h('button', { class: 'btn btn--primary', onclick: submit }, 'Создать кейс');
+        const createButton = h('button', { class: 'btn btn--primary', onclick: submit }, 'Зарегистрировать');
 
         const dialog = openModal({
-            title: 'Новый кейс',
+            title: 'Регистрация письма',
             body: [
                 h('div', { class: 'form-grid' },
                     h('label', { class: 'field' }, 'Тип отчёта', typeSelect),
@@ -1567,19 +1551,19 @@
                     facts: facts,
                 });
                 dialog.close();
-                toast('Кейс ' + caseId + ' создан', 'ok');
+                toast('Письмо ' + caseId + ' зарегистрировано', 'ok');
                 navigate('#/case/' + data.case.id);
             } catch (error) {
                 toastError(error);
             } finally {
                 createButton.disabled = false;
-                createButton.textContent = 'Создать кейс';
+                createButton.textContent = 'Зарегистрировать';
             }
         }
     }
 
     // =====================================================================
-    // 6. Экран «Кейс»: три панели
+    // 6. Экран письма: три панели
     // =====================================================================
 
     const wb = {
@@ -2340,7 +2324,7 @@
                 isAdmin() ? h('button', {
                     class: 'btn btn--sm btn--danger',
                     onclick: () => deleteCase(wb.case, () => navigate('#/cases')),
-                }, 'Удалить кейс') : null),
+                }, 'Удалить письмо') : null),
             h('div', { class: 'line' },
                 wb.reports.length ? versionSelect : h('span', { class: 'small muted' }, 'версий отчёта нет'),
                 report ? h('span', { class: 'badge badge--' + (
@@ -2896,8 +2880,8 @@
         }
         const ok = await confirmDialog({
             title: 'Утвердить отчёт',
-            message: 'Отчёт версии ' + wb.report.version + ' по кейсу ' + wb.case.case_id +
-                ' будет подписан. Кейс перейдёт в статус «утверждён».',
+            message: 'Отчёт версии ' + wb.report.version + ' по письму ' + wb.case.case_id +
+                ' будет подписан. Письмо перейдёт в состояние «отправлено».',
             note: 'Пары «черновик модели → финал инженера» по изменённым разделам уйдут в обучающий набор.',
             confirmText: 'Утвердить',
         });
@@ -3212,7 +3196,7 @@
         }
 
         const tableBox = h('div', { class: 'card' });
-        const statsLine = h('div', { class: 'small muted' });
+        const statsLine = h('div', { class: 'page-note' });
         const uploadList = h('div', {});
         const searchResults = h('div', {});
 
@@ -3237,10 +3221,6 @@
         const forceCheckbox = h('input', { type: 'checkbox' });
         const uploadType = h('select', {}, (state.config.doc_types || []).map((type) =>
             h('option', { value: type }, docTypeLabel(type))));
-        const uploadConf = h('select', {}, (state.config.confidentiality || ['public', 'internal', 'nda'])
-            .map((value) => h('option', {
-                value: value, selected: value === 'internal',
-            }, CONFIDENTIALITY_LABEL[value] || value)));
         const uploadDomain = domainSelect({
             anyLabel: 'определить автоматически',
             title: 'Направление загружаемых документов',
@@ -3274,7 +3254,8 @@
             h('div', { class: 'small' }, formatsHint()));
 
         const searchInput = h('input', {
-            type: 'search', class: 'grow', placeholder: 'Проверка поиска: запрос по библиотеке',
+            type: 'search', class: 'grow',
+            placeholder: 'Что найти в документах — например, «занимаемая полоса частот»',
             onkeydown: (event) => {
                 if (event.key === 'Enter') runSearch();
             },
@@ -3295,20 +3276,27 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('h1', {}, 'Библиотека'),
                 statsLine,
                 // Кнопки держатся вместе: при переносе на узком экране они
                 // должны уезжать на новую строку группой, а не поодиночке.
                 h('div', { class: 'page-head-actions' },
                     h('button', { class: 'btn', onclick: () => loadLibrary() }, 'Обновить'),
-                    canEdit() ? h('label', { class: 'inline' }, forceCheckbox, 'принудительно') : null,
-                    canEdit() ? h('button', { class: 'btn', onclick: () => reindex() }, 'Переиндексировать') : null)),
+                    canEdit() ? h('label', {
+                        class: 'inline',
+                        title: 'Обычно перечитываются только новые и изменившиеся файлы. ' +
+                            'С этой отметкой перечитываются все — нужно после смены модели ' +
+                            'встраивания или правил разбора.',
+                    }, forceCheckbox, 'перечитать все файлы') : null,
+                    canEdit() ? h('button', {
+                        class: 'btn',
+                        title: 'Прочитать каталог библиотеки и обновить поисковый индекс',
+                        onclick: () => reindex(),
+                    }, 'Прочитать каталог') : null)),
 
             canEdit() ? h('div', { class: 'card card-pad' },
                 h('div', { class: 'card-title' }, 'Загрузка документов'),
                 h('div', { class: 'toolbar' },
                     h('label', { class: 'inline' }, 'Тип:', uploadType),
-                    h('label', { class: 'inline' }, 'Гриф:', uploadConf),
                     h('label', { class: 'inline' }, 'Направление:', uploadDomain)),
                 dropzone, fileInput, uploadList) : null,
 
@@ -3316,7 +3304,7 @@
             tableBox,
 
             h('div', { class: 'card card-pad', style: { marginTop: '14px' } },
-                h('div', { class: 'card-title' }, 'Проверка поиска'),
+                h('div', { class: 'card-title' }, 'Поиск по библиотеке'),
                 h('div', { class: 'toolbar' },
                     searchInput, topKInput, searchDomain,
                     h('button', { class: 'btn btn--primary', onclick: () => runSearch() }, 'Найти')),
@@ -3389,22 +3377,19 @@
                     h('td', {}, documentStatusCell(item)),
                     h('td', { class: 'num' }, item.chunk_count || 0),
                     h('td', { class: 'small muted nowrap' }, fmtDateTime(item.indexed_at)),
-                    h('td', {
-                        class: 'small muted nowrap',
-                        title: CONFIDENTIALITY_LABEL[item.confidentiality] || item.confidentiality,
-                    }, CONFIDENTIALITY_SHORT[item.confidentiality] || item.confidentiality),
                     h('td', { class: 'row-actions' }, isAdmin() ? h('button', {
-                        class: 'btn btn--ghost btn--icon btn--danger-hover', title: 'Удалить документ',
+                        class: 'btn btn--icon btn--danger-hover',
+                        title: 'Убрать документ из библиотеки и из поиска',
                         onclick: () => removeDocument(item),
-                    }, '×') : null)));
+                    }, iconGlyph('trash')) : null)));
             });
             const libraryTable = h('table', { class: 'grid grid--library' },
                     h('thead', {}, h('tr', {},
                         h('th', {}, 'Название'), h('th', {}, 'Идентификатор'), h('th', {}, 'Тип'),
                         h('th', {}, 'Направление'),
                         h('th', {}, 'Актуальность'),
-                        h('th', { class: 'num' }, 'Фрагментов'), h('th', {}, 'Индексация'),
-                        h('th', {}, 'Гриф'), h('th', {}))),
+                        h('th', { class: 'num' }, 'Фрагментов'), h('th', {}, 'Прочитан'),
+                        h('th', {}))),
                     body);
             tableBox.appendChild(h('div', { class: 'table-scroll' },
                 makeResizable(libraryTable, 'library')));
@@ -3506,7 +3491,6 @@
                 const form = new FormData();
                 form.append('file', file);
                 form.append('doc_type', uploadType.value);
-                form.append('confidentiality', uploadConf.value);
                 form.append('domain', uploadDomain.value);
                 try {
                     const data = await uploadFile('/api/library/upload', form, (fraction) => {
@@ -3657,6 +3641,275 @@
     // 8. Экран «Метрики» и журнал действий
     // =====================================================================
 
+    // =====================================================================
+    // 8а. Экран «Дашборд» — состояние отдела на сегодня
+    // =====================================================================
+
+    const boardState = { days: 30, data: null };
+
+    async function renderBoard(view) {
+        clear(view);
+        const page = h('div', { class: 'page' });
+        view.appendChild(page);
+
+        const periodSelect = h('select', {
+            onchange: (event) => {
+                boardState.days = Number(event.target.value) || 30;
+                load();
+            },
+        }, [7, 30, 90, 365].map((days) => h('option', {
+            value: String(days), selected: boardState.days === days,
+        }, 'за ' + plural(days, 'день', 'дня', 'дней'))));
+
+        const head = h('div', { class: 'page-head' },
+            h('div', { class: 'page-note' }, 'Что в отделе происходит сегодня'),
+            h('div', { class: 'page-head-actions' },
+                periodSelect,
+                h('button', { class: 'btn', onclick: () => load() }, 'Обновить')));
+
+        const body = h('div', {});
+        append(page, [head, body]);
+
+        async function load() {
+            clear(body);
+            body.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' })));
+            try {
+                boardState.data = await api.get('/api/board?days=' + boardState.days);
+                draw();
+            } catch (error) {
+                clear(body);
+                body.appendChild(h('div', { class: 'empty' }, errorText(error)));
+            }
+        }
+
+        function draw() {
+            const data = boardState.data;
+            const totals = data.totals || {};
+            clear(body);
+
+            /* Верхний ряд — то, что спрашивают с отдела в первую очередь. */
+            const tiles = h('div', { class: 'tiles' },
+                tile(totals.open || 0, 'писем в работе',
+                    'всего зарегистрировано: ' + sumStatuses(data.statuses),
+                    '#/cases', 'open'),
+                tile(totals.overdue || 0, 'просрочено',
+                    totals.overdue ? 'сроки уже прошли' : 'просроченных нет',
+                    '#/cases', 'overdue', totals.overdue ? 'bad' : 'ok'),
+                tile(totals.soon || 0, 'горят в ближайшие 3 дня', 'по сроку ответа',
+                    '#/cases', 'open', totals.soon ? 'warn' : ''),
+                tile(totals.unassigned || 0, 'без исполнителя',
+                    totals.unassigned ? 'нужно распределить' : 'все письма распределены',
+                    '#/cases', 'open', totals.unassigned ? 'warn' : 'ok'),
+                tile(totals.staff || 0, 'человек в строю',
+                    'на дежурстве: ' + (totals.on_duty || 0) + ' · отсутствуют: ' + (totals.away || 0)),
+                tile((data.movement || {}).sent || 0, 'ответов отправлено',
+                    'поступило за период: ' + ((data.movement || {}).came || 0) +
+                    ' · версий отчётов: ' + ((data.movement || {}).reports || 0)));
+
+            const columns = h('div', { class: 'board-cols' },
+                h('div', {}, workloadCard(data), movementCard(data)),
+                h('div', {}, deadlinesCard(data), dutyCard(data)));
+
+            append(body, [tiles, columns]);
+        }
+
+        function tile(value, label, note, href, tab, kind) {
+            return h('a', {
+                class: 'tile' + (kind ? ' tile--' + kind : ''),
+                href: href,
+                onclick: () => { if (tab) casesState.view = tab; },
+            },
+                h('div', { class: 'tile-value' }, String(value)),
+                h('div', { class: 'tile-label' }, label),
+                h('div', { class: 'tile-note' }, note));
+        }
+
+        function sumStatuses(statuses) {
+            return (statuses || []).reduce((sum, item) => sum + (item.count || 0), 0);
+        }
+
+        /* Нагрузка по людям: кто сколько ведёт и у кого горит. */
+        function workloadCard(data) {
+            const people = data.people || [];
+            const card = h('div', { class: 'card card-pad' },
+                h('div', { class: 'card-title' }, 'Нагрузка и занятость'));
+            if (!people.length) {
+                card.appendChild(h('div', { class: 'empty' },
+                    'Личный состав не заведён. Раздел «Сотрудники» — там заводят людей.'));
+                return card;
+            }
+            const peak = people.reduce((max, item) => Math.max(max, item.open || 0), 0) || 1;
+            const rows = h('tbody', {});
+            people.forEach((person) => {
+                rows.appendChild(h('tr', {},
+                    h('td', {},
+                        h('div', {}, person.full_name),
+                        h('div', { class: 'small faint' },
+                            (ROLE_SHORT[person.role] || person.role) +
+                            (person.team ? ' · ' + person.team : ''))),
+                    h('td', {}, personState(person)),
+                    h('td', { class: 'w-bar' },
+                        h('div', { class: 'bar-cell' },
+                            h('div', { class: 'bar' },
+                                h('span', { style: { width: Math.round((person.open || 0) / peak * 100) + '%' } })),
+                            h('b', {}, String(person.open || 0)))),
+                    h('td', { class: 'nowrap' }, person.late
+                        ? h('span', { class: 'due due--late' }, plural(person.late, 'просрочка', 'просрочки', 'просрочек'))
+                        : h('span', { class: 'faint' }, '—')),
+                    h('td', { class: 'nowrap small muted' },
+                        person.next_deadline ? fmtDate(person.next_deadline) : '—')));
+            });
+            card.appendChild(h('div', { class: 'table-scroll' },
+                h('table', { class: 'grid' },
+                    h('thead', {}, h('tr', {},
+                        h('th', {}, 'Сотрудник'),
+                        h('th', {}, 'Чем занят'),
+                        h('th', {}, 'Писем в работе'),
+                        h('th', {}, 'Сроки'),
+                        h('th', {}, 'Ближайший срок'))),
+                    rows)));
+            return card;
+        }
+
+        function personState(person) {
+            if (person.away) {
+                return h('span', { class: 'badge badge--warn' },
+                    person.away_title + (person.away_until ? ' до ' + fmtDate(person.away_until) : ''));
+            }
+            if (person.on_duty) return h('span', { class: 'badge badge--accent' }, 'на дежурстве');
+            if (!person.open) return h('span', { class: 'faint small' }, 'свободен');
+            return h('span', { class: 'badge badge--info' }, 'в работе');
+        }
+
+        /* Сроки: что уже просрочено и что горит. */
+        function deadlinesCard(data) {
+            const late = data.overdue || [];
+            const soon = data.soon || [];
+            const card = h('div', { class: 'card card-pad' },
+                h('div', { class: 'card-title' }, 'Сроки'));
+            if (!late.length && !soon.length) {
+                card.appendChild(h('div', { class: 'empty' }, 'Просроченных и горящих писем нет.'));
+                return card;
+            }
+            if (late.length) card.appendChild(deadlineList('Просрочено', late, 'late'));
+            if (soon.length) card.appendChild(deadlineList('Ближайшие три дня', soon, 'soon'));
+            return card;
+        }
+
+        function deadlineList(title, items, kind) {
+            return h('div', { class: 'due-group' },
+                h('div', { class: 'due-group-title' }, title),
+                h('ul', { class: 'due-list' }, items.map((item) => h('li', {},
+                    h('a', { href: '#/case/' + item.id }, item.title || item.case_id),
+                    h('span', { class: 'due due--' + kind }, fmtDate(item.deadline)),
+                    h('span', { class: 'small faint' },
+                        item.assignee_name || 'не назначен')))));
+        }
+
+        /* Дежурство и отсутствия на сегодня. */
+        function dutyCard(data) {
+            const duty = data.duty || [];
+            const absent = data.absent || [];
+            const card = h('div', { class: 'card card-pad' },
+                h('div', { class: 'card-title' }, 'Дежурство и отсутствия'),
+                h('div', { class: 'kv-line' },
+                    h('b', {}, 'На дежурстве: '),
+                    duty.length
+                        ? duty.map((item) => h('span', { class: 'chip chip--flat' }, item.full_name))
+                        : h('span', { class: 'faint' }, 'никто не назначен')));
+            if (!absent.length) {
+                card.appendChild(h('div', { class: 'muted small' }, 'Отсутствующих сегодня нет.'));
+            } else {
+                card.appendChild(h('ul', { class: 'plain-list' }, absent.map((item) =>
+                    h('li', {},
+                        h('b', {}, item.full_name),
+                        h('span', { class: 'badge badge--warn' }, item.kind_title),
+                        h('span', { class: 'small faint' },
+                            'по ' + fmtDate(item.date_to))))));
+            }
+            if (isAdmin()) {
+                card.appendChild(h('div', { class: 'btn-row', style: { marginTop: '10px' } },
+                    h('button', {
+                        class: 'btn btn--sm',
+                        onclick: () => openAbsenceDialog(() => load()),
+                    }, 'Отметить дежурство или отпуск')));
+            }
+            return card;
+        }
+
+        /* Движение писем по состояниям. */
+        function movementCard(data) {
+            const statuses = data.statuses || [];
+            const total = sumStatuses(statuses) || 1;
+            const card = h('div', { class: 'card card-pad' },
+                h('div', { class: 'card-title' }, 'Письма по состояниям'));
+            if (!statuses.length) {
+                card.appendChild(h('div', { class: 'empty' }, 'Писем ещё нет.'));
+                return card;
+            }
+            card.appendChild(h('div', { class: 'flow' }, statuses.map((item) =>
+                h('div', { class: 'flow-row' },
+                    h('span', { class: 'flow-name' }, item.title),
+                    h('div', { class: 'bar' },
+                        h('span', { style: { width: Math.round(item.count / total * 100) + '%' } })),
+                    h('b', {}, String(item.count))))));
+            return card;
+        }
+
+        await load();
+    }
+
+    /** Отметить дежурство, отпуск или командировку. */
+    async function openAbsenceDialog(after) {
+        const staff = await staffList();
+        const who = h('select', {}, staff.map((person) => h('option', {
+            value: String(person.id),
+        }, (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role))));
+        const kind = h('select', {}, Object.keys(ABSENCE_LABEL).map((key) =>
+            h('option', { value: key }, ABSENCE_LABEL[key])));
+        const from = h('input', { type: 'date', value: todayIso() });
+        const to = h('input', { type: 'date', value: todayIso() });
+        const note = h('input', { type: 'text', placeholder: 'необязательно' });
+
+        const save = h('button', { class: 'btn btn--primary', onclick: submit }, 'Отметить');
+        const dialog = openModal({
+            title: 'Дежурство или отсутствие',
+            body: [
+                h('div', { class: 'form-grid' },
+                    h('label', { class: 'field' }, 'Сотрудник', who),
+                    h('label', { class: 'field' }, 'Вид', kind),
+                    h('label', { class: 'field' }, 'С какого числа', from),
+                    h('label', { class: 'field' }, 'По какое число', to)),
+                h('label', { class: 'field' }, 'Примечание', note),
+            ],
+            footer: [
+                h('span', { class: 'spacer' }),
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                save,
+            ],
+        });
+
+        async function submit() {
+            save.disabled = true;
+            try {
+                await api.post('/api/absences', {
+                    user_id: Number(who.value),
+                    kind: kind.value,
+                    date_from: from.value,
+                    date_to: to.value,
+                    note: note.value.trim(),
+                });
+                dialog.close();
+                toast('Отмечено', 'ok');
+                if (after) after();
+            } catch (error) {
+                toastError(error);
+            } finally {
+                save.disabled = false;
+            }
+        }
+    }
+
     async function renderStats(view) {
         clear(view);
         const page = h('div', { class: 'page' });
@@ -3669,7 +3922,7 @@
         const library = data.library || {};
 
         const cards = h('div', { class: 'stat-cards' },
-            statCard(cases.total || 0, 'кейсов всего',
+            statCard(cases.total || 0, 'писем всего',
                 'утверждено: ' + (cases.approved || 0) + ' · черновиков: ' + (cases.draft || 0)),
             statCard(reports.total || 0, 'версий отчётов',
                 'утверждено: ' + (reports.approved || 0)),
@@ -3737,8 +3990,13 @@
         }
 
         append(page, [
-            h('div', { class: 'page-head' }, h('h1', {}, 'Метрики'),
-                h('button', { class: 'btn', onclick: () => renderRoute(state.route) }, 'Обновить')),
+            h('div', { class: 'page-head' },
+                h('div', { class: 'page-note' },
+                    'Объём работы, качество черновиков и состояние библиотеки'),
+                h('div', { class: 'page-head-actions' },
+                    h('button', {
+                        class: 'btn', onclick: () => renderRoute(state.route),
+                    }, 'Обновить'))),
             cards, editsCard, libCard,
         ]);
 
@@ -4168,7 +4426,7 @@
             title,
             h('div', { class: 'meta' },
                 item.domain ? h('span', { class: 'badge badge--info' }, domainTitle(item.domain)) : null,
-                item.case_ref ? h('span', { class: 'badge badge--accent' }, 'кейс') : null,
+                item.case_ref ? h('span', { class: 'badge badge--accent' }, 'письмо') : null,
                 h('span', { class: 'faint' }, item.message_count + ' ' +
                     plural(item.message_count, 'сообщение', 'сообщения', 'сообщений')),
                 h('span', { class: 'faint' }, fmtDateTime(item.updated_at))),
@@ -4512,7 +4770,7 @@
             h('div', { class: 'composer-row' }, input, sendButton, stopButton));
     }
 
-    /** Плашка с номером обращения, если разговор привязан к кейсу. */
+    /** Плашка с номером письма, если разговор к нему привязан. */
     async function loadChatCase() {
         const plate = chat.nodes.casePlate;
         if (!plate || !chat.current || !chat.current.case_ref) return;
@@ -4520,7 +4778,7 @@
         clear(plate);
         plate.appendChild(h('a', {
             class: 'badge badge--accent', href: '#/case/' + reference,
-            title: 'Открыть кейс',
+            title: 'Открыть письмо',
         }, 'обращение #' + reference));
         try {
             const data = await api.get('/api/cases/' + reference);
@@ -4529,11 +4787,11 @@
                 clear(plate);
                 plate.appendChild(h('a', {
                     class: 'badge badge--accent', href: '#/case/' + reference,
-                    title: 'Открыть кейс: ' + (chat.caseInfo.title || ''),
+                    title: 'Открыть письмо: ' + (chat.caseInfo.title || ''),
                 }, 'обращение ' + chat.caseInfo.case_id));
             }
         } catch (error) {
-            /* кейс мог быть удалён — оставляем плашку с номером */
+            /* письмо могло быть удалено — оставляем плашку с номером */
         }
     }
 
@@ -4816,75 +5074,123 @@
 
         if (!isAdmin()) {
             page.appendChild(h('div', { class: 'card card-pad' },
-                h('h3', {}, 'Раздел доступен администратору'),
+                h('h3', {}, 'Раздел закрыт'),
                 h('div', { class: 'muted' },
-                    'Сотрудниками управляет тот, у кого роль «Администратор».')));
+                    'Личным составом занимается начальник группы и выше.')));
             return;
         }
 
         const tableBox = h('div', {});
-        const data = { roles: [], items: [] };
+        const rolesBox = h('div', { class: 'card card-pad' });
+        const data = { roles: [], items: [], departments: [] };
+
+        function role(roleId) {
+            return data.roles.filter((item) => item.id === roleId)[0] || null;
+        }
 
         function roleNote(roleId) {
-            const role = data.roles.find((item) => item.id === roleId);
-            return role ? role.note : '';
+            const found = role(roleId);
+            return found ? found.note : '';
         }
 
         async function reload() {
             const fresh = await api.get('/api/users');
             data.roles = fresh.roles || [];
             data.items = fresh.items || [];
+            data.departments = fresh.departments || [];
+            paintRoles();
             paint();
+        }
+
+        /* Штатное расписание: что даёт каждая должность. Список приходит
+           с сервера — второй экземпляр в браузере с ним расходился. */
+        function paintRoles() {
+            clear(rolesBox);
+            rolesBox.appendChild(h('div', { class: 'card-title' }, 'Должности и права'));
+            rolesBox.appendChild(h('div', { class: 'role-list' }, data.roles.map((item) =>
+                h('div', { class: 'role-item' + (item.is_admin ? ' role-item--admin' : '') },
+                    h('b', {}, item.title,
+                        item.is_admin ? h('span', { class: 'badge badge--accent' }, 'администратор') : null),
+                    h('span', { class: 'muted small' }, item.note)))));
         }
 
         function paint() {
             clear(tableBox);
             const body = h('tbody', {});
             data.items.forEach((user) => {
+                const locked = !user.may_manage;
                 const nameInput = h('input', {
                     type: 'text', value: user.full_name || '',
-                    placeholder: 'Фамилия И.О.', class: 'input--quiet',
+                    placeholder: 'Фамилия И. О.', class: 'input--quiet',
+                    disabled: locked,
                     onchange: () => save(user, { full_name: nameInput.value }),
                 });
                 const roleSelect = h('select', {
                     class: 'select--quiet',
-                    title: roleNote(user.role),
+                    title: locked ? 'Должность этого сотрудника менять нельзя' : roleNote(user.role),
+                    disabled: locked,
                     onchange: () => save(user, { role: roleSelect.value }, roleSelect),
-                }, data.roles.map((role) => h('option', {
-                    value: role.id, selected: user.role === role.id, title: role.note,
-                }, role.title)));
+                }, data.roles.map((item) => h('option', {
+                    value: item.id,
+                    selected: user.role === item.id,
+                    // Должность выше собственной сервер всё равно не примет —
+                    // лучше не предлагать её в списке.
+                    disabled: !item.allowed && user.role !== item.id,
+                    title: item.note,
+                }, item.title)));
+                const depInput = h('input', {
+                    type: 'text', value: user.department || '', class: 'input--quiet',
+                    placeholder: '—', disabled: locked, list: 'departments',
+                    onchange: () => save(user, { department: depInput.value }),
+                });
+                const teamInput = h('input', {
+                    type: 'text', value: user.team || '', class: 'input--quiet',
+                    placeholder: '—', disabled: locked,
+                    onchange: () => save(user, { team: teamInput.value }),
+                });
 
-                body.appendChild(h('tr', {},
+                body.appendChild(h('tr', { class: user.active ? '' : 'is-off' },
                     h('td', { class: 'primary mono' }, user.login),
                     h('td', {}, nameInput),
                     h('td', {}, roleSelect),
-                    h('td', { class: 'small muted' }, roleNote(user.role)),
+                    h('td', {}, depInput),
+                    h('td', {}, teamInput),
                     h('td', {}, user.active
                         ? h('span', { class: 'badge badge--ok' }, 'работает')
                         : h('span', { class: 'badge' }, 'отключён')),
                     h('td', { class: 'small muted nowrap' }, fmtDateTime(user.created_at)),
                     h('td', { class: 'row-actions nowrap' },
                         h('button', {
-                            class: 'btn btn--sm', title: 'Задать новый пароль. Старый знать не нужно.',
+                            class: 'btn btn--sm',
+                            disabled: locked,
+                            title: 'Задать новый пароль. Старый знать не нужно.',
                             onclick: () => resetPassword(user),
                         }, 'Пароль'),
                         h('button', {
                             class: 'btn btn--sm',
+                            disabled: locked,
                             title: user.active
-                                ? 'Отключить: человек больше не сможет войти, данные останутся'
-                                : 'Включить обратно',
+                                ? 'Человек больше не сможет войти, данные останутся'
+                                : 'Вернуть доступ',
                             onclick: () => setActive(user, !user.active),
                         }, user.active ? 'Отключить' : 'Включить'))));
             });
 
             const usersTable = h('table', { class: 'grid grid--users' },
-                    h('thead', {}, h('tr', {},
-                        h('th', {}, 'Логин'), h('th', {}, 'Фамилия и инициалы'),
-                        h('th', {}, 'Роль'), h('th', {}, 'Что разрешено'),
-                        h('th', {}, 'Доступ'), h('th', {}, 'Заведён'), h('th', {}))),
-                    body);
+                h('thead', {}, h('tr', {},
+                    h('th', {}, 'Логин'),
+                    h('th', {}, 'Фамилия и инициалы'),
+                    h('th', {}, 'Должность'),
+                    h('th', {}, 'Отдел'),
+                    h('th', {}, 'Группа'),
+                    h('th', {}, 'Доступ'),
+                    h('th', {}, 'Заведён'),
+                    h('th', {}))),
+                body);
             tableBox.appendChild(h('div', { class: 'table-scroll' },
                 makeResizable(usersTable, 'users')));
+            tableBox.appendChild(h('datalist', { id: 'departments' },
+                data.departments.map((item) => h('option', { value: item }))));
         }
 
         async function save(user, patch, control) {
@@ -4922,7 +5228,7 @@
                 const ok = await confirmDialog({
                     title: 'Отключить сотрудника?',
                     message: '«' + (user.full_name || user.login) + '» больше не сможет войти. ' +
-                        'Его отчёты и правки останутся на месте — учётную запись можно включить обратно.',
+                        'Его отчёты и правки останутся на месте — доступ можно вернуть.',
                     confirmText: 'Отключить', danger: true,
                 });
                 if (!ok) return;
@@ -4937,20 +5243,27 @@
 
         async function addUser() {
             const login = h('input', { type: 'text', placeholder: 'petrov', autocapitalize: 'off' });
-            const fullName = h('input', { type: 'text', placeholder: 'Петров П.П.' });
+            const fullName = h('input', { type: 'text', placeholder: 'Петров П. П.' });
             const passwordBox = passwordField('не короче 8 символов');
             const password = passwordBox.input;
-            const role = h('select', {}, data.roles.map((item) => h('option', {
+            const allowed = data.roles.filter((item) => item.allowed);
+            const roleSelect = h('select', {}, allowed.map((item) => h('option', {
                 value: item.id, selected: item.id === 'engineer',
             }, item.title)));
-            const note = h('div', { class: 'small muted' }, roleNote('engineer'));
-            role.addEventListener('change', () => { note.textContent = roleNote(role.value); });
+            const department = h('input', {
+                type: 'text', list: 'departments',
+                value: (state.user && state.user.department) || '',
+            });
+            const team = h('input', { type: 'text' });
+            const note = h('div', { class: 'small muted' }, roleNote(roleSelect.value));
+            roleSelect.addEventListener('change', () => {
+                note.textContent = roleNote(roleSelect.value);
+            });
 
             // Кнопку держим в переменной. Раньше её включали обратно через
             // event.currentTarget, а он после await равен null: сервер
             // отклонял короткий пароль, обработчик падал на «Cannot set
             // properties of null», и кнопка оставалась выключенной навсегда.
-            // Инженер исправлял пароль и не мог отправить форму.
             const submit = h('button', {
                 class: 'btn btn--primary',
                 onclick: async () => {
@@ -4960,7 +5273,9 @@
                             login: login.value.trim(),
                             full_name: fullName.value.trim(),
                             password: password.value,
-                            role: role.value,
+                            role: roleSelect.value,
+                            department: department.value.trim(),
+                            team: team.value.trim(),
                         });
                         dialog.close();
                         toast('Сотрудник заведён');
@@ -4976,12 +5291,17 @@
             const dialog = openModal({
                 title: 'Новый сотрудник',
                 narrow: true,
-                body: h('div', { class: 'form-grid' },
-                    h('label', { class: 'field' }, 'Логин для входа', login,
-                        h('span', { class: 'small faint' }, 'латиница, 3–32 знака')),
-                    h('label', { class: 'field' }, 'Фамилия и инициалы', fullName),
-                    h('label', { class: 'field' }, 'Первый пароль', passwordBox),
-                    h('label', { class: 'field' }, 'Роль', role, note)),
+                body: [
+                    h('div', { class: 'form-grid' },
+                        h('label', { class: 'field' }, 'Логин для входа', login,
+                            h('span', { class: 'small faint' }, 'латиница, 3–32 знака')),
+                        h('label', { class: 'field' }, 'Фамилия и инициалы', fullName),
+                        h('label', { class: 'field' }, 'Первый пароль', passwordBox),
+                        h('label', { class: 'field' }, 'Должность', roleSelect),
+                        h('label', { class: 'field' }, 'Отдел', department),
+                        h('label', { class: 'field' }, 'Группа', team)),
+                    note,
+                ],
                 footer: [
                     h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
                     submit,
@@ -4992,15 +5312,13 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('h1', {}, 'Сотрудники'),
-
-                h('button', { class: 'btn', onclick: () => reload() }, 'Обновить'),
-                h('button', { class: 'btn btn--primary', onclick: () => addUser() }, 'Завести сотрудника')),
-            h('div', { class: 'card card-pad' },
-                h('div', { class: 'card-title' }, 'Роли'),
-                h('div', { class: 'role-list' }, ROLE_ORDER.map((id) => h('div', { class: 'role-item' },
-                    h('b', {}, ROLE_TITLE[id]),
-                    h('span', { class: 'muted small' }, ROLE_NOTE[id]))))),
+                h('div', { class: 'page-note' }, 'Личный состав отдела, должности и доступ'),
+                h('div', { class: 'page-head-actions' },
+                    h('button', { class: 'btn', onclick: () => reload() }, 'Обновить'),
+                    h('button', {
+                        class: 'btn btn--primary', onclick: () => addUser(),
+                    }, 'Завести сотрудника'))),
+            rolesBox,
             tableBox,
         ]);
 
@@ -5022,12 +5340,14 @@
             h('dl', { class: 'kv' },
                 h('dt', {}, 'Логин'), h('dd', { class: 'mono' }, user.login || '—'),
                 h('dt', {}, 'ФИО'), h('dd', {}, user.full_name || '—'),
-                h('dt', {}, 'Роль'), h('dd', {}, roleLabel(user.role) +
-                    (state.authEnabled ? '' : ' · локальный режим без аутентификации')),
+                h('dt', {}, 'Должность'), h('dd', {}, roleLabel(user.role)),
+                user.department ? h('dt', {}, 'Отдел') : null,
+                user.department ? h('dd', {}, user.department +
+                    (user.team ? ', ' + user.team : '')) : null,
                 h('dt', {}, 'Права'), h('dd', { class: 'small muted' }, rolePowers(user.role))));
 
         const cards = h('div', { class: 'stat-cards' },
-            statCard(data.cases || 0, 'кейсов создано вами'),
+            statCard(data.cases || 0, 'писем зарегистрировано вами'),
             statCard(reports.total || 0, 'версий отчётов',
                 'утверждено: ' + (reports.approved || 0)),
             statCard(edits.pairs || 0, 'пар «черновик → финал»',
@@ -5037,8 +5357,11 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('h1', {}, 'Личный кабинет'),
-                h('button', { class: 'btn', onclick: () => renderRoute(state.route) }, 'Обновить')),
+                h('div', { class: 'page-note' }, 'Ваши данные, пароль и оформление'),
+                h('div', { class: 'page-head-actions' },
+                    h('button', {
+                        class: 'btn', onclick: () => renderRoute(state.route),
+                    }, 'Обновить'))),
             card,
             cards,
             passwordCard(),
@@ -5046,12 +5369,19 @@
         ]);
     }
 
+    /* Что даёт должность. Формулировки совпадают с ROLE_NOTES на сервере:
+       если разойдутся, человек прочитает в кабинете одно, а получит другое. */
     function rolePowers(role) {
+        const base = 'письма и отчёты, пополнение библиотеки, помощник';
+        const admin = base + '; сотрудники, удаление документов, журнал действий';
         return {
-            viewer: 'просмотр кейсов, отчётов, библиотеки и метрик, поиск по литературе',
-            engineer: 'создание кейсов, генерация, правка и утверждение отчётов, загрузка документов',
-            admin: 'всё перечисленное, плюс удаление кейсов и документов и журнал действий',
-        }[role] || '—';
+            owner: admin + '; полные права без ограничений',
+            head: admin,
+            deputy: admin,
+            lead: admin,
+            senior: base + '; утверждение отчётов',
+            engineer: base,
+        }[role] || base;
     }
 
     function passwordCard() {

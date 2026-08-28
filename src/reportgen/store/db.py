@@ -159,6 +159,22 @@ class Database:
         if self._schema_is_current():
             return
         with self._lock:
+            # Колонки добавляются дважды, и оба раза по делу.
+            #
+            # ДО схемы — ради уже работающей базы. В schema.sql есть индексы
+            # по новым полям письма (idx_cases_assignee, idx_cases_deadline),
+            # а CREATE TABLE стоит с IF NOT EXISTS: существующая таблица не
+            # пересоздаётся, колонки в ней ещё нет, и CREATE INDEX падает с
+            # «no such column». База после этого не открывается вообще — ни
+            # интерфейсом, ни командной строкой.
+            #
+            # ПОСЛЕ схемы — ради новой базы. Часть колонок (documents.domain,
+            # documents.status и другие поздние добавления) в schema.sql не
+            # описана и живёт только в COLUMN_MIGRATIONS: на пустой базе
+            # первый проход пропускает их, потому что таблиц ещё нет.
+            #
+            # Оба прохода идемпотентны: колонка на месте — ничего не делаем.
+            self._ensure_columns()
             self.connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
             self._ensure_columns()
             self._rename_domains()
@@ -232,29 +248,48 @@ class Database:
         columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(users)")}
         if "role" not in columns:
             return
+        # Запись «local» — служебная, под ней нельзя войти: делать её
+        # создателем системы значит оставить систему без живого владельца.
         first_admin = self.connection.execute(
-            "SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1"
+            "SELECT id FROM users WHERE role = 'admin' AND login <> 'local' "
+            "ORDER BY id LIMIT 1"
         ).fetchone()
         if first_admin is not None:
             self.connection.execute(
                 "UPDATE users SET role = 'owner' WHERE id = ?", (first_admin["id"],)
             )
+        moved = 0
         for old_role, new_role in ROLE_RENAMES:
             stale = self.connection.execute(
                 "SELECT 1 FROM users WHERE role = ? LIMIT 1", (old_role,)
             ).fetchone()
             if stale is None:
                 continue
-            self.connection.execute(
+            cursor = self.connection.execute(
                 "UPDATE users SET role = ? WHERE role = ?", (new_role, old_role)
+            )
+            moved += cursor.rowcount or 0
+        if moved or first_admin is not None:
+            # Отметка в базе: через год иначе не объяснить, почему бывшие
+            # администраторы стали начальниками отдела.
+            self.connection.execute(
+                "INSERT INTO meta(key, value) VALUES('roles_migrated_at', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (utcnow(),),
             )
 
     def _ensure_columns(self) -> None:
-        """Добавляет недостающие колонки в уже существующие таблицы."""
+        """Добавляет недостающие колонки в уже существующие таблицы.
+
+        Таблицы, которых ещё нет, пропускаем молча: их создаст schema.sql
+        сразу с нужными колонками. Это и есть случай новой базы.
+        """
         for table, column, declaration in COLUMN_MIGRATIONS:
             existing = {
                 row["name"] for row in self.connection.execute(f"PRAGMA table_info({table})")
             }
+            if not existing:
+                continue
             if column not in existing:
                 self.connection.execute(
                     f"ALTER TABLE {table} ADD COLUMN {column} {declaration}"

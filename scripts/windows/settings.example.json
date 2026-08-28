@@ -29,6 +29,15 @@
   "retrieval_candidates": 60,
   "retrieval_top_k": 8,
 
+  "assistant_top_k": 12,
+  "assistant_source_chars": 2200,
+  "assistant_context_chars": 26000,
+  "assistant_neighbours": 1,
+  "assistant_neighbour_top": 4,
+  "assistant_outlines": true,
+  "assistant_max_tokens": 4000,
+  "assistant_target_words": 500,
+
   "host": "127.0.0.1",
   "port": 8080,
   "auth_enabled": true,

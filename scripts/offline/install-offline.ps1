@@ -469,11 +469,11 @@ Step 'Администратор'
 $users = & $venvPython -m reportgen users 2>&1
 if ($LASTEXITCODE -ne 0 -or -not ($users | Where-Object { $_ -match '\S' })) {
     if ($Unattended) {
-        Note 'создайте администратора: reportgen useradd --login admin --role admin'
+        Note 'создайте администратора: reportgen useradd --login admin --role owner'
     } else {
         Write-Host 'Создайте администратора (пароль не короче 8 символов):' -ForegroundColor Yellow
         $login = Read-Host 'Логин'
-        if ($login) { & $venvPython -m reportgen useradd --login $login --role admin }
+        if ($login) { & $venvPython -m reportgen useradd --login $login --role owner }
     }
 } else {
     Ok 'пользователи уже заведены'

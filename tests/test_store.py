@@ -377,6 +377,59 @@ class UserRepoTests(StoreTestCase):
         self.assertGreater(made["head"].rank, made["lead"].rank)
         self.assertGreater(made["owner"].rank, made["head"].rank)
 
+    def test_old_base_opens_after_update(self):
+        """База прошлой версии должна открываться, а не падать при обновлении.
+
+        В schema.sql есть индексы по новым колонкам письма, а CREATE TABLE
+        стоит с IF NOT EXISTS: на работающей базе таблица не пересоздаётся,
+        колонки в ней ещё нет, и CREATE INDEX падал с «no such column».
+        База после этого не открывалась ни интерфейсом, ни командной строкой.
+        """
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+
+        from reportgen.store.db import Database
+
+        tmp = Path(tempfile.mkdtemp())
+        path = tmp / "staraya.db"
+        raw = sqlite3.connect(path)
+        raw.executescript("""
+            CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE users(
+                id INTEGER PRIMARY KEY, login TEXT NOT NULL UNIQUE,
+                full_name TEXT NOT NULL DEFAULT '',
+                role TEXT NOT NULL DEFAULT 'engineer', password_hash TEXT NOT NULL,
+                active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
+            CREATE TABLE cases(
+                id INTEGER PRIMARY KEY, case_id TEXT NOT NULL UNIQUE,
+                report_type TEXT NOT NULL, title TEXT NOT NULL DEFAULT '',
+                customer TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'new',
+                facts_json TEXT NOT NULL, facts_digest TEXT NOT NULL DEFAULT '',
+                created_by INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+            INSERT INTO meta VALUES('schema_version','3');
+            INSERT INTO users(login, role, password_hash, created_at)
+                VALUES('local','admin','x','2025-01-01');
+            INSERT INTO users(login, role, password_hash, created_at)
+                VALUES('petrov','admin','x','2025-01-02');
+            INSERT INTO cases(case_id, report_type, facts_json, created_at, updated_at)
+                VALUES('L-1','fault','{}','2025-01-01','2025-01-01');
+        """)
+        raw.commit()
+        raw.close()
+
+        database = Database(path)                  # раньше падало здесь
+        columns = {row["name"] for row in database.query("PRAGMA table_info(cases)")}
+        self.assertIn("assignee_id", columns)
+        self.assertIn("deadline", columns)
+        self.assertEqual("L-1", database.scalar("SELECT case_id FROM cases"))
+        # Служебная запись «local» не может стать создателем системы: под ней
+        # нельзя войти, и система осталась бы без живого владельца.
+        roles = {row["login"]: row["role"] for row in database.query("SELECT login, role FROM users")}
+        self.assertEqual("owner", roles["petrov"])
+        self.assertNotEqual("owner", roles["local"])
+        database.close()
+
     def test_legacy_roles_are_migrated(self):
         # На уже работающей установке роли viewer/engineer/admin должны
         # превратиться в должности, иначе сотрудник теряет доступ целиком.
@@ -477,11 +530,10 @@ class DocumentRepoTests(StoreTestCase):
     def test_upsert_inserts_new_document(self):
         document = self.repos.documents.upsert(
             "standards/gost-r-52", "standards", "ГОСТ Р 52", "/library/gost.md",
-            "b" * 64, confidentiality="public", meta={"year": "2019"},
+            "b" * 64, meta={"year": "2019"},
         )
         self.assertEqual(document.doc_id, "standards/gost-r-52")
         self.assertEqual(document.doc_type, "standards")
-        self.assertEqual(document.confidentiality, "public")
         self.assertEqual(document.meta, {"year": "2019"})
         self.assertEqual(document.chunk_count, 0)
         self.assertIsNone(document.indexed_at)
@@ -492,14 +544,13 @@ class DocumentRepoTests(StoreTestCase):
         )
         second = self.repos.documents.upsert(
             "literature/kniga", "standards", "Новое название", "/new.md", "c" * 64,
-            confidentiality="nda", meta={"vendor": "ACME"},
+            meta={"vendor": "ACME"},
         )
         self.assertEqual(first.id, second.id)
         self.assertEqual(second.title, "Новое название")
         self.assertEqual(second.doc_type, "standards")
         self.assertEqual(second.source_path, "/new.md")
         self.assertEqual(second.sha256, "c" * 64)
-        self.assertEqual(second.confidentiality, "nda")
         self.assertEqual(second.meta, {"vendor": "ACME"})
         self.assertEqual(second.created_at, first.created_at)
         self.assertEqual(len(self.repos.documents.list()), 1)

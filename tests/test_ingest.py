@@ -449,13 +449,11 @@ class IngestFileTests(TempCase):
         self.assertEqual((result.updated, result.skipped), (1, 0))
         self.assertGreater(result.chunks, 0)
 
-    def test_explicit_doc_type_and_confidentiality(self):
+    def test_explicit_doc_type_wins_over_directory(self):
         path = self.write("прочее/регламент.md", "# Регламент\n\n" + LONG_TEXT)
-        ingest_path(self.repos, path, root=self.tmp,
-                    doc_type="regulations", confidentiality="nda")
+        ingest_path(self.repos, path, root=self.tmp, doc_type="regulations")
         document = self.repos.documents.by_doc_id("прочее/регламент")
         self.assertEqual(document.doc_type, "regulations")
-        self.assertEqual(document.confidentiality, "nda")
         self.assertEqual(self.repos.chunks.all_chunks()[0].doc_type, "regulations")
 
     def test_broken_file_is_counted_as_failed(self):
