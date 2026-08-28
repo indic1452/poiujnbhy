@@ -51,7 +51,11 @@ class Settings:
     llm_base_url: str = "http://127.0.0.1:8000/v1"
     llm_model: str = "local-model"
     llm_api_key: str = "not-needed"
-    llm_timeout: float = 600.0
+    #: Сколько ждать ответа модели. 900 с — столько же стоит в образце
+    #: настроек, который копирует установщик: развёрнутый разбор на 4000
+    #: токенов при 20 токенах в секунду занимает больше трёх минут, а на
+    #: холодном старте с догрузкой весов — заметно больше.
+    llm_timeout: float = 900.0
     llm_seed: int | None = 0
     llm_temperature: float = 0.2
     llm_parallel_sections: int = 2

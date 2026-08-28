@@ -515,7 +515,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_ingest.add_argument(
         "--reset", action="store_true",
         help="стереть библиотеку целиком и загрузить заново "
-             "(обращения, отчёты и сотрудники не трогаются)",
+             "(письма, отчёты и сотрудники не трогаются)",
     )
     p_ingest.add_argument(
         "--doc-type", default=None,
