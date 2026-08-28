@@ -248,6 +248,13 @@ def cmd_ingest(args: argparse.Namespace) -> int:
                   file=sys.stderr)
             return 1
 
+    # Загрузка с нуля: сначала стираем всё, что было. Иначе документы,
+    # удалённые с диска, остаются в базе, а изменившиеся правила нарезки
+    # применяются только к новым файлам.
+    if getattr(args, "reset", False):
+        removed = repos.documents.clear_all()
+        print(f"библиотека очищена: удалено документов {removed}")
+
     if target.is_dir():
         result = ingest_directory(repos, target, force=args.force, progress=print,
                                   doc_type=doc_type, domain=domain,
@@ -497,6 +504,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_ingest = sub.add_parser("ingest", help="загрузить документы библиотеки в базу")
     p_ingest.add_argument("path", nargs="?", default=None, help="файл или каталог")
     p_ingest.add_argument("--force", action="store_true", help="переиндексировать даже без изменений")
+    p_ingest.add_argument(
+        "--reset", action="store_true",
+        help="стереть библиотеку целиком и загрузить заново "
+             "(обращения, отчёты и сотрудники не трогаются)",
+    )
     p_ingest.add_argument(
         "--doc-type", default=None,
         help="тип для всех файлов: literature, standards, datasheets, reports, regulations. "

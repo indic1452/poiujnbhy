@@ -22,8 +22,15 @@
     способ ускорить загрузку большой библиотеки.
 .PARAMETER Force
     Переиндексировать всё заново, даже неизменившиеся файлы.
+.PARAMETER Fresh
+    Загрузка с нуля: библиотека в базе стирается целиком и собирается заново
+    по тому, что сейчас лежит на диске. Нужно, когда документы удаляли или
+    переносили, а база помнит старое. Файлы на диске не трогаются, обращения,
+    отчёты и учётные записи тоже. Скрипт спросит подтверждение.
 .PARAMETER NoEmbed
     Не строить векторы (быстрее, но смысловой поиск работать не будет).
+.EXAMPLE
+    .\load-library.ps1 -Fresh -Jobs 12
 .EXAMPLE
     .\load-library.ps1
 .EXAMPLE
@@ -36,6 +43,7 @@ param(
     [string]$Domain = '',
     [int]$Jobs = 0,
     [switch]$Force,
+    [switch]$Fresh,
     [switch]$NoEmbed
 )
 
@@ -74,8 +82,19 @@ Write-Step 'Поддержка форматов на этой машине'
 Invoke-Reportgen formats
 
 # ---------------------------------------------------------------- разбор ---
+if ($Fresh) {
+    Write-Warn2 'ЗАГРУЗКА С НУЛЯ: библиотека в базе будет стёрта и собрана заново.'
+    Write-Warn2 'Файлы на диске не трогаются. Обращения, отчёты и сотрудники тоже.'
+    $answer = Read-Host 'Продолжить? (да/нет)'
+    if ($answer -notmatch '^(да|д|yes|y)$') {
+        Write-Host 'Отменено.'
+        exit 0
+    }
+}
+
 Write-Step 'Разбор документов (сканы идут медленно, это нормально)'
 $arguments = @('ingest', $library)
+if ($Fresh)   { $arguments += '--reset' }
 if ($Force)   { $arguments += '--force' }
 if ($Jobs)    { $arguments += @('--jobs', $Jobs) }
 if ($DocType) { $arguments += @('--doc-type', $DocType) }

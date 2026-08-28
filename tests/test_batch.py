@@ -392,3 +392,67 @@ class ReportSplitTests(BatchCase):
         self.build()
         result = self.load()
         self.assertEqual(result.failures + result.notes, result.warnings)
+
+
+class FreshLoadTests(BatchCase):
+    """Загрузка с нуля: старое стирается, новое собирается заново.
+
+    Обычный повтор пропускает неизменившееся и не помнит про удалённые
+    файлы — база копит то, чего на диске уже нет. Для «переиндексировать всё
+    начисто» нужна отдельная команда.
+    """
+
+    def test_library_is_wiped(self):
+        self.put("standards/а.md", "А")
+        self.put("standards/б.md", "Б")
+        self.load()
+        self.assertEqual(2, len(self.repos.documents.list()))
+
+        removed = self.repos.documents.clear_all()
+        self.assertEqual(2, removed)
+        self.assertEqual([], self.repos.documents.list())
+        self.assertEqual(0, self.repos.chunks.count())
+        self.assertEqual(0, self.repos.vectors.count())
+
+    def test_deleted_file_disappears_completely(self):
+        # Обычный повтор оставляет его в архиве, загрузка с нуля — убирает.
+        self.put("standards/а.md", "А")
+        self.put("standards/б.md", "Б")
+        self.load()
+        (self.tmp / "standards" / "б.md").unlink()
+
+        self.repos.documents.clear_all()
+        self.load()
+        self.assertEqual(["standards/а"], self.ids())
+
+    def test_people_and_cases_are_untouched(self):
+        """Стирается только библиотека.
+
+        Обращения, отчёты и учётные записи живут в других таблицах: терять их
+        при переиндексации библиотеки недопустимо.
+        """
+        self.put("standards/а.md", "А")
+        self.load()
+        user = self.repos.users.create("ivanov", "parol12345", "Иванов И.И.", "engineer")
+
+        self.repos.documents.clear_all()
+
+        self.assertEqual([], self.repos.documents.list())
+        self.assertIsNotNone(self.repos.users.by_login("ivanov"))
+        self.assertEqual("Иванов И.И.", self.repos.users.by_login("ivanov").full_name)
+        self.assertEqual(user.id, self.repos.users.by_login("ivanov").id)
+
+    def test_cli_flag_exists(self):
+        from reportgen.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["ingest", "--reset"])
+        self.assertTrue(args.reset)
+
+    def test_script_has_the_switch(self):
+        script = (Path(__file__).resolve().parents[1] / "scripts" / "windows"
+                  / "load-library.ps1").read_text(encoding="utf-8")
+        self.assertIn("[switch]$Fresh", script)
+        self.assertIn("--reset", script)
+        # Стирание библиотеки спрашивает подтверждение.
+        self.assertIn("Read-Host", script)

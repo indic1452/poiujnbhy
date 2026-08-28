@@ -326,6 +326,22 @@ class DocumentRepo:
                 (chunk_count, utcnow(), doc_id),
             )
 
+    def clear_all(self) -> int:
+        """Стереть библиотеку целиком: документы, фрагменты, векторы.
+
+        Нужно для загрузки с нуля. Обращения, отчёты, правки инженеров и
+        учётные записи НЕ трогаются: они живут в других таблицах и к
+        библиотеке отношения не имеют. Ссылки на источники в уже готовых
+        отчётах тоже целы — цитаты хранятся в самом отчёте, в приложении.
+        """
+        removed = int(self.db.scalar("SELECT count(*) FROM documents") or 0)
+        with self.db.transaction() as connection:
+            connection.execute("DELETE FROM embeddings")
+            connection.execute("DELETE FROM chunks_fts")
+            connection.execute("DELETE FROM chunks")
+            connection.execute("DELETE FROM documents")
+        return removed
+
     def delete(self, doc_id: str) -> None:
         document = self.by_doc_id(doc_id)
         if document is None:
