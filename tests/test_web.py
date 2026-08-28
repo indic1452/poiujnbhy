@@ -236,6 +236,35 @@ class FilenameTests(WebTestCase):
         self.assertNotIn("\n", header)
         header.encode("latin-1")  # заголовок обязан кодироваться без исключения
 
+    def test_slash_in_the_number_does_not_eat_the_beginning(self):
+        """«ВХ-2026/0423» — обычный входящий номер, а не путь.
+
+        От него оставалось «0423»: письма разных лет выгружались в один и
+        тот же файл и затирали друг друга в каталоге выгрузок.
+        """
+        from reportgen.web.api import _safe_name
+
+        self.assertEqual("ВХ-2026-0423", _safe_name("ВХ-2026/0423"))
+        self.assertNotEqual(_safe_name("ВХ-2026/0423"), _safe_name("ВХ-2025/0423"))
+
+    def test_path_traversal_still_cannot_escape(self):
+        from reportgen.web.api import _safe_name
+
+        for evil in ("../../etc/passwd", "..\\..\\windows\\system32",
+                     "/etc/shadow", "C:\\Windows\\win.ini"):
+            with self.subTest(evil=evil):
+                safe = _safe_name(evil)
+                self.assertNotIn("/", safe)
+                self.assertNotIn("\\", safe)
+
+    def test_name_is_never_empty(self):
+        from reportgen.web.api import _safe_name
+
+        # Пустое имя после чистки — тоже имя файла: выгрузка ушла бы
+        # в «-v1.docx» или вовсе в каталог.
+        self.assertTrue(_safe_name("..."))
+        self.assertTrue(_safe_name(""))
+
     def test_cyrillic_case_id_exports(self):
         facts = json.loads(json.dumps(CASE))
         facts["case_id"] = "ОБРАЩЕНИЕ-2024-118"
@@ -806,6 +835,38 @@ class LetterCardTests(WebTestCase):
         self.assertEqual(400, response.status_code)
         self.assertIn("отправител", response.json()["error"].lower())
 
+    def test_sender_given_at_registration_reaches_the_report(self):
+        """Номер из формы регистрации оставался только колонкой письма.
+
+        В шапку отчёта и в промпт модели он не попадал вовсе: там берётся
+        значение из факт-пакета, а в него номер не записывали. Правка
+        карточки (PATCH) синхронизировала оба места, регистрация — нет.
+        """
+        payload = dict(CASE)
+        response = self.client.post("/api/cases", json={
+            "report_type": payload["report_type"], "case_id": "SUP-ФОРМА-1",
+            "facts": {**payload, "case_id": "SUP-ФОРМА-1", "customer": ""},
+            "customer": "5150",
+        })
+        self.assertEqual(200, response.status_code, response.text)
+        case = response.json()["case"]
+        self.assertEqual("5150", case["customer"])
+        self.assertEqual("5150", case["facts"]["customer"])
+
+        report = self.client.post(f"/api/cases/{case['id']}/generate").json()["report"]
+        text = self.client.get(f"/api/reports/{report['id']}/export.md").text
+        self.assertIn("**Отправитель:** 5150", text)
+
+    def test_sender_in_the_fact_pack_wins_over_the_form(self):
+        payload = dict(CASE)
+        case = self.client.post("/api/cases", json={
+            "report_type": payload["report_type"], "case_id": "SUP-ФОРМА-2",
+            "facts": {**payload, "case_id": "SUP-ФОРМА-2", "customer": "1274"},
+            "customer": "5150",
+        }).json()["case"]
+        self.assertEqual("1274", case["customer"])
+        self.assertEqual("1274", case["facts"]["customer"])
+
     def test_sender_extra_spaces_are_trimmed(self):
         case = self.create_case()
         fresh = self.client.patch(f"/api/cases/{case['id']}",
@@ -848,6 +909,21 @@ class LetterCardTests(WebTestCase):
         fresh = self.client.get(f"/api/cases/{case['id']}").json()["case"]
         self.assertIsNone(fresh["assignee_id"])
         self.assertFalse(fresh["assignee_name"])
+
+    def test_card_edit_keeps_the_fact_pack_hash_in_step(self):
+        """Отправитель живёт и в факт-пакете — значит меняется и его хеш.
+
+        Запись шла прямо в базу, мимо update_facts: хеш оставался от
+        прежнего содержимого, а подписанные отчёты не перепроверялись.
+        """
+        from reportgen.facts import FactPack
+
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}", json={"customer": "3344"})
+        stored = self.repos.cases.get(case["id"])
+        self.assertEqual("3344", stored.facts["customer"])
+        self.assertEqual(FactPack.from_dict(dict(stored.facts)).digest(),
+                         stored.facts_digest)
 
     def test_unknown_assignee_is_refused(self):
         case = self.create_case()

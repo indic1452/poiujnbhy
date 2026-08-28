@@ -327,7 +327,7 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
                 raise ServiceError("исполнитель не найден или отключён", 400)
             fields["assignee_id"] = assignee.id
 
-    updated = repos.cases.update_card(case.id, **fields)
+    updated = _service(request).update_card(case, fields, user)
     repos.audit.log("case.update", user=user, object_type="case",
                     object_id=case.case_id, details=fields)
     return {"case": updated.to_dict() if updated else None}
@@ -1542,11 +1542,19 @@ _UNSAFE = re.compile(r"[^\w .()\-]", re.UNICODE)
 
 
 def _safe_name(name: str) -> str:
-    """Имя файла без путей и управляющих символов, пригодное для ФС и заголовков."""
-    name = unicodedata.normalize("NFC", name).replace("\\", "/").split("/")[-1]
+    """Имя файла без путей и управляющих символов, пригодное для ФС и заголовков.
+
+    Разделители пути заменяются, а не отсекаются вместе с началом имени.
+    Учётный номер вида «ВХ-2026/0423» — обычное делопроизводство, и от него
+    оставалось «0423»: два письма разных лет выгружались в один и тот же
+    файл и затирали друг друга в каталоге выгрузок.
+    """
+    name = unicodedata.normalize("NFC", name).replace("\\", "/").replace("/", "-")
     name = "".join(ch for ch in name if ch.isprintable())
-    name = _UNSAFE.sub("_", name).strip().strip(".")
-    return name[:120]
+    name = _UNSAFE.sub("_", name).strip().strip(".").strip()
+    # Пустое имя после чистки — тоже имя файла: без запасного значения
+    # выгрузка ушла бы в файл вида «-v1.docx» или вовсе в каталог.
+    return name[:120] or "документ"
 
 
 def _disposition(filename: str) -> str:

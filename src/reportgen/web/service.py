@@ -235,6 +235,17 @@ class ReportService:
         if self.repos.cases.by_case_id(case_id) is not None:
             raise ServiceError(f"письмо '{case_id}' уже зарегистрировано", 409)
 
+        # Отправителя берём из факт-пакета, а если его там нет — из формы:
+        # при регистрации письма факт-пакет обычно ещё пустой. Номер из формы
+        # кладём и в сам пакет: оттуда он попадает в шапку отчёта и в промпт
+        # модели. Раньше он оставался только колонкой письма, и отчёт выходил
+        # с прочерком вместо номера, хотя инженер его вводил. Правка карточки
+        # (PATCH) синхронизировала оба места, а регистрация — нет.
+        if not facts_customer(raw):
+            from_form = str(payload.get("customer", "")).strip()
+            if from_form:
+                raw["customer"] = from_form
+
         facts = _validate_facts(raw)
         case = self.repos.cases.create(
             case_id=case_id,
@@ -242,9 +253,7 @@ class ReportService:
             facts=raw,
             digest=facts.digest(),
             title=payload.get("title", ""),
-            # Заказчика берём из факт-пакета, а если его там нет — из формы:
-            # при регистрации письма факт-пакет обычно ещё пустой.
-            customer=facts.customer or str(payload.get("customer", "")).strip(),
+            customer=facts.customer,
             user_id=user.id if user else None,
             incoming_no=str(payload.get("incoming_no", "")).strip(),
             incoming_date=str(payload.get("incoming_date", "")).strip(),
@@ -278,6 +287,23 @@ class ReportService:
         updated = self.repos.cases.get(case.id)
         assert updated is not None
         return updated
+
+    def update_card(self, case: Case, fields: Dict[str, Any],
+                    user: User | None) -> Case | None:
+        """Правка карточки письма.
+
+        Отправитель живёт в двух местах — колонкой письма и полем
+        факт-пакета, откуда он попадает в шапку отчёта. Запись шла прямо в
+        базу, мимо :meth:`update_facts`: хеш пакета оставался от прежнего
+        содержимого, а подписанные отчёты не перепроверялись.
+        """
+        updated = self.repos.cases.update_card(case.id, **fields)
+        if updated is None or "customer" not in fields:
+            return updated
+        facts = _validate_facts(dict(updated.facts))
+        self.repos.cases.update_facts(case.id, dict(updated.facts), facts.digest())
+        self.revalidate_case(case.id)
+        return self.repos.cases.get(case.id)
 
     def revalidate_case(self, case_ref: int) -> int:
         """Перепроверить все отчёты кейса. Возвращает число снятых подписей."""
@@ -667,6 +693,11 @@ class ReportService:
 
 
 # ------------------------------------------------------------- служебное ---
+
+def facts_customer(raw: Dict[str, Any]) -> str:
+    """Номер отправителя, записанный в самом факт-пакете."""
+    return str(raw.get("customer") or "").strip()
+
 
 def _validate_facts(raw: Dict[str, Any]) -> FactPack:
     try:
