@@ -631,6 +631,43 @@ class UploadedReportTests(WebTestCase):
         self.assertIn("пустой", response.json()["error"])
 
 
+class StaleFactsTests(WebTestCase):
+    """Отчёт, собранный по прежней редакции исходных данных."""
+
+    def setUp(self):
+        super().setUp()
+        self.case = self.create_case()
+        self.report = self.generate(self.case["id"])
+
+    def test_fresh_report_is_not_marked_stale(self):
+        body = self.client.get(f"/api/reports/{self.report['id']}").json()["report"]
+        self.assertFalse(body["facts_stale"])
+
+    def test_report_built_before_the_facts_changed_says_so(self):
+        """Шапку документа правка фактов не переписывает — и правильно.
+
+        Пересборка сменила бы текст под подписью. Значит, расхождение надо
+        показывать: карточка письма уже показывает новые данные, а в самом
+        документе стоят прежние. Подтверждено сплошным разбором.
+        """
+        facts = dict(self.client.get(f"/api/cases/{self.case['id']}").json()["case"]["facts"])
+        facts["equipment"] = {**facts.get("equipment", {}), "модем": "МОДЕЛЬ-Б"}
+        self.assertEqual(200, self.client.put(f"/api/cases/{self.case['id']}/facts",
+                                              json={"facts": facts}).status_code)
+        body = self.client.get(f"/api/reports/{self.report['id']}").json()["report"]
+        self.assertTrue(body["facts_stale"], "расхождение с исходными данными не видно")
+
+    def test_a_handed_in_file_is_never_marked_stale(self):
+        # У сданного файлом отчёта факт-пакета за спиной нет: сверять нечего.
+        response = self.client.post(
+            "/api/reports/upload",
+            files={"file": ("Отчёт.md", b"# Otchet\n", "text/markdown")},
+            data={"case_id": "ВХ-СВЕЖ-1", "incoming_no": "ВХ-СВЕЖ-1"},
+        )
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertFalse(response.json()["report"]["facts_stale"])
+
+
 class ReportFlowTests(WebTestCase):
     def setUp(self):
         super().setUp()

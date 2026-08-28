@@ -154,6 +154,7 @@ def _report_or_404(request: Request, report_id: int) -> Report:
 def _report_payload(service, report: Report, *, with_markdown: bool = True) -> Dict[str, Any]:
     data = report.to_dict(with_markdown=with_markdown)
     data["sources"] = service.sources(report)
+    data["facts_stale"] = service.facts_are_stale(report)
     return data
 
 

@@ -516,6 +516,28 @@ class ReportService:
         assert updated is not None
         return updated
 
+    def facts_are_stale(self, report: Report) -> bool:
+        """Собран ли отчёт по прежней редакции исходных данных.
+
+        Шапка документа (обращение, номер группы, оборудование, дата) пишется
+        при сборке и остаётся в тексте как есть. Правка факт-пакета
+        перепроверяет числа в разделах, но шапку не переписывает — и правильно
+        делает: пересборка сменила бы текст под подписью. Значит, расхождение
+        надо не прятать, а показывать: карточка письма уже показывает новые
+        данные, а в документе стоят прежние.
+
+        Сверяем хеш факт-пакета, записанный при сборке, с нынешним.
+        """
+        if report.source == "uploaded":
+            return False
+        made_with = str(report.meta.get("facts_digest") or "")
+        if not made_with:
+            return False
+        case = self.repos.cases.get(report.case_ref)
+        if case is None or not case.facts_digest:
+            return False
+        return made_with != case.facts_digest
+
     def for_export(self, report: Report) -> Report:
         """Отчёт с шапкой, отвечающей его состоянию.
 
