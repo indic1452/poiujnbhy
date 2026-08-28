@@ -829,6 +829,26 @@ class LetterCardTests(WebTestCase):
         again = self.client.get(f"/api/cases/{case['id']}").json()["case"]
         self.assertEqual("4210", again["customer"])
 
+    def test_assignee_can_be_taken_off_the_letter(self):
+        """Снять исполнителя было нельзя вовсе.
+
+        API отвечал 200 и писал в журнал, а в базе оставался прежний
+        человек: пустое значение отбрасывалось вместе с непереданными
+        полями. При этом на дашборде есть плитка «без исполнителя», и
+        письмо в неё попасть не могло.
+        """
+        case = self.create_case()
+        user = self.client.get("/api/users").json()["items"][0]
+        self.client.patch(f"/api/cases/{case['id']}", json={"assignee_id": user["id"]})
+        self.assertEqual(user["id"],
+                         self.client.get(f"/api/cases/{case['id']}").json()["case"]["assignee_id"])
+
+        response = self.client.patch(f"/api/cases/{case['id']}", json={"assignee_id": None})
+        self.assertEqual(200, response.status_code, response.text)
+        fresh = self.client.get(f"/api/cases/{case['id']}").json()["case"]
+        self.assertIsNone(fresh["assignee_id"])
+        self.assertFalse(fresh["assignee_name"])
+
     def test_unknown_assignee_is_refused(self):
         case = self.create_case()
         response = self.client.patch(f"/api/cases/{case['id']}", json={"assignee_id": 9999})
@@ -1153,6 +1173,31 @@ class UserManagementTests(WebTestCase):
         me = self.client.get("/api/me").json()["user"]
         response = self.client.post(f"/api/users/{me['id']}/active", json={"active": False})
         self.assertEqual(409, response.status_code)
+
+    def test_junior_cannot_switch_a_senior_back_on(self):
+        """Старшинство действует в обе стороны.
+
+        Проверка стояла только на отключении, и начальник группы возвращал
+        доступ отключённому начальнику отдела. Чужая учётная запись
+        старшего по должности — не его дело ни в ту, ни в другую сторону.
+        """
+        head = [u for u in self.client.get("/api/users").json()["items"]
+                if u["role"] == "head"][0]
+        self.repos.users.set_active(head["id"], False)
+        self.login("gruppa")
+        response = self.client.post(f"/api/users/{head['id']}/active", json={"active": True})
+        self.assertEqual(403, response.status_code)
+        self.assertFalse(self.repos.users.get(head["id"]).active)
+
+    def test_junior_is_switched_back_on_as_before(self):
+        engineer = [u for u in self.client.get("/api/users").json()["items"]
+                    if u["role"] == "engineer"][0]
+        self.repos.users.set_active(engineer["id"], False)
+        self.login("gruppa")
+        response = self.client.post(f"/api/users/{engineer['id']}/active",
+                                    json={"active": True})
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertTrue(self.repos.users.get(engineer["id"]).active)
 
     def test_password_reset_closes_sessions(self):
         created = self.client.post("/api/users", json={

@@ -1261,11 +1261,16 @@ def set_user_active(request: Request, user_id: int) -> Dict[str, Any]:
     if user is None:
         raise ServiceError("сотрудник не найден", 404)
     active = bool(_body(request).get("active", True))
-    if not active:
-        if user.id == admin.id:
-            raise ServiceError("нельзя отключить самого себя", 409)
-        if not _may_manage(admin, user):
-            raise ServiceError("недостаточно прав, чтобы отключить этого сотрудника", 403)
+    if not active and user.id == admin.id:
+        raise ServiceError("нельзя отключить самого себя", 409)
+    # Старшинство проверяем в обе стороны. Раньше — только при отключении, и
+    # начальник группы возвращал доступ отключённому начальнику отдела: чужая
+    # учётная запись старшего по должности не его дело ни в ту, ни в другую
+    # сторону.
+    if not _may_manage(admin, user):
+        raise ServiceError(
+            "недостаточно прав: этот сотрудник не младше вас по должности", 403
+        )
     repos.users.set_active(user_id, active)
     if not active:
         repos.sessions.delete_for_user(user_id)

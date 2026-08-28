@@ -783,11 +783,20 @@ class CaseRepo:
         """
         allowed = ("title", "customer", "incoming_no", "incoming_date",
                    "deadline", "priority", "assignee_id", "note", "status")
+        # Единственная колонка, где пусто — это значение, а не «не передано».
+        # Снять исполнителя с письма было нельзя вовсе: None отбрасывался
+        # вместе с непереданными полями, API отвечал 200 и писал в журнал, а
+        # в базе оставался прежний человек.
+        nullable = ("assignee_id",)
         parts, values = [], []
         for name in allowed:
-            if name in fields and fields[name] is not None:
-                parts.append(f"{name} = ?")
-                values.append(fields[name])
+            if name not in fields:
+                continue
+            value = fields[name]
+            if value is None and name not in nullable:
+                continue
+            parts.append(f"{name} = ?")
+            values.append(value)
         if not parts:
             return self.get(case_ref)
 
