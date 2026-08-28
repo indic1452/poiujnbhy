@@ -2119,16 +2119,31 @@ body.login-page {
     background: #060b14;
 }
 
-.sky {
+.sky-photo {
     position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
     z-index: 0;
-    /* Сцена нарисована для 16:9. На других пропорциях её обрезает по краям
-       атрибут preserveAspectRatio="slice" в самой разметке: object-fit тут
-       не работает — встроенный <svg> не замещаемый элемент. */
     pointer-events: none;
+}
+
+/* Кадр снят для 16:9. На других пропорциях обрезаем по большей стороне:
+   кромка Земли внизу остаётся кромкой Земли. */
+.sky-photo {
+    object-fit: cover;
+    object-position: center;
+}
+
+/* Лёгкое затемнение поверх снимка: светлые облака под карточкой входа
+   съедают контраст белого текста. */
+body.login-page::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(70% 70% at 42% 40%, rgba(4, 8, 14, .18), rgba(4, 8, 14, .58));
 }
 
 .login-shell {

@@ -283,6 +283,19 @@ def _install_static(app: FastAPI) -> None:
             return FileResponse(logo)
         return JSONResponse({"error": "логотип не задан"}, status_code=404)
 
+    @app.get("/brand/login-image", include_in_schema=False)
+    def brand_login_image() -> Any:
+        """Фон окна входа: свой файл, а если его нет — кадр из поставки.
+
+        Отдаём кадр по умолчанию, а не 404: страница входа тогда просто
+        показывает картинку, без проверок в браузере и без красной строки
+        в консоли на каждой загрузке.
+        """
+        image = app.state.settings.brand_login_image
+        if image and Path(image).is_file():
+            return FileResponse(image)
+        return FileResponse(STATIC_DIR / "login-bg.jpg")
+
     @app.get("/favicon.ico", include_in_schema=False)
     def favicon() -> Any:
         icon = STATIC_DIR / "favicon.ico"

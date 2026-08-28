@@ -633,6 +633,192 @@ class DomainReferenceTests(WebTestCase):
         self.assertIn("misc", {item["id"] for item in answer["items"]})
 
 
+class LetterCardTests(WebTestCase):
+    """Письмо: входящий номер, срок, исполнитель, состояние."""
+
+    def engineer_id(self):
+        return self.repos.users.by_login("engineer").id
+
+    def test_registration_takes_letter_fields(self):
+        payload = dict(CASE)
+        response = self.client.post("/api/cases", json={
+            "report_type": payload["report_type"], "case_id": payload["case_id"],
+            "facts": payload, "title": "Помеха в стволе",
+            "incoming_no": "ВХ-2026-0412", "incoming_date": "2026-08-20",
+            "deadline": "2026-09-01", "priority": "urgent",
+            "assignee_id": self.engineer_id(),
+        })
+        self.assertEqual(200, response.status_code, response.text)
+        case = response.json()["case"]
+        self.assertEqual("ВХ-2026-0412", case["incoming_no"])
+        self.assertEqual("2026-09-01", case["deadline"])
+        self.assertEqual("urgent", case["priority"])
+        self.assertEqual(self.engineer_id(), case["assignee_id"])
+
+    def test_card_is_editable(self):
+        case = self.create_case()
+        response = self.client.patch(f"/api/cases/{case['id']}", json={
+            "deadline": "2026-09-15", "assignee_id": self.engineer_id(),
+            "priority": "high", "status": "review", "note": "запросили уточнение",
+        })
+        self.assertEqual(200, response.status_code, response.text)
+        fresh = response.json()["case"]
+        self.assertEqual("2026-09-15", fresh["deadline"])
+        self.assertEqual("review", fresh["status"])
+        self.assertEqual("Инженеров И. И.", fresh["assignee_name"])
+
+    def test_bad_date_is_refused_with_a_readable_reason(self):
+        # Инженер должен прочитать, в каком виде нужна дата, а не «422».
+        case = self.create_case()
+        for bad, expected in (("вчера", "ГГГГ-ММ-ДД"),
+                              ("01.09.2026", "ГГГГ-ММ-ДД"),
+                              ("2026-13-40", "не существует")):
+            with self.subTest(value=bad):
+                response = self.client.patch(f"/api/cases/{case['id']}",
+                                             json={"deadline": bad})
+                self.assertEqual(400, response.status_code)
+                self.assertIn(expected, response.json()["error"])
+                self.assertIn("deadline", response.json()["error"])
+
+    def test_empty_deadline_clears_it(self):
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}", json={"deadline": "2026-09-01"})
+        fresh = self.client.patch(f"/api/cases/{case['id']}",
+                                  json={"deadline": ""}).json()["case"]
+        self.assertEqual("", fresh["deadline"])
+
+    def test_unknown_assignee_is_refused(self):
+        case = self.create_case()
+        response = self.client.patch(f"/api/cases/{case['id']}", json={"assignee_id": 9999})
+        self.assertEqual(400, response.status_code)
+
+    def test_disabled_employee_cannot_be_assigned(self):
+        # Отключённому сотруднику письмо не поручают: он не войдёт в систему.
+        case = self.create_case()
+        victim = self.repos.users.by_login("engineer")
+        self.repos.users.set_active(victim.id, False)
+        response = self.client.patch(f"/api/cases/{case['id']}",
+                                     json={"assignee_id": victim.id})
+        self.assertEqual(400, response.status_code)
+
+    def test_open_and_overdue_filters(self):
+        early = self.create_case()
+        self.client.patch(f"/api/cases/{early['id']}", json={"deadline": "2000-01-01"})
+        body = self.client.get("/api/cases", params={"overdue": "true"}).json()
+        self.assertEqual([early["case_id"]], [item["case_id"] for item in body["items"]])
+        self.assertEqual(1, body["overdue"])
+        # Отправленное письмо просроченным не считается.
+        self.client.patch(f"/api/cases/{early['id']}", json={"status": "approved"})
+        body = self.client.get("/api/cases", params={"overdue": "true"}).json()
+        self.assertEqual([], body["items"])
+        self.assertEqual(0, body["overdue"])
+
+    def test_search_is_case_insensitive_for_russian(self):
+        # Встроенный lower() в SQLite знает только латиницу: без своей
+        # функции поиск по русскому названию зависел от регистра.
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}", json={"title": "Помеха в стволе"})
+        for query in ("помеха", "ПОМЕХА", "Помеха", "стволе"):
+            with self.subTest(query=query):
+                body = self.client.get("/api/cases", params={"q": query}).json()
+                self.assertEqual(1, len(body["items"]), f"не нашлось по «{query}»")
+
+    def test_overdue_first_in_the_list(self):
+        # Отделу нужны горящие письма наверху, а не те, которых недавно
+        # коснулись: сортировка по дате правки показывала обратное.
+        far = self.create_case()
+        near = self.create_case({**CASE, "case_id": "SUP-2"})
+        self.client.patch(f"/api/cases/{far['id']}", json={"deadline": "2030-01-01"})
+        self.client.patch(f"/api/cases/{near['id']}", json={"deadline": "2000-01-01"})
+        items = self.client.get("/api/cases").json()["items"]
+        self.assertEqual(near["case_id"], items[0]["case_id"])
+
+
+class BoardTests(WebTestCase):
+    """Дашборд: нагрузка, сроки, дежурство, движение за период."""
+
+    def setUp(self):
+        super().setUp()
+        self.engineer = self.repos.users.by_login("engineer")
+
+    def test_board_counts_open_overdue_and_unassigned(self):
+        mine = self.create_case()
+        self.client.patch(f"/api/cases/{mine['id']}", json={
+            "deadline": "2000-01-01", "assignee_id": self.engineer.id})
+        self.create_case({**CASE, "case_id": "SUP-2"})      # без исполнителя
+
+        body = self.client.get("/api/board").json()
+        self.assertEqual(2, body["totals"]["open"])
+        self.assertEqual(1, body["totals"]["overdue"])
+        self.assertEqual(1, body["totals"]["unassigned"])
+        person = [item for item in body["people"] if item["id"] == self.engineer.id][0]
+        self.assertEqual(1, person["open"])
+        self.assertEqual(1, person["late"])
+        self.assertEqual("2000-01-01", person["next_deadline"])
+
+    def test_service_record_is_not_counted_as_staff(self):
+        logins = {item["login"] for item in self.client.get("/api/board").json()["people"]}
+        self.assertNotIn("local", logins)
+
+    def test_duty_and_absence_show_up(self):
+        today = self.client.get("/api/board").json()["today"]
+        self.assertEqual(200, self.client.post("/api/absences", json={
+            "user_id": self.engineer.id, "kind": "duty",
+            "date_from": today, "date_to": today}).status_code)
+        body = self.client.get("/api/board").json()
+        self.assertEqual(1, body["totals"]["on_duty"])
+        person = [item for item in body["people"] if item["id"] == self.engineer.id][0]
+        self.assertTrue(person["on_duty"])
+        self.assertEqual("", person["away"], "дежурство — это не отсутствие")
+
+    def test_vacation_marks_person_as_away(self):
+        today = self.client.get("/api/board").json()["today"]
+        self.client.post("/api/absences", json={
+            "user_id": self.engineer.id, "kind": "vacation",
+            "date_from": today, "date_to": "2099-01-01"})
+        body = self.client.get("/api/board").json()
+        self.assertEqual(1, body["totals"]["away"])
+        person = [item for item in body["people"] if item["id"] == self.engineer.id][0]
+        self.assertEqual("vacation", person["away"])
+        self.assertEqual("отпуск", person["away_title"])
+
+    def test_absence_needs_admin_rights(self):
+        today = self.client.get("/api/board").json()["today"]
+        self.login("engineer")
+        response = self.client.post("/api/absences", json={
+            "user_id": self.engineer.id, "kind": "duty",
+            "date_from": today, "date_to": today})
+        self.assertEqual(403, response.status_code)
+
+    def test_reversed_dates_are_refused(self):
+        response = self.client.post("/api/absences", json={
+            "user_id": self.engineer.id, "kind": "vacation",
+            "date_from": "2026-09-10", "date_to": "2026-09-01"})
+        self.assertEqual(400, response.status_code)
+
+    def test_unknown_kind_is_refused(self):
+        response = self.client.post("/api/absences", json={
+            "user_id": self.engineer.id, "kind": "прогул",
+            "date_from": "2026-09-01", "date_to": "2026-09-02"})
+        self.assertEqual(400, response.status_code)
+
+    def test_counts_do_not_stop_at_the_page_limit(self):
+        # Счётчик просрочек раньше мерил длину выборки в 500 писем: на
+        # пятьсот первом он замирал и показывал неправду.
+        for index in range(12):
+            case = self.create_case({**CASE, "case_id": f"SUP-{index}"})
+            self.repos.cases.update_card(case["id"], deadline="2000-01-01")
+        body = self.client.get("/api/board").json()
+        self.assertEqual(12, body["totals"]["overdue"])
+        self.assertLessEqual(len(body["overdue"]), 20, "список для показа должен быть коротким")
+
+    def test_movement_counts_the_period(self):
+        self.create_case()
+        body = self.client.get("/api/board", params={"days": 30}).json()
+        self.assertEqual(1, body["movement"]["came"])
+        self.assertIn("since", body["movement"])
+
+
 class StatsTests(WebTestCase):
     def test_stats_shape(self):
         case = self.create_case()
@@ -818,6 +1004,48 @@ class UserManagementTests(WebTestCase):
         response = self.client.post(f"/api/users/{created['id']}/password",
                                     json={"password": "новыйпароль1"})
         self.assertEqual(200, response.status_code)
+
+
+class LoginBackgroundTests(WebTestCase):
+    """Фон окна входа: кадр из поставки и своя фотография вместо него."""
+
+    def test_default_image_is_served(self):
+        # Инженер просил не рисованную заставку. Кадр лежит в поставке, чтобы
+        # изолированная машина ничего не скачивала.
+        response = self.client.get("/brand/login-image")
+        self.assertEqual(200, response.status_code)
+        self.assertTrue(response.headers["content-type"].startswith("image/"))
+        self.assertGreater(len(response.content), 20_000, "кадр подозрительно мал")
+
+    def test_own_photo_wins(self):
+        own = self.tmp / "login-bg.jpg"
+        own.write_bytes(b"\xff\xd8\xff" + "своя фотография".encode("utf-8") * 100)
+        self.app.state.settings.brand_login_image = own
+        response = self.client.get("/brand/login-image")
+        self.assertEqual(200, response.status_code)
+        self.assertIn("своя фотография".encode("utf-8"), response.content)
+
+    def test_photo_is_found_next_to_the_settings_file(self):
+        # Путь у всех разный, а имя файла одно: в настройки лезть не надо.
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from reportgen.config import Settings
+
+        folder = Path(tempfile.mkdtemp())
+        (folder / "settings.json").write_text(json.dumps({"port": 8080}), encoding="utf-8")
+        (folder / "login-bg.jpg").write_bytes(b"\xff\xd8\xff")
+        settings = Settings.load(folder / "settings.json")
+        self.assertEqual(folder / "login-bg.jpg", settings.brand_login_image)
+
+    def test_login_page_does_not_probe_for_a_missing_image(self):
+        # Страница просит один адрес, который всегда отвечает: иначе в
+        # консоли браузера на каждой загрузке краснела строка про 404.
+        page = (ROOT / "src" / "reportgen" / "web" / "static" / "login.html").read_text(
+            encoding="utf-8")
+        self.assertIn('src="/brand/login-image"', page)
+        self.assertNotIn("new Image()", page)
 
 
 class InterfaceCopyTests(unittest.TestCase):

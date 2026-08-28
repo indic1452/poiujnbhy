@@ -138,6 +138,14 @@ class Settings:
     brand_subtitle: str = "Подготовка технических отчётов"
     brand_accent: str = "#15507e"
     brand_logo: Path | None = None
+    #: Фон окна входа: свой файл JPG или PNG. Задать можно явно, но обычно
+    #: достаточно положить файл рядом с settings.json под именем
+    #: login-bg.jpg (или .png) — он подхватится сам.
+    #:
+    #: Зачем: рисованная заставка нравится не всем, а изолированная машина
+    #: ничего не скачает. Снимок Земли из космоса берут на онлайн-компьютере
+    #: и приносят вместе с остальной сборкой — тем же путём, что и модели.
+    brand_login_image: Path | None = None
     report_footer: str = ""
 
     # -- веб ---------------------------------------------------------------
@@ -152,7 +160,7 @@ class Settings:
         for name in ("data_dir", "db_path", "library_dir", "upload_dir", "export_dir",
                      "templates_dir", "glossary_path", "domains_path", "terms_path",
                      "docx_template",
-                     "brand_logo"):
+                     "brand_logo", "brand_login_image"):
             value = getattr(self, name)
             if value is not None and not isinstance(value, Path):
                 setattr(self, name, Path(value))
@@ -182,7 +190,11 @@ class Settings:
                 raw[name] = env_value
 
         raw.update(overrides)
-        return cls(**{name: _coerce(name, value, types) for name, value in raw.items() if name in types})
+        settings = cls(**{name: _coerce(name, value, types)
+                          for name, value in raw.items() if name in types})
+        if settings.brand_login_image is None and config_path:
+            settings.brand_login_image = _find_login_image(Path(config_path).parent)
+        return settings
 
     def ensure_dirs(self) -> None:
         for directory in (self.data_dir, self.library_dir, self.upload_dir, self.export_dir):
@@ -196,6 +208,25 @@ class Settings:
         """Настройки без секретов — их можно отдавать в интерфейс."""
         hidden = {"secret_key", "llm_api_key", "embed_api_key", "rerank_api_key"}
         return {k: v for k, v in self.to_dict().items() if k not in hidden}
+
+
+#: Имена, под которыми фон окна входа подхватывается сам — без правки
+#: настроек. Порядок задаёт приоритет.
+LOGIN_IMAGE_NAMES = ("login-bg.jpg", "login-bg.jpeg", "login-bg.png", "login-bg.webp")
+
+
+def _find_login_image(folder: Path) -> Path | None:
+    """Фон окна входа рядом с файлом настроек.
+
+    Инженер приносит снимок с онлайн-машины и кладёт файл в тот же каталог,
+    где лежит settings.json. Лезть в настройки при этом не нужно: путь всё
+    равно был бы у всех разный, а имя одно.
+    """
+    for name in LOGIN_IMAGE_NAMES:
+        candidate = folder / name
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 _TRUE = {"1", "true", "yes", "on", "да"}

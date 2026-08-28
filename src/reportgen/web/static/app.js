@@ -1429,6 +1429,8 @@
             },
         });
         let caseTouched = false;
+        const titleInput = h('input', { type: 'text', placeholder: 'о чём письмо' });
+        const incomingNo = h('input', { type: 'text', class: 'mono', placeholder: 'ВХ-2026-0412' });
         // Учётный номер по умолчанию повторяет входящий: два разных номера
         // руками никто вводить не станет, а поле обязательное.
         incomingNo.addEventListener('input', () => {
@@ -1436,8 +1438,6 @@
             caseInput.value = incomingNo.value.trim();
             if (!jsonTouched) fillSkeleton();
         });
-        const titleInput = h('input', { type: 'text', placeholder: 'о чём письмо' });
-        const incomingNo = h('input', { type: 'text', class: 'mono', placeholder: 'ВХ-2026-0412' });
         const incomingDate = h('input', { type: 'date', value: todayIso() });
         const customerInput = h('input', { type: 'text', placeholder: 'ПАО «Ростелеком»' });
         const deadlineInput = h('input', { type: 'date' });
