@@ -1325,9 +1325,14 @@ class AbsenceRepo:
             connection.execute("DELETE FROM absences WHERE id = ?", (absence_id,))
 
     def on_date(self, day: str, kind: str | None = None) -> List[Absence]:
-        """Кто отсутствует или дежурит в этот день. Границы включительно."""
+        """Кто отсутствует или дежурит в этот день. Границы включительно.
+
+        Только действующие сотрудники. Отпуск уволенного длится в базе до
+        своей даты и раньше считался как отсутствие: отдел вечно недосчитывался
+        человека, которого в нём давно нет.
+        """
         params: List[Any] = [day, day]
-        clause = " WHERE a.date_from <= ? AND a.date_to >= ?"
+        clause = " WHERE u.active = 1 AND a.date_from <= ? AND a.date_to >= ?"
         if kind:
             clause += " AND a.kind = ?"
             params.append(kind)
@@ -1424,18 +1429,19 @@ class BoardRepo:
             tuple(OPEN_CASE_STATUSES)) or 0)
 
     def movement(self, date_from: str) -> Dict[str, int]:
-        """Движение за период: сколько принято, отправлено, в работе."""
-        row = self.db.query_one(
-            "SELECT "
-            "  sum(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS came, "
-            "  sum(CASE WHEN updated_at >= ? AND status = 'approved' THEN 1 ELSE 0 END) AS sent "
-            "FROM cases",
-            (date_from, date_from),
-        )
-        return {
-            "came": int((row["came"] if row else 0) or 0),
-            "sent": int((row["sent"] if row else 0) or 0),
-        }
+        """Движение за период: сколько принято и сколько ответов отправлено.
+
+        «Отправлено» считается по времени утверждения отчёта, а не по
+        времени последней правки письма. По правке выходила неправда:
+        поправил примечание в письме прошлого года — и оно попадало в
+        отправленные за текущий месяц, задирая отчётность отдела.
+        """
+        came = int(self.db.scalar(
+            "SELECT count(*) FROM cases WHERE created_at >= ?", (date_from,)) or 0)
+        sent = int(self.db.scalar(
+            "SELECT count(DISTINCT case_ref) FROM reports "
+            "WHERE status = 'approved' AND approved_at >= ?", (date_from,)) or 0)
+        return {"came": came, "sent": sent}
 
     def reports_in_period(self, date_from: str) -> int:
         return int(self.db.scalar(

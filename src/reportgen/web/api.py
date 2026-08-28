@@ -1416,7 +1416,9 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
             "overdue": deadlines["late"],
             "soon": deadlines["soon"],
             "unassigned": repos.board.unassigned(),
-            "staff": len(people),
+            # В строю — действующие. Отключённый сотрудник попадает в список
+            # только пока за ним числятся письма, и в личный состав не идёт.
+            "staff": sum(1 for item in people if item["active"]),
             "away": len(away),
             "on_duty": len(duty),
         },

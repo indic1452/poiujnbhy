@@ -1099,10 +1099,59 @@ class BoardTests(WebTestCase):
         self.assertEqual(body["totals"]["open"],
                          by_people + body["totals"]["unassigned"])
 
+    def test_absence_of_a_disabled_employee_is_not_counted(self):
+        """Отпуск уволенного длится в базе до своей даты.
+
+        Он считался отсутствием, и отдел вечно недосчитывался человека,
+        которого в нём давно нет. В строю числятся действующие.
+        """
+        today = self.client.get("/api/board").json()["today"]
+        self.client.post("/api/absences", json={
+            "user_id": self.engineer.id, "kind": "vacation",
+            "date_from": today, "date_to": "2099-01-01"})
+        self.assertEqual(1, self.client.get("/api/board").json()["totals"]["away"])
+
+        self.repos.users.set_active(self.engineer.id, False)
+        body = self.client.get("/api/board").json()
+        self.assertEqual(0, body["totals"]["away"])
+        self.assertEqual(0, len(body["absent"]))
+        self.assertNotIn(self.engineer.id, {p["id"] for p in body["people"]})
+
+    def test_roster_counts_only_active_people(self):
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}",
+                          json={"assignee_id": self.engineer.id})
+        before = self.client.get("/api/board").json()["totals"]["staff"]
+        self.repos.users.set_active(self.engineer.id, False)
+        body = self.client.get("/api/board").json()
+        # В списке нагрузки он остался — за ним письмо. В строю — нет.
+        self.assertIn(self.engineer.id, {p["id"] for p in body["people"]})
+        self.assertEqual(before - 1, body["totals"]["staff"])
+
     def test_disabled_employee_without_letters_is_not_listed(self):
         self.repos.users.set_active(self.engineer.id, False)
         body = self.client.get("/api/board").json()
         self.assertNotIn(self.engineer.id, {p["id"] for p in body["people"]})
+
+    def test_editing_an_old_letter_does_not_inflate_sent_this_period(self):
+        """«Ответов отправлено» считается по времени утверждения отчёта.
+
+        По времени последней правки выходила неправда: поправил примечание
+        в письме прошлого года — и оно попадало в отправленные за текущий
+        месяц, задирая отчётность отдела.
+        """
+        case = self.create_case()
+        report = self.generate(case["id"])
+        self.client.post(f"/api/reports/{report['id']}/approve")
+        # Утверждаем «в прошлом году» — переносим отметку подписи назад.
+        self.repos.db.execute(
+            "UPDATE reports SET approved_at = '2020-01-01T00:00:00+00:00' WHERE id = ?",
+            (report["id"],))
+        self.assertEqual(0, self.client.get("/api/board?days=30").json()["movement"]["sent"])
+
+        # Правка карточки старого письма в счётчик текущего периода не идёт.
+        self.client.patch(f"/api/cases/{case['id']}", json={"note": "уточнение"})
+        self.assertEqual(0, self.client.get("/api/board?days=30").json()["movement"]["sent"])
 
     def test_service_record_is_not_counted_as_staff(self):
         logins = {item["login"] for item in self.client.get("/api/board").json()["people"]}
