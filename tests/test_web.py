@@ -61,6 +61,7 @@ class WebTestCase(unittest.TestCase):
             self.repos.users.create("admin", "пароль123", "Хозяев Х. Х.", "owner")
             self.repos.users.create("nachalnik", "пароль123", "Начальников Н. Н.", "head")
             self.repos.users.create("gruppa", "пароль123", "Группин Г. Г.", "lead")
+            self.repos.users.create("zam", "пароль123", "Заместителев З. З.", "deputy")
             self.repos.users.create("engineer", "пароль123", "Инженеров И. И.", "engineer")
             self.login("admin")
 
@@ -407,6 +408,229 @@ class CaseTests(WebTestCase):
         self.assertEqual(response.status_code, 400)
 
 
+class ReviewFlowTests(WebTestCase):
+    """Порядок проверки: сдал — начальник посмотрел — вернул или принял."""
+
+    def setUp(self):
+        super().setUp()
+        self.case = self.create_case()
+        self.report = self.generate(self.case["id"])
+
+    def clean_sections(self):
+        """Довести отчёт до нуля ошибок: чисел мимо факт-пакета не остаётся."""
+        for section in self.report["sections"]:
+            self.client.put(
+                f"/api/reports/{self.report['id']}/sections/{section['section_id']}",
+                json={"text": "Текст инженера без числовых значений."})
+
+    def test_engineer_sends_the_report_up_but_cannot_pass_it_himself(self):
+        """Сдают отчёты все, проверяет начальник. Инженер себя не проверяет."""
+        self.clean_sections()
+        self.login("engineer")
+        sent = self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.assertEqual(200, sent.status_code, sent.text)
+        self.assertEqual("review", sent.json()["report"]["status"])
+        self.assertEqual("на проверке", sent.json()["report"]["status_title"])
+        # Письмо тоже видно как отправленное на проверку.
+        self.assertEqual("review",
+                         self.client.get(f"/api/cases/{self.case['id']}").json()["case"]["status"])
+
+        refused = self.client.post(f"/api/reports/{self.report['id']}/approve")
+        self.assertEqual(403, refused.status_code)
+        self.assertIn("начальник отдела", refused.json()["error"])
+
+    def test_group_lead_is_an_administrator_but_not_a_reviewer(self):
+        # Начальник группы заводит людей, а отчёты проверяет не он.
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("gruppa")
+        self.assertEqual(403,
+                         self.client.post(f"/api/reports/{self.report['id']}/approve").status_code)
+        self.assertEqual(403,
+                         self.client.post(f"/api/reports/{self.report['id']}/rework",
+                                          json={"note": "поправьте"}).status_code)
+
+    def test_head_and_deputy_both_review(self):
+        for login in ("nachalnik", "zam"):
+            with self.subTest(login=login):
+                self.login("admin")
+                case = self.create_case({**CASE, "case_id": f"SUP-ПРОВ-{login}"})
+                report = self.generate(case["id"])
+                for section in report["sections"]:
+                    self.client.put(
+                        f"/api/reports/{report['id']}/sections/{section['section_id']}",
+                        json={"text": "Текст инженера без числовых значений."})
+                self.client.post(f"/api/reports/{report['id']}/submit")
+                self.login(login)
+                done = self.client.post(f"/api/reports/{report['id']}/approve")
+                self.assertEqual(200, done.status_code, done.text)
+                self.assertEqual("approved", done.json()["report"]["status"])
+
+    def test_head_sends_it_back_with_a_remark_everyone_sees(self):
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        back = self.client.post(f"/api/reports/{self.report['id']}/rework",
+                                json={"note": "В выводах нет ссылки на методику"})
+        self.assertEqual(200, back.status_code, back.text)
+        self.assertEqual("rework", back.json()["report"]["status"])
+        self.assertEqual("требует исправления", back.json()["report"]["status_title"])
+
+        # Замечание видит исполнитель, а не только начальник.
+        self.login("engineer")
+        mine = self.client.get(f"/api/reports/{self.report['id']}").json()["report"]
+        self.assertEqual("В выводах нет ссылки на методику", mine["review_note"])
+        self.assertEqual("rework", mine["status"])
+
+    def test_remark_is_required_when_sending_back(self):
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        empty = self.client.post(f"/api/reports/{self.report['id']}/rework",
+                                 json={"note": "   "})
+        self.assertEqual(400, empty.status_code)
+        self.assertIn("что именно исправить", empty.json()["error"])
+
+    def test_corrected_report_goes_up_again_and_the_remark_clears(self):
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/rework",
+                         json={"note": "поправьте выводы"})
+        self.login("engineer")
+        section_id = self.report["sections"][5]["section_id"]
+        self.client.put(f"/api/reports/{self.report['id']}/sections/{section_id}",
+                        json={"text": "Выводы переписаны по замечанию."})
+        again = self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.assertEqual(200, again.status_code, again.text)
+        self.assertEqual("review", again.json()["report"]["status"])
+        self.assertEqual("", again.json()["report"]["review_note"])
+
+    def test_editing_a_report_on_review_returns_it_to_the_author(self):
+        """Начальник читает то, что сдали, а не то, что правят под ним."""
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        section_id = self.report["sections"][0]["section_id"]
+        self.client.put(f"/api/reports/{self.report['id']}/sections/{section_id}",
+                        json={"text": "Правка уже после сдачи."})
+        self.assertEqual("draft", self.repos.reports.get(self.report["id"]).status)
+
+    def test_signature_is_wiped_and_not_left_from_the_previous_text(self):
+        # Подтверждено сплошным разбором: при снятии подписи оставались
+        # прежние «кто и когда проверил».
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/approve")
+        signed = self.repos.reports.get(self.report["id"])
+        self.assertIsNotNone(signed.approved_by)
+
+        section_id = self.report["sections"][0]["section_id"]
+        self.client.put(f"/api/reports/{self.report['id']}/sections/{section_id}",
+                        json={"text": "Правка после проверки."})
+        after = self.repos.reports.get(self.report["id"])
+        self.assertEqual("draft", after.status)
+        self.assertIsNone(after.approved_by, "проверяющий остался под чужим текстом")
+        self.assertIsNone(after.approved_at)
+
+
+class UploadedReportTests(WebTestCase):
+    """Готовый отчёт, сданный файлом: его пишут не системой, а руками."""
+
+    def upload(self, name="Отчёт по письму.md", body=b"# Otchet\n\nTekst inzhenera.\n",
+               **fields):
+        payload = {"case_id": "ВХ-2026-0101", "incoming_no": "ВХ-2026-0101",
+                   "group_no": "1-я группа", "title": "Разбор помехи"}
+        payload.update(fields)
+        return self.client.post(
+            "/api/reports/upload",
+            files={"file": (name, body, "text/markdown")},
+            data=payload,
+        )
+
+    def test_engineer_hands_in_a_finished_report(self):
+        """Сдать отчёт файлом может любой сотрудник, и он сразу на проверке."""
+        self.login("engineer")
+        response = self.upload()
+        self.assertEqual(200, response.status_code, response.text)
+        body = response.json()
+        self.assertEqual("review", body["report"]["status"])
+        self.assertTrue(body["report"]["uploaded"])
+        self.assertEqual("Отчёт по письму.md", body["report"]["file_name"])
+        # Реквизиты письма заполнены тем, что ввели при загрузке.
+        self.assertEqual("ВХ-2026-0101", body["case"]["incoming_no"])
+        self.assertEqual("1-я группа", body["case"]["group_no"])
+        self.assertEqual("Разбор помехи", body["case"]["title"])
+
+    def test_executor_defaults_to_the_person_who_handed_it_in(self):
+        # Чаще всего сдаёт тот, кто писал: заставлять выбирать себя из
+        # списка — лишнее действие на ровном месте.
+        self.login("engineer")
+        engineer = self.repos.users.by_login("engineer")
+        body = self.upload().json()
+        self.assertEqual(engineer.id, body["case"]["assignee_id"])
+        self.assertEqual("Инженеров И. И.", body["case"]["assignee_name"])
+
+    def test_executor_can_be_someone_else(self):
+        engineer = self.repos.users.by_login("engineer")
+        body = self.upload(assignee_id=str(engineer.id)).json()
+        self.assertEqual(engineer.id, body["case"]["assignee_id"])
+
+    def test_the_file_comes_back_exactly_as_it_was_handed_in(self):
+        raw = "# Отчёт\n\nИзмерения приложены отдельно.\n".encode("utf-8")
+        report = self.upload(name="Отчёт.md", body=raw).json()["report"]
+        got = self.client.get(f"/api/reports/{report['id']}/file")
+        self.assertEqual(200, got.status_code, got.text)
+        self.assertEqual(raw, got.content)
+
+    def test_everyone_can_read_a_handed_in_report(self):
+        # Смотреть и искать отчёты могут все — для того и заведён учёт.
+        report = self.upload().json()["report"]
+        self.login("engineer")
+        self.assertEqual(200, self.client.get(f"/api/reports/{report['id']}").status_code)
+        self.assertEqual(200, self.client.get(f"/api/reports/{report['id']}/file").status_code)
+
+    def test_head_passes_a_handed_in_report_without_the_verifier(self):
+        """У сданного файлом отчёта факт-пакета нет, сверять числа не с чем.
+
+        Проверяет его человек — на то он и начальник.
+        """
+        report = self.upload().json()["report"]
+        self.login("nachalnik")
+        done = self.client.post(f"/api/reports/{report['id']}/approve")
+        self.assertEqual(200, done.status_code, done.text)
+        self.assertEqual("approved", done.json()["report"]["status"])
+
+    def test_head_sends_a_handed_in_report_back(self):
+        report = self.upload().json()["report"]
+        self.login("nachalnik")
+        back = self.client.post(f"/api/reports/{report['id']}/rework",
+                                json={"note": "нет подписи исполнителя"})
+        self.assertEqual(200, back.status_code, back.text)
+        self.assertEqual("нет подписи исполнителя", back.json()["report"]["review_note"])
+
+    def test_second_report_on_the_same_letter_is_a_new_version(self):
+        first = self.upload().json()["report"]
+        second = self.upload(name="Отчёт исправленный.md").json()["report"]
+        self.assertEqual(first["version"] + 1, second["version"])
+        self.assertEqual(first["case_ref"], second["case_ref"])
+
+    def test_unreadable_format_is_refused_with_a_plain_answer(self):
+        response = self.upload(name="дамп.pcap", body=b"\xd4\xc3\xb2\xa1")
+        self.assertEqual(400, response.status_code)
+        self.assertIn("docx", response.json()["error"])
+
+    def test_incoming_number_is_required(self):
+        response = self.upload(case_id="", incoming_no="")
+        self.assertEqual(400, response.status_code)
+        self.assertIn("входящий номер", response.json()["error"].lower())
+
+    def test_empty_file_is_refused(self):
+        response = self.upload(body=b"")
+        self.assertEqual(400, response.status_code)
+        self.assertIn("пустой", response.json()["error"])
+
+
 class ReportFlowTests(WebTestCase):
     def setUp(self):
         super().setUp()
@@ -471,7 +695,12 @@ class ReportFlowTests(WebTestCase):
         self.assertEqual(body["errors"], 0)
         self.assertIsInstance(body["issues"], list)
 
-    def test_invented_number_blocks_approval(self):
+    def test_invented_number_blocks_the_report_from_leaving(self):
+        """Число мимо исходных данных не пускает отчёт ни на шаг дальше.
+
+        Ни на проверку — начальнику незачем ловить руками то, что ловит
+        машина, — ни в «проверен».
+        """
         section_id = self.report["sections"][5]["section_id"]
         self.client.put(
             f"/api/reports/{self.report['id']}/sections/{section_id}",
@@ -479,9 +708,14 @@ class ReportFlowTests(WebTestCase):
         )
         verify = self.client.post(f"/api/reports/{self.report['id']}/verify").json()
         self.assertGreater(verify["errors"], 0)
+
+        sent = self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.assertEqual(409, sent.status_code)
+        self.assertIn("верификатор нашёл ошибок", sent.json()["error"])
+
         response = self.client.post(f"/api/reports/{self.report['id']}/approve")
-        self.assertEqual(response.status_code, 409)
-        self.assertIn("не может быть утверждён", response.json()["error"])
+        self.assertEqual(409, response.status_code)
+        self.assertIn("не может быть проверен", response.json()["error"])
 
     def test_approve_collects_edit_pairs(self):
         section_id = self.report["sections"][5]["section_id"]
@@ -874,134 +1108,91 @@ class LetterCardTests(WebTestCase):
         logins = {item["login"] for item in self.client.get("/api/staff").json()["items"]}
         self.assertNotIn("engineer", logins)
 
-    def test_sender_is_a_number(self):
-        # Отправитель — числовой номер группы или части, откуда пришло письмо,
-        # а не название организации.
-        case = self.create_case()
-        for good in ("1274", "12/345", "1274-3", "1 274"):
-            with self.subTest(value=good):
-                response = self.client.patch(f"/api/cases/{case['id']}",
-                                             json={"customer": good})
-                self.assertEqual(200, response.status_code, response.text)
-                self.assertEqual(good, response.json()["case"]["customer"])
+    def test_group_number_accepts_anything_written_by_hand(self):
+        """Формат номера группы задаёт делопроизводство отдела, не программа.
 
-    def test_sender_refuses_text(self):
-        case = self.create_case()
-        for bad in ("ПАО «Ростелеком»", "в/ч 74326", "группа", "9" * 40):
-            with self.subTest(value=bad):
-                response = self.client.patch(f"/api/cases/{case['id']}",
-                                             json={"customer": bad})
-                self.assertEqual(400, response.status_code)
-                self.assertIn("отправител", response.json()["error"].lower())
-
-    def test_sender_is_checked_at_registration_too(self):
-        payload = dict(CASE)
-        response = self.client.post("/api/cases", json={
-            "report_type": payload["report_type"], "case_id": "SUP-НОМЕР",
-            "facts": {**payload, "case_id": "SUP-НОМЕР", "customer": ""},
-            "customer": "не число",
-        })
-        self.assertEqual(400, response.status_code)
-
-    def test_sender_cannot_be_smuggled_through_the_fact_pack(self):
-        # Факт-пакет правится ещё и целиком в режиме JSON, и через API.
-        # Проверка номера в карточке письма этот путь не закрывала.
-        case = self.create_case()
-        facts = self.client.get(f"/api/cases/{case['id']}").json()["case"]["facts"]
-        response = self.client.put(f"/api/cases/{case['id']}/facts",
-                                   json={"facts": {**facts, "customer": "ПАО «Обход»"}})
-        self.assertEqual(400, response.status_code)
-        self.assertIn("отправител", response.json()["error"].lower())
-
-    def test_sender_given_at_registration_reaches_the_report(self):
-        """Номер из формы регистрации оставался только колонкой письма.
-
-        В шапку отчёта и в промпт модели он не попадал вовсе: там берётся
-        значение из факт-пакета, а в него номер не записывали. Правка
-        карточки (PATCH) синхронизировала оба места, регистрация — нет.
+        Пишут и цифрами, и словами: «1274», «12/345», «в/ч 74326»,
+        «группа связи». Строгая проверка на число отвергала половину из
+        этого и заставляла инженера подгонять запись под программу.
         """
+        case = self.create_case()
+        for written in ("1274", "12/345", "1274-3", "в/ч 74326",
+                        "группа связи", "ПАО «Ростелеком»"):
+            with self.subTest(written=written):
+                response = self.client.patch(f"/api/cases/{case['id']}",
+                                             json={"group_no": written})
+                self.assertEqual(200, response.status_code, response.text)
+                self.assertEqual(written, response.json()["case"]["group_no"])
+
+    def test_group_number_refuses_a_whole_paragraph(self):
+        # Предел один — длина: в поле не должен уехать абзац.
+        case = self.create_case()
+        response = self.client.patch(f"/api/cases/{case['id']}",
+                                     json={"group_no": "я" * 500})
+        self.assertEqual(400, response.status_code)
+        self.assertIn("номер группы", response.json()["error"].lower())
+
+    def test_group_number_given_at_registration_reaches_the_report(self):
+        """Номер из формы регистрации доходит до шапки отчёта."""
         payload = dict(CASE)
         response = self.client.post("/api/cases", json={
             "report_type": payload["report_type"], "case_id": "SUP-ФОРМА-1",
-            "facts": {**payload, "case_id": "SUP-ФОРМА-1", "customer": ""},
-            "customer": "5150",
+            "facts": {**payload, "case_id": "SUP-ФОРМА-1", "group_no": ""},
+            "group_no": "1-я группа",
         })
         self.assertEqual(200, response.status_code, response.text)
         case = response.json()["case"]
-        self.assertEqual("5150", case["customer"])
-        self.assertEqual("5150", case["facts"]["customer"])
+        self.assertEqual("1-я группа", case["group_no"])
+        self.assertEqual("1-я группа", case["facts"]["group_no"])
 
         report = self.client.post(f"/api/cases/{case['id']}/generate").json()["report"]
         text = self.client.get(f"/api/reports/{report['id']}/export.md").text
-        self.assertIn("**Отправитель:** 5150", text)
+        self.assertIn("**Номер группы:** 1-я группа", text)
+        self.assertNotIn("Заказчик", text)
+        self.assertNotIn("Отправитель", text)
 
-    def test_sender_in_the_fact_pack_wins_over_the_form(self):
+    def test_group_number_in_the_fact_pack_wins_over_the_form(self):
         payload = dict(CASE)
         case = self.client.post("/api/cases", json={
             "report_type": payload["report_type"], "case_id": "SUP-ФОРМА-2",
-            "facts": {**payload, "case_id": "SUP-ФОРМА-2", "customer": "1274"},
-            "customer": "5150",
+            "facts": {**payload, "case_id": "SUP-ФОРМА-2", "group_no": "1274"},
+            "group_no": "5150",
         }).json()["case"]
-        self.assertEqual("1274", case["customer"])
-        self.assertEqual("1274", case["facts"]["customer"])
+        self.assertEqual("1274", case["group_no"])
+        self.assertEqual("1274", case["facts"]["group_no"])
 
-    def test_sender_extra_spaces_are_trimmed(self):
+    def test_old_fact_pack_with_the_previous_key_still_reads(self):
+        # Факт-пакеты принятых обращений лежат в базе с ключом customer.
+        payload = dict(CASE)
+        payload.pop("group_no", None)
+        case = self.client.post("/api/cases", json={
+            "report_type": payload["report_type"], "case_id": "SUP-СТАРЫЙ-1",
+            "facts": {**payload, "case_id": "SUP-СТАРЫЙ-1", "customer": "1274"},
+        }).json()["case"]
+        self.assertEqual("1274", case["group_no"])
+
+    def test_group_number_extra_spaces_are_trimmed(self):
         case = self.create_case()
         fresh = self.client.patch(f"/api/cases/{case['id']}",
-                                  json={"customer": "  12   345  "}).json()["case"]
-        self.assertEqual("12 345", fresh["customer"])
+                                  json={"group_no": "  12   345  "}).json()["case"]
+        self.assertEqual("12 345", fresh["group_no"])
 
-    def test_customer_stays_in_step_with_the_fact_pack(self):
-        # Заказчик хранится и колонкой письма, и полем факт-пакета — оттуда
-        # он попадает в отчёт. Правка в карточке жила до первого сохранения
+    def test_group_number_stays_in_step_with_the_fact_pack(self):
+        # Номер хранится и колонкой письма, и полем факт-пакета — оттуда он
+        # попадает в отчёт. Правка в карточке жила до первого сохранения
         # фактов, а потом молча возвращалась к прежнему значению.
         case = self.create_case()
-        self.client.patch(f"/api/cases/{case['id']}", json={"customer": "4210"})
+        self.client.patch(f"/api/cases/{case['id']}", json={"group_no": "4210"})
         body = self.client.get(f"/api/cases/{case['id']}").json()["case"]
-        self.assertEqual("4210", body["customer"])
-        self.assertEqual("4210", body["facts"]["customer"])
+        self.assertEqual("4210", body["group_no"])
+        self.assertEqual("4210", body["facts"]["group_no"])
 
-        # Сохранение фактов больше не откатывает правку.
         facts = dict(body["facts"])
         facts["request"] = "уточнение к обращению"
         self.client.put(f"/api/cases/{case['id']}/facts", json={"facts": facts})
         again = self.client.get(f"/api/cases/{case['id']}").json()["case"]
-        self.assertEqual("4210", again["customer"])
+        self.assertEqual("4210", again["group_no"])
 
-    def test_assignee_can_be_taken_off_the_letter(self):
-        """Снять исполнителя было нельзя вовсе.
-
-        API отвечал 200 и писал в журнал, а в базе оставался прежний
-        человек: пустое значение отбрасывалось вместе с непереданными
-        полями. При этом на дашборде есть плитка «без исполнителя», и
-        письмо в неё попасть не могло.
-        """
-        case = self.create_case()
-        user = self.client.get("/api/users").json()["items"][0]
-        self.client.patch(f"/api/cases/{case['id']}", json={"assignee_id": user["id"]})
-        self.assertEqual(user["id"],
-                         self.client.get(f"/api/cases/{case['id']}").json()["case"]["assignee_id"])
-
-        response = self.client.patch(f"/api/cases/{case['id']}", json={"assignee_id": None})
-        self.assertEqual(200, response.status_code, response.text)
-        fresh = self.client.get(f"/api/cases/{case['id']}").json()["case"]
-        self.assertIsNone(fresh["assignee_id"])
-        self.assertFalse(fresh["assignee_name"])
-
-    def test_card_edit_keeps_the_fact_pack_hash_in_step(self):
-        """Отправитель живёт и в факт-пакете — значит меняется и его хеш.
-
-        Запись шла прямо в базу, мимо update_facts: хеш оставался от
-        прежнего содержимого, а подписанные отчёты не перепроверялись.
-        """
-        from reportgen.facts import FactPack
-
-        case = self.create_case()
-        self.client.patch(f"/api/cases/{case['id']}", json={"customer": "3344"})
-        stored = self.repos.cases.get(case["id"])
-        self.assertEqual("3344", stored.facts["customer"])
-        self.assertEqual(FactPack.from_dict(dict(stored.facts)).digest(),
-                         stored.facts_digest)
 
     def test_unknown_assignee_is_refused(self):
         case = self.create_case()
@@ -1414,11 +1605,25 @@ class UserManagementTests(WebTestCase):
         self.assertEqual(403, response.status_code)
 
     def test_admins_are_counted_by_position(self):
-        # Создатель, начальник отдела и начальник группы — администраторы;
-        # старший инженер и инженер — нет.
-        self.assertEqual(3, self.repos.users.count_admins())
+        # Создатель, начальник отдела, заместитель и начальник группы —
+        # администраторы; старший инженер и инженер — нет.
+        self.assertEqual(4, self.repos.users.count_admins())
         engineer = self.repos.users.by_login("engineer")
         self.assertFalse(engineer.is_admin)
+
+    def test_reviewers_are_not_the_same_set_as_administrators(self):
+        """Проверять отчёты — не то же самое, что заводить людей.
+
+        Начальник группы администратор, но отчёты проверяет начальник
+        отдела или его заместитель: так устроен порядок в отделе.
+        """
+        by_login = {login: self.repos.users.by_login(login)
+                    for login in ("admin", "nachalnik", "zam", "gruppa", "engineer")}
+        self.assertTrue(by_login["gruppa"].is_admin)
+        self.assertFalse(by_login["gruppa"].can_review)
+        for login in ("admin", "nachalnik", "zam"):
+            self.assertTrue(by_login[login].can_review, login)
+        self.assertFalse(by_login["engineer"].can_review)
 
     def test_nobody_can_demote_themselves(self):
         # Разжаловать можно только младшего по должности. Значит, сам

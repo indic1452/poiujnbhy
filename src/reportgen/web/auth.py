@@ -107,6 +107,20 @@ def require_editor(request: Request) -> User:
     return user
 
 
+def require_reviewer(request: Request) -> User:
+    """Проверка отчётов: начальник отдела, заместитель, создатель системы.
+
+    Это не то же самое, что права администратора: начальник группы заводит
+    людей, но отчёты проверяет не он — так устроен порядок в отделе.
+    """
+    user = require_user(request)
+    if not user.can_review:
+        raise ServiceError(
+            "проверять отчёты может начальник отдела или его заместитель", 403
+        )
+    return user
+
+
 def require_admin(request: Request) -> User:
     """Управление сотрудниками, библиотекой и журналом.
 

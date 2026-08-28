@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence, Tuple
 
-from .facts import FactPack, FactPackError, check_sender
+from .facts import FactPack, FactPackError
 from .prompts import SECTION_PROMPT, SYSTEM_PROMPT
 
 if TYPE_CHECKING:  # только для подсказок типов — модуль не тянет хранилище
@@ -469,8 +469,8 @@ REVERSE_SYSTEM_PROMPT = """Ты — инженер-аналитик, котор�
 
 REVERSE_PROMPT_TEMPLATE = """### СХЕМА ФАКТ-ПАКЕТА
 
-Верхний уровень: case_id (строка), report_type (строка), customer — номер \
-отправителя цифрами (строка), \
+Верхний уровень: case_id (строка), report_type (строка), group_no — номер \
+группы, откуда пришло письмо (строка), \
 request (строка), equipment (объект «название: значение»), keywords (список строк), \
 measurements (объект), findings (список), timeline (список объектов с полями date и event).
 
@@ -507,7 +507,7 @@ description, evidence, refs. Поля id, severity, title обязательны
 _SAMPLE_JSON = """{
   "case_id": "SUP-0000-000",
   "report_type": "signal_issue",
-  "customer": "1274",
+  "group_no": "1274",
   "request": "краткая формулировка обращения",
   "equipment": {"линия": "...", "модем": "..."},
   "keywords": ["..."],
@@ -566,31 +566,10 @@ def _braced(text: str) -> str | None:
     return text[start:end + 1]
 
 
-def _normalize_sender(value: Any) -> str:
-    """Номер отправителя из старого отчёта: либо номер, либо пусто.
-
-    В отчётах прошлых лет на месте отправителя писали название организации
-    («Заказчик: ПАО Ростелеком») — тогда номера в шапке ещё не было. Такой
-    отчёт для обучения годится: отправитель не измерение, ни одно число из
-    него не берут. Поэтому название отбрасываем и оставляем поле пустым, а
-    номер сохраняем, если он записан номером целиком.
-
-    Выдёргивать цифры из названия нельзя: «Связь-21» превратилась бы в
-    отправителя 21, которого никто не присылал, — а это ровно то враньё,
-    ради запрета которого весь факт-пакет и существует.
-    """
-    try:
-        return check_sender(value)
-    except FactPackError:
-        return ""
-
-
 def _normalize_factpack(data: Dict[str, Any]) -> Dict[str, Any]:
     """Приводит частые вольности модели к форме схемы, не меняя значений."""
     result = dict(data)
 
-    if "customer" in result:
-        result["customer"] = _normalize_sender(result["customer"])
 
     measurements = result.get("measurements")
     if isinstance(measurements, list):

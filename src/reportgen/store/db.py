@@ -11,17 +11,17 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "6"
+SCHEMA_VERSION = "7"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
 # поэтому новые поля добавляются здесь — так база обновляется вместе с кодом,
-# без ручных ALTER на стороне заказчика.
+# без ручных ALTER на стороне отдела.
 COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("documents", "domain", "TEXT NOT NULL DEFAULT ''"),
     ("chunks", "domain", "TEXT NOT NULL DEFAULT ''"),
     # Актуальность документа: заменённый стандарт не должен цитироваться
-    # как действующий — это прямая ошибка в отчёте заказчику.
+    # как действующий — это прямая ошибка в отчёте.
     ("documents", "status", "TEXT NOT NULL DEFAULT 'current'"),
     ("documents", "superseded_by", "TEXT NOT NULL DEFAULT ''"),
     ("chunks", "status", "TEXT NOT NULL DEFAULT 'current'"),
@@ -38,7 +38,7 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     # списочный состав отдела, ни нагрузку по группам.
     ("users", "department", "TEXT NOT NULL DEFAULT ''"),
     ("users", "team", "TEXT NOT NULL DEFAULT ''"),
-    # Письмо заказчика: кто исполнитель, к какому числу, входящий номер.
+    # Входящее письмо: кто исполнитель, к какому числу, входящий номер.
     # Без исполнителя и срока нельзя ни распределить работу, ни увидеть
     # просрочку — а это первое, что спрашивают с отдела.
     ("cases", "assignee_id", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
@@ -47,6 +47,13 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("cases", "incoming_date", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "priority", "TEXT NOT NULL DEFAULT 'normal'"),
     ("cases", "note", "TEXT NOT NULL DEFAULT ''"),
+    # Проверка отчёта начальником: замечание при возврате на исправление,
+    # откуда взялся отчёт (собран системой или загружен файлом) и сам файл.
+    ("reports", "review_note", "TEXT NOT NULL DEFAULT ''"),
+    ("reports", "source", "TEXT NOT NULL DEFAULT 'generated'"),
+    ("reports", "file_name", "TEXT NOT NULL DEFAULT ''"),
+    ("reports", "file_path", "TEXT NOT NULL DEFAULT ''"),
+    ("reports", "file_size", "INTEGER NOT NULL DEFAULT 0"),
 )
 
 #: Прежнее значение роли → нынешнее. Роли viewer/engineer/admin заменены
@@ -180,7 +187,7 @@ class Database:
             self._ensure_columns()
             self._rename_domains()
             self._rename_roles()
-            self._normalize_senders()
+            self._restore_group_numbers()
             self.connection.execute(
                 "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -280,77 +287,53 @@ class Database:
                 (utcnow(),),
             )
 
-    def _normalize_senders(self) -> None:
-        """Отправитель письма стал числовым номером группы.
+    def _restore_group_numbers(self) -> None:
+        """Вернуть на место названия, стёртые прежней проверкой номера.
 
-        Раньше в этом поле держали название организации («ПАО Ростелеком»):
-        оно так и называлось — «заказчик». После обновления такой факт-пакет
-        перестаёт проходить проверку, и письмо, открывшись, отказывается
-        строить черновик — причём на изолированной машине разбираться с этим
-        будет некому.
+        Одно время поле «номер группы» проверялось как число, и обновление
+        стирало из него всё, что числом не было, дописывая стёртое в
+        примечание к письму. Теперь в этом поле разрешён любой текст —
+        значит, стирать было не за что, и написанное надо вернуть.
 
-        Поэтому чиним при первом запуске: номер оставляем как есть, название
-        стираем. Цифры из названия не выдёргиваем — «Связь-21» превратилась
-        бы в отправителя 21, которого никто не присылал, а выдуманным числам
-        в системе места нет. Стёртое название дописываем в примечание к
-        письму: терять сведения молча нельзя, а номер по названию инженер
-        восстановит сам.
+        Отметку прежнего обновления оставляем: по ней видно, что письмо
+        через это прошло, а примечание чистим от служебной строки, чтобы
+        она не мозолила глаза в карточке.
         """
-        from ..facts import FactPackError, check_sender  # noqa: PLC0415
-
         columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(cases)")}
-        if not columns or "customer" not in columns:
+        if not columns or "customer" not in columns or "note" not in columns:
             return
-        has_note = "note" in columns
+        marker = self.connection.execute(
+            "SELECT 1 FROM meta WHERE key = 'senders_migrated_at'"
+        ).fetchone()
+        if marker is None:
+            return
+
+        prefix = "Отправитель до обновления: "
         rows = self.connection.execute(
-            f"SELECT id, customer, facts_json{', note' if has_note else ''} FROM cases"
+            "SELECT id, customer, note, facts_json FROM cases WHERE note LIKE ?",
+            (f"%{prefix}%",),
         ).fetchall()
-        cleaned = 0
         for row in rows:
-            customer = row["customer"] or ""
-            try:
-                kept = check_sender(customer)
-            except FactPackError:
-                kept = ""
-            facts_text = row["facts_json"] or ""
-            facts_kept = facts_text
-            if facts_text:
-                try:
-                    facts = json.loads(facts_text)
-                except (json.JSONDecodeError, TypeError):
-                    facts = None
-                if isinstance(facts, dict) and "customer" in facts:
-                    try:
-                        inner = check_sender(facts["customer"])
-                    except FactPackError:
-                        inner = ""
-                    if inner != facts["customer"]:
-                        facts["customer"] = inner
-                        facts_kept = json.dumps(facts, ensure_ascii=False)
-            if kept == customer and facts_kept == facts_text:
+            kept, rest = "", []
+            for line in (row["note"] or "").splitlines():
+                if line.startswith(prefix) and not kept:
+                    kept = line[len(prefix):].strip()
+                else:
+                    rest.append(line)
+            if not kept or (row["customer"] or "").strip():
                 continue
-            if has_note and customer and not kept:
-                note = (row["note"] or "").strip()
-                mark = f"Отправитель до обновления: {customer}"
-                if mark not in note:
-                    note = f"{note}\n{mark}".strip() if note else mark
-                self.connection.execute(
-                    "UPDATE cases SET customer = ?, facts_json = ?, note = ? WHERE id = ?",
-                    (kept, facts_kept, note, row["id"]),
-                )
-            else:
-                self.connection.execute(
-                    "UPDATE cases SET customer = ?, facts_json = ? WHERE id = ?",
-                    (kept, facts_kept, row["id"]),
-                )
-            cleaned += 1
-        if cleaned:
-            # Отметка в базе: через год иначе не объяснить, куда делись
-            # названия организаций из писем.
+            facts_text = row["facts_json"] or ""
+            try:
+                facts = json.loads(facts_text) if facts_text else None
+            except (json.JSONDecodeError, TypeError):
+                facts = None
+            if isinstance(facts, dict):
+                facts["group_no"] = kept
+                facts.pop("customer", None)
+                facts_text = json.dumps(facts, ensure_ascii=False)
             self.connection.execute(
-                "INSERT INTO meta(key, value) VALUES('senders_migrated_at', ?) "
-                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                (utcnow(),),
+                "UPDATE cases SET customer = ?, note = ?, facts_json = ? WHERE id = ?",
+                (kept, "\n".join(rest).strip(), facts_text, row["id"]),
             )
 
     def _ensure_columns(self) -> None:

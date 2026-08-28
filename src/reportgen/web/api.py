@@ -32,7 +32,8 @@ from ..store.models import (
     Case,
     Report,
 )
-from .auth import COOKIE_NAME, get_user, require_admin, require_editor, require_user
+from .auth import (COOKIE_NAME, get_user, require_admin, require_editor,
+                   require_reviewer, require_user)
 from .service import ServiceError
 
 router = APIRouter(prefix="/api")
@@ -63,17 +64,19 @@ def _since_utc(days: int) -> str:
     return moment.isoformat(timespec="seconds")
 
 
-def _sender_or_empty(value: Any) -> str:
-    """Номер отправителя либо пустая строка. Иначе — понятная ошибка.
+def _group_or_empty(value: Any) -> str:
+    """Номер группы: только чистка пробелов и предел длины.
 
-    Сама проверка живёт в facts.check_sender: факт-пакет правится не только
-    карточкой письма, но и целиком в режиме JSON, и через API — вторая копия
-    правила рано или поздно разошлась бы с первой.
+    Формат задаёт делопроизводство отдела, а не программа: пишут и «1274»,
+    и «12/345», и «в/ч 74326», и словами. Сама чистка живёт в
+    facts.clean_group — факт-пакет правится не только карточкой письма, но и
+    целиком в режиме JSON, и через API, а вторая копия правила рано или
+    поздно разошлась бы с первой.
     """
-    from ..facts import FactPackError, check_sender  # noqa: PLC0415
+    from ..facts import FactPackError, clean_group  # noqa: PLC0415
 
     try:
-        return check_sender(value)
+        return clean_group(value)
     except FactPackError as error:
         raise ServiceError(str(error), 400) from error
 
@@ -309,8 +312,10 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
     for name in ("title", "incoming_no", "note"):
         if name in payload:
             fields[name] = str(payload[name] or "").strip()
-    if "customer" in payload:
-        fields["customer"] = _sender_or_empty(payload["customer"])
+    # Наружу поле зовётся group_no, колонка в базе — customer (см. schema.sql).
+    if "group_no" in payload or "customer" in payload:
+        fields["customer"] = _group_or_empty(
+            payload.get("group_no", payload.get("customer")))
     for name in ("incoming_date", "deadline"):
         if name in payload:
             fields[name] = _date_or_empty(payload[name], name)
@@ -355,8 +360,9 @@ def create_case(request: Request) -> Dict[str, Any]:
     if priority not in CASE_PRIORITIES:
         raise ServiceError(f"неизвестный приоритет '{priority}'", 400)
     payload["priority"] = priority
-    if "customer" in payload:
-        payload["customer"] = _sender_or_empty(payload["customer"])
+    if "group_no" in payload or "customer" in payload:
+        payload["group_no"] = _group_or_empty(
+            payload.get("group_no", payload.get("customer")))
     if payload.get("assignee_id"):
         assignee = _repos(request).users.get(int(payload["assignee_id"]))
         if assignee is None or not assignee.active:
@@ -502,13 +508,163 @@ def restore_section(request: Request, report_id: int, section_id: str) -> Dict[s
     return {"section": section.to_dict(), "report": _report_payload(service, updated)}
 
 
+#: Форматы готового отчёта, который сдают на проверку. Word и PDF — то, в чём
+#: отчёты пишут; Markdown и текст — то, во что их выгружает сама система.
+REPORT_UPLOAD_SUFFIXES = (".docx", ".doc", ".pdf", ".rtf", ".odt", ".md", ".txt")
+
+
+@router.post("/reports/upload")
+def upload_report(
+    request: Request,
+    file: UploadFile = File(...),
+    case_id: str = Form(""),
+    incoming_no: str = Form(""),
+    incoming_date: str = Form(""),
+    group_no: str = Form(""),
+    title: str = Form(""),
+    deadline: str = Form(""),
+    priority: str = Form("normal"),
+    assignee_id: str = Form(""),
+    report_type: str = Form(""),
+    note: str = Form(""),
+) -> Dict[str, Any]:
+    """Сдать готовый отчёт файлом на проверку начальнику.
+
+    Загружать может любой сотрудник — свои отчёты в отдел сдают все.
+    Исполнителем по умолчанию становится тот, кто загрузил: чаще всего он
+    же его и писал. Письмо под отчёт заводится тем же действием, чтобы не
+    заставлять человека делать два дела вместо одного.
+
+    Числа такого отчёта не сверяются с факт-пакетом: его нет и быть не
+    может — документ написан человеком целиком. Об этом сказано и в
+    карточке, и в списке писем, чтобы проверенный файл не путали с
+    отчётом, прошедшим машинную проверку.
+    """
+    user = require_editor(request)
+    repos = _repos(request)
+    settings = _settings(request)
+    service = _service(request)
+
+    name = _safe_name(Path(file.filename or "отчёт").name)
+    suffix = Path(name).suffix.lower()
+    if suffix not in REPORT_UPLOAD_SUFFIXES:
+        raise ServiceError(
+            "отчёт принимается в форматах: " + ", ".join(REPORT_UPLOAD_SUFFIXES), 400)
+
+    incoming_no = str(incoming_no or "").strip()
+    title = str(title or "").strip() or Path(name).stem
+    case_id = str(case_id or "").strip() or incoming_no
+    if not case_id:
+        raise ServiceError("укажите входящий номер письма", 400)
+
+    assignee = user
+    if str(assignee_id or "").strip():
+        found = repos.users.get(int(assignee_id))
+        if found is None or not found.active:
+            raise ServiceError("исполнитель не найден или отключён", 400)
+        assignee = found
+
+    case = repos.cases.by_case_id(case_id)
+    if case is None:
+        payload = {
+            "case_id": case_id,
+            "report_type": report_type or _default_report_type(request),
+            "title": title,
+            "group_no": _group_or_empty(group_no),
+            "incoming_no": incoming_no,
+            "incoming_date": _date_or_empty(incoming_date, "incoming_date"),
+            "deadline": _date_or_empty(deadline, "deadline"),
+            "priority": priority if priority in CASE_PRIORITIES else "normal",
+            "assignee_id": assignee.id,
+            "note": str(note or "").strip(),
+            "facts": {"case_id": case_id, "group_no": _group_or_empty(group_no),
+                      "measurements": {}},
+        }
+        case = service.create_case(payload, user)
+    else:
+        repos.cases.update_card(case.id, assignee_id=assignee.id)
+
+    settings.ensure_dirs()
+    target_dir = Path(settings.data_dir) / "reports" / _safe_name(case.case_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    version = int(repos.db.scalar(
+        "SELECT coalesce(max(version), 0) FROM reports WHERE case_ref = ?", (case.id,)) or 0) + 1
+    target = target_dir / f"v{version}-{name}"
+
+    limit = settings.max_upload_mb * 1024 * 1024
+    size = 0
+    with target.open("wb") as stream:
+        while True:
+            piece = file.file.read(1024 * 1024)
+            if not piece:
+                break
+            size += len(piece)
+            if size > limit:
+                stream.close()
+                target.unlink(missing_ok=True)
+                raise ServiceError(
+                    f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
+            stream.write(piece)
+    if not size:
+        target.unlink(missing_ok=True)
+        raise ServiceError("файл пустой", 400)
+
+    # Текст нужен, чтобы отчёт можно было прочитать и найти, не скачивая.
+    # Не прочитался — не беда: файл на месте, начальник откроет его как есть.
+    text, problem = _extract_attachment(target)
+    report = repos.reports.create_uploaded(
+        case.id, markdown=text.strip(), file_name=name, file_path=str(target),
+        file_size=size, user_id=user.id if user else None)
+    repos.cases.set_status(case.id, "review")
+    repos.audit.log("report.upload", user=user, object_type="report",
+                    object_id=str(report.id),
+                    details={"case_id": case.case_id, "file": name, "bytes": size})
+    return {
+        "report": _report_payload(service, report),
+        "case": repos.cases.get(case.id).to_dict(),  # type: ignore[union-attr]
+        "note": problem or "",
+    }
+
+
+def _default_report_type(request: Request) -> str:
+    """Тип отчёта для загруженного файла: любой из заведённых.
+
+    Загруженный отчёт по шаблону не собирается, тип ему нужен только чтобы
+    письмо было полноценным — потом по нему же можно собрать и свой.
+    """
+    outlines = _service(request).outlines.all()
+    if not outlines:
+        raise ServiceError("не заведено ни одного шаблона отчёта", 500)
+    return sorted(outlines)[0]
+
+
+@router.post("/reports/{report_id}/submit")
+def submit(request: Request, report_id: int) -> Dict[str, Any]:
+    """Отправить отчёт на проверку начальнику. Может любой сотрудник."""
+    user = require_editor(request)
+    report = _report_or_404(request, report_id)
+    service = _service(request)
+    return {"report": _report_payload(service, service.submit(report, user))}
+
+
 @router.post("/reports/{report_id}/approve")
 def approve(request: Request, report_id: int) -> Dict[str, Any]:
-    user = require_editor(request)
+    """Отметить отчёт проверенным. Только начальник отдела или заместитель."""
+    user = require_reviewer(request)
     report = _report_or_404(request, report_id)
     service = _service(request)
     approved = service.approve(report, user)
     return {"report": _report_payload(service, approved)}
+
+
+@router.post("/reports/{report_id}/rework")
+def send_back(request: Request, report_id: int) -> Dict[str, Any]:
+    """Вернуть отчёт исполнителю с замечанием. Только проверяющий."""
+    user = require_reviewer(request)
+    report = _report_or_404(request, report_id)
+    service = _service(request)
+    note = str(_body(request).get("note", ""))
+    return {"report": _report_payload(service, service.send_back(report, note, user))}
 
 
 @router.get("/reports/{report_id}/sources")
@@ -516,6 +672,26 @@ def report_sources(request: Request, report_id: int) -> Dict[str, Any]:
     require_user(request)
     report = _report_or_404(request, report_id)
     return {"items": _service(request).sources(report)}
+
+
+@router.get("/reports/{report_id}/file")
+def download_report_file(request: Request, report_id: int) -> FileResponse:
+    """Отдать загруженный отчёт тем же файлом, каким его сдали.
+
+    Смотреть отчёты может любой сотрудник: система для того и заведена,
+    чтобы отдел видел, что кем сделано.
+    """
+    require_user(request)
+    report = _report_or_404(request, report_id)
+    if report.source != "uploaded":
+        raise ServiceError("этот отчёт собран системой — выгрузите его в DOCX", 404)
+    path = Path(_repos(request).reports.file_path(report.id))
+    if not path.is_file():
+        raise ServiceError("файл отчёта не найден на диске", 404)
+    return FileResponse(
+        path, filename=report.file_name,
+        headers={"Content-Disposition": _disposition(report.file_name)},
+    )
 
 
 @router.get("/reports/{report_id}/export.md")
@@ -820,7 +996,7 @@ def set_document_status(request: Request, doc_id: str) -> Dict[str, Any]:
     """Отметить актуальность документа.
 
     Заменённый и архивный документ пропадает из поиска: цитировать отменённую
-    редакцию стандарта как действующую — прямая ошибка в отчёте заказчику.
+    редакцию стандарта как действующую — прямая ошибка в отчёте.
     Сам документ остаётся в библиотеке для разбора старых обращений.
     """
     user = require_editor(request)

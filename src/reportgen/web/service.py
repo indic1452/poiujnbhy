@@ -31,6 +31,10 @@ from ..store.models import Case, Report, ReportSection, User
 from ..store.repo import Repositories
 from ..verify import summarize, verify_report
 
+#: Предел на замечание проверяющего: это строка «что исправить», а не второй
+#: отчёт. Длиннее — значит, разговор не для карточки письма.
+MAX_REVIEW_NOTE = 2000
+
 #: Предел обрезки цитаты в приложении к отчёту. Он обязан совпадать с тем,
 #: что видела модель, иначе верификатор блокирует число, законно взятое из
 #: хвоста фрагмента. Значение одно и живёт в pipeline.
@@ -235,16 +239,16 @@ class ReportService:
         if self.repos.cases.by_case_id(case_id) is not None:
             raise ServiceError(f"письмо '{case_id}' уже зарегистрировано", 409)
 
-        # Отправителя берём из факт-пакета, а если его там нет — из формы:
+        # Номер группы берём из факт-пакета, а если его там нет — из формы:
         # при регистрации письма факт-пакет обычно ещё пустой. Номер из формы
         # кладём и в сам пакет: оттуда он попадает в шапку отчёта и в промпт
         # модели. Раньше он оставался только колонкой письма, и отчёт выходил
         # с прочерком вместо номера, хотя инженер его вводил. Правка карточки
         # (PATCH) синхронизировала оба места, а регистрация — нет.
-        if not facts_customer(raw):
-            from_form = str(payload.get("customer", "")).strip()
+        if not facts_group_no(raw):
+            from_form = str(payload.get("group_no", payload.get("customer", ""))).strip()
             if from_form:
-                raw["customer"] = from_form
+                raw["group_no"] = from_form
 
         facts = _validate_facts(raw)
         case = self.repos.cases.create(
@@ -253,7 +257,7 @@ class ReportService:
             facts=raw,
             digest=facts.digest(),
             title=payload.get("title", ""),
-            customer=facts.customer,
+            customer=facts.group_no,
             user_id=user.id if user else None,
             incoming_no=str(payload.get("incoming_no", "")).strip(),
             incoming_date=str(payload.get("incoming_date", "")).strip(),
@@ -274,7 +278,7 @@ class ReportService:
         if raw["report_type"] != case.report_type:
             raise ServiceError("тип отчёта менять нельзя — зарегистрируйте новое письмо", 400)
         facts = _validate_facts(raw)
-        self.repos.cases.update_facts(case.id, raw, facts.digest(), customer=facts.customer)
+        self.repos.cases.update_facts(case.id, raw, facts.digest(), customer=facts.group_no)
         # Изменились исходные данные — значит изменилось и множество чисел,
         # которые отчёт имеет право называть. Все отчёты кейса перепроверяются
         # сразу, иначе подписанный документ остался бы «утверждённым» с числами,
@@ -467,6 +471,10 @@ class ReportService:
         report = self.repos.reports.get(report_id)
         if report is None:
             raise ServiceError("отчёт не найден", 404)
+        # Загруженный отчёт написан человеком целиком: ни секций шаблона, ни
+        # факт-пакета за ним нет, пересобирать нечего и не из чего.
+        if report.source == "uploaded":
+            return report
         case = self.repos.cases.get(report.case_ref)
         if case is None:
             raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
@@ -487,7 +495,7 @@ class ReportService:
                 )
             )
         # Состояние документа идёт в шапку: утверждённый отчёт не должен
-        # уходить заказчику с надписью «ЧЕРНОВИК, требует подписи».
+        # уходить с надписью «ЧЕРНОВИК, требует подписи».
         head = {**report.meta, **self._signature(report)}
         markdown = assemble(facts, outline, generated, registry, head)
         issues = self._verify(
@@ -513,13 +521,17 @@ class ReportService:
 
         Шапка пишется при сборке, а состояние меняется позже: отчёт
         утверждают, проверяют, правят. Утверждённые до появления подписи
-        уходили заказчику с отметкой «ЧЕРНОВИК», а свежий черновик — без
+        уходили на проверку с отметкой «ЧЕРНОВИК», а свежий черновик — без
         числа несведённых ошибок. Текст отчёта величина производная, он
         пересобирается из секций при каждой правке, поэтому здесь его
         достаточно пересобрать, а не хранить особым образом.
         """
         from ..pipeline import status_line  # noqa: PLC0415 — только для сверки
 
+        # Загруженный отчёт собирал человек: пересобирать в нём нечего,
+        # а шапку ему система не писала и дописывать не станет.
+        if report.source == "uploaded":
+            return report
         expected = status_line({**self._signature(report), "errors": report.error_count})
         if expected in report.markdown:
             return report
@@ -580,12 +592,12 @@ class ReportService:
         отличить подписанный документ от подправленного после подписи было
         нельзя ничем.
         """
-        if report.status != "approved":
+        if report.status not in ("approved", "review"):
             return
         self.repos.reports.set_status(report.id, "draft")
         self.repos.audit.log(
             "report.approval.revoked", object_type="report", object_id=str(report.id),
-            details={"reason": reason, "section": section_id},
+            details={"reason": reason, "section": section_id, "was": report.status},
         )
 
     def _apply_issues(self, report: Report, issues: List[Dict[str, Any]]) -> None:
@@ -613,16 +625,77 @@ class ReportService:
 
     # -- утверждение --------------------------------------------------------
 
+    def submit(self, report: Report, user: User | None) -> Report:
+        """Отправить отчёт на проверку начальнику.
+
+        Может любой сотрудник — свои отчёты в отдел сдают все. Собранный
+        системой отчёт с ошибками верификатора не отправляем: начальнику
+        незачем ловить числа, которых нет в исходных данных, это работа
+        машины. У загруженного файлом отчёта факт-пакета нет, и сверять
+        нечего — он уходит на проверку как есть.
+        """
+        if report.status == "review":
+            return report
+        if report.status == "approved":
+            raise ServiceError("отчёт уже проверен", 409)
+        if report.source != "uploaded":
+            errors = [i for i in self.verify(report) if i["level"] == "error"]
+            if errors:
+                raise ServiceError(
+                    "нельзя отправить на проверку: верификатор нашёл ошибок — "
+                    f"{len(errors)}", 409)
+        case = self.repos.cases.get(report.case_ref)
+        if case is None:
+            raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
+        self.repos.reports.set_status(report.id, "review", note="")
+        self.repos.cases.set_status(case.id, "review")
+        self.repos.audit.log(
+            "report.submit", user=user, object_type="report", object_id=str(report.id),
+            details={"case_id": case.case_id, "version": report.version},
+        )
+        updated = self.repos.reports.get(report.id)
+        assert updated is not None
+        return updated
+
+    def send_back(self, report: Report, note: str, user: User | None) -> Report:
+        """Вернуть отчёт исполнителю с замечанием. Только для проверяющего."""
+        if report.status not in ("review", "approved"):
+            raise ServiceError("возвращать можно отчёт, отправленный на проверку", 409)
+        note = " ".join(str(note or "").split())
+        if not note:
+            raise ServiceError("напишите, что именно исправить", 400)
+        if len(note) > MAX_REVIEW_NOTE:
+            raise ServiceError(f"замечание длиннее {MAX_REVIEW_NOTE} знаков", 400)
+        case = self.repos.cases.get(report.case_ref)
+        if case is None:
+            raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
+        self.repos.reports.set_status(report.id, "rework", note=note)
+        self.repos.cases.set_status(case.id, "draft")
+        self.repos.audit.log(
+            "report.rework", user=user, object_type="report", object_id=str(report.id),
+            details={"case_id": case.case_id, "version": report.version, "note": note},
+        )
+        updated = self.repos.reports.get(report.id)
+        assert updated is not None
+        return updated
+
     def approve(self, report: Report, user: User | None) -> Report:
-        """Утвердить отчёт. Заблокировано, пока верификатор находит ошибки."""
+        """Отметить отчёт проверенным. Проверяет начальник отдела или его зам.
+
+        Заблокировано, пока верификатор находит ошибки в собранном системой
+        отчёте: подпись означает, что документ прочитан и годен, а не что
+        на него закрыли глаза.
+        """
         if report.status == "approved":
             return report
-        issues = self.verify(report)
-        errors = [issue for issue in issues if issue["level"] == "error"]
-        if errors:
-            raise ServiceError(
-                f"отчёт не может быть утверждён: верификатор нашёл ошибок — {len(errors)}", 409
-            )
+        if report.source != "uploaded":
+            issues = self.verify(report)
+            errors = [issue for issue in issues if issue["level"] == "error"]
+            if errors:
+                raise ServiceError(
+                    f"отчёт не может быть проверен: верификатор нашёл ошибок — {len(errors)}",
+                    409,
+                )
         case = self.repos.cases.get(report.case_ref)
         if case is None:
             raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
@@ -719,9 +792,9 @@ class ReportService:
 
 # ------------------------------------------------------------- служебное ---
 
-def facts_customer(raw: Dict[str, Any]) -> str:
-    """Номер отправителя, записанный в самом факт-пакете."""
-    return str(raw.get("customer") or "").strip()
+def facts_group_no(raw: Dict[str, Any]) -> str:
+    """Номер группы, записанный в самом факт-пакете (или под прежним ключом)."""
+    return str(raw.get("group_no") or raw.get("customer") or "").strip()
 
 
 def _validate_facts(raw: Dict[str, Any]) -> FactPack:

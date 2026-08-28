@@ -79,7 +79,24 @@ ABSENCE_TITLES = {
     "trip": "командировка",
     "study": "учёба",
 }
-REPORT_STATUSES = ("draft", "verified", "approved")
+#: Путь отчёта. Готовит его исполнитель, проверяет начальник отдела или
+#: заместитель: draft — в работе у исполнителя; review — отправлен на
+#: проверку; rework — проверяющий вернул с замечанием; approved — проверен.
+REPORT_STATUSES = ("draft", "review", "rework", "approved")
+REPORT_STATUS_TITLES = {
+    "draft": "в работе",
+    "review": "на проверке",
+    "rework": "требует исправления",
+    "approved": "проверен",
+}
+#: Кто может проверять отчёты: начальник отдела, его заместитель и создатель
+#: системы. Начальник группы — администратор (заводит людей), но отчёты
+#: проверяет не он: так устроен порядок в отделе.
+REVIEW_ROLES = ("owner", "head", "deputy")
+#: Откуда взялся отчёт: собран системой по факт-пакету или загружен готовым
+#: файлом. У загруженного факт-пакета нет, и числа в нём никто не сверял —
+#: это обязано быть видно и в карточке, и в списке.
+REPORT_SOURCES = ("generated", "uploaded")
 
 #: Актуальность документа библиотеки.
 #: current    — действующий, участвует в поиске;
@@ -131,6 +148,11 @@ class User:
     def is_admin(self) -> bool:
         """Заводит и отключает сотрудников, удаляет документы, читает журнал."""
         return self.role in ADMIN_ROLES
+
+    @property
+    def can_review(self) -> bool:
+        """Проверяет отчёты: начальник отдела, заместитель, создатель системы."""
+        return self.role in REVIEW_ROLES
 
     @property
     def is_owner(self) -> bool:
@@ -245,7 +267,7 @@ class Case:
     title: str = ""
     customer: str = ""
     status: str = "new"
-    #: Входящий номер и дата письма заказчика.
+    #: Входящий номер и дата входящего письма.
     incoming_no: str = ""
     incoming_date: str = ""
     #: Срок ответа, ГГГГ-ММ-ДД. Пусто — срок не задан.
@@ -290,7 +312,9 @@ class Case:
             "case_id": self.case_id,
             "report_type": self.report_type,
             "title": self.title,
-            "customer": self.customer,
+            # Колонка в базе называется customer по историческим причинам,
+            # наружу отдаём то слово, которое стоит в интерфейсе.
+            "group_no": self.customer,
             "status": self.status,
             "incoming_no": self.incoming_no,
             "incoming_date": self.incoming_date,
@@ -368,6 +392,14 @@ class Report:
     created_at: str = ""
     approved_by: int | None = None
     approved_at: str | None = None
+    #: Замечание проверяющего при возврате на исправление. Видно всем:
+    #: исполнитель должен знать, что править, а отдел — что происходит.
+    review_note: str = ""
+    #: Собран системой или загружен готовым файлом.
+    source: str = "generated"
+    #: Имя и размер загруженного файла; для собранных системой — пусто.
+    file_name: str = ""
+    file_size: int = 0
     sections: List[ReportSection] = field(default_factory=list)
 
     @classmethod
@@ -384,6 +416,10 @@ class Report:
             created_at=row["created_at"],
             approved_by=row["approved_by"],
             approved_at=row["approved_at"],
+            review_note=_col(row, "review_note", "") or "",
+            source=_col(row, "source", "generated") or "generated",
+            file_name=_col(row, "file_name", "") or "",
+            file_size=int(_col(row, "file_size", 0) or 0),
         )
 
     @property
@@ -404,8 +440,14 @@ class Report:
             "issues": self.issues,
             "errors": self.error_count,
             "warnings": self.warning_count,
+            "status_title": REPORT_STATUS_TITLES.get(self.status, self.status),
             "created_at": self.created_at,
             "approved_at": self.approved_at,
+            "review_note": self.review_note,
+            "source": self.source,
+            "uploaded": self.source == "uploaded",
+            "file_name": self.file_name,
+            "file_size": self.file_size,
             "sections": [section.to_dict() for section in self.sections],
         }
         if with_markdown:

@@ -336,7 +336,7 @@ def generate_report(
 def status_line(meta: Dict[str, Any]) -> str:
     """Строка о состоянии документа в шапке отчёта.
 
-    Утверждённый отчёт уходит заказчику. Пока строка была прибита гвоздями,
+    Проверенный отчёт уходит по назначению. Пока строка была прибита гвоздями,
     он уходил с надписью «ЧЕРНОВИК, требует проверки и подписи инженера» —
     и в Markdown, и в DOCX. Для организации, которая этим отвечает на
     входящее письмо, это хуже опечатки.
@@ -371,7 +371,7 @@ def assemble(
     """Сшивка: титул, служебный блок, оглавление, разделы, приложение."""
     lines: List[str] = [f"# {outline.title}", ""]
     lines.append(f"**Обращение:** {facts.case_id}  ")
-    lines.append(f"**Отправитель:** {facts.customer or '—'}  ")
+    lines.append(f"**Номер группы:** {facts.group_no or '—'}  ")
     if facts.equipment:
         equipment = ", ".join(f"{k}: {v}" for k, v in facts.equipment.items())
         lines.append(f"**Оборудование:** {equipment}  ")

@@ -133,8 +133,13 @@ CREATE TABLE IF NOT EXISTS reports (
     id          INTEGER PRIMARY KEY,
     case_ref    INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
     version     INTEGER NOT NULL,
-    status      TEXT    NOT NULL DEFAULT 'draft',  -- draft|verified|approved
+    status      TEXT    NOT NULL DEFAULT 'draft',  -- draft|review|rework|approved
     markdown    TEXT    NOT NULL,
+    review_note TEXT    NOT NULL DEFAULT '',       -- замечание проверяющего
+    source      TEXT    NOT NULL DEFAULT 'generated', -- generated|uploaded
+    file_name   TEXT    NOT NULL DEFAULT '',       -- имя загруженного файла
+    file_path   TEXT    NOT NULL DEFAULT '',       -- где он лежит
+    file_size   INTEGER NOT NULL DEFAULT 0,
     meta_json   TEXT    NOT NULL DEFAULT '{}',
     issues_json TEXT    NOT NULL DEFAULT '[]',
     created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,

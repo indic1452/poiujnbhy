@@ -791,7 +791,7 @@ class CaseRepo:
         Принимает только известные колонки — остальное молча игнорируется,
         чтобы содержимое запроса из браузера не превращалось в SQL.
 
-        Заказчик хранится в двух местах: колонкой письма и полем факт-пакета,
+        Номер группы хранится в двух местах: колонкой письма и полем факт-пакета,
         откуда он попадает в отчёт. Пишем сразу в оба, иначе правка в
         карточке жила до первого сохранения фактов, а потом молча
         возвращалась к прежнему значению.
@@ -820,7 +820,10 @@ class CaseRepo:
             current = self.get(case_ref)
             if current is not None:
                 facts = dict(current.facts)
-                facts["customer"] = fields["customer"]
+                facts["group_no"] = fields["customer"]
+                # Прежний ключ убираем, иначе в пакете осталось бы два номера
+                # и читался бы не тот, который только что вписали.
+                facts.pop("customer", None)
                 facts_json = json.dumps(facts, ensure_ascii=False)
         if facts_json is not None:
             parts.append("facts_json = ?")
@@ -894,6 +897,37 @@ class ReportRepo:
         report = self.get(report_id)
         assert report is not None
         return report
+
+    def create_uploaded(self, case_ref: int, *, markdown: str, file_name: str,
+                        file_path: str, file_size: int,
+                        user_id: int | None = None) -> Report:
+        """Готовый отчёт, загруженный файлом, — сразу на проверку.
+
+        Секций у него нет: это не сборка по шаблону, а документ, который
+        инженер написал сам. В markdown кладём извлечённый текст — по нему
+        работает поиск и предпросмотр, а на руки выдаётся исходный файл.
+        """
+        version = int(
+            self.db.scalar("SELECT coalesce(max(version), 0) FROM reports WHERE case_ref = ?",
+                           (case_ref,)) or 0
+        ) + 1
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO reports(case_ref, version, status, markdown, meta_json, "
+                "issues_json, source, file_name, file_path, file_size, created_by, created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (case_ref, version, "review", markdown, "{}", "[]",
+                 "uploaded", file_name, file_path, int(file_size), user_id, utcnow()),
+            )
+            report_id = int(cursor.lastrowid)  # type: ignore[arg-type]
+        report = self.get(report_id)
+        assert report is not None
+        return report
+
+    def file_path(self, report_id: int) -> str:
+        """Где лежит загруженный файл. Для собранных системой — пусто."""
+        row = self.db.query_one("SELECT file_path FROM reports WHERE id = ?", (report_id,))
+        return (row["file_path"] if row is not None else "") or ""
 
     def get(self, report_id: int, with_sections: bool = True) -> Report | None:
         row = self.db.query_one("SELECT * FROM reports WHERE id = ?", (report_id,))
@@ -976,15 +1010,29 @@ class ReportRepo:
                 (json.dumps(list(issues), ensure_ascii=False), report_id),
             )
 
-    def set_status(self, report_id: int, status: str) -> None:
+    def set_status(self, report_id: int, status: str, *, note: str | None = None) -> None:
+        """Сменить состояние отчёта.
+
+        При выходе из «проверен» подпись снимается целиком: кто и когда
+        проверил, относится к прежнему тексту. Иначе в базе оставался бы
+        проверяющий под документом, которого он не видел.
+        """
         with self.db.transaction() as connection:
-            connection.execute("UPDATE reports SET status = ? WHERE id = ?", (status, report_id))
+            if status == "approved":
+                connection.execute(
+                    "UPDATE reports SET status = ?, review_note = ? WHERE id = ?",
+                    (status, note or "", report_id))
+            else:
+                connection.execute(
+                    "UPDATE reports SET status = ?, review_note = ?, "
+                    "approved_by = NULL, approved_at = NULL WHERE id = ?",
+                    (status, note if note is not None else "", report_id))
 
     def approve(self, report_id: int, user_id: int | None) -> None:
         with self.db.transaction() as connection:
             connection.execute(
-                "UPDATE reports SET status = 'approved', approved_by = ?, approved_at = ? "
-                "WHERE id = ?",
+                "UPDATE reports SET status = 'approved', review_note = '', "
+                "approved_by = ?, approved_at = ? WHERE id = ?",
                 (user_id, utcnow(), report_id),
             )
 
@@ -1065,7 +1113,7 @@ class ChatRepo:
 
     Все методы принимают ``user_id`` и проверяют владельца: чужой чат нельзя
     ни прочитать, ни изменить — в вопросах инженеров всплывают данные
-    заказчиков, а гриф на них тот же, что и на кейсах.
+    отдела, а порядок доступа к ним тот же, что и к письмам.
     """
 
     def __init__(self, db: Database):

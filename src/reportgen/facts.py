@@ -23,12 +23,10 @@ class FactPackError(ValueError):
     """Факт-пакет не соответствует схеме."""
 
 
-#: Номер отправителя: числовой номер группы или части, откуда пришло письмо.
-#: Разделители допускаем — в делопроизводстве встречаются номера вида «12/345»
-#: и «1274-3». Проверка стоит здесь, а не только в карточке письма: факт-пакет
-#: правится ещё и целиком в режиме JSON, и через API — а это тот же путь в базу.
-SENDER_RE = re.compile(r"\d[\d\s/.\-]*")
-MAX_SENDER = 32
+#: Номер группы, откуда пришло письмо. Пишут по-разному: «1274», «12/345»,
+#: «в/ч 74326», «группа связи». Формат задаёт делопроизводство отдела, а не
+#: программа, поэтому проверяем только длину — чтобы в поле не уехал абзац.
+MAX_GROUP = 120
 
 
 @dataclass(frozen=True)
@@ -99,17 +97,11 @@ class Finding:
         )
 
 
-def check_sender(value: Any) -> str:
-    """Номер отправителя либо пустая строка."""
+def clean_group(value: Any) -> str:
+    """Номер группы: лишние пробелы убраны, длина в пределах разумного."""
     text = " ".join(str(value or "").split())
-    if not text:
-        return ""
-    if len(text) > MAX_SENDER:
-        raise FactPackError(f"отправитель: номер длиннее {MAX_SENDER} знаков")
-    if not SENDER_RE.fullmatch(text):
-        raise FactPackError(
-            "отправитель: только цифры и разделители, например 1274 или 12/345"
-        )
+    if len(text) > MAX_GROUP:
+        raise FactPackError(f"номер группы: длиннее {MAX_GROUP} знаков")
     return text
 
 
@@ -119,10 +111,10 @@ class FactPack:
 
     case_id: str
     report_type: str
-    #: Номер отправителя: числовой номер группы или части, откуда пришло
-    #: письмо. Поле называется customer по историческим причинам — так же
-    #: названа колонка в базе и ключ в факт-пакете уже принятых обращений.
-    customer: str = ""
+    #: Номер группы, откуда пришло письмо. В базе эта колонка по историческим
+    #: причинам называется customer — переименовывать её на работающей
+    #: установке дороже, чем один раз объяснить это здесь.
+    group_no: str = ""
     equipment: Dict[str, Any] = field(default_factory=dict)
     request: str = ""
     artifacts: List[Dict[str, Any]] = field(default_factory=list)
@@ -153,7 +145,9 @@ class FactPack:
         return cls(
             case_id=raw["case_id"],
             report_type=raw["report_type"],
-            customer=check_sender(raw.get("customer", "")),
+            # customer — прежнее имя ключа: факт-пакеты принятых обращений
+            # лежат в базе с ним, и читать их система обязана.
+            group_no=clean_group(raw.get("group_no", raw.get("customer", ""))),
             equipment=raw.get("equipment", {}),
             request=raw.get("request", ""),
             artifacts=list(raw.get("artifacts", [])),
@@ -220,7 +214,7 @@ class FactPack:
         artifacts = ", ".join(a.get("name", "?") for a in self.artifacts) or "—"
         return (
             f"Обращение: {self.case_id}\n"
-            f"Отправитель: {self.customer or '—'}\n"
+            f"Номер группы: {self.group_no or '—'}\n"
             f"Оборудование: {equipment}\n"
             f"Суть обращения: {self.request or '—'}\n"
             f"Полученные материалы: {artifacts}"
@@ -253,7 +247,7 @@ class FactPack:
         return {
             "case_id": self.case_id,
             "report_type": self.report_type,
-            "customer": self.customer,
+            "group_no": self.group_no,
             "equipment": self.equipment,
             "request": self.request,
             "artifacts": self.artifacts,

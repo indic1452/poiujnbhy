@@ -68,7 +68,7 @@ def create_app(settings: Settings | None = None,
     app = FastAPI(
         lifespan=lifespan,
         title="Генератор технических отчётов",
-        description="Локальная система подготовки технических отчётов по обращениям заказчиков",
+        description="Локальная система подготовки, учёта и проверки технических отчётов отдела",
         version="0.1.0",
         # Штатные страницы FastAPI тянут swagger-ui и redoc с cdn.jsdelivr.net,
         # а иконку — с сайта проекта. В изолированном контуре это пустая белая
