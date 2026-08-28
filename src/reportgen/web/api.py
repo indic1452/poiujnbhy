@@ -63,24 +63,19 @@ def _since_utc(days: int) -> str:
     return moment.isoformat(timespec="seconds")
 
 
-#: Номер отправителя: числовой номер группы или части, откуда пришло письмо.
-#: Разделители допускаем — в делопроизводстве встречаются номера вида «12/345»
-#: и «1274-3». Букв нет: поле числовое, так его и заводят.
-SENDER_RE = re.compile(r"\d[\d\s/.\-]*")
-
-
 def _sender_or_empty(value: Any) -> str:
-    """Номер отправителя либо пустая строка. Иначе — понятная ошибка."""
-    text = " ".join(str(value or "").split())
-    if not text:
-        return ""
-    if len(text) > 32:
-        raise ServiceError("номер отправителя длиннее 32 знаков", 400)
-    if not SENDER_RE.fullmatch(text):
-        raise ServiceError(
-            "номер отправителя: только цифры и разделители, например 1274 или 12/345", 400
-        )
-    return text
+    """Номер отправителя либо пустая строка. Иначе — понятная ошибка.
+
+    Сама проверка живёт в facts.check_sender: факт-пакет правится не только
+    карточкой письма, но и целиком в режиме JSON, и через API — вторая копия
+    правила рано или поздно разошлась бы с первой.
+    """
+    from ..facts import FactPackError, check_sender  # noqa: PLC0415
+
+    try:
+        return check_sender(value)
+    except FactPackError as error:
+        raise ServiceError(str(error), 400) from error
 
 
 def _date_or_empty(value: Any, field: str) -> str:

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import threading
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -206,7 +207,18 @@ class Retriever:
         #: было межъязыкового механизма вообще, и русский вопрос по английскому
         #: RFC не находил ничего.
         self.terms_path = terms_path
-        self.last_expansion: List[str] = []
+        # Своё у каждого потока: поисковик на сервер один, а запросы идут
+        # одновременно — общее поле показывало чужое расширение запроса.
+        self._state = threading.local()
+
+    @property
+    def last_expansion(self) -> List[str]:
+        """Что добавилось к последнему запросу этого потока."""
+        return getattr(self._state, "expansion", [])
+
+    @last_expansion.setter
+    def last_expansion(self, value: Sequence[str] | None) -> None:
+        self._state.expansion = list(value or [])
 
     def search(
         self,

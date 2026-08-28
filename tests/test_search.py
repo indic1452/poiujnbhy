@@ -278,6 +278,40 @@ class HybridSearchTests(unittest.TestCase):
         self.assertIsNotNone(retriever.last_warning)
         self.assertIn("плотный поиск", str(retriever.last_warning))
 
+    def test_warning_belongs_to_the_thread_that_searched(self):
+        """Поисковик на сервер один, а спрашивают одновременно.
+
+        Пояснения к поиску лежали в общем поле экземпляра: расширение запроса
+        и предупреждение о деградации показывались не тому, кто спрашивал, а
+        тому, кто спросил последним. Хуже: чужой поиск обнулял предупреждение
+        между поиском и его чтением, и своё инженер не видел вовсе.
+        """
+        import threading
+
+        put_ordered_vectors(self.repos, self._all_uids())
+        retriever = DatabaseRetriever(self.repos, embedder=BrokenEmbedder())
+        retriever.search(OBW_QUERY, top_k=3)
+        self.assertIn("плотный поиск", str(retriever.last_warning))
+
+        # Соседний поток ищет исправным путём — своего предупреждения у него
+        # нет, и чужое он не видит.
+        seen = {}
+
+        def other():
+            clean = DatabaseRetriever(self.repos, embedder=FakeEmbedder())
+            clean.search(OBW_QUERY, top_k=3)
+            seen["clean"] = clean.last_warning
+            seen["shared"] = retriever.last_warning
+
+        thread = threading.Thread(target=other)
+        thread.start()
+        thread.join()
+
+        self.assertIsNone(seen["clean"])
+        self.assertIsNone(seen["shared"], "чужое предупреждение видно из другого потока")
+        # А в своём потоке предупреждение никуда не делось.
+        self.assertIn("плотный поиск", str(retriever.last_warning))
+
     def _all_uids(self) -> List[str]:
         return [chunk.chunk_id for chunk in self.repos.chunks.all_chunks()]
 

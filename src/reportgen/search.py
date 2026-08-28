@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import re
+import threading
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import (
@@ -123,13 +124,35 @@ class DatabaseRetriever:
         #: по-русски. Расширяется только лексический запрос — плотный поиск
         #: bge-m3 язык переступает сам.
         self.terms_path = terms_path
-        #: Что добавилось к последнему запросу — показывается инженеру.
-        self.last_expansion: List[str] = []
-        # Последняя нефатальная неприятность (недоступен сервис эмбеддингов
-        # или реранка). Поиск при этом отработал в деградированном режиме.
-        self.last_warning: str | None = None
+        # Пояснения к последнему поиску — свои у каждого потока. Поисковик
+        # на сервер один, а запросы идут одновременно: общее поле означало,
+        # что расширение запроса и предупреждение о деградации показывались
+        # не тому, кто спрашивал, а тому, кто спросил последним. Хуже того,
+        # начало чужого поиска обнуляло предупреждение между поиском и его
+        # чтением — и своё предупреждение инженер не видел вовсе.
+        self._state = threading.local()
         self._vector_cache: Tuple[List[str], List[List[float]]] | None = None
         self._cached_rows: int = -1
+
+    # -- пояснения к последнему поиску (свои у каждого потока) --------------
+
+    @property
+    def last_expansion(self) -> List[str]:
+        """Что добавилось к последнему запросу — показывается инженеру."""
+        return getattr(self._state, "expansion", [])
+
+    @last_expansion.setter
+    def last_expansion(self, value: Sequence[str] | None) -> None:
+        self._state.expansion = list(value or [])
+
+    @property
+    def last_warning(self) -> str | None:
+        """Последняя нефатальная неприятность: поиск отработал вполсилы."""
+        return getattr(self._state, "warning", None)
+
+    @last_warning.setter
+    def last_warning(self, value: str | None) -> None:
+        self._state.warning = value
 
     # -- служебное ----------------------------------------------------------
 

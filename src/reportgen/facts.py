@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence, Set
@@ -20,6 +21,14 @@ SEVERITIES = ("info", "low", "medium", "high", "critical")
 
 class FactPackError(ValueError):
     """Факт-пакет не соответствует схеме."""
+
+
+#: Номер отправителя: числовой номер группы или части, откуда пришло письмо.
+#: Разделители допускаем — в делопроизводстве встречаются номера вида «12/345»
+#: и «1274-3». Проверка стоит здесь, а не только в карточке письма: факт-пакет
+#: правится ещё и целиком в режиме JSON, и через API — а это тот же путь в базу.
+SENDER_RE = re.compile(r"\d[\d\s/.\-]*")
+MAX_SENDER = 32
 
 
 @dataclass(frozen=True)
@@ -90,6 +99,20 @@ class Finding:
         )
 
 
+def check_sender(value: Any) -> str:
+    """Номер отправителя либо пустая строка."""
+    text = " ".join(str(value or "").split())
+    if not text:
+        return ""
+    if len(text) > MAX_SENDER:
+        raise FactPackError(f"отправитель: номер длиннее {MAX_SENDER} знаков")
+    if not SENDER_RE.fullmatch(text):
+        raise FactPackError(
+            "отправитель: только цифры и разделители, например 1274 или 12/345"
+        )
+    return text
+
+
 @dataclass
 class FactPack:
     """Полный набор исходных данных по обращению."""
@@ -130,7 +153,7 @@ class FactPack:
         return cls(
             case_id=raw["case_id"],
             report_type=raw["report_type"],
-            customer=raw.get("customer", ""),
+            customer=check_sender(raw.get("customer", "")),
             equipment=raw.get("equipment", {}),
             request=raw.get("request", ""),
             artifacts=list(raw.get("artifacts", [])),

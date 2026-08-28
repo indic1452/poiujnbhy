@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence, Tuple
 
-from .facts import FactPack, FactPackError
+from .facts import FactPack, FactPackError, check_sender
 from .prompts import SECTION_PROMPT, SYSTEM_PROMPT
 
 if TYPE_CHECKING:  # только для подсказок типов — модуль не тянет хранилище
@@ -566,9 +566,31 @@ def _braced(text: str) -> str | None:
     return text[start:end + 1]
 
 
+def _normalize_sender(value: Any) -> str:
+    """Номер отправителя из старого отчёта: либо номер, либо пусто.
+
+    В отчётах прошлых лет на месте отправителя писали название организации
+    («Заказчик: ПАО Ростелеком») — тогда номера в шапке ещё не было. Такой
+    отчёт для обучения годится: отправитель не измерение, ни одно число из
+    него не берут. Поэтому название отбрасываем и оставляем поле пустым, а
+    номер сохраняем, если он записан номером целиком.
+
+    Выдёргивать цифры из названия нельзя: «Связь-21» превратилась бы в
+    отправителя 21, которого никто не присылал, — а это ровно то враньё,
+    ради запрета которого весь факт-пакет и существует.
+    """
+    try:
+        return check_sender(value)
+    except FactPackError:
+        return ""
+
+
 def _normalize_factpack(data: Dict[str, Any]) -> Dict[str, Any]:
     """Приводит частые вольности модели к форме схемы, не меняя значений."""
     result = dict(data)
+
+    if "customer" in result:
+        result["customer"] = _normalize_sender(result["customer"])
 
     measurements = result.get("measurements")
     if isinstance(measurements, list):

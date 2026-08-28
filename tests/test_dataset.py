@@ -329,7 +329,7 @@ class FakeLLM:
 ANNOTATION = {
     "case_id": "SUP-2023-041",
     "report_type": "signal_issue",
-    "customer": "ЗАКАЗЧИК_03",
+    "customer": "1274",
     "measurements": {
         "snr": {"title": "Отношение сигнал/шум", "value": 11.2, "unit": "дБ",
                 "method": "по внеполосным участкам спектра"},
@@ -383,6 +383,34 @@ class ReverseAnnotateTests(unittest.TestCase):
         self.assertIn("occupied_bandwidth", user)
         self.assertIn("Результаты измерений", user)
         self.assertIn(REPORT.strip().splitlines()[0], user)
+
+    def test_sender_number_from_an_old_report_survives(self):
+        payload = dict(ANNOTATION)
+        payload["customer"] = "12/345"
+        data = reverse_annotate(FakeLLM(json.dumps(payload, ensure_ascii=False)),
+                                REPORT, "signal_issue")
+        self.assertEqual(data["customer"], "12/345")
+
+    def test_organisation_name_instead_of_sender_does_not_kill_the_report(self):
+        """Старый отчёт с «Заказчик: ПАО Ростелеком» — годная обучающая пара.
+
+        Отправитель не измерение: ни одно число отчёта из него не берут.
+        Ронять из-за него весь разбор нельзя, иначе обратная разметка
+        отвергнет весь архив прошлых лет — там номеров ещё не писали.
+        """
+        payload = dict(ANNOTATION)
+        payload["customer"] = "ПАО «Ростелеком»"
+        data = reverse_annotate(FakeLLM(json.dumps(payload, ensure_ascii=False)),
+                                REPORT, "signal_issue")
+        self.assertEqual(data["customer"], "")
+
+    def test_digits_are_not_dug_out_of_an_organisation_name(self):
+        """«Связь-21» не должна стать отправителем 21: его никто не присылал."""
+        payload = dict(ANNOTATION)
+        payload["customer"] = "ООО «Связь-21»"
+        data = reverse_annotate(FakeLLM(json.dumps(payload, ensure_ascii=False)),
+                                REPORT, "signal_issue")
+        self.assertEqual(data["customer"], "")
 
     def test_non_json_answer_raises(self):
         with self.assertRaises(DatasetError):

@@ -2576,6 +2576,22 @@ table.md-table th {
     color: #1c1607;
 }
 
+/* Ссылка на фрагмент, которого в подборке нет: модель её выдумала.
+   Гасим, но не убираем — инженер должен видеть, что здесь сослались
+   в никуда, а не считать это подтверждённым утверждением. */
+.cite--dead {
+    color: var(--muted);
+    background: transparent;
+    border-color: var(--border-strong);
+    border-style: dashed;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+.cite--dead:hover {
+    border-color: var(--border-strong);
+}
+
 /* -- пустое состояние с примерами -- */
 
 .chat-empty {

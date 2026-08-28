@@ -735,6 +735,16 @@ class LetterCardTests(WebTestCase):
         })
         self.assertEqual(400, response.status_code)
 
+    def test_sender_cannot_be_smuggled_through_the_fact_pack(self):
+        # Факт-пакет правится ещё и целиком в режиме JSON, и через API.
+        # Проверка номера в карточке письма этот путь не закрывала.
+        case = self.create_case()
+        facts = self.client.get(f"/api/cases/{case['id']}").json()["case"]["facts"]
+        response = self.client.put(f"/api/cases/{case['id']}/facts",
+                                   json={"facts": {**facts, "customer": "ПАО «Обход»"}})
+        self.assertEqual(400, response.status_code)
+        self.assertIn("отправител", response.json()["error"].lower())
+
     def test_sender_extra_spaces_are_trimmed(self):
         case = self.create_case()
         fresh = self.client.patch(f"/api/cases/{case['id']}",

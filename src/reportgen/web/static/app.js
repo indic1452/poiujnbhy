@@ -4426,8 +4426,9 @@
         /* Приложенные к следующему вопросу файлы. */
         attachments: [],
         activeLabel: null,
+        /* Идёт ли ответ в ОТКРЫТОМ разговоре. Признак экранный: сам поток
+           живёт при chat.live и переключением разговора не прерывается. */
         streaming: false,
-        controller: null,
         nodes: {},
         /* Ответ, который печатается прямо сейчас. Живёт отдельно от узлов
            страницы: инженер может уйти в «Письма» и вернуться — генерация
@@ -4497,17 +4498,26 @@
         chat.nodes = {};
     }
 
-    /** Оборвать незакрытый поток ответа: вызывается и кнопкой «Стоп», и роутером. */
+    /** Оборвать поток ответа в открытом разговоре: кнопка «Стоп». */
     function stopStreaming() {
-        if (chat.controller) {
+        const live = chat.live;
+        if (live && live.controller) {
             try {
-                chat.controller.abort();
+                live.controller.abort();
             } catch (error) {
                 /* поток уже закрыт */
             }
         }
-        chat.controller = null;
         chat.streaming = false;
+    }
+
+    /** Привести кнопки «Спросить»/«Стоп» в соответствие с тем, что происходит.
+     *
+     * Считаем по самому ответу, а не по общему признаку раздела: ответ мог
+     * остаться работать с прошлого захода, а мог идти и в другом разговоре.
+     */
+    function syncStreaming() {
+        setStreaming(!!(liveIsHere() && chat.live.running));
     }
 
     async function renderChat(view, chatId) {
@@ -4570,7 +4580,7 @@
         loadChatCase();
         // Кнопки «Спросить»/«Стоп» приводим в соответствие потоку: он мог
         // остаться работать с прошлого захода в раздел.
-        setStreaming(chat.streaming && liveIsHere());
+        syncStreaming();
         const input = chat.nodes.input;
         if (input) {
             input.value = loadDraft(chat.current ? chat.current.id : null);
@@ -4936,7 +4946,7 @@
             h('div', { class: 'who' }, 'Помощник', note), body));
         live.body = body;
         live.note = note;
-        if (live.answer) renderAnswer(body, live.answer);
+        if (live.answer) renderAnswer(body, live.answer, live.sources);
         return box;
     }
 
@@ -4964,7 +4974,7 @@
         const isUser = message.role === 'user';
         const body = h('div', { class: 'body' });
         if (isUser) body.textContent = message.content;
-        else renderAnswer(body, message.content);
+        else renderAnswer(body, message.content, message.sources);
 
         const sources = message.sources || [];
         const who = isUser
@@ -4997,6 +5007,11 @@
                 message.meta && message.meta.found !== undefined
                     ? h('span', { class: 'small faint' },
                         'найдено фрагментов: ' + message.meta.found +
+                        // Часть найденного в окно модели не поместилась.
+                        // Молчать об этом нельзя: инженер решит, что в
+                        // библиотеке больше ничего и нет.
+                        (message.meta.shown !== undefined && message.meta.shown < message.meta.found
+                            ? ' (модель видела ' + message.meta.shown + ')' : '') +
                         (message.meta.documents ? ' в ' + message.meta.documents + ' док.' : '') +
                         ', процитировано: ' + (message.meta.cited || 0))
                     : null) : null);
@@ -5010,11 +5025,22 @@
             (item) => String(item.message_id) === String(message.id));
     }
 
-    /** Вставить размеченный ответ и оживить ссылки [S1]. */
-    function renderAnswer(container, text) {
+    /** Вставить размеченный ответ и оживить ссылки [S1].
+     *
+     * `sources` — подборка, по которой писался этот ответ. Модель иногда
+     * ссылается на [S9], когда фрагментов пять: такая кнопка раньше молча
+     * не открывала ничего. Теперь она видна как несуществующая ссылка. */
+    function renderAnswer(container, text, sources) {
         clear(container);
         container.appendChild(renderMarkdown(text));
+        const known = new Set((sources || []).map((item) => item.label));
         $$('.cite', container).forEach((button) => {
+            if (sources && !known.has(button.dataset.label)) {
+                button.classList.add('cite--dead');
+                button.disabled = true;
+                button.title = 'Такого фрагмента в подборке нет: ссылка ошибочна';
+                return;
+            }
             button.classList.toggle('is-active', button.dataset.label === chat.activeLabel);
             button.addEventListener('click', () => selectSource(button.dataset.label, container));
         });
@@ -5409,6 +5435,12 @@
             answer: '',
             body: null,
             note: null,
+            running: true,
+            controller: null,
+            /* Подборка именно этого ответа: по ней сверяются ссылки [S1].
+               Общее поле раздела принадлежит открытому разговору, а ответ
+               мог идти в другом. */
+            sources: [],
         };
         chat.live = live;
 
@@ -5419,7 +5451,7 @@
         chat.activeLabel = null;
 
         const controller = new AbortController();
-        chat.controller = controller;
+        live.controller = controller;
         setStreaming(true);
         renderFeed();
         renderChatSources();
@@ -5436,7 +5468,7 @@
             if (!force && now - painted < 70) return;
             painted = now;
             if (!live.body || !live.body.isConnected) return;
-            renderAnswer(live.body, live.answer);
+            renderAnswer(live.body, live.answer, live.sources);
             live.body.classList.add('is-typing');
             scrollFeed();
         };
@@ -5480,11 +5512,14 @@
                     if (event.type === 'question') {
                         if (event.message && event.message.id) live.questionId = event.message.id;
                     } else if (event.type === 'sources') {
-                        chat.pendingSources = event.sources || [];
-                        chat.pendingDocuments = event.documents || [];
-                        chat.pendingExpansion = event.expansion || null;
-                        chat.pendingWarning = event.warning || null;
-                        renderChatSources();
+                        live.sources = event.sources || [];
+                        if (chat.live === live) {
+                            chat.pendingSources = live.sources;
+                            chat.pendingDocuments = event.documents || [];
+                            chat.pendingExpansion = event.expansion || null;
+                            chat.pendingWarning = event.warning || null;
+                            renderChatSources();
+                        }
                     } else if (event.type === 'delta') {
                         live.answer += event.text || '';
                         paint(false);
@@ -5499,11 +5534,16 @@
             if (error && error.name === 'AbortError') aborted = true;
             else failed = errorText(error);
         } finally {
-            chat.controller = null;
-            setStreaming(false);
+            // Разбираем за собой только СВОЙ ответ. Инженер мог за это время
+            // уйти в другой разговор и спросить там: раньше завершение
+            // первого потока гасило кнопку «Стоп» второго и убирало с экрана
+            // его печатающийся ответ.
+            live.running = false;
+            live.controller = null;
+            syncStreaming();
         }
 
-        chat.live = null;
+        if (chat.live === live) chat.live = null;
 
         if (done) {
             // Разговор мог быть закрыт или переключён, пока шёл ответ:
@@ -5543,7 +5583,7 @@
         }
         live.body.classList.remove('is-typing');
         if (live.note) live.note.textContent = '';
-        renderAnswer(live.body, live.answer);
+        renderAnswer(live.body, live.answer, live.sources);
         if (failed) {
             live.body.appendChild(h('div', { class: 'msg-error' }, 'Ошибка: ' + failed));
         } else if (aborted) {

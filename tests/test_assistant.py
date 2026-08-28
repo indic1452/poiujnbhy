@@ -286,6 +286,65 @@ class MaterialTests(AssistantTestCase):
         prepared = self.prepared()
         self.assertEqual(1, len(prepared["sources"]))
 
+    def test_previous_neighbour_is_cut_from_the_far_side(self):
+        """Сосед слева обрезается спереди, а не сзади.
+
+        Он примыкает к найденному фрагменту своим концом и в нём же
+        продолжается. Обрезка с конца выбрасывала именно стык — то самое
+        начало таблицы, ради которого соседа и берут.
+        """
+        # Соседу отводится половина меры фрагмента — текст обязан быть длиннее,
+        # иначе обрезки не будет вовсе и проверять станет нечего.
+        self.settings.assistant_source_chars = 600
+        long_lead = "далёкое начало раздела. " * 40 + "СТЫК С НАЙДЕННЫМ ФРАГМЕНТОМ"
+
+        class Neighbour:
+            def __init__(self, chunk_id, text):
+                self.chunk_id, self.text = chunk_id, text
+
+        original = self.repos.chunks.neighbours
+
+        def fake(anchors, radius):
+            anchor = list(anchors)[0]
+            doc, _, number = anchor.rpartition("#")
+            before = (f"{doc}#{int(number) - 1:04d}a" if number.isdigit() else "a#0000")
+            return {anchor: [Neighbour(before, long_lead)]}
+
+        self.repos.chunks.neighbours = fake
+        try:
+            prepared = self.prepared()
+        finally:
+            self.repos.chunks.neighbours = original
+
+        leads = [item["lead"] for item in prepared["sources"] if item["lead"]]
+        self.assertTrue(leads, "сосед слева не попал в источники")
+        self.assertIn("СТЫК С НАЙДЕННЫМ ФРАГМЕНТОМ", leads[0])
+
+    def test_dropped_fragments_are_not_reported_as_unfound(self):
+        """«Найдено» — это найденное поиском, а не уцелевшее после обрезки.
+
+        Раньше здесь стояло одно число, и молча выброшенные окном модели
+        фрагменты выглядели ненайденными: инженер решал, что в библиотеке
+        больше ничего и нет.
+        """
+        self.settings.assistant_context_chars = 900
+        answer = self.assistant.ask(self.ivanov, self.chat.id,
+                                    "Как измеряется занимаемая полоса частот?")["answer"]
+        meta = answer["meta"]
+        self.assertGreater(meta["found"], meta["shown"], "обрезки не случилось")
+        self.assertLessEqual(meta["cited"], meta["shown"])
+
+    def test_a_made_up_reference_is_not_counted_as_a_citation(self):
+        """Модель пишет [S9], когда фрагментов пять. Это не источник."""
+        class Inventive(StubLLM):
+            def complete(self, system, user, **kwargs):
+                return "Ответ со ссылкой [S1] и с выдуманной [S99]."
+
+        self.reports.llm = Inventive()
+        answer = self.assistant.ask(self.ivanov, self.chat.id, "полоса частот")["answer"]
+        self.assertEqual(1, answer["meta"]["cited"])
+        self.assertEqual(["S1"], [item["label"] for item in answer["sources"]])
+
     def test_neighbours_can_be_switched_off(self):
         self.settings.assistant_neighbours = 0
         prepared = self.prepared()
@@ -378,8 +437,55 @@ class StreamTests(AssistantTestCase):
         with self.assertRaises(RuntimeError):
             list(self.assistant.ask_stream(self.ivanov, chat.id, "вопрос"))
         messages = self.assistant.messages(self.ivanov, chat.id)
-        # Вопрос сохранён, недописанного ответа нет — чат пригоден к продолжению.
+        # Написанное до обрыва сохранено и помечено прерванным — ровно как
+        # при уходе инженера с вкладки. Терять его нельзя: на длинном ответе
+        # это пять минут работы модели, и обрыв модели тут ничем не отличается
+        # от обрыва браузера. Пометка нужна, чтобы обрубок не выглядел ответом.
+        self.assertEqual([m.role for m in messages], ["user", "assistant"])
+        answer = messages[-1]
+        self.assertEqual(answer.content, "начало ответа")
+        self.assertTrue(answer.meta.get("interrupted"))
+
+    def test_model_failure_before_a_single_word_saves_nothing(self):
+        chat = self.assistant.create_chat(self.ivanov)
+
+        class DeadOnArrival(StubLLM):
+            def stream(self, system, user, **kwargs):
+                raise RuntimeError("модель не поднялась")
+                yield ""      # pragma: no cover — генератор без yield не генератор
+
+        self.reports.llm = DeadOnArrival()
+        with self.assertRaises(RuntimeError):
+            list(self.assistant.ask_stream(self.ivanov, chat.id, "вопрос"))
+        # Сохранять нечего: пустой ответ в разговоре — это мусор, а не работа.
+        messages = self.assistant.messages(self.ivanov, chat.id)
         self.assertEqual([m.role for m in messages], ["user"])
+
+
+class NeighbourTrimTests(unittest.TestCase):
+    """Обрезка соседних фрагментов документа."""
+
+    def test_previous_fragment_keeps_the_end_next_to_the_hit(self):
+        """У соседа СЛЕВА полезен хвост: он продолжается в найденном куске.
+
+        Обрезка с конца (как у всех остальных фрагментов) оставляла дальний
+        край и выбрасывала ровно то место, ради которого соседа и брали, —
+        начало таблицы, обрывающейся в найденном фрагменте.
+        """
+        from reportgen.web.assistant import _tidy, _tidy_end
+
+        text = "начало документа " * 20 + "ТАБЛИЦА ДОПУСКОВ начинается здесь"
+        lead = _tidy_end(text, 60)
+        self.assertLessEqual(len(lead), 61)
+        self.assertIn("начинается здесь", lead)
+        self.assertTrue(lead.startswith("…"), lead)
+        # А обычная обрезка по-прежнему оставляет начало: соседу СПРАВА нужно оно.
+        self.assertIn("начало документа", _tidy(text, 60))
+
+    def test_short_neighbour_is_not_marked_as_cut(self):
+        from reportgen.web.assistant import _tidy_end
+
+        self.assertEqual("две строки", _tidy_end("две строки", 100))
 
 
 class AttachmentTests(AssistantTestCase):
@@ -420,6 +526,46 @@ class AttachmentTests(AssistantTestCase):
                           "мощности, спектр, модуляция, EVM. ") * 400)
         prepared = self.prepared("Что не так в дампе?")
         self.assertTrue(prepared["sources"], "библиотека вытеснена вложением")
+
+    def test_ten_files_together_fit_the_same_limit(self):
+        """Предел был на КАЖДЫЙ файл, и десять файлов выносили промпт за окно.
+
+        Переполнение окна llama.cpp не сообщает: он молча выбрасывает начало
+        промпта вместе с системной инструкцией, и модель перестаёт ставить
+        ссылки на документы — то есть перестаёт быть помощником.
+        """
+        self.settings.assistant_attachment_chars = 1000
+        for number in range(10):
+            self.attach(name=f"dump-{number}.log", text=f"строка{number} " * 400)
+        block, chars = self.assistant._attachment_block(
+            self.repos.chats.attachments(self.chat.id, pending_only=True))
+        self.assertLessEqual(chars, 1000 + 10 * 200, f"вложения заняли {chars} знаков")
+        for number in range(10):
+            self.assertIn(f"dump-{number}.log", block, "файл выпал из промпта целиком")
+
+    def test_a_short_file_does_not_hold_room_it_cannot_use(self):
+        # Поровну — но короткая записка не должна отнимать место у дампа.
+        self.settings.assistant_attachment_chars = 1000
+        self.attach(name="note.txt", text="перезвонить в понедельник")
+        self.attach(name="dump.log", text="строка дампа " * 500)
+        block, _ = self.assistant._attachment_block(
+            self.repos.chats.attachments(self.chat.id, pending_only=True))
+        self.assertIn("перезвонить в понедельник", block)
+        # Дампу досталось всё, что не выбрала записка, а не ровно половина.
+        self.assertIn("показано 9", block.split("dump.log")[1][:60])
+
+    def test_words_for_the_search_are_taken_from_every_file(self):
+        # Слова первого дампа выбирали всю норму, и второй файл на поиск не
+        # влиял вовсе — а прикладывают их как раз затем, чтобы сопоставить.
+        from reportgen.web.assistant import ATTACHMENT_KEYWORDS, _attachment_keywords
+
+        self.attach(name="first.log", text=" ".join(f"альфа{i}" for i in range(200)))
+        self.attach(name="second.log", text=" ".join(f"бета{i}" for i in range(200)))
+        words = _attachment_keywords(
+            self.repos.chats.attachments(self.chat.id, pending_only=True)).split()
+        self.assertEqual(len(words), ATTACHMENT_KEYWORDS)
+        self.assertTrue([w for w in words if w.startswith("альфа")])
+        self.assertTrue([w for w in words if w.startswith("бета")], "второй файл не в запросе")
 
     def test_attachment_is_bound_to_the_question(self):
         item = self.attach()

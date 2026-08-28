@@ -137,6 +137,18 @@ class AssistantService:
             if pieces:
                 self._finish(user, prepared, "".join(pieces), interrupted=True)
             raise
+        except Exception:      # noqa: BLE001 — сохранить написанное и отдать ошибку дальше
+            # Оборвалась сама модель: llama-server упал, кончилась память,
+            # разорвалось соединение. Обрыв браузера сохранял написанное, а
+            # обрыв модели — терял, хотя терять тут ровно то же самое: пять
+            # минут работы на длинном ответе. Ошибку не глотаем, она нужна
+            # наверху, чтобы показать инженеру причину.
+            if pieces:
+                try:
+                    self._finish(user, prepared, "".join(pieces), interrupted=True)
+                except Exception:  # noqa: BLE001 — исходная причина важнее
+                    pass
+            raise
 
         result = self._finish(user, prepared, "".join(pieces))
         yield {"type": "done", **result}
@@ -175,11 +187,20 @@ class AssistantService:
         warning = getattr(retriever, "last_warning", "") or ""
 
         attachment_block, attachment_chars = self._attachment_block(attachments)
-        sources = self._build_sources(hits, reserved=attachment_chars)
+        case_block = self._case_block(chat)
+        # В окно модели идут не только фрагменты библиотеки. Разговор,
+        # вопрос, карточка письма и приложенные файлы занимают то же самое
+        # место, и раньше их никто не считал: бюджет соблюдался по одной
+        # своей части, а промпт всё равно вылезал за окно.
+        history_chars = sum(len(item["content"]) for item in history)
+        reserved = attachment_chars + history_chars + len(question) + len(case_block)
+        sources = self._build_sources(hits, reserved=reserved)
         documents = self._document_cards(sources)
+        sources, documents = self._fit_window(
+            sources, documents, reserved=reserved)
         prompt = ASSISTANT_PROMPT.format(
             question=question,
-            case_block=self._case_block(chat),
+            case_block=case_block,
             attachments=attachment_block,
             library_map=_render_map(documents),
             sources=_render_sources(sources, documents),
@@ -190,6 +211,7 @@ class AssistantService:
             "question": question,
             "question_message": question_message,
             "history": history,
+            "hits": len(hits),
             "sources": sources,
             "documents": documents,
             "attachments": [item.to_dict() for item in attachments],
@@ -211,20 +233,21 @@ class AssistantService:
         if not attachments:
             return "", 0
         limit = int(getattr(self.settings, "assistant_attachment_chars", 0) or 8000)
+        texts = [(item, (item.text or "").strip()) for item in attachments]
+        shares = _share_chars([len(text) for _, text in texts], limit)
         blocks = []
-        for item in attachments:
-            text = (item.text or "").strip()
+        for (item, text), share in zip(texts, shares):
             if not text:
                 blocks.append(
                     f"[Файл: {item.name}] текст извлечь не удалось"
                     + (f" — {item.note}" if item.note else "")
                 )
                 continue
-            cut = len(text) > limit
-            body = text[:limit].rstrip() + ("\n…(файл показан не целиком)" if cut else "")
+            cut = len(text) > share
+            body = text[:share].rstrip() + ("\n…(файл показан не целиком)" if cut else "")
             head = f"[Файл: {item.name}, {ATTACHMENT_TITLES.get(item.kind, item.kind)}"
             if cut:
-                head += f", показано {limit} из {len(text)} знаков"
+                head += f", показано {share} из {len(text)} знаков"
             head += "]"
             blocks.append(f"{head}\n{body}")
         block = "\n### ПРИЛОЖЕННЫЕ ФАЙЛЫ\n" + "\n\n".join(blocks) + "\n"
@@ -287,7 +310,11 @@ class AssistantService:
             # Соседям хватает половины меры: они нужны как продолжение, а не
             # как самостоятельный источник.
             half = max(limit // 2, 300)
-            lead = _tidy(before, half) if before else ""
+            # У предыдущего фрагмента нужен ХВОСТ: он примыкает к найденному
+            # куску и продолжается в нём. Обрезка с конца (как везде) оставила
+            # бы дальний край и выбросила ровно то место, ради которого соседа
+            # и брали, — начало таблицы, обрывающейся в найденном фрагменте.
+            lead = _tidy_end(before, half) if before else ""
             tail = _tidy(after, half) if after else ""
 
             cost = len(text) + len(lead) + len(tail) + len(chunk.citation) + 40
@@ -343,11 +370,46 @@ class AssistantService:
                     cards[doc_id]["outline"] = headings
         return [cards[doc_id] for doc_id in order]
 
+    def _fit_window(self, sources: List[Dict[str, Any]], documents: List[Dict[str, Any]],
+                    *, reserved: int) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Последняя сверка с окном модели — уже по готовому тексту материала.
+
+        Бюджет источников считается по их длине, но в промпт идут ещё
+        оглавления документов и подписи фрагментов. На большой библиотеке
+        оглавления — это тысячи знаков, и промпт вылезал за окно, ничего
+        об этом не сообщая.
+
+        Порядок отказа: сначала оглавления (самое необязательное — они лишь
+        подсказывают, что ещё есть в документе), и только потом хвост
+        подборки, где относимость уже низкая. Последний фрагмент остаётся
+        всегда: без единого источника отвечать не на что.
+        """
+        window = int(getattr(self.settings, "assistant_context_chars", 0) or 26000)
+        room = max(window - reserved, min(MIN_LIBRARY_CHARS, window))
+        while sources:
+            weight = len(_render_map(documents)) + len(_render_sources(sources, documents))
+            if weight <= room:
+                break
+            if any(card.get("outline") for card in documents):
+                for card in documents:
+                    card["outline"] = []
+                continue
+            if len(sources) == 1:
+                break
+            sources = sources[:-1]
+            documents = self._document_cards(sources)
+        return sources, documents
+
     def _finish(self, user: User, prepared: Dict[str, Any], text: str,
                 *, interrupted: bool = False) -> Dict[str, Any]:
         chat: Chat = prepared["chat"]
         sources: List[Dict[str, Any]] = prepared["sources"]
-        used = _used_labels(text)
+        labels = {item["label"] for item in sources}
+        # Ссылки сверяем с подборкой. Модель иногда пишет [S9], когда в
+        # подборке пять фрагментов: такая ссылка ведёт в никуда, и считать
+        # её процитированным источником — врать инженеру в лицо. Ненайденные
+        # метки в счётчик не идут и в разметке гасятся.
+        used = _used_labels(text) & labels
         # В историю кладём только те источники, на которые ответ реально сослался,
         # иначе панель источников заполняется мусором.
         kept = [item for item in sources if item["label"] in used] or sources[:3]
@@ -358,7 +420,11 @@ class AssistantService:
             chat.id, "assistant", text.strip(),
             sources=kept,
             meta={"model": getattr(self.reports.get_llm(), "name", "unknown"),
-                  "found": len(sources), "cited": len(used),
+                  # «Найдено» — это найденное поиском, а не уцелевшее после
+                  # обрезки по окну модели. Раньше здесь стояло одно число,
+                  # и молча выброшенные фрагменты выглядели ненайденными.
+                  "found": int(prepared.get("hits") or len(sources)),
+                  "shown": len(sources), "cited": len(used),
                   "documents": len(prepared.get("documents") or []),
                   "interrupted": interrupted},
         )
@@ -366,7 +432,8 @@ class AssistantService:
             self.repos.chats.rename(chat.id, _make_title(prepared["question"]))
         self.repos.audit.log(
             "chat.ask", user=user, object_type="chat", object_id=str(chat.id),
-            details={"found": len(sources), "cited": len(used)},
+            details={"found": int(prepared.get("hits") or len(sources)),
+                     "shown": len(sources), "cited": len(used)},
         )
         return {
             "question": prepared["question_message"].to_dict(),
@@ -521,19 +588,36 @@ def _attachment_keywords(attachments: Sequence[Any]) -> str:
     находит не то, о чём спрашивали, а то, что чаще всего повторяется
     в файле. Сам вопрос при этом тонет.
     """
+    # По очереди из каждого файла. Подряд нельзя: слова первого дампа
+    # выбирали всю норму, и приложенный к тому же вопросу второй файл на
+    # поиск не влиял вовсе — а прикладывают их как раз затем, чтобы
+    # сопоставить одно с другим.
+    queues: List[List[str]] = []
+    for item in attachments:
+        words = [
+            word for word in re.split(r"[^0-9A-Za-zА-Яа-яЁё_.-]+", (item.text or "")[:4000])
+            if len(word) >= 3
+        ]
+        if words:
+            queues.append(words)
+
     seen: List[str] = []
     known = set()
-    for item in attachments:
-        for word in re.split(r"[^0-9A-Za-zА-Яа-яЁё_.-]+", (item.text or "")[:4000]):
-            if len(word) < 3:
+    while queues and len(seen) < ATTACHMENT_KEYWORDS:
+        for words in list(queues):
+            word = None
+            while words:
+                candidate = words.pop(0)
+                if candidate.lower() not in known:
+                    word = candidate
+                    break
+            if word is None:
+                queues.remove(words)
                 continue
-            key = word.lower()
-            if key in known:
-                continue
-            known.add(key)
+            known.add(word.lower())
             seen.append(word)
             if len(seen) >= ATTACHMENT_KEYWORDS:
-                return " ".join(seen)
+                break
     return " ".join(seen)
 
 
@@ -570,6 +654,45 @@ def _tidy(text: str, limit: int) -> str:
     from ..corpus import tidy_quote  # noqa: PLC0415 — не тянуть корпус при импорте
 
     return tidy_quote(text, limit)
+
+
+def _tidy_end(text: str, limit: int) -> str:
+    """То же, что :func:`_tidy`, но лишнее срезается спереди.
+
+    Нужно ровно для одного случая — предыдущего соседа найденного фрагмента.
+    """
+    whole = _tidy(text, len(text or "") + 1)
+    if len(whole) <= limit:
+        return whole
+    return "…" + whole[len(whole) - limit:].lstrip()
+
+
+def _share_chars(sizes: Sequence[int], total: int) -> List[int]:
+    """Разделить общий предел знаков между файлами.
+
+    Поровну, но короткий файл не занимает чужого: то, что он не выбрал,
+    достаётся длинным. Предел был на КАЖДЫЙ файл, и десять приложенных
+    файлов выносили промпт за окно модели втрое — а переполнение окна
+    llama.cpp не сообщает, он молча выбрасывает начало промпта вместе с
+    системной инструкцией, и модель перестаёт ставить ссылки.
+    """
+    shares = [0] * len(sizes)
+    pending = [i for i, size in enumerate(sizes) if size > 0]
+    left = max(int(total), 0)
+    while pending and left > 0:
+        share = left // len(pending)
+        if share <= 0:
+            break
+        modest = [i for i in pending if sizes[i] <= share]
+        if not modest:
+            for i in pending:
+                shares[i] = share
+            break
+        for i in modest:
+            shares[i] = sizes[i]
+            left -= sizes[i]
+        pending = [i for i in pending if i not in set(modest)]
+    return shares
 
 
 def _clip(text: str, limit: int) -> str:
