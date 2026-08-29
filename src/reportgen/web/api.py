@@ -664,7 +664,15 @@ def upload_report(
             "facts": {"case_id": case_id, "group_no": _group_or_empty(group_no),
                       "measurements": {}},
         }
-        case = service.create_case(payload, user)
+        try:
+            case = service.create_case(payload, user)
+        except ServiceError as error:
+            # Письмо успели завести, пока мы собирались: два человека сдают
+            # отчёты по одному входящему разом или кто-то нажал дважды.
+            # Заводить нечего — сдаём по тому, что уже есть.
+            case = repos.cases.by_case_id(case_id)
+            if case is None:
+                raise error
         taken = ""
     else:
         # Письмо уже заведено — сдаём по нему ещё одну версию отчёта.
@@ -740,6 +748,10 @@ def upload_report(
             raise ServiceError(
                 "по этому письму прямо сейчас сдают отчёт — повторите через "
                 "несколько секунд", 409) from error
+
+        # Прежние версии уходят с проверки: начальник читает то, что сдали
+        # последним, а не то, что исполнитель уже заменил.
+        service.withdraw_previous(case, report, user)
 
         # Теперь номер версии известен — даём файлу постоянное имя.
         final = target_dir / f"v{report.version}-{name}"

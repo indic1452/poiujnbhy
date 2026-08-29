@@ -876,6 +876,19 @@ class CaseRepo:
         return int(self.db.scalar(f"SELECT count(*) FROM cases{clause}", tuple(params)) or 0)
 
 
+def _next_version(connection: sqlite3.Connection, case_ref: int) -> int:
+    """Следующий номер версии отчёта по письму — внутри транзакции.
+
+    Считать его до транзакции нельзя: две одновременные сдачи брали один
+    номер, и вторая падала на UNIQUE(case_ref, version). Замок записи
+    выстраивает их в очередь, и номера выходят подряд.
+    """
+    row = connection.execute(
+        "SELECT coalesce(max(version), 0) FROM reports WHERE case_ref = ?", (case_ref,)
+    ).fetchone()
+    return int(row[0] or 0) + 1
+
+
 class ReportRepo:
     def __init__(self, db: Database):
         self.db = db
@@ -883,12 +896,12 @@ class ReportRepo:
     def create(self, case_ref: int, markdown: str, meta: Dict[str, Any],
                issues: Sequence[Dict[str, Any]], sections: Sequence[Dict[str, Any]],
                user_id: int | None = None) -> Report:
-        version = int(
-            self.db.scalar("SELECT coalesce(max(version), 0) FROM reports WHERE case_ref = ?",
-                           (case_ref,)) or 0
-        ) + 1
         now = utcnow()
         with self.db.transaction() as connection:
+            # Номер версии считаем под замком записи: две сдачи по одному
+            # письму (хоть бы и от двойного нажатия) брали один номер и
+            # спотыкались об UNIQUE(case_ref, version).
+            version = _next_version(connection, case_ref)
             cursor = connection.execute(
                 "INSERT INTO reports(case_ref, version, status, markdown, meta_json, issues_json, "
                 "created_by, created_at) VALUES(?,?,?,?,?,?,?,?)",
@@ -926,11 +939,9 @@ class ReportRepo:
         инженер написал сам. В markdown кладём извлечённый текст — по нему
         работает поиск и предпросмотр, а на руки выдаётся исходный файл.
         """
-        version = int(
-            self.db.scalar("SELECT coalesce(max(version), 0) FROM reports WHERE case_ref = ?",
-                           (case_ref,)) or 0
-        ) + 1
         with self.db.transaction() as connection:
+            # Тот же расчёт под замком: см. ReportRepo.create.
+            version = _next_version(connection, case_ref)
             cursor = connection.execute(
                 "INSERT INTO reports(case_ref, version, status, markdown, meta_json, "
                 "issues_json, source, file_name, file_path, file_size, created_by, created_at) "

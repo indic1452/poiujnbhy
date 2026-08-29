@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -251,21 +252,28 @@ class ReportService:
                 raw["group_no"] = from_form
 
         facts = _validate_facts(raw)
-        case = self.repos.cases.create(
-            case_id=case_id,
-            report_type=report_type,
-            facts=raw,
-            digest=facts.digest(),
-            title=payload.get("title", ""),
-            customer=facts.group_no,
-            user_id=user.id if user else None,
-            incoming_no=str(payload.get("incoming_no", "")).strip(),
-            incoming_date=str(payload.get("incoming_date", "")).strip(),
-            deadline=str(payload.get("deadline", "")).strip(),
-            priority=str(payload.get("priority") or "normal"),
-            assignee_id=payload.get("assignee_id") or None,
-            note=str(payload.get("note", "")).strip(),
-        )
+        try:
+            case = self.repos.cases.create(
+                case_id=case_id,
+                report_type=report_type,
+                facts=raw,
+                digest=facts.digest(),
+                title=payload.get("title", ""),
+                customer=facts.group_no,
+                user_id=user.id if user else None,
+                incoming_no=str(payload.get("incoming_no", "")).strip(),
+                incoming_date=str(payload.get("incoming_date", "")).strip(),
+                deadline=str(payload.get("deadline", "")).strip(),
+                priority=str(payload.get("priority") or "normal"),
+                assignee_id=payload.get("assignee_id") or None,
+                note=str(payload.get("note", "")).strip(),
+            )
+        except sqlite3.IntegrityError as error:
+            # Проверка «такое письмо уже есть» выше по коду ловит обычный
+            # случай, но не гонку: двойное нажатие или два человека разом
+            # доходили до вставки одновременно, и второй получал срыв
+            # сервера вместо понятного отказа.
+            raise ServiceError(f"письмо '{case_id}' уже зарегистрировано", 409) from error
         self.repos.audit.log("case.create", user=user, object_type="case", object_id=case.case_id)
         return case
 
@@ -383,7 +391,7 @@ class ReportService:
             ],
             user_id=user.id if user else None,
         )
-        self._withdraw_previous(case, report, user)
+        self.withdraw_previous(case, report, user)
         self.repos.cases.set_status(case.id, "draft")
         self.repos.audit.log(
             "report.generate", user=user, object_type="report", object_id=str(report.id),
@@ -392,18 +400,23 @@ class ReportService:
         )
         return report
 
-    def _withdraw_previous(self, case: Case, fresh: Report, user: User | None) -> None:
+    def withdraw_previous(self, case: Case, fresh: Report, user: User | None) -> None:
         """Снять с проверки прежние версии отчёта по письму.
 
         Исполнитель собирал новую версию, пока начальник читал прежнюю:
         письмо возвращалось «в работу» и пропадало из очереди проверки, а
         старый отчёт оставался помеченным «на проверке» — начальник его в
         списке уже не находил, а отчёт числился сданным. Сдаёт исполнитель,
-        и сдаёт он ту версию, которую считает готовой: новая сборка означает,
-        что прежнюю он отозвал.
+        и сдаёт он ту версию, которую считает готовой: новая сборка (или
+        новая сдача файлом) означает, что прежнюю он отозвал.
         """
         for stored in self.repos.reports.list_for_case(case.id):
+            # Отзываем только то, что старше сданного. Иначе две сдачи,
+            # пришедшие разом, снимают друг друга, и на проверке не
+            # остаётся ничего, хотя письмо помечено «на проверке».
             if stored.id == fresh.id or stored.status != "review":
+                continue
+            if stored.version > fresh.version:
                 continue
             self.repos.reports.set_status(stored.id, "draft", note="")
             self.repos.audit.log(

@@ -805,6 +805,46 @@ class UploadedReportTests(WebTestCase):
         report = self.client.get(f"/api/reports/{body['report']['id']}").json()["report"]
         self.assertIn("Помеха устранена", report["markdown"])
 
+    def test_handing_in_the_same_letter_at_once_does_not_break(self):
+        """Двойное нажатие и двое разом — обычное дело в отделе.
+
+        Номер версии считался до записи, а письмо заводилось после
+        проверки «уже есть»: обе гонки давали то отказ, то срыв сервера.
+        Сдачи должны выстроиться в очередь и получить номера подряд, а
+        на проверке остаётся последняя.
+        """
+        import threading
+
+        answers = []
+
+        def hand_in(number):
+            answers.append(self.upload(name=f"о{number}.md",
+                                       case_id="ВХ-РАЗОМ", incoming_no="ВХ-РАЗОМ"))
+
+        threads = [threading.Thread(target=hand_in, args=(i,)) for i in range(6)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        codes = sorted(answer.status_code for answer in answers)
+        self.assertEqual([200] * 6, codes, [a.text[:120] for a in answers])
+        case = self.repos.cases.by_case_id("ВХ-РАЗОМ")
+        versions = sorted(r.version for r in self.repos.reports.list_for_case(case.id))
+        self.assertEqual([1, 2, 3, 4, 5, 6], versions)
+        on_desk = [r for r in self.repos.reports.list_for_case(case.id)
+                   if r.status == "review"]
+        self.assertEqual([6], [r.version for r in on_desk],
+                         "на проверке должна остаться последняя сдача")
+
+    def test_a_new_hand_in_takes_the_previous_one_off_the_desk(self):
+        # Сдал заново — прежнее отозвал: начальник читает последнее.
+        first = self.upload().json()["report"]
+        self.assertEqual("review", first["status"])
+        second = self.upload(name="Отчёт исправленный.md").json()["report"]
+        self.assertEqual("draft", self.repos.reports.get(first["id"]).status)
+        self.assertEqual("review", self.repos.reports.get(second["id"]).status)
+
     def test_handed_in_report_is_not_exported_as_our_own(self):
         """Наружу такой отчёт уходит подлинником, а не пересборкой.
 
@@ -1569,6 +1609,36 @@ class LetterCardTests(WebTestCase):
         self.assertEqual("Помеха в стволе", fresh["title"])
         self.assertEqual("ВХ -1", fresh["incoming_no"])
         self.assertEqual("первая строка\nвторая строка", fresh["note"])
+
+    def test_registering_the_same_letter_twice_at_once_is_refused_not_crashed(self):
+        """Двойное нажатие на «Зарегистрировать письмо» — обычное дело.
+
+        Проверка «такое письмо уже есть» стоит до вставки: гонка
+        проскакивала мимо неё, и второй получал срыв сервера вместо
+        понятного отказа.
+        """
+        import threading
+
+        answers = []
+
+        def register():
+            answers.append(self.client.post("/api/cases", json={
+                "report_type": CASE["report_type"], "case_id": "SUP-РАЗОМ-1",
+                "facts": {**CASE, "case_id": "SUP-РАЗОМ-1"}}))
+
+        threads = [threading.Thread(target=register) for _ in range(5)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        codes = sorted(answer.status_code for answer in answers)
+        self.assertEqual([200, 409, 409, 409, 409], codes,
+                         [a.text[:100] for a in answers])
+        for answer in answers:
+            if answer.status_code == 409:
+                self.assertIn("уже зарегистрировано", answer.json()["error"])
+        self.assertEqual(1, self.repos.cases.count(query="SUP-РАЗОМ-1"))
 
     def test_registration_holds_the_same_limits(self):
         # Предел поля не должен зависеть от того, каким действием письмо
