@@ -94,7 +94,11 @@ _TOC_TITLES = frozenset({"содержание", "оглавление", "conten
 #: Разбор начертаний внутри абзаца. Подчёркивания требуют границы слова, иначе
 #: пострадают технические идентификаторы вида ``facts_digest`` и ``ЗАКАЗЧИК_07``.
 _INLINE_RE = re.compile(
-    r"(?P<mono>`[^`\n]+`)"
+    # Экранированный знак идёт первым: «\*» — это звёздочка, а не начало
+    # курсива. Без этого номер группы «*1274*» и модель «Р_168_М» из
+    # факт-пакета приезжали в документ без части знаков.
+    r"(?P<esc>\\[\\`*_\[\]])"
+    r"|(?P<mono>`[^`\n]+`)"
     r"|(?P<link>\[(?P<link_text>[^\]\n]+)\]\((?P<link_url>[^)\s]+)\))"
     r"|(?P<strong_em>\*\*\*[^*\n]+\*\*\*)"
     r"|(?P<strong>\*\*[^*\n]+\*\*)"
@@ -375,7 +379,10 @@ def _split_inline(text: str) -> List[_Span]:
         if match.start() > position:
             spans.append(_Span(text[position:match.start()]))
         groups = match.groupdict()
-        if groups["mono"] is not None:
+        if groups["esc"] is not None:
+            # «\*» — это звёздочка. Сама косая черта в документ не идёт.
+            spans.append(_Span(groups["esc"][1]))
+        elif groups["mono"] is not None:
             spans.append(_Span(groups["mono"][1:-1], mono=True))
         elif groups["link"] is not None:
             label = groups["link_text"]

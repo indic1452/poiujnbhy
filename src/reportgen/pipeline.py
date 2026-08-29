@@ -333,6 +333,19 @@ def generate_report(
     )
 
 
+def plain(value: Any) -> str:
+    """Значение из факт-пакета — в текст документа как есть.
+
+    Номер группы «*1274*» и модель «Р_168_М» — это данные, а не разметка.
+    Без экранирования конвертер съедал звёздочки и подчёркивания, и в
+    документе оказывалось не то, что записал инженер.
+    """
+    text = str(value if value is not None else "")
+    for sign in ("\\", "`", "*", "_", "[", "]"):
+        text = text.replace(sign, "\\" + sign)
+    return text
+
+
 def status_line(meta: Dict[str, Any]) -> str:
     """Строка о состоянии документа в шапке отчёта.
 
@@ -370,10 +383,10 @@ def assemble(
 ) -> str:
     """Сшивка: титул, служебный блок, оглавление, разделы, приложение."""
     lines: List[str] = [f"# {outline.title}", ""]
-    lines.append(f"**Обращение:** {facts.case_id}  ")
-    lines.append(f"**Номер группы:** {facts.group_no or '—'}  ")
+    lines.append(f"**Обращение:** {plain(facts.case_id)}  ")
+    lines.append(f"**Номер группы:** {plain(facts.group_no) or '—'}  ")
     if facts.equipment:
-        equipment = ", ".join(f"{k}: {v}" for k, v in facts.equipment.items())
+        equipment = ", ".join(f"{plain(k)}: {plain(v)}" for k, v in facts.equipment.items())
         lines.append(f"**Оборудование:** {equipment}  ")
     lines.append(f"**Дата:** {meta['generated_at']}")
     lines.append("")

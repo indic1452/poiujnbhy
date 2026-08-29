@@ -104,6 +104,21 @@ class MarkdownStructureTests(ExportTestCase):
         self.assertNotIn("**", document.paragraphs[0].text)
         self.assertNotIn("`", document.paragraphs[0].text)
 
+    def test_escaped_signs_reach_the_document_as_they_are(self):
+        """Данные факт-пакета — не разметка.
+
+        Номер группы «*1274*» и модель «Р_168_М» приезжали в документ без
+        части знаков: конвертер принимал их за курсив.
+        """
+        document = self.build("Номер группы: \\*1274\\* и модель Р\\_168\\_М")
+        self.assertEqual("Номер группы: *1274* и модель Р_168_М",
+                         document.paragraphs[0].text)
+
+    def test_markup_still_works_next_to_escaped_signs(self):
+        document = self.build("\\*не курсив\\*, а *курсив* рядом")
+        self.assertEqual("*не курсив*, а курсив рядом", document.paragraphs[0].text)
+        self.assertTrue(find_run(document, "курсив").italic)
+
     def test_hard_line_break_keeps_single_paragraph(self):
         # Титульный блок конвейера: строки заканчиваются двумя пробелами.
         document = self.build("**Обращение:** SUP-2024-118  \n**Отправитель:** 1274")

@@ -41,6 +41,41 @@ class OutlineTests(unittest.TestCase):
             SectionSpec.from_dict({"id": "a", "title": "t", "instruction": "i", "опечатка": 1})
 
 
+class HeaderEscapingTests(unittest.TestCase):
+    """Шапка отчёта: данные факт-пакета попадают в документ дословно."""
+
+    def test_group_number_with_markup_signs_is_escaped(self):
+        from reportgen.pipeline import plain
+
+        self.assertEqual("\\*1274\\*", plain("*1274*"))
+        self.assertEqual("Р\\_168\\_М", plain("Р_168_М"))
+        self.assertEqual("1274", plain("1274"), "обычный номер не трогаем лишним")
+        self.assertEqual("", plain(None))
+
+    def test_header_of_a_real_report_keeps_the_number_verbatim(self):
+        """Проверяем не саму функцию, а что шапка ею пользуется."""
+        import json as _json
+        from reportgen.export.docx import _split_inline
+        from reportgen.facts import FactPack
+        from reportgen.pipeline import Outline, SourceRegistry, assemble
+
+        raw = _json.loads((ROOT / "examples" / "cases" / "case-2024-118.json")
+                          .read_text(encoding="utf-8"))
+        outline = Outline.load(ROOT / "templates" / "outline_signal_issue.json")
+        meta = {"generated_at": "2026-08-28", "model": "local", "outline_version": "1",
+                "index_version": "docs=0", "facts_digest": "x"}
+        for written in ("*1274*", "Р_168_М", "гр. 1*2*3", "[1274]"):
+            with self.subTest(written=written):
+                raw["group_no"] = written
+                raw["equipment"] = {"модем": written}
+                markdown = assemble(FactPack.from_dict(raw), outline, [],
+                                    SourceRegistry(), meta)
+                line = [x for x in markdown.splitlines() if "Номер группы" in x][0]
+                # То же, что увидит Word после разбора разметки.
+                seen = "".join(span.text for span in _split_inline(line))
+                self.assertEqual(f"Номер группы: {written}", seen.strip())
+
+
 class CoverageTests(unittest.TestCase):
     def test_example_case_is_complete(self):
         facts = FactPack.load(CASE)

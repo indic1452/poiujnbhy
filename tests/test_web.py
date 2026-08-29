@@ -1808,6 +1808,24 @@ class UserManagementTests(WebTestCase):
         engineer = self.repos.users.by_login("engineer")
         self.assertFalse(engineer.is_admin)
 
+    def test_role_notes_agree_with_the_code(self):
+        """Описание должности не должно обещать того, чего нет.
+
+        Карточка прав и личный кабинет читают ROLE_NOTES; там значилось,
+        что отчёты утверждает каждый.
+        """
+        from reportgen.store.models import REVIEW_ROLES, ROLE_NOTES, ROLES
+
+        for role in ROLES:
+            note = ROLE_NOTES[role]
+            low = note.lower()
+            says_reviews = ("проверяет отчёт" in low
+                            or "включая проверку отчётов" in low)
+            with self.subTest(role=role):
+                self.assertEqual(role in REVIEW_ROLES, says_reviews, note)
+            # Слово «утверждает» из описаний ушло: отчёты теперь проверяют.
+            self.assertNotIn("утвержда", note, role)
+
     def test_reviewers_are_not_the_same_set_as_administrators(self):
         """Проверять отчёты — не то же самое, что заводить людей.
 

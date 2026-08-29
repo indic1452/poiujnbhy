@@ -1440,9 +1440,9 @@
         const status = h('select', {}, CASE_FLOW.map((key) =>
             h('option', { value: key, selected: item.status === key }, CASE_STATUS[key])));
         const groupInput = h('input', {
-            type: 'text', class: 'mono', inputmode: 'numeric',
+            type: 'text',
             placeholder: '1274 или 1-я группа', value: item.group_no || '',
-            title: 'Числовой номер группы или части, откуда пришло письмо',
+            title: 'Откуда пришло письмо. Пишите как принято в отделе: 1274, 12/345, в/ч 74326, «2-я группа связи»',
         });
         const note = h('textarea', { rows: '3' }, item.note || '');
 
@@ -1572,8 +1572,8 @@
         });
         const incomingDate = h('input', { type: 'date', value: todayIso() });
         const groupNoInput = h('input', {
-            type: 'text', class: 'mono', inputmode: 'numeric', placeholder: '1274',
-            title: 'Числовой номер группы или части, откуда пришло письмо',
+            type: 'text', placeholder: '1274',
+            title: 'Откуда пришло письмо. Пишите как принято в отделе: 1274, 12/345, в/ч 74326, «2-я группа связи»',
         });
         const deadlineInput = h('input', { type: 'date' });
         const priorityPick = h('select', {}, Object.keys(CASE_PRIORITY).map((key) =>
@@ -2201,10 +2201,16 @@
                 h('dt', {}, 'состояние'), h('dd', {}, CASE_STATUS[wb.case.status] || wb.case.status)),
             h('label', { class: 'field', style: { marginTop: '8px' } }, 'Номер группы',
                 h('input', {
-                    type: 'text', class: 'mono', inputmode: 'numeric', placeholder: '1274',
-                    value: wb.facts.group_no || '', disabled: !canEdit(),
-                    title: 'Числовой номер группы или части, откуда пришло письмо',
-                    oninput: (event) => { wb.facts.group_no = event.target.value; markFactsDirty(); },
+                    type: 'text', placeholder: '1274',
+                    value: wb.facts.group_no || wb.facts.customer || '', disabled: !canEdit(),
+                    title: 'Откуда пришло письмо. Пишите как принято в отделе: 1274, 12/345, в/ч 74326, «2-я группа связи»',
+                    oninput: (event) => {
+                        // Прежний ключ убираем, иначе в пакете останутся два
+                        // номера и прочитается не тот, который вписали.
+                        wb.facts.group_no = event.target.value;
+                        delete wb.facts.customer;
+                        markFactsDirty();
+                    },
                 })),
             h('label', { class: 'field', style: { marginTop: '8px' } }, 'Суть обращения',
                 h('textarea', {
@@ -4490,7 +4496,8 @@
         if (!bySection.length) {
             editsCard.appendChild(h('div', { class: 'empty' },
                 'Правок ещё нет: они появляются, когда инженер меняет черновик модели '
-                + 'и утверждает отчёт. По ним видно, какие разделы модель пишет хуже всего.'));
+                + ', а начальник отмечает отчёт проверенным. По ним видно, какие '
+                + 'разделы модель пишет хуже всего.'));
         } else {
             const body = h('tbody', {});
             bySection.forEach((item) => {
@@ -4650,7 +4657,13 @@
 
     /** Строчное оформление: код, жирный, курсив и ссылки [S1] на источники. */
     function mdInline(text) {
-        let out = escapeHtml(text);
+        // Экранированные знаки прячем до разбора и возвращаем после: «\*» —
+        // это звёздочка из данных, а не начало курсива.
+        const hidden = [];
+        let out = escapeHtml(String(text).replace(/\\([\\`*_[\]])/g, (whole, ch) => {
+            hidden.push(ch);
+            return '\u0000' + (hidden.length - 1) + '\u0000';
+        }));
         out = out.replace(/`([^`\n]+)`/g, '<code>$1</code>');
         out = out.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
         out = out.replace(/(^|[\s([«—])\*([^*\n]+)\*/g, '$1<i>$2</i>');
@@ -4658,7 +4671,8 @@
         out = out.replace(/\[(S\d+)\]/g,
             '<button type="button" class="cite" data-label="$1" ' +
             'title="Показать источник">[$1]</button>');
-        return out;
+        return out.replace(/\u0000(\d+)\u0000/g,
+            (whole, index) => escapeHtml(hidden[Number(index)]));
     }
 
     /** Текст ответа → узел с разметкой. */
