@@ -434,7 +434,7 @@ New-NetFirewallRule -DisplayName "Reportgen 8080" -Direction Inbound `
 cd C:\reportgen\app\scripts\windows
 .\users.ps1                                                  # кто уже заведён
 .\users.ps1 -Add petrov -Role engineer -Name "Петров П. П." `
-    -Department "Отдел радиосвязи" -Team "1 группа"          # новый сотрудник
+    -Department "2 специальный отдел" -Team "1 группа"          # новый сотрудник
 ```
 
 Должности повторяют штатное расписание, а не уровни доступа:

@@ -903,11 +903,56 @@
         badge.title = late ? 'из них просрочено: ' + late : '';
     }
 
+    /* Эмблема отдела: живая, но не навязчивая.
+
+       Всё существенное делает CSS — вращение, отклик на наведение и на
+       нажатие. Здесь только две вещи, которых CSS не умеет: плавная смена
+       скорости (сменить длительность анимации нельзя — луч перескочит) и
+       одинаковое поведение при нажатии для мыши, касания и клавиатуры.
+       Не выполнится — эмблема всё равно вращается и откликается. */
+    const EMBLEM_FAST = 3.4;
+
+    function wakeEmblem() {
+        const mark = $('#emblem');
+        if (!mark || mark.dataset.ready) return;
+        mark.dataset.ready = '1';
+
+        const sweep = $('.emblem-sweep', mark);
+        const rate = (value) => {
+            if (!sweep || typeof sweep.getAnimations !== 'function') return;
+            const running = sweep.getAnimations()[0];
+            if (!running || typeof running.updatePlaybackRate !== 'function') return;
+            try {
+                running.updatePlaybackRate(value);
+            } catch (error) {
+                /* останется базовая скорость — эмблема продолжит вращаться */
+            }
+        };
+        const hold = () => mark.classList.add('emblem--held');
+        const release = () => mark.classList.remove('emblem--held');
+
+        mark.addEventListener('pointerenter', () => rate(EMBLEM_FAST));
+        mark.addEventListener('pointerleave', () => { rate(1); release(); });
+        mark.addEventListener('pointerdown', hold);
+        mark.addEventListener('pointerup', release);
+        mark.addEventListener('pointercancel', release);
+        mark.addEventListener('keydown', (event) => {
+            if (event.key === ' ' || event.key === 'Enter') hold();
+        });
+        mark.addEventListener('keyup', release);
+        mark.addEventListener('blur', () => { rate(1); release(); });
+    }
+
     function renderChrome() {
         const brand = (state.config && state.config.brand) || null;
         if (brand && brand.name) {
-            const label = $('.side-brand span');
-            if (label) label.textContent = brand.name;
+            const short = $('#brand-short');
+            const full = $('#brand-name');
+            if (short) short.textContent = brand.short || brand.name;
+            if (full) full.textContent = brand.name;
+            const home = $('.side-brand');
+            if (home) home.title = brand.name
+                + (brand.subtitle ? ' — ' + brand.subtitle : '');
             document.title = brand.name;
         }
         if (brand && typeof brand.accent === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(brand.accent)) {
@@ -937,6 +982,7 @@
         }
 
         buildNav();
+        wakeEmblem();
 
         const chip = $('#user-chip');
         const logout = $('#logout-btn');

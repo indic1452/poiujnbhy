@@ -150,7 +150,7 @@ cd C:\reportgen\app\scripts\windows
 
 ```powershell
 .\users.ps1                                        # личный состав
-.\users.ps1 -Add petrov -Name "Петров П. П." -Role senior -Department "Отдел радиосвязи"
+.\users.ps1 -Add petrov -Name "Петров П. П." -Role senior -Department "2 специальный отдел"
 .\users.ps1 -Reset petrov                          # новый пароль
 ```
 
@@ -179,7 +179,7 @@ cd C:\reportgen\app\scripts\windows
 
 ```powershell
 reportgen useradd --login admin --role owner --name "Петров П. П." `
-                  --department "Отдел радиосвязи" --team "1 группа"
+                  --department "2 специальный отдел" --team "1 группа"
 ```
 
 ---

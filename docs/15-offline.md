@@ -250,7 +250,7 @@ cd C:\reportgen\app\scripts\windows
 
 ```powershell
 .\users.ps1 -Add ivanov -Role engineer -Name "Иванов И. И." `
-    -Department "Отдел радиосвязи" -Team "1 группа"
+    -Department "2 специальный отдел" -Team "1 группа"
 ```
 
 Должности: `owner` (создатель системы), `head` (начальник отдела), `deputy`

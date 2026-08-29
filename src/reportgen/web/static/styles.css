@@ -276,6 +276,9 @@ body.side-min .side {
     width: var(--side-w-min);
 }
 
+/* Название отдела в две строки: сокращение крупно, полное название под ним.
+   Одной строкой «2 специальный отдел» не помещается в 208 px колонки и
+   вылезало на заголовок страницы. */
 .side-brand {
     display: flex;
     align-items: center;
@@ -283,14 +286,37 @@ body.side-min .side {
     height: var(--topbar-h);
     padding: 0 14px;
     flex: 0 0 auto;
+    min-width: 0;
     font-family: var(--font-display);
-    font-weight: 600;
-    font-size: var(--fs-md);
-    letter-spacing: -.01em;
-    white-space: nowrap;
     color: var(--text);
     text-decoration: none;
     border-bottom: 1px solid var(--border);
+}
+
+.side-brand-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.15;
+}
+
+.side-brand-text b {
+    font-weight: 600;
+    font-size: var(--fs-md);
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.side-brand-text span {
+    font-family: var(--font-ui);
+    font-weight: 400;
+    font-size: var(--fs-xs);
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .side-brand:hover {
@@ -421,7 +447,7 @@ body.side-min .side-collapse svg {
 }
 
 /* В свёрнутом виде прячем подписи и центруем значки. */
-body.side-min .side-brand span,
+body.side-min .side-brand .side-brand-text,
 body.side-min .side-nav a span,
 body.side-min .side-collapse span {
     display: none;
@@ -1822,9 +1848,12 @@ input.is-bad {
 
 /* -------------------------------------------------------------- метрики --- */
 
+/* Плитки чисел. auto-fit при пяти плитках давал ряд из четырёх и одну
+   сиротой на второй строке. minmax пошире ставит их 3+2: ряды выходят
+   ровнее, и число с подписью не жмётся. */
 .stat-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
     gap: 12px;
     margin-bottom: 16px;
 }
@@ -2174,7 +2203,19 @@ body.login-page::after {
 }
 
 /* Знак крупно и отдельной строкой: это единственное место, где у системы
-   есть лицо, и мельчить тут незачем. */
+   есть лицо, и мельчить тут незачем. Под названием — строка о том, что
+   это за система: человек видит её раз в день на входе, и одна строка
+   объяснения дешевле любой справки. */
+.login-card .brand small {
+    display: block;
+    margin-top: 5px;
+    font-family: var(--font-ui);
+    font-size: var(--fs-sm);
+    font-weight: 400;
+    letter-spacing: 0;
+    color: rgba(226, 236, 247, .62);
+}
+
 .login-card .brand {
     display: flex;
     flex-direction: column;
@@ -2188,15 +2229,14 @@ body.login-page::after {
     color: #f2f6fb;
 }
 
-.login-card .brand svg {
-    width: 40px;
-    height: 40px;
-    padding: 8px;
-    border: 1px solid rgba(120, 170, 220, .45);
-    border-radius: var(--radius);
-    background: rgba(30, 90, 150, .35);
-    color: #8fc2ee;
-    overflow: visible;
+/* Знак на карточке входа — сама эмблема отдела, без плашки под ней:
+   прибор в рамке выглядел бы наклейкой. Размер и толщины задаёт
+   .emblem--card. */
+.login-card .brand .emblem--card {
+    --accent: #7fb6e8;
+    --muted: rgba(200, 220, 240, .70);
+    --faint: rgba(180, 205, 230, .62);
+    --ok: #6fd39c;
 }
 
 .login-card form {
@@ -2731,6 +2771,261 @@ table.md-table th {
 .src-meta a:hover {
     color: var(--accent);
     border-bottom-color: var(--accent);
+}
+
+/* Волосяная линейка перед эмблемой: отделяет знак отдела от карточки
+   пользователя, не отнимая места. */
+.topbar-sep {
+    width: 1px;
+    height: 22px;
+    flex: 0 0 auto;
+    background: var(--border);
+    margin: 0 2px 0 4px;
+}
+
+/* ---------------------------------------------------- эмблема отдела --- */
+
+/* Знак 2 специального отдела в правом углу шапки: круговая шкала пеленга с
+   идущей по ней развёрткой. Не украшение ради украшения — это то, чем отдел
+   занят: ищет источники помех. Рисунок один и тот же на 34 и на 160 px,
+   толщины линий заданы переменными, поэтому волосяная линейка остаётся
+   волосяной на любом размере.
+
+   Ни одного обращения наружу, ни библиотек, ни фильтров и размытий: вертится
+   один transform на группе из шести путей, остальное — переходы прозрачности.
+   На рабочей станции отдела это ничего не стоит.
+
+   Взято из разбора четырёх замыслов эмблемы; здесь только перенос. */
+
+.emblem {
+    /* Габарит. 34 px в строке 52 px: между эмблемой и линейками шапки
+       остаётся по 9 px. Размер держится жёстко, соседей не двигает. */
+    position: relative;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+
+    /* Сброс кнопки: эмблема кликабельна и берётся клавиатурой. */
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    border-radius: 50%;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+
+    /* Волосяная линейка должна остаться волосяной на любом размере, поэтому
+       толщины — переменные, а не зашитые в SVG числа. Значения даны в
+       единицах viewBox (100), при 34 px делитель ≈ 2.94:
+       2.4 → 0.82 px, 3.2 → 1.09 px, 4.2 → 1.43 px. */
+    --emblem-hair: 2.4;
+    --emblem-tick: 2.4;
+    --emblem-tick-card: 3.2;
+    --emblem-beam: 2.8;
+    --emblem-cursor: 4.2;
+
+    /* Оборот развёртки. Медленно: эмблема не должна тянуть взгляд от
+       таблиц. Наведение ускоряет её через playbackRate (см. скрипт), а не
+       сменой этой длительности — смена дала бы скачок луча. */
+    --emblem-turn: 14s;
+
+    color: var(--faint);
+    transition: transform .12s ease-out;
+}
+
+.emblem:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.emblem-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* --- неподвижная часть: дальномерные кольца, линии пеленга, шкала ------- */
+
+.emblem-grid {
+    opacity: .3;
+}
+
+.emblem-grid circle,
+.emblem-grid path {
+    stroke-width: var(--emblem-hair);
+}
+
+.emblem-scale {
+    opacity: .9;
+}
+
+.emblem-bezel {
+    stroke-width: var(--emblem-hair);
+    opacity: .8;
+}
+
+.emblem-bezel--in {
+    opacity: .55;
+}
+
+/* 32 румба. На 34 px мелкие деления сливаются в накатку кольца, на 160 px
+   разбираются в настоящую шкалу — рисунок один и тот же. */
+.emblem-tick {
+    stroke-width: var(--emblem-tick);
+}
+
+.emblem-tick--minor {
+    opacity: .6;
+}
+
+.emblem-tick--inter {
+    opacity: .85;
+}
+
+.emblem-tick--card {
+    stroke: var(--muted);
+    stroke-width: var(--emblem-tick-card);
+}
+
+/* --- подвижная часть: только она и вращается -------------------------- */
+
+.emblem-sweep {
+    transform-box: view-box;
+    transform-origin: 50px 50px;
+    animation: emblem-turn var(--emblem-turn) linear infinite;
+    will-change: transform;
+}
+
+@keyframes emblem-turn {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Послесвечение. Не сектор во весь круг и не свечение: четыре дуги
+   затухающей плотности в кольце между лучом и центром. Ни фильтров, ни
+   размытий, ни градиентов — на слабой машине это ничего не стоит. */
+.emblem-trail {
+    opacity: .5;
+    transition: opacity .45s ease-out;
+}
+
+.emblem-trail-seg {
+    stroke: var(--accent);
+    stroke-width: 16;
+}
+
+.emblem-beam {
+    stroke: var(--accent);
+    stroke-width: var(--emblem-beam);
+    opacity: .62;
+}
+
+/* Курсор идёт прямо по делениям: видно не «луч фонаря», а снимаемый отсчёт. */
+.emblem-cursor {
+    stroke: var(--accent);
+    stroke-width: var(--emblem-cursor);
+    opacity: .8;
+}
+
+.emblem-index {
+    fill: var(--accent);
+    opacity: .85;
+}
+
+.emblem-hub {
+    fill: var(--accent);
+    opacity: .9;
+}
+
+.emblem-beam,
+.emblem-cursor,
+.emblem-hub,
+.emblem-grid,
+.emblem-scale {
+    transition: opacity .18s linear, stroke .18s linear, fill .18s linear;
+}
+
+/* --- наведение: прибор «поднимает усиление» ---------------------------- */
+
+.emblem:hover .emblem-grid {
+    opacity: .5;
+}
+
+.emblem:hover .emblem-scale {
+    opacity: 1;
+}
+
+.emblem:hover .emblem-trail,
+.emblem:hover .emblem-beam,
+.emblem:hover .emblem-cursor {
+    opacity: 1;
+}
+
+/* --- нажатие: пеленг взят --------------------------------------------- */
+
+.emblem:active,
+.emblem.emblem--held {
+    transform: scale(.94);
+}
+
+.emblem:active .emblem-sweep,
+.emblem.emblem--held .emblem-sweep {
+    animation-play-state: paused;
+}
+
+.emblem:active .emblem-beam,
+.emblem:active .emblem-cursor,
+.emblem.emblem--held .emblem-beam,
+.emblem.emblem--held .emblem-cursor {
+    stroke: var(--ok);
+    opacity: 1;
+}
+
+.emblem:active .emblem-hub,
+.emblem.emblem--held .emblem-hub {
+    fill: var(--ok);
+    opacity: 1;
+}
+
+/* Развёртка стоит — послесвечению неоткуда взяться. */
+.emblem:active .emblem-trail,
+.emblem.emblem--held .emblem-trail {
+    opacity: 0;
+}
+
+/* --- покой по требованию системы --------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .emblem-sweep {
+        animation: none;
+        transform: rotate(58deg);
+    }
+
+    .emblem-trail {
+        display: none;
+    }
+
+    .emblem {
+        transition: none;
+    }
+}
+
+/* Крупный экземпляр на карточке входа. Толщины линий заданы в единицах
+   viewBox, поэтому при увеличении их надо соразмерно уменьшить — иначе
+   волосяная линейка превратится в жирную обводку. */
+.emblem--card {
+    width: 56px;
+    height: 56px;
+    cursor: default;
+    --emblem-hair: 1.5;
+    --emblem-tick: 1.5;
+    --emblem-tick-card: 2.1;
+    --emblem-beam: 1.8;
+    --emblem-cursor: 2.8;
+    color: rgba(190, 214, 238, .75);
 }
 
 /* ------------------------------------------------------ личный кабинет --- */

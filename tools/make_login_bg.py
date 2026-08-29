@@ -1,38 +1,70 @@
-"""Отрисовка фона окна входа: Земля из космоса, спутник, луч на станцию.
+"""Отрисовка фона окна входа: Земля с орбиты по настоящему снимку.
 
-Зачем отдельный сценарий, а не картинка в репозитории: изолированная машина
-ничего не скачивает, а тащить в репозиторий несколько мегабайт бинарного
-файла ради заставки не хочется. Сценарий детерминированный — один и тот же
-seed даёт один и тот же кадр, — и его можно перезапустить, если понадобится
-другое разрешение или другой ракурс.
+Кадр строится трассировкой лучей по шару, на который натянут снимок NASA
+Blue Marble Next Generation — мозаика съёмки MODIS с аппарата Terra. Снимок
+в общественном достоянии, как и всё, что снимает NASA.
 
-    python3 tools/make_login_bg.py src/reportgen/web/static/login-bg.jpg
+Почему сценарий, а не готовая картинка в репозитории: сама мозаика весит
+больше двух мегабайт, и держать её в истории ради заставки незачем. В
+репозиторий кладётся только готовый кадр, а исходник берётся один раз.
 
-Своя фотография всегда важнее нарисованной: положите файл login-bg.jpg рядом
-с settings.json, и окно входа возьмёт его (см. Settings.brand_login_image).
-Снимки Земли в общественном достоянии есть на сайтах NASA.
+    # мозаика лежит внутри пакета basemap-data (PyPI), качать с сайтов не надо
+    pip download basemap-data --no-deps -d /tmp/bm
+    unzip -o /tmp/bm/*.whl -d /tmp/bmx
+    python3 tools/make_login_bg.py src/reportgen/web/static/login-bg.jpg \\
+        --texture /tmp/bmx/mpl_toolkits/basemap_data/bmng.jpg
+
+Без --texture сценарий рисует шар по своему рельефу: кадр выходит беднее, но
+собирается на машине, где мозаики нет.
+
+Своя фотография всегда важнее: положите файл login-bg.jpg рядом с
+settings.json, и окно входа возьмёт его (см. Settings.brand_login_image).
 """
 
 from __future__ import annotations
 
-import sys
+import argparse
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 WIDTH, HEIGHT = 2560, 1440
-SEED = 20260828
+#: Кратность передискретизации. Кромка планеты и звёзды — это тонкие детали
+#: в один пиксель; без запаса они рвутся на «лесенку», которую видно на
+#: большом мониторе сразу.
+SUPERSAMPLE = 2
+SEED = 20260829
 
-# Центр планеты вынесен далеко вниз: в кадре остаётся только кромка шара —
-# так Земля и выглядит с низкой орбиты.
-CENTER = np.array([0.42 * WIDTH, 2.62 * HEIGHT])
-RADIUS = 2.05 * HEIGHT
-# Солнце почти сбоку слева: в кадре виден узкий серп планеты, и свет обязан
-# меняться поперёк него. При солнце «из-за камеры» освещённость по всей дуге
-# одинаковая, терминатора нет, и кадр выглядит дневным небом, а не космосом.
-SUN = np.array([-0.88, -0.30, 0.37])
-SUN /= np.linalg.norm(SUN)
+#: Радиус планеты и высота съёмки в тех же единицах. С низкой орбиты
+#: (400 км) горизонт почти прямой и в кадре одна пустыня; с двух тысяч
+#: километров видна дуга планеты целиком — так снимают метеоспутники.
+R_EARTH = 6371.0
+ALTITUDE = 1950.0
+
+#: Наклон камеры вниз от местного горизонта, в градусах. Горизонт опущен на
+#: arccos(R/(R+h)); наклон берём чуть меньше, чтобы дуга легла ниже середины
+#: кадра: планета занимает низ, вверху остаётся место под карточку входа.
+PITCH_DEG = 32.0
+FOV_DEG = 58.0
+
+#: Точка под камерой и разворот кадра. Выбраны так, чтобы в кадр попадала
+#: узнаваемая суша, а не открытая вода: без берега снимок читается как
+#: синее пятно.
+SUB_LAT, SUB_LON = 26.0, 44.0
+ROLL_DEG = -7.0
+
+#: Точка, над которой стоит Солнце. Задаём широтой и долготой, как и точку
+#: под камерой: так видно, где на кадре окажется день, а где ночь. Солнце
+#: западнее камеры и ниже по широте — в кадр попадает и освещённая дуга, и
+#: терминатор. При солнце «из-за камеры» освещённость по всей дуге
+#: одинаковая, терминатора нет, и кадр выглядит дневным небом, а не космосом.
+SUN_LAT, SUN_LON = 14.0, -34.0
+
+#: Толщина атмосферы и её цвет. Рэлеевское рассеяние сильнее к синему концу
+#: спектра — отсюда и голубая кромка над планетой.
+ATMO_H = 105.0
+ATMO_RGB = np.array([0.30, 0.55, 1.00])
 
 
 def _smoothstep(edge0: float, edge1: float, value: np.ndarray) -> np.ndarray:
@@ -40,204 +72,251 @@ def _smoothstep(edge0: float, edge1: float, value: np.ndarray) -> np.ndarray:
     return t * t * (3.0 - 2.0 * t)
 
 
-def _value_noise(shape: tuple[int, int], cells: tuple[int, int],
-                 rng: np.random.Generator) -> np.ndarray:
-    """Гладкий шум: решётка случайных значений с косинусной интерполяцией.
+def _unit(lat_deg: float, lon_deg: float) -> np.ndarray:
+    """Единичный вектор по широте и долготе."""
+    lat, lon = np.radians(lat_deg), np.radians(lon_deg)
+    return np.array([np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)])
 
-    Пригодного шума Перлина в зависимостях нет, а тащить его ради одной
-    картинки незачем: на облака хватает и этого — важна связность пятен,
-    а не математическая чистота.
+
+SUN_DIR = _unit(SUN_LAT, SUN_LON)
+
+
+def _rotation(sub_lat: float, sub_lon: float, pitch: float, roll: float) -> np.ndarray:
+    """Поворот из системы камеры в систему планеты."""
+    up = _unit(sub_lat, sub_lon)
+    north = np.array([0.0, 0.0, 1.0])
+    east = np.cross(north, up)
+    east /= np.linalg.norm(east)
+    north = np.cross(up, east)
+
+    p, r = np.radians(pitch), np.radians(roll)
+    # Взгляд от местного горизонта наклоняем ВНИЗ на угол тангажа: только
+    # так луч уходит под горизонт и встречает и планету, и воздух над ней.
+    forward = np.cos(p) * north - np.sin(p) * up
+    right = east * np.cos(r) + np.cross(forward, east) * np.sin(r)
+    right -= forward * float(right @ forward)
+    right /= np.linalg.norm(right)
+    upv = np.cross(right, forward)
+    return np.stack([right, upv, forward], axis=1)
+
+
+def _rays() -> tuple[np.ndarray, np.ndarray, tuple[int, int]]:
+    """Начало и направления лучей для каждого пикселя кадра."""
+    width, height = WIDTH * SUPERSAMPLE, HEIGHT * SUPERSAMPLE
+    aspect = width / height
+    scale = np.tan(np.radians(FOV_DEG) * 0.5)
+
+    xs = (np.arange(width) + 0.5) / width * 2.0 - 1.0
+    ys = 1.0 - (np.arange(height) + 0.5) / height * 2.0
+    gx, gy = np.meshgrid(xs * scale * aspect, ys * scale)
+
+    local = np.stack([gx, gy, np.ones_like(gx)], axis=-1)
+    local /= np.linalg.norm(local, axis=-1, keepdims=True)
+
+    basis = _rotation(SUB_LAT, SUB_LON, PITCH_DEG, ROLL_DEG)
+    directions = local @ basis.T
+
+    origin = _unit(SUB_LAT, SUB_LON) * (R_EARTH + ALTITUDE)
+    return origin, directions, (width, height)
+
+
+def _hit_sphere(origin: np.ndarray, direction: np.ndarray, radius: float) -> np.ndarray:
+    """Ближнее пересечение луча со сферой. Промах — NaN."""
+    b = 2.0 * (direction @ origin)
+    c = float(origin @ origin) - radius * radius
+    disc = b * b - 4.0 * c
+    hit = disc > 0.0
+    root = np.full(disc.shape, np.nan)
+    sq = np.sqrt(np.where(hit, disc, 0.0))
+    near = (-b - sq) * 0.5
+    far = (-b + sq) * 0.5
+    take = np.where(near > 0.0, near, far)
+    root[hit] = take[hit]
+    root[root <= 0.0] = np.nan
+    return root
+
+
+def _sample_texture(texture: np.ndarray, lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
+    """Билинейная выборка равнопромежуточной мозаики по широте и долготе."""
+    th, tw = texture.shape[:2]
+    u = (lon / (2.0 * np.pi) + 0.5) * tw - 0.5
+    v = (0.5 - lat / np.pi) * th - 0.5
+
+    x0 = np.floor(u).astype(np.int64)
+    y0 = np.clip(np.floor(v).astype(np.int64), 0, th - 1)
+    fx = (u - x0)[..., None]
+    fy = (v - y0)[..., None]
+    x0 %= tw
+    x1 = (x0 + 1) % tw
+    y1 = np.clip(y0 + 1, 0, th - 1)
+
+    top = texture[y0, x0] * (1.0 - fx) + texture[y0, x1] * fx
+    bottom = texture[y1, x0] * (1.0 - fx) + texture[y1, x1] * fx
+    return top * (1.0 - fy) + bottom * fy
+
+
+def _fallback_surface(lat: np.ndarray, lon: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    """Поверхность без мозаики: море и материки по шуму.
+
+    Нужна там, где снимка NASA под рукой нет. Кадр выходит беднее — это
+    честно написано в справке сценария.
     """
-    grid = rng.random((cells[0] + 1, cells[1] + 1))
-    ys = np.linspace(0, cells[0], shape[0], endpoint=False)
-    xs = np.linspace(0, cells[1], shape[1], endpoint=False)
-    y0, x0 = np.floor(ys).astype(int), np.floor(xs).astype(int)
-    fy = (1 - np.cos((ys - y0) * np.pi)) / 2
-    fx = (1 - np.cos((xs - x0) * np.pi)) / 2
-    top = grid[y0][:, x0] * (1 - fx) + grid[y0][:, x0 + 1] * fx
-    bottom = grid[y0 + 1][:, x0] * (1 - fx) + grid[y0 + 1][:, x0 + 1] * fx
-    return top * (1 - fy[:, None]) + bottom * fy[:, None]
+    value = np.zeros_like(lat)
+    amp, freq = 1.0, 1.6
+    for _ in range(6):
+        phase = rng.uniform(0.0, 2.0 * np.pi, size=3)
+        value += amp * (
+            np.sin(freq * lat * 2.3 + phase[0])
+            * np.sin(freq * lon * 1.7 + phase[1])
+            + 0.5 * np.sin(freq * (lat + lon) * 1.1 + phase[2])
+        )
+        amp *= 0.55
+        freq *= 1.9
+    land = _smoothstep(0.15, 0.55, value)
+    sea = np.array([0.05, 0.12, 0.26])
+    soil = np.array([0.24, 0.28, 0.18])
+    return sea * (1.0 - land[..., None]) + soil * land[..., None]
 
 
-def _fbm(shape: tuple[int, int], rng: np.random.Generator,
-         octaves: int = 6, base: int = 4) -> np.ndarray:
-    """Сумма шумов растущей частоты — то, из чего получается облачность."""
-    total = np.zeros(shape)
-    amplitude, weight = 1.0, 0.0
-    for octave in range(octaves):
-        cells = (base * 2 ** octave, base * 2 ** octave * shape[1] // shape[0])
-        total += amplitude * _value_noise(shape, cells, rng)
-        weight += amplitude
-        amplitude *= 0.5
-    return total / weight
+def _night_lights(surface: np.ndarray) -> np.ndarray:
+    """Свечение городов на ночной стороне.
+
+    Отдельного снимка ночной Земли в мозаике нет, поэтому берём сушу из
+    дневного кадра: у воды в Blue Marble синий канал заметно выше зелёного,
+    у суши — наоборот. Огни ставим только на суше и вполсилы: ночная
+    сторона должна оставаться тёмной, иначе кадр выглядит нарисованным.
+    """
+    red, green, blue = surface[..., 0], surface[..., 1], surface[..., 2]
+    land = _smoothstep(-0.01, 0.05, green - blue) * _smoothstep(0.03, 0.12, red + green)
+    return land
 
 
-def render() -> Image.Image:
+def _stars(shape: tuple[int, int], rng: np.random.Generator) -> np.ndarray:
+    """Звёздное поле. Ярких звёзд мало, слабых много — как на небе."""
+    height, width = shape
+    field = np.zeros((height, width), dtype=np.float32)
+    count = int(width * height / 5200)
+    ys = rng.integers(0, height, count)
+    xs = rng.integers(0, width, count)
+    # Показатель степени подобран так, чтобы ярких точек были единицы:
+    # равномерная яркость даёт «сыпь», которой на небе не бывает.
+    mag = rng.random(count) ** 7.0
+    np.maximum.at(field, (ys, xs), mag.astype(np.float32))
+    return field
+
+
+def render(texture_path: Path | None) -> Image.Image:
     rng = np.random.default_rng(SEED)
-    yy, xx = np.mgrid[0:HEIGHT, 0:WIDTH].astype(np.float64)
+    origin, direction, (width, height) = _rays()
 
-    # -- космос: почти чёрный, с еле заметной засветкой в стороне солнца ----
-    glow = np.exp(-(((xx - 0.18 * WIDTH) ** 2 + (yy - 0.05 * HEIGHT) ** 2)
-                    / (2 * (0.50 * WIDTH) ** 2)))
-    image = np.empty((HEIGHT, WIDTH, 3))
-    image[..., 0] = 0.0030 + 0.0060 * glow
-    image[..., 1] = 0.0048 + 0.0100 * glow
-    image[..., 2] = 0.0095 + 0.0195 * glow
+    texture = None
+    if texture_path is not None:
+        with Image.open(texture_path) as raw:
+            texture = np.asarray(raw.convert("RGB"), dtype=np.float32) / 255.0
 
-    # -- звёзды -------------------------------------------------------------
-    # Ярких мало, тусклых много: так выглядит настоящее звёздное поле.
-    for count, low, high, size in ((1400, 0.06, 0.22, 0), (260, 0.25, 0.55, 0),
-                                   (70, 0.55, 0.95, 1)):
-        sy = rng.integers(0, HEIGHT, count)
-        sx = rng.integers(0, WIDTH, count)
-        brightness = rng.uniform(low, high, count)
-        # Цвет звезды чуть плавает от голубого к тёплому.
-        tint = rng.uniform(-0.10, 0.06, count)
-        for index in range(count):
-            y, x = int(sy[index]), int(sx[index])
-            value = brightness[index]
-            for dy in range(-size, size + 1):
-                for dx in range(-size, size + 1):
-                    py, px = y + dy, x + dx
-                    if not (0 <= py < HEIGHT and 0 <= px < WIDTH):
-                        continue
-                    fall = value if (dy or dx) == 0 else value * 0.35
-                    image[py, px, 0] += fall * (1 + tint[index])
-                    image[py, px, 1] += fall
-                    image[py, px, 2] += fall * (1 - tint[index] * 0.5)
+    distance = _hit_sphere(origin, direction, R_EARTH)
+    ground = np.isfinite(distance)
 
-    # -- геометрия шара -----------------------------------------------------
-    dx = xx - CENTER[0]
-    dy = yy - CENTER[1]
-    distance = np.sqrt(dx * dx + dy * dy)
-    inside = distance <= RADIUS
+    image = np.zeros((height, width, 3), dtype=np.float32)
 
-    # Нормаль к поверхности в точке экрана: z из уравнения сферы.
-    nx = np.where(inside, dx / RADIUS, 0.0)
-    ny = np.where(inside, dy / RADIUS, 0.0)
-    nz = np.sqrt(np.clip(1.0 - nx * nx - ny * ny, 0.0, 1.0))
-    lambert = np.clip(nx * SUN[0] + ny * SUN[1] + nz * SUN[2], 0.0, 1.0)
-    # Терминатор мягкий: у планеты с атмосферой резкой границы света нет.
-    light = _smoothstep(0.0, 0.42, lambert) ** 1.25
+    # -- звёзды ------------------------------------------------------------
+    stars = _stars((height, width), rng)
+    stars = np.asarray(
+        Image.fromarray((stars * 255).astype(np.uint8)).filter(
+            ImageFilter.GaussianBlur(0.6 * SUPERSAMPLE)), dtype=np.float32) / 255.0
+    image += (stars * 1.9)[..., None] * np.array([0.86, 0.90, 1.0])
 
-    # -- поверхность --------------------------------------------------------
-    clouds = _fbm((HEIGHT, WIDTH), rng, octaves=7, base=3)
-    # Облачные полосы вытянуты вдоль широт: сжимаем шум по вертикали.
-    bands = _fbm((HEIGHT, WIDTH), np.random.default_rng(SEED + 1), octaves=4, base=2)
-    clouds = np.clip(clouds * 0.72 + bands * 0.28, 0, 1)
-    cover = _smoothstep(0.50, 0.78, clouds)
+    # -- поверхность -------------------------------------------------------
+    if ground.any():
+        hit = origin + direction[ground] * distance[ground][..., None]
+        normal = hit / np.linalg.norm(hit, axis=-1, keepdims=True)
+        lat = np.arcsin(np.clip(normal[..., 2], -1.0, 1.0))
+        lon = np.arctan2(normal[..., 1], normal[..., 0])
 
-    ocean = np.stack([np.full((HEIGHT, WIDTH), 0.020),
-                      np.full((HEIGHT, WIDTH), 0.062),
-                      np.full((HEIGHT, WIDTH), 0.150)], axis=-1)
-    cloud_colour = np.stack([np.full((HEIGHT, WIDTH), 0.66),
-                             np.full((HEIGHT, WIDTH), 0.72),
-                             np.full((HEIGHT, WIDTH), 0.80)], axis=-1)
-    surface = ocean * (1 - cover[..., None]) + cloud_colour * cover[..., None]
-    surface *= light[..., None]
+        surface = (_sample_texture(texture, lat, lon) if texture is not None
+                   else _fallback_surface(lat, lon, rng))
 
-    # Рассеяние у самой кромки диска: узкая голубая каёмка на освещённой
-    # стороне. Широкая полоса делала планету светлой целиком.
-    edge = _smoothstep(0.975, 1.0, distance / RADIUS)
-    scatter = np.stack([0.10 * edge, 0.20 * edge, 0.38 * edge], axis=-1)
-    surface = np.clip(surface + scatter * light[..., None], 0, 1)
+        sun = np.clip(normal @ SUN_DIR, -1.0, 1.0)
+        # Терминатор мягкий: у планеты с атмосферой резкой границы нет.
+        day = _smoothstep(-0.14, 0.22, sun)
+        lit = surface * (0.05 + 0.92 * day[..., None] * np.clip(sun, 0.0, 1.0)[..., None] ** 0.62)
 
-    image = np.where(inside[..., None], surface, image)
+        night = _night_lights(surface) * (1.0 - day)
+        lit += night[..., None] * np.array([0.42, 0.31, 0.16]) * 0.30
 
-    # -- атмосфера снаружи диска -------------------------------------------
-    # Узкая яркая полоса у самого горизонта плюс короткий мягкий ореол.
-    # Широкий ореол заливал полкадра, и небо переставало быть чёрным.
-    outside = np.clip(distance - RADIUS, 0, None)
-    rim = np.exp(-outside / (0.0018 * RADIUS))
-    halo = np.exp(-outside / (0.014 * RADIUS)) * 0.22
-    # Свечение гаснет вместе со светом: над ночной стороной атмосферы не видно.
-    air = (rim + halo) * light
-    air = np.where(inside, 0.0, air)
-    image[..., 0] += air * 0.30
-    image[..., 1] += air * 0.55
-    image[..., 2] += air * 0.92
+        # Блик на воде под солнцем: у зеркальной глади он есть всегда, и без
+        # него океан выглядит матовой краской.
+        view = -direction[ground]
+        half = view + SUN_DIR
+        half /= np.linalg.norm(half, axis=-1, keepdims=True)
+        water = _smoothstep(0.02, 0.10, surface[..., 2] - surface[..., 1])
+        gloss = np.clip(np.sum(normal * half, axis=-1), 0.0, 1.0) ** 220.0
+        lit += (gloss * water * day)[..., None] * np.array([0.55, 0.62, 0.70])
 
-    _add_satellite(image, xx, yy)
+        image[ground] = lit
 
-    return Image.fromarray((np.clip(image, 0, 1) ** (1 / 2.2) * 255).astype(np.uint8))
+    # -- атмосфера ---------------------------------------------------------
+    # Толщина воздуха вдоль луча считается по расстоянию до центра планеты:
+    # у кромки луч идёт по касательной и проходит через воздух долго, отсюда
+    # яркая голубая полоса, которая и делает кадр космическим.
+    # Ближайшее расстояние от центра планеты до луча: проекция начала луча
+    # на направление даёт точку наибольшего сближения.
+    # Точка наибольшего сближения лежит при t = -(d·o). Если она позади
+    # камеры, луч уходит от планеты и воздуха не встречает вовсе: без этой
+    # оговорки свечение заливало всё небо над горизонтом.
+    along = direction @ origin
+    miss = np.linalg.norm(origin - direction * along[..., None], axis=-1)
+    away = along >= 0.0
+    miss = np.where(away, np.linalg.norm(origin), miss)
 
+    shell = _smoothstep(R_EARTH + ATMO_H * 2.6, R_EARTH - ATMO_H * 0.35, miss)
+    # За планетой воздуха не видно — там уже поверхность.
+    limb = np.where(ground, _smoothstep(0.0, ATMO_H * 0.8, R_EARTH - miss) * 0.55, 1.0)
+    # Освещённость самой атмосферы: с ночной стороны она тоже гаснет.
+    lit_air = _smoothstep(-0.55, 0.25, direction @ SUN_DIR * -1.0 + 0.45)
+    glow = shell * limb * lit_air
+    image += glow[..., None] * ATMO_RGB * 0.78
 
-def _limb_y(x: float) -> float:
-    """Высота горизонта планеты в этой точке кадра."""
-    dx = x - CENTER[0]
-    return float(CENTER[1] - np.sqrt(max(RADIUS ** 2 - dx * dx, 0.0)))
+    # Второй, широкий и слабый слой: у настоящего снимка свечение уходит в
+    # черноту постепенно, а не обрывается ступенькой.
+    # Над самой планетой второго слоя быть не должно: он ложился белёсой
+    # вуалью на океан, и вода выходила серой, как на выцветшей печати.
+    halo = _smoothstep(R_EARTH + ATMO_H * 9.0, R_EARTH, miss) * (~ground)
+    image += (halo * lit_air)[..., None] * ATMO_RGB * 0.16
 
+    # -- сведение ----------------------------------------------------------
+    image = np.clip(image, 0.0, None)
+    # Мягкое сжатие ярких мест: без него кромка выгорает в белую полосу.
+    image = image / (1.0 + image * 0.34)
+    image = np.clip(image, 0.0, 1.0) ** (1.0 / 1.10)
+    # Небольшая добавка насыщенности: сжатие ярких мест тянет цвета к серому,
+    # и океан из синего становится оловянным.
+    grey = image @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+    image = np.clip(grey[..., None] + (image - grey[..., None]) * 1.22, 0.0, 1.0)
 
-def _add_satellite(image: np.ndarray, xx: np.ndarray, yy: np.ndarray) -> None:
-    """Спутник и луч на наземную станцию.
-
-    Рисуется прямо в растр, а не поверх разметкой: тогда не надо совмещать
-    две системы координат при другом соотношении сторон экрана, и спутник
-    остаётся на своём месте относительно планеты при любой обрезке кадра.
-
-    Аппарат намеренно мелкий и почти силуэтом: крупный подробный спутник
-    посреди снимка сразу выдаёт рисунок.
-    """
-    sat_x, sat_y = 0.735 * WIDTH, 0.255 * HEIGHT
-    ground_x = 0.655 * WIDTH
-    ground_y = _limb_y(ground_x)
-
-    # -- луч: узкий конус от аппарата к точке на горизонте ------------------
-    along = np.array([ground_x - sat_x, ground_y - sat_y])
-    length = float(np.hypot(*along))
-    along /= length
-    across = np.array([-along[1], along[0]])
-    rel_x, rel_y = xx - sat_x, yy - sat_y
-    depth = rel_x * along[0] + rel_y * along[1]
-    side = np.abs(rel_x * across[0] + rel_y * across[1])
-    t = np.clip(depth / length, 0.0, 1.0)
-    width = 4.0 + 46.0 * t                       # раскрыв диаграммы к земле
-    inside_beam = (depth > 0) & (depth < length) & (side < width)
-    # Ярче у аппарата, мягче к поверхности, размыто по краям конуса.
-    strength = (1.0 - t) ** 1.6 * (1.0 - side / np.maximum(width, 1e-6)) ** 2
-    beam = np.where(inside_beam, strength, 0.0) * 0.075
-    image[..., 0] += beam * 0.55
-    image[..., 1] += beam * 0.78
-    image[..., 2] += beam * 1.00
-
-    # -- корпус и панели ----------------------------------------------------
-    def box(cx, cy, half_w, half_h, value, tint=(1.0, 1.0, 1.0)):
-        mask = (np.abs(xx - cx) < half_w) & (np.abs(yy - cy) < half_h)
-        for channel, factor in enumerate(tint):
-            image[..., channel] = np.where(mask, value * factor, image[..., channel])
-
-    scale = HEIGHT / 1440.0
-    body_w, body_h = 11 * scale, 15 * scale
-    panel_w, panel_h = 27 * scale, 10 * scale
-    gap = body_w + 6 * scale
-
-    box(sat_x - gap - panel_w, sat_y, panel_w, panel_h, 0.055, (0.85, 0.95, 1.15))
-    box(sat_x + gap + panel_w, sat_y, panel_w, panel_h, 0.055, (0.85, 0.95, 1.15))
-    box(sat_x - gap - panel_w, sat_y, panel_w, 1.0 * scale, 0.020)   # шов панели
-    box(sat_x + gap + panel_w, sat_y, panel_w, 1.0 * scale, 0.020)
-    box(sat_x - gap / 2 - panel_w / 2, sat_y, gap / 2 + panel_w / 2, 1.2 * scale, 0.10)
-    box(sat_x + gap / 2 + panel_w / 2, sat_y, gap / 2 + panel_w / 2, 1.2 * scale, 0.10)
-    box(sat_x, sat_y, body_w, body_h, 0.075)
-    # Блик солнца на обращённой к светилу грани — аппарат перестаёт быть
-    # плоским пятном.
-    box(sat_x - body_w + 1.6 * scale, sat_y, 1.8 * scale, body_h, 0.42, (1.0, 1.0, 1.02))
-
-    # -- отметка наземной станции ------------------------------------------
-    spot = np.exp(-(((xx - ground_x) ** 2 + (yy - ground_y) ** 2)
-                    / (2 * (7.0 * scale) ** 2)))
-    image[..., 0] += spot * 0.30
-    image[..., 1] += spot * 0.45
-    image[..., 2] += spot * 0.60
+    out = Image.fromarray((image * 255.0 + 0.5).astype(np.uint8), mode="RGB")
+    if SUPERSAMPLE > 1:
+        out = out.resize((WIDTH, HEIGHT), Image.LANCZOS)
+    return out
 
 
 def main() -> int:
-    target = Path(sys.argv[1] if len(sys.argv) > 1
-                  else "src/reportgen/web/static/login-bg.jpg")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("target", nargs="?",
+                        default="src/reportgen/web/static/login-bg.jpg")
+    parser.add_argument("--texture", default=None,
+                        help="равнопромежуточная мозаика Земли (NASA Blue Marble)")
+    args = parser.parse_args()
+
+    texture = Path(args.texture) if args.texture else None
+    if texture is not None and not texture.is_file():
+        print(f"мозаика не найдена: {texture}")
+        return 2
+
+    target = Path(args.target)
     target.parent.mkdir(parents=True, exist_ok=True)
-    picture = render()
-    picture.save(target, quality=88, optimize=True, progressive=True)
-    print(f"{target} — {picture.size[0]}×{picture.size[1]}, "
-          f"{target.stat().st_size / 1024:.0f} КБ")
+    render(texture).save(target, quality=88, optimize=True, progressive=True)
+    print(f"{target} — {target.stat().st_size // 1024} КБ")
     return 0
 
 

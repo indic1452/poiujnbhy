@@ -318,6 +318,7 @@ def config(request: Request) -> Dict[str, Any]:
         "auth_enabled": settings.auth_enabled,
         "brand": {
             "name": settings.brand_name,
+            "short": settings.brand_short,
             "subtitle": settings.brand_subtitle,
             "accent": settings.brand_accent,
             "logo": "/brand/logo" if _logo_path(settings) else None,

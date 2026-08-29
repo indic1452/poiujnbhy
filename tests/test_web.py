@@ -2844,6 +2844,71 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("CASE_BY_FLOW", self.js)
         self.assertIn("Это состояние письмо получает от проверки отчёта", self.js)
 
+    def test_the_department_emblem_lives_in_the_corner_of_the_header(self):
+        """Начальник отдела просил живой знак отдела в углу шапки.
+
+        Проверяем не красоту — её видно глазом, — а то, что знак на месте,
+        вертится сам, отзывается на наведение и нажатие и не тянет за собой
+        ни одной внешней загрузки.
+        """
+        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+
+        # Знак стоит в правом углу шапки, после карточки пользователя.
+        head = self.html[self.html.index('class="topbar-right"'):
+                         self.html.index("</header>")]
+        self.assertIn('class="emblem"', head)
+        self.assertLess(head.index("user-chip"), head.index('class="emblem"'),
+                        "эмблема оказалась левее карточки пользователя")
+
+        # Вертится сама, средствами CSS: без скрипта она тоже живая.
+        self.assertIn("@keyframes emblem-turn", css)
+        self.assertIn("animation: emblem-turn", css)
+        # Отзывается на наведение и на нажатие.
+        self.assertIn(".emblem:hover", css)
+        self.assertIn(".emblem--held", css)
+        # Скорость меняется проигрыванием, а не длительностью: иначе луч
+        # перескакивает.
+        self.assertIn("updatePlaybackRate", self.js)
+
+    def test_the_emblem_stops_when_the_system_asks_for_calm(self):
+        # Движение на экране — не всем в радость, и система об этом знает.
+        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+        calm = css[css.index("@media (prefers-reduced-motion: reduce)"):]
+        block = calm[:calm.index("/* --- крупный")] if "/* --- крупный" in calm else calm[:900]
+        self.assertIn(".emblem-sweep", block)
+        self.assertIn("animation: none", block)
+
+    def test_nothing_on_the_screen_is_fetched_from_outside(self):
+        """Изолированная машина: ни одного обращения наружу.
+
+        Ни шрифтов, ни картинок, ни библиотек с чужих адресов — иначе на
+        машине отдела экран встанет с пустыми местами и будет ждать сети.
+        """
+        import re as _re
+
+        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+        for name, text in (("index.html", self.html), ("login.html", self.login),
+                           ("app.js", self.js), ("styles.css", css)):
+            with self.subTest(file=name):
+                outside = _re.findall(r"https?://[^\s\"')]+", text)
+                self.assertEqual([], [a for a in outside
+                                      if "w3.org" not in a and "schemas" not in a],
+                                 f"{name} тянет что-то снаружи")
+
+    def test_the_department_is_named_everywhere_the_same(self):
+        # Название отдела стоит в трёх местах и должно совпадать.
+        from reportgen.config import Settings
+
+        settings = Settings()
+        self.assertEqual("2 специальный отдел", settings.brand_name)
+        self.assertEqual("2СО", settings.brand_short)
+        self.assertIn(settings.brand_name, self.login)
+        self.assertIn(settings.brand_name, self.html)
+        self.assertIn(settings.brand_short, self.html)
+
     def test_letter_states_in_the_interface_match_the_server(self):
         """Состояние, которого нет в словаре интерфейса, ломает карточку.
 
