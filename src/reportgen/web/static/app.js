@@ -31,19 +31,23 @@
         new: 'принято',
         draft: 'в работе',
         review: 'на проверке',
+        checked: 'проверен, к отправке',
         approved: 'отправлено',
         archived: 'в архиве',
     };
 
-    /* Порядок движения письма: следующее состояние — соседнее справа. */
-    const CASE_FLOW = ['new', 'draft', 'review', 'approved', 'archived'];
-    /* Эти два состояния письму даёт отчёт, а не отметка в карточке. */
-    const CASE_BY_FLOW = ['review', 'approved'];
+    /* Порядок движения письма: следующее состояние — соседнее справа.
+       «Проверен» и «отправлено» — разные вещи: начальник согласился, но
+       ответ ещё не ушёл. Между ними стоит работа исполнителя — отправить
+       ответ и записать исходящий номер. */
+    const CASE_FLOW = ['new', 'draft', 'review', 'checked', 'approved', 'archived'];
+    /* Эти три состояния письму даёт ход отчёта, а не отметка в карточке. */
+    const CASE_BY_FLOW = ['review', 'checked', 'approved'];
 
     /* Пределы полей карточки письма. Те же, что на сервере
        (api.MAX_CARD_FIELDS): поле не должно принимать то, что сервер потом
        отвергнет — человек уже напечатал. */
-    const CARD_LIMIT = { title: 300, incoming_no: 60, note: 2000, group_no: 120 };
+    const CARD_LIMIT = { title: 300, incoming_no: 60, outgoing_no: 60, note: 2000, group_no: 120 };
 
     const CASE_PRIORITY = { normal: 'обычный', high: 'важный', urgent: 'срочный' };
 
@@ -123,12 +127,22 @@
         'case.create': 'зарегистрировано письмо',
         'case.delete': 'удалено письмо',
         'case.facts.update': 'изменён факт-пакет',
-        'report.generate': 'сгенерирован отчёт',
+        'case.send': 'ответ отправлен, записан исходящий номер',
+        'case.send.withdraw': 'отозвана отправка ответа',
+        'report.generate': 'собран черновик отчёта',
+        'report.section.edit': 'правка раздела',
         'report.section.save': 'сохранена секция',
-        'report.section.regenerate': 'перегенерирована секция',
+        'report.section.regenerate': 'раздел написан заново',
         'report.section.restore': 'возвращён черновик модели',
-        'report.approve': 'отчёт утверждён',
-        'report.export': 'экспорт отчёта',
+        'report.submit': 'отчёт сдан на проверку',
+        'report.rework': 'отчёт возвращён на исправление',
+        'report.approve': 'отчёт отмечен проверенным',
+        'report.approval.revoked': 'снята отметка о проверке',
+        'report.withdraw': 'прежняя редакция снята с проверки',
+        'report.upload': 'сдан готовый отчёт файлом',
+        'report.export': 'выгрузка отчёта',
+        'chat.attach': 'к разговору приложен файл',
+        'library.status': 'изменена актуальность документа',
         'library.upload': 'загружен документ',
         'library.reindex': 'переиндексация библиотеки',
         'library.delete': 'удалён документ',
@@ -1107,9 +1121,10 @@
     // 5. Экран «Письма»
     // =====================================================================
 
-    /* Раздел ведёт входящие письма: у каждого есть входящий номер, номер
-       отправителя (числовой — группа или часть, откуда пришло), срок ответа,
-       исполнитель и подготовленный ответ — отчёт. */
+    /* Раздел ведёт письма отдела. У письма есть входящий номер, номер
+       группы (откуда пришло), срок ответа, исполнитель и один отчёт —
+       подготовленный ответ. Круг замыкается исходящим номером: под ним
+       ответ ушёл адресату, и только тогда письмо считается закрытым. */
 
     const casesState = {
         view: 'open',       // open | overdue | mine | all | архивные состояния
@@ -1130,6 +1145,8 @@
         { id: 'overdue', title: 'Просроченные', params: { overdue: '1' } },
         // Начальнику это первый набор, за которым он сюда заходит.
         { id: 'review', title: 'На проверке', params: { status: 'review' } },
+        // А это первый набор исполнителя: начальник проверил, ответ ещё не ушёл.
+        { id: 'checked', title: 'К отправке', params: { status: 'checked' } },
         { id: 'mine', title: 'Мои', params: { status: 'open', mine: true } },
         { id: 'approved', title: 'Отправленные', params: { status: 'approved' } },
         { id: 'all', title: 'Все', params: {} },
@@ -1156,7 +1173,10 @@
         const tabs = h('div', { class: 'seg' });
         const searchInput = h('input', {
             type: 'search',
-            placeholder: 'Входящий номер, тема, отправитель',
+            placeholder: 'Номер, тема, группа или слова из отчёта',
+            title: 'Ищет по учётному и входящему номеру, исходящему номеру, '
+                + 'теме, номеру группы, примечанию — и по тексту самих отчётов. '
+                + 'Слова ищутся по основе: «помеха» найдёт и «помехи».',
             value: casesState.query,
             oninput: debounce((event) => {
                 casesState.query = event.target.value.trim();
@@ -1352,13 +1372,27 @@
                         h('td', {}, h('div', {}, item.title || h('span', { class: 'faint' }, 'без темы')),
                             item.priority && item.priority !== 'normal'
                                 ? h('span', { class: 'tag tag--' + item.priority },
-                                    CASE_PRIORITY[item.priority]) : null),
+                                    CASE_PRIORITY[item.priority]) : null,
+                            // Искомого слова не видно ни в теме, ни в номерах —
+                            // значит, письмо нашлось по тексту отчёта. Без
+                            // пометки строка в выдаче выглядит случайной.
+                            item.found_in_report
+                                ? h('span', { class: 'tag', title: 'Искомое слово нашлось '
+                                    + 'в тексте отчёта по этому письму' }, 'в тексте отчёта')
+                                : null),
                         h('td', { class: 'small nowrap' },
                             item.group_no || h('span', { class: 'faint' }, '—')),
                         h('td', { class: 'small nowrap' },
                             item.assignee_name || h('span', { class: 'faint' }, 'не назначен')),
                         h('td', { class: 'nowrap' }, deadlineCell(item)),
                         h('td', {}, statusBadge(item.status)),
+                        // Исходящий номер — вторая половина учёта: чем ответили.
+                        h('td', { class: 'mono small nowrap',
+                            title: item.outgoing_date
+                                ? 'Ответ отправлен ' + fmtDate(item.outgoing_date)
+                                    + (item.sent_by_name ? ', ' + item.sent_by_name : '')
+                                : '' },
+                            item.outgoing_no || h('span', { class: 'faint' }, '—')),
                         h('td', { class: 'small muted nowrap' }, fmtDate(item.incoming_date) || '—'),
                         h('td', { class: 'row-actions nowrap' },
                             canEdit() ? h('button', {
@@ -1381,6 +1415,7 @@
                             h('th', {}, 'Исполнитель'),
                             h('th', {}, 'Срок ответа'),
                             h('th', {}, 'Состояние'),
+                            h('th', {}, 'Исходящий'),
                             h('th', {}, 'Дата письма'),
                             h('th', {}))),
                         body)));
@@ -1858,7 +1893,7 @@
         refreshAll();
     }
 
-    /** Загрузка версии отчёта вместе со списком источников для правой панели. */
+    /** Загрузка редакции отчёта вместе со списком источников для правой панели. */
     async function loadReport(reportId) {
         const payload = await api.get('/api/reports/' + reportId);
         const report = normalizeReport(payload.report);
@@ -2538,20 +2573,40 @@
         const report = wb.report;
         const editable = canEdit();
 
+        /* У письма один отчёт. То, что раньше звалось версиями, — это его
+           редакции: собрал заново или сдал файлом ещё раз. Нынешняя —
+           последняя, прежние остаются на чтение как история правок:
+           по ним видно, что начальник вернул и что исполнитель поправил. */
+        const currentReport = wb.reports.length
+            ? wb.reports[wb.reports.length - 1] : null;
+        const isCurrent = !report || !currentReport || report.id === currentReport.id;
         const versionSelect = h('select', {
-            title: 'Версия отчёта',
+            title: wb.reports.length < 2
+                ? 'Отчёт по письму один'
+                : 'Редакции отчёта: нынешняя и прежние, на чтение',
             disabled: wb.reports.length < 2,
             onchange: (event) => switchVersion(Number(event.target.value)),
         }, wb.reports.map((item) => h('option', {
             value: item.id, selected: report && item.id === report.id,
-        }, 'версия ' + item.version + ' · ' + (REPORT_STATUS[item.status] || item.status))));
+        }, (currentReport && item.id === currentReport.id
+            ? 'отчёт (редакция ' + item.version + ')'
+            : 'прежняя редакция ' + item.version)
+            + ' · ' + (REPORT_STATUS[item.status] || item.status))));
+
+        /* Ответ ушёл под исходящим номером — письмо закрыто. Работать
+           можно только с нынешней редакцией и только до отправки: после
+           неё отчёт обязан совпадать с тем, что ушло адресату. Сервер это
+           и так не даст, но человек должен видеть погашенную кнопку, а не
+           ловить отказ после нажатия. */
+        const sent = !!(wb.case && wb.case.outgoing_no);
+        const frozen = sent || !isCurrent;
 
         // Со сломанным факт-пакетом генерация всё равно откажет: кнопку
         // гасим и говорим почему, а не отправляем инженера за ошибкой.
         const broken = !!wb.coverageError;
         const generateButton = h('button', {
             class: 'btn' + (report ? '' : ' btn--primary'),
-            disabled: !editable || wb.busy || broken,
+            disabled: !editable || wb.busy || broken || frozen,
             title: broken
                 ? 'Сначала исправьте факт-пакет: ' + wb.coverageError
                 : (report
@@ -2580,7 +2635,7 @@
            за ним нет, читает его человек. */
         const submitButton = h('button', {
             class: 'btn' + (status === 'draft' || status === 'rework' ? ' btn--primary' : ''),
-            disabled: !report || !editable || wb.busy
+            disabled: !report || !editable || wb.busy || frozen
                 || status === 'review' || status === 'approved'
                 || (!uploaded && errors > 0),
             title: (!uploaded && errors > 0)
@@ -2593,7 +2648,8 @@
            показываем вовсе: несуществующее право не должно дразнить. */
         const approveButton = canReview() ? h('button', {
             class: 'btn btn--primary',
-            disabled: !report || (!uploaded && errors > 0) || status === 'approved' || wb.busy,
+            disabled: !report || (!uploaded && errors > 0) || status === 'approved'
+                || wb.busy || frozen,
             title: (!uploaded && errors > 0)
                 ? 'Проверка заблокирована: верификатор нашёл ошибок — ' + errors
                 : 'Отметить отчёт проверенным',
@@ -2602,10 +2658,30 @@
 
         const reworkButton = canReview() ? h('button', {
             class: 'btn btn--danger-hover',
-            disabled: !report || wb.busy || (status !== 'review' && status !== 'approved'),
+            disabled: !report || wb.busy || frozen
+                || (status !== 'review' && status !== 'approved'),
             title: 'Вернуть исполнителю с замечанием',
             onclick: () => reworkReport(),
         }, 'Вернуть на исправление') : null;
+
+        /* Последний шаг порядка отдела: ответ ушёл адресату, записываем
+           исходящий номер. Отправляет исполнитель — тот же, кто готовил и
+           сдавал отчёт; проверяет начальник, а отправляют все. */
+        const sendButton = sent ? null : h('button', {
+            class: 'btn' + (status === 'approved' ? ' btn--primary' : ''),
+            disabled: !report || status !== 'approved' || wb.busy || !canEdit(),
+            title: status === 'approved'
+                ? 'Записать исходящий номер, под которым ушёл ответ'
+                : 'Сначала начальник отдела должен отметить отчёт проверенным',
+            onclick: () => sendCase(),
+        }, 'Ответ отправлен');
+
+        /* Отозвать отправку может проверяющий: запись учётная. */
+        const unsendButton = (sent && canReview()) ? h('button', {
+            class: 'btn btn--danger-hover', disabled: wb.busy,
+            title: 'Снять запись об отправке и вернуть письмо к работе',
+            onclick: () => unsendCase(),
+        }, 'Отозвать отправку') : null;
 
         append(head, [
             h('div', { class: 'line' },
@@ -2638,8 +2714,16 @@
                     onclick: () => deleteCase(wb.case, () => navigate('#/cases')),
                 }, 'Удалить письмо') : null),
             h('div', { class: 'line' },
-                wb.reports.length ? versionSelect : h('span', { class: 'small muted' }, 'версий отчёта нет'),
+                wb.reports.length ? versionSelect : h('span', { class: 'small muted' }, 'отчёта ещё нет'),
                 report ? reportStatusBadge(report) : null,
+                // Открыта прежняя редакция: править и проверять её нельзя,
+                // и человек должен видеть это, а не гадать, почему кнопки
+                // не нажимаются.
+                !isCurrent ? h('span', {
+                    class: 'badge badge--warn',
+                    title: 'Это прежняя редакция отчёта, открытая на чтение. '
+                        + 'Работают с нынешней — последней в списке слева.',
+                }, 'прежняя редакция') : null,
                 // У сданного файлом отчёта факт-пакета нет: числа в нём не
                 // сверялись ни с чем, и молчать об этом нельзя.
                 uploaded ? h('span', {
@@ -2674,13 +2758,24 @@
                     title: 'Скачать файл, каким его сдали',
                     onclick: () => downloadReportFile(report),
                 }, 'Скачать файл') : exportButton,
-                submitButton, reworkButton, approveButton),
+                submitButton, reworkButton, approveButton, sendButton, unsendButton),
             // Замечание проверяющего видит весь отдел, и в первую очередь
             // исполнитель: без него «требует исправления» ничего не значит.
             report && report.review_note
                 ? h('div', { class: 'review-note' },
                     h('b', {}, 'Возвращено на исправление'),
                     h('div', {}, report.review_note))
+                : null,
+            // Исходящий номер — вторая половина учёта: по нему в отделе
+            // находят, чем ответили на письмо.
+            sent
+                ? h('div', { class: 'line small muted' },
+                    h('span', {}, 'Ответ отправлен: '),
+                    h('b', { class: 'mono' }, wb.case.outgoing_no),
+                    wb.case.outgoing_date
+                        ? h('span', {}, ' от ' + fmtDate(wb.case.outgoing_date)) : null,
+                    wb.case.sent_by_name
+                        ? h('span', {}, ' · ' + wb.case.sent_by_name) : null)
                 : null,
         ]);
     }
@@ -2717,6 +2812,7 @@
         { id: 'check', title: 'Проверить и поправить' },
         { id: 'review', title: 'Сдать начальнику' },
         { id: 'done', title: 'Проверено' },
+        { id: 'sent', title: 'Ответ отправлен' },
     ];
 
     /* Путь отчёта, который написали руками и сдали файлом: шаблона и
@@ -2724,20 +2820,35 @@
     const UPLOAD_STEPS = [
         { id: 'review', title: 'Сдан на проверку' },
         { id: 'done', title: 'Проверено' },
+        { id: 'sent', title: 'Ответ отправлен' },
     ];
 
     /** Какой шаг сейчас и что на нём делать. */
     function caseStep() {
         const report = wb.report;
+        const uploaded = !!(report && report.uploaded);
+
+        // Ответ ушёл под исходящим номером — работа по письму закончена.
+        // Это последний шаг, и он важнее всех прочих признаков.
+        if (wb.case && wb.case.outgoing_no) {
+            return {
+                id: 'sent', done: true, uploaded: uploaded,
+                hint: 'Ответ отправлен под исходящим номером '
+                    + wb.case.outgoing_no + '. Письмо закрыто, отчёт правке '
+                    + 'не подлежит: он должен совпадать с тем, что ушло. '
+                    + 'Понадобилось исправить — начальник отзывает отправку.',
+            };
+        }
 
         // Сданный файлом отчёт по шаблону не собирается: у него свой,
         // короткий путь — сдан и проверен.
         if (report && report.uploaded) {
             if (report.status === 'approved') {
                 return {
-                    id: 'done', done: true, uploaded: true,
-                    hint: 'Отчёт проверен начальником. Письмо переведено '
-                        + 'в состояние «отправлено».',
+                    id: 'done', uploaded: true,
+                    hint: 'Отчёт проверен начальником отдела. Отправьте ответ '
+                        + 'и нажмите «Ответ отправлен», чтобы записать '
+                        + 'исходящий номер — иначе письмо остаётся незакрытым.',
                 };
             }
             if (report.status === 'rework') {
@@ -2784,9 +2895,11 @@
         }
         if (report.status === 'approved') {
             return {
-                id: 'done', done: true,
-                hint: 'Отчёт проверен начальником. Выгрузите его в DOCX и отправьте '
-                    + 'ответ; письмо переведено в состояние «отправлено».',
+                id: 'done',
+                hint: 'Отчёт проверен начальником отдела. Выгрузите его в DOCX, '
+                    + 'отправьте ответ и нажмите «Ответ отправлен», чтобы '
+                    + 'записать исходящий номер — иначе письмо остаётся '
+                    + 'незакрытым и висит в работе.',
             };
         }
         if (report.status === 'review') {
@@ -3148,7 +3261,7 @@
         if (wb.dirty.size) {
             const ok = await confirmDialog({
                 title: 'Есть несохранённые правки',
-                message: 'Будет создана новая версия отчёта. Несохранённые правки в текущей версии пропадут.',
+                message: 'Отчёт будет написан заново новой редакцией. Несохранённые правки в нынешней пропадут; прежняя редакция останется в истории.',
                 confirmText: 'Всё равно сгенерировать',
                 danger: true,
             });
@@ -3205,7 +3318,7 @@
         if (wb.dirty.size) {
             const ok = await confirmDialog({
                 title: 'Есть несохранённые правки',
-                message: 'Переключение версии отчёта потеряет несохранённые правки (' +
+                message: 'Переход к другой редакции отчёта потеряет несохранённые правки (' +
                     wb.dirty.size + ' ' + plural(wb.dirty.size, 'раздел', 'раздела', 'разделов') + ').',
                 confirmText: 'Переключить',
                 danger: true,
@@ -3287,7 +3400,7 @@
         if (!wb.report || wb.report.status !== 'approved') return true;
         return confirmDialog({
             title: 'Отчёт подписан',
-            message: 'Отчёт версии ' + wb.report.version + ' утверждён. '
+            message: 'Отчёт (редакция ' + wb.report.version + ') проверен. '
                 + 'Правка снимет подпись: подпись стоит под тем текстом, '
                 + 'который прочитал утвердивший.',
             note: 'После правки отчёт нужно будет утвердить заново.',
@@ -3415,7 +3528,7 @@
         }
         const ok = await confirmDialog({
             title: 'Отправить на проверку',
-            message: 'Отчёт версии ' + wb.report.version + ' по письму ' + wb.case.case_id
+            message: 'Отчёт (редакция ' + wb.report.version + ') по письму ' + wb.case.case_id
                 + ' уйдёт на проверку начальнику отдела. Письмо перейдёт '
                 + 'в состояние «на проверке».',
             note: 'Правка отчёта после отправки вернёт его вам: начальник должен '
@@ -3439,7 +3552,7 @@
         const note = await promptDialog({
             multiline: true,
             title: 'Вернуть на исправление',
-            message: 'Что исправить в отчёте версии ' + wb.report.version
+            message: 'Что исправить в отчёте (редакция ' + wb.report.version + ')'
                 + ' по письму ' + wb.case.case_id + '?',
             note: 'Замечание увидит исполнитель и весь отдел — пишите так, '
                 + 'чтобы по нему можно было работать.',
@@ -3472,8 +3585,10 @@
         }
         const ok = await confirmDialog({
             title: 'Отметить проверенным',
-            message: 'Отчёт версии ' + wb.report.version + ' по письму ' + wb.case.case_id +
-                ' будет отмечен проверенным. Письмо перейдёт в состояние «отправлено».',
+            message: 'Отчёт (редакция ' + wb.report.version + ') по письму ' + wb.case.case_id +
+                ' будет отмечен проверенным. Письмо перейдёт в состояние '
+                + '«проверен, к отправке»: дальше исполнитель отправляет ответ '
+                + 'и записывает исходящий номер.',
             note: wb.report.uploaded
                 ? 'Отчёт сдан файлом: числа в нём система не сверяла, вы проверяете сами.'
                 : 'Разделы, которые переписал исполнитель, сохранятся парами '
@@ -3486,7 +3601,76 @@
                 () => api.post('/api/reports/' + wb.report.id + '/approve', {}));
             wb.report = normalizeReport(data.report) || wb.report;
             await reloadCase(wb.report.id);
-            toast('Отчёт отмечен проверенным', 'ok');
+            toast('Отчёт отмечен проверенным. Отправьте ответ и запишите '
+                + 'исходящий номер', 'ok', 6000);
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
+    /** Ответ по письму ушёл адресату: записываем исходящий номер. */
+    async function sendCase() {
+        if (!wb.case) return;
+        const number = h('input', {
+            type: 'text', class: 'mono', placeholder: 'ИСХ-2026-0915',
+            maxLength: CARD_LIMIT.outgoing_no,
+        });
+        const when = h('input', { type: 'date', value: casesState.today || todayIso() });
+        const dialog = openModal({
+            title: 'Ответ отправлен',
+            body: [
+                h('div', { class: 'muted' },
+                    'Отчёт проверен начальником отдела. Запишите, под каким '
+                    + 'исходящим номером и когда ушёл ответ по письму '
+                    + (wb.case.incoming_no || wb.case.case_id) + '. После этого '
+                    + 'письмо считается закрытым, а отчёт — правке не подлежит.'),
+                h('div', { class: 'form-grid' },
+                    h('label', { class: 'field' }, 'Исходящий номер', number),
+                    h('label', { class: 'field' }, 'Дата отправки', when)),
+            ],
+            footer: [
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                h('button', { class: 'btn btn--primary', onclick: () => save() },
+                    'Записать'),
+            ],
+            focus: 'input',
+        });
+
+        async function save() {
+            const value = number.value.trim();
+            if (!value) { toast('Укажите исходящий номер', 'error'); return; }
+            try {
+                const data = await api.post('/api/cases/' + wb.case.id + '/send', {
+                    outgoing_no: value, outgoing_date: when.value || '',
+                });
+                dialog.close();
+                wb.case = data.case;
+                refreshAll();
+                toast('Ответ отправлен под номером ' + value, 'ok');
+            } catch (error) {
+                toastError(error);
+            }
+        }
+    }
+
+    /** Отозвать отправку: номер вписали не тот. Право проверяющего. */
+    async function unsendCase() {
+        if (!wb.case || !wb.case.outgoing_no) return;
+        const ok = await confirmDialog({
+            title: 'Отозвать отправку',
+            message: 'Запись об отправке ответа под номером «'
+                + wb.case.outgoing_no + '» будет снята, письмо вернётся '
+                + 'в состояние «проверен, к отправке».',
+            note: 'Отзыв виден в журнале действий. Отчёт остаётся проверенным.',
+            confirmText: 'Отозвать',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            const data = await api.post('/api/cases/' + wb.case.id + '/unsend', {});
+            wb.case = data.case;
+            refreshAll();
+            toast('Отправка отозвана', 'ok');
         } catch (error) {
             toastError(error);
         }
@@ -4319,7 +4503,10 @@
                     'на дежурстве: ' + (totals.on_duty || 0) + ' · отсутствуют: ' + (totals.away || 0)),
                 tile((data.movement || {}).sent || 0, 'ответов отправлено',
                     'поступило за период: ' + ((data.movement || {}).came || 0) +
-                    ' · версий отчётов: ' + ((data.movement || {}).reports || 0)));
+                    ' · проверено, но не отправлено: '
+                    + Math.max(0, ((data.movement || {}).checked || 0)
+                        - ((data.movement || {}).sent || 0)) +
+                    ' · редакций отчётов: ' + ((data.movement || {}).reports || 0)));
 
             const columns = h('div', { class: 'board-cols' },
                 h('div', {}, workloadCard(data), movementCard(data)),
@@ -4549,7 +4736,7 @@
         const cards = h('div', { class: 'stat-cards' },
             statCard(cases.total || 0, 'писем всего',
                 'отправлено: ' + (cases.approved || 0) + ' · в работе: ' + (cases.draft || 0)),
-            statCard(reports.total || 0, 'версий отчётов',
+            statCard(reports.total || 0, 'редакций отчётов',
                 'утверждено: ' + (reports.approved || 0)),
             statCard(fmtNumber(edits.mean_distance || 0, 3), 'средняя доля правки',
                 'какую часть черновика инженер переписывает; правок в наборе: ' +
@@ -6346,7 +6533,7 @@
 
         const cards = h('div', { class: 'stat-cards' },
             statCard(data.cases || 0, 'писем зарегистрировано вами'),
-            statCard(reports.total || 0, 'версий отчётов',
+            statCard(reports.total || 0, 'редакций отчётов',
                 'утверждено: ' + (reports.approved || 0)),
             statCard(edits.pairs || 0, 'пар «черновик → готовое»',
                 'средняя доля правки: ' + fmtNumber(edits.mean_distance || 0, 3)),

@@ -38,16 +38,15 @@ from ..store.models import (
 )
 from .auth import (COOKIE_NAME, get_user, require_admin, require_editor,
                    require_reviewer, require_user)
-from .service import ServiceError
+from .service import CARD_LIMITS, ServiceError
 
 router = APIRouter(prefix="/api")
 
 MAX_QUERY_LEN = 500
 
-#: Пределы полей карточки письма. Это строки журнала входящих, а не текст
-#: отчёта: тема в пять тысяч знаков ломает и список писем, и шапку
-#: документа. Примечание длиннее — это уже не пометка на полях.
-MAX_CARD_FIELDS = {"title": 300, "incoming_no": 60, "note": 2000}
+#: Пределы строк карточки письма. Живут в сервисном слое: правило одно, а
+#: применяют его и веб, и поля формы (см. CARD_LIMIT в app.js).
+MAX_CARD_FIELDS = CARD_LIMITS
 
 #: Формат дат в карточке письма и в отсутствиях.
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -73,9 +72,10 @@ def _since_utc(days: int) -> str:
     return moment.isoformat(timespec="seconds")
 
 
-#: Состояния письма, которые даёт порядок проверки отчёта, а не рука.
-#: «На проверке» — отчёт сдан начальнику, «отправлено» — отчёт проверен.
-FLOW_CASE_STATUSES = ("review", "approved")
+#: Состояния письма, которые даёт ход отчёта, а не рука. «На проверке» —
+#: отчёт сдан начальнику; «проверен» — начальник согласился; «отправлено» —
+#: исполнитель отправил ответ и записал исходящий номер.
+FLOW_CASE_STATUSES = ("review", "checked", "approved")
 
 
 def _guard_case_status(repos: Any, case: Case, status: str) -> None:
@@ -91,6 +91,12 @@ def _guard_case_status(repos: Any, case: Case, status: str) -> None:
     """
     if status not in FLOW_CASE_STATUSES:
         return
+    if status == "approved":
+        # «Отправлено» всегда означает «есть исходящий номер»: иначе в
+        # журнале отдела письмо закрыто, а чем ответили — неизвестно.
+        raise ServiceError(
+            "состояние «отправлено» ставится записью исходящего номера: "
+            "откройте письмо и нажмите «Ответ отправлен»", 409)
     if not repos.reports.list_for_case(case.id):
         return
     raise ServiceError(
@@ -114,7 +120,7 @@ def _card_line(value: Any, name: str) -> str:
     text = text.strip() if name == "note" else " ".join(text.split())
     if len(text) > limit:
         titles = {"title": "тема письма", "incoming_no": "входящий номер",
-                  "note": "примечание"}
+                  "note": "примечание", "outgoing_no": "исходящий номер"}
         raise ServiceError(f"{titles[name]}: длиннее {limit} знаков", 400)
     return text
 
@@ -348,8 +354,17 @@ def list_cases(request: Request, status: str | None = None,
         overdue_before=_today() if overdue else None,
         query=q[:MAX_QUERY_LEN],
     )
+    # Чем нашлось письмо, человеку видно не всегда: искомого слова может не
+    # быть ни в теме, ни в номере — оно в тексте отчёта. Помечаем такие.
+    by_text = repos.cases.matched_by_text(
+        q[:MAX_QUERY_LEN], [case.id for case in cases]) if q.strip() else set()
+    items = []
+    for case in cases:
+        row = case.to_dict()
+        row["found_in_report"] = case.id in by_text
+        items.append(row)
     return {
-        "items": [case.to_dict() for case in cases],
+        "items": items,
         # Считаем то же, что показываем: при поиске «показаны 3 из 12» врало.
         "total": repos.cases.count(status, assignee_id=assignee, query=q[:MAX_QUERY_LEN]),
         "open": repos.cases.count("open"),
@@ -370,6 +385,12 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
     for name in MAX_CARD_FIELDS:
         if name in payload:
             fields[name] = _card_line(payload[name], name)
+    # Исходящий номер вписывается отправкой ответа, а не правкой карточки:
+    # иначе письмо числилось бы отправленным без проверенного отчёта.
+    if "outgoing_no" in fields:
+        raise ServiceError(
+            "исходящий номер записывается при отправке ответа: откройте письмо "
+            "и нажмите «Отправлено»", 409)
     # Наружу поле зовётся group_no, колонка в базе — customer (см. schema.sql).
     if "group_no" in payload or "customer" in payload:
         fields["customer"] = _group_or_empty(
@@ -482,13 +503,45 @@ def update_facts(request: Request, case_ref: int) -> Dict[str, Any]:
     return {"case": updated.to_dict(with_facts=True), "coverage": service.coverage(updated)}
 
 
+@router.post("/cases/{case_ref}/send")
+def send_case(request: Request, case_ref: int) -> Dict[str, Any]:
+    """Ответ по письму отправлен: записать исходящий номер.
+
+    Последний шаг порядка отдела. Делает исполнитель — тот же, кто готовил
+    и сдавал отчёт: отправляют ответы все, а проверяет начальник.
+    """
+    user = require_editor(request)
+    case = _case_or_404(request, case_ref)
+    payload = _body(request)
+    updated = _service(request).send_out(
+        case,
+        _card_line(payload.get("outgoing_no", ""), "outgoing_no"),
+        _date_or_empty(payload.get("outgoing_date", _today()), "outgoing_date"),
+        user,
+    )
+    return {"case": updated.to_dict()}
+
+
+@router.post("/cases/{case_ref}/unsend")
+def unsend_case(request: Request, case_ref: int) -> Dict[str, Any]:
+    """Отозвать отправку: номер вписали не тот или ответ ушёл не тому.
+
+    Право проверяющего: запись об отправке — учётная, и снимать её должен
+    тот, кто отвечает за проверку, а не любой сотрудник.
+    """
+    user = require_reviewer(request)
+    case = _case_or_404(request, case_ref)
+    updated = _service(request).withdraw_sending(case, user)
+    return {"case": updated.to_dict()}
+
+
 @router.delete("/cases/{case_ref}")
 def delete_case(request: Request, case_ref: int) -> Dict[str, Any]:
     user = require_admin(request)
     case = _case_or_404(request, case_ref)
     # Сданные файлом отчёты лежат на диске: строки из базы уходят каскадом,
     # а файлы остались бы навсегда. Интерфейс обещает удаление вместе со
-    # всеми версиями отчёта — значит, и с их файлами.
+    # всеми редакциями отчёта — значит, и с их файлами.
     folder = Path(_settings(request).data_dir) / "reports" / str(case.id)
     _repos(request).cases.delete(case.id)
     removed = 0
@@ -675,7 +728,11 @@ def upload_report(
                 raise error
         taken = ""
     else:
-        # Письмо уже заведено — сдаём по нему ещё одну версию отчёта.
+        # Ответ по письму уже ушёл под исходящим номером — сдавать по нему
+        # новый отчёт нельзя: письмо вернулось бы «на проверку», сохранив
+        # запись об отправке, и в учёте вышла бы небылица.
+        service.guard_not_sent(case, "сдать по нему отчёт")
+        # Письмо уже заведено — сдаём по нему ещё одну редакцию отчёта.
         # Реквизиты, которые человек ввёл, применяем: он вводил их не зря.
         # Пустые поля не трогают того, что в письме уже записано.
         fields: Dict[str, Any] = {}
@@ -712,7 +769,7 @@ def upload_report(
     target_dir = Path(settings.data_dir) / "reports" / str(case.id)
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    # Пишем во временный файл: номер версии присваивает база при вставке
+    # Пишем во временный файл: номер редакции присваивает база при вставке
     # строки, и только после неё известно, как файл назвать. Считать номер
     # заранее нельзя — две одновременные сдачи получили бы один и тот же.
     limit = settings.max_upload_mb * 1024 * 1024
@@ -744,7 +801,7 @@ def upload_report(
                 case.id, markdown=text.strip(), file_name=name, file_path=str(target),
                 file_size=size, user_id=user.id if user else None)
         except sqlite3.IntegrityError as error:
-            # Две сдачи по одному письму столкнулись на номере версии.
+            # Две сдачи по одному письму столкнулись на номере редакции.
             raise ServiceError(
                 "по этому письму прямо сейчас сдают отчёт — повторите через "
                 "несколько секунд", 409) from error

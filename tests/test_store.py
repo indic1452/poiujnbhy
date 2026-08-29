@@ -120,9 +120,35 @@ class DatabaseTests(StoreTestCase):
         rows = self.db.query("SELECT name FROM sqlite_master WHERE type IN ('table','view')")
         names = {row["name"] for row in rows}
         for table in ("meta", "users", "sessions", "documents", "chunks", "chunks_fts",
-                      "embeddings", "cases", "reports", "report_sections", "edit_pairs",
-                      "audit"):
+                      "embeddings", "cases", "cases_fts", "reports", "report_sections",
+                      "edit_pairs", "audit"):
             self.assertIn(table, names)
+
+    def test_a_missing_search_index_is_restored_on_open(self):
+        """Виртуальных таблиц нет в списке миграций колонок.
+
+        ALTER TABLE к ним неприменим, и готовность схемы считалась только
+        по версии и колонкам: на базе, где версия уже поднята, а указателя
+        поиска ещё нет, он бы так и не появился, и поиск по тексту отчётов
+        молча не находил бы ничего.
+        """
+        import sqlite3 as _sqlite3
+        import tempfile
+        from pathlib import Path as _Path
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = str(_Path(folder) / "old.db")
+            Database(path).close()
+            raw = _sqlite3.connect(path)
+            raw.execute("DROP TABLE cases_fts")
+            raw.commit()
+            raw.close()
+
+            database = Database(path)
+            names = {row["name"] for row in database.query(
+                "SELECT name FROM sqlite_master WHERE type = 'table'")}
+            self.assertIn("cases_fts", names, "указатель поиска не восстановлен")
+            database.close()
 
     def test_schema_version_is_written_to_meta(self):
         self.assertEqual(

@@ -58,6 +58,12 @@ def create_app(settings: Settings | None = None,
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         repos.sessions.purge_expired()
+        # Поиск по тексту отчётов появился позже писем: на базе отдела
+        # указателя ещё нет. Строим его сам при первом запуске новой
+        # версии, чтобы никого не просить «переиндексируйте».
+        if repos.cases.count() and repos.case_search.is_empty():
+            built = repos.case_search.rebuild_all()
+            logger.info("Указатель поиска по письмам построен: %d", built)
         if settings.auth_enabled and repos.users.count() == 0:
             logger.warning(
                 "В системе нет ни одного сотрудника. Заведите создателя системы: "

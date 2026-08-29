@@ -60,16 +60,22 @@ ROLE_RANK = {"owner": 50, "head": 40, "deputy": 30, "lead": 20, "senior": 10, "e
 #: а в штатном расписании компании такой должности нет — становится инженером.
 LEGACY_ROLES = {"viewer": "engineer", "admin": "head"}
 CHAT_ROLES = ("user", "assistant")
-CASE_STATUSES = ("new", "draft", "review", "approved", "archived")
+#: Путь письма в отделе: пришло — сделали отчёт — сдали начальнику — он
+#: проверил — инженер отправил ответ на исходящий номер — сдали в архив.
+#: «Проверен» и «отправлено» — разные вещи: между ними живёт работа
+#: исполнителя, и пока ответ не ушёл, письмо считается незакрытым.
+CASE_STATUSES = ("new", "draft", "review", "checked", "approved", "archived")
 CASE_STATUS_TITLES = {
     "new": "принято",
     "draft": "в работе",
     "review": "на проверке",
+    "checked": "проверен, к отправке",
     "approved": "отправлено",
     "archived": "в архиве",
 }
-#: Письма, которые считаются работой в текущий момент.
-OPEN_CASE_STATUSES = ("new", "draft", "review")
+#: Письма, которые считаются работой в текущий момент. Проверенное, но не
+#: отправленное письмо — тоже работа: ответ ещё не ушёл.
+OPEN_CASE_STATUSES = ("new", "draft", "review", "checked")
 
 CASE_PRIORITIES = ("normal", "high", "urgent")
 CASE_PRIORITY_TITLES = {"normal": "обычный", "high": "важный", "urgent": "срочный"}
@@ -275,6 +281,11 @@ class Case:
     #: Входящий номер и дата входящего письма.
     incoming_no: str = ""
     incoming_date: str = ""
+    #: Исходящий номер ответа, дата отправки и кто отправил. Проставляются,
+    #: когда проверенный отчёт ушёл адресату: до этого письмо не закрыто.
+    outgoing_no: str = ""
+    outgoing_date: str = ""
+    sent_by: int | None = None
     #: Срок ответа, ГГГГ-ММ-ДД. Пусто — срок не задан.
     deadline: str = ""
     priority: str = "normal"
@@ -289,6 +300,8 @@ class Case:
     assignee_name: str = ""
     #: Сколько отчётов заведено по письму. Считает выборка, в таблице нет.
     reports_count: int = 0
+    #: ФИО отправившего ответ. Заполняется выборкой со связкой.
+    sent_by_name: str = ""
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Case":
@@ -301,6 +314,9 @@ class Case:
             status=row["status"],
             incoming_no=_col(row, "incoming_no", ""),
             incoming_date=_col(row, "incoming_date", ""),
+            outgoing_no=_col(row, "outgoing_no", "") or "",
+            outgoing_date=_col(row, "outgoing_date", "") or "",
+            sent_by=_col(row, "sent_by", None),
             deadline=_col(row, "deadline", ""),
             priority=_col(row, "priority", "normal") or "normal",
             assignee_id=_col(row, "assignee_id", None),
@@ -312,6 +328,7 @@ class Case:
             updated_at=row["updated_at"],
             assignee_name=_col(row, "assignee_name", "") or "",
             reports_count=int(_col(row, "reports_count", 0) or 0),
+            sent_by_name=_col(row, "sent_by_name", "") or "",
         )
 
     def to_dict(self, *, with_facts: bool = False) -> Dict[str, Any]:
@@ -324,8 +341,15 @@ class Case:
             # наружу отдаём то слово, которое стоит в интерфейсе.
             "group_no": self.customer,
             "status": self.status,
+            # Название состояния по-русски — одно на всю систему. Иначе
+            # интерфейс и отчёты о работе называют одно и то же по-разному.
+            "status_title": CASE_STATUS_TITLES.get(self.status, self.status),
             "incoming_no": self.incoming_no,
             "incoming_date": self.incoming_date,
+            "outgoing_no": self.outgoing_no,
+            "outgoing_date": self.outgoing_date,
+            "sent_by": self.sent_by,
+            "sent_by_name": self.sent_by_name,
             "deadline": self.deadline,
             "priority": self.priority,
             "assignee_id": self.assignee_id,

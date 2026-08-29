@@ -410,6 +410,33 @@ class DocumentRepo:
 _FTS_SPECIAL = re.compile(r'[^\w.]', re.UNICODE)
 
 
+def fts_stemmed(*parts: Any) -> str:
+    """Текст для полнотекстового указателя: приведён к основам слов.
+
+    unicode61 русской морфологии не знает: «помеха» и «помехи» для него
+    разные слова. Поэтому в указатель кладём уже разобранный текст, а
+    запрос разбираем тем же способом — тогда одно находит другое.
+    """
+    text = " ".join(str(part or "") for part in parts)
+    return " ".join(_FTS_SPECIAL.sub("", token) for token in tokenize(text)
+                    if _FTS_SPECIAL.sub("", token))
+
+
+def fts_match(query: str) -> str:
+    """Запрос к FTS5 из строки, которую ввёл человек. Пусто — искать нечего.
+
+    Слова соединяем по «и». У библиотеки они соединены по «или», и это
+    там правильно: выдача ранжируется bm25 и обрезается, лишнее тонет
+    внизу. Список писем не ранжируется вовсе — он сортируется по сроку,
+    как нужно отделу. С «или» полный входящий номер «ВХ-2026-0423»
+    распадался бы на слова и вытаскивал половину журнала.
+    """
+    terms = fts_stemmed(query).split()
+    if not terms:
+        return ""
+    return " AND ".join(f'"{term}"' for term in terms)
+
+
 class ChunkRepo:
     """Чанки и лексический индекс FTS5 поверх стеммированного текста."""
 
@@ -673,6 +700,74 @@ class VectorRepo:
             connection.execute("DELETE FROM embeddings")
 
 
+def refresh_case_index(db: "Database", case_ref: int) -> None:
+    """Пересобрать строку письма в поисковом указателе.
+
+    Строка целиком: реквизиты письма плюс текст всех редакций отчёта.
+    Письма нет — строка убирается. Живёт отдельной функцией, потому что
+    зовут её из двух мест: репозитория писем и репозитория отчётов. Текст
+    меняют оба, и обновление указателя должно стоять там же, где запись, —
+    иначе его рано или поздно забудут (так и вышло со сдачей файлом:
+    отчёт лежал в базе, а поиск его не находил).
+    """
+    row = db.query_one(
+        "SELECT case_id, title, customer, incoming_no, outgoing_no, note "
+        "FROM cases WHERE id = ?", (case_ref,))
+    with db.transaction() as connection:
+        connection.execute("DELETE FROM cases_fts WHERE case_ref = ?", (case_ref,))
+        if row is None:
+            return
+        texts = [row["case_id"], row["title"], row["customer"],
+                 row["incoming_no"], row["outgoing_no"], row["note"]]
+        for report in connection.execute(
+                "SELECT markdown FROM reports WHERE case_ref = ?", (case_ref,)):
+            texts.append(report["markdown"])
+        for section in connection.execute(
+                "SELECT s.text FROM report_sections s JOIN reports r ON r.id = s.report_id "
+                "WHERE r.case_ref = ?", (case_ref,)):
+            texts.append(section["text"])
+        stemmed = fts_stemmed(*texts)
+        if stemmed:
+            connection.execute(
+                "INSERT INTO cases_fts(stemmed, case_ref) VALUES(?, ?)",
+                (stemmed, case_ref))
+
+
+class CaseSearchRepo:
+    """Полнотекстовый указатель по письмам и их отчётам.
+
+    Одна строка на письмо: реквизиты письма плюс текст всех редакций
+    отчёта. Ищут в отделе по-разному — по обрывку входящего номера, по теме
+    и по паре слов, которые запомнились из вывода прошлогоднего отчёта.
+    Первое находит поиск подстрокой, последнее — только это.
+
+    Строка перестраивается целиком при каждой правке: письмо в отделе
+    правят несколько раз за жизнь, а не тысячу, и целая строка надёжнее
+    попыток обновить её по частям.
+    """
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def refresh(self, case_ref: int) -> None:
+        """Пересобрать строку письма. Письма нет — строка убирается."""
+        refresh_case_index(self.db, case_ref)
+
+    def rebuild_all(self) -> int:
+        """Перестроить указатель целиком. Возвращает число писем.
+
+        Нужно после обновления системы: на базе отдела указателя ещё нет, а
+        поиск по тексту должен заработать сразу, без просьбы «переиндексируйте».
+        """
+        rows = self.db.query("SELECT id FROM cases")
+        for row in rows:
+            self.refresh(int(row["id"]))
+        return len(rows)
+
+    def is_empty(self) -> bool:
+        return not int(self.db.scalar("SELECT count(*) FROM cases_fts") or 0)
+
+
 class CaseRepo:
     def __init__(self, db: Database):
         self.db = db
@@ -681,11 +776,13 @@ class CaseRepo:
     #: бесполезен, а второй запрос на строку — это N+1 на ровном месте.
     _SELECT = (
         "SELECT c.*, coalesce(u.full_name, u.login, '') AS assignee_name, "
+        "coalesce(s.full_name, s.login, '') AS sent_by_name, "
         # Сколько отчётов заведено по письму. Нужно карточке: состояния
-        # «на проверке» и «отправлено» даёт проверка отчёта, и руками их
-        # выставлять нельзя, пока по письму есть отчёты.
+        # «на проверке», «проверен» и «отправлено» даёт ход отчёта, и руками
+        # их выставлять нельзя, пока по письму есть отчёты.
         "(SELECT count(*) FROM reports r WHERE r.case_ref = c.id) AS reports_count "
-        "FROM cases c LEFT JOIN users u ON u.id = c.assignee_id"
+        "FROM cases c LEFT JOIN users u ON u.id = c.assignee_id "
+        "LEFT JOIN users s ON s.id = c.sent_by"
     )
 
     def create(self, case_id: str, report_type: str, facts: Dict[str, Any],
@@ -756,8 +853,9 @@ class CaseRepo:
                 where.append("c.deadline <= ?")
                 params.append(deadline_to)
         if query.strip():
-            where.append(self._SEARCH_SQL.format(p="c."))
-            params.extend([self._search_needle(query)] * 4)
+            clause, needles = self._search_clause(query, "c.")
+            where.append(clause)
+            params.extend(needles)
         clause = (" WHERE " + " AND ".join(where)) if where else ""
         order = (
             " ORDER BY CASE WHEN c.status IN ('approved', 'archived') THEN 1 ELSE 0 END, "
@@ -797,12 +895,13 @@ class CaseRepo:
         возвращалась к прежнему значению.
         """
         allowed = ("title", "customer", "incoming_no", "incoming_date",
+                   "outgoing_no", "outgoing_date", "sent_by",
                    "deadline", "priority", "assignee_id", "note", "status")
         # Единственная колонка, где пусто — это значение, а не «не передано».
         # Снять исполнителя с письма было нельзя вовсе: None отбрасывался
         # вместе с непереданными полями, API отвечал 200 и писал в журнал, а
         # в базе оставался прежний человек.
-        nullable = ("assignee_id",)
+        nullable = ("assignee_id", "sent_by")
         parts, values = [], []
         for name in allowed:
             if name not in fields:
@@ -839,14 +938,21 @@ class CaseRepo:
 
     def delete(self, case_ref: int) -> None:
         with self.db.transaction() as connection:
+            # Строку поискового указателя убираем руками: внешнего ключа у
+            # виртуальной таблицы нет, каскад её не трогает — удалённое
+            # письмо осталось бы находиться поиском вечно.
+            connection.execute("DELETE FROM cases_fts WHERE case_ref = ?", (case_ref,))
             connection.execute("DELETE FROM cases WHERE id = ?", (case_ref,))
 
     #: Отбор по строке поиска. Один на список и на счётчик: иначе «показаны
     #: 3 из 12» при поиске врёт — списком одно, числом другое.
-    _SEARCH_SQL = ("(rulower({p}title) LIKE ? ESCAPE '\\' "
-                   "OR rulower({p}customer) LIKE ? ESCAPE '\\' "
-                   "OR rulower({p}case_id) LIKE ? ESCAPE '\\' "
-                   "OR rulower({p}incoming_no) LIKE ? ESCAPE '\\')")
+    #:
+    #: Ищем по всем реквизитам письма: учётный номер, входящий, исходящий,
+    #: тема, номер группы, примечание. Плюс отдельно — по тексту отчётов,
+    #: через полнотекстовый указатель cases_fts (см. _FTS_SQL).
+    _SEARCH_FIELDS = ("title", "customer", "case_id", "incoming_no",
+                      "outgoing_no", "note")
+    _FTS_SQL = "{p}id IN (SELECT case_ref FROM cases_fts WHERE cases_fts MATCH ?)"
 
     @staticmethod
     def _search_needle(query: str) -> str:
@@ -855,6 +961,59 @@ class CaseRepo:
         for sign in ("\\", "%", "_"):
             needle = needle.replace(sign, "\\" + sign)
         return f"%{needle}%"
+
+    def _search_clause(self, query: str, prefix: str = "") -> tuple[str, List[Any]]:
+        """Условие поиска и его параметры: реквизиты письма плюс текст отчёта.
+
+        По реквизитам ищем подстрокой — инженер помнит «0423» и вводит
+        обрывок номера. По тексту отчёта подстрокой искать бессмысленно:
+        «помеха» не найдёт «помехи». Там работает полнотекстовый указатель
+        со стеммингом, тот же, что и у библиотеки.
+
+        Условия складываются по «или»: указатель может отстать (его строит
+        код при каждой правке), и поиск по реквизитам обязан работать в
+        любом случае.
+        """
+        needle = self._search_needle(query)
+        parts = [f"rulower({prefix}{name}) LIKE ? ESCAPE '\\'"
+                 for name in self._SEARCH_FIELDS]
+        params: List[Any] = [needle] * len(self._SEARCH_FIELDS)
+        match = fts_match(query)
+        if match:
+            parts.append(self._FTS_SQL.format(p=prefix))
+            params.append(match)
+        return "(" + " OR ".join(parts) + ")", params
+
+    def matched_by_text(self, query: str, case_refs: Sequence[int]) -> set[int]:
+        """Какие из этих писем нашлись ТОЛЬКО по тексту отчёта.
+
+        Нужно списку: человек должен видеть, почему письмо в выдаче, если
+        искомого слова не видно ни в теме, ни в номерах. Письмо, найденное
+        по теме, помечать незачем — там и так всё на виду, а лишняя пометка
+        только сбивает.
+
+        Реквизиты сверяем по основам слов, а не подстрокой: «помехи» и
+        «Помеха в стволе» для человека — одно и то же, и говорить ему
+        «нашлось в тексте отчёта» про слово, которое стоит в теме, значит
+        сбивать с толку.
+        """
+        terms = fts_stemmed(query).split()
+        if not terms or not case_refs:
+            return set()
+        marks = ", ".join("?" for _ in case_refs)
+        columns = ", ".join(f"c.{name}" for name in self._SEARCH_FIELDS)
+        rows = self.db.query(
+            f"SELECT c.id, {columns} FROM cases c WHERE c.id IN "
+            "(SELECT case_ref FROM cases_fts WHERE cases_fts MATCH ?) "
+            f"AND c.id IN ({marks})",
+            (fts_match(query), *case_refs),
+        )
+        found = set()
+        for row in rows:
+            fields = fts_stemmed(*(row[name] for name in self._SEARCH_FIELDS)).split()
+            if not all(term in fields for term in terms):
+                found.add(int(row["id"]))
+        return found
 
     def count(self, status: str | None = None, assignee_id: int | None = None,
               query: str = "") -> int:
@@ -870,8 +1029,9 @@ class CaseRepo:
             where.append("assignee_id = ?")
             params.append(assignee_id)
         if query.strip():
-            where.append(self._SEARCH_SQL.format(p=""))
-            params.extend([self._search_needle(query)] * 4)
+            clause, needles = self._search_clause(query)
+            where.append(clause)
+            params.extend(needles)
         clause = (" WHERE " + " AND ".join(where)) if where else ""
         return int(self.db.scalar(f"SELECT count(*) FROM cases{clause}", tuple(params)) or 0)
 
@@ -926,6 +1086,7 @@ class ReportRepo:
                         now,
                     ),
                 )
+        refresh_case_index(self.db, case_ref)
         report = self.get(report_id)
         assert report is not None
         return report
@@ -950,6 +1111,7 @@ class ReportRepo:
                  "uploaded", file_name, file_path, int(file_size), user_id, utcnow()),
             )
             report_id = int(cursor.lastrowid)  # type: ignore[arg-type]
+        refresh_case_index(self.db, case_ref)
         report = self.get(report_id)
         assert report is not None
         return report
@@ -998,6 +1160,19 @@ class ReportRepo:
             report.sections = self.sections(report.id)
         return report
 
+    def current_for_case(self, case_ref: int) -> Report | None:
+        """Отчёт письма. У письма он один — последняя редакция.
+
+        Прежние редакции остаются в базе как история правок: по ним видно,
+        что именно начальник вернул и что исполнитель поправил. Но «отчёт
+        по письму» — всегда последняя.
+        """
+        row = self.db.query_one(
+            "SELECT * FROM reports WHERE case_ref = ? ORDER BY version DESC LIMIT 1",
+            (case_ref,),
+        )
+        return Report.from_row(row) if row else None
+
     def list_for_case(self, case_ref: int) -> List[Report]:
         rows = self.db.query(
             "SELECT * FROM reports WHERE case_ref = ? ORDER BY version DESC", (case_ref,)
@@ -1012,6 +1187,7 @@ class ReportRepo:
                 "WHERE report_id = ? AND section_id = ?",
                 (text, int(edited), utcnow(), report_id, section_id),
             )
+        self._reindex(report_id)
 
     def replace_section(self, report_id: int, section_id: str, text: str,
                         sources: Sequence[str], missing_facts: Sequence[str]) -> None:
@@ -1025,6 +1201,18 @@ class ReportRepo:
                  json.dumps(list(missing_facts), ensure_ascii=False), utcnow(),
                  report_id, section_id),
             )
+        self._reindex(report_id)
+
+    def _reindex(self, report_id: int) -> None:
+        """Обновить поисковую строку письма после правки текста отчёта.
+
+        Стоит вплотную к записи, а не в сервисном слое: там про него
+        забыли на сдаче файлом, и отчёт лежал в базе, а поиск по его
+        тексту не находил ничего.
+        """
+        row = self.db.query_one("SELECT case_ref FROM reports WHERE id = ?", (report_id,))
+        if row is not None:
+            refresh_case_index(self.db, int(row["case_ref"]))
 
     def update_meta(self, report_id: int, meta: Dict[str, Any]) -> None:
         with self.db.transaction() as connection:
@@ -1038,6 +1226,7 @@ class ReportRepo:
             connection.execute(
                 "UPDATE reports SET markdown = ? WHERE id = ?", (markdown, report_id)
             )
+        self._reindex(report_id)
 
     def set_issues(self, report_id: int, issues: Sequence[Dict[str, Any]]) -> None:
         with self.db.transaction() as connection:
@@ -1513,19 +1702,24 @@ class BoardRepo:
             tuple(OPEN_CASE_STATUSES)) or 0)
 
     def movement(self, date_from: str) -> Dict[str, int]:
-        """Движение за период: сколько принято и сколько ответов отправлено.
+        """Движение за период: сколько принято, проверено и отправлено.
 
-        «Отправлено» считается по времени утверждения отчёта, а не по
-        времени последней правки письма. По правке выходила неправда:
-        поправил примечание в письме прошлого года — и оно попадало в
-        отправленные за текущий месяц, задирая отчётность отдела.
+        Считаем по дате отправки ответа, а не по времени правки письма и
+        не по отметке начальника. По правке выходила неправда: поправил
+        примечание в письме прошлого года — и оно попадало в отправленные
+        за текущий месяц. По отметке начальника — тоже: проверенный отчёт,
+        ответ по которому ещё не ушёл, отправленным не считается, и в
+        отчётности отдела это разные числа.
         """
         came = int(self.db.scalar(
             "SELECT count(*) FROM cases WHERE created_at >= ?", (date_from,)) or 0)
         sent = int(self.db.scalar(
+            "SELECT count(*) FROM cases WHERE outgoing_no <> '' AND outgoing_date >= ?",
+            (date_from[:10],)) or 0)
+        checked = int(self.db.scalar(
             "SELECT count(DISTINCT case_ref) FROM reports "
             "WHERE status = 'approved' AND approved_at >= ?", (date_from,)) or 0)
-        return {"came": came, "sent": sent}
+        return {"came": came, "sent": sent, "checked": checked}
 
     def reports_in_period(self, date_from: str) -> int:
         return int(self.db.scalar(
@@ -1553,6 +1747,7 @@ class Repositories:
         self.chunks = ChunkRepo(db)
         self.vectors = VectorRepo(db)
         self.cases = CaseRepo(db)
+        self.case_search = CaseSearchRepo(db)
         self.reports = ReportRepo(db)
         self.edits = EditPairRepo(db)
         self.chats = ChatRepo(db)

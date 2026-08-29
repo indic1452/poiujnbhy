@@ -554,16 +554,18 @@ class ReviewFlowTests(WebTestCase):
         self.assertEqual("draft", self.repos.reports.get(self.report["id"]).status)
 
     def test_letter_comes_back_together_with_the_report(self):
-        """Письмо не должно числиться отправленным, когда отчёт — черновик.
+        """Письмо не должно числиться проверенным, когда отчёт — черновик.
 
-        Подпись снималась только с отчёта: в списке писем стояло
-        «отправлено», а в карточке лежал черновик.
+        Подпись снималась только с отчёта: в списке писем стояло состояние
+        законченной работы, а в карточке лежал черновик.
         """
         self.clean_sections()
         self.client.post(f"/api/reports/{self.report['id']}/submit")
         self.login("nachalnik")
         self.client.post(f"/api/reports/{self.report['id']}/approve")
-        self.assertEqual("approved", self.repos.cases.get(self.case["id"]).status)
+        # Начальник проверил — но ответ ещё не отправлен: письмо ждёт
+        # исходящего номера, а не числится законченным.
+        self.assertEqual("checked", self.repos.cases.get(self.case["id"]).status)
 
         self.login("engineer")
         section_id = self.report["sections"][0]["section_id"]
@@ -675,6 +677,325 @@ class ReviewFlowTests(WebTestCase):
 
     def pairs(self) -> int:
         return int(self.repos.db.scalar("SELECT count(*) FROM edit_pairs") or 0)
+
+
+class OutgoingNumberTests(WebTestCase):
+    """Последний шаг порядка отдела: ответ ушёл, записан исходящий номер."""
+
+    def setUp(self):
+        super().setUp()
+        self.case = self.create_case()
+        self.report = self.generate(self.case["id"])
+        for section in self.report["sections"]:
+            self.client.put(
+                f"/api/reports/{self.report['id']}/sections/{section['section_id']}",
+                json={"text": "Текст инженера без числовых значений."})
+
+    def check(self):
+        """Довести отчёт до «проверен» руками начальника."""
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        self.assertEqual(200, self.client.post(
+            f"/api/reports/{self.report['id']}/approve").status_code)
+        self.login("engineer")
+
+    def case_now(self):
+        return self.client.get(f"/api/cases/{self.case['id']}").json()["case"]
+
+    def test_checked_is_not_yet_sent(self):
+        """«Проверен» и «отправлено» — разные вещи.
+
+        Начальник согласился с отчётом, но ответ ещё не ушёл: пока нет
+        исходящего номера, письмо в отделе не закрыто и остаётся в работе.
+        """
+        self.check()
+        fresh = self.case_now()
+        self.assertEqual("checked", fresh["status"])
+        self.assertEqual("проверен, к отправке", fresh["status_title"])
+        self.assertEqual("", fresh["outgoing_no"])
+        # И оно по-прежнему числится работой отдела.
+        self.assertIn(self.case["case_id"], [item["case_id"] for item in self.client.get(
+            "/api/cases", params={"status": "open"}).json()["items"]])
+
+    def test_engineer_sends_the_answer_and_writes_the_number(self):
+        self.check()
+        sent = self.client.post(f"/api/cases/{self.case['id']}/send", json={
+            "outgoing_no": "ИСХ-2026-1147", "outgoing_date": "2026-08-29"})
+        self.assertEqual(200, sent.status_code, sent.text)
+        fresh = self.case_now()
+        self.assertEqual("approved", fresh["status"])
+        self.assertEqual("отправлено", fresh["status_title"])
+        self.assertEqual("ИСХ-2026-1147", fresh["outgoing_no"])
+        self.assertEqual("2026-08-29", fresh["outgoing_date"])
+        self.assertEqual("Инженеров И. И.", fresh["sent_by_name"])
+
+    def test_nothing_goes_out_before_the_head_has_checked_it(self):
+        # Порядок отдела: сначала проверка, потом отправка.
+        early = self.client.post(f"/api/cases/{self.case['id']}/send",
+                                 json={"outgoing_no": "ИСХ-1"})
+        self.assertEqual(409, early.status_code)
+        self.assertIn("не проверен", early.json()["error"])
+
+    def test_a_letter_answered_outside_the_system_still_records_its_number(self):
+        """Ответ составили в Word и отправили, отчёт сюда не заводили.
+
+        Так в отделе бывает. Исходящий номер всё равно должен попасть в
+        базу — иначе в учёте дыра: письмо закрыто, а чем ответили,
+        неизвестно.
+        """
+        empty = self.create_case({**CASE, "case_id": "SUP-МИМО-1"})
+        sent = self.client.post(f"/api/cases/{empty['id']}/send",
+                                json={"outgoing_no": "ИСХ-2026-0007"})
+        self.assertEqual(200, sent.status_code, sent.text)
+        fresh = self.client.get(f"/api/cases/{empty['id']}").json()["case"]
+        self.assertEqual("approved", fresh["status"])
+        self.assertEqual("ИСХ-2026-0007", fresh["outgoing_no"])
+
+    def test_the_number_is_required_and_bounded(self):
+        self.check()
+        blank = self.client.post(f"/api/cases/{self.case['id']}/send",
+                                 json={"outgoing_no": "   "})
+        self.assertEqual(400, blank.status_code)
+        self.assertIn("исходящий номер", blank.json()["error"])
+        long = self.client.post(f"/api/cases/{self.case['id']}/send",
+                                json={"outgoing_no": "9" * 61})
+        self.assertEqual(400, long.status_code)
+
+    def test_the_answer_goes_out_once(self):
+        self.check()
+        self.client.post(f"/api/cases/{self.case['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-1147"})
+        again = self.client.post(f"/api/cases/{self.case['id']}/send",
+                                 json={"outgoing_no": "ИСХ-ДРУГОЙ"})
+        self.assertEqual(409, again.status_code)
+        self.assertIn("ИСХ-2026-1147", again.json()["error"])
+
+    def test_a_sent_letter_is_closed_for_work(self):
+        """Ответ ушёл — отчёт обязан совпадать с тем, что отправили.
+
+        Иначе в отделе документ под исходящим номером один, а в системе
+        по тому же номеру другой.
+        """
+        self.check()
+        self.client.post(f"/api/cases/{self.case['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-1147"})
+        section_id = self.report["sections"][0]["section_id"]
+        for name, response in (
+            ("правка раздела", self.client.put(
+                f"/api/reports/{self.report['id']}/sections/{section_id}",
+                json={"text": "правка после отправки"})),
+            ("сборка заново", self.client.post(
+                f"/api/cases/{self.case['id']}/generate", json={})),
+            ("правка исходных данных", self.client.put(
+                f"/api/cases/{self.case['id']}/facts", json={"facts": CASE})),
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(409, response.status_code, response.text)
+                self.assertIn("ИСХ-2026-1147", response.json()["error"])
+
+    def test_only_a_reviewer_withdraws_the_sending(self):
+        self.check()
+        self.client.post(f"/api/cases/{self.case['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-1147"})
+        self.assertEqual(403, self.client.post(
+            f"/api/cases/{self.case['id']}/unsend").status_code)
+        self.login("gruppa")  # начальник группы — администратор, но не проверяющий
+        self.assertEqual(403, self.client.post(
+            f"/api/cases/{self.case['id']}/unsend").status_code)
+
+        self.login("nachalnik")
+        back = self.client.post(f"/api/cases/{self.case['id']}/unsend")
+        self.assertEqual(200, back.status_code, back.text)
+        fresh = self.case_now()
+        self.assertEqual("checked", fresh["status"])
+        self.assertEqual("", fresh["outgoing_no"])
+        self.assertIsNone(fresh["sent_by"])
+        # И работа по письму снова возможна.
+        self.login("engineer")
+        section_id = self.report["sections"][0]["section_id"]
+        self.assertEqual(200, self.client.put(
+            f"/api/reports/{self.report['id']}/sections/{section_id}",
+            json={"text": "Поправленный текст без числовых значений."}).status_code)
+
+    def test_the_outgoing_number_is_not_written_by_hand_in_the_card(self):
+        # Иначе письмо числилось бы отправленным без проверенного отчёта.
+        refused = self.client.patch(f"/api/cases/{self.case['id']}",
+                                    json={"outgoing_no": "ИСХ-МИМО"})
+        self.assertEqual(409, refused.status_code)
+        self.assertIn("при отправке ответа", refused.json()["error"])
+        self.assertEqual("", self.case_now()["outgoing_no"])
+
+    def test_the_letter_states_stay_in_the_hands_of_the_flow(self):
+        # «Проверен» руками тоже не выставляют: его даёт отметка начальника.
+        for status in ("review", "checked", "approved"):
+            with self.subTest(status=status):
+                refused = self.client.patch(f"/api/cases/{self.case['id']}",
+                                            json={"status": status})
+                self.assertEqual(409, refused.status_code)
+
+
+    def test_no_new_report_is_handed_in_for_a_sent_letter(self):
+        """Ответ ушёл — сдавать по письму новый отчёт нельзя.
+
+        Сдача файлом шла мимо запрета: письмо возвращалось «на проверку»,
+        сохраняя запись об отправке. В учёте выходила небылица — ответ
+        отправлен и одновременно лежит у начальника.
+        """
+        self.check()
+        self.client.post(f"/api/cases/{self.case['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-1147"})
+        refused = self.client.post("/api/reports/upload", data={
+            "case_id": self.case["case_id"], "incoming_no": self.case["case_id"],
+            "report_type": CASE["report_type"]},
+            files={"file": ("о.md", "# T\n\nтекст\n".encode(), "text/markdown")})
+        self.assertEqual(409, refused.status_code, refused.text)
+        self.assertIn("ИСХ-2026-1147", refused.json()["error"])
+        fresh = self.case_now()
+        self.assertEqual("approved", fresh["status"])
+        self.assertEqual("ИСХ-2026-1147", fresh["outgoing_no"])
+
+    def test_movement_counts_answers_that_actually_went_out(self):
+        """«Ответов отправлено» — это отправленные, а не проверенные.
+
+        Счёт шёл по отметке начальника. После разделения «проверен» и
+        «отправлено» это разные числа: отчёт может лежать проверенным
+        неделю, а отчётность отдела уже посчитала ответ ушедшим.
+        """
+        self.check()
+        before = self.client.get("/api/board").json()["movement"]
+        self.assertEqual(0, before["sent"], "проверенный отчёт посчитан отправленным")
+        self.assertEqual(1, before["checked"])
+
+        self.client.post(f"/api/cases/{self.case['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-1147"})
+        after = self.client.get("/api/board").json()["movement"]
+        self.assertEqual(1, after["sent"])
+
+
+class LetterSearchTests(WebTestCase):
+    """Поиск по письмам: реквизиты и текст самих отчётов."""
+
+    def with_text(self, case_id, title, text):
+        case = self.create_case({**CASE, "case_id": case_id})
+        self.client.patch(f"/api/cases/{case['id']}", json={"title": title})
+        report = self.generate(case["id"])
+        self.client.put(
+            f"/api/reports/{report['id']}/sections/{report['sections'][0]['section_id']}",
+            json={"text": text})
+        return case
+
+    def found(self, query):
+        body = self.client.get("/api/cases", params={"q": query}).json()
+        return {item["case_id"]: item["found_in_report"] for item in body["items"]}
+
+    def test_search_finds_words_from_the_report_body(self):
+        """«Искать отчёты» — значит и по тому, что в них написано.
+
+        Инженер помнит пару слов из вывода прошлогоднего отчёта, а не его
+        учётный номер. Поиск подстрокой по теме тут не поможет.
+        """
+        self.with_text("SUP-ПОИСК-1", "Разбор обращения",
+                       "Источник — неисправный возбудитель передатчика.")
+        self.with_text("SUP-ПОИСК-2", "Совсем другое", "Ничего похожего здесь нет.")
+        self.assertEqual({"SUP-ПОИСК-1": True}, self.found("возбудитель"))
+
+    def test_search_knows_russian_word_forms(self):
+        # «помеха» и «помехи» — одно слово. Подстрокой это не берётся.
+        self.with_text("SUP-ПОИСК-3", "Обращение",
+                       "Обнаружена узкополосная помеха в стволе.")
+        for query in ("помеха", "помехи", "помехой", "узкополосный", "стволы"):
+            with self.subTest(query=query):
+                self.assertIn("SUP-ПОИСК-3", self.found(query),
+                              f"не нашлось по «{query}»")
+
+    def test_a_word_from_the_subject_is_not_called_a_word_from_the_report(self):
+        # Пометка «в тексте отчёта» должна стоять только там, где иначе
+        # непонятно, почему письмо в выдаче.
+        self.with_text("SUP-ПОИСК-4", "Помеха в стволе", "Разбор проведён.")
+        self.assertEqual({"SUP-ПОИСК-4": False}, self.found("помехи"))
+
+    def test_all_letter_fields_are_searchable(self):
+        case = self.create_case({**CASE, "case_id": "SUP-ПОИСК-5"})
+        self.client.patch(f"/api/cases/{case['id']}", json={
+            "title": "Обращение по РРЛ", "incoming_no": "ВХ-2026-0412",
+            "note": "уточнение запрошено телефонограммой"})
+        for query in ("SUP-ПОИСК-5", "ВХ-2026-0412", "0412", "РРЛ",
+                      "1274", "телефонограммой"):
+            with self.subTest(query=query):
+                self.assertIn("SUP-ПОИСК-5", self.found(query),
+                              f"не нашлось по «{query}»")
+
+    def test_the_outgoing_number_is_searchable(self):
+        # По исходящему в отделе ищут не реже, чем по входящему.
+        case = self.create_case({**CASE, "case_id": "SUP-ПОИСК-6"})
+        report = self.generate(case["id"])
+        for section in report["sections"]:
+            self.client.put(
+                f"/api/reports/{report['id']}/sections/{section['section_id']}",
+                json={"text": "Текст инженера без числовых значений."})
+        self.client.post(f"/api/reports/{report['id']}/submit")
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{report['id']}/approve")
+        self.login("engineer")
+        self.client.post(f"/api/cases/{case['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-1147"})
+        self.assertIn("SUP-ПОИСК-6", self.found("ИСХ-2026-1147"))
+        self.assertIn("SUP-ПОИСК-6", self.found("1147"))
+
+    def test_a_full_number_does_not_drag_out_the_whole_journal(self):
+        """Полный номер должен находить одно письмо, а не половину журнала.
+
+        Слова запроса соединяются по «и»: список писем не ранжируется —
+        он сортируется по сроку, как нужно отделу, — и «или» вытащило бы
+        всё, где есть хотя бы «2026».
+        """
+        for number in range(1, 6):
+            case = self.create_case({**CASE, "case_id": f"SUP-ЖУРНАЛ-{number}"})
+            self.client.patch(f"/api/cases/{case['id']}",
+                              json={"incoming_no": f"ВХ-2026-{number:04d}"})
+        self.assertEqual(["SUP-ЖУРНАЛ-3"], list(self.found("ВХ-2026-0003")))
+        self.assertEqual(5, len(self.found("ВХ-2026")))
+
+    def test_a_report_handed_in_as_a_file_is_searchable_too(self):
+        """Сдали файлом — текст должен искаться так же, как у собранного.
+
+        Обновление указателя стояло в сервисном слое, а сдача файлом идёт
+        мимо него: отчёт лежал в базе, а поиск по его тексту не находил
+        ничего. Теперь указатель обновляет само хранилище — там, где
+        пишется текст, и забыть про него негде.
+        """
+        self.client.post("/api/reports/upload", data={
+            "case_id": "ВХ-ФАЙЛ-1", "incoming_no": "ВХ-ФАЙЛ-1",
+            "report_type": CASE["report_type"]},
+            files={"file": ("о.md",
+                            "# Отчёт\n\nОбнаружен обрыв фидера антенны.\n".encode(),
+                            "text/markdown")})
+        self.assertEqual({"ВХ-ФАЙЛ-1": True}, self.found("фидера"))
+        self.assertEqual({"ВХ-ФАЙЛ-1": True}, self.found("антенна"))
+
+    def test_a_deleted_letter_stops_being_found(self):
+        # У виртуальной таблицы нет внешнего ключа: каскад её не трогает,
+        # и удалённое письмо находилось бы поиском вечно.
+        case = self.with_text("SUP-ПОИСК-7", "Тема", "Совершенно особое слово: криптоанализ.")
+        self.assertIn("SUP-ПОИСК-7", self.found("криптоанализ"))
+        self.assertEqual(200, self.client.delete(f"/api/cases/{case['id']}").status_code)
+        self.assertEqual({}, self.found("криптоанализ"))
+        self.assertEqual(0, self.repos.db.scalar("SELECT count(*) FROM cases_fts"))
+
+    def test_the_index_is_built_for_letters_that_predate_it(self):
+        """Поиск по тексту появился позже писем.
+
+        На базе отдела указателя ещё нет, и просить «переиндексируйте»
+        нельзя: система строит его сама при первом запуске новой версии.
+        """
+        self.with_text("SUP-ПОИСК-8", "Тема", "Слово для проверки: рефлектометр.")
+        self.repos.db.connection.execute("DELETE FROM cases_fts")
+        self.repos.db.connection.commit()
+        self.assertEqual({}, self.found("рефлектометр"))
+        self.assertTrue(self.repos.case_search.is_empty())
+
+        self.repos.case_search.rebuild_all()
+        self.assertIn("SUP-ПОИСК-8", self.found("рефлектометр"))
 
 
 class UploadedReportTests(WebTestCase):
@@ -1658,12 +1979,17 @@ class LetterCardTests(WebTestCase):
         case = self.create_case()
         self.generate(case["id"])
         self.login("engineer")
-        for status in ("approved", "review"):
+        for status in ("review", "checked"):
             with self.subTest(status=status):
                 refused = self.client.patch(f"/api/cases/{case['id']}",
                                             json={"status": status})
                 self.assertEqual(409, refused.status_code, refused.text)
                 self.assertIn("проверка отчёта", refused.json()["error"])
+        # «Отправлено» — тем более: его даёт запись исходящего номера.
+        refused = self.client.patch(f"/api/cases/{case['id']}",
+                                    json={"status": "approved"})
+        self.assertEqual(409, refused.status_code)
+        self.assertIn("исходящего номера", refused.json()["error"])
         # Остальные состояния карточка ставит как ставила.
         for status in ("new", "draft", "archived"):
             with self.subTest(status=status):
@@ -1672,14 +1998,22 @@ class LetterCardTests(WebTestCase):
                 self.assertEqual(200, response.status_code, response.text)
                 self.assertEqual(status, response.json()["case"]["status"])
 
-    def test_letter_answered_outside_the_system_can_still_be_marked(self):
-        # По письму нет ни одного отчёта — подменять нечего: на него
-        # ответили мимо системы, и отметить это в карточке можно.
+    def test_sent_is_never_set_by_hand_even_without_a_report(self):
+        """«Отправлено» всегда значит «есть исходящий номер».
+
+        Иначе в журнале отдела письмо закрыто, а чем ответили —
+        неизвестно. Ответ мимо системы записывается тем же действием
+        «Ответ отправлен», просто без отчёта.
+        """
         case = self.create_case()
-        response = self.client.patch(f"/api/cases/{case['id']}", json={"status": "approved"})
-        self.assertEqual(200, response.status_code, response.text)
-        self.assertEqual("approved", response.json()["case"]["status"])
-        self.assertEqual(0, response.json()["case"]["reports_count"])
+        refused = self.client.patch(f"/api/cases/{case['id']}", json={"status": "approved"})
+        self.assertEqual(409, refused.status_code)
+        self.assertIn("исходящего номера", refused.json()["error"])
+        # А «принято», «в работе» и «в архиве» по-прежнему ставятся руками.
+        for status in ("new", "draft", "archived"):
+            with self.subTest(status=status):
+                ok = self.client.patch(f"/api/cases/{case['id']}", json={"status": status})
+                self.assertEqual(200, ok.status_code, ok.text)
 
     def test_letter_says_how_many_reports_it_has(self):
         # Число нужно карточке: по нему она запирает состояния «на проверке»
@@ -1745,8 +2079,16 @@ class LetterCardTests(WebTestCase):
         body = self.client.get("/api/cases", params={"overdue": "true"}).json()
         self.assertEqual([early["case_id"]], [item["case_id"] for item in body["items"]])
         self.assertEqual(1, body["overdue"])
-        # Отправленное письмо просроченным не считается.
-        self.client.patch(f"/api/cases/{early['id']}", json={"status": "approved"})
+        # Проверенное, но не отправленное — всё ещё просрочка: ответ не ушёл.
+        self.repos.cases.set_status(early["id"], "checked")
+        body = self.client.get("/api/cases", params={"overdue": "true"}).json()
+        self.assertEqual([early["case_id"]], [item["case_id"] for item in body["items"]],
+                         "проверенный, но не отправленный ответ снял просрочку")
+        self.assertEqual(1, body["overdue"])
+
+        # А отправленное письмо просроченным не считается.
+        self.client.post(f"/api/cases/{early['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-0001"})
         body = self.client.get("/api/cases", params={"overdue": "true"}).json()
         self.assertEqual([], body["items"])
         self.assertEqual(0, body["overdue"])
@@ -2330,10 +2672,38 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertEqual(str(MAX_GROUP), limits.get("group_no"))
 
     def test_letter_card_locks_the_states_the_report_gives(self):
-        # «На проверке» и «отправлено» письму даёт проверка отчёта. В
-        # карточке эти состояния заперты, пока по письму есть отчёты.
+        # «На проверке», «проверен» и «отправлено» письму даёт ход отчёта.
+        # В карточке эти состояния заперты, пока по письму есть отчёты.
         self.assertIn("CASE_BY_FLOW", self.js)
         self.assertIn("Это состояние письмо получает от проверки отчёта", self.js)
+
+    def test_letter_states_in_the_interface_match_the_server(self):
+        """Состояние, которого нет в словаре интерфейса, ломает карточку.
+
+        Список «Состояние» строится прямо из CASE_FLOW: пропущенное
+        состояние не совпадёт ни с одним пунктом, и сохранение карточки
+        молча переведёт письмо назад в «принято».
+        """
+        import re as _re
+
+        from reportgen.store.models import CASE_STATUSES, CASE_STATUS_TITLES
+        from reportgen.web.api import FLOW_CASE_STATUSES
+
+        titles = dict(_re.findall(r"(\w+): '([^']+)'",
+                                  _re.search(r"const CASE_STATUS = \{([^}]+)\}",
+                                             self.js).group(1)))
+        flow = _re.findall(r"'(\w+)'",
+                           _re.search(r"const CASE_FLOW = \[([^\]]+)\]",
+                                      self.js).group(1))
+        by_flow = _re.findall(r"'(\w+)'",
+                              _re.search(r"const CASE_BY_FLOW = \[([^\]]+)\]",
+                                         self.js).group(1))
+        self.assertEqual(list(CASE_STATUSES), flow, "порядок состояний разошёлся")
+        self.assertEqual(sorted(FLOW_CASE_STATUSES), sorted(by_flow))
+        for status in CASE_STATUSES:
+            with self.subTest(status=status):
+                self.assertEqual(CASE_STATUS_TITLES[status], titles.get(status),
+                                 f"название состояния «{status}» разошлось с сервером")
 
     def test_direction_of_work_is_asked_when_handing_in_a_file(self):
         # Направление бралось первым по алфавиту — письмо выходило под

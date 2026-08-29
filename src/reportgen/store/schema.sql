@@ -112,9 +112,12 @@ CREATE TABLE IF NOT EXISTS cases (
     report_type   TEXT    NOT NULL,
     title         TEXT    NOT NULL DEFAULT '',
     customer      TEXT    NOT NULL DEFAULT '',
-    status        TEXT    NOT NULL DEFAULT 'new',  -- new|draft|review|approved|archived
+    status        TEXT    NOT NULL DEFAULT 'new',  -- new|draft|review|checked|approved|archived
     incoming_no   TEXT    NOT NULL DEFAULT '',     -- входящий номер письма
     incoming_date TEXT    NOT NULL DEFAULT '',     -- дата письма, ГГГГ-ММ-ДД
+    outgoing_no   TEXT    NOT NULL DEFAULT '',     -- исходящий номер ответа
+    outgoing_date TEXT    NOT NULL DEFAULT '',     -- дата отправки, ГГГГ-ММ-ДД
+    sent_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,  -- кто отправил
     deadline      TEXT    NOT NULL DEFAULT '',     -- срок ответа, ГГГГ-ММ-ДД
     priority      TEXT    NOT NULL DEFAULT 'normal',  -- normal | high | urgent
     assignee_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -126,8 +129,20 @@ CREATE TABLE IF NOT EXISTS cases (
     updated_at    TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cases_status   ON cases(status);
+CREATE INDEX IF NOT EXISTS idx_cases_outgoing ON cases(outgoing_no);
 CREATE INDEX IF NOT EXISTS idx_cases_assignee ON cases(assignee_id);
 CREATE INDEX IF NOT EXISTS idx_cases_deadline ON cases(deadline);
+
+-- Поиск по письмам и отчётам. Тот же приём, что и для библиотеки
+-- (chunks_fts): unicode61 русской морфологии не знает, поэтому стемминг
+-- делает reportgen.retrieval.tokenize, а сюда кладутся готовые токены.
+-- В строку письма попадают его реквизиты и текст всех редакций отчёта:
+-- искать в отделе нужно и «по входящему 0423», и «по паре слов из вывода».
+CREATE VIRTUAL TABLE IF NOT EXISTS cases_fts USING fts5(
+    stemmed,
+    case_ref UNINDEXED,
+    tokenize = 'unicode61 remove_diacritics 2'
+);
 
 CREATE TABLE IF NOT EXISTS reports (
     id          INTEGER PRIMARY KEY,

@@ -36,6 +36,13 @@ from ..verify import summarize, verify_report
 #: отчёт. Длиннее — значит, разговор не для карточки письма.
 MAX_REVIEW_NOTE = 2000
 
+#: Пределы строк карточки письма. Это строки журнала входящих и исходящих,
+#: а не текст отчёта: тема в пять тысяч знаков ломает и список писем, и
+#: шапку документа. Предел один на всю систему — веб-слой и поля формы
+#: берут его отсюда, иначе форма примет то, что сервер потом отвергнет.
+CARD_LIMITS = {"title": 300, "incoming_no": 60, "outgoing_no": 60, "note": 2000}
+MAX_OUTGOING_NO = CARD_LIMITS["outgoing_no"]
+
 #: Предел обрезки цитаты в приложении к отчёту. Он обязан совпадать с тем,
 #: что видела модель, иначе верификатор блокирует число, законно взятое из
 #: хвоста фрагмента. Значение одно и живёт в pipeline.
@@ -274,6 +281,7 @@ class ReportService:
             # доходили до вставки одновременно, и второй получал срыв
             # сервера вместо понятного отказа.
             raise ServiceError(f"письмо '{case_id}' уже зарегистрировано", 409) from error
+        self.repos.case_search.refresh(case.id)
         self.repos.audit.log("case.create", user=user, object_type="case", object_id=case.case_id)
         return case
 
@@ -286,12 +294,17 @@ class ReportService:
         if raw["report_type"] != case.report_type:
             raise ServiceError("тип отчёта менять нельзя — зарегистрируйте новое письмо", 400)
         facts = _validate_facts(raw)
+        # Ответ ушёл — числа в отчёте обязаны совпадать с отправленным.
+        # Правка исходных данных сняла бы подпись и развернула письмо в
+        # работу, хотя бумага уже у адресата.
+        self.guard_not_sent(case, "править исходные данные")
         self.repos.cases.update_facts(case.id, raw, facts.digest(), customer=facts.group_no)
         # Изменились исходные данные — значит изменилось и множество чисел,
         # которые отчёт имеет право называть. Все отчёты кейса перепроверяются
         # сразу, иначе подписанный документ остался бы «утверждённым» с числами,
         # которых в факт-пакете больше нет.
         revoked = self.revalidate_case(case.id)
+        self.repos.case_search.refresh(case.id)
         self.repos.audit.log(
             "case.facts.update", user=user, object_type="case", object_id=case.case_id,
             details={"digest": facts.digest(), "revoked": revoked},
@@ -309,12 +322,21 @@ class ReportService:
         базу, мимо :meth:`update_facts`: хеш пакета оставался от прежнего
         содержимого, а подписанные отчёты не перепроверялись.
         """
+        # Номер группы уходит в шапку отчёта. У отправленного письма отчёт
+        # обязан совпадать с тем, что ушло, — номер группы правке не
+        # подлежит. Срок, важность, примечание и архив трогать можно.
+        if "customer" in fields and fields["customer"] != case.customer:
+            self.guard_not_sent(case, "менять номер группы")
         updated = self.repos.cases.update_card(case.id, **fields)
+        # Тема, номера и примечание попадают в поиск: указатель надо
+        # пересобрать, иначе письмо ищется по прежнему названию.
+        self.repos.case_search.refresh(case.id)
         if updated is None or "customer" not in fields:
             return updated
         facts = _validate_facts(dict(updated.facts))
         self.repos.cases.update_facts(case.id, dict(updated.facts), facts.digest())
         self.revalidate_case(case.id)
+        self.repos.case_search.refresh(case.id)
         return self.repos.cases.get(case.id)
 
     def revalidate_case(self, case_ref: int) -> int:
@@ -346,6 +368,7 @@ class ReportService:
     # -- генерация ----------------------------------------------------------
 
     def generate(self, case: Case, user: User | None, *, top_k: int | None = None) -> Report:
+        self.guard_not_sent(case, "собрать отчёт заново")
         facts = self.facts_of(case)
         outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
         result = generate_report(
@@ -393,6 +416,7 @@ class ReportService:
         )
         self.withdraw_previous(case, report, user)
         self.repos.cases.set_status(case.id, "draft")
+        self.repos.case_search.refresh(case.id)
         self.repos.audit.log(
             "report.generate", user=user, object_type="report", object_id=str(report.id),
             details={"case_id": case.case_id, "version": report.version,
@@ -401,7 +425,7 @@ class ReportService:
         return report
 
     def withdraw_previous(self, case: Case, fresh: Report, user: User | None) -> None:
-        """Снять с проверки прежние версии отчёта по письму.
+        """Снять с проверки прежние редакции отчёта по письму.
 
         Исполнитель собирал новую версию, пока начальник читал прежнюю:
         письмо возвращалось «в работу» и пропадало из очереди проверки, а
@@ -423,14 +447,12 @@ class ReportService:
                 "report.withdraw", user=user, object_type="report",
                 object_id=str(stored.id),
                 details={"case_id": case.case_id, "version": stored.version,
-                         "reason": "собрана версия " + str(fresh.version)},
+                         "reason": "собрана редакция " + str(fresh.version)},
             )
 
     def regenerate_section(self, report: Report, section_id: str, user: User | None,
                            *, hint: str = "", top_k: int | None = None) -> ReportSection:
-        case = self.repos.cases.get(report.case_ref)
-        if case is None:
-            raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
+        case = self.guard_current(report, "переписывать разделы")
         facts = self.facts_of(case)
         outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
         spec = next((s for s in outline.sections if s.id == section_id), None)
@@ -472,6 +494,7 @@ class ReportService:
 
     def save_section(self, report: Report, section_id: str, text: str,
                      user: User | None) -> ReportSection:
+        self.guard_current(report, "править разделы")
         section = self.repos.reports.section(report.id, section_id)
         if section is None:
             raise ServiceError(f"секция '{section_id}' не найдена", 404)
@@ -489,6 +512,7 @@ class ReportService:
 
     def restore_section(self, report: Report, section_id: str, user: User | None) -> ReportSection:
         """Вернуть черновик модели, отменив ручные правки секции."""
+        self.guard_current(report, "возвращать черновик модели")
         section = self.repos.reports.section(report.id, section_id)
         if section is None:
             raise ServiceError(f"секция '{section_id}' не найдена", 404)
@@ -553,6 +577,9 @@ class ReportService:
                                 {**head, "errors": errors})
         self.repos.reports.update_markdown(report.id, markdown)
         self._apply_issues(report, issues)
+        # Текст отчёта попал в поиск: пересборка идёт после каждой правки
+        # раздела, и это единственное место, где текст меняется целиком.
+        self.repos.case_search.refresh(report.case_ref)
         updated = self.repos.reports.get(report.id)
         assert updated is not None
         return updated
@@ -677,7 +704,7 @@ class ReportService:
         # отправленным или лежащим у начальника, а отчёт по нему — черновик:
         # в списке писем одно, в карточке другое.
         case = self.repos.cases.get(report.case_ref)
-        if case is not None and case.status in ("approved", "review"):
+        if case is not None and case.status in ("checked", "review"):
             self.repos.cases.set_status(case.id, "draft")
         self.repos.audit.log(
             "report.approval.revoked", object_type="report", object_id=str(report.id),
@@ -728,6 +755,7 @@ class ReportService:
             return report
         if report.status == "approved":
             raise ServiceError("отчёт уже проверен", 409)
+        self.guard_current(report, "сдать отчёт на проверку")
         if report.source != "uploaded":
             errors = [i for i in self.verify(report) if i["level"] == "error"]
             if errors:
@@ -751,6 +779,7 @@ class ReportService:
         """Вернуть отчёт исполнителю с замечанием. Только для проверяющего."""
         if report.status not in ("review", "approved"):
             raise ServiceError("возвращать можно отчёт, отправленный на проверку", 409)
+        self.guard_current(report, "вернуть отчёт на исправление")
         note = " ".join(str(note or "").split())
         if not note:
             raise ServiceError("напишите, что именно исправить", 400)
@@ -793,6 +822,7 @@ class ReportService:
         if report.status != "review":
             raise ServiceError(
                 "отчёт не отправлен на проверку: отметить проверенным нечего", 409)
+        self.guard_current(report, "отметить отчёт проверенным")
         if report.source != "uploaded":
             issues = self.verify(report)
             errors = [issue for issue in issues if issue["level"] == "error"]
@@ -807,7 +837,10 @@ class ReportService:
 
         pairs = self._collect_edit_pairs(report, case, user)
         self.repos.reports.approve(report.id, user.id if user else None)
-        self.repos.cases.set_status(case.id, "approved")
+        # «Проверен» — ещё не «отправлено». Начальник прочитал и согласился;
+        # ответ по письму отправляет исполнитель и записывает исходящий
+        # номер. Пока номера нет, письмо в отделе не закрыто.
+        self.repos.cases.set_status(case.id, "checked")
         # Пересобираем текст: в шапке стоит «ЧЕРНОВИК», а отчёт уже подписан.
         self.rebuild(report.id)
         self.repos.audit.log(
@@ -817,6 +850,103 @@ class ReportService:
         updated = self.repos.reports.get(report.id)
         assert updated is not None
         return updated
+
+    # -- отправка ответа ----------------------------------------------------
+
+    def send_out(self, case: Case, outgoing_no: str, outgoing_date: str,
+                 user: User | None) -> Case:
+        """Записать исходящий номер: ответ по письму ушёл адресату.
+
+        Последний шаг порядка отдела. Отчёт проверен начальником — дальше
+        исполнитель отправляет ответ и записывает, под каким исходящим
+        номером тот ушёл. Без этой записи в учёте нет главного: письмо
+        пришло, работа сделана, а чем ответили — неизвестно.
+
+        Отправляет исполнитель, а не проверяющий: сдают и отправляют все.
+        """
+        # Письмо без единого отчёта — это ответ мимо системы: составили в
+        # Word, отправили, отчёт сюда не заводили. Исходящий номер всё
+        # равно должен попасть в базу, иначе в учёте отдела дыра.
+        report = self.repos.reports.current_for_case(case.id)
+        if report is not None and report.status != "approved":
+            raise ServiceError(
+                "отчёт ещё не проверен начальником — отправлять рано", 409)
+        if case.outgoing_no:
+            raise ServiceError(
+                f"ответ уже отправлен под номером «{case.outgoing_no}»", 409)
+        outgoing_no = " ".join(str(outgoing_no or "").split())
+        if not outgoing_no:
+            raise ServiceError("укажите исходящий номер, под которым ушёл ответ", 400)
+        if len(outgoing_no) > MAX_OUTGOING_NO:
+            raise ServiceError(f"исходящий номер: длиннее {MAX_OUTGOING_NO} знаков", 400)
+
+        updated = self.repos.cases.update_card(
+            case.id, outgoing_no=outgoing_no, outgoing_date=outgoing_date,
+            sent_by=user.id if user else None, status="approved")
+        self.repos.case_search.refresh(case.id)
+        self.repos.audit.log(
+            "case.send", user=user, object_type="case", object_id=case.case_id,
+            details={"outgoing_no": outgoing_no, "outgoing_date": outgoing_date,
+                     "report_version": report.version if report else 0},
+        )
+        assert updated is not None
+        return updated
+
+    def withdraw_sending(self, case: Case, user: User | None) -> Case:
+        """Отозвать отправку: исходящий номер вписали не тот или не тому.
+
+        Право проверяющего, а не исполнителя: запись об отправке — учётная,
+        и снимать её должен тот же, кто отвечает за проверку. Письмо
+        возвращается в «проверен, к отправке», отчёт остаётся проверенным.
+        """
+        if not case.outgoing_no:
+            raise ServiceError("ответ по этому письму ещё не отправляли", 409)
+        was = case.outgoing_no
+        updated = self.repos.cases.update_card(
+            case.id, outgoing_no="", outgoing_date="", sent_by=None,
+            status="checked")
+        self.repos.case_search.refresh(case.id)
+        self.repos.audit.log(
+            "case.send.withdraw", user=user, object_type="case",
+            object_id=case.case_id, details={"was": was},
+        )
+        assert updated is not None
+        return updated
+
+    def guard_not_sent(self, case: Case, what: str) -> None:
+        """Отправленное письмо не правят.
+
+        Ответ ушёл адресату под исходящим номером — значит, отчёт в системе
+        обязан совпадать с тем, что отправили. Понадобилось исправить —
+        начальник сначала отзывает отправку, и это видно в журнале.
+        """
+        if case.outgoing_no:
+            raise ServiceError(
+                f"ответ по письму отправлен под номером «{case.outgoing_no}»: "
+                f"{what} нельзя. Чтобы вернуться к работе, начальник отдела "
+                "отзывает отправку", 409)
+
+    def guard_current(self, report: Report, what: str) -> Case:
+        """У письма один отчёт. Работают с ним, а не с прежней редакцией.
+
+        Прежние редакции остаются в базе как история: по ним видно, что
+        начальник вернул и что исполнитель поправил. Но править, сдавать и
+        отмечать проверенным можно только нынешнюю — иначе в отделе два
+        отчёта по одному письму, и неизвестно, который ушёл адресату.
+
+        Заодно проверяет, что ответ по письму ещё не отправлен: после
+        исходящего номера отчёт обязан совпадать с тем, что ушло.
+        """
+        case = self.repos.cases.get(report.case_ref)
+        if case is None:
+            raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
+        current = self.repos.reports.current_for_case(case.id)
+        if current is not None and current.id != report.id:
+            raise ServiceError(
+                f"это прежняя редакция отчёта (№{report.version} из "
+                f"{current.version}): {what} можно только в нынешней", 409)
+        self.guard_not_sent(case, what)
+        return case
 
     def _collect_edit_pairs(self, report: Report, case: Case, user: User | None) -> int:
         """Сохранить пары «черновик модели → финал инженера» (док. 03, 3.7)."""
