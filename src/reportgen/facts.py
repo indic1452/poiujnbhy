@@ -29,6 +29,46 @@ class FactPackError(ValueError):
 MAX_GROUP = 120
 
 
+#: Какого вида должно быть поле факт-пакета. Инженер правит пакет как JSON
+#: прямо в интерфейсе, и «measurements: []» вместо «measurements: {}» —
+#: обычная описка. Раньше она валила запрос с пятисотой ошибкой без единого
+#: слова о причине; теперь говорим, где именно ошиблись.
+_SHAPES: Dict[str, tuple] = {
+    "measurements": (dict, "объектом «ключ: измерение»"),
+    "equipment": (dict, "объектом «поле: значение»"),
+    "findings": (list, "списком"),
+    "artifacts": (list, "списком"),
+    "timeline": (list, "списком"),
+    "keywords": (list, "списком строк"),
+}
+
+
+def _check_shapes(raw: Dict[str, Any]) -> None:
+    """Проверить вид полей до разбора: иначе разбор срывается без объяснения."""
+    for field_name, (kind, expected) in _SHAPES.items():
+        value = raw.get(field_name)
+        if value is None or isinstance(value, kind):
+            continue
+        raise FactPackError(
+            f"факт-пакет: поле '{field_name}' должно быть {expected}, "
+            f"а задано {_kind_name(value)}")
+
+
+def _kind_name(value: Any) -> str:
+    """Название вида значения по-русски — для сообщения инженеру."""
+    if isinstance(value, bool):
+        return "да/нет"
+    if isinstance(value, str):
+        return "строкой"
+    if isinstance(value, (int, float)):
+        return "числом"
+    if isinstance(value, list):
+        return "списком"
+    if isinstance(value, dict):
+        return "объектом"
+    return "пустым значением"
+
+
 @dataclass(frozen=True)
 class Measurement:
     """Одно измерение с единицей, методом получения и ссылкой на артефакт."""
@@ -128,14 +168,24 @@ class FactPack:
 
     @classmethod
     def from_dict(cls, raw: Dict[str, Any]) -> "FactPack":
+        if not isinstance(raw, dict):
+            raise FactPackError("факт-пакет должен быть объектом JSON")
         for required in ("case_id", "report_type"):
             if required not in raw:
                 raise FactPackError(f"факт-пакет: отсутствует поле '{required}'")
+        for required in ("case_id", "report_type"):
+            if not isinstance(raw[required], str):
+                raise FactPackError(
+                    f"факт-пакет: поле '{required}' должно быть строкой, "
+                    f"а задано {_kind_name(raw[required])}")
+        _check_shapes(raw)
+        # `or` вместо значения по умолчанию: в JSON поле бывает выписано
+        # с null — это «не заполнено», а не «поле кривое».
         measurements = {
             key: Measurement.from_dict(key, value)
-            for key, value in raw.get("measurements", {}).items()
+            for key, value in (raw.get("measurements") or {}).items()
         }
-        findings = [Finding.from_dict(item) for item in raw.get("findings", [])]
+        findings = [Finding.from_dict(item) for item in (raw.get("findings") or [])]
         known_keys = {ev for finding in findings for ev in finding.evidence}
         unknown = known_keys - set(measurements)
         if unknown:
@@ -148,13 +198,13 @@ class FactPack:
             # customer — прежнее имя ключа: факт-пакеты принятых обращений
             # лежат в базе с ним, и читать их система обязана.
             group_no=clean_group(raw.get("group_no", raw.get("customer", ""))),
-            equipment=raw.get("equipment", {}),
-            request=raw.get("request", ""),
-            artifacts=list(raw.get("artifacts", [])),
+            equipment=raw.get("equipment") or {},
+            request=raw.get("request") or "",
+            artifacts=list(raw.get("artifacts") or []),
             measurements=measurements,
             findings=findings,
-            timeline=list(raw.get("timeline", [])),
-            keywords=list(raw.get("keywords", [])),
+            timeline=list(raw.get("timeline") or []),
+            keywords=list(raw.get("keywords") or []),
             raw=raw,
         )
 

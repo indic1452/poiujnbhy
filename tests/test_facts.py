@@ -28,6 +28,50 @@ class FactPackTests(unittest.TestCase):
         with self.assertRaises(FactPackError):
             FactPack.from_dict({"report_type": "x"})
 
+    def test_wrong_shape_of_a_field_is_named_not_crashed(self):
+        """Инженер правит факт-пакет как JSON прямо в интерфейсе.
+
+        «measurements: []» вместо «measurements: {}» — обычная описка. Она
+        валила запрос пятисотой ошибкой без единого слова о причине:
+        AttributeError на `.items()` уходил наружу как срыв сервера.
+        Надо сказать, где именно ошиблись.
+        """
+        cases = {
+            "measurements": ([], "объектом"),
+            "equipment": (["антенна"], "объектом"),
+            "findings": ({"a": 1}, "списком"),
+            "artifacts": (5, "списком"),
+            "timeline": (5, "списком"),
+            "keywords": ("раз, два", "списком"),
+        }
+        for name, (value, expected) in cases.items():
+            with self.subTest(field=name):
+                with self.assertRaises(FactPackError) as caught:
+                    FactPack.from_dict({**MINIMAL, name: value})
+                message = str(caught.exception)
+                self.assertIn(name, message, message)
+                self.assertIn(expected, message, message)
+
+    def test_pack_itself_must_be_an_object(self):
+        with self.assertRaises(FactPackError) as caught:
+            FactPack.from_dict(["case_id", "report_type"])
+        self.assertIn("объектом JSON", str(caught.exception))
+
+    def test_case_id_and_type_must_be_text(self):
+        # Номер обращения числом уезжал в шапку отчёта как есть и падал
+        # на разметке. Говорим сразу.
+        for name in ("case_id", "report_type"):
+            with self.subTest(field=name):
+                with self.assertRaises(FactPackError) as caught:
+                    FactPack.from_dict({**MINIMAL, name: 17})
+                self.assertIn("строкой", str(caught.exception))
+
+    def test_empty_field_is_still_allowed(self):
+        # Пустое значение — это «не заполнено», а не ошибка вида.
+        facts = FactPack.from_dict({**MINIMAL, "keywords": None, "findings": None})
+        self.assertEqual([], facts.keywords)
+        self.assertEqual([], facts.findings)
+
     def test_rejects_unknown_severity(self):
         raw = dict(MINIMAL, findings=[{"id": "F1", "severity": "апокалипсис", "title": "т"}])
         with self.assertRaises(FactPackError):
