@@ -903,41 +903,21 @@
         badge.title = late ? 'из них просрочено: ' + late : '';
     }
 
-    /* Эмблема отдела: живая, но не навязчивая.
-
-       Всё существенное делает CSS — вращение, отклик на наведение и на
-       нажатие. Здесь только две вещи, которых CSS не умеет: плавная смена
-       скорости (сменить длительность анимации нельзя — глобус дёрнется) и
-       одинаковое поведение при нажатии для мыши, касания и клавиатуры.
-       Не выполнится — эмблема всё равно вращается и откликается. */
-    const EMBLEM_FAST = 3.4;
+    /* Эмблема отдела: настоящий знак файлом, отклик — состояние, а не
+       движение. Наведение и нажатие делает CSS. Здесь только одна вещь,
+       которой CSS не умеет: одинаковое поведение при нажатии для мыши,
+       касания и клавиатуры. Не выполнится — знак всё равно откликается на
+       наведение и остаётся ссылкой на дашборд. */
 
     function wakeEmblem() {
         const mark = $('#emblem');
         if (!mark || mark.dataset.ready) return;
         mark.dataset.ready = '1';
 
-        // Меридианов четыре, и у каждого своя анимация со своим сдвигом фазы:
-        // скорость надо менять всем сразу, иначе шар «разъедется».
-        const merids = $$('.em-merid', mark);
-        const rate = (value) => {
-            merids.forEach((part) => {
-                if (typeof part.getAnimations !== 'function') return;
-                part.getAnimations().forEach((running) => {
-                    if (typeof running.updatePlaybackRate !== 'function') return;
-                    try {
-                        running.updatePlaybackRate(value);
-                    } catch (error) {
-                        /* останется базовая скорость — эмблема продолжит вращаться */
-                    }
-                });
-            });
-        };
         const hold = () => mark.classList.add('emblem--held');
         const release = () => mark.classList.remove('emblem--held');
 
-        mark.addEventListener('pointerenter', () => rate(EMBLEM_FAST));
-        mark.addEventListener('pointerleave', () => { rate(1); release(); });
+        mark.addEventListener('pointerleave', release);
         mark.addEventListener('pointerdown', hold);
         mark.addEventListener('pointerup', release);
         mark.addEventListener('pointercancel', release);
@@ -945,7 +925,7 @@
             if (event.key === ' ' || event.key === 'Enter') hold();
         });
         mark.addEventListener('keyup', release);
-        mark.addEventListener('blur', () => { rate(1); release(); });
+        mark.addEventListener('blur', release);
     }
 
     function renderChrome() {

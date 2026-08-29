@@ -323,11 +323,14 @@ body.side-min .side {
     color: var(--text);
 }
 
-.side-brand svg {
-    width: 22px;
-    height: 22px;
+/* Знак отдела в шапке меню. Тот же файл, что и в углу шапки приложения:
+   один знак на все места, иначе в двух окнах оказались бы два разных
+   отдела. 26 px, а не 22: у щита рисунок плотнее, чем у прежней схемы. */
+.side-brand .mark {
+    width: 26px;
+    height: 26px;
     flex: 0 0 auto;
-    color: var(--accent);
+    display: block;
 }
 
 .side-nav {
@@ -2823,22 +2826,17 @@ table.md-table th {
 
 /* ---------------------------------------------------- эмблема отдела --- */
 
-/* Знак 2 специального отдела: щит в золотой кайме, красная зубчатая звезда,
-   синий глобус с меридианами и стрела связи. Рисунок ведомственный, поэтому
-   цвета у него свои и от темы интерфейса не зависят — герб не перекрашивают
-   под светлый режим.
+/* Знак 2 специального отдела — настоящий, файлом: static/emblem.png.
+   Перерисовка вектором была ближе к оригиналу с каждым заходом, но
+   оригиналом так и не стала, а знак организации подделывать нельзя. Файл
+   лежит рядом, наружу за ним никто не ходит.
 
-   Глобус вращается по-настоящему. Меридиан на шаре — это окружность, которая
-   в проекции сжимается по горизонтали как косинус долготы; поэтому крутится
-   не рисунок целиком, а каждый меридиан меняет свою полуось. Четыре
-   меридиана со сдвигом фазы на восьмую оборота дают вращение шара, а не
-   кувыркание рамки, и стоит это один transform на группу.
+   Отсюда и отсутствие вращения: глобус крутился, пока щит был набором путей;
+   у снимка вращать нечего, а крутить сам щит — не по-геральдически. Отклик
+   на наведение остался, но он теперь состояние, а не движение.
 
-   Мелкие детали — серебряная обводка звезды и стрелы, внутренняя золотая
-   линия, два добавочных меридиана — живут только на крупных экземплярах.
-   На 34 px линия в треть пикселя не «тонкая», а грязная: проверено растром.
-
-   Ни одного обращения наружу, ни библиотек, ни фильтров и размытий. */
+   Размеры знака заданы в одном месте — на .emblem; сам <img> тянется на всю
+   кнопку. Так на карточке входа и в шапке стоит один и тот же файл. */
 
 .emblem {
     /* Габарит. 34 px в строке 52 px: между эмблемой и линейками шапки
@@ -2853,25 +2851,6 @@ table.md-table th {
     background: none;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-
-    /* Геральдика знака. Цвета сняты пипеткой с присланного образца, а не
-       подобраны на глаз. Отдельными переменными — чтобы наведение меняло
-       один цвет, а не переписывало правила. */
-    --em-gold: #d2a63f;
-    --em-gold-hi: #f6e6b6;
-    --em-gold-dk: #80521e;
-    --em-field: #0d0f11;
-    --em-edge: #07090b;
-    --em-red: #7e0c14;
-    --em-red-hi: #c01019;
-    --em-steel: #eef3f8;
-    --em-blue: #125fb6;
-    --em-glass: #8fc9ef;
-
-    /* Оборот глобуса. Медленно: эмблема не должна тянуть взгляд от таблиц.
-       Наведение ускоряет её через playbackRate (см. app.js), а не сменой
-       этой длительности — смена дала бы скачок. */
-    --emblem-turn: 14s;
 }
 
 .emblem:focus-visible {
@@ -2880,220 +2859,35 @@ table.md-table th {
     border-radius: 3px;
 }
 
-.emblem-svg {
+.emblem-img {
     display: block;
     width: 100%;
     height: 100%;
+    object-fit: contain;
+    user-select: none;
+    transition: filter .18s linear;
 }
 
-/* --- щит --------------------------------------------------------------- */
-
-/* Золотая полоса зажата между чёрной кромкой снаружи и чёрным полем внутри.
-   Обе линии даёт один и тот же контур: широкий чёрный штрих, поверх него
-   узкий золотой по той же осевой. Второго пути под кайму не нужно. */
-.em-frame-out {
-    fill: var(--em-field);
-    stroke: var(--em-edge);
-    stroke-width: 8;
-    stroke-linejoin: round;
+/* Наведение: знак «загорается». Ни габарит, ни положение не меняются —
+   в проекте нет ни одного другого элемента, который дёргается под курсором. */
+.emblem:hover .emblem-img {
+    filter: brightness(1.14) saturate(1.1);
 }
 
-.em-frame {
-    fill: none;
-    stroke: var(--em-gold);
-    stroke-width: 3.8;
-    stroke-linejoin: round;
-    transition: stroke .18s linear;
+.emblem:active .emblem-img,
+.emblem.emblem--held .emblem-img {
+    filter: brightness(.9);
 }
 
-.em-frame-in {
-    fill: none;
-    stroke: var(--em-gold-dk);
-    stroke-width: 1.2;
-    stroke-linejoin: round;
-}
-
-/* --- звезда ------------------------------------------------------------ */
-
-/* Серебряная кайма лежит ПОД красным и выходит наружу штрихом. Обводка
-   поверх заливки съедала бы зубцы изнутри, и звезда читалась бы белой —
-   на образце она красная с серебряным кантом. */
-.em-star-halo {
-    fill: var(--em-steel);
-    stroke: var(--em-steel);
-    stroke-width: 3;
-    stroke-linejoin: round;
-}
-
-.em-star {
-    fill: var(--em-red);
-    transition: fill .18s linear;
-}
-
-/* --- глобус ------------------------------------------------------------ */
-
-.em-globe {
-    fill: var(--em-blue);
-}
-
-.em-globe-rim {
-    fill: none;
-    stroke: var(--em-steel);
-    stroke-width: 2;
-}
-
-/* Толщина сетки не должна ехать вместе со сжатием меридиана: без
-   non-scaling-stroke линия у края шара раздувалась бы, а у центра исчезала. */
-.em-grid {
-    fill: none;
-    stroke: var(--em-steel);
-    stroke-width: 1.3;
-    opacity: .78;
-    vector-effect: non-scaling-stroke;
-}
-
-.em-gloss {
-    fill: #ffffff;
-    opacity: .12;
-}
-
-.em-merid {
-    transform-box: view-box;
-    transform-origin: 50px 46px;
-    animation: emblem-turn var(--emblem-turn) linear infinite;
-    will-change: transform;
-}
-
-.em-merid--b {
-    animation-delay: calc(var(--emblem-turn) / -8);
-}
-
-.em-merid--c {
-    animation-delay: calc(var(--emblem-turn) / -4);
-}
-
-.em-merid--d {
-    animation-delay: calc(var(--emblem-turn) * -0.375);
-}
-
-/* Полуось меридиана идёт как косинус долготы. Восьми опорных точек хватает:
-   между ними отклонение от косинуса меньше сотой доли радиуса шара. Ноль
-   заменён на тысячную — при точном нуле группа схлопывается и браузер
-   перестаёт рисовать штрих вовсе. */
-@keyframes emblem-turn {
-    0% { transform: scaleX(1); }
-    12.5% { transform: scaleX(.707); }
-    25% { transform: scaleX(.001); }
-    37.5% { transform: scaleX(-.707); }
-    50% { transform: scaleX(-1); }
-    62.5% { transform: scaleX(-.707); }
-    75% { transform: scaleX(-.001); }
-    87.5% { transform: scaleX(.707); }
-    100% { transform: scaleX(1); }
-}
-
-/* --- стрела связи ------------------------------------------------------ */
-
-.em-bolt {
-    fill: none;
-    stroke: var(--em-steel);
-    stroke-width: 2.4;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-}
-
-.em-arrow {
-    fill: var(--em-red-hi);
-}
-
-.em-arrow-edge {
-    fill: none;
-    stroke: var(--em-steel);
-    stroke-width: 1.4;
-    stroke-linejoin: round;
-}
-
-.em-rose {
-    fill: var(--em-glass);
-}
-
-.em-rose-star {
-    fill: var(--em-steel);
-}
-
-.em-rose-edge {
-    fill: none;
-    stroke: var(--em-steel);
-    stroke-width: 1.5;
-    stroke-linejoin: round;
-}
-
-/* --- мелочь только на крупных экземплярах ------------------------------ */
-
-.em-fine {
-    display: none;
-}
-
-.emblem--card .em-fine {
-    display: inline;
-}
-
-/* --- наведение: знак «загорается» -------------------------------------- */
-
-.emblem:hover .em-frame {
-    stroke: var(--em-gold-hi);
-}
-
-.emblem:hover .em-star {
-    fill: var(--em-red-hi);
-}
-
-/* --- нажатие: глобус встаёт -------------------------------------------- */
-
-/* Отклик — состояние, а не движение. Приседания кнопки здесь нет намеренно:
-   в проекте нет ни одного другого элемента, который меняет габарит при
-   нажатии, и при выключенных переходах такое приседание стало бы рывком —
-   ровно тем, от чего человек и просил покоя. */
-.emblem:active .em-merid,
-.emblem.emblem--held .em-merid {
-    animation-play-state: paused;
-}
-
-/* --- покой по требованию системы --------------------------------------- */
-
-@media (prefers-reduced-motion: reduce) {
-
-    .em-merid {
-        animation: none;
-    }
-
-    /* Без движения шар должен остаться шаром. Меридианы разводим по разным
-       долготам вручную: иначе все четыре встанут в полный круг и лягут на
-       обод — вместо сетки получится жирная окружность. Первые два видны и
-       на 34 px, поэтому именно они дают развёрнутый меридиан и ребро. */
-    .em-merid {
-        transform: scaleX(.62);
-    }
-
-    .em-merid--c {
-        transform: scaleX(.14);
-    }
-
-    .em-merid--b {
-        transform: scaleX(.93);
-    }
-
-    .em-merid--d {
-        transform: scaleX(-.38);
-    }
-}
-
-/* Крупный экземпляр на карточке входа. Толщины линий заданы в единицах
-   viewBox и потому масштабируются вместе с рисунком сами. */
+/* Крупный экземпляр на карточке входа. */
 .emblem--card {
     width: 64px;
     height: 64px;
     cursor: default;
+}
+
+.emblem--card:hover .emblem-img {
+    filter: none;
 }
 
 /* ------------------------------------------------------ личный кабинет --- */

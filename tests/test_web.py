@@ -2845,74 +2845,92 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("Это состояние письмо получает от проверки отчёта", self.js)
 
     def test_the_department_emblem_lives_in_the_corner_of_the_header(self):
-        """Начальник отдела просил живой знак отдела в углу шапки.
+        """Начальник отдела просил знак отдела в углу шапки.
 
         Проверяем не красоту — её видно глазом, — а то, что знак на месте,
-        вертится сам, отзывается на наведение и нажатие и не тянет за собой
-        ни одной внешней загрузки.
+        стоит правее карточки пользователя, ведёт на дашборд и откликается
+        на наведение.
         """
         css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
             encoding="utf-8")
 
-        # Знак стоит в правом углу шапки, после карточки пользователя.
         head = self.html[self.html.index('class="topbar-right"'):
                          self.html.index("</header>")]
         self.assertIn('class="emblem"', head)
         self.assertLess(head.index("user-chip"), head.index('class="emblem"'),
                         "эмблема оказалась левее карточки пользователя")
+        self.assertIn('href="#/board"', head[head.index('class="emblem"'):])
 
-        # Вертится сама, средствами CSS: без скрипта она тоже живая.
-        self.assertIn("@keyframes emblem-turn", css)
-        self.assertIn("animation: emblem-turn", css)
-        # Отзывается на наведение и на нажатие.
-        self.assertIn(".emblem:hover", css)
+        # Отзывается на наведение и на нажатие, и это состояние, а не движение.
+        self.assertIn(".emblem:hover .emblem-img", css)
         self.assertIn(".emblem--held", css)
-        # Скорость меняется проигрыванием, а не длительностью: иначе луч
-        # перескакивает.
-        self.assertIn("updatePlaybackRate", self.js)
 
-    def test_the_emblem_stops_when_the_system_asks_for_calm(self):
-        # Движение на экране — не всем в радость, и система об этом знает.
-        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
-            encoding="utf-8")
-        calm = css[css.index("@media (prefers-reduced-motion: reduce)"):]
-        block = calm[:calm.index("/* Крупный экземпляр")]
-        self.assertIn(".em-merid", block)
-        self.assertIn("animation: none", block)
-        # Замерший шар должен остаться шаром: меридианы разведены по разным
-        # долготам, иначе все они встанут в одну окружность на ободе.
-        poses = {line.split("scaleX(")[1].split(")")[0]
-                 for line in block.splitlines() if "scaleX(" in line}
-        self.assertGreaterEqual(len(poses), 4,
-                                "в покое меридианы встали в одну долготу")
+    def test_the_emblem_is_the_department_sign_itself(self):
+        """Знак — присланный оригинал файлом, а не перерисовка.
 
-    def test_the_emblem_repeats_the_department_sign(self):
-        """Знак отдела — щит со звездой, глобусом и стрелой связи.
-
-        Проверяем состав рисунка и то, что он одинаков в шапке и на карточке
-        входа: разные знаки в двух окнах — это два разных отдела.
+        Перерисовка вектором с каждым заходом была ближе к образцу, но
+        оригиналом так и не стала. Проверяем, что в обоих окнах стоит один
+        и тот же файл и что от перерисовки не осталось ни следа.
         """
         css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
             encoding="utf-8")
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+
+        for name in ("emblem.png", "emblem-small.png"):
+            with self.subTest(file=name):
+                self.assertTrue((static / name).is_file(), f"нет файла {name}")
+                self.assertGreater((static / name).stat().st_size, 2000,
+                                   f"{name} подозрительно пуст")
+
         for name, text in (("index.html", self.html), ("login.html", self.login)):
             with self.subTest(file=name):
-                for part in ("em-frame", "em-star", "em-globe", "em-arrow", "em-merid"):
-                    self.assertIn(f'class="{part}"', text, f"в {name} нет части {part}")
-        # Геральдика своя и от темы не зависит: цвета заданы прямо в знаке.
-        for token in ("--em-gold:", "--em-red:", "--em-blue:", "--em-field:"):
-            self.assertIn(token, css.replace(" ", ""))
+                self.assertIn('class="emblem-img"', text)
+                self.assertIn("/static/emblem", text)
+                # Ни одного пути от прежней перерисовки.
+                for gone in ("em-frame", "em-star", "em-merid", "em-arrow", "emblem-svg"):
+                    self.assertNotIn(gone, text, f"в {name} остался {gone} от перерисовки")
 
-    def test_fine_detail_of_the_emblem_hides_at_working_size(self):
-        """На 34 px мелочь превращается в грязь, и она там не рисуется.
+        for gone in ("em-frame", "em-star", "em-merid", "emblem-turn", "em-fine"):
+            self.assertNotIn(gone, css, f"в стилях остался {gone} от перерисовки")
 
-        Обводки и добавочные меридианы стоят под классом em-fine, который
-        включается только на крупном экземпляре карточки входа.
+    def test_the_emblem_never_moves(self):
+        """У снимка вращать нечего, и он не дёргается.
+
+        Прежний знак был набором путей, и глобус в нём крутился. Сейчас это
+        фотография: любое движение здесь — либо подделка вращения, либо
+        рывок. Проверяем, что ни анимации, ни смены габарита у знака нет.
         """
         css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
             encoding="utf-8")
-        self.assertRegex(css, r"\.em-fine\s*\{\s*display:\s*none")
-        self.assertRegex(css, r"\.emblem--card \.em-fine\s*\{\s*display:\s*inline")
-        self.assertIn("em-star-halo em-fine", self.html)
+        block = css[css.index("--- эмблема отдела ---"):
+                    css.index("--- личный кабинет ---")]
+        for moving in ("animation", "scale(", "translate("):
+            self.assertNotIn(moving, block, f"знак снова двигается: {moving}")
+        self.assertNotIn("updatePlaybackRate", self.js)
+
+    def test_the_small_emblem_is_scaled_before_shipping(self):
+        """В шапке стоит заранее уменьшенный файл.
+
+        Браузер сжимает 256 px до 34 хуже, чем это делает хороший фильтр при
+        сборке; на экранах с двойной плотностью подставляется полный файл.
+        """
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        from PIL import Image
+
+        with Image.open(static / "emblem-small.png") as small:
+            with Image.open(static / "emblem.png") as full:
+                self.assertLess(small.size[0], full.size[0],
+                                "мелкий файл не мельче полного")
+                self.assertGreaterEqual(small.size[0], 68,
+                                        "мелкого файла не хватит на 34 px при двойной плотности")
+
+        head = self.html[self.html.index('class="topbar-right"'):
+                         self.html.index("</header>")]
+        mark = head[head.index('class="emblem"'):]
+        self.assertIn("/static/emblem-small.png", mark)
+        self.assertIn("/static/emblem.png 2x", mark)
+        # На карточке входа знак крупный — там мелкий файл был бы мылом.
+        self.assertNotIn("emblem-small", self.login)
 
     def test_registering_a_letter_does_not_ask_for_json(self):
         """Письмо только спустили — чисел в нём ещё нет.
