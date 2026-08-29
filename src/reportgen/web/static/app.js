@@ -907,7 +907,7 @@
 
        Всё существенное делает CSS — вращение, отклик на наведение и на
        нажатие. Здесь только две вещи, которых CSS не умеет: плавная смена
-       скорости (сменить длительность анимации нельзя — луч перескочит) и
+       скорости (сменить длительность анимации нельзя — глобус дёрнется) и
        одинаковое поведение при нажатии для мыши, касания и клавиатуры.
        Не выполнится — эмблема всё равно вращается и откликается. */
     const EMBLEM_FAST = 3.4;
@@ -917,16 +917,21 @@
         if (!mark || mark.dataset.ready) return;
         mark.dataset.ready = '1';
 
-        const sweep = $('.emblem-sweep', mark);
+        // Меридианов четыре, и у каждого своя анимация со своим сдвигом фазы:
+        // скорость надо менять всем сразу, иначе шар «разъедется».
+        const merids = $$('.em-merid', mark);
         const rate = (value) => {
-            if (!sweep || typeof sweep.getAnimations !== 'function') return;
-            const running = sweep.getAnimations()[0];
-            if (!running || typeof running.updatePlaybackRate !== 'function') return;
-            try {
-                running.updatePlaybackRate(value);
-            } catch (error) {
-                /* останется базовая скорость — эмблема продолжит вращаться */
-            }
+            merids.forEach((part) => {
+                if (typeof part.getAnimations !== 'function') return;
+                part.getAnimations().forEach((running) => {
+                    if (typeof running.updatePlaybackRate !== 'function') return;
+                    try {
+                        running.updatePlaybackRate(value);
+                    } catch (error) {
+                        /* останется базовая скорость — эмблема продолжит вращаться */
+                    }
+                });
+            });
         };
         const hold = () => mark.classList.add('emblem--held');
         const release = () => mark.classList.remove('emblem--held');
@@ -1834,10 +1839,16 @@
                     h('label', { class: 'field' }, 'Учётный номер', caseInput,
                         h('span', { class: 'small faint' },
                             'внутренний номер дела; можно повторить входящий'))),
-                h('div', {},
-                    h('div', { class: 'toolbar', style: { marginBottom: '6px' } },
+                // Исходные данные письма — это JSON, и при регистрации он
+                // никому не нужен: письмо только спустили, чисел в нём ещё
+                // нет, заготовку по шаблону система заполняет сама. Прячем
+                // под раскрывашку — она нужна одному человеку из ста, у
+                // которого пакет уже собран приборным разбором.
+                h('details', { class: 'facts-advanced' },
+                    h('summary', {}, 'Исходные данные (JSON) — если пакет уже собран'),
+                    h('div', { class: 'toolbar', style: { margin: '8px 0 6px' } },
                         h('span', { class: 'small muted grow' },
-                            'Факт-пакет (JSON) — единственный источник чисел для отчёта'),
+                            'Числа отчёта берутся только отсюда; заготовку заполнит система'),
                         h('button', { class: 'btn btn--sm', onclick: () => fileInput.click() }, 'Загрузить из файла'),
                         h('button', {
                             class: 'btn btn--sm',
@@ -1848,7 +1859,7 @@
                     editor, status),
             ],
             footer: [
-                h('span', { class: 'small faint spacer' }, 'Поля проверяются сервером по схеме факт-пакета'),
+                h('span', { class: 'small faint spacer' }, 'Обязательны входящий номер и тема письма'),
                 h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
                 createButton,
             ],
@@ -1860,7 +1871,11 @@
         async function submit() {
             const facts = validate();
             if (!facts) {
-                toast('Исправьте факт-пакет: ' + status.textContent, 'error');
+                // Раскрывашка закрыта, и без этого человек услышал бы про
+                // ошибку в поле, которого не видит.
+                const box = editor.closest('details');
+                if (box) box.open = true;
+                toast('Исправьте исходные данные: ' + status.textContent, 'error');
                 return;
             }
             const caseId = caseInput.value.trim() || String(facts.case_id || '').trim();

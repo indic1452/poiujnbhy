@@ -2876,9 +2876,64 @@ class InterfaceCopyTests(unittest.TestCase):
         css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
             encoding="utf-8")
         calm = css[css.index("@media (prefers-reduced-motion: reduce)"):]
-        block = calm[:calm.index("/* --- крупный")] if "/* --- крупный" in calm else calm[:900]
-        self.assertIn(".emblem-sweep", block)
+        block = calm[:calm.index("/* Крупный экземпляр")]
+        self.assertIn(".em-merid", block)
         self.assertIn("animation: none", block)
+        # Замерший шар должен остаться шаром: меридианы разведены по разным
+        # долготам, иначе все они встанут в одну окружность на ободе.
+        poses = {line.split("scaleX(")[1].split(")")[0]
+                 for line in block.splitlines() if "scaleX(" in line}
+        self.assertGreaterEqual(len(poses), 4,
+                                "в покое меридианы встали в одну долготу")
+
+    def test_the_emblem_repeats_the_department_sign(self):
+        """Знак отдела — щит со звездой, глобусом и стрелой связи.
+
+        Проверяем состав рисунка и то, что он одинаков в шапке и на карточке
+        входа: разные знаки в двух окнах — это два разных отдела.
+        """
+        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+        for name, text in (("index.html", self.html), ("login.html", self.login)):
+            with self.subTest(file=name):
+                for part in ("em-frame", "em-star", "em-globe", "em-arrow", "em-merid"):
+                    self.assertIn(f'class="{part}"', text, f"в {name} нет части {part}")
+        # Геральдика своя и от темы не зависит: цвета заданы прямо в знаке.
+        for token in ("--em-gold:", "--em-red:", "--em-blue:", "--em-field:"):
+            self.assertIn(token, css.replace(" ", ""))
+
+    def test_fine_detail_of_the_emblem_hides_at_working_size(self):
+        """На 34 px мелочь превращается в грязь, и она там не рисуется.
+
+        Обводки и добавочные меридианы стоят под классом em-fine, который
+        включается только на крупном экземпляре карточки входа.
+        """
+        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+        self.assertRegex(css, r"\.em-fine\s*\{\s*display:\s*none")
+        self.assertRegex(css, r"\.emblem--card \.em-fine\s*\{\s*display:\s*inline")
+        self.assertIn("em-star-edge em-fine", self.html)
+
+    def test_registering_a_letter_does_not_ask_for_json(self):
+        """Письмо только спустили — чисел в нём ещё нет.
+
+        Начальник отдела сказал прямо: поле с факт-пакетом при регистрации
+        лишнее, люди в этом JSON только путаются. Оно осталось для тех, у
+        кого пакет уже собран приборным разбором, но убрано под раскрывашку,
+        и заготовку по шаблону система заполняет сама.
+        """
+        create = self.js[self.js.index("function openNewCaseDialog"):]
+        create = create[:create.index("\n    function ", 10)]
+
+        self.assertIn("facts-advanced", create,
+                      "поле факт-пакета снова стоит на виду")
+        self.assertIn("h('details'", create)
+        # Раскрывашка закрыта по умолчанию: открытого details в окне нет.
+        self.assertNotIn("open: true", create)
+        # Ошибку в спрятанном поле человек должен увидеть.
+        self.assertIn("box.open = true", create)
+        # Обязательное — про письмо, а не про схему пакета.
+        self.assertIn("Обязательны входящий номер и тема письма", create)
 
     def test_nothing_on_the_screen_is_fetched_from_outside(self):
         """Изолированная машина: ни одного обращения наружу.

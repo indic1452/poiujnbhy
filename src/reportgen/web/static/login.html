@@ -7,15 +7,15 @@
     <meta name="color-scheme" content="light dark">
     <meta name="referrer" content="same-origin">
     <title>Вход — 2 специальный отдел</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20rx%3D%2718%27%20fill%3D%27%2315507e%27%2F%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23ffffff%27%20stroke-linecap%3D%27round%27%3E%3Ccircle%20cx%3D%2750%27%20cy%3D%2750%27%20r%3D%2733%27%20stroke-width%3D%275%27%20opacity%3D%27.85%27%2F%3E%3Ccircle%20cx%3D%2750%27%20cy%3D%2750%27%20r%3D%2717%27%20stroke-width%3D%274%27%20opacity%3D%27.5%27%2F%3E%3Cpath%20d%3D%27M50%2012v11M50%2077v11M12%2050h11M77%2050h11%27%20stroke-width%3D%275%27%20opacity%3D%27.8%27%2F%3E%3Cpath%20d%3D%27M50%2050%2074%2030%27%20stroke-width%3D%276%27%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2750%27%20cy%3D%2750%27%20r%3D%274.5%27%20fill%3D%27%23ffffff%27%2F%3E%3C%2Fsvg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Cpath%20d%3D%27M14%206H86V46C86%2070%2070%2087%2050%2096%2030%2087%2014%2070%2014%2046Z%27%20fill%3D%27%230a0d11%27%20stroke%3D%27%23d8b25a%27%20stroke-width%3D%278%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cpath%20d%3D%27M50%2016%2055%2033%2068%2022%2065%2039%2082%2036%2071%2049%2082%2062%2065%2059%2068%2076%2055%2065%2050%2082%2045%2065%2032%2076%2035%2059%2018%2062%2029%2049%2018%2036%2035%2039%2032%2022%2045%2033Z%27%20fill%3D%27%239d151f%27%2F%3E%3Ccircle%20cx%3D%2750%27%20cy%3D%2749%27%20r%3D%2719%27%20fill%3D%27%231663b4%27%2F%3E%3Cpath%20d%3D%27M31%2049H69%27%20stroke%3D%27%23eef3f8%27%20stroke-width%3D%273%27%20fill%3D%27none%27%2F%3E%3Cellipse%20cx%3D%2750%27%20cy%3D%2749%27%20rx%3D%278%27%20ry%3D%2719%27%20stroke%3D%27%23eef3f8%27%20stroke-width%3D%273%27%20fill%3D%27none%27%2F%3E%3Ccircle%20cx%3D%2750%27%20cy%3D%2749%27%20r%3D%2719%27%20stroke%3D%27%23eef3f8%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%2F%3E%3Cpath%20d%3D%27M34%2045H58V38L75%2049%2058%2060V53H34Z%27%20fill%3D%27%23c8202c%27%2F%3E%3C%2Fsvg%3E">
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 
 <body class="login-page">
-    <!-- Фон: Земля с орбиты. Кадр собран трассировкой по настоящему снимку
-         NASA Blue Marble (общественное достояние) сценарием
-         tools/make_login_bg.py и лежит рядом файлом — изолированная машина
-         ничего не скачивает.
+    <!-- Фон: ночная Земля с орбиты. Кадр собран трассировкой по настоящим
+         снимкам NASA — «Black Marble» (огни городов) и «Blue Marble»
+         (рельеф), общественное достояние — сценарием tools/make_login_bg.py
+         и лежит рядом файлом: изолированная машина ничего не скачивает.
 
          Своя фотография всегда важнее: положите файл login-bg.jpg рядом
          с settings.json, и окно входа возьмёт его. -->
@@ -29,25 +29,27 @@
                  Вращение делает один CSS, скрипт для него не нужен. -->
             <span class="emblem emblem--card" aria-label="Эмблема 2 специального отдела">
                 <svg class="emblem-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-                    <!-- Неподвижное: обойма, дальномерное кольцо и шкала.
-                         Делений восемь, а не тридцать два: на 34 px деление в треть
-                         пикселя — не шкала, а накатка. Рисунок перечерчен под рабочий
-                         размер, а не уменьшен с крупного. -->
-                    <g class="emblem-still" fill="none" stroke="currentColor" stroke-linecap="butt">
-                        <circle class="emblem-bezel" cx="50" cy="50" r="43" />
-                        <circle class="emblem-ring" cx="50" cy="50" r="23" />
-                        <path class="emblem-tick" d="M93 50L85 50M50 93L50 85M7 50L15 50" />
-                        <path class="emblem-tick emblem-tick--half"
-                              d="M80.41 19.59L76.52 23.48M80.41 80.41L76.52 76.52M19.59 80.41L23.48 76.52M19.59 19.59L23.48 23.48" />
-                    </g>
-                    <!-- Подвижное: развёртка. Вращается только она. -->
-                    <g class="emblem-sweep" fill="none">
-                        <path class="emblem-beam" d="M50 50L50 11" />
-                    </g>
-                    <!-- Поверх развёртки: нуль шкалы и ось станции. Нуль неподвижен —
-                         отсчёт читается по нему, а не по бегущему лучу. -->
-                    <path class="emblem-index" d="M50 7L50 16" fill="none" stroke-linecap="butt" />
-                    <circle class="emblem-hub" cx="50" cy="50" r="3.4" />
+                    <!-- Щит: золотая кайма по чёрному полю. -->
+                    <path class="em-frame"
+                          d="M16 5H84A4 4 0 0 1 88 9V46C88 71 72 88 50 97 28 88 12 71 12 46V9A4 4 0 0 1 16 5Z" />
+                    <path class="em-frame-in em-fine"
+                          d="M19 11H81V46C81 67 67 82 50 90 33 82 19 67 19 46Z" />
+                    <!-- Звезда: шестнадцать лучей, длинные через один. -->
+                    <path class="em-star" d="M50 14 54.19 24.91 62.25 16.44 61.94 28.12 72.63 23.37 67.88 34.06 79.56 33.75 71.09 41.81 82 46 71.09 50.19 79.56 58.25 67.88 57.94 72.63 68.63 61.94 63.88 62.25 75.56 54.19 67.09 50 78 45.81 67.09 37.75 75.56 38.06 63.88 27.37 68.63 32.12 57.94 20.44 58.25 28.91 50.19 18 46 28.91 41.81 20.44 33.75 32.12 34.06 27.37 23.37 38.06 28.12 37.75 16.44 45.81 24.91Z" />
+                    <path class="em-star-edge em-fine" d="M50 14 54.19 24.91 62.25 16.44 61.94 28.12 72.63 23.37 67.88 34.06 79.56 33.75 71.09 41.81 82 46 71.09 50.19 79.56 58.25 67.88 57.94 72.63 68.63 61.94 63.88 62.25 75.56 54.19 67.09 50 78 45.81 67.09 37.75 75.56 38.06 63.88 27.37 68.63 32.12 57.94 20.44 58.25 28.91 50.19 18 46 28.91 41.81 20.44 33.75 32.12 34.06 27.37 23.37 38.06 28.12 37.75 16.44 45.81 24.91Z" />
+                    <!-- Глобус. Экватор неподвижен, меридианы сжимаются по косинусу
+                         долготы — так шар вращается, а не кувыркается рамка. -->
+                    <circle class="em-globe" cx="50" cy="46" r="19" />
+                    <path class="em-grid" d="M31 46H69" />
+                    <g class="em-merid"><ellipse class="em-grid" cx="50" cy="46" rx="19" ry="19" /></g>
+                    <g class="em-merid em-merid--c"><ellipse class="em-grid" cx="50" cy="46" rx="19" ry="19" /></g>
+                    <g class="em-merid em-merid--b em-fine"><ellipse class="em-grid" cx="50" cy="46" rx="19" ry="19" /></g>
+                    <g class="em-merid em-merid--d em-fine"><ellipse class="em-grid" cx="50" cy="46" rx="19" ry="19" /></g>
+                    <circle class="em-globe-rim" cx="50" cy="46" r="19" />
+                    <!-- Стрела связи поверх глобуса. -->
+                    <path class="em-arrow-back em-fine" d="M26 32 49 46 26 60 33.5 46Z" />
+                    <path class="em-arrow" d="M34 42H58V34.5L75 46 58 57.5V50H34Z" />
+                    <path class="em-arrow-edge em-fine" d="M34 42H58V34.5L75 46 58 57.5V50H34Z" />
                 </svg>
             </span>
             <span>2 специальный отдел</span>

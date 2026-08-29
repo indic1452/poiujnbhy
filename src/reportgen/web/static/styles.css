@@ -1356,6 +1356,30 @@ input.is-bad {
     color: var(--muted);
 }
 
+/* Исходные данные письма под раскрывашкой. При регистрации письма JSON не
+   нужен: письмо только спустили, числа появятся, когда инженер сядет за
+   отчёт. Поле остаётся на месте для тех, у кого пакет уже собран приборным
+   разбором, но глаза оно больше никому не мозолит. */
+.facts-advanced {
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+}
+
+.facts-advanced > summary {
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--muted);
+    list-style-position: outside;
+}
+
+.facts-advanced > summary:hover {
+    color: var(--text);
+}
+
+.facts-advanced .json-editor {
+    min-height: 260px;
+}
+
 .json-editor {
     width: 100%;
     min-height: 420px;
@@ -2799,17 +2823,22 @@ table.md-table th {
 
 /* ---------------------------------------------------- эмблема отдела --- */
 
-/* Знак 2 специального отдела в правом углу шапки: круговая шкала пеленга с
-   идущей по ней развёрткой. Не украшение ради украшения — это то, чем отдел
-   занят: ищет источники помех. Рисунок один и тот же на 34 и на 160 px,
-   толщины линий заданы переменными, поэтому волосяная линейка остаётся
-   волосяной на любом размере.
+/* Знак 2 специального отдела: щит в золотой кайме, красная зубчатая звезда,
+   синий глобус с меридианами и стрела связи. Рисунок ведомственный, поэтому
+   цвета у него свои и от темы интерфейса не зависят — герб не перекрашивают
+   под светлый режим.
 
-   Ни одного обращения наружу, ни библиотек, ни фильтров и размытий: вертится
-   один transform на группе из шести путей, остальное — переходы прозрачности.
-   На рабочей станции отдела это ничего не стоит.
+   Глобус вращается по-настоящему. Меридиан на шаре — это окружность, которая
+   в проекции сжимается по горизонтали как косинус долготы; поэтому крутится
+   не рисунок целиком, а каждый меридиан меняет свою полуось. Четыре
+   меридиана со сдвигом фазы на восьмую оборота дают вращение шара, а не
+   кувыркание рамки, и стоит это один transform на группу.
 
-   Взято из разбора четырёх замыслов эмблемы; здесь только перенос. */
+   Мелкие детали — серебряная обводка звезды и стрелы, внутренняя золотая
+   линия, два добавочных меридиана — живут только на крупных экземплярах.
+   На 34 px линия в треть пикселя не «тонкая», а грязная: проверено растром.
+
+   Ни одного обращения наружу, ни библиотек, ни фильтров и размытий. */
 
 .emblem {
     /* Габарит. 34 px в строке 52 px: между эмблемой и линейками шапки
@@ -2822,31 +2851,30 @@ table.md-table th {
     padding: 0;
     border: 0;
     background: none;
-    border-radius: 50%;
     cursor: pointer;
-    color: var(--muted);
     -webkit-tap-highlight-color: transparent;
 
-    /* Толщины даны в единицах viewBox (100), при 34 px делитель ≈ 2.94.
-       Считаны так, чтобы на рабочем размере каждая линия дала не меньше
-       пикселя: 3.6 → 1.22 px, 4.5 → 1.53 px, 5 → 1.70 px. Линия тоньше
-       пикселя не «волосяная», а невидимая — это проверено растром. */
-    --emblem-bezel: 3.6;
-    --emblem-ring: 3;
-    --emblem-tick: 4.5;
-    --emblem-half: 3.2;
-    --emblem-beam: 5;
-    --emblem-index: 5.5;
+    /* Геральдика знака. Отдельными переменными — чтобы наведение меняло
+       один цвет, а не переписывало правила. */
+    --em-gold: #d8b25a;
+    --em-gold-hi: #f0cf7f;
+    --em-gold-dk: #8d6a22;
+    --em-field: #0a0d11;
+    --em-red: #9d151f;
+    --em-red-hi: #c8202c;
+    --em-steel: #eef3f8;
+    --em-blue: #1663b4;
 
-    /* Оборот развёртки. Медленно: эмблема не должна тянуть взгляд от
-       таблиц. Наведение ускоряет её через playbackRate (см. app.js), а не
-       сменой этой длительности — смена дала бы скачок луча. */
+    /* Оборот глобуса. Медленно: эмблема не должна тянуть взгляд от таблиц.
+       Наведение ускоряет её через playbackRate (см. app.js), а не сменой
+       этой длительности — смена дала бы скачок. */
     --emblem-turn: 14s;
 }
 
 .emblem:focus-visible {
     outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline-offset: 3px;
+    border-radius: 3px;
 }
 
 .emblem-svg {
@@ -2855,131 +2883,177 @@ table.md-table th {
     height: 100%;
 }
 
-/* --- неподвижная часть ------------------------------------------------- */
+/* --- щит --------------------------------------------------------------- */
 
-.emblem-bezel {
-    stroke-width: var(--emblem-bezel);
-    opacity: .8;
+.em-frame {
+    fill: var(--em-field);
+    stroke: var(--em-gold);
+    stroke-width: 6;
+    stroke-linejoin: round;
+    transition: stroke .18s linear;
 }
 
-.emblem-ring {
-    stroke-width: var(--emblem-ring);
-    opacity: .45;
+.em-frame-in {
+    fill: none;
+    stroke: var(--em-gold-dk);
+    stroke-width: 1.2;
+    stroke-linejoin: round;
 }
 
-.emblem-tick {
-    stroke-width: var(--emblem-tick);
-    opacity: .9;
+/* --- звезда ------------------------------------------------------------ */
+
+.em-star {
+    fill: var(--em-red);
+    transition: fill .18s linear;
 }
 
-.emblem-tick--half {
-    stroke-width: var(--emblem-half);
-    opacity: .55;
+.em-star-edge {
+    fill: none;
+    stroke: var(--em-steel);
+    stroke-width: 1.6;
+    stroke-linejoin: round;
 }
 
-/* --- подвижная часть: только развёртка --------------------------------- */
+/* --- глобус ------------------------------------------------------------ */
 
-.emblem-sweep {
+.em-globe {
+    fill: var(--em-blue);
+}
+
+.em-globe-rim {
+    fill: none;
+    stroke: var(--em-steel);
+    stroke-width: 2.4;
+}
+
+/* Толщина сетки не должна ехать вместе со сжатием меридиана: без
+   non-scaling-stroke линия у края шара раздувалась бы, а у центра исчезала. */
+.em-grid {
+    fill: none;
+    stroke: var(--em-steel);
+    stroke-width: 1.5;
+    opacity: .85;
+    vector-effect: non-scaling-stroke;
+}
+
+.em-merid {
     transform-box: view-box;
-    transform-origin: 50px 50px;
+    transform-origin: 50px 46px;
     animation: emblem-turn var(--emblem-turn) linear infinite;
     will-change: transform;
 }
 
+.em-merid--b {
+    animation-delay: calc(var(--emblem-turn) / -8);
+}
+
+.em-merid--c {
+    animation-delay: calc(var(--emblem-turn) / -4);
+}
+
+.em-merid--d {
+    animation-delay: calc(var(--emblem-turn) * -0.375);
+}
+
+/* Полуось меридиана идёт как косинус долготы. Восьми опорных точек хватает:
+   между ними отклонение от косинуса меньше сотой доли радиуса шара. Ноль
+   заменён на тысячную — при точном нуле группа схлопывается и браузер
+   перестаёт рисовать штрих вовсе. */
 @keyframes emblem-turn {
-    to {
-        transform: rotate(360deg);
-    }
+    0% { transform: scaleX(1); }
+    12.5% { transform: scaleX(.707); }
+    25% { transform: scaleX(.001); }
+    37.5% { transform: scaleX(-.707); }
+    50% { transform: scaleX(-1); }
+    62.5% { transform: scaleX(-.707); }
+    75% { transform: scaleX(-.001); }
+    87.5% { transform: scaleX(.707); }
+    100% { transform: scaleX(1); }
 }
 
-.emblem-beam {
-    stroke: var(--accent);
-    stroke-width: var(--emblem-beam);
-    stroke-linecap: butt;
+/* --- стрела связи ------------------------------------------------------ */
+
+.em-arrow {
+    fill: var(--em-red-hi);
 }
 
-/* Нуль шкалы: неподвижная отметка, под которой идёт развёртка. Без неё
-   вращение читается как «картинка крутится», а не как снимаемый отсчёт. */
-.emblem-index {
-    stroke: var(--accent);
-    stroke-width: var(--emblem-index);
+.em-arrow-back {
+    fill: var(--em-steel);
 }
 
-.emblem-hub {
-    fill: var(--accent);
+.em-arrow-edge {
+    fill: none;
+    stroke: var(--em-steel);
+    stroke-width: 1.4;
+    stroke-linejoin: round;
 }
 
-.emblem-still,
-.emblem-beam,
-.emblem-index,
-.emblem-hub {
-    transition: opacity .18s linear, stroke .18s linear, fill .18s linear;
+/* --- мелочь только на крупных экземплярах ------------------------------ */
+
+.em-fine {
+    display: none;
 }
 
-/* --- наведение: прибор «поднимает усиление» ---------------------------- */
-
-.emblem:hover {
-    color: var(--text);
+.emblem--card .em-fine {
+    display: inline;
 }
 
-.emblem:hover .emblem-ring,
-.emblem:hover .emblem-tick--half {
-    opacity: .8;
+/* --- наведение: знак «загорается» -------------------------------------- */
+
+.emblem:hover .em-frame {
+    stroke: var(--em-gold-hi);
 }
 
-.emblem:hover .emblem-bezel,
-.emblem:hover .emblem-tick {
-    opacity: 1;
+.emblem:hover .em-star {
+    fill: var(--em-red-hi);
 }
 
-/* --- нажатие: пеленг взят ---------------------------------------------- */
+/* --- нажатие: глобус встаёт -------------------------------------------- */
 
-/* Отклик — состояние, а не движение: развёртка встаёт, луч и ось уходят в
-   цвет готовности. Приседания кнопки здесь нет намеренно: в проекте нет ни
-   одного другого элемента, который меняет габарит при нажатии, и при
-   выключенных переходах такое приседание стало бы рывком — ровно тем, от
-   чего человек и просил покоя. */
-.emblem:active .emblem-sweep,
-.emblem.emblem--held .emblem-sweep {
+/* Отклик — состояние, а не движение. Приседания кнопки здесь нет намеренно:
+   в проекте нет ни одного другого элемента, который меняет габарит при
+   нажатии, и при выключенных переходах такое приседание стало бы рывком —
+   ровно тем, от чего человек и просил покоя. */
+.emblem:active .em-merid,
+.emblem.emblem--held .em-merid {
     animation-play-state: paused;
-}
-
-.emblem:active .emblem-beam,
-.emblem:active .emblem-index,
-.emblem.emblem--held .emblem-beam,
-.emblem.emblem--held .emblem-index {
-    stroke: var(--ok);
-}
-
-.emblem:active .emblem-hub,
-.emblem.emblem--held .emblem-hub {
-    fill: var(--ok);
 }
 
 /* --- покой по требованию системы --------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-    .emblem-sweep {
+
+    .em-merid {
         animation: none;
-        transform: rotate(58deg);
+    }
+
+    /* Без движения шар должен остаться шаром. Меридианы разводим по разным
+       долготам вручную: иначе все четыре встанут в полный круг и лягут на
+       обод — вместо сетки получится жирная окружность. Первые два видны и
+       на 34 px, поэтому именно они дают развёрнутый меридиан и ребро. */
+    .em-merid {
+        transform: scaleX(.62);
+    }
+
+    .em-merid--c {
+        transform: scaleX(.14);
+    }
+
+    .em-merid--b {
+        transform: scaleX(.93);
+    }
+
+    .em-merid--d {
+        transform: scaleX(-.38);
     }
 }
 
 /* Крупный экземпляр на карточке входа. Толщины линий заданы в единицах
-   viewBox, поэтому при увеличении их надо соразмерно уменьшить — иначе
-   волосяная линейка превратится в жирную обводку. */
+   viewBox и потому масштабируются вместе с рисунком сами. */
 .emblem--card {
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
     cursor: default;
-    /* Тот же рисунок, толщины поделены на 56/34: линия остаётся такой же
-       по виду, а не разрастается в верёвку. */
-    --emblem-bezel: 2.2;
-    --emblem-ring: 1.8;
-    --emblem-tick: 2.7;
-    --emblem-half: 1.9;
-    --emblem-beam: 3;
-    --emblem-index: 3.3;
 }
 
 /* ------------------------------------------------------ личный кабинет --- */
