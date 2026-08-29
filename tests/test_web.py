@@ -2912,7 +2912,7 @@ class InterfaceCopyTests(unittest.TestCase):
             encoding="utf-8")
         self.assertRegex(css, r"\.em-fine\s*\{\s*display:\s*none")
         self.assertRegex(css, r"\.emblem--card \.em-fine\s*\{\s*display:\s*inline")
-        self.assertIn("em-star-edge em-fine", self.html)
+        self.assertIn("em-star-halo em-fine", self.html)
 
     def test_registering_a_letter_does_not_ask_for_json(self):
         """Письмо только спустили — чисел в нём ещё нет.

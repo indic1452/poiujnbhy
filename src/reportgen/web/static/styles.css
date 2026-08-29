@@ -2854,16 +2854,19 @@ table.md-table th {
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 
-    /* Геральдика знака. Отдельными переменными — чтобы наведение меняло
+    /* Геральдика знака. Цвета сняты пипеткой с присланного образца, а не
+       подобраны на глаз. Отдельными переменными — чтобы наведение меняло
        один цвет, а не переписывало правила. */
-    --em-gold: #d8b25a;
-    --em-gold-hi: #f0cf7f;
-    --em-gold-dk: #8d6a22;
-    --em-field: #0a0d11;
-    --em-red: #9d151f;
-    --em-red-hi: #c8202c;
+    --em-gold: #d2a63f;
+    --em-gold-hi: #f6e6b6;
+    --em-gold-dk: #80521e;
+    --em-field: #0d0f11;
+    --em-edge: #07090b;
+    --em-red: #7e0c14;
+    --em-red-hi: #c01019;
     --em-steel: #eef3f8;
-    --em-blue: #1663b4;
+    --em-blue: #125fb6;
+    --em-glass: #8fc9ef;
 
     /* Оборот глобуса. Медленно: эмблема не должна тянуть взгляд от таблиц.
        Наведение ускоряет её через playbackRate (см. app.js), а не сменой
@@ -2885,10 +2888,20 @@ table.md-table th {
 
 /* --- щит --------------------------------------------------------------- */
 
-.em-frame {
+/* Золотая полоса зажата между чёрной кромкой снаружи и чёрным полем внутри.
+   Обе линии даёт один и тот же контур: широкий чёрный штрих, поверх него
+   узкий золотой по той же осевой. Второго пути под кайму не нужно. */
+.em-frame-out {
     fill: var(--em-field);
+    stroke: var(--em-edge);
+    stroke-width: 8;
+    stroke-linejoin: round;
+}
+
+.em-frame {
+    fill: none;
     stroke: var(--em-gold);
-    stroke-width: 6;
+    stroke-width: 3.8;
     stroke-linejoin: round;
     transition: stroke .18s linear;
 }
@@ -2902,16 +2915,19 @@ table.md-table th {
 
 /* --- звезда ------------------------------------------------------------ */
 
+/* Серебряная кайма лежит ПОД красным и выходит наружу штрихом. Обводка
+   поверх заливки съедала бы зубцы изнутри, и звезда читалась бы белой —
+   на образце она красная с серебряным кантом. */
+.em-star-halo {
+    fill: var(--em-steel);
+    stroke: var(--em-steel);
+    stroke-width: 3;
+    stroke-linejoin: round;
+}
+
 .em-star {
     fill: var(--em-red);
     transition: fill .18s linear;
-}
-
-.em-star-edge {
-    fill: none;
-    stroke: var(--em-steel);
-    stroke-width: 1.6;
-    stroke-linejoin: round;
 }
 
 /* --- глобус ------------------------------------------------------------ */
@@ -2923,7 +2939,7 @@ table.md-table th {
 .em-globe-rim {
     fill: none;
     stroke: var(--em-steel);
-    stroke-width: 2.4;
+    stroke-width: 2;
 }
 
 /* Толщина сетки не должна ехать вместе со сжатием меридиана: без
@@ -2931,9 +2947,14 @@ table.md-table th {
 .em-grid {
     fill: none;
     stroke: var(--em-steel);
-    stroke-width: 1.5;
-    opacity: .85;
+    stroke-width: 1.3;
+    opacity: .78;
     vector-effect: non-scaling-stroke;
+}
+
+.em-gloss {
+    fill: #ffffff;
+    opacity: .12;
 }
 
 .em-merid {
@@ -2973,18 +2994,37 @@ table.md-table th {
 
 /* --- стрела связи ------------------------------------------------------ */
 
-.em-arrow {
-    fill: var(--em-red-hi);
+.em-bolt {
+    fill: none;
+    stroke: var(--em-steel);
+    stroke-width: 2.4;
+    stroke-linejoin: round;
+    stroke-linecap: round;
 }
 
-.em-arrow-back {
-    fill: var(--em-steel);
+.em-arrow {
+    fill: var(--em-red-hi);
 }
 
 .em-arrow-edge {
     fill: none;
     stroke: var(--em-steel);
     stroke-width: 1.4;
+    stroke-linejoin: round;
+}
+
+.em-rose {
+    fill: var(--em-glass);
+}
+
+.em-rose-star {
+    fill: var(--em-steel);
+}
+
+.em-rose-edge {
+    fill: none;
+    stroke: var(--em-steel);
+    stroke-width: 1.5;
     stroke-linejoin: round;
 }
 
