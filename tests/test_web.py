@@ -89,6 +89,12 @@ class WebTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()["report"]
 
+    def submit(self, report_id: int):
+        """Сдать отчёт на проверку. Проверяют только то, что сдали."""
+        response = self.client.post(f"/api/reports/{report_id}/submit", json={})
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()["report"]
+
 
 class ServiceUnitTests(unittest.TestCase):
     def test_stored_registry_assigns_and_reuses_labels(self):
@@ -515,6 +521,78 @@ class ReviewFlowTests(WebTestCase):
                         json={"text": "Правка уже после сдачи."})
         self.assertEqual("draft", self.repos.reports.get(self.report["id"]).status)
 
+    def test_regenerating_a_section_also_removes_the_signature(self):
+        """Перегенерация — такая же правка текста, как правка руками.
+
+        Подпись снималась при правке и откате раздела, а перегенерацию
+        пропустили: начальник оставался утвердившим текст, которого не
+        видел, и это уходило в шапку выгружаемого документа.
+        """
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/approve")
+        self.assertEqual("approved", self.repos.reports.get(self.report["id"]).status)
+
+        self.login("engineer")
+        section_id = self.report["sections"][0]["section_id"]
+        response = self.client.post(
+            f"/api/reports/{self.report['id']}/sections/{section_id}/regenerate", json={})
+        self.assertEqual(200, response.status_code, response.text)
+        after = self.repos.reports.get(self.report["id"])
+        self.assertEqual("draft", after.status)
+        self.assertIsNone(after.approved_by, "проверяющий остался под чужим текстом")
+        self.assertNotIn("УТВЕРЖДЁН", self.client.get(
+            f"/api/reports/{self.report['id']}/export.md").text)
+
+    def test_regenerating_a_section_on_review_returns_it_to_the_author(self):
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        section_id = self.report["sections"][0]["section_id"]
+        self.client.post(
+            f"/api/reports/{self.report['id']}/sections/{section_id}/regenerate", json={})
+        self.assertEqual("draft", self.repos.reports.get(self.report["id"]).status)
+
+    def test_letter_comes_back_together_with_the_report(self):
+        """Письмо не должно числиться отправленным, когда отчёт — черновик.
+
+        Подпись снималась только с отчёта: в списке писем стояло
+        «отправлено», а в карточке лежал черновик.
+        """
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/approve")
+        self.assertEqual("approved", self.repos.cases.get(self.case["id"]).status)
+
+        self.login("engineer")
+        section_id = self.report["sections"][0]["section_id"]
+        self.client.put(f"/api/reports/{self.report['id']}/sections/{section_id}",
+                        json={"text": "Правка после проверки."})
+        self.assertEqual("draft", self.repos.reports.get(self.report["id"]).status)
+        self.assertEqual("draft", self.repos.cases.get(self.case["id"]).status,
+                         "письмо осталось отправленным при черновике отчёта")
+
+    def test_only_a_handed_in_report_can_be_marked_checked(self):
+        """Проверяют то, что сдали.
+
+        Отчёт, лежащий в работе у исполнителя, начальник отмечать
+        проверенным не должен: исполнитель ещё не сказал, что закончил.
+        """
+        self.clean_sections()
+        self.login("nachalnik")
+        early = self.client.post(f"/api/reports/{self.report['id']}/approve")
+        self.assertEqual(409, early.status_code)
+        self.assertIn("не отправлен на проверку", early.json()["error"])
+
+        # И возвращённый на исправление — тоже: сначала пусть сдаст заново.
+        self.login("engineer")
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/rework", json={"note": "поправьте"})
+        again = self.client.post(f"/api/reports/{self.report['id']}/approve")
+        self.assertEqual(409, again.status_code)
+
     def test_signature_is_wiped_and_not_left_from_the_previous_text(self):
         # Подтверждено сплошным разбором: при снятии подписи оставались
         # прежние «кто и когда проверил».
@@ -609,11 +687,83 @@ class UploadedReportTests(WebTestCase):
         self.assertEqual(200, back.status_code, back.text)
         self.assertEqual("нет подписи исполнителя", back.json()["report"]["review_note"])
 
+    def test_details_typed_for_an_existing_letter_are_applied(self):
+        """Введённые реквизиты не должны пропадать.
+
+        У заведённого письма из формы брался только исполнитель, а тема,
+        номер группы, даты и важность выбрасывались молча.
+        """
+        self.upload(group_no="1274", title="Первая тема")
+        again = self.upload(name="Отчёт-2.md", group_no="2-я группа связи",
+                            title="Уточнённая тема", deadline="2026-09-30",
+                            priority="urgent").json()
+        case = again["case"]
+        self.assertEqual("2-я группа связи", case["group_no"])
+        self.assertEqual("Уточнённая тема", case["title"])
+        self.assertEqual("2026-09-30", case["deadline"])
+        self.assertEqual("urgent", case["priority"])
+
+    def test_empty_fields_do_not_wipe_what_the_letter_already_has(self):
+        first = self.upload(group_no="1274", title="Первая тема").json()["case"]
+        again = self.upload(name="Отчёт-2.md", group_no="", title="").json()["case"]
+        self.assertEqual(first["group_no"], again["group_no"])
+        self.assertEqual(first["title"], again["title"])
+
+    def test_handing_in_a_report_does_not_steal_someone_elses_letter(self):
+        """Сдача отчёта по чужому письму не переводит письмо на себя."""
+        engineer = self.repos.users.by_login("engineer")
+        self.upload(assignee_id=str(engineer.id))
+        self.login("nachalnik")
+        body = self.upload(name="Отчёт-2.md").json()
+        self.assertEqual(engineer.id, body["case"]["assignee_id"],
+                         "письмо молча переписано на сдавшего")
+        self.assertIn("исполнитель письма не изменён", body["note"])
+
+    def test_letter_without_an_executor_gets_the_one_who_handed_it_in(self):
+        self.login("engineer")
+        engineer = self.repos.users.by_login("engineer")
+        case = self.upload().json()["case"]
+        self.assertEqual(engineer.id, case["assignee_id"])
+
     def test_second_report_on_the_same_letter_is_a_new_version(self):
         first = self.upload().json()["report"]
         second = self.upload(name="Отчёт исправленный.md").json()["report"]
         self.assertEqual(first["version"] + 1, second["version"])
         self.assertEqual(first["case_ref"], second["case_ref"])
+
+    def test_two_letters_with_similar_numbers_do_not_share_files(self):
+        """«ВХ-2026/0423» и «ВХ-2026-0423» — разные письма.
+
+        После чистки имени они совпадают, и отчёты по ним ложились в один
+        каталог с одинаковым именем: второй затирал первый насмерть.
+        """
+        first = self.upload(name="Отчёт.md", body=b"pervyi otchet",
+                            case_id="BX-2026/0423", incoming_no="BX-2026/0423").json()
+        second = self.upload(name="Отчёт.md", body=b"vtoroi otchet",
+                             case_id="BX-2026-0423", incoming_no="BX-2026-0423").json()
+        self.assertNotEqual(first["case"]["id"], second["case"]["id"])
+        self.assertEqual(b"pervyi otchet",
+                         self.client.get(f"/api/reports/{first['report']['id']}/file").content)
+        self.assertEqual(b"vtoroi otchet",
+                         self.client.get(f"/api/reports/{second['report']['id']}/file").content)
+
+    def test_versions_of_one_letter_keep_their_own_files(self):
+        first = self.upload(name="Отчёт.md", body=b"versiya odin").json()["report"]
+        second = self.upload(name="Отчёт.md", body=b"versiya dva").json()["report"]
+        self.assertEqual(b"versiya odin",
+                         self.client.get(f"/api/reports/{first['id']}/file").content)
+        self.assertEqual(b"versiya dva",
+                         self.client.get(f"/api/reports/{second['id']}/file").content)
+
+    def test_refused_upload_leaves_no_rubbish_on_disk(self):
+        from pathlib import Path as _P
+
+        self.upload(name="Отчёт.md", body=b"normalnyi").json()
+        before = sorted(x.name for x in _P(self.tmp / "data" / "reports").rglob("*") if x.is_file())
+        self.upload(name="дамп.pcap", body=b"\xd4\xc3\xb2\xa1")
+        self.upload(body=b"")
+        after = sorted(x.name for x in _P(self.tmp / "data" / "reports").rglob("*") if x.is_file())
+        self.assertEqual(before, after, "отказанная сдача оставила файл на диске")
 
     def test_unreadable_format_is_refused_with_a_plain_answer(self):
         response = self.upload(name="дамп.pcap", body=b"\xd4\xc3\xb2\xa1")
@@ -752,7 +902,7 @@ class ReportFlowTests(WebTestCase):
 
         response = self.client.post(f"/api/reports/{self.report['id']}/approve")
         self.assertEqual(409, response.status_code)
-        self.assertIn("не может быть проверен", response.json()["error"])
+        self.assertIn("не отправлен на проверку", response.json()["error"])
 
     def test_approve_collects_edit_pairs(self):
         section_id = self.report["sections"][5]["section_id"]
@@ -760,6 +910,7 @@ class ReportFlowTests(WebTestCase):
             f"/api/reports/{self.report['id']}/sections/{section_id}",
             json={"text": "Выводы инженера: EVM 12.4 % при ОСШ 13.7 дБ."},
         )
+        self.submit(self.report["id"])
         response = self.client.post(f"/api/reports/{self.report['id']}/approve")
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["report"]["status"], "approved")
@@ -780,6 +931,7 @@ class ReportFlowTests(WebTestCase):
         report_id = self.report["id"]
         self.assertIn("ЧЕРНОВИК", self.client.get(
             f"/api/reports/{report_id}/export.md").text)
+        self.submit(report_id)
         self.client.post(f"/api/reports/{report_id}/approve")
         text = self.client.get(f"/api/reports/{report_id}/export.md").text
         self.assertNotIn("ЧЕРНОВИК", text)
@@ -794,6 +946,7 @@ class ReportFlowTests(WebTestCase):
         Текст отчёта — величина производная, он пересобирается из секций.
         """
         report_id = self.report["id"]
+        self.submit(report_id)
         self.client.post(f"/api/reports/{report_id}/approve")
         # Возвращаем в базу шапку, какой она была до исправления.
         stale = self.repos.reports.get(report_id).markdown.replace(
@@ -842,17 +995,20 @@ class ReportFlowTests(WebTestCase):
         section_id = self.report["sections"][5]["section_id"]
         self.client.put(f"/api/reports/{report_id}/sections/{section_id}",
                         json={"text": "Первый вариант инженера."})
+        self.submit(report_id)
         self.client.post(f"/api/reports/{report_id}/approve")
         self.assertEqual(1, self.repos.edits.count())
 
         self.client.put(f"/api/reports/{report_id}/sections/{section_id}",
                         json={"text": "Окончательный вариант инженера."})
+        self.submit(report_id)
         self.client.post(f"/api/reports/{report_id}/approve")
         pairs = self.repos.edits.list()
         self.assertEqual(1, len(pairs), "пары от прошлого утверждения остались")
         self.assertEqual("Окончательный вариант инженера.", pairs[0].final)
 
     def test_approve_is_idempotent(self):
+        self.submit(self.report["id"])
         first = self.client.post(f"/api/reports/{self.report['id']}/approve")
         self.assertEqual(first.status_code, 200, first.text)
         second = self.client.post(f"/api/reports/{self.report['id']}/approve")
@@ -880,6 +1036,7 @@ class ReportFlowTests(WebTestCase):
         отличить подписанный документ от подправленного после подписи было
         нельзя ничем.
         """
+        self.submit(self.report["id"])
         self.client.post(f"/api/reports/{self.report['id']}/approve")
         section_id = self.report["sections"][0]["section_id"]
         response = self.client.put(
@@ -897,6 +1054,7 @@ class ReportFlowTests(WebTestCase):
         section_id = self.report["sections"][0]["section_id"]
         self.client.put(f"/api/reports/{self.report['id']}/sections/{section_id}",
                         json={"text": "Правка инженера без чисел."})
+        self.submit(self.report["id"])
         self.client.post(f"/api/reports/{self.report['id']}/approve")
         response = self.client.post(
             f"/api/reports/{self.report['id']}/sections/{section_id}/restore")
@@ -906,6 +1064,7 @@ class ReportFlowTests(WebTestCase):
     def test_warning_from_changed_facts_does_not_revoke_approval(self):
         # Замечание-предупреждение подписи не снимает: снимает её ошибка,
         # то есть число в тексте мимо факт-пакета.
+        self.submit(self.report["id"])
         self.client.post(f"/api/reports/{self.report['id']}/approve")
         case = self.client.get(f"/api/cases/{self.case['id']}").json()["case"]
         facts = dict(case["facts"])
@@ -1370,6 +1529,7 @@ class BoardTests(WebTestCase):
         """
         case = self.create_case()
         report = self.generate(case["id"])
+        self.submit(report["id"])
         self.client.post(f"/api/reports/{report['id']}/approve")
         # Утверждаем «в прошлом году» — переносим отметку подписи назад.
         self.repos.db.execute(

@@ -924,6 +924,12 @@ class ReportRepo:
         assert report is not None
         return report
 
+    def set_file_path(self, report_id: int, path: str) -> None:
+        """Постоянное имя файла: известно только после присвоения версии."""
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE reports SET file_path = ? WHERE id = ?", (path, report_id))
+
     def file_path(self, report_id: int) -> str:
         """Где лежит загруженный файл. Для собранных системой — пусто."""
         row = self.db.query_one("SELECT file_path FROM reports WHERE id = ?", (report_id,))

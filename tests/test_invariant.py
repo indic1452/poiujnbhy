@@ -73,6 +73,15 @@ class AttackTestCase(unittest.TestCase):
         return response.json()["report"]
 
     def approve(self):
+        """Сдать отчёт и отметить проверенным.
+
+        Проверяют только то, что сдали, поэтому сдача входит в шаг: этим
+        тестам важен не порядок сдачи, а инвариант «ни одного числа мимо
+        факт-пакета в проверенном документе».
+        """
+        sent = self.client.post(f"/api/reports/{self.report['id']}/submit")
+        if sent.status_code != 200:
+            return sent
         return self.client.post(f"/api/reports/{self.report['id']}/approve")
 
     def assert_blocked(self, report_payload):

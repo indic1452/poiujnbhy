@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import secrets
+import sqlite3
+import tempfile
 import unicodedata
 import urllib.parse
 from datetime import datetime, timedelta, timezone
@@ -582,40 +585,88 @@ def upload_report(
                       "measurements": {}},
         }
         case = service.create_case(payload, user)
+        taken = ""
     else:
-        repos.cases.update_card(case.id, assignee_id=assignee.id)
+        # Письмо уже заведено — сдаём по нему ещё одну версию отчёта.
+        # Реквизиты, которые человек ввёл, применяем: он вводил их не зря.
+        # Пустые поля не трогают того, что в письме уже записано.
+        fields: Dict[str, Any] = {}
+        if title and title != Path(name).stem:
+            fields["title"] = title
+        if str(group_no or "").strip():
+            fields["customer"] = _group_or_empty(group_no)
+        if str(incoming_date or "").strip():
+            fields["incoming_date"] = _date_or_empty(incoming_date, "incoming_date")
+        if str(deadline or "").strip():
+            fields["deadline"] = _date_or_empty(deadline, "deadline")
+        if priority in CASE_PRIORITIES and priority != "normal":
+            fields["priority"] = priority
+        if str(note or "").strip():
+            fields["note"] = str(note).strip()
+        # Исполнителя переписываем, только если его не было. Иначе сдача
+        # отчёта по чужому письму молча переводила бы письмо на себя.
+        taken = ""
+        if case.assignee_id is None:
+            fields["assignee_id"] = assignee.id
+        elif case.assignee_id != assignee.id:
+            taken = (f"исполнитель письма не изменён: он уже назначен "
+                     f"({case.assignee_name or 'другой сотрудник'})")
+        if fields:
+            service.update_card(case, fields, user)
+            repos.audit.log("case.update", user=user, object_type="case",
+                            object_id=case.case_id, details=fields)
+            case = repos.cases.get(case.id) or case
 
+    # Каталог по номеру письма в базе, а не по его учётному номеру: разные
+    # номера после чистки имени совпадают («ВХ-2026/0423» и «ВХ-2026-0423»),
+    # и два письма писали бы отчёты в один каталог.
     settings.ensure_dirs()
-    target_dir = Path(settings.data_dir) / "reports" / _safe_name(case.case_id)
+    target_dir = Path(settings.data_dir) / "reports" / str(case.id)
     target_dir.mkdir(parents=True, exist_ok=True)
-    version = int(repos.db.scalar(
-        "SELECT coalesce(max(version), 0) FROM reports WHERE case_ref = ?", (case.id,)) or 0) + 1
-    target = target_dir / f"v{version}-{name}"
 
+    # Пишем во временный файл: номер версии присваивает база при вставке
+    # строки, и только после неё известно, как файл назвать. Считать номер
+    # заранее нельзя — две одновременные сдачи получили бы один и тот же.
     limit = settings.max_upload_mb * 1024 * 1024
     size = 0
-    with target.open("wb") as stream:
-        while True:
-            piece = file.file.read(1024 * 1024)
-            if not piece:
-                break
-            size += len(piece)
-            if size > limit:
-                stream.close()
-                target.unlink(missing_ok=True)
-                raise ServiceError(
-                    f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
-            stream.write(piece)
-    if not size:
-        target.unlink(missing_ok=True)
-        raise ServiceError("файл пустой", 400)
+    handle, temp_name = tempfile.mkstemp(dir=str(target_dir), prefix="sdacha-")
+    target = Path(temp_name)
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            while True:
+                piece = file.file.read(1024 * 1024)
+                if not piece:
+                    break
+                size += len(piece)
+                if size > limit:
+                    raise ServiceError(
+                        f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
+                stream.write(piece)
+        if not size:
+            raise ServiceError("файл пустой", 400)
 
-    # Текст нужен, чтобы отчёт можно было прочитать и найти, не скачивая.
-    # Не прочитался — не беда: файл на месте, начальник откроет его как есть.
-    text, problem = _extract_attachment(target)
-    report = repos.reports.create_uploaded(
-        case.id, markdown=text.strip(), file_name=name, file_path=str(target),
-        file_size=size, user_id=user.id if user else None)
+        # Текст нужен, чтобы отчёт можно было прочитать и найти, не скачивая.
+        # Не прочитался — не беда: файл на месте, начальник откроет его как есть.
+        text, problem = _extract_attachment(target)
+        try:
+            report = repos.reports.create_uploaded(
+                case.id, markdown=text.strip(), file_name=name, file_path=str(target),
+                file_size=size, user_id=user.id if user else None)
+        except sqlite3.IntegrityError as error:
+            # Две сдачи по одному письму столкнулись на номере версии.
+            raise ServiceError(
+                "по этому письму прямо сейчас сдают отчёт — повторите через "
+                "несколько секунд", 409) from error
+
+        # Теперь номер версии известен — даём файлу постоянное имя.
+        final = target_dir / f"v{report.version}-{name}"
+        target.replace(final)
+        repos.reports.set_file_path(report.id, str(final))
+        target = final
+    except BaseException:
+        if target.exists() and target.name.startswith("sdacha-"):
+            target.unlink(missing_ok=True)
+        raise
     repos.cases.set_status(case.id, "review")
     repos.audit.log("report.upload", user=user, object_type="report",
                     object_id=str(report.id),
@@ -623,7 +674,7 @@ def upload_report(
     return {
         "report": _report_payload(service, report),
         "case": repos.cases.get(case.id).to_dict(),  # type: ignore[union-attr]
-        "note": problem or "",
+        "note": "; ".join(x for x in (problem, taken) if x),
     }
 
 

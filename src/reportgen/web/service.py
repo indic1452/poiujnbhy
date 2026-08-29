@@ -420,6 +420,10 @@ class ReportService:
         meta = dict(report.meta)
         meta["sources"] = registry.to_meta()
         self.repos.reports.update_meta(report.id, meta)
+        # Перегенерация — такая же правка текста, как правка руками: подпись
+        # стоит под тем, что прочитал проверяющий. Здесь этого не было, и
+        # начальник оставался утвердившим текст, которого не видел.
+        self._unsign(report, "section.regenerate", section_id)
         self.rebuild(report.id)
         self.repos.audit.log(
             "report.section.regenerate", user=user, object_type="report",
@@ -617,6 +621,12 @@ class ReportService:
         if report.status not in ("approved", "review"):
             return
         self.repos.reports.set_status(report.id, "draft")
+        # Письмо возвращаем вместе с отчётом. Иначе оно числилось бы
+        # отправленным или лежащим у начальника, а отчёт по нему — черновик:
+        # в списке писем одно, в карточке другое.
+        case = self.repos.cases.get(report.case_ref)
+        if case is not None and case.status in ("approved", "review"):
+            self.repos.cases.set_status(case.id, "draft")
         self.repos.audit.log(
             "report.approval.revoked", object_type="report", object_id=str(report.id),
             details={"reason": reason, "section": section_id, "was": report.status},
@@ -710,6 +720,12 @@ class ReportService:
         """
         if report.status == "approved":
             return report
+        # Проверяют то, что сдали. Отчёт, лежащий в работе у исполнителя,
+        # или возвращённый ему же, начальник отмечать проверенным не должен:
+        # исполнитель ещё не сказал, что закончил.
+        if report.status != "review":
+            raise ServiceError(
+                "отчёт не отправлен на проверку: отметить проверенным нечего", 409)
         if report.source != "uploaded":
             issues = self.verify(report)
             errors = [issue for issue in issues if issue["level"] == "error"]
