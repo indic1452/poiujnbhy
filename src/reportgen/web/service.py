@@ -694,6 +694,8 @@ class ReportService:
         """
         if report.status not in ("approved", "review"):
             return
+        if self._is_sent(report):
+            return
         self.repos.reports.set_status(report.id, "draft")
         # Текст под подписью изменили — пары «черновик модели → финал
         # инженера», собранные при утверждении, описывают уже не тот
@@ -722,6 +724,17 @@ class ReportService:
         """
         self.repos.reports.set_issues(report.id, issues)
         has_errors = any(issue["level"] == "error" for issue in issues)
+        # Ответ по письму уже ушёл — снимать отметку нельзя: отзыв подписи
+        # не отзывает бумагу у адресата, а система начинает врать —
+        # «отправлено» и «черновик» одновременно. Замечания сохраняем и
+        # показываем: отдел сам решит, отзывать ли отправку и исправлять.
+        if has_errors and self._is_sent(report):
+            self.repos.audit.log(
+                "report.errors.after.sending", object_type="report",
+                object_id=str(report.id),
+                details={"errors": sum(1 for i in issues if i["level"] == "error")},
+            )
+            return
         if has_errors and report.status == "approved":
             self.repos.reports.set_status(report.id, "draft")
             # Подпись снята — значит, в тексте есть число мимо факт-пакета.
@@ -733,6 +746,11 @@ class ReportService:
                 details={"errors": sum(1 for i in issues if i["level"] == "error"),
                          "edit_pairs_dropped": dropped},
             )
+
+    def _is_sent(self, report: Report) -> bool:
+        """Ушёл ли ответ по письму этого отчёта под исходящим номером."""
+        case = self.repos.cases.get(report.case_ref)
+        return bool(case is not None and case.outgoing_no)
 
     def _parts_of(self, report: Report) -> tuple[List[tuple[str, str]], str]:
         """Тексты секций и приложение источников из базы — то, что проверяем."""

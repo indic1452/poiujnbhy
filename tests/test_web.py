@@ -854,6 +854,34 @@ class OutgoingNumberTests(WebTestCase):
         self.assertEqual("approved", fresh["status"])
         self.assertEqual("ИСХ-2026-1147", fresh["outgoing_no"])
 
+    def test_errors_found_after_sending_do_not_falsify_the_record(self):
+        """Отзыв подписи не отзывает бумагу у адресата.
+
+        Верификатор ронял отправленный отчёт в черновик, а письмо
+        оставалось «отправлено» с исходящим номером: система начинала
+        врать — отправлено и черновик разом. Замечания сохраняем и
+        показываем, отметку оставляем; отдел решает, отзывать ли отправку.
+        """
+        self.check()
+        self.client.post(f"/api/cases/{self.case['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-1147"})
+        # Портим текст мимо API — как если бы сменился шаблон или глоссарий.
+        self.repos.db.connection.execute(
+            "UPDATE report_sections SET text = ? WHERE report_id = ?",
+            ("Замер дал 4242 единицы, чего в исходных данных нет.", self.report["id"]))
+        self.repos.db.connection.commit()
+
+        checked = self.client.post(f"/api/reports/{self.report['id']}/verify").json()
+        self.assertTrue(checked["errors"], "верификатор ничего не нашёл")
+        fresh = self.repos.reports.get(self.report["id"])
+        self.assertEqual("approved", fresh.status,
+                         "отправленный отчёт молча стал черновиком")
+        self.assertEqual(checked["errors"],
+                         sum(1 for i in fresh.issues if i["level"] == "error"),
+                         "замечания не сохранены")
+        self.assertEqual("approved", self.case_now()["status"])
+        self.assertEqual("ИСХ-2026-1147", self.case_now()["outgoing_no"])
+
     def test_movement_counts_answers_that_actually_went_out(self):
         """«Ответов отправлено» — это отправленные, а не проверенные.
 
