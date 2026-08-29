@@ -287,6 +287,8 @@ class Case:
     updated_at: str = ""
     #: ФИО исполнителя. Заполняется выборкой со связкой, в таблице не хранится.
     assignee_name: str = ""
+    #: Сколько отчётов заведено по письму. Считает выборка, в таблице нет.
+    reports_count: int = 0
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Case":
@@ -309,6 +311,7 @@ class Case:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
             assignee_name=_col(row, "assignee_name", "") or "",
+            reports_count=int(_col(row, "reports_count", 0) or 0),
         )
 
     def to_dict(self, *, with_facts: bool = False) -> Dict[str, Any]:
@@ -329,6 +332,7 @@ class Case:
             "assignee_name": self.assignee_name,
             "note": self.note,
             "facts_digest": self.facts_digest,
+            "reports_count": self.reports_count,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }

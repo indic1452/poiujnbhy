@@ -680,7 +680,11 @@ class CaseRepo:
     #: Выборка письма вместе с ФИО исполнителя: список писем без исполнителя
     #: бесполезен, а второй запрос на строку — это N+1 на ровном месте.
     _SELECT = (
-        "SELECT c.*, coalesce(u.full_name, u.login, '') AS assignee_name "
+        "SELECT c.*, coalesce(u.full_name, u.login, '') AS assignee_name, "
+        # Сколько отчётов заведено по письму. Нужно карточке: состояния
+        # «на проверке» и «отправлено» даёт проверка отчёта, и руками их
+        # выставлять нельзя, пока по письму есть отчёты.
+        "(SELECT count(*) FROM reports r WHERE r.case_ref = c.id) AS reports_count "
         "FROM cases c LEFT JOIN users u ON u.id = c.assignee_id"
     )
 

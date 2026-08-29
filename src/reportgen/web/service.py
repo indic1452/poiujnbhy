@@ -322,7 +322,9 @@ class ReportService:
         revoked = 0
         for stored in self.repos.reports.list_for_case(case_ref):
             report = self.repos.reports.get(stored.id)
-            if report is None:
+            # Сданный файлом отчёт с факт-пакетом не связан: проверять
+            # в нём нечего, замечания были бы выдуманными.
+            if report is None or report.source == "uploaded":
                 continue
             sections, appendix = self._parts_of(report)
             issues = self._verify(report.markdown, facts, outline,
@@ -381,6 +383,7 @@ class ReportService:
             ],
             user_id=user.id if user else None,
         )
+        self._withdraw_previous(case, report, user)
         self.repos.cases.set_status(case.id, "draft")
         self.repos.audit.log(
             "report.generate", user=user, object_type="report", object_id=str(report.id),
@@ -388,6 +391,27 @@ class ReportService:
                      "errors": report.error_count, "warnings": report.warning_count},
         )
         return report
+
+    def _withdraw_previous(self, case: Case, fresh: Report, user: User | None) -> None:
+        """Снять с проверки прежние версии отчёта по письму.
+
+        Исполнитель собирал новую версию, пока начальник читал прежнюю:
+        письмо возвращалось «в работу» и пропадало из очереди проверки, а
+        старый отчёт оставался помеченным «на проверке» — начальник его в
+        списке уже не находил, а отчёт числился сданным. Сдаёт исполнитель,
+        и сдаёт он ту версию, которую считает готовой: новая сборка означает,
+        что прежнюю он отозвал.
+        """
+        for stored in self.repos.reports.list_for_case(case.id):
+            if stored.id == fresh.id or stored.status != "review":
+                continue
+            self.repos.reports.set_status(stored.id, "draft", note="")
+            self.repos.audit.log(
+                "report.withdraw", user=user, object_type="report",
+                object_id=str(stored.id),
+                details={"case_id": case.case_id, "version": stored.version,
+                         "reason": "собрана версия " + str(fresh.version)},
+            )
 
     def regenerate_section(self, report: Report, section_id: str, user: User | None,
                            *, hint: str = "", top_k: int | None = None) -> ReportSection:
@@ -577,6 +601,16 @@ class ReportService:
         return signature
 
     def verify(self, report: Report) -> List[Dict[str, Any]]:
+        """Сверка отчёта с факт-пакетом. Возвращает замечания верификатора.
+
+        У сданного файлом отчёта факт-пакета нет: его писали не здесь и не по
+        нашему шаблону. Прогонять такой файл через проверку разделов
+        бессмысленно — она честно докладывала, что «обязательный раздел
+        отсутствует», перечисляя разделы чужого шаблона, взятого письму
+        по умолчанию. Сверять нечего: замечаний нет, читает начальник.
+        """
+        if report.source == "uploaded":
+            return []
         case = self.repos.cases.get(report.case_ref)
         if case is None:
             raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
@@ -621,6 +655,11 @@ class ReportService:
         if report.status not in ("approved", "review"):
             return
         self.repos.reports.set_status(report.id, "draft")
+        # Текст под подписью изменили — пары «черновик модели → финал
+        # инженера», собранные при утверждении, описывают уже не тот
+        # документ, который прочитал начальник. Соберут заново при новом
+        # утверждении (док. 03, 3.7).
+        dropped = self.repos.edits.drop_for_report(report.id) if report.status == "approved" else 0
         # Письмо возвращаем вместе с отчётом. Иначе оно числилось бы
         # отправленным или лежащим у начальника, а отчёт по нему — черновик:
         # в списке писем одно, в карточке другое.
@@ -629,7 +668,8 @@ class ReportService:
             self.repos.cases.set_status(case.id, "draft")
         self.repos.audit.log(
             "report.approval.revoked", object_type="report", object_id=str(report.id),
-            details={"reason": reason, "section": section_id, "was": report.status},
+            details={"reason": reason, "section": section_id, "was": report.status,
+                     "edit_pairs_dropped": dropped},
         )
 
     def _apply_issues(self, report: Report, issues: List[Dict[str, Any]]) -> None:
@@ -644,9 +684,14 @@ class ReportService:
         has_errors = any(issue["level"] == "error" for issue in issues)
         if has_errors and report.status == "approved":
             self.repos.reports.set_status(report.id, "draft")
+            # Подпись снята — значит, в тексте есть число мимо факт-пакета.
+            # Пары «черновик → финал», собранные при утверждении, учат
+            # ровно этому тексту: убираем вместе с подписью.
+            dropped = self.repos.edits.drop_for_report(report.id)
             self.repos.audit.log(
                 "report.approval.revoked", object_type="report", object_id=str(report.id),
-                details={"errors": sum(1 for i in issues if i["level"] == "error")},
+                details={"errors": sum(1 for i in issues if i["level"] == "error"),
+                         "edit_pairs_dropped": dropped},
             )
 
     def _parts_of(self, report: Report) -> tuple[List[tuple[str, str]], str]:
@@ -701,11 +746,20 @@ class ReportService:
         case = self.repos.cases.get(report.case_ref)
         if case is None:
             raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
+        # Отчёт был отмечен проверенным, а теперь возвращён: пары «черновик
+        # модели → финал инженера» с того утверждения ушли в обучающий набор
+        # (док. 03, 3.7). Начальник сказал, что текст негоден, — учить на нём
+        # как на образце нельзя. Пары снимаем, при новом утверждении их
+        # соберут заново из исправленного текста.
+        dropped = 0
+        if report.status == "approved":
+            dropped = self.repos.edits.drop_for_report(report.id)
         self.repos.reports.set_status(report.id, "rework", note=note)
         self.repos.cases.set_status(case.id, "draft")
         self.repos.audit.log(
             "report.rework", user=user, object_type="report", object_id=str(report.id),
-            details={"case_id": case.case_id, "version": report.version, "note": note},
+            details={"case_id": case.case_id, "version": report.version, "note": note,
+                     "edit_pairs_dropped": dropped},
         )
         updated = self.repos.reports.get(report.id)
         assert updated is not None

@@ -611,6 +611,71 @@ class ReviewFlowTests(WebTestCase):
         self.assertIsNone(after.approved_by, "проверяющий остался под чужим текстом")
         self.assertIsNone(after.approved_at)
 
+    def test_new_version_takes_the_old_one_off_the_head_desk(self):
+        """Собрал новую версию — значит, прежнюю отозвал.
+
+        Исполнитель собирал версию, пока начальник читал сданную: письмо
+        уходило «в работу» и пропадало из очереди проверки, а прежний
+        отчёт оставался помеченным «на проверке» — числился сданным,
+        а найти его начальнику было уже негде.
+        """
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        second = self.generate(self.case["id"])
+
+        withdrawn = self.repos.reports.get(self.report["id"])
+        self.assertEqual("draft", withdrawn.status,
+                         "прежний отчёт остался на проверке без письма в очереди")
+        self.assertEqual("draft",
+                         self.client.get(f"/api/cases/{self.case['id']}").json()["case"]["status"])
+        self.assertEqual("draft", self.repos.reports.get(second["id"]).status)
+
+        # И отметить проверенным отозванное нельзя: сдают заново.
+        self.login("nachalnik")
+        refused = self.client.post(f"/api/reports/{self.report['id']}/approve")
+        self.assertEqual(409, refused.status_code)
+
+    def test_returned_report_leaves_the_training_set(self):
+        """Начальник забраковал текст — учить модель на нём нельзя.
+
+        Пары «черновик модели → финал инженера» собираются при отметке
+        «проверен» (док. 03, 3.7). Если после этого отчёт вернули на
+        исправление, тот же текст остаётся в наборе как образец — ровно
+        то, от чего предостерегает документ.
+        """
+        section_id = self.report["sections"][0]["section_id"]
+        self.client.put(f"/api/reports/{self.report['id']}/sections/{section_id}",
+                        json={"text": "Правленый инженером текст без числовых значений."})
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/approve")
+        self.assertTrue(self.pairs(), "пары за утверждение не сохранились")
+
+        self.client.post(f"/api/reports/{self.report['id']}/rework",
+                         json={"note": "вывод не по делу, переписать"})
+        self.assertEqual(0, self.pairs(), "забракованный текст остался в обучающем наборе")
+
+    def test_revoked_signature_takes_the_pairs_with_it(self):
+        # Подпись снимает верификатор, найдя число мимо факт-пакета.
+        # Пары того утверждения учат ровно этому тексту.
+        section_id = self.report["sections"][0]["section_id"]
+        self.client.put(f"/api/reports/{self.report['id']}/sections/{section_id}",
+                        json={"text": "Правленый инженером текст без числовых значений."})
+        self.clean_sections()
+        self.client.post(f"/api/reports/{self.report['id']}/submit")
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/approve")
+        self.assertTrue(self.pairs(), "пары за утверждение не сохранились")
+
+        self.client.put(f"/api/reports/{self.report['id']}/sections/{section_id}",
+                        json={"text": "Замер дал 4242 единицы, чего в исходных данных нет."})
+        self.assertEqual("draft", self.repos.reports.get(self.report["id"]).status)
+        self.assertEqual(0, self.pairs(), "пары остались под снятой подписью")
+
+    def pairs(self) -> int:
+        return int(self.repos.db.scalar("SELECT count(*) FROM edit_pairs") or 0)
+
 
 class UploadedReportTests(WebTestCase):
     """Готовый отчёт, сданный файлом: его пишут не системой, а руками."""
@@ -724,6 +789,59 @@ class UploadedReportTests(WebTestCase):
         engineer = self.repos.users.by_login("engineer")
         case = self.upload().json()["case"]
         self.assertEqual(engineer.id, case["assignee_id"])
+
+    def test_text_of_the_handed_in_report_is_readable(self):
+        """Отчёт должен читаться в карточке, а не только скачиваться.
+
+        Формат разбирают по расширению файла, а временное имя, под которым
+        файл писался на диск, расширения не имело: текст не извлекался ни
+        из одного сданного отчёта — «неподдерживаемый формат без
+        расширения», — и в карточке оставался один файл.
+        """
+        body = self.upload(
+            name="Отчёт группы.md",
+            body="# Отчёт\n\nПомеха устранена, замер в норме.\n".encode("utf-8")).json()
+        self.assertEqual("", body.get("note", ""), body.get("note"))
+        report = self.client.get(f"/api/reports/{body['report']['id']}").json()["report"]
+        self.assertIn("Помеха устранена", report["markdown"])
+
+    def test_verification_says_it_had_nothing_to_check(self):
+        """«Замечаний нет» и «сверять было нечем» — разные ответы.
+
+        Верификатор докладывал по сданному файлом отчёту, что «обязательный
+        раздел отсутствует», перечисляя разделы чужого шаблона, взятого
+        письму по умолчанию. Факт-пакета за таким отчётом нет: документ
+        целиком написал человек, читает его начальник.
+        """
+        report = self.upload().json()["report"]
+        body = self.client.post(f"/api/reports/{report['id']}/verify").json()
+        self.assertEqual([], body["issues"], "верификатор придумал замечания")
+        self.assertFalse(body["checked"])
+        self.assertIn("сдан файлом", body["note"])
+
+    def test_direction_of_work_is_taken_from_the_form(self):
+        # Направление писали первым по алфавиту — письмо выходило под чужой
+        # темой. Оно приходит из формы сдачи.
+        body = self.upload(report_type="signal_issue").json()
+        self.assertEqual("signal_issue", body["case"]["report_type"])
+        refused = self.upload(case_id="ВХ-2026-0102", incoming_no="ВХ-2026-0102",
+                              report_type="такого-нет")
+        self.assertEqual(400, refused.status_code)
+        self.assertIn("тип отчёта", refused.json()["error"])
+
+    def test_editing_the_facts_does_not_touch_the_handed_in_report(self):
+        # Перепроверка письма проходит по всем отчётам. Сданный файлом
+        # с факт-пакетом не связан: замечания по нему были бы выдуманными.
+        body = self.upload().json()
+        report_id = body["report"]["id"]
+        facts = self.client.get(
+            f"/api/cases/{body['case']['id']}").json()["case"]["facts"]
+        facts["group_no"] = "4-я группа"
+        self.assertEqual(200, self.client.put(
+            f"/api/cases/{body['case']['id']}/facts", json={"facts": facts}).status_code)
+        fresh = self.client.get(f"/api/reports/{report_id}").json()["report"]
+        self.assertEqual([], fresh["issues"], "по сданному файлу выписали замечания")
+        self.assertEqual("review", fresh["status"], "отчёт сняли с проверки без причины")
 
     def test_deleting_a_letter_removes_the_handed_in_files(self):
         """Интерфейс обещает удаление вместе со всеми версиями отчёта.
@@ -1399,6 +1517,51 @@ class LetterCardTests(WebTestCase):
         self.assertEqual(0, self.client.get(
             "/api/cases", params={"q": "10_%"}).json()["total"])
 
+    def test_flow_states_are_not_set_by_hand_when_a_report_exists(self):
+        """«На проверке» и «отправлено» письму даёт отчёт, а не карточка.
+
+        Инженер ставил письму «отправлено» прямо в карточке: письмо уходило
+        из работы, начальник его больше не видел, а отчёт никто не проверял.
+        """
+        case = self.create_case()
+        self.generate(case["id"])
+        self.login("engineer")
+        for status in ("approved", "review"):
+            with self.subTest(status=status):
+                refused = self.client.patch(f"/api/cases/{case['id']}",
+                                            json={"status": status})
+                self.assertEqual(409, refused.status_code, refused.text)
+                self.assertIn("проверка отчёта", refused.json()["error"])
+        # Остальные состояния карточка ставит как ставила.
+        for status in ("new", "draft", "archived"):
+            with self.subTest(status=status):
+                response = self.client.patch(f"/api/cases/{case['id']}",
+                                             json={"status": status})
+                self.assertEqual(200, response.status_code, response.text)
+                self.assertEqual(status, response.json()["case"]["status"])
+
+    def test_letter_answered_outside_the_system_can_still_be_marked(self):
+        # По письму нет ни одного отчёта — подменять нечего: на него
+        # ответили мимо системы, и отметить это в карточке можно.
+        case = self.create_case()
+        response = self.client.patch(f"/api/cases/{case['id']}", json={"status": "approved"})
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual("approved", response.json()["case"]["status"])
+        self.assertEqual(0, response.json()["case"]["reports_count"])
+
+    def test_letter_says_how_many_reports_it_has(self):
+        # Число нужно карточке: по нему она запирает состояния «на проверке»
+        # и «отправлено», которые даёт проверка отчёта.
+        case = self.create_case()
+        self.assertEqual(0, self.client.get(
+            f"/api/cases/{case['id']}").json()["case"]["reports_count"])
+        self.generate(case["id"])
+        self.generate(case["id"])
+        self.assertEqual(2, self.client.get(
+            f"/api/cases/{case['id']}").json()["case"]["reports_count"])
+        listed = self.client.get("/api/cases").json()["items"]
+        self.assertEqual(2, [x for x in listed if x["id"] == case["id"]][0]["reports_count"])
+
     def test_counter_counts_what_the_search_shows(self):
         # «Показаны 1 из 12» при поиске врало: список считал одно, число другое.
         case = self.create_case()
@@ -2000,6 +2163,31 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("Правка снимет подпись", self.js)
         self.assertIn("Править и снять подпись", self.js)
 
+    def test_handed_in_report_is_shown_and_not_only_offered_for_download(self):
+        """Начальник открывает отчёт, чтобы прочитать его, а не скачать.
+
+        Сданный файлом отчёт показывал одно имя файла и кнопку: чтобы
+        прочитать, начальнику надо было скачать документ и найти, чем его
+        открыть, — на каждом отчёте отдела. Текст извлекается при сдаче,
+        значит, его надо показать, честно сказав, что подлинник — файл.
+        """
+        self.assertIn("function uploadedReportView(report)", self.js)
+        self.assertIn("renderMarkdown(text)", self.js)
+        self.assertIn("Так система прочитала сданный файл", self.js)
+        self.assertNotIn("Разделов у него нет", self.js)
+
+    def test_letter_card_locks_the_states_the_report_gives(self):
+        # «На проверке» и «отправлено» письму даёт проверка отчёта. В
+        # карточке эти состояния заперты, пока по письму есть отчёты.
+        self.assertIn("CASE_BY_FLOW", self.js)
+        self.assertIn("Это состояние письмо получает от проверки отчёта", self.js)
+
+    def test_direction_of_work_is_asked_when_handing_in_a_file(self):
+        # Направление бралось первым по алфавиту — письмо выходило под
+        # чужой темой. Спрашиваем при сдаче.
+        self.assertIn("Направление работы", self.js)
+        self.assertIn("form.append('report_type'", self.js)
+
     def test_files_are_uploaded_one_after_another(self):
         """Разом — это две беды сразу.
 
@@ -2027,8 +2215,9 @@ class InterfaceCopyTests(unittest.TestCase):
         """
         self.assertIn("Отчёт сдан готовым файлом", self.js)
         self.assertIn("coverage-box--calm", self.js)
-        # И вместо «в отчёте нет секций» — что это за отчёт и как его открыть.
-        self.assertIn("Разделов у него нет — это готовый документ", self.js)
+        # И вместо «в отчёте нет секций» — сам отчёт: имя файла, прочитанный
+        # текст и кнопка на подлинник.
+        self.assertIn("uploadedReportView(report)", self.js)
 
     def test_deletion_says_what_it_does_not_remove(self):
         # Выгруженные DOCX лежат в каталоге выгрузок: инженер выгрузил их сам,

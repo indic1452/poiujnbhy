@@ -68,6 +68,31 @@ def _since_utc(days: int) -> str:
     return moment.isoformat(timespec="seconds")
 
 
+#: Состояния письма, которые даёт порядок проверки отчёта, а не рука.
+#: «На проверке» — отчёт сдан начальнику, «отправлено» — отчёт проверен.
+FLOW_CASE_STATUSES = ("review", "approved")
+
+
+def _guard_case_status(repos: Any, case: Case, status: str) -> None:
+    """Не давать выставить в карточке то, что означает работу с отчётом.
+
+    Инженер ставил письму «отправлено» прямо в карточке — письмо уходило из
+    работы, начальник его больше не видел, а отчёта никто не проверял. Эти
+    два состояния письмо получает от отчёта: сдали на проверку — «на
+    проверке», отметили проверенным — «отправлено».
+
+    Письмо без единого отчёта — другое дело: на него ответили мимо системы,
+    подменять нечего, и отметить его в карточке можно.
+    """
+    if status not in FLOW_CASE_STATUSES:
+        return
+    if not repos.reports.list_for_case(case.id):
+        return
+    raise ServiceError(
+        f"состояние «{CASE_STATUS_TITLES[status]}» письму даёт проверка отчёта: "
+        "отправьте отчёт на проверку или отметьте его проверенным", 409)
+
+
 def _group_or_empty(value: Any) -> str:
     """Номер группы: только чистка пробелов и предел длины.
 
@@ -239,6 +264,7 @@ def config(request: Request) -> Dict[str, Any]:
         outlines.append({
             "report_type": outline.report_type,
             "title": outline.title,
+            "short_title": outline.short_title or outline.title,
             "version": outline.version,
             "sections": [
                 {
@@ -334,6 +360,8 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
         status = str(payload["status"] or "")
         if status not in CASE_STATUSES:
             raise ServiceError(f"неизвестное состояние '{status}'", 400)
+        if status != case.status:
+            _guard_case_status(repos, case, status)
         fields["status"] = status
     if "assignee_id" in payload:
         raw = payload["assignee_id"]
@@ -482,10 +510,16 @@ def verify_report_endpoint(request: Request, report_id: int) -> Dict[str, Any]:
     require_user(request)
     report = _report_or_404(request, report_id)
     issues = _service(request).verify(report)
+    # «Ошибок нет» и «сверять было нечем» — разные ответы. У сданного файлом
+    # отчёта факт-пакета нет, и пустой список замечаний не значит, что
+    # документ проверен: его читает начальник, а не программа.
+    checked = report.source != "uploaded"
     return {
         "issues": issues,
         "errors": sum(1 for issue in issues if issue["level"] == "error"),
         "warnings": sum(1 for issue in issues if issue["level"] == "warning"),
+        "checked": checked,
+        "note": "" if checked else "отчёт сдан файлом: сверять с исходными данными нечего",
     }
 
 
@@ -643,7 +677,10 @@ def upload_report(
     # заранее нельзя — две одновременные сдачи получили бы один и тот же.
     limit = settings.max_upload_mb * 1024 * 1024
     size = 0
-    handle, temp_name = tempfile.mkstemp(dir=str(target_dir), prefix="sdacha-")
+    # Расширение временному файлу обязательно: формат разбирают по нему, и
+    # без него текст не читался ни из одного сданного отчёта — в карточке
+    # оставался только файл, а прочитать и найти его было нельзя.
+    handle, temp_name = tempfile.mkstemp(dir=str(target_dir), prefix="sdacha-", suffix=suffix)
     target = Path(temp_name)
     try:
         with os.fdopen(handle, "wb") as stream:

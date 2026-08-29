@@ -37,6 +37,8 @@
 
     /* Порядок движения письма: следующее состояние — соседнее справа. */
     const CASE_FLOW = ['new', 'draft', 'review', 'approved', 'archived'];
+    /* Эти два состояния письму даёт отчёт, а не отметка в карточке. */
+    const CASE_BY_FLOW = ['review', 'approved'];
 
     const CASE_PRIORITY = { normal: 'обычный', high: 'важный', urgent: 'срочный' };
 
@@ -653,6 +655,16 @@
         return outline ? outline.title : reportType;
     }
 
+    /* Короткое имя направления работы для узких мест — списков и колонок.
+       Полные названия шаблонов начинаются одинаково («Технический отчёт по
+       результатам анализа…»), и в закрытом списке видно только общее начало:
+       выбрать не из чего. Короткое имя задаёт сам шаблон-план полем
+       short_title, чтобы отдел называл направления своими словами. */
+    function reportTypeShort(outline) {
+        if (!outline) return '';
+        return outline.short_title || outline.title || outline.report_type;
+    }
+
     function docTypeLabel(value) {
         return DOC_TYPE_LABEL[value] || value;
     }
@@ -1203,6 +1215,14 @@
             ...staff.filter((person) => person.id !== me.id).map((person) =>
                 h('option', { value: String(person.id) },
                     person.full_name || person.login)));
+        /* Направление работы. Сданный файлом отчёт по шаблону не собирается,
+           но письмо без направления не найти в отделе по нужной теме — а
+           брать первое попавшееся значит подписать письмо чужой темой. */
+        const outlines = state.config.outlines || [];
+        const kind = h('select', {}, outlines.map((outline) =>
+            h('option', { value: outline.report_type, title: outline.title },
+                reportTypeShort(outline))));
+        kind.disabled = !outlines.length;
         // Системную кнопку выбора файла прячем: она подписана по-английски
         // и в остальном интерфейсе такой нет.
         const chosen = h('span', { class: 'small muted' }, 'файл не выбран');
@@ -1233,6 +1253,7 @@
                 h('label', { class: 'field' }, 'Входящий номер', incoming),
                 h('label', { class: 'field' }, 'Номер группы', group),
                 h('label', { class: 'field' }, 'Тема', title),
+                h('label', { class: 'field' }, 'Направление работы', kind),
                 h('label', { class: 'field' }, 'Дата письма', incomingDate),
                 h('label', { class: 'field' }, 'Срок ответа', deadline),
                 h('label', { class: 'field' }, 'Важность', priority),
@@ -1254,6 +1275,7 @@
             form.append('incoming_no', incoming.value.trim());
             form.append('group_no', group.value.trim());
             form.append('title', title.value.trim());
+            form.append('report_type', kind.value || '');
             form.append('incoming_date', incomingDate.value || '');
             form.append('deadline', deadline.value || '');
             form.append('priority', priority.value);
@@ -1437,8 +1459,21 @@
         const priority = h('select', {}, Object.keys(CASE_PRIORITY).map((key) =>
             h('option', { value: key, selected: (item.priority || 'normal') === key },
                 CASE_PRIORITY[key])));
-        const status = h('select', {}, CASE_FLOW.map((key) =>
-            h('option', { value: key, selected: item.status === key }, CASE_STATUS[key])));
+        /* «На проверке» и «отправлено» письму даёт проверка отчёта: сдали —
+           «на проверке», отметили проверенным — «отправлено». Руками их не
+           выставляют, иначе письмо уходит из работы мимо начальника. Пока по
+           письму нет ни одного отчёта, подменять нечего — на такое письмо
+           ответили мимо системы, и отметить его можно. */
+        const byFlow = Number(item.reports_count || 0) > 0;
+        const status = h('select', {}, CASE_FLOW.map((key) => {
+            const locked = byFlow && CASE_BY_FLOW.includes(key) && item.status !== key;
+            return h('option', {
+                value: key,
+                selected: item.status === key,
+                disabled: locked,
+                title: locked ? 'Это состояние письмо получает от проверки отчёта' : '',
+            }, CASE_STATUS[key] + (locked ? ' — по отчёту' : ''));
+        }));
         const groupInput = h('input', {
             type: 'text',
             placeholder: '1274 или 1-я группа', value: item.group_no || '',
@@ -1551,7 +1586,8 @@
                 if (!jsonTouched) fillSkeleton();
             },
         }, outlines.map((outline) =>
-            h('option', { value: outline.report_type }, outline.title + ' (' + outline.report_type + ')')));
+            h('option', { value: outline.report_type, title: outline.title },
+                reportTypeShort(outline) + ' (' + outline.report_type + ')')));
 
         const caseInput = h('input', {
             type: 'text', placeholder: 'заполнится по входящему номеру', class: 'mono',
@@ -2785,6 +2821,37 @@
             h('div', { class: 'step-hint' }, step.hint));
     }
 
+    /** Сданный файлом отчёт: показываем прочитанный текст, а не одну кнопку.
+
+        Начальник открывает отчёт, чтобы его прочитать. Заставлять его для
+        этого скачивать файл и искать, чем открыть .docx, — лишний шаг на
+        каждом отчёте отдела. Текст мы извлекаем при сдаче; показываем его
+        здесь и честно говорим, что это чтение файла, а подлинник — файл. */
+    function uploadedReportView(report) {
+        const box = h('div', { class: 'section-card' });
+        box.appendChild(h('header', {},
+            h('h3', {}, report.file_name || 'файл'),
+            h('button', {
+                class: 'btn btn--sm',
+                title: 'Открыть подлинник, как его сдали',
+                onclick: () => downloadReportFile(report),
+            }, 'Скачать файл')));
+        const text = String(report.markdown || '').trim();
+        const read = h('div', { class: 'section-read' });
+        if (text) {
+            read.appendChild(h('div', { class: 'small muted', style: { marginBottom: '10px' } },
+                'Так система прочитала сданный файл. Оформление подлинника '
+                + 'здесь не передаётся — за ним «Скачать файл».'));
+            read.appendChild(renderMarkdown(text));
+        } else {
+            read.appendChild(h('div', { class: 'faint' },
+                'Прочитать текст файла не удалось — откройте подлинник кнопкой '
+                + '«Скачать файл».'));
+        }
+        box.appendChild(read);
+        return box;
+    }
+
     function renderSections() {
         const body = wb.nodes.reportBody;
         clear(body);
@@ -2813,17 +2880,7 @@
             // У сданного файлом отчёта секций и не бывает: это не сборка по
             // шаблону, а документ, который инженер написал сам.
             container.appendChild(report.uploaded
-                ? h('div', { class: 'empty' },
-                    h('h3', {}, 'Отчёт сдан файлом'),
-                    h('div', {}, report.file_name || 'файл'),
-                    h('div', { class: 'small muted', style: { marginTop: '6px' } },
-                        'Разделов у него нет — это готовый документ. '
-                        + 'Откройте его кнопкой «Скачать файл».'),
-                    h('div', { class: 'btn-row', style: { justifyContent: 'center', marginTop: '14px' } },
-                        h('button', {
-                            class: 'btn btn--primary',
-                            onclick: () => downloadReportFile(report),
-                        }, 'Скачать файл')))
+                ? uploadedReportView(report)
                 : h('div', { class: 'empty' }, 'В отчёте нет секций.'));
         }
         body.appendChild(container);

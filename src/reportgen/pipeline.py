@@ -68,6 +68,10 @@ class Outline:
     sections: List[SectionSpec]
     style: str = DEFAULT_STYLE
     version: str = "1"
+    #: Короткое имя направления работы для списков и колонок. Полные
+    #: названия начинаются одинаково, и в узком поле видно только общее
+    #: начало. Пусто — берём полное название.
+    short_title: str = ""
 
     @classmethod
     def load(cls, path: str | Path) -> "Outline":
@@ -75,6 +79,7 @@ class Outline:
         return cls(
             report_type=raw["report_type"],
             title=raw["title"],
+            short_title=str(raw.get("short_title", "") or "").strip(),
             style=raw.get("style", DEFAULT_STYLE),
             version=str(raw.get("version", "1")),
             sections=[SectionSpec.from_dict(item) for item in raw["sections"]],
