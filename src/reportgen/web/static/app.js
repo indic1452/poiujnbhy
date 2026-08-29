@@ -40,6 +40,11 @@
     /* Эти два состояния письму даёт отчёт, а не отметка в карточке. */
     const CASE_BY_FLOW = ['review', 'approved'];
 
+    /* Пределы полей карточки письма. Те же, что на сервере
+       (api.MAX_CARD_FIELDS): поле не должно принимать то, что сервер потом
+       отвергнет — человек уже напечатал. */
+    const CARD_LIMIT = { title: 300, incoming_no: 60, note: 2000, group_no: 120 };
+
     const CASE_PRIORITY = { normal: 'обычный', high: 'важный', urgent: 'срочный' };
 
     /* Штатные должности. Права: до начальника группы включительно —
@@ -1203,9 +1208,14 @@
     async function openUploadReportDialog(after) {
         const staff = await staffList();
         const me = state.user || {};
-        const incoming = h('input', { type: 'text', placeholder: 'ВХ-2026-0423' });
-        const group = h('input', { type: 'text', placeholder: '1274 или 1-я группа' });
-        const title = h('input', { type: 'text', placeholder: 'о чём письмо' });
+        const incoming = h('input', {
+            type: 'text', placeholder: 'ВХ-2026-0423',
+            maxLength: CARD_LIMIT.incoming_no });
+        const group = h('input', {
+            type: 'text', placeholder: '1274 или 1-я группа',
+            maxLength: CARD_LIMIT.group_no });
+        const title = h('input', {
+            type: 'text', placeholder: 'о чём письмо', maxLength: CARD_LIMIT.title });
         const incomingDate = h('input', { type: 'date' });
         const deadline = h('input', { type: 'date' });
         const priority = h('select', {}, ...Object.keys(CASE_PRIORITY).map((id) =>
@@ -1454,7 +1464,9 @@
         }
 
         const deadline = h('input', { type: 'date', value: item.deadline || '' });
-        const incomingNo = h('input', { type: 'text', class: 'mono', value: item.incoming_no || '' });
+        const incomingNo = h('input', {
+            type: 'text', class: 'mono', value: item.incoming_no || '',
+            maxLength: CARD_LIMIT.incoming_no });
         const incomingDate = h('input', { type: 'date', value: item.incoming_date || '' });
         const priority = h('select', {}, Object.keys(CASE_PRIORITY).map((key) =>
             h('option', { value: key, selected: (item.priority || 'normal') === key },
@@ -1475,11 +1487,11 @@
             }, CASE_STATUS[key] + (locked ? ' — по отчёту' : ''));
         }));
         const groupInput = h('input', {
-            type: 'text',
+            type: 'text', maxLength: CARD_LIMIT.group_no,
             placeholder: '1274 или 1-я группа', value: item.group_no || '',
             title: 'Откуда пришло письмо. Пишите как принято в отделе: 1274, 12/345, в/ч 74326, «2-я группа связи»',
         });
-        const note = h('textarea', { rows: '3' }, item.note || '');
+        const note = h('textarea', { rows: '3', maxLength: CARD_LIMIT.note }, item.note || '');
 
         const save = h('button', { class: 'btn btn--primary', onclick: submit }, 'Сохранить');
         const dialog = openModal({
@@ -1597,8 +1609,11 @@
             },
         });
         let caseTouched = false;
-        const titleInput = h('input', { type: 'text', placeholder: 'о чём письмо' });
-        const incomingNo = h('input', { type: 'text', class: 'mono', placeholder: 'ВХ-2026-0412' });
+        const titleInput = h('input', {
+            type: 'text', placeholder: 'о чём письмо', maxLength: CARD_LIMIT.title });
+        const incomingNo = h('input', {
+            type: 'text', class: 'mono', placeholder: 'ВХ-2026-0412',
+            maxLength: CARD_LIMIT.incoming_no });
         // Учётный номер по умолчанию повторяет входящий: два разных номера
         // руками никто вводить не станет, а поле обязательное.
         incomingNo.addEventListener('input', () => {
@@ -5169,7 +5184,8 @@
     /** Переименование по двойному клику: поле прямо в строке списка. */
     function startRename(node, item, titleNode) {
         if ($('input.rename', node)) return;
-        const input = h('input', { type: 'text', class: 'rename', value: item.title });
+        const input = h('input', {
+            type: 'text', class: 'rename', value: item.title, maxLength: CARD_LIMIT.title });
         node.replaceChild(input, titleNode);
         input.focus();
         input.select();

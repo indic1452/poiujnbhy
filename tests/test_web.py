@@ -805,6 +805,24 @@ class UploadedReportTests(WebTestCase):
         report = self.client.get(f"/api/reports/{body['report']['id']}").json()["report"]
         self.assertIn("Помеха устранена", report["markdown"])
 
+    def test_handed_in_report_is_not_exported_as_our_own(self):
+        """Наружу такой отчёт уходит подлинником, а не пересборкой.
+
+        Текст сданного файлом отчёта — машинное чтение чужого документа:
+        оформление, таблицы и подписи в нём уже потеряны. Собранный из
+        него DOCX по фирменному бланку выглядит как отчёт и рискует уйти
+        адресату вместо подлинника.
+        """
+        report = self.upload().json()["report"]
+        for path in ("export.md", "export.docx"):
+            with self.subTest(path=path):
+                refused = self.client.get(f"/api/reports/{report['id']}/{path}")
+                self.assertEqual(409, refused.status_code)
+                self.assertIn("Скачать файл", refused.json()["error"])
+        # А подлинник отдаётся всем.
+        self.assertEqual(200, self.client.get(
+            f"/api/reports/{report['id']}/file").status_code)
+
     def test_verification_says_it_had_nothing_to_check(self):
         """«Замечаний нет» и «сверять было нечем» — разные ответы.
 
@@ -1517,6 +1535,50 @@ class LetterCardTests(WebTestCase):
         self.assertEqual(0, self.client.get(
             "/api/cases", params={"q": "10_%"}).json()["total"])
 
+    def test_card_lines_have_a_limit_and_say_so(self):
+        """Тема в пять тысяч знаков ломает и список, и шапку документа.
+
+        Молча обрезать нельзя: человек не узнает, что часть текста
+        потерялась. Говорим, какое поле и какой у него предел.
+        """
+        case = self.create_case()
+        for field, limit, word in (("title", 300, "тема письма"),
+                                   ("incoming_no", 60, "входящий номер"),
+                                   ("note", 2000, "примечание")):
+            with self.subTest(field=field):
+                refused = self.client.patch(f"/api/cases/{case['id']}",
+                                            json={field: "т" * (limit + 1)})
+                self.assertEqual(400, refused.status_code)
+                self.assertIn(word, refused.json()["error"])
+                self.assertIn(str(limit), refused.json()["error"])
+                ok = self.client.patch(f"/api/cases/{case['id']}",
+                                       json={field: "т" * limit})
+                self.assertEqual(200, ok.status_code, ok.text)
+
+    def test_card_lines_drop_control_characters(self):
+        """Нулевой байт приезжает вставкой из Word и рвёт выгрузку и поиск.
+
+        Тема и входящий номер — строки журнала: перевод строки в них
+        сминается в пробел. Примечание — заметка на полях, там абзацы
+        уместны и сохраняются.
+        """
+        case = self.create_case()
+        fresh = self.client.patch(f"/api/cases/{case['id']}", json={
+            "title": "Помеха\x00 в\nстволе", "incoming_no": "ВХ\t-1",
+            "note": "первая строка\nвторая строка"}).json()["case"]
+        self.assertEqual("Помеха в стволе", fresh["title"])
+        self.assertEqual("ВХ -1", fresh["incoming_no"])
+        self.assertEqual("первая строка\nвторая строка", fresh["note"])
+
+    def test_registration_holds_the_same_limits(self):
+        # Предел поля не должен зависеть от того, каким действием письмо
+        # завели: карточкой или регистрацией.
+        refused = self.client.post("/api/cases", json={
+            "report_type": CASE["report_type"], "case_id": "SUP-ДЛИННЫЙ-1",
+            "title": "т" * 301, "facts": {**CASE, "case_id": "SUP-ДЛИННЫЙ-1"}})
+        self.assertEqual(400, refused.status_code)
+        self.assertIn("тема письма", refused.json()["error"])
+
     def test_flow_states_are_not_set_by_hand_when_a_report_exists(self):
         """«На проверке» и «отправлено» письму даёт отчёт, а не карточка.
 
@@ -2175,6 +2237,27 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("renderMarkdown(text)", self.js)
         self.assertIn("Так система прочитала сданный файл", self.js)
         self.assertNotIn("Разделов у него нет", self.js)
+
+    def test_form_fields_hold_the_same_limits_as_the_server(self):
+        """Поле не должно принимать то, что сервер потом отвергнет.
+
+        Человек уже напечатал: узнать о пределе после нажатия «Сохранить» —
+        значит потерять набранное. Пределы держим в одном месте и на обеих
+        сторонах.
+        """
+        import re as _re
+
+        from reportgen.web.api import MAX_CARD_FIELDS
+        from reportgen.facts import MAX_GROUP
+
+        found = _re.search(r"const CARD_LIMIT = \{([^}]+)\}", self.js)
+        self.assertIsNotNone(found, "в интерфейсе нет пределов полей")
+        limits = dict(_re.findall(r"(\w+): (\d+)", found.group(1)))
+        for name, limit in MAX_CARD_FIELDS.items():
+            with self.subTest(field=name):
+                self.assertEqual(str(limit), limits.get(name),
+                                 f"предел поля «{name}» в интерфейсе разошёлся с сервером")
+        self.assertEqual(str(MAX_GROUP), limits.get("group_no"))
 
     def test_letter_card_locks_the_states_the_report_gives(self):
         # «На проверке» и «отправлено» письму даёт проверка отчёта. В

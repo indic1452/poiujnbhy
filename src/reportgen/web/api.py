@@ -44,6 +44,11 @@ router = APIRouter(prefix="/api")
 
 MAX_QUERY_LEN = 500
 
+#: Пределы полей карточки письма. Это строки журнала входящих, а не текст
+#: отчёта: тема в пять тысяч знаков ломает и список писем, и шапку
+#: документа. Примечание длиннее — это уже не пометка на полях.
+MAX_CARD_FIELDS = {"title": 300, "incoming_no": 60, "note": 2000}
+
 #: Формат дат в карточке письма и в отсутствиях.
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
@@ -91,6 +96,27 @@ def _guard_case_status(repos: Any, case: Case, status: str) -> None:
     raise ServiceError(
         f"состояние «{CASE_STATUS_TITLES[status]}» письму даёт проверка отчёта: "
         "отправьте отчёт на проверку или отметьте его проверенным", 409)
+
+
+def _card_line(value: Any, name: str) -> str:
+    """Строка карточки письма: без управляющих знаков и в пределах длины.
+
+    Управляющие знаки в поля не вводят — они приезжают вставкой из Word и
+    из выгрузок: нулевой байт рвёт и выгрузку в DOCX, и поиск. Убираем их
+    молча. А про длину говорим: молча обрезанная тема — это потерянный
+    текст, о котором человек не узнал.
+    """
+    limit = MAX_CARD_FIELDS[name]
+    text = "".join(
+        ch for ch in str(value or "")
+        if ch in "\n\t" or unicodedata.category(ch)[0] != "C"
+    )
+    text = text.strip() if name == "note" else " ".join(text.split())
+    if len(text) > limit:
+        titles = {"title": "тема письма", "incoming_no": "входящий номер",
+                  "note": "примечание"}
+        raise ServiceError(f"{titles[name]}: длиннее {limit} знаков", 400)
+    return text
 
 
 def _group_or_empty(value: Any) -> str:
@@ -341,9 +367,9 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
     payload = _body(request)
 
     fields: Dict[str, Any] = {}
-    for name in ("title", "incoming_no", "note"):
+    for name in MAX_CARD_FIELDS:
         if name in payload:
-            fields[name] = str(payload[name] or "").strip()
+            fields[name] = _card_line(payload[name], name)
     # Наружу поле зовётся group_no, колонка в базе — customer (см. schema.sql).
     if "group_no" in payload or "customer" in payload:
         fields["customer"] = _group_or_empty(
@@ -397,6 +423,9 @@ def create_case(request: Request) -> Dict[str, Any]:
     if "group_no" in payload or "customer" in payload:
         payload["group_no"] = _group_or_empty(
             payload.get("group_no", payload.get("customer")))
+    for name in MAX_CARD_FIELDS:
+        if name in payload:
+            payload[name] = _card_line(payload[name], name)
     if payload.get("assignee_id"):
         assignee = _repos(request).users.get(int(payload["assignee_id"]))
         if assignee is None or not assignee.active:
@@ -603,8 +632,11 @@ def upload_report(
         raise ServiceError(
             "отчёт принимается в форматах: " + ", ".join(REPORT_UPLOAD_SUFFIXES), 400)
 
-    incoming_no = str(incoming_no or "").strip()
-    title = str(title or "").strip() or Path(name).stem
+    # Те же пределы, что и в карточке: сдача файлом заводит письмо, и
+    # строки в нём должны быть такими же, как у зарегистрированного руками.
+    incoming_no = _card_line(incoming_no, "incoming_no")
+    title = _card_line(title, "title") or Path(name).stem
+    note = _card_line(note, "note")
     case_id = str(case_id or "").strip() or incoming_no
     if not case_id:
         raise ServiceError("укажите входящий номер письма", 400)
@@ -628,7 +660,7 @@ def upload_report(
             "deadline": _date_or_empty(deadline, "deadline"),
             "priority": priority if priority in CASE_PRIORITIES else "normal",
             "assignee_id": assignee.id,
-            "note": str(note or "").strip(),
+            "note": note,
             "facts": {"case_id": case_id, "group_no": _group_or_empty(group_no),
                       "measurements": {}},
         }
@@ -797,10 +829,26 @@ def download_report_file(request: Request, report_id: int) -> FileResponse:
     )
 
 
+def _refuse_export_of_a_file(report: Report) -> None:
+    """Сданный файлом отчёт наружу отдаётся подлинником, а не пересборкой.
+
+    Текст такого отчёта — машинное чтение чужого документа: оформление,
+    таблицы и подписи в нём уже потеряны. Собрать из него DOCX по
+    фирменному бланку значит выдать пересказ за отчёт — и его отправят
+    вместо подлинника. Подлинник отдаёт GET /api/reports/{id}/file.
+    """
+    if report.source == "uploaded":
+        raise ServiceError(
+            "этот отчёт сдан готовым файлом — выгружать его заново незачем: "
+            "подлинник отдаёт кнопка «Скачать файл»", 409)
+
+
 @router.get("/reports/{report_id}/export.md")
 def export_markdown(request: Request, report_id: int) -> Response:
     require_user(request)
-    report = _service(request).for_export(_report_or_404(request, report_id))
+    report = _report_or_404(request, report_id)
+    _refuse_export_of_a_file(report)
+    report = _service(request).for_export(report)
     case = _case_or_404(request, report.case_ref)
     filename = f"{_safe_name(case.case_id)}-v{report.version}.md"
     return Response(
@@ -813,7 +861,9 @@ def export_markdown(request: Request, report_id: int) -> Response:
 @router.get("/reports/{report_id}/export.docx")
 def export_docx(request: Request, report_id: int) -> FileResponse:
     user = require_user(request)
-    report = _service(request).for_export(_report_or_404(request, report_id))
+    report = _report_or_404(request, report_id)
+    _refuse_export_of_a_file(report)
+    report = _service(request).for_export(report)
     case = _case_or_404(request, report.case_ref)
     settings = _settings(request)
 
