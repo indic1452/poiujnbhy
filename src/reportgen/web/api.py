@@ -78,27 +78,6 @@ def _since_utc(days: int) -> str:
 FLOW_CASE_STATUSES = ("review", "checked", "approved")
 
 
-def _guard_incoming_no(repos: Any, number: str, case: Case | None = None) -> None:
-    """Не давать завести одно письмо дважды под разными учётными номерами.
-
-    В отделе одно письмо — один отчёт — один исходящий номер. Письмо,
-    зарегистрированное дважды, законно получает два отчёта и два разных
-    исходящих: в журнале выходит, что на одно обращение ответили дважды
-    по-разному. Единственность учётного номера от этого не спасает — его
-    придумывает система, а входящий стоит на бумаге.
-    """
-    if not str(number or "").strip():
-        return
-    twin = repos.cases.by_incoming_no(number, other_than=case.id if case else None)
-    if twin is None:
-        return
-    raise ServiceError(
-        f"письмо с входящим номером «{twin.incoming_no}» уже зарегистрировано "
-        f"({twin.case_id}"
-        + (f", {twin.title}" if twin.title else "") + "). Одно письмо — один отчёт: "
-        "работайте по нему или исправьте номер", 409)
-
-
 def _guard_case_status(repos: Any, case: Case, status: str) -> None:
     """Не давать выставить в карточке то, что означает работу с отчётом.
 
@@ -409,8 +388,6 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
     for name in MAX_CARD_FIELDS:
         if name in payload:
             fields[name] = _card_line(payload[name], name)
-    if "incoming_no" in fields:
-        _guard_incoming_no(repos, fields["incoming_no"], case)
     # Исходящий номер вписывается отправкой ответа, а не правкой карточки:
     # иначе письмо числилось бы отправленным без проверенного отчёта.
     if "outgoing_no" in fields:
@@ -473,7 +450,6 @@ def create_case(request: Request) -> Dict[str, Any]:
     for name in MAX_CARD_FIELDS:
         if name in payload:
             payload[name] = _card_line(payload[name], name)
-    _guard_incoming_no(_repos(request), payload.get("incoming_no", ""))
     if payload.get("assignee_id"):
         assignee = _repos(request).users.get(int(payload["assignee_id"]))
         if assignee is None or not assignee.active:
@@ -747,9 +723,6 @@ def upload_report(
 
     case = repos.cases.by_case_id(case_id)
     if case is None:
-        # Тот же запрет, что и при регистрации: одно письмо заводится один
-        # раз, иначе по нему выйдут два отчёта и два исходящих номера.
-        _guard_incoming_no(repos, incoming_no)
         payload = {
             "case_id": case_id,
             "report_type": report_type or _default_report_type(request),

@@ -917,6 +917,28 @@ class OutgoingNumberTests(WebTestCase):
         self.assertEqual(0, self.client.get("/api/me/summary").json()["sent"],
                          "отправка записана не тому, кто отправлял")
 
+    def test_one_outgoing_number_may_close_several_letters(self):
+        """Одним исходящим отвечают сразу на несколько писем.
+
+        Так заведено в делопроизводстве, и система в это не вмешивается:
+        её дело — записать, под каким номером ушёл ответ, а не решать за
+        отдел, сколько писем одним ответом закрывать.
+        """
+        self.check()
+        first = self.client.post(f"/api/cases/{self.case['id']}/send",
+                                 json={"outgoing_no": "ИСХ-2026-1147"})
+        self.assertEqual(200, first.status_code, first.text)
+
+        # Второе письмо, тот же исходящий номер.
+        other = self.create_case({**CASE, "case_id": "SUP-ОБЩИЙ-ИСХ"})
+        second = self.client.post(f"/api/cases/{other['id']}/send",
+                                  json={"outgoing_no": "ИСХ-2026-1147"})
+        self.assertEqual(200, second.status_code, second.text)
+
+        # И по номеру находятся оба.
+        found = self.client.get("/api/cases", params={"q": "ИСХ-2026-1147"}).json()
+        self.assertEqual(2, found["total"])
+
     def test_movement_counts_answers_that_actually_went_out(self):
         """«Ответов отправлено» — это отправленные, а не проверенные.
 
@@ -2140,32 +2162,38 @@ class LetterCardTests(WebTestCase):
                          "счётчик считает не то, что показано")
         self.assertEqual(2, body["total"])
 
-    def test_one_letter_is_registered_once(self):
-        """Одно письмо — один отчёт. Значит, и заводится оно один раз.
+    def test_numbers_and_assignees_may_repeat(self):
+        """Входящие номера и исполнители в отделе повторяются.
 
-        Единственность учётного номера от этого не спасает: его придумывает
-        система, а входящий стоит на бумаге. Письмо, заведённое дважды,
-        законно получало два отчёта и два разных исходящих номера.
+        Так заведено в делопроизводстве: одним входящим номером приходит
+        несколько обращений, одним исходящим отвечают на несколько писем, а
+        один инженер ведёт их десятками. Система в это не вмешивается — её
+        дело учесть, а не спорить с журналом отдела.
         """
-        first = self.create_case({**CASE, "case_id": "SUP-ОДИН-1"})
-        self.client.patch(f"/api/cases/{first['id']}",
-                          json={"incoming_no": "ВХ-2026-0900"})
-        second = self.create_case({**CASE, "case_id": "SUP-ОДИН-2"})
-        twin = self.client.patch(f"/api/cases/{second['id']}",
-                                 json={"incoming_no": "ВХ-2026-0900"})
-        self.assertEqual(409, twin.status_code)
-        self.assertIn("SUP-ОДИН-1", twin.json()["error"])
+        engineer = self.engineer_id()
+        letters = []
+        for name in ("SUP-ПОВТОР-1", "SUP-ПОВТОР-2"):
+            case = self.create_case({**CASE, "case_id": name})
+            fresh = self.client.patch(f"/api/cases/{case['id']}", json={
+                "incoming_no": "ВХ-2026-0900", "assignee_id": engineer})
+            self.assertEqual(200, fresh.status_code, fresh.text)
+            letters.append(fresh.json()["case"])
 
-        # При регистрации — то же самое.
-        again = self.client.post("/api/cases", json={
-            "report_type": CASE["report_type"], "case_id": "SUP-ОДИН-3",
+        self.assertEqual(["ВХ-2026-0900", "ВХ-2026-0900"],
+                         [item["incoming_no"] for item in letters])
+        self.assertEqual([engineer, engineer],
+                         [item["assignee_id"] for item in letters])
+
+        # И регистрация с тем же входящим номером проходит.
+        third = self.client.post("/api/cases", json={
+            "report_type": CASE["report_type"], "case_id": "SUP-ПОВТОР-3",
             "incoming_no": "ВХ-2026-0900",
-            "facts": {**CASE, "case_id": "SUP-ОДИН-3"}})
-        self.assertEqual(409, again.status_code)
+            "facts": {**CASE, "case_id": "SUP-ПОВТОР-3"}})
+        self.assertEqual(200, third.status_code, third.text)
 
-        # А своему письму тот же номер вернуть можно: это не двойник.
-        self.assertEqual(200, self.client.patch(
-            f"/api/cases/{first['id']}", json={"incoming_no": "ВХ-2026-0900"}).status_code)
+        # По номеру находятся все три — на то он и общий.
+        found = self.client.get("/api/cases", params={"q": "ВХ-2026-0900"}).json()
+        self.assertEqual(3, found["total"])
 
     def test_counter_counts_what_the_search_shows(self):
         # «Показаны 1 из 12» при поиске врало: список считал одно, число другое.

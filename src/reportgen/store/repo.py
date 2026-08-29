@@ -816,24 +816,6 @@ class CaseRepo:
         row = self.db.query_one(f"{self._SELECT} WHERE c.id = ?", (case_ref,))
         return Case.from_row(row) if row else None
 
-    def by_incoming_no(self, incoming_no: str, *, other_than: int | None = None) -> Case | None:
-        """Письмо с таким входящим номером. Нужно, чтобы не завести его дважды.
-
-        Одно физическое письмо, зарегистрированное дважды под разными
-        учётными номерами, законно получает два «единственных» отчёта и два
-        разных исходящих — в учёте отдела это прямая ошибка.
-        """
-        number = " ".join(str(incoming_no or "").split())
-        if not number:
-            return None
-        sql = f"{self._SELECT} WHERE rulower(c.incoming_no) = rulower(?)"
-        params: List[Any] = [number]
-        if other_than is not None:
-            sql += " AND c.id <> ?"
-            params.append(other_than)
-        row = self.db.query_one(sql + " LIMIT 1", tuple(params))
-        return Case.from_row(row) if row else None
-
     def by_case_id(self, case_id: str) -> Case | None:
         row = self.db.query_one(f"{self._SELECT} WHERE c.case_id = ?", (case_id,))
         return Case.from_row(row) if row else None
