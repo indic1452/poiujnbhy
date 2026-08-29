@@ -29,35 +29,26 @@
                  Вращение делает один CSS, скрипт для него не нужен. -->
             <span class="emblem emblem--card" aria-label="Эмблема 2 специального отдела">
                 <svg class="emblem-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-                        <!-- неподвижное: дальномерные кольца и линии пеленга -->
-                        <g class="emblem-grid" fill="none" stroke="currentColor">
-                            <circle cx="50" cy="50" r="26"/>
-                            <circle cx="50" cy="50" r="13.5"/>
-                            <path d="M11.5 50H88.5M50 11.5V88.5"/>
-                        </g>
-                        <!-- неподвижное: кольцо со шкалой на 32 румба -->
-                        <g class="emblem-scale" fill="none" stroke="currentColor">
-                            <circle class="emblem-bezel" cx="50" cy="50" r="47"/>
-                            <circle class="emblem-bezel emblem-bezel--in" cx="50" cy="50" r="38.5"/>
-                            <path class="emblem-tick emblem-tick--minor" d="M59.17 3.9L58.68 6.36M67.99 6.58L67.03 8.89M76.11 10.92L74.72 13M89.08 23.89L87 25.28M93.42 32.01L91.11 32.97M96.1 40.83L93.64 41.32M96.1 59.17L93.64 58.68M93.42 67.99L91.11 67.03M89.08 76.11L87 74.72M76.11 89.08L74.72 87M67.99 93.42L67.03 91.11M59.17 96.1L58.68 93.64M40.83 96.1L41.32 93.64M32.01 93.42L32.97 91.11M23.89 89.08L25.28 87M10.92 76.11L13 74.72M6.58 67.99L8.89 67.03M3.9 59.17L6.36 58.68M3.9 40.83L6.36 41.32M6.58 32.01L8.89 32.97M10.92 23.89L13 25.28M23.89 10.92L25.28 13M32.01 6.58L32.97 8.89M40.83 3.9L41.32 6.36"/>
-                            <path class="emblem-tick emblem-tick--inter" d="M83.23 16.77L80.05 19.95M83.23 83.23L80.05 80.05M16.77 83.23L19.95 80.05M16.77 16.77L19.95 19.95"/>
-                            <path class="emblem-tick emblem-tick--card" d="M50 3L50 11.5M97 50L88.5 50M50 97L50 88.5M3 50L11.5 50"/>
-                        </g>
-                        <!-- подвижное: развёртка -->
-                        <g class="emblem-sweep" fill="none">
-                            <g class="emblem-trail" stroke="currentColor">
-                                <path class="emblem-trail-seg" d="M49.24 21.01A29 29 0 0 0 45.46 21.36" opacity=".2"/>
-                                <path class="emblem-trail-seg" d="M45.46 21.36A29 29 0 0 0 41.04 22.42" opacity=".13"/>
-                                <path class="emblem-trail-seg" d="M41.04 22.42A29 29 0 0 0 36.39 24.39" opacity=".075"/>
-                                <path class="emblem-trail-seg" d="M36.39 24.39A29 29 0 0 0 31.36 27.78" opacity=".035"/>
-                            </g>
-                            <path class="emblem-beam" d="M50 46L50 11.5"/>
-                            <path class="emblem-cursor" d="M50 9.5L50 3"/>
-                        </g>
-                        <!-- неподвижное поверх развёртки: индекс нуля и ось станции -->
-                        <path class="emblem-index" d="M50 11.5L46.8 18L53.2 18Z"/>
-                        <circle class="emblem-hub" cx="50" cy="50" r="2.2"/>
-                    </svg>
+                    <!-- Неподвижное: обойма, дальномерное кольцо и шкала.
+                         Делений восемь, а не тридцать два: на 34 px деление в треть
+                         пикселя — не шкала, а накатка. Рисунок перечерчен под рабочий
+                         размер, а не уменьшен с крупного. -->
+                    <g class="emblem-still" fill="none" stroke="currentColor" stroke-linecap="butt">
+                        <circle class="emblem-bezel" cx="50" cy="50" r="43" />
+                        <circle class="emblem-ring" cx="50" cy="50" r="23" />
+                        <path class="emblem-tick" d="M93 50L85 50M50 93L50 85M7 50L15 50" />
+                        <path class="emblem-tick emblem-tick--half"
+                              d="M80.41 19.59L76.52 23.48M80.41 80.41L76.52 76.52M19.59 80.41L23.48 76.52M19.59 19.59L23.48 23.48" />
+                    </g>
+                    <!-- Подвижное: развёртка. Вращается только она. -->
+                    <g class="emblem-sweep" fill="none">
+                        <path class="emblem-beam" d="M50 50L50 11" />
+                    </g>
+                    <!-- Поверх развёртки: нуль шкалы и ось станции. Нуль неподвижен —
+                         отсчёт читается по нему, а не по бегущему лучу. -->
+                    <path class="emblem-index" d="M50 7L50 16" fill="none" stroke-linecap="butt" />
+                    <circle class="emblem-hub" cx="50" cy="50" r="3.4" />
+                </svg>
             </span>
             <span>2 специальный отдел</span>
             <small>Подготовка, учёт и проверка технических отчётов</small>

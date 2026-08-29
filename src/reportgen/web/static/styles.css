@@ -2816,37 +2816,32 @@ table.md-table th {
        остаётся по 9 px. Размер держится жёстко, соседей не двигает. */
     position: relative;
     flex: 0 0 auto;
+    display: block;
     width: 34px;
     height: 34px;
-
-    /* Сброс кнопки: эмблема кликабельна и берётся клавиатурой. */
-    display: block;
     padding: 0;
     border: 0;
     background: none;
     border-radius: 50%;
     cursor: pointer;
-    -webkit-appearance: none;
+    color: var(--muted);
     -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
 
-    /* Волосяная линейка должна остаться волосяной на любом размере, поэтому
-       толщины — переменные, а не зашитые в SVG числа. Значения даны в
-       единицах viewBox (100), при 34 px делитель ≈ 2.94:
-       2.4 → 0.82 px, 3.2 → 1.09 px, 4.2 → 1.43 px. */
-    --emblem-hair: 2.4;
-    --emblem-tick: 2.4;
-    --emblem-tick-card: 3.2;
-    --emblem-beam: 2.8;
-    --emblem-cursor: 4.2;
+    /* Толщины даны в единицах viewBox (100), при 34 px делитель ≈ 2.94.
+       Считаны так, чтобы на рабочем размере каждая линия дала не меньше
+       пикселя: 3.6 → 1.22 px, 4.5 → 1.53 px, 5 → 1.70 px. Линия тоньше
+       пикселя не «волосяная», а невидимая — это проверено растром. */
+    --emblem-bezel: 3.6;
+    --emblem-ring: 3;
+    --emblem-tick: 4.5;
+    --emblem-half: 3.2;
+    --emblem-beam: 5;
+    --emblem-index: 5.5;
 
     /* Оборот развёртки. Медленно: эмблема не должна тянуть взгляд от
-       таблиц. Наведение ускоряет её через playbackRate (см. скрипт), а не
+       таблиц. Наведение ускоряет её через playbackRate (см. app.js), а не
        сменой этой длительности — смена дала бы скачок луча. */
     --emblem-turn: 14s;
-
-    color: var(--faint);
-    transition: transform .12s ease-out;
 }
 
 .emblem:focus-visible {
@@ -2860,50 +2855,29 @@ table.md-table th {
     height: 100%;
 }
 
-/* --- неподвижная часть: дальномерные кольца, линии пеленга, шкала ------- */
-
-.emblem-grid {
-    opacity: .3;
-}
-
-.emblem-grid circle,
-.emblem-grid path {
-    stroke-width: var(--emblem-hair);
-}
-
-.emblem-scale {
-    opacity: .9;
-}
+/* --- неподвижная часть ------------------------------------------------- */
 
 .emblem-bezel {
-    stroke-width: var(--emblem-hair);
+    stroke-width: var(--emblem-bezel);
     opacity: .8;
 }
 
-.emblem-bezel--in {
+.emblem-ring {
+    stroke-width: var(--emblem-ring);
+    opacity: .45;
+}
+
+.emblem-tick {
+    stroke-width: var(--emblem-tick);
+    opacity: .9;
+}
+
+.emblem-tick--half {
+    stroke-width: var(--emblem-half);
     opacity: .55;
 }
 
-/* 32 румба. На 34 px мелкие деления сливаются в накатку кольца, на 160 px
-   разбираются в настоящую шкалу — рисунок один и тот же. */
-.emblem-tick {
-    stroke-width: var(--emblem-tick);
-}
-
-.emblem-tick--minor {
-    opacity: .6;
-}
-
-.emblem-tick--inter {
-    opacity: .85;
-}
-
-.emblem-tick--card {
-    stroke: var(--muted);
-    stroke-width: var(--emblem-tick-card);
-}
-
-/* --- подвижная часть: только она и вращается -------------------------- */
+/* --- подвижная часть: только развёртка --------------------------------- */
 
 .emblem-sweep {
     transform-box: view-box;
@@ -2918,96 +2892,68 @@ table.md-table th {
     }
 }
 
-/* Послесвечение. Не сектор во весь круг и не свечение: четыре дуги
-   затухающей плотности в кольце между лучом и центром. Ни фильтров, ни
-   размытий, ни градиентов — на слабой машине это ничего не стоит. */
-.emblem-trail {
-    opacity: .5;
-    transition: opacity .45s ease-out;
-}
-
-.emblem-trail-seg {
-    stroke: var(--accent);
-    stroke-width: 16;
-}
-
 .emblem-beam {
     stroke: var(--accent);
     stroke-width: var(--emblem-beam);
-    opacity: .62;
+    stroke-linecap: butt;
 }
 
-/* Курсор идёт прямо по делениям: видно не «луч фонаря», а снимаемый отсчёт. */
-.emblem-cursor {
-    stroke: var(--accent);
-    stroke-width: var(--emblem-cursor);
-    opacity: .8;
-}
-
+/* Нуль шкалы: неподвижная отметка, под которой идёт развёртка. Без неё
+   вращение читается как «картинка крутится», а не как снимаемый отсчёт. */
 .emblem-index {
-    fill: var(--accent);
-    opacity: .85;
+    stroke: var(--accent);
+    stroke-width: var(--emblem-index);
 }
 
 .emblem-hub {
     fill: var(--accent);
-    opacity: .9;
 }
 
+.emblem-still,
 .emblem-beam,
-.emblem-cursor,
-.emblem-hub,
-.emblem-grid,
-.emblem-scale {
+.emblem-index,
+.emblem-hub {
     transition: opacity .18s linear, stroke .18s linear, fill .18s linear;
 }
 
 /* --- наведение: прибор «поднимает усиление» ---------------------------- */
 
-.emblem:hover .emblem-grid {
-    opacity: .5;
+.emblem:hover {
+    color: var(--text);
 }
 
-.emblem:hover .emblem-scale {
+.emblem:hover .emblem-ring,
+.emblem:hover .emblem-tick--half {
+    opacity: .8;
+}
+
+.emblem:hover .emblem-bezel,
+.emblem:hover .emblem-tick {
     opacity: 1;
 }
 
-.emblem:hover .emblem-trail,
-.emblem:hover .emblem-beam,
-.emblem:hover .emblem-cursor {
-    opacity: 1;
-}
+/* --- нажатие: пеленг взят ---------------------------------------------- */
 
-/* --- нажатие: пеленг взят --------------------------------------------- */
-
-.emblem:active,
-.emblem.emblem--held {
-    transform: scale(.94);
-}
-
+/* Отклик — состояние, а не движение: развёртка встаёт, луч и ось уходят в
+   цвет готовности. Приседания кнопки здесь нет намеренно: в проекте нет ни
+   одного другого элемента, который меняет габарит при нажатии, и при
+   выключенных переходах такое приседание стало бы рывком — ровно тем, от
+   чего человек и просил покоя. */
 .emblem:active .emblem-sweep,
 .emblem.emblem--held .emblem-sweep {
     animation-play-state: paused;
 }
 
 .emblem:active .emblem-beam,
-.emblem:active .emblem-cursor,
+.emblem:active .emblem-index,
 .emblem.emblem--held .emblem-beam,
-.emblem.emblem--held .emblem-cursor {
+.emblem.emblem--held .emblem-index {
     stroke: var(--ok);
-    opacity: 1;
 }
 
 .emblem:active .emblem-hub,
 .emblem.emblem--held .emblem-hub {
     fill: var(--ok);
-    opacity: 1;
-}
-
-/* Развёртка стоит — послесвечению неоткуда взяться. */
-.emblem:active .emblem-trail,
-.emblem.emblem--held .emblem-trail {
-    opacity: 0;
 }
 
 /* --- покой по требованию системы --------------------------------------- */
@@ -3016,14 +2962,6 @@ table.md-table th {
     .emblem-sweep {
         animation: none;
         transform: rotate(58deg);
-    }
-
-    .emblem-trail {
-        display: none;
-    }
-
-    .emblem {
-        transition: none;
     }
 }
 
@@ -3034,12 +2972,14 @@ table.md-table th {
     width: 56px;
     height: 56px;
     cursor: default;
-    --emblem-hair: 1.5;
-    --emblem-tick: 1.5;
-    --emblem-tick-card: 2.1;
-    --emblem-beam: 1.8;
-    --emblem-cursor: 2.8;
-    color: rgba(190, 214, 238, .75);
+    /* Тот же рисунок, толщины поделены на 56/34: линия остаётся такой же
+       по виду, а не разрастается в верёвку. */
+    --emblem-bezel: 2.2;
+    --emblem-ring: 1.8;
+    --emblem-tick: 2.7;
+    --emblem-half: 1.9;
+    --emblem-beam: 3;
+    --emblem-index: 3.3;
 }
 
 /* ------------------------------------------------------ личный кабинет --- */
