@@ -859,10 +859,25 @@ def is_draft(status: str) -> bool:
     return str(status).strip().lower() not in APPROVED_STATUSES
 
 
-def footer_for(case_id: str) -> str:
-    """Подпись в нижнем колонтитуле по идентификатору обращения."""
+def footer_for(case_id: str, incoming_no: str = "", outgoing_no: str = "") -> str:
+    """Подпись в нижнем колонтитуле документа.
+
+    Документ уходит адресату, а не остаётся в системе. В колонтитуле должны
+    стоять те номера, по которым его найдут в делопроизводстве: входящий, на
+    который отвечаем, и исходящий, под которым ответ ушёл. Учётный номер
+    системы — запасной вариант: снаружи он никому ничего не говорит.
+    """
+    parts = []
+    outgoing_no = (outgoing_no or "").strip()
+    incoming_no = (incoming_no or "").strip()
     case_id = (case_id or "").strip()
-    return f"Технический отчёт по обращению {case_id}" if case_id else "Технический отчёт"
+    if outgoing_no:
+        parts.append(f"исх. {outgoing_no}")
+    if incoming_no:
+        parts.append(f"на вх. {incoming_no}")
+    if not parts and case_id:
+        parts.append(f"по обращению {case_id}")
+    return "Технический отчёт " + " ".join(parts) if parts else "Технический отчёт"
 
 
 def export_report(
@@ -870,17 +885,20 @@ def export_report(
     path: str | Path,
     *,
     case_id: str = "",
+    incoming_no: str = "",
+    outgoing_no: str = "",
     status: str = "draft",
     template: str | Path | None = None,
 ) -> Path:
     """Выгрузка отчёта одной строкой — обёртка для веб-слоя и CLI.
 
     Сама заполняет :class:`ExportOptions`: отметку черновика по ``status``
-    (черновик — всё, что не утверждено) и подпись колонтитула по ``case_id``.
+    (черновик — всё, что не утверждено) и подпись колонтитула по номерам
+    письма — входящему и исходящему.
     """
     options = ExportOptions(
         template=Path(template) if template else None,
         draft=is_draft(status),
-        footer_text=footer_for(case_id),
+        footer_text=footer_for(case_id, incoming_no, outgoing_no),
     )
     return markdown_to_docx(markdown, path, options)

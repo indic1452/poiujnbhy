@@ -882,6 +882,41 @@ class OutgoingNumberTests(WebTestCase):
         self.assertEqual("approved", self.case_now()["status"])
         self.assertEqual("ИСХ-2026-1147", self.case_now()["outgoing_no"])
 
+    def test_the_document_that_goes_out_carries_the_real_numbers(self):
+        """Документ уходит адресату, а не остаётся в системе.
+
+        В колонтитуле каждой страницы стоял внутренний учётный номер — тот,
+        что придумала система. Снаружи он никому ничего не говорит: искать
+        документ в делопроизводстве будут по входящему и исходящему.
+        """
+        from reportgen.export.docx import footer_for
+
+        self.client.patch(f"/api/cases/{self.case['id']}",
+                          json={"incoming_no": "ВХ-2026-0412"})
+        self.check()
+        self.client.post(f"/api/cases/{self.case['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-1147"})
+
+        line = footer_for(self.case["case_id"], "ВХ-2026-0412", "ИСХ-2026-1147")
+        self.assertIn("исх. ИСХ-2026-1147", line)
+        self.assertIn("на вх. ВХ-2026-0412", line)
+        self.assertNotIn(self.case["case_id"], line,
+                         "внутренний номер уехал адресату")
+        # Пока номеров нет, остаётся прежняя подпись — документ всё равно
+        # должен как-то называться.
+        self.assertIn("по обращению", footer_for("ОБР-1"))
+
+    def test_the_engineer_sees_how_many_answers_he_sent(self):
+        # Проверяет начальник, отправляет исполнитель — и отчитывается он
+        # именно этим числом.
+        self.check()
+        self.client.post(f"/api/cases/{self.case['id']}/send",
+                         json={"outgoing_no": "ИСХ-2026-1147"})
+        self.assertEqual(1, self.client.get("/api/me/summary").json()["sent"])
+        self.login("nachalnik")
+        self.assertEqual(0, self.client.get("/api/me/summary").json()["sent"],
+                         "отправка записана не тому, кто отправлял")
+
     def test_movement_counts_answers_that_actually_went_out(self):
         """«Ответов отправлено» — это отправленные, а не проверенные.
 
@@ -1000,6 +1035,40 @@ class LetterSearchTests(WebTestCase):
                             "text/markdown")})
         self.assertEqual({"ВХ-ФАЙЛ-1": True}, self.found("фидера"))
         self.assertEqual({"ВХ-ФАЙЛ-1": True}, self.found("антенна"))
+
+    def test_the_index_takes_the_file_name_and_the_remark_too(self):
+        """У сканированного PDF текст не извлекается вовсе.
+
+        Тогда письмо не найти ничем, кроме имени файла. Замечание
+        начальника тоже ищут — «что мне тогда вернули по этому письму».
+        """
+        body = self.client.post("/api/reports/upload", data={
+            "case_id": "ВХ-СКАН-1", "incoming_no": "ВХ-СКАН-1",
+            "title": "Разбор обращения", "report_type": CASE["report_type"]},
+            files={"file": ("Скан рефлектограммы.md", b"---\n", "text/markdown")}).json()
+        self.assertIn("ВХ-СКАН-1", self.found("рефлектограммы"))
+
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{body['report']['id']}/rework",
+                         json={"note": "нет ссылки на методику поверки"})
+        self.login("engineer")
+        self.assertIn("ВХ-СКАН-1", self.found("поверки"))
+
+    def test_the_index_can_be_rebuilt_on_demand(self):
+        # Перестроение может оборваться на середине: указатель наполовину
+        # полон, признака «пуст» уже нет, и часть писем не находится.
+        self.with_text("SUP-ЗАНОВО-1", "Тема", "Слово для проверки: интермодуляция.")
+        self.repos.db.connection.execute("DELETE FROM cases_fts")
+        self.repos.db.connection.commit()
+        self.assertEqual({}, self.found("интермодуляция"))
+
+        self.login("engineer")
+        self.assertEqual(403, self.client.post("/api/cases/reindex").status_code,
+                         "перестроение указателя доступно не администратору")
+        self.login("admin")
+        done = self.client.post("/api/cases/reindex")
+        self.assertEqual(200, done.status_code, done.text)
+        self.assertIn("SUP-ЗАНОВО-1", self.found("интермодуляция"))
 
     def test_a_deleted_letter_stops_being_found(self):
         # У виртуальной таблицы нет внешнего ключа: каскад её не трогает,
@@ -2055,6 +2124,48 @@ class LetterCardTests(WebTestCase):
             f"/api/cases/{case['id']}").json()["case"]["reports_count"])
         listed = self.client.get("/api/cases").json()["items"]
         self.assertEqual(2, [x for x in listed if x["id"] == case["id"]][0]["reports_count"])
+
+    def test_counter_counts_what_the_filter_shows_not_just_the_search(self):
+        """«Показаны 2 из 5» на вкладке «Просроченные».
+
+        Условия отбора были написаны дважды — для списка и для счётчика — и
+        разошлись: список знал про срок, счётчик считал по всем письмам.
+        """
+        for number in range(1, 6):
+            case = self.create_case({**CASE, "case_id": f"SUP-СРОК-{number}"})
+            self.client.patch(f"/api/cases/{case['id']}", json={
+                "deadline": "2000-01-01" if number < 3 else "2030-01-01"})
+        body = self.client.get("/api/cases", params={"overdue": "true"}).json()
+        self.assertEqual(len(body["items"]), body["total"],
+                         "счётчик считает не то, что показано")
+        self.assertEqual(2, body["total"])
+
+    def test_one_letter_is_registered_once(self):
+        """Одно письмо — один отчёт. Значит, и заводится оно один раз.
+
+        Единственность учётного номера от этого не спасает: его придумывает
+        система, а входящий стоит на бумаге. Письмо, заведённое дважды,
+        законно получало два отчёта и два разных исходящих номера.
+        """
+        first = self.create_case({**CASE, "case_id": "SUP-ОДИН-1"})
+        self.client.patch(f"/api/cases/{first['id']}",
+                          json={"incoming_no": "ВХ-2026-0900"})
+        second = self.create_case({**CASE, "case_id": "SUP-ОДИН-2"})
+        twin = self.client.patch(f"/api/cases/{second['id']}",
+                                 json={"incoming_no": "ВХ-2026-0900"})
+        self.assertEqual(409, twin.status_code)
+        self.assertIn("SUP-ОДИН-1", twin.json()["error"])
+
+        # При регистрации — то же самое.
+        again = self.client.post("/api/cases", json={
+            "report_type": CASE["report_type"], "case_id": "SUP-ОДИН-3",
+            "incoming_no": "ВХ-2026-0900",
+            "facts": {**CASE, "case_id": "SUP-ОДИН-3"}})
+        self.assertEqual(409, again.status_code)
+
+        # А своему письму тот же номер вернуть можно: это не двойник.
+        self.assertEqual(200, self.client.patch(
+            f"/api/cases/{first['id']}", json={"incoming_no": "ВХ-2026-0900"}).status_code)
 
     def test_counter_counts_what_the_search_shows(self):
         # «Показаны 1 из 12» при поиске врало: список считал одно, число другое.

@@ -34,11 +34,18 @@ if (Test-Path $db) {
     Write-Warn2 "база не найдена: $db"
 }
 
-Write-Step 'Библиотека, экспорты и настройки'
+Write-Step 'Библиотека, сданные отчёты, экспорты и настройки'
 $library = Join-Path $script:Data 'library'
 if (Test-Path $library) {
     Compress-Archive -Path $library -DestinationPath (Join-Path $folder 'library.zip') -Force
     Write-Ok 'библиотека заархивирована'
+}
+# Подлинники отчётов, сданных файлом. В базе на них только ссылка: без этого
+# каталога восстановленная система покажет отчёт, а файла за ним не будет.
+$reports = Join-Path $script:Data 'reports'
+if ((Test-Path $reports) -and (Get-ChildItem $reports -ErrorAction SilentlyContinue)) {
+    Compress-Archive -Path $reports -DestinationPath (Join-Path $folder 'reports.zip') -Force
+    Write-Ok 'сданные файлом отчёты заархивированы'
 }
 $exports = Join-Path $script:Data 'exports'
 if ((Test-Path $exports) -and (Get-ChildItem $exports -ErrorAction SilentlyContinue)) {
@@ -53,4 +60,4 @@ foreach ($item in $old) { Remove-Item $item.FullName -Recurse -Force; Write-Ok "
 
 Write-Host ''
 Write-Host "Копия готова: $folder" -ForegroundColor Green
-Write-Host 'Восстановление: остановить приложение, положить reportgen.db обратно в data\, распаковать library.zip.'
+Write-Host 'Восстановление: остановить приложение, положить reportgen.db обратно в data\, распаковать library.zip и reports.zip.'

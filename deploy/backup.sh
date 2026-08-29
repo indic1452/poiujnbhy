@@ -67,6 +67,10 @@ load_env() {
     DB_PATH="${REPORTGEN_DB_PATH:-$DATA_DIR/reportgen.db}"
     LIBRARY_DIR="${REPORTGEN_LIBRARY_DIR:-$DATA_DIR/library}"
     EXPORT_DIR="${REPORTGEN_EXPORT_DIR:-$DATA_DIR/exports}"
+    # Подлинники отчётов, сданных файлом. В базе на них только ссылка
+    # (reports.file_path): без этого каталога восстановленная система
+    # покажет отчёт, а «Скачать файл» приведёт в пустоту.
+    REPORTS_DIR="$DATA_DIR/reports"
     TEMPLATES_DIR="${BACKUP_TEMPLATES:-${REPORTGEN_TEMPLATES_DIR:-/opt/reportgen/templates}}"
 }
 
@@ -214,6 +218,13 @@ do_backup() {
         log "библиотека не найдена ($LIBRARY_DIR) — пропускаем"
     fi
 
+    if [[ -d "$REPORTS_DIR" ]]; then
+        log "сданные отчёты: $REPORTS_DIR"
+        tar -czf "$partial/reports.tar.gz" -C "$(dirname "$REPORTS_DIR")" "$(basename "$REPORTS_DIR")"
+    else
+        log "сданных файлом отчётов нет ($REPORTS_DIR) — пропускаем"
+    fi
+
     if [[ -d "$EXPORT_DIR" ]]; then
         log "экспорты: $EXPORT_DIR"
         tar -czf "$partial/exports.tar.gz" -C "$(dirname "$EXPORT_DIR")" "$(basename "$EXPORT_DIR")"
@@ -242,12 +253,14 @@ do_backup() {
         echo "библиотека:  $LIBRARY_DIR"
         echo "экспорты:    $EXPORT_DIR"
         echo "шаблоны:     $TEMPLATES_DIR"
+        echo "отчёты:      $REPORTS_DIR"
         echo
         echo "восстановление:"
         echo "  systemctl stop reportgen"
         echo "  cp reportgen.db $DB_PATH"
         echo "  rm -f $DB_PATH-wal $DB_PATH-shm"
         echo "  tar -xzf library.tar.gz -C $(dirname "$LIBRARY_DIR")"
+        echo "  tar -xzf reports.tar.gz -C $DATA_DIR    # подлинники сданных отчётов"
         echo "  chown -R reportgen:reportgen $(dirname "$DB_PATH")"
         echo "  systemctl start reportgen"
         echo "  reportgen ingest    # пересобрать индекс из библиотеки"

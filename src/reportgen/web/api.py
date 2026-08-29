@@ -78,6 +78,27 @@ def _since_utc(days: int) -> str:
 FLOW_CASE_STATUSES = ("review", "checked", "approved")
 
 
+def _guard_incoming_no(repos: Any, number: str, case: Case | None = None) -> None:
+    """Не давать завести одно письмо дважды под разными учётными номерами.
+
+    В отделе одно письмо — один отчёт — один исходящий номер. Письмо,
+    зарегистрированное дважды, законно получает два отчёта и два разных
+    исходящих: в журнале выходит, что на одно обращение ответили дважды
+    по-разному. Единственность учётного номера от этого не спасает — его
+    придумывает система, а входящий стоит на бумаге.
+    """
+    if not str(number or "").strip():
+        return
+    twin = repos.cases.by_incoming_no(number, other_than=case.id if case else None)
+    if twin is None:
+        return
+    raise ServiceError(
+        f"письмо с входящим номером «{twin.incoming_no}» уже зарегистрировано "
+        f"({twin.case_id}"
+        + (f", {twin.title}" if twin.title else "") + "). Одно письмо — один отчёт: "
+        "работайте по нему или исправьте номер", 409)
+
+
 def _guard_case_status(repos: Any, case: Case, status: str) -> None:
     """Не давать выставить в карточке то, что означает работу с отчётом.
 
@@ -365,8 +386,11 @@ def list_cases(request: Request, status: str | None = None,
         items.append(row)
     return {
         "items": items,
-        # Считаем то же, что показываем: при поиске «показаны 3 из 12» врало.
-        "total": repos.cases.count(status, assignee_id=assignee, query=q[:MAX_QUERY_LEN]),
+        # Считаем то же, что показываем, по ВСЕМ отборам — не только по
+        # поиску: на вкладке «Просроченные» выходило «показаны 2 из 5».
+        "total": repos.cases.count(
+            status, assignee_id=assignee, query=q[:MAX_QUERY_LEN],
+            overdue_before=_today() if overdue else None),
         "open": repos.cases.count("open"),
         "overdue": repos.board.deadline_counts(_today(), _today())["late"],
         "today": _today(),
@@ -385,6 +409,8 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
     for name in MAX_CARD_FIELDS:
         if name in payload:
             fields[name] = _card_line(payload[name], name)
+    if "incoming_no" in fields:
+        _guard_incoming_no(repos, fields["incoming_no"], case)
     # Исходящий номер вписывается отправкой ответа, а не правкой карточки:
     # иначе письмо числилось бы отправленным без проверенного отчёта.
     if "outgoing_no" in fields:
@@ -447,6 +473,7 @@ def create_case(request: Request) -> Dict[str, Any]:
     for name in MAX_CARD_FIELDS:
         if name in payload:
             payload[name] = _card_line(payload[name], name)
+    _guard_incoming_no(_repos(request), payload.get("incoming_no", ""))
     if payload.get("assignee_id"):
         assignee = _repos(request).users.get(int(payload["assignee_id"]))
         if assignee is None or not assignee.active:
@@ -501,6 +528,23 @@ def update_facts(request: Request, case_ref: int) -> Dict[str, Any]:
         raise ServiceError("ожидался объект facts", 400)
     updated = service.update_facts(case, facts, user)
     return {"case": updated.to_dict(with_facts=True), "coverage": service.coverage(updated)}
+
+
+@router.post("/cases/reindex")
+def reindex_cases(request: Request) -> Dict[str, Any]:
+    """Перестроить поисковый указатель по письмам.
+
+    Обычно он строится сам: при каждой правке письма или отчёта, а на
+    базе без указателя — при первом запуске. Но перестроение может
+    оборваться на середине, и тогда часть писем не находится, а признака
+    «указатель пуст» уже нет. Кнопка на такой случай — как и у библиотеки.
+    """
+    user = require_admin(request)
+    repos = _repos(request)
+    built = repos.case_search.rebuild_all()
+    repos.audit.log("cases.reindex", user=user, object_type="case",
+                    object_id="", details={"cases": built})
+    return {"ok": True, "cases": built}
 
 
 @router.post("/cases/{case_ref}/send")
@@ -703,6 +747,9 @@ def upload_report(
 
     case = repos.cases.by_case_id(case_id)
     if case is None:
+        # Тот же запрет, что и при регистрации: одно письмо заводится один
+        # раз, иначе по нему выйдут два отчёта и два исходящих номера.
+        _guard_incoming_no(repos, incoming_no)
         payload = {
             "case_id": case_id,
             "report_type": report_type or _default_report_type(request),
@@ -738,6 +785,11 @@ def upload_report(
         fields: Dict[str, Any] = {}
         if title and title != Path(name).stem:
             fields["title"] = title
+        # Входящий номер терялся: в наборе полей его не было вовсе. Письмо,
+        # заведённое сдачей файла без номера, оставалось без него навсегда,
+        # и по номеру такое письмо было не найти.
+        if incoming_no and not case.incoming_no:
+            fields["incoming_no"] = incoming_no
         if str(group_no or "").strip():
             fields["customer"] = _group_or_empty(group_no)
         if str(incoming_date or "").strip():
@@ -949,7 +1001,8 @@ def export_docx(request: Request, report_id: int) -> FileResponse:
     try:
         export_report(
             report.markdown, target,
-            case_id=case.case_id, status=report.status,
+            case_id=case.case_id, incoming_no=case.incoming_no,
+            outgoing_no=case.outgoing_no, status=report.status,
             template=settings.docx_template,
         )
     except ImportError as error:
@@ -1873,6 +1926,11 @@ def my_summary(request: Request) -> Dict[str, Any]:
             "total": int(reports["total"] or 0),
             "approved": int(reports["approved"] or 0),
         },
+        # Чем сотрудник отчитывается за последний шаг: сколько ответов он
+        # отправил. «Проверено» — работа начальника, «отправлено» — его.
+        "sent": int(repos.db.scalar(
+            "SELECT count(*) FROM cases WHERE sent_by = ? AND outgoing_no <> ''",
+            (user.id,)) or 0),
         "edits": {
             "pairs": int(edits["pairs"] or 0),
             "mean_distance": round(float(edits["mean"] or 0.0), 3),

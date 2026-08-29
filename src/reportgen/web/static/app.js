@@ -129,6 +129,7 @@
         'case.facts.update': 'изменён факт-пакет',
         'case.send': 'ответ отправлен, записан исходящий номер',
         'case.send.withdraw': 'отозвана отправка ответа',
+        'cases.reindex': 'перестроен указатель поиска по письмам',
         'report.generate': 'собран черновик отчёта',
         'report.section.edit': 'правка раздела',
         'report.section.save': 'сохранена секция',
@@ -1193,6 +1194,15 @@
                 h('div', { class: 'page-note' }, 'Входящие письма и подготовленные ответы'),
                 h('div', { class: 'page-head-actions' },
                     h('button', { class: 'btn', onclick: () => loadCases() }, 'Обновить'),
+                    /* Указатель поиска строится сам, но перестроение может
+                       оборваться, и тогда часть писем не находится. Кнопка
+                       на такой случай — как и у библиотеки. */
+                    isAdmin() ? h('button', {
+                        class: 'btn btn--sm',
+                        title: 'Перестроить указатель поиска по письмам, если что-то '
+                            + 'перестало находиться',
+                        onclick: () => reindexCases(),
+                    }, 'Указатель поиска') : null,
                     canEdit() ? h('button', {
                         class: 'btn',
                         title: 'Загрузить свой готовый отчёт файлом на проверку начальнику',
@@ -1225,6 +1235,26 @@
         }
 
         /** Кнопка «Сдать готовый отчёт» и её диалог: реквизиты и файл. */
+    /** Перестроить указатель поиска по письмам. Право администратора. */
+    async function reindexCases() {
+        const ok = await confirmDialog({
+            title: 'Перестроить указатель поиска',
+            message: 'Указатель по письмам и текстам отчётов будет собран заново.',
+            note: 'Обычно он обновляется сам при каждой правке. Кнопка нужна, '
+                + 'если что-то перестало находиться поиском.',
+            confirmText: 'Перестроить',
+        });
+        if (!ok) return;
+        try {
+            const data = await withOverlay('Перестроение указателя',
+                'Собираем реквизиты писем и тексты отчётов заново.',
+                () => api.post('/api/cases/reindex', {}));
+            toast('Указатель перестроен, писем: ' + (data.cases || 0), 'ok');
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
     async function openUploadReportDialog(after) {
         const staff = await staffList();
         const me = state.user || {};
@@ -4749,7 +4779,7 @@
             statCard(cases.total || 0, 'писем всего',
                 'отправлено: ' + (cases.approved || 0) + ' · в работе: ' + (cases.draft || 0)),
             statCard(reports.total || 0, 'редакций отчётов',
-                'утверждено: ' + (reports.approved || 0)),
+                'из них проверено: ' + (reports.approved || 0)),
             statCard(fmtNumber(edits.mean_distance || 0, 3), 'средняя доля правки',
                 'какую часть черновика инженер переписывает; правок в наборе: ' +
                 (edits.count || 0) + ' · чем меньше, тем ближе черновик к готовому'),
@@ -6546,7 +6576,11 @@
         const cards = h('div', { class: 'stat-cards' },
             statCard(data.cases || 0, 'писем зарегистрировано вами'),
             statCard(reports.total || 0, 'редакций отчётов',
-                'утверждено: ' + (reports.approved || 0)),
+                'из них проверено: ' + (reports.approved || 0)),
+            // Последний шаг порядка отдела — работа исполнителя, и
+            // отчитывается он именно этим числом.
+            statCard(data.sent || 0, 'ответов отправлено вами',
+                'записан исходящий номер — письмо закрыто'),
             statCard(edits.pairs || 0, 'пар «черновик → готовое»',
                 'средняя доля правки: ' + fmtNumber(edits.mean_distance || 0, 3)),
             statCard(data.chats || 0, 'разговоров с помощником',

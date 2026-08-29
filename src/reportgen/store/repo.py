@@ -711,17 +711,26 @@ def refresh_case_index(db: "Database", case_ref: int) -> None:
     отчёт лежал в базе, а поиск его не находил).
     """
     row = db.query_one(
-        "SELECT case_id, title, customer, incoming_no, outgoing_no, note "
+        "SELECT case_id, title, customer, incoming_no, outgoing_no, note, facts_json "
         "FROM cases WHERE id = ?", (case_ref,))
     with db.transaction() as connection:
         connection.execute("DELETE FROM cases_fts WHERE case_ref = ?", (case_ref,))
         if row is None:
             return
         texts = [row["case_id"], row["title"], row["customer"],
-                 row["incoming_no"], row["outgoing_no"], row["note"]]
+                 row["incoming_no"], row["outgoing_no"], row["note"],
+                 # Суть обращения и ключевые слова из факт-пакета: по ним
+                 # ищут письмо, у которого отчёта ещё нет вовсе.
+                 row["facts_json"]]
         for report in connection.execute(
-                "SELECT markdown FROM reports WHERE case_ref = ?", (case_ref,)):
+                "SELECT markdown, file_name, review_note FROM reports "
+                "WHERE case_ref = ?", (case_ref,)):
             texts.append(report["markdown"])
+            # Имя сданного файла: у сканированного PDF текст не извлекается,
+            # и без имени такое письмо не найти ничем. Замечание проверяющего
+            # тоже ищут — «что мне тогда вернули по этому письму».
+            texts.append(report["file_name"])
+            texts.append(report["review_note"])
         for section in connection.execute(
                 "SELECT s.text FROM report_sections s JOIN reports r ON r.id = s.report_id "
                 "WHERE r.case_ref = ?", (case_ref,)):
@@ -807,6 +816,24 @@ class CaseRepo:
         row = self.db.query_one(f"{self._SELECT} WHERE c.id = ?", (case_ref,))
         return Case.from_row(row) if row else None
 
+    def by_incoming_no(self, incoming_no: str, *, other_than: int | None = None) -> Case | None:
+        """Письмо с таким входящим номером. Нужно, чтобы не завести его дважды.
+
+        Одно физическое письмо, зарегистрированное дважды под разными
+        учётными номерами, законно получает два «единственных» отчёта и два
+        разных исходящих — в учёте отдела это прямая ошибка.
+        """
+        number = " ".join(str(incoming_no or "").split())
+        if not number:
+            return None
+        sql = f"{self._SELECT} WHERE rulower(c.incoming_no) = rulower(?)"
+        params: List[Any] = [number]
+        if other_than is not None:
+            sql += " AND c.id <> ?"
+            params.append(other_than)
+        row = self.db.query_one(sql + " LIMIT 1", tuple(params))
+        return Case.from_row(row) if row else None
+
     def by_case_id(self, case_id: str) -> Case | None:
         row = self.db.query_one(f"{self._SELECT} WHERE c.case_id = ?", (case_id,))
         return Case.from_row(row) if row else None
@@ -820,42 +847,10 @@ class CaseRepo:
         Порядок «по дате правки» показывал наверху то, чего только что
         коснулись, а не то, что горит. Отделу нужно обратное.
         """
-        where, params = [], []
-        if status == "open":
-            marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
-            where.append(f"c.status IN ({marks})")
-            params.extend(OPEN_CASE_STATUSES)
-        elif status:
-            where.append("c.status = ?")
-            params.append(status)
-        if assignee_id is not None:
-            where.append("c.assignee_id = ?")
-            params.append(assignee_id)
-        if overdue_before:
-            marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
-            where.append(
-                f"c.deadline <> '' AND c.deadline < ? AND c.status IN ({marks})"
-            )
-            params.append(overdue_before)
-            params.extend(OPEN_CASE_STATUSES)
-        if deadline_from or deadline_to:
-            # Отбор по сроку делает база, а не выборка «первых N с фильтром
-            # на стороне кода»: сортировка ставит наверх просроченные, и на
-            # отделе с полусотней просрочек список «горящих» выходил пустым
-            # при ненулевой плитке над ним.
-            marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
-            where.append(f"c.deadline <> '' AND c.status IN ({marks})")
-            params.extend(OPEN_CASE_STATUSES)
-            if deadline_from:
-                where.append("c.deadline >= ?")
-                params.append(deadline_from)
-            if deadline_to:
-                where.append("c.deadline <= ?")
-                params.append(deadline_to)
-        if query.strip():
-            clause, needles = self._search_clause(query, "c.")
-            where.append(clause)
-            params.extend(needles)
+        where, params = self._filters(
+            status=status, assignee_id=assignee_id, overdue_before=overdue_before,
+            deadline_from=deadline_from, deadline_to=deadline_to, query=query,
+            prefix="c.")
         clause = (" WHERE " + " AND ".join(where)) if where else ""
         order = (
             " ORDER BY CASE WHEN c.status IN ('approved', 'archived') THEN 1 ELSE 0 END, "
@@ -1015,23 +1010,64 @@ class CaseRepo:
                 found.add(int(row["id"]))
         return found
 
-    def count(self, status: str | None = None, assignee_id: int | None = None,
-              query: str = "") -> int:
-        where, params = [], []
+    def _filters(self, *, status: str | None = None, assignee_id: int | None = None,
+                 overdue_before: str | None = None, deadline_from: str | None = None,
+                 deadline_to: str | None = None, query: str = "",
+                 prefix: str = "") -> tuple[List[str], List[Any]]:
+        """Условия отбора писем — одни на список и на счётчик.
+
+        Раньше их было два набора, и они разошлись: список знал про срок и
+        просрочку, счётчик — нет. На вкладке «Просроченные» выходило
+        «показаны 2 из 5»: показано верно, а число взято по всем письмам.
+        Один набор условий на оба запроса — единственный способ, чтобы это
+        не повторилось при следующем новом отборе.
+        """
+        where: List[str] = []
+        params: List[Any] = []
         if status == "open":
             marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
-            where.append(f"status IN ({marks})")
+            where.append(f"{prefix}status IN ({marks})")
             params.extend(OPEN_CASE_STATUSES)
         elif status:
-            where.append("status = ?")
+            where.append(f"{prefix}status = ?")
             params.append(status)
         if assignee_id is not None:
-            where.append("assignee_id = ?")
+            where.append(f"{prefix}assignee_id = ?")
             params.append(assignee_id)
+        if overdue_before:
+            marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
+            where.append(
+                f"{prefix}deadline <> '' AND {prefix}deadline < ? "
+                f"AND {prefix}status IN ({marks})"
+            )
+            params.append(overdue_before)
+            params.extend(OPEN_CASE_STATUSES)
+        if deadline_from or deadline_to:
+            # Отбор по сроку делает база, а не выборка «первых N с фильтром
+            # на стороне кода»: сортировка ставит наверх просроченные, и на
+            # отделе с полусотней просрочек список «горящих» выходил пустым
+            # при ненулевой плитке над ним.
+            marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
+            where.append(f"{prefix}deadline <> '' AND {prefix}status IN ({marks})")
+            params.extend(OPEN_CASE_STATUSES)
+            if deadline_from:
+                where.append(f"{prefix}deadline >= ?")
+                params.append(deadline_from)
+            if deadline_to:
+                where.append(f"{prefix}deadline <= ?")
+                params.append(deadline_to)
         if query.strip():
-            clause, needles = self._search_clause(query)
+            clause, needles = self._search_clause(query, prefix)
             where.append(clause)
             params.extend(needles)
+        return where, params
+
+    def count(self, status: str | None = None, assignee_id: int | None = None,
+              query: str = "", *, overdue_before: str | None = None,
+              deadline_from: str | None = None, deadline_to: str | None = None) -> int:
+        where, params = self._filters(
+            status=status, assignee_id=assignee_id, overdue_before=overdue_before,
+            deadline_from=deadline_from, deadline_to=deadline_to, query=query)
         clause = (" WHERE " + " AND ".join(where)) if where else ""
         return int(self.db.scalar(f"SELECT count(*) FROM cases{clause}", tuple(params)) or 0)
 
@@ -1252,6 +1288,9 @@ class ReportRepo:
                     "UPDATE reports SET status = ?, review_note = ?, "
                     "approved_by = NULL, approved_at = NULL WHERE id = ?",
                     (status, note if note is not None else "", report_id))
+        # Замечание проверяющего тоже ищут: «что мне тогда вернули по
+        # этому письму». Значит, оно должно попасть в указатель.
+        self._reindex(report_id)
 
     def approve(self, report_id: int, user_id: int | None) -> None:
         with self.db.transaction() as connection:
