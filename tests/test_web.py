@@ -725,6 +725,22 @@ class UploadedReportTests(WebTestCase):
         case = self.upload().json()["case"]
         self.assertEqual(engineer.id, case["assignee_id"])
 
+    def test_deleting_a_letter_removes_the_handed_in_files(self):
+        """Интерфейс обещает удаление вместе со всеми версиями отчёта.
+
+        Строки из базы уходили каскадом, а файлы оставались на диске
+        навсегда — содержимое удалённого отчёта лежало бы там годами.
+        """
+        from pathlib import Path as _P
+
+        body = self.upload().json()
+        folder = _P(self.tmp / "reports" / str(body["case"]["id"]))
+        self.assertTrue(any(folder.iterdir()), "файл не сохранён")
+        self.assertEqual(200, self.client.delete(
+            f"/api/cases/{body['case']['id']}").status_code)
+        self.assertFalse(folder.exists() and any(folder.iterdir()),
+                         "файл сданного отчёта остался на диске")
+
     def test_second_report_on_the_same_letter_is_a_new_version(self):
         first = self.upload().json()["report"]
         second = self.upload(name="Отчёт исправленный.md").json()["report"]
@@ -759,10 +775,10 @@ class UploadedReportTests(WebTestCase):
         from pathlib import Path as _P
 
         self.upload(name="Отчёт.md", body=b"normalnyi").json()
-        before = sorted(x.name for x in _P(self.tmp / "data" / "reports").rglob("*") if x.is_file())
+        before = sorted(x.name for x in _P(self.tmp / "reports").rglob("*") if x.is_file())
         self.upload(name="дамп.pcap", body=b"\xd4\xc3\xb2\xa1")
         self.upload(body=b"")
-        after = sorted(x.name for x in _P(self.tmp / "data" / "reports").rglob("*") if x.is_file())
+        after = sorted(x.name for x in _P(self.tmp / "reports").rglob("*") if x.is_file())
         self.assertEqual(before, after, "отказанная сдача оставила файл на диске")
 
     def test_unreadable_format_is_refused_with_a_plain_answer(self):
@@ -1366,6 +1382,30 @@ class LetterCardTests(WebTestCase):
             "facts": {**payload, "case_id": "SUP-СТАРЫЙ-1", "customer": "1274"},
         }).json()["case"]
         self.assertEqual("1274", case["group_no"])
+
+    def test_search_treats_percent_as_a_sign_not_a_wildcard(self):
+        """«100%» — это то, что ввёл инженер, а не «найди всё подряд»."""
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}", json={"title": "Запас 100% мощности"})
+        other = self.create_case({**CASE, "case_id": "SUP-ДРУГОЕ-1"})
+        self.client.patch(f"/api/cases/{other['id']}", json={"title": "Совсем про другое"})
+
+        found = self.client.get("/api/cases", params={"q": "100%"}).json()
+        titles = {item["title"] for item in found["items"]}
+        self.assertIn("Запас 100% мощности", titles)
+        self.assertNotIn("Совсем про другое", titles, "% сработал как подстановка")
+
+        # И одиночное подчёркивание не заменяет любой знак.
+        self.assertEqual(0, self.client.get(
+            "/api/cases", params={"q": "10_%"}).json()["total"])
+
+    def test_counter_counts_what_the_search_shows(self):
+        # «Показаны 1 из 12» при поиске врало: список считал одно, число другое.
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}", json={"title": "Особая тема"})
+        self.create_case({**CASE, "case_id": "SUP-ПРОЧЕЕ-1"})
+        body = self.client.get("/api/cases", params={"q": "Особая"}).json()
+        self.assertEqual(len(body["items"]), body["total"])
 
     def test_group_number_extra_spaces_are_trimmed(self):
         case = self.create_case()

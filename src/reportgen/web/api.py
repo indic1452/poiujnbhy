@@ -10,6 +10,7 @@ import sqlite3
 import tempfile
 import unicodedata
 import urllib.parse
+from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable
@@ -297,7 +298,8 @@ def list_cases(request: Request, status: str | None = None,
     )
     return {
         "items": [case.to_dict() for case in cases],
-        "total": repos.cases.count(status, assignee_id=assignee),
+        # Считаем то же, что показываем: при поиске «показаны 3 из 12» врало.
+        "total": repos.cases.count(status, assignee_id=assignee, query=q[:MAX_QUERY_LEN]),
         "open": repos.cases.count("open"),
         "overdue": repos.board.deadline_counts(_today(), _today())["late"],
         "today": _today(),
@@ -427,9 +429,21 @@ def update_facts(request: Request, case_ref: int) -> Dict[str, Any]:
 def delete_case(request: Request, case_ref: int) -> Dict[str, Any]:
     user = require_admin(request)
     case = _case_or_404(request, case_ref)
+    # Сданные файлом отчёты лежат на диске: строки из базы уходят каскадом,
+    # а файлы остались бы навсегда. Интерфейс обещает удаление вместе со
+    # всеми версиями отчёта — значит, и с их файлами.
+    folder = Path(_settings(request).data_dir) / "reports" / str(case.id)
     _repos(request).cases.delete(case.id)
+    removed = 0
+    if folder.is_dir():
+        for item in folder.iterdir():
+            if item.is_file():
+                item.unlink(missing_ok=True)
+                removed += 1
+        with suppress(OSError):
+            folder.rmdir()
     _repos(request).audit.log("case.delete", user=user, object_type="case",
-                              object_id=case.case_id)
+                              object_id=case.case_id, details={"files": removed})
     return {"ok": True}
 
 

@@ -752,12 +752,8 @@ class CaseRepo:
                 where.append("c.deadline <= ?")
                 params.append(deadline_to)
         if query.strip():
-            like = f"%{query.strip().lower()}%"
-            where.append(
-                "(rulower(c.title) LIKE ? OR rulower(c.customer) LIKE ? "
-                "OR rulower(c.case_id) LIKE ? OR rulower(c.incoming_no) LIKE ?)"
-            )
-            params.extend([like, like, like, like])
+            where.append(self._SEARCH_SQL.format(p="c."))
+            params.extend([self._search_needle(query)] * 4)
         clause = (" WHERE " + " AND ".join(where)) if where else ""
         order = (
             " ORDER BY CASE WHEN c.status IN ('approved', 'archived') THEN 1 ELSE 0 END, "
@@ -841,7 +837,23 @@ class CaseRepo:
         with self.db.transaction() as connection:
             connection.execute("DELETE FROM cases WHERE id = ?", (case_ref,))
 
-    def count(self, status: str | None = None, assignee_id: int | None = None) -> int:
+    #: Отбор по строке поиска. Один на список и на счётчик: иначе «показаны
+    #: 3 из 12» при поиске врёт — списком одно, числом другое.
+    _SEARCH_SQL = ("(rulower({p}title) LIKE ? ESCAPE '\\' "
+                   "OR rulower({p}customer) LIKE ? ESCAPE '\\' "
+                   "OR rulower({p}case_id) LIKE ? ESCAPE '\\' "
+                   "OR rulower({p}incoming_no) LIKE ? ESCAPE '\\')")
+
+    @staticmethod
+    def _search_needle(query: str) -> str:
+        """Строка для LIKE. % и _ — знаки, которые ввёл инженер, а не подстановка."""
+        needle = query.strip().lower()
+        for sign in ("\\", "%", "_"):
+            needle = needle.replace(sign, "\\" + sign)
+        return f"%{needle}%"
+
+    def count(self, status: str | None = None, assignee_id: int | None = None,
+              query: str = "") -> int:
         where, params = [], []
         if status == "open":
             marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
@@ -853,6 +865,9 @@ class CaseRepo:
         if assignee_id is not None:
             where.append("assignee_id = ?")
             params.append(assignee_id)
+        if query.strip():
+            where.append(self._SEARCH_SQL.format(p=""))
+            params.extend([self._search_needle(query)] * 4)
         clause = (" WHERE " + " AND ".join(where)) if where else ""
         return int(self.db.scalar(f"SELECT count(*) FROM cases{clause}", tuple(params)) or 0)
 

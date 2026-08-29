@@ -299,6 +299,8 @@ class Database:
         через это прошло, а примечание чистим от служебной строки, чтобы
         она не мозолила глаза в карточке.
         """
+        from ..facts import MAX_GROUP  # noqa: PLC0415 — только ради предела длины
+
         columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(cases)")}
         if not columns or "customer" not in columns or "note" not in columns:
             return
@@ -322,6 +324,10 @@ class Database:
                     rest.append(line)
             if not kept or (row["customer"] or "").strip():
                 continue
+            # Подрезаем до предела поля: вернуть можно только то, что поле
+            # принимает, иначе письмо откроется, а отчёт по нему не собрать.
+            if len(kept) > MAX_GROUP:
+                kept = kept[:MAX_GROUP].rstrip()
             facts_text = row["facts_json"] or ""
             try:
                 facts = json.loads(facts_text) if facts_text else None
