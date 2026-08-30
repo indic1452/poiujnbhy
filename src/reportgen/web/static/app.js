@@ -926,6 +926,12 @@
         mark.addEventListener('blur', release);
     }
 
+    /** Название отдела. Оно одно на всю систему и живёт в настройках. */
+    function brandName() {
+        const brand = (state.config && state.config.brand) || {};
+        return brand.name || '2 специальный отдел';
+    }
+
     function renderChrome() {
         const brand = (state.config && state.config.brand) || null;
         if (brand && brand.name) {
@@ -6764,7 +6770,7 @@
 
         const tableBox = h('div', {});
         const rolesBox = h('div', { class: 'card card-pad' });
-        const data = { roles: [], items: [], departments: [] };
+        const data = { roles: [], items: [] };
 
         function role(roleId) {
             return data.roles.filter((item) => item.id === roleId)[0] || null;
@@ -6779,7 +6785,6 @@
             const fresh = await api.get('/api/users');
             data.roles = fresh.roles || [];
             data.items = fresh.items || [];
-            data.departments = fresh.departments || [];
             paintRoles();
             paint();
         }
@@ -6822,7 +6827,10 @@
                 }, item.title)));
                 const depInput = h('input', {
                     type: 'text', value: user.department || '', class: 'input--quiet',
-                    placeholder: '—', disabled: locked, list: 'departments',
+                    placeholder: '—', disabled: locked,
+                    title: 'Подразделение, в котором сотрудник стоит по штату. '
+                        + 'Работают все в отделе; поле нужно только тем, кто '
+                        + 'числится в другом подразделении',
                     onchange: () => save(user, { department: depInput.value }),
                 });
                 const teamInput = h('input', {
@@ -6872,7 +6880,7 @@
                     h('th', {}, 'Логин'),
                     h('th', {}, 'Фамилия и инициалы'),
                     h('th', {}, 'Должность'),
-                    h('th', {}, 'Отдел'),
+                    h('th', {}, 'По штату'),
                     h('th', {}, 'Группа'),
                     h('th', {}, 'Доступ'),
                     h('th', {}, 'Заведён'),
@@ -6880,8 +6888,6 @@
                 body);
             tableBox.appendChild(h('div', { class: 'table-scroll' },
                 makeResizable(usersTable, 'users')));
-            tableBox.appendChild(h('datalist', { id: 'departments' },
-                data.departments.map((item) => h('option', { value: item }))));
         }
 
         async function save(user, patch, control) {
@@ -6941,9 +6947,11 @@
             const roleSelect = h('select', {}, allowed.map((item) => h('option', {
                 value: item.id, selected: item.id === 'engineer',
             }, item.title)));
+            // Отдел у всех один — 2СО, и спрашивать его у каждого незачем.
+            // Здесь только штатная принадлежность: человек работает в отделе,
+            // а по штату может стоять в другом подразделении.
             const department = h('input', {
-                type: 'text', list: 'departments',
-                value: (state.user && state.user.department) || '',
+                type: 'text', placeholder: 'если по штату в другом подразделении',
             });
             const team = h('input', { type: 'text' });
             const note = h('div', { class: 'small muted' }, roleNote(roleSelect.value));
@@ -6989,7 +6997,7 @@
                         h('label', { class: 'field' }, 'Фамилия и инициалы', fullName),
                         h('label', { class: 'field' }, 'Первый пароль', passwordBox),
                         h('label', { class: 'field' }, 'Должность', roleSelect),
-                        h('label', { class: 'field' }, 'Отдел', department),
+                        h('label', { class: 'field' }, 'По штату', department),
                         h('label', { class: 'field' }, 'Группа', team)),
                     note,
                 ],
@@ -7032,9 +7040,12 @@
                 h('dt', {}, 'Логин'), h('dd', { class: 'mono' }, user.login || '—'),
                 h('dt', {}, 'ФИО'), h('dd', {}, user.full_name || '—'),
                 h('dt', {}, 'Должность'), h('dd', {}, roleLabel(user.role)),
-                user.department ? h('dt', {}, 'Отдел') : null,
-                user.department ? h('dd', {}, user.department +
-                    (user.team ? ', ' + user.team : '')) : null,
+                // Отдел у всех один: это и есть система. Спрашивать его у
+                // каждого незачем — берём из названия.
+                h('dt', {}, 'Отдел'),
+                h('dd', {}, brandName() + (user.team ? ', ' + user.team : '')),
+                user.department ? h('dt', {}, 'По штату') : null,
+                user.department ? h('dd', {}, user.department) : null,
                 h('dt', {}, 'Права'), h('dd', { class: 'small muted' }, rolePowers(user.role))));
 
         const cards = h('div', { class: 'stat-cards' },

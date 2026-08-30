@@ -496,7 +496,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--role", default="engineer", choices=list(ROLES),
         help="должность: " + "; ".join(f"{role} — {ROLE_TITLES[role]}" for role in ROLES),
     )
-    p_useradd.add_argument("--department", default="", help="отдел")
+    p_useradd.add_argument(
+        "--department", default="",
+        help="подразделение по штату, если оно не то, где человек работает")
     p_useradd.add_argument("--team", default="", help="группа внутри отдела")
     p_useradd.add_argument("--password", default=None, help="если не задан — будет запрошен")
     p_useradd.set_defaults(func=cmd_useradd)

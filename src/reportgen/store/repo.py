@@ -101,6 +101,13 @@ class UserRepo:
 
     def create(self, login: str, password: str, full_name: str = "",
                role: str = "engineer", department: str = "", team: str = "") -> User:
+        """Завести сотрудника.
+
+        department — не «в каком отделе работает»: работают все в одном, это
+        и есть система. Здесь подразделение, в котором человек стоит по штату,
+        если оно не то же самое. Колонка называется department по
+        историческим причинам; в интерфейсе поле подписано «По штату».
+        """
         with self.db.transaction() as connection:
             cursor = connection.execute(
                 "INSERT INTO users(login, full_name, role, department, team, "
@@ -195,13 +202,6 @@ class UserRepo:
         ) + f" ELSE {len(ROLES)} END, full_name, login"
         where = " WHERE active = 1" if active_only else ""
         return rows_to(User, self.db.query(f"SELECT * FROM users{where} ORDER BY {order}"))
-
-    def departments(self) -> List[str]:
-        rows = self.db.query(
-            "SELECT DISTINCT department FROM users "
-            "WHERE department <> '' ORDER BY department"
-        )
-        return [row["department"] for row in rows]
 
     def count(self) -> int:
         return int(self.db.scalar("SELECT count(*) FROM users") or 0)

@@ -18,7 +18,9 @@
 .PARAMETER Name
     ФИО для отображения в интерфейсе, например "Петров П. П.".
 .PARAMETER Department
-    Отдел, например "Отдел радиосвязи".
+    Подразделение, в котором сотрудник стоит ПО ШТАТУ, например "в/ч 74326".
+    Работают все в одном отделе — том, что задан в настройках, — и заполнять
+    это поле нужно только тем, кто числится в другом подразделении.
 .PARAMETER Team
     Группа внутри отдела, например "1 группа".
 .EXAMPLE
@@ -26,7 +28,7 @@
 .EXAMPLE
     .\users.ps1 -Add admin -Role owner -Name "Петров П. П."
 .EXAMPLE
-    .\users.ps1 -Add ivanov -Role engineer -Name "Иванов И. И." -Department "Отдел радиосвязи"
+    .\users.ps1 -Add ivanov -Role engineer -Name "Иванов И. И." -Team "1 группа"
 .EXAMPLE
     .\users.ps1 -Reset admin
 #>

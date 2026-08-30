@@ -1697,7 +1697,6 @@ def list_users(request: Request) -> Dict[str, Any]:
             }
             for role in ROLES
         ],
-        "departments": repos.users.departments(),
         "admins": repos.users.count_admins(),
     }
 

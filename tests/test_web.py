@@ -3471,6 +3471,27 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertLessEqual(len(found.group(1)), 40,
                              "подсказка поиска снова не помещается в поле")
 
+    def test_the_department_is_one_and_is_not_asked_of_everybody(self):
+        """Работают все в одном отделе — это и есть система.
+
+        Спрашивать название отдела у каждого сотрудника незачем: оно одно и
+        стоит в настройках. Поле осталось для другого — человек может по
+        штату числиться в другом подразделении, — и подписано «По штату».
+        Справочника названий отделов больше нет ни на сервере, ни на экране.
+        """
+        self.assertNotIn("'Отдел', department", self.js,
+                         "у сотрудника снова спрашивают название отдела")
+        self.assertIn("'По штату'", self.js)
+        # Списка названий нет: подсказывать нечего, отдел один.
+        self.assertNotIn("list: 'departments'", self.js)
+        self.assertNotIn("datalist", self.js)
+        self.assertNotIn("data.departments", self.js)
+
+        # В кабинете отдел берётся из названия системы, а не из записи.
+        cabinet = self.js[self.js.index("async function renderMe"):]
+        cabinet = cabinet[:cabinet.index("\n    /* Что за человеком числится")]
+        self.assertIn("brandName()", cabinet)
+
     def test_the_cabinet_grew_beyond_a_password_form(self):
         """Кабинет должен отвечать «что за мной», а не только «кто я».
 
