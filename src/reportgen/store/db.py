@@ -61,6 +61,9 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     # Линия связи и номер технического средства. Отдел работает по линиям —
     # спутниковым, радиорелейным, коротковолновым, — и без этих двух полей
     # письмо нельзя ни найти, ни отнести к своему хозяйству.
+    # Где человек в эти дни. Без места расход отвечает «дежурство», но не
+    # отвечает «где», а начальнику нужно именно второе.
+    ("absences", "place", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "line_type", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "tc_no", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "outgoing_date", "TEXT NOT NULL DEFAULT ''"),

@@ -2915,6 +2915,231 @@ table.md-table th {
     }
 }
 
+/* ---------------------------------------------------------- расход ------ */
+
+/* Сетка «сотрудник × день». Первый столбец приклеен: на четырнадцати днях
+   таблица едет вбок, и без фамилии на виду читать её нельзя.
+
+   Цвет клетки — единственный способ прочитать расход отдела одним взглядом,
+   поэтому каждому виду занятости свой. Различаются они не только тоном, но и
+   яркостью: при чёрно-белой печати развода сетка обязана остаться читаемой. */
+
+.grid--roster {
+    min-width: 100%;
+    table-layout: fixed;
+}
+
+.grid--roster th,
+.grid--roster td {
+    border: 1px solid var(--border);
+    padding: 0;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.grid--roster .roster-name {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    width: 210px;
+    min-width: 210px;
+    background: var(--panel);
+    text-align: left;
+    padding: 6px 10px;
+    line-height: 1.25;
+}
+
+.grid--roster thead .roster-name {
+    z-index: 3;
+}
+
+.grid--roster .roster-name.is-me {
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.roster-day {
+    width: 96px;
+    padding: 5px 2px !important;
+    cursor: pointer;
+    line-height: 1.2;
+}
+
+.roster-day b {
+    display: block;
+    font-size: 12px;
+    text-transform: lowercase;
+}
+
+.roster-day span {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.roster-day.is-weekend,
+.roster-cell.is-weekend {
+    background: var(--bg);
+}
+
+/* Сегодняшний столбец обведён вертикальной полосой, а не залит: заливка
+   спорила бы с цветом занятости, ради которого сетка и нужна. */
+.roster-day.is-today,
+.roster-cell.is-today {
+    border-left-color: var(--accent);
+    border-right-color: var(--accent);
+}
+
+.roster-day.is-today {
+    color: var(--accent);
+    border-top: 2px solid var(--accent);
+}
+
+.roster-day.is-picked {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.roster-cell {
+    height: 44px;
+}
+
+.roster-cell.is-mine {
+    cursor: pointer;
+}
+
+/* Пустая своя клетка: плюс появляется под курсором. Держать его видимым
+   всегда — значит засыпать сетку крестиками там, где смотрят на занятость. */
+.roster-add {
+    color: var(--faint);
+    opacity: 0;
+    font-size: 15px;
+    transition: opacity .12s linear;
+}
+
+.roster-cell.is-mine:hover .roster-add {
+    opacity: 1;
+}
+
+.roster-cell.is-mine:hover {
+    background: var(--accent-soft);
+}
+
+.roster-mark {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 4px 5px;
+    line-height: 1.15;
+}
+
+.roster-mark b {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.roster-mark i {
+    font-style: normal;
+    font-size: 10.5px;
+    opacity: .85;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Виды занятости. Заливка бледная, а текст насыщенный: сетка из семи
+   плотных цветов режет глаз, а по ней работают весь день. */
+.kind-duty { background: #dbe9f7; color: #12456f; }
+.kind-work { background: #dcefe0; color: #1c5c31; }
+.kind-trip { background: #fbe7cd; color: #7a4a10; }
+.kind-study { background: #e6e0f6; color: #45338a; }
+.kind-vacation { background: #d8eff0; color: #12595e; }
+.kind-sick { background: #f8dcdc; color: #8a1f22; }
+.kind-dayoff { background: #e6e8ea; color: #4a545c; }
+.kind-unmarked { background: transparent; color: var(--muted); }
+
+:root[data-theme="dark"] .kind-duty { background: #14304a; color: #9ac8ee; }
+:root[data-theme="dark"] .kind-work { background: #163524; color: #8fd3a4; }
+:root[data-theme="dark"] .kind-trip { background: #3c2a11; color: #e6b877; }
+:root[data-theme="dark"] .kind-study { background: #2a2350; color: #b9aef0; }
+:root[data-theme="dark"] .kind-vacation { background: #123437; color: #86cfd3; }
+:root[data-theme="dark"] .kind-sick { background: #401c1e; color: #eda1a3; }
+:root[data-theme="dark"] .kind-dayoff { background: #262c31; color: #a8b3bc; }
+
+@media (prefers-color-scheme: dark) {
+
+    :root:not([data-theme="light"]) .kind-duty { background: #14304a; color: #9ac8ee; }
+    :root:not([data-theme="light"]) .kind-work { background: #163524; color: #8fd3a4; }
+    :root:not([data-theme="light"]) .kind-trip { background: #3c2a11; color: #e6b877; }
+    :root:not([data-theme="light"]) .kind-study { background: #2a2350; color: #b9aef0; }
+    :root:not([data-theme="light"]) .kind-vacation { background: #123437; color: #86cfd3; }
+    :root:not([data-theme="light"]) .kind-sick { background: #401c1e; color: #eda1a3; }
+    :root:not([data-theme="light"]) .kind-dayoff { background: #262c31; color: #a8b3bc; }
+}
+
+/* Расход на день: то, что читают на разводе. Колонки по видам занятости —
+   так список сразу разбит на «на месте» и «нет», а не смешан в одну кучу. */
+.roster-day-card {
+    margin-top: 12px;
+}
+
+.roster-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.roster-group {
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+}
+
+.roster-group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.roster-group-head b {
+    font-size: 12.5px;
+}
+
+.roster-person {
+    display: flex;
+    flex-direction: column;
+    font-size: 12.5px;
+    padding: 2px 0;
+}
+
+.roster-person i {
+    font-style: normal;
+}
+
+.roster-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.roster-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.roster-legend-item i {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+}
+
 /* ---------------------------------------------------- эмблема отдела --- */
 
 /* Знак 2 специального отдела — настоящий, файлом: static/emblem.png.

@@ -25,15 +25,19 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TEXT    NOT NULL
 );
 
--- Отсутствия: дежурство, отпуск, больничный, командировка. Отдельная таблица,
--- а не пара колонок в users: у одного человека бывает несколько периодов,
--- и нужна история — по ней дашборд показывает движение за период.
+-- Расход личного состава: чем занят человек в эти дни — дежурство, работы,
+-- командировка, отпуск, больничный, учёба, отгул. Отдельная таблица, а не
+-- пара колонок в users: у одного человека бывает несколько периодов, и нужна
+-- история — по ней дашборд показывает движение за период, а расход строит
+-- сетку по дням. Таблица называется absences по историческим причинам: в
+-- интерфейсе это «расход».
 CREATE TABLE IF NOT EXISTS absences (
     id         INTEGER PRIMARY KEY,
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    kind       TEXT    NOT NULL,            -- duty | vacation | sick | trip | study
+    kind       TEXT    NOT NULL,            -- duty|work|trip|study|vacation|sick|dayoff
     date_from  TEXT    NOT NULL,            -- ГГГГ-ММ-ДД включительно
     date_to    TEXT    NOT NULL,            -- ГГГГ-ММ-ДД включительно
+    place      TEXT    NOT NULL DEFAULT '', -- где: узел, аппаратная, объект
     note       TEXT    NOT NULL DEFAULT '',
     created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TEXT    NOT NULL

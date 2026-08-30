@@ -100,15 +100,25 @@ LINE_FULL_TITLES = {
 CASE_PRIORITIES = ("normal", "high", "urgent")
 CASE_PRIORITY_TITLES = {"normal": "обычный", "high": "важный", "urgent": "срочный"}
 
-#: Виды отсутствия и дежурства.
-ABSENCE_KINDS = ("duty", "vacation", "sick", "trip", "study")
+#: Расход личного состава: чем занят человек в этот день. Порядок важен —
+#: в таком виде он и показывается в сетке расхода, от «на месте» к «нет».
+ABSENCE_KINDS = ("duty", "work", "trip", "study", "vacation", "sick", "dayoff")
 ABSENCE_TITLES = {
     "duty": "дежурство",
-    "vacation": "отпуск",
-    "sick": "больничный",
+    "work": "работы",
     "trip": "командировка",
     "study": "учёба",
+    "vacation": "отпуск",
+    "sick": "больничный",
+    "dayoff": "отгул",
 }
+#: Кто считается на месте. Дежурный и занятый работами в отделе — на месте:
+#: их можно спросить и им можно дать письмо. Раньше «на месте» был только
+#: дежурный, и любая отметка о работах превращала человека в отсутствующего.
+PRESENT_KINDS = ("duty", "work")
+#: Тот, у кого на день нет ни одной отметки, в расходе показывается как
+#: «не отмечен»: это не отсутствие, а незаполненный расход.
+ABSENCE_UNMARKED = "unmarked"
 #: Путь отчёта. Готовит его исполнитель, проверяет начальник отдела или
 #: заместитель: draft — в работе у исполнителя; review — отправлен на
 #: проверку; rework — проверяющий вернул с замечанием; approved — проверен.
@@ -752,12 +762,17 @@ class Absence:
     kind: str
     date_from: str
     date_to: str
+    #: Где человек в эти дни: узел, аппаратная, объект, часть. Свободный
+    #: текст: мест в отделе больше, чем можно перечислить справочником, и
+    #: заставлять выбирать из списка «прочее» значит терять сведения.
+    place: str = ""
     note: str = ""
     created_by: int | None = None
     created_at: str = ""
-    #: ФИО и должность подтягиваются выборкой со связкой.
+    #: ФИО, должность и группа подтягиваются выборкой со связкой.
     full_name: str = ""
     role: str = ""
+    team: str = ""
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Absence":
@@ -767,11 +782,13 @@ class Absence:
             kind=row["kind"],
             date_from=row["date_from"],
             date_to=row["date_to"],
+            place=_col(row, "place", "") or "",
             note=_col(row, "note", ""),
             created_by=_col(row, "created_by", None),
             created_at=_col(row, "created_at", ""),
             full_name=_col(row, "full_name", "") or "",
             role=_col(row, "role", "") or "",
+            team=_col(row, "team", "") or "",
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -782,10 +799,14 @@ class Absence:
             "kind_title": ABSENCE_TITLES.get(self.kind, self.kind),
             "date_from": self.date_from,
             "date_to": self.date_to,
+            "place": self.place,
             "note": self.note,
+            "present": self.kind in PRESENT_KINDS,
             "full_name": self.full_name,
             "role": self.role,
             "role_title": ROLE_TITLES.get(self.role, self.role),
+            "team": self.team,
+            "created_by": self.created_by,
         }
 
 

@@ -30,6 +30,7 @@ from ..store.models import (
     CASE_STATUS_TITLES,
     DOC_STATUSES,
     LINE_FULL_TITLES,
+    PRESENT_KINDS,
     LINE_TITLES,
     LINE_TYPES,
     ROLE_NOTES,
@@ -38,6 +39,7 @@ from ..store.models import (
     ROLES,
     Case,
     Report,
+    User,
 )
 from .auth import (COOKIE_NAME, get_user, require_admin, require_editor,
                    require_reviewer, require_user)
@@ -1847,11 +1849,145 @@ def set_user_active(request: Request, user_id: int) -> Dict[str, Any]:
     return {"user": _user_public(repos.users.get(user_id))}
 
 
-# ------------------------------------------------- дежурства и отсутствия --
+# ------------------------------------------------------------- расход ----
+
+#: Насколько далеко можно расписать расход одной записью. Год — предел
+#: осмысленного: отпуск и учёба длятся месяцами, а «дежурство на пять лет»
+#: это не расход, а описка, от которой сетка становится нечитаемой.
+MAX_ROSTER_SPAN_DAYS = 366
+
+#: Сколько дней показывает сетка расхода за раз. Две недели — предел, за
+#: которым столбцы становятся уже подписи под ними.
+MAX_ROSTER_WINDOW = 31
+
+
+def _may_edit_roster(actor: User, user_id: int) -> bool:
+    """Свой расход ведёт каждый; чужой — начальник, зам, создатель и начальник группы.
+
+    Смысл расхода в том, что человек отмечает себя сам: иначе он собирается
+    через начальника, устаревает за день и им никто не пользуется.
+    """
+    return actor.id == user_id or actor.is_admin
+
+
+def _roster_bounds(payload: Dict[str, Any]) -> tuple[str, str]:
+    start = _date_or_empty(payload.get("date_from"), "date_from")
+    finish = _date_or_empty(payload.get("date_to"), "date_to") or start
+    if not start:
+        raise ServiceError("не указана дата начала", 400)
+    if finish < start:
+        raise ServiceError("дата окончания раньше даты начала", 400)
+    if _days_between(start, finish) > MAX_ROSTER_SPAN_DAYS:
+        raise ServiceError("одна запись расхода не может быть длиннее года", 400)
+    return start, finish
+
+
+def _days_between(start: str, finish: str) -> int:
+    a = datetime.strptime(start, "%Y-%m-%d")
+    b = datetime.strptime(finish, "%Y-%m-%d")
+    return (b - a).days
+
+
+@router.get("/roster")
+def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, Any]:
+    """Расход отдела за промежуток: сетка «сотрудник × день».
+
+    Готовую сетку собирает сервер, а не браузер. Раскладывать периоды по
+    дням в трёх местах интерфейса — верный способ получить три разных
+    расхода, а он в отделе один.
+    """
+    actor = require_user(request)
+    repos = _repos(request)
+    start = _date_or_empty(date_from, "date_from") or _today()
+    span = min(max(int(days or 7), 1), MAX_ROSTER_WINDOW)
+    finish = _shift(start, span - 1)
+
+    days_list = [_shift(start, step) for step in range(span)]
+    records = repos.absences.in_period_for_active(start, finish)
+
+    staff = []
+    for person in repos.users.list_all(active_only=True):
+        staff.append({
+            "id": person.id,
+            "full_name": person.full_name or person.login,
+            "role": person.role,
+            "role_title": person.role_title,
+            "team": person.team,
+            "can_edit": _may_edit_roster(actor, person.id),
+            "is_me": person.id == actor.id,
+        })
+
+    # Раскладка по дням: одна запись покрывает несколько суток, а сетке нужна
+    # клетка. Ключ — «id сотрудника|день», чтобы браузер брал клетку прямо.
+    cells: Dict[str, List[Dict[str, Any]]] = {}
+    for item in records:
+        for day in days_list:
+            if item.date_from <= day <= item.date_to:
+                cells.setdefault(f"{item.user_id}|{day}", []).append(item.to_dict())
+
+    return {
+        "date_from": start,
+        "date_to": finish,
+        "today": _today(),
+        "days": days_list,
+        "staff": staff,
+        "cells": cells,
+        "items": [item.to_dict() for item in records],
+        "kinds": [
+            {"id": kind, "title": ABSENCE_TITLES[kind], "present": kind in PRESENT_KINDS}
+            for kind in ABSENCE_KINDS
+        ],
+    }
+
+
+@router.get("/roster/day")
+def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
+    """Расход на день: кто где, по видам, плюс не отмеченные.
+
+    Это то, что начальник читает вслух на разводе, поэтому список полный:
+    отдел минус все отмеченные и есть те, о ком расход молчит.
+    """
+    require_user(request)
+    repos = _repos(request)
+    day = _date_or_empty(date, "date") or _today()
+    records = repos.absences.on_date(day)
+
+    marked: Dict[int, Any] = {}
+    for item in records:
+        # Отметок на один день может оказаться две (правили и не убрали
+        # старую). Берём ту, что заведена позже: она и есть свежая правда.
+        current = marked.get(item.user_id)
+        if current is None or item.id > current.id:
+            marked[item.user_id] = item
+
+    groups: Dict[str, List[Dict[str, Any]]] = {kind: [] for kind in ABSENCE_KINDS}
+    for item in sorted(marked.values(), key=lambda row: row.full_name):
+        groups[item.kind].append(item.to_dict())
+
+    unmarked = [
+        {"id": person.id, "full_name": person.full_name or person.login,
+         "role": person.role, "role_title": person.role_title, "team": person.team}
+        for person in repos.users.list_all(active_only=True)
+        if person.id not in marked
+    ]
+    present = sum(len(groups[kind]) for kind in PRESENT_KINDS)
+    return {
+        "date": day,
+        "groups": [
+            {"id": kind, "title": ABSENCE_TITLES[kind],
+             "present": kind in PRESENT_KINDS, "people": groups[kind]}
+            for kind in ABSENCE_KINDS
+        ],
+        "unmarked": unmarked,
+        "total": len(unmarked) + len(marked),
+        "present": present,
+        "away": len(marked) - present,
+    }
+
 
 @router.get("/absences")
 def list_absences(request: Request, date_from: str = "", date_to: str = "") -> Dict[str, Any]:
-    """Отсутствия за период. По умолчанию — ближайший месяц от сегодня."""
+    """Расход за период. По умолчанию — ближайший месяц от сегодня."""
     require_user(request)
     repos = _repos(request)
     start = _date_or_empty(date_from, "date_from") or _today()
@@ -1866,40 +2002,87 @@ def list_absences(request: Request, date_from: str = "", date_to: str = "") -> D
 
 @router.post("/absences")
 def add_absence(request: Request) -> Dict[str, Any]:
-    admin = require_admin(request)
+    """Отметить себя (или подчинённого) в расходе."""
+    actor = require_editor(request)
     repos = _repos(request)
     payload = _body(request)
 
-    user = repos.users.get(int(payload.get("user_id") or 0))
-    if user is None:
+    user_id = int(payload.get("user_id") or 0) or actor.id
+    user = repos.users.get(user_id)
+    if user is None or not user.active:
         raise ServiceError("сотрудник не найден", 404)
+    if not _may_edit_roster(actor, user.id):
+        raise ServiceError("недостаточно прав: чужой расход ведёт начальник", 403)
     kind = str(payload.get("kind", ""))
     if kind not in ABSENCE_KINDS:
         raise ServiceError(f"неизвестный вид '{kind}'", 400)
-    start = _date_or_empty(payload.get("date_from"), "date_from")
-    finish = _date_or_empty(payload.get("date_to"), "date_to") or start
-    if not start:
-        raise ServiceError("не указана дата начала", 400)
-    if finish < start:
-        raise ServiceError("дата окончания раньше даты начала", 400)
+    start, finish = _roster_bounds(payload)
+
+    clash = repos.absences.overlapping(user.id, start, finish)
+    if clash:
+        first = clash[0]
+        raise ServiceError(
+            f"на эти дни уже есть отметка «{ABSENCE_TITLES.get(first.kind, first.kind)}» "
+            f"({_human_date(first.date_from)} — {_human_date(first.date_to)}): "
+            "поправьте её, а не заводите вторую", 409)
 
     item = repos.absences.add(user.id, kind, start, finish,
-                              note=str(payload.get("note", "")).strip(),
-                              created_by=admin.id)
-    repos.audit.log("absence.add", user=admin, object_type="user", object_id=user.login,
+                              place=str(payload.get("place", "")).strip()[:120],
+                              note=str(payload.get("note", "")).strip()[:300],
+                              created_by=actor.id)
+    repos.audit.log("absence.add", user=actor, object_type="user", object_id=user.login,
                     details={"kind": kind, "from": start, "to": finish})
     return {"absence": item.to_dict() if item else None}
 
 
-@router.delete("/absences/{absence_id}")
-def delete_absence(request: Request, absence_id: int) -> Dict[str, Any]:
-    admin = require_admin(request)
+@router.patch("/absences/{absence_id}")
+def update_absence(request: Request, absence_id: int) -> Dict[str, Any]:
+    """Поправить свою запись расхода: планы меняются чаще, чем расход пишут."""
+    actor = require_editor(request)
     repos = _repos(request)
     item = repos.absences.get(absence_id)
     if item is None:
         raise ServiceError("запись не найдена", 404)
+    if not _may_edit_roster(actor, item.user_id):
+        raise ServiceError("недостаточно прав: чужой расход ведёт начальник", 403)
+
+    payload = _body(request)
+    fields: Dict[str, Any] = {}
+    if "kind" in payload:
+        kind = str(payload["kind"])
+        if kind not in ABSENCE_KINDS:
+            raise ServiceError(f"неизвестный вид '{kind}'", 400)
+        fields["kind"] = kind
+    if "date_from" in payload or "date_to" in payload:
+        merged = {"date_from": payload.get("date_from", item.date_from),
+                  "date_to": payload.get("date_to", item.date_to)}
+        fields["date_from"], fields["date_to"] = _roster_bounds(merged)
+        clash = repos.absences.overlapping(
+            item.user_id, fields["date_from"], fields["date_to"], skip_id=item.id)
+        if clash:
+            raise ServiceError("на эти дни у сотрудника уже есть другая отметка", 409)
+    if "place" in payload:
+        fields["place"] = str(payload["place"] or "").strip()[:120]
+    if "note" in payload:
+        fields["note"] = str(payload["note"] or "").strip()[:300]
+
+    updated = repos.absences.update(absence_id, **fields)
+    repos.audit.log("absence.update", user=actor, object_type="user",
+                    object_id=str(item.user_id), details=fields)
+    return {"absence": updated.to_dict() if updated else None}
+
+
+@router.delete("/absences/{absence_id}")
+def delete_absence(request: Request, absence_id: int) -> Dict[str, Any]:
+    actor = require_editor(request)
+    repos = _repos(request)
+    item = repos.absences.get(absence_id)
+    if item is None:
+        raise ServiceError("запись не найдена", 404)
+    if not _may_edit_roster(actor, item.user_id):
+        raise ServiceError("недостаточно прав: чужой расход ведёт начальник", 403)
     repos.absences.delete(absence_id)
-    repos.audit.log("absence.delete", user=admin, object_type="user",
+    repos.audit.log("absence.delete", user=actor, object_type="user",
                     object_id=str(item.user_id), details={"kind": item.kind})
     return {"ok": True}
 
@@ -1931,7 +2114,10 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
     # дежурства: сотруднику отмечают больничный и следом отпуск, дежурство и
     # подмену на те же сутки. Записей две, а человек один — счётчик обязан
     # считать людей, иначе «на дежурстве: 2» при одной фамилии в списке.
-    away = _one_per_person(item for item in records if item.kind != "duty")
+    # «На месте» — дежурный и занятый работами: их можно спросить и им можно
+    # дать письмо. Раньше на месте был только дежурный, и любая отметка о
+    # работах превращала человека в отсутствующего.
+    away = _one_per_person(item for item in records if item.kind not in PRESENT_KINDS)
     on_duty = _one_per_person(item for item in records if item.kind == "duty")
     absent = sorted(away.values(), key=lambda item: (item.full_name, item.date_to))
     duty = sorted(on_duty.values(), key=lambda item: (item.full_name, item.date_to))
@@ -1998,6 +2184,14 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
             "since": _shift(today, -period_days),
         },
     }
+
+
+def _human_date(day: str) -> str:
+    """Дата по-русски: 2026-09-01 → 01.09.2026. Для сообщений человеку."""
+    try:
+        return datetime.strptime(day, "%Y-%m-%d").strftime("%d.%m.%Y")
+    except ValueError:
+        return day
 
 
 def _shift(day: str, days: int) -> str:

@@ -1663,10 +1663,11 @@ def normalized_edit_distance(left: str, right: str) -> float:
 
 
 class AbsenceRepo:
-    """Дежурства, отпуска и командировки."""
+    """Расход личного состава: чем занят человек в эти дни."""
 
     _SELECT = (
-        "SELECT a.*, coalesce(u.full_name, u.login, '') AS full_name, u.role AS role "
+        "SELECT a.*, coalesce(u.full_name, u.login, '') AS full_name, "
+        "u.role AS role, u.team AS team "
         "FROM absences a JOIN users u ON u.id = a.user_id"
     )
 
@@ -1674,14 +1675,59 @@ class AbsenceRepo:
         self.db = db
 
     def add(self, user_id: int, kind: str, date_from: str, date_to: str,
-            note: str = "", created_by: int | None = None) -> Absence:
+            note: str = "", created_by: int | None = None,
+            place: str = "") -> Absence:
         with self.db.transaction() as connection:
             cursor = connection.execute(
-                "INSERT INTO absences(user_id, kind, date_from, date_to, note, "
-                "created_by, created_at) VALUES(?,?,?,?,?,?,?)",
-                (user_id, kind, date_from, date_to, note, created_by, utcnow()),
+                "INSERT INTO absences(user_id, kind, date_from, date_to, place, "
+                "note, created_by, created_at) VALUES(?,?,?,?,?,?,?,?)",
+                (user_id, kind, date_from, date_to, place, note, created_by, utcnow()),
             )
         return self.get(int(cursor.lastrowid))  # type: ignore[arg-type,return-value]
+
+    def update(self, absence_id: int, **fields: Any) -> Absence | None:
+        """Правка записи расхода. Принимает только известные колонки."""
+        allowed = ("kind", "date_from", "date_to", "place", "note")
+        parts, values = [], []
+        for name in allowed:
+            if name in fields:
+                parts.append(f"{name} = ?")
+                values.append(fields[name])
+        if not parts:
+            return self.get(absence_id)
+        values.append(absence_id)
+        with self.db.transaction() as connection:
+            connection.execute(
+                f"UPDATE absences SET {', '.join(parts)} WHERE id = ?", tuple(values))
+        return self.get(absence_id)
+
+    def overlapping(self, user_id: int, date_from: str, date_to: str,
+                    skip_id: int | None = None) -> List[Absence]:
+        """Записи этого человека, пересекающиеся с промежутком.
+
+        Нужны, чтобы не заводить вторую отметку на те же дни: расход, где
+        человек одновременно в отпуске и на дежурстве, — не расход.
+        """
+        params: List[Any] = [user_id, date_to, date_from]
+        clause = " WHERE a.user_id = ? AND a.date_from <= ? AND a.date_to >= ?"
+        if skip_id is not None:
+            clause += " AND a.id <> ?"
+            params.append(skip_id)
+        return rows_to(Absence, self.db.query(
+            f"{self._SELECT}{clause} ORDER BY a.date_from", tuple(params)))
+
+    def in_period_for_active(self, date_from: str, date_to: str) -> List[Absence]:
+        """Расход за промежуток, только по действующим сотрудникам.
+
+        Уволенный человек с отпуском до конца месяца в расходе не нужен: он
+        занимал бы строку в сетке, которую никто не может заполнить.
+        """
+        rows = self.db.query(
+            f"{self._SELECT} WHERE u.active = 1 AND a.date_from <= ? AND a.date_to >= ? "
+            "ORDER BY full_name, a.date_from",
+            (date_to, date_from),
+        )
+        return rows_to(Absence, rows)
 
     def get(self, absence_id: int) -> Absence | None:
         row = self.db.query_one(f"{self._SELECT} WHERE a.id = ?", (absence_id,))

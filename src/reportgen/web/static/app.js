@@ -841,12 +841,14 @@
         library: '<path d="M3 2.5h3v13H3zM7 2.5h3v13H7zM11.4 3.2l2.8.8-3.2 12.5-2.8-.8z"/>',
         stats: '<path d="M2.5 13.5h13M4.5 13.5V8M8 13.5V3.5M11.5 13.5V6.5M15 13.5v-3"/>',
         users: '<path d="M6.2 8.5a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2zM1.8 15c0-2.4 2-4 4.4-4s4.4 1.6 4.4 4M11.5 4a2.3 2.3 0 0 1 0 4.6M13 11.2c1.6.5 2.7 1.8 2.7 3.8"/>',
+        roster: '<path d="M2.5 4h13v11.5h-13zM2.5 7.5h13M6 2.5v3M12 2.5v3M5.5 10.5h2M8.5 10.5h2M11.5 10.5h2M5.5 13h2M8.5 13h2"/>',
     };
 
     /** Разделы бокового меню. Порядок — от «что сегодня» к справочникам. */
     const SECTIONS = [
         { route: 'board', href: '#/board', title: 'Дашборд', icon: 'board' },
         { route: 'cases', href: '#/cases', title: 'Письма', icon: 'letters', count: 'letters' },
+        { route: 'roster', href: '#/roster', title: 'Расход', icon: 'roster' },
         { route: 'chat', href: '#/chat', title: 'Помощник', icon: 'chat' },
         { route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
         { route: 'stats', href: '#/stats', title: 'Метрики', icon: 'stats' },
@@ -1055,7 +1057,7 @@
             // Идентификатор документа — путь вида «standards/obw-method».
             return { name: 'library', id: parts.slice(1).map(decodeURIComponent).join('/') };
         }
-        if (['board', 'cases', 'library', 'stats', 'me', 'users'].indexOf(parts[0]) !== -1) {
+        if (['board', 'cases', 'roster', 'library', 'stats', 'me', 'users'].indexOf(parts[0]) !== -1) {
             return { name: parts[0], id: null };
         }
         return { name: 'board', id: null };
@@ -1115,6 +1117,7 @@
             else if (route.name === 'case') await renderCase(view, route.id);
             else if (route.name === 'library') await renderLibrary(view, route.id);
             else if (route.name === 'stats') await renderStats(view);
+            else if (route.name === 'roster') await renderRoster(view);
             else if (route.name === 'chat') await renderChat(view, route.id);
             else if (route.name === 'me') await renderMe(view);
             else if (route.name === 'users') await renderUsers(view);
@@ -1884,6 +1887,361 @@
                 toast('Письмо ' + created.case_id + ' зарегистрировано', 'ok');
             }
             location.hash = '#/case/' + created.id;
+        }
+    }
+
+    // =====================================================================
+    // 5а. Экран «Расход»
+    // =====================================================================
+
+    /* Расход личного состава: кто где и чем занят по дням.
+
+       Смысл раздела в том, что человек отмечает себя сам. Расход, собранный
+       через начальника, устаревает за день, и им никто не пользуется. Поэтому
+       своя строка в сетке кликабельна у каждого, чужая — только у начальства.
+
+       Раскладку периодов по суткам делает сервер (GET /api/roster): в браузере
+       это пришлось бы повторить трижды — в сетке, в сводке дня и в кабинете, —
+       и рано или поздно три расхода разошлись бы. */
+
+    const ROSTER_KIND = {
+        duty:     { title: 'дежурство',    short: 'Деж',  cls: 'duty' },
+        work:     { title: 'работы',       short: 'Раб',  cls: 'work' },
+        trip:     { title: 'командировка', short: 'Ком',  cls: 'trip' },
+        study:    { title: 'учёба',        short: 'Учёб', cls: 'study' },
+        vacation: { title: 'отпуск',       short: 'Отп',  cls: 'vacation' },
+        sick:     { title: 'больничный',   short: 'Бол',  cls: 'sick' },
+        dayoff:   { title: 'отгул',        short: 'Отг',  cls: 'dayoff' },
+    };
+
+    const WEEKDAYS = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+
+    const rosterState = { from: '', span: 7, day: '' };
+
+    function shiftIso(day, delta) {
+        const date = new Date(day + 'T00:00:00');
+        if (isNaN(date.getTime())) return day;
+        date.setDate(date.getDate() + delta);
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        return date.getFullYear() + '-' + month + '-' + String(date.getDate()).padStart(2, '0');
+    }
+
+    /** Понедельник недели, в которую попал день: расход в отделе ведут неделями. */
+    function weekStart(day) {
+        const date = new Date(day + 'T00:00:00');
+        if (isNaN(date.getTime())) return day;
+        const shift = (date.getDay() + 6) % 7;
+        return shiftIso(day, -shift);
+    }
+
+    function isWeekend(day) {
+        const date = new Date(day + 'T00:00:00');
+        const weekday = date.getDay();
+        return weekday === 0 || weekday === 6;
+    }
+
+    async function renderRoster(view) {
+        clear(view);
+        const page = h('div', { class: 'page' });
+        view.appendChild(page);
+
+        // Окно начинается с сегодня: расход смотрят вперёд («кто где завтра»),
+        // а не назад. Кнопка «Текущая неделя» ставит начало на понедельник.
+        if (!rosterState.from) rosterState.from = todayIso();
+        if (!rosterState.day) rosterState.day = todayIso();
+
+        const gridBox = h('div', { class: 'card' });
+        const dayBox = h('div', {});
+        const rangeLabel = h('span', { class: 'small muted' });
+
+        const spanPick = h('select', {
+            title: 'Сколько дней показывать сразу',
+            onchange: () => { rosterState.span = Number(spanPick.value); load(); },
+        }, [7, 14].map((value) => h('option', {
+            value: String(value), selected: rosterState.span === value,
+        }, value + ' дней')));
+
+        append(page, [
+            h('div', { class: 'page-head' },
+                h('div', { class: 'page-note' },
+                    'Кто где и чем занят: дежурство, работы, выезды, отсутствия'),
+                h('div', { class: 'page-head-actions' },
+                    h('button', {
+                        class: 'btn btn--sm', title: 'Предыдущая неделя',
+                        onclick: () => { rosterState.from = shiftIso(rosterState.from, -rosterState.span); load(); },
+                    }, '←'),
+                    h('button', {
+                        class: 'btn btn--sm',
+                        onclick: () => {
+                            rosterState.from = weekStart(todayIso());
+                            rosterState.day = todayIso();
+                            load();
+                        },
+                        title: 'С понедельника текущей недели',
+                    }, 'Неделя'),
+                    h('button', {
+                        class: 'btn btn--sm',
+                        title: 'Показать расход на завтра',
+                        onclick: () => {
+                            rosterState.from = todayIso();
+                            rosterState.day = shiftIso(todayIso(), 1);
+                            load();
+                        },
+                    }, 'Завтра'),
+                    h('button', {
+                        class: 'btn btn--sm', title: 'Следующая неделя',
+                        onclick: () => { rosterState.from = shiftIso(rosterState.from, rosterState.span); load(); },
+                    }, '→'),
+                    spanPick,
+                    h('button', {
+                        class: 'btn btn--primary',
+                        title: 'Отметить, чем вы заняты',
+                        onclick: () => openRosterDialog({ user_id: (state.user || {}).id,
+                            date_from: rosterState.day }, load),
+                    }, 'Отметить себя'))),
+            rangeLabel,
+            dayBox,
+            gridBox,
+            rosterLegend(),
+        ]);
+
+        async function load() {
+            gridBox.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' })));
+            let data;
+            try {
+                data = await api.get('/api/roster?date_from=' + rosterState.from +
+                    '&days=' + rosterState.span);
+            } catch (error) {
+                clear(gridBox);
+                gridBox.appendChild(h('div', { class: 'empty' }, errorText(error)));
+                return;
+            }
+            // День сводки держим внутри показанной недели: иначе человек
+            // листает вперёд, а внизу висит позавчерашний расход.
+            if (data.days.indexOf(rosterState.day) === -1) rosterState.day = data.days[0];
+            rangeLabel.textContent = fmtDate(data.date_from) + ' — ' + fmtDate(data.date_to);
+            drawGrid(data);
+            await drawDay();
+        }
+
+        function drawGrid(data) {
+            clear(gridBox);
+            const head = h('tr', {}, h('th', { class: 'roster-name' }, 'Сотрудник'),
+                data.days.map((day) => h('th', {
+                    class: 'roster-day' + (day === data.today ? ' is-today' : '')
+                        + (isWeekend(day) ? ' is-weekend' : '')
+                        + (day === rosterState.day ? ' is-picked' : ''),
+                    title: 'Показать расход на этот день',
+                    onclick: () => { rosterState.day = day; load(); },
+                },
+                    h('b', {}, WEEKDAYS[new Date(day + 'T00:00:00').getDay()]),
+                    h('span', {}, fmtDate(day).slice(0, 5)))));
+
+            const body = h('tbody', {});
+            data.staff.forEach((person) => {
+                const cells = data.days.map((day) => {
+                    const marks = data.cells[person.id + '|' + day] || [];
+                    const mark = marks[0];
+                    const classes = ['roster-cell'];
+                    if (isWeekend(day)) classes.push('is-weekend');
+                    if (day === data.today) classes.push('is-today');
+                    if (mark) classes.push('kind-' + (ROSTER_KIND[mark.kind] || {}).cls);
+                    if (person.can_edit) classes.push('is-mine');
+                    return h('td', {
+                        class: classes.join(' '),
+                        title: mark
+                            ? (mark.kind_title + (mark.place ? ' · ' + mark.place : '')
+                                + (mark.note ? '\n' + mark.note : ''))
+                            : (person.can_edit ? 'Отметить' : 'Отметки нет'),
+                        onclick: () => {
+                            if (!person.can_edit) return;
+                            openRosterDialog(mark || { user_id: person.id, date_from: day },
+                                load);
+                        },
+                    }, mark
+                        ? h('span', { class: 'roster-mark' },
+                            h('b', {}, (ROSTER_KIND[mark.kind] || {}).short || mark.kind),
+                            mark.place ? h('i', {}, mark.place) : null)
+                        : (person.can_edit ? h('span', { class: 'roster-add' }, '+') : null));
+                });
+                body.appendChild(h('tr', {},
+                    h('td', { class: 'roster-name' + (person.is_me ? ' is-me' : '') },
+                        h('div', {}, person.full_name),
+                        h('div', { class: 'small faint' },
+                            ROLE_SHORT[person.role] || person.role_title)),
+                    cells));
+            });
+
+            gridBox.appendChild(h('div', { class: 'table-scroll' },
+                h('table', { class: 'grid grid--roster' }, h('thead', {}, head), body)));
+        }
+
+        async function drawDay() {
+            clear(dayBox);
+            let day;
+            try {
+                day = await api.get('/api/roster/day?date=' + rosterState.day);
+            } catch (error) {
+                dayBox.appendChild(h('div', { class: 'small muted' }, errorText(error)));
+                return;
+            }
+            const filled = day.total ? Math.round((day.total - day.unmarked.length)
+                / day.total * 100) : 0;
+            append(dayBox, [
+                h('div', { class: 'stat-cards' },
+                    statCard(day.present, 'на месте ' + fmtDate(day.date),
+                        'дежурство и работы в отделе'),
+                    statCard(day.away, 'отсутствуют',
+                        'выезды, отпуска, больничные, учёба'),
+                    statCard(day.unmarked.length, 'не отмечены',
+                        'расход заполнен на ' + filled + '%')),
+                h('div', { class: 'card card-pad roster-day-card' },
+                    h('div', { class: 'card-title' }, 'Расход на ' + fmtDate(day.date)),
+                    h('div', { class: 'roster-groups' },
+                        day.groups.filter((group) => group.people.length).map((group) =>
+                            h('div', { class: 'roster-group kind-' + ROSTER_KIND[group.id].cls },
+                                h('div', { class: 'roster-group-head' },
+                                    h('b', {}, group.title),
+                                    h('span', { class: 'small faint' },
+                                        String(group.people.length))),
+                                group.people.map((person) => h('div', { class: 'roster-person' },
+                                    h('span', {}, person.full_name),
+                                    person.place
+                                        ? h('i', { class: 'small muted' }, person.place) : null)))),
+                        day.unmarked.length
+                            ? h('div', { class: 'roster-group kind-unmarked' },
+                                h('div', { class: 'roster-group-head' },
+                                    h('b', {}, 'не отмечены'),
+                                    h('span', { class: 'small faint' },
+                                        String(day.unmarked.length))),
+                                day.unmarked.map((person) => h('div', { class: 'roster-person' },
+                                    h('span', {}, person.full_name))))
+                            : null),
+                    day.groups.every((group) => !group.people.length)
+                        ? h('div', { class: 'muted' },
+                            'На этот день расход ещё никто не заполнил.')
+                        : null),
+            ]);
+        }
+
+        await load();
+    }
+
+    function rosterLegend() {
+        return h('div', { class: 'roster-legend' },
+            Object.keys(ROSTER_KIND).map((key) => h('span', { class: 'roster-legend-item' },
+                h('i', { class: 'kind-' + ROSTER_KIND[key].cls }),
+                ROSTER_KIND[key].title)),
+            h('span', { class: 'small faint' },
+                'Щёлкните по своей клетке, чтобы отметиться; по заголовку дня — '
+                + 'чтобы увидеть расход на этот день.'));
+    }
+
+    /** Отметка в расходе: своя — у каждого, чужая — у начальника. */
+    async function openRosterDialog(mark, after) {
+        const existing = Boolean(mark && mark.id);
+        const staff = await staffList();
+        const me = state.user || {};
+        const owner = existing ? mark.user_id : (mark.user_id || me.id);
+
+        const whoPick = h('select', {}, staff.map((person) => h('option', {
+            value: String(person.id), selected: person.id === owner,
+        }, (person.full_name || person.login) + (person.id === me.id ? ' (я)' : ''))));
+        // Чужой расход ведёт только начальство: инженеру список не нужен.
+        whoPick.disabled = !isAdmin();
+
+        const kindPick = h('select', {}, Object.keys(ROSTER_KIND).map((key) =>
+            h('option', { value: key, selected: (mark.kind || 'duty') === key },
+                ROSTER_KIND[key].title)));
+        const fromInput = h('input', { type: 'date',
+            value: mark.date_from || rosterState.day || todayIso() });
+        const toInput = h('input', { type: 'date',
+            value: mark.date_to || mark.date_from || rosterState.day || todayIso() });
+        // Одна дата — обычный случай: отметился на завтра и забыл. Конец
+        // тянется за началом, пока его не тронули руками.
+        let toTouched = existing;
+        fromInput.addEventListener('input', () => {
+            if (toTouched || !fromInput.value) return;
+            toInput.value = fromInput.value;
+        });
+        toInput.addEventListener('input', () => { toTouched = true; });
+        const placeInput = h('input', {
+            type: 'text', maxLength: 120, value: mark.place || '',
+            placeholder: 'Узел 3, аппаратная 2, в/ч 74326',
+            title: 'Где вы будете. Пишите как принято в отделе',
+        });
+        const noteInput = h('textarea', { rows: '2', maxLength: 300 }, mark.note || '');
+
+        const save = h('button', { class: 'btn btn--primary', onclick: submit },
+            existing ? 'Сохранить' : 'Отметить');
+
+        const dialog = openModal({
+            title: existing ? 'Отметка в расходе' : 'Отметить в расходе',
+            body: [
+                h('div', { class: 'form-grid' },
+                    h('label', { class: 'field' }, 'Сотрудник', whoPick),
+                    h('label', { class: 'field' }, 'Чем занят', kindPick),
+                    h('label', { class: 'field' }, 'С какого дня', fromInput),
+                    h('label', { class: 'field' }, 'По какой день', toInput)),
+                h('label', { class: 'field' }, 'Где', placeInput),
+                h('label', { class: 'field' }, 'Примечание', noteInput),
+            ],
+            footer: [
+                existing ? h('button', {
+                    class: 'btn btn--danger-hover', onclick: remove,
+                }, 'Убрать отметку') : null,
+                h('span', { class: 'spacer' }),
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                save,
+            ],
+            focus: 'select',
+        });
+
+        async function submit() {
+            if (!fromInput.value) { toast('Укажите день', 'error'); return; }
+            const payload = {
+                kind: kindPick.value,
+                date_from: fromInput.value,
+                date_to: toInput.value || fromInput.value,
+                place: placeInput.value.trim(),
+                note: noteInput.value.trim(),
+            };
+            save.disabled = true;
+            try {
+                if (existing) {
+                    await api.patch('/api/absences/' + mark.id, payload);
+                } else {
+                    payload.user_id = Number(whoPick.value) || me.id;
+                    await api.post('/api/absences', payload);
+                }
+                dialog.close();
+                toast('Расход обновлён', 'ok');
+                if (after) after();
+            } catch (error) {
+                toastError(error);
+            } finally {
+                save.disabled = false;
+            }
+        }
+
+        async function remove() {
+            const ok = await confirmDialog({
+                title: 'Убрать отметку',
+                message: 'Отметка «' + (ROSTER_KIND[mark.kind] || {}).title + '» '
+                    + 'с ' + fmtDate(mark.date_from) + ' по ' + fmtDate(mark.date_to)
+                    + ' будет убрана из расхода.',
+                confirmText: 'Убрать',
+                danger: true,
+            });
+            if (!ok) return;
+            try {
+                await api.del('/api/absences/' + mark.id);
+                dialog.close();
+                toast('Отметка убрана', 'ok');
+                if (after) after();
+            } catch (error) {
+                toastError(error);
+            }
         }
     }
 

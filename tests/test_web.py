@@ -2438,6 +2438,12 @@ class LetterCardTests(WebTestCase):
         self.assertEqual(near["case_id"], items[0]["case_id"])
 
 
+def _today_iso() -> str:
+    from datetime import date
+
+    return date.today().isoformat()
+
+
 def _shift_days(day: str, delta: int) -> str:
     from datetime import date, timedelta
     return (date.fromisoformat(day) + timedelta(days=delta)).isoformat()
@@ -2496,7 +2502,7 @@ class BoardTests(WebTestCase):
         today = self.client.get("/api/board").json()["today"]
         self.client.post("/api/absences", json={
             "user_id": self.engineer.id, "kind": "vacation",
-            "date_from": today, "date_to": "2099-01-01"})
+            "date_from": today, "date_to": _shift_days(today, 30)})
         self.assertEqual(1, self.client.get("/api/board").json()["totals"]["away"])
 
         self.repos.users.set_active(self.engineer.id, False)
@@ -2599,9 +2605,10 @@ class BoardTests(WebTestCase):
 
     def test_vacation_marks_person_as_away(self):
         today = self.client.get("/api/board").json()["today"]
-        self.client.post("/api/absences", json={
+        added = self.client.post("/api/absences", json={
             "user_id": self.engineer.id, "kind": "vacation",
-            "date_from": today, "date_to": "2099-01-01"})
+            "date_from": today, "date_to": _shift_days(today, 30)})
+        self.assertEqual(200, added.status_code, added.text)
         body = self.client.get("/api/board").json()
         self.assertEqual(1, body["totals"]["away"])
         person = [item for item in body["people"] if item["id"] == self.engineer.id][0]
@@ -2609,26 +2616,42 @@ class BoardTests(WebTestCase):
         self.assertEqual("отпуск", person["away_title"])
 
     def test_two_absences_for_one_person_count_once(self):
-        # У сотрудника отмечены и больничный, и следом отпуск. Счётчик
-        # считает людей, список показывал записи — и они расходились.
+        """У сотрудника на одни сутки две отметки: больничный и отпуск.
+
+        Через расход такое больше не заводится — он не даёт положить вторую
+        отметку на занятые дни. Но в базе отдела такие пары остались от
+        прежней версии, и счётчик обязан считать людей, а не записи: иначе
+        «отсутствуют: 2» при одной фамилии в списке.
+        """
         today = self.client.get("/api/board").json()["today"]
-        for kind, until in (("sick", today), ("vacation", "2099-01-01")):
-            self.client.post("/api/absences", json={
-                "user_id": self.engineer.id, "kind": kind,
-                "date_from": today, "date_to": until})
+        for kind, until in (("sick", today), ("vacation", _shift_days(today, 20))):
+            self.repos.absences.add(self.engineer.id, kind, today, until)
         body = self.client.get("/api/board").json()
         self.assertEqual(1, body["totals"]["away"])
         self.assertEqual(1, len(body["absent"]))
         # Показываем ту запись, что кончается позже: она и есть текущая.
         self.assertEqual("vacation", body["absent"][0]["kind"])
 
-    def test_absence_needs_admin_rights(self):
+    def test_everyone_marks_themselves_but_not_the_others(self):
+        """Расход тем и жив, что человек отмечает себя сам.
+
+        Собранный через начальника расход устаревает за день, и им никто не
+        пользуется. Поэтому свою отметку ставит каждый — а чужую по-прежнему
+        только начальник.
+        """
         today = self.client.get("/api/board").json()["today"]
         self.login("engineer")
-        response = self.client.post("/api/absences", json={
-            "user_id": self.engineer.id, "kind": "duty",
-            "date_from": today, "date_to": today})
-        self.assertEqual(403, response.status_code)
+        mine = self.client.post("/api/absences", json={
+            "kind": "duty", "date_from": today, "date_to": today,
+            "place": "Узел 3"})
+        self.assertEqual(200, mine.status_code, mine.text)
+        self.assertEqual("Узел 3", mine.json()["absence"]["place"])
+
+        others = self.client.post("/api/absences", json={
+            "user_id": self.repos.users.by_login("nachalnik").id, "kind": "duty",
+            "date_from": _shift_days(today, 1), "date_to": _shift_days(today, 1)})
+        self.assertEqual(403, others.status_code)
+        self.assertIn("чужой расход", others.json()["error"])
 
     def test_reversed_dates_are_refused(self):
         response = self.client.post("/api/absences", json={
@@ -2657,6 +2680,142 @@ class BoardTests(WebTestCase):
         body = self.client.get("/api/board", params={"days": 30}).json()
         self.assertEqual(1, body["movement"]["came"])
         self.assertIn("since", body["movement"])
+
+
+class RosterTests(WebTestCase):
+    """Расход личного состава: кто где и чем занят."""
+
+    def setUp(self):
+        super().setUp()
+        self.engineer = self.repos.users.by_login("engineer")
+        self.today = _today_iso()
+
+    def mark(self, kind="duty", days=0, span=0, place="", user_id=None, note=""):
+        start = _shift_days(self.today, days)
+        payload = {"kind": kind, "date_from": start,
+                   "date_to": _shift_days(start, span), "place": place, "note": note}
+        if user_id is not None:
+            payload["user_id"] = user_id
+        return self.client.post("/api/absences", json=payload)
+
+    def test_the_roster_is_a_grid_of_people_and_days(self):
+        """Сетку раскладывает сервер, а не браузер.
+
+        Разложить период по суткам в трёх местах интерфейса — верный способ
+        получить три разных расхода, а он в отделе один.
+        """
+        self.mark("trip", days=1, span=2, place="в/ч 74326", user_id=self.engineer.id)
+        body = self.client.get("/api/roster", params={"date_from": self.today,
+                                                      "days": 7}).json()
+        self.assertEqual(7, len(body["days"]))
+        self.assertEqual(self.today, body["days"][0])
+        self.assertEqual(_shift_days(self.today, 6), body["date_to"])
+
+        # Одна запись на трое суток даёт три клетки, а не одну.
+        marked = [day for day in body["days"]
+                  if f"{self.engineer.id}|{day}" in body["cells"]]
+        self.assertEqual([_shift_days(self.today, step) for step in (1, 2, 3)], marked)
+        cell = body["cells"][f"{self.engineer.id}|{_shift_days(self.today, 1)}"][0]
+        self.assertEqual("командировка", cell["kind_title"])
+        self.assertEqual("в/ч 74326", cell["place"])
+        self.assertFalse(cell["present"])
+
+    def test_the_grid_lists_the_whole_department(self):
+        # Пустая строка — тоже сведение: видно, кто расход не заполнил.
+        body = self.client.get("/api/roster").json()
+        logins = {person["full_name"] for person in body["staff"]}
+        self.assertIn("Инженеров И. И.", logins)
+        me = [person for person in body["staff"] if person["is_me"]][0]
+        self.assertTrue(me["can_edit"])
+
+    def test_an_engineer_may_edit_only_their_own_row(self):
+        self.login("engineer")
+        body = self.client.get("/api/roster").json()
+        mine = [person for person in body["staff"] if person["is_me"]][0]
+        others = [person for person in body["staff"] if not person["is_me"]]
+        self.assertTrue(mine["can_edit"])
+        self.assertTrue(all(not person["can_edit"] for person in others),
+                        "инженеру дали править чужой расход")
+
+    def test_the_window_of_the_grid_is_bounded(self):
+        # Месяц столбцов в одной сетке ещё читается, год — уже нет.
+        body = self.client.get("/api/roster", params={"days": 400}).json()
+        self.assertLessEqual(len(body["days"]), 31)
+        body = self.client.get("/api/roster", params={"days": 1}).json()
+        self.assertEqual(1, len(body["days"]))
+        # Без указания — неделя: столько отдел планирует за раз.
+        self.assertEqual(7, len(self.client.get("/api/roster").json()["days"]))
+
+    def test_two_marks_on_the_same_days_are_refused(self):
+        """Расход, где человек разом в отпуске и на дежурстве, — не расход."""
+        self.assertEqual(200, self.mark("duty", span=2).status_code)
+        clash = self.mark("vacation", days=1, span=5)
+        self.assertEqual(409, clash.status_code)
+        self.assertIn("уже есть отметка", clash.json()["error"])
+        # Соседние сутки не пересекаются — их занимать можно.
+        self.assertEqual(200, self.mark("vacation", days=3, span=1).status_code)
+
+    def test_a_mark_may_be_corrected_instead_of_duplicated(self):
+        # Планы меняются чаще, чем расход пишут.
+        item = self.mark("duty", place="Узел 3").json()["absence"]
+        response = self.client.patch(f"/api/absences/{item['id']}", json={
+            "kind": "work", "place": "Аппаратная 2", "note": "замена модема"})
+        self.assertEqual(200, response.status_code, response.text)
+        fixed = response.json()["absence"]
+        self.assertEqual("работы", fixed["kind_title"])
+        self.assertEqual("Аппаратная 2", fixed["place"])
+        self.assertTrue(fixed["present"], "работы в отделе — это «на месте»")
+
+    def test_correcting_a_mark_does_not_step_on_another(self):
+        first = self.mark("duty", span=1).json()["absence"]
+        self.mark("vacation", days=5, span=2)
+        clash = self.client.patch(f"/api/absences/{first['id']}", json={
+            "date_from": self.today, "date_to": _shift_days(self.today, 6)})
+        self.assertEqual(409, clash.status_code)
+
+    def test_a_stranger_mark_is_not_yours_to_change(self):
+        item = self.mark("duty", user_id=self.engineer.id).json()["absence"]
+        self.login("engineer")
+        self.assertEqual(200, self.client.patch(
+            f"/api/absences/{item['id']}", json={"place": "Узел 1"}).status_code)
+
+        boss = self.repos.users.by_login("nachalnik")
+        theirs = self.repos.absences.add(boss.id, "duty", _shift_days(self.today, 9),
+                                         _shift_days(self.today, 9))
+        self.assertEqual(403, self.client.patch(
+            f"/api/absences/{theirs.id}", json={"place": "Узел 1"}).status_code)
+        self.assertEqual(403, self.client.delete(
+            f"/api/absences/{theirs.id}").status_code)
+
+    def test_the_day_view_says_who_is_where_and_who_is_silent(self):
+        """Расход на день — то, что начальник читает на разводе."""
+        self.mark("duty", place="Узел 3", user_id=self.engineer.id)
+        body = self.client.get("/api/roster/day", params={"date": self.today}).json()
+        duty = [group for group in body["groups"] if group["id"] == "duty"][0]
+        self.assertEqual(["Инженеров И. И."],
+                         [person["full_name"] for person in duty["people"]])
+        self.assertEqual(1, body["present"])
+        self.assertEqual(0, body["away"])
+        # Об остальных расход молчит, и это должно быть видно.
+        silent = {person["full_name"] for person in body["unmarked"]}
+        self.assertIn("Начальников Н. Н.", silent)
+        self.assertEqual(body["total"], len(body["unmarked"]) + 1)
+
+    def test_work_in_the_department_is_not_an_absence(self):
+        """«Работы» — человек на месте: его можно спросить и ему можно дать письмо."""
+        self.mark("work", place="Аппаратная 2", user_id=self.engineer.id)
+        board = self.client.get("/api/board").json()
+        self.assertEqual(0, board["totals"]["away"])
+        day = self.client.get("/api/roster/day").json()
+        self.assertEqual(1, day["present"])
+
+    def test_a_mark_longer_than_a_year_is_a_typo(self):
+        # 2099 вместо 2029 — обычная описка, и сетка от неё становится
+        # нечитаемой на годы вперёд.
+        response = self.client.post("/api/absences", json={
+            "kind": "vacation", "date_from": self.today, "date_to": "2099-01-01"})
+        self.assertEqual(400, response.status_code)
+        self.assertIn("длиннее года", response.json()["error"])
 
 
 class StatsTests(WebTestCase):
@@ -3166,6 +3325,55 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIsNotNone(found, "не нашёл подсказку поля поиска")
         self.assertLessEqual(len(found.group(1)), 40,
                              "подсказка поиска снова не помещается в поле")
+
+    def test_the_roster_has_its_own_section(self):
+        """Расход — раздел, а не строчка на дашборде.
+
+        Им пользуются каждый день и все, а не только начальник: человек
+        отмечает себя сам. Значит, у него своё место в меню и свой адрес.
+        """
+        self.assertIn("route: 'roster'", self.js)
+        self.assertIn("'#/roster'", self.js)
+        self.assertIn("'Расход'", self.js)
+        self.assertIn("renderRoster", self.js)
+        # Адрес должен разбираться маршрутизатором, иначе ссылка молча
+        # уводит на дашборд — так и было, пока раздел не внесли в список.
+        known = self.js[self.js.index("['board', 'cases'"):]
+        self.assertIn("'roster'", known[:200])
+
+    def test_the_roster_kinds_match_the_server(self):
+        """Виды занятости — один список на сервер и на экран.
+
+        Разойдутся — человек отметит «отгул», а сетка нарисует пустую
+        клетку, и расход перестанет сходиться.
+        """
+        import re as _re
+
+        from reportgen.store.models import ABSENCE_KINDS, ABSENCE_TITLES
+
+        found = _re.search(r"const ROSTER_KIND = \{(.+?)\n    \};", self.js, _re.S)
+        self.assertIsNotNone(found, "в интерфейсе нет справочника видов занятости")
+        block = found.group(1)
+        for kind in ABSENCE_KINDS:
+            with self.subTest(kind=kind):
+                self.assertIn(f"{kind}:", block, f"в сетке нет вида «{kind}»")
+                self.assertIn(f"'{ABSENCE_TITLES[kind]}'", block)
+        # Каждому виду свой цвет: сетка читается цветом, а не подписью.
+        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+        for kind in ABSENCE_KINDS:
+            with self.subTest(kind=kind):
+                self.assertIn(f".kind-{kind} {{", css, f"у вида «{kind}» нет цвета")
+
+    def test_the_roster_grid_keeps_the_names_in_sight(self):
+        # На четырнадцати днях таблица едет вбок, и без фамилии на виду
+        # читать её нельзя: клетка есть, а чья — непонятно.
+        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+        block = css[css.index(".grid--roster .roster-name {"):]
+        block = block[:block.index("}")]
+        self.assertIn("position: sticky", block)
+        self.assertIn("left: 0", block)
 
     def test_nothing_on_the_screen_is_fetched_from_outside(self):
         """Изолированная машина: ни одного обращения наружу.
