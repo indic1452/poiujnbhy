@@ -33,6 +33,7 @@ from ..store.models import (
     LINE_TITLES,
     LINE_TYPES,
     PERSON_FILE_KINDS,
+    PERSON_FILE_SINGLE,
     PERSON_FILE_TITLES,
     PRESENT_KINDS,
     REVIEW_ROLES,
@@ -2223,7 +2224,7 @@ def _opt_str(payload: Dict[str, Any], name: str) -> str | None:
 
 # --------------------------------------------------------- личный кабинет --
 
-#: Что кладут в личное дело: справка-объективка, приказ, диплом, снимок.
+#: В чём приносят документы сотрудника: набранный файл, скан, снимок.
 PERSON_FILE_SUFFIXES = (
     ".pdf", ".docx", ".doc", ".rtf", ".odt", ".txt", ".md",
     ".png", ".jpg", ".jpeg", ".tif", ".tiff",
@@ -2249,13 +2250,13 @@ def _person_or_404(request: Request, user_id: int) -> User:
 
 @router.get("/users/{user_id}/files")
 def list_person_files(request: Request, user_id: int) -> Dict[str, Any]:
-    """Личные документы сотрудника."""
+    """Документы сотрудника: справка-объективка, приказы, прочее."""
     actor = require_user(request)
     person = _person_or_404(request, user_id)
     if not _may_see_person_files(actor, person.id):
         raise ServiceError(
-            "недостаточно прав: личные документы сотрудника видят он сам, "
-            "начальник отдела, заместитель и создатель системы", 403)
+            "недостаточно прав: документы сотрудника видят он сам, начальник "
+            "отдела, заместитель и создатель системы", 403)
     items = _repos(request).person_files.list_for_user(person.id)
     return {
         "user": _user_public(person),
@@ -2271,11 +2272,15 @@ def add_person_file(request: Request, user_id: int,
                     file: UploadFile = File(...),
                     kind: str = Form("profile"),
                     note: str = Form("")) -> Dict[str, Any]:
-    """Загрузить справку-объективку или другой личный документ."""
+    """Приложить документ к сотруднику.
+
+    Справка-объективка одна: новая заменяет прежнюю. Приказы и прочее
+    копятся — таких бумаг у человека бывает много, и все они нужны.
+    """
     actor = require_user(request)
     person = _person_or_404(request, user_id)
     if not _may_see_person_files(actor, person.id):
-        raise ServiceError("недостаточно прав: чужое личное дело не ваше", 403)
+        raise ServiceError("недостаточно прав: чужие документы не ваши", 403)
     if kind not in PERSON_FILE_KINDS:
         raise ServiceError(f"неизвестный вид документа '{kind}'", 400)
 
@@ -2287,7 +2292,7 @@ def add_person_file(request: Request, user_id: int,
     suffix = Path(name).suffix.lower()
     if suffix not in PERSON_FILE_SUFFIXES:
         known = ", ".join(PERSON_FILE_SUFFIXES)
-        raise ServiceError(f"такие файлы в личное дело не кладут (можно: {known})", 400)
+        raise ServiceError(f"такие файлы к сотруднику не прикладывают (можно: {known})", 400)
 
     settings.ensure_dirs()
     target_dir = Path(settings.data_dir) / "person-files" / str(person.id)
@@ -2317,19 +2322,19 @@ def add_person_file(request: Request, user_id: int,
         target.unlink(missing_ok=True)
         raise
 
-    # Объективка у человека одна: новая заменяет прежнюю. Иначе список
-    # копит редакции, и начальник не знает, какая из них действующая.
-    # «Прочее» копится намеренно: приказов и дипломов бывает много.
-    if kind == "profile":
+    # Справка-объективка одна: новая заменяет прежнюю. Иначе список копит
+    # редакции, и начальник не знает, какая из них действующая. Приказы и
+    # прочее копятся намеренно.
+    if kind in PERSON_FILE_SINGLE:
         for old_item in repos.person_files.list_for_user(person.id):
-            if old_item.kind != "profile" or old_item.id == item.id:
+            if old_item.kind != kind or old_item.id == item.id:
                 continue
             path = repos.person_files.delete(old_item.id)
             if path:
                 Path(path).unlink(missing_ok=True)
 
-    # В журнал — только факт и имя файла: содержимое личного документа туда
-    # не попадает, журнал читают все администраторы.
+    # В журнал — только факт, имя файла и вид: содержимое документа туда не
+    # попадает, журнал читают все администраторы.
     repos.audit.log("person.file.add", user=actor, object_type="user",
                     object_id=person.login, details={"name": name, "kind": kind})
     return {"file": item.to_dict()}
@@ -2340,7 +2345,7 @@ def download_person_file(request: Request, user_id: int, file_id: int) -> FileRe
     actor = require_user(request)
     person = _person_or_404(request, user_id)
     if not _may_see_person_files(actor, person.id):
-        raise ServiceError("недостаточно прав: чужое личное дело не ваше", 403)
+        raise ServiceError("недостаточно прав: чужие документы не ваши", 403)
     item = _repos(request).person_files.get(file_id)
     if item is None or item.user_id != person.id:
         raise ServiceError("файл не найден", 404)
@@ -2356,7 +2361,7 @@ def delete_person_file(request: Request, user_id: int, file_id: int) -> Dict[str
     actor = require_user(request)
     person = _person_or_404(request, user_id)
     if not _may_see_person_files(actor, person.id):
-        raise ServiceError("недостаточно прав: чужое личное дело не ваше", 403)
+        raise ServiceError("недостаточно прав: чужие документы не ваши", 403)
     repos = _repos(request)
     item = repos.person_files.get(file_id)
     if item is None or item.user_id != person.id:

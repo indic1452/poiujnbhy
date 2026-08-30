@@ -3063,7 +3063,7 @@ class UserManagementTests(WebTestCase):
 
 
 class PersonalFileTests(WebTestCase):
-    """Личное дело: справка-объективка и контакты."""
+    """Документы сотрудника: справка-объективка, приказы, прочее."""
 
     def setUp(self):
         super().setUp()
@@ -3096,7 +3096,7 @@ class PersonalFileTests(WebTestCase):
         """Объективка — личные сведения, и открыта не всему отделу.
 
         Начальник группы сюда не входит, хотя он и администратор: круг тех,
-        кому открыто личное дело, уже круга тех, кто заводит учётные записи.
+        кому открыта справка, уже круга тех, кто заводит учётные записи.
         """
         self.login("engineer")
         self.upload(self.engineer.id)
@@ -3113,7 +3113,7 @@ class PersonalFileTests(WebTestCase):
                 self.login(who)
                 response = self.client.get(f"/api/users/{self.engineer.id}/files")
                 self.assertEqual(403, response.status_code, f"{who} читает чужое дело")
-                self.assertIn("личные документы", response.json()["error"])
+                self.assertIn("документы сотрудника", response.json()["error"])
 
     def test_an_engineer_cannot_reach_a_colleagues_file(self):
         self.login("engineer")
@@ -3121,11 +3121,11 @@ class PersonalFileTests(WebTestCase):
         self.assertEqual(403, self.client.get(f"/api/users/{boss.id}/files").status_code)
         self.assertEqual(403, self.upload(boss.id).status_code)
 
-    def test_a_new_profile_replaces_the_old_one(self):
-        """Объективка у человека одна: новая заменяет прежнюю.
+    def test_a_new_certificate_replaces_the_old_one(self):
+        """Справка-объективка одна: новая заменяет прежнюю.
 
         Иначе список копит редакции, и начальник не знает, какая из них
-        действующая. «Прочее» копится намеренно: приказов и дипломов много.
+        действующая. Приказы и прочее копятся — таких бумаг бывает много.
         """
         self.login("engineer")
         first = self.upload(self.engineer.id, "объективка-старая.docx").json()["file"]
@@ -3134,13 +3134,37 @@ class PersonalFileTests(WebTestCase):
 
         files = self.client.get(f"/api/users/{self.engineer.id}/files").json()["files"]
         self.assertEqual([second["id"]], [row["id"] for row in files])
-        self.assertFalse(old_path.exists(), "прежняя объективка осталась на диске")
+        self.assertEqual("справка-объективка", files[0]["kind_title"])
+        self.assertFalse(old_path.exists(), "прежняя справка осталась на диске")
 
-        # Прочие документы копятся: их бывает много и все нужны.
-        self.upload(self.engineer.id, "приказ-1.pdf", kind="other")
-        self.upload(self.engineer.id, "диплом.pdf", kind="other")
+    def test_orders_and_the_rest_pile_up(self):
+        """К сотруднику кладут не одну бумагу: приказов и допусков много."""
+        self.login("engineer")
+        self.upload(self.engineer.id, "объективка.docx")
+        self.upload(self.engineer.id, "приказ-14.pdf", kind="order")
+        self.upload(self.engineer.id, "приказ-27.pdf", kind="order")
+        self.upload(self.engineer.id, "допуск.pdf", kind="other")
         files = self.client.get(f"/api/users/{self.engineer.id}/files").json()["files"]
-        self.assertEqual(3, len(files))
+        self.assertEqual(4, len(files))
+        self.assertEqual({"справка-объективка", "приказ", "прочее"},
+                         {row["kind_title"] for row in files})
+
+    def test_the_kinds_come_from_the_server(self):
+        # Список видов один на сервер и на экран: разойтись им нельзя.
+        from reportgen.store.models import PERSON_FILE_KINDS, PERSON_FILE_TITLES
+
+        self.login("engineer")
+        kinds = self.client.get(
+            f"/api/users/{self.engineer.id}/files").json()["kinds"]
+        self.assertEqual(list(PERSON_FILE_KINDS), [item["id"] for item in kinds])
+        self.assertEqual([PERSON_FILE_TITLES[key] for key in PERSON_FILE_KINDS],
+                         [item["title"] for item in kinds])
+
+        unknown = self.client.post(
+            f"/api/users/{self.engineer.id}/files",
+            files={"file": ("что-то.pdf", b"%PDF-1.4", "application/pdf")},
+            data={"kind": "выдумка"})
+        self.assertEqual(400, unknown.status_code)
 
     def test_a_removed_file_leaves_the_disk(self):
         self.login("engineer")
@@ -3157,7 +3181,7 @@ class PersonalFileTests(WebTestCase):
             f"/api/users/{self.engineer.id}/files",
             files={"file": ("сборка.exe", b"MZ", "application/octet-stream")})
         self.assertEqual(400, response.status_code)
-        self.assertIn("в личное дело не кладут", response.json()["error"])
+        self.assertIn("не прикладывают", response.json()["error"])
 
     def test_contacts_are_filled_in_by_the_person_themselves(self):
         """Справочник кадровика устаревает быстрее, чем его правят."""
@@ -3496,7 +3520,7 @@ class InterfaceCopyTests(unittest.TestCase):
         """Кабинет должен отвечать «что за мной», а не только «кто я».
 
         Раньше в нём были учётная запись, счётчики и смена пароля. Теперь —
-        письма за человеком, его расход, контакты и личные документы.
+        письма за человеком, его расход, контакты и документы.
         """
         # Берём только тело renderMe, до первой вспомогательной функции:
         # иначе проверка проходила бы на одном лишь определении карточки,
@@ -3508,17 +3532,32 @@ class InterfaceCopyTests(unittest.TestCase):
             with self.subTest(card=part):
                 self.assertIn(part, cabinet, f"в кабинете нет карточки {part}")
 
-    def test_a_personal_file_is_opened_only_by_those_who_may(self):
-        """Кнопка «Личное дело» стоит только у того круга, кому оно открыто.
+    def test_the_documents_are_opened_only_by_those_who_may(self):
+        """Кнопка стоит только у того круга, кому документы открыты.
 
         Показать кнопку и ответить на неё отказом — худший из вариантов:
         человек видит дверь, которая не открывается.
         """
         self.assertIn("canReview() ? h('button'", self.js)
-        self.assertIn("'Личное дело'", self.js)
+        self.assertIn("'Документы'", self.js)
         opener = self.js[self.js.index("function openPersonFiles"):]
         opener = opener[:opener.index("\n    async function renderUsers")]
         self.assertIn("personFilesCard(user.id, false)", opener)
+
+    def test_the_folder_is_called_by_what_lies_in_it(self):
+        """Раздел зовут «Документы», а не «личным делом».
+
+        Личное дело — папка кадрового органа, и путать одно с другим нельзя.
+        Здесь лежат справка-объективка, приказы и прочее.
+        """
+        self.assertNotIn("Личное дело", self.js)
+        self.assertNotIn("личное дело", self.js)
+        self.assertIn("Ваши документы", self.js)
+        self.assertIn("справка-объективка", self.js)
+        # Вид документа выбирается, и список видов приходит с сервера.
+        card = self.js[self.js.index("function personFilesCard"):]
+        self.assertIn("kindPick", card)
+        self.assertIn("fillKinds(data.kinds)", card)
 
     def test_the_roster_has_its_own_section(self):
         """Расход — раздел, а не строчка на дашборде.
