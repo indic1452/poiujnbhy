@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "8"
+SCHEMA_VERSION = "9"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -58,6 +58,11 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     # инженер отправляет ответ и записывает исходящий номер. Без него в
     # учёте отдела нет главного: под каким номером ушёл ответ на письмо.
     ("cases", "outgoing_no", "TEXT NOT NULL DEFAULT ''"),
+    # Линия связи и номер технического средства. Отдел работает по линиям —
+    # спутниковым, радиорелейным, коротковолновым, — и без этих двух полей
+    # письмо нельзя ни найти, ни отнести к своему хозяйству.
+    ("cases", "line_type", "TEXT NOT NULL DEFAULT ''"),
+    ("cases", "tc_no", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "outgoing_date", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "sent_by", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
 )
@@ -222,8 +227,8 @@ class Database:
                 return False
             if names and column not in names:
                 return False
-        # Виртуальных таблиц в COLUMN_MIGRATIONS нет и быть не может:
-        # ALTER TABLE к ним неприменим. Их наличие проверяем отдельно —
+        # Таблиц целиком в COLUMN_MIGRATIONS нет: там только колонки. Наличие
+        # виртуальных и новых таблиц проверяем отдельно —
         # иначе указатель поиска мог не доехать на базе, где версия схемы
         # уже поднята, а таблицы ещё нет, и поиск молча ничего не находил.
         try:
@@ -233,7 +238,7 @@ class Database:
             }
         except sqlite3.Error:
             return False
-        return {"chunks_fts", "cases_fts"}.issubset(present)
+        return {"chunks_fts", "cases_fts", "case_files"}.issubset(present)
 
     def _rename_domains(self) -> None:
         """Переименование направлений при смене справочника.

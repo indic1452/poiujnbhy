@@ -29,6 +29,9 @@ from ..store.models import (
     DOC_STATUS_TITLES,
     CASE_STATUS_TITLES,
     DOC_STATUSES,
+    LINE_FULL_TITLES,
+    LINE_TITLES,
+    LINE_TYPES,
     ROLE_NOTES,
     ROLE_RANK,
     ROLE_TITLES,
@@ -311,6 +314,13 @@ def config(request: Request) -> Dict[str, Any]:
         })
     return {
         "outlines": outlines,
+        # Линии связи, по которым работает отдел. Отдаём справочником, а не
+        # зашиваем в интерфейс: список читают и форма регистрации, и фильтр
+        # списка писем, и разойтись они не должны.
+        "line_types": [
+            {"id": key, "title": LINE_TITLES[key], "full": LINE_FULL_TITLES[key]}
+            for key in LINE_TYPES
+        ],
         "doc_types": list(DOC_TYPES),
         "statuses": [{"id": key, "title": title} for key, title in DOC_STATUS_TITLES.items()],
         "llm": {"model": settings.llm_model, "base_url": settings.llm_base_url,
@@ -407,6 +417,8 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
         if priority not in CASE_PRIORITIES:
             raise ServiceError(f"неизвестный приоритет '{priority}'", 400)
         fields["priority"] = priority
+    if "line_type" in payload:
+        fields["line_type"] = _line_or_empty(payload["line_type"])
     if "status" in payload:
         status = str(payload["status"] or "")
         if status not in CASE_STATUSES:
@@ -445,6 +457,7 @@ def create_case(request: Request) -> Dict[str, Any]:
     if priority not in CASE_PRIORITIES:
         raise ServiceError(f"неизвестный приоритет '{priority}'", 400)
     payload["priority"] = priority
+    payload["line_type"] = _line_or_empty(payload.get("line_type"))
     if "group_no" in payload or "customer" in payload:
         payload["group_no"] = _group_or_empty(
             payload.get("group_no", payload.get("customer")))
@@ -457,6 +470,123 @@ def create_case(request: Request) -> Dict[str, Any]:
             raise ServiceError("исполнитель не найден или отключён", 400)
     case = service.create_case(payload, user)
     return {"case": case.to_dict(with_facts=True), "coverage": service.coverage(case)}
+
+
+#: Что кладут к письму: само письмо сканом, схема линии, журнал измерений,
+#: выгрузка анализатора. Список широкий намеренно — отдел приносит разное, и
+#: запрещать формат значит заставлять человека искать обходной путь.
+CASE_FILE_SUFFIXES = (
+    ".pdf", ".docx", ".doc", ".rtf", ".odt", ".xlsx", ".xls", ".csv",
+    ".md", ".txt", ".log", ".json", ".png", ".jpg", ".jpeg", ".tif", ".tiff",
+    ".zip", ".7z", ".rar",
+)
+
+
+@router.get("/cases/{case_ref}/files")
+def list_case_files(request: Request, case_ref: int) -> Dict[str, Any]:
+    """Бумаги, приложенные к письму. Смотреть может любой сотрудник."""
+    require_user(request)
+    case = _case_or_404(request, case_ref)
+    items = _repos(request).case_files.list_for_case(case.id)
+    return {"files": [item.to_dict() for item in items]}
+
+
+@router.post("/cases/{case_ref}/files")
+def attach_to_case(request: Request, case_ref: int,
+                   file: UploadFile = File(...),
+                   note: str = Form("")) -> Dict[str, Any]:
+    """Приложить к письму бумагу.
+
+    Файл остаётся на диске подлинником: письмо, пришедшее сканом, потом
+    поднимают целиком, а не пересказом. Текст из него разбирается тут же и
+    кладётся в поиск — иначе приложенную схему нельзя было бы найти по
+    словам, и человек искал бы её глазами по всему журналу.
+    """
+    user = require_editor(request)
+    case = _case_or_404(request, case_ref)
+    settings = _settings(request)
+    repos = _repos(request)
+
+    name = _safe_name(Path(file.filename or "файл").name)
+    if not name:
+        raise ServiceError("некорректное имя файла", 400)
+    suffix = Path(name).suffix.lower()
+    if suffix not in CASE_FILE_SUFFIXES:
+        known = ", ".join(CASE_FILE_SUFFIXES)
+        raise ServiceError(f"такие файлы к письму не прикладывают (можно: {known})", 400)
+
+    settings.ensure_dirs()
+    target_dir = Path(settings.data_dir) / "case-files" / str(case.id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    # Имя на диске с случайной приставкой: две бумаги с именем «письмо.pdf»
+    # к одному письму — обычное дело, и вторая не должна затирать первую.
+    target = target_dir / f"{secrets.token_hex(6)}-{name}"
+
+    limit = settings.max_upload_mb * 1024 * 1024
+    size = 0
+    try:
+        with target.open("wb") as stream:
+            while True:
+                piece = file.file.read(1024 * 1024)
+                if not piece:
+                    break
+                size += len(piece)
+                if size > limit:
+                    raise ServiceError(
+                        f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
+                stream.write(piece)
+        if not size:
+            raise ServiceError("файл пустой", 400)
+        # Не прочиталось — не беда: подлинник на месте, откроют как есть.
+        text, _problem = _extract_attachment(target)
+        item = repos.case_files.add(
+            case.id, name=name, path=str(target), size=size,
+            text=text.strip(), note=str(note or "").strip()[:300],
+            user_id=user.id if user else None)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
+
+    repos.audit.log("case.attach", user=user, object_type="case",
+                    object_id=case.case_id, details={"name": name, "bytes": size})
+    return {"file": item.to_dict()}
+
+
+@router.get("/cases/{case_ref}/files/{file_id}")
+def download_case_file(request: Request, case_ref: int, file_id: int) -> FileResponse:
+    """Отдать приложенную бумагу подлинником."""
+    require_user(request)
+    case = _case_or_404(request, case_ref)
+    item = _repos(request).case_files.get(file_id)
+    if item is None or item.case_ref != case.id:
+        raise ServiceError("файл не найден", 404)
+    path = Path(item.path)
+    if not path.is_file():
+        raise ServiceError("файл не найден на диске", 404)
+    return FileResponse(path, filename=item.name,
+                        headers={"Content-Disposition": _disposition(item.name)})
+
+
+@router.delete("/cases/{case_ref}/files/{file_id}")
+def detach_from_case(request: Request, case_ref: int, file_id: int) -> Dict[str, Any]:
+    """Убрать приложенную бумагу.
+
+    Отправленное письмо не трогаем: убрать из него исходную бумагу задним
+    числом — это правка того, что уже ушло адресату.
+    """
+    user = require_editor(request)
+    case = _case_or_404(request, case_ref)
+    repos = _repos(request)
+    _service(request).guard_not_sent(case, "убрать из него приложенный файл")
+    item = repos.case_files.get(file_id)
+    if item is None or item.case_ref != case.id:
+        raise ServiceError("файл не найден", 404)
+    path = repos.case_files.delete(file_id)
+    if path:
+        Path(path).unlink(missing_ok=True)
+    repos.audit.log("case.detach", user=user, object_type="case",
+                    object_id=case.case_id, details={"name": item.name})
+    return {"ok": True}
 
 
 @router.get("/cases/{case_ref}")
@@ -563,10 +693,16 @@ def delete_case(request: Request, case_ref: int) -> Dict[str, Any]:
     # Сданные файлом отчёты лежат на диске: строки из базы уходят каскадом,
     # а файлы остались бы навсегда. Интерфейс обещает удаление вместе со
     # всеми редакциями отчёта — значит, и с их файлами.
-    folder = Path(_settings(request).data_dir) / "reports" / str(case.id)
+    # Приложенные к письму бумаги лежат там же на диске: удаление письма
+    # обещано вместе со всем, что к нему относится.
+    data_dir = Path(_settings(request).data_dir)
+    folders = [data_dir / "reports" / str(case.id),
+               data_dir / "case-files" / str(case.id)]
     _repos(request).cases.delete(case.id)
     removed = 0
-    if folder.is_dir():
+    for folder in folders:
+        if not folder.is_dir():
+            continue
         for item in folder.iterdir():
             if item.is_file():
                 item.unlink(missing_ok=True)
@@ -1992,6 +2128,22 @@ def health(request: Request) -> Dict[str, Any]:
 # Пробел разрешён, а вот \s пропускал бы перевод строки — и тогда case_id
 # с переводом строки уезжал бы прямо в заголовок HTTP-ответа.
 _UNSAFE = re.compile(r"[^\w .()\-]", re.UNICODE)
+
+
+def _line_or_empty(value: Any) -> str:
+    """Линия связи: один из известных видов либо пусто.
+
+    Пустое значение разрешено намеренно: письмо иногда спускают раньше, чем
+    становится ясно, к какой линии оно относится, и запирать регистрацию
+    из-за этого нельзя.
+    """
+    line = str(value or "").strip()
+    if not line:
+        return ""
+    if line not in LINE_TYPES:
+        known = ", ".join(LINE_TITLES[key] for key in LINE_TYPES)
+        raise ServiceError(f"неизвестная линия связи '{line}' (известны: {known})", 400)
+    return line
 
 
 def _safe_name(name: str) -> str:

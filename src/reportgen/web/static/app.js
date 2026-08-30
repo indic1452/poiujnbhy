@@ -47,9 +47,15 @@
     /* Пределы полей карточки письма. Те же, что на сервере
        (api.MAX_CARD_FIELDS): поле не должно принимать то, что сервер потом
        отвергнет — человек уже напечатал. */
-    const CARD_LIMIT = { title: 300, incoming_no: 60, outgoing_no: 60, note: 2000, group_no: 120 };
+    const CARD_LIMIT = { title: 300, incoming_no: 60, outgoing_no: 60, tc_no: 60,
+                         note: 2000, group_no: 120 };
 
     const CASE_PRIORITY = { normal: 'обычный', high: 'важный', urgent: 'срочный' };
+
+    /* Линии связи. Дублируем названия на случай, если справочник с сервера
+       ещё не пришёл: в списке писем прочерк вместо «СЛС» читается как
+       «линия не указана», а это разные вещи. */
+    const LINE_TITLE = { sls: 'СЛС', rrls: 'РРЛС', kv: 'КВ', other: 'Другое' };
 
     /* Штатные должности. Права: до начальника группы включительно —
        администраторы, остальные ведут письма и отчёты. */
@@ -822,16 +828,6 @@
         const root = document.documentElement;
         if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode);
         else root.removeAttribute('data-theme');
-        const button = $('#theme-btn');
-        if (button) button.textContent = THEME_LABEL[mode] || 'Авто';
-    }
-
-    function cycleTheme() {
-        const order = ['auto', 'light', 'dark'];
-        const current = storageGet('rg-theme', 'auto');
-        const next = order[(order.indexOf(current) + 1) % order.length];
-        storageSet('rg-theme', next);
-        applyTheme(next);
     }
 
     // -- каркас: боковое меню и шапка ---------------------------------------
@@ -990,7 +986,6 @@
             location.href = '/login';
         };
 
-        $('#theme-btn').onclick = cycleTheme;
         bindSidebar();
     }
 
@@ -1204,11 +1199,12 @@
 
         const tabs = h('div', { class: 'seg' });
         const searchInput = h('input', {
-            type: 'search',
-            placeholder: 'Номер, тема, группа или слова из отчёта',
+            type: 'search', class: 'field-search',
+            placeholder: 'Номер, описание или слово из отчёта',
             title: 'Ищет по учётному и входящему номеру, исходящему номеру, '
-                + 'теме, номеру группы, примечанию — и по тексту самих отчётов. '
-                + 'Слова ищутся по основе: «помеха» найдёт и «помехи».',
+                + 'описанию, номеру ТС, линии связи, номеру группы, примечанию '
+                + '— и по тексту самих отчётов. Слова ищутся по основе: '
+                + '«помеха» найдёт и «помехи».',
             value: casesState.query,
             oninput: debounce((event) => {
                 casesState.query = event.target.value.trim();
@@ -1343,7 +1339,7 @@
                 h('label', { class: 'field' }, 'Файл отчёта', pickButton),
                 h('label', { class: 'field' }, 'Входящий номер', incoming),
                 h('label', { class: 'field' }, 'Номер группы', group),
-                h('label', { class: 'field' }, 'Тема', title),
+                h('label', { class: 'field' }, 'Описание', title),
                 h('label', { class: 'field' }, 'Направление работы', kind),
                 h('label', { class: 'field' }, 'Дата письма', incomingDate),
                 h('label', { class: 'field' }, 'Срок ответа', deadline),
@@ -1430,7 +1426,7 @@
                         },
                     },
                         h('td', { class: 'mono nowrap' }, item.incoming_no || item.case_id),
-                        h('td', {}, h('div', {}, item.title || h('span', { class: 'faint' }, 'без темы')),
+                        h('td', {}, h('div', {}, item.title || h('span', { class: 'faint' }, 'без описания')),
                             item.priority && item.priority !== 'normal'
                                 ? h('span', { class: 'tag tag--' + item.priority },
                                     CASE_PRIORITY[item.priority]) : null,
@@ -1441,6 +1437,14 @@
                                 ? h('span', { class: 'tag', title: 'Искомое слово нашлось '
                                     + 'в тексте отчёта по этому письму' }, 'в тексте отчёта')
                                 : null),
+                        // Линия связи и номер средства: по ним в отделе
+                        // отбирают письма своего хозяйства.
+                        h('td', { class: 'small nowrap' },
+                            item.line_type
+                                ? h('span', { class: 'tag tag--line' },
+                                    LINE_TITLE[item.line_type] || item.line_type)
+                                : h('span', { class: 'faint' }, '—'),
+                            item.tc_no ? h('div', { class: 'mono small muted' }, item.tc_no) : null),
                         h('td', { class: 'small nowrap' },
                             item.group_no || h('span', { class: 'faint' }, '—')),
                         h('td', { class: 'small nowrap' },
@@ -1471,7 +1475,8 @@
                     h('table', { class: 'grid grid--letters' },
                         h('thead', {}, h('tr', {},
                             h('th', {}, 'Входящий'),
-                            h('th', {}, 'Тема'),
+                            h('th', {}, 'Описание'),
+                            h('th', {}, 'Линия · ТС'),
                             h('th', {}, 'Номер группы'),
                             h('th', {}, 'Исполнитель'),
                             h('th', {}, 'Срок ответа'),
@@ -1587,6 +1592,17 @@
             placeholder: '1274 или 1-я группа', value: item.group_no || '',
             title: 'Откуда пришло письмо. Пишите как принято в отделе: 1274, 12/345, в/ч 74326, «2-я группа связи»',
         });
+        const titleInput = h('textarea', {
+            class: 'field-area', rows: 2, maxLength: CARD_LIMIT.title,
+            placeholder: 'о чём письмо' }, item.title || '');
+        const tcInput = h('input', {
+            type: 'text', class: 'mono', maxLength: CARD_LIMIT.tc_no,
+            placeholder: 'ТС-1274-03', value: item.tc_no || '' });
+        const linePick = h('select', {},
+            h('option', { value: '', selected: !item.line_type }, 'не указана'),
+            (state.config.line_types || []).map((line) => h('option', {
+                value: line.id, title: line.full, selected: item.line_type === line.id,
+            }, line.title)));
         const note = h('textarea', { rows: '3', maxLength: CARD_LIMIT.note }, item.note || '');
 
         const save = h('button', { class: 'btn btn--primary', onclick: submit }, 'Сохранить');
@@ -1597,10 +1613,13 @@
                     h('label', { class: 'field' }, 'Входящий номер', incomingNo),
                     h('label', { class: 'field' }, 'Дата письма', incomingDate),
                     h('label', { class: 'field' }, 'Номер группы', groupInput),
+                    h('label', { class: 'field' }, 'Номер ТС', tcInput),
+                    h('label', { class: 'field' }, 'Линия связи', linePick),
                     h('label', { class: 'field' }, 'Срок ответа', deadline),
                     h('label', { class: 'field' }, 'Исполнитель', assignee),
                     h('label', { class: 'field' }, 'Приоритет', priority),
                     h('label', { class: 'field' }, 'Состояние', status)),
+                h('label', { class: 'field' }, 'Описание', titleInput),
                 h('label', { class: 'field' }, 'Примечание', note),
             ],
             footer: [
@@ -1618,6 +1637,9 @@
                     incoming_no: incomingNo.value.trim(),
                     incoming_date: incomingDate.value,
                     group_no: groupInput.value.trim(),
+                    title: titleInput.value.trim(),
+                    tc_no: tcInput.value.trim(),
+                    line_type: linePick.value,
                     deadline: deadline.value,
                     assignee_id: assignee.value ? Number(assignee.value) : null,
                     priority: priority.value,
@@ -1683,44 +1705,34 @@
     }
 
     function openNewCaseDialog() {
-        const outlines = state.config.outlines || [];
-        if (!outlines.length) {
-            toast('Нет ни одного шаблона-плана: положите файл templates/outline_<тип>.json', 'error');
-            return;
-        }
+        const lines = state.config.line_types || [];
 
-        const typeSelect = h('select', {
-            onchange: () => {
-                if (!jsonTouched) fillSkeleton();
-            },
-        }, outlines.map((outline) =>
-            h('option', { value: outline.report_type, title: outline.title },
-                reportTypeShort(outline) + ' (' + outline.report_type + ')')));
-
-        const caseInput = h('input', {
-            type: 'text', placeholder: 'заполнится по входящему номеру', class: 'mono',
-            oninput: () => {
-                caseTouched = true;
-                if (!jsonTouched) fillSkeleton();
-            },
-        });
-        let caseTouched = false;
-        const titleInput = h('input', {
-            type: 'text', placeholder: 'о чём письмо', maxLength: CARD_LIMIT.title });
+        const titleInput = h('textarea', {
+            class: 'field-area', rows: 2, placeholder: 'о чём письмо',
+            maxLength: CARD_LIMIT.title });
         const incomingNo = h('input', {
             type: 'text', class: 'mono', placeholder: 'ВХ-2026-0412',
             maxLength: CARD_LIMIT.incoming_no });
+        const caseInput = h('input', {
+            type: 'text', placeholder: 'заполнится по входящему номеру', class: 'mono',
+            oninput: () => { caseTouched = true; },
+        });
+        let caseTouched = false;
         // Учётный номер по умолчанию повторяет входящий: два разных номера
         // руками никто вводить не станет, а поле обязательное.
         incomingNo.addEventListener('input', () => {
             if (caseTouched) return;
             caseInput.value = incomingNo.value.trim();
-            if (!jsonTouched) fillSkeleton();
         });
         const incomingDate = h('input', { type: 'date', value: todayIso() });
         const groupNoInput = h('input', {
             type: 'text', placeholder: '1274',
             title: 'Откуда пришло письмо. Пишите как принято в отделе: 1274, 12/345, в/ч 74326, «2-я группа связи»',
+        });
+        const tcInput = h('input', {
+            type: 'text', class: 'mono', placeholder: 'ТС-1274-03',
+            maxLength: CARD_LIMIT.tc_no,
+            title: 'Номер технического средства, о котором письмо. Ищется наравне с номерами письма',
         });
         const deadlineInput = h('input', { type: 'date' });
         const priorityPick = h('select', {}, Object.keys(CASE_PRIORITY).map((key) =>
@@ -1731,76 +1743,52 @@
             h('option', { value: String(person.id) },
                 (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role)))));
 
-        const status = h('div', { class: 'json-status' });
-        const editor = h('textarea', {
-            class: 'json-editor', spellcheck: 'false',
-            oninput: () => {
-                jsonTouched = true;
-                validate();
-            },
-        });
+        // Линия связи вместо типа отчёта: отдел работает по линиям, а шаблон
+        // отчёта выбирается потом, когда инженер садится за текст.
+        const linePick = h('select', {},
+            h('option', { value: '' }, 'не указана'),
+            lines.map((item) => h('option', { value: item.id, title: item.full }, item.title)));
+
+        // Приложенные бумаги. Файл кладётся на диск после того, как письмо
+        // заведено: раньше не к чему прикладывать. Список собираем здесь и
+        // отправляем по одному — так видно, какой именно файл не прошёл.
+        let picked = [];
+        const fileList = h('div', { class: 'file-list' });
         const fileInput = h('input', {
-            type: 'file', accept: '.json,application/json', style: { display: 'none' },
+            type: 'file', multiple: true, style: { display: 'none' },
             onchange: (event) => {
-                const file = event.target.files && event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => {
-                    editor.value = String(reader.result || '');
-                    jsonTouched = true;
-                    validate();
-                    const parsed = validate();
-                    if (parsed) {
-                        if (parsed.case_id) caseInput.value = parsed.case_id;
-                        if (parsed.report_type) {
-                            const known = outlines.some((o) => o.report_type === parsed.report_type);
-                            if (known) typeSelect.value = parsed.report_type;
-                            else toast('В файле указан тип отчёта «' + parsed.report_type +
-                                '», для которого нет шаблона-плана', 'error');
-                        }
+                const chosen = Array.from(event.target.files || []);
+                chosen.forEach((file) => {
+                    if (!picked.some((item) => item.name === file.name && item.size === file.size)) {
+                        picked.push(file);
                     }
-                };
-                reader.onerror = () => toast('не удалось прочитать файл', 'error');
-                reader.readAsText(file, 'utf-8');
+                });
                 event.target.value = '';
+                drawFiles();
             },
         });
 
-        let jsonTouched = false;
-
-        function fillSkeleton() {
-            const outline = outlines.find((item) => item.report_type === typeSelect.value);
-            editor.value = JSON.stringify(factsSkeleton(outline, caseInput.value.trim()), null, 2);
-            validate();
-        }
-
-        function validate() {
-            const raw = editor.value.trim();
-            if (!raw) {
-                status.className = 'json-status is-bad';
-                status.textContent = 'факт-пакет пуст';
-                return null;
+        function drawFiles() {
+            clear(fileList);
+            if (!picked.length) {
+                fileList.appendChild(h('div', { class: 'small faint' },
+                    'Скан письма, схема линии, журнал измерений — что пришло вместе с письмом'));
+                return;
             }
-            try {
-                const parsed = JSON.parse(raw);
-                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-                    status.className = 'json-status is-bad';
-                    status.textContent = 'ожидался объект JSON верхнего уровня';
-                    return null;
-                }
-                const count = Object.keys(parsed.measurements || {}).length;
-                status.className = 'json-status is-ok';
-                status.textContent = 'JSON корректен · измерений: ' + count +
-                    ' · находок: ' + ((parsed.findings || []).length);
-                return parsed;
-            } catch (error) {
-                status.className = 'json-status is-bad';
-                status.textContent = 'ошибка синтаксиса JSON: ' + error.message;
-                return null;
-            }
+            picked.forEach((file, index) => fileList.appendChild(
+                h('div', { class: 'file-row' },
+                    h('span', { class: 'file-name' }, file.name),
+                    h('span', { class: 'small faint' }, fmtBytes(file.size)),
+                    h('button', {
+                        class: 'btn btn--sm btn--ghost',
+                        title: 'Убрать из списка',
+                        onclick: () => { picked.splice(index, 1); drawFiles(); },
+                    }, 'Убрать'))));
         }
+        drawFiles();
 
-        const createButton = h('button', { class: 'btn btn--primary', onclick: submit }, 'Зарегистрировать');
+        const createButton = h('button', { class: 'btn btn--primary', onclick: submit },
+            'Зарегистрировать');
 
         const dialog = openModal({
             title: 'Регистрация письма',
@@ -1810,88 +1798,92 @@
                     h('label', { class: 'field' }, 'Дата письма', incomingDate),
                     h('label', { class: 'field' }, 'Номер группы', groupNoInput,
                         h('span', { class: 'small faint' }, 'номер группы или части')),
+                    h('label', { class: 'field' }, 'Номер ТС', tcInput,
+                        h('span', { class: 'small faint' }, 'техническое средство, о котором письмо')),
+                    h('label', { class: 'field' }, 'Линия связи', linePick),
                     h('label', { class: 'field' }, 'Срок ответа', deadlineInput),
                     h('label', { class: 'field' }, 'Исполнитель', assigneePick),
                     h('label', { class: 'field' }, 'Приоритет', priorityPick)),
-                h('label', { class: 'field' }, 'Тема письма', titleInput),
-                h('div', { class: 'form-grid' },
-                    h('label', { class: 'field' }, 'Тип отчёта', typeSelect),
-                    h('label', { class: 'field' }, 'Учётный номер', caseInput,
-                        h('span', { class: 'small faint' },
-                            'внутренний номер дела; можно повторить входящий'))),
-                // Исходные данные письма — это JSON, и при регистрации он
-                // никому не нужен: письмо только спустили, чисел в нём ещё
-                // нет, заготовку по шаблону система заполняет сама. Прячем
-                // под раскрывашку — она нужна одному человеку из ста, у
-                // которого пакет уже собран приборным разбором.
-                h('details', { class: 'facts-advanced' },
-                    h('summary', {}, 'Исходные данные (JSON) — если пакет уже собран'),
-                    h('div', { class: 'toolbar', style: { margin: '8px 0 6px' } },
-                        h('span', { class: 'small muted grow' },
-                            'Числа отчёта берутся только отсюда; заготовку заполнит система'),
-                        h('button', { class: 'btn btn--sm', onclick: () => fileInput.click() }, 'Загрузить из файла'),
+                h('label', { class: 'field' }, 'Описание', titleInput),
+                h('label', { class: 'field' }, 'Учётный номер', caseInput,
+                    h('span', { class: 'small faint' },
+                        'внутренний номер дела; можно повторить входящий')),
+                h('div', { class: 'field' },
+                    h('div', { class: 'toolbar', style: { marginBottom: '6px' } },
+                        h('span', { class: 'grow' }, 'Приложенные файлы'),
                         h('button', {
-                            class: 'btn btn--sm',
-                            title: 'Заполнить заготовку обязательными ключами выбранного шаблона',
-                            onclick: () => { jsonTouched = false; fillSkeleton(); },
-                        }, 'Заготовка по шаблону'),
+                            class: 'btn btn--sm', onclick: () => fileInput.click(),
+                        }, 'Выбрать файлы'),
                         fileInput),
-                    editor, status),
+                    fileList),
             ],
             footer: [
-                h('span', { class: 'small faint spacer' }, 'Обязательны входящий номер и тема письма'),
+                h('span', { class: 'small faint spacer' },
+                    'Обязательны входящий номер и описание'),
                 h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
                 createButton,
             ],
             focus: 'input',
         });
 
-        fillSkeleton();
-
         async function submit() {
-            const facts = validate();
-            if (!facts) {
-                // Раскрывашка закрыта, и без этого человек услышал бы про
-                // ошибку в поле, которого не видит.
-                const box = editor.closest('details');
-                if (box) box.open = true;
-                toast('Исправьте исходные данные: ' + status.textContent, 'error');
-                return;
-            }
-            const caseId = caseInput.value.trim() || String(facts.case_id || '').trim();
+            const caseId = caseInput.value.trim() || incomingNo.value.trim();
             if (!caseId) {
-                toast('Укажите идентификатор обращения', 'error');
-                caseInput.focus();
+                toast('Укажите входящий номер письма', 'error');
+                incomingNo.focus();
                 return;
             }
-            const reportType = typeSelect.value;
-            facts.case_id = caseId;
-            facts.report_type = reportType;
+            if (!titleInput.value.trim()) {
+                toast('Опишите, о чём письмо', 'error');
+                titleInput.focus();
+                return;
+            }
 
             createButton.disabled = true;
             createButton.textContent = 'Создание…';
+            let created = null;
             try {
                 const data = await api.post('/api/cases', {
                     case_id: caseId,
-                    report_type: reportType,
                     title: titleInput.value.trim(),
-                    group_no: groupNoInput.value.trim(),
                     incoming_no: incomingNo.value.trim(),
-                    incoming_date: incomingDate.value,
-                    deadline: deadlineInput.value,
+                    incoming_date: incomingDate.value || '',
+                    group_no: groupNoInput.value.trim(),
+                    tc_no: tcInput.value.trim(),
+                    line_type: linePick.value,
+                    deadline: deadlineInput.value || '',
                     priority: priorityPick.value,
                     assignee_id: assigneePick.value ? Number(assigneePick.value) : null,
-                    facts: facts,
                 });
-                dialog.close();
-                toast('Письмо ' + caseId + ' зарегистрировано', 'ok');
-                navigate('#/case/' + data.case.id);
+                created = data.case;
             } catch (error) {
                 toastError(error);
-            } finally {
                 createButton.disabled = false;
                 createButton.textContent = 'Зарегистрировать';
+                return;
             }
+
+            // Письмо заведено. Файлы кладём следом и по одному: если один
+            // не прошёл, остальные всё равно на месте, а человек видит имя
+            // того, который не взяли, — а не «что-то пошло не так».
+            const failed = [];
+            for (const file of picked) {
+                try {
+                    const form = new FormData();
+                    form.append('file', file);
+                    await uploadFile('/api/cases/' + created.id + '/files', form);
+                } catch (error) {
+                    failed.push(file.name + ' — ' + errorText(error));
+                }
+            }
+
+            dialog.close();
+            if (failed.length) {
+                toast('Письмо создано, но файлы не приложены: ' + failed.join('; '), 'error');
+            } else {
+                toast('Письмо ' + created.case_id + ' зарегистрировано', 'ok');
+            }
+            location.hash = '#/case/' + created.id;
         }
     }
 
@@ -1905,11 +1897,11 @@
         reports: [],
         report: null,
         facts: null,
+        files: [],
+        filesError: '',
         rows: [],
         findings: [],
         factsDirty: false,
-        jsonMode: false,
-        jsonText: '',
         drafts: new Map(),
         dirty: new Set(),
         tab: 'sources',
@@ -1925,11 +1917,11 @@
         wb.reports = [];
         wb.report = null;
         wb.facts = null;
+        wb.files = [];
+        wb.filesError = '';
         wb.rows = [];
         wb.findings = [];
         wb.factsDirty = false;
-        wb.jsonMode = false;
-        wb.jsonText = '';
         wb.drafts = new Map();
         wb.dirty = new Set();
         wb.tab = 'sources';
@@ -1962,6 +1954,9 @@
         clear(view);
         view.appendChild(buildWorkbench());
         refreshAll();
+        // Список бумаг догружаем после отрисовки: письмо должно открыться
+        // сразу, а не ждать ещё одного запроса.
+        loadCaseFiles();
     }
 
     /** Загрузка редакции отчёта вместе со списком источников для правой панели. */
@@ -2189,26 +2184,120 @@
             onclick: () => saveFacts(),
         }, 'Сохранить факты');
 
-        const modeButton = h('button', {
-            class: 'btn btn--sm',
-            onclick: () => toggleJsonMode(),
-        }, 'Показать JSON');
-
         const body = h('div', { class: 'panel-body' });
         const digest = h('div', { class: 'small faint' });
 
         wb.nodes.factsBody = body;
         wb.nodes.factsSave = saveButton;
-        wb.nodes.factsMode = modeButton;
         wb.nodes.factsDigest = digest;
+
+        // Бумаги письма стоят над фактами: с них работа и начинается —
+        // сперва читают, что пришло, и только потом заносят числа.
+        const filesBox = h('div', { class: 'case-files' });
+        wb.nodes.caseFiles = filesBox;
+        renderCaseFiles();
 
         return h('section', { class: 'panel panel--facts' },
             h('div', { class: 'panel-head' },
                 h('div', { class: 'panel-head-row' },
                     h('span', { class: 'panel-title' }, 'Факт-пакет'),
-                    modeButton, saveButton),
+                    saveButton),
                 h('div', { class: 'panel-head-row' }, digest)),
+            filesBox,
             body);
+    }
+
+    /* Приложенные к письму бумаги: скан письма, схема линии, журнал.
+       Список отдельным запросом — он нужен и после того, как файл добавили
+       или убрали, а перезагружать ради этого всё письмо расточительно. */
+    async function loadCaseFiles() {
+        try {
+            const data = await api.get('/api/cases/' + wb.case.id + '/files');
+            wb.files = data.files || [];
+        } catch (error) {
+            wb.files = [];
+            wb.filesError = errorText(error);
+        }
+        renderCaseFiles();
+    }
+
+    function renderCaseFiles() {
+        const box = wb.nodes.caseFiles;
+        if (!box) return;
+        clear(box);
+
+        const picker = h('input', {
+            type: 'file', multiple: true, style: { display: 'none' },
+            onchange: async (event) => {
+                const chosen = Array.from(event.target.files || []);
+                event.target.value = '';
+                for (const file of chosen) {
+                    const form = new FormData();
+                    form.append('file', file);
+                    try {
+                        await uploadFile('/api/cases/' + wb.case.id + '/files', form);
+                    } catch (error) {
+                        toast(file.name + ' — ' + errorText(error), 'error', 6000);
+                    }
+                }
+                await loadCaseFiles();
+            },
+        });
+
+        const items = wb.files || [];
+        append(box, [
+            h('div', { class: 'toolbar' },
+                h('span', { class: 'panel-title grow' }, 'Приложено к письму'),
+                h('span', { class: 'small faint' }, items.length ? String(items.length) : ''),
+                canEdit() && !isSent(wb.case) ? h('button', {
+                    class: 'btn btn--sm', onclick: () => picker.click(),
+                }, iconGlyph('clip'), 'Приложить') : null,
+                picker),
+            items.length ? h('div', { class: 'file-list' }, items.map((file) =>
+                h('div', { class: 'file-row' },
+                    h('a', {
+                        class: 'file-name',
+                        href: '/api/cases/' + wb.case.id + '/files/' + file.id,
+                        title: 'Скачать ' + file.name + (file.uploaded_by_name
+                            ? ' · приложил ' + file.uploaded_by_name : ''),
+                    }, file.name),
+                    h('span', { class: 'small faint nowrap' }, fmtBytes(file.size)),
+                    // Не прочиталось — значит, по словам из этой бумаги
+                    // письмо не найдётся. Человек должен это знать заранее.
+                    file.has_text ? null : h('span', {
+                        class: 'small faint', title: 'Текст из файла прочитать не удалось: '
+                            + 'по словам из него письмо не найдётся',
+                    }, 'без текста'),
+                    canEdit() && !isSent(wb.case) ? h('button', {
+                        class: 'btn btn--icon btn--danger-hover',
+                        title: 'Убрать файл из письма',
+                        onclick: () => removeCaseFile(file),
+                    }, iconGlyph('trash')) : null)))
+                : h('div', { class: 'small faint' },
+                    wb.filesError || 'Ничего не приложено'),
+        ]);
+    }
+
+    async function removeCaseFile(file) {
+        const ok = await confirmDialog({
+            title: 'Убрать файл',
+            message: 'Файл «' + file.name + '» будет убран из письма и удалён с диска.',
+            confirmText: 'Убрать',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del('/api/cases/' + wb.case.id + '/files/' + file.id);
+            toast('Файл убран', 'ok');
+        } catch (error) {
+            toastError(error);
+        }
+        await loadCaseFiles();
+    }
+
+    /** Ответ по письму уже отправлен: исходные бумаги задним числом не правят. */
+    function isSent(item) {
+        return Boolean(item && item.outgoing_no);
     }
 
     function markFactsDirty() {
@@ -2229,73 +2318,14 @@
         ]);
     }
 
-    function toggleJsonMode() {
-        if (wb.jsonMode) {
-            let parsed;
-            try {
-                parsed = JSON.parse(wb.jsonText);
-            } catch (error) {
-                toast('Не переключаюсь в таблицу: ошибка синтаксиса JSON — ' + error.message, 'error');
-                return;
-            }
-            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-                toast('Ожидался объект JSON верхнего уровня', 'error');
-                return;
-            }
-            wb.facts = parsed;
-            rebuildFactRows();
-            wb.jsonMode = false;
-            wb.nodes.factsMode.textContent = 'Показать JSON';
-        } else {
-            wb.facts = serializeFacts();
-            wb.jsonText = JSON.stringify(wb.facts, null, 2);
-            wb.jsonMode = true;
-            wb.nodes.factsMode.textContent = 'Показать таблицу';
-        }
-        renderFactsBody();
-    }
-
     function renderFactsBody() {
         const body = wb.nodes.factsBody;
         if (!body) return;
         const scroll = body.scrollTop;
         clear(body);
-        if (wb.jsonMode) renderFactsJson(body);
-        else renderFactsTable(body);
+        renderFactsTable(body);
         body.scrollTop = scroll;
         updateFactsDigest();
-    }
-
-    function renderFactsJson(body) {
-        const status = h('div', { class: 'json-status' });
-        const editor = h('textarea', {
-            class: 'json-editor', spellcheck: 'false', disabled: !canEdit(),
-            oninput: (event) => {
-                wb.jsonText = event.target.value;
-                markFactsDirty();
-                check();
-            },
-        });
-        editor.value = wb.jsonText;
-
-        function check() {
-            try {
-                const parsed = JSON.parse(wb.jsonText);
-                const count = Object.keys((parsed && parsed.measurements) || {}).length;
-                status.className = 'json-status is-ok';
-                status.textContent = 'JSON корректен · измерений: ' + count;
-                return true;
-            } catch (error) {
-                status.className = 'json-status is-bad';
-                status.textContent = 'ошибка синтаксиса: ' + error.message;
-                return false;
-            }
-        }
-
-        append(body, [
-            editor, status,
-        ]);
-        check();
     }
 
     /** Блок «каких обязательных измерений не хватает» — красные ключи из coverage. */
@@ -2354,6 +2384,11 @@
                 wb.case.incoming_no ? h('dt', {}, 'входящий') : null,
                 wb.case.incoming_no
                     ? h('dd', { class: 'mono' }, wb.case.incoming_no) : null,
+                wb.case.line_type ? h('dt', {}, 'линия связи') : null,
+                wb.case.line_type
+                    ? h('dd', {}, wb.case.line_title || LINE_TITLE[wb.case.line_type]) : null,
+                wb.case.tc_no ? h('dt', {}, 'номер ТС') : null,
+                wb.case.tc_no ? h('dd', { class: 'mono' }, wb.case.tc_no) : null,
                 h('dt', {}, 'тип отчёта'), h('dd', {}, reportTypeTitle(wb.case.report_type)),
                 h('dt', {}, 'состояние'), h('dd', {}, CASE_STATUS[wb.case.status] || wb.case.status)),
             h('label', { class: 'field', style: { marginTop: '8px' } }, 'Номер группы',
@@ -2585,23 +2620,13 @@
             toast('Недостаточно прав: правка фактов доступна инженеру', 'error');
             return;
         }
-        let facts;
-        if (wb.jsonMode) {
-            try {
-                facts = JSON.parse(wb.jsonText);
-            } catch (error) {
-                toast('Ошибка синтаксиса JSON: ' + error.message, 'error');
-                return;
-            }
-        } else {
-            const problems = validateFacts();
-            if (problems.length) {
-                toast('Факт-пакет не сохранён: ' + problems.slice(0, 3).join('; ') +
-                    (problems.length > 3 ? ' и ещё ' + (problems.length - 3) : ''), 'error');
-                return;
-            }
-            facts = serializeFacts();
+        const problems = validateFacts();
+        if (problems.length) {
+            toast('Факт-пакет не сохранён: ' + problems.slice(0, 3).join('; ') +
+                (problems.length > 3 ? ' и ещё ' + (problems.length - 3) : ''), 'error');
+            return;
         }
+        const facts = serializeFacts();
 
         const button = wb.nodes.factsSave;
         button.disabled = true;
@@ -2613,7 +2638,6 @@
             wb.coverage = data.coverage || {};
             wb.facts = clone(wb.case.facts || {});
             rebuildFactRows();
-            if (wb.jsonMode) wb.jsonText = JSON.stringify(wb.facts, null, 2);
             wb.factsDirty = false;
             renderFactsBody();
             toast('Факт-пакет сохранён', 'ok');

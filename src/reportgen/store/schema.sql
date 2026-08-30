@@ -113,6 +113,8 @@ CREATE TABLE IF NOT EXISTS cases (
     title         TEXT    NOT NULL DEFAULT '',
     customer      TEXT    NOT NULL DEFAULT '',
     status        TEXT    NOT NULL DEFAULT 'new',  -- new|draft|review|checked|approved|archived
+    line_type     TEXT    NOT NULL DEFAULT '',     -- sls | rrls | kv | other
+    tc_no         TEXT    NOT NULL DEFAULT '',     -- номер технического средства
     incoming_no   TEXT    NOT NULL DEFAULT '',     -- входящий номер письма
     incoming_date TEXT    NOT NULL DEFAULT '',     -- дата письма, ГГГГ-ММ-ДД
     outgoing_no   TEXT    NOT NULL DEFAULT '',     -- исходящий номер ответа
@@ -132,6 +134,24 @@ CREATE INDEX IF NOT EXISTS idx_cases_status   ON cases(status);
 CREATE INDEX IF NOT EXISTS idx_cases_outgoing ON cases(outgoing_no);
 CREATE INDEX IF NOT EXISTS idx_cases_assignee ON cases(assignee_id);
 CREATE INDEX IF NOT EXISTS idx_cases_deadline ON cases(deadline);
+CREATE INDEX IF NOT EXISTS idx_cases_line     ON cases(line_type);
+
+-- Файлы, приложенные к письму: само письмо сканом, схема линии, журнал
+-- измерений. Хранится и путь на диске, и разобранный текст: файл на диске
+-- можно потерять, а искать письмо по словам из приложения нужно всегда.
+-- Отдельно от reports: там сданный на проверку отчёт, тут исходные бумаги.
+CREATE TABLE IF NOT EXISTS case_files (
+    id          INTEGER PRIMARY KEY,
+    case_ref    INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    name        TEXT    NOT NULL,
+    size        INTEGER NOT NULL DEFAULT 0,
+    path        TEXT    NOT NULL,
+    text        TEXT    NOT NULL DEFAULT '',
+    note        TEXT    NOT NULL DEFAULT '',
+    uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at  TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_case_files ON case_files(case_ref, id);
 
 -- Поиск по письмам и отчётам. Тот же приём, что и для библиотеки
 -- (chunks_fts): unicode61 русской морфологии не знает, поэтому стемминг

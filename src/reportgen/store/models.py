@@ -77,6 +77,26 @@ CASE_STATUS_TITLES = {
 #: отправленное письмо — тоже работа: ответ ещё не ушёл.
 OPEN_CASE_STATUSES = ("new", "draft", "review", "checked")
 
+#: Линии связи, по которым работает отдел. Идентификатор латиницей — по нему
+#: сверяется код и строится фильтр; человеку показывается сокращение из
+#: LINE_TITLES, принятое в отделе. «Другое» оставлено намеренно: линий больше,
+#: чем три, и заставлять человека врать в поле нельзя — чем именно занято
+#: письмо, он напишет в описании.
+LINE_TYPES = ("sls", "rrls", "kv", "other")
+LINE_TITLES = {
+    "sls": "СЛС",
+    "rrls": "РРЛС",
+    "kv": "КВ",
+    "other": "Другое",
+}
+#: Полные названия — для подсказок и отчётов о работе.
+LINE_FULL_TITLES = {
+    "sls": "Спутниковая линия связи",
+    "rrls": "Радиорелейная линия связи",
+    "kv": "Коротковолновая связь",
+    "other": "Другое",
+}
+
 CASE_PRIORITIES = ("normal", "high", "urgent")
 CASE_PRIORITY_TITLES = {"normal": "обычный", "high": "важный", "urgent": "срочный"}
 
@@ -275,9 +295,14 @@ class Case:
     id: int
     case_id: str
     report_type: str
+    #: Описание письма — о чём оно. В интерфейсе поле так и называется.
     title: str = ""
     customer: str = ""
     status: str = "new"
+    #: Линия связи: sls | rrls | kv | other. Пусто — не указана.
+    line_type: str = ""
+    #: Номер технического средства, к которому относится письмо.
+    tc_no: str = ""
     #: Входящий номер и дата входящего письма.
     incoming_no: str = ""
     incoming_date: str = ""
@@ -300,6 +325,8 @@ class Case:
     assignee_name: str = ""
     #: Сколько отчётов заведено по письму. Считает выборка, в таблице нет.
     reports_count: int = 0
+    #: Сколько файлов приложено к письму. Считает выборка, в таблице нет.
+    files_count: int = 0
     #: ФИО отправившего ответ. Заполняется выборкой со связкой.
     sent_by_name: str = ""
 
@@ -312,6 +339,8 @@ class Case:
             title=row["title"],
             customer=row["customer"],
             status=row["status"],
+            line_type=_col(row, "line_type", "") or "",
+            tc_no=_col(row, "tc_no", "") or "",
             incoming_no=_col(row, "incoming_no", ""),
             incoming_date=_col(row, "incoming_date", ""),
             outgoing_no=_col(row, "outgoing_no", "") or "",
@@ -328,6 +357,7 @@ class Case:
             updated_at=row["updated_at"],
             assignee_name=_col(row, "assignee_name", "") or "",
             reports_count=int(_col(row, "reports_count", 0) or 0),
+            files_count=int(_col(row, "files_count", 0) or 0),
             sent_by_name=_col(row, "sent_by_name", "") or "",
         )
 
@@ -344,6 +374,9 @@ class Case:
             # Название состояния по-русски — одно на всю систему. Иначе
             # интерфейс и отчёты о работе называют одно и то же по-разному.
             "status_title": CASE_STATUS_TITLES.get(self.status, self.status),
+            "line_type": self.line_type,
+            "line_title": LINE_TITLES.get(self.line_type, ""),
+            "tc_no": self.tc_no,
             "incoming_no": self.incoming_no,
             "incoming_date": self.incoming_date,
             "outgoing_no": self.outgoing_no,
@@ -357,12 +390,64 @@ class Case:
             "note": self.note,
             "facts_digest": self.facts_digest,
             "reports_count": self.reports_count,
+            "files_count": self.files_count,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
         if with_facts:
             data["facts"] = self.facts
         return data
+
+
+@dataclass
+class CaseFile:
+    """Бумага, приложенная к письму: скан письма, схема линии, журнал.
+
+    Текст хранится рядом с путём намеренно. Файл на диске можно потерять
+    или перенести, а искать письмо по словам из приложения нужно всегда —
+    и после переноса тоже.
+    """
+
+    id: int
+    case_ref: int
+    name: str
+    size: int = 0
+    path: str = ""
+    text: str = ""
+    note: str = ""
+    uploaded_by: int | None = None
+    uploaded_by_name: str = ""
+    created_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "CaseFile":
+        return cls(
+            id=row["id"],
+            case_ref=row["case_ref"],
+            name=row["name"],
+            size=int(_col(row, "size", 0) or 0),
+            path=_col(row, "path", "") or "",
+            text=_col(row, "text", "") or "",
+            note=_col(row, "note", "") or "",
+            uploaded_by=_col(row, "uploaded_by", None),
+            uploaded_by_name=_col(row, "uploaded_by_name", "") or "",
+            created_at=row["created_at"],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "case_ref": self.case_ref,
+            "name": self.name,
+            "size": self.size,
+            "note": self.note,
+            # Сам текст наружу не отдаём: он нужен поиску, а не экрану, и
+            # на скане журнала это сотни килобайт в каждом списке.
+            "has_text": bool(self.text.strip()),
+            "uploaded_by": self.uploaded_by,
+            "uploaded_by_name": self.uploaded_by_name,
+            "created_at": self.created_at,
+        }
 
 
 @dataclass

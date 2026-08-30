@@ -28,6 +28,7 @@ from .models import (
     AuditEntry,
     ChatAttachment,
     Case,
+    CaseFile,
     Chat,
     ChatMessage,
     Document,
@@ -711,14 +712,14 @@ def refresh_case_index(db: "Database", case_ref: int) -> None:
     отчёт лежал в базе, а поиск его не находил).
     """
     row = db.query_one(
-        "SELECT case_id, title, customer, incoming_no, outgoing_no, note, facts_json "
-        "FROM cases WHERE id = ?", (case_ref,))
+        "SELECT case_id, title, customer, incoming_no, outgoing_no, tc_no, note, "
+        "facts_json FROM cases WHERE id = ?", (case_ref,))
     with db.transaction() as connection:
         connection.execute("DELETE FROM cases_fts WHERE case_ref = ?", (case_ref,))
         if row is None:
             return
         texts = [row["case_id"], row["title"], row["customer"],
-                 row["incoming_no"], row["outgoing_no"], row["note"],
+                 row["incoming_no"], row["outgoing_no"], row["tc_no"], row["note"],
                  # Суть обращения и ключевые слова из факт-пакета: по ним
                  # ищут письмо, у которого отчёта ещё нет вовсе.
                  row["facts_json"]]
@@ -731,6 +732,15 @@ def refresh_case_index(db: "Database", case_ref: int) -> None:
             # тоже ищут — «что мне тогда вернули по этому письму».
             texts.append(report["file_name"])
             texts.append(report["review_note"])
+        # Приложенные к письму бумаги: скан самого письма, схема линии,
+        # журнал измерений. Их текст разбирают при загрузке, и искать по
+        # нему нужно так же, как по отчёту.
+        for attachment in connection.execute(
+                "SELECT name, text, note FROM case_files WHERE case_ref = ?",
+                (case_ref,)):
+            texts.append(attachment["name"])
+            texts.append(attachment["text"])
+            texts.append(attachment["note"])
         for section in connection.execute(
                 "SELECT s.text FROM report_sections s JOIN reports r ON r.id = s.report_id "
                 "WHERE r.case_ref = ?", (case_ref,)):
@@ -740,6 +750,61 @@ def refresh_case_index(db: "Database", case_ref: int) -> None:
             connection.execute(
                 "INSERT INTO cases_fts(stemmed, case_ref) VALUES(?, ?)",
                 (stemmed, case_ref))
+
+
+class CaseFileRepo:
+    """Бумаги, приложенные к письму.
+
+    Файл лежит на диске, а строка здесь хранит имя, размер, путь и
+    разобранный текст. Текст нужен поиску: письмо ищут и по словам из
+    приложенной схемы, а не только по своим реквизитам.
+    """
+
+    _SELECT = (
+        "SELECT f.*, coalesce(u.full_name, u.login, '') AS uploaded_by_name "
+        "FROM case_files f LEFT JOIN users u ON u.id = f.uploaded_by"
+    )
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def add(self, case_ref: int, name: str, path: str, size: int = 0,
+            text: str = "", note: str = "", user_id: int | None = None) -> CaseFile:
+        now = utcnow()
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO case_files(case_ref, name, size, path, text, note, "
+                "uploaded_by, created_at) VALUES(?,?,?,?,?,?,?,?)",
+                (case_ref, name, size, path, text, note, user_id, now),
+            )
+        # Текст приложения попадает в поиск сразу: положить бумагу и не
+        # найти по ней письмо — ровно тот случай, ради которого приложения
+        # и заводили.
+        refresh_case_index(self.db, case_ref)
+        return self.get(int(cursor.lastrowid))  # type: ignore[arg-type]
+
+    def get(self, file_id: int) -> CaseFile | None:
+        row = self.db.query_one(f"{self._SELECT} WHERE f.id = ?", (file_id,))
+        return CaseFile.from_row(row) if row else None
+
+    def list_for_case(self, case_ref: int) -> List[CaseFile]:
+        return rows_to(CaseFile, self.db.query(
+            f"{self._SELECT} WHERE f.case_ref = ? ORDER BY f.id", (case_ref,)))
+
+    def count_for_case(self, case_ref: int) -> int:
+        row = self.db.query_one(
+            "SELECT count(*) AS n FROM case_files WHERE case_ref = ?", (case_ref,))
+        return int(row["n"]) if row else 0
+
+    def delete(self, file_id: int) -> str:
+        """Убрать строку. Возвращает путь к файлу — удалять его решает вызвавший."""
+        item = self.get(file_id)
+        if item is None:
+            return ""
+        with self.db.transaction() as connection:
+            connection.execute("DELETE FROM case_files WHERE id = ?", (file_id,))
+        refresh_case_index(self.db, item.case_ref)
+        return item.path
 
 
 class CaseSearchRepo:
@@ -789,7 +854,10 @@ class CaseRepo:
         # Сколько отчётов заведено по письму. Нужно карточке: состояния
         # «на проверке», «проверен» и «отправлено» даёт ход отчёта, и руками
         # их выставлять нельзя, пока по письму есть отчёты.
-        "(SELECT count(*) FROM reports r WHERE r.case_ref = c.id) AS reports_count "
+        "(SELECT count(*) FROM reports r WHERE r.case_ref = c.id) AS reports_count, "
+        # Сколько бумаг приложено к письму. Список показывает скрепку, и
+        # без счётчика пришлось бы спрашивать базу отдельно на каждую строку.
+        "(SELECT count(*) FROM case_files f WHERE f.case_ref = c.id) AS files_count "
         "FROM cases c LEFT JOIN users u ON u.id = c.assignee_id "
         "LEFT JOIN users s ON s.id = c.sent_by"
     )
@@ -798,16 +866,19 @@ class CaseRepo:
                digest: str = "", title: str = "", customer: str = "",
                user_id: int | None = None, *, incoming_no: str = "",
                incoming_date: str = "", deadline: str = "", priority: str = "normal",
-               assignee_id: int | None = None, note: str = "") -> Case:
+               assignee_id: int | None = None, note: str = "",
+               line_type: str = "", tc_no: str = "") -> Case:
         now = utcnow()
         with self.db.transaction() as connection:
             cursor = connection.execute(
                 "INSERT INTO cases(case_id, report_type, title, customer, status, "
-                "incoming_no, incoming_date, deadline, priority, assignee_id, note, "
-                "facts_json, facts_digest, created_by, created_at, updated_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "line_type, tc_no, incoming_no, incoming_date, deadline, priority, "
+                "assignee_id, note, facts_json, facts_digest, created_by, "
+                "created_at, updated_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (case_id, report_type, title, customer, "new",
-                 incoming_no, incoming_date, deadline, priority, assignee_id, note,
+                 line_type, tc_no, incoming_no, incoming_date, deadline, priority,
+                 assignee_id, note,
                  json.dumps(facts, ensure_ascii=False), digest, user_id, now, now),
             )
         return self.get(int(cursor.lastrowid))  # type: ignore[arg-type]
@@ -873,6 +944,7 @@ class CaseRepo:
         """
         allowed = ("title", "customer", "incoming_no", "incoming_date",
                    "outgoing_no", "outgoing_date", "sent_by",
+                   "line_type", "tc_no",
                    "deadline", "priority", "assignee_id", "note", "status")
         # Единственная колонка, где пусто — это значение, а не «не передано».
         # Снять исполнителя с письма было нельзя вовсе: None отбрасывался
@@ -925,10 +997,11 @@ class CaseRepo:
     #: 3 из 12» при поиске врёт — списком одно, числом другое.
     #:
     #: Ищем по всем реквизитам письма: учётный номер, входящий, исходящий,
-    #: тема, номер группы, примечание. Плюс отдельно — по тексту отчётов,
-    #: через полнотекстовый указатель cases_fts (см. _FTS_SQL).
+    #: описание, номер группы, номер ТС, примечание. Плюс отдельно — по
+    #: тексту отчётов и приложенных файлов через полнотекстовый указатель
+    #: cases_fts (см. _FTS_SQL).
     _SEARCH_FIELDS = ("title", "customer", "case_id", "incoming_no",
-                      "outgoing_no", "note")
+                      "outgoing_no", "tc_no", "note")
     _FTS_SQL = "{p}id IN (SELECT case_ref FROM cases_fts WHERE cases_fts MATCH ?)"
 
     @staticmethod
@@ -1769,6 +1842,7 @@ class Repositories:
         self.vectors = VectorRepo(db)
         self.cases = CaseRepo(db)
         self.case_search = CaseSearchRepo(db)
+        self.case_files = CaseFileRepo(db)
         self.reports = ReportRepo(db)
         self.edits = EditPairRepo(db)
         self.chats = ChatRepo(db)

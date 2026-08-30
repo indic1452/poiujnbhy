@@ -1117,6 +1117,163 @@ class LetterSearchTests(WebTestCase):
         self.assertIn("SUP-ПОИСК-8", self.found("рефлектометр"))
 
 
+class LetterRegistrationTests(WebTestCase):
+    """Регистрация письма: линия связи, номер ТС, бумаги, без JSON."""
+
+    def register(self, **fields):
+        payload = {"case_id": "ВХ-2026-0500", "title": "Описание письма"}
+        payload.update(fields)
+        response = self.client.post("/api/cases", json=payload)
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()["case"]
+
+    def test_a_letter_registers_without_a_fact_pack(self):
+        """Письмо только спустили — чисел в нём ещё нет.
+
+        Заготовку по шаблону собирает система: требовать JSON от того, кто
+        регистрирует входящее, значит требовать того, чего он знать не может.
+        """
+        case = self.register()
+        self.assertEqual("ВХ-2026-0500", case["case_id"])
+        # Тип отчёта выбран сам, шаблон найден, заготовка собрана.
+        self.assertTrue(case["report_type"])
+        full = self.client.get(f"/api/cases/{case['id']}").json()["case"]
+        self.assertIn("measurements", full["facts"])
+        self.assertEqual(case["case_id"], full["facts"]["case_id"])
+        # Ключи взяты из шаблона, а не выдуманы.
+        outline = self.service.outlines.get(case["report_type"])
+        expected = {key for section in outline.sections
+                    for key in section.required_facts}
+        self.assertEqual(expected, set(full["facts"]["measurements"]))
+
+    def test_the_communication_line_is_one_of_the_known_ones(self):
+        # Отдел работает по линиям, и «РРЛС» в поле — не свободный текст:
+        # по нему потом отбирают письма своего хозяйства.
+        case = self.register(line_type="rrls", tc_no="ТС-3081-07")
+        self.assertEqual("rrls", case["line_type"])
+        self.assertEqual("РРЛС", case["line_title"])
+        self.assertEqual("ТС-3081-07", case["tc_no"])
+
+        bad = self.client.post("/api/cases", json={
+            "case_id": "ВХ-2026-0501", "line_type": "оптика"})
+        self.assertEqual(400, bad.status_code)
+        self.assertIn("линия связи", bad.json()["error"])
+
+    def test_the_line_may_be_left_empty(self):
+        # Письмо иногда спускают раньше, чем ясно, к какой линии оно
+        # относится. Запирать регистрацию из-за этого нельзя.
+        case = self.register(line_type="")
+        self.assertEqual("", case["line_type"])
+
+    def test_the_equipment_number_is_searchable(self):
+        # Номер ТС ищется наравне с номерами письма: в отделе спрашивают
+        # «что было по этому средству», а не «по этому входящему».
+        self.register(tc_no="ТС-3081-07")
+        found = self.client.get("/api/cases", params={"q": "ТС-3081-07"}).json()
+        self.assertEqual(["ВХ-2026-0500"], [item["case_id"] for item in found["items"]])
+        # И по обрывку номера тоже: человек помнит «3081».
+        found = self.client.get("/api/cases", params={"q": "3081"}).json()
+        self.assertIn("ВХ-2026-0500", [item["case_id"] for item in found["items"]])
+
+    def test_the_line_and_the_number_are_editable_in_the_card(self):
+        case = self.register()
+        response = self.client.patch(f"/api/cases/{case['id']}", json={
+            "line_type": "sls", "tc_no": "ТС-9", "title": "Новое описание"})
+        self.assertEqual(200, response.status_code, response.text)
+        updated = response.json()["case"]
+        self.assertEqual("sls", updated["line_type"])
+        self.assertEqual("ТС-9", updated["tc_no"])
+        self.assertEqual("Новое описание", updated["title"])
+
+
+class LetterFileTests(WebTestCase):
+    """Бумаги, приложенные к письму."""
+
+    def setUp(self):
+        super().setUp()
+        response = self.client.post("/api/cases", json={
+            "case_id": "ВХ-2026-0600", "title": "Помеха на линии"})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.case = response.json()["case"]
+
+    def attach(self, name="схема.txt", body=b"", note=""):
+        return self.client.post(
+            f"/api/cases/{self.case['id']}/files",
+            files={"file": (name, body or "текст".encode("utf-8"), "text/plain")},
+            data={"note": note})
+
+    def test_a_paper_attached_to_a_letter_can_be_downloaded_back(self):
+        """Скан письма поднимают целиком, а не пересказом."""
+        body = "Схема радиорелейной линии. Поляризация вертикальная.".encode("utf-8")
+        response = self.attach("схема-линии.txt", body)
+        self.assertEqual(200, response.status_code, response.text)
+        item = response.json()["file"]
+        self.assertEqual("схема-линии.txt", item["name"])
+        self.assertEqual(len(body), item["size"])
+        self.assertTrue(item["has_text"], "текст из файла не разобрали")
+
+        listed = self.client.get(f"/api/cases/{self.case['id']}/files").json()["files"]
+        self.assertEqual([item["id"]], [row["id"] for row in listed])
+
+        back = self.client.get(f"/api/cases/{self.case['id']}/files/{item['id']}")
+        self.assertEqual(200, back.status_code)
+        self.assertEqual(body, back.content)
+
+    def test_a_letter_is_found_by_words_from_its_papers(self):
+        """Положить бумагу и не найти по ней письмо — незачем и прикладывать."""
+        self.attach("схема.txt", "Поляризация вертикальная, ствол третий".encode("utf-8"))
+        for query in ("поляризация", "стволы", "схема"):
+            with self.subTest(query=query):
+                found = self.client.get("/api/cases", params={"q": query}).json()
+                self.assertIn("ВХ-2026-0600",
+                              [row["case_id"] for row in found["items"]],
+                              f"не нашлось по «{query}»")
+
+    def test_removing_a_paper_takes_it_out_of_the_search_too(self):
+        item = self.attach("схема.txt", "Поляризация вертикальная".encode("utf-8")).json()["file"]
+        self.assertEqual(200, self.client.delete(
+            f"/api/cases/{self.case['id']}/files/{item['id']}").status_code)
+        found = self.client.get("/api/cases", params={"q": "поляризация"}).json()
+        self.assertEqual([], found["items"], "убранная бумага осталась в поиске")
+
+    def test_papers_of_a_sent_letter_are_not_touched(self):
+        """Ответ ушёл — исходные бумаги задним числом не правят."""
+        item = self.attach().json()["file"]
+        report = self.generate(self.case["id"])
+        self.submit(report["id"])
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{report['id']}/approve", json={})
+        self.login("admin")
+        sent = self.client.post(f"/api/cases/{self.case['id']}/send",
+                                json={"outgoing_no": "ИСХ-2026-0900"})
+        self.assertEqual(200, sent.status_code, sent.text)
+
+        refused = self.client.delete(f"/api/cases/{self.case['id']}/files/{item['id']}")
+        self.assertEqual(409, refused.status_code)
+        self.assertIn("отправлен", refused.json()["error"])
+
+    def test_the_letter_counts_its_papers(self):
+        self.attach("первая.txt")
+        self.attach("вторая.txt")
+        listed = self.client.get("/api/cases").json()["items"]
+        row = [item for item in listed if item["case_id"] == "ВХ-2026-0600"][0]
+        self.assertEqual(2, row["files_count"])
+
+    def test_a_kind_of_file_nobody_attaches_is_refused(self):
+        # Список широкий намеренно, но исполняемое к письму не прикладывают.
+        response = self.attach("вирус.exe", b"MZ")
+        self.assertEqual(400, response.status_code)
+        self.assertIn("не прикладывают", response.json()["error"])
+
+    def test_deleting_a_letter_takes_its_papers_off_the_disk(self):
+        item = self.attach().json()["file"]
+        path = Path(self.repos.case_files.get(item["id"]).path)
+        self.assertTrue(path.is_file())
+        self.assertEqual(200, self.client.delete(
+            f"/api/cases/{self.case['id']}").status_code)
+        self.assertFalse(path.exists(), "файл письма остался на диске навсегда")
+
+
 class UploadedReportTests(WebTestCase):
     """Готовый отчёт, сданный файлом: его пишут не системой, а руками."""
 
@@ -2932,26 +3089,83 @@ class InterfaceCopyTests(unittest.TestCase):
         # На карточке входа знак крупный — там мелкий файл был бы мылом.
         self.assertNotIn("emblem-small", self.login)
 
-    def test_registering_a_letter_does_not_ask_for_json(self):
-        """Письмо только спустили — чисел в нём ещё нет.
+    def test_nobody_is_asked_to_edit_json_anywhere(self):
+        """Начальник отдела сказал прямо: правку JSON убрать.
 
-        Начальник отдела сказал прямо: поле с факт-пакетом при регистрации
-        лишнее, люди в этом JSON только путаются. Оно осталось для тех, у
-        кого пакет уже собран приборным разбором, но убрано под раскрывашку,
-        и заготовку по шаблону система заполняет сама.
+        Ни при регистрации письма, ни на экране самого письма человек не
+        должен видеть скобок и кавычек. Заготовку по шаблону собирает
+        сервер, измерения правятся таблицей.
+        """
+        for gone in ("json-editor", "jsonMode", "renderFactsJson",
+                     "toggleJsonMode", "Показать JSON", "facts-advanced"):
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, self.js, f"правка JSON вернулась: {gone}")
+
+        create = self.js[self.js.index("function openNewCaseDialog"):]
+        create = create[:create.index("\n    function ", 10)]
+        self.assertNotIn("JSON", create, "в окне регистрации снова просят JSON")
+        self.assertIn("Обязательны входящий номер и описание", create)
+
+    def test_registering_a_letter_asks_what_the_department_needs(self):
+        """Поля окна регистрации — те, что диктует порядок в отделе.
+
+        Спускается письмо с входящим номером; в нём есть описание, номер
+        группы, номер технического средства и линия связи; вместе с письмом
+        приходят бумаги. Всё это и спрашивается — ни больше, ни меньше.
         """
         create = self.js[self.js.index("function openNewCaseDialog"):]
         create = create[:create.index("\n    function ", 10)]
+        for label in ("Входящий номер", "Дата письма", "Номер группы", "Номер ТС",
+                      "Линия связи", "Срок ответа", "Исполнитель", "Приоритет",
+                      "Описание", "Учётный номер", "Приложенные файлы"):
+            with self.subTest(field=label):
+                self.assertIn(f"'{label}'", create, f"в окне нет поля «{label}»")
+        # Тип отчёта при регистрации не спрашивают: шаблон выбирают, когда
+        # садятся за текст, а не когда принимают входящее.
+        self.assertNotIn("Тип отчёта", create)
+        # Файлы кладутся после того, как письмо заведено: раньше не к чему.
+        self.assertIn("/files", create)
 
-        self.assertIn("facts-advanced", create,
-                      "поле факт-пакета снова стоит на виду")
-        self.assertIn("h('details'", create)
-        # Раскрывашка закрыта по умолчанию: открытого details в окне нет.
-        self.assertNotIn("open: true", create)
-        # Ошибку в спрятанном поле человек должен увидеть.
-        self.assertIn("box.open = true", create)
-        # Обязательное — про письмо, а не про схему пакета.
-        self.assertIn("Обязательны входящий номер и тема письма", create)
+    def test_the_word_subject_is_replaced_by_description_everywhere(self):
+        # «Тема» и «описание» — разные слова, и в отделе говорят второе.
+        self.assertNotIn("'Тема'", self.js)
+        self.assertNotIn("без темы", self.js)
+        self.assertIn("'Описание'", self.js)
+        self.assertIn("без описания", self.js)
+
+    def test_the_theme_switch_left_the_header(self):
+        """Выбор темы оформления живёт в личном кабинете, а не в шапке.
+
+        В шапке место дорогое: там имя, выход и знак отдела. Оформление
+        меняют раз в жизни, и ради этого кнопка в углу не нужна.
+        """
+        head = self.html[self.html.index('class="topbar-right"'):
+                         self.html.index("</header>")]
+        self.assertNotIn("theme-btn", head)
+        self.assertNotIn("theme-btn", self.js)
+        self.assertNotIn("cycleTheme", self.js)
+        # Но сам выбор никуда не делся.
+        self.assertIn("function themeCard", self.js)
+
+    def test_the_search_hint_fits_the_field(self):
+        """Подсказка обрывалась на «и» — человек не понимал, чем она кончится.
+
+        Считаем грубо, по числу знаков: поле шириной 320 px при 13 px шрифта
+        держит примерно полсотни знаков, но подсказка серая и мелкая, и
+        запас нужен. Сорок знаков — предел, за которым её резало.
+        """
+        import re as _re
+
+        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+        self.assertIn(".field-search", css, "поле поиска снова без заданной ширины")
+        self.assertIn("class: 'field-search'", self.js)
+
+        found = _re.search(r"type: 'search', class: 'field-search',\s*\n\s*"
+                           r"placeholder: '([^']+)'", self.js)
+        self.assertIsNotNone(found, "не нашёл подсказку поля поиска")
+        self.assertLessEqual(len(found.group(1)), 40,
+                             "подсказка поиска снова не помещается в поле")
 
     def test_nothing_on_the_screen_is_fetched_from_outside(self):
         """Изолированная машина: ни одного обращения наружу.

@@ -1851,6 +1851,89 @@ input.is-bad {
     transition: width .15s;
 }
 
+/* Поле поиска по письмам. Ширина задана явно: у поля по умолчанию хватает
+   места примерно на двадцать знаков, и подсказка обрывалась на полуслове —
+   человек читал «Номер, тема, группа и» и не понимал, чем это кончается. */
+.field-search {
+    width: 320px;
+    max-width: 42vw;
+    flex: 0 1 auto;
+}
+
+/* Описание письма — не строка в одну фразу: люди пишут туда суть письма
+   целиком. Даём поле в две строки с возможностью растянуть. */
+.field-area {
+    width: 100%;
+    min-height: 46px;
+    resize: vertical;
+    font: inherit;
+}
+
+/* Блок бумаг письма над таблицей фактов. Отделён линией: это не часть
+   факт-пакета, а то, что пришло вместе с письмом. */
+.case-files {
+    flex: 0 0 auto;
+    padding: 8px 12px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 40%;
+    overflow-y: auto;
+}
+
+.case-files .file-list {
+    border: 0;
+    padding: 0;
+    min-height: 0;
+}
+
+.case-files .file-name {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.case-files .file-name:hover {
+    text-decoration: underline;
+}
+
+/* Приложенные к письму бумаги. Список, а не таблица: строк обычно две-три,
+   и рамка вокруг них выглядела бы тяжелее самих файлов. */
+.file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    min-height: 40px;
+    justify-content: center;
+}
+
+.file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.file-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+}
+
+/* Метка линии связи в списке писем. Спокойный синий: это признак
+   хозяйства, а не тревога, и красным его красить незачем. */
+.tag--line {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: transparent;
+}
+
 .search-hit {
     border-bottom: 1px solid var(--border);
     padding: 9px 0;
@@ -2810,16 +2893,24 @@ table.md-table th {
     margin: 0 2px 0 4px;
 }
 
-/* Список писем на узком мониторе. Столбцов девять, и на 1280-1440 px два
-   последних уезжают за край — их приходится возить прокруткой. Прячем дату
-   письма: из всех столбцов она нужна реже прочих (срок ответа важнее, а сама
-   дата видна в карточке), зато исходящий номер остаётся на виду — по нему
-   в отделе ищут ответ. Прокрутка при этом никуда не девается: если места
-   не хватит и так, таблица по-прежнему возится внутри своей рамки. */
-@media (max-width: 1500px) {
+/* Список писем на узком мониторе. Столбцов десять, и на 1280-1600 px хвост
+   уезжает за край — его приходится возить прокруткой. Убираем по одному, от
+   наименее нужного: сперва дата письма (срок ответа важнее, а сама дата
+   видна в карточке), затем номер группы. Линия связи и номер ТС остаются:
+   по ним отбирают письма своего хозяйства. Прокрутка никуда не девается:
+   если места не хватит и так, таблица по-прежнему возится в своей рамке. */
+@media (max-width: 1600px) {
 
-    .grid--letters th:nth-child(8),
-    .grid--letters td:nth-child(8) {
+    .grid--letters th:nth-child(9),
+    .grid--letters td:nth-child(9) {
+        display: none;
+    }
+}
+
+@media (max-width: 1360px) {
+
+    .grid--letters th:nth-child(4),
+    .grid--letters td:nth-child(4) {
         display: none;
     }
 }

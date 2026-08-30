@@ -40,7 +40,8 @@ MAX_REVIEW_NOTE = 2000
 #: а не текст отчёта: тема в пять тысяч знаков ломает и список писем, и
 #: шапку документа. Предел один на всю систему — веб-слой и поля формы
 #: берут его отсюда, иначе форма примет то, что сервер потом отвергнет.
-CARD_LIMITS = {"title": 300, "incoming_no": 60, "outgoing_no": 60, "note": 2000}
+CARD_LIMITS = {"title": 300, "incoming_no": 60, "outgoing_no": 60,
+               "tc_no": 60, "note": 2000}
 MAX_OUTGOING_NO = CARD_LIMITS["outgoing_no"]
 
 #: Предел обрезки цитаты в приложении к отчёту. Он обязан совпадать с тем,
@@ -229,11 +230,55 @@ class ReportService:
 
     # -- кейсы --------------------------------------------------------------
 
+    def facts_skeleton(self, report_type: str, case_id: str) -> Dict[str, Any]:
+        """Пустой факт-пакет по шаблону: ключи есть, значений ещё нет.
+
+        Собирает его система, а не человек. При регистрации письмо только
+        спустили, чисел в нём нет, и заставлять регистратора писать JSON —
+        значит требовать от него того, чего он знать не может. Готовый
+        пакет из приборного разбора кладут отдельным действием.
+        """
+        outline = self.outlines.get(report_type)  # type: ignore[union-attr]
+        keys: List[str] = []
+        for section in outline.sections:
+            for key in getattr(section, "required_facts", ()) or ():
+                if key not in keys:
+                    keys.append(key)
+        return {
+            "case_id": case_id,
+            "report_type": report_type,
+            "group_no": "",
+            "request": "",
+            "equipment": {},
+            "keywords": [],
+            "artifacts": [],
+            "measurements": {
+                key: {"title": key, "value": "", "unit": "", "method": "",
+                      "uncertainty": ""} for key in keys
+            },
+            "findings": [],
+            "timeline": [],
+        }
+
+    def default_report_type(self) -> str:
+        """Тип отчёта, если его не выбирали руками.
+
+        Шаблон нужен, чтобы вообще собрать отчёт, но при регистрации письма
+        его не спрашивают: там речь про линию связи и номер средства. Берём
+        первый по алфавиту — при единственном шаблоне выбора и нет, а при
+        нескольких инженер сменит его в карточке, когда сядет за отчёт.
+        """
+        outlines = sorted(self.outlines.all())  # type: ignore[union-attr]
+        if not outlines:
+            raise ServiceError(
+                "нет ни одного шаблона-плана: положите файл "
+                "templates/outline_<тип>.json", 500)
+        return outlines[0]
+
     def create_case(self, payload: Dict[str, Any], user: User | None) -> Case:
         raw = dict(payload.get("facts") or {})
-        report_type = payload.get("report_type") or raw.get("report_type")
-        if not report_type:
-            raise ServiceError("не указан тип отчёта", 400)
+        report_type = (payload.get("report_type") or raw.get("report_type")
+                       or self.default_report_type())
         raw.setdefault("report_type", report_type)
         case_id = (payload.get("case_id") or raw.get("case_id") or "").strip()
         if not case_id:
@@ -258,6 +303,13 @@ class ReportService:
             if from_form:
                 raw["group_no"] = from_form
 
+        # Пакета не прислали — собираем заготовку по шаблону сами.
+        if not raw.get("measurements") and "measurements" not in raw:
+            skeleton = self.facts_skeleton(report_type, case_id)
+            skeleton.update(raw)
+            skeleton["group_no"] = raw.get("group_no", skeleton["group_no"])
+            raw = skeleton
+
         facts = _validate_facts(raw)
         try:
             case = self.repos.cases.create(
@@ -274,6 +326,8 @@ class ReportService:
                 priority=str(payload.get("priority") or "normal"),
                 assignee_id=payload.get("assignee_id") or None,
                 note=str(payload.get("note", "")).strip(),
+                line_type=str(payload.get("line_type", "")).strip(),
+                tc_no=str(payload.get("tc_no", "")).strip(),
             )
         except sqlite3.IntegrityError as error:
             # Проверка «такое письмо уже есть» выше по коду ловит обычный
@@ -328,7 +382,7 @@ class ReportService:
         if "customer" in fields and fields["customer"] != case.customer:
             self.guard_not_sent(case, "менять номер группы")
         updated = self.repos.cases.update_card(case.id, **fields)
-        # Тема, номера и примечание попадают в поиск: указатель надо
+        # Описание, номера и примечание попадают в поиск: указатель надо
         # пересобрать, иначе письмо ищется по прежнему названию.
         self.repos.case_search.refresh(case.id)
         if updated is None or "customer" not in fields:
