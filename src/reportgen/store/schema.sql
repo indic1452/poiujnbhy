@@ -20,6 +20,12 @@ CREATE TABLE IF NOT EXISTS users (
     role          TEXT    NOT NULL DEFAULT 'engineer',
     department    TEXT    NOT NULL DEFAULT '',   -- отдел
     team          TEXT    NOT NULL DEFAULT '',   -- группа внутри отдела
+    -- Как человека найти. Заполняет он сам в личном кабинете: справочник,
+    -- который ведёт кадровик, устаревает быстрее, чем его правят.
+    phone         TEXT    NOT NULL DEFAULT '',   -- телефон
+    ext_no        TEXT    NOT NULL DEFAULT '',   -- внутренний номер
+    room          TEXT    NOT NULL DEFAULT '',   -- кабинет
+    email         TEXT    NOT NULL DEFAULT '',   -- почта
     password_hash TEXT    NOT NULL,
     active        INTEGER NOT NULL DEFAULT 1,
     created_at    TEXT    NOT NULL
@@ -44,6 +50,23 @@ CREATE TABLE IF NOT EXISTS absences (
 );
 CREATE INDEX IF NOT EXISTS idx_absences_user ON absences(user_id, date_from);
 CREATE INDEX IF NOT EXISTS idx_absences_range ON absences(date_from, date_to);
+
+-- Личные документы сотрудника: справка-объективка и всё, что к ней. Файл
+-- лежит на диске, строка хранит имя, размер и путь. Своё грузит и смотрит
+-- каждый; чужое — начальник отдела, заместитель и создатель системы: это
+-- личные сведения, и открывать их всему отделу нельзя.
+CREATE TABLE IF NOT EXISTS person_files (
+    id          INTEGER PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind        TEXT    NOT NULL DEFAULT 'profile',  -- profile | other
+    name        TEXT    NOT NULL,
+    size        INTEGER NOT NULL DEFAULT 0,
+    path        TEXT    NOT NULL,
+    note        TEXT    NOT NULL DEFAULT '',
+    uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at  TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_person_files ON person_files(user_id, id);
 
 CREATE TABLE IF NOT EXISTS sessions (
     token      TEXT PRIMARY KEY,

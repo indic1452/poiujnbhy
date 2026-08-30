@@ -100,6 +100,11 @@ LINE_FULL_TITLES = {
 CASE_PRIORITIES = ("normal", "high", "urgent")
 CASE_PRIORITY_TITLES = {"normal": "обычный", "high": "важный", "urgent": "срочный"}
 
+#: Личные документы сотрудника. «Объективка» — справка о человеке, которую в
+#: отделе спрашивают чаще прочего; остальное лежит рядом под «прочим».
+PERSON_FILE_KINDS = ("profile", "other")
+PERSON_FILE_TITLES = {"profile": "справка-объективка", "other": "прочее"}
+
 #: Расход личного состава: чем занят человек в этот день. Порядок важен —
 #: в таком виде он и показывается в сетке расхода, от «на месте» к «нет».
 ABSENCE_KINDS = ("duty", "work", "trip", "study", "vacation", "sick", "dayoff")
@@ -176,6 +181,11 @@ class User:
     role: str = "engineer"
     department: str = ""
     team: str = ""
+    #: Как найти человека. Заполняет он сам в личном кабинете.
+    phone: str = ""
+    ext_no: str = ""
+    room: str = ""
+    email: str = ""
     active: bool = True
     created_at: str = ""
 
@@ -216,6 +226,10 @@ class User:
             role=row["role"],
             department=_col(row, "department", ""),
             team=_col(row, "team", ""),
+            phone=_col(row, "phone", "") or "",
+            ext_no=_col(row, "ext_no", "") or "",
+            room=_col(row, "room", "") or "",
+            email=_col(row, "email", "") or "",
             active=bool(row["active"]),
             created_at=row["created_at"],
         )
@@ -229,6 +243,10 @@ class User:
             "role_title": self.role_title,
             "department": self.department,
             "team": self.team,
+            "phone": self.phone,
+            "ext_no": self.ext_no,
+            "room": self.room,
+            "email": self.email,
             "is_admin": self.is_admin,
             "can_review": self.can_review,
             "is_owner": self.is_owner,
@@ -751,6 +769,51 @@ class ChatAttachment:
         if with_text:
             data["text"] = self.text
         return data
+
+
+@dataclass
+class PersonFile:
+    """Личный документ сотрудника: справка-объективка и всё, что к ней."""
+
+    id: int
+    user_id: int
+    kind: str = "profile"
+    name: str = ""
+    size: int = 0
+    path: str = ""
+    note: str = ""
+    uploaded_by: int | None = None
+    uploaded_by_name: str = ""
+    created_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "PersonFile":
+        return cls(
+            id=row["id"],
+            user_id=row["user_id"],
+            kind=_col(row, "kind", "profile") or "profile",
+            name=row["name"],
+            size=int(_col(row, "size", 0) or 0),
+            path=_col(row, "path", "") or "",
+            note=_col(row, "note", "") or "",
+            uploaded_by=_col(row, "uploaded_by", None),
+            uploaded_by_name=_col(row, "uploaded_by_name", "") or "",
+            created_at=row["created_at"],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "kind": self.kind,
+            "kind_title": PERSON_FILE_TITLES.get(self.kind, self.kind),
+            "name": self.name,
+            "size": self.size,
+            "note": self.note,
+            "uploaded_by": self.uploaded_by,
+            "uploaded_by_name": self.uploaded_by_name,
+            "created_at": self.created_at,
+        }
 
 
 @dataclass

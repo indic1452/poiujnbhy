@@ -33,6 +33,7 @@ from .models import (
     ChatMessage,
     Document,
     EditPair,
+    PersonFile,
     Report,
     ReportSection,
     User,
@@ -132,10 +133,18 @@ class UserRepo:
                 (hash_password(password), user_id),
             )
 
+    #: Поля, которые человек правит сам о себе. Отдельно от должности и
+    #: отдела: их назначает начальник, а телефон и кабинет — своё дело.
+    CONTACT_FIELDS = ("phone", "ext_no", "room", "email")
+
     def update(self, user_id: int, full_name: str | None = None,
                role: str | None = None, department: str | None = None,
-               team: str | None = None) -> "User | None":
-        """Изменить ФИО, должность, отдел и группу. None оставляет поле как было."""
+               team: str | None = None, **contacts: str | None) -> "User | None":
+        """Изменить ФИО, должность, отдел, группу и контакты.
+
+        None оставляет поле как было. Контакты передаются по имени колонки —
+        телефон, внутренний номер, кабинет, почта.
+        """
         fields, values = [], []
         if full_name is not None:
             fields.append("full_name = ?")
@@ -149,6 +158,11 @@ class UserRepo:
         if team is not None:
             fields.append("team = ?")
             values.append(team.strip())
+        for name in self.CONTACT_FIELDS:
+            value = contacts.get(name)
+            if value is not None:
+                fields.append(f"{name} = ?")
+                values.append(str(value).strip())
         if fields:
             values.append(user_id)
             with self.db.transaction() as connection:
@@ -1662,6 +1676,53 @@ def normalized_edit_distance(left: str, right: str) -> float:
     return round(previous[-1] / max(len(source), len(target), 1), 4)
 
 
+class PersonFileRepo:
+    """Личные документы сотрудника: справка-объективка и всё, что к ней."""
+
+    _SELECT = (
+        "SELECT f.*, coalesce(u.full_name, u.login, '') AS uploaded_by_name "
+        "FROM person_files f LEFT JOIN users u ON u.id = f.uploaded_by"
+    )
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def add(self, user_id: int, name: str, path: str, size: int = 0,
+            kind: str = "profile", note: str = "",
+            uploaded_by: int | None = None) -> PersonFile:
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO person_files(user_id, kind, name, size, path, note, "
+                "uploaded_by, created_at) VALUES(?,?,?,?,?,?,?,?)",
+                (user_id, kind, name, size, path, note, uploaded_by, utcnow()),
+            )
+        return self.get(int(cursor.lastrowid))  # type: ignore[arg-type,return-value]
+
+    def get(self, file_id: int) -> PersonFile | None:
+        row = self.db.query_one(f"{self._SELECT} WHERE f.id = ?", (file_id,))
+        return PersonFile.from_row(row) if row else None
+
+    def list_for_user(self, user_id: int) -> List[PersonFile]:
+        return rows_to(PersonFile, self.db.query(
+            f"{self._SELECT} WHERE f.user_id = ? ORDER BY f.kind, f.id DESC",
+            (user_id,)))
+
+    def counts(self) -> Dict[int, int]:
+        """Сколько документов у каждого. Нужно списку сотрудников одним запросом."""
+        rows = self.db.query(
+            "SELECT user_id, count(*) AS n FROM person_files GROUP BY user_id")
+        return {int(row["user_id"]): int(row["n"]) for row in rows}
+
+    def delete(self, file_id: int) -> str:
+        """Убрать строку. Возвращает путь — удалять файл решает вызвавший."""
+        item = self.get(file_id)
+        if item is None:
+            return ""
+        with self.db.transaction() as connection:
+            connection.execute("DELETE FROM person_files WHERE id = ?", (file_id,))
+        return item.path
+
+
 class AbsenceRepo:
     """Расход личного состава: чем занят человек в эти дни."""
 
@@ -1760,6 +1821,13 @@ class AbsenceRepo:
             (date_to, date_from),
         )
         return rows_to(Absence, rows)
+
+    def for_user_period(self, user_id: int, date_from: str, date_to: str) -> List[Absence]:
+        """Расход одного человека за промежуток. Для его личного кабинета."""
+        return rows_to(Absence, self.db.query(
+            f"{self._SELECT} WHERE a.user_id = ? AND a.date_from <= ? "
+            "AND a.date_to >= ? ORDER BY a.date_from",
+            (user_id, date_to, date_from)))
 
     def for_user(self, user_id: int, limit: int = 50) -> List[Absence]:
         rows = self.db.query(
@@ -1893,6 +1961,7 @@ class Repositories:
         self.edits = EditPairRepo(db)
         self.chats = ChatRepo(db)
         self.absences = AbsenceRepo(db)
+        self.person_files = PersonFileRepo(db)
         self.board = BoardRepo(db)
         self.audit = AuditRepo(db)
 

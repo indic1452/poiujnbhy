@@ -3062,6 +3062,151 @@ class UserManagementTests(WebTestCase):
         self.assertEqual(200, response.status_code)
 
 
+class PersonalFileTests(WebTestCase):
+    """Личное дело: справка-объективка и контакты."""
+
+    def setUp(self):
+        super().setUp()
+        self.engineer = self.repos.users.by_login("engineer")
+
+    def upload(self, user_id, name="объективка.docx", kind="profile"):
+        return self.client.post(
+            f"/api/users/{user_id}/files",
+            files={"file": (name, "справка о сотруднике".encode("utf-8"),
+                            "application/octet-stream")},
+            data={"kind": kind})
+
+    def test_everyone_keeps_their_own_file(self):
+        """Свою объективку человек грузит и скачивает сам."""
+        self.login("engineer")
+        response = self.upload(self.engineer.id)
+        self.assertEqual(200, response.status_code, response.text)
+        item = response.json()["file"]
+        self.assertEqual("справка-объективка", item["kind_title"])
+
+        listed = self.client.get(f"/api/users/{self.engineer.id}/files").json()
+        self.assertEqual([item["id"]], [row["id"] for row in listed["files"]])
+        self.assertTrue(listed["can_edit"])
+
+        back = self.client.get(f"/api/users/{self.engineer.id}/files/{item['id']}")
+        self.assertEqual(200, back.status_code)
+        self.assertEqual("справка о сотруднике".encode("utf-8"), back.content)
+
+    def test_only_the_head_deputy_and_owner_see_someone_elses_file(self):
+        """Объективка — личные сведения, и открыта не всему отделу.
+
+        Начальник группы сюда не входит, хотя он и администратор: круг тех,
+        кому открыто личное дело, уже круга тех, кто заводит учётные записи.
+        """
+        self.login("engineer")
+        self.upload(self.engineer.id)
+
+        for who in ("nachalnik", "zam", "admin"):
+            with self.subTest(who=who):
+                self.login(who)
+                response = self.client.get(f"/api/users/{self.engineer.id}/files")
+                self.assertEqual(200, response.status_code, f"{who} не видит дело")
+                self.assertEqual(1, len(response.json()["files"]))
+
+        for who in ("gruppa",):
+            with self.subTest(who=who):
+                self.login(who)
+                response = self.client.get(f"/api/users/{self.engineer.id}/files")
+                self.assertEqual(403, response.status_code, f"{who} читает чужое дело")
+                self.assertIn("личные документы", response.json()["error"])
+
+    def test_an_engineer_cannot_reach_a_colleagues_file(self):
+        self.login("engineer")
+        boss = self.repos.users.by_login("nachalnik")
+        self.assertEqual(403, self.client.get(f"/api/users/{boss.id}/files").status_code)
+        self.assertEqual(403, self.upload(boss.id).status_code)
+
+    def test_a_new_profile_replaces_the_old_one(self):
+        """Объективка у человека одна: новая заменяет прежнюю.
+
+        Иначе список копит редакции, и начальник не знает, какая из них
+        действующая. «Прочее» копится намеренно: приказов и дипломов много.
+        """
+        self.login("engineer")
+        first = self.upload(self.engineer.id, "объективка-старая.docx").json()["file"]
+        old_path = Path(self.repos.person_files.get(first["id"]).path)
+        second = self.upload(self.engineer.id, "объективка-новая.docx").json()["file"]
+
+        files = self.client.get(f"/api/users/{self.engineer.id}/files").json()["files"]
+        self.assertEqual([second["id"]], [row["id"] for row in files])
+        self.assertFalse(old_path.exists(), "прежняя объективка осталась на диске")
+
+        # Прочие документы копятся: их бывает много и все нужны.
+        self.upload(self.engineer.id, "приказ-1.pdf", kind="other")
+        self.upload(self.engineer.id, "диплом.pdf", kind="other")
+        files = self.client.get(f"/api/users/{self.engineer.id}/files").json()["files"]
+        self.assertEqual(3, len(files))
+
+    def test_a_removed_file_leaves_the_disk(self):
+        self.login("engineer")
+        item = self.upload(self.engineer.id).json()["file"]
+        path = Path(self.repos.person_files.get(item["id"]).path)
+        self.assertTrue(path.is_file())
+        self.assertEqual(200, self.client.delete(
+            f"/api/users/{self.engineer.id}/files/{item['id']}").status_code)
+        self.assertFalse(path.exists())
+
+    def test_a_kind_of_file_nobody_puts_in_a_personal_file_is_refused(self):
+        self.login("engineer")
+        response = self.client.post(
+            f"/api/users/{self.engineer.id}/files",
+            files={"file": ("сборка.exe", b"MZ", "application/octet-stream")})
+        self.assertEqual(400, response.status_code)
+        self.assertIn("в личное дело не кладут", response.json()["error"])
+
+    def test_contacts_are_filled_in_by_the_person_themselves(self):
+        """Справочник кадровика устаревает быстрее, чем его правят."""
+        self.login("engineer")
+        response = self.client.patch("/api/me/contacts", json={
+            "phone": "+7 900 000-00-00", "ext_no": "3-45",
+            "room": "214", "email": "engineer@otdel"})
+        self.assertEqual(200, response.status_code, response.text)
+        user = response.json()["user"]
+        self.assertEqual("+7 900 000-00-00", user["phone"])
+        self.assertEqual("3-45", user["ext_no"])
+        self.assertEqual("214", user["room"])
+
+        summary = self.client.get("/api/me/summary").json()
+        self.assertEqual("214", summary["user"]["room"])
+
+    def test_contacts_are_not_a_way_to_change_a_rank(self):
+        # Через контакты нельзя дотянуться до должности: она не своё дело.
+        self.login("engineer")
+        self.client.patch("/api/me/contacts", json={"role": "owner", "phone": "1"})
+        self.assertEqual("engineer", self.repos.users.by_login("engineer").role)
+
+    def test_the_cabinet_says_what_is_on_the_person_right_now(self):
+        """Кабинет отвечает не только «сколько я сделал», но и «что за мной»."""
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}", json={
+            "assignee_id": self.engineer.id, "deadline": "2000-01-01"})
+        self.login("engineer")
+        body = self.client.get("/api/me/summary").json()
+        self.assertEqual(1, body["my_cases_total"])
+        self.assertEqual(1, body["overdue"])
+        self.assertEqual([case["case_id"]], [item["case_id"] for item in body["my_cases"]])
+
+    def test_the_cabinet_shows_the_persons_own_roster(self):
+        self.login("engineer")
+        today = _today_iso()
+        self.client.post("/api/absences", json={
+            "kind": "duty", "date_from": _shift_days(today, 2),
+            "date_to": _shift_days(today, 2), "place": "Узел 3"})
+        body = self.client.get("/api/me/summary").json()
+        self.assertEqual(["Узел 3"], [item["place"] for item in body["roster"]])
+        # Далёкая отметка в ближайшие две недели не попадает.
+        self.client.post("/api/absences", json={
+            "kind": "vacation", "date_from": _shift_days(today, 40),
+            "date_to": _shift_days(today, 50)})
+        body = self.client.get("/api/me/summary").json()
+        self.assertEqual(1, len(body["roster"]))
+
+
 class LoginBackgroundTests(WebTestCase):
     """Фон окна входа: кадр из поставки и своя фотография вместо него."""
 
@@ -3325,6 +3470,34 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIsNotNone(found, "не нашёл подсказку поля поиска")
         self.assertLessEqual(len(found.group(1)), 40,
                              "подсказка поиска снова не помещается в поле")
+
+    def test_the_cabinet_grew_beyond_a_password_form(self):
+        """Кабинет должен отвечать «что за мной», а не только «кто я».
+
+        Раньше в нём были учётная запись, счётчики и смена пароля. Теперь —
+        письма за человеком, его расход, контакты и личные документы.
+        """
+        # Берём только тело renderMe, до первой вспомогательной функции:
+        # иначе проверка проходила бы на одном лишь определении карточки,
+        # даже если её перестали ставить на страницу.
+        cabinet = self.js[self.js.index("async function renderMe"):]
+        cabinet = cabinet[:cabinet.index("\n    /* Что за человеком числится")]
+        for part in ("myCasesCard(data)", "myRosterCard(data)", "contactsCard(user)",
+                     "personFilesCard(user.id, true)", "passwordCard()", "themeCard()"):
+            with self.subTest(card=part):
+                self.assertIn(part, cabinet, f"в кабинете нет карточки {part}")
+
+    def test_a_personal_file_is_opened_only_by_those_who_may(self):
+        """Кнопка «Личное дело» стоит только у того круга, кому оно открыто.
+
+        Показать кнопку и ответить на неё отказом — худший из вариантов:
+        человек видит дверь, которая не открывается.
+        """
+        self.assertIn("canReview() ? h('button'", self.js)
+        self.assertIn("'Личное дело'", self.js)
+        opener = self.js[self.js.index("function openPersonFiles"):]
+        opener = opener[:opener.index("\n    async function renderUsers")]
+        self.assertIn("personFilesCard(user.id, false)", opener)
 
     def test_the_roster_has_its_own_section(self):
         """Расход — раздел, а не строчка на дашборде.

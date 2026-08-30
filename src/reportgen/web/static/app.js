@@ -2064,11 +2064,19 @@
                             mark.place ? h('i', {}, mark.place) : null)
                         : (person.can_edit ? h('span', { class: 'roster-add' }, '+') : null));
                 });
+                // Как найти человека — подсказкой на фамилии: расход отвечает
+                // «где он», и телефон тут же под рукой.
+                const reach = [person.ext_no ? 'вн. ' + person.ext_no : '',
+                    person.room ? 'каб. ' + person.room : '',
+                    person.phone].filter(Boolean).join(' · ');
                 body.appendChild(h('tr', {},
-                    h('td', { class: 'roster-name' + (person.is_me ? ' is-me' : '') },
+                    h('td', {
+                        class: 'roster-name' + (person.is_me ? ' is-me' : ''),
+                        title: reach || '',
+                    },
                         h('div', {}, person.full_name),
                         h('div', { class: 'small faint' },
-                            ROLE_SHORT[person.role] || person.role_title)),
+                            reach || ROLE_SHORT[person.role] || person.role_title)),
                     cells));
             });
 
@@ -6717,6 +6725,30 @@
 
     // -- сотрудники ---------------------------------------------------------
 
+    /** Личное дело сотрудника отдельным окном: список сотрудников и так плотный. */
+    function openPersonFiles(user) {
+        const dialog = openModal({
+            title: 'Личное дело — ' + (user.full_name || user.login),
+            body: [
+                h('dl', { class: 'kv', style: { marginBottom: '10px' } },
+                    h('dt', {}, 'Должность'), h('dd', {}, roleLabel(user.role)),
+                    user.phone ? h('dt', {}, 'Телефон') : null,
+                    user.phone ? h('dd', {}, user.phone) : null,
+                    user.ext_no ? h('dt', {}, 'Внутренний') : null,
+                    user.ext_no ? h('dd', { class: 'mono' }, user.ext_no) : null,
+                    user.room ? h('dt', {}, 'Кабинет') : null,
+                    user.room ? h('dd', {}, user.room) : null,
+                    user.email ? h('dt', {}, 'Почта') : null,
+                    user.email ? h('dd', {}, user.email) : null),
+                personFilesCard(user.id, false),
+            ],
+            footer: [
+                h('span', { class: 'spacer' }),
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Закрыть'),
+            ],
+        });
+    }
+
     async function renderUsers(view) {
         clear(view);
         const page = h('div', { class: 'page' });
@@ -6810,6 +6842,15 @@
                         : h('span', { class: 'badge' }, 'отключён')),
                     h('td', { class: 'small muted nowrap' }, fmtDateTime(user.created_at)),
                     h('td', { class: 'row-actions nowrap' },
+                        // Личное дело открыто только тому кругу, что проверяет
+                        // отчёты: начальник отдела, заместитель, создатель.
+                        // Начальник группы заводит людей, но объективку не
+                        // читает — это личные сведения.
+                        canReview() ? h('button', {
+                            class: 'btn btn--sm',
+                            title: 'Справка-объективка и другие личные документы',
+                            onclick: () => openPersonFiles(user),
+                        }, 'Личное дело') : null,
                         h('button', {
                             class: 'btn btn--sm',
                             disabled: locked,
@@ -6997,13 +7038,13 @@
                 h('dt', {}, 'Права'), h('dd', { class: 'small muted' }, rolePowers(user.role))));
 
         const cards = h('div', { class: 'stat-cards' },
-            statCard(data.cases || 0, 'писем зарегистрировано вами'),
-            statCard(reports.total || 0, 'редакций отчётов',
-                'из них проверено: ' + (reports.approved || 0)),
-            // Последний шаг порядка отдела — работа исполнителя, и
-            // отчитывается он именно этим числом.
+            statCard(data.my_cases_total || 0, 'писем за вами',
+                (data.overdue || 0) ? 'просрочено: ' + data.overdue : 'просрочек нет'),
             statCard(data.sent || 0, 'ответов отправлено вами',
                 'записан исходящий номер — письмо закрыто'),
+            statCard(reports.total || 0, 'редакций отчётов',
+                'из них проверено: ' + (reports.approved || 0)),
+            statCard(data.cases || 0, 'писем зарегистрировано вами'),
             statCard(edits.pairs || 0, 'пар «черновик → готовое»',
                 'средняя доля правки: ' + fmtNumber(edits.mean_distance || 0, 3)),
             statCard(data.chats || 0, 'разговоров с помощником',
@@ -7011,16 +7052,239 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('div', { class: 'page-note' }, 'Ваши данные, пароль и оформление'),
+                h('div', { class: 'page-note' }, 'Ваши данные, работа, документы и пароль'),
                 h('div', { class: 'page-head-actions' },
                     h('button', {
                         class: 'btn', onclick: () => renderRoute(state.route),
                     }, 'Обновить'))),
             card,
             cards,
+            myCasesCard(data),
+            myRosterCard(data),
+            contactsCard(user),
+            personFilesCard(user.id, true),
             passwordCard(),
             themeCard(),
         ]);
+    }
+
+    /* Что за человеком числится прямо сейчас. Кабинет должен отвечать не
+       только «сколько я сделал», но и «что мне делать»: за вторым приходят
+       чаще, а раньше за этим приходилось идти в список писем и фильтровать. */
+    function myCasesCard(data) {
+        const items = data.my_cases || [];
+        const box = h('div', { class: 'card card-pad' },
+            h('div', { class: 'toolbar' },
+                h('span', { class: 'card-title grow' }, 'Письма за вами'),
+                h('a', { class: 'btn btn--sm', href: '#/cases' }, 'Все письма')));
+        if (!items.length) {
+            box.appendChild(h('div', { class: 'muted' },
+                'За вами нет писем в работе.'));
+            return box;
+        }
+        const rows = items.map((item) => h('tr', {
+            class: 'clickable',
+            onclick: () => navigate('#/case/' + item.id),
+        },
+            h('td', { class: 'mono nowrap small' }, item.incoming_no || item.case_id),
+            h('td', {}, item.title || h('span', { class: 'faint' }, 'без описания')),
+            h('td', { class: 'nowrap' }, deadlineCell(item)),
+            h('td', {}, statusBadge(item.status))));
+        box.appendChild(h('div', { class: 'table-scroll' },
+            h('table', { class: 'grid' },
+                h('thead', {}, h('tr', {},
+                    h('th', {}, 'Входящий'), h('th', {}, 'Описание'),
+                    h('th', {}, 'Срок ответа'), h('th', {}, 'Состояние'))),
+                h('tbody', {}, rows))));
+        if ((data.my_cases_total || 0) > items.length) {
+            box.appendChild(h('div', { class: 'small faint', style: { marginTop: '6px' } },
+                'показаны ' + items.length + ' из ' + data.my_cases_total));
+        }
+        return box;
+    }
+
+    /** Свой расход на две недели вперёд: сюда заходят свериться, где я завтра. */
+    function myRosterCard(data) {
+        const items = data.roster || [];
+        const box = h('div', { class: 'card card-pad' },
+            h('div', { class: 'toolbar' },
+                h('span', { class: 'card-title grow' }, 'Ваш расход на две недели'),
+                h('a', { class: 'btn btn--sm', href: '#/roster' }, 'Весь расход')));
+        if (!items.length) {
+            append(box, [
+                h('div', { class: 'muted' },
+                    'Вы себя не отметили. Расход отдела собирается из таких отметок — '
+                    + 'без них начальник не знает, где вас искать.'),
+                h('div', { class: 'btn-row', style: { marginTop: '10px' } },
+                    h('button', {
+                        class: 'btn btn--primary',
+                        onclick: () => openRosterDialog(
+                            { user_id: (state.user || {}).id, date_from: todayIso() },
+                            () => renderRoute(state.route)),
+                    }, 'Отметить себя')),
+            ]);
+            return box;
+        }
+        box.appendChild(h('div', { class: 'roster-mine' }, items.map((item) =>
+            h('button', {
+                class: 'roster-mine-row kind-' + (ROSTER_KIND[item.kind] || {}).cls,
+                title: 'Поправить отметку',
+                onclick: () => openRosterDialog(item, () => renderRoute(state.route)),
+            },
+                h('b', {}, (ROSTER_KIND[item.kind] || {}).title || item.kind),
+                h('span', {}, item.date_from === item.date_to
+                    ? fmtDate(item.date_from)
+                    : fmtDate(item.date_from) + ' — ' + fmtDate(item.date_to)),
+                item.place ? h('i', {}, item.place) : null))));
+        return box;
+    }
+
+    /* Контакты человек правит сам: справочник, который ведёт кадровик,
+       устаревает быстрее, чем его правят, а свой внутренний номер человек
+       поправит в ту же минуту, когда переедет. */
+    function contactsCard(user) {
+        const note = h('div', { class: 'form-note' });
+        const fields = {
+            phone: h('input', { type: 'tel', value: user.phone || '',
+                placeholder: '+7 900 000-00-00', maxLength: 120 }),
+            ext_no: h('input', { type: 'text', value: user.ext_no || '',
+                placeholder: '3-45', maxLength: 120, class: 'mono' }),
+            room: h('input', { type: 'text', value: user.room || '',
+                placeholder: '214', maxLength: 120 }),
+            email: h('input', { type: 'email', value: user.email || '',
+                placeholder: 'ivanov@otdel', maxLength: 120 }),
+        };
+        const save = h('button', { class: 'btn btn--primary', onclick: submit }, 'Сохранить');
+
+        async function submit() {
+            save.disabled = true;
+            try {
+                const payload = {};
+                Object.keys(fields).forEach((key) => { payload[key] = fields[key].value.trim(); });
+                const data = await api.patch('/api/me/contacts', payload);
+                if (state.user) Object.assign(state.user, data.user || {});
+                note.textContent = 'Контакты сохранены.';
+                note.className = 'form-note is-ok';
+            } catch (error) {
+                note.textContent = errorText(error);
+                note.className = 'form-note is-bad';
+            } finally {
+                save.disabled = false;
+            }
+        }
+
+        return h('div', { class: 'card card-pad' },
+            h('div', { class: 'card-title' }, 'Как вас найти'),
+            h('div', { class: 'small muted', style: { marginBottom: '10px' } },
+                'Видно отделу в расходе и в списке сотрудников. Заполняете вы сами.'),
+            h('div', { class: 'form-grid' },
+                h('label', { class: 'field' }, 'Телефон', fields.phone),
+                h('label', { class: 'field' }, 'Внутренний', fields.ext_no),
+                h('label', { class: 'field' }, 'Кабинет', fields.room),
+                h('label', { class: 'field' }, 'Почта', fields.email)),
+            h('div', { class: 'btn-row', style: { marginTop: '10px' } }, save),
+            note);
+    }
+
+    /* Личное дело: справка-объективка и всё, что к ней. Своё видит каждый,
+       чужое — начальник отдела, заместитель и создатель системы. Начальник
+       группы сюда не входит, хотя он и администратор: объективка — личные
+       сведения, и круг тех, кому она открыта, уже круга тех, кто заводит
+       учётные записи. */
+    function personFilesCard(userId, mine) {
+        const box = h('div', { class: 'card card-pad' });
+        const listBox = h('div', {});
+        let canEditFiles = false;
+
+        const picker = h('input', {
+            type: 'file', style: { display: 'none' },
+            onchange: async (event) => {
+                const file = (event.target.files || [])[0];
+                event.target.value = '';
+                if (!file) return;
+                const form = new FormData();
+                form.append('file', file);
+                form.append('kind', kindPick.value);
+                try {
+                    await uploadFile('/api/users/' + userId + '/files', form);
+                    toast('Документ загружен', 'ok');
+                } catch (error) {
+                    toastError(error);
+                }
+                await load();
+            },
+        });
+        const kindPick = h('select', {},
+            h('option', { value: 'profile' }, 'справка-объективка'),
+            h('option', { value: 'other' }, 'прочее'));
+
+        async function load() {
+            clear(listBox);
+            let data;
+            try {
+                data = await api.get('/api/users/' + userId + '/files');
+            } catch (error) {
+                listBox.appendChild(h('div', { class: 'small muted' }, errorText(error)));
+                return;
+            }
+            canEditFiles = Boolean(data.can_edit);
+            const items = data.files || [];
+            if (!items.length) {
+                listBox.appendChild(h('div', { class: 'muted' }, mine
+                    ? 'Справка-объективка не загружена.'
+                    : 'Документов нет.'));
+                return;
+            }
+            listBox.appendChild(h('div', { class: 'file-list' }, items.map((item) =>
+                h('div', { class: 'file-row' },
+                    h('a', {
+                        class: 'file-name',
+                        href: '/api/users/' + userId + '/files/' + item.id,
+                        title: 'Скачать ' + item.name,
+                    }, item.name),
+                    h('span', { class: 'tag' }, item.kind_title),
+                    h('span', { class: 'small faint nowrap' }, fmtBytes(item.size)),
+                    canEditFiles ? h('button', {
+                        class: 'btn btn--icon btn--danger-hover',
+                        title: 'Убрать документ',
+                        onclick: () => removeFile(item),
+                    }, iconGlyph('trash')) : null))));
+        }
+
+        async function removeFile(item) {
+            const ok = await confirmDialog({
+                title: 'Убрать документ',
+                message: 'Документ «' + item.name + '» будет убран и удалён с диска.',
+                confirmText: 'Убрать',
+                danger: true,
+            });
+            if (!ok) return;
+            try {
+                await api.del('/api/users/' + userId + '/files/' + item.id);
+                toast('Документ убран', 'ok');
+            } catch (error) {
+                toastError(error);
+            }
+            await load();
+        }
+
+        append(box, [
+            h('div', { class: 'toolbar' },
+                h('span', { class: 'card-title grow' },
+                    mine ? 'Ваши документы' : 'Документы сотрудника'),
+                kindPick,
+                h('button', {
+                    class: 'btn btn--sm', onclick: () => picker.click(),
+                }, iconGlyph('clip'), 'Загрузить'),
+                picker),
+            h('div', { class: 'small muted', style: { margin: '2px 0 10px' } },
+                'Справку-объективку видите вы, начальник отдела, его заместитель '
+                + 'и создатель системы; остальному отделу она недоступна. '
+                + 'Объективка одна: новая заменяет прежнюю.'),
+            listBox,
+        ]);
+        load();
+        return box;
     }
 
     /* Что даёт должность. Формулировки совпадают с ROLE_NOTES на сервере:

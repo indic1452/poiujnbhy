@@ -30,9 +30,12 @@ from ..store.models import (
     CASE_STATUS_TITLES,
     DOC_STATUSES,
     LINE_FULL_TITLES,
-    PRESENT_KINDS,
     LINE_TITLES,
     LINE_TYPES,
+    PERSON_FILE_KINDS,
+    PERSON_FILE_TITLES,
+    PRESENT_KINDS,
+    REVIEW_ROLES,
     ROLE_NOTES,
     ROLE_RANK,
     ROLE_TITLES,
@@ -1718,6 +1721,12 @@ def staff(request: Request) -> Dict[str, Any]:
                 "role_title": user.role_title,
                 "department": user.department,
                 "team": user.team,
+                # Как человека найти. Не личные сведения: телефон и кабинет
+                # в отделе и так знают, а искать их по бумажке — терять время.
+                "phone": user.phone,
+                "ext_no": user.ext_no,
+                "room": user.room,
+                "email": user.email,
             }
             for user in _repos(request).users.list_all(active_only=True)
             if user.login != "local"
@@ -1913,6 +1922,12 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
             "role": person.role,
             "role_title": person.role_title,
             "team": person.team,
+            # Расход отвечает «где человек»; телефон и кабинет — вторая
+            # половина того же вопроса, и держать их в другом разделе значит
+            # заставлять ходить туда-обратно.
+            "phone": person.phone,
+            "ext_no": person.ext_no,
+            "room": person.room,
             "can_edit": _may_edit_roster(actor, person.id),
             "is_me": person.id == actor.id,
         })
@@ -2209,10 +2224,178 @@ def _opt_str(payload: Dict[str, Any], name: str) -> str | None:
 
 # --------------------------------------------------------- личный кабинет --
 
+#: Что кладут в личное дело: справка-объективка, приказ, диплом, снимок.
+PERSON_FILE_SUFFIXES = (
+    ".pdf", ".docx", ".doc", ".rtf", ".odt", ".txt", ".md",
+    ".png", ".jpg", ".jpeg", ".tif", ".tiff",
+)
+
+
+def _may_see_person_files(actor: User, user_id: int) -> bool:
+    """Свои документы видит каждый; чужие — начальник, заместитель, создатель.
+
+    Начальник группы сюда не входит намеренно, хотя он и администратор:
+    объективка — личные сведения, и круг тех, кому она открыта, уже круга
+    тех, кто заводит учётные записи. Тот же круг проверяет отчёты.
+    """
+    return actor.id == user_id or actor.role in REVIEW_ROLES
+
+
+def _person_or_404(request: Request, user_id: int) -> User:
+    person = _repos(request).users.get(user_id)
+    if person is None:
+        raise ServiceError("сотрудник не найден", 404)
+    return person
+
+
+@router.get("/users/{user_id}/files")
+def list_person_files(request: Request, user_id: int) -> Dict[str, Any]:
+    """Личные документы сотрудника."""
+    actor = require_user(request)
+    person = _person_or_404(request, user_id)
+    if not _may_see_person_files(actor, person.id):
+        raise ServiceError(
+            "недостаточно прав: личные документы сотрудника видят он сам, "
+            "начальник отдела, заместитель и создатель системы", 403)
+    items = _repos(request).person_files.list_for_user(person.id)
+    return {
+        "user": _user_public(person),
+        "files": [item.to_dict() for item in items],
+        "kinds": [{"id": kind, "title": PERSON_FILE_TITLES[kind]}
+                  for kind in PERSON_FILE_KINDS],
+        "can_edit": actor.id == person.id or actor.role in REVIEW_ROLES,
+    }
+
+
+@router.post("/users/{user_id}/files")
+def add_person_file(request: Request, user_id: int,
+                    file: UploadFile = File(...),
+                    kind: str = Form("profile"),
+                    note: str = Form("")) -> Dict[str, Any]:
+    """Загрузить справку-объективку или другой личный документ."""
+    actor = require_user(request)
+    person = _person_or_404(request, user_id)
+    if not _may_see_person_files(actor, person.id):
+        raise ServiceError("недостаточно прав: чужое личное дело не ваше", 403)
+    if kind not in PERSON_FILE_KINDS:
+        raise ServiceError(f"неизвестный вид документа '{kind}'", 400)
+
+    settings = _settings(request)
+    repos = _repos(request)
+    name = _safe_name(Path(file.filename or "документ").name)
+    if not name:
+        raise ServiceError("некорректное имя файла", 400)
+    suffix = Path(name).suffix.lower()
+    if suffix not in PERSON_FILE_SUFFIXES:
+        known = ", ".join(PERSON_FILE_SUFFIXES)
+        raise ServiceError(f"такие файлы в личное дело не кладут (можно: {known})", 400)
+
+    settings.ensure_dirs()
+    target_dir = Path(settings.data_dir) / "person-files" / str(person.id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / f"{secrets.token_hex(6)}-{name}"
+
+    limit = settings.max_upload_mb * 1024 * 1024
+    size = 0
+    try:
+        with target.open("wb") as stream:
+            while True:
+                piece = file.file.read(1024 * 1024)
+                if not piece:
+                    break
+                size += len(piece)
+                if size > limit:
+                    raise ServiceError(
+                        f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
+                stream.write(piece)
+        if not size:
+            raise ServiceError("файл пустой", 400)
+        item = repos.person_files.add(
+            person.id, name=name, path=str(target), size=size, kind=kind,
+            note=str(note or "").strip()[:300],
+            uploaded_by=actor.id if actor else None)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
+
+    # Объективка у человека одна: новая заменяет прежнюю. Иначе список
+    # копит редакции, и начальник не знает, какая из них действующая.
+    # «Прочее» копится намеренно: приказов и дипломов бывает много.
+    if kind == "profile":
+        for old_item in repos.person_files.list_for_user(person.id):
+            if old_item.kind != "profile" or old_item.id == item.id:
+                continue
+            path = repos.person_files.delete(old_item.id)
+            if path:
+                Path(path).unlink(missing_ok=True)
+
+    # В журнал — только факт и имя файла: содержимое личного документа туда
+    # не попадает, журнал читают все администраторы.
+    repos.audit.log("person.file.add", user=actor, object_type="user",
+                    object_id=person.login, details={"name": name, "kind": kind})
+    return {"file": item.to_dict()}
+
+
+@router.get("/users/{user_id}/files/{file_id}")
+def download_person_file(request: Request, user_id: int, file_id: int) -> FileResponse:
+    actor = require_user(request)
+    person = _person_or_404(request, user_id)
+    if not _may_see_person_files(actor, person.id):
+        raise ServiceError("недостаточно прав: чужое личное дело не ваше", 403)
+    item = _repos(request).person_files.get(file_id)
+    if item is None or item.user_id != person.id:
+        raise ServiceError("файл не найден", 404)
+    path = Path(item.path)
+    if not path.is_file():
+        raise ServiceError("файл не найден на диске", 404)
+    return FileResponse(path, filename=item.name,
+                        headers={"Content-Disposition": _disposition(item.name)})
+
+
+@router.delete("/users/{user_id}/files/{file_id}")
+def delete_person_file(request: Request, user_id: int, file_id: int) -> Dict[str, Any]:
+    actor = require_user(request)
+    person = _person_or_404(request, user_id)
+    if not _may_see_person_files(actor, person.id):
+        raise ServiceError("недостаточно прав: чужое личное дело не ваше", 403)
+    repos = _repos(request)
+    item = repos.person_files.get(file_id)
+    if item is None or item.user_id != person.id:
+        raise ServiceError("файл не найден", 404)
+    path = repos.person_files.delete(file_id)
+    if path:
+        Path(path).unlink(missing_ok=True)
+    repos.audit.log("person.file.delete", user=actor, object_type="user",
+                    object_id=person.login, details={"name": item.name})
+    return {"ok": True}
+
+
+@router.patch("/me/contacts")
+def update_my_contacts(request: Request) -> Dict[str, Any]:
+    """Свои контакты человек правит сам.
+
+    Справочник, который ведёт кадровик, устаревает быстрее, чем его правят;
+    свой внутренний номер человек поправит в ту же минуту, когда переедет.
+    """
+    user = require_user(request)
+    payload = _body(request)
+    fields: Dict[str, Any] = {}
+    for name in ("phone", "ext_no", "room", "email"):
+        if name in payload:
+            fields[name] = str(payload[name] or "").strip()[:120]
+    if not fields:
+        return {"user": _user_public(user)}
+    updated = _repos(request).users.update(user.id, **fields)
+    _repos(request).audit.log("user.contacts", user=user, object_type="user",
+                              object_id=user.login, details={"fields": sorted(fields)})
+    return {"user": _user_public(updated)}
+
+
 @router.get("/me/summary")
 def my_summary(request: Request) -> Dict[str, Any]:
     user = require_user(request)
     repos = _repos(request)
+    today = _today()
     reports = repos.db.query_one(
         "SELECT count(*) AS total, "
         "sum(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved "
@@ -2240,6 +2423,19 @@ def my_summary(request: Request) -> Dict[str, Any]:
             "mean_distance": round(float(edits["mean"] or 0.0), 3),
         },
         "chats": repos.chats.count_for_user(user.id),
+        # Что у человека на руках прямо сейчас. Кабинет должен отвечать не
+        # только «сколько я сделал», но и «что за мной числится»: за вторым
+        # приходят чаще.
+        "my_cases": [item.to_dict() for item in repos.cases.list(
+            status="open", assignee_id=user.id, limit=20)],
+        "my_cases_total": repos.cases.count(status="open", assignee_id=user.id),
+        "overdue": repos.cases.count(status="open", assignee_id=user.id,
+                                     overdue_before=today),
+        # Свой расход на ближайшие две недели: чаще всего человек заходит
+        # сюда именно свериться, где он завтра.
+        "roster": [item.to_dict() for item in repos.absences.for_user_period(
+            user.id, today, _shift(today, 14))],
+        "files": len(repos.person_files.list_for_user(user.id)),
     }
 
 

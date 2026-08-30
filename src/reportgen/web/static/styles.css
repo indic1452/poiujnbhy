@@ -3117,6 +3117,43 @@ table.md-table th {
     font-style: normal;
 }
 
+/* Свой расход в кабинете: не сетка, а список ближайших отметок — их две-три,
+   и таблица на них была бы тяжелее содержимого. */
+.roster-mine {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.roster-mine-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    align-items: flex-start;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.roster-mine-row b {
+    font-size: 12.5px;
+}
+
+.roster-mine-row span {
+    font-size: 12px;
+    opacity: .85;
+}
+
+.roster-mine-row i {
+    font-style: normal;
+    font-size: 12px;
+    opacity: .75;
+}
+
 .roster-legend {
     display: flex;
     flex-wrap: wrap;

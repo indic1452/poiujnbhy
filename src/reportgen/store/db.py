@@ -61,6 +61,12 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     # Линия связи и номер технического средства. Отдел работает по линиям —
     # спутниковым, радиорелейным, коротковолновым, — и без этих двух полей
     # письмо нельзя ни найти, ни отнести к своему хозяйству.
+    # Как найти человека: телефон, внутренний, кабинет, почта. Заполняет он
+    # сам в кабинете — справочник кадровика устаревает быстрее, чем его правят.
+    ("users", "phone", "TEXT NOT NULL DEFAULT ''"),
+    ("users", "ext_no", "TEXT NOT NULL DEFAULT ''"),
+    ("users", "room", "TEXT NOT NULL DEFAULT ''"),
+    ("users", "email", "TEXT NOT NULL DEFAULT ''"),
     # Где человек в эти дни. Без места расход отвечает «дежурство», но не
     # отвечает «где», а начальнику нужно именно второе.
     ("absences", "place", "TEXT NOT NULL DEFAULT ''"),
@@ -241,7 +247,8 @@ class Database:
             }
         except sqlite3.Error:
             return False
-        return {"chunks_fts", "cases_fts", "case_files"}.issubset(present)
+        return {"chunks_fts", "cases_fts", "case_files",
+                "person_files"}.issubset(present)
 
     def _rename_domains(self) -> None:
         """Переименование направлений при смене справочника.
