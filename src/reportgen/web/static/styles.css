@@ -2915,6 +2915,83 @@ table.md-table th {
     }
 }
 
+/* -------------------------------------------------------- просмотр ------ */
+
+/* Просмотр приложенного файла прямо на экране. Половина вложений в отделе —
+   картинки: скан письма, снимок экрана анализатора. Скачивать их, чтобы
+   просто взглянуть, — лишняя работа на каждом письме. */
+.modal--wide {
+    width: min(1100px, 94vw);
+    max-width: 94vw;
+}
+
+.preview-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 320px;
+    max-height: 68vh;
+    overflow: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 66vh;
+    object-fit: contain;
+}
+
+.preview-frame {
+    width: 100%;
+    height: 66vh;
+    border: 0;
+    background: var(--panel);
+}
+
+.preview-text {
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+}
+
+.preview-text > summary {
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.preview-text pre {
+    margin-top: 6px;
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+}
+
+/* Имя файла — кнопка просмотра, но выглядит ссылкой: щёлкают по нему,
+   чтобы посмотреть, а не чтобы скачать. */
+.file-name--link {
+    border: 0;
+    background: none;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    color: var(--accent);
+    cursor: pointer;
+}
+
+.file-name--link:hover {
+    text-decoration: underline;
+}
+
 /* ---------------------------------------------------------- расход ------ */
 
 /* Сетка «сотрудник × день». Первый столбец приклеен: на четырнадцати днях

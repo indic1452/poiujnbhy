@@ -4,6 +4,24 @@
   "title": "Технический отчёт по результатам анализа обмена по протоколу",
   "short_title": "Анализ обмена по протоколу",
   "style": "деловой технический, прошедшее время, без оценочных суждений",
+  "fact_titles": {
+    "capture_duration": "Длительность захвата",
+    "packet_count": "Пакетов в захвате",
+    "capture_point": "Точка захвата",
+    "protocol_stack": "Стек протоколов",
+    "anomaly_count": "Обнаружено отклонений",
+    "retransmission_rate": "Доля повторов",
+    "max_response_time": "Наибольшее время ответа",
+    "session_failures": "Сорванных сессий"
+  },
+  "fact_units": {
+    "capture_duration": "с",
+    "packet_count": "шт.",
+    "anomaly_count": "шт.",
+    "retransmission_rate": "%",
+    "max_response_time": "мс",
+    "session_failures": "шт."
+  },
   "sections": [
     {
       "id": "scope",

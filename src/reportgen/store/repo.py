@@ -1198,12 +1198,17 @@ class ReportRepo:
 
     def create_uploaded(self, case_ref: int, *, markdown: str, file_name: str,
                         file_path: str, file_size: int,
-                        user_id: int | None = None) -> Report:
-        """Готовый отчёт, загруженный файлом, — сразу на проверку.
+                        user_id: int | None = None,
+                        status: str = "review") -> Report:
+        """Готовый отчёт, загруженный файлом.
 
         Секций у него нет: это не сборка по шаблону, а документ, который
         инженер написал сам. В markdown кладём извлечённый текст — по нему
         работает поиск и предпросмотр, а на руки выдаётся исходный файл.
+
+        status решает вызывающий. Сдача из списка писем — сразу «на проверке»:
+        человек за тем и пришёл. Загрузка на уже открытом письме — «в работе»:
+        там отчёт сперва смотрят, а на проверку отправляют отдельной кнопкой.
         """
         with self.db.transaction() as connection:
             # Тот же расчёт под замком: см. ReportRepo.create.
@@ -1212,7 +1217,7 @@ class ReportRepo:
                 "INSERT INTO reports(case_ref, version, status, markdown, meta_json, "
                 "issues_json, source, file_name, file_path, file_size, created_by, created_at) "
                 "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                (case_ref, version, "review", markdown, "{}", "[]",
+                (case_ref, version, status, markdown, "{}", "[]",
                  "uploaded", file_name, file_path, int(file_size), user_id, utcnow()),
             )
             report_id = int(cursor.lastrowid)  # type: ignore[arg-type]

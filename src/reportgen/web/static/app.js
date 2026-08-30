@@ -498,7 +498,10 @@
         const root = $('#modal-root');
         const footer = h('footer', {});
         const body = h('div', { class: 'modal-body' });
-        const modal = h('div', { class: 'modal' + (options.narrow ? ' modal--narrow' : '') },
+        const modal = h('div', {
+            class: 'modal' + (options.narrow ? ' modal--narrow' : '')
+                + (options.wide ? ' modal--wide' : ''),
+        },
             h('header', {},
                 options.title,
                 h('button', { class: 'btn btn--ghost btn--icon', title: 'Закрыть', onclick: () => close() }, '×')),
@@ -1474,9 +1477,11 @@
                                 title: 'Карточка письма: исполнитель, срок, состояние',
                                 onclick: () => openCaseCard(item, loadCases),
                             }, iconGlyph('edit')) : null,
-                            isAdmin() ? h('button', {
+                            canDeleteCase(item) ? h('button', {
                                 class: 'btn btn--icon btn--danger-hover',
-                                title: 'Удалить письмо вместе с отчётами',
+                                title: isAdmin()
+                                    ? 'Удалить письмо вместе с отчётами'
+                                    : 'Убрать ошибочно заведённое письмо',
                                 onclick: () => deleteCase(item, loadCases),
                             }, iconGlyph('trash')) : null)));
                 });
@@ -1666,11 +1671,99 @@
         }
     }
 
+    /* Кому можно убрать письмо. Ошибиться при регистрации может каждый, и
+       ходить за начальником из-за собственной описки человек не должен. Своё
+       письмо убирает тот, кто его завёл, — но лишь пока по нему ничего не
+       сделано. Как только за письмо взялись, оно перестаёт быть личной
+       ошибкой и становится работой отдела. Те же правила на сервере. */
+    function canDeleteCase(item) {
+        if (isAdmin()) return true;
+        const me = state.user || {};
+        return Boolean(item.created_by && item.created_by === me.id)
+            && !Number(item.reports_count || 0)
+            && !item.outgoing_no;
+    }
+
+    /* Сдать по уже заведённому письму свой отчёт.
+
+       Отдельное окно от «Сдать готовый отчёт» в списке писем: там реквизиты
+       спрашивают, потому что письма может ещё не быть. Здесь письмо открыто,
+       и спрашивать нечего — от повторного ввода входящего номера рождались
+       письма-двойники: ошибся в знаке, и вместо новой редакции по своему
+       письму заводилось второе. */
+    function openUploadForCase(item, after) {
+        const chosen = h('span', { class: 'small muted' }, 'файл не выбран');
+        const picker = h('input', {
+            type: 'file',
+            accept: '.docx,.doc,.pdf,.rtf,.odt,.md,.txt',
+            style: { display: 'none' },
+            onchange: () => {
+                const file = (picker.files || [])[0];
+                chosen.textContent = file ? file.name : 'файл не выбран';
+                chosen.className = file ? 'small' : 'small muted';
+            },
+        });
+        const send = h('button', { class: 'btn btn--primary', onclick: submit },
+            'Загрузить');
+
+        const dialog = openModal({
+            title: 'Свой отчёт по письму ' + (item.incoming_no || item.case_id),
+            narrow: true,
+            body: [
+                h('div', { class: 'muted', style: { marginBottom: '10px' } },
+                    'Отчёт станет новой редакцией по этому письму. Числа в нём '
+                    + 'система не сверяет: его написал человек. После загрузки '
+                    + 'отчёт можно отправить начальнику на проверку.'),
+                h('div', { class: 'file-pick' },
+                    h('button', {
+                        class: 'btn btn--sm', type: 'button',
+                        onclick: () => picker.click(),
+                    }, iconGlyph('clip'), 'Выбрать файл'),
+                    chosen, picker),
+            ],
+            footer: [
+                h('span', { class: 'spacer' }),
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                send,
+            ],
+        });
+
+        async function submit() {
+            const file = (picker.files || [])[0];
+            if (!file) { toast('Выберите файл отчёта', 'error'); return; }
+            send.disabled = true;
+            const form = new FormData();
+            form.append('file', file);
+            // Ключ письма — его учётный номер: сервер найдёт письмо по нему
+            // и заведёт редакцию, а не второе письмо.
+            form.append('case_id', item.case_id);
+            // На проверку отчёт уйдёт отдельной кнопкой: сперва его смотрят.
+            form.append('submit', '0');
+            try {
+                const data = await uploadFile('/api/reports/upload', form);
+                dialog.close();
+                toast(data.note
+                    ? 'Отчёт загружен. Текст прочитать не удалось: ' + data.note
+                    : 'Отчёт загружен — посмотрите и отправьте на проверку',
+                    data.note ? 'info' : 'ok', 6000);
+                if (after) after();
+            } catch (error) {
+                toastError(error);
+            } finally {
+                send.disabled = false;
+            }
+        }
+    }
+
     async function deleteCase(item, after) {
+        const mine = !isAdmin();
         const ok = await confirmDialog({
-            title: 'Удалить письмо',
-            message: 'Письмо ' + (item.incoming_no || item.case_id) +
-                ' будет удалено вместе со всеми версиями отчёта. Действие необратимо.',
+            title: mine ? 'Убрать письмо' : 'Удалить письмо',
+            message: mine
+                ? 'Письмо ' + (item.incoming_no || item.case_id) + ' будет убрано '
+                    + 'вместе с приложенными к нему файлами. Действие необратимо.'
+                : 'Письмо ' + (item.incoming_no || item.case_id) +
+                    ' будет удалено вместе со всеми версиями отчёта. Действие необратимо.',
             note: 'Сохранённые пары «черновик → правка» в обучающем наборе остаются. '
                 + 'Уже выгруженные файлы DOCX лежат в каталоге выгрузок и удаляются вручную.',
             confirmText: 'Удалить',
@@ -2058,7 +2151,9 @@
                         title: mark
                             ? (mark.kind_title + (mark.place ? ' · ' + mark.place : '')
                                 + (mark.note ? '\n' + mark.note : ''))
-                            : (person.can_edit ? 'Отметить' : 'Отметки нет'),
+                            : (person.can_edit
+                                ? 'На месте. Щёлкните, чтобы отметить другое'
+                                : 'На месте'),
                         onclick: () => {
                             if (!person.can_edit) return;
                             openRosterDialog(mark || { user_id: person.id, date_from: day },
@@ -2099,16 +2194,16 @@
                 dayBox.appendChild(h('div', { class: 'small muted' }, errorText(error)));
                 return;
             }
-            const filled = day.total ? Math.round((day.total - day.unmarked.length)
-                / day.total * 100) : 0;
             append(dayBox, [
                 h('div', { class: 'stat-cards' },
                     statCard(day.present, 'на месте ' + fmtDate(day.date),
-                        'дежурство и работы в отделе'),
+                        day.unmarked.length
+                            ? 'из них без отметки: ' + day.unmarked.length
+                            : 'все отметились'),
                     statCard(day.away, 'отсутствуют',
                         'выезды, отпуска, больничные, учёба'),
-                    statCard(day.unmarked.length, 'не отмечены',
-                        'расход заполнен на ' + filled + '%')),
+                    statCard(day.marked, 'отметок в расходе',
+                        'из ' + day.total + ' человек в отделе')),
                 h('div', { class: 'card card-pad roster-day-card' },
                     h('div', { class: 'card-title' }, 'Расход на ' + fmtDate(day.date)),
                     h('div', { class: 'roster-groups' },
@@ -2122,18 +2217,21 @@
                                     h('span', {}, person.full_name),
                                     person.place
                                         ? h('i', { class: 'small muted' }, person.place) : null)))),
+                        // Не отмеченные — тоже на месте, и стоят они среди
+                        // своих, а не отдельной кучей «неизвестно».
                         day.unmarked.length
-                            ? h('div', { class: 'roster-group kind-unmarked' },
+                            ? h('div', { class: 'roster-group kind-work' },
                                 h('div', { class: 'roster-group-head' },
-                                    h('b', {}, 'не отмечены'),
+                                    h('b', {}, 'на месте, без отметки'),
                                     h('span', { class: 'small faint' },
                                         String(day.unmarked.length))),
                                 day.unmarked.map((person) => h('div', { class: 'roster-person' },
                                     h('span', {}, person.full_name))))
                             : null),
-                    day.groups.every((group) => !group.people.length)
+                    day.marked === 0
                         ? h('div', { class: 'muted' },
-                            'На этот день расход ещё никто не заполнил.')
+                            'На этот день никто себя не отмечал — значит, весь '
+                            + 'отдел на местах.')
                         : null),
             ]);
         }
@@ -2147,8 +2245,9 @@
                 h('i', { class: 'kind-' + ROSTER_KIND[key].cls }),
                 ROSTER_KIND[key].title)),
             h('span', { class: 'small faint' },
-                'Щёлкните по своей клетке, чтобы отметиться; по заголовку дня — '
-                + 'чтобы увидеть расход на этот день.'));
+                'Пустая клетка — человек на месте: отмечают отклонения, а не '
+                + 'присутствие. Щёлкните по своей клетке, чтобы отметиться; '
+                + 'по заголовку дня — чтобы увидеть расход на этот день.'));
     }
 
     /** Отметка в расходе: своя — у каждого, чужая — у начальника. */
@@ -2552,9 +2651,9 @@
     function buildFactsPanel() {
         const saveButton = h('button', {
             class: 'btn btn--primary btn--sm', disabled: true,
-            title: 'Сохранить факт-пакет (Ctrl+S)',
+            title: 'Сохранить данные (Ctrl+S)',
             onclick: () => saveFacts(),
-        }, 'Сохранить факты');
+        }, 'Сохранить');
 
         const body = h('div', { class: 'panel-body' });
         const digest = h('div', { class: 'small faint' });
@@ -2572,11 +2671,86 @@
         return h('section', { class: 'panel panel--facts' },
             h('div', { class: 'panel-head' },
                 h('div', { class: 'panel-head-row' },
-                    h('span', { class: 'panel-title' }, 'Факт-пакет'),
+                    h('span', { class: 'panel-title' }, 'Данные для отчёта'),
                     saveButton),
                 h('div', { class: 'panel-head-row' }, digest)),
             filesBox,
             body);
+    }
+
+    /* Просмотр приложенного файла, не скачивая его.
+
+       Скан письма хочется увидеть, а не положить в «Загрузки» и открывать
+       сторонней программой: половина вложений в отделе — картинки, и весь
+       смысл в том, чтобы взглянуть. Браузер сам рисует картинки, PDF и
+       простой текст; всё прочее просмотру не поддаётся, и по нему честно
+       говорится, что открыть можно только скачав. */
+    const PREVIEW_IMAGE = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tif', 'tiff'];
+    const PREVIEW_PDF = ['pdf'];
+    const PREVIEW_TEXT = ['txt', 'md', 'log', 'json', 'csv'];
+
+    function fileExt(name) {
+        const dot = String(name || '').lastIndexOf('.');
+        return dot === -1 ? '' : String(name).slice(dot + 1).toLowerCase();
+    }
+
+    function openFilePreview(item, href, textHref) {
+        const ext = fileExt(item.name);
+        const inline = href + (href.indexOf('?') === -1 ? '?' : '&') + 'inline=1';
+        let view;
+        if (PREVIEW_IMAGE.indexOf(ext) !== -1) {
+            view = h('img', { class: 'preview-image', src: inline, alt: item.name });
+        } else if (PREVIEW_PDF.indexOf(ext) !== -1 || PREVIEW_TEXT.indexOf(ext) !== -1) {
+            // Встроенное окно, а не вставка текста в разметку: чужой файл в
+            // своей странице — это чужой код в своей странице. Сервер отдаёт
+            // его в песочнице и с запретом переугадывать тип.
+            view = h('iframe', {
+                class: 'preview-frame', src: inline, title: item.name,
+                sandbox: '', referrerpolicy: 'no-referrer',
+            });
+        } else {
+            view = h('div', { class: 'muted' },
+                'Такой файл на экране не показать — скачайте и откройте '
+                + 'своей программой.');
+        }
+
+        // Что система вычитала из файла. Показываем рядом с ним: человек
+        // должен видеть, что попало в поиск, и не рассчитывать на
+        // распознанное там, где его нет.
+        const readBox = h('div', {});
+        if (textHref && item.has_text) {
+            api.get(textHref).then((data) => {
+                const text = (data.text || '').trim();
+                if (!text) return;
+                append(readBox, [h('details', { class: 'preview-text' },
+                    h('summary', {}, data.recognised
+                        ? 'Что распознала система'
+                        : 'Что система вычитала из файла'),
+                    data.recognised ? h('div', { class: 'small muted' },
+                        'Текст получен машинным распознаванием. По нему ищется '
+                        + 'письмо, но числа и обозначения сверяйте с оригиналом: '
+                        + 'на снимке «3,5» и «8,5» различаются одним штрихом.') : null,
+                    h('pre', {}, text + (data.truncated ? '\n…' : '')))]);
+            }).catch(() => { /* не прочиталось — обойдёмся картинкой */ });
+        }
+
+        const dialog = openModal({
+            title: item.name,
+            wide: true,
+            body: [
+                h('div', { class: 'preview-box' }, view),
+                item.note ? h('div', { class: 'small muted' }, item.note) : null,
+                item.has_text === false ? h('div', { class: 'small muted' },
+                    'Текст из файла прочитать не удалось: по словам из него '
+                    + 'письмо не найдётся. Сам файл на месте.') : null,
+                readBox,
+            ],
+            footer: [
+                h('span', { class: 'small faint spacer' }, fmtBytes(item.size)),
+                h('a', { class: 'btn', href: href }, 'Скачать'),
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Закрыть'),
+            ],
+        });
     }
 
     /* Приложенные к письму бумаги: скан письма, схема линии, журнал.
@@ -2627,11 +2801,13 @@
                 picker),
             items.length ? h('div', { class: 'file-list' }, items.map((file) =>
                 h('div', { class: 'file-row' },
-                    h('a', {
-                        class: 'file-name',
-                        href: '/api/cases/' + wb.case.id + '/files/' + file.id,
-                        title: 'Скачать ' + file.name + (file.uploaded_by_name
+                    h('button', {
+                        class: 'file-name file-name--link',
+                        title: 'Посмотреть ' + file.name + (file.uploaded_by_name
                             ? ' · приложил ' + file.uploaded_by_name : ''),
+                        onclick: () => openFilePreview(file,
+                            '/api/cases/' + wb.case.id + '/files/' + file.id,
+                            '/api/cases/' + wb.case.id + '/files/' + file.id + '/text'),
                     }, file.name),
                     h('span', { class: 'small faint nowrap' }, fmtBytes(file.size)),
                     // Не прочиталось — значит, по словам из этой бумаги
@@ -2707,7 +2883,7 @@
         // собирается собирать отчёт системой.
         if (wb.report && wb.report.uploaded) {
             return h('div', { class: 'coverage-box coverage-box--calm' },
-                h('b', {}, 'Отчёт сдан готовым файлом'),
+                h('b', {}, 'Отчёт написан человеком'),
                 h('div', { class: 'small muted' },
                     'Измерения нужны, только когда отчёт собирает система. '
                     + 'Заполните их, если решите собрать свой вариант.'));
@@ -2716,28 +2892,30 @@
         // Письмо при этом открывается — иначе чинить пакет было бы негде.
         if (wb.coverageError) {
             return h('div', { class: 'coverage-box coverage-box--bad' },
-                h('b', {}, 'Факт-пакет не разбирается'),
+                h('b', {}, 'Данные не разбираются'),
                 h('div', { class: 'small' }, wb.coverageError),
                 h('div', { class: 'small muted' },
-                    'Исправьте пакет в этой панели или в режиме JSON — '
-                    + 'до этого проверка обязательных измерений не работает.'));
+                    'Поправьте значения в этой панели — до этого проверка '
+                    + 'обязательных не работает.'));
         }
         const coverage = localCoverage();
         if (!coverage.length) {
             return h('div', { class: 'badge badge--ok', style: { marginBottom: '12px' } },
-                'Обязательные измерения на месте');
+                'Всё, что нужно отчёту, занесено');
         }
         const box = h('div', { class: 'coverage-box' },
-            h('b', {}, 'Не хватает обязательных измерений'),
+            h('b', {}, 'Не хватает данных'),
             h('div', { class: 'small muted' },
-                'Шаблон отчёта требует эти ключи — без них секции будут помечены «не хватает данных».'));
+                'Без этих значений разделы отчёта выйдут с пометкой «не хватает '
+                + 'данных». Щёлкните — строка добавится в таблицу.'));
         coverage.forEach((entry) => {
             box.appendChild(h('div', { class: 'coverage-line' },
                 h('span', { class: 'small' }, entry.title + ': '),
                 entry.keys.map((key) => h('button', {
-                    class: 'chip', title: 'Добавить измерение «' + key + '» в таблицу',
+                    class: 'chip',
+                    title: 'Добавить строку «' + factTitle(key) + '» в таблицу',
                     onclick: () => addMeasurement(key),
-                }, key, ' +'))));
+                }, factTitle(key), ' +'))));
         });
         return box;
     }
@@ -2799,7 +2977,7 @@
                h('th', {}, 'Значение'), h('th', { class: 'col-unit' }, 'Ед.'),
                h('th', {}, 'Метод'), h('th', {}, 'Погрешность'),
                h('th', { class: 'col-act' })]
-            : [h('th', {}, 'Измерение и ключ'), h('th', { class: 'col-value' }, 'Значение'),
+            : [h('th', {}, 'Что измерено'), h('th', { class: 'col-value' }, 'Значение'),
                h('th', { class: 'col-unit' }, 'Ед.'), h('th', { class: 'col-act' })];
         const table = h('table', { class: 'facts-table' + (detailed ? '' : ' is-compact') },
             h('thead', {}, h('tr', {}, ...headCells)),
@@ -2809,8 +2987,9 @@
 
         body.appendChild(h('div', { class: 'facts-section' },
             h('h4', {},
-                'Измерения ', h('span', { class: 'faint' }, '(' + wb.rows.length + ')'),
-                h('label', { class: 'facts-toggle', title: 'Показывать колонки «Метод» и «Погрешность»' },
+                'Что измерено ', h('span', { class: 'faint' }, '(' + wb.rows.length + ')'),
+                h('label', { class: 'facts-toggle',
+                    title: 'Показать технический ключ, способ измерения и погрешность' },
                     h('input', {
                         type: 'checkbox', checked: detailed,
                         onchange: (event) => {
@@ -2818,17 +2997,24 @@
                             renderFactsBody();
                         },
                     }), ' подробно')),
+            h('div', { class: 'small faint', style: { marginBottom: '6px' } },
+                'Числа, полученные при проверке. Только они попадут в отчёт: '
+                + 'ничего, кроме занесённого здесь, система в текст не поставит.'),
             h('div', { class: 'table-scroll' }, table),
             canEdit() ? h('button', {
                 class: 'btn btn--sm', style: { marginTop: '8px' },
                 onclick: () => addMeasurement(''),
-            }, '+ измерение') : null));
+            }, '+ значение') : null));
 
         // -- находки
         const findingsBox = h('div', {});
         wb.findings.forEach((finding, index) => findingsBox.appendChild(findingCard(finding, index)));
         body.appendChild(h('div', { class: 'facts-section' },
-            h('h4', {}, 'Находки ', h('span', { class: 'faint' }, '(' + wb.findings.length + ')')),
+            h('h4', {}, 'Что обнаружено ',
+                h('span', { class: 'faint' }, '(' + wb.findings.length + ')')),
+            h('div', { class: 'small faint', style: { marginBottom: '6px' } },
+                'Отклонения, которые нашли при проверке: что именно, насколько '
+                + 'серьёзно и чем подтверждается.'),
             findingsBox,
             canEdit() ? h('button', {
                 class: 'btn btn--sm',
@@ -2840,7 +3026,7 @@
                     markFactsDirty();
                     renderFactsBody();
                 },
-            }, '+ находка') : null));
+            }, '+ отклонение') : null));
 
 
     }
@@ -2868,7 +3054,7 @@
         }
 
         const remove = h('td', {}, editable ? h('button', {
-            class: 'btn btn--icon btn--ghost', title: 'Удалить измерение',
+            class: 'btn btn--icon btn--ghost', title: 'Убрать строку',
             onclick: () => {
                 const index = wb.rows.indexOf(row);
                 if (index !== -1) wb.rows.splice(index, 1);
@@ -2883,7 +3069,7 @@
         if (detailed) {
             append(tr, [
                 h('td', {}, field('key', 'key', 'ключ')),
-                h('td', {}, field('title', '', 'название')),
+                h('td', {}, field('title', '', 'что измерено')),
                 h('td', {}, field('value', '', 'значение')),
                 h('td', {}, field('unit', '', 'ед.')),
                 h('td', {}, field('method', '', 'как получено')),
@@ -2891,12 +3077,12 @@
                 remove,
             ]);
         } else {
-            // Компактный режим: название сверху, ключ мелким моноширинным снизу —
-            // в панели шириной 400 px это единственная читаемая раскладка.
+            // Компактный режим: только название. Ключ вроде packet_count —
+            // имя для кода, человеку он не говорит ничего, а места в панели
+            // шириной 400 px занимает столько же, сколько название. Кому он
+            // нужен — включает «подробно».
             append(tr, [
-                h('td', { class: 'cell-stack' },
-                    field('title', '', 'название измерения'),
-                    field('key', 'key', 'ключ')),
+                h('td', {}, field('title', '', 'что измерено')),
                 h('td', {}, field('value', '', 'значение')),
                 h('td', {}, field('unit', '', 'ед.')),
                 remove,
@@ -2923,24 +3109,43 @@
         });
     }
 
+    /* Как значение называется по-русски. Названия лежат в шаблоне рядом с
+       ключами: заводят новый ключ — тут же и подписывают. Нет подписи —
+       показываем сам ключ: это хуже, но честно, и видно, что подписать. */
+    function factTitle(key) {
+        const outline = outlineFor(wb.case && wb.case.report_type);
+        const titles = (outline && outline.fact_titles) || {};
+        return titles[key] || key;
+    }
+
+    function factUnit(key) {
+        const outline = outlineFor(wb.case && wb.case.report_type);
+        return ((outline && outline.fact_units) || {})[key] || '';
+    }
+
     function addMeasurement(key) {
-        wb.rows.push({ key: key || '', title: key || '', value: '', unit: '', method: '', uncertainty: '', source: '', note: '' });
+        wb.rows.push({
+            key: key || '', title: key ? factTitle(key) : '', value: '',
+            unit: key ? factUnit(key) : '', method: '', uncertainty: '',
+            source: '', note: '',
+        });
         markFactsDirty();
         renderFactsBody();
-        const inputs = $$('.facts-table tbody tr input.key');
-        const last = inputs[inputs.length - 1];
-        if (!last) return;
+        const rows = $$('.facts-table tbody tr');
+        const lastRow = rows[rows.length - 1];
+        if (!lastRow) return;
         if (!key) {
-            last.focus();                    // ключ ещё не задан — с него и начинаем
+            // Строку добавили вручную — начинают с названия: ключ человек
+            // придумывать не должен, его подставит шаблон или он останется
+            // пустым, и это законно.
+            const titleInput = lastRow.querySelector('input[data-field="title"]');
+            if (titleInput) titleInput.focus();
             return;
         }
-        // Ключ уже известен (строку добавили из списка недостающих) — курсор
-        // ставим в «Значение». Раньше искали столбец по номеру, но в сжатом
-        // виде таблицы третий столбец — «Ед.», и курсор попадал не туда.
-        const row = last.closest('tr');
-        const value = row ? $('input[data-field="value"]', row) : null;
+        // Ключ уже известен (строку добавили из списка недостающих) — название
+        // и единица подставлены шаблоном, курсор ставим сразу в «Значение».
+        const value = lastRow.querySelector('input[data-field="value"]');
         if (value) value.focus();
-        else last.focus();
     }
 
     function findingCard(finding, index) {
@@ -3093,6 +3298,17 @@
             onclick: () => exportDocx(),
         }, 'Экспорт в DOCX');
 
+        /* Отчёт, написанный руками, кладётся прямо на письмо. Раньше для
+           этого приходилось возвращаться в список и заново вводить входящий
+           номер: ошибся в знаке — и вместо редакции по своему письму
+           заводилось второе письмо-двойник. */
+        const uploadOwnButton = h('button', {
+            class: 'btn' + (report ? '' : ' btn--primary'),
+            disabled: !editable || wb.busy || frozen,
+            title: 'Приложить к этому письму отчёт, который вы написали сами',
+            onclick: () => openUploadForCase(wb.case, () => renderRoute(state.route)),
+        }, 'Загрузить свой отчёт');
+
         const errors = report ? report.errors || 0 : 0;
         const uploaded = !!(report && report.uploaded);
         const status = report ? report.status : '';
@@ -3176,10 +3392,10 @@
                     title: 'Открыть разговор с помощником по этому письму',
                     onclick: (event) => askAssistantAboutCase(event.currentTarget),
                 }, 'Спросить помощника'),
-                isAdmin() ? h('button', {
+                canDeleteCase(wb.case) ? h('button', {
                     class: 'btn btn--sm btn--danger',
                     onclick: () => deleteCase(wb.case, () => navigate('#/cases')),
-                }, 'Удалить письмо') : null),
+                }, isAdmin() ? 'Удалить письмо' : 'Убрать письмо') : null),
             h('div', { class: 'line' },
                 wb.reports.length ? versionSelect : h('span', { class: 'small muted' }, 'отчёта ещё нет'),
                 report ? reportStatusBadge(report) : null,
@@ -3218,6 +3434,7 @@
                     onclick: () => { setTab('issues'); focusSidePanel(); },
                 }, '▲ предупреждений: ' + (report.warnings || 0)) : null,
                 h('span', { style: { flex: '1' } }),
+                uploadOwnButton,
                 uploaded ? null : generateButton,
                 uploaded ? null : verifyButton,
                 uploaded ? h('button', {
@@ -3297,6 +3514,7 @@
     /* Путь отчёта, который написали руками и сдали файлом: шаблона и
        факт-пакета за ним нет, значит и шагов меньше. */
     const UPLOAD_STEPS = [
+        { id: 'loaded', title: 'Отчёт загружен' },
         { id: 'review', title: 'Сдан на проверку' },
         { id: 'done', title: 'Проверено' },
         { id: 'sent', title: 'Ответ отправлен' },
@@ -3335,6 +3553,15 @@
                     id: 'review', errors: 1, uploaded: true,
                     hint: 'Начальник вернул отчёт: ' + (report.review_note || 'см. замечание')
                         + ' Исправьте документ и сдайте его заново — новой версией.',
+                };
+            }
+            if (report.status === 'draft') {
+                return {
+                    id: 'loaded', uploaded: true,
+                    hint: 'Отчёт загружен файлом. Посмотрите его и нажмите '
+                        + '«Отправить на проверку» — до этого начальник его не '
+                        + 'видит. Числа в таком отчёте система не сверяет: его '
+                        + 'написал человек.',
                 };
             }
             return {
@@ -7258,10 +7485,11 @@
             }
             listBox.appendChild(h('div', { class: 'file-list' }, items.map((item) =>
                 h('div', { class: 'file-row' },
-                    h('a', {
-                        class: 'file-name',
-                        href: '/api/users/' + userId + '/files/' + item.id,
-                        title: 'Скачать ' + item.name,
+                    h('button', {
+                        class: 'file-name file-name--link',
+                        title: 'Посмотреть ' + item.name,
+                        onclick: () => openFilePreview(item,
+                            '/api/users/' + userId + '/files/' + item.id),
                     }, item.name),
                     h('span', { class: 'tag' }, item.kind_title),
                     h('span', { class: 'small faint nowrap' }, fmtBytes(item.size)),

@@ -350,6 +350,59 @@ def _tesseract_env() -> Dict[str, str]:
     return env
 
 
+#: К какому размеру подтягивать мелкую картинку перед распознаванием.
+#: tesseract рассчитан примерно на 300 dpi. Снимок листа А4 с телефона или
+#: скриншот окна — это 800–1200 точек по стороне, то есть вчетверо меньше
+#: нужного, и распознавание слипает слова: «Stvol3,poyarizaciya» вместо
+#: «Stvol 3, polyarizaciya». Увеличение с хорошей интерполяцией эту кашу
+#: убирает — проверено на снимках отдела.
+OCR_MIN_SIDE = 1400
+#: Больше чем вчетверо не растягиваем: дальше растёт только время, а букв в
+#: исходнике от этого не прибавляется.
+OCR_MAX_SCALE = 4
+#: Потолок по числу точек. Растянутая до 40 Мп страница считается минутами и
+#: съедает память — на рабочей станции отдела это заметно.
+OCR_MAX_PIXELS = 40_000_000
+
+
+def _upscaled_for_ocr(image: Path) -> Path | None:
+    """Копия картинки, растянутая до рабочего для tesseract размера.
+
+    Возвращает ``None``, если растягивать нечего или нечем (Pillow не
+    установлен): распознавание тогда идёт по исходнику, как и раньше.
+    """
+    try:
+        from PIL import Image  # noqa: PLC0415 — необязательная зависимость
+    except ImportError:
+        return None
+    try:
+        with Image.open(image) as source:
+            width, height = source.size
+            short = min(width, height)
+            if short <= 0 or short >= OCR_MIN_SIDE:
+                return None
+            scale = min(OCR_MAX_SCALE, OCR_MIN_SIDE / short)
+            if width * height * scale * scale > OCR_MAX_PIXELS:
+                scale = (OCR_MAX_PIXELS / (width * height)) ** 0.5
+            if scale <= 1.05:
+                return None
+            bigger = source.convert("RGB").resize(
+                (max(1, int(width * scale)), max(1, int(height * scale))),
+                Image.LANCZOS)
+    except Exception:                   # noqa: BLE001 — картинка важнее красоты
+        return None
+    handle = tempfile.NamedTemporaryFile(prefix="reportgen-ocr-big-",
+                                         suffix=".png", delete=False)
+    handle.close()
+    target = Path(handle.name)
+    try:
+        bigger.save(target)
+    except Exception:                   # noqa: BLE001
+        target.unlink(missing_ok=True)
+        return None
+    return target
+
+
 def _run_tesseract(
     binary: str,
     image: Path,
@@ -358,11 +411,17 @@ def _run_tesseract(
     timeout: float,
     temporary: Path | None,
 ) -> str:
-    command = [binary, str(image), "stdout"]
+    # Мелкую картинку сперва растягиваем: на 75 dpi tesseract слипает слова,
+    # и на выходе получается каша, которую нельзя ни прочитать, ни найти.
+    bigger = _upscaled_for_ocr(image)
+    command = [binary, str(bigger or image), "stdout"]
     if usable:
         command += ["-l", usable]
     if psm is not None:
         command += ["--psm", str(int(psm))]
+    # Просим не съедать пробелы между словами: со сжатых сканов tesseract
+    # склеивает их сам, а разделить потом уже нечем.
+    command += ["-c", "preserve_interword_spaces=1"]
 
     try:
         completed = subprocess.run(command, capture_output=True, timeout=timeout,
@@ -375,9 +434,11 @@ def _run_tesseract(
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         raise OcrError(f"не удалось запустить tesseract: {_reason(error)}") from error
     finally:
-        if temporary is not None:
+        for leftover in (temporary, bigger):
+            if leftover is None:
+                continue
             try:
-                temporary.unlink()
+                leftover.unlink()
             except OSError:  # pragma: no cover — файл уже удалён или занят
                 pass
 

@@ -307,6 +307,10 @@ def config(request: Request) -> Dict[str, Any]:
             "title": outline.title,
             "short_title": outline.short_title or outline.title,
             "version": outline.version,
+            # Названия значений по-русски: без них экран показывает ключи
+            # вида packet_count, и человек не знает, что туда заносить.
+            "fact_titles": dict(outline.fact_titles),
+            "fact_units": dict(outline.fact_units),
             "sections": [
                 {
                     "id": spec.id,
@@ -559,8 +563,15 @@ def attach_to_case(request: Request, case_ref: int,
 
 
 @router.get("/cases/{case_ref}/files/{file_id}")
-def download_case_file(request: Request, case_ref: int, file_id: int) -> FileResponse:
-    """Отдать приложенную бумагу подлинником."""
+def download_case_file(request: Request, case_ref: int, file_id: int,
+                       inline: int = 0) -> FileResponse:
+    """Отдать приложенную бумагу подлинником.
+
+    inline=1 — для просмотра прямо на экране: скан письма хочется увидеть, не
+    скачивая его в «Загрузки» и не открывая сторонней программой. Показывать
+    так можно только то, что браузер рисует сам и без опаски: картинки, PDF и
+    простой текст. Всё прочее отдаётся вложением, как и раньше.
+    """
     require_user(request)
     case = _case_or_404(request, case_ref)
     item = _repos(request).case_files.get(file_id)
@@ -569,8 +580,32 @@ def download_case_file(request: Request, case_ref: int, file_id: int) -> FileRes
     path = Path(item.path)
     if not path.is_file():
         raise ServiceError("файл не найден на диске", 404)
-    return FileResponse(path, filename=item.name,
-                        headers={"Content-Disposition": _disposition(item.name)})
+    return _file_reply(path, item.name, inline=bool(inline))
+
+
+@router.get("/cases/{case_ref}/files/{file_id}/text")
+def case_file_text(request: Request, case_ref: int, file_id: int) -> Dict[str, Any]:
+    """Что система вычитала из приложенного файла.
+
+    Показывается рядом с самим файлом — чтобы человек видел, что попало в
+    поиск, и не рассчитывал на распознанное там, где его нет. Со сканов
+    текст берётся машинным распознаванием, и доверять его числам нельзя:
+    «3,5» и «8,5» на плохом снимке различаются одним штрихом.
+    """
+    require_user(request)
+    case = _case_or_404(request, case_ref)
+    item = _repos(request).case_files.get(file_id)
+    if item is None or item.case_ref != case.id:
+        raise ServiceError("файл не найден", 404)
+    text = item.text.strip()
+    return {
+        "name": item.name,
+        # Длинный разбор целиком экрану не нужен: смотрят начало, чтобы
+        # понять, прочиталось ли вообще.
+        "text": text[:20000],
+        "truncated": len(text) > 20000,
+        "recognised": Path(item.name).suffix.lower() in OCR_SUFFIXES,
+    }
 
 
 @router.delete("/cases/{case_ref}/files/{file_id}")
@@ -694,8 +729,29 @@ def unsend_case(request: Request, case_ref: int) -> Dict[str, Any]:
 
 @router.delete("/cases/{case_ref}")
 def delete_case(request: Request, case_ref: int) -> Dict[str, Any]:
-    user = require_admin(request)
+    """Убрать письмо.
+
+    Ошибиться при регистрации может каждый — не тот номер, не то письмо, — и
+    ходить за начальником из-за собственной описки человек не должен. Поэтому
+    своё письмо убирает тот, кто его завёл, но лишь пока по нему ничего не
+    сделано: нет ни одного отчёта и ответ не отправлен. Как только за письмо
+    взялись, оно перестаёт быть личной ошибкой и становится работой отдела —
+    удалить его может только администратор.
+    """
+    user = require_editor(request)
     case = _case_or_404(request, case_ref)
+    repos = _repos(request)
+    if not user.is_admin:
+        if case.created_by != user.id:
+            raise ServiceError(
+                "недостаточно прав: чужое письмо убирает администратор", 403)
+        if repos.reports.list_for_case(case.id):
+            raise ServiceError(
+                "по письму уже есть отчёт — удалить его может только "
+                "администратор", 409)
+        if case.outgoing_no:
+            raise ServiceError(
+                "по письму отправлен ответ — такое письмо не удаляют", 409)
     # Сданные файлом отчёты лежат на диске: строки из базы уходят каскадом,
     # а файлы остались бы навсегда. Интерфейс обещает удаление вместе со
     # всеми редакциями отчёта — значит, и с их файлами.
@@ -704,7 +760,7 @@ def delete_case(request: Request, case_ref: int) -> Dict[str, Any]:
     data_dir = Path(_settings(request).data_dir)
     folders = [data_dir / "reports" / str(case.id),
                data_dir / "case-files" / str(case.id)]
-    _repos(request).cases.delete(case.id)
+    repos.cases.delete(case.id)
     removed = 0
     for folder in folders:
         if not folder.is_dir():
@@ -715,8 +771,8 @@ def delete_case(request: Request, case_ref: int) -> Dict[str, Any]:
                 removed += 1
         with suppress(OSError):
             folder.rmdir()
-    _repos(request).audit.log("case.delete", user=user, object_type="case",
-                              object_id=case.case_id, details={"files": removed})
+    repos.audit.log("case.delete", user=user, object_type="case",
+                    object_id=case.case_id, details={"files": removed})
     return {"ok": True}
 
 
@@ -824,6 +880,7 @@ def upload_report(
     assignee_id: str = Form(""),
     report_type: str = Form(""),
     note: str = Form(""),
+    submit: str = Form("1"),
 ) -> Dict[str, Any]:
     """Сдать готовый отчёт файлом на проверку начальнику.
 
@@ -836,6 +893,12 @@ def upload_report(
     может — документ написан человеком целиком. Об этом сказано и в
     карточке, и в списке писем, чтобы проверенный файл не путали с
     отчётом, прошедшим машинную проверку.
+
+    submit решает, уходит ли отчёт начальнику тем же движением. Из списка
+    писем — да: человек нажал «Сдать готовый отчёт», он за тем и пришёл. С
+    открытого письма — нет: там отчёт сперва смотрят и отправляют отдельной
+    кнопкой, иначе ошибочный файл оказывается на столе у начальника раньше,
+    чем его успели заметить.
     """
     user = require_editor(request)
     repos = _repos(request)
@@ -964,10 +1027,12 @@ def upload_report(
         # Текст нужен, чтобы отчёт можно было прочитать и найти, не скачивая.
         # Не прочитался — не беда: файл на месте, начальник откроет его как есть.
         text, problem = _extract_attachment(target)
+        to_review = str(submit or "").strip().lower() not in ("0", "false", "no", "")
         try:
             report = repos.reports.create_uploaded(
                 case.id, markdown=text.strip(), file_name=name, file_path=str(target),
-                file_size=size, user_id=user.id if user else None)
+                file_size=size, user_id=user.id if user else None,
+                status="review" if to_review else "draft")
         except sqlite3.IntegrityError as error:
             # Две сдачи по одному письму столкнулись на номере редакции.
             raise ServiceError(
@@ -987,7 +1052,9 @@ def upload_report(
         if target.exists() and target.name.startswith("sdacha-"):
             target.unlink(missing_ok=True)
         raise
-    repos.cases.set_status(case.id, "review")
+    # Письмо переходит «на проверку» только вместе с отчётом. Загруженный
+    # черновик оставляет его «в работе»: на столе у начальника он ещё не был.
+    repos.cases.set_status(case.id, "review" if to_review else "draft")
     repos.audit.log("report.upload", user=user, object_type="report",
                     object_id=str(report.id),
                     details={"case_id": case.case_id, "file": name, "bytes": size})
@@ -1621,6 +1688,39 @@ CAPTURE_ATTACH = {
 }
 
 
+#: Расширения, текст в которых берётся распознаванием, а не чтением.
+OCR_SUFFIXES = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".webp")
+
+
+def _looks_like_mush(text: str) -> bool:
+    """Похож ли распознанный текст на кашу, а не на слова.
+
+    Снимок экрана с телефона, фотография листа под углом, печать по клетчатой
+    бумаге — распознавание выдаёт по такому набор обрывков вроде «Ha 4Ta 6ap».
+    Класть это в поиск нельзя: письмо начинает находиться по случайным буквам,
+    а настоящее — тонуть. Считаем по двум признакам сразу:
+
+    * доля букв среди знаков — в словах она высокая, в каше её съедают
+      мусорные символы;
+    * доля слов длиннее трёх букв — распознанный шум рассыпается на огрызки
+      по одной-две буквы, связный текст — нет.
+
+    Порог намеренно мягкий: лучше принять сомнительную страницу, чем выкинуть
+    настоящую. Отсекается только явная каша.
+    """
+    stripped = text.strip()
+    if len(stripped) < 40:
+        return False          # коротко — судить не по чему, пусть остаётся
+    letters = sum(1 for ch in stripped if ch.isalpha())
+    if letters / len(stripped) < 0.55:
+        return True
+    words = [word for word in stripped.split() if any(ch.isalpha() for ch in word)]
+    if len(words) < 8:
+        return False
+    long_words = sum(1 for word in words if len(word) > 3)
+    return long_words / len(words) < 0.35
+
+
 def _extract_attachment(path: Path) -> tuple[str, str]:
     """Текст файла и, если что-то пошло не так, объяснение по-русски."""
     suffix = path.suffix.lower()
@@ -1651,6 +1751,13 @@ def _extract_attachment(path: Path) -> tuple[str, str]:
     note = "; ".join(converted.warnings[:2])
     if converted.is_empty and not note:
         note = "в файле не нашлось текста — возможно, это скан без распознавания"
+
+    # Распознанное с картинки проверяем на кашу. Обрывки вроде «Ha 4Ta 6ap»
+    # в поиске хуже пустоты: письмо начинает находиться по случайным буквам,
+    # а настоящее — тонуть. Сам файл при этом на месте, его открывают глазами.
+    if suffix in OCR_SUFFIXES and _looks_like_mush(converted.text):
+        return "", ("распознать текст с изображения не удалось — по словам из "
+                    "него письмо не найдётся; сам файл на месте")
     return converted.text, note
 
 
@@ -1979,13 +2086,18 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
     for item in sorted(marked.values(), key=lambda row: row.full_name):
         groups[item.kind].append(item.to_dict())
 
+    # Кто себя не отметил — тот на месте. Это положение по умолчанию, а не
+    # неизвестность: человек приходит на службу, и отмечаются в расходе как
+    # раз отклонения от этого. Иначе отдел, где все на местах, выглядел бы
+    # ненаписанным расходом, и начальник каждое утро гонялся бы за отметками
+    # от тех, у кого ничего не менялось.
     unmarked = [
         {"id": person.id, "full_name": person.full_name or person.login,
          "role": person.role, "role_title": person.role_title, "team": person.team}
         for person in repos.users.list_all(active_only=True)
         if person.id not in marked
     ]
-    present = sum(len(groups[kind]) for kind in PRESENT_KINDS)
+    on_place = sum(len(groups[kind]) for kind in PRESENT_KINDS)
     return {
         "date": day,
         "groups": [
@@ -1995,8 +2107,12 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
         ],
         "unmarked": unmarked,
         "total": len(unmarked) + len(marked),
-        "present": present,
-        "away": len(marked) - present,
+        # На месте — отмеченные дежурством и работами плюс все, кто себя не
+        # отмечал вовсе.
+        "present": on_place + len(unmarked),
+        "marked_present": on_place,
+        "away": len(marked) - on_place,
+        "marked": len(marked),
     }
 
 
@@ -2341,7 +2457,8 @@ def add_person_file(request: Request, user_id: int,
 
 
 @router.get("/users/{user_id}/files/{file_id}")
-def download_person_file(request: Request, user_id: int, file_id: int) -> FileResponse:
+def download_person_file(request: Request, user_id: int, file_id: int,
+                         inline: int = 0) -> FileResponse:
     actor = require_user(request)
     person = _person_or_404(request, user_id)
     if not _may_see_person_files(actor, person.id):
@@ -2352,8 +2469,7 @@ def download_person_file(request: Request, user_id: int, file_id: int) -> FileRe
     path = Path(item.path)
     if not path.is_file():
         raise ServiceError("файл не найден на диске", 404)
-    return FileResponse(path, filename=item.name,
-                        headers={"Content-Disposition": _disposition(item.name)})
+    return _file_reply(path, item.name, inline=bool(inline))
 
 
 @router.delete("/users/{user_id}/files/{file_id}")
@@ -2554,6 +2670,48 @@ def _safe_name(name: str) -> str:
     # Пустое имя после чистки — тоже имя файла: без запасного значения
     # выгрузка ушла бы в файл вида «-v1.docx» или вовсе в каталог.
     return name[:120] or "документ"
+
+
+#: Что браузер показывает сам и без опаски. HTML и SVG сюда не входят
+#: намеренно: в них живёт скрипт, а показанная встроенным окном страница
+#: получила бы права нашего же адреса. Их отдаём вложением, как и всё прочее.
+INLINE_TYPES = {
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+    ".bmp": "image/bmp",
+    ".txt": "text/plain; charset=utf-8",
+    ".md": "text/plain; charset=utf-8",
+    ".log": "text/plain; charset=utf-8",
+    ".csv": "text/plain; charset=utf-8",
+    ".json": "text/plain; charset=utf-8",
+}
+
+
+def _file_reply(path: Path, name: str, *, inline: bool = False) -> FileResponse:
+    """Отдать файл: вложением или для просмотра прямо на экране."""
+    media = INLINE_TYPES.get(Path(name).suffix.lower())
+    if not inline or media is None:
+        return FileResponse(path, filename=name,
+                            headers={"Content-Disposition": _disposition(name)})
+    # Content-Disposition: inline с тем же кодированием имени по RFC 5987:
+    # заголовки HTTP — latin-1, а имена файлов у нас кириллические.
+    return FileResponse(
+        path, media_type=media,
+        headers={
+            "Content-Disposition": _disposition(name).replace("attachment;", "inline;", 1),
+            # Показываем чужой файл в своём окне — запрещаем его исполнение
+            # и переугадывание типа: подписанный .png, внутри которого HTML,
+            # иначе выполнился бы как страница нашего адреса.
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "sandbox; default-src 'none'; img-src 'self'",
+        },
+    )
 
 
 def _disposition(filename: str) -> str:

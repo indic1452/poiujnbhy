@@ -957,6 +957,103 @@ class OutgoingNumberTests(WebTestCase):
         self.assertEqual(1, after["sent"])
 
 
+class OwnReportTests(WebTestCase):
+    """Свой отчёт по уже заведённому письму."""
+
+    def setUp(self):
+        super().setUp()
+        self.login("engineer")
+        response = self.client.post("/api/cases", json={
+            "case_id": "ВХ-2026-0720", "title": "Проверка полосы"})
+        self.case = response.json()["case"]
+
+    def upload(self, submit="1"):
+        return self.client.post(
+            "/api/reports/upload",
+            files={"file": ("мой-отчёт.md", "# Отчёт\n\nОтклонений нет.".encode("utf-8"),
+                            "text/markdown")},
+            data={"case_id": self.case["case_id"], "submit": submit})
+
+    def test_a_report_lands_on_the_letter_and_not_on_a_twin(self):
+        """Помощник сыроват, и отчёты пишут руками — класть их надо на письмо.
+
+        Раньше для этого возвращались в список и вводили входящий номер
+        заново: ошибся в знаке — вместо новой редакции по своему письму
+        заводилось второе письмо-двойник.
+        """
+        response = self.upload()
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual(1, self.client.get("/api/cases").json()["total"],
+                         "завелось второе письмо вместо редакции")
+        reports = self.client.get(f"/api/cases/{self.case['id']}").json()["reports"]
+        self.assertEqual(1, len(reports))
+        full = self.client.get(f"/api/reports/{reports[0]['id']}").json()["report"]
+        self.assertTrue(full["uploaded"], "отчёт не помечен как сданный файлом")
+
+    def test_uploading_from_the_letter_does_not_send_it_off_at_once(self):
+        """С открытого письма отчёт сперва смотрят, а потом отправляют.
+
+        Иначе ошибочный файл оказывается на столе у начальника раньше, чем
+        его успели заметить.
+        """
+        report = self.upload(submit="0").json()["report"]
+        self.assertEqual("draft", report["status"])
+        case = self.client.get(f"/api/cases/{self.case['id']}").json()["case"]
+        self.assertEqual("draft", case["status"], "письмо ушло на проверку само")
+
+        # Отправляет человек — отдельным движением.
+        sent = self.client.post(f"/api/reports/{report['id']}/submit", json={})
+        self.assertEqual(200, sent.status_code, sent.text)
+        case = self.client.get(f"/api/cases/{self.case['id']}").json()["case"]
+        self.assertEqual("review", case["status"])
+
+    def test_from_the_list_the_report_still_goes_straight_to_the_head(self):
+        # Там человек нажал «Сдать готовый отчёт» — он за тем и пришёл.
+        report = self.upload(submit="1").json()["report"]
+        self.assertEqual("review", report["status"])
+        case = self.client.get(f"/api/cases/{self.case['id']}").json()["case"]
+        self.assertEqual("review", case["status"])
+
+
+class FactNamingTests(WebTestCase):
+    """Значения отчёта называются по-русски, а не packet_count."""
+
+    def test_every_fact_of_every_template_has_a_russian_name(self):
+        """Ключ — имя для кода; человеку, который заносит числа, он не говорит
+        ничего, а спросить не у кого.
+
+        Названия живут в шаблоне рядом с ключами: заводят новый ключ — тут же
+        и подписывают, иначе словарь разъезжается с шаблоном.
+        """
+        outlines = self.client.get("/api/config").json()["outlines"]
+        self.assertTrue(outlines, "шаблонов нет — проверять нечего")
+        for outline in outlines:
+            titles = outline["fact_titles"]
+            keys = set()
+            for section in outline["sections"]:
+                keys |= set(section["required_facts"]) | set(section["optional_facts"])
+            with self.subTest(report_type=outline["report_type"]):
+                missing = sorted(keys - set(titles))
+                self.assertEqual([], missing, f"без названия остались: {missing}")
+                for key, title in titles.items():
+                    self.assertNotEqual(key, title, f"«{key}» подписан сам собой")
+                    self.assertTrue(any(ch.isalpha() and ch.lower() in "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+                                        for ch in title),
+                                    f"название «{title}» не по-русски")
+
+    def test_the_skeleton_comes_named_and_measured(self):
+        # Заготовку собирает сервер, и человек видит в ней название и
+        # единицу — а не ключ дважды, как было.
+        case = self.client.post("/api/cases", json={
+            "case_id": "ВХ-2026-0730", "title": "Помеха",
+            "report_type": "signal_issue"}).json()["case"]
+        facts = self.client.get(f"/api/cases/{case['id']}").json()["case"]["facts"]
+        snr = facts["measurements"]["snr"]
+        self.assertEqual("Отношение сигнал/шум", snr["title"])
+        self.assertEqual("дБ", snr["unit"])
+        self.assertEqual("", snr["value"], "значение должен занести человек")
+
+
 class LetterSearchTests(WebTestCase):
     """Поиск по письмам: реквизиты и текст самих отчётов."""
 
@@ -1184,6 +1281,168 @@ class LetterRegistrationTests(WebTestCase):
         self.assertEqual("sls", updated["line_type"])
         self.assertEqual("ТС-9", updated["tc_no"])
         self.assertEqual("Новое описание", updated["title"])
+
+
+class LetterDeletionTests(WebTestCase):
+    """Ошибочно заведённое письмо убирает тот, кто его завёл."""
+
+    def setUp(self):
+        super().setUp()
+        self.login("engineer")
+        self.engineer = self.repos.users.by_login("engineer")
+
+    def register(self, case_id="ВХ-2026-0700"):
+        response = self.client.post("/api/cases", json={
+            "case_id": case_id, "title": "Ошибся при регистрации"})
+        self.assertEqual(200, response.status_code, response.text)
+        return response.json()["case"]
+
+    def test_the_author_takes_back_their_own_mistake(self):
+        """Ходить за начальником из-за собственной описки человек не должен."""
+        case = self.register()
+        response = self.client.delete(f"/api/cases/{case['id']}")
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertIsNone(self.repos.cases.get(case["id"]))
+
+    def test_a_stranger_letter_is_not_yours_to_remove(self):
+        self.login("admin")
+        case = self.register("ВХ-2026-0701")
+        self.login("engineer")
+        response = self.client.delete(f"/api/cases/{case['id']}")
+        self.assertEqual(403, response.status_code)
+        self.assertIn("чужое письмо", response.json()["error"])
+
+    def test_once_the_work_started_it_is_not_a_mistake_anymore(self):
+        """По письму сделали отчёт — оно стало работой отдела, а не опиской."""
+        case = self.register("ВХ-2026-0702")
+        self.generate(case["id"])
+        response = self.client.delete(f"/api/cases/{case['id']}")
+        self.assertEqual(409, response.status_code)
+        self.assertIn("уже есть отчёт", response.json()["error"])
+        # Администратор такое письмо всё же удаляет.
+        self.login("admin")
+        self.assertEqual(200, self.client.delete(
+            f"/api/cases/{case['id']}").status_code)
+
+    def test_a_letter_with_an_answer_sent_is_never_a_mistake(self):
+        case = self.register("ВХ-2026-0703")
+        self.repos.cases.update_card(case["id"], outgoing_no="ИСХ-2026-1")
+        response = self.client.delete(f"/api/cases/{case['id']}")
+        self.assertEqual(409, response.status_code)
+        self.assertIn("отправлен ответ", response.json()["error"])
+
+
+class AttachmentPreviewTests(WebTestCase):
+    """Приложенный файл смотрят на экране, не скачивая."""
+
+    def setUp(self):
+        super().setUp()
+        response = self.client.post("/api/cases", json={
+            "case_id": "ВХ-2026-0710", "title": "Помеха на линии"})
+        self.case = response.json()["case"]
+
+    def attach(self, name, body):
+        return self.client.post(f"/api/cases/{self.case['id']}/files",
+                                files={"file": (name, body, "application/octet-stream")})
+
+    def test_a_picture_opens_in_the_page_instead_of_downloading(self):
+        item = self.attach("скан.png", _tiny_png()).json()["file"]
+        shown = self.client.get(
+            f"/api/cases/{self.case['id']}/files/{item['id']}?inline=1")
+        self.assertEqual(200, shown.status_code)
+        self.assertTrue(shown.headers["content-disposition"].startswith("inline;"))
+        self.assertEqual("image/png", shown.headers["content-type"])
+        # Чужой файл в своём окне: исполняться он не должен.
+        self.assertEqual("nosniff", shown.headers["x-content-type-options"])
+        self.assertIn("sandbox", shown.headers["content-security-policy"])
+
+        # Без флага — как и раньше, вложением.
+        saved = self.client.get(f"/api/cases/{self.case['id']}/files/{item['id']}")
+        self.assertTrue(saved.headers["content-disposition"].startswith("attachment;"))
+
+    def test_a_kind_the_browser_should_not_run_is_never_shown_inline(self):
+        """HTML и SVG показу не подлежат: в них живёт скрипт.
+
+        Показанная встроенным окном страница получила бы права нашего же
+        адреса, поэтому такие файлы отдаются вложением даже по запросу.
+        """
+        item = self.attach("выгрузка.csv", "a;b\n1;2".encode("utf-8")).json()["file"]
+        shown = self.client.get(
+            f"/api/cases/{self.case['id']}/files/{item['id']}?inline=1")
+        self.assertTrue(shown.headers["content-type"].startswith("text/plain"))
+
+        from reportgen.web.api import INLINE_TYPES
+
+        for risky in (".html", ".htm", ".svg", ".js", ".zip", ".docx"):
+            with self.subTest(suffix=risky):
+                self.assertNotIn(risky, INLINE_TYPES)
+
+    def test_the_person_sees_what_the_machine_read(self):
+        # Чтобы не рассчитывать на распознанное там, где его нет.
+        item = self.attach("журнал.txt",
+                           "Ствол третий, поляризация вертикальная".encode("utf-8")).json()["file"]
+        body = self.client.get(
+            f"/api/cases/{self.case['id']}/files/{item['id']}/text").json()
+        self.assertIn("поляризация", body["text"])
+        self.assertFalse(body["recognised"], "текстовый файл не распознают")
+        self.assertFalse(body["truncated"])
+
+
+def _tiny_png() -> bytes:
+    """Однопиксельный PNG. Меньше, чем описывать его словами."""
+    import base64
+
+    return base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+
+
+class OcrQualityTests(unittest.TestCase):
+    """Каша из распознавания не должна попадать в поиск."""
+
+    def test_mush_is_told_apart_from_words(self):
+        from reportgen.web.api import _looks_like_mush
+
+        mush = "Ha 4Ta 6ap n0 e | ~ 1l Bo 3a Ha ce 6b1 Tb Ha 4Ta 6ap n0 e u3"
+        real = ("Схема радиорелейной линии Северная — Апатиты. Ствол третий, "
+                "поляризация вертикальная, приёмник исправен.")
+        self.assertTrue(_looks_like_mush(mush), "каша принята за текст")
+        self.assertFalse(_looks_like_mush(real), "нормальный текст принят за кашу")
+        # Короткую подпись судить не по чему — пусть остаётся.
+        self.assertFalse(_looks_like_mush("Узел 3"))
+        # Сплошные знаки без букв — тоже каша.
+        self.assertTrue(_looks_like_mush("### @@@ %%% ^^^ &&& *** ((( ))) --- === +++ ~~~ ???"))
+
+    def test_a_small_picture_is_enlarged_before_recognition(self):
+        """На 75 dpi tesseract слипает слова — отсюда и каша.
+
+        Снимок листа с телефона и скриншот окна — это 800–1200 точек по
+        стороне, вчетверо меньше рабочих для распознавания 300 dpi.
+        """
+        from reportgen.ingest.formats.ocr import OCR_MIN_SIDE, _upscaled_for_ocr
+
+        try:
+            from PIL import Image
+        except ImportError:                      # pragma: no cover
+            self.skipTest("Pillow не установлен")
+
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as folder:
+            small = Path(folder) / "мелкая.png"
+            Image.new("RGB", (900, 420), "white").save(small)
+            bigger = _upscaled_for_ocr(small)
+            self.assertIsNotNone(bigger, "мелкую картинку не растянули")
+            try:
+                with Image.open(bigger) as grown:
+                    self.assertGreaterEqual(min(grown.size), OCR_MIN_SIDE)
+            finally:
+                bigger.unlink(missing_ok=True)
+
+            # Большую не трогаем: растягивать нечего.
+            large = Path(folder) / "крупная.png"
+            Image.new("RGB", (2400, 1800), "white").save(large)
+            self.assertIsNone(_upscaled_for_ocr(large))
 
 
 class LetterFileTests(WebTestCase):
@@ -2788,18 +3047,33 @@ class RosterTests(WebTestCase):
             f"/api/absences/{theirs.id}").status_code)
 
     def test_the_day_view_says_who_is_where_and_who_is_silent(self):
-        """Расход на день — то, что начальник читает на разводе."""
+        """Расход на день — то, что начальник читает на разводе.
+
+        Кто себя не отметил, тот на месте: человек приходит на службу, и
+        отмечают в расходе как раз отклонения. Иначе отдел, где все на
+        местах, выглядел бы ненаписанным расходом.
+        """
         self.mark("duty", place="Узел 3", user_id=self.engineer.id)
         body = self.client.get("/api/roster/day", params={"date": self.today}).json()
         duty = [group for group in body["groups"] if group["id"] == "duty"][0]
         self.assertEqual(["Инженеров И. И."],
                          [person["full_name"] for person in duty["people"]])
-        self.assertEqual(1, body["present"])
         self.assertEqual(0, body["away"])
-        # Об остальных расход молчит, и это должно быть видно.
-        silent = {person["full_name"] for person in body["unmarked"]}
-        self.assertIn("Начальников Н. Н.", silent)
-        self.assertEqual(body["total"], len(body["unmarked"]) + 1)
+        self.assertEqual(1, body["marked"])
+        self.assertEqual(1, body["marked_present"])
+        # На месте — дежурный и все, кто себя не отмечал.
+        self.assertEqual(body["total"], body["present"])
+        self.assertEqual(body["total"] - 1, len(body["unmarked"]))
+        # Кто именно молчит — видно поимённо.
+        self.assertIn("Начальников Н. Н.",
+                      {person["full_name"] for person in body["unmarked"]})
+
+    def test_an_absent_person_is_the_only_one_missing_from_the_place(self):
+        # Отсутствие — только явно отмеченное. Остальные на месте.
+        self.mark("vacation", span=3, user_id=self.engineer.id)
+        body = self.client.get("/api/roster/day", params={"date": self.today}).json()
+        self.assertEqual(1, body["away"])
+        self.assertEqual(body["total"] - 1, body["present"])
 
     def test_work_in_the_department_is_not_an_absence(self):
         """«Работы» — человек на месте: его можно спросить и ему можно дать письмо."""
@@ -2807,7 +3081,8 @@ class RosterTests(WebTestCase):
         board = self.client.get("/api/board").json()
         self.assertEqual(0, board["totals"]["away"])
         day = self.client.get("/api/roster/day").json()
-        self.assertEqual(1, day["present"])
+        self.assertEqual(1, day["marked_present"])
+        self.assertEqual(day["total"], day["present"])
 
     def test_a_mark_longer_than_a_year_is_a_typo(self):
         # 2099 вместо 2029 — обычная описка, и сетка от неё становится
@@ -3696,7 +3971,7 @@ class InterfaceCopyTests(unittest.TestCase):
         врезка «не хватает обязательных измерений» на такой карточке —
         требование ни к чему.
         """
-        self.assertIn("Отчёт сдан готовым файлом", self.js)
+        self.assertIn("Отчёт написан человеком", self.js)
         self.assertIn("coverage-box--calm", self.js)
         # И вместо «в отчёте нет секций» — сам отчёт: имя файла, прочитанный
         # текст и кнопка на подлинник.

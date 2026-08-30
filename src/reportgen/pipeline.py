@@ -72,6 +72,13 @@ class Outline:
     #: названия начинаются одинаково, и в узком поле видно только общее
     #: начало. Пусто — берём полное название.
     short_title: str = ""
+    #: Как называется каждое значение по-русски и в чём оно меряется.
+    #: Ключи вроде packet_count — имена для кода; человеку, который заносит
+    #: числа, они не говорят ничего, а спросить не у кого. Названия живут в
+    #: шаблоне рядом с самими ключами: заводят новый ключ — тут же и
+    #: подписывают, иначе словарь разъезжается с шаблоном.
+    fact_titles: Dict[str, str] = field(default_factory=dict)
+    fact_units: Dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def load(cls, path: str | Path) -> "Outline":
@@ -82,8 +89,16 @@ class Outline:
             short_title=str(raw.get("short_title", "") or "").strip(),
             style=raw.get("style", DEFAULT_STYLE),
             version=str(raw.get("version", "1")),
+            fact_titles={str(key): str(value) for key, value
+                         in (raw.get("fact_titles") or {}).items()},
+            fact_units={str(key): str(value) for key, value
+                        in (raw.get("fact_units") or {}).items()},
             sections=[SectionSpec.from_dict(item) for item in raw["sections"]],
         )
+
+    def fact_title(self, key: str) -> str:
+        """Название значения по-русски. Нет в шаблоне — отдаём сам ключ."""
+        return self.fact_titles.get(key) or key
 
     def required_facts(self) -> List[str]:
         seen: List[str] = []

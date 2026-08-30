@@ -431,6 +431,9 @@ class Case:
             "facts_digest": self.facts_digest,
             "reports_count": self.reports_count,
             "files_count": self.files_count,
+            # Кто завёл письмо. Нужно интерфейсу: своё ошибочно заведённое
+            # письмо человек убирает сам, чужое — только администратор.
+            "created_by": self.created_by,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }

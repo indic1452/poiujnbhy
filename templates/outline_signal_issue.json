@@ -4,6 +4,35 @@
   "title": "Технический отчёт по результатам анализа радиосигнала",
   "short_title": "Анализ радиосигнала",
   "style": "деловой технический, прошедшее время, без оценочных суждений",
+  "fact_titles": {
+    "center_frequency": "Центральная частота",
+    "modulation": "Вид модуляции",
+    "sample_rate": "Частота дискретизации",
+    "capture_duration": "Длительность захвата",
+    "symbol_rate": "Символьная скорость",
+    "occupied_bandwidth": "Занимаемая полоса",
+    "snr": "Отношение сигнал/шум",
+    "evm": "Модуль вектора ошибки",
+    "frequency_offset": "Уход частоты",
+    "phase_noise_1khz": "Фазовый шум на отстройке 1 кГц",
+    "spurious_offset": "Отстройка побочного излучения",
+    "spurious_level": "Уровень побочного излучения",
+    "ber": "Коэффициент ошибок по битам",
+    "fer": "Коэффициент ошибок по кадрам"
+  },
+  "fact_units": {
+    "center_frequency": "МГц",
+    "sample_rate": "МГц",
+    "capture_duration": "с",
+    "symbol_rate": "Бод",
+    "occupied_bandwidth": "кГц",
+    "snr": "дБ",
+    "evm": "%",
+    "frequency_offset": "Гц",
+    "phase_noise_1khz": "дБн/Гц",
+    "spurious_offset": "кГц",
+    "spurious_level": "дБн"
+  },
   "sections": [
     {
       "id": "scope",

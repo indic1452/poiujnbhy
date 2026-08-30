@@ -252,9 +252,13 @@ class ReportService:
             "equipment": {},
             "keywords": [],
             "artifacts": [],
+            # Название и единицу берём из шаблона. Раньше в названии стоял
+            # сам ключ, и человек видел в таблице «packet_count» дважды —
+            # ни что заносить, ни в чём, из этого не следовало.
             "measurements": {
-                key: {"title": key, "value": "", "unit": "", "method": "",
-                      "uncertainty": ""} for key in keys
+                key: {"title": outline.fact_title(key), "value": "",
+                      "unit": outline.fact_units.get(key, ""),
+                      "method": "", "uncertainty": ""} for key in keys
             },
             "findings": [],
             "timeline": [],
