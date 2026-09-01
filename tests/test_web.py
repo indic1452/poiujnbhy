@@ -3991,6 +3991,25 @@ class TalkTests(WebTestCase):
         self.client.post(f"/api/talks/{talk['talk_id']}/messages", json={"text": "Раз"})
         self.assertEqual(0, self.client.get("/api/talks").json()["items"][0]["unread"])
 
+    def test_any_member_of_the_department_may_start_a_talk(self):
+        """Завести беседу — не право должности.
+
+        Спрашивать разрешения написать товарищу по отделу не у кого и
+        незачем: инженер заводит и личную переписку, и общую беседу так же,
+        как начальник.
+        """
+        lead = self.repos.users.by_login("gruppa")
+        self.login("engineer")
+        private = self.client.post("/api/talks", json={"members": [self.boss.id]})
+        self.assertEqual(200, private.status_code, private.text)
+        group = self.client.post("/api/talks", json={
+            "members": [self.boss.id, lead.id], "title": "Разбор по стволу 3"})
+        self.assertEqual(200, group.status_code, group.text)
+        # И обе беседы у него на месте.
+        mine = self.client.get("/api/talks").json()["items"]
+        self.assertEqual(2, len(mine))
+        self.assertIn("Разбор по стволу 3", [item["title"] for item in mine])
+
     def test_a_group_talk_holds_everyone(self):
         lead = self.repos.users.by_login("gruppa")
         self.login("nachalnik")
@@ -4072,6 +4091,7 @@ class InterfaceCopyTests(unittest.TestCase):
         static = ROOT / "src" / "reportgen" / "web" / "static"
         self.js = (static / "app.js").read_text(encoding="utf-8")
         self.html = (static / "index.html").read_text(encoding="utf-8")
+        self.css = (static / "styles.css").read_text(encoding="utf-8")
         self.login = (static / "login.html").read_text(encoding="utf-8")
 
     def test_editing_a_signed_report_warns_before_removing_the_signature(self):
@@ -4160,12 +4180,12 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("items.filter((file) => file.stage === 'outgoing')", self.js)
 
     def test_messages_are_a_section_of_their_own(self):
-        self.assertIn("async function renderTalks(view, talkId)", self.js)
+        self.assertIn("async function renderTalks(view, talkId, writeTo)", self.js)
         self.assertIn("title: 'Сообщения'", self.js)
         self.assertIn("/api/talks", self.js)
         # Личная и на несколько человек — обе.
-        self.assertIn("получится личная переписка", self.js)
-        self.assertIn("общая беседа", self.js)
+        self.assertIn("Личная переписка с одним человеком", self.js)
+        self.assertIn("Беседа на ", self.js)
 
     def test_the_talk_poll_is_stopped_when_the_screen_is_left(self):
         """Опрос, который никто не гасит, живёт до перезагрузки страницы.
@@ -4177,6 +4197,107 @@ class InterfaceCopyTests(unittest.TestCase):
         start = self.js.index("async function renderRoute(route)")
         head = self.js[start:start + 600]
         self.assertIn("stopTalkPoll();", head)
+
+    def test_notifications_live_in_the_corner_and_not_in_the_header(self):
+        """Значок в шапке соперничал за внимание с названием раздела.
+
+        Нужен он ровно между делами, а смотрят между делами в правый нижний
+        угол. Заодно исчезло модальное окно: список уведомлений — не то, ради
+        чего затемняют экран.
+        """
+        self.assertIn('id="dock"', self.html)
+        self.assertIn('id="notice-panel"', self.html)
+        # Колокольчик ушёл из шапки: в ней его больше нет.
+        head = self.html[self.html.index('<header class="topbar">'):
+                         self.html.index('</header>')]
+        self.assertNotIn('id="bell"', head)
+        self.assertIn('id="bell"', self.html)
+        self.assertIn("function toggleNotices(", self.js)
+        self.assertNotIn("function openNotices(", self.js)
+
+    def test_the_notice_panel_closes_the_way_popups_do(self):
+        # Щелчком мимо и Escape — так ведёт себя всё всплывающее, и рука
+        # это уже знает.
+        self.assertIn("function outsideNotices(", self.js)
+        self.assertIn("function escNotices(", self.js)
+        self.assertIn("event.key === 'Escape'", self.js)
+
+    def test_an_arriving_notice_shows_itself_without_stopping_the_work(self):
+        # Перебивать работу окном ради «письмо передано вам» нельзя, а
+        # промолчать — значит заставить открывать список наугад.
+        self.assertIn("function liveNotice(item)", self.js)
+        self.assertIn("item.loud ? 15000 : 8000", self.js)
+
+    def test_the_corner_is_freed_where_the_screen_has_its_own_button(self):
+        """Иначе «Отправить» в переписке оказывается под колокольчиком.
+
+        Кнопка отправки стоит ровно в том углу, который занял значок
+        уведомлений, и нажать её было нельзя.
+        """
+        self.assertIn("body.has-dock .talk-send,\nbody.has-dock .composer {\n"
+                      "    padding-right: 70px;", self.css)
+        self.assertIn("body.has-dock #toasts {\n    bottom: 78px;", self.css)
+
+    def test_one_line_finds_a_letter_a_person_and_a_talk(self):
+        """Путь «Письма → набор → поиск → строка» человек проходит по
+        двадцать раз в день. Ctrl+K — общепринятое сочетание."""
+        self.assertIn("function openPalette()", self.js)
+        self.assertIn("async function paletteSearch(text)", self.js)
+        self.assertIn("event.key.toLowerCase() === 'k'", self.js)
+        self.assertIn('id="cmd-open"', self.html)
+        # Сочетание, о котором никто не знает, всё равно что его нет.
+        self.assertIn('<kbd>Ctrl K</kbd>', self.html)
+        # Ищем теми же маршрутами, что и разделы: своего второго поиска нет.
+        self.assertIn("'/api/cases?q=' + encodeURIComponent(query)", self.js)
+
+    def test_the_palette_does_not_ask_the_server_on_every_letter(self):
+        # Набирающий «ВХ-2026-0423» иначе шлёт двенадцать запросов подряд.
+        self.assertIn("const CMD_DELAY_MS", self.js)
+        self.assertIn("cmd.timer = setTimeout(", self.js)
+        # И ответ на устаревший запрос не должен перебить свежий.
+        self.assertIn("if (mine !== cmd.seq", self.js)
+
+    def test_the_palette_is_walked_by_the_keyboard(self):
+        self.assertIn("if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {",
+                      self.js)
+        self.assertIn("if (event.key === 'Enter' && cmd.items[cmd.cursor])", self.js)
+        self.assertIn("scrollIntoView", self.js)
+
+    def test_a_person_found_in_the_palette_is_opened_by_writing_to_them(self):
+        # Человека ищут, чтобы ему написать: личный состав и так рядом.
+        self.assertIn("'#/talks?to=' + person.id", self.js)
+        self.assertIn("async function openTalkWith(userId)", self.js)
+
+    def test_choosing_whom_to_write_to_has_a_search(self):
+        # Отдел на десяток человек ищут глазами, на полсотни — уже нет.
+        self.assertIn("'Фамилия или логин'", self.js)
+        self.assertIn("function paintPeople()", self.js)
+        self.assertIn("function paintChosen()", self.js)
+        # Двое — личная переписка, больше — беседа, и ей нужно имя.
+        self.assertIn("titleField.hidden = !many", self.js)
+
+    def test_loading_keeps_the_shape_of_the_screen(self):
+        """Кружок говорит «жди», но не говорит, чего именно.
+
+        Экран прыгает, когда данные приходят: заглушка держит ту же
+        разметку, что и готовый экран.
+        """
+        self.assertIn("function skeleton(rows, kind)", self.js)
+        self.assertIn("skeleton(6, 'page')", self.js)
+        self.assertIn(".sk-line", self.css)
+
+    def test_movement_is_dropped_for_those_who_asked(self):
+        # Кому движение мешает — тому его не показываем.
+        self.assertIn("@media (prefers-reduced-motion: reduce)", self.css)
+
+    def test_time_is_written_the_way_it_is_spoken(self):
+        # «Сегодня 18:45» человек читает мгновенно, «01.09.2026 18:45» —
+        # сверяя с календарём в голове.
+        self.assertIn("function fmtWhen(value)", self.js)
+        self.assertIn("return 'сегодня ' + clock", self.js)
+        self.assertIn("return 'вчера ' + clock", self.js)
+        # Полная дата остаётся подсказкой при наведении.
+        self.assertIn("title: fmtDateTime(item.created_at)", self.js)
 
     def test_form_fields_hold_the_same_limits_as_the_server(self):
         """Поле не должно принимать то, что сервер потом отвергнет.

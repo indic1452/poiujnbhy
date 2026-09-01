@@ -272,6 +272,7 @@
         clip: 'M11.5 6.5 6.8 11.2a2.3 2.3 0 0 1-3.3-3.3l5.2-5.2a1.6 1.6 0 0 1 2.3 2.3l-5.2 5.2a.8.8 0 0 1-1.2-1.2l4.7-4.7',
         check: 'M3 8.5 6.5 12 13 4.5',
         close: 'M4 4l8 8M12 4l-8 8',
+        search: 'M11.2 11.2 14 14M7.2 3a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4z',
     };
 
     function iconGlyph(name) {
@@ -285,6 +286,20 @@
         svg.setAttribute('aria-hidden', 'true');
         svg.innerHTML = '<path d="' + (GLYPHS[name] || '') + '"/>';
         return svg;
+    }
+
+    /* Заглушка на время загрузки. Крутящийся кружок говорит «жди», но не
+       говорит, чего именно, и экран прыгает, когда данные приходят.
+       Серые полосы держат ту же разметку, что и готовый экран: глаз уже
+       знает, где будет таблица, и не ищет её заново. */
+    function skeleton(rows, kind) {
+        const lines = [];
+        for (let n = 0; n < (rows || 5); n += 1) {
+            lines.push(h('div', { class: 'sk-line' }));
+        }
+        return h('div', { class: 'sk' + (kind ? ' sk--' + kind : '') },
+            kind === 'page' ? h('div', { class: 'sk-line sk-line--head' }) : null,
+            lines);
     }
 
     function fmtNumber(value, digits) {
@@ -967,7 +982,8 @@
         'user.approved': '✓',
     };
 
-    const notices = { items: [], unseen: 0, messages: 0, timer: null, seenLoud: 0 };
+    const notices = { items: [], unseen: 0, messages: 0, timer: null,
+                      seenLoud: 0, filter: 'all' };
 
     /** Короткий сигнал. Ни файла, ни библиотеки: два тона встроенным синтезом. */
     /* Звук уведомления. Браузер не даёт странице звучать, пока человек её не
@@ -1019,6 +1035,46 @@
         }
     }
 
+    /* Когда именно. «Сегодня 18:45» человек читает мгновенно, а
+       «01.09.2026 18:45» приходится сверять с календарём в голове. Полная
+       дата остаётся подсказкой при наведении. */
+    function fmtWhen(value) {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return fmtDateTime(value);
+        const pad = (n) => String(n).padStart(2, '0');
+        const clock = pad(date.getHours()) + ':' + pad(date.getMinutes());
+        const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const days = Math.round((today - day) / 86400000);
+        if (days === 0) return 'сегодня ' + clock;
+        if (days === 1) return 'вчера ' + clock;
+        if (days > 1 && days < 7) return days + ' дн. назад';
+        return fmtDateTime(value);
+    }
+
+    /** Только часы и минуты: у реплики в переписке дата уже сказана выше. */
+    function clockOf(value) {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return '';
+        const pad = (n) => String(n).padStart(2, '0');
+        return pad(date.getHours()) + ':' + pad(date.getMinutes());
+    }
+
+    /** Заголовок дня для списка уведомлений. */
+    function whenGroup(value) {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return 'Ранее';
+        const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const days = Math.round((today - day) / 86400000);
+        if (days <= 0) return 'Сегодня';
+        if (days === 1) return 'Вчера';
+        if (days < 7) return 'На этой неделе';
+        return 'Ранее';
+    }
+
     async function pollNotices(loud) {
         if (!state.user) return;
         let data;
@@ -1028,104 +1084,426 @@
             return;                     // сеть моргнула — спросим через двадцать секунд
         }
         const fresh = (data.items || []).filter((item) => !item.seen && item.loud);
+        const before = new Set(notices.items.map((item) => item.id));
         notices.items = data.items || [];
         notices.unseen = data.unseen || 0;
         notices.messages = data.messages || 0;
         paintBell();
+        if (!$('#notice-panel').hidden) paintNotices();
 
-        // Звук и всплывающее — только на новое громкое и только если это не
-        // первая загрузка страницы: заходить утром под звонок недельной
-        // давности человеку незачем.
-        const newest = fresh.length ? fresh[0].id : 0;
-        if (loud && newest && newest > notices.seenLoud) {
-            playAlert();
-            toast(fresh[0].title, 'info', 8000);
+        // Звук и всплывающее — только на новое и только если это не первая
+        // загрузка страницы: заходить утром под звонок недельной давности
+        // человеку незачем.
+        if (!loud) {
+            notices.seenLoud = fresh.length ? fresh[0].id : notices.seenLoud;
+            return;
         }
+        const arrived = notices.items.filter(
+            (item) => !item.seen && !before.has(item.id));
+        arrived.slice(0, 3).reverse().forEach((item) => liveNotice(item));
+        const newest = fresh.length ? fresh[0].id : 0;
+        if (newest && newest > notices.seenLoud) playAlert();
         if (newest > notices.seenLoud) notices.seenLoud = newest;
     }
 
+    /* Карточка пришедшего уведомления. Всплывает над колокольчиком и уходит
+       сама: перебивать работу окном ради «письмо передано вам» нельзя, а
+       промолчать — значит заставить человека открывать список наугад. */
+    function liveNotice(item) {
+        const box = $('#toasts');
+        if (!box) return;
+        const card = h('div', {
+            class: 'live-notice' + (item.loud ? ' is-loud' : ''),
+            onclick: () => {
+                if (!item.link) return;
+                api.post('/api/notifications/read', { id: item.id }).catch(() => {});
+                card.remove();
+                navigate(item.link);
+                pollNotices(false);
+            },
+        },
+            h('span', { class: 'notice-mark kind-' + noticeTone(item) },
+                NOTICE_ICON[item.kind] || '•'),
+            h('div', { class: 'live-notice-body' },
+                h('b', {}, item.title),
+                item.body ? h('div', { class: 'small' }, item.body) : null,
+                item.link ? h('div', { class: 'small faint' }, 'Открыть') : null),
+            h('button', {
+                class: 'close', title: 'Убрать',
+                onclick: (event) => { event.stopPropagation(); card.remove(); },
+            }, '×'));
+        box.appendChild(card);
+        // Громкое держим дольше: возврат отчёта и вызов в кабинет человек
+        // должен успеть прочитать, даже если отвернулся к бумагам.
+        setTimeout(() => card.remove(), item.loud ? 15000 : 8000);
+    }
+
+    /** Каким цветом уведомление: тревожное, доброе или обычное. */
+    function noticeTone(item) {
+        if (item.kind === 'call' || item.kind === 'report.rework') return 'alarm';
+        if (item.kind === 'report.approved' || item.kind === 'case.sent'
+            || item.kind === 'user.approved') return 'good';
+        return 'plain';
+    }
+
     function paintBell() {
+        const dock = $('#dock');
         const bell = $('#bell');
         const count = $('#bell-count');
-        if (!bell || !count) return;
-        bell.hidden = !state.user;
+        if (!dock || !bell || !count) return;
+        dock.hidden = !state.user;
+        document.body.classList.toggle('has-dock', !!state.user);
         const total = (notices.unseen || 0) + (notices.messages || 0);
         count.hidden = !total;
         count.textContent = total > 99 ? '99+' : String(total);
-        bell.classList.toggle('has-loud',
-            notices.items.some((item) => !item.seen && item.loud));
+        const loud = notices.items.some((item) => !item.seen && item.loud);
+        bell.classList.toggle('has-loud', loud);
+        bell.classList.toggle('has-new', !!total);
         bell.title = total ? 'Уведомлений: ' + total : 'Уведомлений нет';
     }
 
-    function openNotices() {
-        const list = h('div', { class: 'notice-list' });
-
-        function draw() {
-            clear(list);
-            if (!notices.items.length) {
-                list.appendChild(h('div', { class: 'muted' }, 'Уведомлений нет.'));
-                return;
-            }
-            notices.items.forEach((item) => list.appendChild(h('div', {
-                class: 'notice' + (item.seen ? '' : ' is-new')
-                    + (item.loud ? ' is-loud' : ''),
-            },
-                h('span', { class: 'notice-mark' }, NOTICE_ICON[item.kind] || '•'),
-                h('div', { class: 'notice-body' },
-                    h('b', {}, item.title),
-                    item.body ? h('div', { class: 'small' }, item.body) : null,
-                    h('div', { class: 'small faint' },
-                        fmtDateTime(item.created_at)
-                        + (item.from_name ? ' · ' + item.from_name : ''))),
-                item.link ? h('button', {
-                    class: 'btn btn--sm',
-                    onclick: async () => {
-                        await api.post('/api/notifications/read', { id: item.id });
-                        dialog.close();
-                        navigate(item.link);
-                        pollNotices(false);
-                    },
-                }, 'Открыть') : null)));
+    function toggleNotices(open) {
+        const panel = $('#notice-panel');
+        const bell = $('#bell');
+        if (!panel) return;
+        const show = open === undefined ? panel.hidden : open;
+        panel.hidden = !show;
+        if (bell) bell.setAttribute('aria-expanded', show ? 'true' : 'false');
+        if (show) {
+            paintNotices();
+            // Открытый список сам себя закрывает щелчком мимо и Escape —
+            // так ведёт себя всё всплывающее, и рука это уже знает.
+            setTimeout(() => document.addEventListener('pointerdown', outsideNotices), 0);
+            document.addEventListener('keydown', escNotices);
+        } else {
+            document.removeEventListener('pointerdown', outsideNotices);
+            document.removeEventListener('keydown', escNotices);
         }
-        draw();
+    }
 
-        const dialog = openModal({
-            title: 'Уведомления',
-            body: [list],
-            footer: [
+    function outsideNotices(event) {
+        const dock = $('#dock');
+        if (dock && !dock.contains(event.target)) toggleNotices(false);
+    }
+
+    function escNotices(event) {
+        if (event.key === 'Escape') toggleNotices(false);
+    }
+
+    function paintNotices() {
+        const panel = $('#notice-panel');
+        if (!panel) return;
+        const shown = notices.filter === 'new'
+            ? notices.items.filter((item) => !item.seen)
+            : notices.items;
+
+        const list = h('div', { class: 'notice-list' });
+        if (!shown.length) {
+            list.appendChild(h('div', { class: 'notice-empty' },
+                h('div', { class: 'notice-empty-mark' }, '✓'),
+                h('b', {}, notices.filter === 'new'
+                    ? 'Всё прочитано' : 'Уведомлений нет'),
+                h('div', { class: 'small muted' },
+                    'Сюда придёт возврат отчёта, вызов в кабинет, '
+                    + 'сообщение и примечание к письму.')));
+        } else {
+            let group = '';
+            shown.forEach((item) => {
+                const title = whenGroup(item.created_at);
+                if (title !== group) {
+                    group = title;
+                    list.appendChild(h('div', { class: 'notice-day' }, title));
+                }
+                list.appendChild(noticeRow(item));
+            });
+        }
+
+        clear(panel);
+        append(panel, [
+            h('div', { class: 'notice-head' },
+                h('b', { class: 'grow' }, 'Уведомления'),
                 h('button', {
-                    class: 'btn', onclick: async () => {
+                    class: 'btn btn--icon btn--sm', title: 'Отметить все прочитанными',
+                    disabled: !notices.unseen,
+                    onclick: async () => {
+                        await api.post('/api/notifications/read', {});
+                        await pollNotices(false);
+                        paintNotices();
+                    },
+                }, iconGlyph('check')),
+                h('button', {
+                    class: 'btn btn--icon btn--sm btn--danger-hover', title: 'Очистить список',
+                    disabled: !notices.items.length,
+                    onclick: async () => {
                         await api.del('/api/notifications');
                         notices.items = [];
                         notices.unseen = 0;
                         paintBell();
-                        draw();
+                        paintNotices();
                     },
-                }, 'Очистить'),
-                h('span', { class: 'spacer' }),
+                }, iconGlyph('trash')),
                 h('button', {
-                    class: 'btn btn--primary', onclick: async () => {
-                        await api.post('/api/notifications/read', {});
-                        await pollNotices(false);
-                        draw();
-                    },
-                }, 'Всё прочитано'),
-                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Закрыть'),
-            ],
-        });
+                    class: 'btn btn--icon btn--sm', title: 'Закрыть',
+                    onclick: () => toggleNotices(false),
+                }, '×')),
+            h('div', { class: 'notice-tabs' },
+                ['all', 'new'].map((key) => h('button', {
+                    class: 'chip' + (notices.filter === key ? ' is-active' : ''),
+                    onclick: () => { notices.filter = key; paintNotices(); },
+                }, key === 'all' ? 'Все' : 'Непрочитанные'
+                    + (notices.unseen ? ' · ' + notices.unseen : '')))),
+            list,
+        ]);
+    }
+
+    function noticeRow(item) {
+        const open = async () => {
+            if (!item.seen) {
+                await api.post('/api/notifications/read', { id: item.id });
+            }
+            if (item.link) {
+                toggleNotices(false);
+                navigate(item.link);
+            }
+            await pollNotices(false);
+            paintNotices();
+        };
+        return h('button', {
+            class: 'notice kind-' + noticeTone(item) + (item.seen ? '' : ' is-new'),
+            title: fmtDateTime(item.created_at)
+                + (item.link ? ' · щёлкните, чтобы открыть' : ''),
+            onclick: open,
+        },
+            h('span', { class: 'notice-mark kind-' + noticeTone(item) },
+                NOTICE_ICON[item.kind] || '•'),
+            h('div', { class: 'notice-body' },
+                h('b', {}, item.title),
+                item.body ? h('div', { class: 'small' }, item.body) : null,
+                h('div', { class: 'small faint' },
+                    fmtWhen(item.created_at)
+                    + (item.from_name ? ' · ' + item.from_name : ''))),
+            item.seen ? null : h('span', { class: 'notice-dot', title: 'Не прочитано' }));
     }
 
     function startNotices() {
         const bell = $('#bell');
         if (bell && !bell.dataset.ready) {
             bell.dataset.ready = '1';
-            bell.onclick = () => openNotices();
+            bell.onclick = () => toggleNotices();
         }
         if (notices.timer) return;
         armAudio();
         // Первый опрос — молча: человек только вошёл, звонить ему нечем.
         pollNotices(false);
         notices.timer = setInterval(() => pollNotices(true), NOTICE_POLL_MS);
+    }
+
+    /* ------------------------------------------------- поиск по системе ---
+
+       Одна строка вместо блуждания по разделам: письмо по номеру, человек по
+       фамилии, беседа, раздел. В отделе десяток людей и сотни писем, и путь
+       «Письма → набор → поиск → строка» человек проходит по двадцать раз в
+       день. Ctrl+K — общепринятое сочетание: тот, кто привык к нему в другой
+       программе, попробует его и здесь.
+
+       Ищем на сервере теми же маршрутами, что и разделы: своего второго
+       поиска в браузере нет, иначе палитра находила бы не то же, что
+       «Письма». Запрос отправляем не на каждую букву, а с задержкой —
+       набирающий «ВХ-2026-0423» иначе шлёт двенадцать запросов подряд. */
+
+    const CMD_DELAY_MS = 180;
+    const cmd = { open: false, query: '', items: [], cursor: 0, seq: 0, timer: null };
+
+    function cmdSections() {
+        return SECTIONS
+            .filter((section) => !section.adminOnly || isAdmin())
+            .map((section) => ({
+                kind: 'Раздел', title: section.title, note: '',
+                href: section.href, icon: section.icon,
+            }));
+    }
+
+    function openPalette() {
+        if (cmd.open) return;
+        cmd.open = true;
+        cmd.query = '';
+        cmd.items = cmdSections();
+        cmd.cursor = 0;
+
+        const input = h('input', {
+            type: 'text', class: 'cmd-input', autocomplete: 'off', spellcheck: false,
+            placeholder: 'Письмо, человек, беседа, раздел…',
+            oninput: () => schedule(input.value),
+        });
+        const list = h('div', { class: 'cmd-list' });
+        const hint = h('div', { class: 'cmd-hint' },
+            h('span', {}, h('kbd', {}, '↑'), h('kbd', {}, '↓'), ' выбрать'),
+            h('span', {}, h('kbd', {}, 'Enter'), ' открыть'),
+            h('span', {}, h('kbd', {}, 'Esc'), ' закрыть'));
+
+        const box = h('div', { class: 'cmd' },
+            h('div', { class: 'cmd-field' },
+                h('span', { class: 'cmd-mark' }, iconGlyph('search')),
+                input),
+            list, hint);
+        const backdrop = h('div', { class: 'cmd-backdrop' }, box);
+
+        function close() {
+            cmd.open = false;
+            if (cmd.timer) clearTimeout(cmd.timer);
+            document.removeEventListener('keydown', onKey, true);
+            backdrop.remove();
+        }
+
+        function schedule(text) {
+            cmd.query = text;
+            if (cmd.timer) clearTimeout(cmd.timer);
+            cmd.timer = setTimeout(() => search(text), CMD_DELAY_MS);
+        }
+
+        async function search(text) {
+            const mine = ++cmd.seq;
+            const found = await paletteSearch(text);
+            if (mine !== cmd.seq || !cmd.open) return;   // пришёл ответ на старый запрос
+            cmd.items = found;
+            cmd.cursor = 0;
+            paint();
+        }
+
+        function paint() {
+            clear(list);
+            if (!cmd.items.length) {
+                list.appendChild(h('div', { class: 'cmd-empty' },
+                    cmd.query ? 'Ничего не нашлось по «' + cmd.query + '»'
+                        : 'Наберите номер письма, фамилию или название раздела'));
+                return;
+            }
+            let group = '';
+            cmd.items.forEach((item, index) => {
+                if (item.kind !== group) {
+                    group = item.kind;
+                    list.appendChild(h('div', { class: 'cmd-group' }, group));
+                }
+                list.appendChild(h('button', {
+                    class: 'cmd-row' + (index === cmd.cursor ? ' is-active' : ''),
+                    dataset: { index: String(index) },
+                    onmousemove: () => {
+                        if (cmd.cursor === index) return;
+                        cmd.cursor = index;
+                        paint();
+                    },
+                    onclick: () => go(item),
+                },
+                    h('span', { class: 'cmd-icon' },
+                        item.icon ? icon(item.icon) : h('span', {}, item.glyph || '•')),
+                    h('span', { class: 'cmd-text' },
+                        h('b', {}, item.title),
+                        item.note ? h('span', { class: 'small muted' }, item.note) : null)));
+            });
+            const active = list.querySelector('.cmd-row.is-active');
+            if (active) active.scrollIntoView({ block: 'nearest' });
+        }
+
+        function go(item) {
+            close();
+            navigate(item.href);
+        }
+
+        function onKey(event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                close();
+                return;
+            }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (!cmd.items.length) return;
+                const step = event.key === 'ArrowDown' ? 1 : -1;
+                cmd.cursor = (cmd.cursor + step + cmd.items.length) % cmd.items.length;
+                paint();
+                return;
+            }
+            if (event.key === 'Enter' && cmd.items[cmd.cursor]) {
+                event.preventDefault();
+                go(cmd.items[cmd.cursor]);
+            }
+        }
+
+        backdrop.addEventListener('mousedown', (event) => {
+            if (event.target === backdrop) close();
+        });
+        document.addEventListener('keydown', onKey, true);
+        $('#modal-root').appendChild(backdrop);
+        paint();
+        input.focus();
+    }
+
+    /** Что нашлось по строке: разделы, письма, люди, беседы. */
+    async function paletteSearch(text) {
+        const query = String(text || '').trim();
+        const words = query.toLowerCase();
+        const sections = cmdSections().filter(
+            (item) => !words || item.title.toLowerCase().indexOf(words) !== -1);
+        if (!query) return sections;
+
+        const out = sections.slice();
+        // Письма и людей спрашиваем разом: один медленный ответ не должен
+        // задерживать другой.
+        const [cases, people, talks] = await Promise.all([
+            api.get('/api/cases?q=' + encodeURIComponent(query) + '&limit=6')
+                .catch(() => ({ items: [] })),
+            api.get('/api/board').catch(() => ({ people: [] })),
+            api.get('/api/talks').catch(() => ({ items: [] })),
+        ]);
+
+        (cases.items || []).slice(0, 6).forEach((item) => out.push({
+            kind: 'Письма', glyph: '✉',
+            title: (item.incoming_no || item.case_id) + ' · ' + (item.title || 'без описания'),
+            note: [item.assignee_name, CASE_STATUS[item.status] || item.status]
+                .filter(Boolean).join(' · '),
+            href: '#/case/' + item.id,
+        }));
+
+        (people.people || []).filter((person) =>
+            (person.full_name || '').toLowerCase().indexOf(words) !== -1
+            || (person.login || '').toLowerCase().indexOf(words) !== -1
+        ).slice(0, 5).forEach((person) => out.push({
+            kind: 'Сотрудники', glyph: '☺',
+            title: person.full_name || person.login,
+            note: [person.role_title, person.team].filter(Boolean).join(' · '),
+            // Человека открываем перепиской: это то, зачем его ищут чаще
+            // всего. Личный состав и так рядом, в своём разделе.
+            href: '#/talks?to=' + person.id,
+        }));
+
+        (talks.items || []).filter((item) =>
+            talkTitle(item).toLowerCase().indexOf(words) !== -1
+        ).slice(0, 4).forEach((item) => out.push({
+            kind: 'Беседы', glyph: '✎',
+            title: talkTitle(item),
+            note: item.last_text || '',
+            href: '#/talks/' + item.id,
+        }));
+
+        return out;
+    }
+
+    function armPalette() {
+        const button = $('#cmd-open');
+        if (button && !button.dataset.ready) {
+            button.dataset.ready = '1';
+            button.hidden = false;
+            button.onclick = () => openPalette();
+        }
+        if (document.body.dataset.palette) return;
+        document.body.dataset.palette = '1';
+        document.addEventListener('keydown', (event) => {
+            if (!state.user) return;
+            const combo = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k';
+            if (!combo) return;
+            event.preventDefault();
+            openPalette();
+        });
     }
 
     function renderChrome() {
@@ -1170,6 +1548,7 @@
         wakeEmblem();
         startNotices();
         paintBell();
+        armPalette();
 
         const chip = $('#user-chip');
         const logout = $('#logout-btn');
@@ -1253,11 +1632,19 @@
     let restoringHash = false;
 
     function parseHash(hash) {
-        const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
+        // Хвост «?to=5» отрезаем до разбора пути: он не часть адреса раздела,
+        // а просьба открыть в нём что-то конкретное.
+        const raw = String(hash || '').replace(/^#\/?/, '');
+        const cut = raw.indexOf('?');
+        const query = cut === -1 ? '' : raw.slice(cut + 1);
+        const parts = (cut === -1 ? raw : raw.slice(0, cut)).split('/').filter(Boolean);
+        const ask = (name) => new URLSearchParams(query).get(name) || '';
         if (!parts.length) return { name: 'board', id: null };
         if (parts[0] === 'case' && parts[1]) return { name: 'case', id: parts[1] };
         if (parts[0] === 'chat') return { name: 'chat', id: parts[1] ? decodeURIComponent(parts[1]) : null };
-        if (parts[0] === 'talks') return { name: 'talks', id: parts[1] ? parts[1] : null };
+        if (parts[0] === 'talks') {
+            return { name: 'talks', id: parts[1] ? parts[1] : null, to: ask('to') };
+        }
         if (parts[0] === 'library' && parts.length > 1) {
             // Идентификатор документа — путь вида «standards/obw-method».
             return { name: 'library', id: parts.slice(1).map(decodeURIComponent).join('/') };
@@ -1316,7 +1703,7 @@
         setActiveNav(route.name);
         const view = $('#view');
         clear(view);
-        view.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' }), 'Загрузка…'));
+        view.appendChild(h('div', { class: 'page' }, skeleton(6, 'page')));
         try {
             if (route.name === 'board') await renderBoard(view);
             else if (route.name === 'cases') await renderCases(view);
@@ -1325,7 +1712,7 @@
             else if (route.name === 'stats') await renderStats(view);
             else if (route.name === 'roster') await renderRoster(view);
             else if (route.name === 'chat') await renderChat(view, route.id);
-            else if (route.name === 'talks') await renderTalks(view, route.id);
+            else if (route.name === 'talks') await renderTalks(view, route.id, route.to);
             else if (route.name === 'me') await renderMe(view);
             else if (route.name === 'users') await renderUsers(view);
         } catch (error) {
@@ -1593,7 +1980,7 @@
     async function loadCases() {
             renderTabs();
             clear(tableBox);
-            tableBox.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' })));
+            tableBox.appendChild(skeleton(8));
             const chosen = CASE_VIEWS.filter((item) => item.id === casesState.view)[0] || CASE_VIEWS[0];
             const params = ['limit=' + casesState.limit, 'offset=' + casesState.offset];
             if (chosen.params.status) params.push('status=' + chosen.params.status);
@@ -2748,7 +3135,9 @@
             body.appendChild(h('div', { class: 'note-item' },
                 h('div', { class: 'note-head' },
                     h('b', {}, note.author || 'кто-то'),
-                    h('span', { class: 'small faint grow' }, fmtDateTime(note.created_at)),
+                    h('span', {
+                        class: 'small faint grow', title: fmtDateTime(note.created_at),
+                    }, fmtWhen(note.created_at)),
                     // Своё убирает автор, чужое — начальство.
                     (note.user_id === me.id || isAdmin()) ? h('button', {
                         class: 'btn btn--icon btn--sm btn--danger-hover',
@@ -5222,7 +5611,7 @@
 
         async function loadLibrary() {
             clear(tableBox);
-            tableBox.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' }), 'Загрузка…'));
+            tableBox.appendChild(skeleton(7));
             try {
                 const query = [];
                 if (libState.docType) query.push('doc_type=' + encodeURIComponent(libState.docType));
@@ -7828,7 +8217,7 @@
         return others.map((member) => member.full_name).join(', ');
     }
 
-    async function renderTalks(view, talkId) {
+    async function renderTalks(view, talkId, writeTo) {
         clear(view);
         const listBox = h('div', { class: 'talk-list' });
         const roomBox = h('div', { class: 'talk-room' });
@@ -7847,6 +8236,10 @@
             h('div', { class: 'talks' }, listBox, roomBox)));
 
         await loadTalks();
+        // Пришли из поиска «написать Жукову» — открываем беседу с ним, заводя
+        // её, если её ещё нет. Человека ищут, чтобы ему написать, а не чтобы
+        // посмотреть на список бесед.
+        if (writeTo) await openTalkWith(Number(writeTo));
         stopTalkPoll();
         // Опрос заводим после первой загрузки, чтобы два запроса не пошли
         // одновременно, и снимаем при уходе с экрана — см. renderRoute.
@@ -7854,6 +8247,17 @@
             if (state.route && state.route.name === 'talks') loadTalks(true);
             else stopTalkPoll();
         }, TALK_POLL_MS);
+    }
+
+    /** Открыть личную беседу с человеком, заведя её при необходимости. */
+    async function openTalkWith(userId) {
+        if (!userId) return;
+        try {
+            const data = await api.post('/api/talks', { members: [userId] });
+            location.hash = '#/talks/' + data.talk_id;
+        } catch (error) {
+            toastError(error);
+        }
     }
 
     async function loadTalks(quiet) {
@@ -7895,7 +8299,9 @@
                     item.unread ? h('span', { class: 'badge badge--accent' },
                         String(item.unread)) : null),
                 h('div', { class: 'small muted talk-last' }, item.last_text || '—'),
-                h('div', { class: 'small faint' }, fmtDateTime(item.updated_at))));
+                h('div', {
+                    class: 'small faint', title: fmtDateTime(item.updated_at),
+                }, fmtWhen(item.updated_at))));
         });
     }
 
@@ -7928,12 +8334,28 @@
 
         const me = (state.user || {}).id;
         const messages = data.messages || [];
-        const flow = h('div', { class: 'talk-stream' }, messages.map((message) =>
-            h('div', { class: 'talk-msg' + (message.user_id === me ? ' talk-msg--mine' : '') },
-                h('div', { class: 'talk-msg-head' },
-                    h('b', {}, message.author || 'кто-то'),
-                    h('span', { class: 'small faint' }, fmtDateTime(message.created_at))),
-                h('div', { class: 'talk-msg-text' }, message.text || ''))));
+        // Подряд идущие реплики одного человека не повторяют его имя: в
+        // переписке из десяти строк «Никитин В. П.» десять раз — это шум.
+        let last = null;
+        const flow = h('div', { class: 'talk-stream' }, messages.map((message) => {
+            const mine = message.user_id === me;
+            const same = last === message.user_id;
+            last = message.user_id;
+            return h('div', {
+                class: 'talk-line' + (mine ? ' talk-line--mine' : '')
+                    + (same ? ' is-same' : ''),
+            },
+                mine ? null : h('span', { class: 'avatar avatar--sm' },
+                    same ? '' : initials(message.author)),
+                h('div', { class: 'talk-msg' + (mine ? ' talk-msg--mine' : '') },
+                    same ? null : h('div', { class: 'talk-msg-head' },
+                        h('b', {}, message.author || 'кто-то')),
+                    h('div', { class: 'talk-msg-text' }, message.text || ''),
+                    h('span', {
+                        class: 'talk-msg-when',
+                        title: fmtDateTime(message.created_at),
+                    }, clockOf(message.created_at))));
+        }));
         talks.nodes.stream = flow;
 
         const field = h('textarea', {
@@ -7978,7 +8400,9 @@
     }
 
     /* Кому писать. Список берём из сводки отдела: он доступен всем, в отличие
-       от раздела «Сотрудники», куда рядового инженера не пускают. */
+       от раздела «Сотрудники», куда рядового инженера не пускают. Завести
+       беседу может каждый — и личную, и общую: спрашивать на это разрешения
+       не у кого и незачем. */
     async function openNewTalk() {
         let people = [];
         try {
@@ -7995,31 +8419,86 @@
             return;
         }
 
-        const checks = people.map((person) => {
-            const box = h('input', { type: 'checkbox', value: String(person.id) });
-            return {
-                id: person.id,
-                box: box,
-                node: h('label', { class: 'check-row' }, box,
-                    h('span', {}, person.full_name,
-                        h('span', { class: 'small faint' }, ' · ' + person.role_title))),
-            };
-        });
+        const chosen = new Set();
+        const listBox = h('div', { class: 'check-list' });
+        const chosenBox = h('div', { class: 'pick-chosen' });
         const title = h('input', {
-            type: 'text', placeholder: 'если беседа не на двоих — как её назвать',
+            type: 'text', placeholder: 'например, «Разбор РРЛС-4»',
         });
+        const titleField = h('label', { class: 'field', hidden: true },
+            'Название беседы', title);
+        const kindNote = h('div', { class: 'small muted' });
+        // Отдел на десяток человек ищут глазами, на полсотни — уже нет.
+        // Поиск стоит всегда: привыкать к двум разным окнам не приходится.
+        const filter = h('input', {
+            type: 'text', class: 'input--quiet', placeholder: 'Фамилия или логин',
+            oninput: () => paintPeople(),
+        });
+
+        function paintChosen() {
+            clear(chosenBox);
+            const picked = people.filter((person) => chosen.has(person.id));
+            chosenBox.hidden = !picked.length;
+            picked.forEach((person) => chosenBox.appendChild(h('button', {
+                class: 'pick-tag', title: 'Убрать из беседы',
+                onclick: () => {
+                    chosen.delete(person.id);
+                    paintChosen();
+                    paintPeople();
+                },
+            }, person.full_name || person.login, h('span', {}, '×'))));
+            // Двое — личная переписка, больше — беседа, и ей нужно имя:
+            // «Никитин, Орлов, Титов» в списке через месяц ничего не скажет.
+            const many = picked.length > 1;
+            titleField.hidden = !many;
+            kindNote.textContent = !picked.length
+                ? 'Отметьте, кому писать.'
+                : (many
+                    ? 'Беседа на ' + (picked.length + 1) + ' человек — считая вас.'
+                    : 'Личная переписка с одним человеком. '
+                      + 'Если она уже есть, откроется прежняя, а не вторая.');
+        }
+
+        function paintPeople() {
+            const words = filter.value.trim().toLowerCase();
+            const found = people.filter((person) => !words
+                || (person.full_name || '').toLowerCase().indexOf(words) !== -1
+                || (person.login || '').toLowerCase().indexOf(words) !== -1);
+            clear(listBox);
+            if (!found.length) {
+                listBox.appendChild(h('div', { class: 'small faint pad' },
+                    'Никого не нашлось'));
+                return;
+            }
+            found.forEach((person) => listBox.appendChild(h('button', {
+                class: 'pick-row' + (chosen.has(person.id) ? ' is-picked' : ''),
+                onclick: () => {
+                    if (chosen.has(person.id)) chosen.delete(person.id);
+                    else chosen.add(person.id);
+                    paintChosen();
+                    paintPeople();
+                },
+            },
+                h('span', { class: 'avatar avatar--sm' }, initials(person.full_name)),
+                h('span', { class: 'pick-text' },
+                    h('b', {}, person.full_name || person.login),
+                    h('span', { class: 'small muted' },
+                        [person.role_title, person.team].filter(Boolean).join(' · '))),
+                h('span', { class: 'pick-mark' },
+                    chosen.has(person.id) ? iconGlyph('check') : null))));
+        }
+
         const submit = h('button', {
             class: 'btn btn--primary',
             onclick: async () => {
-                const chosen = checks.filter((item) => item.box.checked).map((item) => item.id);
-                if (!chosen.length) {
+                if (!chosen.size) {
                     toast('Выберите, кому писать', 'error');
                     return;
                 }
                 submit.disabled = true;
                 try {
                     const data = await api.post('/api/talks', {
-                        members: chosen, title: title.value.trim(),
+                        members: Array.from(chosen), title: title.value.trim(),
                     });
                     dialog.close();
                     location.hash = '#/talks/' + data.talk_id;
@@ -8030,23 +8509,26 @@
                     submit.disabled = false;
                 }
             },
-        }, 'Завести беседу');
+        }, 'Написать');
 
         const dialog = openModal({
             title: 'Кому написать',
             narrow: true,
             body: [
-                h('div', { class: 'small muted' },
-                    'Отметьте одного — получится личная переписка; '
-                    + 'нескольких — общая беседа.'),
-                h('div', { class: 'check-list' }, checks.map((item) => item.node)),
-                h('label', { class: 'field' }, 'Название беседы', title),
+                h('div', { class: 'field-search' }, filter),
+                chosenBox,
+                listBox,
+                kindNote,
+                titleField,
             ],
             footer: [
                 h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
                 submit,
             ],
         });
+        paintChosen();
+        paintPeople();
+        filter.focus();
     }
 
     async function renderMe(view) {
