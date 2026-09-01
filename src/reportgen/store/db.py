@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "9"
+SCHEMA_VERSION = "10"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -67,11 +67,28 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("users", "ext_no", "TEXT NOT NULL DEFAULT ''"),
     ("users", "room", "TEXT NOT NULL DEFAULT ''"),
     ("users", "email", "TEXT NOT NULL DEFAULT ''"),
+    # Одобрение заявки. Значение по умолчанию 1: все, кто уже заведён,
+    # остаются одобренными — иначе обновление системы заперло бы отдел.
+    ("users", "approved", "INTEGER NOT NULL DEFAULT 1"),
+    ("users", "approved_by", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+    ("users", "approved_at", "TEXT NOT NULL DEFAULT ''"),
     # Где человек в эти дни. Без места расход отвечает «дежурство», но не
     # отвечает «где», а начальнику нужно именно второе.
     ("absences", "place", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "line_type", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "tc_no", "TEXT NOT NULL DEFAULT ''"),
+    # Указания, по которым письмо отрабатывают, дата средства и число
+    # регистраций. Всё это в журнале отдела заполняют на входящем, и без
+    # них письмо приходится держать в голове или на бумаге рядом.
+    ("cases", "tc_date", "TEXT NOT NULL DEFAULT ''"),
+    ("cases", "order_no", "TEXT NOT NULL DEFAULT ''"),
+    ("cases", "order_date", "TEXT NOT NULL DEFAULT ''"),
+    ("cases", "registrations", "INTEGER NOT NULL DEFAULT 0"),
+    # Что написали при отправке ответа. Отдельно от примечания к письму:
+    # одно — про входящее, другое — про то, чем ответили.
+    ("cases", "outgoing_note", "TEXT NOT NULL DEFAULT ''"),
+    # Бумага пришла с письмом или ушла с ответом.
+    ("case_files", "stage", "TEXT NOT NULL DEFAULT 'incoming'"),
     ("cases", "outgoing_date", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "sent_by", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
 )
@@ -247,8 +264,9 @@ class Database:
             }
         except sqlite3.Error:
             return False
-        return {"chunks_fts", "cases_fts", "case_files",
-                "person_files"}.issubset(present)
+        return {"chunks_fts", "cases_fts", "case_files", "person_files",
+                "notifications", "talks", "talk_members",
+                "talk_messages", "case_notes"}.issubset(present)
 
     def _rename_domains(self) -> None:
         """Переименование направлений при смене справочника.
@@ -453,6 +471,12 @@ class Database:
             self.connection.execute("VACUUM")
 
     def counts(self) -> dict[str, int]:
-        tables = ("users", "documents", "chunks", "cases", "reports", "edit_pairs",
-                  "chats", "chat_messages", "chat_attachments", "absences", "audit")
+        # Всё, что копится от работы отдела. Проверка здоровья отвечает на
+        # вопрос «что в базе есть», и таблица, которой в этом списке нет,
+        # для неё как будто не существует.
+        tables = ("users", "documents", "chunks", "cases", "case_files",
+                  "case_notes", "reports", "edit_pairs",
+                  "chats", "chat_messages", "chat_attachments",
+                  "absences", "person_files", "notifications",
+                  "talks", "talk_messages", "audit")
         return {name: int(self.scalar(f"SELECT count(*) FROM {name}") or 0) for name in tables}

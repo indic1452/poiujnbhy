@@ -41,7 +41,8 @@ MAX_REVIEW_NOTE = 2000
 #: шапку документа. Предел один на всю систему — веб-слой и поля формы
 #: берут его отсюда, иначе форма примет то, что сервер потом отвергнет.
 CARD_LIMITS = {"title": 300, "incoming_no": 60, "outgoing_no": 60,
-               "tc_no": 60, "note": 2000}
+               "tc_no": 60, "order_no": 60, "note": 2000,
+               "outgoing_note": 2000}
 MAX_OUTGOING_NO = CARD_LIMITS["outgoing_no"]
 
 #: Предел обрезки цитаты в приложении к отчёту. Он обязан совпадать с тем,
@@ -332,6 +333,10 @@ class ReportService:
                 note=str(payload.get("note", "")).strip(),
                 line_type=str(payload.get("line_type", "")).strip(),
                 tc_no=str(payload.get("tc_no", "")).strip(),
+                tc_date=str(payload.get("tc_date", "")).strip(),
+                order_no=str(payload.get("order_no", "")).strip(),
+                order_date=str(payload.get("order_date", "")).strip(),
+                registrations=int(payload.get("registrations") or 0),
             )
         except sqlite3.IntegrityError as error:
             # Проверка «такое письмо уже есть» выше по коду ловит обычный
@@ -930,7 +935,7 @@ class ReportService:
     # -- отправка ответа ----------------------------------------------------
 
     def send_out(self, case: Case, outgoing_no: str, outgoing_date: str,
-                 user: User | None) -> Case:
+                 user: User | None, outgoing_note: str = "") -> Case:
         """Записать исходящий номер: ответ по письму ушёл адресату.
 
         Последний шаг порядка отдела. Отчёт проверен начальником — дальше
@@ -958,6 +963,7 @@ class ReportService:
 
         updated = self.repos.cases.update_card(
             case.id, outgoing_no=outgoing_no, outgoing_date=outgoing_date,
+            outgoing_note=str(outgoing_note or "").strip()[:CARD_LIMITS["note"]],
             sent_by=user.id if user else None, status="approved")
         self.repos.case_search.refresh(case.id)
         self.repos.audit.log(

@@ -1685,6 +1685,42 @@ input.is-bad {
     border-bottom-color: var(--accent);
 }
 
+/* Примечания к письму: поле ввода сверху, переписка ниже. Форма стоит над
+   списком, потому что открывают вкладку почти всегда чтобы написать. */
+.note-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.note-form textarea {
+    width: 100%;
+    resize: vertical;
+}
+
+.note-item {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: var(--panel);
+}
+
+.note-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.note-text {
+    margin-top: 4px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 .source-item,
 .issue-item {
     border: 1px solid var(--border);
@@ -2403,6 +2439,30 @@ body.login-page::after {
     background: #2a7cc6;
 }
 
+.login-note {
+    color: #d8ecd6;
+    background: rgba(28, 92, 52, .5);
+    border: 1px solid rgba(110, 200, 140, .55);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: var(--fs-sm);
+}
+
+/* «Подать заявку» — вторая по важности кнопка карточки: заметная, но не
+   спорящая с «Войти». */
+.login-alt {
+    margin-top: 12px;
+    width: 100%;
+    color: #b6c6d8;
+    background: transparent;
+    border-color: rgba(120, 160, 200, .35);
+}
+
+.login-alt:hover {
+    color: #f2f6fb;
+    border-color: #6aa9e0;
+}
+
 .login-error {
     color: #ffd9d4;
     background: rgba(140, 32, 24, .55);
@@ -2915,6 +2975,85 @@ table.md-table th {
     }
 }
 
+/* ------------------------------------------------------ уведомления ----- */
+
+/* Колокольчик в шапке. Значок остаётся на месте и когда уведомлений нет:
+   исчезающие элементы шапки сбивают руку — человек тянется туда, где вчера
+   была кнопка, и не находит её. */
+.bell {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.bell-count {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font: 600 10px/16px var(--font-ui);
+    text-align: center;
+}
+
+/* Есть громкое — возврат отчёта или вызов в кабинет. Красным, чтобы человек
+   не пролистал его глазами вместе с обычными. */
+.bell.has-loud .bell-count {
+    background: var(--danger);
+}
+
+.notice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+}
+
+.notice.is-new {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.notice.is-loud.is-new {
+    border-color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.notice-mark {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    font-size: 12px;
+}
+
+.notice-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    line-height: 1.35;
+}
+
+.notice-body b {
+    font-size: 13px;
+}
+
 /* -------------------------------------------------------- просмотр ------ */
 
 /* Просмотр приложенного файла прямо на экране. Половина вложений в отделе —
@@ -3330,6 +3469,177 @@ table.md-table th {
     max-width: 1120px;
 }
 
+/* ---------------------------------------------------- сообщения ---------
+
+   Экран переписки устроен как почта: слева беседы, справа выбранная. Обе
+   колонки прокручиваются сами, страница целиком — нет: иначе поле ввода
+   уезжает вниз, и до него приходится доскроллить. */
+
+.page--talks {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 22px;
+}
+
+.talks {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+    gap: 14px;
+}
+
+.talk-list {
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 4px;
+}
+
+.talk-list .pad {
+    padding: 12px;
+}
+
+.talk-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: left;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+    color: inherit;
+    cursor: pointer;
+}
+
+.talk-row:hover {
+    border-color: var(--accent);
+}
+
+.talk-row.is-active {
+    border-color: var(--accent);
+    background: var(--panel-2);
+}
+
+.talk-row-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.talk-last {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.talk-room {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+}
+
+.talk-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.talk-stream {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.talk-msg {
+    align-self: flex-start;
+    max-width: min(680px, 80%);
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+}
+
+/* Своё справа и другим цветом: в общей беседе иначе не разобрать, где чья
+   реплика, а перечитывают переписку обычно бегло. */
+.talk-msg--mine {
+    align-self: flex-end;
+    border-color: var(--accent);
+    background: var(--accent-soft, var(--panel-2));
+}
+
+.talk-msg-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.talk-msg-text {
+    margin-top: 2px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.talk-send {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+}
+
+.talk-send textarea {
+    flex: 1;
+    resize: vertical;
+}
+
+/* Список «кому писать»: отметки в столбик, чтобы фамилии читались подряд. */
+.check-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 320px;
+    overflow: auto;
+    margin: 8px 0;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+}
+
+.check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 6px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.check-row:hover {
+    background: var(--panel);
+}
+
+@media (max-width: 900px) {
+    .talks {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(120px, 200px) minmax(0, 1fr);
+    }
+}
+
 .form-note {
     margin-top: 10px;
     min-height: 1.2em;
@@ -3586,6 +3896,33 @@ table.grid tr.is-focus td {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--panel-2);
+}
+
+/* Заявки на доступ: строка «кто — кем ставим — куда — решение». Держим их
+   отдельным блоком наверху, чтобы заявку нельзя было не заметить. */
+.pending-row {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(150px, 200px) minmax(110px, 150px) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    margin-top: 10px;
+    border: 1px solid var(--warn);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+}
+
+.pending-who {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .pending-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 table.grid--users {

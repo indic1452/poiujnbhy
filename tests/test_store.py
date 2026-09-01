@@ -210,9 +210,11 @@ class DatabaseTests(StoreTestCase):
     def test_counts_on_empty_database(self):
         self.assertEqual(
             self.db.counts(),
-            {"users": 0, "documents": 0, "chunks": 0, "cases": 0, "reports": 0,
+            {"users": 0, "documents": 0, "chunks": 0, "cases": 0,
+             "case_files": 0, "case_notes": 0, "reports": 0,
              "edit_pairs": 0, "chats": 0, "chat_messages": 0,
-             "chat_attachments": 0, "absences": 0, "audit": 0},
+             "chat_attachments": 0, "absences": 0, "person_files": 0,
+             "notifications": 0, "talks": 0, "talk_messages": 0, "audit": 0},
         )
 
     def test_counts_reflect_inserted_rows(self):

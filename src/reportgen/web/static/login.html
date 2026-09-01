@@ -48,6 +48,36 @@
             </label>
             <button class="btn btn--primary" type="submit" id="submit">Войти</button>
         </form>
+
+        <!-- Заявка на доступ. Заводить каждого руками в отделе некому, поэтому
+             человек подаёт заявку сам, а доступ ей открывает создатель системы,
+             начальник отдела, его заместитель или начальник группы. Должность
+             в заявке не спрашиваем: её назначает тот, кто одобряет. -->
+        <form id="signup-form" autocomplete="off" hidden>
+            <div class="login-error" id="signup-error" hidden></div>
+            <div class="login-note" id="signup-done" hidden>
+                Заявка отправлена. Доступ откроет начальник отдела, его
+                заместитель или начальник группы — после этого входите под
+                своим логином.
+            </div>
+            <label class="field">Фамилия и инициалы
+                <input type="text" id="signup-name" name="full_name" placeholder="Жуков А. В."
+                    autocomplete="off" required>
+            </label>
+            <label class="field">Логин
+                <input type="text" id="signup-login" name="new_login" autocapitalize="off"
+                    spellcheck="false" autocomplete="off" required>
+            </label>
+            <label class="field">Пароль (не короче 8 знаков)
+                <input type="password" id="signup-password" name="new_password"
+                    autocomplete="new-password" minlength="8" required>
+            </label>
+            <button class="btn btn--primary" type="submit" id="signup-submit">Отправить заявку</button>
+        </form>
+
+        <button class="btn btn--ghost btn--sm login-alt" type="button" id="mode-toggle">
+            Нет доступа? Подать заявку
+        </button>
     </div>
     </div>
 
@@ -141,6 +171,87 @@
                 } finally {
                     submit.disabled = false;
                     submit.textContent = 'Войти';
+                }
+            });
+
+            // Переключение «вход ↔ заявка». Две формы на одной карточке: на
+            // изолированной машине лишних страниц лучше не заводить.
+            const signupForm = document.getElementById('signup-form');
+            const signupError = document.getElementById('signup-error');
+            const signupDone = document.getElementById('signup-done');
+            const signupName = document.getElementById('signup-name');
+            const signupLogin = document.getElementById('signup-login');
+            const signupPassword = document.getElementById('signup-password');
+            const signupSubmit = document.getElementById('signup-submit');
+            const modeToggle = document.getElementById('mode-toggle');
+
+            function showMode(signup) {
+                form.hidden = signup;
+                signupForm.hidden = !signup;
+                modeToggle.textContent = signup
+                    ? 'Уже есть доступ? Войти'
+                    : 'Нет доступа? Подать заявку';
+                hideError();
+                signupError.hidden = true;
+                (signup ? signupName : loginInput).focus();
+            }
+
+            modeToggle.addEventListener('click', function () {
+                showMode(signupForm.hidden);
+            });
+
+            signupForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                signupError.hidden = true;
+                signupDone.hidden = true;
+                const fullName = signupName.value.trim();
+                const login = signupLogin.value.trim();
+                const password = signupPassword.value;
+                if (!fullName || !login || !password) {
+                    signupError.textContent = 'заполните все поля';
+                    signupError.hidden = false;
+                    return;
+                }
+                if (password.length < 8) {
+                    signupError.textContent = 'пароль короче 8 знаков';
+                    signupError.hidden = false;
+                    return;
+                }
+                signupSubmit.disabled = true;
+                signupSubmit.textContent = 'Отправка…';
+                try {
+                    const response = await fetch('/api/auth/register', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            login: login,
+                            password: password,
+                            full_name: fullName,
+                        }),
+                    });
+                    let data = null;
+                    try {
+                        data = await response.json();
+                    } catch (parseError) {
+                        data = null;
+                    }
+                    if (!response.ok) {
+                        signupError.textContent = (data && data.error)
+                            || ('не удалось подать заявку (код ' + response.status + ')');
+                        signupError.hidden = false;
+                        return;
+                    }
+                    signupName.value = '';
+                    signupLogin.value = '';
+                    signupPassword.value = '';
+                    signupDone.hidden = false;
+                } catch (error) {
+                    signupError.textContent = 'сервер недоступен: проверьте, запущен ли reportgen';
+                    signupError.hidden = false;
+                } finally {
+                    signupSubmit.disabled = false;
+                    signupSubmit.textContent = 'Отправить заявку';
                 }
             });
 

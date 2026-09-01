@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import secrets
@@ -29,12 +30,15 @@ from ..store.models import (
     DOC_STATUS_TITLES,
     CASE_STATUS_TITLES,
     DOC_STATUSES,
+    FILE_STAGES,
+    FILE_STAGE_TITLES,
     LINE_FULL_TITLES,
     LINE_TITLES,
     LINE_TYPES,
     PERSON_FILE_KINDS,
     PERSON_FILE_SINGLE,
     PERSON_FILE_TITLES,
+    NOTICE_KINDS,
     PRESENT_KINDS,
     REVIEW_ROLES,
     ROLE_NOTES,
@@ -48,6 +52,8 @@ from ..store.models import (
 from .auth import (COOKIE_NAME, get_user, require_admin, require_editor,
                    require_reviewer, require_user)
 from .service import CARD_LIMITS, ServiceError
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
@@ -254,6 +260,15 @@ def login(request: Request, response: Response) -> Dict[str, Any]:
         repos.audit.log("auth.fail", object_type="user", object_id=login_name,
                         details={"client": client})
         raise ServiceError("неверный логин или пароль", 401)
+    # Заявка подана, но её ещё не признали. Говорим прямо: «неверный пароль»
+    # человеку, который ввёл верный, — это час поисков несуществующей ошибки.
+    # Отдел изолирован, и скрывать от своего сотрудника, что он в очереди,
+    # незачем.
+    if not user.approved:
+        throttle.success(key)
+        raise ServiceError(
+            "заявка на доступ ещё не одобрена — обратитесь к начальнику отдела "
+            "или его заместителю", 403)
 
     throttle.success(key)
     token = repos.sessions.create(
@@ -269,6 +284,53 @@ def login(request: Request, response: Response) -> Dict[str, Any]:
     )
     repos.audit.log("auth.login", user=user, object_type="user", object_id=user.login)
     return {"user": user.to_dict()}
+
+
+@router.post("/auth/register")
+def register(request: Request) -> Dict[str, Any]:
+    """Заявка на доступ. Заводит себя человек сам, одобряет начальство.
+
+    Заводить каждого руками — работа, которую в отделе делать некому, а
+    открытая регистрация без одобрения превращает систему в проходной двор.
+    Поэтому заявку подаёт сам человек, а доступ ей открывает создатель
+    системы, начальник отдела, его заместитель или начальник группы.
+
+    Должность заявке не выбирают: её назначает тот, кто одобряет. Иначе
+    любой пришедший записал бы себя начальником отдела.
+    """
+    settings = _settings(request)
+    if not settings.auth_enabled:
+        raise ServiceError("аутентификация отключена настройками", 400)
+    # Вход этот путь не требует — значит, его можно дёргать в цикле. Тем же
+    # ограничителем, что и вход: десяток заявок подряд с одного места — это
+    # не отдел устраивается на работу.
+    throttle = request.app.state.throttle
+    key = "register@" + (request.client.host if request.client else "?")
+    throttle.check(key)
+    repos = _repos(request)
+    payload = _body(request)
+
+    login_name = str(payload.get("login", "")).strip().lower()
+    full_name = _card_line(payload.get("full_name", ""), "title")
+    password = str(payload.get("password", ""))
+    _check_login(login_name)
+    if not full_name:
+        raise ServiceError("укажите фамилию и инициалы", 400)
+    if len(password) < 8:
+        raise ServiceError("пароль короче 8 символов", 400)
+    if repos.users.by_login(login_name) is not None:
+        raise ServiceError("такой логин уже занят — выберите другой", 409)
+
+    # Заявке даём самую младшую должность: настоящую назначит тот, кто
+    # одобряет, и до одобрения она всё равно ничего не значит.
+    user = repos.users.create(login_name, password, full_name, "engineer",
+                              approved=False)
+    # Заявка засчитывается ограничителю как попытка: подать их без счёта
+    # нельзя, иначе очередь на одобрение забивается за минуту.
+    throttle.failure(key)
+    repos.audit.log("user.request", object_type="user", object_id=user.login,
+                    details={"full_name": full_name})
+    return {"ok": True, "login": user.login}
 
 
 @router.post("/auth/logout")
@@ -419,9 +481,11 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
     if "group_no" in payload or "customer" in payload:
         fields["customer"] = _group_or_empty(
             payload.get("group_no", payload.get("customer")))
-    for name in ("incoming_date", "deadline"):
+    for name in ("incoming_date", "deadline", "tc_date", "order_date"):
         if name in payload:
             fields[name] = _date_or_empty(payload[name], name)
+    if "registrations" in payload:
+        fields["registrations"] = _count_or_zero(payload["registrations"])
     if "priority" in payload:
         priority = str(payload["priority"] or "normal")
         if priority not in CASE_PRIORITIES:
@@ -449,6 +513,14 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
     updated = _service(request).update_card(case, fields, user)
     repos.audit.log("case.update", user=user, object_type="case",
                     object_id=case.case_id, details=fields)
+    # Письмо назначили на человека — он должен об этом узнать, а не найти
+    # его случайно в своём списке.
+    fresh = fields.get("assignee_id")
+    if fresh and fresh != case.assignee_id:
+        _notify(request, fresh, "case.assigned",
+                f"На вас письмо {case.incoming_no or case.case_id}",
+                (case.title or "")[:200],
+                link=f"#/case/{case.id}", from_id=user.id)
     return {"case": updated.to_dict() if updated else None}
 
 
@@ -460,9 +532,10 @@ def create_case(request: Request) -> Dict[str, Any]:
     payload = _body(request)
     # Даты и приоритет проверяем здесь: сервисному слою достаётся уже
     # проверенное, а инженер видит понятную ошибку вместо отказа базы.
-    for field in ("incoming_date", "deadline"):
+    for field in ("incoming_date", "deadline", "tc_date", "order_date"):
         if field in payload:
             payload[field] = _date_or_empty(payload[field], field)
+    payload["registrations"] = _count_or_zero(payload.get("registrations"))
     priority = str(payload.get("priority") or "normal")
     if priority not in CASE_PRIORITIES:
         raise ServiceError(f"неизвестный приоритет '{priority}'", 400)
@@ -492,19 +565,82 @@ CASE_FILE_SUFFIXES = (
 )
 
 
-@router.get("/cases/{case_ref}/files")
-def list_case_files(request: Request, case_ref: int) -> Dict[str, Any]:
-    """Бумаги, приложенные к письму. Смотреть может любой сотрудник."""
+@router.get("/cases/{case_ref}/notes")
+def list_case_notes(request: Request, case_ref: int) -> Dict[str, Any]:
+    """Примечания к письму: обсуждение прямо на деле."""
     require_user(request)
     case = _case_or_404(request, case_ref)
-    items = _repos(request).case_files.list_for_case(case.id)
-    return {"files": [item.to_dict() for item in items]}
+    items = _repos(request).case_notes.list_for_case(case.id)
+    return {"notes": [item.to_dict() for item in items]}
+
+
+@router.post("/cases/{case_ref}/notes")
+def add_case_note(request: Request, case_ref: int) -> Dict[str, Any]:
+    """Оставить примечание к письму.
+
+    Начальник пишет, что поправить, исполнитель отвечает — и всё это
+    остаётся при письме, а не теряется в разговорах у стола. Тот, кого
+    примечание касается (исполнитель письма и его автор), узнаёт о нём
+    уведомлением: письмо он в этот момент может не держать открытым.
+    """
+    user = require_editor(request)
+    case = _case_or_404(request, case_ref)
+    repos = _repos(request)
+    text = str(_body(request).get("text", "")).strip()
+    if not text:
+        raise ServiceError("примечание пустое", 400)
+    if len(text) > 4000:
+        raise ServiceError("примечание длиннее 4000 знаков", 400)
+
+    note = repos.case_notes.add(case.id, user.id, text)
+    who = case.incoming_no or case.case_id
+    for target in {case.assignee_id, case.created_by}:
+        _notify(request, target, "case.note",
+                f"Примечание к письму {who}",
+                text[:200], link=f"#/case/{case.id}", from_id=user.id)
+    repos.audit.log("case.note", user=user, object_type="case",
+                    object_id=case.case_id)
+    return {"note": note.to_dict()}
+
+
+@router.delete("/cases/{case_ref}/notes/{note_id}")
+def delete_case_note(request: Request, case_ref: int, note_id: int) -> Dict[str, Any]:
+    """Убрать своё примечание. Чужое — только начальству."""
+    user = require_editor(request)
+    case = _case_or_404(request, case_ref)
+    repos = _repos(request)
+    note = repos.case_notes.get(note_id)
+    if note is None or note.case_ref != case.id:
+        raise ServiceError("примечание не найдено", 404)
+    if note.user_id != user.id and not user.is_admin:
+        raise ServiceError("недостаточно прав: чужое примечание убирает начальник", 403)
+    repos.case_notes.delete(note_id)
+    return {"ok": True}
+
+
+@router.get("/cases/{case_ref}/files")
+def list_case_files(request: Request, case_ref: int, stage: str = "") -> Dict[str, Any]:
+    """Бумаги письма. Смотреть может любой сотрудник.
+
+    stage отбирает стопку: incoming — пришли с письмом, outgoing — ушли с
+    ответом. Пусто — обе, и тогда сперва идут те, что к ответу.
+    """
+    require_user(request)
+    case = _case_or_404(request, case_ref)
+    if stage and stage not in FILE_STAGES:
+        raise ServiceError(f"неизвестный вид приложения '{stage}'", 400)
+    items = _repos(request).case_files.list_for_case(case.id, stage=stage)
+    return {
+        "files": [item.to_dict() for item in items],
+        "stages": [{"id": key, "title": FILE_STAGE_TITLES[key]} for key in FILE_STAGES],
+    }
 
 
 @router.post("/cases/{case_ref}/files")
 def attach_to_case(request: Request, case_ref: int,
                    file: UploadFile = File(...),
-                   note: str = Form("")) -> Dict[str, Any]:
+                   note: str = Form(""),
+                   stage: str = Form("incoming")) -> Dict[str, Any]:
     """Приложить к письму бумагу.
 
     Файл остаётся на диске подлинником: письмо, пришедшее сканом, потом
@@ -516,6 +652,8 @@ def attach_to_case(request: Request, case_ref: int,
     case = _case_or_404(request, case_ref)
     settings = _settings(request)
     repos = _repos(request)
+    if stage not in FILE_STAGES:
+        raise ServiceError(f"неизвестный вид приложения '{stage}'", 400)
 
     name = _safe_name(Path(file.filename or "файл").name)
     if not name:
@@ -552,7 +690,7 @@ def attach_to_case(request: Request, case_ref: int,
         item = repos.case_files.add(
             case.id, name=name, path=str(target), size=size,
             text=text.strip(), note=str(note or "").strip()[:300],
-            user_id=user.id if user else None)
+            user_id=user.id if user else None, stage=stage)
     except BaseException:
         target.unlink(missing_ok=True)
         raise
@@ -710,6 +848,7 @@ def send_case(request: Request, case_ref: int) -> Dict[str, Any]:
         _card_line(payload.get("outgoing_no", ""), "outgoing_no"),
         _date_or_empty(payload.get("outgoing_date", _today()), "outgoing_date"),
         user,
+        outgoing_note=str(payload.get("outgoing_note", "")),
     )
     return {"case": updated.to_dict()}
 
@@ -1083,7 +1222,18 @@ def submit(request: Request, report_id: int) -> Dict[str, Any]:
     user = require_editor(request)
     report = _report_or_404(request, report_id)
     service = _service(request)
-    return {"report": _report_payload(service, service.submit(report, user))}
+    result = service.submit(report, user)
+    # Проверяющим — знать, что на столе появилась работа. Иначе отчёт лежит,
+    # пока исполнитель не сходит и не скажет вслух.
+    case = _repos(request).cases.get(report.case_ref)
+    who = (case.incoming_no or case.case_id) if case else str(report.case_ref)
+    for boss in _repos(request).users.list_all(active_only=True):
+        if boss.can_review:
+            _notify(request, boss.id, "report.review",
+                    f"Отчёт на проверку по письму {who}",
+                    f"Сдал {user.full_name or user.login}.",
+                    link=f"#/case/{report.case_ref}", from_id=user.id)
+    return {"report": _report_payload(service, result)}
 
 
 @router.post("/reports/{report_id}/approve")
@@ -1093,6 +1243,13 @@ def approve(request: Request, report_id: int) -> Dict[str, Any]:
     report = _report_or_404(request, report_id)
     service = _service(request)
     approved = service.approve(report, user)
+    case = _repos(request).cases.get(report.case_ref)
+    who = (case.incoming_no or case.case_id) if case else str(report.case_ref)
+    for target in {report.created_by, case.assignee_id if case else None}:
+        _notify(request, target, "report.approved",
+                f"Отчёт проверен по письму {who}",
+                "Можно отправлять ответ и записывать исходящий номер.",
+                link=f"#/case/{report.case_ref}", from_id=user.id)
     return {"report": _report_payload(service, approved)}
 
 
@@ -1103,7 +1260,17 @@ def send_back(request: Request, report_id: int) -> Dict[str, Any]:
     report = _report_or_404(request, report_id)
     service = _service(request)
     note = str(_body(request).get("note", ""))
-    return {"report": _report_payload(service, service.send_back(report, note, user))}
+    result = service.send_back(report, note, user)
+    # Возврат с замечанием — то, ради чего человека отрывают от работы:
+    # пока он не узнает, письмо стоит. Уведомление громкое, со звуком.
+    case = _repos(request).cases.get(report.case_ref)
+    who = (case.incoming_no or case.case_id) if case else str(report.case_ref)
+    for target in {report.created_by, case.assignee_id if case else None}:
+        _notify(request, target, "report.rework",
+                f"Отчёт возвращён на исправление: {who}",
+                note.strip()[:300] or "Замечание см. в карточке письма.",
+                link=f"#/case/{report.case_ref}", from_id=user.id)
+    return {"report": _report_payload(service, result)}
 
 
 @router.get("/reports/{report_id}/sources")
@@ -1848,10 +2015,7 @@ def create_user(request: Request) -> Dict[str, Any]:
     payload = _body(request)
 
     login = str(payload.get("login", "")).strip().lower()
-    if not re.fullmatch(r"[a-z0-9._-]{3,32}", login):
-        raise ServiceError(
-            "логин: от 3 до 32 знаков, латиница, цифры, точка, дефис или подчёркивание", 400
-        )
+    _check_login(login)
     if repos.users.by_login(login) is not None:
         raise ServiceError(f"пользователь '{login}' уже есть", 409)
 
@@ -1917,6 +2081,75 @@ def update_user(request: Request, user_id: int) -> Dict[str, Any]:
                     details={k: payload.get(k) for k in ("role", "full_name", "department", "team")
                              if k in payload})
     return {"user": _user_public(updated)}
+
+
+@router.get("/users/pending")
+def pending_users(request: Request) -> Dict[str, Any]:
+    """Заявки, ждущие одобрения."""
+    require_admin(request)
+    items = _repos(request).users.pending()
+    return {"items": [_user_public(item) for item in items]}
+
+
+@router.post("/users/{user_id}/approve")
+def approve_user(request: Request, user_id: int) -> Dict[str, Any]:
+    """Открыть доступ по заявке и назначить должность.
+
+    Одобряет создатель системы, начальник отдела, его заместитель или
+    начальник группы — тот же круг, что заводит сотрудников руками. Должность
+    назначает он же: заявка приходит с самой младшей, и назначить выше
+    собственной по-прежнему нельзя.
+    """
+    admin = require_admin(request)
+    repos = _repos(request)
+    user = repos.users.get(user_id)
+    if user is None:
+        raise ServiceError("заявка не найдена", 404)
+    if user.approved:
+        raise ServiceError("эта учётная запись уже одобрена", 409)
+
+    payload = _body(request)
+    role = str(payload.get("role", user.role) or user.role)
+    if role not in ROLES:
+        raise ServiceError(f"неизвестная должность '{role}'", 400)
+    if role == "owner":
+        raise ServiceError("создатель системы в единственном числе", 403)
+    if not admin.is_owner and ROLE_RANK.get(role, 0) >= admin.rank:
+        raise ServiceError("нельзя назначить должность выше собственной", 403)
+
+    repos.users.update(user_id, role=role,
+                       team=_opt_str(payload, "team"),
+                       department=_opt_str(payload, "department"))
+    approved = repos.users.approve(user_id, admin.id)
+    repos.audit.log("user.approve", user=admin, object_type="user",
+                    object_id=user.login, details={"role": role})
+    _notify(request, user_id, "user.approved",
+            "Доступ открыт",
+            f"Заявку одобрил {admin.full_name or admin.login}. "
+            f"Должность: {ROLE_TITLES.get(role, role)}.")
+    return {"user": _user_public(approved)}
+
+
+@router.post("/users/{user_id}/reject")
+def reject_user(request: Request, user_id: int) -> Dict[str, Any]:
+    """Отклонить заявку: запись убирается совсем.
+
+    Отклонённая заявка — это не сотрудник; держать её в списке значит копить
+    мусор, по которому никто не работает. Отключение — для другого случая:
+    человек был и ушёл.
+    """
+    admin = require_admin(request)
+    repos = _repos(request)
+    user = repos.users.get(user_id)
+    if user is None:
+        raise ServiceError("заявка не найдена", 404)
+    if user.approved:
+        raise ServiceError(
+            "эта учётная запись уже одобрена — её отключают, а не отклоняют", 409)
+    repos.users.delete(user_id)
+    repos.audit.log("user.reject", user=admin, object_type="user",
+                    object_id=user.login)
+    return {"ok": True}
 
 
 @router.post("/users/{user_id}/password")
@@ -2216,6 +2449,169 @@ def delete_absence(request: Request, absence_id: int) -> Dict[str, Any]:
     repos.audit.log("absence.delete", user=actor, object_type="user",
                     object_id=str(item.user_id), details={"kind": item.kind})
     return {"ok": True}
+
+
+# ------------------------------------------------------- уведомления ----
+
+def _notify(request: Request, user_id: int | None, kind: str, title: str,
+            body: str = "", link: str = "", from_id: int | None = None) -> None:
+    """Положить человеку уведомление. Молча, если класть некому.
+
+    Уведомление — вещь вспомогательная: если оно не легло, работа всё равно
+    сделана. Поэтому здесь не бросается ничего: сорванная запись в почтовый
+    ящик не должна отменять проверку отчёта.
+    """
+    if not user_id:
+        return
+    try:
+        _repos(request).notices.add(user_id, kind, title, body, link, from_id)
+    except Exception:                   # noqa: BLE001 — работа важнее извещения
+        log.warning("не удалось положить уведомление %s для %s", kind, user_id)
+
+
+@router.get("/notifications")
+def notifications(request: Request, limit: int = 50) -> Dict[str, Any]:
+    """Что человеку нужно знать. Свежие сверху."""
+    user = require_user(request)
+    repos = _repos(request)
+    items = repos.notices.list_for(user.id, limit=min(max(int(limit or 50), 1), 200))
+    return {
+        "items": [item.to_dict() for item in items],
+        "unseen": repos.notices.unseen(user.id),
+        # Непрочитанные сообщения считаем тут же: значок в шапке один, и
+        # два запроса ради одного числа — лишний разговор с сервером.
+        "messages": repos.talks.unread_total(user.id),
+    }
+
+
+@router.post("/notifications/read")
+def read_notifications(request: Request) -> Dict[str, Any]:
+    """Отметить прочитанным одно уведомление или все сразу."""
+    user = require_user(request)
+    repos = _repos(request)
+    payload = _body(request)
+    raw = payload.get("id")
+    repos.notices.mark_seen(user.id, int(raw) if raw else None)
+    return {"unseen": repos.notices.unseen(user.id)}
+
+
+@router.delete("/notifications")
+def clear_notifications(request: Request) -> Dict[str, Any]:
+    user = require_user(request)
+    _repos(request).notices.clear(user.id)
+    return {"ok": True}
+
+
+@router.post("/notifications/call")
+def call_to_office(request: Request) -> Dict[str, Any]:
+    """Вызвать сотрудника в кабинет.
+
+    Право начальства: создатель, начальник отдела, заместитель и начальник
+    группы. Вызывать друг друга всем подряд — не порядок, а способ мешать
+    работать.
+    """
+    admin = require_admin(request)
+    repos = _repos(request)
+    payload = _body(request)
+    user = repos.users.get(int(payload.get("user_id") or 0))
+    if user is None or not user.active or not user.approved:
+        raise ServiceError("сотрудник не найден", 404)
+    if user.id == admin.id:
+        raise ServiceError("себя вызывать не нужно", 400)
+    where = _card_line(payload.get("place", ""), "tc_no")
+    note = _card_line(payload.get("note", ""), "note")
+
+    repos.notices.add(
+        user.id, "call",
+        f"Вас вызывает {admin.full_name or admin.login}",
+        " ".join(part for part in (where and f"Куда: {where}.", note) if part),
+        link="", from_id=admin.id)
+    repos.audit.log("user.call", user=admin, object_type="user",
+                    object_id=user.login, details={"place": where})
+    return {"ok": True}
+
+
+# ---------------------------------------------------------- переписка ----
+
+@router.get("/talks")
+def list_talks(request: Request) -> Dict[str, Any]:
+    """Беседы человека: свежие сверху."""
+    user = require_user(request)
+    return {"items": _repos(request).talks.list_for(user.id)}
+
+
+@router.post("/talks")
+def create_talk(request: Request) -> Dict[str, Any]:
+    """Завести беседу: личную или на несколько человек.
+
+    Личная беседа двоих не заводится дважды: иначе каждое «написать Иванову»
+    рождало бы новую ветку, и переписка рассыпалась бы на одинаковые.
+    """
+    user = require_user(request)
+    repos = _repos(request)
+    payload = _body(request)
+
+    raw = payload.get("members") or []
+    if not isinstance(raw, list):
+        raise ServiceError("список собеседников не разобран", 400)
+    members = []
+    for item in raw:
+        person = repos.users.get(int(item or 0))
+        if person is None or not person.active or not person.approved:
+            raise ServiceError("сотрудник не найден", 404)
+        members.append(person.id)
+    if not members:
+        raise ServiceError("выберите, кому писать", 400)
+    members = list(dict.fromkeys(members + [user.id]))
+    title = _card_line(payload.get("title", ""), "title")
+
+    if len(members) == 2 and not title:
+        other = [item for item in members if item != user.id]
+        existing = repos.talks.private_between(user.id, other[0] if other else user.id)
+        if existing is not None:
+            return {"talk_id": existing, "existed": True}
+
+    talk_id = repos.talks.create(members, title=title, created_by=user.id)
+    return {"talk_id": talk_id, "existed": False}
+
+
+@router.get("/talks/{talk_id}")
+def read_talk(request: Request, talk_id: int) -> Dict[str, Any]:
+    user = require_user(request)
+    repos = _repos(request)
+    if not repos.talks.is_member(talk_id, user.id):
+        raise ServiceError("беседа не найдена", 404)
+    messages = repos.talks.messages(talk_id)
+    repos.talks.mark_read(talk_id, user.id)
+    return {
+        "id": talk_id,
+        "members": repos.talks.members(talk_id),
+        "messages": [item.to_dict() for item in messages],
+    }
+
+
+@router.post("/talks/{talk_id}/messages")
+def write_to_talk(request: Request, talk_id: int) -> Dict[str, Any]:
+    user = require_user(request)
+    repos = _repos(request)
+    if not repos.talks.is_member(talk_id, user.id):
+        raise ServiceError("беседа не найдена", 404)
+    text = str(_body(request).get("text", "")).strip()
+    if not text:
+        raise ServiceError("сообщение пустое", 400)
+    if len(text) > 4000:
+        raise ServiceError("сообщение длиннее 4000 знаков", 400)
+
+    message = repos.talks.add_message(talk_id, user.id, text)
+    # Остальным участникам — уведомление: человек может не держать беседу
+    # открытой, а сообщение чаще всего срочное.
+    for member in repos.talks.members(talk_id):
+        if member["id"] == user.id:
+            continue
+        _notify(request, member["id"], "message",
+                f"Сообщение от {user.full_name or user.login}",
+                text[:200], link=f"#/talks/{talk_id}", from_id=user.id)
+    return {"message": message.to_dict() if message else None}
 
 
 # ------------------------------------------------------------- дашборд ----
@@ -2638,6 +3034,38 @@ def health(request: Request) -> Dict[str, Any]:
 # Пробел разрешён, а вот \s пропускал бы перевод строки — и тогда case_id
 # с переводом строки уезжал бы прямо в заголовок HTTP-ответа.
 _UNSAFE = re.compile(r"[^\w .()\-]", re.UNICODE)
+
+
+def _count_or_zero(value: Any) -> int:
+    """Счётная величина письма: неотрицательное целое, пусто — ноль.
+
+    Отрицательное число регистраций — это описка, а не сведение; принимать
+    его значит соглашаться, что письмо зарегистрировали минус три раза.
+    """
+    raw = str(value if value is not None else "").strip()
+    if not raw:
+        return 0
+    try:
+        number = int(float(raw.replace(",", ".")))
+    except ValueError:
+        raise ServiceError("количество регистраций — целое число", 400) from None
+    if number < 0:
+        raise ServiceError("количество регистраций не бывает отрицательным", 400)
+    if number > 100000:
+        raise ServiceError("количество регистраций слишком велико — проверьте ввод", 400)
+    return number
+
+
+#: Каким может быть логин. Один на заявку и на заведение руками: разойдутся —
+#: и человек, чью заявку одобрили, не сможет войти под тем, что он вводил.
+LOGIN_RE = r"[a-z0-9._-]{3,32}"
+LOGIN_HINT = ("логин: от 3 до 32 знаков, латиница, цифры, точка, дефис "
+              "или подчёркивание")
+
+
+def _check_login(login: str) -> None:
+    if not re.fullmatch(LOGIN_RE, login):
+        raise ServiceError(LOGIN_HINT, 400)
 
 
 def _line_or_empty(value: Any) -> str:

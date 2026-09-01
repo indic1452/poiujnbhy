@@ -29,6 +29,12 @@ CREATE TABLE IF NOT EXISTS users (
     ext_no        TEXT    NOT NULL DEFAULT '',   -- внутренний номер
     room          TEXT    NOT NULL DEFAULT '',   -- кабинет
     email         TEXT    NOT NULL DEFAULT '',   -- почта
+    -- Заявка одобрена. Человек заводит себя сам, но войти сможет только
+    -- после того, как его признает создатель, начальник отдела, заместитель
+    -- или начальник группы: система отдела не проходной двор.
+    approved      INTEGER NOT NULL DEFAULT 1,
+    approved_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    approved_at   TEXT    NOT NULL DEFAULT '',
     password_hash TEXT    NOT NULL,
     active        INTEGER NOT NULL DEFAULT 1,
     created_at    TEXT    NOT NULL
@@ -145,6 +151,11 @@ CREATE TABLE IF NOT EXISTS cases (
     status        TEXT    NOT NULL DEFAULT 'new',  -- new|draft|review|checked|approved|archived
     line_type     TEXT    NOT NULL DEFAULT '',     -- sls | rrls | kv | other
     tc_no         TEXT    NOT NULL DEFAULT '',     -- номер технического средства
+    tc_date       TEXT    NOT NULL DEFAULT '',     -- дата ТС, ГГГГ-ММ-ДД
+    order_no      TEXT    NOT NULL DEFAULT '',     -- номер указаний
+    order_date    TEXT    NOT NULL DEFAULT '',     -- дата указаний, ГГГГ-ММ-ДД
+    registrations INTEGER NOT NULL DEFAULT 0,      -- количество регистраций
+    outgoing_note TEXT    NOT NULL DEFAULT '',     -- примечание при отправке
     incoming_no   TEXT    NOT NULL DEFAULT '',     -- входящий номер письма
     incoming_date TEXT    NOT NULL DEFAULT '',     -- дата письма, ГГГГ-ММ-ДД
     outgoing_no   TEXT    NOT NULL DEFAULT '',     -- исходящий номер ответа
@@ -173,6 +184,10 @@ CREATE INDEX IF NOT EXISTS idx_cases_line     ON cases(line_type);
 CREATE TABLE IF NOT EXISTS case_files (
     id          INTEGER PRIMARY KEY,
     case_ref    INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    -- К чему бумага относится: incoming — пришла с письмом, outgoing — ушла
+    -- с ответом. В журнале отдела это две разные стопки, и смешивать их
+    -- нельзя: по одной отвечают, вторую отправляют.
+    stage       TEXT    NOT NULL DEFAULT 'incoming',
     name        TEXT    NOT NULL,
     size        INTEGER NOT NULL DEFAULT 0,
     path        TEXT    NOT NULL,
@@ -291,6 +306,65 @@ CREATE TABLE IF NOT EXISTS chat_attachments (
     created_at TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_chat_attachments ON chat_attachments(chat_id, id);
+
+-- ------------------------------------------------------- уведомления ---
+
+-- Что человеку нужно знать: начальник вернул отчёт, письмо назначили на
+-- вас, вас вызывают в кабинет. Хранится у получателя, а не рассылается:
+-- изолированная машина без почты и телефона, и единственное надёжное место
+-- для «вам сообщение» — та же база.
+CREATE TABLE IF NOT EXISTS notifications (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind       TEXT    NOT NULL,               -- см. NOTICE_KINDS
+    title      TEXT    NOT NULL DEFAULT '',
+    body       TEXT    NOT NULL DEFAULT '',
+    link       TEXT    NOT NULL DEFAULT '',    -- куда вести по щелчку
+    from_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    seen       INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notifications ON notifications(user_id, seen, id);
+
+-- ---------------------------------------------------------- переписка ---
+
+-- Беседа: между двумя людьми или на несколько человек. Отдельно от чата с
+-- помощником (chats): там разговор с моделью, тут — между людьми.
+CREATE TABLE IF NOT EXISTS talks (
+    id         INTEGER PRIMARY KEY,
+    title      TEXT    NOT NULL DEFAULT '',    -- пусто — беседа двоих
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT    NOT NULL,
+    updated_at TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS talk_members (
+    talk_id   INTEGER NOT NULL REFERENCES talks(id) ON DELETE CASCADE,
+    user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    seen_id   INTEGER NOT NULL DEFAULT 0,      -- до какого сообщения прочитано
+    PRIMARY KEY (talk_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS talk_messages (
+    id         INTEGER PRIMARY KEY,
+    talk_id    INTEGER NOT NULL REFERENCES talks(id) ON DELETE CASCADE,
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    text       TEXT    NOT NULL,
+    created_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_talk_messages ON talk_messages(talk_id, id);
+
+-- Примечания к письму: обсуждение прямо на деле. Начальник пишет, что
+-- поправить, исполнитель отвечает — и всё это остаётся при письме, а не
+-- теряется в разговорах.
+CREATE TABLE IF NOT EXISTS case_notes (
+    id         INTEGER PRIMARY KEY,
+    case_ref   INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    text       TEXT    NOT NULL,
+    created_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_case_notes ON case_notes(case_ref, id);
 
 -- --------------------------------------------------------------- журнал ---
 

@@ -26,8 +26,10 @@ logger = logging.getLogger("reportgen.web")
 
 #: Методы, меняющие состояние: их тело нельзя читать до проверки прав.
 WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
-#: Пути, доступные без входа в систему.
-OPEN_PATHS = frozenset({"/api/auth/login", "/api/auth/logout"})
+#: Пути, доступные без входа в систему. Заявка на доступ — среди них: её
+#: подаёт человек, у которого доступа ещё нет. Ничего, кроме записи в очередь
+#: на одобрение, она не создаёт.
+OPEN_PATHS = frozenset({"/api/auth/login", "/api/auth/logout", "/api/auth/register"})
 #: Потолок для JSON-тел: факт-пакет — это килобайты, а не сотни мегабайт.
 MAX_JSON_BYTES = 8 * 1024 * 1024
 

@@ -199,6 +199,10 @@ class User:
     room: str = ""
     email: str = ""
     active: bool = True
+    #: Заявку одобрили. Пока нет — человек заведён, но войти не может.
+    approved: bool = True
+    approved_by: int | None = None
+    approved_at: str = ""
     created_at: str = ""
 
     @property
@@ -243,6 +247,9 @@ class User:
             room=_col(row, "room", "") or "",
             email=_col(row, "email", "") or "",
             active=bool(row["active"]),
+            approved=bool(_col(row, "approved", 1)),
+            approved_by=_col(row, "approved_by", None),
+            approved_at=_col(row, "approved_at", "") or "",
             created_at=row["created_at"],
         )
 
@@ -260,6 +267,8 @@ class User:
             "room": self.room,
             "email": self.email,
             "is_admin": self.is_admin,
+            "approved": self.approved,
+            "approved_at": self.approved_at,
             "can_review": self.can_review,
             "is_owner": self.is_owner,
             "active": self.active,
@@ -341,8 +350,15 @@ class Case:
     status: str = "new"
     #: Линия связи: sls | rrls | kv | other. Пусто — не указана.
     line_type: str = ""
-    #: Номер технического средства, к которому относится письмо.
+    #: Номер технического средства и его дата.
     tc_no: str = ""
+    tc_date: str = ""
+    #: Указания, по которым письмо отрабатывают: номер и дата.
+    order_no: str = ""
+    order_date: str = ""
+    #: Сколько регистраций числится по письму. В журнале отдела это счётная
+    #: величина, по ней потом отчитываются за объём работы.
+    registrations: int = 0
     #: Входящий номер и дата входящего письма.
     incoming_no: str = ""
     incoming_date: str = ""
@@ -350,6 +366,9 @@ class Case:
     #: когда проверенный отчёт ушёл адресату: до этого письмо не закрыто.
     outgoing_no: str = ""
     outgoing_date: str = ""
+    #: Что написали при отправке ответа. Отдельно от примечания к письму:
+    #: одно про входящее, другое про то, чем ответили.
+    outgoing_note: str = ""
     sent_by: int | None = None
     #: Срок ответа, ГГГГ-ММ-ДД. Пусто — срок не задан.
     deadline: str = ""
@@ -381,6 +400,11 @@ class Case:
             status=row["status"],
             line_type=_col(row, "line_type", "") or "",
             tc_no=_col(row, "tc_no", "") or "",
+            tc_date=_col(row, "tc_date", "") or "",
+            order_no=_col(row, "order_no", "") or "",
+            order_date=_col(row, "order_date", "") or "",
+            registrations=int(_col(row, "registrations", 0) or 0),
+            outgoing_note=_col(row, "outgoing_note", "") or "",
             incoming_no=_col(row, "incoming_no", ""),
             incoming_date=_col(row, "incoming_date", ""),
             outgoing_no=_col(row, "outgoing_no", "") or "",
@@ -417,10 +441,15 @@ class Case:
             "line_type": self.line_type,
             "line_title": LINE_TITLES.get(self.line_type, ""),
             "tc_no": self.tc_no,
+            "tc_date": self.tc_date,
+            "order_no": self.order_no,
+            "order_date": self.order_date,
+            "registrations": self.registrations,
             "incoming_no": self.incoming_no,
             "incoming_date": self.incoming_date,
             "outgoing_no": self.outgoing_no,
             "outgoing_date": self.outgoing_date,
+            "outgoing_note": self.outgoing_note,
             "sent_by": self.sent_by,
             "sent_by_name": self.sent_by_name,
             "deadline": self.deadline,
@@ -442,6 +471,13 @@ class Case:
         return data
 
 
+#: К чему относится бумага: пришла с письмом или ушла с ответом. В журнале
+#: отдела это две разные стопки, и смешивать их нельзя: по одной отвечают,
+#: вторую отправляют.
+FILE_STAGES = ("incoming", "outgoing")
+FILE_STAGE_TITLES = {"incoming": "к письму", "outgoing": "к ответу"}
+
+
 @dataclass
 class CaseFile:
     """Бумага, приложенная к письму: скан письма, схема линии, журнал.
@@ -454,6 +490,8 @@ class CaseFile:
     id: int
     case_ref: int
     name: str
+    #: incoming — пришла с письмом, outgoing — ушла с ответом.
+    stage: str = "incoming"
     size: int = 0
     path: str = ""
     text: str = ""
@@ -468,6 +506,7 @@ class CaseFile:
             id=row["id"],
             case_ref=row["case_ref"],
             name=row["name"],
+            stage=_col(row, "stage", "incoming") or "incoming",
             size=int(_col(row, "size", 0) or 0),
             path=_col(row, "path", "") or "",
             text=_col(row, "text", "") or "",
@@ -482,6 +521,8 @@ class CaseFile:
             "id": self.id,
             "case_ref": self.case_ref,
             "name": self.name,
+            "stage": self.stage,
+            "stage_title": FILE_STAGE_TITLES.get(self.stage, self.stage),
             "size": self.size,
             "note": self.note,
             # Сам текст наружу не отдаём: он нужен поиску, а не экрану, и
@@ -784,6 +825,135 @@ class ChatAttachment:
         if with_text:
             data["text"] = self.text
         return data
+
+
+#: О чём система сообщает человеку. Порядок не важен, важно, чтобы вид знали
+#: обе стороны: экран рисует по нему значок и звук.
+NOTICE_KINDS = (
+    "report.rework",     # начальник вернул отчёт с замечанием
+    "report.review",     # вам сдали отчёт на проверку
+    "report.approved",   # ваш отчёт проверен
+    "case.assigned",     # письмо назначено на вас
+    "case.note",         # к письму оставили примечание
+    "case.sent",         # по письму отправлен ответ
+    "call",              # вызов в кабинет
+    "message",           # личное сообщение
+    "user.approved",     # заявку на доступ одобрили
+)
+#: Что показывать заметно и со звуком: вызов в кабинет и возврат отчёта —
+#: это то, ради чего человека отрывают от работы. Остальное ждёт.
+LOUD_NOTICES = ("call", "report.rework")
+
+
+@dataclass
+class Notice:
+    """Уведомление для одного человека."""
+
+    id: int
+    user_id: int
+    kind: str
+    title: str = ""
+    body: str = ""
+    link: str = ""
+    from_id: int | None = None
+    from_name: str = ""
+    seen: bool = False
+    created_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "Notice":
+        return cls(
+            id=row["id"],
+            user_id=row["user_id"],
+            kind=row["kind"],
+            title=_col(row, "title", "") or "",
+            body=_col(row, "body", "") or "",
+            link=_col(row, "link", "") or "",
+            from_id=_col(row, "from_id", None),
+            from_name=_col(row, "from_name", "") or "",
+            seen=bool(_col(row, "seen", 0)),
+            created_at=row["created_at"],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "title": self.title,
+            "body": self.body,
+            "link": self.link,
+            "from_id": self.from_id,
+            "from_name": self.from_name,
+            "seen": self.seen,
+            "loud": self.kind in LOUD_NOTICES,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass
+class TalkMessage:
+    """Сообщение в беседе между людьми."""
+
+    id: int
+    talk_id: int
+    user_id: int | None = None
+    text: str = ""
+    author: str = ""
+    created_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "TalkMessage":
+        return cls(
+            id=row["id"],
+            talk_id=row["talk_id"],
+            user_id=_col(row, "user_id", None),
+            text=row["text"],
+            author=_col(row, "author", "") or "",
+            created_at=row["created_at"],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "talk_id": self.talk_id,
+            "user_id": self.user_id,
+            "author": self.author,
+            "text": self.text,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass
+class CaseNote:
+    """Примечание к письму: обсуждение прямо на деле."""
+
+    id: int
+    case_ref: int
+    user_id: int | None = None
+    text: str = ""
+    author: str = ""
+    created_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "CaseNote":
+        return cls(
+            id=row["id"],
+            case_ref=row["case_ref"],
+            user_id=_col(row, "user_id", None),
+            text=row["text"],
+            author=_col(row, "author", "") or "",
+            created_at=row["created_at"],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "case_ref": self.case_ref,
+            "user_id": self.user_id,
+            "author": self.author,
+            "text": self.text,
+            "created_at": self.created_at,
+        }
 
 
 @dataclass

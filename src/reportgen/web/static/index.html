@@ -54,6 +54,20 @@
             <h1 class="topbar-title" id="topbar-title"></h1>
             <div class="topbar-right">
                 <span id="llm-info" class="llm-dot" title=""></span>
+                <!-- Уведомления: возврат отчёта, назначенное письмо, вызов в
+                     кабинет. Значок с числом непрочитанных, щелчок открывает
+                     список. Пусто — значок молчит, но остаётся на месте:
+                     исчезающие элементы шапки сбивают руку. -->
+                <button class="btn btn--icon bell" id="bell" type="button"
+                        title="Уведомления" hidden>
+                    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor"
+                         stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <path d="M9 2.2a4.6 4.6 0 0 0-4.6 4.6c0 3.4-1.2 4.5-1.2 4.5h11.6s-1.2-1.1-1.2-4.5A4.6 4.6 0 0 0 9 2.2z" />
+                        <path d="M7.4 14a1.8 1.8 0 0 0 3.2 0" />
+                    </svg>
+                    <b class="bell-count" id="bell-count" hidden></b>
+                </button>
                 <a class="user-chip" id="user-chip" href="#/me" data-route="me" title="Личный кабинет" hidden>
                     <span class="avatar" id="user-initials"></span>
                     <span class="user-chip-text">

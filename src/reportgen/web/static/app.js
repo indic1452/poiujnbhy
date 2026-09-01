@@ -48,7 +48,8 @@
        (api.MAX_CARD_FIELDS): поле не должно принимать то, что сервер потом
        отвергнет — человек уже напечатал. */
     const CARD_LIMIT = { title: 300, incoming_no: 60, outgoing_no: 60, tc_no: 60,
-                         note: 2000, group_no: 120 };
+                         order_no: 60, note: 2000, outgoing_note: 2000,
+                         group_no: 120 };
 
     const CASE_PRIORITY = { normal: 'обычный', high: 'важный', urgent: 'срочный' };
 
@@ -845,6 +846,7 @@
         stats: '<path d="M2.5 13.5h13M4.5 13.5V8M8 13.5V3.5M11.5 13.5V6.5M15 13.5v-3"/>',
         users: '<path d="M6.2 8.5a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2zM1.8 15c0-2.4 2-4 4.4-4s4.4 1.6 4.4 4M11.5 4a2.3 2.3 0 0 1 0 4.6M13 11.2c1.6.5 2.7 1.8 2.7 3.8"/>',
         roster: '<path d="M2.5 4h13v11.5h-13zM2.5 7.5h13M6 2.5v3M12 2.5v3M5.5 10.5h2M8.5 10.5h2M11.5 10.5h2M5.5 13h2M8.5 13h2"/>',
+        talks: '<path d="M2.5 3.5h10v7h-6l-4 3zM12.5 6h3v7h-2.5l-3 2.2V13"/>',
     };
 
     /** Разделы бокового меню. Порядок — от «что сегодня» к справочникам. */
@@ -852,6 +854,7 @@
         { route: 'board', href: '#/board', title: 'Дашборд', icon: 'board' },
         { route: 'cases', href: '#/cases', title: 'Письма', icon: 'letters', count: 'letters' },
         { route: 'roster', href: '#/roster', title: 'Расход', icon: 'roster' },
+        { route: 'talks', href: '#/talks', title: 'Сообщения', icon: 'talks', count: 'talks' },
         { route: 'chat', href: '#/chat', title: 'Помощник', icon: 'chat' },
         { route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
         { route: 'stats', href: '#/stats', title: 'Метрики', icon: 'stats' },
@@ -935,6 +938,196 @@
         return brand.name || '2 специальный отдел';
     }
 
+    // =====================================================================
+    // 4а. Уведомления
+    // =====================================================================
+
+    /* Что человеку нужно знать: начальник вернул отчёт, письмо назначили на
+       вас, вас вызывают в кабинет, пришло сообщение.
+
+       Машина изолирована — ни почты, ни телефона, — и единственное место,
+       куда можно положить «вам сообщение», это та же база. Экран спрашивает
+       её раз в двадцать секунд: постоянного соединения в проекте нет и
+       заводить его ради колокольчика незачем.
+
+       Звук делаем сами через Web Audio: файла со звонком нет и быть не
+       может — ни одной внешней загрузки в системе. Звучит только громкое:
+       вызов в кабинет и возврат отчёта. Остальное ждёт молча. */
+
+    const NOTICE_POLL_MS = 20000;
+    const NOTICE_ICON = {
+        'report.rework': '!',
+        'report.review': '→',
+        'report.approved': '✓',
+        'case.assigned': '✉',
+        'case.note': '…',
+        'case.sent': '✓',
+        'call': '☎',
+        'message': '✉',
+        'user.approved': '✓',
+    };
+
+    const notices = { items: [], unseen: 0, messages: 0, timer: null, seenLoud: 0 };
+
+    /** Короткий сигнал. Ни файла, ни библиотеки: два тона встроенным синтезом. */
+    /* Звук уведомления. Браузер не даёт странице звучать, пока человек её не
+       тронул: свежесозданный AudioContext стоит «приостановленным», и всё,
+       что в него расписали, уходит в тишину. Поэтому контекст держим один,
+       будим его первым же касанием страницы и на всякий случай будим ещё раз
+       перед самим сигналом. */
+    let audioCtx = null;
+
+    function wakeAudio() {
+        const Audio = window.AudioContext || window.webkitAudioContext;
+        if (!Audio) return null;
+        try {
+            if (!audioCtx) audioCtx = new Audio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        } catch (error) {
+            audioCtx = null;      // звук — вещь необязательная
+        }
+        return audioCtx;
+    }
+
+    function armAudio() {
+        // Одного касания хватает на весь сеанс — дальше слушать незачем.
+        const once = { once: true, passive: true };
+        ['pointerdown', 'keydown'].forEach((name) =>
+            document.addEventListener(name, wakeAudio, once));
+    }
+
+    function playAlert() {
+        const ctx = wakeAudio();
+        if (!ctx) return;
+        try {
+            const now = ctx.currentTime;
+            [880, 1170].forEach((hz, index) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = hz;
+                // Резкий старт и мягкий спад: щелчка нет, а слышно сразу.
+                gain.gain.setValueAtTime(0.0001, now + index * 0.18);
+                gain.gain.exponentialRampToValueAtTime(0.14, now + index * 0.18 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.18 + 0.16);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(now + index * 0.18);
+                osc.stop(now + index * 0.18 + 0.18);
+            });
+        } catch (error) {
+            /* звук — вещь необязательная: уведомление и так на экране */
+        }
+    }
+
+    async function pollNotices(loud) {
+        if (!state.user) return;
+        let data;
+        try {
+            data = await api.get('/api/notifications?limit=50');
+        } catch (error) {
+            return;                     // сеть моргнула — спросим через двадцать секунд
+        }
+        const fresh = (data.items || []).filter((item) => !item.seen && item.loud);
+        notices.items = data.items || [];
+        notices.unseen = data.unseen || 0;
+        notices.messages = data.messages || 0;
+        paintBell();
+
+        // Звук и всплывающее — только на новое громкое и только если это не
+        // первая загрузка страницы: заходить утром под звонок недельной
+        // давности человеку незачем.
+        const newest = fresh.length ? fresh[0].id : 0;
+        if (loud && newest && newest > notices.seenLoud) {
+            playAlert();
+            toast(fresh[0].title, 'info', 8000);
+        }
+        if (newest > notices.seenLoud) notices.seenLoud = newest;
+    }
+
+    function paintBell() {
+        const bell = $('#bell');
+        const count = $('#bell-count');
+        if (!bell || !count) return;
+        bell.hidden = !state.user;
+        const total = (notices.unseen || 0) + (notices.messages || 0);
+        count.hidden = !total;
+        count.textContent = total > 99 ? '99+' : String(total);
+        bell.classList.toggle('has-loud',
+            notices.items.some((item) => !item.seen && item.loud));
+        bell.title = total ? 'Уведомлений: ' + total : 'Уведомлений нет';
+    }
+
+    function openNotices() {
+        const list = h('div', { class: 'notice-list' });
+
+        function draw() {
+            clear(list);
+            if (!notices.items.length) {
+                list.appendChild(h('div', { class: 'muted' }, 'Уведомлений нет.'));
+                return;
+            }
+            notices.items.forEach((item) => list.appendChild(h('div', {
+                class: 'notice' + (item.seen ? '' : ' is-new')
+                    + (item.loud ? ' is-loud' : ''),
+            },
+                h('span', { class: 'notice-mark' }, NOTICE_ICON[item.kind] || '•'),
+                h('div', { class: 'notice-body' },
+                    h('b', {}, item.title),
+                    item.body ? h('div', { class: 'small' }, item.body) : null,
+                    h('div', { class: 'small faint' },
+                        fmtDateTime(item.created_at)
+                        + (item.from_name ? ' · ' + item.from_name : ''))),
+                item.link ? h('button', {
+                    class: 'btn btn--sm',
+                    onclick: async () => {
+                        await api.post('/api/notifications/read', { id: item.id });
+                        dialog.close();
+                        navigate(item.link);
+                        pollNotices(false);
+                    },
+                }, 'Открыть') : null)));
+        }
+        draw();
+
+        const dialog = openModal({
+            title: 'Уведомления',
+            body: [list],
+            footer: [
+                h('button', {
+                    class: 'btn', onclick: async () => {
+                        await api.del('/api/notifications');
+                        notices.items = [];
+                        notices.unseen = 0;
+                        paintBell();
+                        draw();
+                    },
+                }, 'Очистить'),
+                h('span', { class: 'spacer' }),
+                h('button', {
+                    class: 'btn btn--primary', onclick: async () => {
+                        await api.post('/api/notifications/read', {});
+                        await pollNotices(false);
+                        draw();
+                    },
+                }, 'Всё прочитано'),
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Закрыть'),
+            ],
+        });
+    }
+
+    function startNotices() {
+        const bell = $('#bell');
+        if (bell && !bell.dataset.ready) {
+            bell.dataset.ready = '1';
+            bell.onclick = () => openNotices();
+        }
+        if (notices.timer) return;
+        armAudio();
+        // Первый опрос — молча: человек только вошёл, звонить ему нечем.
+        pollNotices(false);
+        notices.timer = setInterval(() => pollNotices(true), NOTICE_POLL_MS);
+    }
+
     function renderChrome() {
         const brand = (state.config && state.config.brand) || null;
         if (brand && brand.name) {
@@ -975,6 +1168,8 @@
 
         buildNav();
         wakeEmblem();
+        startNotices();
+        paintBell();
 
         const chip = $('#user-chip');
         const logout = $('#logout-btn');
@@ -1062,11 +1257,12 @@
         if (!parts.length) return { name: 'board', id: null };
         if (parts[0] === 'case' && parts[1]) return { name: 'case', id: parts[1] };
         if (parts[0] === 'chat') return { name: 'chat', id: parts[1] ? decodeURIComponent(parts[1]) : null };
+        if (parts[0] === 'talks') return { name: 'talks', id: parts[1] ? parts[1] : null };
         if (parts[0] === 'library' && parts.length > 1) {
             // Идентификатор документа — путь вида «standards/obw-method».
             return { name: 'library', id: parts.slice(1).map(decodeURIComponent).join('/') };
         }
-        if (['board', 'cases', 'roster', 'library', 'stats', 'me', 'users'].indexOf(parts[0]) !== -1) {
+        if (['board', 'cases', 'roster', 'talks', 'library', 'stats', 'me', 'users'].indexOf(parts[0]) !== -1) {
             return { name: parts[0], id: null };
         }
         return { name: 'board', id: null };
@@ -1115,6 +1311,7 @@
         // Уходя с экрана помощника, отпускаем узлы страницы, но генерацию
         // не трогаем: ответ дописывается в фоне и ждёт возвращения.
         detachChat();
+        stopTalkPoll();
         state.route = route;
         setActiveNav(route.name);
         const view = $('#view');
@@ -1128,6 +1325,7 @@
             else if (route.name === 'stats') await renderStats(view);
             else if (route.name === 'roster') await renderRoster(view);
             else if (route.name === 'chat') await renderChat(view, route.id);
+            else if (route.name === 'talks') await renderTalks(view, route.id);
             else if (route.name === 'me') await renderMe(view);
             else if (route.name === 'users') await renderUsers(view);
         } catch (error) {
@@ -1612,6 +1810,14 @@
         const tcInput = h('input', {
             type: 'text', class: 'mono', maxLength: CARD_LIMIT.tc_no,
             placeholder: 'ТС-1274-03', value: item.tc_no || '' });
+        const tcDate = h('input', { type: 'date', value: item.tc_date || '' });
+        const orderNo = h('input', {
+            type: 'text', class: 'mono', maxLength: CARD_LIMIT.order_no,
+            placeholder: 'У-2026-14', value: item.order_no || '' });
+        const orderDate = h('input', { type: 'date', value: item.order_date || '' });
+        const regInput = h('input', {
+            type: 'number', min: '0', step: '1',
+            value: String(item.registrations || 0) });
         const linePick = h('select', {},
             h('option', { value: '', selected: !item.line_type }, 'не указана'),
             (state.config.line_types || []).map((line) => h('option', {
@@ -1627,8 +1833,12 @@
                     h('label', { class: 'field' }, 'Входящий номер', incomingNo),
                     h('label', { class: 'field' }, 'Дата письма', incomingDate),
                     h('label', { class: 'field' }, 'Номер группы', groupInput),
+                    h('label', { class: 'field' }, 'Номер указаний', orderNo),
+                    h('label', { class: 'field' }, 'Дата указаний', orderDate),
                     h('label', { class: 'field' }, 'Номер ТС', tcInput),
+                    h('label', { class: 'field' }, 'Дата ТС', tcDate),
                     h('label', { class: 'field' }, 'Линия связи', linePick),
+                    h('label', { class: 'field' }, 'Количество регистраций', regInput),
                     h('label', { class: 'field' }, 'Срок ответа', deadline),
                     h('label', { class: 'field' }, 'Исполнитель', assignee),
                     h('label', { class: 'field' }, 'Приоритет', priority),
@@ -1653,6 +1863,10 @@
                     group_no: groupInput.value.trim(),
                     title: titleInput.value.trim(),
                     tc_no: tcInput.value.trim(),
+                    tc_date: tcDate.value || '',
+                    order_no: orderNo.value.trim(),
+                    order_date: orderDate.value || '',
+                    registrations: Number(regInput.value || 0),
                     line_type: linePick.value,
                     deadline: deadline.value,
                     assignee_id: assignee.value ? Number(assignee.value) : null,
@@ -1836,6 +2050,17 @@
             maxLength: CARD_LIMIT.tc_no,
             title: 'Номер технического средства, о котором письмо. Ищется наравне с номерами письма',
         });
+        const tcDate = h('input', { type: 'date' });
+        const orderNo = h('input', {
+            type: 'text', class: 'mono', placeholder: 'У-2026-14',
+            maxLength: CARD_LIMIT.order_no,
+            title: 'Номер указаний, по которым письмо отрабатывают',
+        });
+        const orderDate = h('input', { type: 'date' });
+        const regInput = h('input', {
+            type: 'number', min: '0', step: '1', placeholder: '0',
+            title: 'Сколько регистраций числится по письму',
+        });
         const deadlineInput = h('input', { type: 'date' });
         const priorityPick = h('select', {}, Object.keys(CASE_PRIORITY).map((key) =>
             h('option', { value: key }, CASE_PRIORITY[key])));
@@ -1900,9 +2125,13 @@
                     h('label', { class: 'field' }, 'Дата письма', incomingDate),
                     h('label', { class: 'field' }, 'Номер группы', groupNoInput,
                         h('span', { class: 'small faint' }, 'номер группы или части')),
+                    h('label', { class: 'field' }, 'Номер указаний', orderNo),
+                    h('label', { class: 'field' }, 'Дата указаний', orderDate),
                     h('label', { class: 'field' }, 'Номер ТС', tcInput,
                         h('span', { class: 'small faint' }, 'техническое средство, о котором письмо')),
+                    h('label', { class: 'field' }, 'Дата ТС', tcDate),
                     h('label', { class: 'field' }, 'Линия связи', linePick),
+                    h('label', { class: 'field' }, 'Количество регистраций', regInput),
                     h('label', { class: 'field' }, 'Срок ответа', deadlineInput),
                     h('label', { class: 'field' }, 'Исполнитель', assigneePick),
                     h('label', { class: 'field' }, 'Приоритет', priorityPick)),
@@ -1952,6 +2181,10 @@
                     incoming_date: incomingDate.value || '',
                     group_no: groupNoInput.value.trim(),
                     tc_no: tcInput.value.trim(),
+                    tc_date: tcDate.value || '',
+                    order_no: orderNo.value.trim(),
+                    order_date: orderDate.value || '',
+                    registrations: Number(regInput.value || 0),
                     line_type: linePick.value,
                     deadline: deadlineInput.value || '',
                     priority: priorityPick.value,
@@ -2390,6 +2623,8 @@
         wb.facts = null;
         wb.files = [];
         wb.filesError = '';
+        wb.notes = [];
+        wb.notesError = '';
         wb.rows = [];
         wb.findings = [];
         wb.factsDirty = false;
@@ -2425,9 +2660,103 @@
         clear(view);
         view.appendChild(buildWorkbench());
         refreshAll();
-        // Список бумаг догружаем после отрисовки: письмо должно открыться
-        // сразу, а не ждать ещё одного запроса.
+        // Список бумаг и примечания догружаем после отрисовки: письмо должно
+        // открыться сразу, а не ждать ещё двух запросов.
         loadCaseFiles();
+        loadCaseNotes();
+    }
+
+    /* Примечания к письму: переписка прямо на деле.
+
+       Начальник пишет, что поправить, исполнитель отвечает — и всё остаётся
+       при письме. Разговор у стола через неделю не вспомнить, а по бумаге,
+       которую вернули на доработку, вопрос «что именно не так» возникает
+       всегда. */
+    async function loadCaseNotes() {
+        try {
+            const data = await api.get('/api/cases/' + wb.case.id + '/notes');
+            wb.notes = data.notes || [];
+            wb.notesError = '';
+        } catch (error) {
+            wb.notes = [];
+            wb.notesError = errorText(error);
+        }
+        renderSidePanel();
+    }
+
+    async function addCaseNote(text, control) {
+        if (!text.trim()) return false;
+        if (control) control.disabled = true;
+        try {
+            await api.post('/api/cases/' + wb.case.id + '/notes', { text: text.trim() });
+            await loadCaseNotes();
+            return true;
+        } catch (error) {
+            toastError(error);
+            return false;
+        } finally {
+            if (control) control.disabled = false;
+        }
+    }
+
+    async function removeCaseNote(note) {
+        const ok = await confirmDialog({
+            title: 'Убрать примечание',
+            message: 'Примечание будет удалено без следа.',
+            confirmText: 'Убрать', danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del('/api/cases/' + wb.case.id + '/notes/' + note.id);
+            await loadCaseNotes();
+        } catch (error) {
+            toastError(error);
+        }
+    }
+
+    function renderCaseNotes(body) {
+        const notes = wb.notes || [];
+        const field = h('textarea', {
+            rows: 3, placeholder: 'Что поправить, о чём договорились, что уточнили',
+        });
+        const send = h('button', {
+            class: 'btn btn--primary btn--sm',
+            onclick: async () => {
+                if (await addCaseNote(field.value, send)) field.value = '';
+            },
+        }, 'Добавить');
+
+        if (canEdit()) {
+            body.appendChild(h('div', { class: 'note-form' }, field,
+                h('div', { class: 'toolbar' },
+                    h('span', { class: 'small faint grow' },
+                        'Увидит исполнитель и автор письма'),
+                    send)));
+        }
+
+        if (!notes.length) {
+            body.appendChild(h('div', { class: 'empty' },
+                h('h3', {}, 'Примечаний нет'),
+                h('div', {}, wb.notesError
+                    || 'Здесь остаётся то, что сказали бы через стол: что '
+                    + 'поправить и о чём договорились.')));
+            return;
+        }
+
+        const me = state.user || {};
+        notes.forEach((note) => {
+            body.appendChild(h('div', { class: 'note-item' },
+                h('div', { class: 'note-head' },
+                    h('b', {}, note.author || 'кто-то'),
+                    h('span', { class: 'small faint grow' }, fmtDateTime(note.created_at)),
+                    // Своё убирает автор, чужое — начальство.
+                    (note.user_id === me.id || isAdmin()) ? h('button', {
+                        class: 'btn btn--icon btn--sm btn--danger-hover',
+                        title: 'Убрать примечание',
+                        onclick: () => removeCaseNote(note),
+                    }, iconGlyph('trash')) : null),
+                h('div', { class: 'note-text' }, note.text || '')));
+        });
     }
 
     /** Загрузка редакции отчёта вместе со списком источников для правой панели. */
@@ -2791,38 +3120,53 @@
         });
 
         const items = wb.files || [];
+        // Бумаги делим по тому, к чему они относятся: пришедшие с письмом и
+        // ушедшие с ответом. В одной куче исполнитель через полгода уже не
+        // отличит скан входящего от приложения к своему ответу.
+        const incoming = items.filter((file) => file.stage !== 'outgoing');
+        const outgoing = items.filter((file) => file.stage === 'outgoing');
+
+        function fileRow(file) {
+            return h('div', { class: 'file-row' },
+                h('button', {
+                    class: 'file-name file-name--link',
+                    title: 'Посмотреть ' + file.name + (file.uploaded_by_name
+                        ? ' · приложил ' + file.uploaded_by_name : ''),
+                    onclick: () => openFilePreview(file,
+                        '/api/cases/' + wb.case.id + '/files/' + file.id,
+                        '/api/cases/' + wb.case.id + '/files/' + file.id + '/text'),
+                }, file.name),
+                h('span', { class: 'small faint nowrap' }, fmtBytes(file.size)),
+                // Не прочиталось — значит, по словам из этой бумаги
+                // письмо не найдётся. Человек должен это знать заранее.
+                file.has_text ? null : h('span', {
+                    class: 'small faint', title: 'Текст из файла прочитать не удалось: '
+                        + 'по словам из него письмо не найдётся',
+                }, 'без текста'),
+                canEdit() && !isSent(wb.case) ? h('button', {
+                    class: 'btn btn--icon btn--danger-hover',
+                    title: 'Убрать файл из письма',
+                    onclick: () => removeCaseFile(file),
+                }, iconGlyph('trash')) : null);
+        }
+
         append(box, [
             h('div', { class: 'toolbar' },
                 h('span', { class: 'panel-title grow' }, 'Приложено к письму'),
-                h('span', { class: 'small faint' }, items.length ? String(items.length) : ''),
+                h('span', { class: 'small faint' }, incoming.length ? String(incoming.length) : ''),
                 canEdit() && !isSent(wb.case) ? h('button', {
                     class: 'btn btn--sm', onclick: () => picker.click(),
                 }, iconGlyph('clip'), 'Приложить') : null,
                 picker),
-            items.length ? h('div', { class: 'file-list' }, items.map((file) =>
-                h('div', { class: 'file-row' },
-                    h('button', {
-                        class: 'file-name file-name--link',
-                        title: 'Посмотреть ' + file.name + (file.uploaded_by_name
-                            ? ' · приложил ' + file.uploaded_by_name : ''),
-                        onclick: () => openFilePreview(file,
-                            '/api/cases/' + wb.case.id + '/files/' + file.id,
-                            '/api/cases/' + wb.case.id + '/files/' + file.id + '/text'),
-                    }, file.name),
-                    h('span', { class: 'small faint nowrap' }, fmtBytes(file.size)),
-                    // Не прочиталось — значит, по словам из этой бумаги
-                    // письмо не найдётся. Человек должен это знать заранее.
-                    file.has_text ? null : h('span', {
-                        class: 'small faint', title: 'Текст из файла прочитать не удалось: '
-                            + 'по словам из него письмо не найдётся',
-                    }, 'без текста'),
-                    canEdit() && !isSent(wb.case) ? h('button', {
-                        class: 'btn btn--icon btn--danger-hover',
-                        title: 'Убрать файл из письма',
-                        onclick: () => removeCaseFile(file),
-                    }, iconGlyph('trash')) : null)))
+            incoming.length ? h('div', { class: 'file-list' }, incoming.map(fileRow))
                 : h('div', { class: 'small faint' },
                     wb.filesError || 'Ничего не приложено'),
+            // Приложения к ответу показываем только когда они есть: у письма,
+            // по которому ещё работают, этой стопки просто нет.
+            outgoing.length ? h('div', { class: 'toolbar' },
+                h('span', { class: 'panel-title grow' }, 'Ушло с ответом'),
+                h('span', { class: 'small faint' }, String(outgoing.length))) : null,
+            outgoing.length ? h('div', { class: 'file-list' }, outgoing.map(fileRow)) : null,
         ]);
     }
 
@@ -4322,6 +4666,45 @@
             maxLength: CARD_LIMIT.outgoing_no,
         });
         const when = h('input', { type: 'date', value: casesState.today || todayIso() });
+        const outNote = h('textarea', {
+            rows: '3', maxLength: CARD_LIMIT.outgoing_note,
+            placeholder: 'чем ответили, куда ушло, особые обстоятельства',
+        });
+        // Приложения к ответу собираем здесь же и кладём после записи номера:
+        // до неё письмо ещё не отправлено, и приложениям к ответу неоткуда
+        // взяться.
+        let picked = [];
+        const fileList = h('div', { class: 'file-list' });
+        const picker = h('input', {
+            type: 'file', multiple: true, style: { display: 'none' },
+            onchange: (event) => {
+                Array.from(event.target.files || []).forEach((file) => {
+                    if (!picked.some((item) => item.name === file.name
+                            && item.size === file.size)) picked.push(file);
+                });
+                event.target.value = '';
+                drawFiles();
+            },
+        });
+
+        function drawFiles() {
+            clear(fileList);
+            if (!picked.length) {
+                fileList.appendChild(h('div', { class: 'small faint' },
+                    'Что ушло вместе с ответом: сам ответ, приложения к нему'));
+                return;
+            }
+            picked.forEach((file, index) => fileList.appendChild(
+                h('div', { class: 'file-row' },
+                    h('span', { class: 'file-name' }, file.name),
+                    h('span', { class: 'small faint' }, fmtBytes(file.size)),
+                    h('button', {
+                        class: 'btn btn--sm btn--ghost',
+                        onclick: () => { picked.splice(index, 1); drawFiles(); },
+                    }, 'Убрать'))));
+        }
+        drawFiles();
+
         const dialog = openModal({
             title: 'Ответ отправлен',
             body: [
@@ -4333,6 +4716,15 @@
                 h('div', { class: 'form-grid' },
                     h('label', { class: 'field' }, 'Исходящий номер', number),
                     h('label', { class: 'field' }, 'Дата отправки', when)),
+                h('label', { class: 'field' }, 'Примечание к ответу', outNote),
+                h('div', { class: 'field' },
+                    h('div', { class: 'toolbar', style: { marginBottom: '6px' } },
+                        h('span', { class: 'grow' }, 'Приложения к ответу'),
+                        h('button', {
+                            class: 'btn btn--sm', onclick: () => picker.click(),
+                        }, 'Выбрать файлы'),
+                        picker),
+                    fileList),
             ],
             footer: [
                 h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
@@ -4345,17 +4737,37 @@
         async function save() {
             const value = number.value.trim();
             if (!value) { toast('Укажите исходящий номер', 'error'); return; }
+            let data;
             try {
-                const data = await api.post('/api/cases/' + wb.case.id + '/send', {
+                data = await api.post('/api/cases/' + wb.case.id + '/send', {
                     outgoing_no: value, outgoing_date: when.value || '',
+                    outgoing_note: outNote.value.trim(),
                 });
-                dialog.close();
-                wb.case = data.case;
-                refreshAll();
-                toast('Ответ отправлен под номером ' + value, 'ok');
             } catch (error) {
                 toastError(error);
+                return;
             }
+            // Приложения кладём по одному: не прошёл один — остальные на
+            // месте, а человек видит имя того, который не взяли.
+            const failed = [];
+            for (const file of picked) {
+                const form = new FormData();
+                form.append('file', file);
+                form.append('stage', 'outgoing');
+                try {
+                    await uploadFile('/api/cases/' + wb.case.id + '/files', form);
+                } catch (error) {
+                    failed.push(file.name + ' — ' + errorText(error));
+                }
+            }
+            dialog.close();
+            wb.case = data.case;
+            refreshAll();
+            loadCaseFiles();
+            toast(failed.length
+                ? 'Ответ записан, но приложения не легли: ' + failed.join('; ')
+                : 'Ответ отправлен под номером ' + value,
+                failed.length ? 'error' : 'ok', failed.length ? 8000 : 4000);
         }
     }
 
@@ -4432,10 +4844,16 @@
                 class: wb.tab === 'issues' ? 'is-active' : '',
                 onclick: () => setTab('issues'),
             }, 'Замечания (' + issues.length + ')'),
+            h('button', {
+                class: wb.tab === 'notes' ? 'is-active' : '',
+                title: 'Переписка по письму: что поправить и о чём договорились',
+                onclick: () => setTab('notes'),
+            }, 'Примечания (' + (wb.notes || []).length + ')'),
         ]);
 
         clear(body);
         if (wb.tab === 'sources') renderSources(body, sources);
+        else if (wb.tab === 'notes') renderCaseNotes(body);
         else renderIssues(body, issues);
     }
 
@@ -6997,7 +7415,8 @@
 
         const tableBox = h('div', {});
         const rolesBox = h('div', { class: 'card card-pad' });
-        const data = { roles: [], items: [] };
+        const pendingBox = h('div', { class: 'card card-pad' });
+        const data = { roles: [], items: [], pending: [] };
 
         function role(roleId) {
             return data.roles.filter((item) => item.id === roleId)[0] || null;
@@ -7012,8 +7431,86 @@
             const fresh = await api.get('/api/users');
             data.roles = fresh.roles || [];
             data.items = fresh.items || [];
+            // Заявки грузим отдельно: список сотрудников их не показывает —
+            // до одобрения это ещё не сотрудник.
+            try {
+                const waiting = await api.get('/api/users/pending');
+                data.pending = waiting.items || [];
+            } catch (error) {
+                data.pending = [];
+            }
             paintRoles();
+            paintPending();
             paint();
+        }
+
+        /* Заявки на доступ. Человек завёл себя сам через окно входа; войти он
+           не сможет, пока должность ему не назначит начальство. Держим их
+           наверху экрана: заявка, о которой забыли, — это человек, который
+           не может работать. */
+        function paintPending() {
+            clear(pendingBox);
+            pendingBox.hidden = !data.pending.length;
+            if (!data.pending.length) return;
+            pendingBox.appendChild(h('div', { class: 'card-title' },
+                'Заявки на доступ',
+                h('span', { class: 'badge badge--warn' }, String(data.pending.length))));
+            pendingBox.appendChild(h('div', { class: 'muted small' },
+                'Человек завёл себя сам в окне входа. Назначьте должность — '
+                + 'до этого войти он не может.'));
+            const allowed = data.roles.filter((item) => item.allowed);
+            data.pending.forEach((item) => {
+                const roleSelect = h('select', {}, allowed.map((role) => h('option', {
+                    value: role.id, selected: role.id === 'engineer', title: role.note,
+                }, role.title)));
+                const team = h('input', {
+                    type: 'text', class: 'input--quiet', placeholder: 'группа',
+                });
+                pendingBox.appendChild(h('div', { class: 'pending-row' },
+                    h('div', { class: 'pending-who' },
+                        h('b', {}, item.full_name || item.login),
+                        h('span', { class: 'mono small muted' }, item.login),
+                        h('span', { class: 'small faint' },
+                            'подана ' + fmtDateTime(item.created_at))),
+                    roleSelect,
+                    team,
+                    h('div', { class: 'row-actions nowrap' },
+                        h('button', {
+                            class: 'btn btn--sm btn--primary',
+                            onclick: () => approveUser(item, roleSelect.value, team.value.trim()),
+                        }, 'Одобрить'),
+                        h('button', {
+                            class: 'btn btn--sm btn--danger',
+                            title: 'Заявка будет удалена',
+                            onclick: () => rejectUser(item),
+                        }, 'Отклонить'))));
+            });
+        }
+
+        async function approveUser(item, role, team) {
+            try {
+                await api.post('/api/users/' + item.id + '/approve', { role: role, team: team });
+                toast('Доступ открыт: ' + (item.full_name || item.login));
+                await reload();
+            } catch (error) {
+                toastError(error);
+            }
+        }
+
+        async function rejectUser(item) {
+            const ok = await confirmDialog({
+                title: 'Отклонить заявку?',
+                message: 'Запись «' + (item.full_name || item.login)
+                    + '» будет удалена. Человек сможет подать заявку заново.',
+                confirmText: 'Отклонить', danger: true,
+            });
+            if (!ok) return;
+            try {
+                await api.post('/api/users/' + item.id + '/reject', {});
+                await reload();
+            } catch (error) {
+                toastError(error);
+            }
         }
 
         /* Штатное расписание: что даёт каждая должность. Список приходит
@@ -7094,6 +7591,13 @@
                         }, 'Пароль'),
                         h('button', {
                             class: 'btn btn--sm',
+                            // Себя вызывать незачем, отключённому вызов не дойдёт.
+                            disabled: !user.active || user.id === (state.user || {}).id,
+                            title: 'Уведомление со звуком: подойти в кабинет',
+                            onclick: () => callToOffice(user),
+                        }, 'Вызвать'),
+                        h('button', {
+                            class: 'btn btn--sm',
                             disabled: locked,
                             title: user.active
                                 ? 'Человек больше не сможет войти, данные останутся'
@@ -7128,6 +7632,48 @@
                 if (control) control.value = user.role;
                 paint();
             }
+        }
+
+        /* «Вызвать в кабинет» — то, что в отделе делают голосом через
+           коридор. Уведомление приходит со звуком, чтобы человек за
+           наушниками его не пропустил. */
+        async function callToOffice(user) {
+            const place = h('input', { type: 'text', placeholder: 'например, каб. 214' });
+            const note = h('textarea', { rows: 3, placeholder: 'с чем подойти (не обязательно)' });
+            const submit = h('button', {
+                class: 'btn btn--primary',
+                onclick: async () => {
+                    submit.disabled = true;
+                    try {
+                        await api.post('/api/notifications/call', {
+                            user_id: user.id,
+                            place: place.value.trim(),
+                            note: note.value.trim(),
+                        });
+                        dialog.close();
+                        toast('Вызов отправлен: ' + (user.full_name || user.login));
+                    } catch (error) {
+                        toastError(error);
+                    } finally {
+                        submit.disabled = false;
+                    }
+                },
+            }, 'Вызвать');
+            const dialog = openModal({
+                title: 'Вызвать в кабинет: ' + (user.full_name || user.login),
+                narrow: true,
+                body: [
+                    h('div', { class: 'muted small' },
+                        'Сотруднику придёт уведомление со звуком.'),
+                    h('label', { class: 'field' }, 'Куда подойти', place),
+                    h('label', { class: 'field field-area' }, 'Примечание', note),
+                ],
+                footer: [
+                    h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                    submit,
+                ],
+            });
+            place.focus();
         }
 
         async function resetPassword(user) {
@@ -7244,11 +7790,263 @@
                     h('button', {
                         class: 'btn btn--primary', onclick: () => addUser(),
                     }, 'Завести сотрудника'))),
+            pendingBox,
             rolesBox,
             tableBox,
         ]);
 
         await reload();
+    }
+
+    /* ------------------------------------------------------- сообщения ---
+
+       Переписка между людьми отдела: личная и на несколько человек. Половина
+       вопросов по письму решается одной фразой «глянь, это тот же ствол?» —
+       и раньше её говорили в коридор или писали в стороннем мессенджере,
+       которого на изолированной машине нет.
+
+       Экран устроен как почта: слева беседы, справа выбранная. Опрос раз в
+       десять секунд — соединения, которое держат открытым, здесь не нужно:
+       людей в отделе десятки, а не тысячи. */
+
+    const TALK_POLL_MS = 10000;
+    const talks = { items: [], current: null, timer: null, nodes: {} };
+
+    function stopTalkPoll() {
+        if (talks.timer) {
+            clearInterval(talks.timer);
+            talks.timer = null;
+        }
+    }
+
+    /** Как назвать беседу: своим именем либо по собеседникам. */
+    function talkTitle(item) {
+        if (item.title) return item.title;
+        const me = (state.user || {}).id;
+        const others = (item.members || []).filter((member) => member.id !== me);
+        if (!others.length) return 'Заметки для себя';
+        return others.map((member) => member.full_name).join(', ');
+    }
+
+    async function renderTalks(view, talkId) {
+        clear(view);
+        const listBox = h('div', { class: 'talk-list' });
+        const roomBox = h('div', { class: 'talk-room' });
+        talks.nodes = { list: listBox, room: roomBox };
+        talks.current = talkId ? Number(talkId) : null;
+
+        view.appendChild(h('div', { class: 'page page--talks' },
+            h('div', { class: 'page-head' },
+                h('div', { class: 'page-note' },
+                    'Переписка отдела: личная и на несколько человек'),
+                h('div', { class: 'page-head-actions' },
+                    h('button', { class: 'btn', onclick: () => loadTalks() }, 'Обновить'),
+                    h('button', {
+                        class: 'btn btn--primary', onclick: () => openNewTalk(),
+                    }, 'Написать'))),
+            h('div', { class: 'talks' }, listBox, roomBox)));
+
+        await loadTalks();
+        stopTalkPoll();
+        // Опрос заводим после первой загрузки, чтобы два запроса не пошли
+        // одновременно, и снимаем при уходе с экрана — см. renderRoute.
+        talks.timer = setInterval(() => {
+            if (state.route && state.route.name === 'talks') loadTalks(true);
+            else stopTalkPoll();
+        }, TALK_POLL_MS);
+    }
+
+    async function loadTalks(quiet) {
+        try {
+            const data = await api.get('/api/talks');
+            talks.items = data.items || [];
+        } catch (error) {
+            if (!quiet) toastError(error);
+            talks.items = [];
+        }
+        // Свежая беседа открывается сама. Раздел с одним разговором и пустой
+        // правой половиной выглядит сломанным: человек зашёл читать, а ему
+        // предлагают сначала выбрать — из одного.
+        if (!talks.current && talks.items.length) talks.current = talks.items[0].id;
+        paintTalkList();
+        setNavCount('talks', talks.items.reduce((sum, item) => sum + (item.unread || 0), 0));
+        if (talks.current) await openTalk(talks.current, true);
+        else paintTalkRoom(null);
+    }
+
+    function paintTalkList() {
+        const box = talks.nodes.list;
+        if (!box) return;
+        clear(box);
+        if (!talks.items.length) {
+            box.appendChild(h('div', { class: 'small faint pad' },
+                'Бесед пока нет. «Написать» — и выберите, кому.'));
+            return;
+        }
+        talks.items.forEach((item) => {
+            box.appendChild(h('button', {
+                class: 'talk-row' + (item.id === talks.current ? ' is-active' : ''),
+                onclick: () => {
+                    location.hash = '#/talks/' + item.id;
+                },
+            },
+                h('div', { class: 'talk-row-head' },
+                    h('b', { class: 'grow' }, talkTitle(item)),
+                    item.unread ? h('span', { class: 'badge badge--accent' },
+                        String(item.unread)) : null),
+                h('div', { class: 'small muted talk-last' }, item.last_text || '—'),
+                h('div', { class: 'small faint' }, fmtDateTime(item.updated_at))));
+        });
+    }
+
+    async function openTalk(talkId, quiet) {
+        try {
+            const data = await api.get('/api/talks/' + talkId);
+            talks.current = talkId;
+            paintTalkRoom(data);
+        } catch (error) {
+            if (!quiet) toastError(error);
+            paintTalkRoom(null);
+        }
+    }
+
+    function paintTalkRoom(data) {
+        const box = talks.nodes.room;
+        if (!box) return;
+        // Запоминаем, был ли человек внизу: дочитанную до конца переписку
+        // прокручиваем к новому сообщению, а поднятую вверх — не дёргаем.
+        const stream = talks.nodes.stream;
+        const wasDown = !stream || (stream.scrollHeight - stream.scrollTop - stream.clientHeight) < 60;
+        clear(box);
+        if (!data) {
+            talks.nodes.stream = null;
+            box.appendChild(h('div', { class: 'empty' },
+                h('h3', {}, 'Беседа не выбрана'),
+                h('div', {}, 'Слева — то, что уже есть. «Написать» — новая.')));
+            return;
+        }
+
+        const me = (state.user || {}).id;
+        const messages = data.messages || [];
+        const flow = h('div', { class: 'talk-stream' }, messages.map((message) =>
+            h('div', { class: 'talk-msg' + (message.user_id === me ? ' talk-msg--mine' : '') },
+                h('div', { class: 'talk-msg-head' },
+                    h('b', {}, message.author || 'кто-то'),
+                    h('span', { class: 'small faint' }, fmtDateTime(message.created_at))),
+                h('div', { class: 'talk-msg-text' }, message.text || ''))));
+        talks.nodes.stream = flow;
+
+        const field = h('textarea', {
+            rows: 2, placeholder: 'Сообщение. Ctrl+Enter — отправить',
+            onkeydown: (event) => {
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    send();
+                }
+            },
+        });
+        const button = h('button', { class: 'btn btn--primary', onclick: () => send() }, 'Отправить');
+
+        async function send() {
+            const text = field.value.trim();
+            if (!text) return;
+            button.disabled = true;
+            try {
+                await api.post('/api/talks/' + data.id + '/messages', { text: text });
+                field.value = '';
+                await loadTalks(true);
+            } catch (error) {
+                toastError(error);
+            } finally {
+                button.disabled = false;
+                field.focus();
+            }
+        }
+
+        append(box, [
+            h('div', { class: 'talk-head' },
+                h('b', { class: 'grow' }, talkTitle({
+                    title: (talks.items.filter((item) => item.id === data.id)[0] || {}).title || '',
+                    members: data.members,
+                })),
+                h('span', { class: 'small faint' },
+                    (data.members || []).length + ' чел.')),
+            flow,
+            h('div', { class: 'talk-send' }, field, button),
+        ]);
+        if (wasDown) flow.scrollTop = flow.scrollHeight;
+    }
+
+    /* Кому писать. Список берём из сводки отдела: он доступен всем, в отличие
+       от раздела «Сотрудники», куда рядового инженера не пускают. */
+    async function openNewTalk() {
+        let people = [];
+        try {
+            const board = await api.get('/api/board');
+            const me = (state.user || {}).id;
+            people = (board.people || []).filter(
+                (person) => person.active && person.id !== me);
+        } catch (error) {
+            toastError(error);
+            return;
+        }
+        if (!people.length) {
+            toast('Писать некому: в отделе один человек', 'error');
+            return;
+        }
+
+        const checks = people.map((person) => {
+            const box = h('input', { type: 'checkbox', value: String(person.id) });
+            return {
+                id: person.id,
+                box: box,
+                node: h('label', { class: 'check-row' }, box,
+                    h('span', {}, person.full_name,
+                        h('span', { class: 'small faint' }, ' · ' + person.role_title))),
+            };
+        });
+        const title = h('input', {
+            type: 'text', placeholder: 'если беседа не на двоих — как её назвать',
+        });
+        const submit = h('button', {
+            class: 'btn btn--primary',
+            onclick: async () => {
+                const chosen = checks.filter((item) => item.box.checked).map((item) => item.id);
+                if (!chosen.length) {
+                    toast('Выберите, кому писать', 'error');
+                    return;
+                }
+                submit.disabled = true;
+                try {
+                    const data = await api.post('/api/talks', {
+                        members: chosen, title: title.value.trim(),
+                    });
+                    dialog.close();
+                    location.hash = '#/talks/' + data.talk_id;
+                    await loadTalks(true);
+                } catch (error) {
+                    toastError(error);
+                } finally {
+                    submit.disabled = false;
+                }
+            },
+        }, 'Завести беседу');
+
+        const dialog = openModal({
+            title: 'Кому написать',
+            narrow: true,
+            body: [
+                h('div', { class: 'small muted' },
+                    'Отметьте одного — получится личная переписка; '
+                    + 'нескольких — общая беседа.'),
+                h('div', { class: 'check-list' }, checks.map((item) => item.node)),
+                h('label', { class: 'field' }, 'Название беседы', title),
+            ],
+            footer: [
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                submit,
+            ],
+        });
     }
 
     async function renderMe(view) {

@@ -29,13 +29,16 @@ from .models import (
     ChatAttachment,
     Case,
     CaseFile,
+    CaseNote,
     Chat,
     ChatMessage,
     Document,
     EditPair,
+    Notice,
     PersonFile,
     Report,
     ReportSection,
+    TalkMessage,
     User,
     rows_to,
 )
@@ -100,7 +103,8 @@ class UserRepo:
         self.db = db
 
     def create(self, login: str, password: str, full_name: str = "",
-               role: str = "engineer", department: str = "", team: str = "") -> User:
+               role: str = "engineer", department: str = "", team: str = "",
+               approved: bool = True) -> User:
         """Завести сотрудника.
 
         department — не «в каком отделе работает»: работают все в одном, это
@@ -111,9 +115,9 @@ class UserRepo:
         with self.db.transaction() as connection:
             cursor = connection.execute(
                 "INSERT INTO users(login, full_name, role, department, team, "
-                "password_hash, active, created_at) VALUES(?,?,?,?,?,?,1,?)",
+                "password_hash, active, approved, created_at) VALUES(?,?,?,?,?,?,1,?,?)",
                 (login.strip().lower(), full_name, role, department.strip(), team.strip(),
-                 hash_password(password), utcnow()),
+                 hash_password(password), 1 if approved else 0, utcnow()),
             )
         return self.get(int(cursor.lastrowid))  # type: ignore[arg-type]
 
@@ -190,6 +194,29 @@ class UserRepo:
         return int(self.db.scalar(
             f"SELECT count(*) FROM users WHERE {where}", tuple(ADMIN_ROLES)) or 0)
 
+    def approve(self, user_id: int, by_user_id: int | None = None) -> "User | None":
+        """Одобрить заявку: человек получает доступ."""
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE users SET approved = 1, approved_by = ?, approved_at = ? "
+                "WHERE id = ?", (by_user_id, utcnow(), user_id))
+        return self.get(user_id)
+
+    def delete(self, user_id: int) -> None:
+        """Убрать учётную запись целиком. Только для отклонённых заявок.
+
+        Отклонённая заявка — это не сотрудник: держать её в списке отдела
+        значит копить мусор, по которому никто не работает. Отключение
+        (``set_active``) для другого случая — человек был и ушёл.
+        """
+        with self.db.transaction() as connection:
+            connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+    def pending(self) -> List[User]:
+        """Заявки, ждущие одобрения. Старые сверху: очередь есть очередь."""
+        return rows_to(User, self.db.query(
+            "SELECT * FROM users WHERE approved = 0 ORDER BY created_at, id"))
+
     def set_active(self, user_id: int, active: bool) -> None:
         with self.db.transaction() as connection:
             connection.execute("UPDATE users SET active = ? WHERE id = ?", (int(active), user_id))
@@ -200,7 +227,9 @@ class UserRepo:
         order = "CASE role " + " ".join(
             f"WHEN '{role}' THEN {index}" for index, role in enumerate(ROLES)
         ) + f" ELSE {len(ROLES)} END, full_name, login"
-        where = " WHERE active = 1" if active_only else ""
+        # Неодобренная заявка — ещё не сотрудник: в списках отдела, в выборе
+        # исполнителя и в расходе ей не место, пока её не признали.
+        where = " WHERE approved = 1" + (" AND active = 1" if active_only else "")
         return rows_to(User, self.db.query(f"SELECT * FROM users{where} ORDER BY {order}"))
 
     def count(self) -> int:
@@ -726,14 +755,16 @@ def refresh_case_index(db: "Database", case_ref: int) -> None:
     отчёт лежал в базе, а поиск его не находил).
     """
     row = db.query_one(
-        "SELECT case_id, title, customer, incoming_no, outgoing_no, tc_no, note, "
-        "facts_json FROM cases WHERE id = ?", (case_ref,))
+        "SELECT case_id, title, customer, incoming_no, outgoing_no, tc_no, "
+        "order_no, note, outgoing_note, facts_json FROM cases WHERE id = ?",
+        (case_ref,))
     with db.transaction() as connection:
         connection.execute("DELETE FROM cases_fts WHERE case_ref = ?", (case_ref,))
         if row is None:
             return
         texts = [row["case_id"], row["title"], row["customer"],
-                 row["incoming_no"], row["outgoing_no"], row["tc_no"], row["note"],
+                 row["incoming_no"], row["outgoing_no"], row["tc_no"],
+                 row["order_no"], row["note"], row["outgoing_note"],
                  # Суть обращения и ключевые слова из факт-пакета: по ним
                  # ищут письмо, у которого отчёта ещё нет вовсе.
                  row["facts_json"]]
@@ -783,13 +814,14 @@ class CaseFileRepo:
         self.db = db
 
     def add(self, case_ref: int, name: str, path: str, size: int = 0,
-            text: str = "", note: str = "", user_id: int | None = None) -> CaseFile:
+            text: str = "", note: str = "", user_id: int | None = None,
+            stage: str = "incoming") -> CaseFile:
         now = utcnow()
         with self.db.transaction() as connection:
             cursor = connection.execute(
-                "INSERT INTO case_files(case_ref, name, size, path, text, note, "
-                "uploaded_by, created_at) VALUES(?,?,?,?,?,?,?,?)",
-                (case_ref, name, size, path, text, note, user_id, now),
+                "INSERT INTO case_files(case_ref, stage, name, size, path, text, "
+                "note, uploaded_by, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                (case_ref, stage, name, size, path, text, note, user_id, now),
             )
         # Текст приложения попадает в поиск сразу: положить бумагу и не
         # найти по ней письмо — ровно тот случай, ради которого приложения
@@ -801,9 +833,14 @@ class CaseFileRepo:
         row = self.db.query_one(f"{self._SELECT} WHERE f.id = ?", (file_id,))
         return CaseFile.from_row(row) if row else None
 
-    def list_for_case(self, case_ref: int) -> List[CaseFile]:
+    def list_for_case(self, case_ref: int, stage: str = "") -> List[CaseFile]:
+        clause = " WHERE f.case_ref = ?"
+        params: List[Any] = [case_ref]
+        if stage:
+            clause += " AND f.stage = ?"
+            params.append(stage)
         return rows_to(CaseFile, self.db.query(
-            f"{self._SELECT} WHERE f.case_ref = ? ORDER BY f.id", (case_ref,)))
+            f"{self._SELECT}{clause} ORDER BY f.stage DESC, f.id", tuple(params)))
 
     def count_for_case(self, case_ref: int) -> int:
         row = self.db.query_one(
@@ -881,17 +918,21 @@ class CaseRepo:
                user_id: int | None = None, *, incoming_no: str = "",
                incoming_date: str = "", deadline: str = "", priority: str = "normal",
                assignee_id: int | None = None, note: str = "",
-               line_type: str = "", tc_no: str = "") -> Case:
+               line_type: str = "", tc_no: str = "", tc_date: str = "",
+               order_no: str = "", order_date: str = "",
+               registrations: int = 0) -> Case:
         now = utcnow()
         with self.db.transaction() as connection:
             cursor = connection.execute(
                 "INSERT INTO cases(case_id, report_type, title, customer, status, "
-                "line_type, tc_no, incoming_no, incoming_date, deadline, priority, "
+                "line_type, tc_no, tc_date, order_no, order_date, registrations, "
+                "incoming_no, incoming_date, deadline, priority, "
                 "assignee_id, note, facts_json, facts_digest, created_by, "
                 "created_at, updated_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (case_id, report_type, title, customer, "new",
-                 line_type, tc_no, incoming_no, incoming_date, deadline, priority,
+                 line_type, tc_no, tc_date, order_no, order_date, int(registrations or 0),
+                 incoming_no, incoming_date, deadline, priority,
                  assignee_id, note,
                  json.dumps(facts, ensure_ascii=False), digest, user_id, now, now),
             )
@@ -957,8 +998,9 @@ class CaseRepo:
         возвращалась к прежнему значению.
         """
         allowed = ("title", "customer", "incoming_no", "incoming_date",
-                   "outgoing_no", "outgoing_date", "sent_by",
-                   "line_type", "tc_no",
+                   "outgoing_no", "outgoing_date", "outgoing_note", "sent_by",
+                   "line_type", "tc_no", "tc_date", "order_no", "order_date",
+                   "registrations",
                    "deadline", "priority", "assignee_id", "note", "status")
         # Единственная колонка, где пусто — это значение, а не «не передано».
         # Снять исполнителя с письма было нельзя вовсе: None отбрасывался
@@ -1015,7 +1057,8 @@ class CaseRepo:
     #: тексту отчётов и приложенных файлов через полнотекстовый указатель
     #: cases_fts (см. _FTS_SQL).
     _SEARCH_FIELDS = ("title", "customer", "case_id", "incoming_no",
-                      "outgoing_no", "tc_no", "note")
+                      "outgoing_no", "tc_no", "order_no", "note",
+                      "outgoing_note")
     _FTS_SQL = "{p}id IN (SELECT case_ref FROM cases_fts WHERE cases_fts MATCH ?)"
 
     @staticmethod
@@ -1870,7 +1913,11 @@ class BoardRepo:
             # письма в работе. Иначе они исчезали отовсюду: из нагрузки —
             # вместе с человеком, а в «без исполнителя» не попадали, потому
             # что исполнитель у них есть. Три письма отдела не видел никто.
-            "WHERE u.login <> 'local' AND (u.active = 1 OR c.id IS NOT NULL) "
+            # Заявка на доступ — ещё не сотрудник: в сводке отдела ей делать
+            # нечего. Писем за ней не числится по определению, поэтому и
+            # оговорка про «остаётся, пока есть письма» её не касается.
+            "WHERE u.login <> 'local' AND u.approved = 1 "
+            "  AND (u.active = 1 OR c.id IS NOT NULL) "
             "GROUP BY u.id "
             "HAVING u.active = 1 OR open_count > 0 "
             "ORDER BY late_count DESC, open_count DESC, u.full_name",
@@ -1949,6 +1996,211 @@ def _shift_days(day: str, days: int) -> str:
     return (base + timedelta(days=days)).strftime("%Y-%m-%d")
 
 
+class NoticeRepo:
+    """Уведомления: что человеку нужно знать.
+
+    Хранятся у получателя, а не рассылаются: машина изолирована, почты и
+    телефона нет, и единственное надёжное место для «вам сообщение» — та же
+    база, куда человек и так заходит работать.
+    """
+
+    _SELECT = (
+        "SELECT n.*, coalesce(u.full_name, u.login, '') AS from_name "
+        "FROM notifications n LEFT JOIN users u ON u.id = n.from_id"
+    )
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def add(self, user_id: int, kind: str, title: str, body: str = "",
+            link: str = "", from_id: int | None = None) -> Notice | None:
+        """Положить уведомление. Себе самому не кладём: это шум."""
+        if from_id is not None and from_id == user_id:
+            return None
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO notifications(user_id, kind, title, body, link, "
+                "from_id, seen, created_at) VALUES(?,?,?,?,?,?,0,?)",
+                (user_id, kind, title, body, link, from_id, utcnow()),
+            )
+        return self.get(int(cursor.lastrowid))
+
+    def get(self, notice_id: int) -> Notice | None:
+        row = self.db.query_one(f"{self._SELECT} WHERE n.id = ?", (notice_id,))
+        return Notice.from_row(row) if row else None
+
+    def list_for(self, user_id: int, limit: int = 50) -> List[Notice]:
+        return rows_to(Notice, self.db.query(
+            f"{self._SELECT} WHERE n.user_id = ? ORDER BY n.id DESC LIMIT ?",
+            (user_id, limit)))
+
+    def unseen(self, user_id: int) -> int:
+        return int(self.db.scalar(
+            "SELECT count(*) FROM notifications WHERE user_id = ? AND seen = 0",
+            (user_id,)) or 0)
+
+    def mark_seen(self, user_id: int, notice_id: int | None = None) -> None:
+        """Отметить прочитанным одно уведомление или все сразу."""
+        with self.db.transaction() as connection:
+            if notice_id is None:
+                connection.execute(
+                    "UPDATE notifications SET seen = 1 WHERE user_id = ?", (user_id,))
+            else:
+                connection.execute(
+                    "UPDATE notifications SET seen = 1 WHERE user_id = ? AND id = ?",
+                    (user_id, notice_id))
+
+    def clear(self, user_id: int) -> None:
+        with self.db.transaction() as connection:
+            connection.execute("DELETE FROM notifications WHERE user_id = ?", (user_id,))
+
+
+class TalkRepo:
+    """Переписка между людьми: личная и на несколько человек."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def create(self, member_ids: Sequence[int], title: str = "",
+               created_by: int | None = None) -> int:
+        now = utcnow()
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO talks(title, created_by, created_at, updated_at) "
+                "VALUES(?,?,?,?)", (title, created_by, now, now))
+            talk_id = int(cursor.lastrowid)
+            for user_id in dict.fromkeys(member_ids):
+                connection.execute(
+                    "INSERT OR IGNORE INTO talk_members(talk_id, user_id, seen_id) "
+                    "VALUES(?,?,0)", (talk_id, user_id))
+        return talk_id
+
+    def private_between(self, first: int, second: int) -> int | None:
+        """Уже заведённая беседа ровно этих двоих. Иначе None.
+
+        Без этого каждое «написать Иванову» заводило бы новую ветку, и
+        переписка рассыпалась бы на десяток одинаковых.
+        """
+        row = self.db.query_one(
+            "SELECT t.id FROM talks t "
+            "JOIN talk_members a ON a.talk_id = t.id AND a.user_id = ? "
+            "JOIN talk_members b ON b.talk_id = t.id AND b.user_id = ? "
+            "WHERE t.title = '' AND "
+            "(SELECT count(*) FROM talk_members m WHERE m.talk_id = t.id) = 2 "
+            "ORDER BY t.id LIMIT 1", (first, second))
+        return int(row["id"]) if row else None
+
+    def members(self, talk_id: int) -> List[Dict[str, Any]]:
+        rows = self.db.query(
+            "SELECT m.user_id, m.seen_id, coalesce(u.full_name, u.login, '') AS name, "
+            "u.role AS role FROM talk_members m JOIN users u ON u.id = m.user_id "
+            "WHERE m.talk_id = ? ORDER BY name", (talk_id,))
+        return [{"id": int(row["user_id"]), "full_name": row["name"],
+                 "role": row["role"], "seen_id": int(row["seen_id"])} for row in rows]
+
+    def is_member(self, talk_id: int, user_id: int) -> bool:
+        return self.db.query_one(
+            "SELECT 1 FROM talk_members WHERE talk_id = ? AND user_id = ?",
+            (talk_id, user_id)) is not None
+
+    def list_for(self, user_id: int) -> List[Dict[str, Any]]:
+        """Беседы человека: свежие сверху, с последним сообщением и счётчиком."""
+        rows = self.db.query(
+            "SELECT t.id, t.title, t.updated_at, m.seen_id, "
+            "(SELECT text FROM talk_messages x WHERE x.talk_id = t.id "
+            " ORDER BY x.id DESC LIMIT 1) AS last_text, "
+            "(SELECT count(*) FROM talk_messages x WHERE x.talk_id = t.id "
+            " AND x.id > m.seen_id AND x.user_id <> ?) AS unread "
+            "FROM talks t JOIN talk_members m ON m.talk_id = t.id "
+            "WHERE m.user_id = ? ORDER BY t.updated_at DESC, t.id DESC",
+            (user_id, user_id))
+        out = []
+        for row in rows:
+            out.append({
+                "id": int(row["id"]),
+                "title": row["title"] or "",
+                "updated_at": row["updated_at"],
+                "last_text": (row["last_text"] or "")[:160],
+                "unread": int(row["unread"] or 0),
+                "members": self.members(int(row["id"])),
+            })
+        return out
+
+    def add_message(self, talk_id: int, user_id: int | None, text: str) -> TalkMessage:
+        now = utcnow()
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO talk_messages(talk_id, user_id, text, created_at) "
+                "VALUES(?,?,?,?)", (talk_id, user_id, text, now))
+            connection.execute("UPDATE talks SET updated_at = ? WHERE id = ?",
+                               (now, talk_id))
+            # Своё сообщение прочитанным считается сразу: счётчик непрочитанных
+            # у автора иначе рос бы от его же слов.
+            if user_id is not None:
+                connection.execute(
+                    "UPDATE talk_members SET seen_id = ? WHERE talk_id = ? AND user_id = ?",
+                    (int(cursor.lastrowid), talk_id, user_id))
+        return self.message(int(cursor.lastrowid))  # type: ignore[return-value]
+
+    def message(self, message_id: int) -> TalkMessage | None:
+        row = self.db.query_one(
+            "SELECT m.*, coalesce(u.full_name, u.login, '') AS author "
+            "FROM talk_messages m LEFT JOIN users u ON u.id = m.user_id "
+            "WHERE m.id = ?", (message_id,))
+        return TalkMessage.from_row(row) if row else None
+
+    def messages(self, talk_id: int, limit: int = 200) -> List[TalkMessage]:
+        rows = self.db.query(
+            "SELECT m.*, coalesce(u.full_name, u.login, '') AS author "
+            "FROM talk_messages m LEFT JOIN users u ON u.id = m.user_id "
+            "WHERE m.talk_id = ? ORDER BY m.id DESC LIMIT ?", (talk_id, limit))
+        return list(reversed(rows_to(TalkMessage, rows)))
+
+    def mark_read(self, talk_id: int, user_id: int) -> None:
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE talk_members SET seen_id = "
+                "coalesce((SELECT max(id) FROM talk_messages WHERE talk_id = ?), 0) "
+                "WHERE talk_id = ? AND user_id = ?", (talk_id, talk_id, user_id))
+
+    def unread_total(self, user_id: int) -> int:
+        return int(self.db.scalar(
+            "SELECT count(*) FROM talk_messages x "
+            "JOIN talk_members m ON m.talk_id = x.talk_id AND m.user_id = ? "
+            "WHERE x.id > m.seen_id AND x.user_id <> ?", (user_id, user_id)) or 0)
+
+
+class CaseNoteRepo:
+    """Примечания к письму: обсуждение прямо на деле."""
+
+    _SELECT = (
+        "SELECT n.*, coalesce(u.full_name, u.login, '') AS author "
+        "FROM case_notes n LEFT JOIN users u ON u.id = n.user_id"
+    )
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def add(self, case_ref: int, user_id: int | None, text: str) -> CaseNote:
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO case_notes(case_ref, user_id, text, created_at) "
+                "VALUES(?,?,?,?)", (case_ref, user_id, text, utcnow()))
+        return self.get(int(cursor.lastrowid))  # type: ignore[return-value]
+
+    def get(self, note_id: int) -> CaseNote | None:
+        row = self.db.query_one(f"{self._SELECT} WHERE n.id = ?", (note_id,))
+        return CaseNote.from_row(row) if row else None
+
+    def list_for_case(self, case_ref: int) -> List[CaseNote]:
+        return rows_to(CaseNote, self.db.query(
+            f"{self._SELECT} WHERE n.case_ref = ? ORDER BY n.id", (case_ref,)))
+
+    def delete(self, note_id: int) -> None:
+        with self.db.transaction() as connection:
+            connection.execute("DELETE FROM case_notes WHERE id = ?", (note_id,))
+
+
 class Repositories:
     """Единая точка доступа ко всем репозиториям."""
 
@@ -1968,6 +2220,9 @@ class Repositories:
         self.absences = AbsenceRepo(db)
         self.person_files = PersonFileRepo(db)
         self.board = BoardRepo(db)
+        self.notices = NoticeRepo(db)
+        self.talks = TalkRepo(db)
+        self.case_notes = CaseNoteRepo(db)
         self.audit = AuditRepo(db)
 
     @classmethod

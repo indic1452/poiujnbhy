@@ -124,6 +124,19 @@ class HealthAndConfigTests(WebTestCase):
         self.assertEqual(body["status"], "ok")
         self.assertIn("cases", body["counts"])
 
+    def test_health_counts_everything_that_accumulates(self):
+        """Таблица, которой нет в счётчиках, для проверки не существует.
+
+        База растёт бумагами письма, документами людей, перепиской и
+        уведомлениями — а «сколько в базе» отвечали по одним письмам и
+        отчётам, и рост, о котором никто не знает, обнаруживался местом
+        на диске.
+        """
+        counts = self.client.get("/api/health").json()["counts"]
+        for name in ("case_files", "case_notes", "person_files",
+                     "notifications", "talks", "talk_messages"):
+            self.assertIn(name, counts)
+
     def test_config_lists_outlines(self):
         body = self.client.get("/api/config").json()
         types = {outline["report_type"] for outline in body["outlines"]}
@@ -1281,6 +1294,123 @@ class LetterRegistrationTests(WebTestCase):
         self.assertEqual("sls", updated["line_type"])
         self.assertEqual("ТС-9", updated["tc_no"])
         self.assertEqual("Новое описание", updated["title"])
+
+
+class LetterCardFieldTests(WebTestCase):
+    """Карточка письма: входящее, указания, ТС, регистрации, ответ."""
+
+    def register(self, **fields):
+        payload = {"case_id": "ВХ-2026-0700", "title": "Проверка обмена по линии"}
+        payload.update(fields)
+        response = self.client.post("/api/cases", json=payload)
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()["case"]
+
+    def test_the_incoming_paper_is_written_down_whole(self):
+        """Входящее письмо приходит с полным набором реквизитов.
+
+        Их вписывают один раз при регистрации: разыскивать потом, каким
+        указанием спущено письмо и по какому средству, придётся по бумажному
+        журналу.
+        """
+        case = self.register(
+            incoming_date="2026-08-14", order_no="УК-142", order_date="2026-08-12",
+            tc_no="ТС-3081-07", tc_date="2026-08-10", line_type="rrls",
+            registrations=3, note="Срочно, доложить начальнику отдела")
+        self.assertEqual("2026-08-14", case["incoming_date"])
+        self.assertEqual("УК-142", case["order_no"])
+        self.assertEqual("2026-08-12", case["order_date"])
+        self.assertEqual("ТС-3081-07", case["tc_no"])
+        self.assertEqual("2026-08-10", case["tc_date"])
+        self.assertEqual("rrls", case["line_type"])
+        self.assertEqual(3, case["registrations"])
+        self.assertIn("Срочно", case["note"])
+
+    def test_the_fields_survive_a_reload(self):
+        # Поле, которое сервер принял и потерял, хуже отсутствующего.
+        case = self.register(order_no="УК-142", tc_date="2026-08-10", registrations=2)
+        fresh = self.client.get(f"/api/cases/{case['id']}").json()["case"]
+        self.assertEqual("УК-142", fresh["order_no"])
+        self.assertEqual("2026-08-10", fresh["tc_date"])
+        self.assertEqual(2, fresh["registrations"])
+
+    def test_the_fields_are_editable_afterwards(self):
+        # Указания приходят вдогонку письму — вписать их надо потом.
+        case = self.register()
+        response = self.client.patch(f"/api/cases/{case['id']}", json={
+            "order_no": "УК-201", "order_date": "2026-08-20", "registrations": 5})
+        self.assertEqual(200, response.status_code, response.text)
+        updated = response.json()["case"]
+        self.assertEqual("УК-201", updated["order_no"])
+        self.assertEqual("2026-08-20", updated["order_date"])
+        self.assertEqual(5, updated["registrations"])
+
+    def test_the_order_number_is_searchable(self):
+        # «Что было по указанию УК-142» — обычный вопрос отдела.
+        self.register(order_no="УК-142")
+        found = self.client.get("/api/cases", params={"q": "УК-142"}).json()
+        self.assertEqual(["ВХ-2026-0700"], [item["case_id"] for item in found["items"]])
+        # И по обрывку номера: человек помнит «142», а не «УК-142» целиком.
+        # Обрывок берётся только подстрокой — полнотекстовый указатель ищет
+        # словами, и на кусок слова он письма не найдёт.
+        part = self.client.get("/api/cases", params={"q": "К-142"}).json()
+        self.assertIn("ВХ-2026-0700", [item["case_id"] for item in part["items"]])
+
+    def test_a_number_of_registrations_is_a_number(self):
+        # «Количество регистраций» — счёт, а не свободный текст.
+        bad = self.client.post("/api/cases", json={
+            "case_id": "ВХ-2026-0701", "registrations": "много"})
+        self.assertEqual(400, bad.status_code)
+
+    def test_a_crooked_date_is_refused_where_it_is_typed(self):
+        bad = self.client.post("/api/cases", json={
+            "case_id": "ВХ-2026-0702", "order_date": "12.08.2026"})
+        self.assertEqual(400, bad.status_code)
+        self.assertIn("дата", bad.json()["error"].lower())
+
+    def test_the_answer_is_written_down_with_its_note(self):
+        """После проверки начальником ответ уходит — и это тоже запись.
+
+        Номер исходящего, дата и примечание: без них в учёте дыра — письмо
+        пришло, работа сделана, а чем ответили, неизвестно.
+        """
+        case = self.register()
+        report = self.generate(case["id"])
+        self.submit(report["id"])
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{report['id']}/approve", json={})
+        self.login("admin")
+        response = self.client.post(f"/api/cases/{case['id']}/send", json={
+            "outgoing_no": "ИСХ-2026-0912", "outgoing_date": "2026-08-28",
+            "outgoing_note": "Отправлено с приложением на 4 листах"})
+        self.assertEqual(200, response.status_code, response.text)
+        sent = response.json()["case"]
+        self.assertEqual("ИСХ-2026-0912", sent["outgoing_no"])
+        self.assertEqual("2026-08-28", sent["outgoing_date"])
+        self.assertEqual("Отправлено с приложением на 4 листах", sent["outgoing_note"])
+        self.assertEqual("approved", sent["status"])
+
+    def test_papers_of_the_answer_are_kept_apart_from_the_letter(self):
+        """Приложения к ответу — не бумаги входящего.
+
+        В одной куче исполнитель через полгода не отличит скан письма от
+        того, что ушло с ответом.
+        """
+        case = self.register()
+        self.client.post(
+            f"/api/cases/{case['id']}/files",
+            files={"file": ("вход.txt", b"skan pisma", "text/plain")})
+        self.client.post(
+            f"/api/cases/{case['id']}/files", data={"stage": "outgoing"},
+            files={"file": ("prilozhenie.txt", b"prilozhenie k otvetu", "text/plain")})
+
+        everything = self.client.get(f"/api/cases/{case['id']}/files").json()["files"]
+        self.assertEqual({"вход.txt": "incoming", "prilozhenie.txt": "outgoing"},
+                         {item["name"]: item["stage"] for item in everything})
+        only_out = self.client.get(f"/api/cases/{case['id']}/files",
+                                   params={"stage": "outgoing"}).json()["files"]
+        self.assertEqual(["prilozhenie.txt"], [item["name"] for item in only_out])
+        self.assertEqual("к ответу", only_out[0]["stage_title"])
 
 
 class LetterDeletionTests(WebTestCase):
@@ -3506,6 +3636,393 @@ class PersonalFileTests(WebTestCase):
         self.assertEqual(1, len(body["roster"]))
 
 
+class SelfRegistrationTests(WebTestCase):
+    """Заявка на доступ: заводит себя человек, открывает начальство."""
+
+    def apply(self, login="sidorov", password="пароль12345", full_name="Сидоров С. С."):
+        self.client.cookies.clear()
+        return self.client.post("/api/auth/register", json={
+            "login": login, "password": password, "full_name": full_name})
+
+    def test_an_application_needs_no_login_of_its_own(self):
+        """Заявку подаёт тот, у кого доступа ещё нет.
+
+        Путь за проверкой входа означал бы, что подать заявку может только
+        уже вошедший, — то есть никто.
+        """
+        response = self.apply()
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual("sidorov", response.json()["login"])
+
+    def test_an_unapproved_person_cannot_get_in(self):
+        # Пароль верный, а доступа нет: система обязана сказать почему,
+        # иначе человек час ищет опечатку в пароле.
+        self.apply()
+        response = self.client.post("/api/auth/login", json={
+            "login": "sidorov", "password": "пароль12345"})
+        self.assertEqual(403, response.status_code)
+        self.assertIn("не одобрена", response.json()["error"])
+
+    def test_an_application_does_not_choose_its_own_rank(self):
+        # Иначе пришедший записал бы себя начальником отдела.
+        self.apply()
+        self.login("admin")
+        pending = self.client.get("/api/users/pending").json()["items"]
+        self.assertEqual(["sidorov"], [item["login"] for item in pending])
+        self.assertEqual("engineer", pending[0]["role"])
+
+    def test_an_applicant_is_not_yet_a_member_of_the_department(self):
+        # До одобрения это не сотрудник: ни в списке личного состава, ни в
+        # сводке отдела его быть не должно.
+        self.apply()
+        self.login("admin")
+        staff = self.client.get("/api/users").json()["items"]
+        self.assertNotIn("sidorov", [item["login"] for item in staff])
+        board = self.client.get("/api/board").json()
+        self.assertNotIn("sidorov", [item["login"] for item in board["people"]])
+
+    def test_the_boss_opens_access_and_assigns_the_rank(self):
+        self.apply()
+        self.login("admin")
+        person = self.client.get("/api/users/pending").json()["items"][0]
+        response = self.client.post(f"/api/users/{person['id']}/approve",
+                                    json={"role": "senior", "team": "3 группа"})
+        self.assertEqual(200, response.status_code, response.text)
+        self.assertEqual("senior", response.json()["user"]["role"])
+        self.assertEqual([], self.client.get("/api/users/pending").json()["items"])
+
+        self.client.cookies.clear()
+        entered = self.client.post("/api/auth/login", json={
+            "login": "sidorov", "password": "пароль12345"})
+        self.assertEqual(200, entered.status_code, entered.text)
+
+    def test_the_approved_person_learns_about_it(self):
+        # Человек не должен пробовать войти каждый день, гадая, одобрили ли.
+        self.apply()
+        self.login("admin")
+        person = self.client.get("/api/users/pending").json()["items"][0]
+        self.client.post(f"/api/users/{person['id']}/approve", json={"role": "engineer"})
+        self.client.cookies.clear()
+        self.login("sidorov", "пароль12345")
+        notices = self.client.get("/api/notifications").json()["items"]
+        self.assertEqual(["user.approved"], [item["kind"] for item in notices])
+
+    def test_an_engineer_neither_sees_nor_approves_applications(self):
+        # Одобряет только создатель, начальник отдела, зам и начальник группы.
+        self.apply()
+        self.login("admin")
+        person = self.client.get("/api/users/pending").json()["items"][0]
+        self.login("engineer")
+        self.assertEqual(403, self.client.get("/api/users/pending").status_code)
+        refused = self.client.post(f"/api/users/{person['id']}/approve",
+                                   json={"role": "engineer"})
+        self.assertEqual(403, refused.status_code)
+        # Отказ именно по должности: инженер не ведёт личный состав. Разбор
+        # «кого кем можно назначить» дальше по коду до него не доходит —
+        # иначе запрет держался бы случайно, на равенстве старшинства.
+        self.assertIn("начальника группы", refused.json()["error"])
+        self.assertEqual(
+            403, self.client.post(f"/api/users/{person['id']}/reject",
+                                  json={}).status_code)
+
+    def test_a_group_lead_may_approve(self):
+        self.apply()
+        self.login("gruppa")
+        person = self.client.get("/api/users/pending").json()["items"][0]
+        response = self.client.post(f"/api/users/{person['id']}/approve",
+                                    json={"role": "engineer"})
+        self.assertEqual(200, response.status_code, response.text)
+
+    def test_nobody_is_promoted_above_the_one_who_approves(self):
+        self.apply()
+        self.login("gruppa")
+        person = self.client.get("/api/users/pending").json()["items"][0]
+        response = self.client.post(f"/api/users/{person['id']}/approve",
+                                    json={"role": "head"})
+        self.assertEqual(403, response.status_code)
+        self.assertIn("выше собственной", response.json()["error"])
+
+    def test_a_rejected_application_leaves_nothing_behind(self):
+        # Отклонённая заявка — не сотрудник: держать её в списке значит
+        # копить мусор, по которому никто не работает.
+        self.apply()
+        self.login("admin")
+        person = self.client.get("/api/users/pending").json()["items"][0]
+        self.assertEqual(200, self.client.post(
+            f"/api/users/{person['id']}/reject", json={}).status_code)
+        self.assertEqual([], self.client.get("/api/users/pending").json()["items"])
+        # Логин освободился: человек может подать заявку заново.
+        self.assertEqual(200, self.apply().status_code)
+
+    def test_an_approved_account_is_switched_off_and_not_rejected(self):
+        self.apply()
+        self.login("admin")
+        person = self.client.get("/api/users/pending").json()["items"][0]
+        self.client.post(f"/api/users/{person['id']}/approve", json={"role": "engineer"})
+        again = self.client.post(f"/api/users/{person['id']}/reject", json={})
+        self.assertEqual(409, again.status_code)
+        self.assertIn("отключают", again.json()["error"])
+
+    def test_a_taken_login_is_refused_plainly(self):
+        self.client.cookies.clear()
+        response = self.client.post("/api/auth/register", json={
+            "login": "engineer", "password": "пароль12345", "full_name": "Другой Д. Д."})
+        self.assertEqual(409, response.status_code)
+        self.assertIn("занят", response.json()["error"])
+
+    def test_a_short_password_is_refused_before_the_record_appears(self):
+        response = self.apply(password="123")
+        self.assertEqual(400, response.status_code)
+        self.login("admin")
+        self.assertEqual([], self.client.get("/api/users/pending").json()["items"])
+
+    def test_applications_cannot_be_poured_in_endlessly(self):
+        """Путь открыт без входа — значит, его можно дёргать в цикле.
+
+        Десяток заявок подряд с одного места — это не отдел устраивается
+        на работу, а очередь на одобрение, забитая за минуту.
+        """
+        codes = [self.apply(login=f"chelovek{n}").status_code for n in range(8)]
+        self.assertIn(429, codes)
+        self.assertIn("слишком много", self.apply(login="ещё").json()["error"])
+
+
+class NotificationTests(WebTestCase):
+    """Уведомления: смена состояния письма, вызов в кабинет, звук."""
+
+    def setUp(self):
+        super().setUp()
+        self.engineer = self.repos.users.by_login("engineer")
+        self.login("engineer")
+        self.case = self.create_case()
+        self.report = self.generate(self.case["id"])
+        self.submit(self.report["id"])
+
+    def notices(self, login="engineer"):
+        self.login(login)
+        return self.client.get("/api/notifications").json()
+
+    def test_the_owner_learns_that_the_report_came_back(self):
+        # Начальник нашёл ошибку — исполнитель должен узнать об этом, не
+        # заглядывая в письмо по расписанию.
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/rework",
+                         json={"note": "Ствол 3: поляризация не та"})
+        data = self.notices()
+        kinds = [item["kind"] for item in data["items"]]
+        self.assertIn("report.rework", kinds)
+        back = [item for item in data["items"] if item["kind"] == "report.rework"][0]
+        self.assertIn("Ствол 3", back["body"])
+        self.assertIn(str(self.case["id"]), back["link"])
+
+    def test_a_returned_report_rings(self):
+        # Возврат на доработку и вызов в кабинет — со звуком: остальное
+        # подождёт до того, как человек посмотрит на экран.
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/rework", json={"note": "поправить"})
+        loud = [item for item in self.notices()["items"] if item["loud"]]
+        self.assertEqual(["report.rework"], [item["kind"] for item in loud])
+
+    def test_the_boss_is_told_that_a_report_was_handed_in(self):
+        data = self.notices("nachalnik")
+        self.assertIn("report.review", [item["kind"] for item in data["items"]])
+
+    def test_the_counter_shows_only_what_has_not_been_looked_at(self):
+        self.login("nachalnik")
+        self.client.post(f"/api/reports/{self.report['id']}/rework", json={"note": "поправить"})
+        data = self.notices()
+        self.assertEqual(data["unseen"], len([i for i in data["items"] if not i["seen"]]))
+        first = data["items"][0]["id"]
+        self.client.post("/api/notifications/read", json={"ids": [first]})
+        self.assertEqual(data["unseen"] - 1,
+                         self.client.get("/api/notifications").json()["unseen"])
+
+    def test_a_call_to_the_office_reaches_the_person(self):
+        self.login("nachalnik")
+        response = self.client.post("/api/notifications/call", json={
+            "user_id": self.engineer.id, "place": "каб. 214", "note": "с журналом"})
+        self.assertEqual(200, response.status_code, response.text)
+        call = [item for item in self.notices()["items"] if item["kind"] == "call"][0]
+        self.assertIn("Начальников", call["title"])
+        self.assertIn("каб. 214", call["body"])
+        self.assertIn("с журналом", call["body"])
+        self.assertTrue(call["loud"])
+
+    def test_calling_is_the_right_of_the_leadership(self):
+        # Вызывать друг друга всем подряд — не порядок, а способ мешать
+        # работать.
+        self.login("engineer")
+        boss = self.repos.users.by_login("nachalnik")
+        response = self.client.post("/api/notifications/call", json={"user_id": boss.id})
+        self.assertEqual(403, response.status_code)
+
+    def test_nobody_calls_themselves(self):
+        self.login("nachalnik")
+        boss = self.repos.users.by_login("nachalnik")
+        response = self.client.post("/api/notifications/call", json={"user_id": boss.id})
+        self.assertEqual(400, response.status_code)
+        self.assertIn("себя", response.json()["error"])
+
+    def test_notices_are_private(self):
+        # Уведомление адресовано человеку, а не отделу.
+        self.login("nachalnik")
+        self.client.post("/api/notifications/call", json={"user_id": self.engineer.id})
+        others = self.client.get("/api/notifications").json()["items"]
+        self.assertNotIn("call", [item["kind"] for item in others])
+
+
+class CaseNoteTests(WebTestCase):
+    """Примечания к письму: обсуждение остаётся при деле."""
+
+    def setUp(self):
+        super().setUp()
+        self.login("engineer")
+        self.case = self.create_case()
+
+    def add(self, text):
+        return self.client.post(f"/api/cases/{self.case['id']}/notes", json={"text": text})
+
+    def test_a_note_stays_with_the_letter(self):
+        response = self.add("Ствол 3: сверить поляризацию с журналом")
+        self.assertEqual(200, response.status_code, response.text)
+        notes = self.client.get(f"/api/cases/{self.case['id']}/notes").json()["notes"]
+        self.assertEqual(["Ствол 3: сверить поляризацию с журналом"],
+                         [item["text"] for item in notes])
+        self.assertEqual("Инженеров И. И.", notes[0]["author"])
+
+    def test_an_empty_note_is_not_a_note(self):
+        self.assertEqual(400, self.add("   ").status_code)
+
+    def test_the_one_it_concerns_is_told(self):
+        # Письмо в эту минуту он может не держать открытым.
+        self.login("nachalnik")
+        self.add("Переделать раздел о выводах")
+        self.login("engineer")
+        notices = self.client.get("/api/notifications").json()["items"]
+        note = [item for item in notices if item["kind"] == "case.note"][0]
+        self.assertIn("Переделать раздел", note["body"])
+        self.assertIn(str(self.case["id"]), note["link"])
+
+    def test_a_person_does_not_get_a_notice_about_their_own_note(self):
+        self.add("Себе на память")
+        notices = self.client.get("/api/notifications").json()["items"]
+        self.assertNotIn("case.note", [item["kind"] for item in notices])
+
+    def test_own_note_is_removed_by_its_author(self):
+        note = self.add("Опечатка").json()["note"]
+        self.assertEqual(200, self.client.delete(
+            f"/api/cases/{self.case['id']}/notes/{note['id']}").status_code)
+        self.assertEqual([], self.client.get(
+            f"/api/cases/{self.case['id']}/notes").json()["notes"])
+
+    def test_a_stranger_does_not_remove_a_note_but_the_boss_does(self):
+        note = self.add("Замечание по делу").json()["note"]
+        second = self.repos.users.create("drugoy", "пароль123", "Другов Д. Д.", "engineer")
+        self.assertTrue(second)
+        self.login("drugoy")
+        self.assertEqual(403, self.client.delete(
+            f"/api/cases/{self.case['id']}/notes/{note['id']}").status_code)
+        self.login("nachalnik")
+        self.assertEqual(200, self.client.delete(
+            f"/api/cases/{self.case['id']}/notes/{note['id']}").status_code)
+
+
+class TalkTests(WebTestCase):
+    """Переписка между людьми отдела: личная и на несколько человек."""
+
+    def setUp(self):
+        super().setUp()
+        self.engineer = self.repos.users.by_login("engineer")
+        self.boss = self.repos.users.by_login("nachalnik")
+
+    def test_a_private_talk_is_not_started_twice(self):
+        """Иначе каждое «написать Иванову» рождало бы новую ветку.
+
+        Переписка рассыпалась бы на одинаковые беседы, и найти в них
+        сказанное на прошлой неделе стало бы нельзя.
+        """
+        self.login("nachalnik")
+        first = self.client.post("/api/talks", json={"members": [self.engineer.id]}).json()
+        self.assertFalse(first["existed"])
+        second = self.client.post("/api/talks", json={"members": [self.engineer.id]}).json()
+        self.assertTrue(second["existed"])
+        self.assertEqual(first["talk_id"], second["talk_id"])
+        # И с другой стороны — та же беседа, а не вторая.
+        self.login("engineer")
+        third = self.client.post("/api/talks", json={"members": [self.boss.id]}).json()
+        self.assertEqual(first["talk_id"], third["talk_id"])
+
+    def test_both_sides_see_the_message(self):
+        self.login("nachalnik")
+        talk = self.client.post("/api/talks", json={"members": [self.engineer.id]}).json()
+        self.client.post(f"/api/talks/{talk['talk_id']}/messages",
+                         json={"text": "Подойдите с материалами по РРЛС-4"})
+        self.login("engineer")
+        data = self.client.get(f"/api/talks/{talk['talk_id']}").json()
+        self.assertEqual(["Подойдите с материалами по РРЛС-4"],
+                         [item["text"] for item in data["messages"]])
+        self.assertEqual("Начальников Н. Н.", data["messages"][0]["author"])
+
+    def test_a_message_reaches_the_person_who_is_not_looking(self):
+        self.login("nachalnik")
+        talk = self.client.post("/api/talks", json={"members": [self.engineer.id]}).json()
+        self.client.post(f"/api/talks/{talk['talk_id']}/messages", json={"text": "Срочно"})
+        self.login("engineer")
+        notices = self.client.get("/api/notifications").json()["items"]
+        message = [item for item in notices if item["kind"] == "message"][0]
+        self.assertIn("Начальников", message["title"])
+        self.assertIn(str(talk["talk_id"]), message["link"])
+
+    def test_unread_is_counted_until_the_talk_is_opened(self):
+        self.login("nachalnik")
+        talk = self.client.post("/api/talks", json={"members": [self.engineer.id]}).json()
+        self.client.post(f"/api/talks/{talk['talk_id']}/messages", json={"text": "Раз"})
+        self.client.post(f"/api/talks/{talk['talk_id']}/messages", json={"text": "Два"})
+        self.login("engineer")
+        listing = self.client.get("/api/talks").json()["items"]
+        self.assertEqual(2, listing[0]["unread"])
+        self.assertEqual("Два", listing[0]["last_text"])
+        self.client.get(f"/api/talks/{talk['talk_id']}")
+        self.assertEqual(0, self.client.get("/api/talks").json()["items"][0]["unread"])
+
+    def test_own_messages_are_never_unread(self):
+        self.login("nachalnik")
+        talk = self.client.post("/api/talks", json={"members": [self.engineer.id]}).json()
+        self.client.post(f"/api/talks/{talk['talk_id']}/messages", json={"text": "Раз"})
+        self.assertEqual(0, self.client.get("/api/talks").json()["items"][0]["unread"])
+
+    def test_a_group_talk_holds_everyone(self):
+        lead = self.repos.users.by_login("gruppa")
+        self.login("nachalnik")
+        talk = self.client.post("/api/talks", json={
+            "members": [self.engineer.id, lead.id], "title": "Разбор РРЛС-4"}).json()
+        self.login("gruppa")
+        data = self.client.get(f"/api/talks/{talk['talk_id']}").json()
+        self.assertEqual(3, len(data["members"]))
+        self.assertEqual("Разбор РРЛС-4",
+                         self.client.get("/api/talks").json()["items"][0]["title"])
+
+    def test_a_stranger_does_not_read_a_talk(self):
+        # Переписка двоих — это переписка двоих, даже для начальника отдела.
+        self.login("engineer")
+        lead = self.repos.users.by_login("gruppa")
+        talk = self.client.post("/api/talks", json={"members": [lead.id]}).json()
+        self.login("nachalnik")
+        self.assertEqual(404, self.client.get(f"/api/talks/{talk['talk_id']}").status_code)
+        self.assertEqual(404, self.client.post(
+            f"/api/talks/{talk['talk_id']}/messages", json={"text": "влезаю"}).status_code)
+
+    def test_a_talk_with_nobody_is_refused(self):
+        self.login("nachalnik")
+        self.assertEqual(400, self.client.post("/api/talks", json={"members": []}).status_code)
+
+    def test_an_empty_message_is_not_sent(self):
+        self.login("nachalnik")
+        talk = self.client.post("/api/talks", json={"members": [self.engineer.id]}).json()
+        self.assertEqual(400, self.client.post(
+            f"/api/talks/{talk['talk_id']}/messages", json={"text": "  "}).status_code)
+
+
 class LoginBackgroundTests(WebTestCase):
     """Фон окна входа: кадр из поставки и своя фотография вместо него."""
 
@@ -3576,6 +4093,90 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("renderMarkdown(text)", self.js)
         self.assertIn("Так система прочитала сданный файл", self.js)
         self.assertNotIn("Разделов у него нет", self.js)
+
+    def test_the_login_page_lets_a_newcomer_apply(self):
+        """Заводить каждого руками в отделе некому.
+
+        Окно входа — единственное место, куда попадает человек без доступа;
+        если заявку подать неоткуда, её и не подадут.
+        """
+        self.assertIn('id="signup-form"', self.login)
+        self.assertIn("/api/auth/register", self.login)
+        self.assertIn("Подать заявку", self.login)
+        # Должность в заявке не спрашиваем: её назначает тот, кто одобряет.
+        self.assertNotIn('id="signup-role"', self.login)
+        # И честно говорим, что будет дальше.
+        self.assertIn("Доступ откроет начальник отдела", self.login)
+
+    def test_the_login_page_stays_on_its_own(self):
+        # Страница входа не подключает внешних сценариев: её должно быть
+        # видно даже при ошибке в основном приложении.
+        self.assertNotIn("<script src", self.login)
+
+    def test_applications_are_shown_where_people_are_managed(self):
+        # Заявка, о которой забыли, — это человек, который не может работать.
+        self.assertIn("/api/users/pending", self.js)
+        # Именно подписью на экране, а не словами в комментарии рядом.
+        self.assertIn("'Заявки на доступ',", self.js)
+        self.assertIn("до этого войти он не может", self.js)
+        self.assertIn("/approve", self.js)
+        self.assertIn("/reject", self.js)
+
+    def test_the_alert_sound_survives_the_browsers_autoplay_rule(self):
+        """Свежий AudioContext стоит приостановленным до касания страницы.
+
+        Всё, что в него расписали до этого, уходит в тишину: вызов в кабинет
+        приходил бы молча — то есть ровно так, как если бы звука не было
+        вовсе. Контекст поэтому один на сеанс, будится первым же касанием и
+        ещё раз перед самим сигналом.
+        """
+        self.assertIn("function wakeAudio()", self.js)
+        self.assertIn("audioCtx.state === 'suspended'", self.js)
+        self.assertIn("audioCtx.resume()", self.js)
+        self.assertIn("['pointerdown', 'keydown'].forEach", self.js)
+        # И контекст не закрывается после сигнала: закрытый не разбудить.
+        self.assertNotIn("ctx.close()", self.js)
+
+    def test_a_person_can_be_called_to_the_office(self):
+        self.assertIn("/api/notifications/call", self.js)
+        self.assertIn("Вызвать в кабинет", self.js)
+        self.assertIn("уведомление со звуком", self.js)
+
+    def test_the_letter_screen_holds_the_talk_about_the_letter(self):
+        # Разговор у стола через неделю не вспомнить, а вопрос «что именно
+        # не так» по возвращённой бумаге возникает всегда.
+        self.assertIn("function renderCaseNotes(body)", self.js)
+        self.assertIn("/notes", self.js)
+        self.assertIn("Примечания (", self.js)
+        self.assertIn("Увидит исполнитель и автор письма", self.js)
+
+    def test_attachments_are_split_into_the_letter_and_the_answer(self):
+        # В одной куче исполнитель через полгода не отличит скан входящего
+        # от приложения к своему ответу.
+        self.assertIn("Приложено к письму", self.js)
+        self.assertIn("Ушло с ответом", self.js)
+        # Обе стопки набираются перебором: пустая вторая — это та же куча.
+        self.assertIn("items.filter((file) => file.stage !== 'outgoing')", self.js)
+        self.assertIn("items.filter((file) => file.stage === 'outgoing')", self.js)
+
+    def test_messages_are_a_section_of_their_own(self):
+        self.assertIn("async function renderTalks(view, talkId)", self.js)
+        self.assertIn("title: 'Сообщения'", self.js)
+        self.assertIn("/api/talks", self.js)
+        # Личная и на несколько человек — обе.
+        self.assertIn("получится личная переписка", self.js)
+        self.assertIn("общая беседа", self.js)
+
+    def test_the_talk_poll_is_stopped_when_the_screen_is_left(self):
+        """Опрос, который никто не гасит, живёт до перезагрузки страницы.
+
+        Уйдя в «Письма», человек продолжал бы дёргать сервер каждые десять
+        секунд — и так на каждом заходе в «Сообщения».
+        """
+        self.assertIn("function stopTalkPoll()", self.js)
+        start = self.js.index("async function renderRoute(route)")
+        head = self.js[start:start + 600]
+        self.assertIn("stopTalkPoll();", head)
 
     def test_form_fields_hold_the_same_limits_as_the_server(self):
         """Поле не должно принимать то, что сервер потом отвергнет.
