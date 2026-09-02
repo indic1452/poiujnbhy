@@ -1244,6 +1244,24 @@ table.grid td.primary {
 /* Состояние смыслового поиска. Цветом — потому что «векторов нет у 4000
    фрагментов» и «поиск работает по всей библиотеке» человек должен различать
    не читая: разница между ними — половина невидимой библиотеки. */
+/* Ход разбора: что помощник искал, прежде чем ответить. Список нужен не
+   для красоты — по нему инженер проверяет ответ «в библиотеке этого нет». */
+.chat-steps {
+    margin: 8px 0;
+    padding: 6px 10px;
+    border-left: 2px solid var(--border-strong);
+}
+
+.chat-steps ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+}
+
+.chat-steps li {
+    color: var(--muted);
+    font-size: var(--fs-sm);
+}
+
 .vectors-card.is-ok {
     border-left: 3px solid var(--ok);
 }

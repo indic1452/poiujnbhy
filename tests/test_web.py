@@ -4516,6 +4516,27 @@ class RegistrationEditorTests(unittest.TestCase):
         self.assertIn("entry.kind !== 'reg'", self.js)
 
 
+class ResearchTrailTests(unittest.TestCase):
+    """Ход разбора виден инженеру, а не только модели."""
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+        self.css = (static / "styles.css").read_text(encoding="utf-8")
+
+    def test_the_steps_reach_the_screen(self):
+        # Ответ «в библиотеке этого нет» без списка запросов не проверить.
+        self.assertIn("event.type === 'step'", self.js)
+        self.assertIn("chat.pendingSteps", self.js)
+        self.assertIn("'Ход разбора:'", self.js)
+        self.assertIn(".chat-steps {", self.css)
+
+    def test_the_steps_are_dropped_together_with_the_rest(self):
+        # Шаги прошлого ответа не должны висеть над следующим.
+        cleanup = self.js.split("chat.pendingWarning = null;")[1][:200]
+        self.assertIn("chat.pendingSteps = null;", cleanup)
+
+
 class VectorCardTests(unittest.TestCase):
     """Состояние смыслового поиска — карточкой, а не серой строчкой."""
 

@@ -7159,6 +7159,8 @@
         pendingSources: null,
         pendingExpansion: null,
         pendingWarning: null,
+        /* Ход разбора открытого разговора: список шагов помощника. */
+        pendingSteps: null,
         /* Приложенные к следующему вопросу файлы. */
         attachments: [],
         /* Идущее создание разговора: чтобы две загрузки не завели два. */
@@ -7219,6 +7221,7 @@
         chat.pendingSources = null;
         chat.pendingExpansion = null;
         chat.pendingWarning = null;
+        chat.pendingSteps = null;
         chat.attachments = [];
         chat.sentAttachments = [];
         chat.activeLabel = null;
@@ -8057,6 +8060,14 @@
         if (chat.pendingWarning) {
             box.appendChild(h('div', { class: 'small muted' }, chat.pendingWarning));
         }
+        // Ход разбора: помощник ходил в библиотеку несколько раз и искал
+        // разными словами. Без этого списка ответ «в библиотеке этого нет»
+        // невозможно ни проверить, ни оспорить.
+        if (chat.pendingSteps && chat.pendingSteps.length) {
+            box.appendChild(h('div', { class: 'chat-steps' },
+                h('div', { class: 'small muted' }, 'Ход разбора:'),
+                h('ul', {}, chat.pendingSteps.map((text) => h('li', {}, text)))));
+        }
         if (chat.pendingExpansion && chat.pendingExpansion.length) {
             box.appendChild(h('div', { class: 'small muted' },
                 'Искали также по английским терминам: ' + chat.pendingExpansion.join(', ')));
@@ -8191,6 +8202,8 @@
             askedAt: new Date().toISOString(),
             attachments: attachments || [],
             answer: '',
+            /* Ход разбора: что помощник искал, прежде чем отвечать. */
+            steps: [],
             body: null,
             note: null,
             running: true,
@@ -8278,6 +8291,16 @@
                             chat.pendingWarning = event.warning || null;
                             renderChatSources();
                         }
+                    } else if (event.type === 'step') {
+                        // Помощник ходит в библиотеку несколько раз. Что он
+                        // искал — инженер должен видеть: ответ «в библиотеке
+                        // этого нет» без списка запросов не проверить.
+                        live.steps.push(event.text || '');
+                        if (chat.live === live) {
+                            chat.pendingSteps = live.steps.slice();
+                            renderChatSources();
+                        }
+                        paint(false);
                     } else if (event.type === 'delta') {
                         live.answer += event.text || '';
                         paint(false);

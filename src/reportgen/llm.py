@@ -179,6 +179,12 @@ class StubLLM:
     def complete(self, system: str, user: str, *, max_tokens: int = 1200,
                  temperature: float = 0.2,
                  history: List[Dict[str, str]] | None = None) -> str:
+        # Помощник спрашивает, что делать следующим шагом разбора. Заглушка
+        # ничего не ищет: она отвечает по тому, что ей дали, и лишний заход
+        # только сжёг бы время. Отвечаем «хватит» — это честный шаг, а не
+        # молчание, которое разбор трактовал бы как непонятый ответ.
+        if "СЛЕДУЮЩИЙ ШАГ" in user:
+            return "ХВАТИТ"
         question = _extract_block(user, "ВОПРОС")
         if question:
             return _stub_answer(question, _extract_block(user, "ИСТОЧНИКИ"))

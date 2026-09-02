@@ -11,16 +11,29 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Sequence
+from typing import Any, Callable, Dict, Iterator, List, Sequence
 
-from ..prompts import ASSISTANT_PROMPT, ASSISTANT_SYSTEM_PROMPT, ASSISTANT_TITLE_PROMPT
-from ..retrieval import Hit
+from ..prompts import (
+    ASSISTANT_PROMPT,
+    ASSISTANT_SYSTEM_PROMPT,
+    ASSISTANT_TITLE_PROMPT,
+    RESEARCH_PROMPT,
+    RESEARCH_SYSTEM_PROMPT,
+)
+from ..retrieval import Hit, reciprocal_rank_fusion
 from ..store.models import ATTACHMENT_TITLES, Chat, ChatMessage, User
 from .catalog import (
     CATALOG_CHARS,
     CATALOG_SHELVES_CHARS,
     LibraryCatalog,
     render_catalog,
+)
+from .research import (
+    Step,
+    found_note,
+    parse_step,
+    render_found,
+    render_trail,
 )
 from .service import ReportService, ServiceError
 
@@ -38,6 +51,14 @@ MIN_ATTACHMENT_CHARS = 1000
 #: Запасное значение, если в настройках его нет (старый settings.json).
 SOURCE_CHARS = 1400
 MAX_QUESTION = 4000
+#: Сколько заходов разбора делаем, если в настройках ничего не сказано.
+RESEARCH_ROUNDS = 4
+#: Длина ответа планировщика: одна строка, лишнее только мешает.
+RESEARCH_TOKENS = 120
+#: Сколько фрагментов отдаёт один заход поиска внутри разбора.
+RESEARCH_TOP_K = 6
+#: Сколько кусков документа отдаёт «ЧИТАТЬ».
+RESEARCH_READ_CHUNKS = 4
 DEFAULT_TITLE = "Новый разговор"
 
 
@@ -115,6 +136,10 @@ class AssistantService:
         """
         prepared = self._prepare(user, chat_id, question, top_k=top_k)
         yield {"type": "question", "message": prepared["question_message"].to_dict()}
+        # Ход разбора инженер должен видеть: ответ «в библиотеке этого нет»
+        # без списка того, что искали, невозможно ни проверить, ни оспорить.
+        for title in prepared.get("trail") or []:
+            yield {"type": "step", "text": title}
         yield {
             "type": "sources",
             "sources": prepared["sources"],
@@ -186,7 +211,8 @@ class AssistantService:
         if attachments:
             self.repos.chats.bind_attachments(chat.id, question_message.id)
 
-        hits = self._search(chat, question, history, top_k, attachments=attachments)
+        hits, trail = self._collect(chat, question, history, top_k,
+                                    attachments=attachments)
         retriever = self.reports.get_retriever()
         # Половина библиотеки английская, а спрашивают по-русски. Если запрос
         # дополнен по двуязычному словарю — сказать об этом: иначе английский
@@ -243,6 +269,7 @@ class AssistantService:
             "attachments": [item.to_dict() for item in attachments],
             "expansion": expansion,
             "warning": warning,
+            "trail": [step.title() for step in trail],
             "prompt": prompt,
         }
 
@@ -569,6 +596,204 @@ class AssistantService:
         except Exception:              # noqa: BLE001 — карта не обязательна
             return ""
         return render_catalog(rows, domain_titles=self._domain_titles(), limit=limit)
+
+    # -- разбор в несколько заходов ------------------------------------------
+
+    def _rounds(self) -> int:
+        """Сколько заходов разрешено. Ноль — разбор выключен, один поиск."""
+        return max(0, int(getattr(self.settings, "assistant_rounds", RESEARCH_ROUNDS)))
+
+    def _collect(self, chat: Chat, question: str, history: Sequence[Dict[str, str]],
+                 top_k: int | None, *, attachments: Sequence[Any] = (),
+                 on_step: "Callable[[Step], None] | None" = None
+                 ) -> tuple[List[Hit], List[Step]]:
+        """Материал для ответа: первый поиск, а затем разбор заходами.
+
+        Возвращает найденное и след разбора — что именно спрашивали. След
+        показывается инженеру: он должен видеть, ЧТО помощник искал, иначе
+        ответ «в библиотеке этого нет» невозможно ни проверить, ни оспорить.
+        """
+        first = self._search(chat, question, history, top_k, attachments=attachments)
+        rounds = self._rounds()
+        if not rounds or not first:
+            # Разбор выключен или библиотека ничего не дала: заходы по пустому
+            # месту только сожгут время модели.
+            return list(first), []
+
+        rankings: List[List[Hit]] = [list(first)]
+        pinned: List[Hit] = []
+        seen = {hit.chunk.chunk_id for hit in first}
+        trail: List[Step] = []
+        catalog = self._catalog_block(chat, first)
+        case_block = self._case_block(chat)
+
+        for index in range(rounds):
+            step = self._next_step(question, case_block, catalog,
+                                   rankings, pinned, trail, rounds - index)
+            if step is None or step.is_final:
+                break
+            trail.append(step)
+            if on_step is not None:
+                on_step(step)
+            found, note = self._run_step(step, chat)
+            fresh = [hit for hit in found if hit.chunk.chunk_id not in seen]
+            seen.update(hit.chunk.chunk_id for hit in fresh)
+            if step.kind == "читать":
+                # Названный раздел инженер (в лице модели) попросил явно —
+                # он обязан дойти до ответа, а не проиграть слияние рангов.
+                pinned.extend(fresh)
+            elif fresh:
+                rankings.append(fresh)
+            step.note = note or found_note(len(fresh))
+
+        return self._merge(rankings, pinned, top_k), trail
+
+    def _merge(self, rankings: Sequence[Sequence[Hit]], pinned: Sequence[Hit],
+               top_k: int | None) -> List[Hit]:
+        """Сводит находки всех заходов в один список.
+
+        Слияние по обратным рангам (RRF): шкалы BM25, косинуса и реранка
+        между собой не сравнимы, а места в списках — сравнимы. Фрагмент,
+        который всплыл в двух заходах по разным словам, поднимается выше —
+        и это именно то, что нужно: два независимых способа его найти.
+        """
+        wanted = int(top_k or getattr(self.settings, "assistant_top_k", 0)
+                     or self.settings.retrieval_top_k)
+        lists = [list(item) for item in rankings if item]
+        if not lists:
+            merged: List[Hit] = []
+        elif len(lists) == 1:
+            merged = lists[0][:wanted]
+        else:
+            merged = reciprocal_rank_fusion(lists, top_k=wanted)
+        # Прочитанное ставим первым и не даём вытеснить: его запросили по
+        # имени, значит оно и есть ответ на «чего не хватало».
+        head = list(pinned)
+        known = {hit.chunk.chunk_id for hit in head}
+        for hit in merged:
+            if hit.chunk.chunk_id not in known:
+                head.append(hit)
+                known.add(hit.chunk.chunk_id)
+        for rank, hit in enumerate(head, start=1):
+            hit.rank = rank
+        return head[:max(wanted, len(pinned))]
+
+    def _next_step(self, question: str, case_block: str, catalog: str,
+                   rankings: Sequence[Sequence[Hit]], pinned: Sequence[Hit],
+                   trail: Sequence[Step], left: int) -> Step | None:
+        """Спрашивает модель, что делать дальше. Не разобралось — конец разбора.
+
+        Непонятый шаг намеренно не переспрашиваем: модель, которая не смогла
+        написать одну строку по образцу, со второй попытки её обычно тоже не
+        пишет, а инженер всё это время ждёт. Отвечаем по собранному.
+        """
+        llm = self.reports.get_llm()
+        found = self._found_lines(rankings, pinned)
+        prompt = RESEARCH_PROMPT.format(
+            question=question,
+            case_block=case_block,
+            catalog=catalog,
+            found=render_found(found),
+            trail=render_trail(trail),
+            left=left,
+        )
+        try:
+            reply = llm.complete(RESEARCH_SYSTEM_PROMPT, prompt,
+                                 max_tokens=RESEARCH_TOKENS, temperature=0.0)
+        except Exception:              # noqa: BLE001 — разбор не обязателен
+            # Модель не ответила: отвечаем по тому, что нашёл первый поиск.
+            # Ронять из-за необязательного захода весь вопрос нельзя.
+            return None
+        return parse_step(reply)
+
+    def _found_lines(self, rankings: Sequence[Sequence[Hit]],
+                     pinned: Sequence[Hit]) -> List[Dict[str, Any]]:
+        """Опись собранного для планировщика: метка, документ, раздел."""
+        lines: List[Dict[str, Any]] = []
+        seen: set = set()
+        for hit in list(pinned) + [hit for group in rankings for hit in group]:
+            uid = hit.chunk.chunk_id
+            if uid in seen:
+                continue
+            seen.add(uid)
+            lines.append({
+                "label": f"S{len(lines) + 1}",
+                "chunk_uid": uid,
+                "citation": hit.chunk.citation,
+                "doc_id": hit.chunk.doc_id,
+            })
+        return lines
+
+    def _run_step(self, step: Step, chat: Chat) -> tuple[List[Hit], str]:
+        """Выполняет шаг. Возвращает находки и замечание для следа."""
+        if step.kind == "искать":
+            return self._step_search(step, chat), ""
+        if step.kind == "оглавление":
+            return [], self._step_outline(step)
+        if step.kind == "читать":
+            return self._step_read(step), ""
+        return [], ""
+
+    def _step_search(self, step: Step, chat: Chat) -> List[Hit]:
+        retriever = self.reports.get_retriever()
+        if retriever is None:
+            return []
+        domains = [chat.domain] if chat.domain else None
+        try:
+            return retriever.search(step.argument, top_k=RESEARCH_TOP_K, domains=domains)
+        except TypeError:              # поисковик без направлений
+            return retriever.search(step.argument, top_k=RESEARCH_TOP_K)
+        except Exception:              # noqa: BLE001 — заход не обязателен
+            return []
+
+    def _step_outline(self, step: Step) -> str:
+        """Оглавление документа. Само по себе это не источник, а подсказка."""
+        doc_id = self._resolve_document(step.argument)
+        if not doc_id:
+            return "документ не найден"
+        try:
+            found = self.repos.chunks.outline([doc_id], limit=OUTLINE_HEADINGS)
+        except Exception:              # noqa: BLE001
+            return "оглавление недоступно"
+        headings = found.get(doc_id) or []
+        return "; ".join(headings) if headings else "разделы не выделены"
+
+    def _step_read(self, step: Step) -> List[Hit]:
+        """Куски названного раздела документа."""
+        doc_id = self._resolve_document(step.argument)
+        if not doc_id:
+            return []
+        document = self.repos.documents.by_doc_id(doc_id)
+        if document is None:
+            return []
+        try:
+            chunks = self.repos.chunks.for_document(document.id)
+        except Exception:              # noqa: BLE001
+            return []
+        wanted = step.section.casefold().strip()
+        if wanted:
+            picked = [chunk for chunk in chunks
+                      if wanted in " → ".join(chunk.title_path).casefold()]
+            chunks = picked or chunks
+        return [Hit(chunk=chunk, score=0.0)
+                for chunk in chunks[:RESEARCH_READ_CHUNKS]]
+
+    def _resolve_document(self, name: str) -> str:
+        """Модель называет документ как умеет: идентификатором или названием."""
+        wanted = str(name or "").strip().strip('«»"\'')
+        if not wanted:
+            return ""
+        if self.repos.documents.by_doc_id(wanted) is not None:
+            return wanted
+        needle = wanted.casefold()
+        best = ""
+        for row in self._catalog().rows():
+            title = str(row.get("title") or "").casefold()
+            if needle == title:
+                return str(row.get("doc_id") or "")
+            if not best and (needle in title or title in needle):
+                best = str(row.get("doc_id") or "")
+        return best
 
     def _catalog_block(self, chat: Chat, hits: Sequence[Hit]) -> str:
         """Карта библиотеки: полки с числами и названия документов.

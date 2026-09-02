@@ -441,6 +441,157 @@ class MaterialTests(AssistantTestCase):
             self.assertNotIn("tail", item)
 
 
+class ScriptedLLM(StubLLM):
+    """Модель, ведущая разбор по сценарию: список шагов, потом ответ."""
+
+    def __init__(self, steps):
+        self.steps = list(steps)
+        self.asked = []
+        self.answer_prompts = []
+
+    def complete(self, system, user, **kwargs):
+        if "СЛЕДУЮЩИЙ ШАГ" in user:
+            self.asked.append(user)
+            return self.steps.pop(0) if self.steps else "ХВАТИТ"
+        self.answer_prompts.append(user)
+        return "Ответ по источникам."
+
+    def stream(self, system, user, **kwargs):
+        yield self.complete(system, user, **kwargs)
+
+
+class ResearchLoopTests(AssistantTestCase):
+    """Между вопросом и ответом помощник ходит в библиотеку несколько раз."""
+
+    def setUp(self):
+        super().setUp()
+        self.chat = self.assistant.create_chat(self.ivanov)
+
+    def drive(self, steps, question="Как измеряется занимаемая полоса частот?"):
+        llm = ScriptedLLM(steps)
+        self.reports.llm = llm
+        prepared = self.assistant._prepare(self.ivanov, self.chat.id, question, top_k=None)
+        return llm, prepared
+
+    def test_the_model_searches_again_in_its_own_words(self):
+        llm, prepared = self.drive(["ИСКАТЬ: паразитные составляющие дБн", "ХВАТИТ"])
+        self.assertEqual(["ищу: паразитные составляющие дБн"], prepared["trail"])
+        # Второй заход спрашивали, зная итог первого.
+        self.assertIn("УЖЕ СОБРАНО", llm.asked[0])
+
+    def test_the_trail_remembers_what_was_asked(self):
+        llm, prepared = self.drive([
+            "ИСКАТЬ: смещение несущей",
+            "ИСКАТЬ: паразитные составляющие",
+            "ХВАТИТ",
+        ])
+        self.assertEqual(2, len(prepared["trail"]))
+        self.assertIn("ищу: смещение несущей", render_trail_of(llm))
+
+    def test_the_rounds_are_capped(self):
+        """Модель может не остановиться — цикл обязан остановиться сам."""
+        self.settings.assistant_rounds = 2
+        llm, prepared = self.drive(["ИСКАТЬ: раз", "ИСКАТЬ: два", "ИСКАТЬ: три"])
+        self.assertEqual(2, len(prepared["trail"]))
+        self.assertEqual(2, len(llm.asked))
+
+    def test_a_reply_that_is_not_a_step_ends_the_research(self):
+        """Непонятый шаг — не ошибка, а конец разбора: отвечаем по собранному."""
+        llm, prepared = self.drive(["Думаю, стоит посмотреть в справочнике."])
+        self.assertEqual([], prepared["trail"])
+        self.assertTrue(prepared["sources"], "ответ должен опираться на первый поиск")
+
+    def test_research_can_be_switched_off(self):
+        self.settings.assistant_rounds = 0
+        llm, prepared = self.drive(["ИСКАТЬ: не должно случиться"])
+        self.assertEqual([], prepared["trail"])
+        self.assertEqual([], llm.asked, "к планировщику не ходили")
+        self.assertTrue(prepared["sources"])
+
+    def test_a_broken_model_does_not_break_the_answer(self):
+        class Broken(StubLLM):
+            def complete(self, system, user, **kwargs):
+                if "СЛЕДУЮЩИЙ ШАГ" in user:
+                    raise RuntimeError("модель не отвечает")
+                return "Ответ."
+
+        self.reports.llm = Broken()
+        prepared = self.assistant._prepare(
+            self.ivanov, self.chat.id, "занимаемая полоса", top_k=None)
+        self.assertEqual([], prepared["trail"])
+        self.assertTrue(prepared["sources"])
+
+    def test_findings_of_all_rounds_reach_the_answer(self):
+        """Найденное во втором заходе обязано дойти до ответа.
+
+        Иначе разбор бессмыслен: модель ищет другими словами, находит — и
+        находка теряется при сборке.
+        """
+        narrow = self.assistant._prepare(
+            self.ivanov, self.chat.id, "паразитные составляющие", top_k=None)
+        alone = {item["chunk_uid"] for item in narrow["sources"]}
+
+        chat = self.assistant.create_chat(self.ivanov)
+        llm = ScriptedLLM(["ИСКАТЬ: паразитные составляющие дБн", "ХВАТИТ"])
+        self.reports.llm = llm
+        wide = self.assistant._prepare(
+            self.ivanov, chat.id, "требования к исходной записи", top_k=None)
+        together = {item["chunk_uid"] for item in wide["sources"]}
+        self.assertTrue(alone & together,
+                        "находка второго захода до ответа не дошла")
+        self.assertIn("### ИСТОЧНИКИ", wide["prompt"])
+
+    def test_reading_a_section_pins_it_into_the_answer(self):
+        """Названную главу модель попросила по имени — она обязана дойти.
+
+        Берём документ, которого по вопросу поиск НЕ находит: если пустить
+        прочитанное через общее слияние рангов, оно проиграет находкам по
+        существу вопроса и до ответа не доберётся — а просили именно его.
+        """
+        question = "Как измеряется занимаемая полоса частот?"
+        plain = self.assistant._prepare(
+            self.ivanov, self.chat.id, question, top_k=None)
+        found = {item["doc_id"] for item in plain["sources"]}
+        missing = [document.doc_id for document in self.repos.documents.list()
+                   if document.doc_id not in found]
+        self.assertTrue(missing, "нужен документ, который поиск не находит")
+
+        chat = self.assistant.create_chat(self.ivanov)
+        llm = ScriptedLLM([f"ЧИТАТЬ: {missing[0]}", "ХВАТИТ"])
+        self.reports.llm = llm
+        prepared = self.assistant._prepare(self.ivanov, chat.id, question, top_k=None)
+        self.assertEqual(1, len(prepared["trail"]))
+        self.assertIn(missing[0], {item["doc_id"] for item in prepared["sources"]})
+        self.assertEqual(missing[0], prepared["sources"][0]["doc_id"])
+
+    def test_the_outline_comes_back_to_the_model(self):
+        """Иначе модель просит оглавление, не видит его и просит снова."""
+        doc_id = self.repos.documents.list()[0].doc_id
+        llm, prepared = self.drive([f"ОГЛАВЛЕНИЕ: {doc_id}", "ХВАТИТ"])
+        self.assertIn("ЧТО УЖЕ ДЕЛАЛИ", llm.asked[1])
+        self.assertIn("смотрю оглавление", llm.asked[1])
+
+    def test_an_unknown_document_does_not_stop_the_research(self):
+        llm, prepared = self.drive(["ЧИТАТЬ: такого тома нет", "ХВАТИТ"])
+        self.assertTrue(prepared["sources"])
+
+    def test_an_empty_library_skips_the_research_entirely(self):
+        # Заходы по пустому месту сожгли бы время модели впустую.
+        llm = ScriptedLLM(["ИСКАТЬ: что угодно"])
+        self.reports.llm = llm
+        self.repos.documents.clear_all()
+        self.reports.reset_retriever()
+        prepared = self.assistant._prepare(
+            self.ivanov, self.chat.id, "занимаемая полоса", top_k=None)
+        self.assertEqual([], prepared["trail"])
+        self.assertEqual([], llm.asked)
+
+
+def render_trail_of(llm):
+    """След, каким его увидел планировщик на последнем заходе."""
+    return llm.asked[-1] if llm.asked else ""
+
+
 class DomainFilterTests(AssistantTestCase):
     def test_domain_narrows_search(self):
         prompts: list[str] = []
@@ -457,9 +608,13 @@ class DomainFilterTests(AssistantTestCase):
         self.assistant.ask(self.ivanov, wide.id, "занимаемая полоса частот")
         self.assistant.ask(self.ivanov, narrow.id, "занимаемая полоса частот")
 
-        self.assertIn("[S1]", prompts[0])
+        # К модели ходят дважды на вопрос: сперва за шагом разбора, потом за
+        # ответом. Смотрим только ответные промпты — в них блок ИСТОЧНИКИ.
+        answers = [item for item in prompts if "### ИСТОЧНИКИ" in item]
+        self.assertEqual(2, len(answers), "ожидались два ответных промпта")
+        self.assertIn("[S1]", answers[0])
         # Библиотека размечена как modulation, поэтому в спутниковом чате пусто.
-        self.assertIn("ничего подходящего не нашлось", prompts[1])
+        self.assertIn("ничего подходящего не нашлось", answers[1])
 
 
 class EmptyLibraryTests(AssistantTestCase):
