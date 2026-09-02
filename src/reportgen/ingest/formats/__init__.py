@@ -18,6 +18,7 @@ _MODULES = (
     "office",
     "opendoc",
     "legacy",
+    "word97",
     "djvu",
     "ocr",
     "web",

@@ -566,14 +566,45 @@ def convert_doc(path: Path) -> ConvertedDocument:
     Номеров страниц у результата нет: разбивка на страницы в Word живёт не в
     файле, а в раскладке при печати, и в DOCX её тоже нет. Зато сохраняются
     заголовки по стилям и таблицы целиком — для таблицы допусков это важнее.
+
+    Если LibreOffice не справился — а он не справляется, когда в установке
+    нет модуля Writer, — документ читает свой разборщик Word 97
+    (:mod:`reportgen.ingest.formats.word97`). Он отдаёт только текст, зато
+    не требует ничего: главный формат ответов отдела не должен оказываться
+    нечитаемым из-за отсутствующего пакета.
     """
     path = Path(path)
-    return _via_soffice(
-        path,
-        target="docx",
-        source_format=_source_format(path, "doc"),
-        inner=_docx_converter,
-    )
+    failure = ""
+    try:
+        result = _via_soffice(
+            path,
+            target="docx",
+            source_format=_source_format(path, "doc"),
+            inner=_docx_converter,
+        )
+        if not result.is_empty:
+            return result
+        # Пустой результат — это отказ: soffice печатает ошибку и выходит с
+        # нулём, поэтому проверять надо содержимое, а не код возврата.
+        failure = "; ".join(result.warnings) or "LibreOffice вернул пустой документ"
+    except Exception as error:  # noqa: BLE001 — причин отказа много, ответ один
+        failure = _reason(error)
+        result = None
+
+    from .word97 import convert_doc_native
+
+    try:
+        native = convert_doc_native(path)
+    except Exception:  # noqa: BLE001 — не Word 97: пусть отвечает первый путь
+        if result is not None:
+            return result
+        raise
+    if native.is_empty and result is not None:
+        return result
+    native.warnings.insert(
+        0, f"LibreOffice документ не преобразовал ({failure}); "
+           f"текст прочитан своими силами")
+    return native
 
 
 def convert_ppt(path: Path) -> ConvertedDocument:

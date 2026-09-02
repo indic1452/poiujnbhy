@@ -912,16 +912,34 @@ class DispatchTest(unittest.TestCase):
         self.assertIn("# Методика измерений", result.text)
         self.assertEqual(result.meta["source_format"], "rtf")
 
-    def test_без_libreoffice_convert_file_говорит_чего_не_хватает(self):
+    def test_без_libreoffice_doc_всё_равно_читается(self):
+        """Главный формат ответов отдела не должен зависеть от пакета.
+
+        Раньше без LibreOffice .doc был нечитаем совсем: письмо не
+        находилось по словам, а просмотр предлагал скачать файл. Теперь
+        текст достаёт свой разборщик Word 97, честно говоря, что разметку
+        он не восстанавливает.
+        """
+        from test_formats_word97 import build_doc
+
+        path = self.workdir / "инструкция.doc"
+        path.write_bytes(build_doc("Методика измерений\rЛиния связи: РРЛС.\r"))
+        with no_soffice():
+            result = convert_file(path)
+        self.assertIn("Методика измерений", result.text)
+        warning = " ".join(result.warnings)
+        self.assertIn("разметка", warning)
+        self.assertIn("LibreOffice", warning)
+
+    def test_нечитаемый_doc_называет_причину_отказа(self):
         path = self.workdir / "инструкция.doc"
         path.write_bytes(b"\xd0\xcf\x11\xe0 old word document")
         with no_soffice():
             result = convert_file(path)
         self.assertEqual(result.text, "")
         warning = " ".join(result.warnings)
-        self.assertIn("doc-libreoffice", warning)
-        self.assertIn("не хватает", warning)
-        self.assertIn("soffice", warning)
+        self.assertIn("doc-native", warning)
+        self.assertIn("OLE2", warning)
 
 
 if __name__ == "__main__":  # pragma: no cover — ручной запуск
