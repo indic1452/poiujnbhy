@@ -400,6 +400,36 @@ class DocumentRepo:
         )
         return {row["domain"] or "не указано": row["documents"] for row in rows}
 
+    def catalog(self) -> List[Dict[str, Any]]:
+        """Опись библиотеки: по строке на документ, одним запросом.
+
+        Нужна помощнику: без неё он знает о библиотеке только то, что попало
+        в найденные фрагменты, и на вопрос «а что у нас есть по спутникам»
+        отвечать ему нечем. Берём лишь то, что помещается в подсказку:
+        направление, тип, название, год, состояние, объём.
+
+        Устаревшие (``superseded``) документы не отдаём: направлять к ним
+        инженера незачем, а место в окне они занимают наравне с
+        действующими.
+        """
+        rows = self.db.query(
+            "SELECT domain, doc_type, doc_id, title, year, status, chunk_count "
+            "FROM documents WHERE status = 'current' "
+            "ORDER BY domain, doc_type, chunk_count DESC, title"
+        )
+        return [
+            {
+                "domain": row["domain"] or "",
+                "doc_type": row["doc_type"],
+                "doc_id": row["doc_id"],
+                "title": row["title"],
+                "year": row["year"],
+                "status": row["status"],
+                "chunks": row["chunk_count"] or 0,
+            }
+            for row in rows
+        ]
+
     def mark_indexed(self, doc_id: str, chunk_count: int) -> None:
         with self.db.transaction() as connection:
             connection.execute(

@@ -16,6 +16,12 @@ from typing import Any, Dict, Iterator, List, Sequence
 from ..prompts import ASSISTANT_PROMPT, ASSISTANT_SYSTEM_PROMPT, ASSISTANT_TITLE_PROMPT
 from ..retrieval import Hit
 from ..store.models import ATTACHMENT_TITLES, Chat, ChatMessage, User
+from .catalog import (
+    CATALOG_CHARS,
+    CATALOG_SHELVES_CHARS,
+    LibraryCatalog,
+    render_catalog,
+)
 from .service import ReportService, ServiceError
 
 HISTORY_DEPTH = 6
@@ -25,6 +31,10 @@ OUTLINE_HEADINGS = 30
 #: Сколько знаков библиотеки остаётся при любых вложениях: без источников
 #: помощник превращается в обычную модель без ссылок на нормы.
 MIN_LIBRARY_CHARS = 6000
+#: Сколько знаков приложенного файла остаётся при любом окне. Меньше — и
+#: показывать нечего: в первой тысяче знаков дампа стоят заголовки сессии,
+#: по которым обычно и видно, что случилось.
+MIN_ATTACHMENT_CHARS = 1000
 #: Запасное значение, если в настройках его нет (старый settings.json).
 SOURCE_CHARS = 1400
 MAX_QUESTION = 4000
@@ -186,14 +196,29 @@ class AssistantService:
         expansion = list(getattr(retriever, "last_expansion", []) or [])
         warning = getattr(retriever, "last_warning", "") or ""
 
-        attachment_block, attachment_chars = self._attachment_block(attachments)
         case_block = self._case_block(chat)
+        # Сколько окна остаётся файлам после вопроса, карточки письма,
+        # разговора и обязательного пола под источники библиотеки.
+        window = int(getattr(self.settings, "assistant_context_chars", 0) or 26000)
+        spent = (len(question) + len(case_block)
+                 + sum(len(item["content"]) for item in history)
+                 + min(MIN_LIBRARY_CHARS, window))
+        attachment_block, attachment_chars = self._attachment_block(
+            attachments, room=max(0, window - spent))
+        # Карта библиотеки: полки и документы. Без неё помощник знает только
+        # то, что попало в найденные фрагменты, и не может ни отправить к
+        # соседнему тому, ни честно сказать «по этой линии у нас ничего нет».
+        catalog_block = self._catalog_block(chat, hits)
         # В окно модели идут не только фрагменты библиотеки. Разговор,
         # вопрос, карточка письма и приложенные файлы занимают то же самое
         # место, и раньше их никто не считал: бюджет соблюдался по одной
         # своей части, а промпт всё равно вылезал за окно.
+        catalog_block, history = self._fit_reserved(
+            catalog_block, history, attachment_chars,
+            fixed=len(question) + len(case_block))
         history_chars = sum(len(item["content"]) for item in history)
-        reserved = attachment_chars + history_chars + len(question) + len(case_block)
+        reserved = (attachment_chars + history_chars + len(question)
+                    + len(case_block) + len(catalog_block))
         sources = self._build_sources(hits, reserved=reserved)
         documents = self._document_cards(sources)
         sources, documents = self._fit_window(
@@ -202,6 +227,7 @@ class AssistantService:
             question=question,
             case_block=case_block,
             attachments=attachment_block,
+            catalog=catalog_block,
             library_map=_render_map(documents),
             sources=_render_sources(sources, documents),
             target_words=int(getattr(self.settings, "assistant_target_words", 0) or 500),
@@ -222,17 +248,29 @@ class AssistantService:
 
     # -- сборка материала ---------------------------------------------------
 
-    def _attachment_block(self, attachments: Sequence[Any]) -> tuple[str, int]:
+    def _attachment_block(self, attachments: Sequence[Any],
+                          *, room: int | None = None) -> tuple[str, int]:
         """Приложенные файлы для промпта и их вес в знаках.
 
         Дамп на десятки мегабайт в окно модели не поместится никогда, поэтому
         берём начало: там заголовки сессии и первые ошибки, по которым обычно
         и понятно, что случилось. Об обрезке говорим прямо — иначе модель
         сделает вывод «ошибок больше нет» по обрезанному хвосту.
+
+        ``room`` — сколько знаков под файлы осталось от окна модели. Настройка
+        assistant_attachment_chars задаёт желаемое, но окно сильнее: при
+        вложении в 40 000 знаков и окне в 26 000 промпт вырастал до 47 678
+        знаков, и llama.cpp молча выбрасывал его начало вместе с системной
+        инструкцией. Обрезка при этом видна — в шапке файла стоит «показано
+        N из M знаков».
         """
         if not attachments:
             return "", 0
         limit = int(getattr(self.settings, "assistant_attachment_chars", 0) or 8000)
+        if room is not None:
+            # Окно может ужать настройку, но не расширить её: маленькое
+            # значение ставят осознанно, и «подрасти» ему нельзя.
+            limit = min(limit, max(MIN_ATTACHMENT_CHARS, room))
         texts = [(item, (item.text or "").strip()) for item in attachments]
         shares = _share_chars([len(text) for _, text in texts], limit)
         blocks = []
@@ -481,6 +519,99 @@ class AssistantService:
         except TypeError:
             # Поисковик без поддержки направлений (лексический запасной вариант).
             return retriever.search(query, top_k=wanted)
+
+    def _fit_reserved(self, catalog_block: str, history: List[Dict[str, str]],
+                      attachment_chars: int, *, fixed: int
+                      ) -> tuple[str, List[Dict[str, str]]]:
+        """Ужать всё, кроме фрагментов, чтобы промпт остался в окне модели.
+
+        Материалу библиотеки гарантирован пол в MIN_LIBRARY_CHARS знаков —
+        без источников отвечать не на что. Но пол этот односторонний: когда
+        вложения, разговор и вопрос вместе занимали больше окна, источники
+        упирались в пол, а промпт всё равно вылезал за границу. При вложении
+        на 40 000 знаков замер давал промпт 47 678 знаков при
+        assistant_context_chars = 26 000 — то есть «жёсткая граница» не
+        держала ничего, и llama.cpp молча выбрасывал начало промпта вместе с
+        системной инструкцией.
+
+        Поэтому режем сверху и в понятном порядке: сперва карта библиотеки
+        (полезная, но необязательная — от неё оставляем перечень полок),
+        потом старые реплики разговора. Вложения и вопрос не трогаем: это
+        то, о чём человек спросил, и молча его обрезать нельзя — у вложений
+        для этого есть свой предел, assistant_attachment_chars.
+        """
+        window = int(getattr(self.settings, "assistant_context_chars", 0) or 26000)
+        room = window - min(MIN_LIBRARY_CHARS, window)
+        used = attachment_chars + fixed + sum(len(item["content"]) for item in history)
+
+        if used + len(catalog_block) <= room:
+            return catalog_block, history
+
+        # Карта: сначала пробуем оставить её укороченной — одни полки без
+        # названий документов уже отвечают на «есть ли у нас про это».
+        spare = max(0, room - used)
+        if spare < CATALOG_SHELVES_CHARS:
+            catalog_block = ""
+        elif len(catalog_block) > spare:
+            catalog_block = self._catalog_block_at(spare)
+        used += len(catalog_block)
+
+        # Разговор: убираем самые старые реплики, оставляя последнюю пару.
+        while used > room and len(history) > 2:
+            used -= len(history[0]["content"])
+            history = history[1:]
+        return catalog_block, history
+
+    def _catalog_block_at(self, limit: int) -> str:
+        """Та же карта, но в заданное число знаков."""
+        try:
+            rows = self._catalog().rows()
+        except Exception:              # noqa: BLE001 — карта не обязательна
+            return ""
+        return render_catalog(rows, domain_titles=self._domain_titles(), limit=limit)
+
+    def _catalog_block(self, chat: Chat, hits: Sequence[Hit]) -> str:
+        """Карта библиотеки: полки с числами и названия документов.
+
+        Полки, которых коснулся поиск, называются первыми: место в окне
+        ограничено, а именно там лежит соседний том, до которого поиск не
+        дотянулся. Разговор, привязанный к направлению, тоже поднимает своё.
+        """
+        limit = int(getattr(self.settings, "assistant_catalog_chars", 0) or CATALOG_CHARS)
+        if limit <= 0:
+            return ""
+        try:
+            rows = self._catalog().rows()
+        except Exception:              # noqa: BLE001 — карта не обязательна
+            return ""
+        prefer: List[str] = []
+        if chat.domain:
+            prefer.append(chat.domain)
+        for hit in hits:
+            domain = str(getattr(hit.chunk, "domain", "") or "")
+            if domain and domain not in prefer:
+                prefer.append(domain)
+        return render_catalog(
+            rows, domain_titles=self._domain_titles(), prefer=prefer, limit=limit)
+
+    def _catalog(self) -> LibraryCatalog:
+        # Кэш живёт на службе отчётов: она одна на приложение, а помощник
+        # создаётся на запрос.
+        existing = getattr(self.reports, "_library_catalog", None)
+        if existing is None:
+            existing = LibraryCatalog(self.repos)
+            setattr(self.reports, "_library_catalog", existing)
+        return existing
+
+    def _domain_titles(self) -> Dict[str, str]:
+        """Русские названия направлений — те же, что видит человек."""
+        try:
+            from ..domains import registry  # noqa: PLC0415 — справочник не нужен при импорте
+
+            found = registry(getattr(self.settings, "domains_path", None))
+            return {domain.id: domain.title for domain in found.domains}
+        except Exception:              # noqa: BLE001 — обойдёмся кодами направлений
+            return {}
 
     def _case_block(self, chat: Chat) -> str:
         if not chat.case_ref:

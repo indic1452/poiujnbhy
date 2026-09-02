@@ -202,6 +202,75 @@ class AnswerTests(AssistantTestCase):
         self.assertIn("SUP-2024-118", prompts[0])
 
 
+class WindowCeilingTests(AssistantTestCase):
+    """Промпт обязан помещаться в окно модели — целиком, а не по частям.
+
+    assistant_context_chars назывался «жёсткой границей», но держал только
+    блок источников: материалу гарантирован пол в MIN_LIBRARY_CHARS знаков,
+    и когда вложения с разговором занимали больше окна, источники упирались
+    в пол, а промпт всё равно вылезал. Замер на вложении в 40 000 знаков
+    давал промпт 47 678 знаков при границе 26 000 — llama.cpp в этом месте
+    молча выбрасывает начало промпта вместе с системной инструкцией, и
+    модель перестаёт ставить ссылки.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.chat = self.assistant.create_chat(self.ivanov)
+
+    QUESTION = "Как измеряется занимаемая полоса частот?"
+    #: Текст «дампа» из настоящих слов: иначе поиск по нему ничего не найдёт
+    #: и проверять окажется нечего.
+    DUMP = "занимаемая полоса частот спектр периодограмма сегмент окно "
+
+    def prompt_with(self, attachment_chars, history_turns=0):
+        self.settings.assistant_attachment_chars = attachment_chars
+        for _ in range(history_turns):
+            self.repos.chats.add_message(self.chat.id, "user", "в" * 1500)
+            self.repos.chats.add_message(self.chat.id, "assistant", "о" * 1500)
+        if attachment_chars:
+            body = self.DUMP * (attachment_chars // len(self.DUMP) * 2 + 10)
+            self.repos.chats.add_attachment(
+                self.chat.id, name="дамп.txt", size=len(body),
+                text=body, kind="text")
+        prepared = self.assistant._prepare(
+            self.ivanov, self.chat.id, self.QUESTION, top_k=None)
+        return prepared["prompt"]
+
+    def catalog_of(self, prompt):
+        head = prompt.split("### ЧТО ЕСТЬ В БИБЛИОТЕКЕ ОТДЕЛА", 1)
+        return head[1].split("### ЧТО НАШЛОСЬ", 1)[0] if len(head) > 1 else ""
+
+    def test_a_huge_attachment_does_not_burst_the_window(self):
+        window = self.settings.assistant_context_chars
+        prompt = self.prompt_with(40000)
+        self.assertLessEqual(
+            len(prompt), window + 4000,
+            f"промпт {len(prompt)} знаков при окне {window}")
+
+    def test_a_long_conversation_does_not_burst_the_window(self):
+        window = self.settings.assistant_context_chars
+        prompt = self.prompt_with(8000, history_turns=3)
+        self.assertLessEqual(len(prompt), window + 4000)
+
+    def test_the_sources_survive_even_at_the_ceiling(self):
+        # Резать до последнего фрагмента нельзя: без источников помощник
+        # превращается в обычную модель без ссылок на нормы.
+        self.assertIn("[S1]", self.prompt_with(40000))
+
+    def test_the_truncation_of_the_file_is_admitted(self):
+        # Молча показать модели первую тысячу знаков дампа нельзя: она
+        # сделает вывод «ошибок больше нет» по обрезанному хвосту.
+        self.assertIn("показано", self.prompt_with(40000))
+
+    def test_the_map_gives_way_before_the_sources(self):
+        """Карта полезна, но фрагменты важнее: её ужимают первой."""
+        wide = self.assistant._prepare(
+            self.ivanov, self.chat.id, self.QUESTION, top_k=None)["prompt"]
+        narrow = self.prompt_with(40000)
+        self.assertLess(len(self.catalog_of(narrow)), len(self.catalog_of(wide)))
+
+
 class MaterialTests(AssistantTestCase):
     """Из чего собирается материал для модели.
 
@@ -233,7 +302,7 @@ class MaterialTests(AssistantTestCase):
 
     def test_prompt_carries_document_map_with_outline(self):
         prepared = self.prepared()
-        self.assertIn("### ЧТО НАШЛОСЬ В БИБЛИОТЕКЕ", prepared["prompt"])
+        self.assertIn("### ЧТО НАШЛОСЬ ПО ЭТОМУ ВОПРОСУ", prepared["prompt"])
         self.assertIn("Разделы документа:", prepared["prompt"])
         self.assertTrue(prepared["documents"])
         card = prepared["documents"][0]

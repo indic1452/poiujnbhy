@@ -29,3 +29,21 @@ _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 def urlopen(request, timeout=None):
     """``urlopen`` в обход системного прокси. Ошибки — те же, что у urllib."""
     return _OPENER.open(request, timeout=timeout)
+
+
+def refused(error: BaseException) -> bool:
+    """Соединение отвергнуто: сервер не поднят, повторять бессмысленно.
+
+    «Connection refused» приходит мгновенно — на том конце никто не слушает,
+    и через секунду не начнёт. Три попытки с паузами 1 и 2 секунды
+    добавляли ровно три секунды к КАЖДОМУ запросу, то есть к каждому
+    вопросу помощника, не давая ни одного шанса на успех. Занятый или
+    медленный сервер (таймаут, разрыв соединения) — другое дело: там
+    повтор помогает, и его мы оставляем.
+
+    Причина у ``URLError`` лежит в ``reason``, поэтому смотрим и туда.
+    """
+    if isinstance(error, ConnectionRefusedError):
+        return True
+    reason = getattr(error, "reason", None)
+    return isinstance(reason, ConnectionRefusedError)

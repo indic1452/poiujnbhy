@@ -380,8 +380,12 @@ def cmd_embed(args: argparse.Namespace) -> int:
         model=settings.embed_model,
         api_key=settings.embed_api_key,
         timeout=settings.embed_timeout,
+        batch=settings.embed_batch,
     )
-    count = index_embeddings(repos, client, only_missing=not args.force, progress=print)
+    # Батч уважаем и здесь: без него REPORTGEN_EMBED_BATCH не влиял на
+    # построение индекса вовсе — всегда шли пачки по 16, сколько ни ставь.
+    count = index_embeddings(repos, client, batch=settings.embed_batch,
+                             only_missing=not args.force, progress=print)
     print(f"векторов проставлено: {count}, всего в базе: {repos.vectors.count()}")
     return 0
 

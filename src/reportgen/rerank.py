@@ -115,6 +115,11 @@ class CrossEncoderReranker:
             except (urllib.error.URLError, TimeoutError, OSError,
                     json.JSONDecodeError) as error:
                 last_error = error
+                # Сервер не поднят — ждать и пробовать снова бессмысленно:
+                # три секунды пауз добавлялись к каждому запросу, не давая
+                # ни одного шанса на успех.
+                if _http.refused(error):
+                    break
                 if attempt < max(1, self.retries) - 1:
                     time.sleep(2 ** attempt)
         raise RerankError(f"сервис реранка недоступен ({self.base_url}): {last_error}")

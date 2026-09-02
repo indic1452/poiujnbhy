@@ -270,6 +270,8 @@ class EmbeddingClient:
             except (urllib.error.URLError, TimeoutError, OSError,
                     KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
                 last_error = error
+                if _http.refused(error):
+                    break
                 if attempt < max(1, self.retries) - 1:
                     time.sleep(2 ** attempt)
         raise EmbeddingError(

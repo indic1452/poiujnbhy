@@ -95,6 +95,49 @@ class DatabaseCliTests(unittest.TestCase):
         self.assertEqual(payload["cases"]["total"], 0)
 
 
+class EmbedCommandTests(unittest.TestCase):
+    """«reportgen embed» — построение векторов из консоли."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.db = str(Path(self._tmp.name) / "test.db")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_the_batch_setting_reaches_the_indexer(self):
+        """REPORTGEN_EMBED_BATCH не влиял на построение вовсе.
+
+        Пачки всегда шли по 16, сколько ни ставь: команда создавала клиента
+        без batch и звала индексатор без batch. На сервере, который держит
+        по 64 текста за раз, это вчетверо дольше — а библиотека строится
+        часами.
+        """
+        import os
+        from unittest import mock
+
+        from reportgen import embeddings
+
+        seen = {}
+
+        class Spy(embeddings.StubEmbedder):
+            def __init__(self, **kwargs):
+                super().__init__()
+                seen["client_batch"] = kwargs.get("batch")
+
+        def spy_index(repos, client, *, batch=32, only_missing=True, progress=None):
+            seen["index_batch"] = batch
+            return 0
+
+        with mock.patch.object(embeddings, "EmbeddingClient", Spy), \
+                mock.patch.object(embeddings, "index_embeddings", spy_index), \
+                mock.patch.dict(os.environ, {"REPORTGEN_EMBED_BATCH": "64"}):
+            code, out = run(["--db", self.db, "embed"])
+        self.assertEqual(0, code, out)
+        self.assertEqual(64, seen["client_batch"])
+        self.assertEqual(64, seen["index_batch"])
+
+
 class CliTests(unittest.TestCase):
     def test_full_cycle(self):
         with tempfile.TemporaryDirectory() as tmp:

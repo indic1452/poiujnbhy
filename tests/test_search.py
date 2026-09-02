@@ -685,6 +685,30 @@ class BuildRetrieverTests(unittest.TestCase):
         retriever = build_retriever(self.repos, settings, llm=FakeLLM("1: 1"))
         self.assertIsInstance(retriever.reranker, LLMReranker)
 
+    def test_a_dead_service_is_not_retried_with_pauses(self):
+        """Сервер не поднят — три секунды пауз ни к чему не приведут.
+
+        «Connection refused» приходит мгновенно; повторы с паузами 1 и 2
+        секунды добавлялись к КАЖДОМУ запросу, то есть к каждому вопросу
+        помощника, не давая ни одного шанса на успех.
+        """
+        import time
+
+        from reportgen.embeddings import EmbeddingClient, EmbeddingError
+
+        client = EmbeddingClient(base_url="http://127.0.0.1:9/v1", timeout=2.0)
+        started = time.monotonic()
+        with self.assertRaises(EmbeddingError):
+            client.embed(["проба"])
+        self.assertLess(time.monotonic() - started, 1.0)
+
+    def test_a_slow_service_is_still_retried(self):
+        """Занятый сервер — другое дело: там повтор помогает."""
+        from reportgen import _http
+
+        self.assertTrue(_http.refused(ConnectionRefusedError(111, "refused")))
+        self.assertFalse(_http.refused(TimeoutError()))
+
     def test_the_reranker_does_not_share_a_port_with_the_embedder(self):
         """Реранкер — отдельный сервер на своём порту (док. 11, start-embed.ps1).
 
