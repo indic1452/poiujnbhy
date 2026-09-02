@@ -89,5 +89,53 @@ class RetrieverTests(unittest.TestCase):
         self.assertEqual(calls, ["полоса частот"])
 
 
+class SupersededTests(unittest.TestCase):
+    """Заменённая редакция не идёт в выдачу — как и в поиске по базе.
+
+    Фильтра по состоянию здесь не было вовсе, и два поиска расходились
+    молча: приложение отменённую норму не показывало, а «reportgen search»
+    и сборка отчёта по файловому указателю — показывали, и она уезжала в
+    отчёт со ссылкой как действующая.
+    """
+
+    def index(self):
+        from reportgen.corpus import Chunk
+        from reportgen.retrieval import BM25Index
+
+        return BM25Index([
+            Chunk(chunk_id="a#0", doc_id="a", doc_type="standards",
+                  title_path=["Норма"], text="Занимаемая полоса не более 3.5 МГц.",
+                  meta={"status": "superseded", "superseded_by": "b"}),
+            Chunk(chunk_id="b#0", doc_id="b", doc_type="standards",
+                  title_path=["Норма"], text="Занимаемая полоса не более 4.0 МГц.",
+                  meta={"status": "current"}),
+            Chunk(chunk_id="c#0", doc_id="c", doc_type="standards",
+                  title_path=["Норма"], text="Занимаемая полоса не более 5.0 МГц."),
+        ])
+
+    def test_a_replaced_standard_is_not_returned(self):
+        found = self.index().search("занимаемая полоса", top_k=5)
+        self.assertEqual({"b", "c"}, {hit.chunk.doc_id for hit in found})
+
+    def test_a_chunk_without_a_status_counts_as_current(self):
+        """Старый указатель состояния не хранит — молча пустеть он не должен."""
+        found = self.index().search("занимаемая полоса", top_k=5)
+        self.assertIn("c", {hit.chunk.doc_id for hit in found})
+
+    def test_the_filter_can_be_lifted_on_purpose(self):
+        found = self.index().search("занимаемая полоса", top_k=5, statuses=None)
+        self.assertEqual({"a", "b", "c"}, {hit.chunk.doc_id for hit in found})
+
+    def test_both_searches_use_one_and_the_same_list(self):
+        # Две копии константы разъехались бы: у поиска по базе своя, у
+        # поиска по указателю своя, и отменённая норма вернулась бы через
+        # один из них.
+        from reportgen.corpus import SEARCHABLE_STATUSES as core
+        from reportgen.store.models import SEARCHABLE_STATUSES as stored
+
+        self.assertIs(core, stored)
+
+
 if __name__ == "__main__":
+
     unittest.main()

@@ -11,6 +11,8 @@ import sqlite3
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Sequence
 
+from ..corpus import SEARCHABLE_STATUSES
+
 #: Штатные должности. Идентификатор в базе — латиницей, потому что по нему
 #: сверяются права в коде; человеку везде показывается название из ROLE_TITLES.
 #:
@@ -163,7 +165,7 @@ DOC_STATUS_TITLES = {
     "draft": "проект",
 }
 #: Что участвует в поиске по умолчанию.
-SEARCHABLE_STATUSES = ("current",)
+
 
 
 def _col(row: sqlite3.Row, name: str, default: Any) -> Any:

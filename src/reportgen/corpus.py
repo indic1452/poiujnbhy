@@ -34,6 +34,12 @@ from typing import Any, Dict, Iterator, List, Sequence
 #: «литературой» и портили выдачу по ней.
 DOC_TYPES = ("literature", "standards", "datasheets", "reports", "regulations", "misc")
 
+#: Состояния документа, которые участвуют в поиске. Заменённая редакция
+#: стандарта в выдачу не идёт: сослаться на отменённую норму в отчёте — тот
+#: самый случай, ради которого система и заводилась. Константа живёт в ядре,
+#: потому что фильтруют по ней оба поиска: и по базе, и по файловому указателю.
+SEARCHABLE_STATUSES = ("current",)
+
 TARGET_CHARS = 2200
 OVERLAP_CHARS = 250
 MIN_CHARS = 200

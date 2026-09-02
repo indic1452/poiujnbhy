@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Sequence
 
-from .corpus import Chunk
+from .corpus import SEARCHABLE_STATUSES, Chunk
 
 K1 = 1.2
 B = 0.75
@@ -104,15 +104,25 @@ class BM25Index:
         doc_types: Iterable[str] | None = None,
         meta_filter: Dict[str, str] | None = None,
         domains: Iterable[str] | None = None,
+        statuses: Iterable[str] | None = SEARCHABLE_STATUSES,
     ) -> List[Hit]:
         terms = tokenize(query)
         if not terms:
             return []
         allowed_types = set(doc_types) if doc_types else None
         allowed_domains = {d for d in (domains or []) if d} or None
+        # Заменённая редакция стандарта в выдачу не идёт — так же, как в
+        # поиске по базе. Здесь фильтра не было вовсе, и два поиска расходились
+        # молча: приложение отменённую норму не показывало, а «reportgen
+        # search» и сборка отчёта по файловому указателю — показывали, и она
+        # уезжала в отчёт со ссылкой как действующая.
+        allowed_statuses = set(statuses) if statuses else None
         scores: List[tuple[float, int]] = []
         for index, chunk in enumerate(self.chunks):
             if allowed_types and chunk.doc_type not in allowed_types:
+                continue
+            if allowed_statuses and \
+                    str(chunk.meta.get("status", "current")) not in allowed_statuses:
                 continue
             if allowed_domains and chunk.meta.get("domain", "") not in allowed_domains:
                 continue
