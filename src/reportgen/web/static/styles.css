@@ -740,6 +740,23 @@ select::-ms-expand {
     display: none;
 }
 
+/* Раскрытый список рисует не страница, а браузер, и цвет он берёт у самого
+   select. У тихих списков в таблицах фон прозрачный — и раскрытый список
+   выходил прозрачным: строки видно насквозь, а в тёмной теме их не видно
+   вовсе. Красим сами строки: это единственное, на что страница здесь
+   влияет. */
+select option,
+select optgroup {
+    background-color: var(--panel);
+    color: var(--text);
+}
+
+/* Недоступный вариант — бледнее, но читаемо: «должность выше собственной»
+   должно быть видно, что она есть, а не только что её нельзя выбрать. */
+select option:disabled {
+    color: var(--faint);
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -2957,13 +2974,65 @@ table.md-table th {
     margin: 0 2px 0 4px;
 }
 
-/* Список писем на узком мониторе. Столбцов десять, и на 1280-1600 px хвост
-   уезжает за край — его приходится возить прокруткой. Убираем по одному, от
-   наименее нужного: сперва дата письма (срок ответа важнее, а сама дата
-   видна в карточке), затем номер группы. Линия связи и номер ТС остаются:
-   по ним отбирают письма своего хозяйства. Прокрутка никуда не девается:
-   если места не хватит и так, таблица по-прежнему возится в своей рамке. */
-@media (max-width: 1600px) {
+/* Список писем. Столбцов одиннадцать: линия связи и номер средства стоят
+   врозь — это разные вещи, и в одной ячейке их не сравнить глазами по
+   столбцу. Ширины заданы явно, чтобы описанию доставалось остальное, а
+   кнопки правки не уезжали за край. */
+/* Раскладка по заданным ширинам, а не по содержимому. Иначе одно длинное
+   описание растягивает свой столбец, таблица вылезает за рамку, и кнопки
+   правки уезжают за правый край — при том, что места хватало. Ширина есть у
+   всех столбцов, кроме описания: ему достаётся остаток. */
+.grid--letters {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.grid--letters td:nth-child(2) {
+    overflow-wrap: anywhere;
+}
+
+/* Заголовкам разрешаем перенос: «Номер группы» в 96 px одной строкой не
+   помещается, а отнимать ширину у описания ради заголовка незачем. */
+.grid--letters th {
+    white-space: normal;
+}
+
+.grid--letters th:nth-child(1) { width: 128px; }
+.grid--letters th:nth-child(3) { width: 78px; }
+.grid--letters th:nth-child(4) { width: 118px; }
+/* Номер группы бывает не номером, а словами («2-я группа связи»): даём ему
+   перенос, иначе одна такая строка растягивает столбец на весь экран. */
+.grid--letters th:nth-child(5) { width: 96px; }
+
+.grid--letters td:nth-child(5) {
+    white-space: normal;
+}
+.grid--letters th:nth-child(6) { width: 122px; }
+.grid--letters th:nth-child(7) { width: 108px; }
+.grid--letters th:nth-child(8) { width: 128px; }
+.grid--letters th:nth-child(9) { width: 104px; }
+.grid--letters th:nth-child(10) { width: 104px; }
+.grid--letters th:nth-child(11) { width: 76px; }
+
+/* На узком мониторе столбцы отнимают место у описания — а описание и есть
+   то, ради чего в список смотрят: «Отказ модема …» не письмо, а огрызок.
+   Поэтому убираем по одному, от наименее нужного:
+
+     дата письма   — срок ответа важнее, а сама дата видна в карточке;
+     исходящий     — у письма в работе он пуст, а таких в списке почти все;
+     номер группы  — в карточке он тоже есть.
+
+   Линия связи и номер ТС остаются на любой ширине: по ним отбирают письма
+   своего хозяйства, и ради них столбцы и разделяли. */
+@media (max-width: 1700px) {
+
+    .grid--letters th:nth-child(10),
+    .grid--letters td:nth-child(10) {
+        display: none;
+    }
+}
+
+@media (max-width: 1520px) {
 
     .grid--letters th:nth-child(9),
     .grid--letters td:nth-child(9) {
@@ -2971,10 +3040,10 @@ table.md-table th {
     }
 }
 
-@media (max-width: 1360px) {
+@media (max-width: 1400px) {
 
-    .grid--letters th:nth-child(4),
-    .grid--letters td:nth-child(4) {
+    .grid--letters th:nth-child(5),
+    .grid--letters td:nth-child(5) {
         display: none;
     }
 }
@@ -2984,6 +3053,313 @@ table.md-table th {
 /* Колокольчик в шапке. Значок остаётся на месте и когда уведомлений нет:
    исчезающие элементы шапки сбивают руку — человек тянется туда, где вчера
    была кнопка, и не находит её. */
+/* Строка «показать остальных» в конце таблицы: не строка данных, поэтому
+   без разделителя и с приглушённым фоном. */
+.row-more td {
+    text-align: center;
+    padding: 10px;
+    background: var(--panel-2);
+}
+
+/* ------------------------------------------- расход: кто где сегодня -----
+
+   Раньше это был столбик фамилий в цветной коробке: на десятерых читалось,
+   на двадцати превращалось в простыню. Теперь строка на состояние, а люди в
+   ней — плашками с переносом: два десятка помещаются в три строки, и глаз
+   ловит нужную фамилию сразу. */
+
+.day-board {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.day-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 9px 0;
+    border-top: 1px solid var(--border);
+}
+
+.day-row:first-child {
+    border-top: 0;
+    padding-top: 2px;
+}
+
+.day-row-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    padding-top: 3px;
+}
+
+.day-row-head i {
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+    /* Бледная заливка на светлом фоне не видна вовсе — обводка делает
+       квадратик меткой, а не пятном. */
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14);
+}
+
+.day-count {
+    margin-left: auto;
+    font: 600 12px/1 var(--font-ui);
+    color: var(--muted);
+    background: var(--panel-2);
+    border-radius: 999px;
+    padding: 3px 8px;
+}
+
+.day-people {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.day-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px 3px 3px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--panel);
+    color: var(--text);
+    font: 500 12.5px/1.6 var(--font-ui);
+    cursor: pointer;
+    transition: border-color .12s ease, background .12s ease;
+}
+
+.day-chip:hover {
+    border-color: var(--accent);
+    background: var(--panel-2);
+}
+
+/* Цвет состояния — на кружке с инициалами, а не на всей плашке: два десятка
+   залитых плашек подряд превращают строку в полосу краски. */
+.day-chip .avatar {
+    background: inherit;
+    color: inherit;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
+}
+
+.day-chip.kind-duty .avatar { background: #dbe9f7; color: #12456f; }
+.day-chip.kind-work .avatar { background: #dcefe0; color: #1c5c31; }
+.day-chip.kind-trip .avatar { background: #fbe7cd; color: #7a4a10; }
+.day-chip.kind-study .avatar { background: #e6e0f6; color: #45338a; }
+.day-chip.kind-vacation .avatar { background: #d8eff0; color: #12595e; }
+.day-chip.kind-sick .avatar { background: #f8dcdc; color: #8a1f22; }
+.day-chip.kind-dayoff .avatar { background: #e6e8ea; color: #4a545c; }
+.day-chip.kind-none .avatar { background: var(--accent-soft); color: var(--accent); }
+
+.day-chip i {
+    font-style: normal;
+    font-size: 11.5px;
+    color: var(--muted);
+    border-left: 1px solid var(--border);
+    padding-left: 6px;
+}
+
+.avatar--xs {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+}
+
+@media (max-width: 760px) {
+    .day-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+}
+
+/* Файлы в переписке: строка под текстом реплики. Не карточка и не картинка
+   во всю ширину — пузырь должен оставаться репликой, а не альбомом. */
+/* Документ Word — его текстом. Не вид документа, а содержимое, и место
+   ему главное: до сих пор окно по .docx честно отказывалось показывать
+   документ, который система уже прочитала. */
+.preview-doc {
+    width: 100%;
+    max-height: 60vh;
+    overflow: auto;
+    text-align: left;
+    padding: 14px 16px;
+}
+
+.preview-doc pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 12.5px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.preview-doc-note {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.talk-files {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.talk-file {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    text-align: left;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+    color: inherit;
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+}
+
+.talk-file:hover {
+    border-color: var(--accent);
+}
+
+.talk-file svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    color: var(--muted);
+}
+
+.talk-file-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Участники беседы в заголовке: фамилии, а не подпись. */
+.talk-members {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+/* Отметка с пояснением под ней: «Звук» и почему настройка здесь. */
+.check-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.check-line input {
+    margin-top: 3px;
+    flex: 0 0 auto;
+}
+
+.notice-kinds {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 6px 0 10px;
+}
+
+.notice-kind {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.notice-kind:last-child {
+    border-bottom: 0;
+}
+
+/* --------------------------------------------- карточка сотрудника ------- */
+
+.person-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+}
+
+.avatar--lg {
+    width: 46px;
+    height: 46px;
+    font-size: 15px;
+}
+
+.person-who {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.person-who b {
+    font-size: 15px;
+}
+
+.person-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+}
+
+.person-line .kv-name {
+    min-width: 150px;
+    color: var(--muted);
+    font-size: var(--fs-sm);
+}
+
+.kind-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font: 500 12px/1.6 var(--font-ui);
+    background: var(--panel-2);
+    color: var(--text);
+}
+
+/* Фамилия, открывающая карточку. Подчёркивание только при наведении: строка
+   таблицы, где каждое имя подчёркнуто, читается как поле ссылок. */
+.person-link {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+}
+
+.person-link:hover {
+    color: var(--accent);
+    border-bottom-color: currentColor;
+}
+
 /* ------------------------------------------------------- заглушки --------
 
    Серые полосы вместо крутящегося кружка. Кружок говорит «жди», но не
@@ -3894,6 +4270,9 @@ body.has-dock .composer {
 .kind-sick { background: #f8dcdc; color: #8a1f22; }
 .kind-dayoff { background: #e6e8ea; color: #4a545c; }
 .kind-unmarked { background: transparent; color: var(--muted); }
+/* Без отметки — это тоже «на месте», и цвет у него тот же, что у работ,
+   но бледнее: отличие есть, а спорить с отмеченными он не должен. */
+.kind-none { background: var(--panel-2); color: var(--muted); }
 
 :root[data-theme="dark"] .kind-duty { background: #14304a; color: #9ac8ee; }
 :root[data-theme="dark"] .kind-work { background: #163524; color: #8fd3a4; }
@@ -4675,7 +5054,36 @@ table.grid tr.is-focus td {
 }
 
 table.grid--users {
-    min-width: 980px;
+    /* ФИО теперь пишется целиком, и «Ковалёв Алексей Серг…» в обрезанном
+       поле — не запись человека, а её огрызок. Ширину даём под полное имя;
+       границы столбцов всё равно тянутся мышью. */
+    min-width: 1240px;
+}
+
+table.grid--users th:nth-child(1),
+table.grid--users td:nth-child(1) {
+    width: 120px;
+}
+
+table.grid--users th:nth-child(2),
+table.grid--users td:nth-child(2) {
+    /* «Сорокин Дмитрий Анатольевич» — 28 знаков, и это не предел. */
+    width: 290px;
+}
+
+table.grid--users th:nth-child(3),
+table.grid--users td:nth-child(3) {
+    width: 230px;
+}
+
+table.grid--users th:nth-child(4),
+table.grid--users td:nth-child(4) {
+    width: 180px;
+}
+
+table.grid--users th:nth-child(5),
+table.grid--users td:nth-child(5) {
+    width: 120px;
 }
 
 /* В таблице сотрудников действия — основная работа раздела, а не редкая

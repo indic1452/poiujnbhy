@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "10"
+SCHEMA_VERSION = "11"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -91,6 +91,9 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("case_files", "stage", "TEXT NOT NULL DEFAULT 'incoming'"),
     ("cases", "outgoing_date", "TEXT NOT NULL DEFAULT ''"),
     ("cases", "sent_by", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+    # Текст приложенного к беседе документа: Word браузер не рисует, а
+    # прочитать его собеседник должен, не скачивая файл.
+    ("talk_files", "text", "TEXT NOT NULL DEFAULT ''"),
 )
 
 #: Прежнее значение роли → нынешнее. Роли viewer/engineer/admin заменены
@@ -266,7 +269,7 @@ class Database:
             return False
         return {"chunks_fts", "cases_fts", "case_files", "person_files",
                 "notifications", "talks", "talk_members",
-                "talk_messages", "case_notes"}.issubset(present)
+                "talk_messages", "talk_files", "case_notes"}.issubset(present)
 
     def _rename_domains(self) -> None:
         """Переименование направлений при смене справочника.

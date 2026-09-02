@@ -48,6 +48,7 @@ from ..store.models import (
     Case,
     Report,
     User,
+    short_name,
 )
 from .auth import (COOKIE_NAME, get_user, require_admin, require_editor,
                    require_reviewer, require_user)
@@ -311,11 +312,9 @@ def register(request: Request) -> Dict[str, Any]:
     payload = _body(request)
 
     login_name = str(payload.get("login", "")).strip().lower()
-    full_name = _card_line(payload.get("full_name", ""), "title")
+    full_name = _check_full_name(payload.get("full_name", ""))
     password = str(payload.get("password", ""))
     _check_login(login_name)
-    if not full_name:
-        raise ServiceError("укажите фамилию и инициалы", 400)
     if len(password) < 8:
         raise ServiceError("пароль короче 8 символов", 400)
     if repos.users.by_login(login_name) is not None:
@@ -558,6 +557,10 @@ def create_case(request: Request) -> Dict[str, Any]:
 #: Что кладут к письму: само письмо сканом, схема линии, журнал измерений,
 #: выгрузка анализатора. Список широкий намеренно — отдел приносит разное, и
 #: запрещать формат значит заставлять человека искать обходной путь.
+#: Сколько разбора показывать в окне просмотра. Длинный текст целиком экрану
+#: не нужен: смотрят начало, чтобы понять, прочиталось ли вообще.
+ATTACHMENT_TEXT_LIMIT = 20000
+
 CASE_FILE_SUFFIXES = (
     ".pdf", ".docx", ".doc", ".rtf", ".odt", ".xlsx", ".xls", ".csv",
     ".md", ".txt", ".log", ".json", ".png", ".jpg", ".jpeg", ".tif", ".tiff",
@@ -738,10 +741,8 @@ def case_file_text(request: Request, case_ref: int, file_id: int) -> Dict[str, A
     text = item.text.strip()
     return {
         "name": item.name,
-        # Длинный разбор целиком экрану не нужен: смотрят начало, чтобы
-        # понять, прочиталось ли вообще.
-        "text": text[:20000],
-        "truncated": len(text) > 20000,
+        "text": text[:ATTACHMENT_TEXT_LIMIT],
+        "truncated": len(text) > ATTACHMENT_TEXT_LIMIT,
         "recognised": Path(item.name).suffix.lower() in OCR_SUFFIXES,
     }
 
@@ -1231,7 +1232,7 @@ def submit(request: Request, report_id: int) -> Dict[str, Any]:
         if boss.can_review:
             _notify(request, boss.id, "report.review",
                     f"Отчёт на проверку по письму {who}",
-                    f"Сдал {user.full_name or user.login}.",
+                    f"Сдал {short_name(user.full_name) or user.login}.",
                     link=f"#/case/{report.case_ref}", from_id=user.id)
     return {"report": _report_payload(service, result)}
 
@@ -1990,7 +1991,7 @@ def staff(request: Request) -> Dict[str, Any]:
             {
                 "id": user.id,
                 "login": user.login,
-                "full_name": user.full_name or user.login,
+                "full_name": short_name(user.full_name) or user.login,
                 "role": user.role,
                 "role_title": user.role_title,
                 "department": user.department,
@@ -2031,7 +2032,7 @@ def create_user(request: Request) -> Dict[str, Any]:
     if not admin.is_owner and ROLE_RANK.get(role, 0) >= admin.rank:
         raise ServiceError("нельзя назначить должность выше собственной", 403)
 
-    full_name = str(payload.get("full_name", "")).strip()
+    full_name = _check_full_name(payload.get("full_name", ""))
     user = repos.users.create(
         login, password, full_name=full_name, role=role,
         department=str(payload.get("department", "")).strip(),
@@ -2070,9 +2071,13 @@ def update_user(request: Request, user_id: int) -> Dict[str, Any]:
     if not _may_manage(admin, user) and admin.id != user.id:
         raise ServiceError("недостаточно прав для правки этой записи", 403)
 
+    # Правка ФИО проходит ту же проверку, что и заведение: иначе полное имя
+    # можно было бы стереть до фамилии сразу после того, как его завели.
+    new_name = (_check_full_name(payload["full_name"])
+                if "full_name" in payload else None)
     updated = repos.users.update(
         user_id,
-        full_name=_opt_str(payload, "full_name"),
+        full_name=new_name,
         role=None if role is None else str(role),
         department=_opt_str(payload, "department"),
         team=_opt_str(payload, "team"),
@@ -2125,7 +2130,7 @@ def approve_user(request: Request, user_id: int) -> Dict[str, Any]:
                     object_id=user.login, details={"role": role})
     _notify(request, user_id, "user.approved",
             "Доступ открыт",
-            f"Заявку одобрил {admin.full_name or admin.login}. "
+            f"Заявку одобрил {short_name(admin.full_name) or admin.login}. "
             f"Должность: {ROLE_TITLES.get(role, role)}.")
     return {"user": _user_public(approved)}
 
@@ -2258,7 +2263,7 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
     for person in repos.users.list_all(active_only=True):
         staff.append({
             "id": person.id,
-            "full_name": person.full_name or person.login,
+            "full_name": short_name(person.full_name) or person.login,
             "role": person.role,
             "role_title": person.role_title,
             "team": person.team,
@@ -2315,9 +2320,20 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
         if current is None or item.id > current.id:
             marked[item.user_id] = item
 
+    # Отдаём человека, а не запись расхода: экран показывает фамилии и по
+    # щелчку открывает карточку сотрудника, а id записи для этого не годится.
     groups: Dict[str, List[Dict[str, Any]]] = {kind: [] for kind in ABSENCE_KINDS}
     for item in sorted(marked.values(), key=lambda row: row.full_name):
-        groups[item.kind].append(item.to_dict())
+        groups[item.kind].append({
+            "id": item.user_id,
+            "full_name": short_name(item.full_name),
+            "role": item.role,
+            "role_title": ROLE_TITLES.get(item.role, item.role),
+            "team": item.team,
+            "place": item.place,
+            "note": item.note,
+            "date_to": item.date_to,
+        })
 
     # Кто себя не отметил — тот на месте. Это положение по умолчанию, а не
     # неизвестность: человек приходит на службу, и отмечаются в расходе как
@@ -2325,7 +2341,7 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
     # ненаписанным расходом, и начальник каждое утро гонялся бы за отметками
     # от тех, у кого ничего не менялось.
     unmarked = [
-        {"id": person.id, "full_name": person.full_name or person.login,
+        {"id": person.id, "full_name": short_name(person.full_name) or person.login,
          "role": person.role, "role_title": person.role_title, "team": person.team}
         for person in repos.users.list_all(active_only=True)
         if person.id not in marked
@@ -2523,7 +2539,7 @@ def call_to_office(request: Request) -> Dict[str, Any]:
 
     repos.notices.add(
         user.id, "call",
-        f"Вас вызывает {admin.full_name or admin.login}",
+        f"Вас вызывает {short_name(admin.full_name) or admin.login}",
         " ".join(part for part in (where and f"Куда: {where}.", note) if part),
         link="", from_id=admin.id)
     repos.audit.log("user.call", user=admin, object_type="user",
@@ -2609,9 +2625,116 @@ def write_to_talk(request: Request, talk_id: int) -> Dict[str, Any]:
         if member["id"] == user.id:
             continue
         _notify(request, member["id"], "message",
-                f"Сообщение от {user.full_name or user.login}",
+                f"Сообщение от {short_name(user.full_name) or user.login}",
                 text[:200], link=f"#/talks/{talk_id}", from_id=user.id)
     return {"message": message.to_dict() if message else None}
+
+
+@router.post("/talks/{talk_id}/files")
+def attach_to_talk(request: Request, talk_id: int,
+                   file: UploadFile = File(...),
+                   text: str = Form("")) -> Dict[str, Any]:
+    """Приложить файл к сообщению в беседе.
+
+    Половина вопросов по письму решается тем, что человек показывает
+    картинку: «глянь, это тот же ствол?». Переслать её отделу было нечем —
+    почты в изолированном контуре нет, а класть снимок экрана к письму,
+    когда речь про соседнее, неправильно.
+
+    Файл всегда идёт сообщением: подпись к нему необязательна, но пустая
+    строка в переписке без слов — это и есть «вот, смотри».
+    """
+    user = require_user(request)
+    repos = _repos(request)
+    settings = _settings(request)
+    if not repos.talks.is_member(talk_id, user.id):
+        raise ServiceError("беседа не найдена", 404)
+
+    name = _safe_name(Path(file.filename or "файл").name)
+    if not name:
+        raise ServiceError("некорректное имя файла", 400)
+    suffix = Path(name).suffix.lower()
+    if suffix not in CASE_FILE_SUFFIXES:
+        known = ", ".join(CASE_FILE_SUFFIXES)
+        raise ServiceError(f"такие файлы не пересылают (можно: {known})", 400)
+
+    settings.ensure_dirs()
+    target_dir = Path(settings.data_dir) / "talk-files" / str(talk_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / f"{secrets.token_hex(6)}-{name}"
+
+    limit = settings.max_upload_mb * 1024 * 1024
+    size = 0
+    try:
+        with target.open("wb") as stream:
+            while True:
+                piece = file.file.read(1024 * 1024)
+                if not piece:
+                    break
+                size += len(piece)
+                if size > limit:
+                    raise ServiceError(
+                        f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
+                stream.write(piece)
+        if not size:
+            raise ServiceError("файл пустой", 400)
+        caption = str(text or "").strip()[:CARD_LIMITS["note"]] or name
+        # Текст вычитываем тем же конвертером, что и бумаги письма: без него
+        # документ Word собеседнику пришлось бы скачивать, чтобы прочитать.
+        body, _problem = _extract_attachment(target)
+        message = repos.talks.add_message(talk_id, user.id, caption)
+        item = repos.talks.add_file(talk_id, message.id if message else None,
+                                    user.id, name, str(target), size,
+                                    text=body.strip())
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
+
+    for member in repos.talks.members(talk_id):
+        if member["id"] == user.id:
+            continue
+        _notify(request, member["id"], "message",
+                f"Файл от {short_name(user.full_name) or user.login}",
+                name, link=f"#/talks/{talk_id}", from_id=user.id)
+    return {"file": item.to_dict(),
+            "message": message.to_dict() if message else None}
+
+
+@router.get("/talks/{talk_id}/files/{file_id}/text")
+def read_talk_file_text(request: Request, talk_id: int, file_id: int) -> Dict[str, Any]:
+    """Что система вычитала из приложенного документа.
+
+    Для Word и Excel это единственный способ прочитать документ, не
+    скачивая его: браузер такие файлы не рисует.
+    """
+    user = require_user(request)
+    repos = _repos(request)
+    if not repos.talks.is_member(talk_id, user.id):
+        raise ServiceError("беседа не найдена", 404)
+    item = repos.talks.file(file_id)
+    if item is None or item.talk_id != talk_id:
+        raise ServiceError("файл не найден", 404)
+    text = item.text.strip()
+    return {"text": text[:ATTACHMENT_TEXT_LIMIT],
+            "truncated": len(text) > ATTACHMENT_TEXT_LIMIT,
+            "recognised": False}
+
+
+@router.get("/talks/{talk_id}/files/{file_id}")
+def read_talk_file(request: Request, talk_id: int, file_id: int,
+                   inline: int = 0):
+    """Отдать приложенный к беседе файл. Только участнику беседы."""
+    user = require_user(request)
+    repos = _repos(request)
+    if not repos.talks.is_member(talk_id, user.id):
+        raise ServiceError("беседа не найдена", 404)
+    item = repos.talks.file(file_id)
+    if item is None or item.talk_id != talk_id:
+        raise ServiceError("файл не найден", 404)
+    path = Path(item.path)
+    if not path.exists():
+        raise ServiceError("файл не найден на диске", 410)
+    return _file_reply(path, item.name, inline=bool(inline))
 
 
 # ------------------------------------------------------------- дашборд ----
@@ -2655,7 +2778,7 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
         people.append({
             "id": row["id"],
             "login": row["login"],
-            "full_name": row["full_name"] or row["login"],
+            "full_name": short_name(row["full_name"]) or row["login"],
             # Отключённый сотрудник остаётся в списке, пока за ним числятся
             # письма: их надо передать живому человеку, и это должно быть видно.
             "active": bool(row["active"]),
@@ -2907,6 +3030,59 @@ def update_my_contacts(request: Request) -> Dict[str, Any]:
     return {"user": _user_public(updated)}
 
 
+@router.get("/people/{user_id}")
+def person_card(request: Request, user_id: int) -> Dict[str, Any]:
+    """Карточка сотрудника, открытая всему отделу.
+
+    Кто это, кем работает, в какой группе, по какому подразделению стоит по
+    штату, как до него дозвониться и где он сегодня. Всё это в отделе и так
+    знают друг о друге — а новому человеку спрашивать по коридору неудобно,
+    и справочник для того и нужен.
+
+    Это не «Сотрудники»: там заводят учётные записи и меняют должности, и
+    туда рядового инженера не пускают. И не документы: справка-объективка и
+    приказы остаются закрытыми — их круг уже (см. `_may_see_person_files`).
+    """
+    actor = require_user(request)
+    repos = _repos(request)
+    person = repos.users.get(user_id)
+    if person is None or not person.approved:
+        raise ServiceError("сотрудник не найден", 404)
+
+    today = _today()
+    # Где человек сегодня: та же запись расхода, что видна в общем списке.
+    marks = [item for item in repos.absences.on_date(today)
+             if item.user_id == person.id]
+    marks.sort(key=lambda item: item.date_to, reverse=True)
+    where = marks[0].to_dict() if marks else None
+
+    card = {
+        "id": person.id,
+        "login": person.login,
+        "full_name": person.full_name or person.login,
+        "short_name": short_name(person.full_name) or person.login,
+        "role": person.role,
+        "role_title": ROLE_TITLES.get(person.role, person.role),
+        "role_note": ROLE_NOTES.get(person.role, ""),
+        # Работают все в отделе; «по штату» заполнено только у тех, кто
+        # числится в другом подразделении.
+        "team": person.team,
+        "department": person.department,
+        "phone": person.phone,
+        "ext_no": person.ext_no,
+        "room": person.room,
+        "email": person.email,
+        "active": person.active,
+        "created_at": person.created_at,
+        "where": where,
+        # Нагрузка — не тайна: по ней и решают, кому отдать письмо.
+        "open_cases": repos.cases.count(status="open", assignee_id=person.id),
+        "is_me": actor.id == person.id,
+        "may_see_files": _may_see_person_files(actor, person.id),
+    }
+    return {"person": card}
+
+
 @router.get("/me/summary")
 def my_summary(request: Request) -> Dict[str, Any]:
     user = require_user(request)
@@ -3061,6 +3237,30 @@ def _count_or_zero(value: Any) -> int:
 LOGIN_RE = r"[a-z0-9._-]{3,32}"
 LOGIN_HINT = ("логин: от 3 до 32 знаков, латиница, цифры, точка, дефис "
               "или подчёркивание")
+
+
+def _check_full_name(value: str) -> str:
+    """ФИО заводят полностью: «Жуков Пётр Иванович», а не «Жуков П. И.».
+
+    Полное имя нужно там, где документ подписывают человеком, а не
+    сокращением: справка-объективка, приказ, исходящее письмо. В списках оно
+    всё равно показывается инициалами — сокращать умеет система, а
+    восстанавливать имя из «П. И.» не умеет никто.
+
+    Одну фамилию не принимаем: имя есть у всех. Уже сокращённое «Жуков П. И.»
+    проходит — записи, заведённые до этого правила, править насильно незачем.
+    """
+    full = " ".join(str(value or "").split())
+    if not full:
+        raise ServiceError("укажите фамилию, имя и отчество", 400)
+    if len(full) > CARD_LIMITS["title"]:
+        raise ServiceError(
+            f"ФИО: длиннее {CARD_LIMITS['title']} знаков", 400)
+    if len(full.split()) < 2:
+        raise ServiceError(
+            "напишите фамилию, имя и отчество полностью — "
+            "одной фамилии недостаточно", 400)
+    return full
 
 
 def _check_login(login: str) -> None:

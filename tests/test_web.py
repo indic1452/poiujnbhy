@@ -3329,12 +3329,14 @@ class UserManagementTests(WebTestCase):
 
     def test_create_and_update(self):
         created = self.client.post("/api/users", json={
-            "login": "petrov", "full_name": "Петров П.П.",
+            "login": "petrov", "full_name": "Петров Пётр Петрович",
             "password": "пароль12345", "role": "engineer",
         })
         self.assertEqual(200, created.status_code, created.text)
         user = created.json()["user"]
-        self.assertEqual("Петров П.П.", user["full_name"])
+        # В записи имя лежит целиком, в списках показывается инициалами.
+        self.assertEqual("Петров Пётр Петрович", user["full_name"])
+        self.assertEqual("Петров П. П.", user["short_name"])
 
         patched = self.client.patch(f"/api/users/{user['id']}", json={
             "role": "senior", "department": "Отдел связи", "team": "1 группа"})
@@ -3346,16 +3348,19 @@ class UserManagementTests(WebTestCase):
         for bad in ("ab", "Петров", "with space", "x" * 40):
             with self.subTest(login=bad):
                 response = self.client.post("/api/users", json={
-                    "login": bad, "password": "пароль12345", "role": "engineer"})
+                    "login": bad, "full_name": "Плохов Логин Логинович",
+                    "password": "пароль12345", "role": "engineer"})
                 self.assertEqual(400, response.status_code)
 
     def test_short_password_refused(self):
         response = self.client.post("/api/users", json={
-            "login": "sidorov", "password": "коротк", "role": "engineer"})
+            "login": "sidorov", "full_name": "Сидоров Сидор Сидорович",
+            "password": "коротк", "role": "engineer"})
         self.assertEqual(400, response.status_code)
 
     def test_duplicate_login_refused(self):
-        payload = {"login": "dublikat", "password": "пароль12345", "role": "engineer"}
+        payload = {"login": "dublikat", "full_name": "Дубликатов Дубль Дублевич",
+                   "password": "пароль12345", "role": "engineer"}
         self.assertEqual(200, self.client.post("/api/users", json=payload).status_code)
         self.assertEqual(409, self.client.post("/api/users", json=payload).status_code)
 
@@ -3426,7 +3431,8 @@ class UserManagementTests(WebTestCase):
     def test_role_above_own_is_refused(self):
         self.login("gruppa")
         response = self.client.post("/api/users", json={
-            "login": "vyshe", "password": "пароль12345", "role": "head"})
+            "login": "vyshe", "full_name": "Вышев Выше Вышевич",
+            "password": "пароль12345", "role": "head"})
         self.assertEqual(403, response.status_code)
 
     def test_cannot_disable_self(self):
@@ -3461,7 +3467,8 @@ class UserManagementTests(WebTestCase):
 
     def test_password_reset_closes_sessions(self):
         created = self.client.post("/api/users", json={
-            "login": "smena", "password": "пароль12345", "role": "engineer"}).json()["user"]
+            "login": "smena", "full_name": "Сменов Смена Сменович",
+            "password": "пароль12345", "role": "engineer"}).json()["user"]
         response = self.client.post(f"/api/users/{created['id']}/password",
                                     json={"password": "новыйпароль1"})
         self.assertEqual(200, response.status_code)
@@ -4042,6 +4049,251 @@ class TalkTests(WebTestCase):
             f"/api/talks/{talk['talk_id']}/messages", json={"text": "  "}).status_code)
 
 
+class NameFormatTests(unittest.TestCase):
+    """Полное ФИО в записи, фамилия с инициалами в списках."""
+
+    def test_a_full_name_becomes_initials(self):
+        from reportgen.store.models import short_name
+        self.assertEqual("Жуков П. И.", short_name("Жуков Пётр Иванович"))
+        self.assertEqual("Жуков П.", short_name("Жуков Пётр"))
+
+    def test_an_already_short_name_stays_itself(self):
+        """Правило применяется к тому, что уже лежит в базе.
+
+        Записи, заведённые до полного ФИО, хранят «Жуков П. И.» — прогон их
+        через сокращение не должен съедать точки и превращать имя в кашу.
+        """
+        from reportgen.store.models import short_name
+        self.assertEqual("Жуков П. И.", short_name("Жуков П. И."))
+        self.assertEqual("Жуков П. И.", short_name(short_name("Жуков Пётр Иванович")))
+        # И строчный инициал приводится к прописному, а не остаётся как был.
+        self.assertEqual("Жуков П. И.", short_name("Жуков п. и."))
+
+    def test_a_double_surname_is_not_torn_into_initials(self):
+        # «Римский-Корсаков» — одно слово и одна фамилия.
+        from reportgen.store.models import short_name
+        self.assertEqual("Римский-Корсаков Н. А.",
+                         short_name("Римский-Корсаков Николай Андреевич"))
+
+    def test_a_surname_alone_and_an_empty_name_survive(self):
+        from reportgen.store.models import short_name
+        self.assertEqual("Жуков", short_name("Жуков"))
+        self.assertEqual("", short_name(""))
+        self.assertEqual("", short_name(None))
+
+
+class FullNameEntryTests(WebTestCase):
+    """ФИО заводят целиком — сокращает система."""
+
+    def test_a_new_record_keeps_the_name_whole(self):
+        created = self.client.post("/api/users", json={
+            "login": "vorobev", "full_name": "Воробьёв Игорь Семёнович",
+            "password": "пароль12345", "role": "engineer"})
+        self.assertEqual(200, created.status_code, created.text)
+        user = created.json()["user"]
+        self.assertEqual("Воробьёв Игорь Семёнович", user["full_name"])
+        self.assertEqual("Воробьёв И. С.", user["short_name"])
+
+    def test_one_surname_is_not_a_name(self):
+        """Имя есть у всех, а восстановить его из «Жуков» потом не сможет никто.
+
+        Полное имя нужно там, где документ подписывают человеком: справка,
+        приказ, исходящее письмо.
+        """
+        refused = self.client.post("/api/users", json={
+            "login": "odin", "full_name": "Одинов",
+            "password": "пароль12345", "role": "engineer"})
+        self.assertEqual(400, refused.status_code)
+        self.assertIn("полностью", refused.json()["error"])
+
+    def test_an_application_asks_for_the_whole_name_too(self):
+        self.client.cookies.clear()
+        refused = self.client.post("/api/auth/register", json={
+            "login": "zayavka", "full_name": "Заявкин", "password": "пароль12345"})
+        self.assertEqual(400, refused.status_code)
+        ok = self.client.post("/api/auth/register", json={
+            "login": "zayavka", "full_name": "Заявкин Заявка Заявкович",
+            "password": "пароль12345"})
+        self.assertEqual(200, ok.status_code, ok.text)
+
+    def test_the_name_cannot_be_erased_down_to_a_surname_later(self):
+        # Иначе полное имя стирают сразу после того, как его завели.
+        user = self.repos.users.by_login("engineer")
+        refused = self.client.patch(f"/api/users/{user.id}", json={"full_name": "Инженеров"})
+        self.assertEqual(400, refused.status_code)
+
+    def test_lists_show_initials_not_the_whole_name(self):
+        """«Инженеров Иван Иванович» в столбце «Исполнитель» вытесняет то,
+        ради чего в список смотрят."""
+        person = self.repos.users.by_login("engineer")
+        self.repos.users.update(person.id, full_name="Инженеров Иван Иванович")
+        case = self.create_case()
+        self.client.patch(f"/api/cases/{case['id']}", json={"assignee_id": person.id})
+
+        listing = self.client.get("/api/cases").json()["items"]
+        row = [item for item in listing if item["id"] == case["id"]][0]
+        self.assertEqual("Инженеров И. И.", row["assignee_name"])
+
+        board = self.client.get("/api/board").json()
+        found = [item for item in board["people"] if item["id"] == person.id][0]
+        self.assertEqual("Инженеров И. И.", found["full_name"])
+
+        staff = self.client.get("/api/staff").json()["items"]
+        found = [item for item in staff if item["id"] == person.id][0]
+        self.assertEqual("Инженеров И. И.", found["full_name"])
+
+    def test_a_talk_and_a_note_are_signed_with_initials(self):
+        person = self.repos.users.by_login("engineer")
+        self.repos.users.update(person.id, full_name="Инженеров Иван Иванович")
+        case = self.create_case()
+        self.login("engineer")
+        self.client.post(f"/api/cases/{case['id']}/notes", json={"text": "Сверить ствол"})
+        notes = self.client.get(f"/api/cases/{case['id']}/notes").json()["notes"]
+        self.assertEqual("Инженеров И. И.", notes[0]["author"])
+
+        boss = self.repos.users.by_login("nachalnik")
+        talk = self.client.post("/api/talks", json={"members": [boss.id]}).json()
+        self.client.post(f"/api/talks/{talk['talk_id']}/messages", json={"text": "Готово"})
+        data = self.client.get(f"/api/talks/{talk['talk_id']}").json()
+        self.assertEqual("Инженеров И. И.", data["messages"][0]["author"])
+        self.assertIn("Инженеров И. И.",
+                      [item["full_name"] for item in data["members"]])
+
+
+class PersonCardTests(WebTestCase):
+    """Карточка сотрудника открыта всему отделу."""
+
+    def setUp(self):
+        super().setUp()
+        self.person = self.repos.users.by_login("nachalnik")
+        self.repos.users.update(self.person.id, full_name="Начальников Николай Николаевич",
+                                team="1 группа", department="Отдел радиосвязи",
+                                phone="+7 900 000-00-00", room="214")
+
+    def test_any_member_of_the_department_may_open_it(self):
+        """Спрашивать по коридору «а Титов — это кто?» новому человеку
+        неудобно, а справочник для того и нужен."""
+        self.login("engineer")
+        response = self.client.get(f"/api/people/{self.person.id}")
+        self.assertEqual(200, response.status_code, response.text)
+        card = response.json()["person"]
+        self.assertEqual("Начальников Николай Николаевич", card["full_name"])
+        self.assertEqual("Начальников Н. Н.", card["short_name"])
+        self.assertEqual("Начальник отдела", card["role_title"])
+        self.assertEqual("1 группа", card["team"])
+        self.assertEqual("Отдел радиосвязи", card["department"])
+        self.assertEqual("214", card["room"])
+
+    def test_the_card_says_where_the_person_is_today(self):
+        self.repos.absences.add(self.person.id, "trip", _today_iso(), _today_iso(),
+                                place="узел К-12")
+        self.login("engineer")
+        card = self.client.get(f"/api/people/{self.person.id}").json()["person"]
+        self.assertEqual("trip", card["where"]["kind"])
+        self.assertEqual("узел К-12", card["where"]["place"])
+
+    def test_the_card_is_not_a_door_to_personal_documents(self):
+        """Справка-объективка остаётся в своём круге.
+
+        Карточка отвечает «кто это и как найти», а не «что о нём в кадрах».
+        """
+        self.login("engineer")
+        card = self.client.get(f"/api/people/{self.person.id}").json()["person"]
+        self.assertFalse(card["may_see_files"])
+        self.assertEqual(403, self.client.get(
+            f"/api/users/{self.person.id}/files").status_code)
+
+    def test_a_stranger_without_a_login_gets_nothing(self):
+        self.client.cookies.clear()
+        self.assertEqual(401, self.client.get(f"/api/people/{self.person.id}").status_code)
+
+    def test_an_unapproved_application_has_no_card(self):
+        # До одобрения это не сотрудник — и в справочнике его нет.
+        self.client.cookies.clear()
+        self.client.post("/api/auth/register", json={
+            "login": "novichok", "full_name": "Новичков Новик Новикович",
+            "password": "пароль12345"})
+        pending = self.repos.users.by_login("novichok")
+        self.login("engineer")
+        self.assertEqual(404, self.client.get(f"/api/people/{pending.id}").status_code)
+
+
+def _today_iso() -> str:
+    from datetime import date
+    return date.today().isoformat()
+
+
+class TalkFileTests(WebTestCase):
+    """Файлы в переписке: показать картинку, не заводя письма."""
+
+    def setUp(self):
+        super().setUp()
+        self.boss = self.repos.users.by_login("nachalnik")
+        self.login("engineer")
+        self.talk = self.client.post(
+            "/api/talks", json={"members": [self.boss.id]}).json()["talk_id"]
+
+    def attach(self, name="skhema.txt", body=b"stvol 3", text=""):
+        return self.client.post(
+            f"/api/talks/{self.talk}/files",
+            data={"text": text},
+            files={"file": (name, body, "text/plain")})
+
+    def test_a_file_comes_as_a_message(self):
+        """Файл без сообщения повис бы в беседе без места и времени.
+
+        Пустая строка в переписке без слов — это и есть «вот, смотри»,
+        поэтому подпись необязательна, а сообщение обязательно.
+        """
+        response = self.attach()
+        self.assertEqual(200, response.status_code, response.text)
+        data = self.client.get(f"/api/talks/{self.talk}").json()
+        self.assertEqual(1, len(data["messages"]))
+        message = data["messages"][0]
+        self.assertEqual("skhema.txt", message["text"])
+        self.assertEqual(["skhema.txt"], [item["name"] for item in message["files"]])
+
+    def test_a_caption_replaces_the_file_name(self):
+        self.attach(text="Глянь, это тот же ствол?")
+        message = self.client.get(f"/api/talks/{self.talk}").json()["messages"][0]
+        self.assertEqual("Глянь, это тот же ствол?", message["text"])
+        self.assertEqual(1, len(message["files"]))
+
+    def test_the_other_side_is_told_about_the_file(self):
+        self.attach()
+        self.login("nachalnik")
+        notices = self.client.get("/api/notifications").json()["items"]
+        self.assertIn("Файл от", notices[0]["title"])
+        self.assertEqual("skhema.txt", notices[0]["body"])
+
+    def test_the_file_is_read_back_by_a_member(self):
+        item = self.attach().json()["file"]
+        got = self.client.get(f"/api/talks/{self.talk}/files/{item['id']}")
+        self.assertEqual(200, got.status_code)
+        self.assertEqual(b"stvol 3", got.content)
+
+    def test_a_stranger_reads_neither_the_talk_nor_its_files(self):
+        # Переписка двоих — это переписка двоих, и приложенное к ней тоже.
+        item = self.attach().json()["file"]
+        self.login("gruppa")
+        self.assertEqual(404, self.client.get(
+            f"/api/talks/{self.talk}/files/{item['id']}").status_code)
+        self.assertEqual(404, self.client.post(
+            f"/api/talks/{self.talk}/files",
+            files={"file": ("chuzhoy.txt", b"...", "text/plain")}).status_code)
+
+    def test_an_unknown_kind_of_file_is_refused(self):
+        refused = self.attach(name="virus.exe", body=b"MZ")
+        self.assertEqual(400, refused.status_code)
+        self.assertIn("не пересылают", refused.json()["error"])
+
+    def test_an_empty_file_leaves_nothing_behind(self):
+        refused = self.attach(body=b"")
+        self.assertEqual(400, refused.status_code)
+        self.assertEqual([], self.client.get(
+            f"/api/talks/{self.talk}").json()["messages"])
+
+
 class LoginBackgroundTests(WebTestCase):
     """Фон окна входа: кадр из поставки и своя фотография вместо него."""
 
@@ -4298,6 +4550,131 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("return 'вчера ' + clock", self.js)
         # Полная дата остаётся подсказкой при наведении.
         self.assertIn("title: fmtDateTime(item.created_at)", self.js)
+
+    def test_the_line_and_the_equipment_are_separate_columns(self):
+        """Линия связи и номер средства — разные вещи.
+
+        В одной ячейке их не отсортировать и не сравнить глазами по столбцу,
+        а отбирают письма своего хозяйства именно по ним.
+        """
+        self.assertIn("h('th', {}, 'Линия'),", self.js)
+        self.assertIn("h('th', {}, 'Номер ТС'),", self.js)
+        self.assertNotIn("'Линия · ТС'", self.js)
+
+    def test_the_letters_table_lays_out_by_set_widths(self):
+        """Одно длинное описание растягивало свой столбец, таблица вылезала
+        за рамку, и кнопки правки уезжали за правый край — при том, что
+        места хватало."""
+        self.assertIn(".grid--letters {\n    table-layout: fixed;", self.css)
+        self.assertIn(".grid--letters th:nth-child(4) { width: 118px; }", self.css)
+
+    def test_the_day_roster_is_chips_and_not_a_column_of_names(self):
+        """Столбик фамилий в цветной коробке читался на десятерых.
+
+        На двадцати он превращался в простыню, которую надо прокручивать,
+        чтобы найти одну фамилию.
+        """
+        self.assertIn("function rosterDayBoard(day)", self.js)
+        self.assertIn("class: 'day-chip kind-' + row.cls", self.js)
+        self.assertIn(".day-people {\n    display: flex;\n    flex-wrap: wrap;", self.css)
+        # Отсутствующие первыми: их и ищут, присутствие подразумевается.
+        self.assertIn("rows.sort((a, b) => (b.away ? 1 : 0) - (a.away ? 1 : 0));", self.js)
+
+    def test_a_name_anywhere_opens_the_person(self):
+        # Спрашивать по коридору «а Титов — это кто?» новому человеку неудобно.
+        self.assertIn("async function openPerson(userId)", self.js)
+        self.assertIn("function personLink(userId, name, extra)", self.js)
+        self.assertIn("'/api/people/' + userId", self.js)
+        # В списке писем, в сводке отдела и в расходе — везде.
+        self.assertIn("personLink(item.assignee_id, item.assignee_name)", self.js)
+        self.assertIn("personLink(person.id, person.full_name)", self.js)
+
+    def test_the_person_card_splits_the_unit_from_the_staffing(self):
+        # Слитое «отдел, группа» не отвечает ни на «в какой он группе»,
+        # ни на «где числится по штату».
+        self.assertIn("['Отдел', brandName()]", self.js)
+        self.assertIn("rows.push(['Группа', person.team])", self.js)
+        self.assertIn("rows.push(['По штату', person.department])", self.js)
+
+    def test_the_idle_tail_of_the_board_is_folded(self):
+        """В отделе на двадцать человек свободных больше, чем занятых.
+
+        Сводка «кто чем занят» превращалась в две страницы нулей, из-за
+        которых не видно тех, у кого горит.
+        """
+        self.assertIn("const idle = people.filter(", self.js)
+        self.assertIn("'Показать ещё ' + idle.length", self.js)
+        self.assertIn("'Скрыть свободных'", self.js)
+
+    def test_the_whole_name_is_asked_for_where_a_person_is_entered(self):
+        self.assertIn("'Фамилия, имя, отчество'", self.js)
+        self.assertIn("placeholder: 'Петров Пётр Петрович'", self.js)
+        self.assertIn("Фамилия, имя, отчество", self.login)
+        self.assertIn('placeholder="Жуков Пётр Иванович"', self.login)
+        # И одной фамилии окно входа не пропускает.
+        self.assertIn("fullName.split(/\\s+/).length < 2", self.login)
+
+    def test_the_header_shows_initials_and_not_the_whole_name(self):
+        # «Никитин Виктор Павлович» в шапке вытесняет название раздела.
+        self.assertIn("const name = state.user.short_name || state.user.full_name",
+                      self.js)
+
+    def test_a_word_document_is_shown_and_not_only_offered_for_download(self):
+        """Браузер .docx не рисует и не будет: это упакованный архив.
+
+        Но текст система вычитала при загрузке — и до сих пор окно по .docx
+        говорило «скачайте и откройте своей программой», то есть отказывалось
+        показать документ, который уже прочитан.
+        """
+        self.assertIn("const PREVIEW_READ = ['docx', 'doc', 'rtf', 'odt', 'xlsx', 'xls']",
+                      self.js)
+        self.assertIn("Так система прочитала документ", self.js)
+        self.assertIn("class: 'preview-doc'", self.js)
+        # И честно: это содержимое, а не вид документа.
+        self.assertIn("Так система прочитала документ: только текст, ", self.js)
+        self.assertIn("без разметки, колонок и таблиц. Подлинник — ", self.js)
+
+    def test_an_archive_says_plainly_that_it_cannot_be_opened(self):
+        self.assertIn("const PREVIEW_NONE = ['zip', '7z', 'rar']", self.js)
+        self.assertIn("Архив на экране не раскрыть", self.js)
+
+    def test_the_open_dropdown_is_not_transparent(self):
+        """Раскрытый список рисует браузер, и цвет он берёт у самого select.
+
+        У тихих списков в таблицах фон прозрачный — и раскрытый список
+        выходил прозрачным: строки видно насквозь, а в тёмной теме их не
+        видно вовсе.
+        """
+        self.assertIn("select option,\nselect optgroup {\n"
+                      "    background-color: var(--panel);", self.css)
+        self.assertIn("select option:disabled {", self.css)
+
+    def test_a_file_can_be_sent_in_a_talk(self):
+        # Половина вопросов решается тем, что человек показывает картинку,
+        # а переслать её отделу было нечем: почты в контуре нет.
+        self.assertIn("'/api/talks/' + data.id + '/files'", self.js)
+        self.assertIn("function talkFileRow(item)", self.js)
+        self.assertIn("title: 'Приложить файл'", self.js)
+
+    def test_a_talk_leads_to_the_person_card(self):
+        self.assertIn("class: 'talk-members grow'", self.js)
+        self.assertIn("personLink(member.id, member.full_name)", self.js)
+        self.assertIn("personLink(message.user_id, message.author || 'кто-то')", self.js)
+
+    def test_the_sound_can_be_turned_off_and_checked(self):
+        """Настройка, о которой никто не знает, — то же, что её отсутствие.
+
+        Человек не знал ни того, что звук есть, ни того, что его можно
+        убрать: и то и другое кончается выключенными колонками.
+        """
+        self.assertIn("function openNoticeSettings()", self.js)
+        self.assertIn("function soundOn()", self.js)
+        self.assertIn("'Проверить звук'", self.js)
+        # Звук молчит, когда его выключили.
+        self.assertIn("    function playAlert() {\n        if (!soundOn()) return;", self.js)
+        # И видно, что приходит со звуком, а что молча.
+        self.assertIn("['Вас вызывают в кабинет', true]", self.js)
+        self.assertIn("['Сообщение в беседе', false]", self.js)
 
     def test_form_fields_hold_the_same_limits_as_the_server(self):
         """Поле не должно принимать то, что сервер потом отвергнет.

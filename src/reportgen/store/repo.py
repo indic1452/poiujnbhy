@@ -38,9 +38,11 @@ from .models import (
     PersonFile,
     Report,
     ReportSection,
+    TalkFile,
     TalkMessage,
     User,
     rows_to,
+    short_name,
 )
 
 log = logging.getLogger(__name__)
@@ -2095,7 +2097,9 @@ class TalkRepo:
             "SELECT m.user_id, m.seen_id, coalesce(u.full_name, u.login, '') AS name, "
             "u.role AS role FROM talk_members m JOIN users u ON u.id = m.user_id "
             "WHERE m.talk_id = ? ORDER BY name", (talk_id,))
-        return [{"id": int(row["user_id"]), "full_name": row["name"],
+        # Участники беседы — списком в заголовке: полное ФИО там не помещается
+        # и не нужно, беседу узнают по фамилиям.
+        return [{"id": int(row["user_id"]), "full_name": short_name(row["name"]),
                  "role": row["role"], "seen_id": int(row["seen_id"])} for row in rows]
 
     def is_member(self, talk_id: int, user_id: int) -> bool:
@@ -2154,7 +2158,35 @@ class TalkRepo:
             "SELECT m.*, coalesce(u.full_name, u.login, '') AS author "
             "FROM talk_messages m LEFT JOIN users u ON u.id = m.user_id "
             "WHERE m.talk_id = ? ORDER BY m.id DESC LIMIT ?", (talk_id, limit))
-        return list(reversed(rows_to(TalkMessage, rows)))
+        items = list(reversed(rows_to(TalkMessage, rows)))
+        # Файлы всей беседы одним запросом и раскладываем по сообщениям: по
+        # запросу на сообщение — это двести запросов на открытие переписки.
+        by_message: Dict[int, List[Dict[str, Any]]] = {}
+        for item in self.files(talk_id):
+            by_message.setdefault(int(item.message_id or 0), []).append(item.to_dict())
+        for message in items:
+            message.files = by_message.get(message.id, [])
+        return items
+
+    # -- вложения -----------------------------------------------------------
+
+    def files(self, talk_id: int) -> List[TalkFile]:
+        return rows_to(TalkFile, self.db.query(
+            "SELECT * FROM talk_files WHERE talk_id = ? ORDER BY id", (talk_id,)))
+
+    def file(self, file_id: int) -> TalkFile | None:
+        row = self.db.query_one("SELECT * FROM talk_files WHERE id = ?", (file_id,))
+        return TalkFile.from_row(row) if row else None
+
+    def add_file(self, talk_id: int, message_id: int | None, user_id: int | None,
+                 name: str, path: str, size: int, text: str = "") -> TalkFile:
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO talk_files(talk_id, message_id, user_id, name, path, "
+                "size, text, created_at) VALUES(?,?,?,?,?,?,?,?)",
+                (talk_id, message_id, user_id, name, path, int(size or 0),
+                 text, utcnow()))
+        return self.file(int(cursor.lastrowid))  # type: ignore[return-value]
 
     def mark_read(self, talk_id: int, user_id: int) -> None:
         with self.db.transaction() as connection:

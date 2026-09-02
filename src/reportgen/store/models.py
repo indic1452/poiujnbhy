@@ -180,6 +180,28 @@ def _json(value: str | None, default: Any) -> Any:
         return default
 
 
+def short_name(full: str) -> str:
+    """«Жуков Пётр Иванович» → «Жуков П. И.».
+
+    В записи человек хранится полностью — так его пишут в приказе и в
+    справке-объективке. В списках и таблицах полное имя занимает столько
+    места, что вытесняет то, ради чего в список смотрят; отдел друг друга
+    знает и по фамилии с инициалами.
+
+    Правило идемпотентно само по себе: первая буква инициала «П.» — та же
+    «П», и «Жуков П. И.» остаётся собой. Это важно для записей, заведённых
+    до полного ФИО: их прогоняют через то же сокращение, и точки не должны
+    множиться или пропадать.
+
+    Двойная фамилия через дефис на инициалы не разбирается:
+    «Римский-Корсаков» — одно слово и одна фамилия.
+    """
+    parts = str(full or "").split()
+    if not parts:
+        return ""
+    return " ".join([parts[0]] + [part[0].upper() + "." for part in parts[1:]])
+
+
 @dataclass
 class User:
     id: int
@@ -258,6 +280,8 @@ class User:
             "id": self.id,
             "login": self.login,
             "full_name": self.full_name,
+            # Для списков и таблиц: полное ФИО в них не помещается.
+            "short_name": short_name(self.full_name),
             "role": self.role,
             "role_title": self.role_title,
             "department": self.department,
@@ -451,11 +475,11 @@ class Case:
             "outgoing_date": self.outgoing_date,
             "outgoing_note": self.outgoing_note,
             "sent_by": self.sent_by,
-            "sent_by_name": self.sent_by_name,
+            "sent_by_name": short_name(self.sent_by_name),
             "deadline": self.deadline,
             "priority": self.priority,
             "assignee_id": self.assignee_id,
-            "assignee_name": self.assignee_name,
+            "assignee_name": short_name(self.assignee_name),
             "note": self.note,
             "facts_digest": self.facts_digest,
             "reports_count": self.reports_count,
@@ -529,7 +553,7 @@ class CaseFile:
             # на скане журнала это сотни килобайт в каждом списке.
             "has_text": bool(self.text.strip()),
             "uploaded_by": self.uploaded_by,
-            "uploaded_by_name": self.uploaded_by_name,
+            "uploaded_by_name": short_name(self.uploaded_by_name),
             "created_at": self.created_at,
         }
 
@@ -883,7 +907,7 @@ class Notice:
             "body": self.body,
             "link": self.link,
             "from_id": self.from_id,
-            "from_name": self.from_name,
+            "from_name": short_name(self.from_name),
             "seen": self.seen,
             "loud": self.kind in LOUD_NOTICES,
             "created_at": self.created_at,
@@ -900,6 +924,8 @@ class TalkMessage:
     text: str = ""
     author: str = ""
     created_at: str = ""
+    #: Приложенные файлы. Подставляются выборкой, в самой строке их нет.
+    files: List[Dict[str, Any]] = field(default_factory=list)
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "TalkMessage":
@@ -917,8 +943,56 @@ class TalkMessage:
             "id": self.id,
             "talk_id": self.talk_id,
             "user_id": self.user_id,
-            "author": self.author,
+            "author": short_name(self.author),
             "text": self.text,
+            "files": self.files,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass
+class TalkFile:
+    """Файл, приложенный к сообщению: снимок экрана, выгрузка, схема.
+
+    Половина вопросов по письму решается тем, что человек показывает
+    картинку, — а переслать её отделу было нечем: почты в изолированном
+    контуре нет.
+    """
+
+    id: int
+    talk_id: int
+    message_id: int | None = None
+    user_id: int | None = None
+    name: str = ""
+    path: str = ""
+    size: int = 0
+    #: Наружу не отдаём: он нужен окну просмотра отдельным запросом, а в
+    #: списке переписки это сотни килобайт на каждое сообщение.
+    text: str = ""
+    created_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "TalkFile":
+        return cls(
+            id=row["id"],
+            talk_id=row["talk_id"],
+            message_id=_col(row, "message_id", None),
+            user_id=_col(row, "user_id", None),
+            name=row["name"],
+            path=_col(row, "path", "") or "",
+            size=int(_col(row, "size", 0) or 0),
+            text=_col(row, "text", "") or "",
+            created_at=row["created_at"],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "talk_id": self.talk_id,
+            "message_id": self.message_id,
+            "name": self.name,
+            "size": self.size,
+            "has_text": bool(self.text.strip()),
             "created_at": self.created_at,
         }
 
@@ -950,7 +1024,7 @@ class CaseNote:
             "id": self.id,
             "case_ref": self.case_ref,
             "user_id": self.user_id,
-            "author": self.author,
+            "author": short_name(self.author),
             "text": self.text,
             "created_at": self.created_at,
         }
@@ -996,7 +1070,7 @@ class PersonFile:
             "size": self.size,
             "note": self.note,
             "uploaded_by": self.uploaded_by,
-            "uploaded_by_name": self.uploaded_by_name,
+            "uploaded_by_name": short_name(self.uploaded_by_name),
             "created_at": self.created_at,
         }
 
@@ -1050,7 +1124,7 @@ class Absence:
             "place": self.place,
             "note": self.note,
             "present": self.kind in PRESENT_KINDS,
-            "full_name": self.full_name,
+            "full_name": short_name(self.full_name),
             "role": self.role,
             "role_title": ROLE_TITLES.get(self.role, self.role),
             "team": self.team,

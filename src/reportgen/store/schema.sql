@@ -354,6 +354,24 @@ CREATE TABLE IF NOT EXISTS talk_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_talk_messages ON talk_messages(talk_id, id);
 
+-- Файлы, приложенные к сообщению: снимок экрана, выгрузка, схема. Половина
+-- вопросов по письму решается тем, что человек показывает картинку, — а
+-- пересылать её отделу было нечем: почты в изолированном контуре нет.
+CREATE TABLE IF NOT EXISTS talk_files (
+    id          INTEGER PRIMARY KEY,
+    talk_id     INTEGER NOT NULL REFERENCES talks(id) ON DELETE CASCADE,
+    message_id  INTEGER REFERENCES talk_messages(id) ON DELETE CASCADE,
+    user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    name        TEXT    NOT NULL,
+    path        TEXT    NOT NULL,
+    size        INTEGER NOT NULL DEFAULT 0,
+    -- Текст, вычитанный при загрузке: Word и Excel браузер не рисует, а
+    -- прочитать документ собеседник должен, не скачивая его.
+    text        TEXT    NOT NULL DEFAULT '',
+    created_at  TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_talk_files ON talk_files(talk_id, id);
+
 -- Примечания к письму: обсуждение прямо на деле. Начальник пишет, что
 -- поправить, исполнитель отвечает — и всё это остаётся при письме, а не
 -- теряется в разговорах.

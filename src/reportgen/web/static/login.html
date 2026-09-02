@@ -60,9 +60,9 @@
                 заместитель или начальник группы — после этого входите под
                 своим логином.
             </div>
-            <label class="field">Фамилия и инициалы
-                <input type="text" id="signup-name" name="full_name" placeholder="Жуков А. В."
-                    autocomplete="off" required>
+            <label class="field">Фамилия, имя, отчество
+                <input type="text" id="signup-name" name="full_name"
+                    placeholder="Жуков Пётр Иванович" autocomplete="off" required>
             </label>
             <label class="field">Логин
                 <input type="text" id="signup-login" name="new_login" autocapitalize="off"
@@ -209,6 +209,13 @@
                 const password = signupPassword.value;
                 if (!fullName || !login || !password) {
                     signupError.textContent = 'заполните все поля';
+                    signupError.hidden = false;
+                    return;
+                }
+                // Одной фамилии мало: имя есть у всех, а восстановить его из
+                // «Жуков» потом не сможет никто.
+                if (fullName.split(/\s+/).length < 2) {
+                    signupError.textContent = 'напишите фамилию, имя и отчество полностью';
                     signupError.hidden = false;
                     return;
                 }

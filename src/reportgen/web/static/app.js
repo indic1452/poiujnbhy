@@ -985,6 +985,19 @@
     const notices = { items: [], unseen: 0, messages: 0, timer: null,
                       seenLoud: 0, filter: 'all' };
 
+    /* Звук — свойство рабочего места, а не учётной записи: в аппаратной
+       он нужен, в кабинете рядом со спящим начальником — нет, и это не
+       повод носить настройку за собой на другую машину. Поэтому храним
+       её в браузере. По умолчанию звук включён: человек, которому он
+       мешает, его выключит, а тот, кто о нём не знает, пропустит вызов. */
+    function soundOn() {
+        return storageGet('rg-notice-sound', '1') !== '0';
+    }
+
+    function setSoundOn(on) {
+        storageSet('rg-notice-sound', on ? '1' : '0');
+    }
+
     /** Короткий сигнал. Ни файла, ни библиотеки: два тона встроенным синтезом. */
     /* Звук уведомления. Браузер не даёт странице звучать, пока человек её не
        тронул: свежесозданный AudioContext стоит «приостановленным», и всё,
@@ -1013,6 +1026,7 @@
     }
 
     function playAlert() {
+        if (!soundOn()) return;
         const ctx = wakeAudio();
         if (!ctx) return;
         try {
@@ -1251,9 +1265,85 @@
                     class: 'chip' + (notices.filter === key ? ' is-active' : ''),
                     onclick: () => { notices.filter = key; paintNotices(); },
                 }, key === 'all' ? 'Все' : 'Непрочитанные'
-                    + (notices.unseen ? ' · ' + notices.unseen : '')))),
+                    + (notices.unseen ? ' · ' + notices.unseen : ''))),
+                h('span', { class: 'grow' }),
+                h('button', {
+                    class: 'chip', title: 'Звук и что приходит со звуком',
+                    onclick: () => openNoticeSettings(),
+                }, soundOn() ? '🔔 звук' : '🔕 без звука')),
             list,
         ]);
+    }
+
+    /* Что приходит со звуком и как его выключить. Настройка одна, но без
+       неё человек не знает ни того, что звук вообще есть, ни того, что его
+       можно убрать: и то и другое кончается выключенными колонками. */
+    function openNoticeSettings() {
+        const toggle = h('input', { type: 'checkbox', checked: soundOn() });
+        const test = h('button', {
+            class: 'btn btn--sm',
+            onclick: () => {
+                if (!toggle.checked) {
+                    toast('Звук выключен — включите отметку выше', 'error');
+                    return;
+                }
+                // Проверка звонит мимо настройки: человек нажал именно
+                // затем, чтобы услышать.
+                const was = soundOn();
+                setSoundOn(true);
+                playAlert();
+                setSoundOn(was);
+            },
+        }, 'Проверить звук');
+
+        const loud = [
+            ['Отчёт вернули на доработку', true],
+            ['Вас вызывают в кабинет', true],
+            ['Сообщение в беседе', false],
+            ['Примечание к письму', false],
+            ['Отчёт сдан на проверку', false],
+            ['Отчёт проверен', false],
+            ['Ответ по письму отправлен', false],
+            ['Письмо передано вам', false],
+            ['Заявка на доступ одобрена', false],
+        ];
+
+        const dialog = openModal({
+            title: 'Уведомления',
+            narrow: true,
+            body: [
+                h('label', { class: 'check-line' }, toggle,
+                    h('span', {},
+                        h('b', {}, 'Звук'),
+                        h('div', { class: 'small muted' },
+                            'Короткий сигнал на срочное. Настройка держится '
+                            + 'на этой машине: в аппаратной звук нужен, '
+                            + 'в кабинете — не всегда.'))),
+                h('div', { class: 'toolbar' }, h('span', { class: 'grow' }), test),
+                h('div', { class: 'card-title' }, 'Что приходит'),
+                h('div', { class: 'notice-kinds' }, loud.map((pair) =>
+                    h('div', { class: 'notice-kind' },
+                        h('span', {}, pair[0]),
+                        pair[1]
+                            ? h('span', { class: 'badge badge--warn' }, 'со звуком')
+                            : h('span', { class: 'small faint' }, 'молча')))),
+                h('div', { class: 'small muted' },
+                    'Звонить по каждому поводу — верный способ, чтобы звук '
+                    + 'выключили насовсем. Поэтому громких всего два.'),
+            ],
+            footer: [
+                h('button', {
+                    class: 'btn btn--primary',
+                    onclick: () => {
+                        setSoundOn(toggle.checked);
+                        dialog.close();
+                        paintNotices();
+                        toast(toggle.checked ? 'Звук включён' : 'Звук выключен', 'ok');
+                    },
+                }, 'Сохранить'),
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+            ],
+        });
     }
 
     function noticeRow(item) {
@@ -1554,9 +1644,12 @@
         const logout = $('#logout-btn');
         if (state.user) {
             chip.hidden = false;
-            const name = state.user.full_name || state.user.login;
+            const name = state.user.short_name || state.user.full_name
+                || state.user.login;
             $('#user-name').textContent = name;
             $('#user-initials').textContent = initials(name);
+            $('#user-chip').title = (state.user.full_name || name)
+                + ' — личный кабинет';
             $('#user-role').textContent = roleLabel(state.user.role);
         } else {
             chip.hidden = true;
@@ -1895,7 +1988,8 @@
         const priority = h('select', {}, ...Object.keys(CASE_PRIORITY).map((id) =>
             h('option', { value: id }, CASE_PRIORITY[id])));
         const assignee = h('select', {},
-            h('option', { value: String(me.id || '') }, (me.full_name || me.login || 'я') + ' (я)'),
+            h('option', { value: String(me.id || '') },
+                (me.short_name || me.full_name || me.login || 'я') + ' (я)'),
             ...staff.filter((person) => person.id !== me.id).map((person) =>
                 h('option', { value: String(person.id) },
                     person.full_name || person.login)));
@@ -2034,18 +2128,21 @@
                                 ? h('span', { class: 'tag', title: 'Искомое слово нашлось '
                                     + 'в тексте отчёта по этому письму' }, 'в тексте отчёта')
                                 : null),
-                        // Линия связи и номер средства: по ним в отделе
-                        // отбирают письма своего хозяйства.
+                        // Линия связи и номер средства — разные вещи и разные
+                        // столбцы: линия говорит, чьё это хозяйство, номер ТС —
+                        // по какому именно средству работают. В одной ячейке их
+                        // не отсортировать и не сравнить глазами по столбцу.
                         h('td', { class: 'small nowrap' },
                             item.line_type
                                 ? h('span', { class: 'tag tag--line' },
                                     LINE_TITLE[item.line_type] || item.line_type)
-                                : h('span', { class: 'faint' }, '—'),
-                            item.tc_no ? h('div', { class: 'mono small muted' }, item.tc_no) : null),
-                        h('td', { class: 'small nowrap' },
+                                : h('span', { class: 'faint' }, '—')),
+                        h('td', { class: 'mono small nowrap' },
+                            item.tc_no || h('span', { class: 'faint' }, '—')),
+                        h('td', { class: 'small' },
                             item.group_no || h('span', { class: 'faint' }, '—')),
                         h('td', { class: 'small nowrap' },
-                            item.assignee_name || h('span', { class: 'faint' }, 'не назначен')),
+                            personLink(item.assignee_id, item.assignee_name)),
                         h('td', { class: 'nowrap' }, deadlineCell(item)),
                         h('td', {}, statusBadge(item.status)),
                         // Исходящий номер — вторая половина учёта: чем ответили.
@@ -2075,7 +2172,8 @@
                         h('thead', {}, h('tr', {},
                             h('th', {}, 'Входящий'),
                             h('th', {}, 'Описание'),
-                            h('th', {}, 'Линия · ТС'),
+                            h('th', {}, 'Линия'),
+                            h('th', {}, 'Номер ТС'),
                             h('th', {}, 'Номер группы'),
                             h('th', {}, 'Исполнитель'),
                             h('th', {}, 'Срок ответа'),
@@ -2795,7 +2893,7 @@
                         class: 'roster-name' + (person.is_me ? ' is-me' : ''),
                         title: reach || '',
                     },
-                        h('div', {}, person.full_name),
+                        personLink(person.id, person.full_name),
                         h('div', { class: 'small faint' },
                             reach || ROLE_SHORT[person.role] || person.role_title)),
                     cells));
@@ -2826,28 +2924,7 @@
                         'из ' + day.total + ' человек в отделе')),
                 h('div', { class: 'card card-pad roster-day-card' },
                     h('div', { class: 'card-title' }, 'Расход на ' + fmtDate(day.date)),
-                    h('div', { class: 'roster-groups' },
-                        day.groups.filter((group) => group.people.length).map((group) =>
-                            h('div', { class: 'roster-group kind-' + ROSTER_KIND[group.id].cls },
-                                h('div', { class: 'roster-group-head' },
-                                    h('b', {}, group.title),
-                                    h('span', { class: 'small faint' },
-                                        String(group.people.length))),
-                                group.people.map((person) => h('div', { class: 'roster-person' },
-                                    h('span', {}, person.full_name),
-                                    person.place
-                                        ? h('i', { class: 'small muted' }, person.place) : null)))),
-                        // Не отмеченные — тоже на месте, и стоят они среди
-                        // своих, а не отдельной кучей «неизвестно».
-                        day.unmarked.length
-                            ? h('div', { class: 'roster-group kind-work' },
-                                h('div', { class: 'roster-group-head' },
-                                    h('b', {}, 'на месте, без отметки'),
-                                    h('span', { class: 'small faint' },
-                                        String(day.unmarked.length))),
-                                day.unmarked.map((person) => h('div', { class: 'roster-person' },
-                                    h('span', {}, person.full_name))))
-                            : null),
+                    rosterDayBoard(day),
                     day.marked === 0
                         ? h('div', { class: 'muted' },
                             'На этот день никто себя не отмечал — значит, весь '
@@ -2858,6 +2935,54 @@
 
         await load();
     }
+
+    /* Кто где в этот день. Раньше это был столбик фамилий в цветной коробке:
+       на десятерых читалось, на двадцати превращалось в простыню, которую
+       надо прокручивать, чтобы найти одну фамилию.
+
+       Теперь строка на состояние, а люди в ней — плашками с переносом: два
+       десятка помещаются в три строки, глаз ловит нужную фамилию сразу, а
+       щелчок открывает карточку сотрудника. Отсутствующие идут первыми — их
+       и ищут, присутствие в отделе подразумевается. */
+    function rosterDayBoard(day) {
+        const rows = [];
+        day.groups.filter((group) => group.people.length).forEach((group) => rows.push({
+            cls: ROSTER_KIND[group.id] ? ROSTER_KIND[group.id].cls : 'work',
+            title: group.title,
+            people: group.people,
+            // Дежурство и работы — присутствие, остальное — отсутствие.
+            away: PRESENT_ROSTER.indexOf(group.id) === -1,
+        }));
+        if (day.unmarked.length) {
+            rows.push({
+                cls: 'none', title: 'на месте, без отметки',
+                people: day.unmarked, away: false,
+            });
+        }
+        rows.sort((a, b) => (b.away ? 1 : 0) - (a.away ? 1 : 0));
+
+        return h('div', { class: 'day-board' }, rows.map((row) =>
+            h('div', { class: 'day-row' },
+                h('div', { class: 'day-row-head' },
+                    h('i', { class: 'kind-' + row.cls }),
+                    h('b', {}, row.title),
+                    h('span', { class: 'day-count' }, String(row.people.length))),
+                h('div', { class: 'day-people' }, row.people.map((person) =>
+                    h('button', {
+                        class: 'day-chip kind-' + row.cls,
+                        title: (person.place ? person.place + ' · ' : '')
+                            + 'карточка сотрудника',
+                        onclick: () => openPerson(person.id),
+                    },
+                        h('span', { class: 'avatar avatar--xs' },
+                            initials(person.full_name)),
+                        person.full_name,
+                        person.place
+                            ? h('i', {}, person.place) : null))))));
+    }
+
+    /** Дежурство и работы — человек на месте; остальное — отсутствие. */
+    const PRESENT_ROSTER = ['duty', 'work'];
 
     function rosterLegend() {
         return h('div', { class: 'roster-legend' },
@@ -2879,7 +3004,8 @@
 
         const whoPick = h('select', {}, staff.map((person) => h('option', {
             value: String(person.id), selected: person.id === owner,
-        }, (person.full_name || person.login) + (person.id === me.id ? ' (я)' : ''))));
+        }, (person.full_name || person.login)
+            + (person.id === (me || {}).id ? ' (я)' : ''))));
         // Чужой расход ведёт только начальство: инженеру список не нужен.
         whoPick.disabled = !isAdmin();
 
@@ -3406,6 +3532,14 @@
     const PREVIEW_IMAGE = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tif', 'tiff'];
     const PREVIEW_PDF = ['pdf'];
     const PREVIEW_TEXT = ['txt', 'md', 'log', 'json', 'csv'];
+    /* Документы Word, Excel и им подобные браузер не рисует и никогда не
+       будет: это не формат для показа, а упакованный архив с разметкой.
+       Но текст из них система уже вычитала при загрузке — тем же
+       конвертером, что и библиотеку, — и показать его она может. Это не
+       вид документа, а его содержимое, и говорится об этом прямо. */
+    const PREVIEW_READ = ['docx', 'doc', 'rtf', 'odt', 'xlsx', 'xls'];
+    /* Архив не показать никак: внутри может быть что угодно. */
+    const PREVIEW_NONE = ['zip', '7z', 'rar'];
 
     function fileExt(name) {
         const dot = String(name || '').lastIndexOf('.');
@@ -3415,6 +3549,12 @@
     function openFilePreview(item, href, textHref) {
         const ext = fileExt(item.name);
         const inline = href + (href.indexOf('?') === -1 ? '?' : '&') + 'inline=1';
+        // Документ Word показываем его текстом, и он занимает главное место
+        // в окне, а не прячется в свёрнутой строке внизу: до сих пор по
+        // .docx окно говорило «скачайте и откройте своей программой» — то
+        // есть отказывалось показывать документ, который система уже
+        // прочитала.
+        const asText = PREVIEW_READ.indexOf(ext) !== -1;
         let view;
         if (PREVIEW_IMAGE.indexOf(ext) !== -1) {
             view = h('img', { class: 'preview-image', src: inline, alt: item.name });
@@ -3426,19 +3566,39 @@
                 class: 'preview-frame', src: inline, title: item.name,
                 sandbox: '', referrerpolicy: 'no-referrer',
             });
+        } else if (asText) {
+            view = h('div', { class: 'preview-doc' },
+                h('div', { class: 'spinner' }));
         } else {
             view = h('div', { class: 'muted' },
-                'Такой файл на экране не показать — скачайте и откройте '
-                + 'своей программой.');
+                PREVIEW_NONE.indexOf(ext) !== -1
+                    ? 'Архив на экране не раскрыть — скачайте и распакуйте.'
+                    : 'Такой файл на экране не показать — скачайте и откройте '
+                        + 'своей программой.');
         }
 
-        // Что система вычитала из файла. Показываем рядом с ним: человек
-        // должен видеть, что попало в поиск, и не рассчитывать на
-        // распознанное там, где его нет.
+        // Что система вычитала из файла. Для Word это и есть показ, для
+        // остальных — справка рядом: человек должен видеть, что попало в
+        // поиск, и не рассчитывать на распознанное там, где его нет.
         const readBox = h('div', {});
-        if (textHref && item.has_text) {
+        if (textHref && (asText || item.has_text)) {
             api.get(textHref).then((data) => {
                 const text = (data.text || '').trim();
+                if (asText) {
+                    clear(view);
+                    append(view, [text
+                        ? [
+                            h('div', { class: 'small muted preview-doc-note' },
+                                'Так система прочитала документ: только текст, '
+                                + 'без разметки, колонок и таблиц. Подлинник — '
+                                + 'сам файл, его и скачивайте для правки и печати.'),
+                            h('pre', {}, text + (data.truncated ? '\n…' : '')),
+                        ]
+                        : h('div', { class: 'muted' },
+                            'Текст из документа прочитать не удалось — '
+                            + 'скачайте и откройте своей программой.')]);
+                    return;
+                }
                 if (!text) return;
                 append(readBox, [h('details', { class: 'preview-text' },
                     h('summary', {}, data.recognised
@@ -3449,7 +3609,17 @@
                         + 'письмо, но числа и обозначения сверяйте с оригиналом: '
                         + 'на снимке «3,5» и «8,5» различаются одним штрихом.') : null,
                     h('pre', {}, text + (data.truncated ? '\n…' : '')))]);
-            }).catch(() => { /* не прочиталось — обойдёмся картинкой */ });
+            }).catch(() => {
+                if (!asText) return;
+                clear(view);
+                view.appendChild(h('div', { class: 'muted' },
+                    'Текст из документа прочитать не удалось — скачайте и '
+                    + 'откройте своей программой.'));
+            });
+        } else if (asText) {
+            clear(view);
+            view.appendChild(h('div', { class: 'muted' },
+                'Текст этого документа система не сохранила — скачайте файл.'));
         }
 
         const dialog = openModal({
@@ -3458,7 +3628,7 @@
             body: [
                 h('div', { class: 'preview-box' }, view),
                 item.note ? h('div', { class: 'small muted' }, item.note) : null,
-                item.has_text === false ? h('div', { class: 'small muted' },
+                !asText && item.has_text === false ? h('div', { class: 'small muted' },
                     'Текст из файла прочитать не удалось: по словам из него '
                     + 'письмо не найдётся. Сам файл на месте.') : null,
                 readBox,
@@ -6055,11 +6225,39 @@
             }
             const peak = people.reduce((max, item) => Math.max(max, item.open || 0), 0) || 1;
             const rows = h('tbody', {});
-            people.forEach((person) => {
+
+            /* Кто ничем не занят — в конец и под сворачивание. В отделе на
+               двадцать человек свободных больше, чем занятых, и сводка
+               «кто чем занят» превращалась в две страницы нулей, из-за
+               которых не видно тех, у кого горит. Отсутствующих оставляем
+               наверху: их отсутствие — тоже занятость. */
+            const busy = people.filter((person) =>
+                (person.open || 0) > 0 || person.away || person.on_duty
+                || person.active === false);
+            const idle = people.filter((person) => busy.indexOf(person) === -1);
+            let idleShown = false;
+
+            function drawRows() {
+                clear(rows);
+                busy.forEach(addRow);
+                if (idleShown) idle.forEach(addRow);
+                if (!idle.length) return;
+                rows.appendChild(h('tr', { class: 'row-more' },
+                    h('td', { colSpan: 5 },
+                        h('button', {
+                            class: 'btn btn--sm',
+                            onclick: () => { idleShown = !idleShown; drawRows(); },
+                        }, idleShown
+                            ? 'Скрыть свободных'
+                            : 'Показать ещё ' + idle.length + ' '
+                                + plural(idle.length, 'свободного', 'свободных', 'свободных')))));
+            }
+
+            function addRow(person) {
                 rows.appendChild(h('tr', {},
                     h('td', {},
                         h('div', { class: person.active === false ? 'muted' : '' },
-                            person.full_name),
+                            personLink(person.id, person.full_name)),
                         h('div', { class: 'small faint' },
                             (ROLE_SHORT[person.role] || person.role) +
                             (person.team ? ' · ' + person.team : ''))),
@@ -6075,7 +6273,9 @@
                         : h('span', { class: 'faint' }, '—')),
                     h('td', { class: 'nowrap small muted' },
                         person.next_deadline ? fmtDate(person.next_deadline) : '—')));
-            });
+            }
+
+            drawRows();
             card.appendChild(h('div', { class: 'table-scroll' },
                 h('table', { class: 'grid' },
                     h('thead', {}, h('tr', {},
@@ -7122,7 +7322,7 @@
 
         const sources = message.sources || [];
         const who = isUser
-            ? (state.user ? (state.user.full_name || state.user.login) : 'Инженер')
+            ? (state.user ? (state.user.short_name || state.user.login) : 'Инженер')
             : 'Помощник';
 
         // Приложенные файлы показываем под вопросом: через неделю иначе
@@ -7921,7 +8121,10 @@
                 const locked = !user.may_manage;
                 const nameInput = h('input', {
                     type: 'text', value: user.full_name || '',
-                    placeholder: 'Фамилия И. О.', class: 'input--quiet',
+                    placeholder: 'Фамилия Имя Отчество', class: 'input--quiet',
+                    title: 'Полностью: в приказе и в справке человек пишется '
+                        + 'целиком. В списках система сама покажет «'
+                        + (user.short_name || 'Фамилия И. О.') + '»',
                     disabled: locked,
                     onchange: () => save(user, { full_name: nameInput.value }),
                 });
@@ -7953,7 +8156,8 @@
                 });
 
                 body.appendChild(h('tr', { class: user.active ? '' : 'is-off' },
-                    h('td', { class: 'primary mono' }, user.login),
+                    h('td', { class: 'primary mono' },
+                        personLink(user.id, user.login)),
                     h('td', {}, nameInput),
                     h('td', {}, roleSelect),
                     h('td', {}, depInput),
@@ -7998,7 +8202,7 @@
             const usersTable = h('table', { class: 'grid grid--users' },
                 h('thead', {}, h('tr', {},
                     h('th', {}, 'Логин'),
-                    h('th', {}, 'Фамилия и инициалы'),
+                    h('th', {}, 'Фамилия, имя, отчество'),
                     h('th', {}, 'Должность'),
                     h('th', {}, 'По штату'),
                     h('th', {}, 'Группа'),
@@ -8102,7 +8306,9 @@
 
         async function addUser() {
             const login = h('input', { type: 'text', placeholder: 'petrov', autocapitalize: 'off' });
-            const fullName = h('input', { type: 'text', placeholder: 'Петров П. П.' });
+            const fullName = h('input', {
+                type: 'text', placeholder: 'Петров Пётр Петрович',
+            });
             const passwordBox = passwordField('не короче 8 символов');
             const password = passwordBox.input;
             const allowed = data.roles.filter((item) => item.allowed);
@@ -8156,7 +8362,9 @@
                     h('div', { class: 'form-grid' },
                         h('label', { class: 'field' }, 'Логин для входа', login,
                             h('span', { class: 'small faint' }, 'латиница, 3–32 знака')),
-                        h('label', { class: 'field' }, 'Фамилия и инициалы', fullName),
+                        h('label', { class: 'field' }, 'Фамилия, имя, отчество', fullName,
+                            h('span', { class: 'small faint' },
+                                'полностью — в списках система покажет инициалами')),
                         h('label', { class: 'field' }, 'Первый пароль', passwordBox),
                         h('label', { class: 'field' }, 'Должность', roleSelect),
                         h('label', { class: 'field' }, 'По штату', department),
@@ -8349,8 +8557,14 @@
                     same ? '' : initials(message.author)),
                 h('div', { class: 'talk-msg' + (mine ? ' talk-msg--mine' : '') },
                     same ? null : h('div', { class: 'talk-msg-head' },
-                        h('b', {}, message.author || 'кто-то')),
+                        // И в реплике фамилия открывает карточку: собеседника
+                        // ищут глазами там, где он написал.
+                        personLink(message.user_id, message.author || 'кто-то')),
                     h('div', { class: 'talk-msg-text' }, message.text || ''),
+                    (message.files || []).length
+                        ? h('div', { class: 'talk-files' },
+                            message.files.map((item) => talkFileRow(item)))
+                        : null,
                     h('span', {
                         class: 'talk-msg-when',
                         title: fmtDateTime(message.created_at),
@@ -8385,18 +8599,68 @@
             }
         }
 
+        // Участники беседы — не подпись, а список людей: щелчок по фамилии
+        // открывает карточку. Спрашивать «а Титов — это кто?» приходится
+        // чаще всего именно тут, в общей беседе на пятерых.
+        const others = (data.members || []).filter((member) => member.id !== me);
+        const named = (talks.items.filter((item) => item.id === data.id)[0] || {}).title;
+
+        const picker = h('input', {
+            type: 'file', style: { display: 'none' },
+            onchange: async (event) => {
+                const chosen = Array.from(event.target.files || []);
+                event.target.value = '';
+                for (const one of chosen) {
+                    const form = new FormData();
+                    form.append('file', one);
+                    if (field.value.trim()) form.append('text', field.value.trim());
+                    try {
+                        await uploadFile('/api/talks/' + data.id + '/files', form);
+                        field.value = '';
+                    } catch (error) {
+                        toast(one.name + ' — ' + errorText(error), 'error', 6000);
+                    }
+                }
+                await loadTalks(true);
+            },
+        });
+
         append(box, [
             h('div', { class: 'talk-head' },
-                h('b', { class: 'grow' }, talkTitle({
-                    title: (talks.items.filter((item) => item.id === data.id)[0] || {}).title || '',
-                    members: data.members,
-                })),
-                h('span', { class: 'small faint' },
+                named
+                    ? h('b', { class: 'grow' }, named)
+                    : h('div', { class: 'talk-members grow' }, others.length
+                        ? others.map((member, index) => [
+                            index ? h('span', { class: 'faint' }, ', ') : null,
+                            personLink(member.id, member.full_name),
+                        ])
+                        : h('b', {}, 'Заметки для себя')),
+                h('span', { class: 'small faint nowrap' },
                     (data.members || []).length + ' чел.')),
             flow,
-            h('div', { class: 'talk-send' }, field, button),
+            h('div', { class: 'talk-send' },
+                h('button', {
+                    class: 'btn btn--icon', title: 'Приложить файл',
+                    onclick: () => picker.click(),
+                }, iconGlyph('clip')),
+                picker, field, button),
         ]);
         if (wasDown) flow.scrollTop = flow.scrollHeight;
+    }
+
+    /** Приложенный к сообщению файл: посмотреть, не скачивая. */
+    function talkFileRow(item) {
+        const href = '/api/talks/' + talks.current + '/files/' + item.id;
+        return h('button', {
+            class: 'talk-file',
+            title: 'Посмотреть ' + item.name,
+            onclick: (event) => {
+                event.stopPropagation();
+                openFilePreview(item, href, href + '/text');
+            },
+        }, iconGlyph('clip'),
+            h('span', { class: 'talk-file-name' }, item.name),
+            h('span', { class: 'small faint' }, fmtBytes(item.size)));
     }
 
     /* Кому писать. Список берём из сводки отдела: он доступен всем, в отличие
@@ -8531,6 +8795,117 @@
         filter.focus();
     }
 
+    /* --------------------------------------------- карточка сотрудника ---
+
+       Кто это, кем работает, в какой группе, как дозвониться и где он
+       сегодня. Открыта всему отделу: спрашивать по коридору «а Титов — это
+       кто?» новому человеку неудобно, а справочник для того и нужен.
+
+       Это не раздел «Сотрудники» — там заводят учётные записи и меняют
+       должности, и туда рядового инженера не пускают. И не документы:
+       справка-объективка и приказы остаются закрытыми. */
+
+    async function openPerson(userId) {
+        if (!userId) return;
+        let person;
+        try {
+            person = (await api.get('/api/people/' + userId)).person;
+        } catch (error) {
+            toastError(error);
+            return;
+        }
+
+        const rows = [
+            ['Фамилия, имя, отчество', person.full_name],
+            ['Должность', person.role_title],
+            // Где человек работает и где он стоит по штату — разные вещи, и
+            // строки тоже разные: слитое «отдел, группа» не даёт ответить
+            // ни на «в какой он группе», ни на «где числится».
+            ['Отдел', brandName()],
+        ];
+        if (person.team) rows.push(['Группа', person.team]);
+        // «По штату» показываем только тем, у кого оно другое: у остальных
+        // это лишняя строка, повторяющая предыдущую.
+        if (person.department) rows.push(['По штату', person.department]);
+        rows.push(['Логин', person.login]);
+
+        const contacts = [
+            ['Телефон', person.phone],
+            ['Внутренний', person.ext_no],
+            ['Кабинет', person.room],
+            ['Почта', person.email],
+        ].filter((pair) => pair[1]);
+
+        const where = person.where;
+        const dialog = openModal({
+            title: 'Сотрудник',
+            narrow: true,
+            body: [
+                h('div', { class: 'person-head' },
+                    h('span', { class: 'avatar avatar--lg' }, initials(person.full_name)),
+                    h('div', { class: 'person-who' },
+                        h('b', {}, person.short_name),
+                        h('span', { class: 'muted' }, person.role_title),
+                        person.active ? null : h('span', { class: 'badge' }, 'отключён'))),
+                h('dl', { class: 'kv' }, rows.map((pair) => [
+                    h('dt', {}, pair[0]),
+                    h('dd', { class: pair[0] === 'Логин' ? 'mono' : '' }, pair[1] || '—'),
+                ])),
+                h('div', { class: 'person-line' },
+                    h('span', { class: 'kv-name' }, 'Сегодня'),
+                    where
+                        ? h('span', { class: 'kind-tag kind-' + where.kind },
+                            where.kind_title
+                            + (where.place ? ' · ' + where.place : '')
+                            // До какого числа: «в отпуске» без срока не
+                            // отвечает на вопрос, ради которого смотрят.
+                            + (where.date_to && where.date_to !== where.date_from
+                                ? ' до ' + fmtDate(where.date_to) : ''))
+                        : h('span', { class: 'kind-tag kind-none' }, 'на месте')),
+                h('div', { class: 'person-line' },
+                    h('span', { class: 'kv-name' }, 'Писем в работе'),
+                    h('b', {}, String(person.open_cases || 0))),
+                contacts.length
+                    ? h('dl', { class: 'kv' }, contacts.map((pair) => [
+                        h('dt', {}, pair[0]), h('dd', {}, pair[1])]))
+                    : h('div', { class: 'small faint' },
+                        person.is_me
+                            ? 'Телефон и кабинет вы вписываете сами в личном кабинете.'
+                            : 'Контакты не заполнены — их вписывает сам сотрудник.'),
+            ],
+            footer: [
+                // Документы — тому кругу, кому они открыты; кнопки у
+                // остальных нет вовсе: дверь, которая не открывается, хуже
+                // отсутствия двери.
+                person.may_see_files && !person.is_me ? h('button', {
+                    class: 'btn',
+                    onclick: () => { dialog.close(); openPersonFiles(person); },
+                }, 'Документы') : null,
+                h('span', { class: 'spacer' }),
+                person.is_me ? h('a', {
+                    class: 'btn', href: '#/me', onclick: () => dialog.close(),
+                }, 'Мой кабинет') : h('button', {
+                    class: 'btn btn--primary',
+                    onclick: () => { dialog.close(); openTalkWith(person.id); },
+                }, 'Написать'),
+                h('button', { class: 'btn', onclick: () => dialog.close() }, 'Закрыть'),
+            ],
+        });
+    }
+
+    /** Фамилия, открывающая карточку. Везде, где человек упомянут по имени. */
+    function personLink(userId, name, extra) {
+        if (!userId) return h('span', { class: 'faint' }, name || 'не назначен');
+        return h('button', {
+            class: 'person-link' + (extra ? ' ' + extra : ''),
+            title: 'Карточка сотрудника',
+            onclick: (event) => {
+                event.stopPropagation();
+                openPerson(userId);
+            },
+        }, name || '—');
+    }
+
     async function renderMe(view) {
         clear(view);
         const page = h('div', { class: 'page page--narrow' });
@@ -8545,12 +8920,16 @@
             h('div', { class: 'card-title' }, 'Учётная запись'),
             h('dl', { class: 'kv' },
                 h('dt', {}, 'Логин'), h('dd', { class: 'mono' }, user.login || '—'),
-                h('dt', {}, 'ФИО'), h('dd', {}, user.full_name || '—'),
+                h('dt', {}, 'Фамилия, имя, отчество'),
+                h('dd', {}, user.full_name || '—'),
                 h('dt', {}, 'Должность'), h('dd', {}, roleLabel(user.role)),
                 // Отдел у всех один: это и есть система. Спрашивать его у
-                // каждого незачем — берём из названия.
-                h('dt', {}, 'Отдел'),
-                h('dd', {}, brandName() + (user.team ? ', ' + user.team : '')),
+                // каждого незачем — берём из названия. Группа и штатная
+                // принадлежность — отдельными строками: это разные вещи, и
+                // слитая строка не отвечает ни на один из двух вопросов.
+                h('dt', {}, 'Отдел'), h('dd', {}, brandName()),
+                user.team ? h('dt', {}, 'Группа') : null,
+                user.team ? h('dd', {}, user.team) : null,
                 user.department ? h('dt', {}, 'По штату') : null,
                 user.department ? h('dd', {}, user.department) : null,
                 h('dt', {}, 'Права'), h('dd', { class: 'small muted' }, rolePowers(user.role))));
