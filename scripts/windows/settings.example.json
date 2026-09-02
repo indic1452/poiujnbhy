@@ -17,11 +17,13 @@
   "llm_temperature": 0.2,
   "llm_parallel_sections": 2,
 
+  "_векторы": "Векторы новых документов приложение строит само, фоном, сразу после приёма. Состояние видно в разделе «Библиотека».",
   "embed_enabled": true,
   "embed_base_url": "http://127.0.0.1:8001/v1",
   "embed_model": "bge-m3",
   "embed_batch": 16,
 
+  "_реранкер": "Отдельный сервер, порт 8002: 8001 занят эмбеддингами.",
   "rerank_enabled": true,
   "rerank_base_url": "http://127.0.0.1:8002/v1",
   "rerank_model": "bge-reranker-v2-m3",
@@ -45,8 +47,8 @@
   "session_ttl_hours": 12,
   "max_upload_mb": 200,
 
-  "brand_name": "Название вашей компании",
-  "brand_subtitle": "Отдел технической экспертизы",
+  "brand_name": "2 специальный отдел",
+  "brand_subtitle": "Подготовка, учёт и проверка технических отчётов",
   "brand_accent": "#15507e",
   "brand_logo": null,
   "report_footer": "Технический отчёт. Не является офертой."

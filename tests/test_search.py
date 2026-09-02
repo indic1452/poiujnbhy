@@ -685,6 +685,18 @@ class BuildRetrieverTests(unittest.TestCase):
         retriever = build_retriever(self.repos, settings, llm=FakeLLM("1: 1"))
         self.assertIsInstance(retriever.reranker, LLMReranker)
 
+    def test_the_reranker_does_not_share_a_port_with_the_embedder(self):
+        """Реранкер — отдельный сервер на своём порту (док. 11, start-embed.ps1).
+
+        По умолчанию здесь стоял тот же 8001, что у эмбеддингов: установка,
+        включившая реранк без явного адреса, спрашивала оценки у эмбеддера.
+        Тот отвечал ошибкой, реранк молча пропускался — и никто не замечал,
+        потому что поиск при этом продолжал работать.
+        """
+        settings = Settings()
+        self.assertNotEqual(settings.embed_base_url, settings.rerank_base_url)
+        self.assertIn("8002", settings.rerank_base_url)
+
 
 if __name__ == "__main__":
     unittest.main()

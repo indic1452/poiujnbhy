@@ -2270,6 +2270,53 @@ class ReportFlowTests(WebTestCase):
         self.assertIn(response.status_code, (200, 501), response.text)
 
 
+class VectorStatusTests(WebTestCase):
+    """Состояние смыслового поиска видно из приложения, а не из консоли."""
+
+    def test_the_state_is_readable_by_anyone_who_logged_in(self):
+        # Смотрит на библиотеку весь отдел, а не только начальник: инженер
+        # должен понимать, почему его вопрос ничего не нашёл.
+        self.login("engineer")
+        response = self.client.get("/api/library/vectors")
+        self.assertEqual(200, response.status_code, response.text)
+        body = response.json()["vectors"]
+        self.assertIn("chunks", body)
+        self.assertIn("missing", body)
+        self.assertIn("hint", body)
+
+    def test_a_switched_off_search_says_so_and_refuses_to_build(self):
+        # Свежая установка без сервера эмбеддингов: поиск словами работает,
+        # но об этом надо сказать, а не молчать.
+        state = self.client.get("/api/library/vectors").json()["vectors"]
+        self.assertFalse(state["enabled"])
+        self.assertIn("выключен", state["hint"])
+        response = self.client.post("/api/library/vectors", json={})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("embed_enabled", response.json()["error"])
+
+    def test_uploading_a_document_reports_the_state_of_the_search(self):
+        """Положили книгу — сразу видно, попала ли она в смысловой поиск.
+
+        Векторы строила одна команда из консоли, к которой на изолированной
+        машине никто не подходит: книга ложилась в библиотеку и молча
+        оставалась невидимой для поиска по смыслу.
+        """
+        response = self.client.post(
+            "/api/library/upload",
+            files={"file": ("книга.md",
+                            "# Том\n\n".encode() + "Радиорелейная линия. ".encode() * 40,
+                            "text/markdown")},
+            data={"doc_type": "literature"},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertIn("vectors", response.json())
+
+    def test_the_state_counts_chunks_not_rows_of_the_table(self):
+        state = self.client.get("/api/library/vectors").json()["vectors"]
+        self.assertGreater(state["chunks"], 0)
+        self.assertEqual(state["chunks"] - state["vectors"], state["missing"])
+
+
 class LibraryTests(WebTestCase):
     def test_library_listing(self):
         body = self.client.get("/api/library").json()
@@ -4467,6 +4514,38 @@ class RegistrationEditorTests(unittest.TestCase):
     def test_an_empty_record_does_not_paint_the_measurements_table_red(self):
         """Поле записи и строка измерений могут называться одинаково."""
         self.assertIn("entry.kind !== 'reg'", self.js)
+
+
+class VectorCardTests(unittest.TestCase):
+    """Состояние смыслового поиска — карточкой, а не серой строчкой."""
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+        self.css = (static / "styles.css").read_text(encoding="utf-8")
+
+    def test_the_library_shows_the_state_of_the_search(self):
+        self.assertIn("function renderVectors", self.js)
+        self.assertIn("'Смысловой поиск'", self.js)
+        self.assertIn(".vectors-card.is-bad {", self.css)
+
+    def test_work_in_progress_wins_over_the_result(self):
+        """При перестройке заново векторы на месте, а поиск — в разобранном виде.
+
+        Карточка светилась зелёным «работает по всей библиотеке» ровно тогда,
+        когда указатель переписывался наполовину.
+        """
+        self.assertIn("(busy ? ' is-busy' : (state.ready ? ' is-ok' : ' is-bad'))", self.js)
+
+    def test_a_full_rebuild_asks_first(self):
+        # Часы работы видеокарты по нечаянному нажатию — не то, что можно
+        # отменить.
+        self.assertIn("Построить векторы заново", self.js)
+        self.assertIn("часы работы видеокарты", self.js)
+
+    def test_the_progress_is_polled_while_it_works(self):
+        self.assertIn("libState.vectorsTimer", self.js)
+        self.assertIn(".vectors-bar-fill", self.css)
 
 
 class InterfaceCopyTests(unittest.TestCase):

@@ -1497,14 +1497,20 @@ def upload_document(
     repos = _repos(request)
     repos.audit.log("library.upload", user=user, object_type="document",
                     object_id=name, details={"doc_type": doc_type, "bytes": size})
-    _service(request).reset_retriever()
+    service = _service(request)
+    service.reset_retriever()
+    # Векторы новых фрагментов строим сразу, фоном. Раньше их строила одна
+    # команда из консоли, к которой на изолированной машине никто не
+    # подходит: книга ложилась в библиотеку и оставалась невидимой для
+    # смыслового поиска — молча, без единого признака.
+    vectors = service.vectors.start_if_needed() if service.vectors else {}
 
     document = None
     for doc_id in (result.get("documents") or []):
         found = repos.documents.by_doc_id(doc_id)
         if found is not None:
             document = found.to_dict()
-    return {"result": result, "document": document}
+    return {"result": result, "document": document, "vectors": vectors}
 
 
 @router.post("/library/reindex")
@@ -1522,9 +1528,52 @@ def reindex(request: Request) -> Dict[str, Any]:
     settings.ensure_dirs()
     result = ingest_directory(_repos(request), settings.library_dir, force=force,
                               domains_path=settings.domains_path)  # jobs — по числу ядер
-    _service(request).reset_retriever()
+    service = _service(request)
+    service.reset_retriever()
+    # Достраиваем только недостающее. Переиндексация документа сама сносит
+    # его векторы вместе со старыми фрагментами (ChunkRepo.replace_for_document),
+    # поэтому «недостающее» после неё — ровно то, что надо построить заново.
+    # Полная перестройка нужна лишь при смене модели и делается отдельной
+    # командой: на большой библиотеке это часы работы видеокарты.
+    vectors = service.vectors.start_if_needed() if service.vectors else {}
     _repos(request).audit.log("library.reindex", user=user, details={"force": force})
-    return {"result": _ingest_to_dict(result)}
+    return {"result": _ingest_to_dict(result), "vectors": vectors}
+
+
+@router.get("/library/vectors")
+def vectors_status(request: Request) -> Dict[str, Any]:
+    """Состояние смыслового поиска: сколько фрагментов, сколько с векторами.
+
+    Отдельная точка, потому что спрашивают её часто: экран библиотеки
+    показывает состояние постоянно, а во время построения — ещё и ход работы.
+    """
+    require_user(request)
+    service = _service(request)
+    if service.vectors is None:
+        return {"vectors": {"enabled": False, "hint": "смысловой поиск недоступен"}}
+    return {"vectors": service.vectors.status()}
+
+
+@router.post("/library/vectors")
+def vectors_build(request: Request) -> Dict[str, Any]:
+    """Построить векторы. ``force`` — заново все, после смены модели.
+
+    Полная перестройка — часы работы видеокарты на большой библиотеке,
+    поэтому она за начальником, а не за любым, кто открыл библиотеку.
+    """
+    payload = getattr(request.state, "json_body", None) or {}
+    force = bool(payload.get("force", False))
+    user = require_admin(request) if force else require_editor(request)
+    service = _service(request)
+    if service.vectors is None:
+        raise ServiceError("смысловой поиск недоступен", 501)
+    if not service.vectors.enabled:
+        raise ServiceError(
+            "смысловой поиск выключен в настройках (embed_enabled) — "
+            "включите его и перезапустите приложение", 400)
+    state = service.vectors.start(force=force)
+    _repos(request).audit.log("library.vectors", user=user, details={"force": force})
+    return {"vectors": state}
 
 
 @router.delete("/library/{doc_id:path}")

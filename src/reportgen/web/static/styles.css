@@ -1241,6 +1241,46 @@ table.grid td.primary {
     color: var(--danger);
 }
 
+/* Состояние смыслового поиска. Цветом — потому что «векторов нет у 4000
+   фрагментов» и «поиск работает по всей библиотеке» человек должен различать
+   не читая: разница между ними — половина невидимой библиотеки. */
+.vectors-card.is-ok {
+    border-left: 3px solid var(--ok);
+}
+
+.vectors-card.is-bad {
+    border-left: 3px solid var(--danger);
+}
+
+.vectors-card.is-busy {
+    border-left: 3px solid var(--accent);
+}
+
+.vectors-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.vectors-line > span {
+    color: var(--muted);
+}
+
+.vectors-bar {
+    margin-top: 8px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.vectors-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.4s ease;
+}
+
 .coverage-box {
     border: 1px solid var(--danger);
     background: var(--danger-soft);

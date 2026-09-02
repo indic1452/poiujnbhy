@@ -5827,7 +5827,8 @@
     // 7. Экран «Библиотека»
     // =====================================================================
 
-    const libState = { docType: '', domain: '', items: [], stats: {}, chunks: 0, embeddings: 0 };
+    const libState = { docType: '', domain: '', items: [], stats: {}, chunks: 0,
+                      embeddings: 0, vectorsTimer: 0 };
 
     /** Подсказка о поддерживаемых форматах и о том, чего не хватает. */
     function formatsHint() {
@@ -5965,6 +5966,7 @@
         }
 
         const tableBox = h('div', { class: 'card' });
+        const vectorsBox = h('div', {});
         const statsLine = h('div', { class: 'page-note' });
         const uploadList = h('div', {});
         const searchResults = h('div', {});
@@ -6072,6 +6074,8 @@
                     h('label', { class: 'inline' }, 'Направление:', uploadDomain)),
                 dropzone, fileInput, uploadList) : null,
 
+            vectorsBox,
+
             h('div', { class: 'toolbar', style: { marginTop: '14px' } }, typeFilter, domainFilter, focusChip),
             tableBox,
 
@@ -6085,6 +6089,95 @@
                 h('div', { class: 'toolbar small muted' }, 'типы:', searchTypes.map((item) => item.node)),
                 searchResults),
         ]);
+
+        /* Состояние смыслового поиска. Библиотека может быть полна, а поиск
+           по смыслу — слеп: не построены векторы, упала служба, векторы
+           построены другой моделью. Раньше об этом говорила серая строчка
+           под ответом помощника, и месяцами никто не замечал. */
+        async function loadVectors() {
+            try {
+                const data = await api.get('/api/library/vectors');
+                renderVectors(data.vectors || {});
+            } catch (error) {
+                clear(vectorsBox);
+                vectorsBox.appendChild(h('div', { class: 'small muted' }, errorText(error)));
+            }
+        }
+
+        function renderVectors(state) {
+            clear(vectorsBox);
+            if (!state.enabled && !state.chunks) return;
+
+            // Идущая работа важнее итога: при перестройке заново векторы
+            // на месте, состояние «готово», а поиск в эту минуту опирается
+            // на наполовину переписанный указатель.
+            const busy = state.running;
+            const card = h('div', {
+                class: 'card card-pad vectors-card'
+                    + (busy ? ' is-busy' : (state.ready ? ' is-ok' : ' is-bad')),
+                style: { marginTop: '14px' },
+            });
+
+            const line = h('div', { class: 'vectors-line' },
+                h('b', {}, 'Смысловой поиск'),
+                h('span', { class: 'small' }, state.hint || ''));
+            card.appendChild(line);
+
+            if (busy && state.total) {
+                const share = Math.min(100, Math.round(100 * (state.done || 0) / state.total));
+                card.appendChild(h('div', { class: 'vectors-bar' },
+                    h('div', { class: 'vectors-bar-fill', style: { width: share + '%' } })));
+            }
+
+            const actions = h('div', { class: 'toolbar', style: { marginTop: '8px' } });
+            if (canEdit() && state.enabled && !busy && state.missing) {
+                actions.appendChild(h('button', {
+                    class: 'btn btn--primary btn--sm',
+                    title: 'Построить векторы фрагментам, у которых их нет',
+                    onclick: () => buildVectors(false),
+                }, 'Построить векторы'));
+            }
+            if (isAdmin() && state.enabled && !busy && state.chunks) {
+                actions.appendChild(h('button', {
+                    class: 'btn btn--sm',
+                    title: 'Заново по всей библиотеке — нужно после смены модели встраивания. '
+                        + 'На большой библиотеке это часы работы видеокарты.',
+                    onclick: () => buildVectors(true),
+                }, 'Построить заново'));
+            }
+            if (actions.childNodes.length) card.appendChild(actions);
+            vectorsBox.appendChild(card);
+
+            // Пока идёт работа — переспрашиваем. Закончилась: обновляем ещё
+            // раз, чтобы полоса сменилась итогом, и на этом успокаиваемся.
+            clearTimeout(libState.vectorsTimer);
+            if (busy) {
+                libState.vectorsTimer = setTimeout(() => {
+                    if (document.body.contains(vectorsBox)) loadVectors();
+                }, 2000);
+            }
+        }
+
+        async function buildVectors(force) {
+            if (force) {
+                const ok = await confirmDialog({
+                    title: 'Построить векторы заново',
+                    message: 'Векторы будут пересчитаны по всей библиотеке, '
+                        + 'даже те, что уже есть. На большой библиотеке это '
+                        + 'часы работы видеокарты. Нужно после смены модели '
+                        + 'встраивания.',
+                    confirmText: 'Построить заново',
+                });
+                if (!ok) return;
+            }
+            try {
+                const data = await api.post('/api/library/vectors', { force: !!force });
+                renderVectors(data.vectors || {});
+                toast(force ? 'Строим векторы заново' : 'Строим недостающие векторы');
+            } catch (error) {
+                toast(errorText(error), 'bad');
+            }
+        }
 
         async function loadLibrary() {
             clear(tableBox);
@@ -6111,22 +6204,13 @@
                 acc.chunks += libState.stats[type].chunks || 0;
                 return acc;
             }, { documents: 0, chunks: 0 });
-            // «Векторов 2000» при 5000 фрагментов выглядит благополучно, а на
-            // деле три пятых библиотеки в смысловом поиске не участвуют. Это
-            // обычный итог упавшей службы эмбеддингов посреди большой пачки,
-            // и заметить его иначе нечем.
+            // О векторах говорит отдельная карточка ниже: там же и кнопка,
+            // и ход построения. В строке итогов им места нет — «векторов
+            // 2000» при 5000 фрагментов выглядит благополучно, хотя три
+            // пятых библиотеки в смысловом поиске не участвуют.
             const chunkCount = libState.chunks || totals.chunks;
-            let vectors;
-            if (!libState.embeddings) {
-                vectors = ' · векторов нет (плотный поиск выключен)';
-            } else if (chunkCount && libState.embeddings < chunkCount) {
-                vectors = ' · векторов: ' + libState.embeddings + ' из ' + chunkCount +
-                    ' — остальные фрагменты в смысловой поиск не попадают';
-            } else {
-                vectors = ' · векторов: ' + libState.embeddings;
-            }
             statsLine.textContent = 'документов: ' + totals.documents +
-                ' · фрагментов: ' + chunkCount + vectors;
+                ' · фрагментов: ' + chunkCount;
 
             clear(tableBox);
             if (!libState.items.length) {
@@ -6300,6 +6384,8 @@
                 }
             }
             await loadLibrary();
+            // Векторы новых фрагментов уже строятся фоном: показываем ход.
+            await loadVectors();
         }
 
         async function reindex() {
@@ -6323,6 +6409,7 @@
                     ', ошибок ' + (result.failed || 0) +
                     ', фрагментов ' + (result.chunks || 0), (result.failed ? 'error' : 'ok'), 9000);
                 await loadLibrary();
+                await loadVectors();
                 // Счётчик «ошибок 3» не говорит, КАКИЕ файлы не попали в
                 // библиотеку и что с ними не так. Список показываем отдельно:
                 // всплывающее сообщение для него слишком коротко живёт.
@@ -6424,6 +6511,7 @@
         }
 
         await loadLibrary();
+        await loadVectors();
     }
 
     // =====================================================================

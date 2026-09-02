@@ -69,7 +69,11 @@ class Settings:
     embed_timeout: float = 120.0
 
     rerank_enabled: bool = False
-    rerank_base_url: str = "http://127.0.0.1:8001/v1"
+    #: Реранкер — ОТДЕЛЬНЫЙ сервер, на своём порту: 8001 занят эмбеддингами
+    #: (см. scripts/windows/start-embed.ps1 и док. 11). Здесь стоял 8001, и
+    #: установка, включившая реранк без явного адреса, спрашивала оценки у
+    #: эмбеддера: тот отвечал ошибкой, реранк молча пропускался.
+    rerank_base_url: str = "http://127.0.0.1:8002/v1"
     rerank_model: str = "bge-reranker-v2-m3"
     rerank_api_key: str = "not-needed"
     rerank_timeout: float = 120.0

@@ -30,6 +30,7 @@ from ..pipeline import (
 from ..retrieval import BM25Index, Retriever
 from ..store.models import Case, Report, ReportSection, User
 from ..store.repo import Repositories
+from .vectors import VectorIndexer
 from ..verify import summarize, verify_report
 
 #: Предел на замечание проверяющего: это строка «что исправить», а не второй
@@ -188,12 +189,15 @@ class ReportService:
     retriever: Retriever | None = None
     glossary: Dict[str, str] = field(default_factory=dict)
     outlines: OutlineLibrary | None = None
+    vectors: "VectorIndexer | None" = None
 
     def __post_init__(self) -> None:
         if self.outlines is None:
             self.outlines = OutlineLibrary(self.settings.templates_dir)
         if not self.glossary:
             self.glossary = _load_glossary(self.settings.glossary_path)
+        if self.vectors is None:
+            self.vectors = VectorIndexer(self.repos, self.settings)
 
     # -- вспомогательное ----------------------------------------------------
 
