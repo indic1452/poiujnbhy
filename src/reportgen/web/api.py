@@ -2737,7 +2737,7 @@ def read_talk_file(request: Request, talk_id: int, file_id: int,
     return _file_reply(path, item.name, inline=bool(inline))
 
 
-# ------------------------------------------------------------- дашборд ----
+# -------------------------------------------------------------- сводка ----
 
 def _one_per_person(records: Iterable[Any]) -> Dict[int, Any]:
     """По одной записи на человека — той, что кончается позже."""

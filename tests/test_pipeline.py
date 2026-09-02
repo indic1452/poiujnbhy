@@ -1,3 +1,4 @@
+import json
 import unittest
 from pathlib import Path
 
@@ -217,5 +218,95 @@ class PromptTests(unittest.TestCase):
         self.assertNotIn("Модуль вектора ошибки", prompt)
 
 
+class StyleTests(unittest.TestCase):
+    """Стиль из шапки шаблона обязан дойти до модели."""
+
+    TEMPLATE = {
+        "report_type": "проба",
+        "title": "Проба",
+        "style": "деловой технический, прошедшее время",
+        "sections": [
+            {"id": "a", "title": "А", "instruction": "пиши"},
+            {"id": "b", "title": "Б", "instruction": "пиши",
+             "style": "телеграфный, только перечисление"},
+        ],
+    }
+
+    def outline(self):
+        from reportgen.pipeline import Outline
+
+        return Outline._from_raw(json.loads(json.dumps(self.TEMPLATE)))
+
+    def test_a_section_inherits_the_style_of_the_template(self):
+        # Стиль в шапке до модели не доходил вовсе: секция брала общий по
+        # умолчанию, а автор шаблона был уверен, что задал тон всему отчёту.
+        self.assertEqual("деловой технический, прошедшее время",
+                         self.outline().sections[0].style)
+
+    def test_a_section_with_its_own_style_keeps_it(self):
+        self.assertEqual("телеграфный, только перечисление",
+                         self.outline().sections[1].style)
+
+    def test_a_template_without_a_style_falls_back_to_the_default(self):
+        from reportgen.pipeline import DEFAULT_STYLE
+
+        raw = json.loads(json.dumps(self.TEMPLATE))
+        del raw["style"]
+        self.assertEqual(DEFAULT_STYLE, Outline._from_raw(raw).sections[0].style)
+
+    def test_the_style_reaches_the_prompt(self):
+        """Проверяем не поле, а саму подсказку: между ними бывает обрыв."""
+        facts = FactPack.load(CASE)
+        captured = {}
+
+        class Spy(StubLLM):
+            def complete(self, system, user, **kwargs):
+                captured.setdefault("first", user)
+                return super().complete(system, user, **kwargs)
+
+        from reportgen.pipeline import generate_section
+
+        spec = self.outline().sections[0]
+        generate_section(spec, facts, None, Spy(), registry=SourceRegistry())
+        self.assertIn("деловой технический, прошедшее время", captured["first"])
+
+
+class SeverityGuardTests(unittest.TestCase):
+    """Порог находок проверяется при загрузке шаблона, а не при сборке."""
+
+    def make(self, severity):
+        from reportgen.pipeline import SectionSpec
+
+        return SectionSpec.from_dict({
+            "id": "выводы", "title": "Выводы", "instruction": "пиши",
+            "findings_min_severity": severity,
+        })
+
+    def test_a_misspelled_level_is_refused_with_a_readable_message(self):
+        # Опечатка доживала до сборки отчёта и роняла её сообщением
+        # «tuple.index(x): x not in tuple» — ни шаблона, ни секции в нём нет.
+        with self.assertRaises(ValueError) as caught:
+            self.make("высокая")
+        message = str(caught.exception)
+        self.assertIn("выводы", message)
+        self.assertIn("высокая", message)
+        self.assertIn("critical", message)
+
+    def test_every_declared_level_is_accepted(self):
+        from reportgen.facts import SEVERITIES
+
+        for severity in SEVERITIES:
+            with self.subTest(severity=severity):
+                self.assertEqual(severity, self.make(severity).findings_min_severity)
+
+    def test_no_level_is_still_allowed(self):
+        from reportgen.pipeline import SectionSpec
+
+        spec = SectionSpec.from_dict({"id": "a", "title": "А", "instruction": "и"})
+        self.assertIsNone(spec.findings_min_severity)
+
+
 if __name__ == "__main__":
+
+
     unittest.main()

@@ -9,9 +9,10 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence
@@ -21,12 +22,168 @@ from .corpus import Chunk, tidy_quote
 #: Сколько символов фрагмента подаётся модели. Приложение к отчёту берёт то же
 #: значение: см. SourceRegistry.render_appendix.
 PROMPT_QUOTE_CHARS = 700
-from .facts import FactPack
+from .facts import SEVERITIES, FactPack
 from .llm import LLM
 from .prompts import SECTION_PROMPT, SYSTEM_PROMPT
 from .retrieval import Hit, Retriever
 
 DEFAULT_STYLE = "нейтральный технический, без оценочных суждений"
+
+
+#: Направления из templates/domains.json рядом с шаблоном. Читается один раз
+#: на каталог: шаблонов десяток, а справочник один и тот же.
+_DOMAIN_CACHE: Dict[str, frozenset] = {}
+
+
+def _known_domains(directory: Path) -> frozenset:
+    key = str(directory)
+    if key not in _DOMAIN_CACHE:
+        path = directory / "domains.json"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8-sig"))
+            ids = {str(item["id"]) for item in raw.get("domains", []) if item.get("id")}
+        except (OSError, ValueError, KeyError, TypeError):
+            ids = set()          # справочника нет — проверять нечем
+        _DOMAIN_CACHE[key] = frozenset(ids)
+    return _DOMAIN_CACHE[key]
+
+
+def _as_is(value: Any) -> str:
+    """Значение — для подсказки модели, без разметки Markdown.
+
+    `plain` экранирует звёздочки и подчёркивания, потому что пишет в
+    документ. Здесь текст идёт в подсказку, и «7419\\_8931» модель читает
+    как имя каталога с обратными косыми — то есть как другое имя.
+    """
+    return str(value if value is not None else "")
+
+
+def _fill(text: str, item: Dict[str, Any], caption: str, number: int) -> str:
+    """Подставить в строку поля записи: «Файлы в каталогах {catalogs}».
+
+    Подстановка своя, а не str.format: в инструкциях шаблона встречаются
+    фигурные скобки сами по себе, и format на них падает. Здесь неизвестное
+    имя остаётся как было — это видно человеку и не роняет генерацию.
+    """
+    def one(match: "re.Match[str]") -> str:
+        key = match.group(1)
+        if key == "n":
+            return str(number)
+        if key == "caption":
+            return caption
+        if key not in item:
+            return match.group(0)
+        # Без экранирования: подстановка идёт в заголовок раздела и в
+        # инструкцию, а имена каталогов у отдела сплошь с подчёркиваниями —
+        # «7419\_8931\_CQPSK\_H» в заголовке письма это уже другое имя,
+        # и сверить его с материалами нельзя.
+        return _as_is(item[key])
+
+    return re.sub(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", one, text)
+
+
+def _item_caption(item: Dict[str, Any], pattern: str, number: int) -> str:
+    """Как называется запись в заголовке раздела."""
+    caption = str(item.get("caption", "") or "").strip()
+    if caption:
+        return caption
+    if pattern:
+        return _fill(pattern, item, "", number)
+    for key in ("name", "id", "file", "title"):
+        value = str(item.get(key, "") or "").strip()
+        if value:
+            return value
+    return str(number)
+
+
+#: Поля записи, которые в блок для модели не идут: заголовок уже вынесен
+#: в название раздела, повторять его данными незачем.
+_ITEM_SKIP = ("caption",)
+
+#: Порядок и подписи блока «Условия записи» — как в исходящих отдела. Эти
+#: четыре строки в письме стоят всегда первыми и всегда этими словами;
+#: модель обязана воспроизвести их дословно, а не пересказать.
+_CONDITIONS = (
+    ("line_type", "линия связи"),
+    ("modulation", "вид модуляции"),
+    ("clock_khz", "тактовая частота"),
+    ("record_format", "формат записи"),
+)
+
+
+def _item_block(item: Dict[str, Any], titles: Dict[str, str] | None = None,
+                units: Dict[str, str] | None = None) -> str:
+    """Данные одной записи — текстом для модели.
+
+    Сперва «Условия записи» в готовом виде: их надо перенести в раздел
+    дословно, и оставлять это на пересказ модели нельзя — там четыре строки,
+    которые в отделе читают глазами и сверяют с описью.
+
+    Дальше остальные поля записи, подписанные по-русски из словаря шаблона:
+    «оборудование линии», а не «equipment». Имя ключа модели ничего не
+    говорит, а из подписи она понимает, о чём речь.
+    """
+    titles, units = titles or {}, units or {}
+
+    def value_of(key: str) -> str:
+        text = _as_is(item[key])
+        unit = units.get(key, "")
+        return f"{text} {unit}".strip() if unit else text
+
+    ready = [f"{label}: {value_of(key)};"
+             for key, label in _CONDITIONS
+             if item.get(key) not in ("", None, [], {})]
+    if ready:
+        ready[-1] = ready[-1][:-1] + "."
+
+    known = {key for key, _ in _CONDITIONS}
+    rest = []
+    for key, value in item.items():
+        if key in _ITEM_SKIP or key in known or value in ("", None, [], {}):
+            continue
+        rest.append(f"- {titles.get(key, key)}: {value_of(key)}")
+
+    parts = []
+    if ready:
+        parts.append("УСЛОВИЯ ЗАПИСИ — перенести в раздел дословно, "
+                     "первым абзацем:\n" + "\n".join(ready))
+    if rest:
+        parts.append("ОСТАЛЬНЫЕ ДАННЫЕ ЭТОЙ ЗАПИСИ (других по ней нет):\n"
+                     + "\n".join(rest))
+    return "\n\n".join(parts)
+
+
+def _check_item_domains(section_id: str, table: Dict[str, Any]) -> None:
+    """Проверяет форму таблицы направлений по полю записи.
+
+    Ошибка в форме тихо обесценивает фильтр: раздел ищет по всей библиотеке
+    и молчит об этом. Поэтому таблицу разбираем при загрузке шаблона.
+    """
+    unknown = set(table) - {"field", "values"}
+    if unknown:
+        raise ValueError(
+            f"секция '{section_id}': в item_domains лишние поля "
+            f"{sorted(unknown)}; допустимы 'field' и 'values'")
+    field_name = table.get("field")
+    if not isinstance(field_name, str) or not field_name.strip():
+        raise ValueError(
+            f"секция '{section_id}': в item_domains не указано поле записи "
+            f"('field'), по которому выбирается направление")
+    values = table.get("values")
+    if not isinstance(values, dict) or not values:
+        raise ValueError(
+            f"секция '{section_id}': в item_domains пуста таблица 'values' — "
+            f"выбирать не из чего")
+    for key, domains in values.items():
+        if not isinstance(domains, (list, tuple)) or not domains:
+            raise ValueError(
+                f"секция '{section_id}': в item_domains значению '{key}' не "
+                f"сопоставлено ни одного направления")
+        for name in domains:
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError(
+                    f"секция '{section_id}': в item_domains у значения "
+                    f"'{key}' направление задано не строкой")
 
 
 @dataclass
@@ -46,6 +203,37 @@ class SectionSpec:
     retrieval_domains: Sequence[str] = ()
     target_words: int = 250
     style: str = DEFAULT_STYLE
+    #: Имя списка в факт-пакете, по которому раздел повторяется.
+    #:
+    #: В отделе ответ на одну опись содержит раздел на каждую регистрацию:
+    #: «Файлы в каталогах …», «Условия записи», разбор, вывод — и так восемь
+    #: раз, а на другом письме тридцать. Записывать тридцать одинаковых
+    #: секций в шаблон нельзя: их число известно не автору шаблона, а
+    #: описи. Здесь пишется имя списка («registrations»), и шаблон
+    #: разворачивается по нему на столько разделов, сколько строк в описи.
+    repeat_over: str = ""
+    #: Поля, которые обязаны быть у каждой строки списка. Их отсутствие —
+    #: то же, что отсутствие обязательного измерения: раздел выйдет с
+    #: пометкой «не хватает данных».
+    item_required: Sequence[str] = ()
+    #: Как назвать саму строку в заголовке раздела, если в ней нет `caption`.
+    item_title: str = ""
+    #: Направления поиска, выбираемые по полю записи.
+    #:
+    #: Одно письмо отдела разбирает и релейные, и спутниковые регистрации:
+    #: раздел один, а полки библиотеки под ними разные. Объединять полки
+    #: нельзя — фильтр перестанет фильтровать; заводить два шаблона тоже
+    #: нельзя — письмо-то одно. Поэтому направление выбирается по значению
+    #: поля записи: {"field": "line_type", "values": {"РРЛС": [...], ...}}.
+    #: Значение, которого нет в таблице, оставляет направления раздела.
+    item_domains: Dict[str, Any] = field(default_factory=dict)
+    #: Данные записи. Ставит `for_item`; в шаблоне этого поля не бывает.
+    item: Dict[str, Any] = field(default_factory=dict)
+    #: Русские подписи полей записи — из словаря шаблона, чтобы модель
+    #: видела «оборудование линии», а не «equipment».
+    item_titles: Dict[str, str] = field(default_factory=dict)
+    #: Единицы полей записи: «8931 кГц», а не «8931».
+    item_units: Dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, raw: Dict[str, Any]) -> "SectionSpec":
@@ -56,7 +244,80 @@ class SectionSpec:
         unknown = set(raw) - known
         if unknown:
             raise ValueError(f"секция '{raw['id']}': неизвестные поля {sorted(unknown)}")
-        return cls(**raw)
+        if {"item", "item_titles", "item_units"} & set(raw):
+            raise ValueError(
+                f"секция '{raw['id']}': поля 'item' и 'item_titles' заполняются "
+                f"при разворачивании раздела по описи, в шаблоне их быть не должно")
+        spec = cls(**raw)
+        if spec.item_required and not spec.repeat_over:
+            raise ValueError(
+                f"секция '{spec.id}': item_required задан без repeat_over — "
+                f"проверять нечего, раздел не повторяется")
+        if spec.findings_min_severity and spec.findings_min_severity not in SEVERITIES:
+            # Опечатка в пороге доживала до сборки отчёта и роняла её
+            # сообщением «tuple.index(x): x not in tuple» — по нему нельзя
+            # догадаться ни о шаблоне, ни о секции, ни о том, что писать.
+            raise ValueError(
+                f"секция '{spec.id}': уровень находок "
+                f"'{spec.findings_min_severity}' не заведён; допустимы "
+                f"{', '.join(SEVERITIES)}")
+        if spec.item_domains:
+            if not spec.repeat_over:
+                raise ValueError(
+                    f"секция '{spec.id}': item_domains задан без repeat_over — "
+                    f"выбирать направление не по чему, раздел не повторяется")
+            _check_item_domains(spec.id, spec.item_domains)
+        return spec
+
+    def for_item(self, item: Dict[str, Any], number: int,
+                 titles: Dict[str, str] | None = None,
+                 units: Dict[str, str] | None = None) -> "SectionSpec":
+        """Раздел под одну строку списка: свой номер, свой заголовок, свои данные.
+
+        Идентификатор получает номер (`registration-3`): по нему секции
+        различаются в базе, в проверке структуры и в правках инженера, и он
+        обязан быть устойчивым — иначе правка третьего раздела после
+        перегенерации уедет в четвёртый.
+        """
+        caption = _item_caption(item, self.item_title, number)
+        # Недостающие поля записи докладываются тем же путём, что и
+        # недостающие измерения: через required_facts развёрнутого раздела.
+        # Ключ помечен именем записи, иначе в списке нехватки восемь
+        # одинаковых строк «modulation» и непонятно, у какой регистрации.
+        lacking = [f"{self.repeat_over}[{number}].{key}"
+                   for key in self.item_required
+                   if item.get(key) in ("", None, [], {})]
+        return replace(
+            self,
+            id=f"{self.id}-{number}",
+            title=_fill(self.title, item, caption, number),
+            instruction=_fill(self.instruction, item, caption, number),
+            required_facts=tuple(self.required_facts) + tuple(lacking),
+            # Запрос к библиотеке тоже подставляется по записи: «разбор
+            # {modulation} на {line_type}» уходит в поиск словами этой
+            # регистрации, а не общими словами шаблона.
+            retrieval_queries=tuple(
+                _fill(query, item, caption, number)
+                for query in self.retrieval_queries),
+            retrieval_domains=self._domains_for(item),
+            repeat_over="",
+            item_required=(),
+            item_domains={},
+            item=dict(item),
+            item_titles=dict(titles or {}),
+            item_units=dict(units or {}),
+        )
+
+    def _domains_for(self, item: Dict[str, Any]) -> Sequence[str]:
+        """Направления поиска для одной записи описи."""
+        table = self.item_domains
+        if not table:
+            return self.retrieval_domains
+        value = str(item.get(str(table.get("field", "")), "") or "").strip()
+        for key, domains in dict(table.get("values", {})).items():
+            if str(key).strip().casefold() == value.casefold():
+                return tuple(domains)
+        return self.retrieval_domains
 
 
 @dataclass
@@ -83,17 +344,58 @@ class Outline:
     @classmethod
     def load(cls, path: str | Path) -> "Outline":
         raw = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+        outline = cls._from_raw(raw)
+        outline._check_domains(Path(path))
+        return outline
+
+    def _check_domains(self, path: Path) -> None:
+        """Направления поиска в шаблоне обязаны существовать.
+
+        Опечатка в направлении не роняет ничего: поиск просто отбирает по
+        несуществующему значению и не находит ни одного фрагмента. Раздел
+        выходит без источников, и понять почему нельзя — поэтому ловим при
+        загрузке шаблона, а не при первом отчёте.
+        """
+        known = _known_domains(path.parent)
+        if not known:
+            return
+        for spec in self.sections:
+            declared = list(spec.retrieval_domains)
+            for domains in dict(spec.item_domains.get("values", {})).values():
+                declared.extend(domains)
+            unknown = [item for item in declared if item not in known]
+            if unknown:
+                raise ValueError(
+                    f"шаблон '{path.name}', секция '{spec.id}': неизвестные "
+                    f"направления {sorted(unknown)}; заведены "
+                    f"{sorted(known)}")
+
+    @classmethod
+    def _from_raw(cls, raw: Dict[str, Any]) -> "Outline":
+        style = raw.get("style", DEFAULT_STYLE)
+        # Стиль в шапке шаблона задаёт язык всего документа — «деловой
+        # технический, прошедшее время, термины отдела». Раздел его
+        # наследует, если не назначил себе свой. Пока наследования не было,
+        # стиль в шапке не доходил до модели вовсе: каждая секция брала
+        # общий по умолчанию, а автор шаблона был уверен, что задал тон
+        # всему отчёту.
+        sections = []
+        for item in raw["sections"]:
+            spec = SectionSpec.from_dict(item)
+            if "style" not in item:
+                spec = replace(spec, style=style)
+            sections.append(spec)
         return cls(
             report_type=raw["report_type"],
             title=raw["title"],
             short_title=str(raw.get("short_title", "") or "").strip(),
-            style=raw.get("style", DEFAULT_STYLE),
+            style=style,
             version=str(raw.get("version", "1")),
             fact_titles={str(key): str(value) for key, value
                          in (raw.get("fact_titles") or {}).items()},
             fact_units={str(key): str(value) for key, value
                         in (raw.get("fact_units") or {}).items()},
-            sections=[SectionSpec.from_dict(item) for item in raw["sections"]],
+            sections=sections,
         )
 
     def fact_title(self, key: str) -> str:
@@ -107,6 +409,44 @@ class Outline:
                 if key not in seen:
                     seen.append(key)
         return seen
+
+    def expand(self, facts: "FactPack") -> List[SectionSpec]:
+        """Разделы шаблона, развёрнутые по спискам факт-пакета.
+
+        Раздел с `repeat_over` превращается в столько разделов, сколько строк
+        в названном списке: по одному на регистрацию из описи. Порядок —
+        порядок списка, то есть порядок описи; отчёт от этого остаётся
+        воспроизводимым.
+
+        Пустой список — не ошибка: раздела просто не будет. Ошибкой это
+        станет позже, при проверке полноты, и там об этом скажут словами.
+        """
+        out: List[SectionSpec] = []
+        for spec in self.sections:
+            if not spec.repeat_over:
+                out.append(spec)
+                continue
+            items = facts.item_list(spec.repeat_over)
+            for number, item in enumerate(items, start=1):
+                out.append(spec.for_item(item, number,
+                                          self.fact_titles, self.fact_units))
+        return out
+
+    def expanded(self, facts: "FactPack") -> "Outline":
+        """Тот же шаблон, но с уже развёрнутыми по описи разделами.
+
+        Всё, что работает со списком разделов, — проверка структуры,
+        перегенерация одной секции, подсчёт полноты — обязано видеть
+        разделы такими же, какими их видела генерация. Иначе проверка
+        требует раздел «{caption}», которого нет и быть не может.
+        """
+        if not any(spec.repeat_over for spec in self.sections):
+            return self
+        return replace(self, sections=self.expand(facts))
+
+    def repeats_over(self) -> List[str]:
+        """Имена списков факт-пакета, по которым разворачиваются разделы."""
+        return [spec.repeat_over for spec in self.sections if spec.repeat_over]
 
 
 class SourceRegistry:
@@ -225,7 +565,16 @@ def generate_section(
     missing = facts.missing(spec.required_facts)
 
     keys = [*spec.required_facts, *spec.optional_facts]
-    facts_block = facts.render_measurements(keys) if keys else "(измерения для раздела не заданы)"
+    if spec.item:
+        # Раздел развёрнут по описи: данные у него свои, а не из общих
+        # измерений. Это тот же слот подсказки — модель ищет данные там же.
+        facts_block = _item_block(spec.item, spec.item_titles, spec.item_units)
+        extra = facts.render_measurements(keys) if keys else ""
+        if extra:
+            facts_block += "\n\n" + extra
+    else:
+        facts_block = (facts.render_measurements(keys) if keys
+                       else "(измерения для раздела не заданы)")
     if spec.findings_min_severity:
         findings = facts.findings_at_least(spec.findings_min_severity)
         facts_block += "\n\n" + facts.render_findings(findings)
@@ -311,9 +660,12 @@ def generate_report(
     generated: List[GeneratedSection] = []
     previously: List[tuple[str, str]] = []
     wave_size = max(1, int(parallel_sections))
+    # Разделы, повторяющиеся по описи, разворачиваются здесь: дальше по коду
+    # разница между «раздел шаблона» и «раздел по записи» уже не нужна.
+    plan = outline.expand(facts)
 
-    for start in range(0, len(outline.sections), wave_size):
-        wave = outline.sections[start:start + wave_size]
+    for start in range(0, len(plan), wave_size):
+        wave = plan[start:start + wave_size]
         if len(wave) == 1:
             sections = [generate_section(
                 wave[0], facts, retriever, llm,
@@ -450,8 +802,13 @@ def check_facts_coverage(facts: FactPack, outline: Outline) -> Dict[str, List[st
     доснять, до того как он потратит время на чтение черновика.
     """
     result: Dict[str, List[str]] = {}
-    for spec in outline.sections:
+    for spec in outline.expand(facts):
         missing = facts.missing(spec.required_facts)
         if missing:
             result[spec.id] = missing
+    # Пустая опись — тоже нехватка данных, и молчать о ней нельзя: отчёт
+    # выйдет без единого разбора, а инженер узнает об этом, прочитав его.
+    for name in outline.repeats_over():
+        if not facts.item_list(name):
+            result.setdefault("__list__:" + name, []).append(name)
     return result

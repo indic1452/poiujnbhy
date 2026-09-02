@@ -219,6 +219,31 @@ class FactPack:
         """Какие из требуемых шаблоном измерений отсутствуют."""
         return [key for key in keys if key not in self.measurements]
 
+    def item_list(self, name: str) -> List[Dict[str, Any]]:
+        """Список записей факт-пакета, по которому повторяется раздел.
+
+        В отделе это опись регистраций: строка на файл — линия связи, вид
+        модуляции, тактовая частота, условия. Ответ содержит раздел на
+        каждую такую строку, и число их задаёт опись, а не шаблон.
+
+        Не список или не объекты внутри — не молчаливая пустота, а ошибка с
+        именем поля: иначе отчёт выйдет без половины разделов, и понять, что
+        случилось, будет нельзя.
+        """
+        value = (self.raw or {}).get(name)
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise FactPackError(
+                f"факт-пакет: поле '{name}' должно быть списком записей, "
+                f"а задано {_kind_name(value)}")
+        for number, item in enumerate(value, start=1):
+            if not isinstance(item, dict):
+                raise FactPackError(
+                    f"факт-пакет: запись {number} в списке '{name}' должна быть "
+                    f"объектом «поле: значение», а задана {_kind_name(item)}")
+        return list(value)
+
     def subset(self, keys: Iterable[str]) -> List[Measurement]:
         return [self.measurements[key] for key in keys if key in self.measurements]
 

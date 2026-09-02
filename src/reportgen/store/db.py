@@ -34,7 +34,7 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     # всей библиотеки с диска. stat() дешевле хеша примерно в сотню раз.
     ("documents", "size", "INTEGER"),
     ("documents", "mtime_ns", "INTEGER"),
-    # Отдел и группа сотрудника: без них дашборд не может показать ни
+    # Отдел и группа сотрудника: без них сводка не может показать ни
     # списочный состав отдела, ни нагрузку по группам.
     ("users", "department", "TEXT NOT NULL DEFAULT ''"),
     ("users", "team", "TEXT NOT NULL DEFAULT ''"),

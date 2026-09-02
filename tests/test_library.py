@@ -705,6 +705,92 @@ class EnglishDomainTests(unittest.TestCase):
             "Порядок измерений, анализатор спектра, погрешность, протокол измерений."))
 
 
+class DepartmentWordingTests(unittest.TestCase):
+    """Документ раскладывается по полке и тогда, когда написан по-нашему.
+
+    Слово в справочнике ищется подстрокой, поэтому словарная форма ловит не
+    все падежи: «перемежение» не находится в «перемежения», а «рид-соломон»
+    — в «Рида-Соломона». Отдел пишет ещё и своими сокращениями: СЛС, ФМ-4,
+    КАМ-16, «оцифрованный участок спектра».
+
+    Проверяем не только итоговую полку: направление ставится по числу
+    совпадений, и в живом тексте их набирается с запасом — пропажа одного
+    слова осталась бы незамеченной. Поэтому каждое слово проверяется
+    отдельно, на короткой строке, где совпасть больше нечему.
+    """
+
+    #: Строка → направление, которое обязано её узнать.
+    WORDING = [
+        ("перемежения кодовых слов", "signal"),
+        ("кода Рида-Соломона", "signal"),
+        ("точки созвездия", "signal"),
+        ("аддитивный скремблер", "signal"),
+        ("синхрослова", "signal"),
+        ("пилот-символов", "signal"),
+        ("ФМ-4С", "signal"),
+        ("КАМ-256", "signal"),
+        ("оцифрованный участок", "signal"),
+        ("в режиме холостого хода", "signal"),
+        ("регистрации СЛС", "satellite"),
+        ("массив кадров BBFrame", "satellite"),
+        ("заголовки BBHeader", "satellite"),
+        ("дейтаграммы", "protocols"),
+        ("технология IPsec", "protocols"),
+        ("мультиплексных потоков", "protocols"),
+        ("квитирования", "protocols"),
+        ("ретрансмиссии", "protocols"),
+        ("юстировки антенны", "microwave"),
+        ("наведения антенны", "microwave"),
+        ("мачты", "microwave"),
+        ("глубоких замираний", "hf"),
+        ("погрешности", "method"),
+        ("методики", "method"),
+        ("поверки", "method"),
+        ("калибровки", "method"),
+        ("изделия", "hardware"),
+        ("стойки", "hardware"),
+        ("неисправности", "hardware"),
+        ("наработки", "hardware"),
+        ("подключения", "hardware"),
+        ("приложения", "software"),
+        ("утилиты", "software"),
+        ("трассировки", "software"),
+        ("рекомендации", "standard"),
+        ("редакции", "standard"),
+        ("радиопокрытия", "mobile"),
+    ]
+
+    def setUp(self):
+        from reportgen.domains import registry
+
+        self.registry = registry(ROOT / "templates" / "domains.json")
+
+    def classify(self, title, text):
+        return self.registry.classify(title, text)
+
+    def test_every_wording_is_recognised_by_its_domain(self):
+        for text, domain_id in self.WORDING:
+            with self.subTest(text=text):
+                domain = self.registry.get(domain_id)
+                self.assertIsNotNone(domain, f"нет направления {domain_id}")
+                self.assertGreaterEqual(
+                    domain.score(text.lower()), 1,
+                    f"«{text}» не узнаётся направлением «{domain_id}»")
+
+    def test_a_letter_of_the_department_lands_on_the_right_shelf(self):
+        self.assertEqual("signal", self.classify(
+            "Декодирование каскадных кодов",
+            "Параметры перемежения кодовых слов кода Рида-Соломона; "
+            "точки созвездия при модуляционном декодировании."))
+        self.assertEqual("microwave", self.classify(
+            "Разбор сигналов РРЛС",
+            "Сигналы РРЛС на пролёте; юстировка антенны и профиль трассы."))
+        self.assertEqual("satellite", self.classify(
+            "Разбор сигналов СЛС",
+            "Регистрации СЛС стандарта DVB-S2: массив кадров BBFrame, "
+            "снятие заголовков BBHeader."))
+
+
 class AutoSortingTests(unittest.TestCase):
     """Тип документа определяется по содержимому, когда каталог молчит.
 

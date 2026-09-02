@@ -227,6 +227,8 @@ class ReportService:
     def coverage(self, case: Case) -> Dict[str, List[str]]:
         """Каких обязательных измерений не хватает по шаблону (док. 04, 4.3)."""
         outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
+        # Разделы по описи разворачивает сама проверка полноты: ей нужен
+        # шаблон, а не готовый план.
         return check_facts_coverage(self.facts_of(case), outline)
 
     # -- кейсы --------------------------------------------------------------
@@ -409,7 +411,7 @@ class ReportService:
             return 0
         try:
             facts = self.facts_of(case)
-            outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
+            outline = self.outlines.get(case.report_type).expanded(facts)  # type: ignore[union-attr]
         except ServiceError:
             return 0
         revoked = 0
@@ -517,7 +519,7 @@ class ReportService:
                            *, hint: str = "", top_k: int | None = None) -> ReportSection:
         case = self.guard_current(report, "переписывать разделы")
         facts = self.facts_of(case)
-        outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
+        outline = self.outlines.get(case.report_type).expanded(facts)  # type: ignore[union-attr]
         spec = next((s for s in outline.sections if s.id == section_id), None)
         if spec is None:
             raise ServiceError(f"в шаблоне нет секции '{section_id}'", 404)
@@ -607,7 +609,7 @@ class ReportService:
         if case is None:
             raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
         facts = self.facts_of(case)
-        outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
+        outline = self.outlines.get(case.report_type).expanded(facts)  # type: ignore[union-attr]
         registry = StoredRegistry.from_meta(report.meta)
 
         specs = {spec.id: spec for spec in outline.sections}
@@ -718,7 +720,7 @@ class ReportService:
         if case is None:
             raise ServiceError("письмо, к которому относится отчёт, не найдено", 404)
         facts = self.facts_of(case)
-        outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
+        outline = self.outlines.get(case.report_type).expanded(facts)  # type: ignore[union-attr]
         sections, appendix = self._parts_of(report)
         issues = self._verify(report.markdown, facts, outline,
                               sections=sections, appendix=appendix)
@@ -1032,9 +1034,9 @@ class ReportService:
 
     def _collect_edit_pairs(self, report: Report, case: Case, user: User | None) -> int:
         """Сохранить пары «черновик модели → финал инженера» (док. 03, 3.7)."""
-        outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
-        specs = {spec.id: spec for spec in outline.sections}
         facts = self.facts_of(case)
+        outline = self.outlines.get(case.report_type).expanded(facts)  # type: ignore[union-attr]
+        specs = {spec.id: spec for spec in outline.sections}
         sources = {record["label"]: record for record in report.meta.get("sources", [])}
         # Отчёт могли утвердить, поправить и утвердить снова. В наборе
         # остаётся только последнее утверждение: прежнее содержит вариант,
