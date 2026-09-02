@@ -4336,6 +4336,139 @@ class LoginBackgroundTests(WebTestCase):
         self.assertNotIn("new Image()", page)
 
 
+class LineTypeTests(WebTestCase):
+    """Линия связи принимается и кодом, и названием."""
+
+    def test_the_title_is_accepted_as_well_as_the_code(self):
+        # Отказ звучал издевательски: «неизвестная линия связи 'РРЛС'
+        # (известны: СЛС, РРЛС, КВ, Другое)» — название и было в списке.
+        response = self.client.post("/api/cases", json={
+            "case_id": "2026-0001", "title": "проба",
+            "report_type": CASE["report_type"], "line_type": "РРЛС"})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual("rrls", response.json()["case"]["line_type"])
+
+    def test_the_case_of_the_title_does_not_matter(self):
+        response = self.client.post("/api/cases", json={
+            "case_id": "2026-0002", "title": "проба",
+            "report_type": CASE["report_type"], "line_type": "слс"})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual("sls", response.json()["case"]["line_type"])
+
+    def test_an_unknown_line_names_both_the_code_and_the_title(self):
+        response = self.client.post("/api/cases", json={
+            "case_id": "2026-0003", "title": "проба",
+            "report_type": CASE["report_type"], "line_type": "тропосферная"})
+        self.assertEqual(response.status_code, 400)
+        message = response.json()["error"]
+        self.assertIn("rrls (РРЛС)", message)
+        self.assertIn("sls (СЛС)", message)
+
+
+class RepeatingSectionCaseTests(WebTestCase):
+    """Письмо с описью: по разделу отчёта на каждую регистрацию."""
+
+    OPIS = json.loads(
+        (ROOT / "examples" / "cases" / "opis-signals-2026.json").read_text(encoding="utf-8"))
+
+    def test_a_report_gets_a_section_per_registration(self):
+        case = self.create_case(self.OPIS)
+        report = self.generate(case["id"])
+        titles = [section["title"] for section in report["sections"]]
+        # Исходные данные + шесть регистраций + выводы.
+        self.assertEqual(8, len(titles))
+        self.assertIn("Файл в каталоге «7745_34000_QAM-256»", titles)
+        # Один каталог — «Файл в каталоге», несколько — «Файлы в каталогах»:
+        # так написано и в настоящем ответе отдела.
+        self.assertIn("Файлы в каталогах «17919_26000_QAM-16_H», "
+                      "«18737_26000_QAM-16_H», «18737_26000_QAM-16_V»", titles)
+        self.assertIn("Файл в каталоге «62_memoteck»", titles)
+
+    def test_an_empty_list_is_reported_as_missing_data(self):
+        """Пустая опись — нехватка данных, а не молчаливо пустой отчёт."""
+        facts = json.loads(json.dumps(self.OPIS))
+        facts["registrations"] = []
+        case = self.create_case(facts)
+        coverage = self.client.get(f"/api/cases/{case['id']}").json()["coverage"]
+        self.assertIn("__list__:registrations", coverage)
+
+    def test_a_record_without_required_fields_is_named_in_the_coverage(self):
+        facts = json.loads(json.dumps(self.OPIS))
+        del facts["registrations"][2]["modulation"]
+        case = self.create_case(facts)
+        coverage = self.client.get(f"/api/cases/{case['id']}").json()["coverage"]
+        gaps = [key for keys in coverage.values() for key in keys]
+        self.assertIn("registrations[3].modulation", gaps)
+
+    def test_the_list_survives_a_save_from_the_screen(self):
+        """Экран данных шлёт факт-пакет целиком — опись обязана вернуться."""
+        case = self.create_case(self.OPIS)
+        facts = self.client.get(f"/api/cases/{case['id']}").json()["case"]["facts"]
+        facts["registrations"][0]["equipment"] = "Ericsson MiniLink (Швеция)"
+        response = self.client.put(f"/api/cases/{case['id']}/facts", json={"facts": facts})
+        self.assertEqual(response.status_code, 200, response.text)
+        again = self.client.get(f"/api/cases/{case['id']}").json()["case"]["facts"]
+        self.assertEqual(6, len(again["registrations"]))
+        self.assertEqual("Ericsson MiniLink (Швеция)",
+                         again["registrations"][0]["equipment"])
+
+
+class RegistrationEditorTests(unittest.TestCase):
+    """Опись регистраций правится в самом приложении.
+
+    Раздел отчёта повторяется по описи, но заносить опись было негде: список
+    жил только в файле факт-пакета, а в приложении его не показывали вовсе —
+    повторяющиеся разделы были недостижимы для инженера.
+    """
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+        self.css = (static / "styles.css").read_text(encoding="utf-8")
+
+    def test_the_template_tells_the_screen_what_repeats(self):
+        from reportgen.pipeline import Outline
+
+        outline = Outline.load(ROOT / "templates" / "outline_signal_analysis.json")
+        section = next(spec for spec in outline.sections if spec.repeat_over)
+        self.assertEqual("registrations", section.repeat_over)
+        # Экран данных читает то же самое из /api/config.
+        self.assertIn('"repeat_over": spec.repeat_over', self.api_source())
+        self.assertIn('"item_required": list(spec.item_required)', self.api_source())
+        self.assertIn('"item_title": spec.item_title', self.api_source())
+
+    def api_source(self):
+        return (ROOT / "src" / "reportgen" / "web" / "api.py").read_text(encoding="utf-8")
+
+    def test_the_screen_has_a_place_for_the_list(self):
+        self.assertIn("registrationsSection", self.js)
+        self.assertIn("'+ регистрация'", self.js)
+        self.assertIn("Опись, по которой пришли сигналы", self.js)
+        self.assertIn(".reg-card {", self.css)
+
+    def test_a_new_record_comes_with_the_fields_the_template_wants(self):
+        # Пустая карточка заставляла бы угадывать имена полей.
+        self.assertIn("function addRegistration", self.js)
+        self.assertIn("itemTitleKeys().concat(itemRequired())", self.js)
+
+    def test_the_order_of_records_can_be_changed(self):
+        # Порядок карточек — порядок разделов в письме.
+        self.assertIn("function moveRegistration", self.js)
+        self.assertIn("Поднять выше", self.js)
+        self.assertIn("Опустить ниже", self.js)
+
+    def test_a_required_field_cannot_be_renamed(self):
+        self.assertIn("Поле требуется шаблоном отчёта — имя менять нельзя", self.js)
+
+    def test_the_list_is_read_and_written_back(self):
+        self.assertIn("wb.regs = list.map", self.js)
+        self.assertIn("facts[listName] = (wb.regs || []).map", self.js)
+
+    def test_an_empty_record_does_not_paint_the_measurements_table_red(self):
+        """Поле записи и строка измерений могут называться одинаково."""
+        self.assertIn("entry.kind !== 'reg'", self.js)
+
+
 class InterfaceCopyTests(unittest.TestCase):
     """Подписи интерфейса: без жаргона и без разговоров ни о чём."""
 

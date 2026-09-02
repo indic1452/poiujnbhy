@@ -2491,7 +2491,7 @@
         keys.forEach((key) => {
             measurements[key] = { title: key, value: '', unit: '', method: '', uncertainty: '' };
         });
-        return {
+        const skeleton = {
             case_id: caseId || '',
             report_type: outline ? outline.report_type : '',
             group_no: '',
@@ -2503,6 +2503,12 @@
             findings: [],
             timeline: [],
         };
+        // Список описи заводим сразу пустым: иначе панель данных не покажет
+        // раздел «Регистрации», и человек не догадается, что его надо завести.
+        const repeating = (outline ? outline.sections : [])
+            .find((section) => section.repeat_over);
+        if (repeating) skeleton[repeating.repeat_over] = [];
+        return skeleton;
     }
 
     function openNewCaseDialog() {
@@ -3117,6 +3123,7 @@
         files: [],
         filesError: '',
         rows: [],
+        regs: [],
         findings: [],
         factsDirty: false,
         drafts: new Map(),
@@ -3377,6 +3384,38 @@
 
     const MEASUREMENT_FIELDS = ['title', 'value', 'unit', 'method', 'uncertainty', 'source', 'note'];
 
+    /** Раздел шаблона, который повторяется по описи (если он есть). */
+    function repeatSection(outline) {
+        return ((outline && outline.sections) || [])
+            .find((section) => section.repeat_over) || null;
+    }
+
+    /** Имя списка описи для типа отчёта письма. Пусто — список не нужен. */
+    function repeatName() {
+        const section = repeatSection(outlineFor(wb.case && wb.case.report_type));
+        return section ? section.repeat_over : '';
+    }
+
+    /** Поля, которые обязана иметь каждая запись описи. */
+    function itemRequired() {
+        const section = repeatSection(outlineFor(wb.case && wb.case.report_type));
+        return section ? (section.item_required || []) : [];
+    }
+
+    /** Ключи, которые упомянуты в заголовке записи: {catalogs}, {caption}. */
+    function itemTitleKeys() {
+        const section = repeatSection(outlineFor(wb.case && wb.case.report_type));
+        const found = [];
+        String((section && section.item_title) || '')
+            .replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, (whole, name) => {
+                if (name !== 'n' && name !== 'caption' && found.indexOf(name) === -1) {
+                    found.push(name);
+                }
+                return whole;
+            });
+        return found;
+    }
+
     function rebuildFactRows() {
         const measurements = (wb.facts && wb.facts.measurements) || {};
         wb.rows = Object.keys(measurements).map((key) => {
@@ -3387,6 +3426,18 @@
             });
             return row;
         });
+        // Опись: список записей с произвольными полями. Держим его парами
+        // «ключ — значение», а не готовым объектом: инженер правит и сами
+        // имена полей, а объект порядок полей не хранит.
+        const listName = repeatName();
+        const list = (listName && wb.facts && Array.isArray(wb.facts[listName]))
+            ? wb.facts[listName] : [];
+        wb.regs = list.map((item) => ({
+            fields: Object.keys(item || {}).map((key) => ({
+                key: key,
+                value: item[key] === undefined || item[key] === null ? '' : String(item[key]),
+            })),
+        }));
         wb.findings = ((wb.facts && wb.facts.findings) || []).map((finding) => ({
             id: finding.id || '',
             severity: finding.severity || 'info',
@@ -3425,6 +3476,19 @@
             measurements[key] = item;
         });
         facts.measurements = measurements;
+
+        const listName = repeatName();
+        if (listName) {
+            facts[listName] = (wb.regs || []).map((reg) => {
+                const item = {};
+                reg.fields.forEach((field) => {
+                    const key = String(field.key || '').trim();
+                    if (!key) return;
+                    item[key] = parseValue(field.value);
+                });
+                return item;
+            });
+        }
 
         facts.findings = wb.findings.map((finding) => {
             const item = {
@@ -3474,21 +3538,65 @@
         const outline = outlineFor(wb.case.report_type);
         const have = new Set(wb.rows.map((row) => row.key.trim()).filter(Boolean));
         if (!outline) {
+            // Шаблон неизвестен (его сняли или переименовали) — показываем то,
+            // что посчитал сервер. Пустую опись он помечает служебным ключом
+            // «__list__:имя»: показывать его человеку как есть нельзя.
             return Object.keys(wb.coverage || {}).map((sectionId) => ({
-                id: sectionId, title: sectionId, keys: wb.coverage[sectionId] || [],
+                id: sectionId,
+                title: sectionId.indexOf('__list__:') === 0
+                    ? 'Опись пуста' : sectionId,
+                keys: wb.coverage[sectionId] || [],
             }));
         }
         const result = [];
         outline.sections.forEach((section) => {
+            // Повторяющийся раздел спрашивает не общие измерения, а поля
+            // каждой записи описи: их считаем отдельно, по карточкам.
+            if (section.repeat_over) return;
             const missing = (section.required_facts || []).filter((key) => !have.has(key));
             if (missing.length) result.push({ id: section.id, title: section.title, keys: missing });
         });
-        return result;
+        return result.concat(registrationGaps());
+    }
+
+    /** Чего не хватает записям описи: по строке на регистрацию. */
+    function registrationGaps() {
+        const required = itemRequired();
+        if (!required.length) return [];
+        const gaps = [];
+        (wb.regs || []).forEach((reg, index) => {
+            const missing = required.filter((key) => {
+                const field = reg.fields.find((item) => String(item.key || '').trim() === key);
+                return !field || !String(field.value || '').trim();
+            });
+            if (missing.length) {
+                gaps.push({
+                    id: 'reg-' + index, kind: 'reg', index: index,
+                    title: registrationCaption(reg, index), keys: missing,
+                });
+            }
+        });
+        return gaps;
+    }
+
+    /** Подвести человека к пустому полю записи, а не просто назвать его. */
+    function focusRegistrationField(index, key) {
+        const cards = $$('.reg-card');
+        const card = cards[index];
+        if (!card) return;
+        card.scrollIntoView({ block: 'nearest' });
+        const input = card.querySelector('input[data-reg-field="' + key + '"]');
+        if (input) input.focus();
     }
 
     function missingKeySet() {
         const keys = new Set();
-        localCoverage().forEach((entry) => entry.keys.forEach((key) => keys.add(key)));
+        // Только общие измерения: поле записи описи и строка измерений могут
+        // называться одинаково («modulation»), и пустая запись подсвечивала
+        // бы заполненную строку в таблице.
+        localCoverage()
+            .filter((entry) => entry.kind !== 'reg')
+            .forEach((entry) => entry.keys.forEach((key) => keys.add(key)));
         return keys;
     }
 
@@ -3810,15 +3918,22 @@
             h('b', {}, 'Не хватает данных'),
             h('div', { class: 'small muted' },
                 'Без этих значений разделы отчёта выйдут с пометкой «не хватает '
-                + 'данных». Щёлкните — строка добавится в таблицу.'));
+                + 'данных». Щёлкните — строка добавится в таблицу, а поле '
+                + 'регистрации откроется в её карточке.'));
         coverage.forEach((entry) => {
             box.appendChild(h('div', { class: 'coverage-line' },
                 h('span', { class: 'small' }, entry.title + ': '),
-                entry.keys.map((key) => h('button', {
-                    class: 'chip',
-                    title: 'Добавить строку «' + factTitle(key) + '» в таблицу',
-                    onclick: () => addMeasurement(key),
-                }, factTitle(key), ' +'))));
+                entry.keys.map((key) => entry.kind === 'reg'
+                    ? h('button', {
+                        class: 'chip',
+                        title: 'Показать поле «' + factTitle(key) + '» этой регистрации',
+                        onclick: () => focusRegistrationField(entry.index, key),
+                    }, factTitle(key))
+                    : h('button', {
+                        class: 'chip',
+                        title: 'Добавить строку «' + factTitle(key) + '» в таблицу',
+                        onclick: () => addMeasurement(key),
+                    }, factTitle(key), ' +'))));
         });
         return box;
     }
@@ -3871,6 +3986,9 @@
                     },
                 })));
         body.appendChild(general);
+
+        // -- опись регистраций
+        if (repeatName()) body.appendChild(registrationsSection());
 
         // -- измерения
         const tbody = h('tbody', {});
@@ -3932,6 +4050,195 @@
             }, '+ отклонение') : null));
 
 
+    }
+
+    /** Опись регистраций: по разделу отчёта на каждую запись. */
+    function registrationsSection() {
+        const box = h('div', {});
+        wb.regs.forEach((reg, index) => box.appendChild(registrationCard(reg, index)));
+        if (!wb.regs.length) {
+            box.appendChild(h('div', { class: 'small faint' },
+                'Опись пуста: разделов по регистрациям в отчёте не будет.'));
+        }
+        // Ключ поля показываем в том же режиме «подробно», что и у измерений:
+        // переключателей на одной панели должно быть не два, а один.
+        const detailed = storageGet('facts-detailed', '0') === '1';
+        return h('div', { class: 'facts-section reg-list' + (detailed ? ' is-detailed' : '') },
+            h('h4', {}, 'Регистрации ',
+                h('span', { class: 'faint' }, '(' + wb.regs.length + ')')),
+            h('div', { class: 'small faint', style: { marginBottom: '6px' } },
+                'Опись, по которой пришли сигналы. На каждую запись отчёт '
+                + 'соберёт свой раздел — в этом же порядке.'),
+            box,
+            canEdit() ? h('button', {
+                class: 'btn btn--sm', style: { marginTop: '8px' },
+                onclick: () => addRegistration(),
+            }, '+ регистрация') : null);
+    }
+
+    /** Как назвать запись в заголовке карточки. */
+    function registrationCaption(reg, index) {
+        const values = {};
+        reg.fields.forEach((field) => {
+            const key = String(field.key || '').trim();
+            if (key) values[key] = String(field.value || '').trim();
+        });
+        if (values.caption) return values.caption;
+        const named = itemTitleKeys().map((key) => values[key]).filter(Boolean);
+        if (named.length) return named.join(', ');
+        return 'Регистрация ' + (index + 1);
+    }
+
+    function registrationCard(reg, index) {
+        const editable = canEdit();
+        const required = itemRequired();
+        const have = new Set(reg.fields.map((field) => String(field.key || '').trim()));
+        const lacking = required.filter((key) => {
+            const field = reg.fields.find((item) => String(item.key || '').trim() === key);
+            return !field || !String(field.value || '').trim();
+        });
+
+        const rows = h('div', { class: 'reg-fields' });
+        reg.fields.forEach((field) => rows.appendChild(registrationField(reg, field, required)));
+
+        const missingChips = lacking
+            .filter((key) => !have.has(key))
+            .map((key) => h('button', {
+                class: 'chip', title: 'Добавить поле «' + factTitle(key) + '»',
+                onclick: () => {
+                    reg.fields.push({ key: key, value: '' });
+                    markFactsDirty();
+                    renderFactsBody();
+                },
+            }, factTitle(key), ' +'));
+
+        return h('div', { class: 'reg-card' + (lacking.length ? ' is-missing' : '') },
+            h('div', { class: 'reg-head' },
+                h('span', { class: 'reg-no' }, String(index + 1)),
+                h('span', { class: 'reg-caption', title: registrationCaption(reg, index) },
+                    registrationCaption(reg, index)),
+                editable ? h('button', {
+                    class: 'btn btn--icon btn--ghost', title: 'Поднять выше',
+                    disabled: index === 0,
+                    onclick: () => moveRegistration(index, -1),
+                }, '↑') : null,
+                editable ? h('button', {
+                    class: 'btn btn--icon btn--ghost', title: 'Опустить ниже',
+                    disabled: index === wb.regs.length - 1,
+                    onclick: () => moveRegistration(index, 1),
+                }, '↓') : null,
+                editable ? h('button', {
+                    class: 'btn btn--icon btn--ghost', title: 'Убрать регистрацию',
+                    onclick: () => {
+                        wb.regs.splice(index, 1);
+                        markFactsDirty();
+                        renderFactsBody();
+                    },
+                }, '×') : null),
+            rows,
+            missingChips.length
+                ? h('div', { class: 'reg-missing' },
+                    h('span', { class: 'small' }, 'не хватает: '), missingChips)
+                : null,
+            editable ? h('button', {
+                class: 'btn btn--sm btn--ghost',
+                onclick: () => {
+                    reg.fields.push({ key: '', value: '' });
+                    markFactsDirty();
+                    renderFactsBody();
+                },
+            }, '+ поле') : null);
+    }
+
+    function registrationField(reg, field, required) {
+        const editable = canEdit();
+        const key = String(field.key || '').trim();
+        const isRequired = required.indexOf(key) !== -1;
+        const unit = factUnit(key);
+
+        const keyInput = h('input', {
+            type: 'text', class: 'key', value: field.key || '', placeholder: 'ключ',
+            disabled: !editable || isRequired,
+            title: isRequired
+                ? 'Поле требуется шаблоном отчёта — имя менять нельзя'
+                : 'Имя поля записи',
+            oninput: (event) => {
+                field.key = event.target.value;
+                markFactsDirty();
+            },
+        });
+        const valueInput = h('input', {
+            type: 'text', value: field.value || '', disabled: !editable,
+            placeholder: unit ? unit : 'значение',
+            title: field.value || '',
+            oninput: (event) => {
+                field.value = event.target.value;
+                event.target.title = event.target.value;
+                // Перерисовать всю панель нельзя — потеряется фокус, поэтому
+                // метку «пусто» снимаем с самого поля и с его карточки.
+                if (isRequired) {
+                    event.target.classList.toggle('is-bad', !event.target.value.trim());
+                    const card = event.target.closest('.reg-card');
+                    if (card) {
+                        card.classList.toggle('is-missing',
+                            !!card.querySelector('input.is-bad'));
+                    }
+                }
+                // Заголовок карточки складывается из каталогов: не обновить
+                // его сразу — и человек, заполнив опись, видит над каждой
+                // записью безличное «Регистрация 3».
+                if (key === 'caption' || itemTitleKeys().indexOf(key) !== -1) {
+                    const card = event.target.closest('.reg-card');
+                    const caption = card && card.querySelector('.reg-caption');
+                    if (caption) {
+                        const index = wb.regs.indexOf(reg);
+                        const text = registrationCaption(reg, index);
+                        caption.textContent = text;
+                        caption.title = text;
+                    }
+                }
+                markFactsDirty();
+                refreshCoverageMarks();
+            },
+        });
+        valueInput.dataset.regField = key;
+        if (isRequired && !String(field.value || '').trim()) valueInput.classList.add('is-bad');
+
+        return h('div', { class: 'reg-field' },
+            h('span', { class: 'reg-label', title: key }, factTitle(key) || 'поле'),
+            keyInput,
+            valueInput,
+            editable && !isRequired ? h('button', {
+                class: 'btn btn--icon btn--ghost', title: 'Убрать поле',
+                onclick: () => {
+                    const index = reg.fields.indexOf(field);
+                    if (index !== -1) reg.fields.splice(index, 1);
+                    markFactsDirty();
+                    renderFactsBody();
+                },
+            }, '×') : null);
+    }
+
+    function addRegistration() {
+        // Новая запись сразу с полями, которых ждёт шаблон, и с теми, из
+        // которых складывается её заголовок: пустую карточку человеку
+        // пришлось бы заполнять ключами наугад.
+        const keys = [];
+        itemTitleKeys().concat(itemRequired()).forEach((key) => {
+            if (keys.indexOf(key) === -1) keys.push(key);
+        });
+        wb.regs.push({ fields: keys.map((key) => ({ key: key, value: '' })) });
+        markFactsDirty();
+        renderFactsBody();
+    }
+
+    function moveRegistration(index, step) {
+        const next = index + step;
+        if (next < 0 || next >= wb.regs.length) return;
+        const moved = wb.regs.splice(index, 1)[0];
+        wb.regs.splice(next, 0, moved);
+        markFactsDirty();
+        renderFactsBody();
     }
 
     function measurementRow(row, missing, detailed) {
@@ -4490,14 +4797,14 @@
             return missing
                 ? {
                     id: 'facts', missing: missing,
-                    hint: 'Шаблон отчёта требует измерений, которых пока нет: ' + missing +
+                    hint: 'Шаблон отчёта требует данных, которых пока нет: ' + missing +
                         '. Внесите их слева — иначе разделы выйдут с пометкой '
                         + '«не хватает данных». Можно и сгенерировать как есть, '
                         + 'чтобы посмотреть структуру.',
                 }
                 : {
                     id: 'draft',
-                    hint: 'Измерения на месте. Система пройдёт по разделам шаблона '
+                    hint: 'Данные на месте. Система пройдёт по разделам шаблона '
                         + '«' + reportTypeTitle(wb.case.report_type) + '», подберёт '
                         + 'фрагменты библиотеки и напишет черновик.',
                 };

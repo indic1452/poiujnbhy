@@ -1148,6 +1148,99 @@ table.grid td.primary {
     gap: 6px;
 }
 
+/* Карточка регистрации из описи. Отчёт соберёт по разделу на каждую, и
+   порядок карточек — это порядок разделов в письме, поэтому номер стоит
+   слева и виден всегда, а стрелки переставляют записи. */
+.reg-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: var(--panel);
+}
+
+.reg-card.is-missing {
+    border-color: var(--danger);
+}
+
+.reg-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.reg-no {
+    flex: none;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    line-height: 20px;
+    text-align: center;
+}
+
+/* Заголовок записи — это каталоги, а они длинные. Обрезаем в одну строку:
+   иначе шапка карточки в панели шириной 400 px разъезжается на три. */
+.reg-caption {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.reg-head .btn--icon {
+    flex: none;
+}
+
+.reg-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+/* Подпись поля по-русски. Ширина фиксированная, чтобы поля ввода стояли
+   в столбик и глаз не искал начало значения у каждой строки. */
+.reg-label {
+    flex: 0 0 132px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--fs-sm);
+    color: var(--muted);
+}
+
+.reg-field input {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+/* Технический ключ поля виден только в подробном режиме: человеку, который
+   заносит опись, «line_type» не говорит ничего. */
+.reg-field input.key {
+    display: none;
+}
+
+.reg-list.is-detailed .reg-field input.key {
+    display: block;
+    flex: 0 0 108px;
+}
+
+.reg-missing {
+    margin-top: 4px;
+}
+
+.reg-missing > span {
+    color: var(--danger);
+}
+
 .coverage-box {
     border: 1px solid var(--danger);
     background: var(--danger-soft);

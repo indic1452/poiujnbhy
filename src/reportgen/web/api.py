@@ -379,6 +379,12 @@ def config(request: Request) -> Dict[str, Any]:
                     "required_facts": list(spec.required_facts),
                     "optional_facts": list(spec.optional_facts),
                     "target_words": spec.target_words,
+                    # Раздел, который повторяется по описи: без этих трёх
+                    # полей экран данных не знает ни что заводить списком,
+                    # ни каких полей ждать от каждой записи.
+                    "repeat_over": spec.repeat_over,
+                    "item_required": list(spec.item_required),
+                    "item_title": spec.item_title,
                 }
                 for spec in outline.sections
             ],
@@ -3278,10 +3284,16 @@ def _line_or_empty(value: Any) -> str:
     line = str(value or "").strip()
     if not line:
         return ""
-    if line not in LINE_TYPES:
-        known = ", ".join(LINE_TITLES[key] for key in LINE_TYPES)
-        raise ServiceError(f"неизвестная линия связи '{line}' (известны: {known})", 400)
-    return line
+    if line in LINE_TYPES:
+        return line
+    # Название линии принимаем наравне с её кодом: «РРЛС» пишут и в описи, и
+    # в переносе данных из другой системы, а отказ звучал издевательски —
+    # «неизвестная линия связи 'РРЛС' (известны: СЛС, РРЛС, КВ, Другое)».
+    for key in LINE_TYPES:
+        if LINE_TITLES[key].casefold() == line.casefold():
+            return key
+    known = ", ".join(f"{key} ({LINE_TITLES[key]})" for key in LINE_TYPES)
+    raise ServiceError(f"неизвестная линия связи '{line}' (известны: {known})", 400)
 
 
 def _safe_name(name: str) -> str:
