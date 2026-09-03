@@ -24,6 +24,8 @@ from ..domains import registry as domain_registry
 from ..store.models import (
     ABSENCE_KINDS,
     ABSENCE_TITLES,
+    DEPARTMENT_DAY_KINDS,
+    DEPARTMENT_DAY_TITLES,
     ADMIN_ROLES,
     CASE_PRIORITIES,
     CASE_STATUSES,
@@ -2435,6 +2437,16 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
             if item.date_from <= day <= item.date_to:
                 cells.setdefault(f"{item.user_id}|{day}", []).append(item.to_dict())
 
+    # Дни, отмеченные на весь отдел: учения, собрание, общие работы. Кладём
+    # их по дням той же раскладкой, что и клетки: сетке нужен готовый ответ
+    # на «что сегодня у отдела», а не список промежутков.
+    marked = repos.department_days.in_period(start, finish)
+    by_day: Dict[str, List[Dict[str, Any]]] = {}
+    for item in marked:
+        for day in days_list:
+            if item.date_from <= day <= item.date_to:
+                by_day.setdefault(day, []).append(item.to_dict())
+
     return {
         "date_from": start,
         "date_to": finish,
@@ -2443,11 +2455,59 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
         "staff": staff,
         "cells": cells,
         "items": [item.to_dict() for item in records],
+        "department_days": by_day,
+        "can_mark_days": bool(actor.is_admin),
+        "day_kinds": [{"id": kind, "title": DEPARTMENT_DAY_TITLES[kind]}
+                      for kind in DEPARTMENT_DAY_KINDS],
         "kinds": [
             {"id": kind, "title": ABSENCE_TITLES[kind], "present": kind in PRESENT_KINDS}
             for kind in ABSENCE_KINDS
         ],
     }
+
+
+@router.post("/roster/days")
+def mark_department_day(request: Request) -> Dict[str, Any]:
+    """Отметить день на весь отдел: общие работы, занятия, собрание.
+
+    Это не отсутствие: отсутствие про человека, а такой день про сам день.
+    Ставит начальство — день касается всех, и заводить его каждому по своему
+    усмотрению значит спорить о том, что у отдела в четверг.
+    """
+    actor = require_admin(request)
+    repos = _repos(request)
+    payload = _body(request)
+    kind = str(payload.get("kind") or "work").strip()
+    if kind not in DEPARTMENT_DAY_KINDS:
+        known = ", ".join(DEPARTMENT_DAY_KINDS)
+        raise ServiceError(f"неизвестный вид дня '{kind}' (можно: {known})", 400)
+    start = _date_or_empty(payload.get("date_from", ""), "date_from") or _today()
+    finish = _date_or_empty(payload.get("date_to", ""), "date_to") or start
+    if finish < start:
+        raise ServiceError("конец промежутка раньше начала", 400)
+    title = _card_line(payload.get("title", ""), "note")
+    note = _card_line(payload.get("note", ""), "note")
+
+    item = repos.department_days.add(kind, start, finish, title=title, note=note,
+                                     created_by=actor.id)
+    repos.audit.log("roster.day", user=actor, object_type="department_day",
+                    object_id=str(item.id),
+                    details={"kind": kind, "from": start, "to": finish})
+    return {"day": item.to_dict()}
+
+
+@router.delete("/roster/days/{day_id}")
+def unmark_department_day(request: Request, day_id: int) -> Dict[str, Any]:
+    actor = require_admin(request)
+    repos = _repos(request)
+    item = repos.department_days.get(day_id)
+    if item is None:
+        raise ServiceError("отметка не найдена", 404)
+    repos.department_days.delete(day_id)
+    repos.audit.log("roster.day.remove", user=actor,
+                    object_type="department_day", object_id=str(day_id),
+                    details={"kind": item.kind, "from": item.date_from})
+    return {"ok": True}
 
 
 @router.get("/roster/day")
@@ -2668,6 +2728,11 @@ def clear_notifications(request: Request) -> Dict[str, Any]:
     return {"ok": True}
 
 
+#: Должности, которые вызвать нельзя. Вызов — это «подойдите ко мне», и
+#: снизу вверх он не делается: к начальнику отдела заходят сами.
+UNCALLABLE_ROLES = ("owner", "head")
+
+
 @router.post("/notifications/call")
 def call_to_office(request: Request) -> Dict[str, Any]:
     """Вызвать сотрудника в кабинет.
@@ -2684,6 +2749,12 @@ def call_to_office(request: Request) -> Dict[str, Any]:
         raise ServiceError("сотрудник не найден", 404)
     if user.id == admin.id:
         raise ServiceError("себя вызывать не нужно", 400)
+    if user.role in UNCALLABLE_ROLES:
+        # В отделе к начальнику не вызывают — к нему заходят. Права
+        # администратора есть и у начальника группы, и без этого правила он
+        # мог бы вызвать начальника отдела к себе в кабинет.
+        raise ServiceError(
+            "начальника отдела не вызывают — к нему заходят сами", 403)
     where = _card_line(payload.get("place", ""), "tc_no")
     note = _card_line(payload.get("note", ""), "note")
 

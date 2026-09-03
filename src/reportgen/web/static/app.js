@@ -79,6 +79,12 @@
         engineer: 'инженер',
     };
 
+    /* Кого нельзя вызвать в кабинет. Вызов идёт сверху вниз и только так:
+       к начальнику отдела заходят сами. Права администратора есть и у
+       начальника группы — без этого правила он мог бы вызвать начальника
+       отдела к себе. */
+    const UNCALLABLE_ROLES = ['owner', 'head'];
+
     const ABSENCE_LABEL = {
         duty: 'дежурство',
         vacation: 'отпуск',
@@ -2791,6 +2797,7 @@
         if (!rosterState.day) rosterState.day = todayIso();
 
         const gridBox = h('div', { class: 'card' });
+        const daysBox = h('div', {});
         const dayBox = h('div', {});
         const rangeLabel = h('span', { class: 'small muted' });
 
@@ -2852,6 +2859,7 @@
                             date_from: rosterState.day }, load),
                     }, 'Отметить себя'))),
             rangeLabel,
+            daysBox,
             dayBox,
             gridBox,
             rosterLegend(),
@@ -2873,21 +2881,150 @@
             if (data.days.indexOf(rosterState.day) === -1) rosterState.day = data.days[0];
             rangeLabel.textContent = fmtDate(data.date_from) + ' — ' + fmtDate(data.date_to);
             drawGrid(data);
+            drawDepartmentDays(data);
             await drawDay();
+        }
+
+        /* Дни, отмеченные на весь отдел: учения, собрание, общие работы.
+
+           Это не расход одного человека, а то, что в этот день у отдела
+           целиком. Записывать такое отсутствием пришлось бы двадцатью
+           строками на один день — и счёт «сколько людей в строю» перестал бы
+           сходиться. */
+        function drawDepartmentDays(data) {
+            clear(daysBox);
+            const marked = data.department_days || {};
+            const shown = [];
+            const seen = {};
+            data.days.forEach((day) => (marked[day] || []).forEach((item) => {
+                if (seen[item.id]) return;
+                seen[item.id] = true;
+                shown.push(item);
+            }));
+            if (!shown.length && !data.can_mark_days) return;
+
+            const row = h('div', { class: 'toolbar days-bar' });
+            append(row, [
+                h('span', { class: 'small muted' }, shown.length
+                    ? 'Общие дни отдела:'
+                    : 'Общих дней отдела на этот промежуток не отмечено'),
+                shown.map((item) => h('span', {
+                    class: 'chip day-chip day-' + item.kind,
+                    title: [item.kind_title, item.note].filter(Boolean).join('. '),
+                },
+                    h('b', {}, item.title || item.kind_title),
+                    h('span', { class: 'small faint' },
+                        item.date_from === item.date_to
+                            ? fmtDate(item.date_from)
+                            : fmtDate(item.date_from) + '—' + fmtDate(item.date_to)),
+                    data.can_mark_days ? h('button', {
+                        class: 'chip-x', title: 'Снять отметку',
+                        onclick: () => dropDepartmentDay(item),
+                    }, '×') : null)),
+                h('span', { class: 'grow' }),
+                data.can_mark_days ? h('button', {
+                    class: 'btn btn--sm',
+                    title: 'Отметить день на весь отдел: общие работы, '
+                        + 'занятия, собрание, нерабочий день',
+                    onclick: () => markDepartmentDay(data),
+                }, 'Отметить день отдела') : null,
+            ]);
+            daysBox.appendChild(row);
+        }
+
+        async function markDepartmentDay(data) {
+            const kinds = data.day_kinds || [];
+            const kind = h('select', {}, kinds.map((item) =>
+                h('option', { value: item.id }, item.title)));
+            const from = h('input', { type: 'date', value: rosterState.day });
+            const to = h('input', { type: 'date', value: rosterState.day });
+            const title = h('input', {
+                type: 'text',
+                placeholder: 'например, Парко-хозяйственный день',
+            });
+            const note = h('textarea', { rows: 2, placeholder: 'подробности (не обязательно)' });
+            const submit = h('button', {
+                class: 'btn btn--primary',
+                onclick: async () => {
+                    submit.disabled = true;
+                    try {
+                        await api.post('/api/roster/days', {
+                            kind: kind.value,
+                            date_from: from.value,
+                            date_to: to.value || from.value,
+                            title: title.value.trim(),
+                            note: note.value.trim(),
+                        });
+                        dialog.close();
+                        toast('День отдела отмечен', 'ok');
+                        await load();
+                    } catch (error) {
+                        toastError(error);
+                        submit.disabled = false;
+                    }
+                },
+            }, 'Отметить');
+            const dialog = openModal({
+                title: 'День отдела',
+                body: [
+                    h('div', { class: 'small muted' },
+                        'Отметка стоит на дне, а не на человеке: расход у всех '
+                        + 'остаётся своим, а в сетке видно, что в этот день у '
+                        + 'отдела общее дело.'),
+                    h('label', { class: 'field' }, 'Что', kind),
+                    h('div', { class: 'field-row' },
+                        h('label', { class: 'field' }, 'С', from),
+                        h('label', { class: 'field' }, 'По', to)),
+                    h('label', { class: 'field' }, 'Название', title),
+                    h('label', { class: 'field' }, 'Примечание', note),
+                ],
+                footer: [submit,
+                    h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена')],
+            });
+        }
+
+        async function dropDepartmentDay(item) {
+            const ok = await confirmDialog({
+                title: 'Снять отметку',
+                message: 'Отметка «' + (item.title || item.kind_title)
+                    + '» будет снята со всего отдела.',
+                confirmText: 'Снять',
+                danger: true,
+            });
+            if (!ok) return;
+            try {
+                await api.del('/api/roster/days/' + item.id);
+                await load();
+            } catch (error) {
+                toastError(error);
+            }
         }
 
         function drawGrid(data) {
             clear(gridBox);
+            const marked = data.department_days || {};
             const head = h('tr', {}, h('th', { class: 'roster-name' }, 'Сотрудник'),
-                data.days.map((day) => h('th', {
-                    class: 'roster-day' + (day === data.today ? ' is-today' : '')
-                        + (isWeekend(day) ? ' is-weekend' : '')
-                        + (day === rosterState.day ? ' is-picked' : ''),
-                    title: 'Показать расход на этот день',
-                    onclick: () => { rosterState.day = day; load(); },
-                },
-                    h('b', {}, WEEKDAYS[new Date(day + 'T00:00:00').getDay()]),
-                    h('span', {}, fmtDate(day).slice(0, 5)))));
+                data.days.map((day) => {
+                    const dayMarks = marked[day] || [];
+                    const first = dayMarks[0];
+                    return h('th', {
+                        class: 'roster-day' + (day === data.today ? ' is-today' : '')
+                            + (isWeekend(day) ? ' is-weekend' : '')
+                            + (day === rosterState.day ? ' is-picked' : '')
+                            + (first ? ' is-marked day-' + first.kind : ''),
+                        title: dayMarks.length
+                            ? dayMarks.map((item) => item.title || item.kind_title).join('; ')
+                            : 'Показать расход на этот день',
+                        onclick: () => { rosterState.day = day; load(); },
+                    },
+                        h('b', {}, WEEKDAYS[new Date(day + 'T00:00:00').getDay()]),
+                        h('span', {}, fmtDate(day).slice(0, 5)),
+                        // Отметка на весь отдел стоит в шапке дня, а не в
+                        // клетках: она про день, а не про человека, и
+                        // повторять её двадцать раз в столбце незачем.
+                        first ? h('i', { class: 'roster-day-mark' },
+                            first.title || first.kind_title) : null);
+                }));
 
             const body = h('tbody', {});
             data.staff.forEach((person) => {
@@ -9030,9 +9167,15 @@
                         }, 'Пароль'),
                         h('button', {
                             class: 'btn btn--sm',
-                            // Себя вызывать незачем, отключённому вызов не дойдёт.
-                            disabled: !user.active || user.id === (state.user || {}).id,
-                            title: 'Уведомление со звуком: подойти в кабинет',
+                            // Себя вызывать незачем, отключённому вызов не
+                            // дойдёт, а к начальнику отдела не вызывают —
+                            // к нему заходят сами.
+                            disabled: !user.active
+                                || user.id === (state.user || {}).id
+                                || UNCALLABLE_ROLES.indexOf(user.role) !== -1,
+                            title: UNCALLABLE_ROLES.indexOf(user.role) !== -1
+                                ? 'К начальнику отдела заходят сами, а не вызывают'
+                                : 'Уведомление со звуком: подойти в кабинет',
                             onclick: () => callToOffice(user),
                         }, 'Вызвать'),
                         h('button', {
@@ -9074,7 +9217,11 @@
 
         /* «Вызвать в кабинет» — то, что в отделе делают голосом через
            коридор. Уведомление приходит со звуком, чтобы человек за
-           наушниками его не пропустил. */
+           наушниками его не пропустил.
+
+           Вызов идёт сверху вниз и только так: к начальнику отдела заходят
+           сами. Права администратора есть и у начальника группы — без этого
+           правила он мог бы вызвать начальника отдела к себе. */
         async function callToOffice(user) {
             const place = h('input', { type: 'text', placeholder: 'например, каб. 214' });
             const note = h('textarea', { rows: 3, placeholder: 'с чем подойти (не обязательно)' });

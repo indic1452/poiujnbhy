@@ -60,6 +60,23 @@ CREATE TABLE IF NOT EXISTS absences (
 CREATE INDEX IF NOT EXISTS idx_absences_user ON absences(user_id, date_from);
 CREATE INDEX IF NOT EXISTS idx_absences_range ON absences(date_from, date_to);
 
+-- День, отмеченный на весь отдел: общие работы, занятия, собрание, нерабочий
+-- день. Это не отсутствие: отсутствие про человека («Жуков в командировке»),
+-- а такой день про сам день («в четверг весь отдел на учениях»). Держать их
+-- в одной таблице нельзя — счёт «сколько людей в строю» сразу перестал бы
+-- сходиться, и пришлось бы заводить строку на каждого из двадцати.
+CREATE TABLE IF NOT EXISTS department_days (
+    id         INTEGER PRIMARY KEY,
+    kind       TEXT    NOT NULL,            -- work|study|meeting|holiday
+    date_from  TEXT    NOT NULL,            -- ГГГГ-ММ-ДД включительно
+    date_to    TEXT    NOT NULL,            -- ГГГГ-ММ-ДД включительно
+    title      TEXT    NOT NULL DEFAULT '', -- что именно: «Парко-хозяйственный день»
+    note       TEXT    NOT NULL DEFAULT '',
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_department_days ON department_days(date_from, date_to);
+
 -- Личные документы сотрудника: справка-объективка и всё, что к ней. Файл
 -- лежит на диске, строка хранит имя, размер и путь. Своё грузит и смотрит
 -- каждый; чужое — начальник отдела, заместитель и создатель системы: это

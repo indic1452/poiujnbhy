@@ -33,6 +33,7 @@ from .models import (
     CaseNote,
     Chat,
     ChatMessage,
+    DepartmentDay,
     Document,
     EditPair,
     Notice,
@@ -2161,6 +2162,48 @@ class PersonFileRepo:
         return item.path
 
 
+class DepartmentDayRepo:
+    """Дни, отмеченные на весь отдел: общие работы, занятия, собрание.
+
+    Отдельно от расхода намеренно. Расход отвечает «где человек», а такой
+    день — «что в этот день у всего отдела»: в четверг учения, в пятницу
+    парко-хозяйственный день. Записав это отсутствием, пришлось бы завести
+    двадцать строк на один день и сломать счёт «сколько людей в строю».
+    """
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def add(self, kind: str, date_from: str, date_to: str, title: str = "",
+            note: str = "", created_by: int | None = None) -> DepartmentDay:
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "INSERT INTO department_days(kind, date_from, date_to, title, "
+                "note, created_by, created_at) VALUES(?,?,?,?,?,?,?)",
+                (kind, date_from, date_to, title.strip(), note.strip(),
+                 created_by, utcnow()),
+            )
+        return self.get(int(cursor.lastrowid))    # type: ignore[return-value]
+
+    def get(self, day_id: int) -> DepartmentDay | None:
+        row = self.db.query_one(
+            "SELECT * FROM department_days WHERE id = ?", (day_id,))
+        return DepartmentDay.from_row(row) if row else None
+
+    def in_period(self, date_from: str, date_to: str) -> List[DepartmentDay]:
+        """Все дни отдела, пересекающиеся с промежутком."""
+        rows = self.db.query(
+            "SELECT * FROM department_days WHERE date_from <= ? AND date_to >= ? "
+            "ORDER BY date_from, id", (date_to, date_from))
+        return rows_to(DepartmentDay, rows)
+
+    def delete(self, day_id: int) -> bool:
+        with self.db.transaction() as connection:
+            cursor = connection.execute(
+                "DELETE FROM department_days WHERE id = ?", (day_id,))
+        return bool(cursor.rowcount)
+
+
 class AbsenceRepo:
     """Расход личного состава: чем занят человек в эти дни."""
 
@@ -2669,6 +2712,7 @@ class Repositories:
         self.edits = EditPairRepo(db)
         self.chats = ChatRepo(db)
         self.absences = AbsenceRepo(db)
+        self.department_days = DepartmentDayRepo(db)
         self.person_files = PersonFileRepo(db)
         self.board = BoardRepo(db)
         self.notices = NoticeRepo(db)

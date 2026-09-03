@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "14"
+SCHEMA_VERSION = "15"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -341,7 +341,8 @@ class Database:
             return False
         return {"chunks_fts", "chunks_vocab", "cases_fts", "case_files",
                 "person_files", "notifications", "talks", "talk_members",
-                "talk_messages", "talk_files", "case_notes"}.issubset(present)
+                "talk_messages", "talk_files", "case_notes",
+                "department_days"}.issubset(present)
 
     def _rename_domains(self) -> None:
         """Переименование направлений при смене справочника.

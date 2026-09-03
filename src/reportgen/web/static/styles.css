@@ -6350,3 +6350,77 @@ table.grid .row-actions .btn--icon svg {
     text-overflow: ellipsis;
     max-width: 22ch;
 }
+
+/* --- Дни, отмеченные на весь отдел -------------------------------------- */
+/* Отметка живёт в шапке дня, а не в клетках: она про день, а не про
+   человека, и повторять её двадцать раз в столбце незачем. */
+
+/* Два поля в строку: «С» и «По» читаются как один промежуток, а не как два
+   независимых вопроса. */
+.field-row {
+    display: flex;
+    gap: 10px;
+}
+
+.field-row > .field {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.days-bar {
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 10px 0 4px;
+}
+
+.day-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border);
+    border-left-width: 3px;
+    border-radius: var(--radius-sm);
+    padding: 2px 8px;
+    background: var(--panel);
+}
+
+.day-chip .chip-x {
+    border: 0;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 2px;
+}
+
+.day-chip .chip-x:hover { color: var(--danger); }
+
+/* Цвет вида дня — один и тот же и на фишке, и в шапке столбца: глаз ищет
+   в сетке то же пятно, что увидел в строке над ней. */
+.day-work    { border-left-color: var(--accent); }
+.day-study   { border-left-color: #b07d2b; }
+.day-meeting { border-left-color: #2f7d5a; }
+.day-holiday { border-left-color: #8a5cd6; }
+
+.roster-day.is-marked {
+    border-bottom: 3px solid var(--accent);
+}
+
+.roster-day.is-marked.day-study   { border-bottom-color: #b07d2b; }
+.roster-day.is-marked.day-meeting { border-bottom-color: #2f7d5a; }
+.roster-day.is-marked.day-holiday { border-bottom-color: #8a5cd6; }
+
+.roster-day-mark {
+    display: block;
+    font-style: normal;
+    font-size: 10px;
+    line-height: 1.2;
+    color: var(--muted);
+    max-width: 9ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 2px;
+}

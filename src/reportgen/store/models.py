@@ -1097,6 +1097,63 @@ class PersonFile:
         }
 
 
+#: Виды дней, отмеченных на весь отдел. Немного намеренно: что именно за
+#: работы, говорит название, а вид нужен только чтобы день был узнаваем
+#: цветом с одного взгляда на сетку.
+DEPARTMENT_DAY_KINDS = ("work", "study", "meeting", "holiday")
+DEPARTMENT_DAY_TITLES = {
+    "work": "общие работы отдела",
+    "study": "занятия, учения",
+    "meeting": "общее собрание",
+    "holiday": "нерабочий день",
+}
+
+
+@dataclass
+class DepartmentDay:
+    """День, отмеченный на весь отдел.
+
+    Это не отсутствие. Отсутствие — про человека («Жуков в командировке»), а
+    такой день — про сам день («в четверг весь отдел на учениях»). Держать
+    их вместе нельзя: счёт «сколько людей в строю» перестал бы сходиться, и
+    на один день пришлось бы заводить строку каждому из двадцати.
+    """
+
+    id: int
+    kind: str
+    date_from: str
+    date_to: str
+    title: str = ""
+    note: str = ""
+    created_by: int | None = None
+    created_at: str = ""
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "DepartmentDay":
+        return cls(
+            id=row["id"],
+            kind=row["kind"],
+            date_from=row["date_from"],
+            date_to=row["date_to"],
+            title=_col(row, "title", "") or "",
+            note=_col(row, "note", "") or "",
+            created_by=_col(row, "created_by", None),
+            created_at=_col(row, "created_at", ""),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "kind_title": DEPARTMENT_DAY_TITLES.get(self.kind, self.kind),
+            "date_from": self.date_from,
+            "date_to": self.date_to,
+            "title": self.title,
+            "note": self.note,
+            "created_at": self.created_at,
+        }
+
+
 @dataclass
 class Absence:
     """Период отсутствия или дежурства сотрудника."""

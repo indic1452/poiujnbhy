@@ -1999,6 +1999,123 @@ class UploadedReportTests(WebTestCase):
         self.assertIn("пустой", response.json()["error"])
 
 
+class DepartmentDayTests(WebTestCase):
+    """Дни, отмеченные на весь отдел: общие работы, занятия, собрание.
+
+    Это не расход одного человека. Записать «в четверг учения» отсутствием
+    значило бы завести двадцать строк на один день и сломать счёт «сколько
+    людей в строю».
+    """
+
+    def test_a_marked_day_shows_up_in_the_roster(self):
+        answer = self.client.post("/api/roster/days", json={
+            "kind": "work", "date_from": "2026-09-10", "date_to": "2026-09-10",
+            "title": "Парко-хозяйственный день"})
+        self.assertEqual(200, answer.status_code, answer.text)
+        grid = self.client.get("/api/roster?date_from=2026-09-07&days=7").json()
+        marked = grid["department_days"]
+        self.assertIn("2026-09-10", marked)
+        self.assertEqual("Парко-хозяйственный день", marked["2026-09-10"][0]["title"])
+        self.assertEqual("общие работы отдела", marked["2026-09-10"][0]["kind_title"])
+
+    def test_a_several_day_mark_covers_every_day(self):
+        self.client.post("/api/roster/days", json={
+            "kind": "study", "date_from": "2026-09-08", "date_to": "2026-09-10",
+            "title": "Учения"})
+        marked = self.client.get(
+            "/api/roster?date_from=2026-09-07&days=7").json()["department_days"]
+        self.assertEqual(["2026-09-08", "2026-09-09", "2026-09-10"],
+                         sorted(marked.keys()))
+
+    def test_a_day_outside_the_window_is_not_shown(self):
+        self.client.post("/api/roster/days", json={
+            "kind": "meeting", "date_from": "2026-12-01", "date_to": "2026-12-01"})
+        marked = self.client.get(
+            "/api/roster?date_from=2026-09-07&days=7").json()["department_days"]
+        self.assertEqual({}, marked)
+
+    def test_the_mark_does_not_touch_the_head_count(self):
+        """Расход у каждого остаётся своим: отметка стоит на дне."""
+        before = self.client.get("/api/roster/day?date=2026-09-10").json()
+        self.client.post("/api/roster/days", json={
+            "kind": "work", "date_from": "2026-09-10", "date_to": "2026-09-10"})
+        after = self.client.get("/api/roster/day?date=2026-09-10").json()
+        for key in ("present", "away", "marked", "total"):
+            self.assertEqual(before[key], after[key], f"сбился счёт «{key}»")
+
+    def test_the_mark_can_be_taken_off(self):
+        day = self.client.post("/api/roster/days", json={
+            "kind": "holiday", "date_from": "2026-09-10",
+            "date_to": "2026-09-10"}).json()["day"]
+        self.assertEqual(200, self.client.delete(
+            f"/api/roster/days/{day['id']}").status_code)
+        marked = self.client.get(
+            "/api/roster?date_from=2026-09-07&days=7").json()["department_days"]
+        self.assertEqual({}, marked)
+        self.assertEqual(404, self.client.delete(
+            f"/api/roster/days/{day['id']}").status_code)
+
+    def test_an_unknown_kind_is_refused_with_the_list(self):
+        answer = self.client.post("/api/roster/days", json={
+            "kind": "shashlyk", "date_from": "2026-09-10"})
+        self.assertEqual(400, answer.status_code)
+        self.assertIn("work", answer.json()["error"])
+
+    def test_a_backwards_period_is_refused(self):
+        answer = self.client.post("/api/roster/days", json={
+            "kind": "work", "date_from": "2026-09-10", "date_to": "2026-09-08"})
+        self.assertEqual(400, answer.status_code)
+
+    def test_an_engineer_does_not_mark_days_for_the_department(self):
+        """День касается всех: ставит его начальство."""
+        self.login("engineer")
+        answer = self.client.post("/api/roster/days", json={
+            "kind": "work", "date_from": "2026-09-10"})
+        self.assertEqual(403, answer.status_code)
+        self.assertFalse(self.client.get(
+            "/api/roster?date_from=2026-09-07&days=7").json()["can_mark_days"])
+
+    def test_the_boss_is_told_they_may_mark_days(self):
+        self.login("nachalnik")
+        self.assertTrue(self.client.get(
+            "/api/roster?date_from=2026-09-07&days=7").json()["can_mark_days"])
+
+
+class SummonTests(WebTestCase):
+    """Вызов в кабинет идёт сверху вниз и только так."""
+
+    def test_the_head_of_department_cannot_be_summoned(self):
+        """К начальнику отдела заходят сами, а не вызывают его к себе.
+
+        Права администратора есть и у начальника группы — без этого правила
+        он мог бы вызвать начальника отдела.
+        """
+        head = self.repos.users.by_login("nachalnik")
+        for who in ("gruppa", "zam", "admin"):
+            self.login(who)
+            answer = self.client.post("/api/notifications/call",
+                                      json={"user_id": head.id})
+            self.assertEqual(403, answer.status_code,
+                             f"«{who}» вызвал начальника отдела")
+            self.assertIn("заходят", answer.json()["error"])
+
+    def test_an_engineer_can_still_be_summoned(self):
+        engineer = self.repos.users.by_login("engineer")
+        self.login("nachalnik")
+        answer = self.client.post("/api/notifications/call",
+                                  json={"user_id": engineer.id, "place": "каб. 214"})
+        self.assertEqual(200, answer.status_code, answer.text)
+        self.login("engineer")
+        notices = self.client.get("/api/notifications").json()["items"]
+        self.assertTrue([item for item in notices if item["kind"] == "call"])
+
+    def test_the_creator_of_the_system_is_not_summoned_either(self):
+        owner = self.repos.users.by_login("admin")
+        self.login("nachalnik")
+        self.assertEqual(403, self.client.post(
+            "/api/notifications/call", json={"user_id": owner.id}).status_code)
+
+
 class StaleFactsTests(WebTestCase):
     """Отчёт, собранный по прежней редакции исходных данных."""
 
