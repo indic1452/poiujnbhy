@@ -14,7 +14,7 @@ import _bootstrap  # noqa: F401
 from fastapi.testclient import TestClient
 
 from reportgen.config import Settings
-from reportgen.corpus import MIN_CHARS, merge_short_sections, split_document
+from reportgen.corpus import Chunk, MIN_CHARS, merge_short_sections, split_document
 from reportgen.ingest.convert import glued_text_warning
 from reportgen.llm import StubLLM
 from reportgen.store.db import Database
@@ -383,6 +383,149 @@ class VectorIndexTests(unittest.TestCase):
         self.assertAlmostEqual(0.6, float(index.matrix[0][0]), places=5)
         self.assertAlmostEqual(0.8, float(index.matrix[0][1]), places=5)
         self.assertAlmostEqual(1.0, float(index.matrix[1][1]), places=5)
+
+
+class NoiseWordTests(unittest.TestCase):
+    """Слово, стоящее в половине библиотеки, не отличает ничего.
+
+    Вопрос из пяти слов словарь отдела превращает в двадцать два, и любое из
+    них — «связь», «линия», «сигнал» — приводило половину библиотеки. Секунда
+    с лишним на поиск, а помощник за один вопрос ищет до пяти раз.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from reportgen.store.repo import NOISE_MIN_LIBRARY
+
+        cls.repos = Repositories(Database(":memory:"))
+        document = cls.repos.documents.upsert(
+            doc_id="kniga", doc_type="literature", title="Том",
+            source_path="kniga.md", sha256="a" * 64, domain="satellite")
+        total = NOISE_MIN_LIBRARY + 5000
+        # Пишем прямо в таблицы: разбор двадцати пяти тысяч фрагментов ради
+        # проверки отсева слов занял бы минуты.
+        rows, index_rows = [], []
+        for index in range(total):
+            words = ["связь", "лини"]                  # почти в каждом фрагменте
+            # «порог» и «канал» — оба частые, но вместе не встречаются
+            # никогда: на них проверяется возврат к поиску через «или».
+            words.append("порог" if index % 3 == 0 else "канал")
+            if index < 400:
+                words.append("клистрон")               # редкое, ради него и ищут
+            if 400 <= index < 800:
+                words.append("магнетрон")              # тоже редкое
+            text = " ".join(words)
+            uid = f"kniga#{index:06d}"
+            rows.append((uid, document.id, index, "literature", "[]", text,
+                         "current", "satellite"))
+            index_rows.append((text, uid, "literature"))
+        with cls.repos.db.transaction() as connection:
+            connection.executemany(
+                "INSERT INTO chunks(chunk_uid, document_id, ord, doc_type, "
+                "title_path, text, status, domain) VALUES(?,?,?,?,?,?,?,?)", rows)
+            connection.executemany(
+                "INSERT INTO chunks_fts(stemmed, chunk_uid, doc_type) "
+                "VALUES(?,?,?)", index_rows)
+        cls.total = total
+
+    def kept(self, *words):
+        terms, all_common = self.repos.chunks.drop_noise_words(list(words))
+        return terms, all_common
+
+    def asked(self, query):
+        """О чём в итоге спросили указатель — по одной строке на попытку."""
+        seen = []
+        original = self.repos.db.query
+
+        def spy(sql, params=()):
+            if "chunks_fts MATCH" in str(sql):
+                seen.append(str(params[0]))
+            return original(sql, params)
+
+        with mock.patch.object(self.repos.db, "query", spy):
+            self.repos.chunks.search_lexical(query, limit=10)
+        return seen
+
+    def test_a_common_word_is_dropped_and_the_rare_one_stays(self):
+        terms, all_common = self.kept("связь", "лини", "клистрон")
+        self.assertEqual(["клистрон"], terms)
+        self.assertFalse(all_common)
+
+    def test_a_rare_word_survives_however_big_the_library(self):
+        """«Редко» считается от библиотеки, но у редкости есть и свой предел."""
+        terms, _ = self.kept("клистрон", "магнетрон")
+        self.assertEqual(["клистрон", "магнетрон"], terms)
+
+    def test_when_everything_is_common_the_rarest_stay(self):
+        """Вопрос «где про линии связи» тоже надо на что-то отвечать."""
+        terms, all_common = self.kept("связь", "лини", "порог")
+        self.assertTrue(all_common)
+        self.assertTrue(terms, "не осталось ни одного слова")
+        self.assertIn("порог", terms)
+
+    def test_a_repeated_word_is_asked_about_once(self):
+        self.assertEqual(['"клистрон"'], self.asked("клистрон клистрон клистрон"))
+
+    def test_a_common_word_never_reaches_the_index(self):
+        """Не «спросили и отсеяли», а не спросили вовсе."""
+        self.assertEqual(['"клистрон"'], self.asked("связь лини клистрон"))
+
+    def test_the_search_still_finds_what_it_was_asked_for(self):
+        hits = self.repos.chunks.search_lexical("связь лини клистрон", limit=10)
+        self.assertTrue(hits)
+        uids = {uid for uid, _ in hits}
+        self.assertTrue(uids <= {f"kniga#{i:06d}" for i in range(400)},
+                        "нашлось не то, ради чего искали")
+
+    def test_all_common_words_are_asked_for_together(self):
+        """Половина библиотеки подходит под любое из них — значит, нужны все."""
+        asked = self.asked("связь лини порог")
+        self.assertEqual(1, len(asked), asked)
+        self.assertIn(" AND ", asked[0])
+        self.assertNotIn(" OR ", asked[0])
+        hits = self.repos.chunks.search_lexical("связь лини порог", limit=20)
+        self.assertTrue(hits)
+        for uid, _ in hits:
+            self.assertEqual(0, int(uid.split("#")[1]) % 3,
+                             f"{uid} — без слова «порог»")
+
+    def test_words_that_never_meet_are_asked_for_separately(self):
+        """«Все сразу» не нашло ничего — значит, спрашиваем как раньше.
+
+        Пустой ответ на заданный вопрос дороже лишней секунды поиска.
+        """
+        terms, all_common = self.kept("порог", "канал", "связь")
+        self.assertTrue(all_common)
+        asked = self.asked("порог канал связь")
+        self.assertEqual(2, len(asked), f"попыток вышло {len(asked)}: {asked}")
+        self.assertIn(" AND ", asked[0])
+        self.assertIn(" OR ", asked[1])
+        hits = self.repos.chunks.search_lexical("порог канал связь", limit=10)
+        self.assertTrue(hits, "вместе не встретились — и ответа не стало")
+
+    def test_a_small_library_is_left_alone(self):
+        """На сотне фрагментов доля — величина случайная, а поиск и так быстр."""
+        small = Repositories(Database(":memory:"))
+        document = small.documents.upsert(
+            doc_id="malo", doc_type="literature", title="Брошюра",
+            source_path="malo.md", sha256="b" * 64, domain="satellite")
+        small.chunks.replace_for_document(document, [
+            Chunk(chunk_id=f"malo#{i:04d}", doc_id="malo", doc_type="literature",
+                  title_path=["Раздел"], text="связь и линия связи")
+            for i in range(30)])
+        terms, all_common = small.chunks.drop_noise_words(["связь", "лини"])
+        self.assertEqual(["связь", "лини"], terms)
+        self.assertFalse(all_common)
+
+    def test_without_the_dictionary_the_search_works_as_before(self):
+        """Словаря может не быть: база старая или сборка SQLite без него."""
+        from unittest import mock as _mock
+
+        with _mock.patch.object(self.repos.chunks, "_word_counts",
+                                return_value={}):
+            terms, all_common = self.kept("связь", "лини", "клистрон")
+        self.assertEqual(["связь", "лини", "клистрон"], terms)
+        self.assertFalse(all_common)
 
 
 class MissingVectorTests(unittest.TestCase):

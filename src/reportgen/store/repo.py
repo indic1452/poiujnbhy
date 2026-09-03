@@ -12,6 +12,7 @@ import logging
 import re
 import secrets
 import sqlite3
+import time
 from array import array
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Sequence, Set, Tuple
@@ -849,6 +850,67 @@ class ChunkRepo:
     def count(self) -> int:
         return int(self.db.scalar("SELECT count(*) FROM chunks") or 0)
 
+    def drop_noise_words(self, terms: List[str]) -> "Tuple[List[str], bool]":
+        """Выбросить из запроса слова, которые есть почти везде.
+
+        Возвращает оставшиеся слова и признак «частыми оказались все»: в этом
+        случае искать их через «или» бессмысленно — половина библиотеки
+        подойдёт под любое из них, — и спрашивать надо все сразу.
+
+        Вопрос из пяти слов словарь отдела превращает в двадцать два: к
+        «кадру» добавляются frame, frames, frame format, radio frame, к
+        «связи» — link, communication. Все они уходили в поиск через OR, и
+        любое слово вроде «связь» или «линия» приводило половину библиотеки:
+        полмиллиона совпадений, каждое из которых надо было отсеять по типу,
+        направлению и состоянию документа. Секунда с лишним на поиск, а
+        помощник за один вопрос ищет до пяти раз.
+
+        При этом на порядок выдачи такие слова не влияют: bm25 считает вес
+        слова тем меньше, чем оно обычнее, и у слова из половины библиотеки
+        вес около нуля. То есть выбрасываются ровно те слова, которые ничего
+        не решали, — а поиск с 1764 мс сходит до 9 мс.
+
+        Если частые все до одного, оставляем самые редкие из них: пустой
+        запрос не найдёт ничего, а вопрос «где про линии связи» задают.
+        """
+        if len(terms) <= 1:
+            return terms, False
+        counts = self._word_counts(terms)
+        if not counts:
+            return terms, False       # словаря нет — ищем как раньше
+        size = self._library_size()
+        if size < NOISE_MIN_LIBRARY:
+            return terms, False
+        ceiling = int(size * NOISE_SHARE)
+        kept = [term for term in terms if counts.get(term, 0) <= ceiling]
+        if kept:
+            return kept, False
+        # Все слова частые: берём самые редкие, порядок вопроса сохраняем.
+        rarest = sorted(terms, key=lambda term: counts.get(term, 0))[:MIN_TERMS]
+        return [term for term in terms if term in set(rarest)], True
+
+    def _word_counts(self, terms: Sequence[str]) -> Dict[str, int]:
+        """Сколько фрагментов содержит каждое слово — одним обращением."""
+        placeholders = ",".join("?" * len(terms))
+        try:
+            rows = self.db.query(
+                f"SELECT term, doc FROM chunks_vocab WHERE term IN ({placeholders})",
+                tuple(terms))
+        except sqlite3.Error:
+            # Словаря нет: база старая или сборка SQLite без fts5vocab.
+            # Поиск от этого не ломается — он просто останется прежним.
+            return {}
+        return {str(row["term"]): int(row["doc"] or 0) for row in rows}
+
+    def _library_size(self) -> int:
+        now = time.monotonic()
+        cached = getattr(self, "_size_cache", None)
+        if cached is not None and now - cached[0] < _SIZE_TTL:
+            return cached[1]
+        total = int(self.db.scalar("SELECT count(*) FROM chunks") or 0)
+        self._size_cache = (now, total)
+        return total
+
     def search_lexical(
         self, query: str, limit: int = 50, doc_types: Iterable[str] | None = None,
         domains: Iterable[str] | None = None,
@@ -861,10 +923,15 @@ class ChunkRepo:
         а направлений со временем станет больше.
         """
         terms = [_FTS_SPECIAL.sub("", term) for term in tokenize(query)]
-        terms = [term for term in terms if term]
+        terms = list(dict.fromkeys(term for term in terms if term))
         if not terms:
             return []
-        match = " OR ".join(f'"{term}"' for term in terms)
+        terms, all_common = self.drop_noise_words(terms)
+        # Слова остались частые все до одного — значит, отличает фрагмент не
+        # каждое из них, а то, что они стоят вместе. «Или» тут привело бы
+        # половину библиотеки и ничего не сказало о порядке выдачи.
+        joiner = " AND " if all_common else " OR "
+        match = joiner.join(f'"{term}"' for term in terms)
         params: List[Any] = [match]
         sql = ("SELECT f.chunk_uid AS chunk_uid, bm25(chunks_fts) AS rank "
                "FROM chunks_fts f JOIN chunks c ON c.chunk_uid = f.chunk_uid "
@@ -884,7 +951,36 @@ class ChunkRepo:
         sql += " ORDER BY rank LIMIT ?"
         params.append(int(limit))
         # bm25() в SQLite тем меньше, чем релевантнее; переводим в «больше = лучше».
-        return [(row["chunk_uid"], -float(row["rank"])) for row in self.db.query(sql, params)]
+        found = [(row["chunk_uid"], -float(row["rank"]))
+                 for row in self.db.query(sql, params)]
+        if found or not all_common or len(terms) < 2:
+            return found
+        # Все слова вместе не встретились нигде — спрашиваем как раньше, через
+        # «или». Дорого, но пустой ответ на заданный вопрос дороже.
+        params[0] = " OR ".join(f'"{term}"' for term in terms)
+        return [(row["chunk_uid"], -float(row["rank"]))
+                for row in self.db.query(sql, params)]
+
+
+#: Слово, стоящее больше чем в такой доле фрагментов, ничего не отличает.
+#: В библиотеке радиотехнического отдела это «связь», «линия», «сигнал»,
+#: «поле», «система» — они есть в каждом втором фрагменте.
+NOISE_SHARE = 0.15
+
+#: Столько самых редких слов оставляем, даже если частые все до одного.
+#: Иначе вопрос «где про линии связи» не нашёл бы ничего.
+MIN_TERMS = 3
+
+#: Меньше этого числа фрагментов отсев не включаем вовсе. На маленькой
+#: библиотеке любой поиск и так мгновенный, а доля от сотни фрагментов —
+#: величина случайная: слово из трёх фрагментов оказалось бы «частым».
+NOISE_MIN_LIBRARY = 20_000
+
+
+#: Столько секунд верим прошлому размеру библиотеки. Он нужен только чтобы
+#: пересчитать долю в число фрагментов, и лишний счёт на каждый поиск ни к
+#: чему.
+_SIZE_TTL = 60.0
 
 
 class VectorRepo:

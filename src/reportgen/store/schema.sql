@@ -129,6 +129,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
     tokenize = 'unicode61 remove_diacritics 2'
 );
 
+-- Словарь полнотекстового указателя: слово и в скольких фрагментах оно
+-- встречается. Нужен, чтобы отличить слово, которое что-то значит, от слова
+-- вроде «связь» или «линия», стоящего в каждом втором фрагменте библиотеки
+-- радиотехнического отдела. Своих данных не хранит — это взгляд на
+-- chunks_fts, и получается такой ответ одним обращением к указателю.
+CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vocab USING fts5vocab(chunks_fts, 'row');
+
 CREATE TABLE IF NOT EXISTS embeddings (
     chunk_uid TEXT PRIMARY KEY,
     model     TEXT    NOT NULL,

@@ -339,8 +339,8 @@ class Database:
             }
         except sqlite3.Error:
             return False
-        return {"chunks_fts", "cases_fts", "case_files", "person_files",
-                "notifications", "talks", "talk_members",
+        return {"chunks_fts", "chunks_vocab", "cases_fts", "case_files",
+                "person_files", "notifications", "talks", "talk_members",
                 "talk_messages", "talk_files", "case_notes"}.issubset(present)
 
     def _rename_domains(self) -> None:
