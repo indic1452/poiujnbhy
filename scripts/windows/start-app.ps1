@@ -17,7 +17,20 @@ $host_ = Get-Setting 'host' '127.0.0.1'
 
 if (-not (Test-Port $port)) { throw "порт $port занят — приложение уже запущено?" }
 
-Write-Step "Веб-интерфейс: http://$host_`:$port"
+if ($host_ -eq '0.0.0.0' -or $host_ -eq '::') {
+    # Слушаем всю сеть: показываем адрес, который коллеги наберут в браузере.
+    $lan = Get-LanAddress
+    Write-Step "Веб-интерфейс: http://127.0.0.1`:$port (на этой машине)"
+    if ($lan) {
+        Write-Ok "коллегам по сети отдела: http://$lan`:$port"
+    } else {
+        Write-Warn2 'адрес в сети не определился — посмотрите ipconfig'
+    }
+    Write-Warn2 'порт должен быть открыт в брандмауэре, вход по паролю обязателен'
+} else {
+    Write-Step "Веб-интерфейс: http://$host_`:$port"
+    Write-Warn2 "слушаем только эту машину; чтобы открыть отделу, поставьте host = 0.0.0.0 в $script:Config"
+}
 if ($OpenBrowser) {
     Start-Job -ScriptBlock {
         param($url)

@@ -267,6 +267,47 @@ class InstallScriptTests(unittest.TestCase):
         self.assertIn("REPORTGEN_HOME", self.text)
 
 
+class LanAccessTests(unittest.TestCase):
+    """Доступ отделу по сети: адрес должен быть тем, что набирают в браузере."""
+
+    def setUp(self):
+        folder = ROOT / "scripts" / "windows"
+        self.start_app = (folder / "start-app.ps1").read_text(encoding="utf-8-sig")
+        self.common = (folder / "_common.ps1").read_text(encoding="utf-8-sig")
+        self.example = json.loads(
+            (folder / "settings.example.json").read_text(encoding="utf-8-sig"))
+        self.docs = (ROOT / "docs" / "11-windows.md").read_text(encoding="utf-8")
+
+    def test_by_default_the_system_listens_only_to_itself(self):
+        """Служебные материалы не выставляют в сеть по умолчанию."""
+        self.assertEqual("127.0.0.1", self.example["host"])
+        self.assertTrue(self.example["auth_enabled"])
+
+    def test_the_start_script_tells_the_address_colleagues_will_type(self):
+        """«http://0.0.0.0:8080» не открывается ниоткуда.
+
+        Человек, поставивший host = 0.0.0.0, шёл спрашивать, что вводить
+        коллегам.
+        """
+        self.assertIn("function Get-LanAddress {", self.common)
+        # И она действительно зовётся при запуске, а не просто существует.
+        self.assertIn("$lan = Get-LanAddress", self.start_app)
+        self.assertIn("коллегам по сети отдела", self.start_app)
+        self.assertIn("$host_ -eq '0.0.0.0'", self.start_app)
+
+    def test_a_local_only_setup_says_how_to_open_it_to_the_department(self):
+        self.assertIn("host = 0.0.0.0", self.start_app)
+
+    def test_the_loopback_address_is_not_offered_as_a_network_one(self):
+        # 127.0.0.1 и 169.254.* — не адреса отдела.
+        self.assertIn("'127.0.0.1'", self.common)
+        self.assertIn("169.254.*", self.common)
+
+    def test_the_docs_have_the_firewall_rule(self):
+        self.assertIn("New-NetFirewallRule", self.docs)
+        self.assertIn('"host": "0.0.0.0"', self.docs)
+
+
 class ScriptHygieneTests(unittest.TestCase):
     """Общие требования ко всем скриптам комплекта."""
 

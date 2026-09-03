@@ -37,6 +37,27 @@ function Wait-Http($url, $seconds = 180) {
     return $false
 }
 
+function Get-LanAddress {
+    <#
+        Адрес машины в сети отдела — тот, который коллеги набирают в браузере.
+        При host = 0.0.0.0 печатать «http://0.0.0.0:8080» бессмысленно: такой
+        адрес не открывается ниоткуда, и человек идёт спрашивать, что вводить.
+        Берём первый адрес IPv4, который не петля и не APIPA (169.254.x).
+    #>
+    try {
+        $found = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
+            Where-Object {
+                $_.IPAddress -ne '127.0.0.1' -and
+                $_.IPAddress -notlike '169.254.*' -and
+                $_.PrefixOrigin -ne 'WellKnown'
+            } |
+            Sort-Object -Property InterfaceMetric |
+            Select-Object -First 1
+        if ($found) { return $found.IPAddress }
+    } catch { }
+    return ''
+}
+
 function Get-PythonExe {
     $venvPython = Join-Path $script:Venv 'Scripts\python.exe'
     if (Test-Path $venvPython) { return $venvPython }
