@@ -192,7 +192,7 @@ def cmd_useradd(args: argparse.Namespace) -> int:
                               department=args.department or "", team=args.team or "")
     repos.audit.log("user.create", object_type="user", object_id=user.login,
                     details={"role": user.role})
-    print(f"создан сотрудник {user.login} — {ROLE_TITLES.get(user.role, user.role)}")
+    print(f"создан военнослужащий {user.login} — {ROLE_TITLES.get(user.role, user.role)}")
     return 0
 
 
@@ -218,7 +218,7 @@ def cmd_users(args: argparse.Namespace) -> int:
     repos, _ = _open_repos(args)
     users = repos.users.list_all()
     if not users:
-        print("сотрудников нет — заведите создателя системы: "
+        print("военнослужащих нет — заведите создателя системы: "
               "reportgen useradd --login admin --role owner")
         return 1
     for user in users:
@@ -525,7 +525,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_ingest.add_argument(
         "--reset", action="store_true",
         help="стереть библиотеку целиком и загрузить заново "
-             "(письма, отчёты и сотрудники не трогаются)",
+             "(письма, отчёты и военнослужащие не трогаются)",
     )
     p_ingest.add_argument(
         "--doc-type", default=None,

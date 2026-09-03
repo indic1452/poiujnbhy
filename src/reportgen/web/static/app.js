@@ -163,9 +163,9 @@
         'library.domain': 'изменено направление документа',
         'chat.ask': 'вопрос помощнику',
         'chat.delete': 'удалён разговор',
-        'user.create': 'заведён сотрудник',
-        'user.update': 'изменена запись сотрудника',
-        'user.active': 'изменён доступ сотрудника',
+        'user.create': 'добавлен военнослужащий',
+        'user.update': 'изменена запись военнослужащего',
+        'user.active': 'изменён доступ военнослужащего',
         'user.password': 'смена пароля',
         'case.update': 'изменена карточка письма',
         'absence.add': 'отмечено дежурство или отсутствие',
@@ -674,7 +674,7 @@
         route: { name: 'board', id: null },
     };
 
-    /* Права приходят с сервера вместе с записью сотрудника: держать здесь
+    /* Права приходят с сервера вместе с записью военнослужащего: держать здесь
        второй список должностей — верный способ разойтись с бэкендом. */
     function canEdit() {
         return !!state.user;
@@ -879,7 +879,7 @@
         { route: 'chat', href: '#/chat', title: 'Помощник', icon: 'chat' },
         { route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
         { route: 'stats', href: '#/stats', title: 'Метрики', icon: 'stats' },
-        { route: 'users', href: '#/users', title: 'Сотрудники', icon: 'users', adminOnly: true },
+        { route: 'users', href: '#/users', title: 'Военнослужащие', icon: 'users', adminOnly: true },
     ];
 
     /** Какой пункт меню подсвечивать для вложенного экрана. */
@@ -1757,7 +1757,7 @@
             (person.full_name || '').toLowerCase().indexOf(words) !== -1
             || (person.login || '').toLowerCase().indexOf(words) !== -1
         ).slice(0, 5).forEach((person) => out.push({
-            kind: 'Сотрудники', glyph: '☺',
+            kind: 'Военнослужащие', glyph: '☺',
             title: person.full_name || person.login,
             note: [person.role_title, person.team].filter(Boolean).join(' · '),
             // Человека открываем перепиской: это то, зачем его ищут чаще
@@ -2068,7 +2068,7 @@
         { id: 'all', title: 'Все', params: {} },
     ];
 
-    /** Список сотрудников для выбора исполнителя. Читается раз на сеанс.
+    /** Список военнослужащих для выбора исполнителя. Читается раз на сеанс.
      *  Доступен всем: взять письмо на себя вправе любой инженер. */
     async function staffList() {
         if (casesState.staff.length) return casesState.staff;
@@ -2455,7 +2455,7 @@
             }, (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role))));
         if (!staff.length) {
             assignee.disabled = true;
-            assignee.title = 'Список сотрудников получить не удалось';
+            assignee.title = 'Список военнослужащих получить не удалось';
         }
 
         const deadline = h('input', { type: 'date', value: item.deadline || '' });
@@ -2752,7 +2752,7 @@
         const priorityPick = h('select', {}, Object.keys(CASE_PRIORITY).map((key) =>
             h('option', { value: key }, CASE_PRIORITY[key])));
         const assigneePick = h('select', {}, h('option', { value: '' }, 'назначить позже'));
-        // Список сотрудников подгружаем, не задерживая открытие окна.
+        // Список военнослужащих подгружаем, не задерживая открытие окна.
         staffList().then((staff) => staff.forEach((person) => assigneePick.appendChild(
             h('option', { value: String(person.id) },
                 (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role)))));
@@ -3176,7 +3176,7 @@
         function drawGrid(data) {
             clear(gridBox);
             const marked = data.department_days || {};
-            const head = h('tr', {}, h('th', { class: 'roster-name' }, 'Сотрудник'),
+            const head = h('tr', {}, h('th', { class: 'roster-name' }, 'Военнослужащий'),
                 data.days.map((day) => {
                     const dayMarks = marked[day] || [];
                     const first = dayMarks[0];
@@ -3294,7 +3294,7 @@
 
        Теперь строка на состояние, а люди в ней — плашками с переносом: два
        десятка помещаются в три строки, глаз ловит нужную фамилию сразу, а
-       щелчок открывает карточку сотрудника. Отсутствующие идут первыми — их
+       щелчок открывает карточку военнослужащего. Отсутствующие идут первыми — их
        и ищут, присутствие в отделе подразумевается. */
     function rosterDayBoard(day) {
         const rows = [];
@@ -3323,7 +3323,7 @@
                     h('button', {
                         class: 'day-chip kind-' + row.cls,
                         title: (person.place ? person.place + ' · ' : '')
-                            + 'карточка сотрудника',
+                            + 'карточка военнослужащего',
                         onclick: () => openPerson(person.id),
                     },
                         h('span', { class: 'avatar avatar--xs' },
@@ -3390,7 +3390,7 @@
             title: existing ? 'Отметка в расходе' : 'Отметить в расходе',
             body: [
                 h('div', { class: 'form-grid' },
-                    h('label', { class: 'field' }, 'Сотрудник', whoPick),
+                    h('label', { class: 'field' }, 'Военнослужащий', whoPick),
                     h('label', { class: 'field' }, 'Чем занят', kindPick),
                     h('label', { class: 'field' }, 'С какого дня', fromInput),
                     h('label', { class: 'field' }, 'По какой день', toInput)),
@@ -4968,7 +4968,7 @@
         const uploaded = !!(report && report.uploaded);
         const status = report ? report.status : '';
 
-        /* Сдать отчёт начальнику может любой сотрудник — свои отчёты в отдел
+        /* Сдать отчёт начальнику может любой военнослужащий — свои отчёты в отдел
            сдают все. У сданного файлом отчёта чисел не сверяют: факт-пакета
            за ним нет, читает его человек. */
         const submitButton = h('button', {
@@ -5893,7 +5893,7 @@
         }
     }
 
-    /** Сдать отчёт начальнику отдела на проверку. Может любой сотрудник. */
+    /** Сдать отчёт начальнику отдела на проверку. Может любой военнослужащий. */
     async function submitReport() {
         if (!wb.report) return;
         if (wb.dirty.size) {
@@ -7398,7 +7398,7 @@
                 h('div', { class: 'card-title' }, 'Нагрузка и занятость'));
             if (!people.length) {
                 card.appendChild(h('div', { class: 'empty' },
-                    'Личный состав не заведён. Раздел «Сотрудники» — там заводят людей.'));
+                    'Личный состав не добавлен. Раздел «Военнослужащие» — там добавляют людей.'));
                 return card;
             }
             const peak = people.reduce((max, item) => Math.max(max, item.open || 0), 0) || 1;
@@ -7457,7 +7457,7 @@
             card.appendChild(h('div', { class: 'table-scroll' },
                 h('table', { class: 'grid' },
                     h('thead', {}, h('tr', {},
-                        h('th', {}, 'Сотрудник'),
+                        h('th', {}, 'Военнослужащий'),
                         h('th', {}, 'Чем занят'),
                         h('th', {}, 'Писем в работе'),
                         h('th', {}, 'Сроки'),
@@ -7467,7 +7467,7 @@
         }
 
         function personState(person) {
-            // Отключённый сотрудник попадает в список, только пока за ним
+            // Отключённый военнослужащий попадает в список, только пока за ним
             // числятся письма: их надо передать живому человеку. Это
             // важнее и отпуска, и дежурства — потому и первым.
             if (person.active === false) {
@@ -7579,7 +7579,7 @@
             title: 'Дежурство или отсутствие',
             body: [
                 h('div', { class: 'form-grid' },
-                    h('label', { class: 'field' }, 'Сотрудник', who),
+                    h('label', { class: 'field' }, 'Военнослужащий', who),
                     h('label', { class: 'field' }, 'Вид', kind),
                     h('label', { class: 'field' }, 'С какого числа', from),
                     h('label', { class: 'field' }, 'По какое число', to)),
@@ -9302,9 +9302,9 @@
     // 11. Личный кабинет
     // =====================================================================
 
-    // -- сотрудники ---------------------------------------------------------
+    // -- военнослужащие ---------------------------------------------------------
 
-    /** Документы сотрудника отдельным окном: список сотрудников и так плотный. */
+    /** Документы военнослужащего отдельным окном: список военнослужащих и так плотный. */
     function openPersonFiles(user) {
         const dialog = openModal({
             title: 'Документы — ' + (user.full_name || user.login),
@@ -9359,8 +9359,8 @@
             const fresh = await api.get('/api/users');
             data.roles = fresh.roles || [];
             data.items = fresh.items || [];
-            // Заявки грузим отдельно: список сотрудников их не показывает —
-            // до одобрения это ещё не сотрудник.
+            // Заявки грузим отдельно: список военнослужащих их не показывает —
+            // до одобрения это ещё не военнослужащий.
             try {
                 const waiting = await api.get('/api/users/pending');
                 data.pending = waiting.items || [];
@@ -9475,7 +9475,7 @@
                 });
                 const roleSelect = h('select', {
                     class: 'select--quiet',
-                    title: locked ? 'Должность этого сотрудника менять нельзя' : roleNote(user.role),
+                    title: locked ? 'Должность этого военнослужащего менять нельзя' : roleNote(user.role),
                     disabled: locked,
                     onchange: () => save(user, { role: roleSelect.value }, roleSelect),
                 }, data.roles.map((item) => h('option', {
@@ -9494,7 +9494,7 @@
                 const depInput = h('input', {
                     type: 'text', value: user.department || '', class: 'input--quiet',
                     placeholder: 'подразделение', disabled: locked,
-                    title: 'Подразделение, в котором сотрудник стоит по штату. '
+                    title: 'Подразделение, в котором военнослужащий стоит по штату. '
                         + 'Работают все в отделе; поле нужно только тем, кто '
                         + 'числится в другом подразделении',
                     onchange: () => save(user, { department: depInput.value }),
@@ -9620,7 +9620,7 @@
                 narrow: true,
                 body: [
                     h('div', { class: 'muted small' },
-                        'Сотруднику придёт уведомление со звуком.'),
+                        'Военнослужащему придёт уведомление со звуком.'),
                     h('label', { class: 'field' }, 'Куда подойти', place),
                     h('label', { class: 'field field-area' }, 'Примечание', note),
                 ],
@@ -9636,7 +9636,7 @@
             const value = await promptDialog({
                 title: 'Новый пароль для «' + (user.full_name || user.login) + '»',
                 message: 'Не короче 8 символов. Старый пароль знать не нужно. ' +
-                    'Все открытые сеансы этого сотрудника закроются.',
+                    'Все открытые сеансы этого военнослужащего закроются.',
                 password: true,
                 confirmText: 'Задать пароль',
             });
@@ -9652,7 +9652,7 @@
         async function setActive(user, active) {
             if (!active) {
                 const ok = await confirmDialog({
-                    title: 'Отключить сотрудника?',
+                    title: 'Отключить военнослужащего?',
                     message: '«' + (user.full_name || user.login) + '» больше не сможет войти. ' +
                         'Его отчёты и правки останутся на месте — доступ можно вернуть.',
                     confirmText: 'Отключить', danger: true,
@@ -9708,7 +9708,7 @@
                             team: team.value.trim(),
                         });
                         dialog.close();
-                        toast('Сотрудник заведён');
+                        toast('Военнослужащий добавлен');
                         await reload();
                     } catch (error) {
                         toastError(error);
@@ -9716,10 +9716,10 @@
                         submit.disabled = false;
                     }
                 },
-            }, 'Завести');
+            }, 'Добавить');
 
             const dialog = openModal({
-                title: 'Новый сотрудник',
+                title: 'Новый военнослужащий',
                 narrow: true,
                 body: [
                     h('div', { class: 'form-grid' },
@@ -9748,7 +9748,7 @@
                     h('button', { class: 'btn', onclick: () => reload() }, 'Обновить'),
                     h('button', {
                         class: 'btn btn--primary', onclick: () => addUser(),
-                    }, 'Завести сотрудника'))),
+                    }, 'Добавить военнослужащего'))),
             pendingBox,
             rolesBox,
             tableBox,
@@ -10126,7 +10126,7 @@
     }
 
     /* Кому писать. Список берём из сводки отдела: он доступен всем, в отличие
-       от раздела «Сотрудники», куда рядового инженера не пускают. Завести
+       от раздела «Военнослужащие», куда рядового инженера не пускают. Завести
        беседу может каждый — и личную, и общую: спрашивать на это разрешения
        не у кого и незачем. */
     async function openNewTalk() {
@@ -10257,13 +10257,13 @@
         filter.focus();
     }
 
-    /* --------------------------------------------- карточка сотрудника ---
+    /* --------------------------------------------- карточка военнослужащего ---
 
        Кто это, кем работает, в какой группе, как дозвониться и где он
        сегодня. Открыта всему отделу: спрашивать по коридору «а Титов — это
        кто?» новому человеку неудобно, а справочник для того и нужен.
 
-       Это не раздел «Сотрудники» — там заводят учётные записи и меняют
+       Это не раздел «Военнослужащие» — там заводят учётные записи и меняют
        должности, и туда рядового инженера не пускают. И не документы:
        справка-объективка и приказы остаются закрытыми. */
 
@@ -10300,7 +10300,7 @@
 
         const where = person.where;
         const dialog = openModal({
-            title: 'Сотрудник',
+            title: 'Военнослужащий',
             narrow: true,
             body: [
                 h('div', { class: 'person-head' },
@@ -10341,7 +10341,7 @@
                     : h('div', { class: 'small faint' },
                         person.is_me
                             ? 'Телефон и кабинет вы вписываете сами в личном кабинете.'
-                            : 'Контакты не заполнены — их вписывает сам сотрудник.'),
+                            : 'Контакты не заполнены — их вписывает сам военнослужащий.'),
             ],
             footer: [
                 // Документы — тому кругу, кому они открыты; кнопки у
@@ -10368,7 +10368,7 @@
         if (!userId) return h('span', { class: 'faint' }, name || 'не назначен');
         return h('button', {
             class: 'person-link' + (extra ? ' ' + extra : ''),
-            title: 'Карточка сотрудника',
+            title: 'Карточка военнослужащего',
             onclick: (event) => {
                 event.stopPropagation();
                 openPerson(userId);
@@ -10553,7 +10553,7 @@
             // Строка короткая, но нужная: это единственное место, где человек
             // правит сведения о себе, и без неё карточку принимают за справку.
             h('div', { class: 'small muted', style: { marginBottom: '10px' } },
-                'Заполняете вы сами — видно отделу в расходе и в карточке сотрудника.'),
+                'Заполняете вы сами — видно отделу в расходе и в карточке военнослужащего.'),
             h('div', { class: 'form-grid' },
                 h('label', { class: 'field' }, 'Мобильный', fields.phone_mobile),
                 h('label', { class: 'field' }, 'Открытый', fields.phone_open),
@@ -10563,7 +10563,7 @@
             note);
     }
 
-    /* Документы сотрудника: справка-объективка, приказы, прочее. Свои видит
+    /* Документы военнослужащего: справка-объективка, приказы, прочее. Свои видит
        каждый, чужие — начальник отдела, заместитель и создатель системы.
        Начальник группы сюда не входит, хотя он и администратор: это личные
        сведения, и круг тех, кому они открыты, уже круга тех, кто заводит
@@ -10659,7 +10659,7 @@
         append(box, [
             h('div', { class: 'toolbar' },
                 h('span', { class: 'card-title grow' },
-                    mine ? 'Ваши документы' : 'Документы сотрудника'),
+                    mine ? 'Ваши документы' : 'Документы военнослужащего'),
                 kindPick,
                 h('button', {
                     class: 'btn btn--sm', onclick: () => picker.click(),
@@ -10684,9 +10684,9 @@
        если разойдутся, человек прочитает в кабинете одно, а получит другое. */
     function rolePowers(role) {
         const base = 'письма и отчёты, пополнение библиотеки, помощник';
-        const admin = base + '; сотрудники, удаление документов, журнал действий';
+        const admin = base + '; военнослужащие, удаление документов, журнал действий';
         return {
-            owner: admin + '; может менять должность любому сотруднику',
+            owner: admin + '; может менять должность любому военнослужащему',
             head: admin,
             deputy: admin,
             lead: admin,

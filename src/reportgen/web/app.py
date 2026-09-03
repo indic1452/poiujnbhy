@@ -68,7 +68,7 @@ def create_app(settings: Settings | None = None,
             logger.info("Указатель поиска по письмам построен: %d", built)
         if settings.auth_enabled and repos.users.count() == 0:
             logger.warning(
-                "В системе нет ни одного сотрудника. Заведите создателя системы: "
+                "В системе нет ни одного военнослужащего. Заведите создателя системы: "
                 "reportgen useradd --login admin --role owner"
             )
         # Достраиваем векторы, недостроенные в прошлый раз. Приложение могли
@@ -338,4 +338,26 @@ def run(settings: Settings | None = None) -> None:  # pragma: no cover — то�
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    uvicorn.run(create_app(settings), host=settings.host, port=settings.port, log_level="info")
+    options = {"host": settings.host, "port": settings.port, "log_level": "info"}
+    if getattr(settings, "https", False):
+        # Свой сертификат — ради уведомлений на рабочем столе: браузер
+        # показывает их только защищённой странице. Не вышло выписать —
+        # поднимаемся по http и говорим почему: без уведомлений система
+        # работает, без системы отдел не работает.
+        from .tls import CertificateError, ensure_certificate  # noqa: PLC0415
+
+        try:
+            extra = [str(name) for name in
+                     (getattr(settings, "https_hosts", None) or []) if name]
+            cert, key = ensure_certificate(
+                Path(settings.data_dir), brand=settings.brand_name,
+                extra_hosts=extra)
+            options["ssl_certfile"] = str(cert)
+            options["ssl_keyfile"] = str(key)
+            logging.getLogger("reportgen.web").info(
+                "работаем по https://%s:%s", settings.host, settings.port)
+        except CertificateError as error:
+            logging.getLogger("reportgen.web").warning(
+                "https не поднялся (%s) — работаем по http, уведомлений на "
+                "рабочем столе не будет", error)
+    uvicorn.run(create_app(settings), **options)

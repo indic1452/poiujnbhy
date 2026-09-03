@@ -266,7 +266,7 @@ def login(request: Request, response: Response) -> Dict[str, Any]:
         raise ServiceError("неверный логин или пароль", 401)
     # Заявка подана, но её ещё не признали. Говорим прямо: «неверный пароль»
     # человеку, который ввёл верный, — это час поисков несуществующей ошибки.
-    # Отдел изолирован, и скрывать от своего сотрудника, что он в очереди,
+    # Отдел изолирован, и скрывать от своего военнослужащего, что он в очереди,
     # незачем.
     if not user.approved:
         throttle.success(key)
@@ -639,7 +639,7 @@ def delete_case_note(request: Request, case_ref: int, note_id: int) -> Dict[str,
 
 @router.get("/cases/{case_ref}/files")
 def list_case_files(request: Request, case_ref: int, stage: str = "") -> Dict[str, Any]:
-    """Бумаги письма. Смотреть может любой сотрудник.
+    """Бумаги письма. Смотреть может любой военнослужащий.
 
     stage отбирает стопку: incoming — пришли с письмом, outgoing — ушли с
     ответом. Пусто — обе, и тогда сперва идут те, что к ответу.
@@ -871,7 +871,7 @@ def unsend_case(request: Request, case_ref: int) -> Dict[str, Any]:
     """Отозвать отправку: номер вписали не тот или ответ ушёл не тому.
 
     Право проверяющего: запись об отправке — учётная, и снимать её должен
-    тот, кто отвечает за проверку, а не любой сотрудник.
+    тот, кто отвечает за проверку, а не любой военнослужащий.
     """
     user = require_reviewer(request)
     case = _case_or_404(request, case_ref)
@@ -1039,7 +1039,7 @@ def upload_report(
 ) -> Dict[str, Any]:
     """Сдать готовый отчёт файлом на проверку начальнику.
 
-    Загружать может любой сотрудник — свои отчёты в отдел сдают все.
+    Загружать может любой военнослужащий — свои отчёты в отдел сдают все.
     Исполнителем по умолчанию становится тот, кто загрузил: чаще всего он
     же его и писал. Письмо под отчёт заводится тем же действием, чтобы не
     заставлять человека делать два дела вместо одного.
@@ -1138,7 +1138,7 @@ def upload_report(
             fields["assignee_id"] = assignee.id
         elif case.assignee_id != assignee.id:
             taken = (f"исполнитель письма не изменён: он уже назначен "
-                     f"({case.assignee_name or 'другой сотрудник'})")
+                     f"({case.assignee_name or 'другой военнослужащий'})")
         if fields:
             service.update_card(case, fields, user)
             repos.audit.log("case.update", user=user, object_type="case",
@@ -1231,7 +1231,7 @@ def _default_report_type(request: Request) -> str:
 
 @router.post("/reports/{report_id}/submit")
 def submit(request: Request, report_id: int) -> Dict[str, Any]:
-    """Отправить отчёт на проверку начальнику. Может любой сотрудник."""
+    """Отправить отчёт на проверку начальнику. Может любой военнослужащий."""
     user = require_editor(request)
     report = _report_or_404(request, report_id)
     service = _service(request)
@@ -1297,7 +1297,7 @@ def report_sources(request: Request, report_id: int) -> Dict[str, Any]:
 def download_report_file(request: Request, report_id: int) -> FileResponse:
     """Отдать загруженный отчёт тем же файлом, каким его сдали.
 
-    Смотреть отчёты может любой сотрудник: система для того и заведена,
+    Смотреть отчёты может любой военнослужащий: система для того и заведена,
     чтобы отдел видел, что кем сделано.
     """
     require_user(request)
@@ -2088,7 +2088,7 @@ def _extract_attachment(path: Path) -> tuple[str, str]:
     return converted.text, note
 
 
-# ------------------------------------------------------------ сотрудники --
+# ------------------------------------------------------------ военнослужащие --
 
 #: Что роль позволяет делать — показывается прямо в форме, чтобы не гадать.
 def _user_public(user) -> Dict[str, Any]:
@@ -2138,10 +2138,10 @@ def list_users(request: Request) -> Dict[str, Any]:
 
 @router.get("/staff")
 def staff(request: Request) -> Dict[str, Any]:
-    """Список сотрудников для выбора исполнителя.
+    """Список военнослужащих для выбора исполнителя.
 
     Отдельно от /api/users: тот доступен только администратору и отдаёт
-    полную запись, а назначить исполнителя письма вправе любой сотрудник —
+    полную запись, а назначить исполнителя письма вправе любой военнослужащий —
     в том числе взять письмо на себя. Здесь только то, что нужно списку.
     """
     require_user(request)
@@ -2208,7 +2208,7 @@ def update_user(request: Request, user_id: int) -> Dict[str, Any]:
     repos = _repos(request)
     user = repos.users.get(user_id)
     if user is None:
-        raise ServiceError("сотрудник не найден", 404)
+        raise ServiceError("военнослужащий не найден", 404)
     payload = _body(request)
 
     role = payload.get("role")
@@ -2216,7 +2216,7 @@ def update_user(request: Request, user_id: int) -> Dict[str, Any]:
         if role not in ROLES:
             raise ServiceError(f"неизвестная должность '{role}'", 400)
         if not _may_manage(admin, user):
-            raise ServiceError("нельзя менять должность сотруднику своего уровня или выше", 403)
+            raise ServiceError("нельзя менять должность военнослужащему своего уровня или выше", 403)
         if role == "owner":
             raise ServiceError("создатель системы в единственном числе", 403)
         if not admin.is_owner and ROLE_RANK.get(role, 0) >= admin.rank:
@@ -2260,7 +2260,7 @@ def approve_user(request: Request, user_id: int) -> Dict[str, Any]:
     """Открыть доступ по заявке и назначить должность.
 
     Одобряет создатель системы, начальник отдела, его заместитель или
-    начальник группы — тот же круг, что заводит сотрудников руками. Должность
+    начальник группы — тот же круг, что заводит военнослужащих руками. Должность
     назначает он же: заявка приходит с самой младшей, и назначить выше
     собственной по-прежнему нельзя.
     """
@@ -2298,7 +2298,7 @@ def approve_user(request: Request, user_id: int) -> Dict[str, Any]:
 def reject_user(request: Request, user_id: int) -> Dict[str, Any]:
     """Отклонить заявку: запись убирается совсем.
 
-    Отклонённая заявка — это не сотрудник; держать её в списке значит копить
+    Отклонённая заявка — это не военнослужащий; держать её в списке значит копить
     мусор, по которому никто не работает. Отключение — для другого случая:
     человек был и ушёл.
     """
@@ -2322,7 +2322,7 @@ def reset_user_password(request: Request, user_id: int) -> Dict[str, Any]:
     repos = _repos(request)
     user = repos.users.get(user_id)
     if user is None:
-        raise ServiceError("сотрудник не найден", 404)
+        raise ServiceError("военнослужащий не найден", 404)
     if not _may_manage(admin, user) and admin.id != user.id:
         raise ServiceError("недостаточно прав для смены этого пароля", 403)
     password = str(_body(request).get("password", ""))
@@ -2342,7 +2342,7 @@ def set_user_active(request: Request, user_id: int) -> Dict[str, Any]:
     repos = _repos(request)
     user = repos.users.get(user_id)
     if user is None:
-        raise ServiceError("сотрудник не найден", 404)
+        raise ServiceError("военнослужащий не найден", 404)
     active = bool(_body(request).get("active", True))
     if not active and user.id == admin.id:
         raise ServiceError("нельзя отключить самого себя", 409)
@@ -2352,7 +2352,7 @@ def set_user_active(request: Request, user_id: int) -> Dict[str, Any]:
     # сторону.
     if not _may_manage(admin, user):
         raise ServiceError(
-            "недостаточно прав: этот сотрудник не младше вас по должности", 403
+            "недостаточно прав: этот военнослужащий не младше вас по должности", 403
         )
     repos.users.set_active(user_id, active)
     if not active:
@@ -2403,7 +2403,7 @@ def _days_between(start: str, finish: str) -> int:
 
 @router.get("/roster")
 def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, Any]:
-    """Расход отдела за промежуток: сетка «сотрудник × день».
+    """Расход отдела за промежуток: сетка «военнослужащий × день».
 
     Готовую сетку собирает сервер, а не браузер. Раскладывать периоды по
     дням в трёх местах интерфейса — верный способ получить три разных
@@ -2438,7 +2438,7 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
         })
 
     # Раскладка по дням: одна запись покрывает несколько суток, а сетке нужна
-    # клетка. Ключ — «id сотрудника|день», чтобы браузер брал клетку прямо.
+    # клетка. Ключ — «id военнослужащего|день», чтобы браузер брал клетку прямо.
     cells: Dict[str, List[Dict[str, Any]]] = {}
     for item in records:
         for day in days_list:
@@ -2539,7 +2539,7 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
             marked[item.user_id] = item
 
     # Отдаём человека, а не запись расхода: экран показывает фамилии и по
-    # щелчку открывает карточку сотрудника, а id записи для этого не годится.
+    # щелчку открывает карточку военнослужащего, а id записи для этого не годится.
     groups: Dict[str, List[Dict[str, Any]]] = {kind: [] for kind in ABSENCE_KINDS}
     for item in sorted(marked.values(), key=lambda row: row.full_name):
         groups[item.kind].append({
@@ -2608,7 +2608,7 @@ def add_absence(request: Request) -> Dict[str, Any]:
     user_id = int(payload.get("user_id") or 0) or actor.id
     user = repos.users.get(user_id)
     if user is None or not user.active:
-        raise ServiceError("сотрудник не найден", 404)
+        raise ServiceError("военнослужащий не найден", 404)
     if not _may_edit_roster(actor, user.id):
         raise ServiceError("недостаточно прав: чужой расход ведёт начальник", 403)
     kind = str(payload.get("kind", ""))
@@ -2658,7 +2658,7 @@ def update_absence(request: Request, absence_id: int) -> Dict[str, Any]:
         clash = repos.absences.overlapping(
             item.user_id, fields["date_from"], fields["date_to"], skip_id=item.id)
         if clash:
-            raise ServiceError("на эти дни у сотрудника уже есть другая отметка", 409)
+            raise ServiceError("на эти дни у военнослужащего уже есть другая отметка", 409)
     if "place" in payload:
         fields["place"] = str(payload["place"] or "").strip()[:120]
     if "note" in payload:
@@ -2743,7 +2743,7 @@ UNCALLABLE_ROLES = ("owner", "head")
 
 @router.post("/notifications/call")
 def call_to_office(request: Request) -> Dict[str, Any]:
-    """Вызвать сотрудника в кабинет.
+    """Вызвать военнослужащего в кабинет.
 
     Право начальства: создатель, начальник отдела, заместитель и начальник
     группы. Вызывать друг друга всем подряд — не порядок, а способ мешать
@@ -2754,7 +2754,7 @@ def call_to_office(request: Request) -> Dict[str, Any]:
     payload = _body(request)
     user = repos.users.get(int(payload.get("user_id") or 0))
     if user is None or not user.active or not user.approved:
-        raise ServiceError("сотрудник не найден", 404)
+        raise ServiceError("военнослужащий не найден", 404)
     if user.id == admin.id:
         raise ServiceError("себя вызывать не нужно", 400)
     if user.role in UNCALLABLE_ROLES:
@@ -2803,7 +2803,7 @@ def create_talk(request: Request) -> Dict[str, Any]:
     for item in raw:
         person = repos.users.get(int(item or 0))
         if person is None or not person.active or not person.approved:
-            raise ServiceError("сотрудник не найден", 404)
+            raise ServiceError("военнослужащий не найден", 404)
         members.append(person.id)
     if not members:
         raise ServiceError("выберите, кому писать", 400)
@@ -3024,7 +3024,7 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
     staff = repos.board.workload(today)
     records = repos.absences.on_date(today)
     # По человеку — одна запись, та, что кончается позже. И у отсутствия, и у
-    # дежурства: сотруднику отмечают больничный и следом отпуск, дежурство и
+    # дежурства: военнослужащему отмечают больничный и следом отпуск, дежурство и
     # подмену на те же сутки. Записей две, а человек один — счётчик обязан
     # считать людей, иначе «на дежурстве: 2» при одной фамилии в списке.
     # «На месте» — дежурный и занятый работами: их можно спросить и им можно
@@ -3042,7 +3042,7 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
             "id": row["id"],
             "login": row["login"],
             "full_name": short_name(row["full_name"]) or row["login"],
-            # Отключённый сотрудник остаётся в списке, пока за ним числятся
+            # Отключённый военнослужащий остаётся в списке, пока за ним числятся
             # письма: их надо передать живому человеку, и это должно быть видно.
             "active": bool(row["active"]),
             "role": row["role"],
@@ -3076,7 +3076,7 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
             "overdue": deadlines["late"],
             "soon": deadlines["soon"],
             "unassigned": repos.board.unassigned(),
-            # В строю — действующие. Отключённый сотрудник попадает в список
+            # В строю — действующие. Отключённый военнослужащий попадает в список
             # только пока за ним числятся письма, и в личный состав не идёт.
             "staff": sum(1 for item in people if item["active"]),
             "away": len(away),
@@ -3122,7 +3122,7 @@ def _opt_str(payload: Dict[str, Any], name: str) -> str | None:
 
 # --------------------------------------------------------- личный кабинет --
 
-#: В чём приносят документы сотрудника: набранный файл, скан, снимок.
+#: В чём приносят документы военнослужащего: набранный файл, скан, снимок.
 #: Справочный список — как и CASE_FILE_SUFFIXES, ничего не запрещает.
 PERSON_FILE_SUFFIXES = (
     ".pdf", ".docx", ".doc", ".rtf", ".odt", ".txt", ".md",
@@ -3143,18 +3143,18 @@ def _may_see_person_files(actor: User, user_id: int) -> bool:
 def _person_or_404(request: Request, user_id: int) -> User:
     person = _repos(request).users.get(user_id)
     if person is None:
-        raise ServiceError("сотрудник не найден", 404)
+        raise ServiceError("военнослужащий не найден", 404)
     return person
 
 
 @router.get("/users/{user_id}/files")
 def list_person_files(request: Request, user_id: int) -> Dict[str, Any]:
-    """Документы сотрудника: справка-объективка, приказы, прочее."""
+    """Документы военнослужащего: справка-объективка, приказы, прочее."""
     actor = require_user(request)
     person = _person_or_404(request, user_id)
     if not _may_see_person_files(actor, person.id):
         raise ServiceError(
-            "недостаточно прав: документы сотрудника видят он сам, начальник "
+            "недостаточно прав: документы военнослужащего видят он сам, начальник "
             "отдела, заместитель и создатель системы", 403)
     items = _repos(request).person_files.list_for_user(person.id)
     return {
@@ -3171,7 +3171,7 @@ def add_person_file(request: Request, user_id: int,
                     file: UploadFile = File(...),
                     kind: str = Form("profile"),
                     note: str = Form("")) -> Dict[str, Any]:
-    """Приложить документ к сотруднику.
+    """Приложить документ к военнослужащему.
 
     Справка-объективка одна: новая заменяет прежнюю. Приказы и прочее
     копятся — таких бумаг у человека бывает много, и все они нужны.
@@ -3292,14 +3292,14 @@ def update_my_contacts(request: Request) -> Dict[str, Any]:
 
 @router.get("/people/{user_id}")
 def person_card(request: Request, user_id: int) -> Dict[str, Any]:
-    """Карточка сотрудника, открытая всему отделу.
+    """Карточка военнослужащего, открытая всему отделу.
 
     Кто это, кем работает, в какой группе, по какому подразделению стоит по
     штату, как до него дозвониться и где он сегодня. Всё это в отделе и так
     знают друг о друге — а новому человеку спрашивать по коридору неудобно,
     и справочник для того и нужен.
 
-    Это не «Сотрудники»: там заводят учётные записи и меняют должности, и
+    Это не «Военнослужащие»: там заводят учётные записи и меняют должности, и
     туда рядового инженера не пускают. И не документы: справка-объективка и
     приказы остаются закрытыми — их круг уже (см. `_may_see_person_files`).
     """
@@ -3307,7 +3307,7 @@ def person_card(request: Request, user_id: int) -> Dict[str, Any]:
     repos = _repos(request)
     person = repos.users.get(user_id)
     if person is None or not person.approved:
-        raise ServiceError("сотрудник не найден", 404)
+        raise ServiceError("военнослужащий не найден", 404)
 
     today = _today()
     # Где человек сегодня: та же запись расхода, что видна в общем списке.
@@ -3368,7 +3368,7 @@ def my_summary(request: Request) -> Dict[str, Any]:
             "total": int(reports["total"] or 0),
             "approved": int(reports["approved"] or 0),
         },
-        # Чем сотрудник отчитывается за последний шаг: сколько ответов он
+        # Чем военнослужащий отчитывается за последний шаг: сколько ответов он
         # отправил. «Проверено» — работа начальника, «отправлено» — его.
         "sent": int(repos.db.scalar(
             "SELECT count(*) FROM cases WHERE sent_by = ? AND outgoing_no <> ''",
@@ -3454,7 +3454,7 @@ def audit(request: Request, limit: int = 200) -> Dict[str, Any]:
 def health(request: Request) -> Dict[str, Any]:
     """Жив ли сервис. Отвечает и без входа — этим пользуются скрипты запуска.
 
-    Без входа отдаём только признак жизни. Сколько в отделе сотрудников,
+    Без входа отдаём только признак жизни. Сколько в отделе военнослужащих,
     писем и отчётов — сведения о работе организации, и посторонним в них
     делать нечего; модель и её адрес — тем более.
     """

@@ -509,7 +509,7 @@ class UserRepoTests(StoreTestCase):
 
     def test_legacy_roles_are_migrated(self):
         # На уже работающей установке роли viewer/engineer/admin должны
-        # превратиться в должности, иначе сотрудник теряет доступ целиком.
+        # превратиться в должности, иначе военнослужащий теряет доступ целиком.
         self.repos.db.execute(
             "INSERT INTO users(login, full_name, role, password_hash, active, created_at) "
             "VALUES('starii', '', 'admin', 'x', 1, '2024-01-01')"

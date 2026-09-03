@@ -243,7 +243,7 @@ class WindowCeilingTests(AssistantTestCase):
 
     def test_a_huge_attachment_does_not_burst_the_window(self):
         window = self.settings.assistant_context_chars
-        prompt = self.prompt_with(40000)
+        prompt = self.prompt_with(window * 2)
         self.assertLessEqual(
             len(prompt), window + 4000,
             f"промпт {len(prompt)} знаков при окне {window}")
@@ -256,18 +256,25 @@ class WindowCeilingTests(AssistantTestCase):
     def test_the_sources_survive_even_at_the_ceiling(self):
         # Резать до последнего фрагмента нельзя: без источников помощник
         # превращается в обычную модель без ссылок на нормы.
-        self.assertIn("[S1]", self.prompt_with(40000))
+        self.assertIn("[S1]", self.prompt_with(
+            self.settings.assistant_context_chars * 2))
 
     def test_the_truncation_of_the_file_is_admitted(self):
         # Молча показать модели первую тысячу знаков дампа нельзя: она
         # сделает вывод «ошибок больше нет» по обрезанному хвосту.
-        self.assertIn("показано", self.prompt_with(40000))
+        self.assertIn("показано", self.prompt_with(
+            self.settings.assistant_context_chars * 2))
 
     def test_the_map_gives_way_before_the_sources(self):
-        """Карта полезна, но фрагменты важнее: её ужимают первой."""
+        """Карта полезна, но фрагменты важнее: её ужимают первой.
+
+        Размер вложения берём от самой настройки, а не числом: окно меняется
+        вместе с числом слотов модели, и вложение, тесное при 26 000 знаков,
+        при 52 000 уже никого не теснит — проверка тогда меряет пустоту.
+        """
         wide = self.assistant._prepare(
             self.ivanov, self.chat.id, self.QUESTION, top_k=None)["prompt"]
-        narrow = self.prompt_with(40000)
+        narrow = self.prompt_with(self.settings.assistant_context_chars * 2)
         self.assertLess(len(self.catalog_of(narrow)), len(self.catalog_of(wide)))
 
 

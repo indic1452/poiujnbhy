@@ -146,7 +146,7 @@ class HealthAndConfigTests(WebTestCase):
     def test_health_without_login_says_only_that_it_is_alive(self):
         """Признак жизни нужен скриптам запуска и без входа.
 
-        А сколько в отделе сотрудников, писем и отчётов — сведения о работе
+        А сколько в отделе военнослужащих, писем и отчётов — сведения о работе
         организации: посторонним в них делать нечего. Адрес и имя модели —
         тем более.
         """
@@ -1710,7 +1710,7 @@ class UploadedReportTests(WebTestCase):
         )
 
     def test_engineer_hands_in_a_finished_report(self):
-        """Сдать отчёт файлом может любой сотрудник, и он сразу на проверке."""
+        """Сдать отчёт файлом может любой военнослужащий, и он сразу на проверке."""
         self.login("engineer")
         response = self.upload()
         self.assertEqual(200, response.status_code, response.text)
@@ -2761,7 +2761,7 @@ class LetterCardTests(WebTestCase):
         self.assertEqual("", fresh["deadline"])
 
     def test_any_employee_can_pick_the_assignee_list(self):
-        # Взять письмо на себя вправе любой инженер, а раздел сотрудников
+        # Взять письмо на себя вправе любой инженер, а раздел военнослужащих
         # ему закрыт — поэтому список исполнителей отдаётся отдельно.
         self.login("engineer")
         self.assertEqual(403, self.client.get("/api/users").status_code)
@@ -3075,7 +3075,7 @@ class LetterCardTests(WebTestCase):
         self.assertEqual(400, response.status_code)
 
     def test_disabled_employee_cannot_be_assigned(self):
-        # Отключённому сотруднику письмо не поручают: он не войдёт в систему.
+        # Отключённому военнослужащему письмо не поручают: он не войдёт в систему.
         case = self.create_case()
         victim = self.repos.users.by_login("engineer")
         self.repos.users.set_active(victim.id, False)
@@ -3158,7 +3158,7 @@ class BoardTests(WebTestCase):
         self.assertEqual("2000-01-01", person["next_deadline"])
 
     def test_letters_of_a_disabled_employee_do_not_vanish(self):
-        """Письма отключённого сотрудника исчезали отовсюду.
+        """Письма отключённого военнослужащего исчезали отовсюду.
 
         Из нагрузки — вместе с человеком, а в «без исполнителя» они не
         попадали, потому что исполнитель у них есть. Отдел не видел их
@@ -3302,7 +3302,7 @@ class BoardTests(WebTestCase):
         self.assertEqual("отпуск", person["away_title"])
 
     def test_two_absences_for_one_person_count_once(self):
-        """У сотрудника на одни сутки две отметки: больничный и отпуск.
+        """У военнослужащего на одни сутки две отметки: больничный и отпуск.
 
         Через расход такое больше не заводится — он не даёт положить вторую
         отметку на занятые дни. Но в базе отдела такие пары остались от
@@ -3424,7 +3424,7 @@ class RosterTests(WebTestCase):
 
         Он не дежурит, писем за ним не числится, и в расходе его строка —
         всегда пустая, зато сбивает счёт: «12 человек в строю» становилось
-        13. В разделе «Сотрудники» он, наоборот, обязан быть виден: это
+        13. В разделе «Военнослужащие» он, наоборот, обязан быть виден: это
         перечень учётных записей.
         """
         body = self.client.get("/api/roster").json()
@@ -3631,7 +3631,7 @@ class DocumentInspectionTests(WebTestCase):
 
 
 class UserManagementTests(WebTestCase):
-    """Сотрудники, должности и пароли — из интерфейса, а не только из CLI."""
+    """Военнослужащие, должности и пароли — из интерфейса, а не только из CLI."""
 
     def test_only_admin_sees_the_list(self):
         self.login("engineer")
@@ -3805,7 +3805,7 @@ class UserManagementTests(WebTestCase):
 
 
 class PersonalFileTests(WebTestCase):
-    """Документы сотрудника: справка-объективка, приказы, прочее."""
+    """Документы военнослужащего: справка-объективка, приказы, прочее."""
 
     def setUp(self):
         super().setUp()
@@ -3814,7 +3814,7 @@ class PersonalFileTests(WebTestCase):
     def upload(self, user_id, name="объективка.docx", kind="profile"):
         return self.client.post(
             f"/api/users/{user_id}/files",
-            files={"file": (name, "справка о сотруднике".encode("utf-8"),
+            files={"file": (name, "справка о военнослужащем".encode("utf-8"),
                             "application/octet-stream")},
             data={"kind": kind})
 
@@ -3832,7 +3832,7 @@ class PersonalFileTests(WebTestCase):
 
         back = self.client.get(f"/api/users/{self.engineer.id}/files/{item['id']}")
         self.assertEqual(200, back.status_code)
-        self.assertEqual("справка о сотруднике".encode("utf-8"), back.content)
+        self.assertEqual("справка о военнослужащем".encode("utf-8"), back.content)
 
     def test_only_the_head_deputy_and_owner_see_someone_elses_file(self):
         """Объективка — личные сведения, и открыта не всему отделу.
@@ -3855,7 +3855,7 @@ class PersonalFileTests(WebTestCase):
                 self.login(who)
                 response = self.client.get(f"/api/users/{self.engineer.id}/files")
                 self.assertEqual(403, response.status_code, f"{who} читает чужое дело")
-                self.assertIn("документы сотрудника", response.json()["error"])
+                self.assertIn("документы военнослужащего", response.json()["error"])
 
     def test_an_engineer_cannot_reach_a_colleagues_file(self):
         self.login("engineer")
@@ -3880,7 +3880,7 @@ class PersonalFileTests(WebTestCase):
         self.assertFalse(old_path.exists(), "прежняя справка осталась на диске")
 
     def test_orders_and_the_rest_pile_up(self):
-        """К сотруднику кладут не одну бумагу: приказов и допусков много."""
+        """К военнослужащему кладут не одну бумагу: приказов и допусков много."""
         self.login("engineer")
         self.upload(self.engineer.id, "объективка.docx")
         self.upload(self.engineer.id, "приказ-14.pdf", kind="order")
@@ -4029,7 +4029,7 @@ class SelfRegistrationTests(WebTestCase):
         self.assertEqual("engineer", pending[0]["role"])
 
     def test_an_applicant_is_not_yet_a_member_of_the_department(self):
-        # До одобрения это не сотрудник: ни в списке личного состава, ни в
+        # До одобрения это не военнослужащий: ни в списке личного состава, ни в
         # сводке отдела его быть не должно.
         self.apply()
         self.login("admin")
@@ -4100,7 +4100,7 @@ class SelfRegistrationTests(WebTestCase):
         self.assertIn("выше собственной", response.json()["error"])
 
     def test_a_rejected_application_leaves_nothing_behind(self):
-        # Отклонённая заявка — не сотрудник: держать её в списке значит
+        # Отклонённая заявка — не военнослужащий: держать её в списке значит
         # копить мусор, по которому никто не работает.
         self.apply()
         self.login("admin")
@@ -4600,7 +4600,7 @@ class FullNameEntryTests(WebTestCase):
 
 
 class PersonCardTests(WebTestCase):
-    """Карточка сотрудника открыта всему отделу."""
+    """Карточка военнослужащего открыта всему отделу."""
 
     def setUp(self):
         super().setUp()
@@ -4647,7 +4647,7 @@ class PersonCardTests(WebTestCase):
         self.assertEqual(401, self.client.get(f"/api/people/{self.person.id}").status_code)
 
     def test_an_unapproved_application_has_no_card(self):
-        # До одобрения это не сотрудник — и в справочнике его нет.
+        # До одобрения это не военнослужащий — и в справочнике его нет.
         self.client.cookies.clear()
         self.client.post("/api/auth/register", json={
             "login": "novichok", "full_name": "Новичков Новик Новикович",
@@ -5194,7 +5194,7 @@ class QuietScreensTests(unittest.TestCase):
         self.assertIn("const statsLine = h('div', { class: 'page-note' });", self.js)
 
     def test_who_may_do_what_is_folded_away(self):
-        """Права читают при заведении сотрудника — то есть изредка."""
+        """Права читают при заведении военнослужащего — то есть изредка."""
         self.assertIn("'Какие бывают должности и что они дают'", self.js)
         self.assertIn("h('details', { class: 'fold' }", self.js)
         # Развёрнутого заголовка карточки больше нет: список отдела начинается
@@ -5835,13 +5835,13 @@ class InterfaceCopyTests(unittest.TestCase):
     def test_the_department_is_one_and_is_not_asked_of_everybody(self):
         """Работают все в одном отделе — это и есть система.
 
-        Спрашивать название отдела у каждого сотрудника незачем: оно одно и
+        Спрашивать название отдела у каждого военнослужащего незачем: оно одно и
         стоит в настройках. Поле осталось для другого — человек может по
         штату числиться в другом подразделении, — и подписано «По штату».
         Справочника названий отделов больше нет ни на сервере, ни на экране.
         """
         self.assertNotIn("'Отдел', department", self.js,
-                         "у сотрудника снова спрашивают название отдела")
+                         "у военнослужащего снова спрашивают название отдела")
         self.assertIn("'По штату'", self.js)
         # Списка названий нет: подсказывать нечего, отдел один.
         self.assertNotIn("list: 'departments'", self.js)
