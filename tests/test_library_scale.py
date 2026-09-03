@@ -7,6 +7,7 @@
 """
 
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
@@ -308,6 +309,124 @@ class VectorIndexTests(unittest.TestCase):
         index = repos.vectors.load_index("bge-m3")
         self.assertEqual(0, len(index))
         self.assertEqual([], index.search([1.0], k=3))
+
+    def test_rows_are_not_unpacked_into_python_lists(self):
+        """Строка матрицы читается из байтов как есть.
+
+        Через array("f") каждая из полумиллиона строк заводила тысячу чисел
+        Python — одиннадцать секунд на одну загрузку матрицы. Распаковка
+        списками допустима один раз, чтобы узнать длину вектора; на строку
+        матрицы её быть не должно.
+        """
+        repos = self.build(300, dim=16)
+        from reportgen.store import repo as repo_module
+
+        calls = []
+        original = repo_module.unpack_vector
+
+        def counted(blob):
+            calls.append(len(blob))
+            return original(blob)
+
+        with mock.patch.object(repo_module, "unpack_vector", counted):
+            index = repos.vectors.load_index("bge-m3")
+        self.assertEqual(300, len(index))
+        self.assertLessEqual(len(calls), 1, f"распаковок списками: {len(calls)}")
+
+    def test_the_rows_are_not_sorted_on_the_way_out(self):
+        """Сортировка ключа стоит дороже всего чтения.
+
+        Ключ фрагмента текстовый, вектор — четыре килобайта. На «ORDER BY
+        chunk_uid» SQLite заводит временное дерево и переносит туда всю
+        библиотеку: два с лишним гигабайта через временный файл, двадцать две
+        секунды вместо шести. А порядок здесь не нужен: ключи собираются
+        рядом с матрицей, строка к строке.
+        """
+        repos = self.build(200, dim=8)
+        seen = []
+        original = repos.db.stream
+
+        def spy(sql, params=(), chunk=2000):
+            seen.append(" ".join(str(sql).split()).lower())
+            return original(sql, params, chunk)
+
+        with mock.patch.object(repos.db, "stream", spy):
+            index = repos.vectors.load_index("bge-m3")
+        self.assertEqual(200, len(index))
+        self.assertTrue(seen, "матрица прочиталась без потока")
+        for sql in seen:
+            self.assertNotIn("order by", sql, f"сортировка вернулась: {sql}")
+
+    def test_a_key_belongs_to_its_own_row_in_any_order(self):
+        """Порядок убрали — значит, связь «ключ ↔ строка» держится сама."""
+        repos = Repositories(Database(":memory:"))
+        repos.vectors.put_many("bge-m3", {
+            "yakor": [1.0, 0.0], "sever": [0.0, 1.0], "zapad": [-1.0, 0.0]})
+        original = repos.db.stream
+
+        def reversed_stream(sql, params=(), chunk=2000):
+            for rows in original(sql, params, chunk):
+                yield list(reversed(rows))
+
+        with mock.patch.object(repos.db, "stream", reversed_stream):
+            index = repos.vectors.load_index("bge-m3")
+        self.assertEqual(3, len(index))
+        self.assertEqual("yakor", index.search([1.0, 0.0], k=1)[0][0])
+        self.assertEqual("sever", index.search([0.0, 1.0], k=1)[0][0])
+
+    def test_the_matrix_is_the_same_numbers_as_before(self):
+        """Способ распаковки сменился — числа обязаны остаться теми же."""
+        repos = Repositories(Database(":memory:"))
+        repos.vectors.put_many("bge-m3", {"a": [3.0, 4.0], "b": [0.0, 5.0]})
+        index = repos.vectors.load_index("bge-m3")
+        # Строки нормированы: (3,4) → (0.6,0.8), (0,5) → (0,1).
+        self.assertAlmostEqual(0.6, float(index.matrix[0][0]), places=5)
+        self.assertAlmostEqual(0.8, float(index.matrix[0][1]), places=5)
+        self.assertAlmostEqual(1.0, float(index.matrix[1][1]), places=5)
+
+
+class MissingVectorTests(unittest.TestCase):
+    """Узнать, чего не хватает, — по ключам, а не по самим векторам.
+
+    ``missing`` звался в начале каждого захода построения и тянул из базы
+    двухгигабайтные BLOB, чтобы посмотреть на ключи. На библиотеке отдела
+    это шесть секунд распаковки и полмиллиарда лишних объектов — на каждый
+    заход, а заходов до трёх.
+    """
+
+    def setUp(self):
+        self.repos = Repositories(Database(":memory:"))
+        self.repos.vectors.put_many("bge-m3", {
+            f"kniga#{i:04d}": [float(i), 1.0] for i in range(0, 40, 2)})
+        self.uids = [f"kniga#{i:04d}" for i in range(40)]
+
+    def test_the_missing_ones_are_named(self):
+        gaps = self.repos.vectors.missing(self.uids)
+        self.assertEqual([f"kniga#{i:04d}" for i in range(1, 40, 2)], gaps)
+
+    def test_the_vector_itself_is_never_read(self):
+        rows = []
+        original = self.repos.db.query
+
+        def spy(sql, params=()):
+            rows.append(" ".join(str(sql).split()))
+            return original(sql, params)
+
+        with mock.patch.object(self.repos.db, "query", spy):
+            self.repos.vectors.missing(self.uids)
+        self.assertTrue(rows, "запросов не было вовсе")
+        for sql in rows:
+            self.assertNotIn("vector", sql.lower(), f"вектор всё ещё читается: {sql}")
+
+    def test_nothing_is_asked_of_the_base_for_an_empty_list(self):
+        with mock.patch.object(self.repos.db, "query", side_effect=AssertionError):
+            self.assertEqual(set(), self.repos.vectors.present([]))
+            self.assertEqual([], self.repos.vectors.missing([]))
+
+    def test_a_full_library_leaves_nothing_missing(self):
+        even = [f"kniga#{i:04d}" for i in range(0, 40, 2)]
+        self.assertEqual([], self.repos.vectors.missing(even))
+        self.assertEqual(set(even), self.repos.vectors.present(even))
 
 
 class QualityCheckTests(unittest.TestCase):

@@ -14,7 +14,7 @@ import secrets
 import sqlite3
 from array import array
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Sequence, Set, Tuple
 
 from ..corpus import Chunk
 from ..retrieval import tokenize
@@ -947,7 +947,7 @@ class VectorRepo:
             return VectorIndex([], [], 0)
 
         first = self.db.query(
-            f"SELECT vector FROM embeddings {where} ORDER BY chunk_uid LIMIT 1", params)
+            f"SELECT vector FROM embeddings {where} LIMIT 1", params)
         dim = len(unpack_vector(first[0]["vector"])) if first else 0
         if not dim:
             return VectorIndex([], [], 0)
@@ -971,15 +971,24 @@ class VectorRepo:
         # Читаем одним проходом курсора, а не LIMIT/OFFSET по страницам: с
         # OFFSET SQLite на каждой странице пропускает всё, что перед ней, и
         # последняя страница отматывает полмиллиона строк.
+        # Без ORDER BY — и это не мелочь. Ключ фрагмента текстовый, и на
+        # сортировку по нему SQLite заводит временное дерево, куда переносит
+        # все строки вместе с векторами: две с лишним тысячи мегабайт через
+        # временный файл, двадцать две секунды вместо трёх. А порядок здесь
+        # не нужен вовсе: ключи собираются рядом с матрицей, строка к строке,
+        # и поиск возвращает их по номеру строки.
         for rows in self.db.stream(
-                f"SELECT chunk_uid, vector FROM embeddings {where} "
-                f"ORDER BY chunk_uid", params, chunk=batch):
+                f"SELECT chunk_uid, vector FROM embeddings {where}",
+                params, chunk=batch):
             for item in rows:
                 if row >= total:
                     break
-                values = array("f")
-                values.frombytes(item["vector"])
-                if len(values) != dim:
+                # np.frombuffer читает готовые байты как есть, без промежуточных
+                # объектов. array("f") на каждую строку заводил тысячу чисел
+                # Python: на библиотеке отдела это одиннадцать секунд только
+                # на распаковку, здесь — меньше секунды при том же итоге.
+                values = np.frombuffer(item["vector"], dtype="float32")
+                if values.size != dim:
                     # Вектор чужой модели или битая строка: место в матрице
                     # ему не отводим, иначе поиск сравнивал бы несравнимое.
                     continue
@@ -995,8 +1004,30 @@ class VectorRepo:
         normalize_rows(matrix)
         return VectorIndex(uids, matrix, dim)
 
+    def present(self, chunk_uids: Sequence[str]) -> Set[str]:
+        """Ключи фрагментов, у которых вектор уже есть.
+
+        Именно ключи, без самих векторов: узнать, что строить дальше, можно
+        по одному столбцу. Раньше здесь звался ``get_many``, и чтобы получить
+        множество ключей, система вычитывала из базы двухгигабайтные BLOB и
+        разворачивала каждый в список из тысячи чисел — на библиотеке отдела
+        это шесть секунд и полмиллиарда лишних объектов на каждый заход
+        построения, а заходов до трёх.
+        """
+        if not chunk_uids:
+            return set()
+        found: Set[str] = set()
+        for batch in _batched(list(chunk_uids)):
+            placeholders = ",".join("?" * len(batch))
+            rows = self.db.query(
+                f"SELECT chunk_uid FROM embeddings WHERE chunk_uid IN ({placeholders})",
+                tuple(batch),
+            )
+            found.update(str(row["chunk_uid"]) for row in rows)
+        return found
+
     def missing(self, chunk_uids: Sequence[str]) -> List[str]:
-        present = set(self.get_many(chunk_uids))
+        present = self.present(chunk_uids)
         return [uid for uid in chunk_uids if uid not in present]
 
     def count(self) -> int:

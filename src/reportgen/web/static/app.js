@@ -6121,7 +6121,9 @@
             clearTimeout(libState.qualityTimer);
             if (state.running) {
                 libState.qualityTimer = setTimeout(() => {
-                    if (document.body.contains(qualityBox)) loadQuality();
+                    if (!document.body.contains(qualityBox)) return;
+                    if (document.hidden) { renderQuality(); return; }
+                    loadQuality();
                 }, 1500);
             }
         }
@@ -6348,7 +6350,13 @@
             clearTimeout(libState.vectorsTimer);
             if (busy) {
                 libState.vectorsTimer = setTimeout(() => {
-                    if (document.body.contains(vectorsBox)) loadVectors();
+                    if (!document.body.contains(vectorsBox)) return;
+                    // Свёрнутое окно спрашивать незачем: человек на него не
+                    // смотрит, а каждый вопрос — это счёт по всей библиотеке
+                    // на той же базе, в которую построение сейчас пишет.
+                    // Ждём, пока вкладку откроют снова.
+                    if (document.hidden) { renderVectors(state); return; }
+                    loadVectors();
                 }, 2000);
             }
         }

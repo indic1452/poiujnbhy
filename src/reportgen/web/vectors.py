@@ -33,8 +33,8 @@ if TYPE_CHECKING:  # pragma: no cover — только для подсказок
 
 __all__ = ["VectorIndexer"]
 
-#: Столько секунд держим последний посчитанный статус. Считается он двумя
-#: запросами к SQLite, но экран библиотеки открывают часто, а построение
+#: Столько секунд держим последний посчитанный статус. Считается он тремя
+#: счётами по индексам, но экран библиотеки открывают часто, а построение
 #: векторов и без того занимает базу.
 STATUS_TTL = 2.0
 
@@ -42,6 +42,14 @@ STATUS_TTL = 2.0
 #: пока идёт долгая книга, кладут вторую. Больше трёх проходов — признак
 #: того, что дело не в новых документах.
 _MAX_PASSES = 3
+
+#: Столько секунд верим прошлому счёту осиротевших векторов. Он один во всём
+#: состоянии стоит прохода по всей библиотеке (полсекунды на базе отдела), а
+#: меняться ему теперь неоткуда: вектор удаляется вместе со своим фрагментом
+#: триггером схемы. Держим как страховку от чужой записи в базу — редкую и
+#: потому проверяемую редко. После построения счёт обновляется принудительно:
+#: именно там от него зависит вывод «поиск готов».
+ORPHAN_TTL = 600.0
 
 
 class VectorIndexer:
@@ -66,6 +74,10 @@ class VectorIndexer:
         self._written = 0
         self._status: Dict[str, Any] | None = None
         self._status_at = 0.0
+        #: Осиротевшие векторы — счёт и время его снятия.
+        self._orphan_ours = 0
+        self._orphan_others = 0
+        self._orphan_at = 0.0
         #: Приложение выключается — новых проходов не начинать.
         self._stopping = threading.Event()
 
@@ -127,29 +139,69 @@ class VectorIndexer:
         return counted
 
     def _count(self) -> Dict[str, Any]:
+        """Счёт по индексам — без прохода по самим векторам.
+
+        Раньше и «сколько векторов», и «сколько чужой моделью» считались
+        соединением с таблицей фрагментов: на библиотеке отдела это полсекунды
+        на каждый ответ, а экран библиотеки во время построения спрашивает
+        состояние раз в две секунды — по тому же файлу, в который построение
+        в это время пишет.
+
+        Соединение стояло не зря: оно отсекало векторы удалённых документов.
+        Считать их нужно по-прежнему — осиротевший вектор врёт молча,
+        превращая «не хватает» в ноль при непостроенной библиотеке. Но
+        появиться такому вектору больше неоткуда: его удаляет вместе с
+        фрагментом триггер схемы. Значит, и пересчитывать сирот на каждый
+        ответ незачем — их счёт держится отдельно и обновляется редко.
+        """
         db = self.repos.db
         chunks = int(db.scalar("SELECT count(*) FROM chunks") or 0)
-        # Считаем не строки таблицы векторов, а ФРАГМЕНТЫ: в таблице могут
-        # остаться векторы удалённых документов, и «векторов больше, чем
-        # фрагментов» пугало бы на пустом месте.
         vectors = int(db.scalar(
-            "SELECT count(*) FROM chunks c "
-            "JOIN embeddings e ON e.chunk_uid = c.chunk_uid "
-            "WHERE e.model = ?", (self.model,)) or 0)
+            "SELECT count(*) FROM embeddings WHERE model = ?",
+            (self.model,)) or 0)
         # Фрагмент, вектор которого построен ЧУЖОЙ моделью. Косинус между
         # разными моделями ничего не значит, поэтому такой фрагмент для
         # поиска всё равно что без вектора — он входит и в missing, но
         # чинится иначе: не достройкой, а полной перестройкой.
         stale = int(db.scalar(
-            "SELECT count(*) FROM chunks c "
-            "JOIN embeddings e ON e.chunk_uid = c.chunk_uid "
-            "WHERE e.model <> ?", (self.model,)) or 0)
+            "SELECT count(*) FROM embeddings WHERE model <> ?",
+            (self.model,)) or 0)
+        ours, others = self._orphans()
+        vectors = max(0, vectors - ours)
+        stale = max(0, stale - others)
         return {
             "chunks": chunks,
             "vectors": vectors,
             "missing": max(0, chunks - vectors),
             "stale": stale,
         }
+
+    def _orphans(self, *, fresh: bool = False) -> "tuple[int, int]":
+        """Векторы, чьих фрагментов уже нет: (нашей моделью, чужой моделью).
+
+        Единственное место состояния, которому нужен проход по всей таблице.
+        Держим его отдельно от остальных счётов и обновляем по ``ORPHAN_TTL``
+        либо принудительно — после построения и после очистки.
+        """
+        now = time.monotonic()
+        with self._lock:
+            if (not fresh and self._orphan_at
+                    and now - self._orphan_at < ORPHAN_TTL):
+                return self._orphan_ours, self._orphan_others
+        row = self.repos.db.query(
+            "SELECT count(*) AS total, "
+            "       sum(CASE WHEN e.model = ? THEN 1 ELSE 0 END) AS ours "
+            "FROM embeddings e "
+            "WHERE NOT EXISTS (SELECT 1 FROM chunks c "
+            "                  WHERE c.chunk_uid = e.chunk_uid)",
+            (self.model,))
+        total = int((row[0]["total"] if row else 0) or 0)
+        ours = int((row[0]["ours"] if row else 0) or 0)
+        with self._lock:
+            self._orphan_ours = ours
+            self._orphan_others = max(0, total - ours)
+            self._orphan_at = now
+            return self._orphan_ours, self._orphan_others
 
     # -- построение ---------------------------------------------------------
 
@@ -294,6 +346,9 @@ class VectorIndexer:
                 with self._lock:
                     self._written = total_written
                     self._status = None
+                    # Здесь по счёту принимается решение «поиск готов»: сирот
+                    # пересчитываем заново, а не берём с прошлого раза.
+                    self._orphan_at = 0.0
                 if not written or not self._count()["missing"]:
                     break
         except Exception as error:  # noqa: BLE001 — поток не должен уносить приложение

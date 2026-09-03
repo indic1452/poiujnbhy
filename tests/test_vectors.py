@@ -132,6 +132,125 @@ class StatusTests(unittest.TestCase):
         self.assertFalse(state["ready"])
         self.assertIn("пуста", state["hint"])
 
+    def test_the_count_never_walks_the_whole_vector_table(self):
+        """Состояние спрашивают раз в две секунды, пока идёт построение.
+
+        Считалось оно соединением с таблицей фрагментов: на библиотеке отдела
+        это полсекунды на каждый ответ — по той же базе, в которую построение
+        в это время пишет.
+        """
+        repos = build_repos(3)
+        repos.vectors.put_many("bge-m3", {
+            f"kniga#{index:04d}": [0.1, 0.2, 0.3, 0.4] for index in range(3)})
+        seen = []
+        original = repos.db.scalar
+
+        def spy(sql, params=()):
+            seen.append(" ".join(str(sql).split()).lower())
+            return original(sql, params)
+
+        with mock.patch.object(repos.db, "scalar", spy):
+            VectorIndexer(repos, make_settings()).status()
+        self.assertTrue(seen, "состояние посчиталось без единого запроса")
+        for sql in seen:
+            self.assertNotIn(" join ", sql, f"соединение вернулось: {sql}")
+
+    def test_the_whole_table_is_not_walked_on_every_poll(self):
+        """Пока идёт построение, состояние спрашивают раз в две секунды.
+
+        Проход по всей таблице векторов нужен ровно для одного числа —
+        сколько векторов осталось от удалённых фрагментов. Появиться им
+        теперь неоткуда, и повторять этот проход на каждый ответ незачем.
+        """
+        repos = build_repos(3)
+        repos.vectors.put_many("bge-m3", {
+            f"kniga#{index:04d}": [0.1, 0.2, 0.3, 0.4] for index in range(3)})
+        indexer = VectorIndexer(repos, make_settings())
+        heavy = []
+        original = repos.db.query
+
+        def spy(sql, params=()):
+            text = " ".join(str(sql).split()).lower()
+            if "not exists" in text or " join " in text:
+                heavy.append(text)
+            return original(sql, params)
+
+        with mock.patch.object(repos.db, "query", spy):
+            for _ in range(5):
+                indexer.status(fresh=True)
+        self.assertEqual(1, len(heavy),
+                         f"проходов по всей таблице: {len(heavy)}")
+
+    def test_a_deleted_fragment_takes_its_vector_with_it(self):
+        """Иначе осиротевший вектор врёт молча.
+
+        Он попадает в счёт, «не хватает» становится нулём, и человек читает
+        «смысловой поиск работает по всей библиотеке» при непостроенных
+        векторах.
+        """
+        repos = build_repos(4)
+        repos.vectors.put_many("bge-m3", {
+            f"kniga#{index:04d}": [0.1, 0.2, 0.3, 0.4] for index in range(4)})
+        self.assertEqual(4, repos.vectors.count())
+        with repos.db.transaction() as connection:
+            connection.execute(
+                "DELETE FROM chunks WHERE chunk_uid = ?", ("kniga#0001",))
+        self.assertEqual(3, repos.vectors.count())
+        state = VectorIndexer(repos, make_settings()).status()
+        self.assertEqual(3, state["chunks"])
+        self.assertEqual(3, state["vectors"])
+        self.assertEqual(0, state["missing"])
+
+    def test_the_verdict_after_a_build_is_counted_afresh(self):
+        """Итог построения — единственное место, где счёт нельзя брать старый.
+
+        Между двумя ответами счёт сирот держится десять минут: меняться ему
+        неоткуда. Но именно по итогу построения человек читает «поиск
+        работает по всей библиотеке», и здесь старое число превратилось бы в
+        «векторов больше, чем фрагментов» — ту самую тревогу на пустом месте.
+        """
+        repos = build_repos(4)
+        indexer = VectorIndexer(repos, make_settings())
+        indexer.status()                        # запомнили: сирот нет
+        repos.vectors.put_many("bge-m3", {
+            f"prizrak#{index:04d}": [0.1, 0.2, 0.3, 0.4] for index in range(4)})
+        indexer.client_factory = lambda: StubEmbedder()
+        indexer.start()
+        indexer.wait(5)
+        state = indexer.status()
+        self.assertEqual(4, state["chunks"])
+        self.assertEqual(4, state["vectors"], "сироты попали в счёт")
+        self.assertEqual(0, state["missing"])
+
+    def test_orphans_left_by_an_older_version_are_swept_once(self):
+        """База отдела пожила до правила «вектор живёт со своим фрагментом»."""
+        import sqlite3
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = str(Path(folder) / "staraya.db")
+            repos = build_repos(3, path=path)
+            repos.vectors.put_many("bge-m3", {
+                f"kniga#{index:04d}": [0.1, 0.2, 0.3, 0.4] for index in range(3)})
+            repos.db.close()
+            # Сироту заводим в обход триггера — так она и появлялась раньше.
+            raw = sqlite3.connect(path)
+            raw.execute("INSERT INTO embeddings(chunk_uid, model, dim, vector) "
+                        "VALUES('udalyonnaya#0000', 'bge-m3', 4, ?)",
+                        (b"\x00" * 16,))
+            raw.execute("DELETE FROM meta WHERE key = 'orphan_vectors_dropped_at'")
+            raw.execute("UPDATE meta SET value = '13' WHERE key = 'schema_version'")
+            raw.commit()
+            self.assertEqual(4, raw.execute(
+                "SELECT count(*) FROM embeddings").fetchone()[0])
+            raw.close()
+
+            again = Repositories(Database(path))
+            self.assertEqual(3, again.vectors.count())
+            state = VectorIndexer(again, make_settings()).status()
+            self.assertEqual(3, state["vectors"])
+            self.assertEqual(0, state["missing"])
+            again.db.close()
+
 
 class BuildTests(unittest.TestCase):
     def test_vectors_are_built_for_every_chunk(self):

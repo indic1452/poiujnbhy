@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "13"
+SCHEMA_VERSION = "14"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -243,6 +243,7 @@ class Database:
             self._rename_roles()
             self._restore_group_numbers()
             self._move_phones()
+            self._drop_orphan_vectors()
             self.connection.execute(
                 "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -272,6 +273,39 @@ class Database:
         self.connection.execute(
             "UPDATE users SET phone_open = ext_no "
             "WHERE phone_open = '' AND ext_no <> ''")
+
+    def _drop_orphan_vectors(self) -> None:
+        """Векторы фрагментов, которых уже нет, — по одному разу на базу.
+
+        Правило «вектор живёт со своим фрагментом» теперь стоит триггером в
+        самой схеме, но до него база успела пожить, и сироты в ней могли
+        остаться. Они не безобидны: состояние смыслового поиска считает
+        векторы, и лишние делают «не хватает» нулём при непостроенной
+        библиотеке — человек видит «всё готово» и не понимает, почему поиск
+        ничего не находит.
+
+        Проход тяжёлый — полмиллиона строк, — поэтому делаем его один раз и
+        запоминаем в meta. Дальше сирот не будет: их не даст завести триггер.
+        """
+        try:
+            done = self.connection.execute(
+                "SELECT 1 FROM meta WHERE key = 'orphan_vectors_dropped_at'"
+            ).fetchone()
+        except sqlite3.Error:
+            return
+        if done is not None:
+            return
+        try:
+            self.connection.execute(
+                "DELETE FROM embeddings WHERE chunk_uid NOT IN "
+                "(SELECT chunk_uid FROM chunks)")
+        except sqlite3.Error:
+            return                # таблиц ещё нет — база новая, сирот неоткуда взять
+        self.connection.execute(
+            "INSERT INTO meta(key, value) VALUES('orphan_vectors_dropped_at', ?) "
+            "ON CONFLICT(key) DO NOTHING",
+            (datetime.now(timezone.utc).isoformat(timespec="seconds"),),
+        )
 
     def _schema_is_current(self) -> bool:
         """Готова ли база к работе без единой записи."""
