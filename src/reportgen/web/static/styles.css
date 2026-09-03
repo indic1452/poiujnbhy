@@ -4299,7 +4299,7 @@ body.has-dock .composer {
 
 .preview-box {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     min-height: 320px;
     max-height: 68vh;
@@ -4321,6 +4321,62 @@ body.has-dock .composer {
     height: 66vh;
     border: 0;
     background: var(--panel);
+}
+
+/* Страницы PDF и сканов: лист по центру, под ним листалка. Лист на белом и
+   с тенью — как бумага на столе, чтобы поля страницы были видны. */
+/* Лист прокручивается сам, в своих границах: листалка стоит ниже и никуда
+   не уезжает, а «наверх новой страницы» получается одной строкой кода. */
+.pages-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-height: 62vh;
+    overflow: auto;
+    outline: none;
+}
+
+/* Лист прижат к верху, а не отцентрован по вертикали. Отцентрованный
+   flex-элемент, который выше своего родителя, вылезает в обе стороны, и
+   верхняя часть становится недостижимой прокруткой: страница, растянутая по
+   ширине, показывалась с середины, а начало текста было не достать. */
+.pages-sheet {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 300px;
+    width: 100%;
+}
+
+.pages-image {
+    max-width: 100%;
+    max-height: 60vh;
+    width: auto;
+    object-fit: contain;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .16);
+}
+
+.pages-image.is-wide {
+    max-height: none;
+    width: 100%;
+}
+
+/* Листалка стоит под листом, а не внутри него: растянутая по ширине страница
+   выше окна, и внутри кнопки уезжали из виду вместе с текстом. */
+.pages-bar {
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.pages-count {
+    white-space: nowrap;
 }
 
 .preview-text {

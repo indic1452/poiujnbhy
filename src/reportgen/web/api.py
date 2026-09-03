@@ -52,6 +52,7 @@ from ..store.models import (
 )
 from .auth import (COOKIE_NAME, get_user, require_admin, require_editor,
                    require_reviewer, require_user)
+from .pages import PageRenderError, is_renderable, page_count, render_page
 from .service import CARD_LIMITS, ServiceError
 
 log = logging.getLogger(__name__)
@@ -640,7 +641,7 @@ def list_case_files(request: Request, case_ref: int, stage: str = "") -> Dict[st
         raise ServiceError(f"неизвестный вид приложения '{stage}'", 400)
     items = _repos(request).case_files.list_for_case(case.id, stage=stage)
     return {
-        "files": [item.to_dict() for item in items],
+        "files": [with_pages(item) for item in items],
         "stages": [{"id": key, "title": FILE_STAGE_TITLES[key]} for key in FILE_STAGES],
     }
 
@@ -706,12 +707,12 @@ def attach_to_case(request: Request, case_ref: int,
 
     repos.audit.log("case.attach", user=user, object_type="case",
                     object_id=case.case_id, details={"name": name, "bytes": size})
-    return {"file": item.to_dict()}
+    return {"file": with_pages(item)}
 
 
 @router.get("/cases/{case_ref}/files/{file_id}")
 def download_case_file(request: Request, case_ref: int, file_id: int,
-                       inline: int = 0) -> FileResponse:
+                       inline: int = 0, page: int = 0):
     """Отдать приложенную бумагу подлинником.
 
     inline=1 — для просмотра прямо на экране: скан письма хочется увидеть, не
@@ -727,7 +728,7 @@ def download_case_file(request: Request, case_ref: int, file_id: int,
     path = Path(item.path)
     if not path.is_file():
         raise ServiceError("файл не найден на диске", 404)
-    return _file_reply(path, item.name, inline=bool(inline))
+    return _preview_reply(request, path, item.name, inline=inline, page=page)
 
 
 @router.get("/cases/{case_ref}/files/{file_id}/text")
@@ -2745,10 +2746,23 @@ def read_talk(request: Request, talk_id: int) -> Dict[str, Any]:
         raise ServiceError("беседа не найдена", 404)
     messages = repos.talks.messages(talk_id)
     repos.talks.mark_read(talk_id, user.id)
+    # Число страниц для приложенных PDF и сканов: без него окно не напишет
+    # «страница 1 из 4» и не узнает, есть ли следующая.
+    counts = {item.id: page_count(Path(item.path))
+              for item in repos.talks.files(talk_id)
+              if is_renderable(item.name) and item.path}
+    listing = []
+    for message in messages:
+        data = message.to_dict()
+        for attachment in data.get("files") or []:
+            total = counts.get(int(attachment.get("id") or 0))
+            if total:
+                attachment["pages"] = total
+        listing.append(data)
     return {
         "id": talk_id,
         "members": repos.talks.members(talk_id),
-        "messages": [item.to_dict() for item in messages],
+        "messages": listing,
     }
 
 
@@ -2868,7 +2882,7 @@ def read_talk_file_text(request: Request, talk_id: int, file_id: int) -> Dict[st
 
 @router.get("/talks/{talk_id}/files/{file_id}")
 def read_talk_file(request: Request, talk_id: int, file_id: int,
-                   inline: int = 0):
+                   inline: int = 0, page: int = 0):
     """Отдать приложенный к беседе файл. Только участнику беседы."""
     user = require_user(request)
     repos = _repos(request)
@@ -2880,7 +2894,7 @@ def read_talk_file(request: Request, talk_id: int, file_id: int,
     path = Path(item.path)
     if not path.exists():
         raise ServiceError("файл не найден на диске", 410)
-    return _file_reply(path, item.name, inline=bool(inline))
+    return _preview_reply(request, path, item.name, inline=inline, page=page)
 
 
 # -------------------------------------------------------------- сводка ----
@@ -3041,7 +3055,7 @@ def list_person_files(request: Request, user_id: int) -> Dict[str, Any]:
     items = _repos(request).person_files.list_for_user(person.id)
     return {
         "user": _user_public(person),
-        "files": [item.to_dict() for item in items],
+        "files": [with_pages(item) for item in items],
         "kinds": [{"id": kind, "title": PERSON_FILE_TITLES[kind]}
                   for kind in PERSON_FILE_KINDS],
         "can_edit": actor.id == person.id or actor.role in REVIEW_ROLES,
@@ -3118,12 +3132,12 @@ def add_person_file(request: Request, user_id: int,
     # попадает, журнал читают все администраторы.
     repos.audit.log("person.file.add", user=actor, object_type="user",
                     object_id=person.login, details={"name": name, "kind": kind})
-    return {"file": item.to_dict()}
+    return {"file": with_pages(item)}
 
 
 @router.get("/users/{user_id}/files/{file_id}")
 def download_person_file(request: Request, user_id: int, file_id: int,
-                         inline: int = 0) -> FileResponse:
+                         inline: int = 0, page: int = 0):
     actor = require_user(request)
     person = _person_or_404(request, user_id)
     if not _may_see_person_files(actor, person.id):
@@ -3134,7 +3148,7 @@ def download_person_file(request: Request, user_id: int, file_id: int,
     path = Path(item.path)
     if not path.is_file():
         raise ServiceError("файл не найден на диске", 404)
-    return _file_reply(path, item.name, inline=bool(inline))
+    return _preview_reply(request, path, item.name, inline=inline, page=page)
 
 
 @router.delete("/users/{user_id}/files/{file_id}")
@@ -3474,6 +3488,58 @@ INLINE_TYPES = {
     ".csv": "text/plain; charset=utf-8",
     ".json": "text/plain; charset=utf-8",
 }
+
+
+def with_pages(item: Any) -> Dict[str, Any]:
+    """Описание файла плюс число страниц — для показа картинками.
+
+    Знать его окну нужно заранее: без этого нельзя написать «страница 1 из 4»
+    и нельзя понять, есть ли следующая. Путь к файлу на сторону человека при
+    этом не уходит — берём его из записи, а не из ответа. Открытие файла тоже
+    почти ничего не стоит: MuPDF читает оглавление, до страниц дело не идёт.
+    """
+    data = item.to_dict()
+    name = str(getattr(item, "name", "") or "")
+    if not is_renderable(name):
+        return data
+    raw = str(getattr(item, "path", "") or "")
+    if not raw:
+        return data
+    total = page_count(Path(raw))
+    if total:
+        data["pages"] = total
+    return data
+
+
+def _preview_reply(request: Request, path: Path, name: str, *,
+                   inline: int = 0, page: int = 0):
+    """Что отдать в ответ на просмотр: страницу картинкой или сам файл.
+
+    PDF в окне не открывался вовсе: встроенное окно стоит в песочнице и с
+    запретом «default-src 'none'» — чужой файл в своей странице — это чужой
+    код в своей странице. Встроенный просмотрщик браузера тоже код, и запрет
+    глушил его: человек видел пустой серый прямоугольник и шёл скачивать файл.
+
+    Снимать запрет нельзя — PDF умеет исполнять свой код. Поэтому страницу
+    рисуем у себя и отдаём картинкой: картинка кода не несёт ни при каком
+    браузере. Заодно так показываются сканы TIFF, которых не показывает
+    вообще ни один браузер.
+    """
+    if page > 0:
+        try:
+            data = render_page(path, page,
+                               cache_root=Path(_settings(request).data_dir) / "kesh")
+        except PageRenderError as error:
+            raise ServiceError(str(error), 404) from error
+        return Response(
+            content=data, media_type="image/png",
+            headers={
+                "Cache-Control": "private, max-age=3600",
+                "X-Content-Type-Options": "nosniff",
+                "Content-Security-Policy": "sandbox; default-src 'none'",
+            },
+        )
+    return _file_reply(path, name, inline=bool(inline))
 
 
 def _file_reply(path: Path, name: str, *, inline: bool = False) -> FileResponse:

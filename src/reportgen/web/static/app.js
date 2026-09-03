@@ -3661,9 +3661,23 @@
        смысл в том, чтобы взглянуть. Браузер сам рисует картинки, PDF и
        простой текст; всё прочее просмотру не поддаётся, и по нему честно
        говорится, что открыть можно только скачав. */
-    const PREVIEW_IMAGE = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tif', 'tiff'];
-    const PREVIEW_PDF = ['pdf'];
+    const PREVIEW_IMAGE = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
     const PREVIEW_TEXT = ['txt', 'md', 'log', 'json', 'csv'];
+    /* PDF и сканы показываем страницами, нарисованными на сервере.
+
+       Раньше PDF стоял во встроенном окне — и не открывался вовсе. Чужой
+       файл в своей странице — это чужой код в своей странице, поэтому окно
+       стоит в песочнице и с запретом «default-src 'none'». Встроенный
+       просмотрщик браузера — тоже код, и запрет глушил и его: человек
+       нажимал на справку-объективку и получал пустой серый прямоугольник со
+       словами «This page has been blocked by Chromium». Ждал, ничего не
+       дождавшись, и шёл скачивать файл.
+
+       Снимать запрет нельзя: PDF умеет исполнять свой код. Поэтому страницу
+       рисует сервер и отдаёт картинкой — картинка кода не несёт ни при каком
+       браузере. Заодно так показываются сканы TIFF, которые не показывает
+       вообще ни один браузер. */
+    const PREVIEW_PAGES = ['pdf', 'tif', 'tiff', 'xps', 'oxps', 'epub', 'cbz'];
     /* Документы Word, Excel и им подобные браузер не рисует и никогда не
        будет: это не формат для показа, а упакованный архив с разметкой.
        Но текст из них система уже вычитала при загрузке — тем же
@@ -3678,6 +3692,90 @@
         return dot === -1 ? '' : String(name).slice(dot + 1).toLowerCase();
     }
 
+    /* Просмотрщик страниц: страница рисуется на сервере и приходит картинкой.
+
+       Листается кнопками и стрелками на клавиатуре, соседняя страница
+       подгружается заранее — на своей машине это мгновенно, а перелистывать
+       книгу приятнее без ожидания. */
+    function pageViewer(item, href) {
+        const total = Number(item.pages || 0);
+        const box = h('div', { class: 'pages-view', tabindex: '0' });
+        box.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowLeft') { show(current - 1); event.preventDefault(); }
+            if (event.key === 'ArrowRight') { show(current + 1); event.preventDefault(); }
+        });
+        const canvas = h('div', { class: 'pages-sheet' }, h('div', { class: 'spinner' }));
+        const label = h('span', { class: 'small muted pages-count' });
+        let current = 1;
+        let wide = false;
+
+        const pageUrl = (number) =>
+            href + (href.indexOf('?') === -1 ? '?' : '&') + 'page=' + number;
+
+        const back = h('button', {
+            class: 'btn btn--sm', title: 'Предыдущая страница',
+            onclick: () => show(current - 1),
+        }, '← назад');
+        const forward = h('button', {
+            class: 'btn btn--sm', title: 'Следующая страница',
+            onclick: () => show(current + 1),
+        }, 'вперёд →');
+        // Страница целиком — чтобы увидеть вёрстку; по ширине — чтобы
+        // прочитать. Нужно и то и другое: справку читают, схему разглядывают.
+        const zoom = h('button', {
+            class: 'btn btn--sm',
+            title: 'Показать страницу целиком или растянуть по ширине окна',
+            onclick: () => { wide = !wide; show(current); },
+        }, 'по ширине');
+
+        function show(number) {
+            if (!total || number < 1 || number > total) return;
+            current = number;
+            back.disabled = current <= 1;
+            forward.disabled = current >= total;
+            zoom.textContent = wide ? 'страница целиком' : 'по ширине';
+            label.textContent = 'страница ' + current + ' из ' + total;
+            const image = h('img', {
+                class: 'pages-image' + (wide ? ' is-wide' : ''),
+                src: pageUrl(current),
+                alt: 'Страница ' + current + ' — ' + item.name,
+                onerror: () => {
+                    clear(canvas);
+                    canvas.appendChild(h('div', { class: 'muted' },
+                        'Эту страницу показать не удалось — скачайте файл '
+                        + 'и откройте своей программой.'));
+                },
+                onload: () => {
+                    clear(canvas);
+                    canvas.appendChild(image);
+                    // Новую страницу показываем с её начала: без этого после
+                    // перелистывания человек оказывался посреди чужого листа.
+                    box.scrollTop = 0;
+                    // Следующую готовим заранее, пока человек читает эту.
+                    if (current < total) new Image().src = pageUrl(current + 1);
+                },
+            });
+        }
+
+        if (!total) {
+            clear(canvas);
+            canvas.appendChild(h('div', { class: 'muted' },
+                'Страницы этого файла показать не получилось — скачайте его '
+                + 'и откройте своей программой.'));
+        } else {
+            show(1);
+        }
+
+        box.appendChild(canvas);
+        // Листалка живёт ВНЕ прокручиваемого листа. Растянутая по ширине
+        // страница выше окна, и внутри она уезжала из виду вместе с текстом:
+        // человек прокручивал страницу до конца и не находил, чем листать.
+        const bar = h('div', { class: 'toolbar pages-bar' },
+            total > 1 ? [back, label, forward] : label,
+            total ? zoom : null);
+        return { view: box, bar: bar, focus: () => box.focus() };
+    }
+
     function openFilePreview(item, href, textHref) {
         const ext = fileExt(item.name);
         const inline = href + (href.indexOf('?') === -1 ? '?' : '&') + 'inline=1';
@@ -3688,9 +3786,13 @@
         // прочитала.
         const asText = PREVIEW_READ.indexOf(ext) !== -1;
         let view;
+        let pager = null;
         if (PREVIEW_IMAGE.indexOf(ext) !== -1) {
             view = h('img', { class: 'preview-image', src: inline, alt: item.name });
-        } else if (PREVIEW_PDF.indexOf(ext) !== -1 || PREVIEW_TEXT.indexOf(ext) !== -1) {
+        } else if (PREVIEW_PAGES.indexOf(ext) !== -1) {
+            pager = pageViewer(item, href);
+            view = pager.view;
+        } else if (PREVIEW_TEXT.indexOf(ext) !== -1) {
             // Встроенное окно, а не вставка текста в разметку: чужой файл в
             // своей странице — это чужой код в своей странице. Сервер отдаёт
             // его в песочнице и с запретом переугадывать тип.
@@ -3759,6 +3861,7 @@
             wide: true,
             body: [
                 h('div', { class: 'preview-box' }, view),
+                pager ? pager.bar : null,
                 item.note ? h('div', { class: 'small muted' }, item.note) : null,
                 !asText && item.has_text === false ? h('div', { class: 'small muted' },
                     'Текст из файла прочитать не удалось: по словам из него '
@@ -3771,6 +3874,8 @@
                 h('button', { class: 'btn', onclick: () => dialog.close() }, 'Закрыть'),
             ],
         });
+        // Стрелки листают сразу, без щелчка по листу.
+        if (pager) setTimeout(() => pager.focus(), 0);
     }
 
     /* Приложенные к письму бумаги: скан письма, схема линии, журнал.
