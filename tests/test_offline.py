@@ -267,6 +267,39 @@ class InstallScriptTests(unittest.TestCase):
         self.assertIn("REPORTGEN_HOME", self.text)
 
 
+class BrandingTests(unittest.TestCase):
+    """Название отдела меняется в одном файле — и целиком."""
+
+    def setUp(self):
+        folder = ROOT / "scripts" / "windows"
+        self.example = json.loads(
+            (folder / "settings.example.json").read_text(encoding="utf-8-sig"))
+        self.docs = (ROOT / "docs" / "11-windows.md").read_text(encoding="utf-8")
+
+    def test_the_short_name_is_in_the_example_too(self):
+        """Иначе переименовавший отдел получал два названия на одном экране.
+
+        В примере настроек стояло только полное название. Человек правил
+        его, а в шапке слева оставалось прежнее сокращение — потому что
+        ключа brand_short в файле просто не было.
+        """
+        self.assertIn("brand_short", self.example)
+        self.assertIn("brand_name", self.example)
+
+    def test_every_branding_key_is_explained(self):
+        for key in ("brand_name", "brand_short", "brand_subtitle",
+                    "brand_accent", "brand_logo"):
+            with self.subTest(key=key):
+                self.assertIn(f"`{key}`", self.docs)
+
+    def test_the_docs_warn_to_change_both_names_together(self):
+        self.assertIn("вместе с `brand_name`", self.docs)
+
+    def test_the_docs_do_not_pretend_the_department_is_a_company(self):
+        # «Ваша компания» в примере — след от прежней, не отдельской версии.
+        self.assertNotIn('"brand_name": "Ваша компания"', self.docs)
+
+
 class LanAccessTests(unittest.TestCase):
     """Доступ отделу по сети: адрес должен быть тем, что набирают в браузере."""
 

@@ -3254,8 +3254,41 @@ class RosterTests(WebTestCase):
         body = self.client.get("/api/roster").json()
         logins = {person["full_name"] for person in body["staff"]}
         self.assertIn("Инженеров И. И.", logins)
+        self.assertIn("Начальников Н. Н.", logins)
+
+    def test_your_own_row_is_editable(self):
+        self.login("engineer")
+        body = self.client.get("/api/roster").json()
         me = [person for person in body["staff"] if person["is_me"]][0]
         self.assertTrue(me["can_edit"])
+
+    def test_the_system_creator_is_not_a_person_of_the_department(self):
+        """Создатель систему поставил, а не служит в отделе.
+
+        Он не дежурит, писем за ним не числится, и в расходе его строка —
+        всегда пустая, зато сбивает счёт: «12 человек в строю» становилось
+        13. В разделе «Сотрудники» он, наоборот, обязан быть виден: это
+        перечень учётных записей.
+        """
+        body = self.client.get("/api/roster").json()
+        self.assertNotIn("Хозяев Х. Х.",
+                         {person["full_name"] for person in body["staff"]})
+        # Список для выбора исполнителя письма — тоже список отдела.
+        staff = self.client.get("/api/staff").json()["items"]
+        self.assertNotIn("Хозяев Х. Х.", {item["full_name"] for item in staff})
+        board = self.client.get("/api/board").json()
+        self.assertNotIn("Хозяев Х. Х.",
+                         {item["full_name"] for item in board.get("people", [])})
+        # А в учётных записях — на месте.
+        users = self.client.get("/api/users").json()["items"]
+        self.assertIn("admin", {item["login"] for item in users})
+
+    def test_the_creator_is_not_counted_in_the_headcount(self):
+        board = self.client.get("/api/board").json()
+        staff = board["totals"]["staff"]
+        active = [u for u in self.repos.users.list_all(active_only=True)
+                  if u.role != "owner"]
+        self.assertEqual(len(active), staff)
 
     def test_an_engineer_may_edit_only_their_own_row(self):
         self.login("engineer")

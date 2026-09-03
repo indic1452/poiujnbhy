@@ -2116,8 +2116,7 @@ def staff(request: Request) -> Dict[str, Any]:
                 "phone_secure": user.phone_secure,
                 "room": user.room,
             }
-            for user in _repos(request).users.list_all(active_only=True)
-            if user.login != "local"
+            for user in _repos(request).users.list_all(active_only=True, staff_only=True)
         ]
     }
 
@@ -2373,7 +2372,7 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
     records = repos.absences.in_period_for_active(start, finish)
 
     staff = []
-    for person in repos.users.list_all(active_only=True):
+    for person in repos.users.list_all(active_only=True, staff_only=True):
         staff.append({
             "id": person.id,
             "full_name": short_name(person.full_name) or person.login,
@@ -2457,7 +2456,7 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
     unmarked = [
         {"id": person.id, "full_name": short_name(person.full_name) or person.login,
          "role": person.role, "role_title": person.role_title, "team": person.team}
-        for person in repos.users.list_all(active_only=True)
+        for person in repos.users.list_all(active_only=True, staff_only=True)
         if person.id not in marked
     ]
     on_place = sum(len(groups[kind]) for kind in PRESENT_KINDS)

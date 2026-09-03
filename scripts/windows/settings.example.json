@@ -1,4 +1,4 @@
-{
+﻿{
   "_комментарий": "Скопируйте в C:\\reportgen\\settings.json и правьте под себя. Пути — с двойными обратными слэшами.",
 
   "data_dir": "C:\\reportgen\\data",
@@ -48,6 +48,7 @@
   "max_upload_mb": 200,
 
   "brand_name": "2 специальный отдел",
+  "brand_short": "2СО",
   "brand_subtitle": "Подготовка, учёт и проверка технических отчётов",
   "brand_accent": "#15507e",
   "brand_logo": null,

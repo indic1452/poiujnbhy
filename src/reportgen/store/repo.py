@@ -224,15 +224,30 @@ class UserRepo:
         with self.db.transaction() as connection:
             connection.execute("UPDATE users SET active = ? WHERE id = ?", (int(active), user_id))
 
-    def list_all(self, active_only: bool = False) -> List[User]:
+    def list_all(self, active_only: bool = False, staff_only: bool = False) -> List[User]:
         """Личный состав. Сортировка — по старшинству должности, потом по ФИО:
-        так список читается как штатное расписание, а не как выгрузка."""
+        так список читается как штатное расписание, а не как выгрузка.
+
+        ``staff_only`` убирает учётные записи, которые человеком отдела не
+        являются: служебную запись режима без входа и создателя системы.
+        Создатель — это тот, кто систему поставил и правит настройки; в
+        расходе он не дежурит, писем за ним не числится, и в списках отдела
+        он только сбивает счёт: «12 человек в строю» превращалось в 13.
+        В разделе «Сотрудники» он, наоборот, обязан быть виден — это
+        перечень учётных записей, и управлять невидимой записью нельзя.
+        """
         order = "CASE role " + " ".join(
             f"WHEN '{role}' THEN {index}" for index, role in enumerate(ROLES)
         ) + f" ELSE {len(ROLES)} END, full_name, login"
         # Неодобренная заявка — ещё не сотрудник: в списках отдела, в выборе
         # исполнителя и в расходе ей не место, пока её не признали.
-        where = " WHERE approved = 1" + (" AND active = 1" if active_only else "")
+        clauses = ["approved = 1"]
+        if active_only:
+            clauses.append("active = 1")
+        if staff_only:
+            clauses.append("role <> 'owner'")
+            clauses.append("login <> 'local'")
+        where = " WHERE " + " AND ".join(clauses)
         return rows_to(User, self.db.query(f"SELECT * FROM users{where} ORDER BY {order}"))
 
     def count(self) -> int:
@@ -2075,7 +2090,10 @@ class BoardRepo:
             # Заявка на доступ — ещё не сотрудник: в сводке отдела ей делать
             # нечего. Писем за ней не числится по определению, поэтому и
             # оговорка про «остаётся, пока есть письма» её не касается.
-            "WHERE u.login <> 'local' AND u.approved = 1 "
+            # Создатель системы — учётная запись, а не человек отдела: он не
+            # дежурит и писем за ним не числится, а в сводке добавлял бы
+            # лишнюю единицу к «человек в строю».
+            "WHERE u.login <> 'local' AND u.role <> 'owner' AND u.approved = 1 "
             "  AND (u.active = 1 OR c.id IS NOT NULL) "
             "GROUP BY u.id "
             "HAVING u.active = 1 OR open_count > 0 "
