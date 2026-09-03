@@ -235,6 +235,49 @@ class NotATableTests(MarkupTestCase):
         self.assertEqual([], self.tables("Маска `SYN|ACK|FIN` разбирается так же."))
 
 
+class CitationTests(MarkupTestCase):
+    """Ссылка на источник — то, чем ответ связан с библиотекой отдела."""
+
+    def buttons(self, text):
+        import re as _re
+
+        out = self.inline(text)
+        return _re.findall(r'data-label="([^"]+)"', out)
+
+    def test_a_plain_label_is_a_button(self):
+        self.assertEqual(["S1"], self.buttons("Порог 12 дБ [S1]."))
+
+    def test_two_labels_in_one_bracket_are_two_buttons(self):
+        """Модель пишет «[S1, S2]» — по-русски это самая естественная запись.
+
+        Такая метка кнопкой не становилась: человек не мог открыть источник,
+        а сервер считал, что ответ не сослался ни на что.
+        """
+        self.assertEqual(["S1", "S2"], self.buttons("Порог 12 дБ [S1, S2]."))
+
+    def test_the_other_separators_too(self):
+        for text in ("[S1; S2]", "[S1 и S2]", "[ S1 , S2 ]"):
+            self.assertEqual(["S1", "S2"], self.buttons(text), text)
+
+    def test_a_range_is_opened_up(self):
+        self.assertEqual(["S1", "S2", "S3"], self.buttons("[S1—S3]"))
+        self.assertEqual(["S1", "S2", "S3"], self.buttons("[S1-S3]"))
+
+    def test_a_russian_letter_instead_of_the_latin_one(self):
+        """По раскладке «С» вместо «S» — обычная опечатка модели."""
+        self.assertEqual(["S1", "S2"], self.buttons("[С1, С2]"))
+
+    def test_a_leading_zero_is_not_a_dead_button(self):
+        self.assertEqual(["S1"], self.buttons("[S01]"))
+
+    def test_the_buttons_are_separated_in_the_text(self):
+        """«[S1][S2]» подряд читается как одна метка с опечаткой."""
+        self.assertIn("</button>, <button", self.inline("[S1, S2]"))
+
+    def test_a_bracket_that_is_not_a_citation_is_left_alone(self):
+        self.assertEqual([], self.buttons("Смотри [ГОСТ 1-3] и [примечание]."))
+
+
 class OrderedListTests(MarkupTestCase):
     """Порядок шагов методики терялся: «1., 1., 1.» вместо «1., 2., 3.»."""
 

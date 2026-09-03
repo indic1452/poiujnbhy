@@ -921,7 +921,11 @@ def _render_map(documents: Sequence[Dict[str, Any]]) -> str:
         if card.get("year"):
             head += f", {card['year']} г."
         head += f", {_STATUS_TITLES.get(card.get('status', 'current'), card.get('status'))}"
-        head += f". Фрагменты: {', '.join(card['labels'])}"
+        # Метки показываем так, как их надо писать, — каждую в своей
+        # скобке. Список через запятую модель принимала за образец и
+        # отвечала «[S1, S2]».
+        head += ". Фрагменты: " + " ".join(
+            f"[{label}]" for label in card["labels"])
         lines = [head]
         if card.get("outline"):
             lines.append("  Разделы документа: " + "; ".join(card["outline"]))
@@ -1037,7 +1041,17 @@ def _split_neighbours(chunks: Sequence[Any], anchor_uid: str,
 
 
 def _used_labels(text: str) -> set[str]:
-    return set(re.findall(r"\[(S\d+)\]", text or ""))
+    """Метки источников, на которые ответ сослался.
+
+    Разбор общий с остальной системой (reportgen.citations): «[S1, S2]» —
+    такая же ссылка, как две отдельные, и считать её нулём нельзя. Раньше
+    считалось: панель источников показывала первые три фрагмента подборки
+    вместо процитированных, а рядом с ответом висело «ответ не опирается на
+    библиотеку».
+    """
+    from ..citations import labels_in  # noqa: PLC0415 — модуль без зависимостей
+
+    return labels_in(text)
 
 
 def _tidy(text: str, limit: int) -> str:

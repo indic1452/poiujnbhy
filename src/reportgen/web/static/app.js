@@ -5453,8 +5453,17 @@
         }, 'Править');
 
         readView.addEventListener('click', (event) => {
-            // Щелчок по ссылке на источник — это не «хочу править».
-            if (!editable || event.target.closest('.cite')) return;
+            // Щелчок по ссылке на источник — это не «хочу править», а
+            // «покажи фрагмент». Кнопки в отчёте рисовались с курсором-
+            // пальцем и подсветкой, а обработчика у них не было вовсе:
+            // инженер жал на метку и не получал ничего.
+            const cite = event.target.closest('.cite');
+            if (cite) {
+                setActiveSource(cite.dataset.label);
+                setTab('sources');
+                return;
+            }
+            if (!editable) return;
             setMode(true);
         });
 
@@ -5541,8 +5550,14 @@
         const backdrop = $('.editor-backdrop', card);
         if (!textarea || !backdrop) return;
         const text = textarea.value + '\n';
-        backdrop.innerHTML = escapeHtml(text).replace(/\[(S\d+)\]/g, (match, label) =>
-            '<mark class="src-mark' + (wb.activeSource === label ? ' is-active' : '') + '">' + match + '</mark>');
+        // Разбор ссылок тот же, что везде: «[S1, S2]» — тоже ссылка, и
+        // подсвечиваться она обязана так же, как одиночная.
+        backdrop.innerHTML = escapeHtml(text).replace(CITATION_BOX, (match) => {
+            const labels = citeLabels(match);
+            const active = wb.activeSource && labels.indexOf(wb.activeSource) !== -1;
+            return '<mark class="src-mark' + (active ? ' is-active' : '') + '">'
+                + match + '</mark>';
+        });
     }
 
     /** Отметить в разметке ссылки на выбранный источник. */
@@ -5561,8 +5576,12 @@
         renderSidePanel();
         if (!wb.activeSource) return;
         const section = (wb.report ? wb.report.sections : []).find((item) => {
-            const text = wb.drafts.has(item.section_id) ? wb.drafts.get(item.section_id) : item.text;
-            return String(text).indexOf('[' + wb.activeSource + ']') !== -1;
+            const text = wb.drafts.has(item.section_id)
+                ? wb.drafts.get(item.section_id) : item.text;
+            // Ищем по разобранным меткам, а не по подстроке «[S1]»: раздел,
+            // сославшийся группой «[S1, S2]», подстрокой не находился.
+            return (String(text).match(CITATION_BOX) || []).some(
+                (box) => citeLabels(box).indexOf(wb.activeSource) !== -1);
         });
         if (section) flashSection(section.section_id);
     }
@@ -7789,6 +7808,54 @@
             (lines ? opensTable(lines, index) : isTableRow(line));
     }
 
+    /* Ссылки на источники: [S1], а также [S1, S2], [S1; S2], [S1—S3].
+
+       Разбирался ровно один вид — закрывающая скобка сразу за цифрами. А
+       модель, когда утверждение опирается на два документа, пишет по-русски
+       естественно: «[S1, S2]». Такая метка кнопкой не становилась, человек
+       не мог открыть источник, а сервер считал, что ответ не сослался ни на
+       что, и рисовал рядом «ответ не опирается на библиотеку».
+
+       Разбор тот же, что на сервере (reportgen/citations.py): их правила
+       обязаны совпадать, иначе интерфейс покажет ссылку там, где сервер её
+       не засчитал. */
+    const CITATION_BOX =
+        /\[\s*[SsСс]\s*0*\d+(?:\s*(?:[,;]|—|–|-|и)\s*(?:[SsСс]\s*)?0*\d+)*\s*\]/g;
+    const CITE_MAX_RANGE = 50;
+
+    function citeLabels(box) {
+        const inner = String(box).replace(/^\[|\]$/g, '');
+        const out = [];
+        const seen = {};
+        inner.split(/\s*(?:[,;]|и)\s*/).forEach((part) => {
+            const numbers = (part.match(/\d+/g) || []).map(Number);
+            if (!numbers.length) return;
+            let from = numbers[0];
+            let to = from;
+            if (numbers.length >= 2 && /[-–—]/.test(part)) {
+                // Диапазон, записанный наоборот, — тоже диапазон: обе метки
+                // настоящие, терять их молча хуже.
+                from = Math.min(numbers[0], numbers[1]);
+                to = Math.min(Math.max(numbers[0], numbers[1]), from + CITE_MAX_RANGE);
+            }
+            for (let n = from; n <= to; n += 1) {
+                const label = 'S' + n;
+                if (!seen[label]) { seen[label] = true; out.push(label); }
+            }
+        });
+        return out;
+    }
+
+    function citeButtons(box) {
+        const labels = citeLabels(box);
+        if (!labels.length) return box;
+        // Кнопки разделяем запятой: «[S1][S2]» подряд читается как одна
+        // метка с опечаткой.
+        return labels.map((label) =>
+            '<button type="button" class="cite" data-label="' + label + '" '
+            + 'title="Показать источник">[' + label + ']</button>').join(', ');
+    }
+
     /** Строчное оформление: код, жирный, курсив и ссылки [S1] на источники. */
     function mdInline(text) {
         // Экранированные знаки прячем до разбора и возвращаем после: «\*» —
@@ -7816,9 +7883,7 @@
         out = out.replace(/(^|[\s([«—])\*(\S|\S[^*\n]*\S)\*/g, '$1<i>$2</i>');
         out = out.replace(/(^|[\s([«—])_(\S|\S[^_\n]*\S)_/g, '$1<i>$2</i>');
         out = mdScripts(out);
-        out = out.replace(/\[(S\d+)\]/g,
-            '<button type="button" class="cite" data-label="$1" ' +
-            'title="Показать источник">[$1]</button>');
+        out = out.replace(CITATION_BOX, citeButtons);
         out = out.replace(/\u0001(\d+)\u0001/g,
             (whole, index) => '<code>' + code[Number(index)] + '</code>');
         return out.replace(/\u0000(\d+)\u0000/g,

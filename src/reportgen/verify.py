@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import re
+
+from .citations import labels_in
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Sequence
 
@@ -163,11 +165,11 @@ def _check_numbers(
 
 
 def _check_citations(sections: Sequence[tuple[str, str]], appendix: str) -> List[Issue]:
-    known = set(re.findall(r"\[(S\d+)\]", appendix))
+    known = labels_in(appendix)
     issues: List[Issue] = []
     for title, raw_body in sections:
         body = f"{title}\n{raw_body}"
-        for label in sorted(set(re.findall(r"\[(S\d+)\]", body))):
+        for label in sorted(labels_in(body)):
             if label not in known:
                 issues.append(
                     Issue(

@@ -28,6 +28,8 @@ from __future__ import annotations
 
 import json
 import re
+
+from .citations import CITATION_BOX, expand_box, labels_in
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -64,7 +66,9 @@ METRIC_ORDER = (
 # склонения и числа роли не играют, а порог отсекает случайные совпадения.
 DEFAULT_TITLE_OVERLAP = 0.6
 
-_CITATION_RE = re.compile(r"\[(S\d+)\]")
+#: Разбор ссылок общий с остальной системой: «[S1, S2]» — это две ссылки,
+#: и метрика точности цитирования обязана считать их так же, как интерфейс.
+_CITATION_RE = CITATION_BOX
 
 
 class EvalError(RuntimeError):
@@ -293,8 +297,12 @@ def citation_precision(markdown: str) -> float:
     ссылка вообще существует. Ссылка в никуда — это отчёт, который инженер не
     сможет проверить за пять секунд, ради чего приложение и заводилось.
     """
-    known = set(_CITATION_RE.findall(appendix_text(markdown)))
-    used = _CITATION_RE.findall(body_text(markdown))
+    known = labels_in(appendix_text(markdown))
+    # Считаем по каждой метке отдельно, а не по скобке: «[S1, S2]» — это две
+    # ссылки, и если одна из них в никуда, метрика обязана это показать.
+    used = [label
+            for box in _CITATION_RE.findall(body_text(markdown))
+            for label in expand_box(box)]
     if not used:
         return 1.0
     resolved = sum(1 for label in used if label in known)
