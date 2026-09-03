@@ -18,12 +18,29 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Protocol
 
 
+def _timed_out(error: BaseException) -> bool:
+    """Ответа не дождались (а не «не смогли подключиться»).
+
+    Различать это важно: связи нет — повторить попытку разумно, сервер мог
+    только подниматься; ответа нет — повторять бессмысленно и вредно, модель
+    занята, и второй такой же запрос удлиняет очередь отдела.
+    """
+    if isinstance(error, TimeoutError):
+        return True
+    reason = getattr(error, "reason", None)
+    return isinstance(reason, TimeoutError)
+
+
 class LLMError(RuntimeError):
     """Ошибка обращения к модели."""
 
 
 class LLM(Protocol):
     name: str
+
+    @staticmethod
+    def _timed_out(error: BaseException) -> bool:
+        return _timed_out(error)
 
     def complete(self, system: str, user: str, *, max_tokens: int = 1200,
                  temperature: float = 0.2) -> str:
@@ -118,6 +135,13 @@ class OpenAICompatLLM:
                 return body["choices"][0]["message"]["content"].strip()
             except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError) as error:
                 last_error = error
+                # Не дождались ответа — повторять НЕЛЬЗЯ. Молчание модели
+                # означает, что она занята очередью отдела, и второй такой же
+                # запрос очередь только удлиняет. А человек за это время не
+                # видит ничего: при трёх попытках по пятнадцать минут беда
+                # доходила до него через сорок пять минут молчания.
+                if _timed_out(error):
+                    break
                 if attempt < self.retries - 1:
                     time.sleep(2 ** attempt)
         raise LLMError(f"обращение к модели не удалось: {last_error}") from last_error
