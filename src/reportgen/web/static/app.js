@@ -975,7 +975,16 @@
        может — ни одной внешней загрузки в системе. Звучит только громкое:
        вызов в кабинет и возврат отчёта. Остальное ждёт молча. */
 
-    const NOTICE_POLL_MS = 20000;
+    /* Как часто спрашиваем про новое.
+
+       Было двадцать секунд, и человек жаловался справедливо: сообщение
+       написали, а уведомление приходит через полминуты. Запрос дешёвый —
+       выборка по своим уведомлениям, — поэтому на виду спрашиваем раз в пять
+       секунд. Свёрнутое окно опрашиваем реже: там браузер всё равно тормозит
+       таймеры фоновых вкладок, а рабочий стол получит уведомление и с
+       задержкой. */
+    const NOTICE_POLL_MS = 5000;
+    const NOTICE_POLL_HIDDEN_MS = 30000;
     const NOTICE_ICON = {
         'report.rework': '!',
         'report.review': '→',
@@ -1002,6 +1011,22 @@
 
     function setSoundOn(on) {
         storageSet('rg-notice-sound', on ? '1' : '0');
+    }
+
+    /* Громкость. Сигнал звучал на одной десятой мощности — в аппаратной, где
+       гудят стойки, его попросту не было слышно. Теперь громкость выставляет
+       человек, и по умолчанию она полная: тот, кому громко, убавит, а тот,
+       кто о настройке не знает, вызов не пропустит. */
+    const SOUND_LOUDEST = 0.9;
+
+    function soundLevel() {
+        const raw = Number(storageGet('rg-notice-volume', '100'));
+        if (!isFinite(raw)) return 1;
+        return Math.min(1, Math.max(0, raw / 100));
+    }
+
+    function setSoundLevel(percent) {
+        storageSet('rg-notice-volume', String(Math.round(percent)));
     }
 
     /** Короткий сигнал. Ни файла, ни библиотеки: два тона встроенным синтезом. */
@@ -1031,24 +1056,98 @@
             document.addEventListener(name, wakeAudio, once));
     }
 
+    /* Уведомление на рабочем столе, когда окно свёрнуто.
+
+       Браузер показывает такие уведомления только «защищённой» странице:
+       https или localhost. Отдел работает по http на адрес машины в сети,
+       и для клиентских мест это условие не выполняется — окна Notification
+       там нет вовсе. Поэтому: где можно — показываем, где нельзя — честно
+       говорим об этом в настройке и не притворяемся, что работает.
+
+       Что работает всегда, при любом браузере и любом адресе, — счётчик в
+       заголовке вкладки: свёрнутое окно в панели задач само показывает
+       «(3) 2СО», и это видно, не разворачивая. */
+    function deskAllowed() {
+        return typeof window.Notification === 'function';
+    }
+
+    function deskOn() {
+        return deskAllowed() && storageGet('rg-notice-desk', '1') !== '0'
+            && window.Notification.permission === 'granted';
+    }
+
+    function setDeskOn(on) {
+        storageSet('rg-notice-desk', on ? '1' : '0');
+    }
+
+    async function askDesk() {
+        if (!deskAllowed()) return 'unavailable';
+        if (window.Notification.permission === 'granted') return 'granted';
+        try {
+            return await window.Notification.requestPermission();
+        } catch (error) {
+            return 'denied';
+        }
+    }
+
+    function showDesk(item) {
+        // Показываем только когда окно не на виду: иначе получается два
+        // уведомления об одном — на экране и рядом с ним.
+        if (!deskOn() || !document.hidden) return;
+        try {
+            const note = new window.Notification(
+                (item.title || 'Уведомление') + ' — ' + brandShort(),
+                { body: item.text || '', tag: 'rg-' + (item.id || ''),
+                  lang: 'ru', renotify: false });
+            note.onclick = () => {
+                window.focus();
+                if (item.link) location.hash = item.link;
+                note.close();
+            };
+            setTimeout(() => note.close(), 15000);
+        } catch (error) {
+            /* уведомление на столе — удобство, а не условие работы */
+        }
+    }
+
+    /** Короткое название отдела для заголовка вкладки и уведомлений. */
+    function brandShort() {
+        const brand = (state.config && state.config.brand) || {};
+        return String(brand.short || brand.name || '2СО');
+    }
+
+    /* Счётчик непрочитанного в заголовке вкладки. Свёрнутое окно показывает
+       заголовок в панели задач — и «(3)» там видно, не разворачивая. */
+    let titleBase = '';
+
+    function paintTitle(count) {
+        if (!titleBase) titleBase = document.title || brandShort();
+        document.title = count > 0 ? '(' + count + ') ' + titleBase : titleBase;
+    }
+
     function playAlert() {
         if (!soundOn()) return;
         const ctx = wakeAudio();
         if (!ctx) return;
+        const level = soundLevel();
+        if (level <= 0) return;
         try {
             const now = ctx.currentTime;
-            [880, 1170].forEach((hz, index) => {
+            // Три тона вместо двух и треугольная волна вместо синуса: у
+            // синуса нет обертонов, и в шуме аппаратной он тонет первым.
+            const peak = Math.max(0.0002, SOUND_LOUDEST * level);
+            [880, 1170, 1480].forEach((hz, index) => {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
-                osc.type = 'sine';
+                osc.type = 'triangle';
                 osc.frequency.value = hz;
                 // Резкий старт и мягкий спад: щелчка нет, а слышно сразу.
-                gain.gain.setValueAtTime(0.0001, now + index * 0.18);
-                gain.gain.exponentialRampToValueAtTime(0.14, now + index * 0.18 + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.18 + 0.16);
+                gain.gain.setValueAtTime(0.0001, now + index * 0.16);
+                gain.gain.exponentialRampToValueAtTime(peak, now + index * 0.16 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.16 + 0.15);
                 osc.connect(gain).connect(ctx.destination);
-                osc.start(now + index * 0.18);
-                osc.stop(now + index * 0.18 + 0.18);
+                osc.start(now + index * 0.16);
+                osc.stop(now + index * 0.16 + 0.17);
             });
         } catch (error) {
             /* звук — вещь необязательная: уведомление и так на экране */
@@ -1129,6 +1228,7 @@
         notices.unseen = data.unseen || 0;
         notices.messages = data.messages || 0;
         paintBell();
+        paintTitle(notices.unseen);
         if (!$('#notice-panel').hidden) paintNotices();
 
         // Звук и всплывающее — только на новое и только если это не первая
@@ -1141,6 +1241,10 @@
         const arrived = notices.items.filter(
             (item) => !item.seen && !before.has(item.id));
         arrived.slice(0, 3).reverse().forEach((item) => liveNotice(item));
+        // Окно свёрнуто — карточку над колокольчиком человек не увидит.
+        // Значит, уведомление показывает рабочий стол, а счётчик в заголовке
+        // вкладки видно прямо в панели задач.
+        if (document.hidden) arrived.slice(0, 3).forEach((item) => showDesk(item));
         const newest = fresh.length ? fresh[0].id : 0;
         if (newest && newest > notices.seenLoud) playAlert();
         if (newest > notices.seenLoud) notices.seenLoud = newest;
@@ -1306,6 +1410,14 @@
        можно убрать: и то и другое кончается выключенными колонками. */
     function openNoticeSettings() {
         const toggle = h('input', { type: 'checkbox', checked: soundOn() });
+        const level = h('input', {
+            type: 'range', min: '0', max: '100', step: '5',
+            value: String(Math.round(soundLevel() * 100)),
+            class: 'volume',
+            oninput: () => { levelText.textContent = level.value + ' %'; },
+        });
+        const levelText = h('span', { class: 'small mono nowrap' },
+            Math.round(soundLevel() * 100) + ' %');
         const test = h('button', {
             class: 'btn btn--sm',
             onclick: () => {
@@ -1313,14 +1425,39 @@
                     toast('Звук выключен — включите отметку выше', 'error');
                     return;
                 }
-                // Проверка звонит мимо настройки: человек нажал именно
-                // затем, чтобы услышать.
-                const was = soundOn();
+                // Проверка звонит мимо настройки и на той громкости, что
+                // сейчас на ползунке: человек нажал именно затем, чтобы
+                // услышать, как будет звучать.
+                const wasOn = soundOn();
+                const wasLevel = Math.round(soundLevel() * 100);
                 setSoundOn(true);
+                setSoundLevel(Number(level.value));
                 playAlert();
-                setSoundOn(was);
+                setSoundOn(wasOn);
+                setSoundLevel(wasLevel);
             },
         }, 'Проверить звук');
+
+        // Уведомление на рабочем столе. Показать его может только
+        // «защищённая» страница — https или localhost. Отдел работает по
+        // http на адрес машины в сети, поэтому на клиентских местах такого
+        // окна у браузера нет вовсе, и врать об этом нельзя.
+        const desk = h('input', {
+            type: 'checkbox',
+            checked: deskOn(),
+            disabled: !deskAllowed(),
+            onchange: async () => {
+                if (!desk.checked) return;
+                const answer = await askDesk();
+                if (answer !== 'granted') {
+                    desk.checked = false;
+                    toast(answer === 'denied'
+                        ? 'Браузер отказал в уведомлениях: разрешите их в его '
+                          + 'настройках для этого адреса'
+                        : 'Этот браузер здесь уведомлений не показывает', 'error');
+                }
+            },
+        });
 
         const loud = [
             ['Отчёт вернули на доработку', true],
@@ -1345,7 +1482,21 @@
                             'Короткий сигнал на срочное. Настройка держится '
                             + 'на этой машине: в аппаратной звук нужен, '
                             + 'в кабинете — не всегда.'))),
+                h('label', { class: 'field field--row' },
+                    h('span', { class: 'small' }, 'Громкость'),
+                    level, levelText),
                 h('div', { class: 'toolbar' }, h('span', { class: 'grow' }), test),
+                h('label', { class: 'check-line' }, desk,
+                    h('span', {},
+                        h('b', {}, 'Уведомление на рабочем столе'),
+                        h('div', { class: 'small muted' }, deskAllowed()
+                            ? 'Когда окно свёрнуто, уведомление покажет сам '
+                              + 'Windows. Браузер спросит разрешение один раз.'
+                            : 'Этот браузер показывает такие уведомления только '
+                              + 'по https или на самой машине с сервером. У вас '
+                              + 'открыт обычный адрес в сети — окна не будет. '
+                              + 'Число непрочитанных при этом видно в заголовке '
+                              + 'вкладки прямо в панели задач.'))),
                 h('div', { class: 'card-title' }, 'Что приходит'),
                 h('div', { class: 'notice-kinds' }, loud.map((pair) =>
                     h('div', { class: 'notice-kind' },
@@ -1362,9 +1513,13 @@
                     class: 'btn btn--primary',
                     onclick: () => {
                         setSoundOn(toggle.checked);
+                        setSoundLevel(Number(level.value));
+                        setDeskOn(desk.checked);
                         dialog.close();
                         paintNotices();
-                        toast(toggle.checked ? 'Звук включён' : 'Звук выключен', 'ok');
+                        toast(toggle.checked
+                            ? 'Звук включён, громкость ' + level.value + ' %'
+                            : 'Звук выключен', 'ok');
                     },
                 }, 'Сохранить'),
                 h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
@@ -1411,7 +1566,25 @@
         armAudio();
         // Первый опрос — молча: человек только вошёл, звонить ему нечем.
         pollNotices(false);
-        notices.timer = setInterval(() => pollNotices(true), NOTICE_POLL_MS);
+        // Свёрнутое окно спрашиваем реже, развёрнутое — чаще. И спрашиваем
+        // сразу же, как человек вернулся к окну: он мог отойти на час, и
+        // ждать ещё пять секунд ради того, что уже случилось, незачем.
+        let hiddenTicks = 0;
+        notices.timer = setInterval(() => {
+            if (!document.hidden) {
+                hiddenTicks = 0;
+                pollNotices(true);
+                return;
+            }
+            hiddenTicks += NOTICE_POLL_MS;
+            if (hiddenTicks >= NOTICE_POLL_HIDDEN_MS) {
+                hiddenTicks = 0;
+                pollNotices(true);
+            }
+        }, NOTICE_POLL_MS);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) pollNotices(true);
+        });
     }
 
     /* ------------------------------------------------- поиск по системе ---

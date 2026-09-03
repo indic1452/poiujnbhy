@@ -6436,3 +6436,15 @@ table.grid .row-actions .btn--icon svg {
 
 .md sup { top: -.15em; }
 .md sub { bottom: -.1em; }
+
+/* Строка настройки с ползунком: подпись, ползунок, число. */
+.field--row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.field--row .volume {
+    flex: 1;
+    accent-color: var(--accent);
+}

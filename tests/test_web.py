@@ -5282,6 +5282,53 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("Так система прочитала сданный файл", self.js)
         self.assertNotIn("Разделов у него нет", self.js)
 
+    def test_a_notice_does_not_wait_twenty_seconds(self):
+        """Сообщение написали — уведомление приходило через полминуты.
+
+        Опрос стоял раз в двадцать секунд, и человек справедливо считал, что
+        уведомления «не приходят сразу». Запрос дешёвый: выборка своих
+        уведомлений по одному индексу.
+        """
+        self.assertIn("const NOTICE_POLL_MS = 5000;", self.js)
+        self.assertNotIn("const NOTICE_POLL_MS = 20000;", self.js)
+        # И спрашиваем сразу, как человек вернулся к окну: он мог отойти
+        # на час, и ждать ещё пять секунд ради случившегося незачем.
+        self.assertIn("visibilitychange", self.js)
+
+    def test_a_hidden_window_is_asked_less_often(self):
+        """Свёрнутой вкладке браузер всё равно тормозит таймеры."""
+        self.assertIn("const NOTICE_POLL_HIDDEN_MS = 30000;", self.js)
+
+    def test_the_sound_has_a_volume_and_it_is_loud_by_default(self):
+        """Сигнал звучал на одной десятой мощности — в аппаратной не слышно."""
+        self.assertIn("function soundLevel()", self.js)
+        self.assertIn("rg-notice-volume", self.js)
+        self.assertIn("const SOUND_LOUDEST = 0.9;", self.js)
+        # Прежний потолок громкости остаться не должен.
+        self.assertNotIn("exponentialRampToValueAtTime(0.14", self.js)
+
+    def test_a_minimised_window_gets_a_desktop_notice(self):
+        """Свёрнутое окно карточку над колокольчиком не покажет."""
+        self.assertIn("function showDesk(item)", self.js)
+        self.assertIn("window.Notification", self.js)
+        # Показываем только когда окно не на виду: иначе два уведомления
+        # об одном — на экране и рядом с ним.
+        self.assertIn("if (!deskOn() || !document.hidden) return;", self.js)
+
+    def test_the_department_is_told_when_desktop_notices_are_impossible(self):
+        """Браузер показывает их только по https или на самой машине.
+
+        Отдел работает по http на адрес в сети — на клиентских местах такого
+        окна нет вовсе, и делать вид, что настройка работает, нельзя.
+        """
+        self.assertIn("function deskAllowed()", self.js)
+        self.assertIn("по https или на самой машине с сервером", self.js)
+
+    def test_the_tab_title_counts_what_is_unread(self):
+        """Работает при любом браузере и любом адресе — видно в панели задач."""
+        self.assertIn("function paintTitle(count)", self.js)
+        self.assertIn("paintTitle(notices.unseen)", self.js)
+
     def test_the_login_page_lets_a_newcomer_apply(self):
         """Заводить каждого руками в отделе некому.
 
