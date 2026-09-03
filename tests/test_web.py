@@ -3739,21 +3739,39 @@ class PersonalFileTests(WebTestCase):
         """Справочник кадровика устаревает быстрее, чем его правят."""
         self.login("engineer")
         response = self.client.patch("/api/me/contacts", json={
-            "phone": "+7 900 000-00-00", "ext_no": "3-45",
-            "room": "214", "email": "engineer@otdel"})
+            "phone_mobile": "+7 900 000-00-00", "phone_open": "3-45",
+            "phone_secure": "2-17", "room": "214"})
         self.assertEqual(200, response.status_code, response.text)
         user = response.json()["user"]
-        self.assertEqual("+7 900 000-00-00", user["phone"])
-        self.assertEqual("3-45", user["ext_no"])
+        self.assertEqual("+7 900 000-00-00", user["phone_mobile"])
+        self.assertEqual("3-45", user["phone_open"])
+        self.assertEqual("2-17", user["phone_secure"])
         self.assertEqual("214", user["room"])
 
         summary = self.client.get("/api/me/summary").json()
         self.assertEqual("214", summary["user"]["room"])
 
+    def test_a_phone_says_whether_one_may_talk_on_it(self):
+        """Телефонов в отделе три, и это не прихоть.
+
+        По мобильному звонят, по открытому говорят о работе в общих словах,
+        по режимному — обо всём остальном. Одно поле «Телефон» на все три не
+        отвечало на первый же вопрос: можно ли по этому номеру говорить.
+        """
+        self.login("engineer")
+        self.client.patch("/api/me/contacts", json={
+            "phone_mobile": "+7 900 111-22-33", "phone_secure": "2-17"})
+        person = self.repos.users.by_login("engineer")
+        card = self.client.get(f"/api/people/{person.id}").json()["person"]
+        self.assertEqual("+7 900 111-22-33", card["phone_mobile"])
+        self.assertEqual("2-17", card["phone_secure"])
+        # Почты в кабинете больше нет: отдел изолированный, писать некуда.
+        self.assertNotIn("email", card)
+
     def test_contacts_are_not_a_way_to_change_a_rank(self):
         # Через контакты нельзя дотянуться до должности: она не своё дело.
         self.login("engineer")
-        self.client.patch("/api/me/contacts", json={"role": "owner", "phone": "1"})
+        self.client.patch("/api/me/contacts", json={"role": "owner", "phone_mobile": "1"})
         self.assertEqual("engineer", self.repos.users.by_login("engineer").role)
 
     def test_the_cabinet_says_what_is_on_the_person_right_now(self):
@@ -4660,6 +4678,128 @@ class VectorCardTests(unittest.TestCase):
     def test_the_progress_is_polled_while_it_works(self):
         self.assertIn("libState.vectorsTimer", self.js)
         self.assertIn(".vectors-bar-fill", self.css)
+
+    def test_the_card_says_what_to_do_and_not_only_what_broke(self):
+        """«Сервер эмбеддингов недоступен» — это диагноз, а не действие.
+
+        Человек сидит за той же машиной, где всё стоит, и ему нужна команда.
+        """
+        self.assertIn("state.advice", self.js)
+        self.assertIn(".vectors-advice {", self.css)
+
+    def test_the_connection_can_be_checked_without_a_build(self):
+        # Иначе узнать, поднялась ли служба, можно было единственным
+        # способом: занять видеокарту на полчаса и подождать неудачи.
+        self.assertIn("'Проверить связь'", self.js)
+        self.assertIn("/api/library/vectors/check", self.js)
+
+    def test_filling_the_library_is_the_chiefs_business(self):
+        # Кнопки, которые всё равно ответят «нет прав», показывать незачем.
+        self.assertIn("isAdmin() ? h('div', { class: 'card card-pad' },", self.js)
+        self.assertIn("}, 'Прочитать каталог') : null)),", self.js)
+
+
+class LibraryIsForTheChiefTests(WebTestCase):
+    """Библиотека — общее хозяйство: правит её начальство.
+
+    Документ ложится в один поиск на весь отдел. Неверно указанный тип или
+    направление меняют выдачу всем, а разобрать это обратно можно только
+    руками — по одному документу из тринадцати тысяч. Читают и ищут по
+    библиотеке все, это не меняется.
+    """
+
+    def test_an_engineer_may_read_and_search_the_library(self):
+        self.login("engineer")
+        self.assertEqual(200, self.client.get("/api/library").status_code)
+        self.assertEqual(200, self.client.get("/api/search?q=полоса").status_code)
+
+    def test_an_engineer_may_not_add_documents(self):
+        self.login("engineer")
+        response = self.client.post(
+            "/api/library/upload",
+            files={"file": ("proba.md", b"# Proba\n\nTekst.", "text/markdown")},
+            data={"doc_type": "literature", "domain": ""})
+        self.assertEqual(403, response.status_code, response.text)
+
+    def test_an_engineer_may_not_reindex_or_build_vectors(self):
+        self.login("engineer")
+        for path, payload in (("/api/library/reindex", {}),
+                              ("/api/library/vectors", {}),
+                              ("/api/library/vectors/check", {})):
+            with self.subTest(path=path):
+                self.assertEqual(403, self.client.post(path, json=payload).status_code)
+
+    def test_the_chief_may(self):
+        self.login("nachalnik")
+        response = self.client.post(
+            "/api/library/upload",
+            files={"file": ("proba.md", b"# Proba\n\nTekst otdela.", "text/markdown")},
+            data={"doc_type": "literature", "domain": ""})
+        self.assertEqual(200, response.status_code, response.text)
+
+
+class VectorTroubleTests(WebTestCase):
+    """Связь со службой проверяют кнопкой, а не получасом построения."""
+
+    def test_the_check_says_what_is_wrong_and_what_to_do(self):
+        self.login("admin")
+        self.service.settings.embed_enabled = True
+        self.service.settings.embed_base_url = "http://127.0.0.1:8/v1"
+        self.service.settings.embed_timeout = 1
+        self.service.vectors.settings = self.service.settings
+        answer = self.client.post("/api/library/vectors/check", json={}).json()["check"]
+        self.assertFalse(answer["ok"])
+        # Не только «не работает», но и что нажать.
+        self.assertIn("start-embed.ps1", answer["advice"])
+
+    def test_a_switched_off_search_says_so_plainly(self):
+        self.login("admin")
+        self.service.settings.embed_enabled = False
+        answer = self.client.post("/api/library/vectors/check", json={}).json()["check"]
+        self.assertFalse(answer["ok"])
+        self.assertIn("embed_enabled", answer["advice"])
+
+
+class LibraryScreenTests(unittest.TestCase):
+    """Экран библиотеки при тринадцати тысячах документов."""
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+        self.css = (static / "styles.css").read_text(encoding="utf-8")
+
+    def test_the_table_is_drawn_by_the_page(self):
+        # Тринадцать тысяч строк в одной таблице браузер рисует минуту.
+        self.assertIn("'page=' + libState.page", self.js)
+        self.assertIn("function renderPager()", self.js)
+        self.assertIn(".pager {", self.css)
+
+    def test_the_page_says_how_much_of_the_whole_is_shown(self):
+        # Без этих чисел человек не знает, всё ли перед ним.
+        self.assertIn("' из ' + libState.total", self.js)
+        self.assertIn("'страница ' + libState.page + ' из ' + libState.pages", self.js)
+
+    def test_a_document_is_found_by_name(self):
+        """Листать пятьюдесятью страницами по тринадцати тысячам никто не станет."""
+        self.assertIn("Поиск по названию документа", self.js)
+        self.assertIn("q=' + encodeURIComponent(libState.query)", self.js)
+
+    def test_nothing_found_is_not_the_same_as_an_empty_library(self):
+        self.assertIn("'Ничего не нашлось'", self.js)
+
+    def test_a_badly_read_file_is_marked_in_the_list(self):
+        """Документ есть, фрагментов много, а найти в нём нельзя ничего."""
+        self.assertIn("item.text_quality === 'glued'", self.js)
+        self.assertIn("'текст склеен'", self.js)
+
+    def test_an_upload_says_what_actually_happened(self):
+        # «Готово, фрагментов: 231» не отвечало на вопрос, заменил ли файл
+        # прежний документ и прочитался ли текст целиком.
+        self.assertIn("function showUploadResult(", self.js)
+        self.assertIn("'заменил прежний · фрагментов: '", self.js)
+        self.assertIn("'добавлен · фрагментов: '", self.js)
+        self.assertIn("'посмотреть, что прочитано'", self.js)
+        self.assertIn(".upload-remarks {", self.css)
 
 
 class QuietScreensTests(unittest.TestCase):

@@ -24,7 +24,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
+import socket
 import time
 import urllib.error
 import urllib.request
@@ -48,14 +50,20 @@ from .retrieval import tokenize
 if TYPE_CHECKING:  # pragma: no cover — только для подсказок типов
     from .store.repo import Repositories
 
+logger = logging.getLogger("reportgen.embeddings")
+
 __all__ = [
     "EmbeddingError",
+    "advice",
     "Embedder",
     "EmbeddingClient",
     "StubEmbedder",
     "l2_normalize",
     "cosine",
     "top_cosine",
+    "VectorIndex",
+    "build_index",
+    "normalize_rows",
     "index_embeddings",
 ]
 
@@ -87,7 +95,76 @@ def _numpy() -> Any:
 
 
 class EmbeddingError(RuntimeError):
-    """Ошибка получения векторов (сеть, формат ответа, пустой ответ)."""
+    """Ошибка получения векторов (сеть, формат ответа, пустой ответ).
+
+    ``kind`` называет РОД беды одним словом. Без него наружу уходила только
+    строка вида «сервер эмбеддингов недоступен (http://127.0.0.1:8001/v1):
+    <Errno 111> Connection refused», и человек в отделе, прочитав её на
+    экране библиотеки, узнавал ровно одно: что-то не работает. А беды тут
+    разные, и делать при них надо разное: службу не запустили — запустить;
+    служба грузит модель в видеопамять — подождать; на порту чужая служба —
+    поправить настройки. Род беды и позволяет сказать это словами.
+    """
+
+    def __init__(self, message: str, *, kind: str = "other"):
+        super().__init__(message)
+        #: refused | timeout | http | format | other
+        self.kind = kind
+
+
+#: Что делать при каждом роде беды. Текст пишется для инженера отдела: он
+#: сидит за той же машиной, где всё и стоит, и ему нужна команда, а не
+#: диагноз. Названия скриптов — те, что лежат в scripts\windows.
+def advice(kind: str, base_url: str = "", timeout: float = 0.0) -> str:
+    """Одна строка: что сделать человеку, чтобы беды не стало."""
+    where = base_url or "http://127.0.0.1:8001/v1"
+    if kind == "refused":
+        return ("служба не запущена: по адресу " + where + " никто не отвечает. "
+                "Запустите scripts\\windows\\start-embed.ps1 — должно открыться "
+                "свёрнутое окно llama-server. Если оно сразу закрывается, "
+                "в каталоге моделей нет файла bge-m3*.gguf")
+    if kind == "timeout":
+        seconds = f" за {int(timeout)} с" if timeout else ""
+        return ("служба не ответила" + seconds + ": скорее всего, модель ещё "
+                "загружается в видеопамять. Подождите минуту и повторите; "
+                "если ждать приходится всякий раз — уменьшите embed_batch "
+                "в settings.json")
+    if kind == "http":
+        return ("служба ответила ошибкой. Если в скобках сказано про размер "
+                "пачки (input is too large, batch size) — система уменьшит "
+                "пачку сама, повторите построение; если ошибка осталась при "
+                "одном фрагменте, сервер запущен без ключа --embeddings или "
+                "по адресу " + where + " отвечает не эмбеддер, а другая "
+                "служба (у эмбеддингов порт 8001, у реранкера — 8002)")
+    if kind == "format":
+        return ("ответ не похож на ответ сервера эмбеддингов — вероятно, на "
+                "этом порту другая служба. Проверьте embed_base_url в "
+                "settings.json и запустите сервер с ключом --embeddings")
+    return ("посмотрите окно llama-server и файл logs\\embed.log — там "
+            "написана причина")
+
+
+def _kind_of(error: BaseException | None) -> str:
+    """Род беды по исключению транспорта.
+
+    Разбираем по типу, а не по тексту: тексты у Python разных версий и
+    сборок разные, а «служба не запущена» и «служба думает» — это разные
+    действия человека, и путать их нельзя.
+    """
+    if error is None:
+        return "other"
+    if _http.refused(error):
+        return "refused"
+    if isinstance(error, urllib.error.HTTPError):
+        return "http"
+    if isinstance(error, (json.JSONDecodeError, KeyError, TypeError, ValueError)):
+        return "format"
+    if isinstance(error, TimeoutError):
+        return "timeout"
+    reason = getattr(error, "reason", None)
+    if isinstance(reason, TimeoutError) or isinstance(reason, socket.timeout):
+        return "timeout"
+    return "other"
 
 
 class Embedder(Protocol):
@@ -143,6 +220,78 @@ def cosine(a: Sequence[float], b: Sequence[float]) -> float:
     return dot / denominator
 
 
+class VectorIndex:
+    """Матрица векторов корпуса, пригодная для настоящей библиотеки.
+
+    Раньше матрица жила списками Python: ``List[List[float]]``. На корпусе
+    отдела — 562 000 фрагментов по 1024 числа — это около восемнадцати
+    гигабайт объектов, а каждый поиск делал с них ещё и копию в float64,
+    то есть четыре с половиной гигабайта сверху. На такой библиотеке
+    смысловой поиск не «работал медленно», он не работал вовсе.
+
+    Здесь то же самое хранится одной матрицей float32: 2,3 ГБ на весь
+    корпус, поиск — одно умножение матрицы на вектор. Строки нормируются
+    один раз при загрузке, поэтому косинус — это скалярное произведение, и
+    на каждый запрос не считаются заново длины полумиллиона векторов.
+
+    Без numpy остаётся прежний путь на списках: он медленный, но при
+    небольшой библиотеке разницы не видно, а ронять поиск из-за
+    отсутствующей библиотеки нельзя.
+    """
+
+    def __init__(self, uids: Sequence[str], matrix: Any, dim: int = 0):
+        self.uids = list(uids)
+        self.matrix = matrix
+        self.dim = int(dim)
+
+    def __len__(self) -> int:
+        return len(self.uids)
+
+    def search(self, query_vec: Sequence[float], k: int = 10) -> List[Tuple[str, float]]:
+        if not len(self.uids) or k <= 0 or not query_vec:
+            return []
+        np = _numpy()
+        if np is None or not hasattr(self.matrix, "shape"):
+            return top_cosine(query_vec, self.matrix, self.uids, k=k)
+        if len(query_vec) != self.dim:
+            # Вектор запроса другой размерности — это чужая модель. Молча
+            # выдавать бессмысленные оценки нельзя.
+            return []
+        query = np.asarray(query_vec, dtype="float32")
+        norm = float(np.linalg.norm(query))
+        if norm < _EPS:
+            return []
+        scores = self.matrix @ (query / norm)
+        count = min(int(k), scores.shape[0])
+        # argpartition вместо полной сортировки: на полумиллионе строк
+        # сортировка занимает больше, чем само умножение.
+        top = np.argpartition(-scores, count - 1)[:count]
+        top = top[np.argsort(-scores[top], kind="stable")]
+        return [(self.uids[int(i)], float(scores[int(i)])) for i in top]
+
+
+def build_index(uids: Sequence[str], vectors: Sequence[Sequence[float]]) -> VectorIndex:
+    """Собирает индекс из готовых списков — путь для небольших корпусов."""
+    np = _numpy()
+    dim = len(vectors[0]) if len(vectors) else 0
+    if np is None or not dim:
+        return VectorIndex(uids, list(vectors), dim)
+    keep = [i for i, vector in enumerate(vectors) if len(vector) == dim]
+    matrix = np.asarray([vectors[i] for i in keep], dtype="float32")
+    normalize_rows(matrix)
+    return VectorIndex([uids[i] for i in keep], matrix, dim)
+
+
+def normalize_rows(matrix: Any) -> None:
+    """Делит строки на их длину — на месте, без второй матрицы в памяти."""
+    np = _numpy()
+    if np is None or not hasattr(matrix, "shape") or not matrix.size:
+        return
+    norms = np.linalg.norm(matrix, axis=1)
+    norms[norms < _EPS] = 1.0
+    matrix /= norms[:, None]
+
+
 def top_cosine(
     query_vec: Sequence[float],
     matrix: Sequence[Sequence[float]],
@@ -186,6 +335,24 @@ def top_cosine(
     return [scored[i] for i in order]
 
 
+#: Ошибки, при которых имеет смысл дробить пачку: сервер ответил, но не
+#: справился. «Служба не запущена» дроблением не лечится.
+_SPLIT_ON = ("http", "timeout")
+
+#: Короче этого укорачивать фрагмент бессмысленно: от текста ничего не
+#: остаётся, и вектор перестаёт что-либо значить.
+MIN_TEXT_CHARS = 400
+
+#: Отказы, после которых построение продолжают: сервер ответил, но этот
+#: текст не взял. «Служба не отвечает» сюда не входит — там продолжать нечего.
+_SKIPPABLE = ("http", "format")
+
+#: Столько подряд отвергнутых фрагментов — и мы сдаёмся. Это уже не трудные
+#: тексты, а сломанная служба, и перебирать из-за неё полмиллиона фрагментов
+#: значит занять видеокарту на час впустую.
+GIVE_UP_AFTER = 50
+
+
 # ------------------------------------------------- клиент к серверу -------
 
 @dataclass
@@ -210,6 +377,13 @@ class EmbeddingClient:
     batch: int = 16
     dim: int = 0  # становится известной после первого успешного ответа
 
+    def __post_init__(self) -> None:
+        #: Предел пачки, нащупанный на этом сервере. Ноль — ещё не нащупан.
+        self.safe_batch = 0
+        #: Сколько фрагментов пришлось укоротить, чтобы сервер их принял.
+        #: Число нужно назвать вслух: укороченный текст даёт худший вектор.
+        self.shortened = 0
+
     @property
     def name(self) -> str:
         return f"{self.model} @ {self.base_url}"
@@ -227,15 +401,58 @@ class EmbeddingClient:
         if not items:
             return []
         size = max(1, int(batch or self.batch))
+        if self.safe_batch:
+            size = min(size, self.safe_batch)
         vectors: List[List[float]] = []
-        for start in range(0, len(items), size):
-            piece = items[start:start + size]
-            vectors.extend(self._request(piece))
+        index = 0
+        while index < len(items):
+            piece = items[index:index + size]
+            try:
+                vectors.extend(self._request(piece))
+            except EmbeddingError as error:
+                if len(piece) > 1 and error.kind in _SPLIT_ON:
+                    # Сервер не осилил пачку целиком. Пределы у llama.cpp
+                    # считаются в ТОКЕНАХ (-ub), а мы отправляем ШТУКИ, и
+                    # сколько штук влезет — зависит от длины фрагментов,
+                    # то есть от библиотеки. Значит, предел не угадывают в
+                    # настройках, а нащупывают: делим пачку пополам и дальше
+                    # держимся найденного размера. Иначе на библиотеке в
+                    # полмиллиона фрагментов человек получал 500 от сервера
+                    # и ни одного вектора.
+                    size = max(1, len(piece) // 2)
+                    self.safe_batch = size
+                    continue
+                if len(piece) == 1 and error.kind in _SPLIT_ON:
+                    vectors.append(self._shorten_and_retry(piece[0], error))
+                    index += 1
+                    continue
+                raise
+            index += len(piece)
         if len(vectors) != len(items):
             raise EmbeddingError(
                 f"сервер вернул {len(vectors)} векторов вместо {len(items)}"
             )
         return vectors
+
+    def _shorten_and_retry(self, text: str, error: EmbeddingError) -> List[float]:
+        """Один фрагмент, который сервер не принял целиком.
+
+        Делить дальше нечего — остаётся укоротить сам текст: у модели предел
+        по числу токенов, а в библиотеке отдела попадаются таблицы и листинги
+        в десятки тысяч знаков. Укороченный текст даёт вектор хуже полного,
+        поэтому такие фрагменты считаем и говорим о них вслух: молча выдавать
+        половину текста за целый нельзя.
+        """
+        cut = len(text)
+        while cut > MIN_TEXT_CHARS:
+            cut = max(MIN_TEXT_CHARS, cut // 2)
+            try:
+                vectors = self._request([text[:cut]])
+            except EmbeddingError:
+                continue
+            self.shortened += 1
+            return vectors[0]
+        raise error
 
     def embed_one(self, text: str) -> List[float]:
         vectors = self.embed([text])
@@ -275,8 +492,40 @@ class EmbeddingClient:
                 if attempt < max(1, self.retries) - 1:
                     time.sleep(2 ** attempt)
         raise EmbeddingError(
-            f"сервер эмбеддингов недоступен ({self.base_url}): {last_error}"
+            f"сервер эмбеддингов недоступен ({self.base_url}): "
+            f"{_http.explain(last_error)}",
+            kind=_kind_of(last_error),
         ) from last_error
+
+    def check(self) -> Dict[str, Any]:
+        """Один короткий запрос: отвечает ли служба и чем именно.
+
+        Нужна человеку, а не программе: он нажимает «Проверить связь» и
+        хочет узнать ответ сейчас, а не через полчаса построения. Ошибку
+        не поднимаем — её описание и есть ответ.
+        """
+        started = time.monotonic()
+        try:
+            vector = self.embed_one("проверка связи")
+        except EmbeddingError as error:
+            return {
+                "ok": False,
+                "error": str(error),
+                "advice": advice(error.kind, self.base_url, self.timeout),
+                "kind": error.kind,
+                "base_url": self.base_url,
+                "model": self.model,
+            }
+        return {
+            "ok": True,
+            "error": "",
+            "advice": "",
+            "kind": "",
+            "base_url": self.base_url,
+            "model": self.model,
+            "dim": len(vector),
+            "ms": int((time.monotonic() - started) * 1000),
+        }
 
     def _parse(self, body: Any, expected: int) -> List[List[float]]:
         if not isinstance(body, dict):
@@ -368,9 +617,9 @@ def index_embeddings(
     ``progress(готово, всего)`` вызывается после каждого батча — веб-интерфейс
     показывает по нему полосу выполнения.
     """
-    chunks = repos.chunks.all_chunks()
-    by_uid = {chunk.chunk_id: chunk for chunk in chunks}
-    uids = list(by_uid)
+    # Опознаватели, а не тексты: библиотека отдела — полмиллиона фрагментов,
+    # и поднимать её в память целиком ради пачек по шестнадцать незачем.
+    uids = repos.chunks.all_uids()
     if only_missing:
         uids = _missing_uids(repos, uids)
     total = len(uids)
@@ -382,9 +631,47 @@ def index_embeddings(
     model = str(getattr(client, "model", "") or getattr(client, "name", "embedder"))
     size = max(1, int(batch))
     written = 0
+    skipped: List[str] = []
+    in_a_row = 0
     for start in range(0, total, size):
         piece = uids[start:start + size]
-        vectors = client.embed([by_uid[uid].indexed_text for uid in piece])
+        texts = {chunk.chunk_id: chunk.indexed_text
+                 for chunk in repos.chunks.get_many(piece)}
+        piece = [uid for uid in piece if uid in texts]
+        if not piece:
+            continue
+        try:
+            vectors = client.embed([texts[uid] for uid in piece])
+        except EmbeddingError as error:
+            # Отличаем беду СЛУЖБЫ от беды ФРАГМЕНТА. Служба не запущена или
+            # не отвечает — построение обречено целиком, и делать вид, что
+            # мы просто «пропускаем фрагменты», нечестно: человек должен
+            # увидеть, что смысловой поиск не работает. А вот отказ на
+            # конкретном тексте (сервер ответил, но этот не взял) ронять
+            # построение библиотеки не должен: остальные полмиллиона
+            # фрагментов ни в чём не виноваты.
+            if getattr(error, "kind", "other") not in _SKIPPABLE:
+                raise
+            before = len(skipped)
+            for uid in piece:
+                written += index_embeddings_one(repos, client, model, uid,
+                                                texts[uid], skipped)
+                if progress is not None:
+                    progress(written + len(skipped), total)
+            if len(skipped) - before == len(piece):
+                # Не пошёл ни один фрагмент пачки. Это уже не «трудный
+                # текст», а сломанная служба: считаем подряд идущие неудачи
+                # и сдаёмся, не перебирая впустую полмиллиона фрагментов.
+                in_a_row += len(piece)
+                if in_a_row >= GIVE_UP_AFTER:
+                    raise EmbeddingError(
+                        f"сервер эмбеддингов отверг подряд {in_a_row} "
+                        f"фрагментов — построение остановлено: {error}",
+                        kind=getattr(error, "kind", "other")) from error
+            else:
+                in_a_row = 0
+            continue
+        in_a_row = 0
         if len(vectors) != len(piece):
             raise EmbeddingError(
                 f"на {len(piece)} фрагментов получено {len(vectors)} векторов"
@@ -392,8 +679,34 @@ def index_embeddings(
         repos.vectors.put_many(model, dict(zip(piece, vectors)))
         written += len(piece)
         if progress is not None:
-            progress(written, total)
+            progress(written + len(skipped), total)
+    if skipped:
+        _log_skipped(skipped)
     return written
+
+
+def index_embeddings_one(repos: "Repositories", client: Embedder, model: str,
+                         uid: str, text: str, skipped: List[str]) -> int:
+    """Один фрагмент: записан — 1, не принят сервером — 0 и запись в список."""
+    try:
+        vectors = client.embed([text])
+    except EmbeddingError:
+        skipped.append(uid)
+        return 0
+    if not vectors:
+        skipped.append(uid)
+        return 0
+    repos.vectors.put_many(model, {uid: vectors[0]})
+    return 1
+
+
+def _log_skipped(skipped: Sequence[str]) -> None:
+    """Пропущенные фрагменты — в журнал, с примерами, а не одним числом."""
+    examples = ", ".join(skipped[:5])
+    logger.warning(
+        "сервер эмбеддингов не принял %d фрагментов — они останутся без "
+        "векторов и будут находиться только словами. Например: %s",
+        len(skipped), examples)
 
 
 def _missing_uids(repos: "Repositories", uids: Sequence[str], slice_size: int = 400) -> List[str]:

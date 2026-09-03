@@ -1285,6 +1285,15 @@ table.grid td.primary {
     color: var(--muted);
 }
 
+/* Что делать — строкой под состоянием. Диагноз «сервер эмбеддингов
+   недоступен» человеку в отделе не говорит ничего: он сидит за той же
+   машиной, и ему нужна команда, а не название беды. */
+.vectors-advice {
+    margin-top: 6px;
+    color: var(--muted);
+    line-height: 1.45;
+}
+
 .vectors-bar {
     margin-top: 8px;
     height: 4px;
@@ -2041,9 +2050,28 @@ input.is-bad {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
     font-size: 12.5px;
     padding: 6px 0;
     border-bottom: 1px solid var(--border);
+}
+
+/* Итог по каждому файлу: добавлен, заменил прежний или не прочитан. Цветом,
+   потому что файлов кладут пачками и глазом нужно поймать неудачные. */
+.upload-row .is-ok {
+    color: var(--ok);
+}
+
+.upload-row .is-bad {
+    color: var(--danger);
+}
+
+/* Замечания приёма и ссылка «посмотреть, что прочитано» — своей строкой во
+   всю ширину, под самим файлом. */
+.upload-remarks {
+    flex: 1 0 100%;
+    margin: 2px 0 4px;
+    line-height: 1.45;
 }
 
 .upload-row .bar {
@@ -5343,6 +5371,31 @@ table.grid--users .row-actions .btn {
 .input--quiet:hover:not(:disabled) {
     border-color: var(--border-strong);
     background-color: var(--field);
+}
+
+/* Постраничный переход под таблицей. Библиотека отдела — тринадцать с
+   половиной тысяч документов: одной таблицей это не рисуется, а без чисел
+   «61–110 из 13600» человек не знает, всё ли перед ним. */
+.pager {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
+.pager:empty {
+    display: none;
+}
+
+/* Поиск по названию: строка должна быть заметно шире выпадающих списков
+   рядом — в неё вводят слова, а не выбирают из трёх. */
+.input--wide {
+    flex: 1 1 260px;
+    min-width: 200px;
+    max-width: 420px;
 }
 
 /* ------------------------------------------------- изменяемые колонки --- */

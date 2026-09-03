@@ -185,6 +185,24 @@ class BuildTests(unittest.TestCase):
         # Библиотека цела, поиск словами работает: векторов просто нет.
         self.assertEqual(3, state["missing"])
 
+    def test_the_state_says_what_to_do_and_not_only_what_broke(self):
+        """«Сервер эмбеддингов недоступен» — диагноз, а человеку нужна команда.
+
+        Он сидит за той же машиной, где всё стоит: ему надо знать, какой
+        скрипт запустить, а не как называется беда.
+        """
+        class NotStarted(StubEmbedder):
+            def embed(self, texts):
+                raise EmbeddingError("сервер эмбеддингов недоступен",
+                                     kind="refused")
+
+        indexer = VectorIndexer(build_repos(2), make_settings(), NotStarted)
+        indexer.start()
+        indexer.wait(10)
+        state = indexer.status(fresh=True)
+        self.assertIn("недоступен", state["error"])
+        self.assertIn("start-embed.ps1", state["advice"])
+
     def test_a_broken_client_factory_is_reported_not_raised(self):
         def factory():
             raise RuntimeError("адрес службы не разобран")

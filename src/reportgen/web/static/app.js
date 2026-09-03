@@ -2894,9 +2894,10 @@
                 });
                 // Как найти человека — подсказкой на фамилии: расход отвечает
                 // «где он», и телефон тут же под рукой.
-                const reach = [person.ext_no ? 'вн. ' + person.ext_no : '',
+                const reach = [person.phone_open ? 'откр. ' + person.phone_open : '',
+                    person.phone_secure ? 'реж. ' + person.phone_secure : '',
                     person.room ? 'каб. ' + person.room : '',
-                    person.phone].filter(Boolean).join(' · ');
+                    person.phone_mobile].filter(Boolean).join(' · ');
                 body.appendChild(h('tr', {},
                     h('td', {
                         class: 'roster-name' + (person.is_me ? ' is-me' : ''),
@@ -5823,7 +5824,12 @@
     // =====================================================================
 
     const libState = { docType: '', domain: '', items: [], stats: {}, chunks: 0,
-                      embeddings: 0, vectorsTimer: 0 };
+                      embeddings: 0, vectorsTimer: 0,
+                      // Библиотека отдела — тринадцать с половиной тысяч
+                      // документов. Одной таблицей это не рисуется: браузер
+                      // подвисает на минуту, а человеку нужны три документа,
+                      // которые он ищет по названию.
+                      query: '', page: 1, pages: 1, total: 0, perPage: 50 };
 
     /** Подсказка о поддерживаемых форматах и о том, чего не хватает. */
     function formatsHint() {
@@ -5881,6 +5887,7 @@
         });
 
         let data;
+        let shown = 0;
         try {
             data = await api.get('/api/library/' + encodeURIComponent(item.doc_id) + '/text');
         } catch (error) {
@@ -5925,19 +5932,57 @@
             h('div', { class: 'doc-tabs' },
                 h('button', { class: 'chip is-active', onclick: (e) => switchTab(e, 'text') }, 'Текст целиком'),
                 h('button', { class: 'chip', onclick: (e) => switchTab(e, 'chunks') },
-                    'Фрагменты (' + chunks.length + ')')),
+                    'Фрагменты (' + (data.chunks_total || chunks.length) + ')')),
+            // Книга бывает и в полторы тысячи фрагментов: показываем
+            // страницами и говорим, сколько всего. Молча обрезанный список
+            // читается как весь документ — а это разные вещи.
+            (data.chunks_total || 0) > chunks.length ? h('div', { class: 'small muted' },
+                'Показаны фрагменты 1–' + chunks.length + ' из ' + data.chunks_total
+                + '. Дочитать: кнопка внизу.') : null,
             h('div', { class: 'doc-pane', id: 'doc-pane-text' },
                 h('pre', { class: 'doc-text' }, data.text || '')),
             h('div', { class: 'doc-pane', id: 'doc-pane-chunks', hidden: true },
-                chunks.length ? chunks.map((chunk, index) => h('div', { class: 'doc-chunk' },
-                    h('div', { class: 'doc-chunk-head' },
-                        h('b', {}, 'Фрагмент ' + (index + 1)),
-                        h('span', { class: 'faint small' },
-                            (chunk.title_path || []).join(' → ') || 'без заголовка'),
-                        h('span', { class: 'faint small' }, chunk.chars + ' знаков')),
-                    h('div', { class: 'doc-chunk-text' }, chunk.text)))
+                chunks.length ? chunkNodes(chunks, 0)
                     : h('div', { class: 'empty' }, 'Фрагментов нет.')),
         ]);
+
+        shown = chunks.length;
+        appendMoreButton();
+
+        function chunkNodes(list, from) {
+            return list.map((chunk, index) => h('div', { class: 'doc-chunk' },
+                h('div', { class: 'doc-chunk-head' },
+                    h('b', {}, 'Фрагмент ' + (from + index + 1)),
+                    h('span', { class: 'faint small' },
+                        (chunk.title_path || []).join(' → ') || 'без заголовка'),
+                    h('span', { class: 'faint small' }, chunk.chars + ' знаков')),
+                h('div', { class: 'doc-chunk-text' }, chunk.text)));
+        }
+
+        function appendMoreButton() {
+            const pane = $('#doc-pane-chunks', bodyBox);
+            if (!pane || shown >= (data.chunks_total || 0)) return;
+            const more = h('button', {
+                class: 'btn', style: { marginTop: '10px' },
+                onclick: async () => {
+                    more.disabled = true;
+                    more.textContent = 'читаю…';
+                    try {
+                        const next = await api.get('/api/library/'
+                            + encodeURIComponent(item.doc_id) + '/text?offset=' + shown);
+                        const list = next.chunks || [];
+                        more.remove();
+                        chunkNodes(list, shown).forEach((node) => pane.appendChild(node));
+                        shown += list.length;
+                        appendMoreButton();
+                    } catch (error) {
+                        more.disabled = false;
+                        more.textContent = errorText(error);
+                    }
+                },
+            }, 'Показать ещё ' + Math.min(400, (data.chunks_total || 0) - shown));
+            pane.appendChild(more);
+        }
 
         function switchTab(event, which) {
             $$('.doc-tabs .chip', bodyBox).forEach((chip) => chip.classList.remove('is-active'));
@@ -5983,6 +6028,50 @@
                 loadLibrary();
             },
         });
+
+        // Поиск по названию — главный способ добраться до документа, когда
+        // их тринадцать тысяч: листать пятьюдесятью страницами никто не станет.
+        const nameSearch = h('input', {
+            type: 'search', class: 'input--wide',
+            placeholder: 'Поиск по названию документа',
+            value: libState.query,
+            oninput: () => {
+                clearTimeout(libState.searchTimer);
+                libState.searchTimer = setTimeout(() => {
+                    libState.query = nameSearch.value.trim();
+                    libState.page = 1;
+                    loadLibrary();
+                }, 350);
+            },
+        });
+
+        const pager = h('div', { class: 'pager' });
+
+        function renderPager() {
+            clear(pager);
+            if (libState.total <= libState.perPage) return;
+            const first = (libState.page - 1) * libState.perPage + 1;
+            const last = Math.min(libState.total, first + libState.items.length - 1);
+            const go = (page) => {
+                libState.page = page;
+                loadLibrary();
+                tableBox.scrollIntoView({ block: 'start' });
+            };
+            append(pager, [
+                h('button', {
+                    class: 'btn btn--sm', disabled: libState.page <= 1,
+                    onclick: () => go(libState.page - 1),
+                }, '← назад'),
+                h('span', { class: 'small muted' },
+                    first + '–' + last + ' из ' + libState.total),
+                h('button', {
+                    class: 'btn btn--sm', disabled: libState.page >= libState.pages,
+                    onclick: () => go(libState.page + 1),
+                }, 'вперёд →'),
+                h('span', { class: 'small faint' },
+                    'страница ' + libState.page + ' из ' + libState.pages),
+            ]);
+        }
 
         const forceCheckbox = h('input', { type: 'checkbox' });
         const uploadType = h('select', {}, (state.config.doc_types || []).map((type) =>
@@ -6050,19 +6139,22 @@
                 // должны уезжать на новую строку группой, а не поодиночке.
                 h('div', { class: 'page-head-actions' },
                     h('button', { class: 'btn', onclick: () => loadLibrary() }, 'Обновить'),
-                    canEdit() ? h('label', {
+                    isAdmin() ? h('label', {
                         class: 'inline',
                         title: 'Обычно перечитываются только новые и изменившиеся файлы. ' +
                             'С этой отметкой перечитываются все — нужно после смены модели ' +
                             'встраивания или правил разбора.',
                     }, forceCheckbox, 'перечитать все файлы') : null,
-                    canEdit() ? h('button', {
+                    isAdmin() ? h('button', {
                         class: 'btn',
                         title: 'Прочитать каталог библиотеки и обновить поисковый индекс',
                         onclick: () => reindex(),
                     }, 'Прочитать каталог') : null)),
 
-            canEdit() ? h('div', { class: 'card card-pad' },
+            // Пополняет библиотеку начальство: документ ложится в общий
+            // поиск всего отдела, и неверно указанный тип или направление
+            // портят выдачу всем.
+            isAdmin() ? h('div', { class: 'card card-pad' },
                 h('div', { class: 'card-title' }, 'Загрузка документов'),
                 h('div', { class: 'toolbar' },
                     h('label', { class: 'inline' }, 'Тип:', uploadType),
@@ -6071,8 +6163,10 @@
 
             vectorsBox,
 
-            h('div', { class: 'toolbar', style: { marginTop: '14px' } }, typeFilter, domainFilter, focusChip),
+            h('div', { class: 'toolbar', style: { marginTop: '14px' } },
+                typeFilter, domainFilter, nameSearch, focusChip),
             tableBox,
+            pager,
 
             h('div', { class: 'card card-pad', style: { marginTop: '14px' } },
                 h('div', { class: 'card-title' }, 'Поиск по библиотеке'),
@@ -6118,6 +6212,13 @@
                 h('span', { class: 'small' }, state.hint || ''));
             card.appendChild(line);
 
+            // Что делать. Диагноз «сервер эмбеддингов недоступен» человеку в
+            // отделе не говорит ничего: он сидит за той же машиной, и ему
+            // нужна команда, а не название беды.
+            if (state.advice) {
+                card.appendChild(h('div', { class: 'vectors-advice small' }, state.advice));
+            }
+
             if (busy && state.total) {
                 const share = Math.min(100, Math.round(100 * (state.done || 0) / state.total));
                 card.appendChild(h('div', { class: 'vectors-bar' },
@@ -6125,7 +6226,7 @@
             }
 
             const actions = h('div', { class: 'toolbar', style: { marginTop: '8px' } });
-            if (canEdit() && state.enabled && !busy && state.missing) {
+            if (isAdmin() && state.enabled && !busy && state.missing) {
                 actions.appendChild(h('button', {
                     class: 'btn btn--primary btn--sm',
                     title: 'Построить векторы фрагментам, у которых их нет',
@@ -6140,6 +6241,15 @@
                     onclick: () => buildVectors(true),
                 }, 'Построить заново'));
             }
+            // Проверка связи — отдельно от построения: узнать, поднялась ли
+            // служба, нужно сразу, а не через полчаса работы видеокарты.
+            if (isAdmin() && state.enabled && !busy) {
+                actions.appendChild(h('button', {
+                    class: 'btn btn--sm',
+                    title: 'Один короткий запрос к службе эмбеддингов',
+                    onclick: (event) => checkVectors(event.target),
+                }, 'Проверить связь'));
+            }
             if (actions.childNodes.length) card.appendChild(actions);
             vectorsBox.appendChild(card);
 
@@ -6150,6 +6260,43 @@
                 libState.vectorsTimer = setTimeout(() => {
                     if (document.body.contains(vectorsBox)) loadVectors();
                 }, 2000);
+            }
+        }
+
+        async function checkVectors(button) {
+            const was = button.textContent;
+            button.disabled = true;
+            button.textContent = 'проверяю…';
+            try {
+                const answer = (await api.post('/api/library/vectors/check', {})).check || {};
+                if (answer.ok) {
+                    toast('Служба отвечает: ' + (answer.model || 'модель')
+                        + ', вектор из ' + (answer.dim || '?') + ' чисел, '
+                        + (answer.ms || 0) + ' мс');
+                } else {
+                    // Показываем не только беду, но и что с ней делать — в
+                    // окне, которое не закроется само: всплывающая подсказка
+                    // уходит раньше, чем человек дочитает команду.
+                    const dialog = openModal({
+                        narrow: true,
+                        title: 'Смысловой поиск не работает',
+                        body: h('div', {},
+                            h('div', {}, answer.error || 'служба не отвечает'),
+                            answer.advice
+                                ? h('div', { class: 'small muted', style: { marginTop: '8px' } },
+                                    answer.advice)
+                                : null),
+                        footer: [h('button', {
+                            class: 'btn btn--primary', onclick: () => dialog.close(),
+                        }, 'Понятно')],
+                    });
+                }
+                loadVectors();
+            } catch (error) {
+                toastError(error);
+            } finally {
+                button.disabled = false;
+                button.textContent = was;
             }
         }
 
@@ -6178,14 +6325,18 @@
             clear(tableBox);
             tableBox.appendChild(skeleton(7));
             try {
-                const query = [];
+                const query = ['page=' + libState.page, 'per_page=' + libState.perPage];
                 if (libState.docType) query.push('doc_type=' + encodeURIComponent(libState.docType));
                 if (libState.domain) query.push('domain=' + encodeURIComponent(libState.domain));
-                const data = await api.get('/api/library' + (query.length ? '?' + query.join('&') : ''));
+                if (libState.query) query.push('q=' + encodeURIComponent(libState.query));
+                const data = await api.get('/api/library?' + query.join('&'));
                 libState.items = data.items || [];
                 libState.stats = data.stats || {};
                 libState.chunks = data.chunks || 0;
                 libState.embeddings = data.embeddings || 0;
+                libState.total = data.total || 0;
+                libState.page = data.page || 1;
+                libState.pages = data.pages || 1;
                 renderTable();
             } catch (error) {
                 clear(tableBox);
@@ -6205,13 +6356,19 @@
             // пятых библиотеки в смысловом поиске не участвуют.
             const chunkCount = libState.chunks || totals.chunks;
             statsLine.textContent = 'документов: ' + totals.documents +
-                ' · фрагментов: ' + chunkCount;
+                ' · фрагментов: ' + chunkCount +
+                (libState.query ? ' · найдено: ' + libState.total : '');
 
             clear(tableBox);
             if (!libState.items.length) {
-                tableBox.appendChild(h('div', { class: 'empty' },
-                    h('h3', {}, 'Документов нет'),
-                    h('div', {}, 'Загрузите литературу, стандарты и прошлые отчёты — они станут источниками для ссылок.')));
+                clear(pager);
+                tableBox.appendChild(libState.query || libState.docType || libState.domain
+                    ? h('div', { class: 'empty' },
+                        h('h3', {}, 'Ничего не нашлось'),
+                        h('div', {}, 'По этим условиям в библиотеке документов нет.'))
+                    : h('div', { class: 'empty' },
+                        h('h3', {}, 'Документов нет'),
+                        h('div', {}, 'Загрузите литературу, стандарты и прошлые отчёты — они станут источниками для ссылок.')));
                 return;
             }
             const body = h('tbody', {});
@@ -6223,7 +6380,17 @@
                     h('td', { class: 'primary' }, h('button', {
                         class: 'linklike', title: 'Посмотреть, что система вычитала из файла',
                         onclick: () => showDocument(item),
-                    }, item.title || item.doc_id)),
+                    }, item.title || item.doc_id),
+                        // Документ есть, фрагментов много, а найти в нём
+                        // нельзя ничего: файл разобрался в сплошную строку
+                        // без пробелов. Без метки это не отличить от целого.
+                        item.text_quality === 'glued' ? h('span', {
+                            class: 'badge badge--warn',
+                            title: 'Текст склеен без пробелов — файл разобран '
+                                + 'плохо. Поиск по нему почти ничего не найдёт: '
+                                + 'переложите документ через OCR или сохраните '
+                                + 'в другом формате и загрузите заново.',
+                        }, 'текст склеен') : null),
                     h('td', { class: 'mono small muted' }, item.doc_id),
                     h('td', { class: 'small' }, docTypeLabel(item.doc_type)),
                     h('td', {}, documentDomainCell(item)),
@@ -6246,6 +6413,7 @@
                     body);
             tableBox.appendChild(h('div', { class: 'table-scroll' },
                 makeResizable(libraryTable, 'library')));
+            renderPager();
 
             if (focusDocId) {
                 const row = document.getElementById(domId('doc-', focusDocId));
@@ -6255,7 +6423,7 @@
 
         /** Ячейка направления: инженеру — выпадающий список с сохранением, остальным — текст. */
         function documentDomainCell(item) {
-            if (!canEdit()) {
+            if (!isAdmin()) {
                 return h('span', { class: 'small' + (item.domain ? '' : ' faint') }, domainTitle(item.domain));
             }
             const select = domainSelect({
@@ -6272,7 +6440,7 @@
         /** Актуальность документа: заменённый стандарт исчезает из поиска. */
         function documentStatusCell(item) {
             const title = item.status_title || item.status || 'действующий';
-            if (!canEdit()) {
+            if (!isAdmin()) {
                 return h('span', {
                     class: 'small' + (item.searchable === false ? ' status-off' : ''),
                 }, title);
@@ -6365,22 +6533,59 @@
                         bar.style.width = Math.round(fraction * 100) + '%';
                     });
                     bar.style.width = '100%';
-                    const result = data.result || {};
-                    const chunks = result.chunks !== undefined && result.chunks !== null ? result.chunks : '—';
-                    status.textContent = 'готово, фрагментов: ' + chunks;
-                    status.className = 'small';
-                    if (result.failed) {
-                        status.textContent = 'файл сохранён, но не проиндексирован';
-                    }
+                    showUploadResult(row, status, file, data);
                 } catch (error) {
                     status.textContent = errorText(error);
-                    status.className = 'small';
-                    status.style.color = 'var(--danger)';
+                    status.className = 'small is-bad';
                 }
             }
             await loadLibrary();
             // Векторы новых фрагментов уже строятся фоном: показываем ход.
             await loadVectors();
+        }
+
+        /* Что на самом деле стало с файлом.
+
+           Раньше строка говорила «готово, фрагментов: 231» — и на этом всё.
+           Заменил ли он прежний документ, прочитался ли текст целиком, не
+           склеился ли он в сплошную строку — было неизвестно, а на глаз
+           отличить принятый документ от испорченного нельзя. Инженер клал
+           файл и уходил, считая, что тот работает. */
+        function showUploadResult(row, status, file, data) {
+            const result = data.result || {};
+            const document_ = data.document || null;
+            const failed = result.failed || 0;
+            const chunks = document_ ? (document_.chunk_count || 0)
+                : (result.chunks || 0);
+
+            if (failed || (!document_ && !chunks)) {
+                status.textContent = 'не прочитан';
+                status.className = 'small is-bad';
+            } else if (result.updated) {
+                // Файл с таким же именем уже лежал: молча заменять и молчать
+                // об этом нельзя — человек думает, что добавил второй.
+                status.textContent = 'заменил прежний · фрагментов: ' + chunks;
+                status.className = 'small is-ok';
+            } else {
+                status.textContent = 'добавлен · фрагментов: ' + chunks;
+                status.className = 'small is-ok';
+            }
+
+            // Замечания приёма — под строкой, целиком: там написано, почему
+            // документ прочитан не так, как ожидалось.
+            const remarks = (result.failures || []).concat(result.notes || []);
+            if (remarks.length) {
+                row.appendChild(h('div', { class: 'upload-remarks small muted' },
+                    remarks.map((text) => h('div', {}, text))));
+            }
+            if (document_) {
+                row.appendChild(h('div', { class: 'upload-remarks' },
+                    h('button', {
+                        class: 'linklike small',
+                        title: 'Показать, что система вычитала из файла',
+                        onclick: () => showDocument(document_),
+                    }, 'посмотреть, что прочитано')));
+            }
         }
 
         async function reindex() {
@@ -8381,14 +8586,14 @@
             body: [
                 h('dl', { class: 'kv', style: { marginBottom: '10px' } },
                     h('dt', {}, 'Должность'), h('dd', {}, roleLabel(user.role)),
-                    user.phone ? h('dt', {}, 'Телефон') : null,
-                    user.phone ? h('dd', {}, user.phone) : null,
-                    user.ext_no ? h('dt', {}, 'Внутренний') : null,
-                    user.ext_no ? h('dd', { class: 'mono' }, user.ext_no) : null,
+                    user.phone_mobile ? h('dt', {}, 'Мобильный') : null,
+                    user.phone_mobile ? h('dd', {}, user.phone_mobile) : null,
+                    user.phone_open ? h('dt', {}, 'Открытый') : null,
+                    user.phone_open ? h('dd', { class: 'mono' }, user.phone_open) : null,
+                    user.phone_secure ? h('dt', {}, 'Режимный') : null,
+                    user.phone_secure ? h('dd', { class: 'mono' }, user.phone_secure) : null,
                     user.room ? h('dt', {}, 'Кабинет') : null,
-                    user.room ? h('dd', {}, user.room) : null,
-                    user.email ? h('dt', {}, 'Почта') : null,
-                    user.email ? h('dd', {}, user.email) : null),
+                    user.room ? h('dd', {}, user.room) : null),
                 personFilesCard(user.id, false),
             ],
             footer: [
@@ -9249,10 +9454,10 @@
         rows.push(['Логин', person.login]);
 
         const contacts = [
-            ['Телефон', person.phone],
-            ['Внутренний', person.ext_no],
+            ['Мобильный', person.phone_mobile],
+            ['Открытый', person.phone_open],
+            ['Режимный', person.phone_secure],
             ['Кабинет', person.room],
-            ['Почта', person.email],
         ].filter((pair) => pair[1]);
 
         const where = person.where;
@@ -9347,8 +9552,6 @@
                 // принадлежность — отдельными строками: это разные вещи, и
                 // слитая строка не отвечает ни на один из двух вопросов.
                 h('dt', {}, 'Отдел'), h('dd', {}, brandName()),
-                user.team ? h('dt', {}, 'Группа') : null,
-                user.team ? h('dd', {}, user.team) : null,
                 user.department ? h('dt', {}, 'По штату') : null,
                 user.department ? h('dd', {}, user.department) : null),
             // Перечень прав человек читает раз в жизни — при заведении. В
@@ -9466,15 +9669,19 @@
        поправит в ту же минуту, когда переедет. */
     function contactsCard(user) {
         const note = h('div', { class: 'form-note' });
+        // Телефоны в отделе называют по-своему: по мобильному звонят, по
+        // открытому говорят о работе в общих словах, по режимному — обо
+        // всём остальном. Одно поле «Телефон» на все три не годилось: по
+        // номеру не понять, можно ли по нему говорить.
         const fields = {
-            phone: h('input', { type: 'tel', value: user.phone || '',
+            phone_mobile: h('input', { type: 'tel', value: user.phone_mobile || '',
                 placeholder: '+7 900 000-00-00', maxLength: 120 }),
-            ext_no: h('input', { type: 'text', value: user.ext_no || '',
+            phone_open: h('input', { type: 'text', value: user.phone_open || '',
                 placeholder: '3-45', maxLength: 120, class: 'mono' }),
+            phone_secure: h('input', { type: 'text', value: user.phone_secure || '',
+                placeholder: '2-17', maxLength: 120, class: 'mono' }),
             room: h('input', { type: 'text', value: user.room || '',
                 placeholder: '214', maxLength: 120 }),
-            email: h('input', { type: 'email', value: user.email || '',
-                placeholder: 'ivanov@otdel', maxLength: 120 }),
         };
         const save = h('button', { class: 'btn btn--primary', onclick: submit }, 'Сохранить');
 
@@ -9497,11 +9704,15 @@
 
         return h('div', { class: 'card card-pad' },
             h('div', { class: 'card-title' }, 'Как вас найти'),
+            // Строка короткая, но нужная: это единственное место, где человек
+            // правит сведения о себе, и без неё карточку принимают за справку.
+            h('div', { class: 'small muted', style: { marginBottom: '10px' } },
+                'Заполняете вы сами — видно отделу в расходе и в карточке сотрудника.'),
             h('div', { class: 'form-grid' },
-                h('label', { class: 'field' }, 'Телефон', fields.phone),
-                h('label', { class: 'field' }, 'Внутренний', fields.ext_no),
-                h('label', { class: 'field' }, 'Кабинет', fields.room),
-                h('label', { class: 'field' }, 'Почта', fields.email)),
+                h('label', { class: 'field' }, 'Мобильный', fields.phone_mobile),
+                h('label', { class: 'field' }, 'Открытый', fields.phone_open),
+                h('label', { class: 'field' }, 'Режимный', fields.phone_secure),
+                h('label', { class: 'field' }, 'Кабинет', fields.room)),
             h('div', { class: 'btn-row', style: { marginTop: '10px' } }, save),
             note);
     }

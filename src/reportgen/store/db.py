@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "11"
+SCHEMA_VERSION = "12"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -61,12 +61,21 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     # Линия связи и номер технического средства. Отдел работает по линиям —
     # спутниковым, радиорелейным, коротковолновым, — и без этих двух полей
     # письмо нельзя ни найти, ни отнести к своему хозяйству.
-    # Как найти человека: телефон, внутренний, кабинет, почта. Заполняет он
-    # сам в кабинете — справочник кадровика устаревает быстрее, чем его правят.
+    # Как найти человека. Заполняет он сам в кабинете — справочник кадровика
+    # устаревает быстрее, чем его правят.
+    #
+    # Телефоны отдела названы по-своему: мобильный, открытый и режимный. Одно
+    # поле «Телефон» на все три не годилось — по номеру не понять, можно ли
+    # по нему говорить о работе, а это в отделе первый вопрос. Старые
+    # колонки phone/ext_no/email оставлены на месте: в них лежат номера,
+    # набранные людьми, и стирать их ради переименования нельзя.
     ("users", "phone", "TEXT NOT NULL DEFAULT ''"),
     ("users", "ext_no", "TEXT NOT NULL DEFAULT ''"),
     ("users", "room", "TEXT NOT NULL DEFAULT ''"),
     ("users", "email", "TEXT NOT NULL DEFAULT ''"),
+    ("users", "phone_mobile", "TEXT NOT NULL DEFAULT ''"),
+    ("users", "phone_open", "TEXT NOT NULL DEFAULT ''"),
+    ("users", "phone_secure", "TEXT NOT NULL DEFAULT ''"),
     # Одобрение заявки. Значение по умолчанию 1: все, кто уже заведён,
     # остаются одобренными — иначе обновление системы заперло бы отдел.
     ("users", "approved", "INTEGER NOT NULL DEFAULT 1"),
@@ -228,12 +237,36 @@ class Database:
             self._rename_domains()
             self._rename_roles()
             self._restore_group_numbers()
+            self._move_phones()
             self.connection.execute(
                 "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                 (SCHEMA_VERSION,),
             )
             self.connection.commit()
+
+    def _move_phones(self) -> None:
+        """Старые номера — в новые поля, по одному разу.
+
+        «Телефон» люди заполняли мобильным (в отделе спрашивают именно его),
+        «Внутренний» — это и есть номер по открытой АТС. Переносим так и
+        только в пустое: если человек уже вписал номер в новое поле, чужая
+        догадка не должна его затирать. Старые колонки не трогаем — если
+        догадка неверна, номера на месте и их видно в базе.
+        """
+        try:
+            names = {item["name"] for item in
+                     self.connection.execute("PRAGMA table_info(users)")}
+        except sqlite3.Error:
+            return
+        if not {"phone", "ext_no", "phone_mobile", "phone_open"} <= names:
+            return
+        self.connection.execute(
+            "UPDATE users SET phone_mobile = phone "
+            "WHERE phone_mobile = '' AND phone <> ''")
+        self.connection.execute(
+            "UPDATE users SET phone_open = ext_no "
+            "WHERE phone_open = '' AND ext_no <> ''")
 
     def _schema_is_current(self) -> bool:
         """Готова ли база к работе без единой записи."""

@@ -147,8 +147,9 @@ class UserRepo:
             )
 
     #: Поля, которые человек правит сам о себе. Отдельно от должности и
-    #: отдела: их назначает начальник, а телефон и кабинет — своё дело.
-    CONTACT_FIELDS = ("phone", "ext_no", "room", "email")
+    #: отдела: их назначает начальник, а телефоны и кабинет — своё дело.
+    CONTACT_FIELDS = ("phone_mobile", "phone_open", "phone_secure", "room",
+                      "phone", "ext_no", "email")
 
     def update(self, user_id: int, full_name: str | None = None,
                role: str | None = None, department: str | None = None,
@@ -156,7 +157,7 @@ class UserRepo:
         """Изменить ФИО, должность, отдел, группу и контакты.
 
         None оставляет поле как было. Контакты передаются по имени колонки —
-        телефон, внутренний номер, кабинет, почта.
+        телефоны (мобильный, открытый, режимный) и кабинет.
         """
         fields, values = [], []
         if full_name is not None:
@@ -341,8 +342,8 @@ class DocumentRepo:
         row = self.db.query_one("SELECT * FROM documents WHERE sha256 = ?", (sha256,))
         return Document.from_row(row) if row else None
 
-    def list(self, doc_type: str | None = None, domain: str | None = None,
-             status: str | None = None) -> List[Document]:
+    def _filters(self, doc_type: str | None, domain: str | None,
+                 status: str | None, query: str = "") -> tuple:
         clauses, params = [], []
         if doc_type:
             clauses.append("doc_type = ?")
@@ -353,8 +354,38 @@ class DocumentRepo:
         if status:
             clauses.append("status = ?")
             params.append(status)
+        needle = " ".join(str(query or "").split())
+        if needle:
+            # Поиск по названию и опознавателю — по кускам слова: в
+            # библиотеке отдела названия длинные («Методика контроля
+            # излучения передатчика»), и целиком их никто не набирает.
+            clauses.append("(title LIKE ? OR doc_id LIKE ?)")
+            params.extend([f"%{needle}%", f"%{needle}%"])
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
-        rows = self.db.query(f"SELECT * FROM documents{where} ORDER BY doc_type, title", params)
+        return where, params
+
+    def count_all(self, doc_type: str | None = None, domain: str | None = None,
+                  status: str | None = None, query: str = "") -> int:
+        where, params = self._filters(doc_type, domain, status, query)
+        return int(self.db.scalar(
+            f"SELECT count(*) FROM documents{where}", params) or 0)
+
+    def list(self, doc_type: str | None = None, domain: str | None = None,
+             status: str | None = None, query: str = "",
+             limit: int | None = None, offset: int = 0) -> List[Document]:
+        """Документы библиотеки. ``limit`` — страница, без него всё сразу.
+
+        Библиотека отдела — тринадцать с половиной тысяч документов. Раньше
+        экран запрашивал их все и рисовал одной таблицей: браузер получал
+        несколько мегабайт JSON и подвисал на минуту, а человеку в этот миг
+        нужны были три документа, которые он ищет по названию.
+        """
+        where, params = self._filters(doc_type, domain, status, query)
+        sql = f"SELECT * FROM documents{where} ORDER BY doc_type, title"
+        if limit is not None:
+            sql += " LIMIT ? OFFSET ?"
+            params = list(params) + [int(limit), max(0, int(offset))]
+        rows = self.db.query(sql, params)
         return rows_to(Document, rows)
 
     def set_domain(self, doc_id: str, domain: str) -> None:
@@ -602,15 +633,47 @@ class ChunkRepo:
             by_uid.update({row["chunk_uid"]: self._to_chunk(row) for row in rows})
         return [by_uid[uid] for uid in chunk_uids if uid in by_uid]
 
-    def for_document(self, document_id: int, limit: int = 400) -> List[Chunk]:
+    def for_document(self, document_id: int, limit: int = 400,
+                     offset: int = 0) -> List[Chunk]:
         """Фрагменты одного документа по порядку — так, как их видит поиск.
 
         Нужны инженеру для проверки качества разбора: по ним сразу видно,
         распался ли скан на осмысленные куски или в базу уехал мусор.
+        ``offset`` — чтобы можно было дочитать длинный том: в библиотеке
+        отдела попадаются книги в полторы тысячи фрагментов, и первые
+        четыреста из них — это ещё оглавление.
         """
         rows = self.db.query(
-            "SELECT * FROM chunks WHERE document_id = ? ORDER BY ord LIMIT ?",
-            (document_id, limit),
+            "SELECT * FROM chunks WHERE document_id = ? ORDER BY ord "
+            "LIMIT ? OFFSET ?",
+            (document_id, int(limit), max(0, int(offset))),
+        )
+        return [self._to_chunk(row) for row in rows]
+
+    def count_for_document(self, document_id: int) -> int:
+        return int(self.db.scalar(
+            "SELECT count(*) FROM chunks WHERE document_id = ?",
+            (document_id,)) or 0)
+
+    def find_sections(self, document_id: int, needle: str,
+                      limit: int = 8) -> List[Chunk]:
+        """Фрагменты документа, у которых в крошках встречается ``needle``.
+
+        Помощник просит «ЧИТАТЬ: том | Глава 12». Раньше главу искали в
+        первых четырёхстах фрагментах, поднятых в память: в книге на
+        полторы тысячи фрагментов двенадцатой главы там просто нет, и
+        помощник честно отвечал «раздела не нашёл» о разделе, который в
+        документе есть. Ищем в базе и по всему документу.
+        """
+        needle = " ".join(str(needle or "").split())
+        if not needle:
+            return []
+        # rulower, а не lower: встроенный lower() в SQLite знает только
+        # латиницу, и «Глава» с «глава» для него разные слова.
+        rows = self.db.query(
+            "SELECT * FROM chunks WHERE document_id = ? "
+            "AND rulower(title_path) LIKE ? ORDER BY ord LIMIT ?",
+            (document_id, f"%{needle.lower()}%", int(limit)),
         )
         return [self._to_chunk(row) for row in rows]
 
@@ -673,6 +736,18 @@ class ChunkRepo:
             if heading and (not bucket or bucket[-1] != heading) and len(bucket) < limit:
                 bucket.append(heading)
         return result
+
+    def all_uids(self) -> List[str]:
+        """Только опознаватели фрагментов, без текстов.
+
+        Построение векторов раньше начиналось с ``all_chunks()`` — то есть
+        поднимало в память ВСЮ библиотеку целиком. На корпусе отдела это
+        полмиллиона фрагментов и больше гигабайта текста ради того, чтобы
+        отправлять их пачками по шестнадцать. Опознаватели весят на два
+        порядка меньше, а тексты берутся пачкой перед самой отправкой.
+        """
+        return [str(row["chunk_uid"]) for row in
+                self.db.query("SELECT chunk_uid FROM chunks ORDER BY id")]
 
     def all_chunks(self, limit: int | None = None) -> List[Chunk]:
         sql = ("SELECT c.*, d.doc_id AS doc_id FROM chunks c "
@@ -763,6 +838,58 @@ class VectorRepo:
         uids = [row["chunk_uid"] for row in rows]
         vectors = [unpack_vector(row["vector"]) for row in rows]
         return uids, vectors
+
+    def load_index(self, model: str | None = None, batch: int = 20000) -> Any:
+        """Матрица векторов корпуса — сразу в float32, без списков Python.
+
+        ``all_vectors`` собирает ``List[List[float]]``: на корпусе отдела это
+        полмиллиона списков по тысяче чисел, около восемнадцати гигабайт
+        объектов. Здесь строки распаковываются пачками прямо в готовую
+        матрицу: та же библиотека занимает 2,3 ГБ, и лишней копии в памяти
+        не возникает ни на миг.
+        """
+        from ..embeddings import VectorIndex, build_index, normalize_rows  # noqa: PLC0415
+
+        where, params = ("WHERE model = ?", (model,)) if model else ("", ())
+        total = int(self.db.scalar(
+            f"SELECT count(*) FROM embeddings {where}", params) or 0)
+        if not total:
+            return VectorIndex([], [], 0)
+
+        first = self.db.query(
+            f"SELECT vector FROM embeddings {where} ORDER BY chunk_uid LIMIT 1", params)
+        dim = len(unpack_vector(first[0]["vector"])) if first else 0
+        if not dim:
+            return VectorIndex([], [], 0)
+
+        try:
+            import numpy as np                      # noqa: PLC0415
+        except ImportError:
+            uids, vectors = self.all_vectors(model)
+            return build_index(uids, vectors)
+
+        matrix = np.empty((total, dim), dtype="float32")
+        uids: List[str] = []
+        row = 0
+        for start in range(0, total, batch):
+            rows = self.db.query(
+                f"SELECT chunk_uid, vector FROM embeddings {where} "
+                f"ORDER BY chunk_uid LIMIT ? OFFSET ?",
+                tuple(params) + (int(batch), int(start)))
+            for item in rows:
+                values = array("f")
+                values.frombytes(item["vector"])
+                if len(values) != dim:
+                    # Вектор чужой модели или битая строка: место в матрице
+                    # ему не отводим, иначе поиск сравнивал бы несравнимое.
+                    continue
+                matrix[row] = values
+                uids.append(str(item["chunk_uid"]))
+                row += 1
+        if row != total:
+            matrix = matrix[:row]
+        normalize_rows(matrix)
+        return VectorIndex(uids, matrix, dim)
 
     def missing(self, chunk_uids: Sequence[str]) -> List[str]:
         present = set(self.get_many(chunk_uids))

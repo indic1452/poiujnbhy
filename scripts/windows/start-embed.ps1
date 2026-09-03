@@ -27,12 +27,16 @@ function Find-Model($pattern, $exclude) {
     return $found[0].FullName
 }
 
+$started = @()
+
 if ($Only -in @('embed', 'both')) {
     if (-not $EmbedModel) { $EmbedModel = Find-Model 'bge-m3|embed|e5' 'rerank' }
     if (-not $EmbedModel) {
-        Write-Warn2 'модель эмбеддингов не найдена — плотный поиск будет отключён'
+        Write-Bad  'модель эмбеддингов не найдена — смысловой поиск работать не будет'
+        Write-Warn2 "положите файл bge-m3*.gguf в $script:Models и запустите этот скрипт снова"
     } elseif (-not (Test-Port 8001)) {
         Write-Warn2 'порт 8001 занят — сервер эмбеддингов уже запущен'
+        $started += @{ Name = 'эмбеддинги'; Port = 8001 }
     } else {
         $path = if (Test-Path $EmbedModel) { $EmbedModel } else { Join-Path $script:Models $EmbedModel }
         Write-Step "Эмбеддинги: $(Split-Path $path -Leaf) → порт 8001"
@@ -43,6 +47,7 @@ if ($Only -in @('embed', 'both')) {
             '--alias', 'bge-m3',
             '--log-file', (Join-Path $script:Logs 'embed.log')
         )
+        $started += @{ Name = 'эмбеддинги'; Port = 8001 }
     }
 }
 
@@ -52,6 +57,7 @@ if ($Only -in @('rerank', 'both')) {
         Write-Warn2 'модель реранкера не найдена — реранк будет отключён'
     } elseif (-not (Test-Port 8002)) {
         Write-Warn2 'порт 8002 занят — реранкер уже запущен'
+        $started += @{ Name = 'реранкер'; Port = 8002 }
     } else {
         $path = if (Test-Path $RerankModel) { $RerankModel } else { Join-Path $script:Models $RerankModel }
         Write-Step "Реранкер: $(Split-Path $path -Leaf) → порт 8002"
@@ -62,7 +68,31 @@ if ($Only -in @('rerank', 'both')) {
             '--alias', 'bge-reranker',
             '--log-file', (Join-Path $script:Logs 'rerank.log')
         )
+        $started += @{ Name = 'реранкер'; Port = 8002 }
     }
 }
 
-Write-Ok 'вспомогательные модели запущены в свёрнутых окнах'
+# Запустить — не то же самое, что поднять. Окно свёрнуто, и если модель не
+# влезла в видеопамять или файл оказался битым, llama-server закрывается
+# молча: скрипт рапортовал «запущены», а в библиотеке потом стояло «сервер
+# эмбеддингов недоступен», и связать одно с другим было нечем. Поэтому
+# дожидаемся ответа и говорим правду.
+$bad = 0
+foreach ($item in $started) {
+    Write-Step "Проверка: $($item.Name) на порту $($item.Port)"
+    if (Wait-Http "http://127.0.0.1:$($item.Port)/health" 120) {
+        Write-Ok "$($item.Name) отвечают"
+    } else {
+        $bad++
+        Write-Bad "$($item.Name) не поднялись за две минуты"
+        $log = if ($item.Port -eq 8001) { 'embed.log' } else { 'rerank.log' }
+        Write-Warn2 "причина — в $(Join-Path $script:Logs $log); чаще всего не хватает видеопамяти: закройте лишние окна llama-server и попробуйте снова"
+    }
+}
+
+if (-not $started) {
+    Write-Bad 'ничего не запущено: нет файлов моделей'
+    exit 1
+}
+if ($bad) { exit 1 }
+Write-Ok 'вспомогательные модели работают'

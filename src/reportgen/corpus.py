@@ -27,7 +27,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Sequence
+from typing import Any, Dict, Iterable, Iterator, List, Sequence
 
 #: Типы документов библиотеки. «misc» — полка для того, что не относится
 #: ни к одному из остальных: без неё такие файлы молча становились
@@ -166,6 +166,48 @@ def split_document(text: str) -> Iterator[tuple[List[str], str]]:
     yield from flush()
 
 
+def merge_short_sections(
+    pieces: Iterable[tuple[List[str], str]],
+    min_chars: int = MIN_CHARS,
+) -> Iterator[tuple[List[str], str]]:
+    """Склеивает куцые разделы с СОСЕДНИМИ, а не бросает их поодиночке.
+
+    Документ отдела редко устроен ровно: за заголовком «4. Приложения» идёт
+    одна строка, за ней — таблица на две страницы. Раньше короткий раздел
+    приклеивался только к ПРЕДЫДУЩЕМУ куску, и если предыдущего не было
+    (раздел первый) или короткие шли подряд, в указателе оседали фрагменты
+    в одну строку. Искать по такому фрагменту нечего: слов в нём меньше,
+    чем в запросе, а место в выдаче он занимает.
+
+    Здесь склейка идёт ВПЕРЁД: копим, пока не наберётся осмысленный размер,
+    и только тогда отдаём. Заголовок приклеиваемого раздела дописываем
+    строкой — иначе слова из него пропали бы из поиска вместе с ним.
+    """
+    buffer: List[str] = []
+    path: List[str] = []
+    size = 0
+    for title_path, text in pieces:
+        text = text.strip()
+        if not text:
+            continue
+        if not buffer:
+            path = list(title_path)
+            buffer = [text]
+            size = len(text)
+        else:
+            # Заголовок склеиваемого раздела — частью текста: «4. Приложения»
+            # это тоже слова, по которым ищут.
+            head = title_path[-1] if title_path and title_path != path else ""
+            piece = f"{head}\n{text}" if head else text
+            buffer.append(piece)
+            size += len(piece)
+        if size >= min_chars:
+            yield path, "\n\n".join(buffer)
+            buffer, path, size = [], [], 0
+    if buffer:
+        yield path, "\n\n".join(buffer)
+
+
 def load_file(path: Path, root: Path) -> List[Chunk]:
     text = path.read_text(encoding="utf-8")
     meta, text = parse_front_matter(text)
@@ -176,20 +218,8 @@ def load_file(path: Path, root: Path) -> List[Chunk]:
     meta["path"] = str(relative)
 
     chunks: List[Chunk] = []
-    for index, (title_path, body) in enumerate(split_document(text)):
-        if len(body) < MIN_CHARS and chunks:
-            # Короткий хвост присоединяем к предыдущему чанку, чтобы не
-            # засорять индекс обрывками в одну строку.
-            previous = chunks[-1]
-            chunks[-1] = Chunk(
-                chunk_id=previous.chunk_id,
-                doc_id=previous.doc_id,
-                doc_type=previous.doc_type,
-                title_path=previous.title_path,
-                text=f"{previous.text}\n\n{body}",
-                meta=previous.meta,
-            )
-            continue
+    for index, (title_path, body) in enumerate(
+            merge_short_sections(split_document(text))):
         # Заголовок первого уровня обычно дублирует название документа —
         # в крошках он лишний.
         tail = [t for t in title_path if not meta["title"].lower().startswith(t.lower())]

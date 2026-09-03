@@ -20,6 +20,7 @@
 
 from __future__ import annotations
 
+import json
 import urllib.request
 
 #: Опенер без единого прокси-обработчика.
@@ -29,6 +30,51 @@ _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 def urlopen(request, timeout=None):
     """``urlopen`` в обход системного прокси. Ошибки — те же, что у urllib."""
     return _OPENER.open(request, timeout=timeout)
+
+
+def explain(error: BaseException, limit: int = 300) -> str:
+    """Ошибка вместе с тем, что сервер написал в теле ответа.
+
+    ``HTTPError`` печатается как «HTTP Error 500: Internal Server Error» —
+    и это всё, что видел человек. А настоящая причина лежит в теле ответа:
+    llama.cpp пишет туда, например, «input is too large to process. increase
+    the physical batch size». Без неё «Internal Server Error» на экране
+    библиотеки — это тупик: сервер работает, а что ему не нравится, узнать
+    неоткуда.
+    """
+    text = str(error)
+    body = _body_of(error)
+    return f"{text}: {body}" if body else text
+
+
+def _body_of(error: BaseException) -> str:
+    read = getattr(error, "read", None)
+    if read is None:
+        return ""
+    try:
+        raw = read()
+    except Exception:                  # noqa: BLE001 — тело читается один раз
+        return ""
+    if not raw:
+        return ""
+    try:
+        text = raw.decode("utf-8", "replace")
+    except Exception:                  # noqa: BLE001
+        return ""
+    # llama.cpp и vLLM отвечают JSON-ом {"error": {"message": "..."}}.
+    try:
+        parsed = json.loads(text)
+    except (ValueError, TypeError):
+        parsed = None
+    if isinstance(parsed, dict):
+        inner = parsed.get("error")
+        if isinstance(inner, dict):
+            text = str(inner.get("message") or inner)
+        elif inner:
+            text = str(inner)
+        elif parsed.get("message"):
+            text = str(parsed["message"])
+    return " ".join(text.split())[:300]
 
 
 def refused(error: BaseException) -> bool:

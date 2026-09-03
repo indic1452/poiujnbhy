@@ -1028,7 +1028,21 @@ class AssistantHttpTests(unittest.TestCase):
         empty = self.client.get("/api/library", params={"domain": "satellite"}).json()
         self.assertEqual(empty["items"], [])
 
+    def test_setting_a_domain_is_not_for_an_engineer(self):
+        """Библиотека — общее хозяйство: направление правит начальство.
+
+        Документ лежит в одном поиске на весь отдел, и переставленное
+        направление меняет выдачу всем, а вернуть его обратно можно только
+        руками — по одному документу из тринадцати тысяч.
+        """
+        doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
+        response = self.client.put(f"/api/library/{doc_id}/domain",
+                                   json={"domain": "protocols"})
+        self.assertEqual(response.status_code, 403, response.text)
+
     def test_set_document_domain(self):
+        self.repos.users.create("nachalnik", "пароль123", "Начальников", "head")
+        self.login("nachalnik")
         doc_id = self.client.get("/api/library").json()["items"][0]["doc_id"]
         response = self.client.put(f"/api/library/{doc_id}/domain", json={"domain": "protocols"})
         self.assertEqual(response.status_code, 200, response.text)

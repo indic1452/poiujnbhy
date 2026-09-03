@@ -217,10 +217,19 @@ class User:
     department: str = ""
     #: Группа внутри отдела.
     team: str = ""
-    #: Как найти человека. Заполняет он сам в личном кабинете.
+    #: Как найти человека. Заполняет он сам в личном кабинете. Телефоны
+    #: названы по-отдельски: по мобильному звонят, по открытому говорят о
+    #: работе в общих словах, по режимному — обо всём остальном. Одно поле
+    #: «Телефон» на все три не годилось: по номеру не понять, можно ли по
+    #: нему говорить.
+    phone_mobile: str = ""
+    phone_open: str = ""
+    phone_secure: str = ""
+    room: str = ""
+    #: Старые поля. Наружу не показываются, но и не стираются: в них лежат
+    #: номера, набранные людьми до переименования.
     phone: str = ""
     ext_no: str = ""
-    room: str = ""
     email: str = ""
     active: bool = True
     #: Заявку одобрили. Пока нет — человек заведён, но войти не может.
@@ -266,9 +275,12 @@ class User:
             role=row["role"],
             department=_col(row, "department", ""),
             team=_col(row, "team", ""),
+            phone_mobile=_col(row, "phone_mobile", "") or "",
+            phone_open=_col(row, "phone_open", "") or "",
+            phone_secure=_col(row, "phone_secure", "") or "",
+            room=_col(row, "room", "") or "",
             phone=_col(row, "phone", "") or "",
             ext_no=_col(row, "ext_no", "") or "",
-            room=_col(row, "room", "") or "",
             email=_col(row, "email", "") or "",
             active=bool(row["active"]),
             approved=bool(_col(row, "approved", 1)),
@@ -288,10 +300,10 @@ class User:
             "role_title": self.role_title,
             "department": self.department,
             "team": self.team,
-            "phone": self.phone,
-            "ext_no": self.ext_no,
+            "phone_mobile": self.phone_mobile,
+            "phone_open": self.phone_open,
+            "phone_secure": self.phone_secure,
             "room": self.room,
-            "email": self.email,
             "is_admin": self.is_admin,
             "approved": self.approved,
             "approved_at": self.approved_at,
@@ -361,6 +373,10 @@ class Document:
             "searchable": self.status in SEARCHABLE_STATUSES,
             "chunk_count": self.chunk_count,
             "indexed_at": self.indexed_at,
+            # Отдельным полем, а не только внутри meta: по нему рисуется
+            # метка в списке библиотеки, и лезть за ней в словарь на каждой
+            # из тринадцати тысяч строк незачем.
+            "text_quality": str(self.meta.get("text_quality", "") or ""),
             "meta": self.meta,
         }
 

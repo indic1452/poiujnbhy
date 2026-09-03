@@ -336,7 +336,7 @@ class VectorCacheTests(unittest.TestCase):
         index_embeddings(self.repos, StubEmbedder(dim=64))
         retriever = DatabaseRetriever(self.repos, embedder=StubEmbedder(dim=64))
         with mock.patch.object(
-            self.repos.vectors, "all_vectors", wraps=self.repos.vectors.all_vectors
+            self.repos.vectors, "load_index", wraps=self.repos.vectors.load_index
         ) as loader:
             retriever.search(OBW_QUERY, top_k=3)
             retriever.search(EVM_QUERY, top_k=3)
@@ -367,7 +367,7 @@ class VectorCacheDuringBuildTests(unittest.TestCase):
     def test_while_building_the_matrix_is_not_reloaded_on_every_search(self):
         self.retriever.vectors_building = lambda: True
         with mock.patch.object(
-            self.repos.vectors, "all_vectors", wraps=self.repos.vectors.all_vectors
+            self.repos.vectors, "load_index", wraps=self.repos.vectors.load_index
         ) as loader:
             self.retriever.search(OBW_QUERY, top_k=3)
             self.more_vectors()
@@ -379,7 +379,7 @@ class VectorCacheDuringBuildTests(unittest.TestCase):
         # находиться сразу, а не «через несколько секунд».
         self.retriever.vectors_building = lambda: False
         with mock.patch.object(
-            self.repos.vectors, "all_vectors", wraps=self.repos.vectors.all_vectors
+            self.repos.vectors, "load_index", wraps=self.repos.vectors.load_index
         ) as loader:
             self.retriever.search(OBW_QUERY, top_k=3)
             self.more_vectors()

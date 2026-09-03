@@ -25,7 +25,7 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any, Callable, Dict
 
-from ..embeddings import EmbeddingClient, EmbeddingError, index_embeddings
+from ..embeddings import EmbeddingClient, EmbeddingError, advice, index_embeddings
 
 if TYPE_CHECKING:  # pragma: no cover — только для подсказок типов
     from ..config import Settings
@@ -59,6 +59,9 @@ class VectorIndexer:
         self._done = 0
         self._total = 0
         self._error = ""
+        #: Что делать человеку. Одной ошибки мало: «сервер эмбеддингов
+        #: недоступен» — это диагноз, а инженеру нужна команда.
+        self._advice = ""
         self._finished_at = 0.0
         self._written = 0
         self._status: Dict[str, Any] | None = None
@@ -113,6 +116,7 @@ class VectorIndexer:
                 "total": self._total,
                 "written": self._written,
                 "error": self._error,
+                "advice": self._advice,
             })
         # «Чужие» векторы отдельной проверки не требуют: такой фрагмент
         # уже посчитан недостающим — вектора нужной модели у него нет.
@@ -168,6 +172,7 @@ class VectorIndexer:
                 self._total = 0
                 self._written = 0
                 self._error = ""
+                self._advice = ""
                 self._status = None
                 self._thread = threading.Thread(
                     target=self._run, args=(force,),
@@ -205,6 +210,29 @@ class VectorIndexer:
         self._stopping.set()
         self.wait(timeout)
 
+    def check(self) -> Dict[str, Any]:
+        """Проверить связь со службой одним коротким запросом.
+
+        Человек нажимает кнопку и хочет ответ сейчас, а не через полчаса
+        построения. Таймаут поэтому короткий: если служба грузит модель в
+        видеопамять, это тоже ответ — «не ответила вовремя».
+        """
+        if not self.enabled:
+            return {"ok": False, "kind": "off", "error": "смысловой поиск выключен",
+                    "advice": "включите embed_enabled в settings.json и "
+                              "перезапустите приложение"}
+        try:
+            client = self.client_factory()
+        except Exception as error:                # noqa: BLE001
+            return {"ok": False, "kind": "other",
+                    "error": f"не удалось подключиться к службе эмбеддингов: {error}",
+                    "advice": advice("other", self.settings.embed_base_url)}
+        probe = getattr(client, "check", None)
+        if probe is None:
+            return {"ok": True, "error": "", "advice": "", "kind": "",
+                    "model": self.model}
+        return probe()
+
     def _default_client(self) -> Any:
         return EmbeddingClient(
             base_url=self.settings.embed_base_url,
@@ -230,7 +258,8 @@ class VectorIndexer:
         try:
             client = self.client_factory()
         except Exception as error:  # noqa: BLE001 — поток не должен уносить приложение
-            self._fail(f"не удалось подключиться к службе эмбеддингов: {error}")
+            self._fail(f"не удалось подключиться к службе эмбеддингов: {error}",
+                       what_to_do=advice("other", self.settings.embed_base_url))
             return
 
         def progress(done: int, total: int) -> None:
@@ -254,8 +283,12 @@ class VectorIndexer:
                     # Служба не отвечает или отвечает не тем. Это штатная беда
                     # изолированной машины: сервер эмбеддингов не подняли.
                     # Поиск при этом работает словами — падать нельзя,
-                    # молчать тоже.
-                    self._fail(str(error), written=total_written)
+                    # молчать тоже. И мало сказать «не отвечает»: человек
+                    # сидит за той же машиной, ему нужна команда.
+                    self._fail(str(error), written=total_written,
+                               what_to_do=advice(getattr(error, "kind", "other"),
+                                                 self.settings.embed_base_url,
+                                                 self.settings.embed_timeout))
                     return
                 total_written += written
                 with self._lock:
@@ -276,9 +309,10 @@ class VectorIndexer:
             self._finished_at = time.monotonic()
             self._status = None
 
-    def _fail(self, message: str, *, written: int = 0) -> None:
+    def _fail(self, message: str, *, written: int = 0, what_to_do: str = "") -> None:
         with self._lock:
             self._error = message
+            self._advice = what_to_do
             self._written = written
             self._finished_at = time.monotonic()
             self._status = None

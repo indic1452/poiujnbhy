@@ -203,17 +203,23 @@ def chunks_from_markdown(
 
     chunks: List[Chunk] = []
     page: int | None = None
-    for title_path, piece in corpus.split_document(body):
-        start_page, page = _page_bounds(piece, page)
-        cleaned = convert.strip_page_markers(piece)
-        if not cleaned:
-            continue
-        if len(cleaned) < corpus.MIN_CHARS and chunks:
-            # Короткий хвост присоединяем к предыдущему чанку — как в корпусе,
-            # чтобы не засорять индекс обрывками в одну строку.
-            previous = chunks[-1]
-            previous.text = f"{previous.text}\n\n{cleaned}"
-            continue
+    # Маркеры страниц снимаем ДО склейки: иначе кусок из одного маркера
+    # считался бы содержимым и тянул за собой соседний раздел.
+    def cleaned_pieces():
+        nonlocal page
+        for title_path, piece in corpus.split_document(body):
+            start_page, page = _page_bounds(piece, page)
+            cleaned = convert.strip_page_markers(piece)
+            if not cleaned:
+                continue
+            pages.append(start_page)
+            yield title_path, cleaned
+
+    pages: List[int | None] = []
+    for index, (title_path, cleaned) in enumerate(
+            corpus.merge_short_sections(cleaned_pieces())):
+        start_page = pages[0] if pages else None
+        pages.clear()
         # Заголовок первого уровня обычно дублирует название документа —
         # в крошках он лишний.
         tail = [step for step in title_path if not title.lower().startswith(step.lower())]
@@ -368,6 +374,13 @@ def ingest_path(
         return result
     result.notes.extend(remarks)
 
+    # Склеенный текст — беда тихая: документ в библиотеке есть, фрагментов
+    # много, а найти в нём нельзя ничего. Говорим о ней при приёме и метим
+    # сам документ, чтобы это было видно и потом, в списке библиотеки.
+    glued = convert.glued_text_warning(converted.text)
+    if glued:
+        result.notes.append(f"{label}: {glued}")
+
     title = converted.title.strip() or doc_id.rsplit("/", 1)[-1]
 
     # Каталог верхнего уровня главнее: если библиотека разложена, спорить с
@@ -386,6 +399,9 @@ def ingest_path(
 
     if type_source:
         meta["doc_type_source"] = type_source
+
+    if glued:
+        meta["text_quality"] = "glued"
 
     year, year_source = _detect_year(converted, title=title, filename=path.name)
     if year:

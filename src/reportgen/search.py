@@ -40,7 +40,12 @@ from typing import (
 )
 
 from .corpus import Chunk
-from .embeddings import Embedder, EmbeddingClient, EmbeddingError, top_cosine
+from .embeddings import (
+    Embedder,
+    EmbeddingClient,
+    EmbeddingError,
+    VectorIndex,
+)
 from .rerank import Reranker as RerankerProtocol
 from .rerank import RerankError, build_reranker
 from .retrieval import Hit, reciprocal_rank_fusion
@@ -139,7 +144,7 @@ class DatabaseRetriever:
         # начало чужого поиска обнуляло предупреждение между поиском и его
         # чтением — и своё предупреждение инженер не видел вовсе.
         self._state = threading.local()
-        self._vector_cache: Tuple[List[str], List[List[float]]] | None = None
+        self._vector_cache: "VectorIndex | None" = None
         self._vector_cache_at = 0.0
         self._cached_rows: int = -1
         #: «Идёт ли прямо сейчас фоновая постройка векторов». Ставится
@@ -176,7 +181,7 @@ class DatabaseRetriever:
     @property
     def cached_vector_count(self) -> int:
         """Сколько векторов сейчас лежит в кэше (0 — кэш пуст)."""
-        return len(self._vector_cache[0]) if self._vector_cache else 0
+        return len(self._vector_cache) if self._vector_cache is not None else 0
 
     def invalidate_cache(self) -> None:
         """Сбросить кэш векторов вручную (после массовой переиндексации)."""
@@ -356,8 +361,8 @@ class DatabaseRetriever:
                 "только по словарю терминов"
             )
             return []
-        uids, matrix = self._vectors()
-        if not uids:
+        index = self._vectors()
+        if not len(index):
             total = self.repos.vectors.count()
             if total:
                 # Строки в таблице есть, а под нынешнее имя модели их ноль.
@@ -386,7 +391,7 @@ class DatabaseRetriever:
         pool = self.candidates
         if allowed or meta_filter or domains:
             pool *= self.dense_pool_factor
-        scored = top_cosine(query_vec, matrix, uids, k=pool)
+        scored = index.search(query_vec, k=pool)
         if not scored:
             return []
         chunks = self._chunks_by_uid([uid for uid, _ in scored])
@@ -440,21 +445,20 @@ class DatabaseRetriever:
 
     # -- доступ к хранилищу -------------------------------------------------
 
-    def _vectors(self) -> Tuple[List[str], List[List[float]]]:
+    def _vectors(self) -> "VectorIndex":
         """Матрица векторов корпуса. Перечитывается, когда их число сменилось.
 
-        Сверка стоит один счётный запрос, распаковка — все векторы
-        библиотеки из BLOB. Поэтому обычно сверяемся всегда: достроенный
-        вектор должен находиться сразу, а не «через несколько секунд».
+        Сверка стоит один счётный запрос, загрузка — все векторы библиотеки
+        из BLOB. Поэтому обычно сверяемся всегда: достроенный вектор должен
+        находиться сразу, а не «через несколько секунд».
 
         Исключение одно — идущая фоновая постройка. Там число меняется
         после КАЖДОЙ пачки, то есть сверка всякий раз кончается полной
-        распаковкой, а разбор вопроса делает несколько поисков подряд. На
-        корпусе в десятки тысяч фрагментов это сотни мегабайт мусора на
-        один вопрос, да ещё под тем же замком базы, который держит на
-        запись сам строитель. Пока строим — перечитываем не чаще раза в
-        ``VECTOR_CACHE_TTL`` секунд: библиотека в эти секунды всё равно
-        неполна, и ждать её целиком никто не обещал.
+        перезагрузкой, а разбор вопроса делает несколько поисков подряд. На
+        корпусе отдела это гигабайты работы на один вопрос, да ещё под тем
+        же замком базы, который держит на запись сам строитель. Пока
+        строим — перечитываем не чаще раза в ``VECTOR_CACHE_TTL`` секунд:
+        библиотека в эти секунды всё равно неполна.
         """
         now = time.monotonic()
         if (self._vector_cache is not None
@@ -463,7 +467,7 @@ class DatabaseRetriever:
             return self._vector_cache
         rows = self.repos.vectors.count()
         if self._vector_cache is None or rows != self._cached_rows:
-            self._vector_cache = self.repos.vectors.all_vectors(self.embed_model)
+            self._vector_cache = self.repos.vectors.load_index(self.embed_model)
             self._cached_rows = rows
         self._vector_cache_at = now
         return self._vector_cache

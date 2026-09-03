@@ -774,18 +774,25 @@ class AssistantService:
         document = self.repos.documents.by_doc_id(doc_id)
         if document is None:
             return [], "документ не найден"
+        wanted = step.section.strip()
+        note = ""
         try:
-            chunks = self.repos.chunks.for_document(document.id)
+            if wanted:
+                # Ищем раздел в БАЗЕ, а не в первых четырёхстах фрагментах,
+                # поднятых в память: в книге на полторы тысячи фрагментов
+                # двенадцатой главы там просто нет, и помощник отвечал
+                # «раздела не нашёл» о разделе, который в документе есть.
+                chunks = self.repos.chunks.find_sections(
+                    document.id, wanted, limit=RESEARCH_READ_CHUNKS)
+                if not chunks:
+                    note = f"раздел «{step.section}» не найден, читаю с начала"
+                    chunks = self.repos.chunks.for_document(
+                        document.id, limit=RESEARCH_READ_CHUNKS)
+            else:
+                chunks = self.repos.chunks.for_document(
+                    document.id, limit=RESEARCH_READ_CHUNKS)
         except Exception:              # noqa: BLE001
             return [], "документ не читается"
-        wanted = step.section.casefold().strip()
-        note = ""
-        if wanted:
-            picked = [chunk for chunk in chunks
-                      if wanted in " → ".join(chunk.title_path).casefold()]
-            if not picked:
-                note = f"раздел «{step.section}» не найден, читаю с начала"
-            chunks = picked or chunks
         hits = [Hit(chunk=chunk, score=0.0)
                 for chunk in chunks[:RESEARCH_READ_CHUNKS]]
         opened = f"прочитано: {document.title or doc_id}"

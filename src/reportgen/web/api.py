@@ -1379,12 +1379,36 @@ def export_docx(request: Request, report_id: int) -> FileResponse:
 
 # ------------------------------------------------------------ библиотека ---
 
+#: Сколько документов показываем за раз. Библиотека отдела — тринадцать с
+#: половиной тысяч, и одной таблицей это не читается и не рисуется.
+LIBRARY_PAGE = 50
+
+#: Больше этого за один запрос не отдаём даже по просьбе.
+LIBRARY_PAGE_MAX = 200
+
+
 @router.get("/library")
 def library(request: Request, doc_type: str | None = None,
-            domain: str | None = None, status: str | None = None) -> Dict[str, Any]:
+            domain: str | None = None, status: str | None = None,
+            q: str = "", page: int = 1,
+            per_page: int = LIBRARY_PAGE) -> Dict[str, Any]:
+    """Страница библиотеки. Раньше отдавалась целиком — все документы разом.
+
+    На корпусе отдела это несколько мегабайт JSON на каждое открытие
+    раздела: сервер их собирал, браузер разбирал и рисовал таблицу в
+    тринадцать тысяч строк. Человеку в этот миг нужны три документа,
+    которые он ищет по названию.
+    """
     require_user(request)
     repos = _repos(request)
-    documents = repos.documents.list(doc_type, domain, status)
+    size = max(1, min(int(per_page or LIBRARY_PAGE), LIBRARY_PAGE_MAX))
+    number = max(1, int(page or 1))
+    query = str(q or "").strip()[:200]
+    total = repos.documents.count_all(doc_type, domain, status, query)
+    pages = max(1, (total + size - 1) // size)
+    number = min(number, pages)
+    documents = repos.documents.list(doc_type, domain, status, query,
+                                     limit=size, offset=(number - 1) * size)
     return {
         "items": [document.to_dict() for document in documents],
         "stats": repos.documents.stats(),
@@ -1392,6 +1416,13 @@ def library(request: Request, doc_type: str | None = None,
         "statuses": repos.documents.statuses(),
         "chunks": repos.chunks.count(),
         "embeddings": repos.vectors.count(),
+        # Сколько всего нашлось и какую часть показали: без этих чисел
+        # человек не знает, всё ли перед ним.
+        "total": total,
+        "page": number,
+        "pages": pages,
+        "per_page": size,
+        "query": query,
     }
 
 
@@ -1408,12 +1439,21 @@ def document_text(request: Request, doc_id: str) -> Dict[str, Any]:
     document = repos.documents.by_doc_id(doc_id)
     if document is None:
         raise ServiceError(f"документ '{doc_id}' не найден", 404)
-    chunks = repos.chunks.for_document(document.id)
+    # Книга в библиотеке отдела бывает и в полторы тысячи фрагментов.
+    # Показываем страницами и ЧЕСТНО говорим, сколько их всего: молча
+    # обрезанный на четырёхстах список читается как весь документ.
+    total = repos.chunks.count_for_document(document.id)
+    offset = max(0, int(request.query_params.get("offset", 0) or 0))
+    limit = max(1, min(int(request.query_params.get("limit", 400) or 400), 400))
+    chunks = repos.chunks.for_document(document.id, limit=limit, offset=offset)
     source = Path(document.source_path)
     return {
         "document": document.to_dict(),
         "source_exists": source.is_file(),
         "source_name": source.name,
+        "chunks_total": total,
+        "chunks_offset": offset,
+        "chunks_limit": limit,
         "chunks": [
             {
                 "chunk_id": chunk.chunk_id,
@@ -1460,7 +1500,10 @@ def upload_document(
     doc_type: str = Form("literature"),
     domain: str = Form(""),
 ) -> Dict[str, Any]:
-    user = require_editor(request)
+    # Пополнение библиотеки — за начальством. Документ ложится в общий поиск
+    # всего отдела: неверный тип или направление портят выдачу всем, а
+    # разложить обратно можно только руками.
+    user = require_admin(request)
     settings = _settings(request)
     if doc_type not in DOC_TYPES:
         raise ServiceError(f"неизвестный тип документа '{doc_type}'", 400)
@@ -1515,7 +1558,7 @@ def upload_document(
 
 @router.post("/library/reindex")
 def reindex(request: Request) -> Dict[str, Any]:
-    user = require_editor(request)
+    user = require_admin(request)
     settings = _settings(request)
     payload = getattr(request.state, "json_body", None) or {}
     force = bool(payload.get("force", False))
@@ -1554,6 +1597,21 @@ def vectors_status(request: Request) -> Dict[str, Any]:
     return {"vectors": service.vectors.status()}
 
 
+@router.post("/library/vectors/check")
+def vectors_check(request: Request) -> Dict[str, Any]:
+    """Отвечает ли служба эмбеддингов — одним коротким запросом.
+
+    Раньше узнать это можно было единственным способом: нажать «Построить
+    векторы» и ждать. Ответ приходил тот же самый — «сервер эмбеддингов
+    недоступен», — только через минуту и в виде неудачи, а не проверки.
+    """
+    require_admin(request)
+    service = _service(request)
+    if service.vectors is None:
+        raise ServiceError("смысловой поиск недоступен", 501)
+    return {"check": service.vectors.check()}
+
+
 @router.post("/library/vectors")
 def vectors_build(request: Request) -> Dict[str, Any]:
     """Построить векторы. ``force`` — заново все, после смены модели.
@@ -1563,7 +1621,7 @@ def vectors_build(request: Request) -> Dict[str, Any]:
     """
     payload = getattr(request.state, "json_body", None) or {}
     force = bool(payload.get("force", False))
-    user = require_admin(request) if force else require_editor(request)
+    user = require_admin(request)
     service = _service(request)
     if service.vectors is None:
         raise ServiceError("смысловой поиск недоступен", 501)
@@ -1680,7 +1738,7 @@ def set_document_status(request: Request, doc_id: str) -> Dict[str, Any]:
     редакцию стандарта как действующую — прямая ошибка в отчёте.
     Сам документ остаётся в библиотеке для разбора старых обращений.
     """
-    user = require_editor(request)
+    user = require_admin(request)
     payload = _body(request)
     status = str(payload.get("status", "")).strip()
     if status not in DOC_STATUSES:
@@ -1703,7 +1761,7 @@ def set_document_status(request: Request, doc_id: str) -> Dict[str, Any]:
 
 @router.put("/library/{doc_id:path}/domain")
 def set_document_domain(request: Request, doc_id: str) -> Dict[str, Any]:
-    user = require_editor(request)
+    user = require_admin(request)
     payload = _body(request)
     domain = str(payload.get("domain", "")).strip()
     if not _domains(request).is_known(domain):
@@ -2053,10 +2111,10 @@ def staff(request: Request) -> Dict[str, Any]:
                 "team": user.team,
                 # Как человека найти. Не личные сведения: телефон и кабинет
                 # в отделе и так знают, а искать их по бумажке — терять время.
-                "phone": user.phone,
-                "ext_no": user.ext_no,
+                "phone_mobile": user.phone_mobile,
+                "phone_open": user.phone_open,
+                "phone_secure": user.phone_secure,
                 "room": user.room,
-                "email": user.email,
             }
             for user in _repos(request).users.list_all(active_only=True)
             if user.login != "local"
@@ -2325,8 +2383,9 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
             # Расход отвечает «где человек»; телефон и кабинет — вторая
             # половина того же вопроса, и держать их в другом разделе значит
             # заставлять ходить туда-обратно.
-            "phone": person.phone,
-            "ext_no": person.ext_no,
+            "phone_mobile": person.phone_mobile,
+            "phone_open": person.phone_open,
+            "phone_secure": person.phone_secure,
             "room": person.room,
             "can_edit": _may_edit_roster(actor, person.id),
             "is_me": person.id == actor.id,
@@ -3074,7 +3133,7 @@ def update_my_contacts(request: Request) -> Dict[str, Any]:
     user = require_user(request)
     payload = _body(request)
     fields: Dict[str, Any] = {}
-    for name in ("phone", "ext_no", "room", "email"):
+    for name in ("phone_mobile", "phone_open", "phone_secure", "room"):
         if name in payload:
             fields[name] = str(payload[name] or "").strip()[:120]
     if not fields:
@@ -3123,10 +3182,10 @@ def person_card(request: Request, user_id: int) -> Dict[str, Any]:
         # числится в другом подразделении.
         "team": person.team,
         "department": person.department,
-        "phone": person.phone,
-        "ext_no": person.ext_no,
+        "phone_mobile": person.phone_mobile,
+        "phone_open": person.phone_open,
+        "phone_secure": person.phone_secure,
         "room": person.room,
-        "email": person.email,
         "active": person.active,
         "created_at": person.created_at,
         "where": where,
