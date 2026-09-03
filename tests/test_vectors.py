@@ -6,9 +6,13 @@
 невидимой для поиска по смыслу.
 """
 
+import tempfile
 import threading
+import time
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import _bootstrap  # noqa: F401
 
@@ -17,6 +21,7 @@ from reportgen.corpus import Chunk
 from reportgen.embeddings import EmbeddingError
 from reportgen.store.db import Database
 from reportgen.store.repo import Repositories
+from reportgen.web import vectors as vectors_module
 from reportgen.web.vectors import VectorIndexer, _hint
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,8 +60,8 @@ class SlowEmbedder(StubEmbedder):
         return super().embed(texts)
 
 
-def build_repos(chunk_count=5):
-    repos = Repositories(Database(":memory:"))
+def build_repos(chunk_count=5, path=":memory:"):
+    repos = Repositories(Database(path))
     stored = repos.documents.upsert(
         doc_id="kniga", doc_type="literature", title="Том по релейным линиям",
         source_path="kniga.md", sha256="a" * 64, domain="microwave",
@@ -256,6 +261,108 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(0, state["missing"])
         self.assertEqual(0, state["stale"])
         self.assertTrue(state["ready"])
+
+
+class ConcurrencyTests(unittest.TestCase):
+    """Строитель один. Не «обычно один», а один при любом стечении."""
+
+    def test_two_simultaneous_starts_do_not_make_two_workers(self):
+        """Два запуска РАЗОМ — самое частое стечение: загрузили пачку файлов.
+
+        Заводить поток нужно под тем же замком, под которым его проверяют:
+        только что созданный поток ещё не «жив», и второй вызов, попав в
+        зазор между созданием и запуском, заведёт свой. Две постройки
+        поделят видеокарту, а дождаться можно будет только последней.
+        """
+        gate = threading.Event()
+        embedder = SlowEmbedder(gate)
+        indexer = VectorIndexer(build_repos(6), make_settings(), lambda: embedder)
+
+        created = []
+
+        class SlowToStart(threading.Thread):
+            """Поток, который запускается не мгновенно — зазор виден."""
+
+            def start(self):
+                created.append(self)
+                time.sleep(0.05)
+                super().start()
+
+        shim = types.SimpleNamespace(Thread=SlowToStart, Lock=threading.Lock,
+                                     Event=threading.Event, local=threading.local)
+        callers = [threading.Thread(target=indexer.start) for _ in range(2)]
+        with mock.patch.object(vectors_module, "threading", shim):
+            for caller in callers:
+                caller.start()
+            for caller in callers:
+                caller.join(10)
+        gate.set()
+        indexer.wait(10)
+        self.assertEqual(1, len(created))
+
+    def test_a_document_added_during_the_build_gets_vectors_too(self):
+        """Пока строится долгая книга, инженер кладёт вторую.
+
+        Её фрагментов в снимке первого прохода нет, а ``start_if_needed``
+        в это время отвечает «уже строим» и ничего не ставит в очередь.
+        Без второго прохода второй документ остался бы без векторов
+        навсегда — ровно та беда, ради которой писан весь модуль.
+        """
+        repos = build_repos(2)
+
+        class AddsABookMidway(StubEmbedder):
+            def __init__(self):
+                super().__init__()
+                self.added = False
+
+            def embed(self, texts):
+                if not self.added:
+                    self.added = True
+                    second = repos.documents.upsert(
+                        doc_id="vtoraya", doc_type="literature",
+                        title="Вторая книга", source_path="vtoraya.md",
+                        sha256="b" * 64, domain="satellite")
+                    repos.chunks.replace_for_document(second, [
+                        Chunk(chunk_id="vtoraya#0000", doc_id="vtoraya",
+                              doc_type="literature", title_path=[],
+                              text="Фрагмент второй книги.")])
+                return super().embed(texts)
+
+        indexer = VectorIndexer(repos, make_settings(), AddsABookMidway)
+        indexer.start()
+        indexer.wait(10)
+        state = indexer.status(fresh=True)
+        self.assertEqual(3, state["chunks"])
+        self.assertEqual(0, state["missing"])
+
+    def test_the_worker_closes_its_database_connection(self):
+        """Поток на каждую книгу — и соединение на каждый поток.
+
+        Список соединений базы сам не чистится: соединение умершего потока
+        живёт до конца работы приложения. За полгода это сотни навсегда
+        открытых файлов, а при WAL — ещё и -wal, -shm к каждому.
+        """
+        # База НА ДИСКЕ: у базы в памяти соединение одно на всех, и утечку
+        # на ней не увидеть — а работает отдел на файле.
+        with tempfile.TemporaryDirectory() as folder:
+            repos = build_repos(2, path=str(Path(folder) / "baza.db"))
+            indexer = VectorIndexer(repos, make_settings(), StubEmbedder)
+            before = len(repos.db._connections)
+            indexer.start()
+            indexer.wait(10)
+            self.assertEqual(before, len(repos.db._connections))
+            # И база после этого цела: закрыли соединение, а не хранилище.
+            self.assertEqual(2, repos.chunks.count())
+            repos.db.close()
+
+    def test_stopping_starts_no_further_passes(self):
+        """Выключение: досчитать пачку даём, новых проходов не начинаем."""
+        repos = build_repos(2)
+        indexer = VectorIndexer(repos, make_settings(), StubEmbedder)
+        indexer._stopping.set()
+        indexer.start()
+        indexer.wait(10)
+        self.assertEqual(2, indexer.status(fresh=True)["missing"])
 
 
 class HintTests(unittest.TestCase):

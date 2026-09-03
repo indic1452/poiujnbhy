@@ -456,6 +456,33 @@ class Database:
         with self._lock:
             self.connection.commit()
 
+    def release(self) -> None:
+        """Закрыть соединение ТЕКУЩЕГО потока и забыть его.
+
+        Список соединений сам не чистится: он держит ссылку, и соединение
+        умершего потока живёт до конца работы приложения. Пулу потоков это
+        безразлично — он их переиспользует, а вот фоновое построение
+        векторов заводит новый поток на каждую книгу. За полгода работы
+        отдела это сотни навсегда открытых файлов (при WAL — ещё и -wal,
+        -shm к каждому). Общая база в памяти соединения не имеет — там
+        закрывать нечего.
+        """
+        if self._shared is not None:
+            return
+        connection = getattr(self._local, "connection", None)
+        if connection is None:
+            return
+        with self._lock:
+            try:
+                self._connections.remove(connection)
+            except ValueError:
+                pass
+            try:
+                connection.close()
+            except sqlite3.Error:
+                pass
+        self._local.connection = None
+
     def close(self) -> None:
         with self._lock:
             for connection in self._connections:

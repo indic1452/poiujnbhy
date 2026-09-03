@@ -1530,8 +1530,73 @@ class ConcurrencyTests(unittest.TestCase):
         repos.users.create("second", "пароль123", "", "engineer")
         self.assertEqual(repos.users.count(), 2)
 
-if __name__ == "__main__":
-    unittest.main()
+
+class ReleaseTests(unittest.TestCase):
+    """Соединение потока закрывается за собой.
+
+    Список соединений сам не чистится: соединение умершего потока живёт до
+    конца работы приложения. Пулу потоков это безразлично — он их
+    переиспользует, а фоновое построение векторов заводит новый поток на
+    каждую книгу. За полгода работы отдела это сотни навсегда открытых
+    файлов, а при WAL — ещё и -wal, -shm к каждому.
+    """
+
+    def database(self):
+        folder = tempfile.mkdtemp()
+        database = Database(str(Path(folder) / "release.db"))
+        self.addCleanup(database.close)
+        return database
+
+    def test_a_worker_thread_leaves_no_connection_behind(self):
+        import threading
+
+        database = self.database()
+        before = len(database._connections)
+
+        def worker() -> None:
+            database.scalar("SELECT count(*) FROM users")
+            database.release()
+
+        thread = threading.Thread(target=worker)
+        thread.start()
+        thread.join(5)
+        self.assertEqual(before, len(database._connections))
+
+    def test_without_release_the_connection_stays(self):
+        """Обратная сторона: без release() соединение и остаётся висеть."""
+        import threading
+
+        database = self.database()
+        before = len(database._connections)
+        thread = threading.Thread(
+            target=lambda: database.scalar("SELECT count(*) FROM users"))
+        thread.start()
+        thread.join(5)
+        self.assertEqual(before + 1, len(database._connections))
+
+    def test_the_same_thread_works_on_after_releasing(self):
+        # Закрыли соединение, а не хранилище: следующий запрос открывает
+        # новое и работает как ни в чём не бывало.
+        database = self.database()
+        repos = Repositories(database)
+        repos.users.create("pervyy", "пароль123", "", "engineer")
+        database.release()
+        self.assertEqual(1, repos.users.count())
+
+    def test_releasing_twice_is_not_an_error(self):
+        database = self.database()
+        database.scalar("SELECT 1")
+        database.release()
+        database.release()
+
+    def test_a_memory_database_has_nothing_to_release(self):
+        """Общая база в памяти — одно соединение на всех: закрывать нечего."""
+        database = Database(":memory:")
+        self.addCleanup(database.close)
+        repos = Repositories(database)
+        repos.users.create("pervyy", "пароль123", "", "engineer")
+        database.release()
+        self.assertEqual(1, repos.users.count())
 
 
 class ConcurrentAccessTests(unittest.TestCase):
@@ -1636,3 +1701,7 @@ class ConcurrentAccessTests(unittest.TestCase):
         database._rename_domains()
         database.connection.set_trace_callback(None)
         self.assertEqual([], self.writes(statements))
+
+
+if __name__ == "__main__":
+    unittest.main()

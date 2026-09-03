@@ -571,6 +571,34 @@ class ResearchLoopTests(AssistantTestCase):
         self.assertIn("ЧТО УЖЕ ДЕЛАЛИ", llm.asked[1])
         self.assertIn("смотрю оглавление", llm.asked[1])
 
+    def test_the_trail_names_what_was_actually_read(self):
+        """Просили один том, открыли похожий — след обязан назвать открытое.
+
+        Название модель пишет как умеет, находим по совпадению: инженер не
+        должен сверять ответ с документом, которого никто не читал.
+        """
+        document = self.repos.documents.list()[0]
+        llm = ScriptedLLM([f"ЧИТАТЬ: {document.title}", "ХВАТИТ"])
+        self.reports.llm = llm
+        self.assistant._prepare(self.ivanov, self.chat.id, "полоса", top_k=None)
+        # Смотрим именно след, а не весь промпт: слово «фрагмент» стоит и в
+        # карте библиотеки, и такая проверка ничего бы не значила.
+        trail = llm.asked[-1].split("### ЧТО УЖЕ ДЕЛАЛИ", 1)[1].split("###", 1)[0]
+        self.assertIn("прочитано:", trail)
+        self.assertIn(document.title, trail)
+        # И сколько нового при этом набралось: без счёта модель не отличает
+        # «прочитал, там то же самое» от «прочитал и нашёл недостающее».
+        self.assertTrue(
+            "фрагмент" in trail or "ничего нового" in trail,
+            f"в следе нет счёта новых фрагментов: {trail!r}")
+
+    def test_a_missing_section_is_admitted(self):
+        document = self.repos.documents.list()[0]
+        llm = ScriptedLLM([f"ЧИТАТЬ: {document.doc_id} | Такого раздела нет", "ХВАТИТ"])
+        self.reports.llm = llm
+        self.assistant._prepare(self.ivanov, self.chat.id, "полоса", top_k=None)
+        self.assertIn("не найден", llm.asked[-1])
+
     def test_an_unknown_document_does_not_stop_the_research(self):
         llm, prepared = self.drive(["ЧИТАТЬ: такого тома нет", "ХВАТИТ"])
         self.assertTrue(prepared["sources"])

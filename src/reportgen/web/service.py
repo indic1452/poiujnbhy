@@ -216,6 +216,14 @@ class ReportService:
     def get_retriever(self) -> Retriever | None:
         if self.retriever is None:
             self.retriever = _build_retriever(self.repos, self.settings)
+            # Поисковику показываем, идёт ли постройка векторов. Пока идёт,
+            # он не перечитывает матрицу на каждый запрос: число векторов
+            # меняется после каждой пачки, а разбор вопроса делает несколько
+            # поисков подряд — библиотека распаковывалась бы из BLOB заново
+            # на каждый заход.
+            if self.retriever is not None and self.vectors is not None:
+                if hasattr(self.retriever, "vectors_building"):
+                    self.retriever.vectors_building = self.vectors.running
         return self.retriever
 
     def reset_retriever(self) -> None:

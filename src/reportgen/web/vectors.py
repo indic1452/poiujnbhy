@@ -38,6 +38,11 @@ __all__ = ["VectorIndexer"]
 #: векторов и без того занимает базу.
 STATUS_TTL = 2.0
 
+#: Сколько проходов построения делаем подряд. Библиотека растёт на ходу:
+#: пока идёт долгая книга, кладут вторую. Больше трёх проходов — признак
+#: того, что дело не в новых документах.
+_MAX_PASSES = 3
+
 
 class VectorIndexer:
     """Построение векторов библиотеки и состояние смыслового поиска."""
@@ -58,6 +63,8 @@ class VectorIndexer:
         self._written = 0
         self._status: Dict[str, Any] | None = None
         self._status_at = 0.0
+        #: Приложение выключается — новых проходов не начинать.
+        self._stopping = threading.Event()
 
     # -- состояние ----------------------------------------------------------
 
@@ -146,26 +153,28 @@ class VectorIndexer:
         """Запустить построение в фоне. Уже идёт — вернуть текущее состояние."""
         if not self.enabled:
             return self.status()
-        # Замок отпускаем ДО status(): он берёт тот же замок, а обычный
-        # threading.Lock не повторный — второй «построить» на идущей работе
-        # вешал поток намертво.
-        thread: threading.Thread | None = None
+        # Поток ЗАПУСКАЕМ под замком. Thread.is_alive() до start() ложно, и
+        # если отпустить замок между «положили в self._thread» и «запустили»,
+        # второй вызов увидит мёртвый поток и заведёт второй: два построения
+        # поделят видеокарту, а wait() будет знать только про последнее.
+        # Сам start() не ждёт тела потока, так что взаимоблокировки нет.
+        #
+        # А вот status() под замком звать нельзя: он берёт тот же замок, а
+        # обычный threading.Lock не повторный.
+        started = False
         with self._lock:
-            busy = self._thread is not None and self._thread.is_alive()
-            if not busy:
+            if self._thread is None or not self._thread.is_alive():
                 self._done = 0
                 self._total = 0
                 self._written = 0
                 self._error = ""
                 self._status = None
-                thread = threading.Thread(
+                self._thread = threading.Thread(
                     target=self._run, args=(force,),
                     name="reportgen-embed", daemon=True)
-                self._thread = thread
-        if thread is None:
-            return self.status()
-        thread.start()
-        return self.status(fresh=True)
+                self._thread.start()
+                started = True
+        return self.status(fresh=True) if started else self.status()
 
     def start_if_needed(self) -> Dict[str, Any]:
         """Достроить недостающие векторы — зовётся после приёма документов.
@@ -187,6 +196,15 @@ class VectorIndexer:
         if thread is not None:
             thread.join(timeout)
 
+    def stop(self, timeout: float = 5.0) -> None:
+        """Остановить построение при выключении приложения.
+
+        Досчитать пачку не мешаем — она короткая, а брошенная на полуслове
+        транзакция хуже. Просим не начинать следующую и ждём.
+        """
+        self._stopping.set()
+        self.wait(timeout)
+
     def _default_client(self) -> Any:
         return EmbeddingClient(
             base_url=self.settings.embed_base_url,
@@ -197,13 +215,22 @@ class VectorIndexer:
         )
 
     def _run(self, force: bool) -> None:
+        """Проходы построения. Их несколько: библиотека растёт на ходу.
+
+        Пока идёт долгая книга, инженер успевает положить вторую. Её чанки
+        в снимок первого прохода не попали, а ``start_if_needed`` в это
+        время отвечает «уже строим» и ничего не ставит в очередь. Раньше
+        второй документ так и оставался без векторов навсегда — ровно та
+        беда, ради которой писан весь модуль. Поэтому в конце прохода
+        смотрим заново: появилось недостающее — идём ещё раз.
+
+        Проходов не больше ``_MAX_PASSES``: если после прохода недостающее
+        не убавилось, дело не в новых документах, и крутиться незачем.
+        """
         try:
             client = self.client_factory()
         except Exception as error:  # noqa: BLE001 — поток не должен уносить приложение
-            with self._lock:
-                self._error = f"не удалось подключиться к службе эмбеддингов: {error}"
-                self._finished_at = time.monotonic()
-                self._status = None
+            self._fail(f"не удалось подключиться к службе эмбеддингов: {error}")
             return
 
         def progress(done: int, total: int) -> None:
@@ -211,29 +238,58 @@ class VectorIndexer:
                 self._done = done
                 self._total = total
 
+        total_written = 0
         try:
-            written = index_embeddings(
-                self.repos, client, batch=self.settings.embed_batch,
-                only_missing=not force, progress=progress)
-        except EmbeddingError as error:
-            # Служба не отвечает или отвечает не тем. Это штатная беда
-            # изолированной машины: сервер эмбеддингов не подняли. Поиск при
-            # этом работает словами — падать нельзя, молчать тоже.
-            with self._lock:
-                self._error = str(error)
-                self._finished_at = time.monotonic()
-                self._status = None
-            return
+            for step in range(_MAX_PASSES):
+                if self._stopping.is_set():
+                    break
+                try:
+                    written = index_embeddings(
+                        self.repos, client, batch=self.settings.embed_batch,
+                        # Полная перестройка нужна один раз: следующие проходы
+                        # достраивают то, что появилось за время работы.
+                        only_missing=not (force and step == 0),
+                        progress=progress)
+                except EmbeddingError as error:
+                    # Служба не отвечает или отвечает не тем. Это штатная беда
+                    # изолированной машины: сервер эмбеддингов не подняли.
+                    # Поиск при этом работает словами — падать нельзя,
+                    # молчать тоже.
+                    self._fail(str(error), written=total_written)
+                    return
+                total_written += written
+                with self._lock:
+                    self._written = total_written
+                    self._status = None
+                if not written or not self._count()["missing"]:
+                    break
         except Exception as error:  # noqa: BLE001 — поток не должен уносить приложение
-            with self._lock:
-                self._error = f"построение векторов прервалось: {error}"
-                self._finished_at = time.monotonic()
-                self._status = None
+            self._fail(f"построение векторов прервалось: {error}", written=total_written)
             return
+        finally:
+            # Соединение потока закрываем за собой: список соединений базы
+            # не чистится сам, а поток на каждое построение новый — за
+            # полгода работы отдела это сотни навсегда открытых файлов.
+            self._release()
         with self._lock:
+            self._written = total_written
+            self._finished_at = time.monotonic()
+            self._status = None
+
+    def _fail(self, message: str, *, written: int = 0) -> None:
+        with self._lock:
+            self._error = message
             self._written = written
             self._finished_at = time.monotonic()
             self._status = None
+
+    def _release(self) -> None:
+        release = getattr(self.repos.db, "release", None)
+        if release is not None:
+            try:
+                release()
+            except Exception:          # noqa: BLE001 — закрытие не обязано мешать
+                pass
 
 
 def _hint(state: Dict[str, Any]) -> str:

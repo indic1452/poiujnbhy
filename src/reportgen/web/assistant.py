@@ -644,7 +644,10 @@ class AssistantService:
                 pinned.extend(fresh)
             elif fresh:
                 rankings.append(fresh)
-            step.note = note or found_note(len(fresh))
+            # У «читать» заметка своя — что именно открыли; счёт новых
+            # фрагментов дописываем к ней, а не вместо неё.
+            counted = found_note(len(fresh))
+            step.note = f"{note}; {counted}" if note else counted
 
         return self._merge(rankings, pinned, top_k), trail
 
@@ -731,7 +734,7 @@ class AssistantService:
         if step.kind == "оглавление":
             return [], self._step_outline(step)
         if step.kind == "читать":
-            return self._step_read(step), ""
+            return self._step_read(step)
         return [], ""
 
     def _step_search(self, step: Step, chat: Chat) -> List[Hit]:
@@ -758,25 +761,35 @@ class AssistantService:
         headings = found.get(doc_id) or []
         return "; ".join(headings) if headings else "разделы не выделены"
 
-    def _step_read(self, step: Step) -> List[Hit]:
-        """Куски названного раздела документа."""
+    def _step_read(self, step: Step) -> tuple[List[Hit], str]:
+        """Куски названного раздела документа и что именно открыли.
+
+        Название модель пишет как умеет, а находим мы по совпадению — значит,
+        открыть можем не то, что просили. След обязан назвать прочитанное:
+        иначе инженер сверяет ответ с документом, которого никто не читал.
+        """
         doc_id = self._resolve_document(step.argument)
         if not doc_id:
-            return []
+            return [], "документ не найден"
         document = self.repos.documents.by_doc_id(doc_id)
         if document is None:
-            return []
+            return [], "документ не найден"
         try:
             chunks = self.repos.chunks.for_document(document.id)
         except Exception:              # noqa: BLE001
-            return []
+            return [], "документ не читается"
         wanted = step.section.casefold().strip()
+        note = ""
         if wanted:
             picked = [chunk for chunk in chunks
                       if wanted in " → ".join(chunk.title_path).casefold()]
+            if not picked:
+                note = f"раздел «{step.section}» не найден, читаю с начала"
             chunks = picked or chunks
-        return [Hit(chunk=chunk, score=0.0)
+        hits = [Hit(chunk=chunk, score=0.0)
                 for chunk in chunks[:RESEARCH_READ_CHUNKS]]
+        opened = f"прочитано: {document.title or doc_id}"
+        return hits, f"{opened}; {note}" if note else opened
 
     def _resolve_document(self, name: str) -> str:
         """Модель называет документ как умеет: идентификатором или названием."""

@@ -71,7 +71,20 @@ def create_app(settings: Settings | None = None,
                 "В системе нет ни одного сотрудника. Заведите создателя системы: "
                 "reportgen useradd --login admin --role owner"
             )
+        # Достраиваем векторы, недостроенные в прошлый раз. Приложение могли
+        # перезапустить посреди работы — тогда половина библиотеки ищется
+        # только словами, и узнать об этом можно было, лишь открыв
+        # «Библиотеку». Ничего не строится, если всё на месте или смысловой
+        # поиск выключен.
+        if service.vectors is not None:
+            state = service.vectors.start_if_needed()
+            if state.get("running"):
+                logger.info("Достраиваем векторы: %s", state.get("hint", ""))
         yield
+        # Выключение: досчитать начатую пачку даём, новых проходов не
+        # начинаем. Брошенная на полуслове запись хуже пяти секунд ожидания.
+        if service.vectors is not None:
+            service.vectors.stop()
 
     app = FastAPI(
         lifespan=lifespan,

@@ -346,6 +346,68 @@ class VectorCacheTests(unittest.TestCase):
             self.assertEqual(loader.call_count, 2)
 
 
+class VectorCacheDuringBuildTests(unittest.TestCase):
+    """Пока строятся векторы, матрицу перечитываем реже — но не позже конца.
+
+    Число векторов меняется после каждой пачки, а разбор вопроса делает
+    несколько поисков подряд: без задержки библиотека распаковывалась бы из
+    BLOB по разу на заход. Задержка допустима ТОЛЬКО во время постройки:
+    вне её достроенный вектор обязан находиться сразу.
+    """
+
+    def setUp(self):
+        self.repos = build_repos()
+        index_embeddings(self.repos, StubEmbedder(dim=64))
+        self.retriever = DatabaseRetriever(self.repos, embedder=StubEmbedder(dim=64))
+
+    def more_vectors(self):
+        """Дописать вектор ещё одного фрагмента — как делает пачка."""
+        self.repos.vectors.put_many("bge-m3", {"pridumannyy#0000": [0.5] * 64})
+
+    def test_while_building_the_matrix_is_not_reloaded_on_every_search(self):
+        self.retriever.vectors_building = lambda: True
+        with mock.patch.object(
+            self.repos.vectors, "all_vectors", wraps=self.repos.vectors.all_vectors
+        ) as loader:
+            self.retriever.search(OBW_QUERY, top_k=3)
+            self.more_vectors()
+            self.retriever.search(EVM_QUERY, top_k=3)
+            self.assertEqual(loader.call_count, 1)
+
+    def test_when_nothing_is_building_a_new_vector_is_seen_at_once(self):
+        # Ради экономии слепнуть нельзя: построенный вектор должен
+        # находиться сразу, а не «через несколько секунд».
+        self.retriever.vectors_building = lambda: False
+        with mock.patch.object(
+            self.repos.vectors, "all_vectors", wraps=self.repos.vectors.all_vectors
+        ) as loader:
+            self.retriever.search(OBW_QUERY, top_k=3)
+            self.more_vectors()
+            self.retriever.search(EVM_QUERY, top_k=3)
+            self.assertEqual(loader.call_count, 2)
+
+    def test_the_end_of_the_build_is_not_waited_out(self):
+        """Постройка кончилась — следующий же поиск видит всю библиотеку."""
+        building = [True]
+        self.retriever.vectors_building = lambda: building[0]
+        self.retriever.search(OBW_QUERY, top_k=3)
+        before = self.retriever.cached_vector_count
+        self.more_vectors()
+        building[0] = False
+        self.retriever.search(EVM_QUERY, top_k=3)
+        self.assertEqual(before + 1, self.retriever.cached_vector_count)
+
+    def test_a_broken_probe_does_not_break_the_search(self):
+        # Подсказка о постройке — удобство, а не условие работы поиска.
+        def explode():
+            raise RuntimeError("строитель уехал")
+
+        # Первый поиск наполняет кэш — подсказку спрашивают со второго.
+        self.retriever.search(OBW_QUERY, top_k=3)
+        self.retriever.vectors_building = explode
+        self.assertTrue(self.retriever.search(EVM_QUERY, top_k=3))
+
+
 # ----------------------------------------------------------- реранкеры ----
 
 class RerankInSearchTests(unittest.TestCase):

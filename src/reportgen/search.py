@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import re
 import threading
+import time
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import (
@@ -53,6 +54,13 @@ __all__ = ["Retriever", "DatabaseRetriever", "build_retriever"]
 
 # Больше этого числа параметров SQLite в один запрос не отдаём.
 _SQL_SLICE = 400
+
+#: Как часто перечитываем матрицу векторов, ПОКА ИДЁТ ФОНОВАЯ ПОСТРОЙКА.
+#: Вне постройки число векторов не меняется, и сверяться с базой можно на
+#: каждом поиске: это один счётный запрос. А во время постройки число
+#: меняется после каждой пачки — без этой задержки разбор вопроса
+#: распаковывал бы всю библиотеку из BLOB по разу на заход.
+VECTOR_CACHE_TTL = 5.0
 
 
 class Retriever(Protocol):
@@ -132,7 +140,13 @@ class DatabaseRetriever:
         # чтением — и своё предупреждение инженер не видел вовсе.
         self._state = threading.local()
         self._vector_cache: Tuple[List[str], List[List[float]]] | None = None
+        self._vector_cache_at = 0.0
         self._cached_rows: int = -1
+        #: «Идёт ли прямо сейчас фоновая постройка векторов». Ставится
+        #: снаружи (:mod:`reportgen.web.service`) — поисковик о строителе
+        #: сам не знает и знать не должен. Пока не поставлено, поиск
+        #: сверяется с базой на каждом запросе: так честнее.
+        self.vectors_building: Any = None
 
     # -- пояснения к последнему поиску (свои у каждого потока) --------------
 
@@ -167,6 +181,7 @@ class DatabaseRetriever:
     def invalidate_cache(self) -> None:
         """Сбросить кэш векторов вручную (после массовой переиндексации)."""
         self._vector_cache = None
+        self._vector_cache_at = 0.0
         self._cached_rows = -1
 
     # -- основной вход ------------------------------------------------------
@@ -426,11 +441,42 @@ class DatabaseRetriever:
     # -- доступ к хранилищу -------------------------------------------------
 
     def _vectors(self) -> Tuple[List[str], List[List[float]]]:
+        """Матрица векторов корпуса. Перечитывается, когда их число сменилось.
+
+        Сверка стоит один счётный запрос, распаковка — все векторы
+        библиотеки из BLOB. Поэтому обычно сверяемся всегда: достроенный
+        вектор должен находиться сразу, а не «через несколько секунд».
+
+        Исключение одно — идущая фоновая постройка. Там число меняется
+        после КАЖДОЙ пачки, то есть сверка всякий раз кончается полной
+        распаковкой, а разбор вопроса делает несколько поисков подряд. На
+        корпусе в десятки тысяч фрагментов это сотни мегабайт мусора на
+        один вопрос, да ещё под тем же замком базы, который держит на
+        запись сам строитель. Пока строим — перечитываем не чаще раза в
+        ``VECTOR_CACHE_TTL`` секунд: библиотека в эти секунды всё равно
+        неполна, и ждать её целиком никто не обещал.
+        """
+        now = time.monotonic()
+        if (self._vector_cache is not None
+                and now - self._vector_cache_at < VECTOR_CACHE_TTL
+                and self._building()):
+            return self._vector_cache
         rows = self.repos.vectors.count()
         if self._vector_cache is None or rows != self._cached_rows:
             self._vector_cache = self.repos.vectors.all_vectors(self.embed_model)
             self._cached_rows = rows
+        self._vector_cache_at = now
         return self._vector_cache
+
+    def _building(self) -> bool:
+        """Строятся ли векторы прямо сейчас. Не знаем — считаем, что нет."""
+        probe = self.vectors_building
+        if probe is None:
+            return False
+        try:
+            return bool(probe())
+        except Exception:              # noqa: BLE001 — подсказка не обязана мешать поиску
+            return False
 
     def _chunks_by_uid(self, uids: Sequence[str]) -> Dict[str, Chunk]:
         found: Dict[str, Chunk] = {}

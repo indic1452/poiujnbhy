@@ -2270,6 +2270,84 @@ class ReportFlowTests(WebTestCase):
         self.assertIn(response.status_code, (200, 501), response.text)
 
 
+class FakeIndexer:
+    """Строитель векторов, которого считают по вызовам."""
+
+    def __init__(self, state=None):
+        self.state = dict(state or {"running": False, "missing": 0, "hint": ""})
+        self.started = 0
+        self.stopped = 0
+
+    def start_if_needed(self):
+        self.started += 1
+        return dict(self.state)
+
+    def stop(self, timeout=5.0):
+        self.stopped += 1
+
+    def running(self):
+        return bool(self.state.get("running"))
+
+    def status(self, *, fresh=False):
+        return dict(self.state)
+
+
+class VectorLifecycleTests(unittest.TestCase):
+    """Пуск и остановка приложения: векторы достраиваются и не бросаются."""
+
+    def build(self, indexer):
+        import tempfile
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        settings = Settings.load(
+            data_dir=str(tmp.name), db_path=":memory:", auth_enabled=False,
+            templates_dir=str(ROOT / "templates"),
+            glossary_path=str(ROOT / "templates" / "glossary.json"),
+        )
+        repos = Repositories(Database(":memory:"))
+        service = ReportService(repos=repos, settings=settings, llm=StubLLM(),
+                                vectors=indexer)
+        return create_app(settings, repos, service), service
+
+    def test_an_unfinished_build_is_resumed_at_startup(self):
+        """Приложение перезапустили посреди работы.
+
+        Половина библиотеки ищется только словами, и узнать об этом можно
+        было, лишь открыв «Библиотеку» и нажав кнопку рукой.
+        """
+        indexer = FakeIndexer({"running": True, "missing": 40,
+                               "hint": "строятся векторы"})
+        app, _ = self.build(indexer)
+        with TestClient(app):
+            pass
+        self.assertEqual(1, indexer.started)
+
+    def test_the_build_is_stopped_when_the_application_shuts_down(self):
+        # Брошенный на полуслове поток дописывает в базу, которую уже
+        # закрывают: в журнале это «database is locked» на выходе.
+        indexer = FakeIndexer()
+        app, _ = self.build(indexer)
+        with TestClient(app):
+            pass
+        self.assertEqual(1, indexer.stopped)
+
+    def test_the_search_knows_when_vectors_are_being_built(self):
+        """Поисковику нужен признак постройки, иначе он перечитывает всё.
+
+        Число векторов меняется после каждой пачки, а разбор вопроса делает
+        несколько поисков подряд — библиотека распаковывалась бы из BLOB
+        заново на каждый заход.
+        """
+        indexer = FakeIndexer({"running": True, "missing": 5, "hint": ""})
+        _, service = self.build(indexer)
+        retriever = service.get_retriever()
+        self.assertIsNotNone(retriever)
+        self.assertTrue(retriever.vectors_building())
+        indexer.state["running"] = False
+        self.assertFalse(retriever.vectors_building())
+
+
 class VectorStatusTests(WebTestCase):
     """Состояние смыслового поиска видно из приложения, а не из консоли."""
 
