@@ -217,9 +217,20 @@ class AuthTests(WebTestCase):
         self.login("engineer")
         self.assertEqual(self.client.delete(f"/api/cases/{case['id']}").status_code, 403)
 
-    def test_audit_is_admin_only(self):
-        self.login("engineer")
-        self.assertEqual(self.client.get("/api/audit").status_code, 403)
+    def test_the_journal_is_for_the_one_who_runs_the_system(self):
+        """Журнал — не управление отделом, а протокол работы самой системы.
+
+        Права администратора есть и у начальника группы: он заводит людей и
+        правит библиотеку. Но в журнале видно, кто что открывал, менял и
+        удалял, включая действия начальства, — читать его должен тот, кто за
+        систему отвечает.
+        """
+        for who in ("engineer", "gruppa", "nachalnik", "zam"):
+            self.login(who)
+            self.assertEqual(403, self.client.get("/api/audit").status_code,
+                             f"журнал открылся должности «{who}»")
+        self.login("admin")
+        self.assertEqual(200, self.client.get("/api/audit").status_code)
 
     def test_me_reports_current_user(self):
         body = self.client.get("/api/me").json()
@@ -4149,6 +4160,95 @@ class TalkTests(WebTestCase):
         self.login("engineer")
         third = self.client.post("/api/talks", json={"members": [self.boss.id]}).json()
         self.assertEqual(first["talk_id"], third["talk_id"])
+
+    def test_a_talk_is_removed_for_the_one_who_left(self):
+        """«Убрать беседу» убирает её у себя, а не у собеседника."""
+        self.login("nachalnik")
+        talk = self.client.post("/api/talks",
+                                json={"members": [self.engineer.id]}).json()
+        talk_id = talk["talk_id"]
+        self.client.post(f"/api/talks/{talk_id}/messages",
+                         json={"text": "Подойдите с материалами"})
+        answer = self.client.delete(f"/api/talks/{talk_id}")
+        self.assertEqual(200, answer.status_code, answer.text)
+        self.assertFalse(answer.json()["purged"], "стёрли у собеседника тоже")
+        self.assertEqual([], self.client.get("/api/talks").json()["items"])
+        self.assertEqual(404, self.client.get(f"/api/talks/{talk_id}").status_code)
+
+    def test_the_other_side_keeps_the_talk(self):
+        """Его половина разговора — тоже запись о работе отдела."""
+        self.login("nachalnik")
+        talk_id = self.client.post(
+            "/api/talks", json={"members": [self.engineer.id]}).json()["talk_id"]
+        self.client.post(f"/api/talks/{talk_id}/messages", json={"text": "Срочно"})
+        self.client.delete(f"/api/talks/{talk_id}")
+        self.login("engineer")
+        items = self.client.get("/api/talks").json()["items"]
+        self.assertEqual([talk_id], [item["id"] for item in items])
+        data = self.client.get(f"/api/talks/{talk_id}").json()
+        self.assertEqual(["Срочно"], [item["text"] for item in data["messages"]])
+
+    def test_the_last_one_out_takes_the_talk_with_them(self):
+        """Беседу, из которой ушли все, держать незачем."""
+        self.login("nachalnik")
+        talk_id = self.client.post(
+            "/api/talks", json={"members": [self.engineer.id]}).json()["talk_id"]
+        self.client.post(f"/api/talks/{talk_id}/messages", json={"text": "Срочно"})
+        self.client.delete(f"/api/talks/{talk_id}")
+        self.login("engineer")
+        answer = self.client.delete(f"/api/talks/{talk_id}")
+        self.assertTrue(answer.json()["purged"])
+        self.assertEqual(0, self.repos.db.scalar(
+            "SELECT count(*) FROM talks WHERE id = ?", (talk_id,)))
+        self.assertEqual(0, self.repos.db.scalar(
+            "SELECT count(*) FROM talk_messages WHERE talk_id = ?", (talk_id,)))
+
+    def test_the_attached_files_leave_the_disk_with_the_talk(self):
+        """Иначе снимки экрана из удалённых бесед копились бы годами."""
+        import io
+        from pathlib import Path
+
+        self.login("nachalnik")
+        talk_id = self.client.post(
+            "/api/talks", json={"members": [self.engineer.id]}).json()["talk_id"]
+        answer = self.client.post(
+            f"/api/talks/{talk_id}/files",
+            files={"file": ("spektr.png", io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"0" * 64),
+                            "image/png")})
+        self.assertEqual(200, answer.status_code, answer.text)
+        stored = [Path(item.path) for item in self.repos.talks.files(talk_id)]
+        self.assertTrue(stored and stored[0].is_file(), stored)
+        self.client.delete(f"/api/talks/{talk_id}")
+        self.login("engineer")
+        self.client.delete(f"/api/talks/{talk_id}")
+        self.assertFalse(stored[0].exists(), "файл остался на диске")
+        self.assertEqual(0, self.repos.db.scalar(
+            "SELECT count(*) FROM talk_files WHERE talk_id = ?", (talk_id,)))
+
+    def test_a_stranger_cannot_remove_a_talk(self):
+        self.login("nachalnik")
+        talk_id = self.client.post(
+            "/api/talks", json={"members": [self.engineer.id]}).json()["talk_id"]
+        self.login("gruppa")
+        self.assertEqual(404, self.client.delete(f"/api/talks/{talk_id}").status_code)
+        self.login("engineer")
+        self.assertEqual([talk_id],
+                         [item["id"] for item in
+                          self.client.get("/api/talks").json()["items"]])
+
+    def test_writing_again_starts_a_clean_talk(self):
+        """Ушли и написали снова — разговор начинается с чистого листа."""
+        self.login("nachalnik")
+        first = self.client.post(
+            "/api/talks", json={"members": [self.engineer.id]}).json()["talk_id"]
+        self.client.post(f"/api/talks/{first}/messages", json={"text": "Старое"})
+        self.client.delete(f"/api/talks/{first}")
+        again = self.client.post("/api/talks",
+                                 json={"members": [self.engineer.id]}).json()
+        self.assertFalse(again["existed"])
+        self.assertNotEqual(first, again["talk_id"])
+        self.assertEqual([], self.client.get(
+            f"/api/talks/{again['talk_id']}").json()["messages"])
 
     def test_both_sides_see_the_message(self):
         self.login("nachalnik")

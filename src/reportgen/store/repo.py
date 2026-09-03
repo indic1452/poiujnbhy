@@ -2521,6 +2521,34 @@ class TalkRepo:
             })
         return out
 
+    def leave(self, talk_id: int, user_id: int) -> "List[str]":
+        """Убрать беседу у одного человека.
+
+        Переписка отдела — это записи о работе, и удалять их у собеседника
+        нельзя: он в них тоже участник, и его половина разговора не наша.
+        Поэтому уходим только сами; у собеседника беседа остаётся.
+
+        Когда беседу покинул последний участник, держать её незачем: она
+        уходит целиком вместе с сообщениями и приложенными файлами. Пути
+        файлов возвращаем — их удаляет тот, кто отвечает за диск.
+        """
+        with self.db.transaction() as connection:
+            connection.execute(
+                "DELETE FROM talk_members WHERE talk_id = ? AND user_id = ?",
+                (talk_id, user_id))
+            left = connection.execute(
+                "SELECT count(*) AS n FROM talk_members WHERE talk_id = ?",
+                (talk_id,)).fetchone()
+            if int(left["n"] if left else 0):
+                return []
+            paths = [str(row["path"]) for row in connection.execute(
+                "SELECT path FROM talk_files WHERE talk_id = ?", (talk_id,))
+                if row["path"]]
+            connection.execute("DELETE FROM talk_files WHERE talk_id = ?", (talk_id,))
+            connection.execute("DELETE FROM talk_messages WHERE talk_id = ?", (talk_id,))
+            connection.execute("DELETE FROM talks WHERE id = ?", (talk_id,))
+        return paths
+
     def add_message(self, talk_id: int, user_id: int | None, text: str) -> TalkMessage:
         now = utcnow()
         with self.db.transaction() as connection:

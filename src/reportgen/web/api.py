@@ -51,7 +51,7 @@ from ..store.models import (
     short_name,
 )
 from .auth import (COOKIE_NAME, get_user, require_admin, require_editor,
-                   require_reviewer, require_user)
+                   require_owner, require_reviewer, require_user)
 from .pages import PageRenderError, is_renderable, page_count, render_page
 from .service import CARD_LIMITS, ServiceError
 
@@ -2766,6 +2766,31 @@ def read_talk(request: Request, talk_id: int) -> Dict[str, Any]:
     }
 
 
+@router.delete("/talks/{talk_id}")
+def leave_talk(request: Request, talk_id: int) -> Dict[str, Any]:
+    """Убрать беседу у себя.
+
+    Переписка отдела — записи о работе, и стирать их у собеседника нельзя:
+    его половина разговора не наша. Поэтому уходим только сами. Когда беседу
+    покинул последний участник, она уходит целиком — с сообщениями и
+    приложенными файлами.
+    """
+    user = require_user(request)
+    repos = _repos(request)
+    if not repos.talks.is_member(talk_id, user.id):
+        raise ServiceError("беседа не найдена", 404)
+    paths = repos.talks.leave(talk_id, user.id)
+    purged = not repos.talks.members(talk_id)
+    for raw in paths:
+        try:
+            Path(raw).unlink()
+        except OSError:                 # noqa: PERF203 — файла может уже не быть
+            pass
+    repos.audit.log("talk.leave", user=user, object_type="talk",
+                    object_id=str(talk_id), details={"purged": purged})
+    return {"purged": purged}
+
+
 @router.post("/talks/{talk_id}/messages")
 def write_to_talk(request: Request, talk_id: int) -> Dict[str, Any]:
     user = require_user(request)
@@ -3337,7 +3362,15 @@ def stats(request: Request) -> Dict[str, Any]:
 
 @router.get("/audit")
 def audit(request: Request, limit: int = 200) -> Dict[str, Any]:
-    require_admin(request)
+    """Журнал действий — только создателю системы.
+
+    Права администратора в отделе есть и у начальника группы: он заводит
+    людей и правит библиотеку. Но журнал — это не управление отделом, а
+    протокол работы самой системы: кто что открывал, менял и удалял, включая
+    действия начальства. Читать его должен тот, кто за систему отвечает, а не
+    всякий, кому нужно завести нового инженера.
+    """
+    require_owner(request)
     entries = _repos(request).audit.list(limit=min(limit, 1000))
     return {"items": [entry.to_dict() for entry in entries]}
 

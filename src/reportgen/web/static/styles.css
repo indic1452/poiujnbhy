@@ -6341,3 +6341,12 @@ table.grid .row-actions .btn--icon svg {
 .step-box--bad .step-hint {
     color: var(--danger);
 }
+
+/* Как дозвониться до человека — строкой под должностью, а не вместо неё. */
+.roster-reach {
+    opacity: .8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 22ch;
+}

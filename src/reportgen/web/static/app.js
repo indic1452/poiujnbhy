@@ -2829,8 +2829,16 @@
                         class: 'btn btn--sm',
                         title: 'Показать расход на завтра',
                         onclick: () => {
-                            rosterState.from = todayIso();
-                            rosterState.day = shiftIso(todayIso(), 1);
+                            const tomorrow = shiftIso(todayIso(), 1);
+                            rosterState.day = tomorrow;
+                            // Окно оставляем как есть, если завтрашний день в
+                            // него попадает. Раньше «Завтра» всегда ставило
+                            // начало окна на сегодня, и от одного щелчка вся
+                            // сетка перескакивала на другую неделю.
+                            const after = shiftIso(rosterState.from, rosterState.span);
+                            if (!(rosterState.from <= tomorrow && tomorrow < after)) {
+                                rosterState.from = tomorrow;
+                            }
                             load();
                         },
                     }, 'Завтра'),
@@ -2918,14 +2926,20 @@
                     person.phone_secure ? 'реж. ' + person.phone_secure : '',
                     person.room ? 'каб. ' + person.room : '',
                     person.phone_mobile].filter(Boolean).join(' · ');
+                // Должность и телефон — разные сведения, и одно другого не
+                // отменяет. Стояло «телефон ИЛИ должность»: стоило человеку
+                // вписать номер, и должность из расхода пропадала — а расход
+                // читают как штатное расписание, по должностям.
+                const post = ROLE_SHORT[person.role] || person.role_title;
                 body.appendChild(h('tr', {},
                     h('td', {
                         class: 'roster-name' + (person.is_me ? ' is-me' : ''),
-                        title: reach || '',
+                        title: [person.role_title, reach].filter(Boolean).join(' · '),
                     },
                         personLink(person.id, person.full_name),
-                        h('div', { class: 'small faint' },
-                            reach || ROLE_SHORT[person.role] || person.role_title)),
+                        post ? h('div', { class: 'small faint' }, post) : null,
+                        reach ? h('div', { class: 'small faint roster-reach' },
+                            reach) : null),
                     cells));
             });
 
@@ -7324,7 +7338,11 @@
             cards, editsCard, libCard,
         ]);
 
-        if (isAdmin()) page.appendChild(await auditCard());
+        // Журнал — не управление отделом, а протокол работы самой системы:
+        // кто что открывал, менял и удалял, включая действия начальства.
+        // Права администратора есть и у начальника группы, а читать журнал
+        // должен тот, кто за систему отвечает.
+        if (isOwner()) page.appendChild(await auditCard());
     }
 
     function statCard(value, label, sub) {
@@ -9471,7 +9489,12 @@
                         ])
                         : h('b', {}, 'Заметки для себя')),
                 h('span', { class: 'small faint nowrap' },
-                    (data.members || []).length + ' чел.')),
+                    (data.members || []).length + ' чел.'),
+                h('button', {
+                    class: 'btn btn--icon btn--danger-hover',
+                    title: 'Убрать беседу у себя',
+                    onclick: () => dropTalk(data),
+                }, iconGlyph('trash'))),
             flow,
             h('div', { class: 'talk-send' },
                 h('button', {
@@ -9481,6 +9504,43 @@
                 picker, field, button),
         ]);
         if (wasDown) flow.scrollTop = flow.scrollHeight;
+    }
+
+    /* Убрать беседу.
+
+       Переписка отдела — это записи о работе, и стирать их у собеседника
+       нельзя: его половина разговора не наша. Поэтому уходим только сами, и
+       говорится об этом прямо — иначе человек рассчитывал бы, что разговора
+       не осталось ни у кого. Когда беседу покинул последний участник, она
+       уходит целиком, вместе с приложенными файлами. */
+    async function dropTalk(data) {
+        const me = (state.user || {}).id;
+        const others = (data.members || []).filter((member) => member.id !== me);
+        const ok = await confirmDialog({
+            title: 'Убрать беседу',
+            message: others.length
+                ? 'Беседа исчезнет из вашего списка вместе с историей.'
+                : 'Беседа и все приложенные к ней файлы будут удалены.',
+            note: others.length
+                ? 'У ' + (others.length === 1
+                    ? others[0].full_name
+                    : 'остальных участников') + ' переписка останется: это и '
+                    + 'их запись о работе. Если напишете снова, разговор '
+                    + 'начнётся с чистого листа.'
+                : 'Участников кроме вас не осталось — удаляется всё.',
+            confirmText: 'Убрать',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del('/api/talks/' + data.id);
+            talks.current = 0;
+            location.hash = '#/talks';
+            await loadTalks();
+            toast('Беседа убрана', 'ok');
+        } catch (error) {
+            toastError(error);
+        }
     }
 
     /** Подпись к сообщению: пусто, если это просто имя приложенного файла. */
