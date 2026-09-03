@@ -4662,6 +4662,98 @@ class VectorCardTests(unittest.TestCase):
         self.assertIn(".vectors-bar-fill", self.css)
 
 
+class QuietScreensTests(unittest.TestCase):
+    """Экран показывает работу, а не рассказывает о себе.
+
+    Под заголовком раздела стояла строка, пересказывающая заголовок; над
+    списком отдела — шесть карточек с абзацами прав; в карточке письма одно
+    и то же объяснение шло дважды. Инженер приходит сюда работать, а не
+    читать: служебные подробности убраны под свёрнутую строку, пересказы
+    сняты совсем.
+    """
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+        self.css = (static / "styles.css").read_text(encoding="utf-8")
+
+    def test_a_section_does_not_retell_its_own_title(self):
+        for retelling in (
+            "Входящие письма и подготовленные ответы",
+            "Кто где и чем занят: дежурство, работы, выезды, отсутствия",
+            "Что в отделе происходит сегодня",
+            "Объём работы, качество черновиков и состояние библиотеки",
+            "Личный состав отдела, должности и доступ",
+            "Переписка отдела: личная и на несколько человек",
+            "Ваши данные, работа, документы и пароль",
+        ):
+            with self.subTest(retelling=retelling):
+                self.assertNotIn(retelling, self.js)
+
+    def test_the_numbers_line_of_the_library_stays(self):
+        # Убирали пересказы, а не данные: «документов: 5 · фрагментов: 21» —
+        # это ответ на вопрос, а не подпись к заголовку.
+        self.assertIn("const statsLine = h('div', { class: 'page-note' });", self.js)
+
+    def test_who_may_do_what_is_folded_away(self):
+        """Права читают при заведении сотрудника — то есть изредка."""
+        self.assertIn("'Какие бывают должности и что они дают'", self.js)
+        self.assertIn("h('details', { class: 'fold' }", self.js)
+        # Развёрнутого заголовка карточки больше нет: список отдела начинается
+        # сразу под кнопками.
+        self.assertNotIn("'Должности и права'", self.js)
+
+    def test_your_own_powers_are_folded_too(self):
+        self.assertIn("'Что вам доступно'", self.js)
+        self.assertNotIn("h('dt', {}, 'Права')", self.js)
+
+    def test_a_folded_line_shows_that_it_opens(self):
+        # Свёрнутая строка без значка неотличима от обычной подписи.
+        self.assertIn(".fold > summary::before {", self.css)
+        self.assertIn(".fold[open] > summary::before {", self.css)
+
+    def test_the_same_thing_is_not_explained_twice_on_a_case(self):
+        """Карточка «Не хватает данных» стоит вплотную к самим полям.
+
+        Полоса шагов пересказывала её же другими словами — и обе строки
+        читались как два разных требования.
+        """
+        self.assertNotIn("Шаблон отчёта требует данных", self.js)
+        self.assertIn("'Не хватает значений: '", self.js)
+        self.assertIn("'Щёлкните — строка добавится в таблицу.'", self.js)
+
+    def test_a_department_name_is_not_cut_in_the_staff_list(self):
+        """«Отдел радиосвязи» в поле шириной 77 px — это «Отдел р».
+
+        Два столбца — подразделение и группа — съедали 300 px, которых у
+        таблицы нет: браузер ужимал их под содержимое соседей, и оба
+        значения читались огрызками. Свели в один столбец в две строки,
+        ширину закрепили: ширина без min-width — только пожелание.
+        """
+        self.assertIn("h('th', {}, 'По штату и группа')", self.js)
+        self.assertIn("h('td', { class: 'cell-stack' }, depInput, teamInput)", self.js)
+        self.assertIn("min-width: 185px;", self.css)
+        # И строка таблицы от второй строки в клетке не раздувается:
+        # двенадцать человек отдела должны быть видны разом.
+        self.assertIn("table.grid--users td.cell-stack input {", self.css)
+
+    def test_a_section_is_not_defined_under_its_own_title(self):
+        """«Что обнаружено» не нуждается в подписи «отклонения, которые нашли».
+
+        А вот правило, по которому работает вся система, — нуждается, и
+        оно осталось: в отчёт идут только занесённые сюда числа.
+        """
+        self.assertNotIn("Отклонения, которые нашли при проверке", self.js)
+        self.assertNotIn("Числа, полученные при проверке", self.js)
+        self.assertIn("'Других чисел в отчёте не будет.'", self.js)
+
+    def test_the_hour_a_person_was_added_is_not_a_column(self):
+        # Минута, в которую человека внесли в систему, не нужна никому —
+        # а столбец под неё отбирал место у подразделения.
+        self.assertIn("}, fmtDate(user.created_at)),", self.js)
+        self.assertIn("title: fmtDateTime(user.created_at),", self.js)
+
+
 class InterfaceCopyTests(unittest.TestCase):
     """Подписи интерфейса: без жаргона и без разговоров ни о чём."""
 

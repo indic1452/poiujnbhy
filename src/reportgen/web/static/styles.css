@@ -1378,12 +1378,15 @@ table.facts-table.is-compact {
     min-width: 0;
 }
 
+/* Проценты подобраны так, чтобы название величины влезало целиком при
+   ширине окна 1366 px: «Занимаемая полоса частот» упиралось в край поля и
+   теряло последнюю букву. Значение и единица короткие — им доли хватает. */
 table.facts-table.is-compact .col-value {
-    width: 22%;
+    width: 20%;
 }
 
 table.facts-table.is-compact .col-unit {
-    width: 15%;
+    width: 13%;
 }
 
 table.facts-table.is-compact .col-act {
@@ -1790,7 +1793,7 @@ input.is-bad {
 
 .section-actions .hint {
     flex: 1;
-    min-width: 170px;
+    min-width: 210px;
 }
 
 .section-sources {
@@ -5159,7 +5162,47 @@ table.grid tr.is-focus td {
     text-underline-offset: 2px;
 }
 
+/* Свёрнутое пояснение: заголовок строкой, содержимое — по щелчку.
+   Служебные подробности (кому что можно, как считается величина) нужны
+   изредка и не тому, кто пришёл делать работу. Развёрнутыми они занимают
+   пол-экрана над тем, ради чего человек открыл раздел. */
+.fold > summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: var(--fs-sm);
+    list-style: none;
+}
+
+.fold > summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Треугольник рисуем сами: у браузеров он разный, а в свёрнутом виде это
+   единственный признак того, что строка вообще раскрывается. */
+.fold > summary::before {
+    content: '▸';
+    display: inline-block;
+    width: 14px;
+    color: var(--muted);
+}
+
+.fold[open] > summary::before {
+    content: '▾';
+}
+
+.fold > summary:hover {
+    color: var(--text);
+}
+
+.fold[open] > summary {
+    margin-bottom: 10px;
+}
+
 /* ------------------------------------------------------------ сотрудники --- */
+
+.card-pad--tight {
+    padding: 12px 18px;
+}
 
 .role-list {
     display: grid;
@@ -5211,9 +5254,18 @@ table.grid--users {
     min-width: 1240px;
 }
 
+/* Дата заведения — без часов: минута, в которую человека внесли в систему,
+   не нужна никому, а столбец под неё отбирал место у подразделения. */
+table.grid--users th:nth-child(6),
+table.grid--users td:nth-child(6) {
+    width: 105px;
+}
+
 table.grid--users th:nth-child(1),
 table.grid--users td:nth-child(1) {
-    width: 120px;
+    /* Логины короткие: «nikitin» — семь знаков. Отданные столбцу лишние
+       сто пикселей отбирались у подразделения и у кнопок справа. */
+    width: 90px;
 }
 
 table.grid--users th:nth-child(2),
@@ -5224,25 +5276,61 @@ table.grid--users td:nth-child(2) {
 
 table.grid--users th:nth-child(3),
 table.grid--users td:nth-child(3) {
-    width: 230px;
+    /* «Заместитель начальника отдела» — самая длинная должность. */
+    width: 250px;
+    min-width: 250px;
 }
 
+/* Подразделение и группа — один столбец в две строки. «Отдел радиосвязи» в
+   поле шириной 77 px превращался в «Отдел р», а ширина без min-width —
+   только пожелание: браузер ужимает столбцы под содержимое соседей (кнопки
+   справа шире всего). Обрезанное название подразделения не отличить от
+   чужого, а поправить его нельзя, не увидев целиком. */
 table.grid--users th:nth-child(4),
 table.grid--users td:nth-child(4) {
     width: 180px;
+    min-width: 185px;
+}
+
+/* Две строки в клетке не должны раздувать строку таблицы: двенадцать
+   человек отдела и так не помещаются в экран целиком. */
+table.grid--users td.cell-stack {
+    padding: 2px 2px;
+}
+
+table.grid--users td.cell-stack input {
+    min-height: 24px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+table.grid--users td.cell-stack .key {
+    font-size: 11.5px;
+    color: var(--muted);
 }
 
 table.grid--users th:nth-child(5),
 table.grid--users td:nth-child(5) {
-    width: 120px;
+    width: 105px;
 }
 
 /* В таблице сотрудников действия — основная работа раздела, а не редкая
-   правка: прятать их до наведения незачем. */
+   правка: прятать их до наведения незачем.
+
+   Поля по бокам кнопок урезаны: четыре кнопки со стандартными полями
+   занимали 355 px и вместе с остальными столбцами не влезали в окно
+   1600 px — «Отключить» уходило за край, и добраться до него можно было
+   только прокруткой вбок. Слова на кнопках при этом остались целыми:
+   значок вместо слова читается хуже, чем узкая кнопка. */
 table.grid--users .row-actions {
     opacity: 1;
     display: flex;
-    gap: 6px;
+    gap: 5px;
+}
+
+table.grid--users .row-actions .btn {
+    padding-left: 8px;
+    padding-right: 8px;
 }
 
 /* Тихое поле ввода в таблице: рамка появляется под курсором. */

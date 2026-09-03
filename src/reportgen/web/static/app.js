@@ -1908,7 +1908,6 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('div', { class: 'page-note' }, 'Входящие письма и подготовленные ответы'),
                 h('div', { class: 'page-head-actions' },
                     h('button', { class: 'btn', onclick: () => loadCases() }, 'Обновить'),
                     /* Указатель поиска строится сам, но перестроение может
@@ -2786,8 +2785,6 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('div', { class: 'page-note' },
-                    'Кто где и чем занят: дежурство, работы, выезды, отсутствия'),
                 h('div', { class: 'page-head-actions' },
                     h('button', {
                         class: 'btn btn--sm', title: 'Предыдущая неделя',
@@ -3917,9 +3914,7 @@
         const box = h('div', { class: 'coverage-box' },
             h('b', {}, 'Не хватает данных'),
             h('div', { class: 'small muted' },
-                'Без этих значений разделы отчёта выйдут с пометкой «не хватает '
-                + 'данных». Щёлкните — строка добавится в таблицу, а поле '
-                + 'регистрации откроется в её карточке.'));
+                'Щёлкните — строка добавится в таблицу.'));
         coverage.forEach((entry) => {
             box.appendChild(h('div', { class: 'coverage-line' },
                 h('span', { class: 'small' }, entry.title + ': '),
@@ -4019,8 +4014,7 @@
                         },
                     }), ' подробно')),
             h('div', { class: 'small faint', style: { marginBottom: '6px' } },
-                'Числа, полученные при проверке. Только они попадут в отчёт: '
-                + 'ничего, кроме занесённого здесь, система в текст не поставит.'),
+                'Других чисел в отчёте не будет.'),
             h('div', { class: 'table-scroll' }, table),
             canEdit() ? h('button', {
                 class: 'btn btn--sm', style: { marginTop: '8px' },
@@ -4033,9 +4027,6 @@
         body.appendChild(h('div', { class: 'facts-section' },
             h('h4', {}, 'Что обнаружено ',
                 h('span', { class: 'faint' }, '(' + wb.findings.length + ')')),
-            h('div', { class: 'small faint', style: { marginBottom: '6px' } },
-                'Отклонения, которые нашли при проверке: что именно, насколько '
-                + 'серьёзно и чем подтверждается.'),
             findingsBox,
             canEdit() ? h('button', {
                 class: 'btn btn--sm',
@@ -4797,10 +4788,8 @@
             return missing
                 ? {
                     id: 'facts', missing: missing,
-                    hint: 'Шаблон отчёта требует данных, которых пока нет: ' + missing +
-                        '. Внесите их слева — иначе разделы выйдут с пометкой '
-                        + '«не хватает данных». Можно и сгенерировать как есть, '
-                        + 'чтобы посмотреть структуру.',
+                    hint: 'Не хватает значений: ' + missing + '. Без них '
+                        + 'разделы выйдут с пометкой «не хватает данных».',
                 }
                 : {
                     id: 'draft',
@@ -6539,7 +6528,6 @@
         }, 'за ' + days + ' ' + plural(days, 'день', 'дня', 'дней'))));
 
         const head = h('div', { class: 'page-head' },
-            h('div', { class: 'page-note' }, 'Что в отделе происходит сегодня'),
             h('div', { class: 'page-head-actions' },
                 periodSelect,
                 h('button', { class: 'btn', onclick: () => load() }, 'Обновить')));
@@ -6847,8 +6835,7 @@
             statCard(reports.total || 0, 'редакций отчётов',
                 'из них проверено: ' + (reports.approved || 0)),
             statCard(fmtNumber(edits.mean_distance || 0, 3), 'средняя доля правки',
-                'какую часть черновика инженер переписывает; правок в наборе: ' +
-                (edits.count || 0) + ' · чем меньше, тем ближе черновик к готовому'),
+                'правок в наборе: ' + (edits.count || 0)),
             statCard(library.documents || 0, 'документов в библиотеке',
                 'фрагментов: ' + (library.chunks || 0) +
                 (library.embeddings ? ' · векторов: ' + library.embeddings : ' · векторов нет')));
@@ -6914,8 +6901,6 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('div', { class: 'page-note' },
-                    'Объём работы, качество черновиков и состояние библиотеки'),
                 h('div', { class: 'page-head-actions' },
                     h('button', {
                         class: 'btn', onclick: () => renderRoute(state.route),
@@ -8421,7 +8406,7 @@
         }
 
         const tableBox = h('div', {});
-        const rolesBox = h('div', { class: 'card card-pad' });
+        const rolesBox = h('div', { class: 'card card-pad card-pad--tight' });
         const pendingBox = h('div', { class: 'card card-pad' });
         const data = { roles: [], items: [], pending: [] };
 
@@ -8521,15 +8506,21 @@
         }
 
         /* Штатное расписание: что даёт каждая должность. Список приходит
-           с сервера — второй экземпляр в браузере с ним расходился. */
+           с сервера — второй экземпляр в браузере с ним расходился.
+
+           Свёрнуто. Начальник заглядывает сюда, когда меняет кому-то
+           должность, — то есть изредка; а развёрнутым это шесть карточек
+           с абзацами прав, занимавших треть экрана над списком отдела.
+           Список — то, ради чего сюда заходят, — начинался под ними. */
         function paintRoles() {
             clear(rolesBox);
-            rolesBox.appendChild(h('div', { class: 'card-title' }, 'Должности и права'));
-            rolesBox.appendChild(h('div', { class: 'role-list' }, data.roles.map((item) =>
-                h('div', { class: 'role-item' + (item.is_admin ? ' role-item--admin' : '') },
-                    h('b', {}, item.title,
-                        item.is_admin ? h('span', { class: 'badge badge--accent' }, 'администратор') : null),
-                    h('span', { class: 'muted small' }, item.note)))));
+            rolesBox.appendChild(h('details', { class: 'fold' },
+                h('summary', {}, 'Какие бывают должности и что они дают'),
+                h('div', { class: 'role-list' }, data.roles.map((item) =>
+                    h('div', { class: 'role-item' + (item.is_admin ? ' role-item--admin' : '') },
+                        h('b', {}, item.title,
+                            item.is_admin ? h('span', { class: 'badge badge--accent' }, 'администратор') : null),
+                        h('span', { class: 'muted small' }, item.note))))));
         }
 
         function paint() {
@@ -8559,17 +8550,23 @@
                     disabled: !item.allowed && user.role !== item.id,
                     title: item.note,
                 }, item.title)));
+                // Подразделение и группа стоят в одной клетке, друг под
+                // другом. Двумя столбцами они съедали 300 px, и «Отдел
+                // радиосвязи» — одинаковый у всего отдела — не влезал в свой
+                // столбец даже наполовину: читалось «Отдел р». Заполняют оба
+                // поля редко, а разглядывают ещё реже.
                 const depInput = h('input', {
                     type: 'text', value: user.department || '', class: 'input--quiet',
-                    placeholder: '—', disabled: locked,
+                    placeholder: 'подразделение', disabled: locked,
                     title: 'Подразделение, в котором сотрудник стоит по штату. '
                         + 'Работают все в отделе; поле нужно только тем, кто '
                         + 'числится в другом подразделении',
                     onchange: () => save(user, { department: depInput.value }),
                 });
                 const teamInput = h('input', {
-                    type: 'text', value: user.team || '', class: 'input--quiet',
-                    placeholder: '—', disabled: locked,
+                    type: 'text', value: user.team || '', class: 'input--quiet key',
+                    placeholder: 'группа', disabled: locked,
+                    title: 'Группа отдела, в которой человек работает',
                     onchange: () => save(user, { team: teamInput.value }),
                 });
 
@@ -8578,12 +8575,15 @@
                         personLink(user.id, user.login)),
                     h('td', {}, nameInput),
                     h('td', {}, roleSelect),
-                    h('td', {}, depInput),
-                    h('td', {}, teamInput),
+                    h('td', { class: 'cell-stack' }, depInput, teamInput),
                     h('td', {}, user.active
                         ? h('span', { class: 'badge badge--ok' }, 'работает')
                         : h('span', { class: 'badge' }, 'отключён')),
-                    h('td', { class: 'small muted nowrap' }, fmtDateTime(user.created_at)),
+                    // Час и минута, в которые человека внесли в систему, не
+                    // нужны никому; кому вдруг понадобятся — они в подсказке.
+                    h('td', {
+                        class: 'small muted nowrap', title: fmtDateTime(user.created_at),
+                    }, fmtDate(user.created_at)),
                     h('td', { class: 'row-actions nowrap' },
                         // Справка открыта только тому кругу, что проверяет
                         // отчёты: начальник отдела, заместитель, создатель.
@@ -8622,8 +8622,7 @@
                     h('th', {}, 'Логин'),
                     h('th', {}, 'Фамилия, имя, отчество'),
                     h('th', {}, 'Должность'),
-                    h('th', {}, 'По штату'),
-                    h('th', {}, 'Группа'),
+                    h('th', {}, 'По штату и группа'),
                     h('th', {}, 'Доступ'),
                     h('th', {}, 'Заведён'),
                     h('th', {}))),
@@ -8799,7 +8798,6 @@
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('div', { class: 'page-note' }, 'Личный состав отдела, должности и доступ'),
                 h('div', { class: 'page-head-actions' },
                     h('button', { class: 'btn', onclick: () => reload() }, 'Обновить'),
                     h('button', {
@@ -8852,8 +8850,6 @@
 
         view.appendChild(h('div', { class: 'page page--talks' },
             h('div', { class: 'page-head' },
-                h('div', { class: 'page-note' },
-                    'Переписка отдела: личная и на несколько человек'),
                 h('div', { class: 'page-head-actions' },
                     h('button', { class: 'btn', onclick: () => loadTalks() }, 'Обновить'),
                     h('button', {
@@ -8953,8 +8949,7 @@
         if (!data) {
             talks.nodes.stream = null;
             box.appendChild(h('div', { class: 'empty' },
-                h('h3', {}, 'Беседа не выбрана'),
-                h('div', {}, 'Слева — то, что уже есть. «Написать» — новая.')));
+                h('h3', {}, 'Беседа не выбрана')));
             return;
         }
 
@@ -9349,25 +9344,27 @@
                 user.team ? h('dt', {}, 'Группа') : null,
                 user.team ? h('dd', {}, user.team) : null,
                 user.department ? h('dt', {}, 'По штату') : null,
-                user.department ? h('dd', {}, user.department) : null,
-                h('dt', {}, 'Права'), h('dd', { class: 'small muted' }, rolePowers(user.role))));
+                user.department ? h('dd', {}, user.department) : null),
+            // Перечень прав человек читает раз в жизни — при заведении. В
+            // карточке он стоял абзацем поперёк экрана над всем остальным,
+            // ради чего сюда заходят: письмами, расходом, документами.
+            h('details', { class: 'fold' },
+                h('summary', {}, 'Что вам доступно'),
+                h('div', { class: 'small muted' }, rolePowers(user.role))));
 
         const cards = h('div', { class: 'stat-cards' },
             statCard(data.my_cases_total || 0, 'писем за вами',
                 (data.overdue || 0) ? 'просрочено: ' + data.overdue : 'просрочек нет'),
-            statCard(data.sent || 0, 'ответов отправлено вами',
-                'записан исходящий номер — письмо закрыто'),
+            statCard(data.sent || 0, 'ответов отправлено вами'),
             statCard(reports.total || 0, 'редакций отчётов',
                 'из них проверено: ' + (reports.approved || 0)),
             statCard(data.cases || 0, 'писем зарегистрировано вами'),
             statCard(edits.pairs || 0, 'пар «черновик → готовое»',
                 'средняя доля правки: ' + fmtNumber(edits.mean_distance || 0, 3)),
-            statCard(data.chats || 0, 'разговоров с помощником',
-                'чужие разговоры недоступны никому'));
+            statCard(data.chats || 0, 'разговоров с помощником'));
 
         append(page, [
             h('div', { class: 'page-head' },
-                h('div', { class: 'page-note' }, 'Ваши данные, работа, документы и пароль'),
                 h('div', { class: 'page-head-actions' },
                     h('button', {
                         class: 'btn', onclick: () => renderRoute(state.route),
@@ -9490,8 +9487,6 @@
 
         return h('div', { class: 'card card-pad' },
             h('div', { class: 'card-title' }, 'Как вас найти'),
-            h('div', { class: 'small muted', style: { marginBottom: '10px' } },
-                'Видно отделу в расходе и в списке сотрудников. Заполняете вы сами.'),
             h('div', { class: 'form-grid' },
                 h('label', { class: 'field' }, 'Телефон', fields.phone),
                 h('label', { class: 'field' }, 'Внутренний', fields.ext_no),
@@ -9603,11 +9598,15 @@
                     class: 'btn btn--sm', onclick: () => picker.click(),
                 }, iconGlyph('clip'), 'Загрузить'),
                 picker),
-            h('div', { class: 'small muted', style: { margin: '2px 0 10px' } },
-                'Справка-объективка, приказы и прочее. Видите их вы, начальник '
-                + 'отдела, его заместитель и создатель системы; остальному '
-                + 'отделу они недоступны. Справка одна: новая заменяет прежнюю, '
-                + 'остальное копится.'),
+            // Кому эти документы видны — вопрос важный, но задают его
+            // редко, а стоял ответ абзацем над самим списком.
+            h('details', { class: 'fold', style: { margin: '2px 0 10px' } },
+                h('summary', {}, 'Кто это видит'),
+                h('div', { class: 'small muted' },
+                    'Вы, начальник отдела, его заместитель и создатель '
+                    + 'системы; остальному отделу документы недоступны. '
+                    + 'Справка одна: новая заменяет прежнюю, остальное '
+                    + 'копится.')),
             listBox,
         ]);
         load();
@@ -9742,9 +9741,6 @@
         mark();
         append(box, [
             h('div', { class: 'card-title' }, 'Оформление'),
-            h('div', { class: 'small muted', style: { marginBottom: '10px' } },
-                'Режим «авто» следует настройке светлой или тёмной темы в операционной системе. ' +
-                'Выбор хранится в этом браузере.'),
             h('div', { class: 'btn-row' }, buttons),
         ]);
         return box;
