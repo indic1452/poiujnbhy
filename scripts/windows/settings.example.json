@@ -33,7 +33,7 @@
 
   "assistant_top_k": 12,
   "assistant_source_chars": 2200,
-  "assistant_context_chars": 26000,
+  "assistant_context_chars": 23500,
   "assistant_neighbours": 1,
   "assistant_neighbour_top": 4,
   "assistant_outlines": true,

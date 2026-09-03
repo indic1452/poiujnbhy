@@ -7557,7 +7557,7 @@
        экранируется. */
 
     const MD_BULLET = /^\s*[-*•]\s+(.*)$/;
-    const MD_ORDERED = /^\s*\d+[.)]\s+(.*)$/;
+    const MD_ORDERED = /^\s*(\d+)[.)]\s+(.*)$/;
     const MD_HEADING = /^(#{1,6})\s+(.*)$/;
     const MD_QUOTE = /^\s*>\s?(.*)$/;
     const MD_RULE = /^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/;
@@ -7567,18 +7567,53 @@
         return /^\s*\|.*\|\s*$/.test(line);
     }
 
+    /* Строка-разделитель шапки: «|---|---|» или «--- | --- | ---».
+
+       Форма у неё особая — только пробелы, палки, двоеточия и дефисы, — и в
+       обычной прозе такой строки не бывает. Поэтому именно по ней узнаём
+       таблицу, у которой модель не поставила крайние палки. */
     function isTableSeparator(line) {
-        return isTableRow(line) && /^[\s|:-]+$/.test(line) && line.indexOf('-') !== -1;
+        const body = String(line).trim();
+        return !!body && /^[\s|:-]+$/.test(body)
+            && body.indexOf('-') !== -1 && body.indexOf('|') !== -1;
+    }
+
+    /* Начинается ли здесь таблица.
+
+       Открываем строго: либо строка с палками по краям, либо шапка, под
+       которой стоит разделитель. Иначе таблицей становилась бы любая строка
+       с палками — а в паспортах и RFC их полно: «Флаги: URG | ACK | PSH»,
+       «O_RDONLY | O_CREAT | O_TRUNC», «Маска SYN|ACK|FIN». Такие строки
+       обязаны остаться текстом. */
+    function opensTable(lines, index) {
+        const line = lines[index];
+        if (!line || line.indexOf('|') === -1) return false;
+        if (isTableRow(line)) return true;
+        const next = index + 1 < lines.length ? lines[index + 1] : '';
+        return isTableSeparator(next);
+    }
+
+    /* Продолжается ли таблица этой строкой.
+
+       Здесь мягче: таблица уже началась, и строка тела без замыкающей палки
+       («| Полоса | 36 МГц») — это оборванная строка таблицы, а не абзац.
+       Раньше на ней таблица кончалась, и остаток вываливался сырыми палками
+       прямо в текст ответа. */
+    function continuesTable(line) {
+        const body = String(line || '').trim();
+        if (!body || body.indexOf('|') === -1) return false;
+        return !MD_HEADING.test(body) && !MD_FENCE.test(body) && !MD_RULE.test(body);
     }
 
     function tableCells(line) {
         return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
     }
 
-    function startsBlock(line) {
+    function startsBlock(line, lines, index) {
         return !line.trim() || MD_HEADING.test(line) || MD_BULLET.test(line) ||
             MD_ORDERED.test(line) || MD_QUOTE.test(line) || MD_RULE.test(line) ||
-            MD_FENCE.test(line) || isTableRow(line);
+            MD_FENCE.test(line) ||
+            (lines ? opensTable(lines, index) : isTableRow(line));
     }
 
     /** Строчное оформление: код, жирный, курсив и ссылки [S1] на источники. */
@@ -7590,15 +7625,62 @@
             hidden.push(ch);
             return '\u0000' + (hidden.length - 1) + '\u0000';
         }));
-        out = out.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+        // Строчный код прячем целиком: внутри него ничего не разбирается —
+        // ни курсив, ни степень. «`P_вх`» и «`10^2`» человек должен увидеть
+        // ровно так, как написано, иначе имя регистра из паспорта
+        // превратится на экране в другое имя.
+        const code = [];
+        out = out.replace(/`([^`\n]+)`/g, (whole, body) => {
+            code.push(body);
+            return '\u0001' + (code.length - 1) + '\u0001';
+        });
         out = out.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
-        out = out.replace(/(^|[\s([«—])\*([^*\n]+)\*/g, '$1<i>$2</i>');
-        out = out.replace(/(^|[\s([«—])_([^_\n]+)_/g, '$1<i>$2</i>');
+        // Звёздочка выделения обязана прилегать к непробельному знаку с обеих
+        // сторон — правило CommonMark. Без этого «S = P / (4 * pi * R^2)»
+        // превращалось в «S = P / (4  pi  R^2)»: знаки умножения исчезали с
+        // экрана, и формулу было не прочитать. То же с подчёркиванием в
+        // пояснении индексов: «_вх — вход, _вых — выход».
+        out = out.replace(/(^|[\s([«—])\*(\S|\S[^*\n]*\S)\*/g, '$1<i>$2</i>');
+        out = out.replace(/(^|[\s([«—])_(\S|\S[^_\n]*\S)_/g, '$1<i>$2</i>');
+        out = mdScripts(out);
         out = out.replace(/\[(S\d+)\]/g,
             '<button type="button" class="cite" data-label="$1" ' +
             'title="Показать источник">[$1]</button>');
+        out = out.replace(/\u0001(\d+)\u0001/g,
+            (whole, index) => '<code>' + code[Number(index)] + '</code>');
         return out.replace(/\u0000(\d+)\u0000/g,
             (whole, index) => escapeHtml(hidden[Number(index)]));
+    }
+
+    /* Степень и индекс: «R^2» → R², «P_вх» → P с нижним «вх».
+
+       Библиотека отдаёт обозначения именно в такой записи — разбор
+       литературы приводит «R²» и «H₂O» к «R^2» и «H_2O», чтобы они
+       находились поиском. На экране их надо вернуть в человеческий вид:
+       иначе инженер читает «десять в крышка минус шесть» и «P подчёркивание
+       вх», а в формуле из стандарта это разные величины.
+
+       Правила намеренно узкие. Индекс — это цифры или короткое русское
+       окончание после буквы; «ГОСТ_Р» и «Transfer_Encoding» не трогаются,
+       потому что до подчёркивания там не одиночная буква-обозначение, а
+       слово. Так имя регистра из паспорта не превратится в формулу. */
+    const SUP_BRACED = /\^\{([^}\n]{1,24})\}/g;
+    const SUB_BRACED = /_\{([^}\n]{1,24})\}/g;
+    const SUP_PLAIN = /\^(-?\d+(?:[.,]\d+)?|[-+]?[a-zA-Zа-яёА-ЯЁ])/g;
+    // Основание индекса — РОВНО один знак, и перед ним не буква и не цифра.
+    // Так «P_вх» и «H_2O» разбираются, а «КАМ_16», «ФМ_4», «ГОСТ_Р»,
+    // «RX_LOS» и «Transfer_Encoding» остаются как есть: там подчёркивание
+    // разделяет слова, а не обозначает индекс. Обозначения отдела и имена
+    // регистров из паспортов важнее красоты формулы.
+    const SUB_PLAIN =
+        /(^|[^\wА-Яа-яЁё])([A-Za-zА-Яа-яЁё0-9])_(\d{1,3}|[а-яё]{1,12}|[a-z])(?![a-zа-яё0-9])/g;
+
+    function mdScripts(text) {
+        let out = String(text);
+        out = out.replace(SUP_BRACED, '<sup>$1</sup>');
+        out = out.replace(SUB_BRACED, '<sub>$1</sub>');
+        out = out.replace(SUP_PLAIN, '<sup>$1</sup>');
+        return out.replace(SUB_PLAIN, '$1$2<sub>$3</sub>');
     }
 
     /** Текст ответа → узел с разметкой. */
@@ -7642,9 +7724,10 @@
                 continue;
             }
 
-            if (isTableRow(line)) {
-                const rows = [];
-                while (index < lines.length && isTableRow(lines[index])) {
+            if (opensTable(lines, index)) {
+                const rows = [lines[index]];
+                index += 1;
+                while (index < lines.length && continuesTable(lines[index])) {
                     rows.push(lines[index]);
                     index += 1;
                 }
@@ -7664,11 +7747,19 @@
 
             if (MD_BULLET.test(line) || MD_ORDERED.test(line)) {
                 const ordered = !MD_BULLET.test(line);
-                const list = h(ordered ? 'ol' : 'ul', {});
+                // Нумерацию берём из текста, а не начинаем заново с единицы.
+                // Между пунктами порядка работ модель вставляет пояснение —
+                // список на нём обрывается, и следующий пункт открывал новый
+                // <ol>. Человек видел «1. Измерить», «1. Снять спектр»,
+                // «1. Сравнить»: в методике измерений это потерянный порядок
+                // шагов, а не косметика.
+                const first = ordered ? Number(MD_ORDERED.exec(line)[1]) : 0;
+                const list = h(ordered ? 'ol' : 'ul',
+                    ordered && first > 1 ? { start: String(first) } : {});
                 while (index < lines.length) {
                     const item = (ordered ? MD_ORDERED : MD_BULLET).exec(lines[index]);
                     if (!item) break;
-                    list.appendChild(h('li', { html: mdInline(item[1]) }));
+                    list.appendChild(h('li', { html: mdInline(ordered ? item[2] : item[1]) }));
                     index += 1;
                 }
                 root.appendChild(list);
@@ -7676,7 +7767,7 @@
             }
 
             const paragraph = [];
-            while (index < lines.length && !startsBlock(lines[index])) {
+            while (index < lines.length && !startsBlock(lines[index], lines, index)) {
                 paragraph.push(lines[index].trim());
                 index += 1;
             }

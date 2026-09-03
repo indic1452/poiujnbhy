@@ -6424,3 +6424,15 @@ table.grid .row-actions .btn--icon svg {
     white-space: nowrap;
     margin-top: 2px;
 }
+
+/* Степень и индекс в формуле. line-height: 0 обязателен: без него строка с
+   «R^2» становится выше соседних, и таблица допусков разъезжается. */
+.md sup,
+.md sub {
+    font-size: .75em;
+    line-height: 0;
+    position: relative;
+}
+
+.md sup { top: -.15em; }
+.md sub { bottom: -.1em; }
