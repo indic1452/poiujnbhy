@@ -1461,6 +1461,9 @@ def document_text(request: Request, doc_id: str) -> Dict[str, Any]:
         "document": document.to_dict(),
         "source_exists": source.is_file(),
         "source_name": source.name,
+        # Сколько страниц у подлинника: по этому числу окно документа
+        # показывает его страницами, как справку в личном кабинете.
+        "source_pages": page_count(source) if source.is_file() else 0,
         "chunks_total": total,
         "chunks_offset": offset,
         "chunks_limit": limit,
@@ -1478,8 +1481,13 @@ def document_text(request: Request, doc_id: str) -> Dict[str, Any]:
 
 
 @router.get("/library/{doc_id:path}/file")
-def document_file(request: Request, doc_id: str):
-    """Отдать исходный файл — тот самый, что лежит в библиотеке на диске."""
+def document_file(request: Request, doc_id: str, page: int = 0):
+    """Отдать исходный файл — тот самый, что лежит в библиотеке на диске.
+
+    ``page=N`` отдаёт одну страницу картинкой: так подлинник смотрят, не
+    скачивая. Кнопка «Открыть исходный файл» открывала его вложением, то есть
+    на деле скачивала — и посмотреть страницу стандарта было нечем.
+    """
     require_user(request)
     repos = _repos(request)
     settings = _settings(request)
@@ -1500,7 +1508,7 @@ def document_file(request: Request, doc_id: str):
     if not resolved.is_file():
         raise ServiceError(f"исходный файл не найден: {source.name}", 404)
 
-    return FileResponse(resolved, filename=resolved.name)
+    return _preview_reply(request, resolved, resolved.name, page=page)
 
 
 @router.post("/library/upload")

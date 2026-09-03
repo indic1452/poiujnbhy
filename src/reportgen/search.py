@@ -147,6 +147,12 @@ class DatabaseRetriever:
         self._vector_cache: "VectorIndex | None" = None
         self._vector_cache_at = 0.0
         self._cached_rows: int = -1
+        #: Матрицу загружает ровно один поток, остальные ждут и берут
+        #: готовую. Без этого замка двадцать одновременных вопросов отдела
+        #: заводили двадцать матриц по 2,14 ГиБ каждая — сорок гигабайт на
+        #: машине с шестьюдесятью четырьмя, то есть своп и стоящее
+        #: приложение. Ждать шесть секунд чужой загрузки дешевле.
+        self._vector_lock = threading.Lock()
         #: «Идёт ли прямо сейчас фоновая постройка векторов». Ставится
         #: снаружи (:mod:`reportgen.web.service`) — поисковик о строителе
         #: сам не знает и знать не должен. Пока не поставлено, поиск
@@ -461,16 +467,29 @@ class DatabaseRetriever:
         библиотека в эти секунды всё равно неполна.
         """
         now = time.monotonic()
-        if (self._vector_cache is not None
+        cached = self._vector_cache
+        if (cached is not None
                 and now - self._vector_cache_at < VECTOR_CACHE_TTL
                 and self._building()):
-            return self._vector_cache
+            return cached
         rows = self.repos.vectors.count()
-        if self._vector_cache is None or rows != self._cached_rows:
-            self._vector_cache = self.repos.vectors.load_index(self.embed_model)
+        cached = self._vector_cache
+        if cached is not None and rows == self._cached_rows:
+            self._vector_cache_at = now
+            return cached
+        # Грузим под замком: иначе каждый из ждавших потоков заведёт свою
+        # матрицу на два гигабайта. Проверяем ещё раз уже под замком —
+        # пока ждали, её мог загрузить кто-то другой, и второй раз читать
+        # два с половиной гигабайта с диска незачем.
+        with self._vector_lock:
+            if self._vector_cache is not None and self._cached_rows == rows:
+                self._vector_cache_at = time.monotonic()
+                return self._vector_cache
+            index = self.repos.vectors.load_index(self.embed_model)
+            self._vector_cache = index
             self._cached_rows = rows
-        self._vector_cache_at = now
-        return self._vector_cache
+            self._vector_cache_at = time.monotonic()
+            return index
 
     def _building(self) -> bool:
         """Строятся ли векторы прямо сейчас. Не знаем — считаем, что нет."""

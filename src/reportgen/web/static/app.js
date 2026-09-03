@@ -6344,6 +6344,31 @@
     async function showDocument(item) {
         const bodyBox = h('div', {}, h('div', { class: 'empty' }, h('div', { class: 'spinner' }), 'Читаем…'));
         const fileUrl = '/api/library/' + encodeURIComponent(item.doc_id) + '/file';
+        const openSource = h('button', {
+            class: 'btn', hidden: true,
+            title: 'Посмотреть страницы подлинника, не скачивая его',
+            onclick: () => showSourcePages(),
+        }, 'Показать подлинник');
+        let sourcePages = 0;
+
+        function showSourcePages() {
+            if (!sourcePages) return;
+            const pager = pageViewer(
+                { name: item.doc_id, pages: sourcePages }, fileUrl);
+            const window_ = openModal({
+                title: h('div', { class: 'modal-head' },
+                    h('b', {}, item.title || item.doc_id),
+                    h('span', { class: 'mono small faint' }, 'подлинник')),
+                wide: true,
+                body: [h('div', { class: 'preview-box' }, pager.view), pager.bar],
+                footer: [
+                    h('a', { class: 'btn', href: fileUrl, download: '' }, 'Скачать'),
+                    h('button', { class: 'btn btn--primary',
+                                  onclick: () => window_.close() }, 'Закрыть'),
+                ],
+            });
+            setTimeout(() => pager.focus(), 0);
+        }
 
         const dialog = openModal({
             title: h('div', { class: 'modal-head' },
@@ -6351,10 +6376,10 @@
                 h('span', { class: 'mono small faint' }, item.doc_id)),
             body: bodyBox,
             footer: [
-                h('a', {
-                    class: 'btn', href: fileUrl, target: '_blank', rel: 'noopener',
-                    title: 'Открыть файл так, как он лежит в библиотеке',
-                }, 'Открыть исходный файл'),
+                // Кнопка «Открыть исходный файл» на деле скачивала: сервер
+                // отдаёт файл вложением. Смотреть подлинник теперь можно
+                // прямо здесь — страницами, как справку в личном кабинете.
+                openSource,
                 h('a', { class: 'btn', href: fileUrl, download: '' }, 'Скачать'),
                 h('button', { class: 'btn btn--primary', onclick: () => dialog.close() }, 'Закрыть'),
             ],
@@ -6372,6 +6397,8 @@
 
         const chunks = data.chunks || [];
         const chars = (data.text || '').length;
+        sourcePages = Number(data.source_pages || 0);
+        openSource.hidden = !sourcePages;
         const warnings = (item.warnings || data.document && data.document.warnings || []);
 
         // Доля букв и цифр: у скана без распознавания и у PDF без карты
@@ -6472,11 +6499,17 @@
         const page = h('div', { class: 'page' });
         view.appendChild(page);
 
-        // Переход из панели источников помощника: показываем нужный документ,
-        // сняв фильтры, иначе строки может не оказаться в таблице.
+        // Переход по адресу «#/library/<doc_id>»: показываем нужный документ.
+        // Раньше здесь только снимались фильтры, а строку искали на текущей
+        // странице списка — при тринадцати тысячах документов и пятидесяти
+        // строках на странице её там не было почти никогда. Теперь документ
+        // ставится в поиск: строка гарантированно на виду.
         if (focusDocId) {
             libState.docType = '';
             libState.domain = '';
+            libState.quality = '';
+            libState.query = focusDocId;
+            libState.page = 1;
         }
 
         const tableBox = h('div', { class: 'card' });
@@ -8999,9 +9032,18 @@
                 source.domain
                     ? h('span', { class: 'badge badge--info' }, domainTitle(source.domain))
                     : h('span', { class: 'badge' }, 'направление не указано'),
-                docId ? h('a', {
-                    class: 'small', href: '#/library/' + encodePath(docId),
-                    title: 'Показать документ в библиотеке',
+                // Открываем сам документ, а не список библиотеки. Переход
+                // «#/library/<doc_id>» вёл в таблицу на тринадцать тысяч
+                // строк, где нужную строку искали на текущей странице — и
+                // почти никогда там не находили. Отсюда окно документа: тот
+                // же текст, те же фрагменты и кнопка «Скачать».
+                docId ? h('button', {
+                    class: 'btn btn--link small',
+                    title: 'Открыть документ целиком и скачать исходный файл',
+                    onclick: (event) => {
+                        event.stopPropagation();
+                        showDocument({ doc_id: docId, title: source.title || docId });
+                    },
                 }, docId) : null),
             h('div', { class: 'quote' }, source.text || ''));
         return node;

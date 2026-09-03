@@ -247,5 +247,80 @@ class ThroughTheWebTests(unittest.TestCase):
         self.assertEqual(first.content, again.content)
 
 
+@unittest.skipUnless(FONT.is_file(), "нет шрифта с кириллицей для сборки PDF")
+class LibrarySourceTests(unittest.TestCase):
+    """Подлинник документа библиотеки — страницами, не скачиванием.
+
+    Кнопка «Открыть исходный файл» на деле скачивала: сервер отдаёт файл
+    вложением. Посмотреть страницу стандарта, не таща его на диск, было
+    нечем — а именно за этим её и жмут.
+    """
+
+    def setUp(self):
+        try:
+            import pymupdf                       # noqa: F401
+        except ImportError:                      # pragma: no cover
+            self.skipTest("нет pymupdf")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        folder = Path(self._tmp.name)
+        library = folder / "biblioteka" / "literature"
+        library.mkdir(parents=True)
+        self.pdf = make_pdf(library / "tom.pdf", pages=4)
+        settings = Settings.load(
+            data_dir=str(folder), db_path=str(folder / "p.db"), auth_enabled=True,
+            library_dir=str(folder / "biblioteka"),
+            templates_dir=str(ROOT / "templates"))
+        self.app = create_app(settings)
+        self.client = TestClient(self.app)
+        repos = self.app.state.repos
+        repos.users.create(login="chief", password="proverka123", role="owner",
+                           full_name="Ковалёв Андрей Сергеевич")
+        from reportgen.corpus import Chunk
+
+        document = repos.documents.upsert(
+            doc_id="literature/tom", doc_type="literature", title="Том",
+            source_path=str(self.pdf), sha256="a" * 64, domain="satellite")
+        repos.chunks.replace_for_document(document, [
+            Chunk(chunk_id="literature/tom#0000", doc_id="literature/tom",
+                  doc_type="literature", title_path=["Глава 4"],
+                  text="Занимаемая полоса частот измеряется методом.")])
+        answer = self.client.post("/api/auth/login",
+                                  json={"login": "chief", "password": "proverka123"})
+        self.assertEqual(200, answer.status_code, answer.text)
+
+    def test_the_window_learns_how_many_pages_the_original_has(self):
+        """Без этого числа окно не покажет «страница 1 из 4»."""
+        answer = self.client.get("/api/library/literature%2Ftom/text")
+        self.assertEqual(200, answer.status_code, answer.text)
+        self.assertEqual(4, answer.json()["source_pages"])
+
+    def test_a_page_of_the_original_comes_as_a_picture(self):
+        answer = self.client.get("/api/library/literature%2Ftom/file?page=2")
+        self.assertEqual(200, answer.status_code, answer.text)
+        self.assertEqual("image/png", answer.headers["content-type"])
+        self.assertTrue(answer.content.startswith(PNG_HEAD))
+
+    def test_the_file_itself_still_downloads(self):
+        answer = self.client.get("/api/library/literature%2Ftom/file")
+        self.assertEqual(200, answer.status_code)
+        self.assertTrue(answer.content.startswith(b"%PDF"))
+
+    def test_a_page_that_is_not_there_is_a_plain_404(self):
+        answer = self.client.get("/api/library/literature%2Ftom/file?page=99")
+        self.assertEqual(404, answer.status_code)
+
+    def test_a_document_without_a_readable_original_says_zero(self):
+        """DOCX страницами не показать — окно об этом и не заикнётся."""
+        repos = self.app.state.repos
+        other = Path(self.app.state.settings.library_dir) / "literature" / "prikaz.docx"
+        other.write_bytes(b"PK\x03\x04")
+        repos.documents.upsert(
+            doc_id="literature/prikaz", doc_type="literature", title="Приказ",
+            source_path=str(other), sha256="b" * 64, domain="satellite")
+        answer = self.client.get("/api/library/literature%2Fprikaz/text")
+        self.assertEqual(0, answer.json()["source_pages"])
+
+
 if __name__ == "__main__":
     unittest.main()

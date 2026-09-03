@@ -6448,3 +6448,20 @@ table.grid .row-actions .btn--icon svg {
     flex: 1;
     accent-color: var(--accent);
 }
+
+/* Кнопка, которая читается как ссылка: имя документа под ответом помощника.
+   Это именно кнопка — она открывает окно, а не уводит по адресу. */
+.btn--link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    font: inherit;
+}
+
+.btn--link:hover {
+    color: var(--accent-strong, var(--accent));
+}

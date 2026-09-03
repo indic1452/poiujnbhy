@@ -322,6 +322,58 @@ class VectorCacheTests(unittest.TestCase):
     def setUp(self):
         self.repos = build_repos()
 
+    def test_only_one_thread_loads_the_matrix(self):
+        """Двадцать одновременных вопросов — не двадцать матриц.
+
+        На библиотеке отдела матрица весит 2,14 ГиБ. Без замка каждый из
+        потоков, пришедших с пустым кэшем, заводил свою: сорок гигабайт на
+        машине с шестьюдесятью четырьмя — это своп и стоящее приложение.
+        """
+        import threading
+        import time as _time
+
+        retriever = DatabaseRetriever(self.repos, embedder=StubEmbedder(dim=64))
+        loads = []
+        original = self.repos.vectors.load_index
+        start = threading.Barrier(8)
+
+        def slow(model=None, batch=2000):
+            loads.append(model)
+            _time.sleep(0.05)          # загрузка на корпусе отдела — секунды
+            return original(model, batch)
+
+        self.repos.vectors.load_index = slow
+
+        def ask():
+            start.wait(5)
+            retriever._vectors()  # noqa: SLF001 — проверяем именно его
+
+        threads = [threading.Thread(target=ask) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(10)
+        self.assertEqual(1, len(loads), f"матрицу загрузили {len(loads)} раз")
+
+    def test_everyone_gets_the_same_matrix(self):
+        """Ждавшие берут готовую, а не свою копию."""
+        import threading
+
+        retriever = DatabaseRetriever(self.repos, embedder=StubEmbedder(dim=64))
+        seen = []
+        start = threading.Barrier(6)
+
+        def ask():
+            start.wait(5)
+            seen.append(id(retriever._vectors()))  # noqa: SLF001
+
+        threads = [threading.Thread(target=ask) for _ in range(6)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(10)
+        self.assertEqual(1, len(set(seen)), "матриц вышло несколько")
+
     def test_cache_is_invalidated_after_indexing(self):
         retriever = DatabaseRetriever(self.repos, embedder=StubEmbedder(dim=64))
         retriever.search(OBW_QUERY, top_k=3)
