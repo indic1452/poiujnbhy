@@ -76,6 +76,48 @@ MIN_SPACE_SHARE = 0.04
 GLUE_CHECK_CHARS = 400
 
 
+def _repairs_note(repairs: Dict[str, int]) -> str:
+    """Одна строка о том, что система поправила в тексте файла.
+
+    Человеку важно не «текст поправлен», а что именно с ним сделали: правок
+    много — документ стоит пересохранить у себя, а не жить с починкой.
+    """
+    names = {
+        "ligatures": ("лигатура", "лигатуры", "лигатур"),
+        "invisible": ("невидимый знак — мягкий перенос или нулевой пробел",
+                      "невидимых знака", "невидимых знаков"),
+        "scripts": ("степень или индекс записаны знаками ^ и _",
+                    "степени и индекса записаны знаками ^ и _",
+                    "степеней и индексов записаны знаками ^ и _"),
+        "homoglyphs": ("слово с латинскими буквами внутри русского",
+                       "слова с латинскими буквами внутри русских",
+                       "слов с латинскими буквами внутри русских"),
+    }
+    parts = []
+    for key, count in repairs.items():
+        if not count:
+            continue
+        forms = names.get(key)
+        word = _plural(count, *forms) if forms else key
+        parts.append(f"{count} {word}")
+    return ("текст файла поправлен при чтении: "
+            + ", ".join(parts)
+            + " — иначе такие слова не находятся поиском")
+
+
+def _plural(count: int, one: str, few: str, many: str) -> str:
+    """Согласование числа со словом по-русски: 1 лигатура, 2 лигатуры, 5 лигатур."""
+    tail = abs(int(count)) % 100
+    if 11 <= tail <= 14:
+        return many
+    tail %= 10
+    if tail == 1:
+        return one
+    if 2 <= tail <= 4:
+        return few
+    return many
+
+
 def glued_text_warning(text: str) -> str:
     """«Методыцифровогокодирования» — так выглядит плохо разобранный PDF.
 
@@ -121,6 +163,13 @@ _CAPTION_STYLES = {"caption", "название объекта", "подпись
 _LIST_STYLE_MARKERS = ("list", "список", "bullet", "маркированный", "нумерованный")
 
 _WORD_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+
+from .text_repair import (                # noqa: E402 — рядом со своими помощниками
+    drop_running_titles,
+    repair_report,
+    repair_text,
+)
 
 
 class MissingDependencyError(RuntimeError):
@@ -382,22 +431,135 @@ def _import_docx():
 
 # ------------------------------------------------------------------ PDF ---
 
+#: Промежуток между спанами, начиная с которого между ними был пробел.
+#: Считается в долях кегля: пробел в наборных шрифтах — от четверти до трети
+#: круглой. Порог ниже трети, потому что вёрстка пробелы поджимает.
+SPAN_GAP_SHARE = 0.22
+
+#: Спан считается индексом или степенью, если он мельче строки во столько
+#: раз. Обычные выделения (полужирный, курсив) кегля не меняют, а индекс в
+#: наборе всегда заметно мельче.
+SCRIPT_SIZE_SHARE = 0.82
+
+#: И если его базовая линия сдвинута хотя бы на такую долю кегля. Без
+#: проверки сдвига под правило попала бы любая мелкая сноска в строке.
+SCRIPT_SHIFT_SHARE = 0.14
+
+
+def _span_text(span: Any) -> str:
+    return str(span.get("text", "") or "")
+
+
+def _line_text(spans: Sequence[Any]) -> Tuple[str, float]:
+    """Строка из спанов: с пробелами там, где они были, и с индексами.
+
+    Раньше спаны просто склеивались подряд. В PDF спан обрывается на каждой
+    смене шрифта, и абзац, где часть слов полужирные, приходил из файла как
+    «Занимаемаяполосачастотизмеряетсяметодом» — документ ложился в библиотеку
+    целым на вид и не находился ни по одному слову.
+
+    Пробела в файле может не быть вовсе: вёрстка ставит слово на своё место
+    координатой, а не пробелом. Поэтому смотрим не на текст, а на разрыв
+    между правым краем предыдущего спана и левым краем следующего.
+
+    Тем же взглядом видно степень и индекс: спан мельче строки и приподнят
+    или опущен относительно её базовой линии. Такой спан записываем как
+    «^2» и «_вх» — иначе «4πR2» читается как число 2 при R, а не как
+    квадрат, и в ответе помощника оказывается не то, что в стандарте.
+    """
+    body = [span for span in spans if _span_text(span).strip()]
+    if not body:
+        return "", 0.0
+    sizes = [(float(span.get("size", 0.0) or 0.0), len(_span_text(span)))
+             for span in body]
+    line_size = _weighted_median(sizes) or max(size for size, _ in sizes)
+    base = _weighted_median([
+        (float((span.get("origin") or (0.0, 0.0))[1]), len(_span_text(span)))
+        for span in body]) or 0.0
+
+    parts: List[str] = []
+    mode = ""                       # какой ряд идёт сейчас: '^', '_' или никакой
+    previous_right: float | None = None
+    for span in body:
+        text = _span_text(span)
+        size = float(span.get("size", 0.0) or 0.0)
+        box = span.get("bbox") or (0.0, 0.0, 0.0, 0.0)
+        left, right = float(box[0]), float(box[2])
+        origin_y = float((span.get("origin") or (0.0, base))[1])
+
+        shift = base - origin_y          # больше нуля — спан приподнят
+        script = ""
+        if (line_size and size and size <= line_size * SCRIPT_SIZE_SHARE
+                and abs(shift) >= line_size * SCRIPT_SHIFT_SHARE):
+            script = "^" if shift > 0 else "_"
+
+        gap = 0.0 if previous_right is None else left - previous_right
+        need_space = (
+            previous_right is not None
+            and gap >= max(line_size, size) * SPAN_GAP_SHARE
+            and not parts[-1].endswith((" ", "-"))
+            and not text.startswith(" ")
+        )
+
+        if script != mode:
+            # Закрываем прежний ряд и открываем новый. Разрыв между двумя
+            # индексами подряд («P_вх» и «P_изл») не должен их слепить.
+            mode = script
+            if script:
+                if need_space:
+                    parts.append(" ")
+                parts.append(script)
+                need_space = False
+        if need_space:
+            parts.append(" ")
+        parts.append(text)
+        previous_right = right
+
+    return clean_line("".join(parts)), line_size
+
+
+def _blocks_in_reading_order(raw_blocks: Sequence[Any], width: float) -> List[Any]:
+    """Блоки по порядку чтения, с учётом двух колонок.
+
+    MuPDF сортирует блоки сверху вниз, и на двухколоночной странице книги
+    строки левой и правой колонки чередуются: получается текст, в котором
+    предложения перебивают друг друга. Ни поиск, ни модель такого не читают.
+
+    Колонки ищем по одному признаку — есть ли по середине страницы полоса,
+    которую не пересекает ни один блок. Есть — читаем сначала левую колонку
+    целиком, потом правую. Нет — оставляем как было: страница одноколоночная
+    или свёрстана сложнее, и угадывать тут нельзя.
+    """
+    boxes = [(block, block.get("bbox") or (0.0, 0.0, 0.0, 0.0))
+             for block in raw_blocks]
+    if len(boxes) < 4 or width <= 0:
+        return list(raw_blocks)
+    middle = width / 2
+    for _, box in boxes:
+        if float(box[0]) < middle < float(box[2]):
+            return list(raw_blocks)       # блок пересекает середину — не колонки
+    left = [(block, box) for block, box in boxes if float(box[2]) <= middle]
+    right = [(block, box) for block, box in boxes if float(box[0]) >= middle]
+    if not left or not right:
+        return list(raw_blocks)
+    order = (sorted(left, key=lambda item: float(item[1][1]))
+             + sorted(right, key=lambda item: float(item[1][1])))
+    return [block for block, _ in order]
+
+
 def _pdf_page_blocks(page: Any) -> List[List[Tuple[str, float]]]:
     """Блоки страницы: список абзацев, абзац — список пар (строка, кегль)."""
     data = page.get_text("dict", sort=True)
+    width = float(data.get("width") or 0.0)
     blocks: List[List[Tuple[str, float]]] = []
-    for raw_block in data.get("blocks", []):
-        if raw_block.get("type", 0) != 0:  # тип 1 — изображение, текста в нём нет
-            continue
+    text_blocks = [raw for raw in data.get("blocks", [])
+                   if raw.get("type", 0) == 0]  # тип 1 — картинка, текста нет
+    for raw_block in _blocks_in_reading_order(text_blocks, width):
         lines: List[Tuple[str, float]] = []
         for raw_line in raw_block.get("lines", []):
-            spans = [span for span in raw_line.get("spans", []) if span.get("text", "").strip()]
-            if not spans:
-                continue
-            text = clean_line("".join(span.get("text", "") for span in spans))
+            text, size = _line_text(raw_line.get("spans", []))
             if not text:
                 continue
-            size = max(float(span.get("size", 0.0)) for span in spans)
             lines.append((text, size))
         if lines:
             blocks.append(lines)
@@ -517,14 +679,26 @@ def _convert_pdf(path: Path) -> ConvertedDocument:
     levels = _heading_levels([block for page in pages for block in page], body_size)
     result.meta["body_font_size"] = round(body_size, 2)
 
+    rendered_pages = [_render_blocks(page, levels) for page in pages]
+    # Колонтитул «2 специальный отдел — Методика измерений 17» на каждой из
+    # шестисот страниц книги попадал в каждый фрагмент: смысл фрагмента
+    # разбавлялся названием отдела, а поиск по названию отдела находил всю
+    # библиотеку целиком.
+    rendered_pages, running = drop_running_titles(rendered_pages)
+    if running:
+        result.meta["running_titles"] = running
     pieces: List[str] = []
-    for number, page in enumerate(pages, start=1):
-        rendered = _render_blocks(page, levels)
+    for number, rendered in enumerate(rendered_pages, start=1):
         if not rendered:
             continue
         pieces.append(page_marker(number))
         pieces.extend(rendered)
-    result.text = "\n\n".join(pieces)
+    raw_text = "\n\n".join(pieces)
+    result.text = repair_text(raw_text)
+    repairs = repair_report(raw_text, result.text)
+    if repairs:
+        result.meta["text_repairs"] = repairs
+        result.warnings.append(_repairs_note(repairs))
 
     characters = sum(length for _, length in samples)
     if result.page_count and characters < MIN_CHARS_PER_PAGE * result.page_count:
@@ -537,6 +711,13 @@ def _convert_pdf(path: Path) -> ConvertedDocument:
         )
     if not result.page_count:
         result.warnings.append("в PDF нет ни одной страницы")
+    if not result.needs_ocr:
+        # Проверяем по тому, что получилось, а не по тому, что было в файле:
+        # пробелы между словами система теперь восстанавливает сама, и
+        # жаловаться надо лишь на то, чего восстановить не удалось.
+        glued = glued_text_warning(strip_page_markers(result.text))
+        if glued:
+            result.warnings.append(glued)
 
     title = str(metadata.get("title") or "").strip()
     if not title:
@@ -1041,6 +1222,35 @@ def readable_share(text: str) -> float:
     return good / len(meaningful)
 
 
+def _repair_result(result: "ConvertedDocument") -> "ConvertedDocument":
+    """Починить текст любого формата — и сказать, что именно поправлено.
+
+    Лигатуры, невидимые переносы и латинские буквы внутри русских слов родом
+    не из PDF: они так же приходят из DOCX, из старого .doc, из распознанного
+    скана и из DjVu. Разборщик PDF правит свою часть сам (пробелы между
+    словами и индексы — по геометрии страницы), поэтому повторный проход тут
+    ничего у него не отнимает: все починки идемпотентны.
+    """
+    raw = result.text or ""
+    if not raw:
+        return result
+    fixed = repair_text(raw)
+    if fixed == raw:
+        return result
+    result.text = fixed
+    repairs = repair_report(raw, fixed)
+    if not repairs:
+        return result
+    totals = dict(result.meta.get("text_repairs") or {})
+    for key, count in repairs.items():
+        totals[key] = int(totals.get(key, 0)) + int(count)
+    result.meta["text_repairs"] = totals
+    note = _repairs_note(repairs)
+    if note not in result.warnings:
+        result.warnings.append(note)
+    return result
+
+
 def _flag_unreadable(result: "ConvertedDocument", path: Path) -> "ConvertedDocument":
     """Пометить документ, из которого извлеклась бессмыслица.
 
@@ -1113,7 +1323,8 @@ def convert_file(path: str | Path) -> ConvertedDocument:
         return result
 
     try:
-        return _flag_unreadable(_add_embedded_images(spec.convert(path), path), path)
+        return _flag_unreadable(
+            _repair_result(_add_embedded_images(spec.convert(path), path)), path)
     except MissingDependencyError as error:
         result = ConvertedDocument(title=path.stem,
                                    meta={"source_format": suffix.lstrip(".")})
