@@ -6,6 +6,7 @@ from pathlib import Path
 
 import _bootstrap  # noqa: F401
 from reportgen.cli import main
+from reportgen.config import Settings, settings_warnings
 
 ROOT = Path(__file__).resolve().parents[1]
 CASE = str(ROOT / "examples" / "cases" / "case-2024-118.json")
@@ -193,6 +194,45 @@ class CliTests(unittest.TestCase):
             code, out = run(["check-facts", "--facts", str(path), "--outline", OUTLINE])
             self.assertEqual(code, 2)
             self.assertIn("case_id", out)
+
+
+class SettingsWarningTests(unittest.TestCase):
+    """Настройки, от которых система не падает, а работает вполсилы.
+
+    Такую беду не видно ниоткуда, а на изолированной машине спросить
+    некого. Раньше умолчание адреса реранкера совпадало с адресом
+    эмбеддингов: реранк спрашивал оценки у эмбеддера, тот отвечал ошибкой,
+    и реранк молча пропускался. Умолчание поправлено, но в уже написанном
+    settings.json отдела старый адрес остался — сказать об этом должна
+    сама система.
+    """
+
+    def test_one_address_for_two_services_is_named(self):
+        settings = Settings.load(
+            embed_enabled=True, rerank_enabled=True,
+            embed_base_url="http://127.0.0.1:8001/v1",
+            rerank_base_url="http://127.0.0.1:8001/v1")
+        trouble = "\n".join(settings_warnings(settings))
+        self.assertIn("один адрес", trouble)
+        # И сказано, что именно править: иначе предупреждение бесполезно.
+        self.assertIn("rerank_base_url", trouble)
+        self.assertIn("8002", trouble)
+
+    def test_rerank_without_dense_search_is_named(self):
+        settings = Settings.load(embed_enabled=False, rerank_enabled=True)
+        self.assertIn("embed_enabled", "\n".join(settings_warnings(settings)))
+
+    def test_a_correct_setup_is_silent(self):
+        # Предупреждение на пустом месте приучает не читать предупреждения.
+        settings = Settings.load(embed_enabled=True, rerank_enabled=True)
+        self.assertEqual([], settings_warnings(settings))
+
+    def test_a_switched_off_reranker_is_not_a_trouble(self):
+        settings = Settings.load(
+            embed_enabled=True, rerank_enabled=False,
+            embed_base_url="http://127.0.0.1:8001/v1",
+            rerank_base_url="http://127.0.0.1:8001/v1")
+        self.assertEqual([], settings_warnings(settings))
 
 
 if __name__ == "__main__":

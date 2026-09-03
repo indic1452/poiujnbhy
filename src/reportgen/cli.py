@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from . import domains
-from .config import Settings
+from .config import Settings, settings_warnings
 from .corpus import DOC_TYPES, load_corpus
 from .facts import FactPack, FactPackError
 from .llm import build_llm
@@ -169,6 +169,10 @@ def cmd_serve(args: argparse.Namespace) -> int:
     print(f"веб-интерфейс: http://{settings.host}:{settings.port}")
     print(f"база данных:   {settings.db_path}")
     print(f"модель:        {settings.llm_model} ({settings.llm_base_url})")
+    # Настройки, от которых система не падает, а работает вполсилы. На
+    # изолированной машине спросить некого — говорим сами, в глаза.
+    for trouble in settings_warnings(settings):
+        print(f"ВНИМАНИЕ:      {trouble}", file=sys.stderr)
     run(settings)
     return 0
 

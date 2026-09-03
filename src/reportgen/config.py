@@ -238,6 +238,29 @@ class Settings:
         return {k: v for k, v in self.to_dict().items() if k not in hidden}
 
 
+def settings_warnings(settings: "Settings") -> list[str]:
+    """Настройки, которые ничего не сломают, но тихо обесценят работу.
+
+    Такую беду не видно ниоткуда: система не падает, просто делает меньше,
+    чем от неё ждут. А на изолированной машине спросить некого — значит,
+    сказать должна сама система, и словами, по которым понятно, что
+    править.
+    """
+    troubles: list[str] = []
+    if settings.rerank_enabled and settings.rerank_base_url == settings.embed_base_url:
+        troubles.append(
+            f"реранкер и эмбеддинги настроены на один адрес "
+            f"({settings.rerank_base_url}). Это разные службы на разных "
+            f"портах: реранк будет молча пропускаться. Поправьте "
+            f"rerank_base_url в settings.json — обычно "
+            f"http://127.0.0.1:8002/v1")
+    if settings.rerank_enabled and not settings.embed_enabled:
+        troubles.append(
+            "реранкер включён, а смысловой поиск выключен: переупорядочивать "
+            "будет только то, что нашлось словами. Включите embed_enabled")
+    return troubles
+
+
 #: Имена, под которыми фон окна входа подхватывается сам — без правки
 #: настроек. Порядок задаёт приоритет.
 LOGIN_IMAGE_NAMES = ("login-bg.jpg", "login-bg.jpeg", "login-bg.png", "login-bg.webp")

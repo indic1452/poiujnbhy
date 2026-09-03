@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from ..config import Settings
+from ..config import Settings, settings_warnings
 from ..store.db import Database
 from ..store.repo import Repositories
 from .api import router
@@ -76,6 +76,8 @@ def create_app(settings: Settings | None = None,
         # только словами, и узнать об этом можно было, лишь открыв
         # «Библиотеку». Ничего не строится, если всё на месте или смысловой
         # поиск выключен.
+        for trouble in settings_warnings(settings):
+            logger.warning("Настройки: %s", trouble)
         if service.vectors is not None:
             state = service.vectors.start_if_needed()
             if state.get("running"):

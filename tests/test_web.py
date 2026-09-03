@@ -2295,7 +2295,7 @@ class FakeIndexer:
 class VectorLifecycleTests(unittest.TestCase):
     """Пуск и остановка приложения: векторы достраиваются и не бросаются."""
 
-    def build(self, indexer):
+    def build(self, indexer, **changes):
         import tempfile
 
         tmp = tempfile.TemporaryDirectory()
@@ -2304,6 +2304,7 @@ class VectorLifecycleTests(unittest.TestCase):
             data_dir=str(tmp.name), db_path=":memory:", auth_enabled=False,
             templates_dir=str(ROOT / "templates"),
             glossary_path=str(ROOT / "templates" / "glossary.json"),
+            **changes,
         )
         repos = Repositories(Database(":memory:"))
         service = ReportService(repos=repos, settings=settings, llm=StubLLM(),
@@ -2331,6 +2332,20 @@ class VectorLifecycleTests(unittest.TestCase):
         with TestClient(app):
             pass
         self.assertEqual(1, indexer.stopped)
+
+    def test_a_half_disabled_search_is_complained_about_at_startup(self):
+        """Реранкер и эмбеддинги на одном адресе — реранк молча пропадает.
+
+        Система при этом не падает и ничем себя не выдаёт, а на
+        изолированной машине спросить некого.
+        """
+        app, _ = self.build(FakeIndexer(), embed_enabled=True, rerank_enabled=True,
+                            embed_base_url="http://127.0.0.1:8001/v1",
+                            rerank_base_url="http://127.0.0.1:8001/v1")
+        with self.assertLogs("reportgen.web", level="WARNING") as logs:
+            with TestClient(app):
+                pass
+        self.assertIn("rerank_base_url", "\n".join(logs.output))
 
     def test_the_search_knows_when_vectors_are_being_built(self):
         """Поисковику нужен признак постройки, иначе он перечитывает всё.
