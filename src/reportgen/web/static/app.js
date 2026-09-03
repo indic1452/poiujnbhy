@@ -5849,7 +5849,8 @@
                       // документов. Одной таблицей это не рисуется: браузер
                       // подвисает на минуту, а человеку нужны три документа,
                       // которые он ищет по названию.
-                      query: '', page: 1, pages: 1, total: 0, perPage: 50 };
+                      query: '', page: 1, pages: 1, total: 0, perPage: 50,
+                      quality: '', qualityState: null };
 
     /** Подсказка о поддерживаемых форматах и о том, чего не хватает. */
     function formatsHint() {
@@ -6066,6 +6067,74 @@
         });
 
         const pager = h('div', { class: 'pager' });
+        const qualityBox = h('div', {});
+
+        /* Плохо разобранные документы в уже готовой библиотеке.
+
+           Склейку текста система замечает при приёме, но библиотека отдела
+           собрана раньше: тринадцать тысяч документов лежат без пометок, и
+           найти среди них плохие можно было только глазами. Проверка идёт
+           по тому, что уже в базе, — перезагружать библиотеку не нужно. */
+        async function loadQuality() {
+            try {
+                const data = await api.get('/api/library/quality');
+                libState.qualityState = data.quality || {};
+                renderQuality();
+            } catch (error) {
+                clear(qualityBox);
+            }
+        }
+
+        function renderQuality() {
+            const state = libState.qualityState || {};
+            clear(qualityBox);
+            if (!state.hint && !isAdmin()) return;
+            const card = h('div', {
+                class: 'card card-pad quality-card'
+                    + (state.glued ? ' is-bad' : ''),
+                style: { marginTop: '14px' },
+            });
+            append(card, [
+                h('div', { class: 'vectors-line' },
+                    h('b', {}, 'Качество разбора'),
+                    h('span', { class: 'small' }, state.hint
+                        || 'библиотека на склейку текста не проверялась')),
+                h('div', { class: 'toolbar', style: { marginTop: '8px' } },
+                    isAdmin() && !state.running ? h('button', {
+                        class: 'btn btn--sm',
+                        title: 'Пройти по уже загруженным документам и пометить те, '
+                            + 'у которых текст склеен без пробелов. Файлы заново не '
+                            + 'разбираются — читается то, что уже в базе.',
+                        onclick: () => runQuality(),
+                    }, 'Проверить разбор') : null,
+                    state.glued ? h('button', {
+                        class: 'btn btn--sm' + (libState.quality ? ' btn--primary' : ''),
+                        onclick: () => {
+                            libState.quality = libState.quality ? '' : 'glued';
+                            libState.page = 1;
+                            loadLibrary();
+                            renderQuality();
+                        },
+                    }, libState.quality ? 'Показать все' : 'Показать плохо разобранные') : null),
+            ]);
+            qualityBox.appendChild(card);
+            clearTimeout(libState.qualityTimer);
+            if (state.running) {
+                libState.qualityTimer = setTimeout(() => {
+                    if (document.body.contains(qualityBox)) loadQuality();
+                }, 1500);
+            }
+        }
+
+        async function runQuality() {
+            try {
+                const data = await api.post('/api/library/quality', {});
+                libState.qualityState = data.quality || {};
+                renderQuality();
+            } catch (error) {
+                toastError(error);
+            }
+        }
 
         function renderPager() {
             clear(pager);
@@ -6182,6 +6251,7 @@
                 dropzone, fileInput, uploadList) : null,
 
             vectorsBox,
+            qualityBox,
 
             h('div', { class: 'toolbar', style: { marginTop: '14px' } },
                 typeFilter, domainFilter, nameSearch, focusChip),
@@ -6349,6 +6419,7 @@
                 if (libState.docType) query.push('doc_type=' + encodeURIComponent(libState.docType));
                 if (libState.domain) query.push('domain=' + encodeURIComponent(libState.domain));
                 if (libState.query) query.push('q=' + encodeURIComponent(libState.query));
+                if (libState.quality) query.push('quality=' + encodeURIComponent(libState.quality));
                 const data = await api.get('/api/library?' + query.join('&'));
                 libState.items = data.items || [];
                 libState.stats = data.stats || {};
@@ -6732,6 +6803,7 @@
 
         await loadLibrary();
         await loadVectors();
+        await loadQuality();
     }
 
     // =====================================================================

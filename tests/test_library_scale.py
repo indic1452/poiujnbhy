@@ -310,5 +310,103 @@ class VectorIndexTests(unittest.TestCase):
         self.assertEqual([], index.search([1.0], k=3))
 
 
+class QualityCheckTests(unittest.TestCase):
+    """Плохо разобранные документы в УЖЕ готовой библиотеке.
+
+    Склейку система замечает при приёме. Но библиотека отдела собрана
+    раньше: тринадцать тысяч документов лежат без единой пометки, и найти
+    среди них плохие можно было только глазами. Перезагружать библиотеку
+    ради этого нельзя — повторный разбор PDF занимает часы и ничего не
+    изменит: файл как разобрался, так и разберётся.
+    """
+
+    GOOD = "Занимаемая полоса частот измеряется методом 99 процентов мощности. " * 12
+    BAD = "Занимаемаяполосачастотизмеряетсяметодом99процентовмощности." * 12
+
+    def build(self, *texts):
+        from reportgen.corpus import Chunk
+        from reportgen.web.quality import QualityChecker
+
+        repos = Repositories(Database(":memory:"))
+        for index, text in enumerate(texts):
+            document = repos.documents.upsert(
+                doc_id=f"literature/tom-{index}", doc_type="literature",
+                title=f"Том {index}", source_path=f"{index}.md",
+                sha256=str(index).ljust(64, "0"))
+            repos.chunks.replace_for_document(document, [
+                Chunk(chunk_id=f"literature/tom-{index}#{j:04d}",
+                      doc_id=f"literature/tom-{index}", doc_type="literature",
+                      title_path=["Том"], text=text)
+                for j in range(3)
+            ])
+        return repos, QualityChecker(repos)
+
+    def run_check(self, *texts):
+        repos, checker = self.build(*texts)
+        checker.start()
+        checker.wait(10)
+        return repos, checker
+
+    def test_a_badly_parsed_document_is_marked_without_reloading_it(self):
+        repos, checker = self.run_check(self.GOOD, self.BAD, self.GOOD)
+        self.assertEqual(1, checker.count_glued())
+        marked = [d.doc_id for d in repos.documents.list()
+                  if d.meta.get("text_quality") == "glued"]
+        self.assertEqual(["literature/tom-1"], marked)
+
+    def test_the_state_says_how_many_and_why(self):
+        _, checker = self.run_check(self.BAD, self.BAD, self.GOOD)
+        state = checker.status()
+        self.assertEqual(2, state["glued"])
+        self.assertIn("2", state["hint"])
+        self.assertIn("склеен", state["hint"])
+
+    def test_a_clean_library_is_not_alarmed_about(self):
+        _, checker = self.run_check(self.GOOD, self.GOOD)
+        self.assertEqual(0, checker.count_glued())
+        self.assertIn("не нашлось", checker.status()["hint"])
+
+    def test_a_fixed_document_loses_the_mark(self):
+        """Иначе пометка висела бы вечно и чинили бы уже починенное."""
+        from reportgen.corpus import Chunk
+
+        repos, checker = self.run_check(self.BAD)
+        self.assertEqual(1, checker.count_glued())
+        document = repos.documents.by_doc_id("literature/tom-0")
+        repos.chunks.replace_for_document(document, [
+            Chunk(chunk_id="literature/tom-0#0000", doc_id="literature/tom-0",
+                  doc_type="literature", title_path=["Том"], text=self.GOOD)])
+        checker.start()
+        checker.wait(10)
+        self.assertEqual(0, checker.count_glued())
+
+    def test_a_document_without_fragments_is_not_called_glued(self):
+        """Скан без распознавания — другая беда, и лечится она иначе."""
+        repos, checker = self.build()
+        repos.documents.upsert(
+            doc_id="literature/skan", doc_type="literature", title="Скан",
+            source_path="skan.pdf", sha256="s" * 64)
+        checker.start()
+        checker.wait(10)
+        self.assertEqual(0, checker.count_glued())
+
+    def test_the_library_can_be_filtered_down_to_the_bad_ones(self):
+        # Среди тринадцати тысяч документов пометка бесполезна, если по ней
+        # нельзя отобрать.
+        repos, _ = self.run_check(self.GOOD, self.BAD, self.BAD)
+        self.assertEqual(2, repos.documents.count_all(quality="glued"))
+        self.assertEqual(3, repos.documents.count_all())
+        found = repos.documents.list(quality="glued")
+        self.assertEqual(["literature/tom-1", "literature/tom-2"],
+                         [d.doc_id for d in found])
+
+    def test_only_the_beginning_of_a_document_is_read(self):
+        """У книги полторы тысячи фрагментов; склейка видна на первых же."""
+        repos, _ = self.build(self.GOOD)
+        sample = repos.documents.text_samples()[0]["sample"]
+        self.assertLessEqual(len(sample), 4000)
+        self.assertTrue(sample)
+
+
 if __name__ == "__main__":
     unittest.main()

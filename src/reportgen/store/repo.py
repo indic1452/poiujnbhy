@@ -381,7 +381,8 @@ class DocumentRepo:
         return Document.from_row(row) if row else None
 
     def _filters(self, doc_type: str | None, domain: str | None,
-                 status: str | None, query: str = "") -> tuple:
+                 status: str | None, query: str = "",
+                 quality: str | None = None) -> tuple:
         clauses, params = [], []
         if doc_type:
             clauses.append("doc_type = ?")
@@ -399,17 +400,24 @@ class DocumentRepo:
             # излучения передатчика»), и целиком их никто не набирает.
             clauses.append("(title LIKE ? OR doc_id LIKE ?)")
             params.extend([f"%{needle}%", f"%{needle}%"])
+        if quality:
+            # Пометка лежит в meta документа: отдельной колонки под неё нет,
+            # а заводить её ради одного признака — менять схему всем.
+            clauses.append("meta_json LIKE ?")
+            params.append(f'%"text_quality": "{quality}"%')
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
         return where, params
 
     def count_all(self, doc_type: str | None = None, domain: str | None = None,
-                  status: str | None = None, query: str = "") -> int:
-        where, params = self._filters(doc_type, domain, status, query)
+                  status: str | None = None, query: str = "",
+                  quality: str | None = None) -> int:
+        where, params = self._filters(doc_type, domain, status, query, quality)
         return int(self.db.scalar(
             f"SELECT count(*) FROM documents{where}", params) or 0)
 
     def list(self, doc_type: str | None = None, domain: str | None = None,
              status: str | None = None, query: str = "",
+             quality: str | None = None,
              limit: int | None = None, offset: int = 0) -> List[Document]:
         """Документы библиотеки. ``limit`` — страница, без него всё сразу.
 
@@ -418,13 +426,57 @@ class DocumentRepo:
         несколько мегабайт JSON и подвисал на минуту, а человеку в этот миг
         нужны были три документа, которые он ищет по названию.
         """
-        where, params = self._filters(doc_type, domain, status, query)
+        where, params = self._filters(doc_type, domain, status, query, quality)
         sql = f"SELECT * FROM documents{where} ORDER BY doc_type, title"
         if limit is not None:
             sql += " LIMIT ? OFFSET ?"
             params = list(params) + [int(limit), max(0, int(offset))]
         rows = self.db.query(sql, params)
         return rows_to(Document, rows)
+
+    def text_samples(self, limit: int = 500, offset: int = 0,
+                     chars: int = 4000) -> List[Dict[str, Any]]:
+        """По куску текста на документ — чтобы судить о качестве разбора.
+
+        Читать все фрагменты документа ради проверки на склейку незачем: у
+        книги их бывает полторы тысячи, а склейка видна на первых же
+        абзацах. Берём начало документа и режем по ``chars``.
+        """
+        rows = self.db.query(
+            "SELECT d.id AS id, d.doc_id AS doc_id, d.meta_json AS meta_json, "
+            "  (SELECT group_concat(substr(c.text, 1, 800), ' ') FROM ("
+            "     SELECT text FROM chunks WHERE document_id = d.id "
+            "     ORDER BY ord LIMIT 8) c) AS sample "
+            "FROM documents d ORDER BY d.id LIMIT ? OFFSET ?",
+            (int(limit), max(0, int(offset))))
+        return [
+            {"id": row["id"], "doc_id": row["doc_id"],
+             "meta_json": row["meta_json"],
+             "sample": (row["sample"] or "")[:chars]}
+            for row in rows
+        ]
+
+    def set_meta_flag(self, document_id: int, meta_json: str,
+                      key: str, value: str) -> bool:
+        """Проставить или снять пометку в meta документа. True — если меняли."""
+        try:
+            meta = json.loads(meta_json or "{}")
+        except (ValueError, TypeError):
+            meta = {}
+        if not isinstance(meta, dict):
+            meta = {}
+        current = str(meta.get(key, "") or "")
+        if current == str(value or ""):
+            return False
+        if value:
+            meta[key] = value
+        else:
+            meta.pop(key, None)
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE documents SET meta_json = ? WHERE id = ?",
+                (json.dumps(meta, ensure_ascii=False), document_id))
+        return True
 
     def set_domain(self, doc_id: str, domain: str) -> None:
         with self.db.transaction() as connection:

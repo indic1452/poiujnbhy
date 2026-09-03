@@ -30,6 +30,7 @@ from ..pipeline import (
 from ..retrieval import BM25Index, Retriever
 from ..store.models import Case, Report, ReportSection, User
 from ..store.repo import Repositories
+from .quality import QualityChecker
 from .vectors import VectorIndexer
 from ..verify import summarize, verify_report
 
@@ -190,6 +191,7 @@ class ReportService:
     glossary: Dict[str, str] = field(default_factory=dict)
     outlines: OutlineLibrary | None = None
     vectors: "VectorIndexer | None" = None
+    quality: "QualityChecker | None" = None
 
     def __post_init__(self) -> None:
         if self.outlines is None:
@@ -198,6 +200,8 @@ class ReportService:
             self.glossary = _load_glossary(self.settings.glossary_path)
         if self.vectors is None:
             self.vectors = VectorIndexer(self.repos, self.settings)
+        if self.quality is None:
+            self.quality = QualityChecker(self.repos)
 
     # -- вспомогательное ----------------------------------------------------
 

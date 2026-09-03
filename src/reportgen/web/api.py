@@ -1390,7 +1390,7 @@ LIBRARY_PAGE_MAX = 200
 @router.get("/library")
 def library(request: Request, doc_type: str | None = None,
             domain: str | None = None, status: str | None = None,
-            q: str = "", page: int = 1,
+            q: str = "", quality: str = "", page: int = 1,
             per_page: int = LIBRARY_PAGE) -> Dict[str, Any]:
     """Страница библиотеки. Раньше отдавалась целиком — все документы разом.
 
@@ -1404,10 +1404,13 @@ def library(request: Request, doc_type: str | None = None,
     size = max(1, min(int(per_page or LIBRARY_PAGE), LIBRARY_PAGE_MAX))
     number = max(1, int(page or 1))
     query = str(q or "").strip()[:200]
-    total = repos.documents.count_all(doc_type, domain, status, query)
+    # «Плохо разобранные» — такой же фильтр, как тип или направление: без
+    # него найти их среди тринадцати тысяч можно только глазами.
+    bad = str(quality or "").strip().lower() or None
+    total = repos.documents.count_all(doc_type, domain, status, query, bad)
     pages = max(1, (total + size - 1) // size)
     number = min(number, pages)
-    documents = repos.documents.list(doc_type, domain, status, query,
+    documents = repos.documents.list(doc_type, domain, status, query, bad,
                                      limit=size, offset=(number - 1) * size)
     return {
         "items": [document.to_dict() for document in documents],
@@ -1423,6 +1426,7 @@ def library(request: Request, doc_type: str | None = None,
         "pages": pages,
         "per_page": size,
         "query": query,
+        "quality": bad or "",
     }
 
 
@@ -1595,6 +1599,34 @@ def vectors_status(request: Request) -> Dict[str, Any]:
     if service.vectors is None:
         return {"vectors": {"enabled": False, "hint": "смысловой поиск недоступен"}}
     return {"vectors": service.vectors.status()}
+
+
+@router.get("/library/quality")
+def quality_status(request: Request) -> Dict[str, Any]:
+    """Сколько документов разобрано плохо и идёт ли проверка."""
+    require_user(request)
+    service = _service(request)
+    if service.quality is None:
+        return {"quality": {"running": False, "glued": 0, "hint": ""}}
+    return {"quality": service.quality.status()}
+
+
+@router.post("/library/quality")
+def quality_check(request: Request) -> Dict[str, Any]:
+    """Пройти по УЖЕ загруженной библиотеке и пометить плохо разобранное.
+
+    Склейку текста система замечает при приёме документа, но библиотека
+    отдела собрана раньше: тринадцать тысяч документов лежат без единой
+    пометки. Перезагружать библиотеку ради этого нельзя — повторный разбор
+    PDF занимает часы и ничего не изменит. Проверяем то, что уже в базе.
+    """
+    user = require_admin(request)
+    service = _service(request)
+    if service.quality is None:
+        raise ServiceError("проверка качества недоступна", 501)
+    state = service.quality.start()
+    _repos(request).audit.log("library.quality", user=user)
+    return {"quality": state}
 
 
 @router.post("/library/vectors/check")
