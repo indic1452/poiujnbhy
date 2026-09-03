@@ -2025,7 +2025,6 @@
         const chosen = h('span', { class: 'small muted' }, 'файл не выбран');
         const picker = h('input', {
             type: 'file',
-            accept: '.docx,.doc,.pdf,.rtf,.odt,.md,.txt',
             style: { display: 'none' },
             onchange: () => {
                 const file = (picker.files || [])[0];
@@ -2413,7 +2412,6 @@
         const chosen = h('span', { class: 'small muted' }, 'файл не выбран');
         const picker = h('input', {
             type: 'file',
-            accept: '.docx,.doc,.pdf,.rtf,.odt,.md,.txt',
             style: { display: 'none' },
             onchange: () => {
                 const file = (picker.files || [])[0];
@@ -5981,8 +5979,14 @@
         const head = ['PDF', 'DOCX', 'DOC', 'XLSX', 'PPTX', 'DJVU', 'TXT'].filter(
             (item) => shown.indexOf(item) >= 0);
         const rest = shown.length - head.length;
-        let text = head.join(', ');
+        let text = 'Текст читается из ' + head.join(', ');
         if (rest > 0) text += ' и ещё ' + rest + ' форматов';
+        // Ограничения на расширение нет: класть можно что угодно. Но
+        // нечитаемый файл в библиотеке — это папка с названием и без
+        // содержимого: он не найдётся ни поиском, ни помощником, и сказать
+        // об этом надо до загрузки, а не после.
+        text += '. Любой другой файл тоже примем — но текст из него не '
+            + 'вычитается, и в поиске он не найдётся';
         // Один формат объявляют несколько конвертеров (7z через 7z, 7za, 7zz),
         // поэтому без свёртки список повторялся: «.7z, .rar, .7z, .rar, .7z».
         const blocked = formats.blocked || [];
@@ -5993,6 +5997,7 @@
         if (missing.length) {
             text += '. Не читаются: ' + missing.join(', ');
         }
+        text += '.';
         return text;
     }
 
@@ -6293,8 +6298,6 @@
 
         const fileInput = h('input', {
             type: 'file', multiple: true, style: { display: 'none' },
-            accept: (state.formats && state.formats.available || []).join(',') ||
-                '.pdf,.docx,.md,.markdown,.txt',
             onchange: (event) => {
                 handleFiles(Array.prototype.slice.call(event.target.files || []));
                 event.target.value = '';
@@ -8257,15 +8260,6 @@
         node.style.height = Math.min(node.scrollHeight + 2, 200) + 'px';
     }
 
-    /* Что можно приложить к вопросу. Список для окна выбора файла: без него
-       проводник показывает все файлы подряд, и инженер пробует приложить
-       архив, который всё равно не прочитается. */
-    const ATTACH_ACCEPT = [
-        '.txt', '.log', '.csv', '.json', '.xml', '.pcap', '.pcapng', '.cap', '.har',
-        '.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp',
-        '.pdf', '.docx', '.doc', '.xlsx', '.odt', '.md',
-    ].join(',');
-
     const ATTACH_KIND_LABEL = {
         dump: 'дамп или лог',
         image: 'снимок экрана',
@@ -8275,7 +8269,7 @@
     function buildAttachBar() {
         const list = h('div', { class: 'attach-list' });
         const picker = h('input', {
-            type: 'file', multiple: true, accept: ATTACH_ACCEPT,
+            type: 'file', multiple: true,
             style: { display: 'none' },
             onchange: async (event) => {
                 const files = Array.prototype.slice.call(event.target.files || []);

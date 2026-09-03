@@ -1659,11 +1659,32 @@ class LetterFileTests(WebTestCase):
         row = [item for item in listed if item["case_id"] == "ВХ-2026-0600"][0]
         self.assertEqual(2, row["files_count"])
 
-    def test_a_kind_of_file_nobody_attaches_is_refused(self):
-        # Список широкий намеренно, но исполняемое к письму не прикладывают.
-        response = self.attach("вирус.exe", b"MZ")
-        self.assertEqual(400, response.status_code)
-        self.assertIn("не прикладывают", response.json()["error"])
+    def test_any_kind_of_file_can_be_attached(self):
+        """Перечислить заранее, что придёт с письмом, нельзя.
+
+        В отдел приходят прошивки, выгрузки приборов, схемы в чужих САПР — и
+        список разрешённых расширений отказывал ровно тем бумагам, ради
+        которых письмо и завели.
+        """
+        for name in ("proshivka.bin", "vygruzka.dat", "shema.dwg", "bez_rasshireniya"):
+            response = self.attach(name, b"\x00\x01\x02")
+            self.assertEqual(200, response.status_code,
+                             f"{name}: {response.text}")
+
+    def test_a_file_of_an_unknown_kind_is_never_shown_inside_the_page(self):
+        """Показать чужой файл в своей странице значит его исполнить.
+
+        Ограничение на приём сняли, а это осталось запретом: страницу
+        подписанного .html браузер выполнил бы как нашу собственную.
+        """
+        item = self.attach("stranica.html", b"<script>alert(1)</script>").json()["file"]
+        answer = self.client.get(
+            f"/api/cases/{self.case['id']}/files/{item['id']}?inline=1")
+        self.assertEqual(200, answer.status_code)
+        disposition = answer.headers.get("content-disposition", "")
+        self.assertIn("attachment", disposition,
+                      "чужая страница открылась бы прямо в интерфейсе")
+        self.assertNotIn("text/html", answer.headers.get("content-type", ""))
 
     def test_deleting_a_letter_takes_its_papers_off_the_disk(self):
         item = self.attach().json()["file"]
@@ -1949,15 +1970,23 @@ class UploadedReportTests(WebTestCase):
 
         self.upload(name="Отчёт.md", body=b"normalnyi").json()
         before = sorted(x.name for x in _P(self.tmp / "reports").rglob("*") if x.is_file())
-        self.upload(name="дамп.pcap", body=b"\xd4\xc3\xb2\xa1")
         self.upload(body=b"")
+        self.upload(name="", body=b"chto-to")
         after = sorted(x.name for x in _P(self.tmp / "reports").rglob("*") if x.is_file())
         self.assertEqual(before, after, "отказанная сдача оставила файл на диске")
 
-    def test_unreadable_format_is_refused_with_a_plain_answer(self):
+    def test_a_report_in_an_unreadable_format_is_taken_but_flagged(self):
+        """Отказать нельзя: отчёт сдают в том, в чём он написан.
+
+        Но по нечитаемому файлу нельзя сверить ни одного числа — а сверка
+        чисел и есть то, ради чего система заведена. Поэтому берём и говорим
+        об этом прямо, а не отказываем и не молчим.
+        """
         response = self.upload(name="дамп.pcap", body=b"\xd4\xc3\xb2\xa1")
-        self.assertEqual(400, response.status_code)
-        self.assertIn("docx", response.json()["error"])
+        self.assertEqual(200, response.status_code, response.text)
+        body = response.json()
+        self.assertTrue(body["note"], "молча приняли нечитаемый отчёт")
+        self.assertEqual("", body["report"]["markdown"].strip())
 
     def test_incoming_number_is_required(self):
         response = self.upload(case_id="", incoming_no="")
@@ -3771,13 +3800,15 @@ class PersonalFileTests(WebTestCase):
             f"/api/users/{self.engineer.id}/files/{item['id']}").status_code)
         self.assertFalse(path.exists())
 
-    def test_a_kind_of_file_nobody_puts_in_a_personal_file_is_refused(self):
+    def test_any_kind_of_document_can_be_put_in_a_personal_file(self):
+        """Бумаги на человека приходят в чём угодно: скан, выписка, архив."""
         self.login("engineer")
-        response = self.client.post(
-            f"/api/users/{self.engineer.id}/files",
-            files={"file": ("сборка.exe", b"MZ", "application/octet-stream")})
-        self.assertEqual(400, response.status_code)
-        self.assertIn("не прикладывают", response.json()["error"])
+        for name in ("vypiska.rar", "skan.tiff", "prikaz.dat", "bez_rasshireniya"):
+            response = self.client.post(
+                f"/api/users/{self.engineer.id}/files",
+                files={"file": (name, b"\x00\x01", "application/octet-stream")},
+                data={"kind": "order"})
+            self.assertEqual(200, response.status_code, f"{name}: {response.text}")
 
     def test_contacts_are_filled_in_by_the_person_themselves(self):
         """Справочник кадровика устаревает быстрее, чем его правят."""

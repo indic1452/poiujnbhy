@@ -568,6 +568,13 @@ def create_case(request: Request) -> Dict[str, Any]:
 #: не нужен: смотрят начало, чтобы понять, прочиталось ли вообще.
 ATTACHMENT_TEXT_LIMIT = 20000
 
+#: Что к письму прикладывают чаще всего. Это подсказка окну выбора файла, а
+#: НЕ запрет: библиотека отдела и переписка полны форматов, которых заранее не
+#: перечислить, — прошивки, выгрузки приборов, схемы в чужих САПР. Файл, чей
+#: текст система прочитать не может, просто хранится и скачивается: об этом в
+#: карточке сказано прямо. Показывать чужой файл прямо в странице по-прежнему
+#: разрешено только известным типам (INLINE_TYPES) — там список остаётся
+#: запретом, и это другое: показать значит исполнить.
 CASE_FILE_SUFFIXES = (
     ".pdf", ".docx", ".doc", ".rtf", ".odt", ".xlsx", ".xls", ".csv",
     ".md", ".txt", ".log", ".json", ".png", ".jpg", ".jpeg", ".tif", ".tiff",
@@ -668,10 +675,6 @@ def attach_to_case(request: Request, case_ref: int,
     name = _safe_name(Path(file.filename or "файл").name)
     if not name:
         raise ServiceError("некорректное имя файла", 400)
-    suffix = Path(name).suffix.lower()
-    if suffix not in CASE_FILE_SUFFIXES:
-        known = ", ".join(CASE_FILE_SUFFIXES)
-        raise ServiceError(f"такие файлы к письму не прикладывают (можно: {known})", 400)
 
     settings.ensure_dirs()
     target_dir = Path(settings.data_dir) / "case-files" / str(case.id)
@@ -1010,6 +1013,9 @@ def restore_section(request: Request, report_id: int, section_id: str) -> Dict[s
 
 #: Форматы готового отчёта, который сдают на проверку. Word и PDF — то, в чём
 #: отчёты пишут; Markdown и текст — то, во что их выгружает сама система.
+#: Форматы, из которых система вычитывает текст отчёта. Список справочный:
+#: отчёт примут в любом виде, но по нечитаемому файлу проверить числа нельзя,
+#: и об этом говорится в карточке.
 REPORT_UPLOAD_SUFFIXES = (".docx", ".doc", ".pdf", ".rtf", ".odt", ".md", ".txt")
 
 
@@ -1054,9 +1060,6 @@ def upload_report(
 
     name = _safe_name(Path(file.filename or "отчёт").name)
     suffix = Path(name).suffix.lower()
-    if suffix not in REPORT_UPLOAD_SUFFIXES:
-        raise ServiceError(
-            "отчёт принимается в форматах: " + ", ".join(REPORT_UPLOAD_SUFFIXES), 400)
 
     # Те же пределы, что и в карточке: сдача файлом заводит письмо, и
     # строки в нём должны быть такими же, как у зарегистрированного руками.
@@ -2838,10 +2841,6 @@ def attach_to_talk(request: Request, talk_id: int,
     name = _safe_name(Path(file.filename or "файл").name)
     if not name:
         raise ServiceError("некорректное имя файла", 400)
-    suffix = Path(name).suffix.lower()
-    if suffix not in CASE_FILE_SUFFIXES:
-        known = ", ".join(CASE_FILE_SUFFIXES)
-        raise ServiceError(f"такие файлы не пересылают (можно: {known})", 400)
 
     settings.ensure_dirs()
     target_dir = Path(settings.data_dir) / "talk-files" / str(talk_id)
@@ -3045,6 +3044,7 @@ def _opt_str(payload: Dict[str, Any], name: str) -> str | None:
 # --------------------------------------------------------- личный кабинет --
 
 #: В чём приносят документы сотрудника: набранный файл, скан, снимок.
+#: Справочный список — как и CASE_FILE_SUFFIXES, ничего не запрещает.
 PERSON_FILE_SUFFIXES = (
     ".pdf", ".docx", ".doc", ".rtf", ".odt", ".txt", ".md",
     ".png", ".jpg", ".jpeg", ".tif", ".tiff",
@@ -3109,10 +3109,6 @@ def add_person_file(request: Request, user_id: int,
     name = _safe_name(Path(file.filename or "документ").name)
     if not name:
         raise ServiceError("некорректное имя файла", 400)
-    suffix = Path(name).suffix.lower()
-    if suffix not in PERSON_FILE_SUFFIXES:
-        known = ", ".join(PERSON_FILE_SUFFIXES)
-        raise ServiceError(f"такие файлы к сотруднику не прикладывают (можно: {known})", 400)
 
     settings.ensure_dirs()
     target_dir = Path(settings.data_dir) / "person-files" / str(person.id)
@@ -3579,8 +3575,15 @@ def _file_reply(path: Path, name: str, *, inline: bool = False) -> FileResponse:
     """Отдать файл: вложением или для просмотра прямо на экране."""
     media = INLINE_TYPES.get(Path(name).suffix.lower())
     if not inline or media is None:
+        # Тип не угадываем по имени. Ограничения на расширение при приёме нет,
+        # и подписанный .html Starlette отдал бы как text/html: браузер, если
+        # заголовок «скачать» когда-нибудь потеряется, выполнил бы чужую
+        # страницу как нашу собственную. Файл, который мы не показываем сами,
+        # уходит потоком байтов и ничем иным.
         return FileResponse(path, filename=name,
-                            headers={"Content-Disposition": _disposition(name)})
+                            media_type="application/octet-stream",
+                            headers={"Content-Disposition": _disposition(name),
+                                     "X-Content-Type-Options": "nosniff"})
     # Content-Disposition: inline с тем же кодированием имени по RFC 5987:
     # заголовки HTTP — latin-1, а имена файлов у нас кириллические.
     return FileResponse(
