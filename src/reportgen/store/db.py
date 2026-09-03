@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = "12"
+SCHEMA_VERSION = "13"
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -73,6 +73,11 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("users", "ext_no", "TEXT NOT NULL DEFAULT ''"),
     ("users", "room", "TEXT NOT NULL DEFAULT ''"),
     ("users", "email", "TEXT NOT NULL DEFAULT ''"),
+    # Когда человека последний раз видели в системе. Нужна не «слежка», а
+    # ответ на обычный вопрос отдела: писать ему сейчас или он ушёл и
+    # прочтёт завтра. Обновляется не чаще раза в минуту — иначе на каждый
+    # щелчок в интерфейсе приходилась бы запись в базу.
+    ("users", "last_seen_at", "TEXT NOT NULL DEFAULT ''"),
     ("users", "phone_mobile", "TEXT NOT NULL DEFAULT ''"),
     ("users", "phone_open", "TEXT NOT NULL DEFAULT ''"),
     ("users", "phone_secure", "TEXT NOT NULL DEFAULT ''"),
@@ -458,6 +463,31 @@ class Database:
     def query(self, sql: str, params: Sequence[Any] = ()) -> list[sqlite3.Row]:
         with self._read_guard():
             return self.connection.execute(sql, params).fetchall()
+
+    def stream(self, sql: str, params: Sequence[Any] = (),
+               chunk: int = 2000) -> Iterator[list[sqlite3.Row]]:
+        """Читает выборку кусками, не поднимая её в память целиком.
+
+        ``query`` делает ``fetchall``: на таблице векторов отдела это два с
+        лишним гигабайта BLOB-ов разом. Обходить это через LIMIT/OFFSET —
+        значит заставлять SQLite на каждой странице пропускать всё, что
+        перед ней: на полумиллионе строк последняя страница отматывает
+        полмиллиона. Один курсор с ``fetchmany`` читает ту же выборку одним
+        проходом и держит в памяти только текущий кусок.
+
+        Замок общей базы в памяти держится на всё чтение: курсор живёт
+        дольше одного вызова, и отпускать его на середине нельзя.
+        """
+        with self._read_guard():
+            cursor = self.connection.execute(sql, params)
+            try:
+                while True:
+                    rows = cursor.fetchmany(max(1, int(chunk)))
+                    if not rows:
+                        return
+                    yield rows
+            finally:
+                cursor.close()
 
     def query_one(self, sql: str, params: Sequence[Any] = ()) -> sqlite3.Row | None:
         with self._read_guard():

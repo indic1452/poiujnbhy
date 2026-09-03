@@ -232,6 +232,8 @@ class User:
     ext_no: str = ""
     email: str = ""
     active: bool = True
+    #: Когда человека последний раз видели в системе (UTC, ISO-8601).
+    last_seen_at: str = ""
     #: Заявку одобрили. Пока нет — человек заведён, но войти не может.
     approved: bool = True
     approved_by: int | None = None
@@ -283,6 +285,7 @@ class User:
             ext_no=_col(row, "ext_no", "") or "",
             email=_col(row, "email", "") or "",
             active=bool(row["active"]),
+            last_seen_at=_col(row, "last_seen_at", "") or "",
             approved=bool(_col(row, "approved", 1)),
             approved_by=_col(row, "approved_by", None),
             approved_at=_col(row, "approved_at", "") or "",
@@ -304,6 +307,7 @@ class User:
             "phone_open": self.phone_open,
             "phone_secure": self.phone_secure,
             "room": self.room,
+            "last_seen_at": self.last_seen_at,
             "is_admin": self.is_admin,
             "approved": self.approved,
             "approved_at": self.approved_at,

@@ -256,6 +256,53 @@ class VectorIndexTests(unittest.TestCase):
         self.assertEqual(10, len(index))
         self.assertEqual(10, index.matrix.shape[0])
 
+    def test_vectors_added_while_reading_do_not_break_the_search(self):
+        """Ровно та ошибка, что видел отдел, спросив помощника при постройке.
+
+        Матрица отводится по числу векторов, а пока её наполняют, фоновое
+        построение дописывает новые. Строк приходит больше, чем мест, и
+        человеку в ответ на вопрос прилетало «index 83616 is out of bounds
+        for axis 0 with size 83616». Лишние векторы берутся в следующий
+        раз: число изменилось, значит, кэш всё равно перечитается.
+        """
+        from unittest import mock
+
+        repos = self.build(500, dim=8)
+        real = repos.db.scalar
+
+        def stale(sql, params=()):
+            value = real(sql, params)
+            if "count(*) FROM embeddings" in sql:
+                return value - 84          # столько дописали, пока считали
+            return value
+
+        with mock.patch.object(repos.db, "scalar", stale):
+            index = repos.vectors.load_index("bge-m3")
+        self.assertEqual(416, len(index))
+        self.assertEqual(416, index.matrix.shape[0])
+        # И поиск по такой матрице работает, а не падает.
+        self.assertEqual(5, len(index.search([1.0] * 8, k=5)))
+
+    def test_vectors_removed_while_reading_do_not_leave_empty_rows(self):
+        """Обратный случай: строк пришло меньше, чем мест в матрице.
+
+        Пустая строка матрицы — это вектор из мусора: он одинаково «похож»
+        на любой запрос и лезет в выдачу вперёд настоящих.
+        """
+        from unittest import mock
+
+        repos = self.build(100, dim=8)
+        real = repos.db.scalar
+
+        def ahead(sql, params=()):
+            value = real(sql, params)
+            return value + 50 if "count(*) FROM embeddings" in sql else value
+
+        with mock.patch.object(repos.db, "scalar", ahead):
+            index = repos.vectors.load_index("bge-m3")
+        self.assertEqual(100, len(index))
+        self.assertEqual(100, index.matrix.shape[0])
+
     def test_an_empty_library_is_an_empty_index(self):
         repos = Repositories(Database(":memory:"))
         index = repos.vectors.load_index("bge-m3")

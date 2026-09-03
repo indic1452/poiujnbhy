@@ -283,13 +283,26 @@ def build_index(uids: Sequence[str], vectors: Sequence[Sequence[float]]) -> Vect
 
 
 def normalize_rows(matrix: Any) -> None:
-    """Делит строки на их длину — на месте, без второй матрицы в памяти."""
+    """Делит строки на их длину — на месте, без второй матрицы в памяти.
+
+    ``np.linalg.norm(matrix, axis=1)`` считает ``sqrt(sum(abs(x)**2))`` и на
+    ``abs(x)**2`` заводит ВРЕМЕННУЮ матрицу того же размера. На корпусе
+    отдела это лишние 2,1 ГБ на ровном месте: пик памяти выходил вдвое
+    больше самой матрицы. ``einsum`` считает те же суммы квадратов построчно
+    и заводит только результат — вектор длин, два мегабайта.
+
+    Делим тоже кусками: ``matrix /= norms[:, None]`` numpy выполняет на
+    месте, но выражение справа numpy может материализовать целиком.
+    """
     np = _numpy()
     if np is None or not hasattr(matrix, "shape") or not matrix.size:
         return
-    norms = np.linalg.norm(matrix, axis=1)
+    norms = np.sqrt(np.einsum("ij,ij->i", matrix, matrix))
     norms[norms < _EPS] = 1.0
-    matrix /= norms[:, None]
+    step = max(1, NORMALIZE_ROWS)
+    for start in range(0, matrix.shape[0], step):
+        piece = matrix[start:start + step]
+        piece /= norms[start:start + step, None]
 
 
 def top_cosine(
@@ -338,6 +351,10 @@ def top_cosine(
 #: Ошибки, при которых имеет смысл дробить пачку: сервер ответил, но не
 #: справился. «Служба не запущена» дроблением не лечится.
 _SPLIT_ON = ("http", "timeout")
+
+#: Сколько строк нормируем за раз. Кусками — чтобы numpy не заводил
+#: временную матрицу на весь корпус.
+NORMALIZE_ROWS = 50000
 
 #: Короче этого укорачивать фрагмент бессмысленно: от текста ничего не
 #: остаётся, и вектор перестаёт что-либо значить.

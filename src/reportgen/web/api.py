@@ -2115,6 +2115,7 @@ def staff(request: Request) -> Dict[str, Any]:
                 "phone_open": user.phone_open,
                 "phone_secure": user.phone_secure,
                 "room": user.room,
+                "last_seen_at": user.last_seen_at,
             }
             for user in _repos(request).users.list_all(active_only=True, staff_only=True)
         ]
@@ -3185,6 +3186,9 @@ def person_card(request: Request, user_id: int) -> Dict[str, Any]:
         "phone_open": person.phone_open,
         "phone_secure": person.phone_secure,
         "room": person.room,
+        # Когда человека последний раз видели. Отвечает на обычный вопрос
+        # отдела: писать ему сейчас или он ушёл и прочтёт завтра.
+        "last_seen_at": person.last_seen_at,
         "active": person.active,
         "created_at": person.created_at,
         "where": where,

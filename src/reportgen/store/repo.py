@@ -224,6 +224,29 @@ class UserRepo:
         with self.db.transaction() as connection:
             connection.execute("UPDATE users SET active = ? WHERE id = ?", (int(active), user_id))
 
+    #: Чаще этого отметку «был в сети» не переписываем. Интерфейс дёргает
+    #: сервер на каждый щелчок, а запись в базу на каждый щелчок — это
+    #: блокировка на общей базе там, где хватает точности до минуты.
+    SEEN_EVERY_SECONDS = 60
+
+    def mark_seen(self, user: "User", now: str | None = None) -> bool:
+        """Отметить, что человек сейчас в системе. Вернёт True, если записали."""
+        stamp = now or utcnow()
+        if user.last_seen_at:
+            try:
+                previous = datetime.fromisoformat(user.last_seen_at)
+                current = datetime.fromisoformat(stamp)
+            except ValueError:
+                previous = current = None
+            if previous is not None and current is not None:
+                if (current - previous).total_seconds() < self.SEEN_EVERY_SECONDS:
+                    return False
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE users SET last_seen_at = ? WHERE id = ?", (stamp, user.id))
+        user.last_seen_at = stamp
+        return True
+
     def list_all(self, active_only: bool = False, staff_only: bool = False) -> List[User]:
         """Личный состав. Сортировка — по старшинству должности, потом по ФИО:
         так список читается как штатное расписание, а не как выгрузка.
@@ -854,7 +877,7 @@ class VectorRepo:
         vectors = [unpack_vector(row["vector"]) for row in rows]
         return uids, vectors
 
-    def load_index(self, model: str | None = None, batch: int = 20000) -> Any:
+    def load_index(self, model: str | None = None, batch: int = 2000) -> Any:
         """Матрица векторов корпуса — сразу в float32, без списков Python.
 
         ``all_vectors`` собирает ``List[List[float]]``: на корпусе отдела это
@@ -886,12 +909,22 @@ class VectorRepo:
         matrix = np.empty((total, dim), dtype="float32")
         uids: List[str] = []
         row = 0
-        for start in range(0, total, batch):
-            rows = self.db.query(
+        # Строк может прийти БОЛЬШЕ, чем показал счёт: пока мы читаем,
+        # фоновое построение дописывает новые векторы. Матрица уже отведена
+        # по старому числу, и попытка положить лишнюю строку роняла поиск —
+        # «index 83616 is out of bounds for axis 0 with size 83616» прилетало
+        # человеку в ответ на вопрос помощнику. Лишние берём в следующий раз:
+        # число векторов изменилось, значит, кэш всё равно перечитается.
+        #
+        # Читаем одним проходом курсора, а не LIMIT/OFFSET по страницам: с
+        # OFFSET SQLite на каждой странице пропускает всё, что перед ней, и
+        # последняя страница отматывает полмиллиона строк.
+        for rows in self.db.stream(
                 f"SELECT chunk_uid, vector FROM embeddings {where} "
-                f"ORDER BY chunk_uid LIMIT ? OFFSET ?",
-                tuple(params) + (int(batch), int(start)))
+                f"ORDER BY chunk_uid", params, chunk=batch):
             for item in rows:
+                if row >= total:
+                    break
                 values = array("f")
                 values.frombytes(item["vector"])
                 if len(values) != dim:
@@ -901,6 +934,10 @@ class VectorRepo:
                 matrix[row] = values
                 uids.append(str(item["chunk_uid"]))
                 row += 1
+            full = row >= total
+            rows.clear()
+            if full:
+                break
         if row != total:
             matrix = matrix[:row]
         normalize_rows(matrix)

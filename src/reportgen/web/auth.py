@@ -89,7 +89,17 @@ def get_user(request: Request) -> User | None:
     token = request.cookies.get(COOKIE_NAME)
     if not token:
         return None
-    return request.app.state.repos.sessions.resolve(token)
+    user = request.app.state.repos.sessions.resolve(token)
+    if user is not None:
+        # Отмечаем, что человек в системе. Не чаще раза в минуту — иначе
+        # запись в базу приходилась бы на каждый щелчок в интерфейсе.
+        # Неудача здесь не должна мешать работе: отметка — удобство, а не
+        # условие входа.
+        try:
+            request.app.state.repos.users.mark_seen(user)
+        except Exception:              # noqa: BLE001
+            pass
+    return user
 
 
 def require_user(request: Request) -> User:

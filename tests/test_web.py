@@ -4732,6 +4732,73 @@ class VectorCardTests(unittest.TestCase):
         self.assertIn("}, 'Прочитать каталог') : null)),", self.js)
 
 
+class TalkFileTests(unittest.TestCase):
+    """Вложение в беседе щелчком СКАЧИВАЕТСЯ, а не пытается открыться."""
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+
+    def test_a_click_downloads_the_file(self):
+        """В переписке ходят чертежи, таблицы и архивы.
+
+        Половину из них показать в браузере нечем, и человек вместо файла
+        получал окно с ошибкой. В беседе файл посылают, чтобы открыть его
+        своей программой.
+        """
+        row = self.js.split("function talkFileRow(item)", 1)[1].split("\n    }", 1)[0]
+        self.assertIn("download: item.name", row)
+        self.assertIn("'Скачать '", row)
+        self.assertNotIn("openFilePreview", row)
+
+    def test_a_photo_is_shown_right_in_the_conversation(self):
+        """Снимок посылают, чтобы на него посмотрели.
+
+        Плашка с именем файла вместо картинки заставляла скачивать и
+        открывать её своей программой ради одного взгляда.
+        """
+        row = self.js.split("function talkFileRow(item)", 1)[1].split("\n    }", 1)[0]
+        self.assertIn("PREVIEW_IMAGE.indexOf(fileExt(item.name))", row)
+        self.assertIn("'talk-photo'", row)
+        self.assertIn("openPhoto(item, href)", row)
+
+    def test_the_photo_opens_full_size_and_can_be_saved(self):
+        self.assertIn("function openPhoto(item, href)", self.js)
+        photo = self.js.split("function openPhoto(item, href)", 1)[1].split("\n    }", 1)[0]
+        self.assertIn("'Скачать'", photo)
+        css = (ROOT / "src" / "reportgen" / "web" / "static"
+               / "styles.css").read_text(encoding="utf-8")
+        self.assertIn(".talk-photo img {", css)
+        self.assertIn(".photo-view img {", css)
+
+
+class LastSeenTests(WebTestCase):
+    """«Писать ему сейчас или он прочтёт завтра» — обычный вопрос отдела."""
+
+    def test_the_card_says_when_the_person_was_last_seen(self):
+        self.login("engineer")
+        person = self.repos.users.by_login("engineer")
+        card = self.client.get(f"/api/people/{person.id}").json()["person"]
+        self.assertTrue(card["last_seen_at"], "отметка не проставилась при входе")
+
+    def test_the_mark_is_not_written_on_every_click(self):
+        """Иначе запись в базу приходилась бы на каждый щелчок в интерфейсе."""
+        person = self.repos.users.by_login("engineer")
+        self.assertTrue(self.repos.users.mark_seen(person))
+        self.assertFalse(self.repos.users.mark_seen(person))
+
+    def test_an_old_mark_is_refreshed(self):
+        person = self.repos.users.by_login("engineer")
+        self.repos.users.mark_seen(person, now="2020-01-01T00:00:00+00:00")
+        self.assertTrue(self.repos.users.mark_seen(person))
+        fresh = self.repos.users.by_login("engineer")
+        self.assertNotEqual("2020-01-01T00:00:00+00:00", fresh.last_seen_at)
+
+    def test_the_directory_carries_it_too(self):
+        staff = self.client.get("/api/staff").json()["items"]
+        self.assertTrue(all("last_seen_at" in item for item in staff))
+
+
 class LibraryIsForTheChiefTests(WebTestCase):
     """Библиотека — общее хозяйство: правит её начальство.
 

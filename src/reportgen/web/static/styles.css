@@ -3411,6 +3411,49 @@ table.md-table th {
     cursor: pointer;
 }
 
+/* Снимок в переписке — сразу картинкой, как её и посылают. Ширина
+   ограничена: фотография в полный размер вытолкнула бы из окна и саму
+   переписку, и соседние сообщения. */
+.talk-photo {
+    display: block;
+    max-width: 320px;
+    margin-top: 4px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    line-height: 0;
+}
+
+.talk-photo img {
+    display: block;
+    width: 100%;
+    max-height: 260px;
+    object-fit: cover;
+    background: var(--field-2);
+}
+
+.talk-photo:hover img {
+    opacity: .92;
+}
+
+/* Картинка целиком поверх переписки. */
+.photo-view {
+    display: flex;
+    justify-content: center;
+    max-height: 72vh;
+}
+
+.photo-view img {
+    max-width: 100%;
+    max-height: 72vh;
+    object-fit: contain;
+}
+
+/* Вложение теперь ссылка, а не кнопка: подчёркивание от ссылки здесь
+   лишнее — плашка и так выглядит нажимаемой. */
+.talk-file {
+    text-decoration: none;
+}
+
 .talk-file:hover {
     border-color: var(--accent);
 }
@@ -5188,6 +5231,29 @@ table.grid tr.is-focus td {
     color: var(--link);
     text-decoration: underline;
     text-underline-offset: 2px;
+}
+
+/* «В сети» / «был в сети…» в карточке сотрудника. Зелёная точка — только
+   когда человек действительно за экраном: обещать доступность, когда её
+   нет, хуже, чем не обещать ничего. */
+.seen {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--fs-sm);
+    color: var(--muted);
+}
+
+.seen--online {
+    color: var(--ok);
+}
+
+.seen--online::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
 }
 
 /* Свёрнутое пояснение: заголовок строкой, содержимое — по щелчку.

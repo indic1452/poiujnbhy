@@ -1067,6 +1067,26 @@
         return fmtDateTime(value);
     }
 
+    /* «В сети» или «был в сети…».
+
+       Обычный вопрос отдела — писать человеку сейчас или он ушёл и прочтёт
+       завтра. Пока страница открыта, отметка обновляется сама, поэтому три
+       минуты без неё — это уже «не в сети»: браузер закрыт или человек
+       отошёл. Меньше брать нельзя: отметка пишется не чаще раза в минуту. */
+    const ONLINE_WITHIN_MS = 3 * 60 * 1000;
+
+    function lastSeen(value) {
+        if (!value) return { text: 'ещё не заходил', online: false };
+        const date = new Date(value.endsWith('Z') || value.includes('+')
+            ? value : value + 'Z');
+        if (isNaN(date.getTime())) return { text: '', online: false };
+        const ago = Date.now() - date.getTime();
+        if (ago < ONLINE_WITHIN_MS) return { text: 'в сети', online: true };
+        const minutes = Math.round(ago / 60000);
+        if (minutes < 60) return { text: 'был в сети ' + minutes + ' мин. назад', online: false };
+        return { text: 'был в сети ' + fmtWhen(date.toISOString()), online: false };
+    }
+
     /** Только часы и минуты: у реплики в переписке дата уже сказана выше. */
     function clockOf(value) {
         const date = new Date(value);
@@ -9184,7 +9204,13 @@
                         // И в реплике фамилия открывает карточку: собеседника
                         // ищут глазами там, где он написал.
                         personLink(message.user_id, message.author || 'кто-то')),
-                    h('div', { class: 'talk-msg-text' }, message.text || ''),
+                    // Файл без подписи приходит сообщением, у которого текст —
+                    // это имя файла. Печатать его строкой НАД самим файлом
+                    // значит написать «spektr.png» и показать под этим
+                    // spektr.png: подпись, которая ничего не добавляет.
+                    messageCaption(message)
+                        ? h('div', { class: 'talk-msg-text' }, messageCaption(message))
+                        : null,
                     (message.files || []).length
                         ? h('div', { class: 'talk-files' },
                             message.files.map((item) => talkFileRow(item)))
@@ -9272,19 +9298,74 @@
         if (wasDown) flow.scrollTop = flow.scrollHeight;
     }
 
-    /** Приложенный к сообщению файл: посмотреть, не скачивая. */
+    /** Подпись к сообщению: пусто, если это просто имя приложенного файла. */
+    function messageCaption(message) {
+        const text = (message.text || '').trim();
+        if (!text) return '';
+        const names = (message.files || []).map((item) => (item.name || '').trim());
+        return names.indexOf(text) === -1 ? text : '';
+    }
+
+    /* Приложенный к сообщению файл: щелчок — скачивание.
+
+       Раньше щелчок открывал окно предпросмотра. В переписке отдела ходят
+       чертежи, таблицы и архивы — половину из них показать в браузере
+       нечем, и человек вместо файла получал окно с ошибкой. Показывать
+       файл, который не показывается, незачем: в беседе его посылают, чтобы
+       открыть своей программой. Сервер и без того отдаёт вложение с
+       заголовком «attachment», атрибут download — на случай, если ссылку
+       откроют средним щелчком. */
     function talkFileRow(item) {
         const href = '/api/talks/' + talks.current + '/files/' + item.id;
-        return h('button', {
+        // Снимок экрана или фотография — показываем прямо в переписке. Их и
+        // посылают, чтобы посмотреть: «глянь, это тот же ствол?». Плашка с
+        // именем файла вместо картинки заставляла скачивать и открывать её
+        // своей программой ради одного взгляда.
+        if (PREVIEW_IMAGE.indexOf(fileExt(item.name)) !== -1) {
+            return h('a', {
+                class: 'talk-photo',
+                href: href,
+                title: 'Открыть ' + item.name + ' целиком',
+                onclick: (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openPhoto(item, href);
+                },
+            }, h('img', {
+                src: href + '?inline=1', alt: item.name, loading: 'lazy',
+            }));
+        }
+        return h('a', {
             class: 'talk-file',
-            title: 'Посмотреть ' + item.name,
-            onclick: (event) => {
-                event.stopPropagation();
-                openFilePreview(item, href, href + '/text');
-            },
+            href: href,
+            download: item.name || '',
+            title: 'Скачать ' + item.name,
+            onclick: (event) => event.stopPropagation(),
         }, iconGlyph('clip'),
             h('span', { class: 'talk-file-name' }, item.name),
             h('span', { class: 'small faint' }, fmtBytes(item.size)));
+    }
+
+    /* Картинка целиком — поверх переписки, как открывают фотографию.
+
+       Отдельно от openFilePreview: тому окну нужны вкладки, текст документа
+       и разбор форматов, а здесь нужна ровно картинка во весь экран и
+       кнопка «Скачать». */
+    function openPhoto(item, href) {
+        const dialog = openModal({
+            title: item.name,
+            body: h('div', { class: 'photo-view' },
+                h('img', { src: href + '?inline=1', alt: item.name })),
+            footer: [
+                h('a', { class: 'btn', href: href, download: item.name || '' },
+                    'Скачать'),
+                h('span', { class: 'spacer' }),
+                h('button', {
+                    class: 'btn btn--primary', onclick: () => dialog.close(),
+                }, 'Закрыть'),
+            ],
+        });
+        return dialog;
     }
 
     /* Кому писать. Список берём из сводки отдела: он доступен всем, в отличие
@@ -9467,9 +9548,17 @@
             body: [
                 h('div', { class: 'person-head' },
                     h('span', { class: 'avatar avatar--lg' }, initials(person.full_name)),
-                    h('div', { class: 'person-who' },
+                        h('div', { class: 'person-who' },
                         h('b', {}, person.short_name),
                         h('span', { class: 'muted' }, person.role_title),
+                        // Писать ему сейчас или он ушёл и прочтёт завтра —
+                        // это первое, что нужно знать, открыв карточку.
+                        (() => {
+                            const seen = lastSeen(person.last_seen_at);
+                            return seen.text ? h('span', {
+                                class: 'seen' + (seen.online ? ' seen--online' : ''),
+                            }, seen.text) : null;
+                        })(),
                         person.active ? null : h('span', { class: 'badge' }, 'отключён'))),
                 h('dl', { class: 'kv' }, rows.map((pair) => [
                     h('dt', {}, pair[0]),
