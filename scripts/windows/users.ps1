@@ -12,7 +12,8 @@
 .PARAMETER Role
     Должность: owner (создатель системы, полные права), head (начальник
     отдела), deputy (заместитель начальника отдела), lead (начальник группы),
-    senior (старший инженер отдела), engineer (инженер отдела).
+    senior (старший инженер отдела), engineer (инженер отдела),
+    guest (гость: только помощник, без истории и личного кабинета).
     По умолчанию owner — первым заводят именно его.
     Права администратора: owner, head, deputy, lead.
 .PARAMETER Name
@@ -35,7 +36,7 @@
 param(
     [string]$Add = '',
     [string]$Reset = '',
-    [ValidateSet('owner', 'head', 'deputy', 'lead', 'senior', 'engineer')]
+    [ValidateSet('owner', 'head', 'deputy', 'lead', 'senior', 'engineer', 'guest')]
     [string]$Role = 'owner',
     [string]$Name = '',
     [string]$Department = '',

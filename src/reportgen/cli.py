@@ -166,7 +166,10 @@ def cmd_serve(args: argparse.Namespace) -> int:
         settings.host = args.host
     if args.port:
         settings.port = args.port
-    print(f"веб-интерфейс: http://{settings.host}:{settings.port}")
+    # Схема — из настроек. Печатать http://, когда включён https, значит
+    # послать человека по адресу, который у него не откроется.
+    схема = "https" if getattr(settings, "https", False) else "http"
+    print(f"веб-интерфейс: {схема}://{settings.host}:{settings.port}")
     print(f"база данных:   {settings.db_path}")
     print(f"модель:        {settings.llm_model} ({settings.llm_base_url})")
     # Настройки, от которых система не падает, а работает вполсилы. На
@@ -479,6 +482,28 @@ def cmd_stats(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_paths(args: argparse.Namespace) -> int:
+    """Где лежат данные отдела: этим пользуются скрипты обслуживания.
+
+    Скрипт, помнящий пути сам, рано или поздно разойдётся с приложением —
+    и разойдётся молча. Пусть лучше спрашивает.
+    """
+    from .config import Settings                 # noqa: PLC0415
+
+    settings = Settings.load(args.config)
+    места = settings.storage()
+    if getattr(args, "json", False):
+        print(json.dumps({"data_dir": str(settings.data_dir), "places": места},
+                         ensure_ascii=False))
+        return 0
+    print("каталог данных: %s" % settings.data_dir)
+    for место in места:
+        отметка = "в копию" if место["в_копию"] else "       "
+        существует = "есть" if Path(место["путь"]).exists() else "нет "
+        print("  %s  %s  %-14s %s" % (отметка, существует, место["имя"], место["путь"]))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reportgen",
@@ -620,6 +645,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_stats = sub.add_parser("stats", help="метрики установки")
     p_stats.set_defaults(func=cmd_stats)
+
+    p_paths = sub.add_parser("paths", help="где лежат данные отдела")
+    p_paths.add_argument("--json", action="store_true", help="вывод для скриптов")
+    p_paths.set_defaults(func=cmd_paths)
 
     return parser
 

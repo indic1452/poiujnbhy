@@ -240,7 +240,20 @@ class Settings:
         raw: Dict[str, Any] = {}
         config_path = path or os.environ.get(f"{ENV_PREFIX}CONFIG")
         if config_path and Path(config_path).is_file():
-            raw.update(json.loads(Path(config_path).read_text(encoding="utf-8-sig")))
+            # Файл настроек правят руками, и лишняя запятая в нём — обычное
+            # дело. Английский traceback без имени файла в этом месте
+            # бесполезен: человеку нужно знать, ЧТО открыть и в какой строке
+            # искать.
+            try:
+                raw.update(json.loads(
+                    Path(config_path).read_text(encoding="utf-8-sig")))
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    "файл настроек %s испорчен: %s (строка %d, знак %d). "
+                    "Откройте его и проверьте запятые и кавычки — рядом с "
+                    "указанным местом." % (config_path, error.msg,
+                                           error.lineno, error.colno)
+                ) from error
 
         types = {f.name: f.type for f in fields(cls)}
         for name in types:
@@ -259,6 +272,43 @@ class Settings:
         for directory in (self.data_dir, self.library_dir, self.upload_dir, self.export_dir):
             Path(directory).mkdir(parents=True, exist_ok=True)
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+
+    def storage(self) -> "list[dict]":
+        """Где лежат данные отдела — списком, от самого приложения.
+
+        Отсюда берут перечень и резервное копирование, и проверка установки.
+        Раньше каждый скрипт помнил пути сам, и они разошлись: копия делалась
+        из C:\\reportgen\\data, даже когда данные лежали в другом месте, а
+        вложения писем, файлы переписки и личных карточек в неё не попадали
+        вовсе. Восстановление из такой копии показало бы письмо без
+        приложенных к нему файлов — и никто бы не заметил до того дня, когда
+        файл понадобится.
+
+        Признак «в копию» отделяет то, что нужно сохранить, от того, что
+        восстановится само.
+        """
+        корень = Path(self.data_dir)
+        места = [
+            {"имя": "reportgen.db", "путь": str(self.db_path), "папка": False,
+             "в_копию": True, "что": "база: письма, отчёты, люди, переписка"},
+            {"имя": "library", "путь": str(self.library_dir), "папка": True,
+             "в_копию": True, "что": "библиотека: исходные документы"},
+            {"имя": "uploads", "путь": str(self.upload_dir), "папка": True,
+             "в_копию": True, "что": "принятые интерфейсом файлы"},
+            {"имя": "exports", "путь": str(self.export_dir), "папка": True,
+             "в_копию": True, "что": "выгруженные отчёты"},
+        ]
+        for имя, что in (
+                ("reports", "отчёты, сданные файлом"),
+                ("case-files", "файлы, приложенные к письмам"),
+                ("talk-files", "файлы из переписки"),
+                ("person-files", "файлы личных карточек"),
+                ("tls", "свой сертификат: без корня обходить рабочие места заново")):
+            места.append({"имя": имя, "путь": str(корень / имя), "папка": True,
+                          "в_копию": True, "что": что})
+        места.append({"имя": "kesh", "путь": str(корень / "kesh"), "папка": True,
+                      "в_копию": False, "что": "кеш разбора: восстановится сам"})
+        return места
 
     def to_dict(self) -> Dict[str, Any]:
         return {k: (str(v) if isinstance(v, Path) else v) for k, v in asdict(self).items()}
@@ -334,4 +384,10 @@ def _coerce(name: str, value: Any, types: Dict[str, Any]) -> Any:
         return float(value)
     if "Path" in annotation:
         return None if value == "" else Path(value)
+    if "list" in annotation:
+        # Из переменной среды список приходит строкой. Отдать её как есть
+        # нельзя: строка перебирается по буквам, и «192.168.10.5» в
+        # сертификате превратилось бы в двенадцать имён по одному знаку.
+        return [item.strip() for item in value.replace(";", ",").split(",")
+                if item.strip()]
     return value

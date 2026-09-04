@@ -49,6 +49,7 @@ import zipfile
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Sequence, Tuple
 
+from ...packages import pip_hint
 from .. import registry
 from ..convert import (
     _PAGE_MARKER_RE,
@@ -129,7 +130,7 @@ TESSERACT_HINT = (
     "установке), каталог добавить в PATH"
 )
 
-PYMUPDF_HINT = "pip install pymupdf"
+PYMUPDF_HINT = pip_hint("pymupdf")
 
 #: Где искать tesseract на Windows, если его нет в PATH. Установщик по
 #: умолчанию кладёт программу именно сюда, а PATH правит не всегда.
@@ -741,12 +742,66 @@ def image_frame_count(path: Path) -> int:
     try:
         from PIL import Image  # noqa: PLC0415 — необязательная зависимость
     except ImportError:
-        return 1
+        # Без Pillow кадры не разделить, но СОСЧИТАТЬ их можно и своими
+        # силами. Молчать тут нельзя: сорокастраничный протокол уходил бы в
+        # библиотеку одной первой страницей, и по остальным тридцати девяти
+        # поиск ничего бы не нашёл — а человек об этом не узнал.
+        return _tiff_frames(path)
     try:
         with Image.open(path) as image:
             return max(1, int(getattr(image, "n_frames", 1) or 1))
     except Exception:  # noqa: BLE001 — битый файл разберёт основной путь
         return 1
+
+
+def _tiff_frames(path: Path) -> int:
+    """Сколько страниц в TIFF — по самому файлу, без сторонних пакетов.
+
+    TIFF устроен как цепочка каталогов: заголовок указывает на первый, каждый
+    каталог — на следующий. Пройти по цепочке и посчитать звенья хватает,
+    чтобы понять, одна страница в файле или сорок.
+    """
+    try:
+        with open(path, "rb") as поток:
+            заголовок = поток.read(8)
+            if len(заголовок) < 8:
+                return 1
+            if заголовок[:2] == b"II":
+                порядок = "little"
+            elif заголовок[:2] == b"MM":
+                порядок = "big"
+            else:
+                return 1                         # это не TIFF
+            if int.from_bytes(заголовок[2:4], порядок) != 42:
+                return 1                         # BigTIFF (43) тут не разбираем
+            смещение = int.from_bytes(заголовок[4:8], порядок)
+            страниц = 0
+            видели = set()
+            while смещение and смещение not in видели and страниц < 10_000:
+                видели.add(смещение)
+                поток.seek(смещение)
+                сколько_raw = поток.read(2)
+                if len(сколько_raw) < 2:
+                    break
+                записей = int.from_bytes(сколько_raw, порядок)
+                страниц += 1
+                поток.seek(смещение + 2 + записей * 12)
+                дальше = поток.read(4)
+                if len(дальше) < 4:
+                    break
+                смещение = int.from_bytes(дальше, порядок)
+            return max(1, страниц)
+    except OSError:                              # pragma: no cover — битый файл
+        return 1
+
+
+def _pillow_available() -> bool:
+    """Есть ли чем разделить многостраничный скан на страницы."""
+    try:
+        from PIL import Image  # noqa: PLC0415, F401 — только наличие
+    except ImportError:
+        return False
+    return True
 
 
 def _frame_to_png(path: Path, index: int) -> bytes | None:
@@ -809,6 +864,28 @@ def convert_image(path: Path) -> ConvertedDocument:
         result.warnings.append(note)
 
     if frames <= 1:
+        try:
+            raw = ocr_image(path, languages=DEFAULT_LANGUAGES)
+        except OcrError as error:
+            result.needs_ocr = True
+            result.warnings.append(str(error))
+            return result
+        body = ocr_text_to_markdown(raw)
+        if body:
+            result.text = f"{page_marker(1)}\n\n{body}"
+        result.meta["ocr_languages"] = resolve_languages(DEFAULT_LANGUAGES)[0]
+        result.title = _first_markdown_heading(body) or path.stem
+        _describe_ocr_quality(result, len(body.strip()))
+        return result
+
+    if not _pillow_available():
+        # Кадры сосчитаны, но разделить их нечем. Говорим прямо, что именно
+        # потеряно и чем это чинится: молчаливая потеря тридцати девяти
+        # страниц из сорока — худшее, что может сделать библиотека.
+        result.warnings.append(
+            f"в файле страниц: {frames}, распознана только первая. Для "
+            f"постраничного распознавания нужен пакет pillow — он есть в "
+            f"комплекте офлайн-установки (requirements-formats.txt)")
         try:
             raw = ocr_image(path, languages=DEFAULT_LANGUAGES)
         except OcrError as error:

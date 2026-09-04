@@ -330,7 +330,10 @@ def run(settings: Settings | None = None) -> None:  # pragma: no cover — то�
     try:
         import uvicorn
     except ImportError:
-        print("не установлен uvicorn: pip install -r requirements.txt", file=sys.stderr)
+        from ..packages import pip_hint       # noqa: PLC0415
+
+        print("не установлен uvicorn — веб-сервер не поднять. На этой машине: "
+              + pip_hint("\"uvicorn[standard]\""), file=sys.stderr)
         raise SystemExit(2) from None
 
     settings = settings or Settings.load()

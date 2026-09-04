@@ -102,10 +102,30 @@ def get_user(request: Request) -> User | None:
     return user
 
 
-def require_user(request: Request) -> User:
+def require_anyone(request: Request) -> User:
+    """Просто вошедший — включая гостя. Только для помощника.
+
+    Всё остальное закрыто по умолчанию: см. require_user ниже.
+    """
     user = get_user(request)
     if user is None:
         raise ServiceError("требуется вход в систему", 401)
+    return user
+
+
+def require_user(request: Request) -> User:
+    """Вошедший сотрудник отдела.
+
+    Гостя сюда не пускаем НАМЕРЕННО и именно здесь, а не в каждом маршруте по
+    отдельности: закрытым по умолчанию должно быть всё, а открытым — то
+    немногое, что гостю положено (помощник). Новый маршрут, написанный
+    завтра, окажется для гостя закрыт сам собой, и это правильный порядок:
+    забыть закрыть легко, забыть открыть — заметно сразу.
+    """
+    user = require_anyone(request)
+    if user.is_guest:
+        raise ServiceError(
+            "гостю доступен только помощник: вопрос-ответ по библиотеке", 403)
     return user
 
 

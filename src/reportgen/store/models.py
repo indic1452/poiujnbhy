@@ -22,8 +22,13 @@ from ..corpus import SEARCHABLE_STATUSES
 #: deputy   — заместитель начальника отдела;
 #: lead     — начальник группы;
 #: senior   — старший инженер отдела;
-#: engineer — инженер отдела.
-ROLES = ("owner", "head", "deputy", "lead", "senior", "engineer")
+#: engineer — инженер отдела;
+#: guest    — гость: только помощник, без личного кабинета и без истории.
+ROLES = ("owner", "head", "deputy", "lead", "senior", "engineer", "guest")
+
+#: Штатные должности отдела — все, кроме гостя. Гость в отделе не служит:
+#: ему открыт один помощник, и работу отдела он не ведёт.
+STAFF_ROLES = tuple(role for role in ROLES if role != "guest")
 
 ROLE_TITLES = {
     "owner": "Создатель системы",
@@ -32,6 +37,7 @@ ROLE_TITLES = {
     "lead": "Начальник группы",
     "senior": "Старший инженер отдела",
     "engineer": "Инженер отдела",
+    "guest": "Гость",
 }
 
 ROLE_NOTES = {
@@ -48,6 +54,9 @@ ROLE_NOTES = {
               "пополняет библиотеку.",
     "engineer": "Ведёт письма, готовит отчёты и сдаёт их на проверку, "
                 "пополняет библиотеку.",
+    "guest": "Только помощник: вопрос-ответ по библиотеке отдела. Переписка "
+             "не сохраняется и пропадает при выходе. Писем, расхода, "
+             "сообщений, библиотеки и личного кабинета гость не видит.",
 }
 
 #: Должности с правами администратора: заводят военнослужащих, удаляют документы,
@@ -56,7 +65,8 @@ ADMIN_ROLES = ("owner", "head", "deputy", "lead")
 
 #: Старшинство: больше — выше. Нужно, чтобы начальник группы не менял роль
 #: начальнику отдела, а заместитель — создателю.
-ROLE_RANK = {"owner": 50, "head": 40, "deputy": 30, "lead": 20, "senior": 10, "engineer": 0}
+ROLE_RANK = {"owner": 50, "head": 40, "deputy": 30, "lead": 20, "senior": 10,
+             "engineer": 0, "guest": -10}
 
 #: Как читать роли, оставшиеся от прежней версии. viewer был «только чтение»,
 #: а в штатном расписании компании такой должности нет — становится инженером.
@@ -242,8 +252,11 @@ class User:
 
     @property
     def can_edit(self) -> bool:
-        """Может вести письма и править отчёты. Это все штатные должности."""
-        return self.role in ROLES
+        """Может вести письма и править отчёты. Это все штатные должности.
+
+        Гость сюда не входит: у него открыт один помощник.
+        """
+        return self.role in STAFF_ROLES
 
     @property
     def is_admin(self) -> bool:
@@ -259,6 +272,11 @@ class User:
     def is_owner(self) -> bool:
         """Создатель системы: права без ограничений."""
         return self.role == "owner"
+
+    @property
+    def is_guest(self) -> bool:
+        """Гость: только помощник, без личного кабинета и без истории."""
+        return self.role == "guest"
 
     @property
     def rank(self) -> int:
@@ -313,6 +331,7 @@ class User:
             "approved_at": self.approved_at,
             "can_review": self.can_review,
             "is_owner": self.is_owner,
+            "is_guest": self.is_guest,
             "active": self.active,
             "created_at": self.created_at,
         }

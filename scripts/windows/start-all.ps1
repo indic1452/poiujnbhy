@@ -22,6 +22,30 @@ param(
 
 . "$PSScriptRoot\_common.ps1"
 
+# Проверяем то, без чего запуск заведомо не удастся. Раньше об этом узнавали
+# через пять минут ожидания — хотя знать было можно сразу.
+try {
+    $null = Get-LlamaServer
+} catch {
+    Write-Bad $_.Exception.Message
+    exit 1
+}
+if (Test-Path $script:Models) {
+    $модели = @(Get-ChildItem $script:Models -Filter *.gguf -Recurse -ErrorAction SilentlyContinue)
+    if (-not $модели.Count) {
+        Write-Bad "в $script:Models нет ни одного файла .gguf — модель не из чего запускать"
+        Write-Host 'Положите файл модели в этот каталог (см. docs\11-windows.md).'
+        exit 1
+    }
+} else {
+    Write-Bad "нет каталога моделей $script:Models"
+    exit 1
+}
+if (-not (Test-Path $script:Config)) {
+    Write-Bad "нет файла настроек $script:Config — сначала запустите .\01-install.ps1"
+    exit 1
+}
+
 Write-Step 'Основная модель (отдельное окно)'
 $llmArgs = @('-NoExit', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'start-llm.ps1'))
 if ($Model)   { $llmArgs += @('-Model', $Model) }
@@ -30,7 +54,7 @@ if ($CpuMoe)  { $llmArgs += @('-CpuMoe', $CpuMoe) }
 Start-Process powershell -ArgumentList $llmArgs
 
 Write-Step 'Ожидание готовности модели (первый запуск — до 2 минут)'
-if (Wait-Http 'http://127.0.0.1:8000/health' 300) {
+if (Wait-Http 'http://127.0.0.1:8000/health' 300 'llama-server') {
     Write-Ok 'модель отвечает'
 } else {
     Write-Bad 'модель не поднялась за 5 минут — посмотрите окно llama-server и logs\llm.log'

@@ -47,6 +47,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
+from ...packages import pip_hint
 from .. import registry
 from ..convert import ConvertedDocument, page_marker, _clean_line, _read_text
 
@@ -690,7 +691,7 @@ def convert_pptx(path: Path) -> ConvertedDocument:
     except ImportError:
         result.warnings.append(
             "для разбора презентаций нужен пакет python-pptx "
-            "(pip install python-pptx; в Windows — py -m pip install python-pptx); "
+            "(%s); " % pip_hint("python-pptx") +
             "в изолированном контуре ставится из локального зеркала"
         )
         return result
@@ -792,7 +793,7 @@ def convert_xlsx(path: Path) -> ConvertedDocument:
     except ImportError:
         result.warnings.append(
             "для разбора книг Excel нужен пакет openpyxl "
-            "(pip install openpyxl; в Windows — py -m pip install openpyxl); "
+            "(%s); " % pip_hint("openpyxl") +
             "в изолированном контуре ставится из локального зеркала"
         )
         return result
@@ -931,7 +932,7 @@ def convert_xls(path: Path) -> ConvertedDocument:
     except ImportError:
         result.warnings.append(
             "для разбора старых книг .xls нужен пакет xlrd "
-            "(pip install xlrd; в Windows — py -m pip install xlrd); "
+            "(%s); " % pip_hint("xlrd") +
             "современные .xlsx он не читает, это отдельный конвертер"
         )
         return result
@@ -1121,7 +1122,7 @@ registry.register(registry.ConverterSpec(
         registry.Requirement(
             "python",
             "pptx",
-            "pip install python-pptx; в Windows — py -m pip install python-pptx",
+            pip_hint("python-pptx"),
         ),
     ),
     note="презентации PowerPoint: слайд — раздел, таблицы и заметки докладчика",
@@ -1135,7 +1136,7 @@ registry.register(registry.ConverterSpec(
         registry.Requirement(
             "python",
             "openpyxl",
-            "pip install openpyxl; в Windows — py -m pip install openpyxl",
+            pip_hint("openpyxl"),
         ),
     ),
     note="книги Excel 2007 и новее: лист — раздел, значения формул вычисленные",
@@ -1149,8 +1150,7 @@ registry.register(registry.ConverterSpec(
         registry.Requirement(
             "python",
             "xlrd",
-            "pip install xlrd; в Windows — py -m pip install xlrd "
-            "(xlrd читает только старый двоичный .xls)",
+            pip_hint("xlrd") + " (xlrd читает только старый двоичный .xls)",
         ),
     ),
     note="книги Excel 97–2003 (двоичный .xls), выгрузки старых приборов",

@@ -2115,6 +2115,25 @@ class ChatRepo:
         with self.db.transaction() as connection:
             connection.execute("DELETE FROM chat_attachments WHERE id = ?", (attachment_id,))
 
+    def forget_user(self, user_id: int) -> int:
+        """Стереть все разговоры человека вместе с сообщениями и вложениями.
+
+        Нужно гостю: ему обещано, что переписка не сохраняется. Обещание
+        держится в двух местах — при входе и при выходе, — потому что уйти
+        можно и не нажимая «выйти»: просто закрыть окно.
+        """
+        with self.db.transaction() as connection:
+            строки = connection.execute(
+                "SELECT id FROM chats WHERE user_id = ?", (user_id,)).fetchall()
+            номера = [int(строка["id"]) for строка in строки]
+            for номер in номера:
+                connection.execute(
+                    "DELETE FROM chat_attachments WHERE chat_id = ?", (номер,))
+                connection.execute(
+                    "DELETE FROM chat_messages WHERE chat_id = ?", (номер,))
+            connection.execute("DELETE FROM chats WHERE user_id = ?", (user_id,))
+        return len(номера)
+
     def count_for_user(self, user_id: int, *, archived: bool = False) -> int:
         return int(self.db.scalar(
             "SELECT count(*) FROM chats WHERE user_id = ? AND archived = ?",

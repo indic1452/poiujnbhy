@@ -65,7 +65,15 @@ if (-not (Test-Path $script:Config)) {
 }
 Write-Ok "окружение и настройки на месте"
 
-$library = if ($Path) { $Path } else { Get-Setting 'library_dir' (Join-Path $script:Data 'library') }
+# Каталог библиотеки спрашиваем у приложения: в настройках его может не быть
+# вовсе (он выводится из data_dir), и запасной путь C:\reportgen\data\library
+# уводил в пустоту у каждого, кто перенёс данные на другой диск.
+if ($Path) {
+    $library = $Path
+} else {
+    $library = Get-DataPlace 'library'
+    if (-not $library) { $library = Get-Setting 'library_dir' (Join-Path $script:Data 'library') }
+}
 if (-not (Test-Path $library)) {
     Write-Bad "не найден каталог библиотеки: $library"
     exit 1

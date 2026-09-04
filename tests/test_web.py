@@ -3642,7 +3642,8 @@ class UserManagementTests(WebTestCase):
         self.assertTrue(data["items"])
         titles = {role["id"]: role for role in data["roles"]}
         self.assertEqual(
-            {"owner", "head", "deputy", "lead", "senior", "engineer"}, set(titles)
+            {"owner", "head", "deputy", "lead", "senior", "engineer", "guest"},
+            set(titles)
         )
         for role in data["roles"]:
             self.assertTrue(role["note"], f"у должности {role['id']} нет пояснения")
@@ -3650,7 +3651,8 @@ class UserManagementTests(WebTestCase):
         # Права администратора — до начальника группы включительно.
         self.assertTrue(all(titles[key]["is_admin"]
                             for key in ("owner", "head", "deputy", "lead")))
-        self.assertFalse(any(titles[key]["is_admin"] for key in ("senior", "engineer")))
+        self.assertFalse(any(titles[key]["is_admin"]
+                             for key in ("senior", "engineer", "guest")))
 
     def test_local_service_record_is_hidden(self):
         # Запись «local» — служебная, в списке личного состава ей не место.
@@ -5319,10 +5321,15 @@ class InterfaceCopyTests(unittest.TestCase):
         """Браузер показывает их только по https или на самой машине.
 
         Отдел работает по http на адрес в сети — на клиентских местах такого
-        окна нет вовсе, и делать вид, что настройка работает, нельзя.
+        окна нет вовсе, и делать вид, что настройка работает, нельзя. Но и
+        отправлять человека что-то устанавливать нельзя тоже: на рабочих
+        местах это запрещено. Значит, надо сказать, что срочное найдёт его и
+        без этого.
         """
         self.assertIn("function deskAllowed()", self.js)
-        self.assertIn("по https или на самой машине с сервером", self.js)
+        self.assertIn("Окно поверх других окон браузер показывает", self.js)
+        self.assertIn("ставить на эту машину", self.js)
+        self.assertIn("ВЫЗОВ В КАБИНЕТ", self.js)
 
     def test_the_tab_title_counts_what_is_unread(self):
         """Работает при любом браузере и любом адресе — видно в панели задач."""

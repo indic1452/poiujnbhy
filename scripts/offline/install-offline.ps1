@@ -41,6 +41,35 @@ function Fail($text) { Write-Host "  X   $text" -ForegroundColor Red; exit 1 }
 $script:Warnings = @()
 function Later($text) { $script:Warnings += $text; Warn $text }
 
+function Invoke-Native {
+    <#
+        Запустить внешнюю программу и вернуть её вывод, не оборвав установку.
+
+        Windows PowerShell 5.1 при $ErrorActionPreference = 'Stop' считает
+        ошибкой каждую строку, которую внешняя программа написала в поток
+        ошибок, — а «2>&1» отдаёт эти строки как ошибки. Из-за этого установка
+        обрывалась на git clone (git пишет туда «Cloning into...»), на
+        tesseract --list-langs (он пишет туда весь свой ответ) и на pip.
+        Обрывалась молча, до создания настроек и администратора.
+
+        Код возврата кладём в $script:NativeExit: $LASTEXITCODE после разбора
+        вывода уже не тот.
+    #>
+    param([string]$Path, [string[]]$Arguments = @())
+    $прежний = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $вывод = & $Path @Arguments 2>&1
+        $script:NativeExit = $LASTEXITCODE
+        return @($вывод | ForEach-Object { "$_" })
+    } catch {
+        $script:NativeExit = 1
+        return @("$($_.Exception.Message)")
+    } finally {
+        $ErrorActionPreference = $прежний
+    }
+}
+
 function Write-Utf8NoBom([string]$path, [string]$text) {
     # Windows PowerShell 5.1 на "-Encoding UTF8" пишет BOM. JSON с BOM читается
     # не всеми разборщиками, поэтому пишем через .NET явно без него.
@@ -270,7 +299,7 @@ if (Test-Path $tessSource) {
 
         $tesseract = Join-Path (Split-Path $targetDir -Parent) 'tesseract.exe'
         if (Test-Path $tesseract) {
-            $languages = & $tesseract --list-langs 2>&1
+            $languages = Invoke-Native $tesseract @('--list-langs')
             if ($languages -match '(?m)^rus$') { Ok 'tesseract видит русский язык' }
             else { Later 'tesseract не видит русский язык — проверьте каталог tessdata' }
         }
@@ -298,8 +327,8 @@ if ((Test-Path (Join-Path $app '.git')) -and $hasGit) {
     # Уже развёрнуто из бандла — обновляем через git, история сохраняется.
     Push-Location $app
     try {
-        & git pull $gitBundle 2>&1 | Out-Null
-        if ($LASTEXITCODE -eq 0) { Ok 'код обновлён из git-бандла, история сохранена' }
+        $null = Invoke-Native 'git' @('pull', $gitBundle)
+        if ($script:NativeExit -eq 0) { Ok 'код обновлён из git-бандла, история сохранена' }
         else { Later 'git pull из бандла не прошёл — обновите код вручную' }
     } finally { Pop-Location }
 } elseif ($hasGit -and (Test-Path $gitBundle) -and -not (Test-Path (Join-Path $app 'src'))) {
@@ -308,8 +337,8 @@ if ((Test-Path (Join-Path $app '.git')) -and $hasGit) {
     $branch = 'main'
     $branchFile = Join-Path $bundle 'code\BRANCH.txt'
     if (Test-Path $branchFile) { $branch = (Get-Content $branchFile -Raw).Trim() }
-    & git clone --branch $branch $gitBundle $app 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
+    $null = Invoke-Native 'git' @('clone', '--branch', $branch, $gitBundle, $app)
+    if ($script:NativeExit -eq 0) {
         Ok "код склонирован из git-бандла (ветка $branch) — обновления ставятся командой git pull"
     } else {
         Warn 'клонирование из бандла не удалось, разворачиваю копированием'
@@ -403,7 +432,9 @@ $venvPython = Join-Path $venv 'Scripts\python.exe'
 if (-not (Test-Path $venvPython)) { Fail "не создано окружение $venv" }
 $wheels = Join-Path $bundle 'wheels'
 
-& $venvPython -m pip install --no-index --find-links $wheels --upgrade pip setuptools wheel 2>&1 | Out-Null
+$null = Invoke-Native $venvPython @('-m', 'pip', 'install', '--no-index',
+                                    '--find-links', $wheels, '--upgrade',
+                                    'pip', 'setuptools', 'wheel')
 & $venvPython -m pip install --no-index --find-links $wheels -r (Join-Path $app 'requirements.txt')
 if ($LASTEXITCODE -ne 0) { Fail 'не удалось поставить зависимости из локальных колёс' }
 $formats = Join-Path $app 'requirements-formats.txt'
@@ -419,8 +450,9 @@ if (Test-Path $formats) {
 # модели. Ему нужен httpx: без него три модуля падают на импорте.
 $dev = Join-Path $app 'requirements-dev.txt'
 if (Test-Path $dev) {
-    & $venvPython -m pip install --no-index --find-links $wheels -r $dev 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { Later 'пакеты для прогона тестов не встали — проверить установку тестами не выйдет' }
+    $null = Invoke-Native $venvPython @('-m', 'pip', 'install', '--no-index',
+                                        '--find-links', $wheels, '-r', $dev)
+    if ($script:NativeExit -ne 0) { Later 'пакеты для прогона тестов не встали — проверить установку тестами не выйдет' }
     else { Ok 'пакеты для прогона тестов установлены' }
 }
 & $venvPython -c "import fastapi, uvicorn, docx, pymupdf, numpy; print('пакеты на месте')"
@@ -466,14 +498,23 @@ Step 'Проверка установки'
 if ($LASTEXITCODE -ne 0) { Later 'reportgen formats завершился с ошибкой' }
 
 Step 'Администратор'
-$users = & $venvPython -m reportgen users 2>&1
-if ($LASTEXITCODE -ne 0 -or -not ($users | Where-Object { $_ -match '\S' })) {
+$users = Invoke-Native $venvPython @('-m', 'reportgen', 'users')
+if ($script:NativeExit -ne 0 -or -not ($users | Where-Object { $_ -match '\S' })) {
     if ($Unattended) {
-        Note 'создайте администратора: reportgen useradd --login admin --role owner'
+        # Это именно замечание, а не примечание: без администратора в систему
+        # не войти никому, и «установка завершена без замечаний» было бы
+        # неправдой ровно в том месте, где она важнее всего.
+        Later ('администратор не заведён — войти в систему пока нельзя. Создайте его: ' +
+               '"' + $venvPython + '" -m reportgen useradd --login admin --role owner')
     } else {
         Write-Host 'Создайте администратора (пароль не короче 8 символов):' -ForegroundColor Yellow
         $login = Read-Host 'Логин'
-        if ($login) { & $venvPython -m reportgen useradd --login $login --role owner }
+        if ($login) {
+            & $venvPython -m reportgen useradd --login $login --role owner
+            if ($LASTEXITCODE -ne 0) { Later 'администратор не заведён — войти в систему пока нельзя' }
+        } else {
+            Later 'администратор не заведён — войти в систему пока нельзя'
+        }
     }
 } else {
     Ok 'пользователи уже заведены'

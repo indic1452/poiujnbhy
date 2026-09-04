@@ -41,7 +41,10 @@ if ($free -lt 60) { Write-Warn2 "на диске ${letter}: свободно $fr
 
 Write-Step 'Python'
 try {
-    $version = (& python -V 2>&1) -join ' '
+    $прежний = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $version = (& python -V 2>&1) -join ' ' } finally { $ErrorActionPreference = $прежний }
+    if (-not $version) { throw 'python не отвечает' }
     Write-Ok $version
     $numbers = [version](($version -replace '[^\d.]', '').Trim('.'))
     if ($numbers.Major -lt 3 -or ($numbers.Major -eq 3 -and $numbers.Minor -lt 11)) {
@@ -49,7 +52,19 @@ try {
         $problems++
     }
 } catch {
-    Write-Bad 'python не найден в PATH — установите Python 3.11+ с python.org, отметив "Add python.exe to PATH"'
+    Write-Bad 'python не найден в PATH'
+    # На машине отдела интернета нет, и посылать за установщиком на python.org
+    # бессмысленно: он лежит в комплекте офлайн-установки.
+    $комплект = @('D:\reportgen-offline\tools', 'E:\reportgen-offline\tools',
+                  (Join-Path $script:Base 'reportgen-offline\tools')) |
+        Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($комплект) {
+        Write-Host "     установщик Python лежит в комплекте: $комплект"
+        Write-Host '     поставьте его, отметив «Add python.exe to PATH», и запустите проверку снова'
+    } else {
+        Write-Host '     установщик Python есть в комплекте офлайн-установки (папка tools)'
+        Write-Host '     на машине с интернетом его берут с python.org, отметив «Add python.exe to PATH»'
+    }
     $problems++
 }
 
@@ -81,7 +96,19 @@ foreach ($port in 8000, 8001, 8002, 8080) {
 
 Write-Host ''
 if ($problems -eq 0) {
-    Write-Host 'Критичных проблем нет. Следующий шаг: .\01-install.ps1' -ForegroundColor Green
+    Write-Host 'Критичных проблем нет.' -ForegroundColor Green
+    # Без ключа -Wheels установка пойдёт в PyPI и на изолированной машине
+    # встанет по таймауту. Называем сразу ту команду, которая сработает.
+    $колёса = @('D:\reportgen-offline\wheels', 'E:\reportgen-offline\wheels',
+                (Join-Path $script:Base 'reportgen-offline\wheels')) |
+        Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($колёса) {
+        Write-Host "Следующий шаг: .\01-install.ps1 -Wheels $колёса"
+    } else {
+        Write-Host 'Следующий шаг: .\01-install.ps1'
+        Write-Host '  на машине без интернета — с каталогом колёс из комплекта:'
+        Write-Host '  .\01-install.ps1 -Wheels D:\reportgen-offline\wheels'
+    }
 } else {
     Write-Host "Найдено критичных проблем: $problems. Исправьте и запустите проверку снова." -ForegroundColor Red
     exit 1

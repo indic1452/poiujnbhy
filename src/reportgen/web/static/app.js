@@ -684,6 +684,18 @@
         return !!state.user && state.user.is_admin === true;
     }
 
+    /* Гость: ему открыт один помощник.
+
+       Переписка гостя не сохраняется — она стирается на сервере и при входе,
+       и при выходе. Личного кабинета у гостя нет: заполнять объективку и
+       телефоны тому, кого в отделе нет, незачем. Разделы отдела гостю не
+       показываются вовсе — дверь, которая не открывается, хуже отсутствия
+       двери; сервер их всё равно закрыл бы, но человек не должен упираться
+       в отказ, чтобы это узнать. */
+    function isGuest() {
+        return !!state.user && state.user.is_guest === true;
+    }
+
     /** Может ли этот человек проверять отчёты: начальник отдела или зам.
      *
      * Это не то же самое, что права администратора: начальник группы заводит
@@ -904,6 +916,7 @@
         clear(nav);
         SECTIONS.forEach((section) => {
             if (section.adminOnly && !isAdmin()) return;
+            if (isGuest() && section.route !== 'chat') return;
             const link = h('a', {
                 href: section.href,
                 dataset: { route: section.route },
@@ -1122,7 +1135,72 @@
 
     function paintTitle(count) {
         if (!titleBase) titleBase = document.title || brandShort();
+        // Пока мигает срочное, заголовок держит тревога: обычный счётчик
+        // вернётся сам, когда человек прочтёт.
+        if (alarm.timer) return;
         document.title = count > 0 ? '(' + count + ') ' + titleBase : titleBase;
+    }
+
+    /* Срочное, когда окно свёрнуто.
+
+       Окно уведомления Windows браузер показывает только защищённой
+       странице — https или адрес самой машины. Отдел работает по http на
+       адрес в сети, и на рабочих местах такого окна нет вовсе. Значит,
+       достучаться надо тем, что работает ВЕЗДЕ и всегда:
+
+       * заголовок вкладки. Свёрнутое окно показывает его в панели задач, и
+         мигающая надпись «ВЫЗОВ В КАБИНЕТ» видна там, не разворачивая;
+       * звук. Он играет и при свёрнутом окне — лишь бы вкладка была открыта.
+         Один сигнал можно прослушать, поэтому срочное повторяется, пока
+         человек не вернётся к окну, но не больше десятка раз: сигнализация,
+         которая воет вечно, кончается выключенным звуком.
+
+       Оба способа не требуют ни https, ни разрешений, ни установки чего бы
+       то ни было на рабочем месте. */
+    const ALARM_BLINK_MS = 1100;
+    const ALARM_SOUND_EVERY = 8;             // тактов между сигналами
+    const ALARM_MAX_SOUNDS = 10;
+
+    const alarm = { timer: null, text: '', ticks: 0, sounds: 0 };
+
+    function startAlarm(text) {
+        stopAlarm();
+        if (!titleBase) titleBase = document.title || brandShort();
+        alarm.text = String(text || 'СРОЧНОЕ').toUpperCase();
+        alarm.ticks = 0;
+        alarm.sounds = 0;
+        playAlert();
+        alarm.sounds += 1;
+        alarm.timer = setInterval(() => {
+            // Человек вернулся к окну — он уже видит карточку, дальше выть
+            // незачем.
+            if (!document.hidden) {
+                stopAlarm();
+                paintTitle(notices.unseen);
+                return;
+            }
+            alarm.ticks += 1;
+            document.title = (alarm.ticks % 2)
+                ? '‼ ' + alarm.text
+                : titleBase;
+            if (alarm.ticks % ALARM_SOUND_EVERY === 0
+                    && alarm.sounds < ALARM_MAX_SOUNDS) {
+                alarm.sounds += 1;
+                playAlert();
+            }
+            if (alarm.sounds >= ALARM_MAX_SOUNDS
+                    && alarm.ticks > ALARM_SOUND_EVERY * ALARM_MAX_SOUNDS) {
+                stopAlarm();
+                paintTitle(notices.unseen);
+            }
+        }, ALARM_BLINK_MS);
+    }
+
+    function stopAlarm() {
+        if (alarm.timer) clearInterval(alarm.timer);
+        alarm.timer = null;
+        alarm.ticks = 0;
+        alarm.sounds = 0;
     }
 
     function playAlert() {
@@ -1246,8 +1324,33 @@
         // вкладки видно прямо в панели задач.
         if (document.hidden) arrived.slice(0, 3).forEach((item) => showDesk(item));
         const newest = fresh.length ? fresh[0].id : 0;
-        if (newest && newest > notices.seenLoud) playAlert();
+        if (newest && newest > notices.seenLoud) {
+            // Окно свёрнуто — поднимаем тревогу заголовком и повторным
+            // сигналом: это работает по любому адресу, без https. Окно на
+            // виду — довольно одного сигнала, человек и так смотрит.
+            if (document.hidden) startAlarm(alarmWord(fresh[0]));
+            else playAlert();
+        }
         if (newest > notices.seenLoud) notices.seenLoud = newest;
+    }
+
+    /* Что мигает в панели задач.
+
+       Место там узкое, а взгляд по нему скользит мельком, поэтому первое
+       слово должно говорить, ЧТО случилось: «ВЫЗОВ» или «ОТЧЁТ ВЕРНУЛИ».
+       Кто вызывает — вторым, если помещается: «ВЫЗОВ: НИКИТИН В. П.» человек
+       понимает целиком, не разворачивая окна. */
+    function alarmWord(item) {
+        const title = String((item && item.title) || '');
+        const низом = title.toLowerCase();
+        if (низом.indexOf('вызыва') !== -1 || низом.indexOf('кабинет') !== -1) {
+            const кто = title.replace(/^[Вв]ас вызывает\s*/, '').trim();
+            return кто ? 'ВЫЗОВ: ' + кто : 'ВЫЗОВ В КАБИНЕТ';
+        }
+        if (низом.indexOf('доработ') !== -1 || низом.indexOf('вернул') !== -1) {
+            return 'ОТЧЁТ ВЕРНУЛИ';
+        }
+        return title || 'Срочное';
     }
 
     /* Карточка пришедшего уведомления. Всплывает над колокольчиком и уходит
@@ -1493,16 +1596,15 @@
                             ? 'Когда окно свёрнуто, уведомление покажет сам '
                               + 'Windows. Браузер спросит разрешение один раз.'
                             // Сказать «нельзя» мало: человек уходит ни с чем.
-                            // Выход есть, он в одну команду, и назвать её надо
-                            // здесь — искать по документам никто не пойдёт.
-                            : 'Этот браузер показывает такие уведомления только '
-                              + 'по https или на самой машине с сервером. У вас '
-                              + 'открыт обычный адрес в сети — окна не будет. '
-                              + 'Включается это на сервере одной командой: '
-                              + 'scripts\\windows\\setup-https.ps1, после неё '
-                              + 'систему открывают по https, и переключатель '
-                              + 'заработает. Пока так — число непрочитанных '
-                              + 'видно в заголовке вкладки, прямо в панели задач.'))),
+                            // Говорим, что работает и без этого, — а работает
+                            // главное.
+                            : 'Окно поверх других окон браузер показывает '
+                              + 'только по https. У вас обычный адрес в сети — '
+                              + 'такого окна не будет, и ставить на эту машину '
+                              + 'ничего не нужно: срочное всё равно вас найдёт. '
+                              + 'При свёрнутом окне в панели задач мигает '
+                              + '«‼ ВЫЗОВ В КАБИНЕТ», и сигнал повторяется, '
+                              + 'пока вы не вернётесь к окну.'))),
                 h('div', { class: 'card-title' }, 'Что приходит'),
                 h('div', { class: 'notice-kinds' }, loud.map((pair) =>
                     h('div', { class: 'notice-kind' },
@@ -1513,6 +1615,12 @@
                 h('div', { class: 'small muted' },
                     'Звонить по каждому поводу — верный способ, чтобы звук '
                     + 'выключили насовсем. Поэтому громких всего два.'),
+                h('div', { class: 'small muted' },
+                    'Громкое при свёрнутом окне мигает в панели задач и '
+                    + 'повторяет сигнал до десяти раз, пока вы не вернётесь к '
+                    + 'окну. Это работает по любому адресу, ничего не требует '
+                    + 'ни от браузера, ни от вашей машины и не просит ничего '
+                    + 'устанавливать.'),
             ],
             footer: [
                 h('button', {
@@ -1589,7 +1697,10 @@
             }
         }, NOTICE_POLL_MS);
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) pollNotices(true);
+            if (document.hidden) return;
+            stopAlarm();
+            paintTitle(notices.unseen);
+            pollNotices(true);
         });
     }
 
@@ -1612,6 +1723,7 @@
     function cmdSections() {
         return SECTIONS
             .filter((section) => !section.adminOnly || isAdmin())
+            .filter((section) => !isGuest() || section.route === 'chat')
             .map((section) => ({
                 kind: 'Раздел', title: section.title, note: '',
                 href: section.href, icon: section.icon,
@@ -1841,8 +1953,16 @@
 
         buildNav();
         wakeEmblem();
-        startNotices();
-        paintBell();
+        // Уведомления гостю не приходят: писем, отчётов и вызовов в кабинет
+        // у него нет. Колокол без содержимого — обещание, которое не
+        // выполняется.
+        if (!isGuest()) {
+            startNotices();
+            paintBell();
+        } else {
+            const bell = $('#bell');
+            if (bell) bell.hidden = true;
+        }
         armPalette();
 
         const chip = $('#user-chip');
@@ -1853,9 +1973,19 @@
                 || state.user.login;
             $('#user-name').textContent = name;
             $('#user-initials').textContent = initials(name);
-            $('#user-chip').title = (state.user.full_name || name)
-                + ' — личный кабинет';
             $('#user-role').textContent = roleLabel(state.user.role);
+            if (isGuest()) {
+                // Гостю личный кабинет не открывается: заводить объективку и
+                // телефоны тому, кого в отделе нет, незачем. Ссылку убираем
+                // совсем, а не делаем неработающей.
+                chip.removeAttribute('href');
+                chip.classList.add('user-chip--flat');
+                chip.title = 'Гостевой вход: переписка с помощником не сохраняется';
+            } else {
+                chip.setAttribute('href', '#/me');
+                chip.classList.remove('user-chip--flat');
+                chip.title = (state.user.full_name || name) + ' — личный кабинет';
+            }
         } else {
             chip.hidden = true;
         }
@@ -1997,6 +2127,13 @@
         // не трогаем: ответ дописывается в фоне и ждёт возвращения.
         detachChat();
         stopTalkPoll();
+        // Гостю открыт один помощник. Забрёл по ссылке в другой раздел —
+        // возвращаем к помощнику, не показывая отказ: он ничего не сделал
+        // не так.
+        if (isGuest() && route.name !== 'chat') {
+            location.hash = '#/chat';
+            return;
+        }
         state.route = route;
         setActiveNav(route.name);
         const view = $('#view');
@@ -8496,7 +8633,17 @@
         chat.nodes.bench = bench;
         chat.nodes.switcher = switcher;
         append(bench, [buildChatListPanel(), buildTalkPanel(), buildChatSidePanel()]);
-        append(screen, [switcher, bench]);
+        // Гостю говорим прямо, что разговор не сохранится. Узнать об этом
+        // после того, как закрыл окно, — плохой способ узнать.
+        append(screen, [
+            isGuest()
+                ? h('div', { class: 'guest-note' },
+                    h('b', {}, 'Гостевой вход. '),
+                    'Разговор с помощником не сохраняется: он пропадёт при '
+                    + 'выходе и при следующем входе. Нужное перенесите себе '
+                    + 'сразу.')
+                : null,
+            switcher, bench]);
         return screen;
     }
 

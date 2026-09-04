@@ -734,7 +734,16 @@ class RegistryTest(unittest.TestCase):
                 self.assertEqual(spec.name, name)
 
     def test_requirements_carry_install_hints(self):
-        """На машине заказчика пакетов может не быть — подсказка обязана быть внятной."""
+        """На машине заказчика пакетов может не быть — подсказка обязана работать.
+
+        Прежняя подсказка звучала «pip install openpyxl; в Windows — py -m pip
+        install openpyxl» и была негодной дважды: интернета в контуре нет, а
+        py — системный запускатель, и пакет уехал бы мимо окружения, в котором
+        работает приложение. Теперь называется тот самый интерпретатор и
+        установка без сети.
+        """
+        import sys
+
         for name, package in (("pptx", "pptx"), ("xlsx", "openpyxl"), ("xls", "xlrd")):
             with self.subTest(name=name):
                 spec = next(item for item in registry.all_specs() if item.name == name)
@@ -743,7 +752,12 @@ class RegistryTest(unittest.TestCase):
                 )
                 self.assertEqual(requirement.kind, "python")
                 self.assertIn("pip install", requirement.hint)
-                self.assertIn("Windows", requirement.hint)
+                self.assertIn("--no-index", requirement.hint,
+                              "подсказка уводит в интернет, которого нет")
+                self.assertIn(sys.executable, requirement.hint,
+                              "подсказка не называет интерпретатор приложения")
+                self.assertNotIn("py -m pip", requirement.hint,
+                                 "py — другой интерпретатор: пакет уедет мимо окружения")
                 self.assertTrue(spec.note)
 
     def test_csv_needs_nothing_extra(self):

@@ -19,6 +19,7 @@ from typing import Any, Dict, Iterable
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
+from ..packages import pip_hint
 from ..corpus import DOC_TYPES
 from ..domains import registry as domain_registry
 from ..store.models import (
@@ -52,8 +53,9 @@ from ..store.models import (
     User,
     short_name,
 )
-from .auth import (COOKIE_NAME, get_user, require_admin, require_editor,
-                   require_owner, require_reviewer, require_user)
+from .auth import (COOKIE_NAME, get_user, require_admin, require_anyone,
+                   require_editor, require_owner, require_reviewer,
+                   require_user)
 from .pages import PageRenderError, is_renderable, page_count, render_page
 from .service import CARD_LIMITS, ServiceError
 
@@ -275,6 +277,11 @@ def login(request: Request, response: Response) -> Dict[str, Any]:
             "или его заместителю", 403)
 
     throttle.success(key)
+    # Гостю обещано, что переписка не сохраняется. Стираем её и на входе:
+    # уйти можно и не нажимая «выйти» — просто закрыв окно, — и тогда
+    # прошлый разговор ждал бы следующего гостя.
+    if user.is_guest:
+        repos.chats.forget_user(user.id)
     token = repos.sessions.create(
         user.id, settings.session_ttl_hours, request.headers.get("user-agent", "")
     )
@@ -338,8 +345,12 @@ def register(request: Request) -> Dict[str, Any]:
 @router.post("/auth/logout")
 def logout(request: Request, response: Response) -> Dict[str, Any]:
     token = request.cookies.get(COOKIE_NAME)
+    уходит = get_user(request)
+    repos = _repos(request)
+    if уходит is not None and уходит.is_guest:
+        repos.chats.forget_user(уходит.id)
     if token:
-        _repos(request).sessions.delete(token)
+        repos.sessions.delete(token)
     response.delete_cookie(COOKIE_NAME, path="/")
     return {"ok": True}
 
@@ -361,7 +372,7 @@ def config(request: Request) -> Dict[str, Any]:
     берёт отдельным маршрутом, — а состав шаблонов, перечень направлений
     работы и адрес модели постороннему знать незачем.
     """
-    require_user(request)
+    require_anyone(request)
     settings = _settings(request)
     service = _service(request)
     outlines = []
@@ -1355,8 +1366,10 @@ def export_docx(request: Request, report_id: int) -> FileResponse:
         from ..export.docx import export_report  # noqa: PLC0415
     except ImportError as error:
         raise ServiceError(
-            "экспорт в DOCX недоступен: не установлен python-docx "
-            "(pip install -r requirements.txt)", 501,
+            "экспорт в DOCX недоступен: не установлен python-docx. Отчёт "
+            "можно забрать в виде Markdown. Чтобы вернуть выгрузку в DOCX, "
+            "администратору нужно выполнить на сервере: "
+            + pip_hint("python-docx"), 501,
         ) from error
 
     settings.ensure_dirs()
@@ -1367,6 +1380,7 @@ def export_docx(request: Request, report_id: int) -> FileResponse:
             case_id=case.case_id, incoming_no=case.incoming_no,
             outgoing_no=case.outgoing_no, status=report.status,
             template=settings.docx_template,
+            note=getattr(settings, "report_footer", ""),
         )
     except ImportError as error:
         # MissingDependencyError из export.docx — пакет не установлен.
@@ -1856,14 +1870,14 @@ def set_document_domain(request: Request, doc_id: str) -> Dict[str, Any]:
 
 @router.get("/chats")
 def list_chats(request: Request, archived: bool = False) -> Dict[str, Any]:
-    user = require_user(request)
+    user = require_anyone(request)
     chats = _assistant(request).list_chats(user, archived=archived)
     return {"items": [chat.to_dict() for chat in chats]}
 
 
 @router.post("/chats")
 def create_chat(request: Request) -> Dict[str, Any]:
-    user = require_user(request)
+    user = require_anyone(request)
     payload = getattr(request.state, "json_body", None) or {}
     domain = str(payload.get("domain", "")).strip()
     if not _domains(request).is_known(domain):
@@ -1880,7 +1894,7 @@ def create_chat(request: Request) -> Dict[str, Any]:
 
 @router.get("/chats/{chat_id}")
 def get_chat(request: Request, chat_id: int) -> Dict[str, Any]:
-    user = require_user(request)
+    user = require_anyone(request)
     assistant = _assistant(request)
     chat = assistant.get_chat(user, chat_id)
     repos = _repos(request)
@@ -1895,7 +1909,7 @@ def get_chat(request: Request, chat_id: int) -> Dict[str, Any]:
 
 @router.patch("/chats/{chat_id}")
 def update_chat(request: Request, chat_id: int) -> Dict[str, Any]:
-    user = require_user(request)
+    user = require_anyone(request)
     payload = _body(request)
     assistant = _assistant(request)
     if "title" in payload:
@@ -1914,14 +1928,14 @@ def update_chat(request: Request, chat_id: int) -> Dict[str, Any]:
 
 @router.delete("/chats/{chat_id}")
 def delete_chat(request: Request, chat_id: int) -> Dict[str, Any]:
-    user = require_user(request)
+    user = require_anyone(request)
     _assistant(request).delete(user, chat_id)
     return {"ok": True}
 
 
 @router.post("/chats/{chat_id}/ask")
 def ask(request: Request, chat_id: int) -> Dict[str, Any]:
-    user = require_user(request)
+    user = require_anyone(request)
     payload = _body(request)
     text = str(payload.get("text", ""))
     return _assistant(request).ask(user, chat_id, text)
@@ -1930,7 +1944,7 @@ def ask(request: Request, chat_id: int) -> Dict[str, Any]:
 @router.post("/chats/{chat_id}/stream")
 def ask_stream(request: Request, chat_id: int) -> StreamingResponse:
     """Потоковый ответ: события SSE — вопрос, источники, куски текста, итог."""
-    user = require_user(request)
+    user = require_anyone(request)
     payload = _body(request)
     text = str(payload.get("text", ""))
     assistant = _assistant(request)

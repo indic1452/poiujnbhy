@@ -44,6 +44,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
+from ..packages import pip_hint
+
 __all__ = [
     "DRAFT_NOTICE",
     "ExportOptions",
@@ -461,9 +463,9 @@ def _docx_api() -> _DocxApi:
     except ImportError as error:
         raise MissingDependencyError(
             "экспорт в DOCX недоступен: не установлен пакет python-docx. "
-            "Установите его в контуре ('pip install python-docx' из локального "
-            "зеркала пакетов) и повторите экспорт; Markdown-версия отчёта "
-            "доступна без этого пакета."
+            "Отчёт можно забрать в виде Markdown — эта кнопка работает без "
+            "него. Чтобы вернуть выгрузку в DOCX, администратору системы "
+            "нужно выполнить на сервере: " + pip_hint("python-docx")
         ) from error
     return _DocxApi(
         Document=Document,
@@ -859,7 +861,8 @@ def is_draft(status: str) -> bool:
     return str(status).strip().lower() not in APPROVED_STATUSES
 
 
-def footer_for(case_id: str, incoming_no: str = "", outgoing_no: str = "") -> str:
+def footer_for(case_id: str, incoming_no: str = "", outgoing_no: str = "",
+               note: str = "") -> str:
     """Подпись в нижнем колонтитуле документа.
 
     Документ уходит адресату, а не остаётся в системе. В колонтитуле должны
@@ -877,7 +880,14 @@ def footer_for(case_id: str, incoming_no: str = "", outgoing_no: str = "") -> st
         parts.append(f"на вх. {incoming_no}")
     if not parts and case_id:
         parts.append(f"по обращению {case_id}")
-    return "Технический отчёт " + " ".join(parts) if parts else "Технический отчёт"
+    строка = "Технический отчёт " + " ".join(parts) if parts else "Технический отчёт"
+    # Приписка отдела из настроек (report_footer). Настройка была в образце
+    # настроек и в документации, но не читалась никем: отдел вписывал туда
+    # свою строку и не находил её в выгруженном отчёте.
+    note = (note or "").strip()
+    if note:
+        строка = f"{строка} · {note}"
+    return строка
 
 
 def export_report(
@@ -889,6 +899,7 @@ def export_report(
     outgoing_no: str = "",
     status: str = "draft",
     template: str | Path | None = None,
+    note: str = "",
 ) -> Path:
     """Выгрузка отчёта одной строкой — обёртка для веб-слоя и CLI.
 
@@ -899,6 +910,6 @@ def export_report(
     options = ExportOptions(
         template=Path(template) if template else None,
         draft=is_draft(status),
-        footer_text=footer_for(case_id, incoming_no, outgoing_no),
+        footer_text=footer_for(case_id, incoming_no, outgoing_no, note),
     )
     return markdown_to_docx(markdown, path, options)

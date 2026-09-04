@@ -52,6 +52,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Sequence, Tuple
 
+from ...packages import pip_hint
 from .. import registry
 from ..convert import ConvertedDocument, _clean_line, _read_text, page_marker
 
@@ -122,7 +123,7 @@ _NO_SOFFICE_WARNING = (
     "старый формат разбирается через LibreOffice, а он не найден: " + _SOFFICE_HINT
 )
 
-_STRIPRTF_HINT = "pip install striprtf; в Windows — py -m pip install striprtf"
+_STRIPRTF_HINT = pip_hint("striprtf")
 
 #: Кэш поиска: soffice ищется по PATH и по десятку каталогов, а спрашивают о
 #: нём при каждом обращении к реестру форматов.
@@ -242,16 +243,16 @@ _SOFFICE_REQUIRED = registry.Requirement(
     "binary", "soffice", _SOFFICE_HINT, locate=lambda: soffice_binary()
 )
 _DOCX_REQUIRED = registry.Requirement(
-    "python", "docx", "pip install python-docx; в Windows — py -m pip install python-docx"
+    "python", "docx", pip_hint("python-docx")
 )
 _PPTX_REQUIRED = registry.Requirement(
-    "python", "pptx", "pip install python-pptx; в Windows — py -m pip install python-pptx"
+    "python", "pptx", pip_hint("python-pptx")
 )
 _XLSX_REQUIRED = registry.Requirement(
-    "python", "openpyxl", "pip install openpyxl; в Windows — py -m pip install openpyxl"
+    "python", "openpyxl", pip_hint("openpyxl")
 )
 _PDF_REQUIRED = registry.Requirement(
-    "python", "pymupdf", "pip install pymupdf; в Windows — py -m pip install pymupdf"
+    "python", "pymupdf", pip_hint("pymupdf")
 )
 _STRIPRTF_REQUIRED = registry.Requirement("python", "striprtf", _STRIPRTF_HINT)
 

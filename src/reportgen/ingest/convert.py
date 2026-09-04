@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Sequence, Tuple
 
+from ..packages import pip_hint
 from ..corpus import DOC_TYPES
 
 __all__ = [
@@ -355,7 +356,7 @@ def _import_pymupdf():
         import pymupdf  # type: ignore
     except ImportError as error:  # pragma: no cover — зависит от окружения
         raise MissingDependencyError(
-            "для разбора PDF нужен пакет pymupdf (pip install pymupdf); "
+            "для разбора PDF нужен пакет pymupdf (%s); " % pip_hint("pymupdf") +
             "установите его в изолированном контуре из локального зеркала"
         ) from error
     _silence_mupdf(pymupdf)
@@ -423,7 +424,7 @@ def _import_docx():
         import docx  # type: ignore
     except ImportError as error:  # pragma: no cover — зависит от окружения
         raise MissingDependencyError(
-            "для разбора DOCX нужен пакет python-docx (pip install python-docx); "
+            "для разбора DOCX нужен пакет python-docx (%s); " % pip_hint("python-docx") +
             "установите его в изолированном контуре из локального зеркала"
         ) from error
     return docx
@@ -1110,14 +1111,14 @@ def _register_builtin_converters() -> None:
         name="pdf",
         suffixes=(".pdf",),
         convert=_convert_pdf,
-        requires=(registry.Requirement("python", "pymupdf", "pip install pymupdf"),),
+        requires=(registry.Requirement("python", "pymupdf", pip_hint("pymupdf")),),
         note="текстовый слой PDF, заголовки по кеглю, номера страниц",
     ))
     registry.register(registry.ConverterSpec(
         name="docx",
         suffixes=(".docx", ".dotx"),
         convert=_convert_docx,
-        requires=(registry.Requirement("python", "docx", "pip install python-docx"),),
+        requires=(registry.Requirement("python", "docx", pip_hint("python-docx")),),
         note="Word 2007 и новее: заголовки по стилям, таблицы, списки",
     ))
     registry.register(registry.ConverterSpec(

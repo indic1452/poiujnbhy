@@ -92,11 +92,40 @@ if (-not (Test-Path $script:Config)) {
 Write-Step 'Проверка установки'
 $env:PYTHONPATH = Join-Path $script:Root 'src'
 $env:REPORTGEN_CONFIG = $script:Config
-& $python -c "import fastapi, uvicorn, docx, pymupdf; print('пакеты на месте')"
-if ($LASTEXITCODE -ne 0) { Write-Bad 'зависимости встали не полностью — дальше идти нельзя'; exit 1 }
+# Проверяем ВСЁ, без чего приложение не поднимется. Раньше здесь смотрели на
+# четыре пакета из восьми, писали «пакеты на месте» и «Готово», а сервер потом
+# падал с «pip install python-multipart» — на машине, где pip идти некуда.
+$нужные = 'fastapi', 'uvicorn', 'docx', 'pymupdf', 'numpy', 'multipart',
+          'itsdangerous', 'jinja2'
+$проверка = ($нужные | ForEach-Object { "import $_" }) -join '; '
+& $python -c "$проверка; print('пакеты на месте')"
+if ($LASTEXITCODE -ne 0) {
+    Write-Bad 'зависимости встали не полностью — дальше идти нельзя'
+    Write-Host 'Какого именно пакета не хватает, видно в строке выше (ModuleNotFoundError).'
+    if (-not $Wheels) {
+        Write-Warn2 'на машине без интернета укажите каталог с колёсами: -Wheels D:\reportgen-offline\wheels'
+    }
+    exit 1
+}
+# Приложение должно не только ввозиться по частям, но и собираться целиком.
+& $python -c "import reportgen.web.app as app; app.create_app; print('приложение собирается')"
+if ($LASTEXITCODE -ne 0) {
+    Write-Bad 'приложение не собирается — установка не закончена'
+    exit 1
+}
 
 Write-Step 'Администратор'
-$users = & $python -m reportgen --config $script:Config users 2>&1
+# Windows PowerShell 5.1 при $ErrorActionPreference = 'Stop' считает ошибкой
+# каждую строку, написанную внешней программой в поток ошибок. С «2>&1» это
+# обрывало установку ровно здесь: администратор не заводился, «Готово» не
+# печаталось, и человек оставался с наполовину установленной системой.
+$прежний = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+try {
+    $users = & $python -m reportgen --config $script:Config users 2>&1
+} finally {
+    $ErrorActionPreference = $прежний
+}
 if ($LASTEXITCODE -ne 0) {
     Write-Host 'Создайте администратора (пароль не короче 8 символов):' -ForegroundColor Yellow
     $login = Read-Host 'Логин'

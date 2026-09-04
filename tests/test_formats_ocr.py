@@ -11,6 +11,7 @@ DjVu — программами djvulibre (``cjb2`` склеивает PBM в с
 совпадения, будет падать на каждой второй версии tesseract.
 """
 
+import json
 import _bootstrap  # noqa: F401
 
 import shutil
@@ -849,6 +850,53 @@ class MultipageTiffTests(unittest.TestCase):
         path = self.directory / "одна.png"
         Image.new("RGB", (300, 200), "white").save(path)
         self.assertEqual(1, ocr.image_frame_count(path))
+
+    def test_pages_are_counted_without_pillow(self):
+        """Без Pillow страницы не разделить — но сосчитать можно и нужно.
+
+        На неполной установке сорокастраничный протокол уходил в библиотеку
+        одной первой страницей, молча: по остальным тридцати девяти поиск не
+        находил ничего, и человек об этом не узнавал.
+        """
+        path = self.make_tiff(4)
+        self.assertEqual(4, ocr._tiff_frames(path))
+
+    def test_a_png_is_not_mistaken_for_a_multipage_tiff(self):
+        from PIL import Image
+
+        path = self.directory / "снимок.png"
+        Image.new("RGB", (300, 200), "white").save(path)
+        self.assertEqual(1, ocr._tiff_frames(path))
+
+    def test_the_loss_of_pages_is_announced(self):
+        """Молчаливая потеря страниц — худшее, что может сделать библиотека."""
+        import os
+        import subprocess
+        import sys
+        from pathlib import Path as _Path
+
+        корень = _Path(__file__).resolve().parents[1]
+        path = self.make_tiff(4)
+        заглушка = self.directory / "без-pillow"
+        (заглушка / "PIL").mkdir(parents=True)
+        (заглушка / "PIL" / "__init__.py").write_text(
+            "raise ImportError(\"No module named 'PIL'\")", encoding="utf-8")
+        готово = subprocess.run(
+            [sys.executable, "-c",
+             "import json,sys;"
+             "from reportgen.ingest.formats import ocr;"
+             "r=ocr.convert_image(__import__('pathlib').Path(sys.argv[1]));"
+             "print(json.dumps({'p': r.meta.get('page_count'),"
+             " 'w': r.warnings}, ensure_ascii=False))", str(path)],
+            capture_output=True, text=True, timeout=600,
+            env=dict(os.environ, PYTHONPATH=os.pathsep.join(
+                [str(заглушка), str(корень / "src")])))
+        self.assertEqual(0, готово.returncode, готово.stderr)
+        итог = json.loads(готово.stdout.strip().splitlines()[-1])
+        self.assertEqual(4, итог["p"])
+        self.assertTrue(any("распознана только первая" in note
+                            for note in итог["w"]),
+                        f"о потере страниц не сказано: {итог['w']}")
 
     @unittest.skipUnless(HAS_TESSERACT, "нет tesseract")
     def test_every_page_gets_its_own_marker(self):

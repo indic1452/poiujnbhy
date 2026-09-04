@@ -14,21 +14,25 @@ if (-not (Test-Path $script:Config)) {
 
 $port = [int](Get-Setting 'port' 8080)
 $host_ = Get-Setting 'host' '127.0.0.1'
+# Схема берётся из настроек: при включённом https адрес http://... не
+# откроется вовсе, и человек пойдёт искать, что сломалось.
+$схема = 'http'
+if ([bool](Get-Setting 'https' $false)) { $схема = 'https' }
 
 if (-not (Test-Port $port)) { throw "порт $port занят — приложение уже запущено?" }
 
 if ($host_ -eq '0.0.0.0' -or $host_ -eq '::') {
     # Слушаем всю сеть: показываем адрес, который коллеги наберут в браузере.
     $lan = Get-LanAddress
-    Write-Step "Веб-интерфейс: http://127.0.0.1`:$port (на этой машине)"
+    Write-Step "Веб-интерфейс: $схема`://127.0.0.1`:$port (на этой машине)"
     if ($lan) {
-        Write-Ok "коллегам по сети отдела: http://$lan`:$port"
+        Write-Ok "коллегам по сети отдела: $схема`://$lan`:$port"
     } else {
         Write-Warn2 'адрес в сети не определился — посмотрите ipconfig'
     }
     Write-Warn2 'порт должен быть открыт в брандмауэре, вход по паролю обязателен'
 } else {
-    Write-Step "Веб-интерфейс: http://$host_`:$port"
+    Write-Step "Веб-интерфейс: $схема`://$host_`:$port"
     Write-Warn2 "слушаем только эту машину; чтобы открыть отделу, поставьте host = 0.0.0.0 в $script:Config"
 }
 if ($OpenBrowser) {
@@ -36,7 +40,7 @@ if ($OpenBrowser) {
         param($url)
         Start-Sleep -Seconds 4
         Start-Process $url
-    } -ArgumentList "http://127.0.0.1:$port" | Out-Null
+    } -ArgumentList "$схема`://127.0.0.1:$port" | Out-Null
 }
 
 Invoke-Reportgen serve

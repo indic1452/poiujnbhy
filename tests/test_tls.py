@@ -95,15 +95,25 @@ class CertificateTests(unittest.TestCase):
         self.assertIn("localhost", set(names.get_values_for_type(x509.DNSName)))
 
     def test_it_lives_long_enough_to_be_forgotten(self):
-        """В изолированном контуре некому следить за сроками."""
+        """В изолированном контуре некому следить за сроками.
+
+        Долго живёт КОРЕНЬ — тот единственный файл, который разносят по
+        рабочим местам: обходить их из-за срока никто не должен. Серверный
+        живёт меньше, но следить и за ним не надо: система перевыписывает его
+        сама, заранее (см. RENEW_BEFORE_DAYS).
+        """
+        from reportgen.web.tls import ROOT_NAME, SERVER_YEARS
+
         cert, _ = self.issue()
-        certificate = self.read(cert)
-        # Имена полей у cryptography разных версий отличаются: берём то,
-        # что есть, — проверяем срок, а не название свойства.
-        after = getattr(certificate, 'not_valid_after_utc', None) or certificate.not_valid_after
-        before = getattr(certificate, 'not_valid_before_utc', None) or certificate.not_valid_before
-        years = (after - before).days / 365
-        self.assertGreaterEqual(round(years), YEARS)
+        корень = self.read(cert.parent / ROOT_NAME)
+        after = getattr(корень, 'not_valid_after_utc', None) or корень.not_valid_after
+        before = getattr(корень, 'not_valid_before_utc', None) or корень.not_valid_before
+        self.assertGreaterEqual(round((after - before).days / 365), YEARS)
+
+        серверный = self.read(cert)
+        after = getattr(серверный, 'not_valid_after_utc', None) or серверный.not_valid_after
+        before = getattr(серверный, 'not_valid_before_utc', None) or серверный.not_valid_before
+        self.assertGreaterEqual(round((after - before).days / 365), SERVER_YEARS)
 
     def test_the_key_is_not_left_open_to_everyone(self):
         import os

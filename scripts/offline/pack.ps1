@@ -104,8 +104,18 @@ function Test-Wanted([string]$id) {
 $script:UserAgent = 'reportgen-pack (Windows NT 10.0; Win64; x64)'
 
 function Invoke-Http([string]$url) {
-    $text = & $script:CurlExe -sSL --fail --max-time 90 -A $script:UserAgent $url 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "не удалось получить $url" }
+    # curl пишет ход загрузки в поток ошибок, а Windows PowerShell 5.1 при
+    # $ErrorActionPreference = 'Stop' считает такую строку ошибкой и обрывает
+    # сборку комплекта. Читаем сначала, решаем потом.
+    $прежний = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $text = & $script:CurlExe -sSL --fail --max-time 90 -A $script:UserAgent $url 2>&1
+        $код = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $прежний
+    }
+    if ($код -ne 0) { throw "не удалось получить $url" }
     return ($text -join "`n")
 }
 

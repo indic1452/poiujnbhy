@@ -336,6 +336,10 @@ class OptionsTests(ExportTestCase):
         message = str(caught.exception)
         self.assertIn("python-docx", message)
         self.assertIn("DOCX", message)
+        # Инженеру в браузере командную строку не подсовываем: команда
+        # адресована администратору и названа именно так.
+        self.assertIn("Markdown", message)
+        self.assertIn("администратору", message)
         self.assertIsInstance(caught.exception, ImportError)
         self.assertFalse((self.tmp / "нет.docx").exists())
 

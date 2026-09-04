@@ -66,7 +66,7 @@ def _pymupdf():
         import pymupdf                          # noqa: PLC0415
     except ImportError as error:                # pragma: no cover — зависит от среды
         raise PageRenderError(
-            "показ страниц требует пакет pymupdf (pip install pymupdf); "
+            "показ страниц требует пакет pymupdf (%s); " % pip_hint("pymupdf") +
             "сам файл при этом скачивается и открывается как обычно"
         ) from error
     return pymupdf

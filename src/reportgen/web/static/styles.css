@@ -6482,3 +6482,19 @@ table.grid .row-actions .btn--icon svg {
 .btn--link:hover {
     color: var(--accent-strong, var(--accent));
 }
+
+
+/* Гостю личный кабинет не открывается: убираем и вид ссылки, чтобы по ней
+   не пытались щёлкнуть. */
+.user-chip--flat { cursor: default; }
+.user-chip--flat:hover { background: transparent; }
+
+/* Полоса гостя над помощником: не украшение, а предупреждение. */
+.guest-note {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--warn, #b8860b);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--warn, #b8860b) 12%, transparent);
+    font-size: 13px;
+}
