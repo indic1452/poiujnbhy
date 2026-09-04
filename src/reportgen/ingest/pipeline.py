@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import os
+import re
 from concurrent import futures
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -167,6 +168,42 @@ class IngestResult:
 
 # ------------------------------------------------------------- нарезка ----
 
+#: Маркер страницы, занимающий строку целиком.
+_PAGE_MARKER_LINE = re.compile(r"^\s*<!--\s*page:\s*\d+\s*-->\s*$")
+#: Заголовок Markdown — к нему маркер не приклеиваем: строка перестала бы
+#: начинаться с решётки и заголовок пропал бы вовсе.
+_MARKDOWN_HEADING = re.compile(r"^\s{0,3}#{1,6}\s")
+
+
+def _attach_page_markers(text: str) -> str:
+    """Маркер страницы приклеить к тексту, который за ним идёт.
+
+    Отдельной строкой маркер был бы куском-пустышкой: склейка сочла бы его
+    содержимым и притянула к нему соседний раздел. Приклеенный, он едет вместе
+    со своим текстом через нарезку и склейку, и номер страницы фрагмента
+    берётся из самого фрагмента.
+
+    Раньше номера вели сбоку, отдельным списком: пока склейка отдавала
+    фрагмент сразу, как наберёт размер, список содержал ровно куски этого
+    фрагмента. Стоило склейке заглянуть на кусок вперёд — и номера съезжали.
+    Порядок, в котором один генератор тянет из другого, — не то, на чём должна
+    держаться ссылка «с. 42» под цитатой.
+    """
+    out: List[str] = []
+    pending: List[str] = []
+    for line in text.splitlines():
+        if _PAGE_MARKER_LINE.match(line):
+            pending.append(line.strip())
+            continue
+        if pending and line.strip() and not _MARKDOWN_HEADING.match(line):
+            line = "".join(pending) + line
+            pending.clear()
+        out.append(line)
+    # Маркер, за которым текста уже не было (пустая последняя страница),
+    # выбрасываем: показывать ссылку на страницу без содержимого нечем.
+    return "\n".join(out)
+
+
 def _page_bounds(piece: str, current: int | None) -> Tuple[int | None, int | None]:
     """Страница, на которой начинается фрагмент, и страница, на которой он кончается."""
     markers = convert.page_markers(piece)
@@ -201,25 +238,15 @@ def chunks_from_markdown(
     merged.setdefault("path", doc_id)
     title = str(merged["title"])
 
+    body = _attach_page_markers(body)
+
     chunks: List[Chunk] = []
     page: int | None = None
-    # Маркеры страниц снимаем ДО склейки: иначе кусок из одного маркера
-    # считался бы содержимым и тянул за собой соседний раздел.
-    def cleaned_pieces():
-        nonlocal page
-        for title_path, piece in corpus.split_document(body):
-            start_page, page = _page_bounds(piece, page)
-            cleaned = convert.strip_page_markers(piece)
-            if not cleaned:
-                continue
-            pages.append(start_page)
-            yield title_path, cleaned
-
-    pages: List[int | None] = []
-    for index, (title_path, cleaned) in enumerate(
-            corpus.merge_short_sections(cleaned_pieces())):
-        start_page = pages[0] if pages else None
-        pages.clear()
+    for title_path, piece in corpus.merge_short_sections(corpus.split_document(body)):
+        start_page, page = _page_bounds(piece, page)
+        cleaned = convert.strip_page_markers(piece)
+        if not cleaned:
+            continue
         # Заголовок первого уровня обычно дублирует название документа —
         # в крошках он лишний.
         tail = [step for step in title_path if not title.lower().startswith(step.lower())]
@@ -414,6 +441,21 @@ def ingest_path(
     # ровно то, ради чего разбор шапки и делался.
     status, superseded_by = _resolve_status(meta, existing)
 
+    # Фрагменты считаем ДО записи документа: текст есть, а фрагментов ноль —
+    # значит документ в библиотеке был бы, а найти в нём было бы нечего. Так
+    # терялся перечень из одних заголовков: приём рапортовал «добавлено 1»,
+    # предупреждений не было ни одного, а в базе лежал документ без единого
+    # фрагмента. Считаем это отказом: пусть человек увидит имя файла в списке
+    # непринятых, чем документ пропадёт молча.
+    chunks = chunks_from_markdown(converted.text, doc_id, resolved_type, meta)
+    if not chunks:
+        result.failed = 1
+        result.failures.append(
+            f"{label}: текст извлечён ({len(converted.text)} знаков), "
+            f"но не разбился ни на один фрагмент — документ не принят"
+        )
+        return result
+
     document = repos.documents.upsert(
         doc_id=doc_id,
         doc_type=resolved_type,
@@ -428,7 +470,6 @@ def ingest_path(
         size=stat.st_size,
         mtime_ns=stat.st_mtime_ns,
     )
-    chunks = chunks_from_markdown(converted.text, doc_id, resolved_type, meta)
     result.chunks = repos.chunks.replace_for_document(document, chunks)
     result.documents.append(doc_id)
     if existing is None:
