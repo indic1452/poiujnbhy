@@ -655,6 +655,26 @@ class LlamaAssetMatchingTests(unittest.TestCase):
         self.assertEqual(0, done.returncode, done.stdout + done.stderr)
 
 
+class ItuParsingTests(unittest.TestCase):
+    """Разбор страниц МСЭ-Т в качалке — проверка настоящим PowerShell.
+
+    Сеть при разработке качалки была закрыта, поэтому единственное, что
+    отделяет её от выдуманных ссылок, — разбор сохранённых образцов страниц.
+    Главное здесь: заменённая редакция обязана опознаваться заменённой. Если
+    она проедет как действующая, отчёт сошлётся на отменённую норму, а это
+    ровно то, ради чего система и заводилась.
+    """
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_itu_pages(self):
+        script = ROOT / "tests" / "powershell" / "test_itu.ps1"
+        done = subprocess.run(
+            ["pwsh", "-NoProfile", "-File", str(script)],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=120,
+        )
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+
+
 class TableResizeTests(unittest.TestCase):
     """Колонки таблиц тянутся мышью, и ручка обязана ловить курсор.
 
