@@ -52,10 +52,48 @@ foreach ($entry in $manifest.files) {
 Write-Progress -Activity 'Проверка комплекта' -Completed
 
 Write-Host ''
-if ($missing -eq 0 -and $damaged -eq 0) {
-    Write-Host 'Комплект целый. Можно устанавливать: .\install-offline.ps1' -ForegroundColor Green
-    exit 0
+if ($missing -gt 0 -or $damaged -gt 0) {
+    Write-Host "Отсутствует файлов: $missing, повреждено: $damaged" -ForegroundColor Red
+    Write-Host 'Перенесите повреждённые файлы заново — устанавливать нельзя.'
+    exit 1
 }
-Write-Host "Отсутствует файлов: $missing, повреждено: $damaged" -ForegroundColor Red
-Write-Host 'Перенесите повреждённые файлы заново — устанавливать нельзя.'
-exit 1
+
+# Целые файлы — ещё не полный комплект. manifest.json перечисляет только то,
+# что удалось скачать: если сборка сорвалась на моделях, список просто короче,
+# и «Комплект целый» было бы неправдой. Сверяем с составом, объявленным при
+# сборке.
+$нет = @()
+if ($manifest.expected) {
+    $путиВкомплекте = @($manifest.files | ForEach-Object { $_.path })
+    function Есть([string]$образец) {
+        return [bool](@($путиВкомплекте | Where-Object { $_ -like $образец }).Count)
+    }
+    foreach ($файл in @($manifest.expected.models)) {
+        if (-not (Есть "models/$файл")) { $нет += "модель $файл" }
+    }
+    foreach ($язык in @($manifest.expected.tessdata)) {
+        if (-not (Есть "tessdata/$язык")) { $нет += "язык Tesseract $язык" }
+    }
+    $архивов = @($путиВкомплекте | Where-Object { $_ -like 'llama/*.zip' }).Count
+    $надо = @($manifest.expected.llama).Count
+    if ($надо -and $архивов -lt $надо) {
+        $нет += "архивов llama.cpp $архивов из $надо (сервер и библиотеки CUDA)"
+    }
+    $установщиков = @($путиВкомплекте | Where-Object { $_ -like 'tools/*' }).Count
+    $надоПрограмм = @($manifest.expected.tools).Count
+    if ($надоПрограмм -and $установщиков -lt $надоПрограмм) {
+        $нет += "установщиков программ $установщиков из $надоПрограмм"
+    }
+}
+
+if ($нет.Count) {
+    Write-Host 'Файлы целы, но КОМПЛЕКТ НЕПОЛНЫЙ:' -ForegroundColor Yellow
+    foreach ($что in $нет) { Write-Host "  * нет: $что" -ForegroundColor Yellow }
+    Write-Host ''
+    Write-Host 'Ставить можно, но система заработает не вся: доберите недостающее'
+    Write-Host 'на машине с интернетом (.\pack.ps1 -Only <что именно>) и перенесите.'
+    exit 2
+}
+
+Write-Host 'Комплект целый и полный. Можно устанавливать: .\install-offline.ps1' -ForegroundColor Green
+exit 0

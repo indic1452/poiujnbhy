@@ -66,6 +66,12 @@ function Ok($text)   { Write-Host "  OK  $text" -ForegroundColor Green }
 function Warn($text) { Write-Host "  !   $text" -ForegroundColor Yellow }
 function Note($text) { Write-Host "      $text" -ForegroundColor DarkGray }
 
+# Замечания копим и повторяем в самом конце. Предупреждение, сказанное в
+# середине многочасовой сборки, уезжает вверх за экран и до человека не
+# доходит — а везти неполный комплект на изолированную машину нельзя.
+$script:Warnings = @()
+function Later($text) { $script:Warnings += $text; Warn $text }
+
 function New-Dir([string]$path) {
     if (-not (Test-Path $path)) { New-Item -ItemType Directory -Path $path -Force | Out-Null }
     return (Resolve-Path $path).Path
@@ -414,6 +420,48 @@ function Get-File([string]$url, [string]$target) {
     if ($LASTEXITCODE -ne 0) { throw "не удалось скачать $url" }
 }
 
+function Test-Payload([string]$path, [string]$what) {
+    <#
+        Скачалось ли то, что заказывали.
+
+        curl с --fail отсекает явные 4xx, но зеркало может ответить кодом 200
+        и отдать страницу «файл не найден» или оборвать передачу на середине.
+        Такой файл ложится в комплект, попадает в manifest.json как здоровый —
+        и обнаруживается на изолированной машине, где заменить его нечем.
+        Поэтому смотрим в начало файла: настоящие .exe, .zip и .gguf узнаются
+        по первым байтам.
+    #>
+    if (-not (Test-Path $path)) { throw "файл не появился: $what" }
+    $item = Get-Item $path
+    if ($item.Length -lt 1024) {
+        Remove-Item $path -Force -ErrorAction SilentlyContinue
+        throw "$what — вместо файла пришло $($item.Length) байт (похоже на страницу ошибки)"
+    }
+    $поток = [System.IO.File]::OpenRead($path)
+    try {
+        $начало = New-Object byte[] 8
+        $прочитано = $поток.Read($начало, 0, 8)
+    } finally { $поток.Dispose() }
+    if ($прочитано -lt 4) { throw "$what — файл нечитаем" }
+    $знаки = [System.Text.Encoding]::ASCII.GetString($начало, 0, 4)
+    if ($знаки -match '^(<!DO|<htm|<HTM|<\?xm)') {
+        Remove-Item $path -Force -ErrorAction SilentlyContinue
+        throw "$what — вместо файла пришла веб-страница (зеркало ответило текстом)"
+    }
+    switch -Regex ($item.Extension) {
+        '\.exe$' { if ($начало[0] -ne 0x4D -or $начало[1] -ne 0x5A) {
+                       throw "$what — это не программа Windows (нет подписи MZ)" } }
+        '\.(zip|msi)$' {
+            # MSI — это составной документ OLE, ZIP — обычный архив.
+            $zip = ($начало[0] -eq 0x50 -and $начало[1] -eq 0x4B)
+            $ole = ($начало[0] -eq 0xD0 -and $начало[1] -eq 0xCF)
+            if (-not ($zip -or $ole)) { throw "$what — это не архив и не пакет установки" }
+        }
+        '\.gguf$' { if ($знаки -ne 'GGUF') {
+                       throw "$what — это не модель GGUF (нет подписи GGUF)" } }
+    }
+}
+
 function Test-Checksum([string]$path, $expected) {
     if ($expected.bytes) {
         $actual = (Get-Item $path).Length
@@ -555,7 +603,7 @@ Ok "документация: $((Get-ChildItem $docsDir -File).Count) файло
 if (-not $SkipWheels -and (Test-Wanted 'wheels')) {
     Step 'Колёса Python'
     if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) {
-        Warn 'сборка идёт не на Windows: колёса не подойдут для Windows-машины (см. docs/15-offline.md, 15.2)'
+        Later 'сборка идёт не на Windows: колёса не подойдут для Windows-машины (см. docs/15-offline.md, 15.2)'
     }
     $requirements = Join-Path $Root 'requirements.txt'
     if (-not (Test-Path $requirements)) { throw "не найден $requirements" }
@@ -564,7 +612,7 @@ if (-not $SkipWheels -and (Test-Wanted 'wheels')) {
     $formats = Join-Path $Root 'requirements-formats.txt'
     if (Test-Path $formats) {
         & python -m pip download --dest $wheels --requirement $formats
-        if ($LASTEXITCODE -ne 0) { Warn 'часть пакетов для форматов не скачалась' }
+        if ($LASTEXITCODE -ne 0) { Later 'часть пакетов для форматов не скачалась' }
     }
     # Набор тестов на офлайн-машине — единственный способ проверить установку
     # без модели и без сети. Ему нужен httpx (тестовый клиент FastAPI), иначе
@@ -572,7 +620,7 @@ if (-not $SkipWheels -and (Test-Wanted 'wheels')) {
     $dev = Join-Path $Root 'requirements-dev.txt'
     if (Test-Path $dev) {
         & python -m pip download --dest $wheels --requirement $dev
-        if ($LASTEXITCODE -ne 0) { Warn 'пакеты для прогона тестов не скачались' }
+        if ($LASTEXITCODE -ne 0) { Later 'пакеты для прогона тестов не скачались' }
     }
     # pip нужен и на офлайн-машине — версия из колеса надёжнее системной.
     & python -m pip download --dest $wheels pip setuptools wheel
@@ -638,10 +686,20 @@ if (-not $SkipModels) {
         $url = "https://huggingface.co/$($model.repo)/resolve/main/$($model.file)?download=true"
         $target = Join-Path $modelDir $model.file
         Write-Host "  $($model.role): $($model.repo)/$($model.file) (~$($model.approx_gb) ГБ)"
-        Get-File $url $target
-        Test-Checksum $target $model
-        Ok $model.file
-        $catalog += [pscustomobject]@{ id = $model.id; file = $model.file; source = "huggingface/$($model.repo)" }
+        # Обрыв на девятом гигабайте не должен рвать весь скрипт: без манифеста
+        # уже скачанные восемнадцать гигабайт становятся непроверяемыми, и
+        # человеку приходится начинать многочасовую сборку сначала. Копим беду
+        # и доходим до конца — недостающее назовёт проверка полноты.
+        try {
+            Get-File $url $target
+            Test-Payload $target $model.file
+            Test-Checksum $target $model
+            Ok $model.file
+            $catalog += [pscustomobject]@{ id = $model.id; file = $model.file; source = "huggingface/$($model.repo)" }
+        } catch {
+            Later ("модель {0} не скачана: {1}" -f $model.file, $_.Exception.Message)
+            Note "докачать её отдельно: .\pack.ps1 -Destination <тот же каталог> -Only $($model.id)"
+        }
     }
 }
 
@@ -654,6 +712,7 @@ if (-not $SkipTools) {
         try {
             Write-Host "  $($tool.name) (~$($tool.approx_mb) МБ)"
             $resolved = Get-FromFirstWorking $tool.sources $tool.name $toolsDir
+            Test-Payload (Join-Path $toolsDir $resolved.filename) $resolved.filename
             Ok "$($resolved.filename) — $($resolved.note)"
             $catalog += [pscustomobject]@{ id = $tool.id; file = $resolved.filename; source = $resolved.note }
         } catch {
@@ -675,12 +734,17 @@ if (-not $SkipTools) {
     if ($plan.tessdata -and (Test-Wanted 'tessdata')) {
         Step 'Языковые файлы Tesseract'
         foreach ($file in $plan.tessdata.files) {
-            $resolved = Resolve-GitHubRaw $file
-            $target = Join-Path $tessDir $file.as
-            New-Dir (Split-Path $target -Parent) | Out-Null
-            Get-File $resolved.url $target
-            Ok $file.as
-            $catalog += [pscustomobject]@{ id = 'tessdata'; file = "tessdata/$($file.as)"; source = $resolved.note }
+            try {
+                $resolved = Resolve-GitHubRaw $file
+                $target = Join-Path $tessDir $file.as
+                New-Dir (Split-Path $target -Parent) | Out-Null
+                Get-File $resolved.url $target
+                Test-Payload $target $file.as
+                Ok $file.as
+                $catalog += [pscustomobject]@{ id = 'tessdata'; file = "tessdata/$($file.as)"; source = $resolved.note }
+            } catch {
+                Later ("языковой файл {0} не скачан: {1}" -f $file.as, $_.Exception.Message)
+            }
         }
         $meta = @{ target = $plan.tessdata.target; install_from = $plan.tessdata.install_from }
         $meta | ConvertTo-Json | Set-Content (Join-Path $tessDir 'tessdata.json') -Encoding UTF8
@@ -705,19 +769,119 @@ $entries = foreach ($file in $files) {
         sha256 = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
     }
 }
+# Из чего комплект ОБЯЗАН состоять, чтобы система заработала. Пишем по
+# настройкам сборки, а не по тому, что удалось скачать: manifest.json со
+# списком одних лишь удавшихся файлов не отличает полный комплект от
+# половины — и verify.ps1 на изолированной машине рапортовал «целый».
+$expected = [pscustomobject]@{
+    models   = @(@($plan.models) | ForEach-Object { $_.file })
+    tools    = @(@($plan.tools.items) | ForEach-Object { $_.id })
+    tessdata = @(@($plan.tessdata.files) | ForEach-Object { $_.as })
+    llama    = @(@($plan.llama_cpp.asset_patterns) | ForEach-Object { $_.id })
+}
 $manifest = [pscustomobject]@{
     created  = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
     machine  = $env:COMPUTERNAME
     python   = (& python -c "import sys; print(sys.version.split()[0])" 2>$null)
     catalog  = $catalog
+    expected = $expected
     files    = $entries
     total_gb = [math]::Round((($entries | Measure-Object bytes -Sum).Sum / 1GB), 2)
 }
 $manifest | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $bundle 'manifest.json') -Encoding UTF8
 
+# ------------------------------------------------------ полнота комплекта ---
+# Раньше скрипт печатал «Комплект готов» и при неполной сборке: одна сорвавшаяся
+# закачка колёс давала только предупреждение, оно уезжало вверх за экран, и на
+# изолированной машине выяснялось, что ставить нечем. Проверяем сами — здесь,
+# пока машина ещё в сети и добрать недостающее можно одной командой.
+Step 'Полнота комплекта'
+$пробелы = @()
+
+# Колёса: не «сколько файлов», а «встанет ли из них приложение». Спрашиваем
+# у самого pip, не устанавливая: он же будет ставить их на машине отдела.
+# Проверяем то, что в комплекте ЛЕЖИТ, а не то, что мы только что качали:
+# при доборе одной части (-Only llama) колёса могли остаться неполными с
+# прошлого раза, и узнать об этом надо здесь, а не на изолированной машине.
+if (@(Get-ChildItem $wheels -File -ErrorAction SilentlyContinue).Count) {
+    foreach ($набор in @('requirements.txt', 'requirements-formats.txt', 'requirements-dev.txt')) {
+        $файл = Join-Path $Root $набор
+        if (-not (Test-Path $файл)) { continue }
+        $прежний = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $вывод = & python -m pip install --dry-run --ignore-installed --no-index `
+                --find-links $wheels --requirement $файл 2>&1
+            $код = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $прежний
+        }
+        if ($код -eq 0) {
+            Ok "$набор — из комплекта поставится"
+        } else {
+            $беда = @($вывод | ForEach-Object { "$_" } |
+                     Where-Object { $_ -match 'ERROR|No matching distribution' }) -join '; '
+            if ($набор -eq 'requirements-dev.txt') {
+                Later "$набор — не поставится: $беда (без этого на машине отдела не прогнать набор проверок)"
+            } else {
+                $пробелы += "$набор — из комплекта НЕ поставится: $беда"
+            }
+        }
+    }
+}
+
+# Остальное — по наличию файлов: без модели и без llama.cpp система не
+# заработает вовсе, и узнать об этом надо здесь.
+if (-not $SkipModels -and $plan.models -and @($plan.models).Count) {
+    $ждём = @($plan.models | Where-Object { Test-Wanted $_.id })
+    $есть = @(Get-ChildItem $modelDir -Filter *.gguf -ErrorAction SilentlyContinue)
+    if ($ждём.Count -and $есть.Count -lt $ждём.Count) {
+        $пробелы += ("моделей в комплекте {0} из {1}" -f $есть.Count, $ждём.Count)
+    } elseif ($ждём.Count) {
+        Ok ("моделей: {0}" -f $есть.Count)
+    }
+}
+if (-not $SkipLlama -and (Test-Wanted 'llama')) {
+    $архивы = @(Get-ChildItem $llamaDir -Filter *.zip -ErrorAction SilentlyContinue)
+    if ($архивы.Count -lt 2) {
+        $пробелы += ("архивов llama.cpp {0}, нужно 2 (сервер и библиотеки CUDA)" -f $архивы.Count)
+    } else { Ok 'llama.cpp: сервер и библиотеки CUDA' }
+}
+if (-not $SkipTools -and $plan.tools) {
+    $ждём = @($plan.tools.items | Where-Object { Test-Wanted $_.id })
+    $есть = @(Get-ChildItem $toolsDir -File -ErrorAction SilentlyContinue)
+    if ($ждём.Count -and $есть.Count -lt $ждём.Count) {
+        $пробелы += ("установщиков программ {0} из {1}" -f $есть.Count, $ждём.Count)
+    } elseif ($ждём.Count) { Ok ("установщиков программ: {0}" -f $есть.Count) }
+}
+if (Test-Wanted 'tessdata') {
+    $языки = @(Get-ChildItem $tessDir -Recurse -Filter *.traineddata -ErrorAction SilentlyContinue)
+    if (-not ($языки | Where-Object { $_.Name -eq 'rus.traineddata' })) {
+        $пробелы += 'нет русского языка для Tesseract (rus.traineddata) — сканы распознаются в бессмыслицу'
+    } else { Ok ("языков Tesseract: {0}" -f $языки.Count) }
+}
+
+Write-Host ''
+if ($пробелы.Count) {
+    Write-Host 'КОМПЛЕКТ НЕПОЛНЫЙ:' -ForegroundColor Red
+    foreach ($п in $пробелы) { Write-Host "  * $п" -ForegroundColor Red }
+    Write-Host ''
+    Write-Host 'Доберите недостающее, не перекачивая весь комплект:' -ForegroundColor Cyan
+    Write-Host "  .\pack.ps1 -Destination $bundle -Only <что именно>"
+    Write-Host 'Везти такой комплект на изолированную машину нельзя: доложить там будет неоткуда.'
+    exit 1
+}
+Ok 'комплект полный'
+
 Write-Host ''
 Write-Host "Комплект готов: $bundle" -ForegroundColor Green
 Write-Host ("Файлов: {0}, объём: {1} ГБ" -f $entries.Count, $manifest.total_gb)
+if ($script:Warnings.Count) {
+    Write-Host ''
+    Write-Host 'Замечания при сборке:' -ForegroundColor Yellow
+    foreach ($item in $script:Warnings) { Write-Host "  * $item" -ForegroundColor Yellow }
+}
+Write-Host ''
 Write-Host 'Проверьте его здесь же: .\verify.ps1'
 Write-Host 'Затем скопируйте каталог целиком на внешний диск (NTFS или exFAT, не FAT32).'
 Write-Host 'На офлайн-машине: .\verify.ps1, затем .\install-offline.ps1'

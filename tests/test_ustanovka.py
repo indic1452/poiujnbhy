@@ -321,6 +321,192 @@ class СертификатВыписываетсяСкриптом(unittest.Test
         self.assertFalse(настройки["https"])
 
 
+class СборкаКомплекта(unittest.TestCase):
+    """Сборка на машине с интернетом. Проверено прогоном обоих сборщиков."""
+
+    def test_комплект_проверяется_на_полноту(self):
+        """«Комплект готов» при неполной сборке — худшая из возможных неправд.
+
+        Одна сорвавшаяся закачка колёс давала только предупреждение, оно
+        уезжало вверх за экран, и выяснялось это на изолированной машине, где
+        доложить неоткуда.
+        """
+        for скрипт in (OFFLINE / "pack.ps1", OFFLINE / "pack.sh"):
+            with self.subTest(script=скрипт.name):
+                текст = читать(скрипт)
+                self.assertIn("Полнота комплекта", текст)
+                self.assertIn("--dry-run", текст,
+                              "полнота считается файлами, а не проверкой установки")
+                self.assertIn("НЕПОЛНЫЙ", текст)
+                # Именно решение, а не строчка текста: после списка пробелов
+                # скрипт обязан завершиться ошибкой.
+                хвост = текст[текст.index("НЕПОЛНЫЙ"):]
+                self.assertRegex(хвост[:900], r"exit 1",
+                                 "неполный комплект объявлен, но сборка кончается успехом")
+
+    def test_оба_сборщика_кладут_пакеты_для_проверок(self):
+        """Набор проверок — единственный способ убедиться в установке на месте."""
+        self.assertRegex(
+            читать(OFFLINE / "pack.ps1"),
+            r"pip download[^\n]*--requirement \$dev",
+            "pack.ps1 не качает колёса для проверок")
+        self.assertRegex(
+            читать(OFFLINE / "pack.sh"),
+            r"pip download[^\n]*\n?[^\n]*requirements-dev\.txt",
+            "pack.sh не качает колёса для проверок")
+
+    def test_оба_установщика_ставят_пакеты_для_проверок(self):
+        self.assertRegex(
+            читать(OFFLINE / "install-offline.ps1"),
+            r"pip', 'install'[^\n]*\n?[^\n]*'-r', \$dev",
+            "install-offline.ps1 не ставит пакеты для проверок")
+        текст = читать(OFFLINE / "install-offline.sh")
+        начало = текст.index('if [ -f "$TARGET/app/requirements-dev.txt" ]')
+        self.assertIn("pip install", текст[начало:начало + 400],
+                      "install-offline.sh не ставит пакеты для проверок")
+
+    def test_скрипты_установки_попадают_в_манифест(self):
+        """Иначе подмену самого установщика проверка не заметит.
+
+        А это единственный файл комплекта, который на машине отдела
+        запускают с полными правами.
+        """
+        текст = читать(OFFLINE / "pack.sh")
+        место_копирования = текст.index('cp "$ROOT/scripts/offline/install-offline.sh"')
+        место_манифеста = текст.index("Манифест и контрольные суммы")
+        self.assertLess(место_копирования, место_манифеста,
+                        "установщик кладётся после манифеста и не проверяется")
+
+    def test_манифест_объявляет_состав_комплекта(self):
+        """Список одних лишь удавшихся файлов не отличает полный от половины."""
+        текст = читать(OFFLINE / "pack.ps1")
+        манифест = текст[текст.index("$manifest = [pscustomobject]@{"):]
+        self.assertIn("expected", манифест[:600],
+                      "состав посчитан, но в манифест не попал")
+        свой = читать(OFFLINE / "pack.sh")
+        манифест = свой[свой.index('manifest = {"created"'):]
+        self.assertIn('"expected"', манифест[:900])
+
+    def test_скачанное_проверяется_на_подделку(self):
+        """Зеркало отвечает кодом 200 и отдаёт страницу «файл не найден»."""
+        текст = читать(OFFLINE / "pack.ps1")
+        self.assertIn("function Test-Payload", текст)
+        self.assertIn("веб-страница", текст)
+        self.assertIn("GGUF", текст)
+
+    def test_обрыв_на_модели_не_рвёт_всю_сборку(self):
+        """Иначе восемнадцать скачанных гигабайт остаются без манифеста."""
+        текст = читать(OFFLINE / "pack.ps1")
+        кусок = текст[текст.index("Модели GGUF"):]
+        кусок = кусок[:кусок.index("внешние программы")]
+        self.assertIn("try {", кусок)
+        self.assertIn("Later", кусок)
+
+
+@unittest.skipUnless(shutil.which("pwsh") or shutil.which("powershell"),
+                     "нет pwsh — подделку не проверить запуском")
+class ПодделкуЛовятЗапуском(unittest.TestCase):
+    """Не «в скрипте написано», а «подсунули страницу — поймал»."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.pwsh = shutil.which("pwsh") or shutil.which("powershell")
+        текст = читать(OFFLINE / "pack.ps1")
+        начало = текст.index("function Test-Payload")
+        конец = текст.index("function Test-Checksum")
+        cls.функция = текст[начало:конец]
+
+    def проверить(self, имя: str, содержимое: bytes) -> str:
+        with tempfile.TemporaryDirectory() as кат:
+            файл = Path(кат) / имя
+            файл.write_bytes(содержимое)
+            скрипт = Path(кат) / "проба.ps1"
+            скрипт.write_text(
+                self.функция + f"\ntry {{ Test-Payload '{файл}' '{имя}'; 'ГОДЕН' }}"
+                f" catch {{ $_.Exception.Message }}\n", encoding="utf-8")
+            готово = subprocess.run([self.pwsh, "-NoProfile", "-File", str(скрипт)],
+                                    capture_output=True, text=True, timeout=120)
+            self.assertEqual(0, готово.returncode, готово.stderr)
+            return готово.stdout.strip()
+
+    def test_страница_ошибки_вместо_установщика(self):
+        ответ = self.проверить("setup.exe", b"<!DOCTYPE html><html>404" + b"x" * 2000)
+        self.assertIn("веб-страница", ответ)
+
+    def test_обрывок_вместо_файла(self):
+        self.assertIn("страницу ошибки", self.проверить("setup.exe", b"MZ" + b"x" * 10))
+
+    def test_не_программа_windows(self):
+        ответ = self.проверить("setup.exe", b"\x7fELF" + b"x" * 4000)
+        self.assertIn("не программа Windows", ответ)
+
+    def test_не_модель_gguf(self):
+        ответ = self.проверить("model.gguf", b"PK\x03\x04" + b"x" * 4000)
+        self.assertIn("не модель GGUF", ответ)
+
+    def test_настоящий_установщик_проходит(self):
+        self.assertEqual("ГОДЕН", self.проверить("setup.exe", b"MZ" + b"\x00" * 4000))
+
+    def test_настоящая_модель_проходит(self):
+        self.assertEqual("ГОДЕН", self.проверить("m.gguf", b"GGUF" + b"\x00" * 4000))
+
+
+class ПроверкаКомплектаНаМесте(unittest.TestCase):
+    """verify.* отличает битый комплект от неполного, а не путает их."""
+
+    def test_битый_и_неполный_различаются(self):
+        for скрипт in (OFFLINE / "verify.ps1", OFFLINE / "verify.sh"):
+            with self.subTest(script=скрипт.name):
+                текст = читать(скрипт)
+                self.assertIn("НЕПОЛНЫЙ", текст)
+                self.assertRegex(текст, r"(exit 2|sys\.exit\(2\))",
+                                 "неполный комплект неотличим от битого")
+
+    def test_установщики_понимают_оба_кода(self):
+        for скрипт in (OFFLINE / "install-offline.ps1", OFFLINE / "install-offline.sh"):
+            with self.subTest(script=скрипт.name):
+                текст = читать(скрипт)
+                self.assertIn("-eq 1", текст)
+                self.assertIn("-eq 2", текст)
+
+
+class ОболочкаНеПониамаетКириллицы(unittest.TestCase):
+    """Дважды за день bash упал на «ПРОБЕЛЫ=0»: command not found."""
+
+    def test_имена_переменных_оболочки_латиницей(self):
+        беды = []
+        for скрипт in OFFLINE.glob("*.sh"):
+            текст = читать(скрипт)
+            внутри_python = False
+            for номер, строка in enumerate(текст.splitlines(), 1):
+                # Питоновские вставки живут в heredoc — там кириллица законна.
+                if re.search(r"<<'?[A-Z]+'?$", строка):
+                    внутри_python = True
+                    continue
+                if внутри_python:
+                    if re.match(r"^[A-Z]+$", строка.strip()):
+                        внутри_python = False
+                    continue
+                if re.match(r"^\s*[А-Яа-яЁё_]+=", строка):
+                    беды.append(f"{скрипт.name}:{номер}: {строка.strip()}")
+                if re.match(r"^\s*for\s+[А-Яа-яЁё]", строка):
+                    беды.append(f"{скрипт.name}:{номер}: {строка.strip()}")
+        self.assertEqual([], беды, "bash не принимает кириллицу в именах переменных")
+
+
+class РазборПутиНеРоняетУстановку(unittest.TestCase):
+    def test_split_path_qualifier_под_защитой(self):
+        """На пути без буквы диска он БРОСАЕТ, а не возвращает пустоту.
+
+        Так установка обрывалась на сетевом пути, а запасная ветка, написанная
+        как раз на этот случай, не выполнялась никогда.
+        """
+        текст = читать(OFFLINE / "install-offline.ps1")
+        место = текст.index("Split-Path $Target -Qualifier")
+        вокруг = текст[место - 200:место + 100]
+        self.assertIn("try {", вокруг)
+
+
 class ПодсказкаКоторуюМожноВыполнить(unittest.TestCase):
     """«pip install X» на машине без интернета — тупик, а не совет."""
 

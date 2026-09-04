@@ -114,7 +114,13 @@ if (Test-Path $manifestPath) {
 if ($needBytes) {
     # С запасом: модели копируются, архивы llama.cpp ещё и распаковываются.
     $needGb = [math]::Round(($needBytes * 1.4) / 1GB, 1)
-    $drive = (Split-Path $Target -Qualifier)
+    # Split-Path -Qualifier на пути без буквы диска не возвращает пустоту, а
+    # БРОСАЕТ исключение — и при $ErrorActionPreference = 'Stop' обрывает
+    # установку целиком. Так падало на сетевом пути (\\сервер\обмен\reportgen):
+    # запасная ветка ниже, написанная как раз на этот случай, не выполнялась
+    # никогда.
+    $drive = ''
+    try { $drive = Split-Path $Target -Qualifier } catch { $drive = '' }
     if (-not $drive) { $drive = (Get-Location).Drive.Name + ':' }
     $free = (Get-PSDrive -Name $drive.TrimEnd(':') -ErrorAction SilentlyContinue).Free
     if ($free) {
@@ -130,7 +136,11 @@ if ($needBytes) {
 if (-not $SkipVerify) {
     Step 'Проверка комплекта'
     & (Join-Path $bundle 'verify.ps1')
-    if ($LASTEXITCODE -ne 0) { Fail 'комплект повреждён — установка отменена' }
+    # 1 — файлы битые или потеряны: ставить нельзя. 2 — файлы целы, но чего-то
+    # в комплекте нет вовсе: поставить можно, работать будет не всё, и об этом
+    # человек должен прочитать в итоге, а не гадать при первом запуске.
+    if ($LASTEXITCODE -eq 1) { Fail 'комплект повреждён — установка отменена' }
+    if ($LASTEXITCODE -eq 2) { Later 'комплект неполный — часть возможностей работать не будет (см. список выше)' }
 }
 
 # --------------------------------------------------------------- Python ----
@@ -248,7 +258,10 @@ if (-not $SkipTools) {
                 }
             }
         } else {
-            Note "установщики остались в $toolsDir — поставьте позже вручную"
+            # Это замечание: без LibreOffice, Tesseract и DjVuLibre система
+            # прочитает вчетверо меньше форматов, а «завершена без замечаний»
+            # означало бы, что всё на месте.
+            Later "внешние программы не ставились — установщики остались в $toolsDir"
         }
     }
 
@@ -292,7 +305,13 @@ if (Test-Path $tessSource) {
                 Copy-Item $osd $targetDir -Force
                 $copied++
             }
-            Ok "языковых файлов скопировано: $copied ($flavour)"
+            if ($copied -eq 0) {
+                # Ноль скопированных — это не успех: без русского языка сканы
+                # русских книг распознаются в бессмыслицу.
+                Later "языковых файлов не скопировано ни одного — проверьте $targetDir"
+            } else {
+                Ok "языковых файлов скопировано: $copied ($flavour)"
+            }
         } catch {
             Later "не удалось скопировать языки в $targetDir ($($_.Exception.Message)) — запустите установку от администратора или скопируйте файлы вручную"
         }
@@ -395,6 +414,13 @@ if (-not $archives) {
         Ok 'файлы подняты из вложенного каталога'
     }
     if (Test-Path (Join-Path $llamaTarget 'llama-server.exe')) {
+        # Одного сервера мало: без библиотек CUDA рядом он не стартует вовсе,
+        # и выяснится это при первом запуске, когда добрать их уже неоткуда.
+        $cuda = @(Get-ChildItem $llamaTarget -Filter 'cudart*.dll' -ErrorAction SilentlyContinue) +
+                @(Get-ChildItem $llamaTarget -Filter 'cublas*.dll' -ErrorAction SilentlyContinue)
+        if (-not $cuda.Count) {
+            Later 'рядом с llama-server.exe нет библиотек CUDA (cudart/cublas) — сервер модели не запустится'
+        }
         Ok 'llama-server.exe на месте'
     } else {
         # Не обрываем установку: всё остальное — зависимости, настройки,
@@ -460,6 +486,10 @@ if (Test-Path $dev) {
 # падал на python-multipart — на машине, где pip идти некуда.
 & $venvPython -c "import fastapi, uvicorn, docx, pymupdf, numpy, multipart, itsdangerous, jinja2; print('пакеты на месте')"
 if ($LASTEXITCODE -ne 0) { Fail 'зависимости встали не полностью' }
+# Пакет лежит в src/ и в окружение не устанавливается — путь к нему нужен
+# здесь же, а не только ниже: без него проверка падала на ModuleNotFoundError
+# и обрывала установку в самом конце.
+$env:PYTHONPATH = Join-Path $app 'src'
 & $venvPython -c "import reportgen.web.app as app; app.create_app; print('приложение собирается')"
 if ($LASTEXITCODE -ne 0) { Fail 'приложение не собирается — установка не закончена' }
 Ok 'зависимости установлены, сеть не использовалась'

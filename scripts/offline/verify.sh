@@ -6,7 +6,9 @@ python3 - "$BUNDLE" "${1:-full}" <<'PY'
 import hashlib, json, sys
 from pathlib import Path
 bundle, mode = Path(sys.argv[1]), sys.argv[2]
-manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+# utf-8-sig: манифест, собранный на Windows, начинается с BOM, и
+# обычный utf-8 на нём спотыкается.
+manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8-sig"))
 print(f"Комплект от {manifest['created']}, файлов: {len(manifest['files'])}, "
       f"объём: {manifest['total_gb']} ГБ")
 missing = damaged = 0
@@ -26,5 +28,28 @@ for entry in manifest["files"]:
 if missing or damaged:
     print(f"\nОтсутствует: {missing}, повреждено: {damaged}. Устанавливать нельзя.")
     sys.exit(1)
-print("\nКомплект целый. Можно устанавливать: ./install-offline.sh")
+
+# Целые файлы — ещё не полный комплект: manifest.json перечисляет лишь то, что
+# удалось скачать. Сверяем с составом, объявленным при сборке.
+пусто = []
+ожидается = manifest.get("expected") or {}
+пути = [item["path"] for item in manifest["files"]]
+def есть(начало):
+    return any(p.startswith(начало) for p in пути)
+for файл in ожидается.get("models", []):
+    if f"models/{файл}" not in пути:
+        пусто.append(f"модель {файл}")
+for язык in ожидается.get("tessdata", []):
+    if f"tessdata/{язык}" not in пути:
+        пусто.append(f"язык Tesseract {язык}")
+if ожидается.get("llama") and not есть("llama/"):
+    пусто.append("сборка llama.cpp")
+if пусто:
+    print("\nФайлы целы, но КОМПЛЕКТ НЕПОЛНЫЙ:")
+    for что in пусто:
+        print(f"  * нет: {что}")
+    print("\nСтавить можно, но система заработает не вся.")
+    sys.exit(2)
+
+print("\nКомплект целый и полный. Можно устанавливать: ./install-offline.sh")
 PY
