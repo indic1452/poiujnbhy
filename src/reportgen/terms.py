@@ -53,7 +53,18 @@ MIN_TERM = 3
 #: побеждает тот, где случайно совпало больше общих слов.
 MAX_EXPANSIONS = 12
 
+#: Сколько равнозначных РУССКИХ написаний добавлять к запросу. Их немного, и
+#: идут они первыми: сокращение — одно слово и самое редкое слово в запросе,
+#: места оно почти не занимает, а пользы даёт больше английского эквивалента.
+#: Больше двух не нужно: третье написание одного термина — уже редкость, а
+#: место в общем пределе оно отнимает у английского.
+MAX_RU_EXPANSIONS = 2
+
 _WORD = re.compile(r"[a-zа-я0-9]+")
+
+#: Цифра в написании: признак того, что это КОНКРЕТНАЯ разновидность
+#: (КАМ-16, ФМ-4, ОКС-7), а не другое написание того же самого.
+_DIGIT = re.compile(r"[0-9]")
 
 #: Сколько чужих слов допускается между словами составного термина. «Поля
 #: заголовка» и «какие поля в заголовке» — один и тот же вопрос, а между
@@ -80,6 +91,12 @@ class Term:
 
     ru: str
     en: Tuple[str, ...]
+    #: Равнозначные написания того же термина по-русски: КСВ и КСВН, ОСШ и
+    #: С/Ш, ФМ-4 и ОФМ-4. Инженер печатает одно, а в книге стоит другое, и
+    #: словесный поиск их не сводит — для BM25 это разные слова. Только
+    #: ОДНОСЛОВНЫЕ сокращения: многословную расшифровку к запросу добавлять
+    #: нельзя, она тянет в выдачу всё, где есть «коэффициент» или «сигнал».
+    ru_syn: Tuple[str, ...] = ()
     risk: str = "нет"
     note: str = ""
 
@@ -225,11 +242,18 @@ def _plural_variants(word: str) -> List[str]:
 class TermGlossary:
     """Словарь терминов, загруженный из JSON."""
 
-    def __init__(self, terms: Sequence[Term], *, source: Path | None = None):
+    def __init__(self, terms: Sequence[Term], *, source: Path | None = None,
+                 problems: Sequence[str] = ()):
         # Длинные основы вперёд: «полоса пропускания» точнее, чем «полоса», и
         # если сработали обе — брать надо точную.
         self.terms: List[Term] = sorted(terms, key=lambda t: len(t.ru), reverse=True)
         self.source = source
+        #: Записи, которые словарь отбросил, и почему. Справочник заявлен
+        #: пополняемым, а отбрасывал строки МОЛЧА: двухбуквенное сокращение,
+        #: запись без эквивалентов, лишняя запятая в JSON — всё это выключало
+        #: термин (а битый файл — весь словарь) без единого слова человеку.
+        #: Печатает этот список команда «reportgen terms».
+        self.problems: List[str] = list(problems)
 
     def __len__(self) -> int:
         return len(self.terms)
@@ -242,18 +266,26 @@ class TermGlossary:
         библиотеки из-за справочника нельзя.
         """
         resolved = Path(path) if path else default_path()
+        problems: List[str] = []
         try:
             raw = json.loads(resolved.read_text(encoding="utf-8-sig"))
-        except (OSError, ValueError):
-            return cls([], source=None)
+        except OSError as error:
+            return cls([], source=None, problems=[f"файл не прочитан: {error}"])
+        except ValueError as error:
+            # Лишняя запятая выключает ВЕСЬ словарь, и до команды «terms» об
+            # этом не говорил никто: поиск просто переставал добавлять слова.
+            return cls([], source=resolved,
+                       problems=[f"файл не разобран как JSON: {error}"])
 
         rows = raw.get("terms", raw) if isinstance(raw, dict) else raw
         if not isinstance(rows, list):
-            return cls([], source=resolved)
+            return cls([], source=resolved,
+                       problems=["в файле нет списка «terms»"])
 
         terms: List[Term] = []
-        for row in rows:
+        for number, row in enumerate(rows, start=1):
             if not isinstance(row, dict):
+                problems.append(f"запись {number}: не объект — пропущена")
                 continue
             ru = normalize(str(row.get("ru", "")).strip())
             english = row.get("en") or []
@@ -262,25 +294,63 @@ class TermGlossary:
             english = tuple(
                 str(item).strip().lower() for item in english if str(item).strip()
             )
-            if len(ru) < MIN_TERM or not english:
+            synonyms = row.get("ru_syn") or []
+            if isinstance(synonyms, str):
+                synonyms = [synonyms]
+            # Чистим по тем же правилам, что и «ru»: двухбуквенное написание в
+            # поиске бесполезно и опасно, а многословная расшифровка к запросу
+            # не добавляется (см. MAX_RU_EXPANSIONS) — она и есть «ru».
+            synonyms = tuple(dict.fromkeys(
+                word for word in (normalize(str(item).strip()) for item in synonyms)
+                if len(word) >= MIN_TERM and word != ru
+            ))
+            # Запись без английского эквивалента разрешена: СЛС и РРЛС оба
+            # русские, выдумывать им английское соответствие незачем.
+            if len(ru) < MIN_TERM:
+                problems.append(
+                    f"запись {number}: «{ru}» короче {MIN_TERM} букв — пропущена "
+                    "(двухбуквенное сокращение в поиске бесполезно и опасно; "
+                    "пишите расшифровку в «ru», а сокращение в «ru_syn»)"
+                )
+                continue
+            if not (english or synonyms):
+                problems.append(
+                    f"запись {number}: «{ru}» без «en» и без «ru_syn» — пропущена, "
+                    "добавлять к запросу нечего"
+                )
                 continue
             terms.append(Term(
                 ru=ru,
                 en=english,
+                ru_syn=synonyms,
                 risk=str(row.get("risk", "нет")).strip() or "нет",
                 note=str(row.get("note", "")).strip(),
             ))
-        return cls(terms, source=resolved)
+        return cls(terms, source=resolved, problems=problems)
 
     def matches(self, query: str) -> List[Term]:
-        """Термины словаря, встретившиеся в запросе."""
+        """Термины словаря, встретившиеся в запросе.
+
+        Запись срабатывает на ЛЮБОЕ из своих написаний: «КСВ» и «КСВН» — одна
+        и та же величина, и записана она в файле один раз. Без этого
+        равнозначные написания пришлось бы заводить отдельными записями, по
+        одной на написание, и держать их в согласии руками.
+        """
         text = normalize(query)
         if not text:
             return []
-        return [term for term in self.terms if _hit(term.ru, text)]
+        return [term for term in self.terms
+                if _hit(term.ru, text)
+                or any(_hit(word, text) for word in term.ru_syn)]
 
-    def expand(self, query: str, *, limit: int = MAX_EXPANSIONS) -> List[str]:
-        """Английские слова, которые стоит добавить к запросу.
+    def expand(self, query: str, *, limit: int = MAX_EXPANSIONS,
+               russian_limit: int = MAX_RU_EXPANSIONS) -> List[str]:
+        """Слова, которые стоит добавить к запросу.
+
+        Сначала равнозначные русские написания, потом английские эквиваленты.
+        Порядок не косметический: русских добавляется не больше двух, и стой
+        они после английских, до них не дошла бы очередь — общий предел
+        выбирается уже на втором-третьем сработавшем термине.
 
         Уже написанное в запросе не дублируется: инженер вполне может спросить
         «поля заголовка header fields» — второй раз добавлять нечего.
@@ -288,18 +358,63 @@ class TermGlossary:
         already = set(_WORD.findall(normalize(query)))
         out: List[str] = []
         seen: set[str] = set()
-        for term in self.matches(query):
+
+        def add(variant: str) -> bool:
+            """Добавить слово. Ложь — слово не пригодилось."""
+            if variant in seen:
+                return False
+            words = set(_WORD.findall(variant))
+            if words and words <= already:
+                return False
+            seen.add(variant)
+            out.append(variant)
+            return True
+
+        matched = self.matches(query)
+        text = normalize(query)
+        russian = 0
+        for term in matched:
+            # У записи без написаний брать нечего: подсовывать в запрос её
+            # собственную ОСНОВУ («заголов») бессмысленно — в указателе стоит
+            # «заголовк», слово не найдёт ничего и займёт место в пределе.
+            if not term.ru_syn:
+                continue
+            # Написание С ЦИФРОЙ срабатывает, но к запросу не добавляется:
+            # КАМ-16 и КАМ-64, ФМ-2 и ФМ-4 — это РАЗНЫЕ модуляции, а не разные
+            # написания одной. Подставив соседнее, поиск вытащил бы документы
+            # про другую величину (замерено: к вопросу про КАМ-16 добавлялось
+            # КАМ-64). Обозначение без цифры — «кам», «офм» — общее для всей
+            # семьи, его добавлять и полезно, и безопасно.
+            spellings = [word for word in term.ru_syn if not _DIGIT.search(word)]
+            # Расшифровку добавляем — и это главное в записи. Спросили «ОСШ», а
+            # в книге написано «отношение сигнал/шум»: без расшифровки словесный
+            # поиск не находит НИЧЕГО. Замерено на настоящем пути поиска и
+            # настоящем размере (25 000 фрагментов, отсев частых слов включён):
+            # без неё 0 попаданий из 8, с ней — 8 из 8 первым местом. Опасение,
+            # что общие слова расшифровки размоют выдачу, замер не подтвердил.
+            #
+            # Берётся она, только если запись нашлась НЕ по ней: когда человек и
+            # так написал расшифровку, повторять её незачем — место отнимет, а
+            # нового не добавит.
+            # Ключ записи годится в добавку, только если это НАСТОЯЩАЯ
+            # расшифровка из нескольких слов. Односложный ключ — это основа
+            # («плезиохрон», «радиорелейн»), и она не сходится со словом
+            # документа: «плезиохронная» приводится к «плезиохронн», на букву
+            # длиннее. Такую добавку поиск не найдёт, а место в пределе она
+            # займёт. Полное написание для таких записей лежит в ru_syn.
+            if " " in term.ru and not _hit(term.ru, text):
+                spellings.insert(0, term.ru)
+            for word in spellings:
+                if russian >= russian_limit or len(out) >= limit:
+                    break
+                if add(word):
+                    russian += 1
+        for term in matched:
             for english in term.en:
                 for variant in _plural_variants(english):
-                    if variant in seen:
-                        continue
-                    words = set(_WORD.findall(variant))
-                    if words and words <= already:
-                        continue
-                    seen.add(variant)
-                    out.append(variant)
                     if len(out) >= limit:
                         return out
+                    add(variant)
         return out
 
 

@@ -333,6 +333,41 @@ def cmd_library(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_terms(args: argparse.Namespace) -> int:
+    """Что прочитано из словаря терминов и что он сделает с вопросом.
+
+    Словарь заявлен пополняемым, а строки отбрасывал молча: двухбуквенное
+    сокращение, запись без эквивалентов, лишняя запятая в JSON — всё это
+    выключало термин, а битый файл выключал весь словарь, и человек об этом
+    не узнавал никак. Поиск при этом продолжал работать, просто хуже.
+    """
+    from .terms import MAX_EXPANSIONS, TermGlossary, default_path  # noqa: PLC0415
+
+    settings = Settings.load()
+    chosen = args.path or getattr(settings, "terms_path", None)
+    path = Path(chosen) if chosen else default_path()
+    glossary = TermGlossary.load(path)
+
+    print(f"Словарь: {path}")
+    print(f"Прочитано записей: {len(glossary)}")
+    print("Из них с равнозначными русскими написаниями: "
+          f"{sum(1 for term in glossary.terms if term.ru_syn)}")
+    if glossary.problems:
+        print("\nПропущено:")
+        for trouble in glossary.problems:
+            print(f"  {trouble}")
+
+    if args.query:
+        added = glossary.expand(args.query)
+        print(f"\nК вопросу «{args.query}» добавится {len(added)} "
+              f"из {MAX_EXPANSIONS} возможных:")
+        for word in added:
+            print(f"  {word}")
+        if not added:
+            print("  ничего — ни один термин словаря в вопросе не встретился")
+    return 1 if (glossary.problems or not len(glossary)) else 0
+
+
 def cmd_formats(args: argparse.Namespace) -> int:
     """Что система умеет читать прямо сейчас и чего для остального не хватает."""
     from .ingest.convert import format_support  # noqa: PLC0415
@@ -550,6 +585,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_formats = sub.add_parser("formats", help="какие форматы документов система умеет читать")
     p_formats.set_defaults(func=cmd_formats)
+
+    p_terms = sub.add_parser("terms", help="проверить словарь терминов")
+    p_terms.add_argument("--path", default=None, help="путь к terms.json")
+    p_terms.add_argument("--query", default=None,
+                         help="показать, что добавится к этому вопросу")
+    p_terms.set_defaults(func=cmd_terms)
 
     p_status = sub.add_parser("doc-status", help="отметить актуальность документа библиотеки")
     p_status.add_argument("--doc-id", required=True)

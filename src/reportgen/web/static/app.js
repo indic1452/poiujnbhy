@@ -7266,12 +7266,15 @@
                 clear(searchResults);
                 if (data.note) searchResults.appendChild(h('div', { class: 'small muted' }, data.note));
                 if (data.warning) searchResults.appendChild(h('div', { class: 'small muted' }, data.warning));
-                // Половина библиотеки английская, спрашивают по-русски. Если
-                // запрос дополнен по словарю — сказать об этом: иначе
-                // английский текст в выдаче выглядит взявшимся ниоткуда.
+                // Половина библиотеки английская, спрашивают по-русски, да и
+                // один термин отдел пишет по-разному: КСВ и КСВН, ОСШ и
+                // «отношение сигнал/шум». Если запрос дополнен по словарю —
+                // сказать об этом: иначе и английский текст в выдаче, и
+                // страница, где нужного слова будто нет, выглядят взявшимися
+                // ниоткуда.
                 if (data.expansion && data.expansion.length) {
                     searchResults.appendChild(h('div', { class: 'small muted' },
-                        'Искали также по английским терминам: ' + data.expansion.join(', ')));
+                        'Искали также по равнозначным написаниям: ' + data.expansion.join(', ')));
                 }
                 const items = data.items || [];
                 if (!items.length) {
@@ -8982,7 +8985,7 @@
         }
         if (chat.pendingExpansion && chat.pendingExpansion.length) {
             box.appendChild(h('div', { class: 'small muted' },
-                'Искали также по английским терминам: ' + chat.pendingExpansion.join(', ')));
+                'Искали также по равнозначным написаниям: ' + chat.pendingExpansion.join(', ')));
         }
         const items = chat.pendingSources || (chat.sourcesOf ? chat.sourcesOf.sources : []) || [];
         if (!items.length) {
