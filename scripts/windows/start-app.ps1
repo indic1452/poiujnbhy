@@ -21,6 +21,13 @@ if ([bool](Get-Setting 'https' $false)) { $схема = 'https' }
 
 if (-not (Test-Port $port)) { throw "порт $port занят — приложение уже запущено?" }
 
+# Окружения нет — Get-PythonExe молча берёт системный Python, в котором
+# зависимостей не стоит. Падение будет позже и не про то.
+if (-not (Test-Path (Join-Path $script:Venv 'Scripts\python.exe'))) {
+    Write-Warn2 "нет окружения $script:Venv — беру системный python"
+    Write-Host '     если приложение не поднимется, выполните .\01-install.ps1'
+}
+
 if ($host_ -eq '0.0.0.0' -or $host_ -eq '::') {
     # Слушаем всю сеть: показываем адрес, который коллеги наберут в браузере.
     $lan = Get-LanAddress

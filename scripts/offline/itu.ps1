@@ -370,11 +370,26 @@ if ($broken) {
 $replaced = @($saved | Where-Object { $_.status -ne 'current' })
 if ($replaced.Count) {
     $markPath = Join-Path $root 'пометить-заменённые.ps1'
+    # Invoke-Reportgen — не программа, а функция из _common.ps1. Без этой
+    # строки сгенерированный скрипт падал на первой же команде: «имя
+    # Invoke-Reportgen не распознано».
     $lines = @(
         '# Пометить скачанные заменённые и отменённые рекомендации МСЭ-Т.',
         '# Выполнить на офлайн-машине ПОСЛЕ load-library.ps1: иначе документов',
         '# в базе ещё нет и метить нечего. Пока они не помечены, поиск считает',
         '# их действующими и модель может сослаться на отменённую редакцию.',
+        '',
+        '$ErrorActionPreference = ''Stop''',
+        '$общее = Join-Path $PSScriptRoot ''_common.ps1''',
+        'if (-not (Test-Path $общее)) {',
+        '    $общее = ''C:\reportgen\app\scripts\windows\_common.ps1''',
+        '}',
+        'if (-not (Test-Path $общее)) {',
+        '    Write-Host "не найден _common.ps1 — положите этот файл в" -ForegroundColor Red',
+        '    Write-Host "C:\reportgen\app\scripts\windows и запустите оттуда"',
+        '    exit 1',
+        '}',
+        '. $общее',
         ''
     )
     foreach ($item in ($replaced | Sort-Object series, number)) {
@@ -387,13 +402,18 @@ if ($replaced.Count) {
 
 Write-Host ''
 Write-Host 'Дальше:' -ForegroundColor Green
-Write-Host "  1) перенесите каталог $(Join-Path (Join-Path $root 'standards') 'itu-t') на офлайн-машину"
-Write-Host '     в C:\reportgen\data\library\standards\itu-t'
+# Переносить надо ВЕСЬ standards: заменённые редакции лежат отдельной папкой
+# itu-t-заменённые, и без неё разметка ниже метила бы то, чего в библиотеке нет.
+Write-Host "  1) перенесите каталог $(Join-Path $root 'standards') на офлайн-машину"
+Write-Host '     в подкаталог standards каталога библиотеки'
+Write-Host '     (где он — покажет: reportgen paths)'
 Write-Host '  2) там выполните:'
 Write-Host '       cd C:\reportgen\app\scripts\windows' -ForegroundColor Cyan
 Write-Host '       .\load-library.ps1 -Jobs 12' -ForegroundColor Cyan
 if ($replaced.Count) {
-    Write-Host '  3) затем пометьте заменённые редакции:'
+    Write-Host '  3) положите пометить-заменённые.ps1 в scripts\windows и оттуда:'
     Write-Host '       .\пометить-заменённые.ps1' -ForegroundColor Cyan
+    Write-Host '     (он сам подключит _common.ps1; без разметки поиск будет'
+    Write-Host '      считать отменённые редакции действующими)'
 }
 Write-Host '  Названия, годы и направления техники определятся сами.'

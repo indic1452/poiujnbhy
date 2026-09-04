@@ -223,6 +223,10 @@ class Settings:
             value = getattr(self, name)
             if value is not None and not isinstance(value, Path):
                 setattr(self, name, Path(value))
+        # Относительный путь в настройках привязывает данные к текущему
+        # каталогу: запуск из другого места — и база с библиотекой «пропали».
+        # Разворачиваем сразу, до того как из него выведены подкаталоги.
+        self.data_dir = Path(self.data_dir).expanduser().resolve()
         derived = {
             "db_path": "reportgen.db",
             "library_dir": "library",

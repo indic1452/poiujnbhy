@@ -510,6 +510,43 @@ class ЧестностьУстановки(unittest.TestCase):
         self.assertIn("приём библиотеки", текст)
 
 
+class ОстальныеТупики(unittest.TestCase):
+    """Мелочь, на которой человек всё равно застревает."""
+
+    def test_разметка_заменённых_подключает_общее(self):
+        """Invoke-Reportgen — функция из _common.ps1, а не программа.
+
+        Сгенерированный скрипт падал на первой же строке: «имя
+        Invoke-Reportgen не распознано», — а без разметки поиск считает
+        отменённые редакции действующими.
+        """
+        текст = читать(OFFLINE / "itu.ps1")
+        кусок = текст[текст.index("пометить-заменённые.ps1"):]
+        self.assertIn("_common.ps1", кусок[:2000],
+                      "сгенерированный скрипт не подключает _common.ps1")
+
+    def test_переносят_всё_standards_а_не_одну_папку(self):
+        """Заменённые редакции лежат отдельно; без них метить нечего."""
+        текст = читать(OFFLINE / "itu.ps1")
+        self.assertNotIn("data\\library\\standards\\itu-t", текст)
+        self.assertIn("reportgen paths", текст)
+
+    def test_запуск_говорит_что_окружения_нет(self):
+        текст = читать(WINDOWS / "start-app.ps1")
+        self.assertIn("беру системный python", текст)
+
+    def test_относительный_каталог_данных_разворачивается(self):
+        """Иначе запуск из другого места — и база «пропала»."""
+        with tempfile.TemporaryDirectory() as имя:
+            путь = Path(имя) / "settings.json"
+            путь.write_text(json.dumps({"data_dir": "данные"}, ensure_ascii=False),
+                            encoding="utf-8")
+            настройки = Settings.load(путь)
+            self.assertTrue(Path(настройки.data_dir).is_absolute(),
+                            "каталог данных остался относительным")
+            self.assertTrue(Path(настройки.db_path).is_absolute())
+
+
 class ДокументацияНеОбещаетЛишнего(unittest.TestCase):
     def test_шаг_про_https_ведёт_в_существующий_каталог(self):
         текст = (ROOT / "docs" / "11-windows.md").read_text(encoding="utf-8")
