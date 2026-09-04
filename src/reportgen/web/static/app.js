@@ -1492,11 +1492,17 @@
                         h('div', { class: 'small muted' }, deskAllowed()
                             ? 'Когда окно свёрнуто, уведомление покажет сам '
                               + 'Windows. Браузер спросит разрешение один раз.'
+                            // Сказать «нельзя» мало: человек уходит ни с чем.
+                            // Выход есть, он в одну команду, и назвать её надо
+                            // здесь — искать по документам никто не пойдёт.
                             : 'Этот браузер показывает такие уведомления только '
                               + 'по https или на самой машине с сервером. У вас '
                               + 'открыт обычный адрес в сети — окна не будет. '
-                              + 'Число непрочитанных при этом видно в заголовке '
-                              + 'вкладки прямо в панели задач.'))),
+                              + 'Включается это на сервере одной командой: '
+                              + 'scripts\\windows\\setup-https.ps1, после неё '
+                              + 'систему открывают по https, и переключатель '
+                              + 'заработает. Пока так — число непрочитанных '
+                              + 'видно в заголовке вкладки, прямо в панели задач.'))),
                 h('div', { class: 'card-title' }, 'Что приходит'),
                 h('div', { class: 'notice-kinds' }, loud.map((pair) =>
                     h('div', { class: 'notice-kind' },
@@ -2935,7 +2941,19 @@
 
     const WEEKDAYS = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 
+    //: Окно расхода: с какого дня, на сколько суток и какой день раскрыт внизу.
+    //: Больше 31 суток сервер не отдаёт (MAX_ROSTER_WINDOW), и просить незачем:
+    //: расход дальше месяца в отделе не планируют.
+    const ROSTER_MAX_SPAN = 31;
     const rosterState = { from: '', span: 7, day: '' };
+
+    /** Сколько суток между двумя днями включительно. */
+    function daysBetween(from, to) {
+        const a = new Date(from + 'T00:00:00');
+        const b = new Date(to + 'T00:00:00');
+        if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+        return Math.round((b - a) / 86400000) + 1;
+    }
 
     function shiftIso(day, delta) {
         const date = new Date(day + 'T00:00:00');
@@ -2959,6 +2977,60 @@
         return weekday === 0 || weekday === 6;
     }
 
+    /* Свой промежуток: «с какого по какое». Выпадающий список даёт неделю,
+       две и месяц, а расход просят и на конкретные числа — на время учений,
+       на командировку, на отпускной период группы. */
+    function pickRosterPeriod(reload) {
+        const from = h('input', { type: 'date', value: rosterState.from });
+        const to = h('input', {
+            type: 'date',
+            value: shiftIso(rosterState.from, rosterState.span - 1),
+        });
+        const hint = h('div', { class: 'small muted' });
+
+        function apply() {
+            const начало = from.value;
+            const конец = to.value;
+            if (!начало || !конец) {
+                hint.textContent = 'Укажите оба числа.';
+                return;
+            }
+            if (конец < начало) {
+                hint.textContent = 'Конец промежутка раньше начала.';
+                return;
+            }
+            const суток = daysBetween(начало, конец);
+            if (суток > ROSTER_MAX_SPAN) {
+                // Не молча обрезаем, а говорим: человек ждал бы свой
+                // промежуток, а увидел бы месяц и решил, что кнопка не
+                // работает.
+                hint.textContent = 'Больше ' + ROSTER_MAX_SPAN
+                    + ' суток расход не показывает: получилось ' + суток + '.';
+                return;
+            }
+            rosterState.from = начало;
+            rosterState.span = суток;
+            // День сводки держим внутри нового окна.
+            if (rosterState.day < начало || rosterState.day > конец) {
+                rosterState.day = начало;
+            }
+            dialog.close();
+            reload();
+        }
+
+        const dialog = openModal({
+            title: 'Свой промежуток',
+            narrow: true,
+            body: h('div', {},
+                h('label', { class: 'field' }, 'С какого числа', from),
+                h('label', { class: 'field' }, 'По какое число', to),
+                hint),
+            footer: h('button', { class: 'btn btn--primary', onclick: apply },
+                       'Показать'),
+        });
+        return dialog;
+    }
+
     async function renderRoster(view) {
         clear(view);
         const page = h('div', { class: 'page' });
@@ -2974,12 +3046,26 @@
         const dayBox = h('div', {});
         const rangeLabel = h('span', { class: 'small muted' });
 
+        // В списке — привычные величины. Свой промежуток в список не входит,
+        // и его добавляем отдельной строкой: иначе поле показывало бы «7 сут.»
+        // при четырёх показанных днях, и человек решил бы, что выбор сбросился.
+        const spanChoices = [7, 14, 31];
         const spanPick = h('select', {
-            title: 'Сколько дней показывать сразу',
+            title: 'Сколько суток показывать сразу',
             onchange: () => { rosterState.span = Number(spanPick.value); load(); },
-        }, [7, 14].map((value) => h('option', {
-            value: String(value), selected: rosterState.span === value,
-        }, value + ' дней')));
+        });
+
+        function syncSpanPick() {
+            clear(spanPick);
+            if (spanChoices.indexOf(rosterState.span) === -1) {
+                spanPick.appendChild(h('option', { value: String(rosterState.span) },
+                                       rosterState.span + ' сут. (свой)'));
+            }
+            spanChoices.forEach((value) => spanPick.appendChild(
+                h('option', { value: String(value) }, value + ' сут.')));
+            spanPick.value = String(rosterState.span);
+        }
+        syncSpanPick();
 
         append(page, [
             h('div', { class: 'page-head' },
@@ -2990,10 +3076,21 @@
                 h('div', { class: 'page-note' },
                     'Кто где и чем занят: дежурство, работы, выезды, отсутствия'),
                 h('div', { class: 'page-head-actions' },
+                    // Двойная стрелка — на окно целиком, одинарная — на сутки.
+                    // Раньше были только двойные: чтобы посмотреть завтрашний
+                    // день у края окна, приходилось прыгать через всю неделю.
                     h('button', {
-                        class: 'btn btn--sm', title: 'Предыдущая неделя',
+                        class: 'btn btn--sm', title: 'На окно назад',
                         onclick: () => { rosterState.from = shiftIso(rosterState.from, -rosterState.span); load(); },
-                    }, '←'),
+                    }, '«'),
+                    h('button', {
+                        class: 'btn btn--sm', title: 'На сутки назад',
+                        onclick: () => {
+                            rosterState.from = shiftIso(rosterState.from, -1);
+                            rosterState.day = shiftIso(rosterState.day, -1);
+                            load();
+                        },
+                    }, '‹'),
                     h('button', {
                         class: 'btn btn--sm',
                         onclick: () => {
@@ -3021,10 +3118,23 @@
                         },
                     }, 'Завтра'),
                     h('button', {
-                        class: 'btn btn--sm', title: 'Следующая неделя',
+                        class: 'btn btn--sm', title: 'На сутки вперёд',
+                        onclick: () => {
+                            rosterState.from = shiftIso(rosterState.from, 1);
+                            rosterState.day = shiftIso(rosterState.day, 1);
+                            load();
+                        },
+                    }, '›'),
+                    h('button', {
+                        class: 'btn btn--sm', title: 'На окно вперёд',
                         onclick: () => { rosterState.from = shiftIso(rosterState.from, rosterState.span); load(); },
-                    }, '→'),
+                    }, '»'),
                     spanPick,
+                    h('button', {
+                        class: 'btn btn--sm',
+                        title: 'Задать свой промежуток: с какого по какое число',
+                        onclick: () => pickRosterPeriod(load),
+                    }, 'Свой период'),
                     h('button', {
                         class: 'btn btn--primary',
                         title: 'Отметить, чем вы заняты',
@@ -3053,6 +3163,9 @@
             // листает вперёд, а внизу висит позавчерашний расход.
             if (data.days.indexOf(rosterState.day) === -1) rosterState.day = data.days[0];
             rangeLabel.textContent = fmtDate(data.date_from) + ' — ' + fmtDate(data.date_to);
+            // Поле выбора окна держим в согласии с показанным: свой промежуток
+            // меняет размер окна в обход этого поля.
+            syncSpanPick();
             drawGrid(data);
             drawDepartmentDays(data);
             await drawDay();
