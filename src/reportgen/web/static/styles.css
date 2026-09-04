@@ -2239,6 +2239,18 @@ input.is-bad {
     margin-top: 2px;
 }
 
+/* Щёлкаемое число в плитке. Без этого оно рисовалось ЛЕГЧЕ соседнего
+   нещёлкаемого: у .linklike насыщенность 500, у .stat .value — 650, и
+   получалось наоборот тому, что задумано, — ссылка выглядела бледнее
+   обычного числа. Подчёркивание и цвет ссылки берутся от .linklike. */
+.stat .stat-link {
+    font-size: 26px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: var(--link);
+}
+
 .stat .sub {
     font-size: 11.5px;
     color: var(--faint);

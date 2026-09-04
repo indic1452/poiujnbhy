@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from concurrent import futures
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -29,6 +30,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Sequence,
 from .. import corpus
 from ..corpus import Chunk
 from ..store.models import DOC_STATUSES
+from ..store.repo import LibraryReportRepo
 from . import convert
 from .convert import ConvertedDocument, convert_file, guess_doc_type, sha256_file
 
@@ -665,6 +667,37 @@ def _resolve_ids(files: Sequence[Path], root: Path) -> Tuple[Dict[Path, str], Li
     return identifiers, warnings
 
 
+def save_ingest_report(repos: "Repositories", root: "str | Path",
+                       result: "IngestResult") -> Dict[str, Any]:
+    """Записать итог приёма, чтобы он пережил закрытие консоли.
+
+    Человек, пересобравший тринадцать тысяч документов, сегодня узнать итог не
+    может: строки уехали вверх, а IngestResult живёт только в памяти процесса.
+    Складываем ЧИСЛА и имена непринятых файлов — по каталогу, по которому шёл
+    приём: приём отдельной папки штатный и итог сборки всей библиотеки затирать
+    не должен.
+
+    Числа берём как есть, а не вычитанием одного из другого. «Файлов на диске
+    минус документов в базе» назвать потерей нельзя: приём НАМЕРЕННО не заводит
+    второй документ для файла с тем же содержимым, и на библиотеке отдела таких
+    пар много — скан и распознанная версия, .md и выгрузка в .txt.
+    """
+    report: Dict[str, Any] = {
+        "root": str(root),
+        "finished_at": time.time(),
+        "added": result.added,
+        "updated": result.updated,
+        "skipped": result.skipped,
+        "failed": result.failed,
+        "chunks": result.chunks,
+        "failures": list(result.failures[:LibraryReportRepo.MAX_NAMES]),
+        "failures_total": len(result.failures),
+        "notes_total": len(result.notes),
+    }
+    repos.library_report.save(str(root), report)
+    return report
+
+
 def ingest_directory(
     repos: "Repositories",
     root: str | Path,
@@ -763,20 +796,27 @@ def ingest_directory(
             "разобранное сохранено, повторный запуск продолжит с остатка"
         )
     _finish(repos, result, root, files, full_pass)
-    # Порядок завершения у потоков произвольный — приводим списки к
-    # предсказуемому виду, иначе отчёт о приёме каждый раз выглядит иначе.
-    result.documents.sort()
-    result.failures.sort()
-    result.notes.sort()
     return result
 
 
 def _finish(repos: "Repositories", result: IngestResult, root: Path,
             files: Sequence[Path], full_pass: bool) -> None:
-    """Сверки после прохода: дубликаты и исчезнувшие файлы."""
+    """Сверки после прохода, порядок списков и запись итога."""
     result.notes.extend(_report_duplicates(repos, result.documents))
     if full_pass:
         result.notes.extend(_archive_missing(repos, root, files))
+    # Порядок завершения у потоков произвольный — приводим списки к
+    # предсказуемому виду, иначе отчёт о приёме каждый раз выглядит иначе.
+    result.documents.sort()
+    result.failures.sort()
+    result.notes.sort()
+    # Итог складываем в базу здесь, в единственном месте, через которое
+    # проходят оба выхода из приёма: в последовательном и в многопоточном.
+    # Раньше выходы расходились, и один из них итога не сохранил бы.
+    report = save_ingest_report(repos, root, result)
+    report["files_seen"] = len(files)
+    report["full_pass"] = bool(full_pass)
+    repos.library_report.save(str(root), report)
 
 
 def _report_duplicates(repos: "Repositories", touched: Sequence[str]) -> List[str]:

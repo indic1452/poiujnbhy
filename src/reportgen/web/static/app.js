@@ -6296,7 +6296,7 @@
                       // подвисает на минуту, а человеку нужны три документа,
                       // которые он ищет по названию.
                       query: '', page: 1, pages: 1, total: 0, perPage: 50,
-                      quality: '', qualityState: null };
+                      quality: '', qualityState: null, summary: null };
 
     /** Подсказка о поддерживаемых форматах и о том, чего не хватает. */
     function formatsHint() {
@@ -6554,6 +6554,112 @@
 
         const pager = h('div', { class: 'pager' });
         const qualityBox = h('div', {});
+        const summaryBox = h('div', {});
+
+        /* Собралась ли библиотека — одним взглядом, после пересборки.
+
+           Итог приёма виден только в консоли PowerShell, а на тринадцати
+           тысячах документов её содержимое уезжает вверх задолго до конца.
+           Человек, ради которого пересборка и затевалась, узнать «сколько
+           принято и что не принято» уже не может. */
+        async function loadSummary() {
+            try {
+                libState.summary = await api.get('/api/library/summary');
+            } catch (error) {
+                libState.summary = null;
+            }
+            renderSummary();
+        }
+
+        function summaryTile(value, label, filter) {
+            const number = filter
+                ? h('button', {
+                    class: 'linklike stat-link',
+                    onclick: () => {
+                        libState.quality = libState.quality === filter ? '' : filter;
+                        libState.page = 1;
+                        loadLibrary();
+                        renderSummary();
+                    },
+                  }, String(value))
+                : h('div', { class: 'value' }, String(value));
+            return h('div', { class: 'stat' }, number, h('div', { class: 'label' }, label));
+        }
+
+        function renderSummary() {
+            const data = libState.summary;
+            clear(summaryBox);
+            if (!data) return;
+            const counts = data.counts || {};
+            const report = data.report || {};
+            const tiles = [
+                summaryTile(counts.documents || 0, 'документов', ''),
+                summaryTile(counts.chunks || 0, 'фрагментов', ''),
+            ];
+            // Плитку показываем, только когда есть о чём говорить: ноль
+            // непринятых — это хорошая новость, а не строка в отчёте.
+            if (report.failures_total) {
+                tiles.push(h('div', { class: 'stat' },
+                    h('button', {
+                        class: 'linklike stat-link',
+                        onclick: () => showFailures(report),
+                    }, String(report.failures_total)),
+                    h('div', { class: 'label' }, 'не принято')));
+            }
+            if (counts.empty) tiles.push(summaryTile(counts.empty, 'без фрагментов', 'empty'));
+            if (counts.glued) tiles.push(summaryTile(counts.glued, 'склеенный текст', 'glued'));
+
+            const строки = [h('div', { class: 'stat-cards' }, tiles)];
+            if (report.finished_at) {
+                строки.push(h('div', { class: 'small muted' },
+                    'Приём закончился ' + fmtDateTime(report.finished_at * 1000)
+                    + ': просмотрено файлов ' + (report.files_seen || 0)
+                    + ', принято ' + (report.added || 0)
+                    + ', обновлено ' + (report.updated || 0)
+                    + ', пропущено ' + (report.skipped || 0)
+                    + ' (не менялись или тот же файл под другим именем)'
+                    + ', не принято ' + (report.failed || 0) + '.'));
+            } else {
+                строки.push(h('div', { class: 'small muted' },
+                    'Итога приёма нет: библиотека собрана прежним выпуском системы. '
+                    + 'Он появится после ближайшей загрузки.'));
+            }
+            // Своя кнопка выхода из отбора: соседняя карточка рисует свою,
+            // только когда нашлись склеенные, и по отбору «без фрагментов»
+            // человек остался бы в отфильтрованном списке без выхода.
+            if (libState.quality) {
+                строки.push(h('button', {
+                    class: 'btn btn--sm',
+                    onclick: () => {
+                        libState.quality = '';
+                        libState.page = 1;
+                        loadLibrary();
+                        renderSummary();
+                    },
+                }, 'Показать все документы'));
+            }
+            summaryBox.appendChild(h('div', { class: 'card card-pad' },
+                h('h3', {}, 'Библиотека собралась'), ...строки));
+        }
+
+        function showFailures(report) {
+            const список = report.failures || [];
+            const хвост = (report.failures_total || 0) - список.length;
+            openModal({
+                title: 'Файлы, которые не приняты',
+                body: h('div', {},
+                    h('p', { class: 'small muted' },
+                        'Эти файлы в библиотеку не попали. Причина написана рядом '
+                        + 'с именем: разберитесь с ними и запустите загрузку ещё раз — '
+                        + 'уже принятое заново не перечитывается.'),
+                    h('ul', { class: 'plain-list' },
+                        список.map((строка) => h('li', { class: 'small' }, строка))),
+                    хвост > 0
+                        ? h('p', { class: 'small muted' },
+                            'И ещё ' + хвост + ': полный список печатает приём в консоли.')
+                        : null),
+            });
+        }
 
         /* Плохо разобранные документы в уже готовой библиотеке.
 
@@ -6737,6 +6843,7 @@
                 dropzone, fileInput, uploadList) : null,
 
             vectorsBox,
+            summaryBox,
             qualityBox,
 
             h('div', { class: 'toolbar', style: { marginTop: '14px' } },
@@ -7299,6 +7406,7 @@
         await loadLibrary();
         await loadVectors();
         await loadQuality();
+        await loadSummary();
     }
 
     // =====================================================================

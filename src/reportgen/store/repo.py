@@ -321,6 +321,77 @@ class SessionRepo:
         return cursor.rowcount
 
 
+class LibraryReportRepo:
+    """Итог последнего приёма: он должен пережить закрытие консоли.
+
+    Приём печатает в консоль, сколько файлов принято и какие не приняты, — и
+    на тринадцати тысячах документов эти строки уезжают вверх задолго до
+    конца. Человек, пересобравший библиотеку, узнать итог уже не может:
+    IngestResult живёт только в памяти процесса.
+
+    Храним в таблице «meta», по одной записи НА КАТАЛОГ. Это не мелочь: приём
+    отдельной папки — штатная операция (load-library.ps1 -Path …), и он не
+    должен затирать итог сборки всей библиотеки.
+    """
+
+    #: Приставка ключа. Дальше идёт каталог, по которому шёл приём.
+    PREFIX = "ingest_report:"
+
+    #: Сколько имён непринятых файлов храним. Полный список на 13 600 файлах
+    #: может весить мегабайты, а человеку нужно увидеть, что именно упало;
+    #: сколько всего — хранится числом отдельно.
+    MAX_NAMES = 200
+
+    def __init__(self, db: "Database") -> None:
+        self.db = db
+
+    def counts(self) -> Dict[str, int]:
+        """Числа по документам ОДНИМ запросом.
+
+        Одним — потому что карточку открывают на библиотеке в 13 600
+        документов и полмиллиона фрагментов, и пять отдельных проходов по
+        таблице человек заметит.
+        """
+        row = self.db.query_one(
+            "SELECT count(*) AS documents, "
+            "       coalesce(sum(chunk_count), 0) AS chunks, "
+            "       sum(CASE WHEN chunk_count = 0 THEN 1 ELSE 0 END) AS empty, "
+            "       sum(CASE WHEN meta_json LIKE ? THEN 1 ELSE 0 END) AS glued "
+            "FROM documents",
+            ('%"text_quality": "glued"%',),
+        )
+        if not row:
+            return {"documents": 0, "chunks": 0, "empty": 0, "glued": 0}
+        return {ключ: int(row[ключ] or 0)
+                for ключ in ("documents", "chunks", "empty", "glued")}
+
+    def _key(self, root: str) -> str:
+        return f"{self.PREFIX}{str(root).replace(chr(92), '/').rstrip('/')}"
+
+    def save(self, root: str, report: Dict[str, Any]) -> None:
+        # В транзакции, а не одиночным execute: без завершения записи её не
+        # увидит веб-сервер — он открывает базу СВОИМ соединением, и незакрытая
+        # транзакция приёма для него не существует. Ровно этот случай и есть
+        # главный: консоль закрыли, итог смотрят в браузере.
+        with self.db.transaction() as connection:
+            connection.execute(
+                "INSERT INTO meta(key, value) VALUES(?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (self._key(root), json.dumps(report, ensure_ascii=False)),
+            )
+
+    def load(self, root: str) -> Dict[str, Any]:
+        row = self.db.query_one("SELECT value FROM meta WHERE key = ?",
+                                (self._key(root),))
+        if not row:
+            return {}
+        try:
+            found = json.loads(row["value"])
+        except ValueError:                       # pragma: no cover — битая запись
+            return {}
+        return found if isinstance(found, dict) else {}
+
+
 class DocumentRepo:
     def __init__(self, db: Database):
         self.db = db
@@ -402,7 +473,12 @@ class DocumentRepo:
             # излучения передатчика»), и целиком их никто не набирает.
             clauses.append("(title LIKE ? OR doc_id LIKE ?)")
             params.extend([f"%{needle}%", f"%{needle}%"])
-        if quality:
+        if quality == "empty":
+            # Документ без единого фрагмента: искать в нём нечего. Новые такие
+            # приём больше не заводит, но в библиотеке, собранной прежними
+            # выпусками системы, они есть, и человек должен их увидеть.
+            clauses.append("chunk_count = 0")
+        elif quality:
             # Пометка лежит в meta документа: отдельной колонки под неё нет,
             # а заводить её ради одного признака — менять схему всем.
             clauses.append("meta_json LIKE ?")
@@ -2703,6 +2779,7 @@ class Repositories:
         self.users = UserRepo(db)
         self.sessions = SessionRepo(db)
         self.documents = DocumentRepo(db)
+        self.library_report = LibraryReportRepo(db)
         self.chunks = ChunkRepo(db)
         self.vectors = VectorRepo(db)
         self.cases = CaseRepo(db)
