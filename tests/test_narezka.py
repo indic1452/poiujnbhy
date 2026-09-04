@@ -367,6 +367,42 @@ class ЧислаВПоиске(unittest.TestCase):
         self.assertIn("5.3.2", tokenize("требование пункта 5.3.2"))
 
 
+class ДвеРаскладки(unittest.TestCase):
+    """«Е1» русской Е и «E1» латинской — одно обозначение, не два.
+
+    Отдел печатает обозначения в двух раскладках вперемешку, и распознавание
+    сканов делает то же самое: на замере «E1» превращалось в «Е1» кириллицей.
+    На экране это одно слово, а для указателя было два — и запрос находил
+    ровно половину библиотеки.
+    """
+
+    def test_обозначение_из_буквы_и_цифры(self):
+        self.assertEqual(tokenize("Е1"), tokenize("E1"))
+
+    def test_слово_из_перемешанных_раскладок(self):
+        self.assertEqual(tokenize("НDВ3"), tokenize("HDB3"))
+        self.assertEqual(tokenize("Нeader"), tokenize("header"))
+
+    def test_русское_слово_не_трогаем(self):
+        self.assertEqual(["полос"], tokenize("полоса"))
+
+    def test_английское_слово_не_трогаем(self):
+        self.assertEqual(["bandwidth"], tokenize("bandwidth"))
+
+    def test_не_сводим_то_что_не_похоже(self):
+        """«С» и «G» на глаз разные: это ошибка распознавания, а не раскладки,
+        и выдавать одно за другое нельзя."""
+        self.assertNotEqual(tokenize("С.703"), tokenize("G.703"))
+
+    def test_таблицы_похожих_букв_не_разошлись(self):
+        """Тот же набор пар лежит в починке текста, читаемый в другую сторону.
+        Разойдутся — приём и поиск станут сводить буквы по-разному."""
+        from reportgen.ingest.text_repair import _LAT_TO_CYR
+        from reportgen.retrieval import _CONFUSABLE
+        self.assertEqual({cyr: lat for lat, cyr in _LAT_TO_CYR.items()},
+                         _CONFUSABLE)
+
+
 class НомераСтраниц(unittest.TestCase):
     """Ссылка «с. 42» под цитатой обязана быть верной."""
 

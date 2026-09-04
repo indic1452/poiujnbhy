@@ -322,12 +322,84 @@ class TesseractTests(TempCase):
     @unittest.skipUnless(HAS_TESSERACT and HAS_PIL and FONT, "нет tesseract, Pillow или шрифта")
     def test_recognises_image_from_memory(self):
         image = make_image(self.directory / "скан.png")
+        before = self.leftover("reportgen-ocr-")
         text = ocr.ocr_image(image.read_bytes())
         self.assertTrue(keywords_present(text, "радиорелейная"), text)
-        self.assertEqual([], self.leftover("reportgen-ocr-"))
+        # Сверяем с тем, что было ДО прогона, а не с пустотой: каталог общий на
+        # всю машину, и чужое распознавание (второй приём, снятый по таймауту
+        # прогон) оставляло здесь свой файл — тест падал, хотя убирать за собой
+        # умеет и убирает.
+        self.assertEqual(before, self.leftover("reportgen-ocr-"))
 
 
 # --------------------------------------------------- разметка и качество ---
+
+class MixedDocumentTests(TempCase):
+    """Книга, где часть страниц набрана, а часть вклеена сканом.
+
+    Так устроено полбиблиотеки отдела: пятнадцать страниц главы набраны, а
+    приложение с таблицами измерений вклеено сканом. Признак «это скан»
+    считался по СРЕДНЕМУ числу знаков на страницу, среднее выходило высоким,
+    документ признавался обычным — и приложение пропадало молча: ни в тексте,
+    ни в предупреждениях. Замер до починки: 20 страниц, 5 из них сканом, слова
+    «ПРИЛОЖЕНИЕ» в тексте нет вовсе.
+    """
+
+    def книга(self):
+        image = make_image(self.directory / "приложение.png",
+                           ["ПРИЛОЖЕНИЕ А", "таблица измерений затухания"])
+        полный = ["Обычный набранный текст главы отдела о методике измерений."] * 6
+        страницы = [("text", [f"Страница {n}", *полный]) for n in range(1, 6)]
+        страницы.append(("image", image))
+        return make_pdf(self.directory / "книга.pdf", страницы)
+
+    @unittest.skipUnless(HAS_TESSERACT and HAS_PIL and FONT, "нет tesseract, Pillow или шрифта")
+    def test_вклеенный_скан_распознаётся(self):
+        document = ocr.convert_pdf_ocr(self.книга())
+        self.assertIn("ПРИЛОЖЕНИЕ", document.text.upper(),
+                      "страница-скан пропала из документа: " + document.text[:300])
+
+    @unittest.skipUnless(HAS_TESSERACT and HAS_PIL and FONT, "нет tesseract, Pillow или шрифта")
+    def test_о_частичном_распознавании_сказано_честно(self):
+        document = ocr.convert_pdf_ocr(self.книга())
+        сказано = " ".join(document.warnings)
+        self.assertIn("текстовый слой был не везде", сказано)
+        self.assertNotIn("текстового слоя не было", сказано,
+                         "про книгу с текстом сказано как про сплошной скан")
+
+    @unittest.skipUnless(HAS_TESSERACT and HAS_PIL and FONT, "нет tesseract, Pillow или шрифта")
+    def test_документ_целиком_с_текстом_не_трогаем(self):
+        полный = ["Текста здесь достаточно для разбора без распознавания."] * 6
+        путь = make_pdf(self.directory / "обычная.pdf", [
+            ("text", [f"Страница {n}", *полный]) for n in range(1, 4)
+        ])
+        document = ocr.convert_pdf_ocr(путь)
+        self.assertNotIn("ocr", document.meta,
+                         "распознавание запустилось там, где текст и так есть")
+
+
+class PageRangeTests(unittest.TestCase):
+    """Номера страниц в предупреждении — диапазонами.
+
+    У скана книги чертежей бывает три сотни, и строка на каждую топит
+    настоящий отказ: человек пролистывает их все вместе с ним.
+    """
+
+    def test_подряд_идущие_свёрнуты(self):
+        self.assertEqual("6-8", ocr.page_ranges([6, 7, 8]))
+
+    def test_разрывы_сохранены(self):
+        self.assertEqual("6-8, 11", ocr.page_ranges([6, 7, 8, 11]))
+
+    def test_одиночные(self):
+        self.assertEqual("2, 5, 9", ocr.page_ranges([9, 2, 5]))
+
+    def test_повторы_и_беспорядок(self):
+        self.assertEqual("1-3", ocr.page_ranges([3, 1, 2, 2]))
+
+    def test_пусто(self):
+        self.assertEqual("", ocr.page_ranges([]))
+
 
 class MarkdownTests(unittest.TestCase):
     def test_headings_by_word_and_number(self):
@@ -707,10 +779,11 @@ class DjvuTests(TempCase):
     @unittest.skipUnless(HAS_TESSERACT, "нет tesseract")
     def test_temporary_files_are_removed(self):
         before = self.leftover("reportgen-djvu-")
+        before_ocr = self.leftover("reportgen-ocr-")
         path = self._scan(pages=1)
         djvu.convert_djvu(path)
         self.assertEqual(before, self.leftover("reportgen-djvu-"))
-        self.assertEqual([], self.leftover("reportgen-ocr-"))
+        self.assertEqual(before_ocr, self.leftover("reportgen-ocr-"))
 
     @unittest.skipUnless(HAS_TESSERACT, "нет tesseract")
     def test_dispatched_through_registry(self):

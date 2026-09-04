@@ -603,6 +603,30 @@ def ocr_pdf_pages(
     return collected
 
 
+def page_ranges(numbers: "Sequence[int]") -> str:
+    """[6, 7, 8, 11] → «6-8, 11».
+
+    Перечень из трёхсот номеров подряд человек не читает: он его пролистывает
+    вместе со всем остальным, и настоящий отказ тонет среди строк про пустые
+    листы.
+    """
+    parts: List[str] = []
+    for number in sorted(set(int(item) for item in numbers)):
+        if parts and number == _range_end(parts[-1]) + 1:
+            parts[-1] = f"{_range_start(parts[-1])}-{number}"
+        else:
+            parts.append(str(number))
+    return ", ".join(parts)
+
+
+def _range_start(part: str) -> int:
+    return int(part.split("-")[0])
+
+
+def _range_end(part: str) -> int:
+    return int(part.split("-")[-1])
+
+
 def page_quality_warning(page: int, text: str) -> str | None:
     """Предупреждение о плохо распознанной странице (или ``None``, если всё хорошо)."""
     count = len(text.strip())
@@ -1033,8 +1057,18 @@ def convert_pdf_ocr(path: Path) -> ConvertedDocument:
     from ..convert import _convert_pdf  # noqa: PLC0415 — не тянуть PDF-разбор при импорте
 
     result = _convert_pdf(path)
-    if not result.needs_ocr:
-        return result
+    # Решение принимаем ПОСТРАНИЧНО, а не по документу целиком. Признак
+    # `needs_ocr` считается по среднему числу знаков на страницу (convert.py),
+    # и у книги, где пятнадцать страниц набраны, а пять приложений вклеены
+    # сканом, среднее выходит высоким: документ признавался обычным, выходили
+    # отсюда сразу, и пять страниц пропадали молча — ни в тексте, ни в
+    # предупреждениях. Замер: книга 20 страниц, приложение из 5 сканов,
+    # `needs_ocr=False`, слова «ПРИЛОЖЕНИЕ» в тексте нет вовсе.
+    #
+    # Замысел модуля с самого начала был постраничный («распознаются только
+    # страницы, на которых текста нет»), и ниже он уже так и написан: список
+    # `targets` собирается по страницам. Не хватало только не выходить раньше.
+    whole = bool(result.needs_ocr)
 
     total = int(result.page_count or 0)
     prefix, pages = _split_pages(result.text)
@@ -1072,15 +1106,30 @@ def convert_pdf_ocr(path: Path) -> ConvertedDocument:
     result.warnings.extend(notes)
 
     added = 0
+    empty: List[int] = []
+    poor: List[int] = []
     for number in sorted(recognised):
         body = ocr_text_to_markdown(recognised[number])
-        quality = page_quality_warning(number, body)
-        if quality:
-            result.warnings.append(quality)
-        if not body.strip():
+        count = len(body.strip())
+        if not count:
+            empty.append(number)
             continue
+        if count < MIN_PAGE_CHARS:
+            poor.append(number)
         pages[number] = body
         added += 1
+    # Одной строкой на весь документ, а не строкой на страницу: у скана книги
+    # чертежей бывает три сотни, и настоящий отказ среди них не разглядеть.
+    if empty:
+        result.warnings.append(
+            f"текст не распознан на страницах {page_ranges(empty)} "
+            f"(всего {len(empty)}) — вероятно, чертежи, фотографии или пустые листы"
+        )
+    if poor:
+        result.warnings.append(
+            f"плохо распозналось страниц: {len(poor)} ({page_ranges(poor)}) — "
+            "вероятно, чертежи или фотографии с подписями"
+        )
 
     result.meta["ocr"] = True
     result.meta["ocr_pages"] = added
@@ -1097,11 +1146,16 @@ def convert_pdf_ocr(path: Path) -> ConvertedDocument:
     # Предупреждение обычного разбора «нужен слой OCR» больше не соответствует
     # действительности: слой мы только что сделали сами.
     result.warnings = [item for item in result.warnings if _SCAN_WARNING_MARK not in item]
+    начало = (
+        f"текстового слоя не было: распознано страниц {added} из {len(targets)}"
+        if whole else
+        f"текстовый слой был не везде: распознано страниц {added} из {len(targets)} "
+        f"(приложение, вклейка или отсканированная часть)"
+    )
     result.warnings.insert(
         0,
-        f"текстового слоя не было: распознано страниц {added} из {len(targets)} "
-        f"(tesseract, {result.meta['ocr_languages']}); текст получен машинно — "
-        "числа и обозначения перед использованием сверяйте с оригиналом",
+        f"{начало} (tesseract, {result.meta['ocr_languages']}); текст получен "
+        "машинно — числа и обозначения перед использованием сверяйте с оригиналом",
     )
     if not result.title or result.title == path.stem:
         result.title = _first_markdown_heading(result.text) or path.stem
