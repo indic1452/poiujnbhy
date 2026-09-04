@@ -9993,7 +9993,29 @@
        людей в отделе десятки, а не тысячи. */
 
     const TALK_POLL_MS = 10000;
-    const talks = { items: [], current: null, timer: null, nodes: {} };
+    const talks = { items: [], current: null, timer: null, nodes: {}, drafts: {} };
+
+    /* Недописанное сообщение.
+
+       Опрос беседы идёт каждые десять секунд и перерисовывает правую
+       половину вместе с полем ввода. Человек писал дольше десяти секунд —
+       поле пересоздавалось пустым, и написанное пропадало без следа.
+       Держим начатое здесь, отдельно от разметки, и кладём обратно при
+       каждой отрисовке.
+
+       Черновик хранится ПО БЕСЕДАМ: начатое Жукову ждёт в беседе с
+       Жуковым, даже если человек отвлёкся на разговор с Титовым. Перенести
+       чужой черновик в другой разговор хуже, чем потерять свой. */
+    function rememberDraft(talkId, text) {
+        if (talkId === null || talkId === undefined) return;
+        if (text) talks.drafts[talkId] = text;
+        else delete talks.drafts[talkId];
+    }
+
+    function draftOf(talkId) {
+        if (talkId === null || talkId === undefined) return '';
+        return talks.drafts[talkId] || '';
+    }
 
     function stopTalkPoll() {
         if (talks.timer) {
@@ -10108,9 +10130,36 @@
         }
     }
 
+    /** Признак содержимого беседы: по нему решаем, надо ли перерисовывать. */
+    function talkStamp(data) {
+        if (!data) return '';
+        const messages = data.messages || [];
+        const last = messages[messages.length - 1] || {};
+        return [data.id, messages.length, last.id || '', last.created_at || '',
+                (data.members || []).length].join('|');
+    }
+
     function paintTalkRoom(data) {
         const box = talks.nodes.room;
         if (!box) return;
+
+        // Место курсора в недописанном переживает перерисовку вместе с самим
+        // текстом: иначе человек, которому во время набора пришёл ответ,
+        // дописывал бы фразу с конца и заново щёлкнув в поле.
+        const той_же = data && talks.nodes.talkId === data.id;
+        const было = той_же ? talks.nodes.field : null;
+        const draft = data ? draftOf(data.id) : '';
+        const hadFocus = Boolean(было) && document.activeElement === было;
+        const caret = было ? было.selectionStart : draft.length;
+        const caretEnd = было ? было.selectionEnd : draft.length;
+
+        // Ничего не изменилось — не трогаем вообще. Перерисовка на месте сбивает
+        // и прокрутку, и выделение, и наведённые подсказки; делать её ради того,
+        // что и так на экране, незачем.
+        const stamp = talkStamp(data);
+        if (talks.nodes.stamp === stamp && (!data || talks.nodes.stream)) return;
+        talks.nodes.stamp = stamp;
+
         // Запоминаем, был ли человек внизу: дочитанную до конца переписку
         // прокручиваем к новому сообщению, а поднятую вверх — не дёргаем.
         const stream = talks.nodes.stream;
@@ -10118,6 +10167,8 @@
         clear(box);
         if (!data) {
             talks.nodes.stream = null;
+            talks.nodes.field = null;
+            talks.nodes.talkId = null;
             box.appendChild(h('div', { class: 'empty' },
                 h('h3', {}, 'Беседа не выбрана')));
             return;
@@ -10163,6 +10214,9 @@
 
         const field = h('textarea', {
             rows: 2, placeholder: 'Сообщение. Ctrl+Enter — отправить',
+            // Запоминаем на каждой букве: уход в другую беседу пересобирает
+            // экран целиком, и спросить у поля потом уже не у кого.
+            oninput: () => rememberDraft(data.id, field.value),
             onkeydown: (event) => {
                 if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
                     event.preventDefault();
@@ -10179,12 +10233,16 @@
             try {
                 await api.post('/api/talks/' + data.id + '/messages', { text: text });
                 field.value = '';
+                rememberDraft(data.id, '');
                 await loadTalks(true);
             } catch (error) {
                 toastError(error);
             } finally {
                 button.disabled = false;
-                field.focus();
+                // Отправка перерисовывает ленту, и поле к этому мигу уже другое.
+                // Возвращаем курсор в то, что человек видит, а не в выброшенное:
+                // иначе следующую фразу пришлось бы начинать со щелчка мышью.
+                (talks.nodes.field || field).focus();
             }
         }
 
@@ -10206,6 +10264,7 @@
                     try {
                         await uploadFile('/api/talks/' + data.id + '/files', form);
                         field.value = '';
+                        rememberDraft(data.id, '');
                     } catch (error) {
                         toast(one.name + ' — ' + errorText(error), 'error', 6000);
                     }
@@ -10239,6 +10298,17 @@
                 }, iconGlyph('clip')),
                 picker, field, button),
         ]);
+        // Возвращаем недописанное вместе с курсором. Порядок важен: значение
+        // ставится до фокуса, иначе курсор уедет в конец строки.
+        talks.nodes.field = field;
+        talks.nodes.talkId = data.id;
+        if (draft) {
+            field.value = draft;
+            if (hadFocus) {
+                field.focus();
+                try { field.setSelectionRange(caret, caretEnd); } catch (error) { /* старый браузер */ }
+            }
+        }
         if (wasDown) flow.scrollTop = flow.scrollHeight;
     }
 
@@ -10270,6 +10340,7 @@
         if (!ok) return;
         try {
             await api.del('/api/talks/' + data.id);
+            rememberDraft(data.id, '');
             talks.current = 0;
             location.hash = '#/talks';
             await loadTalks();
