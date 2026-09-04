@@ -455,8 +455,13 @@ if (Test-Path $dev) {
     if ($script:NativeExit -ne 0) { Later 'пакеты для прогона тестов не встали — проверить установку тестами не выйдет' }
     else { Ok 'пакеты для прогона тестов установлены' }
 }
-& $venvPython -c "import fastapi, uvicorn, docx, pymupdf, numpy; print('пакеты на месте')"
+# Проверяем ВСЁ, без чего приложение не поднимется. Половина списка тут
+# отсутствовала, и установка рапортовала «пакеты на месте», а сервер потом
+# падал на python-multipart — на машине, где pip идти некуда.
+& $venvPython -c "import fastapi, uvicorn, docx, pymupdf, numpy, multipart, itsdangerous, jinja2; print('пакеты на месте')"
 if ($LASTEXITCODE -ne 0) { Fail 'зависимости встали не полностью' }
+& $venvPython -c "import reportgen.web.app as app; app.create_app; print('приложение собирается')"
+if ($LASTEXITCODE -ne 0) { Fail 'приложение не собирается — установка не закончена' }
 Ok 'зависимости установлены, сеть не использовалась'
 
 # -------------------------------------------------------------- настройка --

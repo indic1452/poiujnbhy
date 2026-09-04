@@ -5327,9 +5327,10 @@ class InterfaceCopyTests(unittest.TestCase):
         без этого.
         """
         self.assertIn("function deskAllowed()", self.js)
-        self.assertIn("Окно поверх других окон браузер показывает", self.js)
-        self.assertIn("ставить на эту машину", self.js)
-        self.assertIn("ВЫЗОВ В КАБИНЕТ", self.js)
+        self.assertIn("Окно Windows поверх других: здесь недоступно", self.js)
+        self.assertIn("Ставить на эту машину тоже ничего не", self.js)
+        self.assertIn("искать не нужно", self.js)
+        self.assertIn("ВЫЗОВ", self.js)
 
     def test_the_tab_title_counts_what_is_unread(self):
         """Работает при любом браузере и любом адресе — видно в панели задач."""

@@ -779,7 +779,9 @@ class StartGuideTests(unittest.TestCase):
                 continue
             block = re.search(r"^param\((.*?)^\)", read(path), re.S | re.M)
             declared = {word.lower() for word in re.findall(r"\$(\w+)", block.group(1))} if block else set()
-            for switch in re.findall(r"-(\w+)", tail):
+            # Ключ всегда стоит после пробела. Без этого «-server» из
+            # \\otdel-server\obmen считался ключом скрипта.
+            for switch in re.findall(r"(?:^|\s)-(\w+)", tail):
                 if switch.lower() in self.HOST_SWITCHES:
                     continue
                 if switch.lower() not in declared:

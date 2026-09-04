@@ -112,18 +112,45 @@ class ПодсказкаПроHttps(unittest.TestCase):
     """
 
     def кусок(self):
-        начало = APP.index("Окно поверх других окон браузер показывает")
-        return APP[начало:начало + 900]
+        начало = APP.index("Окно Windows поверх других: здесь недоступно")
+        return APP[начало:начало + 1400]
 
     def test_не_велит_ничего_устанавливать(self):
         текст = self.кусок()
-        self.assertIn("ставить на эту машину", текст)
+        self.assertIn("ничего не", текст)
         self.assertNotIn("setup-https.ps1", текст)
+
+    def test_не_посылает_искать_разрешение_в_браузере(self):
+        """Ровно то, на чём человек застрял: в Firefox разрешения там нет."""
+        текст = self.кусок()
+        self.assertIn("искать не нужно", текст)
+        self.assertIn("Firefox", текст)
 
     def test_сказано_чем_срочное_достучится(self):
         текст = self.кусок()
-        self.assertIn("ВЫЗОВ В КАБИНЕТ", текст)
+        self.assertIn("ВЫЗОВ", текст)
         self.assertIn("повторяется", текст)
+
+    def test_вызов_можно_посмотреть_своими_глазами(self):
+        self.assertIn("'Проверить вызов'", APP)
+        self.assertIn("Смотрите на заголовок вкладки", APP)
+
+    def test_мёртвого_переключателя_нет(self):
+        """Отключённая отметка и гонит человека в настройки браузера.
+
+        Отметку показываем ТОЛЬКО там, где окно Windows возможно; где нет —
+        на её месте объяснение и кнопка проверки, а не серый переключатель.
+        """
+        import re as _re
+
+        self.assertNotIn("disabled: !deskAllowed()", APP)
+        self.assertRegex(
+            APP, r"deskAllowed\(\)\s*\n\s*\? h\('label', \{ class: 'check-line' \}, desk,",
+            "отметка показывается независимо от того, работает ли она")
+        self.assertRegex(
+            APP, r":\s*h\('div', \{ class: 'card card-pad' \},\s*\n\s*"
+                 r"h\('b', \{\}, 'Окно Windows поверх других: здесь недоступно'\)",
+            "объяснения вместо мёртвой отметки нет")
 
 
 class СерверОтдаётСвоёОкно(unittest.TestCase):

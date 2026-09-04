@@ -591,6 +591,44 @@ class ДокументацияНеОбещаетЛишнего(unittest.TestCase
         self.assertIn("опись.txt", кусок)
 
 
+class СквознойМаршрутВерен(unittest.TestCase):
+    """docs/00-start.md — то, по чему систему ставят от начала до конца."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.текст = (ROOT / "docs" / "00-start.md").read_text(encoding="utf-8")
+
+    def test_число_слотов_модели_совпадает_со_скриптом(self):
+        """Документация обещала два слота, а скрипт поднимает один."""
+        скрипт = читать(WINDOWS / "start-llm.ps1")
+        найдено = re.search(r"\[int\]\$Parallel\s*=\s*(\d+)", скрипт)
+        self.assertIsNotNone(найдено)
+        self.assertIn("--parallel %s`" % найдено.group(1), self.текст)
+
+    def test_объём_материала_совпадает_с_настройками(self):
+        """В образце настроек 52000 — столько и должно быть обещано."""
+        образец = json.loads(
+            (WINDOWS / "settings.example.json").read_text(encoding="utf-8-sig"))
+        сколько = образец["assistant_context_chars"]
+        self.assertIn("%d 000" % (сколько // 1000), self.текст)
+
+    def test_не_зовут_программу_которой_нет(self):
+        """`reportgen` — не программа: она живёт в окружении приложения."""
+        for номер, строка in enumerate(self.текст.splitlines(), 1):
+            голая = строка.strip()
+            if голая.startswith("reportgen ") and "Invoke-Reportgen" not in строка:
+                self.fail(f"00-start.md:{номер}: {голая}")
+
+    def test_сказано_что_на_рабочих_местах_ничего_не_ставят(self):
+        self.assertIn("Ставить на них **не нужно ничего**", self.текст)
+        self.assertIn("ВЫЗОВ", self.текст)
+
+    def test_копия_описана_так_как_делается(self):
+        кусок = self.текст[self.текст.index("### Резервная копия"):]
+        self.assertIn("опись.txt", кусок[:1500])
+        self.assertIn("вложения писем", кусок[:1500])
+
+
 class НастройкиЧитаютсяПоЧеловечески(unittest.TestCase):
     def test_испорченный_файл_называют_и_показывают_место(self):
         with tempfile.TemporaryDirectory() as имя:

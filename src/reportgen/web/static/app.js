@@ -1161,20 +1161,28 @@
     const ALARM_SOUND_EVERY = 8;             // тактов между сигналами
     const ALARM_MAX_SOUNDS = 10;
 
-    const alarm = { timer: null, text: '', ticks: 0, sounds: 0 };
+    const alarm = { timer: null, text: '', ticks: 0, sounds: 0, показ: false };
 
-    function startAlarm(text) {
+    function startAlarm(text, показ) {
         stopAlarm();
         if (!titleBase) titleBase = document.title || brandShort();
         alarm.text = String(text || 'СРОЧНОЕ').toUpperCase();
         alarm.ticks = 0;
         alarm.sounds = 0;
+        // Показ по просьбе человека («Проверить вызов»): он смотрит на экран,
+        // и останавливаться из-за этого нельзя — иначе проверять нечего.
+        alarm.показ = Boolean(показ);
         playAlert();
         alarm.sounds += 1;
         alarm.timer = setInterval(() => {
+            if (alarm.показ && alarm.ticks >= 6) {
+                stopAlarm();
+                paintTitle(notices.unseen);
+                return;
+            }
             // Человек вернулся к окну — он уже видит карточку, дальше выть
             // незачем.
-            if (!document.hidden) {
+            if (!alarm.показ && !document.hidden) {
                 stopAlarm();
                 paintTitle(notices.unseen);
                 return;
@@ -1201,6 +1209,7 @@
         alarm.timer = null;
         alarm.ticks = 0;
         alarm.sounds = 0;
+        alarm.показ = false;
     }
 
     function playAlert() {
@@ -1548,7 +1557,6 @@
         const desk = h('input', {
             type: 'checkbox',
             checked: deskOn(),
-            disabled: !deskAllowed(),
             onchange: async () => {
                 if (!desk.checked) return;
                 const answer = await askDesk();
@@ -1561,6 +1569,18 @@
                 }
             },
         });
+
+        // Показать, как выглядит вызов. Человеку, у которого окно Windows
+        // недоступно, нужно своими глазами увидеть, что вместо него: иначе он
+        // идёт искать разрешение в настройках браузера, где его нет.
+        const проба = h('button', {
+            class: 'btn btn--sm',
+            onclick: () => {
+                startAlarm('ВЫЗОВ: ' + ((state.user || {}).short_name || 'НИКИТИН В. П.'),
+                           true);
+                toast('Смотрите на заголовок вкладки и в панель задач', 'ok', 7000);
+            },
+        }, 'Проверить вызов');
 
         const loud = [
             ['Отчёт вернули на доработку', true],
@@ -1589,22 +1609,34 @@
                     h('span', { class: 'small' }, 'Громкость'),
                     level, levelText),
                 h('div', { class: 'toolbar' }, h('span', { class: 'grow' }), test),
-                h('label', { class: 'check-line' }, desk,
-                    h('span', {},
-                        h('b', {}, 'Уведомление на рабочем столе'),
-                        h('div', { class: 'small muted' }, deskAllowed()
-                            ? 'Когда окно свёрнуто, уведомление покажет сам '
-                              + 'Windows. Браузер спросит разрешение один раз.'
-                            // Сказать «нельзя» мало: человек уходит ни с чем.
-                            // Говорим, что работает и без этого, — а работает
-                            // главное.
-                            : 'Окно поверх других окон браузер показывает '
-                              + 'только по https. У вас обычный адрес в сети — '
-                              + 'такого окна не будет, и ставить на эту машину '
-                              + 'ничего не нужно: срочное всё равно вас найдёт. '
-                              + 'При свёрнутом окне в панели задач мигает '
-                              + '«‼ ВЫЗОВ В КАБИНЕТ», и сигнал повторяется, '
-                              + 'пока вы не вернётесь к окну.'))),
+                // Мёртвого переключателя быть не должно. Там, где окна
+                // Windows нет, человек видит не отключённую отметку, а
+                // объяснение и кнопку проверки: иначе он идёт искать
+                // разрешение в настройках браузера, где его нет вовсе.
+                deskAllowed()
+                    ? h('label', { class: 'check-line' }, desk,
+                        h('span', {},
+                            h('b', {}, 'Уведомление на рабочем столе'),
+                            h('div', { class: 'small muted' },
+                                'Когда окно свёрнуто, уведомление покажет сам '
+                                + 'Windows. Браузер спросит разрешение один раз.')))
+                    : h('div', { class: 'card card-pad' },
+                        h('b', {}, 'Окно Windows поверх других: здесь недоступно'),
+                        h('div', { class: 'small muted' },
+                            'Такое окно браузер показывает только защищённой '
+                            + 'странице (https). У вас обычный адрес в сети — '
+                            + 'значит, окна не будет. '),
+                        h('div', { class: 'small muted' },
+                            'Разрешение в настройках браузера искать не нужно: '
+                            + 'по этому адресу его там нет вовсе — ни в Firefox, '
+                            + 'ни в Chrome. Ставить на эту машину тоже ничего не '
+                            + 'надо.'),
+                        h('div', { class: 'small' },
+                            'Вместо окна вас найдёт вот что: при свёрнутом окне '
+                            + 'в панели задач мигает «‼ ВЫЗОВ: ФАМИЛИЯ», а '
+                            + 'сигнал повторяется, пока вы не вернётесь.'),
+                        h('div', { class: 'toolbar' },
+                            h('span', { class: 'grow' }), проба)),
                 h('div', { class: 'card-title' }, 'Что приходит'),
                 h('div', { class: 'notice-kinds' }, loud.map((pair) =>
                     h('div', { class: 'notice-kind' },
