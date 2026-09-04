@@ -51,6 +51,14 @@
 .PARAMETER Probe
     Ничего не качать, только проверить, отвечает ли источник и опознаются ли
     ссылки. С этого начинайте, если что-то идёт не так.
+.PARAMETER UserAgent
+    Чем представляться серверу. По умолчанию скрипт сам подбирает: сначала
+    обычным браузерным заголовком, а если сервер его не принял — своим именем.
+    Ключ нужен, только если корпоративный шлюз требует чего-то определённого.
+.PARAMETER StopAfterFailures
+    Сколько страниц подряд может не открыться, прежде чем скрипт остановится.
+    По умолчанию 15: если МСЭ закрыт, незачем час долбиться в шесть тысяч
+    адресов, чтобы в конце сказать «ничего не скачано».
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\itu.ps1 -Probe
 .EXAMPLE
@@ -68,7 +76,9 @@ param(
     [int]$DelayMs = 700,
     [string]$BaseUrl = 'https://www.itu.int',
     [string]$IndexFrom = '',
-    [switch]$Probe
+    [switch]$Probe,
+    [string]$UserAgent = '',
+    [int]$StopAfterFailures = 15
 )
 
 $ErrorActionPreference = 'Stop'
@@ -86,6 +96,159 @@ function Step($text) { Write-Host "==> $text" -ForegroundColor Cyan }
 function Ok($text)   { Write-Host "  OK  $text" -ForegroundColor Green }
 function Warn($text) { Write-Host "  !   $text" -ForegroundColor Yellow }
 function Note($text) { Write-Host "      $text" -ForegroundColor DarkGray }
+function Fail($text) { Write-Host "  X   $text" -ForegroundColor Red }
+
+Add-Type -AssemblyName System.Web -ErrorAction SilentlyContinue
+
+<#
+    Чем представляться серверу МСЭ.
+
+    Первым идёт обычный браузерный заголовок. Это не уловка: действующие
+    рекомендации МСЭ раздаёт бесплатно и без регистрации, но защита сайта от
+    наплыва запросов отвечает 403 на незнакомое имя программы. Перечень серии
+    при этом открывается — он отдаётся из кэша, — а страница самой
+    рекомендации уже нет. Ровно это отдел и видел: 25 перечней прочитались,
+    6584 рекомендации опознались, а первая же страница получила 403.
+
+    Вторым идёт честное имя нашей качалки: если сервер принимает его, лучше
+    называться собой. Что сработало — то и запоминается на весь запуск.
+#>
+$script:UserAgents = @(
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'reportgen-library/1.0 (offline technical library)'
+)
+if ($UserAgent) { $script:UserAgents = @($UserAgent) }
+$script:AgentIndex = 0
+
+<#
+    Банка печений на весь запуск.
+
+    Файл рекомендации МСЭ отдаёт не по прямой ссылке, а через dologin_pub.asp
+    — «вход для публики»: тот ставит печенье и перенаправляет на сам PDF. Без
+    общей банки каждый запрос начинается с нуля, и вместо PDF приезжает
+    html-страница. Она проходила проверку «файл больше 4 КБ» и ложилась в
+    библиотеку под именем .pdf.
+#>
+$script:CookieJar = ''
+
+function Invoke-Curl {
+    <#
+        Запустить curl и вернуть его вывод, не оборвав выгрузку.
+
+        Windows PowerShell 5.1 при $ErrorActionPreference = 'Stop' считает
+        ошибкой каждую строку, которую внешняя программа написала в поток
+        ошибок. Ключ «2>$null» от этого НЕ спасает: строка попадает в поток
+        ошибок раньше, чем её отбрасывают. Именно поэтому один 403 на первой
+        же рекомендации обрывал выгрузку всех шести тысяч — с трассировкой
+        PowerShell вместо человеческого объяснения.
+    #>
+    param([string[]]$Arguments)
+    $прежний = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $вывод = & $script:CurlExe @Arguments 2>&1
+        $выход = $LASTEXITCODE
+    } catch {
+        return @{ lines = @("$($_.Exception.Message)"); exit = 1 }
+    } finally {
+        $ErrorActionPreference = $прежний
+    }
+    return @{ lines = @($вывод | ForEach-Object { "$_" }); exit = $выход }
+}
+
+<#
+    Один запрос к МСЭ: вернуть тело, код ответа и код выхода curl.
+
+    Код ответа спрашиваем у самого curl через -w: с ключом --fail он
+    молчит о теле и пишет ошибку в поток ошибок, а нам нужно и то, и другое —
+    отличить «сервер отказал» от «страница пустая» иначе нельзя.
+#>
+function Invoke-Request {
+    param(
+        [string]$Url,
+        [string]$Referer = '',
+        [string]$OutFile = '',
+        [int]$Timeout = 90,
+        [int]$Agent = -1
+    )
+    if ($Agent -lt 0) { $Agent = $script:AgentIndex }
+    $аргументы = @(
+        '-sL', '--max-time', "$Timeout", '--retry', '2', '--retry-delay', '2',
+        '-A', $script:UserAgents[$Agent], '-w', "`n%{http_code}"
+    )
+    if ($script:CookieJar) { $аргументы += @('-c', $script:CookieJar, '-b', $script:CookieJar) }
+    if ($Referer) { $аргументы += @('-e', $Referer) }
+    if ($OutFile) { $аргументы += @('-o', $OutFile) }
+    $аргументы += $Url
+
+    $ответ = Invoke-Curl -Arguments $аргументы
+    $строки = @($ответ.lines)
+    # Последняя строка вывода — это %{http_code}, всё до неё — тело ответа.
+    # При -o тела в выводе нет и остаётся только код.
+    $код = 0
+    if ($строки.Count) {
+        $хвост = "$($строки[-1])".Trim()
+        if ($хвост -match '^\d{3}$') { $код = [int]$хвост }
+        $строки = @($строки[0..([Math]::Max(0, $строки.Count - 2))])
+        if ($хвост -match '^\d{3}$' -and $ответ.lines.Count -le 1) { $строки = @() }
+    }
+    return [pscustomobject]@{
+        code = $код
+        exit = $ответ.exit
+        text = ($строки -join "`n")
+    }
+}
+
+#: Код ответа человеческими словами. Инженеру на изолированной машине
+#: «ошибка 403» ничего не говорит, а «не пускает эту программу» говорит.
+function Read-HttpCode([int]$code, [int]$exitCode) {
+    if ($code -eq 0) {
+        switch ($exitCode) {
+            6  { return 'не нашёл сервер по имени (нет DNS или шлюза)' }
+            7  { return 'сервер не отвечает (закрыт порт или шлюз)' }
+            28 { return 'время ожидания вышло' }
+            35 { return 'не удалось договориться о шифровании (TLS)' }
+            60 { return 'сертификат сервера не признан' }
+            default { return "нет ответа (curl вышел с кодом $exitCode)" }
+        }
+    }
+    switch ($code) {
+        401 { return 'сервер требует входа (401)' }
+        403 { return 'сервер отказал (403): не пускает эту программу' }
+        404 { return 'страницы нет (404): адрес изменился' }
+        429 { return 'слишком часто (429): увеличьте -DelayMs' }
+        500 { return 'сервер сломался (500)' }
+        503 { return 'сервер занят (503)' }
+        default { return "ответ $code" }
+    }
+}
+
+<#
+    Страница МСЭ с подбором имени программы.
+
+    На 403 пробуем следующее имя из списка — один раз за запуск. Что
+    сработало, тем и ходим дальше: перебирать на каждой из шести тысяч
+    страниц значило бы утроить нагрузку на чужой сервер.
+#>
+function Get-Page {
+    param([string]$Url, [string]$Referer = '')
+    $ответ = Invoke-Request -Url $Url -Referer $Referer
+    if ($ответ.code -eq 403 -and -not $script:AgentTried) {
+        for ($i = 0; $i -lt $script:UserAgents.Count; $i++) {
+            if ($i -eq $script:AgentIndex) { continue }
+            $другой = Invoke-Request -Url $Url -Referer $Referer -Agent $i
+            if ($другой.code -ge 200 -and $другой.code -lt 400) {
+                $script:AgentIndex = $i
+                $script:AgentTried = $true
+                Note 'сервер не принял прежнее имя программы — перешёл на другое'
+                return $другой
+            }
+        }
+        $script:AgentTried = $true
+    }
+    return $ответ
+}
+$script:AgentTried = $false
 
 #: Серии рекомендаций МСЭ-Т. Буква серии — это область техники, и по ней же
 #: раскладываются файлы: инженеру привычнее искать «G.703», чем номер в общем
@@ -201,11 +364,39 @@ function Read-ItuPdfLink {
 function Resolve-ItuUrl {
     param([string]$Href, [string]$BaseAddress)
     if (-not $Href) { return '' }
-    $href = [System.Web.HttpUtility]::HtmlDecode($Href)
+    # System.Web в PowerShell 7 подгружается не везде, а падение здесь при
+    # $ErrorActionPreference = 'Stop' обрывало бы весь запуск на первой ссылке.
+    $href = $Href
+    try { $href = [System.Web.HttpUtility]::HtmlDecode($Href) }
+    catch {
+        $href = $Href -replace '&amp;', '&' -replace '&#38;', '&' `
+                      -replace '&quot;', '"' -replace '&#39;', "'"
+    }
     if ($href -match '^(?i)https?://') { return $href }
     if ($href.StartsWith('//'))        { return "https:$href" }
     if ($href.StartsWith('/'))         { return "$BaseAddress$href" }
     return "$BaseAddress/$($href.TrimStart('./'))"
+}
+
+<#
+    Настоящий ли это PDF.
+
+    Проверки «файл больше 4 КБ» не хватает: страница «доступ закрыт» или
+    «сервер занят» весит больше и ложилась в библиотеку под именем .pdf.
+    Приём такой файл не прочитает, а инженер увидит в перечне документ,
+    которого нет. Смотрим подпись формата — первые пять байт.
+#>
+function Test-PdfFile([string]$path) {
+    if (-not (Test-Path -LiteralPath $path)) { return $false }
+    try {
+        $поток = [IO.File]::OpenRead($path)
+        try {
+            $голова = New-Object byte[] 5
+            $прочитано = $поток.Read($голова, 0, 5)
+        } finally { $поток.Dispose() }
+    } catch { return $false }
+    if ($прочитано -lt 5) { return $false }
+    return ([Text.Encoding]::ASCII.GetString($голова) -eq '%PDF-')
 }
 
 #: Имя файла: «T-REC-G.703.pdf». Двоеточий и косых в номерах МСЭ не бывает,
@@ -216,29 +407,76 @@ function Get-ItuFileName {
     return "T-REC-$safe.pdf"
 }
 
-function Get-Text([string]$url) {
-    return (& $script:CurlExe -sSL --fail --max-time 90 --retry 2 `
-              -A 'reportgen-library/1.0 (offline technical library)' $url 2>$null) -join "`n"
+#: Тело страницы или пустая строка. Причину неудачи кладём в $script:LastWhy,
+#: чтобы вызывающий мог сказать человеку, что именно случилось.
+$script:LastWhy = ''
+$script:LastCode = 0
+function Get-Text([string]$url, [string]$referer = '') {
+    $ответ = Get-Page -Url $url -Referer $referer
+    $script:LastCode = $ответ.code
+    if ($ответ.code -ge 200 -and $ответ.code -lt 400 -and $ответ.text) {
+        $script:LastWhy = ''
+        return $ответ.text
+    }
+    $script:LastWhy = Read-HttpCode $ответ.code $ответ.exit
+    return ''
 }
 
 # --- Проверка источника ----------------------------------------------------
+<#
+    Проверка идёт по всем трём ступеням выгрузки, а не только по первой.
+
+    Раньше проверялись адреса перечней — и они открываются даже тогда, когда
+    всё остальное закрыто: перечень отдаётся из кэша. Из-за этого проверка
+    говорила «источник отвечает», а выгрузка ложилась на первой же
+    рекомендации. Теперь проверяются перечень, страница рекомендации и сам
+    файл, и каждым именем программы по очереди.
+#>
 if ($Probe) {
-    Step 'Проверка источника'
-    $tries = @("$Base/rec/T-REC-G/en", "$Base/rec/T-REC-G.703/en", "$Base/ITU-T/recommendations/index.aspx?ser=G")
-    foreach ($url in $tries) {
-        $target = if ($script:CurlExe -eq 'curl.exe') { 'NUL' } else { '/dev/null' }
-        $code = [int]((& $script:CurlExe -sL --max-time 45 -o $target -w '%{http_code}' $url 2>$null) |
-                      Select-Object -Last 1)
-        $status = if ($code -ge 200 -and $code -lt 400) { "OK $code" } else { "ОШИБКА $code" }
-        Write-Host ("  {0,-52} {1}" -f $url.Replace($Base, ''), $status)
+    $script:CookieJar = Join-Path ([IO.Path]::GetTempPath()) 'itu-probe-cookies.txt'
+    if (Test-Path -LiteralPath $script:CookieJar) {
+        Remove-Item -LiteralPath $script:CookieJar -Force -ErrorAction SilentlyContinue
     }
+
+    Step 'Проверка источника — по ступеням выгрузки'
+    $рабочий = -1
+    for ($i = 0; $i -lt $script:UserAgents.Count; $i++) {
+        $имя = $script:UserAgents[$i]
+        $коротко = if ($имя -match '^Mozilla') { 'как браузер' } else { 'своим именем' }
+        Write-Host ("  представляемся {0}:" -f $коротко)
+        $ступени = @(
+            @{ что = 'перечень серии G'; url = "$Base/rec/T-REC-G/en" },
+            @{ что = 'страница G.703';   url = "$Base/rec/T-REC-G.703/en" }
+        )
+        $всеОткрылись = $true
+        foreach ($ступень in $ступени) {
+            $ответ = Invoke-Request -Url $ступень.url -Timeout 45 -Agent $i
+            $хорошо = ($ответ.code -ge 200 -and $ответ.code -lt 400)
+            if (-not $хорошо) { $всеОткрылись = $false }
+            $итог = if ($хорошо) { "OK $($ответ.code)" } else { Read-HttpCode $ответ.code $ответ.exit }
+            Write-Host ("    {0,-20} {1}" -f $ступень.что, $итог)
+        }
+        if ($всеОткрылись -and $рабочий -lt 0) { $рабочий = $i }
+    }
+
+    if ($рабочий -lt 0) {
+        Write-Host ''
+        Fail 'ни одним именем страница рекомендации не открылась'
+        Note 'проверьте в браузере на этой же машине:'
+        Note "  $Base/rec/T-REC-G.703/en"
+        Note 'открывается в браузере, а здесь нет — значит, мешает шлюз или'
+        Note 'защита сайта. Тогда сохраните страницы перечней браузером и'
+        Note 'запустите с ключом -IndexFrom <каталог с G.html, H.html и т.д.>'
+        exit 1
+    }
+    $script:AgentIndex = $рабочий
     Write-Host ''
+    Ok ("сервер принимает: {0}" -f $(if ($script:UserAgents[$рабочий] -match '^Mozilla') { 'браузерное имя' } else { 'имя качалки' }))
+
     Step 'Опознаются ли ссылки на странице перечня'
     $html = Get-Text "$Base/rec/T-REC-G/en"
     if (-not $html) {
-        Warn 'страница перечня не получена — смотрите коды ответа выше'
-        Note 'если сайт открывается браузером, а скриптом нет, сохраните страницы'
-        Note 'перечней вручную и запустите с ключом -IndexFrom <каталог>'
+        Fail "страница перечня не получена: $script:LastWhy"
         exit 1
     }
     $entries = Read-ItuIndex -Html $html -SeriesLetter 'G'
@@ -249,14 +487,47 @@ if ($Probe) {
     if ($entries.Count -eq 0) {
         Warn 'ссылки не опознались — вёрстка МСЭ изменилась'
         Note 'сохраните страницу в файл и пришлите: разбор поправим по ней'
+        exit 1
     }
+
+    Step 'Доходит ли дело до самого файла'
+    $первая = $entries | Select-Object -First 1
+    $адресСтраницы = Resolve-ItuUrl -Href $первая.page -BaseAddress $Base
+    $страница = Get-Text $адресСтраницы -referer "$Base/rec/T-REC-G/en"
+    if (-not $страница) {
+        Fail "страница $($первая.id) не получена: $script:LastWhy"
+        exit 1
+    }
+    $адресФайла = Resolve-ItuUrl -Href (Read-ItuPdfLink -Html $страница) -BaseAddress $Base
+    if (-not $адресФайла) {
+        Warn "на странице $($первая.id) не нашлось ссылки на PDF"
+        Note 'у части рекомендаций публикуется только платная версия — но если'
+        Note 'так отвечают все подряд, значит изменилась вёрстка страницы'
+        exit 1
+    }
+    $проба = Join-Path ([IO.Path]::GetTempPath()) 'itu-probe.pdf'
+    $файл = Invoke-Request -Url $адресФайла -Referer $адресСтраницы -OutFile $проба -Timeout 120
+    $размер = if (Test-Path -LiteralPath $проба) { (Get-Item -LiteralPath $проба).Length } else { 0 }
+    $этоPdf = Test-PdfFile $проба
+    Remove-Item -LiteralPath $проба -Force -ErrorAction SilentlyContinue
+    if ($файл.code -ne 200 -or -not $этоPdf) {
+        Fail ("файл {0} не скачался: {1}, размер {2}, PDF: {3}" -f `
+              $первая.id, (Read-HttpCode $файл.code $файл.exit), $размер, $(if ($этоPdf) { 'да' } else { 'нет' }))
+        Note 'страницы открываются, а файлы — нет. Так бывает, когда сервер'
+        Note 'отдаёт файл только по печенью: проверьте, что curl не запрещено'
+        Note 'писать во временный каталог.'
+        exit 1
+    }
+    Ok ("файл {0} скачивается: {1:N0} КБ" -f $первая.id, ($размер / 1KB))
+    Write-Host ''
+    Ok 'источник исправен — можно запускать выгрузку'
     exit 0
 }
 
 # --- Перечень --------------------------------------------------------------
 $wanted = if ($Series.Count) { $Series | ForEach-Object { $_.ToUpperInvariant() } } else { Get-ItuSeries }
 $root = New-Item -ItemType Directory -Path $Destination -Force
-Add-Type -AssemblyName System.Web -ErrorAction SilentlyContinue
+$script:CookieJar = Join-Path $root 'cookies.txt'
 
 Step "Перечень рекомендаций: серий $($wanted.Count)"
 $all = @()
@@ -267,7 +538,11 @@ foreach ($letter in $wanted) {
     } else {
         Get-Text "$Base/rec/T-REC-$letter/en"
     }
-    if (-not $html) { Warn "серия $letter — перечень не получен"; continue }
+    if (-not $html) {
+        $почему = if ($IndexFrom) { "нет файла $letter.html в $IndexFrom" } else { $script:LastWhy }
+        Warn "серия $letter — перечень не получен: $почему"
+        continue
+    }
     $entries = Read-ItuIndex -Html $html -SeriesLetter $letter
     if ($entries.Count -eq 0) { Warn "серия $letter — ни одной ссылки не опознано" }
     else { Note ("серия {0}: {1}" -f $letter, $entries.Count) }
@@ -302,8 +577,14 @@ if (-not $Superseded -and $other.Count) {
 Step "Скачивание: $($plan.Count) документов"
 Note 'прервали — запустите снова, уже скачанное не перекачивается'
 
-$done = 0; $got = 0; $skipped = 0; $nolink = 0; $broken = 0
+# «Не скачано» разложено по причинам: без этого 403 на весь сайт выглядел
+# как «у части рекомендаций публикуется только платная версия», и отдел
+# уносил на изолированную машину пустой каталог, считая это нормой.
+$done = 0; $got = 0; $skipped = 0; $nolink = 0; $broken = 0; $noPage = 0
 $saved = @()
+$неудачи = @()
+$подряд = 0
+$оборвано = $false
 foreach ($item in ($plan | Sort-Object series, number)) {
     $done++
     $folder = if ($item.status -eq 'current') {
@@ -314,32 +595,72 @@ foreach ($item in ($plan | Sort-Object series, number)) {
     New-Item -ItemType Directory -Path $folder -Force | Out-Null
     $target = Join-Path $folder (Get-ItuFileName $item.id)
 
+    # Пропускаем уже скачанное — но только если это действительно PDF.
+    # Прежняя редакция скрипта сохраняла html-страницу «доступ закрыт» под
+    # именем .pdf: она тяжелее четырёх килобайт и по одному размеру
+    # пропускалась бы вечно. Проверка подписи формата чинит это сама —
+    # мусор будет перекачан при следующем запуске.
     if ((Test-Path -LiteralPath $target) -and (Get-Item -LiteralPath $target).Length -gt 4096) {
-        $skipped++
-        $saved += $item
-        continue
+        if (Test-PdfFile $target) {
+            $skipped++
+            $saved += $item
+            continue
+        }
+        Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
     }
 
+    $indexUrl = "$Base/rec/T-REC-$($item.series)/en"
     $pageUrl = Resolve-ItuUrl -Href $item.page -BaseAddress $Base
-    $page = Get-Text $pageUrl
+    $page = Get-Text $pageUrl -referer $indexUrl
     if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
+
+    if (-not $page) {
+        # Страница не открылась. Это НЕ «нет ссылки на PDF»: путать их нельзя,
+        # иначе закрытый сайт выдаётся за платные документы.
+        $noPage++
+        $подряд++
+        $неудачи += [pscustomobject]@{ id = $item.id; этап = 'страница'; причина = $script:LastWhy; адрес = $pageUrl }
+        if ($noPage -le 10) { Warn "$($item.id) — страница не открылась: $script:LastWhy" }
+        if ($noPage -eq 11) { Note 'дальше о таких молчу, итог будет в конце' }
+        if ($подряд -ge $StopAfterFailures) {
+            Write-Host ''
+            Fail "подряд не открылось страниц: $подряд — дальше идти незачем"
+            $оборвано = $true
+            break
+        }
+        continue
+    }
+    $подряд = 0
+
     $pdfUrl = Resolve-ItuUrl -Href (Read-ItuPdfLink -Html $page) -BaseAddress $Base
     if (-not $pdfUrl) {
         $nolink++
+        $неудачи += [pscustomobject]@{ id = $item.id; этап = 'ссылка'; причина = 'на странице нет ссылки на PDF'; адрес = $pageUrl }
         if ($nolink -le 10) { Warn "$($item.id) — на странице нет ссылки на PDF" }
         if ($nolink -eq 11) { Note 'дальше о таких молчу, итог будет в конце' }
         continue
     }
 
-    $code = [int]((& $script:CurlExe -sL --max-time 180 --retry 2 -o $target `
-                     -A 'reportgen-library/1.0 (offline technical library)' `
-                     -w '%{http_code}' $pdfUrl 2>$null) | Select-Object -Last 1)
-    # Пустой или крошечный файл — это страница с ошибкой, а не рекомендация.
+    # Referer обязателен: МСЭ отдаёт файл через dologin_pub.asp, и без ссылки
+    # на страницу, с которой пришли, тот отвечает страницей, а не файлом.
+    $ответ = Invoke-Request -Url $pdfUrl -Referer $pageUrl -OutFile $target -Timeout 180
     $size = if (Test-Path -LiteralPath $target) { (Get-Item -LiteralPath $target).Length } else { 0 }
-    if ($code -ne 200 -or $size -le 4096) {
+    $этоPdf = Test-PdfFile $target
+    # Обрыв посреди передачи: сервер ответил 200, подпись %PDF- на месте, а
+    # хвоста файла нет. Виден такой обрыв только по коду выхода curl (18).
+    $оборван = ($ответ.exit -ne 0)
+    if ($ответ.code -ne 200 -or $size -le 4096 -or -not $этоPdf -or $оборван) {
         if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue }
         $broken++
-        if ($broken -le 10) { Warn "$($item.id) — ответ $code, размер $size" }
+        $причина = if ($ответ.code -eq 200 -and -not $этоPdf) {
+            "сервер отдал не PDF, а страницу ($size байт)"
+        } elseif ($ответ.code -eq 200 -and $оборван) {
+            "связь оборвалась посреди файла (получено $size байт)"
+        } else {
+            Read-HttpCode $ответ.code $ответ.exit
+        }
+        $неудачи += [pscustomobject]@{ id = $item.id; этап = 'файл'; причина = $причина; адрес = $pdfUrl }
+        if ($broken -le 10) { Warn "$($item.id) — $причина" }
         if ($broken -eq 11) { Note 'дальше об ошибках связи молчу, итог будет в конце' }
     } else {
         $got++
@@ -361,8 +682,39 @@ $size = ($files | Measure-Object Length -Sum).Sum
 Write-Host ''
 Ok ("файлов: {0}, объём: {1:N0} МБ" -f $files.Count, ($size / 1MB))
 if ($nolink) { Note "без ссылки на PDF: $nolink (у части рекомендаций публикуется только платная версия)" }
-if ($broken) {
-    Warn "не скачано из-за ошибок связи: $broken"
+if ($noPage) { Warn "страница не открылась: $noPage" }
+if ($broken) { Warn "файл не скачался: $broken" }
+
+if ($неудачи.Count) {
+    $списокПуть = Join-Path $root 'не-скачано.csv'
+    $неудачи | Export-Csv -LiteralPath $списокПуть -NoTypeInformation -Encoding UTF8
+    Note "что именно не доехало — список: $списокПуть"
+}
+
+# Пустой каталог не должен выглядеть успехом: молчаливый ноль уносили на
+# изолированную машину и обнаруживали пропажу только там.
+if ($got -eq 0 -and $skipped -eq 0) {
+    Write-Host ''
+    Fail 'не скачано НИ ОДНОГО документа'
+    if ($noPage) {
+        Note 'страницы рекомендаций не открываются. Проверьте в браузере на'
+        Note 'этой же машине один адрес из не-скачано.csv. Открывается там, а'
+        Note 'здесь нет — мешает шлюз или защита сайта.'
+        Note 'Разбор по ступеням покажет: .\itu.ps1 -Probe'
+        Note 'Запасной путь: сохранить перечни браузером и запустить с ключом'
+        Note '-IndexFrom <каталог с G.html, H.html и т.д.>'
+    }
+    exit 1
+}
+
+if ($оборвано) {
+    Write-Host ''
+    Warn 'выгрузка оборвана на середине — в каталоге только часть документов'
+    Note 'причина в не-скачано.csv; после устранения запустите скрипт снова:'
+    Note 'скачанное не перекачивается, добьёт остаток'
+    exit 1
+}
+if ($broken -or $noPage) {
     Note 'запустите скрипт ещё раз: скачанное не перекачивается, добьёт остаток'
 }
 

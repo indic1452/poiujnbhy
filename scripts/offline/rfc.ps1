@@ -67,10 +67,61 @@ function Ok($text)   { Write-Host "  OK  $text" -ForegroundColor Green }
 function Warn($text) { Write-Host "  !   $text" -ForegroundColor Yellow }
 function Note($text) { Write-Host "      $text" -ForegroundColor DarkGray }
 
+function Invoke-Curl {
+    <#
+        Запустить curl и вернуть его вывод и код выхода, не оборвав выгрузку.
+
+        Windows PowerShell 5.1 при $ErrorActionPreference = 'Stop' считает
+        ошибкой каждую строку, которую внешняя программа написала в поток
+        ошибок, и «2>$null» от этого НЕ спасает: строка попадает туда раньше,
+        чем её отбрасывают. Здесь качаются тысячи файлов по одному, и без
+        этой обёртки один обрыв связи на четырёхтысячном номере обрывал бы
+        весь запуск трассировкой PowerShell.
+    #>
+    param([string[]]$Arguments)
+    $прежний = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $вывод = & $script:CurlExe @Arguments 2>&1
+        $выход = $LASTEXITCODE
+    } catch {
+        return @{ lines = @(); exit = 1 }
+    } finally {
+        $ErrorActionPreference = $прежний
+    }
+    return @{ lines = @($вывод | ForEach-Object { "$_" }); exit = $выход }
+}
+
+<#
+    Код ответа сервера и код выхода curl.
+
+    Одного кода ответа мало. Если связь оборвалась ПОСРЕДИ файла, сервер уже
+    успел ответить 200, а на диск лёг огрызок: у нас так и вышло — вместо
+    RFC 794 сохранилось десять байт, и приём положил бы их в библиотеку как
+    документ. Обрыв виден только по коду выхода curl (18 — «файл получен не
+    целиком»), поэтому возвращаем оба и требуем, чтобы сошлись оба.
+
+    Ноль в коде ответа означает «ответа не было вовсе» — закрытый шлюз,
+    вышедшее время. Считать это за 404 нельзя.
+#>
+function Invoke-Download([string[]]$Arguments) {
+    $ответ = Invoke-Curl -Arguments $Arguments
+    $строки = @($ответ.lines)
+    $код = 0
+    if ($строки.Count) {
+        $хвост = "$($строки[-1])".Trim()
+        if ($хвост -match '^\d{3}$') { $код = [int]$хвост }
+    }
+    return [pscustomobject]@{ code = $код; exit = $ответ.exit }
+}
+
+function Get-HttpCode([string[]]$Arguments) {
+    return (Invoke-Download $Arguments).code
+}
+
 function Test-Url([string]$url) {
     $target = if ($script:CurlExe -eq 'curl.exe') { 'NUL' } else { '/dev/null' }
-    $code = & $script:CurlExe -sL -r 0-0 --max-time 45 -o $target -w '%{http_code}' $url 2>$null
-    return [int]($code | Select-Object -Last 1)
+    return (Get-HttpCode @('-sL', '-r', '0-0', '--max-time', '45', '-o', $target, '-w', '%{http_code}', $url))
 }
 
 # ------------------------------------------------------------- проверка ----
@@ -87,8 +138,13 @@ if ($Probe) {
 $root = New-Item -ItemType Directory -Path $Destination -Force
 Step "Указатель RFC"
 $indexPath = Join-Path $root 'rfc-index.xml'
-& $script:CurlExe -sSL --fail --retry 3 -o $indexPath $IndexUrl
-if ($LASTEXITCODE -ne 0) { Write-Host '  X   не удалось скачать указатель' -ForegroundColor Red; exit 1 }
+$код = Get-HttpCode @('-sL', '--max-time', '180', '--retry', '3', '-o', $indexPath, '-w', '%{http_code}', $IndexUrl)
+if ($код -ne 200) {
+    Write-Host "  X   не удалось скачать указатель (ответ $код)" -ForegroundColor Red
+    Write-Host "      адрес: $IndexUrl"
+    Write-Host '      закрыт корпоративным шлюзом — укажите своё зеркало ключом -BaseUrl'
+    exit 1
+}
 Ok ("rfc-index.xml, {0:N1} МБ" -f ((Get-Item $indexPath).Length / 1MB))
 
 # Из указателя берём номера, названия и — главное — чем какой RFC отменён.
@@ -134,14 +190,21 @@ foreach ($number in $numbers) {
     # Код ответа берём сами: 404 — это нормально (часть номеров никогда не
     # публиковалась), а вот обрыв связи молча засчитывать за «нет такого RFC»
     # нельзя, иначе половина архива тихо не доедет.
-    $code = [int](& $script:CurlExe -sL --max-time 60 --retry 2 -o $target `
-                    -w '%{http_code}' "$Base/rfc/rfc$number.txt" 2>$null |
-                  Select-Object -Last 1)
+    $ответ = Invoke-Download @('-sL', '--max-time', '60', '--retry', '2', '-o', $target,
+                               '-w', '%{http_code}', "$Base/rfc/rfc$number.txt")
+    $code = $ответ.code
+    # Обрыв посреди передачи: сервер ответил 200, а файл пришёл огрызком.
+    # Такой номер честнее считать не скачанным — повторный запуск его добьёт.
+    $оборван = ($code -eq 200 -and $ответ.exit -ne 0)
+    if ($оборван) { $code = 0 }
     if ($code -ne 200) {
         if (Test-Path $target) { Remove-Item $target -Force -ErrorAction SilentlyContinue }
         if ($code -eq 404) { $absent++ } else {
             $broken++
-            if ($broken -le 10) { Warn "RFC $number — ответ $code" }
+            $почему = if ($оборван) { 'связь оборвалась посреди файла' }
+                      elseif ($code -eq 0) { 'ответа не было (связь или шлюз)' }
+                      else { "ответ $code" }
+            if ($broken -le 10) { Warn "RFC $number — $почему" }
             if ($broken -eq 11) { Note 'дальше об ошибках связи молчу, итог будет в конце' }
         }
     } else {

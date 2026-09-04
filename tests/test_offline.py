@@ -365,6 +365,18 @@ class ScriptHygieneTests(unittest.TestCase):
                 found = forbidden.findall(read(path))
                 self.assertFalse(found, f"перекрыты автоматические переменные: {found}")
 
+    def test_line_endings_are_crlf(self):
+        # Эти файлы открывают Блокнотом на изолированной машине, куда не
+        # приехать с исправлением. Кроме того, редактор на другой системе
+        # молча переписывает файл с чужим переводом строк целиком, и правка из
+        # трёх строк выглядит как переписанный файл — однажды так и вышло.
+        # Вид закреплён в .gitattributes, здесь он проверяется.
+        for path in self.scripts() + sorted((ROOT / "tests" / "powershell").glob("*.ps1")):
+            with self.subTest(script=path.name):
+                байты = path.read_bytes()
+                одиночные = байты.replace(b"\r\n", b"").count(b"\n")
+                self.assertEqual(0, одиночные, "перевод строки LF вместо CRLF")
+
     def test_no_string_concatenation_in_message_calls(self):
         # Warn 'текст' + $путь — это три позиционных аргумента, и путь молча
         # теряется: пользователь видит «распакуйте вручную в » без каталога.
@@ -810,3 +822,525 @@ class StartGuideTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NativeStderrHygieneTests(unittest.TestCase):
+    """Ни один вызов внешней программы не смеет обрывать скрипт.
+
+    Windows PowerShell 5.1 при `$ErrorActionPreference = 'Stop'` считает
+    ошибкой каждую строку, которую внешняя программа написала в поток ошибок,
+    как только этот поток перенаправлен. Ключ `2>$null` от этого НЕ спасает:
+    строка попадает в поток ошибок раньше, чем её отбрасывают.
+
+    Ровно так один ответ 403 на первой из 6217 рекомендаций МСЭ оборвал всю
+    выгрузку — трассировкой PowerShell вместо объяснения. Перенаправлять поток
+    ошибок можно только внутри обёртки, которая на время вызова опускает
+    `$ErrorActionPreference` до 'Continue'.
+    """
+
+    #: Обёртки, внутри которых перенаправление разрешено: каждая опускает
+    #: $ErrorActionPreference перед вызовом и поднимает обратно в finally.
+    ОБЁРТКИ = ("Invoke-Native", "Invoke-Curl", "Invoke-Http", "Test-Url", "Get-Setting")
+
+    def scripts(self):
+        return sorted(OFFLINE.glob("*.ps1")) + sorted((ROOT / "scripts" / "windows").glob("*.ps1"))
+
+    @staticmethod
+    def без_шума(text):
+        """Убрать пояснения и склеить строки, разорванные обратной кавычкой.
+
+        Без склейки проверка слепа ровно там, где опаснее всего: длинный вызов
+        curl переносят, и «2>$null» оказывается на следующей строке. Такую
+        мутацию проверка однажды и пропустила.
+        """
+        text = re.sub(r"<#.*?#>", "", text, flags=re.DOTALL)
+        text = re.sub(r"`\r?\n\s*", " ", text)
+        return "\n".join(строка for строка in text.splitlines() if not строка.lstrip().startswith("#"))
+
+    @staticmethod
+    def функции(text):
+        """Разложить скрипт на куски «имя функции -> её текст»."""
+        куски = []
+        границы = [(m.start(), m.group(1)) for m in re.finditer(r"^function\s+([\w-]+)", text, re.MULTILINE)]
+        for i, (начало, имя) in enumerate(границы):
+            конец = границы[i + 1][0] if i + 1 < len(границы) else len(text)
+            куски.append((имя, text[начало:конец]))
+        # Всё, что до первой функции, и хвост скрипта — код верхнего уровня.
+        первая = границы[0][0] if границы else len(text)
+        куски.append(("<верхний уровень>", text[:первая]))
+        return куски
+
+    def test_stderr_is_redirected_only_inside_a_guarded_wrapper(self):
+        перенаправление = re.compile(r"&\s*\$?[\w:.]*[Cc]url[\w.]*\b[^\n]*2>", re.MULTILINE)
+        for path in self.scripts():
+            text = self.без_шума(read(path))
+            if "$ErrorActionPreference = 'Stop'" not in text:
+                continue
+            for имя, кусок in self.функции(text):
+                with self.subTest(script=path.name, function=имя):
+                    if not перенаправление.search(кусок):
+                        continue
+                    self.assertIn(
+                        имя,
+                        self.ОБЁРТКИ,
+                        f"{path.name}: поток ошибок curl перенаправлен в «{имя}» — "
+                        "один ответ 403 оборвёт весь запуск",
+                    )
+                    self.assertIn(
+                        "$ErrorActionPreference = 'Continue'",
+                        кусок,
+                        f"{path.name}: обёртка «{имя}» не опускает $ErrorActionPreference",
+                    )
+                    self.assertIn("finally", кусок, f"{path.name}: «{имя}» не возвращает прежнее значение")
+
+
+class ItuDownloadTests(unittest.TestCase):
+    """Качалка МСЭ-Т: закрытый сайт обязан быть виден как закрытый.
+
+    Отдел запустил выгрузку, перечни всех 25 серий прочитались, 6584
+    рекомендации опознались — а первая же страница ответила 403. Под Windows
+    PowerShell 5.1 это оборвало скрипт трассировкой, под PowerShell 7 — прошло
+    молча: 403 засчитался за «нет ссылки на PDF», итог сказал «у части
+    рекомендаций публикуется только платная версия», код возврата 0. Пустой
+    каталог уехал бы на изолированную машину как готовая библиотека.
+    """
+
+    def setUp(self):
+        self.text = read(OFFLINE / "itu.ps1")
+
+    def test_closed_page_is_not_counted_as_paid_edition(self):
+        # Счётчики разные: $noPage — страница не открылась, $nolink — открылась,
+        # но платная. Слить их значит выдать закрытый сайт за платные документы.
+        self.assertIn("$noPage++", self.text)
+        self.assertIn("$nolink++", self.text)
+        страница = self.text[self.text.index("if (-not $page) {"):]
+        страница = страница[: страница.index("$подряд = 0")]
+        self.assertIn("$noPage++", страница)
+        self.assertNotIn("$nolink++", страница, "закрытая страница засчитана в платные")
+
+    def test_empty_result_is_a_failure(self):
+        self.assertIn("не скачано НИ ОДНОГО документа", self.text)
+        хвост = self.text[self.text.index("не скачано НИ ОДНОГО документа"):]
+        self.assertIn("exit 1", хвост[:1200], "пустая выгрузка завершается успехом")
+
+    def test_run_stops_after_a_wall_of_failures(self):
+        # Шесть тысяч запросов по 700 мс — это час. Час впустую, чтобы в конце
+        # сказать «ничего не скачано», никому не нужен.
+        self.assertIn("$StopAfterFailures", self.text)
+        self.assertIn("if ($подряд -ge $StopAfterFailures)", self.text)
+
+    def test_reason_is_written_in_russian_words(self):
+        self.assertIn("сервер отказал (403)", self.text)
+        self.assertIn("слишком часто (429)", self.text)
+        self.assertIn("страницы нет (404)", self.text)
+
+    def test_failures_are_listed_in_a_file(self):
+        # Десять предупреждений в консоли из шести тысяч — не разбор.
+        self.assertIn("не-скачано.csv", self.text)
+
+    def test_server_name_is_negotiated(self):
+        # МСЭ отдаёт перечень из кэша кому угодно, а страницу рекомендации —
+        # только знакомому имени программы.
+        self.assertIn("$script:UserAgents", self.text)
+        self.assertIn("Mozilla/5.0", self.text)
+        self.assertIn("if ($ответ.code -eq 403", self.text)
+
+    def test_cookies_are_kept_for_the_whole_run(self):
+        # Файл отдаётся через dologin_pub.asp: тот ставит печенье и
+        # перенаправляет. Без общей банки вместо PDF приезжает страница.
+        self.assertIn("$script:CookieJar", self.text)
+        self.assertIn("'-c', $script:CookieJar, '-b', $script:CookieJar", self.text)
+
+    def test_saved_file_must_really_be_a_pdf(self):
+        # Проверки «больше 4 КБ» не хватает: страница «доступ закрыт» тяжелее.
+        self.assertIn("function Test-PdfFile", self.text)
+        self.assertIn("'%PDF-'", self.text)
+        self.assertIn("$этоPdf", self.text)
+
+    def test_truncated_file_is_not_accepted(self):
+        # Обрыв посреди передачи: ответ 200, подпись на месте, хвоста нет.
+        self.assertIn("$оборван = ($ответ.exit -ne 0)", self.text)
+        self.assertIn("связь оборвалась посреди файла", self.text)
+
+    def test_probe_checks_every_step(self):
+        # Раньше проверялись только перечни — а они открываются даже тогда,
+        # когда всё остальное закрыто.
+        проба = self.text[self.text.index("if ($Probe) {"):]
+        проба = проба[: проба.index("# --- Перечень")]
+        self.assertIn("страница G.703", проба)
+        self.assertIn("Доходит ли дело до самого файла", проба)
+        self.assertIn("Test-PdfFile", проба)
+
+
+class RfcTruncationTests(unittest.TestCase):
+    """RFC: обрезанный файл не должен попасть в библиотеку.
+
+    Связь оборвалась посреди передачи — сервер уже ответил 200, а на диск лёг
+    огрызок в десять байт. Приём положил бы его в библиотеку как документ, и в
+    перечне появился бы RFC, которого нет.
+    """
+
+    def setUp(self):
+        self.text = read(OFFLINE / "rfc.ps1")
+
+    def test_curl_exit_code_is_checked_alongside_http_code(self):
+        self.assertIn("$оборван = ($code -eq 200 -and $ответ.exit -ne 0)", self.text)
+
+    def test_broken_link_is_explained(self):
+        self.assertIn("связь оборвалась посреди файла", self.text)
+        self.assertIn("ответа не было (связь или шлюз)", self.text)
+
+    def test_index_failure_names_the_code(self):
+        self.assertIn("не удалось скачать указатель (ответ $код)", self.text)
+
+
+class ItuLiveRunTests(unittest.TestCase):
+    """Качалка МСЭ прогоняется целиком — настоящим PowerShell по настоящему HTTP.
+
+    Разбор текста скрипта ловит не всё: 403 «проезжал» именно на исполнении.
+    Поэтому здесь поднимается подставной сайт МСЭ, который ведёт себя так же,
+    как настоящий в каждом из известных отказов, и скрипт запускается по нему.
+    """
+
+    ПЕРЕЧЕНЬ = (
+        "<html><body><table>"
+        '<tr><td><a href="/rec/T-REC-G.703/en">G.703</a></td>'
+        "<td>Physical and electrical characteristics of hierarchical interfaces</td>"
+        "<td>In force</td></tr>"
+        '<tr><td><a href="/rec/T-REC-G.704/en">G.704</a></td>'
+        "<td>Synchronous frame structures used at 1544 and 2048 kbit/s</td>"
+        "<td>In force</td></tr>"
+        "</table></body></html>"
+    )
+    СТРАНИЦА = (
+        '<html><body><a href="/rec/dologin_pub.asp?lang=e&amp;'
+        'id=T-REC-G.703-201611-I!!PDF-E&amp;type=items">PDF</a></body></html>'
+    )
+    ФАЙЛ = b"%PDF-1.4\n" + b"x" * 9000 + b"\n%%EOF\n"
+
+    @classmethod
+    def обработчик(cls, режим):
+        from http.server import BaseHTTPRequestHandler
+
+        сам = cls
+
+        class Обработчик(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.0"
+
+            def log_message(self, *args):
+                pass
+
+            def отдать(self, код, тело, тип="text/html"):
+                self.send_response(код)
+                self.send_header("Content-Type", тип)
+                self.send_header("Content-Length", str(len(тело)))
+                self.end_headers()
+                self.wfile.write(тело)
+
+            def do_GET(self):
+                путь = self.path
+                агент = self.headers.get("User-Agent", "")
+                if путь.startswith("/rec/T-REC-") and "." not in путь.split("/")[-2]:
+                    return self.отдать(200, сам.ПЕРЕЧЕНЬ.encode())
+                if путь.startswith("/rec/T-REC-"):
+                    if режим == "403":
+                        return self.отдать(403, b"Forbidden")
+                    if режим == "браузер" and "Mozilla" not in агент:
+                        return self.отдать(403, b"Forbidden")
+                    if режим == "качалка" and "reportgen" not in агент:
+                        return self.отдать(403, b"Forbidden")
+                    if режим == "печенье":
+                        # Так и ведёт себя МСЭ: печенье ставится на странице,
+                        # а спрашивается при выдаче файла.
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/html")
+                        self.send_header("Set-Cookie", "ITUsession=1; Path=/")
+                        тело = сам.СТРАНИЦА.encode()
+                        self.send_header("Content-Length", str(len(тело)))
+                        self.end_headers()
+                        self.wfile.write(тело)
+                        return
+                    return self.отдать(200, сам.СТРАНИЦА.encode())
+                if путь.startswith("/rec/dologin_pub.asp"):
+                    if режим == "не-pdf":
+                        return self.отдать(200, b"<html>" + b"z" * 9000 + b"</html>")
+                    if режим == "печенье" and "ITUsession" not in self.headers.get("Cookie", ""):
+                        return self.отдать(200, b"<html>" + b"z" * 9000 + b"</html>")
+                    if режим == "referer" and "/rec/T-REC-" not in self.headers.get("Referer", ""):
+                        return self.отдать(200, b"<html>" + b"z" * 9000 + b"</html>")
+                    if режим == "обрыв":
+                        self.send_response(200)
+                        self.send_header("Content-Length", "500000")
+                        self.end_headers()
+                        self.wfile.write(сам.ФАЙЛ)
+                        self.wfile.flush()
+                        self.connection.close()
+                        return
+                    return self.отдать(200, сам.ФАЙЛ, "application/pdf")
+                return self.отдать(404, b"no")
+
+        return Обработчик
+
+    def прогнать(self, режим, *ключи):
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        сервер = ThreadingHTTPServer(("127.0.0.1", 0), self.обработчик(режим))
+        поток = threading.Thread(target=сервер.serve_forever, daemon=True)
+        поток.start()
+        каталог = tempfile.mkdtemp(prefix="itu-")
+        # Убирать каталог сразу нельзя: тест ещё читает из него скачанное.
+        self.addCleanup(shutil.rmtree, каталог, ignore_errors=True)
+        try:
+            готово = subprocess.run(
+                [
+                    "pwsh", "-NoProfile", "-File", str(OFFLINE / "itu.ps1"),
+                    "-BaseUrl", f"http://127.0.0.1:{сервер.server_address[1]}",
+                    "-Series", "G", "-Destination", каталог, "-DelayMs", "0", *ключи,
+                ],
+                capture_output=True, text=True, timeout=180,
+            )
+            файлы = sorted((Path(каталог) / "standards" / "itu-t" / "G").glob("*.pdf"))
+            return готово, файлы, Path(каталог)
+        finally:
+            сервер.shutdown()
+            сервер.server_close()
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_working_source_downloads_everything(self):
+        готово, файлы, _ = self.прогнать("хорошо")
+        self.assertEqual(0, готово.returncode, готово.stdout + готово.stderr)
+        self.assertEqual(2, len(файлы), готово.stdout)
+        self.assertTrue(файлы[0].read_bytes().startswith(b"%PDF-"))
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_forbidden_source_fails_loudly_and_names_the_reason(self):
+        готово, файлы, каталог = self.прогнать("403")
+        self.assertEqual(1, готово.returncode, "закрытый сайт засчитан за успех:\n" + готово.stdout)
+        self.assertEqual([], файлы)
+        self.assertIn("сервер отказал (403)", готово.stdout)
+        self.assertIn("не скачано НИ ОДНОГО документа", готово.stdout)
+        # И ни слова о платных версиях: это была не платность, а отказ.
+        итог = готово.stdout[готово.stdout.index("файлов: 0"):]
+        self.assertNotIn("платная версия", итог, "отказ сервера выдан за платный документ")
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_server_name_is_negotiated_when_the_first_is_refused(self):
+        # Сайт пускает только браузерное имя — скрипт обязан подобрать его сам.
+        готово, файлы, _ = self.прогнать("браузер")
+        self.assertEqual(0, готово.returncode, готово.stdout + готово.stderr)
+        self.assertEqual(2, len(файлы), готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_the_second_name_is_tried_when_the_first_is_refused(self):
+        # Здесь отказано ПЕРВОМУ имени из списка: без подбора выгрузка встанет.
+        готово, файлы, _ = self.прогнать("качалка")
+        self.assertEqual(0, готово.returncode, "имя программы не подобрано:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
+        self.assertIn("перешёл на другое", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_html_page_is_not_saved_as_pdf(self):
+        готово, файлы, _ = self.прогнать("не-pdf")
+        self.assertEqual(1, готово.returncode, готово.stdout)
+        self.assertEqual([], файлы, "html-страница легла в библиотеку под именем .pdf")
+        self.assertIn("не PDF", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_truncated_file_is_not_saved(self):
+        готово, файлы, _ = self.прогнать("обрыв")
+        self.assertEqual(1, готово.returncode, готово.stdout)
+        self.assertEqual([], файлы, "обрезанный файл сохранён как готовый документ")
+        self.assertIn("оборвалась посреди файла", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_wall_of_failures_stops_the_run_early(self):
+        готово, _, _ = self.прогнать("403", "-StopAfterFailures", "1")
+        self.assertIn("дальше идти незачем", готово.stdout)
+        self.assertEqual(1, готово.returncode)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_session_cookie_is_carried_from_page_to_file(self):
+        # МСЭ ставит печенье на странице рекомендации, а спрашивает его при
+        # выдаче файла. Без общей на весь запуск банки вместо PDF приезжает
+        # страница — и раньше она ложилась в библиотеку под именем .pdf.
+        готово, файлы, _ = self.прогнать("печенье")
+        self.assertEqual(0, готово.returncode, готово.stdout + готово.stderr)
+        self.assertEqual(2, len(файлы), "печенье не доехало от страницы до файла:\n" + готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_referer_is_sent_when_asking_for_the_file(self):
+        # Без ссылки на страницу, с которой пришли, dologin_pub.asp отдаёт
+        # страницу, а не файл.
+        готово, файлы, _ = self.прогнать("referer")
+        self.assertEqual(0, готово.returncode, готово.stdout + готово.stderr)
+        self.assertEqual(2, len(файлы), "Referer не передан:\n" + готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_rubbish_left_by_an_older_run_is_replaced(self):
+        """Файл от прежней редакции скрипта не должен остаться навсегда.
+
+        Прежняя редакция сохраняла html-страницу «доступ закрыт» под именем
+        .pdf. Она тяжелее четырёх килобайт, а повторный запуск пропускал
+        готовое по одному размеру — и такой файл жил бы в библиотеке вечно.
+        """
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        сервер = ThreadingHTTPServer(("127.0.0.1", 0), self.обработчик("хорошо"))
+        threading.Thread(target=сервер.serve_forever, daemon=True).start()
+        каталог = tempfile.mkdtemp(prefix="itu-")
+        self.addCleanup(shutil.rmtree, каталог, ignore_errors=True)
+        мусор = Path(каталог) / "standards" / "itu-t" / "G" / "T-REC-G.703.pdf"
+        мусор.parent.mkdir(parents=True)
+        мусор.write_bytes(b"<html>" + b"z" * 9000 + b"</html>")
+        try:
+            готово = subprocess.run(
+                ["pwsh", "-NoProfile", "-File", str(OFFLINE / "itu.ps1"),
+                 "-BaseUrl", f"http://127.0.0.1:{сервер.server_address[1]}",
+                 "-Series", "G", "-Destination", каталог, "-DelayMs", "0"],
+                capture_output=True, text=True, timeout=180,
+            )
+        finally:
+            сервер.shutdown()
+            сервер.server_close()
+        self.assertEqual(0, готово.returncode, готово.stdout + готово.stderr)
+        self.assertTrue(
+            мусор.read_bytes().startswith(b"%PDF-"),
+            "html-страница от прежнего запуска осталась в библиотеке под именем .pdf",
+        )
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_probe_pinpoints_the_step_that_fails(self):
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        сервер = ThreadingHTTPServer(("127.0.0.1", 0), self.обработчик("403"))
+        threading.Thread(target=сервер.serve_forever, daemon=True).start()
+        try:
+            готово = subprocess.run(
+                ["pwsh", "-NoProfile", "-File", str(OFFLINE / "itu.ps1"),
+                 "-BaseUrl", f"http://127.0.0.1:{сервер.server_address[1]}", "-Probe"],
+                capture_output=True, text=True, timeout=120,
+            )
+        finally:
+            сервер.shutdown()
+            сервер.server_close()
+        # Перечень открывается, страница — нет: проверка обязана это показать.
+        self.assertIn("перечень серии G", готово.stdout)
+        self.assertIn("страница G.703", готово.stdout)
+        self.assertIn("сервер отказал (403)", готово.stdout)
+        self.assertEqual(1, готово.returncode, готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_probe_goes_all_the_way_to_the_file(self):
+        """Страницы открываются, а вместо файла приезжает html.
+
+        Раньше проверка кончалась на перечне и говорила «источник отвечает» —
+        а выгрузка потом складывала эти html-страницы в библиотеку под именем
+        .pdf. Проверка обязана дойти до самого файла.
+        """
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        сервер = ThreadingHTTPServer(("127.0.0.1", 0), self.обработчик("не-pdf"))
+        threading.Thread(target=сервер.serve_forever, daemon=True).start()
+        try:
+            готово = subprocess.run(
+                ["pwsh", "-NoProfile", "-File", str(OFFLINE / "itu.ps1"),
+                 "-BaseUrl", f"http://127.0.0.1:{сервер.server_address[1]}", "-Probe"],
+                capture_output=True, text=True, timeout=120,
+            )
+        finally:
+            сервер.shutdown()
+            сервер.server_close()
+        self.assertEqual(1, готово.returncode, "проверка одобрила источник, отдающий html вместо PDF:\n" + готово.stdout)
+        self.assertIn("не скачался", готово.stdout)
+
+
+class RfcLiveRunTests(unittest.TestCase):
+    """Выгрузка RFC прогоняется целиком — настоящим PowerShell по настоящему HTTP.
+
+    Здесь качаются тысячи файлов подряд, и цена ошибки та же: обрыв связи на
+    четырёхтысячном номере не должен ни оборвать запуск, ни оставить в
+    библиотеке огрызок вместо документа.
+    """
+
+    НОМЕРА = (791, 792, 793, 794, 795)
+    УКАЗАТЕЛЬ = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<rfc-index xmlns="http://www.rfc-editor.org/rfc-index">'
+        + "".join(
+            f"<rfc-entry><doc-id>RFC{n:04d}</doc-id><title>Проверка {n}</title>"
+            f"<current-status>PROPOSED STANDARD</current-status></rfc-entry>"
+            for n in НОМЕРА
+        )
+        + "</rfc-index>"
+    )
+    ТЕКСТ = ("Network Working Group\nRequest for Comments: 791\n\n" + "текст " * 300).encode()
+
+    @classmethod
+    def обработчик(cls):
+        from http.server import BaseHTTPRequestHandler
+
+        сам = cls
+
+        class Обработчик(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.0"
+
+            def log_message(self, *args):
+                pass
+
+            def отдать(self, код, тело):
+                self.send_response(код)
+                self.send_header("Content-Length", str(len(тело)))
+                self.end_headers()
+                self.wfile.write(тело)
+
+            def do_GET(self):
+                if self.path.endswith("rfc-index.xml"):
+                    return self.отдать(200, сам.УКАЗАТЕЛЬ.encode())
+                if self.path.endswith("rfc794.txt"):
+                    # Обрыв посреди передачи: заголовок обещает больше, чем придёт.
+                    self.send_response(200)
+                    self.send_header("Content-Length", "100000")
+                    self.end_headers()
+                    self.wfile.write(b"x" * 10)
+                    self.wfile.flush()
+                    self.connection.close()
+                    return
+                if self.path.endswith("rfc795.txt"):
+                    return self.отдать(404, b"no")
+                return self.отдать(200, сам.ТЕКСТ)
+
+        return Обработчик
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_broken_transfer_neither_stops_the_run_nor_lands_in_the_library(self):
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        сервер = ThreadingHTTPServer(("127.0.0.1", 0), self.обработчик())
+        threading.Thread(target=сервер.serve_forever, daemon=True).start()
+        каталог = tempfile.mkdtemp(prefix="rfc-")
+        self.addCleanup(shutil.rmtree, каталог, ignore_errors=True)
+        try:
+            готово = subprocess.run(
+                ["pwsh", "-NoProfile", "-File", str(OFFLINE / "rfc.ps1"),
+                 "-BaseUrl", f"http://127.0.0.1:{сервер.server_address[1]}",
+                 "-Destination", каталог],
+                capture_output=True, text=True, timeout=180,
+            )
+        finally:
+            сервер.shutdown()
+            сервер.server_close()
+
+        файлы = sorted((Path(каталог) / "standards" / "rfc").glob("*.txt"))
+        имена = [f.name for f in файлы]
+        # Обрыв на 794 не остановил выгрузку: 791-793 доехали.
+        self.assertEqual(["rfc791.txt", "rfc792.txt", "rfc793.txt"], имена, готово.stdout)
+        # И огрызок не сохранён: иначе в библиотеке появился бы RFC из десяти байт.
+        self.assertNotIn("rfc794.txt", имена, "обрезанный файл сохранён как документ")
+        self.assertIn("связь оборвалась посреди файла", готово.stdout)
+        # 795 не публиковался — это норма, а не ошибка связи.
+        self.assertIn("номеров без текста: 1", готово.stdout)

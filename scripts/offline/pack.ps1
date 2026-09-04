@@ -402,10 +402,23 @@ function Test-Url([string]$url) {
     # отвечают через раз, а на обычный GET отдают данные. Плюс это проверяет,
     # что зеркало действительно ОТДАЁТ файл, а не только знает о нём.
     $target = if ($script:CurlExe -eq 'curl.exe') { 'NUL' } else { '/dev/null' }
+    # Как и везде: «2>$null» не спасает от того, что Windows PowerShell 5.1
+    # считает строку в потоке ошибок поводом оборвать весь скрипт. Проверка
+    # источника обязана возвращать код, а не рушить сборку комплекта.
+    $value = 0
     foreach ($attempt in 1..2) {
-        $code = & $script:CurlExe -sL -r 0-0 --max-time 60 --retry 1 --retry-delay 2 `
-                    -A $script:UserAgent -o $target -w '%{http_code}' $url 2>$null
-        $value = [int]($code | Select-Object -Last 1)
+        $прежний = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $code = & $script:CurlExe -sL -r 0-0 --max-time 60 --retry 1 --retry-delay 2 `
+                        -A $script:UserAgent -o $target -w '%{http_code}' $url 2>&1
+        } catch {
+            $code = @()
+        } finally {
+            $ErrorActionPreference = $прежний
+        }
+        $хвост = @($code | ForEach-Object { "$_" }) | Select-Object -Last 1
+        $value = if ("$хвост".Trim() -match '^\d{3}$') { [int]"$хвост".Trim() } else { 0 }
         if ($value -ge 200 -and $value -lt 400) { return $value }
     }
     return $value
