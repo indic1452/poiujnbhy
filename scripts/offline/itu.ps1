@@ -257,6 +257,7 @@ function Invoke-Polite {
 }
 $script:SaidBusy = $false
 $script:SaidFallback = $false
+$script:SaidEdition = $false
 
 #: Код ответа человеческими словами. Инженеру на изолированной машине
 #: «ошибка 403» ничего не говорит, а «не пускает эту программу» говорит.
@@ -433,6 +434,39 @@ function Read-ItuPdfLink {
     # Ссылки на PDF нет — так и говорим. Отдать вместо неё Word значит положить
     # в библиотеку файл, который назван не тем, что он есть.
     return ''
+}
+
+<#
+    Ссылки на страницы отдельных ИЗДАНИЙ рекомендации, свежие первыми.
+
+    У МСЭ две ступени, а не одна. Ссылка из перечня серии ведёт на
+    «recommendation.asp?parent=T-REC-A.1» — и параметр назван «parent» не
+    случайно: это список изданий, а не сам документ. Файла на нём нет, он
+    лежит на странице конкретного издания «T-REC-A.1-201911-I». Разбор,
+    искавший файл только на первой ступени, честно сообщал «на странице нет
+    ссылки на PDF» — и так по всем шести тысячам рекомендаций.
+
+    Порядок по дате издания, свежие первыми: в отчёт годится действующая
+    редакция, а она у МСЭ последняя.
+#>
+function Read-ItuEditionLinks {
+    param([string]$Html, [string]$Id)
+    $образец = 'T-REC-' + [regex]::Escape($Id) + '-(\d{6})-[0-9A-Za-z]+'
+    $найдено = [ordered]@{}
+    foreach ($m in [regex]::Matches($Html, '(?is)href\s*=\s*["'']([^"'']+)["'']')) {
+        $href = $m.Groups[1].Value
+        # dologin_pub — это уже сам файл, а не страница издания.
+        if ($href -match '(?i)dologin_pub') { continue }
+        $ключ = [regex]::Match($href, $образец)
+        if (-not $ключ.Success) { continue }
+        if ($найдено.Contains($ключ.Value)) { continue }
+        $найдено[$ключ.Value] = [pscustomobject]@{
+            href = $href
+            date = $ключ.Groups[1].Value
+            id   = $ключ.Value
+        }
+    }
+    return @($найдено.Values | Sort-Object -Property date -Descending)
 }
 
 #: Расшифровать «&amp;» и прочие подстановки HTML. Отдельной функцией потому,
@@ -790,7 +824,24 @@ if ($Probe) {
         exit 1
     }
     $основаСтраницы = Read-ItuBaseHref -Html $страница -PageUrl $script:LastUrl
-    $адресФайла = Resolve-ItuUrl -Href (Read-ItuPdfLink -Html $страница -Languages $Languages) -PageUrl $основаСтраницы
+    $ссылкаНаФайл = Read-ItuPdfLink -Html $страница -Languages $Languages
+    if (-not $ссылкаНаФайл) {
+        Note 'на этой странице файла нет — это список изданий, иду на издание'
+        foreach ($издание in (@(Read-ItuEditionLinks -Html $страница -Id $первая.id) | Select-Object -First 2)) {
+            $адресИздания = Resolve-ItuUrl -Href $издание.href -PageUrl $основаСтраницы
+            Note "  издание: $адресИздания"
+            $страницаИздания = Get-Text $адресИздания -referer $адресСтраницы
+            if (-not $страницаИздания) { continue }
+            $найденная = Read-ItuPdfLink -Html $страницаИздания -Languages $Languages
+            if ($найденная) {
+                $ссылкаНаФайл = $найденная
+                $адресСтраницы = $script:LastUrl
+                $основаСтраницы = Read-ItuBaseHref -Html $страницаИздания -PageUrl $адресСтраницы
+                break
+            }
+        }
+    }
+    $адресФайла = Resolve-ItuUrl -Href $ссылкаНаФайл -PageUrl $основаСтраницы
     if (-not $адресФайла) {
         Warn "на странице $($первая.id) не нашлось ссылки на PDF"
         Note 'у части рекомендаций публикуется только платная версия — но если'
@@ -955,12 +1006,50 @@ foreach ($item in ($plan | Sort-Object series, number)) {
     $подряд = 0
 
     $основаСтраницы = Read-ItuBaseHref -Html $page -PageUrl $pageUrl
-    $pdfUrl = Resolve-ItuUrl -Href (Read-ItuPdfLink -Html $page -Languages $Languages) -PageUrl $основаСтраницы
+    $ссылкаНаФайл = Read-ItuPdfLink -Html $page -Languages $Languages
+
+    # Вторая ступень. Ссылка из перечня ведёт на СПИСОК ИЗДАНИЙ
+    # («recommendation.asp?parent=...»), а файл лежит на странице конкретного
+    # издания. Берём свежие первыми: в отчёт годится действующая редакция.
+    # Двух хватает: если и в предыдущей редакции файла нет, дело не в ней.
+    if (-not $ссылкаНаФайл) {
+        $издания = @(Read-ItuEditionLinks -Html $page -Id $item.id) | Select-Object -First 2
+        foreach ($издание in $издания) {
+            $адресИздания = Resolve-ItuUrl -Href $издание.href -PageUrl $основаСтраницы
+            if ($адресИздания -eq $pageUrl) { continue }
+            $страницаИздания = Get-Text $адресИздания -referer $pageUrl
+            if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
+            if (-not $страницаИздания) { continue }
+            $найденная = Read-ItuPdfLink -Html $страницаИздания -Languages $Languages
+            if ($найденная) {
+                $ссылкаНаФайл = $найденная
+                $pageUrl = $script:LastUrl
+                $основаСтраницы = Read-ItuBaseHref -Html $страницаИздания -PageUrl $pageUrl
+                if (-not $script:SaidEdition) {
+                    Note 'файл лежит на странице издания — перехожу туда'
+                    $script:SaidEdition = $true
+                }
+                break
+            }
+        }
+    }
+
+    $pdfUrl = Resolve-ItuUrl -Href $ссылкаНаФайл -PageUrl $основаСтраницы
     if (-not $pdfUrl) {
         $nolink++
         $неудачи += [pscustomobject]@{ id = $item.id; этап = 'ссылка'; причина = 'на странице нет ссылки на PDF'; адрес = $pageUrl }
         if ($nolink -le 10) { Warn "$($item.id) — на странице нет ссылки на PDF" }
         if ($nolink -eq 11) { Note 'дальше о таких молчу, итог будет в конце' }
+        # Первые несколько таких страниц сохраняем целиком. Без них разбор
+        # чужой вёрстки превращается в переписку: «пришлите страницу» —
+        # «какую?». Теперь она уже лежит рядом с отчётом.
+        if ($nolink -le 5) {
+            $складПусто = Join-Path $root 'не-найдено-ссылок'
+            New-Item -ItemType Directory -Path $складПусто -Force | Out-Null
+            $имяСтраницы = Join-Path $складПусто ((Get-ItuFileName $item.id) -replace '\.pdf$', '.html')
+            [IO.File]::WriteAllText($имяСтраницы, $page, (New-Object System.Text.UTF8Encoding($false)))
+            if ($nolink -eq 1) { Note "страница сохранена для разбора: $складПусто" }
+        }
         continue
     }
 

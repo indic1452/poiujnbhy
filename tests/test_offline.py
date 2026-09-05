@@ -1069,6 +1069,14 @@ class ItuLiveRunTests(unittest.TestCase):
 
             def как_у_мсэ(self, путь, режим):
                 """Разметка адресов, снятая с настоящего сайта МСЭ."""
+                if режим == "две-ступени":
+                    return self.две_ступени(путь)
+                if режим == "глухая-страница":
+                    if путь.startswith("/rec/T-REC-G/en"):
+                        return self.отдать(200, сам.ПЕРЕЧЕНЬ.encode())
+                    if путь.startswith("/rec/T-REC-"):
+                        return self.отдать(200, "<html><body>ни файла, ни изданий</body></html>".encode())
+                    return self.отдать(403, b"Forbidden")
                 if путь.startswith("/rec/T-REC-G/en") or путь.startswith("/rec/browse/T-REC-G/en"):
                     if режим == "перенаправление" and not путь.startswith("/rec/browse/"):
                         self.send_response(302)
@@ -1131,6 +1139,50 @@ class ItuLiveRunTests(unittest.TestCase):
                 # Всё прочее — чужой путь; у МСЭ это 403, а не 404.
                 return self.отдать(403, b"Forbidden")
 
+            def две_ступени(self, путь):
+                """Две ступени МСЭ: список изданий, потом само издание.
+
+                Ссылка из перечня ведёт на «recommendation.asp?parent=...» —
+                это СПИСОК ИЗДАНИЙ, файла там нет. Файл лежит на странице
+                конкретного издания, уровнем глубже.
+                """
+                издания = {"G.703": ["199804-I", "201604-I"], "G.704": ["199810-I"]}
+                if путь.startswith("/rec/T-REC-G/en"):
+                    строки = "".join(
+                        '<tr><td><a href="../recommendation.asp?lang=en&amp;parent=T-REC-%s">%s</a></td>'
+                        '<td>Characteristics of hierarchical digital interfaces %s</td>'
+                        '<td>In force</td></tr>' % (н, н, н) for н in издания)
+                    return self.отдать(200, ("<html><body><table>%s</table></body></html>" % строки).encode())
+                if путь.startswith("/rec/recommendation.asp"):
+                    from urllib.parse import urlparse, parse_qs
+                    родитель = parse_qs(urlparse(self.path).query).get("parent", [""])[0]
+                    номер = родитель.replace("T-REC-", "")
+                    if номер not in издания:
+                        return self.отдать(404, b"no")
+                    строки = "".join(
+                        '<tr><td><a href="../rec/T-REC-%s-%s/en">%s</a></td></tr>' % (номер, к, к)
+                        for к in издания[номер])
+                    return self.отдать(200, ("<html><body><table>%s</table></body></html>" % строки).encode())
+                if путь.startswith("/rec/T-REC-G.") and путь.endswith("/en"):
+                    кусок = путь.split("/")[2][6:]
+                    номер, _, ключ = кусок.partition("-")
+                    if номер not in издания or ключ not in издания[номер]:
+                        return self.отдать(404, b"no")
+                    тело = (
+                        "<html><body>"
+                        '<a href="../dologin_pub.asp?id=T-REC-%s-%s!!SOFT-E&amp;type=items">Word</a>'
+                        '<a href="../dologin_pub.asp?id=T-REC-%s-%s!!PDF-E&amp;type=items">PDF</a>'
+                        "</body></html>" % (номер, ключ, номер, ключ))
+                    return self.отдать(200, тело.encode())
+                if путь.startswith("/rec/dologin_pub.asp"):
+                    # В сам файл вписываем ключ издания: так тест видит, какую
+                    # редакцию скачали, а не только что скачали хоть что-то.
+                    from urllib.parse import urlparse, parse_qs
+                    ключ = parse_qs(urlparse(self.path).query).get("id", [""])[0]
+                    тело = b"%PDF-1.4\n" + ключ.encode() + b"\n" + b"x" * 9000 + b"\n%%EOF\n"
+                    return self.отдать(200, тело, "application/pdf")
+                return self.отдать(403, b"Forbidden")
+
             def do_GET(self):
                 путь = self.path
                 агент = self.headers.get("User-Agent", "")
@@ -1140,7 +1192,8 @@ class ItuLiveRunTests(unittest.TestCase):
                 # страницы лежат в /rec/. Обращение к корню сайта сервер
                 # отвергает — так ведёт себя SharePoint у МСЭ.
                 if режим in ("относительные", "перенаправление", "запасной",
-                             "занят", "только-русский", "много-языков"):
+                             "занят", "только-русский", "много-языков",
+                             "две-ступени", "глухая-страница"):
                     return self.как_у_мсэ(путь, режим)
 
                 if путь.startswith("/rec/T-REC-") and "." not in путь.split("/")[-2]:
@@ -1353,6 +1406,39 @@ class ItuLiveRunTests(unittest.TestCase):
         готово, файлы, _ = self.прогнать("много-языков")
         self.assertEqual(0, готово.returncode, "взято не предпочтённое издание:\n" + готово.stdout)
         self.assertEqual(2, len(файлы), готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_file_is_taken_from_the_edition_page(self):
+        """У МСЭ две ступени: список изданий, а файл — на странице издания.
+
+        Ссылка из перечня ведёт на «recommendation.asp?parent=T-REC-A.1», и
+        параметр назван «parent» не случайно: это перечень изданий, а не сам
+        документ. Разбор, искавший файл только на первой ступени, сообщал «на
+        странице нет ссылки на PDF» по всем шести тысячам рекомендаций.
+        """
+        готово, файлы, _ = self.прогнать("две-ступени")
+        self.assertEqual(0, готово.returncode, "до страницы издания не дошли:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
+        # И скачана ДЕЙСТВУЮЩАЯ редакция, а не первая попавшаяся: сослаться в
+        # отчёте на отменённую — прямой путь к претензии.
+        содержимое = файлы[0].read_bytes()
+        self.assertTrue(содержимое.startswith(b"%PDF-"))
+        self.assertIn(b"201604", содержимое, "взята старая редакция вместо свежей")
+        self.assertNotIn(b"199804", содержимое)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_page_without_a_link_is_saved_for_inspection(self):
+        """Страница, на которой ничего не нашлось, сохраняется целиком.
+
+        Без этого разбор чужой вёрстки превращается в переписку: «пришлите
+        страницу» — «какую?» — и круг занимает день. Теперь она уже лежит
+        рядом с отчётом о выгрузке.
+        """
+        готово, файлы, каталог = self.прогнать("глухая-страница")
+        self.assertEqual(1, готово.returncode, готово.stdout)
+        сохранённые = sorted((каталог / "не-найдено-ссылок").glob("*.html"))
+        self.assertTrue(сохранённые, "страница для разбора не сохранена:\n" + готово.stdout)
+        self.assertIn("ни файла, ни изданий", сохранённые[0].read_text(encoding="utf-8"))
 
     @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
     def test_rubbish_left_by_an_older_run_is_replaced(self):

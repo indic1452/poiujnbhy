@@ -15,7 +15,8 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 # Вытаскиваем разбирающие функции из скрипта, не запуская его целиком.
 $text = Get-Content (Join-Path $PSScriptRoot '..\..\scripts\offline\itu.ps1') -Raw -Encoding UTF8
 foreach ($name in 'Test-ItuLooksLikeName', 'Read-ItuIndex', 'Read-ItuPdfLink', 'ConvertFrom-HtmlText',
-                  'Resolve-ItuUrl', 'Read-ItuBaseHref', 'Get-ItuFileName', 'Get-ItuSeries') {
+                  'Resolve-ItuUrl', 'Read-ItuBaseHref', 'Read-ItuEditionLinks',
+                  'Get-ItuFileName', 'Get-ItuSeries') {
     $start = $text.IndexOf("function $name")
     if ($start -lt 0) { Write-Host "функция $name не найдена" -ForegroundColor Red; exit 1 }
     $depth = 0; $j = $text.IndexOf('{', $start)
@@ -90,6 +91,30 @@ Check 'ссылка с «./» не теряет каталог' `
       'https://www.itu.int/rec/dologin_pub.asp?id=1'
 Check 'без указания страницы адрес не выдумывается' `
       (Resolve-ItuUrl 'https://www.itu.int/x' '') 'https://www.itu.int/x'
+
+Write-Host 'Ссылки на издания (вторая ступень МСЭ):'
+# Страница «recommendation.asp?parent=T-REC-A.1» — это список изданий, а не сам
+# документ. Файл лежит уровнем глубже; разбор, не знавший об этом, сообщал «на
+# странице нет ссылки на PDF» по всем шести тысячам рекомендаций.
+$списокИзданий = @'
+<html><body>
+<a href="../rec/T-REC-A.1-198810-I/en">A.1 (1988)</a>
+<a href="../rec/T-REC-A.1-201911-I/en">A.1 (2019)</a>
+<a href="../rec/T-REC-A.1-200802-I/en">A.1 (2008)</a>
+<a href="../rec/T-REC-A.11-202203-I/en">A.11 — чужой номер</a>
+<a href="dologin_pub.asp?id=T-REC-A.1-197712-I!!PDF-E">это уже файл, не издание</a>
+<a href="/rec/T-REC-A.1-201911-I/en">та же ссылка другим видом</a>
+</body></html>
+'@
+$изд = @(Read-ItuEditionLinks -Html $списокИзданий -Id 'A.1')
+Check 'изданий опознано' $изд.Count 3
+Check 'первым идёт самое свежее' $изд[0].date '201911'
+Check 'дальше по убыванию' ($изд[1].date + ',' + $изд[2].date) '200802,198810'
+Check 'чужой номер A.11 не подхвачен' (@($изд | Where-Object { $_.id -like '*A.11*' }).Count) 0
+Check 'ссылка на сам файл изданием не считается' `
+      (@($изд | Where-Object { $_.href -like '*dologin_pub*' }).Count) 0
+Check 'у рекомендации без изданий список пуст' `
+      (@(Read-ItuEditionLinks -Html '<html><a href="/x">нет</a></html>' -Id 'A.1')).Count 0
 
 Write-Host 'Собственная основа страницы (<base href>):'
 Check 'основа объявлена — считаем от неё' `
