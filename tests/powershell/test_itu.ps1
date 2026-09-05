@@ -116,6 +116,27 @@ Check 'ссылка на сам файл изданием не считаетс�
 Check 'у рекомендации без изданий список пуст' `
       (@(Read-ItuEditionLinks -Html '<html><a href="/x">нет</a></html>' -Id 'A.1')).Count 0
 
+Write-Host 'Настоящая страница МСЭ (A.31, сохранена отделом):'
+# Не выдуманный образец, а страница с сайта: список изданий рекомендации A.31.
+# Файла на ней нет вовсе, а издание открывается через тот же
+# recommendation.asp — только с ключом издания в parent. Разбор обязан это
+# опознать: именно здесь он однажды сказал «нет ссылки на PDF».
+$настоящая = Get-Content (Join-Path $fixtures 'A.31-издания.html') -Raw -Encoding UTF8
+$стрA31 = 'https://www.itu.int/rec/recommendation.asp?lang=en&parent=T-REC-A.31'
+Check 'файла на списке изданий нет' "[$(Read-ItuPdfLink -Html $настоящая -Languages @('E'))]" '[]'
+$издA31 = @(Read-ItuEditionLinks -Html $настоящая -Id 'A.31')
+Check 'издание опознано ровно одно' $издA31.Count 1
+Check 'ключ издания взят верно' $издA31[0].id 'T-REC-A.31-200810-I'
+Check 'хлебные крошки за издание не приняты' `
+      (@($издA31 | Where-Object { $_.href -notmatch '200810' }).Count) 0
+Check 'адрес издания развёрнут в тот же recommendation.asp' `
+      (Resolve-ItuUrl -Href $издA31[0].href -PageUrl $стрA31) `
+      'https://www.itu.int/rec/recommendation.asp?lang=en&parent=T-REC-A.31-200810-I'
+# Крайняя мера: адрес файла собирается из ключа издания, а не выдумывается.
+Check 'собранный адрес файла' `
+      (Resolve-ItuUrl -Href ('dologin_pub.asp?lang=e&id={0}!!PDF-E&type=items' -f $издA31[0].id) -PageUrl $стрA31) `
+      'https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-A.31-200810-I!!PDF-E&type=items'
+
 Write-Host 'Собственная основа страницы (<base href>):'
 Check 'основа объявлена — считаем от неё' `
       (Read-ItuBaseHref '<html><head><base href="/rec/"></head></html>' 'https://www.itu.int/rec/T-REC-A/en') `

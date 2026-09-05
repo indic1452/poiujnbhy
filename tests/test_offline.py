@@ -1071,6 +1071,11 @@ class ItuLiveRunTests(unittest.TestCase):
                 """Разметка адресов, снятая с настоящего сайта МСЭ."""
                 if режим == "две-ступени":
                     return self.две_ступени(путь)
+                # Случай A.31 с настоящего сайта: издание открывается через
+                # тот же recommendation.asp, и ссылки на файл там нет вовсе.
+                # Адрес файла остаётся только собрать из ключа издания.
+                if режим in ("как-A31", "как-A31-русский", "тупик-на-издании"):
+                    return self.как_a31(путь, режим)
                 if режим == "глухая-страница":
                     if путь.startswith("/rec/T-REC-G/en"):
                         return self.отдать(200, сам.ПЕРЕЧЕНЬ.encode())
@@ -1139,6 +1144,48 @@ class ItuLiveRunTests(unittest.TestCase):
                 # Всё прочее — чужой путь; у МСЭ это 403, а не 404.
                 return self.отдать(403, b"Forbidden")
 
+            def как_a31(self, путь, режим="как-A31"):
+                from urllib.parse import urlparse, parse_qs
+                разбор = urlparse(self.path)
+                запрос = parse_qs(разбор.query)
+                путь = разбор.path
+                if путь.startswith("/rec/T-REC-G/en"):
+                    # В перечне серии МСЭ пишет «../», а на странице списка
+                    # изданий — «./»: обе формы взяты с настоящего сайта.
+                    строки = "".join(
+                        '<tr><td><a href="../recommendation.asp?lang=en&amp;parent=T-REC-%s">%s</a></td>'
+                        '<td>Guidelines for the organization of work %s</td>'
+                        '<td>In force</td></tr>' % (н, н, н) for н in ("G.703", "G.704"))
+                    return self.отдать(200, ("<html><body><table>%s</table></body></html>" % строки).encode())
+                if путь.endswith("/recommendation.asp"):
+                    родитель = запрос.get("parent", [""])[0]
+                    номер = родитель.replace("T-REC-", "")
+                    if "-" in номер:
+                        # Страница издания: ни одной ссылки на файл, как у A.31.
+                        return self.отдать(200, (
+                            "<html><body><p>ЭТО СТРАНИЦА ИЗДАНИЯ</p>"
+                            "<p>%s</p></body></html>" % родитель).encode())
+                    if номер not in ("G.703", "G.704"):
+                        return self.отдать(404, b"no")
+                    ключ = "T-REC-%s-200810-I" % номер
+                    return self.отдать(200, (
+                        '<html><body><table><tr><td>'
+                        '<a href="./recommendation.asp?lang=en&amp;parent=%s">%s (10/08)</a>'
+                        "</td><td>In force</td></tr></table></body></html>" % (ключ, номер)).encode())
+                if путь.startswith("/rec/dologin_pub.asp"):
+                    ид = запрос.get("id", [""])[0]
+                    # Какой язык вообще выложен. «тупик-на-издании» — никакой:
+                    # у части рекомендаций публикуется только платная версия.
+                    доступен = {"как-A31": "!!PDF-E",
+                                "как-A31-русский": "!!PDF-R"}.get(режим)
+                    if доступен is None or not ид.endswith(доступен):
+                        # Настоящий МСЭ на недоступное издание отвечает не
+                        # ошибкой, а страницей — её нельзя принять за документ.
+                        return self.отдать(200, b"<html>not available</html>" + b"z" * 9000)
+                    тело = b"%PDF-1.4\n" + ид.encode() + b"\n" + b"x" * 9000 + b"\n%%EOF\n"
+                    return self.отдать(200, тело, "application/pdf")
+                return self.отдать(403, b"Forbidden")
+
             def две_ступени(self, путь):
                 """Две ступени МСЭ: список изданий, потом само издание.
 
@@ -1193,7 +1240,8 @@ class ItuLiveRunTests(unittest.TestCase):
                 # отвергает — так ведёт себя SharePoint у МСЭ.
                 if режим in ("относительные", "перенаправление", "запасной",
                              "занят", "только-русский", "много-языков",
-                             "две-ступени", "глухая-страница"):
+                             "две-ступени", "глухая-страница", "как-A31",
+                             "как-A31-русский", "тупик-на-издании"):
                     return self.как_у_мсэ(путь, режим)
 
                 if путь.startswith("/rec/T-REC-") and "." not in путь.split("/")[-2]:
@@ -1425,6 +1473,52 @@ class ItuLiveRunTests(unittest.TestCase):
         self.assertTrue(содержимое.startswith(b"%PDF-"))
         self.assertIn(b"201604", содержимое, "взята старая редакция вместо свежей")
         self.assertNotIn(b"199804", содержимое)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_address_is_built_from_the_edition_key_as_a_last_resort(self):
+        """Случай A.31: на странице издания ссылки на файл нет вовсе.
+
+        Так устроена часть рекомендаций на настоящем сайте (страница сохранена
+        в tests/powershell/itu/A.31-издания.html). Ключ издания при этом
+        известен — он взят со страницы, не выдуман, — и адрес файла собирается
+        из него. Промах безопасен: скачанное проверяется на подпись формата,
+        поэтому в библиотеку ничего постороннего не попадёт.
+        """
+        готово, файлы, _ = self.прогнать("как-A31")
+        self.assertEqual(0, готово.returncode, "собранный адрес не сработал:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
+        содержимое = файлы[0].read_bytes()
+        self.assertTrue(содержимое.startswith(b"%PDF-"))
+        self.assertIn(b"200810", содержимое, "скачано не то издание")
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_built_address_walks_through_the_languages(self):
+        """Собранный адрес перебирает языки, а не сдаётся на первом.
+
+        Здесь выложено только русское издание. Английское — первое в списке
+        предпочтений — не существует, и сервер отвечает на него страницей, а
+        не ошибкой. Остановка на первом кандидате потеряла бы документ.
+        """
+        готово, файлы, _ = self.прогнать("как-A31-русский")
+        self.assertEqual(0, готово.returncode, "перебор языков не дошёл до русского:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
+        self.assertIn(b"PDF-R", файлы[0].read_bytes())
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_saved_page_is_the_last_one_examined(self):
+        """Для разбора сохраняется страница издания, а не список изданий.
+
+        След обрывается именно на ней. Сохранить первую значит прислать не то
+        и потерять ещё один круг переписки.
+        """
+        готово, файлы, каталог = self.прогнать("тупик-на-издании")
+        self.assertEqual([], файлы)
+        сохранённые = sorted((каталог / "не-найдено-ссылок").glob("*.html"))
+        self.assertTrue(сохранённые, "страница для разбора не сохранена:\n" + готово.stdout)
+        текст = сохранённые[0].read_text(encoding="utf-8")
+        self.assertIn("ЭТО СТРАНИЦА ИЗДАНИЯ", текст, "сохранён список изданий вместо страницы издания")
+        # И адрес в шапке — чтобы было видно, откуда она взялась.
+        self.assertIn("адрес: http://127.0.0.1", текст.splitlines()[1])
 
     @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
     def test_page_without_a_link_is_saved_for_inspection(self):
