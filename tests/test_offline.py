@@ -1017,6 +1017,36 @@ class ItuLiveRunTests(unittest.TestCase):
         'id=T-REC-G.703-201611-I!!PDF-E&amp;type=items">PDF</a></body></html>'
     )
     ФАЙЛ = b"%PDF-1.4\n" + b"x" * 9000 + b"\n%%EOF\n"
+    #: Сколько раз сервер уже попросил подождать.
+    ЗАНЯТ_РАЗ = 0
+    #: Шесть языков, английский — далеко не первый в разметке.
+    СТРАНИЦА_ШЕСТЬ_ЯЗЫКОВ = (
+        "<html><body>"
+        + "".join(
+            '<a href="dologin_pub.asp?id=T-REC-G.703-201604-I!!PDF-%s&amp;type=items">%s</a>' % (я, я)
+            for я in ("A", "C", "F", "E", "S", "R"))
+        + "</body></html>"
+    )
+    #: Страница, где английского издания нет, а русское есть.
+    СТРАНИЦА_РУССКАЯ = (
+        "<html><body>"
+        '<a href="dologin_pub.asp?lang=r&amp;id=T-REC-G.703-201604-I!!PDF-R&amp;type=items">PDF</a>'
+        "</body></html>"
+    )
+    #: Страница рекомендации, где ссылка на файл записана от корня сайта.
+    СТРАНИЦА_АБСОЛЮТНАЯ = (
+        "<html><body>"
+        '<a href="/rec/dologin_pub.asp?lang=e&amp;id=T-REC-G.703-201604-I!!SOFT-E&amp;type=items">Word</a>'
+        '<a href="/rec/dologin_pub.asp?lang=e&amp;id=T-REC-G.703-201604-I!!PDF-E&amp;type=items">PDF</a>'
+        "</body></html>"
+    )
+    #: Страница рекомендации, где ссылка на файл тоже записана относительной.
+    СТРАНИЦА_ОТНОСИТЕЛЬНАЯ = (
+        "<html><body>"
+        '<a href="dologin_pub.asp?lang=e&amp;id=T-REC-G.703-201604-I!!SOFT-E&amp;type=items">Word</a>'
+        '<a href="dologin_pub.asp?lang=e&amp;id=T-REC-G.703-201604-I!!PDF-E&amp;type=items">PDF</a>'
+        "</body></html>"
+    )
 
     @classmethod
     def обработчик(cls, режим):
@@ -1037,9 +1067,82 @@ class ItuLiveRunTests(unittest.TestCase):
                 self.end_headers()
                 self.wfile.write(тело)
 
+            def как_у_мсэ(self, путь, режим):
+                """Разметка адресов, снятая с настоящего сайта МСЭ."""
+                if путь.startswith("/rec/T-REC-G/en") or путь.startswith("/rec/browse/T-REC-G/en"):
+                    if режим == "перенаправление" and not путь.startswith("/rec/browse/"):
+                        self.send_response(302)
+                        self.send_header("Location", "/rec/browse/T-REC-G/en")
+                        self.send_header("Content-Length", "0")
+                        self.end_headers()
+                        return
+                    строки = "".join(
+                        '<tr><td><a href="../recommendation.asp?lang=en&amp;parent=T-REC-%s">%s</a></td>'
+                        '<td>Characteristics of digital transmission equipment %s</td>'
+                        '<td>In force</td></tr>' % (н, н, н)
+                        for н in ("G.703", "G.704"))
+                    if режим == "перенаправление":
+                        # После перехода страница лежит на уровень глубже, и
+                        # «../» ведёт из /rec/browse/T-REC-G/ в /rec/browse/.
+                        строки = строки.replace("../recommendation.asp", "../../recommendation.asp")
+                    return self.отдать(200, ("<html><body><table>%s</table></body></html>" % строки).encode())
+
+                # Сервер занят: первый запрос страницы отвергается просьбой
+                # подождать. Это не отказ, и терять из-за него документ нельзя.
+                # Отвергаем больше раз, чем curl повторяет сам (у него две
+                # попытки): иначе проверялась бы не наша уступка, а его.
+                if режим == "занят" and путь.startswith("/rec/recommendation.asp"):
+                    if сам.ЗАНЯТ_РАЗ < 3:
+                        сам.ЗАНЯТ_РАЗ += 1
+                        return self.отдать(503, b"Busy")
+
+                # Шесть языков на странице. Сервер отдаёт только английское
+                # издание — значит, промах в порядке предпочтения сразу виден.
+                if режим == "много-языков":
+                    if путь.startswith("/rec/recommendation.asp"):
+                        return self.отдать(200, сам.СТРАНИЦА_ШЕСТЬ_ЯЗЫКОВ.encode())
+                    if путь.startswith("/rec/dologin_pub.asp"):
+                        if "PDF-E" not in self.path:
+                            return self.отдать(404, b"no such edition")
+                        return self.отдать(200, сам.ФАЙЛ, "application/pdf")
+
+                # У части рекомендаций английского издания нет, а русское есть.
+                if режим == "только-русский":
+                    if путь.startswith("/rec/recommendation.asp"):
+                        return self.отдать(200, сам.СТРАНИЦА_РУССКАЯ.encode())
+                    if путь.startswith("/rec/dologin_pub.asp"):
+                        if "PDF-R" not in self.path:
+                            return self.отдать(404, b"no such edition")
+                        return self.отдать(200, сам.ФАЙЛ, "application/pdf")
+
+                # Запасной путь: ссылка из перечня мертва, канонический адрес жив.
+                if режим == "запасной" and путь.startswith("/rec/recommendation.asp"):
+                    return self.отдать(403, b"Forbidden")
+                if режим == "запасной" and путь.startswith("/rec/T-REC-G."):
+                    # На канонической странице МСЭ ссылка на файл записана от
+                    # корня — иначе она указывала бы внутрь «каталога» с
+                    # номером рекомендации, которого не существует.
+                    return self.отдать(200, сам.СТРАНИЦА_АБСОЛЮТНАЯ.encode())
+
+                if путь.startswith("/rec/recommendation.asp"):
+                    return self.отдать(200, сам.СТРАНИЦА_ОТНОСИТЕЛЬНАЯ.encode())
+                if путь.startswith("/rec/dologin_pub.asp"):
+                    return self.отдать(200, сам.ФАЙЛ, "application/pdf")
+                # Всё прочее — чужой путь; у МСЭ это 403, а не 404.
+                return self.отдать(403, b"Forbidden")
+
             def do_GET(self):
                 путь = self.path
                 агент = self.headers.get("User-Agent", "")
+
+                # Настоящая структура адресов МСЭ: перечень ссылается на
+                # рекомендации ОТНОСИТЕЛЬНО («../recommendation.asp»), а сами
+                # страницы лежат в /rec/. Обращение к корню сайта сервер
+                # отвергает — так ведёт себя SharePoint у МСЭ.
+                if режим in ("относительные", "перенаправление", "запасной",
+                             "занят", "только-русский", "много-языков"):
+                    return self.как_у_мсэ(путь, режим)
+
                 if путь.startswith("/rec/T-REC-") and "." not in путь.split("/")[-2]:
                     return self.отдать(200, сам.ПЕРЕЧЕНЬ.encode())
                 if путь.startswith("/rec/T-REC-"):
@@ -1175,6 +1278,81 @@ class ItuLiveRunTests(unittest.TestCase):
         готово, файлы, _ = self.прогнать("referer")
         self.assertEqual(0, готово.returncode, готово.stdout + готово.stderr)
         self.assertEqual(2, len(файлы), "Referer не передан:\n" + готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_relative_links_are_resolved_against_the_page(self):
+        """Ссылка «../recommendation.asp» — та самая, на которой всё встало.
+
+        МСЭ пишет в перечне относительные ссылки. Прежний разбор приклеивал их
+        к корню сайта и терял «/rec/»; SharePoint отвечал 403 на чужой путь, и
+        выгрузка из 6217 документов не привезла ни одного. Здесь сервер устроен
+        так же, как настоящий: по корню — отказ, по /rec/ — страница.
+        """
+        готово, файлы, _ = self.прогнать("относительные")
+        self.assertEqual(0, готово.returncode, "ссылки развёрнуты не туда:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
+        self.assertTrue(файлы[0].read_bytes().startswith(b"%PDF-"))
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_relative_links_follow_redirects(self):
+        """Считать надо от страницы, на которой оказались, а не запрошенной.
+
+        curl ходит с -L. Если МСЭ перебросит перечень на другой адрес, все
+        относительные ссылки на нём отсчитываются от нового адреса. Считать от
+        запрошенного значило бы снова промахнуться мимо каталога.
+        """
+        готово, файлы, _ = self.прогнать("перенаправление")
+        self.assertEqual(0, готово.returncode, "адрес считался не от итоговой страницы:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_canonical_address_is_tried_when_the_listed_link_is_dead(self):
+        """Ссылка из перечня мертва — берём канонический адрес рекомендации.
+
+        Он у МСЭ неизменен много лет и не зависит от того, как записана ссылка
+        в перечне. Одна лишняя попытка на документ дешевле пропущенного
+        документа, а на шести тысячах это заметная разница в улове.
+        """
+        готово, файлы, _ = self.прогнать("запасной")
+        self.assertEqual(0, готово.returncode, "запасной адрес не сработал:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
+        self.assertIn("канонический адрес", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_busy_server_is_waited_out_not_counted_as_failure(self):
+        """«Слишком часто» и «занят» — просьба подождать, а не отказ.
+
+        На выгрузке в шесть тысяч документов такие ответы приходят пачками, и
+        если засчитывать их в неудачу, из библиотеки выпадают целые серии.
+        """
+        type(self).ЗАНЯТ_РАЗ = 0
+        готово, файлы, _ = self.прогнать("занят")
+        self.assertEqual(0, готово.returncode, "документ потерян из-за просьбы подождать:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
+        self.assertIn("уступаю", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_another_language_is_taken_when_english_is_missing(self):
+        """Английского издания нет — берём следующее по списку предпочтений.
+
+        Сервер здесь отдаёт только русское издание и отвечает 404 на любое
+        другое. Раньше такая рекомендация просто пропускалась.
+        """
+        готово, файлы, _ = self.прогнать("только-русский")
+        self.assertEqual(0, готово.returncode, "издание на другом языке не взято:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_preferred_language_wins_over_document_order(self):
+        """Из шести изданий берётся предпочтённое, а не первое в разметке.
+
+        На странице МСЭ ссылки идут в своём порядке — арабское может стоять
+        раньше английского. Брать первую попавшуюся значит класть в библиотеку
+        документ на случайном языке.
+        """
+        готово, файлы, _ = self.прогнать("много-языков")
+        self.assertEqual(0, готово.returncode, "взято не предпочтённое издание:\n" + готово.stdout)
+        self.assertEqual(2, len(файлы), готово.stdout)
 
     @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
     def test_rubbish_left_by_an_older_run_is_replaced(self):
@@ -1344,3 +1522,50 @@ class RfcLiveRunTests(unittest.TestCase):
         self.assertIn("связь оборвалась посреди файла", готово.stdout)
         # 795 не публиковался — это норма, а не ошибка связи.
         self.assertIn("номеров без текста: 1", готово.stdout)
+
+
+class ItuSelfTestTests(unittest.TestCase):
+    """Ключ -SelfTest: проверка скрипта на месте, без выхода в сеть.
+
+    Выгрузка МСЭ идёт часами, и узнать, что скрипт несовместим с этой версией
+    PowerShell, лучше за десять секунд до начала, чем через час после. Именно
+    так однажды и вышло: под Windows PowerShell 5.1 любая строка, написанная
+    curl в поток ошибок, обрывала запуск — и выяснилось это после того, как
+    отдел прочитал перечни всех 25 серий.
+
+    Проверка обязана уметь две вещи: сказать «исправен», когда всё цело, и
+    честно упасть, когда нет. Вторая важнее: молчаливо одобряющая проверка
+    хуже отсутствующей.
+    """
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_self_test_passes_on_a_healthy_machine(self):
+        готово = subprocess.run(
+            ["pwsh", "-NoProfile", "-File", str(OFFLINE / "itu.ps1"), "-SelfTest"],
+            capture_output=True, text=True, timeout=180,
+        )
+        self.assertEqual(0, готово.returncode, готово.stdout + готово.stderr)
+        self.assertIn("самопроверка пройдена", готово.stdout)
+        # Ни одна проверка не должна молча выпасть из прогона.
+        self.assertNotIn("  X  ", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_self_test_fails_loudly_when_curl_is_missing(self):
+        # Без curl выгрузка невозможна, и проверка обязана это сказать, а не
+        # отрапортовать «исправен». Прячем curl, оставив путь к самому pwsh.
+        окружение = dict(os.environ)
+        окружение["PATH"] = str(Path(shutil.which("pwsh")).parent)
+        подстава = tempfile.mkdtemp(prefix="bez-curl-")
+        self.addCleanup(shutil.rmtree, подстава, ignore_errors=True)
+        окружение["PATH"] = подстава + os.pathsep + окружение["PATH"]
+        # В подставном каталоге curl отсутствует; если он есть в каталоге
+        # pwsh, проверка потеряет смысл — тогда тест пропускаем.
+        if shutil.which("curl", path=окружение["PATH"]):
+            self.skipTest("curl лежит рядом с pwsh — спрятать его нечем")
+        готово = subprocess.run(
+            ["pwsh", "-NoProfile", "-File", str(OFFLINE / "itu.ps1"), "-SelfTest"],
+            capture_output=True, text=True, timeout=180, env=окружение,
+        )
+        self.assertEqual(1, готово.returncode, "сломанная машина одобрена:\n" + готово.stdout)
+        self.assertIn("самопроверка не пройдена", готово.stdout)
+        self.assertIn("выгрузку запускать нельзя", готово.stdout)

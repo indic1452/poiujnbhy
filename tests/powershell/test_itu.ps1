@@ -14,7 +14,8 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
 # Вытаскиваем разбирающие функции из скрипта, не запуская его целиком.
 $text = Get-Content (Join-Path $PSScriptRoot '..\..\scripts\offline\itu.ps1') -Raw -Encoding UTF8
-foreach ($name in 'Test-ItuLooksLikeName', 'Read-ItuIndex', 'Read-ItuPdfLink', 'Resolve-ItuUrl', 'Get-ItuFileName', 'Get-ItuSeries') {
+foreach ($name in 'Test-ItuLooksLikeName', 'Read-ItuIndex', 'Read-ItuPdfLink', 'ConvertFrom-HtmlText',
+                  'Resolve-ItuUrl', 'Read-ItuBaseHref', 'Get-ItuFileName', 'Get-ItuSeries') {
     $start = $text.IndexOf("function $name")
     if ($start -lt 0) { Write-Host "функция $name не найдена" -ForegroundColor Red; exit 1 }
     $depth = 0; $j = $text.IndexOf('{', $start)
@@ -74,6 +75,33 @@ Check 'ссылки нет — пустая строка, а не выдумка
 Write-Host 'Адреса и имена:'
 Check 'относительный адрес развёрнут' (Resolve-ItuUrl '/rec/T-REC-G.703/en' 'https://www.itu.int') `
       'https://www.itu.int/rec/T-REC-G.703/en'
+
+# Ниже — та самая ошибка, из-за которой выгрузка не скачала ни одного
+# документа: ссылку «../recommendation.asp» прежний разбор приклеивал к корню
+# сайта, теряя «/rec/», и МСЭ отвечал 403 на несуществующий путь.
+Check 'ссылка с «../» считается от страницы, а не от корня' `
+      (Resolve-ItuUrl '../recommendation.asp?lang=en&parent=T-REC-A.1' 'https://www.itu.int/rec/T-REC-A/en') `
+      'https://www.itu.int/rec/recommendation.asp?lang=en&parent=T-REC-A.1'
+Check 'ссылка без косой считается от каталога страницы' `
+      (Resolve-ItuUrl 'recommendation.asp?parent=T-REC-A.1' 'https://www.itu.int/rec/T-REC-A/en') `
+      'https://www.itu.int/rec/T-REC-A/recommendation.asp?parent=T-REC-A.1'
+Check 'ссылка с «./» не теряет каталог' `
+      (Resolve-ItuUrl './dologin_pub.asp?id=1' 'https://www.itu.int/rec/recommendation.asp') `
+      'https://www.itu.int/rec/dologin_pub.asp?id=1'
+Check 'без указания страницы адрес не выдумывается' `
+      (Resolve-ItuUrl 'https://www.itu.int/x' '') 'https://www.itu.int/x'
+
+Write-Host 'Собственная основа страницы (<base href>):'
+Check 'основа объявлена — считаем от неё' `
+      (Read-ItuBaseHref '<html><head><base href="/rec/"></head></html>' 'https://www.itu.int/rec/T-REC-A/en') `
+      'https://www.itu.int/rec/'
+Check 'основы нет — считаем от самой страницы' `
+      (Read-ItuBaseHref '<html><head></head></html>' 'https://www.itu.int/rec/T-REC-A/en') `
+      'https://www.itu.int/rec/T-REC-A/en'
+Check 'ссылка разворачивается от объявленной основы' `
+      (Resolve-ItuUrl 'recommendation.asp?parent=T-REC-A.1' `
+        (Read-ItuBaseHref '<base href="/rec/">' 'https://www.itu.int/rec/T-REC-A/en')) `
+      'https://www.itu.int/rec/recommendation.asp?parent=T-REC-A.1'
 Check 'полный адрес не тронут' (Resolve-ItuUrl 'https://www.itu.int/x' 'https://www.itu.int') `
       'https://www.itu.int/x'
 Check 'амперсанд в ссылке раскодирован' `

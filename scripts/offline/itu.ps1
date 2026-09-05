@@ -59,6 +59,18 @@
     Сколько страниц подряд может не открыться, прежде чем скрипт остановится.
     По умолчанию 15: если МСЭ закрыт, незачем час долбиться в шесть тысяч
     адресов, чтобы в конце сказать «ничего не скачано».
+.PARAMETER Languages
+    Языки изданий по порядку предпочтения. По умолчанию E,R,F,S — английское
+    издание, если есть; иначе русское, французское, испанское. Так в
+    библиотеку попадает больше документов: часть рекомендаций выложена не на
+    всех языках. Нужен русский текст в первую очередь — укажите -Languages R,E.
+.PARAMETER SelfTest
+    Проверить сам скрипт на этой машине, ничего не скачивая и вообще не
+    выходя в сеть. Проверяется то, что ломалось: переживает ли скрипт ошибку
+    внешней программы на этой версии PowerShell, разбирает ли страницы МСЭ,
+    отличает ли PDF от подделки. С этого стоит начинать на новой машине.
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File .\itu.ps1 -SelfTest
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\itu.ps1 -Probe
 .EXAMPLE
@@ -78,7 +90,9 @@ param(
     [string]$IndexFrom = '',
     [switch]$Probe,
     [string]$UserAgent = '',
-    [int]$StopAfterFailures = 15
+    [int]$StopAfterFailures = 15,
+    [string[]]$Languages = @('E', 'R', 'F', 'S'),
+    [switch]$SelfTest
 )
 
 $ErrorActionPreference = 'Stop'
@@ -172,9 +186,13 @@ function Invoke-Request {
         [int]$Agent = -1
     )
     if ($Agent -lt 0) { $Agent = $script:AgentIndex }
+    # Кроме кода ответа спрашиваем у curl ИТОГОВЫЙ адрес. Он нужен не для
+    # красоты: относительные ссылки на странице считаются от того адреса, на
+    # котором браузер в итоге оказался, а не от того, который был запрошен.
+    # МСЭ перенаправляет, и без этого ссылки развернулись бы не туда.
     $аргументы = @(
         '-sL', '--max-time', "$Timeout", '--retry', '2', '--retry-delay', '2',
-        '-A', $script:UserAgents[$Agent], '-w', "`n%{http_code}"
+        '-A', $script:UserAgents[$Agent], '-w', "`n%{http_code}`n%{url_effective}"
     )
     if ($script:CookieJar) { $аргументы += @('-c', $script:CookieJar, '-b', $script:CookieJar) }
     if ($Referer) { $аргументы += @('-e', $Referer) }
@@ -183,21 +201,62 @@ function Invoke-Request {
 
     $ответ = Invoke-Curl -Arguments $аргументы
     $строки = @($ответ.lines)
-    # Последняя строка вывода — это %{http_code}, всё до неё — тело ответа.
-    # При -o тела в выводе нет и остаётся только код.
+    # Две последние строки вывода — это код ответа и итоговый адрес, всё до
+    # них — тело. При -o тела в выводе нет и остаются только эти две строки.
     $код = 0
-    if ($строки.Count) {
-        $хвост = "$($строки[-1])".Trim()
-        if ($хвост -match '^\d{3}$') { $код = [int]$хвост }
-        $строки = @($строки[0..([Math]::Max(0, $строки.Count - 2))])
-        if ($хвост -match '^\d{3}$' -and $ответ.lines.Count -le 1) { $строки = @() }
+    $итоговый = ''
+    if ($строки.Count -ge 2) {
+        $адресСтрока = "$($строки[-1])".Trim()
+        $кодСтрока = "$($строки[-2])".Trim()
+        if ($кодСтрока -match '^\d{3}$') {
+            $код = [int]$кодСтрока
+            $итоговый = $адресСтрока
+            $строки = if ($строки.Count -ge 3) { @($строки[0..($строки.Count - 3)]) } else { @() }
+        }
     }
     return [pscustomobject]@{
         code = $код
         exit = $ответ.exit
         text = ($строки -join "`n")
+        url  = $итоговый
     }
 }
+
+<#
+    Запрос с уступкой перегруженному серверу.
+
+    Ответы 429 («слишком часто») и 503 («занят») — не отказ, а просьба
+    подождать. Считать их за неудачу значит терять документы там, где хватило
+    бы паузы: на выгрузке в шесть тысяч штук такие ответы приходят пачками, и
+    без уступки в библиотеку не доезжают целые серии. Ждём всё дольше —
+    5, 10, 20 секунд, — а не долбим сервер организации, которая раздаёт всё
+    это бесплатно.
+#>
+function Invoke-Polite {
+    param(
+        [string]$Url,
+        [string]$Referer = '',
+        [string]$OutFile = '',
+        [int]$Timeout = 90,
+        [int]$Agent = -1,
+        [int]$Waits = 3
+    )
+    $пауза = 5
+    for ($попытка = 0; $попытка -le $Waits; $попытка++) {
+        $ответ = Invoke-Request -Url $Url -Referer $Referer -OutFile $OutFile -Timeout $Timeout -Agent $Agent
+        if ($ответ.code -ne 429 -and $ответ.code -ne 503) { return $ответ }
+        if ($попытка -eq $Waits) { return $ответ }
+        if (-not $script:SaidBusy) {
+            Note "сервер просит подождать (ответ $($ответ.code)) — уступаю, выгрузка продолжится"
+            $script:SaidBusy = $true
+        }
+        Start-Sleep -Seconds $пауза
+        $пауза = $пауза * 2
+    }
+    return $ответ
+}
+$script:SaidBusy = $false
+$script:SaidFallback = $false
 
 #: Код ответа человеческими словами. Инженеру на изолированной машине
 #: «ошибка 403» ничего не говорит, а «не пускает эту программу» говорит.
@@ -232,7 +291,7 @@ function Read-HttpCode([int]$code, [int]$exitCode) {
 #>
 function Get-Page {
     param([string]$Url, [string]$Referer = '')
-    $ответ = Invoke-Request -Url $Url -Referer $Referer
+    $ответ = Invoke-Polite -Url $Url -Referer $Referer
     if ($ответ.code -eq 403 -and -not $script:AgentTried) {
         for ($i = 0; $i -lt $script:UserAgents.Count; $i++) {
             if ($i -eq $script:AgentIndex) { continue }
@@ -343,15 +402,31 @@ function Read-ItuIndex {
     вёрстку когда-нибудь упростят.
 #>
 function Read-ItuPdfLink {
-    param([string]$Html)
+    param([string]$Html, [string[]]$Languages = @('E'))
 
     # Рядом с PDF на той же странице лежат Word и ZIP — у МСЭ они отдаются той
     # же dologin_pub.asp, и Word обычно стоит ПЕРВЫМ. Брать первую попавшуюся
     # ссылку нельзя: в библиотеку лёг бы документ Word под именем .pdf.
     # Поэтому среди ссылок выбираем ту, у которой в ключе издания написано PDF.
-    $links = [regex]::Matches($Html, '(?is)href\s*=\s*["'']([^"'']*dologin_pub\.asp[^"'']*)["'']')
-    foreach ($link in $links) {
-        if ($link.Groups[1].Value -match '(?i)PDF') { return $link.Groups[1].Value }
+    $links = @([regex]::Matches($Html, '(?is)href\s*=\s*["'']([^"'']*dologin_pub\.asp[^"'']*)["'']') |
+               ForEach-Object { $_.Groups[1].Value })
+
+    # Язык издания записан в ключе последней буквой: «!!PDF-E» — английское,
+    # «!!PDF-R» — русское. МСЭ выкладывает не всякую рекомендацию на всех
+    # языках, поэтому идём по списку предпочтений: так в библиотеку попадает
+    # больше документов, чем при одном-единственном языке. И порядок здесь не
+    # прихоть — без него на странице с шестью языками бралась бы первая
+    # попавшаяся, то есть какая придётся.
+    foreach ($язык in $Languages) {
+        $образец = '(?i)PDF-' + [regex]::Escape($язык) + '\b'
+        foreach ($href in $links) {
+            if ($href -match $образец) { return $href }
+        }
+    }
+    # Языка из списка нет, но PDF на странице есть — берём его: документ на
+    # неожиданном языке всё равно лучше, чем пропуск.
+    foreach ($href in $links) {
+        if ($href -match '(?i)PDF') { return $href }
     }
     $direct = [regex]::Match($Html, '(?is)href\s*=\s*["'']([^"'']*\.pdf(?:\?[^"'']*)?)["'']')
     if ($direct.Success) { return $direct.Groups[1].Value }
@@ -360,22 +435,69 @@ function Read-ItuPdfLink {
     return ''
 }
 
-#: Ссылку со страницы приводим к полному адресу: МСЭ пишет их и относительными.
+#: Расшифровать «&amp;» и прочие подстановки HTML. Отдельной функцией потому,
+#: что System.Web подгружается не везде, а падение при
+#: $ErrorActionPreference = 'Stop' оборвало бы весь запуск на первой ссылке.
+function ConvertFrom-HtmlText([string]$text) {
+    if (-not $text) { return '' }
+    try { return [System.Web.HttpUtility]::HtmlDecode($text) } catch { }
+    return ($text -replace '&amp;', '&' -replace '&#38;', '&' `
+                  -replace '&quot;', '"' -replace '&#39;', "'" -replace '&#39;', "'")
+}
+
+<#
+    Ссылку со страницы — в полный адрес, по правилам браузера.
+
+    ЗДЕСЬ БЫЛА ОШИБКА, ИЗ-ЗА КОТОРОЙ ВЫГРУЗКА НЕ СКАЧАЛА НИ ОДНОГО ДОКУМЕНТА.
+    Прежний разбор приклеивал относительную ссылку к корню сайта и вдобавок
+    срезал ведущие точки и косые скопом: «TrimStart('./')» съедает и точки, и
+    косые, поэтому «../» исчезал целиком. МСЭ на странице перечня пишет
+    ссылки именно так — «../recommendation.asp?lang=en&parent=T-REC-A.1», — и
+    вместо
+
+        https://www.itu.int/rec/recommendation.asp?lang=en&parent=T-REC-A.1
+
+    получалось
+
+        https://www.itu.int/recommendation.asp?lang=en&parent=T-REC-A.1
+
+    без «/rec/». Сайт МСЭ на SharePoint, а тот на чужой путь отвечает 403, и
+    выглядело это как отказ защиты сайта, хотя мы просто просили не тот адрес.
+
+    Теперь считаем так же, как считает браузер: System.Uri разворачивает
+    ссылку относительно страницы, НА КОТОРОЙ она найдена, и «../», «./» и
+    полные адреса обрабатываются правильно сами.
+#>
 function Resolve-ItuUrl {
-    param([string]$Href, [string]$BaseAddress)
+    param([string]$Href, [string]$PageUrl)
     if (-not $Href) { return '' }
-    # System.Web в PowerShell 7 подгружается не везде, а падение здесь при
-    # $ErrorActionPreference = 'Stop' обрывало бы весь запуск на первой ссылке.
-    $href = $Href
-    try { $href = [System.Web.HttpUtility]::HtmlDecode($Href) }
-    catch {
-        $href = $Href -replace '&amp;', '&' -replace '&#38;', '&' `
-                      -replace '&quot;', '"' -replace '&#39;', "'"
+    $href = ConvertFrom-HtmlText $Href
+    if (-not $PageUrl) { return $href }
+    try {
+        $основа = New-Object -TypeName System.Uri -ArgumentList @($PageUrl)
+        return (New-Object -TypeName System.Uri -ArgumentList @($основа, $href)).AbsoluteUri
+    } catch {
+        # Ни страница, ни ссылка не разобрались как адрес. Собирать адрес из
+        # обломков вручную — ровно то, чем прежний разбор и промахнулся;
+        # честнее вернуть ссылку как есть и дать неудаче попасть в отчёт.
+        return $href
     }
-    if ($href -match '^(?i)https?://') { return $href }
-    if ($href.StartsWith('//'))        { return "https:$href" }
-    if ($href.StartsWith('/'))         { return "$BaseAddress$href" }
-    return "$BaseAddress/$($href.TrimStart('./'))"
+}
+
+<#
+    Собственная основа страницы, если она объявлена тегом <base href>.
+
+    Браузер, встретив такой тег, считает от него, а не от адреса страницы.
+    Не учитывать его значит разворачивать ссылки не туда на всех страницах,
+    где он есть.
+#>
+function Read-ItuBaseHref {
+    param([string]$Html, [string]$PageUrl)
+    $m = [regex]::Match($Html, '(?is)<base\b[^>]*\bhref\s*=\s*["'']([^"'']+)["'']')
+    if (-not $m.Success) { return $PageUrl }
+    $свой = Resolve-ItuUrl -Href $m.Groups[1].Value -PageUrl $PageUrl
+    if ($свой) { return $свой }
+    return $PageUrl
 }
 
 <#
@@ -411,15 +533,180 @@ function Get-ItuFileName {
 #: чтобы вызывающий мог сказать человеку, что именно случилось.
 $script:LastWhy = ''
 $script:LastCode = 0
+#: Адрес, на котором curl оказался в итоге. От него, а не от запрошенного,
+#: считаются относительные ссылки на полученной странице.
+$script:LastUrl = ''
 function Get-Text([string]$url, [string]$referer = '') {
     $ответ = Get-Page -Url $url -Referer $referer
     $script:LastCode = $ответ.code
+    $script:LastUrl = if ($ответ.url) { $ответ.url } else { $url }
     if ($ответ.code -ge 200 -and $ответ.code -lt 400 -and $ответ.text) {
         $script:LastWhy = ''
         return $ответ.text
     }
     $script:LastWhy = Read-HttpCode $ответ.code $ответ.exit
     return ''
+}
+
+# --- Самопроверка ----------------------------------------------------------
+<#
+    Проверить сам скрипт на этой машине, не выходя в сеть.
+
+    Зачем отдельный ключ. Выгрузка МСЭ идёт часами, и узнать, что скрипт
+    несовместим с этой версией PowerShell, лучше за десять секунд до начала, а
+    не через час. Именно так и вышло однажды: под Windows PowerShell 5.1 любая
+    строка, написанная curl в поток ошибок, обрывала весь запуск — а выяснилось
+    это после того, как отдел прочитал перечни всех 25 серий.
+
+    Проверяется ровно то, что ломалось, и без единого обращения наружу:
+    обращение к заведомо закрытому порту на 127.0.0.1 заставляет curl написать
+    в поток ошибок — если скрипт это переживает, переживёт и отказ МСЭ.
+    Остальное — разбор страниц по вложенным образцам и проверка того, что
+    подделка не будет принята за PDF.
+#>
+$script:SelfChecks = 0
+$script:SelfFailed = 0
+function Assert-That([string]$что, [bool]$верно, [string]$пояснение = '') {
+    $script:SelfChecks++
+    if ($верно) {
+        Write-Host ("  OK  {0}" -f $что) -ForegroundColor Green
+    } else {
+        $script:SelfFailed++
+        Write-Host ("  X   {0}" -f $что) -ForegroundColor Red
+        if ($пояснение) { Note $пояснение }
+    }
+}
+
+#: Образцы страниц МСЭ вшиты в скрипт: самопроверка обязана работать и там,
+#: где рядом нет ни репозитория, ни сети.
+function Get-SelfSampleIndex {
+    return @'
+<html><body><table>
+<tr><th>Recommendation</th><th>Title</th><th>Status</th></tr>
+<tr><td><a href="/rec/T-REC-G.703-201604-I/en">G.703</a></td>
+    <td>Physical/electrical characteristics of hierarchical digital interfaces</td>
+    <td>In force</td></tr>
+<tr><td><a href="/rec/T-REC-G.711-198811-I/en">Recommendation ITU-T G.711</a></td>
+    <td>Pulse code modulation (PCM) of voice frequencies</td>
+    <td>In force</td></tr>
+<tr><td><a href="/rec/T-REC-G.721-198811-S/en">G.721</a></td>
+    <td>32 kbit/s adaptive differential pulse code modulation</td>
+    <td>Superseded</td></tr>
+<tr><td><a href="/rec/T-REC-G.722-201209-I/en">G.722</a></td>
+    <td>7 kHz audio-coding within 64 kbit/s</td>
+    <td>Withdrawn</td></tr>
+<tr><td><a href="/rec/T-REC-G.703-201604-I/en">G.703</a></td>
+    <td>Duplicate row</td><td>In force</td></tr>
+</table>
+<p><a href="/rec/T-REC-H.264-202108-I/en">H.264</a> from another series</p>
+</body></html>
+'@
+}
+
+function Get-SelfSamplePage {
+    return @'
+<html><body>
+<a href="/rec/dologin_pub.asp?lang=e&amp;id=T-REC-G.703-201604-I!!SOFT-E&amp;type=items">Word</a>
+<a href="/rec/dologin_pub.asp?lang=f&amp;id=T-REC-G.703-201604-I!!PDF-F&amp;type=items">PDF francais</a>
+<a href="/rec/dologin_pub.asp?lang=e&amp;id=T-REC-G.703-201604-I!!PDF-E&amp;type=items">PDF English</a>
+</body></html>
+'@
+}
+
+if ($SelfTest) {
+    Step 'Самопроверка: сеть не нужна'
+
+    # 1. Есть ли curl вообще. На Windows 10 он в комплекте, но встречаются
+    #    сборки, где его вырезали, — тогда всё остальное бессмысленно.
+    $версия = Invoke-Curl -Arguments @('--version')
+    # Мало найти слово «curl» в выводе: сообщение «имя curl не распознано»
+    # тоже его содержит, и проверка приняла бы отсутствие curl за наличие.
+    # Смотрим и код выхода, и то, что первая строка — это его заголовок.
+    $естьCurl = ($версия.exit -eq 0 -and $версия.lines.Count -gt 0 -and
+                 "$($версия.lines[0])" -match '^(?i)curl\s+\d')
+    Assert-That 'curl найден и запускается' $естьCurl `
+        "команда «$script:CurlExe --version» ничего не ответила: без curl выгрузка невозможна"
+    if ($естьCurl) { Note ("      {0}" -f $версия.lines[0]) }
+
+    # 2. Главная проверка. Обращение к закрытому порту на своей же машине
+    #    заставляет curl написать в поток ошибок. Под Windows PowerShell 5.1
+    #    при $ErrorActionPreference = 'Stop' это раньше обрывало весь скрипт.
+    #    Если строка ниже выполнилась — обёртка работает.
+    $закрытый = Invoke-Request -Url 'http://127.0.0.1:9/' -Timeout 5
+    Assert-That 'ошибка внешней программы не обрывает скрипт' ($закрытый.code -eq 0) `
+        'обращение к закрытому порту вернуло код ответа — проверка не состоялась'
+    Note ("      что скажет человеку: {0}" -f (Read-HttpCode $закрытый.code $закрытый.exit))
+
+    # 3. Разбор перечня серии.
+    $записи = @(Read-ItuIndex -Html (Get-SelfSampleIndex) -SeriesLetter 'G')
+    Assert-That 'перечень серии разбирается' ($записи.Count -eq 4) `
+        "опознано записей: $($записи.Count), ожидалось 4 (дубль считается один раз, чужая серия не берётся)"
+    $g703 = $записи | Where-Object { $_.id -eq 'G.703' } | Select-Object -First 1
+    Assert-That 'название берётся из соседней ячейки, а не из ссылки' `
+        ($g703 -and $g703.title -match 'hierarchical') `
+        "у G.703 названием оказалось: «$($g703.title)»"
+    $g711 = $записи | Where-Object { $_.id -eq 'G.711' } | Select-Object -First 1
+    Assert-That 'подпись «Recommendation ITU-T G.711» названием не считается' `
+        ($g711 -and $g711.title -notmatch '(?i)recommendation itu') `
+        "у G.711 названием оказалось: «$($g711.title)»"
+
+    # 4. Состояние редакции. Ошибка здесь дороже всех прочих: отчёт сошлётся
+    #    на отменённую норму.
+    $g721 = $записи | Where-Object { $_.id -eq 'G.721' } | Select-Object -First 1
+    $g722 = $записи | Where-Object { $_.id -eq 'G.722' } | Select-Object -First 1
+    Assert-That 'заменённая редакция опознана заменённой' ($g721 -and $g721.status -eq 'superseded') `
+        "у G.721 состояние: «$($g721.status)» вместо superseded"
+    Assert-That 'отменённая редакция опознана отменённой' ($g722 -and $g722.status -eq 'archived') `
+        "у G.722 состояние: «$($g722.status)» вместо archived"
+
+    # 5. Выбор ссылки на файл: PDF, а не Word, и нужного языка.
+    $страницаОбразец = Get-SelfSamplePage
+    $ссылка = Read-ItuPdfLink -Html $страницаОбразец -Languages @('E', 'R', 'F', 'S')
+    Assert-That 'берётся PDF, а не документ Word' ($ссылка -match '(?i)PDF') `
+        "выбрана ссылка: $ссылка"
+    Assert-That 'язык выбирается по порядку предпочтения' ($ссылка -match '(?i)PDF-E') `
+        "при предпочтении E,R,F,S выбрана ссылка: $ссылка"
+    $поРусски = Read-ItuPdfLink -Html $страницаОбразец -Languages @('R', 'F', 'E')
+    Assert-That 'нет предпочтённого языка — берётся следующий по списку' `
+        ($поРусски -match '(?i)PDF-F') `
+        "при предпочтении R,F,E выбрана ссылка: $поРусски"
+
+    # 6. Подделка не должна пройти за PDF.
+    $проба = Join-Path ([IO.Path]::GetTempPath()) ("itu-selftest-{0}.bin" -f $PID)
+    try {
+        [IO.File]::WriteAllBytes($проба, [Text.Encoding]::ASCII.GetBytes('%PDF-1.4' + ("`n" * 20)))
+        Assert-That 'настоящий PDF принимается' (Test-PdfFile $проба)
+        [IO.File]::WriteAllBytes($проба, [Text.Encoding]::ASCII.GetBytes('<html>доступ закрыт</html>'))
+        Assert-That 'html-страница за PDF не принимается' (-not (Test-PdfFile $проба))
+        [IO.File]::WriteAllBytes($проба, [byte[]]@(37, 80))
+        Assert-That 'обрезок в два байта за PDF не принимается' (-not (Test-PdfFile $проба))
+    } finally {
+        Remove-Item -LiteralPath $проба -Force -ErrorAction SilentlyContinue
+    }
+
+    # 7. Путь с кириллицей: каталог заменённых называется по-русски, и если
+    #    кодировка на машине сбита, файлы просто не создадутся.
+    $русскийПуть = Join-Path ([IO.Path]::GetTempPath()) ("itu-заменённые-{0}" -f $PID)
+    try {
+        New-Item -ItemType Directory -Path $русскийПуть -Force | Out-Null
+        $файлВнутри = Join-Path $русскийПуть (Get-ItuFileName 'G.703')
+        [IO.File]::WriteAllText($файлВнутри, 'проба')
+        Assert-That 'путь с русскими буквами создаётся и читается' (Test-Path -LiteralPath $файлВнутри) `
+            "не удалось создать $файлВнутри"
+    } finally {
+        Remove-Item -LiteralPath $русскийПуть -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    Write-Host ''
+    if ($script:SelfFailed) {
+        Fail "самопроверка не пройдена: $script:SelfFailed из $script:SelfChecks"
+        Note 'выгрузку запускать нельзя — сначала разберитесь с отмеченными строками'
+        exit 1
+    }
+    Ok "самопроверка пройдена: $script:SelfChecks из $script:SelfChecks"
+    Note 'скрипт на этой машине исправен. Дальше: -Probe (отвечает ли МСЭ),'
+    Note 'потом -ListOnly (сколько чего), потом сама выгрузка.'
+    exit 0
 }
 
 # --- Проверка источника ----------------------------------------------------
@@ -492,13 +779,18 @@ if ($Probe) {
 
     Step 'Доходит ли дело до самого файла'
     $первая = $entries | Select-Object -First 1
-    $адресСтраницы = Resolve-ItuUrl -Href $первая.page -BaseAddress $Base
+    $основаПеречня = Read-ItuBaseHref -Html $html -PageUrl $script:LastUrl
+    $адресСтраницы = Resolve-ItuUrl -Href $первая.page -PageUrl $основаПеречня
+    Note "адрес страницы: $адресСтраницы"
     $страница = Get-Text $адресСтраницы -referer "$Base/rec/T-REC-G/en"
     if (-not $страница) {
         Fail "страница $($первая.id) не получена: $script:LastWhy"
+        Note 'если в адресе выше не хватает части пути — ссылка в перечне записана'
+        Note 'иначе, чем ожидает разбор; пришлите этот адрес, поправим'
         exit 1
     }
-    $адресФайла = Resolve-ItuUrl -Href (Read-ItuPdfLink -Html $страница) -BaseAddress $Base
+    $основаСтраницы = Read-ItuBaseHref -Html $страница -PageUrl $script:LastUrl
+    $адресФайла = Resolve-ItuUrl -Href (Read-ItuPdfLink -Html $страница -Languages $Languages) -PageUrl $основаСтраницы
     if (-not $адресФайла) {
         Warn "на странице $($первая.id) не нашлось ссылки на PDF"
         Note 'у части рекомендаций публикуется только платная версия — но если'
@@ -532,18 +824,28 @@ $script:CookieJar = Join-Path $root 'cookies.txt'
 Step "Перечень рекомендаций: серий $($wanted.Count)"
 $all = @()
 foreach ($letter in $wanted) {
+    $адресПеречня = "$Base/rec/T-REC-$letter/en"
     $html = if ($IndexFrom) {
         $file = Join-Path $IndexFrom "$letter.html"
         if (Test-Path -LiteralPath $file) { Get-Content -LiteralPath $file -Raw -Encoding UTF8 } else { '' }
     } else {
-        Get-Text "$Base/rec/T-REC-$letter/en"
+        Get-Text $адресПеречня
     }
     if (-not $html) {
         $почему = if ($IndexFrom) { "нет файла $letter.html в $IndexFrom" } else { $script:LastWhy }
         Warn "серия $letter — перечень не получен: $почему"
         continue
     }
-    $entries = Read-ItuIndex -Html $html -SeriesLetter $letter
+    # Разворачиваем ссылки СРАЗУ и от той страницы, на которой они найдены:
+    # МСЭ пишет их относительными, и позже, в цикле скачивания, страница уже
+    # неизвестна. Сохранённая браузером страница считается лежащей по своему
+    # обычному адресу — иначе ссылки из неё развернуть не от чего.
+    $страницаПеречня = if ($IndexFrom) { $адресПеречня } else { $script:LastUrl }
+    $основаПеречня = Read-ItuBaseHref -Html $html -PageUrl $страницаПеречня
+    $entries = @(Read-ItuIndex -Html $html -SeriesLetter $letter)
+    foreach ($запись in $entries) {
+        $запись.page = Resolve-ItuUrl -Href $запись.page -PageUrl $основаПеречня
+    }
     if ($entries.Count -eq 0) { Warn "серия $letter — ни одной ссылки не опознано" }
     else { Note ("серия {0}: {1}" -f $letter, $entries.Count) }
     $all += $entries
@@ -610,9 +912,29 @@ foreach ($item in ($plan | Sort-Object series, number)) {
     }
 
     $indexUrl = "$Base/rec/T-REC-$($item.series)/en"
-    $pageUrl = Resolve-ItuUrl -Href $item.page -BaseAddress $Base
+    # Адрес развёрнут ещё при разборе перечня — от той страницы, где найден.
+    $pageUrl = $item.page
     $page = Get-Text $pageUrl -referer $indexUrl
     if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
+
+    if (-not $page) {
+        # Запасной путь: канонический адрес рекомендации. У МСЭ он неизменен
+        # много лет и не зависит от того, как записана ссылка в перечне. Одна
+        # лишняя попытка на документ дешевле, чем пропущенный документ.
+        $канонический = "$Base/rec/T-REC-$($item.id)/en"
+        if ($канонический -ne $pageUrl) {
+            $запасная = Get-Text $канонический -referer $indexUrl
+            if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
+            if ($запасная) {
+                if (-not $script:SaidFallback) {
+                    Note 'ссылка из перечня не открылась — беру канонический адрес рекомендации'
+                    $script:SaidFallback = $true
+                }
+                $page = $запасная
+                $pageUrl = $script:LastUrl
+            }
+        }
+    }
 
     if (-not $page) {
         # Страница не открылась. Это НЕ «нет ссылки на PDF»: путать их нельзя,
@@ -632,7 +954,8 @@ foreach ($item in ($plan | Sort-Object series, number)) {
     }
     $подряд = 0
 
-    $pdfUrl = Resolve-ItuUrl -Href (Read-ItuPdfLink -Html $page) -BaseAddress $Base
+    $основаСтраницы = Read-ItuBaseHref -Html $page -PageUrl $pageUrl
+    $pdfUrl = Resolve-ItuUrl -Href (Read-ItuPdfLink -Html $page -Languages $Languages) -PageUrl $основаСтраницы
     if (-not $pdfUrl) {
         $nolink++
         $неудачи += [pscustomobject]@{ id = $item.id; этап = 'ссылка'; причина = 'на странице нет ссылки на PDF'; адрес = $pageUrl }
@@ -643,7 +966,7 @@ foreach ($item in ($plan | Sort-Object series, number)) {
 
     # Referer обязателен: МСЭ отдаёт файл через dologin_pub.asp, и без ссылки
     # на страницу, с которой пришли, тот отвечает страницей, а не файлом.
-    $ответ = Invoke-Request -Url $pdfUrl -Referer $pageUrl -OutFile $target -Timeout 180
+    $ответ = Invoke-Polite -Url $pdfUrl -Referer $pageUrl -OutFile $target -Timeout 180
     $size = if (Test-Path -LiteralPath $target) { (Get-Item -LiteralPath $target).Length } else { 0 }
     $этоPdf = Test-PdfFile $target
     # Обрыв посреди передачи: сервер ответил 200, подпись %PDF- на месте, а
