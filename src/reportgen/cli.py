@@ -15,7 +15,7 @@ from .facts import FactPack, FactPackError
 from .llm import build_llm
 from .pipeline import Outline, check_facts_coverage, generate_report
 from .retrieval import BM25Index, Retriever
-from .store.db import Database
+from .store.db import Database, console_work
 from .store.models import DOC_STATUSES, ROLE_TITLES, ROLES
 from .store.repo import Repositories
 from .verify import blocking, summarize, verify_report
@@ -266,10 +266,19 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         print(f"библиотека очищена: удалено документов {removed}")
 
     if target.is_dir():
-        result = ingest_directory(repos, target, force=args.force, progress=print,
-                                  doc_type=doc_type, domain=domain,
-                                  domains_path=settings.domains_path,
-                                  jobs=getattr(args, "jobs", 0) or None)
+        # Пока идёт приём, фоновый построитель векторов в приложении стоит:
+        # писать в SQLite можно только по одному, и вдвоём они дают
+        # «database is locked» обоим. Отмечаемся на каждом файле, иначе
+        # многочасовая загрузка через четверть часа сочлась бы брошенной.
+        with console_work(repos.db.path, "приём библиотеки") as отметиться:
+            def ход(сообщение) -> None:
+                отметиться()
+                print(сообщение)
+
+            result = ingest_directory(repos, target, force=args.force, progress=ход,
+                                      doc_type=doc_type, domain=domain,
+                                      domains_path=settings.domains_path,
+                                      jobs=getattr(args, "jobs", 0) or None)
     else:
         result = ingest_path(repos, target, root=target.parent, force=args.force,
                              doc_type=doc_type, domain=domain,
@@ -424,10 +433,17 @@ def cmd_embed(args: argparse.Namespace) -> int:
         timeout=settings.embed_timeout,
         batch=settings.embed_batch,
     )
-    # Батч уважаем и здесь: без него REPORTGEN_EMBED_BATCH не влиял на
-    # построение индекса вовсе — всегда шли пачки по 16, сколько ни ставь.
-    count = index_embeddings(repos, client, batch=settings.embed_batch,
-                             only_missing=not args.force, progress=print)
+    # Пока строим — приложение к векторам не лезет: писать в SQLite можно
+    # только по одному, и два построителя дают «database is locked» обоим.
+    with console_work(repos.db.path, "построение векторов") as отметиться:
+        def ход(готово: int, всего: int) -> None:
+            отметиться()          # многочасовая работа не должна счесться брошенной
+            print(готово, всего)
+
+        # Батч уважаем и здесь: без него REPORTGEN_EMBED_BATCH не влиял на
+        # построение индекса вовсе — всегда шли пачки по 16, сколько ни ставь.
+        count = index_embeddings(repos, client, batch=settings.embed_batch,
+                                 only_missing=not args.force, progress=ход)
     print(f"векторов проставлено: {count}, всего в базе: {repos.vectors.count()}")
     return 0
 

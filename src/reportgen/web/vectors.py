@@ -26,6 +26,7 @@ import time
 from typing import TYPE_CHECKING, Any, Callable, Dict
 
 from ..embeddings import EmbeddingClient, EmbeddingError, advice, index_embeddings
+from ..store.db import console_work_active
 
 if TYPE_CHECKING:  # pragma: no cover — только для подсказок типов
     from ..config import Settings
@@ -130,6 +131,10 @@ class VectorIndexer:
                 "error": self._error,
                 "advice": self._advice,
             })
+        # Пересборка из консоли — не ошибка, а причина, по которой векторы
+        # сейчас не строятся. Без этой строчки человек видел бы «не хватает
+        # 40 000» и нажимал бы кнопку, которая ничего не делает.
+        counted["console"] = self.console_busy()
         # «Чужие» векторы отдельной проверки не требуют: такой фрагмент
         # уже посчитан недостающим — вектора нужной модели у него нет.
         counted["ready"] = bool(
@@ -205,10 +210,23 @@ class VectorIndexer:
 
     # -- построение ---------------------------------------------------------
 
+    def console_busy(self) -> bool:
+        """Идёт ли пересборка из консоли.
+
+        База у нас одна на всех, а писать в SQLite можно только по одному.
+        Пока консоль перебирает библиотеку, лезть туда со своими векторами
+        значит драться за ту же запись и за ту же видеокарту — и получить
+        «database is locked» у обоих. Работу всё равно делает консоль, а мы
+        достроим остаток, когда она закончит.
+        """
+        return console_work_active(self.repos.db.path)
+
     def start(self, *, force: bool = False) -> Dict[str, Any]:
         """Запустить построение в фоне. Уже идёт — вернуть текущее состояние."""
         if not self.enabled:
             return self.status()
+        if self.console_busy():
+            return self.status(fresh=True)
         # Поток ЗАПУСКАЕМ под замком. Thread.is_alive() до start() ложно, и
         # если отпустить замок между «положили в self._thread» и «запустили»,
         # второй вызов увидит мёртвый поток и заведёт второй: два построения
@@ -242,6 +260,9 @@ class VectorIndexer:
         if not self.enabled:
             return self.status()
         state = self.status(fresh=True)
+        # Про консоль здесь не спрашиваем: единственная дверь к запуску —
+        # start(), и решение принимается там. Две проверки одного и того же в
+        # разных местах живут ровно до первой правки одной из них.
         if state["running"] or not state["missing"]:
             return state
         return self.start()
@@ -388,6 +409,11 @@ def _hint(state: Dict[str, Any]) -> str:
                 "словами — английские документы почти не находятся")
     if state["error"]:
         return f"векторы не строятся: {state['error']}"
+    # Пересборка из консоли важнее любых чисел: она объясняет и почему
+    # векторов не хватает, и почему кнопка сейчас ничего не даст.
+    if state.get("console"):
+        return ("идёт пересборка библиотеки из консоли — векторы строит она; "
+                "здесь ничего нажимать не нужно")
     if state["running"]:
         total = state["total"] or 0
         done = state["done"] or 0

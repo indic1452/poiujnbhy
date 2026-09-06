@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +14,98 @@ from typing import Any, Iterator, Sequence
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 SCHEMA_VERSION = "15"
+
+#: Сколько ждать освобождения базы, прежде чем сдаться (миллисекунды).
+#:
+#: SQLite пускает к записи по одному, и ждать приходится всерьёз: базу делят
+#: веб-приложение и команды из консоли. Прежние десять секунд рвались на
+#: пересборке библиотеки — приём документов и построение векторов пишут почти
+#: непрерывно, и через полчаса работы вылезало «database is locked», унося с
+#: собой остаток пачки. Минута ожидания ничего не стоит (ждём мы только когда
+#: занято), а обрыв многочасовой работы стоит вечера.
+BUSY_TIMEOUT_MS = 60_000
+try:
+    BUSY_TIMEOUT_MS = max(1_000, int(os.environ.get("REPORTGEN_DB_TIMEOUT_MS", BUSY_TIMEOUT_MS)))
+except ValueError:
+    pass                          # мусор в переменной среды — берём своё значение
+
+#: Признак «в консоли идёт долгая работа с базой».
+#:
+#: Лежит рядом с файлом базы. Ставит его команда из консоли (приём библиотеки,
+#: построение векторов), а смотрит фоновый построитель векторов в приложении:
+#: пока идёт пересборка, ему нечего делать — он будет драться за ту же запись
+#: и за ту же видеокарту, а работу всё равно делает консоль.
+#:
+#: Замок именно советующий, а не запрещающий: если процесс убили и файл
+#: остался, через CONSOLE_MARK_STALE секунд он считается брошенным, и работа
+#: приложения не встаёт навсегда из-за чужого мусора.
+CONSOLE_MARK_SUFFIX = ".консоль-работает"
+CONSOLE_MARK_STALE = 900.0
+
+
+def console_mark_path(db_path: str | Path) -> Path:
+    """Где лежит признак консольной работы для этой базы."""
+    return Path(str(db_path) + CONSOLE_MARK_SUFFIX)
+
+
+def console_work_active(db_path: str | Path) -> bool:
+    """Идёт ли прямо сейчас долгая работа из консоли."""
+    mark = console_mark_path(db_path)
+    try:
+        возраст = time.time() - mark.stat().st_mtime
+    except OSError:
+        return False              # файла нет — значит, никто не работает
+    return возраст < CONSOLE_MARK_STALE
+
+
+@contextmanager
+def console_work(db_path: str | Path, what: str = "") -> Iterator[Any]:
+    """Пометить базу занятой на время долгой работы из консоли.
+
+    Возвращает функцию, которой работа сообщает «я ещё жива»: без этого
+    многочасовое построение векторов через пятнадцать минут сочли бы брошенным.
+    Зовите её на каждой пачке — это одно касание файла.
+    """
+    mark = console_mark_path(db_path)
+    if str(db_path) == ":memory:":
+        yield lambda: None        # база в памяти живёт внутри одного процесса
+        return
+
+    def отметиться() -> None:
+        try:
+            mark.write_text(
+                "%s\n%s\n%s\n" % (os.getpid(), utcnow(), what),
+                encoding="utf-8")
+        except OSError:
+            pass                  # некуда писать — работать это не мешает
+
+    отметиться()
+    try:
+        yield отметиться
+    finally:
+        try:
+            mark.unlink()
+        except OSError:
+            pass
+
+
+class DatabaseBusy(RuntimeError):
+    """База занята другим процессом дольше, чем мы согласны ждать."""
+
+
+def _busy_error(error: sqlite3.Error) -> Exception:
+    """Понятное объяснение вместо «database is locked»."""
+    текст = str(error).lower()
+    if "locked" not in текст and "busy" not in текст:
+        return error
+    секунды = int(BUSY_TIMEOUT_MS / 1000)
+    return DatabaseBusy(
+        "база занята другим процессом дольше %d с. Обычно это открытый "
+        "веб-интерфейс или вторая команда, работающая с той же базой. "
+        "Закройте лишнее и повторите — сделанное сохранено, заново оно не "
+        "выполняется. Ждать дольше: переменная среды "
+        "REPORTGEN_DB_TIMEOUT_MS (в миллисекундах)." % секунды
+    )
 
 # Колонки, добавленные после первого выпуска. Схема применяется идемпотентно
 # (CREATE TABLE IF NOT EXISTS), но существующая таблица от этого не меняется,
@@ -169,12 +263,13 @@ class Database:
     # -- соединения ---------------------------------------------------------
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path, check_same_thread=False, timeout=10.0)
+        connection = sqlite3.connect(self.path, check_same_thread=False,
+                                     timeout=BUSY_TIMEOUT_MS / 1000.0)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         if self.path != ":memory:":
             connection.execute("PRAGMA journal_mode = WAL")
-        connection.execute("PRAGMA busy_timeout = 10000")
+        connection.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
         connection.create_function("rulower", 1, _lower, deterministic=True)
         self._connections.append(connection)
         return connection
@@ -544,11 +639,21 @@ class Database:
             connection = self.connection
             try:
                 yield connection
+            except sqlite3.Error as error:
+                connection.rollback()
+                raise _busy_error(error) from error
             except Exception:
                 connection.rollback()
                 raise
             else:
-                connection.commit()
+                try:
+                    connection.commit()
+                except sqlite3.Error as error:
+                    # Коммит — тоже запись, и именно на нём чаще всего и
+                    # выясняется, что база занята. Голое «database is locked»
+                    # человеку на изолированной машине не говорит ничего.
+                    connection.rollback()
+                    raise _busy_error(error) from error
 
     def commit(self) -> None:
         with self._lock:
