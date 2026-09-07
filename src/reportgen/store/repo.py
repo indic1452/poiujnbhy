@@ -2010,10 +2010,12 @@ class ChatRepo:
             )
 
     def update(self, chat_id: int, *, domain: str | None = None,
-               archived: bool | None = None) -> None:
+               archived: bool | None = None, mode: str | None = None) -> None:
         with self.db.transaction() as connection:
             if domain is not None:
                 connection.execute("UPDATE chats SET domain = ? WHERE id = ?", (domain, chat_id))
+            if mode is not None:
+                connection.execute("UPDATE chats SET mode = ? WHERE id = ?", (mode, chat_id))
             if archived is not None:
                 connection.execute(
                     "UPDATE chats SET archived = ? WHERE id = ?", (int(archived), chat_id)

@@ -5884,6 +5884,14 @@ select.status-off {
     border-right: 0;
 }
 
+/* Переключатель режима ответа стоит в одной строке с выбором направления,
+   рядом с полем ввода. Там тесно, поэтому он мельче обычных вкладок. */
+.seg--mode .seg-item {
+    height: 26px;
+    padding: 0 10px;
+    font-size: var(--fs-xs);
+}
+
 .seg-item:hover {
     background: var(--panel-2);
     color: var(--text);

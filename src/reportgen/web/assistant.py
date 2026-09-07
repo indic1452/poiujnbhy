@@ -57,6 +57,37 @@ SOURCE_CHARS = 1400
 NEIGHBOUR_CHARS = 600
 MAX_QUESTION = 4000
 #: Сколько заходов разбора делаем, если в настройках ничего не сказано.
+#: Как отвечает помощник. Переключатель стоит в самом разговоре: один и тот же
+#: инженер утром разбирает дамп по протоколу, а днём спрашивает «что такое FCS»,
+#: и одна настройка на всех тут не годится.
+#:
+#: «Глубоко» — то, что стоит в настройках отдела: разбор в несколько заходов
+#: (нашёл, прочитал, понял чего не хватает, поискал снова) и длинный ответ.
+#: Точнее и с бо́льшим числом источников, но это минуты.
+#:
+#: «Быстро» — один поиск и короткий ответ. Правила ответа те же самые: ссылки
+#: на источники, честное «в библиотеке этого нет», оригинальные названия полей.
+#: Экономим на объёме работы, а не на добросовестности.
+CHAT_MODES = ("deep", "fast")
+DEFAULT_CHAT_MODE = "deep"
+
+#: Потолки быстрого режима. Не замена настройкам, а именно потолок: берётся
+#: минимум из настройки и этого числа. Поэтому отдел, опустивший
+#: assistant_rounds до нуля, не получит «быстрый» режим медленнее глубокого.
+FAST_LIMITS = {
+    "rounds": 0,            # без заходов: один поиск, как было до разбора
+    "top_k": 8,             # меньше фрагментов — короче промпт, быстрее разбор
+    "target_words": 180,    # ответ на полстраницы, а не на две
+    "max_tokens": 1200,     # главный рычаг: текст рождается по слову
+}
+
+
+def chat_mode(chat: "Chat | None") -> str:
+    """Режим разговора, с запасом на старые записи и мусор в поле."""
+    режим = str(getattr(chat, "mode", "") or "").strip().lower()
+    return режим if режим in CHAT_MODES else DEFAULT_CHAT_MODE
+
+
 RESEARCH_ROUNDS = 4
 #: Длина ответа планировщика: одна строка, лишнее только мешает.
 RESEARCH_TOKENS = 120
@@ -109,9 +140,13 @@ class AssistantService:
         return self.get_chat(user, chat_id)
 
     def update(self, user: User, chat_id: int, *, domain: str | None = None,
-               archived: bool | None = None) -> Chat:
+               archived: bool | None = None, mode: str | None = None) -> Chat:
         self.get_chat(user, chat_id)
-        self.repos.chats.update(chat_id, domain=domain, archived=archived)
+        if mode is not None and mode not in CHAT_MODES:
+            raise ServiceError(
+                "неизвестный режим ответа '%s'; допустимы: %s"
+                % (mode, ", ".join(CHAT_MODES)), 400)
+        self.repos.chats.update(chat_id, domain=domain, archived=archived, mode=mode)
         return self.get_chat(user, chat_id)
 
     def delete(self, user: User, chat_id: int) -> None:
@@ -127,7 +162,7 @@ class AssistantService:
         prepared = self._prepare(user, chat_id, question, top_k=top_k)
         text = self.reports.get_llm().complete(
             ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-            max_tokens=self._max_tokens(), temperature=0.3,
+            max_tokens=prepared["profile"]["max_tokens"], temperature=0.3,
             history=prepared["history"],
         )
         return self._finish(user, prepared, text)
@@ -159,14 +194,14 @@ class AssistantService:
         try:
             if stream is None:
                 text = llm.complete(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                    max_tokens=self._max_tokens(), temperature=0.3,
-                                    history=prepared["history"])
+                                    max_tokens=prepared["profile"]["max_tokens"],
+                                    temperature=0.3, history=prepared["history"])
                 pieces.append(text)
                 yield {"type": "delta", "text": text}
             else:
                 for piece in stream(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                    max_tokens=self._max_tokens(), temperature=0.3,
-                                    history=prepared["history"]):
+                                    max_tokens=prepared["profile"]["max_tokens"],
+                                    temperature=0.3, history=prepared["history"]):
                     pieces.append(piece)
                     yield {"type": "delta", "text": piece}
         except GeneratorExit:
@@ -216,8 +251,13 @@ class AssistantService:
         if attachments:
             self.repos.chats.bind_attachments(chat.id, question_message.id)
 
-        hits, trail = self._collect(chat, question, history, top_k,
-                                    attachments=attachments)
+        # Профиль разговора: сколько заходов, сколько фрагментов, какой объём
+        # ответа. Считаем один раз здесь — дальше все шаги берут его отсюда,
+        # иначе половина работы шла бы в одном режиме, а половина в другом.
+        profile = self._profile(chat)
+        hits, trail = self._collect(chat, question, history,
+                                    top_k or profile["top_k"],
+                                    attachments=attachments, rounds=profile["rounds"])
         retriever = self.reports.get_retriever()
         # Половина библиотеки английская, а спрашивают по-русски. Если запрос
         # дополнен по двуязычному словарю — сказать об этом: иначе английский
@@ -261,10 +301,11 @@ class AssistantService:
             catalog=catalog_block,
             library_map=_render_map(documents),
             sources=_render_sources(sources, documents),
-            target_words=int(getattr(self.settings, "assistant_target_words", 0) or 500),
+            target_words=profile["target_words"],
         )
         return {
             "chat": chat,
+            "profile": profile,
             "question": question,
             "question_message": question_message,
             "history": history,
@@ -524,6 +565,26 @@ class AssistantService:
             "warning": prepared.get("warning") or None,
         }
 
+    def _profile(self, chat: Chat) -> Dict[str, int]:
+        """Насколько глубоко работать в этом разговоре.
+
+        «Глубоко» — это ровно то, что стоит в настройках отдела: режим ничего
+        не выдумывает, он только урезает. «Быстро» берёт от каждой настройки
+        минимум с потолком из FAST_LIMITS, поэтому опустить настройку ниже
+        быстрого режима по-прежнему можно — и быстрый не станет от этого
+        медленнее глубокого.
+        """
+        глубоко = {
+            "rounds": max(0, int(getattr(self.settings, "assistant_rounds", RESEARCH_ROUNDS))),
+            "top_k": int(getattr(self.settings, "assistant_top_k", 0)
+                         or self.settings.retrieval_top_k),
+            "target_words": int(getattr(self.settings, "assistant_target_words", 0) or 500),
+            "max_tokens": self._max_tokens(),
+        }
+        if chat_mode(chat) == "deep":
+            return глубоко
+        return {имя: min(значение, FAST_LIMITS[имя]) for имя, значение in глубоко.items()}
+
     def _max_tokens(self) -> int:
         """Потолок длины ответа. Настройка, а не число в коде."""
         return int(getattr(self.settings, "assistant_max_tokens", 0) or 4000)
@@ -620,7 +681,8 @@ class AssistantService:
 
     def _collect(self, chat: Chat, question: str, history: Sequence[Dict[str, str]],
                  top_k: int | None, *, attachments: Sequence[Any] = (),
-                 on_step: "Callable[[Step], None] | None" = None
+                 on_step: "Callable[[Step], None] | None" = None,
+                 rounds: int | None = None
                  ) -> tuple[List[Hit], List[Step]]:
         """Материал для ответа: первый поиск, а затем разбор заходами.
 
@@ -629,7 +691,7 @@ class AssistantService:
         ответ «в библиотеке этого нет» невозможно ни проверить, ни оспорить.
         """
         first = self._search(chat, question, history, top_k, attachments=attachments)
-        rounds = self._rounds()
+        rounds = self._rounds() if rounds is None else max(0, int(rounds))
         if not rounds or not first:
             # Разбор выключен или библиотека ничего не дала: заходы по пустому
             # месту только сожгут время модели.

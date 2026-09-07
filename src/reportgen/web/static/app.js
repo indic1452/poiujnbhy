@@ -8947,6 +8947,10 @@
     }
 
     function renderTalkHead() {
+        // Переключатель режима живёт в нижней панели, но зависит от того же
+        // разговора: открыли другой — он обязан показать ЕГО выбор, а не
+        // прежний. Место для этого одно, и оно здесь.
+        renderModeSwitch();
         const head = chat.nodes.talkHead;
         if (!head) return;
         clear(head);
@@ -9299,6 +9303,7 @@
             onchange: (value) => setChatDomain(value),
         });
         const caseLine = h('span', { class: 'case-plate' });
+        const modePick = buildModeSwitch();
 
         chat.nodes.input = input;
         chat.nodes.send = sendButton;
@@ -9308,7 +9313,8 @@
 
         return h('div', { class: 'composer' },
             h('div', { class: 'composer-top' },
-                h('span', { class: 'small muted' }, 'Искать в:'), domainPick, caseLine),
+                h('span', { class: 'small muted' }, 'Искать в:'), domainPick,
+                modePick, caseLine),
             buildAttachBar(),
             h('div', { class: 'composer-row' }, input, sendButton, stopButton));
     }
@@ -9335,6 +9341,69 @@
             }
         } catch (error) {
             /* письмо могло быть удалено — оставляем плашку с номером */
+        }
+    }
+
+    //: Два режима работы помощника. «Разбор» — то, ради чего всё и делалось:
+    //: несколько заходов поиска, чтение документов, длинный ответ со сверкой
+    //: источников. «Быстро» — один поиск и короткий ответ, когда нужно просто
+    //: вспомнить, что означает поле. Правила ответа при этом те же: ссылки на
+    //: источники и честное «в библиотеке этого нет» никуда не деваются.
+    const CHAT_MODES = [
+        { id: 'deep', title: 'Разбор',
+          hint: 'Несколько заходов поиска, чтение документов, развёрнутый ответ. Точнее и источников больше, но идёт минуты' },
+        { id: 'fast', title: 'Быстро',
+          hint: 'Один поиск и короткий ответ. Для простых вопросов «что означает поле», когда ждать нечего' },
+    ];
+
+    function chatMode() {
+        const value = chat.current ? chat.current.mode : '';
+        return CHAT_MODES.some((item) => item.id === value) ? value : 'deep';
+    }
+
+    /** Переключатель «Разбор / Быстро» рядом с выбором направления. */
+    function buildModeSwitch() {
+        const box = h('div', { class: 'seg seg--mode', role: 'group',
+                               'aria-label': 'Режим ответа помощника' });
+        chat.nodes.mode = box;
+        renderModeSwitch(box);
+        return box;
+    }
+
+    function renderModeSwitch(box) {
+        const target = box || chat.nodes.mode;
+        if (!target) return;
+        clear(target);
+        const current = chatMode();
+        CHAT_MODES.forEach((item) => {
+            target.appendChild(h('button', {
+                class: 'seg-item' + (item.id === current ? ' is-active' : ''),
+                title: item.hint,
+                'aria-pressed': item.id === current ? 'true' : 'false',
+                onclick: () => setChatMode(item.id),
+            }, item.title));
+        });
+    }
+
+    async function setChatMode(value) {
+        if (!chat.current || value === chatMode()) return;
+        const прежний = chat.current.mode;
+        // Показываем выбор сразу: ответ сервера идёт по сети, а кнопка должна
+        // отзываться под пальцем. Не вышло — вернём как было.
+        chat.current.mode = value;
+        renderModeSwitch();
+        try {
+            const data = await api.patch('/api/chats/' + chat.current.id, { mode: value });
+            chat.current = data.chat;
+            upsertChatInList(chat.current);
+            renderModeSwitch();
+            toast(value === 'fast'
+                ? 'Быстрые ответы: один поиск, коротко'
+                : 'Разбор: несколько заходов, развёрнуто', 'ok', 3000);
+        } catch (error) {
+            chat.current.mode = прежний;
+            renderModeSwitch();
+            toastError(error);
         }
     }
 
