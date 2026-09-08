@@ -29,6 +29,18 @@
 .PARAMETER BaseUrl
     Откуда качать. По умолчанию https://www.rfc-editor.org. Если корпоративный
     шлюз этот адрес не пускает, у IETF есть зеркало: -BaseUrl https://www.ietf.org
+.PARAMETER Mirrors
+    Запасные источники. Если основной не отдал документ ни в одном формате,
+    тот же номер спрашивается у каждого из них по очереди. Оттуда же берётся
+    указатель, если основной адрес закрыт шлюзом.
+
+    Списком через запятую:
+    -Mirrors https://www.ietf.org,https://mirror.example/rfc
+
+    Ответ на вопрос «а вдруг у меня не всё» ищется именно так: указатель
+    называет полный список выпущенных RFC, а источники — лишь разные способы
+    получить один и тот же документ. Документа, которого нет в указателе, нет
+    ни на одном зеркале.
 .PARAMETER Probe
     Ничего не качать, только проверить доступность источника.
 .EXAMPLE
@@ -39,6 +51,9 @@
     powershell -ExecutionPolicy Bypass -File .\rfc.ps1 -Only 791,793,1122,2616,7230
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\rfc.ps1 -BaseUrl https://www.ietf.org
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File .\rfc.ps1 -Destination D:\rfc `
+        -Mirrors https://www.ietf.org,https://www.rfc-editor.org/rfc-index-mirror
 #>
 param(
     [string]$Destination = '',
@@ -47,6 +62,7 @@ param(
     [int[]]$Only = @(),
     [int]$DelayMs = 150,
     [string]$BaseUrl = 'https://www.rfc-editor.org',
+    [string[]]$Mirrors = @(),
     [switch]$Probe
 )
 
@@ -60,6 +76,30 @@ $script:CurlExe = 'curl.exe'
 if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) { $script:CurlExe = 'curl' }
 
 $Base = $BaseUrl.TrimEnd('/')
+
+<#
+    Источники в порядке обхода: основной, за ним запасные.
+
+    Зачем вообще несколько. Один сервер отдаёт не всё: то шлюз режет, то
+    документ выложен только на зеркале, то связь рвётся ровно на нём. Пока
+    источник один, такой документ попадает в «не скачано» — и выглядит это
+    как «его не существует», хотя он лежит рядом.
+
+    Что несколько источников НЕ дают: новых RFC. Полный список выпущенных
+    номеров задаёт указатель, и он у всех зеркал один. Зеркало — это другой
+    способ взять тот же документ, а не другой архив.
+
+    Запятые внутри одного значения тоже разбираем: PowerShell отдаёт
+    «-Mirrors a,b» массивом сам, а вот «-Mirrors "a,b"» — одной строкой, и
+    человеку эта разница ниоткуда не видна.
+#>
+$Sources = @($Base)
+foreach ($зеркало in @($Mirrors)) {
+    foreach ($кусок in "$зеркало".Split(',')) {
+        $адрес = $кусок.Trim().TrimEnd('/')
+        if ($адрес -and ($Sources -notcontains $адрес)) { $Sources += $адрес }
+    }
+}
 $IndexUrl = "$Base/rfc-index.xml"
 
 function Step($text) { Write-Host "==> $text" -ForegroundColor Cyan }
@@ -221,11 +261,14 @@ function Test-Url([string]$url) {
 
 # ------------------------------------------------------------- проверка ----
 if ($Probe) {
-    Step 'Проверка источника'
-    foreach ($url in @($IndexUrl, "$Base/rfc/rfc791.txt")) {
-        $code = Test-Url $url
-        $status = if ($code -ge 200 -and $code -lt 400) { "OK $code" } else { "ОШИБКА $code" }
-        Write-Host ("  {0,-44} {1}" -f $url.Replace($Base, ''), $status)
+    Step "Проверка источников: $($Sources.Count)"
+    foreach ($источник in $Sources) {
+        Write-Host "  $источник"
+        foreach ($хвост in @('/rfc-index.xml', '/rfc/rfc791.txt')) {
+            $code = Test-Url ($источник + $хвост)
+            $status = if ($code -ge 200 -and $code -lt 400) { "OK $code" } else { "ОШИБКА $code" }
+            Write-Host ("      {0,-40} {1}" -f $хвост, $status)
+        }
     }
     exit 0
 }
@@ -233,13 +276,27 @@ if ($Probe) {
 $root = New-Item -ItemType Directory -Path $Destination -Force
 Step "Указатель RFC"
 $indexPath = Join-Path $root 'rfc-index.xml'
-$код = Get-HttpCode @('-sL', '--max-time', '180', '--retry', '3', '-o', $indexPath, '-w', '%{http_code}', $IndexUrl)
+# Указатель берём у первого источника, который его отдал. Без него не будет
+# ни списка номеров, ни перечня форматов, ни отметок «чем отменён» — то есть
+# закрытый шлюз на основном адресе останавливал бы всю выгрузку, даже когда
+# рядом есть работающее зеркало.
+$код = 0
+$откудаУказатель = ''
+foreach ($источник in $Sources) {
+    $адрес = "$источник/rfc-index.xml"
+    $код = Get-HttpCode @('-sL', '--max-time', '180', '--retry', '3', '-o', $indexPath, '-w', '%{http_code}', $адрес)
+    if ($код -eq 200) { $откудаУказатель = $источник; break }
+    Warn "указатель не отдан ($код): $адрес"
+}
 if ($код -ne 200) {
     Write-Host "  X   не удалось скачать указатель (ответ $код)" -ForegroundColor Red
-    Write-Host "      адрес: $IndexUrl"
+    Write-Host "      источников испробовано: $($Sources.Count)"
+    foreach ($источник in $Sources) { Write-Host "      $источник/rfc-index.xml" }
     Write-Host '      закрыт корпоративным шлюзом — укажите своё зеркало ключом -BaseUrl'
+    Write-Host '      или добавьте запасные ключом -Mirrors'
     exit 1
 }
+if ($откудаУказатель -ne $Base) { Note "указатель взят с запасного источника: $откудаУказатель" }
 Ok ("rfc-index.xml, {0:N1} МБ" -f ((Get-Item $indexPath).Length / 1MB))
 
 # Из указателя берём номера, названия и — главное — чем какой RFC отменён.
@@ -287,6 +344,9 @@ Note 'прервали — запустите снова, уже скачанн�
 $texts = New-Item -ItemType Directory -Path (Join-Path (Join-Path $root 'standards') 'rfc') -Force
 $done = 0; $skipped = 0; $absent = 0; $broken = 0; $other = 0
 $неудачи = @()
+#: Сколько документов дал каждый запасной источник. Пустая таблица в итоге —
+#: сама по себе ответ: зеркала не добавили ничего, основной отдал всё.
+$сЗеркал = @{}
 foreach ($number in $numbers) {
     $done++
     $meta = $entries[$number]
@@ -308,25 +368,44 @@ foreach ($number in $numbers) {
     $target = ''
     $оборван = $false
     $code = 0
-    foreach ($вид in $кандидаты) {
-        $target = Join-Path $texts ("rfc{0}.{1}" -f $number, $вид.ext)
-        $ответ = Invoke-Download @('-sL', '--max-time', '60', '--retry', '2', '-o', $target,
-                                   '-w', '%{http_code}', ("$Base/rfc/rfc{0}.{1}" -f $number, $вид.ext))
-        $code = $ответ.code
-        # Обрыв посреди передачи: сервер ответил 200, а файл пришёл огрызком.
-        $оборван = ($code -eq 200 -and $ответ.exit -ne 0)
-        if ($code -eq 200 -and -not $оборван -and (Test-RfcFile $target $вид.ext)) {
-            $взят = $вид.ext
-            break
+    $откуда = ''
+    # Источники перебираем ЦЕЛИКОМ по очереди: сначала все форматы у основного,
+    # и только если он не дал ничего — те же форматы у запасного. Наоборот
+    # (каждый формат у всех источников) вышло бы вчетверо больше запросов к
+    # зеркалам ради документов, которые основной отдаёт и так.
+    foreach ($источник in $Sources) {
+        foreach ($вид in $кандидаты) {
+            $target = Join-Path $texts ("rfc{0}.{1}" -f $number, $вид.ext)
+            $ответ = Invoke-Download @('-sL', '--max-time', '60', '--retry', '2', '-o', $target,
+                                       '-w', '%{http_code}', ("$источник/rfc/rfc{0}.{1}" -f $number, $вид.ext))
+            $code = $ответ.code
+            # Обрыв посреди передачи: сервер ответил 200, а файл пришёл огрызком.
+            $оборван = ($code -eq 200 -and $ответ.exit -ne 0)
+            if ($code -eq 200 -and -not $оборван -and (Test-RfcFile $target $вид.ext)) {
+                $взят = $вид.ext
+                $откуда = $источник
+                break
+            }
+            if (Test-Path $target) { Remove-Item $target -Force -ErrorAction SilentlyContinue }
+            if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
         }
-        if (Test-Path $target) { Remove-Item $target -Force -ErrorAction SilentlyContinue }
-        if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
+        if ($взят) { break }
+    }
+    if ($взят -and $откуда -ne $Base) {
+        if (-not $сЗеркал.ContainsKey($откуда)) { $сЗеркал[$откуда] = 0 }
+        $сЗеркал[$откуда]++
+        if ($сЗеркал[$откуда] -le 5) { Note "RFC $number взят с запасного источника: $откуда" }
+        if ($сЗеркал[$откуда] -eq 6) { Note 'дальше о таких молчу, итог будет в конце' }
     }
 
     if (-not $взят) {
         $почему = if ($оборван) { 'связь оборвалась посреди файла' }
                   elseif ($code -eq 0) { 'ответа не было (связь или шлюз)' }
-                  elseif ($code -eq 404) { 'ни один формат не отдан сервером' }
+                  elseif ($code -eq 404) {
+                      if ($Sources.Count -gt 1) {
+                          "ни один формат не отдан ни одним из источников ($($Sources.Count))"
+                      } else { 'ни один формат не отдан сервером' }
+                  }
                   else { "ответ $code" }
         $неудачи += [pscustomobject]@{
             номер = $number
@@ -387,6 +466,17 @@ Note ("из них текстом: {0}, другим форматом: {1}" -f $
 if ($other) {
     Note "у $other RFC текстовой версии нет — взяты PDF, HTML или XML"
 }
+if ($Sources.Count -gt 1) {
+    if ($сЗеркал.Count) {
+        $всего = ($сЗеркал.Values | Measure-Object -Sum).Sum
+        Ok "запасные источники дали то, чего не дал основной: $всего"
+        foreach ($ключ in ($сЗеркал.Keys | Sort-Object)) {
+            Note ("{0} — {1}" -f $ключ, $сЗеркал[$ключ])
+        }
+    } else {
+        Note 'запасные источники не добавили ничего: основной отдал всё, что смог'
+    }
+}
 if ($absent) {
     Warn "НЕ СКАЧАНО (сервер не отдал ни одного формата): $absent"
     Note 'это выпущенные RFC — их отсутствие не норма; список ниже'
@@ -413,6 +503,17 @@ if ($естьНаРуках -lt $должноБыть) {
     Ok 'архив полон: каждый выпущенный RFC из указателя лежит на диске'
 }
 
+<#
+    Код выхода — тот же ответ, но для программы.
+
+    Скрипт запускают из cmd-файла и по нему решают, можно ли переносить архив
+    на изолированную машину. Пока он заканчивался нулём при любом исходе,
+    выгрузка, из которой не пришло НИ ОДНОГО документа, выглядела успешной:
+    ровно так у отдела и вышло с МСЭ, где шлюз отвечал 403 на всё подряд.
+    Неполный архив — не успех; добрали остаток повторным запуском — успех.
+#>
+$неполон = ($естьНаРуках -lt $должноБыть)
+
 Write-Host ''
 Write-Host 'Дальше:' -ForegroundColor Green
 Write-Host "  1) перенесите каталог $($texts.FullName) на офлайн-машину"
@@ -421,3 +522,6 @@ Write-Host '  2) там выполните:'
 Write-Host '       cd C:\reportgen\app\scripts\windows' -ForegroundColor Cyan
 Write-Host '       .\load-library.ps1 -Jobs 12' -ForegroundColor Cyan
 Write-Host '  Названия, годы и отменённые редакции определятся сами.'
+
+if ($неполон) { exit 1 }
+exit 0

@@ -1971,3 +1971,213 @@ class RfcCoverageTests(unittest.TestCase):
         # В том числе PDF: раньше пропуск смотрел только на .txt, и документ,
         # лежащий в другом формате, качался бы заново каждый запуск.
         self.assertNotIn("текста нет, взят PDF", второй.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_incomplete_archive_is_not_reported_as_success(self):
+        # Скрипт запускают из cmd-файла и по коду выхода решают, можно ли
+        # переносить архив на изолированную машину. Ноль при любом исходе —
+        # это как раз то, из-за чего выгрузка МСЭ, не давшая ни одного
+        # документа, выглядела удачной.
+        готово, _, _ = self.прогнать()
+        self.assertNotEqual(0, готово.returncode,
+                            "неполный архив выдан за успех:\n" + готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_full_archive_ends_with_success(self):
+        # И наоборот: когда всё на месте, код выхода обязан быть нулём, иначе
+        # cmd-файл будет ругаться на исправную выгрузку.
+        каталог = tempfile.mkdtemp(prefix="rfc-")
+        self.addCleanup(shutil.rmtree, каталог, ignore_errors=True)
+        всё = {"txt": True, "pdf": True, "html": True, "xml": True}
+        достать = {н: (ф, всё) for н, (ф, _) in self.ЗАПИСИ.items()}
+        прежние = self.ЗАПИСИ
+        type(self).ЗАПИСИ = достать
+        try:
+            готово, _, _ = self.прогнать(каталог)
+        finally:
+            type(self).ЗАПИСИ = прежние
+        self.assertIn("архив полон", готово.stdout)
+        self.assertEqual(0, готово.returncode, готово.stdout)
+
+
+class RfcMirrorTests(unittest.TestCase):
+    """Несколько источников на один архив.
+
+    Отдел спросил: «у меня есть ещё источники RFC, может, я выкачал не всё».
+    Ответ на это распадается надвое, и обе половины стоит держать в голове.
+
+    Полный список выпущенных RFC задаёт указатель — один и тот же у всех
+    зеркал. Документа, которого нет в указателе, нет нигде: зеркало не
+    добавляет новых RFC, оно даёт другой способ взять тот же самый.
+
+    Зато взять — это как раз то, что срывается: шлюз режет адрес, документ
+    выложен только на зеркале, связь рвётся ровно на этом сервере. Пока
+    источник один, такой документ уходит в «не скачано» и выглядит как
+    несуществующий. Здесь проверяется, что второй источник действительно
+    спрашивают — и не спрашивают зря.
+    """
+
+    ТЕКСТ = ("Network Working Group\nRequest for Comments: %d\n\n" + "текст " * 200)
+
+    @staticmethod
+    def _обработчик(документы, указатель, журнал):
+        from http.server import BaseHTTPRequestHandler
+
+        class Обработчик(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.0"
+
+            def log_message(self, *args):
+                pass
+
+            def отдать(self, код, тело, тип="text/plain"):
+                if isinstance(тело, str):
+                    тело = тело.encode()
+                self.send_response(код)
+                self.send_header("Content-Type", тип)
+                self.send_header("Content-Length", str(len(тело)))
+                self.end_headers()
+                self.wfile.write(тело)
+
+            def do_GET(self):
+                журнал.append(self.path)
+                if self.path.endswith("rfc-index.xml"):
+                    if указатель is None:
+                        return self.отдать(403, "нельзя")
+                    return self.отдать(200, указатель, "application/xml")
+                имя = self.path.rsplit("/", 1)[-1]
+                if имя in документы:
+                    return self.отдать(200, документы[имя])
+                return self.отдать(404, "<html>нет</html>", "text/html")
+
+        return Обработчик
+
+    def _сервер(self, документы, указатель, журнал):
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        сервер = ThreadingHTTPServer(
+            ("127.0.0.1", 0), self._обработчик(документы, указатель, журнал))
+        threading.Thread(target=сервер.serve_forever, daemon=True).start()
+        self.addCleanup(сервер.server_close)
+        self.addCleanup(сервер.shutdown)
+        return "http://127.0.0.1:%d" % сервер.server_address[1]
+
+    @staticmethod
+    def _указатель(номера):
+        куски = []
+        for н in номера:
+            куски.append(
+                "<rfc-entry><doc-id>RFC%04d</doc-id><title>Проба %d</title>"
+                "<format><file-format>TXT</file-format></format>"
+                "<current-status>PROPOSED STANDARD</current-status></rfc-entry>"
+                % (н, н))
+        return ('<?xml version="1.0" encoding="UTF-8"?>'
+                '<rfc-index xmlns="https://www.rfc-editor.org/rfc-index">'
+                + "".join(куски) + "</rfc-index>")
+
+    def _запустить(self, основной, зеркала, каталог=None):
+        каталог = каталог or tempfile.mkdtemp(prefix="зеркало-")
+        self.addCleanup(shutil.rmtree, каталог, ignore_errors=True)
+        аргументы = ["pwsh", "-NoProfile", "-File", str(OFFLINE / "rfc.ps1"),
+                     "-BaseUrl", основной, "-Destination", каталог, "-DelayMs", "0"]
+        if зеркала:
+            аргументы += ["-Mirrors", зеркала]
+        готово = subprocess.run(аргументы, capture_output=True, text=True, timeout=180)
+        файлы = sorted(p.name for p in (Path(каталог) / "standards" / "rfc").glob("rfc*.*"))
+        return готово, файлы, Path(каталог)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_document_missing_on_the_main_source_is_taken_from_the_mirror(self):
+        # Ровно тот случай, ради которого ключ и заведён: документ выпущен,
+        # указатель его знает, а основной сервер не отдаёт.
+        журналА, журналБ = [], []
+        А = self._сервер({"rfc1.txt": self.ТЕКСТ % 1, "rfc2.txt": self.ТЕКСТ % 2},
+                         self._указатель([1, 2, 3]), журналА)
+        Б = self._сервер({"rfc3.txt": self.ТЕКСТ % 3}, self._указатель([1, 2, 3]), журналБ)
+        готово, файлы, _ = self._запустить(А, Б)
+        self.assertIn("rfc3.txt", файлы,
+                      "запасной источник не спросили:\n" + готово.stdout)
+        self.assertIn("запасные источники дали то, чего не дал основной: 1", готово.stdout)
+        self.assertIn("архив полон", готово.stdout)
+        self.assertEqual(0, готово.returncode, готово.stdout + готово.stderr)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_mirror_is_not_asked_for_what_the_main_source_gave(self):
+        # Зеркало — чужой сервер, и лишние тысячи запросов к нему это и грубость,
+        # и лишний час выгрузки.
+        журналА, журналБ = [], []
+        А = self._сервер({"rfc1.txt": self.ТЕКСТ % 1, "rfc2.txt": self.ТЕКСТ % 2},
+                         self._указатель([1, 2, 3]), журналА)
+        Б = self._сервер({"rfc3.txt": self.ТЕКСТ % 3}, self._указатель([1, 2, 3]), журналБ)
+        self._запустить(А, Б)
+        спрошено = [p for p in журналБ if "rfc-index" not in p]
+        self.assertEqual(["/rfc/rfc3.txt"], спрошено,
+                         "зеркало спрашивали о том, что основной уже отдал")
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_index_is_taken_from_the_mirror_when_the_main_source_is_closed(self):
+        # Закрытый шлюзом основной адрес не должен останавливать всю выгрузку,
+        # когда рядом работающее зеркало: без указателя нет ни списка номеров,
+        # ни перечня форматов, ни отметок «чем отменён».
+        журналА, журналБ = [], []
+        А = self._сервер({}, None, журналА)                      # 403 на указатель
+        Б = self._сервер({"rfc1.txt": self.ТЕКСТ % 1}, self._указатель([1]), журналБ)
+        готово, файлы, _ = self._запустить(А, Б)
+        self.assertIn("указатель взят с запасного источника", готово.stdout)
+        self.assertIn("rfc1.txt", файлы, готово.stdout)
+        self.assertEqual(0, готово.returncode, готово.stdout + готово.stderr)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_mirrors_given_as_one_comma_separated_string_are_split(self):
+        # «-Mirrors a,b» PowerShell разбирает сам, «-Mirrors "a,b"» — нет, и
+        # человеку эта разница ниоткуда не видна.
+        журналА, журналБ, журналВ = [], [], []
+        А = self._сервер({}, self._указатель([1]), журналА)
+        Б = self._сервер({}, self._указатель([1]), журналБ)
+        В = self._сервер({"rfc1.txt": self.ТЕКСТ % 1}, self._указатель([1]), журналВ)
+        готово, файлы, _ = self._запустить(А, "%s,%s" % (Б, В))
+        self.assertIn("rfc1.txt", файлы,
+                      "источники из одной строки через запятую не разобраны:\n"
+                      + готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_useless_mirror_is_said_to_be_useless(self):
+        # Если зеркало не добавило ничего — так и надо написать. Иначе человек
+        # будет думать, что оно помогает, и таскать его во всех запусках.
+        журналА, журналБ = [], []
+        А = self._сервер({"rfc1.txt": self.ТЕКСТ % 1}, self._указатель([1]), журналА)
+        Б = self._сервер({"rfc1.txt": self.ТЕКСТ % 1}, self._указатель([1]), журналБ)
+        готово, _, _ = self._запустить(А, Б)
+        self.assertIn("запасные источники не добавили ничего", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_document_missing_everywhere_says_so_by_name(self):
+        # Не нашлось нигде — значит, это настоящий пробел, и назвать его надо
+        # поимённо и с числом источников, чтобы не гадать, все ли спросили.
+        журналА, журналБ = [], []
+        А = self._сервер({}, self._указатель([1]), журналА)
+        Б = self._сервер({}, self._указатель([1]), журналБ)
+        готово, файлы, каталог = self._запустить(А, Б)
+        self.assertEqual([], файлы)
+        список = (каталог / "не-скачано.csv").read_text(encoding="utf-8-sig")
+        self.assertIn("Проба 1", список)
+        self.assertIn("ни один формат не отдан ни одним из источников (2)", список)
+        self.assertNotEqual(0, готово.returncode, "пустая выгрузка выдана за успех")
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_probe_checks_every_source(self):
+        # Проверять доступность одного адреса, а качать с трёх — значит узнать
+        # о закрытом зеркале через два часа выгрузки.
+        журналА, журналБ = [], []
+        А = self._сервер({"rfc791.txt": self.ТЕКСТ % 791}, self._указатель([791]), журналА)
+        Б = self._сервер({}, None, журналБ)
+        каталог = tempfile.mkdtemp(prefix="зеркало-")
+        self.addCleanup(shutil.rmtree, каталог, ignore_errors=True)
+        готово = subprocess.run(
+            ["pwsh", "-NoProfile", "-File", str(OFFLINE / "rfc.ps1"),
+             "-BaseUrl", А, "-Mirrors", Б, "-Destination", каталог, "-Probe"],
+            capture_output=True, text=True, timeout=120)
+        self.assertIn("Проверка источников: 2", готово.stdout)
+        self.assertIn(А, готово.stdout)
+        self.assertIn(Б, готово.stdout)
+        self.assertIn("ОШИБКА 403", готово.stdout, "закрытое зеркало показано как рабочее")
