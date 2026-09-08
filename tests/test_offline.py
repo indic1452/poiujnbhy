@@ -1700,8 +1700,11 @@ class RfcLiveRunTests(unittest.TestCase):
         # И огрызок не сохранён: иначе в библиотеке появился бы RFC из десяти байт.
         self.assertNotIn("rfc794.txt", имена, "обрезанный файл сохранён как документ")
         self.assertIn("связь оборвалась посреди файла", готово.stdout)
-        # 795 не публиковался — это норма, а не ошибка связи.
-        self.assertIn("номеров без текста: 1", готово.stdout)
+        # 795 ЕСТЬ в указателе, значит выпущен, а сервер его не отдал ни в
+        # одном формате. Прежде это записывалось в «номера не публиковались» и
+        # выглядело нормой; теперь названо пробелом, каким и является.
+        self.assertIn("НЕ СКАЧАНО", готово.stdout)
+        self.assertNotIn("не публиковались — так и должно быть", готово.stdout)
 
 
 class ItuSelfTestTests(unittest.TestCase):
@@ -1749,3 +1752,143 @@ class ItuSelfTestTests(unittest.TestCase):
         self.assertEqual(1, готово.returncode, "сломанная машина одобрена:\n" + готово.stdout)
         self.assertIn("самопроверка не пройдена", готово.stdout)
         self.assertIn("выгрузку запускать нельзя", готово.stdout)
+
+
+class RfcCoverageTests(unittest.TestCase):
+    """«Все RFC выкачаны» — утверждение, которое обязано быть проверяемым.
+
+    Скрипт ходит по номерам ИЗ УКАЗАТЕЛЯ, то есть только по выпущенным RFC.
+    Значит, 404 на .txt не может означать «этот номер не публиковался» — он
+    означает «мы попросили не тот формат». Прежний итог писал ровно первое:
+    «номеров без текста: N (эти номера не публиковались — так и должно быть)»,
+    и пробел выглядел нормой. У части RFC текстовой версии действительно нет —
+    есть PDF, и указатель об этом прямо говорит перечнем форматов.
+    """
+
+    #: Что реально отдаёт подставной сервер по каждому номеру.
+    ЗАПИСИ = {
+        1: (["ASCII"], {"txt": True}),
+        2: (["PDF"], {"pdf": True}),                 # текста нет вовсе
+        3: (["ASCII"], {}),                          # выпущен, но не отдаётся
+        5: ([], {"txt": True}),                      # формат в указателе не назван
+        6: (["ASCII", "PDF"], {"pdf": True}),        # txt объявлен, отдаётся PDF
+    }
+    ТЕКСТ = ("Network Working Group\nRequest for Comments: %d\n\n" + "текст " * 200)
+    ПДФ = b"%PDF-1.4\n" + b"x" * 4000 + b"\n%%EOF\n"
+
+    @classmethod
+    def обработчик(cls):
+        from http.server import BaseHTTPRequestHandler
+
+        сам = cls
+
+        class Обработчик(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.0"
+
+            def log_message(self, *args):
+                pass
+
+            def отдать(self, код, тело, тип="text/plain"):
+                if isinstance(тело, str):
+                    тело = тело.encode()
+                self.send_response(код)
+                self.send_header("Content-Type", тип)
+                self.send_header("Content-Length", str(len(тело)))
+                self.end_headers()
+                self.wfile.write(тело)
+
+            def do_GET(self):
+                if self.path.endswith("rfc-index.xml"):
+                    куски = []
+                    for н, (форматы, _) in sorted(сам.ЗАПИСИ.items()):
+                        ф = "".join("<format><file-format>%s</file-format></format>" % x
+                                    for x in форматы)
+                        куски.append(
+                            "<rfc-entry><doc-id>RFC%04d</doc-id><title>Проба %d</title>%s"
+                            "<current-status>PROPOSED STANDARD</current-status></rfc-entry>"
+                            % (н, н, ф))
+                    # Пространство имён — как у настоящего указателя.
+                    тело = ('<?xml version="1.0" encoding="UTF-8"?>'
+                            '<rfc-index xmlns="http://www.rfc-editor.org/rfc-index">'
+                            + "".join(куски) + "</rfc-index>")
+                    return self.отдать(200, тело, "application/xml")
+                if "/rfc/rfc" in self.path:
+                    хвост = self.path.split("/rfc/rfc")[-1]
+                    номер, _, расширение = хвост.partition(".")
+                    try:
+                        номер = int(номер)
+                    except ValueError:
+                        return self.отдать(404, "no")
+                    запись = сам.ЗАПИСИ.get(номер)
+                    if not запись or not запись[1].get(расширение):
+                        # Настоящий сервер на несуществующий файл отдаёт
+                        # html-страницу, а не пустоту.
+                        return self.отдать(404, "<html><body>Not Found</body></html>", "text/html")
+                    if расширение == "pdf":
+                        return self.отдать(200, сам.ПДФ, "application/pdf")
+                    return self.отдать(200, сам.ТЕКСТ % номер)
+                return self.отдать(404, "no")
+
+        return Обработчик
+
+    def прогнать(self, каталог=None):
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        сервер = ThreadingHTTPServer(("127.0.0.1", 0), self.обработчик())
+        threading.Thread(target=сервер.serve_forever, daemon=True).start()
+        каталог = каталог or tempfile.mkdtemp(prefix="rfc-")
+        self.addCleanup(shutil.rmtree, каталог, ignore_errors=True)
+        try:
+            готово = subprocess.run(
+                ["pwsh", "-NoProfile", "-File", str(OFFLINE / "rfc.ps1"),
+                 "-BaseUrl", f"http://127.0.0.1:{сервер.server_address[1]}",
+                 "-Destination", каталог, "-DelayMs", "0"],
+                capture_output=True, text=True, timeout=180,
+            )
+        finally:
+            сервер.shutdown()
+            сервер.server_close()
+        файлы = sorted(p.name for p in (Path(каталог) / "standards" / "rfc").glob("rfc*.*"))
+        return готово, файлы, Path(каталог)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_rfc_without_text_is_taken_as_pdf(self):
+        готово, файлы, _ = self.прогнать()
+        self.assertIn("rfc2.pdf", файлы, "RFC без текстовой версии пропущен:\n" + готово.stdout)
+        self.assertIn("rfc6.pdf", файлы, "не сработал переход с текста на PDF:\n" + готово.stdout)
+        self.assertIn("rfc1.txt", файлы)
+        # Формат в указателе не назван — пробуем всё по очереди, а не пропускаем.
+        self.assertIn("rfc5.txt", файлы, "запись без перечня форматов пропущена")
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_missing_rfc_is_not_called_unpublished(self):
+        готово, _, каталог = self.прогнать()
+        # RFC 3 есть в указателе, значит выпущен. Его отсутствие — не норма.
+        self.assertIn("НЕ СКАЧАНО", готово.stdout)
+        self.assertNotIn("эти номера не публиковались", готово.stdout)
+        список = (каталог / "не-скачано.csv").read_text(encoding="utf-8-sig")
+        self.assertIn("Проба 3", список, "не сказано поимённо, чего не хватает")
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_numbers_outside_the_index_are_the_unpublished_ones(self):
+        # Номер 4 в указателе отсутствует — вот он действительно не выпускался.
+        готово, _, _ = self.прогнать()
+        self.assertIn("номеров, которых нет в указателе: 1", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_summary_counts_against_the_index(self):
+        # Ответ на вопрос «всё ли выкачано» должен считать скрипт, а не человек.
+        готово, _, _ = self.прогнать()
+        self.assertIn("по указателю положено 5, на руках 4", готово.stdout)
+        self.assertIn("не хватает: 1", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_repeat_run_downloads_nothing_again(self):
+        каталог = tempfile.mkdtemp(prefix="rfc-")
+        первый, файлы1, _ = self.прогнать(каталог)
+        второй, файлы2, _ = self.прогнать(каталог)
+        self.assertEqual(файлы1, файлы2)
+        # В том числе PDF: раньше пропуск смотрел только на .txt, и документ,
+        # лежащий в другом формате, качался бы заново каждый запуск.
+        self.assertNotIn("текста нет, взят PDF", второй.stdout)

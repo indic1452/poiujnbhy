@@ -119,6 +119,93 @@ function Get-HttpCode([string[]]$Arguments) {
     return (Invoke-Download $Arguments).code
 }
 
+<#
+    Какие форматы этого RFC вообще существуют — по указателю.
+
+    В указателе у каждой записи есть перечень форматов (<file-format>ASCII,
+    PDF, HTML, XML). Он и есть ответ на вопрос «а текст-то у него есть».
+    Прежде скрипт этого не спрашивал: просил .txt у всех подряд и на 404
+    писал «эти номера не публиковались». Утверждение неверное — по указателю
+    он ходит ТОЛЬКО по опубликованным номерам, — и оно скрывало настоящий
+    пробел: у части RFC текстовой версии нет, есть только PDF.
+
+    Разбор нарочно терпимый. Указатель у МСЭ и IETF меняется, пространство
+    имён в XML мешает точным выборкам, а ошибиться здесь дороже, чем сходить
+    лишний раз: пустой перечень означает «не знаем» и приводит к обычному
+    порядку проб, а не к пропуску документа.
+#>
+function Read-RfcFormats($entry) {
+    $найдено = @()
+    try {
+        foreach ($f in @($entry.format)) {
+            if ($null -eq $f) { continue }
+            $имя = if ($f -is [string]) { $f } else { "$($f.'file-format')" }
+            if ($имя) { $найдено += $имя.Trim().ToUpperInvariant() }
+        }
+    } catch { }
+    if (-not $найдено.Count) {
+        # Точечный разбор не дался — читаем как текст. Некрасиво, зато не
+        # зависит ни от пространства имён, ни от формы записи.
+        try {
+            foreach ($m in [regex]::Matches("$($entry.OuterXml)",
+                                            '(?is)<file-format>\s*([^<]+?)\s*</file-format>')) {
+                $найдено += $m.Groups[1].Value.Trim().ToUpperInvariant()
+            }
+        } catch { }
+    }
+    return @($найдено | Where-Object { $_ } | Select-Object -Unique)
+}
+
+#: Что пробовать скачивать и в каком порядке.
+#:
+#: Текст первым — он и разбирается лучше всех, и в библиотеке удобнее. Нет
+#: текста — берём PDF, потом HTML, потом XML: документ на своём месте нужнее,
+#: чем красивый формат. Пустой перечень означает «указатель не сказал»: тогда
+#: пробуем всё по очереди, а не решаем за него.
+function Get-RfcCandidates([string[]]$formats) {
+    # Возвращаем ОБЪЕКТЫ, а не пары в массивах. PowerShell при возврате
+    # разворачивает массив из одного массива: список с единственным
+    # кандидатом @(@('txt','text/plain')) превращался в @('txt','text/plain'),
+    # цикл шёл по строкам, и скрипт просил у сервера «rfc1.t». Ловушка тихая:
+    # на двух кандидатах всё работало, на одном — нет.
+    $известно = @($formats)
+    $порядок = @()
+    if (-not $известно.Count -or ($известно -match '^(ASCII|TEXT|TXT)$')) {
+        $порядок += [pscustomobject]@{ ext = 'txt'; label = 'ASCII' }
+    }
+    foreach ($пара in @(@('pdf', 'PDF'), @('html', 'HTML'), @('xml', 'XML'))) {
+        if (-not $известно.Count -or ($известно -contains $пара[1])) {
+            $порядок += [pscustomobject]@{ ext = $пара[0]; label = $пара[1] }
+        }
+    }
+    if (-not $порядок.Count) {
+        $порядок += [pscustomobject]@{ ext = 'txt'; label = 'ASCII' }
+    }
+    return @($порядок)
+}
+
+#: Похоже ли скачанное на то, что просили. Сервер на «нет такого файла»
+#: отвечает и страницей, и она пройдёт проверку по размеру.
+function Test-RfcFile([string]$path, [string]$kind) {
+    if (-not (Test-Path -LiteralPath $path)) { return $false }
+    $размер = (Get-Item -LiteralPath $path).Length
+    if ($размер -le 200) { return $false }
+    try {
+        $поток = [IO.File]::OpenRead($path)
+        try {
+            $голова = New-Object byte[] 5
+            $прочитано = $поток.Read($голова, 0, 5)
+        } finally { $поток.Dispose() }
+    } catch { return $false }
+    $начало = [Text.Encoding]::ASCII.GetString($голова, 0, [Math]::Max(0, $прочитано))
+    if ($kind -eq 'pdf') { return ($начало -eq '%PDF-') }
+    if ($kind -eq 'txt') {
+        # Текст RFC не начинается с угловой скобки. Страница «404» начинается.
+        return (-not $начало.TrimStart().StartsWith('<'))
+    }
+    return $true
+}
+
 function Test-Url([string]$url) {
     $target = if ($script:CurlExe -eq 'curl.exe') { 'NUL' } else { '/dev/null' }
     return (Get-HttpCode @('-sL', '-r', '0-0', '--max-time', '45', '-o', $target, '-w', '%{http_code}', $url))
@@ -164,9 +251,20 @@ foreach ($entry in $index.'rfc-index'.'rfc-entry') {
         number = $number
         title = "$($entry.title)"
         obsoletedBy = $obsoletedBy
+        formats = (Read-RfcFormats $entry)
     }
 }
 Ok "в указателе документов: $($entries.Count)"
+
+# Номера, которых в указателе нет вовсе, — вот они действительно никогда не
+# публиковались. Это единственный честный источник такого утверждения:
+# отсутствие файла на сервере им не является.
+$последний = ($entries.Keys | Measure-Object -Maximum).Maximum
+$неВыпускались = 0
+for ($n = 1; $n -le $последний; $n++) { if (-not $entries.ContainsKey($n)) { $неВыпускались++ } }
+if ($неВыпускались) {
+    Note "номеров, которых нет в указателе: $неВыпускались (не публиковались)"
+}
 
 # ---------------------------------------------------------- что качаем -----
 $numbers = if ($Only.Count) {
@@ -179,39 +277,75 @@ Step "Тексты RFC: $($numbers.Count) документов"
 Note 'прервали — запустите снова, уже скачанное не перекачивается'
 
 $texts = New-Item -ItemType Directory -Path (Join-Path (Join-Path $root 'standards') 'rfc') -Force
-$done = 0; $skipped = 0; $absent = 0; $broken = 0
+$done = 0; $skipped = 0; $absent = 0; $broken = 0; $other = 0
+$неудачи = @()
 foreach ($number in $numbers) {
     $done++
-    $target = Join-Path $texts ("rfc{0}.txt" -f $number)
-    if ((Test-Path $target) -and (Get-Item $target).Length -gt 200) {
-        $skipped++
-        continue
+    $meta = $entries[$number]
+    $кандидаты = Get-RfcCandidates ($(if ($meta) { $meta.formats } else { @() }))
+
+    # Уже скачанное пропускаем в любом формате: повторный запуск не должен
+    # заново тянуть RFC только потому, что он лежит не текстом, а PDF.
+    $ужеЕсть = $false
+    foreach ($вид in $кандидаты) {
+        $путь = Join-Path $texts ("rfc{0}.{1}" -f $number, $вид.ext)
+        if (Test-RfcFile $путь $вид.ext) { $ужеЕсть = $true; break }
     }
-    # Код ответа берём сами: 404 — это нормально (часть номеров никогда не
-    # публиковалась), а вот обрыв связи молча засчитывать за «нет такого RFC»
-    # нельзя, иначе половина архива тихо не доедет.
-    $ответ = Invoke-Download @('-sL', '--max-time', '60', '--retry', '2', '-o', $target,
-                               '-w', '%{http_code}', "$Base/rfc/rfc$number.txt")
-    $code = $ответ.code
-    # Обрыв посреди передачи: сервер ответил 200, а файл пришёл огрызком.
-    # Такой номер честнее считать не скачанным — повторный запуск его добьёт.
-    $оборван = ($code -eq 200 -and $ответ.exit -ne 0)
-    if ($оборван) { $code = 0 }
-    if ($code -ne 200) {
+    if ($ужеЕсть) { $skipped++; continue }
+
+    # Пробуем форматы по очереди. 404 на текст больше не означает «не
+    # публиковался»: по указателю мы ходим только по выпущенным номерам, и
+    # отсутствие .txt значит ровно одно — текстовой версии у него нет.
+    $взят = ''
+    $target = ''
+    $оборван = $false
+    $code = 0
+    foreach ($вид in $кандидаты) {
+        $target = Join-Path $texts ("rfc{0}.{1}" -f $number, $вид.ext)
+        $ответ = Invoke-Download @('-sL', '--max-time', '60', '--retry', '2', '-o', $target,
+                                   '-w', '%{http_code}', ("$Base/rfc/rfc{0}.{1}" -f $number, $вид.ext))
+        $code = $ответ.code
+        # Обрыв посреди передачи: сервер ответил 200, а файл пришёл огрызком.
+        $оборван = ($code -eq 200 -and $ответ.exit -ne 0)
+        if ($code -eq 200 -and -not $оборван -and (Test-RfcFile $target $вид.ext)) {
+            $взят = $вид.ext
+            break
+        }
         if (Test-Path $target) { Remove-Item $target -Force -ErrorAction SilentlyContinue }
-        if ($code -eq 404) { $absent++ } else {
+        if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
+    }
+
+    if (-not $взят) {
+        $почему = if ($оборван) { 'связь оборвалась посреди файла' }
+                  elseif ($code -eq 0) { 'ответа не было (связь или шлюз)' }
+                  elseif ($code -eq 404) { 'ни один формат не отдан сервером' }
+                  else { "ответ $code" }
+        $неудачи += [pscustomobject]@{
+            номер = $number
+            название = $(if ($meta) { $meta.title } else { '' })
+            форматы = $(if ($meta) { ($meta.formats -join ' ') } else { '' })
+            причина = $почему
+        }
+        if ($code -eq 404) {
+            $absent++
+            if ($absent -le 10) { Warn "RFC $number — $почему (по указателю: $($неудачи[-1].форматы))" }
+            if ($absent -eq 11) { Note 'дальше о таких молчу, итог будет в конце' }
+        } else {
             $broken++
-            $почему = if ($оборван) { 'связь оборвалась посреди файла' }
-                      elseif ($code -eq 0) { 'ответа не было (связь или шлюз)' }
-                      else { "ответ $code" }
             if ($broken -le 10) { Warn "RFC $number — $почему" }
             if ($broken -eq 11) { Note 'дальше об ошибках связи молчу, итог будет в конце' }
         }
+    } elseif ($взят -ne 'txt') {
+        # Документ на месте, просто не текстом. Это не пробел, но и не то же
+        # самое: PDF читается приёмом иначе, и знать об этом надо.
+        $other++
+        if ($other -le 10) { Note "RFC $number — текста нет, взят $($взят.ToUpperInvariant())" }
+        if ($other -eq 11) { Note 'дальше о таких молчу, итог будет в конце' }
     } else {
         # Отметку «чем отменён» указатель знает точнее самого файла: дописываем
         # её в шапку, если её там нет. По ней приём пометит документ
-        # заменённым, и в поиск он не попадёт.
-        $meta = $entries[$number]
+        # заменённым, и в поиск он не попадёт. Только для текста: в PDF так не
+        # допишешь, там актуальность проставляется отдельной разметкой.
         if ($meta -and $meta.obsoletedBy.Count) {
             $body = Get-Content $target -Raw -Encoding UTF8
             if ($body -notmatch '(?m)^Obsoleted by:') {
@@ -231,14 +365,44 @@ foreach ($number in $numbers) {
 }
 Write-Progress -Activity 'Скачивание RFC' -Completed
 
-$files = @(Get-ChildItem $texts -Filter '*.txt')
+$files = @(Get-ChildItem $texts -File)
+$текстов = @($files | Where-Object { $_.Extension -eq '.txt' })
 $size = ($files | Measure-Object Length -Sum).Sum
 Write-Host ''
 Ok ("файлов: {0}, объём: {1:N0} МБ" -f $files.Count, ($size / 1MB))
-if ($absent) { Note "номеров без текста: $absent (эти номера не публиковались — так и должно быть)" }
+Note ("из них текстом: {0}, другим форматом: {1}" -f $текстов.Count, ($files.Count - $текстов.Count))
+
+# Три разных числа вместо одного успокоительного. Прежняя строка «эти номера
+# не публиковались» была неверной: по указателю скрипт ходит ТОЛЬКО по
+# выпущенным номерам, и 404 означал не «нет такого RFC», а «мы просили не тот
+# формат». Из-за неё пробел выглядел нормой.
+if ($other) {
+    Note "у $other RFC текстовой версии нет — взяты PDF, HTML или XML"
+}
+if ($absent) {
+    Warn "НЕ СКАЧАНО (сервер не отдал ни одного формата): $absent"
+    Note 'это выпущенные RFC — их отсутствие не норма; список ниже'
+}
 if ($broken) {
     Warn "не скачано из-за ошибок связи: $broken"
     Note 'запустите скрипт ещё раз: скачанное не перекачивается, добьёт остаток'
+}
+if ($неудачи.Count) {
+    $списокПуть = Join-Path $root 'не-скачано.csv'
+    $неудачи | Sort-Object номер | Export-Csv -LiteralPath $списокПуть -NoTypeInformation -Encoding UTF8
+    Note "поимённо, с причиной и списком форматов: $списокПуть"
+}
+
+# Сверка с указателем: сколько выпущенных RFC у нас на руках. Это и есть ответ
+# на вопрос «всё ли выкачано», и считать его должен скрипт, а не человек.
+$должноБыть = $numbers.Count
+$естьНаРуках = $должноБыть - $absent - $broken
+Write-Host ''
+Ok ("по указателю положено {0}, на руках {1}" -f $должноБыть, $естьНаРуках)
+if ($естьНаРуках -lt $должноБыть) {
+    Warn ("не хватает: {0}" -f ($должноБыть - $естьНаРуках))
+} else {
+    Ok 'архив полон: каждый выпущенный RFC из указателя лежит на диске'
 }
 
 Write-Host ''
