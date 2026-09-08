@@ -1766,15 +1766,28 @@ class RfcCoverageTests(unittest.TestCase):
     """
 
     #: Что реально отдаёт подставной сервер по каждому номеру.
+    #:
+    #: Перечни форматов взяты с настоящего указателя: подписи там TXT, HTML,
+    #: PDF, XML и PS (не ASCII), и у подавляющего большинства записей форматов
+    #: НЕСКОЛЬКО — «TXT HTML» у 8327 записей, «HTML TXT PDF XML» у 1366.
     ЗАПИСИ = {
-        1: (["ASCII"], {"txt": True}),
+        1: (["TXT", "HTML"], {"txt": True}),
         2: (["PDF"], {"pdf": True}),                 # текста нет вовсе
-        3: (["ASCII"], {}),                          # выпущен, но не отдаётся
+        3: (["TXT", "HTML"], {}),                    # выпущен, но не отдаётся
         5: ([], {"txt": True}),                      # формат в указателе не назван
-        6: (["ASCII", "PDF"], {"pdf": True}),        # txt объявлен, отдаётся PDF
+        6: (["TXT", "PS", "PDF", "HTML"], {"pdf": True}),  # txt объявлен, отдаётся PDF
+        7: (["HTML", "XML"], {"html": True}),        # текста нет и не объявлен
+        8: (["PDF"], {}),                            # форма записи иная, см. ИНАЯ_ФОРМА
     }
+    #: Номера, у которых перечень форматов завёрнут лишним уровнем. Указатель у
+    #: RFC Editor и у зеркал IETF со временем меняется, и точечная выборка по
+    #: имени узла на изменившейся форме молча возвращает пустоту. Тогда работает
+    #: запасной разбор по тексту — и от него зависит колонка «форматы» в
+    #: не-скачано.csv, то есть единственная подсказка, что именно идти искать.
+    ИНАЯ_ФОРМА = {8}
     ТЕКСТ = ("Network Working Group\nRequest for Comments: %d\n\n" + "текст " * 200)
     ПДФ = b"%PDF-1.4\n" + b"x" * 4000 + b"\n%%EOF\n"
+    ХТМЛ = "<html><body><pre>\n" + "разметка " * 200 + "</pre></body></html>"
 
     @classmethod
     def обработчик(cls):
@@ -1801,15 +1814,26 @@ class RfcCoverageTests(unittest.TestCase):
                 if self.path.endswith("rfc-index.xml"):
                     куски = []
                     for н, (форматы, _) in sorted(сам.ЗАПИСИ.items()):
-                        ф = "".join("<format><file-format>%s</file-format></format>" % x
-                                    for x in форматы)
+                        # Форма — как в настоящем указателе: ОДИН <format>, а
+                        # внутри него столько <file-format>, сколько форматов у
+                        # документа. Прежняя выдумка «по <format> на формат»
+                        # прятала разбор, который склеивал их в «TXT HTML».
+                        внутри = "".join("<file-format>%s</file-format>" % x
+                                         for x in форматы)
+                        ф = "<format>%s</format>" % внутри if внутри else ""
+                        if внутри and н in сам.ИНАЯ_ФОРМА:
+                            ф = "<formats>%s</formats>" % ф
+                        # Номер в указателе дополнен нулями до четырёх знаков.
+                        # У седьмого нарочно без дополнения: обе записи
+                        # встречаются в выгрузках, и разбор обязан брать обе.
+                        имя = "RFC%d" % н if н == 7 else "RFC%04d" % н
                         куски.append(
-                            "<rfc-entry><doc-id>RFC%04d</doc-id><title>Проба %d</title>%s"
+                            "<rfc-entry><doc-id>%s</doc-id><title>Проба %d</title>%s"
                             "<current-status>PROPOSED STANDARD</current-status></rfc-entry>"
-                            % (н, н, ф))
+                            % (имя, н, ф))
                     # Пространство имён — как у настоящего указателя.
                     тело = ('<?xml version="1.0" encoding="UTF-8"?>'
-                            '<rfc-index xmlns="http://www.rfc-editor.org/rfc-index">'
+                            '<rfc-index xmlns="https://www.rfc-editor.org/rfc-index">'
                             + "".join(куски) + "</rfc-index>")
                     return self.отдать(200, тело, "application/xml")
                 if "/rfc/rfc" in self.path:
@@ -1826,6 +1850,8 @@ class RfcCoverageTests(unittest.TestCase):
                         return self.отдать(404, "<html><body>Not Found</body></html>", "text/html")
                     if расширение == "pdf":
                         return self.отдать(200, сам.ПДФ, "application/pdf")
+                    if расширение == "html":
+                        return self.отдать(200, сам.ХТМЛ, "text/html")
                     return self.отдать(200, сам.ТЕКСТ % номер)
                 return self.отдать(404, "no")
 
@@ -1862,6 +1888,59 @@ class RfcCoverageTests(unittest.TestCase):
         self.assertIn("rfc5.txt", файлы, "запись без перечня форматов пропущена")
 
     @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_several_formats_in_one_element_are_read_apart(self):
+        """Перечень «TXT HTML PDF» — это три формата, а не одна строка.
+
+        В указателе форматы лежат внутри одного <format> отдельными
+        <file-format>. Разбор брал их одним выражением, и PowerShell склеивал
+        массив в строку вида «TXT PS PDF HTML». Такая строка не совпадала ни с
+        одним форматом, перечень считался пустым — и скрипт молча откатывался
+        к единственной попытке «.txt». Для RFC 6 текста на сервере нет, зато
+        есть PDF: с поломанным разбором документ уходил в «НЕ СКАЧАНО», хотя
+        указатель прямо называл нужный формат. Восемь с лишним тысяч записей
+        настоящего указателя перечисляют по нескольку форматов, так что цена
+        ошибки — весь архив.
+        """
+        готово, файлы, каталог = self.прогнать()
+        self.assertIn("rfc6.pdf", файлы,
+                      "перечень из нескольких форматов разобран как одна строка:\n"
+                      + готово.stdout)
+        # То же и когда текста нет вовсе: HTML с XML в одном перечне.
+        self.assertIn("rfc7.html", файлы,
+                      "запись без текстовой версии не взята HTML:\n" + готово.stdout)
+        # И ни один из этих номеров не должен попасть в список недостающего.
+        список = (каталог / "не-скачано.csv").read_text(encoding="utf-8-sig")
+        self.assertNotIn("Проба 6", список)
+        self.assertNotIn("Проба 7", список)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_changed_index_shape_still_yields_formats(self):
+        """Изменилась форма записи — перечень форматов всё равно должен читаться.
+
+        Точечная выборка по имени узла на непривычной форме молча возвращает
+        пустоту, и это худший вид отказа: скрипт не падает, а тихо забывает,
+        какие форматы у документа есть. Строка в не-скачано.csv тогда выходит с
+        пустой колонкой «форматы» — человеку не за что зацепиться, чтобы найти
+        недостающее вручную. Здесь перечень завёрнут лишним уровнем, и его
+        обязан вытащить запасной разбор по тексту.
+        """
+        готово, _, каталог = self.прогнать()
+        список = (каталог / "не-скачано.csv").read_text(encoding="utf-8-sig")
+        строка = [s for s in список.splitlines() if "Проба 8" in s]
+        self.assertTrue(строка, "запись с иной формой потерялась:\n" + готово.stdout)
+        self.assertIn("PDF", строка[0],
+                      "форматы не прочитаны — в списке недостающего пустая колонка")
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
+    def test_padded_and_bare_numbers_are_both_understood(self):
+        # В указателе номер записан с нулями (RFC0001), в выгрузках попадается
+        # и без них. Пропустить половину записей из-за формы номера нельзя.
+        готово, файлы, _ = self.прогнать()
+        self.assertIn("rfc1.txt", файлы, готово.stdout)   # RFC0001
+        self.assertIn("rfc7.html", файлы, готово.stdout)  # RFC7
+        self.assertIn("в указателе документов: 7", готово.stdout)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
     def test_missing_rfc_is_not_called_unpublished(self):
         готово, _, каталог = self.прогнать()
         # RFC 3 есть в указателе, значит выпущен. Его отсутствие — не норма.
@@ -1880,8 +1959,8 @@ class RfcCoverageTests(unittest.TestCase):
     def test_summary_counts_against_the_index(self):
         # Ответ на вопрос «всё ли выкачано» должен считать скрипт, а не человек.
         готово, _, _ = self.прогнать()
-        self.assertIn("по указателю положено 5, на руках 4", готово.stdout)
-        self.assertIn("не хватает: 1", готово.stdout)
+        self.assertIn("по указателю положено 7, на руках 5", готово.stdout)
+        self.assertIn("не хватает: 2", готово.stdout)
 
     @unittest.skipUnless(shutil.which("pwsh"), "нужен PowerShell")
     def test_repeat_run_downloads_nothing_again(self):

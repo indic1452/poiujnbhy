@@ -139,8 +139,16 @@ function Read-RfcFormats($entry) {
     try {
         foreach ($f in @($entry.format)) {
             if ($null -eq $f) { continue }
-            $имя = if ($f -is [string]) { $f } else { "$($f.'file-format')" }
-            if ($имя) { $найдено += $имя.Trim().ToUpperInvariant() }
+            if ($f -is [string]) { $найдено += $f.Trim().ToUpperInvariant(); continue }
+            # Внутри ОДНОГО <format> лежит несколько <file-format> — вот так:
+            #   <format><file-format>TXT</file-format>
+            #           <file-format>HTML</file-format></format>
+            # Прежний разбор брал их одним выражением, PowerShell склеивал
+            # массив в строку «TXT HTML», и она не совпадала ни с одним
+            # форматом. Пробегаем по каждому.
+            foreach ($имя in @($f.'file-format')) {
+                if ($имя) { $найдено += "$имя".Trim().ToUpperInvariant() }
+            }
         }
     } catch { }
     if (-not $найдено.Count) {
