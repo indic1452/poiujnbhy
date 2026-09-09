@@ -8951,6 +8951,7 @@
         // разговора: открыли другой — он обязан показать ЕГО выбор, а не
         // прежний. Место для этого одно, и оно здесь.
         renderModeSwitch();
+        renderSourcesSwitch();
         const head = chat.nodes.talkHead;
         if (!head) return;
         clear(head);
@@ -9304,6 +9305,7 @@
         });
         const caseLine = h('span', { class: 'case-plate' });
         const modePick = buildModeSwitch();
+        const sourcesPick = buildSourcesSwitch();
 
         chat.nodes.input = input;
         chat.nodes.send = sendButton;
@@ -9314,7 +9316,7 @@
         return h('div', { class: 'composer' },
             h('div', { class: 'composer-top' },
                 h('span', { class: 'small muted' }, 'Искать в:'), domainPick,
-                modePick, caseLine),
+                modePick, sourcesPick, caseLine),
             buildAttachBar(),
             h('div', { class: 'composer-row' }, input, sendButton, stopButton));
     }
@@ -9406,6 +9408,72 @@
             toastError(error);
         }
     }
+
+    //: Откуда брать материал. Отдельно от режима ответа: инженер, который
+    //: разбирает новый сигнал, и инженер, который вспоминает, что похожее у
+    //: нас уже встречалось, спрашивают об одном и том же разными вопросами.
+    const CHAT_SOURCES = [
+        { id: 'all', title: 'Везде',
+          hint: 'Нормы отвечают на «как устроено», отчёты показывают, как это выглядело на практике',
+          toast: 'Источники: вся библиотека' },
+        { id: 'norms', title: 'Нормы',
+          hint: 'Только стандарты, регламенты, литература и паспорта. Нужно, когда на источник придётся ссылаться в отчёте',
+          toast: 'Источники: только нормы и литература' },
+        { id: 'reports', title: 'Наши отчёты',
+          hint: 'Только разборы отдела: что мы уже видели на этой линии',
+          toast: 'Источники: только отчёты отдела' },
+    ];
+
+    function chatSources() {
+        const value = chat.current ? chat.current.sources : '';
+        return CHAT_SOURCES.some((item) => item.id === value) ? value : 'all';
+    }
+
+    /** Переключатель «Везде / Нормы / Наши отчёты» рядом с режимом ответа. */
+    function buildSourcesSwitch() {
+        const box = h('div', { class: 'seg seg--sources', role: 'group',
+                               'aria-label': 'Откуда брать источники' });
+        chat.nodes.sources = box;
+        renderSourcesSwitch(box);
+        return box;
+    }
+
+    function renderSourcesSwitch(box) {
+        const target = box || chat.nodes.sources;
+        if (!target) return;
+        clear(target);
+        const current = chatSources();
+        CHAT_SOURCES.forEach((item) => {
+            target.appendChild(h('button', {
+                class: 'seg-item' + (item.id === current ? ' is-active' : ''),
+                title: item.hint,
+                'aria-pressed': item.id === current ? 'true' : 'false',
+                onclick: () => setChatSources(item.id),
+            }, item.title));
+        });
+    }
+
+    async function setChatSources(value) {
+        if (!chat.current || value === chatSources()) return;
+        const прежний = chat.current.sources;
+        // Показываем выбор сразу: ответ сервера идёт по сети, а кнопка должна
+        // отзываться под пальцем. Не вышло — вернём как было.
+        chat.current.sources = value;
+        renderSourcesSwitch();
+        try {
+            const data = await api.patch('/api/chats/' + chat.current.id, { sources: value });
+            chat.current = data.chat;
+            upsertChatInList(chat.current);
+            renderSourcesSwitch();
+            const выбранный = CHAT_SOURCES.find((item) => item.id === value);
+            toast(выбранный ? выбранный.toast : 'Источники изменены', 'ok', 3000);
+        } catch (error) {
+            chat.current.sources = прежний;
+            renderSourcesSwitch();
+            toastError(error);
+        }
+    }
+
 
     async function setChatDomain(value) {
         if (!chat.current) return;

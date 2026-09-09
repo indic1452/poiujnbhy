@@ -1918,12 +1918,15 @@ def update_chat(request: Request, chat_id: int) -> Dict[str, Any]:
     if domain is not None and not _domains(request).is_known(str(domain)):
         raise ServiceError(f"неизвестное направление '{domain}'", 400)
     mode = payload.get("mode")
-    if domain is not None or mode is not None or "archived" in payload:
+    sources = payload.get("sources")
+    if (domain is not None or mode is not None or sources is not None
+            or "archived" in payload):
         assistant.update(
             user, chat_id,
             domain=str(domain) if domain is not None else None,
             archived=bool(payload["archived"]) if "archived" in payload else None,
             mode=str(mode) if mode is not None else None,
+            sources=str(sources) if sources is not None else None,
         )
     return {"chat": assistant.get_chat(user, chat_id).to_dict()}
 

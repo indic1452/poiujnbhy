@@ -767,6 +767,7 @@ class Chat:
     domain: str = ""
     #: «deep» — разбор в несколько заходов, «fast» — один поиск и коротко.
     mode: str = "deep"
+    sources: str = "all"
     case_ref: int | None = None
     archived: bool = False
     created_at: str = ""
@@ -782,6 +783,7 @@ class Chat:
             title=row["title"],
             domain=row["domain"],
             mode=(row["mode"] if "mode" in keys else "deep") or "deep",
+            sources=(row["sources"] if "sources" in keys else "all") or "all",
             case_ref=row["case_ref"],
             archived=bool(row["archived"]),
             created_at=row["created_at"],
@@ -795,6 +797,7 @@ class Chat:
             "title": self.title,
             "domain": self.domain,
             "mode": self.mode,
+            "sources": self.sources,
             "case_ref": self.case_ref,
             "archived": self.archived,
             "created_at": self.created_at,

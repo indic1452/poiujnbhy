@@ -135,6 +135,7 @@ COLUMN_MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     # у разговора, а не у человека: один и тот же инженер утром разбирает
     # дамп, а днём спрашивает «что означает поле FCS».
     ("chats", "mode", "TEXT NOT NULL DEFAULT 'deep'"),
+    ("chats", "sources", "TEXT NOT NULL DEFAULT 'all'"),
     ("users", "department", "TEXT NOT NULL DEFAULT ''"),
     ("users", "team", "TEXT NOT NULL DEFAULT ''"),
     # Входящее письмо: кто исполнитель, к какому числу, входящий номер.

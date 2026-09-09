@@ -12,6 +12,7 @@
 """
 
 import unittest
+from pathlib import Path
 
 import _bootstrap  # noqa: F401
 
@@ -263,3 +264,62 @@ class РежимЧерезHTTP(AssistantHttpTests):
         self.assertEqual(200, ответ.status_code, ответ.text)
         разговор = self.client.get("/api/chats/%d" % chat["id"]).json()
         self.assertEqual(2, len(разговор["messages"]))
+
+
+class ОтборИсточниковВРазговоре(AssistantHttpTests):
+    """Переключатель «Везде / Нормы / Наши отчёты» — тот самый фильтр.
+
+    Отдел просил его прямо: отчёты узко направлены, и бывает нужно, чтобы их
+    в ответе не было вовсе — например, когда на источник придётся ссылаться в
+    исходящем документе. Бывает и обратное: «покажи только наши разборы по
+    этой линии». Автоматика ставит отчёты на место сама, но последнее слово
+    остаётся за человеком.
+    """
+
+    def setUp(self):
+        super().setUp()
+        ответ = self.client.post("/api/chats", json={"title": "Проба"})
+        self.chat_id = ответ.json()["chat"]["id"]
+
+    def test_по_умолчанию_везде(self):
+        чат = self.client.get(f"/api/chats/{self.chat_id}").json()["chat"]
+        self.assertEqual("all", чат["sources"])
+
+    def test_выбор_сохраняется(self):
+        for значение in ("norms", "reports", "all"):
+            with self.subTest(значение=значение):
+                ответ = self.client.patch(
+                    f"/api/chats/{self.chat_id}", json={"sources": значение})
+                self.assertEqual(200, ответ.status_code, ответ.text)
+                self.assertEqual(значение, ответ.json()["chat"]["sources"])
+                снова = self.client.get(
+                    f"/api/chats/{self.chat_id}").json()["chat"]
+                self.assertEqual(значение, снова["sources"])
+
+    def test_чужое_значение_не_принимается(self):
+        ответ = self.client.patch(
+            f"/api/chats/{self.chat_id}", json={"sources": "выдумка"})
+        self.assertEqual(400, ответ.status_code)
+        # Человеку должно быть сказано, что именно не так и что допустимо.
+        self.assertIn("отбор источников", ответ.text)
+        self.assertIn("reports", ответ.text)
+
+    def test_старый_разговор_читается_как_везде(self):
+        # Разговоры, заведённые до появления переключателя: столбца в записи
+        # нет, и вместо отказа должно подставляться разумное значение.
+        from reportgen.web.assistant import chat_sources
+
+        class Пустой:
+            pass
+
+        self.assertEqual("all", chat_sources(Пустой()))
+        self.assertEqual("all", chat_sources(None))
+
+    def test_переключатель_есть_в_интерфейсе(self):
+        исходник = (Path(__file__).resolve().parents[1] / "src" / "reportgen"
+                    / "web" / "static" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("buildSourcesSwitch", исходник)
+        self.assertIn("Наши отчёты", исходник)
+        # Переключатель обязан перерисовываться при смене разговора, иначе
+        # показывал бы выбор предыдущего.
+        self.assertIn("renderSourcesSwitch();", исходник)

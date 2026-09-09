@@ -95,6 +95,73 @@ _ITU_RE = re.compile(
 #: должен превращаться в полсотни запросов к описи на каждом заходе.
 MAX_DESIGNATIONS = 8
 
+#: Обороты, по которым видно, что спрашивают про НАШУ практику, а не про
+#: устройство вещей. Список нарочно узкий: цена ошибки несимметрична. Принять
+#: общий вопрос за частный — значит снова выдать разбор одного канала за норму,
+#: а это ровно та беда, ради которой всё и заводится. Принять частный за общий
+#: — значит показать на пару стандартов больше, отчёты при этом никуда не
+#: деваются, просто стоят ниже.
+_OWN_CASE_MARKERS = (
+    "у нас", "у себя", "нам попадал", "нам встречал", "наш отчёт", "наши отчёт",
+    "наших отчёт", "нашем отчёт", "в отчёте", "в отчётах", "по обращени",
+    "по письму", "в письме", "прошлый раз", "в прошлый", "мы разбирал",
+    "мы встречал", "мы писал", "мы делал", "мы наблюдал", "мы видел",
+    "встречал ли", "встречали ли", "попадал ли", "попадали ли",
+    "попадался ли", "попадалась ли", "попадалось ли", "попадались ли",
+    "в каком отчёте", "в каких отчётах", "каком отчёте", "нам такой",
+    "нам такое", "нам подобн", "у кого-то из наших",
+    "был ли у нас", "были ли у нас", "бывал ли", "на этой линии",
+    "на той линии", "на объекте", "на этом объекте", "раньше такое",
+    "такое уже", "уже разбирал", "наши разбор", "наш разбор",
+)
+
+
+def asks_about_own_cases(text: str) -> bool:
+    """Спрашивают ли про нашу практику, а не про устройство вещей.
+
+    «Как устроено уплотнение E1» — вопрос об устройстве, и отвечать на него
+    надо по нормам. «Встречали ли мы ИКМ-М в канальном интервале» — вопрос о
+    нашей практике, и тут отчёты отдела и есть единственный верный источник.
+
+    Различаем по оборотам, а не по одному слову «мы»: «как мы посчитаем
+    занимаемую полосу» — обычный общий вопрос, и признаком «мы» тут ничего не
+    значит. Слово «отчёт» само по себе тоже не признак: «по какому шаблону
+    писать отчёт» — вопрос о нашей работе, но не о наших случаях.
+    """
+    строка = " " + " ".join(str(text or "").lower().replace("ё", "е").split()) + " "
+    return any(маркер.replace("ё", "е") in строка for маркер in _OWN_CASE_MARKERS)
+
+
+#: Откуда брать материал. Отдельный от режима ответа переключатель: инженер,
+#: который разбирает новый сигнал, и инженер, который вспоминает, что мы уже
+#: встречали похожее, спрашивают об одном и том же разными вопросами.
+#:
+#: «Везде» — обычная работа: нормы отвечают на «как устроено», отчёты
+#: показывают, как это выглядело на практике, и стоят ниже.
+#: «Нормы» — только стандарты, регламенты, литература и паспорта. Нужно, когда
+#: ответ пойдёт в отчёт со ссылкой: сослаться там можно на норму, а не на
+#: прошлый разбор.
+#: «Отчёты» — только наши разборы. Это поиск по своей практике: «что мы уже
+#: видели на этой линии».
+CHAT_SOURCES = ("all", "norms", "reports")
+DEFAULT_CHAT_SOURCES = "all"
+
+#: Что считается нормой. Паспорт микросхемы и «прочее» сюда входят: это тоже
+#: описание техники вообще, а не разбор одного случая.
+NORM_DOC_TYPES = ("standards", "regulations", "literature", "datasheets", "misc")
+
+SOURCE_DOC_TYPES = {
+    "all": None,
+    "norms": NORM_DOC_TYPES,
+    "reports": ("reports",),
+}
+
+
+def chat_sources(chat: "Chat | None") -> str:
+    """Откуда берём материал, с запасом на старые записи и мусор в поле."""
+    выбор = str(getattr(chat, "sources", "") or "").strip().lower()
+    return выбор if выбор in CHAT_SOURCES else DEFAULT_CHAT_SOURCES
+
 
 def designations_in(text: str) -> List[str]:
     """Обозначения документов, названные в тексте, в порядке появления.
@@ -127,6 +194,47 @@ def designations_in(text: str) -> List[str]:
     for match in _ITU_RE.finditer(строка):
         добавить(match.group("code").upper())
     return найдено[:MAX_DESIGNATIONS]
+
+
+def _only_types(hits: Sequence[Hit], doc_types) -> List[Hit]:
+    """Оставить только выбранные виды документов. Ничего не выбрано — всё."""
+    if not doc_types:
+        return list(hits)
+    разрешено = set(doc_types)
+    return [hit for hit in hits
+            if str(getattr(hit.chunk, "doc_type", "")) in разрешено]
+
+
+def prefer_norms(hits: Sequence[Hit]) -> List[Hit]:
+    """Опустить лишние отчёты ниже норм, ничего не выбрасывая.
+
+    Отдел столкнулся с этим на живой библиотеке: на вопрос «как устроено
+    уплотнение E1» поиск поднял отчёт о разборе одного канала, где ИКМ-М был
+    занят речью на арабском, — и частности того канала поехали в ответ как
+    свойства E1 вообще. Отчёты при этом ценны: в них лучшие разборы конкретных
+    сигналов. Поэтому не отсев, а порядок: сколько-то отчётов остаётся на своих
+    местах, остальные уходят в хвост — и всё равно попадут в промпт, если
+    заменить их нечем.
+
+    Порядок выходит такой: сперва всё, что не отчёт, затем отчёты. Первая
+    часть отвечает на вопрос «как устроено», вторая показывает, как это
+    выглядело у нас. Отсева нет: отчёты доходят до промпта, если места хватает,
+    и занимают его целиком, когда норм по теме нет вовсе — тогда перестановка
+    не меняет ничего.
+
+    Сколько отчётов в итоге увидит модель, решает бюджет окна: материал
+    режется с хвоста (см. _build_sources). Это и есть нужная мера — на богатой
+    нормами теме отчёты потеснятся сами, на бедной останутся все.
+
+    Перестановка устойчивая: относительный порядок внутри обеих частей тот же,
+    что дал поиск.
+    """
+    нормы: List[Hit] = []
+    отчёты: List[Hit] = []
+    for hit in hits:
+        (отчёты if str(getattr(hit.chunk, "doc_type", "")) == "reports"
+         else нормы).append(hit)
+    return нормы + отчёты
 
 
 def _подряд(где: Sequence[str], что: Sequence[str]) -> bool:
@@ -250,13 +358,19 @@ class AssistantService:
         return self.get_chat(user, chat_id)
 
     def update(self, user: User, chat_id: int, *, domain: str | None = None,
-               archived: bool | None = None, mode: str | None = None) -> Chat:
+               archived: bool | None = None, mode: str | None = None,
+               sources: str | None = None) -> Chat:
         self.get_chat(user, chat_id)
         if mode is not None and mode not in CHAT_MODES:
             raise ServiceError(
                 "неизвестный режим ответа '%s'; допустимы: %s"
                 % (mode, ", ".join(CHAT_MODES)), 400)
-        self.repos.chats.update(chat_id, domain=domain, archived=archived, mode=mode)
+        if sources is not None and sources not in CHAT_SOURCES:
+            raise ServiceError(
+                "неизвестный отбор источников '%s'; допустимы: %s"
+                % (sources, ", ".join(CHAT_SOURCES)), 400)
+        self.repos.chats.update(chat_id, domain=domain, archived=archived,
+                                mode=mode, sources=sources)
         return self.get_chat(user, chat_id)
 
     def delete(self, user: User, chat_id: int) -> None:
@@ -368,6 +482,14 @@ class AssistantService:
         hits, trail = self._collect(chat, question, history,
                                     top_k or profile["top_k"],
                                     attachments=attachments, rounds=profile["rounds"])
+        # Отчёт отдела — свидетельство об одном канале в один день, а не
+        # общее правило. На общем вопросе он не должен вытеснять нормы;
+        # на вопросе о нашей практике — наоборот, он и есть ответ.
+        # Выбрал человек — перестановка ничего не меняет: в выдаче тогда
+        # документы одного вида, и делить их не на что.
+        if not asks_about_own_cases(question):
+            hits = prefer_norms(hits)
+
         # Документы, названные в вопросе, сверяем с описью САМИ. Полагаться
         # на то, что поиск случайно вытянет нужный том, а модель случайно не
         # соврёт про его отсутствие, здесь нельзя: это ровно то место, где
@@ -733,6 +855,7 @@ class AssistantService:
         keywords = _attachment_keywords(attachments)
         query = " ".join([question, *previous, keywords])[:1400]
         domains = [chat.domain] if chat.domain else None
+        doc_types = SOURCE_DOC_TYPES.get(chat_sources(chat))
         # Для разговора берём больше фрагментов, чем для отчёта: там материал
         # ограничен факт-пакетом, здесь — только вопросом. Лишнее всё равно
         # отсечёт бюджет окна в _build_sources.
@@ -740,10 +863,15 @@ class AssistantService:
             getattr(self.settings, "assistant_top_k", 0) or self.settings.retrieval_top_k
         )
         try:
-            return retriever.search(query, top_k=wanted, domains=domains)
+            найдено = retriever.search(query, top_k=wanted, domains=domains,
+                                       doc_types=doc_types)
         except TypeError:
             # Поисковик без поддержки направлений (лексический запасной вариант).
-            return retriever.search(query, top_k=wanted)
+            найдено = retriever.search(query, top_k=wanted)
+        # Отбор источников держим и здесь. Запасной поисковик ключа doc_types
+        # не понимает и возвращает всё подряд — а человек, выбравший «нормы»,
+        # получил бы отчёты и не узнал бы об этом.
+        return _only_types(найдено, doc_types)
 
     def _fit_reserved(self, catalog_block: str, history: List[Dict[str, str]],
                       attachment_chars: int, *, fixed: int
@@ -941,12 +1069,18 @@ class AssistantService:
         if retriever is None:
             return []
         domains = [chat.domain] if chat.domain else None
+        # Тот же отбор источников, что и у первого поиска: иначе заход разбора
+        # тихо приносил бы то, что человек фильтром отключил.
+        doc_types = SOURCE_DOC_TYPES.get(chat_sources(chat))
         try:
-            return retriever.search(step.argument, top_k=RESEARCH_TOP_K, domains=domains)
-        except TypeError:              # поисковик без направлений
-            return retriever.search(step.argument, top_k=RESEARCH_TOP_K)
+            try:
+                найдено = retriever.search(step.argument, top_k=RESEARCH_TOP_K,
+                                           domains=domains, doc_types=doc_types)
+            except TypeError:          # поисковик без направлений
+                найдено = retriever.search(step.argument, top_k=RESEARCH_TOP_K)
         except Exception:              # noqa: BLE001 — заход не обязателен
             return []
+        return _only_types(найдено, doc_types)
 
     def _step_outline(self, step: Step) -> str:
         """Оглавление документа. Само по себе это не источник, а подсказка."""
@@ -1196,7 +1330,7 @@ _DOC_TYPE_TITLES = {
     "literature": "литература",
     "standards": "стандарт",
     "datasheets": "паспорт микросхемы",
-    "reports": "прошлый отчёт",
+    "reports": "ОТЧЁТ ОТДЕЛА по конкретному случаю",
     "regulations": "регламент",
     "misc": "прочее",
 }
@@ -1257,7 +1391,14 @@ def _render_sources(sources: Sequence[Dict[str, Any]],
         if not items:
             continue
         title = items[0].get("title") or doc_id
-        blocks.append(f"— — — ДОКУМЕНТ: {title} — — —")
+        # Вид документа стоит рядом с фрагментами, а не только в карте
+        # найденного. Иначе, дойдя до текста, модель уже не помнит, чем был
+        # источник, и разбор одного канала цитируется как определение.
+        вид = _DOC_TYPE_TITLES.get(items[0].get("doc_type", ""), "")
+        заголовок = f"— — — ДОКУМЕНТ: {title}"
+        if вид:
+            заголовок += f" [{вид}]"
+        blocks.append(заголовок + " — — —")
         for item in items:
             mark = "" if item.get("status", "current") == "current" else \
                 f" [ВНИМАНИЕ: документ не действующий — {item['status']}]"
