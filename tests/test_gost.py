@@ -156,7 +156,9 @@ class ИнтерфейсГостя(unittest.TestCase):
                   / "app.js").read_text(encoding="utf-8")
 
     def test_меню_гостя_только_помощник(self):
-        self.assertIn("if (isGuest() && section.route !== 'chat') return;", self.js)
+        # Отбор переехал в фильтр по группам, но правило то же: гостю открыт
+        # один помощник. Сличаем условие, а не строку целиком.
+        self.assertIn("if (isGuest() && section.route !== 'chat') return false;", self.js)
 
     def test_чужой_маршрут_возвращает_к_помощнику(self):
         self.assertIn("if (isGuest() && route.name !== 'chat')", self.js)

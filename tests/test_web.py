@@ -6222,9 +6222,15 @@ class ОформлениеИДвижение(unittest.TestCase):
         self.assertIn("Math.abs(цель) < 5", участок)
 
     def test_заголовок_столбца_не_обрезается(self):
-        # «Номер груп…» человек читает как опечатку, а не как узкий столбец.
+        """«Номер груп…» человек читает как опечатку, а не как узкий столбец.
+
+        Но и переносить ВНУТРИ слова нельзя: «Исходящи/й» читается хуже
+        обрезанного. Перенос по словам — да, разрыв слова — нет.
+        """
         участок = self.css.split("table.grid thead th {")[-1].split("}")[0]
         self.assertIn("white-space: normal", участок)
+        self.assertIn("overflow-wrap: normal", участок)
+        self.assertNotIn("overflow-wrap: anywhere", участок)
 
     def test_ничего_не_загружается_снаружи(self):
         # Машина изолирована: любая внешняя ссылка — отказ на пустом месте.
@@ -6297,3 +6303,122 @@ class ПлиткиСводки(unittest.TestCase):
     def test_плитки_вступают_по_очереди(self):
         self.assertIn("--i", self.js.split("function tile(")[1][:900])
         self.assertIn("calc(var(--i, 0) * 40ms)", self.css)
+
+
+class МенюОтдела(unittest.TestCase):
+    """Меню обрело устройство: главное действие, поиск, группы, недавнее.
+
+    Восемь пунктов подряд человек перечитывает каждый раз заново: список без
+    групп не запоминается, и глаз ищет «Библиотеку» между «Расходом» и
+    «Метриками» по буквам. Работа отдела начинается с письма — значит,
+    кнопка «Новое письмо» должна быть там, где её ищут не глядя, а не
+    третьей в ряду на экране писем.
+    """
+
+    def setUp(self):
+        статика = ROOT / "src" / "reportgen" / "web" / "static"
+        self.css = (статика / "styles.css").read_text(encoding="utf-8")
+        self.js = (статика / "app.js").read_text(encoding="utf-8")
+
+    def test_каждый_раздел_лежит_в_группе(self):
+        # Раздел без группы не попадёт в меню вовсе: сборка идёт по группам.
+        участок = self.js.split("const SECTIONS = [")[1].split("];")[0]
+        строки = [s for s in участок.splitlines() if "route:" in s]
+        self.assertTrue(строки)
+        for строка in строки:
+            with self.subTest(строка=строка.strip()[:60]):
+                self.assertIn("group:", строка, "раздел не отнесён ни к одной группе")
+
+    def test_группы_объявлены_и_названы_по_русски(self):
+        участок = self.js.split("const SECTION_GROUPS = [")[1].split("];")[0]
+        for название in ("Работа", "Знание", "Отдел"):
+            with self.subTest(название=название):
+                self.assertIn(название, участок)
+
+    def test_все_группы_разделов_описаны(self):
+        разделы = self.js.split("const SECTIONS = [")[1].split("];")[0]
+        группы = self.js.split("const SECTION_GROUPS = [")[1].split("];")[0]
+        названные = set()
+        for кусок in разделы.split("group: '")[1:]:
+            названные.add(кусок.split("'")[0])
+        описанные = set()
+        for кусок in группы.split("id: '")[1:]:
+            описанные.add(кусок.split("'")[0])
+        self.assertEqual(набор_без_пустого(названные), набор_без_пустого(описанные),
+                         "группа раздела не описана или описана лишняя")
+
+    def test_главное_действие_есть_и_ведёт_к_регистрации(self):
+        участок = self.js.split("function buildNavHead()")[1].split("\n    //:")[0]
+        self.assertIn("Новое письмо", участок)
+        self.assertIn("pendingNew = true", участок)
+
+    def test_главное_действие_скрыто_от_того_кто_не_заводит_письма(self):
+        участок = self.js.split("function buildNavHead()")[1].split("\n    //:")[0]
+        self.assertIn("canRegister()", участок)
+        правило = self.js.split("function canRegister()")[1].split("}")[0]
+        self.assertIn("isGuest()", правило)
+        self.assertIn("'viewer'", правило)
+
+    def test_переход_из_меню_открывает_окно_сразу(self):
+        # Иначе кнопка лишь перебрасывает на список, и человек нажимает
+        # второй раз уже там.
+        self.assertIn("if (casesState.pendingNew)", self.js)
+        участок = self.js.split("if (casesState.pendingNew)")[1][:220]
+        self.assertIn("openNewCaseDialog()", участок)
+        self.assertIn("pendingNew = false", участок)
+
+    def test_вход_в_поиск_показывает_сочетание_клавиш(self):
+        участок = self.js.split("function buildNavHead()")[1].split("\n    //:")[0]
+        self.assertIn("openPalette()", участок)
+        self.assertIn("Ctrl K", участок)
+
+    def test_недавнее_живёт_у_человека_в_браузере(self):
+        # Список личный: на сервере ему делать нечего.
+        self.assertIn("const RECENT_KEY = 'reportgen.recent'", self.js)
+        участок = self.js.split("function recentList()")[1].split("\n    /**")[0]
+        self.assertIn("localStorage.getItem", участок)
+        self.assertIn("catch", участок, "приватный режим не должен ронять меню")
+
+    def test_недавнее_не_растёт_без_предела(self):
+        self.assertIn("const RECENT_MAX = 4", self.js)
+        участок = self.js.split("function rememberRecent(")[1].split("\n    function ")[0]
+        self.assertIn("slice(0, RECENT_MAX)", участок)
+        self.assertIn("filter((item) => item.href !== href)", участок,
+                      "повторный заход задвоил бы строку")
+
+    def test_гостю_меню_не_показывает_лишнего(self):
+        """Гостю открыт один помощник — ни главного действия, ни недавнего.
+
+        Проверок должно быть ДВЕ: шапка меню и список недавнего. Одна из них
+        оставляет вторую дверь открытой, а сличение «строка есть где-то в
+        сборке» этого не заметит — строка там встречается не раз.
+        """
+        участок = self.js.split("function buildNav()")[1].split("\n    function navLink")[0]
+        self.assertGreaterEqual(участок.count("if (!isGuest())"), 2,
+                                "гостю закрыта не вся лишняя часть меню")
+
+    def test_свёрнутое_меню_прячет_подписи_групп(self):
+        # От подписи группы там остаётся обрубок в два знака. Сличаем со
+        # знаком после имени: «.side-group» — начало и у «.side-group-off».
+        self.assertIn("body.side-min .side-group,", self.css)
+        self.assertIn("body.side-min .side-recent,", self.css)
+
+    def test_у_значка_в_рельсе_есть_всплывающая_подпись(self):
+        # Без неё свёрнутое меню превращается в загадку.
+        self.assertIn("body.side-min .side-nav a > span", self.css)
+        участок = self.css.split("body.side-min .side-nav a > span {")[1].split("}")[0]
+        self.assertIn("opacity: 0", участок)
+        self.assertIn("body.side-min .side-nav a:focus-visible > span", self.css,
+                      "подпись не показывается тому, кто ходит клавиатурой")
+
+    def test_кнопка_в_меню_не_теряет_цвет(self):
+        # Общее правило «.side-nav a» приглушает цвет до подписи раздела:
+        # белым по стали надпись становится серой по стали. Вес селектора
+        # обязан быть выше — и именно у правила о цвете, а не только у
+        # соседнего правила о значке.
+        участок = self.css.split(".side-nav a.side-new,")[1].split("}")[0]
+        self.assertIn("color: var(--accent-text)", участок)
+
+
+def набор_без_пустого(значения):
+    return {значение for значение in значения if значение}

@@ -739,6 +739,11 @@
         return !!state.user && state.user.is_guest === true;
     }
 
+    /** Может ли этот человек заводить письма. Техник и гость — нет. */
+    function canRegister() {
+        return canEdit() && !isGuest() && state.user.role !== 'viewer';
+    }
+
     /** Может ли этот человек проверять отчёты: начальник отдела или зам.
      *
      * Это не то же самое, что права администратора: начальник группы заводит
@@ -923,18 +928,33 @@
         users: '<path d="M6.2 8.5a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2zM1.8 15c0-2.4 2-4 4.4-4s4.4 1.6 4.4 4M11.5 4a2.3 2.3 0 0 1 0 4.6M13 11.2c1.6.5 2.7 1.8 2.7 3.8"/>',
         roster: '<path d="M2.5 4h13v11.5h-13zM2.5 7.5h13M6 2.5v3M12 2.5v3M5.5 10.5h2M8.5 10.5h2M11.5 10.5h2M5.5 13h2M8.5 13h2"/>',
         talks: '<path d="M2.5 3.5h10v7h-6l-4 3zM12.5 6h3v7h-2.5l-3 2.2V13"/>',
+        plus: '<path d="M9 3.5v11M3.5 9h11"/>',
+        search: '<path d="M12.6 12.6 15.5 15.5M8.2 3.4a4.8 4.8 0 1 0 0 9.6 4.8 4.8 0 0 0 0-9.6z"/>',
+        clock: '<path d="M9 2.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 9 2.6zM9 5.5V9l2.4 1.6"/>',
     };
 
     /** Разделы бокового меню. Порядок — от «что сегодня» к справочникам. */
+    //: Разделы, разложенные по смыслу работы. Восемь пунктов подряд человек
+    //: перечитывает каждый раз заново: список без групп не запоминается, и
+    //: глаз ищет «Библиотеку» между «Расходом» и «Метриками» по буквам.
+    //: Три группы отвечают трём разным вопросам: что у нас в работе, где
+    //: посмотреть, и кто чем занят.
     const SECTIONS = [
-        { route: 'board', href: '#/board', title: 'Сводка', icon: 'board' },
-        { route: 'cases', href: '#/cases', title: 'Письма', icon: 'letters', count: 'letters' },
-        { route: 'roster', href: '#/roster', title: 'Расход', icon: 'roster' },
-        { route: 'talks', href: '#/talks', title: 'Сообщения', icon: 'talks', count: 'talks' },
-        { route: 'chat', href: '#/chat', title: 'Помощник', icon: 'chat' },
-        { route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
-        { route: 'stats', href: '#/stats', title: 'Метрики', icon: 'stats' },
-        { route: 'users', href: '#/users', title: 'Военнослужащие', icon: 'users', adminOnly: true },
+        { group: 'work', route: 'board', href: '#/board', title: 'Сводка', icon: 'board' },
+        { group: 'work', route: 'cases', href: '#/cases', title: 'Письма', icon: 'letters', count: 'letters' },
+        { group: 'work', route: 'roster', href: '#/roster', title: 'Расход', icon: 'roster' },
+        { group: 'know', route: 'chat', href: '#/chat', title: 'Помощник', icon: 'chat' },
+        { group: 'know', route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
+        { group: 'dept', route: 'talks', href: '#/talks', title: 'Сообщения', icon: 'talks', count: 'talks' },
+        { group: 'dept', route: 'users', href: '#/users', title: 'Военнослужащие', icon: 'users', adminOnly: true },
+        { group: 'dept', route: 'stats', href: '#/stats', title: 'Метрики', icon: 'stats' },
+    ];
+
+    //: Подписи групп. Порядок здесь и есть порядок в меню.
+    const SECTION_GROUPS = [
+        { id: 'work', title: 'Работа' },
+        { id: 'know', title: 'Знание' },
+        { id: 'dept', title: 'Отдел' },
     ];
 
     /** Какой пункт меню подсвечивать для вложенного экрана. */
@@ -957,20 +977,112 @@
         const nav = $('#nav');
         if (!nav) return;
         clear(nav);
-        SECTIONS.forEach((section) => {
-            if (section.adminOnly && !isAdmin()) return;
-            if (isGuest() && section.route !== 'chat') return;
-            const link = h('a', {
-                href: section.href,
-                dataset: { route: section.route },
-                title: section.title,
-            }, icon(section.icon), h('span', {}, section.title));
-            if (section.count) {
-                link.appendChild(h('b', { class: 'side-count', hidden: true, dataset: { count: section.count } }));
-            }
-            nav.appendChild(link);
+
+        // Гостю показывать нечего, кроме помощника: ни главного действия, ни
+        // недавнего у него нет, и пустые заголовки групп только мешают.
+        if (!isGuest()) {
+            nav.appendChild(buildNavHead());
+        }
+
+        SECTION_GROUPS.forEach((group) => {
+            const пункты = SECTIONS.filter((section) => {
+                if (section.group !== group.id) return false;
+                if (section.adminOnly && !isAdmin()) return false;
+                if (isGuest() && section.route !== 'chat') return false;
+                return true;
+            });
+            if (!пункты.length) return;
+            // Подпись группы прячется в свёрнутом меню: там от неё остаётся
+            // обрубок в два знака, который читается как мусор.
+            nav.appendChild(h('div', { class: 'side-group' }, group.title));
+            пункты.forEach((section) => nav.appendChild(navLink(section)));
         });
+
+        if (!isGuest()) {
+            renderRecent(nav);
+        }
         setActiveNav(state.route ? state.route.name : 'board');
+    }
+
+    function navLink(section) {
+        const link = h('a', {
+            href: section.href,
+            dataset: { route: section.route },
+            title: section.title,
+        }, icon(section.icon), h('span', {}, section.title));
+        if (section.count) {
+            link.appendChild(h('b', {
+                class: 'side-count', hidden: true,
+                dataset: { count: section.count },
+            }));
+        }
+        return link;
+    }
+
+    /**
+     * Шапка меню: главное действие и вход в поиск.
+     *
+     * Работа отдела начинается с письма — значит, кнопка «Зарегистрировать»
+     * должна быть там, где её ищут не глядя, а не третьей в ряду на экране
+     * писем. Поиск рядом с ней, с подписью сочетания клавиш: человек,
+     * увидевший «Ctrl K» один раз, дальше пользуется им, а не мышью.
+     */
+    function buildNavHead() {
+        const голова = h('div', { class: 'side-head' });
+        if (canRegister()) {
+            голова.appendChild(h('a', {
+                class: 'btn btn--primary side-new',
+                href: '#/cases',
+                title: 'Зарегистрировать входящее письмо',
+                onclick: () => { casesState.pendingNew = true; },
+            }, icon('plus'), h('span', {}, 'Новое письмо')));
+        }
+        голова.appendChild(h('button', {
+            class: 'side-search',
+            type: 'button',
+            title: 'Поиск по системе (Ctrl+K)',
+            onclick: () => openPalette(),
+        }, icon('search'), h('span', {}, 'Поиск'), h('kbd', {}, 'Ctrl K')));
+        return голова;
+    }
+
+    //: Куда человек заходил в последний раз. Хранится у него в браузере:
+    //: список личный, на сервере ему делать нечего.
+    const RECENT_KEY = 'reportgen.recent';
+    const RECENT_MAX = 4;
+
+    function recentList() {
+        try {
+            const сырое = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+            return Array.isArray(сырое) ? сырое.filter((item) => item && item.href) : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    /** Запомнить открытое: письмо или разговор, по названию и адресу. */
+    function rememberRecent(href, title) {
+        if (!href || !title) return;
+        const список = recentList().filter((item) => item.href !== href);
+        список.unshift({ href: href, title: String(title).slice(0, 80) });
+        try {
+            localStorage.setItem(RECENT_KEY, JSON.stringify(список.slice(0, RECENT_MAX)));
+        } catch (error) { /* приватный режим — обойдёмся без списка */ }
+        const nav = $('#nav');
+        if (nav) renderRecent(nav);
+    }
+
+    function renderRecent(nav) {
+        const прежнее = nav.querySelector('.side-recent');
+        if (прежнее) прежнее.remove();
+        const прежняя = nav.querySelector('.side-group--recent');
+        if (прежняя) прежняя.remove();
+        const список = recentList();
+        if (!список.length) return;
+        nav.appendChild(h('div', { class: 'side-group side-group--recent' }, 'Недавнее'));
+        nav.appendChild(h('div', { class: 'side-recent' }, список.map((item) =>
+            h('a', { href: item.href, title: item.title },
+                icon('clock'), h('span', {}, item.title)))));
     }
 
     /** Показать счётчик у раздела: сколько писем в работе и сколько просрочено. */
@@ -2271,6 +2383,11 @@
         today: '',
         items: [],
         staff: [],
+        //: Нажали «Новое письмо» в меню, находясь в другом разделе. Экран
+        //: писем откроет окно регистрации сам, как только соберётся: иначе
+        //: кнопка в меню лишь перебрасывала на список, и человек нажимал
+        //: второй раз уже там.
+        pendingNew: false,
     };
 
     /* Наборы писем на кнопках-фильтрах. */
@@ -2348,6 +2465,10 @@
             tableBox,
             footer,
         ]);
+        if (casesState.pendingNew) {
+            casesState.pendingNew = false;
+            if (canEdit()) openNewCaseDialog();
+        }
 
         function renderTabs() {
             clear(tabs);
