@@ -1060,3 +1060,398 @@ class AssistantHttpTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ОпознаниеДокументаПоИмени(AssistantTestCase):
+    """Модель называет документ как умеет, а система обязана его узнать.
+
+    В разборе заходами помощник может попросить открыть документ по имени.
+    Опознание сличало имя с идентификатором точно, а с названием — как
+    подстроку. Из-за этого «RFC 4818» узнавалось, а «RFC4818», «rfc4818» и
+    «RFC-4818» — нет: подстроки «rfc4818» в названии «RFC 4818. RADIUS
+    Delegated-IPv6-Prefix Attribute» нет.
+
+    Не узнав документ, помощник не открывал его вовсе — и отвечал, что
+    такого в библиотеке нет, о документе, который лежит на полке.
+    """
+
+    with_library = False
+
+    def setUp(self):
+        super().setUp()
+        from reportgen.corpus import Chunk
+
+        self.документы = {
+            "standards/rfc/rfc4818": "RFC 4818. RADIUS Delegated-IPv6-Prefix Attribute",
+            "standards/rfc/rfc481": "RFC 481. Ранний документ про сеть",
+            "standards/gost/gost-53363": "ГОСТ Р 53363-2009. Цифровые радиорелейные линии",
+            "literature/книга": "Спутниковые системы связи",
+        }
+        for doc_id, title in self.документы.items():
+            документ = self.repos.documents.upsert(
+                doc_id, "standards", title, "", "sha-" + doc_id[-8:],
+                meta={"title": title}, domain="protocols",
+            )
+            куски = [Chunk(f"{doc_id}#1", doc_id, "standards", [title],
+                           "Текст документа про поля и их назначение. " * 20)]
+            self.repos.chunks.replace_for_document(документ, куски)
+
+    def опознать(self, имя):
+        return self.assistant._resolve_document(имя)
+
+    def test_имя_через_пробел_узнаётся(self):
+        self.assertEqual("standards/rfc/rfc4818", self.опознать("RFC 4818"))
+
+    def test_слитное_имя_узнаётся(self):
+        self.assertEqual("standards/rfc/rfc4818", self.опознать("RFC4818"),
+                         "слитная запись номера не опознана")
+
+    def test_разные_написания_дают_один_документ(self):
+        for имя in ("rfc4818", "RFC-4818", "rfc 4818", "RFC4818", "«RFC 4818»"):
+            with self.subTest(имя=имя):
+                self.assertEqual("standards/rfc/rfc4818", self.опознать(имя))
+
+    def test_имя_файла_узнаётся(self):
+        # Инженер видит в карточке «rfc4818.txt» и называет документ так же.
+        self.assertEqual("standards/rfc/rfc4818", self.опознать("rfc4818.txt"))
+
+    def test_идентификатор_целиком_узнаётся(self):
+        self.assertEqual("standards/rfc/rfc4818",
+                         self.опознать("standards/rfc/rfc4818"))
+
+    def test_соседний_номер_не_подменяет_искомый(self):
+        # «RFC 481» и «RFC 4818» — разные документы. Совпадение по началу
+        # строки не должно съедать границу числа.
+        self.assertEqual("standards/rfc/rfc481", self.опознать("RFC 481"))
+        self.assertEqual("standards/rfc/rfc481", self.опознать("RFC481"))
+
+    def test_гост_с_дефисами_и_без(self):
+        for имя in ("ГОСТ Р 53363-2009", "ГОСТ Р 53363", "гост р 53363-2009"):
+            with self.subTest(имя=имя):
+                self.assertEqual("standards/gost/gost-53363", self.опознать(имя))
+
+    def test_чужое_имя_не_придумывается(self):
+        # Хуже несработавшего опознания только опознание наугад: помощник
+        # открыл бы посторонний документ и сослался на него.
+        self.assertEqual("", self.опознать("RFC 9999"))
+        self.assertEqual("", self.опознать("методика измерения ОБВ"))
+
+    def test_пустое_имя_ничего_не_возвращает(self):
+        self.assertEqual("", self.опознать(""))
+        self.assertEqual("", self.опознать("   "))
+
+
+class ОбозначенияВВопросе(unittest.TestCase):
+    """Из вопроса надо выудить названные документы — по ним и проверять.
+
+    Инженер спрашивает «что RFC 4818 говорит про Delegated-IPv6-Prefix». Пока
+    система не знает, что в вопросе назван документ, ответ «в библиотеке
+    такого нет» держится на одной удаче поиска. Зная обозначение, она может
+    свериться с описью и подложить нужный документ сама.
+    """
+
+    def выудить(self, текст):
+        from reportgen.web.assistant import designations_in
+
+        return designations_in(текст)
+
+    def test_номер_rfc_в_любом_написании(self):
+        for текст, ожидание in (
+            ("что говорит RFC 4818", ["RFC 4818"]),
+            ("а в RFC4818 что", ["RFC 4818"]),
+            ("см. RFC-4818", ["RFC 4818"]),
+            ("rfc 791 и rfc 793", ["RFC 791", "RFC 793"]),
+        ):
+            with self.subTest(текст=текст):
+                self.assertEqual(ожидание, self.выудить(текст))
+
+    def test_гост_с_годом_и_без(self):
+        self.assertEqual(["ГОСТ Р 53363-2009"],
+                         self.выудить("по ГОСТ Р 53363-2009 допуск такой"))
+        self.assertEqual(["ГОСТ 26599"], self.выудить("ГОСТ 26599 определяет"))
+
+    def test_рекомендации_мсэ(self):
+        for текст, ожидание in (
+            ("Рекомендация МСЭ-Т G.703", ["G.703"]),
+            ("по ITU-T X.25 кадр устроен так", ["X.25"]),
+            ("МСЭ-T Y.1541", ["Y.1541"]),
+        ):
+            with self.subTest(текст=текст):
+                self.assertEqual(ожидание, self.выудить(текст))
+
+    def test_ieee_и_iso(self):
+        self.assertEqual(["IEEE 802.11"], self.выудить("стандарт IEEE 802.11"))
+        self.assertEqual(["ISO 11801"], self.выудить("по ISO 11801"))
+
+    def test_одно_обозначение_не_повторяется(self):
+        self.assertEqual(["RFC 4818"],
+                         self.выудить("RFC 4818 и ещё раз rfc4818, а также RFC-4818"))
+
+    def test_обычный_текст_обозначений_не_даёт(self):
+        # Ложное срабатывание стоит лишнего запроса к описи — не беда. А вот
+        # выуживать обозначение из каждого числа нельзя: тогда «полоса 30 кГц»
+        # и «64 сегмента» превратятся в документы.
+        for текст in ("измерение в полосе 30 кГц", "усреднение по 64 сегментам",
+                      "какая антенна подойдёт", "цифровой поток 2048 кбит/с"):
+            with self.subTest(текст=текст):
+                self.assertEqual([], self.выудить(текст))
+
+    def test_обозначений_берём_не_больше_разумного(self):
+        # Вопрос со списком из полусотни номеров не должен превращаться в
+        # полсотни запросов к описи на каждый заход.
+        много = " ".join(f"RFC {номер}" for номер in range(1000, 1100))
+        self.assertLessEqual(len(self.выудить(много)), 8)
+
+
+class НазванныйДокументПроверяетсяПоОписи(AssistantTestCase):
+    """«В библиотеке этого нет» — утверждение, которое обязано быть проверено.
+
+    Отдел столкнулся с этим на живой библиотеке в тридцать тысяч документов:
+    инженер спросил про RFC 4818, документ лежал на полке, а помощник ответил,
+    что такого в библиотеке нет. Разбор показал, что опереться ему было не на
+    что: выдача поиска пуста или мимо, опись в подсказке урезана до трёх
+    десятков названий из тридцати тысяч, и ни строчки о том, что это выборка.
+
+    Ответ на «есть ли такой документ» лежит в базе и берётся одним запросом.
+    Поэтому обозначение из вопроса сверяется с описью напрямую, а найденный
+    документ подкладывается в источники, даже если поиск до него не дотянулся.
+    """
+
+    with_library = False
+
+    def setUp(self):
+        super().setUp()
+        from reportgen.corpus import Chunk
+
+        название = "RFC 4818. RADIUS Delegated-IPv6-Prefix Attribute"
+        документ = self.repos.documents.upsert(
+            "standards/rfc/rfc4818", "standards", название, "", "sha-4818",
+            meta={"title": название}, domain="protocols",
+        )
+        куски = [
+            Chunk("standards/rfc/rfc4818#1", "standards/rfc/rfc4818", "standards",
+                  [название, "Введение"],
+                  "Атрибут Delegated-IPv6-Prefix переносит делегированный префикс. " * 12),
+            Chunk("standards/rfc/rfc4818#2", "standards/rfc/rfc4818", "standards",
+                  [название, "Формат"],
+                  "Поля атрибута: Type, Length, Reserved, Prefix-Length, Prefix. " * 12),
+        ]
+        self.repos.chunks.replace_for_document(документ, куски)
+        # Соседи, которые и будут находиться поиском по общим словам.
+        for номер in (2865, 3162, 3633):
+            имя = f"RFC {номер}. Прочий документ"
+            сосед = self.repos.documents.upsert(
+                f"standards/rfc/rfc{номер}", "standards", имя, "", f"sha-{номер}",
+                meta={"title": имя}, domain="protocols",
+            )
+            self.repos.chunks.replace_for_document(сосед, [
+                Chunk(f"standards/rfc/rfc{номер}#1", f"standards/rfc/rfc{номер}",
+                      "standards", [имя], "Общие слова про радиус и адресацию. " * 12)])
+        self.chat = self.assistant.create_chat(self.ivanov)
+
+    def подготовить(self, вопрос):
+        return self.assistant._prepare(self.ivanov, self.chat.id, вопрос, top_k=6)
+
+    def test_числящийся_документ_назван_числящимся(self):
+        готово = self.подготовить("что говорит RFC 4818 про формат атрибута")
+        self.assertIn("### ДОКУМЕНТЫ, НАЗВАННЫЕ В ВОПРОСЕ", готово["prompt"])
+        self.assertIn("RFC 4818 — ЧИСЛИТСЯ", готово["prompt"])
+        self.assertIn("standards/rfc/rfc4818", готово["prompt"])
+
+    def test_слитная_запись_тоже_проверяется(self):
+        готово = self.подготовить("а что в RFC4818 сказано про Prefix-Length")
+        self.assertIn("RFC 4818 — ЧИСЛИТСЯ", готово["prompt"])
+
+    def test_отсутствующий_документ_назван_прямо(self):
+        готово = self.подготовить("что говорит RFC 9999 про это")
+        self.assertIn("RFC 9999 — в библиотеке НЕ ЧИСЛИТСЯ", готово["prompt"])
+
+    def test_названный_документ_попадает_в_источники(self):
+        # Даже когда вопрос задан словами, которых в документе нет: поиск
+        # приносит соседей, а спрашивали про этот том.
+        готово = self.подготовить("RFC 4818 — что там вообще написано")
+        источники = [строка["doc_id"] for строка in готово["sources"]]
+        self.assertIn("standards/rfc/rfc4818", источники,
+                      "названный документ не подложен в источники")
+        self.assertEqual("standards/rfc/rfc4818", источники[0],
+                         "названный документ не поставлен первым")
+
+    def test_подкладывается_подходящий_фрагмент_а_не_первый_попавшийся(self):
+        готово = self.подготовить("RFC 4818: какие поля у атрибута, Prefix-Length")
+        свои = [строка["chunk_uid"] for строка in готово["sources"]
+                if строка["doc_id"] == "standards/rfc/rfc4818"]
+        self.assertEqual("standards/rfc/rfc4818#2", свои[0],
+                         "подложено начало документа вместо подходящего раздела")
+
+    def test_найденный_поиском_документ_не_дублируется(self):
+        готово = self.подготовить(
+            "RFC 4818 Delegated-IPv6-Prefix делегированный префикс атрибут")
+        свои = [строка["chunk_uid"] for строка in готово["sources"]
+                if строка["doc_id"] == "standards/rfc/rfc4818"]
+        self.assertEqual(len(свои), len(set(свои)), "фрагменты документа задвоились")
+
+    def test_без_обозначений_раздела_нет(self):
+        # Обычный вопрос не должен обрастать пустым разделом.
+        готово = self.подготовить("как устроено стафингование в цифровом тракте")
+        # Само правило раздел упоминает всегда — ищем именно заголовок.
+        self.assertNotIn("### ДОКУМЕНТЫ, НАЗВАННЫЕ В ВОПРОСЕ", готово["prompt"])
+
+    def test_подсказка_говорит_что_опись_неполна(self):
+        готово = self.подготовить("что говорит RFC 4818")
+        self.assertIn("ВЫБОРКА из описи", готово["prompt"])
+        self.assertIn("НЕ значит, что его", готово["prompt"])
+
+    def test_подсказка_разводит_два_утверждения(self):
+        готово = self.подготовить("что говорит RFC 4818")
+        self.assertIn("РАЗДЕЛЯЙ ДВА РАЗНЫХ УТВЕРЖДЕНИЯ", готово["prompt"])
+        self.assertIn("НЕ ЧИСЛИТСЯ", готово["prompt"])
+
+
+class ОпознаниеПриНесколькихПохожих(AssistantTestCase):
+    """Когда на обозначение похожи несколько документов — берётся точный.
+
+    В библиотеке на тридцать тысяч документов у одного номера набирается
+    родня: сам стандарт, обзор по нему, отменённая редакция. Порядок
+    сличения должен быть от точного к приблизительному, иначе помощник
+    откроет обзор вместо стандарта и сошлётся на пересказ как на норму.
+    """
+
+    with_library = False
+
+    def setUp(self):
+        super().setUp()
+        from reportgen.corpus import Chunk
+
+        # «literature» стоит в описи ПЕРЕД «standards» (сортировка по типу),
+        # поэтому приблизительные совпадения встречаются раньше точного.
+        # Если бы порядок решал, побеждали бы они.
+        self.завести("literature/обзор-4818", "literature",
+                     "RFC 4818 в вопросах и ответах")
+        self.завести("literature/сборник", "literature",
+                     "Сборник разборов: RFC 4818 и смежные документы")
+        self.завести("standards/rfc/rfc4818", "standards",
+                     "RFC 4818. RADIUS Delegated-IPv6-Prefix Attribute")
+        self.завести("literature/гост-обзор", "literature",
+                     "Обзор по ГОСТ Р 53363-2009 и его применению")
+        self.завести("standards/gost/gost-53363", "standards",
+                     "ГОСТ Р 53363-2009. Цифровые радиорелейные линии")
+
+    def завести(self, doc_id, тип, название, статус="current"):
+        from reportgen.corpus import Chunk
+
+        документ = self.repos.documents.upsert(
+            doc_id, тип, название, "", "sha-" + doc_id[-10:],
+            meta={"title": название}, domain="protocols",
+        )
+        self.repos.chunks.replace_for_document(документ, [
+            Chunk(f"{doc_id}#1", doc_id, тип, [название],
+                  "Содержание документа про поля и их назначение. " * 15)])
+        if статус != "current":
+            self.repos.documents.set_status(doc_id, статус, "")
+        return документ
+
+    def test_точное_имя_файла_бьёт_совпадение_по_началу_названия(self):
+        # «RFC 4818» — это имя файла rfc4818. Обзор, чьё НАЗВАНИЕ начинается
+        # теми же словами, стандарт подменять не должен.
+        self.assertEqual("standards/rfc/rfc4818",
+                         self.assistant._resolve_document("RFC 4818"))
+        self.assertEqual("standards/rfc/rfc4818",
+                         self.assistant._resolve_document("RFC4818"))
+
+    def test_совпадение_по_началу_бьёт_совпадение_в_середине(self):
+        # «ГОСТ Р 53363» точного имени не имеет ни у кого: у стандарта имя
+        # файла gost-53363, а обозначение с буквой «Р» стоит в НАЧАЛЕ его
+        # названия — и в СЕРЕДИНЕ названия обзора. Побеждает начало.
+        self.assertEqual("standards/gost/gost-53363",
+                         self.assistant._resolve_document("ГОСТ Р 53363"))
+
+    def test_отменённая_редакция_числится_а_не_пропадает(self):
+        """Отменённых редакций RFC тысячи, и спрашивают о них постоянно.
+
+        Опись в подсказке отдаёт только действующие документы — направлять
+        инженера к устаревшему тому незачем. Но вопрос «что было в RFC 2616»
+        задают именно об устаревшем, и ответ «в библиотеке не числится» был
+        бы ложью: документ лежит на полке, просто помечен заменённым.
+        """
+        self.завести("standards/rfc/rfc2616", "standards",
+                     "RFC 2616. HTTP/1.1", статус="superseded")
+        self.assertEqual("standards/rfc/rfc2616",
+                         self.assistant._resolve_document("RFC 2616"))
+        чат = self.assistant.create_chat(self.ivanov)
+        готово = self.assistant._prepare(
+            self.ivanov, чат.id, "что говорит RFC 2616 про заголовки", top_k=6)
+        self.assertIn("RFC 2616 — ЧИСЛИТСЯ", готово["prompt"])
+        self.assertIn("superseded", готово["prompt"],
+                      "не сказано, что редакция отменена")
+
+
+class НазванноеПодкладываетсяДажеМимоПоиска(AssistantTestCase):
+    """Поиск до документа не дотянулся — значит, подложить его силой.
+
+    Это ядро всей правки. Инженер назвал документ; отвечать по соседним
+    томам, а тем более отрицать существование названного, недопустимо, как
+    бы ни легла выдача поиска.
+    """
+
+    with_library = False
+
+    def setUp(self):
+        super().setUp()
+        from reportgen.corpus import Chunk
+
+        название = "RFC 4818. RADIUS Delegated-IPv6-Prefix Attribute"
+        документ = self.repos.documents.upsert(
+            "standards/rfc/rfc4818", "standards", название, "", "sha-4818",
+            meta={"title": название}, domain="protocols",
+        )
+        # Нужный раздел нарочно стоит пятым: подкладываем три фрагмента, и
+        # взятые «с начала» его не захватят. Так проверяется, что фрагменты
+        # выбираются по вопросу, а не по порядку.
+        разделы = [
+            ("Введение", "Общие слова о назначении документа и области применения. "),
+            ("Термины", "Определения понятий, принятых в настоящем документе. "),
+            ("Замечания по безопасности", "Соображения о защите передаваемых данных. "),
+            ("Взаимодействие с IANA", "Порядок присвоения числовых значений. "),
+            ("Формат атрибута", "Поля Type, Length, Reserved, Prefix-Length и Prefix. "),
+            ("Благодарности", "Перечисление участников подготовки документа. "),
+        ]
+        self.repos.chunks.replace_for_document(документ, [
+            Chunk(f"standards/rfc/rfc4818#{номер}", "standards/rfc/rfc4818",
+                  "standards", [название, заголовок], текст * 12)
+            for номер, (заголовок, текст) in enumerate(разделы, start=1)
+        ])
+        # Документ уводим из поиска: так воспроизводится «поиск не дотянулся»
+        # без подгонки весов. Для инженера это тот же случай — он спросил про
+        # документ, а выдача его не принесла.
+        self.repos.documents.set_status("standards/rfc/rfc4818", "archived", "")
+        self.chat = self.assistant.create_chat(self.ivanov)
+
+    def подготовить(self, вопрос):
+        return self.assistant._prepare(self.ivanov, self.chat.id, вопрос, top_k=6)
+
+    def test_поиск_действительно_ничего_не_даёт(self):
+        # Опора теста: без подкладывания источников не было бы вовсе.
+        поиск = self.reports.get_retriever()
+        self.assertEqual([], поиск.search("RFC 4818 Prefix-Length", top_k=6))
+
+    def test_названный_документ_всё_равно_в_источниках(self):
+        готово = self.подготовить("что говорит RFC 4818 про Prefix-Length")
+        источники = [строка["doc_id"] for строка in готово["sources"]]
+        self.assertTrue(источники, "названный документ не подложен, отвечать не на чем")
+        self.assertEqual({"standards/rfc/rfc4818"}, set(источники))
+
+    def test_подкладывается_подходящий_раздел_а_не_начало(self):
+        # В документе шесть разделов, подкладываем три. Выбирать их надо по
+        # вопросу: иначе инженер получит «Введение» и «Термины» на вопрос о
+        # формате поля, а нужный раздел останется непрочитанным.
+        готово = self.подготовить("RFC 4818: какие поля, Prefix-Length, Reserved")
+        свои = {строка["chunk_uid"] for строка in готово["sources"]}
+        self.assertIn("standards/rfc/rfc4818#5", свои,
+                      "раздел про формат атрибута не подложен")
+        self.assertNotIn("standards/rfc/rfc4818#1", свои,
+                         "подложены первые разделы подряд, без учёта вопроса")
+        self.assertLessEqual(len(свои), 3, "подложен весь документ целиком")
+
+    def test_числится_несмотря_на_пустую_выдачу(self):
+        готово = self.подготовить("есть ли у нас RFC 4818")
+        self.assertIn("RFC 4818 — ЧИСЛИТСЯ", готово["prompt"])

@@ -20,7 +20,7 @@ from ..prompts import (
     RESEARCH_PROMPT,
     RESEARCH_SYSTEM_PROMPT,
 )
-from ..retrieval import Hit, reciprocal_rank_fusion
+from ..retrieval import BM25Index, Hit, reciprocal_rank_fusion
 from ..store.models import ATTACHMENT_TITLES, Chat, ChatMessage, User
 from .catalog import (
     CATALOG_CHARS,
@@ -36,6 +36,105 @@ from .research import (
     render_trail,
 )
 from .service import ReportService, ServiceError
+
+
+#: Слова и числа порознь: «RFC4818» — это ['rfc', '4818'], как и «RFC 4818».
+_NAME_PARTS = re.compile(r"[0-9]+|[a-zа-яё]+")
+
+#: Расширения, которые инженер называет вместе с документом («rfc4818.txt»).
+#: Отбрасываем только в конце и только когда перед ними что-то есть.
+_FILE_SUFFIXES = frozenset(
+    ("txt", "pdf", "md", "html", "htm", "xml", "doc", "docx",
+     "rtf", "odt", "djvu", "ps")
+)
+
+
+def name_parts(text: str) -> List[str]:
+    """Имя документа как последовательность слов и чисел.
+
+    Написание разное — «RFC 4818», «RFC4818», «RFC-4818», «rfc4818.txt», —
+    а последовательность одна: ['rfc', '4818']. По ней и сличаем. Сличать
+    подстроками нельзя: «RFC 481» является подстрокой «RFC 4818», и запрос об
+    одном документе открывал другой.
+    """
+    части = _NAME_PARTS.findall(str(text).casefold().replace("ё", "е"))
+    if len(части) > 1 and части[-1] in _FILE_SUFFIXES:
+        части = части[:-1]
+    return части
+
+
+#: Обозначения документов, которые в отделе называют по номеру. Список
+#: намеренно закрытый: выуживать документ из каждого числа нельзя, иначе
+#: «полоса 30 кГц» и «усреднение по 64 сегментам» превратятся в стандарты.
+_DESIGNATION_PREFIXES = (
+    "RFC", "STD", "BCP", "FYI",
+    "ГОСТ Р", "ГОСТ", "ОСТ", "РД", "СНиП", "ТУ",
+    "IEEE", "ISO/IEC", "ISO", "IEC", "ETSI", "EN", "ANSI", "TIA", "3GPP",
+)
+
+#: «RFC 4818», «RFC4818», «RFC-4818», «ГОСТ Р 53363-2009».
+_DESIGNATION_RE = re.compile(
+    r"\b(?P<prefix>" + "|".join(
+        часть.replace(" ", r"\s+").replace("/", r"\s*/\s*")
+        for часть in _DESIGNATION_PREFIXES
+    ) + r")\s*[-—–]?\s*(?P<number>\d{1,5}(?:\.\d+[a-zA-Zа-яА-Я]*)?(?:-\d{1,4})?)\b",
+    re.IGNORECASE,
+)
+
+#: Рекомендации МСЭ называют буквой с номером: G.703, X.25, Y.1541. Само по
+#: себе «G.703» слишком похоже на обычное число с точкой, поэтому берём его
+#: только рядом со словами, которые в отделе стоят перед рекомендацией.
+_ITU_RE = re.compile(
+    r"(?:МСЭ|ITU|Рекомендаци\w*|Recommendation)\s*[-—–]?\s*"
+    r"(?:[TRSТР]\b[.\s-]*)?"
+    r"(?P<code>[A-ZА-Я]\.\d{1,4}(?:\.\d+)*)",
+    re.IGNORECASE,
+)
+
+#: Сколько обозначений разбираем. Вопрос со списком из полусотни номеров не
+#: должен превращаться в полсотни запросов к описи на каждом заходе.
+MAX_DESIGNATIONS = 8
+
+
+def designations_in(text: str) -> List[str]:
+    """Обозначения документов, названные в тексте, в порядке появления.
+
+    Нужны, чтобы система могла свериться с описью САМА, а не надеяться, что
+    поиск случайно вытянет нужный документ, а модель случайно не соврёт про
+    его отсутствие. «Есть ли у нас RFC 4818» — вопрос, на который в базе есть
+    точный ответ; узнавать его перебором фрагментов незачем.
+    """
+    найдено: List[str] = []
+    видели = set()
+
+    def добавить(значение: str) -> None:
+        ключ = "".join(name_parts(значение))
+        if ключ and ключ not in видели:
+            видели.add(ключ)
+            найдено.append(значение)
+
+    строка = str(text or "")
+    for match in _DESIGNATION_RE.finditer(строка):
+        приставка = re.sub(r"\s+", " ", match.group("prefix")).strip()
+        # Приставку приводим к тому виду, в котором её пишут в названиях:
+        # латиницу заглавными, русское «ГОСТ Р» — как в списке.
+        для_списка = next(
+            (образец for образец in _DESIGNATION_PREFIXES
+             if "".join(name_parts(образец)) == "".join(name_parts(приставка))),
+            приставка,
+        )
+        добавить(f"{для_списка} {match.group('number')}")
+    for match in _ITU_RE.finditer(строка):
+        добавить(match.group("code").upper())
+    return найдено[:MAX_DESIGNATIONS]
+
+
+def _подряд(где: Sequence[str], что: Sequence[str]) -> bool:
+    """Идёт ли ``что`` внутри ``где`` подряд, слово в слово."""
+    if not что or len(что) > len(где):
+        return False
+    return any(list(где[i:i + len(что)]) == list(что)
+               for i in range(len(где) - len(что) + 1))
 
 HISTORY_DEPTH = 6
 HISTORY_CHARS = 1500
@@ -56,6 +155,17 @@ SOURCE_CHARS = 1400
 #: показанный с трёх сторон, отвечает хуже трёх разных.
 NEIGHBOUR_CHARS = 600
 MAX_QUESTION = 4000
+#: Сколько фрагментов названного документа подкладываем в источники, когда
+#: поиск до него не дотянулся. Не весь документ: задача — не подменить поиск,
+#: а не дать помощнику отрицать существование того, что лежит на полке.
+PINNED_CHUNKS = 3
+#: Докуда смотрим внутри такого документа, выбирая подходящие фрагменты. В
+#: библиотеке отдела попадаются книги в полторы тысячи фрагментов, и перебирать
+#: их целиком на каждый вопрос незачем.
+PIN_SCAN_CHUNKS = 400
+#: Сколько документов рассматриваем при опознании по номеру. Номер отсекает
+#: библиотеку до единиц строк, и двухсот с запасом хватает на все редакции.
+CANDIDATE_LIMIT = 200
 #: Сколько заходов разбора делаем, если в настройках ничего не сказано.
 #: Как отвечает помощник. Переключатель стоит в самом разговоре: один и тот же
 #: инженер утром разбирает дамп по протоколу, а днём спрашивает «что такое FCS»,
@@ -258,6 +368,17 @@ class AssistantService:
         hits, trail = self._collect(chat, question, history,
                                     top_k or profile["top_k"],
                                     attachments=attachments, rounds=profile["rounds"])
+        # Документы, названные в вопросе, сверяем с описью САМИ. Полагаться
+        # на то, что поиск случайно вытянет нужный том, а модель случайно не
+        # соврёт про его отсутствие, здесь нельзя: это ровно то место, где
+        # помощник отвечал «RFC 4818 в библиотеке нет» о лежащем на полке
+        # документе.
+        mentioned_block, mentioned_ids = self._mentioned(question, history)
+        pinned = self._pin_mentioned(hits, mentioned_ids, question)
+        if pinned:
+            hits = pinned + list(hits)
+            for rank, hit in enumerate(hits, start=1):
+                hit.rank = rank
         retriever = self.reports.get_retriever()
         # Половина библиотеки английская, а спрашивают по-русски. Если запрос
         # дополнен по двуязычному словарю — сказать об этом: иначе английский
@@ -299,6 +420,7 @@ class AssistantService:
             case_block=case_block,
             attachments=attachment_block,
             catalog=catalog_block,
+            mentioned=mentioned_block,
             library_map=_render_map(documents),
             sources=_render_sources(sources, documents),
             target_words=profile["target_words"],
@@ -875,22 +997,139 @@ class AssistantService:
         opened = f"прочитано: {document.title or doc_id}"
         return hits, f"{opened}; {note}" if note else opened
 
+    def _document_candidates(self, искомое: Sequence[str]):
+        """Кого сличать с названным обозначением, в порядке пригодности.
+
+        Сперва документы, у которых в названии или опознавателе стоит число из
+        обозначения. Это важно по двум причинам. Число отсекает библиотеку до
+        единиц строк, и перебор идёт по ним, а не по тридцати тысячам. И —
+        главное — эта выборка идёт по ВСЕМ документам, а опись в подсказке
+        отдаёт только действующие. Отменённая редакция стандарта в библиотеке
+        лежит, и на вопрос о ней ответ «не числится» был бы ложью: у RFC
+        отменённых редакций тысячи, и спрашивают о них постоянно.
+
+        Потом — опись целиком: обозначение может быть и без числа.
+        """
+        число = next((часть for часть in искомое if часть.isdigit()), "")
+        видели = set()
+        if число:
+            for документ in self.repos.documents.list(query=число,
+                                                      limit=CANDIDATE_LIMIT):
+                видели.add(документ.doc_id)
+                yield документ.doc_id, документ.title or ""
+        for row in self._catalog().rows():
+            doc_id = str(row.get("doc_id") or "")
+            if doc_id not in видели:
+                yield doc_id, str(row.get("title") or "")
+
+    def _mentioned(self, question: str, history: Sequence[Dict[str, str]]
+                   ) -> tuple[str, List[str]]:
+        """Названные в вопросе документы, сверенные с описью.
+
+        «Есть ли у нас RFC 4818» — вопрос, на который в базе есть точный
+        ответ. Раньше его добывали перебором фрагментов: поиск промахивался,
+        выдача приходила пустая, и помощник со спокойной совестью отвечал, что
+        такого документа в библиотеке нет. Документ при этом лежал на полке.
+
+        Теперь обозначение из вопроса сверяется с описью напрямую, и модель
+        получает не догадку, а факт: числится или не числится. Отвечать «в
+        библиотеке этого нет» подсказка разрешает только по этой строке.
+        """
+        предыдущее = [item["content"] for item in history if item["role"] == "user"][-1:]
+        обозначения = designations_in(" ".join([question, *предыдущее]))
+        if not обозначения:
+            return "", []
+        строки: List[str] = []
+        найденные: List[str] = []
+        for имя in обозначения:
+            doc_id = self._resolve_document(имя)
+            документ = self.repos.documents.by_doc_id(doc_id) if doc_id else None
+            if документ is None:
+                строки.append(f"- {имя} — в библиотеке НЕ ЧИСЛИТСЯ")
+                continue
+            найденные.append(doc_id)
+            пометка = "" if документ.status == "current" else f", {документ.status}"
+            строки.append(
+                f"- {имя} — ЧИСЛИТСЯ: «{документ.title or doc_id}» "
+                f"({doc_id}, фрагментов {документ.chunk_count}{пометка})"
+            )
+        return ("\n### ДОКУМЕНТЫ, НАЗВАННЫЕ В ВОПРОСЕ\n"
+                + "\n".join(строки) + "\n"), найденные
+
+    def _pin_mentioned(self, hits: Sequence[Hit], doc_ids: Sequence[str],
+                       question: str) -> List[Hit]:
+        """Подложить фрагменты названного документа, если поиск его не принёс.
+
+        Инженер спросил про конкретный документ — значит, читать надо именно
+        его, а не пять соседних, которые всплыли по общим словам. Берём не
+        начало документа, а те его фрагменты, которые ближе к вопросу.
+        """
+        уже = {hit.chunk.doc_id for hit in hits}
+        добавка: List[Hit] = []
+        for doc_id in doc_ids:
+            if doc_id in уже:
+                continue
+            документ = self.repos.documents.by_doc_id(doc_id)
+            if документ is None:
+                continue
+            куски = self.repos.chunks.for_document(документ.id, limit=PIN_SCAN_CHUNKS)
+            if not куски:
+                continue
+            # statuses=None — фильтр по актуальности здесь снят намеренно.
+            # Документ назван инженером поимённо, и если он помечен
+            # заменённым, это повод сказать об этом в ответе, а не подсунуть
+            # вместо нужного раздела первые попавшиеся страницы.
+            подходящие = [найденное.chunk for найденное
+                          in BM25Index(куски).search(question, top_k=PINNED_CHUNKS,
+                                                     statuses=None)]
+            for кусок in (подходящие or куски)[:PINNED_CHUNKS]:
+                добавка.append(Hit(chunk=кусок, score=0.0))
+            уже.add(doc_id)
+        return добавка
+
     def _resolve_document(self, name: str) -> str:
-        """Модель называет документ как умеет: идентификатором или названием."""
+        """Модель называет документ как умеет: идентификатором или названием.
+
+        Сличать строки целиком нельзя: одно и то же обозначение пишут
+        «RFC 4818», «RFC4818», «RFC-4818», «rfc4818.txt», а в названии
+        документа стоит «RFC 4818. RADIUS Delegated-IPv6-Prefix Attribute».
+        Прежнее опознание искало подстроку и потому узнавало только запись
+        через пробел. Не узнав документ, помощник не открывал его вовсе — и
+        отвечал, что такого в библиотеке нет, о документе, лежащем на полке.
+
+        Сравниваем не строки, а последовательности слов и чисел. Заодно это
+        разводит соседние номера: «RFC 481» — это ['rfc', '481'], и началом
+        для ['rfc', '4818', ...] оно не является, тогда как сличение подстрок
+        радостно отдавало под «RFC 481» документ RFC 4818.
+        """
         wanted = str(name or "").strip().strip('«»"\'')
         if not wanted:
             return ""
         if self.repos.documents.by_doc_id(wanted) is not None:
             return wanted
-        needle = wanted.casefold()
-        best = ""
-        for row in self._catalog().rows():
-            title = str(row.get("title") or "").casefold()
-            if needle == title:
-                return str(row.get("doc_id") or "")
-            if not best and (needle in title or title in needle):
-                best = str(row.get("doc_id") or "")
-        return best
+        искомое = name_parts(wanted)
+        if not искомое:
+            return ""
+        по_началу = ""
+        по_вхождению = ""
+        for doc_id, заголовок in self._document_candidates(искомое):
+            if not doc_id:
+                continue
+            имя_файла = name_parts(doc_id.rsplit("/", 1)[-1])
+            название = name_parts(заголовок)
+            # Точное совпадение — с именем файла или с названием целиком.
+            if искомое in (имя_файла, название, name_parts(doc_id)):
+                return doc_id
+            if по_началу:
+                continue
+            # Обозначение стоит в начале названия: «ГОСТ Р 53363» находит
+            # «ГОСТ Р 53363-2009. Цифровые радиорелейные линии».
+            if название[:len(искомое)] == искомое or имя_файла[:len(искомое)] == искомое:
+                по_началу = doc_id
+            elif not по_вхождению and _подряд(название, искомое):
+                # Последнее средство: назвали кусок из середины названия.
+                по_вхождению = doc_id
+        return по_началу or по_вхождению
 
     def _catalog_block(self, chat: Chat, hits: Sequence[Hit]) -> str:
         """Карта библиотеки: полки с числами и названия документов.

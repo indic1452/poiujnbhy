@@ -23,6 +23,49 @@ class TokenizeTests(unittest.TestCase):
     def test_word_forms_collapse(self):
         self.assertEqual(tokenize("занимаемая полоса"), tokenize("занимаемой полосы"))
 
+    def test_glued_designation_is_also_split(self):
+        """«RFC4818» и «RFC 4818» обязаны находить одно и то же.
+
+        Инженер пишет номер как придётся: «RFC 4818», «RFC4818», «RFC-4818».
+        Через дефис и пробел разбор давал два слова, а слитно — одно слово
+        «rfc4818», которого в указателе нет вовсе: в документе-то написано
+        «Request for Comments: 4818». Поиск возвращал ПУСТО, и помощник со
+        спокойной совестью отвечал, что такого документа в библиотеке нет.
+
+        Слитную запись оставляем тоже: «ФМ4», «Е1», «КАМ16» в отделе пишут
+        слитно, и найтись они должны как есть.
+        """
+        self.assertEqual(["rfc4818", "rfc", "4818"], tokenize("RFC4818"))
+        # Через пробел и дефис — как и было.
+        self.assertEqual(["rfc", "4818"], tokenize("RFC 4818"))
+        self.assertEqual(["rfc", "4818"], tokenize("RFC-4818"))
+
+    def test_glued_and_spaced_designations_meet(self):
+        # Главное свойство: как бы номер ни записали, общий токен найдётся.
+        слитно = set(tokenize("RFC4818"))
+        через_пробел = set(tokenize("RFC 4818"))
+        self.assertTrue(слитно & через_пробел, "записи номера не пересекаются")
+        self.assertIn("4818", слитно)
+
+    def test_short_department_notation_is_not_torn_apart(self):
+        """«Е1», «ФМ4» — обозначения, а не «буква и число».
+
+        Резать их значит засорить указатель токенами «е» и «4», которые есть
+        в каждом документе и не значат ничего.
+        """
+        # Латиница в записи — работа unmix_scripts, она была и раньше.
+        self.assertEqual(["e1"], tokenize("Е1"))
+        self.assertEqual(["фm4"], tokenize("ФМ4"))
+
+    def test_dotted_designation_stays_whole(self):
+        # «G.703» и «Х.25» — одно обозначение; точка в них разделителем не является.
+        self.assertEqual(["g.703"], tokenize("G.703"))
+        self.assertEqual(["x.25"], tokenize("Х.25"))
+
+    def test_department_notation_with_two_digits_meets_the_hyphen_form(self):
+        # «КАМ16» в документе и «КАМ-16» в вопросе — одно и то же.
+        self.assertTrue(set(tokenize("КАМ16")) & set(tokenize("КАМ-16")))
+
 
 class BM25Tests(unittest.TestCase):
     def setUp(self):

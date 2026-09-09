@@ -103,6 +103,32 @@ def stem(word: str) -> str:
     return word
 
 
+#: Обозначение, написанное слитно: буквы, сразу за ними число. «RFC4818»,
+#: «ГОСТ53363». Букв не меньше двух и цифр не меньше двух — иначе под правило
+#: попали бы «Е1» и «ФМ4», где резать нечего: получились бы токены «е» и «4»,
+#: которые есть в каждом документе и не значат ничего.
+_GLUED_DESIGNATION = re.compile(r"^([a-zа-яё]{2,})(\d{2,})$")
+
+
+def split_designation(token: str) -> List[str]:
+    """Слитное обозначение — само плюс его половины.
+
+    Инженер пишет номер документа как придётся: «RFC 4818», «RFC-4818»,
+    «RFC4818». Первые две записи разбор давал двумя словами, третья — одним
+    словом «rfc4818», которого в указателе нет вовсе: в самом документе
+    написано «Request for Comments: 4818». Поиск по слитной записи возвращал
+    ПУСТО, а помощник, получив пустую выдачу, отвечал, что такого документа в
+    библиотеке нет. Документ при этом лежал на месте.
+
+    Слитную запись оставляем тоже, и первой: «КАМ16», «ФМ4», «Е1» в отделе
+    пишут слитно, и найтись они должны как есть.
+    """
+    match = _GLUED_DESIGNATION.match(token)
+    if match is None:
+        return [token]
+    return [token, match.group(1), match.group(2)]
+
+
 def tokenize(text: str) -> List[str]:
     # Запятую в числе приводим к точке: «12,5» и «12.5» — одна и та же
     # величина, и в указателе они обязаны быть одним словом. Заодно это
@@ -111,7 +137,12 @@ def tokenize(text: str) -> List[str]:
     text = separate_code_params(text)
     tokens = (unmix_scripts(token).lower().replace(",", ".")
               for token in _TOKEN_RE.findall(text))
-    return [stem(token) for token in tokens if token not in STOPWORDS]
+    готово: List[str] = []
+    for token in tokens:
+        if token in STOPWORDS:
+            continue
+        готово.extend(stem(часть) for часть in split_designation(token))
+    return готово
 
 
 @dataclass
