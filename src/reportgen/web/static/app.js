@@ -3448,6 +3448,23 @@
             onchange: () => { rosterState.span = Number(spanPick.value); load(); },
         });
 
+        // Кнопку прячем, пока не выяснили, есть ли вошедший в расходе.
+        // Создатель системы в нём не значится: он не дежурит и писем не
+        // ведёт. Показанная ему кнопка «Отметить себя» ставила наряд первому
+        // по списку — то есть человеку, который об этом не узнает.
+        const markSelf = h('button', {
+            class: 'btn btn--primary',
+            hidden: true,
+            title: 'Отметить, чем вы заняты',
+            onclick: () => openRosterDialog({ user_id: (state.user || {}).id,
+                date_from: rosterState.day }, load),
+        }, 'Отметить себя');
+
+        staffList().then((staff) => {
+            markSelf.hidden = !staff.some(
+                (person) => person.id === (state.user || {}).id);
+        });
+
         function syncSpanPick() {
             clear(spanPick);
             if (spanChoices.indexOf(rosterState.span) === -1) {
@@ -3528,12 +3545,7 @@
                         title: 'Задать свой промежуток: с какого по какое число',
                         onclick: () => pickRosterPeriod(load),
                     }, 'Свой период'),
-                    h('button', {
-                        class: 'btn btn--primary',
-                        title: 'Отметить, чем вы заняты',
-                        onclick: () => openRosterDialog({ user_id: (state.user || {}).id,
-                            date_from: rosterState.day }, load),
-                    }, 'Отметить себя'))),
+                    markSelf)),
             rangeLabel,
             daysBox,
             dayBox,
@@ -3859,6 +3871,20 @@
         const staff = await staffList();
         const me = state.user || {};
         const owner = existing ? mark.user_id : (mark.user_id || me.id);
+
+        // Того, кого в расходе нет, подставлять нельзя. Список личного
+        // состава не содержит создателя системы: он писем не ведёт и не
+        // дежурит. А выпадающий список, не найдя своего человека, молча
+        // встаёт на первого по алфавиту — и «Отметить себя» ставило наряд
+        // Орловой. Отказ вслух лучше отметки не тому.
+        if (!staff.some((person) => person.id === owner)) {
+            toast(owner === me.id
+                ? 'Вас нет в расходе отдела: создатель системы не дежурит и '
+                  + 'писем не ведёт. Отмечать за себя нечего.'
+                : 'Этого человека нет в расходе отдела — отметку поставить не за кого.',
+                'error');
+            return;
+        }
 
         const whoPick = h('select', {}, staff.map((person) => h('option', {
             value: String(person.id), selected: person.id === owner,
