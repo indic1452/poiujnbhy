@@ -6412,18 +6412,23 @@ class МенюОтдела(unittest.TestCase):
         self.assertGreaterEqual(участок.count("if (!isGuest())"), 2,
                                 "гостю закрыта не вся лишняя часть меню")
 
+    #: Рельса — одно состояние на два пути: свернул сам (side-min) или экран
+    #: узок (side-rail). Правила у них общие, и селектор тоже.
+    РЕЛЬСА = "body:is(.side-min, .side-rail)"
+
     def test_свёрнутое_меню_прячет_подписи_групп(self):
         # От подписи группы там остаётся обрубок в два знака. Сличаем со
         # знаком после имени: «.side-group» — начало и у «.side-group-off».
-        self.assertIn("body.side-min .side-group,", self.css)
-        self.assertIn("body.side-min .side-recent,", self.css)
+        self.assertIn(self.РЕЛЬСА + " .side-group,", self.css)
+        self.assertIn(self.РЕЛЬСА + " .side-recent,", self.css)
 
     def test_у_значка_в_рельсе_есть_всплывающая_подпись(self):
         # Без неё свёрнутое меню превращается в загадку.
-        self.assertIn("body.side-min .side-nav a > span", self.css)
-        участок = self.css.split("body.side-min .side-nav a > span {")[1].split("}")[0]
+        подпись = self.РЕЛЬСА + " .side-nav a > span"
+        self.assertIn(подпись, self.css)
+        участок = self.css.split(подпись + " {")[1].split("}")[0]
         self.assertIn("opacity: 0", участок)
-        self.assertIn("body.side-min .side-nav a:focus-visible > span", self.css,
+        self.assertIn(self.РЕЛЬСА + " .side-nav a:focus-visible > span", self.css,
                       "подпись не показывается тому, кто ходит клавиатурой")
 
     def test_кнопка_в_меню_не_теряет_цвет(self):
@@ -6911,3 +6916,216 @@ class БиблиотекаНачинаетсяСПоиска(unittest.TestCase):
         # Части всё же надо разделить — иначе они слипаются в кашу.
         разделитель = _объявления(self.css, ".fold-body > * + *")
         self.assertIn("var(--border)", разделитель.get("border-top", ""))
+
+
+class МенюЖивётВТрёхВидах(unittest.TestCase):
+    """Полное меню, рельса из значков и выдвижной ящик.
+
+    Две беды разом. Первая: ниже 900 px меню уезжает за левый край, а
+    кнопка «Меню» в шапке не появляется — переходить между разделами
+    становится нечем. Причина не в правилах меню: кнопка размечена с
+    атрибутом hidden, а правило [hidden] стоит с !important и перебивает то
+    правило в @media, которое кнопку показывает.
+
+    Вторая: одно и то же состояние — рельса — описывалось в двух местах.
+    Свёрнутое вручную меню прятало подписи групп, а свёрнутое узким экраном
+    только сжимало ширину: от «Работы» в 35 px оставалось «Рабо», от
+    «Поиска» — «П». Замер в Chromium при 1100 px: «Поиск» требовал 114 px
+    при 29 доступных.
+    """
+
+    def setUp(self):
+        статика = ROOT / "src" / "reportgen" / "web" / "static"
+        self.css = (статика / "styles.css").read_text(encoding="utf-8")
+        self.js = (статика / "app.js").read_text(encoding="utf-8")
+        self.html = (статика / "index.html").read_text(encoding="utf-8")
+
+    def test_кнопка_меню_не_заперта_атрибутом(self):
+        """hidden на кнопке не даёт ей появиться там, где она нужна."""
+        начало = self.html.index('id="side-open"')
+        кнопка = self.html[начало - 200:начало + 200]
+        self.assertNotIn(" hidden", кнопка,
+                         "кнопка «Меню» снова заперта атрибутом hidden")
+        # А правило [hidden] с !important — на месте: оно нужно другим.
+        self.assertIn("[hidden] {\n    display: none !important;\n}", self.css)
+
+    def test_кнопку_прячет_правило_сильнее_чем_у_btn(self):
+        """У .btn ниже по файлу свой display, и при равной силе побеждало бы оно.
+
+        Одного класса мало: .side-open и .btn весят одинаково, а .btn идёт
+        ниже — кнопка «Меню» стояла бы в шапке на любом экране.
+        """
+        self.assertNotIn("\n.side-open {", self.css,
+                         "кнопку снова прячет правило слабее, чем у .btn")
+        self.assertIn(".topbar .side-open {\n    display: none;\n}", self.css)
+        # А показывается она там, где меню становится выдвижным ящиком.
+        ящик = self.css.split("@media (max-width: 900px) {")[-1]
+        self.assertIn(".topbar .side-open {\n        display: inline-flex;\n    }", ящик,
+                      "на узком экране кнопка «Меню» не показывается")
+
+    def test_рельса_описана_одним_набором_правил(self):
+        """Свернул сам или экран узкий — вид обязан быть один.
+
+        Пока это были два разных набора правил, они разошлись: один прятал
+        подписи, другой нет.
+        """
+        self.assertNotIn("body.side-min ", self.css,
+                         "правила рельсы снова разошлись на два набора")
+        self.assertGreater(self.css.count("body:is(.side-min, .side-rail)"), 15)
+
+    def test_узкий_экран_включает_ту_же_рельсу(self):
+        self.assertIn("(min-width: 901px) and (max-width: 1240px)", self.js)
+        кусок = self.js.split("function watchSideRail()")[1].split("\n    }")[0]
+        self.assertIn("classList.toggle('side-rail'", кусок)
+        self.assertIn("addEventListener('change'", кусок,
+                      "рельса не переключается при изменении ширины окна")
+
+    def test_ящик_говорит_читающему_с_экрана_открыт_ли_он(self):
+        self.assertIn('aria-expanded="false"', self.html)
+        self.assertIn("aria-label=\"Меню\"", self.html)
+        # Обе стороны: и когда ящик выдвигают, и когда задвигают. Сличать
+        # «есть где-то в файле» бесполезно — уцелевшей половины хватает,
+        # чтобы проверка прошла, а признак остался врать.
+        выдвижение = self.js.split("open.onclick = () => {")[1].split("};")[0]
+        self.assertIn("setAttribute('aria-expanded'", выдвижение,
+                      "при выдвижении признак не обновляется")
+        задвижение = self.js.split("function closeSideDrawer()")[1].split("\n    }")[0]
+        self.assertIn("setAttribute('aria-expanded', 'false')", задвижение,
+                      "при задвижении признак остаётся «открыт»")
+
+
+class ЦветОтделаВОбеихТемах(unittest.TestCase):
+    """Цвет отдела приходит одним числом — тем, что годится для белого листа.
+
+    Он ставился прямо на корневой узел стилем, а стиль узла сильнее любого
+    правила из файла: тёмная тема получала тот же тёмно-синий, что и
+    светлая. Замер в Chromium: активный пункт меню 1,77:1, кнопка «Новое
+    письмо» 2,23:1 при норме 4,5. Это не «плохо читается» — это не читается.
+    """
+
+    def setUp(self):
+        статика = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (статика / "app.js").read_text(encoding="utf-8")
+
+    def test_цвет_ставится_правилами_а_не_стилем_узла(self):
+        self.assertNotIn("style.setProperty('--accent'", self.js,
+                         "цвет отдела снова ставится стилем узла и бьёт тёмную тему")
+        кусок = self.js.split("function applyBrandAccent(")[1].split("\n    }")[0]
+        # Обе дороги тёмной темы: настройка системы и выбор человека.
+        self.assertIn("prefers-color-scheme: dark", кусок)
+        self.assertIn(':root[data-theme="dark"]', кусок)
+        self.assertIn(":root {", кусок)
+
+    def test_шаг_под_тёмную_тему_считается_а_не_берётся(self):
+        кусок = self.js.split("function darkStepOf(")[1].split("\n    }")[0]
+        self.assertIn("contrastOf(", кусок, "шаг не проверяется на контраст")
+        self.assertIn("TEXT_CONTRAST", кусок)
+        # Тон отдела при этом сохраняется: меняется только светлота.
+        self.assertIn("hexToHsl(hex)", кусок)
+
+
+class ТриУровняТекстаИВсеЧитаемые(unittest.TestCase):
+    """Приглушённый текст давал на фоне страницы 2,81:1 при норме 4,5.
+
+    Кегль у него 12 px, и им набраны подсказки в полях, счётчики и строки
+    «текста нет» — половина того, что человек читает глазами, а не узнаёт
+    по месту.
+    """
+
+    #: Поверхности, на которых стоит текст, — по темам.
+    СВЕТЛЫЕ = ("#ffffff", "#f7f8fa", "#f2f4f6")
+    ТЁМНЫЕ = ("#141a21", "#1a212a", "#0b0f14")
+    НОРМА = 4.5
+
+    def setUp(self):
+        self.css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
+            encoding="utf-8")
+
+    @staticmethod
+    def _яркость(hex_цвет: str) -> float:
+        число = int(hex_цвет.lstrip("#"), 16)
+        каналы = ((число >> 16) & 255, (число >> 8) & 255, число & 255)
+        доли = []
+        for байт in каналы:
+            c = байт / 255
+            доли.append(c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4)
+        return 0.2126 * доли[0] + 0.7152 * доли[1] + 0.0722 * доли[2]
+
+    @classmethod
+    def _контраст(cls, один: str, два: str) -> float:
+        a, b = cls._яркость(один), cls._яркость(два)
+        верх, низ = max(a, b), min(a, b)
+        return (верх + 0.05) / (низ + 0.05)
+
+    def _переменная(self, имя: str, откуда: int = 0) -> str:
+        найдено = re.findall(rf"{имя}:\s*(#[0-9a-fA-F]{{6}})", self.css)
+        self.assertGreater(len(найдено), откуда, f"{имя} не найдена")
+        return найдено[откуда]
+
+    def test_приглушённый_текст_читается_в_светлой_теме(self):
+        цвет = self._переменная("--faint")
+        for фон in self.СВЕТЛЫЕ:
+            with self.subTest(фон=фон):
+                получилось = self._контраст(цвет, фон)
+                self.assertGreaterEqual(
+                    round(получилось, 2), self.НОРМА,
+                    f"приглушённый {цвет} на {фон} даёт {получилось:.2f}:1")
+
+    def test_приглушённый_текст_читается_в_тёмной_теме(self):
+        # Второе и третье вхождения — настройка системы и выбор человека.
+        for откуда in (1, 2):
+            цвет = self._переменная("--faint", откуда)
+            for фон in self.ТЁМНЫЕ:
+                with self.subTest(откуда=откуда, фон=фон):
+                    получилось = self._контраст(цвет, фон)
+                    self.assertGreaterEqual(round(получилось, 2), self.НОРМА,
+                                            f"{цвет} на {фон} даёт {получилось:.2f}:1")
+
+    def test_уровни_текста_остались_различимы(self):
+        """Читаемость не должна свести три уровня в один серый.
+
+        Если приглушённый подтянуть к обычному, разница исчезнет и вместе с
+        ней — весь смысл трёх уровней.
+        """
+        обычный = self._контраст(self._переменная("--text"), "#ffffff")
+        средний = self._контраст(self._переменная("--muted"), "#ffffff")
+        тихий = self._контраст(self._переменная("--faint"), "#ffffff")
+        self.assertGreater(обычный, средний * 1.5, "обычный и средний слились")
+        self.assertGreater(средний, тихий * 1.3, "средний и тихий слились")
+
+
+class ДолжностьНаЭкранеПоРусски(unittest.TestCase):
+    """Латинский код должности не должен доезжать и до разметки.
+
+    В ядре это уже закрыто, но у экрана свой словарь ROLE_SHORT и свои
+    запасные варианты. Один отдавал сам код — в нагрузке рядом с фамилией
+    стояло «viewer»; другой отдавал полное название, и в одном столбце
+    оказывались «инженер» и «Инженер отдела».
+    """
+
+    def setUp(self):
+        self.js = (ROOT / "src" / "reportgen" / "web" / "static" / "app.js").read_text(
+            encoding="utf-8")
+
+    def test_ни_одного_запасного_варианта_с_кодом(self):
+        # Пояснения выкусываем: в них дефект описан словами, и без этого
+        # проверка спотыкается о собственный комментарий.
+        код = re.sub(r"/\*.*?\*/", " ", self.js, flags=re.S)
+        код = re.sub(r"^\s*(//|\*).*$", " ", код, flags=re.M)
+        плохие = []
+        for номер, строка in enumerate(код.splitlines(), start=1):
+            if "ROLE_SHORT[" not in строка:
+                continue
+            # Само объявление словаря и единственное разрешённое обращение —
+            # внутри roleShort, по уже приведённому обозначению.
+            if "const ROLE_SHORT" in строка or "ROLE_SHORT[приведённая]" in строка:
+                continue
+            плохие.append(f"app.js:{номер}: {строка.strip()[:60]}")
+        self.assertEqual([], плохие, "должность снова берут из словаря напрямую")
+
+    def test_прежние_обозначения_приводятся_к_нынешним(self):
+        self.assertIn("LEGACY_ROLES = { viewer: 'engineer', admin: 'head' }", self.js)
+        кусок = self.js.split("function roleShort(")[1].split("\n    }")[0]
+        self.assertIn("LEGACY_ROLES[role] || role", кусок)
+        self.assertIn("'должность не указана'", кусок,
+                      "неизвестная должность снова показывается кодом")

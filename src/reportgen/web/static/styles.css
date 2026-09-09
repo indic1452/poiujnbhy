@@ -24,9 +24,18 @@
     --field-2: #f4f6f8;
     --border: #e0e4e9;
     --border-strong: #c3cad3;
+    /* Три уровня текста, и все три читаемые. Раньше приглушённый давал на
+       фоне страницы 2,81:1 при норме 4,5, и подсказки в полях, счётчики и
+       строки «текста нет» приходилось разбирать, а не читать. Кегль у них
+       12 px — на мониторе отдела это не мелочь, а половина экрана.
+
+       Шаги подобраны счётом, а не на глаз: каждый проверен на всех трёх
+       светлых поверхностях (панель, панель-2, фон страницы). Вышло 17,5 —
+       7,0 — 4,5: разница между уровнями осталась ровно такой же заметной,
+       какой была, только нижний перестал быть нечитаемым. */
     --text: #131a21;
-    --muted: #5a6773;
-    --faint: #8794a1;
+    --muted: #49545e;
+    --faint: #63717f;
 
     /* Акцент — сталь, а не «ссылочная синь»: у прибора цвет служебный,
        им отмечают действие, а не украшают экран. */
@@ -98,7 +107,7 @@
         --border-strong: #3a4552;
         --text: #e6ecf2;
         --muted: #98a5b3;
-        --faint: #71808e;
+        --faint: #7b8996;
 
         --accent: #5fa3dd;
         --accent-hover: #7db8ea;
@@ -137,7 +146,7 @@
     --border-strong: #3a4552;
     --text: #e6ecf2;
     --muted: #98a5b3;
-    --faint: #71808e;
+    --faint: #7b8996;
 
     --accent: #5fa3dd;
     --accent-hover: #7db8ea;
@@ -275,7 +284,7 @@ time {
 
 /* Свёрнутое меню: остаются значки. Ширину задаём и flex-basis, и width —
    иначе flex растянет колонку обратно. */
-body.side-min .side {
+body:is(.side-min, .side-rail) .side {
     flex-basis: var(--side-w-min);
     width: var(--side-w-min);
 }
@@ -449,20 +458,20 @@ table.grid td > div:first-child {
     transition: transform .12s ease;
 }
 
-body.side-min .side-collapse svg {
+body:is(.side-min, .side-rail) .side-collapse svg {
     transform: rotate(180deg);
 }
 
 /* В свёрнутом виде прячем подписи и центруем значки. */
-body.side-min .side-brand .side-brand-text,
-body.side-min .side-nav a span,
-body.side-min .side-collapse span {
+body:is(.side-min, .side-rail) .side-brand .side-brand-text,
+body:is(.side-min, .side-rail) .side-nav a span,
+body:is(.side-min, .side-rail) .side-collapse span {
     display: none;
 }
 
-body.side-min .side-brand,
-body.side-min .side-nav a,
-body.side-min .side-collapse {
+body:is(.side-min, .side-rail) .side-brand,
+body:is(.side-min, .side-rail) .side-nav a,
+body:is(.side-min, .side-rail) .side-collapse {
     justify-content: center;
     padding: 0;
 }
@@ -503,7 +512,12 @@ body.side-min .side-collapse {
     white-space: nowrap;
 }
 
-.side-open {
+/* Кнопка выдвижного меню видна только там, где меню выдвижное. Прячем её
+   не одним классом, а вместе с шапкой: у .btn ниже по файлу свой display, и
+   при равной силе побеждало бы оно — кнопка «Меню» стояла бы в шапке на
+   любом экране. Раньше её прятал атрибут hidden, но он же не давал ей
+   появиться и там, где она нужна. */
+.topbar .side-open {
     display: none;
 }
 
@@ -5753,27 +5767,32 @@ table.grid.is-resizing .col-grip {
 
 /* На узком экране меню сворачивается в значки само, а подпись должности
    под именем уходит: имя и выход важнее. */
+/* Меню на узком экране сворачивается само — но раньше сворачивалось
+   по-своему: ширину рельсы этот блок задавал, а подписи групп, «Поиск» и
+   «Недавнее» прятало только правило свёрнутого вручную меню. От «Работы» в
+   35 px оставалось «Рабо», от «Поиска» — «П». Одно и то же состояние
+   описывалось в двух местах и разошлось.
+
+   Теперь состояние одно: класс side-rail, который ставит matchMedia, и
+   те же правила, что у свёрнутого вручную. Здесь остаётся только ширина —
+   и то, что к меню не относится. */
 @media (max-width: 1240px) {
     .side {
         flex-basis: var(--side-w-min);
         width: var(--side-w-min);
     }
 
-    .side-brand span,
-    .side-nav a span,
-    .side-collapse span {
-        display: none;
-    }
-
-    .side-brand,
-    .side-nav a,
-    .side-collapse {
-        justify-content: center;
-        padding: 0;
-    }
-
     .user-chip-text span {
         display: none;
+    }
+}
+
+/* Ниже 900 меню уже не рельса, а выдвижной ящик во всю ширину: подписи в
+   нём нужны, и рельсу с него снимаем. */
+@media (max-width: 900px) {
+    body.side-rail .side {
+        flex-basis: var(--side-w);
+        width: var(--side-w);
     }
 }
 
@@ -5812,7 +5831,7 @@ table.grid.is-resizing .col-grip {
         display: none;
     }
 
-    .side-open {
+    .topbar .side-open {
         display: inline-flex;
     }
 
@@ -6848,7 +6867,7 @@ body.app {
 }
 
 /* Свёрнутое меню: риска остаётся, значок сдвигать некуда. */
-body.side-min .side-nav a.is-active {
+body:is(.side-min, .side-rail) .side-nav a.is-active {
     padding-left: 12px;
 }
 
@@ -7085,20 +7104,20 @@ table.grid thead th {
 
 /* В рельсе остаются одни значки. Подписи групп и недавнее прячем: от них
    там остаются обрубки в два знака, которые читаются как мусор. */
-body.side-min .side-group,
-body.side-min .side-recent,
-body.side-min .side-search > span,
-body.side-min .side-search kbd,
-body.side-min .side-new > span {
+body:is(.side-min, .side-rail) .side-group,
+body:is(.side-min, .side-rail) .side-recent,
+body:is(.side-min, .side-rail) .side-search > span,
+body:is(.side-min, .side-rail) .side-search kbd,
+body:is(.side-min, .side-rail) .side-new > span {
     display: none;
 }
 
-body.side-min .side-head {
+body:is(.side-min, .side-rail) .side-head {
     padding: 2px 0 8px;
 }
 
-body.side-min .side-new,
-body.side-min .side-search {
+body:is(.side-min, .side-rail) .side-new,
+body:is(.side-min, .side-rail) .side-search {
     justify-content: center;
     padding: 0;
 }
@@ -7106,12 +7125,12 @@ body.side-min .side-search {
 /* Всплывающая подпись у значка: без неё рельс превращается в загадку.
    Своя, а не системная: системная появляется через секунду, и за эту
    секунду человек успевает передумать и уехать мышью. */
-body.side-min .side-nav a {
+body:is(.side-min, .side-rail) .side-nav a {
     position: relative;
     justify-content: center;
 }
 
-body.side-min .side-nav a > span {
+body:is(.side-min, .side-rail) .side-nav a > span {
     position: absolute;
     left: calc(100% + 10px);
     top: 50%;
@@ -7130,8 +7149,8 @@ body.side-min .side-nav a > span {
     z-index: 20;
 }
 
-body.side-min .side-nav a:hover > span,
-body.side-min .side-nav a:focus-visible > span {
+body:is(.side-min, .side-rail) .side-nav a:hover > span,
+body:is(.side-min, .side-rail) .side-nav a:focus-visible > span {
     opacity: 1;
     transform: translateY(-50%) translateX(0);
 }

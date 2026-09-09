@@ -79,6 +79,23 @@
         engineer: 'инженер',
     };
 
+    /* Прежние обозначения ролей. Записи, заведённые старыми выпусками
+       системы, живы до сих пор, и ядро приводит их к нынешним должностям —
+       здесь то же самое для экрана. */
+    const LEGACY_ROLES = { viewer: 'engineer', admin: 'head' };
+
+    /** Должность одним-двумя словами. Латинского кода не отдаёт никогда.
+     *
+     * Запасной вариант `ROLE_SHORT[role] || role` отдавал сам код, и в
+     * нагрузке рядом с фамилией стояло «viewer». А там, где запасным был
+     * `person.role_title`, в одном столбце оказывались и «инженер», и
+     * «Инженер отдела» — одно и то же разными словами.
+     */
+    function roleShort(role) {
+        const приведённая = LEGACY_ROLES[role] || role;
+        return ROLE_SHORT[приведённая] || 'должность не указана';
+    }
+
     /* Кого нельзя вызвать в кабинет. Вызов идёт сверху вниз и только так:
        к начальнику отдела заходят сами. Права администратора есть и у
        начальника группы — без этого правила он мог бы вызвать начальника
@@ -2168,8 +2185,8 @@
                 + (brand.subtitle ? ' — ' + brand.subtitle : '');
             document.title = brand.name;
         }
-        if (brand && typeof brand.accent === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(brand.accent)) {
-            document.documentElement.style.setProperty('--accent', brand.accent);
+        if (brand && typeof brand.accent === 'string' && /^#[0-9a-fA-F]{6}$/.test(brand.accent)) {
+            applyBrandAccent(brand.accent);
         }
 
         // Модель — точка состояния. Пока состояние не выяснено, точка серая
@@ -2254,7 +2271,119 @@
         return (first + second).toUpperCase();
     }
 
+    /* ---- цвет отдела в обеих темах -----------------------------------
+     *
+     * Цвет отдела приходит из настроек одним числом — тем, что годится для
+     * белого листа. Прежде он ставился прямо на корневой узел стилем, а
+     * стиль узла сильнее любого правила из файла: тёмная тема получала тот
+     * же тёмно-синий, что и светлая, и активный пункт меню становился
+     * синим по тёмно-синему. Замер в Chromium: 1,77:1 при норме 4,5:1 —
+     * это не «плохо читается», это не читается.
+     *
+     * Поэтому шаг под тёмную панель считается, а не берётся. Тон отдела
+     * сохраняется, светлота поднимается до той, на которой построена
+     * тёмная палитра (#15507e → #5fa3dd), и результат проверяется на
+     * контраст с тёмной панелью — пока не пройдёт норму. И ставится не
+     * стилем узла, а правилами в обеих областях темы: и по настройке
+     * системы, и по выбору человека.
+     */
+
+    /** hex → [тон 0..360, насыщенность 0..1, светлота 0..1]. */
+    function hexToHsl(hex) {
+        const n = parseInt(hex.slice(1), 16);
+        const r = ((n >> 16) & 255) / 255;
+        const g = ((n >> 8) & 255) / 255;
+        const b = (n & 255) / 255;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const l = (max + min) / 2;
+        if (max === min) return [0, 0, l];
+        const d = max - min;
+        const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        let h;
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        return [h * 60, s, l];
+    }
+
+    function hslToHex(h, s, l) {
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = l - c / 2;
+        const шаг = Math.floor(((h % 360) + 360) % 360 / 60);
+        const наборы = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]];
+        const [r, g, b] = наборы[шаг];
+        const байт = (v) => {
+            const число = Math.round((v + m) * 255);
+            return (число < 16 ? '0' : '') + Math.max(0, Math.min(255, число)).toString(16);
+        };
+        return '#' + байт(r) + байт(g) + байт(b);
+    }
+
+    /** Относительная яркость по формуле WCAG. */
+    function luminanceOf(hex) {
+        const n = parseInt(hex.slice(1), 16);
+        const канал = (v) => {
+            const c = v / 255;
+            return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * канал((n >> 16) & 255)
+            + 0.7152 * канал((n >> 8) & 255)
+            + 0.0722 * канал(n & 255);
+    }
+
+    function contrastOf(one, two) {
+        const a = luminanceOf(one);
+        const b = luminanceOf(two);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    }
+
+    //: Тёмная панель, на которой стоит активный пункт меню (--accent-soft),
+    //: и норма контраста для обычного текста.
+    const DARK_SOFT = '#16283a';
+    const TEXT_CONTRAST = 4.5;
+
+    /** Шаг того же тона под тёмную панель: светлее, пока не станет читаемым. */
+    function darkStepOf(hex) {
+        const [h, s] = hexToHsl(hex);
+        // Светлота тёмной палитры (#5fa3dd) — отправная точка, а не ответ:
+        // у тона потемнее её может не хватить.
+        for (let l = 0.62; l <= 0.86; l += 0.02) {
+            const шаг = hslToHex(h, Math.max(s, 0.45), l);
+            if (contrastOf(шаг, DARK_SOFT) >= TEXT_CONTRAST) return шаг;
+        }
+        return hslToHex(h, Math.max(s, 0.45), 0.86);
+    }
+
+    /** Осветлить или затемнить на долю светлоты — для наведения. */
+    function shiftLightness(hex, delta) {
+        const [h, s, l] = hexToHsl(hex);
+        return hslToHex(h, s, Math.max(0, Math.min(1, l + delta)));
+    }
+
+    function applyBrandAccent(hex) {
+        const светлый = hex.toLowerCase();
+        const тёмный = darkStepOf(светлый);
+        const правила = (accent, hover) =>
+            '--accent: ' + accent + '; --accent-hover: ' + hover + ';';
+        const текст = [
+            ':root {' + правила(светлый, shiftLightness(светлый, -0.08)) + '}',
+            '@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {'
+                + правила(тёмный, shiftLightness(тёмный, 0.08)) + '} }',
+            ':root[data-theme="dark"] {'
+                + правила(тёмный, shiftLightness(тёмный, 0.08)) + '}',
+        ].join('\n');
+        let узел = $('#brand-accent');
+        if (!узел) {
+            узел = h('style', { id: 'brand-accent' });
+            document.head.appendChild(узел);
+        }
+        узел.textContent = текст;
+    }
+
     function bindSidebar() {
+        watchSideRail();
         const collapse = $('#side-btn');
         if (collapse && !collapse.dataset.bound) {
             collapse.dataset.bound = '1';
@@ -2268,12 +2397,15 @@
         const open = $('#side-open');
         if (open && !open.dataset.bound) {
             open.dataset.bound = '1';
-            open.onclick = () => document.body.classList.toggle('side-open');
+            open.onclick = () => {
+                const выдвинуто = document.body.classList.toggle('side-open');
+                open.setAttribute('aria-expanded', выдвинуто ? 'true' : 'false');
+            };
         }
         const scrim = $('#side-scrim');
         if (scrim && !scrim.dataset.bound) {
             scrim.dataset.bound = '1';
-            scrim.onclick = () => document.body.classList.remove('side-open');
+            scrim.onclick = () => closeSideDrawer();
         }
     }
 
@@ -2294,7 +2426,40 @@
             title.textContent = name === 'me' ? 'Личный кабинет' : (found ? found.title : '');
         }
         // На узком экране меню закрывается сразу после выбора раздела.
+        closeSideDrawer();
+    }
+
+    /* Меню живёт в трёх видах: полное, рельса из значков и выдвижной ящик.
+       Рельса включается двумя путями — человек свернул меню сам или экран
+       узок. Пути разные, вид один, и описан он один раз: класс side-min
+       ставит кнопка, side-rail — вот этот наблюдатель, а правила оформления
+       у них общие. Раньше узкий экран сжимал меню своим правилом, а подписи
+       групп прятать забывал: от «Работы» оставалось «Рабо», от «Поиска» — «П».
+
+       Ниже 900 px меню становится ящиком во всю ширину, и рельса снимается:
+       в ящике подписи нужны. */
+    const SIDE_RAIL = '(min-width: 901px) and (max-width: 1240px)';
+
+    function watchSideRail() {
+        let наблюдатель;
+        try {
+            наблюдатель = window.matchMedia(SIDE_RAIL);
+        } catch (error) {
+            return;
+        }
+        const применить = () => {
+            document.body.classList.toggle('side-rail', наблюдатель.matches);
+        };
+        применить();
+        if (наблюдатель.addEventListener) наблюдатель.addEventListener('change', применить);
+        else if (наблюдатель.addListener) наблюдатель.addListener(применить);
+    }
+
+    /** Задвинуть меню на узком экране, не забыв сказать это читающему с экрана. */
+    function closeSideDrawer() {
         document.body.classList.remove('side-open');
+        const open = $('#side-open');
+        if (open) open.setAttribute('aria-expanded', 'false');
     }
 
     // -- маршрутизация ------------------------------------------------------
@@ -2851,7 +3016,7 @@
             staff.map((person) => h('option', {
                 value: String(person.id),
                 selected: person.id === item.assignee_id,
-            }, (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role))));
+            }, (person.full_name || person.login) + ' — ' + roleShort(person.role))));
         if (!staff.length) {
             assignee.disabled = true;
             assignee.title = 'Список военнослужащих получить не удалось';
@@ -3154,7 +3319,7 @@
         // Список военнослужащих подгружаем, не задерживая открытие окна.
         staffList().then((staff) => staff.forEach((person) => assigneePick.appendChild(
             h('option', { value: String(person.id) },
-                (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role)))));
+                (person.full_name || person.login) + ' — ' + roleShort(person.role)))));
 
         // Линия связи вместо типа отчёта: отдел работает по линиям, а шаблон
         // отчёта выбирается потом, когда инженер садится за текст.
@@ -3756,7 +3921,7 @@
                 // отменяет. Стояло «телефон ИЛИ должность»: стоило человеку
                 // вписать номер, и должность из расхода пропадала — а расход
                 // читают как штатное расписание, по должностям.
-                const post = ROLE_SHORT[person.role] || person.role_title;
+                const post = roleShort(person.role);
                 body.appendChild(h('tr', {},
                     h('td', {
                         class: 'roster-name' + (person.is_me ? ' is-me' : ''),
@@ -8124,7 +8289,7 @@
                         h('div', { class: person.active === false ? 'muted' : '' },
                             personLink(person.id, person.full_name)),
                         h('div', { class: 'small faint' },
-                            (ROLE_SHORT[person.role] || person.role) +
+                            roleShort(person.role) +
                             (person.team ? ' · ' + person.team : ''))),
                     h('td', {}, personState(person)),
                     h('td', { class: 'w-bar' },
@@ -8276,7 +8441,7 @@
         const staff = await staffList();
         const who = h('select', {}, staff.map((person) => h('option', {
             value: String(person.id),
-        }, (person.full_name || person.login) + ' — ' + (ROLE_SHORT[person.role] || person.role))));
+        }, (person.full_name || person.login) + ' — ' + roleShort(person.role))));
         const kind = h('select', {}, Object.keys(ABSENCE_LABEL).map((key) =>
             h('option', { value: key }, ABSENCE_LABEL[key])));
         const from = h('input', { type: 'date', value: todayIso() });

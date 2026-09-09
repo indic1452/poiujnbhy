@@ -45,7 +45,15 @@
 
     <div class="shell">
         <header class="topbar">
-            <button class="btn btn--icon side-open" id="side-open" type="button" title="Меню" hidden>
+            <!-- Кнопка выдвижного меню на узком экране. Атрибута hidden тут
+                 быть не должно: правило [hidden] стоит с !important и
+                 перебивало то правило в @media (max-width: 900px), которое
+                 кнопку и показывает. Меню при этом уезжало за левый край, а
+                 кнопка не появлялась — переходить между разделами было
+                 нечем. Прячет её обычное правило .side-open { display: none },
+                 и на широком экране этого достаточно. -->
+            <button class="btn btn--icon side-open" id="side-open" type="button"
+                    title="Меню" aria-label="Меню" aria-expanded="false">
                 <svg viewBox="0 0 16 16" aria-hidden="true">
                     <path d="M2.5 4h11M2.5 8h11M2.5 12h11" fill="none" stroke="currentColor" stroke-width="1.6"
                         stroke-linecap="round" />
