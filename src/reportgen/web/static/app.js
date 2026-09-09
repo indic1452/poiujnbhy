@@ -539,6 +539,38 @@
         return error.message || String(error);
     }
 
+    // -- три вида пустого места --------------------------------------------
+    //
+    // На месте списка человек видит одно из трёх: «ещё грузится», «тут
+    // ничего нет» и «не получилось». Раньше все три собирались одним и тем
+    // же .empty и выглядели одинаково — серой строкой посреди белого поля.
+    // Разница между ними для работающего огромна: ждать, заводить или звать
+    // администратора. Поэтому вид у каждого свой, и собираются они здесь, а
+    // не двадцатью восемью способами по всему файлу.
+
+    /** Ничего нет. Заголовок обязателен, объяснение — почти всегда. */
+    function emptyBox(head, note, action) {
+        return h('div', { class: 'empty' },
+            h('h3', {}, head),
+            note ? h('div', { class: 'empty-note' }, note) : null,
+            action ? h('div', { class: 'empty-act' }, action) : null);
+    }
+
+    /** Ещё грузится. Рамки нет: пустое место здесь временное. */
+    function loadingBox(note) {
+        return h('div', { class: 'empty empty--loading' },
+            h('div', { class: 'spinner' }),
+            h('div', { class: 'empty-note' }, note || 'Загружаем…'));
+    }
+
+    /** Не получилось. Это не пустота, и выглядеть как пустота не должно. */
+    function errorBox(error, note) {
+        return h('div', { class: 'empty empty--error' },
+            h('h3', {}, 'Не удалось загрузить'),
+            h('div', { class: 'empty-note' }, errorText(error)),
+            note ? h('div', { class: 'empty-note faint' }, note) : null);
+    }
+
     // =====================================================================
     // 3. Уведомления, модальные окна, индикатор длительных операций
     // =====================================================================
@@ -2629,7 +2661,7 @@
                 renderCasesTable();
             } catch (error) {
                 clear(tableBox);
-                tableBox.appendChild(h('div', { class: 'empty' }, errorText(error)));
+                tableBox.appendChild(errorBox(error));
             }
         }
 
@@ -2637,11 +2669,15 @@
             const items = casesState.items;
             clear(tableBox);
             if (!items.length) {
-                tableBox.appendChild(h('div', { class: 'empty' },
-                    h('h3', {}, casesState.query ? 'Ничего не найдено' : 'Писем нет'),
-                    h('div', { class: 'muted' }, casesState.query
+                tableBox.appendChild(emptyBox(
+                    casesState.query ? 'Ничего не найдено' : 'Писем нет',
+                    casesState.query
                         ? 'Проверьте строку поиска или выберите другой набор.'
-                        : 'Зарегистрируйте входящее письмо, чтобы начать работу.')));
+                        : 'Зарегистрируйте входящее письмо, чтобы начать работу.',
+                    casesState.query || !canEdit() ? null : h('button', {
+                        class: 'btn btn--sm btn--primary',
+                        onclick: () => openNewCaseDialog(),
+                    }, 'Зарегистрировать письмо')));
             } else {
                 const body = h('tbody', {});
                 items.forEach((item) => {
@@ -3482,14 +3518,14 @@
         ]);
 
         async function load() {
-            gridBox.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' })));
+            gridBox.appendChild(loadingBox());
             let data;
             try {
                 data = await api.get('/api/roster?date_from=' + rosterState.from +
                     '&days=' + rosterState.span);
             } catch (error) {
                 clear(gridBox);
-                gridBox.appendChild(h('div', { class: 'empty' }, errorText(error)));
+                gridBox.appendChild(errorBox(error));
                 return;
             }
             // День сводки держим внутри показанной недели: иначе человек
@@ -4047,11 +4083,9 @@
         }
 
         if (!notes.length) {
-            body.appendChild(h('div', { class: 'empty' },
-                h('h3', {}, 'Примечаний нет'),
-                h('div', {}, wb.notesError
-                    || 'Здесь остаётся то, что сказали бы через стол: что '
-                    + 'поправить и о чём договорились.')));
+            body.appendChild(emptyBox('Примечаний нет', wb.notesError
+                || 'Здесь остаётся то, что сказали бы через стол: что '
+                + 'поправить и о чём договорились.'));
             return;
         }
 
@@ -5793,16 +5827,16 @@
         if (!report) {
             body.appendChild(h('div', { class: 'sections' },
                 stepStrip(),
-                h('div', { class: 'empty' },
-                    h('h3', {}, 'Ответ ещё не готовили'),
-                    h('div', { class: 'btn-row', style: { justifyContent: 'center', marginTop: '14px' } },
-                        h('button', {
-                            class: 'btn btn--primary',
-                            disabled: !canEdit() || !!wb.coverageError,
-                            title: wb.coverageError
-                                ? 'Сначала исправьте факт-пакет: ' + wb.coverageError : '',
-                            onclick: () => generateReport(),
-                        }, 'Подготовить черновик')))));
+                emptyBox('Ответ ещё не готовили',
+                    'Модель соберёт черновик по фактам письма и фрагментам библиотеки. '
+                    + 'Править его потом можно как угодно.',
+                    h('button', {
+                        class: 'btn btn--primary',
+                        disabled: !canEdit() || !!wb.coverageError,
+                        title: wb.coverageError
+                            ? 'Сначала исправьте факт-пакет: ' + wb.coverageError : '',
+                        onclick: () => generateReport(),
+                    }, 'Подготовить черновик'))));
             return;
         }
 
@@ -5814,7 +5848,8 @@
             // шаблону, а документ, который инженер написал сам.
             container.appendChild(report.uploaded
                 ? uploadedReportView(report)
-                : h('div', { class: 'empty' }, 'В отчёте нет секций.'));
+                : emptyBox('Разделов в отчёте нет',
+                    'Отчёт заведён, но шаблон к нему не применён. Выберите шаблон в карточке письма — разделы появятся с заготовками.'));
         }
         body.appendChild(container);
         $$('.editor', container).forEach(autosize);
@@ -6633,11 +6668,9 @@
 
     function renderSources(body, sources) {
         if (!sources.length) {
-            body.appendChild(h('div', { class: 'empty' },
-                h('h3', {}, 'Источников нет'),
-                h('div', {}, wb.report
-                    ? 'Модель не привлекала фрагменты библиотеки: индекс пуст или разделы их не требуют.'
-                    : 'Появятся после генерации отчёта.')));
+            body.appendChild(emptyBox('Источников нет', wb.report
+                ? 'Модель не привлекала фрагменты библиотеки: индекс пуст или разделы их не требуют.'
+                : 'Появятся после генерации отчёта.'));
             return;
         }
 
@@ -6656,11 +6689,9 @@
 
     function renderIssues(body, issues) {
         if (!issues.length) {
-            body.appendChild(h('div', { class: 'empty' },
-                h('h3', {}, 'Замечаний нет'),
-                h('div', {}, wb.report
-                    ? 'Верификатор не нашёл ни чисел мимо факт-пакета, ни ссылок в никуда.'
-                    : 'Появятся после генерации и проверки.')));
+            body.appendChild(emptyBox('Замечаний нет', wb.report
+                ? 'Верификатор не нашёл ни чисел мимо факт-пакета, ни ссылок в никуда.'
+                : 'Появятся после генерации и проверки.'));
             return;
         }
         ['error', 'warning', 'info'].forEach((level) => {
@@ -6788,7 +6819,7 @@
 
     /** Что система вычитала из файла — главный способ проверить качество разбора. */
     async function showDocument(item) {
-        const bodyBox = h('div', {}, h('div', { class: 'empty' }, h('div', { class: 'spinner' }), 'Читаем…'));
+        const bodyBox = h('div', {}, loadingBox('Читаем файл…'));
         const fileUrl = '/api/library/' + encodeURIComponent(item.doc_id) + '/file';
         const openSource = h('button', {
             class: 'btn', hidden: true,
@@ -6890,7 +6921,8 @@
                 h('pre', { class: 'doc-text' }, data.text || '')),
             h('div', { class: 'doc-pane', id: 'doc-pane-chunks', hidden: true },
                 chunks.length ? chunkNodes(chunks, 0)
-                    : h('div', { class: 'empty' }, 'Фрагментов нет.')),
+                    : emptyBox('Документ не нарезан',
+                        'Текст из файла вычитан, но на фрагменты не разбит, и в поиске документ не найдётся. Перечитайте каталог библиотеки.')),
         ]);
 
         shown = chunks.length;
@@ -7476,7 +7508,7 @@
                 renderTable();
             } catch (error) {
                 clear(tableBox);
-                tableBox.appendChild(h('div', { class: 'empty' }, errorText(error)));
+                tableBox.appendChild(errorBox(error));
             }
         }
 
@@ -7499,12 +7531,12 @@
             if (!libState.items.length) {
                 clear(pager);
                 tableBox.appendChild(libState.query || libState.docType || libState.domain
-                    ? h('div', { class: 'empty' },
-                        h('h3', {}, 'Ничего не нашлось'),
-                        h('div', {}, 'По этим условиям в библиотеке документов нет.'))
-                    : h('div', { class: 'empty' },
-                        h('h3', {}, 'Документов нет'),
-                        h('div', {}, 'Загрузите литературу, стандарты и прошлые отчёты — они станут источниками для ссылок.')));
+                    ? emptyBox('Ничего не нашлось',
+                        'По этим условиям в библиотеке документов нет. '
+                        + 'Снимите отбор по типу или направлению.')
+                    : emptyBox('Документов нет',
+                        'Загрузите литературу, стандарты и прошлые отчёты — '
+                        + 'они станут источниками для ссылок.'));
                 return;
             }
             const body = h('tbody', {});
@@ -7562,10 +7594,13 @@
             if (!isAdmin()) {
                 return h('span', { class: 'small' + (item.domain ? '' : ' faint') }, domainTitle(item.domain));
             }
+            // Название целиком — во всплывающей подсказке: у самых длинных
+            // направлений оно шире столбца, и без подсказки выбранное
+            // пришлось бы узнавать, открывая список.
             const select = domainSelect({
                 value: item.domain,
                 anyLabel: 'не указано',
-                title: 'Направление документа',
+                title: 'Направление документа: ' + domainTitle(item.domain),
                 onchange: (value) => saveDomain(item, value, select),
             });
             select.classList.add('domain-select');
@@ -7809,7 +7844,7 @@
             }
             const types = searchTypes.filter((item) => item.checkbox.checked).map((item) => item.type);
             clear(searchResults);
-            searchResults.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' }), 'Поиск…'));
+            searchResults.appendChild(loadingBox('Ищем по библиотеке…'));
             try {
                 const url = '/api/search?q=' + encodeURIComponent(query) +
                     '&top_k=' + encodeURIComponent(topKInput.value || '10') +
@@ -7831,7 +7866,8 @@
                 }
                 const items = data.items || [];
                 if (!items.length) {
-                    searchResults.appendChild(h('div', { class: 'empty' }, 'Ничего не найдено.'));
+                    searchResults.appendChild(emptyBox('Ничего не нашлось',
+                        'Ни один фрагмент не совпал. Попробуйте другое написание обозначения, слово из самого текста стандарта или снимите отбор по направлению.'));
                     return;
                 }
                 items.forEach((hit) => {
@@ -7845,7 +7881,7 @@
                 });
             } catch (error) {
                 clear(searchResults);
-                searchResults.appendChild(h('div', { class: 'empty' }, errorText(error)));
+                searchResults.appendChild(errorBox(error));
             }
         }
 
@@ -7889,13 +7925,13 @@
 
         async function load() {
             clear(body);
-            body.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' })));
+            body.appendChild(loadingBox());
             try {
                 boardState.data = await api.get('/api/board?days=' + boardState.days);
                 draw();
             } catch (error) {
                 clear(body);
-                body.appendChild(h('div', { class: 'empty' }, errorText(error)));
+                body.appendChild(errorBox(error));
             }
         }
 
@@ -7981,8 +8017,9 @@
             const card = h('div', { class: 'card card-pad' },
                 h('div', { class: 'card-title' }, 'Нагрузка и занятость'));
             if (!people.length) {
-                card.appendChild(h('div', { class: 'empty' },
-                    'Личный состав не добавлен. Раздел «Военнослужащие» — там добавляют людей.'));
+                card.appendChild(emptyBox('Личный состав не заведён',
+                    'Пока в системе нет людей, распределять письма не на кого.',
+                    h('a', { class: 'btn btn--sm', href: '#/people' }, 'Завести людей')));
                 return card;
             }
             const peak = people.reduce((max, item) => Math.max(max, item.open || 0), 0) || 1;
@@ -8075,7 +8112,8 @@
             const card = h('div', { class: 'card card-pad' },
                 h('div', { class: 'card-title' }, 'Сроки'));
             if (!late.length && !soon.length) {
-                card.appendChild(h('div', { class: 'empty' }, 'Просроченных и горящих писем нет.'));
+                card.appendChild(emptyBox('Всё в срок',
+                    'Ни одного просроченного письма и ни одного с горящим сроком.'));
                 return card;
             }
             if (late.length) card.appendChild(deadlineList('Просрочено', late, 'late'));
@@ -8131,7 +8169,8 @@
             const card = h('div', { class: 'card card-pad' },
                 h('div', { class: 'card-title' }, 'Письма по состояниям'));
             if (!statuses.length) {
-                card.appendChild(h('div', { class: 'empty' }, 'Писем ещё нет.'));
+                card.appendChild(emptyBox('Писем ещё нет',
+                    'Как только письмо зарегистрируют, здесь встанет его путь по состояниям.'));
                 return card;
             }
             // Состояния письма — не разные сущности, а ступени одного пути:
@@ -8247,10 +8286,10 @@
             h('div', { class: 'card-title' }, 'Какие разделы правят чаще всего'));
 
         if (!bySection.length) {
-            editsCard.appendChild(h('div', { class: 'empty' },
-                'Правок ещё нет: они появляются, когда инженер меняет черновик модели '
-                + ', а начальник отмечает отчёт проверенным. По ним видно, какие '
-                + 'разделы модель пишет хуже всего.'));
+            editsCard.appendChild(emptyBox('Правок ещё нет',
+                'Они появляются, когда инженер меняет черновик модели, а начальник '
+                + 'отмечает отчёт проверенным. По ним видно, какие разделы модель '
+                + 'пишет хуже всего.'));
         } else {
             const body = h('tbody', {});
             bySection.forEach((item) => {
@@ -8282,7 +8321,9 @@
             h('div', { class: 'card-title' }, 'Состав библиотеки'));
         const typeKeys = Object.keys(byType);
         if (!typeKeys.length) {
-            libCard.appendChild(h('div', { class: 'empty' }, 'Библиотека пуста.'));
+            libCard.appendChild(emptyBox('Библиотека пуста',
+                'Помощнику не на что ссылаться. Загрузите литературу, стандарты и прошлые отчёты.',
+                h('a', { class: 'btn btn--sm', href: '#/library' }, 'Открыть библиотеку')));
         } else {
             const body = h('tbody', {});
             typeKeys.forEach((type) => {
@@ -8339,13 +8380,14 @@
 
         async function load() {
             clear(content);
-            content.appendChild(h('div', { class: 'empty' }, h('div', { class: 'spinner' }), 'Загрузка журнала…'));
+            content.appendChild(loadingBox('Читаем журнал…'));
             try {
                 const data = await api.get('/api/audit?limit=' + encodeURIComponent(limitSelect.value));
                 const items = data.items || [];
                 clear(content);
                 if (!items.length) {
-                    content.appendChild(h('div', { class: 'empty' }, 'Записей нет.'));
+                    content.appendChild(emptyBox('Журнал пуст',
+                        'За выбранный срок в системе ничего не происходило.'));
                     return;
                 }
                 const body = h('tbody', {});
@@ -8368,7 +8410,7 @@
                         body)));
             } catch (error) {
                 clear(content);
-                content.appendChild(h('div', { class: 'empty' }, errorText(error)));
+                content.appendChild(errorBox(error));
             }
         }
 
@@ -9399,21 +9441,33 @@
                 for (const file of files) await uploadAttachment(file);
             },
         });
+        // Значок без подписи: скрепка понятна и так, а подпись «Приложить
+        // файл» занимала целую строку рядом с полем ввода.
         const button = h('button', {
-            class: 'btn btn--sm',
+            class: 'btn btn--icon composer-clip',
+            type: 'button',
+            'aria-label': 'Приложить файл',
             title: 'Приложить дамп, лог, снимок экрана или документ. ' +
                 'Файл будет разобран и уйдёт помощнику вместе с вопросом.',
             onclick: () => picker.click(),
-        }, iconGlyph('clip'), 'Приложить файл');
+        }, iconGlyph('clip'));
 
         chat.nodes.attachList = list;
         chat.nodes.attachButton = button;
-        return h('div', { class: 'attach-bar' }, button, list, picker);
+        chat.nodes.attachPicker = picker;
+        // Кнопка уезжает в строку ввода, список остаётся своей строкой и
+        // показывается, только когда есть что показывать: пустая полоса под
+        // полем ввода съедала высоту, на которой мог бы стоять ответ.
+        return h('div', { class: 'attach-bar', hidden: true }, list, picker);
     }
 
     function renderAttachments() {
         const list = chat.nodes.attachList;
         if (!list) return;
+        const bar = list.parentNode;
+        if (bar && bar.classList.contains('attach-bar')) {
+            bar.hidden = !(chat.attachments || []).length;
+        }
         clear(list);
         (chat.attachments || []).forEach((item) => {
             const chip = h('span', {
@@ -9524,12 +9578,18 @@
         chat.nodes.domain = domainPick;
         chat.nodes.casePlate = caseLine;
 
+        // Нижняя панель занимала четыре ряда: настройки, отбор источников,
+        // кнопка вложения и само поле. На экране, где высота — это место под
+        // ответ, четыре ряда служебного управления над одним полем ввода
+        // читаются как приборная доска вместо разговора. Осталось два:
+        // тонкая строка настроек и строка ввода со скрепкой внутри.
+        const attachBar = buildAttachBar();
         return h('div', { class: 'composer' },
             h('div', { class: 'composer-top' },
-                h('span', { class: 'small muted' }, 'Искать в:'), domainPick,
-                modePick, sourcesPick, caseLine),
-            buildAttachBar(),
-            h('div', { class: 'composer-row' }, input, sendButton, stopButton));
+                domainPick, sourcesPick, modePick, caseLine),
+            attachBar,
+            h('div', { class: 'composer-row' },
+                chat.nodes.attachButton, input, sendButton, stopButton));
     }
 
     /** Плашка с номером письма, если разговор к нему привязан. */
@@ -10696,8 +10756,8 @@
             talks.nodes.stream = null;
             talks.nodes.field = null;
             talks.nodes.talkId = null;
-            box.appendChild(h('div', { class: 'empty' },
-                h('h3', {}, 'Беседа не выбрана')));
+            box.appendChild(emptyBox('Беседа не выбрана',
+                'Выберите разговор слева или начните новый.'));
             return;
         }
 

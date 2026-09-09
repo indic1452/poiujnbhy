@@ -108,6 +108,12 @@ function setNavCount() {}
 function toast(text) { записано.сообщено.push(String(text)); }
 function toastError(error) { записано.сообщено.push(String(error && error.message || error)); }
 function personLink(id, name) { return h('a', { html: String(name) }); }
+/* Пустое место беседы собирается общим помощником — тем же, что на всех
+   остальных экранах. Здесь он нужен только чтобы вернуть узел. */
+function emptyBox(head, note, action) {
+  return h('div', { class: 'empty' }, h('h3', { html: String(head) }),
+    note ? h('div', { html: String(note) }) : null, action || null);
+}
 function initials(name) { return String(name || '').slice(0, 2); }
 function clockOf(when) { return String(when || '').slice(11, 16); }
 function fmtDateTime(when) { return String(when || ''); }
