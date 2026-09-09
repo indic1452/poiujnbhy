@@ -237,3 +237,125 @@ class SettingsWarningTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ДогрузкаПачкиИзКонсоли(unittest.TestCase):
+    """«reportgen ingest <папка внутри библиотеки>» — штатная догрузка.
+
+    Документы приносят пачками, и перебирать ради полусотни новых файлов всю
+    библиотеку незачем: под это в load-library.ps1 и заведён ключ -Path. Но
+    консольный приём считал указанный каталог корнем корпуса целиком, а
+    веб-приём — всегда от корня библиотеки. Расхождение стоило дорого: тот же
+    файл, принятый двумя путями, заводился двумя записями с разными
+    идентификаторами, и в выдачу шли парные фрагменты.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        корень = Path(self._tmp.name)
+        self.библиотека = корень / "library"
+        self.пачка = self.библиотека / "standards" / "новая-пачка"
+        self.пачка.mkdir(parents=True)
+        текст = ("Рекомендация описывает порядок стафингования в цифровом "
+                 "тракте и допуски на отклонение тактовой частоты. " * 8)
+        (self.пачка / "рекомендация.md").write_text(
+            "# Рекомендация\n\n" + текст, encoding="utf-8")
+        (self.библиотека / "standards" / "старое.md").write_text(
+            "# Старое\n\n" + текст, encoding="utf-8")
+        import json
+        self.конфиг = корень / "config.json"
+        self.конфиг.write_text(json.dumps({"data_dir": str(корень)}),
+                               encoding="utf-8")
+
+    def _документы(self):
+        from reportgen.store.repo import Repositories
+        repos = Repositories.open(str(Path(self._tmp.name) / "reportgen.db"))
+        try:
+            return sorted(d.doc_id for d in repos.documents.list())
+        finally:
+            repos.close()
+
+    def _принять(self, путь):
+        return run(["--config", str(self.конфиг), "ingest", str(путь)])
+
+    def test_папка_внутри_библиотеки_принимается(self):
+        код, вывод = self._принять(self.пачка)
+        self.assertEqual(0, код, вывод)
+        self.assertIn("добавлено 1", вывод)
+        self.assertNotIn("подходящих файлов не найдено", вывод)
+
+    def test_идентификатор_такой_же_как_при_полной_загрузке(self):
+        self._принять(self.пачка)
+        self.assertEqual(["standards/новая-пачка/рекомендация"], self._документы())
+
+    def test_полная_загрузка_после_догрузки_не_плодит_двойников(self):
+        self._принять(self.пачка)
+        код, вывод = self._принять(self.библиотека)
+        self.assertEqual(0, код, вывод)
+        self.assertEqual(
+            ["standards/новая-пачка/рекомендация", "standards/старое"],
+            self._документы(),
+        )
+        self.assertNotIn("одинаковое содержимое", вывод)
+
+    def test_догрузка_не_уводит_в_архив_остальную_библиотеку(self):
+        self._принять(self.библиотека)
+        self._принять(self.пачка)
+        from reportgen.store.repo import Repositories
+        repos = Repositories.open(str(Path(self._tmp.name) / "reportgen.db"))
+        try:
+            старое = repos.documents.by_doc_id("standards/старое")
+            self.assertEqual("current", старое.status)
+        finally:
+            repos.close()
+
+    def test_один_файл_внутри_библиотеки_считается_от_её_корня(self):
+        код, вывод = self._принять(self.пачка / "рекомендация.md")
+        self.assertEqual(0, код, вывод)
+        self.assertEqual(["standards/новая-пачка/рекомендация"], self._документы())
+
+    def _со_стороны(self):
+        """Пачка, лежащая ВНЕ библиотеки: принесли на флешке, грузим оттуда."""
+        чужое = Path(self._tmp.name) / "флешка" / "standards"
+        чужое.mkdir(parents=True)
+        (чужое / "чужой.md").write_text(
+            "# Чужой\n\n" + "Текст принесённого документа. " * 20, encoding="utf-8")
+        return чужое.parent
+
+    def test_папка_вне_библиотеки_считается_от_себя(self):
+        # Считать её от корня библиотеки нельзя: получился бы путь с «..», а
+        # это не идентификатор. Прежнее поведение здесь и есть правильное.
+        код, вывод = self._принять(self._со_стороны())
+        self.assertEqual(0, код, вывод)
+        self.assertEqual(["standards/чужой"], self._документы())
+
+    def test_один_файл_вне_библиотеки_считается_от_своего_каталога(self):
+        код, вывод = self._принять(self._со_стороны() / "standards" / "чужой.md")
+        self.assertEqual(0, код, вывод)
+        self.assertEqual(["чужой"], self._документы())
+
+    def test_тип_файла_со_стороны_берётся_из_текста(self):
+        """Каталог файла со стороны — не каталог типа внутри библиотеки.
+
+        Идентификатор у такого файла выходит одинаковый, откуда ни считай, а
+        вот ТИП — нет. Считая его от корня библиотеки, приём поднялся бы по
+        чужому дереву вверх и увидел там папку «standards» — то есть присвоил
+        бы тип по имени папки на флешке, до которой библиотеке дела нет.
+        Указали на файл — каталог этого файла и есть корень, а тип берётся из
+        содержимого, как и для файла, положенного в корень библиотеки.
+        """
+        from reportgen.store.repo import Repositories
+
+        чужое = self._со_стороны() / "standards"
+        (чужое / "книга.md").write_text(
+            "# Глава 1\n\n" + "Изложение основ теории связи. " * 30, encoding="utf-8")
+        код, вывод = self._принять(чужое / "книга.md")
+        self.assertEqual(0, код, вывод)
+        repos = Repositories.open(str(Path(self._tmp.name) / "reportgen.db"))
+        try:
+            документ = repos.documents.by_doc_id("книга")
+            self.assertNotEqual("каталог", документ.meta.get("doc_type_source"),
+                                "тип взят по имени папки за пределами библиотеки")
+        finally:
+            repos.close()

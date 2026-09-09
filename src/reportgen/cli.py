@@ -231,6 +231,22 @@ def cmd_users(args: argparse.Namespace) -> int:
     return 0
 
 
+def _id_root(target: Path, library: Path) -> Path:
+    """От чего считать идентификатор документа при приёме одного файла.
+
+    От корня библиотеки, если файл внутри неё: тогда приём одного документа
+    («reportgen ingest ...\\library\\standards\\новый-гост.pdf») и полный
+    проход дадут одну и ту же запись, а не две с разными идентификаторами.
+    Файл со стороны считаем от его каталога, как и раньше.
+    """
+    try:
+        if target.resolve().is_relative_to(library.resolve()):
+            return library
+    except (OSError, ValueError):
+        pass
+    return target.parent
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     try:
         from .ingest.pipeline import ingest_directory, ingest_path  # noqa: PLC0415
@@ -265,6 +281,15 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         removed = repos.documents.clear_all()
         print(f"библиотека очищена: удалено документов {removed}")
 
+    # Корень библиотеки — то, от чего считается идентификатор документа.
+    # Когда принимают одну папку внутри библиотеки (штатная догрузка пачки:
+    # перебирать тринадцать тысяч файлов ради полусотни новых незачем),
+    # идентификатор обязан выйти тот же, что и при полном проходе. Иначе
+    # следующая полная загрузка заведёт те же файлы вторым комплектом
+    # записей, и в выдачу пойдут парные фрагменты. Веб-приём так и делал
+    # всегда; консольный считал от указанного каталога — и расходился с ним.
+    library = Path(settings.library_dir)
+
     if target.is_dir():
         # Пока идёт приём, фоновый построитель векторов в приложении стоит:
         # писать в SQLite можно только по одному, и вдвоём они дают
@@ -275,12 +300,14 @@ def cmd_ingest(args: argparse.Namespace) -> int:
                 отметиться()
                 print(сообщение)
 
-            result = ingest_directory(repos, target, force=args.force, progress=ход,
+            result = ingest_directory(repos, target, base=library, force=args.force,
+                                      progress=ход,
                                       doc_type=doc_type, domain=domain,
                                       domains_path=settings.domains_path,
                                       jobs=getattr(args, "jobs", 0) or None)
     else:
-        result = ingest_path(repos, target, root=target.parent, force=args.force,
+        result = ingest_path(repos, target, root=_id_root(target, library),
+                             force=args.force,
                              doc_type=doc_type, domain=domain,
                              domains_path=settings.domains_path)
     print(result.summary() if hasattr(result, "summary") else result)

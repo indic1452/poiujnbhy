@@ -188,5 +188,34 @@ class СводкаЧерезСервер(unittest.TestCase):
         self.assertEqual(["скан.pdf: текста нет"], тело["report"]["failures"])
 
 
+class НесовместимыеКлючиЗагрузки(unittest.TestCase):
+    """-Fresh и -Path вместе — потеря библиотеки от одной опечатки.
+
+    -Fresh стирает библиотеку в базе целиком и собирает заново по тому, что
+    обошли. -Path говорит, что обходить. Вместе они значат «сотри тринадцать
+    тысяч документов и собери из них одну папку» — осмысленного применения у
+    этого нет, а цена ошибки полдня работы обратно не вернёт.
+    """
+
+    def setUp(self):
+        self.исходник = (Path(__file__).resolve().parents[1] / "scripts" / "windows"
+                         / "load-library.ps1").read_text(encoding="utf-8-sig")
+
+    def test_сочетание_не_выполняется(self):
+        self.assertIn("if ($Fresh -and $Path) {", self.исходник)
+
+    def test_человеку_сказано_чем_заменить(self):
+        # Отказ без замены — это тупик: человек всё равно хотел что-то сделать.
+        участок = self.исходник.split("if ($Fresh -and $Path) {")[1].split("}")[0]
+        self.assertIn("-Path <папка>", участок)
+        self.assertIn("-Fresh", участок)
+        self.assertIn("exit 1", участок)
+
+    def test_проверка_стоит_до_любой_работы(self):
+        # После стирания предупреждать поздно.
+        досюда = self.исходник.index("if ($Fresh -and $Path) {")
+        self.assertLess(досюда, self.исходник.index("Invoke-Reportgen"))
+
+
 if __name__ == "__main__":
     unittest.main()

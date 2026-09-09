@@ -558,7 +558,8 @@ def _iter_library_files(root: Path, patterns: Sequence[str]) -> List[Path]:
     return _scan_library(root, patterns)[0]
 
 
-def _scan_library(root: Path, patterns: Sequence[str]) -> Tuple[List[Path], List[str]]:
+def _scan_library(root: Path, patterns: Sequence[str],
+                  base: Path | None = None) -> Tuple[List[Path], List[str]]:
     """Файлы корпуса и рассказ о том, что пропущено и почему.
 
     Пропуски раньше были молчаливыми: инженер бросал новый ГОСТ прямо в корень
@@ -568,7 +569,15 @@ def _scan_library(root: Path, patterns: Sequence[str]) -> Tuple[List[Path], List
 
     Обход один: раньше дерево обходилось по разу на каждую маску формата, а
     масок теперь больше полусотни. На сетевой шаре это заметно.
+
+    ``root`` — что обходим, ``base`` — от чего считаем глубину и путь. При
+    догрузке отдельной папки это разные вещи: обходим «standards\\новая-пачка»,
+    а «в корне корпуса» по-прежнему означает корень БИБЛИОТЕКИ. Пока они были
+    одним и тем же, файлы прямо в указанной папке считались корневыми и
+    молча не брались — приём заканчивался словами «подходящих файлов не
+    найдено» и советом разложить по подпапкам, хотя разложено было верно.
     """
+    base = Path(base) if base is not None else root
     suffixes = {
         pattern[1:].lower() for pattern in patterns if pattern.startswith("*.")
     }
@@ -580,7 +589,7 @@ def _scan_library(root: Path, patterns: Sequence[str]) -> Tuple[List[Path], List
         if not path.is_file():
             continue
         try:
-            relative = path.relative_to(root)
+            relative = path.relative_to(base)
         except ValueError:
             continue
         if any(part.startswith(_SKIP_PREFIXES) for part in relative.parts):
@@ -702,6 +711,7 @@ def ingest_directory(
     repos: "Repositories",
     root: str | Path,
     *,
+    base: str | Path | None = None,
     patterns: Sequence[str] | None = None,
     force: bool = False,
     progress: ProgressFn | None = None,
@@ -720,34 +730,56 @@ def ingest_directory(
     ключевых слов может не хватить, а инженер знает точно.
     ``progress`` вызывается перед разбором каждого файла — CLI печатает это в
     консоль, веб пишет в журнал приёма.
+
+    ``base`` — корень библиотеки, когда обходим не её целиком, а одну папку
+    внутри. Догрузка пачки — штатная операция: перебирать тринадцать тысяч
+    файлов ради полусотни новых незачем. Но идентификатор документа обязан
+    получиться тот же самый, что и при полном проходе, иначе следующая полная
+    загрузка заведёт те же файлы ВТОРЫМ комплектом записей, и в выдачу пойдут
+    парные фрагменты — инженер увидит подтверждение в двух источниках там, где
+    источник один. Отсюда правило: обходим ``root``, а считаем от ``base``.
     """
     root = Path(root)
     if not root.is_dir():
         raise FileNotFoundError(f"каталог корпуса не найден: {root}")
+    # Корень, от которого считаются идентификаторы. Указанный извне берём
+    # только если обходимая папка действительно внутри него: иначе получились
+    # бы пути с «..», а это не идентификатор.
+    отсчёт = root
+    if base is not None:
+        основание = Path(base)
+        try:
+            внутри = root.resolve().is_relative_to(основание.resolve())
+        except (OSError, ValueError):
+            внутри = False
+        if внутри:
+            отсчёт = основание
 
     files, skipped = _scan_library(
-        root, tuple(patterns) if patterns else library_patterns())
+        root, tuple(patterns) if patterns else library_patterns(), base=отсчёт)
     result = IngestResult()
     result.notes.extend(skipped)
     workers = resolve_jobs(jobs)
-    identifiers, collisions = _resolve_ids(files, root)
+    identifiers, collisions = _resolve_ids(files, отсчёт)
     result.notes.extend(collisions)
 
     def handle(path: Path) -> IngestResult:
         return ingest_path(
-            repos, path, root=root, force=force,
+            repos, path, root=отсчёт, force=force,
             domain=domain, doc_type=doc_type, domains_path=domains_path,
             doc_id=identifiers.get(path),
         )
 
-    # Сверка базы с каталогом имеет смысл только на полном проходе: с
-    # маской -Pattern или по подпапке «пропавшим» окажется всё остальное.
+    # Сверка «файла больше нет» идёт по ОБОЙДЁННОМУ каталогу: при догрузке
+    # одной папки всё остальное туда не попадает и в архив не уходит. Маска
+    # -Pattern отменяет сверку совсем — с ней «пропавшим» оказался бы каждый
+    # файл, не подошедший под маску.
     full_pass = not patterns
 
     if workers <= 1 or len(files) < 2:
         for number, path in enumerate(files, start=1):
             if progress is not None:
-                progress(f"[{number}/{len(files)}] {_relative_for(path, root)}")
+                progress(f"[{number}/{len(files)}] {_relative_for(path, отсчёт)}")
             result.merge(handle(path))
         _finish(repos, result, root, files, full_pass)
         return result
@@ -772,10 +804,10 @@ def ingest_directory(
                 except Exception as error:  # noqa: BLE001 — один файл не роняет приём
                     piece = IngestResult(failed=1)
                     piece.failures.append(
-                        f"{_relative_for(path, root)}: {type(error).__name__}: {error}"
+                        f"{_relative_for(path, отсчёт)}: {type(error).__name__}: {error}"
                     )
                 if progress is not None:
-                    progress(f"[{done}/{len(files)}] {_relative_for(path, root)}")
+                    progress(f"[{done}/{len(files)}] {_relative_for(path, отсчёт)}")
                 result.merge(piece)
         except KeyboardInterrupt:
             # Инженер запустил приём тысячной пачки сканов и увидел, что попал

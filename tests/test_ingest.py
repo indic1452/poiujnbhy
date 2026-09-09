@@ -673,3 +673,135 @@ class SummaryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ПриёмОтдельнойПапки(TempCase):
+    """Догрузка новой пачки: приём одной папки внутри библиотеки.
+
+    Отдел приносит документы не по одному, а пачками, и перебирать ради
+    пятидесяти новых файлов всю библиотеку из тринадцати тысяч незачем —
+    поэтому «load-library.ps1 -Path <папка>» и заведён как штатная операция.
+
+    Но каталог, на который указали, приём считал корнем корпуса целиком. Из
+    этого выходило две беды, обе тихие. Файлы, лежащие прямо в этой папке,
+    оказывались «в корне корпуса» — а такие приём не берёт: загрузка
+    заканчивалась словами «подходящих файлов не найдено» и советом разложить
+    по подпапкам, хотя разложено всё было правильно. А на уровень глубже
+    получалось хуже: идентификатор документа считался от указанной папки, и
+    тот же самый файл при следующей полной загрузке заводился ВТОРОЙ раз под
+    другим идентификатором — в выдаче два одинаковых фрагмента, и инженер
+    видит «подтверждение в двух источниках» там, где источник один.
+
+    Идентификатор документа обязан быть один и тот же, откуда бы ни начали
+    приём: он считается от корня библиотеки, а не от того, на что указали.
+    """
+
+    def библиотека(self):
+        """Библиотека с уже принятым старым документом и новой пачкой."""
+        self.write("standards/старая-методика.md", "# Старая методика\n\n" + LONG_TEXT)
+        новые = self.tmp / "standards" / "новая-пачка"
+        новые.mkdir(parents=True, exist_ok=True)
+        (новые / "рекомендация.md").write_text(
+            "# Рекомендация по стафингованию\n\n" + LONG_TEXT, encoding="utf-8")
+        (новые / "внутри" / "глубже").mkdir(parents=True, exist_ok=True)
+        (новые / "внутри" / "глубже" / "приложение.md").write_text(
+            "# Приложение к рекомендации\n\n" + LONG_TEXT, encoding="utf-8")
+        return новые
+
+    def test_папка_принимается_а_не_объявляется_пустой(self):
+        новые = self.библиотека()
+        result = ingest_directory(self.repos, новые, base=self.tmp)
+        self.assertEqual(2, result.added, result.summary())
+        self.assertEqual(0, result.failed, result.failures)
+
+    def test_идентификаторы_считаются_от_корня_библиотеки(self):
+        новые = self.библиотека()
+        ingest_directory(self.repos, новые, base=self.tmp)
+        self.assertEqual(
+            ["standards/новая-пачка/внутри/глубже/приложение",
+             "standards/новая-пачка/рекомендация"],
+            sorted(d.doc_id for d in self.repos.documents.list()),
+        )
+
+    def test_полная_загрузка_после_частичной_не_плодит_двойников(self):
+        # Главное свойство: сначала догрузили папку, потом по привычке
+        # запустили загрузку целиком. Документов должно остаться столько же.
+        новые = self.библиотека()
+        ingest_directory(self.repos, новые, base=self.tmp)
+        было = sorted(d.doc_id for d in self.repos.documents.list())
+        result = ingest_directory(self.repos, self.tmp)
+        стало = sorted(d.doc_id for d in self.repos.documents.list())
+        self.assertEqual(было + ["standards/старая-методика"], стало)
+        self.assertEqual(2, result.skipped, result.summary())
+        self.assertFalse([n for n in result.notes if "одинаковое содержимое" in n],
+                         "тот же файл заведён вторым документом")
+
+    def test_тип_документа_берётся_от_корня_библиотеки(self):
+        # «standards» — верхний каталог библиотеки, а не указанной папки.
+        новые = self.библиотека()
+        ingest_directory(self.repos, новые, base=self.tmp)
+        документ = self.repos.documents.by_doc_id("standards/новая-пачка/рекомендация")
+        self.assertEqual("standards", документ.doc_type)
+        self.assertEqual("каталог", документ.meta.get("doc_type_source"))
+
+    def test_частичный_приём_не_уводит_в_архив_остальную_библиотеку(self):
+        # Сверка «файла больше нет» имеет смысл только внутри того, что
+        # обошли. Иначе догрузка одной папки увела бы из поиска всё остальное.
+        новые = self.библиотека()
+        ingest_directory(self.repos, self.tmp)
+        ingest_directory(self.repos, новые, base=self.tmp)
+        старый = self.repos.documents.by_doc_id("standards/старая-методика")
+        self.assertEqual("current", старый.status)
+
+    def test_догрузка_не_архивирует_пропажу_за_пределами_папки(self):
+        # Сверка «файла больше нет» ограничена ОБОЙДЁННЫМ каталогом. Иначе
+        # догрузка одной папки увела бы из поиска документ, который просто
+        # лежит в другой части библиотеки и в этот обход не попал, — а
+        # заметить это можно было бы только по пропавшим ссылкам в отчётах.
+        новые = self.библиотека()
+        ingest_directory(self.repos, self.tmp)
+        (self.tmp / "standards" / "старая-методика.md").unlink()
+        ingest_directory(self.repos, новые, base=self.tmp)
+        старая = self.repos.documents.by_doc_id("standards/старая-методика")
+        self.assertEqual("current", старая.status,
+                         "документ вне обойдённой папки уведён в архив")
+
+    def test_догрузка_не_затирает_итог_сборки_всей_библиотеки(self):
+        # Итог хранится по каталогу, по которому шёл приём. Если частичная
+        # догрузка запишется под именем всей библиотеки, карточка библиотеки
+        # покажет «принято 2» вместо тринадцати тысяч.
+        новые = self.библиотека()
+        ingest_directory(self.repos, self.tmp)
+        ingest_directory(self.repos, новые, base=self.tmp)
+        целиком = self.repos.library_report.load(str(self.tmp))
+        self.assertEqual(3, целиком["added"], "итог всей библиотеки затёрт догрузкой")
+        отдельно = self.repos.library_report.load(str(новые))
+        self.assertEqual(0, отдельно["added"])
+        self.assertEqual(2, отдельно["skipped"])
+
+    def test_пропавший_файл_внутри_папки_всё_же_замечен(self):
+        # А внутри обойдённого — сверка обязана работать по-прежнему.
+        новые = self.библиотека()
+        ingest_directory(self.repos, новые, base=self.tmp)
+        (новые / "рекомендация.md").unlink()
+        result = ingest_directory(self.repos, новые, base=self.tmp)
+        документ = self.repos.documents.by_doc_id("standards/новая-пачка/рекомендация")
+        self.assertEqual("archived", документ.status)
+        self.assertTrue([n for n in result.notes if "файла больше нет" in n])
+
+    def test_без_указания_корня_поведение_прежнее(self):
+        # Библиотеку целиком грузят без base — ничего не должно измениться.
+        self.библиотека()
+        result = ingest_directory(self.repos, self.tmp)
+        self.assertEqual(3, result.added, result.summary())
+
+    def test_чужой_корень_не_принимается(self):
+        # Указали корень, внутри которого обходимой папки нет. Считать от него
+        # значит выдать путь с «..» — не идентификатор. Такой корень
+        # игнорируется, и приём работает как раньше, от самой папки.
+        новые = self.библиотека()
+        посторонний = Path(tempfile.mkdtemp(prefix="reportgen-чужой-"))
+        self.addCleanup(shutil.rmtree, посторонний, ignore_errors=True)
+        ingest_directory(self.repos, новые, base=посторонний)
+        имена = sorted(d.doc_id for d in self.repos.documents.list())
+        self.assertEqual(["внутри/глубже/приложение"], имена)
