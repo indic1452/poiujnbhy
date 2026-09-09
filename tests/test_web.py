@@ -4978,7 +4978,13 @@ class VectorCardTests(unittest.TestCase):
 
     def test_filling_the_library_is_the_chiefs_business(self):
         # Кнопки, которые всё равно ответят «нет прав», показывать незачем.
-        self.assertIn("isAdmin() ? h('div', { class: 'card card-pad' },", self.js)
+        #
+        # Раньше здесь сличалась разметка целиком, вместе с классом обёртки:
+        # перенос загрузки в складной раздел ронял проверку, ничего не сломав
+        # по существу. Сличаем само право: блок загрузки закрыт isAdmin().
+        загрузка = self.js.index("'Загрузка документов'")
+        self.assertIn("isAdmin() ?", self.js[загрузка - 200:загрузка],
+                      "блок загрузки документов открыт не только начальству")
         self.assertIn("}, 'Прочитать каталог') : null)),", self.js)
 
 
@@ -6828,3 +6834,80 @@ class ПустоеМестоГоворит(unittest.TestCase):
         self.assertNotIn("'empty' }, h('div', { class: 'spinner' })", self.js)
         self.assertGreaterEqual(self.js.count("errorBox(error)"), 5)
         self.assertGreaterEqual(self.js.count("loadingBox("), 5)
+
+
+class БиблиотекаНачинаетсяСПоиска(unittest.TestCase):
+    """Опись стояла ниже сгиба, а поиск по содержимому — в самом низу.
+
+    Экран открывали, чтобы найти документ или посмотреть, что в библиотеке
+    есть. А сверху лежали четыре карточки обслуживания: загрузка, итог
+    приёма, качество разбора и состояние векторов. Обслуживанием занимается
+    начальство и раз в месяц; смотрят экран каждый день и все.
+
+    Порядок перевернули: сначала предупреждение о слепом поиске, потом сам
+    поиск по содержимому, потом опись, а обслуживание — в складной раздел
+    внизу, который помнит, как его оставили.
+    """
+
+    def setUp(self):
+        статика = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (статика / "app.js").read_text(encoding="utf-8")
+        self.css = (статика / "styles.css").read_text(encoding="utf-8")
+        начало = self.js.index("async function renderLibrary(")
+        кусок = self.js[начало:]
+        сборка = кусок.index("append(page, [")
+        self.сборка = кусок[сборка:кусок.index("\n        ]);", сборка)]
+
+    def место(self, метка: str) -> int:
+        самое = self.сборка.find(метка)
+        self.assertNotEqual(-1, самое, f"на экране библиотеки нет «{метка}»")
+        return самое
+
+    def test_поиск_и_опись_выше_обслуживания(self):
+        порядок = [
+            ("vectorsBox", "состояние смыслового поиска"),
+            ("'Поиск по библиотеке'", "поиск по содержимому"),
+            ("tableBox", "опись"),
+            ("foldCard('library-maint'", "обслуживание"),
+        ]
+        места = [(self.место(метка), подпись) for метка, подпись in порядок]
+        self.assertEqual([подпись for _, подпись in места],
+                         [подпись for _, подпись in sorted(места)],
+                         "порядок разделов библиотеки нарушен: "
+                         + " → ".join(подпись for _, подпись in sorted(места)))
+
+    def test_обслуживание_целиком_внутри_складного_раздела(self):
+        """Ни одна карточка обслуживания не осталась над описью."""
+        свёрнуто = self.сборка[self.место("foldCard('library-maint'"):]
+        for метка in ("'Загрузка документов'", "summaryBox", "qualityBox"):
+            with self.subTest(метка=метка):
+                self.assertIn(метка, свёрнуто,
+                              f"{метка} снова стоит над описью")
+                self.assertEqual(1, self.сборка.count(метка),
+                                 f"{метка} встречается на экране дважды")
+
+    def test_складной_раздел_помнит_выбор(self):
+        """Раскрывать обслуживание каждый вход — та же беда, только медленнее."""
+        помощник = self.js.split("function foldCard(")[1].split("\n    }")[0]
+        self.assertIn("storageGet(storageKey", помощник)
+        self.assertIn("storageSet(storageKey", помощник)
+        self.assertIn("'toggle'", помощник, "выбор не запоминается при переключении")
+        # По умолчанию — свёрнуто: иначе смысл раздела теряется.
+        self.assertIn("open: storageGet(storageKey, '') === '1'", помощник)
+
+    def test_у_свёрнутого_раздела_написано_что_внутри(self):
+        """Заголовок без подписи заставляет раскрывать, чтобы вспомнить."""
+        помощник = self.js.split("function foldCard(")[1].split("\n    }")[0]
+        self.assertIn("class: 'fold-note'", помощник)
+        вызов = self.сборка[self.место("foldCard('library-maint'"):][:400]
+        self.assertIn("загрузка документов, итог приёма, качество разбора", вызов)
+
+    def test_карточка_в_карточке_разглажена(self):
+        """Внутри раздела карточки теряют рамку: рамка в рамке — брак вёрстки."""
+        свойства = _объявления(self.css, ".fold-body .card")
+        self.assertEqual("0", свойства.get("border"), "рамка в рамке")
+        self.assertEqual("none", свойства.get("background"))
+        self.assertEqual("0", свойства.get("padding"))
+        # Части всё же надо разделить — иначе они слипаются в кашу.
+        разделитель = _объявления(self.css, ".fold-body > * + *")
+        self.assertIn("var(--border)", разделитель.get("border-top", ""))

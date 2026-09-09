@@ -864,6 +864,30 @@
         }
     }
 
+    /** Складной раздел, который помнит, оставили его открытым или закрытым.
+     *
+     * Обслуживание нужно раз в месяц, а смотрят экран каждый день. Держать
+     * его развёрнутым — значит каждый день отодвигать вниз то, ради чего
+     * пришли; прятать насовсем — значит потерять. Складываем и запоминаем
+     * выбор: тот, кто занимается библиотекой, раскроет раздел один раз.
+     */
+    function foldCard(key, title, note, ...content) {
+        const storageKey = 'reportgen.fold.' + key;
+        const block = h('details', {
+            class: 'card card-pad fold fold--card',
+            open: storageGet(storageKey, '') === '1',
+            style: { marginTop: '14px' },
+        },
+            h('summary', {},
+                h('b', {}, title),
+                note ? h('span', { class: 'fold-note' }, note) : null),
+            h('div', { class: 'fold-body' }, ...content));
+        block.addEventListener('toggle', () => {
+            storageSet(storageKey, block.open ? '1' : '0');
+        });
+        return block;
+    }
+
     // -- изменяемые колонки таблиц ------------------------------------------
 
     /** Сделать колонки таблицы перетаскиваемыми по ширине.
@@ -7310,25 +7334,15 @@
                         onclick: () => reindex(),
                     }, 'Прочитать каталог') : null)),
 
-            // Пополняет библиотеку начальство: документ ложится в общий
-            // поиск всего отдела, и неверно указанный тип или направление
-            // портят выдачу всем.
-            isAdmin() ? h('div', { class: 'card card-pad' },
-                h('div', { class: 'card-title' }, 'Загрузка документов'),
-                h('div', { class: 'toolbar' },
-                    h('label', { class: 'inline' }, 'Тип:', uploadType),
-                    h('label', { class: 'inline' }, 'Направление:', uploadDomain)),
-                dropzone, fileInput, uploadList) : null,
-
+            // Состояние смыслового поиска стоит выше всего остального: пока
+            // он слеп, и поиск по содержимому, и ответы помощника находят
+            // не то, а понять это по самой выдаче нельзя.
             vectorsBox,
-            summaryBox,
-            qualityBox,
 
-            h('div', { class: 'toolbar', style: { marginTop: '14px' } },
-                typeFilter, domainFilter, nameSearch, focusChip),
-            tableBox,
-            pager,
-
+            // Поиск по содержимому — то, ради чего библиотеку и собирали:
+            // тридцать тысяч файлов листать никто не станет. Он стоял в
+            // самом низу страницы, под четырьмя карточками обслуживания, и
+            // до него доходили, только зная, что он там есть.
             h('div', { class: 'card card-pad', style: { marginTop: '14px' } },
                 h('div', { class: 'card-title' }, 'Поиск по библиотеке'),
                 h('div', { class: 'toolbar' },
@@ -7338,6 +7352,32 @@
                     h('button', { class: 'btn btn--primary', onclick: () => runSearch() }, 'Найти')),
                 h('div', { class: 'toolbar small muted' }, 'типы:', searchTypes.map((item) => item.node)),
                 searchResults),
+
+            // Сама опись: что в библиотеке есть, какого типа и направления.
+            h('div', { class: 'toolbar', style: { marginTop: '14px' } },
+                typeFilter, domainFilter, nameSearch, focusChip),
+            tableBox,
+            pager,
+
+            // Обслуживание — загрузка, итог приёма, качество разбора.
+            // Занимается им начальство и раз в месяц, а смотрят экран
+            // каждый день: четыре карточки наверху отодвигали и опись, и
+            // поиск ниже сгиба у всех остальных.
+            foldCard('library-maint', 'Обслуживание библиотеки',
+                isAdmin()
+                    ? 'загрузка документов, итог приёма, качество разбора'
+                    : 'итог приёма и качество разбора',
+                // Пополняет библиотеку начальство: документ ложится в общий
+                // поиск всего отдела, и неверно указанный тип или направление
+                // портят выдачу всем.
+                isAdmin() ? h('div', { class: 'fold-part' },
+                    h('div', { class: 'card-title' }, 'Загрузка документов'),
+                    h('div', { class: 'toolbar' },
+                        h('label', { class: 'inline' }, 'Тип:', uploadType),
+                        h('label', { class: 'inline' }, 'Направление:', uploadDomain)),
+                    dropzone, fileInput, uploadList) : null,
+                summaryBox,
+                qualityBox),
         ]);
 
         /* Состояние смыслового поиска. Библиотека может быть полна, а поиск

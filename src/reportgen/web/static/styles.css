@@ -7278,3 +7278,66 @@ body.side-min .side-nav a:focus-visible > span {
     background: color-mix(in srgb, var(--danger) 7%, transparent);
     padding: 16px 18px;
 }
+
+/* ------------------------------------------------------ складной раздел --- */
+
+/* Раздел, который нужен раз в месяц, не должен каждый день отодвигать вниз
+   то, ради чего на экран пришли. Складываем его в одну строку и запоминаем,
+   как человек его оставил: тот, кто занимается обслуживанием, раскроет
+   раздел один раз и навсегда. */
+.fold--card > summary {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: var(--fs-md);
+    color: var(--text);
+}
+
+.fold--card > summary b {
+    font-family: var(--font-display);
+    letter-spacing: -.01em;
+}
+
+/* Подпись рядом с заголовком говорит, что внутри: свёрнутый раздел без неё
+   заставляет раскрывать его, чтобы вспомнить, зачем он. */
+.fold-note {
+    color: var(--muted);
+    font-size: var(--fs-sm);
+    font-weight: 400;
+}
+
+.fold--card[open] > summary {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.fold-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Карточка в карточке читается как ошибка вёрстки: внутри раздела рамки
+   снимаем, а части разделяем волосяной линейкой. */
+.fold-body .card,
+.fold-body .card-pad {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: none;
+    padding: 0;
+    margin: 0 !important;
+}
+
+.fold-body > * + *,
+.fold-body .card + .card {
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+/* Пустая часть не должна оставлять за собой линейку и отступ: у не-
+   начальника здесь нет ни загрузки, ни половины остального. */
+.fold-body > *:empty {
+    display: none;
+}
