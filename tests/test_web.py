@@ -6144,3 +6144,156 @@ class ResponsiveLayoutTests(unittest.TestCase):
 
     def test_page_head_wraps(self):
         self.assertIn("flex-wrap: wrap", self.block(".page-head"))
+
+
+class ОформлениеИДвижение(unittest.TestCase):
+    """Материал, глубина и движение — то, чего интерфейсу не хватало.
+
+    Прежний вид держался на волосяных линейках: всё на одном белом, всё
+    одного веса. Приборная строгость — не то же самое, что отсутствие
+    материала: у настоящего прибора панель имеет толщину и кромку, и по ним
+    глаз мгновенно понимает, что лежит на чём.
+
+    Проверяем не красоту — её тестом не поймать, — а то, без чего она
+    рассыпается: шкала уровней заведена и применена, движение выключается по
+    просьбе человека, ни одного обращения наружу не появилось.
+    """
+
+    def setUp(self):
+        статика = ROOT / "src" / "reportgen" / "web" / "static"
+        self.css = (статика / "styles.css").read_text(encoding="utf-8")
+        self.js = (статика / "app.js").read_text(encoding="utf-8")
+
+    def test_шкала_уровней_заведена_и_применена(self):
+        for имя in ("--elev-1", "--elev-2", "--elev-3", "--edge"):
+            with self.subTest(имя=имя):
+                self.assertIn(имя + ":", self.css)
+        # Заведена — мало, надо применить: иначе панель остаётся наклейкой.
+        self.assertIn("box-shadow: var(--elev-1), var(--edge)", self.css)
+
+    def test_уровни_переопределены_для_обеих_тёмных_дорог(self):
+        """Тёмная тема приходит двумя путями, и оба обязаны быть накрыты.
+
+        Настройка системы даёт @media (prefers-color-scheme: dark), выбор
+        человека — :root[data-theme="dark"]. Тени и шкала, рассчитанные на
+        белое, на тёмном не видны вовсе, поэтому переопределены должны быть
+        оба раза — плюс исходное объявление в корне. Считаем вхождения:
+        сличать «есть где-то ниже» бесполезно, ниже лежит весь остальной
+        файл.
+        """
+        for имя in ("--elev-1:", "--elev-2:", "--elev-3:", "--edge:",
+                    "--seq-1:", "--seq-6:"):
+            with self.subTest(имя=имя):
+                self.assertGreaterEqual(
+                    self.css.count(имя), 3,
+                    f"{имя} объявлено не во всех трёх местах: корень, "
+                    "настройка системы, выбор человека")
+
+    def test_движение_спрашивает_разрешения(self):
+        """Всё движение стоит ПОД просьбой не двигать лишнего.
+
+        Сличать наличие строки бесполезно: она встречается в файле не раз, и
+        подмена условия у самого движения проходит незамеченной. Проверяем
+        прилегание — что за открытием условия идёт именно объявление
+        появления раздела.
+        """
+        for кадры in ("view-enter", "tile-enter", "bar-grow"):
+            with self.subTest(кадры=кадры):
+                self.assertIn("@keyframes " + кадры, self.css)
+        self.assertIn(
+            "@media (prefers-reduced-motion: no-preference) {\n    .view-enter {",
+            self.css, "движение вынесено из-под просьбы не двигать лишнего")
+        # И сами кадры описаны внутри того же условия, а не снаружи.
+        участок = self.css.split(
+            "@media (prefers-reduced-motion: no-preference) {\n    .view-enter {")[1]
+        for кадры in ("view-enter", "tile-enter", "bar-grow"):
+            with self.subTest(кадры=кадры):
+                self.assertIn("@keyframes " + кадры, участок.split("\n}\n")[0]
+                              + участок[:4000])
+
+    def test_набегающее_число_молчит_при_запрете_движения(self):
+        self.assertIn("function motionOff()", self.js)
+        участок = self.js.split("function countUp(")[1].split("\n    function ")[0]
+        self.assertIn("motionOff()", участок)
+
+    def test_маленькое_число_не_анимируется(self):
+        # «3» из нуля добегает за два кадра и выглядит дёрганьем.
+        участок = self.js.split("function countUp(")[1].split("\n    function ")[0]
+        self.assertIn("Math.abs(цель) < 5", участок)
+
+    def test_заголовок_столбца_не_обрезается(self):
+        # «Номер груп…» человек читает как опечатку, а не как узкий столбец.
+        участок = self.css.split("table.grid thead th {")[-1].split("}")[0]
+        self.assertIn("white-space: normal", участок)
+
+    def test_ничего_не_загружается_снаружи(self):
+        # Машина изолирована: любая внешняя ссылка — отказ на пустом месте.
+        for кусок in ("http://", "https://", "@import url(", "//fonts."):
+            with self.subTest(кусок=кусок):
+                self.assertNotIn(кусок, self.css)
+
+
+class ШкалаСостоянийПисьма(unittest.TestCase):
+    """Состояния письма — ступени одного пути, а не набор красок.
+
+    Принято → в работе → на проверке → к отправке → отправлено → в архиве.
+    Одна краска от светлой к тёмной показывает движение по пути сама, без
+    легенды. Но краска работает только вместе с порядком: сервер отдаёт
+    состояния по алфавиту опознавателя, и разложенная по алфавиту шкала
+    перестаёт что-либо значить.
+    """
+
+    def setUp(self):
+        статика = ROOT / "src" / "reportgen" / "web" / "static"
+        self.css = (статика / "styles.css").read_text(encoding="utf-8")
+        self.js = (статика / "app.js").read_text(encoding="utf-8")
+
+    def test_шкала_из_шести_ступеней(self):
+        for н in range(1, 7):
+            with self.subTest(ступень=н):
+                self.assertIn(f"--seq-{н}:", self.css)
+                self.assertIn(f'.flow-row[data-step="{н}"] .bar > span', self.css)
+
+    def test_порядок_ступеней_тот_же_что_в_ядре(self):
+        from reportgen.store.models import CASE_STATUSES
+
+        строка = self.js.split("const CASE_FLOW_ORDER = [")[1].split("]")[0]
+        названные = [кусок.strip().strip("'\"")
+                     for кусок in строка.split(",") if кусок.strip()]
+        self.assertEqual(list(CASE_STATUSES), названные,
+                         "порядок состояний в интерфейсе разошёлся с ядром")
+
+    def test_строки_сортируются_по_пути_а_не_по_алфавиту(self):
+        участок = self.js.split("Письма по состояниям")[1][:2400]
+        self.assertIn("statuses.slice().sort", участок)
+        self.assertIn("ступень(", участок)
+
+    def test_полоса_состояния_не_тянется_через_весь_экран(self):
+        # При счёте в единицах полоса на всю карточку превращается в линейку,
+        # и разница между «1» и «2» теряется в её длине.
+        self.assertIn(".flow-row .bar {", self.css)
+        участок = self.css.split(".flow-row .bar {")[1].split("}")[0]
+        self.assertIn("max-width", участок)
+
+
+class ПлиткиСводки(unittest.TestCase):
+    """Плитка — заголовочное число, и число обязано быть с чем сравнить."""
+
+    def setUp(self):
+        статика = ROOT / "src" / "reportgen" / "web" / "static"
+        self.css = (статика / "styles.css").read_text(encoding="utf-8")
+        self.js = (статика / "app.js").read_text(encoding="utf-8")
+
+    def test_доля_от_целого_показана_полоской(self):
+        # «3 писем в работе» само по себе ни о чём не говорит, «3 из 6» —
+        # говорит, а полоска считается быстрее двух чисел.
+        self.assertIn(".tile-meter", self.css)
+        self.assertIn("class: 'tile-meter'", self.js)
+
+    def test_пустая_доля_полоски_не_рисует(self):
+        участок = self.js.split("function tile(value, label, note, href, tab, kind, share)")[1][:1200]
+        self.assertIn("share > 0", участок)
+
+    def test_плитки_вступают_по_очереди(self):
+        self.assertIn("--i", self.js.split("function tile(")[1][:900])
+        self.assertIn("calc(var(--i, 0) * 40ms)", self.css)

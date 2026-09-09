@@ -6508,3 +6508,400 @@ table.grid .row-actions .btn--icon svg {
     background: color-mix(in srgb, var(--warn, #b8860b) 12%, transparent);
     font-size: 13px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ОФОРМЛЕНИЕ: материал, глубина, движение
+
+   Прежний вид держался на волосяных линейках и был честным, но плоским: всё
+   на одном белом, всё одного веса, один акцент на весь экран. Приборная
+   строгость — не то же самое, что отсутствие материала: у настоящего прибора
+   панель имеет толщину, кромку и блик, и по ним глаз мгновенно понимает, что
+   лежит на чём.
+
+   Здесь этот материал и заводится. Правила прежние: плотность не приносится в
+   жертву, тень служит признаком уровня, а не украшением, и ни одного
+   обращения наружу.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* Уровни. Разница между ними — не «красивее/скучнее», а «выше/ниже»:
+       карточка лежит на странице, всплывающее висит над всем. */
+    --elev-0: none;
+    --elev-1: 0 1px 2px rgba(14, 22, 31, .05), 0 1px 1px rgba(14, 22, 31, .04);
+    --elev-2: 0 1px 2px rgba(14, 22, 31, .06), 0 4px 12px rgba(14, 22, 31, .07);
+    --elev-3: 0 2px 4px rgba(14, 22, 31, .07), 0 12px 28px rgba(14, 22, 31, .12);
+
+    /* Кромка панели: светлая полоска по верхнему краю. Она и создаёт
+       ощущение толщины — без неё карточка остаётся наклейкой. */
+    --edge: inset 0 1px 0 rgba(255, 255, 255, .9);
+
+    /* Порядковая шкала для состояний письма: принято → в работе → на
+       проверке → к отправке → отправлено → в архиве. Одна краска, шесть
+       ступеней от светлой к тёмной — движение по шкале читается само,
+       без легенды. Ступени проверены на монотонность светлоты, зазор между
+       соседними и различимость самой светлой на белом фоне. */
+    --seq-1: #94b7d4;
+    --seq-2: #6b9bc0;
+    --seq-3: #4780a9;
+    --seq-4: #256290;
+    --seq-5: #15507e;
+    --seq-6: #0b3454;
+
+    /* Движение. Одна пружина на всё приложение: разнобой в скоростях
+       читается как неряшливость. */
+    --ease: cubic-bezier(.2, .7, .3, 1);
+    --dur-1: 120ms;
+    --dur-2: 200ms;
+    --dur-3: 320ms;
+
+    /* Плотность. Множитель на вертикальные отступы: на ноутбуке 13" и на
+       мониторе 27" удобны разные. */
+    --density: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --elev-1: 0 1px 2px rgba(0, 0, 0, .5);
+        --elev-2: 0 1px 2px rgba(0, 0, 0, .5), 0 6px 16px rgba(0, 0, 0, .45);
+        --elev-3: 0 2px 6px rgba(0, 0, 0, .55), 0 16px 36px rgba(0, 0, 0, .55);
+        --edge: inset 0 1px 0 rgba(255, 255, 255, .06);
+
+        --seq-1: #2f5675;
+        --seq-2: #356d97;
+        --seq-3: #3f88bb;
+        --seq-4: #5fa3dd;
+        --seq-5: #8fc0e8;
+        --seq-6: #bfdcf2;
+    }
+}
+
+:root[data-theme="dark"] {
+    --elev-1: 0 1px 2px rgba(0, 0, 0, .5);
+    --elev-2: 0 1px 2px rgba(0, 0, 0, .5), 0 6px 16px rgba(0, 0, 0, .45);
+    --elev-3: 0 2px 6px rgba(0, 0, 0, .55), 0 16px 36px rgba(0, 0, 0, .55);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, .06);
+
+    --seq-1: #2f5675;
+    --seq-2: #356d97;
+    --seq-3: #3f88bb;
+    --seq-4: #5fa3dd;
+    --seq-5: #8fc0e8;
+    --seq-6: #bfdcf2;
+}
+
+:root[data-density="compact"] {
+    --density: .78;
+}
+
+/* ------------------------------------------------------------- материал --- */
+
+/* Страница — не ровная заливка. Едва заметный уклон сверху вниз даёт глубину
+   сцены: панели на нём читаются как лежащие, а не вырезанные. */
+body.app {
+    background-image: linear-gradient(180deg,
+            color-mix(in srgb, var(--bg) 92%, var(--panel)) 0%,
+            var(--bg) 340px);
+    background-attachment: fixed;
+}
+
+.card,
+.tile,
+.panel {
+    box-shadow: var(--elev-1), var(--edge);
+    transition: box-shadow var(--dur-2) var(--ease),
+                border-color var(--dur-2) var(--ease),
+                transform var(--dur-2) var(--ease);
+}
+
+.card:hover {
+    box-shadow: var(--elev-2), var(--edge);
+}
+
+/* ------------------------------------------------------- плитки сводки --- */
+
+/* Плитка — заголовочное число, а не график: у неё одна задача, показать
+   величину так, чтобы её было видно от двери. Поэтому цифра крупная, с
+   табличными знаками, а подпись под ней — вторым уровнем.
+
+   Полоска слева осталась, но теперь к ней добавлена подложка того же цвета в
+   несколько процентов: состояние читается всей плиткой, а не одной ниткой по
+   краю, и просроченное видно боковым зрением. */
+.tile {
+    position: relative;
+    overflow: hidden;
+    padding: calc(16px * var(--density)) 16px calc(15px * var(--density));
+    border-left-width: 3px;
+    background-image: linear-gradient(180deg,
+            color-mix(in srgb, var(--panel) 97%, var(--accent)) 0%,
+            var(--panel) 62%);
+}
+
+.tile:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--elev-2), var(--edge);
+}
+
+.tile:active {
+    transform: translateY(0);
+}
+
+.tile--bad {
+    background-image: linear-gradient(180deg,
+            color-mix(in srgb, var(--panel) 92%, var(--danger)) 0%,
+            var(--panel) 62%);
+}
+
+.tile--warn {
+    background-image: linear-gradient(180deg,
+            color-mix(in srgb, var(--panel) 92%, var(--warn)) 0%,
+            var(--panel) 62%);
+}
+
+.tile--ok {
+    background-image: linear-gradient(180deg,
+            color-mix(in srgb, var(--panel) 94%, var(--ok)) 0%,
+            var(--panel) 62%);
+}
+
+.tile-value {
+    font-size: clamp(28px, 2.6vw, 38px);
+    font-weight: 650;
+    letter-spacing: -.03em;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.tile-label {
+    font-size: var(--fs-md);
+    letter-spacing: -.005em;
+}
+
+/* Доля от целого прямо в плитке: «3 из 6» глазом не считается, а полоска
+   считается сразу. Показываем только там, где целое есть. */
+.tile-meter {
+    margin-top: 10px;
+    height: 3px;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--border) 70%, transparent);
+    overflow: hidden;
+}
+
+.tile-meter > i {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transform-origin: left center;
+}
+
+.tile--bad .tile-meter > i { background: var(--danger); }
+.tile--warn .tile-meter > i { background: var(--warn); }
+.tile--ok .tile-meter > i { background: var(--ok); }
+
+/* --------------------------------------------------------------- полосы --- */
+
+/* Полоса величины: тонкая, с закруглённым концом, приклеенная к началу
+   отсчёта. Толстая полоса врёт — глаз меряет её площадь, а не длину. */
+.bar,
+.bar-cell .track {
+    height: 6px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.bar > span,
+.bar-cell .track > i {
+    border-radius: 0 3px 3px 0;
+    transform-origin: left center;
+}
+
+/* Строка состояния: подпись, полоса, число. Полосе — своя ступень шкалы,
+   число — табличными знаками, чтобы столбец выравнивался по разрядам. */
+.flow-row {
+    align-items: center;
+}
+
+.flow-row > b {
+    font-variant-numeric: tabular-nums;
+}
+
+.flow-row[data-step="1"] .bar > span { background: var(--seq-1); }
+.flow-row[data-step="2"] .bar > span { background: var(--seq-2); }
+.flow-row[data-step="3"] .bar > span { background: var(--seq-3); }
+.flow-row[data-step="4"] .bar > span { background: var(--seq-4); }
+.flow-row[data-step="5"] .bar > span { background: var(--seq-5); }
+.flow-row[data-step="6"] .bar > span { background: var(--seq-6); }
+
+/* -------------------------------------------------------------- движение --- */
+
+/* Движение служит одному: показать, откуда что взялось. Появление раздела —
+   короткий подъём, строки списка вступают по очереди с шагом в кадр, полосы
+   растут от начала отсчёта. Всё это выключается одной настройкой системы. */
+@media (prefers-reduced-motion: no-preference) {
+    .view-enter {
+        animation: view-enter var(--dur-3) var(--ease) both;
+    }
+
+    .tiles > .tile {
+        animation: tile-enter var(--dur-3) var(--ease) both;
+        animation-delay: calc(var(--i, 0) * 40ms);
+    }
+
+    .bar > span,
+    .bar-cell .track > i,
+    .tile-meter > i {
+        animation: bar-grow var(--dur-3) var(--ease) both;
+        animation-delay: calc(var(--i, 0) * 40ms + 60ms);
+    }
+
+    @keyframes view-enter {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: none; }
+    }
+
+    @keyframes tile-enter {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: none; }
+    }
+
+    @keyframes bar-grow {
+        from { transform: scaleX(0); }
+        to   { transform: scaleX(1); }
+    }
+}
+
+/* Подпись состояния: ширина под самое длинное название («проверен, к
+   отправке»), иначе оно переносится и строка вырастает вдвое. */
+.flow-name {
+    flex: 0 0 auto;
+    width: 148px;
+}
+
+/* ---------------------------------------------------------- боковое меню --- */
+
+/* Меню — не часть страницы, а её край. Раньше оно было того же белого, что и
+   панели, и граница между «где я» и «что я смотрю» держалась на одной линейке.
+   Даём ему свою плоскость: чуть холоднее и глубже, с мягкой тенью внутрь. */
+.side {
+    background-image: linear-gradient(180deg,
+            color-mix(in srgb, var(--panel) 88%, var(--bg)) 0%,
+            color-mix(in srgb, var(--panel) 96%, var(--bg)) 220px);
+    box-shadow: inset -1px 0 0 var(--border);
+}
+
+.side-nav a {
+    position: relative;
+    transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+/* Отметка текущего раздела — вертикальная риска у самого края, как закладка
+   в справочнике. Заливка одна её не заменяет: при беглом взгляде по списку
+   заливка сливается с наведением, а риска — нет. */
+.side-nav a.is-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--accent);
+}
+
+.side-nav a.is-active {
+    box-shadow: var(--elev-1);
+}
+
+/* Свёрнутое меню: риска остаётся, значок сдвигать некуда. */
+body.side-min .side-nav a.is-active {
+    padding-left: 12px;
+}
+
+/* ------------------------------------------------------------------ шапка --- */
+
+/* Шапка держит верх страницы и обязана читаться как отдельный слой: под ней
+   прокручивается содержимое, и без тени оно наезжает на заголовок. */
+.topbar {
+    box-shadow: var(--elev-1);
+    backdrop-filter: saturate(1.2);
+}
+
+/* --------------------------------------------------------------- таблицы --- */
+
+/* Заголовок таблицы прилипает к верху: на списке в двести писем человек
+   доезжает до середины и перестаёт понимать, какой столбец что значит. */
+table.grid thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--panel);
+    box-shadow: inset 0 -1px 0 var(--border);
+}
+
+table.grid tbody tr {
+    transition: background var(--dur-1) var(--ease);
+}
+
+table.grid tbody tr:hover {
+    background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+}
+
+/* Кнопки строки показываются на наведении и при работе с клавиатуры. Держать
+   их видимыми всегда — значит рябить двумя значками в каждой строке; прятать
+   совсем — значит спрятать их и от того, кто ходит табулятором. */
+@media (hover: hover) and (pointer: fine) {
+    table.grid tbody .row-actions {
+        opacity: 0;
+        transition: opacity var(--dur-1) var(--ease);
+    }
+
+    table.grid tbody tr:hover .row-actions,
+    table.grid tbody tr:focus-within .row-actions {
+        opacity: 1;
+    }
+}
+
+/* ------------------------------------------------------- фокус и отклик --- */
+
+/* Одно кольцо фокуса на всё приложение — видимое и на светлом, и на тёмном.
+   Разнобой в обводках читается как разные программы в одном окне. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Нажатие должно ощущаться: кнопка на миг проседает. */
+@media (prefers-reduced-motion: no-preference) {
+    .btn {
+        transition: transform var(--dur-1) var(--ease),
+                    background var(--dur-1) var(--ease),
+                    border-color var(--dur-1) var(--ease);
+    }
+
+    .btn:active {
+        transform: translateY(1px);
+    }
+}
+
+/* Полоса состояния не должна тянуться на всю карточку: при счёте в единицах
+   она превращается в линейку через весь экран, и разница между «1» и «2»
+   теряется в её длине. Ограничиваем поле и ставим число сразу за полосой. */
+.flow-row .bar {
+    flex: 0 1 420px;
+    max-width: 420px;
+}
+
+.flow-row > b {
+    margin-left: 10px;
+    min-width: 28px;
+    text-align: right;
+}
+
+/* Заголовок столбца не обрезаем многоточием: «Номер груп…» человек читает как
+   опечатку, а не как узкий столбец. Пусть переносится по словам — строка
+   заголовка одна на всю таблицу, лишний её ряд дешевле непонятного слова. */
+table.grid thead th {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: bottom;
+}

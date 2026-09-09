@@ -223,6 +223,49 @@
         return parent;
     }
 
+    //: Порядок состояний письма — тот же, что в ядре системы. По нему
+    //: раскрашивается шкала в сводке: не набор красок, а одна от светлой к
+    //: тёмной, и движение по пути видно само.
+    const CASE_FLOW_ORDER = ['new', 'draft', 'review', 'checked', 'approved', 'archived'];
+
+    /** Уважает ли человек просьбу не двигать лишнего. */
+    function motionOff() {
+        try {
+            return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Число, набегающее до значения.
+     *
+     * Не украшение: набегающая цифра показывает, что число ЖИВОЕ и только что
+     * пересчитано, — иначе сводка неотличима от снимка экрана недельной
+     * давности. Маленькие числа не анимируем вовсе: «3» из нуля добегает за
+     * два кадра и выглядит дёрганьем.
+     */
+    function countUp(node, value) {
+        const цель = Number(value) || 0;
+        if (motionOff() || Math.abs(цель) < 5) {
+            node.textContent = String(цель);
+            return node;
+        }
+        node.textContent = '0';
+        const начало = (window.performance && performance.now) ? performance.now() : Date.now();
+        const длительность = 420;
+        function шаг(время) {
+            const доля = Math.min(1, (время - начало) / длительность);
+            // Замедление к концу: число «приезжает», а не тормозит рывком.
+            const плавно = 1 - Math.pow(1 - доля, 3);
+            node.textContent = String(Math.round(цель * плавно));
+            if (доля < 1) requestAnimationFrame(шаг);
+            else node.textContent = String(цель);
+        }
+        requestAnimationFrame(шаг);
+        return node;
+    }
+
     function clear(node) {
         while (node && node.firstChild) node.removeChild(node.firstChild);
         return node;
@@ -7741,20 +7784,28 @@
             clear(body);
 
             /* Верхний ряд — то, что спрашивают с отдела в первую очередь. */
+            tileIndex = 0;
+            const всего = sumStatuses(data.statuses);
+            const вРаботе = totals.open || 0;
+            const доля = (часть, целое) => (целое > 0 ? часть / целое : 0);
             const tiles = h('div', { class: 'tiles' },
-                tile(totals.open || 0, 'писем в работе',
-                    'всего зарегистрировано: ' + sumStatuses(data.statuses),
-                    '#/cases', 'open'),
+                tile(вРаботе, 'писем в работе',
+                    'всего зарегистрировано: ' + всего,
+                    '#/cases', 'open', '', доля(вРаботе, всего)),
                 tile(totals.overdue || 0, 'просрочено',
                     totals.overdue ? 'сроки уже прошли' : 'просроченных нет',
-                    '#/cases', 'overdue', totals.overdue ? 'bad' : 'ok'),
+                    '#/cases', 'overdue', totals.overdue ? 'bad' : 'ok',
+                    доля(totals.overdue || 0, вРаботе)),
                 tile(totals.soon || 0, 'горят в ближайшие 3 дня', 'по сроку ответа',
-                    '#/cases', 'open', totals.soon ? 'warn' : ''),
+                    '#/cases', 'open', totals.soon ? 'warn' : '',
+                    доля(totals.soon || 0, вРаботе)),
                 tile(totals.unassigned || 0, 'без исполнителя',
                     totals.unassigned ? 'нужно распределить' : 'все письма распределены',
-                    '#/cases', 'open', totals.unassigned ? 'warn' : 'ok'),
+                    '#/cases', 'open', totals.unassigned ? 'warn' : 'ok',
+                    доля(totals.unassigned || 0, вРаботе)),
                 tile(totals.staff || 0, 'человек в строю',
-                    'на дежурстве: ' + (totals.on_duty || 0) + ' · отсутствуют: ' + (totals.away || 0)),
+                    'на дежурстве: ' + (totals.on_duty || 0) + ' · отсутствуют: ' + (totals.away || 0),
+                    '', '', '', доля((totals.staff || 0) - (totals.away || 0), totals.staff || 0)),
                 tile((data.movement || {}).sent || 0, 'ответов отправлено',
                     'поступило за период: ' + ((data.movement || {}).came || 0) +
                     ' · проверено, но не отправлено: '
@@ -7769,15 +7820,34 @@
             append(body, [tiles, columns]);
         }
 
-        function tile(value, label, note, href, tab, kind) {
-            return h('a', {
+        //: Порядковый номер плитки. По нему идёт задержка появления: плитки
+        //: вступают по очереди, и глаз успевает прочитать каждую.
+        let tileIndex = 0;
+
+        /**
+         * Плитка сводки.
+         *
+         * `share` — доля от целого, 0…1. Показывается полоской под числом:
+         * «3 писем в работе» само по себе ни о чём не говорит, а «3 из 6»
+         * говорит, и полоска считается быстрее, чем два числа.
+         */
+        function tile(value, label, note, href, tab, kind, share) {
+            const node = h('a', {
                 class: 'tile' + (kind ? ' tile--' + kind : ''),
                 href: href,
+                style: { '--i': String(tileIndex++) },
                 onclick: () => { if (tab) casesState.view = tab; },
             },
-                h('div', { class: 'tile-value' }, String(value)),
+                countUp(h('div', { class: 'tile-value' }), Number(value) || 0),
                 h('div', { class: 'tile-label' }, label),
                 h('div', { class: 'tile-note' }, note));
+            if (typeof share === 'number' && isFinite(share) && share > 0) {
+                node.appendChild(h('div', {
+                    class: 'tile-meter',
+                    role: 'presentation',
+                }, h('i', { style: { width: Math.round(Math.min(1, share) * 100) + '%' } })));
+            }
+            return node;
         }
 
         function sumStatuses(statuses) {
@@ -7943,11 +8013,31 @@
                 card.appendChild(h('div', { class: 'empty' }, 'Писем ещё нет.'));
                 return card;
             }
-            card.appendChild(h('div', { class: 'flow' }, statuses.map((item) =>
-                h('div', { class: 'flow-row' },
+            // Состояния письма — не разные сущности, а ступени одного пути:
+            // принято → в работе → на проверке → к отправке → отправлено →
+            // в архиве. Поэтому не набор красок, а одна краска от светлой к
+            // тёмной: движение по шкале видно само, без легенды.
+            const ступень = (id) => CASE_FLOW_ORDER.indexOf(id) + 1;
+            // Строки идут по пути письма, а не по алфавиту опознавателя.
+            // Иначе шкала от светлого к тёмному ложится вперемешку и
+            // перестаёт что-либо значить: краска показывает ступень, а
+            // порядок строк обязан показывать её же.
+            const порядок = statuses.slice().sort(
+                (а, б) => (ступень(а.id) || 99) - (ступень(б.id) || 99));
+            card.appendChild(h('div', { class: 'flow' }, порядок.map((item, номер) =>
+                h('div', {
+                    class: 'flow-row',
+                    dataset: { step: String(ступень(item.id) || 1) },
+                    title: item.title + ': ' + item.count + ' из ' + total,
+                },
                     h('span', { class: 'flow-name' }, item.title),
                     h('div', { class: 'bar' },
-                        h('span', { style: { width: Math.round(item.count / total * 100) + '%' } })),
+                        h('span', {
+                            style: {
+                                width: Math.round(item.count / total * 100) + '%',
+                                '--i': String(номер),
+                            },
+                        })),
                     h('b', {}, String(item.count))))));
             return card;
         }
