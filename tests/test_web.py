@@ -6422,3 +6422,69 @@ class МенюОтдела(unittest.TestCase):
 
 def набор_без_пустого(значения):
     return {значение for значение in значения if значение}
+
+
+class ДолжностьПоРусски(unittest.TestCase):
+    """Латинский код должности не должен доезжать до экрана.
+
+    Отдел просил убрать коды viewer/engineer/admin из интерфейса. Таблица
+    соответствия прежним обозначениям была заведена тогда же — и не
+    применялась нигде: константа лежала мёртвой, а запасной вариант отдавал
+    сам код. Записи прежних выпусков дожили до сегодняшнего дня, и в расходе
+    у человека вместо должности стояло «viewer».
+    """
+
+    def test_прежние_обозначения_приводятся_к_нынешним(self):
+        from reportgen.store.models import normalize_role
+
+        self.assertEqual("engineer", normalize_role("viewer"))
+        self.assertEqual("head", normalize_role("admin"))
+        # Нынешние остаются как есть.
+        self.assertEqual("engineer", normalize_role("engineer"))
+        self.assertEqual("owner", normalize_role("owner"))
+
+    def test_прежнее_обозначение_показывается_по_русски(self):
+        from reportgen.store.models import role_title_of
+
+        self.assertEqual("Инженер отдела", role_title_of("viewer"))
+        self.assertEqual("Начальник отдела", role_title_of("admin"))
+
+    def test_неизвестная_должность_не_показывает_код(self):
+        # Показывать человеку служебное обозначение хуже, чем честно сказать,
+        # что должность не указана.
+        from reportgen.store.models import role_title_of
+
+        for значение in ("выдумка", "", None, "VIEWER"):
+            with self.subTest(значение=значение):
+                получилось = role_title_of(значение)
+                self.assertEqual("Должность не указана", получилось)
+                if значение:
+                    # Пустая строка входит в любую — сличать её бессмысленно.
+                    self.assertNotIn(значение, получилось)
+
+    def test_ни_одного_запасного_варианта_с_кодом_не_осталось(self):
+        # Именно так дефект и прожил: одно место чинили, семь оставались.
+        корень = ROOT / "src" / "reportgen"
+        плохие = []
+        for путь in корень.rglob("*.py"):
+            текст = путь.read_text(encoding="utf-8")
+            for номер, строка in enumerate(текст.splitlines(), start=1):
+                if "ROLE_TITLES.get(" in строка:
+                    плохие.append(f"{путь.name}:{номер}")
+        self.assertEqual([], плохие,
+                         "запасной вариант отдаёт латинский код должности")
+
+    def test_запись_прежнего_выпуска_читается_с_нынешней_должностью(self):
+        from reportgen.store.db import Database
+        from reportgen.store.repo import Repositories
+
+        repos = Repositories(Database(":memory:"))
+        человек = repos.users.create("kuznec", "пароль123", "Кузнецов Д. О.", "engineer")
+        # Подменяем должность на прежнюю — так выглядит запись, заведённая
+        # старым выпуском системы.
+        with repos.db.transaction() as connection:
+            connection.execute("UPDATE users SET role = 'viewer' WHERE id = ?",
+                               (человек.id,))
+        снова = repos.users.by_login("kuznec")
+        self.assertEqual("Инженер отдела", снова.role_title)
+        self.assertNotIn("viewer", снова.to_dict()["role_title"])

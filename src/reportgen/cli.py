@@ -16,7 +16,7 @@ from .llm import build_llm
 from .pipeline import Outline, check_facts_coverage, generate_report
 from .retrieval import BM25Index, Retriever
 from .store.db import Database, console_work
-from .store.models import DOC_STATUSES, ROLE_TITLES, ROLES
+from .store.models import DOC_STATUSES, ROLE_TITLES, ROLES, role_title_of
 from .store.repo import Repositories
 from .verify import blocking, summarize, verify_report
 
@@ -195,7 +195,7 @@ def cmd_useradd(args: argparse.Namespace) -> int:
                               department=args.department or "", team=args.team or "")
     repos.audit.log("user.create", object_type="user", object_id=user.login,
                     details={"role": user.role})
-    print(f"создан военнослужащий {user.login} — {ROLE_TITLES.get(user.role, user.role)}")
+    print(f"создан военнослужащий {user.login} — {role_title_of(user.role)}")
     return 0
 
 
@@ -226,7 +226,7 @@ def cmd_users(args: argparse.Namespace) -> int:
         return 1
     for user in users:
         state = "работает" if user.active else "отключён"
-        title = ROLE_TITLES.get(user.role, user.role)
+        title = role_title_of(user.role)
         print(f"{user.login:20} {title:30} {state:10} {user.full_name}")
     return 0
 

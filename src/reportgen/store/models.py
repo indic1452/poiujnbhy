@@ -69,8 +69,33 @@ ROLE_RANK = {"owner": 50, "head": 40, "deputy": 30, "lead": 20, "senior": 10,
              "engineer": 0, "guest": -10}
 
 #: Как читать роли, оставшиеся от прежней версии. viewer был «только чтение»,
-#: а в штатном расписании компании такой должности нет — становится инженером.
+#: а в штатном расписании отдела такой должности нет — становится инженером.
 LEGACY_ROLES = {"viewer": "engineer", "admin": "head"}
+
+
+def normalize_role(role: str) -> str:
+    """Должность в нынешних обозначениях.
+
+    Записи прежних выпусков системы хранят roles, которых в штатном расписании
+    больше нет. Таблица соответствия была заведена сразу, а применять её никто
+    не применял — и латинский код доезжал прямо до экрана: в расходе у человека
+    вместо должности стояло «viewer». Отдел просил убрать эти коды из
+    интерфейса, и вот один из них дожил до сегодняшнего дня.
+    """
+    return LEGACY_ROLES.get(str(role or ""), str(role or ""))
+
+
+def role_title_of(role: str) -> str:
+    """Название должности по-русски. Латинского кода не показываем никогда.
+
+    Прежний запасной вариант отдавал сам код: неизвестная должность
+    превращалась на экране в «viewer» или «admin». Показывать человеку
+    служебное обозначение хуже, чем честно сказать, что должность не указана.
+    """
+    приведённая = normalize_role(role)
+    if приведённая in ROLE_TITLES:
+        return ROLE_TITLES[приведённая]
+    return "Должность не указана"
 CHAT_ROLES = ("user", "assistant")
 #: Путь письма в отделе: пришло — сделали отчёт — сдали начальнику — он
 #: проверил — инженер отправил ответ на исходящий номер — сдали в архив.
@@ -284,7 +309,7 @@ class User:
 
     @property
     def role_title(self) -> str:
-        return ROLE_TITLES.get(self.role, self.role)
+        return role_title_of(self.role)
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "User":
@@ -1231,7 +1256,7 @@ class Absence:
             "present": self.kind in PRESENT_KINDS,
             "full_name": short_name(self.full_name),
             "role": self.role,
-            "role_title": ROLE_TITLES.get(self.role, self.role),
+            "role_title": role_title_of(self.role),
             "team": self.team,
             "created_by": self.created_by,
         }

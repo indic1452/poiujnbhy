@@ -52,6 +52,7 @@ from ..store.models import (
     Report,
     User,
     short_name,
+    role_title_of,
 )
 from .auth import (COOKIE_NAME, get_user, require_admin, require_anyone,
                    require_editor, require_owner, require_reviewer,
@@ -2173,7 +2174,7 @@ def list_users(request: Request) -> Dict[str, Any]:
         "roles": [
             {
                 "id": role,
-                "title": ROLE_TITLES.get(role, role),
+                "title": role_title_of(role),
                 "note": ROLE_NOTES.get(role, ""),
                 "is_admin": role in ADMIN_ROLES,
                 # Должность выше собственной назначить нельзя.
@@ -2339,7 +2340,7 @@ def approve_user(request: Request, user_id: int) -> Dict[str, Any]:
     _notify(request, user_id, "user.approved",
             "Доступ открыт",
             f"Заявку одобрил {short_name(admin.full_name) or admin.login}. "
-            f"Должность: {ROLE_TITLES.get(role, role)}.")
+            f"Должность: {role_title_of(role)}.")
     return {"user": _user_public(approved)}
 
 
@@ -2595,7 +2596,7 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
             "id": item.user_id,
             "full_name": short_name(item.full_name),
             "role": item.role,
-            "role_title": ROLE_TITLES.get(item.role, item.role),
+            "role_title": role_title_of(item.role),
             "team": item.team,
             "place": item.place,
             "note": item.note,
@@ -3095,7 +3096,7 @@ def board(request: Request, days: int = 30) -> Dict[str, Any]:
             # письма: их надо передать живому человеку, и это должно быть видно.
             "active": bool(row["active"]),
             "role": row["role"],
-            "role_title": ROLE_TITLES.get(row["role"], row["role"]),
+            "role_title": role_title_of(row["role"]),
             "department": row["department"],
             "team": row["team"],
             "open": int(row["open_count"] or 0),
@@ -3371,7 +3372,7 @@ def person_card(request: Request, user_id: int) -> Dict[str, Any]:
         "full_name": person.full_name or person.login,
         "short_name": short_name(person.full_name) or person.login,
         "role": person.role,
-        "role_title": ROLE_TITLES.get(person.role, person.role),
+        "role_title": role_title_of(person.role),
         "role_note": ROLE_NOTES.get(person.role, ""),
         # Работают все в отделе; «по штату» заполнено только у тех, кто
         # числится в другом подразделении.
