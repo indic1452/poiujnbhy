@@ -21,6 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from ..packages import pip_hint
 from ..corpus import DOC_TYPES
+from ..rerank import build_reranker
 from ..domains import registry as domain_registry
 from ..store.models import (
     ABSENCE_KINDS,
@@ -1701,6 +1702,45 @@ def vectors_check(request: Request) -> Dict[str, Any]:
     if service.vectors is None:
         raise ServiceError("смысловой поиск недоступен", 501)
     return {"check": service.vectors.check()}
+
+
+@router.post("/library/rerank/check")
+def rerank_check(request: Request) -> Dict[str, Any]:
+    """Отвечает ли реранкер — одним коротким запросом.
+
+    Реранк — второй проход поиска: он видит пару «вопрос — фрагмент»
+    целиком и потому отличает «обратный канал» от «прямого» там, где
+    первый проход видит одно слово «канал». Когда он молча отваливается,
+    ответы делаются общими и не по делу, а узнать причину можно было
+    только по строчке в блоке источников — где стоял голый код ошибки.
+    """
+    require_admin(request)
+    settings = _settings(request)
+    if not getattr(settings, "rerank_enabled", False):
+        return {"check": {
+            "ok": False, "kind": "off", "model": "",
+            "error": "реранк выключен в настройках",
+            "advice": "включите rerank_enabled в settings.json и перезапустите "
+                      "приложение; реранкеру нужна своя служба на своём порту",
+        }}
+    if settings.rerank_base_url == settings.embed_base_url:
+        return {"check": {
+            "ok": False, "kind": "same-port", "model": settings.rerank_model,
+            "error": f"реранкер и эмбеддинги настроены на один адрес "
+                     f"({settings.rerank_base_url})",
+            "advice": "это разные службы на разных портах: у эмбеддингов "
+                      "обычно 8001, у реранкера 8002. Поправьте "
+                      "rerank_base_url в settings.json",
+        }}
+    reranker = build_reranker(settings)
+    probe = getattr(reranker, "check", None)
+    if reranker is None or probe is None:
+        return {"check": {
+            "ok": False, "kind": "other", "model": "",
+            "error": "реранкер не собрался по настройкам",
+            "advice": "сверьте rerank_base_url и rerank_model в settings.json",
+        }}
+    return {"check": probe()}
 
 
 @router.post("/library/vectors")

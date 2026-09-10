@@ -4950,7 +4950,7 @@ class VectorCardTests(unittest.TestCase):
         Карточка светилась зелёным «работает по всей библиотеке» ровно тогда,
         когда указатель переписывался наполовину.
         """
-        self.assertIn("(busy ? ' is-busy' : (state.ready ? ' is-ok' : ' is-bad'))", self.js)
+        self.assertIn("(busy ? ' is-busy' : (векторы.ready ? ' is-ok' : ' is-bad'))", self.js)
 
     def test_a_full_rebuild_asks_first(self):
         # Часы работы видеокарты по нечаянному нажатию — не то, что можно
@@ -4967,7 +4967,9 @@ class VectorCardTests(unittest.TestCase):
 
         Человек сидит за той же машиной, где всё стоит, и ему нужна команда.
         """
-        self.assertIn("state.advice", self.js)
+        # Имя переменной в проверке не закрепляем — важно, что совет
+        # берётся из ответа службы и попадает в карточку.
+        self.assertIn("векторы.advice", self.js)
         self.assertIn(".vectors-advice {", self.css)
 
     def test_the_connection_can_be_checked_without_a_build(self):

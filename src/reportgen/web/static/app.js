@@ -7585,47 +7585,47 @@
             }
         }
 
-        function renderVectors(state) {
+        function renderVectors(векторы) {
             clear(vectorsBox);
-            if (!state.enabled && !state.chunks) return;
+            if (!векторы.enabled && !векторы.chunks) return;
 
             // Идущая работа важнее итога: при перестройке заново векторы
             // на месте, состояние «готово», а поиск в эту минуту опирается
             // на наполовину переписанный указатель.
-            const busy = state.running;
+            const busy = векторы.running;
             const card = h('div', {
                 class: 'card card-pad vectors-card'
-                    + (busy ? ' is-busy' : (state.ready ? ' is-ok' : ' is-bad')),
+                    + (busy ? ' is-busy' : (векторы.ready ? ' is-ok' : ' is-bad')),
                 style: { marginTop: '14px' },
             });
 
             const line = h('div', { class: 'vectors-line' },
                 h('b', {}, 'Смысловой поиск'),
-                h('span', { class: 'small' }, state.hint || ''));
+                h('span', { class: 'small' }, векторы.hint || ''));
             card.appendChild(line);
 
             // Что делать. Диагноз «сервер эмбеддингов недоступен» человеку в
             // отделе не говорит ничего: он сидит за той же машиной, и ему
             // нужна команда, а не название беды.
-            if (state.advice) {
-                card.appendChild(h('div', { class: 'vectors-advice small' }, state.advice));
+            if (векторы.advice) {
+                card.appendChild(h('div', { class: 'vectors-advice small' }, векторы.advice));
             }
 
-            if (busy && state.total) {
-                const share = Math.min(100, Math.round(100 * (state.done || 0) / state.total));
+            if (busy && векторы.total) {
+                const share = Math.min(100, Math.round(100 * (векторы.done || 0) / векторы.total));
                 card.appendChild(h('div', { class: 'vectors-bar' },
                     h('div', { class: 'vectors-bar-fill', style: { width: share + '%' } })));
             }
 
             const actions = h('div', { class: 'toolbar', style: { marginTop: '8px' } });
-            if (isAdmin() && state.enabled && !busy && state.missing) {
+            if (isAdmin() && векторы.enabled && !busy && векторы.missing) {
                 actions.appendChild(h('button', {
                     class: 'btn btn--primary btn--sm',
                     title: 'Построить векторы фрагментам, у которых их нет',
                     onclick: () => buildVectors(false),
                 }, 'Построить векторы'));
             }
-            if (isAdmin() && state.enabled && !busy && state.chunks) {
+            if (isAdmin() && векторы.enabled && !busy && векторы.chunks) {
                 actions.appendChild(h('button', {
                     class: 'btn btn--sm',
                     title: 'Заново по всей библиотеке — нужно после смены модели встраивания. '
@@ -7635,12 +7635,27 @@
             }
             // Проверка связи — отдельно от построения: узнать, поднялась ли
             // служба, нужно сразу, а не через полчаса работы видеокарты.
-            if (isAdmin() && state.enabled && !busy) {
+            if (isAdmin() && векторы.enabled && !busy) {
                 actions.appendChild(h('button', {
                     class: 'btn btn--sm',
                     title: 'Один короткий запрос к службе эмбеддингов',
                     onclick: (event) => checkVectors(event.target),
                 }, 'Проверить связь'));
+            }
+            // Реранк — вторая служба и вторая точка отказа. Отваливается он
+            // молча: ответы делаются общими и не по делу, а причина видна
+            // только строчкой в блоке источников под ответом помощника.
+            // Признак берём из настроек отдела, а не из состояния векторов:
+            // здесь «векторы» — это состояние службы эмбеддингов, реранк живёт
+            // отдельно и о нём знает только конфигурация.
+            if (isAdmin() && (state.config.search || {}).rerank) {
+                actions.appendChild(h('button', {
+                    class: 'btn btn--sm',
+                    title: 'Один короткий запрос к службе реранка — второму '
+                        + 'проходу поиска, который и отличает «обратный канал» '
+                        + 'от «прямого»',
+                    onclick: (event) => checkRerank(event.target),
+                }, 'Проверить реранк'));
             }
             if (actions.childNodes.length) card.appendChild(actions);
             vectorsBox.appendChild(card);
@@ -7655,7 +7670,7 @@
                     // смотрит, а каждый вопрос — это счёт по всей библиотеке
                     // на той же базе, в которую построение сейчас пишет.
                     // Ждём, пока вкладку откроют снова.
-                    if (document.hidden) { renderVectors(state); return; }
+                    if (document.hidden) { renderVectors(векторы); return; }
                     loadVectors();
                 }, 2000);
             }
@@ -7690,6 +7705,43 @@
                     });
                 }
                 loadVectors();
+            } catch (error) {
+                toastError(error);
+            } finally {
+                button.disabled = false;
+                button.textContent = was;
+            }
+        }
+
+        async function checkRerank(button) {
+            const was = button.textContent;
+            button.disabled = true;
+            button.textContent = 'проверяю…';
+            try {
+                const answer = (await api.post('/api/library/rerank/check', {})).check || {};
+                if (answer.ok) {
+                    toast('Реранк отвечает: ' + (answer.model || 'модель')
+                        + (answer.batch ? ', по ' + answer.batch + ' фрагм. за раз' : ''));
+                } else {
+                    const dialog = openModal({
+                        narrow: true,
+                        title: 'Реранк не работает',
+                        body: h('div', {},
+                            h('div', {}, answer.error || 'служба не отвечает'),
+                            h('div', { class: 'small muted', style: { marginTop: '8px' } },
+                                'Пока реранк молчит, поиск отдаёт помощнику то, '
+                                + 'что совпало словами. Вопрос про обратный канал '
+                                + 'приносит фрагменты про прямой: слово «канал» '
+                                + 'в них одно и то же.'),
+                            answer.advice
+                                ? h('div', { class: 'small', style: { marginTop: '8px' } },
+                                    answer.advice)
+                                : null),
+                        footer: [h('button', {
+                            class: 'btn btn--primary', onclick: () => dialog.close(),
+                        }, 'Понятно')],
+                    });
+                }
             } catch (error) {
                 toastError(error);
             } finally {

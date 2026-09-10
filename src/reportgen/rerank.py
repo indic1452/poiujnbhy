@@ -55,6 +55,43 @@ class Reranker(Protocol):
         ...
 
 
+class _TooLarge(RuntimeError):
+    """Запрос не влез в сервер. Лечится не повтором, а меньшей порцией."""
+
+
+#: Коды, при которых повтор осмыслен: сервер жив, но занят или перезапускается.
+#: Всё остальное (400-е, 500) — отказ по существу: тот же запрос пройдёт так же.
+RETRY_CODES = frozenset({408, 429, 502, 503, 504})
+
+#: По чему опознаём тесноту. Слова взяты из ответов llama.cpp, TEI и vLLM.
+_TIGHT_WORDS = ("too large", "too long", "exceed", "batch size",
+                "context", "maximum context length", "out of memory")
+
+
+def _стоит_повторить(error: BaseException) -> bool:
+    """Есть ли смысл повторять запрос. Без кода — считаем, что сеть моргнула."""
+    код = getattr(error, "code", None)
+    if код is None:
+        return True
+    return int(код) in RETRY_CODES
+
+
+def _тесно(error: BaseException, пояснение: str) -> bool:
+    """Сервер отказал из-за размера запроса, а не по другой причине.
+
+    Опознаём двумя способами сразу: по коду 413 и по словам сервера. На
+    413 полагаться нельзя — llama.cpp отвечает на тесноту обычной 500,
+    а на слова нельзя полагаться тем более: у каждой реализации свои.
+    """
+    код = getattr(error, "code", None)
+    if код is not None and int(код) == 413:
+        return True
+    if код is not None and int(код) == 500:
+        низ = пояснение.lower()
+        return any(слово in низ for слово in _TIGHT_WORDS)
+    return False
+
+
 def _descending(count: int) -> List[float]:
     """Оценки, сохраняющие исходный порядок фрагментов."""
     return [float(count - index) for index in range(count)]
@@ -81,19 +118,62 @@ class CrossEncoderReranker:
     api_key: str = "not-needed"
     timeout: float = 120.0
     retries: int = 3
+    #: Сколько фрагментов уходит на сервер за один раз. Ноль — «ещё не
+    #: выяснено, шлём всё разом»; дальше подбирается по ответам сервера и
+    #: остаётся жить в клиенте: поисковик держит его между вопросами.
+    batch: int = 0
 
     @property
     def name(self) -> str:
         return f"{self.model} @ {self.base_url}"
 
     def score(self, query: str, texts: Sequence[str]) -> List[float]:
+        """Оценки для всех фрагментов, порциями по силам сервера.
+
+        Верхушку выдачи (20 фрагментов по 1200 знаков) отправляли одним
+        запросом — около 24 000 знаков. llama.cpp с обычным физическим
+        батчем на такое отвечает 500 и пишет в тело «input is too large to
+        process. increase the physical batch size». Ответ на это был
+        негодный: три одинаковых повтора того же неподъёмного запроса,
+        три секунды впустую и молчаливый отказ от реранка — а на вопрос
+        приходится до пяти обращений, по одному на каждый заход разбора.
+
+        Кросс-энкодер оценивает пару «запрос — фрагмент» независимо от
+        остальных, поэтому дробить список безопасно: оценки из разных
+        порций сравнимы между собой. Этим и пользуемся — при отказе по
+        размеру порция делится пополам, пока не пройдёт.
+        """
         documents = [str(text) for text in texts]
         if not documents:
             return []
+
+        размер = self.batch if self.batch > 0 else len(documents)
+        оценки: List[float] = []
+        начало = 0
+        while начало < len(documents):
+            порция = documents[начало:начало + размер]
+            try:
+                оценки.extend(self._request(query, порция))
+            except _TooLarge as тесно:
+                if len(порция) <= 1:
+                    raise RerankError(
+                        f"реранкеру ({self.base_url}) не по силам даже один "
+                        f"фрагмент: {тесно}. Поднимите физический батч "
+                        f"llama-server (-ub) или уменьшите rerank_max_chars "
+                        f"в настройках"
+                    ) from тесно
+                размер = max(1, len(порция) // 2)
+                self.batch = размер
+                continue
+            начало += len(порция)
+        return оценки
+
+    def _request(self, query: str, documents: Sequence[str]) -> List[float]:
+        """Один запрос к сервису. Повторяем только то, что может пройти."""
         payload: Dict[str, Any] = {
             "model": self.model,
             "query": query,
-            "documents": documents,
+            "documents": list(documents),
             "top_n": len(documents),
         }
         request = urllib.request.Request(
@@ -114,15 +194,81 @@ class CrossEncoderReranker:
                 return self._parse(body, len(documents))
             except (urllib.error.URLError, TimeoutError, OSError,
                     json.JSONDecodeError) as error:
+                # Тело ответа читается один раз, а нужно оно и здесь, и в
+                # тексте ошибки, — поэтому разбираем сразу.
+                пояснение = _http.explain(error)
                 last_error = error
-                # Сервер не поднят — ждать и пробовать снова бессмысленно:
-                # три секунды пауз добавлялись к каждому запросу, не давая
-                # ни одного шанса на успех.
-                if _http.refused(error):
-                    break
+                if _тесно(error, пояснение):
+                    raise _TooLarge(пояснение) from error
+                # Сервер не поднят или ответил отказом по существу — ждать и
+                # пробовать снова бессмысленно: паузы добавлялись к каждому
+                # вопросу, не давая ни одного шанса на успех.
+                if _http.refused(error) or not _стоит_повторить(error):
+                    raise RerankError(self._беда(error, пояснение)) from error
                 if attempt < max(1, self.retries) - 1:
                     time.sleep(2 ** attempt)
-        raise RerankError(f"сервис реранка недоступен ({self.base_url}): {last_error}")
+        raise RerankError(self._беда(last_error, _http.explain(last_error)))
+
+    def _беда(self, error: BaseException | None, пояснение: str) -> str:
+        """Почему не вышло — словами сервера, а не только кодом.
+
+        «HTTP Error 500: Internal Server Error» — тупик: сервер работает, а
+        что ему не нравится, узнать неоткуда. Настоящая причина лежит в теле
+        ответа, и показать надо именно её.
+        """
+        код = getattr(error, "code", None)
+        if _http.refused(error) if error is not None else False:
+            return f"сервис реранка не поднят ({self.base_url}): {пояснение}"
+        if код is not None:
+            return (f"сервис реранка ({self.base_url}) ответил ошибкой "
+                    f"{код}: {пояснение}")
+        return f"сервис реранка недоступен ({self.base_url}): {пояснение}"
+
+    def check(self) -> Dict[str, Any]:
+        """Отвечает ли реранкер — одним коротким запросом.
+
+        Узнать это можно было единственным способом: задать вопрос
+        помощнику и разглядеть в блоке источников строчку «реранк
+        пропущен». Причём строчка эта говорила «недоступен» и код 500 —
+        то есть ровно то, по чему ничего не понять.
+
+        Здесь спрашиваем малым: один короткий фрагмент. Если и он не
+        проходит, дело не в размере запроса, а в самой службе, и об этом
+        надо сказать прямо, вместе с тем, что делать.
+        """
+        try:
+            оценки = self._request("проверка связи", ["короткий фрагмент"])
+        except _TooLarge as тесно:
+            return {"ok": False, "kind": "tight", "model": self.model,
+                    "error": f"серверу не по силам даже один короткий фрагмент: {тесно}",
+                    "advice": "поднимите физический батч llama-server "
+                              "(ключ -ub, например -ub 2048) или уменьшите "
+                              "rerank_max_chars в settings.json"}
+        except RerankError as беда:
+            низ = str(беда).lower()
+            if "not support" in низ or "rerank" in низ and "support" in низ:
+                совет = ("на этом порту поднята модель, которая не умеет "
+                         "реранк. Реранкеру нужна своя модель "
+                         "(bge-reranker-v2-m3) и свой llama-server с ключом "
+                         "--reranking")
+            elif "не поднят" in низ:
+                совет = ("запустите llama-server с моделью реранкера и ключом "
+                         "--reranking на порту из rerank_base_url "
+                         "(обычно 8002) — это ОТДЕЛЬНАЯ служба, не та, что "
+                         "считает векторы")
+            else:
+                совет = ("проверьте, что по адресу rerank_base_url отвечает "
+                         "служба реранка с ключом --reranking, а не модель "
+                         "эмбеддингов или чат-модель")
+            return {"ok": False, "kind": "other", "model": self.model,
+                    "error": str(беда), "advice": совет}
+        if not оценки:
+            return {"ok": False, "kind": "empty", "model": self.model,
+                    "error": "служба ответила, но не прислала ни одной оценки",
+                    "advice": "похоже, по этому адресу не реранкер: сверьте "
+                              "rerank_model и ключ --reranking у llama-server"}
+        return {"ok": True, "kind": "", "error": "", "advice": "",
+                "model": self.model, "batch": self.batch}
 
     @staticmethod
     def _parse(body: Any, count: int) -> List[float]:

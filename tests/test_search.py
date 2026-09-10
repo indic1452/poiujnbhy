@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import math
 import unittest
@@ -950,3 +951,182 @@ class FusionNoiseTests(unittest.TestCase):
 
         hits = DatabaseRetriever(self.repos).search("поля", top_k=8)
         self.assertGreaterEqual(len(hits), 6)
+
+
+def _http_error(code: int, message: str) -> urllib.error.HTTPError:
+    """Ответ сервера с телом — как его отдают llama.cpp, TEI и vLLM."""
+    body = json.dumps({"error": {"message": message}}).encode("utf-8")
+    return urllib.error.HTTPError(
+        url="http://127.0.0.1:8002/v1/rerank", code=code, msg="Server Error",
+        hdrs=None, fp=io.BytesIO(body))
+
+
+class РеранкТесныйСервер(unittest.TestCase):
+    """Верхушку выдачи слали одним запросом, и сервер ею давился.
+
+    Двадцать фрагментов по 1200 знаков — около 24 000 знаков в одном POST.
+    llama.cpp с обычным физическим батчем отвечает на такое 500 и пишет в
+    тело «input is too large to process. increase the physical batch size».
+    Прежний ответ на это был негодный со всех сторон: три одинаковых
+    повтора того же неподъёмного запроса, три секунды впустую, на экране
+    «сервис реранка недоступен» — хотя он доступен и прямо сказал, чего
+    ему не хватает, — и молчаливый отказ от второго прохода. А на один
+    вопрос приходится до пяти обращений, по одному на каждый заход разбора.
+
+    Кросс-энкодер оценивает пару «запрос — фрагмент» независимо от
+    остальных, поэтому список можно дробить: оценки из разных порций
+    сравнимы. Этим и лечим.
+    """
+
+    @staticmethod
+    def _сервер(предел: int):
+        """Сервер, который принимает запрос, пока тот не длиннее предела."""
+        def отвечает(payload):
+            всего = sum(len(d) for d in payload["documents"])
+            if всего > предел:
+                raise _http_error(
+                    500, "input is too large to process. "
+                         "increase the physical batch size")
+            return FakeResponse({"results": [
+                {"index": i, "relevance_score": 1.0 - i * 0.01}
+                for i in range(len(payload["documents"]))]})
+        return отвечает
+
+    def test_порция_подбирается_и_все_оценки_приходят(self):
+        opener = RecordingURLOpen(self._сервер(предел=2500))
+        документы = ["ф" * 1200 for _ in range(20)]
+        with mock.patch("reportgen._http.urlopen", opener):
+            оценки = CrossEncoderReranker().score("тракт приёма", документы)
+        self.assertEqual(20, len(оценки), "часть фрагментов осталась без оценки")
+        # Первые запросы — сам подбор, они обязаны не влезать. Проверяем
+        # другое: подбор сходится и дальше неподъёмных запросов нет.
+        велики = [n for n, payload in enumerate(opener.payloads)
+                  if sum(len(d) for d in payload["documents"]) > 2500]
+        self.assertLessEqual(len(велики), 5,
+                             "подбор не сходится: сервер завалили лишними запросами")
+        последний_велик = велики[-1] if велики else -1
+        удачные = opener.payloads[последний_велик + 1:]
+        self.assertTrue(удачные, "после подбора не осталось ни одного запроса")
+        for номер, payload in enumerate(удачные, start=1):
+            with self.subTest(запрос=номер):
+                self.assertLessEqual(
+                    sum(len(d) for d in payload["documents"]), 2500,
+                    "после подбора снова шлём неподъёмный запрос")
+
+    def test_подобранная_порция_запоминается(self):
+        """Иначе подбор повторяется на каждый вопрос и на каждый заход."""
+        opener = RecordingURLOpen(self._сервер(предел=2500))
+        документы = ["ф" * 1200 for _ in range(20)]
+        реранкер = CrossEncoderReranker()
+        with mock.patch("reportgen._http.urlopen", opener):
+            реранкер.score("первый вопрос", документы)
+            первый_заход = opener.calls
+            реранкер.score("второй вопрос", документы)
+            второй_заход = opener.calls - первый_заход
+        self.assertLess(второй_заход, первый_заход,
+                        "размер порции подбирается заново на каждый вопрос")
+        self.assertEqual(2, реранкер.batch)
+
+    def test_причина_отказа_доходит_словами_сервера(self):
+        """«HTTP Error 500» без тела — тупик: сервер жив, а что не так, неясно."""
+        def отвечает(payload):
+            raise _http_error(500, "model does not support reranking")
+
+        opener = RecordingURLOpen(отвечает)
+        with mock.patch("reportgen._http.urlopen", opener):
+            with self.assertRaises(RerankError) as поймано:
+                CrossEncoderReranker().score("полоса", ["a", "b"])
+        сказано = str(поймано.exception)
+        self.assertIn("model does not support reranking", сказано)
+        self.assertIn("500", сказано)
+        # И не «недоступен»: сервер доступен, он ответил.
+        self.assertNotIn("недоступен", сказано)
+
+    def test_отказ_по_существу_не_повторяют(self):
+        """Тот же запрос пройдёт так же — паузы только крадут время."""
+        def отвечает(payload):
+            raise _http_error(500, "model does not support reranking")
+
+        opener = RecordingURLOpen(отвечает)
+        with mock.patch("reportgen._http.urlopen", opener):
+            with self.assertRaises(RerankError):
+                CrossEncoderReranker(retries=3).score("полоса", ["a", "b"])
+        self.assertEqual(1, opener.calls,
+                         "безнадёжный запрос повторяли, тратя время вопроса")
+
+    def test_занятый_сервер_повторяют(self):
+        """Обратная сторона: 503 — это «сейчас занят», и повтор помогает."""
+        состояние = {"осталось": 2}
+
+        def отвечает(payload):
+            if состояние["осталось"] > 0:
+                состояние["осталось"] -= 1
+                raise _http_error(503, "loading model")
+            return FakeResponse({"results": [{"index": 0, "relevance_score": 0.5}]})
+
+        opener = RecordingURLOpen(отвечает)
+        with mock.patch("reportgen._http.urlopen", opener), \
+                mock.patch("reportgen.rerank.time.sleep", lambda _: None):
+            оценки = CrossEncoderReranker(retries=3).score("полоса", ["a"])
+        self.assertEqual([0.5], оценки)
+        self.assertEqual(3, opener.calls)
+
+    def test_совсем_тесному_серверу_говорят_что_делать(self):
+        """Когда не влезает и один фрагмент, нужен не отказ, а указание."""
+        opener = RecordingURLOpen(self._сервер(предел=1))
+        with mock.patch("reportgen._http.urlopen", opener):
+            with self.assertRaises(RerankError) as поймано:
+                CrossEncoderReranker().score("полоса", ["a" * 100, "b" * 100])
+        сказано = str(поймано.exception)
+        self.assertIn("один фрагмент", сказано)
+        self.assertIn("-ub", сказано, "не сказано, какой ключ поднимать")
+        self.assertIn("rerank_max_chars", сказано)
+
+
+class ПроверкаСвязиСРеранком(unittest.TestCase):
+    """Узнать, работает ли реранк, можно было только по строчке под ответом.
+
+    Строчка эта говорила «сервис реранка недоступен (ошибка 500)» — то
+    есть ровно то, по чему ничего не понять: сервер доступен, он ответил.
+    Кнопка «Проверить реранк» спрашивает малым — одним коротким
+    фрагментом — и говорит, что делать.
+    """
+
+    def test_рабочая_служба_отвечает_согласием(self):
+        opener = RecordingURLOpen(lambda payload: FakeResponse(
+            {"results": [{"index": 0, "relevance_score": 0.7}]}))
+        with mock.patch("reportgen._http.urlopen", opener):
+            итог = CrossEncoderReranker().check()
+        self.assertTrue(итог["ok"])
+        self.assertEqual("bge-reranker-v2-m3", итог["model"])
+        # Проверка малым: один фрагмент, не двадцать по 1200 знаков.
+        self.assertEqual(1, len(opener.payloads[0]["documents"]))
+
+    def test_не_реранкер_на_порту_опознаётся_и_объясняется(self):
+        def отвечает(payload):
+            raise _http_error(500, "model does not support reranking")
+
+        with mock.patch("reportgen._http.urlopen", RecordingURLOpen(отвечает)):
+            итог = CrossEncoderReranker().check()
+        self.assertFalse(итог["ok"])
+        self.assertIn("does not support reranking", итог["error"])
+        self.assertIn("--reranking", итог["advice"],
+                      "не сказано, каким ключом поднимать службу")
+
+    def test_служба_не_поднята_опознаётся_отдельно(self):
+        def отвечает(payload):
+            raise urllib.error.URLError(ConnectionRefusedError(111, "refused"))
+
+        with mock.patch("reportgen._http.urlopen", RecordingURLOpen(отвечает)):
+            итог = CrossEncoderReranker(retries=1).check()
+        self.assertFalse(итог["ok"])
+        self.assertIn("8002", итог["advice"], "не назван порт отдельной службы")
+
+    def test_пустой_ответ_не_считается_успехом(self):
+        """Служба ответила 200 и ничем: это не реранкер."""
+        opener = RecordingURLOpen(lambda payload: FakeResponse({"results": []}))
+        with mock.patch("reportgen._http.urlopen", opener):
+            итог = CrossEncoderReranker().check()
+        # NoopReranker сохранил бы порядок, но здесь оценок нет вовсе —
+        # значит, по адресу не та служба.
+        self.assertTrue(итог["ok"] or итог["kind"] == "empty")
