@@ -20,6 +20,7 @@ from ..prompts import (
     RESEARCH_PROMPT,
     RESEARCH_SYSTEM_PROMPT,
 )
+from .. import parts
 from ..retrieval import BM25Index, Hit, reciprocal_rank_fusion
 from ..store.models import ATTACHMENT_TITLES, Chat, ChatMessage, User
 from .catalog import (
@@ -925,6 +926,25 @@ class AssistantService:
 
     # -- разбор в несколько заходов ------------------------------------------
 
+    def _units(self, question: str) -> List[str]:
+        """Узлы названного в вопросе целого — по справочнику состава.
+
+        Справочник необязателен: нет файла, испорчен, целое незнакомо —
+        разбор идёт как прежде. Ронять вопрос инженера из-за справочника
+        нельзя, поэтому ошибки здесь глотаются молча; что справочник отбросил
+        и почему, показывает команда «reportgen parts».
+        """
+        # Ноль и меньше — «не разбирать вовсе», и решает это units_for. Второй
+        # проверки здесь не ставим: она бы прикрывала первую, и ошибка в
+        # правиле «сколько узлов брать» осталась бы невидимой для проверок.
+        предел = int(getattr(self.settings, "assistant_parts", parts.MAX_UNITS))
+        try:
+            return parts.units_for(question,
+                                   getattr(self.settings, "parts_path", None),
+                                   limit=предел)
+        except Exception:              # noqa: BLE001 — разбор не обязателен
+            return []
+
     def _rounds(self) -> int:
         """Сколько заходов разрешено. Ноль — разбор выключен, один поиск."""
         return max(0, int(getattr(self.settings, "assistant_rounds", RESEARCH_ROUNDS)))
@@ -942,17 +962,35 @@ class AssistantService:
         """
         first = self._search(chat, question, history, top_k, attachments=attachments)
         rounds = self._rounds() if rounds is None else max(0, int(rounds))
-        if not rounds or not first:
+        узлы = self._units(question) if rounds else []
+        if not rounds or (not first and not узлы):
             # Разбор выключен или библиотека ничего не дала: заходы по пустому
             # месту только сожгут время модели.
             return list(first), []
 
-        rankings: List[List[Hit]] = [list(first)]
+        rankings: List[List[Hit]] = [list(first)] if first else []
         pinned: List[Hit] = []
         seen = {hit.chunk.chunk_id for hit in first}
         trail: List[Step] = []
         catalog = self._catalog_block(chat, first)
         case_block = self._case_block(chat)
+
+        # Разбор состава идёт ПЕРВЫМ и без обращения к модели. Вопрос называет
+        # целое («тракт приёма РРЛС»), а в библиотеке лежат паспорта его
+        # узлов — «АДЭ-5», «МШУ-2», «ДМА 256», и слов «тракт приёма» в них
+        # нет. Поиск ищет похожее на запрос; здесь нужно другое — то, из чего
+        # запрошенное состоит. Замер и обоснование — в reportgen.parts.
+        for узел in узлы:
+            step = Step("искать", узел)
+            trail.append(step)
+            if on_step is not None:
+                on_step(step)
+            найдено, _ = self._run_step(step, chat)
+            свежие = [hit for hit in найдено if hit.chunk.chunk_id not in seen]
+            seen.update(hit.chunk.chunk_id for hit in свежие)
+            if свежие:
+                rankings.append(свежие)
+            step.note = f"узел из состава; {found_note(len(свежие))}"
 
         for index in range(rounds):
             step = self._next_step(question, case_block, catalog,

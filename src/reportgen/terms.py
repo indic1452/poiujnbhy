@@ -30,7 +30,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
-__all__ = ["TermGlossary", "glossary", "default_path", "expand_query"]
+__all__ = ["TermGlossary", "glossary", "default_path", "expand_query",
+           "mentions", "normalize"]
 
 DEFAULT_PATH = Path("templates") / "terms.json"
 
@@ -170,6 +171,22 @@ def _hit(term: str, text: str) -> bool:
             return False
         position = found + len(word)
     return True
+
+
+def mentions(term: str, text: str) -> bool:
+    """Назван ли термин в тексте. Обе строки приводятся сами.
+
+    То же сличение, что и у словаря: по основам, с падежами и с зазором
+    между словами составного термина. Вынесено наружу, чтобы справочник
+    состава (:mod:`reportgen.parts`) сличал ТАК ЖЕ, а не почти так же:
+    два похожих правила расходятся на первом же падеже, и расхождение это
+    тихое — одно найдёт «тракта приёма», другое нет.
+    """
+    искомое = normalize(str(term or "")).strip()
+    где = normalize(str(text or ""))
+    if not искомое or not где:
+        return False
+    return _hit(искомое, где)
 
 
 def _find_word(word: str, text: str, start: int) -> int:

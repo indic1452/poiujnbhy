@@ -501,6 +501,61 @@ def cmd_terms(args: argparse.Namespace) -> int:
     return 1 if (glossary.problems or not len(glossary)) else 0
 
 
+def cmd_parts(args: argparse.Namespace) -> int:
+    """Что прочитано из справочника состава и что он сделает с вопросом.
+
+    Справочник пополняет отдел, а отбрасывать записи молча нельзя: слишком
+    короткое название целого, запись без узлов, лишняя запятая в JSON — всё
+    это выключает состав (а битый файл — весь справочник), и без этой
+    команды человек не узнает об этом никак. Помощник при этом продолжает
+    отвечать, просто хуже: на вопрос о тракте он снова не найдёт его узлы.
+    """
+    from .parts import MAX_UNITS, PartsBook, default_path  # noqa: PLC0415
+
+    settings = Settings.load()
+    выбранный = args.path or getattr(settings, "parts_path", None)
+    path = Path(выбранный) if выбранный else default_path()
+    книга = PartsBook.load(path)
+
+    предел = int(args.limit or getattr(settings, "assistant_parts", MAX_UNITS))
+    print(f"Справочник: {path}")
+    print(f"Прочитано составов: {len(книга)}")
+    if книга.problems:
+        print("\nПропущено:")
+        for беда in книга.problems:
+            print(f"  {беда}")
+
+    # Обрезание цепочки с конца — самое вредное, что тут может случиться:
+    # дальний узел и есть ответ на «что принимает». Молча этого делать нельзя.
+    длинные = [состав for состав in книга.compositions if len(состав.units) > предел]
+    if длинные:
+        print(f"\nБудут обрезаны (разбирается {предел} узлов, "
+              f"настройка assistant_parts):")
+        for состав in длинные:
+            хвост = ", ".join(состав.units[предел:])
+            print(f"  {состав.whole}: не поищется {хвост}")
+
+    if args.query:
+        узлы = книга.units_for(args.query, limit=предел)
+        совпало = книга.match(args.query)
+        if совпало:
+            print(f"\nВ вопросе «{args.query}» названо: "
+                  + ", ".join(состав.whole for состав in совпало))
+        print(f"Помощник поищет отдельно {len(узлы)} "
+              f"{'узел' if len(узлы) == 1 else 'узлов'}:")
+        for узел in узлы:
+            print(f"  {узел}")
+        if not узлы:
+            print("  ничего — ни один состав справочника в вопросе не встретился")
+    elif not args.quiet:
+        for состав in книга.compositions:
+            print(f"\n{состав.whole}")
+            if состав.also:
+                print("  ещё пишут: " + ", ".join(состав.also))
+            print("  узлы: " + ", ".join(состав.units))
+    return 1 if (книга.problems or not len(книга)) else 0
+
+
 def cmd_formats(args: argparse.Namespace) -> int:
     """Что система умеет читать прямо сейчас и чего для остального не хватает."""
     from .ingest.convert import format_support  # noqa: PLC0415
@@ -766,6 +821,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_terms.add_argument("--query", default=None,
                          help="показать, что добавится к этому вопросу")
     p_terms.set_defaults(func=cmd_terms)
+
+    p_parts = sub.add_parser("parts", help="проверить справочник состава")
+    p_parts.add_argument("--path", default=None, help="путь к parts.json")
+    p_parts.add_argument("--query", default=None,
+                         help="показать, какие узлы помощник поищет по этому вопросу")
+    p_parts.add_argument("--limit", type=int, default=None,
+                         help="сколько узлов брать (по умолчанию из настроек)")
+    p_parts.add_argument("--quiet", action="store_true",
+                         help="не печатать сами составы, только итог")
+    p_parts.set_defaults(func=cmd_parts)
 
     p_status = sub.add_parser("doc-status", help="отметить актуальность документа библиотеки")
     p_status.add_argument("--doc-id", required=True)
