@@ -59,6 +59,11 @@ class _TooLarge(RuntimeError):
     """Запрос не влез в сервер. Лечится не повтором, а меньшей порцией."""
 
 
+#: Короче этого резать фрагмент бессмысленно: по обрывку в полторы строки
+#: кросс-энкодер уже не отличит нужное от похожего, и второй проход теряет
+#: смысл. Дошли до этой границы — честно отказываемся и говорим про -ub.
+MIN_RERANK_CHARS = 240
+
 #: Коды, при которых повтор осмыслен: сервер жив, но занят или перезапускается.
 #: Всё остальное (400-е, 500) — отказ по существу: тот же запрос пройдёт так же.
 RETRY_CODES = frozenset({408, 429, 502, 503, 504})
@@ -122,6 +127,10 @@ class CrossEncoderReranker:
     #: выяснено, шлём всё разом»; дальше подбирается по ответам сервера и
     #: остаётся жить в клиенте: поисковик держит его между вопросами.
     batch: int = 0
+    #: До скольких знаков режем каждый фрагмент. Ноль — «не режем». Как и
+    #: batch, подбирается по ответам сервера: бывает, что и ОДИН фрагмент
+    #: не влезает в физический батч, и делить тогда нечего.
+    max_chars: int = 0
 
     @property
     def name(self) -> str:
@@ -155,26 +164,66 @@ class CrossEncoderReranker:
             try:
                 оценки.extend(self._request(query, порция))
             except _TooLarge as тесно:
-                if len(порция) <= 1:
+                # Сперва делим по числу, потом — по длине. Порядок важен:
+                # укорачивать фрагменты, когда их просто много, значит зря
+                # терять текст, по которому и считается оценка.
+                if len(порция) > 1:
+                    размер = max(1, len(порция) // 2)
+                    self.batch = размер
+                    continue
+                короче = self._ужать(query, порция[0], str(тесно))
+                if короче is None:
                     raise RerankError(
                         f"реранкеру ({self.base_url}) не по силам даже один "
-                        f"фрагмент: {тесно}. Поднимите физический батч "
-                        f"llama-server (-ub) или уменьшите rerank_max_chars "
-                        f"в настройках"
+                        f"фрагмент в {MIN_RERANK_CHARS} знаков: {тесно}. "
+                        f"Поднимите физический батч llama-server (-ub), "
+                        f"например -ub 2048"
                     ) from тесно
-                размер = max(1, len(порция) // 2)
-                self.batch = размер
+                self.max_chars = короче
+                # Число фрагментов подбиралось под ПРЕЖНЮЮ длину и успело
+                # ужаться до одного. С укороченными их снова влезает больше,
+                # поэтому счёт начинаем заново: иначе верхушка уходит на
+                # сервер по одному фрагменту — двадцать запросов вместо двух.
+                # Зацикливания нет: длина на каждом шаге строго убывает.
+                self.batch = 0
+                размер = len(documents) - начало
                 continue
             начало += len(порция)
         return оценки
 
+    def _ужать(self, query: str, document: str, жалоба: str) -> int | None:
+        """Новая длина фрагмента, которая должна пройти. ``None`` — некуда.
+
+        Сервер в жалобе называет числа: «input (574 tokens) is too large to
+        process. increase the physical batch size (current batch size: 512)».
+        По ним видно, во сколько раз ужиматься, — и одного повтора хватает
+        вместо пяти делений пополам вслепую. Если чисел нет, режем вдвое.
+
+        Запас в 15 % нужен потому, что токены считает сервер, а знаки — мы:
+        на кириллице один токен бывает и в один знак, и в четыре.
+        """
+        было = len(document if self.max_chars <= 0 else document[: self.max_chars])
+        if было <= MIN_RERANK_CHARS:
+            return None
+        токенов = re.search(r"input\s*\((\d+)\s*tokens?\)", жалоба, re.I)
+        батч = re.search(r"batch size:\s*(\d+)", жалоба, re.I)
+        if токенов and батч and int(токенов.group(1)) > 0:
+            доля = int(батч.group(1)) / int(токенов.group(1))
+            стало = int(было * доля * 0.85)
+        else:
+            стало = было // 2
+        стало = max(MIN_RERANK_CHARS, min(стало, было - 1))
+        return стало if стало < было else None
+
     def _request(self, query: str, documents: Sequence[str]) -> List[float]:
         """Один запрос к сервису. Повторяем только то, что может пройти."""
+        куски = ([str(d)[: self.max_chars] for d in documents]
+                 if self.max_chars > 0 else [str(d) for d in documents])
         payload: Dict[str, Any] = {
             "model": self.model,
             "query": query,
-            "documents": list(documents),
-            "top_n": len(documents),
+            "documents": куски,
+            "top_n": len(куски),
         }
         request = urllib.request.Request(
             url=f"{self.base_url.rstrip('/')}/rerank",
@@ -267,8 +316,18 @@ class CrossEncoderReranker:
                     "error": "служба ответила, но не прислала ни одной оценки",
                     "advice": "похоже, по этому адресу не реранкер: сверьте "
                               "rerank_model и ключ --reranking у llama-server"}
-        return {"ok": True, "kind": "", "error": "", "advice": "",
-                "model": self.model, "batch": self.batch}
+        # Подобранная длина — не мелочь для отчёта: если сервер заставил
+        # резать фрагменты, реранк работает, но видит куски вместо абзацев,
+        # и качество второго прохода падает. Про это надо сказать.
+        совет = ""
+        if self.max_chars > 0:
+            совет = (f"фрагменты приходится резать до {self.max_chars} знаков — "
+                     f"физический батч llama-server мал. Поднимите -ub "
+                     f"(например -ub 2048): реранк станет точнее, потому что "
+                     f"будет видеть абзац целиком, а не его начало")
+        return {"ok": True, "kind": "", "error": "", "advice": совет,
+                "model": self.model, "batch": self.batch,
+                "max_chars": self.max_chars}
 
     @staticmethod
     def _parse(body: Any, count: int) -> List[float]:

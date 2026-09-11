@@ -33,6 +33,7 @@ from reportgen.embeddings import (
     top_cosine,
 )
 from reportgen.rerank import (
+    MIN_RERANK_CHARS,
     CrossEncoderReranker,
     LLMReranker,
     NoopReranker,
@@ -1080,7 +1081,9 @@ class РеранкТесныйСервер(unittest.TestCase):
         сказано = str(поймано.exception)
         self.assertIn("один фрагмент", сказано)
         self.assertIn("-ub", сказано, "не сказано, какой ключ поднимать")
-        self.assertIn("rerank_max_chars", сказано)
+        # Про rerank_max_chars больше не советуем: длину система подбирает
+        # сама, и совет «уменьшите» стал бы указанием сделать хуже.
+        self.assertNotIn("уменьшите rerank_max_chars", сказано)
 
 
 class ПроверкаСвязиСРеранком(unittest.TestCase):
@@ -1130,3 +1133,101 @@ class ПроверкаСвязиСРеранком(unittest.TestCase):
         # NoopReranker сохранил бы порядок, но здесь оценок нет вовсе —
         # значит, по адресу не та служба.
         self.assertTrue(итог["ok"] or итог["kind"] == "empty")
+
+
+class РеранкУкорачиваетФрагмент(unittest.TestCase):
+    """Бывает, что не влезает и ОДИН фрагмент — делить тогда нечего.
+
+    Живой случай отдела: rerank_max_chars = 1200, сервер поднят с батчем
+    512, и сервер сам сказал числами — «input (574 tokens) is too large to
+    process. increase the physical batch size (current batch size: 512)».
+    То есть реранк не мог работать никогда: один фрагмент уже не проходил.
+    Дробление по числу фрагментов тут бессильно, лечится только длиной.
+
+    Резать — не бесплатно: кросс-энкодер видит начало абзаца вместо абзаца.
+    Поэтому режем по числам из жалобы сервера, а не вслепую, и говорим об
+    этом в проверке связи.
+    """
+
+    @staticmethod
+    def _сервер(батч: int, на_токен: float = 2.09):
+        """Сервер с ТОКЕННЫМ пределом на пару «запрос — фрагмент»."""
+        def отвечает(payload):
+            токенов = max(int((len(d) + len(payload["query"])) / на_токен)
+                          for d in payload["documents"])
+            if токенов > батч:
+                raise _http_error(
+                    500, f"input ({токенов} tokens) is too large to process. "
+                         f"increase the physical batch size "
+                         f"(current batch size: {батч})")
+            return FakeResponse({"results": [
+                {"index": i, "relevance_score": 1.0 - i * 0.01}
+                for i in range(len(payload["documents"]))]})
+        return отвечает
+
+    def test_один_неподъёмный_фрагмент_укорачивается(self):
+        opener = RecordingURLOpen(self._сервер(батч=512))
+        документы = ["ф" * 1200 for _ in range(20)]
+        реранкер = CrossEncoderReranker()
+        with mock.patch("reportgen._http.urlopen", opener):
+            оценки = реранкер.score("тракт приёма РРЛС", документы)
+        self.assertEqual(20, len(оценки),
+                         "реранк снова сдался там, где мог укоротить фрагмент")
+        self.assertGreater(реранкер.max_chars, 0, "длина не подобрана")
+        self.assertLess(реранкер.max_chars, 1200)
+
+    def test_длина_берётся_из_чисел_сервера_а_не_делением_пополам(self):
+        """Одного повтора довольно, если сервер назвал числа."""
+        opener = RecordingURLOpen(self._сервер(батч=512))
+        реранкер = CrossEncoderReranker()
+        with mock.patch("reportgen._http.urlopen", opener):
+            реранкер.score("вопрос", ["ф" * 1200])
+        # Деление пополам дало бы 600; счёт по числам — заметно больше.
+        self.assertGreater(реранкер.max_chars, 700,
+                           "длина подобрана вслепую, хотя сервер назвал числа")
+        self.assertLessEqual(реранкер.max_chars, 1000)
+
+    def test_после_укорачивания_пачка_снова_набирается(self):
+        """Иначе верхушка уходит по одному фрагменту — двадцать запросов."""
+        opener = RecordingURLOpen(self._сервер(батч=512))
+        документы = ["ф" * 1200 for _ in range(20)]
+        реранкер = CrossEncoderReranker()
+        with mock.patch("reportgen._http.urlopen", opener):
+            реранкер.score("первый", документы)
+            подбор = opener.calls
+            реранкер.score("второй", документы)
+            после = opener.calls - подбор
+        self.assertLessEqual(после, 2,
+                             f"после подбора уходит {после} запросов вместо одного")
+        self.assertLess(подбор, 12, "подбор слишком дорогой")
+
+    def test_совсем_тесному_серверу_режут_не_до_бесконечности(self):
+        """По обрывку в полторы строки второй проход теряет смысл."""
+        opener = RecordingURLOpen(self._сервер(батч=8))
+        with mock.patch("reportgen._http.urlopen", opener):
+            with self.assertRaises(RerankError) as поймано:
+                CrossEncoderReranker().score("вопрос", ["ф" * 1200])
+        сказано = str(поймано.exception)
+        self.assertIn(str(MIN_RERANK_CHARS), сказано)
+        self.assertIn("-ub", сказано)
+
+    def test_проверка_связи_предупреждает_про_резку(self):
+        """«Работает» без оговорки скрыло бы падение качества."""
+        opener = RecordingURLOpen(lambda payload: FakeResponse(
+            {"results": [{"index": 0, "relevance_score": 0.7}]}))
+        реранкер = CrossEncoderReranker()
+        реранкер.max_chars = 897
+        with mock.patch("reportgen._http.urlopen", opener):
+            итог = реранкер.check()
+        self.assertTrue(итог["ok"])
+        self.assertEqual(897, итог["max_chars"])
+        self.assertIn("-ub", итог["advice"], "не сказано, чем лечить")
+
+    def test_на_просторном_сервере_ничего_не_режется(self):
+        opener = RecordingURLOpen(self._сервер(батч=4096))
+        реранкер = CrossEncoderReranker()
+        with mock.patch("reportgen._http.urlopen", opener):
+            оценки = реранкер.score("вопрос", ["ф" * 1200 for _ in range(20)])
+        self.assertEqual(20, len(оценки))
+        self.assertEqual(0, реранкер.max_chars, "резали там, где всё влезало")
+        self.assertEqual(1, opener.calls, "лишние запросы на просторном сервере")

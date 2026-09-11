@@ -31,7 +31,7 @@ from .. import corpus
 from ..corpus import Chunk
 from ..store.models import DOC_STATUSES
 from ..store.repo import LibraryReportRepo
-from . import convert
+from . import convert, titles
 from .convert import ConvertedDocument, convert_file, guess_doc_type, sha256_file
 
 if TYPE_CHECKING:  # pragma: no cover — только для подсказок типов
@@ -410,7 +410,20 @@ def ingest_path(
     if glued:
         result.notes.append(f"{label}: {glued}")
 
-    title = converted.title.strip() or doc_id.rsplit("/", 1)[-1]
+    # Название выбирается с проверкой на годность, а не «первое непустое».
+    # Прежде негодное с первой ступени побеждало годное имя файла, и в
+    # библиотеку уходили «УТВЕРЖДЕН», «Оглавление», «document» и сырые
+    # шестнадцатеричные строки из метаданных PDF. Помощник строит из
+    # названий карту библиотеки — по такой карте он не знает, что у него
+    # на полках. Подробности в titles.py.
+    title, откуда, отвергнуто = titles.choose_title(
+        [converted.title], filename=path.name)
+    if not title:
+        title = doc_id.rsplit("/", 1)[-1]
+    if отвергнуто:
+        result.notes.append(
+            f"{label}: название взято из источника «{откуда}» — "
+            + "; ".join(отвергнуто))
 
     # Каталог верхнего уровня главнее: если библиотека разложена, спорить с
     # инженером незачем. Молчит каталог — смотрим в сам документ.

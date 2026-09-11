@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from . import domains
 from .config import Settings, settings_warnings
@@ -372,6 +372,83 @@ def cmd_library(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_retitle(args: argparse.Namespace) -> int:
+    """Переписать негодные названия документов ПРЯМО В БАЗЕ, не трогая файлы.
+
+    Починка приёма не исправляет того, что уже принято, а перечитывать
+    тридцать тысяч файлов — несколько суток работы. Между тем всё нужное
+    уже лежит в базе: у документа есть исходный путь, а имя файла человек
+    выбирал сам и оно почти всегда лучше служебного заголовка из середины
+    документа. Значит, названия можно пересобрать за минуты.
+
+    По умолчанию НИЧЕГО НЕ МЕНЯЕТСЯ: печатается, что изменилось бы. Второго
+    шанса у библиотеки нет, поэтому применение — отдельным ключом --apply.
+    """
+    from .ingest import titles as _titles
+
+    repos, _ = _open_repos(args)
+    documents = repos.documents.list(getattr(args, "doc_type", None),
+                                     getattr(args, "domain", None))
+    if not documents:
+        print("библиотека пуста")
+        return 1
+
+    предел = int(getattr(args, "limit", 0) or 0)
+    правки: List[Tuple[str, str, str, str]] = []
+    целых = 0
+    безнадёжных: List[Tuple[str, str]] = []
+
+    for document in documents:
+        было = str(document.title or "")
+        имя = Path(str(document.source_path or document.doc_id)).name
+        стало, откуда, отвергнуто = _titles.choose_title([было], filename=имя)
+        if not стало or стало == было:
+            if _titles.title_problem(было) is None:
+                целых += 1
+            else:
+                безнадёжных.append((document.doc_id, было))
+            continue
+        правки.append((document.doc_id, было, стало, откуда))
+
+    print(f"документов в библиотеке: {len(documents)}")
+    print(f"названия в порядке:      {целых}")
+    print(f"будет переименовано:     {len(правки)}")
+    if безнадёжных:
+        print(f"негодных, но заменить нечем: {len(безнадёжных)} "
+              f"(ни в документе, ни в имени файла нет пригодного названия)")
+
+    показано = правки if предел <= 0 else правки[:предел]
+    for doc_id, было, стало, откуда in показано:
+        print(f"\n  {doc_id}")
+        print(f"    было:  {было}")
+        print(f"    стало: {стало}   [{откуда}]")
+    if предел > 0 and len(правки) > предел:
+        print(f"\n  …и ещё {len(правки) - предел}. Весь список: --limit 0")
+
+    if безнадёжных and getattr(args, "show_hopeless", False):
+        print("\nНегодные без замены:")
+        for doc_id, было in безнадёжных[: предел or len(безнадёжных)]:
+            print(f"  {doc_id}: «{было}» — {_titles.title_problem(было)}")
+
+    if not getattr(args, "apply", False):
+        print("\nНичего не изменено. Применить: добавьте --apply")
+        return 0
+
+    if not правки:
+        print("\nМенять нечего.")
+        return 0
+
+    изменено = 0
+    with repos.db.transaction() as connection:
+        for doc_id, _было, стало, _откуда in правки:
+            connection.execute("UPDATE documents SET title = ? WHERE doc_id = ?",
+                               (стало, doc_id))
+            изменено += 1
+    print(f"\nПереименовано документов: {изменено}")
+    print("Названия изменены только в описи; сами файлы и фрагменты не тронуты.")
+    return 0
+
+
 def cmd_terms(args: argparse.Namespace) -> int:
     """Что прочитано из словаря терминов и что он сделает с вопросом.
 
@@ -650,6 +727,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_lib.add_argument("--doc-type", default=None)
     p_lib.add_argument("--domain", default=None, help="фильтр по направлению техники")
     p_lib.set_defaults(func=cmd_library)
+
+    p_retitle = sub.add_parser(
+        "retitle",
+        help="пересобрать негодные названия документов в описи (без перечитывания файлов)")
+    p_retitle.add_argument("--doc-type", default=None)
+    p_retitle.add_argument("--domain", default=None)
+    p_retitle.add_argument("--limit", type=int, default=40,
+                           help="сколько строк показать; 0 — все")
+    p_retitle.add_argument("--show-hopeless", action="store_true",
+                           help="показать и те, которым замены не нашлось")
+    p_retitle.add_argument("--apply", action="store_true",
+                           help="применить изменения (по умолчанию только показ)")
+    p_retitle.set_defaults(func=cmd_retitle)
 
     p_formats = sub.add_parser("formats", help="какие форматы документов система умеет читать")
     p_formats.set_defaults(func=cmd_formats)

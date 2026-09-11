@@ -7719,7 +7719,21 @@
             button.textContent = 'проверяю…';
             try {
                 const answer = (await api.post('/api/library/rerank/check', {})).check || {};
-                if (answer.ok) {
+                if (answer.ok && answer.advice) {
+                    // Работает, но с оговоркой: сервер заставил резать
+                    // фрагменты. Это не ошибка, но и не «всё хорошо».
+                    const dialog = openModal({
+                        narrow: true,
+                        title: 'Реранк работает, но вполсилы',
+                        body: h('div', {},
+                            h('div', {}, 'Служба отвечает: ' + (answer.model || 'модель') + '.'),
+                            h('div', { class: 'small', style: { marginTop: '8px' } },
+                                answer.advice)),
+                        footer: [h('button', {
+                            class: 'btn btn--primary', onclick: () => dialog.close(),
+                        }, 'Понятно')],
+                    });
+                } else if (answer.ok) {
                     toast('Реранк отвечает: ' + (answer.model || 'модель')
                         + (answer.batch ? ', по ' + answer.batch + ' фрагм. за раз' : ''));
                 } else {
