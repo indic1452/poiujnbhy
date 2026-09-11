@@ -187,6 +187,39 @@ class ConvertedDocument:
     meta: Dict[str, Any] = field(default_factory=dict)
     needs_ocr: bool = False
     warnings: List[str] = field(default_factory=list)
+    #: Все версии названия по убыванию доверия: свойства файла, заголовок
+    #: первого уровня, первая строка. Нужен именно список, а не одна строка:
+    #: решать, годится ли название, здесь нельзя — это работа ``titles``, а
+    #: она без запасных вариантов бессильна.
+    title_candidates: List[str] = field(default_factory=list)
+
+    def set_title(self, *candidates: Any, fallback: str = "") -> None:
+        """Запомнить ВСЕ версии названия по убыванию доверия.
+
+        Раньше чтец сам выбирал одну: ``core_title or heading or path.stem``.
+        Выбор делался вслепую — годность названия чтецу неизвестна, — и
+        свойства файла побеждали всегда. В отделе документ «ДМА 256» из-за
+        этого назывался «Бланк текстового документа»: документ создали из
+        бланка, свойства от бланка и остались, а настоящее название стояло
+        и в заголовке, и в имени файла.
+
+        Теперь чтец только перечисляет, что нашёл, а выбирает ``titles``:
+        оно умеет отличить имя бланка от названия и спуститься на ступень
+        ниже. ``fallback`` (обычно имя файла) заполняет ``title``, чтобы оно
+        не осталось пустым, но в список кандидатов не попадает: имя файла —
+        отдельная ступень, и называться в журнале она должна своим именем.
+        """
+        видели = set()
+        отобранные: List[str] = []
+        for значение in candidates:
+            строка = " ".join(str(значение or "").split())
+            ключ = строка.lower()
+            if not строка or ключ in видели:
+                continue
+            видели.add(ключ)
+            отобранные.append(строка)
+        self.title_candidates = отобранные
+        self.title = отобранные[0] if отобранные else str(fallback or "")
 
     @property
     def is_empty(self) -> bool:
@@ -723,7 +756,7 @@ def _convert_pdf(path: Path) -> ConvertedDocument:
     title = str(metadata.get("title") or "").strip()
     if not title:
         title = _first_markdown_heading(result.text)
-    result.title = title or path.stem
+    result.set_title(title, _first_markdown_heading(result.text), fallback=path.stem)
     for key in ("author", "subject", "keywords"):
         value = str(metadata.get(key) or "").strip()
         if value:
@@ -879,7 +912,8 @@ def _convert_docx(path: Path) -> ConvertedDocument:
         core_title, author = "", ""
     if author:
         result.meta["author"] = author
-    result.title = core_title or heading_title or _first_markdown_heading(result.text) or path.stem
+    result.set_title(core_title, heading_title,
+                     _first_markdown_heading(result.text), fallback=path.stem)
     if result.is_empty:
         result.warnings.append("в DOCX не найдено текста")
     return result
@@ -1093,9 +1127,9 @@ def _convert_text(path: Path) -> ConvertedDocument:
     front, body = parse_front_matter(result.text)
     for key, value in front.items():
         result.meta.setdefault(key, value)
-    result.title = (front.get("title") or _first_markdown_heading(body)
-                    or (_first_text_line_as_title(body) if kind == "text" else "")
-                    or path.stem)
+    result.set_title(front.get("title"), _first_markdown_heading(body),
+                     _first_text_line_as_title(body) if kind == "text" else "",
+                     fallback=path.stem)
     if not result.text.strip():
         result.warnings.append("файл пуст")
     return result
@@ -1278,8 +1312,13 @@ def _flag_unreadable(result: "ConvertedDocument", path: Path) -> "ConvertedDocum
             f"текст извлёкся неразборчиво (осмысленных знаков {share:.0%}): "
             "проверьте файл, возможно, нужен скан с распознаванием"
         )
-    if not result.title or readable_share(result.title) < MIN_READABLE_SHARE:
-        result.title = path.stem
+    # Неразборчивое название выбрасываем не одно, а все: если заглушками
+    # вместо букв вышли и свойства файла, и заголовок, то негодны обе
+    # ступени, и выбирать между ними нечего.
+    читаемые = [значение for значение in result.title_candidates
+                if readable_share(значение) >= MIN_READABLE_SHARE]
+    if читаемые != result.title_candidates or not result.title:
+        result.set_title(*читаемые, fallback=path.stem)
     return result
 
 

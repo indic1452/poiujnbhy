@@ -591,7 +591,7 @@ def convert_html(path: Path) -> ConvertedDocument:
 
     parsed = html_to_markdown(text)
     result.text = parsed.text
-    result.title = parsed.title or path.stem
+    result.set_title(parsed.title, fallback=path.stem)
     if parsed.images:
         result.meta["images"] = parsed.images
     if result.is_empty:
@@ -798,7 +798,7 @@ def convert_eml(path: Path) -> ConvertedDocument:
         )
 
     result.text = merge_list_blocks(pieces)
-    result.title = subject or path.stem
+    result.set_title(subject, fallback=path.stem)
     if not body.strip() and not attachments:
         result.warnings.append("письмо пустое: ни текста, ни вложений")
     return result
@@ -874,7 +874,8 @@ def convert_mhtml(path: Path) -> ConvertedDocument:
     pieces.append(parsed.text)
 
     result.text = merge_list_blocks([piece for piece in pieces if piece.strip()])
-    result.title = title
+    result.set_title(_clean_line(_header_value(message, "Subject")), parsed.title,
+                     fallback=path.stem)
     if not parsed.text.strip():
         result.warnings.append("страница пуста: в разметке нет текста")
     return result
@@ -977,7 +978,7 @@ def convert_xml(path: Path) -> ConvertedDocument:
             "остальное пропущено; такие выгрузки лучше подавать сводкой"
         )
     result.text = merge_list_blocks(blocks)
-    result.title = first_heading(result.text) or path.stem
+    result.set_title(first_heading(result.text), fallback=path.stem)
     result.meta["root"] = local
     if result.is_empty:
         result.warnings.append("в XML нет текстовых узлов — только структура")

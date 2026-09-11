@@ -417,7 +417,7 @@ def ingest_path(
     # названий карту библиотеки — по такой карте он не знает, что у него
     # на полках. Подробности в titles.py.
     title, откуда, отвергнуто = titles.choose_title(
-        [converted.title], filename=path.name)
+        converted.title_candidates or [converted.title], filename=path.name)
     if not title:
         title = doc_id.rsplit("/", 1)[-1]
     if отвергнуто:

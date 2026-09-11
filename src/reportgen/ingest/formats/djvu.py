@@ -476,7 +476,7 @@ def _convert_djvu(path: Path, *, title: str) -> ConvertedDocument:
         pieces.append(page_marker(number))
         pieces.append(body)
     result.text = "\n\n".join(pieces)
-    result.title = _first_markdown_heading(result.text) or path.stem
+    result.set_title(_first_markdown_heading(result.text), fallback=path.stem)
     # «Нужен OCR» — это про документ, из которого не достали ничего: страницы
     # есть, текста нет. Если хоть часть книги прочиталась, документ в индекс
     # берётся, а о непрочитанном говорят предупреждения.

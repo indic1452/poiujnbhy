@@ -229,9 +229,9 @@ def convert_rfc(path: Path) -> ConvertedDocument:
     title = str(header.get("title") or "").strip()
     if number:
         result.meta["rfc"] = number
-        result.title = f"RFC {number}. {title}" if title else f"RFC {number}"
+        result.set_title(f"RFC {number}. {title}" if title else f"RFC {number}")
     elif title:
-        result.title = title
+        result.set_title(title)
 
     for key in ("year", "month", "category", "obsoletes", "obsoleted_by",
                 "updates", "updated_by"):

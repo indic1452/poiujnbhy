@@ -867,9 +867,9 @@ def _convert_odf(path: Path, expected: str) -> ConvertedDocument:
     # У книги и презентации первый заголовок — это имя листа или номер
     # слайда: названием документа он быть не может, лучше имя файла.
     if kind == "odt":
-        result.title = meta_title or first_heading(result.text) or path.stem
+        result.set_title(meta_title, first_heading(result.text), fallback=path.stem)
     else:
-        result.title = meta_title or path.stem
+        result.set_title(meta_title, fallback=path.stem)
     if result.page_count:
         result.meta["page_count"] = result.page_count
     if result.is_empty:
@@ -1118,7 +1118,7 @@ def convert_fb2(path: Path) -> ConvertedDocument:
     result.warnings.extend(state.notes)
     if state.images:
         result.meta["images"] = state.images
-    result.title = book_title or first_heading(result.text) or path.stem
+    result.set_title(book_title, first_heading(result.text), fallback=path.stem)
     if result.is_empty:
         result.warnings.append("в FB2 не найдено текста")
     return result
@@ -1290,7 +1290,7 @@ def convert_epub(path: Path) -> ConvertedDocument:
         result.meta["author"] = author
     if images:
         result.meta["images"] = images
-    result.title = book_title or first_heading(result.text) or path.stem
+    result.set_title(book_title, first_heading(result.text), fallback=path.stem)
     if result.is_empty:
         result.warnings.append(
             "в книге не найдено текста: либо это скан в картинках, либо разметка пуста"

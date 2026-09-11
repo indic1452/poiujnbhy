@@ -396,23 +396,40 @@ def cmd_retitle(args: argparse.Namespace) -> int:
     предел = int(getattr(args, "limit", 0) or 0)
     правки: List[Tuple[str, str, str, str]] = []
     целых = 0
-    безнадёжных: List[Tuple[str, str]] = []
+    безнадёжных: List[Tuple[str, str, str]] = []
+
+    # Бланки видны только на всей библиотеке сразу: по одному названию не
+    # понять, что оно пришло не от документа, а из свойств файла. Зато
+    # пятьсот разных документов не могут честно называться одинаково.
+    повторы = _titles.repeated_titles(str(документ.title or "")
+                                      for документ in documents)
+    из_бланка = 0
 
     for document in documents:
         было = str(document.title or "")
         имя = Path(str(document.source_path or document.doc_id)).name
-        стало, откуда, отвергнуто = _titles.choose_title([было], filename=имя)
+        бланк = повторы.get(_titles.normalize_title(было), 0)
+        кандидаты = [] if бланк else [было]
+        стало, откуда, отвергнуто = _titles.choose_title(кандидаты, filename=имя)
         if not стало or стало == было:
-            if _titles.title_problem(было) is None:
+            причина = (f"одно название на {бланк} документов — пришло из бланка"
+                       if бланк else _titles.title_problem(было))
+            if причина is None:
                 целых += 1
             else:
-                безнадёжных.append((document.doc_id, было))
+                безнадёжных.append((document.doc_id, было, причина))
             continue
+        if бланк:
+            откуда = f"{откуда}; прежнее носили {бланк} документов"
+            из_бланка += 1
         правки.append((document.doc_id, было, стало, откуда))
 
     print(f"документов в библиотеке: {len(documents)}")
     print(f"названия в порядке:      {целых}")
     print(f"будет переименовано:     {len(правки)}")
+    if из_бланка:
+        print(f"из них с названием бланка: {из_бланка} "
+              f"(одно название на {_titles.MIN_TEMPLATE_COPIES} и более документов)")
     if безнадёжных:
         print(f"негодных, но заменить нечем: {len(безнадёжных)} "
               f"(ни в документе, ни в имени файла нет пригодного названия)")
@@ -427,8 +444,8 @@ def cmd_retitle(args: argparse.Namespace) -> int:
 
     if безнадёжных and getattr(args, "show_hopeless", False):
         print("\nНегодные без замены:")
-        for doc_id, было in безнадёжных[: предел or len(безнадёжных)]:
-            print(f"  {doc_id}: «{было}» — {_titles.title_problem(было)}")
+        for doc_id, было, причина in безнадёжных[: предел or len(безнадёжных)]:
+            print(f"  {doc_id}: «{было}» — {причина}")
 
     if not getattr(args, "apply", False):
         print("\nНичего не изменено. Применить: добавьте --apply")

@@ -874,7 +874,7 @@ def convert_image(path: Path) -> ConvertedDocument:
         if body:
             result.text = f"{page_marker(1)}\n\n{body}"
         result.meta["ocr_languages"] = resolve_languages(DEFAULT_LANGUAGES)[0]
-        result.title = _first_markdown_heading(body) or path.stem
+        result.set_title(_first_markdown_heading(body), fallback=path.stem)
         _describe_ocr_quality(result, len(body.strip()))
         return result
 
@@ -896,7 +896,7 @@ def convert_image(path: Path) -> ConvertedDocument:
         if body:
             result.text = f"{page_marker(1)}\n\n{body}"
         result.meta["ocr_languages"] = resolve_languages(DEFAULT_LANGUAGES)[0]
-        result.title = _first_markdown_heading(body) or path.stem
+        result.set_title(_first_markdown_heading(body), fallback=path.stem)
         _describe_ocr_quality(result, len(body.strip()))
         return result
 
@@ -963,7 +963,7 @@ def convert_image(path: Path) -> ConvertedDocument:
     result.text = "\n\n".join(pieces)
     result.meta["ocr_languages"] = resolve_languages(DEFAULT_LANGUAGES)[0]
     result.meta["ocr_pages"] = recognised
-    result.title = _first_markdown_heading(result.text) or path.stem
+    result.set_title(_first_markdown_heading(result.text), fallback=path.stem)
     result.needs_ocr = recognised == 0
     result.warnings.append(
         f"многостраничный скан: распознано страниц {recognised} из {len(wanted)}"
@@ -1235,7 +1235,7 @@ def convert_pdf_ocr(path: Path) -> ConvertedDocument:
         "машинно — числа и обозначения перед использованием сверяйте с оригиналом",
     )
     if not result.title or result.title == path.stem:
-        result.title = _first_markdown_heading(result.text) or path.stem
+        result.set_title(_first_markdown_heading(result.text), fallback=path.stem)
     return result
 
 

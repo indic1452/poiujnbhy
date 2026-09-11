@@ -17,6 +17,7 @@ import _bootstrap  # noqa: F401
 
 from reportgen import corpus
 from reportgen.ingest import convert as convert_module
+from reportgen.ingest import titles
 from reportgen.ingest import (
     IngestResult,
     chunks_from_markdown,
@@ -320,6 +321,72 @@ class ConvertDocxTests(TempCase):
         converted = convert_file(path)
         self.assertTrue(converted.is_empty)
         self.assertTrue(converted.warnings)
+
+
+class ЛестницаНазваний(TempCase):
+    """Чтец перечисляет все версии названия, а выбирает из них titles.
+
+    Отдел нашёл это на документе «ДМА 256»: в описи он назывался «Бланк
+    текстового документа». Документ создали из бланка, свойства файла
+    достались ему от бланка, а чтец брал ``core_title or heading or stem``
+    и до заголовка не доходил никогда.
+
+    Чинить это внутри чтеца нельзя: годность названия ему неизвестна. Он и
+    не должен выбирать — он должен перечислить, что нашёл.
+    """
+
+    def собрать(self, имя, *, свойства="", заголовок="", текст="Содержание."):
+        путь = self.tmp / имя
+        документ = docx.Document()
+        if свойства:
+            документ.core_properties.title = свойства
+        if заголовок:
+            документ.add_heading(заголовок, level=1)
+        документ.add_paragraph(текст)
+        документ.save(str(путь))
+        return convert_file(путь)
+
+    def test_ступени_перечислены_по_убыванию_доверия(self):
+        вышло = self.собрать("ДМА 256.docx",
+                             свойства="Бланк текстового документа",
+                             заголовок="Демодулятор ДМА 256. Техническое описание")
+        self.assertEqual(["Бланк текстового документа",
+                          "Демодулятор ДМА 256. Техническое описание"],
+                         вышло.title_candidates)
+
+    def test_имя_бланка_уступает_заголовку(self):
+        вышло = self.собрать("ДМА 256.docx",
+                             свойства="Бланк текстового документа",
+                             заголовок="Демодулятор ДМА 256. Техническое описание")
+        стало, откуда, отвергнуто = titles.choose_title(вышло.title_candidates,
+                                                        filename="ДМА 256.docx")
+        self.assertEqual("Демодулятор ДМА 256. Техническое описание", стало)
+        self.assertEqual("документ", откуда)
+        self.assertTrue(отвергнуто, "отвергнутое не названо — чинить будет нечего")
+
+    def test_без_заголовка_выручает_имя_файла(self):
+        вышло = self.собрать("ДМА 256.docx", свойства="Бланк текстового документа")
+        self.assertEqual(["Бланк текстового документа"], вышло.title_candidates)
+        стало, откуда, _ = titles.choose_title(вышло.title_candidates,
+                                               filename="ДМА 256.docx")
+        self.assertEqual("ДМА 256", стало)
+        self.assertEqual("имя файла", откуда)
+
+    def test_имя_файла_в_ступени_не_попадает(self):
+        """Имя файла — отдельная ступень, и называться должна своим именем.
+
+        Если бы чтец клал ``path.stem`` в кандидаты, оно пришло бы в журнал
+        приёма под видом названия из документа, и человек не понял бы, что
+        в самом файле названия не нашлось вовсе.
+        """
+        вышло = self.собрать("ДМА 256.docx")
+        self.assertEqual([], вышло.title_candidates)
+        self.assertEqual("ДМА 256", вышло.title)
+
+    def test_одно_и_то_же_дважды_не_повторяется(self):
+        вышло = self.собрать("отчёт.docx", свойства="Тракт приёма РРЛС",
+                             заголовок="Тракт приёма РРЛС")
+        self.assertEqual(["Тракт приёма РРЛС"], вышло.title_candidates)
 
 
 # ------------------------------------------------------ хеш и тип документа ---

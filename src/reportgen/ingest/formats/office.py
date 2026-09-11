@@ -757,7 +757,7 @@ def convert_pptx(path: Path) -> ConvertedDocument:
         first_title, _ = _slide_title(slide)
         if first_title:
             break
-    result.title = core_title or first_title or path.stem
+    result.set_title(core_title, first_title, fallback=path.stem)
 
     if result.is_empty:
         result.warnings.append("в презентации не найдено текста")
@@ -877,7 +877,7 @@ def convert_xlsx(path: Path) -> ConvertedDocument:
         pass
     if author:
         result.meta["author"] = author
-    result.title = core_title or path.stem
+    result.set_title(core_title, fallback=path.stem)
 
     if result.is_empty:
         result.warnings.append(

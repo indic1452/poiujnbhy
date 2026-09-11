@@ -271,7 +271,7 @@ def convert_doc_native(path: Path) -> ConvertedDocument:
                                meta={"source_format": "doc"})
     raw = doc_text(path.read_bytes())
     result.text = _readable(raw)
-    result.title = _title_of(result.text) or path.stem
+    result.set_title(_title_of(result.text), fallback=path.stem)
     result.meta["reader"] = "word97"
     if result.is_empty:
         result.warnings.append(

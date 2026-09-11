@@ -515,7 +515,7 @@ def _adopt(
     result.page_count = inner.page_count
     result.needs_ocr = inner.needs_ocr
     result.warnings.extend(inner.warnings)
-    result.title = inner.title or path.stem
+    result.set_title(*(inner.title_candidates or [inner.title]), fallback=path.stem)
     if inner.is_empty and not inner.warnings:
         result.warnings.append(
             f"LibreOffice преобразовал файл в {extension.upper()}, "
@@ -1092,7 +1092,7 @@ def convert_rtf(path: Path) -> ConvertedDocument:
     author = _rtf_field(text, "author", codepage)
     if author:
         result.meta["author"] = author
-    result.title = title or _first_heading(result.text) or path.stem
+    result.set_title(title, _first_heading(result.text), fallback=path.stem)
     if result.is_empty:
         result.warnings.append(
             "в RTF не найдено текста — возможно, документ состоит из картинок"
