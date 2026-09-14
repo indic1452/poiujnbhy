@@ -177,6 +177,25 @@ class CacheTests(unittest.TestCase):
         self.add(repos, "a", chunks=5)
         self.assertEqual(5, catalog.rows()[0]["chunks"])
 
+    def test_renaming_refreshes_the_map(self):
+        """«reportgen retitle» меняет НАЗВАНИЯ, не трогая числа.
+
+        Кэш сверялся по числу документов и числу фрагментов — оба остаются
+        прежними, и карта библиотеки держала старые «Оглавление» и «Бланк
+        текстового документа» до перезапуска сервера. Человек переименовывал
+        тридцать тысяч документов и не видел в ответах никакой разницы.
+        """
+        repos, catalog = self.build()
+        self.add(repos, "a")
+        self.assertEqual("Том a", catalog.rows()[0]["title"])
+        with repos.db.transaction() as connection:
+            connection.execute(
+                "UPDATE documents SET title = ? WHERE doc_id = ?",
+                ("ГОСТ Р 53363-2009. Цифровые радиорелейные линии", "a"))
+        self.assertEqual("ГОСТ Р 53363-2009. Цифровые радиорелейные линии",
+                         catalog.rows()[0]["title"],
+                         "карта осталась со старым названием")
+
     def test_a_superseded_document_is_not_offered(self):
         """Направлять инженера к заменённому документу незачем."""
         repos, catalog = self.build()
