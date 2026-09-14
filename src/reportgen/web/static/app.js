@@ -8719,7 +8719,7 @@
                     h('button', {
                         class: 'btn', onclick: () => renderRoute(state.route),
                     }, 'Обновить'))),
-            cards, editsCard, libCard,
+            cards, modelCard(data.model || {}), editsCard, libCard,
         ]);
 
         // О чём спрашивают помощника. Распоряжение начальника отдела:
@@ -8818,6 +8818,55 @@
                 content.appendChild(h('div', { class: 'muted small' }, errorText(error)));
             }
         }
+    }
+
+    /** Бюджет модели: окно и как оно поделено.
+     *
+     * Число «-c», с которым запущен llama-server, определяет всё: сколько
+     * фрагментов увидит модель, насколько развёрнутым выйдет ответ, будет ли
+     * разбор частями. Прежде оно жило в командной строке и в настройке, и
+     * увидеть его одним взглядом было негде — а распоряжаться надо именно
+     * им, когда ответы кажутся поверхностными.
+     */
+    function modelCard(model) {
+        if (!model.context_tokens) return null;
+        const строки = [
+            ['Окно модели', fmtNumber(model.context_tokens, 0) + ' токенов',
+                model.context_from === 'сервер'
+                    ? 'сказал сам llama-server — «-c» при запуске'
+                    : 'из настройки llm_context_tokens: сервер не ответил на '
+                      + '/props, и число может разойтись с «-c»'],
+            ['Отведено ответу', fmtNumber(model.answer_tokens, 0) + ' токенов',
+                'цель — около ' + model.target_words + ' слов. Это место '
+                + 'вычитается из окна: длиннее ответ — меньше материала'],
+            ['Остаётся библиотеке', fmtNumber(model.library_chars, 0) + ' знаков',
+                'примерно ' + Math.max(1, Math.round(
+                    model.library_chars / (model.source_chars || 2200)))
+                + ' фрагментов по ' + model.source_chars + ' знаков. '
+                + 'Найденное сверх этого читается частями и входит выписками'],
+        ];
+        const body = h('tbody', {}, строки.map(([что, сколько, пояснение]) =>
+            h('tr', {},
+                h('td', {}, что),
+                h('td', { class: 'num nowrap' }, сколько),
+                h('td', { class: 'small muted' }, пояснение))));
+        return h('div', { class: 'card card-pad' },
+            h('div', { class: 'card-title' }, 'Бюджет модели',
+                model.name ? h('span', { class: 'small muted' }, model.name) : null),
+            h('div', { class: 'table-scroll' }, h('table', { class: 'grid' }, body)),
+            // Расхождение настройки с настоящим окном — не мелочь: именно
+            // из-за него промпт режется сервером вместе с системной
+            // инструкцией, и со стороны это выглядит как «модель поглупела».
+            model.context_note
+                ? h('div', { class: 'msg-note', style: { marginTop: '8px' } },
+                    model.context_note)
+                : null,
+            model.context_from === 'сервер'
+                ? null
+                : h('div', { class: 'small muted', style: { marginTop: '8px' } },
+                    'Окно взято из настройки. Надёжнее, когда его называет сам '
+                    + 'сервер: тогда поднятое «-c» подхватится без правки '
+                    + 'settings.json, а заниженное не уронит ответ.'));
     }
 
     function statCard(value, label, sub) {

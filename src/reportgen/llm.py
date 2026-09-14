@@ -88,6 +88,49 @@ class OpenAICompatLLM:
         except Exception:          # noqa: BLE001 — любой сбой значит «недоступен»
             return False
 
+    def context_tokens(self, timeout: float = 3.0) -> int:
+        """Настоящее окно контекста сервера — то самое «-c» при запуске.
+
+        Зачем спрашивать, а не брать из настройки. Окно стоит в двух местах:
+        в командной строке llama-server и в settings.json. Держать их
+        согласованными руками не получилось — отдел получил «36061 токенов, а
+        размер 32768»: промпт собирался под одно число, а сервер работал по
+        другому. И наоборот: подняли «-c» ради развёрнутых ответов, а
+        помощник об этом не узнал и продолжил урезать материал под прежнее.
+
+        llama-server отдаёт это число сам, по ``GET /props``: там лежит
+        ``default_generation_settings.n_ctx`` — размер окна ОДНОГО слота. Он
+        уже поделён на число параллельных слотов («--parallel»), то есть это
+        ровно то, что достанется нашему запросу, а не общий буфер.
+
+        Ноль — «сервер не сказал»: не llama.cpp, старая сборка, сервер не
+        поднят. Тогда работает настройка, как работала раньше.
+        """
+        адрес = self.base_url.rstrip("/")
+        # /props лежит В КОРНЕ сервера, а не внутри /v1: базовый адрес в
+        # настройке указывает на /v1, и его надо отрезать.
+        if адрес.endswith("/v1"):
+            адрес = адрес[: -len("/v1")]
+        request = urllib.request.Request(
+            url=f"{адрес}/props",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            method="GET",
+        )
+        try:
+            with _http.urlopen(request, timeout=timeout) as response:
+                данные = json.loads(response.read().decode("utf-8"))
+        except Exception:          # noqa: BLE001 — не сказал, и ладно
+            return 0
+        настройки = данные.get("default_generation_settings") or {}
+        for место in (настройки.get("n_ctx"), данные.get("n_ctx")):
+            try:
+                число = int(место)
+            except (TypeError, ValueError):
+                continue
+            if число > 0:
+                return число
+        return 0
+
     def _payload(self, system: str, user: str, max_tokens: int, temperature: float,
                  history: List[Dict[str, str]] | None = None,
                  stream: bool = False) -> Dict[str, Any]:

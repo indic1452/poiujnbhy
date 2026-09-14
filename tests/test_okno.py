@@ -22,7 +22,11 @@
 import unittest
 
 import _bootstrap  # noqa: F401
-from reportgen.prompts import ASSISTANT_PROMPT, ASSISTANT_SYSTEM_PROMPT
+from reportgen.prompts import (
+    ASSISTANT_PROMPT,
+    ASSISTANT_SYSTEM_PROMPT,
+    ASSISTANT_TASK,
+)
 from test_assistant import AssistantTestCase
 
 ВОПРОС = "Как измеряется занимаемая полоса частот?"
@@ -38,8 +42,12 @@ class ОкноВыводитсяИзМодели(AssistantTestCase):
         self.settings.assistant_max_tokens = 4000
         self.settings.assistant_chars_per_token = 1.5
         self.settings.assistant_context_chars = 0
+        # Задание считается отдельно от шаблона: оно вынесено в свою строку
+        # ради уступки на тесном окне. Не вычесть его — значит обещать
+        # материалу на четыре с половиной тысячи знаков больше, чем есть.
         ждём = int((32768 - 4000 - 512) * 1.5
-                   - len(ASSISTANT_SYSTEM_PROMPT) - len(ASSISTANT_PROMPT))
+                   - len(ASSISTANT_SYSTEM_PROMPT) - len(ASSISTANT_PROMPT)
+                   - len(ASSISTANT_TASK))
         self.assertEqual(ждём, self.assistant._context_chars())
 
     def test_меньшее_окно_даёт_меньший_предел(self):

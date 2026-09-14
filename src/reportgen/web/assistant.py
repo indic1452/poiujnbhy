@@ -1510,6 +1510,39 @@ class AssistantService:
                 "ссылайся на них теми же метками и учитывай в ответе наравне.\n"
                 + "\n\n".join(выписки) + "\n"), вошли
 
+    def _context_tokens(self) -> int:
+        """Окно модели в токенах: спрашиваем СЕРВЕР, настройка — про запас.
+
+        Окно стоит в двух местах: в «-c» при запуске llama-server и в
+        settings.json. Держать их согласованными руками не вышло, и обе
+        стороны расхождения отдел прочувствовал:
+
+        * настройка БОЛЬШЕ настоящего окна — «36061 токенов, а размер 32768»,
+          модель не отвечает вовсе;
+        * настройка МЕНЬШЕ — подняли «-c» ради развёрнутых ответов, а
+          помощник об этом не узнал и продолжил урезать материал под
+          прежнее число. Тихо и незаметно, что хуже.
+
+        Поэтому спрашиваем сервер. Ответ держим в памяти службы отчётов: она
+        одна на приложение, а помощник создаётся на каждый запрос, и ходить
+        за этим числом на каждый вопрос незачем. Перезапустили llama-server с
+        другим «-c» — перезапустите и приложение, либо поправьте настройку:
+        она по-прежнему работает, когда сервер молчит.
+        """
+        llm = self.reports.get_llm()
+        спросить = getattr(llm, "context_tokens", None)
+        если_не_скажет = int(getattr(self.settings, "llm_context_tokens", 0) or 32768)
+        if спросить is None:
+            return если_не_скажет
+        помнит = getattr(self.reports, "_llm_context_tokens", None)
+        if помнит is None:
+            try:
+                помнит = int(спросить() or 0)
+            except Exception:      # noqa: BLE001 — не спросили, работаем по настройке
+                помнит = 0
+            setattr(self.reports, "_llm_context_tokens", помнит)
+        return помнит or если_не_скажет
+
     def _context_chars(self) -> int:
         """Сколько ЗНАКОВ можно отдать промпту. Выводится из окна модели.
 
@@ -1527,12 +1560,18 @@ class AssistantService:
         только УМЕНЬШИТЬ вывод, не увеличить: маленькое значение ставят
         осознанно, а большое — от незнания, и раньше оно роняло ответ.
         """
-        окно = int(getattr(self.settings, "llm_context_tokens", 0) or 32768)
+        окно = self._context_tokens()
         ответ = self._max_tokens()
         знаков_на_токен = max(0.5, float(
             getattr(self.settings, "assistant_chars_per_token", 0) or CHARS_PER_TOKEN))
+        # Задание считается ОТДЕЛЬНО от шаблона: оно вынесено в свою строку
+        # ради уступки на тесном окне, и после выноса шаблон стал коротким.
+        # Не учесть задание — значит обещать материалу на четыре с половиной
+        # тысячи знаков больше, чем есть: ровно та ошибка, из-за которой
+        # промпт когда-то вылезал за окно.
         выведено = int((окно - ответ - TOKEN_SAFETY) * знаков_на_токен
-                       - len(ASSISTANT_SYSTEM_PROMPT) - len(ASSISTANT_PROMPT))
+                       - len(ASSISTANT_SYSTEM_PROMPT) - len(ASSISTANT_PROMPT)
+                       - len(ASSISTANT_TASK))
         # Пол ставим ТОЛЬКО выведенному: окно меньше пола — это опечатка в
         # настройке модели, а не решение. Заданное вручную маленькое значение
         # пола не знает: его ставят, когда окно и правда крошечное, и
@@ -1572,7 +1611,7 @@ class AssistantService:
         потом (выписки). Держать место заранее обязательно: добавлять их по
         остаточному принципу значит снова переполнить окно.
         """
-        окно = int(getattr(self.settings, "llm_context_tokens", 0) or 32768)
+        окно = self._context_tokens()
         знаков_на_токен = float(
             getattr(self.settings, "assistant_chars_per_token", 0) or CHARS_PER_TOKEN)
         знаков_на_токен = max(0.5, знаков_на_токен)
@@ -1598,7 +1637,7 @@ class AssistantService:
     def _too_big(self, prompt: str, history: Sequence[Dict[str, str]],
                  answer_tokens: int) -> bool:
         """Не влезает ли собранный промпт в окно модели вместе с ответом."""
-        окно = int(getattr(self.settings, "llm_context_tokens", 0) or 32768)
+        окно = self._context_tokens()
         знаков_на_токен = max(0.5, float(
             getattr(self.settings, "assistant_chars_per_token", 0) or CHARS_PER_TOKEN))
         знаков = (len(prompt) + len(ASSISTANT_SYSTEM_PROMPT)
