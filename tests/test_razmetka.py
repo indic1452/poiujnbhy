@@ -304,5 +304,117 @@ class OrderedListTests(MarkupTestCase):
         self.assertIn("Измерить уровень", items[0]["items"][0])
 
 
+def кусок(начало: str, конец: str) -> str:
+    """Кусок app.js между двумя объявлениями — для запуска под node."""
+    source = APP_JS.read_text(encoding="utf-8")
+    от = source.index(начало)
+    return source[от:source.index(конец, от)]
+
+
+ПАНЕЛЬ = """
+const input = JSON.parse(process.argv[2]);
+process.stdout.write(JSON.stringify(
+    input.what === 'groups'
+        ? groupSources(input.items).map((g) => ({
+              title: g.title, labels: g.items.map((i) => i.label) }))
+        : seenNote(input.meta)));
+"""
+
+
+@unittest.skipUnless(NODE, "нет node — панель источников не проверить")
+class ПанельИсточников(unittest.TestCase):
+    """Что показано под ответом: весь материал и честный счётчик.
+
+    Отдел, глядя на живой экран: «сначала источников было несколько, в конце
+    остался только один, как это работает и почему до сих пор не понятно».
+    Панель схлопывалась до процитированного — а проверяют отчёт в том числе
+    по тому, что модель прочитала и ПРОМОЛЧАЛА.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.script = Path(cls._tmp.name) / "panel.mjs"
+        cls.script.write_text(
+            кусок("    function plural(", "    function fmtDateTime(")
+            + кусок("    /** «(модель видела", "    /** Файлы, приложенные")
+            + кусок("    /** Панель источников по частям",
+                    "    /** Список документов")
+            + ПАНЕЛЬ, encoding="utf-8")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def прогнать(self, данные):
+        done = subprocess.run([NODE, str(self.script), json.dumps(данные)],
+                              capture_output=True, text=True, timeout=60)
+        self.assertEqual(0, done.returncode, done.stderr)
+        return json.loads(done.stdout)
+
+    def группы(self, *метки_и_ссылки):
+        return self.прогнать({"what": "groups", "items": [
+            {"label": метка, "cited": сослался}
+            for метка, сослался in метки_и_ссылки]})
+
+    def test_процитированное_идёт_первым_и_названо(self):
+        группы = self.группы(("S1", False), ("S2", True), ("S3", False))
+        self.assertEqual(["S2"], группы[0]["labels"])
+        self.assertIn("сослался на 1 фрагмент", группы[0]["title"])
+        self.assertEqual(["S1", "S3"], группы[1]["labels"])
+        self.assertIn("не использовала", группы[1]["title"])
+
+    def test_непроцитированное_никуда_не_девается(self):
+        группы = self.группы(("S1", False), ("S2", True), ("S3", False))
+        показано = [метка for группа in группы for метка in группа["labels"]]
+        self.assertEqual({"S1", "S2", "S3"}, set(показано))
+
+    def test_делить_нечего_заголовков_нет(self):
+        for случай in ((("S1", True), ("S2", True)),
+                       (("S1", False), ("S2", False))):
+            with self.subTest(случай=случай):
+                группы = self.группы(*случай)
+                self.assertEqual(1, len(группы))
+                self.assertEqual("", группы[0]["title"])
+
+    def test_во_время_потока_панель_не_делится(self):
+        """Пока модель пишет, ещё не известно, на что она сошлётся."""
+        группы = self.прогнать({"what": "groups", "items": [
+            {"label": "S1"}, {"label": "S2"}]})
+        self.assertEqual(1, len(группы))
+        self.assertEqual(["S1", "S2"], группы[0]["labels"])
+
+    def счёт(self, **meta):
+        return self.прогнать({"what": "seen", "meta": meta})
+
+    def test_невлезшее_названо_отдельно_от_прочитанного_целиком(self):
+        """«найдено 22 (модель видела 8 целиком и 14 выписками)».
+
+        Смешивать эти два числа нельзя: по выписке инженер проверяет чужой
+        пересказ фрагмента, а не сам фрагмент.
+        """
+        строка = self.счёт(found=22, shown=8, digested=14)
+        self.assertIn("8 целиком", строка)
+        self.assertIn("14 выписками", строка)
+
+    def test_когда_всё_поместилось_приписки_нет(self):
+        self.assertEqual("", self.счёт(found=8, shown=8, digested=0))
+
+    def test_молча_потерянное_названо(self):
+        """Выписок не делали, а часть найденного до модели не дошла."""
+        self.assertIn("модель видела 8", self.счёт(found=22, shown=8, digested=0))
+
+    def test_не_дошедшее_ни_текстом_ни_выпиской_названо(self):
+        """Выписки сделали, но не на всё: остаток не дошёл никак.
+
+        Промолчать здесь — значит дать инженеру решить, что в библиотеке
+        больше ничего и нет.
+        """
+        строка = self.счёт(found=22, shown=8, digested=6)
+        self.assertIn("8 целиком", строка)
+        self.assertIn("6 выписками", строка)
+        self.assertIn("8 не дошли", строка)
+
+
 if __name__ == "__main__":
     unittest.main()

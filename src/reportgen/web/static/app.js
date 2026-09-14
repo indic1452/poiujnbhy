@@ -9710,6 +9710,27 @@
             files.length ? h('div', { class: 'msg-files' }, files.map((item) =>
                 h('span', { class: 'attach attach--sent', title: item.note || '' },
                     iconGlyph('clip'), h('b', {}, item.name)))) : null,
+            // «Загрузите документы RFC и ITU-T, которые уже лежат в
+            // библиотеке» — так это выглядело у отдела. Знать, чего в
+            // библиотеке нет, модель не может: тридцать тысяч документов, а
+            // видит она выборку описи на несколько десятков строк. Поэтому
+            // названное в ответе сверено с описью, и вот что нашлось.
+            !isUser && message.meta && (message.meta.present || []).length
+                ? h('div', { class: 'msg-note msg-note--present' },
+                    h('b', {}, 'Эти документы в библиотеке уже есть — '
+                        + 'доставать их не нужно:'),
+                    h('ul', {}, message.meta.present.map((item) => h('li', {},
+                        item.designation + ' — ',
+                        h('button', {
+                            class: 'btn btn--link small',
+                            title: 'Открыть документ целиком',
+                            onclick: () => showDocument(
+                                { doc_id: item.doc_id, title: item.title }),
+                        }, item.title),
+                        item.chunks
+                            ? h('span', { class: 'faint small' },
+                                ' · фрагментов ' + item.chunks) : null))))
+                : null,
             !isUser && message.meta && message.meta.interrupted
                 ? h('div', { class: 'msg-note' },
                     'Ответ прерван: инженер закрыл вкладку или нажал «Стоп». '
@@ -9732,12 +9753,34 @@
                         'найдено фрагментов: ' + message.meta.found +
                         // Часть найденного в окно модели не поместилась.
                         // Молчать об этом нельзя: инженер решит, что в
-                        // библиотеке больше ничего и нет.
-                        (message.meta.shown !== undefined && message.meta.shown < message.meta.found
-                            ? ' (модель видела ' + message.meta.shown + ')' : '') +
+                        // библиотеке больше ничего и нет. «Целиком» и
+                        // «выпиской» разделены: по выписке проверяется
+                        // пересказ фрагмента, а не сам фрагмент.
+                        seenNote(message.meta) +
                         (message.meta.documents ? ' в ' + message.meta.documents + ' док.' : '') +
                         ', процитировано: ' + (message.meta.cited || 0))
                     : null) : null);
+    }
+
+    /** «(модель видела 8 целиком и 14 выписками)» — или пусто, если всё влезло.
+     *
+     * Найденного бывает больше, чем помещается в окно модели за один раз.
+     * Лишнее не выбрасывается: оно прочитывается отдельными проходами и
+     * доходит до ответа выписками. Разница между «видела целиком» и «дошло
+     * выпиской» существенная — по выписке проверяется пересказ фрагмента, а
+     * не сам фрагмент, — и прятать её нельзя. */
+    function seenNote(meta) {
+        const shown = meta.shown;
+        const digested = meta.digested || 0;
+        if (shown === undefined || (shown >= meta.found && !digested)) return '';
+        const lost = meta.found - shown - digested;
+        return ' (модель видела ' + shown
+            + (digested ? ' целиком и ' + digested + ' выписками' : '')
+            // Остаток не дошёл никак: ни текстом, ни пересказом. Молчать об
+            // этом нельзя — инженер решит, что в библиотеке больше ничего.
+            + (lost > 0 ? ', ' + lost + ' не ' +
+                plural(lost, 'дошёл', 'дошли', 'дошли') : '')
+            + ')';
     }
 
     /** Файлы, приложенные к этому сообщению. */
@@ -9757,16 +9800,29 @@
         clear(container);
         container.appendChild(renderMarkdown(text));
         const known = new Set((sources || []).map((item) => item.label));
+        let dead = 0;
         $$('.cite', container).forEach((button) => {
             if (sources && !known.has(button.dataset.label)) {
                 button.classList.add('cite--dead');
                 button.disabled = true;
                 button.title = 'Такого фрагмента в подборке нет: ссылка ошибочна';
+                dead += 1;
                 return;
             }
             button.classList.toggle('is-active', button.dataset.label === chat.activeLabel);
             button.addEventListener('click', () => selectSource(button.dataset.label, container));
         });
+        // Перечёркнутую ссылку надо объяснить словами. Подсказка по наведению
+        // отвечает только тому, кто догадался навести, — а отдел спросил
+        // прямо: «почему некоторые ссылки перечёркнуты». Утверждение рядом с
+        // такой меткой ничем не подтверждено, и знать это нужно сразу.
+        if (dead) {
+            container.appendChild(h('div', { class: 'msg-note msg-note--dead' },
+                'Перечёркнутых ссылок: ' + dead + '. Такого номера в подборке '
+                + 'нет — модель сослалась в никуда, и утверждение рядом с '
+                + 'такой ссылкой библиотекой не подтверждено. Проверьте его '
+                + 'отдельно или переспросите.'));
+        }
     }
 
     function selectSource(label, container) {
@@ -10200,7 +10256,45 @@
                 plural(docs.length, 'документу', 'документам', 'документам') +
                 ': ' + docs.map((item) => item.title).join('; ')));
         }
-        items.forEach((source) => box.appendChild(sourceCard(source)));
+        groupSources(items).forEach((group) => {
+            if (group.title) box.appendChild(h('div', { class: 'src-group' }, group.title));
+            group.items.forEach((source) => box.appendChild(sourceCard(source)));
+        });
+    }
+
+    /** Панель источников по частям: процитированное, потом остальное.
+     *
+     * Раньше сервер оставлял в панели одни процитированные фрагменты, и
+     * отдел это заметил: «сначала источников было несколько, в конце остался
+     * только один, как это работает и почему до сих пор не понятно». Теперь
+     * показывается ВЕСЬ материал, который получила модель, — иначе проверить
+     * ответ нечем: не видно, что она прочитала и ПРОМОЛЧАЛА, а при проверке
+     * отчёта важно ровно это.
+     *
+     * Заголовки появляются только тогда, когда есть что разделять. Признака
+     * `cited` нет у ответов, написанных до этой правки, и у панели во время
+     * потока: там ещё не известно, на что модель сошлётся. */
+    function groupSources(items) {
+        const all = items || [];
+        const marked = all.some((item) => item.cited !== undefined);
+        const cited = all.filter((item) => item.cited);
+        const rest = all.filter((item) => !item.cited);
+        if (!marked || !cited.length || !rest.length) {
+            return [{ title: '', items: all }];
+        }
+        return [
+            {
+                title: 'Ответ сослался на ' + cited.length + ' ' +
+                    plural(cited.length, 'фрагмент', 'фрагмента', 'фрагментов') + ':',
+                items: cited,
+            },
+            {
+                title: 'Модель это прочитала, но в ответе не использовала — '
+                    + rest.length + ' ' +
+                    plural(rest.length, 'фрагмент', 'фрагмента', 'фрагментов') + ':',
+                items: rest,
+            },
+        ];
     }
 
     /** Список документов, из которых взяты фрагменты, в порядке появления. */
@@ -10220,7 +10314,9 @@
         const docId = String(source.chunk_uid || '').split('#')[0];
         const node = h('div', {
             id: domId('csrc-', source.label),
-            class: 'source-item' + (chat.activeLabel === source.label ? ' is-active is-open' : ''),
+            class: 'source-item'
+                + (chat.activeLabel === source.label ? ' is-active is-open' : '')
+                + (source.cited === false ? ' source-item--quiet' : ''),
             onclick: (event) => {
                 if (event.target.closest('a')) return;
                 node.classList.toggle('is-open');
@@ -10231,6 +10327,16 @@
                 h('span', { class: 'citation' }, source.citation || source.chunk_uid)),
             h('div', { class: 'src-meta' },
                 h('span', { class: 'badge' }, docTypeLabel(source.doc_type)),
+                // Текст этого фрагмента в окно модели не поместился: она
+                // читала его отдельным проходом и получила выписку. Инженер
+                // читает здесь сам фрагмент — и должен знать, что модель
+                // видела не его, а пересказ.
+                source.digest ? h('span', {
+                    class: 'badge badge--warn',
+                    title: 'Фрагмент не поместился в окно модели целиком: '
+                        + 'модель прочитала его отдельным проходом и работала '
+                        + 'с выпиской. Ниже — полный текст фрагмента',
+                }, 'выпиской') : null,
                 source.domain
                     ? h('span', { class: 'badge badge--info' }, domainTitle(source.domain))
                     : h('span', { class: 'badge' }, 'направление не указано'),

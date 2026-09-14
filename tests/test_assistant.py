@@ -150,15 +150,25 @@ class AnswerTests(AssistantTestCase):
         self.assertIn("found", result["answer"]["meta"])
         self.assertIn("cited", result["answer"]["meta"])
 
-    def test_only_cited_sources_are_kept(self):
+    def test_cited_sources_are_marked_but_the_rest_stay(self):
+        """Панель показывает весь материал, а процитированное помечает.
+
+        Отдел: «сначала источников было несколько, в конце остался только
+        один, как это работает и почему до сих пор не понятно». Раньше в
+        панели оставались одни процитированные, и проверить ответ было
+        нечем: не видно, что модель прочитала и промолчала.
+        """
         class OneCitation(StubLLM):
             def complete(self, system, user, **kwargs):
                 return "Ответ опирается только на [S2]."
 
         self.reports.llm = OneCitation()
         result = self.assistant.ask(self.ivanov, self.chat.id, "предел EVM")
-        labels = [item["label"] for item in result["answer"]["sources"]]
-        self.assertEqual(labels, ["S2"])
+        источники = result["answer"]["sources"]
+        self.assertGreater(len(источники), 1, "панель схлопнулась до ссылок")
+        процитированы = [item["label"] for item in источники if item["cited"]]
+        self.assertEqual(["S2"], процитированы)
+        self.assertEqual(1, result["answer"]["meta"]["cited"])
 
     def test_empty_question_is_rejected(self):
         with self.assertRaises(ServiceError) as caught:
@@ -427,7 +437,9 @@ class MaterialTests(AssistantTestCase):
         self.reports.llm = Inventive()
         answer = self.assistant.ask(self.ivanov, self.chat.id, "полоса частот")["answer"]
         self.assertEqual(1, answer["meta"]["cited"])
-        self.assertEqual(["S1"], [item["label"] for item in answer["sources"]])
+        self.assertEqual(["S1"], [item["label"] for item in answer["sources"]
+                                  if item["cited"]])
+        self.assertNotIn("S99", [item["label"] for item in answer["sources"]])
 
     def test_neighbours_can_be_switched_off(self):
         self.settings.assistant_neighbours = 0

@@ -2883,6 +2883,31 @@ input.rename {
     background: var(--warn-soft);
 }
 
+/* Документы, названные в ответе и лежащие в библиотеке. Врезка спокойная:
+   это не ошибка инженера, а поправка к ответу — и сразу проход к документу. */
+.msg-note--present {
+    color: var(--text);
+    background: var(--accent-soft);
+    border-left: 2px solid var(--accent);
+}
+
+.msg-note--present ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+}
+
+.msg-note--present li {
+    margin-top: 2px;
+}
+
+/* Пояснение к перечёркнутым ссылкам. Отдел спросил прямо: «почему некоторые
+   ссылки перечёркнуты». Подсказка по наведению отвечает только тому, кто
+   догадался навести, — а здесь речь о неподтверждённом утверждении. */
+.msg-note--dead {
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
 /* Курсор набора: пока идёт поток, у последнего блока ответа мигает каретка. */
 .body.is-typing:empty::after,
 .body.is-typing .md > *:last-child::after {
@@ -6265,6 +6290,32 @@ table.grid .row-actions .btn--icon svg {
     color: var(--text);
     font-size: var(--fs-sm);
     line-height: 1.45;
+}
+
+/* Заголовок части панели: «ответ сослался на…» и «прочитано, но не
+   использовано». Панель показывает весь материал, который получила модель,
+   и без этих двух строк одно от другого не отличить. */
+.src-group {
+    margin: 14px 0 8px;
+    color: var(--muted);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.src-group:first-child {
+    margin-top: 0;
+}
+
+/* Прочитанное, но не процитированное. Приглушено, но читается: инженер
+   проверяет отчёт в том числе по тому, что модель ПРОМОЛЧАЛА. */
+.source-item--quiet {
+    opacity: 0.78;
+}
+
+.source-item--quiet:hover,
+.source-item--quiet.is-open {
+    opacity: 1;
 }
 
 /* -------------------------------------------- вложения к вопросу -------- */
