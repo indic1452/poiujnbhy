@@ -692,9 +692,16 @@ class StreamTests(AssistantTestCase):
         chat = self.assistant.create_chat(self.ivanov)
         events = list(self.assistant.ask_stream(self.ivanov, chat.id, "предел EVM для QPSK"))
         kinds = [event["type"] for event in events]
-        self.assertEqual(kinds[0], "question")
-        self.assertEqual(kinds[1], "sources")
+        # Порядок проверяем по смыслу, а не по соседству: между вопросом и
+        # подборкой идёт рассказ о том, чем помощник занят, и его число
+        # зависит от того, что нашлось.
+        self.assertEqual(kinds[0], "question",
+                         "своё сообщение инженер должен увидеть первым")
+        self.assertIn("sources", kinds)
         self.assertIn("delta", kinds)
+        self.assertLess(kinds.index("sources"), kinds.index("delta"),
+                        "текст пошёл раньше подборки: ссылки [S1] в нём "
+                        "будет не с чем сверить")
         self.assertEqual(kinds[-1], "done")
 
         streamed = "".join(e["text"] for e in events if e["type"] == "delta")

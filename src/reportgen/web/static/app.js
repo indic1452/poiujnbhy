@@ -9750,7 +9750,13 @@
             }));
         }
         const body = h('div', { class: 'body' + (chat.streaming ? ' is-typing' : '') });
-        const note = h('span', { class: 'faint' }, chat.streaming ? 'печатает…' : '');
+        // Чем помощник занят прямо сейчас. Отдел: «добавь, чтобы был виден
+        // процесс — что делает в данный момент модель, в очереди ответа или
+        // что». Сбор материала идёт минуты, и всё это время на экране не
+        // происходило ничего: помощник дважды ходит к модели — за
+        // обозначениями и за выписками, — и пауза выглядела зависанием.
+        const note = h('span', { class: 'faint stage-note' },
+            chat.streaming ? (live.stage || 'печатает…') : '');
         box.appendChild(h('div', { class: 'msg msg--assistant' },
             h('div', { class: 'who' }, 'Помощник', note), body));
         live.body = body;
@@ -9804,27 +9810,14 @@
             files.length ? h('div', { class: 'msg-files' }, files.map((item) =>
                 h('span', { class: 'attach attach--sent', title: item.note || '' },
                     iconGlyph('clip'), h('b', {}, item.name)))) : null,
-            // «Загрузите документы RFC и ITU-T, которые уже лежат в
-            // библиотеке» — так это выглядело у отдела. Знать, чего в
-            // библиотеке нет, модель не может: тридцать тысяч документов, а
-            // видит она выборку описи на несколько десятков строк. Поэтому
-            // названное в ответе сверено с описью, и вот что нашлось.
-            !isUser && message.meta && (message.meta.present || []).length
-                ? h('div', { class: 'msg-note msg-note--present' },
-                    h('b', {}, 'Эти документы в библиотеке уже есть — '
-                        + 'доставать их не нужно:'),
-                    h('ul', {}, message.meta.present.map((item) => h('li', {},
-                        item.designation + ' — ',
-                        h('button', {
-                            class: 'btn btn--link small',
-                            title: 'Открыть документ целиком',
-                            onclick: () => showDocument(
-                                { doc_id: item.doc_id, title: item.title }),
-                        }, item.title),
-                        item.chunks
-                            ? h('span', { class: 'faint small' },
-                                ' · фрагментов ' + item.chunks) : null))))
-                : null,
+            // Списка «эти документы уже есть» под ответом больше нет.
+            // Отдел: «не надо мне документы эти показывать, нужно чтобы
+            // модель сама всё видела, анализировала и давала ответ со
+            // ссылками на эти документы». Верно: сноска перекладывала
+            // работу обратно на инженера. Теперь помощник, обнаружив, что
+            // ответу не хватило документов, подкладывает их и пишет ответ
+            // заново — сам. Числа остались в метриках, где по ним видно,
+            // на каких вопросах он работает вхолостую.
             !isUser && message.meta && message.meta.interrupted
                 ? h('div', { class: 'msg-note' },
                     'Ответ прерван: инженер закрыл вкладку или нажал «Стоп». '
@@ -10525,6 +10518,9 @@
             askedAt: new Date().toISOString(),
             attachments: attachments || [],
             answer: '',
+            /* Чем помощник занят прямо сейчас: «ищу по библиотеке», «жду
+               ответа модели», «читаю частями то, что не поместилось». */
+            stage: 'готовлю разбор',
             /* Ход разбора: что помощник искал, прежде чем отвечать. */
             steps: [],
             body: null,
@@ -10557,6 +10553,13 @@
 
         /* Рисуем не чаще раза в 70 мс и только если узлы на месте: пока
            инженер в другом разделе, текст просто копится в live.answer. */
+        /* Показать, чем помощник занят. Узла может не быть: инженер ушёл
+           в другой раздел, а генерация продолжается — вернётся и увидит. */
+        const setStage = (text) => {
+            live.stage = text;
+            if (live.note && live.note.isConnected) live.note.textContent = text;
+        };
+
         const paint = (force) => {
             const now = Date.now();
             if (!force && now - painted < 70) return;
@@ -10605,6 +10608,8 @@
                     if (!event) continue;
                     if (event.type === 'question') {
                         if (event.message && event.message.id) live.questionId = event.message.id;
+                    } else if (event.type === 'stage') {
+                        setStage(event.text || '');
                     } else if (event.type === 'sources') {
                         live.sources = event.sources || [];
                         if (chat.live === live) {
@@ -10624,7 +10629,20 @@
                             renderChatSources();
                         }
                         paint(false);
+                    } else if (event.type === 'restart') {
+                        // Ответу не хватило документов: он сам назвал те,
+                        // что лежат в библиотеке и прочитаны не были.
+                        // Помощник подложил их и пишет заново — написанное
+                        // было черновиком по неполному материалу, и
+                        // показывать его дальше значит показывать заведомо
+                        // неполный ответ. Ход разбора остаётся на месте:
+                        // по нему видно, что произошло и почему.
+                        live.answer = '';
+                        paint(false);
                     } else if (event.type === 'delta') {
+                        // Первый кусок текста — значит модель пишет, а не
+                        // ждёт: этап сменяется сам.
+                        if (live.stage !== 'печатает…') setStage('печатает…');
                         live.answer += event.text || '';
                         paint(false);
                     } else if (event.type === 'done') {

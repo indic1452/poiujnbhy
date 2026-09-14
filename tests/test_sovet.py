@@ -104,6 +104,24 @@ class СоветЗагрузитьПроверяется(Библиотека):
         self.assertIn("G.707", строка["title"])
         self.assertEqual("G.707", строка["designation"])
 
+    def test_просьба_достать_прочитанное_замечена(self):
+        """«Нужен стандарт ITU-T G.707» — так пишут чаще, чем «нужен документ».
+
+        Документ при этом модель прочитала: он в материале. Требовать
+        достать то, что сам же и процитировал, — ошибка грубее первой, и в
+        числах метрик она должна быть видна.
+        """
+        prepared = self.assistant._prepare(self.user, self.chat.id,
+                                           "что в G.707", top_k=None)
+        self.assertIn("standards/T-REC-G.707",
+                      {item["doc_id"] for item in prepared["sources"]},
+                      "образец подобран неудачно: документ не прочитан")
+        названо = self.assistant._named_in_answer(
+            "Для полного разбора нужен стандарт ITU-T G.707.",
+            prepared["sources"])
+        self.assertEqual(["standards/T-REC-G.707"],
+                         [item["doc_id"] for item in названо])
+
     def test_прочитанное_моделью_второй_раз_не_показывают(self):
         """Документ уже в материале — сообщать о нём как о находке незачем."""
         prepared = self.assistant._prepare(self.user, self.chat.id,

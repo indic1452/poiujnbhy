@@ -180,12 +180,64 @@ def prefer_norms(hits: Sequence[Hit]) -> List[Hit]:
     return нормы + отчёты
 
 
+def _проверить_вопрос(question: str) -> str:
+    """Вопрос, годный к работе. Проверяется до всего остального.
+
+    Отдельно от сбора материала, потому что нужно дважды: потоковый ответ
+    кладёт вопрос в разговор и показывает его инженеру ДО сбора — сбор идёт
+    минуты, и всё это время своего сообщения человек не видел.
+    """
+    question = (question or "").strip()
+    if not question:
+        raise ServiceError("пустой вопрос", 400)
+    if len(question) > MAX_QUESTION:
+        raise ServiceError(f"вопрос длиннее {MAX_QUESTION} символов", 400)
+    return question
+
+
 def _подряд(где: Sequence[str], что: Sequence[str]) -> bool:
     """Идёт ли ``что`` внутри ``где`` подряд, слово в слово."""
     if not что or len(что) > len(где):
         return False
     return any(list(где[i:i + len(что)]) == list(что)
                for i in range(len(где) - len(что) + 1))
+
+
+#: Слова, которыми называют ПРИБАВКУ к документу, а не сам документ.
+#: «G.703 Amendment 1» — это поправка на несколько страниц; «G.703» — сама
+#: рекомендация на сто двадцать фрагментов. Спрашивая про G.703, инженер
+#: имеет в виду второе.
+_ПРИБАВКА = (
+    "amendment", "amd", "corrigendum", "corr", "erratum", "addendum",
+    "supplement", "annex", "appendix", "поправка", "изменение", "исправление",
+    "дополнение", "приложение",
+)
+
+
+def _вес_совпадения(способ: int, заголовок: str) -> tuple:
+    """Насколько хорошо документ подходит под названное обозначение.
+
+    Подходящих в библиотеке несколько: у одной рекомендации МСЭ рядом лежат
+    сама она, поправка к ней и исправление. Прежде побеждал ПЕРВЫЙ в описи, а
+    опись отсортирована по названию — то есть выбор между рекомендацией и
+    поправкой к ней решал алфавит.
+
+    Отдел это и увидел: на вопрос про E1 система подложила «ITU-T Rec. G.703
+    Amendment 1 (05/2021)» — поправку на 69 фрагментов вместо самой
+    рекомендации. Ответ вышел ни о чём, а внизу стояла ссылка на поправку,
+    и по ней инженер шёл смотреть то, чего там нет.
+
+    Порядок предпочтений:
+
+    1. обозначение в начале названия важнее, чем где-то в середине;
+    2. сам документ важнее прибавки к нему;
+    3. при равенстве — короткое название: «G.703» против «G.703 Amendment 1
+       … Amendment 1», где обозначение просто повторено дважды.
+    """
+    низ = str(заголовок or "").casefold()
+    прибавка = any(слово in низ for слово in _ПРИБАВКА)
+    return (способ, 0 if прибавка else 1, -len(низ))
+
 
 HISTORY_DEPTH = 6
 HISTORY_CHARS = 1500
@@ -277,10 +329,15 @@ DIGEST_WORDS = 300
 #: Сколько документов подтягивать по ссылкам из найденного текста.
 FOLLOW_REFS = 2
 
-#: Сколько документов подкладывать ПО НАЗВАНИЮ, когда обозначений в вопросе
-#: нет (:meth:`AssistantService._by_name`). Три — как у следования ссылкам:
+#: Сколько документов подкладывать ПО НАЗВАНИЮ на каждом вопросе
+#: (:meth:`AssistantService._by_name`). Три — как у следования ссылкам:
 #: больше, и подложенное по догадке начнёт вытеснять найденное поиском.
 NAME_PASS_DOCS = 3
+
+#: Перечитывать ли по заявке самого ответа (:meth:`_to_reread`). Один заход:
+#: иначе во втором ответе модель назовёт третий документ, в третьем —
+#: четвёртый, и вопрос будет обрабатываться до вечера.
+REREAD = 1
 
 #: Ответ на «в каких стандартах это описано» — строка обозначений через
 #: запятую. Больше сотни токенов там взяться неоткуда, а модель, которой
@@ -300,7 +357,10 @@ _ПРОСИТ_ДОСТАТЬ = re.compile(
     r"|добав\w*\s+(?:его\s+|их\s+)?в\s+библиотек\w*"
     r"|(?:нет|отсутству\w*|не\s+числится|не\s+найден\w*)\s+в\s+библиотек\w*"
     r"|в\s+библиотек\w*\s+(?:нет|отсутству\w*)"
-    r"|требу\w*\s+документ\w*|нужен\s+документ\w*|необходим\w*\s+документ\w*",
+    # «Нужен стандарт ITU-T G.704» — так пишут чаще, чем «нужен документ».
+    r"|(?:требу\w*|нужен|нужна|нужны|необходим\w*|не\s+хватает)\s+"
+    r"(?:ещё\s+|еще\s+)?(?:документ\w*|стандарт\w*|рекомендаци\w*|"
+    r"специфик\w*|описани\w*|rfc|гост\w*)",
     re.IGNORECASE,
 )
 
@@ -382,43 +442,125 @@ class AssistantService:
     # -- ответ --------------------------------------------------------------
 
     def ask(self, user: User, chat_id: int, question: str, *,
-            top_k: int | None = None) -> Dict[str, Any]:
+            top_k: int | None = None,
+            pinned: Sequence[str] = ()) -> Dict[str, Any]:
         """Полный ответ одним куском (без потоковой выдачи)."""
-        prepared = self._prepare(user, chat_id, question, top_k=top_k)
-        text = self.reports.get_llm().complete(
+        prepared = self._prepare(user, chat_id, question, top_k=top_k,
+                                 pinned=pinned)
+        text = self._complete(prepared)
+        добор = self._to_reread(text, prepared)
+        if добор:
+            prepared = self._prepare(user, chat_id, question, top_k=top_k,
+                                     pinned=list(pinned) + добор,
+                                     question_message=prepared["question_message"])
+            text = self._complete(prepared)
+        return self._finish(user, prepared, text)
+
+    def _complete(self, prepared: Dict[str, Any]) -> str:
+        return self.reports.get_llm().complete(
             ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
             max_tokens=prepared["profile"]["max_tokens"], temperature=0.3,
             history=prepared["history"],
         )
-        return self._finish(user, prepared, text)
+
+    def _to_reread(self, text: str, prepared: Dict[str, Any]) -> List[str]:
+        """Документы, названные в ответе, лежащие на полке и НЕ прочитанные.
+
+        Отдел: «не надо мне документы эти показывать, нужно чтобы модель сама
+        всё видела, анализировала и давала ответ со ссылками на эти
+        документы, я же для этого модель использую».
+
+        Верно, и сноской под ответом это не лечится. Ответ, который сам
+        признаётся, что ему нужен G.703, — это не ответ, а заявка на
+        материал. Заявку исполняем: подкладываем названное и спрашиваем
+        заново. Инженер получает один ответ, собранный по настоящим
+        документам, и ссылки в нём ведут в них.
+
+        Перечитываем ОДИН раз. Это не проверка внутри условия, а устройство
+        самого хода: и ``ask``, и ``ask_stream`` спрашивают заново ровно один
+        раз и больше к этому месту не возвращаются. Иначе разговор
+        зациклится — во втором ответе модель назовёт третий документ, в
+        третьем четвёртый, и вопрос будет обрабатываться до вечера.
+        """
+        if not int(getattr(self.settings, "assistant_reread", REREAD) or 0):
+            return []
+        # Прочитанным считаем только то, что дошло ТЕКСТОМ. Документ,
+        # дошедший выпиской, модель видела в пересказе на триста слов — и
+        # если ответ всё равно просит его, значит пересказа не хватило.
+        # Перечитывание кладёт такой документ поимённо, и приходит он
+        # фрагментами целиком: ровно то, чего ответу недостало.
+        материал = list(prepared.get("sources") or [])
+        прочитано = {str(item.get("doc_id") or "") for item in материал}
+        # А вот документ, уже лежащий в материале текстом, во втором заходе
+        # даст модели ровно то же самое — это будет не разбор, а вторая
+        # попытка наугад.
+        return [item["doc_id"] for item in self._named_in_answer(text, материал)
+                if item["doc_id"] not in прочитано]
 
     def ask_stream(self, user: User, chat_id: int, question: str, *,
-                   top_k: int | None = None) -> Iterator[Dict[str, Any]]:
+                   top_k: int | None = None,
+                   pinned: Sequence[str] = ()) -> Iterator[Dict[str, Any]]:
         """Потоковый ответ: источники сразу, текст по мере генерации.
 
         Инженер видит, на чём основан ответ, ещё до того как модель дописала
         первое предложение — это заметно меняет ощущение от работы.
         """
-        prepared = self._prepare(user, chat_id, question, top_k=top_k)
-        yield {"type": "question", "message": prepared["question_message"].to_dict()}
-        # Ход разбора инженер должен видеть: ответ «в библиотеке этого нет»
-        # без списка того, что искали, невозможно ни проверить, ни оспорить.
-        for title in prepared.get("trail") or []:
-            yield {"type": "step", "text": title}
-        yield {
-            "type": "sources",
-            # Вместе с выписками: их метки модель ставит в ответе наравне, и
-            # если панель о них не знает, ссылка гаснет как выдуманная.
-            "sources": (list(prepared["sources"])
-                        + list(prepared.get("digest_sources") or [])),
-            "documents": prepared.get("documents") or [],
-            "expansion": prepared.get("expansion") or None,
-            "warning": prepared.get("warning") or None,
-        }
+        chat = self.get_chat(user, chat_id)
+        question = _проверить_вопрос(question)
+        question_message = self.repos.chats.add_message(
+            chat.id, "user", question)
+        # Своё сообщение инженер должен увидеть сразу, а не после сбора
+        # материала: сбор идёт минуты, и всё это время экран был пуст.
+        # Второй раз вопрос в разговор не кладётся: на перечитывании это же
+        # сообщение передаётся сбору, и сбор своё добавление пропускает.
+        yield {"type": "question", "message": question_message.to_dict()}
+
+        def собрать(*, закреплённые, сообщение):
+            """Сбор материала с рассказом о том, чем помощник сейчас занят."""
+            поток = self._prepare_stream(
+                user, chat_id, question, top_k=top_k, pinned=закреплённые,
+                question_message=сообщение)
+            while True:
+                try:
+                    этап = next(поток)
+                except StopIteration as готово:
+                    return готово.value
+                yield {"type": "stage", "text": этап}
+
+        prepared = yield from собрать(закреплённые=pinned,
+                                      сообщение=question_message)
+        показано = 0
+
+        def обстановка():
+            """Ход разбора и подборка — заново после перечитывания."""
+            nonlocal показано
+            # Ход разбора инженер должен видеть: ответ «в библиотеке этого
+            # нет» без списка того, что искали, ни проверить, ни оспорить.
+            следы = list(prepared.get("trail") or [])
+            for title in следы[показано:]:
+                yield {"type": "step", "text": title}
+            показано = len(следы)
+            yield {
+                "type": "sources",
+                # Вместе с выписками: их метки модель ставит в ответе
+                # наравне, и если панель о них не знает, ссылка гаснет как
+                # выдуманная.
+                "sources": (list(prepared["sources"])
+                            + list(prepared.get("digest_sources") or [])),
+                "documents": prepared.get("documents") or [],
+                "expansion": prepared.get("expansion") or None,
+                "warning": prepared.get("warning") or None,
+            }
+
+        yield from обстановка()
 
         llm = self.reports.get_llm()
         pieces: List[str] = []
         stream = getattr(llm, "stream", None)
+        # Между этой строкой и первым куском текста модель думает, а на
+        # маленькой машине ещё и ждёт своей очереди: llama-server отвечает по
+        # одному запросу. Без этой строки пауза выглядит зависанием.
+        yield {"type": "stage", "text": "жду ответа модели"}
         try:
             if stream is None:
                 text = llm.complete(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
@@ -453,25 +595,86 @@ class AssistantService:
                     pass
             raise
 
+        # Ответ назвал документ, который лежит на полке и прочитан не был.
+        # Это не ответ, а заявка на материал: исполняем её и спрашиваем
+        # заново. Написанное до сих пор — черновик по неполному материалу, и
+        # инженеру он не нужен; в разговоре останется только второй ответ.
+        добор = self._to_reread("".join(pieces), prepared)
+        if добор:
+            названия = [элемент["title"] for элемент
+                        in self._named_in_answer("".join(pieces),
+                                                 prepared["sources"])]
+            yield {"type": "step",
+                   "text": "ответу не хватило документов — перечитываю: "
+                           + "; ".join(названия[:3])}
+            сообщение = prepared["question_message"]
+            prepared = yield from собрать(
+                закреплённые=list(pinned) + добор, сообщение=сообщение)
+            pieces = []
+            yield {"type": "restart"}
+            yield from обстановка()
+            yield {"type": "stage", "text": "пишу ответ заново"}
+            if stream is None:
+                text = self._complete(prepared)
+                pieces.append(text)
+                yield {"type": "delta", "text": text}
+            else:
+                for piece in stream(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
+                                    max_tokens=prepared["profile"]["max_tokens"],
+                                    temperature=0.3, history=prepared["history"]):
+                    pieces.append(piece)
+                    yield {"type": "delta", "text": piece}
+
         result = self._finish(user, prepared, "".join(pieces))
         yield {"type": "done", **result}
 
     # -- внутреннее ---------------------------------------------------------
 
     def _prepare(self, user: User, chat_id: int, question: str,
-                 *, top_k: int | None) -> Dict[str, Any]:
+                 *, top_k: int | None,
+                 pinned: Sequence[str] = (),
+                 question_message: ChatMessage | None = None) -> Dict[str, Any]:
+        """Собрать материал под вопрос, не показывая ход работы."""
+        поток = self._prepare_stream(
+            user, chat_id, question, top_k=top_k, pinned=pinned,
+            question_message=question_message)
+        while True:
+            try:
+                next(поток)
+            except StopIteration as готово:
+                return готово.value
+
+    def _prepare_stream(self, user: User, chat_id: int, question: str,
+                        *, top_k: int | None,
+                        pinned: Sequence[str] = (),
+                        question_message: ChatMessage | None = None):
+        """То же, но с рассказом о том, чем помощник занят прямо сейчас.
+
+        Отдел: «добавь, чтобы был виден процесс — что делает в данный момент
+        модель, в очереди ответа или что». Справедливо: сбор материала идёт
+        минуты, и всё это время на экране не происходило ничего. Хуже того,
+        именно здесь помощник дважды обращается к модели — за обозначениями
+        и за выписками, — и пауза выглядела зависанием.
+
+        Выдаёт строки этапов, возвращает собранное. Обычные вызовы ходят
+        через :meth:`_prepare` и этапов не видят.
+
+        ``pinned`` — документы, которые велено прочитать поимённо: так
+        работает перечитывание по заявке самого ответа. Подкладываются они
+        на тех же правах, что и названные в самом вопросе.
+        """
         chat = self.get_chat(user, chat_id)
-        question = (question or "").strip()
-        if not question:
-            raise ServiceError("пустой вопрос", 400)
-        if len(question) > MAX_QUESTION:
-            raise ServiceError(f"вопрос длиннее {MAX_QUESTION} символов", 400)
+        question = _проверить_вопрос(question)
 
         history = [
             {"role": message.role, "content": _clip(message.content, HISTORY_CHARS)}
             for message in self.repos.chats.tail(chat.id, HISTORY_DEPTH)
         ]
-        question_message = self.repos.chats.add_message(chat.id, "user", question)
+        # На перечитывании вопрос в разговор не добавляем второй раз: он
+        # задан один раз, и в переписке должен стоять один раз.
+        if question_message is None:
+            question_message = self.repos.chats.add_message(
+                chat.id, "user", question)
 
         # Вложения привязываем к отправленному вопросу: в разговоре видно,
         # с какими файлами он был задан.
@@ -483,6 +686,7 @@ class AssistantService:
         # ответа. Считаем один раз здесь — дальше все шаги берут его отсюда,
         # иначе половина работы шла бы в одном режиме, а половина в другом.
         profile = self._profile(chat)
+        yield "ищу по библиотеке"
         hits, trail = self._collect(chat, question, history,
                                     top_k or profile["top_k"],
                                     attachments=attachments, rounds=profile["rounds"])
@@ -499,9 +703,16 @@ class AssistantService:
         # соврёт про его отсутствие, здесь нельзя: это ровно то место, где
         # помощник отвечал «RFC 4818 в библиотеке нет» о лежащем на полке
         # документе.
+        yield (f"нашлось фрагментов: {len(hits)} "
+               f"в {len({hit.chunk.doc_id for hit in hits})} док.")
         mentioned_block, mentioned_ids = self._mentioned(question, history)
+        # Названное поимённо: перечитывание по заявке самого ответа.
+        for doc_id in pinned:
+            if doc_id and doc_id not in mentioned_ids:
+                mentioned_ids = list(mentioned_ids) + [doc_id]
         # Поиск вернул пусто или почти пусто — спрашиваем у модели, КАК
         # называется нужный документ, и ищем его по описи по имени.
+        yield "уточняю у модели, в каких стандартах это описано"
         по_имени, имена_след = self._by_name(hits, question, известные=mentioned_ids)
         if по_имени:
             mentioned_ids = list(mentioned_ids) + по_имени
@@ -514,6 +725,7 @@ class AssistantService:
         # на который сами эти рекомендации отвечают наполовину: байтовую
         # структуру цикла обе описывают ссылкой на G.704. Без неё ответ
         # получится словесным пересказом отличий без единой цифры.
+        yield "иду по ссылкам внутри найденного"
         по_ссылкам, ссылки_след = self._follow_refs(hits, question,
                                                     известные=mentioned_ids)
         if по_ссылкам:
@@ -601,6 +813,8 @@ class AssistantService:
             # Не поместившееся не выбрасываем, а прочитываем отдельными
             # проходами: отдел просил все данные, и «не влезло» — не повод
             # молча ответить по половине найденного.
+            yield (f"читаю частями то, что не поместилось в окно: "
+                   f"{len(отброшено)} фрагм.")
             digest_block, выписанные = self._digest(
                 отброшено, question, trail=trail_lines, room=запас)
             sources, documents, prompt, ещё = self._fit_tokens(
@@ -1142,9 +1356,12 @@ class AssistantService:
         короткой репликой, сверяем с описью и подкладываем то, что нашлось.
         Отвечает опись, а не модель: чего в библиотеке нет, то и не придёт.
 
-        Заход делается там, где имени НЕТ ОТКУДА ВЗЯТЬ: в вопросе не названо
-        ни одного обозначения. Назвал инженер — работает сверка с описью, и
-        спрашивать модель незачем.
+        Заход делается на КАЖДЫЙ вопрос, а не только на вопрос без номеров.
+        Сначала он включался лишь там, где имени взять неоткуда, — и этого
+        мало: инженер спрашивает «чем G.733 отличается от G.734», а байтовая
+        структура цикла лежит в G.704, которую он не называл. Сверка с
+        описью знает только то, что напечатано в вопросе; знание о том,
+        КАКИЕ ЕЩЁ документы к делу относятся, есть только у модели.
 
         Мерить вместо этого «мало ли нашлось» бесполезно, и это замерено. По
         вопросу про E1 поиск вернул ПЯТЬ документов — G.704, G.732, G.733,
@@ -1152,15 +1369,12 @@ class AssistantService:
         плохой не назовёт. А главного, G.703, в ней нет. Полнота выдачи не
         говорит о её верности, и ждать от неё этого не надо.
 
-        Цена — одно короткое обращение к модели (сотня токенов) на вопрос
-        без обозначений. Против трёх проходов выписок и ответа на четыре
-        тысячи токенов это немного, но ноль в настройке заход выключает.
+        Цена — одно короткое обращение к модели (сотня токенов) на вопрос.
+        Против трёх проходов выписок и ответа на четыре тысячи токенов это
+        немного, но ноль в настройке заход выключает.
         """
         предел = int(getattr(self.settings, "assistant_name_pass", NAME_PASS_DOCS))
         if предел <= 0:
-            return [], []
-        # Инженер назвал документ сам — его уже сверили с описью и подложили.
-        if designations_in(question) or implied_designations(question):
             return [], []
         llm = self.reports.get_llm()
         if llm is None:
@@ -1873,7 +2087,11 @@ class AssistantService:
         if not искомое:
             return ""
         по_началу = ""
-        по_вхождению = ""
+        # Подходящих бывает несколько: у одной рекомендации в библиотеке
+        # лежат сама она, поправка к ней и исправление. Берём ЛУЧШЕГО, а не
+        # первого попавшегося — см. _вес_совпадения.
+        лучший = ""
+        лучший_вес: tuple | None = None
         for doc_id, заголовок in self._document_candidates(искомое):
             if not doc_id:
                 continue
@@ -1882,16 +2100,19 @@ class AssistantService:
             # Точное совпадение — с именем файла или с названием целиком.
             if искомое in (имя_файла, название, name_parts(doc_id)):
                 return doc_id
-            if по_началу:
-                continue
             # Обозначение стоит в начале названия: «ГОСТ Р 53363» находит
             # «ГОСТ Р 53363-2009. Цифровые радиорелейные линии».
             if название[:len(искомое)] == искомое or имя_файла[:len(искомое)] == искомое:
-                по_началу = doc_id
-            elif not по_вхождению and _подряд(название, искомое):
+                способ = 2
+            elif _подряд(название, искомое) or _подряд(имя_файла, искомое):
                 # Последнее средство: назвали кусок из середины названия.
-                по_вхождению = doc_id
-        return по_началу or по_вхождению
+                способ = 1
+            else:
+                continue
+            вес = _вес_совпадения(способ, заголовок)
+            if лучший_вес is None or вес > лучший_вес:
+                лучший, лучший_вес = doc_id, вес
+        return лучший
 
     def _catalog_block(self, chat: Chat, hits: Sequence[Hit]) -> str:
         """Карта библиотеки: полки с числами и названия документов.
