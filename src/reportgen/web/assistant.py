@@ -15,6 +15,8 @@ from typing import Any, Callable, Dict, Iterator, List, Sequence
 
 from ..prompts import (
     ASSISTANT_PROMPT,
+    DIGEST_PROMPT,
+    DIGEST_SYSTEM_PROMPT,
     ASSISTANT_SYSTEM_PROMPT,
     ASSISTANT_TITLE_PROMPT,
     RESEARCH_PROMPT,
@@ -110,6 +112,28 @@ def chat_sources(chat: "Chat | None") -> str:
     """Откуда берём материал, с запасом на старые записи и мусор в поле."""
     выбор = str(getattr(chat, "sources", "") or "").strip().lower()
     return выбор if выбор in CHAT_SOURCES else DEFAULT_CHAT_SOURCES
+
+
+def _пусто_по_вопросу(ответ: str) -> bool:
+    """Модель честно сказала, что в этой части ничего нет.
+
+    Такую выписку в промпт класть незачем: она занимает место и добавляет
+    шум. Сверяем по началу ответа, а не по вхождению: «по вопросу здесь
+    ничего нет, кроме упоминания полосы» — это уже содержательная выписка.
+    """
+    начало = " ".join(str(ответ or "").split()).lower().replace("ё", "е")[:60]
+    return начало.startswith("по вопросу здесь ничего нет")
+
+
+def _добавить_замечание(было: str, новое: str) -> str:
+    """Два замечания об одном ответе — через точку, а не вместо друг друга."""
+    первое = str(было or "").strip()
+    второе = str(новое or "").strip()
+    if not первое:
+        return второе
+    if not второе:
+        return первое
+    return f"{первое.rstrip('.')}. {второе}"
 
 
 def _only_types(hits: Sequence[Hit], doc_types) -> List[Hit]:
@@ -229,6 +253,26 @@ RESEARCH_TOKENS = 120
 RESEARCH_TOP_K = 6
 #: Сколько кусков документа отдаёт «ЧИТАТЬ».
 RESEARCH_READ_CHUNKS = 4
+
+#: Сколько знаков приходится на токен, если в настройках не сказано иное.
+#: Полтора — с запасом вниз для русского технического текста.
+CHARS_PER_TOKEN = 1.5
+
+#: Запас под то, чего в знаках не посчитать: служебные токены ролей, разметка
+#: сообщений, расхождение оценки с настоящей токенизацией модели.
+TOKEN_SAFETY = 512
+
+#: Сколько отдельных проходов по не поместившемуся материалу делать. Каждый
+#: проход — обращение к модели, и на машине отдела это секунды ожидания.
+DIGEST_PASSES = 3
+#: Сколько фрагментов отдавать модели за один такой проход.
+DIGEST_CHUNK = 6
+#: Насколько длинной должна быть одна выписка. Она идёт в итоговый промпт и
+#: место там не бесплатно: триста слов — это около 2000 знаков.
+DIGEST_WORDS = 300
+
+#: Сколько документов подтягивать по ссылкам из найденного текста.
+FOLLOW_REFS = 2
 
 #: Вес поиска по ОДНОМУ УЗЛУ состава при слиянии — против единицы у поиска
 #: по самому вопросу. Узел спрашивали не мы, а справочник: он полезен,
@@ -428,6 +472,16 @@ class AssistantService:
             hits = pinned + list(hits)
             for rank, hit in enumerate(hits, start=1):
                 hit.rank = rank
+        # Ссылки ВНУТРИ найденного. «Чем G.733 отличается от G.734» — вопрос,
+        # на который сами эти рекомендации отвечают наполовину: байтовую
+        # структуру цикла обе описывают ссылкой на G.704. Без неё ответ
+        # получится словесным пересказом отличий без единой цифры.
+        по_ссылкам, ссылки_след = self._follow_refs(hits, question,
+                                                    известные=mentioned_ids)
+        if по_ссылкам:
+            hits = list(hits) + по_ссылкам
+            for rank, hit in enumerate(hits, start=1):
+                hit.rank = rank
         retriever = self.reports.get_retriever()
         # Половина библиотеки английская, а спрашивают по-русски. Если запрос
         # дополнен по двуязычному словарю — сказать об этом: иначе английский
@@ -440,7 +494,7 @@ class AssistantService:
         case_block = self._case_block(chat)
         # Сколько окна остаётся файлам после вопроса, карточки письма,
         # разговора и обязательного пола под источники библиотеки.
-        window = int(getattr(self.settings, "assistant_context_chars", 0) or 26000)
+        window = self._context_chars()
         spent = (len(question) + len(case_block)
                  + sum(len(item["content"]) for item in history)
                  + min(MIN_LIBRARY_CHARS, window))
@@ -460,20 +514,88 @@ class AssistantService:
         history_chars = sum(len(item["content"]) for item in history)
         reserved = (attachment_chars + history_chars + len(question)
                     + len(case_block) + len(catalog_block))
-        sources = self._build_sources(hits, reserved=reserved)
+        sources, за_бюджетом = self._build_sources(hits, reserved=reserved)
         documents = self._document_cards(sources)
-        sources, documents = self._fit_window(
+        sources, documents, снятые = self._fit_window(
             sources, documents, reserved=reserved)
-        prompt = ASSISTANT_PROMPT.format(
-            question=question,
-            case_block=case_block,
-            attachments=attachment_block,
-            catalog=catalog_block,
-            mentioned=mentioned_block,
-            library_map=_render_map(documents),
-            sources=_render_sources(sources, documents),
-            target_words=profile["target_words"],
-        )
+        # Всё, что не поместилось на любом из шагов, идёт в разбор частями.
+        # Прежде считался только последний шаг, а отброшенное бюджетом знаков
+        # исчезало молча — и ответ собирался по половине найденного.
+        мимо = list(за_бюджетом) + list(снятые)
+
+        digest_block = ""
+
+        def собрать(куски: List[Dict[str, Any]],
+                    карточки: List[Dict[str, Any]]) -> str:
+            return ASSISTANT_PROMPT.format(
+                question=question,
+                case_block=case_block,
+                attachments=attachment_block,
+                catalog=catalog_block,
+                mentioned=mentioned_block,
+                library_map=_render_map(карточки),
+                sources=_render_sources(куски, карточки),
+                digest=digest_block,
+                target_words=profile["target_words"],
+            )
+
+        # Последняя проверка — по СОБРАННОМУ промпту, а не по его частям.
+        # Всё, что выше, считает части: вопрос, карточку, историю, материал.
+        # А в окно уходит ещё системная инструкция, шапки самого шаблона и
+        # блок «документы, названные в вопросе» — их не считал никто, и
+        # промпт вылезал за окно при формально соблюдённом бюджете.
+        #
+        # Место под выписки держим ЗАРАНЕЕ: они пойдут в тот же промпт, и
+        # добавлять их «по остаточному принципу» значит снова его переполнить.
+        запас = self._digest_room()
+        sources, documents, prompt, отброшено = self._fit_tokens(
+            sources, documents, собрать, history=history,
+            answer_tokens=profile["max_tokens"], extra=запас)
+        отброшено = list(отброшено) + мимо
+
+        trail_lines = [step.title() for step in trail] + list(ссылки_след)
+        if отброшено:
+            # Не поместившееся не выбрасываем, а прочитываем отдельными
+            # проходами: отдел просил все данные, и «не влезло» — не повод
+            # молча ответить по половине найденного.
+            digest_block = self._digest(отброшено, question, trail=trail_lines,
+                                        room=запас)
+            sources, documents, prompt, ещё = self._fit_tokens(
+                sources, documents, собрать, history=history,
+                answer_tokens=profile["max_tokens"])
+            warning = _добавить_замечание(
+                warning, self._digest_note(отброшено, digest_block, ещё))
+
+        # ПОРЯДОК УСТУПОК, когда окно совсем тесное. Резать выдачу дальше
+        # нельзя — последний фрагмент остаётся всегда, — поэтому уступает то,
+        # без чего ответ хуже, но возможен:
+        #
+        #   1. выписки — это пересказ, а не первоисточник;
+        #   2. карта библиотеки — она подсказывает, ГДЕ ещё искать;
+        #   3. сверка названных документов с описью — короткая, но не текст.
+        #
+        # Без этого порядка бюджет упирался в пол MIN_LIBRARY_CHARS и начинал
+        # врать: на окне в 9000 токенов он обещал источникам 6000 знаков при
+        # настоящих 4300, и промпт вылезал за окно, сколько ни режь выдачу.
+        for уступка in ("выписки", "карта", "сверка"):
+            if not self._too_big(prompt, history, profile["max_tokens"]):
+                break
+            if уступка == "выписки" and digest_block:
+                digest_block = ""
+                warning = _добавить_замечание(
+                    warning, "выписки не поместились в окно модели и в ответ "
+                             "не вошли")
+            elif уступка == "карта" and catalog_block:
+                catalog_block = ""
+                warning = _добавить_замечание(
+                    warning, "карта библиотеки не поместилась в окно модели — "
+                             "подсказать, где ещё искать, помощник не сможет")
+            elif уступка == "сверка" and mentioned_block:
+                mentioned_block = ""
+            else:
+                continue
+            prompt = собрать(sources, documents)
+
         return {
             "chat": chat,
             "profile": profile,
@@ -486,7 +608,7 @@ class AssistantService:
             "attachments": [item.to_dict() for item in attachments],
             "expansion": expansion,
             "warning": warning,
-            "trail": [step.title() for step in trail],
+            "trail": trail_lines,
             "prompt": prompt,
         }
 
@@ -549,20 +671,23 @@ class AssistantService:
         весу: так видно, что стандарт говорит одно, а паспорт микросхемы
         другое, и их можно сопоставить.
 
-        Бюджет. Материал обрезается по assistant_context_chars — иначе
-        llama.cpp молча выбрасывает начало промпта вместе с системной
-        инструкцией, и модель перестаёт ставить ссылки. Обрезаем с конца
-        выдачи: там уже хвост относимости.
+        Бюджет. Материал обрезается по выведенному из окна модели пределу —
+        иначе llama.cpp либо отвечает ошибкой, либо молча выбрасывает начало
+        промпта вместе с системной инструкцией, и модель перестаёт ставить
+        ссылки. Обрезаем с конца выдачи: там уже хвост относимости.
+
+        Возвращаем ДВА списка: поместившееся и то, что за бюджет не влезло.
+        Второе не выбрасывается — оно идёт в разбор частями (``_digest``).
         """
         if not hits:
-            return []
+            return [], []
 
         # Приложенные файлы уже заняли часть окна — остаток идёт библиотеке.
         # Совсем без источников не оставляем: отвечать будет не на что даже
         # по нормам, а именно за этим помощника и спрашивают. Но и выше
         # настройки не поднимаемся: если окно модели маленькое и это задано
         # осознанно, порог его не отменяет.
-        budget = int(getattr(self.settings, "assistant_context_chars", 0) or 26000)
+        budget = self._context_chars()
         if reserved > 0:
             budget = max(budget - reserved, min(MIN_LIBRARY_CHARS, budget))
         limit = int(getattr(self.settings, "assistant_source_chars", 0) or SOURCE_CHARS)
@@ -583,6 +708,7 @@ class AssistantService:
         found = {hit.chunk.chunk_id for hit in hits}
 
         sources: List[Dict[str, Any]] = []
+        за_бюджетом: List[Dict[str, Any]] = []
         spent = 0
         for hit in hits:
             chunk = hit.chunk
@@ -605,17 +731,15 @@ class AssistantService:
             tail = _tidy(after, half) if after else ""
 
             cost = len(text) + len(lead) + len(tail) + len(chunk.citation) + 40
-            if sources and spent + cost > budget:
-                # Пропускаем этот фрагмент, но выдачу не обрываем: следующий
-                # может оказаться короче и в остаток окна ещё поместиться.
-                # С «break» первый же неподошедший источник уносил с собой и
-                # весь хвост — включая короткие фрагменты, которым места
-                # хватало.
-                continue
-            spent += cost
+            тесно = bool(sources) and spent + cost > budget
+            if not тесно:
+                spent += cost
 
-            sources.append({
-                "label": f"S{len(sources) + 1}",
+            # Не поместившееся не теряется: оно помечается «за бюджетом» и
+            # уходит в разбор частями. Прежде такой фрагмент просто исчезал —
+            # и ответ собирался по половине найденного молча.
+            (за_бюджетом if тесно else sources).append({
+                "label": "",
                 "chunk_uid": chunk.chunk_id,
                 "doc_id": chunk.doc_id,
                 "citation": chunk.citation,
@@ -629,7 +753,12 @@ class AssistantService:
                 "lead": lead,
                 "tail": tail,
             })
-        return sources
+        # Метки идут сквозной нумерацией по всему найденному: по [S12]
+        # инженер откроет источник и тогда, когда тот попал не в текст
+        # промпта, а в выписку.
+        for номер, item in enumerate(sources + за_бюджетом, start=1):
+            item["label"] = f"S{номер}"
+        return sources, за_бюджетом
 
     def _document_cards(self, sources: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Карточки документов: чем каждый полезен и что в нём ещё есть."""
@@ -663,7 +792,9 @@ class AssistantService:
         return [cards[doc_id] for doc_id in order]
 
     def _fit_window(self, sources: List[Dict[str, Any]], documents: List[Dict[str, Any]],
-                    *, reserved: int) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+                    *, reserved: int
+                    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]],
+                               List[Dict[str, Any]]]:
         """Последняя сверка с окном модели — уже по готовому тексту материала.
 
         Бюджет источников считается по их длине, но в промпт идут ещё
@@ -676,8 +807,9 @@ class AssistantService:
         подборки, где относимость уже низкая. Последний фрагмент остаётся
         всегда: без единого источника отвечать не на что.
         """
-        window = int(getattr(self.settings, "assistant_context_chars", 0) or 26000)
+        window = self._context_chars()
         room = max(window - reserved, min(MIN_LIBRARY_CHARS, window))
+        снятые: List[Dict[str, Any]] = []
         while sources:
             weight = len(_render_map(documents)) + len(_render_sources(sources, documents))
             if weight <= room:
@@ -688,9 +820,10 @@ class AssistantService:
                 continue
             if len(sources) == 1:
                 break
+            снятые.insert(0, sources[-1])
             sources = sources[:-1]
             documents = self._document_cards(sources)
-        return sources, documents
+        return sources, documents, снятые
 
     def _finish(self, user: User, prepared: Dict[str, Any], text: str,
                 *, interrupted: bool = False) -> Dict[str, Any]:
@@ -800,6 +933,273 @@ class AssistantService:
         # получил бы отчёты и не узнал бы об этом.
         return _only_types(найдено, doc_types)
 
+    def _follow_refs(self, hits: Sequence[Hit], question: str, *,
+                     известные: Sequence[str] = ()
+                     ) -> tuple[List[Hit], List[str]]:
+        """Подтянуть документы, на которые ссылаются НАЙДЕННЫЕ фрагменты.
+
+        Отдел: «я задаю вопрос, в чём разница стандарта G.733 от G.734.
+        Помимо словесного описания в файлах, существует ещё и ссылка в этих
+        документах на документ G.704, где для каждого описана байтовая
+        структура. Сможет ли модель это всё проанализировать?»
+
+        Прежде — нет. Обозначение из ВОПРОСА система сверяла с описью и
+        документ подкладывала, а обозначение из НАЙДЕННОГО ТЕКСТА не читал
+        никто. Ответ выходил словесным пересказом отличий без единой цифры:
+        сами G.733 и G.734 байтовую структуру не приводят, они на неё
+        ссылаются. Дотянуться до G.704 мог только сам планировщик разбора —
+        если догадается и если остался заход.
+
+        Теперь это делается само и без обращения к модели: в тексте найденных
+        фрагментов ищутся обозначения, сверяются с описью и подкладываются
+        те, которых в выдаче ещё нет. Правило то же, по которому работает
+        инженер: увидел ссылку на норму — открыл норму.
+
+        Граница одна и жёсткая: не больше ``assistant_follow_refs``
+        документов — иначе одна рекомендация МСЭ утащит за собой двадцать.
+        Обозначения собираются в порядке выдачи, поэтому первыми в предел
+        попадают ссылки из самых относимых фрагментов. Шаг только один: по
+        ссылке из ссылки не ходим, потому что подложенное по ссылке в этот
+        обход уже не просматривается.
+        """
+        предел = int(getattr(self.settings, "assistant_follow_refs",
+                             FOLLOW_REFS) or 0)
+        # Ноль отсекает счёт взятого ниже; второй проверки здесь нет по той
+        # же причине, что и у разбора частями.
+        if not hits:
+            return [], []
+
+        названо: List[str] = []
+        for hit in hits:
+            текст = f"{hit.chunk.breadcrumbs}\n{hit.chunk.text}"
+            for обозначение in designations_in(текст):
+                if обозначение not in названо:
+                    названо.append(обозначение)
+
+        добавка: List[Hit] = []
+        след: List[str] = []
+        взято: List[str] = []
+        for обозначение in названо:
+            if len(взято) >= предел:
+                break
+            doc_id = self._resolve_document(обозначение)
+            if not doc_id:
+                continue
+            # Уже найденное второй раз не подкладывается: _pin_mentioned
+            # сам пропускает документы, которые в выдаче уже есть, и вернёт
+            # пустой список. Повторять эту проверку здесь незачем.
+            куски = self._pin_mentioned(list(hits) + добавка, [doc_id], question)
+            if not куски:
+                continue
+            взято.append(обозначение)
+            добавка.extend(куски)
+            след.append(f"по ссылке в найденном открыл {обозначение}")
+        return добавка, след
+
+    def _digest(self, dropped: Sequence[Dict[str, Any]], question: str,
+                *, trail: List[str], room: int = 0) -> str:
+        """Выписки из материала, не поместившегося в окно, — по частям.
+
+        Отдел: «нужны все данные, пусть разбиваются на части». И это верно:
+        отбросить найденное — значит ответить по половине библиотеки, ничем
+        не показав, что вторая половина была и её не читали.
+
+        Поэтому лишнее не выбрасывается, а прочитывается отдельными
+        проходами. В каждом проходе модель получает часть фрагментов и
+        выписывает из неё только то, что относится к вопросу, сохраняя метки
+        [S12] — по ним инженер откроет тот же источник, что и всегда. На
+        последнем проходе ответ собирается по полному материалу: по тексту
+        того, что влезло, и по выпискам из того, что не влезло.
+
+        Цена честная и её надо знать: каждый проход — отдельное обращение к
+        модели. Поэтому проходов не больше ``assistant_digest_passes``, а
+        ноль выключает разбор частями совсем — тогда лишнее отбрасывается,
+        как раньше, но об этом по-прежнему говорится словами.
+
+        ``room`` — сколько знаков отведено выпискам в промпте. Выйти за него
+        нельзя: иначе выписки вытолкнут сами источники, ради которых всё и
+        затевалось. Ноль — не ограничивать.
+        """
+        проходов = int(getattr(self.settings, "assistant_digest_passes",
+                               DIGEST_PASSES) or 0)
+        # Ноль проходов отсекает нарезка ниже («части[:проходов]»), и второй
+        # проверки здесь нет намеренно: она прикрывала бы первую, и ошибка в
+        # правиле «сколько проходов делать» осталась бы невидимой.
+        if not dropped:
+            return ""
+        llm = self.reports.get_llm()
+        if llm is None:
+            return ""
+
+        порция = max(1, int(getattr(self.settings, "assistant_digest_chunk",
+                                    DIGEST_CHUNK) or DIGEST_CHUNK))
+        части = [list(dropped[начало:начало + порция])
+                 for начало in range(0, len(dropped), порция)][:проходов]
+        слов = int(getattr(self.settings, "assistant_digest_words",
+                           DIGEST_WORDS) or DIGEST_WORDS)
+        выписки: List[str] = []
+        for номер, часть in enumerate(части, start=1):
+            подсказка = DIGEST_PROMPT.format(
+                question=question, number=номер, total=len(части),
+                sources=_render_sources(часть), limit=слов)
+            try:
+                ответ = llm.complete(DIGEST_SYSTEM_PROMPT, подсказка,
+                                     max_tokens=int(слов * 2), temperature=0.0)
+            except Exception:          # noqa: BLE001 — проход не обязателен
+                # Один непрошедший проход не должен ронять весь ответ: то, что
+                # уже выписано, полезно и без него.
+                trail.append(f"выписка {номер} из {len(части)}: модель не ответила")
+                continue
+            ответ = (ответ or "").strip()
+            метки = ", ".join(item["label"] for item in часть)
+            trail.append(f"выписка из фрагментов {метки} "
+                         f"({номер} из {len(части)})")
+            if not ответ or _пусто_по_вопросу(ответ):
+                continue
+            кусок = f"— часть {номер} (фрагменты {метки}):\n{ответ}"
+            # Из отведённого места не выходим: иначе выписки вытолкнут сами
+            # источники. Модель отвечает длиннее, чем её просили, постоянно.
+            if room > 0 and sum(len(item) for item in выписки) + len(кусок) > room:
+                trail.append(f"выписка {номер}: не поместилась в отведённое место")
+                break
+            выписки.append(кусок)
+
+        if not выписки:
+            return ""
+        return ("\n### ВЫПИСКИ ИЗ ОСТАЛЬНОГО МАТЕРИАЛА\n"
+                "Найденного по вопросу больше, чем помещается в окно за один "
+                "раз. Ниже — выписки из фрагментов, тексты которых в этот "
+                "промпт не вошли. Они такой же материал, как ИСТОЧНИКИ выше: "
+                "ссылайся на них теми же метками и учитывай в ответе наравне.\n"
+                + "\n\n".join(выписки) + "\n")
+
+    def _context_chars(self) -> int:
+        """Сколько ЗНАКОВ можно отдать промпту. Выводится из окна модели.
+
+        Раньше это число стояло в настройках руками — 52 000 — и с окном
+        модели связано не было. Замер показал расхождение в полтора раза:
+
+            окно 32768 − ответ 4000 − запас 512 = 28 256 токенов
+            28 256 × 1,5 знака = 42 384 знака
+            минус системная инструкция (4315) = 38 069 знаков
+
+        Тридцать восемь тысяч против пятидесяти двух в настройке. Отсюда и
+        «36061 токенов, а размер 32768»: бюджет соблюдался, промпт не влезал.
+
+        Настройка ``assistant_context_chars`` осталась, но теперь она может
+        только УМЕНЬШИТЬ вывод, не увеличить: маленькое значение ставят
+        осознанно, а большое — от незнания, и раньше оно роняло ответ.
+        """
+        окно = int(getattr(self.settings, "llm_context_tokens", 0) or 32768)
+        ответ = self._max_tokens()
+        знаков_на_токен = max(0.5, float(
+            getattr(self.settings, "assistant_chars_per_token", 0) or CHARS_PER_TOKEN))
+        выведено = int((окно - ответ - TOKEN_SAFETY) * знаков_на_токен
+                       - len(ASSISTANT_SYSTEM_PROMPT) - len(ASSISTANT_PROMPT))
+        # Пол ставим ТОЛЬКО выведенному: окно меньше пола — это опечатка в
+        # настройке модели, а не решение. Заданное вручную маленькое значение
+        # пола не знает: его ставят, когда окно и правда крошечное, и
+        # подменять такое решение своим нельзя.
+        выведено = max(MIN_LIBRARY_CHARS, выведено)
+        задано = int(getattr(self.settings, "assistant_context_chars", 0) or 0)
+        return min(выведено, задано) if задано > 0 else выведено
+
+    def _fit_tokens(self, sources: List[Dict[str, Any]],
+                    documents: List[Dict[str, Any]],
+                    собрать: "Callable[[List[Dict[str, Any]], List[Dict[str, Any]]], str]",
+                    *, history: Sequence[Dict[str, str]],
+                    answer_tokens: int, extra: int = 0
+                    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], str,
+                               List[Dict[str, Any]]]:
+        """Урезать материал, пока СОБРАННЫЙ промпт не влезет в окно модели.
+
+        Отдел получил «36061 токенов, а размер 32768»: модель не ответила
+        вовсе. Бюджет при этом соблюдался — но соблюдался по частям, а в окно
+        уходит целое. Не считались системная инструкция (около 1800 токенов),
+        шапки шаблона, блок «документы, названные в вопросе» и место под сам
+        ответ. Вдобавок оценка «2,4 знака на токен» взята от английского
+        текста: русское техническое слово разбивается мельче, и на живом
+        материале вышло около полутора.
+
+        Считать точно нечем: токенизатор лежит в модели, спрашивать её на
+        каждый вопрос — лишний круг по сети. Поэтому оценка с запасом ВНИЗ
+        (``assistant_chars_per_token``) и проверка по собранной строке.
+        Ошибаться можно только в одну сторону: заниженная оценка отнимает у
+        ответа немного материала, завышенная роняет ответ целиком.
+
+        Режем с конца выдачи — там уже хвост относимости. Возвращаем не
+        только оставшееся, но и СНЯТОЕ: выбрасывать его нельзя, его прочтут
+        отдельными проходами (см. ``_digest``).
+
+        ``extra`` — сколько знаков придержать под то, что добавится в промпт
+        потом (выписки). Держать место заранее обязательно: добавлять их по
+        остаточному принципу значит снова переполнить окно.
+        """
+        окно = int(getattr(self.settings, "llm_context_tokens", 0) or 32768)
+        знаков_на_токен = float(
+            getattr(self.settings, "assistant_chars_per_token", 0) or CHARS_PER_TOKEN)
+        знаков_на_токен = max(0.5, знаков_на_токен)
+        место = окно - int(answer_tokens or 0) - TOKEN_SAFETY
+        постоянное = (len(ASSISTANT_SYSTEM_PROMPT) + max(0, int(extra))
+                      + sum(len(item.get("content") or "") for item in history))
+
+        оставшиеся = list(sources)
+        карточки = list(documents)
+        снятые: List[Dict[str, Any]] = []
+        prompt = собрать(оставшиеся, карточки)
+        while len(оставшиеся) > 1 and место > 0:
+            токенов = int((len(prompt) + постоянное) / знаков_на_токен)
+            if токенов <= место:
+                break
+            # Последний фрагмент не снимаем никогда: без единого источника
+            # отвечать не на что, а «отвечу по памяти» — худший исход из всех.
+            снятые.insert(0, оставшиеся.pop())
+            карточки = self._document_cards(оставшиеся)
+            prompt = собрать(оставшиеся, карточки)
+        return оставшиеся, карточки, prompt, снятые
+
+    def _too_big(self, prompt: str, history: Sequence[Dict[str, str]],
+                 answer_tokens: int) -> bool:
+        """Не влезает ли собранный промпт в окно модели вместе с ответом."""
+        окно = int(getattr(self.settings, "llm_context_tokens", 0) or 32768)
+        знаков_на_токен = max(0.5, float(
+            getattr(self.settings, "assistant_chars_per_token", 0) or CHARS_PER_TOKEN))
+        знаков = (len(prompt) + len(ASSISTANT_SYSTEM_PROMPT)
+                  + sum(len(item.get("content") or "") for item in history))
+        return int(знаков / знаков_на_токен) > окно - int(answer_tokens or 0) - TOKEN_SAFETY
+
+    def _digest_room(self) -> int:
+        """Сколько знаков придержать под выписки, если они понадобятся."""
+        проходов = int(getattr(self.settings, "assistant_digest_passes",
+                               DIGEST_PASSES) or 0)
+        if проходов <= 0:
+            return 0
+        слов = int(getattr(self.settings, "assistant_digest_words",
+                           DIGEST_WORDS) or DIGEST_WORDS)
+        # Русское слово с пробелом — около семи знаков; плюс шапка блока.
+        return проходов * слов * 7 + 600
+
+    def _digest_note(self, dropped: Sequence[Dict[str, Any]],
+                     digest: str, ещё: Sequence[Dict[str, Any]]) -> str:
+        """Что сказать инженеру про материал, не влезший в окно.
+
+        Молчать нельзя ни в одном из случаев: ответ собран не так, как
+        обычно, и человек должен это знать, читая его.
+        """
+        всего = len(dropped) + len(ещё)
+        if digest and not ещё:
+            return (f"материал не помещался в окно модели целиком: "
+                    f"{len(dropped)} фрагментов прочитаны отдельными "
+                    f"проходами и вошли в ответ выписками")
+        if digest and ещё:
+            return (f"материал не помещался в окно модели целиком: "
+                    f"{len(dropped)} фрагментов прочитаны выписками, ещё "
+                    f"{len(ещё)} не поместились и в ответ не вошли")
+        return (f"материал не поместился в окно модели: {всего} фрагментов "
+                f"в ответ не вошли. Разбор частями выключен настройкой "
+                f"assistant_digest_passes — включите его или спросите у́же "
+                f"по теме")
+
     def _fit_reserved(self, catalog_block: str, history: List[Dict[str, str]],
                       attachment_chars: int, *, fixed: int
                       ) -> tuple[str, List[Dict[str, str]]]:
@@ -820,7 +1220,7 @@ class AssistantService:
         то, о чём человек спросил, и молча его обрезать нельзя — у вложений
         для этого есть свой предел, assistant_attachment_chars.
         """
-        window = int(getattr(self.settings, "assistant_context_chars", 0) or 26000)
+        window = self._context_chars()
         room = window - min(MIN_LIBRARY_CHARS, window)
         used = attachment_chars + fixed + sum(len(item["content"]) for item in history)
 

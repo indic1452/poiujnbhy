@@ -237,33 +237,41 @@ class WindowCeilingTests(AssistantTestCase):
             self.ivanov, self.chat.id, self.QUESTION, top_k=None)
         return prepared["prompt"]
 
+    def окно(self):
+        """Действующий предел в знаках.
+
+        Брать его из настройки больше нельзя: assistant_context_chars теперь
+        значит «верхний предел, если задан», а сам предел ВЫВОДИТСЯ из окна
+        модели в токенах. Проверка обязана мерить то, что действует, а не то,
+        что записано.
+        """
+        return self.assistant._context_chars()
+
     def catalog_of(self, prompt):
         head = prompt.split("### ЧТО ЕСТЬ В БИБЛИОТЕКЕ ОТДЕЛА", 1)
         return head[1].split("### ЧТО НАШЛОСЬ", 1)[0] if len(head) > 1 else ""
 
     def test_a_huge_attachment_does_not_burst_the_window(self):
-        window = self.settings.assistant_context_chars
+        window = self.окно()
         prompt = self.prompt_with(window * 2)
         self.assertLessEqual(
             len(prompt), window + 4000,
             f"промпт {len(prompt)} знаков при окне {window}")
 
     def test_a_long_conversation_does_not_burst_the_window(self):
-        window = self.settings.assistant_context_chars
+        window = self.окно()
         prompt = self.prompt_with(8000, history_turns=3)
         self.assertLessEqual(len(prompt), window + 4000)
 
     def test_the_sources_survive_even_at_the_ceiling(self):
         # Резать до последнего фрагмента нельзя: без источников помощник
         # превращается в обычную модель без ссылок на нормы.
-        self.assertIn("[S1]", self.prompt_with(
-            self.settings.assistant_context_chars * 2))
+        self.assertIn("[S1]", self.prompt_with(self.окно() * 2))
 
     def test_the_truncation_of_the_file_is_admitted(self):
         # Молча показать модели первую тысячу знаков дампа нельзя: она
         # сделает вывод «ошибок больше нет» по обрезанному хвосту.
-        self.assertIn("показано", self.prompt_with(
-            self.settings.assistant_context_chars * 2))
+        self.assertIn("показано", self.prompt_with(self.окно() * 2))
 
     def test_the_map_gives_way_before_the_sources(self):
         """Карта полезна, но фрагменты важнее: её ужимают первой.
@@ -274,7 +282,7 @@ class WindowCeilingTests(AssistantTestCase):
         """
         wide = self.assistant._prepare(
             self.ivanov, self.chat.id, self.QUESTION, top_k=None)["prompt"]
-        narrow = self.prompt_with(self.settings.assistant_context_chars * 2)
+        narrow = self.prompt_with(self.окно() * 2)
         self.assertLess(len(self.catalog_of(narrow)), len(self.catalog_of(wide)))
 
 
