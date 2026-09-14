@@ -372,6 +372,152 @@ def cmd_library(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_audit(args: argparse.Namespace) -> int:
+    """Какие документы помощник не увидит и почему — по всей библиотеке.
+
+    Отдел: «он не находит и вообще не ссылается на этот документ, и так со
+    многим — нужно, чтобы не было пропусков по всей библиотеке». Разбирать
+    по одному, когда их тридцать тысяч, бессмысленно: беда у ненаходимого
+    документа тихая, он числится в списке, а в ответ не попадает никогда.
+
+    Ничего не меняется: это диагностика. Файлы не читаются, всё берётся из
+    описи и фрагментов — на тридцати тысячах это минуты.
+    """
+    from .audit import audit_library, summarize  # noqa: PLC0415
+
+    repos, _ = _open_repos(args)
+    всего = len(repos.documents.list(getattr(args, "doc_type", None),
+                                     getattr(args, "domain", None)))
+    if not всего:
+        print("библиотека пуста")
+        return 1
+    отчёты = audit_library(repos, doc_type=getattr(args, "doc_type", None),
+                           domain=getattr(args, "domain", None))
+    только = str(getattr(args, "code", "") or "")
+    if только:
+        отчёты = [отчёт for отчёт in отчёты if только in отчёт.codes]
+    фрагментов = int(repos.db.scalar("SELECT count(*) FROM chunks") or 0)
+    for строка in summarize(отчёты, total=всего, vectors=repos.vectors.count(),
+                            chunks=фрагментов):
+        print(строка)
+
+    if not отчёты:
+        print("\nПропусков нет: каждый документ находится и словом, и смыслом.")
+        return 0
+
+    предел = int(getattr(args, "limit", 0) or 0)
+    показать = отчёты if предел <= 0 else отчёты[:предел]
+    for отчёт in показать:
+        метка = "НЕ НАХОДИТСЯ" if отчёт.blocked else "замечание"
+        print(f"\n[{метка}] {отчёт.doc_id}")
+        print(f"    название: {отчёт.title or '—'}")
+        print(f"    фрагментов {отчёт.chunks}, знаков {отчёт.chars}, "
+              f"векторов {отчёт.vectors}")
+        for беда in отчёт.findings:
+            print(f"    · {беда.problem}")
+            print(f"      → {беда.advice}")
+    if предел > 0 and len(отчёты) > предел:
+        print(f"\n…и ещё {len(отчёты) - предел}. Весь список: --limit 0")
+    # Ненаходимый документ — это не «замечание к оформлению», а дыра в
+    # библиотеке: код возврата должен это отражать, чтобы проверку можно
+    # было поставить в скрипт приёма.
+    return 1 if any(отчёт.blocked for отчёт in отчёты) else 0
+
+
+def cmd_why(args: argparse.Namespace) -> int:
+    """Почему этот документ не выходит по этому вопросу.
+
+    Продолжение сплошной проверки для случая «вот с этим разберитесь
+    поимённо». Показывает три вещи по порядку: что с самим документом, какие
+    слова вопроса вообще есть в его тексте, и на каком месте он оказался в
+    настоящей выдаче поиска — или кто его оттуда вытеснил.
+    """
+    from .audit import audit_library  # noqa: PLC0415
+    from .designations import designations_in  # noqa: PLC0415
+    from .retrieval import tokenize  # noqa: PLC0415
+
+    repos, settings = _open_repos(args)
+    документы = repos.documents.list(query=args.doc, limit=10)
+    if not документы:
+        print(f"в описи нет документа по запросу «{args.doc}»", file=sys.stderr)
+        print("Поищите по части имени файла или по названию: reportgen library",
+              file=sys.stderr)
+        return 1
+    if len(документы) > 1:
+        print(f"под «{args.doc}» подходит {len(документы)} документов, "
+              f"беру первый. Остальные:")
+        for документ in документы[1:]:
+            print(f"  {документ.doc_id} — {документ.title}")
+    документ = документы[0]
+
+    print(f"\nДОКУМЕНТ: {документ.doc_id}")
+    print(f"  название:    {документ.title or '—'}")
+    print(f"  тип:         {документ.doc_type}, направление {документ.domain or '—'}")
+    print(f"  статус:      {документ.status}")
+    print(f"  фрагментов:  {документ.chunk_count}")
+
+    беды = [отчёт for отчёт in audit_library(repos)
+            if отчёт.doc_id == документ.doc_id]
+    if беды:
+        print("\nЗАМЕЧАНИЯ:")
+        for беда in беды[0].findings:
+            print(f"  · {беда.problem}")
+            print(f"    → {беда.advice}")
+    else:
+        print("\nС документом всё в порядке: он находится и словом, и смыслом.")
+
+    if not args.query:
+        return 0
+
+    print(f"\nВОПРОС: {args.query}")
+    слова = tokenize(args.query)
+    есть, нет = [], []
+    for слово in dict.fromkeys(слова):
+        строки = repos.db.query(
+            "SELECT 1 FROM chunks WHERE document_id = ? AND lower(text) LIKE ? "
+            "LIMIT 1", (документ.id, f"%{слово}%"))
+        (есть if строки else нет).append(слово)
+    print(f"  слов вопроса в тексте документа: {len(есть)} из {len(есть) + len(нет)}")
+    if есть:
+        print("    есть: " + ", ".join(есть))
+    if нет:
+        print("    нет:  " + ", ".join(нет))
+    обозначения = designations_in(args.query)
+    if обозначения:
+        print("  обозначения в вопросе: " + ", ".join(обозначения)
+              + " — такой документ помощник подкладывает по имени, "
+                "даже если поиск его не принёс")
+
+    retriever = _retriever(repos, settings)
+    if retriever is None:
+        print("\nПоиск не собран: проверить выдачу отсюда нельзя.")
+        return 0
+    попадания = retriever.search(args.query, top_k=int(args.top_k))
+    место = next((n for n, hit in enumerate(попадания, 1)
+                  if hit.chunk.doc_id == документ.doc_id), 0)
+    print(f"\nВЫДАЧА ПОИСКА (первые {len(попадания)}):")
+    for n, hit in enumerate(попадания, 1):
+        свой = " <<< наш документ" if hit.chunk.doc_id == документ.doc_id else ""
+        print(f"  {n:2}. {hit.score:7.3f}  {hit.chunk.breadcrumbs}{свой}")
+    if место:
+        print(f"\nДокумент найден, место {место}.")
+        return 0
+    print("\nДокумент в выдачу НЕ ПОПАЛ. Смотрите замечания выше: чаще всего "
+          "причина в том, что слов вопроса в его тексте нет вовсе.")
+    return 1
+
+
+def _retriever(repos: Repositories, settings: Settings):
+    """Поисковик как в веб-приложении. Не собрался — работаем без него."""
+    try:
+        from .search import DatabaseRetriever  # noqa: PLC0415
+
+        return DatabaseRetriever(repos, terms_path=settings.terms_path)
+    except Exception as ошибка:              # noqa: BLE001 — диагностика
+        print(f"поиск не собран: {ошибка}", file=sys.stderr)
+        return None
+
+
 def cmd_retitle(args: argparse.Namespace) -> int:
     """Переписать негодные названия документов ПРЯМО В БАЗЕ, не трогая файлы.
 
@@ -831,6 +977,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_parts.add_argument("--quiet", action="store_true",
                          help="не печатать сами составы, только итог")
     p_parts.set_defaults(func=cmd_parts)
+
+    p_audit = sub.add_parser(
+        "audit", help="какие документы помощник не увидит и почему")
+    p_audit.add_argument("--doc-type", default=None)
+    p_audit.add_argument("--domain", default=None)
+    p_audit.add_argument("--code", default=None,
+                         help="показать только эту беду (нет-фрагментов, "
+                              "текста-почти-нет, текст-склеен, нет-векторов, "
+                              "название-негодное, обозначение-только-в-названии)")
+    p_audit.add_argument("--limit", type=int, default=40,
+                         help="сколько документов перечислить; 0 — все")
+    p_audit.set_defaults(func=cmd_audit)
+
+    p_why = sub.add_parser(
+        "why", help="почему этот документ не выходит по этому вопросу")
+    p_why.add_argument("--doc", required=True,
+                       help="часть имени файла или названия («g.732»)")
+    p_why.add_argument("--query", default=None,
+                       help="вопрос, по которому документ должен был найтись")
+    p_why.add_argument("--top-k", type=int, default=10)
+    p_why.set_defaults(func=cmd_why)
 
     p_status = sub.add_parser("doc-status", help="отметить актуальность документа библиотеки")
     p_status.add_argument("--doc-id", required=True)

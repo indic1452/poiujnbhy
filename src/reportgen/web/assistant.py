@@ -29,6 +29,11 @@ from .catalog import (
     LibraryCatalog,
     render_catalog,
 )
+from ..designations import (
+    MAX_DESIGNATIONS,  # noqa: F401 — читается снаружи как reportgen.web.assistant.MAX_DESIGNATIONS
+    designations_in,
+    name_parts,
+)
 from .research import (
     Step,
     found_note,
@@ -38,63 +43,6 @@ from .research import (
 )
 from .service import ReportService, ServiceError
 
-
-#: Слова и числа порознь: «RFC4818» — это ['rfc', '4818'], как и «RFC 4818».
-_NAME_PARTS = re.compile(r"[0-9]+|[a-zа-яё]+")
-
-#: Расширения, которые инженер называет вместе с документом («rfc4818.txt»).
-#: Отбрасываем только в конце и только когда перед ними что-то есть.
-_FILE_SUFFIXES = frozenset(
-    ("txt", "pdf", "md", "html", "htm", "xml", "doc", "docx",
-     "rtf", "odt", "djvu", "ps")
-)
-
-
-def name_parts(text: str) -> List[str]:
-    """Имя документа как последовательность слов и чисел.
-
-    Написание разное — «RFC 4818», «RFC4818», «RFC-4818», «rfc4818.txt», —
-    а последовательность одна: ['rfc', '4818']. По ней и сличаем. Сличать
-    подстроками нельзя: «RFC 481» является подстрокой «RFC 4818», и запрос об
-    одном документе открывал другой.
-    """
-    части = _NAME_PARTS.findall(str(text).casefold().replace("ё", "е"))
-    if len(части) > 1 and части[-1] in _FILE_SUFFIXES:
-        части = части[:-1]
-    return части
-
-
-#: Обозначения документов, которые в отделе называют по номеру. Список
-#: намеренно закрытый: выуживать документ из каждого числа нельзя, иначе
-#: «полоса 30 кГц» и «усреднение по 64 сегментам» превратятся в стандарты.
-_DESIGNATION_PREFIXES = (
-    "RFC", "STD", "BCP", "FYI",
-    "ГОСТ Р", "ГОСТ", "ОСТ", "РД", "СНиП", "ТУ",
-    "IEEE", "ISO/IEC", "ISO", "IEC", "ETSI", "EN", "ANSI", "TIA", "3GPP",
-)
-
-#: «RFC 4818», «RFC4818», «RFC-4818», «ГОСТ Р 53363-2009».
-_DESIGNATION_RE = re.compile(
-    r"\b(?P<prefix>" + "|".join(
-        часть.replace(" ", r"\s+").replace("/", r"\s*/\s*")
-        for часть in _DESIGNATION_PREFIXES
-    ) + r")\s*[-—–]?\s*(?P<number>\d{1,5}(?:\.\d+[a-zA-Zа-яА-Я]*)?(?:-\d{1,4})?)\b",
-    re.IGNORECASE,
-)
-
-#: Рекомендации МСЭ называют буквой с номером: G.703, X.25, Y.1541. Само по
-#: себе «G.703» слишком похоже на обычное число с точкой, поэтому берём его
-#: только рядом со словами, которые в отделе стоят перед рекомендацией.
-_ITU_RE = re.compile(
-    r"(?:МСЭ|ITU|Рекомендаци\w*|Recommendation)\s*[-—–]?\s*"
-    r"(?:[TRSТР]\b[.\s-]*)?"
-    r"(?P<code>[A-ZА-Я]\.\d{1,4}(?:\.\d+)*)",
-    re.IGNORECASE,
-)
-
-#: Сколько обозначений разбираем. Вопрос со списком из полусотни номеров не
-#: должен превращаться в полсотни запросов к описи на каждом заходе.
-MAX_DESIGNATIONS = 8
 
 #: Обороты, по которым видно, что спрашивают про НАШУ практику, а не про
 #: устройство вещей. Список нарочно узкий: цена ошибки несимметрична. Принять
@@ -162,39 +110,6 @@ def chat_sources(chat: "Chat | None") -> str:
     """Откуда берём материал, с запасом на старые записи и мусор в поле."""
     выбор = str(getattr(chat, "sources", "") or "").strip().lower()
     return выбор if выбор in CHAT_SOURCES else DEFAULT_CHAT_SOURCES
-
-
-def designations_in(text: str) -> List[str]:
-    """Обозначения документов, названные в тексте, в порядке появления.
-
-    Нужны, чтобы система могла свериться с описью САМА, а не надеяться, что
-    поиск случайно вытянет нужный документ, а модель случайно не соврёт про
-    его отсутствие. «Есть ли у нас RFC 4818» — вопрос, на который в базе есть
-    точный ответ; узнавать его перебором фрагментов незачем.
-    """
-    найдено: List[str] = []
-    видели = set()
-
-    def добавить(значение: str) -> None:
-        ключ = "".join(name_parts(значение))
-        if ключ and ключ not in видели:
-            видели.add(ключ)
-            найдено.append(значение)
-
-    строка = str(text or "")
-    for match in _DESIGNATION_RE.finditer(строка):
-        приставка = re.sub(r"\s+", " ", match.group("prefix")).strip()
-        # Приставку приводим к тому виду, в котором её пишут в названиях:
-        # латиницу заглавными, русское «ГОСТ Р» — как в списке.
-        для_списка = next(
-            (образец for образец in _DESIGNATION_PREFIXES
-             if "".join(name_parts(образец)) == "".join(name_parts(приставка))),
-            приставка,
-        )
-        добавить(f"{для_списка} {match.group('number')}")
-    for match in _ITU_RE.finditer(строка):
-        добавить(match.group("code").upper())
-    return найдено[:MAX_DESIGNATIONS]
 
 
 def _only_types(hits: Sequence[Hit], doc_types) -> List[Hit]:
@@ -314,6 +229,17 @@ RESEARCH_TOKENS = 120
 RESEARCH_TOP_K = 6
 #: Сколько кусков документа отдаёт «ЧИТАТЬ».
 RESEARCH_READ_CHUNKS = 4
+
+#: Вес поиска по ОДНОМУ УЗЛУ состава при слиянии — против единицы у поиска
+#: по самому вопросу. Узел спрашивали не мы, а справочник: он полезен,
+#: когда вопрос про целое, но первое место по слову «антенна» не должно
+#: стоить столько же, сколько первое место по всему вопросу инженера.
+#:
+#: Ноль,35 подобран по смыслу, а не на глаз: три узла, нашедшие один и тот
+#: же документ, вместе перевешивают одну находку по вопросу (0,35 × 3 > 1
+#: на первых местах), а один узел в одиночку — нет. Ровно это и нужно:
+#: документ, всплывший у трёх узлов подряд, и есть узел тракта.
+PART_WEIGHT = 0.35
 DEFAULT_TITLE = "Новый разговор"
 
 
@@ -969,6 +895,9 @@ class AssistantService:
             return list(first), []
 
         rankings: List[List[Hit]] = [list(first)] if first else []
+        # Вес каждого списка при слиянии. Список по САМОМУ вопросу весит
+        # полную единицу, списки по узлам состава — меньше: см. _merge.
+        веса: List[float] = [1.0] * len(rankings)
         pinned: List[Hit] = []
         seen = {hit.chunk.chunk_id for hit in first}
         trail: List[Step] = []
@@ -985,11 +914,12 @@ class AssistantService:
             trail.append(step)
             if on_step is not None:
                 on_step(step)
-            найдено, _ = self._run_step(step, chat)
+            найдено = self._step_search(step, chat, rerank=False)
             свежие = [hit for hit in найдено if hit.chunk.chunk_id not in seen]
             seen.update(hit.chunk.chunk_id for hit in свежие)
             if свежие:
                 rankings.append(свежие)
+                веса.append(PART_WEIGHT)
             step.note = f"узел из состава; {found_note(len(свежие))}"
 
         for index in range(rounds):
@@ -1009,31 +939,46 @@ class AssistantService:
                 pinned.extend(fresh)
             elif fresh:
                 rankings.append(fresh)
+                веса.append(1.0)
             # У «читать» заметка своя — что именно открыли; счёт новых
             # фрагментов дописываем к ней, а не вместо неё.
             counted = found_note(len(fresh))
             step.note = f"{note}; {counted}" if note else counted
 
-        return self._merge(rankings, pinned, top_k), trail
+        return self._merge(rankings, pinned, top_k, веса), trail
 
     def _merge(self, rankings: Sequence[Sequence[Hit]], pinned: Sequence[Hit],
-               top_k: int | None) -> List[Hit]:
+               top_k: int | None,
+               weights: Sequence[float] | None = None) -> List[Hit]:
         """Сводит находки всех заходов в один список.
 
         Слияние по обратным рангам (RRF): шкалы BM25, косинуса и реранка
         между собой не сравнимы, а места в списках — сравнимы. Фрагмент,
         который всплыл в двух заходах по разным словам, поднимается выше —
         и это именно то, что нужно: два независимых способа его найти.
+
+        Списки при этом НЕ равноправны, и в этом была ошибка. Поиск по
+        самому вопросу весит единицу, поиск по одному узлу состава —
+        ``PART_WEIGHT``. С равными весами восемь узловых списков вытесняли
+        то, что нашлось по вопросу: отдел это и увидел — «стало медленнее, а
+        качество не улучшилось, где-то даже ухудшилось».
+
+        Веса и списки сводим парами, а не по номеру: пустые списки
+        отбрасываются, и нумерация без пары разъехалась бы молча.
         """
         wanted = int(top_k or getattr(self.settings, "assistant_top_k", 0)
                      or self.settings.retrieval_top_k)
-        lists = [list(item) for item in rankings if item]
+        веса = list(weights or ())
+        пары = [(list(item), веса[номер] if номер < len(веса) else 1.0)
+                for номер, item in enumerate(rankings) if item]
+        lists = [список for список, _вес in пары]
         if not lists:
             merged: List[Hit] = []
         elif len(lists) == 1:
             merged = lists[0][:wanted]
         else:
-            merged = reciprocal_rank_fusion(lists, top_k=wanted)
+            merged = reciprocal_rank_fusion(
+                lists, top_k=wanted, weights=[вес for _список, вес in пары])
         # Прочитанное ставим первым и не даём вытеснить: его запросили по
         # имени, значит оно и есть ответ на «чего не хватало».
         head = list(pinned)
@@ -1102,7 +1047,15 @@ class AssistantService:
             return self._step_read(step)
         return [], ""
 
-    def _step_search(self, step: Step, chat: Chat) -> List[Hit]:
+    def _step_search(self, step: Step, chat: Chat, *,
+                     rerank: bool = True) -> List[Hit]:
+        """Поиск одним заходом разбора.
+
+        ``rerank=False`` — для разбора состава: там запрос из одного-двух
+        слов («антенна», «демодулятор»), уточнять реранку нечего, а поисков
+        подряд до восьми. Реранк на каждом — восемь обращений к модели вместо
+        одного, и это ровно та задержка, которую отдел заметил.
+        """
         retriever = self.reports.get_retriever()
         if retriever is None:
             return []
@@ -1113,9 +1066,18 @@ class AssistantService:
         try:
             try:
                 найдено = retriever.search(step.argument, top_k=RESEARCH_TOP_K,
-                                           domains=domains, doc_types=doc_types)
-            except TypeError:          # поисковик без направлений
-                найдено = retriever.search(step.argument, top_k=RESEARCH_TOP_K)
+                                           domains=domains, doc_types=doc_types,
+                                           rerank=rerank)
+            except TypeError:
+                # Поисковик постарше: без направлений либо без ключа rerank.
+                # Разбор не обязан падать из-за необязательного удобства.
+                try:
+                    найдено = retriever.search(step.argument,
+                                               top_k=RESEARCH_TOP_K,
+                                               domains=domains,
+                                               doc_types=doc_types)
+                except TypeError:
+                    найдено = retriever.search(step.argument, top_k=RESEARCH_TOP_K)
         except Exception:              # noqa: BLE001 — заход не обязателен
             return []
         return _only_types(найдено, doc_types)

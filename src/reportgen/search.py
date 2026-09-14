@@ -205,12 +205,21 @@ class DatabaseRetriever:
         doc_types: Iterable[str] | None = None,
         meta_filter: Dict[str, str] | None = None,
         domains: Iterable[str] | None = None,
+        rerank: bool = True,
     ) -> List[Hit]:
         """Найти до ``top_k`` фрагментов. Ранги проставлены, лучший — первый.
 
         ``domains`` ограничивает поиск направлением (спутник, релейка,
         протоколы …) — по нему отсекается лексический канал прямо в SQL,
         а плотный фильтруется по метаданным чанка.
+
+        ``rerank=False`` пропускает переоценку моделью. Нужно там, где запрос
+        и без того точный, а поисков много: разбор состава делает до восьми
+        запросов подряд («антенна», «малошумящий усилитель», …), и реранк на
+        каждом — восемь обращений к модели вместо одного. Отдел это и
+        почувствовал: «стал иногда медленный ответ, а качество не улучшилось».
+        На запросе из одного-двух слов реранку и нечего уточнять: он ценен,
+        когда надо отличить «обратный канал» от «прямого» в длинном вопросе.
         """
         self.last_warning = None
         text = (query or "").strip()
@@ -237,7 +246,8 @@ class DatabaseRetriever:
         else:
             merged = list(lexical or dense)[: self.candidates]
 
-        merged = self._rerank(text, merged)
+        if rerank:
+            merged = self._rerank(text, merged)
         merged = self._prefer_fresh(merged)
         merged = _drop_worthless(merged)
         hits = merged[:top_k]

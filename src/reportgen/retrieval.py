@@ -250,18 +250,33 @@ class BM25Index:
 
 
 def reciprocal_rank_fusion(
-    rankings: Sequence[Sequence[Hit]], k: int = 60, top_k: int = 10
+    rankings: Sequence[Sequence[Hit]], k: int = 60, top_k: int = 10,
+    weights: Sequence[float] | None = None,
 ) -> List[Hit]:
     """Слияние нескольких ранжирований (RRF).
 
     Устойчивее взвешенной суммы: не требует калибровки шкал BM25 и косинусной
     близости между собой.
+
+    ``weights`` — вес каждого списка, по умолчанию все равны. Равенство годится,
+    пока списки равноправны (лексика и векторы по ОДНОМУ запросу), и вредит,
+    когда это не так. Отдел это и увидел: к поиску по вопросу добавились восемь
+    поисков по узлам состава, RRF посчитал их равными вопросу, и фрагмент,
+    бывший первым по самому вопросу, стали вытеснять фрагменты, каждый из
+    которых первый лишь по своему узлу. Ответ стал длиннее и хуже.
+
+    Вес меняет только цену первого места в списке; фрагмент, всплывший в
+    НЕСКОЛЬКИХ списках, поднимается по-прежнему — и это то, что нужно: два
+    независимых способа его найти весомее одного.
     """
     fused: Dict[str, float] = {}
     seen: Dict[str, Chunk] = {}
-    for ranking in rankings:
+    веса = list(weights or ())
+    for индекс, ranking in enumerate(rankings):
+        вес = веса[индекс] if индекс < len(веса) else 1.0
         for rank, hit in enumerate(ranking, start=1):
-            fused[hit.chunk.chunk_id] = fused.get(hit.chunk.chunk_id, 0.0) + 1.0 / (k + rank)
+            fused[hit.chunk.chunk_id] = (fused.get(hit.chunk.chunk_id, 0.0)
+                                         + вес / (k + rank))
             seen[hit.chunk.chunk_id] = hit.chunk
     ordered = sorted(fused.items(), key=lambda item: -item[1])[:top_k]
     return [
