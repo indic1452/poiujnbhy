@@ -2810,13 +2810,25 @@ def notifications(request: Request, limit: int = 50) -> Dict[str, Any]:
 
 @router.post("/notifications/read")
 def read_notifications(request: Request) -> Dict[str, Any]:
-    """Отметить прочитанным одно уведомление или все сразу."""
+    """Отметить прочитанным одно уведомление или все сразу.
+
+    «Все сразу» снимает и непрочитанные сообщения бесед. В числе у
+    колокольчика они считаются наравне с уведомлениями, а уведомление о
+    сообщении можно прочесть и удалить, не открыв саму беседу, — и тогда
+    число висело, снять его было нечем. Кнопка «прочитано всё» обязана
+    делать то, что написано на ней, а не половину этого.
+    """
     user = require_user(request)
     repos = _repos(request)
     payload = _body(request)
     raw = payload.get("id")
     repos.notices.mark_seen(user.id, int(raw) if raw else None)
-    return {"unseen": repos.notices.unseen(user.id)}
+    talks = 0
+    if not raw:
+        talks = repos.talks.mark_all_read(user.id)
+    return {"unseen": repos.notices.unseen(user.id),
+            "messages": repos.talks.unread_total(user.id),
+            "talks_read": talks}
 
 
 @router.delete("/notifications")
@@ -2940,27 +2952,43 @@ def read_talk(request: Request, talk_id: int) -> Dict[str, Any]:
 
 @router.delete("/talks/{talk_id}")
 def leave_talk(request: Request, talk_id: int) -> Dict[str, Any]:
-    """Убрать беседу у себя.
+    """Убрать беседу. У двоих — у обоих, в беседе нескольких — у себя.
 
-    Переписка отдела — записи о работе, и стирать их у собеседника нельзя:
-    его половина разговора не наша. Поэтому уходим только сами. Когда беседу
-    покинул последний участник, она уходит целиком — с сообщениями и
-    приложенными файлами.
+    Прежде уходил только тот, кто удалял, и для беседы ДВОИХ это выходило
+    хуже некуда: у собеседника оставалась беседа, отвечать в которой некому,
+    а на попытку написать заново заводилась ВТОРАЯ беседа с тем же
+    человеком. Отдел: «удалил чат, у другого остался, и чтобы снова
+    написать, нужно создать ему доп. чат со мной».
+
+    У беседы двоих нет третьего, чью запись мы бы стёрли: разговор
+    принадлежит им обоим. В беседе НЕСКОЛЬКИХ так нельзя — остальные в ней
+    остались, и решение одного за всех не решает; там по-прежнему уходит
+    только тот, кто попросил, а беседа исчезает, когда её покинул последний.
+
+    Сам факт удаления остаётся в журнале действий в обоих случаях.
     """
     user = require_user(request)
     repos = _repos(request)
     if not repos.talks.is_member(talk_id, user.id):
         raise ServiceError("беседа не найдена", 404)
-    paths = repos.talks.leave(talk_id, user.id)
-    purged = not repos.talks.members(talk_id)
+    вдвоём = repos.talks.is_private(talk_id)
+    участники = [member["id"] for member in repos.talks.members(talk_id)]
+    if вдвоём:
+        paths = repos.talks.purge(talk_id)
+        purged = True
+    else:
+        paths = repos.talks.leave(talk_id, user.id)
+        purged = not repos.talks.members(talk_id)
     for raw in paths:
         try:
             Path(raw).unlink()
         except OSError:                 # noqa: PERF203 — файла может уже не быть
             pass
     repos.audit.log("talk.leave", user=user, object_type="talk",
-                    object_id=str(talk_id), details={"purged": purged})
-    return {"purged": purged}
+                    object_id=str(talk_id),
+                    details={"purged": purged, "both": вдвоём,
+                             "members": участники})
+    return {"purged": purged, "both": вдвоём}
 
 
 @router.post("/talks/{talk_id}/messages")

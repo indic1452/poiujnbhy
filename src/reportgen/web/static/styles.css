@@ -4155,6 +4155,20 @@ table.md-table th {
     background: var(--panel-2);
 }
 
+/* Строка о непрочитанных сообщениях бесед. Она не уведомление, а объяснение
+   числа у колокольчика: это число складывается из двух источников, и второго
+   в списке уведомлений не видно. Поэтому строка стоит НАД списком, отделена
+   чертой и не листается вместе с ним. */
+.notice--link {
+    border-color: var(--border);
+    background: var(--panel-2);
+    margin-bottom: 6px;
+}
+
+.notice--link:hover {
+    border-color: var(--accent);
+}
+
 .notice-mark {
     flex: 0 0 auto;
     width: 26px;

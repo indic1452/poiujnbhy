@@ -4293,6 +4293,7 @@ class TalkTests(WebTestCase):
         super().setUp()
         self.engineer = self.repos.users.by_login("engineer")
         self.boss = self.repos.users.by_login("nachalnik")
+        self.third = self.repos.users.by_login("zam")
 
     def test_a_private_talk_is_not_started_twice(self):
         """Иначе каждое «написать Иванову» рождало бы новую ветку.
@@ -4311,8 +4312,15 @@ class TalkTests(WebTestCase):
         third = self.client.post("/api/talks", json={"members": [self.boss.id]}).json()
         self.assertEqual(first["talk_id"], third["talk_id"])
 
-    def test_a_talk_is_removed_for_the_one_who_left(self):
-        """«Убрать беседу» убирает её у себя, а не у собеседника."""
+    def test_a_private_talk_is_removed_for_both(self):
+        """Беседа двоих удаляется у обоих.
+
+        Прежде уходил только тот, кто удалял. У собеседника оставалась
+        беседа, отвечать в которой некому, а следующее «написать Иванову»
+        заводило ВТОРУЮ ветку с тем же человеком. Отдел: «удалил чат, у
+        другого остался, и чтобы снова написать, нужно создать ему доп. чат
+        со мной». У разговора двоих нет третьего, чью запись мы бы стёрли.
+        """
         self.login("nachalnik")
         talk = self.client.post("/api/talks",
                                 json={"members": [self.engineer.id]}).json()
@@ -4321,17 +4329,34 @@ class TalkTests(WebTestCase):
                          json={"text": "Подойдите с материалами"})
         answer = self.client.delete(f"/api/talks/{talk_id}")
         self.assertEqual(200, answer.status_code, answer.text)
-        self.assertFalse(answer.json()["purged"], "стёрли у собеседника тоже")
+        self.assertTrue(answer.json()["both"])
+        self.assertTrue(answer.json()["purged"])
         self.assertEqual([], self.client.get("/api/talks").json()["items"])
         self.assertEqual(404, self.client.get(f"/api/talks/{talk_id}").status_code)
 
-    def test_the_other_side_keeps_the_talk(self):
-        """Его половина разговора — тоже запись о работе отдела."""
+    def test_the_other_side_loses_it_too(self):
+        """Висящая у собеседника беседа без собеседника — хуже, чем ничего."""
         self.login("nachalnik")
         talk_id = self.client.post(
             "/api/talks", json={"members": [self.engineer.id]}).json()["talk_id"]
         self.client.post(f"/api/talks/{talk_id}/messages", json={"text": "Срочно"})
         self.client.delete(f"/api/talks/{talk_id}")
+        self.login("engineer")
+        self.assertEqual([], self.client.get("/api/talks").json()["items"])
+        self.assertEqual(404, self.client.get(f"/api/talks/{talk_id}").status_code)
+        self.assertEqual(0, self.repos.db.scalar(
+            "SELECT count(*) FROM talk_messages WHERE talk_id = ?", (talk_id,)))
+
+    def test_a_group_talk_stays_with_the_others(self):
+        """В беседе НЕСКОЛЬКИХ решение одного за всех не решает."""
+        self.login("nachalnik")
+        talk_id = self.client.post(
+            "/api/talks", json={"members": [self.engineer.id, self.third.id],
+                                "title": "Разбор линии"}).json()["talk_id"]
+        self.client.post(f"/api/talks/{talk_id}/messages", json={"text": "Срочно"})
+        answer = self.client.delete(f"/api/talks/{talk_id}")
+        self.assertFalse(answer.json()["both"])
+        self.assertFalse(answer.json()["purged"])
         self.login("engineer")
         items = self.client.get("/api/talks").json()["items"]
         self.assertEqual([talk_id], [item["id"] for item in items])
@@ -4339,13 +4364,16 @@ class TalkTests(WebTestCase):
         self.assertEqual(["Срочно"], [item["text"] for item in data["messages"]])
 
     def test_the_last_one_out_takes_the_talk_with_them(self):
-        """Беседу, из которой ушли все, держать незачем."""
+        """Беседу нескольких, из которой ушли все, держать незачем."""
         self.login("nachalnik")
         talk_id = self.client.post(
-            "/api/talks", json={"members": [self.engineer.id]}).json()["talk_id"]
+            "/api/talks", json={"members": [self.engineer.id, self.third.id],
+                                "title": "Разбор линии"}).json()["talk_id"]
         self.client.post(f"/api/talks/{talk_id}/messages", json={"text": "Срочно"})
         self.client.delete(f"/api/talks/{talk_id}")
         self.login("engineer")
+        self.client.delete(f"/api/talks/{talk_id}")
+        self.login("zam")
         answer = self.client.delete(f"/api/talks/{talk_id}")
         self.assertTrue(answer.json()["purged"])
         self.assertEqual(0, self.repos.db.scalar(
@@ -4396,7 +4424,9 @@ class TalkTests(WebTestCase):
         again = self.client.post("/api/talks",
                                  json={"members": [self.engineer.id]}).json()
         self.assertFalse(again["existed"])
-        self.assertNotEqual(first, again["talk_id"])
+        # Номер может совпасть со старым: SQLite переиспользует освободившийся,
+        # а беседа теперь удаляется целиком. Важно не это, а что разговор
+        # начался с чистого листа и ветка одна.
         self.assertEqual([], self.client.get(
             f"/api/talks/{again['talk_id']}").json()["messages"])
 

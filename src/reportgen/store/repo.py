@@ -2665,12 +2665,19 @@ class TalkRepo:
             })
         return out
 
+    def is_private(self, talk_id: int) -> bool:
+        """Беседа двоих: без названия и ровно два участника."""
+        row = self.db.query_one(
+            "SELECT t.title AS title, "
+            "(SELECT count(*) FROM talk_members m WHERE m.talk_id = t.id) AS n "
+            "FROM talks t WHERE t.id = ?", (talk_id,))
+        return bool(row) and not (row["title"] or "") and int(row["n"]) == 2
+
     def leave(self, talk_id: int, user_id: int) -> "List[str]":
         """Убрать беседу у одного человека.
 
-        Переписка отдела — это записи о работе, и удалять их у собеседника
-        нельзя: он в них тоже участник, и его половина разговора не наша.
-        Поэтому уходим только сами; у собеседника беседа остаётся.
+        Так уходят из беседы НЕСКОЛЬКИХ: остальные в ней остались, и стирать
+        разговор у них по решению одного участника нельзя.
 
         Когда беседу покинул последний участник, держать её незачем: она
         уходит целиком вместе с сообщениями и приложенными файлами. Пути
@@ -2685,12 +2692,43 @@ class TalkRepo:
                 (talk_id,)).fetchone()
             if int(left["n"] if left else 0):
                 return []
-            paths = [str(row["path"]) for row in connection.execute(
-                "SELECT path FROM talk_files WHERE talk_id = ?", (talk_id,))
-                if row["path"]]
-            connection.execute("DELETE FROM talk_files WHERE talk_id = ?", (talk_id,))
-            connection.execute("DELETE FROM talk_messages WHERE talk_id = ?", (talk_id,))
-            connection.execute("DELETE FROM talks WHERE id = ?", (talk_id,))
+            return self._purge(connection, talk_id)
+
+    def purge(self, talk_id: int) -> "List[str]":
+        """Убрать беседу СОВСЕМ — у всех участников.
+
+        Так удаляется беседа двоих. Прежде уходил только тот, кто удалял, и
+        выходило хуже некуда: у собеседника висела беседа, отвечать в которой
+        некому, а на попытку написать заново заводилась ВТОРАЯ беседа с тем
+        же человеком — переписка с одним собеседником рассыпалась на две
+        ветки. Отдел это и увидел: «удалил чат, у другого остался, и чтобы
+        снова написать, нужно создать ему доп. чат со мной».
+
+        У беседы двоих нет третьего, чью запись мы бы стёрли: разговор
+        принадлежит им обоим, и решение любого из них его закончить —
+        решение половины участников. Сам факт удаления остаётся в журнале
+        действий: удалена переписка или нет, по журналу видно.
+        """
+        with self.db.transaction() as connection:
+            return self._purge(connection, talk_id)
+
+    @staticmethod
+    def _purge(connection: Any, talk_id: int) -> "List[str]":
+        """Убрать беседу из базы. Возвращает пути приложенных файлов.
+
+        Сообщения, участники и записи о файлах уходят сами: все три таблицы
+        объявлены ``REFERENCES talks(id) ON DELETE CASCADE``, а внешние ключи
+        включены (``PRAGMA foreign_keys = ON``). Дублировать это четырьмя
+        DELETE незачем: лишние строки не проверить ничем — они ничего не
+        меняют, — а расходятся со схемой они молча.
+
+        Сами файлы с диска удаляет тот, кто отвечает за диск: у базы своей
+        файловой системы нет, и путать эти две ответственности не нужно.
+        """
+        paths = [str(row["path"]) for row in connection.execute(
+            "SELECT path FROM talk_files WHERE talk_id = ?", (talk_id,))
+            if row["path"]]
+        connection.execute("DELETE FROM talks WHERE id = ?", (talk_id,))
         return paths
 
     def add_message(self, talk_id: int, user_id: int | None, text: str) -> TalkMessage:
@@ -2757,6 +2795,25 @@ class TalkRepo:
                 "UPDATE talk_members SET seen_id = "
                 "coalesce((SELECT max(id) FROM talk_messages WHERE talk_id = ?), 0) "
                 "WHERE talk_id = ? AND user_id = ?", (talk_id, talk_id, user_id))
+
+    def mark_all_read(self, user_id: int) -> int:
+        """Все беседы человека — прочитанными. Возвращает, сколько сняли.
+
+        Нужно кнопке «прочитано всё» в списке уведомлений. Без этого число у
+        колокольчика снять было нечем: в нём считаются и непрочитанные
+        сообщения бесед, а уведомление о сообщении можно прочесть и удалить,
+        не открыв саму беседу. Отдел это и получил: «прочитал сообщение,
+        даже удалил из вкладки уведомлений, но цифра висит, и никак её не
+        убрать».
+        """
+        было = self.unread_total(user_id)
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE talk_members SET seen_id = coalesce("
+                "  (SELECT max(x.id) FROM talk_messages x "
+                "   WHERE x.talk_id = talk_members.talk_id), 0) "
+                "WHERE user_id = ?", (user_id,))
+        return было
 
     def unread_total(self, user_id: int) -> int:
         return int(self.db.scalar(

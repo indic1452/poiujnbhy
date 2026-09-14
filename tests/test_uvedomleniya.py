@@ -1,274 +1,211 @@
 # -*- coding: utf-8 -*-
-"""Срочное находит человека и без https.
+"""Число у колокольчика и удаление беседы.
 
-Окно уведомления поверх других браузер показывает только защищённой странице.
-Отдел работает по обычному адресу в сети, и требовать ради этого https со
-всех рабочих мест — «слишком сложно и муторно», и это правда.
+Две жалобы отдела, и обе про одно — про то, что человек не может привести
+систему в порядок своими руками:
 
-Поэтому срочное достучивается тем, что работает ВЕЗДЕ:
+* «Я прочитал сообщение, даже удалил из вкладки уведомлений, но цифра висит,
+  и никак её не убрать». Число у колокольчика складывается из двух
+  источников: непрочитанных уведомлений и непрочитанных сообщений бесед.
+  Второго в списке уведомлений не видно, и «прочитать всё» его не снимало —
+  человек читал всё, что видел, а число оставалось.
 
-* заголовок вкладки мигает «‼ ВЫЗОВ В КАБИНЕТ» — свёрнутое окно показывает
-  его прямо в панели задач;
-* сигнал повторяется, пока человек не вернётся к окну, но не бесконечно:
-  сигнализация, которая воет вечно, кончается выключенным звуком.
-
-Проверяется это не подстроками в исходнике: настоящий кусок app.js
-запускается через node с поддельными часами, и сверяется то, что человек
-увидит в панели задач.
+* «Удалил чат, у другого остался, и чтобы снова написать, нужно создать ему
+  доп. чат со мной». Уходил только тот, кто удалял. У собеседника оставалась
+  беседа, отвечать в которой некому, а следующее «написать Иванову» заводило
+  ВТОРУЮ беседу с тем же человеком: прежнюю поиск уже не признавал беседой
+  двоих, потому что участник в ней остался один.
 """
 
-import json
-import re
-import shutil
-import subprocess
-import tempfile
 import unittest
-from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
-ROOT = Path(__file__).resolve().parents[1]
-APP_JS = ROOT / "src" / "reportgen" / "web" / "static" / "app.js"
-NODE = shutil.which("node")
-
-PRELUDE = r"""
-const записано = { сигналов: 0, заголовки: [] };
-const часы = { дальше: [], время: 0 };
-
-function setInterval(fn, ms) { часы.дальше.push({ fn: fn, ms: ms }); return часы.дальше.length; }
-function clearInterval(id) { часы.дальше = []; }
-function такт(сколько) { for (let i = 0; i < сколько; i += 1) часы.дальше.forEach((t) => t.fn()); }
-
-const document = { hidden: true, _title: '2 специальный отдел' };
-Object.defineProperty(document, 'title', {
-  get() { return this._title; },
-  set(v) { this._title = v; записано.заголовки.push(v); },
-});
-function playAlert() { записано.сигналов += 1; }
-function brandShort() { return '2СО'; }
-const notices = { unseen: 0 };
-"""
-
-EPILOGUE = r"""
-const шаги = JSON.parse(process.argv[2]);
-const итог = [];
-for (const шаг of шаги) {
-  if (шаг.do === 'скрыть') document.hidden = true;
-  else if (шаг.do === 'показать') document.hidden = false;
-  else if (шаг.do === 'непрочитано') { notices.unseen = шаг.n; paintTitle(шаг.n); }
-  else if (шаг.do === 'тревога') startAlarm(alarmWord({ title: шаг.title }));
-  else if (шаг.do === 'показ') startAlarm(alarmWord({ title: шаг.title }), true);
-  else if (шаг.do === 'такт') такт(шаг.n);
-  else if (шаг.do === 'снять') { stopAlarm(); paintTitle(notices.unseen); }
-  else if (шаг.do === 'смотреть') {
-    итог.push({
-      заголовок: document.title,
-      сигналов: записано.сигналов,
-      мигает: Boolean(alarm.timer),
-      все: записано.заголовки.slice(),
-    });
-  } else throw new Error('неизвестный шаг ' + шаг.do);
-}
-process.stdout.write(JSON.stringify(итог));
-"""
+from test_web import WebTestCase
 
 
-def кусок(имя: str, source: str) -> str:
-    """Тело функции по имени — обходом фигурных скобок."""
-    начало = source.index("function " + имя)
-    место = source.index("{", начало)
-    глубина = 0
-    while True:
-        if source[место] == "{":
-            глубина += 1
-        elif source[место] == "}":
-            глубина -= 1
-            if глубина == 0:
-                break
-        место += 1
-    return source[начало:место + 1]
+class Беседы(WebTestCase):
+    def кто(self, login: str) -> int:
+        пользователь = self.repos.users.by_login(login)
+        assert пользователь is not None
+        return пользователь.id
+
+    def завести(self, *логины: str, title: str = "") -> int:
+        return self.repos.talks.create([self.кто(логин) for логин in логины],
+                                       title=title,
+                                       created_by=self.кто(логины[0]))
+
+    def колокольчик(self) -> dict:
+        ответ = self.client.get("/api/notifications")
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        return ответ.json()
 
 
-def тревога_из_app() -> str:
-    source = APP_JS.read_text(encoding="utf-8")
-    начало = source.index("    let titleBase = '';")
-    конец = source.index("    function playAlert() {")
-    return source[начало:конец] + "\n" + кусок("alarmWord", source)
+class УдалениеБеседыДвоих(Беседы):
+    """У разговора двоих нет третьего, чью запись мы бы стёрли."""
 
+    def test_удаляется_у_обоих(self):
+        talk = self.завести("admin", "engineer")
+        self.repos.talks.add_message(talk, self.кто("engineer"), "Смотрите вложение")
+        ответ = self.client.delete(f"/api/talks/{talk}")
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        self.assertTrue(ответ.json()["both"])
 
-@unittest.skipUnless(NODE, "нет node — тревогу не проверить")
-class ТревогаTestCase(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls._tmp = tempfile.TemporaryDirectory()
-        cls.script = Path(cls._tmp.name) / "trevoga.mjs"
-        cls.script.write_text(PRELUDE + тревога_из_app() + EPILOGUE, encoding="utf-8")
+        self.login("engineer")
+        свои = [item["id"] for item in self.repos.talks.list_for(self.кто("engineer"))]
+        self.assertNotIn(talk, свои, "у собеседника беседа осталась")
+        self.assertEqual(404, self.client.get(f"/api/talks/{talk}").status_code)
 
-    @classmethod
-    def tearDownClass(cls):
-        cls._tmp.cleanup()
+    def test_сообщения_и_участники_убраны_совсем(self):
+        talk = self.завести("admin", "engineer")
+        self.repos.talks.add_message(talk, self.кто("engineer"), "Есть вопрос")
+        self.client.delete(f"/api/talks/{talk}")
+        self.assertEqual([], self.repos.talks.members(talk))
+        self.assertEqual([], self.repos.talks.messages(talk))
 
-    def прогнать(self, шаги):
-        готово = subprocess.run(
-            [NODE, str(self.script), json.dumps(шаги, ensure_ascii=False)],
-            capture_output=True, text=True, timeout=60)
-        self.assertEqual(0, готово.returncode, готово.stderr)
-        return json.loads(готово.stdout)
+    def test_следующая_переписка_не_вторая_ветка(self):
+        """Ровно то, на что пожаловался отдел.
 
-
-class ЗаголовокМигает(ТревогаTestCase):
-    def test_в_панели_задач_видно_вызов_в_кабинет(self):
-        видно = self.прогнать([
-            {"do": "скрыть"},
-            {"do": "тревога", "title": "Вас вызывают в кабинет"},
-            {"do": "такт", "n": 1},
-            {"do": "смотреть"},
-        ])[0]
-        self.assertIn("ВЫЗОВ", видно["заголовок"])
-        self.assertTrue(видно["мигает"])
-
-    def test_видно_и_кто_вызывает(self):
-        """Так вызов и приходит на самом деле: «Вас вызывает Никитин В. П.».
-
-        В панели задач место узкое, и первым словом должно стоять «ВЫЗОВ», а
-        не фамилия: по фамилии не понять, что от тебя хотят.
+        Прежде после удаления прежняя беседа переставала быть беседой двоих
+        (участник в ней остался один), поиск её не признавал, и «написать
+        Иванову» заводило вторую ветку к тому же человеку.
         """
-        видно = self.прогнать([
-            {"do": "скрыть"},
-            {"do": "тревога", "title": "Вас вызывает Никитин В. П."},
-            {"do": "такт", "n": 1},
-            {"do": "смотреть"},
-        ])[0]
-        self.assertTrue(видно["заголовок"].startswith("‼ ВЫЗОВ"), видно["заголовок"])
-        self.assertIn("НИКИТИН В. П.", видно["заголовок"])
+        talk = self.завести("admin", "engineer")
+        self.repos.talks.add_message(talk, self.кто("admin"), "Первый разговор")
+        self.client.delete(f"/api/talks/{talk}")
 
-    def test_заголовок_чередуется_а_не_застывает(self):
-        видно = self.прогнать([
-            {"do": "скрыть"},
-            {"do": "тревога", "title": "Вас вызывают в кабинет"},
-            {"do": "такт", "n": 4},
-            {"do": "смотреть"},
-        ])[0]
-        мигания = [t for t in видно["все"] if "ВЫЗОВ" in t]
-        обычные = [t for t in видно["все"] if "ВЫЗОВ" not in t]
-        self.assertGreaterEqual(len(мигания), 2, "надпись не мигает")
-        self.assertGreaterEqual(len(обычные), 1, "надпись не гаснет — это не мигание")
+        ответ = self.client.post("/api/talks",
+                                 json={"members": [self.кто("engineer")]})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        новая = ответ.json()["talk_id"]
+        self.assertFalse(ответ.json()["existed"], "нашлась удалённая беседа")
+        # Номер может совпасть со старым — SQLite переиспользует освободившийся.
+        # Важно не это, а что разговор начался с чистого листа.
+        self.assertEqual([], self.repos.talks.messages(новая))
 
-    def test_отчёт_вернули_называется_своими_словами(self):
-        видно = self.прогнать([
-            {"do": "скрыть"},
-            {"do": "тревога", "title": "Отчёт возвращён на доработку"},
-            {"do": "такт", "n": 1},
-            {"do": "смотреть"},
-        ])[0]
-        self.assertIn("ОТЧЁТ ВЕРНУЛИ", видно["заголовок"])
+        self.login("engineer")
+        свои = self.repos.talks.list_for(self.кто("engineer"))
+        с_админом = [беседа for беседа in свои
+                     if any(участник["id"] == self.кто("admin")
+                            for участник in беседа["members"])]
+        self.assertEqual(1, len(с_админом),
+                         "у собеседника оказалось две ветки с одним человеком")
 
-
-class СигналПовторяется(ТревогаTestCase):
-    def test_первый_сигнал_сразу(self):
-        видно = self.прогнать([
-            {"do": "скрыть"},
-            {"do": "тревога", "title": "Вас вызывают в кабинет"},
-            {"do": "смотреть"},
-        ])[0]
-        self.assertEqual(1, видно["сигналов"])
-
-    def test_один_сигнал_можно_прослушать_поэтому_он_не_один(self):
-        видно = self.прогнать([
-            {"do": "скрыть"},
-            {"do": "тревога", "title": "Вас вызывают в кабинет"},
-            {"do": "такт", "n": 20},
-            {"do": "смотреть"},
-        ])[0]
-        self.assertGreater(видно["сигналов"], 1, "сигнал прозвучал один раз")
-
-    def test_сигнализация_не_воет_вечно(self):
-        """Иначе звук выключат насовсем — и тогда не услышат ничего."""
-        видно = self.прогнать([
-            {"do": "скрыть"},
-            {"do": "тревога", "title": "Вас вызывают в кабинет"},
-            {"do": "такт", "n": 400},
-            {"do": "смотреть"},
-        ])[0]
-        self.assertLessEqual(видно["сигналов"], 10)
-        self.assertFalse(видно["мигает"], "тревога не унялась сама")
+    def test_удаление_осталось_в_журнале(self):
+        """Переписка удалена — это действие, и след о нём обязан быть."""
+        talk = self.завести("admin", "engineer")
+        self.client.delete(f"/api/talks/{talk}")
+        записи = self.repos.audit.list(limit=20)
+        свои = [запись for запись in записи if запись.action == "talk.leave"]
+        self.assertTrue(свои, "удаление беседы не попало в журнал")
+        self.assertTrue(свои[0].details.get("both"))
 
 
-class ПоказПоПросьбе(ТревогаTestCase):
-    """«Проверить вызов»: человек смотрит на экран и должен увидеть, что будет."""
+class ВыходИзБеседыНескольких(Беседы):
+    """Решение одного участника не решает за всех."""
 
-    def test_показ_идёт_и_при_открытом_окне(self):
-        видно = self.прогнать([
-            {"do": "показать"},
-            {"do": "показ", "title": "Вас вызывает Никитин В. П."},
-            {"do": "такт", "n": 3},
-            {"do": "смотреть"},
-        ])[0]
-        мигания = [t for t in видно["все"] if "ВЫЗОВ" in t]
-        self.assertTrue(мигания,
-                        "проверка ничего не показывает: окно ведь открыто")
-        self.assertTrue(видно["мигает"])
+    def test_у_остальных_беседа_остаётся(self):
+        talk = self.завести("admin", "engineer", "nachalnik", title="Разбор линии")
+        self.repos.talks.add_message(talk, self.кто("engineer"), "Готово")
+        ответ = self.client.delete(f"/api/talks/{talk}")
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        self.assertFalse(ответ.json()["both"])
+        self.assertFalse(ответ.json()["purged"])
 
-    def test_показ_сам_кончается(self):
-        видно = self.прогнать([
-            {"do": "показать"},
-            {"do": "показ", "title": "Вас вызывает Никитин В. П."},
-            {"do": "такт", "n": 12},
-            {"do": "смотреть"},
-        ])[0]
-        self.assertFalse(видно["мигает"], "проверка мигает без конца")
-        self.assertNotIn("ВЫЗОВ", видно["заголовок"])
+        оставшиеся = {участник["id"] for участник in self.repos.talks.members(talk)}
+        self.assertEqual({self.кто("engineer"), self.кто("nachalnik")}, оставшиеся)
+        self.assertTrue(self.repos.talks.messages(talk),
+                        "переписка остальных участников стёрта")
 
+    def test_последний_участник_убирает_беседу_целиком(self):
+        talk = self.завести("admin", "engineer", title="Вдвоём, но с названием")
+        self.client.delete(f"/api/talks/{talk}")
+        self.login("engineer")
+        ответ = self.client.delete(f"/api/talks/{talk}")
+        self.assertTrue(ответ.json()["purged"])
+        self.assertEqual([], self.repos.talks.members(talk))
 
-class ЧеловекВернулся(ТревогаTestCase):
-    def test_вернулся_к_окну_тревога_снимается(self):
-        видно = self.прогнать([
-            {"do": "непрочитано", "n": 3},
-            {"do": "скрыть"},
-            {"do": "тревога", "title": "Вас вызывают в кабинет"},
-            {"do": "такт", "n": 3},
-            {"do": "показать"},
-            {"do": "такт", "n": 1},
-            {"do": "смотреть"},
-        ])[0]
-        self.assertFalse(видно["мигает"])
-        self.assertNotIn("ВЫЗОВ", видно["заголовок"])
-        self.assertIn("(3)", видно["заголовок"],
-                      "счётчик непрочитанного не вернулся в заголовок")
+    def test_беседа_с_названием_не_считается_беседой_двоих(self):
+        """Признак — не число участников само по себе, а отсутствие названия.
 
-    def test_счётчик_не_перебивает_тревогу(self):
-        """Пока мигает срочное, обычный счётчик заголовок не отнимает."""
-        видно = self.прогнать([
-            {"do": "скрыть"},
-            {"do": "тревога", "title": "Вас вызывают в кабинет"},
-            {"do": "такт", "n": 1},
-            {"do": "непрочитано", "n": 5},
-            {"do": "смотреть"},
-        ])[0]
-        self.assertIn("ВЫЗОВ", видно["заголовок"])
-        self.assertNotIn("(5)", видно["заголовок"])
+        Беседу с названием человек заводил как общую, и удалять её у другого
+        по своему решению он не вправе, даже если их пока двое.
+        """
+        talk = self.завести("admin", "engineer", title="Приёмка комплекса")
+        self.assertFalse(self.repos.talks.is_private(talk))
+        ответ = self.client.delete(f"/api/talks/{talk}")
+        self.assertFalse(ответ.json()["both"])
+        self.assertEqual([self.кто("engineer")],
+                         [участник["id"] for участник in
+                          self.repos.talks.members(talk)])
 
 
-class НичегоНеТребуетОтМашины(unittest.TestCase):
-    """Главное свойство: это работает по любому адресу, без https."""
+class ЧислоУКолокольчика(Беседы):
+    def test_непрочитанные_сообщения_входят_в_число(self):
+        talk = self.завести("admin", "engineer")
+        self.repos.talks.add_message(talk, self.кто("engineer"), "Посмотрите")
+        self.assertEqual(1, self.колокольчик()["messages"])
 
-    def test_тревога_не_зависит_от_разрешений_браузера(self):
-        текст = тревога_из_app()
-        self.assertNotIn("Notification", текст,
-                         "тревога упёрлась в разрешения браузера — а по http "
-                         "их не спросить")
-        self.assertNotIn("isSecureContext", текст)
+    def test_прочитать_всё_снимает_и_сообщения(self):
+        """Кнопка обязана делать то, что на ней написано, а не половину."""
+        talk = self.завести("admin", "engineer")
+        self.repos.talks.add_message(talk, self.кто("engineer"), "Первое")
+        self.repos.talks.add_message(talk, self.кто("engineer"), "Второе")
+        self.assertEqual(2, self.колокольчик()["messages"])
 
-    def test_в_настройках_сказано_что_работает_и_без_https(self):
-        """И не сказано ничего ставить: на рабочих местах это запрещено."""
-        текст = APP_JS.read_text(encoding="utf-8")
-        self.assertIn("ВЫЗОВ В КАБИНЕТ", текст)
-        начало = текст.index("Окно Windows поверх других: здесь недоступно")
-        подсказка = текст[начало:начало + 1400]
-        self.assertIn("Ставить на эту машину тоже ничего не", подсказка)
-        for запрет in ("setup-https", "установите", "Доверять серверу"):
-            self.assertNotIn(запрет, подсказка,
-                             "человека снова отправляют что-то устанавливать")
+        ответ = self.client.post("/api/notifications/read", json={})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        self.assertEqual(0, ответ.json()["messages"])
+        self.assertEqual(2, ответ.json()["talks_read"])
+        self.assertEqual(0, self.колокольчик()["messages"])
+
+    def test_чтение_одного_уведомления_бесед_не_трогает(self):
+        """Прочесть одно — это прочесть одно, а не всё сразу.
+
+        Иначе щелчок по уведомлению молча стирал бы непрочитанное в беседах,
+        которые человек и не открывал.
+        """
+        talk = self.завести("admin", "engineer")
+        self.repos.talks.add_message(talk, self.кто("engineer"), "Посмотрите")
+        уведомление = self.repos.notices.add(
+            self.кто("admin"), "message", "Сообщение", "текст", "", None)
+        ответ = self.client.post("/api/notifications/read",
+                                 json={"id": уведомление.id})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        self.assertEqual(1, ответ.json()["messages"])
+
+    def test_своё_сообщение_себе_не_считается(self):
+        talk = self.завести("admin", "engineer")
+        self.repos.talks.add_message(talk, self.кто("admin"), "Моё")
+        self.assertEqual(0, self.колокольчик()["messages"])
+
+    def test_своё_не_считается_даже_в_обход_отправки(self):
+        """Правило записано в самом счёте, а не только в порядке записи.
+
+        Обычно своё сообщение не считается потому, что отправка сразу
+        двигает отметку прочтения автора. Но это бухгалтерия, и она может
+        не сработать: сообщение заведено другим путём, отметка не сдвинута.
+        Счёт обязан устоять и тогда — иначе человек увидит число от
+        собственных слов и не сможет его снять ничем, кроме как открыв
+        беседу, где читать нечего.
+        """
+        talk = self.завести("admin", "engineer")
+        self.repos.db.execute(
+            "INSERT INTO talk_messages(talk_id, user_id, text, created_at) "
+            "VALUES(?,?,?,datetime('now'))",
+            (talk, self.кто("admin"), "Своё, мимо отправки"))
+        self.assertEqual(0, self.repos.talks.unread_total(self.кто("admin")))
+        self.assertEqual(1, self.repos.talks.unread_total(self.кто("engineer")))
+
+    def test_служебная_запись_без_автора_не_считается(self):
+        talk = self.завести("admin", "engineer")
+        self.repos.talks.add_message(talk, None, "Беседа создана")
+        self.assertEqual(0, self.колокольчик()["messages"])
+
+    def test_открытая_беседа_снимает_своё(self):
+        talk = self.завести("admin", "engineer")
+        self.repos.talks.add_message(talk, self.кто("engineer"), "Посмотрите")
+        self.client.get(f"/api/talks/{talk}")
+        self.assertEqual(0, self.колокольчик()["messages"])
 
 
 if __name__ == "__main__":
