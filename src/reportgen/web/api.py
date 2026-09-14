@@ -3549,8 +3549,38 @@ def change_password(request: Request, response: Response) -> Dict[str, Any]:
 
 @router.get("/stats")
 def stats(request: Request) -> Dict[str, Any]:
-    require_user(request)
+    """Метрики отдела — только администратору.
+
+    По распоряжению начальника отдела: «метрики доступны только админу».
+    Прежде их видел любой вошедший, а это сводка по работе отдела целиком —
+    сколько писем, чьи отчёты правят и насколько сильно.
+    """
+    require_admin(request)
     return _service(request).stats()
+
+
+@router.get("/stats/questions")
+def stats_questions(request: Request, limit: int = 200,
+                    query: str = "") -> Dict[str, Any]:
+    """О чём спрашивают помощника — тело вопроса и кто его задал.
+
+    Заведено по распоряжению начальника отдела: «сделай, чтобы админ мог
+    видеть тело запроса пользователей в метриках». Здесь видно то, ради чего
+    это и заводилось: на каких вопросах помощник работает вхолостую — нашёл
+    мало, сослался ни на что.
+
+    Просмотр пишется в журнал действий. Начальник смотрит переписку
+    подчинённых с помощником — это его право, но не тайна: в системе, где
+    записано, кто открывал письмо и правил библиотеку, этот просмотр
+    записан ровно так же.
+    """
+    user = require_admin(request)
+    items = _repos(request).chats.questions(
+        limit=max(1, min(int(limit), 1000)), query=query)
+    _repos(request).audit.log(
+        "stats.questions", user=user, object_type="chat",
+        details={"limit": int(limit), "query": query, "shown": len(items)})
+    return {"items": items}
 
 
 @router.get("/audit")

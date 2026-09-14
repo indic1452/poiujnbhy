@@ -208,8 +208,13 @@ class AnswerTests(AssistantTestCase):
 
         self.reports.llm = Spy()
         self.assistant.ask(self.ivanov, chat.id, "Что с этим обращением?")
-        self.assertIn("КОНТЕКСТ ОБРАЩЕНИЯ", prompts[0])
-        self.assertIn("SUP-2024-118", prompts[0])
+        # Обращений к модели на один вопрос бывает несколько: поиск по
+        # названию, выписки, сам ответ. Берём то, в котором она отвечает, —
+        # первое попавшееся тут брать нельзя.
+        ответный = [prompt for prompt in prompts if "### ЗАДАНИЕ" in prompt]
+        self.assertTrue(ответный, f"промпта ответа нет: {prompts}")
+        self.assertIn("КОНТЕКСТ ОБРАЩЕНИЯ", ответный[0])
+        self.assertIn("SUP-2024-118", ответный[0])
 
 
 class WindowCeilingTests(AssistantTestCase):

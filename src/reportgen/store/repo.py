@@ -2146,12 +2146,67 @@ class ChatRepo:
             (user_id, int(archived)),
         ) or 0)
 
-    def stats(self) -> Dict[str, int]:
-        """Обезличенная статистика: сколько разговоров и сообщений всего.
+    def questions(self, *, limit: int = 200, query: str = ""
+                  ) -> List[Dict[str, Any]]:
+        """Вопросы к помощнику с именами авторов — ДЛЯ АДМИНИСТРАТОРА.
 
-        Содержимое чужих чатов недоступно никому, но объём использования
-        помощника администратору видеть полезно.
+        Заведено по прямому распоряжению начальника отдела: «сделай, чтобы
+        админ мог видеть тело запроса пользователей в метриках». Это его
+        решение и его система; дело кода — выполнить его честно и не сделать
+        из этого тихого канала наблюдения. Поэтому: маршрут закрыт
+        администратором, а каждый просмотр пишется в журнал действий — там
+        же, где видно, кто открывал письма и правил библиотеку.
+
+        Отдаётся вопрос, автор, время и счётчики ответа: сколько нашлось,
+        сколько дошло до модели, на сколько она сослалась. По ним и видно
+        то, ради чего это заводилось, — на каких вопросах помощник работает
+        вхолостую.
         """
+        clause = ""
+        params: List[Any] = []
+        сокращённый = str(query or "").strip()
+        if сокращённый:
+            clause = " AND lower(m.content) LIKE ?"
+            params.append(f"%{сокращённый.lower()}%")
+        rows = self.db.query(
+            "SELECT m.id, m.chat_id, m.content, m.created_at, "
+            "       c.title AS chat_title, u.login, u.full_name, "
+            "       (SELECT a.meta_json FROM chat_messages a "
+            "         WHERE a.chat_id = m.chat_id AND a.role = 'assistant' "
+            "           AND a.id > m.id ORDER BY a.id LIMIT 1) AS answer_meta "
+            "  FROM chat_messages m "
+            "  JOIN chats c ON c.id = m.chat_id "
+            "  LEFT JOIN users u ON u.id = c.user_id "
+            f" WHERE m.role = 'user'{clause} "
+            " ORDER BY m.id DESC LIMIT ?",
+            (*params, int(limit)),
+        )
+        items: List[Dict[str, Any]] = []
+        for row in rows:
+            try:
+                meta = json.loads(row["answer_meta"] or "{}")
+            except (TypeError, ValueError):
+                meta = {}
+            items.append({
+                "id": int(row["id"]),
+                "chat_id": int(row["chat_id"]),
+                "chat_title": row["chat_title"] or "",
+                "login": row["login"] or "",
+                "full_name": row["full_name"] or "",
+                "question": row["content"] or "",
+                "created_at": row["created_at"],
+                # Ответа может не быть: вопрос задан, модель не ответила.
+                "answered": bool(meta),
+                "found": int(meta.get("found") or 0),
+                "shown": int(meta.get("shown") or 0),
+                "digested": int(meta.get("digested") or 0),
+                "cited": int(meta.get("cited") or 0),
+                "documents": int(meta.get("documents") or 0),
+            })
+        return items
+
+    def stats(self) -> Dict[str, int]:
+        """Обезличенная статистика: сколько разговоров и сообщений всего."""
         return {
             "chats": int(self.db.scalar("SELECT count(*) FROM chats") or 0),
             "messages": int(self.db.scalar("SELECT count(*) FROM chat_messages") or 0),

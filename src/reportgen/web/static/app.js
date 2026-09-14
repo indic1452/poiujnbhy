@@ -1020,7 +1020,10 @@
         { group: 'know', route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
         { group: 'dept', route: 'talks', href: '#/talks', title: 'Сообщения', icon: 'talks', count: 'talks' },
         { group: 'dept', route: 'users', href: '#/users', title: 'Военнослужащие', icon: 'users', adminOnly: true },
-        { group: 'dept', route: 'stats', href: '#/stats', title: 'Метрики', icon: 'stats' },
+        // Метрики — сводка по работе отдела целиком: сколько писем, чьи
+        // отчёты правят и насколько сильно, о чём спрашивают помощника.
+        // Распоряжение начальника отдела: только администратору.
+        { group: 'dept', route: 'stats', href: '#/stats', title: 'Метрики', icon: 'stats', adminOnly: true },
     ];
 
     //: Подписи групп. Порядок здесь и есть порядок в меню.
@@ -8739,11 +8742,102 @@
             cards, editsCard, libCard,
         ]);
 
+        // О чём спрашивают помощника. Распоряжение начальника отдела:
+        // «сделай, чтобы админ мог видеть тело запроса пользователей».
+        page.appendChild(questionsCard());
+
         // Журнал — не управление отделом, а протокол работы самой системы:
         // кто что открывал, менял и удалял, включая действия начальства.
         // Права администратора есть и у начальника группы, а читать журнал
         // должен тот, кто за систему отвечает.
         if (isOwner()) page.appendChild(await auditCard());
+    }
+
+    /** «О чём спрашивают помощника»: тело вопроса, автор, что нашлось.
+     *
+     * Не ради любопытства, а ради работы: в этой таблице сразу видно
+     * вопросы, на которых помощник сработал вхолостую — нашёл мало, дошло
+     * до модели ещё меньше, сослался ни на что. Такой вопрос и есть повод
+     * пополнить словарь терминов или проверить, чем нарезана библиотека.
+     *
+     * Просмотр пишется в журнал действий: начальник смотрит переписку
+     * подчинённых с помощником — это его право, но не тайна. */
+    function questionsCard() {
+        const box = h('div', { class: 'card card-pad', style: { marginTop: '14px' } });
+        const content = h('div', {});
+        const search = h('input', {
+            class: 'input', type: 'search', placeholder: 'Искать по тексту вопроса',
+            style: { maxWidth: '260px' },
+            oninput: () => { clearTimeout(search._t); search._t = setTimeout(load, 300); },
+        });
+        const limitSelect = h('select', { onchange: () => load() },
+            ['50', '200', '500'].map((value) =>
+                h('option', { value: value, selected: value === '200' },
+                    'последние ' + value)));
+
+        append(box, [
+            h('div', { class: 'card-title' }, 'О чём спрашивают помощника',
+                h('span', { style: { flex: '1' } }),
+                search, limitSelect,
+                h('button', { class: 'btn btn--sm', onclick: () => load() }, 'Обновить')),
+            h('div', { class: 'small muted', style: { marginBottom: '8px' } },
+                'Видно только администратору. Открытие этой таблицы '
+                + 'записывается в журнал действий.'),
+            content,
+        ]);
+        load();
+        return box;
+
+        async function load() {
+            clear(content);
+            content.appendChild(loadingBox('Читаем вопросы…'));
+            try {
+                const data = await api.get('/api/stats/questions?limit='
+                    + encodeURIComponent(limitSelect.value)
+                    + '&query=' + encodeURIComponent(search.value.trim()));
+                const items = data.items || [];
+                clear(content);
+                if (!items.length) {
+                    content.appendChild(emptyBox('Вопросов нет',
+                        search.value.trim()
+                            ? 'По этому слову ничего не нашлось.'
+                            : 'Помощнику ещё не задавали вопросов.'));
+                    return;
+                }
+                const body = h('tbody', {});
+                items.forEach((item) => {
+                    // Вхолостую — это когда ответ не оперся ни на что.
+                    // Подсвечиваем: ради этих строк таблица и заведена.
+                    const вхолостую = item.answered && !item.cited;
+                    body.appendChild(h('tr', { class: вхолостую ? 'row--warn' : '' },
+                        h('td', { class: 'small muted nowrap' }, fmtDateTime(item.created_at)),
+                        h('td', { class: 'small nowrap' },
+                            item.full_name || item.login || '—'),
+                        h('td', {}, h('div', { class: 'q-body' }, item.question)),
+                        h('td', { class: 'small nowrap' },
+                            !item.answered
+                                ? h('span', { class: 'muted' }, 'без ответа')
+                                : h('span', {
+                                    class: вхолостую ? 'badge badge--warn' : 'muted',
+                                    title: 'нашлось фрагментов: ' + item.found
+                                        + ' · модель видела: ' + item.shown
+                                        + (item.digested ? ' + ' + item.digested + ' выписками' : '')
+                                        + ' · в документах: ' + item.documents,
+                                }, вхолостую
+                                    ? 'ни на что не сослался'
+                                    : 'нашлось ' + item.found + ', процитировано ' + item.cited))));
+                });
+                content.appendChild(h('div', { class: 'table-scroll' },
+                    h('table', { class: 'grid' },
+                        h('thead', {}, h('tr', {},
+                            h('th', {}, 'Когда'), h('th', {}, 'Кто'),
+                            h('th', {}, 'Вопрос'), h('th', {}, 'Что нашлось'))),
+                        body)));
+            } catch (error) {
+                clear(content);
+                content.appendChild(h('div', { class: 'muted small' }, errorText(error)));
+            }
+        }
     }
 
     function statCard(value, label, sub) {
