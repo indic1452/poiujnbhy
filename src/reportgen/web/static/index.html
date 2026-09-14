@@ -6,8 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <meta name="referrer" content="same-origin">
-    <title>2 специальный отдел</title>
-    <link rel="icon" type="image/png" href="/static/emblem.png">
+    <title>Рабочее место</title>
+    <!-- Значка нет намеренно: распоряжение начальника отдела — убрать знак
+         отовсюду. Ставить вместо него другую картинку значило бы сделать
+         новый знак; браузер обойдётся своим. -->
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 
@@ -15,18 +18,13 @@
     <!-- Боковое меню. Разделов шесть, вертикальный список читается быстрее
          горизонтальной ленты и не отнимает высоту у таблиц. -->
     <aside class="side" id="side">
-        <!-- Название отдела в 208 px одной строкой не помещается и наезжало
-             на заголовок страницы. Ставим в две: сокращение, которое в отделе
-             и так у всех на слуху, и под ним полное название. -->
+        <!-- Название в 208 px одной строкой не помещается и наезжало на
+             заголовок страницы. Ставим в две: сокращение и под ним полное.
+             Оба берутся из настроек brand_short и brand_name. -->
         <a class="side-brand" href="#/board" data-route="board">
-            <!-- Тот же знак, что и в углу шапки: один файл на все места,
-                 иначе в двух окнах оказались бы два разных отдела. -->
-            <img class="mark" src="/static/emblem-small.png"
-                 srcset="/static/emblem-small.png 1x, /static/emblem.png 2x"
-                 alt="" width="96" height="96" draggable="false">
             <span class="side-brand-text">
-                <b id="brand-short">2СО</b>
-                <span id="brand-name">2 специальный отдел</span>
+                <b id="brand-short">РМ</b>
+                <span id="brand-name">Рабочее место</span>
             </span>
         </a>
 
@@ -83,20 +81,6 @@
                     </span>
                 </a>
                 <button class="btn btn--sm" id="logout-btn" hidden>Выйти</button>
-                <!-- Эмблема отдела: настоящий знак файлом. В шапке стоит
-                     заранее уменьшенный emblem-small.png: браузер сжимает
-                     256 px до 34 хуже, чем это делает хороший фильтр при
-                     сборке. На экранах с двойной плотностью подставится
-                     полный файл. Ведёт в сводку — знак организации всегда
-                     ведёт домой. -->
-                <span class="topbar-sep" aria-hidden="true"></span>
-                <a class="emblem" id="emblem" href="#/board" data-route="board"
-                       title="2 специальный отдел — в сводку"
-                       aria-label="Эмблема 2 специального отдела, переход в сводку">
-                    <img class="emblem-img" src="/static/emblem-small.png"
-                         srcset="/static/emblem-small.png 1x, /static/emblem.png 2x"
-                         alt="" width="96" height="96" draggable="false">
-                </a>
             </div>
         </header>
 

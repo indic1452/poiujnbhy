@@ -5712,93 +5712,68 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("CASE_BY_FLOW", self.js)
         self.assertIn("Это состояние письмо получает от проверки отчёта", self.js)
 
-    def test_the_department_emblem_lives_in_the_corner_of_the_header(self):
-        """Начальник отдела просил знак отдела в углу шапки.
+    def test_no_emblem_anywhere(self):
+        """Знака у приложения нет — и не должно появиться обратно.
 
-        Проверяем не красоту — её видно глазом, — а то, что знак на месте,
-        стоит правее карточки пользователя, ведёт в сводку и откликается
-        на наведение.
+        Распоряжение начальника отдела: «убери логотип полностью отовсюду
+        удали». Прежде знак стоял файлом в четырёх местах: в углу шапки, в
+        шапке бокового меню, на карточке входа и значком вкладки. Теперь
+        правило обратное, и держать его должен тест: картинка, поставленная
+        «вместо» убранного знака, — это новый знак, а не его отсутствие.
         """
-        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
-            encoding="utf-8")
-
-        head = self.html[self.html.index('class="topbar-right"'):
-                         self.html.index("</header>")]
-        self.assertIn('class="emblem"', head)
-        self.assertLess(head.index("user-chip"), head.index('class="emblem"'),
-                        "эмблема оказалась левее карточки пользователя")
-        self.assertIn('href="#/board"', head[head.index('class="emblem"'):])
-
-        # Отзывается на наведение и на нажатие, и это состояние, а не движение.
-        self.assertIn(".emblem:hover .emblem-img", css)
-        self.assertIn(".emblem--held", css)
-
-    def test_the_emblem_is_the_department_sign_itself(self):
-        """Знак — присланный оригинал файлом, а не перерисовка.
-
-        Перерисовка вектором с каждым заходом была ближе к образцу, но
-        оригиналом так и не стала. Проверяем, что в обоих окнах стоит один
-        и тот же файл и что от перерисовки не осталось ни следа.
-        """
-        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
-            encoding="utf-8")
         static = ROOT / "src" / "reportgen" / "web" / "static"
+        css = (static / "styles.css").read_text(encoding="utf-8")
 
         for name in ("emblem.png", "emblem-small.png"):
             with self.subTest(file=name):
-                self.assertTrue((static / name).is_file(), f"нет файла {name}")
-                self.assertGreater((static / name).stat().st_size, 2000,
-                                   f"{name} подозрительно пуст")
+                self.assertFalse((static / name).exists(),
+                                 f"файл знака вернулся: {name}")
 
         for name, text in (("index.html", self.html), ("login.html", self.login)):
             with self.subTest(file=name):
-                self.assertIn('class="emblem-img"', text)
-                self.assertIn("/static/emblem", text)
-                # Ни одного пути от прежней перерисовки.
-                for gone in ("em-frame", "em-star", "em-merid", "em-arrow", "emblem-svg"):
-                    self.assertNotIn(gone, text, f"в {name} остался {gone} от перерисовки")
+                self.assertNotIn("emblem", text, f"в {name} остался знак")
+                self.assertNotIn("/static/emblem", text)
+                # Ни одной картинки, кроме фона окна входа: он не знак, а
+                # фотография, и отдел про него не говорил.
+                для_проверки = [строка for строка in text.splitlines()
+                                if "<img" in строка and "sky-photo" not in строка]
+                self.assertEqual([], для_проверки,
+                                 f"в {name} осталась картинка: {для_проверки}")
 
-        for gone in ("em-frame", "em-star", "em-merid", "emblem-turn", "em-fine"):
-            self.assertNotIn(gone, css, f"в стилях остался {gone} от перерисовки")
+        # В стилях от знака остаётся только объяснение, почему его нет.
+        правила = [строка for строка in css.splitlines()
+                   if "emblem" in строка and not строка.lstrip().startswith(("/*", "*", "//"))
+                   and "static/emblem" not in строка]
+        self.assertEqual([], правила, f"в стилях остались правила знака: {правила}")
 
-    def test_the_emblem_never_moves(self):
-        """У снимка вращать нечего, и он не дёргается.
+        # И в коде: обработчик нажатия на знак больше не нужен.
+        self.assertNotIn("wakeEmblem", self.js)
+        self.assertNotIn("emblem--held", self.js)
 
-        Прежний знак был набором путей, и глобус в нём крутился. Сейчас это
-        фотография: любое движение здесь — либо подделка вращения, либо
-        рывок. Проверяем, что ни анимации, ни смены габарита у знака нет.
+    def test_the_application_is_named_neutrally(self):
+        """«Назови в целом приложение нейтрально».
+
+        Название по умолчанию не должно сообщать, в какой организации
+        система стоит. Своё ставится настройкой brand_name — проверяем, что
+        оно из настроек и берётся, а не зашито в разметку намертво.
         """
-        css = (ROOT / "src" / "reportgen" / "web" / "static" / "styles.css").read_text(
-            encoding="utf-8")
-        block = css[css.index("--- эмблема отдела ---"):
-                    css.index("--- личный кабинет ---")]
-        for moving in ("animation", "scale(", "translate("):
-            self.assertNotIn(moving, block, f"знак снова двигается: {moving}")
-        self.assertNotIn("updatePlaybackRate", self.js)
+        from reportgen.config import Settings as _S
 
-    def test_the_small_emblem_is_scaled_before_shipping(self):
-        """В шапке стоит заранее уменьшенный файл.
+        по_умолчанию = _S()
+        for поле in (по_умолчанию.brand_name, по_умолчанию.brand_short):
+            with self.subTest(поле=поле):
+                self.assertNotIn("специальн", поле.lower())
+                self.assertNotIn("2со", поле.lower())
 
-        Браузер сжимает 256 px до 34 хуже, чем это делает хороший фильтр при
-        сборке; на экранах с двойной плотностью подставляется полный файл.
-        """
-        static = ROOT / "src" / "reportgen" / "web" / "static"
-        from PIL import Image
+        for name, text in (("index.html", self.html), ("login.html", self.login)):
+            with self.subTest(file=name):
+                self.assertIn(по_умолчанию.brand_name, text)
+                self.assertNotIn("специальн", text.lower())
 
-        with Image.open(static / "emblem-small.png") as small:
-            with Image.open(static / "emblem.png") as full:
-                self.assertLess(small.size[0], full.size[0],
-                                "мелкий файл не мельче полного")
-                self.assertGreaterEqual(small.size[0], 68,
-                                        "мелкого файла не хватит на 34 px при двойной плотности")
-
-        head = self.html[self.html.index('class="topbar-right"'):
-                         self.html.index("</header>")]
-        mark = head[head.index('class="emblem"'):]
-        self.assertIn("/static/emblem-small.png", mark)
-        self.assertIn("/static/emblem.png 2x", mark)
-        # На карточке входа знак крупный — там мелкий файл был бы мылом.
-        self.assertNotIn("emblem-small", self.login)
+        # Разметка — только заготовка: настоящее название приходит из
+        # настроек и подставляется на месте.
+        self.assertIn('id="brand-name"', self.html)
+        self.assertIn("brandName", self.js)
 
     def test_nobody_is_asked_to_edit_json_anywhere(self):
         """Начальник отдела сказал прямо: правку JSON убрать.
@@ -6010,15 +5985,29 @@ class InterfaceCopyTests(unittest.TestCase):
                                  f"{name} тянет что-то снаружи")
 
     def test_the_department_is_named_everywhere_the_same(self):
-        # Название отдела стоит в трёх местах и должно совпадать.
+        """Заготовка в разметке обязана совпадать с настройкой.
+
+        Название стоит в трёх местах. Разойдутся — и до того, как придёт
+        ответ сервера, человек увидит одно название, а после — другое.
+        Какое именно оно — проверяет test_the_application_is_named_neutrally.
+        """
+        import re as _re
+
         from reportgen.config import Settings
 
         settings = Settings()
-        self.assertEqual("2 специальный отдел", settings.brand_name)
-        self.assertEqual("2СО", settings.brand_short)
         self.assertIn(settings.brand_name, self.login)
-        self.assertIn(settings.brand_name, self.html)
-        self.assertIn(settings.brand_short, self.html)
+        # Сверяем именно ЗАГОТОВКИ, а не наличие слова где-нибудь в файле:
+        # полное название стоит ещё и в <title>, и проверка «есть в файле»
+        # пропускала расхождение в самой заготовке.
+        for опознаватель, ждём in (("brand-name", settings.brand_name),
+                                   ("brand-short", settings.brand_short)):
+            with self.subTest(узел=опознаватель):
+                найдено = _re.search(
+                    r'id="' + опознаватель + r'"[^>]*>([^<]*)<', self.html)
+                self.assertIsNotNone(найдено,
+                                     f"в разметке нет узла {опознаватель}")
+                self.assertEqual(ждём, найдено.group(1).strip())
 
     def test_letter_states_in_the_interface_match_the_server(self):
         """Состояние, которого нет в словаре интерфейса, ломает карточку.

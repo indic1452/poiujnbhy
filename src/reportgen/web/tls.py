@@ -233,7 +233,7 @@ def _issue_server(folder: Path, brand: str, hosts: List[str],
     log.info("выписан свой сертификат на %s", ", ".join(hosts))
 
 
-def ensure_certificate(data_dir: Path, brand: str = "2 специальный отдел",
+def ensure_certificate(data_dir: Path, brand: str = "Рабочее место",
                        hosts: "List[str] | None" = None,
                        extra_hosts: "List[str] | None" = None,
                        renew: bool = False) -> "Tuple[Path, Path]":
@@ -343,7 +343,7 @@ def main(argv: "List[str] | None" = None) -> int:
         prog="python -m reportgen.web.tls",
         description="Свой сертификат для работы по https")
     parser.add_argument("--data-dir", required=True, help="каталог данных")
-    parser.add_argument("--brand", default="2 специальный отдел")
+    parser.add_argument("--brand", default="Рабочее место")
     parser.add_argument("--host", action="append", default=[],
                         help="дополнительное имя или адрес (можно несколько)")
     parser.add_argument("--renew", action="store_true",

@@ -1172,35 +1172,15 @@
         badge.title = late ? 'из них просрочено: ' + late : '';
     }
 
-    /* Эмблема отдела: настоящий знак файлом, отклик — состояние, а не
-       движение. Наведение и нажатие делает CSS. Здесь только одна вещь,
-       которой CSS не умеет: одинаковое поведение при нажатии для мыши,
-       касания и клавиатуры. Не выполнится — знак всё равно откликается на
-       наведение и остаётся ссылкой на сводку. */
-
-    function wakeEmblem() {
-        const mark = $('#emblem');
-        if (!mark || mark.dataset.ready) return;
-        mark.dataset.ready = '1';
-
-        const hold = () => mark.classList.add('emblem--held');
-        const release = () => mark.classList.remove('emblem--held');
-
-        mark.addEventListener('pointerleave', release);
-        mark.addEventListener('pointerdown', hold);
-        mark.addEventListener('pointerup', release);
-        mark.addEventListener('pointercancel', release);
-        mark.addEventListener('keydown', (event) => {
-            if (event.key === ' ' || event.key === 'Enter') hold();
-        });
-        mark.addEventListener('keyup', release);
-        mark.addEventListener('blur', release);
-    }
-
-    /** Название отдела. Оно одно на всю систему и живёт в настройках. */
+    /** Название приложения. Оно одно на всю систему и живёт в настройках.
+     *
+     * Распоряжение начальника отдела: назвать приложение нейтрально и убрать
+     * знак отовсюду. Название по умолчанию ничего не сообщает об
+     * организации; своё ставится настройкой brand_name без правки кода.
+     */
     function brandName() {
         const brand = (state.config && state.config.brand) || {};
-        return brand.name || '2 специальный отдел';
+        return brand.name || 'Рабочее место';
     }
 
     // =====================================================================
@@ -1310,7 +1290,8 @@
 
        Что работает всегда, при любом браузере и любом адресе, — счётчик в
        заголовке вкладки: свёрнутое окно в панели задач само показывает
-       «(3) 2СО», и это видно, не разворачивая. */
+       «(3) РМ» — сокращённое название из настроек с числом непрочитанного
+       впереди, и это видно, не разворачивая. */
     function deskAllowed() {
         // Решает НЕ наличие window.Notification, а защищённость страницы, и
         // это не придирка. Firefox по http объект Notification прячет, а
@@ -1390,7 +1371,7 @@
     /** Короткое название отдела для заголовка вкладки и уведомлений. */
     function brandShort() {
         const brand = (state.config && state.config.brand) || {};
-        return String(brand.short || brand.name || '2СО');
+        return String(brand.short || brand.name || 'РМ');
     }
 
     /* Счётчик непрочитанного в заголовке вкладки. Свёрнутое окно показывает
@@ -2309,7 +2290,6 @@
         }
 
         buildNav();
-        wakeEmblem();
         // Уведомления гостю не приходят: писем, отчётов и вызовов в кабинет
         // у него нет. Колокол без содержимого — обещание, которое не
         // выполняется.
@@ -11098,9 +11078,9 @@
             const roleSelect = h('select', {}, allowed.map((item) => h('option', {
                 value: item.id, selected: item.id === 'engineer',
             }, item.title)));
-            // Отдел у всех один — 2СО, и спрашивать его у каждого незачем.
-            // Здесь только штатная принадлежность: человек работает в отделе,
-            // а по штату может стоять в другом подразделении.
+            // Отдел у всех один и тот же, и спрашивать его у каждого
+            // незачем. Здесь только штатная принадлежность: человек работает
+            // здесь, а по штату может стоять в другом подразделении.
             const department = h('input', {
                 type: 'text', placeholder: 'если по штату в другом подразделении',
             });
