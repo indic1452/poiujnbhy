@@ -303,6 +303,55 @@ class ЛишнегоНеПритягиваем(Свод):
         finally:
             # Библиотека общая на весь класс — возвращаем как было.
             self.repos.documents.delete("lib/vedomost")
+
+    def test_сверка_комплектности_тоже_не_обещает_снятого(self):
+        """Тот же обман отпечатка, но на втором заходе к модели.
+
+        Заходов, опознающих документ по названию, два: «в каких стандартах
+        это описано» и «чего не хватает в собранном». Проверка «а есть ли он
+        на полке» нужна обоим — закрыть один и оставить другой значит
+        починить половину.
+        """
+        self.разобрать("что такое сверхцикл")          # строим кэш описи
+        снимаем = self.repos.documents.by_doc_id("standards/T-REC-G.704")
+        длина = len(снимаем.title)
+        with self.repos.db.transaction() as connection:
+            connection.execute("DELETE FROM documents WHERE id = ?",
+                               (снимаем.id,))
+        замена = "Ведомость эксплуатационных измерений тракта"
+        документ = self.repos.documents.upsert(
+            "lib/vedomost-2", "standards", замена.ljust(длина, "."),
+            "/lib/vedomost-2.pdf", "sha-vedomost2", meta={}, domain="other")
+        self.repos.chunks.replace_for_document(документ, [Chunk(
+            chunk_id=f"lib/vedomost-2#{n}", doc_id="lib/vedomost-2",
+            doc_type="standards", title_path=[замена],
+            text="Ведомость измерений. " * 20, meta={}) for n in range(3)])
+
+        class ПроситСнятое(StubLLM):
+            def complete(self, system, user, **kwargs):
+                if system.startswith("Ты сверяешь КОМПЛЕКТНОСТЬ"):
+                    return "G.704"
+                return "нет"
+
+        прежняя = self.reports.llm
+        self.reports.llm = ПроситСнятое()
+        try:
+            self.assertEqual(
+                "standards/T-REC-G.704",
+                self.assistant._resolve_document("G.704"),
+                "образец подобран неудачно: кэш описи обновился")
+            профиль = self.assistant._profile(
+                self.assistant.create_chat(self.user))
+            hits, _ = self.assistant._collect(
+                self.assistant.create_chat(self.user), "что такое сверхцикл",
+                [], профиль["top_k"], attachments=[], rounds=1)
+            добор, след = self.assistant._чего_не_хватает(
+                hits, "что такое сверхцикл", известные=[])
+            self.assertEqual([], добор, "подложен снятый с полки документ")
+            self.assertEqual([], след, f"след обещает снятое: {след}")
+        finally:
+            self.reports.llm = прежняя
+            self.repos.documents.delete("lib/vedomost-2")
             вернуть = self.repos.documents.upsert(
                 "standards/T-REC-G.704", "standards", снимаем.title,
                 снимаем.source_path, снимаем.sha256, meta={}, domain="other")

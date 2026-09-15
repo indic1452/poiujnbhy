@@ -15,10 +15,21 @@
 модели спрашивают, в каких стандартах это описано, сверяют с описью и
 подкладывают найденное. Это и есть «сразу всё проанализировать».
 
-ПОТОМ — сеть: если ответ всё-таки назвал документ, который лежит на полке и
-прочитан не был, это не ответ, а заявка на материал. Заявку исполняют:
-подкладывают названное и пишут ответ заново. Один раз — иначе во втором
-ответе модель назовёт третий документ, и так до вечера.
+ПОТОМ — сверка комплектности, тоже до ответа: модели показывают список уже
+добытого и спрашивают, чего не хватает. Отличие от захода по названию в
+том, ЧТО она видит: тот спрашивает вслепую по одному вопросу, а этот — по
+собранному материалу.
+
+Раньше второй заход стоял ПОСЛЕ ответа: готовый текст проверяли на
+упоминание непрочитанного тома и, если находили, ответ стирали и писали
+заново по дополненному материалу. Отдел: «почему она старый ответ затёрла
+и начала новый писать, но уже по другим документам, не пойму, первый уже
+лучше был».
+
+И был прав. Дозаказанное вставало в начало подборки, а бюджет окна
+расходуется по порядку — выдача поиска, на которой стоял первый ответ, до
+промпта не доходила. Теперь ряды материала сливаются вперемежку, недостающее
+выясняется до письма, а ответ пишется один раз.
 
 И третье: «добавь, чтобы был виден процесс — что делает в данный момент
 модель, в очереди ответа или что». Сбор материала идёт минуты, и всё это
@@ -127,164 +138,324 @@ class МодельНазываетНужноеСама(Библиотека):
         self.assertTrue([с for с in след if "по названию" in с], след)
 
 
-class ЗаявкуНаМатериалИсполняют(Библиотека):
-    """Заход промахнулся, а ответ назвал документ — дочитываем сами."""
+class СверкаКомплектностиДоОтвета(Библиотека):
+    """Заход по названию промахнулся — ловит сверка перед письмом.
+
+    Прежде этот случай ловили ПОСЛЕ ответа: готовый текст проверяли на
+    упоминание непрочитанного тома, и если оно находилось — ответ стирали и
+    писали заново. Отдел: «почему она старый ответ затёрла и начала новый
+    писать, но уже по другим документам, не пойму, первый уже лучше был».
+    """
 
     def setUp(self):
         super().setUp()
         заходы = self.заходы = []
+        спрошено = self.спрошено = []
 
         class Забывчивая(StubLLM):
-            """Обозначений заранее не назовёт, а в ответе — назовёт."""
+            """Вслепую обозначений не назовёт, а по списку добытого — назовёт."""
 
             def complete(self, system, user, **kwargs):
                 if system.startswith("Ты называешь ОБОЗНАЧЕНИЯ"):
                     return "нет"
+                if system.startswith("Ты сверяешь КОМПЛЕКТНОСТЬ"):
+                    спрошено.append(user)
+                    return "G.706"
                 if system.startswith(ASSISTANT_SYSTEM_PROMPT[:40]):
                     заходы.append(user)
-                if "T-REC-G.706" in user:
-                    return "Сверхцикл CRC-4 описан так: [S1]."
-                return ("В присланных фрагментах ответа нет. Для проверки "
-                        "цикловой синхронизации нужен стандарт ITU-T G.706.")
+                return "Сверхцикл CRC-4 описан так: [S1]."
 
         self.reports.llm = Забывчивая()
 
-    def test_ответ_переписан_по_настоящему_документу(self):
-        готово = self.assistant.ask(self.user, self.chat.id, ВОПРОС)
-        self.assertEqual(2, len(self.заходы), "перечитывания не было")
-        self.assertIn("Сверхцикл CRC-4", готово["answer"]["content"])
-        self.assertNotIn("нужен стандарт", готово["answer"]["content"],
-                         "черновик по неполному материалу остался в разговоре")
-
-    def test_в_разговоре_один_вопрос_и_один_ответ(self):
-        self.assistant.ask(self.user, self.chat.id, ВОПРОС)
-        сообщения = self.assistant.messages(self.user, self.chat.id)
-        роли = [m.role for m in сообщения]
-        self.assertEqual(["user", "assistant"], роли, роли)
-
-    def test_перечитываем_один_раз(self):
-        """Иначе во втором ответе назовут третий документ, и так до вечера."""
-        class Бесконечная(StubLLM):
-            def complete(self, system, user, **kwargs):
-                if system.startswith("Ты называешь ОБОЗНАЧЕНИЯ"):
-                    return "нет"
-                return "Нужен ещё стандарт ITU-T G.706 и G.703."
-
-        self.reports.llm = Бесконечная()
-        # Не зависает и завершается: важен сам факт возврата.
-        готово = self.assistant.ask(self.user, self.chat.id, ВОПРОС)
-        self.assertTrue(готово["answer"]["content"])
-
-    def test_перечитывание_можно_выключить(self):
-        self.settings.assistant_reread = 0
-        self.assistant.ask(self.user, self.chat.id, ВОПРОС)
-        self.assertEqual(1, len(self.заходы))
-
-    def test_прочитанное_второй_раз_не_перечитываем(self):
-        """Документ уже в материале — второй заход даст то же самое.
-
-        Это была бы не доработка ответа, а вторая попытка наугад: тот же
-        материал, та же модель, лишние минуты ожидания.
-        """
-        class Упрямая(StubLLM):
-            def complete(self, system, user, **kwargs):
-                if system.startswith("Ты называешь ОБОЗНАЧЕНИЯ"):
-                    return "нет"
-                return "Структура цикла описана в ITU-T G.704 [S1]."
-
-        self.reports.llm = Упрямая()
+    def test_недостающее_попало_в_материал_до_ответа(self):
         prepared = self.assistant._prepare(self.user, self.chat.id, ВОПРОС,
                                            top_k=None)
-        self.assertIn("standards/T-REC-G.704",
-                      {i["doc_id"] for i in prepared["sources"]},
-                      "образец подобран неудачно: документ и так не прочитан")
-        self.assertEqual([], self.assistant._to_reread(
-            "Структура цикла описана в ITU-T G.704 [S1].", prepared))
+        self.assertIn("standards/T-REC-G.706",
+                      {item["doc_id"] for item in prepared["sources"]})
 
-    def test_дошедшее_выпиской_перечитываем(self):
-        """Выписка — пересказ на триста слов, а не текст документа.
+    def test_модель_отвечает_один_раз(self):
+        """Ради добора ответ больше не переписывают."""
+        self.assistant.ask(self.user, self.chat.id, ВОПРОС)
+        self.assertEqual(1, len(self.заходы), "модель отвечала дважды")
 
-        Если ответ просит документ, который дошёл до модели ВЫПИСКОЙ,
-        значит пересказа не хватило. Перечитывание кладёт такой документ
-        поимённо, и приходит он фрагментами целиком — ровно то, чего ответу
-        недостало. Считать выписку за прочитанное значит отказывать в
-        единственном, что здесь может помочь.
+    def test_модели_показывают_что_уже_достали(self):
+        """Судить о полноте, не зная собранного, нельзя.
+
+        Именно поэтому пробел и всплывал только в готовом ответе: заход по
+        названию спрашивает вслепую, по одному вопросу.
         """
-        prepared = {
-            "sources": [{"doc_id": "lib/mux", "label": "S1"}],
-            "digest_sources": [{"doc_id": "standards/T-REC-G.704",
-                                "label": "S2"}],
-        }
-        self.assertEqual(
-            ["standards/T-REC-G.704"],
-            self.assistant._to_reread("Нужен стандарт ITU-T G.704.", prepared))
+        self.assistant._prepare(self.user, self.chat.id, ВОПРОС, top_k=None)
+        self.assertTrue(self.спрошено, "сверки комплектности не было")
+        задание = self.спрошено[0]
+        self.assertIn("УЖЕ ДОСТАЛИ С ПОЛКИ", задание)
+        self.assertIn("G.704", задание, "список добытого пуст")
 
-    def test_прочитанное_текстом_не_перечитываем(self):
-        prepared = {
-            "sources": [{"doc_id": "standards/T-REC-G.704", "label": "S1"}],
-            "digest_sources": [],
-        }
-        self.assertEqual(
-            [], self.assistant._to_reread("Нужен стандарт ITU-T G.704.",
-                                          prepared))
+    def test_добор_виден_в_ходе_разбора(self):
+        след = self.assistant._prepare(self.user, self.chat.id, ВОПРОС,
+                                       top_k=None)["trail"]
+        self.assertTrue([с for с in след if "добрал до ответа" in с], след)
 
-    def test_списка_документов_под_ответом_больше_нет(self):
-        """Отдел: «не надо мне документы эти показывать».
+    def test_сверку_можно_выключить(self):
+        self.settings.assistant_gap_pass = 0
+        self.assistant._prepare(self.user, self.chat.id, ВОПРОС, top_k=None)
+        self.assertEqual([], self.спрошено)
 
-        Число осталось в метриках — по нему видно, где помощник работает
-        вхолостую, — но работу инженеру обратно не перекладываем.
+    def test_названного_нет_на_полке_значит_и_не_придёт(self):
+        """Отвечает опись, а не модель: выдуманный номер ничего не добавит."""
+        class Выдумщица(StubLLM):
+            def complete(self, system, user, **kwargs):
+                if system.startswith("Ты называешь ОБОЗНАЧЕНИЯ"):
+                    return "нет"
+                if system.startswith("Ты сверяешь КОМПЛЕКТНОСТЬ"):
+                    return "G.999, RFC 9999"
+                return "Ответ [S1]."
+
+        self.reports.llm = Выдумщица()
+        след = self.assistant._prepare(self.user, self.chat.id, ВОПРОС,
+                                       top_k=None)["trail"]
+        self.assertEqual([], [с for с in след if "добрал до ответа" in с])
+
+    def test_уже_прочитанное_второй_раз_не_подкладываем(self):
+        """Тот же документ в материале дважды — только место занял бы."""
+        class Повторяющая(StubLLM):
+            def complete(self, system, user, **kwargs):
+                if system.startswith("Ты называешь ОБОЗНАЧЕНИЯ"):
+                    return "G.704"
+                if system.startswith("Ты сверяешь КОМПЛЕКТНОСТЬ"):
+                    return "G.704"
+                return "Ответ [S1]."
+
+        self.reports.llm = Повторяющая()
+        prepared = self.assistant._prepare(self.user, self.chat.id, ВОПРОС,
+                                           top_k=None)
+        свои = [item for item in prepared["sources"]
+                if item["doc_id"] == "standards/T-REC-G.704"]
+        метки = {item["label"] for item in свои}
+        self.assertEqual(len(свои), len(метки), "фрагменты задвоились")
+
+    def test_добор_ограничен_настройкой(self):
+        """Иначе модель на каждый вопрос утащит за собой полбиблиотеки.
+
+        Ограничение считается по ДОБРАННОМУ, а не по названному: названного
+        может быть десять, а на полке лежать два.
         """
+        class Щедрая(StubLLM):
+            def complete(self, system, user, **kwargs):
+                if system.startswith("Ты называешь ОБОЗНАЧЕНИЯ"):
+                    return "нет"
+                if system.startswith("Ты сверяешь КОМПЛЕКТНОСТЬ"):
+                    return "G.703, G.706, G.711, G.712, G.713"
+                return "Ответ [S1]."
+
+        self.reports.llm = Щедрая()
+        for обозначение in ("711", "712", "713"):
+            self.положить(f"standards/T-REC-G.{обозначение}",
+                          f"ITU-T Rec. G.{обозначение} Pulse code modulation",
+                          "Pulse code modulation of voice frequencies. ")
+        self.settings.assistant_gap_pass = 2
+        добор, _ = self.assistant._чего_не_хватает(
+            self.assistant._collect(
+                self.chat, ВОПРОС, [], 12, attachments=[], rounds=1)[0],
+            ВОПРОС, известные=[])
+        self.assertEqual(2, len(добор), добор)
+
+    def test_списка_документов_под_ответом_нет(self):
+        """Отдел: «не надо мне документы эти показывать»."""
         готово = self.assistant.ask(self.user, self.chat.id, ВОПРОС)
-        self.assertEqual([], готово["answer"]["meta"]["present"],
-                         "ответу всё ещё не хватает документов после "
-                         "перечитывания")
+        self.assertEqual([], готово["answer"]["meta"]["present"])
 
 
-class ПотокомТожеПеречитываем(Библиотека):
-    """В потоке черновик заменяется, а не дописывается."""
+class НайденноеПоискомНеВытесняется(Библиотека):
+    """Подложенное и найденное сливаются вперемежку, а не встык.
+
+    Вот настоящая причина, по которой второй ответ выходил беднее первого.
+    Дозаказанное вставало В НАЧАЛО подборки, а урезание по окну снимает
+    ХВОСТ, — и выдача поиска вылетала из материала целиком. Окно тут ни при
+    чём: у отдела оно 32768, и библиотеке остаётся 27 000 знаков.
+    """
+
+    def ряд(self, doc_id, сколько):
+        from reportgen.retrieval import Hit
+        куски = [Chunk(chunk_id=f"{doc_id}#{n}", doc_id=doc_id,
+                       doc_type="standards", title_path=[doc_id], text="т",
+                       meta={}) for n in range(сколько)]
+        return [Hit(chunk=кусок, score=0.0) for кусок in куски]
+
+    def test_верх_каждого_ряда_доживает_до_обрезки(self):
+        from reportgen.web.assistant import вперемежку
+
+        подложено = self.ряд("закреплённый", 9)
+        найдено = self.ряд("найденный", 30)
+        слито = вперемежку(подложено, найдено)
+        # Влезает десять фрагментов — ровно тот случай, что у отдела.
+        в_окне = {hit.chunk.doc_id for hit in слито[:10]}
+        self.assertIn("найденный", в_окне,
+                      "выдача поиска вытеснена подложенным целиком")
+        self.assertIn("закреплённый", в_окне)
+
+    def test_ничего_не_теряется(self):
+        from reportgen.web.assistant import вперемежку
+
+        слито = вперемежку(self.ряд("а", 3), self.ряд("б", 5))
+        self.assertEqual(8, len(слито))
+
+    def test_места_проставлены_подряд(self):
+        from reportgen.web.assistant import вперемежку
+
+        слито = вперемежку(self.ряд("а", 2), self.ряд("б", 3))
+        self.assertEqual([1, 2, 3, 4, 5], [hit.rank for hit in слито])
+
+    def test_порядок_внутри_ряда_сохранён(self):
+        from reportgen.web.assistant import вперемежку
+
+        ряд = self.ряд("а", 3)
+        слито = вперемежку(ряд, self.ряд("б", 1))
+        свои = [hit for hit in слито if hit.chunk.doc_id == "а"]
+        self.assertEqual([кусок.chunk.chunk_id for кусок in ряд],
+                         [hit.chunk.chunk_id for hit in свои])
+
+    def test_пустые_ряды_не_мешают(self):
+        from reportgen.web.assistant import вперемежку
+
+        self.assertEqual(3, len(вперемежку([], self.ряд("а", 3), [])))
+        self.assertEqual([], вперемежку([], []))
+
+    # -- то же самое, но на живой сборке материала ------------------------
+    #
+    # Проверять слияние в отдельности мало: оно может быть верным, а сборка
+    # материала — складывать ряды мимо него. Ровно так и было.
+
+    #: Окно, при котором порядок решает исход. Замер на этой библиотеке:
+    #: встык — материал ['G.703', 'G.706'], вперемежку — ['G.703', 'G.704'].
+    #: G.704 здесь единственное, что поиск поднимает сам.
+    ТЕСНОЕ_ОКНО = 5000
+    #: То, что поиск на этом вопросе находит без подсказки модели.
+    НАЙДЕНО_ПОИСКОМ = "standards/T-REC-G.704"
+
+    def подкладывает(self, где, что):
+        """Модель называет документы на указанном заходе, и только на нём."""
+        class Называющая(StubLLM):
+            def complete(self, system, user, **kwargs):
+                if system.startswith("Ты называешь ОБОЗНАЧЕНИЯ"):
+                    return что if где == "название" else "нет"
+                if system.startswith("Ты сверяешь КОМПЛЕКТНОСТЬ"):
+                    return что if где == "сверка" else "нет"
+                return "Ответ [S1]."
+
+        self.reports.llm = Называющая()
+        self.settings.assistant_context_chars = self.ТЕСНОЕ_ОКНО
+
+    def в_материале(self):
+        prepared = self.assistant._prepare(self.user, self.chat.id, ВОПРОС,
+                                           top_k=None)
+        return {item["doc_id"] for item in prepared["sources"]}
+
+    def test_подложенное_по_названию_не_вытесняет_выдачу_поиска(self):
+        """Тот самый случай отдела: материал из одних подложенных томов.
+
+        Урезание по окну — не отсечение хвоста, а набор по порядку: берётся
+        всё, что влезает в бюджет, пока он не кончится. Поэтому место в
+        очереди решает всё, и подложенное, поставленное впереди, съедало
+        бюджет прежде, чем до него доходила выдача поиска.
+        """
+        self.подкладывает("название", "G.703, G.706")
+        документы = self.в_материале()
+        self.assertIn(self.НАЙДЕНО_ПОИСКОМ, документы,
+                      "выдача поиска вытеснена подложенным")
+        self.assertIn("standards/T-REC-G.703", документы,
+                      "подложенное не дошло до материала")
+
+    def test_добор_по_сверке_тоже_не_вытесняет(self):
+        self.подкладывает("сверка", "G.703, G.706")
+        self.assertIn(self.НАЙДЕНО_ПОИСКОМ, self.в_материале(),
+                      "добор по сверке вытеснил выдачу поиска")
+
+    def test_дошедшее_по_ссылкам_не_дописывается_в_хвост(self):
+        """Дописанное в хвост доходит до бюджета последним — то есть никогда.
+
+        Отдел: «помимо словесного описания существует ещё и ссылка в этих
+        документах на G.704, где для каждого описана байтовая структура».
+        Документ по ссылке — не довесок, а половина ответа, и складывать его
+        в конец очереди нельзя.
+
+        Замер на этой выдаче: при окне 10 000 встык G.706 до материала не
+        доходит, вперемежку — доходит.
+        """
+        class Молчит(StubLLM):
+            def complete(self, system, user, **kwargs):
+                if system.startswith("Ты называешь ОБОЗНАЧЕНИЯ"):
+                    return "нет"
+                if system.startswith("Ты сверяешь КОМПЛЕКТНОСТЬ"):
+                    return "нет"
+                return "Ответ [S1]."
+
+        self.reports.llm = Молчит()
+        # Поиск находит G.704 сам, а тот ссылается на G.706, до которого по
+        # словам вопроса поиск не дотягивается.
+        self.положить(
+            "standards/T-REC-G.704",
+            "ITU-T Rec. G.704 Synchronous frame structures 2048 kbit/s",
+            "Time slot 0 carries frame alignment. Time slot 16 signalling. "
+            "CRC-4 is described in ITU-T Rec. G.706. ")
+        # Ещё находки по тем же словам: без них бюджет не кончается и
+        # порядок ничего не решает.
+        for n in range(4):
+            self.положить(f"lib/slots-{n}",
+                          f"Таймслоты и структура цикла, часть {n}",
+                          "Time slot structure. Frame alignment. Позиции и "
+                          "таймслоты уплотнения E1. ")
+        self.settings.assistant_context_chars = 10000
+        prepared = self.assistant._prepare(self.user, self.chat.id, ВОПРОС,
+                                           top_k=None)
+        self.assertTrue([с for с in prepared["trail"] if "по ссылке" in с],
+                        "ссылка не сработала — проверять нечего")
+        self.assertIn("standards/T-REC-G.706",
+                      {item["doc_id"] for item in prepared["sources"]},
+                      "документ по ссылке до бюджета не дошёл")
+
+
+class ВПотокеОтветОдин(Библиотека):
+    """На экране ответ пишется один раз и не затирается.
+
+    Отдел смотрел на это живьём: «почему она старый ответ затёрла и начала
+    новый писать». Теперь стирать нечего — материал добран до письма.
+    """
 
     def setUp(self):
         super().setUp()
-        self.положить(
-            "standards/T-REC-G.706",
-            "ITU-T Rec. G.706 Frame alignment and cyclic redundancy check "
-            "procedures", "Frame alignment procedures. CRC-4 procedure. ")
 
         class Забывчивая(StubLLM):
             def complete(self, system, user, **kwargs):
                 if system.startswith("Ты называешь ОБОЗНАЧЕНИЯ"):
                     return "нет"
-                if "T-REC-G.706" in user:
-                    return "Сверхцикл CRC-4 описан так [S1]."
-                return "Нужен стандарт ITU-T G.706."
+                if system.startswith("Ты сверяешь КОМПЛЕКТНОСТЬ"):
+                    return "G.706"
+                return "Сверхцикл CRC-4 описан так [S1]."
 
         self.reports.llm = Забывчивая()
 
     def события(self):
         return list(self.assistant.ask_stream(self.user, self.chat.id, ВОПРОС))
 
-    def test_черновик_убирается_с_экрана(self):
+    def test_перезапуска_в_потоке_нет(self):
+        виды = [с["type"] for с in self.события()]
+        self.assertNotIn("restart", виды, "ответ всё ещё переписывается")
+
+    def test_написанное_целиком_доходит_до_разговора(self):
         события = self.события()
-        виды = [с["type"] for с in события]
-        self.assertIn("restart", виды, "перечитывания в потоке не было")
-        # Всё, что пришло ДО перезапуска, — черновик по неполному
-        # материалу. Инженеру он не нужен, и в ответе его быть не должно.
-        после = виды.index("restart")
-        текст = "".join(с["text"] for с in события[после:]
-                        if с["type"] == "delta")
-        self.assertIn("Сверхцикл CRC-4", текст)
-        self.assertEqual(текст.strip(), события[-1]["answer"]["content"],
-                         "в разговор попал черновик вместе с ответом")
+        текст = "".join(с["text"] for с in события if с["type"] == "delta")
+        self.assertEqual(текст.strip(), события[-1]["answer"]["content"])
 
     def test_вопрос_в_разговоре_один(self):
-        """Перечитывание не должно задваивать сообщение инженера."""
         self.события()
         роли = [m.role for m in self.assistant.messages(self.user, self.chat.id)]
         self.assertEqual(["user", "assistant"], роли, роли)
 
-    def test_перечитывание_названо_в_ходе_работы(self):
+    def test_сверка_названа_в_ходе_работы(self):
         этапы = [с["text"] for с in self.события() if с["type"] == "stage"]
-        self.assertTrue([э for э in этапы if "заново" in э], этапы)
+        self.assertTrue([э for э in этапы if "комплектность" in э], этапы)
+        self.assertEqual([], [э for э in этапы if "заново" in э],
+                         "на экране всё ещё обещают переписать ответ")
 
 
 class ВыбираемДокументАНеПоправкуКНему(Библиотека):
