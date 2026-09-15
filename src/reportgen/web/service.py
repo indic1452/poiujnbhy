@@ -12,7 +12,7 @@ import sqlite3
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence
+from typing import Any, Dict, Iterable, List
 
 from ..config import Settings
 from ..corpus import Chunk
@@ -32,7 +32,7 @@ from ..store.models import Case, Report, ReportSection, User
 from ..store.repo import Repositories
 from .quality import QualityChecker
 from .vectors import VectorIndexer
-from ..verify import summarize, verify_report
+from ..verify import verify_report
 
 #: Предел на замечание проверяющего: это строка «что исправить», а не второй
 #: отчёт. Длиннее — значит, разговор не для карточки письма.

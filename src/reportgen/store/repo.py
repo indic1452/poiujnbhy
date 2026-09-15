@@ -1309,11 +1309,6 @@ class CaseFileRepo:
         return rows_to(CaseFile, self.db.query(
             f"{self._SELECT}{clause} ORDER BY f.stage DESC, f.id", tuple(params)))
 
-    def count_for_case(self, case_ref: int) -> int:
-        row = self.db.query_one(
-            "SELECT count(*) AS n FROM case_files WHERE case_ref = ?", (case_ref,))
-        return int(row["n"]) if row else 0
-
     def delete(self, file_id: int) -> str:
         """Убрать строку. Возвращает путь к файлу — удалять его решает вызвавший."""
         item = self.get(file_id)

@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import List, Sequence
+from typing import Sequence
 
 __all__ = [
     "STEP_KINDS",

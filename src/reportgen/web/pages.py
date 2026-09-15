@@ -24,7 +24,6 @@ import hashlib
 import logging
 import threading
 from pathlib import Path
-from typing import Tuple
 
 __all__ = [
     "RENDERABLE",
@@ -151,10 +150,3 @@ def render_page(path: Path, number: int, cache_root: Path | None = None) -> byte
         except OSError as error:
             log.debug("страница не легла в кэш %s: %s", cached, error)
     return data
-
-
-def preview_pages(path: Path) -> "Tuple[int, bool]":
-    """Число страниц и можно ли вообще показать файл страницами."""
-    if not is_renderable(path.name):
-        return 0, False
-    return page_count(path), True

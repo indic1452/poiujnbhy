@@ -122,13 +122,18 @@ class Settings:
     # Теперь предел не задаётся, а ВЫВОДИТСЯ из окна модели, и считает его
     # assistant._context_chars():
     #
-    #   (llm_context_tokens − assistant_max_tokens − запас на токенизацию)
+    #   (окно модели − assistant_max_tokens − запас на токенизацию)
     #       × assistant_chars_per_token
-    #       − системная инструкция − шаблон промпта
+    #       − системная инструкция − шаблон промпта − задание
     #
-    # На умолчаниях: (32768 − 7000 − 512) × 1,5 − 4315 − 3376 ≈ 30 200 знаков.
-    # Поставите --parallel 2 — уменьшите llm_context_tokens вдвое, и всё
-    # остальное пересчитается само.
+    # На умолчаниях: (32768 − 7000 − 512) × 1,5 − 5750 − 370 − 4534 ≈ 27 200
+    # знаков.
+    #
+    # Окно модели здесь — НЕ llm_context_tokens: помощник спрашивает его у
+    # самого llama-server (GET /props), а настройка остаётся запасным
+    # вариантом на случай, когда сервер про окно не говорит. Поставите
+    # «--parallel 2» — сервер сам сообщит вдвое меньшее пооткошное число, и
+    # всё остальное пересчитается само.
     #
     # И это ещё не всё: собранный промпт меряется целиком ПЕРЕД отправкой
     # (assistant._fit_tokens) и режется, пока не влезет. Вывод по формуле —
@@ -308,7 +313,6 @@ class Settings:
     brand_short: str = "РМ"
     brand_subtitle: str = "Подготовка, учёт и проверка технических отчётов"
     brand_accent: str = "#15507e"
-    brand_logo: Path | None = None
     #: Фон окна входа: свой файл JPG или PNG. Задать можно явно, но обычно
     #: достаточно положить файл рядом с settings.json под именем
     #: login-bg.jpg (или .png) — он подхватится сам.
@@ -349,7 +353,7 @@ class Settings:
                      "templates_dir", "glossary_path", "domains_path", "terms_path",
                      "parts_path",
                      "docx_template",
-                     "brand_logo", "brand_login_image"):
+                     "brand_login_image"):
             value = getattr(self, name)
             if value is not None and not isinstance(value, Path):
                 setattr(self, name, Path(value))
@@ -446,11 +450,6 @@ class Settings:
 
     def to_dict(self) -> Dict[str, Any]:
         return {k: (str(v) if isinstance(v, Path) else v) for k, v in asdict(self).items()}
-
-    def public_dict(self) -> Dict[str, Any]:
-        """Настройки без секретов — их можно отдавать в интерфейс."""
-        hidden = {"llm_api_key", "embed_api_key", "rerank_api_key"}
-        return {k: v for k, v in self.to_dict().items() if k not in hidden}
 
 
 def settings_warnings(settings: "Settings") -> list[str]:

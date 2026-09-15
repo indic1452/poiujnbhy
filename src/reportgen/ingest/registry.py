@@ -24,7 +24,7 @@ import importlib.util
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Callable, Dict, List, Tuple
 
 if TYPE_CHECKING:  # pragma: no cover — только для подсказок типов
     from .convert import ConvertedDocument

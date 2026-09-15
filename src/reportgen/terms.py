@@ -101,11 +101,6 @@ class Term:
     risk: str = "нет"
     note: str = ""
 
-    @property
-    def ambiguous(self) -> bool:
-        """Английское слово частое и в другом смысле («field», «window»)."""
-        return self.risk == "омоним"
-
 
 def default_path() -> Path:
     """Где искать словарь, если путь не задан.

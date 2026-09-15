@@ -4689,11 +4689,6 @@ class PersonCardTests(WebTestCase):
         self.assertEqual(404, self.client.get(f"/api/people/{pending.id}").status_code)
 
 
-def _today_iso() -> str:
-    from datetime import date
-    return date.today().isoformat()
-
-
 class TalkFileTests(WebTestCase):
     """Файлы в переписке: показать картинку, не заводя письма."""
 
@@ -5020,8 +5015,14 @@ class VectorCardTests(unittest.TestCase):
         self.assertIn("}, 'Прочитать каталог') : null)),", self.js)
 
 
-class TalkFileTests(unittest.TestCase):
-    """Вложение в беседе щелчком СКАЧИВАЕТСЯ, а не пытается открыться."""
+class TalkFileDownloadTests(unittest.TestCase):
+    """Вложение в беседе щелчком СКАЧИВАЕТСЯ, а не пытается открыться.
+
+    Имя у класса было то же, что у проверок вложений выше, — и второе
+    объявление затирало первое молча. Семь проверок работы с файлами
+    переписки, включая «чужой не читает ни беседу, ни её файлы», не
+    запускались ни разу.
+    """
 
     def setUp(self):
         static = ROOT / "src" / "reportgen" / "web" / "static"
@@ -5058,6 +5059,48 @@ class TalkFileTests(unittest.TestCase):
                / "styles.css").read_text(encoding="utf-8")
         self.assertIn(".talk-photo img {", css)
         self.assertIn(".photo-view img {", css)
+
+
+class RecentlyOpenedTests(unittest.TestCase):
+    """«Недавнее» в боковом меню: список заполняется, а не только рисуется.
+
+    Раздел был написан целиком — хранение, отрисовка, свои стили, — но
+    `rememberRecent` не вызывали ниоткуда. В браузере не появлялось ни
+    одной записи, и «Недавнее» никогда не показывалось: `renderRecent`
+    читал пустой список и молча уходил.
+    """
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+
+    def вызовы(self):
+        return [line.strip() for line in self.js.splitlines()
+                if "rememberRecent(" in line and "function " not in line]
+
+    def test_the_list_is_filled_from_somewhere(self):
+        self.assertTrue(self.вызовы(), "«Недавнее» никто не заполняет")
+
+    def test_a_case_lands_in_the_list(self):
+        """Письмо — то, к чему возвращаются чаще всего."""
+        экран = self.js.split("async function renderCase(view, caseRef)", 1)[1]
+        экран = экран.split("\n    }", 1)[0]
+        self.assertIn("rememberRecent('#/case/'", экран)
+        # Номер входящего в подписи: письма различают по нему, а не по теме.
+        self.assertIn("wb.case.case_id", экран)
+
+    def test_a_conversation_lands_in_the_list(self):
+        экран = self.js.split("async function renderChat(view, chatId)", 1)[1]
+        экран = экран.split("\n    }", 1)[0]
+        self.assertIn("rememberRecent('#/chat/'", экран)
+
+    def test_the_addresses_are_the_ones_the_router_understands(self):
+        """Ссылка «Недавнего» ведёт по разобранному адресу, а не в сводку."""
+        разбор = self.js.split("function parseHash(hash)", 1)[1].split("\n    }", 1)[0]
+        for вызов in self.вызовы():
+            раздел = вызов.split("'#/", 1)[1].split("/", 1)[0]
+            with self.subTest(раздел=раздел):
+                self.assertIn(f"parts[0] === '{раздел}'", разбор)
 
 
 class LastSeenTests(WebTestCase):
@@ -6129,8 +6172,19 @@ class ResponsiveLayoutTests(unittest.TestCase):
         self.assertNotIn(".page > * {", self.css)
 
     def test_readable_measure_is_opt_in(self):
-        # Мера строки осталась, но только там, где сплошной текст.
-        self.assertIn("max-width: 78ch", self.block(".prose"))
+        """Мера строки — только там, где её просят, и никогда по умолчанию.
+
+        Правило `.prose { max-width: 78ch }` отсюда убрано: его не навешивал
+        ни один экран, и мера жила в файле без дела. Живая опора та же —
+        `.page--narrow`: её ставит личный кабинет, где форма без меры
+        растягивается на весь монитор.
+        """
+        self.assertNotIn(".prose", self.css,
+                         "правило вернулось, но применять его снова некому")
+        self.assertIn("max-width: 1120px", self.block(".page--narrow"))
+        self.assertIn("page--narrow", (
+            ROOT / "src" / "reportgen" / "web" / "static" / "app.js"
+        ).read_text(encoding="utf-8"), "меру больше никто не просит")
 
     def test_topbar_can_shrink(self):
         self.assertIn("min-width: 0", self.block(".topbar"))
@@ -6233,16 +6287,19 @@ class ОформлениеИДвижение(unittest.TestCase):
         прилегание — что за открытием условия идёт именно объявление
         появления раздела.
         """
-        for кадры in ("view-enter", "tile-enter", "bar-grow"):
+        # Якорем служит .tiles > .tile: это движение навешивается селектором
+        # и потому живо. Прежним якорем был .view-enter — класс, который не
+        # навешивался ничем, и правило простояло без дела; убрано.
+        for кадры in ("tile-enter", "bar-grow"):
             with self.subTest(кадры=кадры):
                 self.assertIn("@keyframes " + кадры, self.css)
         self.assertIn(
-            "@media (prefers-reduced-motion: no-preference) {\n    .view-enter {",
+            "@media (prefers-reduced-motion: no-preference) {\n    .tiles > .tile {",
             self.css, "движение вынесено из-под просьбы не двигать лишнего")
         # И сами кадры описаны внутри того же условия, а не снаружи.
         участок = self.css.split(
-            "@media (prefers-reduced-motion: no-preference) {\n    .view-enter {")[1]
-        for кадры in ("view-enter", "tile-enter", "bar-grow"):
+            "@media (prefers-reduced-motion: no-preference) {\n    .tiles > .tile {")[1]
+        for кадры in ("tile-enter", "bar-grow"):
             with self.subTest(кадры=кадры):
                 self.assertIn("@keyframes " + кадры, участок.split("\n}\n")[0]
                               + участок[:4000])

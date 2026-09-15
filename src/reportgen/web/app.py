@@ -299,13 +299,6 @@ def _install_static(app: FastAPI) -> None:
     def api_docs() -> Any:
         return HTMLResponse(API_DOCS_PAGE)
 
-    @app.get("/brand/logo", include_in_schema=False)
-    def brand_logo() -> Any:
-        logo = app.state.settings.brand_logo
-        if logo and Path(logo).is_file():
-            return FileResponse(logo)
-        return JSONResponse({"error": "логотип не задан"}, status_code=404)
-
     @app.get("/brand/login-image", include_in_schema=False)
     def brand_login_image() -> Any:
         """Фон окна входа: свой файл, а если его нет — кадр из поставки.

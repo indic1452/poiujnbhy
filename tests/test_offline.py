@@ -288,7 +288,7 @@ class BrandingTests(unittest.TestCase):
 
     def test_every_branding_key_is_explained(self):
         for key in ("brand_name", "brand_short", "brand_subtitle",
-                    "brand_accent", "brand_logo"):
+                    "brand_accent"):
             with self.subTest(key=key):
                 self.assertIn(f"`{key}`", self.docs)
 

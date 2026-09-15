@@ -116,10 +116,6 @@ def _utf8(text: str) -> bytes:
     return _tlv(0x0C, text.encode("utf-8"))
 
 
-def _ia5(text: str) -> bytes:
-    return _tlv(0x16, text.encode("ascii"))
-
-
 def _bits(body: bytes, unused: int = 0) -> bytes:
     return _tlv(0x03, bytes([unused]) + body)
 

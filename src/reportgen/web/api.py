@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable
 
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from ..packages import pip_hint
 from ..corpus import DOC_TYPES
@@ -42,12 +42,10 @@ from ..store.models import (
     PERSON_FILE_KINDS,
     PERSON_FILE_SINGLE,
     PERSON_FILE_TITLES,
-    NOTICE_KINDS,
     PRESENT_KINDS,
     REVIEW_ROLES,
     ROLE_NOTES,
     ROLE_RANK,
-    ROLE_TITLES,
     ROLES,
     Case,
     Report,
@@ -424,7 +422,6 @@ def config(request: Request) -> Dict[str, Any]:
             "short": settings.brand_short,
             "subtitle": settings.brand_subtitle,
             "accent": settings.brand_accent,
-            "logo": "/brand/logo" if _logo_path(settings) else None,
         },
         "search": {
             "dense": settings.embed_enabled,
@@ -432,13 +429,6 @@ def config(request: Request) -> Dict[str, Any]:
         },
         "domains": _domains(request).to_dict(),
     }
-
-
-def _logo_path(settings) -> Path | None:
-    logo = settings.brand_logo
-    if logo and Path(logo).is_file():
-        return Path(logo)
-    return None
 
 
 # ----------------------------------------------------------------- кейсы ---
@@ -690,6 +680,7 @@ def attach_to_case(request: Request, case_ref: int,
     name = _safe_name(Path(file.filename or "файл").name)
     if not name:
         raise ServiceError("некорректное имя файла", 400)
+    _refuse_dangerous(name)
 
     settings.ensure_dirs()
     target_dir = Path(settings.data_dir) / "case-files" / str(case.id)
@@ -2022,6 +2013,31 @@ ATTACH_IMAGE = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
 ATTACH_DUMP = {".txt", ".log", ".csv", ".json", ".xml", ".pcap", ".pcapng", ".cap", ".har"}
 
 
+#: Что в отделе не пересылают файлом. Список ЗАПРЕТИТЕЛЬНЫЙ, а не
+#: разрешительный, и это осознанно: инженеры шлют друг другу схемы .vsd,
+#: чертежи .dwg, архивы и выгрузки приборов десятка форматов, и перечислить
+#: всё годное заранее нельзя — разрешительный список просто мешал бы работе.
+#: А вот запрещать надо ровно одно: исполняемое.
+#:
+#: Машины в отделе под Windows, и файл, пришедший «от своего» в переписке,
+#: открывают не глядя. Проверка была задумана и описана тестом, но тест не
+#: запускался: его класс затёрло вторым объявлением с тем же именем, и семь
+#: проверок работы с файлами переписки молчали.
+ОПАСНЫЕ_РАСШИРЕНИЯ = frozenset((
+    ".exe", ".com", ".scr", ".pif", ".msi", ".msp", ".cpl", ".dll", ".sys",
+    ".bat", ".cmd", ".ps1", ".psm1", ".vbs", ".vbe", ".js", ".jse", ".wsf",
+    ".wsh", ".hta", ".jar", ".reg", ".lnk", ".inf", ".chm", ".application",
+))
+
+
+def _refuse_dangerous(name: str) -> None:
+    """Исполняемое файлом не пересылают — ни в беседе, ни в письме."""
+    if Path(name).suffix.lower() in ОПАСНЫЕ_РАСШИРЕНИЯ:
+        raise ServiceError(
+            "исполняемые файлы в отделе не пересылают: пришлите документ, "
+            "снимок экрана или выгрузку прибора", 400)
+
+
 def _attachment_kind(suffix: str) -> str:
     if suffix in ATTACH_IMAGE:
         return "image"
@@ -2046,6 +2062,7 @@ def attach_to_chat(request: Request, chat_id: int, file: UploadFile = File(...))
     name = _safe_name(Path(file.filename or "файл").name)
     if not name:
         raise ServiceError("некорректное имя файла", 400)
+    _refuse_dangerous(name)
 
     settings.ensure_dirs()
     target = Path(settings.upload_dir) / f"chat-{chat_id}-{secrets.token_hex(6)}-{name}"
@@ -3038,6 +3055,7 @@ def attach_to_talk(request: Request, talk_id: int,
     name = _safe_name(Path(file.filename or "файл").name)
     if not name:
         raise ServiceError("некорректное имя файла", 400)
+    _refuse_dangerous(name)
 
     settings.ensure_dirs()
     target_dir = Path(settings.data_dir) / "talk-files" / str(talk_id)
@@ -3860,7 +3878,3 @@ def _ingest_to_dict(result: Any) -> Dict[str, Any]:
     keys = ("added", "updated", "skipped", "failed", "chunks", "documents",
             "warnings", "failures", "notes")
     return {key: getattr(result, key, None) for key in keys if hasattr(result, key)}
-
-
-def json_error(status: int, message: str) -> JSONResponse:
-    return JSONResponse(status_code=status, content={"error": message})

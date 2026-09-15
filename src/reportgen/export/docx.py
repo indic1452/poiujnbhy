@@ -615,9 +615,6 @@ class _Writer:
                 return name
         return None
 
-    def _paragraph(self, *names: str) -> Any:
-        return self.document.add_paragraph(style=self._style(*names))
-
     def _runs(self, paragraph: Any, text: str, *, bold: bool = False) -> None:
         """Добавляет в абзац текст с разобранным начертанием.
 

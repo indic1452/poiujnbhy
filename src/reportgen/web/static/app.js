@@ -3317,37 +3317,6 @@
 
     // -- модальное окно «Новое письмо» ---------------------------------------
 
-    function factsSkeleton(outline, caseId) {
-        const keys = [];
-        (outline ? outline.sections : []).forEach((section) => {
-            (section.required_facts || []).forEach((key) => {
-                if (keys.indexOf(key) === -1) keys.push(key);
-            });
-        });
-        const measurements = {};
-        keys.forEach((key) => {
-            measurements[key] = { title: key, value: '', unit: '', method: '', uncertainty: '' };
-        });
-        const skeleton = {
-            case_id: caseId || '',
-            report_type: outline ? outline.report_type : '',
-            group_no: '',
-            request: '',
-            equipment: {},
-            keywords: [],
-            artifacts: [],
-            measurements: measurements,
-            findings: [],
-            timeline: [],
-        };
-        // Список описи заводим сразу пустым: иначе панель данных не покажет
-        // раздел «Регистрации», и человек не догадается, что его надо завести.
-        const repeating = (outline ? outline.sections : [])
-            .find((section) => section.repeat_over);
-        if (repeating) skeleton[repeating.repeat_over] = [];
-        return skeleton;
-    }
-
     function openNewCaseDialog() {
         const lines = state.config.line_types || [];
 
@@ -4300,6 +4269,10 @@
         clear(view);
         view.appendChild(buildWorkbench());
         refreshAll();
+        // Куда человек заходил — то и в «Недавнем»: письмо узнают по входящему
+        // номеру, а без номера — по теме.
+        rememberRecent('#/case/' + encodeURIComponent(caseRef),
+            [wb.case.case_id, wb.case.title].filter(Boolean).join(' — ') || 'Письмо');
         // Список бумаг и примечания догружаем после отрисовки: письмо должно
         // открыться сразу, а не ждать ещё двух запросов.
         loadCaseFiles();
@@ -9383,6 +9356,8 @@
                 throw error;
             }
             rememberChat(chat.current.id);
+            rememberRecent('#/chat/' + encodeURIComponent(chat.current.id),
+                chat.current.title || 'Разговор с помощником');
             // Открыли архивный разговор из адресной строки — показываем архив,
             // иначе его не видно в списке слева.
             if (chat.current.archived !== chat.archived) {

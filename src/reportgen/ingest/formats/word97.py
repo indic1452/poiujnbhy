@@ -284,14 +284,6 @@ def convert_doc_native(path: Path) -> ConvertedDocument:
     return result
 
 
-def _is_ole(path: Path) -> bool:
-    try:
-        with Path(path).open("rb") as handle:
-            return handle.read(8) == OLE_MAGIC
-    except OSError:
-        return False
-
-
 # ------------------------------------------------------------- регистрация ----
 
 # Приоритет ниже, чем у пути через LibreOffice: тот сохраняет заголовки и

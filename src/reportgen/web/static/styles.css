@@ -254,7 +254,6 @@ a:hover {
 
 /* Числа в интерфейсе почти всегда стоят столбиком — выравниваем по разрядам. */
 table,
-.metric-value,
 .num,
 time {
     font-variant-numeric: tabular-nums;
@@ -262,8 +261,7 @@ time {
 
 /* Служебная подпись над полем или группой: маленькая, спокойная, без капса.
    Капслок с разрядкой читается хуже и выдаёт шаблон. */
-.label,
-.field-label {
+.label {
     font-size: var(--fs-sm);
     font-weight: 500;
     color: var(--muted);
@@ -884,13 +882,8 @@ label.inline {
     padding: 22px 24px 48px;
 }
 
-/* Ширину содержимого больше ничто не режет: раздел занимает монитор целиком.
-   Читаемую меру строки держат только блоки со сплошным текстом — им хватает
-   класса .prose, остальное (таблицы, карточки, сетки) тянется во всю ширину. */
-.prose {
-    max-width: 78ch;
-}
-
+/* Ширину содержимого больше ничто не режет: раздел занимает монитор
+   целиком — таблицы, карточки и сетки тянутся во всю ширину. */
 /* Полоса под шапкой: слева одной строкой — чем занят раздел, справа кнопки.
    Заголовок раздела не повторяем: он уже стоит в шапке и виден всегда, а на
    странице отнимал 50 px высоты у таблицы. */
@@ -1012,7 +1005,6 @@ table.grid th {
     background: var(--panel);
     z-index: 1;
 }
-
 
 
 table.grid td {
@@ -1540,74 +1532,6 @@ input.is-bad {
     min-height: 46px;
 }
 
-.sev-critical {
-    color: var(--danger);
-    font-weight: 700;
-}
-
-.sev-high {
-    color: var(--danger);
-}
-
-.sev-medium {
-    color: var(--warn);
-}
-
-.sev-low,
-.sev-info {
-    color: var(--muted);
-}
-
-/* Исходные данные письма под раскрывашкой. При регистрации письма JSON не
-   нужен: письмо только спустили, числа появятся, когда инженер сядет за
-   отчёт. Поле остаётся на месте для тех, у кого пакет уже собран приборным
-   разбором, но глаза оно больше никому не мозолит. */
-.facts-advanced {
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
-}
-
-.facts-advanced > summary {
-    cursor: pointer;
-    font-size: 12.5px;
-    color: var(--muted);
-    list-style-position: outside;
-}
-
-.facts-advanced > summary:hover {
-    color: var(--text);
-}
-
-.facts-advanced .json-editor {
-    min-height: 260px;
-}
-
-.json-editor {
-    width: 100%;
-    min-height: 420px;
-    font-family: var(--font-mono);
-    font-size: 12.5px;
-    line-height: 1.5;
-    resize: vertical;
-    white-space: pre;
-    overflow-wrap: normal;
-    overflow-x: auto;
-}
-
-.json-status {
-    margin-top: 6px;
-    font-size: 12px;
-    min-height: 18px;
-}
-
-.json-status.is-bad {
-    color: var(--danger);
-}
-
-.json-status.is-ok {
-    color: var(--ok);
-}
-
 .kv {
     display: grid;
     grid-template-columns: minmax(90px, 34%) 1fr;
@@ -1978,18 +1902,6 @@ input.is-bad {
     border-radius: 50%;
     margin-top: 6px;
     background: var(--muted);
-}
-
-.issue-item.level-error .dot {
-    background: var(--danger);
-}
-
-.issue-item.level-warning .dot {
-    background: var(--warn);
-}
-
-.issue-item.level-info .dot {
-    background: var(--info);
 }
 
 .issue-item .body {
@@ -2477,15 +2389,6 @@ input.is-bad {
     animation: spin .8s linear infinite;
 }
 
-.spinner--sm {
-    width: 14px;
-    height: 14px;
-    border-width: 2px;
-    margin: 0;
-    display: inline-block;
-    vertical-align: -2px;
-}
-
 @keyframes spin {
     to {
         transform: rotate(360deg);
@@ -2900,21 +2803,6 @@ tr.row--warn > td {
 
 /* Документы, названные в ответе и лежащие в библиотеке. Врезка спокойная:
    это не ошибка инженера, а поправка к ответу — и сразу проход к документу. */
-.msg-note--present {
-    color: var(--text);
-    background: var(--accent-soft);
-    border-left: 2px solid var(--accent);
-}
-
-.msg-note--present ul {
-    margin: 4px 0 0;
-    padding-left: 18px;
-}
-
-.msg-note--present li {
-    margin-top: 2px;
-}
-
 /* Пояснение к перечёркнутым ссылкам. Отдел спросил прямо: «почему некоторые
    ссылки перечёркнуты». Подсказка по наведению отвечает только тому, кто
    догадался навести, — а здесь речь о неподтверждённом утверждении. */
@@ -3221,16 +3109,6 @@ table.md-table th {
 .src-meta a:hover {
     color: var(--accent);
     border-bottom-color: var(--accent);
-}
-
-/* Волосяная линейка перед эмблемой: отделяет знак отдела от карточки
-   пользователя, не отнимая места. */
-.topbar-sep {
-    width: 1px;
-    height: 22px;
-    flex: 0 0 auto;
-    background: var(--border);
-    margin: 0 2px 0 4px;
 }
 
 /* Список писем. Столбцов одиннадцать: линия связи и номер средства стоят
@@ -5265,11 +5143,6 @@ table.grid tr.is-focus td {
     margin-bottom: 12px;
 }
 
-.doc-verdict--ok {
-    color: var(--ok);
-    background: var(--ok-soft);
-}
-
 .doc-verdict--warn {
     color: var(--warn);
     background: var(--warn-soft);
@@ -6007,18 +5880,6 @@ select.status-off {
     color: inherit;
 }
 
-.tile--bad {
-    border-left-color: var(--danger);
-}
-
-.tile--warn {
-    border-left-color: var(--warn);
-}
-
-.tile--ok {
-    border-left-color: var(--ok);
-}
-
 .tile-value {
     font-family: var(--font-display);
     font-size: 30px;
@@ -6026,10 +5887,6 @@ select.status-off {
     line-height: 1.1;
     letter-spacing: -.02em;
     font-variant-numeric: tabular-nums;
-}
-
-.tile--bad .tile-value {
-    color: var(--danger);
 }
 
 .tile-label {
@@ -6217,11 +6074,6 @@ select.status-off {
     font-size: var(--fs-xs);
     font-weight: 600;
     vertical-align: 1px;
-}
-
-.tag--high {
-    background: var(--warn-soft);
-    color: var(--warn);
 }
 
 .tag--urgent {
@@ -6723,24 +6575,6 @@ body.app {
     transform: translateY(0);
 }
 
-.tile--bad {
-    background-image: linear-gradient(180deg,
-            color-mix(in srgb, var(--panel) 92%, var(--danger)) 0%,
-            var(--panel) 62%);
-}
-
-.tile--warn {
-    background-image: linear-gradient(180deg,
-            color-mix(in srgb, var(--panel) 92%, var(--warn)) 0%,
-            var(--panel) 62%);
-}
-
-.tile--ok {
-    background-image: linear-gradient(180deg,
-            color-mix(in srgb, var(--panel) 94%, var(--ok)) 0%,
-            var(--panel) 62%);
-}
-
 .tile-value {
     font-size: clamp(28px, 2.6vw, 38px);
     font-weight: 650;
@@ -6770,10 +6604,6 @@ body.app {
     background: var(--accent);
     transform-origin: left center;
 }
-
-.tile--bad .tile-meter > i { background: var(--danger); }
-.tile--warn .tile-meter > i { background: var(--warn); }
-.tile--ok .tile-meter > i { background: var(--ok); }
 
 /* --------------------------------------------------------------- полосы --- */
 
@@ -6811,14 +6641,14 @@ body.app {
 
 /* -------------------------------------------------------------- движение --- */
 
-/* Движение служит одному: показать, откуда что взялось. Появление раздела —
-   короткий подъём, строки списка вступают по очереди с шагом в кадр, полосы
-   растут от начала отсчёта. Всё это выключается одной настройкой системы. */
-@media (prefers-reduced-motion: no-preference) {
-    .view-enter {
-        animation: view-enter var(--dur-3) var(--ease) both;
-    }
+/* Движение служит одному: показать, откуда что взялось. Плитки сводки
+   вступают по очереди с шагом в кадр, полосы растут от начала отсчёта. Всё
+   это выключается одной настройкой системы.
 
+   Появления раздела здесь больше нет: класс .view-enter не навешивался
+   ничем — в отличие от соседних двух, которые цепляются селекторами, — и
+   правило простояло без дела. */
+@media (prefers-reduced-motion: no-preference) {
     .tiles > .tile {
         animation: tile-enter var(--dur-3) var(--ease) both;
         animation-delay: calc(var(--i, 0) * 40ms);
@@ -6829,11 +6659,6 @@ body.app {
     .tile-meter > i {
         animation: bar-grow var(--dur-3) var(--ease) both;
         animation-delay: calc(var(--i, 0) * 40ms + 60ms);
-    }
-
-    @keyframes view-enter {
-        from { opacity: 0; transform: translateY(6px); }
-        to   { opacity: 1; transform: none; }
     }
 
     @keyframes tile-enter {

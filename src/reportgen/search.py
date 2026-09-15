@@ -36,7 +36,6 @@ from typing import (
     List,
     Protocol,
     Sequence,
-    Tuple,
 )
 
 from .corpus import Chunk

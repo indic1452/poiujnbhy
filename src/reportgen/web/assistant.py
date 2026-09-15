@@ -20,7 +20,6 @@ from ..prompts import (
     ASSISTANT_SYSTEM_PROMPT,
     ASSISTANT_TASK,
     ASSISTANT_TASK_SHORT,
-    ASSISTANT_TITLE_PROMPT,
     NAME_PROMPT,
     NAME_SYSTEM_PROMPT,
     RESEARCH_PROMPT,
@@ -2146,7 +2145,6 @@ class AssistantService:
         искомое = name_parts(wanted)
         if not искомое:
             return ""
-        по_началу = ""
         # Подходящих бывает несколько: у одной рекомендации в библиотеке
         # лежат сама она, поправка к ней и исправление. Берём ЛУЧШЕГО, а не
         # первого попавшегося — см. _вес_совпадения.

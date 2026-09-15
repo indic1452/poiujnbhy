@@ -703,12 +703,6 @@ class Database:
             self._shared = None
             self._local = threading.local()
 
-    # -- сервис -------------------------------------------------------------
-
-    def vacuum(self) -> None:
-        with self._lock:
-            self.connection.execute("VACUUM")
-
     def counts(self) -> dict[str, int]:
         # Всё, что копится от работы отдела. Проверка здоровья отвечает на
         # вопрос «что в базе есть», и таблица, которой в этом списке нет,
