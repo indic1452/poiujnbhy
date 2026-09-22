@@ -245,6 +245,70 @@ class ОбозначенийВВопросеНет(Свод):
         ])
 
 
+class НазванныйДокументОткрываетсяНаНужномМесте(Свод):
+    """Подложить документ мало — надо подложить нужное его место.
+
+    Документы МСЭ начинаются одинаково: Contents, Scope, Definitions, и
+    только потом суть. Внутри названного документа искал голый BM25 по
+    СЫРОМУ вопросу, а вопрос русский против английского текста: общих слов
+    нет, выдача пуста, и срабатывал запасной путь — первые три фрагмента по
+    порядку. То есть обложка.
+
+    Отсюда и жалоба отдела: G.703 подложен, лежит в источниках, а структуры
+    цикла в ответе нет. Её и не могло быть — модели прислали титульный лист.
+    """
+
+    #: Настоящий порядок разделов рекомендации МСЭ.
+    СТРАНИЦЫ = (
+        ("Contents", "Table of contents. Summary. History. Foreword."),
+        ("Scope", "This Recommendation specifies the scope of application."),
+        ("Definitions", "Definitions and abbreviations used herein."),
+        ("5. Basic frame structure",
+         "Basic frame of 256 bits. Time slot 0 carries the frame alignment "
+         "signal. Time slot 16 carries channel associated signalling."),
+    )
+
+    def setUp(self):
+        документ = self.repos.documents.upsert(
+            "standards/T-REC-G.999", "standards",
+            "ITU-T Rec. G.999 Synchronous frame structures", "/g999.pdf",
+            "sha-g999", meta={}, domain="other")
+        self.repos.chunks.replace_for_document(документ, [Chunk(
+            chunk_id=f"standards/T-REC-G.999#{n}", doc_id="standards/T-REC-G.999",
+            doc_type="standards", title_path=["ITU-T Rec. G.999", заголовок],
+            text=текст * 8, meta={})
+            for n, (заголовок, текст) in enumerate(self.СТРАНИЦЫ)])
+        self.addCleanup(self.repos.documents.delete, "standards/T-REC-G.999")
+
+    def подложено(self, вопрос):
+        куски = self.assistant._pin_mentioned([], ["standards/T-REC-G.999"], вопрос)
+        return [hit.chunk.breadcrumbs for hit in куски]
+
+    def test_подкладывается_суть_а_не_обложка(self):
+        """Русский вопрос по английскому документу — через словарь отдела."""
+        крошки = self.подложено("какая структура цикла и канальные интервалы")
+        self.assertTrue(крошки, "не подложено ничего")
+        self.assertTrue(any("frame structure" in к.lower() for к in крошки),
+                        f"вместо сути подложено: {крошки}")
+        self.assertFalse(any("contents" in к.lower() for к in крошки),
+                         f"подложена обложка: {крошки}")
+
+    def test_словарь_и_правда_расширяет_вопрос(self):
+        """Если словарь перестанет знать эту пару, тест выше станет случайным."""
+        расширенный = self.assistant._расширить("структура цикла")
+        self.assertIn("frame structure", расширенный.lower())
+
+    def test_без_попаданий_берём_заголовок_а_не_начало(self):
+        """Запасной путь тоже не должен упираться в титульный лист."""
+        крошки = self.подложено("definitions")
+        self.assertTrue(any("definitions" in к.lower() for к in крошки),
+                        f"запасной путь дал: {крошки}")
+
+    def test_совсем_чужой_вопрос_всё_равно_что_то_подкладывает(self):
+        """Подложить нечего — хуже, чем подложить начало документа."""
+        self.assertTrue(self.подложено("погода на выходных"))
+
+
 class ЛишнегоНеПритягиваем(Свод):
     """Цена ошибки несимметрична и в другую сторону тоже."""
 

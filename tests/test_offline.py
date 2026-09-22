@@ -449,6 +449,32 @@ class WindowsScriptTests(unittest.TestCase):
         self.assertIn("$Context", text)
         self.assertIn("'-Context'", text)
 
+    def test_start_all_checks_the_semantic_search_came_up(self):
+        """Интерфейс открывался и тогда, когда поиск поднялся наполовину.
+
+        Оператор видел работающее окно и считал, что комплекс поднялся. Поиск
+        при этом шёл одним лексическим каналом — вдвое хуже, — а единственный
+        след уезжал вверх по консоли. Библиотека наполовину английская,
+        вопросы русские: без смыслового канала промахи идут потоком.
+        """
+        text = read(ROOT / "scripts" / "windows" / "start-all.ps1")
+        self.assertIn("127.0.0.1:8001/health", text, "эмбеддер не проверяется")
+        self.assertIn("127.0.0.1:8002/health", text, "реранкер не проверяется")
+        self.assertIn("СМЫСЛОВОЙ ПОИСК РАБОТАЕТ НЕ ПОЛНОСТЬЮ", text)
+
+    def test_start_all_never_asks_a_question(self):
+        """При автозапуске вопрос подвесил бы задачу планировщика навсегда."""
+        text = read(ROOT / "scripts" / "windows" / "start-all.ps1")
+        for команда in ("Read-Host", "$host.UI.PromptForChoice", "Pause"):
+            with self.subTest(команда=команда):
+                self.assertNotIn(команда, text)
+
+    def test_start_all_says_where_to_look(self):
+        """Отказ без адреса причины — это не сообщение, а огорчение."""
+        text = read(ROOT / "scripts" / "windows" / "start-all.ps1")
+        self.assertIn("embed.log", text)
+        self.assertIn("rerank.log", text)
+
     def test_advice_switches_exist_in_scripts(self):
         doc = read(ROOT / "docs" / "11-windows.md")
         scripts = "\n".join(read(path) for path in (ROOT / "scripts" / "windows").glob("*.ps1"))
