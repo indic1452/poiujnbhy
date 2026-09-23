@@ -185,7 +185,11 @@ class РежимДоходитДоОтвета(AssistantTestCase):
         # ровно столько же.
         источник = (_bootstrap.ROOT / "src" / "reportgen" / "web" / "assistant.py"
                     ).read_text(encoding="utf-8")
-        self.assertIn('max_tokens=prepared["profile"]["max_tokens"]', источник)
+        # Потолок готовит _prepare: в глубоком режиме — весь остаток окна,
+        # в быстром — ровно профиль (поведение проверяет test_tochnyi_schet,
+        # «в быстром режиме потолок не растёт»). Выдача берёт его оттуда.
+        self.assertIn('max_tokens=prepared.get("answer_tokens") '
+                      'or prepared["profile"]["max_tokens"]', источник)
         # И нигде в выдаче ответа не осталось прежнего общего потолка.
         выдача = источник[источник.index("    def ask("):источник.index("    # -- внутреннее")]
         self.assertNotIn("max_tokens=self._max_tokens()", выдача)

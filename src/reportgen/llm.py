@@ -149,6 +149,16 @@ class OpenAICompatLLM:
     timeout: float = 600.0
     retries: int = 3
     seed: int | None = 0
+    #: Отбор токенов при генерации. Пусто — как решит сервер.
+    #:
+    #: Qwen3 в режиме размышления просит ровно этого: «Temperature=0.6,
+    #: TopP=0.95, TopK=20, MinP=0; НЕ используйте жадный выбор — он ведёт к
+    #: ухудшению качества и бесконечным повторам» (карточка модели). Повтор
+    #: в размышлении съедает весь потолок, и ответ не начинается вовсе.
+    #: При температуре 0 (служебные заходы) эти поля ни на что не влияют.
+    top_k: int | None = None
+    top_p: float | None = None
+    min_p: float | None = None
 
     #: Чем кончилась последняя генерация: «stop» — сама, «length» — упёрлась
     #: в потолок токенов, «размышление» — потолок кончился, пока модель ещё
@@ -205,13 +215,8 @@ class OpenAICompatLLM:
         Ноль — «сервер не сказал»: не llama.cpp, старая сборка, сервер не
         поднят. Тогда работает настройка, как работала раньше.
         """
-        адрес = self.base_url.rstrip("/")
-        # /props лежит В КОРНЕ сервера, а не внутри /v1: базовый адрес в
-        # настройке указывает на /v1, и его надо отрезать.
-        if адрес.endswith("/v1"):
-            адрес = адрес[: -len("/v1")]
         request = urllib.request.Request(
-            url=f"{адрес}/props",
+            url=f"{self._корень()}/props",
             headers={"Authorization": f"Bearer {self.api_key}"},
             method="GET",
         )
@@ -229,6 +234,50 @@ class OpenAICompatLLM:
             if число > 0:
                 return число
         return 0
+
+    def _корень(self) -> str:
+        """Корень сервера: /props и /tokenize лежат НЕ внутри /v1.
+
+        Базовый адрес в настройке указывает на /v1, и его надо отрезать.
+        """
+        адрес = self.base_url.rstrip("/")
+        if адрес.endswith("/v1"):
+            адрес = адрес[: -len("/v1")]
+        return адрес
+
+    def count_tokens(self, text: str, timeout: float = 10.0) -> int:
+        """Сколько токенов займёт текст — со слов самого сервера.
+
+        Бюджет окна прежде считался по оценке «полтора знака на токен». Она
+        заниженная намеренно: ошибка вверх роняет ответ целиком. Но замер
+        настоящим токенизатором Qwen показал цену этой осторожности: на
+        русском тексте выходит 2,0–2,9 знака на токен, на английском
+        стандарте — 2,6–8, и промпт занимал около половины отведённого ему
+        места. Вторая половина окна пустовала, а найденное, которому в ней
+        хватило бы места, уходило в выписки — то есть в пересказ.
+
+        llama-server считает токены сам (``POST /tokenize``) и делает это
+        тем же токенизатором, которым будет читать промпт, — значит, точно.
+        Это миллисекунды, модель при этом не занимается.
+
+        Ноль — «сервер не сказал» (не llama.cpp, старая сборка, сбой сети).
+        Тогда помощник работает по прежней оценке, как и раньше.
+        """
+        данные = json.dumps({"content": text}, ensure_ascii=False).encode("utf-8")
+        request = urllib.request.Request(
+            url=f"{self._корень()}/tokenize",
+            data=данные,
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {self.api_key}"},
+            method="POST",
+        )
+        try:
+            with _http.urlopen(request, timeout=timeout) as response:
+                ответ = json.loads(response.read().decode("utf-8"))
+        except Exception:          # noqa: BLE001 — не сказал, работаем по оценке
+            return 0
+        токены = ответ.get("tokens") if isinstance(ответ, dict) else None
+        return len(токены) if isinstance(токены, list) else 0
 
     def _payload(self, system: str, user: str, max_tokens: int, temperature: float,
                  history: List[Dict[str, str]] | None = None,
@@ -258,6 +307,10 @@ class OpenAICompatLLM:
             # настоящий размер промпта неизвестен: оценка «полтора знака на
             # токен» ничем не проверялась.
             payload["stream_options"] = {"include_usage": True}
+        for имя in ("top_k", "top_p", "min_p"):
+            значение = getattr(self, имя)
+            if значение is not None:
+                payload[имя] = значение
         if self.seed is not None:
             # Воспроизводимость отчёта — инвариант из док. 01, раздел 1.4.
             payload["seed"] = self.seed

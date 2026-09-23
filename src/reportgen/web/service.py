@@ -214,6 +214,9 @@ class ReportService:
                 api_key=self.settings.llm_api_key,
                 timeout=self.settings.llm_timeout,
                 seed=self.settings.llm_seed,
+                top_k=self.settings.llm_top_k,
+                top_p=self.settings.llm_top_p,
+                min_p=self.settings.llm_min_p,
             )
         return self.llm
 
@@ -1155,6 +1158,10 @@ class ReportService:
             "measured": dict(getattr(self, "_последний_замер", {}) or {}),
             "chars_per_token": float(getattr(
                 self.settings, "assistant_chars_per_token", 0) or 1.5),
+            # Считает ли токены сам сервер (POST /tokenize). Да — окно
+            # заполняется до края по точному счёту, и оценка выше не
+            # действует. Нет — работает оценка, с запасом вниз.
+            "counts_exact": помощник._счётчик() is not None,
         }
 
     def _index_version(self) -> str:
