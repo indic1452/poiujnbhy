@@ -1050,6 +1050,19 @@
         plus: '<path d="M9 3.5v11M3.5 9h11"/>',
         search: '<path d="M12.6 12.6 15.5 15.5M8.2 3.4a4.8 4.8 0 1 0 0 9.6 4.8 4.8 0 0 0 0-9.6z"/>',
         clock: '<path d="M9 2.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 9 2.6zM9 5.5V9l2.4 1.6"/>',
+        // Значки смысла для плиток сводки и действий под ответом.
+        alert: '<path d="M9 2.8 16 15H2zM9 7.2v3.6M9 12.9v.1"/>',
+        flame: '<path d="M9 16c-3 0-5-2-5-4.8C4 8 6.6 6.8 7.4 3c2.2 1.3 3.2 3.2 3 5 1-.5 1.6-1.4 1.8-2.4C13.6 7 14 8.6 14 11.2 14 14 12 16 9 16z"/>',
+        send: '<path d="M2.5 9 15.5 3 11 15.5 8.6 10.2zM8.6 10.2l6.9-7.2"/>',
+        check: '<path d="M3.5 9.5 7.2 13 14.5 5"/>',
+        copy: '<path d="M6 6h9v9.5H6zM3 12V2.8h9"/>',
+        print: '<path d="M4.5 7V2.5h9V7M4.5 13H2.5V7h13v6h-2M4.5 10.5h9v5h-9z"/>',
+        table: '<path d="M2.5 3h13v12h-13zM2.5 7h13M2.5 11h13M7 3v12"/>',
+        book: '<path d="M9 4.5C7.5 3.3 5.2 3 2.5 3.2v11C5.2 14 7.5 14.4 9 15.5c1.5-1.1 3.8-1.5 6.5-1.3v-11C12.8 3 10.5 3.3 9 4.5zM9 4.5v11"/>',
+        spark: '<path d="M9 2.5 10.5 7.5 15.5 9 10.5 10.5 9 15.5 7.5 10.5 2.5 9 7.5 7.5z"/>',
+        clip: '<path d="M13 7.3 7.7 12.6a2.6 2.6 0 0 1-3.7-3.7l5.9-5.9a1.8 1.8 0 0 1 2.6 2.6l-5.9 5.9a.9.9 0 0 1-1.3-1.3l5.3-5.3"/>',
+        keys: '<path d="M2 5h14v9H2zM4.5 7.5h1M7 7.5h1M9.5 7.5h1M12 7.5h1.5M4.5 10h1M7 10h1M9.5 10h1M12 10h1.5M6 12h6"/>',
+        refresh: '<path d="M14.5 5.5A6 6 0 0 0 3.2 7.5M3.5 12.5a6 6 0 0 0 11.3-2M14.8 2.8v2.9h-2.9M3.2 15.2v-2.9h2.9"/>',
     };
 
     /** Разделы бокового меню. Порядок — от «что сегодня» к справочникам. */
@@ -2130,7 +2143,8 @@
         const hint = h('div', { class: 'cmd-hint' },
             h('span', {}, h('kbd', {}, '↑'), h('kbd', {}, '↓'), ' выбрать'),
             h('span', {}, h('kbd', {}, 'Enter'), ' открыть'),
-            h('span', {}, h('kbd', {}, 'Esc'), ' закрыть'));
+            h('span', {}, h('kbd', {}, 'Esc'), ' закрыть'),
+            h('span', {}, h('kbd', {}, '?'), ' все клавиши'));
 
         const box = h('div', { class: 'cmd' },
             h('div', { class: 'cmd-field' },
@@ -2296,6 +2310,72 @@
             openPalette();
         });
     }
+
+    /* ----------------------------------------------- шпаргалка клавиш ---
+
+       Сочетаний в системе с десяток, и все они разбросаны по подписям
+       кнопок: Ctrl+S знает тот, кто навёл мышь на «Сохранить». Клавиша «?»
+       собирает их на одном листе — так принято в почте и трекерах, и там
+       её пробуют первой. В поле ввода «?» — просто знак вопроса: вопрос
+       помощнику им и заканчивается. */
+
+    const КЛАВИШИ = [
+        ['Везде', [
+            [['Ctrl', 'K'], 'Поиск по системе: письмо, человек, беседа, раздел'],
+            [['?'], 'Эта шпаргалка'],
+            [['Esc'], 'Закрыть окно, выйти из режима чтения'],
+        ]],
+        ['Помощник', [
+            [['Enter'], 'Отправить вопрос'],
+            [['Shift', 'Enter'], 'Новая строка в вопросе'],
+        ]],
+        ['Отчёт по письму', [
+            [['Ctrl', 'S'], 'Сохранить раздел или данные'],
+            [['Ctrl', 'Enter'], 'Перегенерировать раздел'],
+        ]],
+        ['Беседы', [
+            [['Ctrl', 'Enter'], 'Отправить сообщение'],
+        ]],
+    ];
+
+    /** Набирает ли человек сейчас текст: там «?» — буква, а не команда. */
+    function вводТекста(target) {
+        if (!target || !target.closest) return false;
+        return Boolean(target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]'));
+    }
+
+    function шпаргалкаКлавиш() {
+        if ($('.keys-sheet')) return;
+        const body = h('div', { class: 'keys-sheet' }, КЛАВИШИ.map(([раздел, строки]) =>
+            h('section', { class: 'keys-group' },
+                h('h4', {}, раздел),
+                строки.map(([клавиши, что]) => h('div', { class: 'keys-row' },
+                    h('span', { class: 'keys-combo' }, клавиши.map((клавиша, i) => [
+                        i ? h('span', { class: 'keys-plus' }, '+') : null,
+                        h('kbd', {}, клавиша),
+                    ])),
+                    h('span', { class: 'keys-what' }, что))))));
+        openModal({
+            title: h('div', { class: 'modal-head keys-head' }, icon('keys'), 'Горячие клавиши'),
+            body: body,
+        });
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== '?' || event.ctrlKey || event.metaKey || event.altKey) return;
+        if (!state.user || вводТекста(event.target)) return;
+        if (cmd.open || $('.modal-backdrop')) return;
+        event.preventDefault();
+        шпаргалкаКлавиш();
+    });
+
+    /* Выход из режима чтения. Слушатель общий, как и у «?»: режим живёт на
+       <body>, а не в разделе, и Esc должен снимать его откуда угодно. */
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && document.body.classList.contains('reading')) {
+            режимЧтения(false);
+        }
+    });
 
     function renderChrome() {
         const brand = (state.config && state.config.brand) || null;
@@ -8315,6 +8395,111 @@
 
     const boardState = { days: 30, data: null };
 
+    /** Обрезать текст по слову, с многоточием. */
+    function обрезать(текст, предел) {
+        const t = String(текст || '').replace(/\s+/g, ' ').trim();
+        if (t.length <= предел) return t;
+        const край = t.lastIndexOf(' ', предел);
+        return t.slice(0, край > предел * 0.6 ? край : предел) + '…';
+    }
+
+    /** Полоса «путь писем»: сегмент на каждое состояние, по порядку пути. */
+    function путьПисем(порядок, всего, ступень) {
+        const полоса = h('div', {
+            class: 'path-bar', role: 'img',
+            'aria-label': 'Путь писем: ' + порядок.map((item) =>
+                item.title + ' — ' + item.count).join(', '),
+        });
+        порядок.forEach((item, номер) => {
+            if (!item.count) return;
+            const доля = item.count / всего;
+            полоса.appendChild(h('span', {
+                class: 'path-seg',
+                dataset: { step: String(ступень(item.id) || 1) },
+                style: { flexGrow: String(item.count), '--i': String(номер) },
+                tabindex: '0',
+                onmouseenter: (event) => подсказка(event.currentTarget,
+                    item.title, item.count + ' ' + plural(item.count, 'письмо', 'письма', 'писем')
+                    + ' · ' + Math.round(доля * 100) + '%'),
+                onfocus: (event) => подсказка(event.currentTarget, item.title,
+                    item.count + ' · ' + Math.round(доля * 100) + '%'),
+                onmouseleave: () => подсказка(null),
+                onblur: () => подсказка(null),
+            }));
+        });
+        return полоса;
+    }
+
+    /* Одна общая всплывающая подсказка на всё приложение: показывается у
+       знака, над которым мышь или фокус, и не мешает ни прокрутке, ни клику. */
+    function подсказка(узел, заголовок, текст) {
+        let окно = document.getElementById('tip');
+        if (!узел) {
+            if (окно) окно.hidden = true;
+            return;
+        }
+        if (!окно) {
+            окно = h('div', { id: 'tip', class: 'tip', role: 'tooltip', hidden: true });
+            document.body.appendChild(окно);
+        }
+        clear(окно);
+        окно.appendChild(h('b', {}, заголовок));
+        if (текст) окно.appendChild(h('span', {}, текст));
+        окно.hidden = false;
+        const где = узел.getBoundingClientRect();
+        const ширина = окно.offsetWidth;
+        const левее = Math.max(8, Math.min(window.innerWidth - ширина - 8,
+            где.left + где.width / 2 - ширина / 2));
+        окно.style.left = левее + 'px';
+        окно.style.top = Math.max(8, где.top - окно.offsetHeight - 8) + 'px';
+    }
+
+    /* Приветствие по времени суток. Утром сводку открывают первой, и
+       обращение по имени-отчеству — не украшение: так в отделе принято
+       обращаться, и экран, который это знает, воспринимается своим. */
+    function приветствие() {
+        const час = new Date().getHours();
+        const слова = час >= 5 && час < 12 ? 'Доброе утро'
+            : час >= 12 && час < 18 ? 'Добрый день'
+                : час >= 18 && час < 23 ? 'Добрый вечер' : 'Доброй ночи';
+        const имя = имяОтчество(state.user && state.user.full_name);
+        return имя ? слова + ', ' + имя : слова;
+    }
+
+    /** «Иванов Иван Иванович» → «Иван Иванович»; инициалы — как есть. */
+    function имяОтчество(фио) {
+        const части = String(фио || '').trim().split(/\s+/);
+        if (части.length >= 3 && части[1].length > 2) return части[1] + ' ' + части[2];
+        if (части.length === 2 && части[1].length > 2) return части[1];
+        return '';
+    }
+
+    function сегодняСловами() {
+        const дата = new Date();
+        const день = дата.toLocaleDateString('ru-RU', { weekday: 'long' });
+        return день.charAt(0).toUpperCase() + день.slice(1) + ', '
+            + дата.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    }
+
+    /* Узор приветствия — орбиты и спутник: тот же мотив, что на окне входа.
+       Рисуется встроенным SVG, наружу ни одного обращения. */
+    function орбиты() {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'hero-art');
+        svg.setAttribute('viewBox', '0 0 320 160');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.innerHTML =
+            '<g fill="none" stroke="currentColor" stroke-width="1">' +
+            '<ellipse cx="230" cy="96" rx="150" ry="46" opacity=".22"/>' +
+            '<ellipse cx="230" cy="96" rx="104" ry="31" opacity=".30"/>' +
+            '<ellipse cx="230" cy="96" rx="60" ry="18" opacity=".38"/></g>' +
+            '<circle cx="230" cy="96" r="22" fill="currentColor" opacity=".16"/>' +
+            '<circle cx="230" cy="96" r="12" fill="currentColor" opacity=".28"/>' +
+            '<g class="hero-sat"><circle cx="126" cy="80" r="4" fill="currentColor"/>' +
+            '<path d="M117 80h-8M135 80h8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></g>';
+        return svg;
+    }
+
     async function renderBoard(view) {
         clear(view);
         const page = h('div', { class: 'page' });
@@ -8329,10 +8514,17 @@
             value: String(days), selected: boardState.days === days,
         }, 'за ' + days + ' ' + plural(days, 'день', 'дня', 'дней'))));
 
-        const head = h('div', { class: 'page-head' },
-            h('div', { class: 'page-head-actions' },
+        const итогДня = h('div', { class: 'hero-sub' });
+        const head = h('section', { class: 'hero' },
+            h('div', { class: 'hero-text' },
+                h('div', { class: 'hero-date' }, сегодняСловами()),
+                h('h2', { class: 'hero-title' }, приветствие()),
+                итогДня),
+            h('div', { class: 'hero-actions' },
                 periodSelect,
-                h('button', { class: 'btn', onclick: () => load() }, 'Обновить')));
+                h('button', { class: 'btn btn--glass', onclick: () => load() },
+                    icon('refresh'), 'Обновить')),
+            орбиты());
 
         const body = h('div', {});
         append(page, [head, body]);
@@ -8362,33 +8554,52 @@
             const tiles = h('div', { class: 'tiles' },
                 tile(вРаботе, 'писем в работе',
                     'всего зарегистрировано: ' + всего,
-                    '#/cases', 'open', '', доля(вРаботе, всего)),
+                    '#/cases', 'open', '', доля(вРаботе, всего), 'letters'),
                 tile(totals.overdue || 0, 'просрочено',
                     totals.overdue ? 'сроки уже прошли' : 'просроченных нет',
                     '#/cases', 'overdue', totals.overdue ? 'bad' : 'ok',
-                    доля(totals.overdue || 0, вРаботе)),
+                    доля(totals.overdue || 0, вРаботе), 'alert'),
                 tile(totals.soon || 0, 'горят в ближайшие 3 дня', 'по сроку ответа',
                     '#/cases', 'open', totals.soon ? 'warn' : '',
-                    доля(totals.soon || 0, вРаботе)),
+                    доля(totals.soon || 0, вРаботе), 'flame'),
                 tile(totals.unassigned || 0, 'без исполнителя',
                     totals.unassigned ? 'нужно распределить' : 'все письма распределены',
                     '#/cases', 'open', totals.unassigned ? 'warn' : 'ok',
-                    доля(totals.unassigned || 0, вРаботе)),
+                    доля(totals.unassigned || 0, вРаботе), 'users'),
                 tile(totals.staff || 0, 'человек в строю',
                     'на дежурстве: ' + (totals.on_duty || 0) + ' · отсутствуют: ' + (totals.away || 0),
-                    '', '', '', доля((totals.staff || 0) - (totals.away || 0), totals.staff || 0)),
+                    '', '', 'ok', доля((totals.staff || 0) - (totals.away || 0), totals.staff || 0),
+                    'roster'),
                 tile((data.movement || {}).sent || 0, 'ответов отправлено',
                     'поступило за период: ' + ((data.movement || {}).came || 0) +
                     ' · проверено, но не отправлено: '
                     + Math.max(0, ((data.movement || {}).checked || 0)
                         - ((data.movement || {}).sent || 0)) +
-                    ' · редакций отчётов: ' + ((data.movement || {}).reports || 0)));
+                    ' · редакций отчётов: ' + ((data.movement || {}).reports || 0),
+                    '', '', '', undefined, 'send'));
 
             const columns = h('div', { class: 'board-cols' },
                 h('div', {}, workloadCard(data), movementCard(data)),
                 h('div', {}, deadlinesCard(data), dutyCard(data)));
 
             append(body, [tiles, columns]);
+            итогДня.textContent = итогСловами(totals);
+        }
+
+        /* Итог дня одной строкой — то, ради чего утром открывают сводку. */
+        function итогСловами(totals) {
+            const части = [];
+            const вРаботе = totals.open || 0;
+            части.push(вРаботе
+                ? вРаботе + ' ' + plural(вРаботе, 'письмо', 'письма', 'писем') + ' в работе'
+                : 'писем в работе нет');
+            части.push(totals.overdue
+                ? 'просрочено: ' + totals.overdue
+                : 'просрочек нет');
+            if (totals.soon) части.push('горят: ' + totals.soon);
+            if (totals.staff) части.push('в строю ' + Math.max(0, totals.staff - (totals.away || 0))
+                + ' из ' + totals.staff);
+            return части.join(' · ');
         }
 
         //: Порядковый номер плитки. По нему идёт задержка появления: плитки
@@ -8402,13 +8613,14 @@
          * «3 писем в работе» само по себе ни о чём не говорит, а «3 из 6»
          * говорит, и полоска считается быстрее, чем два числа.
          */
-        function tile(value, label, note, href, tab, kind, share) {
+        function tile(value, label, note, href, tab, kind, share, значок) {
             const node = h('a', {
                 class: 'tile' + (kind ? ' tile--' + kind : ''),
                 href: href,
                 style: { '--i': String(tileIndex++) },
                 onclick: () => { if (tab) casesState.view = tab; },
             },
+                значок ? h('span', { class: 'tile-icon', 'aria-hidden': 'true' }, icon(значок)) : null,
                 countUp(h('div', { class: 'tile-value' }), Number(value) || 0),
                 h('div', { class: 'tile-label' }, label),
                 h('div', { class: 'tile-note' }, note));
@@ -8454,6 +8666,20 @@
                 clear(rows);
                 busy.forEach(addRow);
                 if (idleShown) idle.forEach(addRow);
+                // Никто не занят — это ответ, а не пустое место. Одна кнопка
+                // «показать свободных» в пустой таблице читалась как поломка.
+                if (!busy.length && !idleShown) {
+                    rows.appendChild(h('tr', { class: 'row-calm' },
+                        h('td', { colSpan: 5 },
+                            h('div', { class: 'calm' },
+                                h('span', { class: 'calm-mark', 'aria-hidden': 'true' }, icon('check')),
+                                h('div', {},
+                                    h('b', {}, 'Сейчас никто не загружен письмами'),
+                                    h('div', { class: 'small muted' },
+                                        'Свободны все ' + idle.length + ' '
+                                        + plural(idle.length, 'человек', 'человека', 'человек')
+                                        + ' — есть кому поручить новое.'))))));
+                }
                 if (!idle.length) return;
                 rows.appendChild(h('tr', { class: 'row-more' },
                     h('td', { colSpan: 5 },
@@ -8598,6 +8824,13 @@
             // порядок строк обязан показывать её же.
             const порядок = statuses.slice().sort(
                 (а, б) => (ступень(а.id) || 99) - (ступень(б.id) || 99));
+            // Путь писем одной полосой: где сейчас стоит вся почта отдела.
+            // Часть от целого — сложенная полоса, а не кольцо: ступени идут
+            // по порядку, и полоса этот порядок сохраняет, а кольцо его
+            // замыкает в круг. Краска — та же порядковая шкала, что у строк
+            // ниже; строки служат легендой и таблицей, так что состояние не
+            // держится на одном цвете.
+            card.appendChild(путьПисем(порядок, total, ступень));
             card.appendChild(h('div', { class: 'flow' }, порядок.map((item, номер) =>
                 h('div', {
                     class: 'flow-row',
@@ -9854,10 +10087,22 @@
         return box;
     }
 
+    /* Пустой разговор — не пустое место, а приглашение. Примеры стоят
+       карточками в две колонки: семь вопросов столбиком уходили за край
+       ленты, и заголовок наезжал на рамку. Под заголовком — что помощник
+       умеет, тремя короткими строками: новичок иначе не узнает, что к
+       вопросу можно приложить свой файл. */
     function emptyChatState() {
         return h('div', { class: 'empty chat-empty' },
-            h('h3', {}, 'Вопрос по библиотеке'),
-            h('div', {}, 'Ответ со ссылками на документы библиотеки.'),
+            h('div', { class: 'chat-empty-mark' }, icon('spark')),
+            h('h3', {}, 'О чём спросить библиотеку?'),
+            h('div', { class: 'chat-empty-lead' },
+                'Помощник ищет по всем документам отдела и отвечает со ссылками '
+                + 'на страницы — каждую можно открыть и сверить.'),
+            h('ul', { class: 'chat-empty-can' },
+                h('li', {}, icon('book'), 'Разбор по нормам, методикам и нашим отчётам'),
+                h('li', {}, icon('clip'), 'Свой файл — приложите к вопросу'),
+                h('li', {}, icon('table'), 'Таблицы из ответа — сразу в Excel')),
             h('div', { class: 'chat-examples' }, CHAT_EXAMPLES.map((item) => h('button', {
                 class: 'example', title: 'Подставить вопрос в поле ввода',
                 onclick: () => useExample(item),
@@ -9940,16 +10185,88 @@
                         seenNote(message.meta) +
                         (message.meta.documents ? ' в ' + message.meta.documents + ' док.' : '') +
                         ', процитировано: ' + (message.meta.cited || 0))
-                    : null) : null);
+                    : null) : null,
+            !isUser && message.content ? answerActions(message, body) : null);
     }
 
-    /** «(модель видела 8 целиком и 14 выписками)» — или пусто, если всё влезло.
-     *
-     * Найденного бывает больше, чем помещается в окно модели за один раз.
-     * Лишнее не выбрасывается: оно прочитывается отдельными проходами и
-     * доходит до ответа выписками. Разница между «видела целиком» и «дошло
-     * выпиской» существенная — по выписке проверяется пересказ фрагмента, а
-     * не сам фрагмент, — и прятать её нельзя. */
+    /* Действия с ответом. Отдел учится по ответам помощника и уносит их в
+       отчёты — значит ответ должен легко уходить из окна: целиком, таблицей
+       в Excel, на печать. */
+    function answerActions(message, body) {
+        const кнопка = (значок, подпись, действие) => h('button', {
+            class: 'act', type: 'button', title: подпись, onclick: действие,
+        }, icon(значок), h('span', {}, подпись));
+        const таблицы = () => $$('table', body);
+        return h('div', { class: 'msg-actions' },
+            кнопка('copy', 'Копировать', async () => {
+                const ок = await вБуфер(message.content);
+                toast(ок ? 'Ответ скопирован' : 'Не удалось скопировать', ок ? 'ok' : 'error');
+            }),
+            таблицы().length ? кнопка('table', 'Таблицы в Excel', async () => {
+                // Табуляция между ячейками и перевод строки между рядами —
+                // так Excel и Word вставляют готовой таблицей, без мастера.
+                const текст = таблицы().map(таблицаВТекст).join('\n\n');
+                const ок = await вБуфер(текст);
+                toast(ок ? 'Таблицы скопированы — вставьте в Excel или Word'
+                    : 'Не удалось скопировать', ок ? 'ok' : 'error');
+            }) : null,
+            кнопка('print', 'Печать', () => печатьОтвета(body.closest('.msg'))),
+            кнопка('book', 'Читать', () => режимЧтения(true)));
+    }
+
+    /** Строки и ячейки таблицы — в текст с табуляцией. */
+    function таблицаВТекст(таблица) {
+        return Array.from(таблица.rows).map((ряд) =>
+            Array.from(ряд.cells).map((ячейка) =>
+                ячейка.innerText.replace(/\s+/g, ' ').trim()).join('\t')).join('\n');
+    }
+
+    /* Буфер обмена. navigator.clipboard работает только в защищённом окне
+       (https или localhost); по адресу в сети отдела без TLS его нет, и там
+       выручает старый способ — невидимое поле и команда «копировать». */
+    async function вБуфер(текст) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(текст);
+                return true;
+            }
+        } catch (error) { /* пробуем старым способом */ }
+        const поле = h('textarea', { style: { position: 'fixed', opacity: '0', top: '0' } });
+        поле.value = текст;
+        document.body.appendChild(поле);
+        поле.select();
+        let вышло = false;
+        try { вышло = document.execCommand('copy'); } catch (error) { вышло = false; }
+        поле.remove();
+        return вышло;
+    }
+
+    /* Печать одного ответа: остальное прячется правилами @media print, и
+       браузер печатает — или сохраняет в PDF — только этот ответ. Ничего
+       ставить не нужно: «Сохранить как PDF» есть в окне печати браузера. */
+    function печатьОтвета(сообщение) {
+        if (!сообщение) return;
+        сообщение.classList.add('is-printing');
+        document.body.classList.add('print-one');
+        const убрать = () => {
+            сообщение.classList.remove('is-printing');
+            document.body.classList.remove('print-one');
+            window.removeEventListener('afterprint', убрать);
+        };
+        window.addEventListener('afterprint', убрать);
+        window.print();
+    }
+
+    /* Режим чтения: боковые панели уходят, ответ встаёт по центру крупнее.
+       Для длинного разбора стандарта, по которому учатся, а не для беглого
+       взгляда. Выход — Esc или та же кнопка. */
+    function режимЧтения(включить) {
+        document.body.classList.toggle('reading', !!включить);
+        if (включить) {
+            toast('Режим чтения. Выход — Esc', 'ok');
+        }
+    }
+
     /** Плашка об обрыве ответа по потолку длины.
      *
      * Короткий ответ инженер видит сам. Обрезанный — не видит: он выглядит
@@ -9971,6 +10288,13 @@
         return null;
     }
 
+    /** «(модель видела 8 целиком и 14 выписками)» — или пусто, если всё влезло.
+     *
+     * Найденного бывает больше, чем помещается в окно модели за один раз.
+     * Лишнее не выбрасывается: оно прочитывается отдельными проходами и
+     * доходит до ответа выписками. Разница между «видела целиком» и «дошло
+     * выпиской» существенная — по выписке проверяется пересказ фрагмента, а
+     * не сам фрагмент, — и прятать её нельзя. */
     function seenNote(meta) {
         const shown = meta.shown;
         const digested = meta.digested || 0;
@@ -10013,6 +10337,19 @@
             }
             button.classList.toggle('is-active', button.dataset.label === chat.activeLabel);
             button.addEventListener('click', () => selectSource(button.dataset.label, container));
+            // Навёл на [S1] — видишь, что это за источник и что в нём, не
+            // уходя из ответа. Проверять ответ по ссылкам — главная работа
+            // инженера с помощником, и щелчок ради каждой ссылки её тормозил.
+            const источник = (sources || []).find((item) => item.label === button.dataset.label);
+            if (источник) {
+                const показать = () => подсказка(button,
+                    '[' + источник.label + '] ' + (источник.title || источник.doc_id),
+                    обрезать(источник.text, 240));
+                button.addEventListener('mouseenter', показать);
+                button.addEventListener('focus', показать);
+                button.addEventListener('mouseleave', () => подсказка(null));
+                button.addEventListener('blur', () => подсказка(null));
+            }
         });
         // Перечёркнутую ссылку надо объяснить словами. Подсказка по наведению
         // отвечает только тому, кто догадался навести, — а отдел спросил

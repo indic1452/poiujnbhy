@@ -6469,7 +6469,7 @@ class ПлиткиСводки(unittest.TestCase):
         self.assertIn("class: 'tile-meter'", self.js)
 
     def test_пустая_доля_полоски_не_рисует(self):
-        участок = self.js.split("function tile(value, label, note, href, tab, kind, share)")[1][:1200]
+        участок = self.js.split("function tile(value, label, note, href, tab, kind, share, значок)")[1][:1200]
         self.assertIn("share > 0", участок)
 
     def test_плитки_вступают_по_очереди(self):
