@@ -86,6 +86,31 @@ def _имя_основания(base: ast.expr) -> str:
     return getattr(base, "attr", getattr(base, "id", "") or "")
 
 
+class ПроверкиВнеНабораTests(unittest.TestCase):
+    """Проверка, объявленная не там, где её ищет pytest, молчит.
+
+    Попалось на деле: две проверки встали в модуль после строки
+    «if __name__ == "__main__":». Там они — не методы класса, а локальные
+    функции, и pytest их не собирает. Прогон при этом зелёный, счётчик
+    проверок не изменился, а сами проверки не выполнялись ни разу.
+    """
+
+    def test_под_точкой_входа_нет_проверок(self):
+        for path in _модули():
+            for node in _разобрать(path).body:
+                if not isinstance(node, ast.If):
+                    continue
+                условие = ast.unparse(node.test)
+                if "__name__" not in условие:
+                    continue
+                for sub in ast.walk(node):
+                    if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef)) \
+                            and sub.name.startswith("test"):
+                        with self.subTest(модуль=path.name, проверка=sub.name):
+                            self.fail(f"{sub.name} объявлена под «{условие}» "
+                                      f"(строка {sub.lineno}) и не запускается")
+
+
 class ПустыеНаборыTests(unittest.TestCase):
     """Класс без проверок в отчёте выглядит как работающий раздел.
 

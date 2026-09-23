@@ -801,6 +801,52 @@ class BuildRetrieverTests(unittest.TestCase):
         retriever = build_retriever(self.repos, settings, llm=FakeLLM("1: 1"))
         self.assertIsInstance(retriever.reranker, LLMReranker)
 
+    def test_the_rerank_service_judges_every_candidate(self):
+        """Прежде судили двадцать из шестидесяти, и число было зашито в код.
+
+        Фрагмент, который первый проход поставил двадцать первым, реранк не
+        видел никогда — а на русском вопросе по английскому стандарту нужный
+        кусок именно там и оказывается. Отдельной службе шестьдесят пар
+        стоят около полусекунды.
+        """
+        settings = Settings(rerank_enabled=True, retrieval_candidates=60,
+                            rerank_base_url="http://127.0.0.1:9002/v1")
+        self.assertEqual(60, build_retriever(self.repos, settings).rerank_top_n)
+
+    def test_the_model_reranker_keeps_a_ceiling(self):
+        """Реранк самой моделью — обращение к ней на каждые восемь кандидатов."""
+        settings = Settings(rerank_enabled=True, rerank_base_url="",
+                            retrieval_candidates=60)
+        retriever = build_retriever(self.repos, settings, llm=FakeLLM("1: 1"))
+        self.assertEqual(20, retriever.rerank_top_n)
+
+    def test_the_ceiling_can_be_set_by_hand(self):
+        settings = Settings(rerank_enabled=True, retrieval_candidates=60,
+                            rerank_top_n=30,
+                            rerank_base_url="http://127.0.0.1:9002/v1")
+        self.assertEqual(30, build_retriever(self.repos, settings).rerank_top_n)
+
+    def test_a_candidate_below_twenty_can_be_lifted(self):
+        """То, ради чего всё: фрагмент с тридцатого места поднимается наверх."""
+        class ЛюбитПоследнего:
+            def score(self, query, texts):
+                return [float(номер) for номер, _ in enumerate(texts)]
+
+        from reportgen.corpus import Chunk
+        from reportgen.retrieval import Hit
+
+        кандидаты = [Hit(chunk=Chunk(chunk_id=f"doc#{n}", doc_id="doc",
+                                     doc_type="standards", title_path=["doc"],
+                                     text=f"фрагмент {n}", meta={}),
+                         score=1.0 - n / 100) for n in range(60)]
+        settings = Settings(rerank_enabled=True, retrieval_candidates=60,
+                            rerank_base_url="http://127.0.0.1:9002/v1")
+        retriever = build_retriever(self.repos, settings)
+        retriever.reranker = ЛюбитПоследнего()
+        итог = retriever._rerank(OBW_QUERY, кандидаты)
+        self.assertEqual("doc#59", итог[0].chunk.chunk_id,
+                         "кандидат с шестидесятого места реранку не показан")
+
     def test_a_dead_service_is_not_retried_with_pauses(self):
         """Сервер не поднят — три секунды пауз ни к чему не приведут.
 

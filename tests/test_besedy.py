@@ -61,6 +61,9 @@ function h(tag, attrs, ...kids) {
   return node;
 }
 function clear(n) { n.kids = []; }
+// Колокол над полем ввода меряет настоящую высоту поля — в поддельной
+// разметке мерить нечего, и поле отдаётся как есть.
+function колоколНад(поле) { return поле; }
 function append(n, kids) {
   (kids || []).flat(9).filter((k) => k !== null && k !== undefined)
     .forEach((k) => n.kids.push(k));

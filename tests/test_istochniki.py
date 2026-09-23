@@ -265,3 +265,96 @@ class МеткиВыписокЗаконны(Библиотека):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class СоседиНеПовторяются(unittest.TestCase):
+    """Один и тот же соседний кусок не должен занимать окно дважды.
+
+    Найдены куски №5 и №7 одного документа — кусок №6 шёл в промпт дважды:
+    хвостом пятого и началом седьмого. На стандарте, где нужный раздел лежит
+    подряд несколькими кусками, так и бывает чаще всего, и место в окне
+    уходило на буквальный повтор вместо ещё одного документа.
+    """
+
+    def setUp(self):
+        import tempfile
+
+        from reportgen.config import Settings
+        from reportgen.corpus import Chunk
+        from reportgen.llm import StubLLM
+        from reportgen.store import Database, Repositories
+        from reportgen.web.assistant import AssistantService
+        from reportgen.web.service import ReportService
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        settings = Settings.load(data_dir=self._tmp.name, db_path=":memory:",
+                                 templates_dir=str(ROOT / "templates"))
+        self.repos = Repositories(Database(":memory:"))
+        документ = self.repos.documents.upsert(
+            "std/g704", "standards", "G.704", "/g704.pdf", "sha-g704",
+            meta={}, domain="other")
+        self.repos.chunks.replace_for_document(документ, [Chunk(
+            chunk_id=f"std/g704#{n:04d}", doc_id="std/g704", doc_type="standards",
+            title_path=["G.704"], text=f"<<КУСОК {n}>> " * 30, meta={})
+            for n in range(10)])
+        self.по_номеру = {кусок.chunk_id: кусок for кусок
+                          in self.repos.chunks.for_document(документ.id, limit=50)}
+        self.помощник = AssistantService(reports=ReportService(
+            repos=self.repos, settings=settings, llm=StubLLM()))
+
+    def промпт(self, *номера):
+        from reportgen.retrieval import Hit
+
+        найдено = [Hit(chunk=self.по_номеру[f"std/g704#{n:04d}"], score=1.0 - n / 100)
+                   for n in номера]
+        источники, _ = self.помощник._build_sources(найдено)
+        return "".join(i["text"] + i["lead"] + i["tail"] for i in источники)
+
+    def сколько_раз(self, текст, номер):
+        return текст.count(f"<<КУСОК {номер}>>") // 30
+
+    def test_общий_сосед_двух_находок_показан_один_раз(self):
+        текст = self.промпт(5, 7)
+        self.assertEqual(1, self.сколько_раз(текст, 6), "кусок №6 в окне дважды")
+
+    def test_ни_один_кусок_не_повторяется(self):
+        текст = self.промпт(3, 5, 7)
+        for номер in range(2, 9):
+            with self.subTest(кусок=номер):
+                self.assertLessEqual(self.сколько_раз(текст, номер), 1)
+
+    def test_соседи_по_краям_по_прежнему_на_месте(self):
+        """Починка повтора не должна была отнять самих соседей."""
+        текст = self.промпт(5, 7)
+        self.assertEqual(1, self.сколько_раз(текст, 4), "пропал сосед перед пятым")
+        self.assertEqual(1, self.сколько_раз(текст, 8), "пропал сосед после седьмого")
+
+    def test_сосед_ушедшего_за_бюджет_достаётся_следующему(self):
+        """Фрагмент не влез — его соседа занимать нельзя.
+
+        Найдены №5, №7 и №9; №7 длинный и в окно не входит. Сосед №8 при
+        нём показан не был — значит, он свободен для №9. Пометь его занятым
+        заранее, и №8 не войдёт никуда: ни при седьмом, ни при девятом.
+        """
+        from reportgen.corpus import Chunk
+        from reportgen.retrieval import Hit
+
+        документ = self.repos.documents.upsert(
+            "std/g706", "standards", "G.706", "/g706.pdf", "sha-g706",
+            meta={}, domain="other")
+        self.repos.chunks.replace_for_document(документ, [Chunk(
+            chunk_id=f"std/g706#{n:04d}", doc_id="std/g706", doc_type="standards",
+            title_path=["G.706"],
+            text=("<<ДЛИННЫЙ>> " * 400) if n == 7 else f"<<КУСОК {n}>> " * 5,
+            meta={}) for n in range(12)])
+        по_номеру = {кусок.chunk_id: кусок for кусок
+                     in self.repos.chunks.for_document(документ.id, limit=50)}
+        self.помощник.settings.assistant_context_chars = 2500
+        найдено = [Hit(chunk=по_номеру[f"std/g706#{n:04d}"], score=1.0 - n / 100)
+                   for n in (5, 7, 9)]
+        источники, за_бюджетом = self.помощник._build_sources(найдено)
+        self.assertIn("std/g706#0007", [i["chunk_uid"] for i in за_бюджетом],
+                      "образец подобран неудачно: седьмой влез в окно")
+        текст = "".join(i["text"] + i["lead"] + i["tail"] for i in источники)
+        self.assertIn("<<КУСОК 8>>", текст, "сосед №8 не вошёл никуда")

@@ -158,6 +158,56 @@ class БюджетВиденВМетриках(Основа):
         self.assertIn("model", reports.stats())
 
 
+class ЗамерВиденВМетриках(Основа):
+    """Оценка «знаков на токен» больше не держится на честном слове.
+
+    Сервер присылал расход токенов, клиент его выбрасывал, и проверить
+    оценку, на которой стоит весь бюджет окна, было нечем.
+    """
+
+    def задать_вопрос(self, расход):
+        class Считающий(Сервер):
+            def stream(себя, system, user, **kwargs):
+                себя.последний_расход = dict(расход)
+                yield "Ответ [S1]."
+
+        reports, помощник = self.собрать(Считающий(32768))
+        пользователь = reports.repos.users.create(
+            "ivanov", "пароль123", "Иванов", "engineer")
+        разговор = помощник.create_chat(пользователь)
+        list(помощник.ask_stream(пользователь, разговор.id, "что такое E1"))
+        return reports
+
+    def test_расход_токенов_после_ответа_виден(self):
+        reports = self.задать_вопрос({"prompt_tokens": 9000,
+                                      "completion_tokens": 1200})
+        замер = reports.model_budget()["measured"]
+        self.assertEqual(9000, замер["prompt_tokens"])
+        self.assertEqual(1200, замер["answer_tokens"])
+        self.assertGreater(замер["prompt_chars"], 0,
+                           "знаков промпта не посчитано — делить не на что")
+
+    def test_без_ответа_замера_нет(self):
+        reports, _ = self.собрать(Сервер(32768))
+        self.assertEqual({}, reports.model_budget()["measured"])
+
+    def test_сервер_без_расхода_замер_не_портит(self):
+        """Сборка, не присылающая usage, не должна рисовать ноль токенов."""
+        reports = self.задать_вопрос({})
+        self.assertEqual({}, reports.model_budget()["measured"])
+
+    def test_оценка_видна_рядом_с_замером(self):
+        reports, _ = self.собрать(Сервер(32768), assistant_chars_per_token=1.7)
+        self.assertEqual(1.7, reports.model_budget()["chars_per_token"])
+
+    def test_карточка_показывает_замер(self):
+        js = (ROOT / "src" / "reportgen" / "web" / "static" / "app.js").read_text(
+            encoding="utf-8")
+        карточка = js.split("function modelCard(model)", 1)[1].split("\n    }", 1)[0]
+        self.assertIn("model.measured", карточка)
+        self.assertIn("знака на токен", карточка)
+
+
 class ЧислоПооткошное(unittest.TestCase):
     """Разбор ответа /props: берём именно окно СЛОТА."""
 

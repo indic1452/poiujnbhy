@@ -643,11 +643,30 @@ def build_retriever(
             batch=settings.embed_batch,
         )
     reranker: RerankerProtocol | None = build_reranker(settings, llm)
+    candidates = getattr(settings, "retrieval_candidates", 50)
     return DatabaseRetriever(
         repos,
         embedder=embedder,
         reranker=reranker,
-        candidates=getattr(settings, "retrieval_candidates", 50),
+        candidates=candidates,
+        rerank_top_n=_сколько_пересуживать(settings, reranker, candidates),
         embed_model=settings.embed_model if embedder is not None else None,
         terms_path=getattr(settings, "terms_path", None),
     )
+
+
+#: Потолок для запасного реранка самой моделью: каждые восемь кандидатов —
+#: это отдельное обращение к модели, и шестьдесят кандидатов на каждый из
+#: заходов разбора обошлись бы в минуты.
+LLM_RERANK_TOP_N = 20
+
+
+def _сколько_пересуживать(settings: Any, reranker: Any, candidates: int) -> int:
+    """Сколько кандидатов отдать реранку: всех, если это дёшево."""
+    from .rerank import LLMReranker  # noqa: PLC0415 — круговой импорт
+
+    задано = int(getattr(settings, "rerank_top_n", 0) or 0)
+    сколько = задано if задано > 0 else max(1, int(candidates))
+    if isinstance(reranker, LLMReranker):
+        сколько = min(сколько, LLM_RERANK_TOP_N)
+    return сколько

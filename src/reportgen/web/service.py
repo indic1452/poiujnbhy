@@ -1150,6 +1150,11 @@ class ReportService:
             "library_chars": помощник._context_chars(),
             "source_chars": помощник._source_chars(),
             "context_note": _расхождение_окна(спросили, задано),
+            # Последний настоящий замер: сколько токенов занял промпт со слов
+            # сервера. Пусто — ответов с этого запуска ещё не было.
+            "measured": dict(getattr(self, "_последний_замер", {}) or {}),
+            "chars_per_token": float(getattr(
+                self.settings, "assistant_chars_per_token", 0) or 1.5),
         }
 
     def _index_version(self) -> str:

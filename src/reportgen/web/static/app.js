@@ -506,8 +506,52 @@
         return simple ? simple[1] : 'report.docx';
     }
 
+    /* Номер отрисовки раздела: растёт при каждом переходе.
+
+       Отрисовка раздела асинхронна — она ждёт сервер, — и прежде ничто не
+       мешало ей дорисоваться ПОСЛЕ того, как человек ушёл в другой раздел.
+       Замер на стенде с задержкой сервера в 0,4 с: из четырёх быстрых
+       переходов два показали чужой экран под правильным заголовком. Ушли из
+       помощника в «Письма» — а на экране по-прежнему переписка; ушли из
+       библиотеки в «Сообщения» — а там библиотека. На загруженной машине
+       отдела это случалось при каждом быстром клике, и удалить можно было
+       не то, что видишь в заголовке.
+
+       Лечится в одном месте, а не в каждом разделе: ответ, запрошенный для
+       прежнего раздела, отвергается, а не отдаётся отрисовке. Опоздавшая
+       отрисовка падает на первом же ожидании, ничего не нарисовав и не
+       переписав общего состояния. */
+    let поколениеВида = 0;
+
+    /** Ответ пришёл, но раздел, для которого его просили, уже закрыт. */
+    class Устарело extends Error {
+        constructor(path) {
+            super('раздел сменился, ответ ' + path + ' больше не нужен');
+            this.name = 'Устарело';
+        }
+    }
+
+    function дляРаздела(path) {
+        const поколение = поколениеВида;
+        return request(path).then((ответ) => {
+            if (поколение !== поколениеВида) throw new Устарело(path);
+            return ответ;
+        });
+    }
+
+    // Отвергнутый ответ — не ошибка: никто его уже не ждёт. Без этого каждый
+    // быстрый переход оставлял в консоли «Uncaught (in promise)».
+    window.addEventListener('unhandledrejection', (event) => {
+        if (event.reason instanceof Устарело) event.preventDefault();
+    });
+
     const api = {
-        get: (path) => request(path),
+        // Чтение для раздела — отвергается, если раздел сменился.
+        get: (path) => дляРаздела(path),
+        // Чтение для всего окна: колокол, состояние модели, учётная запись.
+        // Им смена раздела безразлична, и отвергать их ответ нельзя — колокол
+        // перестал бы обновляться, а точка модели краснела бы без причины.
+        getGlobal: (path) => request(path),
         post: (path, body) => request(path, { method: 'POST', body: body || {} }),
         put: (path, body) => request(path, { method: 'PUT', body: body || {} }),
         patch: (path, body) => request(path, { method: 'PATCH', body: body || {} }),
@@ -604,6 +648,8 @@
     }
 
     function toastError(error) {
+        // Отвергнутый ответ прежнего раздела — не беда, о ней не кричим.
+        if (error instanceof Устарело) return;
         toast(errorText(error), 'error');
     }
 
@@ -1550,7 +1596,7 @@
         if (!state.user) return;
         let data;
         try {
-            data = await api.get('/api/notifications?limit=50');
+            data = await api.getGlobal('/api/notifications?limit=50');
         } catch (error) {
             return;                     // сеть моргнула — спросим через двадцать секунд
         }
@@ -2276,7 +2322,7 @@
             dot.dataset.asked = '1';
             const llm = state.config.llm || {};
             dot.title = 'Проверяем сервер модели' + (llm.model ? ': ' + llm.model : '');
-            api.get('/api/llm/status').then((data) => {
+            api.getGlobal('/api/llm/status').then((data) => {
                 dot.classList.toggle('is-up', !!data.available);
                 dot.classList.toggle('is-down', !data.available);
                 dot.title = (data.available
@@ -2621,9 +2667,25 @@
         }
         state.route = route;
         setActiveNav(route.name);
+        // Новый переход — новое поколение: всё, что прежний раздел ещё ждёт
+        // от сервера, придёт отвергнутым и на экран не попадёт.
+        поколениеВида += 1;
+        document.body.style.removeProperty('--над-вводом');
+        // Вторая линия защиты — своя сцена у каждого раздела. Первая линия
+        // (отвергнутый ответ) не спасает там, где раздел сам ловит ошибку и
+        // идёт дальше: «не пришли форматы — обойдёмся», и библиотека
+        // дорисовывалась поверх «Сообщений». Таких мест десятки, и чинить
+        // каждое — значит однажды пропустить. Сцена отцепляется при переходе
+        // целиком, и опоздавшая отрисовка пишет в узел, которого не видно.
         const view = $('#view');
+        const сцена = h('div', { class: 'scene' });
         clear(view);
-        view.appendChild(h('div', { class: 'page' }, skeleton(6, 'page')));
+        view.appendChild(сцена);
+        сцена.appendChild(h('div', { class: 'page' }, skeleton(6, 'page')));
+        await рисоватьРаздел(route, сцена);
+    }
+
+    async function рисоватьРаздел(route, view) {
         try {
             if (route.name === 'board') await renderBoard(view);
             else if (route.name === 'cases') await renderCases(view);
@@ -2637,6 +2699,11 @@
             else if (route.name === 'users') await renderUsers(view);
         } catch (error) {
             if (error instanceof ApiError && error.status === 401) return;
+            // Раздел сменился, пока этот ждал сервер. Молча уходим: новый
+            // раздел уже рисует себя сам, и «не удалось открыть» поверх него
+            // было бы неправдой.
+            if (error instanceof Устарело) return;
+            if (!view.isConnected) return;      // сцена уже снята — рисовать некуда
             clear(view);
             view.appendChild(h('div', { class: 'page' },
                 h('div', { class: 'card card-pad' },
@@ -8818,6 +8885,24 @@
                 + ' фрагментов по ' + model.source_chars + ' знаков. '
                 + 'Найденное сверх этого читается частями и входит выписками'],
         ];
+        // Настоящий замер со слов сервера. Прежде бюджет держался на одной
+        // оценке «знаков на токен», и проверить её было нечем.
+        const замер = model.measured || {};
+        if (замер.prompt_tokens) {
+            const отношение = замер.prompt_chars / замер.prompt_tokens;
+            const оценка = model.chars_per_token || 1.5;
+            строки.push(['Последний ответ, замер',
+                fmtNumber(замер.prompt_tokens, 0) + ' токенов промпта',
+                fmtNumber(замер.prompt_chars, 0) + ' знаков — это '
+                + отношение.toFixed(2).replace('.', ',') + ' знака на токен при оценке '
+                + String(оценка).replace('.', ',') + '. '
+                + (отношение > оценка * 1.25
+                    ? 'Оценка заметно занижена: окно используется не целиком. '
+                      + 'Поднимите assistant_chars_per_token — осторожно, по '
+                      + 'нескольким замерам, а не по одному.'
+                    : 'Оценка с запасом — так и должно быть: завышенная уронила '
+                      + 'бы ответ целиком.')]);
+        }
         const body = h('tbody', {}, строки.map(([что, сколько, пояснение]) =>
             h('tr', {},
                 h('td', {}, что),
@@ -10148,12 +10233,36 @@
         // читаются как приборная доска вместо разговора. Осталось два:
         // тонкая строка настроек и строка ввода со скрепкой внутри.
         const attachBar = buildAttachBar();
-        return h('div', { class: 'composer' },
+        return колоколНад(h('div', { class: 'composer' },
             h('div', { class: 'composer-top' },
                 domainPick, sourcesPick, modePick, caseLine),
             attachBar,
             h('div', { class: 'composer-row' },
-                chat.nodes.attachButton, input, sendButton, stopButton));
+                chat.nodes.attachButton, input, sendButton, stopButton)));
+    }
+
+    /* Колокол уведомлений висит в правом нижнем углу — ровно там, где на
+       узком экране стоит кнопка «Спросить». Раньше на телефоне он её
+       закрывал: запас справа у поля ввода там сняли, решив, что колокол
+       «и так уходит выше клавиатуры». Это верно лишь при открытой
+       клавиатуре; без неё кнопку было не нажать.
+
+       Теперь колокол поднимается над полем ввода — на его настоящую
+       высоту, а не на угаданную: поле растёт вместе с текстом вопроса и
+       с приложенными файлами. */
+    function колоколНад(поле) {
+        if (typeof ResizeObserver !== 'function') return поле;
+        const наблюдатель = new ResizeObserver(() => {
+            if (!поле.isConnected) {
+                наблюдатель.disconnect();
+                document.body.style.removeProperty('--над-вводом');
+                return;
+            }
+            document.body.style.setProperty(
+                '--над-вводом', Math.ceil(поле.getBoundingClientRect().height) + 'px');
+        });
+        наблюдатель.observe(поле);
+        return поле;
     }
 
     /** Плашка с номером письма, если разговор к нему привязан. */
@@ -11507,12 +11616,12 @@
                     onclick: () => dropTalk(data),
                 }, iconGlyph('trash'))),
             flow,
-            h('div', { class: 'talk-send' },
+            колоколНад(h('div', { class: 'talk-send' },
                 h('button', {
                     class: 'btn btn--icon', title: 'Приложить файл',
                     onclick: () => picker.click(),
                 }, iconGlyph('clip')),
-                picker, field, button),
+                picker, field, button)),
         ]);
         // Возвращаем недописанное вместе с курсором. Порядок важен: значение
         // ставится до фокуса, иначе курсор уедет в конец строки.
@@ -12350,7 +12459,7 @@
 
         let me;
         try {
-            me = await api.get('/api/me');
+            me = await api.getGlobal('/api/me');
         } catch (error) {
             if (error instanceof ApiError && error.status === 401) return;
             fatal(errorText(error));
@@ -12364,7 +12473,7 @@
         }
 
         try {
-            state.config = await api.get('/api/config');
+            state.config = await api.getGlobal('/api/config');
         } catch (error) {
             if (error instanceof ApiError && error.status === 401) return;
             fatal(errorText(error));

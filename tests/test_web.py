@@ -5103,6 +5103,85 @@ class RecentlyOpenedTests(unittest.TestCase):
                 self.assertIn(f"parts[0] === '{раздел}'", разбор)
 
 
+class StaleRenderTests(unittest.TestCase):
+    """Опоздавшая отрисовка раздела не должна попадать на чужой экран.
+
+    Замер на стенде с задержкой сервера 0,4 с: из четырёх быстрых переходов
+    два показывали чужой экран под правильным заголовком. Ушли из помощника
+    в «Письма» — на экране переписка; из библиотеки в «Сообщения» — там
+    библиотека. Удалить можно было не то, что написано в заголовке.
+    """
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+        self.css = (static / "styles.css").read_text(encoding="utf-8")
+        начало = self.js.index("async function renderRoute(route)")
+        self.маршрут = self.js[начало:self.js.index("function navigate(hash)", начало)]
+
+    def test_reads_for_a_section_are_checked_against_the_generation(self):
+        self.assertIn("get: (path) => дляРаздела(path)", self.js)
+        обёртка = self.js.split("function дляРаздела(path)", 1)[1].split("\n    }", 1)[0]
+        self.assertIn("поколение !== поколениеВида", обёртка)
+        self.assertIn("throw new Устарело(path)", обёртка)
+
+    def test_each_transition_starts_a_new_generation(self):
+        self.assertIn("поколениеВида += 1;", self.маршрут)
+
+    def test_each_section_draws_into_its_own_scene(self):
+        """Первой линии мало: разделы сами ловят ошибки и идут дальше."""
+        self.assertIn("const сцена = h('div', { class: 'scene' });", self.маршрут)
+        self.assertIn("await рисоватьРаздел(route, сцена);", self.маршрут)
+
+    def test_a_late_failure_does_not_draw_over_the_new_section(self):
+        self.assertIn("if (error instanceof Устарело) return;", self.маршрут)
+        self.assertIn("if (!view.isConnected) return;", self.маршрут)
+
+    def test_the_scene_lays_out_like_the_view(self):
+        """Прослойка между #view и разделом не должна ломать раскладку."""
+        правило = self.css.split("#view,", 1)[1].split("}", 1)[0]
+        self.assertIn(".scene", правило)
+        self.assertIn("flex-direction: column", правило)
+
+    def test_window_wide_reads_are_not_cut_off(self):
+        """Колокол, точка модели и учётная запись живут поверх разделов."""
+        for адрес in ("/api/notifications?limit=50", "/api/llm/status",
+                      "/api/me'", "/api/config'"):
+            with self.subTest(адрес=адрес):
+                self.assertIn("api.getGlobal('" + адрес.lstrip("'"), self.js)
+
+    def test_a_dropped_answer_is_not_shouted_about(self):
+        self.assertIn("if (error instanceof Устарело) return;",
+                      self.js.split("function toastError(error)", 1)[1][:200])
+        self.assertIn("event.reason instanceof Устарело", self.js)
+
+
+class BellOverComposerTests(unittest.TestCase):
+    """На телефоне колокол закрывал кнопку «Спросить»."""
+
+    def setUp(self):
+        static = ROOT / "src" / "reportgen" / "web" / "static"
+        self.js = (static / "app.js").read_text(encoding="utf-8")
+        self.css = (static / "styles.css").read_text(encoding="utf-8")
+
+    def test_both_inputs_lift_the_bell(self):
+        self.assertIn("return колоколНад(h('div', { class: 'composer' },", self.js)
+        self.assertIn("колоколНад(h('div', { class: 'talk-send' },", self.js)
+
+    def test_the_real_height_is_measured(self):
+        """Поле растёт с текстом и вложениями — угаданная высота не годится."""
+        функция = self.js.split("function колоколНад(поле)", 1)[1].split("\n    }", 1)[0]
+        self.assertIn("ResizeObserver", функция)
+        self.assertIn("'--над-вводом'", функция)
+
+    def test_the_bell_stands_on_that_height(self):
+        self.assertIn("bottom: calc(12px + var(--над-вводом, 0px));", self.css)
+
+    def test_leaving_the_section_lowers_the_bell(self):
+        self.assertIn("document.body.style.removeProperty('--над-вводом');",
+                      self.js.split("async function renderRoute(route)", 1)[1][:3000])
+
+
 class LastSeenTests(WebTestCase):
     """«Писать ему сейчас или он прочтёт завтра» — обычный вопрос отдела."""
 
