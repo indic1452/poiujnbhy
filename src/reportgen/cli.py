@@ -656,7 +656,8 @@ def cmd_potok(args: argparse.Namespace) -> int:
     from .potok import разобрать  # noqa: PLC0415 — numpy нужен только здесь
 
     try:
-        разбор = разобрать(args.path, глубоко=args.deep, снять=args.strip or (), профиль="обычно")
+        разбор = разобрать(args.path, глубоко=args.deep, снять=args.strip or (), профиль="обычно",
+                           символ=args.bits or ())
     except ValueError as ошибка:
         print(f"Указание не выполнено: {ошибка}")
         return 2
@@ -999,7 +1000,10 @@ def build_parser() -> argparse.ArgumentParser:
                               "несколько раз по порядку: «инверсия», «сдвиг 5», «nrzi», "
                               "«манчестер», «скремблер 3,20», «свёрточный 171/133 K=7», "
                               "«выколотый 171/133 K=7 шаблон 110110», «перемежение 12 7», "
-                              "«pdh E2 приток 1»")
+                              "«pdh E2 приток 1», «плоскость 6»")
+    p_potok.add_argument("--символ", "--bits", dest="bits", action="append", type=int,
+                         metavar="K", help="бит на символ КАМ, если поток — метки демодулятора: "
+                                           "подобрать модуляционную плоскость (4, 6, 8…)")
     p_potok.set_defaults(func=cmd_potok)
 
     p_parts = sub.add_parser("parts", help="проверить справочник состава")

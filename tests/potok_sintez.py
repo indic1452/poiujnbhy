@@ -364,3 +364,55 @@ def рс(слов: int, n: int, k: int, *, многочлен: int = 0x11D, пе
                 остаток[j] ^= int(умножение[g[j + 1], обратная])
         итог[w] = d + остаток
     return итог
+
+
+# -- GFP и ATM -------------------------------------------------------------------------
+
+def gfp(кадры: Sequence[bytes], *, пустых_между: int = 2, upi: int = 0x01) -> bytes:
+    """GFP (G.7041): основной заголовок с cHEC и маской B6AB31E0, заголовок типа
+    с tHEC, нагрузка под самосинхронизирующимся скремблером x⁴³ + 1."""
+    from reportgen.potok import crc as crc_
+    from reportgen.potok import skrembler
+
+    def hec(данные):
+        return crc_.crc(данные, 16, 0x1021, 0, False, False, 0).to_bytes(2, "big")
+
+    маска = bytes.fromhex("B6AB31E0")
+    пустой = bytes(a ^ b for a, b in zip(b"\0\0" + hec(b"\0\0"), маска))
+    # Нагрузки скремблируются сплошным потоком — сперва собираем их все.
+    нагрузки = []
+    for кадр in кадры:
+        тип = bytes([0b000_0_0000, upi])
+        нагрузки.append(тип + hec(тип) + кадр)
+    сплошь = в_биты(b"".join(нагрузки))
+    скр = в_байты(скремблировать(сплошь, (43,)))
+    итог = bytearray(пустой * пустых_между)
+    место = 0
+    for нагрузка in нагрузки:
+        pli = len(нагрузка).to_bytes(2, "big")
+        итог += bytes(a ^ b for a, b in zip(pli + hec(pli), маска))
+        итог += скр[место:место + len(нагрузка)]
+        место += len(нагрузка)
+        итог += пустой * пустых_между
+    return bytes(итог)
+
+
+def ethernet(пакет: bytes) -> bytes:
+    return bytes.fromhex("0011223344550066778899aa0800") + пакет
+
+
+def atm(пакеты: Sequence[bytes], vpi: int = 1, vci: int = 32) -> bytes:
+    """AAL5 над ATM: PDU с длиной и CRC-32, ячейки по 53 байта с HEC (x⁸+x²+x+1, ⊕0x55)."""
+    from reportgen.potok import crc as crc_
+    итог = bytearray()
+    for пакет in пакеты:
+        набивка = (-(len(пакет) + 8)) % 48
+        pdu = пакет + bytes(набивка) + b"\0\0" + len(пакет).to_bytes(2, "big")
+        pdu += crc_.crc(pdu, 32, 0x04C11DB7, 0xFFFFFFFF, False, False, 0xFFFFFFFF).to_bytes(4, "big")
+        for номер in range(0, len(pdu), 48):
+            последняя = номер + 48 >= len(pdu)
+            заголовок = bytes([(vpi >> 4) & 0x0F, ((vpi & 0x0F) << 4) | (vci >> 12),
+                               (vci >> 4) & 0xFF, ((vci & 0x0F) << 4) | (0b001 << 1 if последняя else 0)])
+            hec = crc_.crc(заголовок, 8, 0x07, 0, False, False, 0) ^ 0x55
+            итог += заголовок + bytes([hec]) + pdu[номер:номер + 48]
+    return bytes(итог)

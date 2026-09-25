@@ -2168,7 +2168,7 @@ def _слои(значение: str) -> List[str]:
 
 @router.post("/potok")
 def potok_start(request: Request, file: UploadFile = File(...), profile: str = Form("обычно"),
-                strip: str = Form("")) -> Dict[str, Any]:
+                strip: str = Form(""), bits: str = Form("")) -> Dict[str, Any]:
     """Принять поток и поставить разбор в очередь. Этапы — по /api/potok/{ид}."""
     user = require_user(request)
     settings = _settings(request)
@@ -2181,8 +2181,11 @@ def potok_start(request: Request, file: UploadFile = File(...), profile: str = F
         raise ServiceError(f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
     if not данные:
         raise ServiceError("файл пуст", 400)
+    символ = [int(ч) for ч in re.findall(r"\d+", bits or "")][:4]
+    if any(k < 2 or k > 12 or k % 2 for k in символ):
+        raise ServiceError("бит на символ КАМ — чётное число от 2 до 12", 400)
     ид = _potok(request).создать(владелец=user.id, имя=name, данные=данные, профиль=profile,
-                                 снять=_слои(strip))
+                                 снять=_слои(strip), символ=символ)
     _repos(request).audit.log("potok.start", user=user, object_type="potok", object_id=ид,
                               details={"name": name, "bytes": len(данные), "profile": profile})
     return {"id": ид}

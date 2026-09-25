@@ -8933,7 +8933,7 @@
     const ПРИМЕРЫ_СЛОЁВ = 'Слои, которые вы уже знаете, — по одному в строке, по порядку:\n' +
         'инверсия · сдвиг 5 · nrzi · манчестер · скремблер 3,20 · ' +
         'свёрточный 171/133 K=7 · выколотый 171/133 K=7 шаблон 110110 · ' +
-        'перемежение 12 7 · pdh E2 приток 1';
+        'перемежение 12 7 · pdh E2 приток 1 · плоскость 6 (или «плоскость 6 поворот 270° Грей половинами»)';
 
     async function renderPotok(view, jobId) {
         clear(view);
@@ -8947,6 +8947,7 @@
         const профиль = h('select', {}, ПРОФИЛИ_РАЗБОРА.map((п) =>
             h('option', { value: п[0], selected: п[0] === 'обычно' }, п[1])));
         const слои = h('textarea', { rows: 3, placeholder: ПРИМЕРЫ_СЛОЁВ });
+        const символ = h('input', { type: 'text', placeholder: 'например, 6 для КАМ-64; можно 4, 6, 8' });
         const кнопка = h('button', { class: 'btn btn--primary', onclick: () => начать() }, 'Разобрать');
         page.appendChild(h('div', { class: 'page-head' },
             h('div', {}, h('h2', {}, 'Разбор потока'),
@@ -8958,6 +8959,10 @@
             h('label', { class: 'field' }, h('span', {}, 'Файл потока (.bin, .sig, .dat, .raw, .bits, .hex, .pcap)'), picker),
             h('label', { class: 'field' }, h('span', {}, 'Профиль'), профиль),
             h('label', { class: 'field' }, h('span', {}, 'Снять вручную (необязательно)'), слои),
+            h('label', { class: 'field', title: 'Если файл — метки с выхода демодулятора КАМ: анализатор ' +
+                    'переберёт повороты и отражения созвездия, порядок бит и код Грея и возьмёт вариант, ' +
+                    'при котором проявляется скремблер или код' },
+                h('span', {}, 'КАМ: бит на символ (если поток — метки демодулятора)'), символ),
             h('div', { class: 'row' }, кнопка)));
         const списокУзел = h('div', { class: 'card card-pad' }, loadingBox('Загружаем разборы…'));
         page.appendChild(списокУзел);
@@ -8989,6 +8994,7 @@
             form.append('file', file);
             form.append('profile', профиль.value);
             form.append('strip', слои.value);
+            form.append('bits', символ.value);
             кнопка.disabled = true;
             try {
                 const data = await uploadFile('/api/potok', form);
