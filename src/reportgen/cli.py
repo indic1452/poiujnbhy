@@ -647,6 +647,19 @@ def cmd_terms(args: argparse.Namespace) -> int:
     return 1 if (glossary.problems or not len(glossary)) else 0
 
 
+def cmd_potok(args: argparse.Namespace) -> int:
+    """Разобрать цифровой поток: код, скремблер, цикл, каналы, HDLC, IP.
+
+    Тот же отчёт, что уходит модели, когда поток приложен к вопросу, — но
+    без модели и без ограничения по объёму: для проверки на месте.
+    """
+    from .potok import разобрать  # noqa: PLC0415 — numpy нужен только здесь
+
+    разбор = разобрать(args.path)
+    print(разбор.отчёт(предел=args.limit))
+    return 0 if разбор.находки else 1
+
+
 def cmd_parts(args: argparse.Namespace) -> int:
     """Что прочитано из справочника состава и что он сделает с вопросом.
 
@@ -967,6 +980,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_terms.add_argument("--query", default=None,
                          help="показать, что добавится к этому вопросу")
     p_terms.set_defaults(func=cmd_terms)
+
+    p_potok = sub.add_parser(
+        "potok", help="разобрать цифровой поток: код, скремблер, цикл, каналы, HDLC, IP")
+    p_potok.add_argument("path", help="файл потока: .bin, .sig, .dat, .raw, .bits, .hex")
+    p_potok.add_argument("--limit", type=int, default=100000,
+                         help="сколько знаков отчёта печатать")
+    p_potok.set_defaults(func=cmd_potok)
 
     p_parts = sub.add_parser("parts", help="проверить справочник состава")
     p_parts.add_argument("--path", default=None, help="путь к parts.json")

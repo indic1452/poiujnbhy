@@ -705,7 +705,7 @@ def attach_to_case(request: Request, case_ref: int,
         if not size:
             raise ServiceError("файл пустой", 400)
         # Не прочиталось — не беда: подлинник на месте, откроют как есть.
-        text, _problem = _extract_attachment(target)
+        text, _problem = _extract_attachment(target, name)
         item = repos.case_files.add(
             case.id, name=name, path=str(target), size=size,
             text=text.strip(), note=str(note or "").strip()[:300],
@@ -2073,6 +2073,8 @@ def _refuse_dangerous(name: str) -> None:
 
 
 def _attachment_kind(suffix: str) -> str:
+    if suffix in STREAM_ATTACH:
+        return "stream"
     if suffix in ATTACH_IMAGE:
         return "image"
     if suffix in ATTACH_DUMP:
@@ -2116,7 +2118,7 @@ def attach_to_chat(request: Request, chat_id: int, file: UploadFile = File(...))
                         f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
                 stream.write(piece)
 
-        text, note = _extract_attachment(target)
+        text, note = _extract_attachment(target, name)
     finally:
         # Разбор сохранён в базе, копия файла на диске больше не нужна:
         # каталог загрузок иначе растёт от каждого заданного вопроса.
@@ -2156,6 +2158,14 @@ CAPTURE_ATTACH = {
 }
 
 
+#: Цифровые потоки: сырой поток (.bin, .dat, .raw), пакеты с двухбайтовой
+#: длиной (.sig), биты или шестнадцатеричный дамп текстом (.bits, .hex).
+#: Модель читать их не может — ни по объёму, ни по сути: вместо потока ей
+#: уходит отчёт анализатора (reportgen.potok) — код, скремблер, цикл,
+#: каналы, HDLC, IP — с мерами уверенности.
+STREAM_ATTACH = {".bin", ".sig", ".dat", ".raw", ".bits", ".hex"}
+
+
 #: Расширения, текст в которых берётся распознаванием, а не чтением.
 OCR_SUFFIXES = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".webp")
 
@@ -2189,9 +2199,22 @@ def _looks_like_mush(text: str) -> bool:
     return long_words / len(words) < 0.35
 
 
-def _extract_attachment(path: Path) -> tuple[str, str]:
-    """Текст файла и, если что-то пошло не так, объяснение по-русски."""
+def _extract_attachment(path: Path, name: str = "") -> tuple[str, str]:
+    """Текст файла и, если что-то пошло не так, объяснение по-русски.
+
+    ``name`` — имя, под которым файл прислали: на диске он лежит под
+    служебным, а в отчёте анализатора должно стоять то, что инженер узнает.
+    """
     suffix = path.suffix.lower()
+    if suffix in STREAM_ATTACH:
+        try:
+            from ..potok import разобрать  # noqa: PLC0415
+            разбор = разобрать(path, имя=name or path.name)
+        except Exception as error:      # noqa: BLE001 — вопрос важнее вложения
+            return "", f"поток разобрать не удалось: {error}"
+        return разбор.отчёт(), (f"разобран анализатором потоков за "
+                               f"{разбор.секунд:.0f} с: найдено уровней — "
+                               f"{len(разбор.находки)}")
     if suffix in CAPTURE_ATTACH:
         return "", (
             "двоичный захват прочитать нечем — приложите текстовую выгрузку "
@@ -3114,7 +3137,7 @@ def attach_to_talk(request: Request, talk_id: int,
         caption = str(text or "").strip()[:CARD_LIMITS["note"]] or name
         # Текст вычитываем тем же конвертером, что и бумаги письма: без него
         # документ Word собеседнику пришлось бы скачивать, чтобы прочитать.
-        body, _problem = _extract_attachment(target)
+        body, _problem = _extract_attachment(target, name)
         message = repos.talks.add_message(talk_id, user.id, caption)
         item = repos.talks.add_file(talk_id, message.id if message else None,
                                     user.id, name, str(target), size,
