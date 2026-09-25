@@ -8933,7 +8933,11 @@
     const ПРИМЕРЫ_СЛОЁВ = 'Слои, которые вы уже знаете, — по одному в строке, по порядку:\n' +
         'инверсия · сдвиг 5 · nrzi · манчестер · скремблер 3,20 · ' +
         'свёрточный 171/133 K=7 · выколотый 171/133 K=7 шаблон 110110 · ' +
-        'перемежение 12 7 · pdh E2 приток 1 · плоскость 6 (или «плоскость 6 поворот 270° Грей половинами»)';
+        'перемежение 12 7 · форни 12 17 0 · pdh E2 приток 1 · ' +
+        'плоскость 6 (или «плоскость 6 поворот 270° Грей половинами») · ' +
+        'синхро 0x1ACFFC1D ошибок 2 · кадры 0x47 длина 1504 · реверс 8 · xor 0xFF · прореживание 2 фаза 1 · ' +
+        'фм 3 (или «фм 3 поворот 2 отражение») · метки 2: 0 1 3 2 · биты символа 4: 1 0 3 2 · ' +
+        'ldpc ИМЯ выколоты 0-191 укорочены 1000-1023';
 
     async function renderPotok(view, jobId) {
         clear(view);
@@ -9016,12 +9020,19 @@
         const ход = h('div', { class: 'potok-log' });
         const этапы = h('div', { class: 'potok-stages' });
         const прочее = h('div', {});
+        const растрУзел = h('div', { class: 'card card-pad potok-raster', hidden: true });
+        const подсказкиУзел = h('div', { class: 'card card-pad potok-hints', hidden: true });
+        const деревоУзел = h('details', { class: 'card card-pad potok-tree', open: true });
         page.appendChild(шапка);
+        page.appendChild(деревоУзел);
+        page.appendChild(подсказкиУзел);
+        page.appendChild(растрУзел);
         page.appendChild(этапы);
         page.appendChild(h('details', { class: 'card card-pad potok-journal', open: true },
             h('summary', {}, 'Журнал хода — что анализатор пробует'), ход));
         page.appendChild(прочее);
         остановитьОпросПотока();
+        let последние = {};
 
         async function обновить() {
             let data;
@@ -9033,13 +9044,29 @@
                 этапы.appendChild(errorBox(error));
                 return;
             }
+            const былоСостояние = последние.состояние;
+            последние = data;
             рисоватьШапку(data);
+            if (былоСостояние !== data.состояние) рисоватьДерево();
             clear(ход);
             (data.журнал || []).slice().reverse().forEach((строка) =>
                 ход.appendChild(h('div', { class: 'mono small' }, строка)));
-            if (data.состояние === 'готово') {
+            if (data.состояние === 'готово' && data.разбирать === false) {
+                clear(этапы);
+                этапы.appendChild(h('div', { class: 'muted' }, 'Производный поток: ' +
+                    ((data.происхождение || []).join('; ') || 'копия') + '. Автоматический разбор не запускался — ' +
+                    'смотрите растр и инструменты выше или нажмите «Разобрать автоматом».'));
+                if (растрУзел.hidden) показатьРастр(0, 'производный поток');
+            } else if (data.состояние === 'готово') {
                 рисоватьЭтапы(data);
                 рисоватьПрочее(data);
+                // Цепочка оборвалась на битах (или её нет) — разбор встал:
+                // сразу показываем, что можно сделать дальше.
+                const список = data.этапы || [];
+                const последний = список[список.length - 1];
+                if (подсказкиУзел.hidden && (!последний || последний.выгрузка === 'bin')) {
+                    показатьПодсказки(последний ? последний.номер : 0, false);
+                }
             } else if (data.состояние === 'ошибка') {
                 clear(этапы);
                 этапы.appendChild(h('div', { class: 'empty empty--error' },
@@ -9062,11 +9089,21 @@
                         fmtBytes(data.байт) + ' · профиль «' + data.профиль + '»' +
                         (data.снять && data.снять.length ? ' · снято вручную: ' + data.снять.join('; ') : '') +
                         (data.секунд ? ' · разбор ' + data.секунд.toFixed(1) + ' с' : ''),
-                        data.от ? h('span', {}, ' · продолжение ',
+                        data.от ? h('span', {},
+                            (data.происхождение && data.происхождение.length ? ' · выделен из ' : ' · продолжение '),
                             h('a', { href: '#/potok/' + encodeURIComponent(data.от.split('#')[0]) },
-                                'разбора с этапа ' + data.от.split('#')[1])) : null)),
+                                (data.происхождение && data.происхождение.length ? 'потока этапа ' : 'разбора с этапа ') +
+                                data.от.split('#')[1])) : null)),
                 h('div', { class: 'page-head-actions' },
                     h('span', { class: 'potok-state is-' + состояниеКласс(data.состояние) }, data.состояние),
+                    h('button', { class: 'btn', onclick: () => показатьРастр(0, 'исходный поток') }, 'Растр исходного'),
+                    data.состояние === 'готово' ? h('button', {
+                        class: 'btn', title: 'Приметы потока там, где разбор встал, подсказки и вопрос помощнику',
+                        onclick: () => показатьПодсказки((data.этапы || []).length, true),
+                    }, 'Что дальше?') : null,
+                    data.состояние === 'готово' && data.разбирать === false ? h('button', {
+                        class: 'btn btn--primary', onclick: () => разобратьЭтот(),
+                    }, 'Разобрать автоматом') : null,
                     h('a', { class: 'btn', href: '#/potok' }, 'Все разборы')),
             ]);
         }
@@ -9096,6 +9133,14 @@
                     class: 'btn btn--sm', onclick: () => скачать(этап),
                     title: 'Поток после этого этапа: биты — .bin, кадры — .sig, пакеты IP — .pcap',
                 }, 'Скачать .' + этап.выгрузка + ' (' + fmtBytes(этап.выгрузка_байт) + ')') : null,
+                этап.выгрузка === 'bin' ? h('button', {
+                    class: 'btn btn--sm', onclick: () => показатьРастр(этап.номер, 'после этапа ' + этап.номер + ' — ' + этап.что),
+                    title: 'Картинка потока по периоду, маски, разуплотнение, ручные инструменты',
+                }, 'Растр') : null,
+                этап.выгрузка === 'bin' ? h('button', {
+                    class: 'btn btn--sm', onclick: () => показатьПодсказки(этап.номер, true),
+                    title: 'Приметы потока после этого этапа, подсказки и вопрос помощнику',
+                }, 'Что дальше?') : null,
                 этап.выгрузка === 'bin' ? h('button', {
                     class: 'btn btn--sm', onclick: () => продолжить(этап),
                     title: 'Разобрать поток после этого этапа заново — можно сняв слой вручную',
@@ -9133,6 +9178,228 @@
             прочее.appendChild(h('details', { class: 'card card-pad' },
                 h('summary', {}, 'Отчёт целиком — тот же, что уходит помощнику'),
                 h('pre', { class: 'potok-report' }, data.отчёт || '')));
+        }
+
+        // -- дерево обработки: узлы, переходы, удаление ветви, правка шагов --
+
+        async function рисоватьДерево() {
+            let data;
+            try {
+                data = await api.get('/api/potok/' + encodeURIComponent(jobId) + '/tree');
+            } catch (error) {
+                return;
+            }
+            clear(деревоУзел);
+            const всего = (function счёт(у) { return 1 + у.дети.reduce((с_, д) => с_ + счёт(д), 0); })(data.tree);
+            append(деревоУзел, [
+                h('summary', {}, 'Дерево обработки — узлов: ' + всего),
+                h('div', { class: 'muted small' }, 'Узел — разбор или производный поток (канал по маске, снятые слои). ' +
+                    'Щелчок — перейти; × — удалить узел с ветвью под ним; у текущего узла шаги можно выключить, ' +
+                    'переставить, убрать или добавить и пересобрать.'),
+                h('ul', { class: 'potok-tree-list' }, узелДерева(data.tree)),
+                редакторШагов(),
+            ]);
+        }
+
+        function узелДерева(у) {
+            const текущий = у.ид === jobId;
+            const шаги = (у.шаги || []).length
+                ? у.шаги.filter((ш) => ш.вкл !== false).map((ш) => ш.вид === 'маска'
+                    ? 'маска: период ' + ш.маска.период + ', позиции ' + диапазоны(ш.маска.позиции) : ш.слой).join(' → ')
+                : ((у.снять || []).length ? 'снято: ' + у.снять.join(' → ') : '');
+            return h('li', { class: текущий ? 'is-current' : '' },
+                h('div', { class: 'potok-tree-node' },
+                    h('span', { class: 'potok-state is-' + состояниеКласс(у.состояние) }, у.состояние),
+                    у.этап_родителя !== null && у.этап_родителя !== undefined
+                        ? h('span', { class: 'muted small' }, у.этап_родителя ? 'из этапа ' + у.этап_родителя : 'из исходного') : null,
+                    текущий ? h('b', {}, у.имя) : h('a', { href: '#/potok/' + encodeURIComponent(у.ид) }, у.имя),
+                    шаги ? h('span', { class: 'mono small' }, шаги) : null,
+                    у.разбирать === false ? h('span', { class: 'muted small' }, 'без автомата') : h('span', { class: 'muted small' }, 'этапов ' + у.этапов),
+                    h('button', {
+                        class: 'btn btn--sm btn--ghost', title: 'Удалить этот узел и всё, что из него получено',
+                        onclick: () => удалитьУзел(у),
+                    }, '×')),
+                у.дети.length ? h('ul', {}, у.дети.map(узелДерева)) : null);
+        }
+
+        async function удалитьУзел(у) {
+            const сколько = (function счёт(в) { return 1 + в.дети.reduce((с_, д) => с_ + счёт(д), 0); })(у);
+            const да = await confirmDialog({
+                title: 'Удалить узел?', danger: true, confirmText: 'Удалить',
+                message: '«' + у.имя + '»' + (сколько > 1 ? ' и всё, что из него получено (узлов: ' + сколько + ')' : '') +
+                    ' будет удалено вместе с потоками.',
+            });
+            if (!да) return;
+            try {
+                await api.del('/api/potok/' + encodeURIComponent(у.ид));
+                const родитель = (у.от || '').split('#')[0];
+                // Удалён текущий узел или его предок — уходим к родителю удалённого.
+                const внутри = (function есть(в) { return в.ид === jobId || в.дети.some(есть); })(у);
+                if (внутри) navigate(родитель ? '#/potok/' + encodeURIComponent(родитель) : '#/potok');
+                else рисоватьДерево();
+            } catch (error) {
+                toastError(error);
+            }
+        }
+
+        function редакторШагов() {
+            const производный = (последние.шаги || []).length > 0;
+            const шаги = производный
+                ? последние.шаги.map((ш) => Object.assign({}, ш))
+                : (последние.снять || []).map((слой) => ({ вид: 'слой', слой: слой, вкл: true }));
+            if (!производный && !шаги.length && !последние.от) {
+                // Корень без ручных слоёв — редактировать нечего, но слой можно добавить.
+            }
+            const список = h('ol', { class: 'potok-steps' });
+            const новый = h('input', { type: 'text', placeholder: 'слой, например: синхро 0x47 · аддитивный отводы 6,7 кадр 1000', style: { flex: '1' } });
+            const автомат = h('input', { type: 'checkbox', checked: !производный || последние.разбирать !== false });
+            const рисовать = () => {
+                clear(список);
+                шаги.forEach((ш, i) => {
+                    const поле = ш.вид === 'слой'
+                        ? h('input', { type: 'text', value: ш.слой, style: { flex: '1' } })
+                        : h('span', { class: 'mono small', style: { flex: '1' } },
+                            'маска: период ' + ш.маска.период + ', сдвиг ' + ш.маска.сдвиг + ', позиции ' + диапазоны(ш.маска.позиции));
+                    if (ш.вид === 'слой') поле.addEventListener('change', () => { ш.слой = поле.value; });
+                    const вкл = h('input', { type: 'checkbox', checked: ш.вкл !== false, title: 'выключить шаг, не удаляя' });
+                    вкл.addEventListener('change', () => { ш.вкл = вкл.checked; });
+                    список.appendChild(h('li', { class: ш.вкл === false ? 'is-off' : '' },
+                        вкл, поле,
+                        h('button', { class: 'btn btn--sm btn--ghost', disabled: i === 0, onclick: () => { шаги.splice(i - 1, 0, шаги.splice(i, 1)[0]); рисовать(); } }, '↑'),
+                        h('button', { class: 'btn btn--sm btn--ghost', disabled: i === шаги.length - 1, onclick: () => { шаги.splice(i + 1, 0, шаги.splice(i, 1)[0]); рисовать(); } }, '↓'),
+                        h('button', { class: 'btn btn--sm btn--ghost', onclick: () => { шаги.splice(i, 1); рисовать(); } }, '×')));
+                });
+                if (!шаги.length) список.appendChild(h('li', { class: 'muted small' }, 'шагов нет'));
+            };
+            рисовать();
+            const пересобрать = async (заменить) => {
+                if (заменить && !(await confirmDialog({
+                    title: 'Заменить узел?', danger: true, confirmText: 'Заменить',
+                    message: 'Текущий узел и всё, что из него получено, будут удалены; новый встанет на его место.',
+                }))) return;
+                try {
+                    const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/rebuild',
+                        { steps: шаги, analyze: автомат.checked, replace: заменить });
+                    navigate('#/potok/' + encodeURIComponent(data.id));
+                } catch (error) {
+                    toastError(error);
+                }
+            };
+            return h('div', { class: 'potok-steps-edit' },
+                h('div', { class: 'card-title' }, производный ? 'Шаги этого потока' : 'Слои, снятые вручную до разбора'),
+                список,
+                h('div', { class: 'rastr-tools' }, новый,
+                    h('button', { class: 'btn btn--sm', onclick: () => {
+                        if (!новый.value.trim()) return;
+                        шаги.push({ вид: 'слой', слой: новый.value.trim(), вкл: true }); новый.value = ''; рисовать();
+                    } }, 'Добавить шаг')),
+                h('div', { class: 'row' },
+                    производный ? h('label', { class: 'small' }, автомат, ' разобрать автоматом') : null,
+                    h('button', { class: 'btn btn--sm', onclick: () => пересобрать(false) }, 'Пересобрать рядом'),
+                    h('button', { class: 'btn btn--sm btn--primary', onclick: () => пересобрать(true) }, 'Пересобрать и заменить')));
+        }
+
+        function показатьРастр(номер, подпись, заданный) {
+            растрУзел.hidden = false;
+            // Период — заданный подсказкой, по находке цикла, если она есть в этапах; иначе 64.
+            const цикл = (последние.этапы || []).filter((э) => /цикл (\d+) бит/.test(э.что))[0];
+            const период = заданный || (цикл ? Number(/цикл (\d+) бит/.exec(цикл.что)[1]) : 64);
+            открытьРастр(растрУзел, jobId, номер, подпись, период);
+            растрУзел.scrollIntoView({ block: 'start' });
+        }
+
+        /** «Что дальше?»: приметы потока на этапе, подсказки с действиями, вопрос помощнику. */
+        async function показатьПодсказки(номер, прокрутить) {
+            подсказкиУзел.hidden = false;
+            clear(подсказкиУзел);
+            подсказкиУзел.appendChild(loadingBox('Смотрю на поток…'));
+            if (прокрутить) подсказкиУзел.scrollIntoView({ block: 'start' });
+            let data;
+            try {
+                data = await api.get('/api/potok/' + encodeURIComponent(jobId) + '/hints?stage=' + номер);
+            } catch (error) {
+                clear(подсказкиУзел);
+                подсказкиУзел.appendChild(errorBox(error));
+                return;
+            }
+            const этап = data.stage;
+            const п = data.signs || {};
+            clear(подсказкиУзел);
+            append(подсказкиУзел, [
+                h('div', { class: 'potok-hints-head' },
+                    h('div', { class: 'card-title' }, 'Что дальше — ' + (этап ? 'поток после этапа ' + этап : 'исходный поток')),
+                    h('button', { class: 'btn btn--sm btn--ghost', onclick: () => { подсказкиУзел.hidden = true; } }, 'Скрыть')),
+                п.мало ? null : h('div', { class: 'muted small potok-signs' },
+                    'единиц ' + (п.доля_единиц * 100).toFixed(1) + ' % · энтропия байта ' + п.энтропия_мин + '–' +
+                    п.энтропия_байт + ' бит · серия до ' + п.серия_до + ' · в паузах ' + (п.в_паузах * 100).toFixed(1) +
+                    ' % · связи ' + п.связи_сигм + 'σ · флагов 7E ×' + п.флагов_к_случайному +
+                    ' · периоды: ' + ((п.периоды || []).map((р) => р.период).join(', ') || 'нет')),
+                h('ol', { class: 'potok-hint-list' }, (data.items || []).map((х) => {
+                    const итог = h('div', { class: 'potok-hint-result' });
+                    return h('li', {},
+                        h('b', {}, х.что),
+                        h('div', { class: 'muted small' }, х.почему),
+                        (х.действия || []).length ? h('div', { class: 'row' }, х.действия.map((д) =>
+                            h('button', {
+                                class: 'btn btn--sm' + (д.вид === 'помощник' ? ' btn--primary' : ''),
+                                onclick: (event) => выполнить(д, этап, итог, event.currentTarget),
+                            }, д.кнопка))) : null,
+                        итог);
+                })),
+            ]);
+        }
+
+        async function выполнить(д, этап, итог, кнопка) {
+            const путь = '/api/potok/' + encodeURIComponent(jobId);
+            кнопка.disabled = true;
+            try {
+                if (д.вид === 'растр') {
+                    показатьРастр(этап, этап ? 'после этапа ' + этап : 'исходный поток', д.период);
+                } else if (д.вид === 'инструмент') {
+                    let k = 0;
+                    if (д.имя === 'плоскость') {
+                        k = Number(await promptDialog({ title: 'Бит на символ КАМ', placeholder: 'например, 6 для КАМ-64' }));
+                        if (!k) return;
+                    }
+                    clear(итог);
+                    итог.appendChild(h('div', { class: 'muted small' }, 'Ищу…'));
+                    const data = await api.post(путь + '/tool', { stage: этап, tool: д.имя, k: k });
+                    clear(итог);
+                    const н = data.found;
+                    итог.appendChild(н ? h('div', {},
+                        h('b', {}, н.что), h('div', { class: 'small' }, н.мера),
+                        h('ul', { class: 'potok-details' }, (н.подробно || []).map((с) => h('li', {}, с))))
+                        : h('div', { class: 'muted small' }, 'Не найдено (' + data.bits + ' бит проверено).'));
+                } else if (д.вид === 'слой' || д.вид === 'разобрать') {
+                    const data = await api.post(путь + '/derive',
+                        { stage: этап, strip: д.слой || '', analyze: true, profile: 'обычно' });
+                    navigate('#/potok/' + encodeURIComponent(data.id));
+                } else if (д.вид === 'профиль') {
+                    const data = этап
+                        ? await api.post(путь + '/continue', { stage: этап, strip: '', profile: д.профиль })
+                        : await api.post(путь + '/derive', { stage: 0, analyze: true, profile: д.профиль });
+                    navigate('#/potok/' + encodeURIComponent(data.id));
+                } else if (д.вид === 'помощник') {
+                    const data = await api.post(путь + '/ask', { stage: этап, topic: д.тема || '' });
+                    // Вопрос не уходит сам: инженер правит его в поле и спрашивает.
+                    saveDraft(data.chat.id, data.question);
+                    navigate('#/chat/' + data.chat.id);
+                }
+            } catch (error) {
+                toastError(error);
+            } finally {
+                кнопка.disabled = false;
+            }
+        }
+
+        async function разобратьЭтот() {
+            try {
+                const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/derive',
+                    { stage: 0, analyze: true, profile: 'обычно' });
+                navigate('#/potok/' + encodeURIComponent(data.id));
+            } catch (error) {
+                toastError(error);
+            }
         }
 
         async function скачать(этап) {
@@ -9181,6 +9448,579 @@
         }
 
         await обновить();
+    }
+
+    // -- матрицы LDPC: H из стандарта для ручного снятия кода ------------------
+
+    /** Панель «Матрицы LDPC»: загрузить H (alist, базовая с Z, адреса), выбрать для слоя «ldpc ИМЯ». */
+    function панельМатриц(слой) {
+        const список = h('div', { class: 'rastr-masks' });
+        const имя = h('input', { type: 'text', placeholder: 'например, nr-bg2-z96', style: { width: '180px' } });
+        const вид = h('select', {},
+            h('option', { value: 'базовая' }, 'базовая матрица сдвигов (QC: 802.11n, 802.16e, 5G NR)'),
+            h('option', { value: 'адреса' }, 'таблица адресов (DVB-S2/T2)'),
+            h('option', { value: 'alist' }, 'alist'));
+        const z = h('input', { type: 'number', min: 1, placeholder: 'Z', style: { width: '72px' } });
+        const n = h('input', { type: 'number', min: 1, placeholder: 'n', style: { width: '84px' } });
+        const k = h('input', { type: 'number', min: 1, placeholder: 'k', style: { width: '84px' } });
+        const текст = h('textarea', { rows: 6, placeholder: 'Вставьте таблицу из документа библиотеки: строки базовой матрицы ' +
+            '(−1 — нулевой блок, число — сдвиг вправо), строки адресов или файл alist', style: { width: '100%' } });
+        const файл = h('input', { type: 'file', accept: '.alist,.txt,.csv' });
+        файл.addEventListener('change', () => {
+            const f = файл.files && файл.files[0];
+            if (!f) return;
+            const чтение = new FileReader();
+            чтение.onload = () => { текст.value = String(чтение.result || ''); if (!имя.value) имя.value = f.name.replace(/\.[^.]+$/, ''); };
+            чтение.readAsText(f);
+        });
+        const поля = () => {
+            z.hidden = вид.value !== 'базовая';
+            n.hidden = k.hidden = вид.value !== 'адреса';
+        };
+        вид.addEventListener('change', поля);
+        поля();
+
+        async function обновить() {
+            clear(список);
+            try {
+                const data = await api.get('/api/potok-matrices');
+                if (!(data.items || []).length) {
+                    список.appendChild(h('div', { class: 'muted small' }, 'Матриц пока нет. Спросите помощника, в каком стандарте ' +
+                        'этот код, и вставьте его таблицу ниже.'));
+                }
+                (data.items || []).forEach((м) => список.appendChild(h('div', { class: 'rastr-mask' },
+                    h('b', {}, м.имя),
+                    h('span', { class: 'muted small' }, '(' + м.n + ', ' + м.k + '), скорость ' + м.скорость + ', ' + м.откуда +
+                        '; веса строк ' + (м.веса_строк || []).join('/') + ', столбцов ' + (м.веса_столбцов || []).join('/')),
+                    h('button', {
+                        class: 'btn btn--sm', title: 'Подставить в «Снять слой вручную»; допишите выколотые и укороченные позиции',
+                        onclick: () => { слой.value = 'ldpc ' + м.имя + ' выколоты 0-0 укорочены '; слой.focus(); },
+                    }, 'В слой'),
+                    h('button', { class: 'btn btn--sm btn--ghost', onclick: async () => {
+                        try { await api.del('/api/potok-matrices/' + encodeURIComponent(м.имя)); обновить(); } catch (error) { toastError(error); }
+                    } }, '×'))));
+            } catch (error) {
+                список.appendChild(errorBox(error));
+            }
+        }
+
+        async function загрузить() {
+            try {
+                const data = await api.post('/api/potok-matrices', {
+                    name: имя.value.trim(), kind: вид.value, text: текст.value,
+                    z: Number(z.value) || 0, n: Number(n.value) || 0, k: Number(k.value) || 0,
+                });
+                toast('Матрица загружена: (' + data.matrix.n + ', ' + data.matrix.k + ')', 'ok');
+                текст.value = '';
+                обновить();
+            } catch (error) {
+                toastError(error);
+            }
+        }
+
+        const узел = h('details', { class: 'rastr-ldpc' },
+            h('summary', {}, 'Матрицы LDPC — снять код по матрице из стандарта (с перфорацией и укорочением)'),
+            h('div', { class: 'muted small' }, 'Слой: «ldpc ИМЯ выколоты 0-191 укорочены 1000-1023 [начало N] [итераций 50]». ' +
+                'Выколотые позиции декодер восстанавливает как стёртые, укороченные — известные нули; начало слова ищется само.'),
+            список,
+            h('div', { class: 'rastr-tools' }, h('label', {}, 'Имя ', имя), h('label', {}, 'Вид ', вид), z, n, k, файл),
+            текст,
+            h('div', { class: 'row' }, h('button', { class: 'btn btn--sm btn--primary', onclick: загрузить }, 'Загрузить матрицу')));
+        узел.addEventListener('toggle', () => { if (узел.open) обновить(); });
+        return узел;
+    }
+
+    // -- растр потока: картинка по периоду и ручные инструменты ---------------
+
+    //: Цвета растра — как у привычных анализаторов: 0 — чёрный, 1 — зелёный.
+    const РАСТР_0 = [0, 0, 0];
+    const РАСТР_1 = [0, 200, 83];
+    const РАСТР_ШИРИНА_ДО = 4096;       // пикселей холста по горизонтали
+
+    function растрМаскиКлюч(jobId, этап) { return 'potok-maski:' + jobId + ':' + этап; }
+
+    function растрМаски(jobId, этап) {
+        try {
+            return JSON.parse(localStorage.getItem(растрМаскиКлюч(jobId, этап)) || '[]');
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function растрСохранитьМаски(jobId, этап, маски) {
+        try {
+            localStorage.setItem(растрМаскиКлюч(jobId, этап), JSON.stringify(маски));
+        } catch (error) { /* хранилище недоступно — маски живут до перехода */ }
+    }
+
+    function диапазоны(позиции) {
+        const п = Array.from(new Set(позиции)).sort((a, b) => a - b);
+        const части = [];
+        let начало = null;
+        п.forEach((х, i) => {
+            if (начало === null) начало = х;
+            if (i + 1 === п.length || п[i + 1] !== х + 1) {
+                части.push(начало === х ? String(начало) : начало + '–' + х);
+                начало = null;
+            }
+        });
+        return части.join(', ');
+    }
+
+    /** Растр потока задания: этап 0 — исходный файл, N — поток после этапа N. */
+    function открытьРастр(контейнер, jobId, этап, подпись, начальныйПериод) {
+        clear(контейнер);
+        const с = {
+            период: начальныйПериод || 64, сдвиг: 0, масштаб: 3, строка: 0, столбец: 0,
+            вид: 'биты', выделено: new Set(), якорь: null, всего: 0, биты: null, маски: растрМаски(jobId, этап),
+        };
+        const поле = (значение, ширина) => h('input', { type: 'number', value: значение, style: { width: ширина || '84px' } });
+        const полеПериод = поле(с.период);
+        const полеСдвиг = поле(с.сдвиг);
+        const полеСтрока = поле(с.строка);
+        const полеСтолбец = поле(с.столбец);
+        const полеМасштаб = h('select', {}, [1, 2, 3, 4, 6, 8].map((z) =>
+            h('option', { value: z, selected: z === с.масштаб }, z + ' пикс.')));
+        const видКнопки = ['биты', 'HEX', 'DEC'].map((вид) =>
+            h('button', { class: 'btn btn--sm' + (вид === с.вид ? ' is-on' : ''), onclick: () => { с.вид = вид; рисовать(); } }, вид));
+        const кандидаты = h('span', { class: 'rastr-cands' });
+        const полоса = h('canvas', { class: 'rastr-bar', height: 18 });
+        const холст = h('canvas', { class: 'rastr-canvas', height: 480, tabindex: 0 });
+        const текст = h('pre', { class: 'rastr-text', hidden: true });
+        const подсказка = h('div', { class: 'muted small rastr-info' });
+        const выделение = h('div', { class: 'rastr-sel' });
+        const маскиУзел = h('div', { class: 'rastr-masks' });
+        const итоги = h('div', { class: 'rastr-results' });
+        const слой = h('input', { type: 'text', placeholder: 'синхро 0x47 · кадры 0x47 длина 1504 · сдвиг 5 · инверсия · реверс 8 · xor 0xFF · nrzi · скремблер 3,20 · форни 12 17 0 · плоскость 6', style: { width: '100%' } });
+        const k = h('input', { type: 'number', value: 6, style: { width: '56px' } });
+        const видМодуляции = h('select', {}, h('option', {}, 'КАМ'), h('option', {}, 'ФМ'));
+        const полеОтводы = h('input', { type: 'text', placeholder: 'пусто — найти; 6,7', style: { width: '120px' } });
+        const полеПропуск = h('input', { type: 'number', value: 0, min: 0, style: { width: '72px' } });
+        const цель = h('select', {});
+        const полеСинхро = h('input', { type: 'text', placeholder: '0011011 или 0x1ACFFC1D', style: { width: '200px' } });
+        const полеОшибок = h('input', { type: 'number', value: 0, min: 0, style: { width: '56px' } });
+        const синхроИтог = h('div', { class: 'rastr-sync' });
+
+        const шаг = (на) => () => { с.период = Math.max(1, с.период + на); полеПериод.value = с.период; загрузить(); };
+        append(контейнер, [
+            h('div', { class: 'card-title' }, 'Растр: ' + подпись),
+            h('div', { class: 'rastr-tools' },
+                h('label', {}, 'Период, бит ', полеПериод),
+                h('button', { class: 'btn btn--sm', onclick: шаг(-8), title: 'Shift+←' }, '−8'),
+                h('button', { class: 'btn btn--sm', onclick: шаг(-1), title: '←' }, '−1'),
+                h('button', { class: 'btn btn--sm', onclick: шаг(1), title: '→' }, '+1'),
+                h('button', { class: 'btn btn--sm', onclick: шаг(8), title: 'Shift+→' }, '+8'),
+                h('button', { class: 'btn btn--sm', onclick: () => найтиПериод() }, 'Найти период'),
+                кандидаты),
+            h('div', { class: 'rastr-tools' },
+                h('label', {}, 'Сдвиг, бит ', полеСдвиг),
+                h('label', {}, 'С цикла ', полеСтрока),
+                h('label', {}, 'С позиции ', полеСтолбец),
+                h('label', {}, 'Масштаб ', полеМасштаб),
+                h('span', { class: 'rastr-views' }, видКнопки)),
+            h('div', { class: 'rastr-tools' },
+                h('label', {}, 'Синхрокомбинация ', полеСинхро),
+                h('label', {}, 'ошибок до ', полеОшибок),
+                h('button', { class: 'btn btn--sm', onclick: () => синхро(false) }, 'Найти'),
+                h('button', {
+                    class: 'btn btn--sm', onclick: () => синхро(true),
+                    title: 'Взять синхрокомбинацию из выделенных подряд столбцов: постоянные биты по циклам',
+                }, 'Из выделения')),
+            синхроИтог,
+            // Полоса средних по столбцам — в той же прокрутке, что и растр: столбцы совпадают.
+            h('div', { class: 'rastr-scroll' }, полоса, холст), текст, подсказка, выделение,
+            h('div', { class: 'row' },
+                h('button', { class: 'btn btn--sm', onclick: () => сохранитьМаску() }, 'Сохранить выделение как канал'),
+                h('button', { class: 'btn btn--sm', onclick: () => { с.выделено.clear(); рисовать(); } }, 'Снять выделение')),
+            маскиУзел,
+            h('div', { class: 'rastr-tools' },
+                h('label', {}, 'Над чем: ', цель),
+                ['скремблер', 'код', 'кадры', 'цикл'].map((имя) =>
+                    h('button', { class: 'btn btn--sm', onclick: () => инструмент(имя) }, 'Найти: ' + имя)),
+                h('label', {}, 'Модуляция ', видМодуляции),
+                h('label', {}, 'бит на символ ', k),
+                h('button', {
+                    class: 'btn btn--sm', title: 'КАМ: 8 симметрий квадрата × Грей/натуральный × раскладка I/Q × порядок бит; ' +
+                        'ФМ: повороты на 2π/M × отражение × Грей/натуральный × порядок бит',
+                    onclick: () => инструмент(видМодуляции.value === 'ФМ' ? 'плоскость-фм' : 'плоскость'),
+                }, 'Подобрать плоскость')),
+            h('div', { class: 'rastr-tools' },
+                h('span', { class: 'small' }, 'Скремблер со сбросом в кадре (кадр — период, начало — сдвиг):'),
+                h('label', {}, 'отводы ', полеОтводы),
+                h('label', {}, 'пропуск, бит ', полеПропуск),
+                h('button', {
+                    class: 'btn btn--sm', title: 'Аддитивная ПСП одинакова в каждом кадре: по устойчивым столбцам — ' +
+                        'отводы (если не заданы) и начальное состояние',
+                    onclick: () => скремблерКадра(),
+                }, 'Найти ПСП и начальное состояние')),
+            h('div', { class: 'rastr-tools' }, h('label', { style: { flex: '1' } }, 'Снять слой вручную: ', слой),
+                h('button', { class: 'btn btn--sm', onclick: () => производный(false) }, 'Новый поток'),
+                h('button', { class: 'btn btn--sm btn--primary', onclick: () => производный(true) }, 'Новый поток и разобрать')),
+            панельМатриц(слой),
+            итоги,
+        ]);
+
+        полеПериод.addEventListener('change', () => { с.период = Math.max(1, Number(полеПериод.value) || 1); загрузить(); });
+        полеСдвиг.addEventListener('change', () => { с.сдвиг = Math.max(0, Number(полеСдвиг.value) || 0); загрузить(); });
+        полеСтрока.addEventListener('change', () => { с.строка = Math.max(0, Number(полеСтрока.value) || 0); загрузить(); });
+        полеСтолбец.addEventListener('change', () => { с.столбец = Math.max(0, Number(полеСтолбец.value) || 0); рисовать(); });
+        полеМасштаб.addEventListener('change', () => { с.масштаб = Number(полеМасштаб.value); загрузить(); });
+        холст.addEventListener('keydown', (event) => {
+            const строк = видимоСтрок();
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                шаг((event.key === 'ArrowLeft' ? -1 : 1) * (event.shiftKey ? 8 : 1))();
+            } else if (event.key === 'ArrowDown' || event.key === 'PageDown') {
+                с.строка += event.key === 'PageDown' || event.shiftKey ? строк : 1; полеСтрока.value = с.строка; загрузить();
+            } else if (event.key === 'ArrowUp' || event.key === 'PageUp') {
+                с.строка = Math.max(0, с.строка - (event.key === 'PageUp' || event.shiftKey ? строк : 1)); полеСтрока.value = с.строка; загрузить();
+            } else return;
+            event.preventDefault();
+        });
+        холст.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            с.строка = Math.max(0, с.строка + Math.sign(event.deltaY) * Math.max(1, Math.floor(видимоСтрок() / 8)));
+            полеСтрока.value = с.строка;
+            загрузить();
+        }, { passive: false });
+        холст.addEventListener('mousedown', (event) => {
+            const позиция = позицияПодМышью(event);
+            с.якорь = { позиция: позиция, добавить: event.shiftKey || event.ctrlKey };
+        });
+        холст.addEventListener('mouseup', (event) => {
+            if (!с.якорь) return;
+            const конец = позицияПодМышью(event);
+            if (!с.якорь.добавить) с.выделено.clear();
+            for (let п = Math.min(с.якорь.позиция, конец); п <= Math.max(с.якорь.позиция, конец); п += 1) {
+                if (п >= 0 && п < с.период) с.выделено.add(п);
+            }
+            с.якорь = null;
+            рисовать();
+        });
+        холст.addEventListener('mousemove', (event) => {
+            const r = холст.getBoundingClientRect();
+            const цикл = с.строка + Math.floor((event.clientY - r.top) / с.масштаб);
+            const позиция = позицияПодМышью(event);
+            const номер = с.сдвиг + цикл * с.период + позиция;
+            подсказка.textContent = 'Всего бит ' + с.всего + ', циклов ' + Math.floor(Math.max(0, с.всего - с.сдвиг) / с.период) +
+                ' · под курсором: цикл ' + цикл + ', позиция ' + позиция + ', бит № ' + номер + ' = ' + значениеБита(номер);
+        });
+
+        function позицияПодМышью(event) {
+            const r = холст.getBoundingClientRect();
+            return с.столбец + Math.floor((event.clientX - r.left) / с.масштаб);
+        }
+
+        function видимоСтрок() { return Math.floor(холст.height / с.масштаб); }
+
+        function значениеБита(номер) {
+            if (!с.биты) return '—';
+            const i = номер - с.начало;
+            if (i < 0 || i >= с.бит) return '—';
+            return (с.биты[i >> 3] >> (7 - (i & 7))) & 1;
+        }
+
+        async function загрузить() {
+            const строк = с.вид === 'биты' ? видимоСтрок() : 128;
+            const начало = с.сдвиг + с.строка * с.период;
+            try {
+                const data = await api.get('/api/potok/' + encodeURIComponent(jobId) + '/bits?stage=' + этап +
+                    '&start=' + начало + '&count=' + Math.min(строк * с.период, 1 << 22));
+                const сырые = atob(data.данные);
+                с.биты = new Uint8Array(сырые.length);
+                for (let i = 0; i < сырые.length; i += 1) с.биты[i] = сырые.charCodeAt(i);
+                с.начало = data.начало;
+                с.бит = data.бит;
+                с.всего = data.всего;
+                рисовать();
+            } catch (error) {
+                toastError(error);
+            }
+        }
+
+        function рисовать() {
+            видКнопки.forEach((кнопка) => кнопка.classList.toggle('is-on', кнопка.textContent === с.вид));
+            кандидаты.querySelectorAll('button').forEach((кнопка) =>
+                кнопка.classList.toggle('is-on', Number(кнопка.dataset.period) === с.период));
+            const колонок = Math.max(1, Math.min(с.период - с.столбец, Math.floor(РАСТР_ШИРИНА_ДО / с.масштаб)));
+            рисоватьПолосу(колонок);
+            холст.hidden = с.вид !== 'биты';
+            текст.hidden = с.вид === 'биты';
+            if (с.вид === 'биты') рисоватьРастр(колонок);
+            else рисоватьТекст();
+            выделение.textContent = с.выделено.size
+                ? 'Выделено позиций в цикле: ' + с.выделено.size + ' (' + диапазоны(Array.from(с.выделено)) + ')'
+                : 'Выделите столбцы мышью (с Shift или Ctrl — добавить к выделенному)';
+            рисоватьМаски();
+        }
+
+        function рисоватьРастр(колонок) {
+            const z = с.масштаб;
+            const строк = Math.min(видимоСтрок(), Math.floor(с.бит / с.период));
+            холст.width = колонок * z;
+            const ctx = холст.getContext('2d');
+            const img = ctx.createImageData(холст.width, холст.height);
+            for (let r = 0; r < строк; r += 1) {
+                for (let c = 0; c < колонок; c += 1) {
+                    const i = r * с.период + с.столбец + c;
+                    const бит = (с.биты[i >> 3] >> (7 - (i & 7))) & 1;
+                    const цвет = бит ? РАСТР_1 : РАСТР_0;
+                    const выделен = с.выделено.has(с.столбец + c);
+                    for (let dy = 0; dy < z; dy += 1) {
+                        let p = ((r * z + dy) * холст.width + c * z) * 4;
+                        for (let dx = 0; dx < z; dx += 1, p += 4) {
+                            img.data[p] = выделен ? Math.min(255, цвет[0] + 90) : цвет[0];
+                            img.data[p + 1] = цвет[1];
+                            img.data[p + 2] = выделен ? Math.min(255, цвет[2] + 160) : цвет[2];
+                            img.data[p + 3] = 255;
+                        }
+                    }
+                }
+            }
+            ctx.putImageData(img, 0, 0);
+        }
+
+        function рисоватьПолосу(колонок) {
+            // Доля единиц в каждом столбце по видимым циклам: постоянные
+            // столбцы (синхрослово, служебные биты) — чистый чёрный или зелёный.
+            const z = с.масштаб;
+            полоса.width = колонок * z;
+            const ctx = полоса.getContext('2d');
+            const строк = Math.floor((с.бит || 0) / с.период);
+            if (!строк) return;
+            for (let c = 0; c < колонок; c += 1) {
+                let единиц = 0;
+                for (let r = 0; r < строк; r += 1) {
+                    const i = r * с.период + с.столбец + c;
+                    единиц += (с.биты[i >> 3] >> (7 - (i & 7))) & 1;
+                }
+                const доля = единиц / строк;
+                const постоянный = доля <= 0.03 || доля >= 0.97;
+                ctx.fillStyle = 'rgb(' + Math.round(РАСТР_1[0] * доля) + ',' + Math.round(РАСТР_1[1] * доля) + ',' +
+                    Math.round(РАСТР_1[2] * доля) + ')';
+                ctx.fillRect(c * z, постоянный ? 0 : 6, z, постоянный ? 18 : 12);
+            }
+        }
+
+        function рисоватьТекст() {
+            const строк = Math.min(128, Math.floor((с.бит || 0) / с.период));
+            const строки = [];
+            for (let r = 0; r < строк; r += 1) {
+                const части = [];
+                for (let b = 0; b < с.период; b += 8) {
+                    let значение = 0;
+                    const n = Math.min(8, с.период - b);
+                    for (let j = 0; j < n; j += 1) {
+                        const i = r * с.период + b + j;
+                        значение = (значение << 1) | ((с.биты[i >> 3] >> (7 - (i & 7))) & 1);
+                    }
+                    части.push(с.вид === 'HEX' ? значение.toString(16).toUpperCase().padStart(Math.ceil(n / 4), '0')
+                        : String(значение).padStart(3, ' '));
+                }
+                строки.push(String(с.строка + r).padStart(7, ' ') + '  ' + части.join(' '));
+            }
+            текст.textContent = строки.join('\n');
+        }
+
+        function рисоватьМаски() {
+            clear(маскиУзел);
+            clear(цель);
+            цель.appendChild(h('option', { value: '' }, 'весь поток'));
+            if (с.выделено.size) цель.appendChild(h('option', { value: 'выделено' }, 'выделенные позиции'));
+            с.маски.forEach((маска, номер) => {
+                цель.appendChild(h('option', { value: String(номер) }, маска.имя));
+                маскиУзел.appendChild(h('div', { class: 'rastr-mask' },
+                    h('b', {}, маска.имя),
+                    h('span', { class: 'muted small' }, 'период ' + маска.период + ', сдвиг ' + маска.сдвиг +
+                        ', позиции ' + диапазоны(маска.позиции)),
+                    h('button', { class: 'btn btn--sm', onclick: () => производныйПоМаске(маска, false) }, 'Разуплотнить'),
+                    h('button', { class: 'btn btn--sm', onclick: () => производныйПоМаске(маска, true) }, 'Разуплотнить и разобрать'),
+                    h('button', { class: 'btn btn--sm', onclick: () => {
+                        с.период = маска.период; с.сдвиг = маска.сдвиг; с.выделено = new Set(маска.позиции);
+                        полеПериод.value = с.период; полеСдвиг.value = с.сдвиг; загрузить();
+                    } }, 'Показать'),
+                    h('button', { class: 'btn btn--sm btn--ghost', onclick: () => {
+                        с.маски.splice(номер, 1); растрСохранитьМаски(jobId, этап, с.маски); рисовать();
+                    } }, '×')));
+            });
+        }
+
+        async function сохранитьМаску() {
+            if (!с.выделено.size) { toast('Сначала выделите столбцы', 'error'); return; }
+            const имя = await promptDialog({ title: 'Канал по выделенным позициям', placeholder: 'например, КИ5' });
+            if (!имя) return;
+            с.маски.push({ имя: имя, период: с.период, сдвиг: с.сдвиг, позиции: Array.from(с.выделено).sort((a, b) => a - b) });
+            растрСохранитьМаски(jobId, этап, с.маски);
+            рисовать();
+        }
+
+        function текущаяМаска() {
+            if (цель.value === 'выделено') {
+                return { период: с.период, сдвиг: с.сдвиг, позиции: Array.from(с.выделено) };
+            }
+            if (цель.value === '') return null;
+            const маска = с.маски[Number(цель.value)];
+            return { период: маска.период, сдвиг: маска.сдвиг, позиции: маска.позиции };
+        }
+
+        async function найтиПериод() {
+            clear(кандидаты);
+            кандидаты.appendChild(h('span', { class: 'muted' }, 'ищем…'));
+            try {
+                const data = await api.get('/api/potok/' + encodeURIComponent(jobId) + '/periods?stage=' + этап);
+                clear(кандидаты);
+                if (!(data.items || []).length) {
+                    кандидаты.appendChild(h('span', { class: 'muted' }, 'выраженного периода нет'));
+                    return;
+                }
+                data.items.forEach((п) => кандидаты.appendChild(h('button', {
+                    class: 'btn btn--sm' + (п.период === с.период ? ' is-on' : ''),
+                    title: 'сила пика — ' + п.сила + ' сигм шума',
+                    'data-period': String(п.период),
+                    onclick: () => { с.период = п.период; полеПериод.value = с.период; загрузить(); },
+                }, п.период + ' (' + п.сила + 'σ' + (п.заметка ? ', ' + п.заметка : '') + ')')));
+            } catch (error) {
+                clear(кандидаты);
+                toastError(error);
+            }
+        }
+
+        async function инструмент(имя) {
+            clear(итоги);
+            итоги.appendChild(loadingBox('Инструмент «' + имя + '» работает…'));
+            try {
+                const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/tool',
+                    { stage: этап, tool: имя, mask: текущаяМаска(), k: Number(k.value) || 0 });
+                clear(итоги);
+                const н = data.found;
+                итоги.appendChild(н
+                    ? h('div', { class: 'card card-pad' },
+                        h('b', {}, н.что), h('div', { class: 'muted small' }, н.мера),
+                        h('ul', { class: 'potok-details' }, (н.подробно || []).map((с_) => h('li', {}, с_))))
+                    : h('div', { class: 'muted' }, 'Не найдено (' + data.bits + ' бит проверено).'));
+            } catch (error) {
+                clear(итоги);
+                toastError(error);
+            }
+        }
+
+        /** Синхрокомбинация: найти, засинхронизировать растр, выровнять кадры, спросить помощника. */
+        async function синхро(изВыделения) {
+            clear(синхроИтог);
+            const тело = { stage: этап, errors: Number(полеОшибок.value) || 0 };
+            if (изВыделения) {
+                if (!с.выделено.size) { toast('Сначала выделите столбцы синхрокомбинации', 'error'); return; }
+                тело.columns = { период: с.период, сдвиг: с.сдвиг, позиции: Array.from(с.выделено) };
+            } else {
+                тело.word = полеСинхро.value;
+            }
+            синхроИтог.appendChild(h('span', { class: 'muted small' }, 'Ищу…'));
+            let н;
+            try {
+                н = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/sync', тело);
+            } catch (error) {
+                clear(синхроИтог);
+                toastError(error);
+                return;
+            }
+            // Слово — битами: его понимают и поиск, и слои «синхро»/«кадры».
+            const биты = (/\(([01]+)\)/.exec(н.слово) || [null, н.слово])[1];
+            полеСинхро.value = биты;
+            const найдено = н.инверсия ? н.инверсных : н.прямых;
+            const слой = (вид, хвост) => вид + ' ' + биты + (хвост || '') + (н.ошибок ? ' ошибок ' + н.ошибок : '');
+            clear(синхроИтог);
+            append(синхроИтог, [
+                h('div', {},
+                    h('b', {}, н.слово), ' — найдена ' + найдено + ' раз' +
+                    (н.инверсия ? ' инверсной (прямой — ' + н.прямых + ')' : (н.инверсных ? ', инверсной — ' + н.инверсных : '')) +
+                    '; случайно ожидалось бы ' + н.случайно +
+                    (н.начало !== null ? '; начало — бит ' + н.начало : '') +
+                    (н.длина_кадра ? '; кадр ' + н.длина_кадра + ' бит' : '')),
+                (н.шаги || []).length ? h('div', { class: 'muted small' }, 'Шаг повторения: ' +
+                    н.шаги.map((ш) => ш.шаг + ' бит ×' + ш.раз + ' (' + Math.round(ш.доля * 100) + ' %)').join(', ')) : null,
+                (н.известная || []).length ? h('div', { class: 'small' }, 'Знакомо анализатору: ' + н.известная.join('; ')) : null,
+                h('div', { class: 'row' },
+                    н.начало !== null ? h('button', {
+                        class: 'btn btn--sm btn--primary', title: 'Начало растра — первый бит синхрокомбинации, период — длина кадра',
+                        onclick: () => {
+                            с.сдвиг = н.начало; с.строка = 0; с.столбец = 0;
+                            if (н.длина_кадра) с.период = н.длина_кадра;
+                            полеСдвиг.value = с.сдвиг; полеСтрока.value = 0; полеСтолбец.value = 0; полеПериод.value = с.период;
+                            загрузить();
+                        },
+                    }, 'Засинхронизировать') : null,
+                    н.начало !== null ? h('button', {
+                        class: 'btn btn--sm', title: 'Новый поток — с первого бита синхрокомбинации' + (н.инверсия ? ', инвертированный' : ''),
+                        onclick: () => создать({ stage: этап, strip: слой('синхро'), analyze: false }),
+                    }, 'Новый поток от синхро') : null,
+                    н.длина_кадра ? h('button', {
+                        class: 'btn btn--sm', title: 'Каждый кадр — от своей синхрокомбинации: проскальзывания бит не сбивают цикл',
+                        onclick: () => создать({ stage: этап, strip: слой('кадры', ' длина ' + н.длина_кадра), analyze: false }),
+                    }, 'Выровнять кадры') : null,
+                    h('button', {
+                        class: 'btn btn--sm', title: 'Помощник поищет эту синхрокомбинацию по библиотеке: система, стандарт, строение кадра',
+                        onclick: async () => {
+                            try {
+                                const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/ask',
+                                    { stage: этап, word: биты, errors: н.ошибок });
+                                saveDraft(data.chat.id, data.question);
+                                navigate('#/chat/' + data.chat.id);
+                            } catch (error) {
+                                toastError(error);
+                            }
+                        },
+                    }, 'Что это? — спросить помощника')),
+            ]);
+        }
+
+        async function скремблерКадра() {
+            clear(итоги);
+            итоги.appendChild(loadingBox('Ищу ПСП по столбцам кадра…'));
+            try {
+                const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/tool', {
+                    stage: этап, tool: 'скремблер-кадр', period: с.период, shift: с.сдвиг,
+                    skip: Number(полеПропуск.value) || 0, taps: полеОтводы.value,
+                });
+                clear(итоги);
+                const н = data.found;
+                if (!н) {
+                    итоги.appendChild(h('div', { class: 'muted' }, 'ПСП не восстановилась: мало устойчивых столбцов. ' +
+                        'Засинхронизируйте растр по синхрокомбинации и проверьте период (длину кадра).'));
+                    return;
+                }
+                const слойТекст = ((н.подробно || []).find((с_) => с_.indexOf('слой для снятия: ') === 0) || '')
+                    .replace('слой для снятия: ', '');
+                итоги.appendChild(h('div', { class: 'card card-pad' },
+                    h('b', {}, н.что), h('div', { class: 'muted small' }, н.мера),
+                    h('ul', { class: 'potok-details' }, (н.подробно || []).map((с_) => h('li', {}, с_))),
+                    слойТекст ? h('div', { class: 'row' },
+                        h('button', { class: 'btn btn--sm', onclick: () => создать({ stage: этап, strip: слойТекст, analyze: false }) }, 'Снять — новый поток'),
+                        h('button', { class: 'btn btn--sm btn--primary', onclick: () => создать({ stage: этап, strip: слойТекст, analyze: true }) }, 'Снять и разобрать'))
+                        : null));
+            } catch (error) {
+                clear(итоги);
+                toastError(error);
+            }
+        }
+
+        async function производныйПоМаске(маска, разобрать) {
+            await создать({ stage: этап, mask: { период: маска.период, сдвиг: маска.сдвиг, позиции: маска.позиции }, analyze: разобрать });
+        }
+
+        async function производный(разобрать) {
+            await создать({ stage: этап, mask: текущаяМаска(), strip: слой.value, analyze: разобрать });
+        }
+
+        async function создать(тело) {
+            try {
+                const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/derive', тело);
+                navigate('#/potok/' + encodeURIComponent(data.id));
+            } catch (error) {
+                toastError(error);
+            }
+        }
+
+        загрузить();
+        setTimeout(() => холст.focus(), 30);
     }
 
     async function renderStats(view) {

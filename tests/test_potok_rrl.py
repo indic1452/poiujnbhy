@@ -12,7 +12,7 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from reportgen.potok import gfp, hdlc, pakety, ploskost, skrembler, разобрать
+from reportgen.potok import forni, gfp, hdlc, kod, pakety, ploskost, skrembler, разобрать
 from reportgen.potok.bity import в_байты, в_биты
 from reportgen.potok.razbor import снять_вручную
 
@@ -150,6 +150,123 @@ class GfpAtmTests(unittest.TestCase):
 
     def test_случайный_не_gfp_и_не_atm(self):
         self.assertIsNone(gfp.найти(с.случайные_биты(400_000)))
+
+
+class ФМиСимволTests(unittest.TestCase):
+    def test_фм_повороты_и_отражения(self):
+        for k, поворот, отражение in ((2, 1, False), (3, 5, True), (4, 7, True)):
+            with self.subTest(k=k):
+                x = V35[:len(V35) // k * k]
+                метки = ploskost.преобразовать_фм(x, k, порядок="старший", код="Грей",
+                                                  поворот=поворот, отражение=отражение)
+                найдено = ploskost.найти_фм(метки, k)
+                ряд = next(iter(найдено.дальше.values()))
+                self.assertTrue(np.array_equal(x[:len(ряд)], ряд))
+                self.assertEqual(1.0, hdlc.найти(skrembler.найти(ряд).дальше).уверенность)
+        self.assertIsNone(ploskost.найти_фм(с.случайные_биты(300_000), 3))
+
+    def test_фм_вручную_и_операции_над_символом(self):
+        x = V35[:len(V35) // 3 * 3]
+        метки = ploskost.преобразовать_фм(x, 3, порядок="старший", код="Грей", поворот=5,
+                                          отражение=True)
+        ряд, запись = снять_вручную(метки, "фм 3 поворот 5 отражение")
+        self.assertTrue(np.array_equal(x, ряд))
+        self.assertIn("поворот 5 (225°), отражение, Грей", запись.подробно[0])
+        ряд, _ = снять_вручную(метки, "фм 3")
+        self.assertTrue(np.array_equal(x[:len(ряд)], ряд))
+        # Перестановка меток: 2 бита, 0→0, 1→1, 2→3, 3→2 (натуральный ↔ Грей).
+        y = np.array([0, 0, 0, 1, 1, 0, 1, 1], dtype=np.uint8)
+        self.assertEqual([0, 0, 0, 1, 1, 1, 1, 0], снять_вручную(y, "метки 2: 0 1 3 2")[0].tolist())
+        self.assertEqual([0, 0, 1, 0, 0, 1, 1, 1],
+                         снять_вручную(y, "биты символа 2: 1 0")[0].tolist())
+        for плохое in ("метки 2: 0 1 2 2", "биты символа 3: 0 1", "фм 9"):
+            with self.subTest(плохое=плохое), self.assertRaises(ValueError):
+                снять_вручную(y, плохое)
+
+
+class КадровыйСкремблерTests(unittest.TestCase):
+    """Аддитивная ПСП со сбросом в каждом кадре: отводы и начальное состояние."""
+
+    @staticmethod
+    def линия(отводы, начальное, сид=3):
+        rng = np.random.default_rng(сид)
+        данные = np.zeros((300, 1000), np.uint8)
+        данные[:, 400:700] = rng.integers(0, 2, (300, 300))       # нагрузка
+        данные[:, 800:850] = 1                                      # заполнение единицами
+        данные[:, :32] = np.unpackbits(np.frombuffer(bytes.fromhex("1ACFFC1D"), np.uint8))
+        н = np.array([int(c) for c in начальное], np.uint8)
+        return данные.reshape(-1), skrembler.снять_по_кадру(данные.reshape(-1), отводы, н, 1000, 32)
+
+    def test_вслепую_и_по_отводам(self):
+        for отводы, начальное in (((6, 7), "1111111"), ((14, 15), "100101010000000"),
+                                  ((3, 5, 9, 23), "1" * 23), ((2, 11, 17, 31), "1010" * 7 + "101")):
+            with self.subTest(отводы=отводы):
+                данные, линия = self.линия(отводы, начальное)
+                вслепую = skrembler.найти_по_кадру(линия, 1000, пропуск=32)
+                self.assertEqual((list(отводы), начальное), (вслепую["отводы"], вслепую["начальное"]))
+                по_отводам = skrembler.найти_по_кадру(линия, 1000, пропуск=32, отводы=отводы)
+                self.assertEqual(начальное, по_отводам["начальное"])
+
+    def test_слоем(self):
+        данные, линия = self.линия((3, 5, 9, 23), "1" * 23)
+        # Поток начинается не с кадра: 77 лишних бит, начало кадра — «начало 77».
+        поток = np.concatenate([с.случайные_биты(77), линия])
+        for указание in ("аддитивный кадр 1000 пропуск 32 начало 77",
+                         "аддитивный отводы 3,5,9,23 кадр 1000 пропуск 32 начало 77",
+                         "аддитивный отводы 3,5,9,23 кадр 1000 начальное " + "1" * 23 +
+                         " пропуск 32 начало 77"):
+            with self.subTest(указание=указание):
+                ряд, запись = снять_вручную(поток, указание)
+                self.assertTrue(np.array_equal(данные, ряд))
+                self.assertIn("начальное состояние (первые 23 бит ПСП после сброса): " + "1" * 23,
+                              запись.подробно[1])
+        for плохое in ("аддитивный", "аддитивный отводы 6,7 кадр 1000 начальное 101",
+                       "аддитивный кадр 1000 пропуск 2000"):
+            with self.subTest(плохое=плохое), self.assertRaises(ValueError):
+                снять_вручную(поток, плохое)
+
+    def test_непрерывная_по_паузе(self):
+        исходный = в_биты(с.hdlc(с.пакеты_ip(120), флагов_между=60))[:400_000]
+        ряд = skrembler.псп((14, 15), np.ones(15, dtype=np.uint8), len(исходный))
+        снято, запись = снять_вручную(исходный ^ ряд, "аддитивный отводы 14,15")
+        self.assertIn("восстановлена по паузе", запись.подробно[0])
+        self.assertEqual(1.0, hdlc.найти(снято).уверенность)
+
+    def test_случайный_поток_не_даёт(self):
+        self.assertIsNone(skrembler.найти_по_кадру(с.случайные_биты(300_000), 1000))
+
+
+class ФорниTests(unittest.TestCase):
+    КОД = с.свёрточный(с.случайные_биты(300_000))
+
+    def test_перестановка_обратима(self):
+        x = с.случайные_биты(50_000)
+        снято = forni.снять(forni.перемежить(x, 12, 17, 3), 12, 17, 3)
+        self.assertTrue(np.array_equal(x[:len(снято)], снято))
+
+    def test_параметры_вслепую(self):
+        # 24 × 3 и 36 × 2 дают одно произведение M·I — выбрать надо верную пару.
+        for I, M, фаза, доля in ((24, 3, 5, 0.0), (8, 5, 3, 0.01)):
+            with self.subTest(I=I, M=M):
+                поток = forni.перемежить(self.КОД, I, M, фаза)[1000:]
+                поток = поток ^ (np.random.default_rng(1).random(len(поток)) < доля).astype(np.uint8)
+                найдено = forni.найти(поток)
+                self.assertIn(f"I = {I} ветвей, M = {M}", найдено.что)
+                self.assertIn("171/133", kod.найти(найдено.дальше[:300_000], длинные=False).что)
+
+    def test_ручное_снятие(self):
+        x = с.случайные_биты(60_000)
+        ряд, запись = снять_вручную(forni.перемежить(x, 12, 17, 3), "форни 12 17 3")
+        self.assertTrue(np.array_equal(x[:len(ряд)], ряд))
+        self.assertEqual(len(x) - 11 * 17 * 12, len(ряд))
+        self.assertIn("I = 12 ветвей, M = 17, фаза ветвей 3", запись.подробно[0])
+        for плохое in ("форни 12", "форни 1 5"):
+            with self.subTest(плохое=плохое), self.assertRaises(ValueError):
+                снять_вручную(x, плохое)
+
+    def test_случайный_и_код_без_перемежения(self):
+        self.assertIsNone(forni.найти(с.случайные_биты(600_000)))
+        self.assertIsNone(forni.найти(self.КОД[:600_000]))
 
 if __name__ == "__main__":
     unittest.main()

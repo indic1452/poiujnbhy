@@ -2233,6 +2233,309 @@ def potok_continue(request: Request, job_id: str) -> Dict[str, Any]:
     return {"id": ид}
 
 
+# -- растр и ручные инструменты ----------------------------------------------------------
+
+def _биты_задания(request: Request, user, job_id: str, stage: int):
+    _задание_или_404(request, user, job_id)
+    try:
+        return _potok(request).биты(job_id, int(stage))
+    except (ValueError, OSError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
+@router.get("/potok/{job_id}/bits")
+def potok_bits(request: Request, job_id: str, stage: int = 0, start: int = 0,
+               count: int = 1 << 16) -> Dict[str, Any]:
+    """Окно бит для растра."""
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    return rastr.окно(_биты_задания(request, user, job_id, stage), start, count)
+
+
+@router.get("/potok/{job_id}/periods")
+def potok_periods(request: Request, job_id: str, stage: int = 0) -> Dict[str, Any]:
+    """Кандидаты периода по автокорреляции."""
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    return {"items": rastr.периоды(_биты_задания(request, user, job_id, stage))}
+
+
+@router.post("/potok/{job_id}/tool")
+def potok_tool(request: Request, job_id: str) -> Dict[str, Any]:
+    """Быстрый инструмент над потоком этапа или каналом по маске."""
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
+    try:
+        if тело.get("mask"):
+            биты = rastr.по_маске(биты, тело["mask"])
+        найдено = rastr.инструмент(
+            биты, str(тело.get("tool") or ""), int(тело.get("k") or 0),
+            **({"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0),
+                "пропуск": int(тело.get("skip") or 0),
+                "отводы": [int(t) for t in re.findall(r"\d+", str(тело.get("taps") or ""))]}
+               if тело.get("tool") == "скремблер-кадр" else {}))
+    except (ValueError, KeyError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    return {"found": rastr.в_словарь(найдено), "bits": int(len(биты))}
+
+
+@router.post("/potok/{job_id}/derive")
+def potok_derive(request: Request, job_id: str) -> Dict[str, Any]:
+    """Производный поток: канал по маске и/или снятые вручную слои — новым узлом дерева.
+
+    Шаги (``steps`` — по порядку; или по-старому ``mask`` и ``strip``)
+    выполняются в задании: долгие слои (LDPC, Форни) не держат запрос.
+    """
+    import numpy as np  # noqa: PLC0415 — numpy только для анализатора
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    состояние = _задание_или_404(request, user, job_id)
+    тело = _body(request)
+    этап = int(тело.get("stage") or 0)
+    биты = _биты_задания(request, user, job_id, этап)
+    профиль = str(тело.get("profile") or "обычно")
+    if профиль not in ПРОФИЛИ_РАЗБОРА:
+        raise ServiceError("неизвестный профиль разбора", 400)
+    шаги = list(тело.get("steps") or [])
+    if not шаги:
+        if тело.get("mask"):
+            шаги.append({"вид": "маска", "маска": тело["mask"]})
+        шаги += [{"вид": "слой", "слой": с} for с in _слои(str(тело.get("strip") or ""))]
+    try:
+        шаги = rastr.проверить_шаги(шаги)
+    except (ValueError, KeyError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    описание = [rastr.описать_шаг(ш) for ш in шаги if ш["вкл"]]
+    имя = f"{состояние['имя']} → " + ("; ".join(описание) or f"этап {этап}")
+    ид = _potok(request).создать(владелец=user.id, имя=имя[:200],
+                                 данные=np.packbits(биты).tobytes(),
+                                 профиль=профиль, от=f"{job_id}#{этап}", шаги=шаги,
+                                 разбирать=bool(тело.get("analyze")), происхождение=описание)
+    return {"id": ид}
+
+
+@router.get("/potok/{job_id}/tree")
+def potok_tree(request: Request, job_id: str) -> Dict[str, Any]:
+    """Дерево обработки, в котором стоит разбор: корень, развилки по этапам, производные."""
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    return {"tree": _potok(request).дерево(job_id, user.id)}
+
+
+@router.delete("/potok/{job_id}")
+def potok_delete(request: Request, job_id: str) -> Dict[str, Any]:
+    """Удалить узел дерева и всю ветвь под ним."""
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    try:
+        удалены = _potok(request).удалить(job_id, user.id)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 409) from None
+    _repos(request).audit.log("potok.delete", user=user, object_type="potok", object_id=job_id,
+                              details={"nodes": len(удалены)})
+    return {"deleted": удалены}
+
+
+@router.post("/potok/{job_id}/rebuild")
+def potok_rebuild(request: Request, job_id: str) -> Dict[str, Any]:
+    """Пересобрать узел с исправленными шагами: убрать, выключить, переставить.
+
+    Производный узел пересобирается из своего исходника (поток родителя),
+    разбор — из своего входа с новым списком слоёв «снять». ``replace`` —
+    старый узел с ветвью удаляется, новый встаёт на его место под тем же
+    родителем.
+    """
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    состояние = _задание_или_404(request, user, job_id)
+    тело = _body(request)
+    задания = _potok(request)
+    папка = задания.папка / job_id
+    try:
+        шаги = rastr.проверить_шаги(list(тело.get("steps") or []))
+    except (ValueError, KeyError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    профиль = str(тело.get("profile") or состояние.get("профиль") or "обычно")
+    if профиль not in ПРОФИЛИ_РАЗБОРА:
+        raise ServiceError("неизвестный профиль разбора", 400)
+    основа = состояние["имя"].split(" → ")[0]
+    if состояние.get("шаги"):
+        описание = [rastr.описать_шаг(ш) for ш in шаги if ш["вкл"]]
+        новый = задания.создать(
+            владелец=user.id, имя=(f"{основа} → " + ("; ".join(описание) or "копия"))[:200],
+            данные=(папка / "исходник.bin").read_bytes(), профиль=профиль,
+            от=состояние.get("от") or "", шаги=шаги, разбирать=bool(тело.get("analyze")),
+            происхождение=описание)
+    else:
+        if any(ш["вид"] == "маска" for ш in шаги):
+            raise ServiceError("у разбора нет маски — маска бывает у производного потока", 400)
+        новый = задания.создать(
+            владелец=user.id, имя=состояние["имя"], данные=(папка / "вход.bin").read_bytes(),
+            профиль=профиль, от=состояние.get("от") or "",
+            снять=[ш["слой"] for ш in шаги if ш["вкл"]], символ=состояние.get("символ") or ())
+    if тело.get("replace"):
+        try:
+            задания.удалить(job_id, user.id)
+        except ValueError as ошибка:
+            raise ServiceError(str(ошибка), 409) from None
+    return {"id": новый}
+
+
+def _синхро(биты, тело: Dict[str, Any]):
+    """Синхрокомбинация из тела запроса: словом или из выделенных столбцов растра."""
+    from ..potok import sinhro  # noqa: PLC0415
+    столбцы = тело.get("columns")
+    if столбцы:
+        образец = sinhro.из_столбцов(биты, int(столбцы["период"]), int(столбцы.get("сдвиг", 0)),
+                                     list(столбцы.get("позиции") or []))
+        if образец is None:
+            raise ValueError("в выделенных столбцах нет постоянных бит — это не синхрокомбинация")
+    else:
+        образец = sinhro.слово(str(тело.get("word") or ""))
+    return образец, sinhro.найти(биты, образец, int(тело.get("errors") or 0))
+
+
+@router.post("/potok/{job_id}/sync")
+def potok_sync(request: Request, job_id: str) -> Dict[str, Any]:
+    """Синхрокомбинация: вхождения (прямые и инверсные), шаг — длина кадра, знакома ли."""
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
+    try:
+        if тело.get("mask"):
+            биты = rastr.по_маске(биты, тело["mask"])
+        _, найдено = _синхро(биты, тело)
+    except (ValueError, KeyError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    найдено["позиции"] = найдено["позиции"][:2000]
+    return найдено
+
+
+# -- матрицы LDPC: загружены из стандартов, общие для отдела ------------------------------
+
+@router.get("/potok-matrices")
+def potok_matrices(request: Request) -> Dict[str, Any]:
+    """Загруженные матрицы проверок LDPC: имя, n, k, веса, откуда."""
+    from ..potok import ldpc  # noqa: PLC0415
+    require_user(request)
+    _potok(request)                     # задаёт каталог матриц
+    return {"items": ldpc.список()}
+
+
+@router.post("/potok-matrices")
+def potok_matrix_add(request: Request) -> Dict[str, Any]:
+    """Загрузить H: alist, базовая матрица сдвигов с Z или таблица адресов с n и k."""
+    from ..potok import ldpc  # noqa: PLC0415
+    user = require_user(request)
+    _potok(request)
+    тело = _body(request)
+    имя = str(тело.get("name") or "").strip()
+    текст = str(тело.get("text") or "")
+    if len(текст) > 8 * 1024 * 1024:
+        raise ServiceError("матрица больше 8 МБ текста", 413)
+    try:
+        if ldpc.владелец(имя) not in (None, user.id):
+            raise ServiceError("матрица с таким именем уже есть — её загрузил другой инженер", 409)
+        матрица = ldpc.загрузить(str(тело.get("kind") or ""), текст, Z=int(тело.get("z") or 0),
+                                 n=int(тело.get("n") or 0), k=int(тело.get("k") or 0))
+        сводка = ldpc.сохранить(имя, матрица, user.id)
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _repos(request).audit.log("potok.matrix", user=user, object_type="ldpc", object_id=имя,
+                              details={"n": сводка["n"], "m": сводка["m"]})
+    return {"matrix": сводка}
+
+
+@router.delete("/potok-matrices/{name}")
+def potok_matrix_delete(request: Request, name: str) -> Dict[str, Any]:
+    from ..potok import ldpc  # noqa: PLC0415
+    user = require_user(request)
+    _potok(request)
+    try:
+        хозяин = ldpc.владелец(name)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    if хозяин is None:
+        raise ServiceError("матрица не найдена", 404)
+    if хозяин != user.id:
+        raise ServiceError("удалить матрицу может только тот, кто её загрузил", 403)
+    ldpc.удалить(name)
+    return {"ok": True}
+
+
+def _приметы_этапа(request: Request, user, job_id: str, stage: int):
+    """Состояние, этап с битовым потоком (этот или ближайший ранее), приметы и подсказки.
+
+    После кадров и пакетов битового потока нет — приметы тогда берутся с
+    ближайшего этапа выше, где он есть: там и встал разбор битов.
+    """
+    from ..potok import podskazki  # noqa: PLC0415
+    состояние = _задание_или_404(request, user, job_id)
+    этап = max(0, min(int(stage), len(состояние.get("этапы") or [])))
+    for номер in range(этап, -1, -1):
+        try:
+            биты = _potok(request).биты(job_id, номер)
+        except (ValueError, OSError):
+            continue
+        приметы = podskazki.приметы(биты)
+        return состояние, номер, приметы, podskazki.подсказки(состояние, номер, приметы)
+    raise ServiceError("у задания нет битового потока", 400)
+
+
+@router.get("/potok/{job_id}/hints")
+def potok_hints(request: Request, job_id: str, stage: int = 0) -> Dict[str, Any]:
+    """Что делать, когда разбор встал: приметы потока и подсказки с действиями."""
+    user = require_user(request)
+    _, этап, приметы, подсказки = _приметы_этапа(request, user, job_id, stage)
+    return {"stage": этап, "signs": приметы, "items": подсказки}
+
+
+@router.post("/potok/{job_id}/ask")
+def potok_ask(request: Request, job_id: str) -> Dict[str, Any]:
+    """Разговор с помощником о разборе: ход разбора и приметы — вложением, вопрос — черновиком.
+
+    Помощник знает теорию из библиотеки; анализатор знает поток. Вложение
+    соединяет одно с другим: помощник ищет по библиотеке с учётом того, что
+    уже найдено, отвергнуто и как поток выглядит там, где разбор встал.
+    Вопрос не отправляется сам — инженер его правит и спрашивает.
+    """
+    from ..potok import podskazki  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    состояние, этап, приметы, подсказки = _приметы_этапа(
+        request, user, job_id, int(тело.get("stage") or 0))
+    текст = podskazki.контекст(состояние, этап, приметы, подсказки)
+    вопрос = podskazki.вопрос(состояние, этап)
+    if тело.get("topic") == "ldpc":
+        from ..potok import ldpc  # noqa: PLC0415
+        вопрос = podskazki.вопрос_о_ldpc(состояние, этап, приметы)
+        загружено = ldpc.список()
+        текст += "\n\nЗагруженные матрицы LDPC: " + ("; ".join(
+            f"{м['имя']} ({м['n']}, {м['k']}), {м['откуда']}" for м in загружено) or "нет")
+    if тело.get("word") or тело.get("columns"):
+        # Вопрос о синхрокомбинации: по ней определяют систему и строение кадра.
+        from ..potok import sinhro  # noqa: PLC0415
+        try:
+            _, найдено = _синхро(_potok(request).биты(job_id, этап), тело)
+        except (ValueError, KeyError, TypeError) as ошибка:
+            raise ServiceError(str(ошибка), 400) from None
+        текст += "\n\nСинхрокомбинация:\n" + sinhro.описать(найдено)
+        вопрос = podskazki.вопрос_о_синхро(найдено)
+    assistant = _assistant(request)
+    chat = assistant.create_chat(user, title=f"Разбор потока: {состояние['имя']}"[:120],
+                                 domain="", case_ref=None)
+    repos = _repos(request)
+    имя = f"разбор-потока-{job_id}-этап-{этап}.txt"
+    repos.chats.add_attachment(chat.id, имя, "stream", size=len(текст.encode("utf-8")),
+                               text=текст, note="ход разбора и приметы потока из анализатора")
+    repos.audit.log("potok.ask", user=user, object_type="potok", object_id=job_id,
+                    details={"chat": chat.id, "stage": этап})
+    return {"chat": chat.to_dict(), "question": вопрос}
+
+
 @router.delete("/chats/{chat_id}/attachments/{attachment_id}")
 def detach_from_chat(request: Request, chat_id: int, attachment_id: int) -> Dict[str, Any]:
     user = require_user(request)
