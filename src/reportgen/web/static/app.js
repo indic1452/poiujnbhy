@@ -9605,6 +9605,7 @@
 
     /** Очистить экран разговора. Живой поток ответа при этом не трогаем. */
     function resetChat() {
+        chat.следить = true;
         chat.current = null;
         chat.messages = [];
         chat.caseInfo = null;
@@ -10023,9 +10024,16 @@
     function buildTalkPanel() {
         const head = h('div', { class: 'panel-head' });
         const feed = h('div', { class: 'panel-body chat-feed' });
+        const вниз = h('button', {
+            class: 'feed-down', type: 'button', hidden: true,
+            title: 'Вернуться к концу разговора и следить за ответом',
+            onclick: () => scrollFeed(true),
+        }, '↓ к ответу');
         chat.nodes.talkHead = head;
         chat.nodes.feed = feed;
-        return h('section', { class: 'panel panel--talk' }, head, feed, buildComposer());
+        chat.nodes.down = вниз;
+        ленточныеСобытия(feed);
+        return h('section', { class: 'panel panel--talk' }, head, feed, вниз, buildComposer());
     }
 
     function renderTalkHead() {
@@ -10067,15 +10075,27 @@
     function renderFeed() {
         const feed = chat.nodes.feed;
         if (!feed) return;
+        // Прокрутку запоминаем ДО очистки: пустая лента сбрасывает её в ноль.
+        const было = feed.scrollTop;
         clear(feed);
         const live = liveIsHere() ? chat.live : null;
         if (!chat.messages.length && !live) {
             feed.appendChild(emptyChatState());
             return;
         }
+        // Лента пересобирается целиком — и прокрутка при этом сбрасывается.
+        // Кто читает выше, должен остаться на своём месте, а не улететь вниз
+        // (или в начало) оттого, что ответ дописался.
         chat.messages.forEach((message) => feed.appendChild(messageNode(message)));
         if (live) feed.appendChild(liveNode(live));
-        scrollFeed();
+        if (chat.следить === false) {
+            feed.scrollTop = было;
+            // И это своё движение, а не человека: слежение не трогаем.
+            if (feed.scrollTop !== 0 || было !== 0) chat.прокручиваем = true;
+            кнопкаВниз();
+        } else {
+            scrollFeed();
+        }
     }
 
     /** Пузырь недописанного ответа. Пересобирается при каждом возвращении
@@ -10432,9 +10452,77 @@
         focusChatPanel('side');
     }
 
-    function scrollFeed() {
+    /* Прокрутка ленты за ответом.
+
+       Отдел: «когда ответ пишет, меня принудительно вниз отправляет страница,
+       не могу читать выше ничего». Лента прокручивалась вниз на каждый кусок
+       текста — раз в 70 мс, — где бы человек ни читал.
+
+       Теперь как в обычных чатах: лента следует за ответом, только пока
+       человек внизу. Прокрутил вверх — лента стоит; вернулся вниз сам или
+       кнопкой «↓ к ответу» — снова следует. Намерение ловим сразу, по колесу,
+       касанию и захвату полосы прокрутки: по одному событию scroll его не
+       поймать — очередной кусок ответа успевал бы вернуть ленту вниз посреди
+       плавной прокрутки колесом. */
+    const У_НИЗА_PX = 48;
+
+    function уНиза(feed) {
+        return feed.scrollHeight - feed.scrollTop - feed.clientHeight <= У_НИЗА_PX;
+    }
+
+    function scrollFeed(вернуться) {
         const feed = chat.nodes.feed;
-        if (feed) feed.scrollTop = feed.scrollHeight;
+        if (!feed) return;
+        if (вернуться) chat.следить = true;
+        if (chat.следить !== false) {
+            const было = feed.scrollTop;
+            feed.scrollTop = feed.scrollHeight;
+            // Своё событие прокрутки за решение человека не принимаем.
+            if (feed.scrollTop !== было) chat.прокручиваем = true;
+        }
+        кнопкаВниз();
+    }
+
+    /** Человек сам двинул ленту: решаем, следить ли дальше. */
+    function ленточныеСобытия(feed) {
+        const отпустить = () => {
+            chat.следить = false;
+            кнопкаВниз();
+        };
+        feed.addEventListener('wheel', (event) => {
+            if (event.deltaY < 0) отпустить();
+        }, { passive: true });
+        feed.addEventListener('touchmove', отпустить, { passive: true });
+        feed.addEventListener('mousedown', (event) => {
+            // Захват полосы прокрутки: щелчок правее содержимого.
+            if (event.offsetX > feed.clientWidth) отпустить();
+        });
+        feed.addEventListener('scroll', () => {
+            if (chat.прокручиваем) {
+                chat.прокручиваем = false;
+                return;
+            }
+            chat.следить = уНиза(feed);
+            кнопкаВниз();
+        }, { passive: true });
+    }
+
+    /** «↓ к ответу» — видна, пока человек читает выше, а ниже есть что читать. */
+    function кнопкаВниз() {
+        const кнопка = chat.nodes.down;
+        const feed = chat.nodes.feed;
+        if (!кнопка || !feed) return;
+        const нужна = chat.следить === false && !уНиза(feed);
+        кнопка.hidden = !нужна;
+        if (нужна) {
+            // Над нижним краем ленты: поле ввода растёт с текстом и
+            // вложениями, и угаданный отступ его бы перекрыл.
+            const панель = feed.offsetParent;
+            const снизу = панель
+                ? панель.clientHeight - (feed.offsetTop + feed.clientHeight) : 0;
+            кнопка.style.bottom = Math.max(0, снизу) + 14 + 'px';
+        }
+        кнопка.classList.toggle('is-live', !!(liveIsHere() && chat.live.running));
     }
 
     // -- поле ввода ----------------------------------------------------------
@@ -11161,6 +11249,8 @@
             sources: [],
         };
         chat.live = live;
+        // Задал вопрос — хочет видеть ответ: лента снова следует за ним.
+        chat.следить = true;
 
         chat.pendingSources = [];
         chat.pendingExpansion = null;

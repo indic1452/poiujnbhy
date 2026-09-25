@@ -8390,3 +8390,62 @@ body.reading .msg .body {
         animation: none;
     }
 }
+
+/* ------------------------------------------------------- «↓ к ответу» --- */
+
+/* Человек читает выше, а ответ пишется ниже: кнопка возвращает к концу и
+   снова включает слежение. Стоит над полем ввода, по центру ленты. */
+.panel--talk {
+    position: relative;
+}
+
+.feed-down {
+    position: absolute;
+    left: 50%;
+    bottom: 150px;              /* уточняется по месту в кнопкаВниз() */
+    transform: translateX(-50%);
+    z-index: 5;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 6px 18px rgba(16, 32, 64, .16);
+    cursor: pointer;
+}
+
+.feed-down[hidden] {
+    display: none;
+}
+
+.feed-down:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.feed-down:focus-visible {
+    outline: none;
+    box-shadow: var(--ring, 0 0 0 3px rgba(31, 95, 174, .35));
+}
+
+/* Ответ ещё пишется — кнопка это показывает: внизу прибавляется текст. */
+.feed-down.is-live::after {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-left: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    vertical-align: middle;
+    animation: note-pulse 1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .feed-down.is-live::after {
+        animation: none;
+    }
+}
