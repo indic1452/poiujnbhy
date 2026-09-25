@@ -1064,6 +1064,7 @@
         keys: '<path d="M2 5h14v9H2zM4.5 7.5h1M7 7.5h1M9.5 7.5h1M12 7.5h1.5M4.5 10h1M7 10h1M9.5 10h1M12 10h1.5M6 12h6"/>',
         refresh: '<path d="M14.5 5.5A6 6 0 0 0 3.2 7.5M3.5 12.5a6 6 0 0 0 11.3-2M14.8 2.8v2.9h-2.9M3.2 15.2v-2.9h2.9"/>',
         wave: '<path d="M1.5 9h2l1.5-5 2.5 10 2.5-8 2 5 1.5-2h3"/>',
+        net: '<path d="M3 3h4v3H3zM11 3h4v3h-4zM7 12h4v3H7zM5 6v2.5h8V6M9 8.5V12"/>',
     };
 
     /** Разделы бокового меню. Порядок — от «что сегодня» к справочникам. */
@@ -1080,6 +1081,7 @@
         { group: 'know', route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
         // Разбор цифрового потока по этапам: от кодирования в линии до пакетов.
         { group: 'know', route: 'potok', href: '#/potok', title: 'Разбор потока', icon: 'wave' },
+        { group: 'know', route: 'pakety', href: '#/pakety', title: 'Пакеты', icon: 'net' },
         { group: 'dept', route: 'talks', href: '#/talks', title: 'Сообщения', icon: 'talks', count: 'talks' },
         { group: 'dept', route: 'users', href: '#/users', title: 'Военнослужащие', icon: 'users', adminOnly: true },
         // Метрики — сводка по работе отдела целиком: сколько писем, чьи
@@ -2688,11 +2690,12 @@
             return { name: 'talks', id: parts[1] ? parts[1] : null, to: ask('to') };
         }
         if (parts[0] === 'potok') return { name: 'potok', id: parts[1] ? decodeURIComponent(parts[1]) : null };
+        if (parts[0] === 'pakety') return { name: 'pakety', id: parts[1] ? decodeURIComponent(parts[1]) : null };
         if (parts[0] === 'library' && parts.length > 1) {
             // Идентификатор документа — путь вида «standards/obw-method».
             return { name: 'library', id: parts.slice(1).map(decodeURIComponent).join('/') };
         }
-        if (['board', 'cases', 'roster', 'talks', 'library', 'stats', 'me', 'users', 'potok'].indexOf(parts[0]) !== -1) {
+        if (['board', 'cases', 'roster', 'talks', 'library', 'stats', 'me', 'users', 'potok', 'pakety'].indexOf(parts[0]) !== -1) {
             return { name: parts[0], id: null };
         }
         return { name: 'board', id: null };
@@ -2777,6 +2780,7 @@
             else if (route.name === 'case') await renderCase(view, route.id);
             else if (route.name === 'library') await renderLibrary(view, route.id);
             else if (route.name === 'potok') await renderPotok(view, route.id);
+            else if (route.name === 'pakety') await renderPakety(view, route.id);
             else if (route.name === 'stats') await renderStats(view);
             else if (route.name === 'roster') await renderRoster(view);
             else if (route.name === 'chat') await renderChat(view, route.id);
@@ -9141,6 +9145,17 @@
                     class: 'btn btn--sm', onclick: () => показатьПодсказки(этап.номер, true),
                     title: 'Приметы потока после этого этапа, подсказки и вопрос помощнику',
                 }, 'Что дальше?') : null,
+                (этап.выгрузка === 'pcap' || этап.выгрузка === 'sig') ? h('button', {
+                    class: 'btn btn--sm', title: 'Открыть пакеты или кадры этого этапа в анализаторе пакетов',
+                    onclick: async () => {
+                        try {
+                            const data = await api.post('/api/pakety/from-potok', { job: jobId, stage: этап.номер });
+                            navigate('#/pakety/' + encodeURIComponent(data.id));
+                        } catch (error) {
+                            toastError(error);
+                        }
+                    },
+                }, 'Пакеты') : null,
                 этап.выгрузка === 'bin' ? h('button', {
                     class: 'btn btn--sm', onclick: () => продолжить(этап),
                     title: 'Разобрать поток после этого этапа заново — можно сняв слой вручную',
@@ -9450,6 +9465,611 @@
         await обновить();
     }
 
+    // -- анализатор пакетов: захваты, список, дерево полей, HEX, статистика -----
+
+    //: Семейство протокола → класс строки (цвет строки дублирует столбец «Протокол»).
+    function пакетКласс(с) {
+        if ((с.ошибки || []).length) return 'pk-err';
+        const стек = с.стек || [];
+        const есть = (имя) => стек.indexOf(имя) !== -1;
+        if (есть('DNS') || есть('mDNS') || есть('LLMNR')) return 'pk-dns';
+        if (есть('HTTP') || есть('SIP') || есть('RTSP') || есть('SSDP')) return 'pk-http';
+        if (есть('TLS') || есть('QUIC') || есть('SSH') || есть('ESP') || есть('ISAKMP')) return 'pk-tls';
+        if (есть('ARP') || есть('RARP') || есть('LLDP') || есть('STP')) return 'pk-arp';
+        if (есть('ICMP') || есть('ICMPv6') || есть('IGMP')) return 'pk-icmp';
+        if (есть('OSPF') || есть('BGP') || есть('RIP') || есть('VRRP') || есть('BFD')) return 'pk-route';
+        if (есть('TCP')) return 'pk-tcp';
+        if (есть('UDP') || есть('SCTP')) return 'pk-udp';
+        return '';
+    }
+
+    const ПРИМЕРЫ_ФИЛЬТРА = 'tcp.port == 443 · ip.addr == 10.0.0.0/8 · dns.qry.name contains "mail" · ' +
+        'port in {53 123} · http.request.method == "POST" · frame.len > 1000 and not arp · expert';
+
+    async function renderPakety(view, capId) {
+        clear(view);
+        const page = h('div', { class: 'page pakety' });
+        view.appendChild(page);
+        if (capId) {
+            await рисоватьЗахват(page, capId);
+            return;
+        }
+        const picker = h('input', { type: 'file', accept: '.pcap,.pcapng,.cap,.sig,.dmp' });
+        const кнопка = h('button', { class: 'btn btn--primary', onclick: () => начать() }, 'Открыть');
+        page.appendChild(h('div', { class: 'page-head' },
+            h('div', {}, h('h2', {}, 'Пакеты'),
+                h('div', { class: 'muted' }, 'Сетевой захват по уровням: список пакетов с фильтром, каждое поле ' +
+                    'заголовка с подсветкой его байт, контрольные суммы, диалоги и узлы, поток TCP целиком, ' +
+                    'запросы DNS и HTTP, имена TLS, формат неизвестных протоколов. Всё на сервере отдела, без интернета.'))));
+        page.appendChild(h('div', { class: 'card card-pad potok-start' },
+            h('label', { class: 'field' }, h('span', {}, 'Захват: pcap, pcapng или .sig (кадры с длиной)'), picker),
+            h('div', { class: 'muted small' }, 'Пакеты и кадры из «Разбора потока» открываются кнопкой «Пакеты» у этапа.'),
+            h('div', { class: 'row' }, кнопка)));
+        const списокУзел = h('div', { class: 'card card-pad' }, loadingBox('Загружаем захваты…'));
+        page.appendChild(списокУзел);
+        try {
+            const data = await api.get('/api/pakety');
+            clear(списокУзел);
+            списокУзел.appendChild(h('div', { class: 'card-title' }, 'Мои захваты'));
+            if (!(data.items || []).length) {
+                списокУзел.appendChild(emptyBox('Захватов ещё нет', 'Откройте файл выше.'));
+            } else {
+                списокУзел.appendChild(h('div', { class: 'potok-list' }, data.items.map((з) =>
+                    h('a', { class: 'potok-item', href: '#/pakety/' + encodeURIComponent(з.ид) },
+                        h('b', {}, з.имя),
+                        h('span', { class: 'muted' }, fmtDateTime(з.создано * 1000) + ' · ' + fmtBytes(з.байт) +
+                            (з.формат ? ' · ' + з.формат : '') + (з.пакетов ? ' · пакетов ' + з.пакетов : '')),
+                        h('span', { class: 'potok-state is-' + состояниеКласс(з.состояние) }, з.состояние)))));
+            }
+        } catch (error) {
+            clear(списокУзел);
+            списокУзел.appendChild(errorBox(error));
+        }
+
+        async function начать() {
+            const file = (picker.files || [])[0];
+            if (!file) { toast('Выберите файл захвата', 'error'); return; }
+            const form = new FormData();
+            form.append('file', file);
+            кнопка.disabled = true;
+            try {
+                const data = await uploadFile('/api/pakety', form);
+                navigate('#/pakety/' + encodeURIComponent(data.id));
+            } catch (error) {
+                toastError(error);
+            } finally {
+                кнопка.disabled = false;
+            }
+        }
+    }
+
+    async function рисоватьЗахват(page, capId) {
+        const путь = '/api/pakety/' + encodeURIComponent(capId);
+        let состояние;
+        // Разбор идёт в фоне: ждём, показывая, сколько разобрано.
+        const ожидание = h('div', { class: 'card card-pad' }, loadingBox('Разбираем захват…'));
+        page.appendChild(ожидание);
+        for (;;) {
+            try {
+                состояние = await api.get(путь);
+            } catch (error) {
+                clear(ожидание);
+                ожидание.appendChild(errorBox(error));
+                return;
+            }
+            if (состояние.состояние === 'готово' || состояние.состояние === 'ошибка') break;
+            clear(ожидание);
+            ожидание.appendChild(loadingBox('Разбираем захват: ' + (состояние.разобрано || 0) + ' из ' +
+                (состояние.пакетов || '…') + ' пакетов'));
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            if (!page.isConnected) return;
+        }
+        ожидание.remove();
+        if (состояние.состояние === 'ошибка') {
+            page.appendChild(h('div', { class: 'empty empty--error' }, h('h3', {}, 'Захват не разобран'),
+                h('div', { class: 'empty-note' }, состояние.ошибка || '')));
+            return;
+        }
+        const с = { фильтр: '', выбран: null, вкладка: 'пакеты', смещение: 0, всего: 0, отобрано: 0 };
+        const полеФильтра = h('input', { type: 'text', class: 'pk-filter', placeholder: ПРИМЕРЫ_ФИЛЬТРА, spellcheck: false });
+        const счётчик = h('span', { class: 'muted small' });
+        const вкладкиУзел = h('div', { class: 'tabs' });
+        const тело = h('div', { class: 'pk-body' });
+        const ВКЛАДКИ = [['пакеты', 'Пакеты'], ['протоколы', 'Протоколы'], ['диалоги', 'Диалоги'], ['узлы', 'Узлы'],
+            ['время', 'Время'], ['dns', 'DNS'], ['http', 'HTTP'], ['tls', 'TLS'], ['ошибки', 'Ошибки'],
+            ['неизвестные', 'Неизвестные форматы']];
+        page.appendChild(h('div', { class: 'page-head' },
+            h('div', {}, h('h2', {}, состояние.имя),
+                h('div', { class: 'muted' }, состояние.формат + ' · пакетов ' + состояние.пакетов + ' · ' + fmtBytes(состояние.байт) +
+                    (состояние.от ? ' · из разбора потока' : '')),
+                (состояние.заметки || []).length ? h('div', { class: 'muted small' }, состояние.заметки.join('; ')) : null),
+            h('div', { class: 'page-head-actions' },
+                h('button', { class: 'btn', onclick: () => выгрузить('pcap') }, 'Отбор в pcap'),
+                h('button', { class: 'btn', onclick: () => выгрузить('csv') }, 'Таблицей (CSV)'),
+                h('button', { class: 'btn', onclick: () => спросить(0) }, 'Спросить помощника'),
+                h('a', { class: 'btn', href: '#/pakety' }, 'Все захваты'))));
+        page.appendChild(h('div', { class: 'card card-pad pk-filterbar' },
+            h('div', { class: 'row' },
+                полеФильтра,
+                h('button', { class: 'btn btn--primary', onclick: () => применить() }, 'Отобрать'),
+                h('button', { class: 'btn btn--ghost', onclick: () => { полеФильтра.value = ''; применить(); } }, 'Сбросить')),
+            h('div', { class: 'pk-chips' },
+                ['tcp', 'udp', 'dns', 'http', 'tls', 'arp', 'icmp', 'expert'].map((ф) =>
+                    h('button', { class: 'btn btn--sm btn--ghost', onclick: () => { полеФильтра.value = ф; применить(); } }, ф)),
+                счётчик)));
+        page.appendChild(вкладкиУзел);
+        page.appendChild(тело);
+        полеФильтра.addEventListener('keydown', (event) => { if (event.key === 'Enter') применить(); });
+
+        function рисоватьВкладки() {
+            clear(вкладкиУзел);
+            ВКЛАДКИ.forEach(([ключ, имя]) => вкладкиУзел.appendChild(h('button', {
+                class: с.вкладка === ключ ? 'is-active' : '', onclick: () => { с.вкладка = ключ; рисоватьВкладки(); показать(); },
+            }, имя)));
+        }
+
+        function применить() {
+            с.фильтр = полеФильтра.value.trim();
+            показать();
+        }
+
+        function отфильтровать(ф) {
+            полеФильтра.value = ф;
+            с.вкладка = 'пакеты';
+            рисоватьВкладки();
+            применить();
+        }
+
+        async function показать() {
+            clear(тело);
+            if (с.вкладка === 'пакеты') return списокПакетов();
+            тело.appendChild(loadingBox('Считаем…'));
+            const вид = { протоколы: 'hierarchy', диалоги: 'conversations', узлы: 'endpoints', время: 'time', dns: 'dns',
+                http: 'http', tls: 'tls', ошибки: 'errors', неизвестные: 'unknown' }[с.вкладка];
+            try {
+                if (вид === 'conversations') return диалоги('ip');
+                const data = await api.get(путь + '/stats?kind=' + вид + '&filter=' + encodeURIComponent(с.фильтр));
+                clear(тело);
+                ({ hierarchy: иерархия, endpoints: узлы, time: время, dns: таблицаDns, http: таблицаHttp, tls: таблицаTls,
+                    errors: ошибки, unknown: неизвестные })[вид](data);
+            } catch (error) {
+                clear(тело);
+                тело.appendChild(errorBox(error));
+            }
+        }
+
+        // -- список пакетов, дерево, HEX --
+
+        async function списокПакетов() {
+            const таблица = h('tbody', {});
+            const ещё = h('div', { class: 'row' });
+            const деталь = h('div', { class: 'pk-detail' },
+                h('div', { class: 'muted pk-hint' }, 'Выберите пакет — здесь будут его уровни и байты.'));
+            const прокрутка = h('div', { class: 'pk-list' },
+                h('table', { class: 'table pk-table' },
+                    h('thead', {}, h('tr', {}, ['№', 'Время, с', 'Источник', 'Получатель', 'Протокол', 'Длина', 'Сведения']
+                        .map((т) => h('th', {}, т)))),
+                    таблица), ещё);
+            тело.appendChild(h('div', { class: 'card pk-split' }, прокрутка, деталь));
+            с.смещение = 0;
+            let начало = null;
+            const строки = [];
+            async function загрузить() {
+                let data;
+                try {
+                    data = await api.get(путь + '/list?filter=' + encodeURIComponent(с.фильтр) + '&offset=' + с.смещение + '&limit=500');
+                } catch (error) {
+                    clear(ещё);
+                    ещё.appendChild(errorBox(error));
+                    return;
+                }
+                с.всего = data.всего;
+                с.отобрано = data.отобрано;
+                счётчик.textContent = 'отобрано ' + data.отобрано + ' из ' + data.всего;
+                data.items.forEach((п) => {
+                    if (начало === null) начало = п.время;
+                    const строка = h('tr', {
+                        class: пакетКласс(п), tabindex: -1, 'data-n': п.номер,
+                        onclick: () => выбрать(п.номер, строка),
+                    },
+                    h('td', { class: 'num' }, String(п.номер)),
+                    h('td', { class: 'num' }, (п.время - начало).toFixed(6)),
+                    h('td', { class: 'mono' }, п.источник || ''),
+                    h('td', { class: 'mono' }, п.получатель || ''),
+                    h('td', {}, п.протокол),
+                    h('td', { class: 'num' }, String(п.длина)),
+                    h('td', { class: 'pk-info' }, (п.ошибки || []).length ? '⚠ ' + п.инфо : п.инфо));
+                    строки.push(строка);
+                    таблица.appendChild(строка);
+                });
+                с.смещение += data.items.length;
+                clear(ещё);
+                if (с.смещение < data.отобрано) {
+                    ещё.appendChild(h('button', { class: 'btn btn--sm', onclick: загрузить },
+                        'Показать ещё (' + (data.отобрано - с.смещение) + ')'));
+                } else if (!data.отобрано) {
+                    ещё.appendChild(h('div', { class: 'muted small' }, 'Под фильтр не попало ни одного пакета.'));
+                }
+            }
+            прокрутка.addEventListener('keydown', (event) => {
+                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                const i = строки.findIndex((с_) => Number(с_.dataset.n) === с.выбран);
+                const следующая = строки[Math.max(0, Math.min(строки.length - 1, i + (event.key === 'ArrowDown' ? 1 : -1)))];
+                if (следующая) { следующая.click(); следующая.scrollIntoView({ block: 'nearest' }); }
+                event.preventDefault();
+            });
+            прокрутка.tabIndex = 0;
+
+            async function выбрать(номер, строка) {
+                строки.forEach((с_) => с_.classList.toggle('is-selected', с_ === строка));
+                с.выбран = номер;
+                clear(деталь);
+                деталь.appendChild(loadingBox('Разбираем пакет…'));
+                try {
+                    const п = await api.get(путь + '/packet/' + номер);
+                    clear(деталь);
+                    деталь.appendChild(подробно(п));
+                } catch (error) {
+                    clear(деталь);
+                    деталь.appendChild(errorBox(error));
+                }
+            }
+            await загрузить();
+        }
+
+        function подробно(п) {
+            const hex = дамп(п.данные);
+            const дерево = h('div', { class: 'pk-tree' });
+            const выбранноеПоле = h('div', { class: 'row pk-field-actions' });
+            const узлыПолей = [];
+            п.уровни.forEach((у) => дерево.appendChild(уровеньУзел(у, hex, узлыПолей, выбранноеПоле)));
+            hex.подсветкаОт = (i) => {
+                // Самое глубокое поле, в которое попал байт, — в дереве подсвечивается и видно.
+                let лучший = null;
+                узлыПолей.forEach((у) => {
+                    if (у.длина > 0 && i >= у.смещение && i < у.смещение + у.длина && (!лучший || у.длина <= лучший.длина)) лучший = у;
+                });
+                узлыПолей.forEach((у) => у.узел.classList.toggle('is-hover', у === лучший));
+                if (лучший) лучший.узел.scrollIntoView({ block: 'nearest' });
+            };
+            const транспорт = п.стек.some((и) => и === 'TCP' || и === 'UDP' || и === 'SCTP');
+            const части = [
+                h('div', { class: 'pk-detail-head' },
+                    h('b', {}, '№' + п.номер + ': ' + п.инфо),
+                    h('div', { class: 'row' },
+                        транспорт ? h('button', { class: 'btn btn--sm', onclick: () => поток(п.номер) }, 'Следовать за потоком') : null,
+                        h('button', { class: 'btn btn--sm', onclick: () => спросить(п.номер) }, 'Спросить помощника о пакете'))),
+                (п.ошибки || []).length ? h('div', { class: 'pk-errors' }, п.ошибки.map((о) => h('div', {}, '⚠ ' + о))) : null,
+                выбранноеПоле,
+                h('div', { class: 'pk-panes' }, дерево, hex.узел),
+            ];
+            if (п.собранный) {
+                const hex2 = дамп(п.собранный.данные);
+                const дерево2 = h('div', { class: 'pk-tree' });
+                п.собранный.уровни.forEach((у) => дерево2.appendChild(уровеньУзел(у, hex2, [], выбранноеПоле)));
+                части.push(h('div', { class: 'card-title' }, 'Собранный из фрагментов пакет'),
+                    h('div', { class: 'pk-panes' }, дерево2, hex2.узел));
+            }
+            return h('div', {}, части);
+        }
+
+        function уровеньУзел(у, hex, узлыПолей, выбранноеПоле) {
+            const поля = h('ul', { class: 'pk-fields' });
+            const добавить = (поле, куда) => {
+                const дети = поле.дети && поле.дети.length ? h('ul', { class: 'pk-fields' }) : null;
+                const строка = h('div', {
+                    class: 'pk-field' + (поле.плохо ? ' is-bad' : ''),
+                    title: поле.ключ ? 'поле фильтра: ' + поле.ключ : '',
+                    onclick: (event) => {
+                        event.stopPropagation();
+                        hex.выделить(поле.смещение, поле.длина);
+                        узлыПолей.forEach((з) => з.узел.classList.remove('is-picked'));
+                        строка.classList.add('is-picked');
+                        clear(выбранноеПоле);
+                        if (поле.ключ) {
+                            const значение = /^[\d.]+$/.test(поле.текст) || /^[0-9a-f:.]+$/i.test(поле.текст) ? поле.текст
+                                : '"' + String(поле.текст).replace(/"/g, '\\"').split(' (')[0] + '"';
+                            const выражение = поле.ключ + ' == ' + значение;
+                            append(выбранноеПоле, [
+                                h('span', { class: 'mono small' }, выражение),
+                                h('button', { class: 'btn btn--sm', onclick: () => отфильтровать(выражение) }, 'Отобрать такие'),
+                                h('button', { class: 'btn btn--sm btn--ghost', onclick: () => отфильтровать('!(' + выражение + ')') }, 'Кроме таких'),
+                            ]);
+                        }
+                    },
+                }, поле.имя + (поле.текст && поле.текст !== String(поле.имя) ? ': ' + поле.текст : ''),
+                поле.длина ? h('span', { class: 'pk-range' }, ' [' + поле.смещение + (поле.длина > 1 ? '…' + (поле.смещение + поле.длина - 1) : '') + ']') : null);
+                узлыПолей.push({ узел: строка, смещение: поле.смещение, длина: поле.длина });
+                const li = h('li', {}, строка, дети);
+                куда.appendChild(li);
+                (поле.дети || []).forEach((д) => добавить(д, дети));
+            };
+            у.поля.forEach((поле) => добавить(поле, поля));
+            const узел = h('details', { class: 'pk-layer', open: true },
+                h('summary', { onclick: () => hex.выделить(у.смещение, у.длина) },
+                    h('b', {}, у.полное), у.итог ? h('span', { class: 'muted' }, ' — ' + у.итог) : null),
+                поля);
+            return узел;
+        }
+
+        function дамп(hexТекст) {
+            const байты = [];
+            for (let i = 0; i < hexТекст.length; i += 2) байты.push(parseInt(hexТекст.substr(i, 2), 16));
+            const ячейки = [];
+            const символы = [];
+            const строки = [];
+            const узелДампа = { узел: null, выделить: null, подсветкаОт: null };
+            for (let r = 0; r < байты.length; r += 16) {
+                const hexЧасть = h('span', { class: 'pk-hex-bytes' });
+                const ascii = h('span', { class: 'pk-hex-ascii' });
+                for (let i = r; i < Math.min(байты.length, r + 16); i += 1) {
+                    const б = байты[i];
+                    const ячейка = h('span', { 'data-i': i }, (б < 16 ? '0' : '') + б.toString(16) + (i % 16 === 7 ? '  ' : ' '));
+                    const символ = h('span', { 'data-i': i }, б >= 32 && б < 127 ? String.fromCharCode(б) : '·');
+                    ячейки.push(ячейка);
+                    символы.push(символ);
+                    hexЧасть.appendChild(ячейка);
+                    ascii.appendChild(символ);
+                }
+                строки.push(h('div', { class: 'pk-hex-row' },
+                    h('span', { class: 'pk-hex-off' }, r.toString(16).padStart(4, '0')), hexЧасть, ascii));
+            }
+            узелДампа.узел = h('div', { class: 'pk-hex', tabindex: 0 }, строки);
+            узелДампа.выделить = (от, длина) => {
+                ячейки.forEach((я, i) => {
+                    const в = длина > 0 && i >= от && i < от + длина;
+                    я.classList.toggle('is-on', в);
+                    символы[i].classList.toggle('is-on', в);
+                });
+                const первая = ячейки[от];
+                if (первая && длина > 0) первая.scrollIntoView({ block: 'nearest' });
+            };
+            узелДампа.узел.addEventListener('mouseover', (event) => {
+                const i = event.target && event.target.dataset ? Number(event.target.dataset.i) : NaN;
+                if (!Number.isNaN(i) && узелДампа.подсветкаОт) узелДампа.подсветкаОт(i);
+            });
+            return узелДампа;
+        }
+
+        // -- поток --
+
+        async function поток(номер) {
+            const окно = openModal({ title: 'Поток', body: loadingBox('Собираем поток…'), wide: true });
+            try {
+                const data = await api.get(путь + '/stream/' + номер);
+                const вид = { текущий: 'текст' };
+                const содержимое = h('div', { class: 'pk-stream' });
+                const рисовать = () => {
+                    clear(содержимое);
+                    data.куски.forEach((к) => содержимое.appendChild(h('div', {
+                        class: 'pk-chunk ' + (к.направление === '→' ? 'is-client' : 'is-server'),
+                        title: 'пакеты ' + к.пакеты.join(', '),
+                    }, h('div', { class: 'pk-chunk-head' }, (к.направление === '→' ? data.клиент + ' → ' + data.сервер : data.сервер + ' → ' + data.клиент) + ', ' + к.байт + ' байт'),
+                    h('pre', {}, вид.текущий === 'текст' ? к.текст : к.hex.replace(/(..)/g, '$1 ').replace(/((?:.. ){16})/g, '$1\n')))));
+                };
+                const кнопки = ['текст', 'hex'].map((в) => h('button', {
+                    class: 'btn btn--sm', onclick: () => { вид.текущий = в; рисовать(); },
+                }, в === 'текст' ? 'Текстом' : 'HEX'));
+                const тело_ = h('div', {},
+                    h('div', { class: 'row' },
+                        h('span', { class: 'muted' }, data.транспорт + ' ' + data.клиент + ' ↔ ' + data.сервер + ', ' + data.байт +
+                            ' байт; клиент — ' + data.клиент), кнопки,
+                        h('button', { class: 'btn btn--sm', onclick: () => { окно.close(); отфильтровать(фильтрПотока(data)); } }, 'Отобрать пакеты потока')),
+                    содержимое);
+                рисовать();
+                clear(окно.body);
+                окно.body.appendChild(тело_);
+            } catch (error) {
+                clear(окно.body);
+                окно.body.appendChild(errorBox(error));
+            }
+        }
+
+        function фильтрПотока(data) {
+            const [а, пa] = data.клиент.split(/:(?=\d+$)/);
+            const [б, пб] = data.сервер.split(/:(?=\d+$)/);
+            const т = data.транспорт.toLowerCase();
+            return 'ip.addr == ' + а + ' and ip.addr == ' + б + ' and ' + т + '.port == ' + пa + ' and ' + т + '.port == ' + пб;
+        }
+
+        // -- статистика --
+
+        function таблица(заголовки, строки, onRow) {
+            return h('div', { class: 'card pk-stat' }, h('table', { class: 'table' },
+                h('thead', {}, h('tr', {}, заголовки.map((з) => h('th', {}, з)))),
+                h('tbody', {}, строки.map((ячейки) => h('tr', { class: onRow ? 'is-clickable' : '', onclick: onRow ? () => onRow(ячейки) : null },
+                    ячейки.map((я) => h('td', {}, я === null || я === undefined ? '' : String(я))))))));
+        }
+
+        function доля(часть, целое) { return целое ? (100 * часть / целое).toFixed(1) + ' %' : ''; }
+
+        function иерархия(data) {
+            const корень = data.items[0];
+            const строки = [];
+            (function обойти(у, глубина) {
+                строки.push({ у: у, глубина: глубина });
+                у.дети.forEach((д) => обойти(д, глубина + 1));
+            })(корень, 0);
+            тело.appendChild(h('div', { class: 'card pk-stat' }, h('table', { class: 'table' },
+                h('thead', {}, h('tr', {}, ['Протокол', 'Пакетов', '% пакетов', 'Байт', '% байт'].map((з) => h('th', {}, з)))),
+                h('tbody', {}, строки.map((с_) => h('tr', {
+                    class: 'is-clickable', title: 'Отобрать пакеты с этим протоколом',
+                    onclick: () => с_.глубина && отфильтровать(с_.у.протокол.toLowerCase().replace(/^исходный |^собранный /, '')),
+                },
+                h('td', { style: { paddingLeft: (8 + 18 * с_.глубина) + 'px' } }, с_.у.протокол),
+                h('td', { class: 'num' }, String(с_.у.пакетов)), h('td', { class: 'num' }, доля(с_.у.пакетов, корень.пакетов)),
+                h('td', { class: 'num' }, fmtBytes(с_.у.байт)), h('td', { class: 'num' }, доля(с_.у.байт, корень.байт))))))));
+        }
+
+        async function диалоги(уровень) {
+            const data = await api.get(путь + '/stats?kind=conversations&level=' + уровень + '&filter=' + encodeURIComponent(с.фильтр));
+            clear(тело);
+            тело.appendChild(h('div', { class: 'row pk-subtabs' }, [['eth', 'Ethernet'], ['ip', 'IP'], ['tcp', 'TCP'], ['udp', 'UDP']].map(([к, и]) =>
+                h('button', { class: 'btn btn--sm' + (к === уровень ? ' is-on' : ''), onclick: () => диалоги(к) }, и))));
+            тело.appendChild(таблица(['А', 'Б', 'Пакетов', 'Байт', 'А → Б', 'Б → А', 'Начало, с', 'Длительность, с', 'Протоколы'],
+                data.items.map((д) => [д.а, д.б, д.пакетов, fmtBytes(д.байт), д.пакетов_аб + ' / ' + fmtBytes(д.байт_аб),
+                    д.пакетов_ба + ' / ' + fmtBytes(д.байт_ба), д.начало.toFixed(3), д.длительность.toFixed(3), д.протоколы]),
+                (ячейки) => {
+                    const ключ = { eth: 'eth.addr', ip: 'ip.addr', tcp: 'tcp', udp: 'udp' }[уровень];
+                    if (уровень === 'tcp' || уровень === 'udp') {
+                        const [а, пa] = ячейки[0].split(/:(?=\d+$)/);
+                        const [б, пб] = ячейки[1].split(/:(?=\d+$)/);
+                        отфильтровать('ip.addr == ' + а + ' and ip.addr == ' + б + ' and ' + ключ + '.port == ' + пa + ' and ' + ключ + '.port == ' + пб);
+                    } else {
+                        отфильтровать(ключ + ' == ' + ячейки[0] + ' and ' + ключ + ' == ' + ячейки[1]);
+                    }
+                }));
+        }
+
+        function узлы(data) {
+            тело.appendChild(таблица(['Адрес', 'Пакетов', 'Байт', 'Отправлено', 'Получено', 'Службы (порты < 1024)'],
+                data.items.map((у) => [у.адрес, у.пакетов, fmtBytes(у.байт), fmtBytes(у.отправлено), fmtBytes(у.получено), у.службы]),
+                (я) => отфильтровать('ip.addr == ' + я[0])));
+        }
+
+        function время(data) {
+            // Один ряд — одна величина за раз (пакеты или байты), не две оси.
+            const величина = { текущая: 'пакетов' };
+            const узел = h('div', { class: 'card card-pad pk-chart' });
+            const рисовать = () => {
+                clear(узел);
+                const значения = data[величина.текущая] || [];
+                const наибольшее = Math.max(1, ...значения);
+                const ш = 720, в = 220, отступ = 36;
+                const шагX = (ш - отступ) / Math.max(1, значения.length);
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', '0 0 ' + ш + ' ' + (в + 24));
+                svg.setAttribute('class', 'pk-chart-svg');
+                svg.setAttribute('role', 'img');
+                svg.setAttribute('aria-label', 'Нагрузка по времени: ' + величина.текущая + ' за интервал');
+                const линия = document.createElementNS(svg.namespaceURI, 'line');
+                линия.setAttribute('x1', отступ); линия.setAttribute('x2', ш); линия.setAttribute('y1', в); линия.setAttribute('y2', в);
+                линия.setAttribute('class', 'pk-axis');
+                svg.appendChild(линия);
+                const подсказка = h('div', { class: 'pk-tooltip', hidden: true });
+                значения.forEach((v, i) => {
+                    const высота = v ? Math.max(2, (в - 8) * v / наибольшее) : 0;
+                    const x = отступ + i * шагX + 1;
+                    const ширина = Math.max(1, шагX - 2);
+                    const r = Math.min(4, ширина / 2, высота);
+                    const y = в - высота;
+                    if (высота) {
+                        const путь_ = document.createElementNS(svg.namespaceURI, 'path');
+                        путь_.setAttribute('d', 'M' + x + ',' + в + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y +
+                            'H' + (x + ширина - r) + 'Q' + (x + ширина) + ',' + y + ' ' + (x + ширина) + ',' + (y + r) + 'V' + в + 'Z');
+                        путь_.setAttribute('class', 'pk-bar');
+                        svg.appendChild(путь_);
+                    }
+                    // Зона наведения — на всю высоту столбца, а не только на сам столбик.
+                    const зона = document.createElementNS(svg.namespaceURI, 'rect');
+                    зона.setAttribute('x', отступ + i * шагX); зона.setAttribute('y', 0);
+                    зона.setAttribute('width', шагX); зона.setAttribute('height', в);
+                    зона.setAttribute('class', 'pk-hit');
+                    зона.addEventListener('mouseenter', () => {
+                        подсказка.hidden = false;
+                        подсказка.textContent = (i * data.шаг).toFixed(3) + '–' + ((i + 1) * data.шаг).toFixed(3) + ' с: ' +
+                            (величина.текущая === 'пакетов' ? v + ' пакетов' : fmtBytes(v));
+                    });
+                    зона.addEventListener('mouseleave', () => { подсказка.hidden = true; });
+                    svg.appendChild(зона);
+                });
+                const подпись = (x, y, текст, якорь) => {
+                    const т = document.createElementNS(svg.namespaceURI, 'text');
+                    т.setAttribute('x', x); т.setAttribute('y', y); т.setAttribute('class', 'pk-axis-label');
+                    т.setAttribute('text-anchor', якорь || 'start');
+                    т.textContent = текст;
+                    svg.appendChild(т);
+                };
+                подпись(отступ - 4, 12, величина.текущая === 'пакетов' ? String(наибольшее) : fmtBytes(наибольшее), 'end');
+                подпись(отступ - 4, в, '0', 'end');
+                подпись(отступ, в + 18, '0 с');
+                подпись(ш, в + 18, (значения.length * data.шаг).toFixed(2) + ' с', 'end');
+                append(узел, [
+                    h('div', { class: 'row' },
+                        h('b', {}, (величина.текущая === 'пакетов' ? 'Пакетов' : 'Байт') + ' за интервал ' + (data.шаг >= 1 ? data.шаг.toFixed(2) + ' с' : (data.шаг * 1000).toFixed(1) + ' мс')),
+                        ['пакетов', 'байт'].map((к) => h('button', { class: 'btn btn--sm' + (к === величина.текущая ? ' is-on' : ''),
+                            onclick: () => { величина.текущая = к; рисовать(); } }, к === 'пакетов' ? 'Пакеты' : 'Байты'))),
+                    svg, подсказка,
+                    h('details', {}, h('summary', {}, 'Таблицей'),
+                        таблица(['Интервал, с', 'Пакетов', 'Байт'], значения.map((_, i) => [(i * data.шаг).toFixed(3),
+                            data.пакетов[i], data.байт[i]]).filter((р) => р[1]))),
+                ]);
+            };
+            рисовать();
+            тело.appendChild(узел);
+        }
+
+        function таблицаDns(data) {
+            тело.appendChild(таблица(['№', 'Клиент', 'Сервер', 'Вид', 'Имя', 'Тип', 'Ответы', 'Код'],
+                data.items.map((з) => [з.номер, з.клиент, з.сервер, з.ответ ? 'ответ' : 'запрос', з.имя, з.тип, з.ответы, з.код]),
+                (я) => отфильтровать('frame.number == ' + я[0])));
+        }
+
+        function таблицаHttp(data) {
+            тело.appendChild(таблица(['№', 'Клиент', 'Сервер', 'Метод', 'Узел', 'Адрес', 'Код', 'Агент'],
+                data.items.map((з) => [з.номер, з.клиент, з.сервер, з.метод, з.узел, з.адрес, з.код, з.агент]),
+                (я) => отфильтровать('frame.number == ' + я[0])));
+        }
+
+        function таблицаTls(data) {
+            тело.appendChild(таблица(['№', 'Клиент', 'Сервер', 'Порт', 'Имя (SNI)', 'ALPN', 'Версии'],
+                data.items.map((з) => [з.номер, з.клиент, з.сервер, з.порт, з.sni, з.alpn, з.версии]),
+                (я) => отфильтровать('frame.number == ' + я[0])));
+        }
+
+        function ошибки(data) {
+            if (!data.items.length) {
+                тело.appendChild(emptyBox('Ошибок нет', 'Контрольные суммы сошлись, оборванных пакетов нет.'));
+                return;
+            }
+            тело.appendChild(таблица(['Что', 'Пакетов', 'Первые номера'],
+                data.items.map((з) => [з.что, з.пакетов, з.первые.join(', ')]), () => отфильтровать('expert')));
+        }
+
+        function неизвестные(data) {
+            if (!data.items.length) {
+                тело.appendChild(emptyBox('Неизвестной нагрузки нет', 'Все пакеты разобраны известными протоколами.'));
+                return;
+            }
+            тело.appendChild(h('div', { class: 'muted small pk-hint' }, 'Нагрузка без известного разборщика — по группам. ' +
+                'Формат восстанавливается статистикой позиций: постоянные поля, счётчики, длины, типы и CRC вслепую.'));
+            data.items.forEach((г) => тело.appendChild(h('div', { class: 'card card-pad' },
+                h('div', { class: 'row' }, h('b', {}, г.группа), h('span', { class: 'muted' }, 'пакетов ' + г.пакетов + ', длина ' + г.длины + ' байт'),
+                    h('button', { class: 'btn btn--sm btn--ghost', onclick: () => отфильтровать('frame.number in {' + г.первые.join(' ') + '}') }, 'Первые пакеты')),
+                г.что ? h('div', {}, г.что) : null,
+                h('ul', { class: 'potok-details' }, г.подробно.map((с_) => h('li', {}, с_))))));
+        }
+
+        // -- действия --
+
+        async function выгрузить(формат) {
+            try {
+                const result = await api.download(путь + '/export?format=' + формат + '&filter=' + encodeURIComponent(с.фильтр));
+                const url = URL.createObjectURL(result.blob);
+                const link = h('a', { href: url, download: result.filename });
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 30000);
+            } catch (error) {
+                toastError(error);
+            }
+        }
+
+        async function спросить(номер) {
+            try {
+                const data = await api.post(путь + '/ask', { number: номер || 0 });
+                saveDraft(data.chat.id, data.question);
+                navigate('#/chat/' + data.chat.id);
+            } catch (error) {
+                toastError(error);
+            }
+        }
+
+        рисоватьВкладки();
+        показать();
+    }
+
     // -- матрицы LDPC: H из стандарта для ручного снятия кода ------------------
 
     /** Панель «Матрицы LDPC»: загрузить H (alist, базовая с Z, адреса), выбрать для слоя «ldpc ИМЯ». */
@@ -9581,7 +10201,7 @@
         const полеСтолбец = поле(с.столбец);
         const полеМасштаб = h('select', {}, [1, 2, 3, 4, 6, 8].map((z) =>
             h('option', { value: z, selected: z === с.масштаб }, z + ' пикс.')));
-        const видКнопки = ['биты', 'HEX', 'DEC'].map((вид) =>
+        const видКнопки = ['биты', 'HEX', 'DEC', 'BIN', 'ТЕКСТ'].map((вид) =>
             h('button', { class: 'btn btn--sm' + (вид === с.вид ? ' is-on' : ''), onclick: () => { с.вид = вид; рисовать(); } }, вид));
         const кандидаты = h('span', { class: 'rastr-cands' });
         const полоса = h('canvas', { class: 'rastr-bar', height: 18 });
@@ -9594,6 +10214,9 @@
         const слой = h('input', { type: 'text', placeholder: 'синхро 0x47 · кадры 0x47 длина 1504 · сдвиг 5 · инверсия · реверс 8 · xor 0xFF · nrzi · скремблер 3,20 · форни 12 17 0 · плоскость 6', style: { width: '100%' } });
         const k = h('input', { type: 'number', value: 6, style: { width: '56px' } });
         const видМодуляции = h('select', {}, h('option', {}, 'КАМ'), h('option', {}, 'ФМ'));
+        const полеПорядка = h('select', {}, h('option', { value: 'старший' }, 'старший первым'),
+            h('option', { value: 'младший' }, 'младший первым'));
+        полеПорядка.addEventListener('change', () => { с.порядок = полеПорядка.value; рисовать(); });
         const полеОтводы = h('input', { type: 'text', placeholder: 'пусто — найти; 6,7', style: { width: '120px' } });
         const полеПропуск = h('input', { type: 'number', value: 0, min: 0, style: { width: '72px' } });
         const цель = h('select', {});
@@ -9617,7 +10240,8 @@
                 h('label', {}, 'С цикла ', полеСтрока),
                 h('label', {}, 'С позиции ', полеСтолбец),
                 h('label', {}, 'Масштаб ', полеМасштаб),
-                h('span', { class: 'rastr-views' }, видКнопки)),
+                h('span', { class: 'rastr-views' }, видКнопки),
+                h('label', { title: 'Как собирать байт из бит для HEX/DEC/BIN/ТЕКСТ' }, 'бит в байте ', полеПорядка)),
             h('div', { class: 'rastr-tools' },
                 h('label', {}, 'Синхрокомбинация ', полеСинхро),
                 h('label', {}, 'ошибок до ', полеОшибок),
@@ -9811,12 +10435,18 @@
                     const n = Math.min(8, с.период - b);
                     for (let j = 0; j < n; j += 1) {
                         const i = r * с.период + b + j;
-                        значение = (значение << 1) | ((с.биты[i >> 3] >> (7 - (i & 7))) & 1);
+                        const бит = (с.биты[i >> 3] >> (7 - (i & 7))) & 1;
+                        // Порядок бит в байте: старший первым (как в линии) или младший первым.
+                        if (с.порядок === 'младший') значение |= бит << j;
+                        else значение = (значение << 1) | бит;
                     }
-                    части.push(с.вид === 'HEX' ? значение.toString(16).toUpperCase().padStart(Math.ceil(n / 4), '0')
-                        : String(значение).padStart(3, ' '));
+                    if (с.вид === 'HEX') части.push(значение.toString(16).toUpperCase().padStart(Math.ceil(n / 4), '0'));
+                    else if (с.вид === 'BIN') части.push(значение.toString(2).padStart(n, '0'));
+                    else if (с.вид === 'ТЕКСТ') части.push(значение >= 32 && значение < 127 ? String.fromCharCode(значение)
+                        : (значение >= 0xC0 ? 'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя'[значение - 0xC0] : '·'));
+                    else части.push(String(значение).padStart(3, ' '));
                 }
-                строки.push(String(с.строка + r).padStart(7, ' ') + '  ' + части.join(' '));
+                строки.push(String(с.строка + r).padStart(7, ' ') + '  ' + части.join(с.вид === 'ТЕКСТ' ? '' : ' '));
             }
             текст.textContent = строки.join('\n');
         }

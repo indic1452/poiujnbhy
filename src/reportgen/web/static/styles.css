@@ -8570,3 +8570,89 @@ body.reading .msg .body {
 .potok-steps li { display: flex; align-items: center; gap: 6px; }
 .potok-steps li.is-off { opacity: .55; }
 .potok-steps-edit .row { flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* -- Пакеты: список с цветом по семейству протокола (дублирует столбец «Протокол»),
+      дерево полей и HEX с подсветкой байт выбранного поля. */
+:root {
+    --pk-tcp: #e8f0fb; --pk-udp: #e7f5ec; --pk-dns: #e3f4f6; --pk-http: #eef4dc;
+    --pk-tls: #eeeafb; --pk-arp: #fbf2dc; --pk-icmp: #fbe8f0; --pk-route: #f2ede3;
+    --pk-sel: #cfe1f3; --pk-hex-on: #ffe08a; --pk-client: #fbe9e7; --pk-server: #e7eef8;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --pk-tcp: #172638; --pk-udp: #15291d; --pk-dns: #11292c; --pk-http: #222a14;
+        --pk-tls: #221d38; --pk-arp: #33280f; --pk-icmp: #36182a; --pk-route: #2b261c;
+        --pk-sel: #23466b; --pk-hex-on: #6b5412; --pk-client: #3a1c1a; --pk-server: #172a40;
+    }
+}
+:root[data-theme="dark"] {
+    --pk-tcp: #172638; --pk-udp: #15291d; --pk-dns: #11292c; --pk-http: #222a14;
+    --pk-tls: #221d38; --pk-arp: #33280f; --pk-icmp: #36182a; --pk-route: #2b261c;
+    --pk-sel: #23466b; --pk-hex-on: #6b5412; --pk-client: #3a1c1a; --pk-server: #172a40;
+}
+.pk-filterbar .row { gap: 8px; align-items: center; }
+.pk-filterbar .row { flex-wrap: nowrap; }
+.pk-filter { flex: 1 1 auto; width: 100%; min-width: 0; font-family: var(--font-mono); font-size: var(--fs-sm); }
+.pk-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 6px; }
+.pk-chips .muted { margin-left: auto; }
+.pk-split { display: flex; flex-direction: column; overflow: hidden; }
+.pk-list { max-height: 42vh; overflow: auto; outline: none; border-bottom: 1px solid var(--border); }
+.pk-table { font-size: var(--fs-sm); width: 100%; }
+.pk-table th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.pk-table td { padding-top: 2px; padding-bottom: 2px; white-space: nowrap; }
+.pk-table td.pk-info { white-space: normal; min-width: 280px; }
+.pk-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.pk-table tr { cursor: pointer; }
+.pk-table tr.pk-tcp { background: var(--pk-tcp); }
+.pk-table tr.pk-udp { background: var(--pk-udp); }
+.pk-table tr.pk-dns { background: var(--pk-dns); }
+.pk-table tr.pk-http { background: var(--pk-http); }
+.pk-table tr.pk-tls { background: var(--pk-tls); }
+.pk-table tr.pk-arp { background: var(--pk-arp); }
+.pk-table tr.pk-icmp { background: var(--pk-icmp); }
+.pk-table tr.pk-route { background: var(--pk-route); }
+.pk-table tr.pk-err td { color: var(--danger); }
+.pk-table tr.is-selected, .pk-table tr.is-selected td { background: var(--pk-sel); }
+.pk-detail { padding: 10px 12px; }
+.pk-detail-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: baseline; }
+.pk-errors { color: var(--danger); font-size: var(--fs-sm); margin: 6px 0; }
+.pk-field-actions { gap: 6px; align-items: center; min-height: 1.6em; margin: 4px 0; }
+.pk-panes { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 12px; margin-top: 6px; }
+@media (max-width: 1100px) { .pk-panes { grid-template-columns: minmax(0, 1fr); } }
+.pk-tree { max-height: 46vh; overflow: auto; font-size: var(--fs-sm); }
+.pk-layer { margin-bottom: 4px; }
+.pk-layer > summary { cursor: pointer; padding: 2px 0; }
+.pk-fields { list-style: none; margin: 0; padding-left: 16px; }
+.pk-field { cursor: pointer; padding: 1px 4px; border-radius: var(--radius-sm); }
+.pk-field:hover, .pk-field.is-hover { background: var(--accent-soft); }
+.pk-field.is-picked { background: var(--pk-sel); }
+.pk-field.is-bad { color: var(--danger); font-weight: 600; }
+.pk-range { color: var(--faint); font-family: var(--font-mono); font-size: var(--fs-xs); }
+.pk-hex {
+    max-height: 46vh; overflow: auto; font-family: var(--font-mono); font-size: var(--fs-sm);
+    line-height: 1.45; white-space: pre; outline: none; max-width: 100%;
+}
+.pk-hex-row { display: flex; gap: 12px; }
+.pk-hex-off { color: var(--faint); }
+.pk-hex-bytes span.is-on, .pk-hex-ascii span.is-on { background: var(--pk-hex-on); color: var(--text); }
+.pk-hint { padding: 10px 12px; }
+.pk-stat { overflow: auto; max-height: 70vh; }
+.pk-stat .table { font-size: var(--fs-sm); }
+.pk-stat tr.is-clickable { cursor: pointer; }
+.pk-stat tr.is-clickable:hover { background: var(--accent-soft); }
+.pk-subtabs { gap: 6px; margin: 8px 0; }
+.pk-stream { max-height: 60vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.pk-chunk { border-radius: var(--radius-sm); padding: 4px 8px; border-left: 3px solid var(--border-strong); }
+.pk-chunk.is-client { background: var(--pk-client); border-left-color: var(--danger); }
+.pk-chunk.is-server { background: var(--pk-server); border-left-color: var(--accent); }
+.pk-chunk-head { font-size: var(--fs-xs); color: var(--muted); }
+.pk-chunk pre { margin: 2px 0 0; white-space: pre-wrap; word-break: break-all; font-family: var(--font-mono); font-size: var(--fs-sm); }
+/* График нагрузки: один ряд, акцентный цвет, приглушённые оси. */
+.pk-chart .row { gap: 8px; align-items: center; }
+.pk-chart-svg { width: 100%; max-width: 900px; height: auto; display: block; margin-top: 8px; }
+.pk-bar { fill: var(--accent); }
+.pk-hit { fill: transparent; }
+.pk-hit:hover { fill: var(--accent-soft); fill-opacity: .5; }
+.pk-axis { stroke: var(--border-strong); stroke-width: 1; }
+.pk-axis-label { fill: var(--muted); font-size: 11px; font-family: var(--font-ui); }
+.pk-tooltip { font-size: var(--fs-sm); color: var(--text); margin-top: 4px; min-height: 1.4em; }

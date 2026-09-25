@@ -67,9 +67,9 @@ class Задания:
     def __init__(self, папка: Path):
         from . import ldpc  # noqa: PLC0415
         self.папка = Path(папка)
-        # Матрицы LDPC, загруженные аналитиками, — рядом с заданиями: слой
-        # «ldpc ИМЯ» находит их по имени.
-        ldpc.КАТАЛОГ = self.папка / "матрицы"
+        # Матрицы LDPC, загруженные аналитиками, — в своей папке рядом (она
+        # идёт в резервную копию, разборы — нет): слой «ldpc ИМЯ» находит их по имени.
+        ldpc.КАТАЛОГ = self.папка.parent / "ldpc"
         self._lock = threading.Lock()
         self._очередь: "queue.Queue[str]" = queue.Queue()
         self._журналы: Dict[str, List[str]] = {}

@@ -125,6 +125,12 @@ class ВКопиюПопадаетВсё(unittest.TestCase):
         места = {место["имя"]: место["в_копию"] for место in Settings.load().storage()}
         self.assertFalse(места["kesh"])
 
+    def test_матрицы_ldpc_в_копию_а_разборы_нет(self):
+        места = {место["имя"]: место["в_копию"] for место in Settings.load().storage()}
+        self.assertTrue(места["ldpc"])
+        self.assertFalse(места["potok"])
+        self.assertFalse(места["pakety"])
+
     def test_копия_не_режется_архиватором_на_два_гигабайта(self):
         """Compress-Archive в PowerShell 5.1 библиотеку отдела не осилит."""
         текст = без_строк_и_примечаний(читать(WINDOWS / "backup.ps1"))
