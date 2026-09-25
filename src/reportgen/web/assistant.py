@@ -374,6 +374,11 @@ DIGEST_WORDS = 300
 #: выписка на триста слов обрывалась на двухсот тридцатом — посреди фразы.
 TOKENS_PER_WORD = 3
 
+#: Во сколько раз может вырасти потолок ответа за счёт остатка окна.
+#: Полтора — это и место под размышление Qwen3, и развёрнутый разбор; больше
+#: не нужно ответу, а очереди отдела стоит времени.
+ANSWER_GROWTH = 1.5
+
 #: Меньше этого выписке места не давать: обрывок в пару строк только путает
 #: модель, а фрагменты за ним выглядели бы прочитанными.
 MIN_DIGEST_CHARS = 300
@@ -543,12 +548,26 @@ class AssistantService:
         return self._finish(user, prepared, self._complete(prepared))
 
     def _complete(self, prepared: Dict[str, Any]) -> str:
-        return self.reports.get_llm().complete(
-            ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-            max_tokens=prepared.get("answer_tokens") or prepared["profile"]["max_tokens"],
-            temperature=self._температура(),
-            history=prepared["history"],
-        )
+        llm = self.reports.get_llm()
+        return llm.complete(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
+                            **self._как_отвечать(llm, prepared))
+
+    def _как_отвечать(self, llm: Any, prepared: Dict[str, Any]) -> Dict[str, Any]:
+        """Параметры главного ответа — одни для потока и для целого ответа.
+
+        Итог вызова (чем кончилась генерация, расход токенов) клиент кладёт
+        в словарь ЭТОГО ответа: клиент модели один на всех, и его общие поля
+        перезаписывает чужой вопрос, заданный в то же время.
+        """
+        параметры: Dict[str, Any] = {
+            "max_tokens": (prepared.get("answer_tokens")
+                           or prepared["profile"]["max_tokens"]),
+            "temperature": self._температура(),
+            "history": prepared["history"],
+        }
+        if getattr(llm, "пишет_итог", False):
+            параметры["итог"] = prepared.setdefault("итог", {})
+        return параметры
 
     def ask_stream(self, user: User, chat_id: int, question: str, *,
                    top_k: int | None = None,
@@ -603,14 +622,12 @@ class AssistantService:
         try:
             if stream is None:
                 text = llm.complete(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                    max_tokens=prepared.get("answer_tokens") or prepared["profile"]["max_tokens"],
-                                    temperature=self._температура(), history=prepared["history"])
+                                    **self._как_отвечать(llm, prepared))
                 pieces.append(text)
                 yield {"type": "delta", "text": text}
             else:
                 for piece in stream(ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
-                                    max_tokens=prepared.get("answer_tokens") or prepared["profile"]["max_tokens"],
-                                    temperature=self._температура(), history=prepared["history"]):
+                                    **self._как_отвечать(llm, prepared)):
                     pieces.append(piece)
                     yield {"type": "delta", "text": piece}
         except GeneratorExit:
@@ -1213,7 +1230,7 @@ class AssistantService:
                   # обрезанный на середине строки таблицы полей, ложился в
                   # переписку как законченный, и инженер уносил в отчёт
                   # таблицу без последних строк, не зная об этом.
-                  "cut": self._чем_кончилось()},
+                  "cut": self._чем_кончилось(prepared)},
         )
         if chat.title == DEFAULT_TITLE:
             self.repos.chats.rename(chat.id, _make_title(prepared["question"]))
@@ -1245,7 +1262,9 @@ class AssistantService:
         материала, завышенная роняет ответ целиком, а один замер на промпте с
         латиницей и цифрами легко поднимет отношение выше настоящего.
         """
-        расход = dict(getattr(llm, "последний_расход", {}) or {})
+        итог = prepared.get("итог")
+        расход = dict((итог.get("расход") if итог is not None
+                       else getattr(llm, "последний_расход", {})) or {})
         токенов = int(расход.get("prompt_tokens") or 0)
         if токенов <= 0:
             return
@@ -1260,13 +1279,20 @@ class AssistantService:
             "answer_limit": int(prepared.get("answer_tokens") or 0),
         }
 
-    def _чем_кончилось(self) -> str:
-        """Как закончилась последняя генерация: сама, по потолку или на мысли.
+    def _чем_кончилось(self, prepared: Dict[str, Any] | None = None) -> str:
+        """Как закончилась генерация ЭТОГО ответа: сама, по потолку, на мысли.
 
         Спрашиваем клиента модели, а не гадаем. Заглушки и сторонние клиенты
         такого поля не имеют — для них пусто, и это правильный ответ: «не
         знаем» лучше, чем выдуманное «закончилась сама».
+
+        Итог берётся из словаря самого ответа, когда клиент его ведёт. Общее
+        поле клиента — только для клиентов, которые словаря не знают: его
+        перезаписывает чужой вопрос, заданный в то же время.
         """
+        итог = (prepared or {}).get("итог")
+        if итог is not None:
+            return str(итог.get("обрыв") or "")
         llm = self.reports.get_llm()
         return str(getattr(llm, "последний_обрыв", "") or "")
 
@@ -2068,7 +2094,9 @@ class AssistantService:
         размышление, которое в ответ не попадает, — и развёрнутый разбор
         кончался на середине таблицы.
 
-        Теперь ответу отдаётся весь остаток, но не меньше настройки. Мерим
+        Теперь ответу отдаётся остаток — не меньше настройки и не больше
+        полутора её (ANSWER_GROWTH): в очереди отдела потолок одного ответа
+        — это время, которое ждёт следующий. Мерим
         точно, когда сервер считает; по оценке — с тем же запасом вниз,
         что и везде.
         """
@@ -2078,7 +2106,11 @@ class AssistantService:
             знаков = (len(prompt) + len(ASSISTANT_SYSTEM_PROMPT)
                       + sum(len(item.get("content") or "") for item in history))
             токенов = int(знаков / self._знаков_на_токен()) + 1
-        return max(int(потолок), окно - токенов - TOKEN_SAFETY)
+        # Рост ограничен: в очереди отдела потолок одного ответа — это время,
+        # которое ждёт следующий. Зациклившаяся модель с потолком в двадцать
+        # тысяч токенов держала бы очередь десять минут.
+        return max(int(потолок), min(окно - токенов - TOKEN_SAFETY,
+                                     int(потолок * ANSWER_GROWTH)))
 
     def _digest_room(self) -> int:
         """Сколько знаков придержать под выписки, если они понадобятся."""

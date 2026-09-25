@@ -188,8 +188,11 @@ class РежимДоходитДоОтвета(AssistantTestCase):
         # Потолок готовит _prepare: в глубоком режиме — весь остаток окна,
         # в быстром — ровно профиль (поведение проверяет test_tochnyi_schet,
         # «в быстром режиме потолок не растёт»). Выдача берёт его оттуда.
-        self.assertIn('max_tokens=prepared.get("answer_tokens") '
-                      'or prepared["profile"]["max_tokens"]', источник)
+        параметры = источник.split("    def _как_отвечать(", 1)[1].split("\n    def ", 1)[0]
+        self.assertIn('prepared.get("answer_tokens")', параметры)
+        self.assertIn('or prepared["profile"]["max_tokens"]', параметры)
+        # И поток, и целый ответ берут потолок оттуда же.
+        self.assertEqual(3, источник.count("**self._как_отвечать(llm, prepared)"))
         # И нигде в выдаче ответа не осталось прежнего общего потолка.
         выдача = источник[источник.index("    def ask("):источник.index("    # -- внутреннее")]
         self.assertNotIn("max_tokens=self._max_tokens()", выдача)

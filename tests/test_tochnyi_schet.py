@@ -160,8 +160,13 @@ class ОкноДоКраяTests(Основа):
         prepared = self.готово()
         ждём = (self.settings.llm_context_tokens - self.токенов_запроса(prepared)
                 - TOKEN_SAFETY)
-        self.assertEqual(max(ждём, self.settings.assistant_max_tokens),
+        потолок = self.settings.assistant_max_tokens
+        # Остаток — но не больше полутора настроек: в очереди отдела потолок
+        # одного ответа — это время, которое ждёт следующий.
+        self.assertEqual(max(потолок, min(ждём, int(потолок * 1.5))),
                          prepared["answer_tokens"])
+        self.assertGreater(prepared["answer_tokens"], потолок,
+                           "остаток окна ответу не достался")
 
     def test_остаток_доходит_до_модели(self):
         prepared = self.готово()

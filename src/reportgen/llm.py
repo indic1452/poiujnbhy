@@ -174,6 +174,18 @@ class OpenAICompatLLM:
     #: сборка сервера выносит мысль сама, и отсекать нечего.
     размышляет: bool = False
 
+    #: Клиент умеет класть итог вызова (чем кончилась генерация, расход
+    #: токенов) в словарь, переданный вызывающим, — см. ``итог`` у
+    #: :meth:`complete` и :meth:`stream`.
+    #:
+    #: Зачем это нужно. Клиент ОДИН на всё приложение, а спрашивают его сразу
+    #: несколько человек: пока модель дописывает один ответ, сбор материала
+    #: для второго вопроса зовёт её же. Поля «последний_обрыв» и
+    #: «последний_расход» на общем клиенте перезаписывались чужим вызовом, и
+    #: ответ забирал чужой итог: пропадала плашка «оборван по длине», замер
+    #: в «Метриках» показывал чужой промпт. Словарь вызова — только его.
+    пишет_итог = True
+
     @property
     def name(self) -> str:
         return f"{self.model} @ {self.base_url}"
@@ -329,7 +341,8 @@ class OpenAICompatLLM:
 
     def complete(self, system: str, user: str, *, max_tokens: int = 1200,
                  temperature: float = 0.2,
-                 history: List[Dict[str, str]] | None = None) -> str:
+                 history: List[Dict[str, str]] | None = None,
+                 итог: Dict[str, Any] | None = None) -> str:
         request = self._request(
             self._payload(system, user, max_tokens, temperature, history)
         )
@@ -345,6 +358,9 @@ class OpenAICompatLLM:
                 # «модель ничего не нашла».
                 self.последний_обрыв = str(выбор.get("finish_reason") or "")
                 self.последний_расход = dict(body.get("usage") or {})
+                if итог is not None:
+                    итог["обрыв"] = self.последний_обрыв
+                    итог["расход"] = dict(self.последний_расход)
                 return без_мысли(выбор["message"]["content"])
             except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError) as error:
                 last_error = error
@@ -361,12 +377,21 @@ class OpenAICompatLLM:
 
     def stream(self, system: str, user: str, *, max_tokens: int = 1200,
                temperature: float = 0.2,
-               history: List[Dict[str, str]] | None = None) -> Iterator[str]:
-        """Читает поток server-sent events и отдаёт куски текста по мере готовности."""
+               history: List[Dict[str, str]] | None = None,
+               итог: Dict[str, Any] | None = None) -> Iterator[str]:
+        """Читает поток server-sent events и отдаёт куски текста по мере готовности.
+
+        ``итог`` — словарь ЭТОГО вызова: сюда кладётся, чем кончилась
+        генерация и сколько токенов ушло. Поля на самом клиенте общие для
+        всех и перезаписываются чужими вызовами — см. ``пишет_итог``.
+        """
         request = self._request(
             self._payload(system, user, max_tokens, temperature, history, stream=True)
         )
         отсекатель = ОтсекательМысли()
+        свой: Dict[str, Any] = итог if итог is not None else {}
+        свой["обрыв"] = ""
+        свой["расход"] = {}
         self.последний_обрыв = ""
         self.последний_расход = {}
         try:
@@ -387,11 +412,13 @@ class OpenAICompatLLM:
                     # всем остальным, и число токенов промпта пропадало.
                     if chunk.get("usage"):
                         self.последний_расход = dict(chunk["usage"])
+                        свой["расход"] = dict(chunk["usage"])
                     choices = chunk.get("choices") or []
                     if not choices:
                         continue
                     if choices[0].get("finish_reason"):
                         self.последний_обрыв = str(choices[0]["finish_reason"])
+                        свой["обрыв"] = self.последний_обрыв
                     delta = choices[0].get("delta") or {}
                     # Новые сборки llama.cpp выносят рассуждение в отдельное
                     # поле. Наружу оно не идёт, но говорит, что модель занята
@@ -408,6 +435,7 @@ class OpenAICompatLLM:
                 yield хвост
             if отсекатель.оборвалось_на_мысли:
                 self.последний_обрыв = "размышление"
+                свой["обрыв"] = "размышление"
         except (urllib.error.URLError, TimeoutError) as error:
             raise LLMError(f"обращение к модели не удалось: {error}") from error
 
