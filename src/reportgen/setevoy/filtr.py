@@ -9,6 +9,9 @@
     port in {53 123 161}             порт TCP, UDP или SCTP — из списка
     http.request.method == "POST"
     expert                           пакеты с ошибками (суммы, обрывы)
+    frame[12:2] == 0800              байты 12–13 кадра (HEX: 0800, 08:00, 0x0800)
+    payload[0].hi == 0xA             старший полубайт первого байта нагрузки
+    frame contains ff:d8:ff          последовательность байт в кадре (или «текст»)
 
 Сравнение истинно, если ему удовлетворяет хоть одно значение поля (как в
 Wireshark: у пакета два адреса, ip.addr — оба). Строки сравниваются без
@@ -97,6 +100,55 @@ class _Разбор:
             return lambda п: not внутри(п)
         return self.атом()
 
+    def по_байтам(self, откуда: str, место, длина, полубайт) -> Условие:
+        """frame[i], frame[i:n], payload[i].hi — байты кадра или нагрузки как число."""
+        ключ = "_frame" if откуда == "frame" else "_payload"
+        оп = self.смотреть().lower()
+        if место is None:
+            if оп not in ("contains", "matches"):
+                raise ОшибкаФильтра(f"{откуда} без [место] — только contains или matches")
+            self.взять()
+            сырое = self.взять()
+            значение = _значение(сырое)
+            if оп == "contains":
+                # В кавычках — текст; без кавычек — HEX (ff:d8:ff, 0xffd8, ffd8ff).
+                образец = значение.encode("utf-8") if сырое.startswith('"') else _байты_значения(значение)
+                return lambda п: образец in (п.get(ключ) or b"")
+            регулярка = re.compile(значение.encode("utf-8"), re.S)
+            return lambda п: bool(регулярка.search(п.get(ключ) or b""))
+        место, длина = int(место), int(длина or 1)
+        if not 1 <= длина <= 8:
+            raise ОшибкаФильтра("байт в срезе — от 1 до 8")
+
+        def число(п):
+            д = п.get(ключ) or b""
+            if место + длина > len(д):
+                return None
+            x = int.from_bytes(д[место:место + длина], "big")
+            if полубайт == "hi":
+                return x >> 4 if длина == 1 else None
+            if полубайт == "lo":
+                return x & 15 if длина == 1 else None
+            return x
+
+        if оп not in ("==", "!=", ">", "<", ">=", "<=", "eq", "ne", "gt", "lt", "ge", "le", "in"):
+            return lambda п: число(п) is not None
+        self.взять()
+        оп = {"eq": "==", "ne": "!=", "gt": ">", "lt": "<", "ge": ">=", "le": "<="}.get(оп, оп)
+        if оп == "in":
+            if self.взять() != "{":
+                raise ОшибкаФильтра("после in — список в фигурных скобках")
+            значения = set()
+            while self.смотреть() != "}":
+                л = self.взять()
+                if л != ",":
+                    значения.add(_число_байт(л))
+            self.взять()
+            return lambda п: число(п) in значения
+        цель = _число_байт(self.взять())
+        return lambda п: (lambda x: x is not None and {"==": x == цель, "!=": x != цель, ">": x > цель,
+                                                         "<": x < цель, ">=": x >= цель, "<=": x <= цель}[оп])(число(п))
+
     def атом(self) -> Условие:
         лекс = self.взять()
         if лекс == "(":
@@ -104,6 +156,9 @@ class _Разбор:
             if self.взять() != ")":
                 raise ОшибкаФильтра("не закрыта скобка")
             return внутри
+        байты = re.fullmatch(r"(frame|payload)(?:\[(\d+)(?::(\d+))?\])?(?:\.(hi|lo))?", лекс.lower())
+        if байты:
+            return self.по_байтам(*байты.groups())
         if not re.fullmatch(r"[A-Za-z_][\w.\-]*", лекс):
             raise ОшибкаФильтра(f"ожидалось имя поля, а не «{лекс}»")
         ключи = ПСЕВДОНИМЫ.get(лекс.lower(), (лекс.lower(),))
@@ -134,10 +189,36 @@ class _Разбор:
         return lambda п: any(к in п for к in ключи)
 
 
+def _байты_значения(текст: str) -> bytes:
+    """«0800», «08:00», «0x0800», «ff d8» → байты; иначе — текст в UTF-8."""
+    чистый = re.sub(r"[\s:]|^0x", "", текст.lower())
+    if re.fullmatch(r"(?:[0-9a-f]{2})+", чистый) and (":" in текст or текст.lower().startswith("0x")
+                                                     or re.fullmatch(r"[0-9a-f]+", текст.lower())):
+        return bytes.fromhex(чистый)
+    return текст.encode("utf-8")
+
+
 def _значение(лекс: str) -> Any:
     if лекс.startswith('"'):
         return лекс[1:-1].replace('\\"', '"').replace("\\\\", "\\")
     return лекс
+
+
+def _число_байт(лекс: str) -> int:
+    """Значение для frame[i:n]: 10, 0x0a, 0800 (как HEX, если есть буквы или ведущий 0), 08:00."""
+    т = _значение(лекс).strip().lower()
+    try:
+        if т.startswith("0x"):
+            return int(т, 16)
+        if ":" in т or re.search(r"[a-f]", т) or (len(т) > 1 and т.startswith("0")):
+            return int(т.replace(":", ""), 16)
+        return int(т)
+    except ValueError:
+        raise ОшибкаФильтра(f"не число: «{лекс}»") from None
+
+
+def нужны_байты(текст: str) -> bool:
+    return bool(re.search(r"\b(frame|payload)\b", текст or "", re.I))
 
 
 def _число(x: Any):

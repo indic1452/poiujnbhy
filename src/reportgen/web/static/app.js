@@ -9175,6 +9175,13 @@
 
         function рисоватьПрочее(data) {
             clear(прочее);
+            if ((data.содержимое || []).length) {
+                прочее.appendChild(h('div', { class: 'card card-pad' },
+                    h('div', { class: 'card-title' }, 'Файлы и текст в потоке'),
+                    h('div', { class: 'muted small' }, 'Найдено автоматически: сигнатуры файлов со сверкой структуры ' +
+                        '(при любом битовом сдвиге и в инверсии), имена файлов, адреса, текст. Скачать — в растре, «Поиск в потоке».'),
+                    h('ul', {}, data.содержимое.map((строка) => h('li', {}, строка)))));
+            }
             if ((data.карта || []).length) {
                 прочее.appendChild(h('details', { class: 'card card-pad' },
                     h('summary', {}, 'Карта файла'),
@@ -9570,14 +9577,15 @@
                 h('div', { class: 'empty-note' }, состояние.ошибка || '')));
             return;
         }
-        const с = { фильтр: '', выбран: null, вкладка: 'пакеты', смещение: 0, всего: 0, отобрано: 0 };
+        const с = { фильтр: '', выбран: null, вкладка: 'пакеты', смещение: 0, всего: 0, отобрано: 0,
+            вид: 'HEX', порядок: 'старший', база: 'frame', начало: 0, столбцов: 64, ширина: 1 };
         const полеФильтра = h('input', { type: 'text', class: 'pk-filter', placeholder: ПРИМЕРЫ_ФИЛЬТРА, spellcheck: false });
         const счётчик = h('span', { class: 'muted small' });
         const вкладкиУзел = h('div', { class: 'tabs' });
         const тело = h('div', { class: 'pk-body' });
         const ВКЛАДКИ = [['пакеты', 'Пакеты'], ['протоколы', 'Протоколы'], ['диалоги', 'Диалоги'], ['узлы', 'Узлы'],
-            ['время', 'Время'], ['dns', 'DNS'], ['http', 'HTTP'], ['tls', 'TLS'], ['ошибки', 'Ошибки'],
-            ['неизвестные', 'Неизвестные форматы']];
+            ['матрица', 'Матрица байт'], ['время', 'Время'], ['dns', 'DNS'], ['http', 'HTTP'], ['tls', 'TLS'],
+            ['ошибки', 'Ошибки'], ['неизвестные', 'Неизвестные форматы']];
         page.appendChild(h('div', { class: 'page-head' },
             h('div', {}, h('h2', {}, состояние.имя),
                 h('div', { class: 'muted' }, состояние.формат + ' · пакетов ' + состояние.пакетов + ' · ' + fmtBytes(состояние.байт) +
@@ -9623,6 +9631,7 @@
         async function показать() {
             clear(тело);
             if (с.вкладка === 'пакеты') return списокПакетов();
+            if (с.вкладка === 'матрица') return матрица();
             тело.appendChild(loadingBox('Считаем…'));
             const вид = { протоколы: 'hierarchy', диалоги: 'conversations', узлы: 'endpoints', время: 'time', dns: 'dns',
                 http: 'http', tls: 'tls', ошибки: 'errors', неизвестные: 'unknown' }[с.вкладка];
@@ -9740,9 +9749,12 @@
                         транспорт ? h('button', { class: 'btn btn--sm', onclick: () => поток(п.номер) }, 'Следовать за потоком') : null,
                         h('button', { class: 'btn btn--sm', onclick: () => спросить(п.номер) }, 'Спросить помощника о пакете'))),
                 (п.ошибки || []).length ? h('div', { class: 'pk-errors' }, п.ошибки.map((о) => h('div', {}, '⚠ ' + о))) : null,
+                h('div', { class: 'row pk-field-actions' }, h('span', { class: 'muted small' }, 'Байты:'),
+                    переключателиВида(() => { const новый = подробно(п); узелПодробно.replaceWith(новый); })),
                 выбранноеПоле,
                 h('div', { class: 'pk-panes' }, дерево, hex.узел),
             ];
+            const узелПодробно = h('div', {});
             if (п.собранный) {
                 const hex2 = дамп(п.собранный.данные);
                 const дерево2 = h('div', { class: 'pk-tree' });
@@ -9750,7 +9762,8 @@
                 части.push(h('div', { class: 'card-title' }, 'Собранный из фрагментов пакет'),
                     h('div', { class: 'pk-panes' }, дерево2, hex2.узел));
             }
-            return h('div', {}, части);
+            append(узелПодробно, части);
+            return узелПодробно;
         }
 
         function уровеньУзел(у, hex, узлыПолей, выбранноеПоле) {
@@ -9795,6 +9808,7 @@
         function дамп(hexТекст) {
             const байты = [];
             for (let i = 0; i < hexТекст.length; i += 2) байты.push(parseInt(hexТекст.substr(i, 2), 16));
+            if (с.вид !== 'HEX' || с.порядок !== 'старший') return дампВид(байты);
             const ячейки = [];
             const символы = [];
             const строки = [];
@@ -9829,6 +9843,233 @@
                 if (!Number.isNaN(i) && узелДампа.подсветкаОт) узелДампа.подсветкаОт(i);
             });
             return узелДампа;
+        }
+
+        /** Дамп в DEC/BIN или с обратным порядком бит: по 8 (DEC) или 4 (BIN) байта в строке. */
+        function дампВид(байты) {
+            const вБайт = с.вид === 'BIN' ? 4 : (с.вид === 'DEC' ? 12 : 16);
+            const ячейки = [];
+            const строки = [];
+            for (let r = 0; r < байты.length; r += вБайт) {
+                const часть = h('span', { class: 'pk-hex-bytes' });
+                for (let i = r; i < Math.min(байты.length, r + вБайт); i += 1) {
+                    const я = h('span', { 'data-i': i }, байтТекст(байты[i]) + ' ');
+                    ячейки.push(я);
+                    часть.appendChild(я);
+                }
+                строки.push(h('div', { class: 'pk-hex-row' }, h('span', { class: 'pk-hex-off' }, String(r).padStart(5, ' ')), часть));
+            }
+            const узел = { узел: h('div', { class: 'pk-hex', tabindex: 0 }, строки), выделить: null, подсветкаОт: null };
+            узел.выделить = (от, длина) => {
+                ячейки.forEach((я, i) => я.classList.toggle('is-on', длина > 0 && i >= от && i < от + длина));
+                if (ячейки[от] && длина > 0) ячейки[от].scrollIntoView({ block: 'nearest' });
+            };
+            узел.узел.addEventListener('mouseover', (event) => {
+                const i = event.target && event.target.dataset ? Number(event.target.dataset.i) : NaN;
+                if (!Number.isNaN(i) && узел.подсветкаОт) узел.подсветкаОт(i);
+            });
+            return узел;
+        }
+
+        /** Байт словами по виду (HEX/DEC/BIN/ТЕКСТ) и порядку бит (старший или младший первым). */
+        function байтТекст(б) {
+            if (с.порядок === 'младший') {
+                let r = 0;
+                for (let k = 0; k < 8; k += 1) r |= ((б >> k) & 1) << (7 - k);
+                б = r;
+            }
+            if (с.вид === 'DEC') return String(б).padStart(3, ' ');
+            if (с.вид === 'BIN') return б.toString(2).padStart(8, '0');
+            if (с.вид === 'ТЕКСТ') return б >= 32 && б < 127 ? ' ' + String.fromCharCode(б) : (б >= 0xC0 ? ' ' + 'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя'[б - 0xC0] : ' ·');
+            return (б < 16 ? '0' : '') + б.toString(16);
+        }
+
+        function переключателиВида(обновить) {
+            const вид = h('span', { class: 'rastr-views' }, ['HEX', 'DEC', 'BIN', 'ТЕКСТ'].map((в) =>
+                h('button', { class: 'btn btn--sm' + (в === с.вид ? ' is-on' : ''), onclick: () => { с.вид = в; обновить(); } }, в)));
+            const порядок = h('select', { title: 'Порядок бит в байте' },
+                h('option', { value: 'старший', selected: с.порядок === 'старший' }, 'старший бит первым'),
+                h('option', { value: 'младший', selected: с.порядок === 'младший' }, 'младший бит первым'));
+            порядок.addEventListener('change', () => { с.порядок = порядок.value; обновить(); });
+            return h('span', { class: 'pk-view-switch' }, вид, порядок);
+        }
+
+        // -- матрица байт: пакеты — строки, байты — столбцы; статистика столбца --
+
+        let меню = null;
+        function закрытьМеню() { if (меню) { меню.remove(); меню = null; } }
+        document.addEventListener('click', закрытьМеню);
+        document.addEventListener('keydown', (event) => { if (event.key === 'Escape') закрытьМеню(); });
+
+        function показатьМеню(event, пункты) {
+            event.preventDefault();
+            закрытьМеню();
+            меню = h('div', { class: 'pk-menu', role: 'menu' }, пункты.map((п) => п ? h('button', {
+                class: 'pk-menu-item', role: 'menuitem', onclick: (e) => { e.stopPropagation(); закрытьМеню(); п[1](); },
+            }, п[0]) : h('div', { class: 'pk-menu-sep' })));
+            document.body.appendChild(меню);
+            const ш = меню.offsetWidth, в = меню.offsetHeight;
+            меню.style.left = Math.min(event.clientX, window.innerWidth - ш - 8) + 'px';
+            меню.style.top = Math.min(event.clientY, window.innerHeight - в - 8) + 'px';
+        }
+
+        function поле(место, ширина) {
+            const имя = с.база === 'payload' ? 'payload' : 'frame';
+            return ширина > 1 ? имя + '[' + место + ':' + ширина + ']' : имя + '[' + место + ']';
+        }
+
+        function добавитьКФильтру(выражение) {
+            const было = полеФильтра.value.trim();
+            отфильтровать(было ? '(' + было + ') and ' + выражение : выражение);
+        }
+
+        async function матрица() {
+            clear(тело);
+            const панель = h('div', { class: 'pk-matrix-stats' },
+                h('div', { class: 'muted small' }, 'Щёлкните заголовок столбца — здесь будет его статистика. ' +
+                    'Правая кнопка на ячейке — отбор по байту или полубайту.'));
+            const сетка = h('div', { class: 'pk-matrix-wrap' });
+            const полеНачало = h('input', { type: 'number', min: 0, value: с.начало, style: { width: '72px' } });
+            const полеСтолбцов = h('select', {}, [16, 32, 64, 128, 256].map((n) => h('option', { value: n, selected: n === с.столбцов }, n)));
+            const полеШирина = h('select', { title: 'Ширина поля для статистики, байт' }, [1, 2, 3, 4, 8].map((n) => h('option', { value: n, selected: n === с.ширина }, n + ' Б')));
+            const база = h('select', {}, h('option', { value: 'frame', selected: с.база === 'frame' }, 'от начала кадра'),
+                h('option', { value: 'payload', selected: с.база === 'payload' }, 'от нагрузки верхнего уровня'));
+            полеНачало.addEventListener('change', () => { с.начало = Math.max(0, Number(полеНачало.value) || 0); загрузить(); });
+            полеСтолбцов.addEventListener('change', () => { с.столбцов = Number(полеСтолбцов.value); загрузить(); });
+            полеШирина.addEventListener('change', () => { с.ширина = Number(полеШирина.value); });
+            база.addEventListener('change', () => { с.база = база.value; загрузить(); });
+            const сдвинуть = (на) => () => { с.начало = Math.max(0, с.начало + на); полеНачало.value = с.начало; загрузить(); };
+            тело.appendChild(h('div', { class: 'card card-pad pk-matrix-bar' },
+                h('div', { class: 'rastr-tools' },
+                    h('label', {}, 'Выравнивание ', база),
+                    h('label', {}, 'с байта ', полеНачало),
+                    h('button', { class: 'btn btn--sm', onclick: сдвинуть(-с.столбцов) }, '←'),
+                    h('button', { class: 'btn btn--sm', onclick: сдвинуть(с.столбцов) }, '→'),
+                    h('label', {}, 'столбцов ', полеСтолбцов),
+                    h('label', {}, 'поле ', полеШирина),
+                    переключателиВида(() => загрузить()))));
+            тело.appendChild(h('div', { class: 'pk-matrix' }, сетка, панель));
+            let данные = null;
+
+            async function загрузить() {
+                clear(сетка);
+                сетка.appendChild(loadingBox('Собираю матрицу…'));
+                try {
+                    данные = await api.get(путь + '/matrix?filter=' + encodeURIComponent(с.фильтр) + '&base=' + с.база +
+                        '&start=' + с.начало + '&count=' + с.столбцов + '&limit=500');
+                } catch (error) {
+                    clear(сетка);
+                    сетка.appendChild(errorBox(error));
+                    return;
+                }
+                рисовать();
+            }
+
+            function рисовать() {
+                clear(сетка);
+                const колонки = данные.столбцы;
+                // Строка профиля: чем ниже энтропия столбца, тем выше «структура» — постоянные поля, счётчики, типы.
+                const профиль = h('tr', { class: 'pk-profile' }, h('th', {}, 'энтропия'), h('th', {}),
+                    колонки.map((к) => h('th', { title: 'энтропия ' + к.энтропия + ' бит, различных ' + к.различных +
+                        (к.постоянное ? ', постоянно 0x' + к.постоянное : '') + ', пакетов ' + к.есть },
+                    h('div', { class: 'pk-ent', style: { height: Math.round(2 + 20 * Math.min(8, к.энтропия) / 8) + 'px',
+                        opacity: к.есть ? 1 : 0.2 } }))));
+                const заголовок = h('tr', {}, h('th', {}, '№'), h('th', {}, 'прот.'), колонки.map((к) => h('th', {
+                    class: 'pk-col' + (к.постоянное ? ' is-const' : ''), 'data-c': к.место,
+                    title: 'Статистика столбца ' + к.место, onclick: () => статистика(к.место),
+                    oncontextmenu: (event) => показатьМеню(event, [
+                        ['Статистика байта ' + к.место, () => статистика(к.место, 1)],
+                        ['Статистика поля ' + к.место + '…+' + (с.ширина - 1) + ' (' + с.ширина + ' Б)', () => статистика(к.место, с.ширина)],
+                        ['Начать матрицу с этого байта', () => { с.начало = к.место; полеНачало.value = с.начало; загрузить(); }],
+                    ]),
+                }, String(к.место))));
+                const строки = данные.строки.map((р) => {
+                    const ячейки = [];
+                    for (let i = 0; i < колонки.length; i += 1) {
+                        const есть = 2 * i < р.hex.length;
+                        const б = есть ? parseInt(р.hex.substr(2 * i, 2), 16) : null;
+                        const место = с.начало + i;
+                        ячейки.push(h('td', {
+                            class: 'pk-cell' + (есть ? '' : ' is-empty'), 'data-c': место,
+                            oncontextmenu: есть ? (event) => показатьМеню(event, [
+                                ['Отобрать ' + поле(место, 1) + ' == 0x' + б.toString(16).padStart(2, '0'), () => добавитьКФильтру(поле(место, 1) + ' == 0x' + б.toString(16).padStart(2, '0'))],
+                                ['Кроме ' + поле(место, 1) + ' == 0x' + б.toString(16).padStart(2, '0'), () => добавитьКФильтру(поле(место, 1) + ' != 0x' + б.toString(16).padStart(2, '0'))],
+                                ['Старший полубайт == 0x' + (б >> 4).toString(16), () => добавитьКФильтру(поле(место, 1) + '.hi == 0x' + (б >> 4).toString(16))],
+                                ['Младший полубайт == 0x' + (б & 15).toString(16), () => добавитьКФильтру(поле(место, 1) + '.lo == 0x' + (б & 15).toString(16))],
+                                с.ширина > 1 && 2 * (i + с.ширина) <= р.hex.length ? ['Отобрать поле ' + поле(место, с.ширина) + ' == ' + р.hex.substr(2 * i, 2 * с.ширина),
+                                    () => добавитьКФильтру(поле(место, с.ширина) + ' == 0x' + р.hex.substr(2 * i, 2 * с.ширина))] : undefined,
+                                null,
+                                ['Статистика столбца ' + место, () => статистика(место, 1)],
+                                ['Статистика поля ' + место + ' (' + с.ширина + ' Б)', () => статистика(место, с.ширина)],
+                                ['Открыть пакет №' + р.номер, () => отфильтровать('frame.number == ' + р.номер)],
+                            ].filter((x) => x !== undefined)) : null,
+                        }, есть ? байтТекст(б).trim() : ''));
+                    }
+                    return h('tr', {}, h('td', { class: 'num' }, String(р.номер)), h('td', { class: 'muted' }, р.протокол), ячейки);
+                });
+                const таблица_ = h('table', { class: 'pk-matrix-table' }, h('thead', {}, профиль, заголовок), h('tbody', {}, строки));
+                // Подсветка столбца под мышью — видно, как значение «ходит» по пакетам.
+                таблица_.addEventListener('mouseover', (event) => {
+                    const c = event.target.closest ? event.target.closest('[data-c]') : null;
+                    const номер = c ? c.dataset.c : null;
+                    таблица_.querySelectorAll('.is-colhover').forEach((x) => x.classList.remove('is-colhover'));
+                    if (номер !== null) таблица_.querySelectorAll('[data-c="' + номер + '"]').forEach((x) => x.classList.add('is-colhover'));
+                });
+                сетка.appendChild(h('div', { class: 'muted small' }, 'Пакетов под фильтр: ' + данные.отобрано +
+                    (данные.строки.length < данные.отобрано ? ' (показаны первые ' + данные.строки.length + ')' : '') +
+                    '; самая длинная ' + (с.база === 'payload' ? 'нагрузка' : 'длина') + ' — ' + данные.наибольшая_длина + ' байт'));
+                сетка.appendChild(h('div', { class: 'pk-matrix-scroll' }, таблица_));
+            }
+
+            async function статистика(место, ширина) {
+                ширина = ширина || с.ширина;
+                clear(панель);
+                панель.appendChild(loadingBox('Считаю…'));
+                let d;
+                try {
+                    d = await api.get(путь + '/column?filter=' + encodeURIComponent(с.фильтр) + '&base=' + с.база +
+                        '&pos=' + место + '&width=' + ширина);
+                } catch (error) {
+                    clear(панель);
+                    панель.appendChild(errorBox(error));
+                    return;
+                }
+                clear(панель);
+                if (!d.есть) { панель.appendChild(h('div', { class: 'muted' }, 'Ни один пакет не дотягивается до этого места.')); return; }
+                const имя = поле(место, ширина);
+                const наибольшая = d.значения[0].раз;
+                append(панель, [
+                    h('div', { class: 'card-title' }, имя + (ширина > 1 ? ' — поле ' + ширина + ' Б' : '')),
+                    h('div', { class: 'small' }, 'Пакетов с этим местом: ' + d.есть + ' из ' + d.всего + ' · различных значений: ' + d.различных +
+                        ' · энтропия ' + d.энтропия + ' из ' + d.наибольшая_энтропия + ' бит · от 0x' + d.мин + ' до 0x' + d.макс),
+                    d.вывод.length ? h('ul', { class: 'pk-verdict' }, d.вывод.map((в) => h('li', {}, в))) : null,
+                    h('div', { class: 'small muted' }, 'Счётчик (+1): ' + Math.round(d.счётчик * 100) + ' % · частый шаг ' + d.шаг.значение +
+                        ' (' + Math.round(d.шаг.доля * 100) + ' %) · «длина ' + (d.длина.k >= 0 ? '− ' : '+ ') + Math.abs(d.длина.k) + '»: ' + Math.round(d.длина.доля * 100) + ' %'),
+                    h('div', { class: 'pk-hist-title' }, 'Значения (частые первыми) — щелчок отбирает'),
+                    h('div', { class: 'pk-hist' }, d.значения.slice(0, 24).map((з) => h('div', {
+                        class: 'pk-hist-row', title: з.раз + ' пакетов (' + (з.доля * 100).toFixed(1) + ' %)',
+                        onclick: () => добавитьКФильтру(имя + ' == 0x' + з.hex),
+                        oncontextmenu: (event) => показатьМеню(event, [
+                            ['Отобрать ' + имя + ' == 0x' + з.hex, () => добавитьКФильтру(имя + ' == 0x' + з.hex)],
+                            ['Кроме ' + имя + ' == 0x' + з.hex, () => добавитьКФильтру(имя + ' != 0x' + з.hex)],
+                        ]),
+                    }, h('span', { class: 'mono' }, '0x' + з.hex), h('span', { class: 'muted small' }, String(з.dec)),
+                    h('span', { class: 'pk-hist-bar' }, h('i', { style: { width: Math.max(2, Math.round(100 * з.раз / наибольшая)) + '%' } })),
+                    h('span', { class: 'num small' }, String(з.раз))))),
+                    d.полубайты ? h('div', { class: 'pk-nibbles' },
+                        ['старший', 'младший'].map((к) => h('div', {},
+                            h('div', { class: 'pk-hist-title' }, (к === 'старший' ? 'Старший' : 'Младший') + ' полубайт'),
+                            h('div', { class: 'pk-nib-bars' }, d.полубайты[к].map((n, v) => h('div', {
+                                class: 'pk-nib', title: '0x' + v.toString(16) + ': ' + n + ' пакетов',
+                                onclick: () => добавитьКФильтру(имя + (к === 'старший' ? '.hi' : '.lo') + ' == 0x' + v.toString(16)),
+                            }, h('i', { style: { height: Math.round(2 + 38 * n / Math.max(1, ...d.полубайты[к])) + 'px' } }),
+                            h('span', {}, v.toString(16)))))))) : null,
+                    h('div', { class: 'pk-hist-title' }, 'Доля единиц по битам (старший первым)'),
+                    h('div', { class: 'pk-nib-bars' }, d.биты.map((доля, b) => h('div', { class: 'pk-nib', title: 'бит ' + b + ': единиц ' + Math.round(доля * 100) + ' %' },
+                        h('i', { style: { height: Math.round(2 + 38 * доля) + 'px' } }), h('span', {}, String(b))))),
+                ]);
+            }
+            await загрузить();
         }
 
         // -- поток --
@@ -10251,6 +10492,7 @@
                     title: 'Взять синхрокомбинацию из выделенных подряд столбцов: постоянные биты по циклам',
                 }, 'Из выделения')),
             синхроИтог,
+            панельПоиска(),
             // Полоса средних по столбцам — в той же прокрутке, что и растр: столбцы совпадают.
             h('div', { class: 'rastr-scroll' }, полоса, холст), текст, подсказка, выделение,
             h('div', { class: 'row' },
@@ -10531,6 +10773,102 @@
                 clear(итоги);
                 toastError(error);
             }
+        }
+
+        /** Поиск в потоке: образец при любом сдвиге, файлы по сигнатурам, строки, частые комбинации. */
+        function панельПоиска() {
+            const образец = h('input', { type: 'text', placeholder: 'ff d8 ff · photo · 0011011', style: { width: '220px' } });
+            const вид = h('select', {}, [['hex', 'HEX'], ['текст', 'текст'], ['биты', 'биты']].map(([з, и]) => h('option', { value: з }, и)));
+            const кодировка = h('select', {}, ['utf-8', 'cp1251', 'utf-16-le', 'koi8-r', 'cp866'].map((к) => h('option', { value: к }, к)));
+            const любой = h('input', { type: 'checkbox', checked: true });
+            const инверсия = h('input', { type: 'checkbox' });
+            const итог = h('div', { class: 'rastr-search-out' });
+            const путь = '/api/potok/' + encodeURIComponent(jobId);
+            const тело = (доп) => Object.assign({ stage: этап, mask: текущаяМаска(), anyshift: любой.checked, inverted: инверсия.checked }, доп);
+            const перейти = (бит, длинаБит) => {
+                // Растр встаёт так, чтобы находка была в третьей строке, и её биты выделяются.
+                с.строка = Math.max(0, Math.floor((бит - с.сдвиг) / с.период) - 2);
+                полеСтрока.value = с.строка;
+                с.выделено = new Set();
+                const от = ((бит - с.сдвиг) % с.период + с.период) % с.период;
+                for (let i = 0; i < Math.min(длинаБит || 8, с.период); i += 1) с.выделено.add((от + i) % с.период);
+                загрузить();
+                холст.scrollIntoView({ block: 'center' });
+            };
+            const где = (н) => 'бит ' + н.бит + (н.сдвиг ? ' (сдвиг ' + н.сдвиг + ')' : '') + (н.инверсия ? ', инверсно' : '');
+            async function запрос(адрес, доп, рисовать) {
+                clear(итог);
+                итог.appendChild(h('div', { class: 'muted small' }, 'Ищу…'));
+                try {
+                    const data = await api.post(путь + адрес, тело(доп));
+                    clear(итог);
+                    рисовать(data);
+                } catch (error) {
+                    clear(итог);
+                    toastError(error);
+                }
+            }
+            const найти = () => запрос('/search', { pattern: образец.value, kind: вид.value, encoding: кодировка.value }, (data) => {
+                итог.appendChild(h('div', { class: 'small' }, 'Найдено: ' + data.найдено + (data.предел ? ' (показаны первые)' : '')));
+                итог.appendChild(h('div', { class: 'rastr-hits' }, data.items.map((н) => h('div', {
+                    class: 'rastr-hit', title: 'Показать в растре', onclick: () => перейти(н.бит, data.бит_образца),
+                }, h('span', { class: 'mono small' }, где(н)),
+                h('span', { class: 'mono small muted' }, н.контекст.до), h('span', { class: 'mono small rastr-hit-on' }, н.контекст.после.slice(0, 3 * Math.ceil(data.бит_образца / 8))),
+                h('span', { class: 'mono small muted' }, н.контекст.после.slice(3 * Math.ceil(data.бит_образца / 8))),
+                h('span', { class: 'mono small' }, '«' + н.контекст.текст + '»')))));
+            });
+            const файлы = () => запрос('/files', {}, (data) => {
+                if (!data.items.length) { итог.appendChild(h('div', { class: 'muted' }, 'Файлов с проверенной структурой не найдено.')); return; }
+                итог.appendChild(h('table', { class: 'table rastr-files' },
+                    h('thead', {}, h('tr', {}, ['Что', 'Где', 'Длина', ''].map((т) => h('th', {}, т)))),
+                    h('tbody', {}, data.items.map((ф) => h('tr', {},
+                        h('td', {}, ф.что + ' (.' + ф.расширение + ')'), h('td', { class: 'mono small' }, где(ф)),
+                        h('td', {}, ф.длина ? fmtBytes(ф.длина) : 'неизвестна'),
+                        h('td', {}, h('button', { class: 'btn btn--sm', onclick: () => перейти(ф.бит, 64) }, 'В растре'),
+                            h('a', { class: 'btn btn--sm', href: путь + '/carve?stage=' + этап + '&bit=' + ф.бит + '&length=' + ф.длина +
+                                '&inv=' + (ф.инверсия ? 'true' : 'false') + '&ext=' + ф.расширение, download: '' }, ф.длина ? 'Скачать' : 'Скачать 1 МБ')))))));
+            });
+            const строки_ = () => запрос('/strings', { min: 8 }, (data) => {
+                if ((data.имена_файлов || []).length) {
+                    итог.appendChild(h('div', { class: 'small' }, h('b', {}, 'Имена файлов: '),
+                        data.имена_файлов.slice(0, 60).map((и) => h('button', { class: 'btn btn--sm btn--ghost', onclick: () => перейти(и.бит, 64) }, и.имя))));
+                }
+                if ((data.адреса || []).length) {
+                    итог.appendChild(h('div', { class: 'small' }, h('b', {}, 'Адреса: '), data.адреса.slice(0, 40).map((а) => а.адрес).join(' · ')));
+                }
+                итог.appendChild(h('div', { class: 'small' }, 'Строк: ' + data.строки.length));
+                итог.appendChild(h('div', { class: 'rastr-hits' }, data.строки.map((с_) => h('div', {
+                    class: 'rastr-hit', onclick: () => перейти(с_.бит, 8 * с_.длина),
+                }, h('span', { class: 'mono small' }, где(с_)), h('span', { class: 'muted small' }, с_.кодировка), h('span', {}, с_.текст)))));
+            });
+            const частые_ = () => запрос('/ngrams', {}, (data) => {
+                if (!data.items.length) { итог.appendChild(h('div', { class: 'muted' }, 'Повторяющихся комбинаций сверх случайного нет.')); return; }
+                итог.appendChild(h('table', { class: 'table rastr-files' },
+                    h('thead', {}, h('tr', {}, ['Блок (HEX)', 'Текст', 'Байт', 'Раз', 'Чаще случайного', 'Шаг, байт', ''].map((т) => h('th', {}, т)))),
+                    h('tbody', {}, data.items.map((з) => h('tr', {},
+                        h('td', { class: 'mono small' }, з.hex), h('td', { class: 'mono small' }, з.текст), h('td', {}, String(з.байт)),
+                        h('td', {}, String(з.раз)), h('td', {}, '×' + з.во_сколько),
+                        h('td', {}, з.шаг ? з.шаг + ' (' + Math.round(з.доля_шага * 100) + ' %)' : '—'),
+                        h('td', {},
+                            h('button', { class: 'btn btn--sm', onclick: () => перейти(з.первый_бит, 8 * з.байт) }, 'В растре'),
+                            з.шаг && з.доля_шага > 0.5 ? h('button', {
+                                class: 'btn btn--sm', title: 'Период растра — шаг блока',
+                                onclick: () => { с.период = 8 * з.шаг; полеПериод.value = с.период; с.сдвиг = з.первый_бит % с.период; полеСдвиг.value = с.сдвиг; перейти(з.первый_бит, 8 * з.байт); },
+                            }, 'Период = шаг') : null,
+                            h('button', { class: 'btn btn--sm btn--ghost', onclick: () => { образец.value = з.hex.replace(' …', ''); вид.value = 'hex'; найти(); } }, 'Искать')))))));
+            });
+            return h('details', { class: 'rastr-search' },
+                h('summary', {}, 'Поиск в потоке: комбинации, файлы, строки, частые блоки'),
+                h('div', { class: 'rastr-tools' },
+                    h('label', {}, 'Образец ', образец), h('label', {}, вид), h('label', {}, кодировка),
+                    h('label', { title: 'Искать с любого бита, а не только по границе байта' }, любой, ' любой сдвиг'),
+                    h('label', {}, инверсия, ' и инверсно'),
+                    h('button', { class: 'btn btn--sm btn--primary', onclick: найти }, 'Найти')),
+                h('div', { class: 'rastr-tools' },
+                    h('button', { class: 'btn btn--sm', onclick: файлы }, 'Найти файлы (JPEG, PNG, ZIP, PDF…)'),
+                    h('button', { class: 'btn btn--sm', onclick: строки_ }, 'Строки и имена файлов'),
+                    h('button', { class: 'btn btn--sm', onclick: частые_ }, 'Частые комбинации 2–8 байт')),
+                итог);
         }
 
         /** Синхрокомбинация: найти, засинхронизировать растр, выровнять кадры, спросить помощника. */

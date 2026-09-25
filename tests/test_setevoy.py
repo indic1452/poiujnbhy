@@ -445,3 +445,71 @@ class СтраницаПакетовTests(unittest.TestCase):
             time.sleep(0.05)
         список = к.get(f"/api/pakety/{ид}/list?filter=ip").json()
         self.assertEqual(30, список["отобрано"])
+
+
+class ФильтрПоБайтамTests(unittest.TestCase):
+    def test_срезы_полубайты_contains(self):
+        from reportgen.setevoy.filtr import ОшибкаФильтра, собрать
+        кадр = bytes.fromhex("00112233445566778899aabb0800450000") + b"JFIF"
+        п = {"_frame": кадр, "_payload": bytes([0xA5, 0x01, 0x02])}
+        for текст, ждём in (("frame[12:2] == 0800", True), ("frame[12:2] == 08:00", True),
+                            ("frame[12:2] == 0x0800", True), ("frame[12:2] == 2048", True),
+                            ("frame[12] == 8", True), ("frame[12] != 8", False), ("frame[0:4] > 0x00112232", True),
+                            ("payload[0].hi == 0xa", True), ("payload[0].lo == 5", True), ("payload[0].hi == 5", False),
+                            ("payload[1] in {1 2}", True), ("frame[100] == 1", False), ("frame[100]", False),
+                            ("frame contains 45:00", True), ("frame contains \"JFIF\"", True),
+                            ("frame contains ffd8", False), ("payload matches \"\\\\x01\\\\x02\"", True)):
+            with self.subTest(текст=текст):
+                self.assertEqual(ждём, собрать(текст)(п))
+        for плохое in ("frame[1:9] == 1", "frame == 1", "frame[0] == zz"):
+            with self.subTest(плохое=плохое), self.assertRaises(ОшибкаФильтра):
+                собрать(плохое)({"_frame": b"\0" * 20})
+
+
+class МатрицаTests(unittest.TestCase):
+    def test_столбец_распознаёт_поля(self):
+        from reportgen.setevoy import statistika
+        import random
+        случ = random.Random(3)
+        ряды = []
+        for i in range(200):
+            тело = bytes(случ.randrange(256) for _ in range(случ.randrange(8, 40)))
+            ряды.append(b"\xa5\x5a" + i.to_bytes(2, "big") + bytes([случ.choice([1, 2, 7])])
+                        + len(тело).to_bytes(2, "big") + тело)
+        self.assertEqual(["постоянное поле: 0xa5"], statistika.столбец(ряды, 0)["вывод"])
+        self.assertEqual(["счётчик: +1 у 100 % соседних пакетов"], statistika.столбец(ряды, 2, 2)["вывод"])
+        self.assertEqual(["поле типа: 3 значений"], statistika.столбец(ряды, 4)["вывод"])
+        self.assertEqual(["поле длины: значение = длина пакета − 7 у 100 % пакетов"],
+                         statistika.столбец(ряды, 5, 2)["вывод"])
+        полубайты = statistika.столбец(ряды, 0)["полубайты"]
+        self.assertEqual(200, полубайты["старший"][0xA])
+        профиль = statistika.профиль_столбцов(ряды, 0, 8)
+        self.assertEqual(["a5", "5a", "00", None], [к["постоянное"] for к in профиль[:4]])  # старший байт счётчика — 00
+        self.assertEqual(0, statistika.столбец(ряды, 500)["есть"])
+
+    def test_через_сервер(self):
+        from test_web import WebTestCase
+        import time
+
+        class Сеть(WebTestCase):
+            def runTest(себя):
+                pass
+
+        сеть = Сеть()
+        сеть.setUp()
+        self.addCleanup(сеть.tearDown)
+        сеть.login("engineer")
+        к = сеть.client
+        пакеты = [с.eth(с.ip(с.udp(b"\xa5\x5a" + bytes([i % 3]) + b"xyz", 9000, 9001), 17)) for i in range(30)]
+        ид = к.post("/api/pakety", files={"file": ("m.pcap", с.pcap(пакеты), "application/octet-stream")}).json()["id"]
+        for _ in range(200):
+            if к.get(f"/api/pakety/{ид}").json()["состояние"] == "готово":
+                break
+            time.sleep(0.05)
+        м = к.get(f"/api/pakety/{ид}/matrix?base=payload&start=0&count=6").json()
+        self.assertEqual((30, 6, "a55a00"), (м["отобрано"], len(м["столбцы"]), м["строки"][0]["hex"][:6]))
+        столбец = к.get(f"/api/pakety/{ид}/column?base=payload&pos=2").json()
+        self.assertEqual(3, столбец["различных"])
+        отбор = к.get(f"/api/pakety/{ид}/list?filter=" + "payload[2] == 1 and frame contains a5:5a").json()
+        self.assertEqual(10, отбор["отобрано"])
+        self.assertEqual(400, к.get(f"/api/pakety/{ид}/matrix?base=zz").status_code)

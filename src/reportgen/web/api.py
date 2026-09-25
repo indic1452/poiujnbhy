@@ -2289,6 +2289,49 @@ def pakety_stats(request: Request, cap_id: str, kind: str = "hierarchy", level: 
     raise ServiceError("неизвестный вид статистики", 400)
 
 
+def _ряды(request: Request, cap_id: str, base: str, номера: List[int]) -> List[bytes]:
+    захваты = _pakety(request)
+    if base == "payload":
+        нагрузки = захваты.нагрузки(cap_id)
+        return [нагрузки[i] or b"" for i in номера]
+    кадры = захваты.кадры(cap_id)
+    return [кадры[i] for i in номера]
+
+
+@router.get("/pakety/{cap_id}/matrix")
+def pakety_matrix(request: Request, cap_id: str, filter: str = "", base: str = "frame", start: int = 0,
+                  count: int = 64, offset: int = 0, limit: int = 300) -> Dict[str, Any]:
+    """Матрица байт: пакеты под фильтр — строки, байты с ``start`` — столбцы; профиль столбцов."""
+    from ..setevoy import statistika  # noqa: PLC0415
+    user = require_user(request)
+    _готовый(request, user, cap_id)
+    if base not in ("frame", "payload"):
+        raise ServiceError("выравнивание — frame (кадр) или payload (нагрузка)", 400)
+    номера = _отобранные(request, cap_id, filter)
+    ряды = _ряды(request, cap_id, base, номера)
+    start, count = max(0, start), max(1, min(count, 256))
+    limit, offset = max(1, min(limit, 2000)), max(0, offset)
+    сводки = _pakety(request).сводки(cap_id)
+    return {"отобрано": len(номера), "наибольшая_длина": max((len(р) for р in ряды), default=0),
+            "столбцы": statistika.профиль_столбцов(ряды, start, count),
+            "строки": [{"номер": сводки[i]["номер"], "протокол": сводки[i]["протокол"],
+                        "длина": len(р), "hex": р[start:start + count].hex()}
+                       for i, р in list(zip(номера, ряды))[offset:offset + limit]]}
+
+
+@router.get("/pakety/{cap_id}/column")
+def pakety_column(request: Request, cap_id: str, filter: str = "", base: str = "frame", pos: int = 0,
+                  width: int = 1) -> Dict[str, Any]:
+    """Полная статистика столбца (поля 1–8 байт) по отобранным пакетам."""
+    from ..setevoy import statistika  # noqa: PLC0415
+    user = require_user(request)
+    _готовый(request, user, cap_id)
+    if base not in ("frame", "payload") or not 1 <= width <= 8 or pos < 0:
+        raise ServiceError("выравнивание frame/payload, ширина поля 1–8 байт", 400)
+    номера = _отобранные(request, cap_id, filter)
+    return statistika.столбец(_ряды(request, cap_id, base, номера), pos, width)
+
+
 @router.get("/pakety/{cap_id}/stream/{number}")
 def pakety_stream(request: Request, cap_id: str, number: int) -> Dict[str, Any]:
     """Следовать за потоком TCP/UDP/SCTP, в котором стоит пакет."""
