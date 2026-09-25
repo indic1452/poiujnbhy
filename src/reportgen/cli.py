@@ -655,7 +655,11 @@ def cmd_potok(args: argparse.Namespace) -> int:
     """
     from .potok import разобрать  # noqa: PLC0415 — numpy нужен только здесь
 
-    разбор = разобрать(args.path)
+    try:
+        разбор = разобрать(args.path, глубоко=args.deep, снять=args.strip or (), профиль="обычно")
+    except ValueError as ошибка:
+        print(f"Указание не выполнено: {ошибка}")
+        return 2
     print(разбор.отчёт(предел=args.limit))
     return 0 if разбор.находки else 1
 
@@ -982,10 +986,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_terms.set_defaults(func=cmd_terms)
 
     p_potok = sub.add_parser(
-        "potok", help="разобрать цифровой поток: код, скремблер, цикл, каналы, HDLC, IP")
-    p_potok.add_argument("path", help="файл потока: .bin, .sig, .dat, .raw, .bits, .hex")
+        "potok", help="разобрать неизвестный цифровой поток на любом этапе: от кодирования "
+                      "в линии до пакетов")
+    p_potok.add_argument("path", help="файл потока: .bin, .sig, .dat, .raw, .bits, .hex, .pcap")
     p_potok.add_argument("--limit", type=int, default=100000,
                          help="сколько знаков отчёта печатать")
+    p_potok.add_argument("--глубоко", "--deep", dest="deep", action="store_true",
+                         help="глубокий разбор: длинные коды до 2048 бит, выколотые до 7/8, "
+                              "до 20 минут")
+    p_potok.add_argument("--снять", "--strip", dest="strip", action="append", metavar="СЛОЙ",
+                         help="сперва снять известный слой, дальше — вслепую; можно "
+                              "несколько раз по порядку: «инверсия», «сдвиг 5», «nrzi», "
+                              "«манчестер», «скремблер 3,20», «свёрточный 171/133 K=7», "
+                              "«выколотый 171/133 K=7 шаблон 110110», «перемежение 12 7», "
+                              "«pdh E2 приток 1»")
     p_potok.set_defaults(func=cmd_potok)
 
     p_parts = sub.add_parser("parts", help="проверить справочник состава")

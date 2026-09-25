@@ -14,7 +14,7 @@ import urllib.parse
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, List
 
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
@@ -1182,7 +1182,7 @@ def upload_report(
 
         # Текст нужен, чтобы отчёт можно было прочитать и найти, не скачивая.
         # Не прочитался — не беда: файл на месте, начальник откроет его как есть.
-        text, problem = _extract_attachment(target)
+        text, problem = _extract_attachment(target, поток=False)
         to_review = str(submit or "").strip().lower() not in ("0", "false", "no", "")
         try:
             report = repos.reports.create_uploaded(
@@ -2133,6 +2133,103 @@ def attach_to_chat(request: Request, chat_id: int, file: UploadFile = File(...))
     return {"attachment": item.to_dict()}
 
 
+# -- разбор потока: задания по этапам ------------------------------------------------
+
+def _potok(request: Request):
+    """Очередь заданий разбора потока — одна на приложение, папка в data_dir."""
+    задания = getattr(request.app.state, "potok", None)
+    if задания is None:
+        from ..potok.zadaniya import Задания  # noqa: PLC0415 — numpy только здесь
+        задания = Задания(Path(_settings(request).data_dir) / "potok")
+        request.app.state.potok = задания
+    return задания
+
+
+def _задание_или_404(request: Request, user, ид: str) -> Dict[str, Any]:
+    if not re.fullmatch(r"[0-9]{8}-[0-9]{6}-[0-9a-f]{6}", ид or ""):
+        raise ServiceError("задание не найдено", 404)
+    try:
+        состояние = _potok(request).прочитать(ид)
+    except KeyError:
+        raise ServiceError("задание не найдено", 404) from None
+    # Как разговоры с помощником: разбор виден только тому, кто его запустил.
+    if состояние.get("владелец") != user.id:
+        raise ServiceError("задание не найдено", 404)
+    return состояние
+
+
+ПРОФИЛИ_РАЗБОРА = ("быстро", "обычно", "глубоко")
+
+
+def _слои(значение: str) -> List[str]:
+    """Слои для ручного снятия — по строке на слой."""
+    return [строка.strip() for строка in (значение or "").splitlines() if строка.strip()][:12]
+
+
+@router.post("/potok")
+def potok_start(request: Request, file: UploadFile = File(...), profile: str = Form("обычно"),
+                strip: str = Form("")) -> Dict[str, Any]:
+    """Принять поток и поставить разбор в очередь. Этапы — по /api/potok/{ид}."""
+    user = require_user(request)
+    settings = _settings(request)
+    name = _safe_name(Path(file.filename or "поток.bin").name) or "поток.bin"
+    if profile not in ПРОФИЛИ_РАЗБОРА:
+        raise ServiceError("неизвестный профиль разбора", 400)
+    limit = settings.max_upload_mb * 1024 * 1024
+    данные = file.file.read(limit + 1)
+    if len(данные) > limit:
+        raise ServiceError(f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
+    if not данные:
+        raise ServiceError("файл пуст", 400)
+    ид = _potok(request).создать(владелец=user.id, имя=name, данные=данные, профиль=profile,
+                                 снять=_слои(strip))
+    _repos(request).audit.log("potok.start", user=user, object_type="potok", object_id=ид,
+                              details={"name": name, "bytes": len(данные), "profile": profile})
+    return {"id": ид}
+
+
+@router.get("/potok")
+def potok_list(request: Request) -> Dict[str, Any]:
+    user = require_user(request)
+    return {"items": _potok(request).список(user.id)}
+
+
+@router.get("/potok/{job_id}")
+def potok_state(request: Request, job_id: str) -> Dict[str, Any]:
+    user = require_user(request)
+    return _задание_или_404(request, user, job_id)
+
+
+@router.get("/potok/{job_id}/stage/{stage}")
+def potok_stage_file(request: Request, job_id: str, stage: int) -> FileResponse:
+    """Поток после этапа: биты — .bin, кадры — .sig, пакеты IP — .pcap."""
+    user = require_user(request)
+    состояние = _задание_или_404(request, user, job_id)
+    файл = _potok(request).файл_этапа(job_id, stage)
+    if файл is None:
+        raise ServiceError("у этого этапа нет выгрузки", 404)
+    основа = Path(состояние.get("имя") or "поток").stem
+    return _file_reply(файл, f"{основа}-этап-{stage}{файл.suffix}")
+
+
+@router.post("/potok/{job_id}/continue")
+def potok_continue(request: Request, job_id: str) -> Dict[str, Any]:
+    """Продолжить разбор с потока после этапа — со снятием слоёв вручную."""
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    тело = _body(request)
+    профиль = str(тело.get("profile") or "обычно")
+    if профиль not in ПРОФИЛИ_РАЗБОРА:
+        raise ServiceError("неизвестный профиль разбора", 400)
+    try:
+        ид = _potok(request).продолжить(job_id, int(тело.get("stage") or 0), владелец=user.id,
+                                        снять=_слои(str(тело.get("strip") or "")),
+                                        профиль=профиль)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    return {"id": ид}
+
+
 @router.delete("/chats/{chat_id}/attachments/{attachment_id}")
 def detach_from_chat(request: Request, chat_id: int, attachment_id: int) -> Dict[str, Any]:
     user = require_user(request)
@@ -2163,7 +2260,7 @@ CAPTURE_ATTACH = {
 #: Модель читать их не может — ни по объёму, ни по сути: вместо потока ей
 #: уходит отчёт анализатора (reportgen.potok) — код, скремблер, цикл,
 #: каналы, HDLC, IP — с мерами уверенности.
-STREAM_ATTACH = {".bin", ".sig", ".dat", ".raw", ".bits", ".hex"}
+STREAM_ATTACH = {".bin", ".sig", ".dat", ".raw", ".bits", ".hex", ".pcap", ".cap"}
 
 
 #: Расширения, текст в которых берётся распознаванием, а не чтением.
@@ -2199,14 +2296,16 @@ def _looks_like_mush(text: str) -> bool:
     return long_words / len(words) < 0.35
 
 
-def _extract_attachment(path: Path, name: str = "") -> tuple[str, str]:
+def _extract_attachment(path: Path, name: str = "", *, поток: bool = True) -> tuple[str, str]:
     """Текст файла и, если что-то пошло не так, объяснение по-русски.
 
     ``name`` — имя, под которым файл прислали: на диске он лежит под
     служебным, а в отчёте анализатора должно стоять то, что инженер узнает.
+    ``поток=False`` — не звать анализатор потоков: сданный отчёт — документ,
+    а не запись с объекта, и «разбор потока» вместо его текста был бы ложью.
     """
     suffix = path.suffix.lower()
-    if suffix in STREAM_ATTACH:
+    if поток and suffix in STREAM_ATTACH:
         try:
             from ..potok import разобрать  # noqa: PLC0415
             разбор = разобрать(path, имя=name or path.name)

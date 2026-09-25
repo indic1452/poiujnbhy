@@ -1063,6 +1063,7 @@
         clip: '<path d="M13 7.3 7.7 12.6a2.6 2.6 0 0 1-3.7-3.7l5.9-5.9a1.8 1.8 0 0 1 2.6 2.6l-5.9 5.9a.9.9 0 0 1-1.3-1.3l5.3-5.3"/>',
         keys: '<path d="M2 5h14v9H2zM4.5 7.5h1M7 7.5h1M9.5 7.5h1M12 7.5h1.5M4.5 10h1M7 10h1M9.5 10h1M12 10h1.5M6 12h6"/>',
         refresh: '<path d="M14.5 5.5A6 6 0 0 0 3.2 7.5M3.5 12.5a6 6 0 0 0 11.3-2M14.8 2.8v2.9h-2.9M3.2 15.2v-2.9h2.9"/>',
+        wave: '<path d="M1.5 9h2l1.5-5 2.5 10 2.5-8 2 5 1.5-2h3"/>',
     };
 
     /** Разделы бокового меню. Порядок — от «что сегодня» к справочникам. */
@@ -1077,6 +1078,8 @@
         { group: 'work', route: 'roster', href: '#/roster', title: 'Расход', icon: 'roster' },
         { group: 'know', route: 'chat', href: '#/chat', title: 'Помощник', icon: 'chat' },
         { group: 'know', route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
+        // Разбор цифрового потока по этапам: от кодирования в линии до пакетов.
+        { group: 'know', route: 'potok', href: '#/potok', title: 'Разбор потока', icon: 'wave' },
         { group: 'dept', route: 'talks', href: '#/talks', title: 'Сообщения', icon: 'talks', count: 'talks' },
         { group: 'dept', route: 'users', href: '#/users', title: 'Военнослужащие', icon: 'users', adminOnly: true },
         // Метрики — сводка по работе отдела целиком: сколько писем, чьи
@@ -2684,11 +2687,12 @@
         if (parts[0] === 'talks') {
             return { name: 'talks', id: parts[1] ? parts[1] : null, to: ask('to') };
         }
+        if (parts[0] === 'potok') return { name: 'potok', id: parts[1] ? decodeURIComponent(parts[1]) : null };
         if (parts[0] === 'library' && parts.length > 1) {
             // Идентификатор документа — путь вида «standards/obw-method».
             return { name: 'library', id: parts.slice(1).map(decodeURIComponent).join('/') };
         }
-        if (['board', 'cases', 'roster', 'talks', 'library', 'stats', 'me', 'users'].indexOf(parts[0]) !== -1) {
+        if (['board', 'cases', 'roster', 'talks', 'library', 'stats', 'me', 'users', 'potok'].indexOf(parts[0]) !== -1) {
             return { name: parts[0], id: null };
         }
         return { name: 'board', id: null };
@@ -2738,6 +2742,7 @@
         // не трогаем: ответ дописывается в фоне и ждёт возвращения.
         detachChat();
         stopTalkPoll();
+        остановитьОпросПотока();
         // Гостю открыт один помощник. Забрёл по ссылке в другой раздел —
         // возвращаем к помощнику, не показывая отказ: он ничего не сделал
         // не так.
@@ -2771,6 +2776,7 @@
             else if (route.name === 'cases') await renderCases(view);
             else if (route.name === 'case') await renderCase(view, route.id);
             else if (route.name === 'library') await renderLibrary(view, route.id);
+            else if (route.name === 'potok') await renderPotok(view, route.id);
             else if (route.name === 'stats') await renderStats(view);
             else if (route.name === 'roster') await renderRoster(view);
             else if (route.name === 'chat') await renderChat(view, route.id);
@@ -8901,6 +8907,274 @@
                 save.disabled = false;
             }
         }
+    }
+
+    // =====================================================================
+    // Разбор потока: этапы вживую
+    // =====================================================================
+
+    //: Разбор идёт на сервере заданием; страница спрашивает его состояние, пока
+    //: оно не закончится, и показывает этапы и журнал хода по мере появления.
+    const разборПотока = { таймер: null };
+
+    function остановитьОпросПотока() {
+        if (разборПотока.таймер) {
+            clearTimeout(разборПотока.таймер);
+            разборПотока.таймер = null;
+        }
+    }
+
+    const ПРОФИЛИ_РАЗБОРА = [
+        ['быстро', 'быстро — до полутора минут'],
+        ['обычно', 'обычно — до 10 минут, длинные коды до 1024 бит'],
+        ['глубоко', 'глубоко — до часа: коды до 2048 бит, выколотые до 7/8'],
+    ];
+
+    const ПРИМЕРЫ_СЛОЁВ = 'Слои, которые вы уже знаете, — по одному в строке, по порядку:\n' +
+        'инверсия · сдвиг 5 · nrzi · манчестер · скремблер 3,20 · ' +
+        'свёрточный 171/133 K=7 · выколотый 171/133 K=7 шаблон 110110 · ' +
+        'перемежение 12 7 · pdh E2 приток 1';
+
+    async function renderPotok(view, jobId) {
+        clear(view);
+        const page = h('div', { class: 'page potok' });
+        view.appendChild(page);
+        if (jobId) {
+            await рисоватьЗадание(page, jobId);
+            return;
+        }
+        const picker = h('input', { type: 'file' });
+        const профиль = h('select', {}, ПРОФИЛИ_РАЗБОРА.map((п) =>
+            h('option', { value: п[0], selected: п[0] === 'обычно' }, п[1])));
+        const слои = h('textarea', { rows: 3, placeholder: ПРИМЕРЫ_СЛОЁВ });
+        const кнопка = h('button', { class: 'btn btn--primary', onclick: () => начать() }, 'Разобрать');
+        page.appendChild(h('div', { class: 'page-head' },
+            h('div', {}, h('h2', {}, 'Разбор потока'),
+                h('div', { class: 'muted' }, 'Байтовый поток с любого этапа — от кодирования в линии ' +
+                    'до пакетов. Анализатор сам ищет уровни и показывает каждый этап: что найдено, ' +
+                    'чем подтверждено, какие ещё гипотезы проверены. Поток после любого этапа ' +
+                    'можно скачать или разобрать дальше, сняв слой вручную.'))));
+        page.appendChild(h('div', { class: 'card card-pad potok-start' },
+            h('label', { class: 'field' }, h('span', {}, 'Файл потока (.bin, .sig, .dat, .raw, .bits, .hex, .pcap)'), picker),
+            h('label', { class: 'field' }, h('span', {}, 'Профиль'), профиль),
+            h('label', { class: 'field' }, h('span', {}, 'Снять вручную (необязательно)'), слои),
+            h('div', { class: 'row' }, кнопка)));
+        const списокУзел = h('div', { class: 'card card-pad' }, loadingBox('Загружаем разборы…'));
+        page.appendChild(списокУзел);
+        try {
+            const data = await api.get('/api/potok');
+            clear(списокУзел);
+            списокУзел.appendChild(h('div', { class: 'card-title' }, 'Мои разборы'));
+            if (!(data.items || []).length) {
+                списокУзел.appendChild(emptyBox('Разборов ещё нет',
+                    'Выберите файл выше — этапы появятся на отдельной странице по мере разбора.'));
+            } else {
+                списокУзел.appendChild(h('div', { class: 'potok-list' }, data.items.map((з) =>
+                    h('a', { class: 'potok-item', href: '#/potok/' + encodeURIComponent(з.ид) },
+                        h('b', {}, з.имя),
+                        h('span', { class: 'muted' }, fmtDateTime(з.создано * 1000) + ' · ' +
+                            fmtBytes(з.байт) + ' · ' + з.профиль),
+                        h('span', { class: 'potok-state is-' + состояниеКласс(з.состояние) },
+                            з.состояние + (з.этапов ? ' · этапов ' + з.этапов : ''))))));
+            }
+        } catch (error) {
+            clear(списокУзел);
+            списокУзел.appendChild(errorBox(error));
+        }
+
+        async function начать() {
+            const file = (picker.files || [])[0];
+            if (!file) { toast('Выберите файл потока', 'error'); return; }
+            const form = new FormData();
+            form.append('file', file);
+            form.append('profile', профиль.value);
+            form.append('strip', слои.value);
+            кнопка.disabled = true;
+            try {
+                const data = await uploadFile('/api/potok', form);
+                navigate('#/potok/' + encodeURIComponent(data.id));
+            } catch (error) {
+                toastError(error);
+            } finally {
+                кнопка.disabled = false;
+            }
+        }
+    }
+
+    function состояниеКласс(состояние) {
+        return { 'готово': 'done', 'ошибка': 'error', 'идёт': 'run', 'ждёт': 'wait' }[состояние] || 'wait';
+    }
+
+    async function рисоватьЗадание(page, jobId) {
+        const шапка = h('div', { class: 'page-head' });
+        const ход = h('div', { class: 'potok-log' });
+        const этапы = h('div', { class: 'potok-stages' });
+        const прочее = h('div', {});
+        page.appendChild(шапка);
+        page.appendChild(этапы);
+        page.appendChild(h('details', { class: 'card card-pad potok-journal', open: true },
+            h('summary', {}, 'Журнал хода — что анализатор пробует'), ход));
+        page.appendChild(прочее);
+        остановитьОпросПотока();
+
+        async function обновить() {
+            let data;
+            try {
+                data = await api.get('/api/potok/' + encodeURIComponent(jobId));
+            } catch (error) {
+                if (error instanceof Устарело) return;
+                clear(этапы);
+                этапы.appendChild(errorBox(error));
+                return;
+            }
+            рисоватьШапку(data);
+            clear(ход);
+            (data.журнал || []).slice().reverse().forEach((строка) =>
+                ход.appendChild(h('div', { class: 'mono small' }, строка)));
+            if (data.состояние === 'готово') {
+                рисоватьЭтапы(data);
+                рисоватьПрочее(data);
+            } else if (data.состояние === 'ошибка') {
+                clear(этапы);
+                этапы.appendChild(h('div', { class: 'empty empty--error' },
+                    h('h3', {}, 'Разбор прервался'), h('div', { class: 'empty-note' }, data.ошибка || '')));
+            } else {
+                clear(этапы);
+                этапы.appendChild(loadingBox(data.состояние === 'ждёт'
+                    ? 'В очереди' + (data.перед_ним ? ': перед ним ' + data.перед_ним : '') + '…'
+                    : 'Идёт разбор — этапы появятся, когда цепочка сложится; журнал ниже показывает, что пробуется сейчас.'));
+                разборПотока.таймер = setTimeout(обновить, 1500);
+            }
+        }
+
+        function рисоватьШапку(data) {
+            clear(шапка);
+            append(шапка, [
+                h('div', {},
+                    h('h2', {}, data.имя),
+                    h('div', { class: 'muted' },
+                        fmtBytes(data.байт) + ' · профиль «' + data.профиль + '»' +
+                        (data.снять && data.снять.length ? ' · снято вручную: ' + data.снять.join('; ') : '') +
+                        (data.секунд ? ' · разбор ' + data.секунд.toFixed(1) + ' с' : ''),
+                        data.от ? h('span', {}, ' · продолжение ',
+                            h('a', { href: '#/potok/' + encodeURIComponent(data.от.split('#')[0]) },
+                                'разбора с этапа ' + data.от.split('#')[1])) : null)),
+                h('div', { class: 'page-head-actions' },
+                    h('span', { class: 'potok-state is-' + состояниеКласс(data.состояние) }, data.состояние),
+                    h('a', { class: 'btn', href: '#/potok' }, 'Все разборы')),
+            ]);
+        }
+
+        function рисоватьЭтапы(data) {
+            clear(этапы);
+            const список = data.этапы || [];
+            if (!список.length) {
+                этапы.appendChild(emptyBox('Структура не найдена',
+                    'Анализатор проверил всё, что умеет, — перечень ниже. Если вы знаете один из слоёв, ' +
+                    'снимите его вручную с исходного потока: разбор пойдёт дальше от него.'));
+            }
+            список.forEach((этап) => этапы.appendChild(карточкаЭтапа(data, этап)));
+        }
+
+        function карточкаЭтапа(data, этап) {
+            const доля = Math.max(0, Math.min(1, этап.уверенность || 0));
+            const подробно = h('ul', { class: 'potok-details' },
+                (этап.подробно || []).map((строка) => h('li', {}, строка)));
+            const альтернативы = (этап.альтернативы || []).length
+                ? h('details', { class: 'potok-alt' },
+                    h('summary', {}, 'Другие гипотезы на этом уровне: ' + этап.альтернативы.length),
+                    h('ul', {}, этап.альтернативы.map((строка) => h('li', {}, строка))))
+                : null;
+            const действия = h('div', { class: 'row' },
+                этап.выгрузка ? h('button', {
+                    class: 'btn btn--sm', onclick: () => скачать(этап),
+                    title: 'Поток после этого этапа: биты — .bin, кадры — .sig, пакеты IP — .pcap',
+                }, 'Скачать .' + этап.выгрузка + ' (' + fmtBytes(этап.выгрузка_байт) + ')') : null,
+                этап.выгрузка === 'bin' ? h('button', {
+                    class: 'btn btn--sm', onclick: () => продолжить(этап),
+                    title: 'Разобрать поток после этого этапа заново — можно сняв слой вручную',
+                }, 'Продолжить отсюда…') : null);
+            return h('div', { class: 'card card-pad potok-stage' },
+                h('div', { class: 'potok-stage-head' },
+                    h('span', { class: 'potok-num' }, String(этап.номер)),
+                    h('span', { class: 'potok-level' }, этап.уровень),
+                    h('b', {}, этап.что),
+                    этап.выход ? h('span', { class: 'muted' }, '→ ' + этап.выход) : null),
+                этап.путь ? h('div', { class: 'muted small' }, 'где: ' + этап.путь) : null,
+                h('div', { class: 'potok-measure' },
+                    h('span', { class: 'track' }, h('i', { style: { width: Math.round(доля * 100) + '%' } })),
+                    h('span', {}, Math.round(доля * 100) + ' % — ' + этап.мера)),
+                подробно, альтернативы, действия);
+        }
+
+        function рисоватьПрочее(data) {
+            clear(прочее);
+            if ((data.карта || []).length) {
+                прочее.appendChild(h('details', { class: 'card card-pad' },
+                    h('summary', {}, 'Карта файла'),
+                    h('ul', {}, data.карта.map((строка) => h('li', {}, строка)))));
+            }
+            if ((data.ограничения || []).length) {
+                прочее.appendChild(h('div', { class: 'card card-pad' },
+                    h('div', { class: 'card-title' }, 'Ограничения разбора'),
+                    h('ul', {}, data.ограничения.map((строка) => h('li', {}, строка)))));
+            }
+            if ((data.не_найдено || []).length) {
+                прочее.appendChild(h('details', { class: 'card card-pad' },
+                    h('summary', {}, 'Проверено и не найдено: ' + data.не_найдено.length),
+                    h('ul', {}, data.не_найдено.map((строка) => h('li', {}, строка)))));
+            }
+            прочее.appendChild(h('details', { class: 'card card-pad' },
+                h('summary', {}, 'Отчёт целиком — тот же, что уходит помощнику'),
+                h('pre', { class: 'potok-report' }, data.отчёт || '')));
+        }
+
+        async function скачать(этап) {
+            try {
+                const result = await api.download('/api/potok/' + encodeURIComponent(jobId) +
+                    '/stage/' + этап.номер);
+                const url = URL.createObjectURL(result.blob);
+                const link = h('a', { href: url, download: result.filename });
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 30000);
+            } catch (error) {
+                toastError(error);
+            }
+        }
+
+        function продолжить(этап) {
+            const слои = h('textarea', { rows: 4, placeholder: ПРИМЕРЫ_СЛОЁВ });
+            const профиль = h('select', {}, ПРОФИЛИ_РАЗБОРА.map((п) =>
+                h('option', { value: п[0], selected: п[0] === 'обычно' }, п[1])));
+            const dialog = openModal({
+                title: 'Продолжить с этапа ' + этап.номер,
+                body: h('div', {},
+                    h('p', { class: 'muted' }, 'Поток после этапа «' + этап.что + '» разберётся заново. ' +
+                        'Если вы знаете следующий слой, снимите его здесь — дальше анализатор пойдёт сам.'),
+                    h('label', { class: 'field' }, h('span', {}, 'Снять вручную'), слои),
+                    h('label', { class: 'field' }, h('span', {}, 'Профиль'), профиль)),
+                footer: [
+                    h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),
+                    h('button', { class: 'btn btn--primary', onclick: () => пуск() }, 'Разобрать'),
+                ],
+                focus: 'textarea',
+            });
+
+            async function пуск() {
+                try {
+                    const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/continue',
+                        { stage: этап.номер, strip: слои.value, profile: профиль.value });
+                    dialog.close();
+                    navigate('#/potok/' + encodeURIComponent(data.id));
+                } catch (error) {
+                    toastError(error);
+                }
+            }
+        }
+
+        await обновить();
     }
 
     async function renderStats(view) {
