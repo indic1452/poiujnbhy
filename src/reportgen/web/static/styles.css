@@ -8757,3 +8757,105 @@ body.reading .msg .body {
 .rastr-stuff-rules { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
 .rastr-stuff-rule { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .rastr-stuff-rule input { width: 12em; }
+
+/* ======================================================================
+   Рабочий стол анализа потока: таблица массивов, операции, журнал сверху,
+   битовый просмотр или таблица кадров снизу — во всю высоту окна.
+   ====================================================================== */
+.page.stol {
+    padding: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto var(--stol-top, 36%) 6px minmax(0, 1fr);
+    height: 100%;
+    background: var(--bg);
+}
+.stol-title { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--panel); min-width: 0; }
+.stol-title b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stol-title-actions { margin-left: auto; display: flex; gap: 4px; flex-shrink: 0; }
+.stol-top { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(170px, 230px) minmax(0, 1fr); min-height: 0; }
+.stol-pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--border); background: var(--panel); }
+.stol-pane:last-child { border-right: 0; }
+.stol-pane-head { font-size: 12px; font-weight: 600; padding: 4px 8px; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.stol-pane--ops .stol-pane-head { border-top: 1px solid var(--border); }
+.stol-pane--ops .stol-pane-head:first-child { border-top: 0; }
+.stol-tree { flex: 1; overflow: auto; outline: none; padding: 4px; }
+.stol-tree:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-line); }
+.stol-svg { display: block; }
+.stol-svg text { font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: var(--muted); }
+.stol-node { cursor: pointer; }
+.stol-node rect { fill: var(--border-strong); stroke: var(--muted); stroke-width: 1; }
+.stol-node.is-frames rect { fill: var(--panel); stroke-dasharray: 3 2; }
+.stol-node.is-run rect { fill: var(--warn); stroke: var(--warn); }
+.stol-node.is-error rect { fill: var(--danger); stroke: var(--danger); }
+.stol-node.is-selected rect { fill: var(--accent); stroke: var(--accent); }
+.stol-node.is-selected text { fill: var(--text); font-weight: 700; }
+.stol-node:hover rect { stroke: var(--accent); stroke-width: 2; }
+.stol-edge { stroke: var(--muted); fill: none; stroke-width: 1; }
+.stol-edge.is-manual { stroke: var(--accent); stroke-width: 1.4; }
+.stol-status { font-size: 12px; padding: 3px 8px; border-top: 1px solid var(--border); display: flex; gap: 4px 16px; flex-wrap: wrap;
+    color: var(--muted); background: var(--panel); font-variant-numeric: tabular-nums; min-height: 22px; }
+.stol-status--bits { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; }
+.stol-ops { overflow: auto; }
+.stol-oplist { display: flex; flex-direction: column; padding: 2px 4px 6px; }
+.stol-op { text-align: left; border: 0; background: none; font: inherit; font-size: 12.5px; padding: 3px 6px; border-radius: 4px;
+    color: var(--text); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stol-op:hover, .stol-op:focus-visible { background: var(--accent-soft); outline: none; }
+.stol-ops > .muted { padding: 4px 10px; }
+.stol-journal { flex: 1; overflow: auto; padding: 6px 10px 10px; font-size: 12.5px; }
+.stol-journal .mono { white-space: pre-wrap; word-break: break-word; }
+.stol-j-head { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); margin-bottom: 2px; }
+.stol-j-op { margin-top: 8px; color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.stol-note { width: 100%; margin-top: 10px; }
+.stol-split { cursor: row-resize; background: var(--border); touch-action: none; }
+.stol-split:hover, .stol-split:active { background: var(--accent-line); }
+.stol-bottom { display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+.stol-bottom-tabs { display: flex; gap: 2px; padding: 3px 8px 0; border-bottom: 1px solid var(--border); }
+.stol-bottom-tabs button { padding: 5px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.stol-bottom-tabs button.is-active { color: var(--accent); border-bottom-color: var(--accent); }
+.stol-bottom-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.stol-toolbar { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; padding: 4px 8px; font-size: 12.5px; border-bottom: 1px solid var(--border); }
+.stol-toolbar label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); white-space: nowrap; }
+.stol-toolbar input[type=number], .stol-toolbar select { height: 26px; padding: 0 6px; font-size: 12.5px; width: auto; }
+.stol-toolbar .seg button { border: 0; border-right: 1px solid var(--border); background: none; padding: 0 9px; height: 26px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; }
+.stol-toolbar .seg button:last-child { border-right: 0; }
+.stol-toolbar .seg button.is-on { background: var(--accent); color: var(--accent-text); }
+.stol-periods { display: inline-flex; gap: 3px; }
+.stol-view { flex: 1; min-height: 0; display: flex; position: relative; }
+.stol-canvas-wrap { flex: 1; min-width: 0; position: relative; background: #000; }
+.stol-canvas { display: block; position: absolute; inset: 0; outline: none; cursor: crosshair; }
+.stol-canvas--table { cursor: default; }
+.stol-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.stol-vscroll { writing-mode: vertical-lr; direction: ltr; width: 18px; height: auto; margin: 0; }
+.stol-hscroll { width: 100%; margin: 0; height: 14px; }
+.stol-colstats { width: 300px; flex-shrink: 0; overflow: auto; border-left: 1px solid var(--border); padding: 8px; font-size: 12.5px; }
+.stol-verdict { background: var(--ok-soft); color: var(--text); border-radius: 6px; padding: 3px 8px; margin: 4px 0; }
+.stol-bitshare { margin-top: 8px; color: var(--muted); }
+.stol-filters { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.stol-chip { display: inline-flex; gap: 4px; align-items: center; background: var(--accent-soft); color: var(--text); border-radius: 999px; padding: 1px 4px 1px 9px; font-size: 12px; }
+.stol-chip button { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 14px; line-height: 1; }
+.stol-menu { position: fixed; z-index: 1000; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-lg); border-radius: 8px;
+    padding: 4px; min-width: 180px; font-size: 13px; }
+.stol-menu-group { position: relative; }
+.stol-menu-name { display: flex; justify-content: space-between; gap: 16px; padding: 5px 10px; border-radius: 5px; cursor: default; color: var(--text); }
+.stol-menu-group:hover > .stol-menu-name, .stol-menu-group:focus-within > .stol-menu-name { background: var(--accent-soft); }
+.stol-submenu { display: none; position: absolute; left: calc(100% - 4px); top: -5px; background: var(--panel); border: 1px solid var(--border);
+    min-width: 290px; padding: 4px; border-radius: 8px; box-shadow: var(--shadow-lg); }
+.stol-menu-group:hover > .stol-submenu, .stol-menu-group:focus-within > .stol-submenu { display: block; }
+.stol-menu-item { display: flex; align-items: center; }
+.stol-menu-run { flex: 1; text-align: left; border: 0; background: none; font: inherit; padding: 5px 10px; border-radius: 5px; color: var(--text); cursor: pointer; white-space: nowrap; }
+.stol-menu-run:hover, .stol-menu-run:focus-visible { background: var(--accent-soft); outline: none; }
+.stol-menu-star { border: 0; background: none; color: var(--border-strong); cursor: pointer; font-size: 13px; padding: 2px 6px; }
+.stol-menu-star.is-on { color: var(--warn); }
+.stol-menu--flat { display: flex; flex-direction: column; }
+.stol-dialog .field { display: block; margin-bottom: 8px; }
+.stol-dialog .field input { width: 100%; }
+.stol-layer-preview { margin-top: 8px; color: var(--muted); word-break: break-all; }
+.stol-raster { flex: 1; overflow: auto; padding: 8px; }
+.stol-tribs { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow: auto; }
+.stol-tribs .row { display: flex; gap: 8px; align-items: center; }
+/* «screen and» — чтобы последним блоком «max-width: 900px» оставался выдвижной ящик меню. */
+@media screen and (max-width: 900px) {
+    .stol-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .stol-pane--ops { display: none; }
+}

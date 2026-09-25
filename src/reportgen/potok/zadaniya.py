@@ -24,7 +24,7 @@ import struct
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -59,6 +59,12 @@ def выгрузка(дальше: Any, вид: str) -> Optional[tuple[bytes, st
         первый = next(iter(дальше.values()))
         return _упаковать_биты(первый), "bin"
     return None
+
+
+#: Сколько притоков этапа хранить по отдельности (у STM-1 — 63 TU-12).
+ПРИТОКОВ_ДО = 256
+#: Сколько записей журнала массива хранить на этап.
+ЖУРНАЛ_СТОЛА = 300
 
 
 class Задания:
@@ -208,9 +214,21 @@ class Задания:
             if родитель in все:
                 дети.setdefault(родитель, []).append(з)
 
+        def кратко(ид_: str) -> Dict[str, Any]:
+            """Этапы узла коротко — для сетки массивов на рабочем столе."""
+            try:
+                с = self._прочитать_файл(ид_)
+            except (OSError, ValueError):
+                return {"этапы_кратко": [], "происхождение": []}
+            return {"этапы_кратко": [{к: э.get(к) for к in ("номер", "уровень", "что", "выход", "выгрузка",
+                                                           "уверенность")}
+                                     | {"притоков": len(э.get("притоки") or [])}
+                                     for э in с.get("этапы") or []],
+                    "происхождение": с.get("происхождение") or []}
+
         def узел(з: Dict[str, Any]) -> Dict[str, Any]:
             от = з.get("от") or ""
-            return {**з, "этап_родителя": int(от.split("#")[1]) if "#" in от else None,
+            return {**з, **кратко(з["ид"]), "этап_родителя": int(от.split("#")[1]) if "#" in от else None,
                     "дети": [узел(д) for д in sorted(дети.get(з["ид"], []),
                                                      key=lambda д: д.get("создано") or 0)]}
 
@@ -247,6 +265,48 @@ class Задания:
 
     def файл_этапа(self, ид: str, этап: int) -> Optional[Path]:
         return self._выгрузка_этапа(ид, этап)
+
+    # -- журнал массива на рабочем столе ------------------------------------------
+
+    def журнал_стола(self, ид: str) -> Dict[str, List[Dict[str, Any]]]:
+        """Записи аналитика и итоги операций по массивам узла: {этап: [записи]}."""
+        путь = self.папка / ид / "журнал-стола.json"
+        if not путь.exists():
+            return {}
+        try:
+            return json.loads(путь.read_text(encoding="utf-8"))
+        except ValueError:
+            return {}
+
+    def записать_в_журнал(self, ид: str, этап: int, запись: Dict[str, Any]) -> Dict[str, Any]:
+        if not (self.папка / ид).exists():
+            raise KeyError(ид)
+        чистая = {"время": time.time(), "операция": str(запись.get("операция", ""))[:200],
+                  "текст": str(запись.get("текст", ""))[:20000],
+                  "слой": str(запись.get("слой", ""))[:2000]}
+        with self._lock:
+            журнал = self.журнал_стола(ид)
+            записи = журнал.setdefault(str(int(этап)), [])
+            записи.append(чистая)
+            del записи[:-ЖУРНАЛ_СТОЛА]
+            путь = self.папка / ид / "журнал-стола.json"
+            временный = путь.with_suffix(".tmp")
+            временный.write_text(json.dumps(журнал, ensure_ascii=False), encoding="utf-8")
+            временный.replace(путь)
+        return чистая
+
+    def приток(self, ид: str, этап: int, номер: int) -> Tuple[bytes, str]:
+        """Байты притока этапа и его имя."""
+        состояние = self.прочитать(ид)
+        этапы = состояние.get("этапы") or []
+        if not 1 <= int(этап) <= len(этапы):
+            raise ValueError("нет такого этапа")
+        притоки = этапы[int(этап) - 1].get("притоки") or []
+        запись = next((п for п in притоки if п["номер"] == int(номер)), None)
+        файл = self.папка / ид / f"приток-{int(этап)}-{int(номер)}.bin"
+        if запись is None or not файл.exists():
+            raise ValueError("у этого этапа нет такого притока")
+        return файл.read_bytes(), запись["имя"]
 
     def биты(self, ид: str, этап: int) -> np.ndarray:
         """Биты потока: этап 0 — исходный файл, дальше — поток после этапа (.bin)."""
@@ -332,6 +392,12 @@ class Задания:
                 (папка / f"этап-{номер}.{расширение}").write_bytes(данные)
                 запись["выгрузка"] = расширение
                 запись["выгрузка_байт"] = len(данные)
+            if находка.вид_дальше == "притоки" and isinstance(находка.дальше, dict):
+                # Каждый приток — своим файлом: скачать или разобрать отдельным узлом.
+                запись["притоки"] = []
+                for k, (имя, ряд) in enumerate(list(находка.дальше.items())[:ПРИТОКОВ_ДО]):
+                    (папка / f"приток-{номер}-{k}.bin").write_bytes(_упаковать_биты(ряд))
+                    запись["притоки"].append({"номер": k, "имя": str(имя), "бит": int(len(ряд))})
         состояние = self._прочитать_файл(ид)
         состояние.update(состояние="готово", этапы=список, отчёт=разбор.отчёт(предел=60000),
                          секунд=разбор.секунд, закончено=time.time(),

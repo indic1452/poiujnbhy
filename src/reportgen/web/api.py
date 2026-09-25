@@ -2581,8 +2581,8 @@ def potok_stage_file(request: Request, job_id: str, stage: int) -> FileResponse:
     """Поток после этапа: биты — .bin, кадры — .sig, пакеты IP — .pcap."""
     user = require_user(request)
     состояние = _задание_или_404(request, user, job_id)
-    файл = _potok(request).файл_этапа(job_id, stage)
-    if файл is None:
+    файл = (_potok(request).папка / job_id / "вход.bin") if int(stage) == 0 else _potok(request).файл_этапа(job_id, stage)
+    if файл is None or not файл.exists():
         raise ServiceError("у этого этапа нет выгрузки", 404)
     основа = Path(состояние.get("имя") or "поток").stem
     return _file_reply(файл, f"{основа}-этап-{stage}{файл.suffix}")
@@ -2648,7 +2648,9 @@ def potok_tool(request: Request, job_id: str) -> Dict[str, Any]:
             **({"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0),
                 "пропуск": int(тело.get("skip") or 0),
                 "отводы": [int(t) for t in re.findall(r"\d+", str(тело.get("taps") or ""))]}
-               if тело.get("tool") == "скремблер-кадр" else {}))
+               if тело.get("tool") == "скремблер-кадр" else
+               {"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0)}
+               if тело.get("tool") == "поля" else {}))
     except (ValueError, KeyError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     return {"found": rastr.в_словарь(найдено), "bits": int(len(биты))}
@@ -2796,6 +2798,114 @@ def potok_try(request: Request, job_id: str) -> Dict[str, Any]:
     return {"бит_на_входе": int(len(проба)), "весь_поток": int(len(биты)), "бит_на_выходе": int(len(итог)),
             "описание": описание, "доля_единиц": round(доля, 4),
             "начало": в_байты(итог[:4096]).hex()}
+
+
+# -- рабочий стол анализа: сетка бит, таблица кадров, журнал массива ------------------------
+
+@router.get("/potok/{job_id}/grid")
+def potok_grid(request: Request, job_id: str, stage: int = 0, period: int = 64, shift: int = 0,
+               row: int = 0, rows: int = 200, col: int = 0, cols: int = 64, per: int = 1) -> Dict[str, Any]:
+    """Прямоугольник битового просмотра: строки × столбцы, со сжатием по горизонтали."""
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    if period < 1:
+        raise ServiceError("ширина строки — от 1 бита", 400)
+    return rastr.сетка(_биты_задания(request, user, job_id, stage), period, shift, row, rows, col, cols, per)
+
+
+def _отбор_кадров(тело: Dict[str, Any]) -> List[Dict[str, Any]]:
+    отбор = []
+    for у in (тело.get("filter") or [])[:16]:
+        try:
+            отбор.append({"место": int(у["place"]), "значение": int(у["value"]),
+                          "полубайт": {"hi": "старший", "lo": "младший"}.get(у.get("nibble") or "", ""),
+                          "не": bool(у.get("not"))})
+        except (KeyError, TypeError, ValueError):
+            raise ServiceError("отбор кадров: {place, value, nibble?, not?}", 400) from None
+    return отбор
+
+
+@router.post("/potok/{job_id}/frames")
+def potok_frames(request: Request, job_id: str) -> Dict[str, Any]:
+    """Таблица кадров: байты строками по периоду, с отбором по байту или полубайту."""
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    период = int(тело.get("period") or 0)
+    if период < 8:
+        raise ServiceError("таблица кадров — при ширине строки от 8 бит", 400)
+    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
+    try:
+        return rastr.кадры_таблицей(биты, период, int(тело.get("shift") or 0), int(тело.get("offset") or 0),
+                                    int(тело.get("limit") or 200), _отбор_кадров(тело),
+                                    "младший" if тело.get("order") == "lsb" else "старший")
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
+@router.post("/potok/{job_id}/framecol")
+def potok_frame_column(request: Request, job_id: str) -> Dict[str, Any]:
+    """Статистика столбца кадров (1–8 байт): значения, энтропия, счётчик, длина, полубайты, биты."""
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
+    try:
+        return rastr.столбец_кадров(биты, int(тело.get("period") or 0), int(тело.get("shift") or 0),
+                                    int(тело.get("place") or 0), int(тело.get("width") or 1),
+                                    _отбор_кадров(тело), "младший" if тело.get("order") == "lsb" else "старший")
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
+@router.get("/potok/{job_id}/journal")
+def potok_journal(request: Request, job_id: str) -> Dict[str, Any]:
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    return {"journal": _potok(request).журнал_стола(job_id)}
+
+
+@router.post("/potok/{job_id}/journal")
+def potok_journal_add(request: Request, job_id: str) -> Dict[str, Any]:
+    """Запись в журнал массива: итог операции или заметка аналитика."""
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    тело = _body(request)
+    return _potok(request).записать_в_журнал(job_id, int(тело.get("stage") or 0),
+                                             {"операция": тело.get("operation", ""), "текст": тело.get("text", ""),
+                                              "слой": тело.get("layer", "")})
+
+
+@router.get("/potok/{job_id}/stage/{stage}/tributary/{number}")
+def potok_tributary_file(request: Request, job_id: str, stage: int, number: int) -> Response:
+    """Один приток этапа (PDH, SDH): биты — .bin."""
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    try:
+        данные, имя = _potok(request).приток(job_id, stage, number)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 404) from None
+    файл = re.sub(r"[^\w\-. ]", "_", имя)[:80] or f"приток-{number}"
+    return Response(данные, media_type="application/octet-stream",
+                    headers={"Content-Disposition": f'attachment; filename="tributary-{stage}-{number}.bin"; '
+                             "filename*=UTF-8''" + urllib.parse.quote(файл + ".bin")})
+
+
+@router.post("/potok/{job_id}/tributary")
+def potok_tributary_node(request: Request, job_id: str) -> Dict[str, Any]:
+    """Приток этапа — отдельным узлом дерева: растр, инструменты, свой разбор."""
+    user = require_user(request)
+    состояние = _задание_или_404(request, user, job_id)
+    тело = _body(request)
+    этап, номер = int(тело.get("stage") or 0), int(тело.get("number") or 0)
+    try:
+        данные, имя = _potok(request).приток(job_id, этап, номер)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 404) from None
+    ид = _potok(request).создать(владелец=user.id, имя=f"{состояние['имя']} → {имя}"[:200], данные=данные,
+                                 профиль=str(тело.get("profile") or "обычно"), от=f"{job_id}#{этап}",
+                                 разбирать=bool(тело.get("analyze", True)), происхождение=[f"приток: {имя}"])
+    return {"id": ид}
 
 
 @router.get("/potok/{job_id}/tree")

@@ -1,0 +1,366 @@
+# -*- coding: utf-8 -*-
+"""SDH/SONET: кадр, скремблер по B1, AU-4/AU-3, VC-4 по B3, TU-12 → VC-12 по V5 → E1 по FAS.
+
+Поток строится здесь же простым генератором по G.707: E1 асинхронно в VC-12
+(C1 C2, S1 S2), TU-12 с указателем V1 V2 в сверхцикле из четырёх кадров,
+TUG-2 → TUG-3 → VC-4 с POH (J1, B3, C2, H4), AU-4 с указателем H1 H2, STM-N с
+A1 A2, J0, B1 и кадровым скремблером 1 + x⁶ + x⁷.
+"""
+
+import unittest
+
+import numpy as np
+
+import _bootstrap  # noqa: F401
+import potok_sintez as с
+from reportgen.potok import cikl, sdh
+from reportgen.potok.bity import в_биты
+
+
+def псп_байты(длина: int) -> np.ndarray:
+    """Кадровый скремблер SDH: 1 + x⁶ + x⁷ от 1111111, байтами."""
+    рег = [1] * 7
+    биты = []
+    for _ in range(длина * 8):
+        биты.append(рег[0])
+        новый = рег[0] ^ рег[1]            # s[n+7] = s[n] ⊕ s[n+1]
+        рег = рег[1:] + [новый]
+    return np.packbits(np.array(биты, dtype=np.uint8))
+
+
+def bip2(байты: np.ndarray) -> int:
+    б = np.unpackbits(байты).reshape(-1, 8)
+    return ((int(б[:, 0::2].sum()) & 1) << 1) | (int(б[:, 1::2].sum()) & 1)
+
+
+def vc12_из_e1(e1: np.ndarray, сколько: int, rng, плохой_v5: bool = False) -> list:
+    """VC-12 по 140 байт с асинхронным E1: C1 = 0 (S1 — данные), C2 — иногда стаффинг."""
+    итог, место, прежний = [], 0, None
+    for _ in range(сколько):
+        v = np.zeros(140, dtype=np.uint8)
+        s2_пустой = rng.random() < 0.7
+        бит = lambda n: e1[место:место + n]
+        части = []
+        for начало in (2, 37, 72):
+            v[начало:начало + 32] = np.packbits(e1[место:место + 256])
+            место += 256
+        c = 0b01000000 if s2_пустой else 0          # C1 = 0, C2 = стаффинг S2
+        for к in (36, 71):
+            v[к] = c
+        s1 = int(e1[место]); место += 1
+        v[106] = c | s1                              # … R R R R R S1
+        if s2_пустой:
+            s2 = 0
+        else:
+            s2 = int(e1[место]); место += 1
+        семь = e1[место:место + 7]; место += 7
+        v[107] = (s2 << 7) | int(np.packbits(np.concatenate([[0], семь]))[0])
+        v[108:139] = np.packbits(e1[место:место + 248]); место += 248
+        v[0] = 0b00000100                            # V5: метка сигнала, BIP-2 — ниже
+        if прежний is not None:
+            v[0] |= (bip2(прежний) ^ (3 if плохой_v5 else 0)) << 6
+        прежний = v
+        del части, бит
+        итог.append(v)
+    return итог, место
+
+
+def tu12_кадры(vc12: list, p: int, кадров: int) -> np.ndarray:
+    """VC-12 → байты TU-12 по кадрам (кадры × 36) с указателем p в V1 V2."""
+    поток = np.concatenate(vc12)
+    циклов = кадров // 4 + 2
+    s = np.zeros((циклов, 144), dtype=np.uint8)
+    for k in range(циклов):
+        q = np.zeros(140, dtype=np.uint8)
+        for j in range(140):
+            x = 140 * k + j - p
+            if 0 <= x < len(поток):
+                q[j] = поток[x]
+        s[k, 37:72], s[k, 73:108], s[k, 109:144] = q[0:35], q[35:70], q[70:105]
+        if k + 1 < циклов:
+            s[k + 1, 1:36] = q[105:140]
+        s[k, 0] = 0x68 | (p >> 8)                    # V1: NDF 0110, размер 10
+        s[k, 36] = p & 0xFF                          # V2
+    return s.reshape(-1, 36)[:кадров]
+
+
+def чередовать(части: list) -> np.ndarray:
+    """Побайтное чередование столбцов: столбец i·k + j — столбец i части j."""
+    k = len(части)
+    итог = np.zeros((9, k * части[0].shape[1]), dtype=np.uint8)
+    for j, ч in enumerate(части):
+        итог[:, j::k] = ч
+    return итог
+
+
+def tug_структура(tu12_кадра: dict) -> np.ndarray:
+    """TU-12 (9 × 4) → TUG-2 (3 вперемежку) → TUG-3 (2 служебных + 7 TUG-2) → 258 столбцов VC-4."""
+    пусто = np.zeros((9, 4), dtype=np.uint8)
+    tug3 = []
+    for t in range(3):
+        tug2 = [чередовать([tu12_кадра.get((t, m, n), пусто) for n in range(3)]) for m in range(7)]
+        tug3.append(np.concatenate([np.zeros((9, 2), np.uint8), чередовать(tug2)], axis=1))
+    return чередовать(tug3)
+
+
+def vc4_кадры(кадров: int, tu12: dict, нагрузка=None, трасса=b"SDH-TEST-ROUTE") -> list:
+    """VC-4 (9 × 261) по кадрам: POH J1 (16 байт), B3, C2, H4; TU-12 или нагрузка C-4."""
+    j1 = [0x80 | 0x11] + list(трасса.ljust(15, b" "))
+    итог, прежний = [], None
+    for f in range(кадров):
+        v = np.zeros((9, 261), dtype=np.uint8)
+        if нагрузка is not None:
+            v[:, 1:] = нагрузка[f]
+        if tu12:
+            v[:, 3:] = tug_структура({адрес: байты[f].reshape(9, 4) for адрес, байты in tu12.items()})
+        v[0, 0] = j1[f % 16]
+        v[2, 0] = 0x02 if tu12 else 0x1B
+        v[5, 0] = f % 4                               # H4: номер кадра в сверхцикле TU
+        if прежний is not None:
+            v[1, 0] = np.bitwise_xor.reduce(прежний.reshape(-1))
+        прежний = v
+        итог.append(v)
+    return итог
+
+
+def stm(vc4_списки: list, указатели: list, N: int = 1, скремблер: bool = True,
+        сцепка: bool = False) -> np.ndarray:
+    """Кадры STM-N из N VC-4 (или одного VC-4-Nc) с указателями AU-4; биты подряд."""
+    кадров = len(vc4_списки[0])
+    столбцов = 270 * N
+    область = []            # по AU-4: линейная область нагрузки (кадры × 2349)
+    for vc4, p in zip(vc4_списки, указатели):
+        поток = np.concatenate([v.reshape(-1) for v in vc4])
+        g = np.zeros(кадров * 2349, dtype=np.uint8)
+        начало = 783 + 3 * p
+        g[начало:] = поток[:len(g) - начало]
+        область.append(g.reshape(кадров, 9, 261))
+    маска = псп_байты(9 * столбцов - 9 * N)
+    итог, прежний = [], None
+    for f in range(кадров):
+        к = np.zeros((9, столбцов), dtype=np.uint8)
+        к[0, :3 * N] = 0xF6
+        к[0, 3 * N:6 * N] = 0x28
+        к[0, 6 * N] = 0x01                            # J0
+        for a in range(N):
+            p = указатели[a] if a < len(указатели) else 0
+            if сцепка and a > 0:
+                к[3, a], к[3, 3 * N + a] = 0x9B, 0xFF
+            else:
+                к[3, a], к[3, 3 * N + a] = 0x68 | (p >> 8), p & 0xFF
+            к[3, N + a], к[3, 2 * N + a] = 0x9B, 0x9B   # Y
+            к[3, 4 * N + a], к[3, 5 * N + a] = 0xFF, 0xFF
+            if a < len(область):
+                # Столбцы нагрузки AU-4 №a: STM-1 №a, местные столбцы 9…269.
+                к[:, 9 * N + a::N] = область[a][f]
+        if прежний is not None:
+            к[1, 0] = np.bitwise_xor.reduce(прежний)
+        плоский = к.reshape(-1).copy()
+        if скремблер:
+            плоский[9 * N:] ^= маска
+        прежний = плоский
+        итог.append(плоский)
+    return np.unpackbits(np.concatenate(итог))
+
+
+def sts1(spe: list, p: int) -> np.ndarray:
+    """STS-1 / STM-0: кадр 9 × 90, TOH 3 столбца, SPE 9 × 87 (POH, заполнение 29 и 58), указатель p."""
+    кадров = len(spe)
+    поток = np.concatenate([v.reshape(-1) for v in spe])
+    g = np.zeros(кадров * 783, dtype=np.uint8)
+    g[261 + p:] = поток[:len(g) - 261 - p]
+    область = g.reshape(кадров, 9, 87)
+    маска = псп_байты(810 - 3)
+    итог, прежний = [], None
+    for f in range(кадров):
+        к = np.zeros((9, 90), dtype=np.uint8)
+        к[0, 0], к[0, 1], к[0, 2] = 0xF6, 0x28, 0x01
+        к[3, 0], к[3, 1] = 0x68 | (p >> 8), p & 0xFF
+        к[:, 3:] = область[f]
+        if прежний is not None:
+            к[1, 0] = np.bitwise_xor.reduce(прежний)
+        плоский = к.reshape(-1).copy()
+        плоский[3:] ^= маска
+        прежний = плоский
+        итог.append(плоский)
+    return np.unpackbits(np.concatenate(итог))
+
+
+def spe_кадры(нагрузка: np.ndarray) -> list:
+    """SPE / VC-3 (9 × 87): POH (J1, B3, C2), заполнение 29 и 58, нагрузка — остальные 84 столбца."""
+    итог, прежний = [], None
+    столбцы = [c for c in range(1, 87) if c not in (29, 58)]
+    for f in range(len(нагрузка)):
+        v = np.zeros((9, 87), dtype=np.uint8)
+        v[:, столбцы] = нагрузка[f]
+        v[0, 0], v[2, 0] = 0x01, 0x04
+        if прежний is not None:
+            v[1, 0] = np.bitwise_xor.reduce(прежний.reshape(-1))
+        прежний = v
+        итог.append(v)
+    return итог
+
+
+class SdhTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        rng = np.random.default_rng(3)
+        cls.кадров = 200
+        cls.e1 = {}
+        tu = {}
+        for адрес, p, сид in (((0, 0, 0), 5, 1), ((1, 2, 1), 77, 2), ((2, 6, 2), 139, 3)):
+            e1 = в_биты(с.e1(400, сид=сид))
+            vc, _ = vc12_из_e1(e1, cls.кадров // 4 + 2, rng)
+            tu[адрес] = tu12_кадры(vc, p, cls.кадров)
+            cls.e1[адрес] = e1
+        cls.поток = stm([vc4_кадры(cls.кадров, tu)], [522])
+        cls.найдено = sdh.найти(np.concatenate([rng.integers(0, 2, 1234).astype(np.uint8), cls.поток]))
+
+    def test_кадр_скремблер_b1_b3(self):
+        н = self.найдено
+        self.assertIsNotNone(н)
+        self.assertTrue(н.что.startswith("SDH STM-1 (STS-3) (G.707): VC-4"), н.что)
+        текст = " ".join(н.подробно)
+        self.assertIn("B1 (BIP-8 по предыдущему кадру) сошёлся в 100.0 %", текст)
+        self.assertIn("1 + x^-6 + x^-7", текст)
+        self.assertIn("начальное 1111111", текст)
+        self.assertIn("VC-4 №1: указатель 522", текст)
+        self.assertIn("B3 сошёлся в 100.0 %", текст)
+        self.assertIn("J1: 16 байт: «SDH-TEST-ROUTE»", текст)
+        self.assertGreater(н.уверенность, 0.95)
+
+    def test_три_e1_бит_в_бит(self):
+        дальше = self.найдено.дальше
+        self.assertEqual(3, sum(1 for к in дальше if к.endswith("E1")), list(дальше))
+        for (t, m, n), e1 in self.e1.items():
+            ключ = f"VC-4 №1 TU-12 {t + 1}-{m + 1}-{n + 1} E1"
+            with self.subTest(ключ=ключ):
+                ряд = дальше[ключ]
+                self.assertGreaterEqual(cikl.e1(ряд).уверенность, 0.99)
+                # Выделенный приток — непрерывный кусок исходного E1.
+                исходный = e1.tobytes()
+                кусок = ряд[:4096].tobytes()
+                self.assertIn(кусок, исходный)
+        текст = " ".join(self.найдено.подробно)
+        self.assertIn("TU-12 с годным VC-12 — 3, из них E1 с FAS — 3", текст)
+        self.assertIn("TU-12 2-3-2: указатель 77, V5 (BIP-2) сошёлся в 100 %", текст)
+
+    def test_нагрузка_c4_как_есть(self):
+        rng = np.random.default_rng(9)
+        кадров = 40
+        нагрузка = rng.integers(0, 256, (кадров, 9, 260)).astype(np.uint8)
+        поток = stm([vc4_кадры(кадров, {}, нагрузка)], [0])
+        н = sdh.найти(поток)
+        self.assertIsNotNone(н)
+        ряд = н.дальше["VC-4 №1 нагрузка"]
+        ждём = np.unpackbits(нагрузка.reshape(-1))
+        # Первый VC-4 начинается в кадре 1 (указатель 0 — строка 4 кадра 0), последний неполный.
+        self.assertTrue(np.array_equal(ждём[:len(ряд)], ряд))
+        self.assertGreaterEqual(len(ряд), (кадров - 2) * 9 * 260 * 8)
+
+    def test_stm4_четыре_au4_и_сцепка(self):
+        rng = np.random.default_rng(4)
+        кадров = 12
+        vc = [vc4_кадры(кадров, {}, rng.integers(0, 256, (кадров, 9, 260)).astype(np.uint8)) for _ in range(4)]
+        н = sdh.найти(stm(vc, [0, 100, 200, 782], N=4))
+        self.assertIsNotNone(н)
+        self.assertEqual("SDH STM-4 (STS-12) (G.707): VC-4, VC-4, VC-4, VC-4", н.что)
+        self.assertEqual(4, len(н.дальше))
+        сцеплен = sdh.найти(stm([vc[0]], [10], N=4, сцепка=True))
+        self.assertEqual("SDH STM-4 (STS-12) (G.707): VC-4-4c", сцеплен.что)
+
+    def test_мусор_в_tu12_не_приток(self):
+        # Указатель TU-12 годен, а VC-12 — случайный, без BIP-2 и без E1: такой TU не приток.
+        rng = np.random.default_rng(12)
+        кадров = 120
+        vc = [rng.integers(0, 256, 140).astype(np.uint8) for _ in range(кадров // 4 + 2)]
+        e1 = в_биты(с.e1(400, сид=4))
+        годный, _ = vc12_из_e1(e1, кадров // 4 + 2, rng)
+        tu = {(0, 1, 0): tu12_кадры(vc, 10, кадров), (0, 2, 0): tu12_кадры(годный, 20, кадров)}
+        н = sdh.найти(stm([vc4_кадры(кадров, tu)], [5]))
+        self.assertEqual(["VC-4 №1 TU-12 1-3-1 E1"], list(н.дальше))
+
+    def test_e1_при_испорченном_v5(self):
+        # BIP-2 испорчен (линия или иное прочтение стандарта), а E1 с FAS внутри есть: приток берём.
+        rng = np.random.default_rng(13)
+        кадров = 120
+        vc, _ = vc12_из_e1(в_биты(с.e1(400, сид=6)), кадров // 4 + 2, rng, плохой_v5=True)
+        н = sdh.найти(stm([vc4_кадры(кадров, {(1, 0, 2): tu12_кадры(vc, 33, кадров)})], [5]))
+        self.assertEqual(["VC-4 №1 TU-12 2-1-3 E1"], list(н.дальше))
+        self.assertRegex(" ".join(н.подробно), r"V5 \(BIP-2\) сошёлся в [0-4]?\d % — не сошёлся, приток подтверждён FAS")
+
+    def test_sts1_vc3(self):
+        rng = np.random.default_rng(6)
+        нагрузка = rng.integers(0, 256, (120, 9, 84)).astype(np.uint8)
+        н = sdh.найти(sts1(spe_кадры(нагрузка), 400))
+        self.assertIsNotNone(н)
+        self.assertEqual("SDH STM-0 (STS-1) (G.707): VC-3", н.что)
+        ряд = н.дальше["VC-3 №1 нагрузка"]
+        ждём = np.unpackbits(нагрузка.reshape(-1))
+        self.assertTrue(np.array_equal(ждём[:len(ряд)], ряд))
+        self.assertIn("VC-3 №1: указатель 400, B3 сошёлся в 100.0 %, C2 = 0x04", " ".join(н.подробно))
+
+    def test_tu3_в_vc4(self):
+        # TUG-3 №2 несёт TU-3: указатель в первом столбце, VC-3 (85 столбцов) со смещением от байта после H3.
+        rng = np.random.default_rng(8)
+        кадров, p = 60, 300
+        нагрузка = rng.integers(0, 256, (кадров, 9, 84)).astype(np.uint8)
+        vc3, прежний = [], None
+        for f in range(кадров):
+            v = np.zeros((9, 85), dtype=np.uint8)
+            v[:, 1:] = нагрузка[f]
+            v[0, 0], v[2, 0] = 0x05, 0x04
+            if прежний is not None:
+                v[1, 0] = np.bitwise_xor.reduce(прежний.reshape(-1))
+            прежний = v
+            vc3.append(v)
+        поток = np.concatenate([v.reshape(-1) for v in vc3])
+        g = np.zeros(кадров * 765, dtype=np.uint8)
+        g[2 * 85 + p:] = поток[:len(g) - 2 * 85 - p]
+        область = g.reshape(кадров, 9, 85)
+        vc4 = []
+        for f in range(кадров):
+            v = np.zeros((9, 261), dtype=np.uint8)
+            столбцы = [3 + 1 + 3 * i for i in range(86)]
+            tug3 = np.zeros((9, 86), dtype=np.uint8)
+            tug3[0, 0], tug3[1, 0] = 0x68 | (p >> 8), p & 0xFF
+            tug3[:, 1:] = область[f]
+            v[:, столбцы] = tug3
+            v[2, 0] = 0x02
+            vc4.append(v)
+        for f in range(1, кадров):
+            vc4[f][1, 0] = np.bitwise_xor.reduce(vc4[f - 1].reshape(-1))
+        н = sdh.найти(stm([vc4], [17]))
+        self.assertIsNotNone(н)
+        ряд = н.дальше["VC-4 №1 TU-3 2 нагрузка"]
+        ждём = np.unpackbits(нагрузка.reshape(-1))
+        self.assertTrue(np.array_equal(ждём[:len(ряд)], ряд))
+        self.assertIn("TU-3 2: указатель 300, B3 VC-3 сошёлся в 100 %", " ".join(н.подробно))
+
+    def test_без_скремблера_и_шум(self):
+        н = sdh.найти(stm([vc4_кадры(20, {}, np.zeros((20, 9, 260), np.uint8))], [3], скремблер=False))
+        self.assertIn("кадр не скремблирован", н.подробно[1])
+        шумный = self.поток ^ (np.random.default_rng(1).random(len(self.поток)) < 2e-6).astype(np.uint8)
+        н = sdh.найти(шумный)
+        self.assertIsNotNone(н)
+        self.assertGreater(н.уверенность, 0.8)
+
+    def test_случайный_и_указатели(self):
+        self.assertIsNone(sdh.найти(с.случайные_биты(2_000_000)))
+        # A1 A2 на месте, а кадры — случайные: B1 не сходится — не SDH.
+        rng = np.random.default_rng(2)
+        кадры = rng.integers(0, 256, (30, 2430)).astype(np.uint8)
+        кадры[:, :6] = [0xF6, 0xF6, 0xF6, 0x28, 0x28, 0x28]
+        self.assertIsNone(sdh.найти(np.unpackbits(кадры.reshape(-1))))
+        # Слово через не кратное кадру расстояние — не кадр SDH.
+        кадры = rng.integers(0, 2, (30, 19448)).astype(np.uint8)
+        кадры[:, :48] = np.unpackbits(np.array([0xF6] * 3 + [0x28] * 3, np.uint8))
+        self.assertIsNone(sdh.выравнивание(кадры.reshape(-1)))
+        self.assertEqual(("норма", 522), sdh.указатель(0x6A, 0x0A))
+        self.assertEqual(("сцепка", -1), sdh.указатель(0x9B, 0xFF))
+        self.assertEqual(("AIS", -1), sdh.указатель(0xFF, 0xFF))
+        self.assertEqual("ошибка", sdh.указатель(0x00, 0x00)[0])
+
+
+if __name__ == "__main__":
+    unittest.main()
