@@ -8943,6 +8943,272 @@
         'фм 3 (или «фм 3 поворот 2 отражение») · метки 2: 0 1 3 2 · биты символа 4: 1 0 3 2 · ' +
         'ldpc ИМЯ выколоты 0-191 укорочены 1000-1023';
 
+    // -- конфигурации обработки: свои цепочки шагов для потоков любого вида --
+
+    /** Шпаргалка слоёв: подпись и пример, который встаёт в поле нового шага. */
+    const ШПАРГАЛКА_СЛОЁВ = [
+        ['инверсия', 'инверсия'], ['сдвиг на N бит', 'сдвиг 5'], ['NRZI', 'nrzi'], ['манчестер', 'манчестер'],
+        ['синхрослово', 'синхро 0x1ACFFC1D ошибок 2'], ['кадры', 'кадры 0x47 длина 1504'],
+        ['скремблер самосинхр.', 'скремблер 3,20'], ['аддитивный по кадру', 'аддитивный отводы 14,15 кадр 1000 пропуск 32'],
+        ['стаффинг (1 место)', 'стаффинг период 200 данные 23-40 управление 20,80,140 возможность 190 знак +'],
+        ['стаффинг (много мест)', 'стаффинг период 200 данные 23-40 управление 20,80,140 возможность 185-187 знак +'],
+        ['стаффинг +/0/−', 'стаффинг период 200 данные 23-40 управление 31,91,151 возможность 188+ управление 32,92,152 возможность 189−'],
+        ['свёрточный', 'свёрточный 171/133 K=7'], ['выколотый', 'выколотый 171/133 K=7 шаблон 110110'],
+        ['перемежение', 'перемежение 12 7'], ['Форни', 'форни 12 17 0'], ['LDPC', 'ldpc ИМЯ выколоты 0-191'],
+        ['PDH', 'pdh E2 приток 1'], ['плоскость КАМ', 'плоскость 6'], ['ФМ', 'фм 3 поворот 2 отражение'],
+        ['реверс бит', 'реверс 8'], ['XOR', 'xor 0xFF'], ['прореживание', 'прореживание 2 фаза 1'],
+    ];
+
+    function описатьШагКонфигурации(ш) {
+        return ш.вид === 'маска'
+            ? 'маска: период ' + ш.маска.период + ', сдвиг ' + ш.маска.сдвиг + ', позиции ' + диапазоны(ш.маска.позиции)
+            : ш.слой;
+    }
+
+    /** Список шагов с правкой: слой — текстом, маска — как есть; вкл/выкл, порядок, удаление. */
+    function спискомШагов(шаги, onChange) {
+        const список = h('ol', { class: 'potok-steps' });
+        const рисовать = () => {
+            clear(список);
+            шаги.forEach((ш, i) => {
+                const поле = ш.вид === 'слой'
+                    ? h('input', { type: 'text', value: ш.слой, style: { flex: '1' }, 'aria-label': 'Шаг ' + (i + 1) })
+                    : h('span', { class: 'mono small', style: { flex: '1' } }, описатьШагКонфигурации(ш));
+                if (ш.вид === 'слой') поле.addEventListener('input', () => { ш.слой = поле.value; if (onChange) onChange(); });
+                const вкл = h('input', { type: 'checkbox', checked: ш.вкл !== false, title: 'выключить шаг, не удаляя' });
+                вкл.addEventListener('change', () => { ш.вкл = вкл.checked; рисовать(); if (onChange) onChange(); });
+                const сдвинуть = (куда) => { шаги.splice(i + куда, 0, шаги.splice(i, 1)[0]); рисовать(); if (onChange) onChange(); };
+                список.appendChild(h('li', { class: ш.вкл === false ? 'is-off' : '' },
+                    вкл, поле,
+                    h('button', { class: 'btn btn--sm btn--ghost', disabled: i === 0, title: 'выше', onclick: () => сдвинуть(-1) }, '↑'),
+                    h('button', { class: 'btn btn--sm btn--ghost', disabled: i === шаги.length - 1, title: 'ниже', onclick: () => сдвинуть(1) }, '↓'),
+                    h('button', { class: 'btn btn--sm btn--ghost', title: 'удалить шаг', onclick: () => { шаги.splice(i, 1); рисовать(); if (onChange) onChange(); } }, '×')));
+            });
+            if (!шаги.length) список.appendChild(h('li', { class: 'muted small' }, 'шагов нет — добавьте первый ниже'));
+        };
+        рисовать();
+        return { узел: список, рисовать };
+    }
+
+    /**
+     * Редактор конфигурации: название, описание, общая ли, шаги, проверка на потоке.
+     * Чужую (общую) конфигурацию править нельзя — сохранится копия.
+     */
+    async function редакторКонфигурации(исходная, onSaved) {
+        const своя = !исходная || !исходная.ид || исходная.своя;
+        const шаги = ((исходная && исходная.шаги) || []).map((ш) => Object.assign({ вкл: true }, JSON.parse(JSON.stringify(ш))));
+        const имя = h('input', { type: 'text', maxlength: 80, value: (исходная && исходная.имя) ? (своя ? исходная.имя : исходная.имя + ' (копия)') : '',
+            placeholder: 'например: РРЛ «Вид-А», кадр 200, стаффинг по 3 бита' });
+        const описание = h('textarea', { rows: 3, maxlength: 4000, placeholder: 'Для каких потоков, откуда параметры, что проверено' },
+            (исходная && исходная.описание) || '');
+        const общая = h('input', { type: 'checkbox', checked: !!(исходная && исходная.общая && своя) });
+        const новый = h('input', { type: 'text', placeholder: 'слой, например: синхро 0x47 · стаффинг период 200 …', style: { flex: '1' } });
+        const ошибка = h('div', { class: 'pk-filter-error small', role: 'status' });
+        const спис = спискомШагов(шаги);
+        const добавить = () => {
+            if (!новый.value.trim()) return;
+            шаги.push({ вид: 'слой', слой: новый.value.trim(), вкл: true });
+            новый.value = '';
+            спис.рисовать();
+        };
+        новый.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); добавить(); } });
+        const шпаргалка = h('details', { class: 'potok-cheat' }, h('summary', {}, 'Шпаргалка слоёв — щелчок вставляет пример'),
+            h('div', { class: 'potok-cheat-list' }, ШПАРГАЛКА_СЛОЁВ.map(([подпись, пример]) => h('button', {
+                class: 'btn btn--sm btn--ghost', title: пример, onclick: () => { новый.value = пример; новый.focus(); },
+            }, подпись))));
+
+        // Проверка на потоке: начало выбранного разбора, этап 0 — исходный поток.
+        const разборы = h('select', { 'aria-label': 'Разбор для проверки' }, h('option', { value: '' }, 'загружаем разборы…'));
+        const этап = h('input', { type: 'number', min: 0, value: 0, style: { width: '5em' }, 'aria-label': 'Этап' });
+        const проба = h('div', { class: 'small potok-try' });
+        api.get('/api/potok').then((data) => {
+            clear(разборы);
+            const готовые = (data.items || []).filter((з) => з.состояние === 'готово');
+            if (!готовые.length) разборы.appendChild(h('option', { value: '' }, 'нет готовых разборов'));
+            готовые.forEach((з) => разборы.appendChild(h('option', { value: з.ид }, з.имя)));
+        }).catch(() => {});
+        async function проверить() {
+            if (!разборы.value) { проба.textContent = 'Выберите разбор, на котором проверить.'; return; }
+            clear(проба);
+            проба.appendChild(h('span', { class: 'muted' }, 'Применяю шаги к началу потока…'));
+            try {
+                const d = await api.post('/api/potok/' + encodeURIComponent(разборы.value) + '/try',
+                    { stage: Number(этап.value) || 0, steps: шаги });
+                clear(проба);
+                проба.appendChild(h('div', {}, 'Вход: ' + d.бит_на_входе.toLocaleString('ru-RU') + ' бит' +
+                    (d.весь_поток > d.бит_на_входе ? ' (начало потока из ' + d.весь_поток.toLocaleString('ru-RU') + ')' : '') +
+                    ' → выход: ' + d.бит_на_выходе.toLocaleString('ru-RU') + ' бит, доля единиц ' + d.доля_единиц.toLocaleString('ru-RU')));
+                проба.appendChild(h('ol', { class: 'potok-details' }, d.описание.map((с) => h('li', {}, с))));
+                проба.appendChild(h('div', { class: 'mono small potok-try-hex' }, d.начало.slice(0, 192).replace(/(..)/g, '$1 ')));
+            } catch (error) {
+                clear(проба);
+                проба.appendChild(h('div', { class: 'pk-filter-error' }, errorText(error)));
+            }
+        }
+
+        const окно = openModal({
+            title: исходная && исходная.ид ? (своя ? 'Конфигурация обработки' : 'Копия конфигурации «' + исходная.имя + '»') : 'Новая конфигурация обработки',
+            wide: true,
+            body: h('div', { class: 'potok-konfig-edit' },
+                h('label', { class: 'field' }, h('span', {}, 'Название'), имя),
+                h('label', { class: 'field' }, h('span', {}, 'Описание'), описание),
+                h('label', { class: 'small' }, общая, ' общая — видна и применяется всем в отделе (править может только автор)'),
+                h('div', { class: 'card-title' }, 'Шаги по порядку'),
+                спис.узел,
+                h('div', { class: 'rastr-tools' }, новый, h('button', { class: 'btn btn--sm', onclick: добавить }, 'Добавить шаг')),
+                шпаргалка,
+                h('div', { class: 'card-title' }, 'Проверить на потоке'),
+                h('div', { class: 'row' }, разборы, h('span', { class: 'small muted' }, 'этап'), этап,
+                    h('button', { class: 'btn btn--sm', onclick: проверить }, 'Проверить')),
+                проба, ошибка),
+            footer: [
+                h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Отмена'),
+                h('button', { class: 'btn btn--primary', onclick: async () => {
+                    try {
+                        const запись = await api.post('/api/potok-configs', {
+                            id: своя && исходная ? исходная.ид : undefined, name: имя.value, description: описание.value,
+                            shared: общая.checked, steps: шаги,
+                        });
+                        окно.close();
+                        toast('Конфигурация «' + запись.имя + '» сохранена', 'ok');
+                        if (onSaved) onSaved(запись);
+                    } catch (error) {
+                        ошибка.textContent = errorText(error);
+                    }
+                } }, 'Сохранить'),
+            ],
+            focus: 'input',
+        });
+    }
+
+    /** Применить конфигурацию к этапу разбора: проба на начале потока, затем новый узел дерева. */
+    async function применитьКонфигурацию(jobId, этапы) {
+        let список;
+        try {
+            список = (await api.get('/api/potok-configs')).items || [];
+        } catch (error) {
+            toastError(error);
+            return;
+        }
+        if (!список.length) {
+            toast('Конфигураций пока нет — создайте на странице «Разбор потока» или сохраните шаги узла', 'error');
+            return;
+        }
+        const выбор = h('select', { 'aria-label': 'Конфигурация' }, список.map((к) =>
+            h('option', { value: к.ид }, к.имя + (к.своя ? '' : ' — общая, ' + (к.автор || 'отдел')))));
+        const этап = h('select', { 'aria-label': 'Этап' }, [h('option', { value: 0 }, 'исходный поток')].concat(
+            (этапы || []).filter((э) => э.выгрузка === 'bin').map((э) => h('option', { value: э.номер }, 'после этапа ' + э.номер + ' — ' + э.что))));
+        const сведения = h('div', { class: 'small muted' });
+        const проба = h('div', { class: 'small potok-try' });
+        const показать = () => {
+            const к = список.find((х) => х.ид === выбор.value);
+            clear(сведения);
+            if (!к) return;
+            if (к.описание) сведения.appendChild(h('div', {}, к.описание));
+            сведения.appendChild(h('ol', { class: 'potok-details' }, к.шаги.filter((ш) => ш.вкл !== false).map((ш) => h('li', { class: 'mono' }, описатьШагКонфигурации(ш)))));
+        };
+        выбор.addEventListener('change', показать);
+        показать();
+        const тело = () => ({ stage: Number(этап.value) || 0, config: выбор.value });
+        const окно = openModal({
+            title: 'Применить конфигурацию',
+            wide: true,
+            body: h('div', {}, h('div', { class: 'row' }, выбор, этап), сведения, проба),
+            footer: [
+                h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Отмена'),
+                h('button', { class: 'btn', onclick: async () => {
+                    clear(проба);
+                    проба.appendChild(h('span', { class: 'muted' }, 'Пробую на начале потока…'));
+                    try {
+                        const d = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/try', тело());
+                        clear(проба);
+                        проба.appendChild(h('div', {}, d.бит_на_входе.toLocaleString('ru-RU') + ' → ' + d.бит_на_выходе.toLocaleString('ru-RU') +
+                            ' бит; доля единиц ' + d.доля_единиц.toLocaleString('ru-RU')));
+                        проба.appendChild(h('ol', { class: 'potok-details' }, d.описание.map((с) => h('li', {}, с))));
+                    } catch (error) {
+                        clear(проба);
+                        проба.appendChild(h('div', { class: 'pk-filter-error' }, errorText(error)));
+                    }
+                } }, 'Проверить на начале'),
+                h('button', { class: 'btn', onclick: () => применить(false) }, 'Применить без разбора'),
+                h('button', { class: 'btn btn--primary', onclick: () => применить(true) }, 'Применить и разобрать'),
+            ],
+        });
+        async function применить(разобрать) {
+            try {
+                const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/derive', Object.assign(тело(), { analyze: разобрать }));
+                окно.close();
+                navigate('#/potok/' + encodeURIComponent(data.id));
+            } catch (error) {
+                clear(проба);
+                проба.appendChild(h('div', { class: 'pk-filter-error' }, errorText(error)));
+            }
+        }
+    }
+
+    /** Карточка «Конфигурации обработки» на странице разборов. */
+    function карточкаКонфигураций(выборПриЗагрузке) {
+        const узел = h('div', { class: 'card card-pad potok-konfig' });
+        const файл = h('input', { type: 'file', accept: '.json,application/json', hidden: true });
+        файл.addEventListener('change', async () => {
+            const f = (файл.files || [])[0];
+            if (!f) return;
+            try {
+                const запись = await api.post('/api/potok-configs', { file: JSON.parse(await f.text()) });
+                toast('Загружена конфигурация «' + запись.имя + '»', 'ok');
+                обновить();
+            } catch (error) {
+                toastError(error instanceof SyntaxError ? new Error('файл не JSON') : error);
+            } finally {
+                файл.value = '';
+            }
+        });
+        async function обновить() {
+            clear(узел);
+            узел.appendChild(h('div', { class: 'row potok-konfig-head' },
+                h('div', { class: 'card-title' }, 'Конфигурации обработки'),
+                h('span', { class: 'muted small' }, 'свои цепочки шагов для потоков любого вида: применяются при загрузке или к любому этапу'),
+                h('button', { class: 'btn btn--sm btn--primary', onclick: () => редакторКонфигурации(null, обновить) }, 'Создать'),
+                h('button', { class: 'btn btn--sm', onclick: () => файл.click() }, 'Загрузить из файла'), файл));
+            let список;
+            try {
+                список = (await api.get('/api/potok-configs')).items || [];
+            } catch (error) {
+                узел.appendChild(errorBox(error));
+                return;
+            }
+            if (выборПриЗагрузке) {
+                const было = выборПриЗагрузке.value;
+                clear(выборПриЗагрузке);
+                выборПриЗагрузке.appendChild(h('option', { value: '' }, 'нет — только автоматический разбор'));
+                список.forEach((к) => выборПриЗагрузке.appendChild(h('option', { value: к.ид, selected: к.ид === было }, к.имя)));
+            }
+            if (!список.length) {
+                узел.appendChild(h('div', { class: 'muted small' }, 'Конфигураций пока нет. Создайте здесь или сохраните шаги узла ' +
+                    'дерева обработки кнопкой «Сохранить как конфигурацию».'));
+                return;
+            }
+            узел.appendChild(h('div', { class: 'potok-konfig-list' }, список.map((к) => h('div', { class: 'potok-konfig-item' },
+                h('div', {},
+                    h('b', {}, к.имя), к.общая ? h('span', { class: 'potok-badge' }, 'общая') : null,
+                    h('div', { class: 'muted small' }, 'шагов ' + к.шаги.length + ' · ' + (к.своя ? 'моя' : 'автор: ' + (к.автор || '—')) +
+                        ' · изменена ' + fmtDateTime(к.изменено * 1000)),
+                    к.описание ? h('div', { class: 'small' }, к.описание.length > 200 ? к.описание.slice(0, 200) + '…' : к.описание) : null,
+                    h('div', { class: 'mono small muted potok-konfig-steps' }, к.шаги.filter((ш) => ш.вкл !== false).map(описатьШагКонфигурации).join('  →  '))),
+                h('div', { class: 'row' },
+                    h('button', { class: 'btn btn--sm', onclick: () => редакторКонфигурации(к, обновить) }, к.своя ? 'Изменить' : 'Копия'),
+                    к.своя ? h('button', { class: 'btn btn--sm btn--ghost', onclick: () => редакторКонфигурации(Object.assign({}, к, { ид: null, своя: true, имя: к.имя + ' (копия)' }), обновить) }, 'Копия') : null,
+                    h('a', { class: 'btn btn--sm btn--ghost', href: '/api/potok-configs/' + encodeURIComponent(к.ид) + '/export', download: к.имя + '.json' }, 'Файл'),
+                    к.своя ? h('button', { class: 'btn btn--sm btn--ghost', onclick: async () => {
+                        if (!(await confirmDialog({ title: 'Удалить конфигурацию?', danger: true, confirmText: 'Удалить',
+                            message: '«' + к.имя + '» будет удалена' + (к.общая ? ' и у всего отдела' : '') + '. Разборы, уже сделанные по ней, останутся.' }))) return;
+                        try { await api.del('/api/potok-configs/' + encodeURIComponent(к.ид)); обновить(); } catch (error) { toastError(error); }
+                    } }, 'Удалить') : null)))));
+        }
+        обновить();
+        return узел;
+    }
+
     async function renderPotok(view, jobId) {
         clear(view);
         const page = h('div', { class: 'page potok' });
@@ -8956,6 +9222,7 @@
             h('option', { value: п[0], selected: п[0] === 'обычно' }, п[1])));
         const слои = h('textarea', { rows: 3, placeholder: ПРИМЕРЫ_СЛОЁВ });
         const символ = h('input', { type: 'text', placeholder: 'например, 6 для КАМ-64; можно 4, 6, 8' });
+        const конфигурация = h('select', {}, h('option', { value: '' }, 'нет — только автоматический разбор'));
         const кнопка = h('button', { class: 'btn btn--primary', onclick: () => начать() }, 'Разобрать');
         page.appendChild(h('div', { class: 'page-head' },
             h('div', {}, h('h2', {}, 'Разбор потока'),
@@ -8971,7 +9238,10 @@
                     'переберёт повороты и отражения созвездия, порядок бит и код Грея и возьмёт вариант, ' +
                     'при котором проявляется скремблер или код' },
                 h('span', {}, 'КАМ: бит на символ (если поток — метки демодулятора)'), символ),
+            h('label', { class: 'field', title: 'Шаги конфигурации выполняются над файлом по порядку, затем — автоматический разбор' },
+                h('span', {}, 'Конфигурация обработки (шаги до разбора)'), конфигурация),
             h('div', { class: 'row' }, кнопка)));
+        page.appendChild(карточкаКонфигураций(конфигурация));
         const списокУзел = h('div', { class: 'card card-pad' }, loadingBox('Загружаем разборы…'));
         page.appendChild(списокУзел);
         try {
@@ -9003,6 +9273,7 @@
             form.append('profile', профиль.value);
             form.append('strip', слои.value);
             form.append('bits', символ.value);
+            form.append('config', конфигурация.value);
             кнопка.disabled = true;
             try {
                 const data = await uploadFile('/api/potok', form);
@@ -9101,6 +9372,8 @@
                 h('div', { class: 'page-head-actions' },
                     h('span', { class: 'potok-state is-' + состояниеКласс(data.состояние) }, data.состояние),
                     h('button', { class: 'btn', onclick: () => показатьРастр(0, 'исходный поток') }, 'Растр исходного'),
+                    h('button', { class: 'btn', title: 'Свои шаги обработки к исходному потоку или к потоку после этапа',
+                        onclick: () => применитьКонфигурацию(jobId, data.этапы) }, 'Конфигурация…'),
                     data.состояние === 'готово' ? h('button', {
                         class: 'btn', title: 'Приметы потока там, где разбор встал, подсказки и вопрос помощнику',
                         onclick: () => показатьПодсказки((data.этапы || []).length, true),
@@ -9318,6 +9591,8 @@
                 h('div', { class: 'row' },
                     производный ? h('label', { class: 'small' }, автомат, ' разобрать автоматом') : null,
                     h('button', { class: 'btn btn--sm', onclick: () => пересобрать(false) }, 'Пересобрать рядом'),
+                    h('button', { class: 'btn btn--sm', title: 'Эти шаги — в конфигурацию, чтобы применять к другим потокам',
+                        onclick: () => редакторКонфигурации({ шаги: шаги, описание: 'Из разбора «' + (последние.имя || '') + '»' }) }, 'Сохранить как конфигурацию'),
                     h('button', { class: 'btn btn--sm btn--primary', onclick: () => пересобрать(true) }, 'Пересобрать и заменить')));
         }
 
@@ -10745,7 +11020,11 @@
                     class: 'btn btn--sm', title: 'Каналы управления — столбцы, равные друг другу в кадре и меняющиеся ' +
                         'от кадра к кадру; для каждого — позиция возможности стаффинга и знак',
                     onclick: () => стаффинг(),
-                }, 'Найти каналы управления')),
+                }, 'Найти каналы управления'),
+                h('button', {
+                    class: 'btn btn--sm', title: 'Правила стаффинга задать самому: управление, места и знаки',
+                    onclick: () => { clear(итоги); итоги.appendChild(формаСтаффинга(null)); },
+                }, 'Задать вручную')),
             h('div', { class: 'rastr-tools' }, h('label', { style: { flex: '1' } }, 'Снять слой вручную: ', слой),
                 h('button', { class: 'btn btn--sm', onclick: () => производный(false) }, 'Новый поток'),
                 h('button', { class: 'btn btn--sm btn--primary', onclick: () => производный(true) }, 'Новый поток и разобрать')),
@@ -11179,35 +11458,116 @@
                 return;
             }
             clear(итоги);
-            if (!data.группы.length) {
-                итоги.appendChild(h('div', { class: 'muted' }, 'Каналов управления не найдено: нет групп столбцов, совпадающих в кадре ' +
-                    'и меняющихся между кадрами. Проверьте период (длину кадра или сверхкадра).'));
-                return;
-            }
-            итоги.appendChild(h('div', { class: 'card card-pad' },
-                h('b', {}, 'Каналов управления: ' + data.группы.length + ' (кадров ' + data.кадров + ')'),
-                h('div', { class: 'muted small' }, 'Для разуплотнения выделите столбцы данных притока (или выберите маску в «Над чем») и нажмите «Разуплотнить».'),
-                data.группы.map((г, i) => {
-                    const в = г.возможность[0];
-                    const слойТекст = (данные) => 'стаффинг период ' + с.период + ' сдвиг ' + с.сдвиг + ' данные ' + диапазоны(данные).replace(/–/g, '-') +
-                        ' управление ' + г.столбцы.join(',') + ' возможность ' + в.столбец + ' знак ' + (в.знак === '+' ? '+' : '-');
-                    return h('div', { class: 'rastr-mask' },
-                        h('b', {}, 'Приток ' + (i + 1)),
-                        h('span', { class: 'small' }, 'управление: столбцы ' + г.столбцы.join(', ') + ' · стаффинг в ' + (г.доля_стаффинга * 100).toFixed(1) +
-                            ' % кадров · несогласных ' + (г.несогласных * 100).toFixed(2) + ' %' +
-                            (в ? ' · возможность — столбец ' + в.столбец + ', ' + (в.знак === '+' ? 'положительный' : 'отрицательный') +
-                                ' (мера ' + в.мера + ')' : ' · позиция возможности не определилась')),
-                        h('button', { class: 'btn btn--sm', onclick: () => {
-                            с.выделено = new Set(г.столбцы.concat(в ? [в.столбец] : []));
+            итоги.appendChild(формаСтаффинга(data));
+        }
+
+        /**
+         * Стаффинг по правилам: найденные группы — подсказка, правила аналитик правит сам.
+         * Правило — столбцы управления и места возможности со знаком: «185-187+» или «188+, 189−».
+         */
+        function формаСтаффинга(data) {
+            const правила = [];
+            const данные = h('input', { type: 'text', style: { flex: '1' }, placeholder: 'позиции данных притока: 23-40, 45, 60-99',
+                'aria-label': 'Позиции данных притока' });
+            const список = h('div', { class: 'rastr-stuff-rules' });
+            const проба = h('div', { class: 'small potok-try' });
+            const местаТекст = (места) => места.map((м) => м.столбец + (м.знак === '+' ? '+' : '−')).join(', ');
+            const изВыделения = () => {
+                const маска = текущаяМаска();
+                const служебные = new Set();
+                правила.forEach((п) => {
+                    (п.управление.match(/\d+/g) || []).forEach((ч) => служебные.add(Number(ч)));
+                    (п.места.match(/\d+/g) || []).forEach((ч) => служебные.add(Number(ч)));
+                });
+                const позиции = (маска ? маска.позиции : Array.from(с.выделено)).filter((п) => !служебные.has(п));
+                if (!позиции.length) { toast('Выделите столбцы данных притока или выберите маску в «Над чем»', 'error'); return; }
+                данные.value = диапазоны(позиции).replace(/–/g, '-');
+            };
+            function рисоватьПравила() {
+                clear(список);
+                правила.forEach((п, i) => {
+                    const управление = h('input', { type: 'text', value: п.управление, placeholder: '20, 80, 140', 'aria-label': 'Столбцы управления' });
+                    const места = h('input', { type: 'text', value: п.места, placeholder: '190+ · 185-187+ · 189−', 'aria-label': 'Места возможности со знаком' });
+                    const полярность = h('select', { 'aria-label': 'Что значит «стаффинг»' },
+                        h('option', { value: 1, selected: п.полярность !== 0 }, '1 — стаффинг'), h('option', { value: 0, selected: п.полярность === 0 }, '0 — стаффинг'));
+                    управление.addEventListener('input', () => { п.управление = управление.value; });
+                    места.addEventListener('input', () => { п.места = места.value; });
+                    полярность.addEventListener('change', () => { п.полярность = Number(полярность.value); });
+                    список.appendChild(h('div', { class: 'rastr-stuff-rule' },
+                        h('span', { class: 'small muted' }, 'Правило ' + (i + 1) + ': управление'), управление,
+                        h('span', { class: 'small muted' }, 'места'), места, полярность,
+                        h('button', { class: 'btn btn--sm btn--ghost', title: 'Показать в растре', onclick: () => {
+                            с.выделено = new Set(((п.управление + ' ' + п.места).match(/\d+/g) || []).map(Number));
                             рисовать();
                         } }, 'Показать'),
-                        в ? h('button', { class: 'btn btn--sm btn--primary', onclick: () => {
-                            const маска = текущаяМаска();
-                            const данные = маска ? маска.позиции : Array.from(с.выделено);
-                            if (!данные.length) { toast('Выделите столбцы данных притока или выберите маску', 'error'); return; }
-                            создать({ stage: этап, strip: слойТекст(данные.filter((п) => г.столбцы.indexOf(п) < 0 && п !== в.столбец)), analyze: true });
-                        } }, 'Разуплотнить и разобрать') : null);
-                })));
+                        h('button', { class: 'btn btn--sm btn--ghost', title: 'Убрать правило', onclick: () => { правила.splice(i, 1); рисоватьПравила(); } }, '×')));
+                });
+                if (!правила.length) список.appendChild(h('div', { class: 'muted small' }, 'Правил нет — добавьте из найденных групп или вручную.'));
+            }
+            function слойТекст() {
+                const д = данные.value.trim();
+                if (!д) throw new Error('укажите позиции данных притока (кнопка «Из выделения»)');
+                if (!правила.length) throw new Error('нет ни одного правила стаффинга');
+                return 'стаффинг период ' + с.период + ' сдвиг ' + с.сдвиг + ' данные ' + д.replace(/–/g, '-') + ' ' + правила.map((п) => {
+                    const места = п.места.trim().replace(/–(?=\s*\d)/g, '-');
+                    if (!п.управление.trim() || !места) throw new Error('у правила нужны столбцы управления и места возможности');
+                    return 'управление ' + п.управление.trim() + ' возможность ' + места + (п.полярность === 0 ? ' полярность 0' : '');
+                }).join(' ');
+            }
+            async function проверить() {
+                clear(проба);
+                let слой;
+                try { слой = слойТекст(); } catch (error) { проба.appendChild(h('div', { class: 'pk-filter-error' }, error.message)); return; }
+                проба.appendChild(h('span', { class: 'muted' }, 'Разуплотняю начало потока…'));
+                try {
+                    const d = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/try', { stage: этап, steps: [{ вид: 'слой', слой }] });
+                    clear(проба);
+                    проба.appendChild(h('div', {}, d.бит_на_входе.toLocaleString('ru-RU') + ' → ' + d.бит_на_выходе.toLocaleString('ru-RU') + ' бит притока'));
+                    проба.appendChild(h('ul', { class: 'potok-details' }, d.описание.map((с_) => h('li', {}, с_))));
+                    проба.appendChild(h('div', { class: 'mono small muted' }, 'слой: ' + слой));
+                } catch (error) {
+                    clear(проба);
+                    проба.appendChild(h('div', { class: 'pk-filter-error' }, errorText(error)));
+                }
+            }
+            const группы = (data && data.группы) || [];
+            рисоватьПравила();
+            return h('div', { class: 'card card-pad' },
+                h('b', {}, группы.length ? 'Каналов управления: ' + группы.length + ' (кадров ' + data.кадров + ')'
+                    : 'Каналов управления не найдено'),
+                группы.length ? null : h('div', { class: 'muted small' }, 'Нет групп столбцов, совпадающих в кадре и меняющихся между кадрами. ' +
+                    'Проверьте период (длину кадра или сверхкадра) или задайте правила вручную ниже.'),
+                группы.map((г, i) => h('div', { class: 'rastr-mask' },
+                    h('b', {}, 'Группа ' + (i + 1)),
+                    h('span', { class: 'small' }, 'управление: столбцы ' + г.столбцы.join(', ') + ' · стаффинг в ' + (г.доля_стаффинга * 100).toFixed(1) +
+                        ' % кадров · несогласных ' + (г.несогласных * 100).toFixed(2) + ' %' +
+                        ((г.места || []).length ? ' · места возможности: ' + местаТекст(г.места) : ' · места возможности не определились')),
+                    h('button', { class: 'btn btn--sm', onclick: () => {
+                        с.выделено = new Set(г.столбцы.concat((г.места || []).map((м) => м.столбец)));
+                        рисовать();
+                    } }, 'Показать'),
+                    h('button', { class: 'btn btn--sm', title: 'Добавить группу правилом ниже — места и знаки можно поправить', onclick: () => {
+                        правила.push({ управление: г.столбцы.join(', '), места: местаТекст(г.места || []), полярность: 1 });
+                        рисоватьПравила();
+                    } }, '+ в правила'))),
+                h('div', { class: 'card-title' }, 'Разуплотнение притока'),
+                h('div', { class: 'muted small' }, 'Позиции данных — всегда в потоке; место со знаком «+» — в потоке, когда стаффинга нет; ' +
+                    '«−» — когда есть. Одно правило может распоряжаться несколькими местами; правил — сколько угодно (например, «+/0/−» — два правила).'),
+                h('div', { class: 'rastr-tools' }, h('span', { class: 'small' }, 'данные'), данные,
+                    h('button', { class: 'btn btn--sm', onclick: изВыделения }, 'Из выделения')),
+                список,
+                h('div', { class: 'row' },
+                    h('button', { class: 'btn btn--sm', onclick: () => { правила.push({ управление: '', места: '', полярность: 1 }); рисоватьПравила(); } }, 'Добавить правило'),
+                    h('button', { class: 'btn btn--sm', onclick: проверить }, 'Проверить'),
+                    h('button', { class: 'btn btn--sm', onclick: () => {
+                        try {
+                            редакторКонфигурации({ шаги: [{ вид: 'слой', слой: слойТекст(), вкл: true }], описание: 'Стаффинг: кадр ' + с.период + ' бит' });
+                        } catch (error) { toast(error.message, 'error'); }
+                    } }, 'В конфигурацию'),
+                    h('button', { class: 'btn btn--sm btn--primary', onclick: () => {
+                        try { создать({ stage: этап, strip: слойТекст(), analyze: true }); } catch (error) { toast(error.message, 'error'); }
+                    } }, 'Разуплотнить и разобрать')),
+                проба);
         }
 
         async function скремблерКадра() {

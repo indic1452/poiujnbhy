@@ -8732,3 +8732,28 @@ body.reading .msg .body {
     font-size: var(--fs-sm); color: var(--text); cursor: pointer; font-family: var(--font-mono); }
 .pk-menu-item:hover, .pk-menu-item:focus-visible { background: var(--accent-soft); outline: none; }
 .pk-menu-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+/* Конфигурации обработки потоков. */
+.potok-konfig-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.potok-konfig-head .card-title { margin: 0; }
+.potok-konfig-head .muted { flex: 1 1 260px; }
+.potok-konfig-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.potok-konfig-item { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between;
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+.potok-konfig-item > div:first-child { min-width: 0; flex: 1; }
+.potok-konfig-item .row { flex-wrap: nowrap; display: flex; gap: 4px; }
+.potok-konfig-steps { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+.potok-badge { display: inline-block; margin-left: 8px; padding: 0 6px; border-radius: 999px; font-size: var(--fs-xs, 11px);
+    background: var(--accent-soft); color: var(--accent); vertical-align: 1px; }
+.potok-konfig-edit .field { display: block; margin-bottom: 8px; }
+.potok-konfig-edit .field input, .potok-konfig-edit .field textarea { width: 100%; }
+.potok-cheat { margin: 6px 0 10px; }
+.potok-cheat-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.potok-try { margin-top: 6px; }
+.potok-try-hex { word-break: break-all; color: var(--muted); }
+@media (max-width: 640px) {
+    .potok-konfig-item { flex-direction: column; }
+}
+.rastr-stuff-rules { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.rastr-stuff-rule { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rastr-stuff-rule input { width: 12em; }

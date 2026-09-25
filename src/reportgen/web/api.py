@@ -2529,7 +2529,7 @@ def _слои(значение: str) -> List[str]:
 
 @router.post("/potok")
 def potok_start(request: Request, file: UploadFile = File(...), profile: str = Form("обычно"),
-                strip: str = Form(""), bits: str = Form("")) -> Dict[str, Any]:
+                strip: str = Form(""), bits: str = Form(""), config: str = Form("")) -> Dict[str, Any]:
     """Принять поток и поставить разбор в очередь. Этапы — по /api/potok/{ид}."""
     user = require_user(request)
     settings = _settings(request)
@@ -2545,8 +2545,20 @@ def potok_start(request: Request, file: UploadFile = File(...), profile: str = F
     символ = [int(ч) for ч in re.findall(r"\d+", bits or "")][:4]
     if any(k < 2 or k > 12 or k % 2 for k in символ):
         raise ServiceError("бит на символ КАМ — чётное число от 2 до 12", 400)
-    ид = _potok(request).создать(владелец=user.id, имя=name, данные=данные, профиль=profile,
-                                 снять=_слои(strip), символ=символ)
+    if config:
+        # Конфигурация — шаги по порядку над битами файла (у .Sig — тела пакетов подряд),
+        # затем разбор автоматом того, что получилось.
+        from ..potok import rastr  # noqa: PLC0415
+        from ..potok.chtenie import прочитать as прочитать_поток  # noqa: PLC0415
+        конфигурация = _конфигурация(request, user, config)
+        поток = прочитать_поток(данные=данные, имя=name)
+        описание = [rastr.описать_шаг(ш) for ш in конфигурация["шаги"] if ш["вкл"]]
+        ид = _potok(request).создать(владелец=user.id, имя=f"{name} → «{конфигурация['имя']}»"[:200],
+                                     данные=поток.данные, профиль=profile, шаги=конфигурация["шаги"],
+                                     разбирать=True, происхождение=описание)
+    else:
+        ид = _potok(request).создать(владелец=user.id, имя=name, данные=данные, профиль=profile,
+                                     снять=_слои(strip), символ=символ)
     _repos(request).audit.log("potok.start", user=user, object_type="potok", object_id=ид,
                               details={"name": name, "bytes": len(данные), "profile": profile})
     return {"id": ид}
@@ -2660,6 +2672,10 @@ def potok_derive(request: Request, job_id: str) -> Dict[str, Any]:
     if профиль not in ПРОФИЛИ_РАЗБОРА:
         raise ServiceError("неизвестный профиль разбора", 400)
     шаги = list(тело.get("steps") or [])
+    конфигурация = None
+    if тело.get("config"):
+        конфигурация = _конфигурация(request, user, str(тело["config"]))
+        шаги = list(конфигурация["шаги"])
     if not шаги:
         if тело.get("mask"):
             шаги.append({"вид": "маска", "маска": тело["mask"]})
@@ -2669,12 +2685,117 @@ def potok_derive(request: Request, job_id: str) -> Dict[str, Any]:
     except (ValueError, KeyError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     описание = [rastr.описать_шаг(ш) for ш in шаги if ш["вкл"]]
-    имя = f"{состояние['имя']} → " + ("; ".join(описание) or f"этап {этап}")
+    имя = f"{состояние['имя']} → " + (f"«{конфигурация['имя']}»" if конфигурация
+                                      else "; ".join(описание) or f"этап {этап}")
     ид = _potok(request).создать(владелец=user.id, имя=имя[:200],
                                  данные=np.packbits(биты).tobytes(),
                                  профиль=профиль, от=f"{job_id}#{этап}", шаги=шаги,
                                  разбирать=bool(тело.get("analyze")), происхождение=описание)
     return {"id": ид}
+
+
+# -- конфигурации обработки: цепочки шагов, составленные аналитиками ------------------------
+
+def _konfig(request: Request):
+    хранилище = getattr(request.app.state, "konfig", None)
+    if хранилище is None:
+        from ..potok.konfig import Конфигурации  # noqa: PLC0415
+        хранилище = Конфигурации(Path(_settings(request).data_dir) / "konfig")
+        request.app.state.konfig = хранилище
+    return хранилище
+
+
+def _конфигурация(request: Request, user, ид: str) -> Dict[str, Any]:
+    try:
+        return _konfig(request).прочитать(ид, user.id)
+    except KeyError:
+        raise ServiceError("конфигурация не найдена", 404) from None
+
+
+@router.get("/potok-configs")
+def potok_configs(request: Request) -> Dict[str, Any]:
+    """Свои конфигурации и общие конфигурации отдела."""
+    user = require_user(request)
+    return {"items": _konfig(request).список(user.id)}
+
+
+@router.post("/potok-configs")
+def potok_config_save(request: Request) -> Dict[str, Any]:
+    """Создать (без id) или исправить свою конфигурацию; из файла — поле ``file``."""
+    from ..potok.konfig import НетДоступа  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    хранилище = _konfig(request)
+    try:
+        if тело.get("file") is not None:
+            запись = хранилище.загрузить(user.id, тело["file"], автор=user.full_name or user.login)
+        else:
+            запись = хранилище.сохранить(
+                user.id, имя=тело.get("name", ""), описание=тело.get("description", ""),
+                шаги=тело.get("steps") or [], общая=bool(тело.get("shared")),
+                автор=user.full_name or user.login, ид=тело.get("id") or None)
+    except KeyError:
+        raise ServiceError("конфигурация не найдена", 404) from None
+    except НетДоступа as ошибка:
+        raise ServiceError(str(ошибка), 403) from None
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _repos(request).audit.log("potok.config", user=user, object_type="potok-config", object_id=запись["ид"],
+                              details={"name": запись["имя"], "steps": len(запись["шаги"])})
+    return запись
+
+
+@router.delete("/potok-configs/{config_id}")
+def potok_config_delete(request: Request, config_id: str) -> Dict[str, Any]:
+    from ..potok.konfig import НетДоступа  # noqa: PLC0415
+    user = require_user(request)
+    try:
+        _konfig(request).удалить(config_id, user.id)
+    except KeyError:
+        raise ServiceError("конфигурация не найдена", 404) from None
+    except НетДоступа as ошибка:
+        raise ServiceError(str(ошибка), 403) from None
+    return {"deleted": config_id}
+
+
+@router.get("/potok-configs/{config_id}/export")
+def potok_config_export(request: Request, config_id: str) -> Response:
+    """Файл конфигурации — перенести на другую машину отдела или сохранить у себя."""
+    from ..potok.konfig import Конфигурации  # noqa: PLC0415
+    user = require_user(request)
+    к = _конфигурация(request, user, config_id)
+    имя = re.sub(r"[^\w\-. ]", "_", к["имя"])[:60] or "конфигурация"
+    return Response(json.dumps(Конфигурации.выгрузка(к), ensure_ascii=False, indent=1),
+                    media_type="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="config-{config_id}.json"; '
+                             "filename*=UTF-8''" + urllib.parse.quote(имя + ".json")})
+
+
+#: Проверка шагов — на начале потока: быстро и видно, туда ли идёт обработка.
+ПРОБА_БИТ = 4 << 20
+
+
+@router.post("/potok/{job_id}/try")
+def potok_try(request: Request, job_id: str) -> Dict[str, Any]:
+    """Пробно применить шаги (или конфигурацию) к началу потока этапа: что вышло, без задания."""
+    import numpy as np  # noqa: PLC0415
+    from ..potok import rastr  # noqa: PLC0415
+    from ..potok.bity import в_байты  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
+    шаги = (_конфигурация(request, user, str(тело["config"]))["шаги"] if тело.get("config")
+            else list(тело.get("steps") or []))
+    проба = биты[:ПРОБА_БИТ]
+    try:
+        шаги = rastr.проверить_шаги(шаги)
+        итог, описание = rastr.применить(проба, шаги)
+    except (ValueError, KeyError, TypeError) as ошибка:
+        raise ServiceError(f"шаги не выполнились: {ошибка}", 400) from None
+    доля = float(np.mean(итог)) if len(итог) else 0.0
+    return {"бит_на_входе": int(len(проба)), "весь_поток": int(len(биты)), "бит_на_выходе": int(len(итог)),
+            "описание": описание, "доля_единиц": round(доля, 4),
+            "начало": в_байты(итог[:4096]).hex()}
 
 
 @router.get("/potok/{job_id}/tree")

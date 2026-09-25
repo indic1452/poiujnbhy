@@ -128,6 +128,7 @@ class ВКопиюПопадаетВсё(unittest.TestCase):
     def test_матрицы_ldpc_в_копию_а_разборы_нет(self):
         места = {место["имя"]: место["в_копию"] for место in Settings.load().storage()}
         self.assertTrue(места["ldpc"])
+        self.assertTrue(места["konfig"])                    # конфигурации обработки — труд аналитиков
         self.assertFalse(места["potok"])
         self.assertFalse(места["pakety"])
 
