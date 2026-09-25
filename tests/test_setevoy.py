@@ -160,6 +160,23 @@ class ПрикладнойTests(unittest.TestCase):
         плохой = struct.pack(">HHHHHH", 1, 0x0100, 1, 0, 0, 0) + b"\xc0\x0c" + b"\0\1\0\1"
         п = разобрать_пакет(с.eth(с.ip(с.udp(плохой, 5000, 53), 17)))
         self.assertNotEqual("DNS", п.протокол)
+        # Петля через метку: имя «a», затем указатель на само имя — тоже отвергается.
+        петля = struct.pack(">HHHHHH", 1, 0x0100, 1, 0, 0, 0) + b"\x01a\xc0\x0c" + b"\0\1\0\1"
+        self.assertNotEqual("DNS", разобрать_пакет(с.eth(с.ip(с.udp(петля, 5000, 53), 17))).протокол)
+        # Петля из двух указателей внутри прежней записи: 17 → 13 → 15 → 13 …
+        # Каждый указатель по отдельности ведёт назад от второго имени — ловит
+        # только граница, убывающая с каждым переходом. Разбор — с пределом времени.
+        import threading
+        двойная = struct.pack(">HHHHHH", 1, 0x0100, 2, 0, 0, 0) + b"\x00\xc0\x0f\xc0\x0d" + b"\xc0\x0d" + b"\0\1\0\1"
+        итог = []
+        нить = threading.Thread(target=lambda: итог.append(
+            разобрать_пакет(с.eth(с.ip(с.udp(двойная, 5000, 53), 17))).протокол), daemon=True)
+        нить.start()
+        нить.join(10)
+        self.assertEqual(["UDP"], итог, "петля указателей DNS не остановлена")
+        # Указатель вперёд — не на прежнее вхождение (RFC 1035, 4.1.4).
+        вперёд = struct.pack(">HHHHHH", 1, 0x0100, 1, 0, 0, 0) + b"\xc0\x12" + b"\0\1\0\1" + b"\x01b\x00"
+        self.assertNotEqual("DNS", разобрать_пакет(с.eth(с.ip(с.udp(вперёд, 5000, 53), 17))).протокол)
 
     def test_dhcp(self):
         тело = struct.pack(">BBBBIHH4s4s4s4s", 1, 1, 6, 0, 0x3903F326, 0, 0x8000, bytes(4), bytes(4),
@@ -170,6 +187,10 @@ class ПрикладнойTests(unittest.TestCase):
         self.assertEqual("DHCP", п.протокол)
         self.assertEqual("DHCP DISCOVER, xid 0x3903f326, клиент 00:11:22:33:44:ff", п.инфо)
         self.assertEqual(["test"], поля(п)["dhcp.option.12"])
+        # Без «магического числа» 63 82 53 63 опции DHCP не читаются.
+        без = тело.replace(b"\x63\x82\x53\x63", bytes(4))
+        п = разобрать_пакет(с.eth(с.ip(с.udp(без, 68, 67), 17)))
+        self.assertNotIn("DHCP", п.стек)
 
     def test_ntp(self):
         тело = bytes([0x23, 0, 6, 0xEC]) + bytes(8) + b"\0\0\0\0" + bytes(24) + struct.pack(">II", 3913056000, 0)
@@ -241,6 +262,9 @@ class ПрикладнойTests(unittest.TestCase):
         rtp = struct.pack(">BBHII", 0x80, 0, 17, 160, 0xABCD) + b"\xd5" * 160
         self.assertEqual("RTP тип 0, SSRC 0x0000abcd, номер 17",
                          разобрать_пакет(с.eth(с.ip(с.udp(rtp, 16384, 16386), 17))).инфо)
+        # Бит выравнивания P — признаки не строгие, RTP не объявляем.
+        с_p = bytes([0xA0]) + rtp[1:]
+        self.assertNotIn("RTP", разобрать_пакет(с.eth(с.ip(с.udp(с_p, 16384, 16386), 17))).стек)
 
     def test_оборванный_пакет_не_роняет(self):
         полный = с.eth(с.ip(с.tcp(b"GET / HTTP/1.1\r\n\r\n", 5, 80), 6))
@@ -248,6 +272,9 @@ class ПрикладнойTests(unittest.TestCase):
             with self.subTest(длина=длина):
                 п = разобрать_пакет(полный[:длина])
                 self.assertTrue(п.ошибки or п.уровни)
+        # Стек меток MPLS без дна, оборванный посреди метки.
+        mpls = разобрать_пакет(с.eth(struct.pack(">I", (16 << 12) | 64) + b"\x00\x01", тип=0x8847))
+        self.assertIn("пакет оборван: заголовок длиннее записанных байт", mpls.ошибки)
 
 
 if __name__ == "__main__":
@@ -270,12 +297,14 @@ class ФильтрTests(unittest.TestCase):
 
     def test_выражения(self):
         for текст, ждём in (("", [1, 2, 3, 4]), ("dns", [1]), ("tcp or arp", [2, 3]), ("ip", [1, 2, 4]),
-                            ("ip.addr == 10.1.1.0/24", [1, 2, 4]), ("ip.src == 10.1.1.1", [1]),
+                            ("ip.addr == 10.1.1.0/24", [1, 2, 4]), ("ip.addr == 192.168.0.0/16", [4]),
+                            ("ip.src == 10.1.1.1", [1]),
                             ("not ip.addr == 8.8.8.8 and udp", [4]), ("port in {53 80}", [1, 2]),
                             ("dns.qry.name contains \"EXAMPLE\"", [1]), ("http.request.method == GET", [2]),
                             ("frame.len > 500", [4]), ("(udp && !dns) || arp", [3, 4]),
                             ("http.host matches \"^x\\\\.\"", [2]), ("ip.dst != 10.1.1.1", [1, 2]),
-                            ("tcp.dstport >= 80 and tcp.dstport <= 80", [2])):
+                            ("tcp.dstport >= 80 and tcp.dstport <= 80", [2]),
+                            ("данные", [4]), ("data", [4]), ("ошибки", [1, 2, 4]), ("not данные and udp", [1])):
             with self.subTest(текст=текст):
                 self.assertEqual(ждём, self.отобрать(текст))
 
@@ -486,6 +515,20 @@ class МатрицаTests(unittest.TestCase):
         профиль = statistika.профиль_столбцов(ряды, 0, 8)
         self.assertEqual(["a5", "5a", "00", None], [к["постоянное"] for к in профиль[:4]])  # старший байт счётчика — 00
         self.assertEqual(0, statistika.столбец(ряды, 500)["есть"])
+
+    def test_столбец_без_ложных_выводов(self):
+        from reportgen.setevoy import statistika
+        # Счётчик 8 бит переходит через 255 → 0: всё равно «+1 у 100 %».
+        ряды = [bytes([i % 256, 0x10]) + bytes(20) for i in range(600)]
+        self.assertEqual(["счётчик: +1 у 100 % соседних пакетов"], statistika.столбец(ряды, 0)["вывод"])
+        self.assertEqual(1.0, statistika.столбец(ряды, 0)["счётчик"])
+        # Все пакеты одной длины: постоянный байт 0x10 = длина − 12 — это не поле длины.
+        self.assertEqual(["постоянное поле: 0x10"], statistika.столбец(ряды, 1)["вывод"])
+        # 99 % одно значение и редкие другие — постоянное поле, а не «поле типа».
+        ряды = [bytes([7 if i % 100 else i // 100]) + bytes(3) for i in range(1000)]
+        вывод = statistika.столбец(ряды, 0)["вывод"]
+        self.assertTrue(вывод and вывод[0].startswith("постоянное поле"), вывод)
+        self.assertFalse(any("типа" in в for в in вывод), вывод)
 
     def test_через_сервер(self):
         from test_web import WebTestCase

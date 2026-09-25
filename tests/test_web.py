@@ -5988,7 +5988,10 @@ class InterfaceCopyTests(unittest.TestCase):
         self.assertIn("'По штату'", self.js)
         # Списка названий нет: подсказывать нечего, отдел один.
         self.assertNotIn("list: 'departments'", self.js)
-        self.assertNotIn("datalist", self.js)
+        # Подсказок-списков для отдела нет; единственный datalist — история
+        # фильтров на странице «Пакеты», к отделу отношения не имеет.
+        self.assertEqual(["pk-filter-history"], re.findall(r"h\('datalist', \{ id: '([^']+)'", self.js))
+        self.assertEqual(1, self.js.count("'datalist'"))
         self.assertNotIn("data.departments", self.js)
 
         # В кабинете отдел берётся из названия системы, а не из записи.

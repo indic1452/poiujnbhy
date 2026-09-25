@@ -9579,13 +9579,16 @@
         }
         const с = { фильтр: '', выбран: null, вкладка: 'пакеты', смещение: 0, всего: 0, отобрано: 0,
             вид: 'HEX', порядок: 'старший', база: 'frame', начало: 0, столбцов: 64, ширина: 1 };
-        const полеФильтра = h('input', { type: 'text', class: 'pk-filter', placeholder: ПРИМЕРЫ_ФИЛЬТРА, spellcheck: false });
+        const полеФильтра = h('input', { type: 'text', class: 'pk-filter', placeholder: ПРИМЕРЫ_ФИЛЬТРА, spellcheck: false,
+            list: 'pk-filter-history', 'aria-label': 'Фильтр пакетов (клавиша /)' });
+        const история = h('datalist', { id: 'pk-filter-history' });
+        const ошибкаФильтра = h('div', { class: 'pk-filter-error small', role: 'status', 'aria-live': 'polite' });
         const счётчик = h('span', { class: 'muted small' });
         const вкладкиУзел = h('div', { class: 'tabs' });
         const тело = h('div', { class: 'pk-body' });
-        const ВКЛАДКИ = [['пакеты', 'Пакеты'], ['протоколы', 'Протоколы'], ['диалоги', 'Диалоги'], ['узлы', 'Узлы'],
+        const ВКЛАДКИ = [['обзор', 'Обзор'], ['пакеты', 'Пакеты'], ['протоколы', 'Протоколы'], ['диалоги', 'Диалоги'], ['узлы', 'Узлы'],
             ['матрица', 'Матрица байт'], ['время', 'Время'], ['dns', 'DNS'], ['http', 'HTTP'], ['tls', 'TLS'],
-            ['ошибки', 'Ошибки'], ['неизвестные', 'Неизвестные форматы']];
+            ['файлы', 'Файлы в потоках'], ['ошибки', 'Ошибки'], ['неизвестные', 'Неизвестные форматы']];
         page.appendChild(h('div', { class: 'page-head' },
             h('div', {}, h('h2', {}, состояние.имя),
                 h('div', { class: 'muted' }, состояние.формат + ' · пакетов ' + состояние.пакетов + ' · ' + fmtBytes(состояние.байт) +
@@ -9595,19 +9598,78 @@
                 h('button', { class: 'btn', onclick: () => выгрузить('pcap') }, 'Отбор в pcap'),
                 h('button', { class: 'btn', onclick: () => выгрузить('csv') }, 'Таблицей (CSV)'),
                 h('button', { class: 'btn', onclick: () => спросить(0) }, 'Спросить помощника'),
+                h('button', { class: 'btn', title: 'Службы на нестандартных портах: какой разборщик брать', onclick: () => разбиратьКак() },
+                    'Разбирать как…' + (Object.keys(состояние.как || {}).length ? ' (' + Object.keys(состояние.как).length + ')' : '')),
                 h('a', { class: 'btn', href: '#/pakety' }, 'Все захваты'))));
         page.appendChild(h('div', { class: 'card card-pad pk-filterbar' },
             h('div', { class: 'row' },
                 полеФильтра,
                 h('button', { class: 'btn btn--primary', onclick: () => применить() }, 'Отобрать'),
                 h('button', { class: 'btn btn--ghost', onclick: () => { полеФильтра.value = ''; применить(); } }, 'Сбросить')),
+            история, ошибкаФильтра,
             h('div', { class: 'pk-chips' },
                 ['tcp', 'udp', 'dns', 'http', 'tls', 'arp', 'icmp', 'expert'].map((ф) =>
                     h('button', { class: 'btn btn--sm btn--ghost', onclick: () => { полеФильтра.value = ф; применить(); } }, ф)),
                 счётчик)));
         page.appendChild(вкладкиУзел);
         page.appendChild(тело);
-        полеФильтра.addEventListener('keydown', (event) => { if (event.key === 'Enter') применить(); });
+        полеФильтра.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') применить();
+            if (event.key === 'Escape') { полеФильтра.value = с.фильтр; проверитьФильтр(); полеФильтра.blur(); }
+        });
+
+        // История фильтров — удобство этого браузера; без хранилища просто пуста.
+        const КЛЮЧ_ИСТОРИИ = 'pk-filters';
+        function прочитатьИсторию() {
+            try { return JSON.parse(localStorage.getItem(КЛЮЧ_ИСТОРИИ) || '[]').filter((х) => typeof х === 'string'); } catch (e) { return []; }
+        }
+        function запомнитьФильтр(текст) {
+            if (!текст) return;
+            const список = [текст].concat(прочитатьИсторию().filter((х) => х !== текст)).slice(0, 20);
+            try { localStorage.setItem(КЛЮЧ_ИСТОРИИ, JSON.stringify(список)); } catch (e) { /* хранилище недоступно */ }
+            рисоватьИсторию();
+        }
+        function рисоватьИсторию() {
+            clear(история);
+            прочитатьИсторию().forEach((х) => история.appendChild(h('option', { value: х })));
+        }
+        рисоватьИсторию();
+
+        // Проверка выражения по мере набора: ошибка видна до «Отобрать».
+        let таймерПроверки = null;
+        let номерПроверки = 0;
+        function проверитьФильтр() {
+            clearTimeout(таймерПроверки);
+            const текст = полеФильтра.value.trim();
+            if (!текст) {
+                полеФильтра.removeAttribute('aria-invalid');
+                ошибкаФильтра.textContent = '';
+                return;
+            }
+            таймерПроверки = setTimeout(async () => {
+                const мой = ++номерПроверки;
+                try {
+                    const ответ = await api.get('/api/pakety-filter?text=' + encodeURIComponent(текст));
+                    if (мой !== номерПроверки) return;
+                    if (ответ.ok) полеФильтра.removeAttribute('aria-invalid'); else полеФильтра.setAttribute('aria-invalid', 'true');
+                    ошибкаФильтра.textContent = ответ.ok ? '' : 'Фильтр: ' + ответ.error;
+                } catch (e) { /* сеть: проверит «Отобрать» */ }
+            }, 250);
+        }
+        полеФильтра.addEventListener('input', проверитьФильтр);
+
+        // «/» — к фильтру (как в поиске); обработчик снимается, когда страницы уже нет.
+        function клавиши(event) {
+            if (!page.isConnected) { document.removeEventListener('keydown', клавиши); return; }
+            const цель = event.target;
+            const пишут = цель && (цель.tagName === 'INPUT' || цель.tagName === 'TEXTAREA' || цель.tagName === 'SELECT' || цель.isContentEditable);
+            if (event.key === '/' && !пишут && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                event.preventDefault();
+                полеФильтра.focus();
+                полеФильтра.select();
+            }
+        }
+        document.addEventListener('keydown', клавиши);
 
         function рисоватьВкладки() {
             clear(вкладкиУзел);
@@ -9618,6 +9680,8 @@
 
         function применить() {
             с.фильтр = полеФильтра.value.trim();
+            запомнитьФильтр(с.фильтр);
+            проверитьФильтр();
             показать();
         }
 
@@ -9632,15 +9696,16 @@
             clear(тело);
             if (с.вкладка === 'пакеты') return списокПакетов();
             if (с.вкладка === 'матрица') return матрица();
+            if (с.вкладка === 'файлы') return файлыВПотоках();
             тело.appendChild(loadingBox('Считаем…'));
             const вид = { протоколы: 'hierarchy', диалоги: 'conversations', узлы: 'endpoints', время: 'time', dns: 'dns',
-                http: 'http', tls: 'tls', ошибки: 'errors', неизвестные: 'unknown' }[с.вкладка];
+                http: 'http', tls: 'tls', ошибки: 'errors', неизвестные: 'unknown', обзор: 'overview' }[с.вкладка];
             try {
                 if (вид === 'conversations') return диалоги('ip');
                 const data = await api.get(путь + '/stats?kind=' + вид + '&filter=' + encodeURIComponent(с.фильтр));
                 clear(тело);
                 ({ hierarchy: иерархия, endpoints: узлы, time: время, dns: таблицаDns, http: таблицаHttp, tls: таблицаTls,
-                    errors: ошибки, unknown: неизвестные })[вид](data);
+                    errors: ошибки, unknown: неизвестные, overview: обзор })[вид](data);
             } catch (error) {
                 clear(тело);
                 тело.appendChild(errorBox(error));
@@ -9701,9 +9766,11 @@
                 }
             }
             прокрутка.addEventListener('keydown', (event) => {
-                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                const шаги = { ArrowDown: 1, ArrowUp: -1, PageDown: 20, PageUp: -20 };
+                if (!(event.key in шаги) && event.key !== 'Home' && event.key !== 'End') return;
                 const i = строки.findIndex((с_) => Number(с_.dataset.n) === с.выбран);
-                const следующая = строки[Math.max(0, Math.min(строки.length - 1, i + (event.key === 'ArrowDown' ? 1 : -1)))];
+                const куда = event.key === 'Home' ? 0 : event.key === 'End' ? строки.length - 1 : i + шаги[event.key];
+                const следующая = строки[Math.max(0, Math.min(строки.length - 1, куда))];
                 if (следующая) { следующая.click(); следующая.scrollIntoView({ block: 'nearest' }); }
                 event.preventDefault();
             });
@@ -9747,6 +9814,10 @@
                     h('b', {}, '№' + п.номер + ': ' + п.инфо),
                     h('div', { class: 'row' },
                         транспорт ? h('button', { class: 'btn btn--sm', onclick: () => поток(п.номер) }, 'Следовать за потоком') : null,
+                        транспорт && п.порт_к != null && !п.стек.includes('SCTP') ? h('button', {
+                            class: 'btn btn--sm',
+                            onclick: () => разбиратьКак(п.стек.includes('TCP') ? 'tcp' : 'udp', Math.min(п.порт_от, п.порт_к)),
+                        }, 'Разбирать порт ' + Math.min(п.порт_от, п.порт_к) + ' как…') : null,
                         h('button', { class: 'btn btn--sm', onclick: () => спросить(п.номер) }, 'Спросить помощника о пакете'))),
                 (п.ошибки || []).length ? h('div', { class: 'pk-errors' }, п.ошибки.map((о) => h('div', {}, '⚠ ' + о))) : null,
                 h('div', { class: 'row pk-field-actions' }, h('span', { class: 'muted small' }, 'Байты:'),
@@ -9898,8 +9969,17 @@
 
         let меню = null;
         function закрытьМеню() { if (меню) { меню.remove(); меню = null; } }
-        document.addEventListener('click', закрытьМеню);
-        document.addEventListener('keydown', (event) => { if (event.key === 'Escape') закрытьМеню(); });
+        // Обработчики документа снимаются, когда страницы захвата уже нет.
+        function щелчокМимо() {
+            if (!page.isConnected) { document.removeEventListener('click', щелчокМимо); return; }
+            закрытьМеню();
+        }
+        function escМеню(event) {
+            if (!page.isConnected) { document.removeEventListener('keydown', escМеню); return; }
+            if (event.key === 'Escape') закрытьМеню();
+        }
+        document.addEventListener('click', щелчокМимо);
+        document.addEventListener('keydown', escМеню);
 
         function показатьМеню(event, пункты) {
             event.preventDefault();
@@ -10072,6 +10152,27 @@
             await загрузить();
         }
 
+        async function файлыВПотоках() {
+            тело.appendChild(loadingBox('Собираю потоки и ищу файлы…'));
+            let data;
+            try {
+                data = await api.get(путь + '/files?filter=' + encodeURIComponent(с.фильтр));
+            } catch (error) {
+                clear(тело);
+                тело.appendChild(errorBox(error));
+                return;
+            }
+            clear(тело);
+            if (!data.items.length) {
+                тело.appendChild(emptyBox('Файлов в потоках не найдено', 'Потоки TCP/UDP собраны; ни одна сигнатура со сверкой структуры не сошлась.'));
+                return;
+            }
+            тело.appendChild(таблица(['Что', 'Поток', 'Смещение', 'Длина', 'Первый пакет', ''],
+                data.items.map((ф) => [ф.что + ' (.' + ф.расширение + ')', ф.поток, ф.смещение, ф.длина ? fmtBytes(ф.длина) : 'неизвестна',
+                    ф.пакет, h('a', { class: 'btn btn--sm', download: 'из-потока-' + ф.смещение + '.' + ф.расширение, href: путь + '/file?flow=' + encodeURIComponent(ф.поток) +
+                        '&offset=' + ф.смещение + '&length=' + ф.длина + '&ext=' + ф.расширение }, 'Скачать')])));
+        }
+
         // -- поток --
 
         async function поток(номер) {
@@ -10106,6 +10207,75 @@
             }
         }
 
+        // -- «разбирать как»: разборщик для порта задаёт аналитик; захват разбирается заново --
+
+        async function разбиратьКак(транспорт, порт) {
+            let протоколы;
+            try {
+                протоколы = await api.get('/api/pakety-protocols');
+            } catch (error) {
+                toastError(error);
+                return;
+            }
+            const правила = Object.entries(состояние.как || {}).map(([ключ, имя]) => {
+                const [т, п_] = ключ.split(':');
+                return { т, порт: п_, имя };
+            });
+            if (транспорт) {
+                const есть = правила.find((п_) => п_.т === транспорт && String(п_.порт) === String(порт));
+                if (!есть) правила.push({ т: транспорт, порт: String(порт), имя: протоколы[транспорт][0] });
+            }
+            if (!правила.length) правила.push({ т: 'udp', порт: '', имя: протоколы.udp[0] });
+            const список = h('div', { class: 'pk-kak' });
+            const ошибка = h('div', { class: 'pk-filter-error small', role: 'status' });
+            function рисовать() {
+                clear(список);
+                правила.forEach((п_, i) => {
+                    const имена = [протоколы.данные].concat(протоколы[п_.т]);
+                    if (!имена.includes(п_.имя)) п_.имя = протоколы[п_.т][0];
+                    список.appendChild(h('div', { class: 'row pk-kak-row' },
+                        h('select', { 'aria-label': 'Транспорт', onchange: (e) => { п_.т = e.target.value; рисовать(); } },
+                            ['udp', 'tcp'].map((т) => h('option', { value: т, selected: т === п_.т }, т.toUpperCase()))),
+                        h('input', { type: 'number', min: 1, max: 65535, value: п_.порт, placeholder: 'порт', 'aria-label': 'Порт',
+                            class: 'pk-kak-port', oninput: (e) => { п_.порт = e.target.value; } }),
+                        h('span', { class: 'muted' }, '→'),
+                        h('select', { 'aria-label': 'Протокол', onchange: (e) => { п_.имя = e.target.value; } },
+                            имена.map((имя) => h('option', { value: имя, selected: имя === п_.имя },
+                                имя === протоколы.данные ? 'не разбирать (данные)' : имя))),
+                        h('button', { class: 'btn btn--ghost btn--sm', title: 'Убрать правило', onclick: () => { правила.splice(i, 1); рисовать(); } }, '×')));
+                });
+            }
+            рисовать();
+            const окно = openModal({
+                title: 'Разбирать как',
+                body: h('div', {},
+                    h('p', { class: 'muted small' }, 'Порт службы → разборщик. Выбор проверяется на данных: если пакет не подошёл, ' +
+                        'это видно в ошибках, и разбор идёт дальше обычным путём. «Не разбирать» — когда угадывание ошибается.'),
+                    список,
+                    h('button', { class: 'btn btn--sm', onclick: () => { правила.push({ т: 'udp', порт: '', имя: протоколы.udp[0] }); рисовать(); } }, 'Добавить правило'),
+                    ошибка),
+                footer: [
+                    h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Отмена'),
+                    h('button', { class: 'btn btn--primary', onclick: async () => {
+                        const rules = {};
+                        правила.filter((п_) => String(п_.порт).trim()).forEach((п_) => { rules[п_.т + ':' + String(п_.порт).trim()] = п_.имя; });
+                        try {
+                            await api.post(путь + '/decode-as', { rules });
+                        } catch (error) {
+                            ошибка.textContent = errorText(error);
+                            return;
+                        }
+                        окно.close();
+                        toast('Захват разбирается заново с правилами «разбирать как»', 'ok');
+                        // Новая страница вместо прежней: обработчики прежней снимутся сами.
+                        const новая = h('div', { class: page.className });
+                        page.replaceWith(новая);
+                        рисоватьЗахват(новая, capId);
+                    } }, 'Разобрать заново'),
+                ],
+            });
+        }
+
         function фильтрПотока(data) {
             const [а, пa] = data.клиент.split(/:(?=\d+$)/);
             const [б, пб] = data.сервер.split(/:(?=\d+$)/);
@@ -10119,7 +10289,57 @@
             return h('div', { class: 'card pk-stat' }, h('table', { class: 'table' },
                 h('thead', {}, h('tr', {}, заголовки.map((з) => h('th', {}, з)))),
                 h('tbody', {}, строки.map((ячейки) => h('tr', { class: onRow ? 'is-clickable' : '', onclick: onRow ? () => onRow(ячейки) : null },
-                    ячейки.map((я) => h('td', {}, я === null || я === undefined ? '' : String(я))))))));
+                    ячейки.map((я) => h('td', {}, я === null || я === undefined ? '' : (я instanceof Node ? я : String(я)))))))));
+        }
+
+        // -- обзор: главное одним взглядом; всё кликается — к пакетам или вкладке --
+
+        function кВкладке(ключ) { с.вкладка = ключ; рисоватьВкладки(); показать(); }
+
+        function обзор(d) {
+            if (!d.пакетов) {
+                тело.appendChild(emptyBox('Под фильтр не попало ни одного пакета', ''));
+                return;
+            }
+            const строка = (текст, значение, действие, подсказка) => h(действие ? 'button' : 'div', {
+                class: 'pk-ov-item' + (действие ? ' is-clickable' : ''), onclick: действие || null, title: подсказка || null,
+                type: действие ? 'button' : null,
+            }, h('span', { class: 'pk-ov-name' }, текст), h('span', { class: 'pk-ov-val' }, значение));
+            const полоса = (текст, значение, доля_, действие) => h('button', {
+                type: 'button', class: 'pk-ov-bar is-clickable', onclick: действие, title: 'Отобрать',
+            },
+            h('span', { class: 'pk-ov-name' }, текст), h('span', { class: 'pk-ov-val' }, значение),
+            h('span', { class: 'pk-ov-track' }, h('span', { class: 'pk-ov-fill', style: { width: Math.max(1, 100 * доля_).toFixed(1) + '%' } })));
+            const карточка = (заголовок, узлы, пусто) => h('div', { class: 'card pk-ov-card' }, h('h3', {}, заголовок),
+                узлы.length ? узлы : h('div', { class: 'muted small' }, пусто || 'нет'));
+            const кавычки = (т) => '"' + String(т).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+            const число = (x, знаков) => x.toLocaleString('ru-RU', { maximumFractionDigits: знаков });
+            const итоги = h('div', { class: 'pk-ov-stats' }, [
+                ['Пакетов', число(d.пакетов, 0)], ['Объём', fmtBytes(d.байт)], ['Длительность', число(d.длительность, 3) + ' с'],
+                ['Средняя скорость', d.скорость >= 1e6 ? число(d.скорость / 1e6, 2) + ' Мбит/с' : число(d.скорость / 1e3, 1) + ' кбит/с'],
+                ['С ошибками', String(d.ошибок)], ['Файлов в потоках', String(d.файлов)],
+            ].map(([и, з]) => h('div', { class: 'pk-ov-stat' }, h('div', { class: 'pk-ov-num' }, з), h('div', { class: 'muted small' }, и))));
+            тело.appendChild(итоги);
+            if (d.приметы.length) {
+                тело.appendChild(h('div', { class: 'card pk-ov-notes' }, h('h3', {}, 'На что посмотреть'),
+                    d.приметы.map((п) => h('div', { class: 'pk-ov-note' }, h('span', {}, п.что),
+                        п.фильтр ? h('button', { class: 'btn btn--sm', onclick: () => отфильтровать(п.фильтр) }, 'Отобрать') : null))));
+            }
+            тело.appendChild(h('div', { class: 'pk-ov-grid' },
+                карточка('Протоколы', d.протоколы.map((п) => полоса(п.протокол, п.пакетов + ' · ' + число(100 * п.доля, 1) + ' %', п.доля,
+                    () => отфильтровать(п.протокол === 'Данные' ? 'data' : п.протокол.toLowerCase().split(/[\s/]/)[0])))),
+                карточка('Главные диалоги IP', d.диалоги.map((д) => строка(д.а + ' ↔ ' + д.б, fmtBytes(д.байт),
+                    () => отфильтровать('ip.addr == ' + д.а + ' and ip.addr == ' + д.б), д.протоколы))),
+                карточка('Имена DNS (' + d.имён_dns + ')', d.dns.map((з) => строка(з.имя, '×' + з.раз,
+                    () => отфильтровать('dns.qry.name == ' + кавычки(з.имя))))),
+                карточка('Серверы TLS (SNI)', d.sni.map((з) => строка(з.имя, '×' + з.раз,
+                    () => отфильтровать('tls.handshake.extensions_server_name == ' + кавычки(з.имя))))),
+                карточка('Узлы HTTP', d.http.map((з) => строка(з.имя, '×' + з.раз, () => отфильтровать('http.host == ' + кавычки(з.имя))))),
+                карточка('Ошибки', d.виды_ошибок.map((о) => строка(о.что, String(о.пакетов), () => отфильтровать('expert'))), 'ошибок нет'),
+                карточка('Файлы в потоках', d.файлы.map((ф) => строка(ф.что + ' · ' + ф.поток, ф.длина ? fmtBytes(ф.длина) : '?',
+                    () => кВкладке('файлы'))), 'не найдено'),
+                карточка('Неразобранная нагрузка', d.неразобрано.map((г) => строка(г.группа, String(г.пакетов), () => кВкладке('неизвестные'))),
+                    'всё разобрано')));
         }
 
         function доля(часть, целое) { return целое ? (100 * часть / целое).toFixed(1) + ' %' : ''; }
@@ -10519,6 +10739,13 @@
                         'отводы (если не заданы) и начальное состояние',
                     onclick: () => скремблерКадра(),
                 }, 'Найти ПСП и начальное состояние')),
+            h('div', { class: 'rastr-tools' },
+                h('span', { class: 'small' }, 'Мультиплекс со стаффингом (кадр — период):'),
+                h('button', {
+                    class: 'btn btn--sm', title: 'Каналы управления — столбцы, равные друг другу в кадре и меняющиеся ' +
+                        'от кадра к кадру; для каждого — позиция возможности стаффинга и знак',
+                    onclick: () => стаффинг(),
+                }, 'Найти каналы управления')),
             h('div', { class: 'rastr-tools' }, h('label', { style: { flex: '1' } }, 'Снять слой вручную: ', слой),
                 h('button', { class: 'btn btn--sm', onclick: () => производный(false) }, 'Новый поток'),
                 h('button', { class: 'btn btn--sm btn--primary', onclick: () => производный(true) }, 'Новый поток и разобрать')),
@@ -10938,6 +11165,49 @@
                         },
                     }, 'Что это? — спросить помощника')),
             ]);
+        }
+
+        async function стаффинг() {
+            clear(итоги);
+            итоги.appendChild(loadingBox('Ищу каналы управления стаффингом…'));
+            let data;
+            try {
+                data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/stuffing', { stage: этап, period: с.период, shift: с.сдвиг });
+            } catch (error) {
+                clear(итоги);
+                toastError(error);
+                return;
+            }
+            clear(итоги);
+            if (!data.группы.length) {
+                итоги.appendChild(h('div', { class: 'muted' }, 'Каналов управления не найдено: нет групп столбцов, совпадающих в кадре ' +
+                    'и меняющихся между кадрами. Проверьте период (длину кадра или сверхкадра).'));
+                return;
+            }
+            итоги.appendChild(h('div', { class: 'card card-pad' },
+                h('b', {}, 'Каналов управления: ' + data.группы.length + ' (кадров ' + data.кадров + ')'),
+                h('div', { class: 'muted small' }, 'Для разуплотнения выделите столбцы данных притока (или выберите маску в «Над чем») и нажмите «Разуплотнить».'),
+                data.группы.map((г, i) => {
+                    const в = г.возможность[0];
+                    const слойТекст = (данные) => 'стаффинг период ' + с.период + ' сдвиг ' + с.сдвиг + ' данные ' + диапазоны(данные).replace(/–/g, '-') +
+                        ' управление ' + г.столбцы.join(',') + ' возможность ' + в.столбец + ' знак ' + (в.знак === '+' ? '+' : '-');
+                    return h('div', { class: 'rastr-mask' },
+                        h('b', {}, 'Приток ' + (i + 1)),
+                        h('span', { class: 'small' }, 'управление: столбцы ' + г.столбцы.join(', ') + ' · стаффинг в ' + (г.доля_стаффинга * 100).toFixed(1) +
+                            ' % кадров · несогласных ' + (г.несогласных * 100).toFixed(2) + ' %' +
+                            (в ? ' · возможность — столбец ' + в.столбец + ', ' + (в.знак === '+' ? 'положительный' : 'отрицательный') +
+                                ' (мера ' + в.мера + ')' : ' · позиция возможности не определилась')),
+                        h('button', { class: 'btn btn--sm', onclick: () => {
+                            с.выделено = new Set(г.столбцы.concat(в ? [в.столбец] : []));
+                            рисовать();
+                        } }, 'Показать'),
+                        в ? h('button', { class: 'btn btn--sm btn--primary', onclick: () => {
+                            const маска = текущаяМаска();
+                            const данные = маска ? маска.позиции : Array.from(с.выделено);
+                            if (!данные.length) { toast('Выделите столбцы данных притока или выберите маску', 'error'); return; }
+                            создать({ stage: этап, strip: слойТекст(данные.filter((п) => г.столбцы.indexOf(п) < 0 && п !== в.столбец)), analyze: true });
+                        } }, 'Разуплотнить и разобрать') : null);
+                })));
         }
 
         async function скремблерКадра() {

@@ -2173,6 +2173,38 @@ def _отобранные(request: Request, ид: str, фильтр: str) -> Lis
         raise ServiceError(f"фильтр: {ошибка}", 400) from None
 
 
+@router.get("/pakety-protocols")
+def pakety_protocols(request: Request) -> Dict[str, Any]:
+    """Что можно выбрать в «разбирать как» для каждого транспорта."""
+    from ..setevoy.prilozh import КАК, КАК_ДАННЫЕ  # noqa: PLC0415
+    require_user(request)
+    return {"udp": sorted(КАК["udp"], key=str.lower), "tcp": sorted(КАК["tcp"], key=str.lower), "данные": КАК_ДАННЫЕ}
+
+
+@router.post("/pakety/{cap_id}/decode-as")
+def pakety_decode_as(request: Request, cap_id: str) -> Dict[str, Any]:
+    """Задать правила «разбирать как» ({"udp:5000": "DNS"}) и разобрать захват заново."""
+    user = require_user(request)
+    _захват_или_404(request, user, cap_id)
+    try:
+        правила = _pakety(request).разбирать_как(cap_id, _body(request).get("rules") or {})
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 409 if "разбирается" in str(ошибка) else 400) from None
+    return {"rules": правила}
+
+
+@router.get("/pakety-filter")
+def pakety_filter_check(request: Request, text: str = "") -> Dict[str, Any]:
+    """Проверить выражение фильтра, не отбирая: для подсветки ошибки по мере набора."""
+    from ..setevoy.filtr import ОшибкаФильтра, собрать  # noqa: PLC0415
+    require_user(request)
+    try:
+        собрать(text[:2000])
+    except ОшибкаФильтра as ошибка:
+        return {"ok": False, "error": str(ошибка)}
+    return {"ok": True, "error": ""}
+
+
 @router.get("/pakety")
 def pakety_list(request: Request) -> Dict[str, Any]:
     user = require_user(request)
@@ -2283,6 +2315,10 @@ def pakety_stats(request: Request, cap_id: str, kind: str = "hierarchy", level: 
         return statistika.по_времени(сводки)
     if kind == "errors":
         return {"items": statistika.ошибки(сводки)}
+    if kind == "overview":
+        поля = [захваты.поля(cap_id)[i] for i in номера]
+        нагрузки = захваты.нагрузки(cap_id)
+        return statistika.обзор(сводки, поля, [нагрузки[i] for i in номера])
     if kind == "unknown":
         нагрузки = захваты.нагрузки(cap_id)
         return {"items": statistika.неизвестные(сводки, [нагрузки[i] for i in номера])}
@@ -2330,6 +2366,37 @@ def pakety_column(request: Request, cap_id: str, filter: str = "", base: str = "
         raise ServiceError("выравнивание frame/payload, ширина поля 1–8 байт", 400)
     номера = _отобранные(request, cap_id, filter)
     return statistika.столбец(_ряды(request, cap_id, base, номера), pos, width)
+
+
+@router.get("/pakety/{cap_id}/files")
+def pakety_files(request: Request, cap_id: str, filter: str = "") -> Dict[str, Any]:
+    """Файлы, переданные внутри потоков TCP/UDP: по сигнатуре со сверкой структуры."""
+    from ..setevoy import statistika  # noqa: PLC0415
+    user = require_user(request)
+    _готовый(request, user, cap_id)
+    захваты = _pakety(request)
+    номера = _отобранные(request, cap_id, filter)
+    сводки, нагрузки = захваты.сводки(cap_id), захваты.нагрузки(cap_id)
+    return {"items": statistika.файлы([сводки[i] for i in номера], [нагрузки[i] for i in номера])}
+
+
+@router.get("/pakety/{cap_id}/file")
+def pakety_file(request: Request, cap_id: str, flow: str, offset: int = 0, length: int = 0,
+                ext: str = "bin") -> Response:
+    """Вырезать файл из собранного потока."""
+    from ..setevoy import statistika  # noqa: PLC0415
+    user = require_user(request)
+    _готовый(request, user, cap_id)
+    захваты = _pakety(request)
+    try:
+        данные = statistika.вырезать_из_потока(захваты.сводки(cap_id), захваты.нагрузки(cap_id), flow,
+                                               max(0, offset), max(0, length))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 404) from None
+    расширение = re.sub(r"[^0-9a-z]", "", ext.lower())[:8] or "bin"
+    return Response(данные, media_type="application/octet-stream",
+                    headers={"Content-Disposition": f'attachment; filename="stream-{max(0, offset)}.{расширение}"; '
+                             "filename*=UTF-8''" + urllib.parse.quote(f"из-потока-{max(0, offset)}.{расширение}")})
 
 
 @router.get("/pakety/{cap_id}/stream/{number}")
@@ -2747,6 +2814,20 @@ def potok_strings(request: Request, job_id: str) -> Dict[str, Any]:
                         сдвиги=range(8) if тело.get("anyshift") else (0,), инверсия=bool(тело.get("inverted")))
     итог["строки"] = итог["строки"][:1500]
     return итог
+
+
+@router.post("/potok/{job_id}/stuffing")
+def potok_stuffing(request: Request, job_id: str) -> Dict[str, Any]:
+    """Мультиплекс со стаффингом: каналы управления, позиция возможности и знак — по растру."""
+    from ..potok import stafing  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    биты = _биты_поиска(request, user, job_id, {**тело, "mask": None})
+    try:
+        найдено = stafing.найти(биты, int(тело.get("period") or 0), int(тело.get("shift") or 0))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    return найдено or {"кадров": 0, "группы": []}
 
 
 @router.post("/potok/{job_id}/ngrams")

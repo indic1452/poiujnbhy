@@ -38,6 +38,7 @@ from typing import Any, Callable, Dict, List, Sequence
     "eth": ("ethernet",),
     "expert": ("_ws.expert",),
     "ошибки": ("_ws.expert",),
+    "data": ("данные",),
 }
 ЛЕКСЕМЫ = re.compile(r"""\s*(?:
     (?P<str>"(?:[^"\\]|\\.)*")|
@@ -159,7 +160,8 @@ class _Разбор:
         байты = re.fullmatch(r"(frame|payload)(?:\[(\d+)(?::(\d+))?\])?(?:\.(hi|lo))?", лекс.lower())
         if байты:
             return self.по_байтам(*байты.groups())
-        if not re.fullmatch(r"[A-Za-z_][\w.\-]*", лекс):
+        # Имена уровней бывают и русскими («данные»): первая — любая буква.
+        if not re.fullmatch(r"[^\W\d][\w.\-]*", лекс):
             raise ОшибкаФильтра(f"ожидалось имя поля, а не «{лекс}»")
         ключи = ПСЕВДОНИМЫ.get(лекс.lower(), (лекс.lower(),))
         оп = self.смотреть().lower()
