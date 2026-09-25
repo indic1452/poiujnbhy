@@ -9633,13 +9633,14 @@
     /** Оборвать поток ответа в открытом разговоре: кнопка «Стоп». */
     function stopStreaming() {
         const live = chat.live;
-        if (live && live.controller) {
+        [live, chat.continuing].forEach((поток) => {
+            if (!поток || !поток.controller) return;
             try {
-                live.controller.abort();
+                поток.controller.abort();
             } catch (error) {
                 /* поток уже закрыт */
             }
-        }
+        });
         chat.streaming = false;
     }
 
@@ -9649,7 +9650,9 @@
      * остаться работать с прошлого захода, а мог идти и в другом разговоре.
      */
     function syncStreaming() {
-        setStreaming(!!(liveIsHere() && chat.live.running));
+        const продолжается = !!(chat.continuing && chat.current
+            && String(chat.continuing.chatId) === String(chat.current.id));
+        setStreaming(!!(liveIsHere() && chat.live.running) || продолжается);
     }
 
     async function renderChat(view, chatId) {
@@ -10179,7 +10182,7 @@
             // и прежде он не показывался ничем. Ответ, обрезанный на середине
             // строки таблицы полей, выглядел законченным, и инженер уносил в
             // отчёт неполную таблицу, не зная об этом.
-            !isUser && message.meta ? cutNote(message.meta.cut) : null,
+            !isUser && message.meta ? cutNote(message.meta.cut, message) : null,
             // Строку со счётчиком показываем и когда источников нет вовсе.
             // Раньше она в этом случае пропадала — а это самый важный
             // случай: ответ написан по памяти модели, и сказать об этом
@@ -10293,11 +10296,27 @@
      * строки. Поэтому молчать здесь нельзя, а гадать — нельзя тем более:
      * показываем только то, что сказал сам сервер модели.
      */
-    function cutNote(cut) {
+    function cutNote(cut, message) {
+        // Продолжить можно только последний ответ разговора: после него уже
+        // задан другой вопрос, и дописывать в середину разговора нельзя.
+        const последний = message && chat.messages.length
+            && String(chat.messages[chat.messages.length - 1].id) === String(message.id);
+        const кнопка = последний ? h('button', {
+            class: 'btn btn--sm btn--primary msg-note-act', type: 'button',
+            onclick: () => продолжитьОтвет(message),
+        }, 'Продолжить ответ') : null;
         if (cut === 'length') {
             return h('div', { class: 'msg-note msg-note--warn' },
-                'Ответ упёрся в потолок длины и не закончен — последние строки '
-                + 'не дописаны. Попросите продолжить с того места, где оборвалось.');
+                h('span', {}, 'Ответ упёрся в потолок длины и не закончен — последние '
+                    + 'строки не дописаны. Можно продолжить с того места, где оборвалось: '
+                    + 'по тем же источникам, в этот же ответ.'), кнопка);
+        }
+        if (cut === 'повтор') {
+            return h('div', { class: 'msg-note msg-note--warn' },
+                h('span', {}, 'Модель начала переписывать длинную последовательность '
+                    + '(или повторять одно и то же) и была остановлена — сама '
+                    + 'последовательность есть в источнике. Можно продолжить разбор '
+                    + 'дальше: по тем же источникам, в этот же ответ.'), кнопка);
         }
         if (cut === 'размышление') {
             return h('div', { class: 'msg-note msg-note--warn' },
@@ -10998,6 +11017,120 @@
         } catch (error) {
             return { type: 'error', error: 'сервер прислал испорченное событие' };
         }
+    }
+
+    /* Продолжить оборванный ответ. Текст дописывается в тот же ответ — на
+       экране и на сервере: разорванная на обрыве таблица продолжается
+       следующей строкой, а метки источников остаются те же. */
+    async function продолжитьОтвет(message) {
+        if (chat.streaming || chat.continuing) {
+            toast('Дождитесь конца текущего ответа', 'info');
+            return;
+        }
+        const chatId = chat.current.id;
+        const controller = new AbortController();
+        chat.continuing = { chatId: chatId, messageId: message.id, controller: controller };
+        syncStreaming();
+        const тело = () => {
+            const узел = chat.nodes.feed
+                ? $('.msg[data-id="' + message.id + '"]', chat.nodes.feed) : null;
+            return узел ? $('.body', узел) : null;
+        };
+        const примечание = () => {
+            const узел = chat.nodes.feed
+                ? $('.msg[data-id="' + message.id + '"] .msg-note--warn', chat.nodes.feed) : null;
+            return узел;
+        };
+        const плашка = примечание();
+        if (плашка) плашка.replaceChildren(h('span', { class: 'msg-note-stage' }, 'продолжаю ответ…'));
+        let основа = message.content;
+        let приписка = '';
+        let готово = null;
+        let ошибка = '';
+        let нарисовано = 0;
+        const нарисовать = (сразу) => {
+            const сейчас = Date.now();
+            if (!сразу && сейчас - нарисовано < 70) return;
+            нарисовано = сейчас;
+            const body = тело();
+            if (!body) return;
+            // Шов — как его сошьёт сервер: таблица продолжается следующей
+            // строкой, всё остальное — новым абзацем.
+            const стык = /^\s*\|/.test(основа.split('\n').pop() || '') ? '\n' : '\n\n';
+            renderAnswer(body, основа + (приписка ? стык + приписка.replace(/^\n+/, '') : ''),
+                message.sources);
+            body.classList.add('is-typing');
+        };
+        try {
+            const response = await fetch('/api/chats/' + chatId + '/continue', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+                body: JSON.stringify({ message_id: message.id }),
+                signal: controller.signal,
+            });
+            if (response.status === 401) {
+                goToLogin();
+                return;
+            }
+            if (!response.ok || !response.body) {
+                throw new ApiError(response.status, 'ошибка сервера (код ' + response.status + ')');
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            while (true) {
+                const piece = await reader.read();
+                if (piece.done) break;
+                buffer += decoder.decode(piece.value, { stream: true }).replace(/\r\n/g, '\n');
+                let cut = buffer.indexOf('\n\n');
+                while (cut !== -1) {
+                    const event = parseEvent(buffer.slice(0, cut));
+                    buffer = buffer.slice(cut + 2);
+                    cut = buffer.indexOf('\n\n');
+                    if (!event) continue;
+                    if (event.type === 'base') {
+                        основа = event.text || '';
+                        нарисовать(true);
+                    } else if (event.type === 'stage') {
+                        const узел = примечание();
+                        if (узел) узел.replaceChildren(
+                            h('span', { class: 'msg-note-stage' }, event.text || ''));
+                    } else if (event.type === 'delta') {
+                        приписка += event.text || '';
+                        нарисовать(false);
+                    } else if (event.type === 'done') {
+                        готово = event;
+                    } else if (event.type === 'error') {
+                        ошибка = event.error || 'модель не ответила';
+                    }
+                }
+            }
+        } catch (error) {
+            if (!(error && error.name === 'AbortError')) ошибка = errorText(error);
+        } finally {
+            chat.continuing = null;
+            syncStreaming();
+        }
+        // Сохранённое сервером — единственная правда: там шов уже сшит, а
+        // повтор последней строки и шапки таблицы убран. Прервали — сервер
+        // сохранил написанное; перечитываем разговор.
+        if (готово && готово.answer) {
+            chat.messages = chat.messages.map((item) =>
+                String(item.id) === String(готово.answer.id) ? готово.answer : item);
+            if (готово.chat) upsertChatInList(готово.chat);
+        } else {
+            try {
+                const payload = await api.get('/api/chats/' + encodeURIComponent(chatId));
+                if (chat.current && String(chat.current.id) === String(chatId)) {
+                    chat.messages = payload.messages || chat.messages;
+                }
+            } catch (error) {
+                /* разговор перечитается при следующем открытии */
+            }
+        }
+        if (chat.current && String(chat.current.id) === String(chatId)) renderFeed();
+        if (ошибка) toast('Продолжение: ' + ошибка, 'error');
     }
 
     async function streamAnswer(text, attachments) {

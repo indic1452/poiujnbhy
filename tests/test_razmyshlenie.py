@@ -286,17 +286,18 @@ class ПлашкаОбОбрывеTests(unittest.TestCase):
         self.css = (статика / "styles.css").read_text(encoding="utf-8")
 
     def test_плашка_есть_и_подключена(self):
-        self.assertIn("function cutNote(cut)", self.js)
-        self.assertIn("cutNote(message.meta.cut)", self.js)
+        self.assertIn("function cutNote(cut, message)", self.js)
+        self.assertIn("cutNote(message.meta.cut, message)", self.js)
 
     def test_разведены_два_разных_обрыва(self):
-        плашка = self.js.split("function cutNote(cut)", 1)[1].split("\n    }", 1)[0]
+        плашка = self.js.split("function cutNote(cut, message)", 1)[1].split("\n    }", 1)[0]
         self.assertIn("'length'", плашка)
         self.assertIn("'размышление'", плашка)
 
     def test_плашка_говорит_что_делать(self):
-        плашка = self.js.split("function cutNote(cut)", 1)[1].split("\n    }", 1)[0]
-        self.assertIn("продолжить", плашка)
+        плашка = self.js.split("function cutNote(cut, message)", 1)[1].split("\n    }", 1)[0]
+        self.assertIn("Продолжить ответ", плашка)
+        self.assertIn("продолжитьОтвет(message)", плашка)
 
     def test_стиль_плашки_есть_в_обеих_темах(self):
         self.assertIn(".msg-note--warn {", self.css)

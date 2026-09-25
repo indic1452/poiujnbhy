@@ -2049,6 +2049,31 @@ class ChatRepo:
         assert row is not None
         return ChatMessage.from_row(row)
 
+    def update_message(self, message_id: int, *, content: str,
+                       sources: Sequence[Dict[str, Any]],
+                       meta: Dict[str, Any]) -> ChatMessage:
+        """Переписать сообщение: так дописывается продолженный ответ.
+
+        Продолжение ложится в то же сообщение, а не новым: иначе разорванная
+        на обрыве таблица и сквозная нумерация источников разошлись бы по
+        двум ответам.
+        """
+        with self.db.transaction() as connection:
+            connection.execute(
+                "UPDATE chat_messages SET content = ?, sources_json = ?, meta_json = ? "
+                "WHERE id = ?",
+                (content, json.dumps(list(sources), ensure_ascii=False),
+                 json.dumps(meta or {}, ensure_ascii=False), message_id),
+            )
+            connection.execute(
+                "UPDATE chats SET updated_at = ? WHERE id = "
+                "(SELECT chat_id FROM chat_messages WHERE id = ?)",
+                (utcnow(), message_id),
+            )
+        row = self.db.query_one("SELECT * FROM chat_messages WHERE id = ?", (message_id,))
+        assert row is not None
+        return ChatMessage.from_row(row)
+
     def messages(self, chat_id: int, limit: int = 500) -> List[ChatMessage]:
         rows = self.db.query(
             "SELECT * FROM chat_messages WHERE chat_id = ? ORDER BY id LIMIT ?",

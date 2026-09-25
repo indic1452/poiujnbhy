@@ -2005,6 +2005,40 @@ def ask_stream(request: Request, chat_id: int) -> StreamingResponse:
     )
 
 
+@router.post("/chats/{chat_id}/continue")
+def continue_answer(request: Request, chat_id: int) -> StreamingResponse:
+    """Продолжить оборванный ответ: те же события SSE, что у вопроса.
+
+    Первым приходит «base» — что осталось от ответа перед продолжением, —
+    потом куски текста и итог с переписанным сообщением.
+    """
+    user = require_anyone(request)
+    payload = _body(request)
+    try:
+        message_id = int(payload.get("message_id") or 0)
+    except (TypeError, ValueError):
+        message_id = 0
+    assistant = _assistant(request)
+
+    def events():
+        try:
+            for event in assistant.continue_stream(user, chat_id, message_id):
+                yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+        except ServiceError as error:
+            yield "data: " + json.dumps(
+                {"type": "error", "error": str(error)}, ensure_ascii=False) + "\n\n"
+        except Exception as error:  # noqa: BLE001 — поток нельзя оборвать молча
+            yield "data: " + json.dumps(
+                {"type": "error", "error": f"ошибка модели: {error}"},
+                ensure_ascii=False) + "\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream; charset=utf-8",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 # ---------------------------------------------- вложения к вопросу --------
 
 #: Что можно приложить к вопросу. Расширение решает, как файл читать;

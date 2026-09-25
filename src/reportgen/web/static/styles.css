@@ -8349,3 +8349,44 @@ body.reading .msg .body {
         transform: none;
     }
 }
+
+/* ------------------------------------------ продолжение оборванного ответа --- */
+
+/* Плашка об обрыве — текст слева, действие справа: кнопка на виду, не надо
+   искать, как дописать ответ. На узком экране кнопка уходит под текст. */
+.msg-note--warn:has(.msg-note-act) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.msg-note--warn:has(.msg-note-act) > span {
+    flex: 1 1 280px;
+}
+
+.msg-note-act {
+    flex: 0 0 auto;
+}
+
+.msg-note-stage::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .6;
+    animation: note-pulse 1s ease-in-out infinite;
+}
+
+@keyframes note-pulse {
+    50% { opacity: .15; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .msg-note-stage::before {
+        animation: none;
+    }
+}

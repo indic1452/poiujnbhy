@@ -191,8 +191,12 @@ class РежимДоходитДоОтвета(AssistantTestCase):
         параметры = источник.split("    def _как_отвечать(", 1)[1].split("\n    def ", 1)[0]
         self.assertIn('prepared.get("answer_tokens")', параметры)
         self.assertIn('or prepared["profile"]["max_tokens"]', параметры)
-        # И поток, и целый ответ берут потолок оттуда же.
-        self.assertEqual(3, источник.count("**self._как_отвечать(llm, prepared)"))
+        # И поток, и целый ответ, и продолжение берут потолок оттуда же:
+        # в обход _как_отвечать потолок нигде не задаётся.
+        self.assertGreaterEqual(источник.count("**self._как_отвечать(llm, prepared)"), 3)
+        вне = источник.replace(параметры, "")
+        self.assertNotIn('prepared["profile"]["max_tokens"],', вне)
+        self.assertNotIn('max_tokens=prepared.get("answer_tokens")', вне)
         # И нигде в выдаче ответа не осталось прежнего общего потолка.
         выдача = источник[источник.index("    def ask("):источник.index("    # -- внутреннее")]
         self.assertNotIn("max_tokens=self._max_tokens()", выдача)
