@@ -227,6 +227,24 @@ class OtnTests(unittest.TestCase):
         разница = int(np.sum(р["нагрузка"] != np.unpackbits(self.нагрузка.reshape(-1))))
         self.assertLessEqual(разница, len(места))
 
+    def test_fec_исправляет_ошибки_линии(self):
+        """Ошибки 1e-4 (около 13 бит на кадр): FEC RS(255, 239) их исправляет — нагрузка бит в бит."""
+        поток = self.линия.copy()
+        rng = np.random.default_rng(5)
+        места = np.flatnonzero(rng.random(len(поток)) < 1e-4)
+        поток[места] ^= 1
+        р = otn.разобрать(поток)
+        и = р["проверки"]["fec"]["исправление"]
+        self.assertGreater(и["байт"], 0)
+        self.assertEqual(и["неисправимых"], 0)
+        self.assertTrue(np.array_equal(р["нагрузка"], np.unpackbits(self.нагрузка.reshape(-1))))
+        текст = "\n".join(otn.найти(поток).подробно)
+        self.assertIn(f"FEC исправил {и['байт']} байт", текст)
+
+    def test_fec_без_ошибок(self):
+        текст = "\n".join(otn.найти(self.линия).подробно)
+        self.assertIn("FEC: ошибок нет — синдромы нулевые у всех", текст)
+
     def test_ошибка_в_одном_слове_rs(self):
         # Байт 5 строки 2 кадра 3 — в слове 5 этой строки: ненулевой синдром ровно у одного слова.
         кадры = otn.в_кадры(np.unpackbits(self.кадры.reshape(len(self.кадры), -1), axis=1)

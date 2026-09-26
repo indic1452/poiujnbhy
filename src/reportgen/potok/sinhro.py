@@ -27,6 +27,8 @@ import numpy as np
 
 from . import cikl, gfp, hdlc, pdh
 
+#: Маркер начала кадра CCSDS (ASM).
+ASM_CCSDS = bytes.fromhex("1ACFFC1D")
 СЛОВО_ДО = 128
 #: Больше вхождений не возвращаем: для растра и шага хватит.
 ПОЗИЦИЙ_ДО = 5000
@@ -147,6 +149,9 @@ def известные() -> List[Tuple[str, np.ndarray]]:
                  np.unpackbits(np.array([0xB8], dtype=np.uint8))))
     итог.append(("пустой кадр GFP (G.7041) после маски: B6AB31E0",
                  np.unpackbits(np.frombuffer(gfp.МАСКА, dtype=np.uint8))))
+    # CCSDS 131.0-B; сверено по gr-satellites (ccsds_rs_deframer: _syncword).
+    итог.append(("ASM CCSDS 0x1ACFFC1D (кадр телеметрии: блок РС (255, 223), рандомизатор, "
+                 "свёрточный код 171/133)", np.unpackbits(np.frombuffer(ASM_CCSDS, dtype=np.uint8))))
     return итог
 
 

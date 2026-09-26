@@ -10710,7 +10710,11 @@
                 этап.выгрузка === 'bin' ? h('button', {
                     class: 'btn btn--sm', onclick: () => продолжить(этап),
                     title: 'Разобрать поток после этого этапа заново — можно сняв слой вручную',
-                }, 'Продолжить отсюда…') : null);
+                }, 'Продолжить отсюда…') : null,
+                h('button', {
+                    class: 'btn btn--sm', onclick: (event) => спроситьОбЭтапе(этап, event.currentTarget),
+                    title: 'Разговор с помощником об этом этапе: находка, мера, подробности и другие гипотезы — вложением',
+                }, 'Спросить помощника'));
             return h('div', { class: 'card card-pad potok-stage' },
                 h('div', { class: 'potok-stage-head' },
                     h('span', { class: 'potok-num' }, String(этап.номер)),
@@ -10960,6 +10964,21 @@
                     saveDraft(data.chat.id, data.question);
                     navigate('#/chat/' + data.chat.id);
                 }
+            } catch (error) {
+                toastError(error);
+            } finally {
+                кнопка.disabled = false;
+            }
+        }
+
+        /** Вопрос помощнику об одном этапе: черновик в поле разговора — инженер правит и спрашивает. */
+        async function спроситьОбЭтапе(этап, кнопка) {
+            кнопка.disabled = true;
+            try {
+                const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/ask',
+                    { stage: этап.номер, topic: 'этап' });
+                saveDraft(data.chat.id, data.question);
+                navigate('#/chat/' + data.chat.id);
             } catch (error) {
                 toastError(error);
             } finally {

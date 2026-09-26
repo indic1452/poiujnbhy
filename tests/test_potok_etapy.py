@@ -34,8 +34,11 @@ class ДеревоTests(unittest.TestCase):
         список = этапы(разбор)
         self.assertEqual(["код", "скремблер", "канальный", "сетевой"],
                          [э["уровень"] for э in список])
-        self.assertEqual("131072 бит", список[0]["выход"])
-        self.assertIn("110 кадров", список[2]["выход"])
+        # Декодируется весь поток (а не первые 2¹⁸ бит): все 160 кадров и пакетов.
+        бит = len(в_биты(с.hdlc(с.пакеты_ip(160), флагов_между=4)))
+        self.assertEqual(f"{бит} бит", список[0]["выход"])
+        self.assertIn("160 кадров", список[2]["выход"])
+        self.assertIn("160 пакетов", список[3]["выход"])
         # У уровня кода, кроме выбранного, проверена и другая гипотеза.
         отчёт = разбор.отчёт()
         self.assertIn("ДРУГИЕ ГИПОТЕЗЫ", отчёт)
@@ -127,7 +130,7 @@ class ЗаданияTests(unittest.TestCase):
         self.assertGreater(длина, 20)
         # pcap с сырыми IP открывается как захват.
         канал, пакеты = karta.pcap(self.задания.файл_этапа(ид, 4).read_bytes())
-        self.assertEqual(("IP", 110), (канал, len(пакеты)))
+        self.assertEqual(("IP", 160), (канал, len(пакеты)))          # весь поток, все пакеты
         # Продолжение с этапа 1 со снятием скремблера вручную.
         ид2 = self.задания.продолжить(ид, 1, владелец=1, снять=["скремблер 3,20"],
                                       профиль="быстро")
@@ -348,7 +351,13 @@ class СинхроTests(unittest.TestCase):
                       sinhro.известная(sinhro.слово("0011011")))
         self.assertIn("инверсная: синхробайт MPEG-TS 0x47, пакет 188 байт (204 с RS)",
                       sinhro.известная(sinhro.слово("0xB8"))[1:] + sinhro.известная(sinhro.слово("0xB8"))[:1])
-        self.assertEqual([], sinhro.известная(sinhro.слово("0x1ACFFC1D")))
+        # ASM CCSDS сверен по gr-satellites (ccsds_rs_deframer) — известен; инверсный — тоже.
+        self.assertEqual(["ASM CCSDS 0x1ACFFC1D (кадр телеметрии: блок РС (255, 223), рандомизатор, "
+                          "свёрточный код 171/133)"], sinhro.известная(sinhro.слово("0x1ACFFC1D")))
+        self.assertTrue(sinhro.известная(sinhro.слово("0xE53003E2"))[0].startswith("инверсная: ASM CCSDS"))
+        # Незнакомое слово: лишь частичные совпадения (короткие известные слова входят в любое).
+        self.assertTrue(all("содержит" in з or "часть:" in з
+                            for з in sinhro.известная(sinhro.слово("0xE4B51C27"))))
         self.assertIn("содержит FAS E1 (G.704), в КИ0 чётных циклов, цикл 256 бит",
                       sinhro.известная(sinhro.слово("10011011")))
         self.assertIn("часть: флаг HDLC/PPP 01111110", sinhro.известная(sinhro.слово("111111")))
@@ -493,6 +502,31 @@ class СтраницаTests(unittest.TestCase):
         self.assertEqual(404, self.сеть.client.get(f"/api/potok/{ид}/hints").status_code)
         self.assertEqual(404, self.сеть.client.post(f"/api/potok/{ид}/ask", json={}).status_code)
 
+    def test_вопрос_об_этапе(self):
+        """У каждого этапа — свой вопрос помощнику: и у битового, и у кадров, и у пакетов."""
+        self.сеть.login("engineer")
+        ид = self.загрузить(цепочка()).json()["id"]
+        состояние = self.дождаться(ид)
+        self.assertEqual(["код", "скремблер", "канальный", "сетевой"],
+                         [э["уровень"] for э in состояние["этапы"]])
+        for номер, что in ((1, "свёрточный код"), (3, "HDLC"), (4, "пакеты IP")):
+            with self.subTest(этап=номер):
+                вопрос = self.сеть.client.post(f"/api/potok/{ид}/ask",
+                                               json={"stage": номер, "topic": "этап"}).json()
+                self.assertIn(f"На этапе {номер} разбора анализатор нашёл: {что}", вопрос["question"])
+                текст = self.сеть.repos.chats.attachments(вопрос["chat"]["id"])[0].text
+                self.assertIn(f"Этап {номер} целиком: [", текст)
+                self.assertIn("Цепочка, найденная анализатором:", текст)
+        # Все подробности этапа — во вложении, а не первые четыре.
+        э = состояние["этапы"][2]
+        вопрос = self.сеть.client.post(f"/api/potok/{ид}/ask", json={"stage": 3, "topic": "этап"}).json()
+        текст = self.сеть.repos.chats.attachments(вопрос["chat"]["id"])[0].text
+        for деталь in э["подробно"]:
+            self.assertIn(деталь, текст)
+        # Этапа нет — вопрос общий («разбор встал»).
+        вопрос = self.сеть.client.post(f"/api/potok/{ид}/ask", json={"stage": 9, "topic": "этап"}).json()
+        self.assertIn("Разбор неизвестного потока встал", вопрос["question"])
+
     def test_синхро_через_сервер(self):
         self.сеть.login("engineer")
         данные = с.случайные_биты(400 * 1500, сид=7).reshape(1500, 400)
@@ -601,7 +635,8 @@ class СтраницаTests(unittest.TestCase):
                       "saveDraft(data.chat.id, data.question);", "'Что дальше?'",
                       "'/sync'", "'Засинхронизировать'", "'Выровнять кадры'", "'Из выделения'",
                       "'/tree'", "'/rebuild'", "'Пересобрать и заменить'", "'Дерево обработки — узлов: '",
-                      "'Найти ПСП и начальное состояние'", "'/api/potok-matrices'"):
+                      "'Найти ПСП и начальное состояние'", "'/api/potok-matrices'",
+                      "{ stage: этап.номер, topic: 'этап' }", "спроситьОбЭтапе(этап, event.currentTarget)"):
             self.assertIn(кусок, js)
 
 
