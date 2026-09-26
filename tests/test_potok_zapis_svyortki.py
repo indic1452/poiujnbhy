@@ -91,6 +91,15 @@ class КольцоTests(unittest.TestCase):
             б[rng.choice(len(б), 3, replace=False)] ^= 1               # 3 ошибки на блок из 120 бит
         self.assertTrue(np.array_equal(данные, svyortka.витерби_кольцо(принято, list(self.LTE), 7)))
 
+    def test_ошибки_в_конце_блока(self):
+        """Конец блока без хвоста не защищён — его защищает только кольцо: декодер, которому блок
+        дан один раз, ошибается на ошибках последних пар; с блоком трижды — исправляет."""
+        rng = np.random.default_rng(7)
+        данные = rng.integers(0, 2, (50, 40)).astype(np.uint8)
+        принято = np.stack([gnuradio_кольцо(б, self.LTE) for б in данные])
+        принято[:, [117, 119]] ^= 1
+        self.assertTrue(np.array_equal(данные, svyortka.витерби_кольцо(принято, list(self.LTE), 7)))
+
     def test_ручной_слой_кольцо(self):
         данные = np.random.default_rng(3).integers(0, 2, (20, 40)).astype(np.uint8)
         поток = np.concatenate([gnuradio_кольцо(б, self.LTE) for б in данные])
