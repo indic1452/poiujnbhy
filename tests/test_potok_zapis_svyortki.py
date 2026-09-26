@@ -127,6 +127,26 @@ class СледКодаTests(unittest.TestCase):
         self.assertFalse(_след_кода(self._ветвь("канальный"), код))
         # Поток — не свёрточный код.
         self.assertFalse(_след_кода(self._ветвь("цикл"), данные))
+        # Цикл, отмеченный как след синхрослова сквозь код, — след, что бы ни было под ним.
+        ветвь = self._ветвь("цикл", "канальный")
+        ветвь.находки[0].свойства["след_кода"] = True
+        self.assertTrue(_след_кода(ветвь, данные))
+
+    def test_цикл_сквозь_код(self):
+        """Кадры ASM CCSDS + 8160 бит, свёрточный 171/133: цикл 16384 бит — след цикла 8192 бит;
+        те же кадры без кода — настоящий цикл."""
+        from reportgen.potok import cikl
+        from reportgen.potok.razbor import _цикл_сквозь_код
+        rng = np.random.default_rng(5)
+        asm = np.unpackbits(np.frombuffer(bytes.fromhex("1ACFFC1D"), np.uint8))
+        кадры = np.concatenate([np.concatenate([asm, rng.integers(0, 2, 8160).astype(np.uint8)]) for _ in range(40)])
+        код = libfec(кадры)
+        цикл = cikl.найти(код)
+        self.assertEqual(16384, цикл.свойства["длина"])
+        self.assertIn("после декодирования — цикл 8192 бит: цикл 16384 бит — след синхрослова сквозь код",
+                      _цикл_сквозь_код(код, цикл))
+        цикл = cikl.найти(кадры)
+        self.assertEqual("", _цикл_сквозь_код(кадры, цикл))
 
 
 if __name__ == "__main__":
