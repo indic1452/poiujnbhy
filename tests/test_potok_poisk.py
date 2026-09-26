@@ -226,6 +226,17 @@ class ЗаполнениеВСтрокахTests(unittest.TestCase):
         self.assertTrue(any("Передача данных" in с["текст"] for с in найдено["строки"]), найдено["строки"])
         self.assertFalse(any("~~~~" in с["текст"] for с in найдено["строки"]))
 
+    def test_заполнение_в_utf16_режется_по_знакам(self):
+        """«~\\0~\\0…» после «y\\0»: полоса с нечётного байта («\\0~») сдвинула бы текст за ней."""
+        перед = "Hello world, report ready".encode("utf-16-le")
+        после = "Transfer complete, status ok".encode("utf-16-le")
+        данные = b"\x01\x02" + перед + "~".encode("utf-16-le") * 200 + после + b"\x01\x02"
+        найдено = poisk.строки(np.unpackbits(np.frombuffer(данные, np.uint8)), наименьшая=10)
+        тексты = [с["текст"] for с in найдено["строки"] if с["кодировка"] == "UTF-16LE"]
+        self.assertTrue(any("Hello world, report ready" in т for т in тексты), тексты)
+        self.assertTrue(any("Transfer complete, status ok" in т for т in тексты), тексты)
+        self.assertFalse(any("~~~~" in т for т in тексты), тексты)
+
     def test_длинное_слово_не_слово(self):
         """Слово, годное по буквам, но длиннее СЛОВО_ДО, — не слово (и не разбирается)."""
         длинное = "передача" * (poisk.СЛОВО_ДО // 8 + 1)

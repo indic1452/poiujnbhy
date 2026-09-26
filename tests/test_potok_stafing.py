@@ -113,7 +113,13 @@ class СтаффингTests(unittest.TestCase):
         кадры = rng.integers(0, 2, (3000, P)).astype(np.uint8)
         кадры[0::2, :16] = np.unpackbits(np.frombuffer(bytes.fromhex("1ACF"), np.uint8))
         кадры[1::2, :16] = np.unpackbits(np.frombuffer(bytes.fromhex("E530"), np.uint8))
-        self.assertTrue(cikl.найти(кадры.reshape(-1)).что.startswith("цикл 400 бит"))
+        найдено = cikl.найти(кадры.reshape(-1))
+        # Половинки цикла разные — цикл не сводится к 200 бит как к «одинаковым»; а то, что
+        # слова через полцикла чередуются, называется: кадр 200 бит, сверхцикл 400.
+        self.assertEqual(найдено.свойства["длина"], 400)
+        self.assertTrue(найдено.свойства["чередование"])
+        self.assertEqual(найдено.свойства["кадр"], 200)
+        self.assertIn("сверхцикл 400 бит", найдено.что)
 
     def test_кратные_доли_чужое_управление_не_возможность(self):
         # 0,5 и 0,25: управление первого притока предсказуемо по управлению второго.
