@@ -55,6 +55,7 @@ class ЗаписьTests(unittest.TestCase):
         self.assertIsNotNone(найдено)
         self.assertIn("скорости 3/4: материнский K=7, 171/133", найдено.что)
         self.assertIn("X 101 / Y 110", найдено.что)
+        self.assertIn("X — ветвь 171, Y — ветвь 133", " ".join(найдено.подробно))
 
     def test_ручной_слой_171_133(self):
         ряд, _ = снять_вручную(libfec(self.данные[:20_000]), "свёрточный 171/133 K=7")
