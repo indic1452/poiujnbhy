@@ -251,6 +251,25 @@ class SdhTests(unittest.TestCase):
         кадры = hdlc.найти(найдено.дальше["DCC D1–D3 (192 кбит/с)"])
         self.assertEqual("ISDN, LAPD (Q.921)", kanal.найти(кадры.дальше).что)
 
+    def test_dcc_d4_d12(self):
+        """DCC D4–D12 с LAPD (HDLC по 9 байт на кадр: строки 5–7, столбцы 0, 3, 6), D1–D3 — не HDLC."""
+        dcc = np.frombuffer(кс.поток_hdlc(кс.lapd(200, сид=7)), dtype=np.uint8)
+        кадров = len(dcc) // 9 + 8
+        rng = np.random.default_rng(6)
+
+        def служебные(f, к):
+            к[5:8, :][:, [0, 3, 6]] = dcc[(9 * f + np.arange(9)) % len(dcc)].reshape(3, 3)
+            к[2, [0, 3, 6]] = rng.integers(0, 256, 3)
+        нагрузка = [rng.integers(0, 256, (9, 261)).astype(np.uint8) for _ in range(кадров)]
+        найдено = sdh.найти(stm([нагрузка], [0], служебные=служебные))
+        текст = "\n".join(найдено.подробно)
+        self.assertIn("DCC D1–D3 (192 кбит/с): HDLC не найден", текст)
+        self.assertRegex(текст, r"DCC D4–D12 \(576 кбит/с\): HDLC")
+        self.assertNotIn("DCC D1–D3 (192 кбит/с)", найдено.дальше)
+        кадры = hdlc.найти(найдено.дальше["DCC D4–D12 (576 кбит/с)"])
+        self.assertEqual("ISDN, LAPD (Q.921)", kanal.найти(кадры.дальше).что)
+        self.assertGreaterEqual(кадры.уверенность, 0.95)
+
     def test_три_e1_бит_в_бит(self):
         дальше = self.найдено.дальше
         self.assertEqual(3, sum(1 for к in дальше if к.endswith("E1")), list(дальше))
