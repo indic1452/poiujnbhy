@@ -165,11 +165,22 @@ class Снятие(unittest.TestCase):
 class Созвездие(unittest.TestCase):
     def test_вариантов_фм8_с_перестановками(self):
         варианты = ploskost.варианты_фм(3)
-        self.assertEqual(len(варианты), 139)
+        self.assertEqual(len(варианты), 331)
         метки = np.array([(v >> s) & 1 for v in range(8) for s in (2, 1, 0)], np.uint8)
         таблицы = {tuple(ploskost.преобразовать_фм(метки, 3, **в)) for в in варианты}
-        self.assertEqual(len(таблицы), 139)             # одинаковых нет
+        self.assertEqual(len(таблицы), 331)             # одинаковых нет
         self.assertNotIn(tuple(метки), таблицы)         # тождественного нет
+        self.assertEqual(sum(1 for в in варианты if в.get("код_выход")), 331 - 139)
+
+    def test_натуральный_в_грей_это_turbo(self):
+        """Демодулятор отдаёт номер точки натуральным кодом, модем нумеровал Греем:
+        точки 0…7 по окружности получают метки 0, 1, 3, 2, 6, 7, 5, 4 («Turbo» у Comtech)."""
+        номера = np.array([(v >> s) & 1 for v in range(8) for s in (2, 1, 0)], np.uint8)
+        в = {"порядок": "старший", "код": "натуральный", "поворот": 0, "отражение": False,
+             "код_выход": "Грей"}
+        метки = ploskost.преобразовать_фм(номера, 3, **в).reshape(8, 3)
+        self.assertEqual([int(a) * 4 + int(b) * 2 + int(c) for a, b, c in метки], [0, 1, 3, 2, 6, 7, 5, 4])
+        self.assertIn("натуральный → Грей", ploskost.имя_фм(в, 3))
 
     def test_перестановка_метки_обратима(self):
         x = np.random.default_rng(7).integers(0, 2, 3000).astype(np.uint8)
@@ -202,7 +213,7 @@ class Созвездие(unittest.TestCase):
         self.assertIsNotNone(найдено)
         ряд = next(iter(найдено.дальше.values()))
         self.assertTrue(np.array_equal(ряд, поток))                  # плоскость восстановлена точно
-        self.assertIn("перебрано вариантов: 139", найдено.подробно[0])
+        self.assertIn("перебрано вариантов: 331", найдено.подробно[0])
 
     def test_ручной_слой_фм_с_битами_метки(self):
         x = np.random.default_rng(8).integers(0, 2, 3000).astype(np.uint8)

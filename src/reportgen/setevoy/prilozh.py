@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import re
+import struct
 from typing import Callable, Dict, List, Optional, Tuple
 
 from .pole import Мало, ip4, ip6, mac, u8, u16, u32, печатное
@@ -1024,7 +1025,7 @@ def по_портам(р: Разбор, транспорт: str, от: int, к: 
         try:
             if КАК[транспорт][имя](р, м, конец):
                 return
-        except (Мало, IndexError, ValueError):
+        except (Мало, IndexError, ValueError, struct.error):
             del р.п.уровни[уровней:]
         р.п.ошибки.append(f"разбирать как {имя} (порт {порт}): данные не подошли")
         break
@@ -1036,13 +1037,13 @@ def по_портам(р: Разбор, транспорт: str, от: int, к: 
         try:
             if разборщик(р, м, конец):
                 return
-        except (Мало, IndexError, ValueError):
+        except (Мало, IndexError, ValueError, struct.error):
             del р.п.уровни[уровней:]
     for разборщик in (ЭВРИСТИКИ_TCP if транспорт == "tcp" else ЭВРИСТИКИ_UDP):
         try:
             if разборщик(р, м, конец):
                 return
-        except (Мало, IndexError, ValueError):
+        except (Мало, IndexError, ValueError, struct.error):
             del р.п.уровни[уровней:]
     try:
         if транспорт == "tcp":
@@ -1056,7 +1057,7 @@ def по_портам(р: Разбор, транспорт: str, от: int, к: 
                 return
             if min(от, к) >= 1024 and rtp(р, м, конец):
                 return
-    except (Мало, IndexError, ValueError):
+    except (Мало, IndexError, ValueError, struct.error):
         del р.п.уровни[уровней:]
     if len(р.п.уровни) == уровней:
         инфо = р.п.инфо

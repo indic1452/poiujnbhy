@@ -158,6 +158,55 @@ class СвёрточныеTests(unittest.TestCase):
         self.assertIsNone(svyortka.опознать(СЛУЧАЙНЫЕ))
 
 
+class ЛожныеСвязиTests(unittest.TestCase):
+    """Связи, которые выполняются не из-за кода, а из-за самих данных (заполнение, ПСП)."""
+
+    def test_расхождение_больше_чем_позволяет_связь(self):
+        """Связь при ошибках 0,1 % выполнена в 99 % окон — у кода и перекодированное расходится
+        с принятым не больше; расходится на 10 % — связь из данных, а не код."""
+        from unittest import mock
+        from reportgen.potok import kod
+        rng = np.random.default_rng(31)
+        данные = rng.integers(0, 2, 1 << 17).astype(np.uint8)
+        код = ошибки(svyortka.кодировать(данные, [0o171, 0o133], 7), 1e-3)
+        self.assertIsNotNone(kod.свёрточный(код))
+        настоящий = kod.витерби
+
+        def плохой(*а):
+            return настоящий(*а) ^ (rng.random(len(а[0]) // 2) < 0.1).astype(np.uint8)
+
+        with mock.patch.object(kod, "витерби", плохой):
+            self.assertIsNone(kod.свёрточный(код))
+
+    def test_постоянные_связи_заполнения_не_блочный_код(self):
+        """Два 8-битных слова по очереди: 7 связей выполнены по отдельности (одинаковы у обоих
+        слов), но все сразу — почти нигде: это «(8, 1)» из заполнения, не код."""
+        from reportgen.potok import kod
+        rng = np.random.default_rng(32)
+        слова = np.array([[0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 0, 1, 0, 0]], np.uint8)
+        поток = np.tile(слова.reshape(-1), 1 << 14)
+        поток = ошибки(поток, 5e-3, сид=32)
+        self.assertIsNone(kod.блочный_устойчивый(поток))
+
+    def test_одно_заполнение_без_данных_не_код_и_без_памяти(self):
+        """Слова все одинаковые — выполнены все 2ⁿ − 1 связей: это не код (k = 0), и проверка
+        всех связей сразу не должна строить матрицу 2ⁿ × слов (раньше — 16 ГБ)."""
+        from reportgen.potok import kod
+        поток = np.tile(np.array([0, 1, 1, 1, 1, 1, 1, 0], np.uint8), 1 << 15)
+        self.assertIsNone(kod.блочный_устойчивый(поток))
+
+    def test_настоящий_код_при_ошибках_остаётся(self):
+        from reportgen.potok import kod
+        rng = np.random.default_rng(33)
+        for доля in (1e-3, 1e-2, 5e-2):
+            with self.subTest(доля=доля):
+                данные = rng.integers(0, 2, 1 << 17).astype(np.uint8)
+                код = ошибки(svyortka.кодировать(данные, [0o171, 0o133], 7), доля, сид=int(доля * 1e4))
+                найдено = kod.найти(код)
+                self.assertIsNotNone(найдено)
+                self.assertIn("171/133", найдено.что)
+
+
 class ВыколотыеTests(unittest.TestCase):
     U = с.случайные_биты(60_000, сид=2)
     МАТЕРИНСКИЙ = svyortka.кодировать(U, [0o171, 0o133], 7)
