@@ -365,6 +365,88 @@ class SlowTests(unittest.TestCase):
             with self.subTest(флаги=флаги, код=код):
                 self.assertNotIn("OAM", разобрать_пакет(с.eth(плохой, тип=0x8809)).стек)
 
+    def test_esmc(self):
+        """ESMC (G.8264, 11.3.1): OSSP подтип 0x0A, OUI ITU-T 00-19-A7, подтип ITU-T 1; TLV QL и
+        расширенного QL — поля и уровни качества, как у разбора Wireshark (packet-ossp.c)."""
+        ql = bytes([1]) + struct.pack(">H", 4) + bytes([0x02])                         # SSM 2
+        расш = (bytes([2]) + struct.pack(">H", 20) + bytes([0xFF]) + bytes.fromhex("001122fffe334455")
+                + bytes([0x01, 3, 5]) + bytes(5))
+        pdu = bytes([0x0A]) + bytes.fromhex("0019a7") + struct.pack(">H", 1) + bytes([0x18, 0, 0, 0]) + ql + расш
+        п = разобрать_пакет(с.eth(pdu + bytes(12), тип=0x8809))
+        self.assertEqual(["Ethernet", "ESMC"], п.стек)
+        self.assertEqual((0x0019A7, 15, 3), место(п, "ossp.oui"))
+        self.assertEqual((1, 18, 2), место(п, "ossp.itu.subtype"))
+        self.assertEqual((1, 20, 1), место(п, "ossp.esmc.version"))
+        self.assertEqual((1, 20, 1), место(п, "ossp.esmc.event_flag"))
+        self.assertEqual((2, 27, 1), место(п, "ossp.esmc.tlv_ql_ssm"))
+        self.assertEqual((0xFF, 31, 1), место(п, "ossp.esmc.tlv_ext_ql_essm"))
+        self.assertEqual(("00:11:22:ff:fe:33:44:55", 32, 8), место(п, "ossp.esmc.tlv_ext_ql_clockid"))
+        self.assertEqual(([0], [1]), (значения(п, "ossp.esmc.tlv_ext_ql_flag_chain"),
+                                      значения(п, "ossp.esmc.tlv_ext_ql_flag_mixed")))
+        self.assertEqual(((3, 41, 1), (5, 42, 1)), (место(п, "ossp.esmc.tlv_ext_ql_eeec"),
+                                                    место(п, "ossp.esmc.tlv_ext_ql_eec")))
+        self.assertIn("QL-PRC (вариант I)", поле(п, "ossp.esmc.ql").текст)
+        self.assertIn("ESMC событие, SSM 0x2: QL-PRC", п.инфо)
+        self.assertFalse(п.ошибки)
+        self.assertEqual(34, [у for у in п.уровни if у.протокол == "ESMC"][0].длина)
+        # Тип 2 при длине не 20 — это не TLV расширенного QL.
+        плохой = bytearray(pdu)
+        плохой[16] = 19
+        п = разобрать_пакет(с.eth(bytes(плохой) + bytes(12), тип=0x8809))
+        self.assertEqual(["Ethernet", "ESMC"], п.стек)
+        self.assertNotIn("ossp.esmc.tlv_ext_ql_essm", п.поля_фильтра())
+        self.assertEqual(14, [у for у in п.уровни if у.протокол == "ESMC"][0].длина)
+        # TLV расширенного QL оборван (33 байта из 34) — его нет, ESMC — по TLV QL.
+        п = разобрать_пакет(с.eth(pdu[:33], тип=0x8809))
+        self.assertEqual(["Ethernet", "ESMC"], п.стек)
+        self.assertNotIn("ossp.esmc.tlv_ext_ql_essm", п.поля_фильтра())
+
+    def test_esmc_уровни(self):
+        """Один код SSM в разных вариантах сети — разные уровни (G.781, 5.5.1); eSSM уточняет уровень.
+        Таблицы — как у Wireshark (packet-ossp.c): вариант I, II, III."""
+        from reportgen.setevoy.protokoly import kanalnye
+        self.assertEqual(kanalnye.ESMC_QL, {
+            "I": {2: "QL-PRC", 4: "QL-SSU-A", 8: "QL-SSU-B", 11: "QL-EEC1", 15: "QL-DNU"},
+            "II": {0: "QL-STU", 1: "QL-PRS", 4: "QL-TNC", 7: "QL-ST2", 10: "QL-ST3", 13: "QL-ST3E",
+                   14: "QL-PROV", 15: "QL-DUS"},
+            "III": {0: "QL-UNK", 11: "QL-EEC1"}})
+        self.assertEqual(kanalnye.ESMC_РАСШИРЕННЫЕ["I"], {(0x20, 2): "QL-PRTC", (0x21, 2): "QL-ePRTC",
+                                                         (0x22, 11): "QL-eEEC", (0x23, 2): "QL-ePRC"})
+        self.assertEqual(kanalnye.ESMC_РАСШИРЕННЫЕ["II"], {(0x20, 1): "QL-PRTC", (0x21, 1): "QL-ePRTC",
+                                                          (0x22, 10): "QL-eEEC", (0x23, 1): "QL-ePRC"})
+        self.assertEqual(kanalnye.esmc_уровень(4), "QL-SSU-A (вариант I); QL-TNC (вариант II)")
+        self.assertEqual(kanalnye.esmc_уровень(11), "QL-EEC1 (вариант I); QL-EEC1 (вариант III)")
+        self.assertEqual(kanalnye.esmc_уровень(15), "QL-DNU (вариант I); QL-DUS (вариант II)")
+        self.assertEqual(kanalnye.esmc_уровень(0), "QL-STU (вариант II); QL-UNK (вариант III)")
+        self.assertEqual(kanalnye.esmc_уровень(2, 0x20), "QL-PRTC (вариант I)")
+        self.assertEqual(kanalnye.esmc_уровень(1, 0x21), "QL-ePRTC (вариант II)")
+        self.assertEqual(kanalnye.esmc_уровень(11, 0x22), "QL-eEEC (вариант I)")
+        self.assertEqual(kanalnye.esmc_уровень(2, 0xFF), "QL-PRC (вариант I)")
+        self.assertEqual(kanalnye.esmc_уровень(3), "неизвестный уровень")
+
+    def test_esmc_не_принимается(self):
+        """Чужой OUI, подтип ITU-T не 1, версия не 1, TLV QL не первым — не ESMC; только QL TLV —
+        ESMC без расширенного; резерв не нулевой — ошибка, но разбор."""
+        ql = bytes([1]) + struct.pack(">H", 4) + bytes([0x0B])
+        хороший = bytes([0x0A]) + bytes.fromhex("0019a7") + struct.pack(">H", 1) + bytes([0x10, 0, 0, 0]) + ql
+        п = разобрать_пакет(с.eth(хороший + bytes(30), тип=0x8809))
+        self.assertEqual(["Ethernet", "ESMC"], п.стек)
+        self.assertNotIn("ossp.esmc.tlv_ext_ql_essm", п.поля_фильтра())
+        self.assertIn("информационное, SSM 0xb: QL-EEC1", п.инфо)
+        for i, байт in ((1, 0x01), (5, 2), (6, 0x20), (10, 2), (12, 5)):
+            плохой = bytearray(хороший)
+            плохой[i] = байт
+            with self.subTest(i=i):
+                self.assertNotIn("ESMC", разобрать_пакет(с.eth(bytes(плохой) + bytes(30), тип=0x8809)).стек)
+        плохой = bytearray(хороший)
+        плохой[8] = 1
+        п = разобрать_пакет(с.eth(bytes(плохой) + bytes(30), тип=0x8809))
+        self.assertEqual(["Ethernet", "ESMC"], п.стек)
+        self.assertTrue(any("резерв" in о for о in п.ошибки))
+        короткий = разобрать_пакет(с.eth(хороший[:13], тип=0x8809))
+        self.assertNotIn("ESMC", короткий.стек)
+        self.assertFalse([о for о in короткий.ошибки if "разбор прерван" in о], короткий.ошибки)
+
 
 class PtpTests(unittest.TestCase):
     def test_sync_ethernet(self):
@@ -970,7 +1052,7 @@ class СлучайныеTests(unittest.TestCase):
 
     def test_ethertype(self):
         for тип, имя, доля in ((0x888E, "EAPOL", 0), (0x8809, "LACP", 0), (0x8809, "Marker", 0), (0x8809, "OAM", 0),
-                               (0x88F7, "PTP", 0), (0x88E5, "MACsec", 0.005), (0x88E7, "PBB", 0.005),
+                               (0x8809, "ESMC", 0), (0x88F7, "PTP", 0), (0x88E5, "MACsec", 0.005), (0x88E7, "PBB", 0.005),
                                (0x8906, "FCoE", 0), (0x8914, "FIP", 0), (0x8892, "PN-RT", 0.005),
                                (0x88A4, "EtherCAT", 0), (0x88B8, "GOOSE", 0), (0x88BA, "SV", 0),
                                (0x0842, "WOL", 0)):
@@ -980,7 +1062,8 @@ class СлучайныеTests(unittest.TestCase):
     def test_ethertype_с_верным_началом(self):
         """Первые байты — как у протокола (версия, подтип), остальное случайно."""
         for тип, начало, имя in ((0x888E, b"\x02\x00", "EAPOL"), (0x8809, b"\x01\x01", "LACP"),
-                                 (0x8809, b"\x03", "OAM"), (0x88F7, b"\x00\x02", "PTP"),
+                                 (0x8809, b"\x03", "OAM"), (0x8809, b"\x0a\x00\x19\xa7\x00\x01", "ESMC"),
+                                 (0x88F7, b"\x00\x02", "PTP"),
                                  (0x8906, bytes(13) + b"\x2e", "FCoE"), (0x8914, b"\x10\x00\x00\x01", "FIP"),
                                  (0x8892, b"\xfe\xff\x05\x01", "PN-DCP"), (0x88A4, b"\x00\x10", "EtherCAT"),
                                  (0x88B8, b"\x00\x01", "GOOSE"), (0x88BA, b"\x40\x00", "SV")):

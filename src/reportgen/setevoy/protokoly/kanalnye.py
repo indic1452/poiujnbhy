@@ -5,7 +5,9 @@
   0x888E EAPOL — IEEE 802.1X-2010, 11.3 (EAPOL PDU); вложенный EAP — RFC 3748, 4 (пакет) и 5 (типы);
   0x8809 Slow Protocols — IEEE 802.3-2018, прил. 43B и 57A: LACP и Marker — IEEE 802.1AX-2014,
          6.4.2.3 (LACPDU) и 6.5.3.3 (Marker PDU); OAM — IEEE 802.3-2018, 57.4.2 (OAMPDU) и
-         57.5.2 (TLV Information OAMPDU);
+         57.5.2 (TLV Information OAMPDU); OSSP (подтип 0x0A) — IEEE 802.3, прил. 57B: у OUI ITU-T
+         00-19-A7 подтип 1 — ESMC, ITU-T G.8264, 11.3.1 (TLV QL и расширенный QL; уровни качества —
+         G.781, 5.5.1, варианты I–III; сверено с разбором Wireshark packet-ossp.c);
   0x88F7 PTP — IEEE 1588-2008, 13 (сообщения; 13.3 — общий заголовок, 5.3.3 — отметка времени),
          прил. F (Ethernet); по UDP 319/320 — прил. D;
   0x88E5 MACsec — IEEE 802.1AE-2018, 9 (SecTAG: 9.5 TCI, 9.6 AN, 9.7 SL, 9.8 PN, 9.9 SCI) и
@@ -256,11 +258,99 @@ OAM_TLV = {0x00: "конец", 0x01: "Local Information", 0x02: "Remote Informat
 
 @_надёжно
 def медленные(р: Разбор, м: int, конец: int) -> bool:
-    """Slow Protocols (IEEE 802.3-2018, прил. 43B/57A): подтип 1 — LACP, 2 — Marker, 3 — OAM."""
+    """Slow Protocols (IEEE 802.3-2018, прил. 43B/57A): 1 — LACP, 2 — Marker, 3 — OAM, 0x0A — OSSP."""
     if м >= конец:
         return False
-    разборщик = {1: lacp, 2: marker, 3: oam}.get(р.д[м])
+    разборщик = {1: lacp, 2: marker, 3: oam, 0x0A: esmc}.get(р.д[м])
     return разборщик is not None and разборщик(р, м, конец)
+
+
+#: Уровни качества по коду SSM (G.781, 5.5.1): вариант I (сети SDH по G.707), II (SONET), III.
+ESMC_QL = {
+    "I": {2: "QL-PRC", 4: "QL-SSU-A", 8: "QL-SSU-B", 11: "QL-EEC1", 15: "QL-DNU"},
+    "II": {0: "QL-STU", 1: "QL-PRS", 4: "QL-TNC", 7: "QL-ST2", 10: "QL-ST3", 13: "QL-ST3E",
+           14: "QL-PROV", 15: "QL-DUS"},
+    "III": {0: "QL-UNK", 11: "QL-EEC1"},
+}
+#: Расширенные уровни (G.8264, табл. 11-8): (eSSM, SSM) → уровень, по вариантам; eSSM 0xFF — как SSM.
+ESMC_РАСШИРЕННЫЕ = {
+    "I": {(0x20, 2): "QL-PRTC", (0x21, 2): "QL-ePRTC", (0x22, 11): "QL-eEEC", (0x23, 2): "QL-ePRC"},
+    "II": {(0x20, 1): "QL-PRTC", (0x21, 1): "QL-ePRTC", (0x22, 10): "QL-eEEC", (0x23, 1): "QL-ePRC"},
+    "III": {},
+}
+
+
+def esmc_уровень(ssm: int, essm: int | None = None) -> str:
+    """Уровень качества по SSM (и eSSM) во всех вариантах сети, где код определён."""
+    имена = []
+    for вариант, таблица in ESMC_QL.items():
+        if essm is None or essm == 0xFF:
+            имя = таблица.get(ssm)
+        else:
+            имя = ESMC_РАСШИРЕННЫЕ[вариант].get((essm, ssm))
+        if имя:
+            имена.append(f"{имя} (вариант {вариант})")
+    return "; ".join(имена) or "неизвестный уровень"
+
+
+def esmc(р: Разбор, м: int, конец: int) -> bool:
+    """OSSP (IEEE 802.3, прил. 57B) с OUI ITU-T и подтипом 1 — ESMC (ITU-T G.8264, 11.3.1).
+
+    За подтипом ITU-T — версия (1) с флагом события, 3 байта резерва, TLV QL (тип 1,
+    длина 4, код SSM в младших 4 битах) и необязательный TLV расширенного QL (тип 2,
+    длина 20: eSSM, clockIdentity SyncE, флаги, число eEEC и EEC в цепочке, резерв).
+    """
+    д = р.д
+    if м + 14 > конец or д[м + 1:м + 4] != b"\x00\x19\xa7" or u16(д, м + 4) != 1:
+        return False
+    if д[м + 6] >> 4 != 1 or д[м + 10] != 1 or u16(д, м + 11) != 4:
+        return False
+    событие = bool(д[м + 6] & 0x08)
+    ssm = д[м + 13] & 0x0F
+    расширенный = м + 34 <= конец and д[м + 14] == 2 and u16(д, м + 15) == 20
+    essm = д[м + 17] if расширенный else None
+    у = р.уровень("ESMC", "Ethernet Synchronization Messaging Channel (ITU-T G.8264)", м)
+    у.поле("Подтип", "slow.subtype", "10 (OSSP)", м, 1, 0x0A)
+    у.поле("OUI", "ossp.oui", "00:19:a7 (ITU-T)", м + 1, 3, 0x0019A7)
+    у.поле("Подтип ITU-T", "ossp.itu.subtype", "0x0001 (ESMC)", м + 4, 2, 1)
+    у.поле("Версия", "ossp.esmc.version", 1, м + 6, 1)
+    у.поле("Флаг события", "ossp.esmc.event_flag",
+           "1 (срочное сообщение о событии)" if событие else "0 (информационное)", м + 6, 1, int(событие))
+    резерв = [(м + 6, 1, д[м + 6] & 0x07, "ossp.esmc.reserved_bits"),
+              (м + 7, 3, int.from_bytes(д[м + 7:м + 10], "big"), "ossp.esmc.reserved")]
+    for место, дл, значение, ключ in резерв:
+        п = у.поле("Резерв", ключ, f"0x{значение:0{2 * дл}x}", место, дл, значение)
+        if значение:
+            п.плохо = True
+            р.ошибка("ESMC: резерв не нулевой (G.8264: передатчик ставит нули)")
+    т = у.поле("TLV QL", "ossp.esmc.tlv", "Quality Level", м + 10, 4)
+    у.поле("Тип TLV", "ossp.esmc.tlv_type", "1 (Quality Level)", м + 10, 1, 1, родитель=т)
+    у.поле("Длина TLV", "ossp.esmc.tlv_length", 4, м + 11, 2, родитель=т)
+    у.поле("Код SSM", "ossp.esmc.tlv_ql_ssm", f"0x{ssm:x}", м + 13, 1, ssm, родитель=т)
+    if д[м + 13] & 0xF0:
+        р.ошибка("ESMC: старшие биты байта SSM не нулевые")
+    длина = 14
+    if расширенный:
+        т = у.поле("TLV расширенного QL", "ossp.esmc.tlv", "Extended Quality Level", м + 14, 20)
+        у.поле("Тип TLV", "ossp.esmc.tlv_type", "2 (Extended Quality Level)", м + 14, 1, 2, родитель=т)
+        у.поле("Длина TLV", "ossp.esmc.tlv_length", 20, м + 15, 2, родитель=т)
+        у.поле("Код eSSM", "ossp.esmc.tlv_ext_ql_essm", f"0x{essm:02x}", м + 17, 1, essm, родитель=т)
+        у.поле("clockIdentity SyncE", "ossp.esmc.tlv_ext_ql_clockid", д[м + 18:м + 26].hex(":"), м + 18, 8,
+               родитель=т)
+        флаги = д[м + 26]
+        у.поле("Неполная цепочка", "ossp.esmc.tlv_ext_ql_flag_chain", "да" if флаги & 0x02 else "нет",
+               м + 26, 1, int(bool(флаги & 0x02)), родитель=т)
+        у.поле("Смешанные EEC/eEEC", "ossp.esmc.tlv_ext_ql_flag_mixed", "да" if флаги & 0x01 else "нет",
+               м + 26, 1, int(bool(флаги & 0x01)), родитель=т)
+        у.поле("eEEC в цепочке", "ossp.esmc.tlv_ext_ql_eeec", д[м + 27], м + 27, 1, родитель=т)
+        у.поле("EEC в цепочке", "ossp.esmc.tlv_ext_ql_eec", д[м + 28], м + 28, 1, родитель=т)
+        длина = 34
+    уровень = esmc_уровень(ssm, essm)
+    у.поле("Уровень качества", "ossp.esmc.ql", уровень, м + 13, 1, ssm)
+    у.длина = длина
+    у.итог = ("событие" if событие else "информационное") + f", SSM 0x{ssm:x}: {уровень}"
+    р.п.инфо = "ESMC " + у.итог
+    return True
 
 
 def lacp(р: Разбор, м: int, конец: int) -> bool:

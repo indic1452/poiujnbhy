@@ -245,6 +245,20 @@ class SdhTests(unittest.TestCase):
         self.assertIn("TU-12 с годным VC-12 — 3, из них E1 с FAS — 3", текст)
         self.assertIn("TU-12 2-3-2: указатель 77, V5 (BIP-2) сошёлся в 100 %", текст)
 
+    def test_e1_с_crc4_в_tu12(self):
+        """E1 со сверхциклом CRC-4 в TU-12: CRC-4 проверяется у выделенного притока — выделение
+        (указатель, стаффинг C1/C2) подтверждено до бита."""
+        from test_potok_e1_crc4 import e1_crc4
+        rng = np.random.default_rng(12)
+        кадров = 200
+        vc, _ = vc12_из_e1(e1_crc4(40, сид=21), кадров // 4 + 2, rng)
+        поток = stm([vc4_кадры(кадров, {(0, 3, 1): tu12_кадры(vc, 40, кадров)})], [100])
+        найдено = sdh.найти(поток)
+        текст = " ".join(найдено.подробно)
+        self.assertIn("TU-12 1-4-2: указатель 40", текст)
+        self.assertIn("CRC-4 сошлась в 100 % подсверхциклов", текст)
+        self.assertNotIn("CRC-4", " ".join(self.найдено.подробно))       # у E1 без CRC-4 — нет
+
     def test_нагрузка_c4_как_есть(self):
         rng = np.random.default_rng(9)
         кадров = 40
