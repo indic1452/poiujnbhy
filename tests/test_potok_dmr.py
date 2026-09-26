@@ -98,7 +98,17 @@ def emb(пакет, цвет, pi=False, lcss=0):
 
 
 def gmult(a, b):
-    return dmr._умн(a, b)
+    """Умножение в GF(2⁸) по модулю x⁸ + x⁴ + x³ + x² + 1 (0x11D: EXP_TABLE RS129.cpp — 0x01, 0x02, …,
+    0x80, 0x1D) — сдвигами, без таблиц модуля."""
+    итог = 0
+    while b:
+        if b & 1:
+            итог ^= a
+        a <<= 1
+        if a & 0x100:
+            a ^= 0x11D
+        b >>= 1
+    return итог
 
 
 def rs129_encode(msg):
@@ -223,11 +233,31 @@ class КодыTests(unittest.TestCase):
         for байты, вид in ((BS_DATA, "БС, данные"), (BS_AUDIO, "БС, речь")):
             self.assertEqual(dmr.СИНХРО[вид], int.from_bytes(байты, "big") >> 4 & ((1 << 48) - 1))
 
+    def test_тип_слота_с_ошибками(self):
+        """Golay (20, 8) исправляет до 3 ошибок в 20 битах типа слота (биты 98–107 и 156–165)."""
+        п = np.unpackbits(np.frombuffer(bytes(пакет_данных(bytes(12), 3, 5)), np.uint8))
+        for места in ([98], [100, 160], [99, 107, 165]):
+            with self.subTest(места=места):
+                испорчено = п.copy()
+                испорчено[места] ^= 1
+                р = dmr.разобрать_пакеты(испорчено, [0])
+                self.assertEqual((5, 3, len(места)), (int(р["цвет"][0]), int(р["тип"][0]), int(р["golay"][0])))
+
     def test_тип_слота_как_mmdvmhost(self):
         for цвет, тип in ((0, 0), (1, 3), (15, 10), (7, 9)):
             п = пакет_данных(bytes(12), тип, цвет)
             р = dmr.разобрать_пакеты(np.unpackbits(np.frombuffer(bytes(п), np.uint8)), [0])
             self.assertEqual((цвет, тип, 0), (int(р["цвет"][0]), int(р["тип"][0]), int(р["golay"][0])))
+
+    def test_поле_как_rs129(self):
+        """Первые степени α — как EXP_TABLE в RS129.cpp: 01 02 04 08 10 20 40 80 1D 3A 74 E8 CD 87 13 26."""
+        степени, x = [], 1
+        for _ in range(16):
+            степени.append(x)
+            x = gmult(x, 2)
+        self.assertEqual(bytes.fromhex("0102040810204080" "1D3A74E8CD871326"), bytes(степени))
+        for a, b in ((0x53, 0xCA), (0x1D, 0x80), (0xFF, 0xFF)):
+            self.assertEqual(gmult(a, b), dmr._умн(a, b))
 
     def test_rs129_и_crc(self):
         б = lc(0, 2001, 9, 1)
@@ -243,6 +273,11 @@ class КодыTests(unittest.TestCase):
         self.assertEqual(("LC", "индивидуальный вызов: 7 → 8 (FID 0, параметры 0x00)"), dmr.поля(2, данные))
         # Не та маска — проверка не сходится.
         self.assertIsNone(dmr.поля(1, данные))
+        данные = np.unpackbits(np.frombuffer(lc(8, 7, 8, 1), np.uint8))
+        self.assertEqual(("LC", "координаты GPS вызов: 7 → 8 (FID 0, параметры 0x00)"), dmr.поля(1, данные))
+        # Radio Check: при байте 3 = 0x80 — кому в байтах 4–6, иначе — от кого (DMRCSBK.cpp).
+        данные = np.unpackbits(np.frombuffer(csbk(0x24, 5, 6, байт3=0x00), np.uint8))
+        self.assertEqual(("CSBK", "Radio Check (проверка связи): 6 → 5 (FID 0)"), dmr.поля(3, данные))
         данные = np.unpackbits(np.frombuffer(csbk(0x26, 11, 12), np.uint8))
         self.assertEqual(("CSBK", "NACK_Rsp (отказ): 12 → 11 (FID 0)"), dmr.поля(3, данные))
         # Заголовок данных: DPF 2 (без подтверждения), групповой; кому — байты 2–4, от кого — 5–7.
@@ -269,6 +304,19 @@ class ПотокTests(unittest.TestCase):
         self.assertIn("пустой пакет × 13, CSBK × 2, заголовок речи (LC) × 1, окончание с LC × 1", текст)
         self.assertEqual(288, найдено.свойства["шаг"])
 
+    def test_неисправимый_тип_слота_не_считается(self):
+        """Тип слота с 5 ошибками (Golay исправляет 3) — пакет не идёт ни в типы, ни в цвета."""
+        пакеты = эфир()
+        испорчен = bytearray(пакеты[1])                      # CSBK преамбулы
+        биты = np.unpackbits(np.frombuffer(bytes(испорчен), np.uint8))
+        биты[[98, 101, 104, 158, 163]] ^= 1
+        пакеты[1] = bytearray(np.packbits(биты).tobytes())
+        подробно = dmr.найти(поток_бс(пакеты)).подробно
+        self.assertEqual("пакетов данных: 18, тип слота (Golay (20, 8)) верен у 17; цветовой код: 1 × 17", подробно[2])
+        self.assertEqual("типы данных: пустой пакет × 13, заголовок речи (LC) × 2, CSBK × 1, окончание с LC × 1",
+                         подробно[3])
+        self.assertNotIn("Preamble CSBK", "\n".join(подробно))
+
     def test_ошибки_в_пакетах(self):
         поток = поток_бс(эфир()).copy()
         rng = np.random.default_rng(4)
@@ -276,6 +324,27 @@ class ПотокTests(unittest.TestCase):
         найдено = dmr.найти(поток)
         self.assertIsNotNone(найдено)
         self.assertTrue(any("BPTC (196, 96): исправлено бит" in п for п in найдено.подробно))
+
+    def test_синхрослова_с_ошибками(self):
+        """Синхрослово с двумя ошибками из 48 бит — всё ещё синхрослово."""
+        поток = поток_бс(эфир())
+        места = [м for м, _, _ in dmr.синхрослова(поток)]
+        испорчено = поток.copy()
+        for м in места:
+            испорчено[[м + 5, м + 30]] ^= 1
+        найдено = dmr.синхрослова(испорчено)
+        self.assertEqual(места, [м for м, _, _ in найдено])
+        self.assertEqual({2}, {о for _, _, о in найдено})
+
+    def test_шаг_у_меньшинства_не_dmr(self):
+        """6 синхрослов с шагом 288 и 14 вразброс: шаг согласован меньше чем у 70 % соседей — не DMR."""
+        rng = np.random.default_rng(8)
+        поток = rng.integers(0, 2, 300_000).astype(np.uint8)
+        слово = np.array([(dmr.СИНХРО["БС, данные"] >> (47 - i)) & 1 for i in range(48)], np.uint8)
+        места = [1000 + 288 * k for k in range(6)] + sorted(rng.choice(np.arange(5000, 290_000, 97), 14, replace=False))
+        for м in места:
+            поток[м:м + 48] = слово
+        self.assertIsNone(dmr.найти(поток))
 
     def test_не_dmr(self):
         rng = np.random.default_rng(5)
