@@ -9063,7 +9063,8 @@ i.pk-lvl {
 }
 .opis-section h3 { margin: 14px 0 6px; font-size: 13px; color: var(--text); }
 .opis-section p { margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: var(--muted); }
-@media (max-width: 900px) {
+/* Экран уже 1100 px: рядом с меню и страницей панели тесно — она ложится поверх страницы. */
+@media (max-width: 1100px) {
     .opis-panel {
         position: absolute;
         top: 0;

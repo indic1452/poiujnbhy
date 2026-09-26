@@ -222,7 +222,7 @@ class СтраницыИСтили(unittest.TestCase):
     def test_стили_панели(self):
         for правило in (".opis-scene {", ".opis-handle {", ".opis-panel {", ".opis-panel[hidden] { display: none; }",
                         ".opis-handle[hidden] { display: none; }", "writing-mode: vertical-rl;",
-                        "@media (max-width: 900px) {"):
+                        "@media (max-width: 1100px) {\n    .opis-panel {\n        position: absolute;"):
             with self.subTest(правило=правило):
                 self.assertIn(правило, self.css)
         # Цвета — только переменными темы: панель одинаково читается в светлой и тёмной.
