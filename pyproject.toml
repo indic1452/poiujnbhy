@@ -58,6 +58,8 @@ include = ["reportgen*"]
 # Файлы, без которых пакет неработоспособен после установки.
 "reportgen.store" = ["schema.sql"]
 "reportgen.web" = ["static/*", "static/**/*"]
+# Таблицы встроенных кодов LDPC (5G NR, DVB-S2/S2X/T2 и др.) — из открытых исходников, сверены.
+"reportgen.potok" = ["data/*.json"]
 
 [tool.ruff]
 line-length = 100

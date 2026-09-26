@@ -3111,16 +3111,20 @@ def potok_sync(request: Request, job_id: str) -> Dict[str, Any]:
 
 @router.get("/potok-matrices")
 def potok_matrices(request: Request) -> Dict[str, Any]:
-    """Загруженные матрицы проверок LDPC: имя, n, k, веса, откуда."""
-    from ..potok import ldpc  # noqa: PLC0415
+    """Загруженные матрицы проверок LDPC (имя, n, k, веса, откуда) и встроенные коды стандартов."""
+    from ..potok import ldpc, ldpc_std  # noqa: PLC0415
     require_user(request)
     _potok(request)                     # задаёт каталог матриц
-    return {"items": ldpc.список()}
+    return {"items": ldpc.список(), "builtin": ldpc_std.список()}
 
 
 @router.post("/potok-matrices")
 def potok_matrix_add(request: Request) -> Dict[str, Any]:
-    """Загрузить H: alist, базовая матрица сдвигов с Z или таблица адресов с n и k."""
+    """Загрузить H: alist, базовая матрица сдвигов с Z или таблица адресов с n и k.
+
+    ``punctured`` и ``shortened`` — схема передачи («0-191, 1000-1023»): с ней
+    автомат сам пробует матрицу на каждом разбираемом потоке.
+    """
     from ..potok import ldpc  # noqa: PLC0415
     user = require_user(request)
     _potok(request)
@@ -3134,7 +3138,9 @@ def potok_matrix_add(request: Request) -> Dict[str, Any]:
             raise ServiceError("матрица с таким именем уже есть — её загрузил другой инженер", 409)
         матрица = ldpc.загрузить(str(тело.get("kind") or ""), текст, Z=int(тело.get("z") or 0),
                                  n=int(тело.get("n") or 0), k=int(тело.get("k") or 0))
-        сводка = ldpc.сохранить(имя, матрица, user.id)
+        # Схема передачи (выколотые и укороченные позиции) — чтобы автомат пробовал матрицу сам.
+        сводка = ldpc.сохранить(имя, матрица, user.id, выколоты=str(тело.get("punctured") or ""),
+                                укорочены=str(тело.get("shortened") or ""))
     except (ValueError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     _repos(request).audit.log("potok.matrix", user=user, object_type="ldpc", object_id=имя,

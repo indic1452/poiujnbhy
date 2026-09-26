@@ -8,6 +8,7 @@
 """
 
 import unittest
+import warnings
 
 import numpy as np
 
@@ -15,7 +16,6 @@ import _bootstrap  # noqa: F401
 import potok_sintez as с
 from reportgen.potok import (crc, dlinnye, gf2, lineynye, polya, rs_bch, svyortka, turbo,
                              vykalyvanie)
-from reportgen.potok.bity import в_биты
 
 СЛУЧАЙНЫЕ = с.случайные_биты(400_000, сид=21)
 
@@ -211,7 +211,6 @@ class ЛожныеСвязиTests(unittest.TestCase):
         """Два 8-битных слова по очереди: 7 связей выполнены по отдельности (одинаковы у обоих
         слов), но все сразу — почти нигде: это «(8, 1)» из заполнения, не код."""
         from reportgen.potok import kod
-        rng = np.random.default_rng(32)
         слова = np.array([[0, 1, 1, 1, 1, 1, 1, 0], [1, 0, 1, 1, 0, 1, 0, 0]], np.uint8)
         поток = np.tile(слова.reshape(-1), 1 << 14)
         поток = ошибки(поток, 5e-3, сид=32)
@@ -425,6 +424,17 @@ class ЛинейныеКодыTests(unittest.TestCase):
 
     def test_случайный_не_код_в_линии(self):
         self.assertIsNone(lineynye.найти(СЛУЧАЙНЫЕ))
+
+    def test_короткий_ряд_без_предупреждений(self):
+        """Ряд короче пары или символа — не код в линии и не повод для предупреждения numpy
+        о среднем пустого ряда."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            for бит in (0, 1, 3, 9):
+                with self.subTest(бит=бит):
+                    self.assertIsNone(lineynye.манчестер(np.ones(бит, np.uint8)))
+                    self.assertIsNone(lineynye.код_4b5b(np.ones(бит, np.uint8)))
+                    self.assertIsNone(lineynye.найти(np.ones(бит, np.uint8)))
 
 
 if __name__ == "__main__":
