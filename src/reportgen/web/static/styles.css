@@ -8859,3 +8859,149 @@ body.reading .msg .body {
     .stol-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
     .stol-pane--ops { display: none; }
 }
+
+/* -- пакеты: иерархия протоколов (схема-«сосулька», дерево, карточка узла) --
+   Цвет — уровень протокола; порядок слотов проверен на различимость при
+   нарушениях цветового зрения. Подписи на схеме и дерево — рядом, цвет
+   один не несёт смысла. */
+.pk-hier {
+    --lvl-link: #2a78d6;
+    --lvl-net: #eb6834;
+    --lvl-trans: #1baf7a;
+    --lvl-app: #eda100;
+    --lvl-data: #9aa3ad;
+    --lvl-other: #6c7680;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 14px;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .pk-hier {
+        --lvl-link: #3987e5;
+        --lvl-net: #d95926;
+        --lvl-trans: #199e70;
+        --lvl-app: #c98500;
+        --lvl-data: #5d6773;
+        --lvl-other: #8a96a3;
+    }
+}
+:root[data-theme="dark"] .pk-hier {
+    --lvl-link: #3987e5;
+    --lvl-net: #d95926;
+    --lvl-trans: #199e70;
+    --lvl-app: #c98500;
+    --lvl-data: #5d6773;
+    --lvl-other: #8a96a3;
+}
+.pk-lvl--канальный { --lvl: var(--lvl-link); }
+.pk-lvl--сетевой { --lvl: var(--lvl-net); }
+.pk-lvl--транспортный { --lvl: var(--lvl-trans); }
+.pk-lvl--прикладной { --lvl: var(--lvl-app); }
+.pk-lvl--данные { --lvl: var(--lvl-data); }
+.pk-lvl--прочий, .pk-lvl--все { --lvl: var(--lvl-other); }
+i.pk-lvl {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--lvl);
+    flex: none;
+}
+.pk-hier-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+.pk-hier-bar h3 { margin: 0 8px 0 0; }
+.pk-hier-search { width: 220px; max-width: 100%; }
+.pk-hier-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-left: auto; }
+.pk-lvl-chip { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-sm); }
+
+.pk-ice-card { position: relative; padding: 10px 12px 12px; }
+.pk-ice-crumbs { font-size: var(--fs-sm); margin-bottom: 8px; }
+.pk-ice { display: block; width: 100%; height: auto; }
+.pk-ice-rect { fill: var(--lvl); fill-opacity: .18; stroke: none; }
+.pk-ice-top { fill: var(--lvl); }
+.pk-ice-node { cursor: pointer; }
+.pk-ice-node:hover .pk-ice-rect { fill-opacity: .32; }
+.pk-ice-node.is-selected .pk-ice-rect { fill-opacity: .38; stroke: var(--text); stroke-width: 1.5; }
+.pk-ice-label { fill: var(--text); font-size: 13px; font-family: var(--font-ui); pointer-events: none; }
+.pk-ice-card .pk-tooltip {
+    position: absolute;
+    z-index: 5;
+    min-width: 180px;
+    max-width: 260px;
+    padding: 8px 10px;
+    margin: 0;
+    background: var(--panel);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    pointer-events: none;
+}
+
+.pk-hier-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+.pk-hier-list {
+    max-height: 62vh;
+    overflow: auto;
+    padding: 4px 0;
+    outline: none;
+}
+.pk-hier-list:focus-visible { box-shadow: 0 0 0 2px var(--accent-line) inset; }
+.pk-hier-row {
+    display: grid;
+    grid-template-columns: 18px 12px minmax(80px, 1fr) 84px minmax(60px, 140px) 58px;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    padding-right: 10px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+}
+.pk-hier-row:hover { background: var(--panel-2); }
+.pk-hier-row.is-selected { background: var(--accent-soft); border-left-color: var(--accent); }
+.pk-hier-row.is-match .pk-hier-name { background: var(--mark); border-radius: 3px; }
+.pk-hier-twist {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: transform .12s ease;
+}
+.pk-hier-twist.is-open { transform: rotate(90deg); }
+.pk-hier-twist.is-leaf { display: inline-block; }
+.pk-hier-name { justify-self: start; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; padding: 0 2px; }
+.pk-hier-num, .pk-hier-pct { text-align: right; color: var(--muted); font-size: var(--fs-sm); }
+.pk-hier-track { height: 8px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }
+.pk-hier-fill { display: block; height: 100%; background: var(--lvl); border-radius: 0 4px 4px 0; }
+
+.pk-hier-node h3 { margin: 0; }
+.pk-node-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.pk-node-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+}
+.pk-node-tile { background: var(--panel-2); border-radius: var(--radius); padding: 8px 10px; }
+.pk-node-num { font-size: var(--fs-md); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pk-node-kids { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.pk-node-kids .pk-ov-fill { background: var(--lvl); }
+.pk-hier .pk-node-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+@media screen and (max-width: 900px) {
+    .pk-hier-grid { grid-template-columns: minmax(0, 1fr); }
+    .pk-hier-row { grid-template-columns: 18px 12px minmax(60px, 1fr) 70px 50px; }
+    .pk-hier-track { display: none; }
+    .pk-hier-legend { margin-left: 0; }
+}
+.pk-hier-grid > .card { margin: 0; }

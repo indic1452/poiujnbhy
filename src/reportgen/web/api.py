@@ -2542,9 +2542,12 @@ def potok_start(request: Request, file: UploadFile = File(...), profile: str = F
         raise ServiceError(f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
     if not данные:
         raise ServiceError("файл пуст", 400)
-    символ = [int(ч) for ч in re.findall(r"\d+", bits or "")][:4]
-    if any(k < 2 or k > 12 or k % 2 for k in символ):
-        raise ServiceError("бит на символ КАМ — чётное число от 2 до 12", 400)
+    from ..potok.ploskost import модуляции  # noqa: PLC0415
+    символ, фм = модуляции(bits or "")
+    символ, фм = символ[:4], фм[:4]
+    if (bits or "").strip() and not (символ or фм):
+        raise ServiceError("модуляция: 8PSK, QPSK, BPSK, 16QAM, КАМ-64 или бит на символ "
+                           "(чётное — КАМ, нечётное — ФМ)", 400)
     if config:
         # Конфигурация — шаги по порядку над битами файла (у .Sig — тела пакетов подряд),
         # затем разбор автоматом того, что получилось.
@@ -2558,7 +2561,7 @@ def potok_start(request: Request, file: UploadFile = File(...), profile: str = F
                                      разбирать=True, происхождение=описание)
     else:
         ид = _potok(request).создать(владелец=user.id, имя=name, данные=данные, профиль=profile,
-                                     снять=_слои(strip), символ=символ)
+                                     снять=_слои(strip), символ=символ, фм=фм)
     _repos(request).audit.log("potok.start", user=user, object_type="potok", object_id=ид,
                               details={"name": name, "bytes": len(данные), "profile": profile})
     return {"id": ид}
@@ -2966,7 +2969,8 @@ def potok_rebuild(request: Request, job_id: str) -> Dict[str, Any]:
         новый = задания.создать(
             владелец=user.id, имя=состояние["имя"], данные=(папка / "вход.bin").read_bytes(),
             профиль=профиль, от=состояние.get("от") or "",
-            снять=[ш["слой"] for ш in шаги if ш["вкл"]], символ=состояние.get("символ") or ())
+            снять=[ш["слой"] for ш in шаги if ш["вкл"]], символ=состояние.get("символ") or (),
+            фм=состояние.get("фм") or ())
     if тело.get("replace"):
         try:
             задания.удалить(job_id, user.id)

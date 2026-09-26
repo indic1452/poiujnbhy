@@ -103,6 +103,19 @@ class ЧерезСерверTests(unittest.TestCase):
             time.sleep(0.1)
         self.fail("разбор не закончился")
 
+    def test_модуляция_словами_при_загрузке(self):
+        к = self.к
+        файл = {"file": ("p.bin", bytes(64), "application/octet-stream")}
+        ид = к.post("/api/potok", data={"profile": "быстро", "bits": "8PSK"}, files=файл).json()["id"]
+        состояние = self.дождаться(ид)
+        self.assertEqual(([], [3]), (состояние["символ"], состояние["фм"]))
+        ид = к.post("/api/potok", data={"profile": "быстро", "bits": "КАМ-64, 4"}, files=файл).json()["id"]
+        состояние = self.дождаться(ид)
+        self.assertEqual(([6, 4], []), (состояние["символ"], состояние["фм"]))
+        ответ = к.post("/api/potok", data={"profile": "быстро", "bits": "16APSK"}, files=файл)
+        self.assertEqual(400, ответ.status_code)
+        self.assertIn("8PSK", ответ.text)
+
     def test_весь_путь(self):
         к = self.к
         ответ = к.post("/api/potok-configs", json={"name": "Инверсия и полубайт", "steps": ШАГИ, "description": "проба"})

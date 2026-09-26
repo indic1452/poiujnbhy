@@ -657,7 +657,8 @@ def cmd_potok(args: argparse.Namespace) -> int:
 
     try:
         разбор = разобрать(args.path, глубоко=args.deep, снять=args.strip or (), профиль="обычно",
-                           символ=args.bits or ())
+                           символ=[k for k in (args.bits or ()) if k % 2 == 0],
+                           фм=[k for k in (args.bits or ()) if k % 2])
     except ValueError as ошибка:
         print(f"Указание не выполнено: {ошибка}")
         return 2
@@ -1002,8 +1003,9 @@ def build_parser() -> argparse.ArgumentParser:
                               "«выколотый 171/133 K=7 шаблон 110110», «перемежение 12 7», "
                               "«pdh E2 приток 1», «плоскость 6»")
     p_potok.add_argument("--символ", "--bits", dest="bits", action="append", type=int,
-                         metavar="K", help="бит на символ КАМ, если поток — метки демодулятора: "
-                                           "подобрать модуляционную плоскость (4, 6, 8…)")
+                         metavar="K", help="бит на символ, если поток — метки демодулятора: "
+                                           "чётное — КАМ (4, 6, 8…), нечётное — ФМ (1, 3 — 8PSK); "
+                                           "без указания — по имени файла («…_8PSK_…»)")
     p_potok.set_defaults(func=cmd_potok)
 
     p_parts = sub.add_parser("parts", help="проверить справочник состава")

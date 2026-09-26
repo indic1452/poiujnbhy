@@ -22,6 +22,18 @@ IP_ПРОТОКОЛЫ = {0: "HOPOPT", 1: "ICMP", 2: "IGMP", 4: "IPv4-в-IP", 6: 
                 41: "IPv6-в-IP", 43: "IPv6-маршрут", 44: "IPv6-фрагмент", 47: "GRE", 50: "ESP",
                 51: "AH", 58: "ICMPv6", 59: "нет следующего", 60: "IPv6-опции получателя",
                 89: "OSPF", 103: "PIM", 112: "VRRP", 132: "SCTP"}
+#: Дополнительные разборщики (модули ``setevoy.protokoly`` регистрируют себя сами):
+#: EtherType → разборщик(р, м); номер протокола IP → разборщик(р, м, конец);
+#: DSAP LLC → разборщик(р, м, конец); PPID SCTP (и порт SCTP) → разборщик(р, м, конец) → bool;
+#: протокол PPP → разборщик(р, м, конец).
+ДОП_ETHERTYPE: Dict[int, Callable] = {}
+ДОП_IP: Dict[int, Callable] = {}
+ДОП_LLC: Dict[int, Callable] = {}
+ДОП_SCTP_PPID: Dict[int, Callable] = {}
+ДОП_SCTP_ПОРТ: Dict[int, Callable] = {}
+ДОП_PPP: Dict[int, Callable] = {}
+#: Уровень протокола для дерева протоколов: имя → «канальный»/«сетевой»/«транспортный»/«прикладной».
+ДОП_УРОВНИ: Dict[str, str] = {}
 PPP_ПРОТОКОЛЫ = {0x0021: "IPv4", 0x0057: "IPv6", 0x0281: "MPLS", 0xC021: "LCP", 0x8021: "IPCP",
                  0x8057: "IPv6CP", 0xC023: "PAP", 0xC223: "CHAP"}
 
@@ -89,7 +101,8 @@ def _скрытые(у: Уровень, ключ: str, значения) -> None
 def по_типу(р: Разбор, тип: int, м: int) -> None:
     разборщик = {0x0800: ipv4, 0x86DD: ipv6, 0x0806: arp, 0x8035: arp, 0x8100: vlan,
                  0x88A8: vlan, 0x9100: vlan, 0x8847: mpls, 0x8848: mpls, 0x8863: pppoe,
-                 0x8864: pppoe, 0x88CC: lldp, 0x6558: ethernet, 0x880B: ppp}.get(тип)
+                 0x8864: pppoe, 0x88CC: lldp, 0x6558: ethernet, 0x880B: ppp}.get(тип) \
+        or ДОП_ETHERTYPE.get(тип)
     if разборщик is None:
         данные(р, м, f"EtherType 0x{тип:04x}")
     else:
@@ -115,6 +128,8 @@ def llc(р: Разбор, м: int, конец: int) -> None:
     elif dsap == 0x42:
         у.итог = "STP"
         stp(р, м + 3)
+    elif dsap in ДОП_LLC:
+        ДОП_LLC[dsap](р, м + 3, конец)
     else:
         у.итог = f"DSAP 0x{dsap:02x}, SSAP 0x{ssap:02x}"
         данные(р, м + 3, "LLC", конец)
@@ -556,6 +571,8 @@ def по_протоколу(р: Разбор, протокол: int, м: int, к
         vrrp(р, м, конец)
     elif протокол == 132:
         sctp(р, м, конец)
+    elif протокол in ДОП_IP:
+        ДОП_IP[протокол](р, м, конец)
     else:
         данные(р, м, f"протокол IP {протокол}", конец)
 
@@ -885,6 +902,7 @@ def sctp(р: Разбор, м: int, конец: int) -> None:
             6: "ABORT", 7: "SHUTDOWN", 8: "SHUTDOWN ACK", 9: "ERROR", 10: "COOKIE ECHO",
             11: "COOKIE ACK", 14: "SHUTDOWN COMPLETE"}
     место, куски = м + 12, []
+    первый_data = None
     while место + 4 <= конец:
         тип, дл = р.д[место], u16(р.д, место + 2)
         if дл < 4:
@@ -895,12 +913,27 @@ def sctp(р: Разбор, м: int, конец: int) -> None:
             у.поле("Поток", "sctp.data_sid", u16(р.д, место + 8), место + 8, 2, родитель=п)
             у.поле("PPID", "sctp.data_payload_proto_id", u32(р.д, место + 12), место + 12, 4, родитель=п)
             р.нагрузка(место + 16, место + дл)
+            if первый_data is None:
+                первый_data = (u32(р.д, место + 12), место + 16, место + дл)
         куски.append(типы.get(тип, str(тип)))
         место += (дл + 3) // 4 * 4
     у.длина = 12
     р.п.порт_от, р.п.порт_к = от, к
     у.итог = f"{от} → {к}: " + ", ".join(куски)
     р.п.инфо = "SCTP " + у.итог
+    # Нагрузка первого куска DATA — по PPID, затем по порту (SIGTRAN, Diameter, S1AP…).
+    if первый_data is not None:
+        ppid, от_, до_ = первый_data
+        кандидаты = [ДОП_SCTP_PPID.get(ppid)] + [ДОП_SCTP_ПОРТ.get(п) for п in sorted((от, к))]
+        уровней = len(р.п.уровни)
+        for разборщик in кандидаты:
+            if разборщик is None:
+                continue
+            try:
+                if разборщик(р, от_, до_):
+                    break
+            except (Мало, IndexError, ValueError, struct.error):
+                del р.п.уровни[уровней:]
 
 
 def _crc32c(данные: bytes) -> int:
@@ -972,3 +1005,7 @@ def разобрать_пакет(данные_: bytes, канал: str = "Ether
     if not пакет.инфо and пакет.уровни:
         пакет.инфо = пакет.уровни[-1].итог
     return пакет
+
+
+# Дополнительные разборщики регистрируют себя в таблицах выше при импорте.
+from . import protokoly  # noqa: E402,F401
