@@ -168,9 +168,12 @@ class КадрTests(unittest.TestCase):
     def test_испорченная_синхрокомбинация(self):
         """Один бит синхрокомбинации испорчен в каждом третьем кадре — это не V.110 (67 % < 90 %)."""
         данные = np.random.default_rng(10).integers(0, 2, 48 * 300).astype(np.uint8)
-        поток = osmo_поток(4800, данные).reshape(-1, 80)
-        поток[::3, 3] ^= 1
-        self.assertIsNone(v110.найти(поток.reshape(-1)))
+        # Каждый из 17 бит: нули октета 0 (0–7) и единицы в начале октетов 1–9 (8, 16, …, 72).
+        for бит in list(range(8)) + list(range(8, 80, 8)):
+            with self.subTest(бит=бит):
+                поток = osmo_поток(4800, данные).reshape(-1, 80)
+                поток[::3, бит] ^= 1
+                self.assertIsNone(v110.найти(поток.reshape(-1)))
 
 
 class ВручнуюTests(unittest.TestCase):
