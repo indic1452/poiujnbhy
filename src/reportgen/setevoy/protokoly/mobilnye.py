@@ -45,6 +45,7 @@ import struct
 from typing import Callable, Dict, List, Optional, Tuple
 
 from .. import prilozh, razbor
+from . import gsm
 from ..pole import Мало, Поле, Уровень, u16, u24, u32, u64
 from ..razbor import Разбор, данные
 
@@ -1307,8 +1308,10 @@ def gsmtap(р: Разбор, м: int, конец: int) -> bool:
     у.длина = 16
     у.итог = (f"{GSMTAP_ТИПЫ.get(тип, f'тип {тип}')}, {текст}, ARFCN {arfcn}{' (вверх)' if вверх else ''}, "
               f"{сигнал} дБм, кадр {u32(д, м + 8)}")
-    данные(р, м + 16, f"GSMTAP: нагрузка ({GSMTAP_ТИПЫ.get(тип, f'тип {тип}')})", конец)
-    р.п.инфо = "GSMTAP " + у.итог
+    # Um: LAPDm / псевдодлина и сообщения RR/MM/CC (gsm.py); прочее — данными.
+    if not (тип == 1 and gsm.um(р, м + 16, конец, подтип)):
+        данные(р, м + 16, f"GSMTAP: нагрузка ({GSMTAP_ТИПЫ.get(тип, f'тип {тип}')})", конец)
+        р.п.инфо = "GSMTAP " + у.итог
     return True
 
 

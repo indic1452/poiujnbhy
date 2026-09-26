@@ -42,7 +42,7 @@ import numpy as np
 from . import (cikl, dlinnye, dvb, forni, gfp, hdlc, karta, kod, lineynye, oktety, pakety,
                ldpc, otn, pcs, pdh, pdh_na, peremezhenie, ploskost, polya, sdh, sinhro, skrembler, stafing,
                svyortka, tpc, turbo, vykalyvanie)
-from . import ccsds, dvbs2, kanal, modem, mpeg_ts
+from . import ccsds, dvbs2, gbe, kanal, modem, mpeg_ts
 from .bity import в_байты, в_биты, инвертировать
 from .chtenie import Поток, прочитать
 from .nahodka import Находка
@@ -254,6 +254,16 @@ def _проверяемые(выборка: np.ndarray, глубина: int, п�
                 ветвь.проверяемая(внутри, _дальше(путь, "GSE"))
         return ветвь
     ветвь.не_найдено.append(f"DVB-S2 после LDPC{где} (BBHEADER с верной CRC-8 в начале слов БЧХ): нет")
+
+    # 1б′. Gigabit Ethernet 1000BASE-X: 8B/10B, /S/ … /T/, кадры Ethernet с верной FCS.
+    найдено = gbe.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        внутри = pakety.найти_в_кадрах(найдено.дальше, "кадрах Ethernet")
+        if внутри is not None:
+            ветвь.проверяемая(внутри, _дальше(путь, "1000BASE-X"))
+        return ветвь
+    ветвь.не_найдено.append(f"Gigabit Ethernet 1000BASE-X{где} (кадры между /S/ и /T/ с верной FCS): нет")
 
     # 1в. CCSDS TM/AOS: счётчик кадров +1, заголовки, FECF; Space Packet через границы кадров.
     найдено = ccsds.найти(байты)
