@@ -127,9 +127,12 @@ class TrauTests(unittest.TestCase):
         self.assertIsNone(trau.найти(rng.integers(0, 2, 320 * 200).astype(np.uint8)))
         self.assertIsNone(trau.найти(np.zeros(320 * 200, np.uint8)))
         self.assertIsNone(trau.найти(речь(10)))                       # мало кадров
-        испорчено = речь(200).reshape(-1, 320)
-        испорчено[::5, 48] ^= 1                                      # единица слова испорчена в 20 %
-        self.assertIsNone(trau.найти(испорчено.reshape(-1)))
+        # Каждый из 35 бит синхрокомбинации (16 нулей и единицы в начале слов), испорченный в 20 % кадров.
+        for бит in list(range(16)) + list(range(16, 320, 16)):
+            with self.subTest(бит=бит):
+                испорчено = речь(200).reshape(-1, 320)
+                испорчено[::5, бит] ^= 1
+                self.assertIsNone(trau.найти(испорчено.reshape(-1)))
 
     def test_стол(self):
         from reportgen.potok import rastr
