@@ -12,6 +12,7 @@ from __future__ import annotations
 import struct
 from typing import Callable, Dict, Optional
 
+from . import vid_kadra
 from .pole import (Мало, Пакет, Уровень, ip4, ip6, mac, u8, u16, u32, сумма16)
 
 ETHERTYPE = {0x0800: "IPv4", 0x86DD: "IPv6", 0x0806: "ARP", 0x8035: "RARP",
@@ -439,7 +440,18 @@ def авто(р: Разбор, м: int) -> None:
     elif len(д) >= 14 and u16(д, 12) in ETHERTYPE:
         ethernet(р, м)
     else:
-        данные(р, м, "кадр неизвестного формата")
+        # MTP2, LAPD, Frame Relay, LAPB, AX.25 — по признакам, которые стандарт требует у кадра.
+        вид = vid_kadra.вид(bytes(д))
+        разборщик = КАНАЛ_В_РАЗБОРЩИК.get(АВТО_КАНАЛЫ.get(вид, ""))
+        if разборщик is not None:
+            разборщик(р, м)
+        else:
+            данные(р, м, "кадр неизвестного формата")
+
+
+#: Вид кадра (``vid_kadra``) → канал разборщика: LAPB в .Sig — без байта направления.
+АВТО_КАНАЛЫ = {"MTP2": "MTP2", "LAPD": "LAPD", "Frame Relay": "Frame Relay",
+               "LAPB": "LAPB без направления", "AX.25": "AX.25"}
 
 
 # -- сетевой уровень --------------------------------------------------------------------

@@ -28,6 +28,8 @@ from typing import Dict, List, Sequence, Tuple
 
 import numpy as np
 
+from . import crc_katalog
+
 #: Известные CRC (имя, ширина, многочлен, init, refin, refout, xorout,
 #: контрольное значение по строке «123456789» — сверяется в тестах).
 КАТАЛОГ = (
@@ -201,7 +203,7 @@ def _выбрать(пары: List[Tuple[int, int]], w: int, P: int, refin: bool
     """Из равносильных пар — известную по каталогу, иначе с init = 0 или все единицы."""
     if not пары:
         return None, None
-    for имя, cw, cP, cinit, crefin, crefout, cxor, _ in КАТАЛОГ:
+    for имя, cw, cP, cinit, crefin, crefout, cxor, _ in КАТАЛОГ + crc_katalog.REVENG:
         if (cw, cP, crefin, crefout) == (w, P, refin, refout) and (cinit, cxor) in пары:
             return cinit, cxor
     единицы = (1 << w) - 1
@@ -247,7 +249,8 @@ def _доля_верных(кадры: Sequence[bytes], м: Dict) -> float | Non
 
 
 def _по_каталогу(м: Dict) -> str | None:
-    for имя, w, P, init, refin, refout, xorout, _ in КАТАЛОГ:
+    """Имя модели: сперва из своего каталога (с пояснениями), затем из каталога RevEng."""
+    for имя, w, P, init, refin, refout, xorout, _ in КАТАЛОГ + crc_katalog.REVENG:
         if (w, P, refin, refout) == (м["w"], м["P"], м["refin"], м["refout"]) and \
                 (м["init"] is None or (init, xorout) == (м["init"], м["xorout"])):
             return имя

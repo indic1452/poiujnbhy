@@ -14,7 +14,7 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from reportgen.potok import (crc, dlinnye, gf2, lineynye, polya, rs_bch, svyortka, turbo,
+from reportgen.potok import (crc, crc_katalog, dlinnye, gf2, lineynye, polya, rs_bch, svyortka, turbo,
                              vykalyvanie)
 
 СЛУЧАЙНЫЕ = с.случайные_биты(400_000, сид=21)
@@ -332,6 +332,20 @@ class CrcTests(unittest.TestCase):
             with self.subTest(имя):
                 self.assertEqual(контроль, crc.crc(b"123456789", w, P, init, refin, refout,
                                                    xorout))
+
+    def test_каталог_reveng_контрольные_значения(self):
+        """113 моделей RevEng (crcany, allcrcs.txt): наш расчёт даёт их контрольные значения."""
+        self.assertEqual(113, len(crc_katalog.REVENG))
+        for имя, w, P, init, refin, refout, xorout, контроль in crc_katalog.REVENG:
+            with self.subTest(имя):
+                self.assertEqual(контроль, crc.crc(b"123456789", w, P, init, refin, refout, xorout))
+
+    def test_имя_по_каталогу_reveng(self):
+        # CRC-16/DECT-X (0x0589, всё нулевое) — нет в своём каталоге, есть в RevEng.
+        найдено = crc.найти(self._кадры(16, 0x0589, 0, False, False, 0, "big"))
+        self.assertEqual("CRC-16/DECT-X", найдено["имя"])
+        найдено = crc.найти(self._кадры(32, 0x04C11DB7, 0xFFFFFFFF, False, False, 0xFFFFFFFF, "big"))
+        self.assertEqual("CRC-32/BZIP2", найдено["имя"])
 
     def test_каталог_и_свои_вслепую(self):
         варианты = [м[1:7] for м in crc.КАТАЛОГ] + [(16, 0x3D65, 0x1234, False, True, 0x0F0F),

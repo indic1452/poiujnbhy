@@ -100,12 +100,24 @@ def ipv6(данные: bytes, место: int = 0, *, ждать_длину: int
     return пакет
 
 
+#: RFC 2684 / RFC 1483 (IP над ATM, Frame Relay): LLC AA-AA-03, OUI 00-00-00 и EtherType;
+#: мостовой Ethernet — OUI 00-80-C2, PID 00-07 (без FCS), два байта набивки, кадр Ethernet.
+LLC_SNAP_IP = (b"\xaa\xaa\x03\x00\x00\x00\x08\x00", b"\xaa\xaa\x03\x00\x00\x00\x86\xdd")
+LLC_SNAP_МОСТ = (b"\xaa\xaa\x03\x00\x80\xc2\x00\x07", b"\xaa\xaa\x03\x00\x80\xc2\x00\x01")
+
+
 def в_кадре(кадр: bytes) -> Пакет | None:
-    """IP в кадре: голый, в PPP или в Ethernet II."""
-    for место, обёртка in ((0, "IP"), (4, "PPP"), (2, "PPP"), (14, "Ethernet")):
+    """IP в кадре: голый, в PPP, в Ethernet II, за LLC/SNAP (RFC 2684) и в мостовом Ethernet."""
+    for место, обёртка in ((0, "IP"), (4, "PPP"), (2, "PPP"), (14, "Ethernet"),
+                           (8, "LLC/SNAP"), (24, "LLC/SNAP, мост")):
         if обёртка == "PPP" and место == 4 and кадр[:2] != b"\xff\x03":
             continue
         if обёртка == "Ethernet" and кадр[12:14] not in (b"\x08\x00", b"\x86\xdd"):
+            continue
+        if обёртка == "LLC/SNAP" and кадр[:8] not in LLC_SNAP_IP:
+            continue
+        if обёртка == "LLC/SNAP, мост" and (кадр[:8] not in LLC_SNAP_МОСТ
+                                            or кадр[22:24] not in (b"\x08\x00", b"\x86\xdd")):
             continue
         пакет = ipv4(кадр, место) or ipv6(кадр, место, ждать_длину=len(кадр) - место)
         if пакет is not None:

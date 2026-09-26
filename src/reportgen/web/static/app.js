@@ -8966,6 +8966,9 @@
             поля: [{ ключ: 'k', подпись: 'бит на символ (1–4)', по: 3 }] },
         { id: 'm-diff', раздел: 'Модуляция', имя: 'Диф. декодер (NRZI)', вид: 'слой', слой: 'nrzi' },
         { id: 'm-manch', раздел: 'Модуляция', имя: 'Манчестер — снять', вид: 'слой', слой: 'манчестер' },
+        { id: 'm-integr', раздел: 'Модуляция', имя: 'Дифференциальный кодер (накопление XOR)', вид: 'слой', слой: 'накопление' },
+        { id: 'm-4b5b', раздел: 'Модуляция', имя: 'Код 4B/5B — снять', вид: 'слой', слой: '4b5b' },
+        { id: 'm-8b10b', раздел: 'Модуляция', имя: 'Код 8B/10B — снять', вид: 'слой', слой: '8b10b' },
         { id: 'm-psk-rot', раздел: 'Модуляция', имя: 'ФМ: поворот и отражение…', вид: 'слой', слой: 'фм {k} поворот {r}{отр}{нат}{биты}',
             поля: [{ ключ: 'k', подпись: 'бит на символ', по: 3 }, { ключ: 'r', подпись: 'поворот (шагов)', по: 0 },
                 { ключ: 'отр', подпись: 'отражение', флаг: ' отражение' },
@@ -9006,6 +9009,7 @@
             поля: [{ ключ: 'имя', подпись: 'имя загруженной матрицы', по: '', текст: true },
                 { ключ: 'выколоты', подпись: 'выколотые позиции (0-191)', по: '', текст: true, приставка: ' выколоты ' },
                 { ключ: 'укорочены', подпись: 'укороченные позиции', по: '', текст: true, приставка: ' укорочены ' }] },
+        { id: 'c-bbframe', раздел: 'ПУ код', имя: 'DVB-S2 после LDPC: БЧХ, скремблер BB, BBFRAME', вид: 'слой', слой: 'bbframe' },
         { id: 'c-tpc', раздел: 'ПУ код', имя: 'Код произведения (TPC) — найти и снять', вид: 'слой', слой: 'tpc' },
         { id: 'c-tpc-set', раздел: 'ПУ код', имя: 'Код произведения (TPC) с параметрами…', вид: 'слой',
             слой: 'tpc строка {n1} начало {o1} столбец {n2} блок {b}',
@@ -9058,6 +9062,14 @@
         { id: 'r-xor', раздел: 'Разное', имя: 'XOR с комбинацией…', вид: 'слой', слой: 'xor {слово}', поля: [{ ключ: 'слово', подпись: 'комбинация', по: '0xFF', текст: true }] },
         { id: 'r-cut', раздел: 'Разное', имя: 'Усечение…', вид: 'слой', слой: 'усечение от {от} длина {длина}',
             поля: [{ ключ: 'от', подпись: 'с бита', по: 0 }, { ключ: 'длина', подпись: 'длина, бит', по: 1000000 }] },
+        { id: 'r-flip', раздел: 'Разное', имя: 'Переворот потока задом наперёд', вид: 'слой', слой: 'переворот' },
+        { id: 'r-drop', раздел: 'Разное', имя: 'Выбросить каждый k-й бит…', вид: 'слой', слой: 'выбросить {k} фаза {f}',
+            поля: [{ ключ: 'k', подпись: 'k (каждый k-й)', по: 8 }, { ключ: 'f', подпись: 'фаза', по: 0 }] },
+        { id: 'r-insert', раздел: 'Разное', имя: 'Вставить бит на каждое k-е место…', вид: 'слой', слой: 'вставить {k} фаза {f} бит {бит}',
+            поля: [{ ключ: 'k', подпись: 'k (каждое k-е)', по: 8 }, { ключ: 'f', подпись: 'фаза', по: 0 }, { ключ: 'бит', подпись: 'бит (0 или 1)', по: 0 }] },
+        { id: 'r-split', раздел: 'Разное', имя: 'Разнести на подпотоки…', вид: 'действие', сделать: 'подпотоки',
+            поля: [{ ключ: 'k', подпись: 'подпотоков (каждый k-й бит)', по: 2 }] },
+        { id: 'r-cutcols', раздел: 'Разное', имя: 'Убрать выделенные столбцы из потока', вид: 'действие', сделать: 'без-столбцов' },
         { id: 'r-copy', раздел: 'Разное', имя: 'Копирование', вид: 'действие', сделать: 'копия' },
         // Утилиты
         { id: 't-hints', раздел: 'Утилиты', имя: 'Приметы и подсказки', вид: 'действие', сделать: 'приметы' },
@@ -9078,6 +9090,54 @@
     ];
     const РАЗДЕЛЫ_СТОЛА = ['Модуляция', 'Скремблер', 'ПУ код', 'Уплотнение', 'Кадры', 'Разное', 'Утилиты', 'Автомат'];
     const МАСШТАБЫ_СТОЛА = [1 / 16, 1 / 8, 1 / 4, 1 / 2, 1, 2, 3, 4, 6, 8, 12];
+
+    //: Цвета полей на битовом поле (подложка — тот же цвет с прозрачностью).
+    const ЦВЕТА_ПОЛЕЙ = ['#4fc3f7', '#ffb74d', '#ba68c8', '#81c784', '#f06292', '#fff176'];
+
+    /** Поля массива (именованные столбцы строки при своей ширине) — удобство этого браузера. */
+    function поляМассива(у) {
+        const все = хранилищеСтола('stol-fields', {});
+        return Array.isArray(все[у.ключ]) ? все[у.ключ] : [];
+    }
+    function сохранитьПоля(у, поля) {
+        const все = хранилищеСтола('stol-fields', {});
+        все[у.ключ] = поля;
+        сохранитьСтола('stol-fields', все);
+    }
+
+    /** Столбцы строки ширины w, кроме выделенных, — по возрастанию. */
+    function остальныеСтолбцы(w, выделено) {
+        const итог = [];
+        for (let c = 0; c < w; c += 1) if (!выделено.has(c)) итог.push(c);
+        return итог;
+    }
+
+    /** Значение поля (строка бит) — двоично, а до 32 бит ещё HEX и десятично. */
+    function значениеПоляСтрокой(биты) {
+        if (!биты.length || биты.length > 32) return биты.length > 64 ? биты.slice(0, 64) + '…' : биты;
+        const число = parseInt(биты, 2);
+        return биты + ' (0x' + число.toString(16).toUpperCase().padStart(Math.ceil(биты.length / 4), '0') + ', ' + число + ')';
+    }
+
+    /** Что поле делает по строкам: постоянно, счётчик (+1 по модулю 2^n), редко меняется или случайно. */
+    function описаниеЗначений(значения) {
+        if (!значения.length) return 'нет видимых строк';
+        const разных = new Set(значения).size;
+        if (разных === 1) return 'постоянно ' + значениеПоляСтрокой(значения[0]);
+        const n = значения[0].length;
+        if (n <= 32) {
+            const м = 2 ** n;
+            let подряд = 0;
+            for (let i = 1; i < значения.length; i += 1) {
+                if ((parseInt(значения[i - 1], 2) + 1) % м === parseInt(значения[i], 2)) подряд += 1;
+            }
+            if (подряд >= 0.9 * (значения.length - 1)) return 'счётчик +1 (' + подряд + ' из ' + (значения.length - 1) + ' переходов), с ' + значениеПоляСтрокой(значения[0]);
+            let смен = 0;
+            for (let i = 1; i < значения.length; i += 1) if (значения[i] !== значения[i - 1]) смен += 1;
+            if (смен <= 0.1 * (значения.length - 1)) return 'меняется редко: ' + смен + ' смен, значений ' + разных;
+        }
+        return 'меняется: значений ' + разных + ' из ' + значения.length + ' строк';
+    }
 
     function хранилищеСтола(ключ, по) {
         try { const v = JSON.parse(localStorage.getItem(ключ) || 'null'); return v === null ? по : v; } catch (e) { return по; }
@@ -9388,13 +9448,19 @@
         // -- контекстное меню с разделами --
         let открытое = null;
         function закрытьМеню() { if (открытое) { открытое.remove(); открытое = null; } }
-        function меню(x, y) {
+        /** Меню операций над выбранным массивом: разделы со всеми операциями; сверху — действия
+         *  по месту щелчка (столбец, выделение, поле), если меню открыто на битовом поле. */
+        function меню(x, y, сверху) {
             закрытьМеню();
             const у = с.массивы.поКлючу[с.выбран];
             if (!у) return;
             const избранные = new Set(хранилищеСтола('stol-fav', []));
             const годна = (о) => у.биты || ['k-pakety', 'u-trib', 't-download', 'a-delete', 't-ask'].includes(о.id);
             const корень = h('div', { class: 'stol-menu', role: 'menu' });
+            if ((сверху || []).length) {
+                корень.appendChild(h('div', { class: 'stol-menu-top' }, сверху.map(([т_, fn]) =>
+                    h('button', { class: 'stol-menu-run', role: 'menuitem', onclick: () => { закрытьМеню(); fn(); } }, т_))));
+            }
             РАЗДЕЛЫ_СТОЛА.forEach((раздел) => {
                 const пункты = ОПЕРАЦИИ_СТОЛА.filter((о) => о.раздел === раздел && годна(о));
                 if (!пункты.length) return;
@@ -9408,13 +9474,26 @@
                         e.currentTarget.classList.toggle('is-on');
                         рисоватьОперации();
                     } }, '★'))));
-                корень.appendChild(h('div', { class: 'stol-menu-group' }, h('div', { class: 'stol-menu-name' }, раздел, h('span', {}, '›')), под));
+                const группа = h('div', { class: 'stol-menu-group' }, h('div', { class: 'stol-menu-name' }, раздел, h('span', {}, '›')), под);
+                группа.addEventListener('mouseenter', () => вОкно(под));
+                группа.addEventListener('focusin', () => вОкно(под));
+                корень.appendChild(группа);
             });
             document.body.appendChild(корень);
             const r = корень.getBoundingClientRect();
             корень.style.left = Math.min(x, window.innerWidth - r.width - 240) + 'px';
             корень.style.top = Math.min(y, window.innerHeight - r.height - 8) + 'px';
             открытое = корень;
+        }
+        /** Подменю — в пределах окна: у нижнего края поднимается, длиннее окна — прокручивается. */
+        function вОкно(под) {
+            под.style.top = '';
+            под.style.maxHeight = '';
+            const r = под.getBoundingClientRect();
+            const запас = 8;
+            под.style.maxHeight = (window.innerHeight - 2 * запас) + 'px';
+            const вылез = r.top + Math.min(r.height, window.innerHeight - 2 * запас) - (window.innerHeight - запас);
+            if (вылез > 0) под.style.top = (parseFloat(getComputedStyle(под).top) - вылез) + 'px';
         }
         const щелчок = (e) => {
             if (!page.isConnected) { document.removeEventListener('mousedown', щелчок, true); return; }
@@ -9609,6 +9688,21 @@
                 navigate('#/pakety/' + encodeURIComponent(d.id));
                 return null;
             }
+            case 'подпотоки': {
+                const k = Math.round(Number(значения.k) || 0);
+                if (k < 2 || k > 64) { toast('Подпотоков — от 2 до 64', 'error'); return null; }
+                for (let f = 0; f < k; f += 1) await слойВМассив(у, 'прореживание ' + k + ' фаза ' + f, 'Подпоток ' + (f + 1) + ' из ' + k);
+                return null;
+            }
+            case 'без-столбцов': {
+                if (!с.выделено.size) { toast('Выделите столбцы в битовом просмотре — они будут убраны из каждой строки', 'error'); return null; }
+                const остальные = остальныеСтолбцы(с.ширина, с.выделено);
+                if (!остальные.length) { toast('Выделены все столбцы — убирать нечего оставить', 'error'); return null; }
+                const d = await api.post(путь + '/derive', { stage: у.stage, analyze: false,
+                    steps: [{ вид: 'маска', маска: { период: с.ширина, сдвиг: с.сдвиг, позиции: остальные } }] });
+                await вЖурнал(у, 'Без столбцов', 'ширина ' + с.ширина + ', сдвиг ' + с.сдвиг + ', убраны ' + диапазоны(Array.from(с.выделено)));
+                return загрузитьДерево(d.id + ':0');
+            }
             case 'копия': {
                 const d = await api.post(путь + '/derive', { stage: у.stage, steps: [], analyze: false });
                 await вЖурнал(у, 'Копирование', '→ копия массива');
@@ -9762,6 +9856,8 @@
                 h('label', {}, 'Сдвиг ', сдвиг), h('label', {}, 'Строка ', строка), h('label', {}, 'Масштаб ', масштаб), вид,
                 h('label', {}, 'Бит в байте ', порядок),
                 текстовая('Сбросить выделение', 'Esc', () => { с.выделено = new Set(); рисовать(); })));
+            const полосаПолей = h('div', { class: 'stol-fields', 'aria-label': 'Поля строки' });
+            место.appendChild(полосаПолей);
             место.appendChild(h('div', { class: 'stol-view' }, рамка, полоса));
             место.appendChild(гполоса);
             место.appendChild(статус);
@@ -9888,6 +9984,20 @@
                     const x = вПиксели(с.наведено.c) + 0.5;
                     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, d.строк * г.строкаВыс); ctx.stroke();
                 }
+                // Поля: цветная подложка на столбцах и подпись в полосе над полем.
+                clear(полосаПолей);
+                видимыеПоля().forEach((п, i) => {
+                    const цвет = ЦВЕТА_ПОЛЕЙ[i % ЦВЕТА_ПОЛЕЙ.length];
+                    const от = Math.max(п.от, d.столбец), до = Math.min(п.от + п.длина, d.столбец + d.столбцов);
+                    if (от >= до) return;
+                    const x = вПиксели(от), w = Math.max(1, (до - от) * ширСтолбца);
+                    ctx.fillStyle = цвет + '33';
+                    ctx.fillRect(x, 0, w, d.строк * г.строкаВыс);
+                    ctx.fillStyle = цвет;
+                    ctx.fillRect(x, 0, w, 2);
+                    полосаПолей.appendChild(h('span', { class: 'stol-field', title: п.имя + ': столбцы ' + п.от + '…' + (п.от + п.длина - 1) + ' (' + п.длина + ' бит)',
+                        style: { left: x + 'px', width: w + 'px', borderColor: цвет, color: цвет } }, п.имя));
+                });
                 рисоватьСтатус();
             }
 
@@ -9912,6 +10022,12 @@
                     const значение = d.на_пиксель === 1 ? ' = ' + битСетки(d, н.r, н.c - d.столбец) : '';
                     части.push('Бит ' + бит.toLocaleString('ru-RU') + значение, 'Строка ' + (с.строка + н.r).toLocaleString('ru-RU'), 'Столбец ' + н.c);
                     if (с.якорь !== null) части.push('Интервал ' + (бит - с.якорь).toLocaleString('ru-RU'));
+                    if (d.на_пиксель === 1) {
+                        видимыеПоля().forEach((п) => {
+                            const в = значениеПоляВСтроке(п, н.r);
+                            if (в !== null) части.push(п.имя + ' = ' + значениеПоляСтрокой(в));
+                        });
+                    }
                 } else {
                     части.push('Бит —');
                 }
@@ -9961,6 +10077,8 @@
             });
             холст.addEventListener('wheel', (e) => {
                 e.preventDefault();
+                // Ctrl + колесо — ширина строки (период) на ходу: ±1, с Shift — ±8.
+                if (e.ctrlKey) { шир(-Math.sign(e.deltaY) * (e.shiftKey ? 8 : 1)); return; }
                 if (e.shiftKey) с.столбец = Math.max(0, Math.min(Number(гполоса.max), с.столбец + Math.sign(e.deltaY) * Math.max(8, Math.round(с.ширина / 20))));
                 else с.строка = Math.max(0, Math.min(с.всего_строк - 1, с.строка + Math.sign(e.deltaY) * 3));
                 строка.value = с.строка;
@@ -9969,16 +10087,58 @@
             холст.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 const н = подКурсором(e);
+                const поле = н ? видимыеПоля().find((п) => н.c >= п.от && н.c < п.от + п.длина) : null;
+                const оп = (id) => () => запустить(ОПЕРАЦИИ_СТОЛА.find((о) => о.id === id));
                 const пункты = [
                     н ? ['Сделать столбец ' + н.c + ' началом строки (сдвиг)', () => { с.сдвиг += н.c; сдвиг.value = с.сдвиг; загрузить(); }] : null,
                     н ? ['Маркер на столбце ' + н.c, () => { с.маркеры.has(н.c) ? с.маркеры.delete(н.c) : с.маркеры.add(н.c); рисовать(); }] : null,
-                    с.выделено.size ? ['Канал из выделенных столбцов → новый массив', () => запустить(ОПЕРАЦИИ_СТОЛА.find((о) => о.id === 'u-mask'))] : null,
-                    с.выделено.size ? ['Синхрослово из выделения → синхронизация', () => запустить(ОПЕРАЦИИ_СТОЛА.find((о) => о.id === 'k-frames'))] : null,
+                    с.выделено.size ? ['Поле из выделения…', () => создатьПоле()] : null,
+                    с.выделено.size ? ['Канал из выделенных столбцов → новый массив', оп('u-mask')] : null,
+                    с.выделено.size ? ['Убрать выделенные столбцы из потока → новый массив', оп('r-cutcols')] : null,
+                    с.выделено.size ? ['Синхрослово из выделения → кадровая синхронизация', оп('k-frames')] : null,
+                    поле ? ['Поле «' + поле.имя + '»: выделить его столбцы', () => { с.выделено = столбцыПоля(поле); рисовать(); }] : null,
+                    поле ? ['Поле «' + поле.имя + '» → новый массив (канал)', () => { с.выделено = столбцыПоля(поле); запустить(ОПЕРАЦИИ_СТОЛА.find((о) => о.id === 'u-mask')); }] : null,
+                    поле ? ['Поле «' + поле.имя + '»: убрать из потока → новый массив', () => { с.выделено = столбцыПоля(поле); запустить(ОПЕРАЦИИ_СТОЛА.find((о) => о.id === 'r-cutcols')); }] : null,
+                    поле ? ['Поле «' + поле.имя + '»: удалить поле', () => { сохранитьПоля(у, поляМассива(у).filter((п) => п !== поле && !(п.имя === поле.имя && п.от === поле.от))); рисовать(); }] : null,
+                    видимыеПоля().length ? ['Поля: значения по видимым строкам → журнал', () => статистикаПолей()] : null,
                     ['Таблица кадров этой ширины', () => { с.нижняя = 'кадры'; рисоватьНиз(); }],
                     ['Снять выделение и маркеры', () => { с.выделено = new Set(); с.маркеры = new Set(); с.якорь = null; рисовать(); }],
                 ].filter(Boolean);
-                всплывающееМеню(e.clientX, e.clientY, пункты);
+                меню(e.clientX, e.clientY, пункты);
             });
+
+            // -- поля: именованные столбцы строки (при этой ширине) --
+            function видимыеПоля() { return поляМассива(у).filter((п) => п.ширина === с.ширина); }
+            function столбцыПоля(п) { const н = new Set(); for (let c = п.от; c < п.от + п.длина; c += 1) н.add(c); return н; }
+            async function создатьПоле() {
+                const столбцы = Array.from(с.выделено).sort((a, b) => a - b);
+                const от = столбцы[0], длина = столбцы[столбцы.length - 1] - от + 1;
+                const имя = await promptDialog({ title: 'Поле: столбцы ' + от + '…' + (от + длина - 1) + ' (' + длина + ' бит)', placeholder: 'имя поля, например «счётчик»' });
+                if (!имя || !String(имя).trim()) return;
+                const поля = поляМассива(у).filter((п) => п.ширина !== с.ширина || п.от + п.длина <= от || п.от >= от + длина);
+                поля.push({ имя: String(имя).trim(), от, длина, ширина: с.ширина });
+                сохранитьПоля(у, поля.sort((a, b) => a.от - b.от));
+                рисовать();
+            }
+            function значениеПоляВСтроке(п, r) {
+                const d = с.данные;
+                let биты_ = '';
+                for (let c = п.от; c < п.от + п.длина; c += 1) {
+                    if (c < d.столбец || c >= d.столбец + d.столбцов) return null;
+                    биты_ += битСетки(d, r, c - d.столбец);
+                }
+                return биты_;
+            }
+            function статистикаПолей() {
+                const d = с.данные;
+                if (!d || d.на_пиксель !== 1) { toast('Значения полей — при масштабе 1 бит на пиксель и больше', 'error'); return; }
+                const строки_ = видимыеПоля().map((п) => {
+                    const значения = [];
+                    for (let r = 0; r < d.строк; r += 1) { const в = значениеПоляВСтроке(п, r); if (в !== null) значения.push(в); }
+                    return п.имя + ' (' + п.от + '…' + (п.от + п.длина - 1) + '): ' + описаниеЗначений(значения);
+                });
+                вЖурнал(у, 'Поля по ' + d.строк + ' видимым строкам (ширина ' + с.ширина + ')', строки_.join('\n'));
+            }
             холст.addEventListener('keydown', (e) => {
                 const стр = Math.max(1, Math.floor(рамка.clientHeight / геометрия().строкаВыс));
                 if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
@@ -10422,7 +10582,7 @@
             try {
                 const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/derive', Object.assign(тело(), { analyze: разобрать }));
                 окно.close();
-                navigate('#/potok/' + encodeURIComponent(data.id));
+                navigate('#/stol/' + encodeURIComponent(data.id));
             } catch (error) {
                 clear(проба);
                 проба.appendChild(h('div', { class: 'pk-filter-error' }, errorText(error)));
@@ -10574,7 +10734,7 @@
             кнопка.disabled = true;
             try {
                 const data = await uploadFile('/api/potok', form);
-                navigate('#/potok/' + encodeURIComponent(data.id));
+                navigate('#/stol/' + encodeURIComponent(data.id));
             } catch (error) {
                 toastError(error);
             } finally {
@@ -10967,7 +11127,7 @@
                 try {
                     const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/rebuild',
                         { steps: шаги, analyze: автомат.checked, replace: заменить });
-                    navigate('#/potok/' + encodeURIComponent(data.id));
+                    navigate('#/stol/' + encodeURIComponent(data.id));
                 } catch (error) {
                     toastError(error);
                 }
@@ -11062,12 +11222,12 @@
                 } else if (д.вид === 'слой' || д.вид === 'разобрать') {
                     const data = await api.post(путь + '/derive',
                         { stage: этап, strip: д.слой || '', analyze: true, profile: 'обычно' });
-                    navigate('#/potok/' + encodeURIComponent(data.id));
+                    navigate('#/stol/' + encodeURIComponent(data.id));
                 } else if (д.вид === 'профиль') {
                     const data = этап
                         ? await api.post(путь + '/continue', { stage: этап, strip: '', profile: д.профиль })
                         : await api.post(путь + '/derive', { stage: 0, analyze: true, profile: д.профиль });
-                    navigate('#/potok/' + encodeURIComponent(data.id));
+                    navigate('#/stol/' + encodeURIComponent(data.id));
                 } else if (д.вид === 'помощник') {
                     const data = await api.post(путь + '/ask', { stage: этап, topic: д.тема || '' });
                     // Вопрос не уходит сам: инженер правит его в поле и спрашивает.
@@ -11100,7 +11260,7 @@
             try {
                 const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/derive',
                     { stage: 0, analyze: true, profile: 'обычно' });
-                navigate('#/potok/' + encodeURIComponent(data.id));
+                navigate('#/stol/' + encodeURIComponent(data.id));
             } catch (error) {
                 toastError(error);
             }
@@ -11144,7 +11304,7 @@
                     const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/continue',
                         { stage: этап.номер, strip: слои.value, profile: профиль.value });
                     dialog.close();
-                    navigate('#/potok/' + encodeURIComponent(data.id));
+                    navigate('#/stol/' + encodeURIComponent(data.id));
                 } catch (error) {
                     toastError(error);
                 }
@@ -13298,7 +13458,7 @@
         async function создать(тело) {
             try {
                 const data = await api.post('/api/potok/' + encodeURIComponent(jobId) + '/derive', тело);
-                navigate('#/potok/' + encodeURIComponent(data.id));
+                navigate('#/stol/' + encodeURIComponent(data.id));
             } catch (error) {
                 toastError(error);
             }

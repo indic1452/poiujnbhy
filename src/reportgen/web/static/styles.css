@@ -8842,13 +8842,18 @@ body.reading .msg .body {
 .stol-menu-name { display: flex; justify-content: space-between; gap: 16px; padding: 5px 10px; border-radius: 5px; cursor: default; color: var(--text); }
 .stol-menu-group:hover > .stol-menu-name, .stol-menu-group:focus-within > .stol-menu-name { background: var(--accent-soft); }
 .stol-submenu { display: none; position: absolute; left: calc(100% - 4px); top: -5px; background: var(--panel); border: 1px solid var(--border);
-    min-width: 290px; padding: 4px; border-radius: 8px; box-shadow: var(--shadow-lg); }
+    min-width: 290px; padding: 4px; border-radius: 8px; box-shadow: var(--shadow-lg); overflow-y: auto; }
 .stol-menu-group:hover > .stol-submenu, .stol-menu-group:focus-within > .stol-submenu { display: block; }
 .stol-menu-item { display: flex; align-items: center; }
 .stol-menu-run { flex: 1; text-align: left; border: 0; background: none; font: inherit; padding: 5px 10px; border-radius: 5px; color: var(--text); cursor: pointer; white-space: nowrap; }
 .stol-menu-run:hover, .stol-menu-run:focus-visible { background: var(--accent-soft); outline: none; }
 .stol-menu-star { border: 0; background: none; color: var(--border-strong); cursor: pointer; font-size: 13px; padding: 2px 6px; }
 .stol-menu-star.is-on { color: var(--warn); }
+/* Поля строки на битовом поле стола: подписи над столбцами поля. */
+.stol-fields { position: relative; height: 18px; flex: none; overflow: hidden; background: #000; border-bottom: 1px solid var(--border); }
+.stol-field { position: absolute; top: 1px; height: 15px; padding: 0 3px; border-top: 2px solid; font: 600 10px/13px var(--font-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
+/* Меню стола: действия по месту щелчка — над разделами операций. */
+.stol-menu-top { display: flex; flex-direction: column; padding-bottom: 4px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
 .stol-menu--flat { display: flex; flex-direction: column; }
 .stol-dialog .field { display: block; margin-bottom: 8px; }
 .stol-dialog .field input { width: 100%; }

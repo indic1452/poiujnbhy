@@ -44,6 +44,11 @@ def выгрузка(дальше: Any, вид: str) -> Optional[tuple[bytes, st
         return None
     if вид in ("биты",) and len(дальше):
         return _упаковать_биты(дальше), "bin"
+    if вид == "кадры" and len(дальше) and getattr(дальше, "канал", None):
+        # Кадры канального протокола (MTP2, LAPD, FR, AX.25) — pcap с его типом канала.
+        заголовок = struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, дальше.канал)
+        return заголовок + b"".join(struct.pack("<IIII", 0, 0, len(к), len(к)) + bytes(к)
+                                    for к in дальше), "pcap"
     if вид == "кадры" and len(дальше):
         # Как .Sig: два байта длины (старший первым) и кадр.
         return b"".join(struct.pack(">H", len(к)) + bytes(к) for к in дальше), "sig"

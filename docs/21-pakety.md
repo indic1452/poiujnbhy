@@ -12,7 +12,13 @@
 - **Из разбора потока**: у этапа, после которого получились пакеты IP или
   кадры, — кнопка **«Пакеты»**. Кадры без канального заголовка (после HDLC,
   из .sig) разбираются «по признакам»: IP по контрольной сумме заголовка,
-  PPP по `FF 03`, Cisco HDLC, Ethernet по типу.
+  PPP по `FF 03`, Cisco HDLC, Ethernet по типу, затем канальные протоколы по
+  признакам их стандартов — Frame Relay (адрес Q.922 и NLPID, LMI), LAPD
+  (EA, SAPI 0/1/16/62/63, кадры I/S/U Q.921), LAPB без байта направления
+  (адрес A/B/C/D, пакет X.25), AX.25 (позывные), MTP2 (LI сходится с длиной).
+  Если разбор потока опознал канальный протокол по всей массе кадров, этап
+  выгружается pcap с типом канала (MTP2 — 140, LAPD — 203, Frame Relay — 107,
+  AX.25 — 3) и открывается сразу нужным разборщиком.
 
 Разбор идёт в фоне; страница показывает, сколько пакетов разобрано. Захваты
 хранятся (последние 30) и видны только тому, кто их открыл; в резервную
@@ -168,7 +174,7 @@ PPID и порту SCTP, портам TCP/UDP, типу канала pcap и п�
 |---|---|---|
 | ОКС-7 и SIGTRAN | M3UA, M2UA, M2PA, SUA, IUA; MTP2 (LSSU, FISU, MSU), MTP3 (метка ITU, управление сетью), SCCP (адреса, форматы), TCAP, MAP (коды операций), ISUP (параметры, причина), Q.931, LAPD | RFC 4666, 3331, 4165, 3868, 4233; ITU-T Q.703, Q.704, Q.713, Q.773, Q.763, Q.850, Q.931, Q.921; 3GPP TS 29.002. Вариант ITU (ANSI и TTC — нет) |
 | Маршрутизация, туннели, VPN | PIM (все сообщения, Bootstrap, C-RP), EIGRP, RSVP (в т. ч. LSP-туннели), DCCP (сумма с CsCov), UDP-Lite, LDP, Geneve, LISP (данные и управление), CAPWAP, OpenVPN, WireGuard, STUN/TURN, DTLS 1.2/1.3, Teredo, MPLS в UDP | RFC 7761, 5059, 3973, 7868, 2205, 3209, 4340, 3828, 5036, 8926, 9300, 9301, 5415, 8489, 8656, 6347, 9147, 4380, 7510 |
-| Мобильные сети и AAA | Diameter (базовый, кредитный контроль, NASREQ, S6a, Cx), GTPv1-C, GTPv2-C, GTP', PFCP, S1AP, NGAP, X2AP, SGsAP, GSMTAP, TACACS+, Kerberos, LDAP | RFC 6733, 4006, 7155, 8907, 4120, 4511; 3GPP TS 29.272, 29.229, 29.060, 29.274, 32.295, 29.244, 36.413, 38.413, 36.423, 29.118 |
+| Мобильные сети и AAA | Diameter (базовый, кредитный контроль, NASREQ, S6a, Cx), GTPv1-C, GTPv2-C, GTP', PFCP, S1AP, NGAP, X2AP, SGsAP, GSMTAP (в нём — LAPDm, псевдодлина CCCH/BCCH, сообщения GSM RR/MM/CC/SMS/SS: системная информация с CI и LAI, вызовы с IMSI/TMSI, запрос обновления местоположения, набранный номер SETUP), TACACS+, Kerberos, LDAP | RFC 6733, 4006, 7155, 8907, 4120, 4511; 3GPP TS 29.272, 29.229, 29.060, 29.274, 32.295, 29.244, 36.413, 38.413, 36.423, 29.118; 44.006, 44.018, 24.008 (таблицы сообщений — по Wireshark packet-gsm_a_rr.c, packet-gsm_a_dtap.c) |
 | Канальный уровень и глобальные сети | EAPOL/EAP, LACP, Marker, OAM Ethernet, ESMC (SyncE: SSM и расширенный QL, уровни качества вариантов I–III), PTP, MACsec, PBB, FCoE и FIP, PROFINET RT/DCP, EtherCAT, GOOSE, SV (IEC 61850), Wake-on-LAN, IS-IS (с суммой LSP; по LLC и по PPP — протокол 0x0023), CDP, Frame Relay (с LMI), AX.25, LAPB и X.25, HSRP | IEEE 802.1X, 802.3 (прил. 43B, 57, 57B), 802.1AX, 1588, ITU-T G.8264, G.781, 802.1AE, 802.1Q; INCITS FC-BB-5; IEC 61158, 61850-8-1, 61850-9-2; ISO/IEC 10589; ITU-T Q.922, Q.933, X.25; RFC 2427, 2281, 3643, 1377 |
 | Промышленные и телефония | DNP3 (CRC каждого блока), IEC 60870-5-104, TPKT/COTP, сеанс и представление ISO, MMS, S7comm (опознание S7comm-plus), EtherNet/IP и CIP, BACnet/IP, OPC UA Binary, MGCP, H.248/Megaco, IAX2, Cisco Skinny, SDP (в SIP и MGCP) | IEEE 1815; IEC 60870-5-104/101; RFC 1006, 3435, 3525, 5456, 8866; ITU-T X.224, X.225, X.226; ISO 9506-2; ODVA CIP; ASHRAE 135; IEC 62541-6 |
 | Корпоративные службы и базы данных | NetBIOS (NBNS, NBDS, NBSS), SMB1, SMB2/3 (и шифрование), DHCPv6, RDP (согласование), HTTP/2, WebSocket, ONC RPC (portmap, NFSv2/3/4, MOUNT), MySQL, PostgreSQL, TDS, Redis, MongoDB (BSON), AMQP 0-9-1, SMPP 3.4, CoAP | RFC 1001/1002, 8415, 3646, 1006, 905, 9113, 6455, 7692, 5531, 1833, 1094, 1813, 7530, 7252, 8132, 7641, 7959; [MS-CIFS], [MS-SMB2], [MS-RDPBCGR], [MS-TDS]; описания протоколов MySQL, PostgreSQL, RESP, MongoDB Wire, AMQP 0-9-1, SMPP v3.4 |

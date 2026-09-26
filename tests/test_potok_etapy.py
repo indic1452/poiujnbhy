@@ -12,7 +12,7 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from reportgen.potok import karta, podskazki, rastr, sinhro, skrembler, разобрать
+from reportgen.potok import karta, lineynye, podskazki, rastr, sinhro, skrembler, разобрать
 from reportgen.potok.bity import в_байты, в_биты
 from reportgen.potok.razbor import снять_вручную, этапы
 from reportgen.potok.zadaniya import Задания, выгрузка
@@ -67,6 +67,44 @@ class РучноеСнятиеTests(unittest.TestCase):
         d = с.случайные_биты(20_000)
         манчестер = np.column_stack([1 - d, d]).reshape(-1)
         self.assertTrue(np.array_equal(d, снять_вручную(манчестер, "манчестер")[0]))
+
+    def test_накопление_обратно_nrzi(self):
+        """Дифференциальный кодер (накопление по модулю 2) и NRZI взаимно обратны: снятое
+        NRZI после накопления даёт исходные биты (кроме первого, у которого нет соседа)."""
+        биты = с.случайные_биты(5000)
+        накоплено, запись = снять_вручную(биты, "накопление")
+        self.assertEqual(int(биты[0]), int(накоплено[0]))
+        self.assertTrue(np.array_equal(np.bitwise_xor.accumulate(биты), накоплено))
+        self.assertTrue(np.array_equal(биты[1:], lineynye.nrzi(накоплено)[1:]))
+        self.assertTrue(np.array_equal(накоплено, снять_вручную(биты, "дифкодер")[0]))
+        self.assertTrue(запись.подробно[0].startswith("накопление по модулю 2 (дифференциальный кодер)"))
+
+    def test_4b5b_и_8b10b_вручную(self):
+        rng = np.random.default_rng(5)
+        полубайты = rng.integers(0, 16, 20_000)
+        символы = [lineynye.ДАННЫЕ_4B5B[x] for x in полубайты]
+        поток = np.array([(v >> (4 - i)) & 1 for v in символы for i in range(5)], np.uint8)
+        ряд, запись = снять_вручную(поток, "4b5b")
+        ожидалось = np.unpackbits(полубайты.astype(np.uint8)[:, None], axis=1)[:, 4:].reshape(-1)
+        self.assertTrue(np.array_equal(ожидалось, ряд))
+        self.assertIn("4B/5B", запись.подробно[0])
+        данные = bytes(rng.integers(0, 256, 5000).tolist())
+        ряд, запись = снять_вручную(lineynye.закодировать_8b10b(данные)[3:], "8b/10b")
+        self.assertEqual(данные[:1000], в_байты(ряд)[:1000])
+        self.assertIn("8B/10B", запись.подробно[0])
+        # Запятые и баланс есть, а символы не из таблицы (другая разновидность кода) —
+        # слой не снимается, а не отдаёт пустой ряд.
+        чужие = [с_ for с_ in range(1024) if bin(с_).count("1") == 5
+                 and с_ not in lineynye.ТАБЛИЦА_8B10B and с_ not in lineynye.K28_5]
+        символы = [lineynye.K28_5[0] if н % 8 == 0 else чужие[rng.integers(len(чужие))] for н in range(4000)]
+        чужой = np.array([(v >> (9 - i)) & 1 for v in символы for i in range(10)], np.uint8)
+        self.assertIsNone(lineynye.код_8b10b(чужой).дальше)
+        with self.assertRaisesRegex(ValueError, "таблица кода с потоком не сошлась"):
+            снять_вручную(чужой, "8b10b")
+        # Не код в линии — внятная ошибка, а не пустой слой.
+        for вид in ("4b5b", "8b10b"):
+            with self.subTest(вид=вид), self.assertRaisesRegex(ValueError, вид[:2].upper()):
+                снять_вручную(с.случайные_биты(50_000), вид)
 
     def test_непонятное_указание(self):
         with self.assertRaises(ValueError):
@@ -345,6 +383,22 @@ class СинхроTests(unittest.TestCase):
         ряд, сводка = sinhro.выровнять(поток, слово, 100)
         self.assertTrue(np.array_equal(кадры[51:], ряд.reshape(-1, 100)[51:]))
         self.assertEqual(1, сводка["проскальзываний"])
+
+    def test_синхрослова_радиосистем_и_спутника(self):
+        """Записи DSD (дибиты «1»/«3») дают значения стандартов: P25 — TIA-102.BAAA, DMR —
+        ETSI TS 102 361-1 табл. 9.2; SOF DVB-S2 — как в leansdr; A1A2 — G.707."""
+        for слово, имя in (("0x5575F5FF77FF", "синхрослово кадра P25 фазы 1 (48 бит, C4FM)"),
+                           ("0xDFF57D75DF5D", "DMR, БС — данные (48 бит)"),
+                           ("0x755FD7DF75F7", "DMR, БС — речь (48 бит)"),
+                           ("0xD5D7F77FD757", "DMR, АС — данные (48 бит)"),
+                           ("0x7F7D5DD57DFD", "DMR, АС — речь (48 бит)"),
+                           ("0xF6F6F6282828", "A1A1A1 A2A2A2 (F6F6F6 282828) — кадр SDH/SONET (G.707) и FAS "
+                                              "кадра OTU (G.709)")):
+            with self.subTest(имя=имя):
+                self.assertIn(имя, sinhro.известная(sinhro.слово(слово)))
+        sof = np.array([(0x18D2E82 >> (25 - i)) & 1 for i in range(26)], dtype=np.uint8)
+        self.assertIn("SOF DVB-S2 (PLHEADER, 26 бит, π/2-BPSK)", sinhro.известная(sof))
+        self.assertEqual(0x5575F5FF77FF, sinhro._дибиты("111113113311333313133333"))
 
     def test_известные_и_из_столбцов(self):
         self.assertIn("FAS E1 (G.704), в КИ0 чётных циклов, цикл 256 бит",
