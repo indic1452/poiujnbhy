@@ -277,6 +277,15 @@ def инструмент(биты: np.ndarray, имя: str, k: int = 0, **пар
         return hdlc.найти(выборка) or oktety.найти(выборка) or gfp.найти(выборка)
     if имя == "цикл":
         return cikl.найти(выборка)
+    if имя == "dmr":
+        from . import dmr  # noqa: PLC0415
+        return dmr.найти(выборка)
+    if имя == "v110":
+        from . import v110  # noqa: PLC0415
+        return v110.найти(выборка)
+    if имя == "trau":
+        from . import trau  # noqa: PLC0415
+        return trau.найти(выборка)
     if имя == "плоскость":
         if not k:
             raise ValueError("для плоскости нужно k — бит на символ КАМ")

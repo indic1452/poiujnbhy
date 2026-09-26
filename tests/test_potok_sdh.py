@@ -12,8 +12,9 @@ import unittest
 import numpy as np
 
 import _bootstrap  # noqa: F401
+import kanal_sintez as кс
 import potok_sintez as с
-from reportgen.potok import cikl, sdh
+from reportgen.potok import cikl, hdlc, kanal, sdh
 from reportgen.potok.bity import в_биты
 
 
@@ -124,7 +125,7 @@ def vc4_кадры(кадров: int, tu12: dict, нагрузка=None, тра�
 
 
 def stm(vc4_списки: list, указатели: list, N: int = 1, скремблер: bool = True,
-        сцепка: bool = False) -> np.ndarray:
+        сцепка: bool = False, служебные=None) -> np.ndarray:
     """Кадры STM-N из N VC-4 (или одного VC-4-Nc) с указателями AU-4; биты подряд."""
     кадров = len(vc4_списки[0])
     столбцов = 270 * N
@@ -153,6 +154,8 @@ def stm(vc4_списки: list, указатели: list, N: int = 1, скрем
             if a < len(область):
                 # Столбцы нагрузки AU-4 №a: STM-1 №a, местные столбцы 9…269.
                 к[:, 9 * N + a::N] = область[a][f]
+        if служебные is not None:
+            служебные(f, к)
         if прежний is not None:
             к[1, 0] = np.bitwise_xor.reduce(прежний)
         плоский = к.reshape(-1).copy()
@@ -228,6 +231,25 @@ class SdhTests(unittest.TestCase):
         self.assertIn("B3 сошёлся в 100.0 %", текст)
         self.assertIn("J1: 16 байт: «SDH-TEST-ROUTE»", текст)
         self.assertGreater(н.уверенность, 0.95)
+
+    def test_dcc_k1k2_s1(self):
+        """DCC D1–D3 с LAPD (HDLC по 3 байта на кадр), K2 — MS-RDI (биты 6–8 = 110), S1 — PRC."""
+        dcc = np.frombuffer(кс.поток_hdlc(кс.lapd(80)), dtype=np.uint8)
+        кадров = len(dcc) // 3 + 8
+
+        def служебные(f, к):
+            к[2, [0, 3, 6]] = dcc[(3 * f + np.arange(3)) % len(dcc)]
+            к[4, 3], к[4, 6], к[8, 0] = 0x00, 0x06, 0x02
+        rng = np.random.default_rng(5)
+        нагрузка = [rng.integers(0, 256, (9, 261)).astype(np.uint8) for _ in range(кадров)]
+        найдено = sdh.найти(stm([нагрузка], [0], служебные=служебные))
+        текст = "\n".join(найдено.подробно)
+        self.assertIn("K1 0x00, K2 0x06 (APS: запрос 0, канал 0; 1+1; MS-RDI)", текст)
+        self.assertIn("S1: SSM 0010 — QL-PRC (вариант I)", текст)
+        self.assertRegex(текст, r"DCC D1–D3 \(192 кбит/с\): HDLC")
+        self.assertIn("DCC D4–D12 (576 кбит/с): заполнен 0x00", текст)
+        кадры = hdlc.найти(найдено.дальше["DCC D1–D3 (192 кбит/с)"])
+        self.assertEqual("ISDN, LAPD (Q.921)", kanal.найти(кадры.дальше).что)
 
     def test_три_e1_бит_в_бит(self):
         дальше = self.найдено.дальше

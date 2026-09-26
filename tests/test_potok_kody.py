@@ -129,6 +129,12 @@ class LdpcTests(unittest.TestCase):
         self.assertIsNone(dlinnye.найти(СЛУЧАЙНЫЕ, до=200, бюджет=60))
 
 
+#: NASA/CCSDS 171/133 в записи стандартов — внутрь зеркалом (регистр (s << 1) | бит).
+НАСА = [svyortka.зеркало(g, 7) for g in (0o171, 0o133)]
+#: RSC турбокода LTE (36.212 5.1.3.2.1: g0 = 13 — обратная связь, g1 = 15) — внутрь зеркалом.
+ОБР, ПРЯМ = svyortka.зеркало(0o13, 4), svyortka.зеркало(0o15, 4)
+
+
 class СвёрточныеTests(unittest.TestCase):
     U = с.случайные_биты(40_000, сид=7)
 
@@ -145,7 +151,8 @@ class СвёрточныеTests(unittest.TestCase):
                 self.assertEqual([], о["несвязанные"])
 
     def test_находка_и_данные(self):
-        поток = svyortka.кодировать(self.U, [0o133, 0o171, 0o165], 7)
+        # Код LTE (36.212 5.1.3.1: G0 = 133, G1 = 171, G2 = 165 — запись стандартов) — внутрь зеркалом.
+        поток = svyortka.кодировать(self.U, [svyortka.зеркало(g, 7) for g in (0o133, 0o171, 0o165)], 7)
         найдено = svyortka.найти(ошибки(поток, 0.02))
         self.assertEqual("свёрточный код скорости 1/3, K=7, 133/171/165", найдено.что)
         self.assertEqual(0, int((найдено.дальше[:30_000] != self.U[:30_000]).sum()))
@@ -168,7 +175,7 @@ class ЛожныеСвязиTests(unittest.TestCase):
         from reportgen.potok import kod
         rng = np.random.default_rng(31)
         данные = rng.integers(0, 2, 1 << 17).astype(np.uint8)
-        код = ошибки(svyortka.кодировать(данные, [0o171, 0o133], 7), 1e-3)
+        код = ошибки(svyortka.кодировать(данные, НАСА, 7), 1e-3)
         self.assertIsNotNone(kod.свёрточный(код))
         настоящий = kod.витерби
 
@@ -186,8 +193,8 @@ class ЛожныеСвязиTests(unittest.TestCase):
         from reportgen.potok import kod
         rng = np.random.default_rng(34)
         данные = rng.integers(0, 2, 1 << 17).astype(np.uint8)
-        код = ошибки(svyortka.кодировать(данные, [0o171, 0o133], 7), 1e-3, сид=34)
-        kod._расхождение_на_случайном(0o171, 0o133, 7)          # база — настоящим декодером
+        код = ошибки(svyortka.кодировать(данные, НАСА, 7), 1e-3, сид=34)
+        kod._расхождение_на_случайном(*НАСА, 7)          # база — настоящим декодером
         настоящий = kod.витерби
 
         def плохой(*а):
@@ -229,7 +236,7 @@ class ЛожныеСвязиTests(unittest.TestCase):
         for доля in (1e-3, 1e-2, 5e-2):
             with self.subTest(доля=доля):
                 данные = rng.integers(0, 2, 1 << 17).astype(np.uint8)
-                код = ошибки(svyortka.кодировать(данные, [0o171, 0o133], 7), доля, сид=int(доля * 1e4))
+                код = ошибки(svyortka.кодировать(данные, НАСА, 7), доля, сид=int(доля * 1e4))
                 найдено = kod.найти(код)
                 self.assertIsNotNone(найдено)
                 self.assertIn("171/133", найдено.что)
@@ -237,7 +244,7 @@ class ЛожныеСвязиTests(unittest.TestCase):
 
 class ВыколотыеTests(unittest.TestCase):
     U = с.случайные_биты(60_000, сид=2)
-    МАТЕРИНСКИЙ = svyortka.кодировать(U, [0o171, 0o133], 7)
+    МАТЕРИНСКИЙ = svyortka.кодировать(U, НАСА, 7)
 
     def test_шаблон_скорость_и_начало_при_ошибках(self):
         for шаблон, сдвиг in (((1, 1, 0, 1), 1), ((1, 1, 0, 1, 1, 0), 2),
@@ -246,7 +253,7 @@ class ВыколотыеTests(unittest.TestCase):
                 поток = ошибки(vykalyvanie.выколоть(self.МАТЕРИНСКИЙ, шаблон), 0.03)[сдвиг:]
                 о = vykalyvanie.опознать(поток)
                 n = sum(шаблон)
-                self.assertEqual((0o171, 0o133, 7, шаблон, (n - сдвиг) % n),
+                self.assertEqual((*НАСА, 7, шаблон, (n - сдвиг) % n),
                                  (о["g1"], о["g2"], о["K"], о["шаблон"], о["начало"]))
 
     def test_данные_после_витерби(self):
@@ -279,13 +286,13 @@ class ТурбоTests(unittest.TestCase):
             with self.subTest(доля=доля):
                 поток = ошибки(self.ПОТОК, доля)
                 о = svyortka.опознать(поток)
-                self.assertEqual((3, [2], 0o13, 0o15),
+                self.assertEqual((3, [2], ОБР, ПРЯМ),
                                  (о["n"], о["несвязанные"], о["многочлены"][0],
                                   о["многочлены"][1]))
                 тройки = поток.reshape(-1, 3)
-                нарушения = turbo.связь_u_p1(тройки[:, 0], тройки[:, 1], 0o13, 0o15)
+                нарушения = turbo.связь_u_p1(тройки[:, 0], тройки[:, 1], ОБР, ПРЯМ)
                 период, _ = turbo.длина_блока(нарушения)
-                вскрыто = turbo.вскрыть(тройки, 0o13, 0o15, 4, период, нарушения)
+                вскрыто = turbo.вскрыть(тройки, ОБР, ПРЯМ, 4, период, нарушения)
                 self.assertEqual((0, 4, 160), (вскрыто["начало"], вскрыто["хвост"],
                                                вскрыто["длина"]))
                 self.assertTrue(np.array_equal(self.π, вскрыто["π"]))
@@ -297,7 +304,7 @@ class ТурбоTests(unittest.TestCase):
         поток = ошибки(self.ПОТОК, 0.05)
         блоки = поток.reshape(80, 164 * 3)[:, :480].reshape(80, 160, 3)
         данные = turbo.декодировать(блоки[:, :, 0], блоки[:, :, 1], блоки[:, :, 2], self.π,
-                                    0o13, 0o15, 4, 0.05)
+                                    ОБР, ПРЯМ, 4, 0.05)
         self.assertGreater(float((блоки[:, :, 0] != self.ДАННЫЕ).mean()), 0.03)
         self.assertTrue(np.array_equal(self.ДАННЫЕ, данные))
 
