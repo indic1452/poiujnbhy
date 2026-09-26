@@ -129,6 +129,20 @@ class ПериодЗаполнения(unittest.TestCase):
         self.assertEqual(skrembler.период_заполнения(0b111), 3)
 
 
+class ЗаписьПолинома(unittest.TestCase):
+    def test_характеристический_и_период(self):
+        """Одна ПСП в двух записях: задержки 1 + x⁻³ + x⁻²⁰ (V.35) — это x²⁰ + x¹⁷ + 1."""
+        self.assertEqual(skrembler.характеристический((3, 20)), "x^20 + x^17 + 1")
+        self.assertEqual(skrembler.характеристический(ОТВОДЫ), "x^12 + x^10 + x^9 + x^3 + 1")
+        self.assertEqual(skrembler.период_лрп(ОТВОДЫ), 4095)
+        self.assertEqual(skrembler.период_лрп((14, 15)), 32767)
+        self.assertEqual(skrembler.период_лрп((1,)), 1)
+        self.assertEqual(skrembler.период_лрп((2, 4)), 6)           # (x² + x + 1)²: не примитивный
+        self.assertIsNone(skrembler.период_лрп((18, 23)))           # выше предела степени — не считается
+        s = лрп((2, 4), "1010", 40)
+        self.assertTrue(all(s[i] == s[i + 6] for i in range(30)))
+
+
 class ЦиклПоГребёнке(unittest.TestCase):
     def test_короткий_файл_с_чередованием(self):
         """300 кадров: каждый пик ниже порога, их сумма на кратных — выше."""

@@ -648,6 +648,20 @@ class IsisTests(unittest.TestCase):
         self.assertEqual(["10.0.0.1"], значения(п, "isis.ipv4_interface_address"))
         self.assertEqual(["00:11:22:33:44:55"], значения(п, "isis.is_neighbor"))
 
+    def test_по_ppp_osi(self):
+        """PPP, протокол 0x0023 «OSI Network Layer» (RFC 1377): первый байт — NLPID, 0x83 — IS-IS."""
+        п = разобрать_пакет(b"\xff\x03\x00\x23" + isis_lsp(), "авто")
+        self.assertEqual(["PPP", "ISIS"], п.стек)
+        self.assertEqual([0x0023], значения(п, "ppp.protocol"))
+        self.assertFalse(поле(п, "isis.lsp.checksum").плохо)
+        сеанс = struct.pack(">BBHH", 0x11, 0, 0x2A, 2 + len(isis_iih())) + b"\x00\x23" + isis_iih()
+        п = разобрать_пакет(с.eth(сеанс, тип=0x8864))
+        self.assertEqual(["Ethernet", "PPPoE", "PPP", "ISIS"], п.стек)
+        # Не IS-IS (другой NLPID) — данные с именем протокола, без ложного уровня.
+        п = разобрать_пакет(b"\xff\x03\x00\x23" + b"\x81" + bytes(20), "авто")
+        self.assertEqual("PPP", п.стек[0])
+        self.assertNotIn("ISIS", п.стек)
+
     def test_lsp_с_суммой_и_csnp(self):
         п = разобрать_пакет(llc_osi(isis_lsp()))
         self.assertEqual(("1921.6800.1001.00-00", 29, 8), место(п, "isis.lsp.lsp_id"))

@@ -131,6 +131,25 @@ class ВКадрах(unittest.TestCase):
         self.assertLess(tpc.мера_в_кадрах(шум, начала[:32], 2964), tpc.ПОРОГ_Z)
 
 
+class ОшибкиВЛинии(unittest.TestCase):
+    def test_доля_по_исправленным(self):
+        rng = np.random.default_rng(23)
+        данные = rng.integers(0, 2, (200, 39, 57)).astype(np.uint8)
+        поток, начала = comtech(данные, ошибок=1e-3)
+        _, находка = tpc.снять_в_кадрах(поток, начала, 2964)
+        self.assertTrue(0.8e-3 < находка.свойства["ошибок_в_линии"] < 1.1e-3, находка.свойства)
+
+    def test_осш_по_доле_ошибок(self):
+        """Опоры из теории (не таблицы): ФМ-2 и ФМ-4 при 10⁻³ — Eb/N0 ≈ 6,8 дБ; ФМ-8 — ≈ 10 дБ."""
+        from math import log10
+        self.assertAlmostEqual(modem.ош_фм(1e-3, 1), 6.79, delta=0.02)
+        self.assertAlmostEqual(modem.ош_фм(1e-3, 2) - 10 * log10(2), 6.79, delta=0.02)
+        self.assertAlmostEqual(modem.ош_фм(1e-3, 3) - 10 * log10(3), 10.0, delta=0.1)
+        self.assertGreater(modem.ош_фм(1e-5, 3), modem.ош_фм(1e-3, 3))
+        self.assertIsNone(modem.ош_фм(0.0, 3))
+        self.assertIsNone(modem.ош_фм(0.3, 3))
+
+
 class ПовторыЗаполнения(unittest.TestCase):
     def test_без_повторов(self):
         rng = np.random.default_rng(12)
@@ -263,6 +282,26 @@ class Плоскость(unittest.TestCase):
         блоки = выход.reshape(-1, 2223)
         маски = блоки ^ данные.reshape(160, -1)[:len(блоки)]
         self.assertTrue((маски == маски[0]).all())
+
+
+class ПлоскостьПоВремени(unittest.TestCase):
+    def test_подбор_в_нагрузке_ограничен_по_времени(self):
+        """Без структуры полная мера нужна всем 331 варианту (минуты) — срок её обрывает."""
+        import time
+        шум = np.random.default_rng(22).integers(0, 2, 1 << 17).astype(np.uint8)
+        начало = time.monotonic()
+        self.assertIsNone(ploskost.найти_фм(шум, 3, бюджет=1.0))
+        self.assertLess(time.monotonic() - начало, 30)
+
+    def test_классы_по_инверсии(self):
+        """Варианты класса отличаются лишь постоянной x ⊕ c в таблице меток."""
+        классы = ploskost.классы_по_инверсии(3)
+        self.assertEqual(sum(len(к) for к in классы), len(ploskost.варианты_фм(3)))
+        все = np.unpackbits(np.arange(8, dtype=np.uint8)[:, None], axis=1)[:, 5:].reshape(-1)
+        for класс in классы:
+            образы = [ploskost.преобразовать_фм(все, 3, **в).reshape(-1, 3) for в in класс]
+            for о in образы[1:]:
+                self.assertTrue(((о ^ образы[0]) == (о ^ образы[0])[0]).all())
 
 
 class ВыборРавноценных(unittest.TestCase):

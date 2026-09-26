@@ -114,6 +114,21 @@ class ПакетыTests(unittest.TestCase):
         пакет[11] ^= 1
         self.assertIsNone(pakety.ipv4(bytes(пакет)))
 
+    def test_esp_spi_и_пропуски_номеров(self):
+        """ESP (RFC 4303): SPI и номер последовательности открыты — по ним сеансы и пропуски."""
+        import struct
+        пакеты = [с.ipv4("92.0.1.85", "92.0.1.83", 50, struct.pack(">II", 0x0A0B0C0D, n) + bytes(40))
+                  for n in (1, 2, 3, 5, 6)]
+        пакеты += [с.ipv4("92.0.1.83", "92.0.1.85", 50, struct.pack(">II", 0xCAFEBABE, n) + bytes(24))
+                   for n in (10, 11)]
+        текст = " ".join(pakety.найти_в_кадрах(пакеты).подробно)
+        self.assertIn("ESP×7", текст)
+        self.assertIn("нагрузка зашифрована", текст)
+        self.assertIn("SPI 0x0a0b0c0d — 5 пакетов, номера 1…6, пропущено 1", текст)
+        self.assertIn("SPI 0xcafebabe — 2 пакетов, номера 10…11, без пропусков", текст)
+        без = " ".join(pakety.найти_в_кадрах(с.пакеты_ip(20)).подробно)
+        self.assertNotIn("ESP", без)
+
     def test_обёртки_ppp_и_ethernet(self):
         ip = с.пакеты_ip(30)
         ppp = pakety.найти_в_кадрах([b"\xff\x03\x00\x21" + x for x in ip])

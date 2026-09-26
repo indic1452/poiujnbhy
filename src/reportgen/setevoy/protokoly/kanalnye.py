@@ -21,7 +21,8 @@
   0x88BA SV — IEC 61850-9-2:2011, разд. 8 (ASN.1 SavPdu, ASDU);
   0x0842 Wake-on-LAN — AMD «Magic Packet Technology», White Paper 20213 (1995); он же по UDP (эвристика).
 По LLC (``razbor.ДОП_LLC``): DSAP 0xFE (OSI) → IS-IS (NLPID 0x83) — ISO/IEC 10589:2002, 9 (форматы PDU),
-  контрольная сумма LSP — 7.3.11 и ISO 8473-1, прил. C (Флетчер).
+  контрольная сумма LSP — 7.3.11 и ISO 8473-1, прил. C (Флетчер). Тот же разбор — по PPP, протокол
+  0x0023 «OSI Network Layer» (RFC 1377; ``razbor.ДОП_PPP``): IS-IS на каналах PPP.
 По SNAP (OUI 00-00-0C, PID 0x2000 → ``ДОП_ETHERTYPE[0x2000]``): CDP — формат Cisco Discovery Protocol
   (документация Cisco; открытого стандарта нет): версия, TTL, сумма RFC 1071, TLV.
 Каналы pcap (``chtenie.КАНАЛЫ``, ``razbor.КАНАЛ_В_РАЗБОРЩИК``; номера — tcpdump.org, LINKTYPE_*):
@@ -48,8 +49,10 @@ from ..pole import Мало, ip4, ip6, mac, u16, u24, u32, печатное, с�
 from ..prilozh import КАК, ПОРТЫ_UDP, ЭВРИСТИКИ_UDP
 from ..razbor import (
     ETHERTYPE,
+    PPP_ПРОТОКОЛЫ,
     ДОП_ETHERTYPE,
     ДОП_LLC,
+    ДОП_PPP,
     ДОП_УРОВНИ,
     КАНАЛ_В_РАЗБОРЩИК,
     Разбор,
@@ -2077,6 +2080,10 @@ for _тип, _разборщик in ((0x888E, eapol), (0x8809, медленны�
     _по_ethertype(_тип, _разборщик)
 
 ДОП_LLC.setdefault(0xFE, _llc_osi)
+# PPP, протокол 0x0023 «OSI Network Layer» (RFC 1377): в поле данных — PDU OSI, первый
+# байт — NLPID (так и у Wireshark: packet-ppp.h PPP_OSI, packet-osi.c dissect_osi).
+ДОП_PPP.setdefault(0x0023, _llc_osi)
+PPP_ПРОТОКОЛЫ.setdefault(0x0023, "OSI")
 
 for _номер, _канал, _вход in ((107, "Frame Relay", fr), (3, "AX.25", ax25), (207, "LAPB", lapb)):
     КАНАЛЫ.setdefault(_номер, _канал)

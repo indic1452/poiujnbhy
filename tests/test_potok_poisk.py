@@ -210,3 +210,26 @@ class ПоискЧерезСерверTests(unittest.TestCase):
                                                                      "kind": "hex"}).status_code)
         self.сеть.login("gruppa")
         self.assertEqual(404, к.post(f"/api/potok/{ид}/files", json={"stage": 0}).status_code)
+
+
+class ЗаполнениеВСтрокахTests(unittest.TestCase):
+    def test_флаги_hdlc_не_тормозят_и_текст_находится(self):
+        """Флаги 0x7E в байтовой фазе — «~~~~» на сотни тысяч знаков: это заполнение, не текст,
+        и перебор его префиксов (раньше — квадратичный) не нужен."""
+        import time
+        текст = "Передача данных завершена успешно".encode("cp1251")
+        данные = b"\x7e" * 200_000 + b" " + текст + b" " + b"\x7e" * 50_000
+        биты = np.unpackbits(np.frombuffer(данные, np.uint8))
+        начало = time.monotonic()
+        найдено = poisk.строки(биты, наименьшая=10, сдвиги=range(8), инверсия=True, предел=300)
+        self.assertLess(time.monotonic() - начало, 20)
+        self.assertTrue(any("Передача данных" in с["текст"] for с in найдено["строки"]), найдено["строки"])
+        self.assertFalse(any("~~~~" in с["текст"] for с in найдено["строки"]))
+
+    def test_длинное_слово_не_слово(self):
+        """Слово, годное по буквам, но длиннее СЛОВО_ДО, — не слово (и не разбирается)."""
+        длинное = "передача" * (poisk.СЛОВО_ДО // 8 + 1)
+        self.assertGreater(len(длинное), poisk.СЛОВО_ДО)
+        self.assertFalse(poisk._слово_годное(длинное))
+        self.assertTrue(poisk._слово_годное("передача" * 3))
+        self.assertTrue(poisk._слово_годное("передача"))

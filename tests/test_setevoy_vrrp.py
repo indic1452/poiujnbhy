@@ -90,13 +90,14 @@ class VrrpTests(unittest.TestCase):
         self.assertIn("верна, с псевдозаголовком", ф["vrrp.checksum"][0].текст)
 
     def test_испорченная_сумма(self):
-        сообщение = bytearray(vrrp3(["192.0.2.1"]))
-        сообщение[2] ^= 1
-        п = пакет4(bytes(сообщение))
-        ф = поля(п)
-        self.assertIn("не сошлась", ф["vrrp.checksum"][0].текст)
-        self.assertTrue(ф["vrrp.checksum"][0].плохо)
-        self.assertTrue(any("VRRP" in о for о in п.ошибки))
+        for сообщение in (bytearray(vrrp3(["192.0.2.1"])), bytearray(vrrp2(["10.0.0.254"]))):
+            with self.subTest(версия=сообщение[0] >> 4):
+                сообщение[2] ^= 1
+                п = пакет4(bytes(сообщение))
+                ф = поля(п)
+                self.assertIn("не сошлась", ф["vrrp.checksum"][0].текст)
+                self.assertTrue(ф["vrrp.checksum"][0].плохо)
+                self.assertTrue(any("VRRP" in о for о in п.ошибки))
 
 
 if __name__ == "__main__":
