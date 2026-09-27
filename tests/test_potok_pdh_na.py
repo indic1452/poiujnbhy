@@ -559,16 +559,25 @@ class EsfDlTests(unittest.TestCase):
         dl = np.concatenate([boc_слова(0x07, 30), np.ones(40, np.uint8), boc_слова(0x00, 12)])
         поток, _ = t1(60, "ESF", сид=4, dl=dl)
         текст = " ".join(pdh_na.t1(поток).подробно)
-        self.assertIn("в DL — BOC 0x07: включить шлейф линии (", текст)
-        self.assertIn("в DL — BOC 0x00: жёлтая авария (RAI) (", текст)
+        self.assertIn("в DL — BOC 0x07: включить шлейф линии (30 слов подряд с бита 0 DL)", текст)
+        self.assertIn("в DL — BOC 0x00: жёлтая авария (RAI) (12 слов подряд с бита 520 DL)", текст)
 
     def test_boc_серии(self):
         # Слова идут с любой фазы; серия короче BOC_ПОВТОРОВ не код; неизвестный код — словами.
         dl = np.concatenate([np.zeros(5, np.uint8), boc_слова(0x1C, pdh_na.BOC_ПОВТОРОВ), boc_слова(0x2A, 11),
                              boc_слова(0x19, pdh_na.BOC_ПОВТОРОВ - 1), np.zeros(16, np.uint8)])
-        self.assertEqual(pdh_na.boc(dl), [(0x1C, pdh_na.BOC_ПОВТОРОВ), (0x2A, 11)])
+        self.assertEqual(pdh_na.boc(dl), [(5, 0x1C, pdh_na.BOC_ПОВТОРОВ), (165, 0x2A, 11)])
         self.assertEqual(pdh_na.boc(np.concatenate([boc_слова(0x12, 10), boc_слова(0x09, 10)])),
-                         [(0x12, 10), (0x09, 10)])
+                         [(0, 0x12, 10), (160, 0x09, 10)])
+        # Фаза 15, серия до самого конца ряда; серия после другой фазы — со своего бита.
+        dl = np.concatenate([np.ones(15, np.uint8), boc_слова(0x33, 12)])
+        self.assertEqual(pdh_na.boc(dl), [(15, 0x33, 12)])
+        dl = np.concatenate([boc_слова(0x07, 10), np.ones(7, np.uint8), boc_слова(0x1C, 10), np.zeros(3, np.uint8)])
+        self.assertEqual(pdh_na.boc(dl), [(0, 0x07, 10), (167, 0x1C, 10)])
+        # Не слова BOC: единица на месте первого или восьмого бита, ноль среди восьми единиц.
+        for слово in ([1, 0, 0, 0, 1, 1, 1, 0] + [1] * 8, [0, 0, 0, 0, 1, 1, 1, 1] + [1] * 8,
+                      [0, 0, 0, 0, 1, 1, 1, 0] + [0] + [1] * 7, [0, 0, 0, 0, 1, 1, 1, 0] + [1] * 7 + [0]):
+            self.assertEqual(pdh_na.boc(np.array(слово * 20, np.uint8)), [], слово)
         self.assertEqual(pdh_na.boc(np.zeros(15, np.uint8)), [])
         self.assertEqual(pdh_na.boc(np.random.default_rng(1).integers(0, 2, 4000).astype(np.uint8)), [])
         self.assertEqual(pdh_na.BOC_КОДЫ[0x0A], "включить шлейф нагрузки")

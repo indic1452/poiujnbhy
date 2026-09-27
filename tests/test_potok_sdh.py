@@ -465,3 +465,46 @@ class МеткиТрассаTests(unittest.TestCase):
                          "16 байт: «NOEE-A/PORT-7», CRC-7 не сошлась")
         self.assertEqual(sdh._трасса(np.array(([0x89] + [0] * 15) * 3, dtype=np.uint8)),
                          "16 байт: «», CRC-7 (x⁷ + x³ + 1) сошлась")
+
+
+class ТрассаГраницыTests(unittest.TestCase):
+    def test_метка_v5(self):
+        self.assertEqual([sdh.метка_v5(v) for v in (0b00000010, 0b00001110, 0b11110001, 0b00000110)], [1, 7, 0, 3])
+
+    def test_crc7_как_остаток_деления(self):
+        """CRC-7 = M(x)·x⁷ mod P(x) — считается здесь делением столбиком, независимо от разбора."""
+        def остаток(байты, многочлен):
+            m = int.from_bytes(bytes(байты), "big") << 7
+            p = 0x80 | многочлен
+            for сдвиг in range(m.bit_length() - 8, -1, -1):
+                if m >> (сдвиг + 7) & 1:
+                    m ^= p << сдвиг
+            return m
+        for многочлен in sdh.CRC7_МНОГОЧЛЕНЫ:
+            for байты in ([0x01], [0x40], [0x80], [0xFF, 0x00, 0x5A], list(b"SDH")):
+                self.assertEqual(sdh.crc7(байты, многочлен), остаток(байты, многочлен), (hex(многочлен), байты))
+
+    def test_трасса_границы(self):
+        т = sdh._трасса
+        # Ровно две трассы по 16 байт — трасса; за ними чужое — всё равно трасса по первым двум.
+        кусок = [0x80] + list(b"ABCDEFGHIJKLMNO")
+        кусок[0] |= crc7_трассы(кусок)
+        self.assertTrue(т(np.array(кусок * 2, np.uint8)).startswith("16 байт: «ABCDEFGHIJKLMNO»"))
+        self.assertTrue(т(np.array(кусок * 2 + list(range(16)), np.uint8)).startswith("16 байт: «ABCDEFGHIJKLMNO»"))
+        self.assertTrue(т(np.array(кусок + кусок[:15], np.uint8)).startswith("переменная"))
+        # Старший бит — у последнего байта окна; без старшего бита — трасса с первого байта.
+        сдвинутый = кусок[1:] + кусок[:1]
+        self.assertTrue(т(np.array(сдвинутый * 2, np.uint8)).startswith("16 байт: «ABCDEFGHIJKLMNO»"))
+        без_msb = list(b"PQRSTUVWXYZabcde")
+        self.assertEqual(т(np.array(без_msb * 2, np.uint8)), "16 байт: «QRSTUVWXYZabcde», CRC-7 не сошлась")
+        # Печатное: пробел и тильда — знаки, 0x1F и 0x7F — точки.
+        кусок = [0x80] + [0x41, 0x20, 0x7E, 0x1F, 0x7F] + [0x42] * 10
+        self.assertTrue(т(np.array(кусок * 2, np.uint8)).startswith("16 байт: «A ~··BBBBBBBBBB»"))
+        # 64 байта с CR LF: нужно ровно 128 байт.
+        длинная = list(b"TRACE-64".ljust(62, b"-")) + [13, 10]
+        self.assertEqual(т(np.array(длинная * 2, np.uint8)), "64 байт: «TRACE-64" + "-" * 54 + "»")
+        self.assertTrue(т(np.array(длинная * 2, np.uint8)[:127]).startswith("переменная"))
+        # Один байт — по первым 128; 129-й уже не смотрится.
+        self.assertEqual(т(np.array([0x41] * 128 + [0x42], np.uint8)), "один байт 0x41")
+        # Переменная: первые 8 байт.
+        self.assertEqual(т(np.arange(40, dtype=np.uint8) * 7), "переменная (00 07 0E 15 1C 23 2A 31 …)")

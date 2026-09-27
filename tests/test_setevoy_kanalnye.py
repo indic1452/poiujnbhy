@@ -896,12 +896,60 @@ class FrameRelayАдресTests(unittest.TestCase):
                 self.assertEqual(у.итог, f"DLCI {dlci}" + (f" [{', '.join(флаги)}]" if флаги else ""))
                 self.assertEqual(п.ошибки, [])
 
+    def test_бит_dc_не_младший_бит_dlci(self):
+        for dlci, байт, dc in ((0xABCC, 3, 1), (0xABCD, 3, 0), (0x5ABCDC, 4, 1), (0x5ABCDD, 4, 0)):
+            п = разобрать_пакет(fr_адрес(dlci, байт, dc=dc) + b"\x03\x55", "Frame Relay")
+            self.assertEqual({к: с for к, _, _, с in раскладка_fr(п)}["fr.dc"], dc, hex(dlci))
+            self.assertEqual({к: с for к, _, _, с in раскладка_fr(п)}["fr.dlci"], dlci)
+
+    def test_инкапсуляция_по_местам(self):
+        """RFC 2427: управление, добивка, NLPID, SNAP — поля по местам и длина уровня."""
+        п = разобрать_пакет(q922(100) + b"\x03\x00\xcc" + ИП, "Frame Relay")
+        self.assertEqual(раскладка_fr(п)[-3:], [("fr.control", 2, 1, 3), ("fr.pad", 3, 1, 0), ("fr.nlpid", 4, 1, 0xCC)])
+        self.assertEqual((п.уровни[0].длина, п.стек[1]), (5, "IPv4"))
+        self.assertEqual(поле(п, "fr.control").текст, "0x03 (UI)")
+        # Не UI: данные сразу за управлением.
+        п = разобрать_пакет(q922(100) + b"\x05abc", "Frame Relay")
+        self.assertEqual((поле(п, "fr.control").текст, п.уровни[-1].смещение, п.уровни[0].длина), ("0x05", 3, 3))
+        for упр in (0x02, 0x04):
+            self.assertEqual(поле(разобрать_пакет(q922(100) + bytes([упр]) + b"x", "Frame Relay"), "fr.control").текст,
+                             f"0x{упр:02x}")
+        # NLPID — последний байт: не оборвано; неизвестный NLPID — данные за ним.
+        п = разобрать_пакет(q922(100) + b"\x03\x55", "Frame Relay")
+        self.assertEqual(п.ошибки, [])
+        п = разобрать_пакет(q922(100) + b"\x03\x55xyz", "Frame Relay")
+        self.assertEqual((п.уровни[-1].протокол, п.уровни[-1].смещение), ("Данные", 4))
+        # Только управление UI и добивка — NLPID оборван.
+        self.assertTrue(разобрать_пакет(q922(100) + b"\x03\x00", "Frame Relay").ошибки)
+        # IPv6 по NLPID 0x8E.
+        ип6 = с.ip6(с.udp(b"x", 1, 2, src="2001:db8::1", dst="2001:db8::2", v6=True), 17)
+        self.assertEqual(разобрать_пакет(q922(100) + b"\x03\x8e" + ип6, "Frame Relay").стек[:2], ["FR", "IPv6"])
+
+    def test_snap_по_местам(self):
+        п = разобрать_пакет(q922(200) + b"\x03\x00\x80\x00\x00\x00\x08\x00" + ИП, "Frame Relay")
+        self.assertEqual(раскладка_fr(п)[-3:], [("fr.nlpid", 4, 1, 0x80), ("fr.snap.oui", 5, 3, "00:00:00"),
+                                                ("fr.snap.pid", 8, 2, 0x0800)])
+        self.assertEqual(п.уровни[0].длина, 10)
+        # SNAP ровно 5 байт — без ошибки; 4 байта — оборван.
+        self.assertEqual(разобрать_пакет(q922(200) + b"\x03\x80\x01\x02\x03\x00\x05", "Frame Relay").ошибки, [])
+        self.assertTrue(разобрать_пакет(q922(200) + b"\x03\x80\x01\x02\x03\x00", "Frame Relay").ошибки)
+        # Cisco OUI — только с PID 0x2000 (CDP); мост 802.3 — только PID 0x0001 и 0x0007.
+        п = разобрать_пакет(q922(200) + b"\x03\x80\x00\x00\x0c\x08\x00" + ИП, "Frame Relay")
+        self.assertEqual(п.стек, ["FR", "Данные"])
+        кадр = bytes(6) + bytes([2, 0, 0, 0, 0, 1]) + b"\x08\x00" + ИП
+        for pid, мост in ((0x0001, True), (0x0007, True), (0x000E, False)):
+            п = разобрать_пакет(q922(200) + b"\x03\x80\x00\x80\xc2" + pid.to_bytes(2, "big") + кадр, "Frame Relay")
+            self.assertEqual(п.стек[1] == "Ethernet", мост, hex(pid))
+
     def test_только_адрес(self):
         п = разобрать_пакет(q922(100), "Frame Relay")
         self.assertEqual((п.стек, п.ошибки), (["FR"], []))
         self.assertEqual(п.уровни[0].длина, 2)
 
     def test_неверный_адрес_по_местам(self):
+        # Пять байт, EA только у пятого: адрес длиннее 4 байт.
+        п = разобрать_пакет(bytes([0x10, 0x20, 0x30, 0x40, 0x51]) + b"xyz", "Frame Relay")
+        self.assertEqual(п.ошибки, ["FR: поле адреса длиннее 4 байт (бит EA)"])
         # Пять байт без EA: поле — первые 4 байта, данные — с пятого.
         п = разобрать_пакет(bytes([0x10, 0x20, 0x30, 0x40, 0x50, 0x61]) + b"xyz", "Frame Relay")
         self.assertEqual(раскладка_fr(п), [("fr.address", 0, 4, "10203040")])

@@ -193,8 +193,8 @@ def кадр_t1(биты: np.ndarray) -> dict | None:
     return None
 
 
-def boc(dl: np.ndarray) -> list[tuple[int, int]]:
-    """Коды BOC в DL: [(код, слов подряд)] — серии не короче BOC_ПОВТОРОВ, по месту в ряду.
+def boc(dl: np.ndarray) -> list[tuple[int, int, int]]:
+    """Коды BOC в DL: [(бит начала, код, слов подряд)] — серии не короче BOC_ПОВТОРОВ, по месту.
 
     Фаза слов у каждой серии своя (между сообщениями — HDLC или заполнение любой длины).
     """
@@ -203,16 +203,12 @@ def boc(dl: np.ndarray) -> list[tuple[int, int]]:
         n = (len(dl) - фаза) // 16
         слова = dl[фаза:фаза + 16 * n].reshape(n, 16)
         годно = (слова[:, 0] == 0) & (слова[:, 7] == 0) & np.all(слова[:, 8:] == 1, axis=1)
-        коды = слова[:, 1:7] @ (1 << np.arange(5, -1, -1))
-        начало, прежний, длина = 0, None, 0
-        for k, (g, код) in enumerate(zip(годно.tolist() + [False], коды.tolist() + [-1], strict=True)):
-            if g and код == прежний:
-                длина += 1
-                continue
-            if прежний is not None and длина >= BOC_ПОВТОРОВ:
-                серии.append((фаза + 16 * начало, прежний, длина))
-            начало, прежний, длина = (k, код, 1) if g else (k, None, 0)
-    return [(код, длина) for _, код, длина in sorted(серии)]
+        метки = np.where(годно, слова[:, 1:7] @ (1 << np.arange(5, -1, -1)), -1)
+        начала = np.flatnonzero(np.diff(метки, prepend=np.nan))    # где метка меняется (и первое слово)
+        for начало, конец in zip(начала, np.r_[начала, n][1:], strict=True):
+            if метки[начало] >= 0 and конец - начало >= BOC_ПОВТОРОВ:
+                серии.append((фаза + 16 * int(начало), int(метки[начало]), int(конец - начало)))
+    return sorted(серии)
 
 
 def prm(кадр: bytes) -> list[str] | None:
@@ -261,9 +257,9 @@ def t1(биты: np.ndarray) -> Находка | None:
         dl = сверхциклы[:, T1_ЦИКЛ * ESF_DL_ЦИКЛЫ].reshape(-1)
         подробно.append(f"канал данных DL (4 кбит/с, F-биты нечётных циклов): {len(dl)} бит, "
                         f"единиц {dl.mean() * 100:.1f} %")
-        for код, повторов in boc(dl):
+        for начало_boc, код, повторов in boc(dl):
             подробно.append(f"в DL — BOC 0x{код:02X}: {BOC_КОДЫ.get(код, 'нет в таблице T1.403')} "
-                            f"({повторов} слов подряд)")
+                            f"({повторов} слов подряд с бита {начало_boc} DL)")
         if len(dl) >= 2048:
             from . import hdlc  # noqa: PLC0415
             кадры_dl = hdlc.найти(dl)

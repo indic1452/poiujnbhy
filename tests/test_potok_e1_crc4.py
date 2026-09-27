@@ -23,6 +23,7 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 from reportgen.potok import cikl
+from reportgen.setevoy.protokoly.kanalnye import esmc_уровень
 
 FAS = [0, 0, 1, 1, 0, 1, 1]
 MFAS = [0, 0, 1, 0, 1, 1]
@@ -153,13 +154,32 @@ class СверхциклCrc4(unittest.TestCase):
         сдвиг = 3 * 256 + 5                              # не с начала сверхцикла и не с КИ0
         найдено = cikl.e1(np.concatenate([np.ones(9, np.uint8), поток[сдвиг:]]))
         текст = "\n".join(найдено.подробно)
-        self.assertIn("Sa4: SSM 0010 — QL-PRC (вариант I) (в 100 % подсверхциклов)", текст)
+        self.assertRegex(текст, r"Sa4: SSM 0010 — QL-PRC \(вариант I\) \(в (\d+) из \1 подсверхциклов\)")
         self.assertIn("Sa5: SSM 1010 при порядке «младший бит первым» — ", текст)
-        self.assertIn("Sa6: слово 0011 по подсверхциклам (в 100 %) — не код SSM G.781", текст)
+        self.assertRegex(текст, r"Sa6: слово 0011 по подсверхциклам \(в (\d+) из \1 подсверхциклов\) — не код SSM G\.781")
         self.assertEqual([с for с in найдено.подробно if с.startswith(("Sa7:", "Sa8:"))], [])
         # Без сверхцикла CRC-4 слова не собрать; постоянные Sa — не SSM.
         self.assertEqual(cikl.ssm_sa(np.ones((40, 512), np.uint8), 0), [])
-        self.assertEqual(cikl.ssm_sa(np.ones((15, 512), np.uint8), 0), [])
+
+    def test_ssm_sa_прямо(self):
+        """Пары циклов вручную: Sa4…Sa8 — биты 4–8 КИ0 NFAS (столбцы 259–263); бит A и КИ1 — не Sa."""
+        def пары(подсверх, слова, фаза=0, хвост=0, совпало=None):
+            п = np.zeros((фаза + 4 * подсверх + хвост, 512), np.uint8)
+            for s in range(подсверх):
+                for k in range(4):
+                    for столбец, слово in слова.items():
+                        верное = совпало is None or s < совпало
+                        п[фаза + 4 * s + k, столбец] = (слово >> (3 - k)) & 1 if верное else (k == 0)
+            return п
+        # Слово 0101 в бите A (258) и в первом бите КИ1 (264) — не Sa, не показывается.
+        слова = {258: 0b0101, 259: 0b0010, 263: 0b1011, 264: 0b0101}
+        self.assertEqual(cikl.ssm_sa(пары(4, слова, фаза=2, хвост=3), 2), [
+            "Sa4: SSM 0010 — QL-PRC (вариант I) (в 4 из 4 подсверхциклов)",
+            "Sa8: SSM 1011 — " + esmc_уровень(0b1011) + " (в 4 из 4 подсверхциклов)"])
+        self.assertEqual(cikl.ssm_sa(пары(3, слова, хвост=3), 0), [])
+        # Порог — 90 % подсверхциклов: 9 из 10 — да, 8 из 10 — нет.
+        self.assertEqual(len(cikl.ssm_sa(пары(10, {260: 0b0100}, совпало=9), 0)), 1)
+        self.assertEqual(cikl.ssm_sa(пары(10, {260: 0b0100}, совпало=8), 0), [])
 
     def test_испорченные_биты_c(self):
         """Бит C1 испорчен в трёх подсверхциклах — ровно у трёх расчётов CRC нет совпадения."""
