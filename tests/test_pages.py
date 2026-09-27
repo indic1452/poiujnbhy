@@ -11,14 +11,17 @@ PDF в окне предпросмотра не открывался вовсе:
 сервер и отдаёт картинкой.
 """
 
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-import _bootstrap  # noqa: F401
 from fastapi.testclient import TestClient
 
+import _bootstrap  # noqa: F401
 from reportgen.config import Settings
+from reportgen.web import pages
 from reportgen.web.app import create_app
 from reportgen.web.pages import (
     DPI,
@@ -67,10 +70,20 @@ class KindTests(unittest.TestCase):
 
 
 @unittest.skipUnless(FONT.is_file(), "нет шрифта с кириллицей для сборки PDF")
+class NoPymupdfTests(unittest.TestCase):
+    def test_without_pymupdf_the_error_says_what_to_install(self):
+        # Раньше здесь падало NameError: подсказка установки не была импортирована.
+        with mock.patch.dict(sys.modules, {"pymupdf": None}):
+            with self.assertRaises(PageRenderError) as ошибка:
+                pages._pymupdf()
+        self.assertIn("pip install", str(ошибка.exception))
+        self.assertIn("pymupdf", str(ошибка.exception))
+
+
 class RenderTests(unittest.TestCase):
     def setUp(self):
         try:
-            import pymupdf                       # noqa: F401
+            import pymupdf  # noqa: F401
         except ImportError:                      # pragma: no cover
             self.skipTest("нет pymupdf")
         self._tmp = tempfile.TemporaryDirectory()
@@ -171,7 +184,7 @@ class ThroughTheWebTests(unittest.TestCase):
 
     def setUp(self):
         try:
-            import pymupdf                       # noqa: F401
+            import pymupdf  # noqa: F401
         except ImportError:                      # pragma: no cover
             self.skipTest("нет pymupdf")
         self._tmp = tempfile.TemporaryDirectory()
@@ -258,7 +271,7 @@ class LibrarySourceTests(unittest.TestCase):
 
     def setUp(self):
         try:
-            import pymupdf                       # noqa: F401
+            import pymupdf  # noqa: F401
         except ImportError:                      # pragma: no cover
             self.skipTest("нет pymupdf")
         self._tmp = tempfile.TemporaryDirectory()

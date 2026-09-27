@@ -25,6 +25,8 @@ import logging
 import threading
 from pathlib import Path
 
+from ..packages import pip_hint
+
 __all__ = [
     "RENDERABLE",
     "PageRenderError",
@@ -62,7 +64,7 @@ def is_renderable(name: str) -> bool:
 
 def _pymupdf():
     try:
-        import pymupdf                          # noqa: PLC0415
+        import pymupdf  # noqa: PLC0415
     except ImportError as error:                # pragma: no cover — зависит от среды
         raise PageRenderError(
             "показ страниц требует пакет pymupdf (%s); " % pip_hint("pymupdf") +
