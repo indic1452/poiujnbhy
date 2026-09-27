@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """SDH и SONET (ITU-T G.707, ANSI T1.105): STM-0…STM-64, AU-4 и AU-3, VC-4/VC-3,
 TU-12 → VC-12 → E1 и TU-3 → VC-3.
 
@@ -14,8 +13,8 @@ TU-12 → VC-12 → E1 и TU-3 → VC-3.
 - **указатели** H1 H2 — у каждой единицы STS-1; единицы с признаком сцепки
   (1001 SS 11 1111 1111) продолжают предыдущую: три — AU-4, 3·X — AU-4-Xc;
 - **VC-4 / VC-3** — по указателю; подтверждение — **B3**: BIP-8 по предыдущему
-  VC совпадает с байтом B3; трассы J0 и J1, метка C2 — как есть (что значит
-  метка — не по памяти: спросите помощника, стандарт — в библиотеке);
+  VC совпадает с байтом B3; трассы J0 и J1 (у 16-байтовой — CRC-7), метка C2
+  словами — по таблице из открытых MIB (не по памяти);
 - **TU-12** — в VC-4 (через TUG-3 и TUG-2) и в VC-3 (через TUG-2): фаза
   сверхцикла из четырёх кадров — по годности указателей V1 V2, VC-12 — по
   указателю; подтверждение — **V5**, BIP-2 по предыдущему VC-12. Асинхронное
@@ -31,11 +30,11 @@ TU-12 → VC-12 → E1 и TU-3 → VC-3.
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
-from . import cikl, skrembler, sinhro
+from . import cikl, sinhro, skrembler
 from .nahodka import Находка
 
 A1, A2 = 0xF6, 0x28
@@ -50,13 +49,52 @@ TU12_ДО = 63
 ВЫБОРКА = 1 << 23
 
 
+#: Метка сигнала C2 (G.707 табл. 9-11; T1.105) — сгенерирована из открытых MIB: PEGASUS-SDH-MIB (коды
+#: G.707) и SL-SONET-MIB (0x05, 0x1B) из librenms; смысл 0x16/0xCF — RFC 2615, 0x17/0x19 — RFC 2823.
+C2_МЕТКИ = {
+    0x00: "неоснащён (или неоснащён с контролем)", 0x01: "оснащён, без уточнения",
+    0x02: "структура TUG", 0x03: "TU-n с жёсткой фазой",
+    0x04: "асинхронное отображение 34 368 / 44 736 кбит/с в C-3", 0x05: "SYNTRAN с доступом к байтам (SONET, T1.105)",
+    0x12: "асинхронное отображение 139 264 кбит/с в C-4", 0x13: "ATM",
+    0x14: "MAN DQDB (IEEE 802.6)", 0x15: "FDDI (ISO 9314)",
+    0x16: "HDLC/PPP (RFC 2615: со скремблером x⁴³ + 1)", 0x17: "SDL с самосинхронизирующимся скремблером",
+    0x18: "HDLC/LAPS (X.85/X.86)", 0x19: "SDL со скремблером set-reset",
+    0x1A: "кадры Ethernet 10 Гбит/с (IEEE 802.3)", 0x1B: "GFP (G.7041)",
+    0xCF: "HDLC/PPP без скремблера (устаревшее; RFC 2615)", 0xFE: "тестовый сигнал O.181",
+    0xFF: "VC-AIS",
+}
+C2_НАЦИОНАЛЬНЫЕ = range(0xE1, 0xFD)
+#: Метка сигнала V5, биты 5–7 (G.707) — там же (в MIB первая строка ошибочно «001b»); 101 — расширенная
+#: метка в K4 (MIB Nokia TSDIM-SNMP-TC). Прочие биты V5 кроме BIP-2 не толкуются: источники расходятся.
+V5_МЕТКИ = ("неоснащён", "оснащён, без уточнения", "асинхронное", "бит-синхронное", "байт-синхронное",
+            "расширенная метка в K4", "тестовый сигнал O.181", "VC-AIS")
+#: CRC-7 трассы из 16 байт: многочлены, дающие вектор RFC 3637 (трасса не используется — 0x89 и 15 нулей);
+#: какой из них у линии — решает сама трасса.
+CRC7_МНОГОЧЛЕНЫ = {0x09: "x⁷ + x³ + 1", 0x2D: "x⁷ + x⁵ + x³ + x² + 1"}
+
+
+def метка_c2(код: int) -> str:
+    """C2 словами: 0x02 — «0x02 (структура TUG)»."""
+    смысл = C2_МЕТКИ.get(код) or ("для национального использования" if код in C2_НАЦИОНАЛЬНЫЕ else "не определена")
+    return f"0x{код:02X} ({смысл})"
+
+
+def crc7(байты: Sequence[int], многочлен: int) -> int:
+    """CRC-7 от старшего бита, начальное 0."""
+    r = 0
+    for б in байты:
+        for i in range(7, -1, -1):
+            r = ((r << 1) & 0x7F) ^ (многочлен if ((r >> 6) ^ (б >> i)) & 1 else 0)
+    return r
+
+
 # -- кадр ---------------------------------------------------------------------------------
 
 def _байтами(значения: Sequence[int]) -> np.ndarray:
     return np.unpackbits(np.array([int(в) for в in значения], dtype=np.uint8))
 
 
-def выравнивание(биты: np.ndarray) -> Optional[Tuple[int, int]]:
+def выравнивание(биты: np.ndarray) -> tuple[int, int] | None:
     """Начало кадра (бит) и M — число единиц STS-1; None — кадра SDH нет."""
     for слово, смещение_байт in ((_байтами([A1] * 3 + [A2] * 3), None), (_байтами([A1, A2]), 0)):
         н = sinhro.несовпадения(биты, слово)
@@ -80,7 +118,7 @@ def выравнивание(биты: np.ndarray) -> Optional[Tuple[int, int]]:
     return None
 
 
-def _колонки(M: int) -> Tuple[np.ndarray, np.ndarray]:
+def _колонки(M: int) -> tuple[np.ndarray, np.ndarray]:
     """Столбец кадра → (единица STS-1, её местный столбец 0…89).
 
     STM-N — это N кадров STM-1, чередующихся по байтам, а в STM-1 чередуются
@@ -125,20 +163,24 @@ def _трасса(байты: np.ndarray) -> str:
             continue
         if all(ряд[i] == ряд[i + длина] for i in range(длина)):
             кусок = ряд[:длина]
+            проверка = ""
             if длина == 16:
                 старт = next((i for i in range(16) if кусок[i] & 0x80), 0)
                 кусок = кусок[старт:] + кусок[:старт]
                 текст = bytes(б & 0x7F for б in кусок[1:])
+                обнулён = [0x80] + кусок[1:]
+                сошлась = [имя for мн, имя in CRC7_МНОГОЧЛЕНЫ.items() if crc7(обнулён, мн) == кусок[0] & 0x7F]
+                проверка = f", CRC-7 ({сошлась[0]}) сошлась" if сошлась else ", CRC-7 не сошлась"
             else:
                 текст = bytes(кусок)
             печатное = "".join(chr(б) if 32 <= б < 127 else "·" for б in текст).rstrip("· ")
-            return f"{длина} байт: «{печатное}»"
+            return f"{длина} байт: «{печатное}»{проверка}"
     return "переменная (" + " ".join(f"{б:02X}" for б in ряд[:8]) + " …)"
 
 
 # -- указатели ----------------------------------------------------------------------------
 
-def указатель(h1: int, h2: int) -> Tuple[str, int]:
+def указатель(h1: int, h2: int) -> tuple[str, int]:
     """(вид, значение): «норма», «новые данные», «сцепка», «AIS» или «ошибка»."""
     слово = (int(h1) << 8) | int(h2)
     ndf, значение = слово >> 12, слово & 0x3FF
@@ -160,7 +202,7 @@ def _большинство(значения: Sequence[int]) -> int:
 # -- VC по указателю ----------------------------------------------------------------------
 
 def _vc(область: np.ndarray, указатели: Sequence[int], единица: int, база_строк: int
-        ) -> Tuple[List[np.ndarray], int]:
+        ) -> tuple[list[np.ndarray], int]:
     """VC по кадрам из области нагрузки (кадры × 9 × R): J1 — по указателю кадра.
 
     Смещение 0 — первый байт строки ``база_строк``; дальше строки подряд и
@@ -185,7 +227,7 @@ def _vc(область: np.ndarray, указатели: Sequence[int], един�
     return итог, смен
 
 
-def _b3(vc: List[np.ndarray], R: int) -> float:
+def _b3(vc: list[np.ndarray], R: int) -> float:
     if len(vc) < 2:
         return 0.0
     return float(np.mean([_ксор(vc[i - 1][None, :])[0] == vc[i][R] for i in range(1, len(vc))]))
@@ -193,7 +235,7 @@ def _b3(vc: List[np.ndarray], R: int) -> float:
 
 # -- TU-12 → VC-12 → E1 ------------------------------------------------------------------
 
-def _tu12_столбцы_vc4(t: int, m: int, n: int) -> List[int]:
+def _tu12_столбцы_vc4(t: int, m: int, n: int) -> list[int]:
     """Столбцы VC-4 (0…260), занятые TU-12 (TUG-3 t, TUG-2 m, TU-12 n; с нуля).
 
     VC-4: столбец POH, два столбца заполнения, дальше три TUG-3 вперемежку;
@@ -203,7 +245,7 @@ def _tu12_столбцы_vc4(t: int, m: int, n: int) -> List[int]:
     return [3 + t + 3 * (2 + m + 7 * (n + 3 * i)) for i in range(4)]
 
 
-def _tu12_столбцы_vc3(m: int, n: int) -> List[int]:
+def _tu12_столбцы_vc3(m: int, n: int) -> list[int]:
     """Столбцы VC-3 из 87 (с заполнением 29 и 58), занятые TU-12 (TUG-2 m, TU-12 n)."""
     нагрузка = [c for c in range(1, 87) if c not in (29, 58)]
     return [нагрузка[m + 7 * (n + 3 * i)] for i in range(4)]
@@ -216,7 +258,7 @@ def _bip2(байты: np.ndarray) -> int:
     return (нечётные << 1) | чётные
 
 
-def vc12(tu: np.ndarray) -> Optional[Dict[str, object]]:
+def vc12(tu: np.ndarray) -> dict[str, object] | None:
     """Байты TU-12 по кадрам (кадры × 36) → VC-12 по сверхциклам, с проверкой V5.
 
     Фаза сверхцикла (какой кадр несёт V1) — та, при которой указатели V1 V2
@@ -258,7 +300,7 @@ def vc12(tu: np.ndarray) -> Optional[Dict[str, object]]:
             "v5": совпало[с_v5], "v5_с_собой": с_v5}
 
 
-def e1_из_vc12(vc: Sequence[np.ndarray]) -> Tuple[np.ndarray, Dict[str, float]]:
+def e1_из_vc12(vc: Sequence[np.ndarray]) -> tuple[np.ndarray, dict[str, float]]:
     """Асинхронное отображение E1 в VC-12: данные, C1/C2 большинством, S1/S2 по ним."""
     части, s1_стафф, s2_стафф = [], 0, 0
     for в in vc:
@@ -281,7 +323,7 @@ def e1_из_vc12(vc: Sequence[np.ndarray]) -> Tuple[np.ndarray, Dict[str, float]
 
 # -- разбор ------------------------------------------------------------------------------
 
-def _группы(указатели_единиц: List[Tuple[str, int]]) -> List[Tuple[int, int, int]]:
+def _группы(указатели_единиц: list[tuple[str, int]]) -> list[tuple[int, int, int]]:
     """(первая единица, сколько единиц, указатель) — AU-3, AU-4 и сцепки."""
     итог = []
     for u, (вид, значение) in enumerate(указатели_единиц):
@@ -347,7 +389,7 @@ def найти(биты: np.ndarray) -> Находка | None:
     группы = _группы(указатели)
     if not группы:
         подробно.append("годных указателей AU нет (AIS или неоснащённый)")
-    дальше: Dict[str, np.ndarray] = {}
+    дальше: dict[str, np.ndarray] = {}
     сводка_vc = []
     проверки = [b1]
     for первая, сколько, _ in группы:
@@ -371,7 +413,7 @@ def найти(биты: np.ndarray) -> Находка | None:
         с2 = _большинство([в[2 * R] for в in vc])
         сводка_vc.append(f"{номер}: указатель {_большинство([p for p in по_кадрам if p >= 0])}"
                          f"{f' (смен {смен})' if смен else ''}, B3 сошёлся в {b3 * 100:.1f} %, "
-                         f"C2 = 0x{с2:02X}, J1: {_трасса(np.array([в[0] for в in vc]))}")
+                         f"C2 = {метка_c2(с2)}, J1: {_трасса(np.array([в[0] for в in vc]))}")
         if b3 < 0.5:
             continue
         проверки.append(b3)
@@ -381,7 +423,7 @@ def найти(биты: np.ndarray) -> Находка | None:
         if сколько == 3 and not притоки:
             притоки = _tu3(матрица, номер)
         if притоки:
-            сводка_vc += [с for с in притоки.pop("_сводка", [])]
+            сводка_vc += list(притоки.pop("_сводка", []))
             дальше.update(притоки)
             continue
         # Нагрузка целиком: без POH и столбцов фиксированного заполнения.
@@ -412,13 +454,13 @@ def _байт_soh(кадры: np.ndarray, M: int, строка: int, c: int) -> 
 K2_РЕЖИМ = {0b111: "MS-AIS", 0b110: "MS-RDI"}
 
 
-def заголовок_секции(кадры: np.ndarray, M: int) -> Tuple[List[str], Dict[str, np.ndarray]]:
+def заголовок_секции(кадры: np.ndarray, M: int) -> tuple[list[str], dict[str, np.ndarray]]:
     """Каналы DCC (D1–D3 — 192 кбит/с регенерационной секции, D4–D12 — 576 кбит/с
     мультиплексной), K1/K2 (APS) и S1 (качество синхронизации, как SSM в G.8264)."""
     from ..setevoy.protokoly.kanalnye import esmc_уровень  # noqa: PLC0415
     from . import hdlc  # noqa: PLC0415
-    строки: List[str] = []
-    каналы: Dict[str, np.ndarray] = {}
+    строки: list[str] = []
+    каналы: dict[str, np.ndarray] = {}
     k1 = _большинство(_байт_soh(кадры, M, 4, 3))
     k2 = _большинство(_байт_soh(кадры, M, 4, 6))
     строки.append(f"K1 0x{k1:02X}, K2 0x{k2:02X} (APS: запрос {k1 >> 4}, канал {k1 & 15}; "
@@ -440,13 +482,13 @@ def заголовок_секции(кадры: np.ndarray, M: int) -> Tuple[Lis
     return строки, каналы
 
 
-def _tu12(vc: np.ndarray, единиц: int, откуда: str) -> Dict[str, object]:
+def _tu12(vc: np.ndarray, единиц: int, откуда: str) -> dict[str, object]:
     """TU-12 внутри VC-4 или VC-3: VC-12 с проверкой V5, E1 — с проверкой FAS."""
     if единиц == 3:
         адреса = [((t, m, n), _tu12_столбцы_vc4(t, m, n)) for t in range(3) for m in range(7) for n in range(3)]
     else:
         адреса = [((0, m, n), _tu12_столбцы_vc3(m, n)) for m in range(7) for n in range(3)]
-    итог: Dict[str, object] = {}
+    итог: dict[str, object] = {}
     сводка = []
     годных, e1_годных = 0, 0
     for (t, m, n), столбцы in адреса[:TU12_ДО]:
@@ -463,8 +505,10 @@ def _tu12(vc: np.ndarray, единиц: int, откуда: str) -> Dict[str, obj
         if р["v5"] < 0.5 and not есть_e1:
             continue
         годных += 1
-        v5 = f"V5 (BIP-2) сошёлся в {р['v5'] * 100:.0f} %" + (" — не сошёлся, приток подтверждён FAS"
-                                                               if р["v5"] < 0.5 else "")
+        метка = _большинство([(int(в[0]) >> 1) & 7 for в in р["vc"]])
+        v5 = (f"V5 (BIP-2) сошёлся в {р['v5'] * 100:.0f} %" + (" — не сошёлся, приток подтверждён FAS"
+                                                                if р["v5"] < 0.5 else "")
+              + f", метка V5 {метка:03b} ({V5_МЕТКИ[метка]})")
         if есть_e1:
             e1_годных += 1
             итог[f"{откуда} {имя} E1"] = e1
@@ -475,7 +519,7 @@ def _tu12(vc: np.ndarray, единиц: int, откуда: str) -> Dict[str, obj
                           + f"; S2 пустой в {стафф['S2_пустой'] * 100:.0f} % сверхциклов")
         else:
             итог[f"{откуда} {имя} VC-12"] = np.unpackbits(np.concatenate([в[1:] for в in р["vc"]]))
-            сводка.append(f"{имя}: указатель {р['указатель']}, V5 сошёлся в {р['v5'] * 100:.0f} %; "
+            сводка.append(f"{имя}: указатель {р['указатель']}, {v5}; "
                           f"асинхронного E1 с FAS нет — нагрузка VC-12 как есть")
     if not годных:
         return {}
@@ -484,9 +528,9 @@ def _tu12(vc: np.ndarray, единиц: int, откуда: str) -> Dict[str, obj
     return итог
 
 
-def _tu3(vc4: np.ndarray, откуда: str) -> Dict[str, object]:
+def _tu3(vc4: np.ndarray, откуда: str) -> dict[str, object]:
     """TU-3 в TUG-3: указатель H1 H2 в первом столбце TUG-3, VC-3 — 85 столбцов, проверка B3."""
-    итог: Dict[str, object] = {}
+    итог: dict[str, object] = {}
     сводка = []
     кадров = len(vc4)
     for t in range(3):
@@ -509,7 +553,7 @@ def _tu3(vc4: np.ndarray, откуда: str) -> Dict[str, object]:
         матрица = np.stack(vc).reshape(len(vc), СТРОК, 85)
         итог[f"{откуда} {имя} нагрузка"] = np.unpackbits(матрица[:, :, 1:].reshape(-1))
         сводка.append(f"{имя}: указатель {_большинство([p for p in по_кадрам if p >= 0])}, "
-                      f"B3 VC-3 сошёлся в {b3 * 100:.0f} %, C2 = 0x{_большинство([в[2 * 85] for в in vc]):02X}")
+                      f"B3 VC-3 сошёлся в {b3 * 100:.0f} %, C2 = {метка_c2(_большинство([в[2 * 85] for в in vc]))}")
     if not итог:
         return {}
     итог["_сводка"] = сводка

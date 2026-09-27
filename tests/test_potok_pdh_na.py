@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Североамериканская PDH: T1 (SF, ESF), DS2 (M12), DS3 (M23, C-bit parity).
 
 Потоки собираются здесь же, простым мультиплексором, написанным заново по
@@ -10,7 +9,7 @@
 import re
 import time
 import unittest
-from functools import lru_cache
+from functools import cache
 
 import numpy as np
 
@@ -36,7 +35,7 @@ def crc6_столбиком(биты):
     return [(рег >> (5 - i)) & 1 for i in range(6)]
 
 
-def t1(сверхциклов, вид="SF", сид=1, crc="G.704"):
+def t1(сверхциклов, вид="SF", сид=1, crc="G.704", dl=None):
     """Поток T1 и его нагрузка (циклы × 192 бита): каналы 1…22 случайны, 23 — 0x7F, 24 — 0xFF.
 
     ``crc``: «G.704» — F-биты при расчёте равны 1; «как есть» — F-биты как
@@ -61,8 +60,8 @@ def t1(сверхциклов, вид="SF", сид=1, crc="G.704"):
             цикл = сц * 24 + k
             if номер % 4 == 0:
                 f[цикл] = FPS[номер // 4 - 1]
-            elif номер % 2 == 1:
-                f[цикл] = rng.integers(0, 2)          # DL
+            elif номер % 2 == 1:                      # DL: заданные биты по кругу или случайные
+                f[цикл] = dl[(цикл // 2) % len(dl)] if dl is not None else rng.integers(0, 2)
         if предыдущий is not None:
             блок = предыдущий.copy()
             if crc != "как есть":
@@ -187,14 +186,14 @@ def ds3(притоки, циклов, доли, режим="M23", сид=9, ис
 ДОЛИ_DS3 = (0.15, 0.25, 0.39, 0.45, 0.55, 0.65, 0.80)
 
 
-@lru_cache(maxsize=None)
+@cache
 def набор_t1(сверхциклов_esf, сид):
     """Четыре T1 для DS2: SF, ESF, SF, ESF."""
     return tuple(t1(сверхциклов_esf * (2 if k % 2 == 0 else 1), "SF" if k % 2 == 0 else "ESF",
                     сид=сид * 10 + k)[0] for k in range(4))
 
 
-@lru_cache(maxsize=None)
+@cache
 def поток_ds2(циклов=1500, сид=1, инверсные=(2, 4), все_esf=False):
     сверхциклов = циклов * 288 // 4632 + 2
     if все_esf:
@@ -204,7 +203,7 @@ def поток_ds2(циклов=1500, сид=1, инверсные=(2, 4), вс�
     return ds2(list(притоки), циклов, ДОЛИ_DS2, инверсные=инверсные, сид=сид), притоки
 
 
-@lru_cache(maxsize=None)
+@cache
 def поток_ds3(режим="M23", циклов=1300):
     нужно_ds2 = циклов * 672 // 1176 + 2
     притоки_ds2 = []
@@ -540,3 +539,56 @@ class Ds3Tests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def boc_слова(код, слов):
+    """Слово BOC T1.403: 0, код (6 бит, старший первым), 0, восемь единиц."""
+    слово = [0] + [(код >> i) & 1 for i in range(5, -1, -1)] + [0] + [1] * 8
+    return np.array(слово * слов, np.uint8)
+
+
+def prm_кадр(секунды, sapi_байт=0x38):
+    """PRM: SAPI 14, TEI 0, UI и 4 пары октетов; пара — 16 бит, первый октет младший."""
+    return bytes([sapi_байт, 0x01, 0x03]) + b"".join(с.to_bytes(2, "little") for с in секунды)
+
+
+class EsfDlTests(unittest.TestCase):
+    """Канал данных ESF: коды BOC (FreeBSD if_lmc.h T1BOP_*) и отчёты PRM (T1PRM_*)."""
+
+    def test_boc_в_потоке(self):
+        dl = np.concatenate([boc_слова(0x07, 30), np.ones(40, np.uint8), boc_слова(0x00, 12)])
+        поток, _ = t1(60, "ESF", сид=4, dl=dl)
+        текст = " ".join(pdh_na.t1(поток).подробно)
+        self.assertIn("в DL — BOC 0x07: включить шлейф линии (", текст)
+        self.assertIn("в DL — BOC 0x00: жёлтая авария (RAI) (", текст)
+
+    def test_boc_серии(self):
+        # Слова идут с любой фазы; серия короче BOC_ПОВТОРОВ не код; неизвестный код — словами.
+        dl = np.concatenate([np.zeros(5, np.uint8), boc_слова(0x1C, pdh_na.BOC_ПОВТОРОВ), boc_слова(0x2A, 11),
+                             boc_слова(0x19, pdh_na.BOC_ПОВТОРОВ - 1), np.zeros(16, np.uint8)])
+        self.assertEqual(pdh_na.boc(dl), [(0x1C, pdh_na.BOC_ПОВТОРОВ), (0x2A, 11)])
+        self.assertEqual(pdh_na.boc(np.concatenate([boc_слова(0x12, 10), boc_слова(0x09, 10)])),
+                         [(0x12, 10), (0x09, 10)])
+        self.assertEqual(pdh_na.boc(np.zeros(15, np.uint8)), [])
+        self.assertEqual(pdh_na.boc(np.random.default_rng(1).integers(0, 2, 4000).astype(np.uint8)), [])
+        self.assertEqual(pdh_na.BOC_КОДЫ[0x0A], "включить шлейф нагрузки")
+
+    def test_prm(self):
+        секунды = [0x1000 | 0x8000 | 0x0100, 0x0400 | 0x0040 | 0x0002, 0x0080 | 0x4000 | 0x0300, 0]
+        self.assertEqual(pdh_na.prm(prm_кадр(секунды)), [
+            "N 1: ошибок CRC 1, FE", "N 0: ошибок CRC 2–5, LV, SL", "N 3: ошибок CRC 6–10, SE", "N 0: ошибок CRC 0"])
+        self.assertEqual(pdh_na.prm(prm_кадр([0x0020 | 0x2000, 0x0004, 0x0001, 0x1004]))[:4], [
+            "N 0: ошибок CRC 11–100, LB", "N 0: ошибок CRC 101–319", "N 0: ошибок CRC 320 и больше",
+            "N 0: ошибок CRC 1"])
+        self.assertIsNotNone(pdh_na.prm(prm_кадр([0] * 4, 0x3A)))
+        for плохой in (prm_кадр([0] * 4, 0x3C), prm_кадр([0] * 4)[:-1], b"\x38\x03\x03" + bytes(8),
+                       b"\x38\x01\x13" + bytes(8), prm_кадр([0] * 4) + b"\x00"):
+            self.assertIsNone(pdh_na.prm(плохой), плохой.hex())
+
+    def test_prm_в_потоке(self):
+        кадры = [prm_кадр([0x0100 * (i % 4) | 0x0002, 0, 0, 0]) for i in range(20)]
+        dl = в_биты(с.hdlc(кадры, флагов_между=4), "старший")
+        поток, _ = t1(400, "ESF", сид=5, dl=dl)
+        текст = " ".join(pdh_na.t1(поток).подробно)
+        self.assertIn("в DL — отчёты PRM (T1.403): ", текст)
+        self.assertRegex(текст, r"последний — N \d: ошибок CRC 0, SL; N 0: ошибок CRC 0; N 0")

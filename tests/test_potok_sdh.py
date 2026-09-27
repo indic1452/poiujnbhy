@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """SDH/SONET: кадр, скремблер по B1, AU-4/AU-3, VC-4 по B3, TU-12 → VC-12 по V5 → E1 по FAS.
 
 Поток строится здесь же простым генератором по G.707: E1 асинхронно в VC-12
@@ -16,6 +15,7 @@ import kanal_sintez as кс
 import potok_sintez as с
 from reportgen.potok import cikl, hdlc, kanal, sdh
 from reportgen.potok.bity import в_биты
+from test_potok_e1_crc4 import e1_crc4
 
 
 def псп_байты(длина: int) -> np.ndarray:
@@ -40,28 +40,28 @@ def vc12_из_e1(e1: np.ndarray, сколько: int, rng, плохой_v5: bool
     for _ in range(сколько):
         v = np.zeros(140, dtype=np.uint8)
         s2_пустой = rng.random() < 0.7
-        бит = lambda n: e1[место:место + n]
-        части = []
         for начало in (2, 37, 72):
             v[начало:начало + 32] = np.packbits(e1[место:место + 256])
             место += 256
         c = 0b01000000 if s2_пустой else 0          # C1 = 0, C2 = стаффинг S2
         for к in (36, 71):
             v[к] = c
-        s1 = int(e1[место]); место += 1
+        s1 = int(e1[место])
+        место += 1
         v[106] = c | s1                              # … R R R R R S1
-        if s2_пустой:
-            s2 = 0
-        else:
-            s2 = int(e1[место]); место += 1
-        семь = e1[место:место + 7]; место += 7
+        s2 = 0
+        if not s2_пустой:
+            s2 = int(e1[место])
+            место += 1
+        семь = e1[место:место + 7]
+        место += 7
         v[107] = (s2 << 7) | int(np.packbits(np.concatenate([[0], семь]))[0])
-        v[108:139] = np.packbits(e1[место:место + 248]); место += 248
+        v[108:139] = np.packbits(e1[место:место + 248])
+        место += 248
         v[0] = 0b00000100                            # V5: метка сигнала, BIP-2 — ниже
         if прежний is not None:
             v[0] |= (bip2(прежний) ^ (3 if плохой_v5 else 0)) << 6
         прежний = v
-        del части, бит
         итог.append(v)
     return итог, место
 
@@ -104,9 +104,22 @@ def tug_структура(tu12_кадра: dict) -> np.ndarray:
     return чередовать(tug3)
 
 
+def crc7_трассы(кусок: list) -> int:
+    """CRC-7 x⁷ + x³ + 1 по 16 байтам трассы с обнулённым полем CRC (MSB первого байта — 1)."""
+    r = 0
+    for б in [0x80] + кусок[1:]:
+        for i in range(7, -1, -1):
+            обратная = ((r >> 6) & 1) ^ ((б >> i) & 1)
+            r = (r << 1) & 0x7F
+            if обратная:
+                r ^= 0b0001001
+    return r
+
+
 def vc4_кадры(кадров: int, tu12: dict, нагрузка=None, трасса=b"SDH-TEST-ROUTE") -> list:
-    """VC-4 (9 × 261) по кадрам: POH J1 (16 байт), B3, C2, H4; TU-12 или нагрузка C-4."""
-    j1 = [0x80 | 0x11] + list(трасса.ljust(15, b" "))
+    """VC-4 (9 × 261) по кадрам: POH J1 (16 байт с CRC-7), B3, C2, H4; TU-12 или нагрузка C-4."""
+    j1 = [0x80] + list(трасса.ljust(15, b" "))
+    j1[0] |= crc7_трассы(j1)
     итог, прежний = [], None
     for f in range(кадров):
         v = np.zeros((9, 261), dtype=np.uint8)
@@ -130,7 +143,7 @@ def stm(vc4_списки: list, указатели: list, N: int = 1, скрем
     кадров = len(vc4_списки[0])
     столбцов = 270 * N
     область = []            # по AU-4: линейная область нагрузки (кадры × 2349)
-    for vc4, p in zip(vc4_списки, указатели):
+    for vc4, p in zip(vc4_списки, указатели, strict=True):
         поток = np.concatenate([v.reshape(-1) for v in vc4])
         g = np.zeros(кадров * 2349, dtype=np.uint8)
         начало = 783 + 3 * p
@@ -229,7 +242,7 @@ class SdhTests(unittest.TestCase):
         self.assertIn("начальное 1111111", текст)
         self.assertIn("VC-4 №1: указатель 522", текст)
         self.assertIn("B3 сошёлся в 100.0 %", текст)
-        self.assertIn("J1: 16 байт: «SDH-TEST-ROUTE»", текст)
+        self.assertIn("J1: 16 байт: «SDH-TEST-ROUTE», CRC-7 (x⁷ + x³ + 1) сошлась", текст)
         self.assertGreater(н.уверенность, 0.95)
 
     def test_dcc_k1k2_s1(self):
@@ -284,12 +297,12 @@ class SdhTests(unittest.TestCase):
                 self.assertIn(кусок, исходный)
         текст = " ".join(self.найдено.подробно)
         self.assertIn("TU-12 с годным VC-12 — 3, из них E1 с FAS — 3", текст)
-        self.assertIn("TU-12 2-3-2: указатель 77, V5 (BIP-2) сошёлся в 100 %", текст)
+        self.assertIn("TU-12 2-3-2: указатель 77, V5 (BIP-2) сошёлся в 100 %, метка V5 010 (асинхронное)", текст)
+        self.assertIn("C2 = 0x02 (структура TUG)", текст)
 
     def test_e1_с_crc4_в_tu12(self):
         """E1 со сверхциклом CRC-4 в TU-12: CRC-4 проверяется у выделенного притока — выделение
         (указатель, стаффинг C1/C2) подтверждено до бита."""
-        from test_potok_e1_crc4 import e1_crc4
         rng = np.random.default_rng(12)
         кадров = 200
         vc, _ = vc12_из_e1(e1_crc4(40, сид=21), кадров // 4 + 2, rng)
@@ -353,7 +366,8 @@ class SdhTests(unittest.TestCase):
         ряд = н.дальше["VC-3 №1 нагрузка"]
         ждём = np.unpackbits(нагрузка.reshape(-1))
         self.assertTrue(np.array_equal(ждём[:len(ряд)], ряд))
-        self.assertIn("VC-3 №1: указатель 400, B3 сошёлся в 100.0 %, C2 = 0x04", " ".join(н.подробно))
+        self.assertIn("VC-3 №1: указатель 400, B3 сошёлся в 100.0 %, C2 = 0x04 (асинхронное отображение "
+                      "34 368 / 44 736 кбит/с в C-3)", " ".join(н.подробно))
 
     def test_tu3_в_vc4(self):
         # TUG-3 №2 несёт TU-3: указатель в первом столбце, VC-3 (85 столбцов) со смещением от байта после H3.
@@ -419,3 +433,35 @@ class SdhTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class МеткиТрассаTests(unittest.TestCase):
+    def test_c2_словами(self):
+        self.assertEqual(sdh.метка_c2(0x1B), "0x1B (GFP (G.7041))")
+        self.assertEqual(sdh.метка_c2(0x16), "0x16 (HDLC/PPP (RFC 2615: со скремблером x⁴³ + 1))")
+        for код in (0xE1, 0xEE, 0xFC):
+            self.assertEqual(sdh.метка_c2(код), f"0x{код:02X} (для национального использования)")
+        for код in (0xE0, 0xFD, 0x77):
+            self.assertEqual(sdh.метка_c2(код), f"0x{код:02X} (не определена)")
+        self.assertEqual(len(sdh.C2_МЕТКИ), 19)
+        self.assertEqual(len(sdh.V5_МЕТКИ), 8)
+
+    def test_crc7_по_вектору_rfc3637(self):
+        """RFC 3637: неиспользуемая трасса — 0x89 и 15 нулей; оба многочлена дают этот вектор."""
+        for многочлен in sdh.CRC7_МНОГОЧЛЕНЫ:
+            self.assertEqual(sdh.crc7([0x80] + [0] * 15, многочлен), 0x09)
+        кусок = [0x80] + list(b"NODE-A/PORT-7   "[:15])
+        кусок[0] |= crc7_трассы(кусок)
+        self.assertEqual(sdh.crc7([0x80] + кусок[1:], 0x09), кусок[0] & 0x7F)
+
+    def test_трасса_с_crc7_и_без(self):
+        кусок = [0x80] + list(b"NODE-A/PORT-7".ljust(15, b" "))
+        кусок[0] |= crc7_трассы(кусок)
+        сдвинутый = np.array((кусок[5:] + кусок[:5]) * 3, dtype=np.uint8)       # с середины трассы
+        self.assertEqual(sdh._трасса(сдвинутый), "16 байт: «NODE-A/PORT-7», CRC-7 (x⁷ + x³ + 1) сошлась")
+        испорчен = list(кусок)
+        испорчен[3] ^= 1
+        self.assertEqual(sdh._трасса(np.array(испорчен * 3, dtype=np.uint8)),
+                         "16 байт: «NOEE-A/PORT-7», CRC-7 не сошлась")
+        self.assertEqual(sdh._трасса(np.array(([0x89] + [0] * 15) * 3, dtype=np.uint8)),
+                         "16 байт: «», CRC-7 (x⁷ + x³ + 1) сошлась")
