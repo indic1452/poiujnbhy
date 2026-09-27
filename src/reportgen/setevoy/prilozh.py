@@ -13,7 +13,7 @@ import struct
 from typing import Callable, Dict, List, Optional, Tuple
 
 from .pole import Мало, ip4, ip6, mac, u8, u16, u32, печатное
-from .razbor import Разбор, ethernet, ipv4, ipv6, ppp, данные, голый_ip
+from .razbor import Разбор, esp, ethernet, ipv4, ipv6, ppp, данные, голый_ip
 
 # -- DNS ----------------------------------------------------------------------------------
 
@@ -881,6 +881,27 @@ def isakmp(р: Разбор, м: int, конец: int) -> bool:
     return True
 
 
+def udpencap(р: Разбор, м: int, конец: int) -> bool:
+    """UDP 4500 — IPsec за NAT (RFC 3948, Wireshark packet-ipsec-udp.c): один байт 0xFF —
+    NAT-keepalive; четыре нулевых байта (non-ESP marker) — дальше IKE; иначе — ESP."""
+    д = р.д
+    if конец - м == 1 and д[м] == 0xFF:
+        у = р.уровень("UDPENCAP", "UDP Encapsulation of IPsec Packets", м)
+        у.поле("NAT-keepalive", "udpencap.nat_keepalive", "0xff", м, 1)
+        у.длина, у.итог = 1, "NAT-keepalive"
+        р.п.инфо = "NAT-keepalive"
+        return True
+    if конец - м < 8:
+        return False
+    if u32(д, м) == 0:
+        у = р.уровень("UDPENCAP", "UDP Encapsulation of IPsec Packets", м)
+        у.поле("Non-ESP marker", "udpencap.non_esp_marker", "00000000", м, 4)
+        у.длина, у.итог = 4, "IKE за маркером non-ESP"
+        return isakmp(р, м + 4, конец)
+    esp(р, м, конец)
+    return True
+
+
 def netflow(р: Разбор, м: int, конец: int) -> bool:
     д = р.д
     if конец - м < 24:
@@ -960,7 +981,7 @@ def _http_как(протокол: str) -> Разборщик:
     53: dns, 5353: lambda р, м, к: dns(р, м, к, имя="mDNS"), 5355: lambda р, м, к: dns(р, м, к, имя="LLMNR"),
     67: dhcp, 68: dhcp, 69: tftp, 123: ntp, 161: snmp, 162: snmp, 514: syslog, 520: rip,
     1812: radius, 1813: radius, 1645: radius, 1646: radius, 4789: vxlan, 2152: gtp_u, 1701: l2tp,
-    5060: _http_как("SIP"), 1900: _http_как("SSDP"), 443: quic, 500: isakmp, 4500: isakmp,
+    5060: _http_как("SIP"), 1900: _http_как("SSDP"), 443: quic, 500: isakmp, 4500: udpencap,
     2055: netflow, 9995: netflow, 9996: netflow, 4739: netflow, 3784: bfd, 4784: bfd,
 }
 ПОРТЫ_TCP: Dict[int, Разборщик] = {
