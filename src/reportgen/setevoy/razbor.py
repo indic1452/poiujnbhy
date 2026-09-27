@@ -33,6 +33,8 @@ IP_ПРОТОКОЛЫ = {0: "HOPOPT", 1: "ICMP", 2: "IGMP", 4: "IPv4-в-IP", 6: 
 ДОП_SCTP_PPID: Dict[int, Callable] = {}
 ДОП_SCTP_ПОРТ: Dict[int, Callable] = {}
 ДОП_PPP: Dict[int, Callable] = {}
+#: Кадры поверх Ethernet, узнаваемые по заголовку раньше него (ISL): признак-разборщик(р, м) → bool.
+ДОП_ETHERNET: list = []
 #: Уровень протокола для дерева протоколов: имя → «канальный»/«сетевой»/«транспортный»/«прикладной».
 ДОП_УРОВНИ: Dict[str, str] = {}
 #: Номера протоколов PPP (RFC 1661; таблица — Wireshark packet-ppp.h, IANA ppp-numbers).
@@ -85,6 +87,9 @@ class Разбор:
 # -- канальный уровень ------------------------------------------------------------------
 
 def ethernet(р: Разбор, м: int) -> None:
+    for признак in ДОП_ETHERNET:
+        if признак(р, м):
+            return
     у = р.уровень("Ethernet", "Ethernet II", м)
     р.нужно(м, 14)
     у.поле("Получатель", "eth.dst", mac(р.д, м), м, 6)
@@ -257,6 +262,9 @@ def pw_ach(р: Разбор, м: int) -> None:
         ipv4(р, м + 4)
     elif тип == 0x0057:
         ipv6(р, м + 4)
+    elif тип in ДОП_ETHERTYPE and тип == 0x8902:
+        # Y.1731 в MPLS-TP (RFC 6371): PDU OAM прямо за словом G-ACh.
+        ДОП_ETHERTYPE[тип](р, м + 4)
     elif м + 4 < len(р.д):
         данные(р, м + 4, "G-ACh")
 

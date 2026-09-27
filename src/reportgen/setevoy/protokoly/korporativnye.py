@@ -3009,6 +3009,8 @@ for _имя, _разборщик in (("NBSS/SMB", nbss), ("SMB Direct", smb_пр
 ЭВРИСТИКИ_TCP.extend([smb_эвристика, rpc_tcp_эвристика, http2_эвристика, websocket_эвристика])
 ЭВРИСТИКИ_UDP.append(rpc_udp_эвристика)
 ДОП_УРОВНИ.update({имя: "прикладной" for имя in (
-    "NBNS", "NBDS", "SMB", "SMB2", "DHCPv6", "TPKT", "COTP", "RDP", "HTTP2", "WebSocket", "RPC", "NFS", "Portmap",
+    "NBNS", "NBDS", "SMB", "SMB2", "DHCPv6", "RDP", "HTTP2", "WebSocket", "RPC", "NFS", "Portmap",
     "MOUNT", "MySQL", "PGSQL", "TDS", "RESP", "MongoDB", "AMQP", "SMPP", "CoAP")})
-ДОП_УРОВНИ["NBSS"] = "транспортный"
+# TPKT и COTP (RFC 1006, ISO 8073) — транспортный уровень OSI поверх TCP; тот же ответ даёт модуль
+# promyshlennye, и порядок загрузки модулей не должен его менять.
+ДОП_УРОВНИ.update({"NBSS": "транспортный", "TPKT": "транспортный", "COTP": "транспортный"})

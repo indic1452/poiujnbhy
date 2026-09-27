@@ -727,6 +727,10 @@ SCCP_СТРОЕНИЕ = {
     0x0F: (("dlr", "ошибка"), (), False),
     0x10: (("dlr", "slr", "класс", "посл", "кредит"), (), False),
 }
+#: Пользователи SCCP по номеру подсистемы (254 — BSSAP): разборщик(р, м, конец) → bool.
+SCCP_ПОДСИСТЕМЫ: Dict[int, Callable[..., bool]] = {}
+#: Пользователи данных соединений SCCP (CR, CC, DT1 несут данные без SSN) — по признакам.
+SCCP_СОЕДИНЕНИЯ: List[Callable[..., bool]] = []
 SCCP_ПАРАМЕТРЫ = {0x03: "Адрес вызываемого", 0x04: "Адрес вызывающего", 0x09: "Кредит",
                   0x0F: "Данные", 0x10: "Сегментация", 0x11: "Счётчик переходов", 0x12: "Важность"}
 SCCP_ВОЗВРАТ = {0: "нет трансляции для адреса такого вида", 1: "нет трансляции для этого адреса",
@@ -958,11 +962,21 @@ def sccp(р: Разбор, м: int, конец: int) -> bool:
     у.итог = ", ".join(итог[:4])
     р.п.инфо = "SCCP " + у.итог
     if данные_ is not None:
-        if тип in (0x09, 0x11):
+        подсистема = SCCP_ПОДСИСТЕМЫ.get(ssn[0x03]) or SCCP_ПОДСИСТЕМЫ.get(ssn[0x04])
+        if подсистема is not None:
+            _дальше(р, подсистема, данные_[0], данные_[1], "данные SCCP")
+        elif тип in (0x09, 0x11):
             _дальше(р, tcap, данные_[0], данные_[1], "данные SCCP", (ssn[0x03], ssn[0x04]))
+        elif SCCP_СОЕДИНЕНИЯ:
+            _дальше(р, _соединение, данные_[0], данные_[1], "данные SCCP")
         else:
             _данные(р, данные_[0], "данные SCCP", данные_[1])
     return True
+
+
+def _соединение(р: Разбор, м: int, конец: int) -> bool:
+    """Данные соединения SCCP (CR, CC, DT1 — без SSN): пользователи пробуются по очереди."""
+    return any(разбор(р, м, конец) for разбор in SCCP_СОЕДИНЕНИЯ)
 
 
 def sccp_канал(р: Разбор, м: int) -> None:
@@ -981,10 +995,46 @@ TCAP_СТРОЕНИЕ = {0x61: ((0x6B, False), (0x6C, True)),
                  0x64: ((0x49, True), (0x6B, False), (0x6C, False)),
                  0x65: ((0x48, True), (0x49, True), (0x6B, False), (0x6C, False)),
                  0x67: ((0x49, True), (0x4A, False), (0x6B, False))}
-#: Коды операций MAP (TS 29.002 17.5) — только общеизвестные.
-MAP_ОПЕРАЦИИ = {2: "updateLocation", 3: "cancelLocation", 7: "insertSubscriberData", 22: "sendRoutingInfo",
-                44: "mt-forwardSM", 45: "sendRoutingInfoForSM", 46: "mo-forwardSM",
-                56: "sendAuthenticationInfo", 59: "processUnstructuredSS-Request", 67: "purgeMS"}
+#: Коды операций MAP (TS 29.002 17.5) — все, по таблице Wireshark (packet-gsm_map.c,
+#: gsm_old_GSMMAPOperationLocalvalue_vals), перенесённой программно.
+MAP_ОПЕРАЦИИ = {2: "updateLocation", 3: "cancelLocation", 4: "provideRoamingNumber",
+                5: "noteSubscriberDataModified", 6: "resumeCallHandling", 7: "insertSubscriberData",
+                8: "deleteSubscriberData", 9: "sendParameters", 10: "registerSS", 11: "eraseSS",
+                12: "activateSS", 13: "deactivateSS", 14: "interrogateSS", 15: "authenticationFailureReport",
+                16: "notifySS", 17: "registerPassword", 18: "getPassword", 19: "processUnstructuredSS-Data",
+                20: "releaseResources", 21: "mt-ForwardSM-VGCS", 22: "sendRoutingInfo",
+                23: "updateGprsLocation", 24: "sendRoutingInfoForGprs", 25: "failureReport",
+                26: "noteMsPresentForGprs", 27: "unAllocated", 28: "performHandover", 29: "sendEndSignal",
+                30: "performSubsequentHandover", 31: "provideSIWFSNumber", 32: "sIWFSSignallingModify",
+                33: "processAccessSignalling", 34: "forwardAccessSignalling", 35: "noteInternalHandover",
+                36: "cancelVcsgLocation", 37: "reset", 38: "forwardCheckSS", 39: "prepareGroupCall",
+                40: "sendGroupCallEndSignal", 41: "processGroupCallSignalling",
+                42: "forwardGroupCallSignalling", 43: "checkIMEI", 44: "mt-forwardSM",
+                45: "sendRoutingInfoForSM", 46: "mo-forwardSM", 47: "reportSM-DeliveryStatus",
+                48: "noteSubscriberPresent", 49: "alertServiceCentreWithoutResult", 50: "activateTraceMode",
+                51: "deactivateTraceMode", 52: "traceSubscriberActivity", 53: "updateVcsgLocation",
+                54: "beginSubscriberActivity", 55: "sendIdentification", 56: "sendAuthenticationInfo",
+                57: "restoreData", 58: "sendIMSI", 59: "processUnstructuredSS-Request",
+                60: "unstructuredSS-Request", 61: "unstructuredSS-Notify",
+                62: "anyTimeSubscriptionInterrogation", 63: "informServiceCentre", 64: "alertServiceCentre",
+                65: "anyTimeModification", 66: "readyForSM", 67: "purgeMS", 68: "prepareHandover",
+                69: "prepareSubsequentHandover", 70: "provideSubscriberInfo", 71: "anyTimeInterrogation",
+                72: "ss-InvocationNotification", 73: "setReportingState", 74: "statusReport",
+                75: "remoteUserFree", 76: "registerCC-Entry", 77: "eraseCC-Entry",
+                78: "secureTransportClass1", 79: "secureTransportClass2", 80: "secureTransportClass3",
+                81: "secureTransportClass4", 82: "unAllocated", 83: "provideSubscriberLocation",
+                84: "sendGroupCallInfo", 85: "sendRoutingInfoForLCS", 86: "subscriberLocationReport",
+                87: "ist-Alert", 88: "ist-Command", 89: "noteMM-Event", 90: "unAllocated", 91: "unAllocated",
+                92: "unAllocated", 93: "unAllocated", 94: "unAllocated", 95: "unAllocated",
+                96: "unAllocated", 97: "unAllocated", 98: "unAllocated", 99: "unAllocated",
+                100: "unAllocated", 101: "unAllocated", 102: "unAllocated", 103: "unAllocated",
+                104: "unAllocated", 105: "unAllocated", 106: "unAllocated", 107: "unAllocated",
+                108: "unAllocated", 109: "lcs-PeriodicLocationCancellation", 110: "lcs-LocationUpdate",
+                111: "lcs-PeriodicLocationRequest", 112: "lcs-AreaEventCancellation",
+                113: "lcs-AreaEventReport", 114: "lcs-AreaEventRequest", 115: "lcs-MOLR",
+                116: "lcs-LocationNotification", 117: "callDeflection", 118: "userUserService",
+                119: "accessRegisterCCEntry", 120: "forwardCUG-Info", 121: "splitMPTY", 122: "retrieveMPTY",
+                123: "holdMPTY", 124: "buildMPTY", 125: "forwardChargeAdvice", 126: "explicitCT"}
 #: Номера подсистем MAP (TS 23.003): MAP, HLR, VLR, MSC, EIR, AuC.
 MAP_SSN = frozenset({5, 6, 7, 8, 9, 10})
 #: Контекст приложения MAP: {itu-t(0) identified-organization(4) etsi(0) mobileDomain(0)
@@ -1153,6 +1203,11 @@ def _контекст(д: bytes, н: int, к: int) -> Optional[Tuple[int, int]]:
     return None
 
 
+#: Приложения поверх TCAP, узнаваемые раньше MAP (CAP делит с MAP корень контекста):
+#: функция(р, компоненты, контекст, (SSN вызываемого, SSN вызывающего)) → bool.
+TCAP_ПРИЛОЖЕНИЯ: List[Callable] = []
+
+
 def tcap(р: Разбор, м: int, конец: int, ssn: Sequence[Optional[int]] = (None, None)) -> bool:
     """TCAP (Q.773 4.2): сообщение (Begin/Continue/End/Abort/Unidirectional), OTID/DTID,
     диалог (контекст приложения), компоненты с invokeID и кодом операции.
@@ -1223,6 +1278,9 @@ def tcap(р: Разбор, м: int, конец: int, ssn: Sequence[Optional[int]
         итог.append("; ".join(виды[:3]))
     у.итог = ", ".join(итог)
     р.п.инфо = "TCAP " + у.итог
+    for приложение in TCAP_ПРИЛОЖЕНИЯ:
+        if компоненты and приложение(р, компоненты, контекст, ssn):
+            return True
     это_map = (контекст is not None and контекст.startswith(MAP_AC)) or \
         (контекст is None and any(s in MAP_SSN for s in ssn if s is not None))
     if это_map and компоненты:

@@ -529,9 +529,9 @@ class MTP3SCCPTests(unittest.TestCase):
         # XUDT (Q.713 4.18): класс, счётчик переходов, 4 указателя (необяз. часть — 0).
         xudt = bytes([0x11, 0x01, 0x0F]) + bytes([4, 4 + 5 - 1, 4 + 10 - 2, 0]) + xudt[5:]
         п = разобрать_пакет(xudt, "SCCP")
-        self.assertEqual(["SCCP", "TCAP"], п.стек)                         # SSN 146 (CAP) — не MAP
+        self.assertEqual(["SCCP", "TCAP", "CAMEL"], п.стек)                # SSN 146 — CAP, не MAP
         self.assertEqual(([15], [1], ["0a0b0c0d"]), (поля(п)["sccp.hops"], поля(п)["sccp.class"], поля(п)["tcap.dtid"]))
-        self.assertEqual(["ReturnResultLast id 1 оп. 2"], [ф.текст for ф in п.уровни[-1].поля if ф.ключ == "tcap.component"])
+        self.assertEqual(["ReturnResultLast id 1 оп. 2"], [ф.текст for ф in п.уровни[-2].поля if ф.ключ == "tcap.component"])
         # CR (4.2): SLR, класс 2, указатель на вызываемого, на необязательную часть (вызывающий, конец).
         вызываемый, вызывающий = адрес_pc(10, 254), адрес_pc(20, 254)
         cr = bytes([0x01, 0x01, 0x02, 0x03, 0x02, 2, 1 + 1 + len(вызываемый)]) + bytes([len(вызываемый)]) \
@@ -586,9 +586,13 @@ class MTP3SCCPTests(unittest.TestCase):
                       tcap_begin_update_location()[:-1] + b"\0"[:0], ber(0x62, ber(0x48, b"\1"))[:-1] + b"\x01\x02"):
             with self.subTest(плохо=плохо.hex()):
                 self.assertNotIn("TCAP", через_udt(плохо).стек)
-        # SSN 146 (CAP) и чужой контекст приложения — TCAP без MAP.
+        # SSN 146 и контекст CAP фазы 4 {0 4 0 0 1 22 3 4} — CAMEL, не MAP (контекст важнее SSN).
         self.assertNotIn("MAP", через_udt(tcap_end_result(), ssn=146).стек)
-        чужой = tcap_begin_update_location(контекст=bytes([0x04, 0x00, 0x00, 0x01, 0x16, 0x03, 0x04]))
+        cap4 = tcap_begin_update_location(контекст=bytes([0x04, 0x00, 0x00, 0x01, 0x16, 0x03, 0x04]))
+        self.assertEqual(["SCCP", "TCAP", "CAMEL"], через_udt(cap4, ssn=146).стек)
+        self.assertEqual(["SCCP", "TCAP", "CAMEL"], через_udt(cap4, ssn=6).стек)
+        # Чужой контекст (не MAP и не CAP) — только TCAP.
+        чужой = tcap_begin_update_location(контекст=bytes([0x04, 0x00, 0x00, 0x01, 0x30, 0x03, 0x04]))
         self.assertEqual(["SCCP", "TCAP"], через_udt(чужой, ssn=146).стек)
         self.assertEqual(["SCCP", "TCAP"], через_udt(чужой, ssn=6).стек)
 
