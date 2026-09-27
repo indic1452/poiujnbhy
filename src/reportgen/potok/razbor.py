@@ -42,8 +42,8 @@ import numpy as np
 from . import (cikl, dlinnye, dvb, forni, gfp, hdlc, karta, kod, lineynye, oktety, pakety,
                ldpc, otn, pcs, pdh, pdh_na, peremezhenie, ploskost, polya, sdh, sinhro, skrembler, stafing,
                svyortka, tpc, turbo, vykalyvanie)
-from . import (acars, adsb, ccsds, dmr, dstar, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, p25, pocsag,
-               trau, v110, ysf)
+from . import (acars, adsb, ccsds, dmr, dsc, dstar, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, navtex, nxdn,
+               p25, pocsag, tetra, trau, v110, vdl2, ysf)
 from .bity import в_байты, в_биты, инвертировать
 from .chtenie import Поток, прочитать
 from .nahodka import Находка
@@ -324,6 +324,13 @@ def _проверяемые(выборка: np.ndarray, глубина: int, п�
         return ветвь
     ветвь.не_найдено.append(f"System Fusion{где} (синхрослово 0xD471C9634D и FICH с верной CRC): нет")
 
+    # 1д‴. NXDN: кадры 384 бита по FSW, скремблер, LICH, SACCH (RAN) и вызовы из сверхкадра SACCH.
+    найдено = nxdn.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"NXDN{где} (FSW 0xCDF59 и LICH с верной чётностью): нет")
+
     # 1е. POCSAG: пакеты 544 бита по синхрослову 0x7CD215D8, BCH (31, 21), адреса и сообщения.
     найдено = pocsag.найти(выборка)
     if найдено is not None:
@@ -351,6 +358,34 @@ def _проверяемые(выборка: np.ndarray, глубина: int, п�
         ветвь.проверяемая(найдено, путь)
         return ветвь
     ветвь.не_найдено.append(f"D-STAR{где} (заголовок после 0x557650 с верной CRC, сверхкадры речи): нет")
+
+    # 1й. NAVTEX / SITOR-B: знаки CCIR 476 (4 единицы из 7), повтор через пять мест, сообщения ZCZC … NNNN.
+    найдено = navtex.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"NAVTEX{где} (знаки CCIR 476 с повтором DX/RX через 5 мест): нет")
+
+    # 1к. ЦИВ (DSC, M.493): знаки 10 бит, фазирование 125 / 111…104, повтор DX/RX, ECC вызова.
+    найдено = dsc.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"ЦИВ DSC{где} (фазирование M.493 и вызовы с верным ECC): нет")
+
+    # 1л. VDL Mode 2: преамбула D8PSK, заголовок (25, 20), RS(255, 249) со стираниями, кадры AVLC с FCS.
+    найдено = vdl2.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"VDL Mode 2{где} (преамбула, заголовок, RS(255, 249) и FCS кадров AVLC): нет")
+
+    # 1м. TETRA: синхронизирующие пачки (обучающая y) с SYNC (CRC-16), затем пачки ячейки через 510 бит.
+    найдено = tetra.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"TETRA{где} (обучающая y и BSCH с верной CRC-16): нет")
 
     # 2. HDLC: битстаффинг, затем октетный (асинхронный PPP, SLIP) — и что в кадрах.
     кадры = hdlc.найти(выборка)
