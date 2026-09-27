@@ -44,8 +44,6 @@ A1, A2 = 0xF6, 0x28
          48: "STM-16 (STS-48)", 192: "STM-64 (STS-192)"}
 #: Кадров на разбор: у STM-1 это 64 мс, у STM-64 — 125 мкс × 64.
 КАДРОВ_ДО = 512
-#: Сколько VC-12 разбирать до притоков E1 (у STM-1 их 63).
-TU12_ДО = 63
 ВЫБОРКА = 1 << 23
 
 
@@ -108,9 +106,9 @@ def выравнивание(биты: np.ndarray) -> tuple[int, int] | None:
             continue
         шаги = Counter(np.diff(места).tolist())
         for шаг, раз in шаги.most_common(3):
-            if шаг % 6480 or шаг // 6480 not in ИМЕНА or раз < 3:
+            M, остаток = divmod(шаг, 6480)
+            if остаток or M not in ИМЕНА or раз < 3:
                 continue
-            M = шаг // 6480
             if смещение_байт is None and M < 3:
                 continue
             if смещение_байт == 0 and M != 1:
@@ -487,32 +485,39 @@ def заголовок_секции(кадры: np.ndarray, M: int) -> tuple[lis
     return строки, каналы
 
 
+def v5_годен(доля: float) -> bool:
+    """BIP-2 в V5 сошёлся хотя бы в половине VC-12 (случайно — в четверти)."""
+    return доля >= 0.5
+
+
 def _tu12(vc: np.ndarray, единиц: int, откуда: str) -> dict[str, object]:
     """TU-12 внутри VC-4 или VC-3: VC-12 с проверкой V5, E1 — с проверкой FAS."""
-    if единиц == 3:
-        адреса = [((t, m, n), _tu12_столбцы_vc4(t, m, n)) for t in range(3) for m in range(7) for n in range(3)]
-    else:
-        адреса = [((0, m, n), _tu12_столбцы_vc3(m, n)) for m in range(7) for n in range(3)]
+    if единиц == 3:                                          # 3 TUG-3 × 7 TUG-2 × 3 TU-12
+        адреса = [(f"{t + 1}-{m + 1}-{n + 1}", _tu12_столбцы_vc4(t, m, n))
+                  for t in range(3) for m in range(7) for n in range(3)]
+    else:                                                     # 7 TUG-2 × 3 TU-12
+        адреса = [(f"{m + 1}-{n + 1}", _tu12_столбцы_vc3(m, n)) for m in range(7) for n in range(3)]
     итог: dict[str, object] = {}
     сводка = []
     годных, e1_годных = 0, 0
-    for (t, m, n), столбцы in адреса[:TU12_ДО]:
+    for номер, столбцы in адреса:
         tu = vc[:, :, столбцы].reshape(len(vc), 36)
         р = vc12(tu)
-        имя = f"TU-12 {t + 1}-{m + 1}-{n + 1}" if единиц == 3 else f"TU-12 {m + 1}-{n + 1}"
+        имя = f"TU-12 {номер}"
         if р is None:
             continue
         e1, стафф = e1_из_vc12(р["vc"])
-        fas = cikl.e1(e1) if len(e1) >= 512 * 40 else None
-        есть_e1 = fas is not None and fas.уверенность >= 0.5
+        # cikl.e1 сам требует 32 пары циклов и FAS почти в каждой (уверенность от 0,79).
+        fas = cikl.e1(e1)
+        есть_e1 = fas is not None
         # VC-12 годен, если сошёлся V5 — или если в нём найден E1 с FAS: FAS сам
         # доказывает, что выделение верно, а BIP-2 бывает и испорчен линией.
-        if р["v5"] < 0.5 and not есть_e1:
+        if not v5_годен(р["v5"]) and not есть_e1:
             continue
         годных += 1
         метка = _большинство([метка_v5(int(в[0])) for в in р["vc"]])
-        v5 = (f"V5 (BIP-2) сошёлся в {р['v5'] * 100:.0f} %" + (" — не сошёлся, приток подтверждён FAS"
-                                                                if р["v5"] < 0.5 else "")
+        v5 = (f"V5 (BIP-2) сошёлся в {р['v5'] * 100:.0f} %" + ("" if v5_годен(р["v5"])
+                                                                else " — не сошёлся, приток подтверждён FAS")
               + f", метка V5 {метка:03b} ({V5_МЕТКИ[метка]})")
         if есть_e1:
             e1_годных += 1
