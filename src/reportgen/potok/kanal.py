@@ -16,6 +16,8 @@ from __future__ import annotations
 from collections import Counter
 from typing import List, Optional, Sequence
 
+import numpy as np
+
 from ..setevoy import vid_kadra
 from .nahodka import Находка
 
@@ -26,6 +28,7 @@ from .nahodka import Находка
     "Frame Relay": ("Frame Relay", 107, "Frame Relay (Q.922, RFC 2427)"),
     "LAPB": ("LAPB без направления", None, "X.25, LAPB"),
     "AX.25": ("AX.25", 3, "AX.25"),
+    "AIS": ("AIS", None, "AIS (ITU-R M.1371): сообщения судов и станций"),
 }
 #: Сколько кадров разбирать ради сводки (остальные идут в выгрузку как есть).
 РАЗБИРАТЬ_ДО = 3000
@@ -72,6 +75,11 @@ def найти(кадры: Sequence[bytes], откуда: str = "кадрах") 
     elif вид == "LAPD":
         подробно.append("SAPI/TEI: " + ", ".join(
             f"{с_ >> 2}/{т >> 1}×{с}" for (с_, т), с in Counter((к[0], к[1]) for к in кадры).most_common(8)))
+    elif вид == "AIS":
+        from . import ais  # noqa: PLC0415
+        сообщения = [п for п in (ais.разобрать(np.unpackbits(np.frombuffer(bytes(к), np.uint8)))
+                                 for к in кадры[:РАЗБИРАТЬ_ДО]) if п]
+        подробно += ais.сводка(сообщения)
     if ошибок:
         подробно.append(f"с замечаниями разборщика: {ошибок} из {len(пакеты)} разобранных "
                         f"(оборванные, неверные поля — подробно в анализаторе пакетов)")

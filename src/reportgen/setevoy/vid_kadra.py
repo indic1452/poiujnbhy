@@ -140,10 +140,19 @@ def ax25(д: bytes) -> bool:
     return False
 
 
+def ais(д: bytes) -> bool:
+    """Сообщение AIS (ITU-R M.1371): тип 1–5, 18, 19, 21, 24 и его точная длина, MMSI не нуль."""
+    from ..potok.ais import годное_по_длине  # noqa: PLC0415 — кольцевой импорт пакетов
+    return (len(д) >= 5 and годное_по_длине(8 * len(д), д[0] >> 2)
+            and (int.from_bytes(д[1:5], "big") >> 2) & 0x3FFFFFFF != 0)
+
+
 #: Проверки в порядке предпочтения при равной доле: у FR признаки строже (NLPID),
-#: у MTP2 — слабее всех (случайный кадр сходится по LI в 1/256).
+#: у MTP2 — слабее всех (случайный кадр сходится по LI в 1/256). AIS — после MTP2: по одному
+#: кадру MSU длиной 21 байт сходится с AIS в 6 случаях из 64 (тип по BSN), а кадр AIS с MTP2 —
+#: лишь при совпавшем LI и нулевом запасе (≈ 0,4 %); у всего потока решает доля.
 ПРОВЕРКИ: Tuple[Tuple[str, Callable[[bytes], bool]], ...] = (
-    ("Frame Relay", fr), ("LAPD", lapd), ("LAPB", lapb), ("AX.25", ax25), ("MTP2", mtp2))
+    ("Frame Relay", fr), ("LAPD", lapd), ("LAPB", lapb), ("AX.25", ax25), ("MTP2", mtp2), ("AIS", ais))
 
 
 def вид(кадр: bytes) -> Optional[str]:
