@@ -14,6 +14,9 @@ import _bootstrap  # noqa: F401
 import setevoy_sintez as с
 from reportgen.setevoy import разобрать_пакет
 from reportgen.setevoy.filtr import отобрать
+from reportgen.setevoy.pole import Пакет
+from reportgen.setevoy.protokoly import mobilnye
+from reportgen.setevoy.razbor import Разбор
 from reportgen.setevoy.statistika import уровень_протокола
 
 СВОИ = {"Diameter", "GTP", "GTPv2", "GTP'", "PFCP", "S1AP", "NGAP", "X2AP", "SGsAP", "GSMTAP", "TACACS+",
@@ -577,7 +580,7 @@ class GtpUTests(Общее):
         for имя, сообщение in (("PT=0 (GTP')", gtpu(255, ВНУТРИ, флаги=0x20)), ("версия 2", gtpu(255, ВНУТРИ, флаги=0x50)),
                                ("версия 0", gtpu(255, ВНУТРИ, флаги=0x10)), ("7 байт", gtpu(1)[:7])):
             with self.subTest(имя):
-                self.assertNotIn("GTP", self.разбор(сообщение).стек)
+                self.assertEqual(["Ethernet", "IPv4", "UDP", "Данные"], self.разбор(сообщение).стек)
 
     def test_служебные_сообщения(self):
         for тип, имя in ((254, "End Marker"), (253, "Tunnel Status"), (1, "Echo Request"), (99, "тип 99")):
@@ -597,8 +600,10 @@ class GtpUTests(Общее):
         self.assertEqual([0, 1, 0], [значения(п, к)[0] for к in ("gtp.flags.e", "gtp.flags.s", "gtp.flags.pn")])
         self.assertEqual(12, п.уровни[3].длина)
         self.assertIn("IPv4", п.стек[4:])
-        п = self.разбор(gtpu(255, ВНУТРИ, флаги=0x31, опц=опц))        # PN: только N-PDU
-        self.assertEqual(([], [0x56]), (значения(п, "gtp.seq_number"), значения(п, "gtp.npdu_number")))
+        п = self.разбор(gtpu(255, ВНУТРИ, флаги=0x31, опц=опц[:3] + b"\x85"))   # PN: только N-PDU
+        self.assertEqual(([], [0x56], []), (значения(п, "gtp.seq_number"), значения(п, "gtp.npdu_number"),
+                                            значения(п, "gtp.next")))
+        self.assertEqual([], п.ошибки)
         self.место(п, "gtp.npdu_number", м + 10, 1)
         self.assertEqual([1], значения(п, "gtp.flags.pn"))
         п = self.разбор(gtpu(255, ВНУТРИ, флаги=0x34, опц=опц))        # E: следующее расширение = 0
@@ -606,6 +611,27 @@ class GtpUTests(Общее):
         self.место(п, "gtp.next", м + 11, 1)
         self.assertEqual([1], значения(п, "gtp.flags.e"))
         self.assertIn("IPv4", п.стек[4:])
+
+    def test_места_заголовка(self):
+        п = self.разбор(gtpu(255, ВНУТРИ, флаги=0x36, опц=b"\x00\x01\x00\x00"))
+        м = UDP_НАГРУЗКА
+        for ключ, место, длина in (("gtp.flags", м, 1), ("gtp.flags.e", м, 1), ("gtp.flags.s", м, 1),
+                                   ("gtp.flags.pn", м, 1), ("gtp.message", м + 1, 1), ("gtp.length", м + 2, 2)):
+            self.место(п, ключ, место, длина)
+
+    def test_прямой_вызов(self):
+        def прямо(сообщение):
+            р = Разбор(Пакет(1, 0.0, сообщение, len(сообщение), "RAW"))
+            return mobilnye.gtp_u(р, 0, len(сообщение)), р.п
+        ок, п = прямо(gtpu(1)[:7])
+        self.assertEqual((False, []), (ок, п.уровни))
+        ок, п = прямо(gtpu(1, флаги=0x32))
+        self.assertEqual((True, ["GTP"]), (ок, п.стек))
+        ок, п = прямо(gtpu(255, ВНУТРИ))
+        self.assertEqual((True, ["GTP", "IPv4", "UDP"]), (ок, п.стек[:3]))
+        # Необязательных полей 3 байта из 4 — их нет.
+        ок, п = прямо(gtpu(1, флаги=0x32, опц=b"\x00\x01\x00") + b"\x85\x01")
+        self.assertEqual((True, ["GTP-U: нет необязательных полей заголовка (номер, N-PDU, расширение)"]), (ок, п.ошибки))
 
     def test_нет_необязательных(self):
         for тип, инфо in ((1, "GTP Echo Request, TEID 0x01020304"), (255, "GTP TEID 0x01020304")):
@@ -633,6 +659,16 @@ class GtpUTests(Общее):
         self.assertEqual("Заголовок расширения: PDU Session Container", найти(п, "gtp.ext_hdr").имя)
         self.assertEqual(20, п.уровни[3].длина)
         self.assertIn("IPv4", п.стек[4:])
+        self.место(п, "gtp.ext_hdr.pdu_ses_con.pdu_type", м + 1, 1)
+        self.место(п, "gtp.ext_hdr.pdu_ses_con.reflec_qos_ind", м + 2, 1)
+        # DL без PPP, но с октетом за QFI: PPI нет (бит PPP — только старший; QFI 5 — нечётный).
+        п = self.разбор(gtpu(255, ВНУТРИ, флаги=0x34, опц=b"\0\0\0\x85" + расш(bytes([0x00, 0x05, 0xE0, 0, 0, 0]))))
+        self.assertEqual(([5], []), (значения(п, "gtp.ext_hdr.pdu_ses_con.qos_flow_id"),
+                                     значения(п, "gtp.ext_hdr.pdu_ses_con.paging_policy_ind")))
+        # Заголовок из трёх слов: длина в поле — 3.
+        п = self.разбор(gtpu(255, ВНУТРИ, флаги=0x34, опц=b"\0\0\0\x81" + расш(bytes(10))))
+        self.assertEqual(([3], [129]), (значения(п, "gtp.ext_hdr.length"), значения(п, "gtp.ext_hdr")))
+        self.место(п, "gtp.ext_hdr", UDP_НАГРУЗКА + 12, 12)
         # DL без PPP: RQI=0, PPI нет; с PPP, но без октета PPI (длина 1) — PPI тоже нет.
         for содержимое, rqi in ((bytes([0x00, 0x05]), 0), (bytes([0x00, 0x80 | 0x05]), 0)):
             п = self.разбор(gtpu(255, ВНУТРИ, флаги=0x34, опц=b"\0\0\0\x85" + расш(содержимое)))
@@ -668,6 +704,9 @@ class GtpUTests(Общее):
         self.assertEqual(12 + len(цепочка), п.уровни[3].длина)
         self.assertIn("IPv4", п.стек[4:])
         self.assertEqual([], п.ошибки)
+        # Тип 3 — тоже Long PDCP (5.2.2.2A); запасные 6 бит отбрасываются.
+        п = self.разбор(gtpu(255, ВНУТРИ, флаги=0x34, опц=b"\0\0\0\x03" + расш(bytes([0xFF, 0xFF, 0xFF, 0, 0, 0]))))
+        self.assertEqual(([3], [0x3FFFF]), (значения(п, "gtp.ext_hdr"), значения(п, "gtp.ext_hdr.pdcp_sn")))
         # Long PDCP длиной в одно слово — номера (3 октета) нет.
         п = self.разбор(gtpu(255, ВНУТРИ, флаги=0x34, опц=b"\0\0\0\x82" + расш(b"\x03\xff")))
         self.assertEqual([], значения(п, "gtp.ext_hdr.pdcp_sn"))
@@ -712,12 +751,19 @@ class GtpUTests(Общее):
         self.место(п, "gtp.ie.unknown", UDP_НАГРУЗКА + 10, 5)
         for имя, тело, место in (("TV", tv(14, b"\x07") + tv(16, b"\x01\x02"), 2), ("TLV", tlv1(133, b"\x01\x02")[:-1], 0),
                                  ("список", bytes([141, 4, 1, 2]), 0), ("заголовок TLV", tv(14, b"\x07") + b"\x85\x00", 2),
-                                 ("список без числа", bytes([141]), 0)):
+                                 ("список без числа", bytes([141]), 0),
+                                 ("заголовок TLV до конца", tv(14, b"\x07") + b"\x85\x00\x05", 2),
+                                 ("число списка до конца", bytes([141, 3]), 0)):
             with self.subTest(имя):
                 п = self.разбор(gtpu(26, тело))
                 обрезан = [ф for ф in п.уровни[3].поля if ф.имя.endswith(": обрезан")]
                 self.assertEqual(1, len(обрезан), [ф.имя for ф in п.уровни[3].поля])
                 self.assertEqual((UDP_НАГРУЗКА + 8 + место, len(тело) - место), (обрезан[0].смещение, обрезан[0].длина))
+        # 127 — ещё TV (незнакомый, стоп), 128 — уже TLV.
+        п = self.разбор(gtpu(26, tv(127, b"\x01")))
+        self.assertEqual([127], значения(п, "gtp.ie.unknown"))
+        п = self.разбор(gtpu(26, tlv1(128, b"\x01\x02")))
+        self.assertEqual("GTP Error Indication, TEID 0x01020304, IE 128 0102", п.инфо)
         # IE — только в пределах объявленной длины.
         п = self.разбор(gtpu(2, tv(14, b"\x07") + b"\xff\xff", длина=2))
         self.assertEqual(("GTP Echo Response, TEID 0x01020304, Recovery 7", []), (п.инфо, значения(п, "gtp.ie.unknown")))
