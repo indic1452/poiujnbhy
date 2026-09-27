@@ -16,7 +16,6 @@ NXDNCRC.cpp, NXDNLayer3.cpp):
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -70,11 +69,11 @@ def свёртка(биты: np.ndarray) -> np.ndarray:
     return np.array(итог, dtype=np.uint8)
 
 
-def витерби(символы: List[Optional[int]], бит: int) -> np.ndarray:
+def витерби(символы: list[int | None], бит: int) -> np.ndarray:
     """Жёсткий Витерби K = 5 со стёртыми символами (None), путь — в нулевое состояние."""
     INF = 1 << 30
     метрики = [0] + [INF] * 15
-    пути: List[List[int]] = [[] for _ in range(16)]
+    пути: list[list[int]] = [[] for _ in range(16)]
     for k in range(0, len(символы), 2):
         a, b = символы[k], символы[k + 1]
         новые, новые_пути = [INF] * 16, [None] * 16
@@ -92,17 +91,17 @@ def витерби(символы: List[Optional[int]], бит: int) -> np.ndarr
     return np.array(пути[0][:бит], dtype=np.uint8)
 
 
-def lich(кадр: np.ndarray) -> Optional[int]:
+def lich(кадр: np.ndarray) -> int | None:
     """8 бит LICH (кадр уже без скремблера); None — чётность не сошлась."""
     биты = np.asarray(кадр, dtype=np.uint8)[20:36:2]
     значение = int("".join(map(str, биты)), 2)
     return значение if (значение & 1) == чётность_lich(значение) else None
 
 
-def sacch(кадр: np.ndarray) -> Optional[Dict[str, int]]:
+def sacch(кадр: np.ndarray) -> dict[str, int] | None:
     """SR, RAN и 18 бит данных SACCH; None — CRC-6 не сошлась."""
     принято = np.asarray(кадр, dtype=np.uint8)[36:96]
-    символы: List[Optional[int]] = []
+    символы: list[int | None] = []
     for n in МЕСТА_SACCH:
         while len(символы) in ВЫКОЛОТЫ:                  # стёртые места выколотого кода
             символы.append(None)
@@ -118,7 +117,7 @@ def sacch(кадр: np.ndarray) -> Optional[Dict[str, int]]:
             "данные": int("".join(map(str, данные[8:26])), 2)}
 
 
-def кадры(биты: np.ndarray) -> List[Dict[str, object]]:
+def кадры(биты: np.ndarray) -> list[dict[str, object]]:
     биты = np.asarray(биты, dtype=np.uint8)
     if len(биты) < КАДР:
         return []
@@ -140,7 +139,7 @@ def кадры(биты: np.ndarray) -> List[Dict[str, object]]:
             л = lich(кадр)
             if л is None:
                 continue
-            к: Dict[str, object] = {"место": int(м), "обратная": обратная, "rfct": л >> 6, "fct": (л >> 4) & 3,
+            к: dict[str, object] = {"место": int(м), "обратная": обратная, "rfct": л >> 6, "fct": (л >> 4) & 3,
                                     "опция": (л >> 2) & 3, "направление": (л >> 1) & 1}
             с = sacch(кадр) if (л >> 4) & 3 in (0, 2, 3) else None
             if с is not None:
@@ -149,7 +148,7 @@ def кадры(биты: np.ndarray) -> List[Dict[str, object]]:
     return sorted(итог, key=lambda к: к["место"])
 
 
-def вызовы(найдено: List[Dict[str, object]]) -> List[Dict[str, object]]:
+def вызовы(найдено: list[dict[str, object]]) -> list[dict[str, object]]:
     """Сообщения уровня 3 из четвёрок SACCH (SR 3, 2, 1, 0 подряд)."""
     итог = []
     с_sacch = [к for к in найдено if "sr" in к]
@@ -165,13 +164,13 @@ def вызовы(найдено: List[Dict[str, object]]) -> List[Dict[str, obje
     return итог
 
 
-def описание(в: Dict[str, object]) -> str:
+def описание(в: dict[str, object]) -> str:
     тип = int(в["тип"])
     return (f"{ТИПЫ.get(тип, f'тип 0x{тип:02X}')}: {в['источник']} → "
             + ("группа " if в["группа"] else "") + str(в["получатель"]))
 
 
-def подряд(найдено: List[Dict[str, object]]) -> List[Dict[str, object]]:
+def подряд(найдено: list[dict[str, object]]) -> list[dict[str, object]]:
     """Кадры, у которых есть сосед той же полярности через 1–4 кадра: передача NXDN идёт кадрами подряд,
     а случайное совпадение FSW (20 бит) с верной чётностью LICH одиночно."""
     места = {(к["место"], к["обратная"]) for к in найдено}
@@ -179,7 +178,7 @@ def подряд(найдено: List[Dict[str, object]]) -> List[Dict[str, obje
             if any((к["место"] + з * КАДР, к["обратная"]) in места for з in (-4, -3, -2, -1, 1, 2, 3, 4))]
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     найдено = подряд(кадры(биты))
     if len(найдено) < НАЙТИ_ОТ:
         return None
@@ -216,7 +215,7 @@ def кадр(rfct: int = 1, fct: int = 2, опция: int = 0, направле�
     return кадр_ ^ СКРЕМБЛЕР
 
 
-def вызов(источник: int, получатель: int, группа: bool = True, тип: int = 0x01, ran: int = 1) -> List[np.ndarray]:
+def вызов(источник: int, получатель: int, группа: bool = True, тип: int = 0x01, ran: int = 1) -> list[np.ndarray]:
     """Четыре кадра со сверхкадром SACCH (SR 3, 2, 1, 0) — сообщение уровня 3 (для проверок)."""
     байты = bytes([тип, 0, 0 if группа else 0x80, источник >> 8, источник & 0xFF, получатель >> 8,
                    получатель & 0xFF, 0, 0])

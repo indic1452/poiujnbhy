@@ -14,10 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 import _bootstrap  # noqa: F401
-
 from reportgen import corpus
-from reportgen.ingest import convert as convert_module
-from reportgen.ingest import titles
 from reportgen.ingest import (
     IngestResult,
     chunks_from_markdown,
@@ -27,7 +24,9 @@ from reportgen.ingest import (
     ingest_path,
     remove_document,
     sha256_file,
+    titles,
 )
+from reportgen.ingest import convert as convert_module
 from reportgen.store import Database
 from reportgen.store.repo import Repositories
 
@@ -317,7 +316,7 @@ class ConvertDocxTests(TempCase):
 
     def test_broken_docx_does_not_raise(self):
         path = self.tmp / "reports" / "битый.docx"
-        path.write_bytes("PK\x03\x04 не документ".encode("utf-8"))
+        path.write_bytes("PK\x03\x04 не документ".encode())
         converted = convert_file(path)
         self.assertTrue(converted.is_empty)
         self.assertTrue(converted.warnings)
@@ -526,7 +525,7 @@ class IngestFileTests(TempCase):
     def test_broken_file_is_counted_as_failed(self):
         path = self.tmp / "literature" / "битый.pdf"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes("%PDF-1.4 \x00 мусор".encode("utf-8"))
+        path.write_bytes("%PDF-1.4 \x00 мусор".encode())
         result = ingest_path(self.repos, path, root=self.tmp)
         self.assertEqual((result.failed, result.added), (1, 0))
         self.assertTrue(result.warnings)

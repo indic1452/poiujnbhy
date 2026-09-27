@@ -10,7 +10,6 @@ import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.store.db import Database
 from reportgen.store.repo import Repositories
 from reportgen.web.catalog import (

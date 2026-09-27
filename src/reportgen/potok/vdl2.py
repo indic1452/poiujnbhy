@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -49,7 +48,7 @@ S_КОМАНДЫ = ("RR", "RNR", "REJ", "SREJ")
 
 def _преамбула() -> np.ndarray:
     биты = []
-    for a, b in zip(ФАЗЫ_ПРЕАМБУЛЫ, ФАЗЫ_ПРЕАМБУЛЫ[1:]):
+    for a, b in zip(ФАЗЫ_ПРЕАМБУЛЫ, ФАЗЫ_ПРЕАМБУЛЫ[1:], strict=False):
         с = ГРЕЙ[(b - a) % 8]
         биты += [(с >> 2) & 1, (с >> 1) & 1, с & 1]
     return np.array(биты, dtype=np.uint8)
@@ -89,7 +88,7 @@ def синдром(заголовок: int) -> int:
     return итог
 
 
-def заголовок(биты: np.ndarray) -> Optional[Tuple[int, int]]:
+def заголовок(биты: np.ndarray) -> tuple[int, int] | None:
     """25 бит (после снятия скремблера) → (длина передачи в битах, синдром) или None."""
     слово = int("".join(map(str, биты[:25].tolist())), 2) & ((1 << 22) - 1)   # резервные — нули
     с = синдром(слово)
@@ -108,7 +107,7 @@ def проверочных(октетов: int) -> int:
     return 0 if октетов < 3 else 2 if октетов < 31 else 4 if октетов < 68 else 6
 
 
-def раскладка(длина: int) -> Tuple[int, int, int, int]:
+def раскладка(длина: int) -> tuple[int, int, int, int]:
     """(октетов данных, блоков, октетов в последнем блоке, проверочных всего)."""
     октетов = (длина + 7) // 8
     блоков, последний = divmod(октетов, RS_K)
@@ -119,7 +118,7 @@ def раскладка(длина: int) -> Tuple[int, int, int, int]:
     return октетов, блоков, последний or RS_K, проверочных_всего
 
 
-def _места(строк: int, ширина: int, всего: int, сдвиг: int) -> List[Tuple[int, int]]:
+def _места(строк: int, ширина: int, всего: int, сдвиг: int) -> list[tuple[int, int]]:
     """Порядок передачи: по столбцам, в последней строке — только её ширина (deinterleave dumpvdl2)."""
     последняя = всего % ширина or ширина
     итог = []
@@ -134,7 +133,7 @@ def _места(строк: int, ширина: int, всего: int, сдвиг:
 @dataclass
 class Кадр:
     октеты: bytes
-    поля: Dict[str, str] = field(default_factory=dict)
+    поля: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -144,7 +143,7 @@ class Пачка:
     длина: int
     синдром: int
     исправлено: int = 0
-    кадры: List[Кадр] = field(default_factory=list)
+    кадры: list[Кадр] = field(default_factory=list)
 
 
 def fcs(данные: bytes) -> int:
@@ -156,7 +155,7 @@ def fcs(данные: bytes) -> int:
     return c
 
 
-def _адрес(б: bytes) -> Tuple[int, int, int]:
+def _адрес(б: bytes) -> tuple[int, int, int]:
     """(адрес 24 бита, вид, бит состояния) как parse_dlc_addr."""
     v = (б[0] >> 1) | (б[1] << 6) | (б[2] << 13) | ((б[3] & 0xFE) << 20)
     v = int(format(v & ((1 << 28) - 1), "028b")[::-1], 2)
@@ -175,7 +174,7 @@ def _acars(данные: bytes) -> str:
             + (f": {п['текст']}" if п["текст"] else ""))
 
 
-def avlc(октеты: bytes) -> Optional[Dict[str, str]]:
+def avlc(октеты: bytes) -> dict[str, str] | None:
     """Поля кадра AVLC или None, если короче 11 октетов или FCS неверна."""
     if len(октеты) < 11 or fcs(октеты) != FCS_ВЕРНА:
         return None
@@ -200,10 +199,10 @@ def avlc(октеты: bytes) -> Optional[Dict[str, str]]:
     return п
 
 
-def кадры_hdlc(биты: np.ndarray) -> Optional[List[bytes]]:
+def кадры_hdlc(биты: np.ndarray) -> list[bytes] | None:
     """Кадры между флагами 0x7E со снятием битстаффинга (как bitstream_copy_next_frame); None — ошибка."""
-    итог: List[bytes] = []
-    кадр: List[int] = []
+    итог: list[bytes] = []
+    кадр: list[int] = []
     единиц, начат = 0, False
     for б in биты.tolist():
         if б == 0 and единиц == 5:
@@ -227,7 +226,7 @@ def кадры_hdlc(биты: np.ndarray) -> Optional[List[bytes]]:
     return итог
 
 
-def _пачка(ряд: np.ndarray, м: int, сопряжение: bool) -> Optional[Пачка]:
+def _пачка(ряд: np.ndarray, м: int, сопряжение: bool) -> Пачка | None:
     """Пачка с начала заголовка ``м`` (биты уже в прямом виде)."""
     хвост = ряд[м:м + 25]
     if len(хвост) < 25:
@@ -245,11 +244,11 @@ def _пачка(ряд: np.ndarray, м: int, сопряжение: bool) -> Opti
     байты = np.packbits(чистые[25:].reshape(-1, 8)[:, ::-1], axis=1).reshape(-1)
     данные, проверка = байты[:октетов], байты[октетов:]
     таблица = np.zeros((блоков, RS_N), dtype=np.int64)
-    for (строка, столбец), б in zip(_места(блоков, RS_K, октетов, 0), данные.tolist()):
+    for (строка, столбец), б in zip(_места(блоков, RS_K, октетов, 0), данные.tolist(), strict=False):
         таблица[строка, столбец] = б
     строк_проверки = блоков - (1 if проверочных(последний) == 0 else 0)
     for (строка, столбец), б in zip(_места(строк_проверки, RS_N - RS_K, проверочных_всего, RS_K),
-                                    проверка.tolist()):
+                                    проверка.tolist(), strict=False):
         таблица[строка, столбец] = б
     исправлено = 0
     выход = []
@@ -280,7 +279,7 @@ def _пачка(ряд: np.ndarray, м: int, сопряжение: bool) -> Opti
 КУСОК = 11                                      # 4 куска по 11 бит: при ≤ 3 ошибках один цел
 
 
-def преамбулы(ряд: np.ndarray) -> List[int]:
+def преамбулы(ряд: np.ndarray) -> list[int]:
     """Места преамбулы (не больше 3 ошибок): кандидаты — где один из четырёх кусков по 11 бит совпал
     точно (по принципу Дирихле), затем полная сверка 45 бит."""
     n = len(ряд) - len(ПРЕАМБУЛА) + 1
@@ -302,9 +301,9 @@ def преамбулы(ряд: np.ndarray) -> List[int]:
     return места[ошибок <= ОШИБОК_ПРЕАМБУЛЫ_ДО].tolist()
 
 
-def пачки(биты: np.ndarray) -> List[Пачка]:
+def пачки(биты: np.ndarray) -> list[Пачка]:
     биты = np.asarray(биты, dtype=np.uint8)
-    итог: List[Пачка] = []
+    итог: list[Пачка] = []
     if len(биты) < len(ПРЕАМБУЛА) + 25:
         return итог
     for сопряжение, сдвиг in [(False, 0)] + [(True, s) for s in range(3)]:
@@ -327,7 +326,7 @@ def описание(к: Кадр) -> str:
     return "; ".join(части)
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     пп = пачки(биты)
     if not пп:
         return None
@@ -361,11 +360,11 @@ def кадр_avlc(получатель: bytes, отправитель: bytes, у
     return тело + bytes([c & 0xFF, c >> 8])
 
 
-def закодировать(кадры: List[bytes], заполнение: int = 0) -> np.ndarray:
+def закодировать(кадры: list[bytes], заполнение: int = 0) -> np.ndarray:
     """Кадры → биты пачки: преамбула, заголовок, данные и проверочные RS, скремблер.
 
     ``заполнение`` — биты дополнения до октета после последнего флага (их отбрасывает длина заголовка)."""
-    полезные: List[int] = [0, 1, 1, 1, 1, 1, 1, 0]
+    полезные: list[int] = [0, 1, 1, 1, 1, 1, 1, 0]
     for к in кадры:
         единиц = 0
         for б in к:

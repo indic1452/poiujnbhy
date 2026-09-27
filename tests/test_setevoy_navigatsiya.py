@@ -51,6 +51,7 @@ class NmeaTests(unittest.TestCase):
 
     def test_канал_ais(self):
         import numpy as np
+
         from reportgen.potok import ais
         б = ais.из_nmea("15M67FC000G?ufbE`FepT@3n00Sa")
         п = разобрать_пакет(np.packbits(б).tobytes(), "AIS")

@@ -43,13 +43,14 @@ import posixpath
 import re
 import xml.etree.ElementTree as ElementTree
 import zipfile
+from collections.abc import Iterable, Sequence
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import Any
 
 from ...packages import pip_hint
 from .. import registry
-from ..convert import ConvertedDocument, page_marker, _clean_line, _read_text
+from ..convert import ConvertedDocument, _clean_line, _read_text, page_marker
 
 __all__ = [
     "MAX_SHEET_ROWS",
@@ -187,7 +188,7 @@ def _row_is_empty(row: Sequence[str]) -> bool:
     return not any(cell.strip() for cell in row)
 
 
-def _trim_table(rows: List[List[str]]) -> Tuple[List[List[str]], int, int]:
+def _trim_table(rows: list[list[str]]) -> tuple[list[list[str]], int, int]:
     """Обрезает пустые строки и столбцы по краям.
 
     Возвращает таблицу и смещения (сколько строк сверху и столбцов слева
@@ -219,7 +220,7 @@ def _trim_table(rows: List[List[str]]) -> Tuple[List[List[str]], int, int]:
     return body, first_row, first_column
 
 
-def _column_groups(width: int) -> List[Tuple[int, int]]:
+def _column_groups(width: int) -> list[tuple[int, int]]:
     """Границы кусков, на которые режется слишком широкая таблица."""
     if width <= MAX_TABLE_COLUMNS:
         return [(0, width)]
@@ -229,7 +230,7 @@ def _column_groups(width: int) -> List[Tuple[int, int]]:
     ]
 
 
-def _table_blocks(rows: Sequence[Sequence[str]]) -> List[str]:
+def _table_blocks(rows: Sequence[Sequence[str]]) -> list[str]:
     """Таблица → куски Markdown.
 
     Первая строка считается строкой заголовков. Если столбцов больше
@@ -250,7 +251,7 @@ def _table_blocks(rows: Sequence[Sequence[str]]) -> List[str]:
     ]
 
     groups = _column_groups(width)
-    blocks: List[str] = []
+    blocks: list[str] = []
     header = body[0]
     for start, stop in groups:
         if len(groups) > 1:
@@ -266,8 +267,8 @@ def _table_blocks(rows: Sequence[Sequence[str]]) -> List[str]:
 
 
 def _expand_merges(
-    grid: List[List[str]],
-    ranges: Iterable[Tuple[int, int, int, int]],
+    grid: list[list[str]],
+    ranges: Iterable[tuple[int, int, int, int]],
     *,
     first_row: int,
     first_column: int,
@@ -321,7 +322,7 @@ def _sheet_pieces(
     index: int,
     rows: Sequence[Sequence[str]],
     skipped: int,
-) -> List[str]:
+) -> list[str]:
     """Раздел одного листа: заголовок, маркер страницы, таблица, примечание."""
     blocks = _table_blocks(rows)
     if not blocks:
@@ -342,12 +343,12 @@ def _column_number(letters: str) -> int:
     return number
 
 
-def _range_boundaries(ref: str) -> Tuple[int, int, int, int] | None:
+def _range_boundaries(ref: str) -> tuple[int, int, int, int] | None:
     """«B2:D4» → (первый столбец, первая строка, последний столбец, последняя строка)."""
     parts = ref.replace("$", "").split(":")
     if not parts or len(parts) > 2:
         return None
-    corners: List[Tuple[int, int]] = []
+    corners: list[tuple[int, int]] = []
     for part in parts:
         match = _CELL_REF_RE.match(part.strip())
         if match is None:
@@ -364,10 +365,10 @@ def _range_boundaries(ref: str) -> Tuple[int, int, int, int] | None:
     )
 
 
-def _sheet_parts(archive: zipfile.ZipFile) -> List[Tuple[str, str]]:
+def _sheet_parts(archive: zipfile.ZipFile) -> list[tuple[str, str]]:
     """Пары «имя листа → путь внутри архива» из xl/workbook.xml."""
     book = ElementTree.fromstring(archive.read("xl/workbook.xml"))
-    targets: Dict[str, str] = {}
+    targets: dict[str, str] = {}
     try:
         relations = ElementTree.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
     except KeyError:
@@ -378,7 +379,7 @@ def _sheet_parts(archive: zipfile.ZipFile) -> List[Tuple[str, str]]:
             target = node.get("Target")
             if identifier and target:
                 targets[identifier] = target
-    parts: List[Tuple[str, str]] = []
+    parts: list[tuple[str, str]] = []
     for node in book.iter():
         if node.tag.rsplit("}", 1)[-1] != "sheet":
             continue
@@ -393,7 +394,7 @@ def _sheet_parts(archive: zipfile.ZipFile) -> List[Tuple[str, str]]:
     return parts
 
 
-def _scan_merge_refs(archive: zipfile.ZipFile, part: str) -> List[str]:
+def _scan_merge_refs(archive: zipfile.ZipFile, part: str) -> list[str]:
     """Ссылки на объединённые диапазоны листа, потоковым чтением.
 
     XML листа читается блоками и не разбирается целиком: у выгрузки на сто
@@ -401,7 +402,7 @@ def _scan_merge_refs(archive: zipfile.ZipFile, part: str) -> List[str]:
     коротких элементов ``mergeCell``. Совпадение внутри текста ячейки
     невозможно: там ``<`` записан как ``&lt;``.
     """
-    found: Dict[str, None] = {}
+    found: dict[str, None] = {}
     tail = b""
     with archive.open(part) as stream:
         while True:
@@ -415,7 +416,7 @@ def _scan_merge_refs(archive: zipfile.ZipFile, part: str) -> List[str]:
     return list(found)
 
 
-def _merged_ranges(path: Path) -> Dict[str, List[Tuple[int, int, int, int]]]:
+def _merged_ranges(path: Path) -> dict[str, list[tuple[int, int, int, int]]]:
     """Объединённые диапазоны по листам книги.
 
     Потоковый режим openpyxl объединения не отдаёт (``ReadOnlyWorksheet`` их не
@@ -424,7 +425,7 @@ def _merged_ranges(path: Path) -> Dict[str, List[Tuple[int, int, int, int]]]:
     фатальна: без разворачивания таблица останется с пустыми ячейками в шапке,
     но текст будет извлечён.
     """
-    result: Dict[str, List[Tuple[int, int, int, int]]] = {}
+    result: dict[str, list[tuple[int, int, int, int]]] = {}
     try:
         with zipfile.ZipFile(path) as archive:
             for name, part in _sheet_parts(archive):
@@ -468,7 +469,7 @@ def _shape_alt_text(shape: Any) -> str:
 
 def _text_frame_block(frame: Any) -> str:
     """Текст рамки: абзац — строка, вложенный уровень — пункт списка."""
-    lines: List[str] = []
+    lines: list[str] = []
     for paragraph in frame.paragraphs:
         try:
             raw = paragraph.text
@@ -486,11 +487,11 @@ def _text_frame_block(frame: Any) -> str:
     return "\n".join(lines)
 
 
-def _pptx_table_rows(table: Any) -> List[List[str]]:
+def _pptx_table_rows(table: Any) -> list[list[str]]:
     """Таблица слайда → строки текста, с разворачиванием объединённых ячеек."""
-    rows: List[List[str]] = []
+    rows: list[list[str]] = []
     for row in table.rows:
-        cells: List[str] = []
+        cells: list[str] = []
         for cell in row.cells:
             try:
                 cells.append(_clean_line(cell.text.replace("\v", " ")))
@@ -504,7 +505,7 @@ def _pptx_table_rows(table: Any) -> List[List[str]]:
     return rows
 
 
-def _expand_pptx_merges(table: Any, rows: List[List[str]]) -> None:
+def _expand_pptx_merges(table: Any, rows: list[list[str]]) -> None:
     for row_index, row in enumerate(table.rows):
         for column_index, cell in enumerate(row.cells):
             if not getattr(cell, "is_merge_origin", False):
@@ -523,7 +524,7 @@ def _expand_pptx_merges(table: Any, rows: List[List[str]]) -> None:
                         target[offset_column] = value
 
 
-def _chart_blocks(shape: Any) -> List[str]:
+def _chart_blocks(shape: Any) -> list[str]:
     """Диаграмма слайда: название и, если получится, ряды данных таблицей.
 
     Числа с графика в отчёт не переносятся (это инвариант: значения приходят из
@@ -544,7 +545,7 @@ def _chart_blocks(shape: Any) -> List[str]:
         series = list(plot.series)
         if not categories or not series:
             return blocks
-        rows: List[List[str]] = [
+        rows: list[list[str]] = [
             ["Категория"]
             + [
                 _clean_line(str(item.name or "")) or f"Ряд {number}"
@@ -563,7 +564,7 @@ def _chart_blocks(shape: Any) -> List[str]:
     return blocks
 
 
-def _shape_top_left(shape: Any) -> Tuple[int, int]:
+def _shape_top_left(shape: Any) -> tuple[int, int]:
     try:
         top = int(shape.top or 0)
     except Exception:  # noqa: BLE001 — размещение унаследовано от макета
@@ -575,14 +576,14 @@ def _shape_top_left(shape: Any) -> Tuple[int, int]:
     return top, left
 
 
-def _ordered_shapes(shapes: Iterable[Any], skip_id: int | None = None) -> List[Any]:
+def _ordered_shapes(shapes: Iterable[Any], skip_id: int | None = None) -> list[Any]:
     """Фигуры в порядке чтения: сверху вниз, в пределах строки — слева направо.
 
     Порядок хранения в файле — это порядок наложения (z-order), он совпадает с
     порядком чтения только случайно: подпись, добавленная последней, окажется в
     конце слайда, хотя читается первой.
     """
-    items: List[Tuple[int, int, int, Any]] = []
+    items: list[tuple[int, int, int, Any]] = []
     for index, shape in enumerate(shapes):
         try:
             if skip_id is not None and shape.shape_id == skip_id:
@@ -595,7 +596,7 @@ def _ordered_shapes(shapes: Iterable[Any], skip_id: int | None = None) -> List[A
     return [item[3] for item in items]
 
 
-def _shape_blocks(shape: Any, state: Dict[str, int]) -> List[str]:
+def _shape_blocks(shape: Any, state: dict[str, int]) -> list[str]:
     """Один объект слайда → куски Markdown."""
     try:
         shape_type = str(shape.shape_type or "")
@@ -603,7 +604,7 @@ def _shape_blocks(shape: Any, state: Dict[str, int]) -> List[str]:
         shape_type = ""
 
     if "GROUP" in shape_type:
-        blocks: List[str] = []
+        blocks: list[str] = []
         for child in _ordered_shapes(shape.shapes):
             blocks.extend(_shape_blocks(child, state))
         return blocks
@@ -628,7 +629,7 @@ def _shape_blocks(shape: Any, state: Dict[str, int]) -> List[str]:
     return [alt] if alt else []
 
 
-def _slide_title(slide: Any) -> Tuple[str, int | None]:
+def _slide_title(slide: Any) -> tuple[str, int | None]:
     try:
         shape = slide.shapes.title
     except Exception:  # noqa: BLE001 — макет без рамки заголовка
@@ -656,8 +657,8 @@ def _notes_text(slide: Any) -> str:
     return _text_frame_block(frame)
 
 
-def _slide_blocks(slide: Any, state: Dict[str, int], warnings: List[str], number: int) -> List[str]:
-    blocks: List[str] = []
+def _slide_blocks(slide: Any, state: dict[str, int], warnings: list[str], number: int) -> list[str]:
+    blocks: list[str] = []
     title, title_id = _slide_title(slide)
     if title:
         if len(title) <= MAX_HEADING_CHARS:
@@ -704,9 +705,9 @@ def convert_pptx(path: Path) -> ConvertedDocument:
         )
         return result
 
-    state: Dict[str, int] = {"images": 0}
-    pieces: List[str] = []
-    empty: List[int] = []
+    state: dict[str, int] = {"images": 0}
+    pieces: list[str] = []
+    empty: list[int] = []
     try:
         slides = list(presentation.slides)
     except Exception as error:  # noqa: BLE001 — повреждён список слайдов
@@ -766,7 +767,7 @@ def convert_pptx(path: Path) -> ConvertedDocument:
 
 # ----------------------------------------------------------------- XLSX ---
 
-def _read_worksheet(worksheet: Any) -> Tuple[List[List[str]], int]:
+def _read_worksheet(worksheet: Any) -> tuple[list[list[str]], int]:
     """Лист → таблица текста и число отброшенных строк.
 
     Потоковый ``iter_rows`` всегда добивает строки пустыми ячейками от A1, а не
@@ -774,7 +775,7 @@ def _read_worksheet(worksheet: Any) -> Tuple[List[List[str]], int]:
     — это всегда ячейка A1 листа. На этом держится пересчёт координат
     объединённых диапазонов.
     """
-    rows: List[List[str]] = []
+    rows: list[list[str]] = []
     skipped = 0
     for values in worksheet.iter_rows(values_only=True):
         if len(rows) >= MAX_SHEET_ROWS:
@@ -812,9 +813,9 @@ def convert_xlsx(path: Path) -> ConvertedDocument:
         return result
 
     merged = _merged_ranges(path)
-    pieces: List[str] = []
-    empty: List[str] = []
-    hidden: List[str] = []
+    pieces: list[str] = []
+    empty: list[str] = []
+    hidden: list[str] = []
     try:
         names = list(workbook.sheetnames)
         result.page_count = len(names)
@@ -911,8 +912,8 @@ def _xls_cell_text(book: Any, sheet: Any, row: int, column: int) -> str:
     return _cell_text(value)
 
 
-def _read_xls_sheet(book: Any, sheet: Any) -> Tuple[List[List[str]], int]:
-    rows: List[List[str]] = []
+def _read_xls_sheet(book: Any, sheet: Any) -> tuple[list[list[str]], int]:
+    rows: list[list[str]] = []
     skipped = 0
     for row in range(sheet.nrows):
         if len(rows) >= MAX_SHEET_ROWS:
@@ -955,8 +956,8 @@ def convert_xls(path: Path) -> ConvertedDocument:
         result.warnings.append(f"не удалось открыть книгу .xls: {failure}")
         return result
 
-    pieces: List[str] = []
-    empty: List[str] = []
+    pieces: list[str] = []
+    empty: list[str] = []
     try:
         sheets = book.sheets()
         result.page_count = len(sheets)
@@ -1071,7 +1072,7 @@ def convert_csv(path: Path) -> ConvertedDocument:
     delimiter = _sniff_delimiter(text, suffix)
     result.meta["delimiter"] = "\\t" if delimiter == "\t" else delimiter
 
-    rows: List[List[str]] = []
+    rows: list[list[str]] = []
     skipped = 0
     reader = csv.reader(io.StringIO(text, newline=""), delimiter=delimiter)
     try:

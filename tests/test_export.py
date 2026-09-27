@@ -13,11 +13,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import _bootstrap  # noqa: F401
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Cm, Pt
 
+import _bootstrap  # noqa: F401
 from reportgen.corpus import load_corpus
 from reportgen.export.docx import (
     DRAFT_NOTICE,

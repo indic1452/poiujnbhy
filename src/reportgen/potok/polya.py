@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Поля неизвестных пакетов: постоянные, счётчики, длины, типы, контрольная сумма.
 
 Когда кадры выделены (HDLC, SLIP, пакеты .Sig, циклы с синхрословом), а
@@ -22,7 +21,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -37,7 +36,7 @@ def _таблица(кадры: Sequence[bytes], длина: int) -> np.ndarray:
     return np.array([list(к[:длина]) for к in кадры if len(к) >= длина], dtype=np.int64)
 
 
-def поля(кадры: Sequence[bytes]) -> List[Dict]:
+def поля(кадры: Sequence[bytes]) -> list[dict]:
     """Поля заголовка: позиция, ширина, вид, подробности, доля совпадений."""
     кадры = [bytes(к) for к in кадры if к]
     if len(кадры) < 8:
@@ -49,7 +48,7 @@ def поля(кадры: Sequence[bytes]) -> List[Dict]:
     if общая < 1:
         return []
     T = _таблица(кадры, общая)
-    итог: List[Dict] = []
+    итог: list[dict] = []
     занято = np.zeros(общая, dtype=bool)
     переменная_длина = len(set(длины.tolist())) > 1
 

@@ -20,7 +20,8 @@
 from __future__ import annotations
 
 import threading
-from typing import TYPE_CHECKING, Any, Dict, List, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # pragma: no cover — только для подсказок типов
     from ..store.repo import Repositories
@@ -67,13 +68,13 @@ class LibraryCatalog:
     надо, и забыть про сброс негде.
     """
 
-    def __init__(self, repos: "Repositories"):
+    def __init__(self, repos: Repositories):
         self.repos = repos
         self._lock = threading.Lock()
-        self._rows: List[Dict[str, Any]] = []
+        self._rows: list[dict[str, Any]] = []
         self._stamp: tuple = ()
 
-    def rows(self) -> List[Dict[str, Any]]:
+    def rows(self) -> list[dict[str, Any]]:
         stamp = self._version()
         with self._lock:
             if stamp == self._stamp:
@@ -105,7 +106,7 @@ class LibraryCatalog:
         return (documents, chunks, titles)
 
 
-def render_catalog(rows: Sequence[Dict[str, Any]], *, domain_titles: Dict[str, str],
+def render_catalog(rows: Sequence[dict[str, Any]], *, domain_titles: dict[str, str],
                    prefer: Sequence[str] = (), limit: int = CATALOG_CHARS) -> str:
     """Карта библиотеки текстом, уложенная в ``limit`` знаков.
 
@@ -121,7 +122,7 @@ def render_catalog(rows: Sequence[Dict[str, Any]], *, domain_titles: Dict[str, s
     order = _order(shelves, prefer)
 
     # Сначала — строки полок: они короткие и обязательные.
-    lines: Dict[str, List[str]] = {}
+    lines: dict[str, list[str]] = {}
     used = 0
     for domain in order:
         head = _shelf_line(domain, shelves[domain], domain_titles)
@@ -136,7 +137,7 @@ def render_catalog(rows: Sequence[Dict[str, Any]], *, domain_titles: Dict[str, s
     # её по остаточному принципу, она не влезает ровно тогда, когда нужнее
     # всего: список обрывается на середине полки, и модель считает, что
     # это вся библиотека.
-    named: Dict[str, int] = {domain: 0 for domain in order}
+    named: dict[str, int] = dict.fromkeys(order, 0)
     for domain in order:
         reserve = _TAIL_RESERVE if len(shelves[domain]) > 1 else 0
         for row in shelves[domain]:
@@ -160,8 +161,8 @@ def render_catalog(rows: Sequence[Dict[str, Any]], *, domain_titles: Dict[str, s
     return "\n".join(blocks)
 
 
-def _group(rows: Sequence[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    shelves: Dict[str, List[Dict[str, Any]]] = {}
+def _group(rows: Sequence[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    shelves: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         shelves.setdefault(row.get("domain") or "", []).append(dict(row))
     for items in shelves.values():
@@ -169,7 +170,7 @@ def _group(rows: Sequence[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
     return shelves
 
 
-def _order(shelves: Dict[str, List[Dict[str, Any]]], prefer: Sequence[str]) -> List[str]:
+def _order(shelves: dict[str, list[dict[str, Any]]], prefer: Sequence[str]) -> list[str]:
     """Полки поиска — первыми, дальше по объёму. Безымянная полка — последней."""
     wanted = [item for item in prefer if item in shelves]
     rest = [name for name in shelves if name not in wanted and name]
@@ -180,15 +181,15 @@ def _order(shelves: Dict[str, List[Dict[str, Any]]], prefer: Sequence[str]) -> L
     return order
 
 
-def _shelf_line(domain: str, items: Sequence[Dict[str, Any]],
-                domain_titles: Dict[str, str]) -> str:
+def _shelf_line(domain: str, items: Sequence[dict[str, Any]],
+                domain_titles: dict[str, str]) -> str:
     title = domain_titles.get(domain) or (domain or NO_DOMAIN)
     chunks = sum(int(row.get("chunks") or 0) for row in items)
     return (f"{title} — {len(items)} {_documents_word(len(items))}, "
             f"{chunks} {_fragments_word(chunks)}:")
 
 
-def _document_line(row: Dict[str, Any]) -> str:
+def _document_line(row: dict[str, Any]) -> str:
     parts = [str(row.get("title") or row.get("doc_id") or "без названия")]
     kind = DOC_TYPE_TITLES.get(str(row.get("doc_type") or ""), row.get("doc_type"))
     tail = [str(kind)] if kind else []

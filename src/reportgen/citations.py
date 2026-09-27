@@ -24,7 +24,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Set
 
 __all__ = ["CITATION_BOX", "MAX_RANGE", "labels_in", "expand_box"]
 
@@ -45,7 +44,7 @@ _DASH = re.compile(r"[-–—]")
 _NUMBER = re.compile(r"\d+")
 
 
-def expand_box(box: str) -> List[str]:
+def expand_box(box: str) -> list[str]:
     """Метки из одной скобки, по порядку и без повторов.
 
     ``"[S1, S2]"`` → ``["S1", "S2"]``; ``"[S1—S3]"`` → ``["S1", "S2", "S3"]``.
@@ -56,8 +55,8 @@ def expand_box(box: str) -> List[str]:
     if inner.endswith("]"):
         inner = inner[:-1]
 
-    out: List[str] = []
-    seen: Set[str] = set()
+    out: list[str] = []
+    seen: set[str] = set()
     for part in _PARTS.split(inner):
         numbers = [int(found) for found in _NUMBER.findall(part)]
         if not numbers:
@@ -79,9 +78,9 @@ def expand_box(box: str) -> List[str]:
     return out
 
 
-def labels_in(text: str) -> Set[str]:
+def labels_in(text: str) -> set[str]:
     """Все метки источников, встреченные в тексте."""
-    found: Set[str] = set()
+    found: set[str] = set()
     for box in CITATION_BOX.findall(str(text or "")):
         found.update(expand_box(box))
     return found

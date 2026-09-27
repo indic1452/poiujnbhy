@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Sequence
+from typing import Any
 
 from ..corpus import SEARCHABLE_STATUSES
 
@@ -312,7 +313,7 @@ class User:
         return role_title_of(self.role)
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "User":
+    def from_row(cls, row: sqlite3.Row) -> User:
         return cls(
             id=row["id"],
             login=row["login"],
@@ -335,7 +336,7 @@ class User:
             created_at=row["created_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "login": self.login,
@@ -375,7 +376,7 @@ class Document:
     superseded_by: str = ""
     #: Год издания. None — определить не удалось.
     year: int | None = None
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
     chunk_count: int = 0
     #: Размер и время правки файла на момент приёма. По ним приём решает, надо
     #: ли вообще читать файл: считать SHA-256 всей библиотеки ради пяти новых
@@ -386,7 +387,7 @@ class Document:
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "Document":
+    def from_row(cls, row: sqlite3.Row) -> Document:
         return cls(
             id=row["id"],
             doc_id=row["doc_id"],
@@ -406,7 +407,7 @@ class Document:
             created_at=row["created_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "doc_id": self.doc_id,
@@ -465,7 +466,7 @@ class Case:
     priority: str = "normal"
     assignee_id: int | None = None
     note: str = ""
-    facts: Dict[str, Any] = field(default_factory=dict)
+    facts: dict[str, Any] = field(default_factory=dict)
     facts_digest: str = ""
     created_by: int | None = None
     created_at: str = ""
@@ -480,7 +481,7 @@ class Case:
     sent_by_name: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "Case":
+    def from_row(cls, row: sqlite3.Row) -> Case:
         return cls(
             id=row["id"],
             case_id=row["case_id"],
@@ -515,7 +516,7 @@ class Case:
             sent_by_name=_col(row, "sent_by_name", "") or "",
         )
 
-    def to_dict(self, *, with_facts: bool = False) -> Dict[str, Any]:
+    def to_dict(self, *, with_facts: bool = False) -> dict[str, Any]:
         data = {
             "id": self.id,
             "case_id": self.case_id,
@@ -591,7 +592,7 @@ class CaseFile:
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "CaseFile":
+    def from_row(cls, row: sqlite3.Row) -> CaseFile:
         return cls(
             id=row["id"],
             case_ref=row["case_ref"],
@@ -606,7 +607,7 @@ class CaseFile:
             created_at=row["created_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "case_ref": self.case_ref,
@@ -633,14 +634,14 @@ class ReportSection:
     ord: int
     draft_text: str
     text: str
-    sources: List[str] = field(default_factory=list)
-    missing_facts: List[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
+    missing_facts: list[str] = field(default_factory=list)
     regenerated: int = 0
     edited: bool = False
     updated_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "ReportSection":
+    def from_row(cls, row: sqlite3.Row) -> ReportSection:
         return cls(
             id=row["id"],
             report_id=row["report_id"],
@@ -656,7 +657,7 @@ class ReportSection:
             updated_at=row["updated_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "section_id": self.section_id,
             "title": self.title,
@@ -678,8 +679,8 @@ class Report:
     version: int
     status: str = "draft"
     markdown: str = ""
-    meta: Dict[str, Any] = field(default_factory=dict)
-    issues: List[Dict[str, Any]] = field(default_factory=list)
+    meta: dict[str, Any] = field(default_factory=dict)
+    issues: list[dict[str, Any]] = field(default_factory=list)
     created_by: int | None = None
     created_at: str = ""
     approved_by: int | None = None
@@ -692,10 +693,10 @@ class Report:
     #: Имя и размер загруженного файла; для собранных системой — пусто.
     file_name: str = ""
     file_size: int = 0
-    sections: List[ReportSection] = field(default_factory=list)
+    sections: list[ReportSection] = field(default_factory=list)
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "Report":
+    def from_row(cls, row: sqlite3.Row) -> Report:
         return cls(
             id=row["id"],
             case_ref=row["case_ref"],
@@ -722,7 +723,7 @@ class Report:
     def warning_count(self) -> int:
         return sum(1 for issue in self.issues if issue.get("level") == "warning")
 
-    def to_dict(self, *, with_markdown: bool = False) -> Dict[str, Any]:
+    def to_dict(self, *, with_markdown: bool = False) -> dict[str, Any]:
         data = {
             "id": self.id,
             "case_ref": self.case_ref,
@@ -758,13 +759,13 @@ class EditPair:
     draft: str
     final: str
     facts_digest: str = ""
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
     edit_distance: float = 0.0
     created_by: int | None = None
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "EditPair":
+    def from_row(cls, row: sqlite3.Row) -> EditPair:
         return cls(
             id=row["id"],
             case_id=row["case_id"],
@@ -800,7 +801,7 @@ class Chat:
     message_count: int = 0
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "Chat":
+    def from_row(cls, row: sqlite3.Row) -> Chat:
         keys = row.keys()
         return cls(
             id=row["id"],
@@ -816,7 +817,7 @@ class Chat:
             message_count=row["message_count"] if "message_count" in keys else 0,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "title": self.title,
@@ -837,12 +838,12 @@ class ChatMessage:
     chat_id: int
     role: str
     content: str
-    sources: List[Dict[str, Any]] = field(default_factory=list)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    sources: list[dict[str, Any]] = field(default_factory=list)
+    meta: dict[str, Any] = field(default_factory=dict)
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "ChatMessage":
+    def from_row(cls, row: sqlite3.Row) -> ChatMessage:
         return cls(
             id=row["id"],
             chat_id=row["chat_id"],
@@ -853,7 +854,7 @@ class ChatMessage:
             created_at=row["created_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "role": self.role,
@@ -892,7 +893,7 @@ class ChatAttachment:
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "ChatAttachment":
+    def from_row(cls, row: sqlite3.Row) -> ChatAttachment:
         text = _col(row, "text", "") or ""
         return cls(
             id=row["id"],
@@ -907,7 +908,7 @@ class ChatAttachment:
             created_at=row["created_at"],
         )
 
-    def to_dict(self, *, with_text: bool = False) -> Dict[str, Any]:
+    def to_dict(self, *, with_text: bool = False) -> dict[str, Any]:
         data = {
             "id": self.id,
             "chat_id": self.chat_id,
@@ -958,7 +959,7 @@ class Notice:
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "Notice":
+    def from_row(cls, row: sqlite3.Row) -> Notice:
         return cls(
             id=row["id"],
             user_id=row["user_id"],
@@ -972,7 +973,7 @@ class Notice:
             created_at=row["created_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "kind": self.kind,
@@ -998,10 +999,10 @@ class TalkMessage:
     author: str = ""
     created_at: str = ""
     #: Приложенные файлы. Подставляются выборкой, в самой строке их нет.
-    files: List[Dict[str, Any]] = field(default_factory=list)
+    files: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "TalkMessage":
+    def from_row(cls, row: sqlite3.Row) -> TalkMessage:
         return cls(
             id=row["id"],
             talk_id=row["talk_id"],
@@ -1011,7 +1012,7 @@ class TalkMessage:
             created_at=row["created_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "talk_id": self.talk_id,
@@ -1045,7 +1046,7 @@ class TalkFile:
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "TalkFile":
+    def from_row(cls, row: sqlite3.Row) -> TalkFile:
         return cls(
             id=row["id"],
             talk_id=row["talk_id"],
@@ -1058,7 +1059,7 @@ class TalkFile:
             created_at=row["created_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "talk_id": self.talk_id,
@@ -1082,7 +1083,7 @@ class CaseNote:
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "CaseNote":
+    def from_row(cls, row: sqlite3.Row) -> CaseNote:
         return cls(
             id=row["id"],
             case_ref=row["case_ref"],
@@ -1092,7 +1093,7 @@ class CaseNote:
             created_at=row["created_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "case_ref": self.case_ref,
@@ -1119,7 +1120,7 @@ class PersonFile:
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "PersonFile":
+    def from_row(cls, row: sqlite3.Row) -> PersonFile:
         return cls(
             id=row["id"],
             user_id=row["user_id"],
@@ -1133,7 +1134,7 @@ class PersonFile:
             created_at=row["created_at"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -1180,7 +1181,7 @@ class DepartmentDay:
     created_at: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "DepartmentDay":
+    def from_row(cls, row: sqlite3.Row) -> DepartmentDay:
         return cls(
             id=row["id"],
             kind=row["kind"],
@@ -1192,7 +1193,7 @@ class DepartmentDay:
             created_at=_col(row, "created_at", ""),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "kind": self.kind,
@@ -1227,7 +1228,7 @@ class Absence:
     team: str = ""
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "Absence":
+    def from_row(cls, row: sqlite3.Row) -> Absence:
         return cls(
             id=row["id"],
             user_id=row["user_id"],
@@ -1243,7 +1244,7 @@ class Absence:
             team=_col(row, "team", "") or "",
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -1271,10 +1272,10 @@ class AuditEntry:
     action: str
     object_type: str = ""
     object_id: str = ""
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "AuditEntry":
+    def from_row(cls, row: sqlite3.Row) -> AuditEntry:
         return cls(
             id=row["id"],
             ts=row["ts"],
@@ -1286,7 +1287,7 @@ class AuditEntry:
             details=_json(row["details_json"], {}),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "ts": self.ts,
             "login": self.login,
@@ -1297,5 +1298,5 @@ class AuditEntry:
         }
 
 
-def rows_to(model: Any, rows: Sequence[sqlite3.Row]) -> List[Any]:
+def rows_to(model: Any, rows: Sequence[sqlite3.Row]) -> list[Any]:
     return [model.from_row(row) for row in rows]

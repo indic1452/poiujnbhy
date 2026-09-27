@@ -28,14 +28,14 @@ from __future__ import annotations
 
 import json
 import re
-
-from .citations import CITATION_BOX, expand_box, labels_in
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Sequence, Tuple
+from typing import Any
 
 from . import numbers
+from .citations import CITATION_BOX, expand_box, labels_in
 from .facts import FactPack
 from .llm import LLM
 from .pipeline import Outline, generate_report
@@ -44,7 +44,7 @@ from .store.repo import normalized_edit_distance
 from .verify import APPENDIX_MARKER, SERVICE_MARKER, parse_sections, verify_report
 
 # Целевые значения из док. 05, раздел 5.2. Ниже порога — сборка красная.
-TARGETS: Dict[str, float] = {
+TARGETS: dict[str, float] = {
     "numeric_fidelity": 1.0,
     "fact_recall": 0.95,
     "citation_precision": 0.90,
@@ -82,8 +82,8 @@ class CaseResult:
     """Результат прогона одного кейса золотого набора."""
 
     case_id: str
-    metrics: Dict[str, float] = field(default_factory=dict)
-    issues: List[Dict[str, Any]] = field(default_factory=list)
+    metrics: dict[str, float] = field(default_factory=dict)
+    issues: list[dict[str, Any]] = field(default_factory=list)
     seconds: float = 0.0
 
     @property
@@ -94,7 +94,7 @@ class CaseResult:
     def warnings(self) -> int:
         return sum(1 for issue in self.issues if issue.get("level") == "warning")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "case_id": self.case_id,
             "metrics": {name: round(float(value), 4) for name, value in self.metrics.items()},
@@ -109,11 +109,11 @@ class CaseResult:
 class EvalReport:
     """Прогон золотого набора целиком: результаты по кейсам и сводка."""
 
-    results: List[CaseResult] = field(default_factory=list)
-    aggregate: Dict[str, Any] = field(default_factory=dict)
+    results: list[CaseResult] = field(default_factory=list)
+    aggregate: dict[str, Any] = field(default_factory=dict)
 
-    def metric_names(self) -> List[str]:
-        seen: List[str] = []
+    def metric_names(self) -> list[str]:
+        seen: list[str] = []
         for name in METRIC_ORDER:
             if any(name in result.metrics for result in self.results):
                 seen.append(name)
@@ -123,7 +123,7 @@ class EvalReport:
                     seen.append(name)
         return seen
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "results": [result.to_dict() for result in self.results],
             "aggregate": self.aggregate,
@@ -131,7 +131,7 @@ class EvalReport:
 
     def to_markdown(self) -> str:
         names = self.metric_names()
-        lines: List[str] = ["# Прогон эвал-набора", ""]
+        lines: list[str] = ["# Прогон эвал-набора", ""]
         cases = self.aggregate.get("cases", len(self.results))
         seconds = float(self.aggregate.get("seconds_total", 0.0))
         lines.append(
@@ -192,7 +192,7 @@ def _as_factpack(factpack: FactPack | Mapping[str, Any]) -> FactPack:
     return FactPack.from_dict(dict(factpack))
 
 
-def body_sections(markdown: str) -> List[Tuple[str, str]]:
+def body_sections(markdown: str) -> list[tuple[str, str]]:
     """Разделы, написанные моделью: без титула, оглавления, приложения и служебного блока.
 
     Метрики считаются только по ним: числа в оглавлении и в цитатах
@@ -233,7 +233,7 @@ def numeric_fidelity(markdown: str, factpack: FactPack | Mapping[str, Any]) -> f
     return round(len(found & allowed) / len(found), 4)
 
 
-def unknown_numbers(markdown: str, factpack: FactPack | Mapping[str, Any]) -> List[str]:
+def unknown_numbers(markdown: str, factpack: FactPack | Mapping[str, Any]) -> list[str]:
     """Какие именно числа отчёта не подтверждены факт-пакетом."""
     facts = _as_factpack(factpack)
     return sorted(numbers.extract(body_text(markdown)) - facts.allowed_numbers())
@@ -275,11 +275,11 @@ def missing_findings(
     min_severity: str = "medium",
     *,
     overlap: float = DEFAULT_TITLE_OVERLAP,
-) -> List[str]:
+) -> list[str]:
     """Идентификаторы находок, которых нет в тексте, — для разбора провала."""
     facts = _as_factpack(factpack)
     report_tokens = set(tokenize(body_text(markdown)))
-    absent: List[str] = []
+    absent: list[str] = []
     for finding in facts.findings_at_least(min_severity):
         title_tokens = set(tokenize(finding.title))
         if not title_tokens:
@@ -365,7 +365,7 @@ def reference_similarity(markdown: str, reference_markdown: str) -> float:
 
 # ------------------------------------------------------------- прогон ------
 
-def load_golden_set(path: str | Path) -> List[Dict[str, Any]]:
+def load_golden_set(path: str | Path) -> list[dict[str, Any]]:
     """Читает JSON-манифест золотого набора (док. 05, 5.1).
 
     Допустимы две формы: список кейсов или объект ``{"cases": [...]}`` с
@@ -388,7 +388,7 @@ def load_golden_set(path: str | Path) -> List[Dict[str, Any]]:
         )
 
     base = manifest_path.parent
-    cases: List[Dict[str, Any]] = []
+    cases: list[dict[str, Any]] = []
     for number, item in enumerate(items, start=1):
         if not isinstance(item, dict):
             raise EvalError(f"манифест {manifest_path}, кейс {number}: ожидался объект JSON")
@@ -436,9 +436,9 @@ def evaluate_report(
     *,
     reference_markdown: str | None = None,
     glossary: Mapping[str, str] | None = None,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Все автометрики для одного готового отчёта."""
-    metrics: Dict[str, float] = {
+    metrics: dict[str, float] = {
         "numeric_fidelity": numeric_fidelity(markdown, facts),
         "fact_recall": fact_recall(markdown, facts),
         "citation_precision": citation_precision(markdown),
@@ -465,7 +465,7 @@ def run_eval(
     Время генерации замеряется по каждому кейсу отдельно: latency — такая же
     метрика SLA, как и качество (док. 05, 5.2).
     """
-    results: List[CaseResult] = []
+    results: list[CaseResult] = []
     for number, case in enumerate(cases, start=1):
         facts_path = case.get("facts_path")
         if not facts_path:
@@ -510,9 +510,9 @@ def run_eval(
     return EvalReport(results=results, aggregate=aggregate_metrics(results))
 
 
-def aggregate_metrics(results: Sequence[CaseResult]) -> Dict[str, Any]:
+def aggregate_metrics(results: Sequence[CaseResult]) -> dict[str, Any]:
     """Средние по кейсам, время и список метрик ниже целевых значений."""
-    names: List[str] = []
+    names: list[str] = []
     for name in METRIC_ORDER:
         if any(name in result.metrics for result in results):
             names.append(name)
@@ -521,7 +521,7 @@ def aggregate_metrics(results: Sequence[CaseResult]) -> Dict[str, Any]:
             if name not in names:
                 names.append(name)
 
-    means: Dict[str, float] = {}
+    means: dict[str, float] = {}
     for name in names:
         values = [result.metrics[name] for result in results if name in result.metrics]
         if values:

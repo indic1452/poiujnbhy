@@ -14,8 +14,8 @@ import shutil
 import subprocess
 import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
+from unittest import mock
 
 import _bootstrap  # noqa: F401
 
@@ -636,8 +636,8 @@ class OfflineWebPagesTests(unittest.TestCase):
     """
 
     def test_builtin_docs_pages_are_off(self):
-        from reportgen.web.app import create_app
         from reportgen.config import Settings
+        from reportgen.web.app import create_app
 
         with tempfile.TemporaryDirectory() as directory:
             app = create_app(Settings(data_dir=Path(directory), auth_enabled=False))
@@ -669,7 +669,7 @@ class DocxTemplateDocsTests(unittest.TestCase):
         exporter = read(ROOT / "src" / "reportgen" / "export" / "docx.py")
         doc = read(ROOT / "docs" / "15-offline.md")
         used = set(re.findall(r'_style\(\s*"([^"]+)"', exporter))
-        used |= {name for name in re.findall(r'"(List (?:Bullet|Number))"', exporter)}
+        used |= set(re.findall(r'"(List (?:Bullet|Number))"', exporter))
         for style in sorted(used):
             with self.subTest(style=style):
                 self.assertIn(style, doc, f"стиль {style} используется, но не описан в docs/15")
@@ -1171,7 +1171,7 @@ class ItuLiveRunTests(unittest.TestCase):
                 return self.отдать(403, b"Forbidden")
 
             def как_a31(self, путь, режим="как-A31"):
-                from urllib.parse import urlparse, parse_qs
+                from urllib.parse import parse_qs, urlparse
                 разбор = urlparse(self.path)
                 запрос = parse_qs(разбор.query)
                 путь = разбор.path
@@ -1227,7 +1227,7 @@ class ItuLiveRunTests(unittest.TestCase):
                         '<td>In force</td></tr>' % (н, н, н) for н in издания)
                     return self.отдать(200, ("<html><body><table>%s</table></body></html>" % строки).encode())
                 if путь.startswith("/rec/recommendation.asp"):
-                    from urllib.parse import urlparse, parse_qs
+                    from urllib.parse import parse_qs, urlparse
                     родитель = parse_qs(urlparse(self.path).query).get("parent", [""])[0]
                     номер = родитель.replace("T-REC-", "")
                     if номер not in издания:
@@ -1250,7 +1250,7 @@ class ItuLiveRunTests(unittest.TestCase):
                 if путь.startswith("/rec/dologin_pub.asp"):
                     # В сам файл вписываем ключ издания: так тест видит, какую
                     # редакцию скачали, а не только что скачали хоть что-то.
-                    from urllib.parse import urlparse, parse_qs
+                    from urllib.parse import parse_qs, urlparse
                     ключ = parse_qs(urlparse(self.path).query).get("id", [""])[0]
                     тело = b"%PDF-1.4\n" + ключ.encode() + b"\n" + b"x" * 9000 + b"\n%%EOF\n"
                     return self.отдать(200, тело, "application/pdf")

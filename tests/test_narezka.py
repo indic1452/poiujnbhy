@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Нарезка библиотеки на фрагменты: без потерь и без раздувания.
 
 Хозяин системы пересобирает библиотеку отдела — 13 600 документов, полмиллиона
@@ -22,12 +21,10 @@ import re
 import unittest
 
 import _bootstrap  # noqa: F401
-
 from reportgen import corpus
-from reportgen.corpus import (MIN_CHARS, TARGET_CHARS, merge_short_sections,
-                              split_document)
-from reportgen.ingest.pipeline import chunks_from_markdown
+from reportgen.corpus import MIN_CHARS, TARGET_CHARS, merge_short_sections, split_document
 from reportgen.ingest import convert
+from reportgen.ingest.pipeline import chunks_from_markdown
 from reportgen.retrieval import tokenize
 
 
@@ -98,7 +95,7 @@ class Перекрытие(unittest.TestCase):
         """Совсем без перекрытия фраза на стыке фрагментов не находится."""
         куски = тексты(скан(20))
         общее = 0
-        for предыдущий, следующий in zip(куски, куски[1:]):
+        for предыдущий, следующий in zip(куски, куски[1:], strict=False):
             хвост = предыдущий[-120:]
             общее += sum(1 for слово in хвост.split() if слово in следующий)
         self.assertGreater(общее, 0, "фрагменты стыкуются встык, без перекрытия")

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Учёт трафика: NetFlow v9 и IPFIX с шаблонами, sFlow v5 — по портам UDP.
 
 Документы (структуры полей — строго по ним):
@@ -23,13 +22,11 @@
 
 from __future__ import annotations
 
-import struct
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from datetime import UTC, datetime
 
-from ..pole import ip4, ip6, mac, u16, u32, u64
-from ..razbor import IP_ПРОТОКОЛЫ, ДОП_УРОВНИ, Разбор, данные
 from .. import prilozh
+from ..pole import ip4, ip6, mac, u16, u32, u64
+from ..razbor import IP_ПРОТОКОЛЫ, ДОП_УРОВНИ, Разбор
 
 ИМЕНА_IE = {
     1: 'BYTES', 2: 'PKTS', 3: 'FLOWS', 4: 'PROTOCOL', 5: 'IP_TOS', 6: 'TCP_FLAGS', 7: 'L4_SRC_PORT',
@@ -125,10 +122,10 @@ def значение_ie(номер: int, байты: bytes, предприяти
         if номер == 4 and len(байты) == 1:
             return f"{байты[0]} ({IP_ПРОТОКОЛЫ.get(байты[0], '?')})"
         if номер in (150, 151) and len(байты) == 4:
-            return datetime.fromtimestamp(u32(байты, 0), timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            return datetime.fromtimestamp(u32(байты, 0), UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         if номер in (152, 153) and len(байты) == 8:
             мс = u64(байты, 0)
-            return datetime.fromtimestamp(мс / 1000, timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
+            return datetime.fromtimestamp(мс / 1000, UTC).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
         if номер == 6 and len(байты) in (1, 2):
             return f"0x{int.from_bytes(байты, 'big'):02x}"
     if 0 < len(байты) <= 8:
@@ -136,7 +133,7 @@ def значение_ie(номер: int, байты: bytes, предприяти
     return байты.hex()
 
 
-Шаблон = List[Tuple[int, int, int]]                     # (номер элемента, длина, предприятие)
+Шаблон = list[tuple[int, int, int]]                     # (номер элемента, длина, предприятие)
 
 
 def _ключ(р: Разбор, версия: int, домен: int, номер: int) -> str:
@@ -150,13 +147,13 @@ def _запомнить(р: Разбор, ключ: str, поля: Шаблон)
         версии.append([р.п.номер, поля_])
 
 
-def _найти(р: Разбор, ключ: str) -> Optional[Шаблон]:
+def _найти(р: Разбор, ключ: str) -> Шаблон | None:
     """Последнее определение, пришедшее не позже этого пакета."""
     годные = [поля for номер, поля in р.шаблоны.get(ключ, []) if номер <= р.п.номер]
     return [tuple(x) for x in годные[-1]] if годные else None
 
 
-def _поля_шаблона(д: bytes, место: int, конец: int, число: int, ipfix: bool) -> Tuple[Шаблон, int]:
+def _поля_шаблона(д: bytes, место: int, конец: int, число: int, ipfix: bool) -> tuple[Шаблон, int]:
     поля: Шаблон = []
     for _ in range(число):
         if место + 4 > конец:
@@ -174,7 +171,7 @@ def _поля_шаблона(д: bytes, место: int, конец: int, чис
     return поля, место
 
 
-def _запись(р: Разбор, у, д: bytes, место: int, конец: int, поля: Шаблон, родитель) -> Optional[int]:
+def _запись(р: Разбор, у, д: bytes, место: int, конец: int, поля: Шаблон, родитель) -> int | None:
     """Одна запись данных по шаблону; None — не помещается."""
     сводка = []
     for номер, длина, предприятие in поля:
@@ -203,7 +200,7 @@ def _запись(р: Разбор, у, д: bytes, место: int, конец: 
     return место
 
 
-def _сводка_записи(с: Dict[int, str]) -> str:
+def _сводка_записи(с: dict[int, str]) -> str:
     от = с.get(8) or с.get(27)
     к = с.get(12) or с.get(28)
     if not от or not к:
@@ -233,7 +230,7 @@ def netflow_шаблоны(р: Разбор, м: int, конец: int) -> bool:
     if ipfix:
         у.поле("Длина", "cflow.len", u16(д, м + 2), м + 2, 2)
         у.поле("Время экспорта", "cflow.timestamp",
-               datetime.fromtimestamp(u32(д, м + 4), timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"), м + 4, 4,
+               datetime.fromtimestamp(u32(д, м + 4), UTC).strftime("%Y-%m-%d %H:%M:%S UTC"), м + 4, 4,
                u32(д, м + 4))
         у.поле("Номер", "cflow.sequence", u32(д, м + 8), м + 8, 4)
         у.поле("Домен наблюдения", "cflow.od_id", домен, м + 12, 4)
@@ -241,7 +238,7 @@ def netflow_шаблоны(р: Разбор, м: int, конец: int) -> bool:
         у.поле("Записей", "cflow.count", u16(д, м + 2), м + 2, 2)
         у.поле("Время работы, мс", "cflow.sysuptime", u32(д, м + 4), м + 4, 4)
         у.поле("Время экспорта", "cflow.timestamp",
-               datetime.fromtimestamp(u32(д, м + 8), timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"), м + 8, 4,
+               datetime.fromtimestamp(u32(д, м + 8), UTC).strftime("%Y-%m-%d %H:%M:%S UTC"), м + 8, 4,
                u32(д, м + 8))
         у.поле("Номер", "cflow.sequence", u32(д, м + 12), м + 12, 4)
         у.поле("Источник", "cflow.source_id", домен, м + 16, 4)

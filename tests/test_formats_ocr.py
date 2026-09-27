@@ -12,8 +12,6 @@ DjVu — программами djvulibre (``cjb2`` склеивает PBM в с
 """
 
 import json
-import _bootstrap  # noqa: F401
-
 import shutil
 import subprocess
 import tempfile
@@ -21,6 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import _bootstrap  # noqa: F401
 from reportgen.ingest import registry
 from reportgen.ingest.convert import ConvertedDocument, convert_file, page_markers
 from reportgen.ingest.formats import djvu, ocr
@@ -298,7 +297,7 @@ class TesseractTests(TempCase):
     @unittest.skipUnless(HAS_TESSERACT, "нет tesseract")
     def test_broken_image_raises_ocr_error(self):
         image = self.directory / "битая.png"
-        image.write_bytes("это не картинка, а обрывок файла".encode("utf-8"))
+        image.write_bytes("это не картинка, а обрывок файла".encode())
         with self.assertRaises(ocr.OcrError):
             ocr.ocr_image(image)
 
@@ -469,7 +468,7 @@ class ImageConverterTests(TempCase):
     @unittest.skipUnless(HAS_TESSERACT, "нет tesseract")
     def test_broken_file_warns_instead_of_failing(self):
         image = self.directory / "битая.jpg"
-        image.write_bytes("JFIF-обрывок".encode("utf-8"))
+        image.write_bytes("JFIF-обрывок".encode())
         document = ocr.convert_image(image)
         self.assertTrue(document.is_empty)
         self.assertTrue(document.warnings)
@@ -633,7 +632,7 @@ class PdfOcrTests(TempCase):
 
     def test_broken_pdf_does_not_raise(self):
         path = self.directory / "битый.pdf"
-        path.write_bytes("%PDF-1.4 дальше обрыв".encode("utf-8"))
+        path.write_bytes("%PDF-1.4 дальше обрыв".encode())
         document = ocr.convert_pdf_ocr(path)
         self.assertTrue(document.is_empty)
         self.assertTrue(document.warnings)
@@ -749,7 +748,7 @@ class DjvuTests(TempCase):
 
     def test_broken_file_warns_instead_of_failing(self):
         path = self.directory / "битая.djvu"
-        path.write_bytes("AT&Tи дальше мусор".encode("utf-8") * 8)
+        path.write_bytes("AT&Tи дальше мусор".encode() * 8)
         document = djvu.convert_djvu(path)
         self.assertTrue(document.is_empty)
         self.assertTrue(any("повреждён" in item for item in document.warnings),
@@ -773,7 +772,7 @@ class DjvuTests(TempCase):
 
     def test_render_of_broken_file_raises_tool_error(self):
         path = self.directory / "битая.djvu"
-        path.write_bytes("AT&Tи дальше мусор".encode("utf-8") * 8)
+        path.write_bytes("AT&Tи дальше мусор".encode() * 8)
         with self.assertRaises(djvu.DjvuToolError):
             djvu.render_djvu_page(path, 1, self.directory / "нет.pnm")
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """OSPFv2 полностью: Hello, DBD, LSR, LSU с LSA, LSAck; суммы пакета и LSA.
 
 Документы (структуры полей — строго по ним):
@@ -17,7 +16,8 @@ OSPFv3 (RFC 5340) — заголовок, как прежде (razbor.ospf).
 from __future__ import annotations
 
 from ..pole import ip4, u16, u32, сумма16
-from ..razbor import ДОП_IP, Разбор, ospf as ospf_заголовок
+from ..razbor import ДОП_IP, Разбор
+from ..razbor import ospf as ospf_заголовок
 
 ПАКЕТЫ = {1: "Hello", 2: "описание базы (DBD)", 3: "запрос состояния (LSR)", 4: "обновление состояния (LSU)",
           5: "подтверждение (LSAck)"}

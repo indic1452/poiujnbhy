@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Линейная алгебра над GF(2) на упакованных битах: ранг, ядро, приведение.
 
 Строка матрицы — массив uint64 (64 столбца на слово). Исключение Гаусса
@@ -10,8 +9,6 @@
 """
 
 from __future__ import annotations
-
-from typing import List, Tuple
 
 import numpy as np
 
@@ -34,11 +31,11 @@ def распаковать(строки: np.ndarray, L: int) -> np.ndarray:
     return биты[:, :L]
 
 
-def привести(строки: np.ndarray, L: int) -> Tuple[np.ndarray, List[int]]:
+def привести(строки: np.ndarray, L: int) -> tuple[np.ndarray, list[int]]:
     """Ступенчатый вид (приведённый): матрица и опорные столбцы. Меняет копию."""
     a = строки.copy()
     M = len(a)
-    опорные: List[int] = []
+    опорные: list[int] = []
     r = 0
     for j in range(L):
         if r >= M:

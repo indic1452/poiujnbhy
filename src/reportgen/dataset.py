@@ -29,9 +29,10 @@ from __future__ import annotations
 import json
 import random
 import re
-from datetime import datetime, timezone
+from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Any
 
 from .facts import FactPack, FactPackError
 from .prompts import SECTION_PROMPT, SYSTEM_PROMPT
@@ -70,7 +71,7 @@ class DatasetError(RuntimeError):
 
 # ------------------------------------------------------- восстановление ---
 
-def _context_value(context: Dict[str, Any], key: str, default: str) -> str:
+def _context_value(context: dict[str, Any], key: str, default: str) -> str:
     value = context.get(key)
     if value is None:
         return default
@@ -78,7 +79,7 @@ def _context_value(context: Dict[str, Any], key: str, default: str) -> str:
     return text or default
 
 
-def _is_degraded(context: Dict[str, Any]) -> bool:
+def _is_degraded(context: dict[str, Any]) -> bool:
     """Пример считается неполным, если контекст секции не сохранён.
 
     Такие примеры не выбрасываются: текст инженера ценен сам по себе как
@@ -91,7 +92,7 @@ def _is_degraded(context: Dict[str, Any]) -> bool:
                    for key in ("facts", "sources", "header", "instruction"))
 
 
-def restore_prompt(pair: "EditPair") -> Tuple[str, bool]:
+def restore_prompt(pair: EditPair) -> tuple[str, bool]:
     """Восстанавливает промпт секции по сохранённому контексту правки.
 
     Возвращает пару «текст промпта, признак неполноты». Формат промпта в
@@ -134,7 +135,7 @@ def restore_prompt(pair: "EditPair") -> Tuple[str, bool]:
     )
 
 
-def _meta(pair: "EditPair") -> Dict[str, Any]:
+def _meta(pair: EditPair) -> dict[str, Any]:
     return {
         "pair_id": pair.id,
         "case_id": pair.case_id,
@@ -149,7 +150,7 @@ def _meta(pair: "EditPair") -> Dict[str, Any]:
 
 # ------------------------------------------------------------- выборка ----
 
-def _all_pairs(repos: "Repositories") -> List["EditPair"]:
+def _all_pairs(repos: Repositories) -> list[EditPair]:
     """Все пары правок в устойчивом порядке (по возрастанию идентификатора).
 
     Порядок фиксирован намеренно: датасет — версионируемый артефакт, и два
@@ -163,14 +164,14 @@ def _all_pairs(repos: "Repositories") -> List["EditPair"]:
 
 
 def _select(
-    repos: "Repositories",
+    repos: Repositories,
     *,
     min_distance: float,
     report_types: Iterable[str] | None,
     limit: int | None,
-) -> List["EditPair"]:
+) -> list[EditPair]:
     allowed = set(report_types) if report_types else None
-    selected: List["EditPair"] = []
+    selected: list[EditPair] = []
     for pair in _all_pairs(repos):
         if float(pair.edit_distance or 0.0) < min_distance:
             continue
@@ -185,12 +186,12 @@ def _select(
 
 
 def build_sft_examples(
-    repos: "Repositories",
+    repos: Repositories,
     *,
     min_distance: float = DEFAULT_SFT_MIN_DISTANCE,
     report_types: Iterable[str] | None = None,
     limit: int | None = None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Примеры для SFT: восстановленный промпт секции → финальный текст инженера.
 
     :param min_distance: отсечка косметических правок. Пара, где инженер
@@ -199,7 +200,7 @@ def build_sft_examples(
         разумно держать отдельный LoRA-адаптер (док. 03, 3.6).
     :param limit: максимум примеров (для быстрых прогонов).
     """
-    examples: List[Dict[str, Any]] = []
+    examples: list[dict[str, Any]] = []
     for pair in _select(repos, min_distance=min_distance,
                         report_types=report_types, limit=limit):
         user, degraded = restore_prompt(pair)
@@ -216,19 +217,19 @@ def build_sft_examples(
 
 
 def build_dpo_examples(
-    repos: "Repositories",
+    repos: Repositories,
     *,
     min_distance: float = DEFAULT_DPO_MIN_DISTANCE,
     report_types: Iterable[str] | None = None,
     limit: int | None = None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Примеры для DPO/ORPO: ``chosen`` — финал инженера, ``rejected`` — черновик.
 
     Порог по расстоянию выше, чем для SFT: предпочтение имеет смысл только
     там, где правка содержательная. На косметике модель научится вкусу
     инженера к пробелам, а не к формулировкам.
     """
-    examples: List[Dict[str, Any]] = []
+    examples: list[dict[str, Any]] = []
     for pair in _select(repos, min_distance=min_distance,
                         report_types=report_types, limit=limit):
         if not (pair.draft or "").strip():
@@ -249,16 +250,16 @@ def build_dpo_examples(
 
 # --------------------------------------------------------------- деление --
 
-def _case_of(example: Dict[str, Any]) -> str:
+def _case_of(example: dict[str, Any]) -> str:
     meta = example.get("meta") or {}
     return str(meta.get("case_id") or example.get("case_id") or "")
 
 
 def split_by_case(
-    examples: Sequence[Dict[str, Any]],
+    examples: Sequence[dict[str, Any]],
     test_ratio: float = DEFAULT_TEST_RATIO,
     seed: int = DEFAULT_SEED,
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Делит набор на train/test **по кейсам** (док. 03, 3.5).
 
     Секции одного отчёта написаны одной рукой в один день и сильно похожи;
@@ -290,7 +291,7 @@ def split_by_case(
 
 # ----------------------------------------------------------------- вывод --
 
-def _target_text(example: Dict[str, Any]) -> str:
+def _target_text(example: dict[str, Any]) -> str:
     if "chosen" in example:
         return str(example.get("chosen") or "")
     messages = example.get("messages") or []
@@ -300,7 +301,7 @@ def _target_text(example: Dict[str, Any]) -> str:
     return ""
 
 
-def _prompt_text(example: Dict[str, Any]) -> str:
+def _prompt_text(example: dict[str, Any]) -> str:
     if "prompt" in example:
         return str(example.get("prompt") or "")
     for message in example.get("messages") or []:
@@ -309,7 +310,7 @@ def _prompt_text(example: Dict[str, Any]) -> str:
     return ""
 
 
-def write_jsonl(examples: Sequence[Dict[str, Any]], path: str | Path) -> int:
+def write_jsonl(examples: Sequence[dict[str, Any]], path: str | Path) -> int:
     """Пишет набор в JSONL (UTF-8, кириллица без экранирования).
 
     Экранированный ``\\u0424`` формально валиден, но делает набор нечитаемым
@@ -327,9 +328,9 @@ def write_jsonl(examples: Sequence[Dict[str, Any]], path: str | Path) -> int:
     return written
 
 
-def read_jsonl(path: str | Path) -> List[Dict[str, Any]]:
+def read_jsonl(path: str | Path) -> list[dict[str, Any]]:
     """Читает JSONL обратно — нужно для проверки выгрузки и для дообучения."""
-    items: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
         line = line.strip()
         if not line:
@@ -341,14 +342,14 @@ def read_jsonl(path: str | Path) -> List[Dict[str, Any]]:
     return items
 
 
-def dataset_stats(examples: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+def dataset_stats(examples: Sequence[dict[str, Any]]) -> dict[str, Any]:
     """Сводка по набору: сколько, из каких кейсов, насколько правили."""
     items = list(examples)
     distances = [
         float((example.get("meta") or {}).get("edit_distance") or 0.0) for example in items
     ]
-    report_types: Dict[str, int] = {}
-    sections: Dict[str, int] = {}
+    report_types: dict[str, int] = {}
+    sections: dict[str, int] = {}
     cases = set()
     for example in items:
         meta = example.get("meta") or {}
@@ -383,7 +384,7 @@ def dataset_stats(examples: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def export_dataset(
-    repos: "Repositories",
+    repos: Repositories,
     out_dir: str | Path,
     *,
     kind: str = "sft",
@@ -392,7 +393,7 @@ def export_dataset(
     limit: int | None = None,
     test_ratio: float = DEFAULT_TEST_RATIO,
     seed: int = DEFAULT_SEED,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Выгружает набор в каталог: ``train.jsonl``, ``test.jsonl``, ``manifest.json``.
 
     ``manifest.json`` — карточка датасета из док. 03, 3.8: дата, число
@@ -425,7 +426,7 @@ def export_dataset(
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "kind": kind,
-        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "filters": {
             "min_distance": threshold,
             "report_types": types,
@@ -532,7 +533,7 @@ def _strip_fence(text: str) -> str:
     return match.group(1) if match else text
 
 
-def parse_json_object(text: str) -> Dict[str, Any]:
+def parse_json_object(text: str) -> dict[str, Any]:
     """Устойчивый разбор JSON-ответа модели.
 
     Локальные модели любят добавить «Вот результат:» перед JSON и обернуть
@@ -566,7 +567,7 @@ def _braced(text: str) -> str | None:
     return text[start:end + 1]
 
 
-def _normalize_factpack(data: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_factpack(data: dict[str, Any]) -> dict[str, Any]:
     """Приводит частые вольности модели к форме схемы, не меняя значений."""
     result = dict(data)
 
@@ -574,7 +575,7 @@ def _normalize_factpack(data: Dict[str, Any]) -> Dict[str, Any]:
     measurements = result.get("measurements")
     if isinstance(measurements, list):
         # Модель отдала список вместо объекта — собираем словарь по ключу.
-        collected: Dict[str, Any] = {}
+        collected: dict[str, Any] = {}
         for item in measurements:
             if not isinstance(item, dict):
                 continue
@@ -605,13 +606,13 @@ def _normalize_factpack(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def reverse_annotate(
-    llm: "LLM",
+    llm: LLM,
     report_markdown: str,
     report_type: str,
     *,
-    outline: "Outline | None" = None,
+    outline: Outline | None = None,
     max_tokens: int = 4000,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """«Обратная разметка» исторического отчёта (док. 03, 3.5).
 
     У компании есть ответы (готовые отчёты), но нет входов (факт-пакетов):

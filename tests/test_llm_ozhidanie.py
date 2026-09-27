@@ -13,7 +13,6 @@ import unittest
 import urllib.error
 
 import _bootstrap  # noqa: F401
-
 from reportgen.llm import LLMError, OpenAICompatLLM, _timed_out
 
 

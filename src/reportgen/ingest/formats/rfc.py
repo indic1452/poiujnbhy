@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 from .. import registry
 from ..convert import ConvertedDocument, page_marker, read_text
@@ -42,7 +41,7 @@ __all__ = [
 ]
 
 #: Расширения, на которых имеет смысл искать RFC. Сам файл опознаётся по шапке.
-RFC_SUFFIXES: Tuple[str, ...] = (".txt",)
+RFC_SUFFIXES: tuple[str, ...] = (".txt",)
 
 #: Сколько строк начала файла считать шапкой.
 HEADER_LINES = 60
@@ -80,17 +79,17 @@ def is_rfc_text(text: str) -> bool:
     return bool(_RFC_NUMBER_RE.search(head))
 
 
-def _numbers(raw: str | None) -> List[int]:
+def _numbers(raw: str | None) -> list[int]:
     if not raw:
         return []
     return [int(item) for item in re.findall(r"\d+", raw)]
 
 
-def parse_header(text: str) -> Dict[str, object]:
+def parse_header(text: str) -> dict[str, object]:
     """Разобрать шапку RFC: номер, название, дата, статус, связи с другими."""
     lines = text.splitlines()
     head = "\n".join(lines[:HEADER_LINES])
-    data: Dict[str, object] = {}
+    data: dict[str, object] = {}
 
     number = _RFC_NUMBER_RE.search(head)
     if number:
@@ -121,14 +120,14 @@ def parse_header(text: str) -> Dict[str, object]:
     return data
 
 
-def _extract_title(lines: List[str]) -> str:
+def _extract_title(lines: list[str]) -> str:
     """Название RFC — центрированная строка под шапкой.
 
     Шапка идёт двумя колонками (слева служебные поля, справа автор и дата),
     затем пустая строка, затем название по центру — иногда в несколько строк.
     """
     started = False
-    collected: List[str] = []
+    collected: list[str] = []
     for raw in lines[:HEADER_LINES]:
         line = raw.rstrip()
         stripped = line.strip()
@@ -157,9 +156,9 @@ def _extract_title(lines: List[str]) -> str:
     return " ".join(collected).strip()
 
 
-def _strip_page_furniture(text: str) -> Tuple[str, int]:
+def _strip_page_furniture(text: str) -> tuple[str, int]:
     """Убрать колонтитулы страниц, расставив маркеры. Возвращает (текст, страниц)."""
-    out: List[str] = []
+    out: list[str] = []
     page = 1
     out.append(page_marker(page))
     out.append("")
@@ -188,7 +187,7 @@ def _strip_page_furniture(text: str) -> Tuple[str, int]:
 
 def _mark_sections(text: str) -> str:
     """Нумерованные заголовки разделов → заголовки Markdown."""
-    out: List[str] = []
+    out: list[str] = []
     for line in text.splitlines():
         found = _SECTION_RE.match(line)
         if found and not line.startswith(" "):

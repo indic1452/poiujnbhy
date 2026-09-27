@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """BGP-4 полностью: OPEN с возможностями, UPDATE (отозванные, атрибуты пути, NLRI), NOTIFICATION, ROUTE-REFRESH.
 
 Документы (структуры полей — строго по ним):
@@ -19,11 +18,9 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
+from .. import prilozh
 from ..pole import ip4, ip6, u16, u32
 from ..razbor import ДОП_УРОВНИ, Разбор
-from .. import prilozh
 
 ТИПЫ = {1: "OPEN", 2: "UPDATE", 3: "NOTIFICATION", 4: "KEEPALIVE", 5: "ROUTE-REFRESH"}
 АТРИБУТЫ = {1: "ORIGIN", 2: "AS_PATH", 3: "NEXT_HOP", 4: "MULTI_EXIT_DISC", 5: "LOCAL_PREF", 6: "ATOMIC_AGGREGATE",
@@ -65,7 +62,7 @@ class _Не(Exception):
     pass
 
 
-def префиксы(д: bytes, место: int, конец: int, v6: bool = False) -> List[str]:
+def префиксы(д: bytes, место: int, конец: int, v6: bool = False) -> list[str]:
     """Префиксы NLRI: длина в битах и ⌈длина/8⌉ байт адреса (RFC 4271, 4.3)."""
     итог = []
     предел = 128 if v6 else 32
@@ -80,7 +77,7 @@ def префиксы(д: bytes, место: int, конец: int, v6: bool = Fal
     return итог
 
 
-def as_путь(д: bytes, место: int, конец: int, размер: int) -> Optional[List[Tuple[int, List[int]]]]:
+def as_путь(д: bytes, место: int, конец: int, размер: int) -> list[tuple[int, list[int]]] | None:
     """Сегменты AS_PATH при размере номера ``размер``; None — не ложатся ровно."""
     итог = []
     while место < конец:
@@ -110,7 +107,7 @@ def размер_as(д: bytes, место: int, конец: int) -> int:
     return 4
 
 
-def путь_словами(сегменты: List[Tuple[int, List[int]]]) -> str:
+def путь_словами(сегменты: list[tuple[int, list[int]]]) -> str:
     части = []
     for вид, номера in сегменты:
         текст = " ".join(map(str, номера))

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Выписка сертификата средствами одной лишь стандартной библиотеки.
 
 Отдел работает в изолированном контуре: интернета нет, и `pip install` там —
@@ -36,8 +35,8 @@ import datetime as dt
 import hashlib
 import ipaddress
 import secrets
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, List, Sequence, Tuple
 
 __all__ = [
     "RsaKey",
@@ -338,7 +337,7 @@ def load_key_pem(text: bytes) -> RsaKey:
     # Внутри строки октетов лежит своя последовательность RSAPrivateKey —
     # её надо развернуть, прежде чем читать числа.
     numbers_body, _ = _read(inner, 0)
-    numbers: List[int] = []
+    numbers: list[int] = []
     position = 0
     while position < len(numbers_body) and len(numbers) < 9:
         value, position = _read_int(numbers_body, position)
@@ -348,7 +347,7 @@ def load_key_pem(text: bytes) -> RsaKey:
     return RsaKey(n=numbers[1], e=numbers[2], d=numbers[3], p=numbers[4], q=numbers[5])
 
 
-def _read(body: bytes, position: int) -> "Tuple[bytes, int]":
+def _read(body: bytes, position: int) -> tuple[bytes, int]:
     """Прочитать одно значение DER, вернув содержимое и место следующего."""
     position += 1
     size = body[position]
@@ -360,7 +359,7 @@ def _read(body: bytes, position: int) -> "Tuple[bytes, int]":
     return body[position:position + size], position + size
 
 
-def _read_int(body: bytes, position: int) -> "Tuple[int, int]":
+def _read_int(body: bytes, position: int) -> tuple[int, int]:
     raw, nxt = _read(body, position)
     return int.from_bytes(raw, "big"), nxt
 
@@ -380,7 +379,7 @@ def _name(common: str, organization: str) -> bytes:
 
 
 def _san(hosts: Iterable[str]) -> bytes:
-    names: List[bytes] = []
+    names: list[bytes] = []
     for host in hosts:
         try:
             address = ipaddress.ip_address(host)
@@ -402,16 +401,16 @@ def _extension(oid: str, critical: bool, body: bytes) -> bytes:
 
 def make_certificate(*, subject_cn: str, organization: str, public: RsaKey,
                      signer: RsaKey, issuer_cn: str, issuer_organization: str,
-                     days: int, hosts: "Sequence[str] | None" = None,
-                     is_ca: bool = False, serial: "int | None" = None,
-                     issuer_key: "RsaKey | None" = None,
-                     now: "dt.datetime | None" = None) -> bytes:
+                     days: int, hosts: Sequence[str] | None = None,
+                     is_ca: bool = False, serial: int | None = None,
+                     issuer_key: RsaKey | None = None,
+                     now: dt.datetime | None = None) -> bytes:
     """Собрать и подписать сертификат X.509 v3. Возвращает DER.
 
     `public` — чей ключ удостоверяем, `signer` — чьим ключом подписываем. Для
     самоподписанного корня это один и тот же ключ.
     """
-    moment = now or dt.datetime.now(dt.timezone.utc)
+    moment = now or dt.datetime.now(dt.UTC)
     # На сутки назад: часы на машинах отдела расходятся, и сертификат «из
     # будущего» браузер отвергает так же решительно, как просроченный.
     start = moment - dt.timedelta(days=1)
@@ -495,7 +494,7 @@ def read_certificate(text: bytes) -> dict:
     finish_raw = validity[offset + 2:offset + 2 + validity[offset + 1]]
     until = _human_time(finish_raw)
 
-    hosts: List[str] = []
+    hosts: list[str] = []
     block, _ = _read(extensions_body, 0)
     position = 0
     while position < len(block):
@@ -518,7 +517,7 @@ def read_certificate(text: bytes) -> dict:
     return {"hosts": hosts, "until": until[0], "until_date": until[1]}
 
 
-def _human_time(raw: bytes) -> "Tuple[str, dt.date | None]":
+def _human_time(raw: bytes) -> tuple[str, dt.date | None]:
     """UTCTime или GeneralizedTime: и для человека, и для сравнения со сроком."""
     text = raw.decode("ascii", "replace").rstrip("Z")
     if len(text) == 12:                          # ГГММДДЧЧММСС

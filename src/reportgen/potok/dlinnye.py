@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Длинные линейные блочные коды вслепую: длина слова, проверки, LDPC.
 
 Короткие коды (n ≤ 16) ищутся проверками Уолша — Адамара (kod), а длинные —
@@ -35,7 +34,6 @@ from __future__ import annotations
 
 import time
 from collections import Counter
-from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -75,7 +73,7 @@ def нарушения(W: np.ndarray, H: np.ndarray) -> np.ndarray:
     return синдромы.mean(axis=0)
 
 
-def зависимости(W: np.ndarray, опорных: int) -> Tuple[np.ndarray, np.ndarray]:
+def зависимости(W: np.ndarray, опорных: int) -> tuple[np.ndarray, np.ndarray]:
     """Проверки по первым ``опорных`` словам, сверенные с остальными.
 
     Возвращает векторы и доли нарушений на проверочных словах. Слова с
@@ -90,7 +88,7 @@ def зависимости(W: np.ndarray, опорных: int) -> Tuple[np.ndarr
 
 
 def длина_слова(биты: np.ndarray, *, до: int = ДЛИНА_ДО, бюджет: float = 30.0
-                ) -> Tuple[int, int, int] | None:
+                ) -> tuple[int, int, int] | None:
     """(L, найдено проверок, из скольких) — первая длина окна с проверками кода."""
     конец = time.monotonic() + бюджет
     for L in range(8, до + 1):
@@ -116,7 +114,7 @@ def _проверок(биты: np.ndarray, n: int, начало: int) -> int:
     return int(np.count_nonzero(доли < НАРУШЕНИЙ_ДО))
 
 
-def выровнять(биты: np.ndarray, L: int) -> Tuple[int, int] | None:
+def выровнять(биты: np.ndarray, L: int) -> tuple[int, int] | None:
     """По окну L, где нашлись проверки, — длина слова n и начало слова.
 
     Кандидаты n — делители L. Для каждого начала слова, где проверки есть,
@@ -164,7 +162,7 @@ def выровнять(биты: np.ndarray, L: int) -> Tuple[int, int] | None:
 
 def пространство(W: np.ndarray, n: int) -> np.ndarray:
     """Проверки кода с учётом шума: объединение по нескольким наборам опорных слов."""
-    найдено: List[np.ndarray] = []
+    найдено: list[np.ndarray] = []
     for проход in range(4):
         сдвиг = проход * (n + 16)
         часть = W[сдвиг:]
@@ -186,7 +184,7 @@ def разреженные(H: np.ndarray, W: np.ndarray, *, попыток: int 
     if not r:
         return H
     случай = np.random.default_rng(сид)
-    найдено: Dict[bytes, np.ndarray] = {}
+    найдено: dict[bytes, np.ndarray] = {}
     for _ in range(попыток):
         порядок = случай.permutation(n)
         переставлено = H[:, порядок]
@@ -270,7 +268,7 @@ def проверки_с_шумом(W: np.ndarray, *, доля_опорных: fl
         return np.zeros((0, n), dtype=np.uint8)
     случай = np.random.default_rng(сид)
     конец = time.monotonic() + бюджет
-    найдено: Dict[bytes, np.ndarray] = {}
+    найдено: dict[bytes, np.ndarray] = {}
     for _ in range(попыток):
         if time.monotonic() > конец:
             break
@@ -296,7 +294,7 @@ def проверки_с_шумом(W: np.ndarray, *, доля_опорных: fl
 def дополнить_сдвигами(проверки: np.ndarray, Z: int, W: np.ndarray) -> np.ndarray:
     """Квазициклический код: все сдвиги найденных проверок внутри блоков Z, сверенные."""
     n = проверки.shape[1]
-    все: Dict[bytes, np.ndarray] = {}
+    все: dict[bytes, np.ndarray] = {}
     for h in проверки:
         блоки = h.reshape(n // Z, Z)
         for s in range(Z):
@@ -318,12 +316,12 @@ def независимые(проверки: np.ndarray) -> np.ndarray:
     n = проверки.shape[1]
     порядок = np.argsort(проверки.sum(axis=1), kind="stable")
     упакованные = gf2.упаковать(проверки[порядок])
-    опорные_строки: List[np.ndarray] = []
-    опорные_столбцы: List[int] = []
-    выбрано: List[int] = []
+    опорные_строки: list[np.ndarray] = []
+    опорные_столбцы: list[int] = []
+    выбрано: list[int] = []
     for номер, строка in enumerate(упакованные):
         остаток = строка.copy()
-        for опорная, столбец in zip(опорные_строки, опорные_столбцы):
+        for опорная, столбец in zip(опорные_строки, опорные_столбцы, strict=False):
             w, b = divmod(столбец, 64)
             if (int(остаток[w]) >> b) & 1:
                 остаток ^= опорная
@@ -336,7 +334,7 @@ def независимые(проверки: np.ndarray) -> np.ndarray:
     return проверки[выбрано]
 
 
-def мин_сумма(W: np.ndarray, H: np.ndarray, итераций: int = 30) -> Tuple[np.ndarray, np.ndarray]:
+def мин_сумма(W: np.ndarray, H: np.ndarray, итераций: int = 30) -> tuple[np.ndarray, np.ndarray]:
     """Декодер «минимум — сумма» по разреженной H на жёстких решениях.
 
     Возвращает исправленные слова и признак «синдром нулевой» для каждого.
@@ -386,7 +384,7 @@ def информационные(H: np.ndarray) -> np.ndarray:
     return np.array(опорные, dtype=np.int64)
 
 
-def _опознать_циклический(W: np.ndarray, n: int) -> Dict | None:
+def _опознать_циклический(W: np.ndarray, n: int) -> dict | None:
     """Рида — Соломона (символы m бит, при чередовании глубины I) или БЧХ — по общим корням слов.
 
     Слово длиной I·N символов из I слов РС, перемешанных по символам (CCSDS, IESS),
@@ -421,7 +419,7 @@ def _в_биты_символов(символы: np.ndarray, m: int) -> np.ndar
     return ((символы[..., None] >> сдвиги) & 1).astype(np.uint8).reshape(len(символы), -1)
 
 
-def исправить_циклический(W: np.ndarray, п: Dict) -> Tuple[np.ndarray, List[str], Dict]:
+def исправить_циклический(W: np.ndarray, п: dict) -> tuple[np.ndarray, list[str], dict]:
     """Исправить слова РС (с чередованием) или БЧХ по найденным корням: (слова, отчёт, числа)."""
     from . import rs_bch
     m, p, fcr, шаг = п["m"], п["многочлен"], п["fcr"], п.get("шаг", 1)
@@ -518,7 +516,7 @@ def найти(биты: np.ndarray, *, до: int = ДЛИНА_ДО, бюдже�
     слова_ = W
     годных = float(np.mean(~(((W.astype(np.int32) @ H.T.astype(np.int32)) & 1).any(axis=1)))) \
         if len(H) else 0.0
-    свойства: Dict = {"n": n, "k": k, "начало": начало}
+    свойства: dict = {"n": n, "k": k, "начало": начало}
     if ldpc:
         слова_, чисто = мин_сумма(W[:4000], редкие)
         подробно.append(f"слов без ошибок до декодирования: {годных * 100:.1f} %; после "
@@ -570,7 +568,7 @@ def найти(биты: np.ndarray, *, до: int = ДЛИНА_ДО, бюдже�
 _TAL = (0x8D, 0xEF, 0xEC, 0x86, 0xFA, 0x99, 0xAF, 0x7B)
 
 
-def _двойной_базис() -> Tuple[np.ndarray, np.ndarray]:
+def _двойной_базис() -> tuple[np.ndarray, np.ndarray]:
     """(обычный → двойной, двойной → обычный) — таблицы на 256 значений."""
     в_двойной = np.zeros(256, dtype=np.uint8)
     for i in range(256):

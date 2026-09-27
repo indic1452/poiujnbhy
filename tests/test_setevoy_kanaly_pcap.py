@@ -9,7 +9,7 @@ import unittest
 
 import _bootstrap  # noqa: F401
 import setevoy_sintez as с
-from reportgen.setevoy import разобрать_пакет, прочитать_захват
+from reportgen.setevoy import прочитать_захват, разобрать_пакет
 from test_setevoy_kanalnye import q922
 from test_setevoy_oks7 import isup_iam, метка
 
@@ -56,6 +56,7 @@ class НаправлениеTests(unittest.TestCase):
         import tempfile
         import time
         from pathlib import Path
+
         from reportgen.setevoy.zahvaty import Захваты
         with tempfile.TemporaryDirectory() as папка:
             захваты = Захваты(Path(папка))

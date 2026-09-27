@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Канальный уровень и глобальные сети: разбор по EtherType, LLC, типу канала pcap и порту UDP.
 
 По EtherType (``razbor.ДОП_ETHERTYPE``):
@@ -44,7 +43,7 @@ from __future__ import annotations
 import datetime
 import struct
 import zlib
-from typing import Callable, List, Tuple
+from collections.abc import Callable
 
 from ..chtenie import КАНАЛЫ
 from ..pole import Мало, ip4, ip6, mac, u16, u24, u32, печатное, сумма16
@@ -123,7 +122,7 @@ def _по_ethertype(тип: int, разборщик: Разборщик) -> None
     ДОП_ETHERTYPE.setdefault(тип, вход)
 
 
-def _биты(у, родитель, место: int, длина: int, значение: int, биты, префикс: str) -> List[str]:
+def _биты(у, родитель, место: int, длина: int, значение: int, биты, префикс: str) -> list[str]:
     """Флаги по маскам: дочерние поля 0/1, возвращает имена поднятых."""
     поднятые = []
     for маска, имя, ключ in биты:
@@ -1076,7 +1075,7 @@ def ethercat(р: Разбор, м: int, конец: int) -> bool:
 
 # -- GOOSE и SV: IEC 61850-8-1, 61850-9-2 -----------------------------------------------------------
 
-def _ber(д: bytes, м: int, край: int) -> Tuple[int, int, int] | None:
+def _ber(д: bytes, м: int, край: int) -> tuple[int, int, int] | None:
     """Тег (однобайтовый), длина (краткая или длинная до 3 байт), начало значения; None — не BER.
     Значение может выходить за ``край`` — это проверяет вызывающий."""
     if м + 2 > край:
@@ -1166,7 +1165,7 @@ SV_РАЗМЕРЫ = {0x82: 2, 0x83: 4, 0x84: 8, 0x85: 1, 0x86: 2, 0x88: 2, 0x89:
 SV_ОБЯЗАТЕЛЬНЫЕ = {0x80, 0x82, 0x83, 0x85, 0x87}
 
 
-def _порядок_тегов(теги: List[int]) -> bool:
+def _порядок_тегов(теги: list[int]) -> bool:
     """Элементы SEQUENCE — по возрастанию номера тега, без повторов."""
     номера = [т & 0x1F for т in теги]
     return номера == sorted(set(номера))
@@ -1633,7 +1632,7 @@ def _конец_802_3(р: Разбор, конец: int) -> int:
     return конец
 
 
-def _cdp_адреса(у, р: Разбор, т, м: int, край: int, ключ: str) -> List[str]:
+def _cdp_адреса(у, р: Разбор, т, м: int, край: int, ключ: str) -> list[str]:
     """Адреса CDP: число (4), затем тип протокола (1: NLPID, 2: 802.2), длина, протокол, длина адреса, адрес."""
     д = р.д
     итог = []
@@ -1937,7 +1936,7 @@ def _ax25_адрес(д: bytes, м: int) -> str | None:
     return f"{позывной}-{ssid}" if ssid else позывной
 
 
-def _hdlc_управление(упр: int, u_коды, s_коды) -> Tuple[str, str]:
+def _hdlc_управление(упр: int, u_коды, s_коды) -> tuple[str, str]:
     """Кадр I / S / U по полю управления (модуль 8): вид и описание."""
     pf = (упр >> 4) & 1
     if not упр & 1:

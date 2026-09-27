@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Синтетические потоки с ИЗВЕСТНЫМ ответом — для проверки анализатора.
 
 Слепой разбор проверить можно только так: собрать поток, строение которого
@@ -12,14 +11,13 @@ from __future__ import annotations
 
 import random
 import struct
-from typing import List, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
 import _bootstrap  # noqa: F401
-from reportgen.potok.bity import в_биты, в_байты
+from reportgen.potok.bity import в_байты, в_биты
 from reportgen.potok.hdlc import fcs16, fcs32
-
 
 # -- пакеты -------------------------------------------------------------------
 
@@ -61,7 +59,7 @@ def tcp(источник: str, получатель: str, порт_от: int, п
     return ipv4(источник, получатель, 6, сегмент, идентификатор)
 
 
-def пакеты_ip(сколько: int, *, сид: int = 1) -> List[bytes]:
+def пакеты_ip(сколько: int, *, сид: int = 1) -> list[bytes]:
     случай = random.Random(сид)
     итог = []
     for номер in range(сколько):
@@ -83,7 +81,7 @@ def hdlc(кадры: Sequence[bytes], *, fcs: int = 16, флагов_между:
     «прибора» старшим битом первым (или младшим — по ``порядок``).
     """
     флаг = [0, 1, 1, 1, 1, 1, 1, 0]
-    ряд: List[int] = флаг * флагов_между
+    ряд: list[int] = флаг * флагов_между
     for кадр in кадры:
         if fcs == 16:
             проверка = (fcs16(кадр) ^ 0xFFFF).to_bytes(2, "little")
@@ -383,13 +381,12 @@ def gfp(кадры: Sequence[bytes], *, пустых_между: int = 2, upi: i
     """GFP (G.7041): основной заголовок с cHEC и маской B6AB31E0, заголовок типа
     с tHEC, нагрузка под самосинхронизирующимся скремблером x⁴³ + 1."""
     from reportgen.potok import crc as crc_
-    from reportgen.potok import skrembler
 
     def hec(данные):
         return crc_.crc(данные, 16, 0x1021, 0, False, False, 0).to_bytes(2, "big")
 
     маска = bytes.fromhex("B6AB31E0")
-    пустой = bytes(a ^ b for a, b in zip(b"\0\0" + hec(b"\0\0"), маска))
+    пустой = bytes(a ^ b for a, b in zip(b"\0\0" + hec(b"\0\0"), маска, strict=False))
     # Нагрузки скремблируются сплошным потоком — сперва собираем их все.
     нагрузки = []
     for кадр in кадры:
@@ -401,7 +398,7 @@ def gfp(кадры: Sequence[bytes], *, пустых_между: int = 2, upi: i
     место = 0
     for нагрузка in нагрузки:
         pli = len(нагрузка).to_bytes(2, "big")
-        итог += bytes(a ^ b for a, b in zip(pli + hec(pli), маска))
+        итог += bytes(a ^ b for a, b in zip(pli + hec(pli), маска, strict=False))
         итог += скр[место:место + len(нагрузка)]
         место += len(нагрузка)
         итог += пустой * пустых_между

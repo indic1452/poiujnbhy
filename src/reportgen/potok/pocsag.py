@@ -18,7 +18,6 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 from itertools import combinations
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -48,7 +47,7 @@ def закодировать(данные21: int) -> int:
     return (слово << 1) | (bin(слово).count("1") & 1)
 
 
-def _синдромы() -> Tuple[Dict[int, int], Dict[int, int]]:
+def _синдромы() -> tuple[dict[int, int], dict[int, int]]:
     одна = {_остаток(1 << i): 1 << i for i in range(31)}
     две = {_остаток((1 << i) | (1 << j)): (1 << i) | (1 << j) for i, j in combinations(range(31), 2)}
     return одна, две
@@ -57,7 +56,7 @@ def _синдромы() -> Tuple[Dict[int, int], Dict[int, int]]:
 ОДНА, ДВЕ = _синдромы()
 
 
-def исправить(слово: int) -> Optional[Tuple[int, int]]:
+def исправить(слово: int) -> tuple[int, int] | None:
     """(исправленное слово, число исправленных бит) — до двух ошибок в 32 битах, иначе None."""
     s = _остаток(слово >> 1)
     нечётно = bin(слово).count("1") & 1
@@ -71,7 +70,7 @@ def исправить(слово: int) -> Optional[Tuple[int, int]]:
     return None
 
 
-def цифровое(данные: List[int]) -> str:
+def цифровое(данные: list[int]) -> str:
     """20-битовые куски → цифровое сообщение (тетрады младшим битом вперёд)."""
     итог = []
     for кусок in данные:
@@ -81,7 +80,7 @@ def цифровое(данные: List[int]) -> str:
     return "".join(итог).rstrip(" ")
 
 
-def текстовое(данные: List[int]) -> str:
+def текстовое(данные: list[int]) -> str:
     """20-битовые куски → текст: 7-битовые символы младшим битом вперёд."""
     биты = "".join(format(к, "020b") for к in данные)
     итог = []
@@ -97,7 +96,7 @@ def текстовое(данные: List[int]) -> str:
 class Сообщение:
     адрес: int
     функция: int
-    данные: List[int] = field(default_factory=list)
+    данные: list[int] = field(default_factory=list)
     оборвано: bool = False
 
     def текст(self) -> str:
@@ -108,7 +107,7 @@ class Сообщение:
         return текст + (" [оборвано: неисправимое слово]" if self.оборвано else "")
 
 
-def синхрослова(биты: np.ndarray) -> List[Tuple[int, bool]]:
+def синхрослова(биты: np.ndarray) -> list[tuple[int, bool]]:
     """(место, инверсия) всех синхрослов с не более чем ОШИБОК_СИНХРО ошибками."""
     биты = np.asarray(биты, dtype=np.uint8)
     if len(биты) < 32:
@@ -121,12 +120,12 @@ def синхрослова(биты: np.ndarray) -> List[Tuple[int, bool]]:
     return sorted(итог)
 
 
-def разобрать(биты: np.ndarray) -> Dict[str, object]:
+def разобрать(биты: np.ndarray) -> dict[str, object]:
     """Пакеты от каждого синхрослова: сообщения, исправленные и неисправимые слова."""
     биты = np.asarray(биты, dtype=np.uint8)
     места = синхрослова(биты)
-    сообщения: List[Сообщение] = []
-    текущее: Optional[Сообщение] = None
+    сообщения: list[Сообщение] = []
+    текущее: Сообщение | None = None
     исправлено = неисправимых = слов = простоя = 0
     пакетов = 0
     for место, инверсия in места:
@@ -164,11 +163,11 @@ def разобрать(биты: np.ndarray) -> Dict[str, object]:
             "инверсия": bool(места and all(и for _, и in места))}
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     р = разобрать(биты)
     if р["пакетов"] < НАЙТИ_ОТ or р["неисправимых"] > 0.3 * р["слов"]:
         return None
-    сообщения: List[Сообщение] = р["сообщения"]
+    сообщения: list[Сообщение] = р["сообщения"]
     подробно = [f"пакетов (синхрослово 0x7CD215D8 + 16 кодовых слов): {р['пакетов']}"
                 + (" — полярность обратная" if р["инверсия"] else ""),
                 f"кодовых слов {р['слов']}: слов простоя {р['простоя']}, исправлено бит {р['исправлено']}, "
@@ -188,13 +187,13 @@ def найти(биты: np.ndarray) -> Optional[Находка]:
         подробно=подробно, свойства={"вызовов": len(сообщения), "исправлено": р["исправлено"]})
 
 
-def передать(вызовы: List[Tuple[int, int, str]], преамбула: int = 576) -> np.ndarray:
+def передать(вызовы: list[tuple[int, int, str]], преамбула: int = 576) -> np.ndarray:
     """Синтез потока (для проверок): [(адрес, функция, текст)] → биты с преамбулой и пакетами.
 
     Текст при функции 0 — цифры (из ЦИФРЫ), иначе ASCII. Адрес ставится в свой кадр
     (адрес mod 8), до него — слова простоя.
     """
-    слова: List[int] = []
+    слова: list[int] = []
     for адрес, функция, текст in вызовы:
         кадр = адрес & 7
         while len(слова) % 16 != 2 * кадр:

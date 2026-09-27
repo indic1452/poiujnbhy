@@ -15,10 +15,10 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Sequence
 
 DEFAULT_PATH = Path("templates/domains.json")
 UNSET = ""
@@ -63,7 +63,7 @@ def _needs_boundary(keyword: str) -> bool:
 
 
 @lru_cache(maxsize=4096)
-def _boundary_pattern(keyword: str) -> "re.Pattern[str]":
+def _boundary_pattern(keyword: str) -> re.Pattern[str]:
     return re.compile(r"(?<![a-z0-9])" + re.escape(keyword.strip()) + r"(?![a-z0-9])")
 
 
@@ -99,7 +99,7 @@ class Domain:
         """
         return sum(1 for keyword in self.keywords if _found(keyword, text))
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {"id": self.id, "title": self.title, "keywords": list(self.keywords)}
 
 
@@ -107,10 +107,10 @@ class Domain:
 class DomainRegistry:
     """Справочник направлений с простым классификатором по ключевым словам."""
 
-    domains: List[Domain]
+    domains: list[Domain]
 
     @classmethod
-    def load(cls, path: str | Path = DEFAULT_PATH) -> "DomainRegistry":
+    def load(cls, path: str | Path = DEFAULT_PATH) -> DomainRegistry:
         file = Path(path)
         if not file.is_file():
             return cls(domains=[])
@@ -133,7 +133,7 @@ class DomainRegistry:
         return cls(domains=domains)
 
     @property
-    def ids(self) -> List[str]:
+    def ids(self) -> list[str]:
         return [domain.id for domain in self.domains]
 
     def get(self, domain_id: str) -> Domain | None:
@@ -188,7 +188,7 @@ class DomainRegistry:
             return UNSET
         return best_id
 
-    def to_dict(self) -> List[Dict[str, object]]:
+    def to_dict(self) -> list[dict[str, object]]:
         return [{"id": d.id, "title": d.title} for d in self.domains]
 
 

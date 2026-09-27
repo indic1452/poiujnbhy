@@ -16,7 +16,6 @@
 import unittest
 
 import _bootstrap  # noqa: F401
-
 from reportgen.citations import MAX_RANGE, expand_box, labels_in
 from reportgen.evaluate import APPENDIX_MARKER, citation_precision
 from reportgen.web.assistant import _used_labels

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Конфигурации обработки потоков: хранение, доступ, перенос, применение к потоку."""
 
 import tempfile
@@ -143,6 +142,7 @@ class ЧерезСерверTests(unittest.TestCase):
         self.assertEqual(400, к.post(f"/api/potok/{ид}/try", json={"stage": 0, "steps": [{"вид": "слой", "слой": "ерунда"}]}).status_code)
         # Проба — только начало потока.
         from unittest import mock
+
         from reportgen.web import api
         with mock.patch.object(api, "ПРОБА_БИТ", 8000):
             мало = к.post(f"/api/potok/{ид}/try", json={"stage": 0, "config": ид_к}).json()

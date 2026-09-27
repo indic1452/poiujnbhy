@@ -25,11 +25,11 @@ import re
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 from . import _http
-from dataclasses import dataclass
-from typing import Any, Dict, List, Protocol, Sequence
-
 from .llm import LLM
 
 __all__ = [
@@ -51,7 +51,7 @@ class Reranker(Protocol):
 
     name: str
 
-    def score(self, query: str, texts: Sequence[str]) -> List[float]:
+    def score(self, query: str, texts: Sequence[str]) -> list[float]:
         ...
 
 
@@ -97,7 +97,7 @@ def _тесно(error: BaseException, пояснение: str) -> bool:
     return False
 
 
-def _descending(count: int) -> List[float]:
+def _descending(count: int) -> list[float]:
     """Оценки, сохраняющие исходный порядок фрагментов."""
     return [float(count - index) for index in range(count)]
 
@@ -136,7 +136,7 @@ class CrossEncoderReranker:
     def name(self) -> str:
         return f"{self.model} @ {self.base_url}"
 
-    def score(self, query: str, texts: Sequence[str]) -> List[float]:
+    def score(self, query: str, texts: Sequence[str]) -> list[float]:
         """Оценки для всех фрагментов, порциями по силам сервера.
 
         Верхушку выдачи (20 фрагментов по 1200 знаков) отправляли одним
@@ -157,7 +157,7 @@ class CrossEncoderReranker:
             return []
 
         размер = self.batch if self.batch > 0 else len(documents)
-        оценки: List[float] = []
+        оценки: list[float] = []
         начало = 0
         while начало < len(documents):
             порция = documents[начало:начало + размер]
@@ -215,11 +215,11 @@ class CrossEncoderReranker:
         стало = max(MIN_RERANK_CHARS, min(стало, было - 1))
         return стало if стало < было else None
 
-    def _request(self, query: str, documents: Sequence[str]) -> List[float]:
+    def _request(self, query: str, documents: Sequence[str]) -> list[float]:
         """Один запрос к сервису. Повторяем только то, что может пройти."""
         куски = ([str(d)[: self.max_chars] for d in documents]
                  if self.max_chars > 0 else [str(d) for d in documents])
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self.model,
             "query": query,
             "documents": куски,
@@ -273,7 +273,7 @@ class CrossEncoderReranker:
                     f"{код}: {пояснение}")
         return f"сервис реранка недоступен ({self.base_url}): {пояснение}"
 
-    def check(self) -> Dict[str, Any]:
+    def check(self) -> dict[str, Any]:
         """Отвечает ли реранкер — одним коротким запросом.
 
         Узнать это можно было единственным способом: задать вопрос
@@ -330,7 +330,7 @@ class CrossEncoderReranker:
                 "max_chars": self.max_chars}
 
     @staticmethod
-    def _parse(body: Any, count: int) -> List[float]:
+    def _parse(body: Any, count: int) -> list[float]:
         results: Any = None
         if isinstance(body, dict):
             for key in ("results", "data", "scores"):
@@ -414,18 +414,18 @@ class LLMReranker:
     _LINE_RE = re.compile(r"^\s*\[?(\d{1,3})\]?\s*[:.)\-]\s*(-?\d+(?:[.,]\d+)?)", re.MULTILINE)
     _NUMBER_RE = re.compile(r"-?\d+(?:[.,]\d+)?")
 
-    def score(self, query: str, texts: Sequence[str]) -> List[float]:
+    def score(self, query: str, texts: Sequence[str]) -> list[float]:
         documents = [str(text) for text in texts]
         if not documents:
             return []
         size = max(1, int(self.batch_size))
-        scores: List[float] = []
+        scores: list[float] = []
         for start in range(0, len(documents), size):
             piece = documents[start:start + size]
             scores.extend(self._score_batch(query, piece))
         return scores
 
-    def _score_batch(self, query: str, documents: Sequence[str]) -> List[float]:
+    def _score_batch(self, query: str, documents: Sequence[str]) -> list[float]:
         listing = "\n\n".join(
             f"[{index}] {self._shorten(text)}"
             for index, text in enumerate(documents, start=1)
@@ -451,7 +451,7 @@ class LLMReranker:
         return flat[: self.max_chars].rstrip() + "…"
 
     @classmethod
-    def _parse(cls, answer: str, count: int) -> List[float]:
+    def _parse(cls, answer: str, count: int) -> list[float]:
         scores = [0.0] * count
         found = False
         for match in cls._LINE_RE.finditer(answer or ""):
@@ -491,7 +491,7 @@ class NoopReranker:
 
     name: str = "noop-reranker"
 
-    def score(self, query: str, texts: Sequence[str]) -> List[float]:
+    def score(self, query: str, texts: Sequence[str]) -> list[float]:
         return _descending(len(texts))
 
 

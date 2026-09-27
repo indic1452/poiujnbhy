@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 
 import _bootstrap  # noqa: F401
-from reportgen.potok import rs_bch, vdl2
+from reportgen.potok import vdl2
 from reportgen.potok.razbor import разобрать as разобрать_поток
 
 ЗЕМЛЯ = vdl2.адрес(0x10A3F2, 4)

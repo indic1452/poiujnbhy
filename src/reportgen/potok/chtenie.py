@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Чтение потока: .bin, .Sig, текст «0101…» или шестнадцатеричный.
 
 .Sig у отдела — это пакеты, каждый с двухбайтовым заголовком — указателем
@@ -14,7 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Tuple
 
 import numpy as np
 
@@ -31,9 +29,9 @@ class Поток:
     имя: str
     вид: str                       # «bin», «sig», «текст»
     данные: bytes                  # сплошной поток (у .Sig — тела пакетов подряд)
-    пакеты: List[Tuple[int, int]] = field(default_factory=list)  # (начало, длина) в данных
+    пакеты: list[tuple[int, int]] = field(default_factory=list)  # (начало, длина) в данных
     формат: str = ""               # как понят файл — словами
-    заметки: List[str] = field(default_factory=list)
+    заметки: list[str] = field(default_factory=list)
 
     def пакет(self, номер: int) -> bytes:
         начало, длина = self.пакеты[номер]

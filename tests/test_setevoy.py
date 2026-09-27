@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Анализатор пакетов: чтение захватов и разборщики — на пакетах, собранных по RFC."""
 
 import struct
@@ -319,6 +318,7 @@ class ХранилищеTests(unittest.TestCase):
     def setUp(self):
         import tempfile
         from pathlib import Path
+
         from reportgen.setevoy.zahvaty import Захваты
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -497,8 +497,9 @@ class ФильтрПоБайтамTests(unittest.TestCase):
 
 class МатрицаTests(unittest.TestCase):
     def test_столбец_распознаёт_поля(self):
-        from reportgen.setevoy import statistika
         import random
+
+        from reportgen.setevoy import statistika
         случ = random.Random(3)
         ряды = []
         for i in range(200):
@@ -531,8 +532,9 @@ class МатрицаTests(unittest.TestCase):
         self.assertFalse(any("типа" in в for в in вывод), вывод)
 
     def test_через_сервер(self):
-        from test_web import WebTestCase
         import time
+
+        from test_web import WebTestCase
 
         class Сеть(WebTestCase):
             def runTest(себя):

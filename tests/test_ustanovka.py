@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Установка на машину отдела: чтобы скрипты не расходились с приложением.
 
 Начальник отдела запустил setup-https.ps1 и получил подряд две беды: скрипт
@@ -30,7 +29,6 @@ import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.config import Settings
 from reportgen.packages import pip_hint
 

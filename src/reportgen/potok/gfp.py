@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """GFP (G.7041) и ATM: кадры по контрольной сумме заголовка.
 
 Обе процедуры выделяют кадры не флагами, а проверкой заголовка — так же
@@ -21,12 +20,11 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 from . import crc as crc_
-from . import pakety, skrembler
+from . import skrembler
 from .bity import в_байты, в_биты
 from .nahodka import Находка
 
@@ -44,18 +42,18 @@ def hec8(данные: bytes) -> int:
     return crc_.crc(данные, 8, 0x07, 0, False, False, 0) ^ 0x55
 
 
-def _заголовок_gfp(данные: bytes, место: int) -> Optional[int]:
+def _заголовок_gfp(данные: bytes, место: int) -> int | None:
     """PLI, если в этом месте верный основной заголовок GFP."""
     if место + 4 > len(данные):
         return None
-    сырые = bytes(a ^ b for a, b in zip(данные[место:место + 4], МАСКА))
+    сырые = bytes(a ^ b for a, b in zip(данные[место:место + 4], МАСКА, strict=False))
     pli = int.from_bytes(сырые[:2], "big")
     if hec16(сырые[:2]) != int.from_bytes(сырые[2:], "big"):
         return None
     return pli
 
 
-def _цепочка_gfp(данные: bytes, начало: int, предел: int = 20000) -> List[Tuple[int, int]]:
+def _цепочка_gfp(данные: bytes, начало: int, предел: int = 20000) -> list[tuple[int, int]]:
     кадры = []
     место = начало
     while len(кадры) < предел:
@@ -81,7 +79,7 @@ def gfp(биты: np.ndarray) -> Находка | None:
     return None
 
 
-def _описать_gfp(данные: bytes, цепь: List[Tuple[int, int]], сдвиг: int) -> Находка:
+def _описать_gfp(данные: bytes, цепь: list[tuple[int, int]], сдвиг: int) -> Находка:
     пустых = sum(1 for _, pli in цепь if pli == 0)
     с_нагрузкой = [(м, pli) for м, pli in цепь if pli >= 4]
     # Область нагрузки скремблирована x⁴³ + 1 сплошным потоком по всем
@@ -94,7 +92,7 @@ def _описать_gfp(данные: bytes, цепь: List[Tuple[int, int]], с
         снятые.append(в_байты(сплошь[место:место + 8 * len(область)]))
         место += 8 * len(область)
     типы: Counter = Counter()
-    клиенты: List[bytes] = []
+    клиенты: list[bytes] = []
     верных_thec = 0
     for область in снятые[1:]:                   # первая — без начала регистра x⁴³
         if len(область) < 4:
@@ -156,7 +154,7 @@ def _описать_atm(ячейки: np.ndarray, доля: float, сдвиг: i
     vci = ((ячейки[:, 1].astype(int) & 0x0F) << 12) | (ячейки[:, 2].astype(int) << 4) \
         | (ячейки[:, 3] >> 4)
     pt = (ячейки[:, 3] >> 1) & 0x07
-    каналы = Counter(zip(vpi.tolist(), vci.tolist()))
+    каналы = Counter(zip(vpi.tolist(), vci.tolist(), strict=False))
     пустых = sum(с for (п, к), с in каналы.items() if п == 0 and к == 0)
     # AAL5: ячейки канала до ячейки с признаком конца (PT = 0x1 в младшем бите
     # типа пользователя); в конце PDU — длина и CRC-32.
@@ -215,9 +213,9 @@ def _rfc2684(pdu: bytes) -> str:
 
 
 def _aal5(ячейки: np.ndarray, vpi: np.ndarray, vci: np.ndarray, pt: np.ndarray
-          ) -> List[Tuple[bytes, bool]]:
-    собрано: Dict[Tuple[int, int], bytearray] = {}
-    итог: List[Tuple[bytes, bool]] = []
+          ) -> list[tuple[bytes, bool]]:
+    собрано: dict[tuple[int, int], bytearray] = {}
+    итог: list[tuple[bytes, bool]] = []
     for номер in range(min(len(ячейки), 20000)):
         ключ = (int(vpi[номер]), int(vci[номер]))
         if ключ == (0, 0) or pt[номер] & 0b100:

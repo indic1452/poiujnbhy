@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Длинная последовательность не съедает ответ, а оборванный — продолжается.
 
 Отдел: «она в примерах или литературе нашла огромную двоичную комбинацию и
@@ -390,6 +389,7 @@ class ПродолжениеПоHttpTests(unittest.TestCase):
         from pathlib import Path
 
         from fastapi.testclient import TestClient
+
         from reportgen.config import Settings
         from reportgen.store import Database, Repositories
         from reportgen.web.app import create_app

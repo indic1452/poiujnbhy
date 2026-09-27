@@ -7,14 +7,14 @@
 """
 
 import unittest
-from unittest import mock
 from pathlib import Path
+from unittest import mock
 
-import _bootstrap  # noqa: F401
 from fastapi.testclient import TestClient
 
+import _bootstrap  # noqa: F401
 from reportgen.config import Settings
-from reportgen.corpus import Chunk, MIN_CHARS, merge_short_sections, split_document
+from reportgen.corpus import MIN_CHARS, Chunk, merge_short_sections, split_document
 from reportgen.ingest.convert import glued_text_warning
 from reportgen.llm import StubLLM
 from reportgen.store.db import Database

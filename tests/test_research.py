@@ -9,7 +9,6 @@
 import unittest
 
 import _bootstrap  # noqa: F401
-
 from reportgen.web.research import (
     Step,
     found_note,

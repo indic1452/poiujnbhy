@@ -7,13 +7,11 @@
 система выписывает его себе сама.
 """
 
-import ipaddress
 import tempfile
 import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.web.tls import (
     CERT_NAME,
     KEY_NAME,

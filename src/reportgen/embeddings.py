@@ -30,21 +30,16 @@ import socket
 import time
 import urllib.error
 import urllib.request
-
-from . import _http
 from collections import Counter
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
-    List,
     Protocol,
-    Sequence,
-    Tuple,
 )
 
+from . import _http
 from .retrieval import tokenize
 
 if TYPE_CHECKING:  # pragma: no cover — только для подсказок типов
@@ -172,16 +167,16 @@ class Embedder(Protocol):
 
     name: str
 
-    def embed(self, texts: Sequence[str]) -> List[List[float]]:
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
         ...
 
-    def embed_one(self, text: str) -> List[float]:
+    def embed_one(self, text: str) -> list[float]:
         ...
 
 
 # ------------------------------------------------------------- векторы ----
 
-def l2_normalize(vector: Sequence[float]) -> List[float]:
+def l2_normalize(vector: Sequence[float]) -> list[float]:
     """Приводит вектор к единичной длине. Нулевой вектор остаётся нулевым."""
     values = [float(value) for value in vector]
     norm = math.sqrt(sum(value * value for value in values))
@@ -210,7 +205,7 @@ def cosine(a: Sequence[float], b: Sequence[float]) -> float:
     dot = 0.0
     left_norm = 0.0
     right_norm = 0.0
-    for left_value, right_value in zip(a, b):
+    for left_value, right_value in zip(a, b, strict=False):
         dot += left_value * right_value
         left_norm += left_value * left_value
         right_norm += right_value * right_value
@@ -247,7 +242,7 @@ class VectorIndex:
     def __len__(self) -> int:
         return len(self.uids)
 
-    def search(self, query_vec: Sequence[float], k: int = 10) -> List[Tuple[str, float]]:
+    def search(self, query_vec: Sequence[float], k: int = 10) -> list[tuple[str, float]]:
         if not len(self.uids) or k <= 0 or not query_vec:
             return []
         np = _numpy()
@@ -310,7 +305,7 @@ def top_cosine(
     matrix: Sequence[Sequence[float]],
     uids: Sequence[str],
     k: int = 10,
-) -> List[Tuple[str, float]]:
+) -> list[tuple[str, float]]:
     """Топ-k ближайших к запросу строк матрицы.
 
     Возвращает пары ``(chunk_uid, косинус)``, лучшие первыми. Строки с
@@ -324,7 +319,7 @@ def top_cosine(
     dim = len(query_vec)
     rows = [
         (uid, vector)
-        for uid, vector in zip(uids, matrix)
+        for uid, vector in zip(uids, matrix, strict=False)
         if len(vector) == dim
     ]
     if not rows:
@@ -407,7 +402,7 @@ class EmbeddingClient:
 
     # -- публичный интерфейс -----------------------------------------------
 
-    def embed(self, texts: Sequence[str], *, batch: int | None = None) -> List[List[float]]:
+    def embed(self, texts: Sequence[str], *, batch: int | None = None) -> list[list[float]]:
         """Векторизует список текстов, разбивая его на батчи.
 
         Батч ограничен и по числу текстов: локальный сервер эмбеддингов
@@ -420,7 +415,7 @@ class EmbeddingClient:
         size = max(1, int(batch or self.batch))
         if self.safe_batch:
             size = min(size, self.safe_batch)
-        vectors: List[List[float]] = []
+        vectors: list[list[float]] = []
         index = 0
         while index < len(items):
             piece = items[index:index + size]
@@ -451,7 +446,7 @@ class EmbeddingClient:
             )
         return vectors
 
-    def _shorten_and_retry(self, text: str, error: EmbeddingError) -> List[float]:
+    def _shorten_and_retry(self, text: str, error: EmbeddingError) -> list[float]:
         """Один фрагмент, который сервер не принял целиком.
 
         Делить дальше нечего — остаётся укоротить сам текст: у модели предел
@@ -471,7 +466,7 @@ class EmbeddingClient:
             return vectors[0]
         raise error
 
-    def embed_one(self, text: str) -> List[float]:
+    def embed_one(self, text: str) -> list[float]:
         vectors = self.embed([text])
         if not vectors:
             raise EmbeddingError("сервер эмбеддингов вернул пустой ответ")
@@ -479,8 +474,8 @@ class EmbeddingClient:
 
     # -- транспорт ----------------------------------------------------------
 
-    def _request(self, texts: Sequence[str]) -> List[List[float]]:
-        payload: Dict[str, Any] = {
+    def _request(self, texts: Sequence[str]) -> list[list[float]]:
+        payload: dict[str, Any] = {
             "model": self.model,
             "input": list(texts),
             "encoding_format": "float",
@@ -514,7 +509,7 @@ class EmbeddingClient:
             kind=_kind_of(last_error),
         ) from last_error
 
-    def check(self) -> Dict[str, Any]:
+    def check(self) -> dict[str, Any]:
         """Один короткий запрос: отвечает ли служба и чем именно.
 
         Нужна человеку, а не программе: он нажимает «Проверить связь» и
@@ -544,16 +539,16 @@ class EmbeddingClient:
             "ms": int((time.monotonic() - started) * 1000),
         }
 
-    def _parse(self, body: Any, expected: int) -> List[List[float]]:
+    def _parse(self, body: Any, expected: int) -> list[list[float]]:
         if not isinstance(body, dict):
             raise ValueError("ответ не является объектом JSON")
         data = body.get("data")
         if not isinstance(data, list) or not data:
             raise ValueError("в ответе нет поля data с векторами")
-        ordered: List[Any] = list(data)
+        ordered: list[Any] = list(data)
         if all(isinstance(item, dict) and "index" in item for item in ordered):
             ordered.sort(key=lambda item: int(item["index"]))
-        vectors: List[List[float]] = []
+        vectors: list[list[float]] = []
         for item in ordered:
             raw = item.get("embedding") if isinstance(item, dict) else item
             if not isinstance(raw, (list, tuple)) or not raw:
@@ -593,10 +588,10 @@ class StubEmbedder:
     seed: int = 0
     name: str = "stub-embedder"
 
-    def embed(self, texts: Sequence[str]) -> List[List[float]]:
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
         return [self.embed_one(text) for text in texts]
 
-    def embed_one(self, text: str) -> List[float]:
+    def embed_one(self, text: str) -> list[float]:
         vector = [0.0] * self.dim
         counts = Counter(tokenize(text or ""))
         for token, tf in counts.items():
@@ -604,9 +599,9 @@ class StubEmbedder:
             vector[index] += sign * (1.0 + math.log(tf))
         return l2_normalize(vector)
 
-    def _slot(self, token: str) -> Tuple[int, float]:
+    def _slot(self, token: str) -> tuple[int, float]:
         digest = hashlib.blake2b(
-            f"{self.seed}:{token}".encode("utf-8"), digest_size=8
+            f"{self.seed}:{token}".encode(), digest_size=8
         ).digest()
         value = int.from_bytes(digest, "big")
         index = (value >> 1) % self.dim
@@ -617,7 +612,7 @@ class StubEmbedder:
 # --------------------------------------------------------- индексация ----
 
 def index_embeddings(
-    repos: "Repositories",
+    repos: Repositories,
     client: Embedder,
     *,
     batch: int = 32,
@@ -648,7 +643,7 @@ def index_embeddings(
     model = str(getattr(client, "model", "") or getattr(client, "name", "embedder"))
     size = max(1, int(batch))
     written = 0
-    skipped: List[str] = []
+    skipped: list[str] = []
     in_a_row = 0
     for start in range(0, total, size):
         piece = uids[start:start + size]
@@ -693,7 +688,7 @@ def index_embeddings(
             raise EmbeddingError(
                 f"на {len(piece)} фрагментов получено {len(vectors)} векторов"
             )
-        repos.vectors.put_many(model, dict(zip(piece, vectors)))
+        repos.vectors.put_many(model, dict(zip(piece, vectors, strict=False)))
         written += len(piece)
         if progress is not None:
             progress(written + len(skipped), total)
@@ -702,8 +697,8 @@ def index_embeddings(
     return written
 
 
-def index_embeddings_one(repos: "Repositories", client: Embedder, model: str,
-                         uid: str, text: str, skipped: List[str]) -> int:
+def index_embeddings_one(repos: Repositories, client: Embedder, model: str,
+                         uid: str, text: str, skipped: list[str]) -> int:
     """Один фрагмент: записан — 1, не принят сервером — 0 и запись в список."""
     try:
         vectors = client.embed([text])
@@ -726,9 +721,9 @@ def _log_skipped(skipped: Sequence[str]) -> None:
         len(skipped), examples)
 
 
-def _missing_uids(repos: "Repositories", uids: Sequence[str], slice_size: int = 400) -> List[str]:
+def _missing_uids(repos: Repositories, uids: Sequence[str], slice_size: int = 400) -> list[str]:
     """Чанки без вектора. Запрос режется на части: у SQLite лимит на число ?."""
-    missing: List[str] = []
+    missing: list[str] = []
     for start in range(0, len(uids), slice_size):
         missing.extend(repos.vectors.missing(uids[start:start + slice_size]))
     return missing

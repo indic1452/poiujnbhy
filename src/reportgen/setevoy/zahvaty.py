@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Захваты для страницы «Пакеты»: приём, разбор в фоне, хранение, выборки.
 
 Каждый захват — папка: исходный файл, пакеты подряд (пакеты.bin) с
@@ -25,7 +24,7 @@ import threading
 import time
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .chtenie import прочитать_захват
 from .filtr import нужны_байты, собрать
@@ -40,7 +39,7 @@ from .razbor import разобрать_пакет
 В_ПАМЯТИ = 2
 
 
-def _сводка(п: Пакет, поля: Dict[str, List[Any]]) -> Dict[str, Any]:
+def _сводка(п: Пакет, поля: dict[str, list[Any]]) -> dict[str, Any]:
     с = п.сводка()
     с["порт_от"], с["порт_к"] = п.порт_от, п.порт_к
     if "eth.src" in поля and "eth.dst" in поля:
@@ -52,7 +51,7 @@ def _сводка(п: Пакет, поля: Dict[str, List[Any]]) -> Dict[str, A
     return с
 
 
-def _для_фильтра(поля: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
+def _для_фильтра(поля: dict[str, list[Any]]) -> dict[str, list[Any]]:
     итог = {}
     for к, значения in поля.items():
         if к in БЕЗ_ФИЛЬТРА:
@@ -65,9 +64,9 @@ class Сборщик:
     """Сборка фрагментов IPv4 по (источник, получатель, id, протокол)."""
 
     def __init__(self):
-        self.куски: Dict[Tuple, Dict[str, Any]] = {}
+        self.куски: dict[tuple, dict[str, Any]] = {}
 
-    def добавить(self, п: Пакет, поля: Dict[str, List[Any]]) -> Optional[bytes]:
+    def добавить(self, п: Пакет, поля: dict[str, list[Any]]) -> bytes | None:
         if "ipv4" not in поля or not поля.get("ip.flags.mf") or "ip.frag_offset" not in поля:
             return None
         mf, смещение = поля["ip.flags.mf"][0], поля["ip.frag_offset"][0]
@@ -109,10 +108,10 @@ class СборщикMP:
     ЖДАТЬ = 4096
 
     def __init__(self):
-        self.куски: Dict[int, Dict[int, Tuple[bool, bool, bytes, int]]] = {}
-        self.последние_номера: List[int] = []
+        self.куски: dict[int, dict[int, tuple[bool, bool, bytes, int]]] = {}
+        self.последние_номера: list[int] = []
 
-    def добавить(self, п: Пакет, поля: Dict[str, List[Any]]) -> Optional[bytes]:
+    def добавить(self, п: Пакет, поля: dict[str, list[Any]]) -> bytes | None:
         уровень = next((у for у in п.уровни if у.протокол == "MP"), None)
         if уровень is None:
             return None
@@ -157,7 +156,7 @@ class Захваты:
     def __init__(self, папка: Path):
         self.папка = Path(папка)
         self._lock = threading.Lock()
-        self._кэш: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+        self._кэш: OrderedDict[str, dict[str, Any]] = OrderedDict()
 
     # -- приём ---------------------------------------------------------------------
 
@@ -183,7 +182,7 @@ class Захваты:
             self._записать(ид, состояние)
             сборщик, сборщик_mp = Сборщик(), СборщикMP()
             состояние.pop("mp_короткие_с", None)             # при пересборке узнаётся заново
-            шаблоны: Dict[str, Any] = {}                      # NetFlow v9/IPFIX: ключ → [[номер, поля], …]
+            шаблоны: dict[str, Any] = {}                      # NetFlow v9/IPFIX: ключ → [[номер, поля], …]
             как = состояние.get("как") or {}
             if (папка / "собранные").exists():             # пересборка: прежние собранные — прочь
                 for старый in (папка / "собранные").iterdir():
@@ -229,7 +228,7 @@ class Захваты:
             состояние.update(состояние="ошибка", ошибка=str(ошибка))
         self._записать(ид, состояние)
 
-    def разбирать_как(self, ид: str, правила: Dict[str, str]) -> Dict[str, str]:
+    def разбирать_как(self, ид: str, правила: dict[str, str]) -> dict[str, str]:
         """Задать «разбирать как» и разобрать захват заново (в фоне, как при приёме)."""
         from .prilozh import проверить_как  # noqa: PLC0415 — круговой импорт
         правила = проверить_как(правила)
@@ -243,8 +242,8 @@ class Захваты:
         threading.Thread(target=self._разобрать, args=(ид,), daemon=True, name="reportgen-pakety").start()
         return правила
 
-    def _собранный(self, папка: Path, п: Пакет, собрано: bytes, номера: List[int],
-                   как: Optional[Dict[str, str]] = None, *, канал: str = "IPv4", имя: str = "IPv4",
+    def _собранный(self, папка: Path, п: Пакет, собрано: bytes, номера: list[int],
+                   как: dict[str, str] | None = None, *, канал: str = "IPv4", имя: str = "IPv4",
                    из: str = "фрагментов") -> None:
         (папка / "собранные").mkdir(exist_ok=True)
         (папка / "собранные" / f"{п.номер}.bin").write_bytes(собрано)
@@ -262,13 +261,13 @@ class Захваты:
 
     # -- чтение --------------------------------------------------------------------
 
-    def прочитать(self, ид: str) -> Dict[str, Any]:
+    def прочитать(self, ид: str) -> dict[str, Any]:
         путь = self.папка / ид / "состояние.json"
         if not путь.exists():
             raise KeyError(ид)
         return json.loads(путь.read_text(encoding="utf-8"))
 
-    def список(self, владелец: int) -> List[Dict[str, Any]]:
+    def список(self, владелец: int) -> list[dict[str, Any]]:
         if not self.папка.exists():
             return []
         итог = []
@@ -280,7 +279,7 @@ class Захваты:
                     итог.append(с)
         return итог
 
-    def _загрузить(self, ид: str) -> Dict[str, Any]:
+    def _загрузить(self, ид: str) -> dict[str, Any]:
         with self._lock:
             if ид in self._кэш:
                 self._кэш.move_to_end(ид)
@@ -300,7 +299,7 @@ class Захваты:
                 self._кэш.popitem(last=False)
         return данные
 
-    def отобрать(self, ид: str, фильтр: str) -> List[int]:
+    def отобрать(self, ид: str, фильтр: str) -> list[int]:
         """Номера (с 0) пакетов под фильтр; последние фильтры запоминаются."""
         д = self._загрузить(ид)
         фильтр = (фильтр or "").strip()
@@ -318,20 +317,20 @@ class Захваты:
             д["фильтры"].popitem(last=False)
         return итог
 
-    def сводки(self, ид: str) -> List[Dict[str, Any]]:
+    def сводки(self, ид: str) -> list[dict[str, Any]]:
         return self._загрузить(ид)["сводки"]
 
-    def поля(self, ид: str) -> List[Dict[str, List[Any]]]:
+    def поля(self, ид: str) -> list[dict[str, list[Any]]]:
         return self._загрузить(ид)["поля"]
 
-    def байты(self, ид: str, номер: int) -> Tuple[bytes, str]:
+    def байты(self, ид: str, номер: int) -> tuple[bytes, str]:
         д = self._загрузить(ид)
         место, длина, канал = д["индекс"]["пакеты"][номер - 1]
         with open(self.папка / ид / "пакеты.bin", "rb") as файл:
             файл.seek(место)
             return файл.read(длина), д["индекс"]["каналы"][канал]
 
-    def пакет(self, ид: str, номер: int) -> Dict[str, Any]:
+    def пакет(self, ид: str, номер: int) -> dict[str, Any]:
         """Подробный разбор одного пакета — заново, с деревом полей."""
         данные, канал = self.байты(ид, номер)
         с = self.сводки(ид)[номер - 1]
@@ -351,7 +350,7 @@ class Захваты:
             итог["собранный"] = с_п.в_словарь()
         return итог
 
-    def кадры(self, ид: str) -> List[bytes]:
+    def кадры(self, ид: str) -> list[bytes]:
         """Байты всех пакетов (для фильтров по байтам и матрицы) — один раз на захват в памяти."""
         д = self._загрузить(ид)
         if "кадры" not in д:
@@ -360,15 +359,15 @@ class Захваты:
             д["кадры"] = [весь[место:место + длина] for место, длина, _ in д["индекс"]["пакеты"]]
         return д["кадры"]
 
-    def нагрузки(self, ид: str) -> List[Optional[bytes]]:
+    def нагрузки(self, ид: str) -> list[bytes | None]:
         д = self._загрузить(ид)
         if "нагрузки" not in д:
             кадры = self.кадры(ид)
             д["нагрузки"] = [к[с["нагр"][0]:с["нагр"][0] + с["нагр"][1]] if с.get("нагр") else None
-                             for к, с in zip(кадры, д["сводки"])]
+                             for к, с in zip(кадры, д["сводки"], strict=False)]
         return д["нагрузки"]
 
-    def выгрузить_pcap(self, ид: str, номера: List[int]) -> bytes:
+    def выгрузить_pcap(self, ид: str, номера: list[int]) -> bytes:
         """Отобранные пакеты — в pcap (канал — первого пакета; смешанные каналы — Ethernet)."""
         д = self._загрузить(ид)
         каналы = {д["индекс"]["каналы"][д["индекс"]["пакеты"][i][2]] for i in номера} or {"Ethernet"}
@@ -397,7 +396,7 @@ class Захваты:
             путь.unlink() if путь.is_file() else путь.rmdir()
         папка.rmdir()
 
-    def _записать(self, ид: str, состояние: Dict[str, Any]) -> None:
+    def _записать(self, ид: str, состояние: dict[str, Any]) -> None:
         путь = self.папка / ид / "состояние.json"
         временный = путь.with_suffix(".tmp")
         временный.write_text(json.dumps(состояние, ensure_ascii=False), encoding="utf-8")

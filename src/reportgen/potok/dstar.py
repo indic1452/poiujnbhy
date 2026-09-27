@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -70,12 +69,12 @@ def закодировать_свёрткой(биты: np.ndarray) -> np.ndarra
     return np.array(итог, dtype=np.uint8)
 
 
-def витерби(пары: np.ndarray) -> Tuple[np.ndarray, int]:
+def витерби(пары: np.ndarray) -> tuple[np.ndarray, int]:
     """Жёсткий Витерби K = 3 (7, 5): (биты, расстояние до ближайшего кодового слова)."""
     пары = np.asarray(пары, dtype=np.uint8).reshape(-1, 2)
     INF = 1 << 30
     метрики = [0, INF, INF, INF]                     # состояние = (d1 << 1) | d2
-    пути: List[List[int]] = [[], [], [], []]
+    пути: list[list[int]] = [[], [], [], []]
     for a, b in пары:
         новые, новые_пути = [INF] * 4, [None] * 4
         for s in range(4):
@@ -106,7 +105,7 @@ def crc_заголовка(данные39: bytes) -> bytes:
     return (fcs16(данные39) ^ 0xFFFF).to_bytes(2, "little")
 
 
-def декодировать_заголовок(эфир: np.ndarray) -> Tuple[bytes, bool, int]:
+def декодировать_заголовок(эфир: np.ndarray) -> tuple[bytes, bool, int]:
     """660 бит эфира → (41 байт, CRC верна, исправлено бит)."""
     б = np.asarray(эфир, dtype=np.uint8)[:ЗАГОЛОВОК_БИТ] ^ СКРЕМБЛЕР
     промежуточные = np.zeros(ЗАГОЛОВОК_БИТ, dtype=np.uint8)
@@ -126,7 +125,7 @@ def закодировать_заголовок(заголовок41: bytes) -> 
          (0x08, "срочно"))
 
 
-def поля(заголовок: bytes) -> Dict[str, object]:
+def поля(заголовок: bytes) -> dict[str, object]:
     т = заголовок.decode("ascii", "replace")
     флаг = заголовок[0]
     return {"флаги": [имя for бит, имя in ФЛАГИ if флаг & бит], "управление": флаг & 7,
@@ -134,13 +133,13 @@ def поля(заголовок: bytes) -> Dict[str, object]:
             "my": т[27:35].rstrip(), "суффикс": т[35:39].rstrip()}
 
 
-def описание(п: Dict[str, object]) -> str:
+def описание(п: dict[str, object]) -> str:
     my = str(п["my"]) + (f"/{п['суффикс']}" if п["суффикс"] else "")
     return (f"{my} → {п['ur']} через {п['rpt1']} / {п['rpt2']}"
             + (f" ({', '.join(п['флаги'])})" if п["флаги"] else ""))
 
 
-def _места(биты: np.ndarray, слово: int, длина: int) -> List[Tuple[int, bool]]:
+def _места(биты: np.ndarray, слово: int, длина: int) -> list[tuple[int, bool]]:
     if len(биты) < длина:
         return []
     окна = np.lib.stride_tricks.sliding_window_view(биты, длина)
@@ -150,12 +149,12 @@ def _места(биты: np.ndarray, слово: int, длина: int) -> List[
     return sorted(итог)
 
 
-def тексты(биты: np.ndarray, синхро: List[Tuple[int, bool]]) -> List[str]:
+def тексты(биты: np.ndarray, синхро: list[tuple[int, bool]]) -> list[str]:
     """Тексты медленных данных по сверхкадрам (от каждой синхронизации данных)."""
     итог = []
     for место, инверсия in синхро:
         начало = место - 72                                  # синхронизация — в медленных данных кадра 0
-        части: Dict[int, str] = {}
+        части: dict[int, str] = {}
         for пара in range(10):
             байты = b""
             for k in (1 + 2 * пара, 2 + 2 * пара):
@@ -172,7 +171,7 @@ def тексты(биты: np.ndarray, синхро: List[Tuple[int, bool]]) -> 
     return итог
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     биты = np.asarray(биты, dtype=np.uint8)
     заголовки = []
     for место, инверсия in _места(биты, СИНХРО_ЗАГОЛОВКА, 24):

@@ -14,7 +14,6 @@ src/trau/trau_frame.c encode_sync16). Биты 17–21 — C1…C5, вид ка�
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -29,7 +28,7 @@ from .nahodka import Находка
 СОГЛАСИЕ = 0.9
 
 #: C1…C5 → (вид, направление) — trau_frame.h TRAU_FT_* (вверх — от БС к TRAU, вниз — к БС).
-ВИДЫ: Dict[int, Tuple[str, str]] = {
+ВИДЫ: dict[int, tuple[str, str]] = {
     0x02: ("речь FR", "вверх"), 0x1C: ("речь FR", "вниз"), 0x1A: ("речь EFR", ""),
     0x06: ("речь AMR", ""), 0x03: ("речь HR", "вверх"), 0x1D: ("речь HR", "вниз"),
     0x05: ("O&M", "вверх"), 0x1B: ("O&M", "вниз"), 0x08: ("данные", "вверх"), 0x16: ("данные", "вниз"),
@@ -44,7 +43,7 @@ def _верные(кадры: np.ndarray) -> np.ndarray:
     return (кадры[:, НУЛИ] == 0).all(1) & (кадры[:, ЕДИНИЦЫ] == 1).all(1)
 
 
-def выровнять(биты: np.ndarray) -> Optional[Tuple[int, float, np.ndarray]]:
+def выровнять(биты: np.ndarray) -> tuple[int, float, np.ndarray] | None:
     """Начало кадра по 35 битам синхрокомбинации: (сдвиг, доля верных кадров, кадры)."""
     биты = np.asarray(биты, dtype=np.uint8)
     кадров = len(биты) // ДЛИНА - 1
@@ -74,13 +73,13 @@ def кадры_v110(кадры: np.ndarray) -> np.ndarray:
     return np.concatenate([нули, группы], axis=2).reshape(-1)
 
 
-def подканалы(биты: np.ndarray) -> List[Tuple[int, np.ndarray]]:
+def подканалы(биты: np.ndarray) -> list[tuple[int, np.ndarray]]:
     """Четыре подканала 16 кбит/с канала 64 кбит/с: (номер 1–4, биты)."""
     октеты = np.asarray(биты[:len(биты) // 8 * 8], dtype=np.uint8).reshape(-1, 8)
     return [(k + 1, октеты[:, 2 * k:2 * k + 2].reshape(-1)) for k in range(4)]
 
 
-def _разобрать(биты: np.ndarray) -> Optional[Dict[str, object]]:
+def _разобрать(биты: np.ndarray) -> dict[str, object] | None:
     найдено = выровнять(биты)
     if найдено is None:
         return None
@@ -100,10 +99,10 @@ def _словами(счёт: Counter) -> str:
     return ", ".join(итог)
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     """TRAU 16 кбит/с прямо в потоке или в подканалах канала 64 кбит/с; данные — через V.110."""
     биты = np.asarray(биты, dtype=np.uint8)
-    итоги: List[Tuple[int, Dict[str, object]]] = []
+    итоги: list[tuple[int, dict[str, object]]] = []
     прямо = _разобрать(биты)
     if прямо is not None:
         итоги.append((0, прямо))
@@ -114,7 +113,7 @@ def найти(биты: np.ndarray) -> Optional[Находка]:
                 итоги.append((номер, р))
     if not итоги:
         return None
-    подробно: List[str] = []
+    подробно: list[str] = []
     дальше = None
     всего = Counter()
     for номер, р in итоги:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Как поставить недостающий пакет на ЭТОЙ машине.
 
 Совет «pip install python-pptx» отделу не помогает ничем. Интернета в контуре
@@ -30,7 +29,7 @@ WHEEL_PLACES = (
 )
 
 
-def wheels_dir() -> "Path | None":
+def wheels_dir() -> Path | None:
     """Каталог колёс комплекта, если он на месте."""
     указан = os.environ.get("REPORTGEN_WHEELS", "").strip()
     if указан and Path(указан).is_dir():

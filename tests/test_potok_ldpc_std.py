@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Встроенные коды LDPC стандартов: состав, размеры и ранг, кодирование, снятие автоматом.
 
 Таблицы сверены при сборке данных (DVB-S2 — xdsopl против AFF3CT, 5G NR — AFF3CT
@@ -243,7 +242,7 @@ class Состав(unittest.TestCase):
         прочитано = ldpc.из_alist("\n".join(линии))
         self.assertLess(time.monotonic() - начало, 10.0)
         self.assertEqual(len(прочитано.строки), len(м.строки))
-        self.assertTrue(all(np.array_equal(a, b) for a, b in zip(прочитано.строки, м.строки)))
+        self.assertTrue(all(np.array_equal(a, b) for a, b in zip(прочитано.строки, м.строки, strict=False)))
 
     def test_ar4ja_схема_из_файла(self):
         """AR4JA (CCSDS): последние 4 блок-столбца не передаются — по шаблону из файла источника;

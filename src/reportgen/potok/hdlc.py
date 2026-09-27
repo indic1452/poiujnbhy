@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """HDLC и битстаффинг: флаги, вставленные нули, кадры, FCS.
 
 Признак HDLC-подобного канала — флаг 01111110 на БИТОВОМ уровне, не
@@ -16,7 +15,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import List
 
 import numpy as np
 
@@ -32,7 +30,7 @@ from .nahodka import Находка
 ОСТАТОК_32 = 0xDEBB20E3
 
 
-def _таблица16() -> List[int]:
+def _таблица16() -> list[int]:
     таблица = []
     for байт in range(256):
         crc = байт
@@ -42,7 +40,7 @@ def _таблица16() -> List[int]:
     return таблица
 
 
-def _таблица32() -> List[int]:
+def _таблица32() -> list[int]:
     таблица = []
     for байт in range(256):
         crc = байт
@@ -104,11 +102,11 @@ def снять_вставку(биты: np.ndarray) -> np.ndarray:
     return np.delete(биты, вставлено)
 
 
-def кадры(биты: np.ndarray) -> List[bytes]:
+def кадры(биты: np.ndarray) -> list[bytes]:
     """Кадры между флагами, со снятой вставкой, в байтах (младший бит первым)."""
     места = флаги(биты)
     итог = []
-    for начало, конец in zip(места[:-1], места[1:]):
+    for начало, конец in zip(места[:-1], места[1:], strict=False):
         if конец - начало < 8 + 32:          # между соседними флагами пусто
             continue
         тело = снять_вставку(биты[начало + 8:конец])

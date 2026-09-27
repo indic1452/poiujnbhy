@@ -26,9 +26,9 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
 
 __all__ = ["TermGlossary", "glossary", "default_path", "expand_query",
            "mentions", "normalize"]
@@ -83,7 +83,7 @@ def normalize(text: str) -> str:
     return (text or "").lower().replace("ё", "е")
 
 #: Кэш собранных выражений: поиск идёт на каждый запрос, а словарь большой.
-_PATTERNS: Dict[str, "re.Pattern[str]"] = {}
+_PATTERNS: dict[str, re.Pattern[str]] = {}
 
 
 @dataclass(frozen=True)
@@ -91,13 +91,13 @@ class Term:
     """Одна пара словаря."""
 
     ru: str
-    en: Tuple[str, ...]
+    en: tuple[str, ...]
     #: Равнозначные написания того же термина по-русски: КСВ и КСВН, ОСШ и
     #: С/Ш, ФМ-4 и ОФМ-4. Инженер печатает одно, а в книге стоит другое, и
     #: словесный поиск их не сводит — для BM25 это разные слова. Только
     #: ОДНОСЛОВНЫЕ сокращения: многословную расшифровку к запросу добавлять
     #: нельзя, она тянет в выдачу всё, где есть «коэффициент» или «сигнал».
-    ru_syn: Tuple[str, ...] = ()
+    ru_syn: tuple[str, ...] = ()
     risk: str = "нет"
     note: str = ""
 
@@ -120,7 +120,7 @@ def default_path() -> Path:
     return DEFAULT_PATH
 
 
-def _pattern(word: str) -> "re.Pattern[str]":
+def _pattern(word: str) -> re.Pattern[str]:
     """Выражение для короткого слова: целиком, но с любым окончанием.
 
     «ацп» найдётся в «ацп» и «ацпшный» не найдётся, «код» — в «код», «кода»,
@@ -208,7 +208,7 @@ _ES_ENDINGS = ("s", "sh", "ch", "x", "z")
 _VOWELS = "aeiou"
 
 
-def _plural_variants(word: str) -> List[str]:
+def _plural_variants(word: str) -> list[str]:
     """«header field» и «header fields» — для поиска это разные слова.
 
     Стеммер в системе русский: английские окончания он не срезает, поэтому
@@ -258,27 +258,27 @@ class TermGlossary:
                  problems: Sequence[str] = ()):
         # Длинные основы вперёд: «полоса пропускания» точнее, чем «полоса», и
         # если сработали обе — брать надо точную.
-        self.terms: List[Term] = sorted(terms, key=lambda t: len(t.ru), reverse=True)
+        self.terms: list[Term] = sorted(terms, key=lambda t: len(t.ru), reverse=True)
         self.source = source
         #: Записи, которые словарь отбросил, и почему. Справочник заявлен
         #: пополняемым, а отбрасывал строки МОЛЧА: двухбуквенное сокращение,
         #: запись без эквивалентов, лишняя запятая в JSON — всё это выключало
         #: термин (а битый файл — весь словарь) без единого слова человеку.
         #: Печатает этот список команда «reportgen terms».
-        self.problems: List[str] = list(problems)
+        self.problems: list[str] = list(problems)
 
     def __len__(self) -> int:
         return len(self.terms)
 
     @classmethod
-    def load(cls, path: str | Path | None = None) -> "TermGlossary":
+    def load(cls, path: str | Path | None = None) -> TermGlossary:
         """Читает словарь. Нет файла или он испорчен — пустой словарь.
 
         Молча: поиск без расширения работает, просто хуже. Ронять приём
         библиотеки из-за справочника нельзя.
         """
         resolved = Path(path) if path else default_path()
-        problems: List[str] = []
+        problems: list[str] = []
         try:
             raw = json.loads(resolved.read_text(encoding="utf-8-sig"))
         except OSError as error:
@@ -294,7 +294,7 @@ class TermGlossary:
             return cls([], source=resolved,
                        problems=["в файле нет списка «terms»"])
 
-        terms: List[Term] = []
+        terms: list[Term] = []
         for number, row in enumerate(rows, start=1):
             if not isinstance(row, dict):
                 problems.append(f"запись {number}: не объект — пропущена")
@@ -340,7 +340,7 @@ class TermGlossary:
             ))
         return cls(terms, source=resolved, problems=problems)
 
-    def matches(self, query: str) -> List[Term]:
+    def matches(self, query: str) -> list[Term]:
         """Термины словаря, встретившиеся в запросе.
 
         Запись срабатывает на ЛЮБОЕ из своих написаний: «КСВ» и «КСВН» — одна
@@ -356,7 +356,7 @@ class TermGlossary:
                 or any(_hit(word, text) for word in term.ru_syn)]
 
     def expand(self, query: str, *, limit: int = MAX_EXPANSIONS,
-               russian_limit: int = MAX_RU_EXPANSIONS) -> List[str]:
+               russian_limit: int = MAX_RU_EXPANSIONS) -> list[str]:
         """Слова, которые стоит добавить к запросу.
 
         Сначала равнозначные русские написания, потом английские эквиваленты.
@@ -368,7 +368,7 @@ class TermGlossary:
         «поля заголовка header fields» — второй раз добавлять нечего.
         """
         already = set(_WORD.findall(normalize(query)))
-        out: List[str] = []
+        out: list[str] = []
         seen: set[str] = set()
 
         def add(variant: str) -> bool:
@@ -431,7 +431,7 @@ class TermGlossary:
 
 
 #: Разобранный словарь и время правки файла, по которому он прочитан.
-_cache: Dict[str, Tuple[float, TermGlossary]] = {}
+_cache: dict[str, tuple[float, TermGlossary]] = {}
 
 
 def _mtime(path: Path) -> float:
@@ -461,7 +461,7 @@ def glossary(path: str | Path | None = None) -> TermGlossary:
 
 
 def expand_query(query: str, path: str | Path | None = None,
-                 *, limit: int = MAX_EXPANSIONS) -> Tuple[str, List[str]]:
+                 *, limit: int = MAX_EXPANSIONS) -> tuple[str, list[str]]:
     """Запрос с добавленными английскими терминами и список добавленного.
 
     Возвращает пару: во что превратился запрос и что именно добавлено — второе

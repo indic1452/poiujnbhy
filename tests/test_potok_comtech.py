@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Сквозной разбор потока как образец Comtech 8PSK: всё вслепую, от меток до IP.
 
 Как в образце аналитика (250_V_8085_8PSK_7556_K2964): кадры Ethernet с IP в
@@ -14,9 +13,9 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
+from reportgen.potok import ploskost, razbor
 from test_potok_blok import НАЧАЛЬНОЕ, ОТВОДЫ, лрп
 from test_potok_tpc3 import ЧУЖИЕ, comtech
-from reportgen.potok import ploskost, razbor
 
 
 def образец(пакетов=90, флагов=300, сид=1, порядок="little"):

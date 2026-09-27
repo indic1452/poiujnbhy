@@ -92,7 +92,7 @@ class ПотокTests(unittest.TestCase):
         б = d.передача(ЗАГОЛОВОК, "ABCDEFGHIJKLMNOPQRST", 2)
         for сверх in range(2):
             кадр = 64 + 24 + 660 + (сверх * 21 + 7) * 96 + 72              # кадр 7 — начало блока 3
-            б[кадр:кадр + 24] = d._из_байт_младшим(bytes(x ^ y for x, y in zip(b"\x44PQ", d.МЕДЛЕННЫЕ_XOR)))
+            б[кадр:кадр + 24] = d._из_байт_младшим(bytes(x ^ y for x, y in zip(b"\x44PQ", d.МЕДЛЕННЫЕ_XOR, strict=False)))
         н = d.найти(self.поток(б))
         self.assertFalse(any("текст" in с for с in н.подробно))
         self.assertEqual([], d.тексты(б, [(64 + 24 + 660 + 72, False)]))

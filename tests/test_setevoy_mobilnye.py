@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Мобильные сети и AAA: Diameter, GTPv1-C, GTPv2-C, GTP', PFCP, S1AP, NGAP, X2AP, SGsAP,
 GSMTAP, TACACS+, Kerberos, LDAP.
 

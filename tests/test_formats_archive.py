@@ -24,7 +24,6 @@ import zipfile
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.ingest import registry
 from reportgen.ingest.convert import convert_file
 from reportgen.ingest.formats import archive
@@ -214,7 +213,7 @@ class ZipSafetyTest(TempCase):
         self.assertTrue(any("за пределы каталога" in item for item in result.warnings),
                         result.warnings)
         self.assertIn("небезопасное имя", result.text)
-        escaped = [item for item in holder.rglob("evil.txt")]
+        escaped = list(holder.rglob("evil.txt"))
         self.assertEqual(escaped, [], "файл записан за пределы каталога распаковки")
         self.assertEqual(list(holder.iterdir()), [], "временный каталог не удалён")
 
@@ -335,7 +334,7 @@ class ZipSafetyTest(TempCase):
             path = self.zip_with({"документ.md": "# Документ\n\n" + TEXT * 8})
             archive.convert_zip(path)
             broken = self.tmp / "битый.zip"
-            broken.write_bytes("PK\x03\x04 дальше мусор".encode("utf-8"))
+            broken.write_bytes("PK\x03\x04 дальше мусор".encode())
             archive.convert_zip(broken)
         finally:
             tempfile.tempdir = previous
@@ -367,7 +366,7 @@ class ZipFailureTest(TempCase):
 
     def test_broken_archive_gives_warning_not_exception(self):
         path = self.tmp / "битый.zip"
-        path.write_bytes("PK\x03\x04 это не архив, а обрывок".encode("utf-8"))
+        path.write_bytes("PK\x03\x04 это не архив, а обрывок".encode())
         result = archive.convert_zip(path)
         self.assertTrue(result.is_empty)
         self.assertTrue(any("не открыт" in item for item in result.warnings), result.warnings)
@@ -393,7 +392,7 @@ class ZipFailureTest(TempCase):
 
     def test_broken_member_does_not_break_the_archive(self):
         path = self.zip_with({
-            "битый.pdf": "%PDF-1.4 дальше мусор".encode("utf-8"),
+            "битый.pdf": "%PDF-1.4 дальше мусор".encode(),
             "документ.md": "# Документ\n\n" + TEXT * 8,
         })
         result = archive.convert_zip(path)

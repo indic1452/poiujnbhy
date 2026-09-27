@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Находка анализатора: что найдено, насколько уверенно, что дальше.
 
 Уверенность — не ощущение, а мера, которую можно пересчитать: доля кадров
@@ -10,7 +9,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, List
+from typing import Any
 
 
 @dataclass
@@ -19,7 +18,7 @@ class Находка:
     что: str                      # коротко: «HDLC, FCS-16»
     уверенность: float            # 0…1
     мера: str                     # на чём держится уверенность — словами и числом
-    подробно: List[str] = field(default_factory=list)
+    подробно: list[str] = field(default_factory=list)
     #: Что передать следующему уровню разбора: биты, байты или кадры.
     дальше: Any = None
     вид_дальше: str = ""          # «биты», «байты», «кадры»

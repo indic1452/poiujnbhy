@@ -34,14 +34,14 @@ class ТаблицаTests(unittest.TestCase):
         буквы = sorted(б for б, _ in navtex.КОДЫ.values() if б.isalpha())
         self.assertEqual([chr(c) for c in range(ord("A"), ord("Z") + 1)], буквы)
         # цифры — на верхнем ряду клавиатуры, как в МТК-2: Q = 1 … P = 0
-        верхний = {б: ц for б, ц in navtex.КОДЫ.values()}
+        верхний = dict(navtex.КОДЫ.values())
         self.assertEqual("1234567890", "".join(верхний[б] for б in "QWERTYUIOP"))
 
     def test_коды_по_m476(self):
         """A = B B B Y Y Y B (младший бит — первым); регистр цифр — международный."""
         a = [к for к, (б, _) in navtex.КОДЫ.items() if б == "A"][0]
         self.assertEqual([1, 1, 1, 0, 0, 0, 1], [(a >> i) & 1 for i in range(7)])
-        цифры = {б: ц for б, ц in navtex.КОДЫ.values()}
+        цифры = dict(navtex.КОДЫ.values())
         self.assertEqual(("\x07", "\x05", "'", "+", "="), tuple(цифры[б] for б in "JDSZV"))
 
 

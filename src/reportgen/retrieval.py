@@ -13,9 +13,10 @@ import math
 import re
 import threading
 from collections import Counter
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Sequence
+from typing import Any
 
 from .corpus import SEARCHABLE_STATUSES, Chunk
 from .numbers import separate_code_params
@@ -110,7 +111,7 @@ def stem(word: str) -> str:
 _GLUED_DESIGNATION = re.compile(r"^([a-zа-яё]{2,})(\d{2,})$")
 
 
-def split_designation(token: str) -> List[str]:
+def split_designation(token: str) -> list[str]:
     """Слитное обозначение — само плюс его половины.
 
     Инженер пишет номер документа как придётся: «RFC 4818», «RFC-4818»,
@@ -129,7 +130,7 @@ def split_designation(token: str) -> List[str]:
     return [token, match.group(1), match.group(2)]
 
 
-def tokenize(text: str) -> List[str]:
+def tokenize(text: str) -> list[str]:
     # Запятую в числе приводим к точке: «12,5» и «12.5» — одна и та же
     # величина, и в указателе они обязаны быть одним словом. Заодно это
     # уберегает от вычистки запятой в MATCH-строке, где всё, кроме букв,
@@ -137,7 +138,7 @@ def tokenize(text: str) -> List[str]:
     text = separate_code_params(text)
     tokens = (unmix_scripts(token).lower().replace(",", ".")
               for token in _TOKEN_RE.findall(text))
-    готово: List[str] = []
+    готово: list[str] = []
     for token in tokens:
         if token in STOPWORDS:
             continue
@@ -156,9 +157,9 @@ class BM25Index:
     """Классический BM25 Okapi. Держит корпус в памяти."""
 
     def __init__(self, chunks: Sequence[Chunk]):
-        self.chunks: List[Chunk] = list(chunks)
-        self._tokens: List[Counter] = []
-        self._lengths: List[int] = []
+        self.chunks: list[Chunk] = list(chunks)
+        self._tokens: list[Counter] = []
+        self._lengths: list[int] = []
         self._df: Counter = Counter()
         for chunk in self.chunks:
             tokens = tokenize(chunk.indexed_text)
@@ -184,10 +185,10 @@ class BM25Index:
         top_k: int = 10,
         *,
         doc_types: Iterable[str] | None = None,
-        meta_filter: Dict[str, str] | None = None,
+        meta_filter: dict[str, str] | None = None,
         domains: Iterable[str] | None = None,
         statuses: Iterable[str] | None = SEARCHABLE_STATUSES,
-    ) -> List[Hit]:
+    ) -> list[Hit]:
         terms = tokenize(query)
         if not terms:
             return []
@@ -199,7 +200,7 @@ class BM25Index:
         # search» и сборка отчёта по файловому указателю — показывали, и она
         # уезжала в отчёт со ссылкой как действующая.
         allowed_statuses = set(statuses) if statuses else None
-        scores: List[tuple[float, int]] = []
+        scores: list[tuple[float, int]] = []
         for index, chunk in enumerate(self.chunks):
             if allowed_types and chunk.doc_type not in allowed_types:
                 continue
@@ -244,7 +245,7 @@ class BM25Index:
         )
 
     @classmethod
-    def load(cls, path: str | Path) -> "BM25Index":
+    def load(cls, path: str | Path) -> BM25Index:
         payload = json.loads(Path(path).read_text(encoding="utf-8-sig"))
         return cls([Chunk.from_dict(item) for item in payload["chunks"]])
 
@@ -252,7 +253,7 @@ class BM25Index:
 def reciprocal_rank_fusion(
     rankings: Sequence[Sequence[Hit]], k: int = 60, top_k: int = 10,
     weights: Sequence[float] | None = None,
-) -> List[Hit]:
+) -> list[Hit]:
     """Слияние нескольких ранжирований (RRF).
 
     Устойчивее взвешенной суммы: не требует калибровки шкал BM25 и косинусной
@@ -269,8 +270,8 @@ def reciprocal_rank_fusion(
     НЕСКОЛЬКИХ списках, поднимается по-прежнему — и это то, что нужно: два
     независимых способа его найти весомее одного.
     """
-    fused: Dict[str, float] = {}
-    seen: Dict[str, Chunk] = {}
+    fused: dict[str, float] = {}
+    seen: dict[str, Chunk] = {}
     веса = list(weights or ())
     for индекс, ranking in enumerate(rankings):
         вес = веса[индекс] if индекс < len(веса) else 1.0
@@ -319,7 +320,7 @@ class Retriever:
         self._state = threading.local()
 
     @property
-    def last_expansion(self) -> List[str]:
+    def last_expansion(self) -> list[str]:
         """Что добавилось к последнему запросу этого потока."""
         return getattr(self._state, "expansion", [])
 
@@ -333,9 +334,9 @@ class Retriever:
         top_k: int = 6,
         *,
         doc_types: Iterable[str] | None = None,
-        meta_filter: Dict[str, str] | None = None,
+        meta_filter: dict[str, str] | None = None,
         domains: Iterable[str] | None = None,
-    ) -> List[Hit]:
+    ) -> list[Hit]:
         from .terms import expand_query  # noqa: PLC0415 — словарь не нужен при импорте
 
         expanded, self.last_expansion = expand_query(query, self.terms_path)
@@ -348,7 +349,7 @@ class Retriever:
             chunks = [hit.chunk for hit in lexical]
             scores = self.dense_scorer(query, chunks)
             dense = sorted(
-                (Hit(chunk=c, score=s) for c, s in zip(chunks, scores)),
+                (Hit(chunk=c, score=s) for c, s in zip(chunks, scores, strict=False)),
                 key=lambda hit: -hit.score,
             )
             rankings.append(dense)
@@ -358,7 +359,7 @@ class Retriever:
             chunks = [hit.chunk for hit in merged]
             scores = self.reranker(query, chunks)
             merged = sorted(
-                (Hit(chunk=c, score=s) for c, s in zip(chunks, scores)),
+                (Hit(chunk=c, score=s) for c, s in zip(chunks, scores, strict=False)),
                 key=lambda hit: -hit.score,
             )
         for rank, hit in enumerate(merged[:top_k], start=1):

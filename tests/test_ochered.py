@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Двое спрашивают одновременно: ответ каждого — только его.
 
 llama-server запущен с «--parallel 1»: одно окно, одна очередь. Второй
@@ -197,7 +196,7 @@ class ОчередьНеБеднитОтветTests(unittest.TestCase):
     """
 
     def test_рост_потолка_ограничен(self):
-        from test_tochnyi_schet import Модель, Основа  # noqa: PLC0415
+        from test_tochnyi_schet import Основа  # noqa: PLC0415
 
         class Проба(Основа):
             def runTest(self_):

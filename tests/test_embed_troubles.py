@@ -11,11 +11,10 @@
 import json
 import unittest
 import urllib.error
+from collections.abc import Sequence
 from io import BytesIO
-from typing import List, Sequence
 
 import _bootstrap  # noqa: F401
-
 from reportgen import _http
 from reportgen.corpus import Chunk
 from reportgen.embeddings import (
@@ -118,9 +117,9 @@ class FakeServer:
     def __init__(self, limit: int = 4, chars: int = 10 ** 9):
         self.limit = limit
         self.chars = chars
-        self.calls: List[int] = []
+        self.calls: list[int] = []
 
-    def __call__(self, texts: Sequence[str]) -> List[List[float]]:
+    def __call__(self, texts: Sequence[str]) -> list[list[float]]:
         self.calls.append(len(texts))
         if len(texts) > self.limit:
             raise EmbeddingError("сервер эмбеддингов недоступен: "

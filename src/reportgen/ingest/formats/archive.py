@@ -57,9 +57,9 @@ import stat
 import subprocess
 import tempfile
 import zipfile
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
 
 from .. import registry
 from ..convert import (
@@ -106,7 +106,7 @@ ARCHIVE_SUFFIXES = (
 )
 
 #: Архивы, которые система умеет открывать сама, и вид каждого из них.
-_ARCHIVE_KINDS: Dict[str, str] = {".zip": "zip", ".7z": "7z", ".rar": "rar"}
+_ARCHIVE_KINDS: dict[str, str] = {".zip": "zip", ".7z": "7z", ".rar": "rar"}
 
 #: Размер блока при распаковке. Читаем потоком: файл на 300 МБ в память не берём.
 _BLOCK = 1 << 20
@@ -219,15 +219,15 @@ class _Unpacked:
     """Итог распаковки: что удалось достать и что при этом случилось."""
 
     opened: bool = False
-    entries: List[ArchiveEntry] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    entries: list[ArchiveEntry] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     #: Сколько файлов было в архиве (без каталогов и служебного мусора).
     total: int = 0
     encrypted: int = 0
     unsafe: int = 0
     #: Готовые строки «имя — причина» по файлам, которые распаковать не вышло.
     #: Попадают в состав архива: молча потерянный файл хуже отсутствующего.
-    failed: List[str] = field(default_factory=list)
+    failed: list[str] = field(default_factory=list)
 
 
 # ------------------------------------------------------------ утилиты ----
@@ -324,7 +324,7 @@ def safe_member_path(root: Path, name: str) -> Path | None:
     cleaned = name.replace("\\", "/").strip()
     if not cleaned or cleaned.startswith("/") or _DRIVE_RE.match(cleaned):
         return None
-    parts: List[str] = []
+    parts: list[str] = []
     for part in cleaned.split("/"):
         if part in ("", "."):
             continue
@@ -354,7 +354,7 @@ def shift_headings(text: str, by: int) -> str:
     """
     if by <= 0 or not text:
         return text
-    lines: List[str] = []
+    lines: list[str] = []
     fence = ""
     for line in text.splitlines():
         opening = _FENCE_RE.match(line)
@@ -404,7 +404,7 @@ def _extract_zip_member(
     info: zipfile.ZipInfo,
     target: Path,
     budget: _Budget,
-) -> Tuple[int, str]:
+) -> tuple[int, str]:
     """Распаковывает один элемент. Возвращает (сколько байт, причина отказа)."""
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -456,7 +456,7 @@ def _unpack_zip(path: Path, root: Path, budget: _Budget) -> _Unpacked:
             out.warnings.append(f"оглавление архива не прочитано: {_reason(error)}")
             return out
 
-        members: List[Tuple[zipfile.ZipInfo, str]] = []
+        members: list[tuple[zipfile.ZipInfo, str]] = []
         for info in infos:
             if info.is_dir():
                 continue
@@ -550,7 +550,7 @@ def _decode_output(raw: bytes) -> str:
     return raw.decode("utf-8", errors="replace")
 
 
-def _run(command: Sequence[str], timeout: float) -> Tuple[int, str]:
+def _run(command: Sequence[str], timeout: float) -> tuple[int, str]:
     """Запуск архиватора. Возвращает (код возврата, вывод); -1 — не запустился,
     -2 — не уложился в таймаут.
 
@@ -579,7 +579,7 @@ def _run(command: Sequence[str], timeout: float) -> Tuple[int, str]:
     return completed.returncode, output
 
 
-def _parse_listing(text: str) -> List[Dict[str, str]]:
+def _parse_listing(text: str) -> list[dict[str, str]]:
     """Разбирает технический листинг архиватора в список записей.
 
     Понимает обе записи: ``7z l -slt`` печатает «Ключ = значение», ``unrar lt``
@@ -592,8 +592,8 @@ def _parse_listing(text: str) -> List[Dict[str, str]]:
     if len(parts) > 1:
         body = parts[-1]
 
-    blocks: List[Dict[str, str]] = []
-    current: Dict[str, str] = {}
+    blocks: list[dict[str, str]] = []
+    current: dict[str, str] = {}
     for line in body.splitlines():
         if not line.strip():
             if current:
@@ -606,7 +606,7 @@ def _parse_listing(text: str) -> List[Dict[str, str]]:
     if current:
         blocks.append(current)
 
-    entries: List[Dict[str, str]] = []
+    entries: list[dict[str, str]] = []
     for block in blocks:
         if "size" not in block:
             continue
@@ -616,7 +616,7 @@ def _parse_listing(text: str) -> List[Dict[str, str]]:
     return entries
 
 
-def _listing_totals(entries: Sequence[Dict[str, str]]) -> Tuple[int, bool]:
+def _listing_totals(entries: Sequence[dict[str, str]]) -> tuple[int, bool]:
     """Суммарный распакованный объём и признак «есть зашифрованные файлы»."""
     total = 0
     encrypted = False
@@ -646,7 +646,7 @@ def _looks_encrypted(output: str) -> bool:
     )
 
 
-def _list_external(tool: str, path: Path) -> Tuple[int, bool, bool]:
+def _list_external(tool: str, path: Path) -> tuple[int, bool, bool]:
     """Оглавление архива: (объём, есть ли шифрование, удалось ли прочитать)."""
     if _is_unrar(tool):
         command = [tool, "lt", "-p-", str(path)]
@@ -662,7 +662,7 @@ def _list_external(tool: str, path: Path) -> Tuple[int, bool, bool]:
     return total, encrypted or _looks_encrypted(output), True
 
 
-def _extract_command(tool: str, path: Path, root: Path) -> List[str]:
+def _extract_command(tool: str, path: Path, root: Path) -> list[str]:
     if _is_unrar(tool):
         # -p- — не спрашивать пароль, -o+ — перезаписывать, -idq — тихо.
         return [tool, "x", "-y", "-p-", "-idq", "-o+", str(path), f"{root}{os.sep}"]
@@ -681,7 +681,7 @@ def _collect_extracted(root: Path, budget: _Budget, out: _Unpacked) -> None:
     except OSError:  # pragma: no cover — экзотические ФС
         base = root
 
-    files: List[Path] = []
+    files: list[Path] = []
     for folder, dirs, names in os.walk(root):
         dirs[:] = sorted(
             name for name in dirs if not os.path.islink(os.path.join(folder, name))
@@ -689,7 +689,7 @@ def _collect_extracted(root: Path, budget: _Budget, out: _Unpacked) -> None:
         for name in sorted(names):
             files.append(Path(folder) / name)
 
-    members: List[Path] = []
+    members: list[Path] = []
     for item in files:
         relative = str(item.relative_to(root)).replace("\\", "/")
         if _is_junk(relative):
@@ -804,7 +804,7 @@ def _convert_entry(
     limits: Limits,
     budget: _Budget,
     depth: int,
-) -> Tuple[ConvertedDocument | None, str]:
+) -> tuple[ConvertedDocument | None, str]:
     """Разбирает один файл архива. ``None`` и причина — если разбирать нечем."""
     suffix = entry.path.suffix.lower()
     if suffix in ARCHIVE_SUFFIXES:
@@ -843,8 +843,8 @@ def _fill_document(
     depth: int,
 ) -> None:
     """Собирает Markdown архива: раздел на файл плюс состав архива."""
-    sections: List[str] = []
-    unparsed: List[str] = []
+    sections: list[str] = []
+    unparsed: list[str] = []
     parsed = 0
     ocr_needed = 0
     hidden_warnings = 0
@@ -901,7 +901,7 @@ def _intro_section(
     parsed: int,
     budget: _Budget,
     limits: Limits,
-) -> List[str]:
+) -> list[str]:
     """Раздел «Состав архива» — только если есть о чём сказать.
 
     Молча потерянный файл хуже отсутствующего: инженер должен видеть, что в

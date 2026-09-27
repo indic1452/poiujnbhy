@@ -8,10 +8,10 @@ from pathlib import Path
 import _bootstrap  # noqa: F401
 from reportgen.corpus import load_corpus
 from reportgen.evaluate import (
+    TARGETS,
+    CaseResult,
     EvalError,
     EvalReport,
-    CaseResult,
-    TARGETS,
     aggregate_metrics,
     body_text,
     citation_precision,

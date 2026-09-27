@@ -12,10 +12,11 @@ import json
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+from typing import Any, Protocol
 
 from . import _http
-from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Protocol
 
 
 def _timed_out(error: BaseException) -> bool:
@@ -75,7 +76,7 @@ class ОтсекательМысли:
     def кусок(self, текст: str) -> str:
         """Очередной кусок потока — вернуть то, что можно показать сейчас."""
         self._буфер += текст
-        наружу: List[str] = []
+        наружу: list[str] = []
         while True:
             if self._внутри:
                 край = self._буфер.find(ЗАКРЫТЬ_МЫСЛЬ)
@@ -132,7 +133,7 @@ class LLM(Protocol):
         ...
 
     def stream(self, system: str, user: str, *, max_tokens: int = 1200,
-               temperature: float = 0.2, history: List[Dict[str, str]] | None = None
+               temperature: float = 0.2, history: list[dict[str, str]] | None = None
                ) -> Iterator[str]:
         """Потоковая выдача по кускам. Нужна помощнику: ответ на 500 слов
         появляется сразу, а не через полминуты молчания."""
@@ -169,7 +170,7 @@ class OpenAICompatLLM:
     #: Расход токенов последнего ответа со слов самого сервера
     #: (``usage``). Нужен, чтобы знать НАСТОЯЩИЙ размер промпта, а не
     #: оценку по знакам.
-    последний_расход: Dict[str, Any] = field(default_factory=dict)
+    последний_расход: dict[str, Any] = field(default_factory=dict)
     #: Видели ли в потоке отдельное поле рассуждения. Признак того, что
     #: сборка сервера выносит мысль сама, и отсекать нечего.
     размышляет: bool = False
@@ -292,14 +293,14 @@ class OpenAICompatLLM:
         return len(токены) if isinstance(токены, list) else 0
 
     def _payload(self, system: str, user: str, max_tokens: int, temperature: float,
-                 history: List[Dict[str, str]] | None = None,
-                 stream: bool = False) -> Dict[str, Any]:
-        messages: List[Dict[str, str]] = [{"role": "system", "content": system}]
+                 history: list[dict[str, str]] | None = None,
+                 stream: bool = False) -> dict[str, Any]:
+        messages: list[dict[str, str]] = [{"role": "system", "content": system}]
         for item in history or []:
             if item.get("role") in ("user", "assistant") and item.get("content"):
                 messages.append({"role": item["role"], "content": item["content"]})
         messages.append({"role": "user", "content": user})
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
             "max_tokens": max_tokens,
@@ -328,7 +329,7 @@ class OpenAICompatLLM:
             payload["seed"] = self.seed
         return payload
 
-    def _request(self, payload: Dict[str, Any]) -> urllib.request.Request:
+    def _request(self, payload: dict[str, Any]) -> urllib.request.Request:
         return urllib.request.Request(
             url=f"{self.base_url.rstrip('/')}/chat/completions",
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -341,8 +342,8 @@ class OpenAICompatLLM:
 
     def complete(self, system: str, user: str, *, max_tokens: int = 1200,
                  temperature: float = 0.2,
-                 history: List[Dict[str, str]] | None = None,
-                 итог: Dict[str, Any] | None = None) -> str:
+                 history: list[dict[str, str]] | None = None,
+                 итог: dict[str, Any] | None = None) -> str:
         request = self._request(
             self._payload(system, user, max_tokens, temperature, history)
         )
@@ -377,8 +378,8 @@ class OpenAICompatLLM:
 
     def stream(self, system: str, user: str, *, max_tokens: int = 1200,
                temperature: float = 0.2,
-               history: List[Dict[str, str]] | None = None,
-               итог: Dict[str, Any] | None = None) -> Iterator[str]:
+               history: list[dict[str, str]] | None = None,
+               итог: dict[str, Any] | None = None) -> Iterator[str]:
         """Читает поток server-sent events и отдаёт куски текста по мере готовности.
 
         ``итог`` — словарь ЭТОГО вызова: сюда кладётся, чем кончилась
@@ -389,7 +390,7 @@ class OpenAICompatLLM:
             self._payload(system, user, max_tokens, temperature, history, stream=True)
         )
         отсекатель = ОтсекательМысли()
-        свой: Dict[str, Any] = итог if итог is not None else {}
+        свой: dict[str, Any] = итог if итог is not None else {}
         свой["обрыв"] = ""
         свой["расход"] = {}
         self.последний_обрыв = ""
@@ -457,7 +458,7 @@ class StubLLM:
 
     def stream(self, system: str, user: str, *, max_tokens: int = 1200,
                temperature: float = 0.2,
-               history: List[Dict[str, str]] | None = None) -> Iterator[str]:
+               history: list[dict[str, str]] | None = None) -> Iterator[str]:
         text = self.complete(system, user, max_tokens=max_tokens, temperature=temperature,
                              history=history)
         for word in text.split(" "):
@@ -465,7 +466,7 @@ class StubLLM:
 
     def complete(self, system: str, user: str, *, max_tokens: int = 1200,
                  temperature: float = 0.2,
-                 history: List[Dict[str, str]] | None = None) -> str:
+                 history: list[dict[str, str]] | None = None) -> str:
         # Помощник спрашивает, что делать следующим шагом разбора. Заглушка
         # ничего не ищет: она отвечает по тому, что ей дали, и лишний заход
         # только сжёг бы время. Отвечаем «хватит» — это честный шаг, а не
@@ -479,7 +480,7 @@ class StubLLM:
         facts = _extract_block(user, "ФАКТЫ")
         sources = _extract_block(user, "ИСТОЧНИКИ")
 
-        lines: List[str] = []
+        lines: list[str] = []
         title = section.splitlines()[0].strip() if section else "Раздел"
         lines.append(f"Ниже приведены данные по разделу «{title}».")
         table = [line for line in facts.splitlines() if line.startswith("|")]

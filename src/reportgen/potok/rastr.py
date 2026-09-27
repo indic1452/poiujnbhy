@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Растр потока и ручные инструменты аналитика.
 
 Автоматический разбор — не всё. Аналитик привык смотреть на поток глазами:
@@ -21,7 +20,8 @@
 from __future__ import annotations
 
 import base64
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -36,7 +36,7 @@ from .nahodka import Находка
 ПОРОГ_СИГМ = 7.0
 
 
-def окно(биты: np.ndarray, начало: int, сколько: int) -> Dict[str, Any]:
+def окно(биты: np.ndarray, начало: int, сколько: int) -> dict[str, Any]:
     """Кусок потока для отрисовки: биты, упакованные старшим первым, в base64."""
     начало = max(0, int(начало))
     сколько = max(0, min(int(сколько), ОКНО_ДО, len(биты) - начало))
@@ -52,7 +52,7 @@ def окно(биты: np.ndarray, начало: int, сколько: int) -> Di
 
 
 def сетка(биты: np.ndarray, период: int, сдвиг: int, строка: int, строк: int,
-          столбец: int, столбцов: int, на_пиксель: int = 1) -> Dict[str, Any]:
+          столбец: int, столбцов: int, на_пиксель: int = 1) -> dict[str, Any]:
     """Прямоугольник растра: строки × столбцы, для битового просмотра на рабочем столе.
 
     ``на_пиксель`` > 1 — сжатие по горизонтали: в пикселе доля единиц в стольких
@@ -103,7 +103,7 @@ def _строки_байт(биты: np.ndarray, период: int, сдвиг: 
     return np.packbits(таблица, axis=1)
 
 
-def отбор_кадров(байты: np.ndarray, отбор: Sequence[Dict[str, Any]]) -> np.ndarray:
+def отбор_кадров(байты: np.ndarray, отбор: Sequence[dict[str, Any]]) -> np.ndarray:
     """Номера кадров, у которых байт (или полубайт) на месте равен значению; «не» — кроме."""
     годные = np.ones(len(байты), dtype=bool)
     for у in отбор:
@@ -121,7 +121,7 @@ def отбор_кадров(байты: np.ndarray, отбор: Sequence[Dict[st
 
 
 def кадры_таблицей(биты: np.ndarray, период: int, сдвиг: int, начало: int, сколько: int,
-                   отбор: Sequence[Dict[str, Any]] = (), порядок: str = "старший") -> Dict[str, Any]:
+                   отбор: Sequence[dict[str, Any]] = (), порядок: str = "старший") -> dict[str, Any]:
     """Таблица кадров для рабочего стола: байты строками, с отбором по байту или полубайту."""
     байты = _строки_байт(биты, период, сдвиг, порядок)
     номера = отбор_кадров(байты, отбор) if отбор else np.arange(len(байты))
@@ -134,7 +134,7 @@ def кадры_таблицей(биты: np.ndarray, период: int, сдв�
 
 
 def столбец_кадров(биты: np.ndarray, период: int, сдвиг: int, место: int, ширина: int = 1,
-                   отбор: Sequence[Dict[str, Any]] = (), порядок: str = "старший") -> Dict[str, Any]:
+                   отбор: Sequence[dict[str, Any]] = (), порядок: str = "старший") -> dict[str, Any]:
     """Полная статистика столбца кадров — та же, что у матрицы байт в пакетах."""
     from ..setevoy.statistika import столбец  # noqa: PLC0415
     байты = _строки_байт(биты, период, сдвиг, порядок)
@@ -154,7 +154,7 @@ def _новый(r: np.ndarray, p: int, q: int, шум: float) -> bool:
     return прирост >= max(4 * шум, min(0.2 * (1 - float(r[q])), 0.25 * abs(float(r[q]))))
 
 
-def периоды(биты: np.ndarray, сколько: int = 8) -> List[Dict[str, Any]]:
+def периоды(биты: np.ndarray, сколько: int = 8) -> list[dict[str, Any]]:
     """Кандидаты периода: пики автокорреляции, сильнейшие первыми (в сигмах шума).
 
     Пики стоят и на кратных периода — это гармоники, их не показываем. Но
@@ -179,7 +179,7 @@ def периоды(биты: np.ndarray, сколько: int = 8) -> List[Dict[s
     # Лагов десятки тысяч: 4 сигмы шум превысит где-нибудь почти наверняка;
     # пики слабее четверти главного — обычно отзвуки синхрослова на почти кратных.
     порог = max(ПОРОГ_СИГМ * шум, 0.25 * float(r.max()))
-    взятые: List[int] = []
+    взятые: list[int] = []
     for место in np.argsort(-r)[:400]:
         место = int(место)
         if r[место] < порог or len(взятые) >= сколько:
@@ -206,7 +206,7 @@ def периоды(биты: np.ndarray, сколько: int = 8) -> List[Dict[s
     return итог
 
 
-def по_маске(биты: np.ndarray, маска: Dict[str, Any]) -> np.ndarray:
+def по_маске(биты: np.ndarray, маска: dict[str, Any]) -> np.ndarray:
     """Поток канала: из каждого цикла — биты на заданных позициях, по порядку."""
     период = int(маска["период"])
     сдвиг = int(маска.get("сдвиг", 0)) % max(1, период)
@@ -218,7 +218,7 @@ def по_маске(биты: np.ndarray, маска: Dict[str, Any]) -> np.ndar
     return ряд[:циклов * период].reshape(циклов, период)[:, позиции].reshape(-1)
 
 
-def столбцы(биты: np.ndarray, период: int, сдвиг: int = 0, циклов: int = 4096) -> List[float]:
+def столбцы(биты: np.ndarray, период: int, сдвиг: int = 0, циклов: int = 4096) -> list[float]:
     """Доля единиц в каждом столбце растра — по первым ``циклов`` циклам."""
     период = int(период)
     if период < 1 or период > ПЕРИОД_ДО:
@@ -245,7 +245,7 @@ def столбцы(биты: np.ndarray, период: int, сдвиг: int = 0,
 
 
 def _скремблер_по_кадру(биты: np.ndarray, *, период: int = 0, сдвиг: int = 0, пропуск: int = 0,
-                        отводы: Sequence[int] = ()) -> Optional[Находка]:
+                        отводы: Sequence[int] = ()) -> Находка | None:
     """Кадровый скремблер по растру: кадр — период, начало — сдвиг растра."""
     if период < 16:
         raise ValueError("нужна длина кадра — период растра (засинхронизируйте растр)")
@@ -265,7 +265,7 @@ def _скремблер_по_кадру(биты: np.ndarray, *, период: i
         дальше=None, вид_дальше="")
 
 
-def инструмент(биты: np.ndarray, имя: str, k: int = 0, **параметры: Any) -> Optional[Находка]:
+def инструмент(биты: np.ndarray, имя: str, k: int = 0, **параметры: Any) -> Находка | None:
     выборка = биты[:1 << 23]
     if имя == "скремблер-кадр":
         return _скремблер_по_кадру(выборка, **параметры)
@@ -306,7 +306,7 @@ def инструмент(биты: np.ndarray, имя: str, k: int = 0, **пар
     raise ValueError(f"нет инструмента «{имя}»")
 
 
-def в_словарь(находка: Optional[Находка]) -> Optional[Dict[str, Any]]:
+def в_словарь(находка: Находка | None) -> dict[str, Any] | None:
     if находка is None:
         return None
     return {"уровень": находка.уровень, "что": находка.суть, "мера": находка.мера,
@@ -314,12 +314,12 @@ def в_словарь(находка: Optional[Находка]) -> Optional[Dict
             "подробно": list(находка.подробно)}
 
 
-def производный(биты: np.ndarray, маска: Optional[Dict[str, Any]],
-                снять: Sequence[str]) -> tuple[bytes, List[str]]:
+def производный(биты: np.ndarray, маска: dict[str, Any] | None,
+                снять: Sequence[str]) -> tuple[bytes, list[str]]:
     """Новый поток: канал по маске и/или снятые вручную слои. Биты → байты и описание."""
     from .razbor import снять_вручную  # noqa: PLC0415 — круговой импорт
 
-    описание: List[str] = []
+    описание: list[str] = []
     if маска:
         биты = по_маске(биты, маска)
         описание.append(f"канал по маске: период {маска['период']}, сдвиг "
@@ -330,7 +330,7 @@ def производный(биты: np.ndarray, маска: Optional[Dict[str, 
     return np.packbits(биты).tobytes(), описание
 
 
-def описать_шаг(шаг: Dict[str, Any]) -> str:
+def описать_шаг(шаг: dict[str, Any]) -> str:
     """Шаг ручной обработки словами: для имени узла и дерева."""
     if шаг.get("вид") == "маска":
         маска = шаг["маска"]
@@ -339,7 +339,7 @@ def описать_шаг(шаг: Dict[str, Any]) -> str:
     return str(шаг.get("слой", ""))
 
 
-def проверить_шаги(шаги: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def проверить_шаги(шаги: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
     """Шаги из запроса → чистый список {вид, маска|слой, вкл}; ошибки формы — ValueError."""
     итог = []
     for шаг in шаги:
@@ -363,12 +363,12 @@ def проверить_шаги(шаги: Sequence[Dict[str, Any]]) -> List[Dict
     return итог
 
 
-def применить(биты: np.ndarray, шаги: Sequence[Dict[str, Any]], ход=None
-              ) -> tuple[np.ndarray, List[str]]:
+def применить(биты: np.ndarray, шаги: Sequence[dict[str, Any]], ход=None
+              ) -> tuple[np.ndarray, list[str]]:
     """Включённые шаги по порядку: маска канала или снятие слоя. Биты и описание."""
     from .razbor import снять_вручную  # noqa: PLC0415 — круговой импорт
 
-    описание: List[str] = []
+    описание: list[str] = []
     for номер, шаг in enumerate(шаги, start=1):
         if not шаг.get("вкл", True):
             continue

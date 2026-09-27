@@ -12,15 +12,14 @@ import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.facts import FactPack, FactPackError
 from reportgen.llm import StubLLM
 from reportgen.pipeline import (
     Outline,
     SectionSpec,
+    _item_block,
     check_facts_coverage,
     generate_report,
-    _item_block,
 )
 
 ROOT = Path(__file__).resolve().parents[1]

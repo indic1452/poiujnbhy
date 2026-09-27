@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Задания разбора потока для страницы «Разбор потока»: в фоне, по этапам.
 
 Разбор потока занимает от секунд до десятков минут, и держать ради него
@@ -23,8 +22,9 @@ import secrets
 import struct
 import threading
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -38,7 +38,7 @@ def _упаковать_биты(биты: np.ndarray) -> bytes:
     return np.packbits(np.asarray(биты, dtype=np.uint8)).tobytes()
 
 
-def выгрузка(дальше: Any, вид: str) -> Optional[tuple[bytes, str]]:
+def выгрузка(дальше: Any, вид: str) -> tuple[bytes, str] | None:
     """Что отдать на скачивание после этапа: (байты, расширение)."""
     if дальше is None:
         return None
@@ -82,8 +82,8 @@ class Задания:
         # идёт в резервную копию, разборы — нет): слой «ldpc ИМЯ» находит их по имени.
         ldpc.КАТАЛОГ = self.папка.parent / "ldpc"
         self._lock = threading.Lock()
-        self._очередь: "queue.Queue[str]" = queue.Queue()
-        self._журналы: Dict[str, List[str]] = {}
+        self._очередь: queue.Queue[str] = queue.Queue()
+        self._журналы: dict[str, list[str]] = {}
         self._поток: threading.Thread | None = None
         self._идёт: str = ""
 
@@ -93,7 +93,7 @@ class Задания:
                 снять: Sequence[str] = (), от: str = "", символ: Sequence[int] = (),
                 фм: Sequence[int] = (),
                 разбирать: bool = True, происхождение: Sequence[str] = (),
-                шаги: Sequence[Dict[str, Any]] = ()) -> str:
+                шаги: Sequence[dict[str, Any]] = ()) -> str:
         """Новое задание.
 
         ``шаги`` — ручная обработка производного потока (канал по маске,
@@ -169,7 +169,7 @@ class Задания:
 
     # -- чтение -----------------------------------------------------------
 
-    def прочитать(self, ид: str) -> Dict[str, Any]:
+    def прочитать(self, ид: str) -> dict[str, Any]:
         путь = self.папка / ид / "состояние.json"
         if not путь.exists():
             raise KeyError(ид)
@@ -181,7 +181,7 @@ class Задания:
                     if ид in self._очередь.queue else 0
         return состояние
 
-    def список(self, владелец: int | None = None) -> List[Dict[str, Any]]:
+    def список(self, владелец: int | None = None) -> list[dict[str, Any]]:
         итог = []
         if not self.папка.exists():
             return итог
@@ -199,7 +199,7 @@ class Задания:
 
     # -- дерево обработки -----------------------------------------------------
 
-    def дерево(self, ид: str, владелец: int) -> Dict[str, Any]:
+    def дерево(self, ид: str, владелец: int) -> dict[str, Any]:
         """Всё дерево, в котором стоит узел: корень, этапы-развилки и производные.
 
         Узел — задание; его дети — задания с «от» = «ид#этап». Родителя,
@@ -214,13 +214,13 @@ class Задания:
             if родитель not in все:
                 break
             корень = родитель
-        дети: Dict[str, List[Dict[str, Any]]] = {}
+        дети: dict[str, list[dict[str, Any]]] = {}
         for з in все.values():
             родитель = (з.get("от") or "").split("#")[0]
             if родитель in все:
                 дети.setdefault(родитель, []).append(з)
 
-        def кратко(ид_: str) -> Dict[str, Any]:
+        def кратко(ид_: str) -> dict[str, Any]:
             """Этапы узла коротко — для сетки массивов на рабочем столе."""
             try:
                 с = self._прочитать_файл(ид_)
@@ -232,7 +232,7 @@ class Задания:
                                      for э in с.get("этапы") or []],
                     "происхождение": с.get("происхождение") or []}
 
-        def узел(з: Dict[str, Any]) -> Dict[str, Any]:
+        def узел(з: dict[str, Any]) -> dict[str, Any]:
             от = з.get("от") or ""
             return {**з, **кратко(з["ид"]), "этап_родителя": int(от.split("#")[1]) if "#" in от else None,
                     "дети": [узел(д) for д in sorted(дети.get(з["ид"], []),
@@ -240,11 +240,11 @@ class Задания:
 
         return узел(все[корень])
 
-    def удалить(self, ид: str, владелец: int) -> List[str]:
+    def удалить(self, ид: str, владелец: int) -> list[str]:
         """Удалить узел и всю ветвь под ним. Идущий разбор не трогаем."""
         дерево = self.дерево(ид, владелец)
 
-        def найти(у: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        def найти(у: dict[str, Any]) -> dict[str, Any] | None:
             if у["ид"] == ид:
                 return у
             for д in у["дети"]:
@@ -253,7 +253,7 @@ class Задания:
                     return н
             return None
 
-        def все_ид(у: Dict[str, Any]) -> List[str]:
+        def все_ид(у: dict[str, Any]) -> list[str]:
             return [у["ид"]] + [и for д in у["дети"] for и in все_ид(д)]
 
         удаляемые = все_ид(найти(дерево))
@@ -269,12 +269,12 @@ class Задания:
                 self._журналы.pop(и, None)
         return удаляемые
 
-    def файл_этапа(self, ид: str, этап: int) -> Optional[Path]:
+    def файл_этапа(self, ид: str, этап: int) -> Path | None:
         return self._выгрузка_этапа(ид, этап)
 
     # -- журнал массива на рабочем столе ------------------------------------------
 
-    def журнал_стола(self, ид: str) -> Dict[str, List[Dict[str, Any]]]:
+    def журнал_стола(self, ид: str) -> dict[str, list[dict[str, Any]]]:
         """Записи аналитика и итоги операций по массивам узла: {этап: [записи]}."""
         путь = self.папка / ид / "журнал-стола.json"
         if not путь.exists():
@@ -284,7 +284,7 @@ class Задания:
         except ValueError:
             return {}
 
-    def записать_в_журнал(self, ид: str, этап: int, запись: Dict[str, Any]) -> Dict[str, Any]:
+    def записать_в_журнал(self, ид: str, этап: int, запись: dict[str, Any]) -> dict[str, Any]:
         if not (self.папка / ид).exists():
             raise KeyError(ид)
         чистая = {"время": time.time(), "операция": str(запись.get("операция", ""))[:200],
@@ -301,7 +301,7 @@ class Задания:
             временный.replace(путь)
         return чистая
 
-    def приток(self, ид: str, этап: int, номер: int) -> Tuple[bytes, str]:
+    def приток(self, ид: str, этап: int, номер: int) -> tuple[bytes, str]:
         """Байты притока этапа и его имя."""
         состояние = self.прочитать(ид)
         этапы = состояние.get("этапы") or []
@@ -373,7 +373,7 @@ class Задания:
         состояние.update(состояние="идёт", начато=time.time())
         self._записать(ид, состояние)
         папка = self.папка / ид
-        найдено: List[Dict[str, Any]] = []
+        найдено: list[dict[str, Any]] = []
 
         def ход(строка: str) -> None:
             self._ход(ид, строка)
@@ -391,7 +391,7 @@ class Задания:
                            снять=состояние.get("снять") or (), ход=ход, этап=этап,
                            символ=состояние.get("символ") or (), фм=состояние.get("фм") or ())
         список = этапы(разбор)
-        for номер, (запись, находка) in enumerate(zip(список, разбор.находки), start=1):
+        for номер, (запись, находка) in enumerate(zip(список, разбор.находки, strict=False), start=1):
             выгружено = выгрузка(находка.дальше, находка.вид_дальше)
             if выгружено is not None:
                 данные, расширение = выгружено
@@ -415,15 +415,15 @@ class Задания:
 
     # -- хранение ---------------------------------------------------------
 
-    def _выгрузка_этапа(self, ид: str, этап: int) -> Optional[Path]:
+    def _выгрузка_этапа(self, ид: str, этап: int) -> Path | None:
         for путь in (self.папка / ид).glob(f"этап-{int(этап)}.*"):
             return путь
         return None
 
-    def _прочитать_файл(self, ид: str) -> Dict[str, Any]:
+    def _прочитать_файл(self, ид: str) -> dict[str, Any]:
         return json.loads((self.папка / ид / "состояние.json").read_text(encoding="utf-8"))
 
-    def _записать(self, ид: str, состояние: Dict[str, Any]) -> None:
+    def _записать(self, ид: str, состояние: dict[str, Any]) -> None:
         путь = self.папка / ид / "состояние.json"
         временный = путь.with_suffix(".tmp")
         временный.write_text(json.dumps(состояние, ensure_ascii=False), encoding="utf-8")

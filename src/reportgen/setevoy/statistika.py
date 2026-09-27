@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Статистика захвата: протоколы, диалоги, узлы, время, DNS/HTTP/TLS, ошибки, поток TCP.
 
 Всё считается по сводкам пакетов (без повторного разбора): у сводки есть
@@ -9,9 +8,10 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
-Сводка = Dict[str, Any]
+Сводка = dict[str, Any]
 
 
 #: Уровни протоколов разборщиков (по разделам разбора); прочее — по месту в стеке.
@@ -39,14 +39,14 @@ def уровень_протокола(протокол: str, предки: Seque
     return "прочий"
 
 
-def иерархия(сводки: Sequence[Сводка]) -> List[Dict[str, Any]]:
+def иерархия(сводки: Sequence[Сводка]) -> list[dict[str, Any]]:
     """Дерево протоколов: у каждого узла пакеты и байты (как «Protocol Hierarchy»).
 
     Узел знает свой уровень (канальный … прикладной) — для раскраски — и
     сколько пакетов на нём кончаются (у родителя пакетов больше, чем у детей
     вместе, — остаток кончился на нём).
     """
-    корень: Dict[str, Any] = {"протокол": "Кадры", "пакетов": 0, "байт": 0, "дети": {}, "предки": ()}
+    корень: dict[str, Any] = {"протокол": "Кадры", "пакетов": 0, "байт": 0, "дети": {}, "предки": ()}
     for с in сводки:
         узел = корень
         узел["пакетов"] += 1
@@ -58,7 +58,7 @@ def иерархия(сводки: Sequence[Сводка]) -> List[Dict[str, Any
             узел["пакетов"] += 1
             узел["байт"] += с["длина"]
 
-    def в_список(у: Dict[str, Any]) -> Dict[str, Any]:
+    def в_список(у: dict[str, Any]) -> dict[str, Any]:
         дети = sorted((в_список(д) for д in у["дети"].values()), key=lambda д: -д["пакетов"])
         return {**{к: у[к] for к in ("протокол", "пакетов", "байт")},
                 "уровень": "все" if у is корень else уровень_протокола(у["протокол"], у["предки"]),
@@ -68,9 +68,9 @@ def иерархия(сводки: Sequence[Сводка]) -> List[Dict[str, Any
     return [в_список(корень)]
 
 
-def диалоги(сводки: Sequence[Сводка], уровень: str = "ip") -> List[Dict[str, Any]]:
+def диалоги(сводки: Sequence[Сводка], уровень: str = "ip") -> list[dict[str, Any]]:
     """Пары узлов (ip), MAC (eth) или пары «адрес:порт» (tcp, udp) — в обе стороны."""
-    таблица: Dict[Tuple, Dict[str, Any]] = {}
+    таблица: dict[tuple, dict[str, Any]] = {}
     for с in сводки:
         if уровень == "eth":
             if not с.get("mac"):
@@ -104,8 +104,8 @@ def диалоги(сводки: Sequence[Сводка], уровень: str = "
     return sorted(итог, key=lambda з: -з["байт"])
 
 
-def узлы(сводки: Sequence[Сводка]) -> List[Dict[str, Any]]:
-    таблица: Dict[str, Dict[str, Any]] = {}
+def узлы(сводки: Sequence[Сводка]) -> list[dict[str, Any]]:
+    таблица: dict[str, dict[str, Any]] = {}
     for с in сводки:
         if not ({"IPv4", "IPv6"} & set(с["стек"])):
             continue
@@ -126,7 +126,7 @@ def узлы(сводки: Sequence[Сводка]) -> List[Dict[str, Any]]:
     return sorted(итог, key=lambda у: -у["байт"])
 
 
-def по_времени(сводки: Sequence[Сводка], столбцов: int = 120) -> Dict[str, Any]:
+def по_времени(сводки: Sequence[Сводка], столбцов: int = 120) -> dict[str, Any]:
     """Пакеты и байты по интервалам — для графика нагрузки."""
     if not сводки:
         return {"шаг": 0, "начало": 0, "пакетов": [], "байт": []}
@@ -141,9 +141,9 @@ def по_времени(сводки: Sequence[Сводка], столбцов: 
     return {"шаг": шаг, "начало": начало, "пакетов": пакетов, "байт": байт}
 
 
-def dns(сводки: Sequence[Сводка], поля: Sequence[Dict[str, List[Any]]]) -> List[Dict[str, Any]]:
+def dns(сводки: Sequence[Сводка], поля: Sequence[dict[str, list[Any]]]) -> list[dict[str, Any]]:
     итог = []
-    for с, п in zip(сводки, поля):
+    for с, п in zip(сводки, поля, strict=False):
         if not {"DNS", "mDNS", "LLMNR"} & set(с["стек"]):
             continue
         ответ = bool(п.get("dns.flags.response", [0])[0])
@@ -159,9 +159,9 @@ def dns(сводки: Sequence[Сводка], поля: Sequence[Dict[str, List[
     return итог
 
 
-def http(сводки: Sequence[Сводка], поля: Sequence[Dict[str, List[Any]]]) -> List[Dict[str, Any]]:
+def http(сводки: Sequence[Сводка], поля: Sequence[dict[str, list[Any]]]) -> list[dict[str, Any]]:
     итог, ждут = [], defaultdict(list)
-    for с, п in zip(сводки, поля):
+    for с, п in zip(сводки, поля, strict=False):
         if "HTTP" not in с["стек"]:
             continue
         ключ = (с["источник"], с.get("порт_от"), с["получатель"], с.get("порт_к"))
@@ -179,9 +179,9 @@ def http(сводки: Sequence[Сводка], поля: Sequence[Dict[str, List
     return итог
 
 
-def tls(сводки: Sequence[Сводка], поля: Sequence[Dict[str, List[Any]]]) -> List[Dict[str, Any]]:
+def tls(сводки: Sequence[Сводка], поля: Sequence[dict[str, list[Any]]]) -> list[dict[str, Any]]:
     итог = []
-    for с, п in zip(сводки, поля):
+    for с, п in zip(сводки, поля, strict=False):
         if "TLS" not in с["стек"] or "ClientHello" not in [str(т) for т in п.get("tls.handshake.type", [])]:
             continue
         итог.append({"номер": с["номер"], "время": с["время"], "клиент": с["источник"], "сервер": с["получатель"],
@@ -191,8 +191,8 @@ def tls(сводки: Sequence[Сводка], поля: Sequence[Dict[str, List[
     return итог
 
 
-def ошибки(сводки: Sequence[Сводка]) -> List[Dict[str, Any]]:
-    по_видам: Dict[str, Dict[str, Any]] = {}
+def ошибки(сводки: Sequence[Сводка]) -> list[dict[str, Any]]:
+    по_видам: dict[str, dict[str, Any]] = {}
     for с in сводки:
         for текст in с["ошибки"]:
             вид = текст.split(":")[0] + ": " + текст.split(":", 1)[-1].split("(")[0].strip() if ":" in текст else текст
@@ -203,7 +203,7 @@ def ошибки(сводки: Sequence[Сводка]) -> List[Dict[str, Any]]:
     return sorted(по_видам.values(), key=lambda з: -з["пакетов"])
 
 
-def ключ_потока(с: Сводка) -> Optional[Tuple]:
+def ключ_потока(с: Сводка) -> tuple | None:
     if с.get("порт_от") is None:
         return None
     транспорт = "TCP" if "TCP" in с["стек"] else "UDP" if "UDP" in с["стек"] else "SCTP" if "SCTP" in с["стек"] else ""
@@ -213,18 +213,18 @@ def ключ_потока(с: Сводка) -> Optional[Tuple]:
     return (транспорт,) + tuple(sorted((а, б)))
 
 
-def поток(сводки: Sequence[Сводка], нагрузки: Sequence[Optional[bytes]], номер: int,
-          предел: int = 4 << 20) -> Dict[str, Any]:
+def поток(сводки: Sequence[Сводка], нагрузки: Sequence[bytes | None], номер: int,
+          предел: int = 4 << 20) -> dict[str, Any]:
     """«Следовать за потоком»: нагрузки в обе стороны по порядку; у TCP — по номерам, без повторов."""
     опорная = next((с for с in сводки if с["номер"] == номер), None)
     if опорная is None or ключ_потока(опорная) is None:
         raise ValueError("у этого пакета нет потока TCP/UDP/SCTP")
     ключ = ключ_потока(опорная)
     клиент = None
-    куски: List[Dict[str, Any]] = []
-    следующий: Dict[str, int] = {}
+    куски: list[dict[str, Any]] = []
+    следующий: dict[str, int] = {}
     всего = 0
-    for с, нагрузка in zip(сводки, нагрузки):
+    for с, нагрузка in zip(сводки, нагрузки, strict=False):
         if ключ_потока(с) != ключ or not нагрузка:
             continue
         сторона = (с["источник"], с["порт_от"])
@@ -259,13 +259,13 @@ def поток(сводки: Sequence[Сводка], нагрузки: Sequence[
             "байт": всего}
 
 
-def неизвестные(сводки: Sequence[Сводка], нагрузки: Sequence[Optional[bytes]],
-                групп_до: int = 12) -> List[Dict[str, Any]]:
+def неизвестные(сводки: Sequence[Сводка], нагрузки: Sequence[bytes | None],
+                групп_до: int = 12) -> list[dict[str, Any]]:
     """Нагрузка без известного разборщика — по группам (транспорт и порт службы):
     поля неизвестного формата и CRC вслепую, как для кадров потока."""
     from ..potok import polya  # noqa: PLC0415 — numpy только здесь
-    группы: Dict[str, List[Tuple[int, bytes]]] = defaultdict(list)
-    for с, нагрузка in zip(сводки, нагрузки):
+    группы: dict[str, list[tuple[int, bytes]]] = defaultdict(list)
+    for с, нагрузка in zip(сводки, нагрузки, strict=False):
         if not нагрузка or с["стек"][-1] != "Данные":
             continue
         свои = [п for п in с["стек"] if п not in ("Данные",)]
@@ -297,7 +297,7 @@ def _энтропия(счёт: Counter, всего: int) -> float:
     return round(-sum(н / всего * math.log2(н / всего) for н in счёт.values()) if всего else 0.0, 3)
 
 
-def профиль_столбцов(ряды: Sequence[bytes], от: int, сколько: int) -> List[Dict[str, Any]]:
+def профиль_столбцов(ряды: Sequence[bytes], от: int, сколько: int) -> list[dict[str, Any]]:
     """Для каждого столбца: сколько пакетов до него дотягивается, энтропия, различных, постоянное значение."""
     итог = []
     for место in range(от, от + сколько):
@@ -310,7 +310,7 @@ def профиль_столбцов(ряды: Sequence[bytes], от: int, ско
     return итог
 
 
-def столбец(ряды: Sequence[bytes], место: int, ширина: int = 1) -> Dict[str, Any]:
+def столбец(ряды: Sequence[bytes], место: int, ширина: int = 1) -> dict[str, Any]:
     """Полная статистика поля (1–8 байт с места): значения, энтропия, счётчик, длина, биты, полубайты."""
     значения, длины = [], []
     for р in ряды:
@@ -322,11 +322,11 @@ def столбец(ряды: Sequence[bytes], место: int, ширина: int
         return {"всего": 0, "есть": 0}
     счёт = Counter(значения)
     модуль = 1 << (8 * ширина)
-    подряд = sum(1 for а, б in zip(значения, значения[1:]) if (б - а) % модуль == 1)
-    шаг_счёт = Counter((б - а) % модуль for а, б in zip(значения, значения[1:]))
+    подряд = sum(1 for а, б in zip(значения, значения[1:], strict=False) if (б - а) % модуль == 1)
+    шаг_счёт = Counter((б - а) % модуль for а, б in zip(значения, значения[1:], strict=False))
     шаг, шаг_раз = шаг_счёт.most_common(1)[0] if шаг_счёт else (0, 0)
     # Поле длины: значение = длина пакета − k для одного k у большинства пакетов.
-    разности = Counter(д - з for з, д in zip(значения, длины))
+    разности = Counter(д - з for з, д in zip(значения, длины, strict=False))
     k, k_раз = разности.most_common(1)[0]
     биты = [round(sum((з >> (8 * ширина - 1 - b)) & 1 for з in значения) / всего, 3) for b in range(8 * ширина)]
     итог = {
@@ -366,16 +366,16 @@ def столбец(ряды: Sequence[bytes], место: int, ширина: int
 
 # -- файлы внутри потоков ---------------------------------------------------------------------
 
-def направления(сводки: Sequence[Сводка], нагрузки: Sequence[Optional[bytes]],
-                предел: int = 64 << 20) -> Dict[Tuple, Dict[str, Any]]:
+def направления(сводки: Sequence[Сводка], нагрузки: Sequence[bytes | None],
+                предел: int = 64 << 20) -> dict[tuple, dict[str, Any]]:
     """Все потоки TCP/UDP/SCTP по направлениям: собранные байты и откуда какой кусок.
 
     У TCP — по номерам последовательности, повторы и перекрытия отбрасываются
     (как в «следовать за потоком»); у UDP — нагрузки подряд.
     """
-    итог: Dict[Tuple, Dict[str, Any]] = {}
+    итог: dict[tuple, dict[str, Any]] = {}
     всего = 0
-    for с, нагрузка in zip(сводки, нагрузки):
+    for с, нагрузка in zip(сводки, нагрузки, strict=False):
         ключ = ключ_потока(с)
         if ключ is None or not нагрузка:
             continue
@@ -402,10 +402,11 @@ def направления(сводки: Sequence[Сводка], нагрузк�
     return итог
 
 
-def файлы(сводки: Sequence[Сводка], нагрузки: Sequence[Optional[bytes]],
-          предел: int = 64 << 20) -> List[Dict[str, Any]]:
+def файлы(сводки: Sequence[Сводка], нагрузки: Sequence[bytes | None],
+          предел: int = 64 << 20) -> list[dict[str, Any]]:
     """Файлы в собранных потоках: сигнатура и структура сошлись (по границе байта)."""
     import numpy as np  # noqa: PLC0415
+
     from ..potok import poisk  # noqa: PLC0415
     итог = []
     for з in направления(сводки, нагрузки, предел).values():
@@ -422,7 +423,7 @@ def файлы(сводки: Sequence[Сводка], нагрузки: Sequence[
     return итог
 
 
-def вырезать_из_потока(сводки: Sequence[Сводка], нагрузки: Sequence[Optional[bytes]], поток: str,
+def вырезать_из_потока(сводки: Sequence[Сводка], нагрузки: Sequence[bytes | None], поток: str,
                        смещение: int, длина: int) -> bytes:
     """Байты файла из собранного потока; длина 0 (конец неизвестен) — до предела вырезки поиска."""
     from ..potok import poisk  # noqa: PLC0415
@@ -438,8 +439,8 @@ def вырезать_из_потока(сводки: Sequence[Сводка], н�
 ОТКРЫТЫЕ = ("HTTP", "FTP", "Telnet", "POP3", "IMAP", "SMTP", "SNMP", "TFTP", "Syslog")
 
 
-def обзор(сводки: Sequence[Сводка], поля: Sequence[Dict[str, List[Any]]],
-          нагрузки: Sequence[Optional[bytes]], *, файлов_в: int = 16 << 20) -> Dict[str, Any]:
+def обзор(сводки: Sequence[Сводка], поля: Sequence[dict[str, list[Any]]],
+          нагрузки: Sequence[bytes | None], *, файлов_в: int = 16 << 20) -> dict[str, Any]:
     """Сводка захвата для первого взгляда: объём, протоколы, главные диалоги, имена,
     ошибки, файлы в потоках, неразобранное — и приметы, на что посмотреть."""
     if not сводки:

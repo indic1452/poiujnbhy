@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Коды Рида — Соломона и БЧХ вслепую: корни порождающего многочлена.
 
 Циклический код — это слова, делящиеся на порождающий многочлен g(x).
@@ -21,8 +20,8 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-from typing import Dict, List, Sequence, Tuple
+from collections.abc import Sequence
+from functools import cache, lru_cache
 
 import numpy as np
 
@@ -67,13 +66,13 @@ def примитивный(p: int) -> bool:
             return False
 
 
-@lru_cache(maxsize=None)
-def примитивные(m: int) -> Tuple[int, ...]:
+@cache
+def примитивные(m: int) -> tuple[int, ...]:
     return tuple(p for p in range(1 << m, 1 << (m + 1)) if примитивный(p))
 
 
 @lru_cache(maxsize=32)
-def поле(p: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def поле(p: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """(степени α, логарифмы, таблица умножения) для GF(2^m) по многочлену p."""
     m = _степень_многочлена(p)
     q = 1 << m
@@ -105,7 +104,7 @@ def значения(слова: np.ndarray, p: int) -> np.ndarray:
     return S
 
 
-def общие_корни(слова: np.ndarray, p: int, *, от: float = КОРЕНЬ_ОТ) -> Tuple[List[int], float]:
+def общие_корни(слова: np.ndarray, p: int, *, от: float = КОРЕНЬ_ОТ) -> tuple[list[int], float]:
     """Степени j, где зануляется не меньше доли ``от`` слов, и средняя доля зануления в них."""
     нули = (значения(слова, p) == 0).mean(axis=0)
     # У настоящих корней доля зануления одна и та же — доля слов без ошибок.
@@ -116,7 +115,7 @@ def общие_корни(слова: np.ndarray, p: int, *, от: float = КО�
     return корни, float(нули[корни].mean()) if корни else 0.0
 
 
-def _подряд_с_шагом(корни: List[int], q1: int) -> Tuple[int, int, int]:
+def _подряд_с_шагом(корни: list[int], q1: int) -> tuple[int, int, int]:
     """Самая длинная цепочка корней β^b … β^(b+длина−1), β = α^шаг: (b, длина, шаг).
 
     Порождающий многочлен бывает задан корнями не подряд идущих степеней α, а
@@ -135,7 +134,7 @@ def _подряд_с_шагом(корни: List[int], q1: int) -> Tuple[int, in
     return лучшее
 
 
-def _подряд(корни: List[int], q1: int) -> Tuple[int, int]:
+def _подряд(корни: list[int], q1: int) -> tuple[int, int]:
     """Самая длинная цепочка подряд идущих степеней (по кругу): (начало, длина)."""
     множество = set(корни)
     лучшее = (0, 0)
@@ -149,7 +148,7 @@ def _подряд(корни: List[int], q1: int) -> Tuple[int, int]:
     return лучшее
 
 
-def опознать(слова: np.ndarray, m: int, *, двоичный: bool) -> Dict | None:
+def опознать(слова: np.ndarray, m: int, *, двоичный: bool) -> dict | None:
     """Перебор примитивных многочленов степени m: поле, корни, fcr, t."""
     лучшее = None
     от = КОРЕНЬ_ОТ if двоичный or m < 4 else КОРЕНЬ_РС_ОТ
@@ -202,7 +201,7 @@ def в_символы(биты: np.ndarray, m: int) -> np.ndarray:
 
 
 @lru_cache(maxsize=32)
-def _таблицы(p: int) -> Tuple[Tuple[int, ...], Tuple[int, ...], int]:
+def _таблицы(p: int) -> tuple[tuple[int, ...], tuple[int, ...], int]:
     """Степени (2q) и логарифмы (q) элементов GF(2^m) — списками для скалярной арифметики."""
     степень, логарифм, умножение = поле(p)
     return tuple(степень.tolist()), tuple(логарифм.tolist()), len(умножение) - 1
@@ -220,7 +219,7 @@ def синдромы(слова: np.ndarray, p: int, fcr: int, корней: int
     return S
 
 
-def берлекэмп_мэсси_поле(S: Sequence[int], p: int) -> Tuple[List[int], int]:
+def берлекэмп_мэсси_поле(S: Sequence[int], p: int) -> tuple[list[int], int]:
     """Многочлен локаторов ошибок Λ (Λ[0] = 1) и его степень по синдромам над GF(2^m)."""
     степень, логарифм, Q = _таблицы(p)
 
@@ -302,7 +301,7 @@ def _исправить_слово(слово: np.ndarray, S: Sequence[int], p: 
 
 
 def исправить(слова: np.ndarray, p: int, fcr: int, корней: int, шаг: int = 1, *,
-              двоичный: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+              двоичный: bool = False) -> tuple[np.ndarray, np.ndarray]:
     """Исправить слова кода РС (символы) или БЧХ (биты): (исправленные, исправлено в слове).
 
     ``исправлено`` — число исправленных символов (битов) в слове, −1 — слово
@@ -324,7 +323,7 @@ def исправить(слова: np.ndarray, p: int, fcr: int, корней: i
     return слова, исправлено
 
 
-def закодировать_рс(данные: Sequence[int], p: int, fcr: int, корней: int, шаг: int = 1) -> List[int]:
+def закодировать_рс(данные: Sequence[int], p: int, fcr: int, корней: int, шаг: int = 1) -> list[int]:
     """Систематическое слово РС: данные и проверочные — остаток D(x)·x^корней по g(x) = Π (x − β^(fcr+j)).
 
     Первый символ — старший коэффициент (как у libfec и у ``синдромы``).
@@ -337,7 +336,7 @@ def закодировать_рс(данные: Sequence[int], p: int, fcr: int,
     g = [1]
     for j in range(корней):
         корень = степень[(шаг * (fcr + j)) % Q]
-        g = [a ^ умн(b, корень) for a, b in zip(g + [0], [0] + g)]      # g(x) · (x + корень)
+        g = [a ^ умн(b, корень) for a, b in zip(g + [0], [0] + g, strict=False)]      # g(x) · (x + корень)
     остаток = [0] * корней
     for d in данные:
         обратная = d ^ остаток[0]
@@ -349,7 +348,7 @@ def закодировать_рс(данные: Sequence[int], p: int, fcr: int,
 
 
 def исправить_со_стираниями(слово: Sequence[int], стирания: Sequence[int], p: int, fcr: int, корней: int,
-                            шаг: int = 1) -> Tuple[List[int], int]:
+                            шаг: int = 1) -> tuple[list[int], int]:
     """Исправить слово РС с известными местами стираний: (слово, исправлено символов) или (слово, −1).
 
     Стёртые символы считаются нулями; ошибок e и стираний f исправимо, пока 2e + f ≤ корней.
@@ -361,7 +360,7 @@ def исправить_со_стираниями(слово: Sequence[int], ст
     def умн(a: int, b: int) -> int:
         return 0 if not a or not b else степень[логарифм[a] + логарифм[b]]
 
-    def произведение(a: Sequence[int], b: Sequence[int]) -> List[int]:
+    def произведение(a: Sequence[int], b: Sequence[int]) -> list[int]:
         итог = [0] * (len(a) + len(b) - 1)
         for i, x in enumerate(a):
             for j, y in enumerate(b):
@@ -416,7 +415,7 @@ def исправить_со_стираниями(слово: Sequence[int], ст
 
 
 def итог_словами(исправлено: np.ndarray, единиц: str, на: str, всего: int, *,
-                 в_чём: str = "словах", чего: str = "слов") -> Tuple[str, float]:
+                 в_чём: str = "словах", чего: str = "слов") -> tuple[str, float]:
     """Итог исправления одной строкой и доля ошибок в линии до декодирования (по исправленным).
 
     ``исправлено`` — по слову: сколько исправлено, −1 — неисправимо; ``единиц`` —

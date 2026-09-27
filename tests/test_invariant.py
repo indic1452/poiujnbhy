@@ -10,9 +10,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import _bootstrap  # noqa: F401
 from fastapi.testclient import TestClient
 
+import _bootstrap  # noqa: F401
 from reportgen.config import Settings
 from reportgen.corpus import load_corpus
 from reportgen.facts import FactPack

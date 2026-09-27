@@ -17,7 +17,6 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -72,22 +71,22 @@ def _коды(биты: np.ndarray, сдвиг: int) -> np.ndarray:
 class Передача:
     бит: int                      # место первого знака участка в битах
     инверсия: bool
-    коды: List[int]
+    коды: list[int]
     текст: str = ""
     исправлено: int = 0           # взят повтор вместо испорченного первого
     потеряно: int = 0             # испорчены оба
     повторов: float = 0.0         # доля совпавших пар DX/RX
-    сообщения: List[dict] = field(default_factory=list)
+    сообщения: list[dict] = field(default_factory=list)
 
 
-def _участки(годные: np.ndarray) -> List[Tuple[int, int]]:
+def _участки(годные: np.ndarray) -> list[tuple[int, int]]:
     """Участки знаков, где в любом окне из 14 подряд не меньше 10 годных; начало — с годного знака."""
     if len(годные) < ОКНО:
         return []
     сумма = np.convolve(годные.astype(np.int64), np.ones(ОКНО, dtype=np.int64), mode="valid")
     края = np.diff(np.concatenate([[0], (сумма >= В_ОКНЕ).astype(np.int8), [0]]))
     итог = []
-    for н, к in zip(np.flatnonzero(края == 1).tolist(), np.flatnonzero(края == -1).tolist()):
+    for н, к in zip(np.flatnonzero(края == 1).tolist(), np.flatnonzero(края == -1).tolist(), strict=False):
         к = к - 1 + ОКНО                                  # последнее хорошее окно кончается здесь
         while not годные[н]:
             н += 1
@@ -95,7 +94,7 @@ def _участки(годные: np.ndarray) -> List[Tuple[int, int]]:
     return итог
 
 
-def разобрать(коды: List[int]) -> Tuple[str, int, int, float]:
+def разобрать(коды: list[int]) -> tuple[str, int, int, float]:
     """Знаки участка → текст; места DX — та чётность, где знак совпадает со знаком через пять мест."""
     n = len(коды)
     счёт = [sum(1 for j in range(ч, n - СДВИГ, 2) if годный(коды[j]) and коды[j] == коды[j + СДВИГ])
@@ -131,7 +130,7 @@ def разобрать(коды: List[int]) -> Tuple[str, int, int, float]:
     return "".join(текст), исправлено, потеряно, счёт[ч] / пар
 
 
-def сообщения(текст: str) -> List[dict]:
+def сообщения(текст: str) -> list[dict]:
     итог = []
     for м in re.finditer(r"ZCZC ?([A-Z])([A-Z])(\d\d)(.*?)(NNNN|$)", текст, re.S):
         итог.append({"станция": м.group(1), "вид": м.group(2), "номер": м.group(3),
@@ -139,10 +138,10 @@ def сообщения(текст: str) -> List[dict]:
     return итог
 
 
-def передачи(биты: np.ndarray) -> List[Передача]:
+def передачи(биты: np.ndarray) -> list[Передача]:
     """Все участки SITOR-B: при любом битовом сдвиге и полярности, с повтором через пять знаков."""
     биты = np.asarray(биты, dtype=np.uint8)
-    найдено: List[Передача] = []
+    найдено: list[Передача] = []
     for инверсия in (False, True):
         ряд = 1 - биты if инверсия else биты
         for сдвиг in range(7):
@@ -150,7 +149,7 @@ def передачи(биты: np.ndarray) -> List[Передача]:
             for н, к in _участки(ВЕС[коды] == 4):
                 участок = коды[н:к].tolist()
                 # разные знаки — только подтверждённые повтором: случайные годные знаки шума по краям не в счёт
-                разных = {x for x, y in zip(участок, участок[СДВИГ:]) if x == y and годный(x)} - set(СЛУЖЕБНЫЕ)
+                разных = {x for x, y in zip(участок, участок[СДВИГ:], strict=False) if x == y and годный(x)} - set(СЛУЖЕБНЫЕ)
                 if к - н < НАЙТИ_ОТ or len(разных) < РАЗНЫХ_ОТ:
                     continue
                 п = Передача(сдвиг + 7 * н, инверсия, [int(x) for x in коды[н:к]])
@@ -162,7 +161,7 @@ def передачи(биты: np.ndarray) -> List[Передача]:
     return sorted(найдено, key=lambda п: п.бит)
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     пп = передачи(биты)
     if not пп:
         return None

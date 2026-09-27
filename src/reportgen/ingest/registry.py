@@ -22,9 +22,10 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List, Tuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover — только для подсказок типов
     from .convert import ConvertedDocument
@@ -61,7 +62,7 @@ class Requirement:
                 return False
         return shutil.which(self.name) is not None
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "kind": self.kind,
             "name": self.name,
@@ -75,22 +76,22 @@ class ConverterSpec:
     """Конвертер одного или нескольких форматов."""
 
     name: str
-    suffixes: Tuple[str, ...]
+    suffixes: tuple[str, ...]
     convert: Converter
-    requires: Tuple[Requirement, ...] = ()
+    requires: tuple[Requirement, ...] = ()
     #: Если на один суффикс претендуют несколько конвертеров, берётся тот,
     #: у кого приоритет выше и все требования выполнены.
     priority: int = 0
     #: Короткое описание для диагностики и документации.
     note: str = ""
 
-    def missing(self) -> List[Requirement]:
+    def missing(self) -> list[Requirement]:
         return [item for item in self.requires if not item.is_available()]
 
     def is_available(self) -> bool:
         return not self.missing()
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "name": self.name,
             "suffixes": list(self.suffixes),
@@ -101,7 +102,7 @@ class ConverterSpec:
         }
 
 
-_REGISTRY: List[ConverterSpec] = []
+_REGISTRY: list[ConverterSpec] = []
 _LOADED = False
 
 
@@ -132,7 +133,7 @@ def reset(loaded: bool = False) -> None:
     _LOADED = loaded
 
 
-def all_specs() -> List[ConverterSpec]:
+def all_specs() -> list[ConverterSpec]:
     ensure_loaded()
     return sorted(_REGISTRY, key=lambda spec: (-spec.priority, spec.name))
 
@@ -152,8 +153,8 @@ def find(suffix: str) -> ConverterSpec | None:
     return available[0] if available else candidates[0]
 
 
-def supported_suffixes(*, only_available: bool = False) -> Tuple[str, ...]:
-    seen: List[str] = []
+def supported_suffixes(*, only_available: bool = False) -> tuple[str, ...]:
+    seen: list[str] = []
     for spec in all_specs():
         if only_available and not spec.is_available():
             continue
@@ -163,7 +164,7 @@ def supported_suffixes(*, only_available: bool = False) -> Tuple[str, ...]:
     return tuple(sorted(seen))
 
 
-def report() -> List[Dict[str, object]]:
+def report() -> list[dict[str, object]]:
     """Состояние поддержки форматов — для CLI и интерфейса."""
     return [spec.to_dict() for spec in all_specs()]
 

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -55,7 +54,7 @@ def знак(биты: np.ndarray) -> int:
     return инфо if 7 - bin(инфо).count("1") == проверка else -1
 
 
-def в_биты(s: int) -> List[int]:
+def в_биты(s: int) -> list[int]:
     нули = 7 - bin(s).count("1")
     return [(s >> i) & 1 for i in range(7)] + [(нули >> 2) & 1, (нули >> 1) & 1, нули & 1]
 
@@ -77,7 +76,7 @@ def знаки_везде(биты: np.ndarray) -> np.ndarray:
     return np.where(7 - единиц == проверка, инфо, -1).astype(np.int16)
 
 
-def _начала(зн: np.ndarray) -> List[int]:
+def _начала(зн: np.ndarray) -> list[int]:
     """Места первого знака сообщения (бит), где фазирование достигнуто по правилу M.493."""
     n = len(зн)
     места = [(-12 + 2 * i, ФАЗА_DX, False) for i in range(6)]
@@ -98,16 +97,16 @@ def _начала(зн: np.ndarray) -> List[int]:
     return np.flatnonzero((всего >= 3) & (rx >= 1)).tolist()
 
 
-def цифры(знаки: List[int]) -> str:
+def цифры(знаки: list[int]) -> str:
     return "".join(f"{s:02d}" if 0 <= s <= 99 else "??" for s in знаки)
 
 
-def mmsi(знаки: List[int]) -> str:
+def mmsi(знаки: list[int]) -> str:
     ц = цифры(знаки)
     return ц[:9] if ц.endswith("0") else f"{ц[:9]}-{ц[9]}"
 
 
-def место_судна(знаки: List[int]) -> str:
+def место_судна(знаки: list[int]) -> str:
     """10 цифр: четверть (0 — СВ, 1 — СЗ, 2 — ЮВ, 3 — ЮЗ), широта ГГММ, долгота ГГГММ; 9999999999 — нет."""
     ц = цифры(знаки)
     if ц == "9999999999":
@@ -116,7 +115,7 @@ def место_судна(знаки: List[int]) -> str:
     return f"{ц[1:3]}°{ц[3:5]}′{ns} {ц[5:8]}°{ц[8:10]}′{ew}"
 
 
-def частота(знаки: List[int], i: int):
+def частота(знаки: list[int], i: int):
     """Частота или канал с места i: (текст, следующее место); 126 126 126 — сведений нет."""
     if знаки[i:i + 3] == [126, 126, 126]:
         return "нет сведений", i + 3
@@ -138,17 +137,17 @@ def частота(знаки: List[int], i: int):
 class Вызов:
     бит: int
     инверсия: bool
-    знаки: List[int]
+    знаки: list[int]
     исправлено: int = 0           # знаков взято из RX: DX негоден
     по_ecc: int = 0               # знаков взято из RX по ECC: DX годен, но неверен
-    поля: Dict[str, str] = field(default_factory=dict)
+    поля: dict[str, str] = field(default_factory=dict)
     годный: bool = False
 
 
-def разобрать(знаки: List[int]) -> Dict[str, str]:
+def разобрать(знаки: list[int]) -> dict[str, str]:
     """Поля сообщения (порядок M.493, как у SDRangel); ``знаки`` — от первого указателя формата до ECC."""
     ф = знаки[0]
-    п: Dict[str, str] = {"формат": ФОРМАТЫ.get(ф, str(ф))}
+    п: dict[str, str] = {"формат": ФОРМАТЫ.get(ф, str(ф))}
     i = 2
     категория = 112 if ф == 112 else None
     if ф != 112:
@@ -199,7 +198,7 @@ def разобрать(знаки: List[int]) -> Dict[str, str]:
     return п
 
 
-def ecc(знаки: List[int]) -> int:
+def ecc(знаки: list[int]) -> int:
     """ECC: исключающее ИЛИ знаков от указателя формата (один раз) до конца включительно."""
     итог = 0
     for s in знаки[1:]:
@@ -218,7 +217,7 @@ def _проверен(в: Вызов) -> bool:
     return True
 
 
-def _годный(в: Вызов, расхождения: List[tuple]) -> Optional[Вызов]:
+def _годный(в: Вызов, расхождения: list[tuple]) -> Вызов | None:
     """Вызов как есть или, если ECC не сошёлся, с заменой части DX на несовпавшие RX."""
     if _проверен(в):
         return в
@@ -235,9 +234,9 @@ def _годный(в: Вызов, расхождения: List[tuple]) -> Option
     return None
 
 
-def вызовы(биты: np.ndarray) -> List[Вызов]:
+def вызовы(биты: np.ndarray) -> list[Вызов]:
     биты = np.asarray(биты, dtype=np.uint8)
-    итог: List[Вызов] = []
+    итог: list[Вызов] = []
     for инверсия in (False, True):
         зн = знаки_везде(1 - биты if инверсия else биты)
         # фазирование на своих местах только у одного начала: сдвиг на место (10 бит) или пару мест
@@ -273,7 +272,7 @@ def описание(в: Вызов) -> str:
     return "; ".join(части)
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     вв = вызовы(биты)
     if not вв:
         return None
@@ -291,13 +290,13 @@ def найти(биты: np.ndarray) -> Optional[Находка]:
         подробно=подробно, свойства={"вызовов": len(вв), "станций": len(от)})
 
 
-def закодировать(сообщение: List[int], точки: int = 20) -> np.ndarray:
+def закодировать(сообщение: list[int], точки: int = 20) -> np.ndarray:
     """Сообщение (от указателя формата до конца, без ECC) → биты: точки, фазирование, DX/RX, ECC."""
     полное = list(сообщение) + [ecc(сообщение)]
     dx = [ФАЗА_DX] * 6 + полное + [сообщение[-1]] * 2
     rx = list(ФАЗА_RX) + полное
     места = []
-    for d, r in zip(dx, rx):
+    for d, r in zip(dx, rx, strict=False):
         места += [d, r]
     биты = [1, 0] * (точки // 2)
     for s in места:

@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import List, Optional
 
 import numpy as np
 
@@ -25,7 +24,7 @@ SYN, SOH, STX, ETX, ETB = 0x16, 0x01, 0x02, 0x83, 0x97
 НАЙТИ_ОТ = 2
 
 
-def _таблица() -> List[int]:
+def _таблица() -> list[int]:
     итог = []
     for n in range(256):
         c = n
@@ -85,10 +84,10 @@ class Блок:
         return итог
 
 
-def блоки(биты: np.ndarray) -> List[Блок]:
+def блоки(биты: np.ndarray) -> list[Блок]:
     """Все блоки ACARS: SYN SYN SOH при любом битовом сдвиге и полярности, до ETX/ETB и CRC."""
     биты = np.asarray(биты, dtype=np.uint8)
-    итог: List[Блок] = []
+    итог: list[Блок] = []
     образец = np.array([(б >> k) & 1 for б in (SYN, SYN, SOH) for k in range(8)], dtype=np.uint8)
     if len(биты) < 24 + 8 * 16:
         return итог
@@ -116,7 +115,7 @@ def блоки(биты: np.ndarray) -> List[Блок]:
     return sorted(итог, key=lambda б: б.место)
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     годные = [б for б in блоки(биты) if б.crc_верна and not б.ошибок_чётности]
     if len(годные) < НАЙТИ_ОТ:
         return None

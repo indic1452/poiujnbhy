@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -84,7 +83,7 @@ def _таблица_nid() -> np.ndarray:
 СЛОВА_NID = _таблица_nid()
 
 
-def декодировать_nid(nid64: np.ndarray) -> Tuple[int, int, int]:
+def декодировать_nid(nid64: np.ndarray) -> tuple[int, int, int]:
     """(NAC, DUID, ошибок) — ближайшее кодовое слово по 63 битам."""
     принято = np.uint64(int("".join(map(str, np.asarray(nid64, dtype=np.uint8)[:63])), 2))
     разности = np.bitwise_count(СЛОВА_NID ^ принято)
@@ -137,7 +136,7 @@ def закодировать_треллис(данные12: bytes) -> np.ndarray
     return итог
 
 
-def декодировать_треллис(эфир196: np.ndarray) -> Tuple[bytes, int]:
+def декодировать_треллис(эфир196: np.ndarray) -> tuple[bytes, int]:
     """Витерби по точкам: (12 байт, расстояние)."""
     э = np.asarray(эфир196, dtype=np.uint8)
     символьные = [None] * 98
@@ -146,7 +145,7 @@ def декодировать_треллис(эфир196: np.ndarray) -> Tuple[by
     биты_точек = [СИМВОЛ_БИТЫ[a] + СИМВОЛ_БИТЫ[b] for a, b in ТОЧКИ]
     INF = 1 << 30
     метрики = [0, INF, INF, INF]
-    пути: List[List[int]] = [[], [], [], []]
+    пути: list[list[int]] = [[], [], [], []]
     for шаг in range(49):
         принято = символьные[2 * шаг] + символьные[2 * шаг + 1]
         новые, новые_пути = [INF] * 4, [None] * 4
@@ -164,10 +163,10 @@ def декодировать_треллис(эфир196: np.ndarray) -> Tuple[by
     return np.packbits(np.array(биты, dtype=np.uint8)).tobytes(), int(расстояние)
 
 
-def разобрать_tsbk(tsbk: bytes) -> Dict[str, object]:
+def разобрать_tsbk(tsbk: bytes) -> dict[str, object]:
     t = int.from_bytes(tsbk, "big")
     код, mfid = tsbk[0] & 0x3F, tsbk[1]
-    п: Dict[str, object] = {"последний": bool(tsbk[0] & 0x80), "код": код, "mfid": mfid,
+    п: dict[str, object] = {"последний": bool(tsbk[0] & 0x80), "код": код, "mfid": mfid,
                             "операция": ОПЕРАЦИИ.get(код, f"код 0x{код:02X}")}
     if mfid == 0:
         if код == 0x00:
@@ -184,7 +183,7 @@ def разобрать_tsbk(tsbk: bytes) -> Dict[str, object]:
     return п
 
 
-def описание_tsbk(п: Dict[str, object]) -> str:
+def описание_tsbk(п: dict[str, object]) -> str:
     части = [str(п["операция"])]
     for ключ, подпись in (("группа", "группа"), ("источник", "от"), ("кому", "кому"), ("wacn", "WACN"),
                           ("sysid", "SYSID"), ("rfss", "RFSS"), ("узел", "узел"), ("канал", "канал")):
@@ -196,7 +195,7 @@ def описание_tsbk(п: Dict[str, object]) -> str:
     return ", ".join(части)
 
 
-def кадры(биты: np.ndarray) -> List[Dict[str, object]]:
+def кадры(биты: np.ndarray) -> list[dict[str, object]]:
     """Кадры: синхрослово (прямо или с обратной полярностью), NID, у TSDU — TSBK."""
     биты = np.asarray(биты, dtype=np.uint8)
     if len(биты) < 114:
@@ -217,7 +216,7 @@ def кадры(биты: np.ndarray) -> List[Dict[str, object]]:
             nac, duid, ошибок = декодировать_nid(nid)
             if ошибок > NID_ОШИБОК_ДО:
                 continue
-            к: Dict[str, object] = {"место": м, "обратная": обратная, "nac": nac, "duid": duid, "ошибок": ошибок,
+            к: dict[str, object] = {"место": м, "обратная": обратная, "nac": nac, "duid": duid, "ошибок": ошибок,
                                     "tsbk": []}
             if duid == 7:
                 поток = _без_состояния(кадр, 114, len(кадр))
@@ -235,7 +234,7 @@ def кадры(биты: np.ndarray) -> List[Dict[str, object]]:
     return sorted(итог, key=lambda к: к["место"])
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     найдено = кадры(биты)
     if len(найдено) < НАЙТИ_ОТ:
         return None
@@ -257,7 +256,7 @@ def найти(биты: np.ndarray) -> Optional[Находка]:
         подробно=подробно, свойства={"nac": nac.most_common(1)[0][0], "кадров": len(найдено), "tsbk": len(tsbk)})
 
 
-def кадр_tsdu(nac: int, tsbk: List[bytes]) -> np.ndarray:
+def кадр_tsdu(nac: int, tsbk: list[bytes]) -> np.ndarray:
     """Кадр TSDU (для проверок): синхрослово, NID, TSBK (10 байт + CRC), символы состояния."""
     блоки = []
     for n, данные in enumerate(tsbk):

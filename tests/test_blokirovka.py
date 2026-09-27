@@ -23,7 +23,6 @@ import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.store import db as dbmod
 from reportgen.store.db import (
     BUSY_TIMEOUT_MS,
@@ -33,9 +32,7 @@ from reportgen.store.db import (
     console_work,
     console_work_active,
 )
-from reportgen.store.repo import Repositories
 from reportgen.web.vectors import VectorIndexer
-
 from test_vectors import build_repos, make_settings  # noqa: E402
 
 

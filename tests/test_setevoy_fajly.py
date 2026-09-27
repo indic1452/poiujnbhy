@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Файлы внутри потоков TCP/UDP захвата: сборка по номерам, сигнатура, вырезание."""
 
 import tempfile
@@ -57,6 +56,7 @@ class ФайлыВПотоках(unittest.TestCase):
 
     def test_длина_неизвестна_до_предела(self):
         from unittest import mock
+
         from reportgen.potok import poisk
         сводки, нагрузки = self.захват([с.eth(с.ip(с.udp(bytes(range(200)), 5000, 6000), 17))])
         with mock.patch.object(poisk, "ФАЙЛ_ДО", 100):

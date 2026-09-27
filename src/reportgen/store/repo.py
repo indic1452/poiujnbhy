@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import builtins
 import hashlib
 import json
 import logging
@@ -14,8 +15,9 @@ import secrets
 import sqlite3
 import time
 from array import array
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterable, List, Sequence, Set, Tuple
+from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from ..corpus import Chunk
 from ..retrieval import tokenize
@@ -27,11 +29,11 @@ from .models import (
     SEARCHABLE_STATUSES,
     Absence,
     AuditEntry,
-    ChatAttachment,
     Case,
     CaseFile,
     CaseNote,
     Chat,
+    ChatAttachment,
     ChatMessage,
     DepartmentDay,
     Document,
@@ -94,7 +96,7 @@ def pack_vector(values: Sequence[float]) -> bytes:
     return array("f", values).tobytes()
 
 
-def unpack_vector(blob: bytes) -> List[float]:
+def unpack_vector(blob: bytes) -> list[float]:
     values = array("f")
     values.frombytes(blob)
     return list(values)
@@ -155,7 +157,7 @@ class UserRepo:
 
     def update(self, user_id: int, full_name: str | None = None,
                role: str | None = None, department: str | None = None,
-               team: str | None = None, **contacts: str | None) -> "User | None":
+               team: str | None = None, **contacts: str | None) -> User | None:
         """Изменить ФИО, должность, отдел, группу и контакты.
 
         None оставляет поле как было. Контакты передаются по имени колонки —
@@ -199,7 +201,7 @@ class UserRepo:
         return int(self.db.scalar(
             f"SELECT count(*) FROM users WHERE {where}", tuple(ADMIN_ROLES)) or 0)
 
-    def approve(self, user_id: int, by_user_id: int | None = None) -> "User | None":
+    def approve(self, user_id: int, by_user_id: int | None = None) -> User | None:
         """Одобрить заявку: человек получает доступ."""
         with self.db.transaction() as connection:
             connection.execute(
@@ -217,7 +219,7 @@ class UserRepo:
         with self.db.transaction() as connection:
             connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
 
-    def pending(self) -> List[User]:
+    def pending(self) -> list[User]:
         """Заявки, ждущие одобрения. Старые сверху: очередь есть очередь."""
         return rows_to(User, self.db.query(
             "SELECT * FROM users WHERE approved = 0 ORDER BY created_at, id"))
@@ -231,7 +233,7 @@ class UserRepo:
     #: блокировка на общей базе там, где хватает точности до минуты.
     SEEN_EVERY_SECONDS = 60
 
-    def mark_seen(self, user: "User", now: str | None = None) -> bool:
+    def mark_seen(self, user: User, now: str | None = None) -> bool:
         """Отметить, что человек сейчас в системе. Вернёт True, если записали."""
         stamp = now or utcnow()
         if user.last_seen_at:
@@ -249,7 +251,7 @@ class UserRepo:
         user.last_seen_at = stamp
         return True
 
-    def list_all(self, active_only: bool = False, staff_only: bool = False) -> List[User]:
+    def list_all(self, active_only: bool = False, staff_only: bool = False) -> list[User]:
         """Личный состав. Сортировка — по старшинству должности, потом по ФИО:
         так список читается как штатное расписание, а не как выгрузка.
 
@@ -285,7 +287,7 @@ class SessionRepo:
 
     def create(self, user_id: int, ttl_hours: int = 12, user_agent: str = "") -> str:
         token = secrets.token_urlsafe(32)
-        expires = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
+        expires = datetime.now(UTC) + timedelta(hours=ttl_hours)
         with self.db.transaction() as connection:
             connection.execute(
                 "INSERT INTO sessions(token, user_id, created_at, expires_at, user_agent) "
@@ -342,10 +344,10 @@ class LibraryReportRepo:
     #: сколько всего — хранится числом отдельно.
     MAX_NAMES = 200
 
-    def __init__(self, db: "Database") -> None:
+    def __init__(self, db: Database) -> None:
         self.db = db
 
-    def counts(self) -> Dict[str, int]:
+    def counts(self) -> dict[str, int]:
         """Числа по документам ОДНИМ запросом.
 
         Одним — потому что карточку открывают на библиотеке в 13 600
@@ -368,7 +370,7 @@ class LibraryReportRepo:
     def _key(self, root: str) -> str:
         return f"{self.PREFIX}{str(root).replace(chr(92), '/').rstrip('/')}"
 
-    def save(self, root: str, report: Dict[str, Any]) -> None:
+    def save(self, root: str, report: dict[str, Any]) -> None:
         # В транзакции, а не одиночным execute: без завершения записи её не
         # увидит веб-сервер — он открывает базу СВОИМ соединением, и незакрытая
         # транзакция приёма для него не существует. Ровно этот случай и есть
@@ -380,7 +382,7 @@ class LibraryReportRepo:
                 (self._key(root), json.dumps(report, ensure_ascii=False)),
             )
 
-    def load(self, root: str) -> Dict[str, Any]:
+    def load(self, root: str) -> dict[str, Any]:
         row = self.db.query_one("SELECT value FROM meta WHERE key = ?",
                                 (self._key(root),))
         if not row:
@@ -397,7 +399,7 @@ class DocumentRepo:
         self.db = db
 
     def upsert(self, doc_id: str, doc_type: str, title: str, source_path: str,
-               sha256: str, meta: Dict[str, Any] | None = None, domain: str = "",
+               sha256: str, meta: dict[str, Any] | None = None, domain: str = "",
                status: str = "current", superseded_by: str = "",
                year: int | None = None, size: int | None = None,
                mtime_ns: int | None = None) -> Document:
@@ -496,7 +498,7 @@ class DocumentRepo:
     def list(self, doc_type: str | None = None, domain: str | None = None,
              status: str | None = None, query: str = "",
              quality: str | None = None,
-             limit: int | None = None, offset: int = 0) -> List[Document]:
+             limit: int | None = None, offset: int = 0) -> builtins.list[Document]:
         """Документы библиотеки. ``limit`` — страница, без него всё сразу.
 
         Библиотека отдела — тринадцать с половиной тысяч документов. Раньше
@@ -513,7 +515,7 @@ class DocumentRepo:
         return rows_to(Document, rows)
 
     def text_samples(self, limit: int = 500, offset: int = 0,
-                     chars: int = 4000) -> List[Dict[str, Any]]:
+                     chars: int = 4000) -> builtins.list[dict[str, Any]]:
         """По куску текста на документ — чтобы судить о качестве разбора.
 
         Читать все фрагменты документа ради проверки на склейку незачем: у
@@ -586,20 +588,20 @@ class DocumentRepo:
                 (status, doc_id),
             )
 
-    def statuses(self) -> Dict[str, int]:
+    def statuses(self) -> dict[str, int]:
         rows = self.db.query(
             "SELECT status, count(*) AS documents FROM documents GROUP BY status"
         )
         return {row["status"]: row["documents"] for row in rows}
 
-    def domains(self) -> Dict[str, int]:
+    def domains(self) -> dict[str, int]:
         rows = self.db.query(
             "SELECT domain, count(*) AS documents FROM documents "
             "GROUP BY domain ORDER BY documents DESC"
         )
         return {row["domain"] or "не указано": row["documents"] for row in rows}
 
-    def catalog(self) -> List[Dict[str, Any]]:
+    def catalog(self) -> builtins.list[dict[str, Any]]:
         """Опись библиотеки: по строке на документ, одним запросом.
 
         Нужна помощнику: без неё он знает о библиотеке только то, что попало
@@ -670,7 +672,7 @@ class DocumentRepo:
             connection.execute("DELETE FROM chunks WHERE document_id = ?", (document.id,))
             connection.execute("DELETE FROM documents WHERE id = ?", (document.id,))
 
-    def stats(self) -> Dict[str, Dict[str, int]]:
+    def stats(self) -> dict[str, dict[str, int]]:
         rows = self.db.query(
             "SELECT doc_type, count(*) AS documents, coalesce(sum(chunk_count), 0) AS chunks "
             "FROM documents GROUP BY doc_type ORDER BY doc_type"
@@ -787,10 +789,10 @@ class ChunkRepo:
         )
         return self._to_chunk(row) if row else None
 
-    def get_many(self, chunk_uids: Sequence[str]) -> List[Chunk]:
+    def get_many(self, chunk_uids: Sequence[str]) -> list[Chunk]:
         if not chunk_uids:
             return []
-        by_uid: Dict[str, Chunk] = {}
+        by_uid: dict[str, Chunk] = {}
         for batch in _batched(list(chunk_uids)):
             placeholders = ",".join("?" * len(batch))
             rows = self.db.query(
@@ -802,7 +804,7 @@ class ChunkRepo:
         return [by_uid[uid] for uid in chunk_uids if uid in by_uid]
 
     def for_document(self, document_id: int, limit: int = 400,
-                     offset: int = 0) -> List[Chunk]:
+                     offset: int = 0) -> list[Chunk]:
         """Фрагменты одного документа по порядку — так, как их видит поиск.
 
         Нужны инженеру для проверки качества разбора: по ним сразу видно,
@@ -824,7 +826,7 @@ class ChunkRepo:
             (document_id,)) or 0)
 
     def find_sections(self, document_id: int, needle: str,
-                      limit: int = 8) -> List[Chunk]:
+                      limit: int = 8) -> list[Chunk]:
         """Фрагменты документа, у которых в крошках встречается ``needle``.
 
         Помощник просит «ЧИТАТЬ: том | Глава 12». Раньше главу искали в
@@ -845,7 +847,7 @@ class ChunkRepo:
         )
         return [self._to_chunk(row) for row in rows]
 
-    def neighbours(self, chunk_uids: Sequence[str], radius: int = 1) -> Dict[str, List[Chunk]]:
+    def neighbours(self, chunk_uids: Sequence[str], radius: int = 1) -> dict[str, list[Chunk]]:
         """Соседние фрагменты тех же документов — по radius в каждую сторону.
 
         Поиск возвращает кусок в 1800 знаков, а таблица допусков или описание
@@ -863,7 +865,7 @@ class ChunkRepo:
             f"SELECT chunk_uid, document_id, ord FROM chunks WHERE chunk_uid IN ({marks})",
             tuple(chunk_uids),
         )
-        result: Dict[str, List[Chunk]] = {}
+        result: dict[str, list[Chunk]] = {}
         for anchor in anchors:
             rows = self.db.query(
                 "SELECT c.*, d.doc_id AS doc_id FROM chunks c "
@@ -877,7 +879,7 @@ class ChunkRepo:
                 result[anchor["chunk_uid"]] = [self._to_chunk(row) for row in rows]
         return result
 
-    def outline(self, doc_ids: Sequence[str], limit: int = 40) -> Dict[str, List[str]]:
+    def outline(self, doc_ids: Sequence[str], limit: int = 40) -> dict[str, list[str]]:
         """Оглавление документов: заголовки разделов по порядку.
 
         Без него модель видит несколько кусков и не знает, что ещё есть в
@@ -893,7 +895,7 @@ class ChunkRepo:
             f"WHERE d.doc_id IN ({marks}) ORDER BY d.doc_id, c.ord",
             tuple(doc_ids),
         )
-        result: Dict[str, List[str]] = {}
+        result: dict[str, list[str]] = {}
         for row in rows:
             path = json.loads(row["title_path"] or "[]")
             if not path:
@@ -905,7 +907,7 @@ class ChunkRepo:
                 bucket.append(heading)
         return result
 
-    def all_uids(self) -> List[str]:
+    def all_uids(self) -> list[str]:
         """Только опознаватели фрагментов, без текстов.
 
         Построение векторов раньше начиналось с ``all_chunks()`` — то есть
@@ -917,7 +919,7 @@ class ChunkRepo:
         return [str(row["chunk_uid"]) for row in
                 self.db.query("SELECT chunk_uid FROM chunks ORDER BY id")]
 
-    def all_chunks(self, limit: int | None = None) -> List[Chunk]:
+    def all_chunks(self, limit: int | None = None) -> list[Chunk]:
         sql = ("SELECT c.*, d.doc_id AS doc_id FROM chunks c "
                "JOIN documents d ON d.id = c.document_id ORDER BY c.id")
         if limit:
@@ -927,7 +929,7 @@ class ChunkRepo:
     def count(self) -> int:
         return int(self.db.scalar("SELECT count(*) FROM chunks") or 0)
 
-    def drop_noise_words(self, terms: List[str]) -> "Tuple[List[str], bool]":
+    def drop_noise_words(self, terms: list[str]) -> tuple[list[str], bool]:
         """Выбросить из запроса слова, которые есть почти везде.
 
         Возвращает оставшиеся слова и признак «частыми оказались все»: в этом
@@ -966,7 +968,7 @@ class ChunkRepo:
         rarest = sorted(terms, key=lambda term: counts.get(term, 0))[:MIN_TERMS]
         return [term for term in terms if term in set(rarest)], True
 
-    def _word_counts(self, terms: Sequence[str]) -> Dict[str, int]:
+    def _word_counts(self, terms: Sequence[str]) -> dict[str, int]:
         """Сколько фрагментов содержит каждое слово — одним обращением."""
         placeholders = ",".join("?" * len(terms))
         try:
@@ -992,7 +994,7 @@ class ChunkRepo:
         self, query: str, limit: int = 50, doc_types: Iterable[str] | None = None,
         domains: Iterable[str] | None = None,
         statuses: Iterable[str] | None = SEARCHABLE_STATUSES,
-    ) -> List[Tuple[str, float]]:
+    ) -> list[tuple[str, float]]:
         """Поиск по FTS5. Возвращает пары (chunk_uid, оценка), лучшие первыми.
 
         Фильтры (тип документа, направление) применяются соединением с таблицей
@@ -1009,7 +1011,7 @@ class ChunkRepo:
         # половину библиотеки и ничего не сказало о порядке выдачи.
         joiner = " AND " if all_common else " OR "
         match = joiner.join(f'"{term}"' for term in terms)
-        params: List[Any] = [match]
+        params: list[Any] = [match]
         sql = ("SELECT f.chunk_uid AS chunk_uid, bm25(chunks_fts) AS rank "
                "FROM chunks_fts f JOIN chunks c ON c.chunk_uid = f.chunk_uid "
                "WHERE chunks_fts MATCH ?")
@@ -1064,7 +1066,7 @@ class VectorRepo:
     def __init__(self, db: Database):
         self.db = db
 
-    def put_many(self, model: str, vectors: Dict[str, Sequence[float]]) -> None:
+    def put_many(self, model: str, vectors: dict[str, Sequence[float]]) -> None:
         rows = [
             (chunk_uid, model, len(vector), pack_vector(vector))
             for chunk_uid, vector in vectors.items()
@@ -1077,10 +1079,10 @@ class VectorRepo:
                 rows,
             )
 
-    def get_many(self, chunk_uids: Sequence[str]) -> Dict[str, List[float]]:
+    def get_many(self, chunk_uids: Sequence[str]) -> dict[str, list[float]]:
         if not chunk_uids:
             return {}
-        found: Dict[str, List[float]] = {}
+        found: dict[str, list[float]] = {}
         for batch in _batched(list(chunk_uids)):
             placeholders = ",".join("?" * len(batch))
             rows = self.db.query(
@@ -1090,7 +1092,7 @@ class VectorRepo:
             found.update({row["chunk_uid"]: unpack_vector(row["vector"]) for row in rows})
         return found
 
-    def all_vectors(self, model: str | None = None) -> Tuple[List[str], List[List[float]]]:
+    def all_vectors(self, model: str | None = None) -> tuple[list[str], list[list[float]]]:
         if model:
             rows = self.db.query(
                 "SELECT chunk_uid, vector FROM embeddings WHERE model = ? ORDER BY chunk_uid",
@@ -1126,13 +1128,13 @@ class VectorRepo:
             return VectorIndex([], [], 0)
 
         try:
-            import numpy as np                      # noqa: PLC0415
+            import numpy as np  # noqa: PLC0415
         except ImportError:
             uids, vectors = self.all_vectors(model)
             return build_index(uids, vectors)
 
         matrix = np.empty((total, dim), dtype="float32")
-        uids: List[str] = []
+        uids: list[str] = []
         row = 0
         # Строк может прийти БОЛЬШЕ, чем показал счёт: пока мы читаем,
         # фоновое построение дописывает новые векторы. Матрица уже отведена
@@ -1177,7 +1179,7 @@ class VectorRepo:
         normalize_rows(matrix)
         return VectorIndex(uids, matrix, dim)
 
-    def present(self, chunk_uids: Sequence[str]) -> Set[str]:
+    def present(self, chunk_uids: Sequence[str]) -> set[str]:
         """Ключи фрагментов, у которых вектор уже есть.
 
         Именно ключи, без самих векторов: узнать, что строить дальше, можно
@@ -1189,7 +1191,7 @@ class VectorRepo:
         """
         if not chunk_uids:
             return set()
-        found: Set[str] = set()
+        found: set[str] = set()
         for batch in _batched(list(chunk_uids)):
             placeholders = ",".join("?" * len(batch))
             rows = self.db.query(
@@ -1199,7 +1201,7 @@ class VectorRepo:
             found.update(str(row["chunk_uid"]) for row in rows)
         return found
 
-    def missing(self, chunk_uids: Sequence[str]) -> List[str]:
+    def missing(self, chunk_uids: Sequence[str]) -> list[str]:
         present = self.present(chunk_uids)
         return [uid for uid in chunk_uids if uid not in present]
 
@@ -1211,7 +1213,7 @@ class VectorRepo:
             connection.execute("DELETE FROM embeddings")
 
 
-def refresh_case_index(db: "Database", case_ref: int) -> None:
+def refresh_case_index(db: Database, case_ref: int) -> None:
     """Пересобрать строку письма в поисковом указателе.
 
     Строка целиком: реквизиты письма плюс текст всех редакций отчёта.
@@ -1300,9 +1302,9 @@ class CaseFileRepo:
         row = self.db.query_one(f"{self._SELECT} WHERE f.id = ?", (file_id,))
         return CaseFile.from_row(row) if row else None
 
-    def list_for_case(self, case_ref: int, stage: str = "") -> List[CaseFile]:
+    def list_for_case(self, case_ref: int, stage: str = "") -> list[CaseFile]:
         clause = " WHERE f.case_ref = ?"
-        params: List[Any] = [case_ref]
+        params: list[Any] = [case_ref]
         if stage:
             clause += " AND f.stage = ?"
             params.append(stage)
@@ -1375,7 +1377,7 @@ class CaseRepo:
         "LEFT JOIN users s ON s.id = c.sent_by"
     )
 
-    def create(self, case_id: str, report_type: str, facts: Dict[str, Any],
+    def create(self, case_id: str, report_type: str, facts: dict[str, Any],
                digest: str = "", title: str = "", customer: str = "",
                user_id: int | None = None, *, incoming_no: str = "",
                incoming_date: str = "", deadline: str = "", priority: str = "normal",
@@ -1411,7 +1413,7 @@ class CaseRepo:
     def list(self, status: str | None = None, limit: int = 100, offset: int = 0,
              assignee_id: int | None = None, overdue_before: str | None = None,
              deadline_from: str | None = None, deadline_to: str | None = None,
-             query: str = "") -> List[Case]:
+             query: str = "") -> builtins.list[Case]:
         """Письма по фильтрам. Сортировка: сначала просроченные и срочные.
 
         Порядок «по дате правки» показывал наверху то, чего только что
@@ -1432,7 +1434,7 @@ class CaseRepo:
         rows = self.db.query(f"{self._SELECT}{clause}{order} LIMIT ? OFFSET ?", tuple(params))
         return rows_to(Case, rows)
 
-    def update_facts(self, case_ref: int, facts: Dict[str, Any], digest: str,
+    def update_facts(self, case_ref: int, facts: dict[str, Any], digest: str,
                      title: str | None = None, customer: str | None = None) -> None:
         with self.db.transaction() as connection:
             connection.execute(
@@ -1531,7 +1533,7 @@ class CaseRepo:
             needle = needle.replace(sign, "\\" + sign)
         return f"%{needle}%"
 
-    def _search_clause(self, query: str, prefix: str = "") -> tuple[str, List[Any]]:
+    def _search_clause(self, query: str, prefix: str = "") -> tuple[str, builtins.list[Any]]:
         """Условие поиска и его параметры: реквизиты письма плюс текст отчёта.
 
         По реквизитам ищем подстрокой — инженер помнит «0423» и вводит
@@ -1546,7 +1548,7 @@ class CaseRepo:
         needle = self._search_needle(query)
         parts = [f"rulower({prefix}{name}) LIKE ? ESCAPE '\\'"
                  for name in self._SEARCH_FIELDS]
-        params: List[Any] = [needle] * len(self._SEARCH_FIELDS)
+        params: list[Any] = [needle] * len(self._SEARCH_FIELDS)
         match = fts_match(query)
         if match:
             parts.append(self._FTS_SQL.format(p=prefix))
@@ -1587,7 +1589,7 @@ class CaseRepo:
     def _filters(self, *, status: str | None = None, assignee_id: int | None = None,
                  overdue_before: str | None = None, deadline_from: str | None = None,
                  deadline_to: str | None = None, query: str = "",
-                 prefix: str = "") -> tuple[List[str], List[Any]]:
+                 prefix: str = "") -> tuple[builtins.list[str], builtins.list[Any]]:
         """Условия отбора писем — одни на список и на счётчик.
 
         Раньше их было два набора, и они разошлись: список знал про срок и
@@ -1596,8 +1598,8 @@ class CaseRepo:
         Один набор условий на оба запроса — единственный способ, чтобы это
         не повторилось при следующем новом отборе.
         """
-        where: List[str] = []
-        params: List[Any] = []
+        where: list[str] = []
+        params: list[Any] = []
         if status == "open":
             marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
             where.append(f"{prefix}status IN ({marks})")
@@ -1663,8 +1665,8 @@ class ReportRepo:
     def __init__(self, db: Database):
         self.db = db
 
-    def create(self, case_ref: int, markdown: str, meta: Dict[str, Any],
-               issues: Sequence[Dict[str, Any]], sections: Sequence[Dict[str, Any]],
+    def create(self, case_ref: int, markdown: str, meta: dict[str, Any],
+               issues: Sequence[dict[str, Any]], sections: Sequence[dict[str, Any]],
                user_id: int | None = None) -> Report:
         now = utcnow()
         with self.db.transaction() as connection:
@@ -1751,7 +1753,7 @@ class ReportRepo:
             report.sections = self.sections(report_id)
         return report
 
-    def sections(self, report_id: int) -> List[ReportSection]:
+    def sections(self, report_id: int) -> list[ReportSection]:
         rows = self.db.query(
             "SELECT * FROM report_sections WHERE report_id = ? ORDER BY ord", (report_id,)
         )
@@ -1788,7 +1790,7 @@ class ReportRepo:
         )
         return Report.from_row(row) if row else None
 
-    def list_for_case(self, case_ref: int) -> List[Report]:
+    def list_for_case(self, case_ref: int) -> list[Report]:
         rows = self.db.query(
             "SELECT * FROM reports WHERE case_ref = ? ORDER BY version DESC", (case_ref,)
         )
@@ -1829,7 +1831,7 @@ class ReportRepo:
         if row is not None:
             refresh_case_index(self.db, int(row["case_ref"]))
 
-    def update_meta(self, report_id: int, meta: Dict[str, Any]) -> None:
+    def update_meta(self, report_id: int, meta: dict[str, Any]) -> None:
         with self.db.transaction() as connection:
             connection.execute(
                 "UPDATE reports SET meta_json = ? WHERE id = ?",
@@ -1843,7 +1845,7 @@ class ReportRepo:
             )
         self._reindex(report_id)
 
-    def set_issues(self, report_id: int, issues: Sequence[Dict[str, Any]]) -> None:
+    def set_issues(self, report_id: int, issues: Sequence[dict[str, Any]]) -> None:
         with self.db.transaction() as connection:
             connection.execute(
                 "UPDATE reports SET issues_json = ? WHERE id = ?",
@@ -1888,7 +1890,7 @@ class EditPairRepo:
 
     def add(self, *, case_id: str, report_id: int | None, report_type: str, section_id: str,
             section_title: str, draft: str, final: str, facts_digest: str = "",
-            context: Dict[str, Any] | None = None, user_id: int | None = None) -> int:
+            context: dict[str, Any] | None = None, user_id: int | None = None) -> int:
         distance = normalized_edit_distance(draft, final)
         with self.db.transaction() as connection:
             cursor = connection.execute(
@@ -1916,7 +1918,7 @@ class EditPairRepo:
             )
         return cursor.rowcount or 0
 
-    def list(self, limit: int = 500, offset: int = 0) -> List[EditPair]:
+    def list(self, limit: int = 500, offset: int = 0) -> builtins.list[EditPair]:
         rows = self.db.query(
             "SELECT * FROM edit_pairs ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset)
         )
@@ -1934,7 +1936,7 @@ class EditPairRepo:
             value = self.db.scalar("SELECT avg(edit_distance) FROM edit_pairs")
         return float(value or 0.0)
 
-    def by_section(self) -> List[Dict[str, Any]]:
+    def by_section(self) -> builtins.list[dict[str, Any]]:
         rows = self.db.query(
             "SELECT section_id, section_title, count(*) AS pairs, "
             "avg(edit_distance) AS mean_distance FROM edit_pairs "
@@ -1988,7 +1990,7 @@ class ChatRepo:
         return Chat.from_row(row)
 
     def for_user(self, user_id: int, *, archived: bool = False,
-                 limit: int = 100, offset: int = 0) -> List[Chat]:
+                 limit: int = 100, offset: int = 0) -> list[Chat]:
         rows = self.db.query(
             "SELECT c.*, (SELECT count(*) FROM chat_messages m WHERE m.chat_id = c.id) "
             "AS message_count FROM chats c WHERE c.user_id = ? AND c.archived = ? "
@@ -2028,8 +2030,8 @@ class ChatRepo:
             connection.execute("DELETE FROM chats WHERE id = ?", (chat_id,))
 
     def add_message(self, chat_id: int, role: str, content: str, *,
-                    sources: Sequence[Dict[str, Any]] = (),
-                    meta: Dict[str, Any] | None = None) -> ChatMessage:
+                    sources: Sequence[dict[str, Any]] = (),
+                    meta: dict[str, Any] | None = None) -> ChatMessage:
         if role not in ("user", "assistant"):
             raise ValueError(f"недопустимая роль сообщения: {role}")
         with self.db.transaction() as connection:
@@ -2050,8 +2052,8 @@ class ChatRepo:
         return ChatMessage.from_row(row)
 
     def update_message(self, message_id: int, *, content: str,
-                       sources: Sequence[Dict[str, Any]],
-                       meta: Dict[str, Any]) -> ChatMessage:
+                       sources: Sequence[dict[str, Any]],
+                       meta: dict[str, Any]) -> ChatMessage:
         """Переписать сообщение: так дописывается продолженный ответ.
 
         Продолжение ложится в то же сообщение, а не новым: иначе разорванная
@@ -2074,14 +2076,14 @@ class ChatRepo:
         assert row is not None
         return ChatMessage.from_row(row)
 
-    def messages(self, chat_id: int, limit: int = 500) -> List[ChatMessage]:
+    def messages(self, chat_id: int, limit: int = 500) -> list[ChatMessage]:
         rows = self.db.query(
             "SELECT * FROM chat_messages WHERE chat_id = ? ORDER BY id LIMIT ?",
             (chat_id, limit),
         )
         return rows_to(ChatMessage, rows)
 
-    def tail(self, chat_id: int, count: int = 6) -> List[ChatMessage]:
+    def tail(self, chat_id: int, count: int = 6) -> list[ChatMessage]:
         """Последние сообщения — история, которая уходит модели в контекст."""
         rows = self.db.query(
             "SELECT * FROM chat_messages WHERE chat_id = ? ORDER BY id DESC LIMIT ?",
@@ -2112,7 +2114,7 @@ class ChatRepo:
                     "length(text) AS chars")
 
     def attachments(self, chat_id: int, *, pending_only: bool = False,
-                    with_text: bool = True) -> List[ChatAttachment]:
+                    with_text: bool = True) -> list[ChatAttachment]:
         """Вложения разговора. pending_only — ещё не привязанные к вопросу.
 
         ``with_text`` выключают там, где нужен только список: открытие
@@ -2167,7 +2169,7 @@ class ChatRepo:
         ) or 0)
 
     def questions(self, *, limit: int = 200, query: str = ""
-                  ) -> List[Dict[str, Any]]:
+                  ) -> list[dict[str, Any]]:
         """Вопросы к помощнику с именами авторов — ДЛЯ АДМИНИСТРАТОРА.
 
         Заведено по прямому распоряжению начальника отдела: «сделай, чтобы
@@ -2183,7 +2185,7 @@ class ChatRepo:
         вхолостую.
         """
         clause = ""
-        params: List[Any] = []
+        params: list[Any] = []
         сокращённый = str(query or "").strip()
         if сокращённый:
             clause = " AND lower(m.content) LIKE ?"
@@ -2201,7 +2203,7 @@ class ChatRepo:
             " ORDER BY m.id DESC LIMIT ?",
             (*params, int(limit)),
         )
-        items: List[Dict[str, Any]] = []
+        items: list[dict[str, Any]] = []
         for row in rows:
             try:
                 meta = json.loads(row["answer_meta"] or "{}")
@@ -2225,7 +2227,7 @@ class ChatRepo:
             })
         return items
 
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         """Обезличенная статистика: сколько разговоров и сообщений всего."""
         return {
             "chats": int(self.db.scalar("SELECT count(*) FROM chats") or 0),
@@ -2239,7 +2241,7 @@ class AuditRepo:
         self.db = db
 
     def log(self, action: str, *, user: User | None = None, object_type: str = "",
-            object_id: str = "", details: Dict[str, Any] | None = None) -> None:
+            object_id: str = "", details: dict[str, Any] | None = None) -> None:
         """Записать действие в журнал. Неудача журнала не ломает само действие.
 
         Журнал — вещь служебная. Если база в этот момент занята (идёт загрузка
@@ -2259,7 +2261,7 @@ class AuditRepo:
         except sqlite3.Error as error:
             log.warning("запись в журнал действий не удалась (%s): %s", action, error)
 
-    def list(self, limit: int = 200) -> List[AuditEntry]:
+    def list(self, limit: int = 200) -> builtins.list[AuditEntry]:
         rows = self.db.query("SELECT * FROM audit ORDER BY id DESC LIMIT ?", (limit,))
         return rows_to(AuditEntry, rows)
 
@@ -2317,12 +2319,12 @@ class PersonFileRepo:
         row = self.db.query_one(f"{self._SELECT} WHERE f.id = ?", (file_id,))
         return PersonFile.from_row(row) if row else None
 
-    def list_for_user(self, user_id: int) -> List[PersonFile]:
+    def list_for_user(self, user_id: int) -> list[PersonFile]:
         return rows_to(PersonFile, self.db.query(
             f"{self._SELECT} WHERE f.user_id = ? ORDER BY f.kind, f.id DESC",
             (user_id,)))
 
-    def counts(self) -> Dict[int, int]:
+    def counts(self) -> dict[int, int]:
         """Сколько документов у каждого. Нужно списку военнослужащих одним запросом."""
         rows = self.db.query(
             "SELECT user_id, count(*) AS n FROM person_files GROUP BY user_id")
@@ -2366,7 +2368,7 @@ class DepartmentDayRepo:
             "SELECT * FROM department_days WHERE id = ?", (day_id,))
         return DepartmentDay.from_row(row) if row else None
 
-    def in_period(self, date_from: str, date_to: str) -> List[DepartmentDay]:
+    def in_period(self, date_from: str, date_to: str) -> list[DepartmentDay]:
         """Все дни отдела, пересекающиеся с промежутком."""
         rows = self.db.query(
             "SELECT * FROM department_days WHERE date_from <= ? AND date_to >= ? "
@@ -2420,13 +2422,13 @@ class AbsenceRepo:
         return self.get(absence_id)
 
     def overlapping(self, user_id: int, date_from: str, date_to: str,
-                    skip_id: int | None = None) -> List[Absence]:
+                    skip_id: int | None = None) -> list[Absence]:
         """Записи этого человека, пересекающиеся с промежутком.
 
         Нужны, чтобы не заводить вторую отметку на те же дни: расход, где
         человек одновременно в отпуске и на дежурстве, — не расход.
         """
-        params: List[Any] = [user_id, date_to, date_from]
+        params: list[Any] = [user_id, date_to, date_from]
         clause = " WHERE a.user_id = ? AND a.date_from <= ? AND a.date_to >= ?"
         if skip_id is not None:
             clause += " AND a.id <> ?"
@@ -2434,7 +2436,7 @@ class AbsenceRepo:
         return rows_to(Absence, self.db.query(
             f"{self._SELECT}{clause} ORDER BY a.date_from", tuple(params)))
 
-    def in_period_for_active(self, date_from: str, date_to: str) -> List[Absence]:
+    def in_period_for_active(self, date_from: str, date_to: str) -> list[Absence]:
         """Расход за промежуток, только по действующим военнослужащим.
 
         Уволенный человек с отпуском до конца месяца в расходе не нужен: он
@@ -2455,14 +2457,14 @@ class AbsenceRepo:
         with self.db.transaction() as connection:
             connection.execute("DELETE FROM absences WHERE id = ?", (absence_id,))
 
-    def on_date(self, day: str, kind: str | None = None) -> List[Absence]:
+    def on_date(self, day: str, kind: str | None = None) -> list[Absence]:
         """Кто отсутствует или дежурит в этот день. Границы включительно.
 
         Только действующие военнослужащие. Отпуск уволенного длится в базе до
         своей даты и раньше считался как отсутствие: отдел вечно недосчитывался
         человека, которого в нём давно нет.
         """
-        params: List[Any] = [day, day]
+        params: list[Any] = [day, day]
         clause = " WHERE u.active = 1 AND a.date_from <= ? AND a.date_to >= ?"
         if kind:
             clause += " AND a.kind = ?"
@@ -2470,7 +2472,7 @@ class AbsenceRepo:
         rows = self.db.query(f"{self._SELECT}{clause} ORDER BY a.kind, full_name", tuple(params))
         return rows_to(Absence, rows)
 
-    def in_period(self, date_from: str, date_to: str) -> List[Absence]:
+    def in_period(self, date_from: str, date_to: str) -> list[Absence]:
         """Все периоды, пересекающиеся с промежутком."""
         rows = self.db.query(
             f"{self._SELECT} WHERE a.date_from <= ? AND a.date_to >= ? "
@@ -2479,14 +2481,14 @@ class AbsenceRepo:
         )
         return rows_to(Absence, rows)
 
-    def for_user_period(self, user_id: int, date_from: str, date_to: str) -> List[Absence]:
+    def for_user_period(self, user_id: int, date_from: str, date_to: str) -> list[Absence]:
         """Расход одного человека за промежуток. Для его личного кабинета."""
         return rows_to(Absence, self.db.query(
             f"{self._SELECT} WHERE a.user_id = ? AND a.date_from <= ? "
             "AND a.date_to >= ? ORDER BY a.date_from",
             (user_id, date_to, date_from)))
 
-    def for_user(self, user_id: int, limit: int = 50) -> List[Absence]:
+    def for_user(self, user_id: int, limit: int = 50) -> list[Absence]:
         rows = self.db.query(
             f"{self._SELECT} WHERE a.user_id = ? ORDER BY a.date_from DESC LIMIT ?",
             (user_id, limit),
@@ -2504,7 +2506,7 @@ class BoardRepo:
     def __init__(self, db: Database):
         self.db = db
 
-    def workload(self, today: str) -> List[Dict[str, Any]]:
+    def workload(self, today: str) -> list[dict[str, Any]]:
         """Нагрузка по людям: сколько писем в работе, сколько просрочено."""
         marks = ", ".join("?" for _ in OPEN_CASE_STATUSES)
         rows = self.db.query(
@@ -2542,11 +2544,11 @@ class BoardRepo:
         )
         return [dict(row) for row in rows]
 
-    def status_counts(self) -> Dict[str, int]:
+    def status_counts(self) -> dict[str, int]:
         rows = self.db.query("SELECT status, count(*) AS n FROM cases GROUP BY status")
         return {row["status"]: int(row["n"]) for row in rows}
 
-    def deadline_counts(self, today: str, soon_until: str) -> Dict[str, int]:
+    def deadline_counts(self, today: str, soon_until: str) -> dict[str, int]:
         """Сколько писем просрочено и сколько горит. Считаем в базе.
 
         Раньше сводка выбирала до 500 полных писем и мерила длину списка:
@@ -2573,7 +2575,7 @@ class BoardRepo:
             f"SELECT count(*) FROM cases WHERE assignee_id IS NULL AND status IN ({marks})",
             tuple(OPEN_CASE_STATUSES)) or 0)
 
-    def movement(self, date_from: str) -> Dict[str, int]:
+    def movement(self, date_from: str) -> dict[str, int]:
         """Движение за период: сколько принято, проверено и отправлено.
 
         Считаем по дате отправки ответа, а не по времени правки письма и
@@ -2641,7 +2643,7 @@ class NoticeRepo:
         row = self.db.query_one(f"{self._SELECT} WHERE n.id = ?", (notice_id,))
         return Notice.from_row(row) if row else None
 
-    def list_for(self, user_id: int, limit: int = 50) -> List[Notice]:
+    def list_for(self, user_id: int, limit: int = 50) -> list[Notice]:
         return rows_to(Notice, self.db.query(
             f"{self._SELECT} WHERE n.user_id = ? ORDER BY n.id DESC LIMIT ?",
             (user_id, limit)))
@@ -2702,7 +2704,7 @@ class TalkRepo:
             "ORDER BY t.id LIMIT 1", (first, second))
         return int(row["id"]) if row else None
 
-    def members(self, talk_id: int) -> List[Dict[str, Any]]:
+    def members(self, talk_id: int) -> list[dict[str, Any]]:
         rows = self.db.query(
             "SELECT m.user_id, m.seen_id, coalesce(u.full_name, u.login, '') AS name, "
             "u.role AS role FROM talk_members m JOIN users u ON u.id = m.user_id "
@@ -2717,7 +2719,7 @@ class TalkRepo:
             "SELECT 1 FROM talk_members WHERE talk_id = ? AND user_id = ?",
             (talk_id, user_id)) is not None
 
-    def list_for(self, user_id: int) -> List[Dict[str, Any]]:
+    def list_for(self, user_id: int) -> list[dict[str, Any]]:
         """Беседы человека: свежие сверху, с последним сообщением и счётчиком."""
         rows = self.db.query(
             "SELECT t.id, t.title, t.updated_at, m.seen_id, "
@@ -2748,7 +2750,7 @@ class TalkRepo:
             "FROM talks t WHERE t.id = ?", (talk_id,))
         return bool(row) and not (row["title"] or "") and int(row["n"]) == 2
 
-    def leave(self, talk_id: int, user_id: int) -> "List[str]":
+    def leave(self, talk_id: int, user_id: int) -> list[str]:
         """Убрать беседу у одного человека.
 
         Так уходят из беседы НЕСКОЛЬКИХ: остальные в ней остались, и стирать
@@ -2769,7 +2771,7 @@ class TalkRepo:
                 return []
             return self._purge(connection, talk_id)
 
-    def purge(self, talk_id: int) -> "List[str]":
+    def purge(self, talk_id: int) -> list[str]:
         """Убрать беседу СОВСЕМ — у всех участников.
 
         Так удаляется беседа двоих. Прежде уходил только тот, кто удалял, и
@@ -2788,7 +2790,7 @@ class TalkRepo:
             return self._purge(connection, talk_id)
 
     @staticmethod
-    def _purge(connection: Any, talk_id: int) -> "List[str]":
+    def _purge(connection: Any, talk_id: int) -> list[str]:
         """Убрать беседу из базы. Возвращает пути приложенных файлов.
 
         Сообщения, участники и записи о файлах уходят сами: все три таблицы
@@ -2829,7 +2831,7 @@ class TalkRepo:
             "WHERE m.id = ?", (message_id,))
         return TalkMessage.from_row(row) if row else None
 
-    def messages(self, talk_id: int, limit: int = 200) -> List[TalkMessage]:
+    def messages(self, talk_id: int, limit: int = 200) -> list[TalkMessage]:
         rows = self.db.query(
             "SELECT m.*, coalesce(u.full_name, u.login, '') AS author "
             "FROM talk_messages m LEFT JOIN users u ON u.id = m.user_id "
@@ -2837,7 +2839,7 @@ class TalkRepo:
         items = list(reversed(rows_to(TalkMessage, rows)))
         # Файлы всей беседы одним запросом и раскладываем по сообщениям: по
         # запросу на сообщение — это двести запросов на открытие переписки.
-        by_message: Dict[int, List[Dict[str, Any]]] = {}
+        by_message: dict[int, list[dict[str, Any]]] = {}
         for item in self.files(talk_id):
             by_message.setdefault(int(item.message_id or 0), []).append(item.to_dict())
         for message in items:
@@ -2846,7 +2848,7 @@ class TalkRepo:
 
     # -- вложения -----------------------------------------------------------
 
-    def files(self, talk_id: int) -> List[TalkFile]:
+    def files(self, talk_id: int) -> list[TalkFile]:
         return rows_to(TalkFile, self.db.query(
             "SELECT * FROM talk_files WHERE talk_id = ? ORDER BY id", (talk_id,)))
 
@@ -2919,7 +2921,7 @@ class CaseNoteRepo:
         row = self.db.query_one(f"{self._SELECT} WHERE n.id = ?", (note_id,))
         return CaseNote.from_row(row) if row else None
 
-    def list_for_case(self, case_ref: int) -> List[CaseNote]:
+    def list_for_case(self, case_ref: int) -> list[CaseNote]:
         return rows_to(CaseNote, self.db.query(
             f"{self._SELECT} WHERE n.case_ref = ? ORDER BY n.id", (case_ref,)))
 
@@ -2955,7 +2957,7 @@ class Repositories:
         self.audit = AuditRepo(db)
 
     @classmethod
-    def open(cls, path: str) -> "Repositories":
+    def open(cls, path: str) -> Repositories:
         return cls(Database(path))
 
     def close(self) -> None:

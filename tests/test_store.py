@@ -8,9 +8,10 @@
 import sqlite3
 import tempfile
 import unittest
-from unittest import mock
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any
+from unittest import mock
 
 import _bootstrap  # noqa: F401
 from reportgen.corpus import Chunk
@@ -39,7 +40,7 @@ FUTURE = "2099-01-01T00:00:00+00:00"
 
 def make_chunk(chunk_id: str, doc_id: str, doc_type: str, text: str,
                title_path: Sequence[str] | None = None,
-               meta: Dict[str, Any] | None = None) -> Chunk:
+               meta: dict[str, Any] | None = None) -> Chunk:
     """Готовит чанк без обращения к файловой системе."""
     return Chunk(
         chunk_id=chunk_id,
@@ -93,8 +94,8 @@ class StoreTestCase(unittest.TestCase):
             case = self.repos.cases.get(case.id)
         return case
 
-    def make_report(self, case_ref: int, sections: Sequence[Dict[str, Any]] | None = None,
-                    issues: Sequence[Dict[str, Any]] = ()) -> Report:
+    def make_report(self, case_ref: int, sections: Sequence[dict[str, Any]] | None = None,
+                    issues: Sequence[dict[str, Any]] = ()) -> Report:
         if sections is None:
             sections = [
                 {"section_id": "summary", "title": "Резюме", "text": "Резюме черновика."},
@@ -828,9 +829,9 @@ class ChunkRepoTests(StoreTestCase):
 # ---------------------------------------------------------- VectorRepo ----
 
 class VectorRepoTests(StoreTestCase):
-    def assert_vectors_close(self, got: List[float], expected: Sequence[float]) -> None:
+    def assert_vectors_close(self, got: list[float], expected: Sequence[float]) -> None:
         self.assertEqual(len(got), len(expected))
-        for value, reference in zip(got, expected):
+        for value, reference in zip(got, expected, strict=False):
             self.assertAlmostEqual(value, reference, places=6)
 
     def test_pack_unpack_round_trip(self):

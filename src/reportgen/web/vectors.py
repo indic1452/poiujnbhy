@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import TYPE_CHECKING, Any, Callable, Dict
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from ..embeddings import EmbeddingClient, EmbeddingError, advice, index_embeddings
 from ..store.db import console_work_active
@@ -56,8 +57,8 @@ ORPHAN_TTL = 600.0
 class VectorIndexer:
     """Построение векторов библиотеки и состояние смыслового поиска."""
 
-    def __init__(self, repos: "Repositories", settings: "Settings",
-                 client_factory: "Callable[[], Any] | None" = None):
+    def __init__(self, repos: Repositories, settings: Settings,
+                 client_factory: Callable[[], Any] | None = None):
         self.repos = repos
         self.settings = settings
         #: Чем строить векторы. Подменяется в тестах: поднимать рядом сервер
@@ -73,7 +74,7 @@ class VectorIndexer:
         self._advice = ""
         self._finished_at = 0.0
         self._written = 0
-        self._status: Dict[str, Any] | None = None
+        self._status: dict[str, Any] | None = None
         self._status_at = 0.0
         #: Осиротевшие векторы — счёт и время его снятия.
         self._orphan_ours = 0
@@ -96,7 +97,7 @@ class VectorIndexer:
         with self._lock:
             return self._thread is not None and self._thread.is_alive()
 
-    def status(self, *, fresh: bool = False) -> Dict[str, Any]:
+    def status(self, *, fresh: bool = False) -> dict[str, Any]:
         """Состояние смыслового поиска — то, что показывает библиотека.
 
         ``chunks`` — сколько фрагментов вообще, ``vectors`` — сколько из них
@@ -143,7 +144,7 @@ class VectorIndexer:
         counted["hint"] = _hint(counted)
         return counted
 
-    def _count(self) -> Dict[str, Any]:
+    def _count(self) -> dict[str, Any]:
         """Счёт по индексам — без прохода по самим векторам.
 
         Раньше и «сколько векторов», и «сколько чужой моделью» считались
@@ -181,7 +182,7 @@ class VectorIndexer:
             "stale": stale,
         }
 
-    def _orphans(self, *, fresh: bool = False) -> "tuple[int, int]":
+    def _orphans(self, *, fresh: bool = False) -> tuple[int, int]:
         """Векторы, чьих фрагментов уже нет: (нашей моделью, чужой моделью).
 
         Единственное место состояния, которому нужен проход по всей таблице.
@@ -221,7 +222,7 @@ class VectorIndexer:
         """
         return console_work_active(self.repos.db.path)
 
-    def start(self, *, force: bool = False) -> Dict[str, Any]:
+    def start(self, *, force: bool = False) -> dict[str, Any]:
         """Запустить построение в фоне. Уже идёт — вернуть текущее состояние."""
         if not self.enabled:
             return self.status()
@@ -251,7 +252,7 @@ class VectorIndexer:
                 started = True
         return self.status(fresh=True) if started else self.status()
 
-    def start_if_needed(self) -> Dict[str, Any]:
+    def start_if_needed(self) -> dict[str, Any]:
         """Достроить недостающие векторы — зовётся после приёма документов.
 
         Ничего не делает, если смысловой поиск выключен или всё построено:
@@ -283,7 +284,7 @@ class VectorIndexer:
         self._stopping.set()
         self.wait(timeout)
 
-    def check(self) -> Dict[str, Any]:
+    def check(self) -> dict[str, Any]:
         """Проверить связь со службой одним коротким запросом.
 
         Человек нажимает кнопку и хочет ответ сейчас, а не через полчаса
@@ -402,7 +403,7 @@ class VectorIndexer:
                 pass
 
 
-def _hint(state: Dict[str, Any]) -> str:
+def _hint(state: dict[str, Any]) -> str:
     """Одна строка о состоянии поиска — та, что читает человек."""
     if not state["enabled"]:
         return ("смысловой поиск выключен: находится только то, что совпало "

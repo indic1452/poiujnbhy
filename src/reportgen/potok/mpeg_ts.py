@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 from .dvbs2 import crc32_mpeg2
 from .nahodka import Находка
@@ -72,10 +71,10 @@ class Разбор:
     скремблировано: int = 0
     секций: int = 0
     crc_неверно: int = 0
-    программы: Dict[int, int] = field(default_factory=dict)              # программа → PID PMT
-    потоки: Dict[int, List[Tuple[int, int]]] = field(default_factory=dict)  # программа → [(тип, PID)]
-    службы: Dict[int, Tuple[int, str, str]] = field(default_factory=dict)   # служба → (тип, поставщик, имя)
-    датаграммы: List[bytes] = field(default_factory=list)
+    программы: dict[int, int] = field(default_factory=dict)              # программа → PID PMT
+    потоки: dict[int, list[tuple[int, int]]] = field(default_factory=dict)  # программа → [(тип, PID)]
+    службы: dict[int, tuple[int, str, str]] = field(default_factory=dict)   # служба → (тип, поставщик, имя)
+    датаграммы: list[bytes] = field(default_factory=list)
     mac: Counter = field(default_factory=Counter)
 
 
@@ -128,8 +127,8 @@ def _секция(р: Разбор, pid: int, с: bytes) -> None:
 def разобрать(данные: bytes, длина: int = 188, сдвиг: int = 0, *, предел: int = 200_000) -> Разбор:
     """Пакеты TS подряд с места ``сдвиг``: счёт PID, непрерывность, секции PSI/SI и MPE."""
     р = Разбор()
-    сборка: Dict[int, bytearray] = {}
-    счётчики: Dict[int, int] = {}
+    сборка: dict[int, bytearray] = {}
+    счётчики: dict[int, int] = {}
     for м in range(сдвиг, len(данные) - 187, длина):
         п = данные[м:м + 188]
         if п[0] != 0x47:
@@ -168,7 +167,7 @@ def разобрать(данные: bytes, длина: int = 188, сдвиг: i
     return р
 
 
-def _завершить(р: Разбор, pid: int, сборка: Dict[int, bytearray]) -> None:
+def _завершить(р: Разбор, pid: int, сборка: dict[int, bytearray]) -> None:
     """Выделить собранные секции из буфера PID (подряд, до набивки 0xFF)."""
     буфер = сборка[pid]
     while len(буфер) >= 3:
@@ -182,7 +181,7 @@ def _завершить(р: Разбор, pid: int, сборка: Dict[int, byte
         del буфер[:длина]
 
 
-def находка(данные: bytes, длина: int = 188, сдвиг: int = 0) -> Optional[Находка]:
+def находка(данные: bytes, длина: int = 188, сдвиг: int = 0) -> Находка | None:
     """Сводка транспортного потока; None — таблиц PSI нет (PAT не собралась)."""
     р = разобрать(данные, длина, сдвиг)
     if not р.программы and not р.датаграммы:

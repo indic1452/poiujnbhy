@@ -18,9 +18,9 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from itertools import combinations
-from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -117,7 +117,7 @@ def crc16(биты: Sequence[int]) -> int:
     return crc
 
 
-def _rm_строки() -> List[int]:
+def _rm_строки() -> list[int]:
     return [(1 << (29 - i)) | int(RM_ПОРОЖДАЮЩАЯ[i], 2) for i in range(14)]
 
 
@@ -136,9 +136,9 @@ def _rm_синдром(слово: int) -> int:
     return (rm_кодировать(слово >> 16) ^ слово) & 0xFFFF
 
 
-def _rm_таблица() -> Dict[int, int]:
+def _rm_таблица() -> dict[int, int]:
     """Синдром → ошибка наименьшего веса (до 3 бит; расстояние кода — 8, проверяется в тестах)."""
-    таблица: Dict[int, int] = {0: 0}
+    таблица: dict[int, int] = {0: 0}
     for вес in (1, 2, 3):
         for места in combinations(range(30), вес):
             e = sum(1 << m for m in места)
@@ -149,7 +149,7 @@ def _rm_таблица() -> Dict[int, int]:
 RM_ТАБЛИЦА = _rm_таблица()
 
 
-def rm_декодировать(слово: int) -> Optional[Tuple[int, int]]:
+def rm_декодировать(слово: int) -> tuple[int, int] | None:
     """30 бит → (14 бит данных, исправлено бит) или None — ошибок больше трёх."""
     e = RM_ТАБЛИЦА.get(_rm_синдром(слово))
     if e is None:
@@ -157,7 +157,7 @@ def rm_декодировать(слово: int) -> Optional[Tuple[int, int]]:
     return (слово ^ e) >> 16, bin(e).count("1")
 
 
-def декодировать_блок(тип5: np.ndarray, скремблер: int, параметры: Tuple[int, int, int, int]) -> Optional[np.ndarray]:
+def декодировать_блок(тип5: np.ndarray, скремблер: int, параметры: tuple[int, int, int, int]) -> np.ndarray | None:
     """Тип 5 → тип 1 (без CRC) или None, если CRC неверна."""
     длина5, длина2, длина1, a = параметры
     тип4 = np.asarray(тип5[:длина5], dtype=np.uint8) ^ гамма(скремблер, длина5)
@@ -173,7 +173,7 @@ def декодировать_блок(тип5: np.ndarray, скремблер: i
     return тип2[:длина1]
 
 
-def закодировать_блок(тип1: Sequence[int], скремблер: int, параметры: Tuple[int, int, int, int]) -> np.ndarray:
+def закодировать_блок(тип1: Sequence[int], скремблер: int, параметры: tuple[int, int, int, int]) -> np.ndarray:
     длина5, длина2, длина1, a = параметры
     crc = crc16(тип1) ^ 0xFFFF
     тип2 = np.array(list(тип1) + [(crc >> (15 - i)) & 1 for i in range(16)] + [0, 0, 0, 0], dtype=np.uint8)
@@ -198,17 +198,17 @@ class Сеть:
 class Пачка:
     бит: int
     вид: str                       # SB, NDB-1 (n), NDB-2 (p)
-    время: Tuple[int, int, int] = (0, 0, 0)       # TN, FN, MN — из SYNC
-    aach: Optional[Dict[str, str]] = None
-    pdu: List[Dict[str, str]] = field(default_factory=list)
+    время: tuple[int, int, int] = (0, 0, 0)       # TN, FN, MN — из SYNC
+    aach: dict[str, str] | None = None
+    pdu: list[dict[str, str]] = field(default_factory=list)
 
 
-def разобрать_sync(т1: np.ndarray) -> Tuple[Сеть, Tuple[int, int, int]]:
+def разобрать_sync(т1: np.ndarray) -> tuple[Сеть, tuple[int, int, int]]:
     ч = lambda от, n: биты_в_число(т1[от:от + n])  # noqa: E731
     return Сеть(ч(31, 10), ч(41, 14), ч(4, 6), ч(0, 4)), (ч(10, 2) + 1, ч(12, 5), ч(17, 6))
 
 
-def разобрать_aach(данные: int, кадр18: bool) -> Dict[str, str]:
+def разобрать_aach(данные: int, кадр18: bool) -> dict[str, str]:
     заголовок, поле1, поле2 = данные >> 12, (данные >> 6) & 0x3F, данные & 0x3F
 
     def доступ(поле: int) -> str:
@@ -227,7 +227,7 @@ def разобрать_aach(данные: int, кадр18: bool) -> Dict[str, st
     return итог
 
 
-def разобрать_pdu(т1: np.ndarray) -> Dict[str, str]:
+def разобрать_pdu(т1: np.ndarray) -> dict[str, str]:
     """Первый элемент MAC в блоке: тип и главные поля (tetra_mac_pdu.c)."""
     ч = lambda от, n: биты_в_число(т1[от:от + n])  # noqa: E731
     вид = ч(0, 2)
@@ -274,8 +274,8 @@ def _ошибок(биты: np.ndarray, образец: Sequence[int]) -> int:
 
 @dataclass
 class Разбор:
-    сети: List[Сеть] = field(default_factory=list)
-    пачки: List[Пачка] = field(default_factory=list)
+    сети: list[Сеть] = field(default_factory=list)
+    пачки: list[Пачка] = field(default_factory=list)
 
 
 def разобрать(биты: np.ndarray) -> Разбор:
@@ -344,7 +344,7 @@ def _пачка(биты: np.ndarray, начало: int, вид: str, сеть: 
     return п
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     р = разобрать(биты)
     if not р.сети:
         return None
@@ -381,7 +381,7 @@ def найти(биты: np.ndarray) -> Optional[Находка]:
 
 # --- для проверок: сборка пачек ---
 
-def sync_биты(сеть: Сеть, tn: int = 1, fn: int = 1, mn: int = 1) -> List[int]:
+def sync_биты(сеть: Сеть, tn: int = 1, fn: int = 1, mn: int = 1) -> list[int]:
     б = [0] * 60
     for от, n, v in ((0, 4, сеть.код_системы), (4, 6, сеть.цвет), (10, 2, tn - 1), (12, 5, fn), (17, 6, mn),
                      (31, 10, сеть.mcc), (41, 14, сеть.mnc)):

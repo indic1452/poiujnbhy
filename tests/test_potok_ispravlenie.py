@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Исправление ошибок блочных кодов: Рида — Соломона, БЧХ (алгебраически), линейные (по синдрому).
 
 Коды собираются здесь же, независимо от анализатора: поле GF(2^m) — сдвигами с
@@ -13,7 +12,6 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 from reportgen.potok import rs_bch
-
 
 # -- поле и коды — независимо от анализатора -------------------------------------------------
 
@@ -147,7 +145,7 @@ class РидСоломон(unittest.TestCase):
 
 class БЧХ(unittest.TestCase):
     def test_двоичные_коды(self):
-        for p, n, fcr, корней, сколько_бит in ((0x13, 15, 1, 4, 7), (0x25, 31, 1, 6, 16), (0x43, 63, 1, 8, 45),
+        for p, n, fcr, корней, _сколько_бит in ((0x13, 15, 1, 4, 7), (0x25, 31, 1, 6, 16), (0x43, 63, 1, 8, 45),
                                                (0x43, 50, 1, 8, 45)):
             gf = GF(p)
             g = порождающий_бчх(gf, fcr, корней)
@@ -193,7 +191,7 @@ def проверочная_циклического(g, n):
     for f in свободные:
         h = np.zeros(n, np.uint8)
         h[f] = 1
-        for строка, p in zip(R, опорные):
+        for строка, p in zip(R, опорные, strict=False):
             h[p] = строка[f]
         H.append(h)
     H = np.array(H, np.uint8)
@@ -223,7 +221,7 @@ class Синдромный(unittest.TestCase):
                     for f in свободные:
                         c = np.zeros(n, np.uint8)
                         c[f] = 1
-                        for строка, p in zip(R, опорные):
+                        for строка, p in zip(R, опорные, strict=False):
                             c[p] = строка[f]
                         G.append(c)
                     G = np.array(G, np.uint8)
@@ -524,8 +522,8 @@ class РандомизаторCcsds(unittest.TestCase):
     def test_назван_у_псп_блока(self):
         """Блоки HDLC с флагами, сложенные с ПСП CCSDS (сброс на каждом блоке): найдена та самая ПСП
         и названа; начальное состояние — единицы."""
-        from reportgen.potok import skrembler
         import potok_sintez as с
+        from reportgen.potok import skrembler
         поток = np.unpackbits(np.frombuffer(с.hdlc(с.пакеты_ip(400, сид=3), флагов_между=40), np.uint8))
         блоков = len(поток) // 8160
         блоки = поток[:блоков * 8160].reshape(блоков, 8160) ^ ccsds_псп(8160)

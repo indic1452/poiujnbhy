@@ -4,12 +4,12 @@ import importlib.util
 import json
 import re
 import unittest
-from urllib.parse import quote
 from pathlib import Path
+from urllib.parse import quote
 
-import _bootstrap  # noqa: F401
 from fastapi.testclient import TestClient
 
+import _bootstrap  # noqa: F401
 from reportgen.config import Settings
 from reportgen.corpus import load_corpus
 from reportgen.llm import StubLLM
@@ -994,7 +994,7 @@ class OwnReportTests(WebTestCase):
     def upload(self, submit="1"):
         return self.client.post(
             "/api/reports/upload",
-            files={"file": ("мой-отчёт.md", "# Отчёт\n\nОтклонений нет.".encode("utf-8"),
+            files={"file": ("мой-отчёт.md", "# Отчёт\n\nОтклонений нет.".encode(),
                             "text/markdown")},
             data={"case_id": self.case["case_id"], "submit": submit})
 
@@ -1507,7 +1507,7 @@ class AttachmentPreviewTests(WebTestCase):
         Показанная встроенным окном страница получила бы права нашего же
         адреса, поэтому такие файлы отдаются вложением даже по запросу.
         """
-        item = self.attach("выгрузка.csv", "a;b\n1;2".encode("utf-8")).json()["file"]
+        item = self.attach("выгрузка.csv", b"a;b\n1;2").json()["file"]
         shown = self.client.get(
             f"/api/cases/{self.case['id']}/files/{item['id']}?inline=1")
         self.assertTrue(shown.headers["content-type"].startswith("text/plain"))
@@ -1521,7 +1521,7 @@ class AttachmentPreviewTests(WebTestCase):
     def test_the_person_sees_what_the_machine_read(self):
         # Чтобы не рассчитывать на распознанное там, где его нет.
         item = self.attach("журнал.txt",
-                           "Ствол третий, поляризация вертикальная".encode("utf-8")).json()["file"]
+                           "Ствол третий, поляризация вертикальная".encode()).json()["file"]
         body = self.client.get(
             f"/api/cases/{self.case['id']}/files/{item['id']}/text").json()
         self.assertIn("поляризация", body["text"])
@@ -1599,12 +1599,12 @@ class LetterFileTests(WebTestCase):
     def attach(self, name="схема.txt", body=b"", note=""):
         return self.client.post(
             f"/api/cases/{self.case['id']}/files",
-            files={"file": (name, body or "текст".encode("utf-8"), "text/plain")},
+            files={"file": (name, body or "текст".encode(), "text/plain")},
             data={"note": note})
 
     def test_a_paper_attached_to_a_letter_can_be_downloaded_back(self):
         """Скан письма поднимают целиком, а не пересказом."""
-        body = "Схема радиорелейной линии. Поляризация вертикальная.".encode("utf-8")
+        body = "Схема радиорелейной линии. Поляризация вертикальная.".encode()
         response = self.attach("схема-линии.txt", body)
         self.assertEqual(200, response.status_code, response.text)
         item = response.json()["file"]
@@ -1621,7 +1621,7 @@ class LetterFileTests(WebTestCase):
 
     def test_a_letter_is_found_by_words_from_its_papers(self):
         """Положить бумагу и не найти по ней письмо — незачем и прикладывать."""
-        self.attach("схема.txt", "Поляризация вертикальная, ствол третий".encode("utf-8"))
+        self.attach("схема.txt", "Поляризация вертикальная, ствол третий".encode())
         for query in ("поляризация", "стволы", "схема"):
             with self.subTest(query=query):
                 found = self.client.get("/api/cases", params={"q": query}).json()
@@ -1630,7 +1630,7 @@ class LetterFileTests(WebTestCase):
                               f"не нашлось по «{query}»")
 
     def test_removing_a_paper_takes_it_out_of_the_search_too(self):
-        item = self.attach("схема.txt", "Поляризация вертикальная".encode("utf-8")).json()["file"]
+        item = self.attach("схема.txt", "Поляризация вертикальная".encode()).json()["file"]
         self.assertEqual(200, self.client.delete(
             f"/api/cases/{self.case['id']}/files/{item['id']}").status_code)
         found = self.client.get("/api/cases", params={"q": "поляризация"}).json()
@@ -1738,7 +1738,7 @@ class UploadedReportTests(WebTestCase):
         self.assertEqual(engineer.id, body["case"]["assignee_id"])
 
     def test_the_file_comes_back_exactly_as_it_was_handed_in(self):
-        raw = "# Отчёт\n\nИзмерения приложены отдельно.\n".encode("utf-8")
+        raw = "# Отчёт\n\nИзмерения приложены отдельно.\n".encode()
         report = self.upload(name="Отчёт.md", body=raw).json()["report"]
         got = self.client.get(f"/api/reports/{report['id']}/file")
         self.assertEqual(200, got.status_code, got.text)
@@ -1818,7 +1818,7 @@ class UploadedReportTests(WebTestCase):
         """
         body = self.upload(
             name="Отчёт группы.md",
-            body="# Отчёт\n\nПомеха устранена, замер в норме.\n".encode("utf-8")).json()
+            body="# Отчёт\n\nПомеха устранена, замер в норме.\n".encode()).json()
         self.assertEqual("", body.get("note", ""), body.get("note"))
         report = self.client.get(f"/api/reports/{body['report']['id']}").json()["report"]
         self.assertIn("Помеха устранена", report["markdown"])
@@ -3816,7 +3816,7 @@ class PersonalFileTests(WebTestCase):
     def upload(self, user_id, name="объективка.docx", kind="profile"):
         return self.client.post(
             f"/api/users/{user_id}/files",
-            files={"file": (name, "справка о военнослужащем".encode("utf-8"),
+            files={"file": (name, "справка о военнослужащем".encode(),
                             "application/octet-stream")},
             data={"kind": kind})
 
@@ -3834,7 +3834,7 @@ class PersonalFileTests(WebTestCase):
 
         back = self.client.get(f"/api/users/{self.engineer.id}/files/{item['id']}")
         self.assertEqual(200, back.status_code)
-        self.assertEqual("справка о военнослужащем".encode("utf-8"), back.content)
+        self.assertEqual("справка о военнослужащем".encode(), back.content)
 
     def test_only_the_head_deputy_and_owner_see_someone_elses_file(self):
         """Объективка — личные сведения, и открыта не всему отделу.
@@ -4773,11 +4773,11 @@ class LoginBackgroundTests(WebTestCase):
 
     def test_own_photo_wins(self):
         own = self.tmp / "login-bg.jpg"
-        own.write_bytes(b"\xff\xd8\xff" + "своя фотография".encode("utf-8") * 100)
+        own.write_bytes(b"\xff\xd8\xff" + "своя фотография".encode() * 100)
         self.app.state.settings.brand_login_image = own
         response = self.client.get("/brand/login-image")
         self.assertEqual(200, response.status_code)
-        self.assertIn("своя фотография".encode("utf-8"), response.content)
+        self.assertIn("своя фотография".encode(), response.content)
 
     def test_photo_is_found_next_to_the_settings_file(self):
         # Путь у всех разный, а имя файла одно: в настройки лезть не надо.
@@ -5816,8 +5816,8 @@ class InterfaceCopyTests(unittest.TestCase):
         """
         import re as _re
 
-        from reportgen.web.api import MAX_CARD_FIELDS
         from reportgen.facts import MAX_GROUP
+        from reportgen.web.api import MAX_CARD_FIELDS
 
         found = _re.search(r"const CARD_LIMIT = \{([^}]+)\}", self.js)
         self.assertIsNotNone(found, "в интерфейсе нет пределов полей")
@@ -6143,7 +6143,7 @@ class InterfaceCopyTests(unittest.TestCase):
         """
         import re as _re
 
-        from reportgen.store.models import CASE_STATUSES, CASE_STATUS_TITLES
+        from reportgen.store.models import CASE_STATUS_TITLES, CASE_STATUSES
         from reportgen.web.api import FLOW_CASE_STATUSES
 
         titles = dict(_re.findall(r"(\w+): '([^']+)'",
@@ -6787,7 +6787,7 @@ class ГеометрияОписи(unittest.TestCase):
     def test_ширины_только_в_пикселях(self):
         """Доли и числа в одной таблице сложить заранее нельзя — значит, только числа."""
         for граница, ширины, _, _ in self.уступы:
-            for столбец, (значение, единица) in sorted(ширины.items()):
+            for столбец, (_значение, единица) in sorted(ширины.items()):
                 with self.subTest(уступ=граница, столбец=self.СТОЛБЦЫ.get(столбец)):
                     self.assertEqual(
                         "px", единица,
@@ -6828,7 +6828,7 @@ class ГеометрияОписи(unittest.TestCase):
         """Уступ обязан убавлять, а не прибавлять: иначе он не уступ."""
         предыдущие = None
         предыдущий_предел = None
-        for граница, ширины, скрытые, предел in self.уступы:
+        for граница, _ширины, скрытые, предел in self.уступы:
             видимые = set(self.СТОЛБЦЫ) - скрытые
             if предыдущие is not None:
                 with self.subTest(уступ=граница):

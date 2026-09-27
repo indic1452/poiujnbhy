@@ -11,31 +11,32 @@ import sqlite3
 import tempfile
 import unicodedata
 import urllib.parse
+from collections.abc import Iterable
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any
 
 from fastapi import APIRouter, File, Form, Request, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
-from ..packages import pip_hint
 from ..corpus import DOC_TYPES
-from ..rerank import build_reranker
 from ..domains import registry as domain_registry
+from ..packages import pip_hint
+from ..rerank import build_reranker
 from ..store.models import (
     ABSENCE_KINDS,
     ABSENCE_TITLES,
-    DEPARTMENT_DAY_KINDS,
-    DEPARTMENT_DAY_TITLES,
     ADMIN_ROLES,
     CASE_PRIORITIES,
-    CASE_STATUSES,
-    DOC_STATUS_TITLES,
     CASE_STATUS_TITLES,
+    CASE_STATUSES,
+    DEPARTMENT_DAY_KINDS,
+    DEPARTMENT_DAY_TITLES,
+    DOC_STATUS_TITLES,
     DOC_STATUSES,
-    FILE_STAGES,
     FILE_STAGE_TITLES,
+    FILE_STAGES,
     LINE_FULL_TITLES,
     LINE_TITLES,
     LINE_TYPES,
@@ -50,12 +51,19 @@ from ..store.models import (
     Case,
     Report,
     User,
-    short_name,
     role_title_of,
+    short_name,
 )
-from .auth import (COOKIE_NAME, get_user, require_admin, require_anyone,
-                   require_editor, require_owner, require_reviewer,
-                   require_user)
+from .auth import (
+    COOKIE_NAME,
+    get_user,
+    require_admin,
+    require_anyone,
+    require_editor,
+    require_owner,
+    require_reviewer,
+    require_user,
+)
 from .pages import PageRenderError, is_renderable, page_count, render_page
 from .service import CARD_LIMITS, ServiceError
 
@@ -89,7 +97,7 @@ def _since_utc(days: int) -> str:
     Сравнивать местную дату со строкой в UTC нельзя: в Москве вечерние
     письма попадали бы в следующие сутки, и «за неделю» считалось бы не то.
     """
-    moment = datetime.now(timezone.utc) - timedelta(days=days)
+    moment = datetime.now(UTC) - timedelta(days=days)
     return moment.isoformat(timespec="seconds")
 
 
@@ -211,7 +219,7 @@ def _settings(request: Request):
     return request.app.state.settings
 
 
-def _body(request: Request) -> Dict[str, Any]:
+def _body(request: Request) -> dict[str, Any]:
     """Тело JSON-запроса; пустое тело считается пустым словарём."""
     raw = getattr(request.state, "json_body", None)
     if raw is None:
@@ -233,7 +241,7 @@ def _report_or_404(request: Request, report_id: int) -> Report:
     return report
 
 
-def _report_payload(service, report: Report, *, with_markdown: bool = True) -> Dict[str, Any]:
+def _report_payload(service, report: Report, *, with_markdown: bool = True) -> dict[str, Any]:
     data = report.to_dict(with_markdown=with_markdown)
     data["sources"] = service.sources(report)
     data["facts_stale"] = service.facts_are_stale(report)
@@ -243,7 +251,7 @@ def _report_payload(service, report: Report, *, with_markdown: bool = True) -> D
 # ------------------------------------------------------------------ вход ---
 
 @router.post("/auth/login")
-def login(request: Request, response: Response) -> Dict[str, Any]:
+def login(request: Request, response: Response) -> dict[str, Any]:
     payload = _body(request)
     login_name = str(payload.get("login", "")).strip().lower()
     password = str(payload.get("password", ""))
@@ -298,7 +306,7 @@ def login(request: Request, response: Response) -> Dict[str, Any]:
 
 
 @router.post("/auth/register")
-def register(request: Request) -> Dict[str, Any]:
+def register(request: Request) -> dict[str, Any]:
     """Заявка на доступ. Заводит себя человек сам, одобряет начальство.
 
     Заводить каждого руками — работа, которую в отделе делать некому, а
@@ -343,7 +351,7 @@ def register(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/auth/logout")
-def logout(request: Request, response: Response) -> Dict[str, Any]:
+def logout(request: Request, response: Response) -> dict[str, Any]:
     token = request.cookies.get(COOKIE_NAME)
     уходит = get_user(request)
     repos = _repos(request)
@@ -356,7 +364,7 @@ def logout(request: Request, response: Response) -> Dict[str, Any]:
 
 
 @router.get("/me")
-def me(request: Request) -> Dict[str, Any]:
+def me(request: Request) -> dict[str, Any]:
     user = get_user(request)
     return {
         "user": user.to_dict() if user else None,
@@ -365,7 +373,7 @@ def me(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/config")
-def config(request: Request) -> Dict[str, Any]:
+def config(request: Request) -> dict[str, Any]:
     """Справочники интерфейса: шаблоны отчётов, типы документов, направления.
 
     Требует входа. Окно входа этих сведений не запрашивает — оформление оно
@@ -436,7 +444,7 @@ def config(request: Request) -> Dict[str, Any]:
 @router.get("/cases")
 def list_cases(request: Request, status: str | None = None,
                limit: int = 100, offset: int = 0, assignee: int | None = None,
-               overdue: bool = False, q: str = "") -> Dict[str, Any]:
+               overdue: bool = False, q: str = "") -> dict[str, Any]:
     """Список писем. status=open — всё, что в работе; overdue — просроченные."""
     require_user(request)
     repos = _repos(request)
@@ -471,14 +479,14 @@ def list_cases(request: Request, status: str | None = None,
 
 
 @router.patch("/cases/{case_ref}")
-def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
+def update_case_card(request: Request, case_ref: int) -> dict[str, Any]:
     """Карточка письма: исполнитель, срок, входящий номер, приоритет, статус."""
     user = require_editor(request)
     case = _case_or_404(request, case_ref)
     repos = _repos(request)
     payload = _body(request)
 
-    fields: Dict[str, Any] = {}
+    fields: dict[str, Any] = {}
     for name in MAX_CARD_FIELDS:
         if name in payload:
             fields[name] = _card_line(payload[name], name)
@@ -536,7 +544,7 @@ def update_case_card(request: Request, case_ref: int) -> Dict[str, Any]:
 
 
 @router.post("/cases")
-def create_case(request: Request) -> Dict[str, Any]:
+def create_case(request: Request) -> dict[str, Any]:
     """Регистрация входящего письма."""
     user = require_editor(request)
     service = _service(request)
@@ -588,7 +596,7 @@ CASE_FILE_SUFFIXES = (
 
 
 @router.get("/cases/{case_ref}/notes")
-def list_case_notes(request: Request, case_ref: int) -> Dict[str, Any]:
+def list_case_notes(request: Request, case_ref: int) -> dict[str, Any]:
     """Примечания к письму: обсуждение прямо на деле."""
     require_user(request)
     case = _case_or_404(request, case_ref)
@@ -597,7 +605,7 @@ def list_case_notes(request: Request, case_ref: int) -> Dict[str, Any]:
 
 
 @router.post("/cases/{case_ref}/notes")
-def add_case_note(request: Request, case_ref: int) -> Dict[str, Any]:
+def add_case_note(request: Request, case_ref: int) -> dict[str, Any]:
     """Оставить примечание к письму.
 
     Начальник пишет, что поправить, исполнитель отвечает — и всё это
@@ -626,7 +634,7 @@ def add_case_note(request: Request, case_ref: int) -> Dict[str, Any]:
 
 
 @router.delete("/cases/{case_ref}/notes/{note_id}")
-def delete_case_note(request: Request, case_ref: int, note_id: int) -> Dict[str, Any]:
+def delete_case_note(request: Request, case_ref: int, note_id: int) -> dict[str, Any]:
     """Убрать своё примечание. Чужое — только начальству."""
     user = require_editor(request)
     case = _case_or_404(request, case_ref)
@@ -641,7 +649,7 @@ def delete_case_note(request: Request, case_ref: int, note_id: int) -> Dict[str,
 
 
 @router.get("/cases/{case_ref}/files")
-def list_case_files(request: Request, case_ref: int, stage: str = "") -> Dict[str, Any]:
+def list_case_files(request: Request, case_ref: int, stage: str = "") -> dict[str, Any]:
     """Бумаги письма. Смотреть может любой военнослужащий.
 
     stage отбирает стопку: incoming — пришли с письмом, outgoing — ушли с
@@ -662,7 +670,7 @@ def list_case_files(request: Request, case_ref: int, stage: str = "") -> Dict[st
 def attach_to_case(request: Request, case_ref: int,
                    file: UploadFile = File(...),
                    note: str = Form(""),
-                   stage: str = Form("incoming")) -> Dict[str, Any]:
+                   stage: str = Form("incoming")) -> dict[str, Any]:
     """Приложить к письму бумагу.
 
     Файл остаётся на диске подлинником: письмо, пришедшее сканом, потом
@@ -741,7 +749,7 @@ def download_case_file(request: Request, case_ref: int, file_id: int,
 
 
 @router.get("/cases/{case_ref}/files/{file_id}/text")
-def case_file_text(request: Request, case_ref: int, file_id: int) -> Dict[str, Any]:
+def case_file_text(request: Request, case_ref: int, file_id: int) -> dict[str, Any]:
     """Что система вычитала из приложенного файла.
 
     Показывается рядом с самим файлом — чтобы человек видел, что попало в
@@ -764,7 +772,7 @@ def case_file_text(request: Request, case_ref: int, file_id: int) -> Dict[str, A
 
 
 @router.delete("/cases/{case_ref}/files/{file_id}")
-def detach_from_case(request: Request, case_ref: int, file_id: int) -> Dict[str, Any]:
+def detach_from_case(request: Request, case_ref: int, file_id: int) -> dict[str, Any]:
     """Убрать приложенную бумагу.
 
     Отправленное письмо не трогаем: убрать из него исходную бумагу задним
@@ -786,7 +794,7 @@ def detach_from_case(request: Request, case_ref: int, file_id: int) -> Dict[str,
 
 
 @router.get("/cases/{case_ref}")
-def get_case(request: Request, case_ref: int) -> Dict[str, Any]:
+def get_case(request: Request, case_ref: int) -> dict[str, Any]:
     require_user(request)
     case = _case_or_404(request, case_ref)
     service = _service(request)
@@ -821,7 +829,7 @@ def get_case(request: Request, case_ref: int) -> Dict[str, Any]:
 
 
 @router.put("/cases/{case_ref}/facts")
-def update_facts(request: Request, case_ref: int) -> Dict[str, Any]:
+def update_facts(request: Request, case_ref: int) -> dict[str, Any]:
     user = require_editor(request)
     case = _case_or_404(request, case_ref)
     service = _service(request)
@@ -834,7 +842,7 @@ def update_facts(request: Request, case_ref: int) -> Dict[str, Any]:
 
 
 @router.post("/cases/reindex")
-def reindex_cases(request: Request) -> Dict[str, Any]:
+def reindex_cases(request: Request) -> dict[str, Any]:
     """Перестроить поисковый указатель по письмам.
 
     Обычно он строится сам: при каждой правке письма или отчёта, а на
@@ -851,7 +859,7 @@ def reindex_cases(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/cases/{case_ref}/send")
-def send_case(request: Request, case_ref: int) -> Dict[str, Any]:
+def send_case(request: Request, case_ref: int) -> dict[str, Any]:
     """Ответ по письму отправлен: записать исходящий номер.
 
     Последний шаг порядка отдела. Делает исполнитель — тот же, кто готовил
@@ -871,7 +879,7 @@ def send_case(request: Request, case_ref: int) -> Dict[str, Any]:
 
 
 @router.post("/cases/{case_ref}/unsend")
-def unsend_case(request: Request, case_ref: int) -> Dict[str, Any]:
+def unsend_case(request: Request, case_ref: int) -> dict[str, Any]:
     """Отозвать отправку: номер вписали не тот или ответ ушёл не тому.
 
     Право проверяющего: запись об отправке — учётная, и снимать её должен
@@ -884,7 +892,7 @@ def unsend_case(request: Request, case_ref: int) -> Dict[str, Any]:
 
 
 @router.delete("/cases/{case_ref}")
-def delete_case(request: Request, case_ref: int) -> Dict[str, Any]:
+def delete_case(request: Request, case_ref: int) -> dict[str, Any]:
     """Убрать письмо.
 
     Ошибиться при регистрации может каждый — не тот номер, не то письмо, — и
@@ -933,7 +941,7 @@ def delete_case(request: Request, case_ref: int) -> Dict[str, Any]:
 
 
 @router.post("/cases/{case_ref}/generate")
-def generate(request: Request, case_ref: int) -> Dict[str, Any]:
+def generate(request: Request, case_ref: int) -> dict[str, Any]:
     user = require_editor(request)
     case = _case_or_404(request, case_ref)
     service = _service(request)
@@ -944,7 +952,7 @@ def generate(request: Request, case_ref: int) -> Dict[str, Any]:
 
 
 @router.get("/cases/{case_ref}/report")
-def latest_report(request: Request, case_ref: int) -> Dict[str, Any]:
+def latest_report(request: Request, case_ref: int) -> dict[str, Any]:
     require_user(request)
     case = _case_or_404(request, case_ref)
     report = _repos(request).reports.latest_for_case(case.id)
@@ -956,14 +964,14 @@ def latest_report(request: Request, case_ref: int) -> Dict[str, Any]:
 # --------------------------------------------------------------- отчёты ---
 
 @router.get("/reports/{report_id}")
-def get_report(request: Request, report_id: int) -> Dict[str, Any]:
+def get_report(request: Request, report_id: int) -> dict[str, Any]:
     require_user(request)
     report = _report_or_404(request, report_id)
     return {"report": _report_payload(_service(request), report)}
 
 
 @router.post("/reports/{report_id}/verify")
-def verify_report_endpoint(request: Request, report_id: int) -> Dict[str, Any]:
+def verify_report_endpoint(request: Request, report_id: int) -> dict[str, Any]:
     require_user(request)
     report = _report_or_404(request, report_id)
     issues = _service(request).verify(report)
@@ -981,7 +989,7 @@ def verify_report_endpoint(request: Request, report_id: int) -> Dict[str, Any]:
 
 
 @router.post("/reports/{report_id}/sections/{section_id}/regenerate")
-def regenerate_section(request: Request, report_id: int, section_id: str) -> Dict[str, Any]:
+def regenerate_section(request: Request, report_id: int, section_id: str) -> dict[str, Any]:
     user = require_editor(request)
     report = _report_or_404(request, report_id)
     service = _service(request)
@@ -994,7 +1002,7 @@ def regenerate_section(request: Request, report_id: int, section_id: str) -> Dic
 
 
 @router.put("/reports/{report_id}/sections/{section_id}")
-def save_section(request: Request, report_id: int, section_id: str) -> Dict[str, Any]:
+def save_section(request: Request, report_id: int, section_id: str) -> dict[str, Any]:
     user = require_editor(request)
     report = _report_or_404(request, report_id)
     payload = _body(request)
@@ -1008,7 +1016,7 @@ def save_section(request: Request, report_id: int, section_id: str) -> Dict[str,
 
 
 @router.post("/reports/{report_id}/sections/{section_id}/restore")
-def restore_section(request: Request, report_id: int, section_id: str) -> Dict[str, Any]:
+def restore_section(request: Request, report_id: int, section_id: str) -> dict[str, Any]:
     user = require_editor(request)
     report = _report_or_404(request, report_id)
     service = _service(request)
@@ -1040,7 +1048,7 @@ def upload_report(
     report_type: str = Form(""),
     note: str = Form(""),
     submit: str = Form("1"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Сдать готовый отчёт файлом на проверку начальнику.
 
     Загружать может любой военнослужащий — свои отчёты в отдел сдают все.
@@ -1117,7 +1125,7 @@ def upload_report(
         # Письмо уже заведено — сдаём по нему ещё одну редакцию отчёта.
         # Реквизиты, которые человек ввёл, применяем: он вводил их не зря.
         # Пустые поля не трогают того, что в письме уже записано.
-        fields: Dict[str, Any] = {}
+        fields: dict[str, Any] = {}
         if title and title != Path(name).stem:
             fields["title"] = title
         # Входящий номер терялся: в наборе полей его не было вовсе. Письмо,
@@ -1234,7 +1242,7 @@ def _default_report_type(request: Request) -> str:
 
 
 @router.post("/reports/{report_id}/submit")
-def submit(request: Request, report_id: int) -> Dict[str, Any]:
+def submit(request: Request, report_id: int) -> dict[str, Any]:
     """Отправить отчёт на проверку начальнику. Может любой военнослужащий."""
     user = require_editor(request)
     report = _report_or_404(request, report_id)
@@ -1254,7 +1262,7 @@ def submit(request: Request, report_id: int) -> Dict[str, Any]:
 
 
 @router.post("/reports/{report_id}/approve")
-def approve(request: Request, report_id: int) -> Dict[str, Any]:
+def approve(request: Request, report_id: int) -> dict[str, Any]:
     """Отметить отчёт проверенным. Только начальник отдела или заместитель."""
     user = require_reviewer(request)
     report = _report_or_404(request, report_id)
@@ -1271,7 +1279,7 @@ def approve(request: Request, report_id: int) -> Dict[str, Any]:
 
 
 @router.post("/reports/{report_id}/rework")
-def send_back(request: Request, report_id: int) -> Dict[str, Any]:
+def send_back(request: Request, report_id: int) -> dict[str, Any]:
     """Вернуть отчёт исполнителю с замечанием. Только проверяющий."""
     user = require_reviewer(request)
     report = _report_or_404(request, report_id)
@@ -1291,7 +1299,7 @@ def send_back(request: Request, report_id: int) -> Dict[str, Any]:
 
 
 @router.get("/reports/{report_id}/sources")
-def report_sources(request: Request, report_id: int) -> Dict[str, Any]:
+def report_sources(request: Request, report_id: int) -> dict[str, Any]:
     require_user(request)
     report = _report_or_404(request, report_id)
     return {"items": _service(request).sources(report)}
@@ -1404,7 +1412,7 @@ LIBRARY_PAGE_MAX = 200
 def library(request: Request, doc_type: str | None = None,
             domain: str | None = None, status: str | None = None,
             q: str = "", quality: str = "", page: int = 1,
-            per_page: int = LIBRARY_PAGE) -> Dict[str, Any]:
+            per_page: int = LIBRARY_PAGE) -> dict[str, Any]:
     """Страница библиотеки. Раньше отдавалась целиком — все документы разом.
 
     На корпусе отдела это несколько мегабайт JSON на каждое открытие
@@ -1444,7 +1452,7 @@ def library(request: Request, doc_type: str | None = None,
 
 
 @router.get("/library/{doc_id:path}/text")
-def document_text(request: Request, doc_id: str) -> Dict[str, Any]:
+def document_text(request: Request, doc_id: str) -> dict[str, Any]:
     """Что система на самом деле вычитала из файла.
 
     Главный инструмент проверки качества: по этому тексту видно, распознался
@@ -1524,7 +1532,7 @@ def upload_document(
     file: UploadFile = File(...),
     doc_type: str = Form("literature"),
     domain: str = Form(""),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     # Пополнение библиотеки — за начальством. Документ ложится в общий поиск
     # всего отдела: неверный тип или направление портят выдачу всем, а
     # разложить обратно можно только руками.
@@ -1582,7 +1590,7 @@ def upload_document(
 
 
 @router.post("/library/reindex")
-def reindex(request: Request) -> Dict[str, Any]:
+def reindex(request: Request) -> dict[str, Any]:
     user = require_admin(request)
     settings = _settings(request)
     payload = getattr(request.state, "json_body", None) or {}
@@ -1609,7 +1617,7 @@ def reindex(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/library/vectors")
-def vectors_status(request: Request) -> Dict[str, Any]:
+def vectors_status(request: Request) -> dict[str, Any]:
     """Состояние смыслового поиска: сколько фрагментов, сколько с векторами.
 
     Отдельная точка, потому что спрашивают её часто: экран библиотеки
@@ -1623,7 +1631,7 @@ def vectors_status(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/library/summary")
-def library_summary(request: Request) -> Dict[str, Any]:
+def library_summary(request: Request) -> dict[str, Any]:
     """Собралась ли библиотека — одним взглядом, после пересборки.
 
     Итог приёма сегодня виден только в консоли PowerShell, а на тринадцати
@@ -1653,7 +1661,7 @@ def library_summary(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/library/quality")
-def quality_status(request: Request) -> Dict[str, Any]:
+def quality_status(request: Request) -> dict[str, Any]:
     """Сколько документов разобрано плохо и идёт ли проверка."""
     require_user(request)
     service = _service(request)
@@ -1663,7 +1671,7 @@ def quality_status(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/library/quality")
-def quality_check(request: Request) -> Dict[str, Any]:
+def quality_check(request: Request) -> dict[str, Any]:
     """Пройти по УЖЕ загруженной библиотеке и пометить плохо разобранное.
 
     Склейку текста система замечает при приёме документа, но библиотека
@@ -1681,7 +1689,7 @@ def quality_check(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/library/vectors/check")
-def vectors_check(request: Request) -> Dict[str, Any]:
+def vectors_check(request: Request) -> dict[str, Any]:
     """Отвечает ли служба эмбеддингов — одним коротким запросом.
 
     Раньше узнать это можно было единственным способом: нажать «Построить
@@ -1696,7 +1704,7 @@ def vectors_check(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/library/rerank/check")
-def rerank_check(request: Request) -> Dict[str, Any]:
+def rerank_check(request: Request) -> dict[str, Any]:
     """Отвечает ли реранкер — одним коротким запросом.
 
     Реранк — второй проход поиска: он видит пару «вопрос — фрагмент»
@@ -1735,7 +1743,7 @@ def rerank_check(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/library/vectors")
-def vectors_build(request: Request) -> Dict[str, Any]:
+def vectors_build(request: Request) -> dict[str, Any]:
     """Построить векторы. ``force`` — заново все, после смены модели.
 
     Полная перестройка — часы работы видеокарты на большой библиотеке,
@@ -1757,7 +1765,7 @@ def vectors_build(request: Request) -> Dict[str, Any]:
 
 
 @router.delete("/library/{doc_id:path}")
-def delete_document(request: Request, doc_id: str) -> Dict[str, Any]:
+def delete_document(request: Request, doc_id: str) -> dict[str, Any]:
     user = require_admin(request)
     repos = _repos(request)
     if repos.documents.by_doc_id(doc_id) is None:
@@ -1770,7 +1778,7 @@ def delete_document(request: Request, doc_id: str) -> Dict[str, Any]:
 
 @router.get("/search")
 def search(request: Request, q: str = "", top_k: int = 10,
-           doc_types: str | None = None, domains: str | None = None) -> Dict[str, Any]:
+           doc_types: str | None = None, domains: str | None = None) -> dict[str, Any]:
     require_user(request)
     query = q.strip()[:MAX_QUERY_LEN]
     if not query:
@@ -1811,7 +1819,7 @@ def search(request: Request, q: str = "", top_k: int = 10,
 # ---------------------------------------------------------- направления ---
 
 @router.get("/llm/status")
-def llm_status(request: Request) -> Dict[str, Any]:
+def llm_status(request: Request) -> dict[str, Any]:
     """Отвечает ли сервер модели. Спрашивает интерфейс при открытии.
 
     Отдельным запросом, а не в /api/config: проверка ходит по сети, и
@@ -1829,7 +1837,7 @@ def llm_status(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/formats")
-def formats(request: Request) -> Dict[str, Any]:
+def formats(request: Request) -> dict[str, Any]:
     """Поддержка форматов документов: что читается, чего не хватает."""
     require_user(request)
     from ..ingest.convert import format_support, supported_suffixes  # noqa: PLC0415
@@ -1844,7 +1852,7 @@ def formats(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/domains")
-def domains(request: Request) -> Dict[str, Any]:
+def domains(request: Request) -> dict[str, Any]:
     require_user(request)
     return {
         "items": _domains(request).to_dict(),
@@ -1853,7 +1861,7 @@ def domains(request: Request) -> Dict[str, Any]:
 
 
 @router.put("/library/{doc_id:path}/status")
-def set_document_status(request: Request, doc_id: str) -> Dict[str, Any]:
+def set_document_status(request: Request, doc_id: str) -> dict[str, Any]:
     """Отметить актуальность документа.
 
     Заменённый и архивный документ пропадает из поиска: цитировать отменённую
@@ -1882,7 +1890,7 @@ def set_document_status(request: Request, doc_id: str) -> Dict[str, Any]:
 
 
 @router.put("/library/{doc_id:path}/domain")
-def set_document_domain(request: Request, doc_id: str) -> Dict[str, Any]:
+def set_document_domain(request: Request, doc_id: str) -> dict[str, Any]:
     user = require_admin(request)
     payload = _body(request)
     domain = str(payload.get("domain", "")).strip()
@@ -1901,14 +1909,14 @@ def set_document_domain(request: Request, doc_id: str) -> Dict[str, Any]:
 # -------------------------------------------------------------- помощник ---
 
 @router.get("/chats")
-def list_chats(request: Request, archived: bool = False) -> Dict[str, Any]:
+def list_chats(request: Request, archived: bool = False) -> dict[str, Any]:
     user = require_anyone(request)
     chats = _assistant(request).list_chats(user, archived=archived)
     return {"items": [chat.to_dict() for chat in chats]}
 
 
 @router.post("/chats")
-def create_chat(request: Request) -> Dict[str, Any]:
+def create_chat(request: Request) -> dict[str, Any]:
     user = require_anyone(request)
     payload = getattr(request.state, "json_body", None) or {}
     domain = str(payload.get("domain", "")).strip()
@@ -1925,7 +1933,7 @@ def create_chat(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/chats/{chat_id}")
-def get_chat(request: Request, chat_id: int) -> Dict[str, Any]:
+def get_chat(request: Request, chat_id: int) -> dict[str, Any]:
     user = require_anyone(request)
     assistant = _assistant(request)
     chat = assistant.get_chat(user, chat_id)
@@ -1940,7 +1948,7 @@ def get_chat(request: Request, chat_id: int) -> Dict[str, Any]:
 
 
 @router.patch("/chats/{chat_id}")
-def update_chat(request: Request, chat_id: int) -> Dict[str, Any]:
+def update_chat(request: Request, chat_id: int) -> dict[str, Any]:
     user = require_anyone(request)
     payload = _body(request)
     assistant = _assistant(request)
@@ -1964,14 +1972,14 @@ def update_chat(request: Request, chat_id: int) -> Dict[str, Any]:
 
 
 @router.delete("/chats/{chat_id}")
-def delete_chat(request: Request, chat_id: int) -> Dict[str, Any]:
+def delete_chat(request: Request, chat_id: int) -> dict[str, Any]:
     user = require_anyone(request)
     _assistant(request).delete(user, chat_id)
     return {"ok": True}
 
 
 @router.post("/chats/{chat_id}/ask")
-def ask(request: Request, chat_id: int) -> Dict[str, Any]:
+def ask(request: Request, chat_id: int) -> dict[str, Any]:
     user = require_anyone(request)
     payload = _body(request)
     text = str(payload.get("text", ""))
@@ -2083,7 +2091,7 @@ def _attachment_kind(suffix: str) -> str:
 
 
 @router.post("/chats/{chat_id}/attachments")
-def attach_to_chat(request: Request, chat_id: int, file: UploadFile = File(...)) -> Dict[str, Any]:
+def attach_to_chat(request: Request, chat_id: int, file: UploadFile = File(...)) -> dict[str, Any]:
     """Приложить к вопросу дамп, снимок экрана или документ.
 
     Файл разбирается сразу и текстом остаётся в разговоре: диск можно
@@ -2145,7 +2153,7 @@ def _pakety(request: Request):
     return захваты
 
 
-def _захват_или_404(request: Request, user, ид: str) -> Dict[str, Any]:
+def _захват_или_404(request: Request, user, ид: str) -> dict[str, Any]:
     if not re.fullmatch(r"[0-9]{8}-[0-9]{6}-[0-9a-f]{6}", ид or ""):
         raise ServiceError("захват не найден", 404)
     try:
@@ -2157,7 +2165,7 @@ def _захват_или_404(request: Request, user, ид: str) -> Dict[str, Any
     return состояние
 
 
-def _готовый(request: Request, user, ид: str) -> Dict[str, Any]:
+def _готовый(request: Request, user, ид: str) -> dict[str, Any]:
     состояние = _захват_или_404(request, user, ид)
     if состояние["состояние"] != "готово":
         raise ServiceError("захват ещё разбирается" if состояние["состояние"] in ("ждёт", "идёт")
@@ -2165,7 +2173,7 @@ def _готовый(request: Request, user, ид: str) -> Dict[str, Any]:
     return состояние
 
 
-def _отобранные(request: Request, ид: str, фильтр: str) -> List[int]:
+def _отобранные(request: Request, ид: str, фильтр: str) -> list[int]:
     from ..setevoy.filtr import ОшибкаФильтра  # noqa: PLC0415
     try:
         return _pakety(request).отобрать(ид, фильтр)
@@ -2174,7 +2182,7 @@ def _отобранные(request: Request, ид: str, фильтр: str) -> Lis
 
 
 @router.get("/pakety-protocols")
-def pakety_protocols(request: Request) -> Dict[str, Any]:
+def pakety_protocols(request: Request) -> dict[str, Any]:
     """Что можно выбрать в «разбирать как» для каждого транспорта."""
     from ..setevoy.prilozh import КАК, КАК_ДАННЫЕ  # noqa: PLC0415
     require_user(request)
@@ -2182,7 +2190,7 @@ def pakety_protocols(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/pakety/{cap_id}/decode-as")
-def pakety_decode_as(request: Request, cap_id: str) -> Dict[str, Any]:
+def pakety_decode_as(request: Request, cap_id: str) -> dict[str, Any]:
     """Задать правила «разбирать как» ({"udp:5000": "DNS"}) и разобрать захват заново."""
     user = require_user(request)
     _захват_или_404(request, user, cap_id)
@@ -2194,7 +2202,7 @@ def pakety_decode_as(request: Request, cap_id: str) -> Dict[str, Any]:
 
 
 @router.get("/pakety-filter")
-def pakety_filter_check(request: Request, text: str = "") -> Dict[str, Any]:
+def pakety_filter_check(request: Request, text: str = "") -> dict[str, Any]:
     """Проверить выражение фильтра, не отбирая: для подсветки ошибки по мере набора."""
     from ..setevoy.filtr import ОшибкаФильтра, собрать  # noqa: PLC0415
     require_user(request)
@@ -2206,13 +2214,13 @@ def pakety_filter_check(request: Request, text: str = "") -> Dict[str, Any]:
 
 
 @router.get("/pakety")
-def pakety_list(request: Request) -> Dict[str, Any]:
+def pakety_list(request: Request) -> dict[str, Any]:
     user = require_user(request)
     return {"items": _pakety(request).список(user.id)}
 
 
 @router.post("/pakety")
-def pakety_upload(request: Request, file: UploadFile = File(...)) -> Dict[str, Any]:
+def pakety_upload(request: Request, file: UploadFile = File(...)) -> dict[str, Any]:
     """Принять захват: pcap, pcapng или .sig. Разбор — в фоне."""
     user = require_user(request)
     settings = _settings(request)
@@ -2237,7 +2245,7 @@ def pakety_upload(request: Request, file: UploadFile = File(...)) -> Dict[str, A
 
 
 @router.post("/pakety/from-potok")
-def pakety_from_potok(request: Request) -> Dict[str, Any]:
+def pakety_from_potok(request: Request) -> dict[str, Any]:
     """Пакеты или кадры после этапа разбора потока — в анализатор пакетов."""
     user = require_user(request)
     тело = _body(request)
@@ -2253,13 +2261,13 @@ def pakety_from_potok(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/pakety/{cap_id}")
-def pakety_state(request: Request, cap_id: str) -> Dict[str, Any]:
+def pakety_state(request: Request, cap_id: str) -> dict[str, Any]:
     user = require_user(request)
     return _захват_или_404(request, user, cap_id)
 
 
 @router.delete("/pakety/{cap_id}")
-def pakety_delete(request: Request, cap_id: str) -> Dict[str, Any]:
+def pakety_delete(request: Request, cap_id: str) -> dict[str, Any]:
     user = require_user(request)
     _захват_или_404(request, user, cap_id)
     _pakety(request).удалить(cap_id)
@@ -2268,7 +2276,7 @@ def pakety_delete(request: Request, cap_id: str) -> Dict[str, Any]:
 
 @router.get("/pakety/{cap_id}/list")
 def pakety_packets(request: Request, cap_id: str, filter: str = "", offset: int = 0,
-                   limit: int = 500) -> Dict[str, Any]:
+                   limit: int = 500) -> dict[str, Any]:
     """Список пакетов под фильтр — страницами."""
     user = require_user(request)
     _готовый(request, user, cap_id)
@@ -2281,7 +2289,7 @@ def pakety_packets(request: Request, cap_id: str, filter: str = "", offset: int 
 
 
 @router.get("/pakety/{cap_id}/packet/{number}")
-def pakety_packet(request: Request, cap_id: str, number: int) -> Dict[str, Any]:
+def pakety_packet(request: Request, cap_id: str, number: int) -> dict[str, Any]:
     """Подробный разбор пакета: уровни, поля с местом в байтах, байты."""
     user = require_user(request)
     _готовый(request, user, cap_id)
@@ -2292,7 +2300,7 @@ def pakety_packet(request: Request, cap_id: str, number: int) -> Dict[str, Any]:
 
 @router.get("/pakety/{cap_id}/stats")
 def pakety_stats(request: Request, cap_id: str, kind: str = "hierarchy", level: str = "ip",
-                 filter: str = "") -> Dict[str, Any]:
+                 filter: str = "") -> dict[str, Any]:
     """Статистика по отобранным пакетам: протоколы, диалоги, узлы, время, DNS, HTTP, TLS, ошибки."""
     from ..setevoy import statistika  # noqa: PLC0415
     user = require_user(request)
@@ -2325,7 +2333,7 @@ def pakety_stats(request: Request, cap_id: str, kind: str = "hierarchy", level: 
     raise ServiceError("неизвестный вид статистики", 400)
 
 
-def _ряды(request: Request, cap_id: str, base: str, номера: List[int]) -> List[bytes]:
+def _ряды(request: Request, cap_id: str, base: str, номера: list[int]) -> list[bytes]:
     захваты = _pakety(request)
     if base == "payload":
         нагрузки = захваты.нагрузки(cap_id)
@@ -2336,7 +2344,7 @@ def _ряды(request: Request, cap_id: str, base: str, номера: List[int])
 
 @router.get("/pakety/{cap_id}/matrix")
 def pakety_matrix(request: Request, cap_id: str, filter: str = "", base: str = "frame", start: int = 0,
-                  count: int = 64, offset: int = 0, limit: int = 300) -> Dict[str, Any]:
+                  count: int = 64, offset: int = 0, limit: int = 300) -> dict[str, Any]:
     """Матрица байт: пакеты под фильтр — строки, байты с ``start`` — столбцы; профиль столбцов."""
     from ..setevoy import statistika  # noqa: PLC0415
     user = require_user(request)
@@ -2352,12 +2360,12 @@ def pakety_matrix(request: Request, cap_id: str, filter: str = "", base: str = "
             "столбцы": statistika.профиль_столбцов(ряды, start, count),
             "строки": [{"номер": сводки[i]["номер"], "протокол": сводки[i]["протокол"],
                         "длина": len(р), "hex": р[start:start + count].hex()}
-                       for i, р in list(zip(номера, ряды))[offset:offset + limit]]}
+                       for i, р in list(zip(номера, ряды, strict=False))[offset:offset + limit]]}
 
 
 @router.get("/pakety/{cap_id}/column")
 def pakety_column(request: Request, cap_id: str, filter: str = "", base: str = "frame", pos: int = 0,
-                  width: int = 1) -> Dict[str, Any]:
+                  width: int = 1) -> dict[str, Any]:
     """Полная статистика столбца (поля 1–8 байт) по отобранным пакетам."""
     from ..setevoy import statistika  # noqa: PLC0415
     user = require_user(request)
@@ -2369,7 +2377,7 @@ def pakety_column(request: Request, cap_id: str, filter: str = "", base: str = "
 
 
 @router.get("/pakety/{cap_id}/files")
-def pakety_files(request: Request, cap_id: str, filter: str = "") -> Dict[str, Any]:
+def pakety_files(request: Request, cap_id: str, filter: str = "") -> dict[str, Any]:
     """Файлы, переданные внутри потоков TCP/UDP: по сигнатуре со сверкой структуры."""
     from ..setevoy import statistika  # noqa: PLC0415
     user = require_user(request)
@@ -2400,7 +2408,7 @@ def pakety_file(request: Request, cap_id: str, flow: str, offset: int = 0, lengt
 
 
 @router.get("/pakety/{cap_id}/stream/{number}")
-def pakety_stream(request: Request, cap_id: str, number: int) -> Dict[str, Any]:
+def pakety_stream(request: Request, cap_id: str, number: int) -> dict[str, Any]:
     """Следовать за потоком TCP/UDP/SCTP, в котором стоит пакет."""
     from ..setevoy import statistika  # noqa: PLC0415
     user = require_user(request)
@@ -2440,7 +2448,7 @@ def pakety_export(request: Request, cap_id: str, filter: str = "", format: str =
 
 
 @router.post("/pakety/{cap_id}/ask")
-def pakety_ask(request: Request, cap_id: str) -> Dict[str, Any]:
+def pakety_ask(request: Request, cap_id: str) -> dict[str, Any]:
     """Разговор с помощником о захвате или пакете: разбор и статистика — вложением."""
     from ..setevoy import statistika  # noqa: PLC0415
     user = require_user(request)
@@ -2506,7 +2514,7 @@ def _potok(request: Request):
     return задания
 
 
-def _задание_или_404(request: Request, user, ид: str) -> Dict[str, Any]:
+def _задание_или_404(request: Request, user, ид: str) -> dict[str, Any]:
     if not re.fullmatch(r"[0-9]{8}-[0-9]{6}-[0-9a-f]{6}", ид or ""):
         raise ServiceError("задание не найдено", 404)
     try:
@@ -2522,14 +2530,14 @@ def _задание_или_404(request: Request, user, ид: str) -> Dict[str, A
 ПРОФИЛИ_РАЗБОРА = ("быстро", "обычно", "глубоко")
 
 
-def _слои(значение: str) -> List[str]:
+def _слои(значение: str) -> list[str]:
     """Слои для ручного снятия — по строке на слой."""
     return [строка.strip() for строка in (значение or "").splitlines() if строка.strip()][:12]
 
 
 @router.post("/potok")
 def potok_start(request: Request, file: UploadFile = File(...), profile: str = Form("обычно"),
-                strip: str = Form(""), bits: str = Form(""), config: str = Form("")) -> Dict[str, Any]:
+                strip: str = Form(""), bits: str = Form(""), config: str = Form("")) -> dict[str, Any]:
     """Принять поток и поставить разбор в очередь. Этапы — по /api/potok/{ид}."""
     user = require_user(request)
     settings = _settings(request)
@@ -2568,13 +2576,13 @@ def potok_start(request: Request, file: UploadFile = File(...), profile: str = F
 
 
 @router.get("/potok")
-def potok_list(request: Request) -> Dict[str, Any]:
+def potok_list(request: Request) -> dict[str, Any]:
     user = require_user(request)
     return {"items": _potok(request).список(user.id)}
 
 
 @router.get("/potok/{job_id}")
-def potok_state(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_state(request: Request, job_id: str) -> dict[str, Any]:
     user = require_user(request)
     return _задание_или_404(request, user, job_id)
 
@@ -2592,7 +2600,7 @@ def potok_stage_file(request: Request, job_id: str, stage: int) -> FileResponse:
 
 
 @router.post("/potok/{job_id}/continue")
-def potok_continue(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_continue(request: Request, job_id: str) -> dict[str, Any]:
     """Продолжить разбор с потока после этапа — со снятием слоёв вручную."""
     user = require_user(request)
     _задание_или_404(request, user, job_id)
@@ -2621,7 +2629,7 @@ def _биты_задания(request: Request, user, job_id: str, stage: int):
 
 @router.get("/potok/{job_id}/bits")
 def potok_bits(request: Request, job_id: str, stage: int = 0, start: int = 0,
-               count: int = 1 << 16) -> Dict[str, Any]:
+               count: int = 1 << 16) -> dict[str, Any]:
     """Окно бит для растра."""
     from ..potok import rastr  # noqa: PLC0415
     user = require_user(request)
@@ -2629,7 +2637,7 @@ def potok_bits(request: Request, job_id: str, stage: int = 0, start: int = 0,
 
 
 @router.get("/potok/{job_id}/periods")
-def potok_periods(request: Request, job_id: str, stage: int = 0) -> Dict[str, Any]:
+def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, Any]:
     """Кандидаты периода по автокорреляции."""
     from ..potok import rastr  # noqa: PLC0415
     user = require_user(request)
@@ -2637,7 +2645,7 @@ def potok_periods(request: Request, job_id: str, stage: int = 0) -> Dict[str, An
 
 
 @router.post("/potok/{job_id}/tool")
-def potok_tool(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_tool(request: Request, job_id: str) -> dict[str, Any]:
     """Быстрый инструмент над потоком этапа или каналом по маске."""
     from ..potok import rastr  # noqa: PLC0415
     user = require_user(request)
@@ -2660,13 +2668,14 @@ def potok_tool(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.post("/potok/{job_id}/derive")
-def potok_derive(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
     """Производный поток: канал по маске и/или снятые вручную слои — новым узлом дерева.
 
     Шаги (``steps`` — по порядку; или по-старому ``mask`` и ``strip``)
     выполняются в задании: долгие слои (LDPC, Форни) не держат запрос.
     """
     import numpy as np  # noqa: PLC0415 — numpy только для анализатора
+
     from ..potok import rastr  # noqa: PLC0415
     user = require_user(request)
     состояние = _задание_или_404(request, user, job_id)
@@ -2710,7 +2719,7 @@ def _konfig(request: Request):
     return хранилище
 
 
-def _конфигурация(request: Request, user, ид: str) -> Dict[str, Any]:
+def _конфигурация(request: Request, user, ид: str) -> dict[str, Any]:
     try:
         return _konfig(request).прочитать(ид, user.id)
     except KeyError:
@@ -2718,14 +2727,14 @@ def _конфигурация(request: Request, user, ид: str) -> Dict[str, An
 
 
 @router.get("/potok-configs")
-def potok_configs(request: Request) -> Dict[str, Any]:
+def potok_configs(request: Request) -> dict[str, Any]:
     """Свои конфигурации и общие конфигурации отдела."""
     user = require_user(request)
     return {"items": _konfig(request).список(user.id)}
 
 
 @router.post("/potok-configs")
-def potok_config_save(request: Request) -> Dict[str, Any]:
+def potok_config_save(request: Request) -> dict[str, Any]:
     """Создать (без id) или исправить свою конфигурацию; из файла — поле ``file``."""
     from ..potok.konfig import НетДоступа  # noqa: PLC0415
     user = require_user(request)
@@ -2751,7 +2760,7 @@ def potok_config_save(request: Request) -> Dict[str, Any]:
 
 
 @router.delete("/potok-configs/{config_id}")
-def potok_config_delete(request: Request, config_id: str) -> Dict[str, Any]:
+def potok_config_delete(request: Request, config_id: str) -> dict[str, Any]:
     from ..potok.konfig import НетДоступа  # noqa: PLC0415
     user = require_user(request)
     try:
@@ -2781,9 +2790,10 @@ def potok_config_export(request: Request, config_id: str) -> Response:
 
 
 @router.post("/potok/{job_id}/try")
-def potok_try(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_try(request: Request, job_id: str) -> dict[str, Any]:
     """Пробно применить шаги (или конфигурацию) к началу потока этапа: что вышло, без задания."""
     import numpy as np  # noqa: PLC0415
+
     from ..potok import rastr  # noqa: PLC0415
     from ..potok.bity import в_байты  # noqa: PLC0415
     user = require_user(request)
@@ -2807,7 +2817,7 @@ def potok_try(request: Request, job_id: str) -> Dict[str, Any]:
 
 @router.get("/potok/{job_id}/grid")
 def potok_grid(request: Request, job_id: str, stage: int = 0, period: int = 64, shift: int = 0,
-               row: int = 0, rows: int = 200, col: int = 0, cols: int = 64, per: int = 1) -> Dict[str, Any]:
+               row: int = 0, rows: int = 200, col: int = 0, cols: int = 64, per: int = 1) -> dict[str, Any]:
     """Прямоугольник битового просмотра: строки × столбцы, со сжатием по горизонтали."""
     from ..potok import rastr  # noqa: PLC0415
     user = require_user(request)
@@ -2816,7 +2826,7 @@ def potok_grid(request: Request, job_id: str, stage: int = 0, period: int = 64, 
     return rastr.сетка(_биты_задания(request, user, job_id, stage), period, shift, row, rows, col, cols, per)
 
 
-def _отбор_кадров(тело: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _отбор_кадров(тело: dict[str, Any]) -> list[dict[str, Any]]:
     отбор = []
     for у in (тело.get("filter") or [])[:16]:
         try:
@@ -2829,7 +2839,7 @@ def _отбор_кадров(тело: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 @router.post("/potok/{job_id}/frames")
-def potok_frames(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_frames(request: Request, job_id: str) -> dict[str, Any]:
     """Таблица кадров: байты строками по периоду, с отбором по байту или полубайту."""
     from ..potok import rastr  # noqa: PLC0415
     user = require_user(request)
@@ -2847,7 +2857,7 @@ def potok_frames(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.post("/potok/{job_id}/framecol")
-def potok_frame_column(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_frame_column(request: Request, job_id: str) -> dict[str, Any]:
     """Статистика столбца кадров (1–8 байт): значения, энтропия, счётчик, длина, полубайты, биты."""
     from ..potok import rastr  # noqa: PLC0415
     user = require_user(request)
@@ -2862,14 +2872,14 @@ def potok_frame_column(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.get("/potok/{job_id}/journal")
-def potok_journal(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_journal(request: Request, job_id: str) -> dict[str, Any]:
     user = require_user(request)
     _задание_или_404(request, user, job_id)
     return {"journal": _potok(request).журнал_стола(job_id)}
 
 
 @router.post("/potok/{job_id}/journal")
-def potok_journal_add(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_journal_add(request: Request, job_id: str) -> dict[str, Any]:
     """Запись в журнал массива: итог операции или заметка аналитика."""
     user = require_user(request)
     _задание_или_404(request, user, job_id)
@@ -2895,7 +2905,7 @@ def potok_tributary_file(request: Request, job_id: str, stage: int, number: int)
 
 
 @router.post("/potok/{job_id}/tributary")
-def potok_tributary_node(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_tributary_node(request: Request, job_id: str) -> dict[str, Any]:
     """Приток этапа — отдельным узлом дерева: растр, инструменты, свой разбор."""
     user = require_user(request)
     состояние = _задание_или_404(request, user, job_id)
@@ -2912,7 +2922,7 @@ def potok_tributary_node(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.get("/potok/{job_id}/tree")
-def potok_tree(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_tree(request: Request, job_id: str) -> dict[str, Any]:
     """Дерево обработки, в котором стоит разбор: корень, развилки по этапам, производные."""
     user = require_user(request)
     _задание_или_404(request, user, job_id)
@@ -2920,7 +2930,7 @@ def potok_tree(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.delete("/potok/{job_id}")
-def potok_delete(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_delete(request: Request, job_id: str) -> dict[str, Any]:
     """Удалить узел дерева и всю ветвь под ним."""
     user = require_user(request)
     _задание_или_404(request, user, job_id)
@@ -2934,7 +2944,7 @@ def potok_delete(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.post("/potok/{job_id}/rebuild")
-def potok_rebuild(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_rebuild(request: Request, job_id: str) -> dict[str, Any]:
     """Пересобрать узел с исправленными шагами: убрать, выключить, переставить.
 
     Производный узел пересобирается из своего исходника (поток родителя),
@@ -2979,7 +2989,7 @@ def potok_rebuild(request: Request, job_id: str) -> Dict[str, Any]:
     return {"id": новый}
 
 
-def _биты_поиска(request: Request, user, job_id: str, тело: Dict[str, Any]):
+def _биты_поиска(request: Request, user, job_id: str, тело: dict[str, Any]):
     from ..potok import rastr  # noqa: PLC0415
     биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
     if тело.get("mask"):
@@ -2991,7 +3001,7 @@ def _биты_поиска(request: Request, user, job_id: str, тело: Dict[s
 
 
 @router.post("/potok/{job_id}/search")
-def potok_search(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_search(request: Request, job_id: str) -> dict[str, Any]:
     """Поиск образца (HEX, текст в кодировке, биты) при любом битовом сдвиге и в инверсии."""
     from ..potok import poisk  # noqa: PLC0415
     user = require_user(request)
@@ -3011,7 +3021,7 @@ def potok_search(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.post("/potok/{job_id}/files")
-def potok_files(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_files(request: Request, job_id: str) -> dict[str, Any]:
     """Файлы внутри потока: сигнатура и структура сошлись, длина — где формат позволяет."""
     from ..potok import poisk  # noqa: PLC0415
     user = require_user(request)
@@ -3038,7 +3048,7 @@ def potok_carve(request: Request, job_id: str, stage: int = 0, bit: int = 0, len
 
 
 @router.post("/potok/{job_id}/strings")
-def potok_strings(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_strings(request: Request, job_id: str) -> dict[str, Any]:
     """Текст в потоке (ASCII, UTF-8, CP1251, UTF-16LE), имена файлов с расширениями, адреса."""
     from ..potok import poisk  # noqa: PLC0415
     user = require_user(request)
@@ -3052,7 +3062,7 @@ def potok_strings(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.post("/potok/{job_id}/stuffing")
-def potok_stuffing(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_stuffing(request: Request, job_id: str) -> dict[str, Any]:
     """Мультиплекс со стаффингом: каналы управления, позиция возможности и знак — по растру."""
     from ..potok import stafing  # noqa: PLC0415
     user = require_user(request)
@@ -3066,7 +3076,7 @@ def potok_stuffing(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.post("/potok/{job_id}/ngrams")
-def potok_ngrams(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_ngrams(request: Request, job_id: str) -> dict[str, Any]:
     """Частые комбинации от 2 до 8 байт и повторяющиеся блоки вокруг них."""
     from ..potok import poisk  # noqa: PLC0415
     user = require_user(request)
@@ -3076,7 +3086,7 @@ def potok_ngrams(request: Request, job_id: str) -> Dict[str, Any]:
                                   сдвиги=range(8) if тело.get("anyshift") else (0,))}
 
 
-def _синхро(биты, тело: Dict[str, Any]):
+def _синхро(биты, тело: dict[str, Any]):
     """Синхрокомбинация из тела запроса: словом или из выделенных столбцов растра."""
     from ..potok import sinhro  # noqa: PLC0415
     столбцы = тело.get("columns")
@@ -3091,7 +3101,7 @@ def _синхро(биты, тело: Dict[str, Any]):
 
 
 @router.post("/potok/{job_id}/sync")
-def potok_sync(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_sync(request: Request, job_id: str) -> dict[str, Any]:
     """Синхрокомбинация: вхождения (прямые и инверсные), шаг — длина кадра, знакома ли."""
     from ..potok import rastr  # noqa: PLC0415
     user = require_user(request)
@@ -3110,7 +3120,7 @@ def potok_sync(request: Request, job_id: str) -> Dict[str, Any]:
 # -- матрицы LDPC: загружены из стандартов, общие для отдела ------------------------------
 
 @router.get("/potok-matrices")
-def potok_matrices(request: Request) -> Dict[str, Any]:
+def potok_matrices(request: Request) -> dict[str, Any]:
     """Загруженные матрицы проверок LDPC (имя, n, k, веса, откуда) и встроенные коды стандартов."""
     from ..potok import ldpc, ldpc_std  # noqa: PLC0415
     require_user(request)
@@ -3119,7 +3129,7 @@ def potok_matrices(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/potok-matrices")
-def potok_matrix_add(request: Request) -> Dict[str, Any]:
+def potok_matrix_add(request: Request) -> dict[str, Any]:
     """Загрузить H: alist, базовая матрица сдвигов с Z или таблица адресов с n и k.
 
     ``punctured`` и ``shortened`` — схема передачи («0-191, 1000-1023»): с ней
@@ -3149,7 +3159,7 @@ def potok_matrix_add(request: Request) -> Dict[str, Any]:
 
 
 @router.delete("/potok-matrices/{name}")
-def potok_matrix_delete(request: Request, name: str) -> Dict[str, Any]:
+def potok_matrix_delete(request: Request, name: str) -> dict[str, Any]:
     from ..potok import ldpc  # noqa: PLC0415
     user = require_user(request)
     _potok(request)
@@ -3185,7 +3195,7 @@ def _приметы_этапа(request: Request, user, job_id: str, stage: int):
 
 
 @router.get("/potok/{job_id}/hints")
-def potok_hints(request: Request, job_id: str, stage: int = 0) -> Dict[str, Any]:
+def potok_hints(request: Request, job_id: str, stage: int = 0) -> dict[str, Any]:
     """Что делать, когда разбор встал: приметы потока и подсказки с действиями."""
     user = require_user(request)
     _, этап, приметы, подсказки = _приметы_этапа(request, user, job_id, stage)
@@ -3193,7 +3203,7 @@ def potok_hints(request: Request, job_id: str, stage: int = 0) -> Dict[str, Any]
 
 
 @router.post("/potok/{job_id}/ask")
-def potok_ask(request: Request, job_id: str) -> Dict[str, Any]:
+def potok_ask(request: Request, job_id: str) -> dict[str, Any]:
     """Разговор с помощником о разборе: ход разбора и приметы — вложением, вопрос — черновиком.
 
     Помощник знает теорию из библиотеки; анализатор знает поток. Вложение
@@ -3244,7 +3254,7 @@ def potok_ask(request: Request, job_id: str) -> Dict[str, Any]:
 
 
 @router.delete("/chats/{chat_id}/attachments/{attachment_id}")
-def detach_from_chat(request: Request, chat_id: int, attachment_id: int) -> Dict[str, Any]:
+def detach_from_chat(request: Request, chat_id: int, attachment_id: int) -> dict[str, Any]:
     user = require_user(request)
     assistant = _assistant(request)
     assistant.get_chat(user, chat_id)
@@ -3367,7 +3377,7 @@ def _extract_attachment(path: Path, name: str = "", *, поток: bool = True) 
 # ------------------------------------------------------------ военнослужащие --
 
 #: Что роль позволяет делать — показывается прямо в форме, чтобы не гадать.
-def _user_public(user) -> Dict[str, Any]:
+def _user_public(user) -> dict[str, Any]:
     return user.to_dict()
 
 
@@ -3385,7 +3395,7 @@ def _may_manage(actor, target) -> bool:
 
 
 @router.get("/users")
-def list_users(request: Request) -> Dict[str, Any]:
+def list_users(request: Request) -> dict[str, Any]:
     actor = require_admin(request)
     repos = _repos(request)
     items = []
@@ -3413,7 +3423,7 @@ def list_users(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/staff")
-def staff(request: Request) -> Dict[str, Any]:
+def staff(request: Request) -> dict[str, Any]:
     """Список военнослужащих для выбора исполнителя.
 
     Отдельно от /api/users: тот доступен только администратору и отдаёт
@@ -3445,7 +3455,7 @@ def staff(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/users")
-def create_user(request: Request) -> Dict[str, Any]:
+def create_user(request: Request) -> dict[str, Any]:
     admin = require_admin(request)
     repos = _repos(request)
     payload = _body(request)
@@ -3479,7 +3489,7 @@ def create_user(request: Request) -> Dict[str, Any]:
 
 
 @router.patch("/users/{user_id}")
-def update_user(request: Request, user_id: int) -> Dict[str, Any]:
+def update_user(request: Request, user_id: int) -> dict[str, Any]:
     admin = require_admin(request)
     repos = _repos(request)
     user = repos.users.get(user_id)
@@ -3524,7 +3534,7 @@ def update_user(request: Request, user_id: int) -> Dict[str, Any]:
 
 
 @router.get("/users/pending")
-def pending_users(request: Request) -> Dict[str, Any]:
+def pending_users(request: Request) -> dict[str, Any]:
     """Заявки, ждущие одобрения."""
     require_admin(request)
     items = _repos(request).users.pending()
@@ -3532,7 +3542,7 @@ def pending_users(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/users/{user_id}/approve")
-def approve_user(request: Request, user_id: int) -> Dict[str, Any]:
+def approve_user(request: Request, user_id: int) -> dict[str, Any]:
     """Открыть доступ по заявке и назначить должность.
 
     Одобряет создатель системы, начальник отдела, его заместитель или
@@ -3571,7 +3581,7 @@ def approve_user(request: Request, user_id: int) -> Dict[str, Any]:
 
 
 @router.post("/users/{user_id}/reject")
-def reject_user(request: Request, user_id: int) -> Dict[str, Any]:
+def reject_user(request: Request, user_id: int) -> dict[str, Any]:
     """Отклонить заявку: запись убирается совсем.
 
     Отклонённая заявка — это не военнослужащий; держать её в списке значит копить
@@ -3593,7 +3603,7 @@ def reject_user(request: Request, user_id: int) -> Dict[str, Any]:
 
 
 @router.post("/users/{user_id}/password")
-def reset_user_password(request: Request, user_id: int) -> Dict[str, Any]:
+def reset_user_password(request: Request, user_id: int) -> dict[str, Any]:
     admin = require_admin(request)
     repos = _repos(request)
     user = repos.users.get(user_id)
@@ -3613,7 +3623,7 @@ def reset_user_password(request: Request, user_id: int) -> Dict[str, Any]:
 
 
 @router.post("/users/{user_id}/active")
-def set_user_active(request: Request, user_id: int) -> Dict[str, Any]:
+def set_user_active(request: Request, user_id: int) -> dict[str, Any]:
     admin = require_admin(request)
     repos = _repos(request)
     user = repos.users.get(user_id)
@@ -3659,7 +3669,7 @@ def _may_edit_roster(actor: User, user_id: int) -> bool:
     return actor.id == user_id or actor.is_admin
 
 
-def _roster_bounds(payload: Dict[str, Any]) -> tuple[str, str]:
+def _roster_bounds(payload: dict[str, Any]) -> tuple[str, str]:
     start = _date_or_empty(payload.get("date_from"), "date_from")
     finish = _date_or_empty(payload.get("date_to"), "date_to") or start
     if not start:
@@ -3678,7 +3688,7 @@ def _days_between(start: str, finish: str) -> int:
 
 
 @router.get("/roster")
-def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, Any]:
+def roster(request: Request, date_from: str = "", days: int = 7) -> dict[str, Any]:
     """Расход отдела за промежуток: сетка «военнослужащий × день».
 
     Готовую сетку собирает сервер, а не браузер. Раскладывать периоды по
@@ -3715,7 +3725,7 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
 
     # Раскладка по дням: одна запись покрывает несколько суток, а сетке нужна
     # клетка. Ключ — «id военнослужащего|день», чтобы браузер брал клетку прямо.
-    cells: Dict[str, List[Dict[str, Any]]] = {}
+    cells: dict[str, list[dict[str, Any]]] = {}
     for item in records:
         for day in days_list:
             if item.date_from <= day <= item.date_to:
@@ -3725,7 +3735,7 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
     # их по дням той же раскладкой, что и клетки: сетке нужен готовый ответ
     # на «что сегодня у отдела», а не список промежутков.
     marked = repos.department_days.in_period(start, finish)
-    by_day: Dict[str, List[Dict[str, Any]]] = {}
+    by_day: dict[str, list[dict[str, Any]]] = {}
     for item in marked:
         for day in days_list:
             if item.date_from <= day <= item.date_to:
@@ -3751,7 +3761,7 @@ def roster(request: Request, date_from: str = "", days: int = 7) -> Dict[str, An
 
 
 @router.post("/roster/days")
-def mark_department_day(request: Request) -> Dict[str, Any]:
+def mark_department_day(request: Request) -> dict[str, Any]:
     """Отметить день на весь отдел: общие работы, занятия, собрание.
 
     Это не отсутствие: отсутствие про человека, а такой день про сам день.
@@ -3781,7 +3791,7 @@ def mark_department_day(request: Request) -> Dict[str, Any]:
 
 
 @router.delete("/roster/days/{day_id}")
-def unmark_department_day(request: Request, day_id: int) -> Dict[str, Any]:
+def unmark_department_day(request: Request, day_id: int) -> dict[str, Any]:
     actor = require_admin(request)
     repos = _repos(request)
     item = repos.department_days.get(day_id)
@@ -3795,7 +3805,7 @@ def unmark_department_day(request: Request, day_id: int) -> Dict[str, Any]:
 
 
 @router.get("/roster/day")
-def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
+def roster_day(request: Request, date: str = "") -> dict[str, Any]:
     """Расход на день: кто где, по видам, плюс не отмеченные.
 
     Это то, что начальник читает вслух на разводе, поэтому список полный:
@@ -3806,7 +3816,7 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
     day = _date_or_empty(date, "date") or _today()
     records = repos.absences.on_date(day)
 
-    marked: Dict[int, Any] = {}
+    marked: dict[int, Any] = {}
     for item in records:
         # Отметок на один день может оказаться две (правили и не убрали
         # старую). Берём ту, что заведена позже: она и есть свежая правда.
@@ -3816,7 +3826,7 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
 
     # Отдаём человека, а не запись расхода: экран показывает фамилии и по
     # щелчку открывает карточку военнослужащего, а id записи для этого не годится.
-    groups: Dict[str, List[Dict[str, Any]]] = {kind: [] for kind in ABSENCE_KINDS}
+    groups: dict[str, list[dict[str, Any]]] = {kind: [] for kind in ABSENCE_KINDS}
     for item in sorted(marked.values(), key=lambda row: row.full_name):
         groups[item.kind].append({
             "id": item.user_id,
@@ -3860,7 +3870,7 @@ def roster_day(request: Request, date: str = "") -> Dict[str, Any]:
 
 
 @router.get("/absences")
-def list_absences(request: Request, date_from: str = "", date_to: str = "") -> Dict[str, Any]:
+def list_absences(request: Request, date_from: str = "", date_to: str = "") -> dict[str, Any]:
     """Расход за период. По умолчанию — ближайший месяц от сегодня."""
     require_user(request)
     repos = _repos(request)
@@ -3875,7 +3885,7 @@ def list_absences(request: Request, date_from: str = "", date_to: str = "") -> D
 
 
 @router.post("/absences")
-def add_absence(request: Request) -> Dict[str, Any]:
+def add_absence(request: Request) -> dict[str, Any]:
     """Отметить себя (или подчинённого) в расходе."""
     actor = require_editor(request)
     repos = _repos(request)
@@ -3910,7 +3920,7 @@ def add_absence(request: Request) -> Dict[str, Any]:
 
 
 @router.patch("/absences/{absence_id}")
-def update_absence(request: Request, absence_id: int) -> Dict[str, Any]:
+def update_absence(request: Request, absence_id: int) -> dict[str, Any]:
     """Поправить свою запись расхода: планы меняются чаще, чем расход пишут."""
     actor = require_editor(request)
     repos = _repos(request)
@@ -3921,7 +3931,7 @@ def update_absence(request: Request, absence_id: int) -> Dict[str, Any]:
         raise ServiceError("недостаточно прав: чужой расход ведёт начальник", 403)
 
     payload = _body(request)
-    fields: Dict[str, Any] = {}
+    fields: dict[str, Any] = {}
     if "kind" in payload:
         kind = str(payload["kind"])
         if kind not in ABSENCE_KINDS:
@@ -3947,7 +3957,7 @@ def update_absence(request: Request, absence_id: int) -> Dict[str, Any]:
 
 
 @router.delete("/absences/{absence_id}")
-def delete_absence(request: Request, absence_id: int) -> Dict[str, Any]:
+def delete_absence(request: Request, absence_id: int) -> dict[str, Any]:
     actor = require_editor(request)
     repos = _repos(request)
     item = repos.absences.get(absence_id)
@@ -3980,7 +3990,7 @@ def _notify(request: Request, user_id: int | None, kind: str, title: str,
 
 
 @router.get("/notifications")
-def notifications(request: Request, limit: int = 50) -> Dict[str, Any]:
+def notifications(request: Request, limit: int = 50) -> dict[str, Any]:
     """Что человеку нужно знать. Свежие сверху."""
     user = require_user(request)
     repos = _repos(request)
@@ -3995,7 +4005,7 @@ def notifications(request: Request, limit: int = 50) -> Dict[str, Any]:
 
 
 @router.post("/notifications/read")
-def read_notifications(request: Request) -> Dict[str, Any]:
+def read_notifications(request: Request) -> dict[str, Any]:
     """Отметить прочитанным одно уведомление или все сразу.
 
     «Все сразу» снимает и непрочитанные сообщения бесед. В числе у
@@ -4018,7 +4028,7 @@ def read_notifications(request: Request) -> Dict[str, Any]:
 
 
 @router.delete("/notifications")
-def clear_notifications(request: Request) -> Dict[str, Any]:
+def clear_notifications(request: Request) -> dict[str, Any]:
     user = require_user(request)
     _repos(request).notices.clear(user.id)
     return {"ok": True}
@@ -4030,7 +4040,7 @@ UNCALLABLE_ROLES = ("owner", "head")
 
 
 @router.post("/notifications/call")
-def call_to_office(request: Request) -> Dict[str, Any]:
+def call_to_office(request: Request) -> dict[str, Any]:
     """Вызвать военнослужащего в кабинет.
 
     Право начальства: создатель, начальник отдела, заместитель и начальник
@@ -4067,14 +4077,14 @@ def call_to_office(request: Request) -> Dict[str, Any]:
 # ---------------------------------------------------------- переписка ----
 
 @router.get("/talks")
-def list_talks(request: Request) -> Dict[str, Any]:
+def list_talks(request: Request) -> dict[str, Any]:
     """Беседы человека: свежие сверху."""
     user = require_user(request)
     return {"items": _repos(request).talks.list_for(user.id)}
 
 
 @router.post("/talks")
-def create_talk(request: Request) -> Dict[str, Any]:
+def create_talk(request: Request) -> dict[str, Any]:
     """Завести беседу: личную или на несколько человек.
 
     Личная беседа двоих не заводится дважды: иначе каждое «написать Иванову»
@@ -4109,7 +4119,7 @@ def create_talk(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/talks/{talk_id}")
-def read_talk(request: Request, talk_id: int) -> Dict[str, Any]:
+def read_talk(request: Request, talk_id: int) -> dict[str, Any]:
     user = require_user(request)
     repos = _repos(request)
     if not repos.talks.is_member(talk_id, user.id):
@@ -4137,7 +4147,7 @@ def read_talk(request: Request, talk_id: int) -> Dict[str, Any]:
 
 
 @router.delete("/talks/{talk_id}")
-def leave_talk(request: Request, talk_id: int) -> Dict[str, Any]:
+def leave_talk(request: Request, talk_id: int) -> dict[str, Any]:
     """Убрать беседу. У двоих — у обоих, в беседе нескольких — у себя.
 
     Прежде уходил только тот, кто удалял, и для беседы ДВОИХ это выходило
@@ -4178,7 +4188,7 @@ def leave_talk(request: Request, talk_id: int) -> Dict[str, Any]:
 
 
 @router.post("/talks/{talk_id}/messages")
-def write_to_talk(request: Request, talk_id: int) -> Dict[str, Any]:
+def write_to_talk(request: Request, talk_id: int) -> dict[str, Any]:
     user = require_user(request)
     repos = _repos(request)
     if not repos.talks.is_member(talk_id, user.id):
@@ -4204,7 +4214,7 @@ def write_to_talk(request: Request, talk_id: int) -> Dict[str, Any]:
 @router.post("/talks/{talk_id}/files")
 def attach_to_talk(request: Request, talk_id: int,
                    file: UploadFile = File(...),
-                   text: str = Form("")) -> Dict[str, Any]:
+                   text: str = Form("")) -> dict[str, Any]:
     """Приложить файл к сообщению в беседе.
 
     Половина вопросов по письму решается тем, что человек показывает
@@ -4269,7 +4279,7 @@ def attach_to_talk(request: Request, talk_id: int,
 
 
 @router.get("/talks/{talk_id}/files/{file_id}/text")
-def read_talk_file_text(request: Request, talk_id: int, file_id: int) -> Dict[str, Any]:
+def read_talk_file_text(request: Request, talk_id: int, file_id: int) -> dict[str, Any]:
     """Что система вычитала из приложенного документа.
 
     Для Word и Excel это единственный способ прочитать документ, не
@@ -4307,9 +4317,9 @@ def read_talk_file(request: Request, talk_id: int, file_id: int,
 
 # -------------------------------------------------------------- сводка ----
 
-def _one_per_person(records: Iterable[Any]) -> Dict[int, Any]:
+def _one_per_person(records: Iterable[Any]) -> dict[int, Any]:
     """По одной записи на человека — той, что кончается позже."""
-    chosen: Dict[int, Any] = {}
+    chosen: dict[int, Any] = {}
     for item in records:
         current = chosen.get(item.user_id)
         if current is None or item.date_to > current.date_to:
@@ -4318,7 +4328,7 @@ def _one_per_person(records: Iterable[Any]) -> Dict[int, Any]:
 
 
 @router.get("/board")
-def board(request: Request, days: int = 30) -> Dict[str, Any]:
+def board(request: Request, days: int = 30) -> dict[str, Any]:
     """Сводка отдела: люди, нагрузка, сроки, дежурство, движение за период."""
     require_user(request)
     repos = _repos(request)
@@ -4420,7 +4430,7 @@ def _shift(day: str, days: int) -> str:
     return (base + timedelta(days=days)).strftime("%Y-%m-%d")
 
 
-def _opt_str(payload: Dict[str, Any], name: str) -> str | None:
+def _opt_str(payload: dict[str, Any], name: str) -> str | None:
     """Значение поля, если оно вообще пришло. None — «не менять»."""
     return None if name not in payload else str(payload[name] or "").strip()
 
@@ -4453,7 +4463,7 @@ def _person_or_404(request: Request, user_id: int) -> User:
 
 
 @router.get("/users/{user_id}/files")
-def list_person_files(request: Request, user_id: int) -> Dict[str, Any]:
+def list_person_files(request: Request, user_id: int) -> dict[str, Any]:
     """Документы военнослужащего: справка-объективка, приказы, прочее."""
     actor = require_user(request)
     person = _person_or_404(request, user_id)
@@ -4475,7 +4485,7 @@ def list_person_files(request: Request, user_id: int) -> Dict[str, Any]:
 def add_person_file(request: Request, user_id: int,
                     file: UploadFile = File(...),
                     kind: str = Form("profile"),
-                    note: str = Form("")) -> Dict[str, Any]:
+                    note: str = Form("")) -> dict[str, Any]:
     """Приложить документ к военнослужащему.
 
     Справка-объективка одна: новая заменяет прежнюю. Приказы и прочее
@@ -4557,7 +4567,7 @@ def download_person_file(request: Request, user_id: int, file_id: int,
 
 
 @router.delete("/users/{user_id}/files/{file_id}")
-def delete_person_file(request: Request, user_id: int, file_id: int) -> Dict[str, Any]:
+def delete_person_file(request: Request, user_id: int, file_id: int) -> dict[str, Any]:
     actor = require_user(request)
     person = _person_or_404(request, user_id)
     if not _may_see_person_files(actor, person.id):
@@ -4575,7 +4585,7 @@ def delete_person_file(request: Request, user_id: int, file_id: int) -> Dict[str
 
 
 @router.patch("/me/contacts")
-def update_my_contacts(request: Request) -> Dict[str, Any]:
+def update_my_contacts(request: Request) -> dict[str, Any]:
     """Свои контакты человек правит сам.
 
     Справочник, который ведёт кадровик, устаревает быстрее, чем его правят;
@@ -4583,7 +4593,7 @@ def update_my_contacts(request: Request) -> Dict[str, Any]:
     """
     user = require_user(request)
     payload = _body(request)
-    fields: Dict[str, Any] = {}
+    fields: dict[str, Any] = {}
     for name in ("phone_mobile", "phone_open", "phone_secure", "room"):
         if name in payload:
             fields[name] = str(payload[name] or "").strip()[:120]
@@ -4596,7 +4606,7 @@ def update_my_contacts(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/people/{user_id}")
-def person_card(request: Request, user_id: int) -> Dict[str, Any]:
+def person_card(request: Request, user_id: int) -> dict[str, Any]:
     """Карточка военнослужащего, открытая всему отделу.
 
     Кто это, кем работает, в какой группе, по какому подразделению стоит по
@@ -4652,7 +4662,7 @@ def person_card(request: Request, user_id: int) -> Dict[str, Any]:
 
 
 @router.get("/me/summary")
-def my_summary(request: Request) -> Dict[str, Any]:
+def my_summary(request: Request) -> dict[str, Any]:
     user = require_user(request)
     repos = _repos(request)
     today = _today()
@@ -4700,7 +4710,7 @@ def my_summary(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/me/password")
-def change_password(request: Request, response: Response) -> Dict[str, Any]:
+def change_password(request: Request, response: Response) -> dict[str, Any]:
     user = require_user(request)
     settings = _settings(request)
     if not settings.auth_enabled:
@@ -4735,7 +4745,7 @@ def change_password(request: Request, response: Response) -> Dict[str, Any]:
 # ------------------------------------------------------- метрики и журнал --
 
 @router.get("/stats")
-def stats(request: Request) -> Dict[str, Any]:
+def stats(request: Request) -> dict[str, Any]:
     """Метрики отдела — только администратору.
 
     По распоряжению начальника отдела: «метрики доступны только админу».
@@ -4748,7 +4758,7 @@ def stats(request: Request) -> Dict[str, Any]:
 
 @router.get("/stats/questions")
 def stats_questions(request: Request, limit: int = 200,
-                    query: str = "") -> Dict[str, Any]:
+                    query: str = "") -> dict[str, Any]:
     """О чём спрашивают помощника — тело вопроса и кто его задал.
 
     Заведено по распоряжению начальника отдела: «сделай, чтобы админ мог
@@ -4771,7 +4781,7 @@ def stats_questions(request: Request, limit: int = 200,
 
 
 @router.get("/audit")
-def audit(request: Request, limit: int = 200) -> Dict[str, Any]:
+def audit(request: Request, limit: int = 200) -> dict[str, Any]:
     """Журнал действий — только создателю системы.
 
     Права администратора в отделе есть и у начальника группы: он заводит
@@ -4786,7 +4796,7 @@ def audit(request: Request, limit: int = 200) -> Dict[str, Any]:
 
 
 @router.get("/health")
-def health(request: Request) -> Dict[str, Any]:
+def health(request: Request) -> dict[str, Any]:
     """Жив ли сервис. Отвечает и без входа — этим пользуются скрипты запуска.
 
     Без входа отдаём только признак жизни. Сколько в отделе военнослужащих,
@@ -4933,7 +4943,7 @@ INLINE_TYPES = {
 }
 
 
-def with_pages(item: Any) -> Dict[str, Any]:
+def with_pages(item: Any) -> dict[str, Any]:
     """Описание файла плюс число страниц — для показа картинками.
 
     Знать его окну нужно заранее: без этого нельзя написать «страница 1 из 4»
@@ -5026,7 +5036,7 @@ def _disposition(filename: str) -> str:
 
 
 def _ingest_file(request: Request, path: Path, *, doc_type: str,
-                 domain: str | None = None) -> Dict[str, Any]:
+                 domain: str | None = None) -> dict[str, Any]:
     try:
         from ..ingest.pipeline import ingest_path  # noqa: PLC0415
     except ImportError as error:
@@ -5041,7 +5051,7 @@ def _ingest_file(request: Request, path: Path, *, doc_type: str,
     return _ingest_to_dict(result)
 
 
-def _ingest_to_dict(result: Any) -> Dict[str, Any]:
+def _ingest_to_dict(result: Any) -> dict[str, Any]:
     if isinstance(result, dict):
         return result
     keys = ("added", "updated", "skipped", "failed", "chunks", "documents",

@@ -7,11 +7,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Tuple
-
 import secrets
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Request
 
@@ -48,23 +46,23 @@ class LoginThrottle:
 
     max_failures: int = 5
     block_minutes: int = 10
-    _state: Dict[str, Tuple[int, datetime | None]] = field(default_factory=dict)
+    _state: dict[str, tuple[int, datetime | None]] = field(default_factory=dict)
 
     def check(self, key: str) -> None:
         failures, blocked_until = self._state.get(key, (0, None))
-        if blocked_until and blocked_until > datetime.now(timezone.utc):
-            left = int((blocked_until - datetime.now(timezone.utc)).total_seconds() // 60) + 1
+        if blocked_until and blocked_until > datetime.now(UTC):
+            left = int((blocked_until - datetime.now(UTC)).total_seconds() // 60) + 1
             raise ServiceError(
                 f"слишком много неудачных попыток входа, повторите через {left} мин", 429
             )
-        if blocked_until and blocked_until <= datetime.now(timezone.utc):
+        if blocked_until and blocked_until <= datetime.now(UTC):
             self._state.pop(key, None)
 
     def failure(self, key: str) -> None:
         failures, _ = self._state.get(key, (0, None))
         failures += 1
         blocked_until = (
-            datetime.now(timezone.utc) + timedelta(minutes=self.block_minutes)
+            datetime.now(UTC) + timedelta(minutes=self.block_minutes)
             if failures >= self.max_failures
             else None
         )

@@ -35,7 +35,6 @@ import datetime as dt
 import logging
 import socket
 from pathlib import Path
-from typing import List, Tuple
 
 from . import certs
 
@@ -69,13 +68,13 @@ class CertificateError(RuntimeError):
     """Сертификат не выписать — с причиной, понятной человеку."""
 
 
-def local_addresses() -> List[str]:
+def local_addresses() -> list[str]:
     """Адреса этой машины в сети: по ним к системе и обращаются.
 
     Сертификат обязан перечислять их все: браузер сверяет адрес в строке с
     тем, что написано в сертификате, и на несовпадение ругается отдельно.
     """
-    found: List[str] = ["127.0.0.1", "::1"]
+    found: list[str] = ["127.0.0.1", "::1"]
 
     # Самый надёжный способ узнать свой адрес в сети — спросить у системы,
     # с какого адреса она пошла бы наружу. Ни одного пакета при этом не
@@ -109,12 +108,12 @@ def local_addresses() -> List[str]:
     return found
 
 
-def _stamp(hosts: List[str]) -> str:
+def _stamp(hosts: list[str]) -> str:
     """Строка, по которой видно, изменился ли набор адресов машины."""
     return "\n".join(sorted(set(hosts)))
 
 
-def root_certificate(data_dir: Path) -> "Path | None":
+def root_certificate(data_dir: Path) -> Path | None:
     """Путь к корню — тому файлу, который ставят на рабочие места.
 
     None означает установку старого образца: там корня нет, а на рабочих
@@ -124,7 +123,7 @@ def root_certificate(data_dir: Path) -> "Path | None":
     return path if path.is_file() else None
 
 
-def _split(names: "List[str] | None") -> List[str]:
+def _split(names: list[str] | None) -> list[str]:
     """Разобрать перечисление адресов.
 
     Человек напишет их и через запятую в одной строке, и по одному ключу на
@@ -132,7 +131,7 @@ def _split(names: "List[str] | None") -> List[str]:
     может, так что разбор безопасен, а имя вида «192.168.10.5,otdel-server»
     в сертификате — это адрес, по которому браузер не откроется никогда.
     """
-    out: List[str] = []
+    out: list[str] = []
     if isinstance(names, str):                   # строку перебирать по буквам нельзя
         names = [names]
     for item in names or []:
@@ -143,7 +142,7 @@ def _split(names: "List[str] | None") -> List[str]:
     return out
 
 
-def _names(hosts: "List[str] | None", extra_hosts: "List[str] | None") -> List[str]:
+def _names(hosts: list[str] | None, extra_hosts: list[str] | None) -> list[str]:
     """Все имена и адреса, по которым к системе обращаются.
 
     Адрес, которого в сертификате нет, браузер отвергнет отдельной руганью —
@@ -196,7 +195,7 @@ def _write_secret(path: Path, body: bytes) -> None:
         pass
 
 
-def _issue_root(folder: Path, brand: str) -> "Tuple[bytes, certs.RsaKey]":
+def _issue_root(folder: Path, brand: str) -> tuple[bytes, certs.RsaKey]:
     """Выписать корень: он подписывает серверные сертификаты и живёт долго."""
     name = "%s — корень" % brand
     key = certs.generate_key(KEY_BITS)
@@ -212,7 +211,7 @@ def _issue_root(folder: Path, brand: str) -> "Tuple[bytes, certs.RsaKey]":
     return der, key
 
 
-def _issue_server(folder: Path, brand: str, hosts: List[str],
+def _issue_server(folder: Path, brand: str, hosts: list[str],
                   root_der: bytes, root_key: certs.RsaKey) -> None:
     """Выписать серверный сертификат на текущие адреса машины."""
     host = socket.gethostname() or "reportgen"
@@ -234,9 +233,9 @@ def _issue_server(folder: Path, brand: str, hosts: List[str],
 
 
 def ensure_certificate(data_dir: Path, brand: str = "Рабочее место",
-                       hosts: "List[str] | None" = None,
-                       extra_hosts: "List[str] | None" = None,
-                       renew: bool = False) -> "Tuple[Path, Path]":
+                       hosts: list[str] | None = None,
+                       extra_hosts: list[str] | None = None,
+                       renew: bool = False) -> tuple[Path, Path]:
     """Вернуть пути к сертификату и ключу, выписав их при первом запуске.
 
     Ключ `renew` выбрасывает прежний серверный сертификат, оставляя корень:
@@ -299,7 +298,7 @@ def describe(data_dir: Path) -> dict:
     «готово», не убедившись, что файлы годны, нельзя: человек уйдёт с этим на
     рабочие места и вернётся ни с чем.
     """
-    import ssl                                   # noqa: PLC0415 — только для проверки
+    import ssl  # noqa: PLC0415 — только для проверки
 
     folder = Path(data_dir) / "tls"
     cert_path = folder / CERT_NAME
@@ -334,10 +333,10 @@ def describe(data_dir: Path) -> dict:
     return report
 
 
-def main(argv: "List[str] | None" = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Выписать сертификат из командной строки: этим пользуются скрипты."""
-    import argparse                              # noqa: PLC0415
-    import json                                  # noqa: PLC0415
+    import argparse  # noqa: PLC0415
+    import json  # noqa: PLC0415
 
     parser = argparse.ArgumentParser(
         prog="python -m reportgen.web.tls",

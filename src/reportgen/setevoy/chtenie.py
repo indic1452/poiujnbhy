@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Чтение захватов: pcap (микро- и наносекундный, оба порядка байт), pcapng, .sig.
 
 pcapng читается по блокам: SHB задаёт порядок байт раздела, IDB — тип
@@ -12,7 +11,6 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 #: Типы канального уровня pcap/pcapng (LINKTYPE_*), которые умеет разборщик.
 КАНАЛЫ = {0: "loopback", 1: "Ethernet", 9: "PPP", 12: "IP", 14: "IP", 50: "PPP-HDLC",
@@ -33,15 +31,15 @@ class Запись:
 @dataclass
 class Захват:
     формат: str
-    записи: List[Запись]
-    заметки: List[str]
+    записи: list[Запись]
+    заметки: list[str]
 
 
 def _канал(номер: int) -> str:
     return КАНАЛЫ.get(номер, f"тип {номер}")
 
 
-def pcap(сырые: bytes) -> Optional[Захват]:
+def pcap(сырые: bytes) -> Захват | None:
     if len(сырые) < 24:
         return None
     магия = сырые[:4]
@@ -51,8 +49,8 @@ def pcap(сырые: bytes) -> Optional[Захват]:
         return None
     порядок, доля = варианты[магия]
     канал = _канал(struct.unpack_from(порядок + "I", сырые, 20)[0] & 0xFFFF)
-    записи: List[Запись] = []
-    заметки: List[str] = []
+    записи: list[Запись] = []
+    заметки: list[str] = []
     место = 24
     while место + 16 <= len(сырые):
         сек, дробь, записано, исходно = struct.unpack_from(порядок + "IIII", сырые, место)
@@ -71,12 +69,12 @@ def pcap(сырые: bytes) -> Optional[Захват]:
     return Захват("pcap", записи, заметки)
 
 
-def pcapng(сырые: bytes) -> Optional[Захват]:
+def pcapng(сырые: bytes) -> Захват | None:
     if len(сырые) < 28 or сырые[:4] != b"\x0a\x0d\x0d\x0a":
         return None
-    записи: List[Запись] = []
-    заметки: List[str] = []
-    интерфейсы: List[Tuple[str, float, int]] = []      # канал, доля секунды, snaplen
+    записи: list[Запись] = []
+    заметки: list[str] = []
+    интерфейсы: list[tuple[str, float, int]] = []      # канал, доля секунды, snaplen
     порядок = "<"
     место = 0
     while место + 12 <= len(сырые):
@@ -128,7 +126,7 @@ def pcapng(сырые: bytes) -> Optional[Захват]:
     return Захват("pcapng", записи, заметки)
 
 
-def кадры(кадры_: List[bytes], формат: str = ".sig") -> Захват:
+def кадры(кадры_: list[bytes], формат: str = ".sig") -> Захват:
     """Кадры без канального заголовка (из .sig, после HDLC): канал угадывается по кадру."""
     return Захват(формат, [Запись(float(i), bytes(к), len(к), "авто")
                            for i, к in enumerate(кадры_[:ПАКЕТОВ_ДО])],

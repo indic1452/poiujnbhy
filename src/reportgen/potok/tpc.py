@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Код произведения (TPC — «турбокод произведения») вслепую: двумерный и трёхмерный.
 
 Блок TPC — таблица n2 × n1 (двумерный) или n3 × n2 × n1 (трёхмерный): каждая
@@ -44,7 +43,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -91,10 +90,10 @@ def _чётность_окон(биты: np.ndarray, L: int) -> np.ndarray:
     return накоп[L:] ^ накоп[:-L]
 
 
-def _без_кратных(итог: List[Dict[str, float]], лучших: int, по_началу: bool) -> List[Dict[str, float]]:
+def _без_кратных(итог: list[dict[str, float]], лучших: int, по_началу: bool) -> list[dict[str, float]]:
     """Кратные длины (две строки подряд тоже чётны) уступают своей основе."""
     итог.sort(key=lambda к: -к["z"])
-    отобрано: List[Dict[str, float]] = []
+    отобрано: list[dict[str, float]] = []
     for к in итог:
         if any(к["длина"] % о["длина"] == 0
                and (not по_началу or (к["начало"] - о["начало"]) % о["длина"] == 0)
@@ -107,7 +106,7 @@ def _без_кратных(итог: List[Dict[str, float]], лучших: int, 
 
 
 def строки_по_чётности(биты: np.ndarray, *, до: int = ДЛИНА_ДО, от: int = ДЛИНА_ОТ,
-                       лучших: int = 5) -> List[Dict[str, float]]:
+                       лучших: int = 5) -> list[dict[str, float]]:
     """Кандидаты (длина строки, начало) по доле окон с чётным весом, лучшие первыми.
 
     Отрыв считается от половины в обе стороны: скремблер со сбросом на
@@ -196,7 +195,7 @@ def отобрать_без_повторов(окна: np.ndarray, нужно: i
     пока различных не наберётся ``нужно``.
     """
     n = len(окна)
-    итог: List[np.ndarray] = []
+    итог: list[np.ndarray] = []
     найдено = 0
     for i in range(0, n, часть):
         от = max(0, i - ПОВТОР_ДО)
@@ -209,9 +208,9 @@ def отобрать_без_повторов(окна: np.ndarray, нужно: i
     return np.concatenate(итог)[:нужно] if итог else np.zeros(0, dtype=int)
 
 
-def _кадры_с_данными(биты: np.ndarray, начала: Sequence[int], длина: int, нужно: int) -> List[int]:
+def _кадры_с_данными(биты: np.ndarray, начала: Sequence[int], длина: int, нужно: int) -> list[int]:
     """Начала первых ``нужно`` кадров, не повторяющих соседей, — по всему потоку, частями."""
-    итог: List[int] = []
+    итог: list[int] = []
     часть = max(64, нужно)
     for i in range(0, len(начала), часть):
         от = max(0, i - ПОВТОР_ДО)
@@ -280,7 +279,7 @@ def _окна_кадров(биты: np.ndarray, начала: Sequence[int], д
 
 
 def строки_в_кадрах(биты: np.ndarray, начала: Sequence[int], длина: int, *, до: int = ДЛИНА_ДО,
-                    от: int = ДЛИНА_ОТ, лучших: int = 5) -> List[Dict[str, float]]:
+                    от: int = ДЛИНА_ОТ, лучших: int = 5) -> list[dict[str, float]]:
     """Строки внутри кадров модема: длина n1, начало первой строки и сколько строк в кадре.
 
     ``биты`` — сплошной поток, ``начала`` — начала кадров (по синхрослову),
@@ -338,7 +337,7 @@ def строки_в_кадрах(биты: np.ndarray, начала: Sequence[in
             итог.append({"z": float(z), "длина": L, "начало": int(начало), "строк": int(строк),
                          "перекос": s_})
     итог.sort(key=lambda к: -к["z"])
-    отобрано: List[Dict[str, float]] = []
+    отобрано: list[dict[str, float]] = []
     for к in итог:
         # Кратная длина уступает основе, только если лежит в её серии: две строки
         # подряд — это серия основы. Серия в другом месте кадра (строки кода
@@ -406,7 +405,7 @@ def _хэши_окон(хэши: np.ndarray, L: int) -> np.ndarray:
 
 
 def столбцы_по_чётности(таблица: np.ndarray, *, до: int = ДЛИНА_ДО, от: int = 2,
-                        лучших: int = 3, длины: Optional[Sequence[int]] = None) -> List[Dict[str, float]]:
+                        лучших: int = 3, длины: Sequence[int] | None = None) -> list[dict[str, float]]:
     """Длина столбца и строка начала блока — по чётности вдоль столбцов таблицы строк.
 
     Перекос считается у каждого столбца отдельно: скремблер со сбросом делает
@@ -557,9 +556,9 @@ def _годные(H: np.ndarray, полные: np.ndarray) -> np.ndarray:
     return H[dlinnye.нарушения(полные, H) < dlinnye.НАРУШЕНИЙ_ДО]
 
 
-def _таблица_синдромов(H: np.ndarray) -> Dict[bytes, int]:
+def _таблица_синдромов(H: np.ndarray) -> dict[bytes, int]:
     """Синдром одиночной ошибки → позиция (только однозначные); H — без столбца единицы."""
-    таблица: Dict[bytes, int] = {}
+    таблица: dict[bytes, int] = {}
     повторы = set()
     for j in range(H.shape[1]):
         ключ = np.packbits(H[:, j]).tobytes()
@@ -573,7 +572,7 @@ def _таблица_синдромов(H: np.ndarray) -> Dict[bytes, int]:
     return таблица
 
 
-def _синдромы_мест(слова: np.ndarray, H: np.ndarray, смещения: Optional[np.ndarray]) -> np.ndarray:
+def _синдромы_мест(слова: np.ndarray, H: np.ndarray, смещения: np.ndarray | None) -> np.ndarray:
     """Синдромы с поправкой места: слова идут блок за блоком, у места p — своя поправка."""
     синдр = синдромы(слова, H)
     if смещения is not None and len(смещения):
@@ -581,8 +580,8 @@ def _синдромы_мест(слова: np.ndarray, H: np.ndarray, смеще
     return синдр
 
 
-def исправить(слова: np.ndarray, H: np.ndarray, смещения: Optional[np.ndarray] = None
-              ) -> Tuple[np.ndarray, int]:
+def исправить(слова: np.ndarray, H: np.ndarray, смещения: np.ndarray | None = None
+              ) -> tuple[np.ndarray, int]:
     """Одиночные ошибки по синдрому: (исправленные слова, сколько исправлено).
 
     ``смещения`` — поправки синдрома по месту слова в блоке (места × проверки),
@@ -602,13 +601,13 @@ def исправить(слова: np.ndarray, H: np.ndarray, смещения: 
     return слова, исправлено
 
 
-def _без_нарушений(слова: np.ndarray, H: np.ndarray, смещения: Optional[np.ndarray] = None) -> float:
+def _без_нарушений(слова: np.ndarray, H: np.ndarray, смещения: np.ndarray | None = None) -> float:
     if not len(H) or not len(слова):
         return 1.0
     return float(np.mean(~_синдромы_мест(слова, H, смещения).any(axis=1)))
 
 
-def проверки_оси(блоки: np.ndarray, ось: int) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+def проверки_оси(блоки: np.ndarray, ось: int) -> tuple[np.ndarray, np.ndarray | None]:
     """Проверки слов вдоль оси и поправки синдрома по месту слова в блоке (или None).
 
     Скремблер со сбросом на блоке, наложенный ПОСЛЕ кода, прибавляет к
@@ -649,9 +648,9 @@ def _вернуть_оси(слова: np.ndarray, блоки: np.ndarray, ос�
     return np.moveaxis(слова.reshape(форма), -1, ось)
 
 
-def декодировать(блоки: np.ndarray, H1: np.ndarray, H2: np.ndarray, H3: Optional[np.ndarray] = None,
-                 итераций: int = ИТЕРАЦИЙ, *, поправки: Optional[Sequence[Optional[np.ndarray]]] = None
-                 ) -> Tuple[np.ndarray, Dict[str, object]]:
+def декодировать(блоки: np.ndarray, H1: np.ndarray, H2: np.ndarray, H3: np.ndarray | None = None,
+                 итераций: int = ИТЕРАЦИЙ, *, поправки: Sequence[np.ndarray | None] | None = None
+                 ) -> tuple[np.ndarray, dict[str, object]]:
     """Итеративное жёсткое декодирование блоков: (блоков × n2 × n1) или (блоков × n3 × n2 × n1).
 
     H1 — проверки строк (последняя ось), H2 — столбцов, H3 — глубины (для
@@ -683,8 +682,8 @@ def декодировать(блоки: np.ndarray, H1: np.ndarray, H2: np.ndar
         if len(H):
             # Слова оси идут блок за блоком (ось блоков остаётся первой).
             плохие |= _синдромы_мест(_слова_оси(блоки, ось), H, п).any(axis=1).reshape(nb, -1).any(axis=1)
-    сводка: Dict[str, object] = {"исправлено": всего, "блоков_чисто": float(np.mean(~плохие))}
-    for имя, д, п in zip(ИЗМЕРЕНИЯ, до, после):
+    сводка: dict[str, object] = {"исправлено": всего, "блоков_чисто": float(np.mean(~плохие))}
+    for имя, д, п in zip(ИЗМЕРЕНИЯ, до, после, strict=False):
         сводка[f"{имя}_до"] = д
         сводка[f"{имя}_после"] = п
     return блоки, сводка
@@ -692,8 +691,8 @@ def декодировать(блоки: np.ndarray, H1: np.ndarray, H2: np.ndar
 
 # -- снятие ------------------------------------------------------------------------------------
 
-def _параметры_строк(выборка: np.ndarray, строка: Optional[int], начало: Optional[int], до: int
-                     ) -> Tuple[int, int, float, float]:
+def _параметры_строк(выборка: np.ndarray, строка: int | None, начало: int | None, до: int
+                     ) -> tuple[int, int, float, float]:
     if строка is None:
         кандидаты = строки_по_чётности(выборка, до=до)
         if not кандидаты or кандидаты[0]["z"] < ПОРОГ_Z:
@@ -706,14 +705,14 @@ def _параметры_строк(выборка: np.ndarray, строка: Opt
     return int(строка), начало, abs(2 * чётных - 1) * np.sqrt(max(1, len(окна))), чётных
 
 
-def _глубина_подтверждена(блоки: np.ndarray, H3: np.ndarray, поправки3: Optional[np.ndarray],
-                         сводка3: Dict[str, object], сводка2: Dict[str, object]) -> bool:
+def _глубина_подтверждена(блоки: np.ndarray, H3: np.ndarray, поправки3: np.ndarray | None,
+                         сводка3: dict[str, object], сводка2: dict[str, object]) -> bool:
     """Третье измерение настоящее: проверки глубины выполнены в блоках из разных плоскостей.
 
     Такие блоки ищутся по всему потоку (до РАЗЛИЧНЫХ_ИСКАТЬ): в начале записи
     бывает долгое заполнение из одинаковых плоскостей.
     """
-    номера: List[np.ndarray] = []
+    номера: list[np.ndarray] = []
     найдено = 0
     for i in range(0, len(блоки), 4 * РАЗЛИЧНЫХ_ИСКАТЬ):
         различные = различные_плоскости(блоки[i:i + 4 * РАЗЛИЧНЫХ_ИСКАТЬ], образцов=4 * РАЗЛИЧНЫХ_ИСКАТЬ)
@@ -729,11 +728,11 @@ def _глубина_подтверждена(блоки: np.ndarray, H3: np.ndar
     return float(np.mean(~нарушены.reshape(len(выбор), -1).any(axis=1))) >= БЛОКОВ_ЧИСТО_ОТ
 
 
-def снять(биты: np.ndarray, *, строка: Optional[int] = None, начало: Optional[int] = None,
-          столбец: Optional[int] = None, блок: Optional[int] = None,
-          глубина: Optional[int] = None, плоскость: Optional[int] = None,
-          трёхмерный: Optional[bool] = None, до: int = ДЛИНА_ДО,
-          столбцы: Optional[Sequence[int]] = None) -> Tuple[np.ndarray, Находка]:
+def снять(биты: np.ndarray, *, строка: int | None = None, начало: int | None = None,
+          столбец: int | None = None, блок: int | None = None,
+          глубина: int | None = None, плоскость: int | None = None,
+          трёхмерный: bool | None = None, до: int = ДЛИНА_ДО,
+          столбцы: Sequence[int] | None = None) -> tuple[np.ndarray, Находка]:
     """Снять TPC: параметры, которых не задано, находятся по потоку.
 
     ``строка``, ``начало`` — длина строки n1 и бит начала строки;
@@ -812,7 +811,7 @@ def снять(биты: np.ndarray, *, строка: Optional[int] = None, на
         H = [h for h, _ in выучено]
         поправки = [п for _, п in выучено]
         if not all(len(h) for h in H):
-            raise ValueError("проверки " + ", ".join(имя for имя, h in zip(ИЗМЕРЕНИЯ, H) if not len(h))
+            raise ValueError("проверки " + ", ".join(имя for имя, h in zip(ИЗМЕРЕНИЯ, H, strict=False) if not len(h))
                              + " не выделились")
         чистые, сводка = декодировать(блоки, *H, поправки=поправки)
         # Второй круг: по исправленным блокам проверки выделяются полнее (в опорных
@@ -820,7 +819,7 @@ def снять(биты: np.ndarray, *, строка: Optional[int] = None, на
         for _ in range(ПЕРЕУЧИТЬ):
             учёба = чистые[учить]
             новые = [проверки_оси(учёба, ось) for ось in оси]
-            if all(len(н) <= len(h) for (н, _), h in zip(новые, H)):
+            if all(len(н) <= len(h) for (н, _), h in zip(новые, H, strict=False)):
                 break
             for i, (н, п) in enumerate(новые):
                 if len(н) > len(H[i]):
@@ -859,7 +858,7 @@ def снять(биты: np.ndarray, *, строка: Optional[int] = None, на
     k = [len(и) for и in инфо]
     n = [n1, n2] + ([n3] if n3 else [])
     систем = all(np.array_equal(и, np.arange(len(и))) for и in инфо)
-    коды = " × ".join(f"({nn}, {kk})" for nn, kk in zip(n, k))
+    коды = " × ".join(f"({nn}, {kk})" for nn, kk in zip(n, k, strict=False))
     скорость_ч, скорость_з = int(np.prod(k)), int(np.prod(n))
     подробно = [
         f"строка {n1} бит с бита {начало} (чётных строк {чётных * 100:.1f} %, отрыв "
@@ -882,7 +881,7 @@ def снять(биты: np.ndarray, *, строка: Optional[int] = None, на
                        else "информационные позиции каждого измерения")
         + " (в предположении систематического кодера)",
     ]
-    с_маской = [имя for имя, п in zip(ИЗМЕРЕНИЯ, поправки) if п is not None]
+    с_маской = [имя for имя, п in zip(ИЗМЕРЕНИЯ, поправки, strict=False) if п is not None]
     if с_маской:
         подробно.append(
             "на блок наложена постоянная маска (скремблер со сбросом на блоке после кода): "
@@ -916,9 +915,9 @@ def снять(биты: np.ndarray, *, строка: Optional[int] = None, на
 
 
 def снять_в_кадрах(биты: np.ndarray, начала: Sequence[int], длина: int, *,
-                   строка: Optional[int] = None, начало: Optional[int] = None,
-                   строк: Optional[int] = None, до: int = ДЛИНА_ДО,
-                   **параметры) -> Tuple[np.ndarray, Находка]:
+                   строка: int | None = None, начало: int | None = None,
+                   строк: int | None = None, до: int = ДЛИНА_ДО,
+                   **параметры) -> tuple[np.ndarray, Находка]:
     """TPC в кадрах модема: строки ищутся от начала каждого кадра.
 
     ``начала`` — начала кадров в ``биты`` (по синхрослову), ``длина`` — длина
@@ -946,8 +945,8 @@ def снять_в_кадрах(биты: np.ndarray, начала: Sequence[int]
                     int(к["строк"]) if строк is None else int(строк)) for к in кандидаты[:СТРОК_ПРОБОВАТЬ]]
     else:
         попытки = [(int(строка), int(начало), int(строк))]
-    итоги: List[Tuple[np.ndarray, Находка]] = []
-    ошибка: Optional[ValueError] = None
+    итоги: list[tuple[np.ndarray, Находка]] = []
+    ошибка: ValueError | None = None
     for строка_, начало_, строк_ in попытки:
         try:
             итоги.append(_снять_строки_в_кадрах(биты, начала, длина, строка_, начало_, строк_, до,
@@ -962,15 +961,15 @@ def снять_в_кадрах(биты: np.ndarray, начала: Sequence[int]
     return max(итоги, key=_качество)
 
 
-def _качество(итог: Tuple[np.ndarray, Находка]) -> Tuple[bool, int, float]:
+def _качество(итог: tuple[np.ndarray, Находка]) -> tuple[bool, int, float]:
     """Какое толкование кода лучше: доказано, больше проверок, чище блоки."""
     находка = итог[1]
     return находка.уверенность >= БЛОКОВ_ЧИСТО_ОТ, проверок(находка), находка.уверенность
 
 
-def _снять_строки_в_кадрах(биты: np.ndarray, начала: List[int], длина: int, строка: int, начало: int,
-                           строк: int, до: int, параметры: Dict[str, object]
-                           ) -> Tuple[np.ndarray, Находка]:
+def _снять_строки_в_кадрах(биты: np.ndarray, начала: list[int], длина: int, строка: int, начало: int,
+                           строк: int, до: int, параметры: dict[str, object]
+                           ) -> tuple[np.ndarray, Находка]:
     """Снять код, когда строки в кадре известны: столбцы, глубина, декодирование."""
     окна = _окна_кадров(биты, [н + начало for н in начала], строк * строка, 0)
     if len(окна) < 2:
@@ -985,7 +984,7 @@ def _снять_строки_в_кадрах(биты: np.ndarray, начала:
     if параметры.get("столбец") is None and "столбцы" not in параметры:
         параметры = {**параметры, "столбцы": sorted({строк * m for m in range(1, 5)}
                                                     | {д for д in range(2, строк + 1) if строк % д == 0})}
-    варианты: List[Dict[str, object]] = []
+    варианты: list[dict[str, object]] = []
     различные = без_повторов(окна)
     if 2 <= int(различные.sum()) < len(окна):
         try:
@@ -998,8 +997,8 @@ def _снять_строки_в_кадрах(биты: np.ndarray, начала:
                              "глубина": с["глубина"] or None, "плоскость": с["плоскость"],
                              "трёхмерный": bool(с["глубина"])})
     варианты.append(параметры)
-    итоги: List[Tuple[np.ndarray, Находка]] = []
-    ошибка: Optional[ValueError] = None
+    итоги: list[tuple[np.ndarray, Находка]] = []
+    ошибка: ValueError | None = None
     for вариант in варианты:
         try:
             итоги.append(снять(окна.reshape(-1), строка=строка, начало=0, до=до, **вариант))
@@ -1022,7 +1021,7 @@ def проверок(находка: Находка) -> int:
                                   (с.get("глубина", 0), с.get("k3", 0))) if n)
 
 
-def найти(биты: np.ndarray, *, до: int = ДЛИНА_ДО) -> Optional[Находка]:
+def найти(биты: np.ndarray, *, до: int = ДЛИНА_ДО) -> Находка | None:
     """Код произведения, если он есть и доказан декодированием; иначе None.
 
     Чётность окон бывает и у структур, которые не код (заполнение, служебные
@@ -1037,7 +1036,7 @@ def найти(биты: np.ndarray, *, до: int = ДЛИНА_ДО) -> Optional
 
 
 def найти_в_кадрах(биты: np.ndarray, начала: Sequence[int], длина: int, *,
-                   до: int = ДЛИНА_ДО) -> Optional[Находка]:
+                   до: int = ДЛИНА_ДО) -> Находка | None:
     """То же в кадрах модема: ``начала`` кадров в ``биты`` и длина кадра."""
     try:
         _, находка = снять_в_кадрах(биты, начала, длина, до=до)

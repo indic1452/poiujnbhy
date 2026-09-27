@@ -15,7 +15,6 @@ from email.message import EmailMessage
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.ingest import convert as convert_module
 from reportgen.ingest import registry
 from reportgen.ingest.formats import opendoc, web
@@ -381,7 +380,7 @@ class BrokenFileTests(TempCase):
 
     def test_not_an_archive_at_all(self):
         path = self.path("plain.odt")
-        path.write_bytes("это просто текст, а не документ".encode("utf-8"))
+        path.write_bytes("это просто текст, а не документ".encode())
         result = opendoc.convert_odt(path)
         self.assertTrue(result.is_empty)
         self.assertIn("не является документом OpenDocument", result.warnings[0])
@@ -760,7 +759,7 @@ class MhtmlTests(TempCase):
         path = self.path("пусто.mht")
         path.write_bytes(b"From: <x>\r\nMIME-Version: 1.0\r\n"
                          b"Content-Type: text/plain\r\n\r\n"
-                         + "ни разметки, ни страницы\r\n".encode("utf-8"))
+                         + "ни разметки, ни страницы\r\n".encode())
         result = web.convert_mhtml(path)
         self.assertTrue(result.warnings)
 

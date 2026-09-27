@@ -34,7 +34,6 @@ from pathlib import Path
 from unittest import mock
 
 import _bootstrap  # noqa: F401
-
 from reportgen.ingest import registry
 from reportgen.ingest.convert import convert_file
 from reportgen.ingest.formats import legacy
@@ -777,7 +776,7 @@ class RtfTest(unittest.TestCase):
     @unittest.skipUnless(striprtf is not None, "нужен striprtf")
     def test_не_rtf_файл(self):
         path = self.workdir / "подделка.rtf"
-        path.write_bytes("Это обычный текст, а не RTF".encode("utf-8"))
+        path.write_bytes("Это обычный текст, а не RTF".encode())
         result = legacy.convert_rtf(path)
         self.assertEqual(result.text, "")
         self.assertTrue(any("не похож на RTF" in item for item in result.warnings))

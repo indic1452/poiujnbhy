@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Карта файла: участки разной природы, известные сигнатуры, сжатие, pcap.
 
 Запись с объекта редко однородна: заголовок прибора, вставки служебных
@@ -25,7 +24,6 @@ from __future__ import annotations
 
 import struct
 import zlib
-from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -47,9 +45,9 @@ from .statistika import энтропия
                104: "Cisco HDLC", 113: "Linux cooked", 228: "IPv4", 229: "IPv6"}
 
 
-def участки(данные: bytes, окно: int = ОКНО) -> List[Tuple[int, int, str, float]]:
+def участки(данные: bytes, окно: int = ОКНО) -> list[tuple[int, int, str, float]]:
     """(начало, конец, характер, средняя энтропия) — соседние окна одного характера слиты."""
-    итог: List[Tuple[int, int, str, float]] = []
+    итог: list[tuple[int, int, str, float]] = []
     for начало in range(0, len(данные), окно):
         кусок = данные[начало:начало + окно]
         if len(кусок) < 64:
@@ -70,7 +68,7 @@ def участки(данные: bytes, окно: int = ОКНО) -> List[Tuple[
             итог.append((начало, начало + len(кусок), характер, h))
     # Короткие участки (меньше четырёх окон) — колебание около порога, а не
     # другая природа: вливаем их в предыдущий.
-    слитые: List[Tuple[int, int, str, float]] = []
+    слитые: list[tuple[int, int, str, float]] = []
     for участок in итог:
         н, к, х, h = участок
         if слитые and (к - н < 4 * окно or слитые[-1][2] == х):
@@ -81,8 +79,8 @@ def участки(данные: bytes, окно: int = ОКНО) -> List[Tuple[
     return слитые
 
 
-def сигнатуры(данные: bytes, предел: int = 50) -> List[Tuple[int, str]]:
-    найдено: List[Tuple[int, str]] = []
+def сигнатуры(данные: bytes, предел: int = 50) -> list[tuple[int, str]]:
+    найдено: list[tuple[int, str]] = []
     for подпись, имя in СИГНАТУРЫ:
         место = данные.find(подпись)
         while место >= 0 and len(найдено) < предел:
@@ -91,7 +89,7 @@ def сигнатуры(данные: bytes, предел: int = 50) -> List[Tupl
     return sorted(найдено)
 
 
-def распаковать_zlib(данные: bytes, предел: int = 200) -> List[Tuple[int, int, bytes]]:
+def распаковать_zlib(данные: bytes, предел: int = 200) -> list[tuple[int, int, bytes]]:
     """Куски zlib: (место, сжатых байт, распакованное) — только те, что распаковались."""
     итог = []
     for место in range(len(данные) - 2):
@@ -111,7 +109,7 @@ def распаковать_zlib(данные: bytes, предел: int = 200) ->
     return итог
 
 
-def pcap(данные: bytes) -> Tuple[str, List[bytes]] | None:
+def pcap(данные: bytes) -> tuple[str, list[bytes]] | None:
     """Классический pcap: тип канала и пакеты (кадры канального уровня)."""
     if len(данные) < 24:
         return None
@@ -124,7 +122,7 @@ def pcap(данные: bytes) -> Tuple[str, List[bytes]] | None:
         return None
     канал = struct.unpack(порядок + "I", данные[20:24])[0] & 0xFFFF
     место = 24
-    пакеты: List[bytes] = []
+    пакеты: list[bytes] = []
     while место + 16 <= len(данные) and len(пакеты) < 200_000:
         _, _, записано, _ = struct.unpack(порядок + "IIII", данные[место:место + 16])
         if записано > 262_144 or место + 16 + записано > len(данные):

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Мультиплекс со стаффингом общего вида: каналы управления, возможность, знак, разуплотнение."""
 
 import unittest
@@ -25,8 +24,8 @@ def мультиплекс(кадров=3000, сид=5, ошибок=0.0, дол
     данные = [c for c in range(P) if c not in служебные]
     разметка = {t: [c for i, c in enumerate(данные) if i % 3 == t] for t in range(3)}
     источники = {t: rng.integers(0, 2, кадров * 80).astype(np.uint8) for t in range(3)}
-    место = {t: 0 for t in range(3)}
-    накоплено = {t: 0.0 for t in range(3)}
+    место = dict.fromkeys(range(3), 0)
+    накоплено = dict.fromkeys(range(3), 0.0)
     кадры = []
     for _ in range(кадров):
         к = np.zeros(P, np.uint8)
@@ -182,7 +181,7 @@ def по_правилам(кадров=3000, сид=11):
     правила = {"А": [((30, 90, 150), [(185, "+"), (186, "+"), (187, "+")])],
                "Б": [((31, 91, 151), [(188, "+")]), ((32, 92, 152), [(189, "−")])]}
     источники = {т: rng.integers(0, 2, кадров * 110).astype(np.uint8) for т in "АБ"}
-    место = {т: 0 for т in "АБ"}
+    место = dict.fromkeys("АБ", 0)
     кадры_ = []
     for _ in range(кадров):
         к = np.zeros(P, np.uint8)
@@ -290,6 +289,7 @@ class СтаффингПоПравиламTests(unittest.TestCase):
 class СтаффингЧерезСерверTests(unittest.TestCase):
     def test_найти(self):
         import time
+
         from test_web import WebTestCase
 
         class Сеть(WebTestCase):

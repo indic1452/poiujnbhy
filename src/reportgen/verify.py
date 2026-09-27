@@ -8,12 +8,11 @@
 from __future__ import annotations
 
 import re
-
-from .citations import labels_in
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Sequence
 
 from . import numbers
+from .citations import labels_in
 from .facts import FactPack
 from .pipeline import Outline
 
@@ -43,7 +42,7 @@ class Issue:
         return f"{self.level.upper():7} {self.code}{where}: {self.message}"
 
 
-def split_document(markdown: str) -> tuple[List[tuple[str, str]], str]:
+def split_document(markdown: str) -> tuple[list[tuple[str, str]], str]:
     """Делит отчёт на проверяемые разделы и приложение с источниками.
 
     Границы определяются ПОЛОЖЕНИЕМ блока, а не текстом заголовка. Это принципиально:
@@ -68,11 +67,11 @@ def _is_contents(title: str) -> bool:
     return re.sub(r"^\d+\.\s*", "", title).strip().casefold() == "содержание"
 
 
-def parse_sections(markdown: str) -> List[tuple[str, str]]:
+def parse_sections(markdown: str) -> list[tuple[str, str]]:
     """Разбирает отчёт на пары (заголовок, тело) по заголовкам второго уровня."""
-    sections: List[tuple[str, str]] = []
+    sections: list[tuple[str, str]] = []
     title = ""
-    body: List[str] = []
+    body: list[str] = []
     for line in markdown.splitlines():
         if line.startswith("## "):
             if title or body:
@@ -96,11 +95,11 @@ def verify_report(
     facts: FactPack,
     outline: Outline | None = None,
     *,
-    glossary: Dict[str, str] | None = None,
-    forbidden: Dict[str, str] | None = None,
+    glossary: dict[str, str] | None = None,
+    forbidden: dict[str, str] | None = None,
     sections: Sequence[tuple[str, str]] | None = None,
     appendix: str | None = None,
-) -> List[Issue]:
+) -> list[Issue]:
     """Полная проверка готового отчёта. Возвращает список замечаний.
 
     ``sections`` и ``appendix`` можно передать явно — тогда разбор Markdown не
@@ -108,7 +107,7 @@ def verify_report(
     берёт из базы, то есть из данных, сформированных кодом, а не из документа,
     который правили модель и инженер. Это закрывает подделку границ разделов.
     """
-    issues: List[Issue] = []
+    issues: list[Issue] = []
     if sections is None or appendix is None:
         parsed_sections, parsed_appendix = split_document(markdown)
         body_sections = list(sections) if sections is not None else parsed_sections
@@ -129,13 +128,13 @@ def verify_report(
 
 def _check_numbers(
     sections: Sequence[tuple[str, str]], facts: FactPack, appendix: str
-) -> List[Issue]:
+) -> list[Issue]:
     """Главная проверка: ни одного числа мимо факт-пакета."""
     allowed_facts = facts.allowed_numbers()
     from_sources = numbers.extract(appendix, structural=True)
     from_sources |= numbers.derived_forms(from_sources)
 
-    issues: List[Issue] = []
+    issues: list[Issue] = []
     for title, body in sections:
         # Заголовок раздела — такой же текст отчёта: и модель, и инженер могут
         # написать в нём число или запрещённую формулировку.
@@ -164,9 +163,9 @@ def _check_numbers(
     return issues
 
 
-def _check_citations(sections: Sequence[tuple[str, str]], appendix: str) -> List[Issue]:
+def _check_citations(sections: Sequence[tuple[str, str]], appendix: str) -> list[Issue]:
     known = labels_in(appendix)
-    issues: List[Issue] = []
+    issues: list[Issue] = []
     for title, raw_body in sections:
         body = f"{title}\n{raw_body}"
         for label in sorted(labels_in(body)):
@@ -182,8 +181,8 @@ def _check_citations(sections: Sequence[tuple[str, str]], appendix: str) -> List
     return issues
 
 
-def _check_placeholders(sections: Sequence[tuple[str, str]]) -> List[Issue]:
-    issues: List[Issue] = []
+def _check_placeholders(sections: Sequence[tuple[str, str]]) -> list[Issue]:
+    issues: list[Issue] = []
     for title, raw_body in sections:
         body = f"{title}\n{raw_body}"
         for match in re.finditer(r"\[ТРЕБУЕТ ПРОВЕРКИ[^\]]*\]", body):
@@ -197,8 +196,8 @@ def _check_placeholders(sections: Sequence[tuple[str, str]]) -> List[Issue]:
     return issues
 
 
-def _check_forbidden(sections: Sequence[tuple[str, str]], forbidden: Dict[str, str]) -> List[Issue]:
-    issues: List[Issue] = []
+def _check_forbidden(sections: Sequence[tuple[str, str]], forbidden: dict[str, str]) -> list[Issue]:
+    issues: list[Issue] = []
     for title, raw_body in sections:
         body = f"{title}\n{raw_body}"
         for pattern, reason in forbidden.items():
@@ -215,8 +214,8 @@ def _check_forbidden(sections: Sequence[tuple[str, str]], forbidden: Dict[str, s
     return issues
 
 
-def _check_glossary(sections: Sequence[tuple[str, str]], glossary: Dict[str, str]) -> List[Issue]:
-    issues: List[Issue] = []
+def _check_glossary(sections: Sequence[tuple[str, str]], glossary: dict[str, str]) -> list[Issue]:
+    issues: list[Issue] = []
     for title, body in sections:
         for variant, canonical in glossary.items():
             if re.search(rf"\b{re.escape(variant)}\b", body, re.IGNORECASE):
@@ -231,8 +230,8 @@ def _check_glossary(sections: Sequence[tuple[str, str]], glossary: Dict[str, str
     return issues
 
 
-def _check_structure(sections: Sequence[tuple[str, str]], outline: Outline) -> List[Issue]:
-    issues: List[Issue] = []
+def _check_structure(sections: Sequence[tuple[str, str]], outline: Outline) -> list[Issue]:
+    issues: list[Issue] = []
     present = [re.sub(r"^\d+\.\s*", "", title).strip() for title, _ in sections]
     for spec in outline.sections:
         if spec.title not in present:
@@ -256,8 +255,8 @@ def _check_structure(sections: Sequence[tuple[str, str]], outline: Outline) -> L
     return issues
 
 
-def summarize(issues: Iterable[Issue]) -> Dict[str, int]:
-    counts = {level: 0 for level in LEVELS}
+def summarize(issues: Iterable[Issue]) -> dict[str, int]:
+    counts = dict.fromkeys(LEVELS, 0)
     for issue in issues:
         counts[issue.level] = counts.get(issue.level, 0) + 1
     return counts

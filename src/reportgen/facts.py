@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence, Set
+from typing import Any
 
 from . import numbers
 
@@ -32,7 +33,7 @@ MAX_GROUP = 120
 #: прямо в интерфейсе, и «measurements: []» вместо «measurements: {}» —
 #: обычная описка. Раньше она валила запрос с пятисотой ошибкой без единого
 #: слова о причине; теперь говорим, где именно ошиблись.
-_SHAPES: Dict[str, tuple] = {
+_SHAPES: dict[str, tuple] = {
     "measurements": (dict, "объектом «ключ: измерение»"),
     "equipment": (dict, "объектом «поле: значение»"),
     "findings": (list, "списком"),
@@ -42,7 +43,7 @@ _SHAPES: Dict[str, tuple] = {
 }
 
 
-def _check_shapes(raw: Dict[str, Any]) -> None:
+def _check_shapes(raw: dict[str, Any]) -> None:
     """Проверить вид полей до разбора: иначе разбор срывается без объяснения."""
     for field_name, (kind, expected) in _SHAPES.items():
         value = raw.get(field_name)
@@ -92,7 +93,7 @@ class Measurement:
         return text
 
     @classmethod
-    def from_dict(cls, key: str, raw: Dict[str, Any]) -> "Measurement":
+    def from_dict(cls, key: str, raw: dict[str, Any]) -> Measurement:
         if "value" not in raw:
             raise FactPackError(f"измерение '{key}': отсутствует поле 'value'")
         known = {f for f in cls.__dataclass_fields__ if f != "key"}
@@ -118,7 +119,7 @@ class Finding:
     refs: Sequence[str] = field(default_factory=tuple)
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, Any]) -> "Finding":
+    def from_dict(cls, raw: dict[str, Any]) -> Finding:
         for required in ("id", "severity", "title"):
             if required not in raw:
                 raise FactPackError(f"находка: отсутствует поле '{required}'")
@@ -154,19 +155,19 @@ class FactPack:
     #: причинам называется customer — переименовывать её на работающей
     #: установке дороже, чем один раз объяснить это здесь.
     group_no: str = ""
-    equipment: Dict[str, Any] = field(default_factory=dict)
+    equipment: dict[str, Any] = field(default_factory=dict)
     request: str = ""
-    artifacts: List[Dict[str, Any]] = field(default_factory=list)
-    measurements: Dict[str, Measurement] = field(default_factory=dict)
-    findings: List[Finding] = field(default_factory=list)
-    timeline: List[Dict[str, Any]] = field(default_factory=list)
-    keywords: List[str] = field(default_factory=list)
-    raw: Dict[str, Any] = field(default_factory=dict)
+    artifacts: list[dict[str, Any]] = field(default_factory=list)
+    measurements: dict[str, Measurement] = field(default_factory=dict)
+    findings: list[Finding] = field(default_factory=list)
+    timeline: list[dict[str, Any]] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
+    raw: dict[str, Any] = field(default_factory=dict)
 
     # -- загрузка -----------------------------------------------------------
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, Any]) -> "FactPack":
+    def from_dict(cls, raw: dict[str, Any]) -> FactPack:
         if not isinstance(raw, dict):
             raise FactPackError("факт-пакет должен быть объектом JSON")
         for required in ("case_id", "report_type"):
@@ -208,17 +209,17 @@ class FactPack:
         )
 
     @classmethod
-    def load(cls, path: str | Path) -> "FactPack":
+    def load(cls, path: str | Path) -> FactPack:
         data = json.loads(Path(path).read_text(encoding="utf-8-sig"))
         return cls.from_dict(data)
 
     # -- доступ -------------------------------------------------------------
 
-    def missing(self, keys: Iterable[str]) -> List[str]:
+    def missing(self, keys: Iterable[str]) -> list[str]:
         """Какие из требуемых шаблоном измерений отсутствуют."""
         return [key for key in keys if key not in self.measurements]
 
-    def item_list(self, name: str) -> List[Dict[str, Any]]:
+    def item_list(self, name: str) -> list[dict[str, Any]]:
         """Список записей факт-пакета, по которому повторяется раздел.
 
         В отделе это опись регистраций: строка на файл — линия связи, вид
@@ -243,10 +244,10 @@ class FactPack:
                     f"объектом «поле: значение», а задана {_kind_name(item)}")
         return list(value)
 
-    def subset(self, keys: Iterable[str]) -> List[Measurement]:
+    def subset(self, keys: Iterable[str]) -> list[Measurement]:
         return [self.measurements[key] for key in keys if key in self.measurements]
 
-    def findings_at_least(self, severity: str) -> List[Finding]:
+    def findings_at_least(self, severity: str) -> list[Finding]:
         threshold = SEVERITIES.index(severity)
         return [f for f in self.findings if SEVERITIES.index(f.severity) >= threshold]
 
@@ -300,7 +301,7 @@ class FactPack:
     #: контрольные суммы состоят из цифровых групп, не имеющих смысла.
     OPAQUE_FIELDS = ("sha256", "sha1", "md5", "hash", "digest", "checksum", "crc", "uuid")
 
-    def allowed_numbers(self) -> Set[str]:
+    def allowed_numbers(self) -> set[str]:
         """Числа, которые модель имеет право использовать в отчёте.
 
         Только значения полей факт-пакета: измерения с погрешностями, методы,
@@ -317,7 +318,7 @@ class FactPack:
         payload = json.dumps(self.raw or self._as_dict(), sort_keys=True, ensure_ascii=False)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
 
-    def _as_dict(self) -> Dict[str, Any]:
+    def _as_dict(self) -> dict[str, Any]:
         return {
             "case_id": self.case_id,
             "report_type": self.report_type,

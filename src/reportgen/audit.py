@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Сплошная проверка находимости: какие документы помощник не увидит.
 
 Отдел: «делаю запрос на структуру этого стандарта — он не находит и вообще
@@ -37,8 +36,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any
 
 from .designations import designations_in
 from .ingest import titles
@@ -95,19 +95,19 @@ class DocumentReport:
     chunks: int = 0
     chars: int = 0
     vectors: int = 0
-    findings: List[Finding] = field(default_factory=list)
+    findings: list[Finding] = field(default_factory=list)
 
     @property
     def blocked(self) -> bool:
         return any(беда.blocking for беда in self.findings)
 
     @property
-    def codes(self) -> List[str]:
+    def codes(self) -> list[str]:
         return [беда.code for беда in self.findings]
 
 
 def audit_library(repos: Any, *, doc_type: str | None = None,
-                  domain: str | None = None) -> List[DocumentReport]:
+                  domain: str | None = None) -> list[DocumentReport]:
     """Проверить всю библиотеку. Возвращает только документы с бедами."""
     документы = repos.documents.list(doc_type, domain)
     if not документы:
@@ -120,7 +120,7 @@ def audit_library(repos: Any, *, doc_type: str | None = None,
     # строку значит утопить в ней всё остальное; про неё скажет сводка.
     всего_векторов = sum(строка[2] for строка in статистика.values())
 
-    отчёты: List[DocumentReport] = []
+    отчёты: list[DocumentReport] = []
     for документ in документы:
         куски, знаки, векторы = статистика.get(документ.id, (0, 0, 0))
         отчёт = DocumentReport(
@@ -136,11 +136,11 @@ def audit_library(repos: Any, *, doc_type: str | None = None,
 
 
 def summarize(reports: Sequence[DocumentReport], *, total: int,
-              vectors: int | None = None, chunks: int | None = None) -> List[str]:
+              vectors: int | None = None, chunks: int | None = None) -> list[str]:
     """Итог словами: сколько документов и по какой причине не находится."""
     if not total:
         return ["библиотека пуста"]
-    счёт: Dict[str, int] = {}
+    счёт: dict[str, int] = {}
     for отчёт in reports:
         for код in отчёт.codes:
             счёт[код] = счёт.get(код, 0) + 1
@@ -177,9 +177,9 @@ def summarize(reports: Sequence[DocumentReport], *, total: int,
 # ------------------------------------------------------------- проверки ----
 
 def _findings(repos: Any, document: Any, отчёт: DocumentReport,
-              повторы: Dict[str, int], *, векторы_есть: bool = True
-              ) -> List[Finding]:
-    беды: List[Finding] = []
+              повторы: dict[str, int], *, векторы_есть: bool = True
+              ) -> list[Finding]:
+    беды: list[Finding] = []
 
     if отчёт.chunks == 0:
         беды.append(Finding(
@@ -242,7 +242,7 @@ def _findings(repos: Any, document: Any, отчёт: DocumentReport,
 
 
 def _designations_missing(repos: Any, document: Any,
-                          отчёт: DocumentReport) -> List[str]:
+                          отчёт: DocumentReport) -> list[str]:
     """Обозначения из названия, которых нет в тексте документа.
 
     Тот самый случай G.732: в названии «T-REC-G.732» номер есть, в тексте
@@ -287,7 +287,7 @@ def _text_mentions(repos: Any, document_id: int, designation: str) -> bool:
     return bool(строки)
 
 
-def _chunk_stats(repos: Any) -> Dict[int, Tuple[int, int, int]]:
+def _chunk_stats(repos: Any) -> dict[int, tuple[int, int, int]]:
     """Фрагменты, знаки и векторы по каждому документу — одним запросом.
 
     Именно одним: тридцать тысяч отдельных запросов превратили бы минутную
@@ -306,7 +306,7 @@ def _chunk_stats(repos: Any) -> Dict[int, Tuple[int, int, int]]:
             for строка in строки}
 
 
-def _вес(отчёт: DocumentReport) -> Tuple[int, str]:
+def _вес(отчёт: DocumentReport) -> tuple[int, str]:
     """По тяжести самой тяжёлой беды, при равенстве — по имени.
 
     Отдельного «сначала ненаходимые» здесь нет намеренно: беды, от которых

@@ -12,8 +12,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
-
 import numpy as np
 
 СОСТОЯНИЯ = {0: "на ходу под двигателем", 1: "на якоре", 2: "не управляется", 3: "ограничен в маневре",
@@ -65,7 +63,7 @@ def из_nmea(полезная: str, заполнение: int = 0) -> np.ndarra
     return np.array(биты[:len(биты) - заполнение] if заполнение else биты, dtype=np.uint8)
 
 
-def в_nmea(биты: np.ndarray) -> Tuple[str, int]:
+def в_nmea(биты: np.ndarray) -> tuple[str, int]:
     """Биты → полезная часть и число заполняющих бит (для синтеза)."""
     биты = list(np.asarray(биты, dtype=np.uint8))
     заполнение = -len(биты) % 6
@@ -77,7 +75,7 @@ def в_nmea(биты: np.ndarray) -> Tuple[str, int]:
     return "".join(знаки), заполнение
 
 
-def _координаты(биты: np.ndarray, от: int) -> Optional[Tuple[float, float]]:
+def _координаты(биты: np.ndarray, от: int) -> tuple[float, float] | None:
     """(широта, долгота) из долготы 28 и широты 27 бит; None — «нет данных» (181° / 91°)."""
     долгота = _целое(биты, от, 28, True) / 600000
     широта = _целое(биты, от + 28, 27, True) / 600000
@@ -86,13 +84,13 @@ def _координаты(биты: np.ndarray, от: int) -> Optional[Tuple[flo
     return round(широта, 6), round(долгота, 6)
 
 
-def разобрать(биты: np.ndarray) -> Optional[Dict[str, object]]:
+def разобрать(биты: np.ndarray) -> dict[str, object] | None:
     """Поля сообщения; None — тип не поддержан или бит не хватает."""
     биты = np.asarray(биты, dtype=np.uint8)
     if len(биты) < 38:
         return None
     тип = _целое(биты, 0, 6)
-    п: Dict[str, object] = {"тип": тип, "повтор": _целое(биты, 6, 2), "mmsi": _целое(биты, 8, 30)}
+    п: dict[str, object] = {"тип": тип, "повтор": _целое(биты, 6, 2), "mmsi": _целое(биты, 8, 30)}
     if тип in (1, 2, 3) and len(биты) >= 168:
         п["состояние"] = СОСТОЯНИЯ.get(_целое(биты, 38, 4), "резерв")
         п["скорость"] = None if _целое(биты, 50, 10) == 1023 else _целое(биты, 50, 10) / 10
@@ -140,7 +138,7 @@ def разобрать(биты: np.ndarray) -> Optional[Dict[str, object]]:
     return п
 
 
-def описание(п: Dict[str, object]) -> str:
+def описание(п: dict[str, object]) -> str:
     """Строка для отчёта."""
     тип = int(п["тип"])
     части = [f"MMSI {п['mmsi']}", ТИПЫ.get(тип, f"тип {тип}")]
@@ -167,9 +165,9 @@ def годное_по_длине(биты_длина: int, тип: int) -> bool:
     return биты_длина in ДЛИНЫ.get(тип, ())
 
 
-def сводка(сообщения: List[Dict[str, object]], сколько: int = 40) -> List[str]:
+def сводка(сообщения: list[dict[str, object]], сколько: int = 40) -> list[str]:
     """Строки по судам: последнее известное о каждом MMSI."""
-    суда: Dict[int, Dict[str, object]] = {}
+    суда: dict[int, dict[str, object]] = {}
     for п in сообщения:
         суда.setdefault(int(п["mmsi"]), {}).update({к: з for к, з in п.items() if з is not None})
     строки = [f"сообщений AIS: {len(сообщения)}, судов и станций (MMSI): {len(суда)}"]

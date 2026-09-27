@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Свёрточное перемежение Форни любых параметров — вслепую.
 
 Перемежитель Форни: I ветвей, в ветви j — задержка j·M ячеек; единица
@@ -18,8 +17,6 @@ I, M и фаза ветвей (какая единица шла по ветви 
 """
 
 from __future__ import annotations
-
-from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -85,7 +82,7 @@ def найти(биты: np.ndarray, *, I_до: int = I_ДО, M_до: int = M_Д
     грубо.sort(reverse=True)
     if грубо[0][0] < max(10.0, 2 * база, 1.5 * как_есть):
         return None
-    итог: Optional[Tuple[float, int, int, int]] = None
+    итог: tuple[float, int, int, int] | None = None
     # Пары с одним произведением M·I сдвигают соседние биты одинаково и на
     # грубом переборе почти неотличимы (24 × 3 и 36 × 2): на уточнение идут
     # все разложения произведений лучших пар.

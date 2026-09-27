@@ -17,8 +17,6 @@ N × 4800 — все 48 бит D; N × 3600 — 36 бит и заполнени�
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
-
 import numpy as np
 
 from .nahodka import Находка
@@ -38,7 +36,7 @@ X = np.array([2 * 8 + 7, 7 * 8 + 7])
 СОГЛАСИЕ = 0.9
 
 
-def _места(отрезки: List[Tuple[str, int]]) -> np.ndarray:
+def _места(отрезки: list[tuple[str, int]]) -> np.ndarray:
     """Номера бит D с данными по отрезкам «данные n» / «заполнение n» (V.110 табл. 6d, 6f)."""
     места, i = [], 0
     for вид, n in отрезки:
@@ -57,7 +55,7 @@ N12000 = _места([("Д", 10), ("F", 2), ("Д", 2), ("F", 2), ("Д", 2), ("F"
                  ("Д", 10), ("F", 2), ("Д", 2), ("F", 2), ("Д", 2), ("F", 2), ("Д", 1), ("F", 3)])
 
 #: E1 E2 E3 → (вид, повтор каждого бита, места данных в D, {IR кбит/с: скорость бит/с}).
-РЕЖИМЫ: Dict[Tuple[int, int, int], Tuple[str, int, np.ndarray, Dict[int, int]]] = {
+РЕЖИМЫ: dict[tuple[int, int, int], tuple[str, int, np.ndarray, dict[int, int]]] = {
     (1, 0, 0): ("600 бит/с, бит × 8", 8, np.arange(48), {8: 600}),
     (0, 1, 0): ("1200 бит/с, бит × 4", 4, np.arange(48), {8: 1200}),
     (1, 1, 0): ("2400 бит/с, бит × 2", 2, np.arange(48), {8: 2400}),
@@ -71,7 +69,7 @@ def _верные(кадры: np.ndarray) -> np.ndarray:
     return (кадры[:, НУЛИ] == 0).all(1) & (кадры[:, ЕДИНИЦЫ] == 1).all(1)
 
 
-def выровнять(биты: np.ndarray) -> Optional[Tuple[int, float, np.ndarray]]:
+def выровнять(биты: np.ndarray) -> tuple[int, float, np.ndarray] | None:
     """Начало кадра по 17 битам синхрокомбинации: (сдвиг, доля верных кадров, кадры).
 
     Сдвиг ищется по первым ОБРАЗЕЦ кадрам, доля и кадры — по всему потоку."""
@@ -94,7 +92,7 @@ def выровнять(биты: np.ndarray) -> Optional[Tuple[int, float, np.nd
     return (сдвиг, верно, кадры) if верно >= СОГЛАСИЕ else None
 
 
-def данные(кадры: np.ndarray, режим: Tuple[int, int, int]) -> Tuple[np.ndarray, float]:
+def данные(кадры: np.ndarray, режим: tuple[int, int, int]) -> tuple[np.ndarray, float]:
     """Биты пользователя (RA1 обратно) и доля согласных повторов (у N × … — 1)."""
     _, повтор, места, _ = РЕЖИМЫ[режим]
     d = кадры[:, D][:, места]
@@ -106,13 +104,13 @@ def данные(кадры: np.ndarray, режим: Tuple[int, int, int]) -> Tu
     return (2 * единиц > повтор).astype(np.uint8).reshape(-1), согласно
 
 
-def _ra2(биты: np.ndarray) -> List[Tuple[int, int, np.ndarray]]:
+def _ra2(биты: np.ndarray) -> list[tuple[int, int, np.ndarray]]:
     """Варианты RA2 из 64 кбит/с: (ширина 1/2/4 бита, первый бит в октете, поток IR)."""
     октеты = np.asarray(биты[:len(биты) // 8 * 8], dtype=np.uint8).reshape(-1, 8)
     return [(w, p, октеты[:, p:p + w].reshape(-1)) for w in (1, 2, 4) for p in range(0, 9 - w)]
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     """Кадры V.110 прямо в потоке или в канале 64 кбит/с через RA2; дальше — данные пользователя."""
     биты = np.asarray(биты, dtype=np.uint8)
     ra2 = None
@@ -172,7 +170,7 @@ def найти(биты: np.ndarray) -> Optional[Находка]:
         свойства={"режим": режим, "IR": ir, "сдвиг": сдвиг})
 
 
-def закодировать(данные_: np.ndarray, режим: Tuple[int, int, int] = (0, 1, 1), s: int = 0, x: int = 0,
+def закодировать(данные_: np.ndarray, режим: tuple[int, int, int] = (0, 1, 1), s: int = 0, x: int = 0,
                  заполнение: int = 1) -> np.ndarray:
     """Кодер V.110 (для проверок): биты пользователя → кадры по 80 бит (как osmo_v110_encode_frame)."""
     _, повтор, места, _ = РЕЖИМЫ[режим]

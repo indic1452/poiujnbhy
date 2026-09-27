@@ -15,7 +15,6 @@ MODCOD | бит пилотов) умножается на образующие 0
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -31,7 +30,7 @@ SOF_БИТЫ = np.array([(SOF >> (25 - i)) & 1 for i in range(26)], dtype=np.uin
 ОШИБОК_SOF = 3
 
 #: MODCOD DVB-S2 (EN 302 307-1 табл. 12; GNU Radio: те же номера) → (созвездие, бит на символ, скорость).
-MODCOD: Dict[int, Tuple[str, int, str]] = {
+MODCOD: dict[int, tuple[str, int, str]] = {
     1: ("QPSK", 2, "1/4"), 2: ("QPSK", 2, "1/3"), 3: ("QPSK", 2, "2/5"), 4: ("QPSK", 2, "1/2"),
     5: ("QPSK", 2, "3/5"), 6: ("QPSK", 2, "2/3"), 7: ("QPSK", 2, "3/4"), 8: ("QPSK", 2, "4/5"),
     9: ("QPSK", 2, "5/6"), 10: ("QPSK", 2, "8/9"), 11: ("QPSK", 2, "9/10"),
@@ -65,7 +64,7 @@ def код_s2(modcod: int, короткий: bool, пилоты: bool) -> int:
     return (modcod << 2) | (2 if короткий else 0) | (1 if пилоты else 0)
 
 
-def разобрать_код(код: int) -> Dict[str, object]:
+def разобрать_код(код: int) -> dict[str, object]:
     """8-битовый код PLS → поля (DVB-S2 или DVB-S2X)."""
     if код & 0x80:
         return {"s2x": True, "modcod": код & 0xFE, "пилоты": bool(код & 1)}
@@ -77,7 +76,7 @@ def разобрать_код(код: int) -> Dict[str, object]:
 ИСПРАВЛЯЕТ_S2X = 11
 
 
-def декодировать(биты64: np.ndarray) -> Optional[Tuple[int, int]]:
+def декодировать(биты64: np.ndarray) -> tuple[int, int] | None:
     """(код, число исправленных бит) или None: слово S2 — до 15 ошибок, слово S2X — до 11."""
     расстояния = (СЛОВА != np.asarray(биты64, dtype=np.uint8)[None, :]).sum(axis=1)
     код = int(расстояния.argmin())
@@ -86,7 +85,7 @@ def декодировать(биты64: np.ndarray) -> Optional[Tuple[int, int]
     return (код, int(расстояния[код])) if расстояния[код] <= ИСПРАВЛЯЕТ_S2 else None
 
 
-def длина_plframe(modcod: int, короткий: bool, пилоты: bool) -> Optional[int]:
+def длина_plframe(modcod: int, короткий: bool, пилоты: bool) -> int | None:
     """Символов в PLFRAME DVB-S2 (у пустого кадра, MODCOD 0, — 90 + 36·90)."""
     if modcod == 0:
         return 90 + 36 * 90
@@ -98,12 +97,12 @@ def длина_plframe(modcod: int, короткий: bool, пилоты: bool) 
     return 90 + слотов * 90 + пилотов
 
 
-def заголовки(биты: np.ndarray) -> List[Tuple[int, int, int, int]]:
+def заголовки(биты: np.ndarray) -> list[tuple[int, int, int, int]]:
     """Все PLHEADER: (бит SOF, ошибок в SOF, код PLS, исправлено в PLS)."""
     биты = np.asarray(биты, dtype=np.uint8)
     if len(биты) < 90:
         return []
-    места: Dict[int, int] = {}
+    места: dict[int, int] = {}
     for сдвиг in range(8):
         # 26-битовые окна со сдвигом 8k + сдвиг: четыре байта, старшие 26 бит.
         байты = np.packbits(биты[сдвиг:len(биты) - 64 + 25]).astype(np.int64)
@@ -135,7 +134,7 @@ def описание(код: int) -> str:
     return f"MODCOD {modcod}: {созвездие} {скорость}, кадр {кадр}" + (", пилоты" if п["пилоты"] else ", без пилотов")
 
 
-def данные_кадров(биты: np.ndarray, места: List[int], длина: int, пилоты: bool) -> np.ndarray:
+def данные_кадров(биты: np.ndarray, места: list[int], длина: int, пилоты: bool) -> np.ndarray:
     """Символы данных PLFRAME подряд: без PLHEADER и без блоков пилотов (36 символов после 16 слотов)."""
     части = []
     for м in места:
@@ -152,7 +151,7 @@ def данные_кадров(биты: np.ndarray, места: List[int], дл�
     return np.concatenate(части) if части else np.zeros(0, dtype=np.uint8)
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     """PLHEADER DVB-S2 в потоке бит (жёсткие решения π/2-BPSK заголовка)."""
     найдено = заголовки(биты)
     if len(найдено) < 3:

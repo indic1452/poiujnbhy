@@ -5,9 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import _bootstrap  # noqa: F401
 from fastapi.testclient import TestClient
 
+import _bootstrap  # noqa: F401
 from reportgen.config import Settings
 from reportgen.corpus import load_corpus
 from reportgen.llm import StubLLM
@@ -1352,7 +1352,6 @@ class ОпознаниеПриНесколькихПохожих(AssistantTestCa
 
     def setUp(self):
         super().setUp()
-        from reportgen.corpus import Chunk
 
         # «literature» стоит в описи ПЕРЕД «standards» (сортировка по типу),
         # поэтому приблизительные совпадения встречаются раньше точного.

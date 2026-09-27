@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Поиск по комбинациям в любом потоке: образец, сигнатуры файлов, строки, частые n-граммы.
 
 Поток после демодуляции к байтам не выровнен: комбинация может начинаться с
@@ -20,8 +19,8 @@ import lzma
 import re
 import struct
 import zlib
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -35,7 +34,7 @@ import numpy as np
 # -- виды потока --------------------------------------------------------------------------
 
 def виды(биты: np.ndarray, *, сдвиги: Sequence[int] = range(8), инверсия: bool = False
-         ) -> List[Tuple[int, bool, bytes]]:
+         ) -> list[tuple[int, bool, bytes]]:
     """(сдвиг, инвертирован, байты): поток, упакованный с каждого из сдвигов."""
     итог = []
     for сдвиг in сдвиги:
@@ -51,7 +50,7 @@ def виды(биты: np.ndarray, *, сдвиги: Sequence[int] = range(8), и
 КОДИРОВКИ = ("utf-8", "cp1251", "utf-16-le", "koi8-r", "cp866")
 
 
-def образец(текст: str, вид: str, кодировка: str = "utf-8") -> Tuple[Optional[bytes], np.ndarray]:
+def образец(текст: str, вид: str, кодировка: str = "utf-8") -> tuple[bytes | None, np.ndarray]:
     """Образец поиска: (байты или None, биты). Вид — hex, текст или биты."""
     if not текст:
         raise ValueError("образец пуст")
@@ -76,7 +75,7 @@ def образец(текст: str, вид: str, кодировка: str = "utf-
     return байты, np.unpackbits(np.frombuffer(байты, dtype=np.uint8))
 
 
-def _все(данные: bytes, что: bytes, предел: int) -> List[int]:
+def _все(данные: bytes, что: bytes, предел: int) -> list[int]:
     итог, место = [], данные.find(что)
     while место >= 0 and len(итог) < предел:
         итог.append(место)
@@ -84,11 +83,11 @@ def _все(данные: bytes, что: bytes, предел: int) -> List[int]:
     return итог
 
 
-def найти_образец(биты: np.ndarray, байты: Optional[bytes], биты_образца: np.ndarray, *,
+def найти_образец(биты: np.ndarray, байты: bytes | None, биты_образца: np.ndarray, *,
                   любой_сдвиг: bool = True, инверсия: bool = False,
-                  предел: int = НАХОДОК_ДО) -> List[Dict[str, object]]:
+                  предел: int = НАХОДОК_ДО) -> list[dict[str, object]]:
     """Все вхождения: позиция в битах, сдвиг, инверсия. Контекст — позже, по позиции."""
-    найдено: List[Dict[str, object]] = []
+    найдено: list[dict[str, object]] = []
     if байты is not None:
         for сдвиг, инв, вид in виды(биты, сдвиги=range(8) if любой_сдвиг else (0,), инверсия=инверсия):
             for место in _все(вид, байты, предел):
@@ -106,7 +105,7 @@ def найти_образец(биты: np.ndarray, байты: Optional[bytes],
     return найдено[:предел]
 
 
-def контекст(биты: np.ndarray, бит: int, инверсия: bool, до: int = 16, после: int = 32) -> Dict[str, str]:
+def контекст(биты: np.ndarray, бит: int, инверсия: bool, до: int = 16, после: int = 32) -> dict[str, str]:
     """Байты вокруг находки (в её же выравнивании): HEX и печатный вид."""
     начало = max(бит % 8, бит - до * 8)
     ряд = биты[начало:бит + после * 8]
@@ -126,10 +125,10 @@ class Формат:
     имя: str
     расширение: str
     подпись: bytes
-    проверка: Callable[[bytes, int], Optional[int]]   # длина файла, 0 — неизвестна, None — не он
+    проверка: Callable[[bytes, int], int | None]   # длина файла, 0 — неизвестна, None — не он
 
 
-def _jpeg(д: bytes, м: int) -> Optional[int]:
+def _jpeg(д: bytes, м: int) -> int | None:
     if м + 4 > len(д) or not (0xE0 <= д[м + 3] <= 0xEF or д[м + 3] in (0xDB, 0xC0, 0xC2, 0xC4, 0xDD, 0xFE)):
         return None
     # Сегменты с длиной до SOS: у настоящего JPEG длины сегментов складываются.
@@ -148,7 +147,7 @@ def _jpeg(д: bytes, м: int) -> Optional[int]:
     return None
 
 
-def _png(д: bytes, м: int) -> Optional[int]:
+def _png(д: bytes, м: int) -> int | None:
     if д[м + 8:м + 16] != b"\x00\x00\x00\x0dIHDR":
         return None
     if zlib.crc32(д[м + 12:м + 29]) != struct.unpack_from(">I", д, м + 29)[0]:
@@ -165,7 +164,7 @@ def _png(д: bytes, м: int) -> Optional[int]:
     return 0
 
 
-def _gif(д: bytes, м: int) -> Optional[int]:
+def _gif(д: bytes, м: int) -> int | None:
     if м + 13 > len(д):
         return None
     ширина, высота, флаги = struct.unpack_from("<HHB", д, м + 6)
@@ -193,7 +192,7 @@ def _gif(д: bytes, м: int) -> Optional[int]:
     return 0
 
 
-def _pdf(д: bytes, м: int) -> Optional[int]:
+def _pdf(д: bytes, м: int) -> int | None:
     if not re.match(rb"%PDF-\d\.\d", д[м:м + 8]):
         return None
     следующий = д.find(b"%PDF-", м + 5, м + ФАЙЛ_ДО)
@@ -202,7 +201,7 @@ def _pdf(д: bytes, м: int) -> Optional[int]:
     return конец + 5 - м if конец >= 0 else 0
 
 
-def _zip(д: bytes, м: int) -> Optional[int]:
+def _zip(д: bytes, м: int) -> int | None:
     if м + 30 > len(д) or struct.unpack_from("<H", д, м + 4)[0] > 63:
         return None
     имя_дл = struct.unpack_from("<H", д, м + 26)[0]
@@ -225,7 +224,7 @@ def _zip_вид(д: bytes, м: int) -> str:
     return "zip"
 
 
-def _7z(д: bytes, м: int) -> Optional[int]:
+def _7z(д: bytes, м: int) -> int | None:
     if м + 32 > len(д) or д[м + 6] != 0:
         return None
     смещение, размер = struct.unpack_from("<QQ", д, м + 12)
@@ -234,8 +233,8 @@ def _7z(д: bytes, м: int) -> Optional[int]:
     return 32 + смещение + размер if 32 + смещение + размер <= ФАЙЛ_ДО else 0
 
 
-def _распаковка(распаковщик) -> Callable[[bytes, int], Optional[int]]:
-    def проверка(д: bytes, м: int) -> Optional[int]:
+def _распаковка(распаковщик) -> Callable[[bytes, int], int | None]:
+    def проверка(д: bytes, м: int) -> int | None:
         р = распаковщик()
         try:
             р.decompress(д[м:м + ФАЙЛ_ДО], 1 << 26)
@@ -247,13 +246,13 @@ def _распаковка(распаковщик) -> Callable[[bytes, int], Opti
     return проверка
 
 
-def _gzip(д: bytes, м: int) -> Optional[int]:
+def _gzip(д: bytes, м: int) -> int | None:
     if м + 10 > len(д) or д[м + 3] & 0xE0:
         return None
     return _распаковка(lambda: zlib.decompressobj(31))(д, м)
 
 
-def _bmp(д: bytes, м: int) -> Optional[int]:
+def _bmp(д: bytes, м: int) -> int | None:
     if м + 30 > len(д):
         return None
     размер, резерв, данные, заголовок = struct.unpack_from("<IIII", д, м + 2)
@@ -262,14 +261,14 @@ def _bmp(д: bytes, м: int) -> Optional[int]:
     return размер
 
 
-def _riff(д: bytes, м: int) -> Optional[int]:
+def _riff(д: bytes, м: int) -> int | None:
     if м + 12 > len(д) or д[м + 8:м + 12] not in (b"WAVE", b"AVI ", b"WEBP", b"RMID"):
         return None
     размер = struct.unpack_from("<I", д, м + 4)[0] + 8
     return размер if размер <= ФАЙЛ_ДО else 0
 
 
-def _ogg(д: bytes, м: int) -> Optional[int]:
+def _ogg(д: bytes, м: int) -> int | None:
     место = м
     for _ in range(1 << 16):
         if д[место:место + 4] != b"OggS" or место + 27 > len(д) or д[место + 4] != 0:
@@ -281,7 +280,7 @@ def _ogg(д: bytes, м: int) -> Optional[int]:
     return 0
 
 
-def _mp4(д: bytes, м: int) -> Optional[int]:
+def _mp4(д: bytes, м: int) -> int | None:
     # Подпись «ftyp» стоит на смещении 4: м указывает на неё, файл — с м − 4.
     начало = м - 4
     if начало < 0 or not 8 <= struct.unpack_from(">I", д, начало)[0] <= 256:
@@ -301,7 +300,7 @@ def _mp4(д: bytes, м: int) -> Optional[int]:
     return место - начало if место > начало + 8 else None
 
 
-def _elf(д: bytes, м: int) -> Optional[int]:
+def _elf(д: bytes, м: int) -> int | None:
     if м + 64 > len(д) or д[м + 4] not in (1, 2) or д[м + 5] not in (1, 2) or д[м + 6] != 1:
         return None
     порядок = "<" if д[м + 5] == 1 else ">"
@@ -315,7 +314,7 @@ def _elf(д: bytes, м: int) -> Optional[int]:
     return длина if 64 <= длина <= ФАЙЛ_ДО else 0
 
 
-def _pe(д: bytes, м: int) -> Optional[int]:
+def _pe(д: bytes, м: int) -> int | None:
     if м + 64 > len(д):
         return None
     pe = struct.unpack_from("<I", д, м + 0x3C)[0]
@@ -334,7 +333,7 @@ def _pe(д: bytes, м: int) -> Optional[int]:
     return длина if длина <= ФАЙЛ_ДО else 0
 
 
-def _sqlite(д: bytes, м: int) -> Optional[int]:
+def _sqlite(д: bytes, м: int) -> int | None:
     if м + 32 > len(д):
         return None
     страница, = struct.unpack_from(">H", д, м + 16)
@@ -345,7 +344,7 @@ def _sqlite(д: bytes, м: int) -> Optional[int]:
     return длина if длина <= ФАЙЛ_ДО else 0
 
 
-def _der(д: bytes, м: int) -> Optional[int]:
+def _der(д: bytes, м: int) -> int | None:
     """Сертификат X.509 в DER: SEQUENCE { SEQUENCE (tbs) … } с согласованными длинами."""
     if м + 8 > len(д):
         return None
@@ -358,11 +357,11 @@ def _der(д: bytes, м: int) -> Optional[int]:
     return 4 + внешняя
 
 
-def _без_длины(проверка: Callable[[bytes, int], bool]) -> Callable[[bytes, int], Optional[int]]:
+def _без_длины(проверка: Callable[[bytes, int], bool]) -> Callable[[bytes, int], int | None]:
     return lambda д, м: 0 if проверка(д, м) else None
 
 
-ФОРМАТЫ: List[Формат] = [
+ФОРМАТЫ: list[Формат] = [
     Формат("JPEG", "jpg", b"\xff\xd8\xff", _jpeg),
     Формат("PNG", "png", b"\x89PNG\r\n\x1a\n", _png),
     Формат("GIF", "gif", b"GIF87a", _gif),
@@ -400,9 +399,9 @@ def _без_длины(проверка: Callable[[bytes, int], bool]) -> Callab
 
 
 def сигнатуры(биты: np.ndarray, *, любой_сдвиг: bool = True, инверсия: bool = False,
-              предел: int = 500) -> List[Dict[str, object]]:
+              предел: int = 500) -> list[dict[str, object]]:
     """Файлы в потоке: подпись и структура сошлись. Позиция — в битах; длина — если известна."""
-    найдено: List[Dict[str, object]] = []
+    найдено: list[dict[str, object]] = []
     for сдвиг, инв, вид in виды(биты, сдвиги=range(8) if любой_сдвиг else (0,), инверсия=инверсия):
         for формат in ФОРМАТЫ:
             for место in _все(вид, формат.подпись, 20000):
@@ -523,7 +522,7 @@ def похоже_на_текст(текст: str) -> bool:
     return any(len(ч) >= 3 and _буквы_годные(ч) for с in годные for ч in re.findall(r"[^\W\d_]+", с))
 
 
-def обрезать(текст: str) -> Tuple[int, str]:
+def обрезать(текст: str) -> tuple[int, str]:
     """Отрезать мусор по краям: случайные байты перед текстом тоже «печатные».
 
     Текст режется на слова по пробелам; с начала и с конца отбрасываются
@@ -590,7 +589,7 @@ class _Кусок:
         return self._начало + len(self._байты)
 
 
-def _куски_без_заполнения(м: "re.Match[bytes]", единица: int, наименьшая: int):
+def _куски_без_заполнения(м: re.Match[bytes], единица: int, наименьшая: int):
     """Совпадение без полос из одного повторённого знака: куски между ними (не короче ``наименьшая``).
 
     Знак — байт или (у UTF-16) пара байт от начала совпадения: полоса режется
@@ -619,9 +618,9 @@ def _куски_без_заполнения(м: "re.Match[bytes]", единиц�
 
 
 def строки(биты: np.ndarray, *, наименьшая: int = 8, сдвиги: Sequence[int] = (0,), инверсия: bool = False,
-           предел: int = 3000) -> Dict[str, object]:
+           предел: int = 3000) -> dict[str, object]:
     """Текстовые фрагменты (ASCII, CP1251, UTF-8, UTF-16LE), имена файлов, адреса."""
-    найдено: List[Dict[str, object]] = []
+    найдено: list[dict[str, object]] = []
     шаблоны = [
         ("ASCII", re.compile(rb"[\x20-\x7e\t]{%d,}" % наименьшая), "ascii"),
         ("UTF-8", re.compile(rb"(?:[\x20-\x7e]|[\xd0\xd1][\x80-\xbf]){%d,}" % наименьшая), "utf-8"),
@@ -629,7 +628,7 @@ def строки(биты: np.ndarray, *, наименьшая: int = 8, сдв�
         ("UTF-16LE", re.compile(rb"(?:[\x20-\x7e]\x00){%d,}" % наименьшая), "utf-16-le"),
     ]
     for сдвиг, инв, вид in виды(биты, сдвиги=сдвиги, инверсия=инверсия):
-        занято: List[Tuple[int, int]] = []
+        занято: list[tuple[int, int]] = []
         for имя, шаблон, кодировка in шаблоны:
             единица = 2 if имя == "UTF-16LE" else 1
             for м_ in шаблон.finditer(вид):
@@ -683,7 +682,7 @@ def строки(биты: np.ndarray, *, наименьшая: int = 8, сдв�
 # -- частые комбинации ----------------------------------------------------------------------------
 
 def частые(биты: np.ndarray, *, от: int = 2, до: int = 8, сдвиги: Sequence[int] = (0,),
-           лучших: int = 40, выборка: int = 8 << 20) -> List[Dict[str, object]]:
+           лучших: int = 40, выборка: int = 8 << 20) -> list[dict[str, object]]:
     """Повторяющиеся комбинации от 2 до 8 байт — и блоки, которые из них вырастают.
 
     Комбинация берётся, если встречается заметно чаще случайного (с учётом
@@ -693,7 +692,7 @@ def частые(биты: np.ndarray, *, от: int = 2, до: int = 8, сдви
     сколько раз, во сколько раз чаще случайного, типичный шаг между
     вхождениями и доля вхождений с этим шагом (регулярный шаг — кадр).
     """
-    итог: List[Dict[str, object]] = []
+    итог: list[dict[str, object]] = []
     for сдвиг, _, вид in виды(биты, сдвиги=сдвиги):
         д = np.frombuffer(вид[:выборка], dtype=np.uint8)
         if len(д) < 64:

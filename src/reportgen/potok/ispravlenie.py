@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Исправление ошибок двоичного линейного кода по синдрому — лидеры смежных классов.
 
 Проверочная матрица H (r × n) найдена по потоку. Ошибка e даёт синдром H·eᵀ; у кода
@@ -18,7 +17,6 @@ from __future__ import annotations
 
 from itertools import combinations
 from math import comb
-from typing import Optional, Tuple
 
 import numpy as np
 
@@ -56,7 +54,7 @@ def независимые(H: np.ndarray) -> np.ndarray:
     return gf2.распаковать(ред, n)[:len(опорные)]
 
 
-def таблица(H: np.ndarray) -> Optional[Таблица]:
+def таблица(H: np.ndarray) -> Таблица | None:
     """Таблица исправления по проверкам H (строки — проверки) или None, если проверок > 64.
 
     Веса перебираются, пока все ошибки веса w однозначны (t = w); на первом весе с
@@ -92,8 +90,8 @@ def таблица(H: np.ndarray) -> Optional[Таблица]:
     return Таблица(синдромы[порядок], места[порядок], t, r)
 
 
-def исправить(слова: np.ndarray, H: np.ndarray, т: Optional[Таблица] = None
-              ) -> Tuple[np.ndarray, np.ndarray, Optional[Таблица]]:
+def исправить(слова: np.ndarray, H: np.ndarray, т: Таблица | None = None
+              ) -> tuple[np.ndarray, np.ndarray, Таблица | None]:
     """Исправить слова (строки бит): (исправленные, исправлено бит в слове (−1 — нет), таблица)."""
     слова = np.array(слова, dtype=np.uint8)
     т = т if т is not None else таблица(H)
@@ -108,7 +106,7 @@ def исправить(слова: np.ndarray, H: np.ndarray, т: Optional[Та�
         return слова, исправлено, т
     i = np.minimum(np.searchsorted(т.синдромы, синдр[ненулевые]), len(т) - 1)
     найдено = т.синдромы[i] == синдр[ненулевые]
-    for слово, строка in zip(ненулевые[найдено].tolist(), i[найдено].tolist()):
+    for слово, строка in zip(ненулевые[найдено].tolist(), i[найдено].tolist(), strict=False):
         места = т.места[строка]
         места = места[места >= 0]
         слова[слово, места] ^= 1

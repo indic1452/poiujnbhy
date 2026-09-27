@@ -229,7 +229,7 @@ class MixedLibraryTests(unittest.TestCase):
 
     def test_broken_file_is_reported_not_fatal(self):
         (self.root / "standards" / "битый.pdf").write_bytes(
-            "%PDF-1.4 мусор".encode("utf-8"))
+            "%PDF-1.4 мусор".encode())
         result = ingest_directory(self.repos, self.root)
         self.assertGreater(result.added, 0)
         self.assertTrue(any("битый" in warning for warning in result.warnings),

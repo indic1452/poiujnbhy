@@ -22,7 +22,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Sequence, Tuple
+from collections.abc import Sequence
 
 __all__ = ["MIN_SCORE", "detect_doc_type", "score_doc_types"]
 
@@ -40,7 +40,7 @@ TITLE_WEIGHT = 3
 
 #: Обороты, по которым тип узнаётся. Вес — второе число: сильный признак
 #: назначает тип сам по себе, слабый только вместе с другими.
-RULES: Dict[str, Sequence[Tuple[str, int]]] = {
+RULES: dict[str, Sequence[tuple[str, int]]] = {
     "standards": (
         ("настоящий стандарт", 4), ("нормативные ссылки", 3), ("область применения", 2),
         ("термины и определения", 2), ("введён в действие", 3), ("взамен гост", 4),
@@ -101,11 +101,11 @@ def _count(text: str, needle: str) -> int:
     return min(3, text.count(needle))
 
 
-def score_doc_types(title: str = "", filename: str = "", text: str = "") -> Dict[str, int]:
+def score_doc_types(title: str = "", filename: str = "", text: str = "") -> dict[str, int]:
     """Вес каждого типа для этого документа. Пусто — ничего не опознано."""
     head = (text or "")[:SCAN_CHARS].lower()
     name = f"{title} {filename}".lower()
-    scores: Dict[str, int] = {}
+    scores: dict[str, int] = {}
     for doc_type, rules in RULES.items():
         total = 0
         for needle, weight in rules:
@@ -118,7 +118,7 @@ def score_doc_types(title: str = "", filename: str = "", text: str = "") -> Dict
 
 
 def detect_doc_type(title: str = "", filename: str = "", text: str = "",
-                    meta: Dict[str, object] | None = None) -> Tuple[str, str]:
+                    meta: dict[str, object] | None = None) -> tuple[str, str]:
     """Тип документа и то, почему он выбран.
 
     Возвращает ``(тип, пояснение)``. Пояснение попадает в карточку документа:
@@ -134,7 +134,7 @@ def detect_doc_type(title: str = "", filename: str = "", text: str = "",
     if not scores:
         return "misc", "признаков ни одного типа не найдено"
 
-    ranked: List[Tuple[int, str]] = sorted(
+    ranked: list[tuple[int, str]] = sorted(
         ((value, key) for key, value in scores.items()), reverse=True
     )
     best_score, best_type = ranked[0]

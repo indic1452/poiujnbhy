@@ -6,7 +6,6 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 from . import domains
 from .config import Settings, settings_warnings
@@ -21,7 +20,7 @@ from .store.repo import Repositories
 from .verify import blocking, summarize, verify_report
 
 
-def _load_glossary(path: str | None) -> Dict[str, str] | None:
+def _load_glossary(path: str | None) -> dict[str, str] | None:
     if not path:
         return None
     return json.loads(Path(path).read_text(encoding="utf-8-sig"))
@@ -34,7 +33,7 @@ def cmd_index(args: argparse.Namespace) -> int:
         return 1
     index = BM25Index(chunks)
     index.save(args.out)
-    by_type: Dict[str, int] = {}
+    by_type: dict[str, int] = {}
     for chunk in chunks:
         by_type[chunk.doc_type] = by_type.get(chunk.doc_type, 0) + 1
     print(f"проиндексировано чанков: {len(chunks)}")
@@ -128,7 +127,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 1 if blocking(issues) else 0
 
 
-def _print_issues(issues: List) -> None:
+def _print_issues(issues: list) -> None:
     counts = summarize(issues)
     if not issues:
         print("проверка пройдена: замечаний нет")
@@ -540,9 +539,9 @@ def cmd_retitle(args: argparse.Namespace) -> int:
         return 1
 
     предел = int(getattr(args, "limit", 0) or 0)
-    правки: List[Tuple[str, str, str, str]] = []
+    правки: list[tuple[str, str, str, str]] = []
     целых = 0
-    безнадёжных: List[Tuple[str, str, str]] = []
+    безнадёжных: list[tuple[str, str, str]] = []
 
     # Бланки видны только на всей библиотеке сразу: по одному названию не
     # понять, что оно пришло не от документа, а из свойств файла. Зато
@@ -845,7 +844,7 @@ def cmd_paths(args: argparse.Namespace) -> int:
     Скрипт, помнящий пути сам, рано или поздно разойдётся с приложением —
     и разойдётся молча. Пусть лучше спрашивает.
     """
-    from .config import Settings                 # noqa: PLC0415
+    from .config import Settings  # noqa: PLC0415
 
     settings = Settings.load(args.config)
     места = settings.storage()
@@ -1075,7 +1074,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

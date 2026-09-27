@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Вопрос о целом собирает его части — сквозная проверка на случае отдела.
 
 Жалоба: «у меня есть комплексы разные, отвечающие за построение тракта
@@ -26,8 +25,8 @@ import _bootstrap  # noqa: F401
 from reportgen import parts
 from reportgen.config import Settings
 from reportgen.corpus import Chunk
-from reportgen.retrieval import Hit, reciprocal_rank_fusion
 from reportgen.llm import StubLLM
+from reportgen.retrieval import Hit, reciprocal_rank_fusion
 from reportgen.store import Database, Repositories
 from reportgen.web.assistant import PART_WEIGHT, AssistantService
 from reportgen.web.research import Step

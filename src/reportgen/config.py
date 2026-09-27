@@ -15,7 +15,7 @@ import json
 import os
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 ENV_PREFIX = "REPORTGEN_"
 
@@ -426,8 +426,8 @@ class Settings:
     # -- загрузка ----------------------------------------------------------
 
     @classmethod
-    def load(cls, path: str | Path | None = None, **overrides: Any) -> "Settings":
-        raw: Dict[str, Any] = {}
+    def load(cls, path: str | Path | None = None, **overrides: Any) -> Settings:
+        raw: dict[str, Any] = {}
         config_path = path or os.environ.get(f"{ENV_PREFIX}CONFIG")
         if config_path and Path(config_path).is_file():
             # Файл настроек правят руками, и лишняя запятая в нём — обычное
@@ -463,7 +463,7 @@ class Settings:
             Path(directory).mkdir(parents=True, exist_ok=True)
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
-    def storage(self) -> "list[dict]":
+    def storage(self) -> list[dict]:
         """Где лежат данные отдела — списком, от самого приложения.
 
         Отсюда берут перечень и резервное копирование, и проверка установки.
@@ -513,11 +513,11 @@ class Settings:
                       "в_копию": True, "что": "конфигурации обработки потоков (цепочки шагов)"})
         return места
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {k: (str(v) if isinstance(v, Path) else v) for k, v in asdict(self).items()}
 
 
-def settings_warnings(settings: "Settings") -> list[str]:
+def settings_warnings(settings: Settings) -> list[str]:
     """Настройки, которые ничего не сломают, но тихо обесценят работу.
 
     Такую беду не видно ниоткуда: система не падает, просто делает меньше,
@@ -563,7 +563,7 @@ _TRUE = {"1", "true", "yes", "on", "да"}
 _FALSE = {"0", "false", "no", "off", "нет", ""}
 
 
-def _coerce(name: str, value: Any, types: Dict[str, Any]) -> Any:
+def _coerce(name: str, value: Any, types: dict[str, Any]) -> Any:
     annotation = str(types.get(name, "str"))
     if not isinstance(value, str):
         return value

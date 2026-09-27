@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Карточка «Библиотека собралась»: итог приёма, переживающий консоль.
 
 Хозяин системы пересобирает тринадцать тысяч документов и должен одним
@@ -20,7 +19,6 @@ import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.corpus import Chunk
 from reportgen.ingest.pipeline import ingest_directory, save_ingest_report
 from reportgen.store.db import Database

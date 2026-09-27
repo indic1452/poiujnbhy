@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Поиск в потоке: образец при любом сдвиге, сигнатуры файлов со сверкой структуры, строки, блоки."""
 
 import gzip
@@ -27,7 +26,8 @@ def jpeg(n=400):
 
 
 def png():
-    кусок = lambda т, д: struct.pack(">I", len(д)) + т + д + struct.pack(">I", zlib.crc32(т + д))
+    def кусок(т, д):
+        return struct.pack(">I", len(д)) + т + д + struct.pack(">I", zlib.crc32(т + д))
     return b"\x89PNG\r\n\x1a\n" + кусок(b"IHDR", struct.pack(">IIBBBBB", 2, 2, 8, 2, 0, 0, 0)) \
         + кусок(b"IDAT", zlib.compress(bytes(14))) + кусок(b"IEND", b"")
 
@@ -113,7 +113,7 @@ class СигнатурыTests(unittest.TestCase):
 class СтрокиTests(unittest.TestCase):
     def test_текст_имена_адреса(self):
         текст = "Передача файла отчёт_2024.pdf на сервер 10.20.30.40 и http://example.com/a".encode("cp1251")
-        данные = случайные(20000) + текст + случайные(2000) + "проверка связи".encode("utf-8") \
+        данные = случайные(20000) + текст + случайные(2000) + "проверка связи".encode() \
             + случайные(500) + "Test string here".encode("utf-16-le") + случайные(500)
         найдено = poisk.строки(в_биты(данные, 3, True), наименьшая=10, сдвиги=range(8), инверсия=True)
         тексты = [с["текст"] for с in найдено["строки"]]

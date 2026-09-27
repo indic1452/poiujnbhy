@@ -29,9 +29,9 @@ BBFRAME (заголовок BBHEADER 80 бит с CRC-8 и поле данных
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from functools import lru_cache
-from typing import Dict, List, Optional, Sequence, Tuple
+from functools import cache, lru_cache
 
 import numpy as np
 
@@ -66,7 +66,7 @@ def _умножить(a: int, b: int) -> int:
     return итог
 
 
-@lru_cache(maxsize=None)
+@cache
 def порождающий(короткий: bool, t: int) -> int:
     """g(x) кода БЧХ DVB-S2: произведение первых t минимальных многочленов."""
     g = 1
@@ -93,7 +93,7 @@ class Код:
         return порождающий(self.короткий, self.t)
 
 
-def _коды() -> Tuple[Код, ...]:
+def _коды() -> tuple[Код, ...]:
     нормальные = (  # (скорость, kbch, nbch, t) — gr-dtv, FECFRAME_NORMAL
         ("1/4", 16008, 16200, 12), ("1/3", 21408, 21600, 12), ("2/5", 25728, 25920, 12),
         ("1/2", 32208, 32400, 12), ("3/5", 38688, 38880, 12), ("2/3", 43040, 43200, 10),
@@ -146,7 +146,7 @@ def закодировать(данные: np.ndarray, код: Код) -> np.nda
 # -- исправление ошибок (двоичный БЧХ над GF(2^m)) -------------------------------------------
 
 @lru_cache(maxsize=2)
-def _поле(p: int) -> Tuple[np.ndarray, np.ndarray]:
+def _поле(p: int) -> tuple[np.ndarray, np.ndarray]:
     """Таблицы степеней (удвоенная длина — без взятия по модулю) и логарифмов GF(2^m)."""
     m = p.bit_length() - 1
     Q = (1 << m) - 1
@@ -163,7 +163,7 @@ def _поле(p: int) -> Tuple[np.ndarray, np.ndarray]:
     return степень, логарифм
 
 
-def исправить_бчх(слово: np.ndarray, код: Код) -> Tuple[np.ndarray, int]:
+def исправить_бчх(слово: np.ndarray, код: Код) -> tuple[np.ndarray, int]:
     """Двоичный БЧХ: синдромы S1…S2t, Берлекэмп — Мэсси, поиск Ченя. (слово, исправлено | −1).
 
     Первый бит слова — старшая степень (как у кодера gr-dtv); укороченный код —
@@ -299,7 +299,7 @@ def заголовок(байты: bytes) -> Заголовок:
 
 # -- поле данных: пакеты TS ------------------------------------------------------------------
 
-def пакеты_ts(кадры: Sequence[Tuple[Заголовок, bytes]]) -> Tuple[List[bytes], int, int]:
+def пакеты_ts(кадры: Sequence[tuple[Заголовок, bytes]]) -> tuple[list[bytes], int, int]:
     """Пакеты TS из полей данных подряд: (пакеты с синхробайтом 0x47, CRC-8 верна, сверено).
 
     Синхробайт каждого пакета в поле данных заменён CRC-8 предыдущего (EN 302 307-1
@@ -307,9 +307,9 @@ def пакеты_ts(кадры: Sequence[Tuple[Заголовок, bytes]]) -> T
     кадра, продолжается в следующем. SYNCD — расстояние в битах от начала поля до
     первого целого пакета: по нему поток ловится в начале и после пропущенного кадра.
     """
-    пакеты: List[bytes] = []
+    пакеты: list[bytes] = []
     верно = сверено = 0
-    буфер: Optional[bytearray] = None
+    буфер: bytearray | None = None
     for з, поле in кадры:
         if not з.crc_верна or not поле:
             буфер = None                                   # кадр потерян — ждём следующий SYNCD
@@ -338,20 +338,20 @@ def пакеты_ts(кадры: Sequence[Tuple[Заголовок, bytes]]) -> T
 @dataclass
 class Gse:
     """Собранные PDU GSE и счёт проверок."""
-    pdu: List[Tuple[int, bytes]] = field(default_factory=list)   # (тип протокола, PDU)
+    pdu: list[tuple[int, bytes]] = field(default_factory=list)   # (тип протокола, PDU)
     фрагментов: int = 0
     crc_верно: int = 0
     crc_неверно: int = 0
     набивка: int = 0
     ошибок: int = 0
-    сборка: Dict[int, bytearray] = field(default_factory=dict)
-    метки: Dict[int, int] = field(default_factory=dict)
+    сборка: dict[int, bytearray] = field(default_factory=dict)
+    метки: dict[int, int] = field(default_factory=dict)
 
 
 ДЛИНЫ_МЕТКИ = {0: 6, 1: 3, 2: 0, 3: 0}
 
 
-def _pdu(данные: bytes, lt: int) -> Optional[Tuple[int, bytes]]:
+def _pdu(данные: bytes, lt: int) -> tuple[int, bytes] | None:
     """Тип протокола, метка, PDU; тип < 0x600 — расширенный заголовок (здесь PDU не выделяется)."""
     if len(данные) < 2:
         return None
@@ -413,7 +413,7 @@ def _заголовок_слова(биты: np.ndarray, начало: int) -> �
     return заголовок(np.packbits(скремблер(биты[начало:начало + 80])).tobytes())
 
 
-def длина_слова(биты: np.ndarray) -> Optional[Tuple[Код, int]]:
+def длина_слова(биты: np.ndarray) -> tuple[Код, int] | None:
     """Код БЧХ по потоку: BBHEADER с верной CRC-8 в начале каждого слова и нулевой остаток."""
     for длина in sorted({к.nbch for к in КОДЫ}):
         слов = min(СЛОВ_ПРОБЫ, len(биты) // длина)
@@ -433,8 +433,8 @@ def длина_слова(биты: np.ndarray) -> Optional[Tuple[Код, int]]:
 @dataclass
 class Кадры:
     код: Код
-    заголовки: List[Заголовок]
-    поля: List[bytes]
+    заголовки: list[Заголовок]
+    поля: list[bytes]
     исправлено: int = 0
     неисправимо: int = 0
 
@@ -461,7 +461,7 @@ def снять(биты: np.ndarray, код: Код, кадров: int = КАД�
     return Кадры(код, заголовки, поля, исправлено, неисправимо)
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     """DVB-S2 после LDPC: код БЧХ, BBFRAME, пакеты TS или GSE."""
     найдено = длина_слова(np.asarray(биты, dtype=np.uint8))
     if найдено is None:
@@ -492,7 +492,7 @@ def найти(биты: np.ndarray) -> Optional[Находка]:
         for з, поле in zip(к.заголовки, к.поля, strict=True):
             if з.crc_верна:
                 разобрать_gse(поле, g)
-        типы: Dict[str, int] = {}
+        типы: dict[str, int] = {}
         for тип, _ in g.pdu:
             имя = {0x0800: "IPv4", 0x86DD: "IPv6", 0x0806: "ARP"}.get(тип, f"0x{тип:04X}")
             типы[имя] = типы.get(имя, 0) + 1

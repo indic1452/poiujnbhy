@@ -40,8 +40,8 @@ class КодерTests(unittest.TestCase):
         b = г.integers(0, 256, 20).tolist()
         ca = rs_bch.закодировать_рс(a, 0x11D, 0, 8)
         cb = rs_bch.закодировать_рс(b, 0x11D, 0, 8)
-        self.assertEqual([x ^ y for x, y in zip(ca, cb)],
-                         rs_bch.закодировать_рс([x ^ y for x, y in zip(a, b)], 0x11D, 0, 8))
+        self.assertEqual([x ^ y for x, y in zip(ca, cb, strict=False)],
+                         rs_bch.закодировать_рс([x ^ y for x, y in zip(a, b, strict=False)], 0x11D, 0, 8))
 
 
 class СтиранияTests(unittest.TestCase):
@@ -115,7 +115,7 @@ class СтиранияTests(unittest.TestCase):
                 x[м] ^= int(г.integers(1, 256))
             слова.append(x)
         исправленные, числа = rs_bch.исправить(np.array(слова), 0x11D, 0, 16)
-        for x, ожидаемое, число in zip(слова, исправленные.tolist(), числа.tolist()):
+        for x, ожидаемое, число in zip(слова, исправленные.tolist(), числа.tolist(), strict=False):
             y, k = rs_bch.исправить_со_стираниями(x, [], 0x11D, 0, 16)
             self.assertEqual((ожидаемое, max(число, 0)), (y, max(k, 0)))
 

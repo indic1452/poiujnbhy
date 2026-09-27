@@ -26,16 +26,13 @@ from __future__ import annotations
 import re
 import threading
 import time
+from collections.abc import Iterable, Sequence
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    Iterable,
-    List,
     Protocol,
-    Sequence,
 )
 
 from .corpus import Chunk
@@ -80,8 +77,8 @@ class Retriever(Protocol):
         top_k: int = 6,
         *,
         doc_types: Iterable[str] | None = None,
-        meta_filter: Dict[str, str] | None = None,
-    ) -> List[Hit]:
+        meta_filter: dict[str, str] | None = None,
+    ) -> list[Hit]:
         ...
 
 
@@ -103,7 +100,7 @@ class DatabaseRetriever:
 
     def __init__(
         self,
-        repos: "Repositories",
+        repos: Repositories,
         embedder: Embedder | None = None,
         reranker: Any | None = None,
         candidates: int = 50,
@@ -143,7 +140,7 @@ class DatabaseRetriever:
         # начало чужого поиска обнуляло предупреждение между поиском и его
         # чтением — и своё предупреждение инженер не видел вовсе.
         self._state = threading.local()
-        self._vector_cache: "VectorIndex | None" = None
+        self._vector_cache: VectorIndex | None = None
         self._vector_cache_at = 0.0
         self._cached_rows: int = -1
         #: Матрицу загружает ровно один поток, остальные ждут и берут
@@ -161,7 +158,7 @@ class DatabaseRetriever:
     # -- пояснения к последнему поиску (свои у каждого потока) --------------
 
     @property
-    def last_expansion(self) -> List[str]:
+    def last_expansion(self) -> list[str]:
         """Что добавилось к последнему запросу — показывается инженеру."""
         return getattr(self._state, "expansion", [])
 
@@ -202,10 +199,10 @@ class DatabaseRetriever:
         top_k: int = 6,
         *,
         doc_types: Iterable[str] | None = None,
-        meta_filter: Dict[str, str] | None = None,
+        meta_filter: dict[str, str] | None = None,
         domains: Iterable[str] | None = None,
         rerank: bool = True,
-    ) -> List[Hit]:
+    ) -> list[Hit]:
         """Найти до ``top_k`` фрагментов. Ранги проставлены, лучший — первый.
 
         ``domains`` ограничивает поиск направлением (спутник, релейка,
@@ -254,7 +251,7 @@ class DatabaseRetriever:
             hit.rank = rank
         return hits
 
-    def _prefer_fresh(self, hits: List[Hit]) -> List[Hit]:
+    def _prefer_fresh(self, hits: list[Hit]) -> list[Hit]:
         """При почти одинаковой релевантности — свежая редакция вперёд.
 
         В библиотеке рядом лежат ГОСТ 2009 года и он же 2024-го, методичка и
@@ -316,9 +313,9 @@ class DatabaseRetriever:
         self,
         query: str,
         allowed: set[str] | None,
-        meta_filter: Dict[str, str] | None,
+        meta_filter: dict[str, str] | None,
         domains: set[str] | None = None,
-    ) -> List[Hit]:
+    ) -> list[Hit]:
         """Первый канал: FTS5 по стеммированному тексту.
 
         Запрос перед поиском расширяется английскими эквивалентами. Без этого
@@ -341,7 +338,7 @@ class DatabaseRetriever:
         if not pairs:
             return []
         chunks = self._chunks_by_uid([uid for uid, _ in pairs])
-        hits: List[Hit] = []
+        hits: list[Hit] = []
         for uid, score in pairs:
             chunk = chunks.get(uid)
             if chunk is None or not _matches(chunk, allowed, meta_filter, domains):
@@ -355,10 +352,10 @@ class DatabaseRetriever:
         self,
         query: str,
         allowed: set[str] | None,
-        meta_filter: Dict[str, str] | None,
+        meta_filter: dict[str, str] | None,
         domains: set[str] | None = None,
         statuses: set[str] | None = None,
-    ) -> List[Hit]:
+    ) -> list[Hit]:
         """Второй канал: косинус между вектором запроса и векторами чанков.
 
         Направление отсекается здесь же, а не после возврата: иначе по редкому
@@ -410,7 +407,7 @@ class DatabaseRetriever:
         if not scored:
             return []
         chunks = self._chunks_by_uid([uid for uid, _ in scored])
-        hits: List[Hit] = []
+        hits: list[Hit] = []
         for uid, score in scored:
             chunk = chunks.get(uid)
             if chunk is None or not _matches(chunk, allowed, meta_filter, domains, statuses):
@@ -420,7 +417,7 @@ class DatabaseRetriever:
                 break
         return hits
 
-    def _rerank(self, query: str, merged: Sequence[Hit]) -> List[Hit]:
+    def _rerank(self, query: str, merged: Sequence[Hit]) -> list[Hit]:
         """Третий проход: пересортировка верхушки списка кандидатов."""
         hits = list(merged)
         if self.reranker is None or not hits:
@@ -438,13 +435,13 @@ class DatabaseRetriever:
             scores = list(scores) + [float(-index) for index in range(len(head) - len(scores))]
         rescored = [
             Hit(chunk=hit.chunk, score=float(score))
-            for hit, score in zip(head, scores)
+            for hit, score in zip(head, scores, strict=False)
         ]
         # sorted стабильна: равные оценки оставляют порядок первого прохода.
         rescored.sort(key=lambda hit: -hit.score)
         return rescored + tail
 
-    def _call_reranker(self, query: str, hits: Sequence[Hit]) -> List[float]:
+    def _call_reranker(self, query: str, hits: Sequence[Hit]) -> list[float]:
         scorer = getattr(self.reranker, "score", None)
         if callable(scorer):
             texts = [self._rerank_text(hit.chunk) for hit in hits]
@@ -460,7 +457,7 @@ class DatabaseRetriever:
 
     # -- доступ к хранилищу -------------------------------------------------
 
-    def _vectors(self) -> "VectorIndex":
+    def _vectors(self) -> VectorIndex:
         """Матрица векторов корпуса. Перечитывается, когда их число сменилось.
 
         Сверка стоит один счётный запрос, загрузка — все векторы библиотеки
@@ -510,8 +507,8 @@ class DatabaseRetriever:
         except Exception:              # noqa: BLE001 — подсказка не обязана мешать поиску
             return False
 
-    def _chunks_by_uid(self, uids: Sequence[str]) -> Dict[str, Chunk]:
-        found: Dict[str, Chunk] = {}
+    def _chunks_by_uid(self, uids: Sequence[str]) -> dict[str, Chunk]:
+        found: dict[str, Chunk] = {}
         for start in range(0, len(uids), _SQL_SLICE):
             piece = uids[start:start + _SQL_SLICE]
             for chunk in self.repos.chunks.get_many(piece):
@@ -526,7 +523,7 @@ class DatabaseRetriever:
 MIN_SCORE_SHARE = 0.02
 
 
-def _drop_worthless(hits: List[Hit]) -> List[Hit]:
+def _drop_worthless(hits: list[Hit]) -> list[Hit]:
     """Убирает фрагменты, попавшие в выдачу по чистой случайности.
 
     Запрос «какие поля в заголовке» находил нужное место в RFC с весом 6,95 —
@@ -598,7 +595,7 @@ def _same_document(first: Hit, second: Hit) -> bool:
 def _matches(
     chunk: Chunk,
     allowed: set[str] | None,
-    meta_filter: Dict[str, str] | None,
+    meta_filter: dict[str, str] | None,
     domains: set[str] | None = None,
     statuses: set[str] | None = None,
 ) -> bool:
@@ -618,8 +615,8 @@ def _matches(
 
 
 def build_retriever(
-    repos: "Repositories",
-    settings: "Settings",
+    repos: Repositories,
+    settings: Settings,
     *,
     llm: Any | None = None,
 ) -> Retriever:

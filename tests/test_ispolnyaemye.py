@@ -15,9 +15,7 @@ from __future__ import annotations
 import unittest
 
 from reportgen.web.api import ОПАСНЫЕ_РАСШИРЕНИЯ
-
 from test_web import WebTestCase
-
 
 ОТКАЗ = "не пересылают"
 
@@ -102,8 +100,8 @@ class ИсполняемыеФайлыTests(WebTestCase):
         годное = (
             ("skhema.vsd", b"visio"),
             ("chertyozh.dwg", b"autocad"),
-            ("vygruzka.csv", "уровень;дБм\n1;-42\n".encode("utf-8")),
-            ("zamer.txt", "КАМ-16, EVM 3%".encode("utf-8")),
+            ("vygruzka.csv", "уровень;дБм\n1;-42\n".encode()),
+            ("zamer.txt", "КАМ-16, EVM 3%".encode()),
             ("arkhiv.zip", b"PK\x03\x04..."),
         )
         for место, приложить in self.приёмные.items():

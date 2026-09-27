@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Фильтр пакетов — язык в духе Wireshark, но свой и безопасный (без eval).
 
     tcp                              есть уровень TCP
@@ -22,9 +21,10 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from typing import Any, Callable, Dict, List, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any
 
-Поля = Dict[str, List[Any]]
+Поля = dict[str, list[Any]]
 Условие = Callable[[Поля], bool]
 
 #: Псевдонимы: одно имя — несколько полей.
@@ -51,7 +51,7 @@ class ОшибкаФильтра(ValueError):
     pass
 
 
-def _лексемы(текст: str) -> List[str]:
+def _лексемы(текст: str) -> list[str]:
     итог, место = [], 0
     while место < len(текст):
         м = ЛЕКСЕМЫ.match(текст, место)
@@ -65,7 +65,7 @@ def _лексемы(текст: str) -> List[str]:
 
 
 class _Разбор:
-    def __init__(self, лексемы: List[str]):
+    def __init__(self, лексемы: list[str]):
         self.л = лексемы
         self.i = 0
 
@@ -283,6 +283,6 @@ def собрать(текст: str) -> Условие:
     return условие
 
 
-def отобрать(поля: Sequence[Поля], текст: str) -> List[int]:
+def отобрать(поля: Sequence[Поля], текст: str) -> list[int]:
     условие = собрать(текст)
     return [i for i, п in enumerate(поля) if условие(п)]

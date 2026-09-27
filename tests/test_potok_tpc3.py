@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """TPC трёхмерный и в кадрах модема (Comtech): синхрослово, чередование, плоскость, выбор полного кода.
 
 Коды собираются здесь же (кодер расширенного Хэмминга — из test_potok_tpc,
@@ -12,8 +11,8 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from test_potok_tpc import хэмминг, тпк
 from reportgen.potok import cikl, modem, ploskost, razbor, tpc
+from test_potok_tpc import тпк, хэмминг
 
 СИНХРО = [np.array([int(x) for x in "11110101000010111000"], np.uint8),
           np.array([int(x) for x in "00001010111101000111"], np.uint8)]

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Рабочий стол анализа: сетка бит, таблица кадров с отбором, статистика столбца, журнал
 массива, притоки этапа отдельными массивами, усечение, SDH в автоматическом разборе."""
 
@@ -182,10 +181,10 @@ class СтолЧерезСерверTests(unittest.TestCase):
 class АвтоматSdhTests(unittest.TestCase):
     def test_stm1_до_e1_и_каналов(self):
         # STM-1 с тремя E1 в TU-12: автомат проходит SDH → VC-4 → TU-12 → E1 → каналы.
+        import potok_sintez as с
         import test_potok_sdh as т
         from reportgen.potok.bity import в_байты, в_биты
         from reportgen.potok.razbor import разобрать
-        import potok_sintez as с
         rng = np.random.default_rng(3)
         кадров = 200
         tu = {}

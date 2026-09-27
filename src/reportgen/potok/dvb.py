@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """DVB: Рид — Соломон (204, 188), свёрточное перемежение I = 12, M = 17, рандомизация.
 
 Канальное кодирование DVB (EN 300 421/429/744) поверх MPEG-TS:
@@ -24,7 +23,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Tuple
 
 import numpy as np
 
@@ -40,7 +38,7 @@ from .nahodka import Находка
 ПАКЕТОВ = 4000
 
 
-def _поле() -> Tuple[np.ndarray, np.ndarray]:
+def _поле() -> tuple[np.ndarray, np.ndarray]:
     степень = np.zeros(512, dtype=np.int64)
     логарифм = np.zeros(256, dtype=np.int64)
     x = 1

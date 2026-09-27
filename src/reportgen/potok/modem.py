@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Кадр модема: синхрослово, плоскость созвездия и код произведения внутри кадров.
 
 Спутниковый модем (Comtech и др.) шлёт кадры: синхрослово (часто в двух
@@ -18,7 +17,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -40,7 +39,7 @@ _проверок = tpc.проверок
 СТРУКТУРА_СРАЗУ = 0.3
 
 
-def простота(код: Находка) -> Tuple[int, float]:
+def простота(код: Находка) -> tuple[int, float]:
     """Насколько просто то, что под кодом: (ступень, мера).
 
     3 — структура видна сразу (мера структуры); 2 — данные под ПСП блока,
@@ -63,7 +62,7 @@ def простота(код: Находка) -> Tuple[int, float]:
     return 1, skrembler.отрыв(данные)
 
 
-def _выбрать_равноценный(равные: list) -> Tuple[int, str]:
+def _выбрать_равноценный(равные: list) -> tuple[int, str]:
     """Из вариантов, снимающих код одинаково, — тот, под которым данные проще: (номер, пояснение)."""
     оценки = [простота(с[1]) for с in равные]
     i = max(range(len(равные)), key=lambda j: (оценки[j], -j))
@@ -84,7 +83,7 @@ def _выбрать_равноценный(равные: list) -> Tuple[int, str
 
 
 def код_в_кадрах(биты: np.ndarray, начала: Sequence[int], длина: int, *, фм: Sequence[int] = ()
-                 ) -> Optional[Tuple[List[Находка], np.ndarray]]:
+                 ) -> tuple[list[Находка], np.ndarray] | None:
     """Плоскость (если нужна) и код произведения в кадрах: (находки, данные) или None."""
     начала = [int(н) for н in начала]
     как_есть = tpc.найти_в_кадрах(биты, начала, длина)
@@ -121,7 +120,7 @@ def код_в_кадрах(биты: np.ndarray, начала: Sequence[int], д
             сняты.remove(равные[i])
             сняты.insert(0, равные[i])
         код = None
-        for _, _, вариант, фаза, мера, ряд, свои in сняты:
+        for _, _, вариант, фаза, мера, ряд, свои in сняты:  # noqa: B007 — выбранный вариант нужен после цикла
             код = tpc.найти_в_кадрах(ряд, свои, длина)
             if код is not None:
                 break
@@ -156,14 +155,14 @@ def код_в_кадрах(биты: np.ndarray, начала: Sequence[int], д
     return None
 
 
-def ош_фм(ош: float, k: int) -> Optional[float]:
+def ош_фм(ош: float, k: int) -> float | None:
     """Es/N0 (дБ) ФМ-2^k с кодом Грея при жёстких решениях по вероятности ошибки на бит.
 
     Приближение для больших ОСШ: ош ≈ (2/k)·Q(√(2·Es/N0)·sin(π/M)) (ошибка — в
     соседнюю точку, у соседей по Грею различается один бит); у ФМ-2 —
     ош = Q(√(2·Es/N0)). Q(x) = ½·erfc(x/√2); обращается делением пополам.
     """
-    from math import erfc, log10, pi, sin, sqrt  # noqa: PLC0415
+    from math import erfc, pi, sin, sqrt  # noqa: PLC0415
     if not 0 < ош < 0.2 or k < 1:
         return None
     M = 1 << k
@@ -185,7 +184,7 @@ def ош_фм(ош: float, k: int) -> Optional[float]:
 
 
 def разобрать_кадры(биты: np.ndarray, длина_цикла: int, *, фм: Sequence[int] = ()
-                    ) -> Optional[Tuple[List[Находка], np.ndarray, Dict[str, object]]]:
+                    ) -> tuple[list[Находка], np.ndarray, dict[str, object]] | None:
     """Кадры по циклу → плоскость → код: (находки, данные, сведения о кадрах) или None."""
     from . import cikl  # noqa: PLC0415
 

@@ -37,12 +37,18 @@ import re
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Iterable, Sequence
 from concurrent import futures
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
 
 from .. import registry
-from ..convert import external_path, ConvertedDocument, _first_markdown_heading, _reason, page_marker
+from ..convert import (
+    ConvertedDocument,
+    _first_markdown_heading,
+    _reason,
+    external_path,
+    page_marker,
+)
 from . import ocr
 
 __all__ = [
@@ -164,11 +170,11 @@ def djvu_page_count(
     path: str | Path,
     *,
     timeout: float = TOOL_TIMEOUT,
-    warnings: List[str] | None = None,
+    warnings: list[str] | None = None,
 ) -> int:
     """Сколько страниц в книге. ``0`` — выяснить не удалось (обычно битый файл)."""
     notes = warnings if warnings is not None else []
-    reasons: List[str] = []
+    reasons: list[str] = []
 
     try:
         completed = _run("djvused", ["-e", "n", str(path)], timeout)
@@ -221,15 +227,15 @@ def djvu_text_layer(
     pages: Iterable[int],
     *,
     timeout: float = TOOL_TIMEOUT,
-    warnings: List[str] | None = None,
-) -> Dict[int, str]:
+    warnings: list[str] | None = None,
+) -> dict[int, str]:
     """Текстовый слой по страницам. В словарь попадают только осмысленные страницы.
 
     Страница с двумя десятками символов — это колонцифра или штамп, а не текст;
     такую страницу лучше распознать заново, чем оставить в индексе огрызок.
     """
     notes = warnings if warnings is not None else []
-    layer: Dict[int, str] = {}
+    layer: dict[int, str] = {}
     failures = 0
     for number in pages:
         try:
@@ -293,7 +299,7 @@ def _ocr_pages(
     path: Path,
     pages: Sequence[int],
     result: ConvertedDocument,
-    text_pages: Dict[int, str],
+    text_pages: dict[int, str],
 ) -> int:
     """Распознать страницы без текстового слоя. Возвращает число распознанных."""
     recognised = 0
@@ -309,7 +315,7 @@ def _ocr_pages(
         batch_size = max(1, workers * 2)
         for start_index in range(0, len(pages), batch_size):
             batch = pages[start_index:start_index + batch_size]
-            ready: List[Tuple[int, Path]] = []
+            ready: list[tuple[int, Path]] = []
             for number in batch:
                 image = Path(directory) / f"page-{number:05d}.pnm"
                 try:
@@ -325,14 +331,14 @@ def _ocr_pages(
                     break
                 continue
 
-            def recognise(item: Tuple[int, Path]):
+            def recognise(item: tuple[int, Path]):
                 number, image = item
                 try:
                     return number, ocr.ocr_image(image, timeout=ocr.DEFAULT_TIMEOUT), None
-                except ocr.OcrUnavailableError as error:
-                    return number, None, error
-                except ocr.OcrError as error:
-                    return number, None, error
+                except ocr.OcrUnavailableError as failure:
+                    return number, None, failure
+                except ocr.OcrError as failure:
+                    return number, None, failure
 
             if workers <= 1 or len(ready) == 1:
                 outcomes = [recognise(item) for item in ready]
@@ -412,7 +418,7 @@ def _convert_djvu(path: Path, *, title: str) -> ConvertedDocument:
     except DjvuToolError as error:
         result.warnings.append(f"текстовый слой не прочитан ({_reason(error)})")
 
-    text_pages: Dict[int, str] = {}
+    text_pages: dict[int, str] = {}
     # До какой страницы разбираем книгу. Обычно до последней; предел нужен
     # только для подшивок на тысячи страниц, где один вызов djvutxt на
     # страницу уже складывается в минуты.
@@ -468,7 +474,7 @@ def _convert_djvu(path: Path, *, title: str) -> ConvertedDocument:
             "числа и обозначения перед использованием сверяйте с оригиналом",
         )
 
-    pieces: List[str] = []
+    pieces: list[str] = []
     for number in sorted(text_pages):
         body = text_pages[number].strip()
         if not body:

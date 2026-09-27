@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """ОКС-7 и SIGTRAN: пакеты собраны здесь по RFC 4666/3331/4165/3868/4233 и ITU-T
 Q.703/Q.704/Q.713/Q.773/Q.763/Q.931/Q.921 — без функций разборщика."""
 
@@ -9,7 +8,7 @@ import unittest
 
 import _bootstrap  # noqa: F401
 import setevoy_sintez as с
-from reportgen.setevoy import разобрать_пакет, прочитать_захват
+from reportgen.setevoy import прочитать_захват, разобрать_пакет
 from reportgen.setevoy.filtr import отобрать
 from reportgen.setevoy.pole import Пакет
 from reportgen.setevoy.protokoly import oks7
@@ -818,6 +817,7 @@ class ОборванныйКусокSctp(unittest.TestCase):
 
     def test_обрыв_в_заголовке_data(self):
         import struct as _struct
+
         import potok_sintez as _с
         from reportgen.setevoy import разобрать_пакет as _разобрать
         sctp = _struct.pack("!HHII", 2905, 2905, 1, 0) + _struct.pack("!BBH", 0, 3, 40) + bytes(4)

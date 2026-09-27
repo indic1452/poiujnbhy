@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import logging
 import sys
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -323,7 +324,7 @@ def run(settings: Settings | None = None) -> None:  # pragma: no cover — то�
     try:
         import uvicorn
     except ImportError:
-        from ..packages import pip_hint       # noqa: PLC0415
+        from ..packages import pip_hint  # noqa: PLC0415
 
         print("не установлен uvicorn — веб-сервер не поднять. На этой машине: "
               + pip_hint("\"uvicorn[standard]\""), file=sys.stderr)

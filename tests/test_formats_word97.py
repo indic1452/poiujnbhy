@@ -12,12 +12,11 @@ import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.ingest.formats.word97 import (
     OLE_MAGIC,
+    cfb_streams,
     convert_doc_native,
     doc_text,
-    cfb_streams,
 )
 
 
@@ -300,7 +299,7 @@ class Word97Tests(unittest.TestCase):
 
     def test_a_file_that_is_not_a_compound_document_is_refused(self):
         with self.assertRaises(ValueError):
-            doc_text("PK\x03\x04 это docx, а не doc".encode("utf-8"))
+            doc_text("PK\x03\x04 это docx, а не doc".encode())
 
     def test_a_truncated_file_does_not_hang_or_crash(self):
         raw = build_doc("Отчёт\r")

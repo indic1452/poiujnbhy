@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Встроенные коды LDPC стандартов — без загрузки: 5G NR, DVB-S2/S2X/T2 и прочие.
 
 Таблицы не вписаны по памяти, а взяты из открытых исходников и сверены:
@@ -31,9 +30,8 @@ from __future__ import annotations
 
 import json
 from fractions import Fraction
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -44,7 +42,7 @@ NR_ДАННЫХ = {1: 22, 2: 10}
 
 
 @lru_cache(maxsize=1)
-def _dvb() -> Dict[str, dict]:
+def _dvb() -> dict[str, dict]:
     return json.loads((ДАННЫЕ / "ldpc_dvb.json").read_text(encoding="utf-8"))
 
 
@@ -54,16 +52,16 @@ def _nr() -> dict:
 
 
 @lru_cache(maxsize=1)
-def _прочие() -> Dict[str, dict]:
+def _прочие() -> dict[str, dict]:
     return json.loads((ДАННЫЕ / "ldpc_prochie.json").read_text(encoding="utf-8"))
 
 
 @lru_cache(maxsize=1)
-def _wifi() -> Dict[str, dict]:
+def _wifi() -> dict[str, dict]:
     return json.loads((ДАННЫЕ / "ldpc_wifi.json").read_text(encoding="utf-8"))
 
 
-def _nr_набор(bg: int, Z: int) -> Optional[dict]:
+def _nr_набор(bg: int, Z: int) -> dict | None:
     """Набор iLS графа, в который входит размер Z, — с таблицей V; None — такого Z нет."""
     for набор in _nr()["графы"][str(bg)].values():
         if Z in набор["Z"]:
@@ -71,7 +69,7 @@ def _nr_набор(bg: int, Z: int) -> Optional[dict]:
     return None
 
 
-def _nr_имя(имя: str) -> Optional[tuple]:
+def _nr_имя(имя: str) -> tuple | None:
     """«nr-bg1-z384» → (1, 384); не NR — None."""
     части = имя.lower().split("-")
     if len(части) != 3 or части[0] != "nr" or not части[1].startswith("bg") or not части[2].startswith("z"):
@@ -87,7 +85,7 @@ def есть(имя: str) -> bool:
     return _nr_имя(имя) is not None or имя in _dvb() or имя in _wifi() or имя in _прочие()
 
 
-def список() -> List[Dict[str, object]]:
+def список() -> list[dict[str, object]]:
     """Все встроенные коды: имя, семейство, n, k, скорость, откуда, выколотые по стандарту."""
     итог = []
     for bg in (1, 2):
@@ -140,7 +138,7 @@ def матрица(имя: str):
 СКОРОСТЬ_3_5 = {"dvb-s2-64800-38880", "dvb-s2-16200-9720"}
 
 
-def перемежения(имя: str) -> List[Tuple[str, str]]:
+def перемежения(имя: str) -> list[tuple[str, str]]:
     """Перемежения бит по стандарту кода: [(модуляция, порядок столбцов)]; у прочих кодов — нет."""
     if not имя.startswith("dvb-s2-"):
         return []
@@ -177,8 +175,8 @@ def схема(имя: str, перемежение: str = ""):
     return с
 
 
-@lru_cache(maxsize=None)
-def проба(имя: str, сколько: int, перемежение: str = "") -> Tuple[int, List[np.ndarray]]:
+@cache
+def проба(имя: str, сколько: int, перемежение: str = "") -> tuple[int, list[np.ndarray]]:
     """Длина слова по схеме стандарта и проверки для пробы кода на потоке — строятся один раз.
 
     Матрицы всех кодов в памяти не держатся (у DVB-S2 — по мегабайту и больше),
@@ -190,7 +188,7 @@ def проба(имя: str, сколько: int, перемежение: str = "
 
 
 @lru_cache(maxsize=1)
-def _по_именам() -> Dict[str, Dict[str, object]]:
+def _по_именам() -> dict[str, dict[str, object]]:
     return {str(э["имя"]): э for э in список()}
 
 
@@ -199,13 +197,13 @@ def выколоты_по_стандарту(имя: str) -> bool:
     return bool((_по_именам().get(имя) or {}).get("выколоты"))
 
 
-def _длина_стандарта(э: Dict[str, object]) -> int:
+def _длина_стандарта(э: dict[str, object]) -> int:
     """Длина слова в потоке по схеме стандарта: n без выколотых позиций."""
     from . import ldpc  # noqa: PLC0415
     return int(э["n"]) - len(ldpc.позиции(str(э["выколоты"]), int(э["n"])))
 
 
-def подходящие(блок: Optional[int], *, бит: Optional[int] = None, слов_до: int = 64) -> List[str]:
+def подходящие(блок: int | None, *, бит: int | None = None, слов_до: int = 64) -> list[str]:
     """Встроенные коды, чьё слово (со схемой стандарта) может лечь в блок данных целое число раз.
 
     Слово в потоке бывает короче слова стандарта (выкалывание при согласовании

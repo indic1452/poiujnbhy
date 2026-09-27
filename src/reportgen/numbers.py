@@ -8,8 +8,8 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from decimal import Decimal, InvalidOperation
-from typing import Iterable, Set
 
 # Число с необязательным знаком, десятичной запятой или точкой и экспонентой.
 #
@@ -115,13 +115,13 @@ def normalize(raw: str) -> str | None:
     return text or "0"
 
 
-def _take_code_params(text: str, found: Set[str]) -> str:
+def _take_code_params(text: str, found: set[str]) -> str:
     """Забирает параметры кодов «ИМЯ (a,b,…)» и гасит их в тексте.
 
     Гасим только сами скобки: сокращение перед ними остаётся на месте, иначе
     в «DVB-S2 (…)» пропала бы двойка из названия стандарта.
     """
-    def replace(match: "re.Match[str]") -> str:
+    def replace(match: re.Match[str]) -> str:
         for part in _INTEGER_RE.findall(match.group(1)):
             normalized = normalize(part)
             if normalized is not None:
@@ -132,7 +132,7 @@ def _take_code_params(text: str, found: Set[str]) -> str:
     return _CODE_PARAMS_RE.sub(replace, text)
 
 
-def extract(text: str, *, structural: bool = False) -> Set[str]:
+def extract(text: str, *, structural: bool = False) -> set[str]:
     """Возвращает множество нормализованных чисел, встреченных в тексте.
 
     :param structural: если False (по умолчанию), числа из разметки
@@ -140,7 +140,7 @@ def extract(text: str, *, structural: bool = False) -> Set[str]:
     """
     if not structural:
         text = strip_structural(text)
-    found: Set[str] = set()
+    found: set[str] = set()
     text = _take_code_params(text, found)
     for match in _NUMBER_RE.finditer(text):
         normalized = normalize(match.group(0))
@@ -149,7 +149,7 @@ def extract(text: str, *, structural: bool = False) -> Set[str]:
     return found
 
 
-def extract_from_object(obj: object, *, skip_keys: Iterable[str] = ()) -> Set[str]:
+def extract_from_object(obj: object, *, skip_keys: Iterable[str] = ()) -> set[str]:
     """Рекурсивно собирает числа из произвольной JSON-подобной структуры.
 
     Собираются только ЗНАЧЕНИЯ. Имена полей игнорируются намеренно: иначе поле
@@ -159,7 +159,7 @@ def extract_from_object(obj: object, *, skip_keys: Iterable[str] = ()) -> Set[st
     но делают верификатор слепым к правдоподобной выдумке.
     """
     skip = {key.casefold() for key in skip_keys}
-    found: Set[str] = set()
+    found: set[str] = set()
     stack = [obj]
     while stack:
         item = stack.pop()
@@ -181,14 +181,14 @@ def extract_from_object(obj: object, *, skip_keys: Iterable[str] = ()) -> Set[st
     return found
 
 
-def derived_forms(values: Iterable[str]) -> Set[str]:
+def derived_forms(values: Iterable[str]) -> set[str]:
     """Формы записи, которые инженер сочтёт тем же числом.
 
     Модель законно может написать «13,7 дБ» как «13.70 дБ» или «-3» как «3»
     в обороте «затухание 3 дБ». Считаем допустимыми модуль числа и
     целую часть, если дробная нулевая.
     """
-    extra: Set[str] = set()
+    extra: set[str] = set()
     for value in values:
         if value.startswith("-"):
             extra.add(value[1:])

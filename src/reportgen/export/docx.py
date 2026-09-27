@@ -40,9 +40,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any
 
 from ..packages import pip_hint
 
@@ -178,10 +179,10 @@ class _Block:
     kind: str
     level: int = 0
     text: str = ""
-    lines: List[str] = field(default_factory=list)
-    rows: List[List[str]] = field(default_factory=list)
-    aligns: List[str | None] = field(default_factory=list)
-    items: List[_ListItem] = field(default_factory=list)
+    lines: list[str] = field(default_factory=list)
+    rows: list[list[str]] = field(default_factory=list)
+    aligns: list[str | None] = field(default_factory=list)
+    items: list[_ListItem] = field(default_factory=list)
 
 
 def _strip_html_comments(text: str) -> str:
@@ -191,7 +192,7 @@ def _strip_html_comments(text: str) -> str:
     слоя приёма, пояснение к служебному блоку) — в готовый документ они
     попадать не должны.
     """
-    result: List[str] = []
+    result: list[str] = []
     in_fence = False
     in_comment = False
     for raw in text.splitlines():
@@ -225,7 +226,7 @@ def _strip_html_comments(text: str) -> str:
     return "\n".join(result)
 
 
-def _split_cells(line: str) -> List[str]:
+def _split_cells(line: str) -> list[str]:
     """Ячейки строки таблицы. Экранированный разделитель ``\\|`` остаётся текстом."""
     body = line.strip()
     if body.startswith("|"):
@@ -236,9 +237,9 @@ def _split_cells(line: str) -> List[str]:
     return [cell.replace("\\|", "|").strip() for cell in cells]
 
 
-def _parse_aligns(line: str) -> List[str | None]:
+def _parse_aligns(line: str) -> list[str | None]:
     """Выравнивание столбцов из строки-разделителя таблицы."""
-    aligns: List[str | None] = []
+    aligns: list[str | None] = []
     for cell in _split_cells(line):
         left = cell.startswith(":")
         right = cell.endswith(":")
@@ -253,10 +254,10 @@ def _parse_aligns(line: str) -> List[str | None]:
     return aligns
 
 
-def _parse_blocks(markdown: str) -> List[_Block]:
+def _parse_blocks(markdown: str) -> list[_Block]:
     """Разбирает Markdown на блоки. Неизвестная разметка становится абзацем."""
     lines = _strip_html_comments(markdown).splitlines()
-    blocks: List[_Block] = []
+    blocks: list[_Block] = []
     index = 0
     total = len(lines)
 
@@ -270,7 +271,7 @@ def _parse_blocks(markdown: str) -> List[_Block]:
 
         if _FENCE_RE.match(line):
             index += 1
-            code: List[str] = []
+            code: list[str] = []
             while index < total and not _FENCE_RE.match(lines[index]):
                 code.append(lines[index])
                 index += 1
@@ -308,7 +309,7 @@ def _parse_blocks(markdown: str) -> List[_Block]:
             continue
 
         if _QUOTE_RE.match(line):
-            quoted: List[str] = []
+            quoted: list[str] = []
             while index < total and _QUOTE_RE.match(lines[index]):
                 quoted.append(_QUOTE_RE.match(lines[index]).group(1))
                 index += 1
@@ -316,7 +317,7 @@ def _parse_blocks(markdown: str) -> List[_Block]:
             continue
 
         if _BULLET_RE.match(line) or _ORDERED_RE.match(line):
-            items: List[_ListItem] = []
+            items: list[_ListItem] = []
             while index < total and lines[index].strip():
                 bullet = _BULLET_RE.match(lines[index])
                 ordered = _ORDERED_RE.match(lines[index])
@@ -333,7 +334,7 @@ def _parse_blocks(markdown: str) -> List[_Block]:
             blocks.append(_Block(kind="list", items=items))
             continue
 
-        paragraph: List[str] = []
+        paragraph: list[str] = []
         while index < total and lines[index].strip():
             current = lines[index]
             if (
@@ -356,10 +357,10 @@ def _parse_blocks(markdown: str) -> List[_Block]:
     return blocks
 
 
-def _logical_lines(lines: Sequence[str]) -> List[str]:
+def _logical_lines(lines: Sequence[str]) -> list[str]:
     """Склеивает строки абзаца, уважая жёсткий перенос (два пробела в конце)."""
-    result: List[str] = []
-    current: List[str] = []
+    result: list[str] = []
+    current: list[str] = []
     for line in lines:
         text = line.strip()
         if not text:
@@ -373,9 +374,9 @@ def _logical_lines(lines: Sequence[str]) -> List[str]:
     return result
 
 
-def _split_inline(text: str) -> List[_Span]:
+def _split_inline(text: str) -> list[_Span]:
     """Разбирает **жирный**, *курсив*, `моноширинный` и ссылки внутри абзаца."""
-    spans: List[_Span] = []
+    spans: list[_Span] = []
     position = 0
     for match in _INLINE_RE.finditer(text):
         if match.start() > position:
@@ -415,7 +416,7 @@ def _is_appendix(text: str) -> bool:
     return bool(_APPENDIX_RE.match(text.strip()))
 
 
-def _with_toc(blocks: Sequence[_Block]) -> List[_Block]:
+def _with_toc(blocks: Sequence[_Block]) -> list[_Block]:
     """Ставит поле оглавления после титульного блока.
 
     Если конвейер уже вывел раздел «Содержание» со списком разделов, он
@@ -595,7 +596,7 @@ class _Writer:
         self.api = api
         self.document = document
         self.options = options
-        self._styles: Dict[str, bool] = {}
+        self._styles: dict[str, bool] = {}
         self._written = 0
 
     # -- служебное ----------------------------------------------------------
@@ -692,7 +693,7 @@ class _Writer:
     def _write_list(self, block: _Block) -> None:
         depths = sorted({item.indent for item in block.items})
         ranks = {indent: min(number, 2) for number, indent in enumerate(depths)}
-        counters: Dict[int, int] = {}
+        counters: dict[int, int] = {}
         for item in block.items:
             if not item.text:
                 continue

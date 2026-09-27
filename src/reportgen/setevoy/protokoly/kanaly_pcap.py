@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Каналы pcap глобальных сетей: байт направления, псевдозаголовки MTP2 и SunATM, ATM RFC 1483, ERF.
 
 Форматы — по описаниям tcpdump.org (linktypes/LINKTYPE_*.html) и Wireshark (wiretap/pcap-common.c,
@@ -22,8 +21,18 @@ from __future__ import annotations
 
 from ..chtenie import КАНАЛЫ
 from ..pole import u16
-from ..razbor import (ДОП_УРОВНИ, КАНАЛ_В_РАЗБОРЩИК, Разбор, cisco_hdlc, данные, ethernet, ipv4, ipv6, llc,
-                      ppp)
+from ..razbor import (
+    ДОП_УРОВНИ,
+    КАНАЛ_В_РАЗБОРЩИК,
+    Разбор,
+    cisco_hdlc,
+    ethernet,
+    ipv4,
+    ipv6,
+    llc,
+    ppp,
+    данные,
+)
 from .kanalnye import fr
 from .oks7 import mtp2, mtp3
 

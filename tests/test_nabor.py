@@ -128,7 +128,7 @@ class ПустыеНаборыTests(unittest.TestCase):
             for node in классы:
                 if node.name in основания:
                     continue          # от него наследуются — это подготовка
-                свои = [base for base in node.bases]
+                свои = list(node.bases)
                 if not any(_имя_основания(base).endswith(("TestCase", "Tests", "Test"))
                            for base in свои):
                     continue          # не набор тестов вовсе

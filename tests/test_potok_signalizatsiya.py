@@ -13,7 +13,8 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from reportgen.potok import cikl, signalizatsiya as сг
+from reportgen.potok import cikl
+from reportgen.potok import signalizatsiya as сг
 from reportgen.potok.bity import в_биты
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)

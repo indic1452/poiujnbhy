@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Общая статистика потока: с чего начинает аналитик.
 
 По одной энтропии уже многое видно. Около 8 бит на байт — поток случайный
@@ -10,7 +9,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Tuple
 
 import numpy as np
 
@@ -24,8 +22,8 @@ class Статистика:
     единиц: float                   # доля единиц в битах
     серия_нулей: int
     серия_единиц: int
-    частые: List[Tuple[int, float]] = field(default_factory=list)   # (байт, доля)
-    повторы: List[Tuple[str, int, float]] = field(default_factory=list)  # (слово, шаг, доля)
+    частые: list[tuple[int, float]] = field(default_factory=list)   # (байт, доля)
+    повторы: list[tuple[str, int, float]] = field(default_factory=list)  # (слово, шаг, доля)
 
     def вывод(self) -> str:
         """Что это значит — одной фразой."""
@@ -61,7 +59,7 @@ def посчитать(данные: bytes, *, выборка_бит: int = 1 <<
 
 
 def повторяющиеся_слова(массив: np.ndarray, *, длина: int = 4,
-                        наибольший_шаг: int = 4096) -> List[Tuple[str, int, float]]:
+                        наибольший_шаг: int = 4096) -> list[tuple[str, int, float]]:
     """Байтовые слова, повторяющиеся с постоянным шагом: кандидат в синхрослово.
 
     Ищем самые частые четырёхбайтовые слова и смотрим, стоят ли они на

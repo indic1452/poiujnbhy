@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Блочное перемежение: слова кода по строкам, передача по столбцам.
 
 Перемежитель R × C пишет кодовые слова в строки таблицы и читает её по
@@ -24,7 +23,6 @@
 from __future__ import annotations
 
 import re
-from typing import List
 
 import numpy as np
 
@@ -54,7 +52,7 @@ def _сила(ряд: np.ndarray) -> float:
     return float(np.abs(смещения).max() * np.sqrt(окон))
 
 
-def глубины(биты: np.ndarray) -> List[tuple[int, float]]:
+def глубины(биты: np.ndarray) -> list[tuple[int, float]]:
     """Глубины перемежения R, при которых прореженный ряд похож на код, — с силой.
 
     Порог — относительный: у структурированных данных без кода (заголовки,
@@ -110,7 +108,7 @@ def собрать(биты: np.ndarray, R: int, n: int) -> tuple[np.ndarray, in
     o = 0
     while o < R - 1 and n > 1 and выравнивания[o] == (q + 1) % n:
         o += 1
-    начала: List[int] = [q + 1 if φ < o else q for φ in range(R)]
+    начала: list[int] = [q + 1 if φ < o else q for φ in range(R)]
     блоков = min((len(фазы[φ]) - начала[φ]) // n for φ in range(R))
     строки = []
     for r in range(R):

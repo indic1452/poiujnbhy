@@ -31,9 +31,10 @@ from __future__ import annotations
 import posixpath
 import re
 import zipfile
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any
 from urllib.parse import unquote
 
 from .. import registry
@@ -148,7 +149,7 @@ def _first(element: Any, name: str) -> Any | None:
     return None
 
 
-def _children(element: Any, name: str) -> List[Any]:
+def _children(element: Any, name: str) -> list[Any]:
     return [child for child in element if _tag(child) == name]
 
 
@@ -167,8 +168,8 @@ def _one_line(text: str) -> str:
 class _Blocks:
     """Куски Markdown в порядке появления плюс всё, что надо запомнить попутно."""
 
-    blocks: List[str] = field(default_factory=list)
-    notes: List[str] = field(default_factory=list)
+    blocks: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
     images: int = 0
     page: int = 1
     paginated: bool = False
@@ -216,7 +217,7 @@ class _Blocks:
 
 def _odf_inline(element: Any, state: _Blocks) -> str:
     """Текст абзаца ODF со всеми вложенными span, ссылками и сносками."""
-    parts: List[str] = []
+    parts: list[str] = []
     if element.text:
         parts.append(element.text)
     for child in element:
@@ -262,7 +263,7 @@ def _odf_note(note: Any, state: _Blocks) -> str:
 
 def _odf_frame_inline(frame: Any, state: _Blocks) -> str:
     """Рамка (картинка, надпись) внутри абзаца."""
-    parts: List[str] = []
+    parts: list[str] = []
     for child in frame:
         name = _tag(child)
         if name == "image":
@@ -274,9 +275,9 @@ def _odf_frame_inline(frame: Any, state: _Blocks) -> str:
     return "".join(parts)
 
 
-def _odf_texts(container: Any, state: _Blocks) -> List[str]:
+def _odf_texts(container: Any, state: _Blocks) -> list[str]:
     """Тексты всех абзацев и пунктов списка внутри контейнера, по порядку."""
-    out: List[str] = []
+    out: list[str] = []
     for child in container:
         name = _tag(child)
         if name in _ODF_SKIP_BLOCK:
@@ -296,9 +297,9 @@ def _odf_texts(container: Any, state: _Blocks) -> List[str]:
     return out
 
 
-def _odf_list_texts(node: Any, state: _Blocks, depth: int = 0) -> List[str]:
+def _odf_list_texts(node: Any, state: _Blocks, depth: int = 0) -> list[str]:
     """Список ODF → строки вида «- пункт» с отступом по вложенности."""
-    out: List[str] = []
+    out: list[str] = []
     indent = "  " * depth
     for item in node:
         if _tag(item) not in ("list-item", "list-header"):
@@ -338,14 +339,14 @@ def _odf_cell_text(cell: Any, state: _Blocks) -> str:
     return "\n".join(pieces)
 
 
-def _odf_row_cells(row: Any, state: _Blocks) -> List[str]:
+def _odf_row_cells(row: Any, state: _Blocks) -> list[str]:
     """Ячейки строки с развёрнутыми повторами.
 
     Хвост из пустых ячеек отбрасывается до разворачивания: LibreOffice пишет в
     конце каждой строки ``table:number-columns-repeated="16384"``, и буквальное
     разворачивание такого хвоста — это лист на миллион пустых колонок.
     """
-    raw: List[Tuple[str, int]] = []
+    raw: list[tuple[str, int]] = []
     for child in row:
         name = _tag(child)
         if name not in ("table-cell", "covered-table-cell"):
@@ -356,7 +357,7 @@ def _odf_row_cells(row: Any, state: _Blocks) -> List[str]:
     while raw and not raw[-1][0].strip():
         raw.pop()
 
-    cells: List[str] = []
+    cells: list[str] = []
     for text, repeat in raw:
         count = max(1, repeat)
         if count > MAX_CELL_REPEAT:
@@ -379,7 +380,7 @@ def odf_table_markdown(table: Any, state: _Blocks) -> str:
     """
     label = _clean_line(_attr(table, "name", "table") or "") or "без названия"
     clamped_before = state.clamped
-    rows: List[List[str]] = []
+    rows: list[list[str]] = []
     source = _iter_table_rows(table)
     for row in source:
         cells = _odf_row_cells(row, state)
@@ -409,7 +410,7 @@ def odf_table_markdown(table: Any, state: _Blocks) -> str:
 
 # ----------------------------------------------------------- ODF: чтение ---
 
-def _page_break_styles(root: Any) -> Tuple[frozenset, frozenset]:
+def _page_break_styles(root: Any) -> tuple[frozenset, frozenset]:
     """Имена стилей абзаца с принудительным разрывом страницы."""
     before: set = set()
     after: set = set()
@@ -432,11 +433,11 @@ def _page_break_styles(root: Any) -> Tuple[frozenset, frozenset]:
     return frozenset(before), frozenset(after)
 
 
-def _odf_metadata(node: Any) -> Tuple[str, str, Dict[str, Any]]:
+def _odf_metadata(node: Any) -> tuple[str, str, dict[str, Any]]:
     """Название, автор и статистика из ``meta.xml`` (или из плоского файла)."""
     title = ""
     author = ""
-    stats: Dict[str, Any] = {}
+    stats: dict[str, Any] = {}
     if node is None:
         return title, author, stats
     meta = _first(node, "meta")
@@ -476,7 +477,7 @@ def _read_zip_member(archive: zipfile.ZipFile, name: str) -> bytes | None:
 
 def _load_odf(
     path: Path, result: ConvertedDocument
-) -> Tuple[Any | None, Any | None, Any | None]:
+) -> tuple[Any | None, Any | None, Any | None]:
     """Читает документ ODF: корни content.xml, meta.xml и styles.xml."""
     import xml.etree.ElementTree as ET  # noqa: PLC0415
 
@@ -567,7 +568,7 @@ def _load_odf(
 def _odt_walk(
     element: Any,
     state: _Blocks,
-    breaks: Tuple[frozenset, frozenset],
+    breaks: tuple[frozenset, frozenset],
     depth: int = 0,
 ) -> None:
     """Обходит текстовое тело ODT, сохраняя порядок абзацев, списков и таблиц."""
@@ -620,10 +621,10 @@ def _render_odt(root: Any, styles_root: Any, body: Any, state: _Blocks) -> None:
 
 # ------------------------------------------------------------------- ODS ---
 
-def _render_ods(body: Any, state: _Blocks) -> Tuple[int, List[str]]:
+def _render_ods(body: Any, state: _Blocks) -> tuple[int, list[str]]:
     """Листы книги: «## Лист «имя»» и таблица целиком. Возвращает (листов, пустые)."""
     number = 0
-    empty: List[str] = []
+    empty: list[str] = []
     for index, sheet in enumerate(_children(body, "table"), start=1):
         name = _clean_line(_attr(sheet, "name", "table") or "") or f"Лист {index}"
         markdown = odf_table_markdown(sheet, state)
@@ -643,9 +644,9 @@ def _odp_frame_class(frame: Any) -> str:
     return (_attr(frame, "class", "presentation") or "").strip().lower()
 
 
-def _odp_frame_blocks(frame: Any, state: _Blocks) -> List[str]:
+def _odp_frame_blocks(frame: Any, state: _Blocks) -> list[str]:
     """Содержимое рамки слайда: список, абзацы, таблица или картинка."""
-    out: List[str] = []
+    out: list[str] = []
     for child in frame:
         name = _tag(child)
         if name == "text-box":
@@ -670,9 +671,9 @@ def _odp_frame_blocks(frame: Any, state: _Blocks) -> List[str]:
     return out
 
 
-def _odg_shape_texts(shape: Any, state: _Blocks) -> List[str]:
+def _odg_shape_texts(shape: Any, state: _Blocks) -> list[str]:
     """Текст одной фигуры чертежа — включая вложенные группы."""
-    out: List[str] = []
+    out: list[str] = []
     name = _tag(shape)
     if name in ("frame", "g"):
         for child in shape:
@@ -699,7 +700,7 @@ def _odg_shape_texts(shape: Any, state: _Blocks) -> List[str]:
     return out
 
 
-def _render_odg(body: Any, state: _Blocks) -> Tuple[int, int]:
+def _render_odg(body: Any, state: _Blocks) -> tuple[int, int]:
     """Чертёж: каждый лист разделом, подписи фигур — строками.
 
     Схемы сетей, стоек и трактов рисуют именно так. Геометрия в текст не
@@ -716,7 +717,7 @@ def _render_odg(body: Any, state: _Blocks) -> Tuple[int, int]:
         name = _clean_line(_attr(page, "name", "draw") or "")
         title = name if name and not name.lower().startswith("page") else ""
         state.add(f"## Лист {number}" + (f". {title}" if title else ""))
-        seen: List[str] = []
+        seen: list[str] = []
         for shape in page:
             if _tag(shape) not in _ODG_SHAPES:
                 continue
@@ -737,7 +738,7 @@ def _render_odp(body: Any, state: _Blocks) -> int:
         state.mark_page(number)
         frames = [child for child in slide if _tag(child) in ("frame", "custom-shape", "g")]
         title = ""
-        body_blocks: List[str] = []
+        body_blocks: list[str] = []
         for frame in frames:
             blocks = _odp_frame_blocks(frame, state)
             if not blocks:
@@ -904,7 +905,7 @@ def convert_odg(path: Path) -> ConvertedDocument:
 
 def _fb2_inline(element: Any, state: _Blocks) -> str:
     """Текст абзаца FB2 со ссылками, сносками и выделениями."""
-    parts: List[str] = []
+    parts: list[str] = []
     if element.text:
         parts.append(element.text)
     for child in element:
@@ -930,9 +931,9 @@ def _fb2_inline(element: Any, state: _Blocks) -> str:
     return "".join(parts)
 
 
-def _fb2_paragraphs(element: Any, state: _Blocks) -> List[str]:
+def _fb2_paragraphs(element: Any, state: _Blocks) -> list[str]:
     """Абзацы внутри title/annotation/epigraph — по порядку, без пустых."""
-    out: List[str] = []
+    out: list[str] = []
     for child in element:
         name = _tag(child)
         if name in ("p", "v", "subtitle", "text-author"):
@@ -947,11 +948,11 @@ def _fb2_paragraphs(element: Any, state: _Blocks) -> List[str]:
 
 
 def _fb2_table(table: Any, state: _Blocks) -> str:
-    rows: List[List[str]] = []
+    rows: list[list[str]] = []
     for row in table:
         if _tag(row) != "tr":
             continue
-        cells: List[str] = []
+        cells: list[str] = []
         for cell in row:
             if _tag(cell) not in ("td", "th"):
                 continue
@@ -1150,7 +1151,7 @@ def _epub_opf_path(archive: zipfile.ZipFile, result: ConvertedDocument) -> str |
     return None
 
 
-def _epub_resolve(base: str, href: str, names: Dict[str, str]) -> str | None:
+def _epub_resolve(base: str, href: str, names: dict[str, str]) -> str | None:
     """Ссылка из OPF → имя записи в архиве (с учётом %-кодирования и «..»)."""
     target = unquote(href.split("#", 1)[0].strip())
     if not target:
@@ -1181,7 +1182,7 @@ def convert_epub(path: Path) -> ConvertedDocument:
         result.warnings.append(f"файл повреждён: архив EPUB не открывается ({_reason(error)})")
         return result
 
-    blocks: List[str] = []
+    blocks: list[str] = []
     chapters = 0
     images = 0
     with archive:
@@ -1209,7 +1210,7 @@ def convert_epub(path: Path) -> ConvertedDocument:
             return result
 
         base = posixpath.dirname(opf_name)
-        manifest: Dict[str, Dict[str, str]] = {}
+        manifest: dict[str, dict[str, str]] = {}
         for node in opf.iter():
             if _tag(node) != "item":
                 continue
@@ -1233,7 +1234,7 @@ def convert_epub(path: Path) -> ConvertedDocument:
             elif name == "language" and value:
                 result.meta.setdefault("language", value)
 
-        order: List[str] = []
+        order: list[str] = []
         unknown = 0
         for node in opf.iter():
             if _tag(node) != "itemref":

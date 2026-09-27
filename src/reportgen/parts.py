@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Состав изделия: целое и его узлы.
 
 Отдел прислал жалобу, и она глубже, чем кажется. В библиотеке лежат
@@ -42,9 +41,9 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
 
 from .terms import mentions, normalize
 
@@ -100,13 +99,13 @@ class Composition:
     """Одна запись справочника: целое и узлы, из которых оно собрано."""
 
     whole: str
-    units: Tuple[str, ...]
+    units: tuple[str, ...]
     #: Другие написания целого: «приёмный тракт» — тот же тракт приёма.
-    also: Tuple[str, ...] = ()
+    also: tuple[str, ...] = ()
     note: str = ""
 
     @property
-    def names(self) -> Tuple[str, ...]:
+    def names(self) -> tuple[str, ...]:
         return (self.whole,) + self.also
 
 
@@ -135,19 +134,19 @@ class PartsBook:
                  source: Path | None = None, problems: Sequence[str] = ()):
         # Длинные названия вперёд: «тракт приёма РРЛС» точнее, чем «тракт
         # приёма», и если сработали оба — разбирать надо по точному.
-        self.compositions: List[Composition] = sorted(
+        self.compositions: list[Composition] = sorted(
             compositions, key=lambda item: len(item.whole), reverse=True)
         self.source = source
         #: Записи, которые справочник отбросил, и почему. Пополняют его люди,
         #: и молча выбрасывать их работу нельзя: печатает этот список команда
         #: «reportgen parts».
-        self.problems: List[str] = list(problems)
+        self.problems: list[str] = list(problems)
 
     def __len__(self) -> int:
         return len(self.compositions)
 
     @classmethod
-    def load(cls, path: str | Path | None = None) -> "PartsBook":
+    def load(cls, path: str | Path | None = None) -> PartsBook:
         """Читает справочник. Нет файла или он испорчен — пустой справочник.
 
         Молча: разбор состава — усиление, а не условие работы. Помощник без
@@ -155,7 +154,7 @@ class PartsBook:
         нельзя.
         """
         resolved = Path(path) if path else default_path()
-        problems: List[str] = []
+        problems: list[str] = []
         try:
             raw = json.loads(resolved.read_text(encoding="utf-8-sig"))
         except OSError as error:
@@ -169,8 +168,8 @@ class PartsBook:
             return cls([], source=resolved,
                        problems=["в файле нет списка «parts»"])
 
-        составы: List[Composition] = []
-        занято: Dict[str, str] = {}
+        составы: list[Composition] = []
+        занято: dict[str, str] = {}
         for номер, строка in enumerate(rows, start=1):
             состав, беда = _разобрать(номер, строка)
             if беда:
@@ -188,7 +187,7 @@ class PartsBook:
             составы.append(состав)
         return cls(составы, source=resolved, problems=problems)
 
-    def match(self, question: str) -> List[Composition]:
+    def match(self, question: str) -> list[Composition]:
         """Какие составы названы в вопросе. Точное совпадение — первым.
 
         «Точное» — это длина СОВПАВШЕГО написания, а не длина названия
@@ -203,7 +202,7 @@ class PartsBook:
         текст = str(question or "")
         if not текст.strip():
             return []
-        отобранные: List[Tuple[int, int, Composition]] = []
+        отобранные: list[tuple[int, int, Composition]] = []
         for место, состав in enumerate(self.compositions):
             совпало = [имя for имя in состав.names if mentions(_основа(имя), текст)]
             if совпало:
@@ -211,7 +210,7 @@ class PartsBook:
         отобранные.sort(key=lambda строка: (строка[0], строка[1]))
         return [состав for _длина, _место, состав in отобранные]
 
-    def units_for(self, question: str, *, limit: int = MAX_UNITS) -> List[str]:
+    def units_for(self, question: str, *, limit: int = MAX_UNITS) -> list[str]:
         """Узлы, которые стоит поискать отдельно по этому вопросу.
 
         Порядок сохраняется таким, как записан в справочнике: он не
@@ -223,7 +222,7 @@ class PartsBook:
         if not предел:
             return []
         видели = set()
-        узлы: List[str] = []
+        узлы: list[str] = []
         for состав in self.match(question):
             for узел in состав.units:
                 ключ = normalize(узел)
@@ -262,7 +261,7 @@ def _обрезать(word: str) -> str:
     return word
 
 
-def _разобрать(номер: int, строка: object) -> Tuple[Composition | None, str]:
+def _разобрать(номер: int, строка: object) -> tuple[Composition | None, str]:
     """Одна запись справочника: что вышло и что с ней не так."""
     if not isinstance(строка, dict):
         return None, f"запись {номер}: не объект — пропущена"
@@ -277,7 +276,7 @@ def _разобрать(номер: int, строка: object) -> Tuple[Composit
     сырые = строка.get("units") or []
     if isinstance(сырые, str):
         сырые = [сырые]
-    узлы: List[str] = []
+    узлы: list[str] = []
     видели = set()
     for узел in сырые:
         значение = " ".join(str(узел or "").split())
@@ -293,8 +292,8 @@ def _разобрать(номер: int, строка: object) -> Tuple[Composit
     прочие = строка.get("also") or []
     if isinstance(прочие, str):
         прочие = [прочие]
-    written: List[str] = []
-    беды: List[str] = []
+    written: list[str] = []
+    беды: list[str] = []
     for имя in прочие:
         значение = " ".join(str(имя or "").split())
         if not значение:
@@ -313,7 +312,7 @@ def _разобрать(номер: int, строка: object) -> Tuple[Composit
     return состав, беда
 
 
-_CACHE: Dict[str, Tuple[float, PartsBook]] = {}
+_CACHE: dict[str, tuple[float, PartsBook]] = {}
 
 
 def _mtime(path: Path) -> float:
@@ -341,7 +340,7 @@ def book(path: str | Path | None = None) -> PartsBook:
 
 
 def units_for(question: str, path: str | Path | None = None, *,
-              limit: int = MAX_UNITS) -> List[str]:
+              limit: int = MAX_UNITS) -> list[str]:
     """Узлы названного в вопросе целого. Ничего не названо — пустой список."""
     return book(path).units_for(question, limit=limit)
 

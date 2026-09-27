@@ -15,7 +15,6 @@ import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.store.models import Chat
 from reportgen.web.assistant import (
     CHAT_MODES,
@@ -24,7 +23,6 @@ from reportgen.web.assistant import (
     chat_mode,
 )
 from reportgen.web.service import ServiceError
-
 from test_assistant import AssistantHttpTests, AssistantTestCase  # noqa: E402
 
 

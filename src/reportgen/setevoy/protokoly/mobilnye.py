@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Мобильные сети и AAA: Diameter, GTPv1-C, GTPv2-C, GTP', PFCP, S1AP, NGAP, X2AP, SGsAP,
 GSMTAP, TACACS+, Kerberos, LDAP.
 
@@ -42,12 +41,12 @@ import datetime
 import functools
 import ipaddress
 import struct
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
 
 from .. import prilozh, razbor
-from . import gsm
 from ..pole import Мало, Поле, Уровень, u16, u24, u32, u64
 from ..razbor import Разбор, данные
+from . import gsm
 
 
 class _НеМоё(Exception):
@@ -97,7 +96,7 @@ def _по_очереди(р: Разбор, м: int, конец: int, одно, �
     следующего сообщения в другом сегменте) — данными.
     """
     конец = min(конец, len(р.д))
-    итоги: List[str] = []
+    итоги: list[str] = []
     место = м
     while место < конец and len(итоги) < 64:
         уровней, ошибок = len(р.п.уровни), len(р.п.ошибки)
@@ -142,7 +141,7 @@ def _plmn(д: bytes, м: int) -> str:
     return f"{mcc}-{mnc}"
 
 
-def _метки(байты: bytes) -> Optional[str]:
+def _метки(байты: bytes) -> str | None:
     """Имя из меток с длиной впереди (APN, FQDN — 3GPP TS 23.003, 9.1; RFC 1035, 3.1)."""
     части, i = [], 0
     while i < len(байты):
@@ -161,7 +160,7 @@ def _ip(байты: bytes) -> str:
 
 
 def _ntp_секунды(сек: int) -> str:
-    момент = datetime.datetime(1900, 1, 1, tzinfo=datetime.timezone.utc) + datetime.timedelta(seconds=сек)
+    момент = datetime.datetime(1900, 1, 1, tzinfo=datetime.UTC) + datetime.timedelta(seconds=сек)
     return момент.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
@@ -169,7 +168,7 @@ def _текст(байты: bytes) -> str:
     return байты.decode("utf-8", "replace")
 
 
-def _личность(байты: bytes) -> Tuple[int, str]:
+def _личность(байты: bytes) -> tuple[int, str]:
     """Mobile Identity (3GPP TS 24.008, 10.5.1.4): тип и значение (IMSI/IMEI цифрами)."""
     тип = байты[0] & 7
     if тип in (1, 2, 3):                                  # IMSI, IMEI, IMEISV — цифры BCD
@@ -205,7 +204,7 @@ DIAMETER_ПРИЛОЖЕНИЯ = {0: "Diameter common messages", 1: "NASREQ", 3: 
                        0xFFFFFFFF: "Relay"}
 #: Код AVP → (имя, тип). Типы: utf8, ident (DiameterIdentity), u32, u64, i32 (и Enumerated),
 #: addr (Address), time (Time), octets, plmn, group (Grouped).
-DIAMETER_AVP: Dict[int, Tuple[str, str]] = {
+DIAMETER_AVP: dict[int, tuple[str, str]] = {
     1: ("User-Name", "utf8"), 25: ("Class", "octets"), 27: ("Session-Timeout", "u32"),
     33: ("Proxy-State", "octets"), 44: ("Accounting-Session-Id", "octets"),
     50: ("Acct-Multi-Session-Id", "utf8"), 55: ("Event-Timestamp", "time"),
@@ -237,7 +236,7 @@ DIAMETER_AVP: Dict[int, Tuple[str, str]] = {
     456: ("Multiple-Services-Credit-Control", "group"), 461: ("Service-Context-Id", "utf8"),
 }
 #: AVP 3GPP (Vendor-ID 10415): TS 29.272, 7.3; TS 29.212, 5.3.
-DIAMETER_AVP_3GPP: Dict[int, Tuple[str, str]] = {
+DIAMETER_AVP_3GPP: dict[int, tuple[str, str]] = {
     1407: ("Visited-PLMN-Id", "plmn"), 1032: ("RAT-Type", "i32"),
     1400: ("Subscription-Data", "group"), 1413: ("Authentication-Info", "group"),
 }
@@ -263,7 +262,7 @@ _DIAMETER_ЗНАЧЕНИЯ = {
 _DIAMETER_ЗНАЧЕНИЯ_3GPP = {1032: {1000: "UTRAN", 1001: "GERAN", 1004: "EUTRAN"}}
 
 
-def _diameter_имя(код: int, запрос: bool) -> Tuple[str, str]:
+def _diameter_имя(код: int, запрос: bool) -> tuple[str, str]:
     """(сокращение, полное имя) команды."""
     if код in DIAMETER_КОМАНДЫ:
         имя, сокр = DIAMETER_КОМАНДЫ[код]
@@ -286,7 +285,7 @@ def _avp_цепочка(д: bytes, м: int, конец: int, до_конца: bo
     return м == конец or not до_конца
 
 
-def _diameter_заголовок(д: bytes, м: int, конец: int) -> Optional[int]:
+def _diameter_заголовок(д: bytes, м: int, конец: int) -> int | None:
     """Длина сообщения, если с ``м`` начинается сообщение Diameter (RFC 6733, 3), иначе None.
 
     Проверяется: версия 1; длина кратна 4 и не меньше 20; зарезервированные биты флагов —
@@ -306,7 +305,7 @@ def _diameter_заголовок(д: bytes, м: int, конец: int) -> Optiona
     return длина
 
 
-def _avp_значение(д: bytes, вид: str, код: int, таблица: Dict[int, Dict[int, str]]):
+def _avp_значение(д: bytes, вид: str, код: int, таблица: dict[int, dict[int, str]]):
     """(текст, сырое, верна ли длина) значения AVP по его типу (RFC 6733, 4.2–4.3)."""
     размер = {"u32": 4, "i32": 4, "u64": 8, "time": 4}.get(вид)
     if размер is not None and len(д) != размер:
@@ -332,8 +331,8 @@ def _avp_значение(д: bytes, вид: str, код: int, таблица: D
     return (д.hex() or "(пусто)"), д.hex(), True
 
 
-def _avp_дерево(р: Разбор, у: Уровень, м: int, конец: int, родитель: Optional[Поле], глубина: int,
-                сводка: Optional[Dict[str, str]]) -> None:
+def _avp_дерево(р: Разбор, у: Уровень, м: int, конец: int, родитель: Поле | None, глубина: int,
+                сводка: dict[str, str] | None) -> None:
     """AVP деревом (RFC 6733, 4.1; Grouped — 4.4). ``конец`` — не дальше записанного."""
     д = р.д
     место = м
@@ -414,7 +413,7 @@ def _diameter_одно(р: Разбор, м: int, конец: int, *, тольк
     у.поле("Hop-by-Hop", "diameter.hopbyhopid", f"0x{u32(д, м + 12):08x}", м + 12, 4, u32(д, м + 12))
     у.поле("End-to-End", "diameter.endtoendid", f"0x{u32(д, м + 16):08x}", м + 16, 4, u32(д, м + 16))
     есть = min(конец, м + длина)
-    сводка: Dict[str, str] = {}
+    сводка: dict[str, str] = {}
     _avp_дерево(р, у, м + 20, есть, None, 0, сводка)
     у.длина = есть - м
     итог = сокр
@@ -456,7 +455,7 @@ GTP1_ТИПЫ = {1: "Echo Request", 2: "Echo Response", 3: "Version Not Supporte
              20: "Delete PDP Context Request", 21: "Delete PDP Context Response",
              31: "Supported Extension Headers Notification"}
 #: TV-элементы (тип < 128): тип → (имя, длина значения). TS 29.060, 7.7 и таблица 37.
-GTP1_TV: Dict[int, Tuple[str, int]] = {
+GTP1_TV: dict[int, tuple[str, int]] = {
     1: ("Cause", 1), 2: ("IMSI", 8), 3: ("Routeing Area Identity", 6), 4: ("TLLI", 4), 5: ("P-TMSI", 4),
     8: ("Reordering Required", 1), 9: ("Authentication Triplet", 28), 11: ("MAP Cause", 1),
     12: ("P-TMSI Signature", 3), 13: ("MS Validated", 1), 14: ("Recovery", 1), 15: ("Selection Mode", 1),
@@ -505,7 +504,7 @@ def _gtp1_значение(тип: int, з: bytes) -> str:
     return з.hex() or "(пусто)"
 
 
-def _gtp1_ie(р: Разбор, у: Уровень, м: int, конец: int, оборван: bool) -> Optional[int]:
+def _gtp1_ie(р: Разбор, у: Уровень, м: int, конец: int, оборван: bool) -> int | None:
     """IE GTPv1 (TS 29.060, 7.7): TV — длина по типу, TLV — 2 байта длины. Незнакомый TV-тип —
     остановка (длину не угадываем). Возвращает, где кончили; None — не сошлось (не наше)."""
     д = р.д
@@ -671,8 +670,8 @@ def _gtp2_значение(тип: int, з: bytes):
     return (з.hex() or "(пусто)"), з.hex()
 
 
-def _gtp2_ie(р: Разбор, у: Уровень, м: int, конец: int, родитель: Optional[Поле], глубина: int,
-             оборван: bool, сводка: Dict[int, str]) -> Optional[int]:
+def _gtp2_ie(р: Разбор, у: Уровень, м: int, конец: int, родитель: Поле | None, глубина: int,
+             оборван: bool, сводка: dict[int, str]) -> int | None:
     """IE GTPv2 (TS 29.274, 8.2.1): тип, длина значения, запасные 4 бита и instance."""
     д = р.д
     место = м
@@ -721,7 +720,7 @@ def _gtpv2_одно(р: Разбор, м: int, конец: int, первое: bo
     if конец - м < заг:
         return None
     есть = min(конец, м + объявлено)
-    сводка: Dict[int, str] = {}
+    сводка: dict[int, str] = {}
     у = р.уровень("GTPv2", "GPRS Tunnelling Protocol v2 (C)", м)
     пф = у.поле("Флаги", "gtpv2.flags", f"0x{флаги:02x}", м, 1, флаги)
     у.поле("Версия", "gtpv2.version", 2, м, 1, родитель=пф)
@@ -934,8 +933,8 @@ def _pfcp_значение(тип: int, з: bytes):
     return (з.hex() or "(пусто)"), з.hex()
 
 
-def _pfcp_ie(р: Разбор, у: Уровень, м: int, конец: int, родитель: Optional[Поле], глубина: int,
-             оборван: bool, сводка: Dict[int, str]) -> Optional[int]:
+def _pfcp_ie(р: Разбор, у: Уровень, м: int, конец: int, родитель: Поле | None, глубина: int,
+             оборван: bool, сводка: dict[int, str]) -> int | None:
     """IE PFCP (TS 29.244, 8.1.1): тип (2), длина (2); тип ≥ 32768 — с Enterprise ID (2) в длине."""
     д = р.д
     место = м
@@ -1008,7 +1007,7 @@ def _pfcp_одно(р: Разбор, м: int, конец: int):
     у.поле("Номер", "pfcp.seqno", номер, место, 3)
     if mp:
         у.поле("Приоритет сообщения", "pfcp.mp", д[место + 3] >> 4, место + 3, 1)
-    сводка: Dict[int, str] = {}
+    сводка: dict[int, str] = {}
     конец_ie = _pfcp_ie(р, у, м + заг, есть, None, 0, оборван, сводка)
     if конец_ie is None or (not оборван and конец_ie != есть):
         del р.п.уровни[р.п.уровни.index(у):]
@@ -1065,7 +1064,7 @@ APER_ВИДЫ = {0: "initiatingMessage", 1: "successfulOutcome", 2: "unsuccessfu
 APER_ВАЖНОСТЬ = {0: "reject", 1: "ignore", 2: "notify"}
 
 
-def _aper_длина(д: bytes, м: int) -> Optional[Tuple[int, int]]:
+def _aper_длина(д: bytes, м: int) -> tuple[int, int] | None:
     """Определитель длины X.691, 10.9.3.6–10.9.3.7: (длина, байт определителя); фрагменты — None."""
     б = д[м]
     if not б & 0x80:
@@ -1075,7 +1074,7 @@ def _aper_длина(д: bytes, м: int) -> Optional[Tuple[int, int]]:
     return None
 
 
-def _aper_ie(д: bytes, м: int, конец: int) -> Optional[List[Tuple[int, int, int, int]]]:
+def _aper_ie(д: bytes, м: int, конец: int) -> list[tuple[int, int, int, int]] | None:
     """ProtocolIE-Container, если значение — SEQUENCE {protocolIEs, ...} (так устроены все
     сообщения S1AP/NGAP/X2AP): бит расширения и 7 бит выравнивания (0x00), число IE
     (0..65535, 2 байта), затем IE: id (2), criticality (2 бита + выравнивание), открытый тип.
@@ -1098,10 +1097,10 @@ def _aper_ie(д: bytes, м: int, конец: int) -> Optional[List[Tuple[int, in
 
 
 #: Разбор значения IE по (протокол, id IE) → сводка или None: S1AP 26 и NGAP 38 — NAS-PDU (модуль nas).
-APER_IE_РАЗБОР: Dict[Tuple[str, int], Callable[[Разбор, int, int], Optional[str]]] = {}
+APER_IE_РАЗБОР: dict[tuple[str, int], Callable[[Разбор, int, int], str | None]] = {}
 
 
-def _aper_pdu(р: Разбор, м: int, конец: int, имя: str, полное: str, процедуры: Dict[int, str],
+def _aper_pdu(р: Разбор, м: int, конец: int, имя: str, полное: str, процедуры: dict[int, str],
               вариантов: int = 3) -> bool:
     """S1AP-PDU / NGAP-PDU / X2AP-PDU ::= CHOICE {initiatingMessage, successfulOutcome,
     unsuccessfulOutcome, ...}: бит расширения 0 и индекс 0–2 (байт 0x00/0x20/0x40; у RANAP-PDU
@@ -1489,7 +1488,7 @@ def tacacs(р: Разбор, м: int, конец: int) -> bool:
 # BER (ITU-T X.690) для Kerberos и LDAP
 # ==============================================================================================
 
-def _ber(д: bytes, м: int, конец: int) -> Tuple[int, int, int]:
+def _ber(д: bytes, м: int, конец: int) -> tuple[int, int, int]:
     """Тег (однобайтовый), начало и конец значения. Заголовок за краем — Мало; неопределённая
     длина, длинный тег, больше 4 байт длины — не DER, значит не наше. Конец значения может
     быть за ``конец`` — это решает вызывающий (оборван или не наше)."""
@@ -1510,7 +1509,7 @@ def _ber(д: bytes, м: int, конец: int) -> Tuple[int, int, int]:
     return тег, м, м + дл
 
 
-def _ber_дети(д: bytes, м: int, конец: int, есть: int) -> List[Tuple[int, int, int, int]]:
+def _ber_дети(д: bytes, м: int, конец: int, есть: int) -> list[tuple[int, int, int, int]]:
     """Элементы внутри составного значения [м, конец): (тег, место, начало, конец значения).
     Не дальше записанного (``есть``): элемент за краем — последний; за пределом родителя — не наше."""
     итог = []
@@ -1561,7 +1560,7 @@ class _Kerberos:
 
     def __init__(self, р: Разбор, у: Уровень, есть: int):
         self.р, self.у, self.д, self.есть = р, у, р.д, есть
-        self.сводка: Dict[str, str] = {}
+        self.сводка: dict[str, str] = {}
 
     def дети(self, нач: int, кон: int):
         return _ber_дети(self.д, нач, кон, self.есть)
@@ -1706,8 +1705,8 @@ class _Kerberos:
         п.текст = ", ".join(виды)
 
 
-def _kerberos_сообщение(р: Разбор, м: int, есть: int, объявлено_до: Optional[int], начало_уровня: int,
-                        tcp_длина: Optional[int]) -> bool:
+def _kerberos_сообщение(р: Разбор, м: int, есть: int, объявлено_до: int | None, начало_уровня: int,
+                        tcp_длина: int | None) -> bool:
     """Проверка и разбор сообщения [APPLICATION n] (RFC 4120, 5.4.1, 5.4.2, 5.5.1, 5.5.2, 5.9.1)."""
     д = р.д
     тег, нач, кон = _ber(д, м, есть)
@@ -2016,6 +2015,4 @@ prilozh.КАК["udp"].update({"GTP-C": gtp_c, "GTP'": gtp_prime, "PFCP": pfcp, "
 prilozh.ЭВРИСТИКИ_TCP.append(diameter_эвристика)
 razbor.ДОП_SCTP_PPID.update({46: diameter, 18: s1ap, 60: ngap, 27: x2ap})
 razbor.ДОП_SCTP_ПОРТ.update({3868: diameter, 36412: s1ap, 38412: ngap, 36422: x2ap, 29118: sgsap})
-razbor.ДОП_УРОВНИ.update({имя: "прикладной" for имя in (
-    "Diameter", "GTP", "GTPv2", "GTP'", "PFCP", "S1AP", "NGAP", "X2AP", "SGsAP", "GSMTAP", "TACACS+",
-    "Kerberos", "LDAP")})
+razbor.ДОП_УРОВНИ.update(dict.fromkeys(("Diameter", "GTP", "GTPv2", "GTP'", "PFCP", "S1AP", "NGAP", "X2AP", "SGsAP", "GSMTAP", "TACACS+", "Kerberos", "LDAP"), "прикладной"))

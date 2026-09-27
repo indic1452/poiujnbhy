@@ -47,10 +47,11 @@ import shutil
 import subprocess
 import tempfile
 import threading
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Sequence, Tuple
+from typing import Any
 
 from ...packages import pip_hint
 from .. import registry
@@ -153,9 +154,9 @@ def _executable(path: Path) -> bool:
     return _windows() or os.access(str(path), os.X_OK)
 
 
-def _candidate_paths() -> List[Path]:
+def _candidate_paths() -> list[Path]:
     """Стандартные места установки для текущей операционной системы."""
-    candidates: List[Path] = []
+    candidates: list[Path] = []
     if _windows():
         for variable in _WINDOWS_ENV_DIRS:
             base = os.environ.get(variable, "").strip()
@@ -272,12 +273,12 @@ class SofficeResult:
     warning: str = ""
     #: Как получен результат — уходит в ``meta['converted_via']``.
     via: str = ""
-    command: Tuple[str, ...] = ()
+    command: tuple[str, ...] = ()
     #: Профиль пользователя этого запуска (нужен тестам и диагностике).
     profile: Path | None = None
 
 
-def _kill_tree(process: "subprocess.Popen[bytes]") -> None:
+def _kill_tree(process: subprocess.Popen[bytes]) -> None:
     """Убить soffice вместе с порождённым soffice.bin."""
     if os.name == "posix":
         try:
@@ -293,9 +294,9 @@ def _kill_tree(process: "subprocess.Popen[bytes]") -> None:
         pass
 
 
-def _run(command: Sequence[str], timeout: float, cwd: Path) -> Tuple[int, str]:
+def _run(command: Sequence[str], timeout: float, cwd: Path) -> tuple[int, str]:
     """Запустить LibreOffice. Бросает :class:`subprocess.TimeoutExpired` по таймауту."""
-    options: Dict[str, Any] = {}
+    options: dict[str, Any] = {}
     if os.name == "posix":
         # Своя группа процессов: иначе по таймауту умрёт лаунчер, а soffice.bin
         # останется висеть и держать временный каталог.
@@ -461,19 +462,19 @@ def convert_with_soffice(
 
 # ------------------------------------------- передача существующим конвертерам ---
 
-def _docx_converter() -> Tuple[Callable[[Path], ConvertedDocument] | None, str]:
+def _docx_converter() -> tuple[Callable[[Path], ConvertedDocument] | None, str]:
     from ..convert import _convert_docx
 
     return _convert_docx, ""
 
 
-def _pdf_converter() -> Tuple[Callable[[Path], ConvertedDocument] | None, str]:
+def _pdf_converter() -> tuple[Callable[[Path], ConvertedDocument] | None, str]:
     from ..convert import _convert_pdf
 
     return _convert_pdf, ""
 
 
-def _pptx_converter() -> Tuple[Callable[[Path], ConvertedDocument] | None, str]:
+def _pptx_converter() -> tuple[Callable[[Path], ConvertedDocument] | None, str]:
     try:
         from .office import convert_pptx
     except ImportError as error:
@@ -485,7 +486,7 @@ def _pptx_converter() -> Tuple[Callable[[Path], ConvertedDocument] | None, str]:
     return convert_pptx, ""
 
 
-def _xlsx_converter() -> Tuple[Callable[[Path], ConvertedDocument] | None, str]:
+def _xlsx_converter() -> tuple[Callable[[Path], ConvertedDocument] | None, str]:
     try:
         from .office import convert_xlsx
     except ImportError as error:
@@ -528,7 +529,7 @@ def _via_soffice(
     *,
     target: str,
     source_format: str,
-    inner: Callable[[], Tuple[Callable[[Path], ConvertedDocument] | None, str]],
+    inner: Callable[[], tuple[Callable[[Path], ConvertedDocument] | None, str]],
     timeout: float | None = None,
 ) -> ConvertedDocument:
     """Общая схема: LibreOffice → современный формат → готовый конвертер."""
@@ -653,7 +654,7 @@ def convert_pub(path: Path) -> ConvertedDocument:
 
 
 #: Во что превращать OpenDocument, если родной конвертер недоступен.
-_ODF_TARGETS: Dict[str, Tuple[str, str]] = {
+_ODF_TARGETS: dict[str, tuple[str, str]] = {
     ".odt": ("docx", "text"),
     ".ott": ("docx", "text"),
     ".fodt": ("docx", "text"),
@@ -734,7 +735,7 @@ def _head_token(level: int) -> str:
     return f"@@RG-H{level}@@"
 
 
-def _brace_group(text: str, start: int) -> Tuple[str, int]:
+def _brace_group(text: str, start: int) -> tuple[str, int]:
     """Содержимое группы, начинающейся с ``{`` в позиции ``start``.
 
     Возвращает пару (содержимое без внешних скобок, позиция за закрывающей
@@ -758,9 +759,9 @@ def _brace_group(text: str, start: int) -> Tuple[str, int]:
     return text[start + 1 :], length
 
 
-def _top_level_groups(text: str) -> List[str]:
+def _top_level_groups(text: str) -> list[str]:
     """Группы первого уровня внутри содержимого группы."""
-    groups: List[str] = []
+    groups: list[str] = []
     index = 0
     length = len(text)
     while index < length:
@@ -808,13 +809,13 @@ def _codepage(text: str) -> int:
     return page if page > 0 else _DEFAULT_CODEPAGE
 
 
-def _heading_styles(text: str) -> Dict[int, int]:
+def _heading_styles(text: str) -> dict[int, int]:
     """Номера стилей заголовков из таблицы стилей: ``{\\s1 … heading 1;}``."""
     start = text.find("{\\stylesheet")
     if start < 0:
         return {}
     body, _end = _brace_group(text, start)
-    styles: Dict[int, int] = {}
+    styles: dict[int, int] = {}
     for group in _top_level_groups(body):
         number = _STYLE_RE.search(group)
         if not number:
@@ -830,7 +831,7 @@ def _heading_styles(text: str) -> Dict[int, int]:
     return styles
 
 
-def _paragraph_level(chunk: str, styles: Dict[int, int]) -> int | None:
+def _paragraph_level(chunk: str, styles: dict[int, int]) -> int | None:
     """Уровень заголовка абзаца: по ``\\outlinelevelN`` или по номеру стиля."""
     if "\\intbl" in chunk or "\\cell" in chunk:
         # Абзац внутри таблицы заголовком не бывает, а метка сломала бы строку.
@@ -849,7 +850,7 @@ def _paragraph_level(chunk: str, styles: Dict[int, int]) -> int | None:
     return None
 
 
-def _mark_rtf_structure(text: str) -> Tuple[str, int, int]:
+def _mark_rtf_structure(text: str) -> tuple[str, int, int]:
     """Расставить в исходном RTF метки заголовков и разрывов страниц.
 
     Метка заголовка приписывается **в конец** абзаца, перед ``\\par``: в начале
@@ -857,7 +858,7 @@ def _mark_rtf_structure(text: str) -> Tuple[str, int, int]:
     вставлять нельзя.
     """
     styles = _heading_styles(text)
-    pieces: List[str] = []
+    pieces: list[str] = []
     headings = 0
     position = 0
     for match in _PAR_RE.finditer(text):
@@ -897,7 +898,7 @@ def _is_table_row(line: str) -> bool:
     return stripped.endswith("|") and len(stripped) > 1
 
 
-def _row_cells(line: str) -> List[str]:
+def _row_cells(line: str) -> list[str]:
     cells = line.rstrip().split("|")
     if cells and not cells[-1].strip():
         cells.pop()
@@ -915,15 +916,15 @@ def _list_item(line: str) -> str | None:
     return None
 
 
-def _rtf_markdown(plain: str, breaks: int) -> Tuple[str, int, int]:
+def _rtf_markdown(plain: str, breaks: int) -> tuple[str, int, int]:
     """Плоский текст striprtf → Markdown.
 
     Возвращает (текст, число таблиц, число страниц). Страницы считаются по
     фактически расставленным маркерам, а не по числу найденных ``\\page``:
     разрыв мог оказаться в колонтитуле, который striprtf выбрасывает.
     """
-    blocks: List[str] = []
-    rows: List[List[str]] = []
+    blocks: list[str] = []
+    rows: list[list[str]] = []
     tables = 0
     page = 1
 

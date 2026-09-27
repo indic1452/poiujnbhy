@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Годность названия документа.
 
 Название документа — не украшение. Помощник строит из названий карту
@@ -44,7 +43,7 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, Iterable, List, Sequence, Tuple
+from collections.abc import Iterable, Sequence
 
 __all__ = [
     "MIN_MOJIBAKE_RUN",
@@ -264,7 +263,7 @@ def normalize_title(text: str) -> str:
 
 
 def repeated_titles(values: Iterable[str], *,
-                    threshold: int = MIN_TEMPLATE_COPIES) -> Dict[str, int]:
+                    threshold: int = MIN_TEMPLATE_COPIES) -> dict[str, int]:
     """Названия, которые носят сразу много документов, — и сколько именно.
 
     Перечислить все бланки списком нельзя: в каждом учреждении они свои.
@@ -276,7 +275,7 @@ def repeated_titles(values: Iterable[str], *,
     «ГОСТ Р 53363-2009» в разных папках — не бланк, а две копии, и
     называются они правильно.
     """
-    счёт: Dict[str, int] = {}
+    счёт: dict[str, int] = {}
     for значение in values:
         строка = str(значение or "").strip()
         if not строка or _ОБОЗНАЧЕНИЕ.search(строка):
@@ -323,7 +322,7 @@ def title_problem(text: str) -> str | None:
 
 
 def choose_title(candidates: Sequence[str], *, filename: str = "",
-                 ) -> Tuple[str, str, List[str]]:
+                 ) -> tuple[str, str, list[str]]:
     """Выбрать годное название. Возвращает (название, откуда, отвергнутое).
 
     Ступени пробуются по порядку, и каждая проверяется. Имя файла стоит
@@ -331,8 +330,8 @@ def choose_title(candidates: Sequence[str], *, filename: str = "",
     точнее — КОГДА они годные. Негодное с первой ступени больше не
     побеждает годное имя файла: ровно на этом и держалась беда.
     """
-    отвергнуто: List[str] = []
-    ступени: List[Tuple[str, str]] = [(str(значение or ""), "документ")
+    отвергнуто: list[str] = []
+    ступени: list[tuple[str, str]] = [(str(значение or ""), "документ")
                                       for значение in candidates]
     if filename:
         ступени.append((title_from_filename(filename), "имя файла"))

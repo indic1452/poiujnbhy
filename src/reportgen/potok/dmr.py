@@ -14,7 +14,6 @@ DMRFullLC.cpp (LC с RS (12, 9) и масками 0x96/0x99), CRC.cpp и DMRCSBK
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -22,7 +21,7 @@ from .nahodka import Находка
 
 ПАКЕТ = 264
 #: Синхрослова (48 бит; DMRDefines.h, те же — у DSD записью дибитов).
-СИНХРО: Dict[str, int] = {
+СИНХРО: dict[str, int] = {
     "БС, речь": 0x755FD7DF75F7, "БС, данные": 0xDFF57D75DF5D,
     "АС, речь": 0x7F7D5DD57DFD, "АС, данные": 0xD5D7F77FD757,
     "прямой режим, слот 1, речь": 0x5D577F7757FF, "прямой режим, слот 1, данные": 0xF7FDD5DDFD55,
@@ -98,7 +97,7 @@ _QR = (
 СЛОВА_EMB = np.array(_QR, dtype=np.int64)
 
 
-def _ближайшее(слова: np.ndarray, принято: np.ndarray, исправляет: int) -> Tuple[np.ndarray, np.ndarray]:
+def _ближайшее(слова: np.ndarray, принято: np.ndarray, исправляет: int) -> tuple[np.ndarray, np.ndarray]:
     """Декодер по ближайшему слову: (номер слова, число исправленных бит; −1 — не исправимо)."""
     расстояния = np.bitwise_count(принято[:, None] ^ слова[None, :]).astype(np.int64)
     номер = расстояния.argmin(axis=1)
@@ -114,7 +113,7 @@ def _число(биты: np.ndarray) -> np.ndarray:
 
 # -- BPTC (196, 96) -------------------------------------------------------------------------
 
-def _хэмминг(уравнения: List[List[int]], k: int) -> Tuple[np.ndarray, Dict[int, int]]:
+def _хэмминг(уравнения: list[list[int]], k: int) -> tuple[np.ndarray, dict[int, int]]:
     """Проверочная матрица из уравнений кодера Hamming.cpp и таблица синдром → бит."""
     n = k + len(уравнения)
     H = np.zeros((len(уравнения), n), dtype=np.uint8)
@@ -135,7 +134,7 @@ H13, МЕСТО13 = _хэмминг([[0, 1, 3, 5, 6], [0, 1, 2, 4, 6, 7], [0, 1,
 ДАННЫЕ_BPTC = np.array(list(range(4, 12)) + [a for r in range(1, 9) for a in range(r * 15 + 1, r * 15 + 12)])
 
 
-def _исправить(матрица: np.ndarray, места: np.ndarray, H: np.ndarray, место: Dict[int, int]) -> int:
+def _исправить(матрица: np.ndarray, места: np.ndarray, H: np.ndarray, место: dict[int, int]) -> int:
     """Одна ошибка на слово Хэмминга по всем пакетам сразу; число исправленных бит."""
     слова = матрица[:, места]                                  # (пакеты, слов, n)
     синдром = (np.einsum("psn,jn->psj", слова, H) & 1)
@@ -149,7 +148,7 @@ def _исправить(матрица: np.ndarray, места: np.ndarray, H: n
     return исправлено
 
 
-def bptc(сырые: np.ndarray) -> Tuple[np.ndarray, int]:
+def bptc(сырые: np.ndarray) -> tuple[np.ndarray, int]:
     """BPTC (196, 96): (пакеты, 196) принятых бит → (пакеты, 96) данных и число исправлений."""
     принято = np.asarray(сырые, dtype=np.uint8)[:, ПЕРЕМЕЖЕНИЕ]
     d = принято.copy()
@@ -215,7 +214,7 @@ def crc_ccitt(данные: bytes) -> int:
 
 # -- поиск и разбор пакетов ----------------------------------------------------------------
 
-def синхрослова(биты: np.ndarray) -> List[Tuple[int, str, int]]:
+def синхрослова(биты: np.ndarray) -> list[tuple[int, str, int]]:
     """Места синхрослов DMR (не больше ОШИБОК_СИНХРО несовпадений): (бит, вид, ошибок)."""
     биты = np.asarray(биты, dtype=np.uint8)
     итог = []
@@ -235,7 +234,7 @@ def синхрослова(биты: np.ndarray) -> List[Tuple[int, str, int]]:
     return итог
 
 
-def разобрать_пакеты(биты: np.ndarray, начала: List[int]) -> Dict[str, object]:
+def разобрать_пакеты(биты: np.ndarray, начала: list[int]) -> dict[str, object]:
     """Тип слота, BPTC и поля пакетов данных, начинающихся в ``начала``."""
     биты = np.asarray(биты, dtype=np.uint8)
     пакеты = np.stack([биты[н:н + ПАКЕТ] for н in начала])
@@ -248,7 +247,7 @@ def _id(б: bytes) -> int:
     return int.from_bytes(б, "big")
 
 
-def поля(тип: int, данные: np.ndarray) -> Optional[Tuple[str, str]]:
+def поля(тип: int, данные: np.ndarray) -> tuple[str, str] | None:
     """Содержимое 96 бит по типу данных: (вид, строка) — только при верной проверке."""
     б = bytearray(np.packbits(данные).tobytes())
     if тип in МАСКИ_LC:
@@ -279,7 +278,7 @@ def поля(тип: int, данные: np.ndarray) -> Optional[Tuple[str, str]]
     return None
 
 
-def emb_сверхкадров(биты: np.ndarray, речь: List[int], слот: int) -> str:
+def emb_сверхкадров(биты: np.ndarray, речь: list[int], слот: int) -> str:
     """EMB пакетов B–F каждого сверхкадра (через ``слот`` бит в том же слоте): цвет, PI, LCSS."""
     слова = []
     for м in речь:
@@ -300,7 +299,7 @@ def emb_сверхкадров(биты: np.ndarray, речь: List[int], сло
             + (f"; признак шифрования PI у {pi}" if pi else ""))
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     """DMR: синхрослова с шагом, кратным 264 (или 288 у БС), тип слота с верным Golay, поля пакетов."""
     биты = np.asarray(биты, dtype=np.uint8)
     места = синхрослова(биты)

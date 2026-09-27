@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Маршрутизация, туннели и VPN: пакеты собраны здесь по RFC, независимо от разборщиков.
 
 PIM, EIGRP, RSVP, DCCP, UDP-Lite (по номеру протокола IP); LDP, Geneve, LISP, CAPWAP,
@@ -200,13 +199,13 @@ def stun(тип, атрибуты=b"", отпечаток=True, магия=МА�
 
 
 def xor_адрес4(адрес, порт):
-    x = bytes(a ^ b for a, b in zip(с.a4(адрес), struct.pack(">I", МАГИЯ)))
+    x = bytes(a ^ b for a, b in zip(с.a4(адрес), struct.pack(">I", МАГИЯ), strict=False))
     return struct.pack(">BBH", 0, 1, порт ^ 0x2112) + x
 
 
 def xor_адрес6(адрес, порт):
     ключ = struct.pack(">I", МАГИЯ) + ТРАНЗАКЦИЯ
-    x = bytes(a ^ b for a, b in zip(с.a6(адрес), ключ))
+    x = bytes(a ^ b for a, b in zip(с.a6(адрес), ключ, strict=False))
     return struct.pack(">BBH", 0, 2, порт ^ 0x2112) + x
 
 
@@ -1031,18 +1030,18 @@ class СлучайныеTests(unittest.TestCase):
     def test_номера_протоколов_ip(self):
         for номер in (103, 88, 46, 33, 136):
             with self.subTest(номер=номер):
-                self.проверить(lambda н: с.eth(с.ip(н, номер)), зерно=номер)
+                self.проверить(lambda н, номер=номер: с.eth(с.ip(н, номер)), зерно=номер)
 
     def test_порты_udp(self):
         for порт in (646, 6081, 4341, 4342, 5246, 5247, 1194, 51820, 3478, 3544):
             with self.subTest(порт=порт):
-                self.проверить(lambda н: udp_пакет(н, 40000, порт), зерно=порт)
+                self.проверить(lambda н, порт=порт: udp_пакет(н, 40000, порт), зерно=порт)
         self.проверить(lambda н: udp_пакет(н, 40000, 6635), СВОИ | {"MPLS"}, зерно=6635)
 
     def test_порты_tcp_и_признаки(self):
         for порт in (646, 3478):
             with self.subTest(порт=порт):
-                self.проверить(lambda н: tcp_пакет(н, 40000, порт), зерно=порт + 1)
+                self.проверить(lambda н, порт=порт: tcp_пакет(н, 40000, порт), зерно=порт + 1)
         # OpenVPN по TCP: у пакета данных проверяемо только 16-битное поле длины кадра
         # (совпадает с сегментом с вероятностью 2^-16), остальное зашифровано. Допуск — 0,5 %.
         for зерно in (1195, 1):

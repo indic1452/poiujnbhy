@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Обозначения документов, названные в вопросе.
 
 «Есть ли у нас RFC 4818», «структура цикла G.732» — вопросы, на которые в
@@ -15,7 +14,6 @@
 from __future__ import annotations
 
 import re
-from typing import List
 
 __all__ = [
     "MAX_DESIGNATIONS",
@@ -36,7 +34,7 @@ _FILE_SUFFIXES = frozenset(
 )
 
 
-def name_parts(text: str) -> List[str]:
+def name_parts(text: str) -> list[str]:
     """Имя документа как последовательность слов и чисел.
 
     Написание разное — «RFC 4818», «RFC4818», «RFC-4818», «rfc4818.txt», —
@@ -191,7 +189,7 @@ def _номера(строка: str):
             yield match.end(), код, f"{серия}.{{}}", len(номер)
 
 
-def implied_designations(text: str) -> List[str]:
+def implied_designations(text: str) -> list[str]:
     """Обозначения, которые в тексте названы НЕ полностью, — это ДОГАДКИ.
 
     Отдел спрашивает так: «в чем разница стандарта g 733 от 734». Второй
@@ -220,7 +218,7 @@ def implied_designations(text: str) -> List[str]:
     пробелу, что это документ, нельзя, а свериться с описью — можно.
     """
     строка = str(text or "")
-    найдено: List[str] = []
+    найдено: list[str] = []
     видели = {"".join(name_parts(имя)) for имя in designations_in(строка)}
 
     def добавить(имя: str) -> None:
@@ -242,7 +240,7 @@ def implied_designations(text: str) -> List[str]:
     return найдено[:MAX_DESIGNATIONS]
 
 
-def designations_in(text: str) -> List[str]:
+def designations_in(text: str) -> list[str]:
     """Обозначения документов, названные в тексте, в порядке появления.
 
     Нужны, чтобы система могла свериться с описью САМА, а не надеяться, что
@@ -257,7 +255,7 @@ def designations_in(text: str) -> List[str]:
     # модель, и она называет главное раньше. Раньше сортировка шла по
     # шаблонам: на «G.703, G.704, RFC 4818» с пределом в два документа
     # приходил RFC и одна рекомендация вместо двух названных первыми.
-    места: List[tuple] = []
+    места: list[tuple] = []
     for match in _DESIGNATION_RE.finditer(строка):
         приставка = re.sub(r"\s+", " ", match.group("prefix")).strip()
         # Приставку приводим к тому виду, в котором её пишут в названиях:
@@ -272,7 +270,7 @@ def designations_in(text: str) -> List[str]:
         for match in регулярное.finditer(строка):
             места.append((match.start(), _itu_code(match.group("code"))))
 
-    найдено: List[str] = []
+    найдено: list[str] = []
     видели = set()
     for _, значение in sorted(места, key=lambda пара: пара[0]):
         ключ = "".join(name_parts(значение))

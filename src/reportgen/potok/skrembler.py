@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Скремблер: полином — из самого потока, проверка — снятием.
 
 Два способа найти полином, и оба работают без подсказки стандарта.
@@ -22,7 +21,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -31,7 +30,7 @@ from .nahodka import Находка
 from .statistika import энтропия
 
 #: Известные самосинхронизирующиеся скремблеры: отводы (степени x^-k).
-ИЗВЕСТНЫЕ: Dict[str, Tuple[int, ...]] = {
+ИЗВЕСТНЫЕ: dict[str, tuple[int, ...]] = {
     "ITU-T V.35 (1 + x⁻³ + x⁻²⁰)": (3, 20),
     "ITU-T V.22/V.22bis (1 + x⁻¹⁴ + x⁻¹⁷)": (14, 17),
     "ITU-T V.32/V.34, вызывающий (1 + x⁻¹⁸ + x⁻²³)": (18, 23),
@@ -47,7 +46,7 @@ from .statistika import энтропия
 #: x⁵ + x³ + 1, регистр в начале каждого кадра (после ASM) — единицы; сверено по
 #: gr-satellites (ccsds_descrambler: GNU Radio additive_scrambler 0xA9, 0xFF, 7, сброс на
 #: каждом кадре) и lfsr.h GNU Radio — последовательность начинается с FF 48 0E C0.
-ИЗВЕСТНЫЕ_ПСП: Dict[Tuple[Tuple[int, ...], str], str] = {
+ИЗВЕСТНЫЕ_ПСП: dict[tuple[tuple[int, ...], str], str] = {
     ((1, 3, 5, 8), "11111111"): "рандомизатор CCSDS (131.0-B): x⁸ + x⁷ + x⁵ + x³ + 1, "
                                 "в начале кадра — единицы",
 }
@@ -69,7 +68,7 @@ def снять(биты: np.ndarray, отводы: Sequence[int]) -> np.ndarray:
     return выход[max(отводы):]
 
 
-def берлекэмп_мэсси(биты: Sequence[int]) -> Tuple[int, int]:
+def берлекэмп_мэсси(биты: Sequence[int]) -> tuple[int, int]:
     """Линейная сложность и полином связи (бит i — коэффициент при x^i)."""
     c, b, l, m = 1, 1, 0, 1
     история = 0
@@ -135,11 +134,11 @@ def _как_число(отводы: Sequence[int]) -> int:
     return 1 | sum(1 << t for t in отводы)
 
 
-def _в_отводы(полином: int) -> Tuple[int, ...]:
+def _в_отводы(полином: int) -> tuple[int, ...]:
     return tuple(i for i in range(1, полином.bit_length()) if полином >> i & 1)
 
 
-def кандидаты_бм(биты: np.ndarray) -> List[Tuple[Tuple[int, ...], int]]:
+def кандидаты_бм(биты: np.ndarray) -> list[tuple[tuple[int, ...], int]]:
     """Полиномы, найденные Берлекэмпом — Мэсси в окнах с малой сложностью.
 
     Число отводов не ограничено: у многоотводного скремблера (5, 7, 9
@@ -151,7 +150,7 @@ def кандидаты_бм(биты: np.ndarray) -> List[Tuple[Tuple[int, ...],
     сложность около половины окна и в разных окнах не повторяется, поэтому
     засчитываются только полиномы, найденные хотя бы в двух окнах.
     """
-    from .svyortka import нод          # noqa: PLC0415 — общая арифметика GF(2)[x]
+    from .svyortka import нод  # noqa: PLC0415 — общая арифметика GF(2)[x]
     найдено: Counter = Counter()
     шаг = max(ОКНО_БМ, (len(биты) - ОКНО_БМ) // ОКОН_БМ)
     for начало in range(0, len(биты) - ОКНО_БМ, шаг):
@@ -213,7 +212,7 @@ def псп(отводы: Sequence[int], начало: np.ndarray, длина: in
     return ряд
 
 
-def _простой(длина: int) -> List[Tuple[str, np.ndarray]]:
+def _простой(длина: int) -> list[tuple[str, np.ndarray]]:
     """Чем бывают заполнены паузы: нули, единицы, флаги HDLC в любой фазе."""
     флаг = np.array([0, 1, 1, 1, 1, 1, 1, 0], dtype=np.uint8)
     варианты = [("нули", np.zeros(длина, dtype=np.uint8)),
@@ -225,7 +224,7 @@ def _простой(длина: int) -> List[Tuple[str, np.ndarray]]:
 
 
 def аддитивный(биты: np.ndarray, отводы: Sequence[int]
-               ) -> Tuple[float, np.ndarray, int, str] | None:
+               ) -> tuple[float, np.ndarray, int, str] | None:
     """Снять аддитивную ПСП с этим полиномом: мера, снятый ряд, откуда, чем заполнены паузы.
 
     Самосинхронизирующее снятие тем же полиномом ПСП гасит, но и данные
@@ -264,8 +263,8 @@ def аддитивный(биты: np.ndarray, отводы: Sequence[int]
     return мера, биты[место:] ^ ряд, место, имя
 
 
-def _кандидаты(выборка: np.ndarray, бм) -> Dict[Tuple[int, ...], str]:
-    кандидаты: Dict[Tuple[int, ...], str] = {}
+def _кандидаты(выборка: np.ndarray, бм) -> dict[tuple[int, ...], str]:
+    кандидаты: dict[tuple[int, ...], str] = {}
     for имя, отводы in ИЗВЕСТНЫЕ.items():
         кандидаты.setdefault(tuple(sorted(отводы)), имя)
     for отводы, счёт in бм:
@@ -277,7 +276,7 @@ def _кандидаты(выборка: np.ndarray, бм) -> Dict[Tuple[int, ...
     return кандидаты
 
 
-def _толпа(выборка: np.ndarray, кандидаты) -> Tuple[float, list]:
+def _толпа(выборка: np.ndarray, кандидаты) -> tuple[float, list]:
     """Насколько лучший полином выделяется из толпы — и толпа, лучшими вперёд.
 
     Решает не величина меры, а отрыв: неверный полином оставляет поток
@@ -324,7 +323,7 @@ def найти(биты: np.ndarray, *, исходная_мера: float | None 
     лучшие += [отводы for отводы, _ in бм if отводы not in лучшие][:24]
     оценки = sorted(((мера_полная(снять(выборка, отводы)), отводы) for отводы in лучшие),
                     reverse=True)
-    from .svyortka import делить       # noqa: PLC0415
+    from .svyortka import делить  # noqa: PLC0415
 
     def кратен(a, b) -> bool:
         """Один полином делит другой — одно семейство, а не соперники."""
@@ -422,7 +421,7 @@ def найти(биты: np.ndarray, *, исходная_мера: float | None 
 
 
 def столбцы_кадра(биты: np.ndarray, длина: int, начало: int = 0, кадров_до: int = 4000
-                  ) -> Tuple[np.ndarray, np.ndarray]:
+                  ) -> tuple[np.ndarray, np.ndarray]:
     """Большинство по каждому столбцу растра и его устойчивость (0,5…1)."""
     ряд = биты[начало:]
     кадров = min(кадров_до, len(ряд) // длина)
@@ -436,7 +435,7 @@ def _назад(ряд: np.ndarray, отводы: Sequence[int], сколько:
     """Продолжить ПСП назад на ``сколько`` бит: s[m−1] = s[m−1+L] ⊕ ⊕ s[m−1+L−t] (t < L)."""
     L = max(отводы)
     младшие = [t for t in отводы if t < L]
-    назад: List[int] = []                       # s[m−1], s[m−2], … по порядку
+    назад: list[int] = []                       # s[m−1], s[m−2], … по порядку
     окно = [int(б) for б in ряд[:L]]            # s[m] … s[m+L−1]
     for _ in range(сколько):
         # a[j] = s[m−1+j] после вставки; s[m−1] = a[L] ⊕ ⊕ a[L−t] — через окно:
@@ -449,7 +448,7 @@ def _назад(ряд: np.ndarray, отводы: Sequence[int], сколько:
                            np.asarray(ряд, dtype=np.uint8)])
 
 
-def _устойчивый_участок(уст: np.ndarray, пропуск: int) -> Tuple[int, int]:
+def _устойчивый_участок(уст: np.ndarray, пропуск: int) -> tuple[int, int]:
     """Самый длинный участок подряд устойчивых столбцов после пропуска: (начало, длина)."""
     хорошие = np.concatenate([[False], уст[пропуск:] >= УСТОЙЧИВЫЙ, [False]])
     края = np.flatnonzero(np.diff(хорошие.astype(np.int8)))
@@ -467,7 +466,7 @@ def _базис(отводы: Sequence[int], длина: int) -> np.ndarray:
                     dtype=np.uint8)
 
 
-def _решить(A: np.ndarray, y: np.ndarray) -> Optional[np.ndarray]:
+def _решить(A: np.ndarray, y: np.ndarray) -> np.ndarray | None:
     """x: A·x = y над GF(2) (A — уравнения × L); None, если несовместно."""
     from . import gf2  # noqa: PLC0415
     L = A.shape[1]
@@ -483,7 +482,7 @@ def _решить(A: np.ndarray, y: np.ndarray) -> Optional[np.ndarray]:
 
 
 def начальное_по_отводам(главные: np.ndarray, уст: np.ndarray, отводы: Sequence[int],
-                         пропуск: int = 0) -> Tuple[Optional[np.ndarray], float]:
+                         пропуск: int = 0) -> tuple[np.ndarray | None, float]:
     """Начальное состояние при известных отводах: по устойчивым столбцам кадра.
 
     В устойчивом участке данные постоянны — нули или единицы (заполнение),
@@ -502,8 +501,8 @@ def начальное_по_отводам(главные: np.ndarray, уст: n
         return None, 0.0
     y = главные[пропуск:]
     края = np.flatnonzero(np.diff(np.concatenate([[0], хорошие.astype(np.int8), [0]])))
-    участки = sorted(zip(края[::2], края[1::2]), key=lambda у: у[0] - у[1])
-    лучшее: Tuple[Optional[np.ndarray], float] = (None, 0.0)
+    участки = sorted(zip(края[::2], края[1::2], strict=False), key=lambda у: у[0] - у[1])
+    лучшее: tuple[np.ndarray | None, float] = (None, 0.0)
     for от, до in участки[:12]:
         if до - от < L:
             break
@@ -524,7 +523,7 @@ def начальное_по_отводам(главные: np.ndarray, уст: n
 
 
 def найти_по_кадру(биты: np.ndarray, длина: int, *, начало: int = 0, пропуск: int = 0,
-                   отводы: Optional[Sequence[int]] = None) -> Optional[Dict[str, object]]:
+                   отводы: Sequence[int] | None = None) -> dict[str, object] | None:
     """Кадровый аддитивный скремблер: отводы (если не даны) и начальное состояние."""
     главные, уст = столбцы_кадра(биты, длина, начало)
     устойчивых = int(np.sum(уст[пропуск:] >= УСТОЙЧИВЫЙ))
@@ -611,7 +610,7 @@ def снять_по_кадру(биты: np.ndarray, отводы: Sequence[int]
 НАЧАЛ_ПРОБОВАТЬ = 8
 
 
-def разделить_период(полином: int) -> Tuple[int, int]:
+def разделить_период(полином: int) -> tuple[int, int]:
     """Полином связи окна → (множитель периода заполнения, полином ПСП)."""
     from .svyortka import делить, нод  # noqa: PLC0415
     остаток = полином
@@ -648,7 +647,7 @@ def характеристический(отводы: Sequence[int]) -> str:
     return " + ".join("1" if с == 0 else "x" if с == 1 else f"x^{с}" for с in степени)
 
 
-def период_лрп(отводы: Sequence[int], *, степень_до: int = 20) -> Optional[int]:
+def период_лрп(отводы: Sequence[int], *, степень_до: int = 20) -> int | None:
     """Период ПСП (порядок x по модулю характеристического многочлена) — до степени ``степень_до``."""
     L = max(отводы)
     if L > степень_до:
@@ -680,7 +679,7 @@ def блоковая_псп(биты: np.ndarray, длина: int) -> Наход
     биты = np.asarray(биты, dtype=np.uint8)
     шаг = max(1, (длина - W) // max(1, ОКОН_В_БЛОКЕ - 1))
     смещения = list(range(0, длина - W + 1, шаг))[:ОКОН_В_БЛОКЕ]
-    окна: List[Tuple[int, int, int, int]] = []          # (блок, смещение, множитель, ПСП)
+    окна: list[tuple[int, int, int, int]] = []          # (блок, смещение, множитель, ПСП)
     for b in range(min(блоков, БЛОКОВ_ДО)):
         for o in смещения:
             начало = b * длина + o
@@ -699,8 +698,8 @@ def блоковая_псп(биты: np.ndarray, длина: int) -> Наход
     отводы = _в_отводы(полином_псп)
     L = max(отводы)
     базис_блока = _базис(отводы, длина)                  # ПСП от начала блока: L × длина
-    базисы: Dict[int, np.ndarray] = {}
-    по_блокам: Dict[int, Counter] = {}
+    базисы: dict[int, np.ndarray] = {}
+    по_блокам: dict[int, Counter] = {}
     заполнения: Counter = Counter()
     for b, o, множитель, псп_ in окна:
         if псп_ != полином_псп:
@@ -743,7 +742,7 @@ def блоковая_псп(биты: np.ndarray, длина: int) -> Наход
     else:
         блоков_ = "блока" if m < 5 else "блоков"
         вид = f"со сбросом через каждые {m} {блоков_} по {длина} бит (сверхблок {m * длина} бит)"
-        где = f"в начале блока — сдвиг состояния сверхблока на место блока в нём, как у одной ПСП"
+        где = "в начале блока — сдвиг состояния сверхблока на место блока в нём, как у одной ПСП"
         сброс_словами = [
             f"сброс через {m} {блоков_}: внутри сверхблока ПСП идёт непрерывно — состояние в начале "
             f"блока совпало со сдвигом состояния сверхблока у {совпало} из {всего} блоков; "
@@ -771,8 +770,8 @@ def блоковая_псп(биты: np.ndarray, длина: int) -> Наход
                   "длина_блока": длина, "блоков_в_сбросе": m, "фаза": int(фаза)})
 
 
-def _сброс(состояние_блока: Dict[int, bytes], отводы: Sequence[int], длина: int
-           ) -> Optional[Tuple[int, np.ndarray, int, int]]:
+def _сброс(состояние_блока: dict[int, bytes], отводы: Sequence[int], длина: int
+           ) -> tuple[int, np.ndarray, int, int] | None:
     """Через сколько блоков сбрасывается ПСП: (m, начальное, фаза, совпало) или None.
 
     ``состояние_блока`` — блок → первые L бит ПСП от начала блока (по одному на
@@ -791,7 +790,7 @@ def _сброс(состояние_блока: Dict[int, bytes], отводы: S
         сдвиги.append([ряд[r * длина:r * длина + L].tobytes() for r in range(СБРОС_ЧЕРЕЗ_ДО)])
     for m in range(1, СБРОС_ЧЕРЕЗ_ДО + 1):
         лучший = None
-        for ключ, свои in zip(частые, сдвиги):
+        for ключ, свои in zip(частые, сдвиги, strict=False):
             место = {свои[r]: r for r in range(m - 1, -1, -1)}     # при совпадении — меньшее место
             фазы: Counter = Counter((b - место[к]) % m for b, к in состояние_блока.items() if к in место)
             if not фазы:
@@ -835,13 +834,13 @@ def маска_блока(биты: np.ndarray, длина: int) -> Находк
     порог = max(МАСКА_БЛОКОВ_ОТ, int(МАСКА_ДОЛЯ_ОТ * блоков))
     # Кандидаты «блок ⊕ заполнение»: у блоков заполнения маска одна и та же.
     варианты = np.stack([таблица ^ заполнение for _, заполнение in заполнения], axis=1)
-    кандидаты: List[Tuple[bytes, int, str]] = []
+    кандидаты: list[tuple[bytes, int, str]] = []
     сборка = _маска_по_кускам(варианты, порог)
     if сборка is not None:
         маска_, сколько_ = сборка
         кандидаты.append((np.packbits(маска_).tobytes(), сколько_, "по кускам 64 бит в разных блоках"))
     счёт: Counter = Counter()
-    откуда: Dict[bytes, Tuple[int, str]] = {}
+    откуда: dict[bytes, tuple[int, str]] = {}
     for b in range(блоков):
         for i, (имя, _) in enumerate(заполнения):
             ключ = np.packbits(варианты[b, i]).tobytes()
@@ -900,7 +899,7 @@ def маска_блока(биты: np.ndarray, длина: int) -> Находк
 КУСОК_ОТРЫВ = 1.5
 
 
-def _маска_по_кускам(варианты: np.ndarray, порог: int) -> Optional[Tuple[np.ndarray, int]]:
+def _маска_по_кускам(варианты: np.ndarray, порог: int) -> tuple[np.ndarray, int] | None:
     """Маска по кускам: у каждого куска — свой самый частый кандидат (блоки × заполнения × длина).
 
     Пауза бывает короче блока, и целиком заполненных блоков нет; но куски

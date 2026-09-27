@@ -7,10 +7,11 @@ import os
 import sqlite3
 import threading
 import time
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator, Sequence
+from typing import Any
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 SCHEMA_VERSION = "15"
@@ -240,7 +241,7 @@ def _lower(value: Any) -> Any:
 
 def utcnow() -> str:
     """Единый формат меток времени во всей системе."""
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class Database:
@@ -405,7 +406,7 @@ class Database:
         self.connection.execute(
             "INSERT INTO meta(key, value) VALUES('orphan_vectors_dropped_at', ?) "
             "ON CONFLICT(key) DO NOTHING",
-            (datetime.now(timezone.utc).isoformat(timespec="seconds"),),
+            (datetime.now(UTC).isoformat(timespec="seconds"),),
         )
 
     def _schema_is_current(self) -> bool:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Пакетный уровень: IPv4/IPv6, UDP/TCP/ICMP, Ethernet II, PPP.
 
 Заголовок IPv4 опознаётся не по «похоже на 0x45», а по контрольной сумме:
@@ -15,8 +14,8 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Sequence
 
 import numpy as np
 
@@ -126,12 +125,12 @@ def в_кадре(кадр: bytes) -> Пакет | None:
     return None
 
 
-def цепочка(данные: bytes, *, предел: int = 1 << 22) -> List[Пакет]:
+def цепочка(данные: bytes, *, предел: int = 1 << 22) -> list[Пакет]:
     """Пакеты IPv4 подряд в сплошном потоке: заголовок → прыжок на длину → заголовок."""
     данные = данные[:предел]
     массив = np.frombuffer(данные, dtype=np.uint8)
     кандидаты = np.flatnonzero((массив >> 4 == 4) & ((массив & 0x0F) >= 5))
-    лучшая: List[Пакет] = []
+    лучшая: list[Пакет] = []
     проверено = 0
     for начало in кандидаты[:20000]:
         пакет = ipv4(данные, int(начало))
@@ -180,13 +179,13 @@ def найти_в_потоке(данные: bytes) -> Находка | None:
                     f"суммой заголовка и длиной, приводящей точно к следующему")
 
 
-def _esp(пакеты: List[Пакет]) -> List[str]:
+def _esp(пакеты: list[Пакет]) -> list[str]:
     """ESP (IPsec, RFC 4303, разд. 2): SPI и номер последовательности — открыты, остальное зашифровано.
 
     По номерам видно, сколько пакетов сеанса нет в записи (пропуски между
     наименьшим и наибольшим номером).
     """
-    номера: Dict[int, List[int]] = {}
+    номера: dict[int, list[int]] = {}
     for п in пакеты:
         if п.протокол != 50 or not п.сырые:
             continue

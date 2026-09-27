@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Конфигурации обработки потоков: именованные цепочки шагов, которые аналитик
 составляет сам и применяет к любому потоку.
 
@@ -17,8 +16,9 @@ import json
 import secrets
 import threading
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 from .rastr import проверить_шаги
 
@@ -44,7 +44,7 @@ class Конфигурации:
             raise KeyError(ид)
         return self.папка / f"{ид}.json"
 
-    def _все(self) -> List[Dict[str, Any]]:
+    def _все(self) -> list[dict[str, Any]]:
         if not self.папка.exists():
             return []
         итог = []
@@ -55,14 +55,14 @@ class Конфигурации:
                 continue                                  # испорченный файл не роняет список
         return итог
 
-    def список(self, владелец: int) -> List[Dict[str, Any]]:
+    def список(self, владелец: int) -> list[dict[str, Any]]:
         """Свои и общие — свои первыми, затем по имени."""
         видно = [к for к in self._все() if к.get("владелец") == владелец or к.get("общая")]
         for к in видно:
             к["своя"] = к.get("владелец") == владелец
         return sorted(видно, key=lambda к: (not к["своя"], к.get("имя", "").lower()))
 
-    def прочитать(self, ид: str, владелец: int) -> Dict[str, Any]:
+    def прочитать(self, ид: str, владелец: int) -> dict[str, Any]:
         путь = self._путь(ид)
         if not путь.exists():
             raise KeyError(ид)
@@ -74,8 +74,8 @@ class Конфигурации:
 
     # -- запись --------------------------------------------------------------------
 
-    def сохранить(self, владелец: int, *, имя: str, шаги: Sequence[Dict[str, Any]], описание: str = "",
-                  общая: bool = False, автор: str = "", ид: Optional[str] = None) -> Dict[str, Any]:
+    def сохранить(self, владелец: int, *, имя: str, шаги: Sequence[dict[str, Any]], описание: str = "",
+                  общая: bool = False, автор: str = "", ид: str | None = None) -> dict[str, Any]:
         """Новая (без ``ид``) или правка своей. Ошибки формы — ValueError."""
         имя = " ".join(str(имя or "").split())
         if not имя:
@@ -119,12 +119,12 @@ class Конфигурации:
     # -- перенос между машинами ------------------------------------------------------
 
     @staticmethod
-    def выгрузка(к: Dict[str, Any]) -> Dict[str, Any]:
+    def выгрузка(к: dict[str, Any]) -> dict[str, Any]:
         """То, что уходит в файл: без владельца и служебных отметок."""
         return {"вид": "конфигурация обработки потока", "версия": 1, "имя": к["имя"],
                 "описание": к.get("описание", ""), "шаги": к["шаги"]}
 
-    def загрузить(self, владелец: int, данные: Dict[str, Any], автор: str = "") -> Dict[str, Any]:
+    def загрузить(self, владелец: int, данные: dict[str, Any], автор: str = "") -> dict[str, Any]:
         if not isinstance(данные, dict) or данные.get("вид") != "конфигурация обработки потока":
             raise ValueError("это не файл конфигурации обработки потока")
         return self.сохранить(владелец, имя=данные.get("имя", ""), описание=данные.get("описание", ""),

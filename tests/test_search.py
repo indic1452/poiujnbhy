@@ -15,8 +15,9 @@ import math
 import unittest
 import urllib.error
 from collections import OrderedDict
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any
 from unittest import mock
 
 import _bootstrap  # noqa: F401
@@ -52,7 +53,7 @@ CORPUS_DIR = Path(__file__).resolve().parents[1] / "examples" / "corpus"
 def build_repos() -> Repositories:
     """База в памяти с библиотекой из examples/corpus."""
     repos = Repositories(Database(":memory:"))
-    groups: "OrderedDict[str, list]" = OrderedDict()
+    groups: OrderedDict[str, list] = OrderedDict()
     for chunk in load_corpus(CORPUS_DIR):
         groups.setdefault(chunk.doc_id, []).append(chunk)
     for doc_id, chunks in groups.items():
@@ -75,12 +76,12 @@ class FakeEmbedder:
     def __init__(self, vector: Sequence[float] = (1.0, 0.0)):
         self.name = "fake-embedder"
         self.vector = [float(value) for value in vector]
-        self.calls: List[str] = []
+        self.calls: list[str] = []
 
-    def embed(self, texts: Sequence[str]) -> List[List[float]]:
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
         return [self.embed_one(text) for text in texts]
 
-    def embed_one(self, text: str) -> List[float]:
+    def embed_one(self, text: str) -> list[float]:
         self.calls.append(text)
         return list(self.vector)
 
@@ -90,10 +91,10 @@ class BrokenEmbedder:
 
     name = "broken-embedder"
 
-    def embed(self, texts: Sequence[str]) -> List[List[float]]:
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
         raise EmbeddingError("соединение отвергнуто")
 
-    def embed_one(self, text: str) -> List[float]:
+    def embed_one(self, text: str) -> list[float]:
         raise EmbeddingError("соединение отвергнуто")
 
 
@@ -103,7 +104,7 @@ class FakeLLM:
     def __init__(self, answer: str):
         self.name = "fake-llm"
         self.answer = answer
-        self.prompts: List[str] = []
+        self.prompts: list[str] = []
 
     def complete(self, system: str, user: str, *, max_tokens: int = 1200,
                  temperature: float = 0.2) -> str:
@@ -120,7 +121,7 @@ class FakeResponse:
     def read(self) -> bytes:
         return self._body
 
-    def __enter__(self) -> "FakeResponse":
+    def __enter__(self) -> FakeResponse:
         return self
 
     def __exit__(self, *exc: Any) -> bool:
@@ -132,7 +133,7 @@ class RecordingURLOpen:
 
     def __init__(self, responder):
         self.responder = responder
-        self.payloads: List[Dict[str, Any]] = []
+        self.payloads: list[dict[str, Any]] = []
 
     def __call__(self, request, timeout=None):
         self.payloads.append(json.loads(request.data.decode("utf-8")))
@@ -146,7 +147,7 @@ class RecordingURLOpen:
 def put_ordered_vectors(repos: Repositories, order: Sequence[str], model: str = "fake") -> None:
     """Раскладывает векторы так, чтобы косинус с [1, 0] убывал по списку."""
     total = len(order)
-    vectors: Dict[str, List[float]] = {}
+    vectors: dict[str, list[float]] = {}
     for position, uid in enumerate(order):
         weight = 1.0 - position / (total + 1)
         vectors[uid] = [weight, math.sqrt(max(0.0, 1.0 - weight * weight))]
@@ -314,7 +315,7 @@ class HybridSearchTests(unittest.TestCase):
         # А в своём потоке предупреждение никуда не делось.
         self.assertIn("плотный поиск", str(retriever.last_warning))
 
-    def _all_uids(self) -> List[str]:
+    def _all_uids(self) -> list[str]:
         return [chunk.chunk_id for chunk in self.repos.chunks.all_chunks()]
 
 
@@ -472,7 +473,7 @@ class RerankInSearchTests(unittest.TestCase):
         class ReportsFirst:
             name = "reports-first"
 
-            def score(self, query: str, texts: Sequence[str]) -> List[float]:
+            def score(self, query: str, texts: Sequence[str]) -> list[float]:
                 return [10.0 if "SUP-2023-041" in text else 0.0 for text in texts]
 
         plain = DatabaseRetriever(self.repos).search("спектр полоса измерение", top_k=5)
@@ -492,7 +493,7 @@ class RerankInSearchTests(unittest.TestCase):
         )
 
     def test_callable_reranker_is_supported(self):
-        seen: List[str] = []
+        seen: list[str] = []
 
         def reranker(query, chunks):
             seen.append(query)
@@ -507,7 +508,7 @@ class RerankInSearchTests(unittest.TestCase):
         class Broken:
             name = "broken"
 
-            def score(self, query: str, texts: Sequence[str]) -> List[float]:
+            def score(self, query: str, texts: Sequence[str]) -> list[float]:
                 raise RerankError("сервис реранка недоступен")
 
         retriever = DatabaseRetriever(self.repos, reranker=Broken())
@@ -592,7 +593,7 @@ class LLMRerankerTests(unittest.TestCase):
 
 class EmbeddingClientTests(unittest.TestCase):
     def test_splits_texts_into_batches(self):
-        def responder(payload: Dict[str, Any]) -> FakeResponse:
+        def responder(payload: dict[str, Any]) -> FakeResponse:
             return FakeResponse({
                 "data": [
                     {"index": index, "embedding": [float(index + 1), 0.0, 0.0]}
@@ -633,7 +634,7 @@ class EmbeddingClientTests(unittest.TestCase):
         self.assertEqual(vectors[1], [0.0, 1.0])
 
     def test_network_error_is_retried_and_reported_in_russian(self):
-        attempts: List[int] = []
+        attempts: list[int] = []
 
         def boom(request, timeout=None):
             attempts.append(1)
@@ -718,7 +719,7 @@ class IndexEmbeddingsTests(unittest.TestCase):
         self.total = self.repos.chunks.count()
 
     def test_fills_every_chunk_and_reports_progress(self):
-        steps: List[tuple] = []
+        steps: list[tuple] = []
         written = index_embeddings(
             self.repos, StubEmbedder(dim=32), batch=8,
             progress=lambda done, total: steps.append((done, total)),

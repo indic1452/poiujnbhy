@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Ethernet 64b/66b: физический кодирующий подуровень (PCS) 10GBASE-R и родственных.
 
 IEEE 802.3, раздел 49 (10GBASE-R); тот же блок 64b/66b и тот же скремблер —
@@ -62,8 +61,8 @@ from __future__ import annotations
 
 import zlib
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -91,7 +90,7 @@ from .nahodka import Находка
 
 ДАННЫЕ, УПРАВЛЕНИЕ = 1, 2          # синхрозаголовок 01 и 10 как число h0·2 + h1
 
-ТИПЫ: Dict[int, str] = {
+ТИПЫ: dict[int, str] = {
     0x1E: "управляющие символы",
     0x2D: "управляющие + упорядоченный набор",
     0x33: "начало кадра в 4-й позиции",
@@ -106,15 +105,15 @@ from .nahodka import Находка
 }
 ДОПУСТИМЫЕ = np.array(sorted(ТИПЫ), dtype=np.uint8)
 #: Начало кадра: с какого октета блока (0 — поле типа) идут октеты кадра.
-НАЧАЛО: Dict[int, int] = {0x78: 1, 0x33: 5, 0x66: 5}
+НАЧАЛО: dict[int, int] = {0x78: 1, 0x33: 5, 0x66: 5}
 #: Конец кадра: сколько октетов данных стоит перед /T/ (с 1-го октета блока).
-КОНЕЦ: Dict[int, int] = {0x87: 0, 0x99: 1, 0xAA: 2, 0xB4: 3,
+КОНЕЦ: dict[int, int] = {0x87: 0, 0x99: 1, 0xAA: 2, 0xB4: 3,
                          0xCC: 4, 0xD2: 5, 0xE1: 6, 0xFF: 7}
 ПРЕАМБУЛА = b"\x55" * 6 + b"\xd5"
 #: Коды управляющих символов в блоке 0x1E.
 СИМВОЛ_ПРОСТОЯ, СИМВОЛ_ОШИБКИ = 0x00, 0x1E
 
-ОТВОДЫ_802_3: Tuple[int, ...] = next(
+ОТВОДЫ_802_3: tuple[int, ...] = next(
     tuple(отводы) for имя, отводы in skrembler.ИЗВЕСТНЫЕ.items() if "10GBASE-R" in имя)
 
 ПОРЯДКИ_В_ФАЙЛЕ = ("как передан", "обратный в байте", "обратный в блоке")
@@ -127,7 +126,7 @@ class Разбор66:
     инверсия: bool
     порядок_в_октете: str             # «младший» (по 802.3) или «старший» бит первым
     фаза: int                         # с какого бита ряда (после переворота) идёт заголовок
-    отводы: Tuple[int, ...]
+    отводы: tuple[int, ...]
     откуда_полином: str
     годных_заголовков: float
     прочие_фазы: float                # медиана доли годных по всем фазам
@@ -144,9 +143,9 @@ class Разбор66:
     оборвано: int = 0                 # начало без конца (помешал другой блок)
     с_преамбулой: int = 0
     верных: int = 0                   # с верной FCS
-    кадры: List[bytes] = field(default_factory=list)   # без преамбулы и FCS
-    концы: Dict[int, Tuple[int, int, int]] = field(default_factory=dict)  # тип → (октетов, верно, всего)
-    поправки: List[str] = field(default_factory=list)
+    кадры: list[bytes] = field(default_factory=list)   # без преамбулы и FCS
+    концы: dict[int, tuple[int, int, int]] = field(default_factory=dict)  # тип → (октетов, верно, всего)
+    поправки: list[str] = field(default_factory=list)
     разобрано_бит: int = 0
 
     @property
@@ -171,7 +170,7 @@ def годность_по_фазам(ряд: np.ndarray) -> np.ndarray:
     return переход.reshape(блоков, ДЛИНА_БЛОКА).mean(axis=0)
 
 
-def блоки(ряд: np.ndarray, фаза: int, в_блоке: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+def блоки(ряд: np.ndarray, фаза: int, в_блоке: bool = False) -> tuple[np.ndarray, np.ndarray]:
     """Синхрозаголовки (1 — данные, 2 — управление, 0/3 — негодный) и полезные части.
 
     ``в_блоке`` — каждый 66-битовый блок записан задом наперёд: заголовок
@@ -204,7 +203,7 @@ def октеты(полезная: np.ndarray, порядок: str = "младш
     return np.packbits(полезная, axis=1, bitorder="little" if порядок == "младший" else "big")
 
 
-def годность_типов(заголовки: np.ndarray, полезная: np.ndarray) -> Tuple[float, int]:
+def годность_типов(заголовки: np.ndarray, полезная: np.ndarray) -> tuple[float, int]:
     """Доля блоков управления с типом из допустимого набора и их число."""
     типы = np.packbits(полезная[заголовки == УПРАВЛЕНИЕ, :8], axis=1, bitorder="little")[:, 0]
     if len(типы) < НАИМЕНЬШЕ_УПРАВЛЕНИЯ:
@@ -216,7 +215,7 @@ def годность_типов(заголовки: np.ndarray, полезная
 
 
 def пары(заголовки: np.ndarray, строки: np.ndarray
-         ) -> Tuple[List[Tuple[bytes, bytes, int]], int]:
+         ) -> tuple[list[tuple[bytes, bytes, int]], int]:
     """Кадры от начала до конца: (октеты до блока конца, 7 октетов блока конца, его тип).
 
     Между началом и концом должны стоять только блоки данных; встретился
@@ -234,9 +233,9 @@ def пары(заголовки: np.ndarray, строки: np.ndarray
     начала = np.flatnonzero(np.isin(типы, list(НАЧАЛО)))
     прочие = np.flatnonzero(~данные)
     следующие = np.searchsorted(прочие, начала, side="right")
-    итог: List[Tuple[bytes, bytes, int]] = []
+    итог: list[tuple[bytes, bytes, int]] = []
     оборвано = 0
-    for s, i in zip(начала.tolist(), следующие.tolist()):
+    for s, i in zip(начала.tolist(), следующие.tolist(), strict=False):
         if i >= len(прочие):
             break                                   # поток кончился посреди кадра
         t = int(прочие[i])
@@ -253,7 +252,7 @@ def fcs_верна(тело: bytes) -> bool:
     return len(тело) >= 18 and zlib.crc32(тело[:-4]) == int.from_bytes(тело[-4:], "little")
 
 
-def без_преамбулы(сырой: bytes) -> Tuple[bytes, bool]:
+def без_преамбулы(сырой: bytes) -> tuple[bytes, bool]:
     """Снять преамбулу 55…55 D5; второе — была ли она ровно такой, как в 802.3."""
     if сырой[:7] == ПРЕАМБУЛА:
         return сырой[7:], True
@@ -263,8 +262,8 @@ def без_преамбулы(сырой: bytes) -> Tuple[bytes, bool]:
     return сырой, False
 
 
-def собрать(пары_: Sequence[Tuple[bytes, bytes, int]], концы: Dict[int, int]
-            ) -> List[Tuple[int, bytes, bool, bool]]:
+def собрать(пары_: Sequence[tuple[bytes, bytes, int]], концы: dict[int, int]
+            ) -> list[tuple[int, bytes, bool, bool]]:
     """(тип конца, тело без преамбулы, преамбула верна, FCS верна) для каждого кадра."""
     итог = []
     for база, хвост, тип in пары_:
@@ -273,22 +272,22 @@ def собрать(пары_: Sequence[Tuple[bytes, bytes, int]], концы: Di
     return итог
 
 
-def сверить_концы(пары_: Sequence[Tuple[bytes, bytes, int]]
-                  ) -> Tuple[Dict[int, int], List[str]]:
+def сверить_концы(пары_: Sequence[tuple[bytes, bytes, int]]
+                  ) -> tuple[dict[int, int], list[str]]:
     """Число октетов перед /T/ для каждого типа конца — по таблице, проверенной FCS.
 
     Для типа, у которого FCS сходится меньше чем у половины кадров, пробуются
     все 0…7 октетов; если другое число даёт больше верных FCS — берём его.
     """
     концы = dict(КОНЕЦ)
-    поправки: List[str] = []
-    по_типу: Dict[int, List[Tuple[bytes, bytes, int]]] = {}
+    поправки: list[str] = []
+    по_типу: dict[int, list[tuple[bytes, bytes, int]]] = {}
     for пара in пары_:
         по_типу.setdefault(пара[2], []).append(пара)
     for тип, свои in по_типу.items():
         if len(свои) < 3:
             continue
-        def верных(k: int) -> int:
+        def верных(k: int, свои: list = свои) -> int:
             return sum(fcs_верна(без_преамбулы(б + х[:k])[0]) for б, х, _ in свои)
         было = верных(концы[тип])
         if было >= len(свои) / 2:
@@ -313,7 +312,7 @@ class _Вариант:
     фаза: int
     годных_заголовков: float
     прочие_фазы: float
-    отводы: Tuple[int, ...] = ()
+    отводы: tuple[int, ...] = ()
     откуда_полином: str = ""
     годных_типов: float = 0.0
 
@@ -323,7 +322,7 @@ def _ряд(биты: np.ndarray, порядок_в_файле: str, инвер�
     return ряд ^ np.uint8(1) if инверсия else ряд
 
 
-def _фазы(выборка: np.ndarray) -> List[_Вариант]:
+def _фазы(выборка: np.ndarray) -> list[_Вариант]:
     """Варианты порядка бит и полярности, у которых нашлась фаза заголовков."""
     варианты = []
     for порядок in ПОРЯДКИ_В_ФАЙЛЕ:
@@ -338,16 +337,16 @@ def _фазы(выборка: np.ndarray) -> List[_Вариант]:
     return варианты
 
 
-def _сырые_блоки(выборка: np.ndarray, в: _Вариант) -> Tuple[np.ndarray, np.ndarray]:
+def _сырые_блоки(выборка: np.ndarray, в: _Вариант) -> tuple[np.ndarray, np.ndarray]:
     return блоки(_ряд(выборка, в.порядок_в_файле, в.инверсия), в.фаза,
                  в.порядок_в_файле == "обратный в блоке")
 
 
-def _полиномы(выборка: np.ndarray, варианты: List[_Вариант]) -> List[_Вариант]:
+def _полиномы(выборка: np.ndarray, варианты: list[_Вариант]) -> list[_Вариант]:
     """Полином скремблера для каждого варианта — только если после снятия есть структура."""
     сырые = {id(в): _сырые_блоки(выборка, в) for в in варианты}
 
-    def проба(отводы: Tuple[int, ...], откуда: str, блоков: Optional[int] = None) -> List[_Вариант]:
+    def проба(отводы: tuple[int, ...], откуда: str, блоков: int | None = None) -> list[_Вариант]:
         годные = []
         for в in варианты:
             заголовки, полезная = сырые[id(в)]
@@ -368,7 +367,7 @@ def _полиномы(выборка: np.ndarray, варианты: List[_Вар
         return годные
     # Вслепую: все одно- и двухотводные полиномы до степени 64 на малой выборке,
     # признак — тот же (типы блоков управления из допустимого набора).
-    лучшие: Dict[int, Tuple[float, Tuple[int, ...]]] = {}
+    лучшие: dict[int, tuple[float, tuple[int, ...]]] = {}
     for b in range(1, skrembler.НАИБОЛЬШАЯ_СТЕПЕНЬ + 1):
         for a in range(0, b):
             отводы = (a, b) if a else (b,)
@@ -417,7 +416,7 @@ def _разобрать(биты: np.ndarray, в: _Вариант, порядо�
     р.с_преамбулой = sum(1 for _, _, п, _ in кадры if п)
     р.верных = sum(1 for _, _, _, f in кадры if f)
     р.кадры = [тело[:-4] for _, тело, _, f in кадры if f]
-    итоги: Dict[int, List[int]] = {}
+    итоги: dict[int, list[int]] = {}
     for тип, _, _, f in кадры:
         итоги.setdefault(тип, [0, 0])
         итоги[тип][0] += f
@@ -426,7 +425,7 @@ def _разобрать(биты: np.ndarray, в: _Вариант, порядо�
     return р
 
 
-def разобрать(биты: np.ndarray) -> Optional[Разбор66]:
+def разобрать(биты: np.ndarray) -> Разбор66 | None:
     """Поток 64b/66b целиком: фаза, порядок бит, скремблер, блоки, кадры. None — не он."""
     биты = np.asarray(биты, dtype=np.uint8)[:ПРЕДЕЛ]
     if len(биты) < НАИМЕНЬШЕ_БЛОКОВ * ДЛИНА_БЛОКА:

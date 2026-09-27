@@ -43,23 +43,23 @@ import os
 import re
 import shutil
 import subprocess
-from concurrent import futures
 import tempfile
 import zipfile
+from collections.abc import Callable, Iterable, Sequence
+from concurrent import futures
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Sequence, Tuple
 
 from ...packages import pip_hint
 from .. import registry
 from ..convert import (
     _PAGE_MARKER_RE,
     ConvertedDocument,
-    external_path,
     MissingDependencyError,
     _clean_line,
     _first_markdown_heading,
     _join_wrapped,
     _reason,
+    external_path,
     page_marker,
 )
 
@@ -161,7 +161,7 @@ _SENTENCE_END = ".,;:!?"
 _HEADING_MAX_CHARS = 80
 _HYPHENS = "-‐‑­−"
 
-_LANGUAGES_CACHE: Dict[str, frozenset] = {}
+_LANGUAGES_CACHE: dict[str, frozenset] = {}
 
 
 class OcrError(RuntimeError):
@@ -189,7 +189,7 @@ def tesseract_binary() -> str | None:
         return found
     if os.name != "nt":
         return None
-    candidates: List[str] = list(_WINDOWS_TESSERACT)
+    candidates: list[str] = list(_WINDOWS_TESSERACT)
     local = os.environ.get("LOCALAPPDATA")
     if local:
         candidates.append(str(Path(local) / "Programs" / "Tesseract-OCR" / "tesseract.exe"))
@@ -246,7 +246,7 @@ def available_languages() -> frozenset:
     return languages
 
 
-def resolve_languages(languages: str = DEFAULT_LANGUAGES) -> Tuple[str, Tuple[str, ...]]:
+def resolve_languages(languages: str = DEFAULT_LANGUAGES) -> tuple[str, tuple[str, ...]]:
     """Отобрать из запрошенных языков установленные.
 
     Возвращает пару «строка для ``-l``, недостающие языки». Если нет ни одного
@@ -332,7 +332,7 @@ def ocr_image(
         return _run_tesseract(binary, safe, usable, psm, timeout, temporary)
 
 
-def _tesseract_env() -> Dict[str, str]:
+def _tesseract_env() -> dict[str, str]:
     """Окружение для tesseract: по одному потоку OpenMP на процесс.
 
     По умолчанию tesseract разворачивает OpenMP на все ядра. На одной странице
@@ -477,7 +477,7 @@ def resolve_ocr_workers(workers: int | None = None) -> int:
 
 
 def _ocr_or_note(image: bytes, number: int, languages: str, timeout: float,
-                 notes: List[str]) -> str | None:
+                 notes: list[str]) -> str | None:
     """Распознать страницу. ``None`` — не получилось, причина уже в ``notes``."""
     try:
         return ocr_image(image, languages=languages, timeout=timeout)
@@ -496,9 +496,9 @@ def ocr_pdf_pages(
     timeout: float = DEFAULT_TIMEOUT,
     scale: float = RENDER_SCALE,
     max_pages: int = MAX_OCR_PAGES,
-    warnings: List[str] | None = None,
-    progress: "Callable[[int, int], None] | None" = None,
-) -> Dict[int, str]:
+    warnings: list[str] | None = None,
+    progress: Callable[[int, int], None] | None = None,
+) -> dict[int, str]:
     """Распознать указанные страницы PDF. Возвращает текст по номерам страниц.
 
     Страницы рендерятся PyMuPDF в PNG и уходят в :func:`ocr_image`. В словаре
@@ -509,7 +509,7 @@ def ocr_pdf_pages(
     Всё, что мешало работе (пропущенные по лимиту страницы, сбои на отдельных
     страницах), дописывается в ``warnings`` по-русски.
     """
-    collected: Dict[int, str] = {}
+    collected: dict[int, str] = {}
     notes = warnings if warnings is not None else []
     wanted = sorted({int(number) for number in pages if int(number) > 0})
     if not wanted:
@@ -553,7 +553,7 @@ def ocr_pdf_pages(
         batch_size = max(1, workers * 2)
         for start in range(0, len(wanted), batch_size):
             batch = wanted[start:start + batch_size]
-            images: List[Tuple[int, bytes]] = []
+            images: list[tuple[int, bytes]] = []
             for number in batch:
                 try:
                     images.append((number, render_pdf_page(document, number, scale)))
@@ -604,15 +604,15 @@ def ocr_pdf_pages(
     return collected
 
 
-def page_ranges(numbers: "Sequence[int]") -> str:
+def page_ranges(numbers: Sequence[int]) -> str:
     """[6, 7, 8, 11] → «6-8, 11».
 
     Перечень из трёхсот номеров подряд человек не читает: он его пролистывает
     вместе со всем остальным, и настоящий отказ тонет среди строк про пустые
     листы.
     """
-    parts: List[str] = []
-    for number in sorted(set(int(item) for item in numbers)):
+    parts: list[str] = []
+    for number in sorted({int(item) for item in numbers}):
         if parts and number == _range_end(parts[-1]) + 1:
             parts[-1] = f"{_range_start(parts[-1])}-{number}"
         else:
@@ -685,8 +685,8 @@ def ocr_text_to_markdown(text: str) -> str:
     построчно набраны таблицы и перечни параметров, и слитый в один абзац
     столбец значений теряет смысл.
     """
-    blocks: List[str] = []
-    current: List[str] = []
+    blocks: list[str] = []
+    current: list[str] = []
 
     def flush() -> None:
         if not current:
@@ -717,7 +717,7 @@ def ocr_text_to_markdown(text: str) -> str:
 
 # ------------------------------------------------- конвертер изображений ---
 
-def _image_meta(path: Path) -> Dict[str, object]:
+def _image_meta(path: Path) -> dict[str, object]:
     """Размер и режим картинки, если Pillow есть. Без Pillow просто нет этих полей."""
     try:
         from PIL import Image  # noqa: PLC0415 — необязательная зависимость
@@ -909,14 +909,14 @@ def convert_image(path: Path) -> ConvertedDocument:
         wanted = wanted[:MAX_OCR_PAGES]
 
     workers = resolve_ocr_workers()
-    pieces: List[str] = []
+    pieces: list[str] = []
     recognised = 0
     failures = 0
     batch_size = max(1, workers * 2)
 
     for start_index in range(0, len(wanted), batch_size):
         batch = wanted[start_index:start_index + batch_size]
-        images: List[Tuple[int, bytes]] = []
+        images: list[tuple[int, bytes]] = []
         for number in batch:
             payload = _frame_to_png(path, number - 1)
             if payload is None:
@@ -992,7 +992,7 @@ EMBEDDED_MEDIA_DIRS = ("word/media/", "ppt/media/", "xl/media/", "Pictures/")
 _EMBEDDED_SUFFIXES = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif")
 
 
-def _embedded_size(payload: bytes) -> Tuple[int, int] | None:
+def _embedded_size(payload: bytes) -> tuple[int, int] | None:
     """Размер картинки без её полной распаковки, если Pillow доступен."""
     try:
         import io  # noqa: PLC0415
@@ -1013,7 +1013,7 @@ def ocr_embedded_images(
     languages: str = DEFAULT_LANGUAGES,
     limit: int = MAX_EMBEDDED_IMAGES,
     timeout: float = DEFAULT_TIMEOUT,
-) -> Tuple[List[Tuple[str, str]], List[str]]:
+) -> tuple[list[tuple[str, str]], list[str]]:
     """Распознать картинки, вложенные в документ-контейнер.
 
     В технических отчётах половина существенного лежит на иллюстрациях:
@@ -1024,8 +1024,8 @@ def ocr_embedded_images(
     Возвращает ``(распознанное, предупреждения)``. Ошибки не бросаются:
     непрочитанная картинка — это меньше текста, а не сломанный документ.
     """
-    found: List[Tuple[str, str]] = []
-    warnings: List[str] = []
+    found: list[tuple[str, str]] = []
+    warnings: list[str] = []
     if not ocr_available():
         return found, warnings
 
@@ -1072,7 +1072,7 @@ def ocr_embedded_images(
     return found, warnings
 
 
-def embedded_images_block(found: Sequence[Tuple[str, str]]) -> str:
+def embedded_images_block(found: Sequence[tuple[str, str]]) -> str:
     """Распознанное с картинок — отдельным разделом, честно помеченным.
 
     Отдельным, а не вперемешку с текстом: распознанное машиной нельзя
@@ -1094,13 +1094,13 @@ def embedded_images_block(found: Sequence[Tuple[str, str]]) -> str:
         parts.append("")
     return "\n".join(parts).rstrip() + "\n"
 
-def _split_pages(text: str) -> Tuple[str, Dict[int, str]]:
+def _split_pages(text: str) -> tuple[str, dict[int, str]]:
     """Размеченный маркерами Markdown → текст до первой страницы и текст по страницам."""
     matches = list(_PAGE_MARKER_RE.finditer(text))
     if not matches:
         return text, {}
     prefix = text[: matches[0].start()]
-    pages: Dict[int, str] = {}
+    pages: dict[int, str] = {}
     for index, match in enumerate(matches):
         end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         number = int(match.group(1))
@@ -1109,9 +1109,9 @@ def _split_pages(text: str) -> Tuple[str, Dict[int, str]]:
     return prefix, pages
 
 
-def _assemble(prefix: str, pages: Dict[int, str]) -> str:
+def _assemble(prefix: str, pages: dict[int, str]) -> str:
     """Обратная сборка: маркер страницы, затем её текст."""
-    pieces: List[str] = []
+    pieces: list[str] = []
     if prefix.strip():
         pieces.append(prefix.strip())
     for number in sorted(pages):
@@ -1173,7 +1173,7 @@ def convert_pdf_ocr(path: Path) -> ConvertedDocument:
     if note:
         result.warnings.append(note)
 
-    notes: List[str] = []
+    notes: list[str] = []
     try:
         recognised = ocr_pdf_pages(path, targets, warnings=notes)
     except (OcrError, MissingDependencyError) as error:
@@ -1183,8 +1183,8 @@ def convert_pdf_ocr(path: Path) -> ConvertedDocument:
     result.warnings.extend(notes)
 
     added = 0
-    empty: List[int] = []
-    poor: List[int] = []
+    empty: list[int] = []
+    poor: list[int] = []
     for number in sorted(recognised):
         body = ocr_text_to_markdown(recognised[number])
         count = len(body.strip())

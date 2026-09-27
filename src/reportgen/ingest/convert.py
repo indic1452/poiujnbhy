@@ -22,25 +22,25 @@ DOCX, заметки в .md и .txt), в единый Markdown, который �
 
 from __future__ import annotations
 
-import os
-
 import hashlib
+import os
 import re
-import unicodedata
 import shutil
 import tempfile
+import unicodedata
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Sequence, Tuple
+from typing import Any
 
-from ..packages import pip_hint
 from ..corpus import DOC_TYPES
+from ..packages import pip_hint
 
 __all__ = [
     "ConvertedDocument",
     "MissingDependencyError",
-    "SUPPORTED_SUFFIXES",
+    "SUPPORTED_SUFFIXES",  # noqa: F822 — отдаётся через __getattr__ модуля (список этой установки)
     "BUILTIN_SUFFIXES",
     "read_text",
     "decode_bytes",
@@ -77,7 +77,7 @@ MIN_SPACE_SHARE = 0.04
 GLUE_CHECK_CHARS = 400
 
 
-def _repairs_note(repairs: Dict[str, int]) -> str:
+def _repairs_note(repairs: dict[str, int]) -> str:
     """Одна строка о том, что система поправила в тексте файла.
 
     Человеку важно не «текст поправлен», а что именно с ним сделали: правок
@@ -166,7 +166,7 @@ _LIST_STYLE_MARKERS = ("list", "список", "bullet", "маркированн
 _WORD_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
-from .text_repair import (                # noqa: E402 — рядом со своими помощниками
+from .text_repair import (  # noqa: E402 — рядом со своими помощниками
     drop_running_titles,
     repair_report,
     repair_text,
@@ -184,14 +184,14 @@ class ConvertedDocument:
     text: str = ""
     title: str = ""
     page_count: int = 0
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
     needs_ocr: bool = False
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     #: Все версии названия по убыванию доверия: свойства файла, заголовок
     #: первого уровня, первая строка. Нужен именно список, а не одна строка:
     #: решать, годится ли название, здесь нельзя — это работа ``titles``, а
     #: она без запасных вариантов бессильна.
-    title_candidates: List[str] = field(default_factory=list)
+    title_candidates: list[str] = field(default_factory=list)
 
     def set_title(self, *candidates: Any, fallback: str = "") -> None:
         """Запомнить ВСЕ версии названия по убыванию доверия.
@@ -210,7 +210,7 @@ class ConvertedDocument:
         отдельная ступень, и называться в журнале она должна своим именем.
         """
         видели = set()
-        отобранные: List[str] = []
+        отобранные: list[str] = []
         for значение in candidates:
             строка = " ".join(str(значение or "").split())
             ключ = строка.lower()
@@ -230,7 +230,7 @@ class ConvertedDocument:
     def char_count(self) -> int:
         return len(strip_page_markers(self.text).strip())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "title": self.title,
             "page_count": self.page_count,
@@ -255,7 +255,7 @@ def strip_page_markers(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
 
-def page_markers(text: str) -> List[Tuple[int, int]]:
+def page_markers(text: str) -> list[tuple[int, int]]:
     """Все маркеры страниц во фрагменте: пары (номер страницы, смещение в тексте)."""
     return [(int(match.group(1)), match.start()) for match in _PAGE_MARKER_RE.finditer(text)]
 
@@ -363,7 +363,7 @@ def clean_line(text: str) -> str:
     return re.sub(r"[ \t]{2,}", " ", text).strip()
 
 
-def _weighted_median(samples: Sequence[Tuple[float, int]]) -> float:
+def _weighted_median(samples: Sequence[tuple[float, int]]) -> float:
     """Медиана размеров шрифта, взвешенная по числу символов.
 
     Взвешивание принципиально: колонтитулы и номера страниц набраны мелко, но
@@ -484,7 +484,7 @@ def _span_text(span: Any) -> str:
     return str(span.get("text", "") or "")
 
 
-def _line_text(spans: Sequence[Any]) -> Tuple[str, float]:
+def _line_text(spans: Sequence[Any]) -> tuple[str, float]:
     """Строка из спанов: с пробелами там, где они были, и с индексами.
 
     Раньше спаны просто склеивались подряд. В PDF спан обрывается на каждой
@@ -511,7 +511,7 @@ def _line_text(spans: Sequence[Any]) -> Tuple[str, float]:
         (float((span.get("origin") or (0.0, 0.0))[1]), len(_span_text(span)))
         for span in body]) or 0.0
 
-    parts: List[str] = []
+    parts: list[str] = []
     mode = ""                       # какой ряд идёт сейчас: '^', '_' или никакой
     previous_right: float | None = None
     for span in body:
@@ -552,7 +552,7 @@ def _line_text(spans: Sequence[Any]) -> Tuple[str, float]:
     return clean_line("".join(parts)), line_size
 
 
-def _blocks_in_reading_order(raw_blocks: Sequence[Any], width: float) -> List[Any]:
+def _blocks_in_reading_order(raw_blocks: Sequence[Any], width: float) -> list[Any]:
     """Блоки по порядку чтения, с учётом двух колонок.
 
     MuPDF сортирует блоки сверху вниз, и на двухколоночной странице книги
@@ -581,15 +581,15 @@ def _blocks_in_reading_order(raw_blocks: Sequence[Any], width: float) -> List[An
     return [block for block, _ in order]
 
 
-def _pdf_page_blocks(page: Any) -> List[List[Tuple[str, float]]]:
+def _pdf_page_blocks(page: Any) -> list[list[tuple[str, float]]]:
     """Блоки страницы: список абзацев, абзац — список пар (строка, кегль)."""
     data = page.get_text("dict", sort=True)
     width = float(data.get("width") or 0.0)
-    blocks: List[List[Tuple[str, float]]] = []
+    blocks: list[list[tuple[str, float]]] = []
     text_blocks = [raw for raw in data.get("blocks", [])
                    if raw.get("type", 0) == 0]  # тип 1 — картинка, текста нет
     for raw_block in _blocks_in_reading_order(text_blocks, width):
-        lines: List[Tuple[str, float]] = []
+        lines: list[tuple[str, float]] = []
         for raw_line in raw_block.get("lines", []):
             text, size = _line_text(raw_line.get("spans", []))
             if not text:
@@ -600,7 +600,7 @@ def _pdf_page_blocks(page: Any) -> List[List[Tuple[str, float]]]:
     return blocks
 
 
-def _heading_levels(blocks: Sequence[Sequence[Tuple[str, float]]], body_size: float) -> Dict[float, int]:
+def _heading_levels(blocks: Sequence[Sequence[tuple[str, float]]], body_size: float) -> dict[float, int]:
     """Сопоставляет кегли заголовков уровням '#', '##', '###'.
 
     Абсолютные пороги («в 1.35 раза крупнее — это h1») ломаются на первом же
@@ -622,10 +622,10 @@ def _heading_levels(blocks: Sequence[Sequence[Tuple[str, float]]], body_size: fl
 
 
 def _render_blocks(
-    blocks: Sequence[Sequence[Tuple[str, float]]], levels: Dict[float, int]
-) -> List[str]:
+    blocks: Sequence[Sequence[tuple[str, float]]], levels: dict[float, int]
+) -> list[str]:
     """Превращает блоки страницы в куски Markdown."""
-    parts: List[Tuple[str, str]] = []  # (вид, текст)
+    parts: list[tuple[str, str]] = []  # (вид, текст)
     for block in blocks:
         text = ""
         for line, _ in block:
@@ -671,7 +671,7 @@ def _convert_pdf(path: Path) -> ConvertedDocument:
         result.page_count = int(getattr(document, "page_count", 0) or 0)
         result.meta["page_count"] = result.page_count
 
-        pages: List[List[List[Tuple[str, float]]]] = []
+        pages: list[list[list[tuple[str, float]]]] = []
         for number in range(result.page_count):
             try:
                 pages.append(_pdf_page_blocks(document[number]))
@@ -721,7 +721,7 @@ def _convert_pdf(path: Path) -> ConvertedDocument:
     rendered_pages, running = drop_running_titles(rendered_pages)
     if running:
         result.meta["running_titles"] = running
-    pieces: List[str] = []
+    pieces: list[str] = []
     for number, rendered in enumerate(rendered_pages, start=1):
         if not rendered:
             continue
@@ -800,9 +800,9 @@ def _cell_text(cell: Any) -> str:
 
 def _table_to_markdown(table: Any) -> str:
     """Таблица DOCX → таблица Markdown (целиком, без разрезания на части)."""
-    rows: List[List[str]] = []
+    rows: list[list[str]] = []
     for row in table.rows:
-        cells: List[str] = []
+        cells: list[str] = []
         seen: set[int] = set()
         for cell in row.cells:
             # Объединённые ячейки python-docx возвращает несколько раз подряд.
@@ -850,7 +850,7 @@ def _convert_docx(path: Path) -> ConvertedDocument:
         result.warnings.append(f"не удалось открыть DOCX: {_reason(error)}")
         return result
 
-    pieces: List[str] = []
+    pieces: list[str] = []
     heading_title = ""
     images = 0
     try:
@@ -921,7 +921,7 @@ def _convert_docx(path: Path) -> ConvertedDocument:
 
 def _merge_list_items(pieces: Sequence[str]) -> str:
     """Соседние пункты списка держим одним абзацем, остальное разделяем пустой строкой."""
-    out: List[str] = []
+    out: list[str] = []
     for piece in pieces:
         if piece.startswith("- ") and out and out[-1].startswith("- "):
             out[-1] = f"{out[-1]}\n{piece}"
@@ -1023,7 +1023,7 @@ def _score_text(text: str) -> float:
     return score
 
 
-def read_text(path: Path) -> Tuple[str, str | None, str | None]:
+def read_text(path: Path) -> tuple[str, str | None, str | None]:
     """Читает текстовый файл, перебирая кодировки. Возвращает (текст, кодировка, ошибка)."""
     try:
         raw = path.read_bytes()
@@ -1032,7 +1032,7 @@ def read_text(path: Path) -> Tuple[str, str | None, str | None]:
     return decode_bytes(raw)
 
 
-def decode_bytes(raw: bytes) -> Tuple[str, str | None, str | None]:
+def decode_bytes(raw: bytes) -> tuple[str, str | None, str | None]:
     """То же самое для содержимого, уже прочитанного в память.
 
     Нужно там, где байты берутся не из файла: вложение письма, страница из
@@ -1166,14 +1166,14 @@ def _register_builtin_converters() -> None:
 _register_builtin_converters()
 
 
-def supported_suffixes(*, only_available: bool = False) -> Tuple[str, ...]:
+def supported_suffixes(*, only_available: bool = False) -> tuple[str, ...]:
     """Все расширения, которые система умеет разбирать сейчас."""
     from . import registry
 
     return registry.supported_suffixes(only_available=only_available)
 
 
-def format_support() -> List[Dict[str, Any]]:
+def format_support() -> list[dict[str, Any]]:
     """Состояние поддержки форматов: что доступно, чего не хватает."""
     from . import registry
 
@@ -1201,7 +1201,7 @@ def embedded_ocr_enabled() -> bool:
     )
 
 
-def _add_embedded_images(result: "ConvertedDocument", path: Path) -> "ConvertedDocument":
+def _add_embedded_images(result: ConvertedDocument, path: Path) -> ConvertedDocument:
     """Дописать в документ текст, распознанный на вложенных картинках."""
     if path.suffix.lower() not in EMBEDDED_IMAGE_SUFFIXES or not embedded_ocr_enabled():
         return result
@@ -1257,7 +1257,7 @@ def readable_share(text: str) -> float:
     return good / len(meaningful)
 
 
-def _repair_result(result: "ConvertedDocument") -> "ConvertedDocument":
+def _repair_result(result: ConvertedDocument) -> ConvertedDocument:
     """Починить текст любого формата — и сказать, что именно поправлено.
 
     Лигатуры, невидимые переносы и латинские буквы внутри русских слов родом
@@ -1286,7 +1286,7 @@ def _repair_result(result: "ConvertedDocument") -> "ConvertedDocument":
     return result
 
 
-def _flag_unreadable(result: "ConvertedDocument", path: Path) -> "ConvertedDocument":
+def _flag_unreadable(result: ConvertedDocument, path: Path) -> ConvertedDocument:
     """Пометить документ, из которого извлеклась бессмыслица.
 
     Заголовок из заглушек заменяется именем файла: в списке библиотеки строка

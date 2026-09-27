@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Разбор пакета по уровням: канальный → сетевой → транспортный → прикладной.
 
 Каждый разборщик читает свой заголовок, кладёт поля с их местом в байтах и
@@ -10,10 +9,10 @@
 from __future__ import annotations
 
 import struct
-from typing import Callable, Dict, Optional
+from collections.abc import Callable
 
 from . import vid_kadra
-from .pole import (Мало, Пакет, Уровень, ip4, ip6, mac, u8, u16, u32, сумма16)
+from .pole import Мало, Пакет, Уровень, ip4, ip6, mac, u16, u32, сумма16
 
 ETHERTYPE = {0x0800: "IPv4", 0x86DD: "IPv6", 0x0806: "ARP", 0x8035: "RARP",
              0x8100: "802.1Q", 0x88A8: "802.1ad", 0x9100: "802.1Q (QinQ)",
@@ -27,16 +26,16 @@ IP_ПРОТОКОЛЫ = {0: "HOPOPT", 1: "ICMP", 2: "IGMP", 4: "IPv4-в-IP", 6: 
 #: EtherType → разборщик(р, м); номер протокола IP → разборщик(р, м, конец);
 #: DSAP LLC → разборщик(р, м, конец); PPID SCTP (и порт SCTP) → разборщик(р, м, конец) → bool;
 #: протокол PPP → разборщик(р, м, конец).
-ДОП_ETHERTYPE: Dict[int, Callable] = {}
-ДОП_IP: Dict[int, Callable] = {}
-ДОП_LLC: Dict[int, Callable] = {}
-ДОП_SCTP_PPID: Dict[int, Callable] = {}
-ДОП_SCTP_ПОРТ: Dict[int, Callable] = {}
-ДОП_PPP: Dict[int, Callable] = {}
+ДОП_ETHERTYPE: dict[int, Callable] = {}
+ДОП_IP: dict[int, Callable] = {}
+ДОП_LLC: dict[int, Callable] = {}
+ДОП_SCTP_PPID: dict[int, Callable] = {}
+ДОП_SCTP_ПОРТ: dict[int, Callable] = {}
+ДОП_PPP: dict[int, Callable] = {}
 #: Кадры поверх Ethernet, узнаваемые по заголовку раньше него (ISL): признак-разборщик(р, м) → bool.
 ДОП_ETHERNET: list = []
 #: Уровень протокола для дерева протоколов: имя → «канальный»/«сетевой»/«транспортный»/«прикладной».
-ДОП_УРОВНИ: Dict[str, str] = {}
+ДОП_УРОВНИ: dict[str, str] = {}
 #: Номера протоколов PPP (RFC 1661; таблица — Wireshark packet-ppp.h, IANA ppp-numbers).
 PPP_ПРОТОКОЛЫ = {0x0021: "IPv4", 0x0057: "IPv6", 0x0281: "MPLS", 0x0283: "MPLS (групповой)", 0xC021: "LCP",
                  0x8021: "IPCP", 0x8057: "IPv6CP", 0xC023: "PAP", 0xC223: "CHAP", 0xC227: "EAP",
@@ -55,7 +54,7 @@ PPP_УПРАВЛЯЮЩИЕ = {0xC021: "LCP", 0x8021: "IPCP", 0x8057: "IPv6CP", 0
 class Разбор:
     """Состояние разбора одного пакета."""
 
-    def __init__(self, пакет: Пакет, как: Optional[Dict[str, str]] = None, шаблоны: Optional[Dict] = None):
+    def __init__(self, пакет: Пакет, как: dict[str, str] | None = None, шаблоны: dict | None = None):
         self.п = пакет
         self.д = пакет.данные
         self.глубина = 0
@@ -79,7 +78,7 @@ class Разбор:
     def адреса(self, от: str, к: str) -> None:
         self.п.источник, self.п.получатель = от, к
 
-    def нагрузка(self, м: int, конец: Optional[int] = None) -> None:
+    def нагрузка(self, м: int, конец: int | None = None) -> None:
         self.п.нагрузка = self.д[м:конец]
         self.п.нагрузка_смещение = м
 
@@ -1232,7 +1231,7 @@ def _таблица_crc32c():
 _ТАБЛИЦА_CRC32C = _таблица_crc32c()
 
 
-def данные(р: Разбор, м: int, что: str, конец: Optional[int] = None) -> None:
+def данные(р: Разбор, м: int, что: str, конец: int | None = None) -> None:
     конец = len(р.д) if конец is None else конец
     if м >= конец:
         return
@@ -1249,7 +1248,7 @@ def данные(р: Разбор, м: int, что: str, конец: Optional[in
 
 # -- вход ---------------------------------------------------------------------------------
 
-КАНАЛ_В_РАЗБОРЩИК: Dict[str, Callable[[Разбор, int], None]] = {
+КАНАЛ_В_РАЗБОРЩИК: dict[str, Callable[[Разбор, int], None]] = {
     "Ethernet": ethernet, "IP": голый_ip, "IPv4": ipv4, "IPv6": ipv6, "PPP": ppp,
     "PPP-HDLC": ppp, "Cisco HDLC": cisco_hdlc, "Linux SLL": linux_sll,
     "Linux SLL2": lambda р, м: linux_sll(р, м, 2), "loopback": loopback, "авто": авто,
@@ -1257,8 +1256,8 @@ def данные(р: Разбор, м: int, что: str, конец: Optional[in
 
 
 def разобрать_пакет(данные_: bytes, канал: str = "Ethernet", *, номер: int = 1,
-                    время: float = 0.0, исходная_длина: Optional[int] = None,
-                    как: Optional[Dict[str, str]] = None, шаблоны: Optional[Dict] = None) -> Пакет:
+                    время: float = 0.0, исходная_длина: int | None = None,
+                    как: dict[str, str] | None = None, шаблоны: dict | None = None) -> Пакет:
     """Разобрать один пакет. Ошибки разбора не бросаются — они в ``пакет.ошибки``.
 
     ``как`` — «разбирать как»: {"tcp:8888": "HTTP", "udp:5000": "данные"};

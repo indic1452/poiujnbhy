@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Dict, List, Sequence, Tuple
+from collections.abc import Sequence
 
 __all__ = [
     "LIGATURES",
@@ -40,7 +40,7 @@ __all__ = [
 #: Лигатуры: один знак вместо двух-трёх букв. В PDF они попадают из шрифта,
 #: и поиск по слову «фильтрация» такое слово не находит — для него это другая
 #: последовательность символов.
-LIGATURES: Dict[str, str] = {
+LIGATURES: dict[str, str] = {
     "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl",
     "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st",
     "Ĳ": "IJ", "ĳ": "ij",
@@ -147,7 +147,7 @@ def spell_out_super_and_subscripts(text: str) -> str:
     """
     if not text:
         return text
-    out: List[str] = []
+    out: list[str] = []
     mode = ""                       # какой ряд идёт сейчас: '^', '_' или никакой
     for character in text:
         if character in _SUPERSCRIPTS:
@@ -180,7 +180,7 @@ def unify_homoglyphs(text: str) -> str:
     if not text:
         return text
 
-    def fix(match: "re.Match[str]") -> str:
+    def fix(match: re.Match[str]) -> str:
         word = match.group(0)
         cyr = len(_CYRILLIC.findall(word))
         lat = len(_LATIN.findall(word))
@@ -211,13 +211,13 @@ def repair_text(text: str) -> str:
     return unify_homoglyphs(text)
 
 
-def repair_report(before: str, after: str) -> Dict[str, int]:
+def repair_report(before: str, after: str) -> dict[str, int]:
     """Что именно починилось — числами, для карточки документа.
 
     Человеку важно знать не «текст поправлен», а что с ним сделали: если
     правок много, документ стоит пересохранить у себя, а не жить с починкой.
     """
-    report: Dict[str, int] = {}
+    report: dict[str, int] = {}
     ligatures = sum(before.count(glyph) for glyph in LIGATURES)
     if ligatures:
         report["ligatures"] = ligatures
@@ -279,7 +279,7 @@ def _running_key(line: str) -> str:
 
 def drop_running_titles(
     pages: Sequence[Sequence[str]],
-) -> "Tuple[List[List[str]], List[str]]":
+) -> tuple[list[list[str]], list[str]]:
     """Убрать колонтитулы, повторяющиеся сверху и снизу страниц.
 
     «Методика измерений 17 — лист» на каждой из шестисот
@@ -297,8 +297,8 @@ def drop_running_titles(
     # строка, которая случайно повторилась у другого края, — а в методике
     # такие есть: «Таблица 1» сверху и «Продолжение на следующей странице»
     # снизу живут по своим законам.
-    top: Dict[str, int] = {}
-    bottom: Dict[str, int] = {}
+    top: dict[str, int] = {}
+    bottom: dict[str, int] = {}
     for page in pages:
         for line in dict.fromkeys(page[:RUNNING_EDGE_LINES]):
             if _may_be_running(line):
@@ -316,10 +316,10 @@ def drop_running_titles(
     if not running_top and not running_bottom:
         return [list(page) for page in pages], []
 
-    dropped: List[str] = []
-    cleaned: List[List[str]] = []
+    dropped: list[str] = []
+    cleaned: list[list[str]] = []
     for page in pages:
-        keep: List[str] = []
+        keep: list[str] = []
         for index, line in enumerate(page):
             key = _running_key(line)
             at_top = index < RUNNING_EDGE_LINES

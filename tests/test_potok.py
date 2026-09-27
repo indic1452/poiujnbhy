@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Анализатор цифровых потоков — на потоках с ИЗВЕСТНЫМ ответом.
 
 Слепой разбор иначе не проверить: собираем поток, строение которого
@@ -13,8 +12,18 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from reportgen.potok import (cikl, dvb, hdlc, kod, oktety, pakety, pdh, peremezhenie,
-                             skrembler, разобрать)
+from reportgen.potok import (
+    cikl,
+    dvb,
+    hdlc,
+    kod,
+    oktety,
+    pakety,
+    pdh,
+    peremezhenie,
+    skrembler,
+    разобрать,
+)
 from reportgen.potok.bity import в_байты, в_биты, из_текста
 from reportgen.potok.chtenie import прочитать, разобрать_sig
 from reportgen.potok.statistika import посчитать
@@ -337,7 +346,7 @@ class PdhTests(unittest.TestCase):
     def test_разметка_по_стандарту(self):
         # Число бит притока в цикле: данные + возможность стаффинга. У E2
         # 205 + 1, у E3 377 + 1, у E4 722 + 1 (G.742, G.751).
-        for иерархия, данных in zip(pdh.ИЕРАРХИИ, (205, 377, 722)):
+        for иерархия, данных in zip(pdh.ИЕРАРХИИ, (205, 377, 722), strict=False):
             with self.subTest(иерархия.имя):
                 данные, cj, стаффинг = pdh.разметка(иерархия)
                 self.assertEqual({данных}, {len(данные[t]) for t in range(4)})

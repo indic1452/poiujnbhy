@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -28,7 +27,7 @@ from .nahodka import Находка
 class Цепь:
     """Одна цепь TDM: откуда, куски (номер, нагрузка) и итог сборки."""
     имя: str
-    куски: List[Tuple[int, bytes]] = field(default_factory=list)
+    куски: list[tuple[int, bytes]] = field(default_factory=list)
     rtp: bool = False
 
 
@@ -37,7 +36,7 @@ def _rtp(д: bytes, м: int, номер: int) -> bool:
     return len(д) >= м + 12 and д[м] == 0x80 and not д[м + 1] & 0x80 and int.from_bytes(д[м + 2:м + 4], "big") == номер
 
 
-def _из_mpls(п) -> Optional[Tuple[str, int, bytes, bool]]:
+def _из_mpls(п) -> tuple[str, int, bytes, bool] | None:
     """Пакет, разобранный как PW-TDM: (цепь, номер, нагрузка, есть RTP)."""
     уровни = {у.протокол: у for у in п.уровни}
     у = уровни.get("PW-TDM")
@@ -59,7 +58,7 @@ def _из_mpls(п) -> Optional[Tuple[str, int, bytes, bool]]:
     return цепь, номер, д[начало:max(начало, конец)], rtp
 
 
-def _из_udp(п) -> Optional[Tuple[str, bytes]]:
+def _из_udp(п) -> tuple[str, bytes] | None:
     """Датаграмма UDP, которую никто не опознал: (поток, нагрузка) — кандидат в псевдопровод."""
     # RTP опознаётся анализатором сам (по версии 2) — нагрузку UDP берём целиком, от заголовка UDP.
     if п.порт_от is None or п.протокол not in ("UDP", "RTP"):
@@ -77,7 +76,7 @@ def _из_udp(п) -> Optional[Tuple[str, bytes]]:
     return f"UDP {src}:{п.порт_от} → {dst}:{п.порт_к}", нагрузка
 
 
-def _udp_как_tdm(датаграммы: List[bytes]) -> Optional[Tuple[List[Tuple[int, bytes]], bool]]:
+def _udp_как_tdm(датаграммы: list[bytes]) -> tuple[list[tuple[int, bytes]], bool] | None:
     """Поток UDP — псевдопровод TDM? Одна длина, слово с нулями в битах 0–3, номера подряд."""
     if len(датаграммы) < ПАКЕТОВ_ОТ:
         return None
@@ -103,7 +102,7 @@ def _udp_как_tdm(датаграммы: List[bytes]) -> Optional[Tuple[List[Tu
     return None
 
 
-def собрать(куски: List[Tuple[int, bytes]]) -> Tuple[bytes, int, int]:
+def собрать(куски: list[tuple[int, bytes]]) -> tuple[bytes, int, int]:
     """Нагрузки по номеру (с переходом через 65535): (поток, пропущено пакетов, повторов)."""
     if not куски:
         return b"", 0, 0
@@ -115,7 +114,7 @@ def собрать(куски: List[Tuple[int, bytes]]) -> Tuple[bytes, int, int
             база -= 0x10000
         полные.append((база + номер, нагрузка))
         прежний = номер
-    по_номеру: Dict[int, bytes] = {}
+    по_номеру: dict[int, bytes] = {}
     повторов = 0
     for н, нагрузка in полные:
         повторов += н in по_номеру
@@ -132,11 +131,11 @@ def собрать(куски: List[Tuple[int, bytes]]) -> Tuple[bytes, int, int
     return bytes(итог), пропущено, повторов
 
 
-def цепи(записи) -> List[Tuple[Цепь, bytes, int, int]]:
+def цепи(записи) -> list[tuple[Цепь, bytes, int, int]]:
     """Цепи TDM захвата: (цепь, поток байт, пропущено пакетов, повторов) — самые длинные первыми."""
     from ..setevoy import разобрать_пакет  # noqa: PLC0415
-    по_имени: Dict[str, Цепь] = {}
-    udp: Dict[str, List[bytes]] = defaultdict(list)
+    по_имени: dict[str, Цепь] = {}
+    udp: dict[str, list[bytes]] = defaultdict(list)
     for запись in записи:
         п = разобрать_пакет(запись.данные, запись.канал)
         найдено = _из_mpls(п)
@@ -163,7 +162,7 @@ def цепи(записи) -> List[Tuple[Цепь, bytes, int, int]]:
     return итог
 
 
-def найти(записи) -> Optional[Находка]:
+def найти(записи) -> Находка | None:
     """Находка «псевдопроводы TDM»: цепи и их потоки (байты) — дальше разбирается каждый поток."""
     найдено = цепи(записи)
     if not найдено:

@@ -10,9 +10,10 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any
 
 from ..config import Settings
 from ..corpus import Chunk
@@ -22,17 +23,17 @@ from ..pipeline import (
     PROMPT_QUOTE_CHARS,
     GeneratedSection,
     Outline,
-    check_facts_coverage,
     assemble,
+    check_facts_coverage,
     generate_report,
     generate_section,
 )
 from ..retrieval import BM25Index, Retriever
 from ..store.models import Case, Report, ReportSection, User
 from ..store.repo import Repositories
+from ..verify import verify_report
 from .quality import QualityChecker
 from .vectors import VectorIndexer
-from ..verify import verify_report
 
 #: Предел на замечание проверяющего: это строка «что исправить», а не второй
 #: отчёт. Длиннее — значит, разговор не для карточки письма.
@@ -74,7 +75,7 @@ class SourceRecord:
     citation: str
     text: str
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         return {
             "label": self.label,
             "chunk_uid": self.chunk_uid,
@@ -83,7 +84,7 @@ class SourceRecord:
         }
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, str]) -> "SourceRecord":
+    def from_dict(cls, raw: dict[str, str]) -> SourceRecord:
         return cls(
             label=raw["label"],
             chunk_uid=raw.get("chunk_uid", ""),
@@ -101,12 +102,12 @@ class StoredRegistry:
     """
 
     def __init__(self, records: Iterable[SourceRecord] = ()):
-        self._records: List[SourceRecord] = list(records)
-        self._by_uid: Dict[str, SourceRecord] = {r.chunk_uid: r for r in self._records}
+        self._records: list[SourceRecord] = list(records)
+        self._by_uid: dict[str, SourceRecord] = {r.chunk_uid: r for r in self._records}
         self._lock = threading.Lock()
 
     @classmethod
-    def from_meta(cls, meta: Dict[str, Any]) -> "StoredRegistry":
+    def from_meta(cls, meta: dict[str, Any]) -> StoredRegistry:
         return cls(SourceRecord.from_dict(item) for item in meta.get("sources", []))
 
     def label(self, chunk: Chunk) -> str:
@@ -125,13 +126,13 @@ class StoredRegistry:
             return record.label
 
     @property
-    def records(self) -> List[SourceRecord]:
+    def records(self) -> list[SourceRecord]:
         return list(self._records)
 
     def render_appendix(self, quote_chars: int = APPENDIX_QUOTE_CHARS) -> str:
         if not self._records:
             return "Внешние источники не привлекались."
-        blocks: List[str] = []
+        blocks: list[str] = []
         for record in self._records:
             quote = record.text
             if len(quote) > quote_chars:
@@ -139,7 +140,7 @@ class StoredRegistry:
             blocks.append(f"**[{record.label}]** {record.citation}\n\n> {quote}\n")
         return "\n".join(blocks)
 
-    def to_meta(self) -> List[Dict[str, str]]:
+    def to_meta(self) -> list[dict[str, str]]:
         return [record.to_dict() for record in self._records]
 
 
@@ -148,18 +149,18 @@ class OutlineLibrary:
 
     def __init__(self, templates_dir: Path):
         self.templates_dir = Path(templates_dir)
-        self._cache: Dict[str, Outline] = {}
-        self._stamp: Dict[str, float] = {}
+        self._cache: dict[str, Outline] = {}
+        self._stamp: dict[str, float] = {}
 
-    def _paths(self) -> List[Path]:
+    def _paths(self) -> list[Path]:
         if not self.templates_dir.is_dir():
             return []
         return sorted(self.templates_dir.glob("outline_*.json"))
 
-    def all(self) -> Dict[str, Outline]:
+    def all(self) -> dict[str, Outline]:
         current = {str(path): path.stat().st_mtime for path in self._paths()}
         if current != self._stamp:
-            cache: Dict[str, Outline] = {}
+            cache: dict[str, Outline] = {}
             for path in self._paths():
                 try:
                     outline = Outline.load(path)
@@ -188,10 +189,10 @@ class ReportService:
     settings: Settings
     llm: LLM | None = None
     retriever: Retriever | None = None
-    glossary: Dict[str, str] = field(default_factory=dict)
+    glossary: dict[str, str] = field(default_factory=dict)
     outlines: OutlineLibrary | None = None
-    vectors: "VectorIndexer | None" = None
-    quality: "QualityChecker | None" = None
+    vectors: VectorIndexer | None = None
+    quality: QualityChecker | None = None
 
     def __post_init__(self) -> None:
         if self.outlines is None:
@@ -243,7 +244,7 @@ class ReportService:
         except FactPackError as error:
             raise ServiceError(f"факт-пакет письма некорректен: {error}", 400) from error
 
-    def coverage(self, case: Case) -> Dict[str, List[str]]:
+    def coverage(self, case: Case) -> dict[str, list[str]]:
         """Каких обязательных измерений не хватает по шаблону (док. 04, 4.3)."""
         outline = self.outlines.get(case.report_type)  # type: ignore[union-attr]
         # Разделы по описи разворачивает сама проверка полноты: ей нужен
@@ -252,7 +253,7 @@ class ReportService:
 
     # -- кейсы --------------------------------------------------------------
 
-    def facts_skeleton(self, report_type: str, case_id: str) -> Dict[str, Any]:
+    def facts_skeleton(self, report_type: str, case_id: str) -> dict[str, Any]:
         """Пустой факт-пакет по шаблону: ключи есть, значений ещё нет.
 
         Собирает его система, а не человек. При регистрации письмо только
@@ -261,7 +262,7 @@ class ReportService:
         пакет из приборного разбора кладут отдельным действием.
         """
         outline = self.outlines.get(report_type)  # type: ignore[union-attr]
-        keys: List[str] = []
+        keys: list[str] = []
         for section in outline.sections:
             for key in getattr(section, "required_facts", ()) or ():
                 if key not in keys:
@@ -301,7 +302,7 @@ class ReportService:
                 "templates/outline_<тип>.json", 500)
         return outlines[0]
 
-    def create_case(self, payload: Dict[str, Any], user: User | None) -> Case:
+    def create_case(self, payload: dict[str, Any], user: User | None) -> Case:
         raw = dict(payload.get("facts") or {})
         report_type = (payload.get("report_type") or raw.get("report_type")
                        or self.default_report_type())
@@ -369,7 +370,7 @@ class ReportService:
         self.repos.audit.log("case.create", user=user, object_type="case", object_id=case.case_id)
         return case
 
-    def update_facts(self, case: Case, raw: Dict[str, Any], user: User | None) -> Case:
+    def update_facts(self, case: Case, raw: dict[str, Any], user: User | None) -> Case:
         raw = dict(raw)
         raw.setdefault("case_id", case.case_id)
         raw.setdefault("report_type", case.report_type)
@@ -397,7 +398,7 @@ class ReportService:
         assert updated is not None
         return updated
 
-    def update_card(self, case: Case, fields: Dict[str, Any],
+    def update_card(self, case: Case, fields: dict[str, Any],
                     user: User | None) -> Case | None:
         """Правка карточки письма.
 
@@ -632,7 +633,7 @@ class ReportService:
         registry = StoredRegistry.from_meta(report.meta)
 
         specs = {spec.id: spec for spec in outline.sections}
-        generated: List[GeneratedSection] = []
+        generated: list[GeneratedSection] = []
         for section in report.sections:
             spec = specs.get(section.section_id)
             if spec is None:
@@ -711,9 +712,9 @@ class ReportService:
             return report
         return self.rebuild(report.id)
 
-    def _signature(self, report: Report) -> Dict[str, Any]:
+    def _signature(self, report: Report) -> dict[str, Any]:
         """Кто и когда подписал отчёт — для шапки документа."""
-        signature: Dict[str, Any] = {
+        signature: dict[str, Any] = {
             "status": report.status,
             "approved_at": report.approved_at or "",
             "approved_by_name": "",
@@ -724,7 +725,7 @@ class ReportService:
                 signature["approved_by_name"] = who.full_name or who.login
         return signature
 
-    def verify(self, report: Report) -> List[Dict[str, Any]]:
+    def verify(self, report: Report) -> list[dict[str, Any]]:
         """Сверка отчёта с факт-пакетом. Возвращает замечания верификатора.
 
         У сданного файлом отчёта факт-пакета нет: его писали не здесь и не по
@@ -747,8 +748,8 @@ class ReportService:
         return issues
 
     def _verify(self, markdown: str, facts: FactPack, outline: Outline,
-                *, sections: List[tuple[str, str]] | None = None,
-                appendix: str | None = None) -> List[Dict[str, Any]]:
+                *, sections: list[tuple[str, str]] | None = None,
+                appendix: str | None = None) -> list[dict[str, Any]]:
         """Проверка отчёта. Секции и приложение берутся из базы, если они есть.
 
         Разбор Markdown — крайний случай: границы разделов в документе задаёт
@@ -798,7 +799,7 @@ class ReportService:
                      "edit_pairs_dropped": dropped},
         )
 
-    def _apply_issues(self, report: Report, issues: List[Dict[str, Any]]) -> None:
+    def _apply_issues(self, report: Report, issues: list[dict[str, Any]]) -> None:
         """Сохранить замечания и снять подпись, если появились ошибки.
 
         Утверждённый отчёт не может оставаться утверждённым, когда верификатор
@@ -836,7 +837,7 @@ class ReportService:
         case = self.repos.cases.get(report.case_ref)
         return bool(case is not None and case.outgoing_no)
 
-    def _parts_of(self, report: Report) -> tuple[List[tuple[str, str]], str]:
+    def _parts_of(self, report: Report) -> tuple[list[tuple[str, str]], str]:
         """Тексты секций и приложение источников из базы — то, что проверяем."""
         sections = [(section.title, section.text) for section in report.sections]
         appendix = StoredRegistry.from_meta(report.meta).render_appendix()
@@ -1092,10 +1093,10 @@ class ReportService:
 
     # -- прочее -------------------------------------------------------------
 
-    def sources(self, report: Report) -> List[Dict[str, str]]:
+    def sources(self, report: Report) -> list[dict[str, str]]:
         return [SourceRecord.from_dict(item).to_dict() for item in report.meta.get("sources", [])]
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         counts = self.repos.db.counts()
         return {
             "cases": {
@@ -1123,7 +1124,7 @@ class ReportService:
             "model": self.model_budget(),
         }
 
-    def model_budget(self) -> Dict[str, Any]:
+    def model_budget(self) -> dict[str, Any]:
         """Окно модели и то, как оно поделено. Для экрана «Метрики».
 
         Число «-c», с которым запущен llama-server, определяет ВСЁ: сколько
@@ -1172,12 +1173,12 @@ class ReportService:
 
 # ------------------------------------------------------------- служебное ---
 
-def facts_group_no(raw: Dict[str, Any]) -> str:
+def facts_group_no(raw: dict[str, Any]) -> str:
     """Номер группы, записанный в самом факт-пакете (или под прежним ключом)."""
     return str(raw.get("group_no") or raw.get("customer") or "").strip()
 
 
-def _validate_facts(raw: Dict[str, Any]) -> FactPack:
+def _validate_facts(raw: dict[str, Any]) -> FactPack:
     try:
         return FactPack.from_dict(raw)
     except FactPackError as error:
@@ -1196,7 +1197,7 @@ def _with_hint(spec: Any, hint: str) -> Any:
     return replace(spec, instruction=f"{spec.instruction}\n\nДополнительно: {hint}")
 
 
-def _load_glossary(path: Path) -> Dict[str, str]:
+def _load_glossary(path: Path) -> dict[str, str]:
     try:
         return json.loads(Path(path).read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):

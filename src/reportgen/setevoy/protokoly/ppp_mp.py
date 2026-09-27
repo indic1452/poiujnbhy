@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """PPP: многоканальный PPP (MP, RFC 1990), PAP (RFC 1334), CHAP (RFC 1994), EAP (RFC 3748), BAP (RFC 2125).
 
 Раскладка — как у Wireshark (epan/dissectors/packet-ppp.c: dissect_mp, dissect_pap, dissect_chap,
@@ -14,7 +13,7 @@ MP (RFC 1990, 3): заголовок длинный — байт B E CLS(4) 00 �
 from __future__ import annotations
 
 from ..pole import u16
-from ..razbor import ДОП_PPP, Разбор, данные, ppp
+from ..razbor import ДОП_PPP, Разбор, ppp, данные
 from .kanalnye import eap
 
 PAP_КОДЫ = {1: "Authenticate-Request", 2: "Authenticate-Ack", 3: "Authenticate-Nak"}

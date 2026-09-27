@@ -17,9 +17,8 @@
 from __future__ import annotations
 
 import math
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -75,8 +74,8 @@ def nl(широта: float) -> int:
     return int(math.floor(2 * math.pi / math.acos(1 - a / b)))
 
 
-def cpr_глобально(чётное: Tuple[int, int], нечётное: Tuple[int, int], последнее_нечётное: bool
-                  ) -> Optional[Tuple[float, float]]:
+def cpr_глобально(чётное: tuple[int, int], нечётное: tuple[int, int], последнее_нечётное: bool
+                  ) -> tuple[float, float] | None:
     """Широта и долгота по паре CPR в воздухе (decodeCPRairborne); None — разные зоны широты."""
     lat0, lon0 = чётное
     lat1, lon1 = нечётное
@@ -103,19 +102,19 @@ def cpr_глобально(чётное: Tuple[int, int], нечётное: Tupl
 class Борт:
     icao: int
     позывные: Counter = field(default_factory=Counter)
-    высоты: List[int] = field(default_factory=list)
-    скорости: List[str] = field(default_factory=list)
-    положения: List[Tuple[float, float]] = field(default_factory=list)
+    высоты: list[int] = field(default_factory=list)
+    скорости: list[str] = field(default_factory=list)
+    положения: list[tuple[float, float]] = field(default_factory=list)
     сообщений: int = 0
-    _cpr: Dict[int, Tuple[int, int]] = field(default_factory=dict)
+    _cpr: dict[int, tuple[int, int]] = field(default_factory=dict)
 
 
-def разобрать_сообщение(биты: np.ndarray) -> Dict[str, object]:
+def разобрать_сообщение(биты: np.ndarray) -> dict[str, object]:
     """Поля сообщения DF17/18 (112 бит) — без проверки CRC."""
     df, ca, icao = _число(биты, 1, 5), _число(биты, 6, 8), _число(биты, 9, 32)
     me = биты[32:88]
     tc = _число(me, 1, 5)
-    итог: Dict[str, object] = {"df": df, "ca": ca, "icao": icao, "tc": tc}
+    итог: dict[str, object] = {"df": df, "ca": ca, "icao": icao, "tc": tc}
     if 1 <= tc <= 4:
         итог["позывной"] = "".join(ЗНАКИ[_число(me, 9 + 6 * k, 14 + 6 * k)] for k in range(8)).rstrip()
         итог["категория"] = f"{chr(ord('A') + 4 - tc)}{_число(me, 6, 8)}"
@@ -152,7 +151,7 @@ def разобрать_сообщение(биты: np.ndarray) -> Dict[str, obj
     return итог
 
 
-def сообщения(биты: np.ndarray) -> List[Tuple[int, np.ndarray]]:
+def сообщения(биты: np.ndarray) -> list[tuple[int, np.ndarray]]:
     """(место, 112 бит) всех сообщений DF17/DF18 с нулевым остатком CRC-24; не перекрываются."""
     биты = np.asarray(биты, dtype=np.uint8)
     if len(биты) < 112:
@@ -171,11 +170,11 @@ def сообщения(биты: np.ndarray) -> List[Tuple[int, np.ndarray]]:
     return итог
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     найдено = сообщения(биты)
     if len(найдено) < НАЙТИ_ОТ:
         return None
-    борта: Dict[int, Борт] = {}
+    борта: dict[int, Борт] = {}
     виды: Counter = Counter()
     for _, с in найдено:
         п = разобрать_сообщение(с)
@@ -221,7 +220,7 @@ def найти(биты: np.ndarray) -> Optional[Находка]:
         подробно=подробно, свойства={"бортов": len(борта), "сообщений": len(найдено)})
 
 
-def cpr_закодировать(широта: float, долгота: float, нечётное: bool) -> Tuple[int, int]:
+def cpr_закодировать(широта: float, долгота: float, нечётное: bool) -> tuple[int, int]:
     """Координаты → (широта, долгота) CPR по 17 бит в воздухе (ICAO Doc 9871, C.2.6; для проверок)."""
     i = 1 if нечётное else 0
     dlat = 360 / (60 - i)

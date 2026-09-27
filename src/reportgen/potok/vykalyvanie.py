@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Выколотые (punctured) свёрточные коды: скорость k/(k+1), материнский код, шаблон.
 
 Скорости 2/3, 3/4, 5/6, 7/8 обычно получают из материнского кода 1/2
@@ -19,7 +18,6 @@ from __future__ import annotations
 import time
 from functools import lru_cache
 from itertools import combinations
-from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -64,7 +62,7 @@ def _материнская(g1: int, g2: int, K: int, входов: int) -> np.n
     return _закодировать_окно(g1, g2, K, входов)
 
 
-def проверки_кандидата(g1: int, g2: int, K: int, шаблон: Tuple[int, ...], k: int
+def проверки_кандидата(g1: int, g2: int, K: int, шаблон: tuple[int, ...], k: int
                        ) -> np.ndarray:
     """Проверочные векторы выколотого кода на окне из K − 1 + ЗАПАС периодов."""
     входов = k * (K - 1 + ЗАПАС_ПЕРИОДОВ)
@@ -129,7 +127,7 @@ def _нарушено(биты: np.ndarray, H: np.ndarray, n: int, начало:
     return float(np.minimum(доли, 1 - доли).min())
 
 
-def опознать(биты: np.ndarray, *, глубоко: bool = False, бюджет: float = 60.0) -> Dict | None:
+def опознать(биты: np.ndarray, *, глубоко: bool = False, бюджет: float = 60.0) -> dict | None:
     """Перебор: скорость k/(k+1), материнский код, шаблон, начало периода.
 
     Порог — статистический: у неверного кандидата доля нарушений около 0,5
@@ -170,16 +168,15 @@ def опознать(биты: np.ndarray, *, глубоко: bool = False, бю
     return None
 
 
-def выколоть(закодированное: np.ndarray, шаблон: Tuple[int, ...]) -> np.ndarray:
+def выколоть(закодированное: np.ndarray, шаблон: tuple[int, ...]) -> np.ndarray:
     период = len(шаблон)
     целых = len(закодированное) - len(закодированное) % период
     маска = np.tile(np.array(шаблон, dtype=bool), целых // период)
     return закодированное[:целых][маска]
 
 
-def вставить_стирания(принятое: np.ndarray, шаблон: Tuple[int, ...]) -> Tuple[np.ndarray, np.ndarray]:
+def вставить_стирания(принятое: np.ndarray, шаблон: tuple[int, ...]) -> tuple[np.ndarray, np.ndarray]:
     """Обратно к материнскому потоку: (биты, маска переданных)."""
-    период = len(шаблон)
     передано_за_период = sum(шаблон)
     периодов = len(принятое) // передано_за_период
     маска = np.tile(np.array(шаблон, dtype=bool), периодов)

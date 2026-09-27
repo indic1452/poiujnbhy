@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Коды вслепую: LDPC, Рида — Соломона, БЧХ, свёрточные 1/n, выколотые, турбо.
 
 Как и в test_potok, всё — на потоках с ИЗВЕСТНЫМ ответом, и в каждом
@@ -14,8 +13,18 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from reportgen.potok import (crc, crc_katalog, dlinnye, gf2, lineynye, polya, rs_bch, svyortka, turbo,
-                             vykalyvanie)
+from reportgen.potok import (
+    crc,
+    crc_katalog,
+    dlinnye,
+    gf2,
+    lineynye,
+    polya,
+    rs_bch,
+    svyortka,
+    turbo,
+    vykalyvanie,
+)
 
 СЛУЧАЙНЫЕ = с.случайные_биты(400_000, сид=21)
 
@@ -172,6 +181,7 @@ class ЛожныеСвязиTests(unittest.TestCase):
         """Связь при ошибках 0,1 % выполнена в 99 % окон — у кода и перекодированное расходится
         с принятым не больше; расходится на 10 % — связь из данных, а не код."""
         from unittest import mock
+
         from reportgen.potok import kod
         rng = np.random.default_rng(31)
         данные = rng.integers(0, 2, 1 << 17).astype(np.uint8)
@@ -190,6 +200,7 @@ class ЛожныеСвязиTests(unittest.TestCase):
         порога случайного ряда (12–16 %), но в десятки раз больше ошибок линии, которые обещает
         связь (0,1 %). Такую находку отвергает только согласие со связью — без него она прошла бы."""
         from unittest import mock
+
         from reportgen.potok import kod
         rng = np.random.default_rng(34)
         данные = rng.integers(0, 2, 1 << 17).astype(np.uint8)

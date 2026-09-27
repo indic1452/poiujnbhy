@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Ethernet 64b/66b (PCS 10GBASE-R): опознавание, скремблер, порядок бит, кадры, FCS.
 
 Синтетика строится здесь же простым независимым кодером: кадры Ethernet с
@@ -289,9 +288,9 @@ class Pcs64b66bTests(unittest.TestCase):
         # Длина с FCS кратна 4 — конец с 0 или 4 октетами (0x87, 0xCC) при любом начале.
         плохие = [len(к) % 4 == 0 for к in self.с_fcs[:300]]
         испорченные = [к[:-1] + bytes([к[-1] ^ 0xFF]) if п else к
-                       for к, п in zip(self.с_fcs[:300], плохие)]
+                       for к, п in zip(self.с_fcs[:300], плохие, strict=False)]
         р = pcs.разобрать(поток_66(испорченные)[0])
-        self.assertEqual(р.кадры, [к for к, п in zip(self.кадры[:300], плохие) if not п])
+        self.assertEqual(р.кадры, [к for к, п in zip(self.кадры[:300], плохие, strict=False) if not п])
         self.assertEqual(р.поправки, [])
         self.assertEqual(р.концы[0x87][:2], (0, 0))
         self.assertEqual(р.концы[0xCC][:2], (4, 0))

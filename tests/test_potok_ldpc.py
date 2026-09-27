@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """LDPC по матрице из стандарта: загрузка H, перфорация, укорочение, снятие слоем."""
 
 import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 

@@ -27,7 +27,6 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -52,7 +51,7 @@ def crc16_ccitt(данные: bytes) -> int:
     return crc
 
 
-def счётчик_кадров(данные: bytes) -> Optional[Tuple[int, int, float]]:
+def счётчик_кадров(данные: bytes) -> tuple[int, int, float] | None:
     """(длина кадра, место счётчика от начала потока по модулю длины, доля «+1»)."""
     б = np.frombuffer(данные[:ВЫБОРКА], dtype=np.uint8).astype(np.int16)
     лучшее = None
@@ -75,9 +74,9 @@ class Кадр:
     vcid: int
     счётчик: int
     ocf: bool
-    fhp: Optional[int]
+    fhp: int | None
     данные: bytes
-    clcw: Optional[int] = None
+    clcw: int | None = None
     vcfc: int = 0                       # счётчик виртуального канала (у TM — 8 бит, у AOS — он же счётчик)
 
 
@@ -86,15 +85,15 @@ class Разбор:
     вид: str
     длина: int
     начало: int
-    кадры: List[Кадр] = field(default_factory=list)
-    fecf: Optional[bool] = None
+    кадры: list[Кадр] = field(default_factory=list)
+    fecf: bool | None = None
     fecf_верна: int = 0
     пропущено: int = 0
-    пакеты: List[bytes] = field(default_factory=list)
+    пакеты: list[bytes] = field(default_factory=list)
     неполных: int = 0
 
 
-def _кадры(данные: bytes, длина: int, начало: int, вид: str, fecf: bool) -> List[Кадр]:
+def _кадры(данные: bytes, длина: int, начало: int, вид: str, fecf: bool) -> list[Кадр]:
     итог = []
     for м in range(начало, len(данные) - длина + 1, длина):
         к = данные[м:м + длина]
@@ -121,12 +120,12 @@ def _кадры(данные: bytes, длина: int, начало: int, вид:
     return итог
 
 
-def _пакеты(кадры: List[Кадр], р: Разбор, модуль: int) -> None:
+def _пакеты(кадры: list[Кадр], р: Разбор, модуль: int) -> None:
     """Space Packet подряд по каждому виртуальному каналу: начало — по FHP, продолжение — через кадры.
 
     Пропущенный кадр канала (счётчик VCFC прыгнул) рвёт пакет: сборка ждёт следующего FHP."""
-    буферы: Dict[int, Optional[bytearray]] = {}
-    счётчики: Dict[int, int] = {}
+    буферы: dict[int, bytearray | None] = {}
+    счётчики: dict[int, int] = {}
     for к in кадры:
         if к.vcid in счётчики and (к.vcfc - счётчики[к.vcid]) % модуль != 1:
             буферы[к.vcid] = None
@@ -168,7 +167,7 @@ def _заголовки_годны(данные: bytes, р: Разбор) -> boo
     return годных >= 0.9 * len(р.кадры)
 
 
-def разобрать(данные: bytes) -> Optional[Разбор]:
+def разобрать(данные: bytes) -> Разбор | None:
     найдено = счётчик_кадров(данные)
     if найдено is None:
         return None
@@ -195,7 +194,7 @@ def разобрать(данные: bytes) -> Optional[Разбор]:
         р.fecf_верна = sum(crc16_ccitt(данные[м:м + длина - 2]) == int.from_bytes(данные[м + длина - 2:м + длина], "big")
                            for м in range(начало, начало + len(р.кадры) * длина, длина))
     модуль = 256 if вид == "TM" else 1 << 24
-    предыдущий: Dict[int, int] = {}
+    предыдущий: dict[int, int] = {}
     for к in р.кадры:
         ключ = -1 if вид == "TM" else к.vcid                 # у TM MCFC общий для всех VC
         if ключ in предыдущий:
@@ -205,7 +204,7 @@ def разобрать(данные: bytes) -> Optional[Разбор]:
     return р
 
 
-def найти(данные: bytes) -> Optional[Находка]:
+def найти(данные: bytes) -> Находка | None:
     р = разобрать(данные)
     if р is None:
         return None

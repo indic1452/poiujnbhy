@@ -25,9 +25,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Sequence
+from typing import Any
 
 #: Типы документов библиотеки. «misc» — полка для того, что не относится
 #: ни к одному из остальных: без неё такие файлы молча становились
@@ -53,9 +54,9 @@ class Chunk:
     chunk_id: str
     doc_id: str
     doc_type: str
-    title_path: List[str]
+    title_path: list[str]
     text: str
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @property
     def breadcrumbs(self) -> str:
@@ -81,7 +82,7 @@ class Chunk:
         path = " → ".join(self.title_path[1:]) if len(self.title_path) > 1 else ""
         return f"{title}{suffix}" + (f" — {path}" if path else "")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "chunk_id": self.chunk_id,
             "doc_id": self.doc_id,
@@ -92,7 +93,7 @@ class Chunk:
         }
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, Any]) -> "Chunk":
+    def from_dict(cls, raw: dict[str, Any]) -> Chunk:
         return cls(
             chunk_id=raw["chunk_id"],
             doc_id=raw["doc_id"],
@@ -103,12 +104,12 @@ class Chunk:
         )
 
 
-def parse_front_matter(text: str) -> tuple[Dict[str, str], str]:
+def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     """Разбирает простой блок 'ключ: значение' в начале файла."""
     match = _FRONT_MATTER_RE.match(text)
     if not match:
         return {}, text
-    meta: Dict[str, str] = {}
+    meta: dict[str, str] = {}
     for line in match.group(1).splitlines():
         if ":" in line:
             key, _, value = line.partition(":")
@@ -154,7 +155,7 @@ def _is_row(line: str) -> bool:
     return bool(_TABLE_ROW.match(_bare(line)))
 
 
-def _table_head(lines: Sequence[str]) -> List[str]:
+def _table_head(lines: Sequence[str]) -> list[str]:
     """Шапка таблицы: строка заголовков и разделитель под ней."""
     if len(lines) >= 2 and _is_row(lines[0]) and _TABLE_RULE.match(_bare(lines[1])):
         return [lines[0], lines[1]]
@@ -179,7 +180,7 @@ def _cut_to_size(part: str, limit: int) -> Iterator[str]:
         yield part
 
 
-def _parts_of(paragraph: str) -> "tuple[str, List[str], str]":
+def _parts_of(paragraph: str) -> tuple[str, list[str], str]:
     """На что делить абзац: на строки (таблица, распознанный текст) или на
     предложения — и какая у него шапка, если это таблица."""
     lines = paragraph.split("\n")
@@ -211,7 +212,7 @@ def _pieces_of(paragraph: str, limit: int = BODY_CHARS) -> Iterator[str]:
     # головой. Место под неё держим в каждом куске, чтобы дописанная шапка
     # не выводила фрагмент за предел длины.
     room = max(limit - (len(head) + len(joiner) if head else 0), MIN_CHARS)
-    buffer: List[str] = []
+    buffer: list[str] = []
     size = 0
     first = True
 
@@ -281,7 +282,7 @@ def _trim(paragraph: str) -> str:
 def _split_long(text: str) -> Iterator[str]:
     """Режет длинный текст на фрагменты с перекрытием."""
     paragraphs = [_trim(p) for p in re.split(r"\n\s*\n", text) if p.strip()]
-    buffer: List[str] = []
+    buffer: list[str] = []
     # Размер СВОЕГО текста, без перекрытия: иначе фрагмент, у которого
     # перекрытие уже занимает место, отдавался бы одним перекрытием.
     size = 0
@@ -313,29 +314,29 @@ def _split_long(text: str) -> Iterator[str]:
         yield "\n\n".join(buffer)
 
 
-def split_document(text: str) -> Iterator[tuple[List[str], str]]:
+def split_document(text: str) -> Iterator[tuple[list[str], str]]:
     """Режет Markdown по заголовкам, затем длинные секции — по абзацам."""
-    stack: List[str] = []
+    stack: list[str] = []
     # Уровень каждого заголовка в стопке. Раньше стопка резалась по номеру
     # места (``del stack[level - 1:]``), а не по уровню, — и документ,
     # начинающийся с «###» (обычное дело после разбора DOCX, где H1 остался
     # в шапке), делал следующий «##» потомком предыдущего раздела: крошки
     # врали, а вместе с ними врала и ссылка под цитатой.
-    levels: List[int] = []
+    levels: list[int] = []
     # Дал ли раздел хоть один фрагмент — свой или потомка. Раздел, который не
     # дал ничего, отдаём заголовком: документ из одних заголовков (перечень
     # контрольных точек, оглавление стандарта) принимался с нулём фрагментов
     # и терялся целиком, молча.
-    produced: List[bool] = []
-    body: List[str] = []
+    produced: list[bool] = []
+    body: list[str] = []
 
-    def flush() -> Iterator[tuple[List[str], str]]:
+    def flush() -> Iterator[tuple[list[str], str]]:
         content = "\n".join(body).strip()
         if content:
             for piece in _split_long(content):
                 yield list(stack), piece
 
-    def close(level: int) -> Iterator[tuple[List[str], str]]:
+    def close(level: int) -> Iterator[tuple[list[str], str]]:
         """Закрывает разделы глубже заданного уровня."""
         while levels and levels[-1] >= level:
             if not produced[-1]:
@@ -388,9 +389,9 @@ def _other_section(title_path: Sequence[str], path: Sequence[str], text: str) ->
 
 
 def merge_short_sections(
-    pieces: Iterable[tuple[List[str], str]],
+    pieces: Iterable[tuple[list[str], str]],
     min_chars: int = MIN_CHARS,
-) -> Iterator[tuple[List[str], str]]:
+) -> Iterator[tuple[list[str], str]]:
     """Склеивает куцые разделы с СОСЕДНИМИ, а не бросает их поодиночке.
 
     Документ отдела редко устроен ровно: за заголовком «4. Приложения» идёт
@@ -411,9 +412,9 @@ def merge_short_sections(
     предыдущему фрагменту: в документе он идёт сразу за ним, и отдельного
     места в выдаче не заслуживает.
     """
-    ready: List[tuple[List[str], str]] = []
-    buffer: List[str] = []
-    path: List[str] = []
+    ready: list[tuple[list[str], str]] = []
+    buffer: list[str] = []
+    path: list[str] = []
     size = 0
 
     def close() -> None:
@@ -457,7 +458,7 @@ def merge_short_sections(
     return iter(ready)
 
 
-def load_file(path: Path, root: Path) -> List[Chunk]:
+def load_file(path: Path, root: Path) -> list[Chunk]:
     text = path.read_text(encoding="utf-8")
     meta, text = parse_front_matter(text)
     relative = path.relative_to(root)
@@ -466,7 +467,7 @@ def load_file(path: Path, root: Path) -> List[Chunk]:
     meta.setdefault("title", doc_id.rsplit("/", 1)[-1])
     meta["path"] = str(relative)
 
-    chunks: List[Chunk] = []
+    chunks: list[Chunk] = []
     for index, (title_path, body) in enumerate(
             merge_short_sections(split_document(text))):
         # Заголовок первого уровня обычно дублирует название документа —
@@ -486,11 +487,11 @@ def load_file(path: Path, root: Path) -> List[Chunk]:
     return chunks
 
 
-def load_corpus(root: str | Path, patterns: tuple[str, ...] = ("*.md", "*.txt")) -> List[Chunk]:
+def load_corpus(root: str | Path, patterns: tuple[str, ...] = ("*.md", "*.txt")) -> list[Chunk]:
     root = Path(root)
     if not root.is_dir():
         raise FileNotFoundError(f"каталог корпуса не найден: {root}")
-    chunks: List[Chunk] = []
+    chunks: list[Chunk] = []
     for pattern in patterns:
         for path in sorted(root.rglob(pattern)):
             if len(path.relative_to(root).parts) == 1:
@@ -576,7 +577,7 @@ def tidy_quote(text: str, limit: int) -> str:
     # номера битов.
     structured = _is_structured([line[common:] if common else line for line in lines])
 
-    cleaned: List[str] = []
+    cleaned: list[str] = []
     for line in lines:
         if not line.strip():
             if cleaned and not cleaned[-1]:

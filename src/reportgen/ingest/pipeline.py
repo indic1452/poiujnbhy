@@ -22,10 +22,11 @@ from __future__ import annotations
 import os
 import re
 import time
+from collections.abc import Callable, Iterable, Sequence
 from concurrent import futures
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Any
 
 from .. import corpus
 from ..corpus import Chunk
@@ -49,7 +50,7 @@ __all__ = [
 
 #: Устаревшая константа: осталась для совместимости. Настоящий список форматов
 #: берётся из реестра конвертеров — см. library_patterns().
-DEFAULT_PATTERNS: Tuple[str, ...] = ("*.pdf", "*.docx", "*.md", "*.txt")
+DEFAULT_PATTERNS: tuple[str, ...] = ("*.pdf", "*.docx", "*.md", "*.txt")
 
 
 #: Сколько файлов разбирать одновременно, если число не задано явно.
@@ -72,7 +73,7 @@ def resolve_jobs(jobs: int | None = None) -> int:
     return max(1, min(8, cores - 1))
 
 
-def library_patterns(*, only_available: bool = True) -> Tuple[str, ...]:
+def library_patterns(*, only_available: bool = True) -> tuple[str, ...]:
     """Маски файлов по всем зарегистрированным конвертерам.
 
     По умолчанию берутся только доступные форматы: незачем поднимать со всего
@@ -99,15 +100,15 @@ class IngestResult:
     failed: int = 0
     chunks: int = 0
     #: doc_id документов, которые были проиндексированы в этом запуске.
-    documents: List[str] = field(default_factory=list)
+    documents: list[str] = field(default_factory=list)
     #: Файл в библиотеку НЕ ПОПАЛ — это требует действий инженера.
-    failures: List[str] = field(default_factory=list)
+    failures: list[str] = field(default_factory=list)
     #: Документ принят, но с оговоркой, либо пропущено ожидаемое (чужой
     #: формат, символьная ссылка внутри архива). Читать полезно, чинить нечего.
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
     @property
-    def warnings(self) -> List[str]:
+    def warnings(self) -> list[str]:
         """Оба списка вместе — прежний вид итога.
 
         Раньше список был один: «файл пуст» (документ не принят) стоял
@@ -125,7 +126,7 @@ class IngestResult:
     def indexed(self) -> int:
         return self.added + self.updated
 
-    def merge(self, other: "IngestResult") -> "IngestResult":
+    def merge(self, other: IngestResult) -> IngestResult:
         """Присоединяет итог по одному файлу к общему итогу по каталогу."""
         self.added += other.added
         self.updated += other.updated
@@ -155,7 +156,7 @@ class IngestResult:
             text += f" Предупреждений: {len(self.warnings)}."
         return text
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "added": self.added,
             "updated": self.updated,
@@ -191,8 +192,8 @@ def _attach_page_markers(text: str) -> str:
     Порядок, в котором один генератор тянет из другого, — не то, на чём должна
     держаться ссылка «с. 42» под цитатой.
     """
-    out: List[str] = []
-    pending: List[str] = []
+    out: list[str] = []
+    pending: list[str] = []
     for line in text.splitlines():
         if _PAGE_MARKER_LINE.match(line):
             pending.append(line.strip())
@@ -206,7 +207,7 @@ def _attach_page_markers(text: str) -> str:
     return "\n".join(out)
 
 
-def _page_bounds(piece: str, current: int | None) -> Tuple[int | None, int | None]:
+def _page_bounds(piece: str, current: int | None) -> tuple[int | None, int | None]:
     """Страница, на которой начинается фрагмент, и страница, на которой он кончается."""
     markers = convert.page_markers(piece)
     if not markers:
@@ -222,8 +223,8 @@ def chunks_from_markdown(
     text: str,
     doc_id: str,
     doc_type: str = convert.DEFAULT_DOC_TYPE,
-    meta: Dict[str, Any] | None = None,
-) -> List[Chunk]:
+    meta: dict[str, Any] | None = None,
+) -> list[Chunk]:
     """Режет Markdown на чанки ровно так же, как это делает `corpus.load_file`.
 
     Отличий от корпуса два, и оба нужны для приёма произвольных файлов:
@@ -232,7 +233,7 @@ def chunks_from_markdown(
     страницы попадает в ``meta['page']`` и потом в ссылку под цитатой.
     """
     front, body = corpus.parse_front_matter(text)
-    merged: Dict[str, Any] = dict(front)
+    merged: dict[str, Any] = dict(front)
     for key, value in (meta or {}).items():
         if value is not None:
             merged[key] = value
@@ -242,7 +243,7 @@ def chunks_from_markdown(
 
     body = _attach_page_markers(body)
 
-    chunks: List[Chunk] = []
+    chunks: list[Chunk] = []
     page: int | None = None
     for title_path, piece in corpus.merge_short_sections(corpus.split_document(body)):
         start_page, page = _page_bounds(piece, page)
@@ -286,7 +287,7 @@ def _relative_for(path: Path, root: Path) -> str:
 
 
 def ingest_path(
-    repos: "Repositories",
+    repos: Repositories,
     path: str | Path,
     *,
     root: str | Path | None = None,
@@ -494,7 +495,7 @@ def ingest_path(
     return result
 
 
-def _resolve_status(meta: Dict[str, Any], existing: Any) -> Tuple[str, str]:
+def _resolve_status(meta: dict[str, Any], existing: Any) -> tuple[str, str]:
     """Актуальность документа: из разбора файла, но не поверх решения человека.
 
     Инженер, поставивший документу статус руками, знает про свою библиотеку
@@ -526,9 +527,9 @@ def _detect_domain(title: str, text: str, domains_path: str | Path | None = None
         return ""
 
 
-def _document_meta(converted: ConvertedDocument, *, title: str, relative: str) -> Dict[str, Any]:
+def _document_meta(converted: ConvertedDocument, *, title: str, relative: str) -> dict[str, Any]:
     """Метаданные документа: то, что уйдёт и в карточку документа, и в каждый чанк."""
-    meta: Dict[str, Any] = {
+    meta: dict[str, Any] = {
         key: value
         for key, value in converted.meta.items()
         if value not in (None, "", 0) and key not in ("title", "path")
@@ -566,13 +567,13 @@ def _detect_year(converted: ConvertedDocument, *, title: str,
 
 # ------------------------------------------------------- приём каталога ---
 
-def _iter_library_files(root: Path, patterns: Sequence[str]) -> List[Path]:
+def _iter_library_files(root: Path, patterns: Sequence[str]) -> list[Path]:
     """Файлы корпуса: рекурсивно, без служебных и без файлов в корне."""
     return _scan_library(root, patterns)[0]
 
 
 def _scan_library(root: Path, patterns: Sequence[str],
-                  base: Path | None = None) -> Tuple[List[Path], List[str]]:
+                  base: Path | None = None) -> tuple[list[Path], list[str]]:
     """Файлы корпуса и рассказ о том, что пропущено и почему.
 
     Пропуски раньше были молчаливыми: инженер бросал новый ГОСТ прямо в корень
@@ -594,9 +595,9 @@ def _scan_library(root: Path, patterns: Sequence[str],
     suffixes = {
         pattern[1:].lower() for pattern in patterns if pattern.startswith("*.")
     }
-    found: Dict[str, Path] = {}
-    in_root: List[str] = []
-    unsupported: Dict[str, int] = {}
+    found: dict[str, Path] = {}
+    in_root: list[str] = []
+    unsupported: dict[str, int] = {}
 
     for path in root.rglob("*"):
         if not path.is_file():
@@ -622,7 +623,7 @@ def _scan_library(root: Path, patterns: Sequence[str],
             continue
         found[str(relative).replace("\\", "/")] = path
 
-    skipped: List[str] = []
+    skipped: list[str] = []
     if in_root:
         names = ", ".join(sorted(in_root)[:10])
         more = f" и ещё {len(in_root) - 10}" if len(in_root) > 10 else ""
@@ -643,7 +644,7 @@ def _scan_library(root: Path, patterns: Sequence[str],
     return [found[key] for key in sorted(found)], skipped
 
 
-def _same_content_elsewhere(repos: "Repositories", digest: str, path: Path):
+def _same_content_elsewhere(repos: Repositories, digest: str, path: Path):
     """Документ с тем же содержимым под другим идентификатором, если он есть."""
     found = repos.documents.by_sha256(digest)
     if found is None:
@@ -655,7 +656,7 @@ def _same_content_elsewhere(repos: "Repositories", digest: str, path: Path):
     return None if same_file else found
 
 
-def _resolve_ids(files: Sequence[Path], root: Path) -> Tuple[Dict[Path, str], List[str]]:
+def _resolve_ids(files: Sequence[Path], root: Path) -> tuple[dict[Path, str], list[str]]:
     """Идентификаторы документов с разведёнными столкновениями.
 
     Идентификатор — путь без расширения, поэтому ``otchet.md`` и
@@ -669,12 +670,12 @@ def _resolve_ids(files: Sequence[Path], root: Path) -> Tuple[Dict[Path, str], Li
     и ``reports/otchet.txt``. Остальные файлы сохраняют прежний вид — иначе
     пришлось бы переиндексировать всю библиотеку.
     """
-    groups: Dict[str, List[Path]] = {}
+    groups: dict[str, list[Path]] = {}
     for path in files:
         groups.setdefault(_doc_id_for(path, root), []).append(path)
 
-    identifiers: Dict[Path, str] = {}
-    warnings: List[str] = []
+    identifiers: dict[Path, str] = {}
+    warnings: list[str] = []
     for base_id, group in groups.items():
         if len(group) == 1:
             identifiers[group[0]] = base_id
@@ -689,8 +690,8 @@ def _resolve_ids(files: Sequence[Path], root: Path) -> Tuple[Dict[Path, str], Li
     return identifiers, warnings
 
 
-def save_ingest_report(repos: "Repositories", root: "str | Path",
-                       result: "IngestResult") -> Dict[str, Any]:
+def save_ingest_report(repos: Repositories, root: str | Path,
+                       result: IngestResult) -> dict[str, Any]:
     """Записать итог приёма, чтобы он пережил закрытие консоли.
 
     Человек, пересобравший тринадцать тысяч документов, сегодня узнать итог не
@@ -704,7 +705,7 @@ def save_ingest_report(repos: "Repositories", root: "str | Path",
     второй документ для файла с тем же содержимым, и на библиотеке отдела таких
     пар много — скан и распознанная версия, .md и выгрузка в .txt.
     """
-    report: Dict[str, Any] = {
+    report: dict[str, Any] = {
         "root": str(root),
         "finished_at": time.time(),
         "added": result.added,
@@ -721,7 +722,7 @@ def save_ingest_report(repos: "Repositories", root: "str | Path",
 
 
 def ingest_directory(
-    repos: "Repositories",
+    repos: Repositories,
     root: str | Path,
     *,
     base: str | Path | None = None,
@@ -844,7 +845,7 @@ def ingest_directory(
     return result
 
 
-def _finish(repos: "Repositories", result: IngestResult, root: Path,
+def _finish(repos: Repositories, result: IngestResult, root: Path,
             files: Sequence[Path], full_pass: bool) -> None:
     """Сверки после прохода, порядок списков и запись итога."""
     result.notes.extend(_report_duplicates(repos, result.documents))
@@ -864,7 +865,7 @@ def _finish(repos: "Repositories", result: IngestResult, root: Path,
     repos.library_report.save(str(root), report)
 
 
-def _report_duplicates(repos: "Repositories", touched: Sequence[str]) -> List[str]:
+def _report_duplicates(repos: Repositories, touched: Sequence[str]) -> list[str]:
     """Документы с одинаковым содержимым под разными идентификаторами.
 
     Последовательный приём такое ловит сам и второй файл не индексирует. Но
@@ -876,12 +877,12 @@ def _report_duplicates(repos: "Repositories", touched: Sequence[str]) -> List[st
     """
     if not touched:
         return []
-    seen: Dict[str, List[str]] = {}
+    seen: dict[str, list[str]] = {}
     for doc_id in touched:
         document = repos.documents.by_doc_id(doc_id)
         if document is not None and document.sha256:
             seen.setdefault(document.sha256, []).append(doc_id)
-    warnings: List[str] = []
+    warnings: list[str] = []
     for group in seen.values():
         if len(group) > 1:
             names = ", ".join(f"«{name}»" for name in sorted(group))
@@ -892,8 +893,8 @@ def _report_duplicates(repos: "Repositories", touched: Sequence[str]) -> List[st
     return sorted(warnings)
 
 
-def _archive_missing(repos: "Repositories", root: Path,
-                     seen: Sequence[Path]) -> List[str]:
+def _archive_missing(repos: Repositories, root: Path,
+                     seen: Sequence[Path]) -> list[str]:
     """Документы, чей файл исчез из каталога, уводятся из поиска.
 
     Инженер убрал устаревший файл и запустил приём снова. Обход идёт по
@@ -916,7 +917,7 @@ def _archive_missing(repos: "Repositories", root: Path,
         except OSError:
             continue
 
-    warnings: List[str] = []
+    warnings: list[str] = []
     for document in repos.documents.list():
         if document.status != "current" or not document.source_path:
             continue
@@ -936,7 +937,7 @@ def _archive_missing(repos: "Repositories", root: Path,
     return sorted(warnings)
 
 
-def remove_document(repos: "Repositories", doc_id: str) -> bool:
+def remove_document(repos: Repositories, doc_id: str) -> bool:
     """Удаляет документ вместе с чанками, эмбеддингами и записями FTS.
 
     Возвращает ``False``, если такого документа в библиотеке не было.
@@ -947,7 +948,7 @@ def remove_document(repos: "Repositories", doc_id: str) -> bool:
     return True
 
 
-def library_stats(repos: "Repositories") -> Dict[str, Any]:
+def library_stats(repos: Repositories) -> dict[str, Any]:
     """Сводка по библиотеке: сколько документов и чанков по каждому типу."""
     stats = repos.documents.stats()
     return {
@@ -957,7 +958,7 @@ def library_stats(repos: "Repositories") -> Dict[str, Any]:
     }
 
 
-def iter_library_files(root: str | Path, patterns: Iterable[str] | None = None) -> List[Path]:
+def iter_library_files(root: str | Path, patterns: Iterable[str] | None = None) -> list[Path]:
     """Список файлов каталога, которые попадут в приём (для предпросмотра в UI)."""
     root = Path(root)
     if not root.is_dir():

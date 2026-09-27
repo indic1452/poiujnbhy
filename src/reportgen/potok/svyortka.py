@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Свёрточные коды скорости 1/n (n = 2…4): многочлены, систематичность, Витерби.
 
 Код 1/n: на каждый входной бит u — n выходных, c_j = g_j · u. Между любыми
@@ -21,18 +20,18 @@ n·K с шагом n (устойчиво к ошибкам линии). Из с�
 
 from __future__ import annotations
 
-from typing import Dict, List, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
-from .kod import инверсия_ветвей, инверсия_словами, витерби_n, проверки, шагов_декодера
+from .kod import витерби_n, инверсия_ветвей, инверсия_словами, проверки, шагов_декодера
 
 ПОРОГ = 0.2
 ШИРИНА_ДО = 20
 
 
 def связь(биты: np.ndarray, n: int, a: int, b: int, K: int, сдвиг: int
-          ) -> Tuple[float, int] | None:
+          ) -> tuple[float, int] | None:
     """Сильнейшая связь между ветвями a и b кода 1/n в окне K блоков: (смещение, h)."""
     # Берём только биты ветвей a и b — окно шириной 2K вместо nK.
     блоков = (len(биты) - сдвиг) // n
@@ -61,7 +60,7 @@ def умножить(a: int, b: int) -> int:
     return итог
 
 
-def делить(a: int, b: int) -> Tuple[int, int]:
+def делить(a: int, b: int) -> tuple[int, int]:
     """Частное и остаток многочленов над GF(2)."""
     частное = 0
     while a and a.bit_length() >= b.bit_length():
@@ -81,7 +80,7 @@ def нок(a: int, b: int) -> int:
     return умножить(a, делить(b, нод(a, b))[0])
 
 
-def _ветви_связи(h: int, K: int) -> Tuple[int, int]:
+def _ветви_связи(h: int, K: int) -> tuple[int, int]:
     биты_h = [(h >> (2 * K - 1 - i)) & 1 for i in range(2 * K)]
     на_a = int("".join(map(str, биты_h[0::2])), 2)
     на_b = int("".join(map(str, биты_h[1::2])), 2)
@@ -96,7 +95,7 @@ def _связь_наименьшая(биты, n, a, b, сдвиг):
     return None
 
 
-def опознать(биты: np.ndarray) -> Dict | None:
+def опознать(биты: np.ndarray) -> dict | None:
     """Код 1/n: n, выравнивание, K, многочлены; несвязанные ветви (турбо).
 
     Выравнивание блока выбирается по ветви 0: при верном у связей ветви 0 со
@@ -158,7 +157,7 @@ def запись(многочлены: Sequence[int], K: int) -> str:
     return "/".join(f"{зеркало(g, K):o}" for g in многочлены)
 
 
-def кодировать(данные: np.ndarray, многочлены: List[int], K: int) -> np.ndarray:
+def кодировать(данные: np.ndarray, многочлены: list[int], K: int) -> np.ndarray:
     n = len(многочлены)
     регистр = 0
     выход = np.zeros(n * len(данные), dtype=np.uint8)
@@ -169,7 +168,7 @@ def кодировать(данные: np.ndarray, многочлены: List[in
     return выход
 
 
-def кодировать_кольцо(данные: np.ndarray, многочлены: List[int], K: int) -> np.ndarray:
+def кодировать_кольцо(данные: np.ndarray, многочлены: list[int], K: int) -> np.ndarray:
     """Кодер с циклическим хвостом (tail-biting, 3GPP 36.212 5.1.3.1): регистр заранее
     заполнен последними K − 1 битами блока — начальное и конечное состояния совпадают
     (как CC_TAILBITING в GNU Radio cc_encoder)."""
@@ -185,7 +184,7 @@ def кодировать_кольцо(данные: np.ndarray, многочле
     return выход
 
 
-def витерби_кольцо(блоки: np.ndarray, многочлены: List[int], K: int) -> np.ndarray:
+def витерби_кольцо(блоки: np.ndarray, многочлены: list[int], K: int) -> np.ndarray:
     """Декодер кода с циклическим хвостом: блок трижды подряд (декодер начинает с равных
     метрик — начальное состояние не известно), берутся решения средней копии — к ней
     путь уже сошёлся к верному состоянию, а конец блока продолжен его же началом.
@@ -220,7 +219,7 @@ def кодировать_rsc(данные: np.ndarray, обратная: int, п
     return выход
 
 
-def витерби(биты: np.ndarray, многочлены: List[int], K: int,
+def витерби(биты: np.ndarray, многочлены: list[int], K: int,
             известно: np.ndarray | None = None) -> np.ndarray:
     """Жёсткие решения, код 1/n (регистр — как в kod); память ограничена — см. ``kod.витерби_n``.
 
@@ -273,17 +272,17 @@ def витерби_с_нуля(принятые: np.ndarray, многочлен�
 ВЫБОРКА = 1 << 18
 
 
-def _расхождение(биты: np.ndarray, многочлены: List[int], K: int) -> Tuple[np.ndarray, np.ndarray]:
+def _расхождение(биты: np.ndarray, многочлены: list[int], K: int) -> tuple[np.ndarray, np.ndarray]:
     данные = витерби(биты, многочлены, K)
     перекодировано = кодировать(данные, многочлены, K)
     длина = min(len(перекодировано), len(биты))
     return данные, перекодировано[:длина] != биты[:длина]
 
 
-_БАЗА: Dict[Tuple, float] = {}
+_БАЗА: dict[tuple, float] = {}
 
 
-def _база(многочлены: List[int], K: int) -> float:
+def _база(многочлены: list[int], K: int) -> float:
     ключ = (tuple(многочлены), K)
     if ключ not in _БАЗА:
         случайные = np.random.default_rng(12345).integers(0, 2, 3 << 12, dtype=np.uint8)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Рассуждение модели не должно ни попадать в ответ, ни съедать его.
 
 Рабочая модель отдела — Qwen3-14B, гибридная: размышление у неё включено по
@@ -35,7 +34,7 @@ from pathlib import Path
 
 import _bootstrap  # noqa: F401
 from reportgen import llm as модуль
-from reportgen.llm import ОтсекательМысли, OpenAICompatLLM, без_мысли
+from reportgen.llm import OpenAICompatLLM, ОтсекательМысли, без_мысли
 from reportgen.prompts import (
     ASSISTANT_SYSTEM_PROMPT,
     DIGEST_SYSTEM_PROMPT,

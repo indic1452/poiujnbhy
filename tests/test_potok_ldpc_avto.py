@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """LDPC по загруженным матрицам — автоматом: схема передачи, начало слова, декодирование.
 
 Матрица загружена (из стандарта, по своим параметрам) — дальше её не нужно
@@ -9,8 +8,8 @@
 
 import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 

@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -49,7 +48,7 @@ def golay24(данные12: int) -> int:
 СЛОВА_ГОЛЕЯ = np.array([golay24(д) for д in range(4096)], dtype=np.uint32)
 
 
-def голей_декодировать(слово24: int) -> Tuple[int, int]:
+def голей_декодировать(слово24: int) -> tuple[int, int]:
     """(12 бит данных, расстояние) — ближайшее из 4096 слов (расстояние кода 8: до 3 ошибок)."""
     разности = np.bitwise_count(СЛОВА_ГОЛЕЯ ^ np.uint32(слово24))
     данные = int(разности.argmin())
@@ -71,7 +70,7 @@ def витерби(пары: np.ndarray, бит: int) -> np.ndarray:
     пары = np.asarray(пары, dtype=np.uint8).reshape(-1, 2)
     INF = 1 << 30
     метрики = [0] + [INF] * 15                         # состояние = d1 d2 d3 d4 (d1 старший)
-    пути: List[List[int]] = [[] for _ in range(16)]
+    пути: list[list[int]] = [[] for _ in range(16)]
     for a, b in пары:
         новые, новые_пути = [INF] * 16, [None] * 16
         for s in range(16):
@@ -101,7 +100,7 @@ def crc16(данные: bytes) -> bytes:
 МЕСТА_ДАННЫХ = [(i % 9) * 40 + (i // 9) * 2 for i in range(180)]
 
 
-def fich(кадр: np.ndarray) -> Optional[Dict[str, object]]:
+def fich(кадр: np.ndarray) -> dict[str, object] | None:
     """Поля FICH кадра (с синхрословом в начале); None — CRC не сошлась."""
     биты = np.asarray(кадр, dtype=np.uint8)[40:240]
     if len(биты) < 200:
@@ -118,7 +117,7 @@ def fich(кадр: np.ndarray) -> Optional[Dict[str, object]]:
             "dev": bool(б[2] & 0x40), "исправлено": sum(р for _, р in слова)}
 
 
-def позывные(кадр: np.ndarray) -> Optional[Tuple[str, str]]:
+def позывные(кадр: np.ndarray) -> tuple[str, str] | None:
     """(получатель, отправитель) из канала данных заголовка или конца; None — CRC не сошлась."""
     полезная = np.asarray(кадр, dtype=np.uint8)[240:960]
     if len(полезная) < 720:
@@ -132,7 +131,7 @@ def позывные(кадр: np.ndarray) -> Optional[Tuple[str, str]]:
     return текст[:10].rstrip(), текст[10:20].rstrip()
 
 
-def кадры(биты: np.ndarray) -> List[Dict[str, object]]:
+def кадры(биты: np.ndarray) -> list[dict[str, object]]:
     биты = np.asarray(биты, dtype=np.uint8)
     if len(биты) < КАДР:
         return []
@@ -157,7 +156,7 @@ def кадры(биты: np.ndarray) -> List[Dict[str, object]]:
     return sorted(итог, key=lambda к: к["место"])
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     найдено = кадры(биты)
     if len(найдено) < НАЙТИ_ОТ:
         return None

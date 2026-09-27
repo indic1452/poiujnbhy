@@ -14,7 +14,7 @@ LAPD — 203, Frame Relay — 107, AX.25 — 3): анализатор пакет
 from __future__ import annotations
 
 from collections import Counter
-from typing import List, Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -37,23 +37,23 @@ from .nahodka import Находка
 class Кадры(list):
     """Кадры этапа с типом канала pcap: выгрузка — pcap с этим LINKTYPE, а не .Sig."""
 
-    def __init__(self, кадры: Sequence[bytes], канал: Optional[int]):
+    def __init__(self, кадры: Sequence[bytes], канал: int | None):
         super().__init__(bytes(к) for к in кадры)
         self.канал = канал
 
 
-def _уровни(пакеты) -> List[str]:
+def _уровни(пакеты) -> list[str]:
     """Цепочки уровней (MTP2 → MTP3 → SCCP …) — частые."""
     счёт = Counter(" → ".join(у.протокол for у in п.уровни) for п in пакеты if п.уровни)
     return [f"{цепь}×{с}" for цепь, с in счёт.most_common(6)]
 
 
-def _частые(пакеты, сколько: int = 10) -> List[str]:
+def _частые(пакеты, сколько: int = 10) -> list[str]:
     счёт = Counter((п.инфо or "").strip() for п in пакеты)
     return [f"{т}×{с}" for т, с in счёт.most_common(сколько) if т]
 
 
-def найти(кадры: Sequence[bytes], откуда: str = "кадрах") -> Optional[Находка]:
+def найти(кадры: Sequence[bytes], откуда: str = "кадрах") -> Находка | None:
     """Канальный протокол во всей массе кадров; None — ни один вид не сошёлся у большинства."""
     решение = vid_kadra.вид_потока(кадры)
     if решение is None:

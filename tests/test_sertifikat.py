@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Свой сертификат: выписывается без интернета и без сторонних пакетов.
 
 Начальник отдела запустил setup-https.ps1 на машине, где интернета нет, и
@@ -31,7 +30,6 @@ import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.web import certs
 from reportgen.web.tls import (
     CERT_NAME,
@@ -108,15 +106,15 @@ class КлючRSA(unittest.TestCase):
 
     def test_подпись_разворачивается_открытым_ключом(self):
         """Проверка подписи — это возведение в открытую степень."""
-        подпись = self.key.sign("письмо 47/312".encode("utf-8"))
+        подпись = self.key.sign("письмо 47/312".encode())
         число = pow(int.from_bytes(подпись, "big"), self.key.e, self.key.n)
         блок = число.to_bytes(self.key.size, "big")
         self.assertTrue(блок.startswith(b"\x00\x01\xff"))
         self.assertIn(certs.SHA256_PREFIX, блок)
 
     def test_подпись_другого_текста_другая(self):
-        self.assertNotEqual(self.key.sign("а".encode("utf-8")),
-                            self.key.sign("б".encode("utf-8")))
+        self.assertNotEqual(self.key.sign("а".encode()),
+                            self.key.sign("б".encode()))
 
     def test_ключ_читается_обратно_с_диска(self):
         снова = certs.load_key_pem(self.key.private_pem())
@@ -287,11 +285,11 @@ class СтараяУстановка(unittest.TestCase):
             папка = Path(имя) / "tls"
             папка.mkdir(parents=True)
             (папка / CERT_NAME).write_bytes(
-                "-----BEGIN CERTIFICATE-----\nстарый\n".encode("utf-8"))
+                "-----BEGIN CERTIFICATE-----\nстарый\n".encode())
             (папка / KEY_NAME).write_bytes(
-                "-----BEGIN PRIVATE KEY-----\nстарый\n".encode("utf-8"))
+                "-----BEGIN PRIVATE KEY-----\nстарый\n".encode())
             cert, key = ensure_certificate(Path(имя))
-            self.assertIn("старый".encode("utf-8"), cert.read_bytes())
+            self.assertIn("старый".encode(), cert.read_bytes())
             self.assertFalse((папка / ROOT_NAME).exists(),
                              "корень выписан поверх работающей установки")
             self.assertIsNone(root_certificate(Path(имя)))
@@ -307,12 +305,12 @@ class СтараяУстановка(unittest.TestCase):
             папка = Path(имя) / "tls"
             папка.mkdir(parents=True)
             (папка / CERT_NAME).write_bytes(
-                "-----BEGIN CERTIFICATE-----\nстарый\n".encode("utf-8"))
+                "-----BEGIN CERTIFICATE-----\nстарый\n".encode())
             (папка / KEY_NAME).write_bytes(
-                "-----BEGIN PRIVATE KEY-----\nстарый\n".encode("utf-8"))
+                "-----BEGIN PRIVATE KEY-----\nстарый\n".encode())
             cert, key = ensure_certificate(Path(имя), renew=True,
                                            hosts=["127.0.0.1"])
-            self.assertNotIn("старый".encode("utf-8"), cert.read_bytes())
+            self.assertNotIn("старый".encode(), cert.read_bytes())
             self.assertTrue((папка / ROOT_NAME).is_file(),
                             "корень так и не выписан")
             отчёт = describe(Path(имя))

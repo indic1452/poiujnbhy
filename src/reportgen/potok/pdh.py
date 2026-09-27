@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """PDH со стаффингом согласования скоростей: E2, E3, E4 (G.742, G.751).
 
 Притоки плезиохронной иерархии идут каждый от своего генератора, и их
@@ -23,7 +22,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -41,8 +39,8 @@ class Иерархия:
     скорость: int              # номинальная скорость агрегата, бит/с
     приток: str
     скорость_притока: int
-    наборы: Tuple[int, ...]    # длины наборов цикла, бит
-    fas: Tuple[int, ...]
+    наборы: tuple[int, ...]    # длины наборов цикла, бит
+    fas: tuple[int, ...]
     служебных: int             # FAS + авария + национальные биты в начале набора I
     притоков: int = 4
 
@@ -65,16 +63,16 @@ class Иерархия:
 )
 
 
-def разметка(и: Иерархия) -> Tuple[Dict[int, List[int]], Dict[int, List[int]], Dict[int, int]]:
+def разметка(и: Иерархия) -> tuple[dict[int, list[int]], dict[int, list[int]], dict[int, int]]:
     """Для каждого притока: позиции его данных, его битов Cj и его бита стаффинга.
 
     Набор I: служебные биты, затем данные. Наборы II…последний: первыми —
     по одному Cj на приток; в последнем наборе после Cj — по одному биту
     возможности стаффинга на приток. Данные притоков чередуются побитно.
     """
-    данные: Dict[int, List[int]] = {t: [] for t in range(и.притоков)}
-    cj: Dict[int, List[int]] = {t: [] for t in range(и.притоков)}
-    стаффинг: Dict[int, int] = {}
+    данные: dict[int, list[int]] = {t: [] for t in range(и.притоков)}
+    cj: dict[int, list[int]] = {t: [] for t in range(и.притоков)}
+    стаффинг: dict[int, int] = {}
     начало = 0
     for номер, длина in enumerate(и.наборы):
         место = начало
@@ -94,7 +92,7 @@ def разметка(и: Иерархия) -> Tuple[Dict[int, List[int]], Dict[i
     return данные, cj, стаффинг
 
 
-def _начало_цикла(биты: np.ndarray, и: Иерархия) -> Tuple[int, float] | None:
+def _начало_цикла(биты: np.ndarray, и: Иерархия) -> tuple[int, float] | None:
     """Где в цикле стоит FAS и в какой доле циклов он совпал."""
     L = и.цикл
     циклов = len(биты) // L
@@ -118,7 +116,7 @@ def _начало_цикла(биты: np.ndarray, и: Иерархия) -> Tupl
 
 
 def разнести(биты: np.ndarray, и: Иерархия, начало: int
-             ) -> Tuple[List[np.ndarray], List[float]]:
+             ) -> tuple[list[np.ndarray], list[float]]:
     """Притоки со снятым стаффингом и доля циклов со стаффингом у каждого."""
     L = и.цикл
     ряд = биты[начало:]

@@ -26,10 +26,11 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any
 
 from .. import registry
 from ..convert import ConvertedDocument, _clean_line, _read_text, _reason, decode_bytes
@@ -102,7 +103,7 @@ def rows_to_markdown(rows: Sequence[Sequence[str]]) -> str:
     Первая непустая строка становится шапкой: в технических документах это
     почти всегда так, а Markdown без шапки таблицу не рисует.
     """
-    cleaned: List[List[str]] = []
+    cleaned: list[list[str]] = []
     for row in rows:
         prepared = [cell_text(cell) for cell in row]
         if any(prepared):
@@ -124,7 +125,7 @@ def rows_to_markdown(rows: Sequence[Sequence[str]]) -> str:
 
 def flatten_table(markdown: str) -> str:
     """Вложенная таблица внутри ячейки: строки через « / », без разметки."""
-    parts: List[str] = []
+    parts: list[str] = []
     for line in markdown.split("\n"):
         stripped = line.strip().strip("|").strip()
         if not stripped or set(stripped.replace("|", "").strip()) <= {"-", " "}:
@@ -135,7 +136,7 @@ def flatten_table(markdown: str) -> str:
 
 def merge_list_blocks(blocks: Sequence[str]) -> str:
     """Собирает блоки в Markdown, склеивая подряд идущие пункты списка."""
-    out: List[str] = []
+    out: list[str] = []
     for block in blocks:
         if not block:
             continue
@@ -199,10 +200,10 @@ class _TableBuilder:
     """
 
     def __init__(self) -> None:
-        self.rows: List[List[str]] = []
-        self.before: List[str] = []
-        self._row: List[str] | None = None
-        self._cell: List[str] | None = None
+        self.rows: list[list[str]] = []
+        self.before: list[str] = []
+        self._row: list[str] | None = None
+        self._cell: list[str] | None = None
         self._colspan = 1
 
     def start_row(self) -> None:
@@ -262,18 +263,18 @@ class _HtmlToMarkdown(HTMLParser):
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.blocks: List[str] = []
+        self.blocks: list[str] = []
         self.images = 0
-        self._title_parts: List[str] = []
-        self._buffer: List[str] = []
+        self._title_parts: list[str] = []
+        self._buffer: list[str] = []
         self._skip_depth = 0
         self._pre_depth = 0
         self._in_title = False
         self._heading = 0
         self._quote_depth = 0
-        self._lists: List[Dict[str, Any]] = []
-        self._tables: List[_TableBuilder] = []
-        self._links: List[Tuple[str, int]] = []
+        self._lists: list[dict[str, Any]] = []
+        self._tables: list[_TableBuilder] = []
+        self._links: list[tuple[str, int]] = []
 
     # --- накопление текста ---
 
@@ -282,7 +283,7 @@ class _HtmlToMarkdown(HTMLParser):
         self._buffer.clear()
         if not raw.strip():
             return ""
-        lines: List[str] = []
+        lines: list[str] = []
         for line in raw.split("\n"):
             cleaned = _clean_line(line)
             if cleaned:
@@ -342,7 +343,7 @@ class _HtmlToMarkdown(HTMLParser):
 
     # --- обработчики html.parser ---
 
-    def handle_starttag(self, tag: str, attrs: Sequence[Tuple[str, str | None]]) -> None:
+    def handle_starttag(self, tag: str, attrs: Sequence[tuple[str, str | None]]) -> None:
         tag = tag.lower()
         if self._skip_depth:
             if tag in _SKIP_TAGS:
@@ -412,7 +413,7 @@ class _HtmlToMarkdown(HTMLParser):
         if tag in _BLOCK_TAGS:
             self._close_block()
 
-    def handle_startendtag(self, tag: str, attrs: Sequence[Tuple[str, str | None]]) -> None:
+    def handle_startendtag(self, tag: str, attrs: Sequence[tuple[str, str | None]]) -> None:
         # Одиночный тег (<br/>, <img/>): закрывать нечего.
         self.handle_starttag(tag, attrs)
         if tag.lower() in _SKIP_TAGS and self._skip_depth:
@@ -542,7 +543,7 @@ def declared_encoding(raw: bytes) -> str | None:
     return None
 
 
-def decode_markup(raw: bytes, path: Path | None = None) -> Tuple[str, str, str | None]:
+def decode_markup(raw: bytes, path: Path | None = None) -> tuple[str, str, str | None]:
     """Байты разметки → текст. Возвращает (текст, кодировка, предупреждение).
 
     Порядок такой: BOM, объявленная в файле кодировка, затем перебор из
@@ -678,11 +679,11 @@ def _part_text(part: Any) -> str:
     return decode_markup(payload)[0]
 
 
-def _mail_parts(message: Any) -> Tuple[Any | None, Any | None, List[Any]]:
+def _mail_parts(message: Any) -> tuple[Any | None, Any | None, list[Any]]:
     """Разбирает письмо на текстовую часть, HTML-часть и вложения."""
     plain: Any | None = None
     html: Any | None = None
-    attachments: List[Any] = []
+    attachments: list[Any] = []
     try:
         parts = list(message.walk())
     except Exception:  # noqa: BLE001 — письмо с дефектной структурой
@@ -709,8 +710,8 @@ def _mail_parts(message: Any) -> Tuple[Any | None, Any | None, List[Any]]:
     return plain, html, attachments
 
 
-def _attachment_lines(attachments: Sequence[Any]) -> List[str]:
-    lines: List[str] = []
+def _attachment_lines(attachments: Sequence[Any]) -> list[str]:
+    lines: list[str] = []
     for number, part in enumerate(attachments, start=1):
         try:
             name = part.get_filename() or f"вложение {number}"
@@ -753,7 +754,7 @@ def convert_eml(path: Path) -> ConvertedDocument:
             return result
 
     subject = _header_value(message, "Subject")
-    header_lines: List[str] = []
+    header_lines: list[str] = []
     for name, label in _MAIL_HEADERS:
         value = _header_value(message, name)
         if value:
@@ -782,7 +783,7 @@ def convert_eml(path: Path) -> ConvertedDocument:
     else:
         result.warnings.append("в письме нет текстовой части — только вложения или разметка")
 
-    pieces: List[str] = [f"# {subject or 'Письмо без темы'}"]
+    pieces: list[str] = [f"# {subject or 'Письмо без темы'}"]
     if header_lines:
         pieces.append("\n".join(header_lines))
     if body.strip():
@@ -866,7 +867,7 @@ def convert_mhtml(path: Path) -> ConvertedDocument:
         result.meta["saved"] = saved
 
     title = _clean_line(_header_value(message, "Subject")) or parsed.title or path.stem
-    pieces: List[str] = []
+    pieces: list[str] = []
     if not parsed.text.lstrip().startswith("# "):
         pieces.append(f"# {title}")
     if address:
@@ -890,7 +891,7 @@ def _xml_local(tag: Any) -> str:
 
 
 def _xml_attributes(element: Any) -> str:
-    parts: List[str] = []
+    parts: list[str] = []
     for name, value in list(element.attrib.items())[:6]:
         cleaned = _clean_line(str(value))
         if not cleaned:
@@ -901,7 +902,7 @@ def _xml_attributes(element: Any) -> str:
     return ", ".join(parts)
 
 
-def _xml_blocks(element: Any, depth: int, blocks: List[str]) -> None:
+def _xml_blocks(element: Any, depth: int, blocks: list[str]) -> None:
     """Дерево XML → Markdown: вложенность тегов становится вложенностью заголовков."""
     if len(blocks) >= _MAX_XML_BLOCKS:
         return
@@ -967,7 +968,7 @@ def convert_xml(path: Path) -> ConvertedDocument:
     if local == "html":
         return convert_html(path)
 
-    blocks: List[str] = []
+    blocks: list[str] = []
     try:
         _xml_blocks(root, 1, blocks)
     except (RecursionError, MemoryError, ValueError) as error:

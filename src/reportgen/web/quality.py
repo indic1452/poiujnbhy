@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from ..ingest.convert import glued_text_warning
 
@@ -40,7 +40,7 @@ PAGE = 500
 class QualityChecker:
     """Проходит по библиотеке и метит документы, разобранные плохо."""
 
-    def __init__(self, repos: "Repositories"):
+    def __init__(self, repos: Repositories):
         self.repos = repos
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
@@ -57,7 +57,7 @@ class QualityChecker:
         with self._lock:
             return self._thread is not None and self._thread.is_alive()
 
-    def status(self) -> Dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         with self._lock:
             state = {
                 "running": self._thread is not None and self._thread.is_alive(),
@@ -81,7 +81,7 @@ class QualityChecker:
 
     # -- работа -------------------------------------------------------------
 
-    def start(self) -> Dict[str, Any]:
+    def start(self) -> dict[str, Any]:
         """Запустить проверку в фоне. Уже идёт — вернуть текущее состояние."""
         started = False
         with self._lock:
@@ -129,7 +129,7 @@ class QualityChecker:
             with self._lock:
                 self._finished_at = time.monotonic()
 
-    def _check_one(self, row: Dict[str, Any]) -> None:
+    def _check_one(self, row: dict[str, Any]) -> None:
         sample = str(row.get("sample") or "")
         # Пустой образец — это документ без фрагментов: разбираться с ним
         # надо иначе (скан без распознавания), и на склейку он не похож.
@@ -147,7 +147,7 @@ class QualityChecker:
                 self._cleared += 1
 
 
-def _hint(state: Dict[str, Any]) -> str:
+def _hint(state: dict[str, Any]) -> str:
     """Одна строка о проверке — та, что читает человек."""
     if state["error"]:
         return state["error"]

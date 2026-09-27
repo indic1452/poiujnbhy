@@ -13,7 +13,6 @@ import unittest
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen.ingest.convert import _repairs_note, convert_file
 from reportgen.ingest.text_repair import (
     drop_running_titles,
@@ -243,8 +242,8 @@ class PdfReadingTests(unittest.TestCase):
     def setUpClass(cls):
         try:
             import pymupdf
-        except ImportError:                      # pragma: no cover
-            raise unittest.SkipTest("нет pymupdf")
+        except ImportError as нет:               # pragma: no cover
+            raise unittest.SkipTest("нет pymupdf") from нет
         import tempfile
 
         cls._tmp = tempfile.TemporaryDirectory()
@@ -404,7 +403,7 @@ class EveryFormatTests(unittest.TestCase):
 
     def test_a_docx_is_repaired(self):
         try:
-            import docx                          # noqa: F401
+            import docx  # noqa: F401
         except ImportError:                      # pragma: no cover
             self.skipTest("нет python-docx")
         from docx import Document
@@ -425,8 +424,8 @@ class TwoColumnTests(unittest.TestCase):
     def build(self, columns: bool):
         try:
             import pymupdf
-        except ImportError:                      # pragma: no cover
-            raise unittest.SkipTest("нет pymupdf")
+        except ImportError as нет:               # pragma: no cover
+            raise unittest.SkipTest("нет pymupdf") from нет
         import tempfile
 
         tmp = tempfile.TemporaryDirectory()

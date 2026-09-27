@@ -13,8 +13,6 @@ OML: дискриминатор (0x80 Formatted O&M, 0x40 MMI, 0x20 TRAU O&M, 0x
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple
-
 from ..pole import u16
 from ..razbor import Разбор, данные
 
@@ -48,7 +46,7 @@ RSL_ТИПЫ = {
 }
 
 #: Элементы RSL: тег → (имя, вид, длина) — вид «TV», «F» (FIXED), «TLV», «TL16V» (rsl_att_tlvdef).
-RSL_IE: Dict[int, Tuple[str, str, int]] = {
+RSL_IE: dict[int, tuple[str, str, int]] = {
     0x01: ("Channel Number", "TV", 1), 0x02: ("Link Identifier", "TV", 1), 0x03: ("Activation Type", "TV", 1),
     0x04: ("BS Power", "TV", 1), 0x05: ("Channel Identification", "TLV", 0), 0x06: ("Channel Mode", "TLV", 0),
     0x07: ("Encryption Information", "TLV", 0), 0x08: ("Frame Number", "F", 2), 0x09: ("Handover Reference", "TV", 1),
@@ -90,7 +88,7 @@ def канал(октет: int) -> str:
     return f"{вид}, TS {tn}"
 
 
-def _ie(д: bytes, м: int, конец: int) -> Optional[Tuple[int, int, int]]:
+def _ie(д: bytes, м: int, конец: int) -> tuple[int, int, int] | None:
     """(тег, начало значения, конец значения) одного элемента или None — не по таблице длин."""
     тег = д[м]
     описание = RSL_IE.get(тег)

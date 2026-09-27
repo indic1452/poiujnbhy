@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Октетный стаффинг: асинхронное HDLC/PPP (RFC 1662) и SLIP (RFC 1055).
 
 Битстаффинг — это синхронное HDLC (модуль hdlc). На асинхронных линиях
@@ -22,7 +21,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import List, Tuple
 
 import numpy as np
 
@@ -37,7 +35,7 @@ SLIP_КОНЕЦ, SLIP_ЭКРАН, SLIP_ВМЕСТО_КОНЦА, SLIP_ВМЕСТ�
 ПРОВЕРЯТЬ_КАДРОВ = 3000
 
 
-def снять_экранирование(тело: bytes) -> Tuple[bytes, int] | None:
+def снять_экранирование(тело: bytes) -> tuple[bytes, int] | None:
     """0x7D x → x ^ 0x20. Возвращает кадр и число снятых экранов (None — кадр битый)."""
     if ЭКРАН not in тело:
         return тело, 0
@@ -56,7 +54,7 @@ def снять_экранирование(тело: bytes) -> Tuple[bytes, int] 
     return bytes(итог), экранов
 
 
-def кадры_асинхронные(данные: bytes) -> List[Tuple[bytes, int]]:
+def кадры_асинхронные(данные: bytes) -> list[tuple[bytes, int]]:
     """Кадры между флагами 0x7E со снятым экранированием: (кадр, экранов)."""
     итог = []
     for тело in данные.split(bytes([ФЛАГ])):
@@ -68,7 +66,7 @@ def кадры_асинхронные(данные: bytes) -> List[Tuple[bytes, 
     return итог
 
 
-def кадры_slip(данные: bytes) -> List[bytes]:
+def кадры_slip(данные: bytes) -> list[bytes]:
     итог = []
     for тело in данные.split(bytes([SLIP_КОНЕЦ])):
         if len(тело) < 20:
@@ -93,7 +91,7 @@ def кадры_slip(данные: bytes) -> List[bytes]:
     return итог
 
 
-def _выравнивания(биты: np.ndarray, байт: int) -> List[int]:
+def _выравнивания(биты: np.ndarray, байт: int) -> list[int]:
     """Сдвиги (0…7), при которых байт-разделитель чаще всего стоит на границе."""
     if len(биты) < 64:
         return [0]

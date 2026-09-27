@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """ОКС-7 (SS7) и SIGTRAN: от канала сигнализации до MAP и Q.931.
 
 Документы и разделы:
@@ -31,7 +30,7 @@ ANSI и японский TTC не поддерживаются: в них ина
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Callable, Sequence
 
 from ..chtenie import КАНАЛЫ
 from ..pole import Мало, u16, u24, u32
@@ -63,12 +62,12 @@ def _дальше(р: Разбор, разборщик: Callable[..., bool], м:
     _данные(р, м, что, min(конец, len(р.д)))
 
 
-def _данные(р: Разбор, м: int, что: str, конец: Optional[int] = None) -> None:
+def _данные(р: Разбор, м: int, что: str, конец: int | None = None) -> None:
     """«Данные» в пределах записанных байт (объявленный конец бывает дальше — при обрыве)."""
     данные(р, м, что, len(р.д) if конец is None else min(конец, len(р.д)))
 
 
-def _цифры(байты: bytes, нечётно: Optional[bool] = None) -> str:
+def _цифры(байты: bytes, нечётно: bool | None = None) -> str:
     """Цифры BCD: первая — в младшем полубайте (Q.713 3.4.2.3, Q.763 3.9, TS 29.002 TBCD).
 
     ``нечётно`` — признак из заголовка: True — старший полубайт последнего октета —
@@ -230,7 +229,7 @@ _ИНТЕРФЕЙС = {0x0001: ("Interface Identifier (Integer)", "interface_ide
 СЕТИ = {0: "международная", 1: "международная (запас)", 2: "национальная", 3: "национальная (запас)"}
 
 
-def _параметры(д: bytes, м: int, конец: int) -> Optional[Tuple[List[Tuple[int, int, int]], bool]]:
+def _параметры(д: bytes, м: int, конец: int) -> tuple[list[tuple[int, int, int]], bool] | None:
     """Параметры TLV SIGTRAN (RFC 4666 3.2): [(тег, начало, длина)] и признак обрыва записи.
 
     Длина параметра — без выравнивания, выравнивание нулями до 4 байт; параметры
@@ -330,7 +329,7 @@ def _sigtran(р: Разбор, м: int, конец: int, протокол: str) 
     return True
 
 
-def _значение_параметра(у, п, протокол: str, ключ: str, вид: str, значение: bytes, м: int) -> Optional[str]:
+def _значение_параметра(у, п, протокол: str, ключ: str, вид: str, значение: bytes, м: int) -> str | None:
     """Значение параметра полями под ним; итог — текст для подписи параметра."""
     дл = len(значение)
     if вид == "текст":
@@ -389,7 +388,7 @@ def _значение_параметра(у, п, протокол: str, ключ
 def _нагрузка_sigtran(р: Разбор, у, протокол: str, класс: int, тип: int, вложенные) -> None:
     """Protocol Data (M3UA, M2UA, IUA) и Data (SUA) — дальше тем же механизмом."""
     к = протокол.lower()
-    адреса: Dict[int, int] = {}
+    адреса: dict[int, int] = {}
     for тег, начало, конец, п in вложенные:
         if протокол == "SUA" and тег in (0x0102, 0x0103):
             ssn = _sua_адрес(р, у, п, начало, конец, "sua.source" if тег == 0x0102 else "sua.destination")
@@ -442,7 +441,7 @@ def _нагрузка_sigtran(р: Разбор, у, протокол: str, кл�
             return
 
 
-def _sua_адрес(р: Разбор, у, п, м: int, конец: int, ключ: str) -> Optional[int]:
+def _sua_адрес(р: Разбор, у, п, м: int, конец: int, ключ: str) -> int | None:
     """Адрес SUA (RFC 3868 3.10.2): указатель маршрутизации, индикатор, подпараметры TLV."""
     д = р.д
     if конец - м < 4:
@@ -728,9 +727,9 @@ SCCP_СТРОЕНИЕ = {
     0x10: (("dlr", "slr", "класс", "посл", "кредит"), (), False),
 }
 #: Пользователи SCCP по номеру подсистемы (254 — BSSAP): разборщик(р, м, конец) → bool.
-SCCP_ПОДСИСТЕМЫ: Dict[int, Callable[..., bool]] = {}
+SCCP_ПОДСИСТЕМЫ: dict[int, Callable[..., bool]] = {}
 #: Пользователи данных соединений SCCP (CR, CC, DT1 несут данные без SSN) — по признакам.
-SCCP_СОЕДИНЕНИЯ: List[Callable[..., bool]] = []
+SCCP_СОЕДИНЕНИЯ: list[Callable[..., bool]] = []
 SCCP_ПАРАМЕТРЫ = {0x03: "Адрес вызываемого", 0x04: "Адрес вызывающего", 0x09: "Кредит",
                   0x0F: "Данные", 0x10: "Сегментация", 0x11: "Счётчик переходов", 0x12: "Важность"}
 SCCP_ВОЗВРАТ = {0: "нет трансляции для адреса такого вида", 1: "нет трансляции для этого адреса",
@@ -744,7 +743,7 @@ SSN = {1: "управление SCCP", 3: "ISUP", 4: "OMAP", 5: "MAP", 6: "HLR",
          7: "ISDN/подвижная (E.214)"}
 
 
-def _разбор_адреса_sccp(д: bytes, м: int, дл: int) -> Optional[dict]:
+def _разбор_адреса_sccp(д: bytes, м: int, дл: int) -> dict | None:
     """Адрес SCCP (Q.713 3.4): индикатор, PC, SSN, глобальный заголовок. Не сошлось — None."""
     if дл < 2:
         return None
@@ -772,7 +771,7 @@ def _разбор_адреса_sccp(д: bytes, м: int, дл: int) -> Optional[d
     return итог
 
 
-def _адрес_sccp(у, р: Разбор, п, м: int, дл: int, ключ: str) -> Tuple[Optional[int], str]:
+def _адрес_sccp(у, р: Разбор, п, м: int, дл: int, ключ: str) -> tuple[int | None, str]:
     """Поля адреса под параметром; итог — SSN и строка для сводки."""
     д = р.д
     а = _разбор_адреса_sccp(д, м, дл)
@@ -1042,7 +1041,7 @@ MAP_SSN = frozenset({5, 6, 7, 8, 9, 10})
 MAP_AC = bytes([0x04, 0x00, 0x00, 0x01, 0x00])
 
 
-def _tlv(д: bytes, м: int, конец: int) -> Optional[Tuple[int, int, int]]:
+def _tlv(д: bytes, м: int, конец: int) -> tuple[int, int, int] | None:
     """Элемент BER (X.690 8.1): тег (один октет), определённая длина до 3 октетов.
     Итог — (тег, начало значения, конец значения) или None, если не укладывается."""
     if м + 2 > конец:
@@ -1062,7 +1061,7 @@ def _tlv(д: bytes, м: int, конец: int) -> Optional[Tuple[int, int, int]]:
     return тег, н, н + дл
 
 
-def _элементы(д: bytes, м: int, конец: int) -> Optional[List[Tuple[int, int, int, int]]]:
+def _элементы(д: bytes, м: int, конец: int) -> list[tuple[int, int, int, int]] | None:
     """Последовательность элементов BER, ровно заполняющая [м, конец): [(тег, м, н, к)]."""
     итог = []
     while м < конец:
@@ -1078,7 +1077,7 @@ def _целое(д: bytes, н: int, к: int) -> int:
     return int.from_bytes(д[н:к], "big", signed=True)
 
 
-def _компонент(д: bytes, тег: int, н: int, к: int) -> Optional[dict]:
+def _компонент(д: bytes, тег: int, н: int, к: int) -> dict | None:
     """Компонент (Q.773 4.2.2): invokeID, linkedID, код операции/ошибки, параметр."""
     э = _элементы(д, н, к)
     if not э:
@@ -1183,7 +1182,7 @@ def _oid(байты: bytes) -> str:
     return ".".join(части)
 
 
-def _контекст(д: bytes, н: int, к: int) -> Optional[Tuple[int, int]]:
+def _контекст(д: bytes, н: int, к: int) -> tuple[int, int] | None:
     """OID контекста приложения из диалога: первый [1] → OBJECT IDENTIFIER (Q.773 4.2.3)."""
     м = н
     while м < к:
@@ -1205,10 +1204,10 @@ def _контекст(д: bytes, н: int, к: int) -> Optional[Tuple[int, int]]:
 
 #: Приложения поверх TCAP, узнаваемые раньше MAP (CAP делит с MAP корень контекста):
 #: функция(р, компоненты, контекст, (SSN вызываемого, SSN вызывающего)) → bool.
-TCAP_ПРИЛОЖЕНИЯ: List[Callable] = []
+TCAP_ПРИЛОЖЕНИЯ: list[Callable] = []
 
 
-def tcap(р: Разбор, м: int, конец: int, ssn: Sequence[Optional[int]] = (None, None)) -> bool:
+def tcap(р: Разбор, м: int, конец: int, ssn: Sequence[int | None] = (None, None)) -> bool:
     """TCAP (Q.773 4.2): сообщение (Begin/Continue/End/Abort/Unidirectional), OTID/DTID,
     диалог (контекст приложения), компоненты с invokeID и кодом операции.
 
@@ -1288,7 +1287,7 @@ def tcap(р: Разбор, м: int, конец: int, ssn: Sequence[Optional[int]
     return True
 
 
-def _map(р: Разбор, компоненты, контекст: Optional[bytes]) -> None:
+def _map(р: Разбор, компоненты, контекст: bytes | None) -> None:
     """MAP (TS 29.002): операции компонентов; для нескольких — IMSI/MSISDN из аргумента."""
     д = р.д
     начало = компоненты[0]["место"][0]
@@ -1324,7 +1323,7 @@ def _map(р: Разбор, компоненты, контекст: Optional[byte
     р.п.инфо = "GSM MAP " + у.итог
 
 
-def _map_номер(д: bytes, код: int, параметр) -> Optional[Tuple[str, str, str, int, int]]:
+def _map_номер(д: bytes, код: int, параметр) -> tuple[str, str, str, int, int] | None:
     """IMSI/MSISDN из аргумента (TS 29.002 17.7): UpdateLocationArg { imsi IMSI, … },
     SendAuthenticationInfoArg { imsi [0] IMSI, … } (v3) или IMSI (v2),
     SendRoutingInfoArg { msisdn [0] ISDN-AddressString, … }."""

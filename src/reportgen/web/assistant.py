@@ -11,17 +11,25 @@ from __future__ import annotations
 
 import re
 import time
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterator, List, Sequence
+from typing import Any
 
+from .. import parts
+from ..designations import (
+    MAX_DESIGNATIONS,  # noqa: F401 — читается снаружи как reportgen.web.assistant.MAX_DESIGNATIONS
+    designations_in,
+    implied_designations,
+    name_parts,
+)
 from ..prompts import (
     ASSISTANT_PROMPT,
-    DIGEST_PROMPT,
-    DIGEST_SYSTEM_PROMPT,
     ASSISTANT_SYSTEM_PROMPT,
     ASSISTANT_TASK,
     ASSISTANT_TASK_SHORT,
     CONTINUE_PROMPT,
+    DIGEST_PROMPT,
+    DIGEST_SYSTEM_PROMPT,
     GAP_PROMPT,
     GAP_SYSTEM_PROMPT,
     NAME_PROMPT,
@@ -29,7 +37,6 @@ from ..prompts import (
     RESEARCH_PROMPT,
     RESEARCH_SYSTEM_PROMPT,
 )
-from .. import parts
 from ..retrieval import BM25Index, Hit, reciprocal_rank_fusion, tokenize
 from ..store.models import ATTACHMENT_TITLES, Chat, ChatMessage, User
 from .catalog import (
@@ -37,12 +44,6 @@ from .catalog import (
     CATALOG_SHELVES_CHARS,
     LibraryCatalog,
     render_catalog,
-)
-from ..designations import (
-    MAX_DESIGNATIONS,  # noqa: F401 — читается снаружи как reportgen.web.assistant.MAX_DESIGNATIONS
-    designations_in,
-    implied_designations,
-    name_parts,
 )
 from .research import (
     Step,
@@ -52,7 +53,6 @@ from .research import (
     render_trail,
 )
 from .service import ReportService, ServiceError
-
 
 #: Обороты, по которым видно, что спрашивают про НАШУ практику, а не про
 #: устройство вещей. Список нарочно узкий: цена ошибки несимметрична. Принять
@@ -116,7 +116,7 @@ SOURCE_DOC_TYPES = {
 }
 
 
-def chat_sources(chat: "Chat | None") -> str:
+def chat_sources(chat: Chat | None) -> str:
     """Откуда берём материал, с запасом на старые записи и мусор в поле."""
     выбор = str(getattr(chat, "sources", "") or "").strip().lower()
     return выбор if выбор in CHAT_SOURCES else DEFAULT_CHAT_SOURCES
@@ -144,7 +144,7 @@ def _добавить_замечание(было: str, новое: str) -> str:
     return f"{первое.rstrip('.')}. {второе}"
 
 
-def _only_types(hits: Sequence[Hit], doc_types) -> List[Hit]:
+def _only_types(hits: Sequence[Hit], doc_types) -> list[Hit]:
     """Оставить только выбранные виды документов. Ничего не выбрано — всё."""
     if not doc_types:
         return list(hits)
@@ -153,7 +153,7 @@ def _only_types(hits: Sequence[Hit], doc_types) -> List[Hit]:
             if str(getattr(hit.chunk, "doc_type", "")) in разрешено]
 
 
-def вперемежку(*ряды: Sequence[Hit]) -> List[Hit]:
+def вперемежку(*ряды: Sequence[Hit]) -> list[Hit]:
     """Слить ряды фрагментов, чередуя их, и заново проставить места.
 
     Материал набирается из нескольких рядов: выдача поиска, фрагменты
@@ -178,7 +178,7 @@ def вперемежку(*ряды: Sequence[Hit]) -> List[Hit]:
     ряда сохраняется.
     """
     живые = [list(ряд) for ряд in ряды if ряд]
-    слито: List[Hit] = []
+    слито: list[Hit] = []
     for позиция in range(max((len(ряд) for ряд in живые), default=0)):
         for ряд in живые:
             if позиция < len(ряд):
@@ -188,7 +188,7 @@ def вперемежку(*ряды: Sequence[Hit]) -> List[Hit]:
     return слито
 
 
-def prefer_norms(hits: Sequence[Hit]) -> List[Hit]:
+def prefer_norms(hits: Sequence[Hit]) -> list[Hit]:
     """Опустить лишние отчёты ниже норм, ничего не выбрасывая.
 
     Отдел столкнулся с этим на живой библиотеке: на вопрос «как устроено
@@ -212,8 +212,8 @@ def prefer_norms(hits: Sequence[Hit]) -> List[Hit]:
     Перестановка устойчивая: относительный порядок внутри обеих частей тот же,
     что дал поиск.
     """
-    нормы: List[Hit] = []
-    отчёты: List[Hit] = []
+    нормы: list[Hit] = []
+    отчёты: list[Hit] = []
     for hit in hits:
         (отчёты if str(getattr(hit.chunk, "doc_type", "")) == "reports"
          else нормы).append(hit)
@@ -336,7 +336,7 @@ FAST_LIMITS = {
 }
 
 
-def chat_mode(chat: "Chat | None") -> str:
+def chat_mode(chat: Chat | None) -> str:
     """Режим разговора, с запасом на старые записи и мусор в поле."""
     режим = str(getattr(chat, "mode", "") or "").strip().lower()
     return режим if режим in CHAT_MODES else DEFAULT_CHAT_MODE
@@ -492,7 +492,7 @@ class AssistantService:
 
     # -- разговоры ----------------------------------------------------------
 
-    def list_chats(self, user: User, *, archived: bool = False) -> List[Chat]:
+    def list_chats(self, user: User, *, archived: bool = False) -> list[Chat]:
         return self.repos.chats.for_user(user.id, archived=archived)
 
     def create_chat(self, user: User, *, title: str = DEFAULT_TITLE,
@@ -508,7 +508,7 @@ class AssistantService:
             raise ServiceError("разговор не найден", 404)
         return chat
 
-    def messages(self, user: User, chat_id: int) -> List[ChatMessage]:
+    def messages(self, user: User, chat_id: int) -> list[ChatMessage]:
         self.get_chat(user, chat_id)
         return self.repos.chats.messages(chat_id)
 
@@ -542,20 +542,20 @@ class AssistantService:
 
     def ask(self, user: User, chat_id: int, question: str, *,
             top_k: int | None = None,
-            pinned: Sequence[str] = ()) -> Dict[str, Any]:
+            pinned: Sequence[str] = ()) -> dict[str, Any]:
         """Полный ответ одним куском (без потоковой выдачи)."""
         prepared = self._prepare(user, chat_id, question, top_k=top_k,
                                  pinned=pinned)
         return self._finish(user, prepared, self._complete(prepared))
 
-    def _complete(self, prepared: Dict[str, Any]) -> str:
+    def _complete(self, prepared: dict[str, Any]) -> str:
         llm = self.reports.get_llm()
         return self._без_вырождения(prepared, llm.complete(
             ASSISTANT_SYSTEM_PROMPT, prepared["prompt"],
             **self._как_отвечать(llm, prepared)))
 
     @staticmethod
-    def _без_вырождения(prepared: Dict[str, Any], текст: str) -> str:
+    def _без_вырождения(prepared: dict[str, Any], текст: str) -> str:
         """Готовый ответ без выродившегося хвоста — для ответа целиком.
 
         В потоке сторож останавливает генерацию сразу; здесь ответ уже
@@ -569,14 +569,14 @@ class AssistantService:
         prepared.setdefault("итог", {})["обрыв"] = "повтор"
         return сторож.чистый()
 
-    def _как_отвечать(self, llm: Any, prepared: Dict[str, Any]) -> Dict[str, Any]:
+    def _как_отвечать(self, llm: Any, prepared: dict[str, Any]) -> dict[str, Any]:
         """Параметры главного ответа — одни для потока и для целого ответа.
 
         Итог вызова (чем кончилась генерация, расход токенов) клиент кладёт
         в словарь ЭТОГО ответа: клиент модели один на всех, и его общие поля
         перезаписывает чужой вопрос, заданный в то же время.
         """
-        параметры: Dict[str, Any] = {
+        параметры: dict[str, Any] = {
             "max_tokens": (prepared.get("answer_tokens")
                            or prepared["profile"]["max_tokens"]),
             "temperature": self._температура(),
@@ -588,7 +588,7 @@ class AssistantService:
 
     def ask_stream(self, user: User, chat_id: int, question: str, *,
                    top_k: int | None = None,
-                   pinned: Sequence[str] = ()) -> Iterator[Dict[str, Any]]:
+                   pinned: Sequence[str] = ()) -> Iterator[dict[str, Any]]:
         """Потоковый ответ: источники сразу, текст по мере генерации.
 
         Инженер видит, на чём основан ответ, ещё до того как модель дописала
@@ -630,7 +630,7 @@ class AssistantService:
         }
 
         llm = self.reports.get_llm()
-        pieces: List[str] = []
+        pieces: list[str] = []
         stream = getattr(llm, "stream", None)
         # Между этой строкой и первым куском текста модель думает, а на
         # маленькой машине ещё и ждёт своей очереди: llama-server отвечает по
@@ -694,7 +694,7 @@ class AssistantService:
         yield {"type": "done", **result}
 
     def continue_stream(self, user: User, chat_id: int,
-                        message_id: int) -> Iterator[Dict[str, Any]]:
+                        message_id: int) -> Iterator[dict[str, Any]]:
         """Продолжить оборванный ответ — в том же сообщении, по тем же источникам.
 
         Отдел: модель нашла в литературе огромную двоичную комбинацию,
@@ -728,7 +728,7 @@ class AssistantService:
         профиль = self._profile(chat)
         источники = [dict(item) for item in ответ.sources or [] if item.get("text")]
 
-        def собрать(куски: List[Dict[str, Any]], карточки: List[Dict[str, Any]]) -> str:
+        def собрать(куски: list[dict[str, Any]], карточки: list[dict[str, Any]]) -> str:
             return CONTINUE_PROMPT.format(
                 question=вопрос, sources=_render_sources(куски, карточки),
                 before=(f"Выше него написано ещё {выше} знаков. " if выше else ""),
@@ -738,14 +738,14 @@ class AssistantService:
         источники, карточки, prompt, _ = self._fit_tokens(
             источники, карточки, собрать, history=[],
             answer_tokens=профиль["max_tokens"])
-        prepared: Dict[str, Any] = {"prompt": prompt, "history": [], "profile": профиль}
+        prepared: dict[str, Any] = {"prompt": prompt, "history": [], "profile": профиль}
         prepared["answer_tokens"] = (self._answer_tokens(prompt, [], профиль["max_tokens"])
                                      if chat_mode(chat) == "deep" else профиль["max_tokens"])
 
         llm = self.reports.get_llm()
         stream = getattr(llm, "stream", None)
         сторож = СторожПовтора()
-        куски: List[str] = []
+        куски: list[str] = []
 
         def сохранить(*, прервано: bool = False) -> ChatMessage:
             продолжение = сторож.чистый() if сторож.вид else "".join(куски)
@@ -813,7 +813,7 @@ class AssistantService:
     def _prepare(self, user: User, chat_id: int, question: str,
                  *, top_k: int | None,
                  pinned: Sequence[str] = (),
-                 question_message: ChatMessage | None = None) -> Dict[str, Any]:
+                 question_message: ChatMessage | None = None) -> dict[str, Any]:
         """Собрать материал под вопрос, не показывая ход работы."""
         поток = self._prepare_stream(
             user, chat_id, question, top_k=top_k, pinned=pinned,
@@ -972,8 +972,8 @@ class AssistantService:
         digest_block = ""
         task_block = ASSISTANT_TASK
 
-        def собрать(куски: List[Dict[str, Any]],
-                    карточки: List[Dict[str, Any]]) -> str:
+        def собрать(куски: list[dict[str, Any]],
+                    карточки: list[dict[str, Any]]) -> str:
             return ASSISTANT_PROMPT.format(
                 question=question,
                 case_block=case_block,
@@ -1008,7 +1008,7 @@ class AssistantService:
         # Фрагменты, попавшие в выписки. Текста их в промпте нет, но метки
         # есть, и модель ссылается на них наравне: значит, они такой же
         # источник ответа, как и остальные, и в панели должны быть.
-        выписанные: List[Dict[str, Any]] = []
+        выписанные: list[dict[str, Any]] = []
         if отброшено:
             # Не поместившееся не выбрасываем, а прочитываем отдельными
             # проходами: отдел просил все данные, и «не влезло» — не повод
@@ -1126,7 +1126,7 @@ class AssistantService:
         texts = [(item, (item.text or "").strip()) for item in attachments]
         shares = _share_chars([len(text) for _, text in texts], limit)
         blocks = []
-        for (item, text), share in zip(texts, shares):
+        for (item, text), share in zip(texts, shares, strict=False):
             if not text:
                 blocks.append(
                     f"[Файл: {item.name}] текст извлечь не удалось"
@@ -1143,7 +1143,7 @@ class AssistantService:
         block = "\n### ПРИЛОЖЕННЫЕ ФАЙЛЫ\n" + "\n\n".join(blocks) + "\n"
         return block, len(block)
 
-    def _build_sources(self, hits: Sequence[Hit], *, reserved: int = 0) -> List[Dict[str, Any]]:
+    def _build_sources(self, hits: Sequence[Hit], *, reserved: int = 0) -> list[dict[str, Any]]:
         """Фрагменты для промпта: с соседями и в пределах окна контекста.
 
         Три вещи, которых раньше не было.
@@ -1180,7 +1180,7 @@ class AssistantService:
         radius = int(getattr(self.settings, "assistant_neighbours", 0) or 0)
         neighbour_top = int(getattr(self.settings, "assistant_neighbour_top", 0) or 0)
 
-        around: Dict[str, List[Any]] = {}
+        around: dict[str, list[Any]] = {}
         if radius > 0 and neighbour_top > 0:
             anchors = [hit.chunk.chunk_id for hit in hits[:neighbour_top]]
             try:
@@ -1200,8 +1200,8 @@ class AssistantService:
         # уходило на буквальный повтор вместо ещё одного документа.
         показано: set[str] = set()
 
-        sources: List[Dict[str, Any]] = []
-        за_бюджетом: List[Dict[str, Any]] = []
+        sources: list[dict[str, Any]] = []
+        за_бюджетом: list[dict[str, Any]] = []
         spent = 0
         for hit in hits:
             chunk = hit.chunk
@@ -1258,8 +1258,8 @@ class AssistantService:
             item["label"] = f"S{номер}"
         return sources, за_бюджетом
 
-    def _document_cards(self, sources: Sequence[Dict[str, Any]], *,
-                        оглавления: bool = True) -> List[Dict[str, Any]]:
+    def _document_cards(self, sources: Sequence[dict[str, Any]], *,
+                        оглавления: bool = True) -> list[dict[str, Any]]:
         """Карточки документов: чем каждый полезен и что в нём ещё есть.
 
         ``оглавления=False`` — без оглавлений: они первыми уступают место
@@ -1267,8 +1267,8 @@ class AssistantService:
         """
         if not sources:
             return []
-        order: List[str] = []
-        cards: Dict[str, Dict[str, Any]] = {}
+        order: list[str] = []
+        cards: dict[str, dict[str, Any]] = {}
         for item in sources:
             doc_id = item["doc_id"]
             if doc_id not in cards:
@@ -1294,10 +1294,10 @@ class AssistantService:
                     cards[doc_id]["outline"] = headings
         return [cards[doc_id] for doc_id in order]
 
-    def _fit_window(self, sources: List[Dict[str, Any]], documents: List[Dict[str, Any]],
+    def _fit_window(self, sources: list[dict[str, Any]], documents: list[dict[str, Any]],
                     *, reserved: int
-                    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]],
-                               List[Dict[str, Any]]]:
+                    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]],
+                               list[dict[str, Any]]]:
         """Последняя сверка с окном модели — уже по готовому тексту материала.
 
         Бюджет источников считается по их длине, но в промпт идут ещё
@@ -1312,7 +1312,7 @@ class AssistantService:
         """
         window = self._context_chars(пул=True)
         room = max(window - reserved, min(MIN_LIBRARY_CHARS, window))
-        снятые: List[Dict[str, Any]] = []
+        снятые: list[dict[str, Any]] = []
         while sources:
             weight = len(_render_map(documents)) + len(_render_sources(sources, documents))
             if weight <= room:
@@ -1328,14 +1328,14 @@ class AssistantService:
             documents = self._document_cards(sources)
         return sources, documents, снятые
 
-    def _finish(self, user: User, prepared: Dict[str, Any], text: str,
-                *, interrupted: bool = False) -> Dict[str, Any]:
+    def _finish(self, user: User, prepared: dict[str, Any], text: str,
+                *, interrupted: bool = False) -> dict[str, Any]:
         chat: Chat = prepared["chat"]
-        sources: List[Dict[str, Any]] = prepared["sources"]
+        sources: list[dict[str, Any]] = prepared["sources"]
         # МАТЕРИАЛ — это всё, что модель получила: и фрагменты целиком, и те,
         # что дошли до неё выписками. Метки у них общие и сквозные, значит и
         # ссылка на любую из них законна.
-        выписанные: List[Dict[str, Any]] = list(prepared.get("digest_sources") or [])
+        выписанные: list[dict[str, Any]] = list(prepared.get("digest_sources") or [])
         материал = list(sources) + выписанные
         labels = {item["label"] for item in материал}
         # Ссылки сверяем с материалом. Модель иногда пишет [S9], когда в
@@ -1401,7 +1401,7 @@ class AssistantService:
             "warning": prepared.get("warning") or None,
         }
 
-    def _запомнить_замер(self, llm: Any, prepared: Dict[str, Any]) -> None:
+    def _запомнить_замер(self, llm: Any, prepared: dict[str, Any]) -> None:
         """Сколько токенов на деле занял промпт — со слов самого сервера.
 
         Бюджет окна считается по оценке «знаков на токен», и проверить её
@@ -1432,7 +1432,7 @@ class AssistantService:
             "answer_limit": int(prepared.get("answer_tokens") or 0),
         }
 
-    def _чем_кончилось(self, prepared: Dict[str, Any] | None = None) -> str:
+    def _чем_кончилось(self, prepared: dict[str, Any] | None = None) -> str:
         """Как закончилась генерация ЭТОГО ответа: сама, по потолку, на мысли.
 
         Спрашиваем клиента модели, а не гадаем. Заглушки и сторонние клиенты
@@ -1449,8 +1449,8 @@ class AssistantService:
         llm = self.reports.get_llm()
         return str(getattr(llm, "последний_обрыв", "") or "")
 
-    def _named_in_answer(self, text: str, материал: Sequence[Dict[str, Any]]
-                         ) -> List[Dict[str, Any]]:
+    def _named_in_answer(self, text: str, материал: Sequence[dict[str, Any]]
+                         ) -> list[dict[str, Any]]:
         """Документы, названные в ОТВЕТЕ и лежащие в библиотеке.
 
         Отдел, вопрос по SDH: «опять внизу: загрузите документы RFC и ITU-T,
@@ -1484,7 +1484,7 @@ class AssistantService:
         просят = bool(_ПРОСИТ_ДОСТАТЬ.search(text or ""))
         уже = set() if просят else {
             str(item.get("doc_id") or "") for item in материал}
-        найдено: List[Dict[str, Any]] = []
+        найдено: list[dict[str, Any]] = []
         видели: set[str] = set()
         for имя in designations_in(text):
             doc_id = self._resolve_document(имя)
@@ -1502,7 +1502,7 @@ class AssistantService:
             })
         return найдено
 
-    def _profile(self, chat: Chat) -> Dict[str, int]:
+    def _profile(self, chat: Chat) -> dict[str, int]:
         """Насколько глубоко работать в этом разговоре.
 
         «Глубоко» — это ровно то, что стоит в настройках отдела: режим ничего
@@ -1535,7 +1535,7 @@ class AssistantService:
 
     # -- точный счёт токенов ----------------------------------------------
 
-    def _счётчик(self) -> "Callable[[str], int] | None":
+    def _счётчик(self) -> Callable[[str], int] | None:
         """Счёт токенов самим сервером модели — или None, если он не умеет.
 
         Ответ «умеет» держим на службе отчётов до конца работы. «Не умеет»
@@ -1553,11 +1553,11 @@ class AssistantService:
                 умеет = int(счёт("проба счёта") or 0) > 0
             except Exception:      # noqa: BLE001 — не умеет, работаем по оценке
                 умеет = False
-            setattr(self.reports, "_llm_counts", умеет)
-            setattr(self.reports, "_llm_counts_at", time.monotonic())
+            self.reports._llm_counts = умеет
+            self.reports._llm_counts_at = time.monotonic()
         return счёт if умеет else None
 
-    def _токенов(self, prompt: str, history: Sequence[Dict[str, str]],
+    def _токенов(self, prompt: str, history: Sequence[dict[str, str]],
                  system: str = ASSISTANT_SYSTEM_PROMPT) -> int | None:
         """Сколько токенов займёт запрос целиком — точно, со слов сервера.
 
@@ -1595,8 +1595,8 @@ class AssistantService:
         """
         return int(getattr(self.settings, "assistant_source_chars", 0) or SOURCE_CHARS)
 
-    def _search(self, chat: Chat, question: str, history: Sequence[Dict[str, str]],
-                top_k: int | None, attachments: Sequence[Any] = ()) -> List[Hit]:
+    def _search(self, chat: Chat, question: str, history: Sequence[dict[str, str]],
+                top_k: int | None, attachments: Sequence[Any] = ()) -> list[Hit]:
         retriever = self.reports.get_retriever()
         if retriever is None:
             return []
@@ -1629,7 +1629,7 @@ class AssistantService:
 
     def _follow_refs(self, hits: Sequence[Hit], question: str, *,
                      известные: Sequence[str] = ()
-                     ) -> tuple[List[Hit], List[str]]:
+                     ) -> tuple[list[Hit], list[str]]:
         """Подтянуть документы, на которые ссылаются НАЙДЕННЫЕ фрагменты.
 
         Отдел: «я задаю вопрос, в чём разница стандарта G.733 от G.734.
@@ -1663,16 +1663,16 @@ class AssistantService:
         if not hits:
             return [], []
 
-        названо: List[str] = []
+        названо: list[str] = []
         for hit in hits:
             текст = f"{hit.chunk.breadcrumbs}\n{hit.chunk.text}"
             for обозначение in designations_in(текст):
                 if обозначение not in названо:
                     названо.append(обозначение)
 
-        добавка: List[Hit] = []
-        след: List[str] = []
-        взято: List[str] = []
+        добавка: list[Hit] = []
+        след: list[str] = []
+        взято: list[str] = []
         for обозначение in названо:
             if len(взято) >= предел:
                 break
@@ -1691,7 +1691,7 @@ class AssistantService:
         return добавка, след
 
     def _by_name(self, hits: Sequence[Hit], question: str,
-                 *, известные: Sequence[str]) -> tuple[List[str], List[str]]:
+                 *, известные: Sequence[str]) -> tuple[list[str], list[str]]:
         """Поиск ничего не дал — спросить у модели, КАК называется документ.
 
         Отдел: «вновь спрашиваю, что такое E1 уплотнение и его структура, в
@@ -1743,8 +1743,8 @@ class AssistantService:
         except Exception:              # noqa: BLE001 — заход не обязателен
             return [], ["поиск по названию: модель не ответила"]
 
-        добавка: List[str] = []
-        названо: List[str] = []
+        добавка: list[str] = []
+        названо: list[str] = []
         for имя in designations_in(ответ or ""):
             if len(добавка) >= предел:
                 break
@@ -1768,7 +1768,7 @@ class AssistantService:
 
     def _чего_не_хватает(self, hits: Sequence[Hit], question: str,
                          *, известные: Sequence[str]
-                         ) -> tuple[List[str], List[str]]:
+                         ) -> tuple[list[str], list[str]]:
         """Показать модели собранное и спросить, чего в нём не хватает.
 
         Отдел: «почему она старый ответ затёрла и начала новый писать, но уже
@@ -1813,8 +1813,8 @@ class AssistantService:
         except Exception:              # noqa: BLE001 — заход не обязателен
             return [], ["сверка комплектности: модель не ответила"]
 
-        добавка: List[str] = []
-        названо: List[str] = []
+        добавка: list[str] = []
+        названо: list[str] = []
         for имя in designations_in(ответ or ""):
             if len(добавка) >= предел:
                 break
@@ -1843,7 +1843,7 @@ class AssistantService:
         пробеле можно по названиям, а фрагменты целиком стоили бы второго
         окна на каждый вопрос.
         """
-        строки: List[str] = []
+        строки: list[str] = []
         видели: set[str] = set()
         for hit in hits:
             doc_id = str(hit.chunk.doc_id or "")
@@ -1855,9 +1855,9 @@ class AssistantService:
             строки.append(f"— {название}")
         return "\n".join(строки)
 
-    def _digest(self, dropped: Sequence[Dict[str, Any]], question: str,
-                *, trail: List[str], room: int = 0
-                ) -> tuple[str, List[Dict[str, Any]], List[Dict[str, Any]]]:
+    def _digest(self, dropped: Sequence[dict[str, Any]], question: str,
+                *, trail: list[str], room: int = 0
+                ) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
         """Выписки из материала, не поместившегося в окно, — по частям.
 
         Отдел: «нужны все данные, пусть разбиваются на части». И это верно:
@@ -1912,8 +1912,8 @@ class AssistantService:
         # отведённое место пустует, а разбор хвоста выходит скупее, чем мог.
         if части:
             слов = max(слов, (проходов * слов) // len(части))
-        выписки: List[str] = []
-        вошли: List[Dict[str, Any]] = []
+        выписки: list[str] = []
+        вошли: list[dict[str, Any]] = []
         for номер, часть in enumerate(части, start=1):
             осталось = room - sum(len(item) for item in выписки) if room > 0 else 0
             if room > 0 and осталось < MIN_DIGEST_CHARS:
@@ -1964,8 +1964,8 @@ class AssistantService:
                 "ссылайся на них теми же метками и учитывай в ответе наравне.\n"
                 + "\n\n".join(выписки) + "\n"), вошли, непрочитано
 
-    def _порции(self, dropped: Sequence[Dict[str, Any]], question: str,
-                слов: int) -> List[List[Dict[str, Any]]]:
+    def _порции(self, dropped: Sequence[dict[str, Any]], question: str,
+                слов: int) -> list[list[dict[str, Any]]]:
         """Как разложить непоместившееся по проходам разбора.
 
         Задано ``assistant_digest_chunk`` — порциями по стольку. Ноль (так
@@ -1986,7 +1986,7 @@ class AssistantService:
             question=question, number=1, total=1, sources="", limit=слов)]
         куски = [_render_sources([item]) for item in dropped]
         счёт = self._счётчик()
-        доли: List[int] = []
+        доли: list[int] = []
         основа = 0
         if счёт is not None:
             try:
@@ -2007,10 +2007,10 @@ class AssistantService:
                                       DIGEST_PASSES) or 1))
         место = (self._context_tokens() - основа - TOKEN_SAFETY
                  - проходов * слов * TOKENS_PER_WORD - 100)
-        части: List[List[Dict[str, Any]]] = []
-        текущая: List[Dict[str, Any]] = []
+        части: list[list[dict[str, Any]]] = []
+        текущая: list[dict[str, Any]] = []
         занято = 0
-        for item, доля in zip(dropped, доли):
+        for item, доля in zip(dropped, доли, strict=False):
             if текущая and занято + доля > место:
                 части.append(текущая)
                 текущая, занято = [], 0
@@ -2050,7 +2050,7 @@ class AssistantService:
                 помнит = int(спросить() or 0)
             except Exception:      # noqa: BLE001 — не спросили, работаем по настройке
                 помнит = 0
-            setattr(self.reports, "_llm_context_tokens", помнит)
+            self.reports._llm_context_tokens = помнит
         return помнит or если_не_скажет
 
     def _context_chars(self, *, пул: bool = False) -> int:
@@ -2097,13 +2097,13 @@ class AssistantService:
         задано = int(getattr(self.settings, "assistant_context_chars", 0) or 0)
         return min(выведено, задано) if задано > 0 else выведено
 
-    def _fit_tokens(self, sources: List[Dict[str, Any]],
-                    documents: List[Dict[str, Any]],
-                    собрать: "Callable[[List[Dict[str, Any]], List[Dict[str, Any]]], str]",
-                    *, history: Sequence[Dict[str, str]],
+    def _fit_tokens(self, sources: list[dict[str, Any]],
+                    documents: list[dict[str, Any]],
+                    собрать: Callable[[list[dict[str, Any]], list[dict[str, Any]]], str],
+                    *, history: Sequence[dict[str, str]],
                     answer_tokens: int, extra: int = 0, extra_tokens: int = 0
-                    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], str,
-                               List[Dict[str, Any]]]:
+                    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str,
+                               list[dict[str, Any]]]:
         """Урезать материал, пока СОБРАННЫЙ промпт не влезет в окно модели.
 
         Отдел получил «36061 токенов, а размер 32768»: модель не ответила
@@ -2146,7 +2146,7 @@ class AssistantService:
 
         оставшиеся = list(sources)
         карточки = list(documents)
-        снятые: List[Dict[str, Any]] = []
+        снятые: list[dict[str, Any]] = []
         prompt = собрать(оставшиеся, карточки)
         while len(оставшиеся) > 1 and место > 0:
             токенов = int((len(prompt) + постоянное) / знаков_на_токен)
@@ -2159,9 +2159,9 @@ class AssistantService:
             prompt = собрать(оставшиеся, карточки)
         return оставшиеся, карточки, prompt, снятые
 
-    def _fit_exact(self, sources: List[Dict[str, Any]],
-                   собрать: "Callable[[List[Dict[str, Any]], List[Dict[str, Any]]], str]",
-                   *, history: Sequence[Dict[str, str]], место: int):
+    def _fit_exact(self, sources: list[dict[str, Any]],
+                   собрать: Callable[[list[dict[str, Any]], list[dict[str, Any]]], str],
+                   *, history: Sequence[dict[str, str]], место: int):
         """Точная мера: сколько фрагментов входит, со слов самого сервера.
 
         None — сервер не считает, и решать надо по оценке.
@@ -2208,7 +2208,7 @@ class AssistantService:
         return (list(sources[:годится]), карточки, prompt,
                 list(sources[годится:]))
 
-    def _too_big(self, prompt: str, history: Sequence[Dict[str, str]],
+    def _too_big(self, prompt: str, history: Sequence[dict[str, str]],
                  answer_tokens: int) -> bool:
         """Не влезает ли собранный промпт в окно модели вместе с ответом."""
         токенов = self._токенов(prompt, history)
@@ -2236,7 +2236,7 @@ class AssistantService:
                            DIGEST_WORDS) or DIGEST_WORDS)
         return проходов * слов * TOKENS_PER_WORD + 300
 
-    def _answer_tokens(self, prompt: str, history: Sequence[Dict[str, str]],
+    def _answer_tokens(self, prompt: str, history: Sequence[dict[str, str]],
                        потолок: int) -> int:
         """Потолок ответа: всё, что осталось в окне после промпта.
 
@@ -2276,9 +2276,9 @@ class AssistantService:
         # Русское слово с пробелом — около семи знаков; плюс шапка блока.
         return проходов * слов * 7 + 600
 
-    def _digest_note(self, dropped: Sequence[Dict[str, Any]],
-                     digest: str, ещё: Sequence[Dict[str, Any]], *,
-                     непрочитано: Sequence[Dict[str, Any]] = ()) -> str:
+    def _digest_note(self, dropped: Sequence[dict[str, Any]],
+                     digest: str, ещё: Sequence[dict[str, Any]], *,
+                     непрочитано: Sequence[dict[str, Any]] = ()) -> str:
         """Что сказать инженеру про материал, не влезший в окно.
 
         Молчать нельзя ни в одном из случаев: ответ собран не так, как
@@ -2322,9 +2322,9 @@ class AssistantService:
                 f"assistant_digest_passes — включите его или спросите у́же "
                 f"по теме")
 
-    def _fit_reserved(self, catalog_block: str, history: List[Dict[str, str]],
+    def _fit_reserved(self, catalog_block: str, history: list[dict[str, str]],
                       attachment_chars: int, *, fixed: int
-                      ) -> tuple[str, List[Dict[str, str]]]:
+                      ) -> tuple[str, list[dict[str, str]]]:
         """Ужать всё, кроме фрагментов, чтобы промпт остался в окне модели.
 
         Материалу библиотеки гарантирован пол в MIN_LIBRARY_CHARS знаков —
@@ -2374,7 +2374,7 @@ class AssistantService:
 
     # -- разбор в несколько заходов ------------------------------------------
 
-    def _units(self, question: str) -> List[str]:
+    def _units(self, question: str) -> list[str]:
         """Узлы названного в вопросе целого — по справочнику состава.
 
         Справочник необязателен: нет файла, испорчен, целое незнакомо —
@@ -2397,11 +2397,11 @@ class AssistantService:
         """Сколько заходов разрешено. Ноль — разбор выключен, один поиск."""
         return max(0, int(getattr(self.settings, "assistant_rounds", RESEARCH_ROUNDS)))
 
-    def _collect(self, chat: Chat, question: str, history: Sequence[Dict[str, str]],
+    def _collect(self, chat: Chat, question: str, history: Sequence[dict[str, str]],
                  top_k: int | None, *, attachments: Sequence[Any] = (),
-                 on_step: "Callable[[Step], None] | None" = None,
+                 on_step: Callable[[Step], None] | None = None,
                  rounds: int | None = None
-                 ) -> tuple[List[Hit], List[Step]]:
+                 ) -> tuple[list[Hit], list[Step]]:
         """Материал для ответа: первый поиск, а затем разбор заходами.
 
         Возвращает найденное и след разбора — что именно спрашивали. След
@@ -2416,13 +2416,13 @@ class AssistantService:
             # месту только сожгут время модели.
             return list(first), []
 
-        rankings: List[List[Hit]] = [list(first)] if first else []
+        rankings: list[list[Hit]] = [list(first)] if first else []
         # Вес каждого списка при слиянии. Список по САМОМУ вопросу весит
         # полную единицу, списки по узлам состава — меньше: см. _merge.
-        веса: List[float] = [1.0] * len(rankings)
-        pinned: List[Hit] = []
+        веса: list[float] = [1.0] * len(rankings)
+        pinned: list[Hit] = []
         seen = {hit.chunk.chunk_id for hit in first}
-        trail: List[Step] = []
+        trail: list[Step] = []
         catalog = self._catalog_block(chat, first)
         case_block = self._case_block(chat)
 
@@ -2471,7 +2471,7 @@ class AssistantService:
 
     def _merge(self, rankings: Sequence[Sequence[Hit]], pinned: Sequence[Hit],
                top_k: int | None,
-               weights: Sequence[float] | None = None) -> List[Hit]:
+               weights: Sequence[float] | None = None) -> list[Hit]:
         """Сводит находки всех заходов в один список.
 
         Слияние по обратным рангам (RRF): шкалы BM25, косинуса и реранка
@@ -2495,7 +2495,7 @@ class AssistantService:
                 for номер, item in enumerate(rankings) if item]
         lists = [список for список, _вес in пары]
         if not lists:
-            merged: List[Hit] = []
+            merged: list[Hit] = []
         elif len(lists) == 1:
             merged = lists[0][:wanted]
         else:
@@ -2542,9 +2542,9 @@ class AssistantService:
         return parse_step(reply)
 
     def _found_lines(self, rankings: Sequence[Sequence[Hit]],
-                     pinned: Sequence[Hit]) -> List[Dict[str, Any]]:
+                     pinned: Sequence[Hit]) -> list[dict[str, Any]]:
         """Опись собранного для планировщика: метка, документ, раздел."""
-        lines: List[Dict[str, Any]] = []
+        lines: list[dict[str, Any]] = []
         seen: set = set()
         for hit in list(pinned) + [hit for group in rankings for hit in group]:
             uid = hit.chunk.chunk_id
@@ -2559,7 +2559,7 @@ class AssistantService:
             })
         return lines
 
-    def _run_step(self, step: Step, chat: Chat) -> tuple[List[Hit], str]:
+    def _run_step(self, step: Step, chat: Chat) -> tuple[list[Hit], str]:
         """Выполняет шаг. Возвращает находки и замечание для следа."""
         if step.kind == "искать":
             return self._step_search(step, chat), ""
@@ -2570,7 +2570,7 @@ class AssistantService:
         return [], ""
 
     def _step_search(self, step: Step, chat: Chat, *,
-                     rerank: bool = True) -> List[Hit]:
+                     rerank: bool = True) -> list[Hit]:
         """Поиск одним заходом разбора.
 
         ``rerank=False`` — для разбора состава: там запрос из одного-двух
@@ -2616,7 +2616,7 @@ class AssistantService:
         headings = found.get(doc_id) or []
         return "; ".join(headings) if headings else "разделы не выделены"
 
-    def _step_read(self, step: Step) -> tuple[List[Hit], str]:
+    def _step_read(self, step: Step) -> tuple[list[Hit], str]:
         """Куски названного раздела документа и что именно открыли.
 
         Название модель пишет как умеет, а находим мы по совпадению — значит,
@@ -2678,8 +2678,8 @@ class AssistantService:
             if doc_id not in видели:
                 yield doc_id, str(row.get("title") or "")
 
-    def _mentioned(self, question: str, history: Sequence[Dict[str, str]]
-                   ) -> tuple[str, List[str]]:
+    def _mentioned(self, question: str, history: Sequence[dict[str, str]]
+                   ) -> tuple[str, list[str]]:
         """Названные в вопросе документы, сверенные с описью.
 
         «Есть ли у нас RFC 4818» — вопрос, на который в базе есть точный
@@ -2710,8 +2710,8 @@ class AssistantService:
         догадки = implied_designations(текст)
         if not обозначения and not догадки:
             return "", []
-        строки: List[str] = []
-        найденные: List[str] = []
+        строки: list[str] = []
+        найденные: list[str] = []
 
         def свериться(имя: str, догадка: bool) -> None:
             doc_id = self._resolve_document(имя)
@@ -2739,7 +2739,7 @@ class AssistantService:
                 + "\n".join(строки) + "\n"), найденные
 
     def _pin_mentioned(self, hits: Sequence[Hit], doc_ids: Sequence[str],
-                       question: str) -> List[Hit]:
+                       question: str) -> list[Hit]:
         """Подложить фрагменты названного документа, если поиск его не принёс.
 
         Инженер спросил про конкретный документ — значит, читать надо именно
@@ -2760,7 +2760,7 @@ class AssistantService:
         """
         вопрос_для_поиска = self._расширить(question)
         уже = {hit.chunk.doc_id for hit in hits}
-        добавка: List[Hit] = []
+        добавка: list[Hit] = []
         for doc_id in doc_ids:
             if doc_id in уже:
                 continue
@@ -2794,7 +2794,7 @@ class AssistantService:
             return question
         return расширенный
 
-    def _по_заголовкам(self, куски: Sequence[Any], question: str) -> List[Any]:
+    def _по_заголовкам(self, куски: Sequence[Any], question: str) -> list[Any]:
         """Запасной путь, когда по тексту документа не нашлось ничего.
 
         Прежде здесь брались первые три фрагмента по порядку — то есть
@@ -2875,7 +2875,7 @@ class AssistantService:
             rows = self._catalog().rows()
         except Exception:              # noqa: BLE001 — карта не обязательна
             return ""
-        prefer: List[str] = []
+        prefer: list[str] = []
         if chat.domain:
             prefer.append(chat.domain)
         for hit in hits:
@@ -2891,10 +2891,10 @@ class AssistantService:
         existing = getattr(self.reports, "_library_catalog", None)
         if existing is None:
             existing = LibraryCatalog(self.repos)
-            setattr(self.reports, "_library_catalog", existing)
+            self.reports._library_catalog = existing
         return existing
 
-    def _domain_titles(self) -> Dict[str, str]:
+    def _domain_titles(self) -> dict[str, str]:
         """Русские названия направлений — те же, что видит человек."""
         try:
             from ..domains import registry  # noqa: PLC0415 — справочник не нужен при импорте
@@ -2938,7 +2938,7 @@ _STATUS_TITLES = {
 }
 
 
-def _render_map(documents: Sequence[Dict[str, Any]]) -> str:
+def _render_map(documents: Sequence[dict[str, Any]]) -> str:
     """Карта найденного: какие документы попали в выдачу и что в них есть.
 
     Без неё модель видит десяток разрозненных кусков и не знает ни того, из
@@ -2964,8 +2964,8 @@ def _render_map(documents: Sequence[Dict[str, Any]]) -> str:
     return "\n\n".join(blocks)
 
 
-def _render_sources(sources: Sequence[Dict[str, Any]],
-                    documents: Sequence[Dict[str, Any]] | None = None) -> str:
+def _render_sources(sources: Sequence[dict[str, Any]],
+                    documents: Sequence[dict[str, Any]] | None = None) -> str:
     """Фрагменты для промпта, сгруппированные по документам.
 
     Порядок по документам, а не по весу выдачи: сопоставить стандарт с
@@ -2974,7 +2974,7 @@ def _render_sources(sources: Sequence[Dict[str, Any]],
     if not sources:
         return "(в библиотеке ничего подходящего не нашлось)"
     order = [card["doc_id"] for card in (documents or [])] or []
-    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    grouped: dict[str, list[dict[str, Any]]] = {}
     for item in sources:
         grouped.setdefault(item.get("doc_id", ""), []).append(item)
     for doc_id in grouped:
@@ -3025,7 +3025,7 @@ def _attachment_keywords(attachments: Sequence[Any]) -> str:
     # выбирали всю норму, и приложенный к тому же вопросу второй файл на
     # поиск не влиял вовсе — а прикладывают их как раз затем, чтобы
     # сопоставить одно с другим.
-    queues: List[List[str]] = []
+    queues: list[list[str]] = []
     for item in attachments:
         words = [
             word for word in re.split(r"[^0-9A-Za-zА-Яа-яЁё_.-]+", (item.text or "")[:4000])
@@ -3034,7 +3034,7 @@ def _attachment_keywords(attachments: Sequence[Any]) -> str:
         if words:
             queues.append(words)
 
-    seen: List[str] = []
+    seen: list[str] = []
     known = set()
     while queues and len(seen) < ATTACHMENT_KEYWORDS:
         for words in list(queues):
@@ -3069,8 +3069,8 @@ def _split_neighbours(chunks: Sequence[Any], anchor_uid: str,
     порядку, иначе дальние возвращались бы молча выброшенными.
     """
     skip = skip or set()
-    before: List[str] = []
-    after: List[str] = []
+    before: list[str] = []
+    after: list[str] = []
     for chunk in sorted(chunks, key=lambda item: item.chunk_id):
         if chunk.chunk_id in skip:
             continue
@@ -3287,7 +3287,7 @@ def _tidy_end(text: str, limit: int) -> str:
     return "…" + whole[len(whole) - limit:].lstrip()
 
 
-def _share_chars(sizes: Sequence[int], total: int) -> List[int]:
+def _share_chars(sizes: Sequence[int], total: int) -> list[int]:
     """Разделить общий предел знаков между файлами.
 
     Поровну, но короткий файл не занимает чужого: то, что он не выбрал,

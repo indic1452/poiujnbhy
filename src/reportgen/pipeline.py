@@ -11,28 +11,29 @@ from __future__ import annotations
 import json
 import re
 import threading
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any
 
 from .corpus import Chunk, tidy_quote
-
-#: Сколько символов фрагмента подаётся модели. Приложение к отчёту берёт то же
-#: значение: см. SourceRegistry.render_appendix.
-PROMPT_QUOTE_CHARS = 700
 from .facts import SEVERITIES, FactPack
 from .llm import LLM
 from .prompts import SECTION_PROMPT, SYSTEM_PROMPT
 from .retrieval import Hit, Retriever
+
+#: Сколько символов фрагмента подаётся модели. Приложение к отчёту берёт то же
+#: значение: см. SourceRegistry.render_appendix.
+PROMPT_QUOTE_CHARS = 700
 
 DEFAULT_STYLE = "нейтральный технический, без оценочных суждений"
 
 
 #: Направления из templates/domains.json рядом с шаблоном. Читается один раз
 #: на каталог: шаблонов десяток, а справочник один и тот же.
-_DOMAIN_CACHE: Dict[str, frozenset] = {}
+_DOMAIN_CACHE: dict[str, frozenset] = {}
 
 
 def _known_domains(directory: Path) -> frozenset:
@@ -58,14 +59,14 @@ def _as_is(value: Any) -> str:
     return str(value if value is not None else "")
 
 
-def _fill(text: str, item: Dict[str, Any], caption: str, number: int) -> str:
+def _fill(text: str, item: dict[str, Any], caption: str, number: int) -> str:
     """Подставить в строку поля записи: «Файлы в каталогах {catalogs}».
 
     Подстановка своя, а не str.format: в инструкциях шаблона встречаются
     фигурные скобки сами по себе, и format на них падает. Здесь неизвестное
     имя остаётся как было — это видно человеку и не роняет генерацию.
     """
-    def one(match: "re.Match[str]") -> str:
+    def one(match: re.Match[str]) -> str:
         key = match.group(1)
         if key == "n":
             return str(number)
@@ -82,7 +83,7 @@ def _fill(text: str, item: Dict[str, Any], caption: str, number: int) -> str:
     return re.sub(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", one, text)
 
 
-def _item_caption(item: Dict[str, Any], pattern: str, number: int) -> str:
+def _item_caption(item: dict[str, Any], pattern: str, number: int) -> str:
     """Как называется запись в заголовке раздела."""
     caption = str(item.get("caption", "") or "").strip()
     if caption:
@@ -111,8 +112,8 @@ _CONDITIONS = (
 )
 
 
-def _item_block(item: Dict[str, Any], titles: Dict[str, str] | None = None,
-                units: Dict[str, str] | None = None) -> str:
+def _item_block(item: dict[str, Any], titles: dict[str, str] | None = None,
+                units: dict[str, str] | None = None) -> str:
     """Данные одной записи — текстом для модели.
 
     Сперва «Условия записи» в готовом виде: их надо перенести в раздел
@@ -153,7 +154,7 @@ def _item_block(item: Dict[str, Any], titles: Dict[str, str] | None = None,
     return "\n\n".join(parts)
 
 
-def _check_item_domains(section_id: str, table: Dict[str, Any]) -> None:
+def _check_item_domains(section_id: str, table: dict[str, Any]) -> None:
     """Проверяет форму таблицы направлений по полю записи.
 
     Ошибка в форме тихо обесценивает фильтр: раздел ищет по всей библиотеке
@@ -226,17 +227,17 @@ class SectionSpec:
     #: нельзя — письмо-то одно. Поэтому направление выбирается по значению
     #: поля записи: {"field": "line_type", "values": {"РРЛС": [...], ...}}.
     #: Значение, которого нет в таблице, оставляет направления раздела.
-    item_domains: Dict[str, Any] = field(default_factory=dict)
+    item_domains: dict[str, Any] = field(default_factory=dict)
     #: Данные записи. Ставит `for_item`; в шаблоне этого поля не бывает.
-    item: Dict[str, Any] = field(default_factory=dict)
+    item: dict[str, Any] = field(default_factory=dict)
     #: Русские подписи полей записи — из словаря шаблона, чтобы модель
     #: видела «оборудование линии», а не «equipment».
-    item_titles: Dict[str, str] = field(default_factory=dict)
+    item_titles: dict[str, str] = field(default_factory=dict)
     #: Единицы полей записи: «8931 кГц», а не «8931».
-    item_units: Dict[str, str] = field(default_factory=dict)
+    item_units: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, Any]) -> "SectionSpec":
+    def from_dict(cls, raw: dict[str, Any]) -> SectionSpec:
         for required in ("id", "title", "instruction"):
             if required not in raw:
                 raise ValueError(f"секция шаблона: отсутствует поле '{required}'")
@@ -269,9 +270,9 @@ class SectionSpec:
             _check_item_domains(spec.id, spec.item_domains)
         return spec
 
-    def for_item(self, item: Dict[str, Any], number: int,
-                 titles: Dict[str, str] | None = None,
-                 units: Dict[str, str] | None = None) -> "SectionSpec":
+    def for_item(self, item: dict[str, Any], number: int,
+                 titles: dict[str, str] | None = None,
+                 units: dict[str, str] | None = None) -> SectionSpec:
         """Раздел под одну строку списка: свой номер, свой заголовок, свои данные.
 
         Идентификатор получает номер (`registration-3`): по нему секции
@@ -308,7 +309,7 @@ class SectionSpec:
             item_units=dict(units or {}),
         )
 
-    def _domains_for(self, item: Dict[str, Any]) -> Sequence[str]:
+    def _domains_for(self, item: dict[str, Any]) -> Sequence[str]:
         """Направления поиска для одной записи описи."""
         table = self.item_domains
         if not table:
@@ -326,7 +327,7 @@ class Outline:
 
     report_type: str
     title: str
-    sections: List[SectionSpec]
+    sections: list[SectionSpec]
     style: str = DEFAULT_STYLE
     version: str = "1"
     #: Короткое имя направления работы для списков и колонок. Полные
@@ -338,11 +339,11 @@ class Outline:
     #: числа, они не говорят ничего, а спросить не у кого. Названия живут в
     #: шаблоне рядом с самими ключами: заводят новый ключ — тут же и
     #: подписывают, иначе словарь разъезжается с шаблоном.
-    fact_titles: Dict[str, str] = field(default_factory=dict)
-    fact_units: Dict[str, str] = field(default_factory=dict)
+    fact_titles: dict[str, str] = field(default_factory=dict)
+    fact_units: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def load(cls, path: str | Path) -> "Outline":
+    def load(cls, path: str | Path) -> Outline:
         raw = json.loads(Path(path).read_text(encoding="utf-8-sig"))
         outline = cls._from_raw(raw)
         outline._check_domains(Path(path))
@@ -371,7 +372,7 @@ class Outline:
                     f"{sorted(known)}")
 
     @classmethod
-    def _from_raw(cls, raw: Dict[str, Any]) -> "Outline":
+    def _from_raw(cls, raw: dict[str, Any]) -> Outline:
         style = raw.get("style", DEFAULT_STYLE)
         # Стиль в шапке шаблона задаёт язык всего документа — «деловой
         # технический, прошедшее время, термины отдела». Раздел его
@@ -402,15 +403,15 @@ class Outline:
         """Название значения по-русски. Нет в шаблоне — отдаём сам ключ."""
         return self.fact_titles.get(key) or key
 
-    def required_facts(self) -> List[str]:
-        seen: List[str] = []
+    def required_facts(self) -> list[str]:
+        seen: list[str] = []
         for section in self.sections:
             for key in section.required_facts:
                 if key not in seen:
                     seen.append(key)
         return seen
 
-    def expand(self, facts: "FactPack") -> List[SectionSpec]:
+    def expand(self, facts: FactPack) -> list[SectionSpec]:
         """Разделы шаблона, развёрнутые по спискам факт-пакета.
 
         Раздел с `repeat_over` превращается в столько разделов, сколько строк
@@ -421,7 +422,7 @@ class Outline:
         Пустой список — не ошибка: раздела просто не будет. Ошибкой это
         станет позже, при проверке полноты, и там об этом скажут словами.
         """
-        out: List[SectionSpec] = []
+        out: list[SectionSpec] = []
         for spec in self.sections:
             if not spec.repeat_over:
                 out.append(spec)
@@ -432,7 +433,7 @@ class Outline:
                                           self.fact_titles, self.fact_units))
         return out
 
-    def expanded(self, facts: "FactPack") -> "Outline":
+    def expanded(self, facts: FactPack) -> Outline:
         """Тот же шаблон, но с уже развёрнутыми по описи разделами.
 
         Всё, что работает со списком разделов, — проверка структуры,
@@ -444,7 +445,7 @@ class Outline:
             return self
         return replace(self, sections=self.expand(facts))
 
-    def repeats_over(self) -> List[str]:
+    def repeats_over(self) -> list[str]:
         """Имена списков факт-пакета, по которым разворачиваются разделы."""
         return [spec.repeat_over for spec in self.sections if spec.repeat_over]
 
@@ -453,8 +454,8 @@ class SourceRegistry:
     """Сквозная нумерация источников [S1], [S2], … по всему отчёту."""
 
     def __init__(self) -> None:
-        self._by_chunk: Dict[str, str] = {}
-        self._chunks: List[Chunk] = []
+        self._by_chunk: dict[str, str] = {}
+        self._chunks: list[Chunk] = []
         # Секции могут генерироваться параллельно и метить источники одновременно.
         self._lock = threading.Lock()
 
@@ -466,10 +467,10 @@ class SourceRegistry:
             return self._by_chunk[chunk.chunk_id]
 
     @property
-    def chunks(self) -> List[Chunk]:
+    def chunks(self) -> list[Chunk]:
         return list(self._chunks)
 
-    def items(self) -> List[tuple[str, Chunk]]:
+    def items(self) -> list[tuple[str, Chunk]]:
         """Пары (метка, фрагмент) в порядке первого упоминания в отчёте."""
         return [(self._by_chunk[chunk.chunk_id], chunk) for chunk in self._chunks]
 
@@ -487,7 +488,7 @@ class SourceRegistry:
         if not self._chunks:
             return "Внешние источники не привлекались."
         limit = max(int(quote_chars), PROMPT_QUOTE_CHARS)
-        lines: List[str] = []
+        lines: list[str] = []
         for chunk in self._chunks:
             quote = tidy_quote(chunk.text, limit)
             body = quote.replace("\n", "\n> ")
@@ -499,25 +500,25 @@ class SourceRegistry:
 class GeneratedSection:
     spec: SectionSpec
     text: str
-    sources: List[str] = field(default_factory=list)
-    missing_facts: List[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
+    missing_facts: list[str] = field(default_factory=list)
 
 
 @dataclass
 class ReportResult:
     markdown: str
-    sections: List[GeneratedSection]
+    sections: list[GeneratedSection]
     registry: SourceRegistry
-    missing_facts: List[str]
-    meta: Dict[str, Any]
+    missing_facts: list[str]
+    meta: dict[str, Any]
 
 
 def _render_sources(hits: Sequence[Hit], registry: SourceRegistry,
-                    quote_chars: int = PROMPT_QUOTE_CHARS) -> tuple[str, List[str]]:
+                    quote_chars: int = PROMPT_QUOTE_CHARS) -> tuple[str, list[str]]:
     if not hits:
         return "(релевантных источников не найдено)", []
-    blocks: List[str] = []
-    labels: List[str] = []
+    blocks: list[str] = []
+    labels: list[str] = []
     for hit in hits:
         label = registry.label(hit.chunk)
         labels.append(label)
@@ -585,7 +586,7 @@ def generate_section(
             + ". Отметь это строкой [ТРЕБУЕТ ПРОВЕРКИ: …]."
         )
 
-    hits: List[Hit] = []
+    hits: list[Hit] = []
     if retriever is not None:
         query = _section_query(spec, facts)
         try:
@@ -657,8 +658,8 @@ def generate_report(
         )
 
     registry = SourceRegistry()
-    generated: List[GeneratedSection] = []
-    previously: List[tuple[str, str]] = []
+    generated: list[GeneratedSection] = []
+    previously: list[tuple[str, str]] = []
     wave_size = max(1, int(parallel_sections))
     # Разделы, повторяющиеся по описи, разворачиваются здесь: дальше по коду
     # разница между «раздел шаблона» и «раздел по записи» уже не нужна.
@@ -675,13 +676,13 @@ def generate_report(
             seen = list(previously)
             with ThreadPoolExecutor(max_workers=len(wave)) as pool:
                 sections = list(pool.map(
-                    lambda spec: generate_section(
+                    lambda spec, seen=seen: generate_section(
                         spec, facts, retriever, llm,
                         previously=seen, registry=registry, top_k=top_k,
                     ),
                     wave,
                 ))
-        for spec, section in zip(wave, sections):
+        for spec, section in zip(wave, sections, strict=False):
             generated.append(section)
             previously.append((spec.title, _summarize(section.text)))
 
@@ -718,7 +719,7 @@ def plain(value: Any) -> str:
     return text
 
 
-def status_line(meta: Dict[str, Any]) -> str:
+def status_line(meta: dict[str, Any]) -> str:
     """Строка о состоянии документа в шапке отчёта.
 
     Проверенный отчёт уходит по назначению. Пока строка была прибита гвоздями,
@@ -751,10 +752,10 @@ def assemble(
     outline: Outline,
     sections: Sequence[GeneratedSection],
     registry: SourceRegistry,
-    meta: Dict[str, Any],
+    meta: dict[str, Any],
 ) -> str:
     """Сшивка: титул, служебный блок, оглавление, разделы, приложение."""
-    lines: List[str] = [f"# {outline.title}", ""]
+    lines: list[str] = [f"# {outline.title}", ""]
     lines.append(f"**Обращение:** {plain(facts.case_id)}  ")
     lines.append(f"**Номер группы:** {plain(facts.group_no) or '—'}  ")
     if facts.equipment:
@@ -795,13 +796,13 @@ def assemble(
     return "\n".join(lines)
 
 
-def check_facts_coverage(facts: FactPack, outline: Outline) -> Dict[str, List[str]]:
+def check_facts_coverage(facts: FactPack, outline: Outline) -> dict[str, list[str]]:
     """Каких измерений не хватает до запуска модели.
 
     Вызывается сразу после автоанализа: инженеру сообщается, какой замер нужно
     доснять, до того как он потратит время на чтение черновика.
     """
-    result: Dict[str, List[str]] = {}
+    result: dict[str, list[str]] = {}
     for spec in outline.expand(facts):
         missing = facts.missing(spec.required_facts)
         if missing:

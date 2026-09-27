@@ -33,7 +33,7 @@ LSSU MTP2 и кадр S LAPD одной длины), поэтому вид вс�
 from __future__ import annotations
 
 from collections import Counter
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Callable, Sequence
 
 #: Индикаторы службы MTP3 (Q.704 14.2.1): 0 SNM, 1–2 SNTM, 3 SCCP, 4 TUP, 5 ISUP,
 #: 6–7 DUP, 8 испытания MTP, 9 B-ISUP, 10 ISUP спутниковый; 11–15 — запас.
@@ -151,11 +151,11 @@ def ais(д: bytes) -> bool:
 #: у MTP2 — слабее всех (случайный кадр сходится по LI в 1/256). AIS — после MTP2: по одному
 #: кадру MSU длиной 21 байт сходится с AIS в 6 случаях из 64 (тип по BSN), а кадр AIS с MTP2 —
 #: лишь при совпавшем LI и нулевом запасе (≈ 0,4 %); у всего потока решает доля.
-ПРОВЕРКИ: Tuple[Tuple[str, Callable[[bytes], bool]], ...] = (
+ПРОВЕРКИ: tuple[tuple[str, Callable[[bytes], bool]], ...] = (
     ("Frame Relay", fr), ("LAPD", lapd), ("LAPB", lapb), ("AX.25", ax25), ("MTP2", mtp2), ("AIS", ais))
 
 
-def вид(кадр: bytes) -> Optional[str]:
+def вид(кадр: bytes) -> str | None:
     """Вид одного кадра — первый, чьи признаки сошлись; None — ни один."""
     for имя, проверка in ПРОВЕРКИ:
         if проверка(кадр):
@@ -169,7 +169,7 @@ def вид(кадр: bytes) -> Optional[str]:
 КАДРОВ_ОТ = 8
 
 
-def вид_потока(кадры: Sequence[bytes]) -> Optional[Tuple[str, float, Dict[str, float]]]:
+def вид_потока(кадры: Sequence[bytes]) -> tuple[str, float, dict[str, float]] | None:
     """Вид канального протокола по всем кадрам: (вид, доля, доли всех видов)."""
     if len(кадры) < КАДРОВ_ОТ:
         return None
@@ -181,7 +181,7 @@ def вид_потока(кадры: Sequence[bytes]) -> Optional[Tuple[str, floa
     return лучший, доли[лучший], доли
 
 
-def сводка(кадры: Sequence[bytes], разобрать: Callable[[bytes], object], сколько: int = 2000) -> List[str]:
+def сводка(кадры: Sequence[bytes], разобрать: Callable[[bytes], object], сколько: int = 2000) -> list[str]:
     """Частые описания кадров (``разобрать`` возвращает пакет с полем ``инфо``)."""
     счёт: Counter = Counter()
     for кадр in кадры[:сколько]:

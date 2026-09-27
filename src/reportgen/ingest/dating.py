@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import datetime
 import re
-from typing import Any, Dict, Tuple
+from typing import Any
 
 #: Раньше этого года технической документации по связи, которая нужна в работе,
 #: практически не бывает, а «1901» в скане — почти всегда мусор распознавания.
@@ -62,7 +62,7 @@ def _expand(raw: str) -> int | None:
     return value if _plausible(value) else None
 
 
-def year_from_metadata(meta: Dict[str, Any]) -> int | None:
+def year_from_metadata(meta: dict[str, Any]) -> int | None:
     """Год из метаданных файла: их ставит программа, а не человек."""
     for key in ("created", "creationDate", "creation_date", "modified", "modDate"):
         raw = meta.get(key)
@@ -101,7 +101,7 @@ def year_from_text(text: str) -> int | None:
 
 
 def detect_year(*, title: str = "", filename: str = "", text: str = "",
-                meta: Dict[str, Any] | None = None) -> Tuple[int | None, str]:
+                meta: dict[str, Any] | None = None) -> tuple[int | None, str]:
     """Год издания и то, откуда он взят.
 
     Возвращает ``(год, источник)``; источник попадает в карточку документа,

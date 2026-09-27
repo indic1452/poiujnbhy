@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Гость: только помощник, без истории и без личного кабинета.
 
 Начальник отдела попросил завести такую должность: человеку со стороны — из
@@ -17,10 +16,8 @@ require_user, через который проходят все разделы. 
 import unittest
 
 import _bootstrap  # noqa: F401
-
-from test_web import WebTestCase
-
 from reportgen.store.models import ROLE_TITLES, ROLES, STAFF_ROLES
+from test_web import WebTestCase
 
 
 class ДолжностьЕсть(unittest.TestCase):

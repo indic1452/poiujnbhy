@@ -17,13 +17,13 @@ import io
 import os
 import re
 import shutil
+import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
-
 from reportgen import corpus
 from reportgen.ingest import convert as convert_module
 from reportgen.ingest import registry
@@ -769,10 +769,7 @@ class RegistryTest(unittest.TestCase):
         """Один недостающий пакет не должен лишать систему остальных форматов."""
         source = Path(office.__file__).read_text(encoding="utf-8")
         tree = ast.parse(source)
-        allowed = set(
-            "ast csv datetime decimal io os posixpath re shutil typing "
-            "xml zipfile pathlib __future__".split()
-        )
+        allowed = set(sys.stdlib_module_names) | {"__future__"}   # только стандартная библиотека
         for node in tree.body:
             if isinstance(node, ast.Import):
                 for alias in node.names:

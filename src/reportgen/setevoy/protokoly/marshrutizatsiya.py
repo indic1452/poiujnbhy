@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Маршрутизация, туннели и VPN — разборщики по номеру протокола IP и по портам UDP/TCP.
 
 Документы (структуры полей — строго по ним):
@@ -45,12 +44,25 @@ from __future__ import annotations
 import functools
 import struct
 import zlib
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
 
-from ..pole import Мало, Уровень, ip4, ip6, mac, u16, u24, u32, u64, сумма16
-from ..razbor import (ETHERTYPE, IP_ПРОТОКОЛЫ, ДОП_ETHERTYPE, ДОП_IP, ДОП_УРОВНИ, Разбор, _скрытые,
-                      ethernet, ipv6, mpls, данные, голый_ip, по_типу)
 from .. import prilozh
+from ..pole import Мало, Уровень, ip4, ip6, mac, u16, u24, u32, u64, сумма16
+from ..razbor import (
+    ETHERTYPE,
+    IP_ПРОТОКОЛЫ,
+    ДОП_ETHERTYPE,
+    ДОП_IP,
+    ДОП_УРОВНИ,
+    Разбор,
+    _скрытые,
+    ethernet,
+    ipv6,
+    mpls,
+    голый_ip,
+    данные,
+    по_типу,
+)
 
 
 class _Не(Exception):
@@ -105,14 +117,14 @@ def _не_моё(р: Разбор, м: int, конец: int, имя: str, при
     данные(р, м, f"протокол IP ({имя}?)", конец)
 
 
-def _ip_уровень(р: Разбор) -> Optional[Уровень]:
+def _ip_уровень(р: Разбор) -> Уровень | None:
     for у in reversed(р.п.уровни):
         if у.протокол in ("IPv4", "IPv6"):
             return у
     return None
 
 
-def _псевдо(р: Разбор) -> Optional[Tuple[bytes, int]]:
+def _псевдо(р: Разбор) -> tuple[bytes, int] | None:
     """Адреса объемлющего IP для псевдозаголовка (разборщики ДОП_IP его не получают)."""
     у = _ip_уровень(р)
     if у is None:
@@ -134,7 +146,7 @@ def _обрезан(р: Разбор, конец: int) -> bool:
     return объявлено > конец
 
 
-def _сумма_псевдо(псевдо: Tuple[bytes, int], протокол: int, длина: int, покрыто: bytes) -> int:
+def _сумма_псевдо(псевдо: tuple[bytes, int], протокол: int, длина: int, покрыто: bytes) -> int:
     """Сумма RFC 1071 с псевдозаголовком IPv4 (RFC 768) или IPv6 (RFC 8200, 8.1)."""
     адреса, версия = псевдо
     if версия == 4:
@@ -1075,7 +1087,7 @@ def lisp_данные(р: Разбор, м: int, конец: int) -> bool:
     return True
 
 
-def _lisp_afi(д: bytes, место: int, конец: int) -> Tuple[str, int]:
+def _lisp_afi(д: bytes, место: int, конец: int) -> tuple[str, int]:
     """Адрес с AFI (RFC 9301, 5.1): 0 — пусто, 1 — IPv4, 2 — IPv6, 16387 — LCAF (RFC 8060)."""
     _нужно(место, 2, конец)
     afi = u16(д, место)
@@ -1100,7 +1112,7 @@ def _lisp_адрес(у: Уровень, д: bytes, место: int, конец:
     return текст, дл
 
 
-def _lisp_запись(у: Уровень, д: bytes, место: int, конец: int) -> Tuple[int, str]:
+def _lisp_запись(у: Уровень, д: bytes, место: int, конец: int) -> tuple[int, str]:
     """Запись сопоставления (RFC 9301, 5.4): TTL, число локаторов, маска EID, ACT/A, версия, EID, локаторы."""
     _нужно(место, 12, конец)
     ttl, локаторов, маска = u32(д, место), д[место + 4], д[место + 5]
@@ -1441,7 +1453,7 @@ def _tlv_цепочка(д: bytes, м: int, конец: int) -> bool:
     return м == конец
 
 
-def _openvpn_раскладка(д: bytes, м: int, конец: int, опкод: int, строго: bool) -> Optional[dict]:
+def _openvpn_раскладка(д: bytes, м: int, конец: int, опкод: int, строго: bool) -> dict | None:
     """Раскладка пакета управления: session_id, [HMAC, packet-id, net_time], подтверждения, remote
     session_id, message packet-id, нагрузка. Подбирается размер HMAC, при котором всё сходится.
     """
@@ -1664,7 +1676,7 @@ STUN_ТЕКСТОВЫЕ = {0x0006: "stun.att.username", 0x0014: "stun.att.realm"
                   0x8022: "stun.att.software"}
 
 
-def _stun_адрес(у: Уровень, д: bytes, т: int, дл: int, п, xor: bytes) -> Optional[str]:
+def _stun_адрес(у: Уровень, д: bytes, т: int, дл: int, п, xor: bytes) -> str | None:
     """(XOR-)MAPPED-ADDRESS (RFC 8489, 14.1–14.2): резерв, семейство, порт, адрес; XOR — с магией и ID."""
     семейство = д[т + 1]
     n = {1: 4, 2: 16}.get(семейство)
@@ -1674,7 +1686,7 @@ def _stun_адрес(у: Уровень, д: bytes, т: int, дл: int, п, xor:
     сырой = д[т + 4:т + 4 + n]
     if xor:
         порт ^= STUN_МАГИЯ >> 16
-        сырой = bytes(a ^ b for a, b in zip(сырой, xor))
+        сырой = bytes(a ^ b for a, b in zip(сырой, xor, strict=False))
         у.поле("Порт (XOR)", "stun.att.port-xord", f"0x{u16(д, т + 2):04x}", т + 2, 2, u16(д, т + 2), родитель=п)
         у.поле("Адрес (XOR)", "stun.att.ipv4-xord" if n == 4 else "stun.att.ipv6-xord", д[т + 4:т + 4 + n].hex(),
                т + 4, n, родитель=п)
@@ -1685,7 +1697,7 @@ def _stun_адрес(у: Уровень, д: bytes, т: int, дл: int, п, xor:
     return f"{адрес}:{порт}" if n == 4 else f"[{адрес}]:{порт}"
 
 
-def _stun_сообщение(у: Уровень, д: bytes, м: int, конец: int) -> Tuple[int, str]:
+def _stun_сообщение(у: Уровень, д: bytes, м: int, конец: int) -> tuple[int, str]:
     """Сообщение STUN (RFC 8489, 5): старшие 2 бита — нули, длина кратна 4, магия, атрибуты.
 
     Атрибуты с выравниванием до 4 ровно заполняют длину; FINGERPRINT — последний и сходится
@@ -1839,7 +1851,7 @@ DTLS_РУКОПОЖАТИЕ = {0: "HelloRequest", 1: "ClientHello", 2: "ServerHe
                     14: "ServerHelloDone", 15: "CertificateVerify", 16: "ClientKeyExchange", 20: "Finished"}
 
 
-def _dtls_рукопожатие(у: Уровень, д: bytes, м: int, конец: int, запись) -> List[str]:
+def _dtls_рукопожатие(у: Уровень, д: bytes, м: int, конец: int, запись) -> list[str]:
     """Открытые сообщения рукопожатия (эпоха 0; RFC 6347, 4.2.2): тип, длина, номер,
     смещение и длина фрагмента — фрагменты ровно заполняют запись."""
     имена = []

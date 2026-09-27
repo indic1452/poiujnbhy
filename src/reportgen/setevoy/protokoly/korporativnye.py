@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Корпоративные службы, файлы и базы данных: NetBIOS, SMB, DHCPv6, RDP, HTTP/2,
 WebSocket, ONC RPC/NFS, MySQL, PostgreSQL, TDS, Redis, MongoDB, AMQP, SMPP, CoAP.
 
@@ -47,8 +46,8 @@ import re
 import struct
 
 from ..pole import Мало, ip4, ip6, печатное
+from ..prilozh import КАК, ПОРТЫ_TCP, ПОРТЫ_UDP, ЭВРИСТИКИ_TCP, ЭВРИСТИКИ_UDP, tls
 from ..razbor import ДОП_УРОВНИ, Разбор, _crc32c, данные
-from ..prilozh import (КАК, ПОРТЫ_TCP, ПОРТЫ_UDP, ЭВРИСТИКИ_TCP, ЭВРИСТИКИ_UDP, tls)
 
 # -- общее ----------------------------------------------------------------------------------------
 
@@ -485,7 +484,7 @@ def _nbss_длина(д: bytes, место: int, прямой: bool) -> int:
 def _nbss(р: Разбор, м: int, конец: int, *, прямой: bool) -> bool:
     д = р.д[:конец]
     куски, хвост = _нарезать(д, м, lambda место: _nbss_длина(д, место, прямой), 4)
-    for н, к in куски:
+    for н, _к in куски:
         smb = д[н + 4:н + 8] in SMB_ПОДПИСИ
         if прямой and н + 8 <= конец and not smb:
             return False                               # по Direct TCP ходит только SMB
@@ -1041,7 +1040,7 @@ def _dhcp6_опции(у, д, м, конец, родитель, глубина, 
             if дл == 0 or дл % 16:
                 raise _Чужое("DNS-серверы: длина не кратна 16")
             серверы = [ip6(д, i) for i in range(т, т + дл, 16)]
-            for i, адрес in zip(range(т, т + дл, 16), серверы):
+            for i, адрес in zip(range(т, т + дл, 16), серверы, strict=False):
                 у.поле("DNS-сервер", "dhcpv6.dns_server", адрес, i, 16, родитель=о)
             о.текст = f"{имя}: {', '.join(серверы)}"
         elif код == 24:
@@ -1442,7 +1441,7 @@ def _websocket(р: Разбор, м: int, конец: int, *, эвристика
         # а пустыми бывают только управляющие кадры (иначе нули заполнения — «кадры»).
         if д[м] & 15 == 0:
             return False
-        for н, к in куски:
+        for н, _к in куски:
             т, дл, _ключ = _ws_разметка(д, н)
             if дл == 0 and д[н] & 15 < 8:
                 return False
@@ -3008,9 +3007,7 @@ for _имя, _разборщик in (("NBSS/SMB", nbss), ("SMB Direct", smb_пр
     КАК["tcp"].setdefault(_имя, _разборщик)
 ЭВРИСТИКИ_TCP.extend([smb_эвристика, rpc_tcp_эвристика, http2_эвристика, websocket_эвристика])
 ЭВРИСТИКИ_UDP.append(rpc_udp_эвристика)
-ДОП_УРОВНИ.update({имя: "прикладной" for имя in (
-    "NBNS", "NBDS", "SMB", "SMB2", "DHCPv6", "RDP", "HTTP2", "WebSocket", "RPC", "NFS", "Portmap",
-    "MOUNT", "MySQL", "PGSQL", "TDS", "RESP", "MongoDB", "AMQP", "SMPP", "CoAP")})
+ДОП_УРОВНИ.update(dict.fromkeys(("NBNS", "NBDS", "SMB", "SMB2", "DHCPv6", "RDP", "HTTP2", "WebSocket", "RPC", "NFS", "Portmap", "MOUNT", "MySQL", "PGSQL", "TDS", "RESP", "MongoDB", "AMQP", "SMPP", "CoAP"), "прикладной"))
 # TPKT и COTP (RFC 1006, ISO 8073) — транспортный уровень OSI поверх TCP; тот же ответ даёт модуль
 # promyshlennye, и порядок загрузки модулей не должен его менять.
 ДОП_УРОВНИ.update({"NBSS": "транспортный", "TPKT": "транспортный", "COTP": "транспортный"})

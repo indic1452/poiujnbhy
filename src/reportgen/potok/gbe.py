@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import zlib
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -42,7 +41,7 @@ def _символ_k(x: int, y: int, rd: int) -> int:
 
 
 #: 10-битовый символ → имя K-символа.
-K_СИМВОЛЫ: Dict[int, str] = {_символ_k(x, y, rd): имя for (x, y), имя in ИМЕНА_K.items() for rd in (0, 1)}
+K_СИМВОЛЫ: dict[int, str] = {_символ_k(x, y, rd): имя for (x, y), имя in ИМЕНА_K.items() for rd in (0, 1)}
 #: Байты данных после K28.5: пауза /I1/ /I2/ и слово автосогласования /C1/ /C2/.
 ПОСЛЕ_ЗАПЯТОЙ = {0xC5: "/I1/", 0x50: "/I2/", 0xB5: "/C1/", 0x42: "/C2/"}   # D5.6, D16.2, D21.5, D2.2
 
@@ -53,7 +52,7 @@ def _crc32(данные: bytes) -> int:
     return zlib.crc32(данные) & 0xFFFFFFFF
 
 
-def декодировать(символы: np.ndarray) -> List[Tuple[str, int]]:
+def декодировать(символы: np.ndarray) -> list[tuple[str, int]]:
     """Символы → [(«D», байт) | («K», имя) | («?», символ)]."""
     итог = []
     for с in символы.tolist():
@@ -66,11 +65,11 @@ def декодировать(символы: np.ndarray) -> List[Tuple[str, int]
     return итог
 
 
-def кадры(поток: List[Tuple[str, int]]) -> Tuple[List[bytes], Counter]:
+def кадры(поток: list[tuple[str, int]]) -> tuple[list[bytes], Counter]:
     """Кадры Ethernet между /S/ и /T/ (после преамбулы и SFD) и счёт упорядоченных наборов."""
     счёт: Counter = Counter()
-    итог: List[bytes] = []
-    текущий: Optional[bytearray] = None
+    итог: list[bytes] = []
+    текущий: bytearray | None = None
     for i, (вид, значение) in enumerate(поток):
         if вид == "K":
             if значение == "K28.5" and i + 1 < len(поток) and поток[i + 1][0] == "D":
@@ -92,7 +91,7 @@ def кадры(поток: List[Tuple[str, int]]) -> Tuple[List[bytes], Counter]
     return итог, счёт
 
 
-def найти(биты: np.ndarray) -> Optional[Находка]:
+def найти(биты: np.ndarray) -> Находка | None:
     """1000BASE-X: выравнивание по запятой K28.5, упорядоченные наборы, кадры с верной FCS."""
     выборка = np.asarray(биты[:lineynye.ВЫБОРКА * 4], dtype=np.uint8)
     лучший = None
@@ -133,10 +132,10 @@ def найти(биты: np.ndarray) -> Optional[Находка]:
         подробно=подробно, дальше=годные, вид_дальше="кадры")
 
 
-def закодировать(кадры_: List[bytes], пауз: int = 6) -> np.ndarray:
+def закодировать(кадры_: list[bytes], пауз: int = 6) -> np.ndarray:
     """Кодер 1000BASE-X (для проверок): /I/ между кадрами, /S/ преамбула SFD кадр FCS /T/ /R/."""
     rd = 0
-    символы: List[int] = []
+    символы: list[int] = []
 
     def данные(байт: int) -> None:
         nonlocal rd

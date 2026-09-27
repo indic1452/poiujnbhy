@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import struct
 from pathlib import Path
-from typing import Dict, List
 
 from .. import registry
 from ..convert import ConvertedDocument, _clean_line
@@ -71,7 +70,7 @@ _CONTROL = {
 }
 
 
-def cfb_streams(data: bytes) -> Dict[str, bytes]:
+def cfb_streams(data: bytes) -> dict[str, bytes]:
     """Разобрать составной файл OLE2: имя потока → его байты.
 
     Полноценной библиотеки для этого в проекте нет и заводить её незачем:
@@ -96,7 +95,7 @@ def cfb_streams(data: bytes) -> Dict[str, bytes]:
         return (index + 1) * sector
 
     # DIFAT: первые 109 записей лежат в заголовке, остальные — цепочкой.
-    difat: List[int] = list(struct.unpack_from("<109I", data, 0x4C))
+    difat: list[int] = list(struct.unpack_from("<109I", data, 0x4C))
     node, left = difat_start, difat_count
     seen: set[int] = set()
     while left > 0 and node < _END_OF_CHAIN and node not in seen:
@@ -108,7 +107,7 @@ def cfb_streams(data: bytes) -> Dict[str, bytes]:
         node = struct.unpack_from("<I", block, sector - 4)[0]
         left -= 1
 
-    fat: List[int] = []
+    fat: list[int] = []
     for index in difat[:fat_count]:
         if index >= _END_OF_CHAIN:
             continue
@@ -116,9 +115,9 @@ def cfb_streams(data: bytes) -> Dict[str, bytes]:
             continue
         fat.extend(struct.unpack_from("<%dI" % (sector // 4), data, at(index)))
 
-    def chain(start: int) -> List[int]:
+    def chain(start: int) -> list[int]:
         """Цепочка секторов от start. Петлю в битом файле обрываем."""
-        out: List[int] = []
+        out: list[int] = []
         node, visited = start, set()
         while node < _END_OF_CHAIN and node not in visited:
             visited.add(node)
@@ -147,7 +146,7 @@ def cfb_streams(data: bytes) -> Dict[str, bytes]:
 
     # Мелкие потоки лежат не в секторах файла, а внутри одного «мини-потока»
     # корневой записи, и у них своя таблица.
-    mini_fat: List[int] = []
+    mini_fat: list[int] = []
     for index in chain(mini_start):
         if at(index) + sector <= len(data):
             mini_fat.extend(struct.unpack_from("<%dI" % (sector // 4), data, at(index)))
@@ -163,7 +162,7 @@ def cfb_streams(data: bytes) -> Dict[str, bytes]:
             node = mini_fat[node] if node < len(mini_fat) else _END_OF_CHAIN
         return bytes(out[:size])
 
-    streams: Dict[str, bytes] = {}
+    streams: dict[str, bytes] = {}
     for entry in entries:
         if entry["type"] != _TYPE_STREAM or not entry["name"]:
             continue
@@ -208,7 +207,7 @@ def doc_text(data: bytes) -> str:
         raise ValueError("список кусков пуст")
     marks = struct.unpack_from("<%dI" % (count + 1), plc, 0)
 
-    parts: List[str] = []
+    parts: list[str] = []
     for index in range(count):
         base = 4 * (count + 1) + index * 8
         offset = struct.unpack_from("<I", plc, base + 2)[0]
@@ -227,7 +226,7 @@ def doc_text(data: bytes) -> str:
 
 def _readable(raw: str) -> str:
     """Убрать служебные знаки Word и склеить строки в абзацы."""
-    out: List[str] = []
+    out: list[str] = []
     for char in raw:
         code = ord(char)
         if code in _CONTROL:
@@ -240,7 +239,7 @@ def _readable(raw: str) -> str:
 
     # Пустых строк подряд в .doc бывает по десятку: пустой абзац там —
     # обычный приём вёрстки. Схлопываем их в одну.
-    result: List[str] = []
+    result: list[str] = []
     for line in lines:
         if not line and (not result or not result[-1]):
             continue

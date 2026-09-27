@@ -7,8 +7,8 @@ from pathlib import Path
 
 import _bootstrap  # noqa: F401
 from reportgen.dataset import (
-    DatasetError,
     SCHEMA_VERSION,
+    DatasetError,
     build_dpo_examples,
     build_sft_examples,
     dataset_stats,
@@ -236,7 +236,7 @@ class JsonlTests(unittest.TestCase):
             path = Path(directory) / "train.jsonl"
             write_jsonl([{"text": "Измерения выполнены"}], path)
             raw = path.read_bytes()
-            self.assertIn("Измерения выполнены".encode("utf-8"), raw)
+            self.assertIn("Измерения выполнены".encode(), raw)
             self.assertNotIn(b"\\u04", raw)
 
     def test_stats_summarize_dataset(self):

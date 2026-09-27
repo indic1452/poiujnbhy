@@ -56,6 +56,7 @@ class HeaderEscapingTests(unittest.TestCase):
     def test_header_of_a_real_report_keeps_the_number_verbatim(self):
         """Проверяем не саму функцию, а что шапка ею пользуется."""
         import json as _json
+
         from reportgen.export.docx import _split_inline
         from reportgen.facts import FactPack
         from reportgen.pipeline import Outline, SourceRegistry, assemble

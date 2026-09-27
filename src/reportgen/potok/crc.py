@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """CRC вслепую: многочлен, начальное значение, финальный XOR, отражения.
 
 Кадры с контрольной суммой в конце — самое частое в неизвестных протоколах,
@@ -24,9 +23,7 @@ crc ⊕ (m·x^w mod P) = (init·x^ℓ mod P) ⊕ xorout. Кадры двух р�
 
 from __future__ import annotations
 
-from typing import Dict, List, Sequence, Tuple
-
-import numpy as np
+from collections.abc import Sequence
 
 from . import crc_katalog
 
@@ -93,7 +90,7 @@ def _как_многочлен(данные: bytes, refin: bool) -> int:
     return int.from_bytes(данные, "big") if данные else 0
 
 
-def _разобрать_кадр(кадр: bytes, w: int, порядок: str, refout: bool) -> Tuple[bytes, int]:
+def _разобрать_кадр(кадр: bytes, w: int, порядок: str, refout: bool) -> tuple[bytes, int]:
     байт = w // 8
     тело, хвост = кадр[:-байт], кадр[-байт:]
     значение = int.from_bytes(хвост, порядок)
@@ -105,7 +102,7 @@ def _разобрать_кадр(кадр: bytes, w: int, порядок: str, r
 def многочлен(кадры: Sequence[bytes], w: int, refin: bool, refout: bool, порядок: str
               ) -> int | None:
     """P по парам кадров одной длины; None — если НОД не степени w."""
-    по_длине: Dict[int, List[bytes]] = {}
+    по_длине: dict[int, list[bytes]] = {}
     for кадр in кадры:
         по_длине.setdefault(len(кадр), []).append(кадр)
     g = 0
@@ -128,7 +125,7 @@ def многочлен(кадры: Sequence[bytes], w: int, refin: bool, refout:
     return g
 
 
-def _решения(строки: List[int], правые: List[int], w: int) -> List[int]:
+def _решения(строки: list[int], правые: list[int], w: int) -> list[int]:
     """Все решения системы над GF(2) (строка_i · init = правая_i), если свободных ≤ 4.
 
     Когда в P есть множитель (x + 1) — а он есть у CRC-16/ARC, X.25 и
@@ -136,8 +133,8 @@ def _решения(строки: List[int], правые: List[int], w: int) ->
     (init ⊕ Q, xorout ⊕ Q), Q = P/(x + 1), дают одинаковую CRC на любых
     данных. Такие модели равносильны, и возвращаются все.
     """
-    опорные: Dict[int, Tuple[int, int]] = {}
-    for строка, правая in zip(строки, правые):
+    опорные: dict[int, tuple[int, int]] = {}
+    for строка, правая in zip(строки, правые, strict=False):
         for бит in sorted(опорные, reverse=True):
             if (строка >> бит) & 1:
                 о_строка, о_правая = опорные[бит]
@@ -166,11 +163,11 @@ def _решения(строки: List[int], правые: List[int], w: int) ->
 
 
 def начало_и_хвост(кадры: Sequence[bytes], w: int, P: int, refin: bool, refout: bool,
-                   порядок: str) -> Tuple[List[Tuple[int, int]], int]:
+                   порядок: str) -> tuple[list[tuple[int, int]], int]:
     """Равносильные пары (init, xorout) — пусто, если все кадры одной длины — и вклад."""
     маска = (1 << w) - 1
     полный = (1 << w) | P
-    вклады: Dict[int, int] = {}
+    вклады: dict[int, int] = {}
     for кадр in кадры:
         тело, значение = _разобрать_кадр(кадр, w, порядок, refout)
         линейная = _остаток(_как_многочлен(тело, refin) << w, полный)
@@ -198,12 +195,12 @@ def начало_и_хвост(кадры: Sequence[bytes], w: int, P: int, refi
     return пары, вклады[ℓ0]
 
 
-def _выбрать(пары: List[Tuple[int, int]], w: int, P: int, refin: bool, refout: bool
-             ) -> Tuple[int | None, int | None]:
+def _выбрать(пары: list[tuple[int, int]], w: int, P: int, refin: bool, refout: bool
+             ) -> tuple[int | None, int | None]:
     """Из равносильных пар — известную по каталогу, иначе с init = 0 или все единицы."""
     if not пары:
         return None, None
-    for имя, cw, cP, cinit, crefin, crefout, cxor, _ in КАТАЛОГ + crc_katalog.REVENG:
+    for _имя, cw, cP, cinit, crefin, crefout, cxor, _ in КАТАЛОГ + crc_katalog.REVENG:
         if (cw, cP, crefin, crefout) == (w, P, refin, refout) and (cinit, cxor) in пары:
             return cinit, cxor
     единицы = (1 << w) - 1
@@ -213,7 +210,7 @@ def _выбрать(пары: List[Tuple[int, int]], w: int, P: int, refin: bool
     return пары[0]
 
 
-def найти(кадры: Sequence[bytes], ширины=(16, 32, 8, 24)) -> Dict | None:
+def найти(кадры: Sequence[bytes], ширины=(16, 32, 8, 24)) -> dict | None:
     """Опознание CRC в конце кадров: ширина, многочлен, init, xorout, отражения."""
     кадры = [bytes(к) for к in кадры if len(к) >= 4][:2000]
     if len(кадры) < 4:
@@ -237,7 +234,7 @@ def найти(кадры: Sequence[bytes], ширины=(16, 32, 8, 24)) -> Dic
     return None
 
 
-def _доля_верных(кадры: Sequence[bytes], м: Dict) -> float | None:
+def _доля_верных(кадры: Sequence[bytes], м: dict) -> float | None:
     if м["init"] is None:
         return None
     верных = 0
@@ -248,7 +245,7 @@ def _доля_верных(кадры: Sequence[bytes], м: Dict) -> float | Non
     return верных / min(len(кадры), 500)
 
 
-def _по_каталогу(м: Dict) -> str | None:
+def _по_каталогу(м: dict) -> str | None:
     """Имя модели: сперва из своего каталога (с пояснениями), затем из каталога RevEng."""
     for имя, w, P, init, refin, refout, xorout, _ in КАТАЛОГ + crc_katalog.REVENG:
         if (w, P, refin, refout) == (м["w"], м["P"], м["refin"], м["refout"]) and \

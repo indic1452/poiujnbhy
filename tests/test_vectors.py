@@ -15,7 +15,6 @@ from pathlib import Path
 from unittest import mock
 
 import _bootstrap  # noqa: F401
-
 from reportgen.config import Settings
 from reportgen.corpus import Chunk
 from reportgen.embeddings import EmbeddingError
@@ -79,7 +78,7 @@ def build_repos(chunk_count=5, path=":memory:"):
 
 
 def make_settings(**changes):
-    values = dict(embed_enabled=True, embed_model="bge-m3", embed_batch=2)
+    values = {"embed_enabled": True, "embed_model": "bge-m3", "embed_batch": 2}
     values.update(changes)
     return Settings(**values)
 

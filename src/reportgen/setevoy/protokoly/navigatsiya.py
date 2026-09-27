@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Морская навигация: NMEA 0183 по UDP (!AIVDM/!AIVDO и $-предложения) и сообщения AIS.
 
 NMEA 0183: предложение «!» или «$», поля через запятую, «*HH» — сумма: XOR всех знаков между
@@ -9,8 +8,6 @@ NMEA 0183: предложение «!» или «$», поля через зап
 """
 
 from __future__ import annotations
-
-from typing import Dict, List
 
 import numpy as np
 
@@ -29,7 +26,7 @@ def сумма_nmea(тело: str) -> int:
     return итог
 
 
-def _поля_ais(у: Уровень, п: Dict[str, object], м: int, длина: int) -> None:
+def _поля_ais(у: Уровень, п: dict[str, object], м: int, длина: int) -> None:
     у.поле("Тип сообщения", "ais.type", f"{п['тип']} ({ais_коды.ТИПЫ.get(int(п['тип']), 'другой')})", м, длина,
            п["тип"])
     у.поле("MMSI", "ais.mmsi", п["mmsi"], м, длина)
@@ -83,9 +80,9 @@ def nmea_udp(р: Разбор, м: int, конец: int) -> bool:
         разобранные.append(строка)
     у = р.уровень("NMEA", "NMEA 0183", м)
     у.длина = конец - м
-    виды: List[str] = []
-    части: Dict[str, List[str]] = {}
-    сообщения: List[Dict[str, object]] = []
+    виды: list[str] = []
+    части: dict[str, list[str]] = {}
+    сообщения: list[dict[str, object]] = []
     for строка in разобранные:
         поля = строка[1:-3].split(",")
         вид = поля[0]

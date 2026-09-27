@@ -19,8 +19,8 @@ CAS (G.704 5.1.3): сверхцикл из 16 циклов; в цикле 0 КИ
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -65,7 +65,7 @@ def энергии(x: np.ndarray, частоты: Sequence[float], блок: int
 @dataclass(frozen=True)
 class Набор:
     имя: str
-    частоты: Tuple[float, ...]
+    частоты: tuple[float, ...]
     блок: int
     коды: str                       # код пары (i < j) по индексу i·5 + j − 1 (как в openr2/spandsp)
     порог: float
@@ -87,7 +87,7 @@ DTMF_БЛОК = 102
 DTMF_ПОРОГ = 5.0e8 * (102 / 133) ** 2
 
 
-def _два_из_шести(э: np.ndarray, набор: Набор) -> List[str]:
+def _два_из_шести(э: np.ndarray, набор: Набор) -> list[str]:
     """Код каждого блока ('' — нет тона) по правилу openr2: две сильнейшие частоты, перекос, пик."""
     порядок = np.argsort(-э, axis=1)
     итог = []
@@ -104,7 +104,7 @@ def _два_из_шести(э: np.ndarray, набор: Набор) -> List[str]
     return итог
 
 
-def _dtmf(x: np.ndarray) -> List[str]:
+def _dtmf(x: np.ndarray) -> list[str]:
     стр = энергии(x, DTMF_СТРОКИ, DTMF_БЛОК)
     стб = энергии(x, DTMF_СТОЛБЦЫ, DTMF_БЛОК)
     итог = []
@@ -120,7 +120,7 @@ def _dtmf(x: np.ndarray) -> List[str]:
     return итог
 
 
-def цифры(коды: List[str], подряд: int = 2) -> List[Tuple[int, str]]:
+def цифры(коды: list[str], подряд: int = 2) -> list[tuple[int, str]]:
     """Коды блоков → (номер блока начала, цифра): тон не короче ``подряд`` блоков, после паузы или смены."""
     итог, прежний, длина, начало = [], "", 0, 0
     for n, к in enumerate(коды + [""]):
@@ -133,7 +133,7 @@ def цифры(коды: List[str], подряд: int = 2) -> List[Tuple[int, st
     return итог
 
 
-def тоны(байты: np.ndarray) -> Optional[Tuple[str, List[Tuple[float, str]]]]:
+def тоны(байты: np.ndarray) -> tuple[str, list[tuple[float, str]]] | None:
     """Набор в канале: (вид сигнализации, [(секунда, цифра)]) — у какого набора больше цифр."""
     x = отсчёты(байты)
     лучший = None
@@ -153,7 +153,7 @@ def тоны(байты: np.ndarray) -> Optional[Tuple[str, List[Tuple[float, st
 НАЗАД = {0b10: "исходное", 0b11: "подтверждение занятия / отбой назад / блокировка", 0b01: "ответ"}
 
 
-def abcd(ки16: np.ndarray) -> Optional[Tuple[np.ndarray, List[int]]]:
+def abcd(ки16: np.ndarray) -> tuple[np.ndarray, list[int]] | None:
     """ABCD каналов по сверхциклу CAS: (сверхциклы × 30 значений 0…15, номера КИ)."""
     байты = np.asarray(ки16, dtype=np.uint8)
     места = np.flatnonzero((байты >> 4) == 0)
@@ -171,7 +171,7 @@ def abcd(ки16: np.ndarray) -> Optional[Tuple[np.ndarray, List[int]]]:
     return значения, list(range(1, 16)) + list(range(17, 32))
 
 
-def линия(значения: np.ndarray, номера: List[int]) -> List[str]:
+def линия(значения: np.ndarray, номера: list[int]) -> list[str]:
     """Сводка по каналам: смена состояний AB и их смысл по Q.421 в прямом и обратном направлении."""
     строки = []
     for k, ки in enumerate(номера):
@@ -191,10 +191,10 @@ def линия(значения: np.ndarray, номера: List[int]) -> List[st
     return строки
 
 
-def сводка(каналы: Dict[int, np.ndarray]) -> List[str]:
+def сводка(каналы: dict[int, np.ndarray]) -> list[str]:
     """Строки для отчёта E1: ABCD по КИ16 и цифры набора в речевых каналах."""
     from .bity import в_байты  # noqa: PLC0415
-    строки: List[str] = []
+    строки: list[str] = []
     if 16 in каналы and len(каналы[16]) >= 16 * 8 * 4:
         найдено = abcd(np.frombuffer(в_байты(каналы[16]), dtype=np.uint8))
         if найдено is not None:
