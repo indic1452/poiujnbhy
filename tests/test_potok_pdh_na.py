@@ -574,6 +574,9 @@ class EsfDlTests(unittest.TestCase):
         self.assertEqual(pdh_na.boc(dl), [(15, 0x33, 12)])
         dl = np.concatenate([boc_слова(0x07, 10), np.ones(7, np.uint8), boc_слова(0x1C, 10), np.zeros(3, np.uint8)])
         self.assertEqual(pdh_na.boc(dl), [(0, 0x07, 10), (167, 0x1C, 10)])
+        # Серия кода 1 сразу после негодных слов — своя, с первого годного слова.
+        dl = np.concatenate([np.zeros(16 * 3, np.uint8), boc_слова(0x01, 10)])
+        self.assertEqual(pdh_na.boc(dl), [(48, 0x01, 10)])
         # Не слова BOC: единица на месте первого или восьмого бита, ноль среди восьми единиц.
         for слово in ([1, 0, 0, 0, 1, 1, 1, 0] + [1] * 8, [0, 0, 0, 0, 1, 1, 1, 1] + [1] * 8,
                       [0, 0, 0, 0, 1, 1, 1, 0] + [0] + [1] * 7, [0, 0, 0, 0, 1, 1, 1, 0] + [1] * 7 + [0]):

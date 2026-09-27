@@ -556,6 +556,13 @@ class ВыравниваниеTests(unittest.TestCase):
                  + [2000 + 96 * k for k in range(5)] + [4000 + k * L for k in range(4)])
         self.assertIsNone(sdh.выравнивание(ряд_кадров(места, 5 * L, 3)))
 
+    def test_испорчен_третий_a2(self):
+        L = 6480 * 3
+        ряд = ряд_кадров([100 + k * L for k in range(5)], 6 * L, 3)
+        for k in range(5):
+            ряд[100 + k * L + 40:100 + k * L + 48] = np.unpackbits(np.array([0x00], np.uint8))
+        self.assertIsNone(sdh.выравнивание(ряд))
+
     def test_короткое_слово_только_у_stm0(self):
         L = 6480 * 3
         # В STM-1 одиночная пара A1 A2 без трёх A1 — не кадр.
@@ -571,7 +578,8 @@ class ВыравниваниеTests(unittest.TestCase):
         self.assertEqual(sdh.выравнивание(ряд), (L4 - 40, 12))
 
     def test_колонки_и_b1(self):
-        единица, местный = sdh._колонки(1)
+        with np.errstate(all="raise"):                          # STM-0: без деления на число STM-1 (ноль)
+            единица, местный = sdh._колонки(1)
         self.assertEqual((len(единица), int(единица.max()), местный.tolist()[:3], len(местный)), (90, 0, [0, 1, 2], 90))
         единица, местный = sdh._колонки(3)
         self.assertEqual((единица.tolist()[:6], местный.tolist()[:6], len(единица)), ([0, 1, 2, 0, 1, 2], [0, 0, 0, 1, 1, 1], 270))

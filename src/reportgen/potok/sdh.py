@@ -101,18 +101,16 @@ def выравнивание(биты: np.ndarray) -> tuple[int, int] | None:
     """Начало кадра (бит) и M — число единиц STS-1; None — кадра SDH нет."""
     for слово, смещение_байт in ((_байтами([A1] * 3 + [A2] * 3), None), (_байтами([A1, A2]), 0)):
         н = sinhro.несовпадения(биты, слово)
-        места = np.flatnonzero(н == 0)
-        if len(места) < 4:
-            continue
+        места = np.flatnonzero(н == 0)                       # меньше четырёх — трёх равных шагов не будет
         шаги = Counter(np.diff(места).tolist())
         for шаг, раз in шаги.most_common(3):
             M, остаток = divmod(шаг, 6480)
             if остаток or M not in ИМЕНА or раз < 3:
                 continue
-            if смещение_байт is None and M < 3:
-                continue
             if смещение_байт == 0 and M != 1:
                 continue
+            # Слово поиска — последние три A1 и первые три A2: у STM-N оно на (M − 3) байт позже
+            # начала кадра; у STM-0 (M = 1) за начало берётся пара A1 A2 в его середине.
             сдвиг = (M - 3) * 8 if смещение_байт is None else 0
             есть = set(места.tolist())
             for п in места.tolist():
