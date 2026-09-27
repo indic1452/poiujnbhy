@@ -264,7 +264,7 @@ def _eps_идентификатор(б: bytes) -> str | None:
         return None
     вид = б[0] & 7
     if вид == 6 and len(б) >= 11:
-        return f"GUTI {_plmn(б[1:4])}, MMEGI {u16(б, 4)}, MMEC {б[6]}, M-TMSI 0x{u32(б, 7):08X}"
+        return f"GUTI {_plmn(б[1:])}, MMEGI {u16(б, 4)}, MMEC {б[6]}, M-TMSI 0x{u32(б, 7):08X}"
     if вид in (1, 3):
         return f"{'IMSI' if вид == 1 else 'IMEI'} {gsm._цифры(б[1:], б[0] >> 4)}"
     return None
@@ -279,13 +279,13 @@ def _5gs_идентификатор(б: bytes) -> str | None:
         формат = (б[0] >> 4) & 7
         if формат != 0 or len(б) < 8:
             return f"SUCI (формат SUPI {формат})"
-        plmn, маршрут, схема = _plmn(б[1:4]), gsm._цифры(б[4:6]), б[6] & 0x0F
+        plmn, маршрут, схема = _plmn(б[1:]), gsm._цифры(б[4:6]), б[6] & 0x0F
         if схема == 0:
             return f"SUCI: IMSI {plmn.replace('-', '')}{gsm._цифры(б[8:])} (нулевая схема), маршрут {маршрут}"
         return (f"SUCI {plmn}, маршрут {маршрут}, схема {СХЕМЫ.get(схема, схема)}, ключ сети {б[7]}, "
                 f"выход {len(б) - 8} байт")
     if вид == 2 and len(б) >= 11:
-        return (f"5G-GUTI {_plmn(б[1:4])}, AMF регион {б[4]}, набор {u16(б, 5) >> 6}, указатель {б[6] & 0x3F}, "
+        return (f"5G-GUTI {_plmn(б[1:])}, AMF регион {б[4]}, набор {u16(б, 5) >> 6}, указатель {б[6] & 0x3F}, "
                 f"5G-TMSI 0x{u32(б, 7):08X}")
     if вид == 4 and len(б) >= 7:
         return f"5G-S-TMSI: набор {u16(б, 1) >> 6}, указатель {б[2] & 0x3F}, 5G-TMSI 0x{u32(б, 3):08X}"
@@ -301,21 +301,21 @@ def _необязательные(д: bytes, x: int, край: int, tv: dict) ->
     while x < край:
         iei = д[x]
         if iei >= 0x80:
-            итог.setdefault(iei & 0xF0, (x, 1))
-            x += 1
+            начало, n = x, 1
         elif iei in tv:
-            итог.setdefault(iei, (x + 1, tv[iei] - 1))
-            x += tv[iei]
+            начало, n = x + 1, tv[iei] - 1
         elif iei & 0xF0 == 0x70:
             if x + 3 > край:
                 break
-            итог.setdefault(iei, (x + 3, u16(д, x + 1)))
-            x += 3 + u16(д, x + 1)
+            начало, n = x + 3, u16(д, x + 1)
         else:
             if x + 2 > край:
                 break
-            итог.setdefault(iei, (x + 2, д[x + 1]))
-            x += 2 + д[x + 1]
+            начало, n = x + 2, д[x + 1]
+        if начало + n > край:                               # значение за концом сообщения — дальше не читать
+            break
+        итог.setdefault(iei & 0xF0 if iei >= 0x80 else iei, (начало, n))
+        x = начало + n
     return итог
 
 
@@ -343,7 +343,7 @@ class _Сообщение:
         if текст:
             self.поле(имя, "mobile_identity", текст, x, n)
             if "IMSI " in текст:
-                imsi = текст.split("IMSI ", 1)[1].split()[0]
+                imsi = текст.partition("IMSI ")[2].split()[0]
                 self.поле("IMSI", "e212.imsi", imsi, x, n)
             self.сводка.append(текст)
 
@@ -456,12 +456,11 @@ def nas_eps(р: Разбор, м: int, конец: int) -> str | None:
     с = _Сообщение(р, у, конец, "nas_eps")
     с.вложенное = None
     заг, pd = д[м] >> 4, д[м] & 0x0F
-    с.поле("Тип защиты" if pd == 7 else "Идентификатор носителя", "security_header_type" if pd == 7 else "bearer_id",
-           ТИП_ЗАЩИТЫ.get(заг, заг) if pd == 7 else заг, м, 1, заг)
+    if pd == 7:                                             # у ESM старший полубайт — носитель, его покажет _esm
+        с.поле("Тип защиты", "security_header_type", ТИП_ЗАЩИТЫ.get(заг, заг), м, 1, заг)
     с.поле("Дискриминатор", "protocol_discriminator", "EMM" if pd == 7 else "ESM", м, 1, pd)
     try:
         if pd == 2:
-            с.у.поля.pop(0)                                 # у ESM старший полубайт — носитель, его покажет _esm
             _esm(с, м, конец)
         elif заг == 12:
             с.поле("KSI и номер", "emm.ksi_and_seq", д[м + 1], м + 1, 1)
@@ -620,7 +619,7 @@ def nas_5gs(р: Разбор, м: int, конец: int) -> str | None:
 
 def _nas_pdu(разбор: Callable) -> Callable:
     """IE NAS-PDU (OCTET STRING в APER): определитель длины, затем сообщение NAS."""
-    def разобрать(р: Разбор, м: int, конец: int) -> str | None:
+    def разобрать(р: Разбор, м: int, конец: int):
         дл = mobilnye._aper_длина(р.д, м) if м < конец else None
         if дл is None or м + дл[1] + дл[0] != конец:
             return None

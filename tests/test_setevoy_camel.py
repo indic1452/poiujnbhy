@@ -148,3 +148,88 @@ class ТестCAP(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def раскладка(п, ключи):
+    у = [x for x in п.уровни if x.протокол == "CAMEL"][0]
+    итог = []
+
+    def обойти(список):
+        for x in список:
+            if x.ключ in ключи:
+                итог.append((x.ключ, x.смещение, x.длина))
+            обойти(x.дети)
+    обойти(у.поля)
+    return итог
+
+
+class ТестГраницCAP(unittest.TestCase):
+    def test_ber_границы(self):
+        self.assertIsNone(camel._ber(b"", 0, 0))
+        self.assertIsNone(camel._ber(b"\x04\x01", 2, 2))
+        self.assertEqual(camel._ber(b"\x9f\x81\x01\x01x", 0, 5), (0x80, 129, 4, 5))
+        self.assertEqual(camel._ber(b"\x04\x83\x00\x00\x02ab", 0, 7), (0x00, 4, 5, 7))
+        self.assertEqual(camel._ber(b"\x04\x81\x00", 0, 3), (0x00, 4, 3, 3))
+        self.assertIsNone(camel._ber(b"\x04\x82\x00\x00\x00\x00", 0, 3))
+        # Класс: универсальный (0x04), контекст (0x80), прикладной (0x40), частный (0xC0) — берётся только контекст.
+        self.assertEqual(camel._элементы(b"\x80\x01\x05\x41\x01\x06\xc2\x01\x07\xa3\x00", 0, 11), {0: (2, 3), 3: (11, 11)})
+
+    def test_номера(self):
+        self.assertEqual(camel._isup_номер(b"\x84\x10\x21"), "1")
+        self.assertIsNone(camel._isup_номер(b"\x84\x10"))
+        self.assertEqual(camel._isup_номер(b"\x04\x10" + bcd("7916123456", 0)), "7916123456")
+        self.assertEqual(camel._isup_номер(b"\x44\x10" + bcd("1234", 0)), "1234")
+        self.assertEqual(camel._isup_номер(b"\x84\x10" + bcd("123", 0)), "123")
+        self.assertIsNone(camel._bcd_номер(b"\x91"))
+        self.assertEqual(camel._bcd_номер(b"\x91\x21"), "12")
+
+    def test_причина_нечётная(self):
+        п = через_udt(вызов(22, ber(0x04, b"\x80\x91")))
+        self.assertEqual(п.инфо, "CAMEL releaseCall: причина 17 (абонент занят)")
+
+    def test_initial_dp_sms_по_отдельности(self):
+        только_imsi = ber(0x30, ber(0x84, bcd(IMSI, 0xF)))
+        п = через_udt(вызов(60, только_imsi, CAP_V4))
+        self.assertEqual(п.инфо, f"CAMEL initialDPSMS: IMSI {IMSI}")
+        н = п.данные.index(bcd(IMSI, 0xF))
+        self.assertEqual(раскладка(п, {"e212.imsi"}), [("e212.imsi", н, len(bcd(IMSI, 0xF)))])
+        только_событие = ber(0x30, ber(0x83, b"\x0b"))
+        п = через_udt(вызов(60, только_событие, CAP_V4))
+        self.assertEqual(п.инфо, "CAMEL initialDPSMS: событие sms-DeliveryRequested")
+        н = п.данные.index(только_событие) + 4
+        self.assertEqual(раскладка(п, {"camel.eventTypeSMS"}), [("camel.eventTypeSMS", н, 1)])
+
+    def test_connect_раскладка_и_прочие_операции(self):
+        номер = isup("74950000000")
+        п = через_udt(вызов(20, ber(0x30, ber(0xA0, ber(0x04, номер)))))
+        н = п.данные.index(номер)
+        self.assertEqual(раскладка(п, {"camel.destinationRoutingAddress"}),
+                         [("camel.destinationRoutingAddress", н, len(номер))])
+        # requestReportBCSMEvent с элементом [0] — не eventReportBCSM.
+        п = через_udt(вызов(23, ber(0x30, ber(0xA0, ber(0x30, ber(0x80, b"\x07"))))))
+        self.assertEqual(п.инфо, "CAMEL requestReportBCSMEvent")
+
+    def test_контекст_из_шести_и_не_cap(self):
+        п = через_udt(вызов(0, INITIAL_DP, bytes([0x04, 0x00, 0x00, 0x01, 0x00, 0x32])), 6)
+        self.assertIn("CAMEL", [у.протокол for у in п.уровни])
+        # Не CAP — дальше разбирает MAP.
+        п = через_udt(вызов(2, b"", MAP_UL), 146)
+        self.assertEqual([у.протокол for у in п.уровни][-1], "MAP")
+
+    def test_раскладка_уровня(self):
+        tcap = вызов(0, INITIAL_DP)
+        п = через_udt(tcap)
+        у = [x for x in п.уровни if x.протокол == "CAMEL"][0]
+        компонент = ber(0xA1, ber(0x02, b"\x01") + ber(0x02, b"\x00") + INITIAL_DP)
+        self.assertEqual((у.смещение, у.длина), (п.данные.index(компонент), len(компонент)))
+        н = у.смещение
+        self.assertEqual(раскладка(п, {"camel.application_context", "camel.opcode"}),
+                         [("camel.application_context", н, 0), ("camel.opcode", н + 5, 3)])
+        ошибка = ber(0x64, ber(0x49, b"\x01") + ber(0x6C, ber(0xA3, ber(0x02, b"\x01") + ber(0x02, b"\x0d"))))
+        п = через_udt(ошибка)
+        н = п.данные.index(b"\x02\x01\x0d")
+        self.assertEqual(раскладка(п, {"camel.error_code"}), [("camel.error_code", н, 3)])
+
+    def test_компонент_без_кода(self):
+        п = через_udt(ber(0x64, ber(0x49, b"\x01") + диалог(CAP_V2) + ber(0x6C, ber(0xA2, ber(0x02, b"\x01")))))
+        self.assertEqual(п.инфо, "CAMEL компоненты без кода операции")

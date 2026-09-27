@@ -266,7 +266,7 @@ class ТестXOT(unittest.TestCase):
         self.assertEqual(п.уровни[-1].смещение, 54 + 9)
 
     def test_pvc_setup(self):
-        pvc = (b"\x10\x05\xf5" + bytes([2, 0x12, 5]) + struct.pack(">H", 7) + bytes([6]) + struct.pack(">H", 9)
+        pvc = (b"\x10\x05\xf5" + bytes([2, 0x12, 5]) + struct.pack(">H", 0x0102) + bytes([6]) + struct.pack(">H", 9)
                + bytes([2, 3, 7, 8]) + b"Seria0" + b"Serial1")
         pvc = pvc[:5] + bytes([6]) + pvc[6:8] + bytes([7]) + pvc[9:]
         п = по_tcp(xot(pvc), 1998)
@@ -274,7 +274,7 @@ class ТестXOT(unittest.TestCase):
         self.assertEqual(ф["x25.lcn"].сырое, 5)
         self.assertEqual(ф["xot.pvc.version"].сырое, 2)
         self.assertEqual(ф["xot.pvc.status"].текст, "соединено")
-        self.assertEqual((ф["xot.pvc.init_lcn"].сырое, ф["xot.pvc.resp_lcn"].сырое), (7, 9))
+        self.assertEqual((ф["xot.pvc.init_lcn"].сырое, ф["xot.pvc.resp_lcn"].сырое), (0x0102, 9))
         self.assertEqual(ф["xot.pvc.send_window"].текст, "2/3")
         self.assertEqual(ф["xot.pvc.send_pkt_size"].текст, "2^7/2^8")
         self.assertEqual((ф["xot.pvc.init_itf_name"].текст, ф["xot.pvc.init_itf_name"].смещение), ("Seria0", 73))

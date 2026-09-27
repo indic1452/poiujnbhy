@@ -484,3 +484,167 @@ class ТестГраниц5GS(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def s1ap_хвост(nas_pdu, процедура=11):
+    """NAS-PDU не последний в пакете: за ним IE с id 0x4141 — первый байт после NAS равен 0x41 (Attach
+    request в таблице EMM, Registration request в 5GMM). Так видно чтение за концом сообщения."""
+    return на_sctp(aper_pdu(0, процедура, 1, [(8, 0, b"\x00\x01"), (26, 0, aper_длина(len(nas_pdu)) + nas_pdu),
+                                              (0x4141, 0, b"\x00")]), 18)
+
+
+def ngap_хвост(nas_pdu, процедура=46):
+    return на_sctp(aper_pdu(0, процедура, 1, [(85, 0, b"\x00\x01"), (38, 0, aper_длина(len(nas_pdu)) + nas_pdu),
+                                              (0x4141, 0, b"\x00")]), 60, 38412, 38412)
+
+
+class ТестГраницЧтения(unittest.TestCase):
+    """Сообщение, оканчивающееся на нужном байте, разбирается без ошибок; за его концом не читается."""
+
+    def test_eps_без_ошибок_на_границе(self):
+        for nas_pdu in (b"\x07\x55", b"\x07\x5d", b"\x07\x44", b"\x07\x45\x09", b"\x07\x52\x00" + bytes(15),
+                        bytes([0x02, 0x01, 0xD0]), bytes([0x02, 0x01, 0xD1])):
+            with self.subTest(nas_pdu=nas_pdu.hex()):
+                п = разобрать_пакет(s1ap_хвост(nas_pdu))
+                self.assertEqual(п.ошибки, [])
+                self.assertEqual(п.уровни[-1].протокол, "NAS-EPS")
+        п = разобрать_пакет(s1ap_хвост(b"\x07\x52\x00" + bytes(15)))
+        self.assertNotIn("nas_eps.emm.rand", поля(п, "NAS-EPS"))
+        # Пустой NAS-PDU — не NAS и не ошибка.
+        п = разобрать_пакет(s1ap_хвост(b""))
+        self.assertEqual((п.уровни[-1].протокол, п.ошибки), ("S1AP", []))
+
+    def test_5gs_без_ошибок_на_границе(self):
+        for nas_pdu in (b"\x7e\x00\x5b", b"\x7e\x00\x5d", b"\x7e\x00\x44", b"\x2e\x05\x01\xc3"):
+            with self.subTest(nas_pdu=nas_pdu.hex()):
+                п = разобрать_пакет(ngap_хвост(nas_pdu))
+                self.assertEqual(п.ошибки, [])
+                self.assertEqual(п.уровни[-1].протокол, "NAS-5GS")
+
+    def test_lv_длиннее_сообщения(self):
+        п = разобрать_пакет(s1ap_хвост(b"\x07\x56\x09" + личность(IMSI, 1)[:5]))
+        self.assertIn("NAS EPS: сообщение оборвано", п.ошибки)
+        self.assertNotIn("nas_eps.mobile_identity", поля(п, "NAS-EPS"))
+
+    def test_простое_под_шифром_не_за_концом(self):
+        # Один байт после заголовка: второй (0x41) — уже не сообщение NAS.
+        п = разобрать_пакет(s1ap_хвост(b"\x27" + bytes(5) + b"\x07"))
+        self.assertEqual((п.уровни[-1].итог, п.ошибки), ("зашифровано", []))
+        п = разобрать_пакет(ngap_хвост(b"\x7e\x02" + bytes(5) + b"\x7e\x00"))
+        self.assertEqual((п.уровни[-1].итог, п.ошибки), ("зашифровано", []))
+        # Простое ровно до конца: 2 байта EMM, 3 байта 5GMM.
+        п = разобрать_пакет(s1ap_хвост(b"\x27" + bytes(5) + b"\x07\x46"))
+        self.assertEqual(п.уровни[-1].итог, "нулевой шифр, Detach accept")
+        п = разобрать_пакет(ngap_хвост(b"\x7e\x02" + bytes(5) + b"\x7e\x00\x46"))
+        self.assertEqual(п.уровни[-1].итог, "нулевой шифр, Deregistration accept (UE originating)")
+        п = разобрать_пакет(ngap_хвост(b"\x7e\x04" + bytes(5) + b"\x7e\x00\x46"))
+        self.assertEqual(п.уровни[-1].итог, "нулевой шифр, Deregistration accept (UE originating)")
+        # Второй байт из таблицы EMM, первый — не 0x07: зашифровано.
+        п = разобрать_пакет(s1ap_хвост(b"\x27" + bytes(5) + b"\x9a\x41\x77"))
+        self.assertEqual(п.уровни[-1].итог, "зашифровано")
+        п = разобрать_пакет(ngap_хвост(b"\x7e\x02" + bytes(5) + b"\x7e\x01\x41"))
+        self.assertEqual(п.уровни[-1].итог, "зашифровано")
+
+    def test_необязательные_на_границе(self):
+        self.assertEqual(nas._необязательные(b"\x77\x00\x00", 0, 3, nas.TV_EPS), {0x77: (3, 0)})
+        self.assertEqual(nas._необязательные(b"\x28\x00", 0, 2, nas.TV_EPS), {0x28: (2, 0)})
+        # Значение длиннее сообщения — элемент не берётся, дальше не читается.
+        self.assertEqual(nas._необязательные(b"\x28\x05ab", 0, 4, nas.TV_EPS), {})
+        self.assertEqual(nas._необязательные(b"\x77\x00\x05ab", 0, 5, nas.TV_EPS), {})
+        self.assertEqual(nas._необязательные(b"\x93\x28\x03abc\x13", 0, 7, nas.TV_EPS), {0x90: (0, 1), 0x28: (3, 3)})
+        tv = next(iter(nas.TV_EPS))
+        n = nas.TV_EPS[tv]
+        self.assertEqual(nas._необязательные(bytes([tv]) + bytes(n - 1), 0, n, nas.TV_EPS), {tv: (1, n - 1)})
+        self.assertEqual(nas._необязательные(bytes([tv]) + bytes(n - 2), 0, n - 1, nas.TV_EPS), {})
+        # APN за концом сообщения не показывается.
+        п = разобрать_пакет(s1ap_хвост(bytes([0x02, 0x01, 0xD0, 0x11, 0x28, 0x09]) + b"inte"))
+        self.assertNotIn("nas_eps.esm.apn", поля(п, "NAS-EPS"))
+
+
+class ТестПолейEMM(unittest.TestCase):
+    def test_заголовок_и_дискриминатор(self):
+        п = разобрать_пакет(s1ap(b"\x07\x55\x01", 11))
+        у = [x for x in п.уровни if x.протокол == "NAS-EPS"][0]
+        self.assertEqual([(x.имя, x.текст) for x in у.поля[:2]],
+                         [("Тип защиты", "без защиты"), ("Дискриминатор", "EMM")])
+        п = разобрать_пакет(s1ap(bytes([0x62, 0x07, 0xD1, 0x1B]), 13))
+        у = [x for x in п.уровни if x.протокол == "NAS-EPS"][0]
+        self.assertEqual([(x.имя, x.текст) for x in у.поля[:2]], [("Дискриминатор", "ESM"),
+                                                                 ("Идентификатор носителя EPS", "6")])
+
+    def test_вид_присоединения_и_обновления(self):
+        for б, вид in ((0x71, "EPS attach"), (0x73, "EPS RLOS attach"), (0x77, "Disaster roaming attach")):
+            п = разобрать_пакет(s1ap(bytes([0x07, 0x41, б]) + lv(личность(IMSI, 1)) + lv(b"\xe0") + lve(b"")))
+            ф = поля(п, "NAS-EPS")
+            self.assertEqual((ф["nas_eps.emm.eps_att_type"].текст, ф["nas_eps.emm.eps_att_type"].сырое), (вид, б & 7))
+        for б, текст in ((0x03, "periodic updating"), (0x05, "5"), (0x07, "7")):
+            п = разобрать_пакет(s1ap(bytes([0x07, 0x48, б]) + lv(GUTI), 12))
+            у = [x for x in п.уровни if x.протокол == "NAS-EPS"][0]
+            ф = поля(п, "NAS-EPS")
+            self.assertEqual((ф["nas_eps.emm.update_type"].текст, ф["nas_eps.emm.update_type"].сырое), (текст, б))
+            self.assertEqual((ф["nas_eps.emm.update_type"].смещение - у.смещение, ф["nas_eps.emm.update_type"].длина),
+                             (2, 1))
+
+    def test_запрос_личности(self):
+        for б, текст in ((0x01, "IMSI"), (0xF3, "IMEISV"), (0x07, "7"), (0xF5, "5")):
+            п = разобрать_пакет(s1ap(bytes([0x07, 0x55, б]), 11))
+            self.assertEqual(раскладка(п, "NAS-EPS")[-1], ("nas_eps.emm.id_type2", 2, 1, б & 7))
+            self.assertEqual(поля(п, "NAS-EPS")["nas_eps.emm.id_type2"].текст, текст)
+            self.assertEqual(п.уровни[-1].итог, f"Identity request, {текст}")
+        for б, текст in ((0x01, "SUCI"), (0xF5, "IMEISV"), (0x07, "7"), (0xF6, "6")):
+            п = разобрать_пакет(ngap(bytes([0x7E, 0x00, 0x5B, б]), 4))
+            self.assertEqual(раскладка(п, "NAS-5GS")[-1], ("nas_5gs.mm.type_id", 3, 1, б & 7))
+            self.assertEqual(поля(п, "NAS-5GS")["nas_5gs.mm.type_id"].текст, текст)
+            self.assertEqual(п.уровни[-1].итог, f"Identity request, {текст}")
+
+    def test_причины_и_rand_раскладка(self):
+        self.assertEqual(раскладка(разобрать_пакет(s1ap(b"\x07\x44\x03", 13)), "NAS-EPS")[-1],
+                         ("nas_eps.emm.cause", 2, 1, 3))
+        self.assertEqual(раскладка(разобрать_пакет(ngap(b"\x7e\x00\x44\x03", 4)), "NAS-5GS")[-1],
+                         ("nas_5gs.mm.5gmm_cause", 3, 1, 3))
+        self.assertEqual(раскладка(разобрать_пакет(ngap(b"\x2e\x05\x01\xc3\x1b", 4)), "NAS-5GS")[-1],
+                         ("nas_5gs.sm.5gsm_cause", 4, 1, 0x1B))
+        rand = bytes(range(16))
+        п = разобрать_пакет(s1ap(b"\x07\x52\x00" + rand + lv(bytes(range(16, 32))), 11))
+        self.assertEqual(раскладка(п, "NAS-EPS")[-2:], [("nas_eps.emm.rand", 3, 16, rand.hex()),
+                                                         ("nas_eps.emm.autn", 20, 16, bytes(range(16, 32)).hex())])
+        # RAND 5GS — только из элемента 0x21: без него (а с AUTN 0x20) RAND нет.
+        п = разобрать_пакет(ngap(b"\x7e\x00\x56\x00" + lv(b"\x00\x00") + b"\x20" + lv(bytes(16)), 4))
+        self.assertNotIn("nas_5gs.mm.rand", поля(п, "NAS-5GS"))
+
+    def test_длинное_сообщение_после_auth(self):
+        # Длинный NAS transport не принимается за Authentication request.
+        cp = b"\x09\x01" + lv(b"\x01\x02\x00" + bytes(20))
+        п = разобрать_пакет(s1ap(b"\x07\x62" + lv(cp), 11))
+        self.assertEqual([у.протокол for у in п.уровни][-3:], ["NAS-EPS", "GSM SMS", "Данные"])
+        self.assertNotIn("nas_eps.emm.rand", поля(п, "NAS-EPS"))
+
+    def test_контейнеры_esm(self):
+        # Контейнер ровно из 3 байт — сообщение ESM; из 2 — нет и без ошибок.
+        п = разобрать_пакет(s1ap(b"\x07\x41\x72" + lv(личность(IMSI, 1)) + lv(b"\xe0") + lve(bytes([0x52, 0x01, 0xC2]))))
+        self.assertEqual(поля(п, "NAS-EPS")["nas_eps.nas_msg_esm_type"].сырое, 0xC2)
+        for nas_pdu in (b"\x07\x41\x72" + lv(личность(IMSI, 1)) + lv(b"\xe0") + lve(b"\x02\x01"),
+                        b"\x07\x42\x02\x21" + lv(b"\x00") + lve(b"\x02\x01")):
+            п = разобрать_пакет(s1ap_хвост(nas_pdu))
+            self.assertEqual(п.ошибки, [], nas_pdu.hex())
+        # Причина ESM внутри контейнера Attach accept — граница контейнера своя.
+        п = разобрать_пакет(s1ap(b"\x07\x42\x02\x21" + lv(b"\x00") + lve(bytes([0x52, 0x01, 0xD1, 0x1B]))))
+        self.assertEqual(поля(п, "NAS-EPS")["nas_eps.esm.cause"].сырое, 0x1B)
+
+    def test_tau_accept_с_результатом(self):
+        п = разобрать_пакет(s1ap(b"\x07\x49\x01\x50" + lv(GUTI), 11))
+        self.assertIn("M-TMSI 0xC0DE1234", п.уровни[-1].итог)
+
+    def test_5gsm_в_контейнере_из_4_байт(self):
+        п = разобрать_пакет(ngap(b"\x7e\x00\x67\x01" + lve(b"\x2e\x05\x01\xc1"), 46))
+        self.assertEqual(поля(п, "NAS-5GS")["nas_5gs.sm.message_type"].сырое, 0xC1)
+        п = разобрать_пакет(ngap(b"\x7e\x00\x67\x01" + lve(b"\x2e\x05\x01"), 46))
+        self.assertNotIn("nas_5gs.sm.message_type", поля(п, "NAS-5GS"))
+
+    def test_адреса_длиннее(self):
+        self.assertEqual(nas._адрес(b"\x01\x0a\x00\x00\x01\x00"), "10.0.0.1")
+        self.assertEqual(nas._адрес(b"\x02" + bytes(8) + b"\x01"), "IPv6 ::")
+        self.assertEqual(nas._адрес(b"\x03" + bytes(7) + b"\x05" + bytes([10, 0, 0, 7]) + b"\x00"), "10.0.0.7, IPv6 ::5")
+        # Маршрут SUCI — ровно 2 байта после PLMN.
+        suci = b"\x01" + PLMN_25001 + b"\x21\x43" + b"\x00\x00" + bcd("1")
+        self.assertEqual(nas._5gs_идентификатор(suci), "SUCI: IMSI 250011 (нулевая схема), маршрут 1234")

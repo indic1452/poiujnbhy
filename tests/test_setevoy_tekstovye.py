@@ -395,6 +395,15 @@ class ТестГраницSSH(unittest.TestCase):
         ф = поля(по_tcp(без_резерва), "SSH")
         self.assertNotIn("ssh.first_kex_packet_follows", ф)
 
+    def test_строка_и_правдоподобие(self):
+        self.assertEqual(tekstovye._ssh_строка(b"\x00\x00\x00\x00", 0, 4), (b"", 4))
+        self.assertEqual(tekstovye._ssh_строка(b"\x00\x00\x00\x01a", 0, 5), (b"a", 5))
+        self.assertIsNone(tekstovye._ssh_строка(b"\x00\x00\x00\x02a", 0, 5))
+        self.assertIsNone(tekstovye._ssh_строка(b"\x00\x00\x00", 0, 3))
+        for короткое in (b"", b"\x00\x00\x00\x0c\x0a", b"\x00"):
+            self.assertFalse(tekstovye._правдоподобен(короткое, 0, len(короткое)))
+        self.assertTrue(tekstovye._правдоподобен(пакет_ssh(21), 0, 16))
+
     def test_раскладка(self):
         п = по_tcp(kexinit())
         конец_списков = 76 + sum(4 + len(x) for x in СПИСКИ)
@@ -413,6 +422,10 @@ class ТестГраницSSH(unittest.TestCase):
         п = по_tcp(пакет_ssh(6, строка_ssh(b"ssh-connection")), от=22, к=5000)
         self.assertEqual(раскладка(п, "SSH", {"ssh.service_name"}), [("ssh.service_name", 60, 18)])
         self.assertEqual(п.инфо, "SSH Service Accept: ssh-connection")
+        # Пакет, за которым идут ещё данные, — поле ровно на пакет (длина + 4).
+        п = по_tcp(пакет_ssh(21) + b"\x8f" * 9)
+        self.assertEqual(раскладка(п, "SSH", {"ssh.message_code", "ssh.encrypted_packet"}),
+                         [("ssh.message_code", 54, 16), ("ssh.encrypted_packet", 70, 9)])
         # Пакет длиннее данных — поле пакета до конца данных.
         п = по_tcp(kexinit()[:40])
         self.assertEqual(раскладка(п, "SSH", {"ssh.message_code"}), [("ssh.message_code", 54, 40)])
