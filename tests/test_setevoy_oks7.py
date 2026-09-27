@@ -708,6 +708,8 @@ class ANSITCAPTests(unittest.TestCase):
                  "ansi_tcap.errorCode", 7),
                 ("reject", ber(0xEC, ber(0xCF, b"") + ber(0xD5, b"\x01\x01") + ber(0xF0, b"")), "Reject проблема 257",
                  "ansi_tcap.rejectProblem", 257),
+                ("reject с SET", ber(0xEC, ber(0xCF, b"\x04") + ber(0xD5, b"\x02\x02") + ber(0xF2, b"")),
+                 "Reject id 4 проблема 514", "ansi_tcap.rejectProblem", 514),
                 ("rr not last", ber(0xEE, ber(0xCF, b"\x09")), "Return Result Not Last id 9", "ansi_tcap.componentIDs",
                  "09")):
             with self.subTest(имя):
