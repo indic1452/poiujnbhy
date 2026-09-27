@@ -176,7 +176,7 @@ NS_ЭЛЕМЕНТЫ = {0x00: "Cause", 0x01: "NS-VCI", 0x02: "NS PDU", 0x03: "BVC
                0x0B: "IP Address"}
 NS_TV = {0x07: 3, 0x08: 3, 0x09: 3, 0x0A: 2, 0x0B: None}
 #: IP Address (10.3.2b) — TV, длина по виду адреса: 1 — IPv4, 2 — IPv6.
-NS_АДРЕС = {1: 6, 2: 18}
+NS_АДРЕС = {b"\x01": 6, b"\x02": 18}
 #: После какого числа элементов идёт поле V в один октет: SNS-ACK, ADD, CHANGEWEIGHT, DELETE — номер
 #: транзакции после NSEI; SNS-CONFIG — End Flag первым.
 NS_V = {0x0C: (1, "Номер транзакции", "nsip.transaction_id"), 0x0D: (1, "Номер транзакции", "nsip.transaction_id"),
@@ -234,7 +234,7 @@ def _элемент(д: bytes, м: int, конец: int, tv: dict | None = None)
     Длина (48.016 10.3.1, 48.018 11.1): бит 8 = 1 — 7 бит в одном октете, 0 — 15 бит в двух."""
     iei = д[м]
     if tv and iei in tv:
-        полная = tv[iei] if tv[iei] is not None else NS_АДРЕС.get(д[м + 1] if м + 1 < конец else -1)
+        полная = tv[iei] if tv[iei] is not None else NS_АДРЕС.get(д[м + 1:min(м + 2, конец)])
         if полная is None:
             return None
         начало, n = м + 1, полная - 1
@@ -298,7 +298,8 @@ def ns(р: Разбор, м: int, конец: int) -> bool:
         return False
     тип = д[м]
     if тип == 0x00:
-        if конец - м < 5 or д[м + 1] & 0xFC or not bssgp_проба(р, м + 4, конец):
+        # Проба BSSGP требует хотя бы октет за BVCI — значит, и биты управления на месте.
+        if not bssgp_проба(р, м + 4, конец) or д[м + 1] & 0xFC:
             return False
         у = р.уровень("NS", "GPRS Network Service", м)
         у.поле("Тип PDU", "nsip.pdu_type", f"0x00 ({NS_PDU[0]})", м, 1, 0)
@@ -414,11 +415,9 @@ def bssgp_проба(р: Разбор, м: int, конец: int) -> bool:
     return _элементы_bssgp(д, м, конец) is not None
 
 
-def bssgp(р: Разбор, м: int, конец: int) -> bool:
+def bssgp(р: Разбор, м: int, конец: int) -> None:
+    """PDU BSSGP, уже проверенный ``bssgp_проба`` (его вызывает NS-UNITDATA)."""
     д = р.д
-    if not bssgp_проба(р, м, конец):
-        данные(р, м, "NS SDU (не BSSGP)", конец)
-        return False
     тип = д[м]
     у = р.уровень("BSSGP", "Base Station Subsystem GPRS Protocol", м)
     у.поле("Тип PDU", "bssgp.pdu_type", f"0x{тип:02x} ({BSSGP_PDU[тип]})", м, 1, тип)
@@ -448,9 +447,7 @@ def bssgp(р: Разбор, м: int, конец: int) -> bool:
         итог_llc = llc(р, *llc_pdu)
         if итог_llc:
             р.п.инфо = f"BSSGP {у.итог}; {итог_llc}"
-        if llc_pdu[1] < конец:
-            данные(р, llc_pdu[1], "элементы BSSGP после LLC-PDU", конец)
-    return True
+        данные(р, llc_pdu[1], "элементы BSSGP после LLC-PDU", конец)     # пустой остаток не показывается
 
 
 # -- LLC ------------------------------------------------------------------------------------------
@@ -510,6 +507,9 @@ def llc(р: Разбор, м: int, конец: int) -> str:
         вид = f"S, {S_КОМАНДЫ[s]}, N(R) {nr}"
         у.поле("Управление", "llcgprs.control", вид, x, 2, б)
         x += 2
+        if s == 3 and x < fcs_место:                      # SACK в кадре S: битовая карта R — до FCS (6.4.2.4)
+            у.поле("Битовая карта SACK", "llcgprs.sack", f"{fcs_место - x} байт", x, fcs_место - x)
+            x = fcs_место
         формат = "S"
     elif б < 0xE0:                                        # UI: 2 октета
         слово = u16(д, x)

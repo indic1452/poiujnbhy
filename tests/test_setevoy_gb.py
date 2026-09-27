@@ -481,3 +481,188 @@ class ТестNS(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# -- эталонные раскладки и прямые вызовы ---------------------------------------------------------------
+
+from reportgen.setevoy.pole import Пакет  # noqa: E402
+from reportgen.setevoy.razbor import Разбор  # noqa: E402
+
+
+#: Прямые вызовы — не с нуля: иначе «конец − м» и «конец + м» не различить.
+С = 16
+
+
+def р_из(данные):
+    return Разбор(Пакет(1, 0.0, bytes(С) + данные, С + len(данные), "RAW"))
+
+
+def дерево(р):
+    """[(протокол, место, длина), [(глубина, ключ, место, длина, сырое)]] по уровням."""
+    def обойти(список, глубина, куда):
+        for x in список:
+            куда.append((глубина, x.ключ, x.смещение - С, x.длина, x.сырое))
+            обойти(x.дети, глубина + 1, куда)
+        return куда
+    return [((у.протокол, у.смещение - С, у.длина), обойти(у.поля, 0, [])) for у in р.п.уровни]
+
+
+class ТестЭталонGb(unittest.TestCase):
+    def test_ns_bssgp_llc(self):
+        д = ns_ud(ul(TLLI, llc_ui(1, b"\x08\x21", nu=5)), bvci=0x1234, биты=0x02)
+        р = р_из(д)
+        self.assertTrue(gb.ns(р, С, С + len(д)))
+        self.assertEqual(дерево(р), [
+            (("NS", 0, 4), [(0, "nsip.pdu_type", 0, 1, 0), (0, "nsip.control_bits", 1, 1, 2),
+                            (1, "nsip.control_bits.r", 1, 1, 0), (1, "nsip.control_bits.c", 1, 1, 1),
+                            (0, "nsip.bvci", 2, 2, 0x1234)]),
+            (("BSSGP", 4, 20), [(0, "bssgp.pdu_type", 4, 1, 1), (0, "bssgp.tlli", 5, 4, TLLI),
+                                (0, "bssgp.qos", 9, 3, "006443"), (0, "bssgp.ie.08", 12, 10, 8),
+                                (0, "bssgp.llc_pdu", 22, 10, 14)]),
+            (("LLC", 24, 3), [(0, "llcgprs.sapi", 24, 1, 1), (1, "llcgprs.cr", 24, 1, 0),
+                              (0, "llcgprs.control", 25, 2, 0xC015), (0, "llcgprs.nu", 25, 2, 5),
+                              (0, "llcgprs.e", 26, 1, 0), (0, "llcgprs.pm", 26, 1, 1),
+                              (0, "llcgprs.fcs", 29, 3, int.from_bytes(fcs(д[24:29]), "little"))]),
+            (("GSM GMM", 27, 2), [(0, "gsm_a.L3_protocol_discriminator", 27, 1, 8), (0, "gsm_a.skip.ind", 27, 1, 0),
+                                  (0, "gsm_a.dtap.msg_gmm_type", 28, 1, 0x21)])])
+        # Без LLC-PDU уровень BSSGP — до конца; с элементом после LLC-PDU — данные за ним.
+        р = р_из(ns_ud(bytes([0x41]) + tlv(0x07, b"\x01")))
+        self.assertTrue(gb.ns(р, С, С + 8))
+        self.assertEqual(р.п.уровни[1].длина, 4)
+
+    def test_sns(self):
+        ip4 = bytes([10, 0, 0, 1]) + struct.pack(">HBB", 23000, 1, 2)
+        д = bytes([0x0F, 0x01]) + tlv(0x04, b"\x00\x64") + tlv(0x05, ip4 + bytes(7))
+        р = р_из(д)
+        self.assertTrue(gb.ns(р, С, С + len(д)))
+        self.assertEqual(дерево(р), [(("NS", 0, 23), [
+            (0, "nsip.pdu_type", 0, 1, 15), (0, "nsip.end_flag", 1, 1, 1), (0, "nsip.ie.04", 2, 4, 4),
+            (0, "nsip.ie.05", 6, 17, 5), (1, "nsip.ip_element", 8, 8, "10.0.0.1:23000"),
+            (2, "nsip.ip_element.signalling_weight", 14, 1, 1), (2, "nsip.ip_element.data_weight", 15, 1, 2)])])
+        д = bytes([0x0C]) + tlv(0x04, b"\x00\x64") + b"\x07" + bytes([0x0B, 1, 10, 0, 0, 9])
+        р = р_из(д)
+        self.assertTrue(gb.ns(р, С, С + len(д)))
+        self.assertEqual(дерево(р), [(("NS", 0, 12), [
+            (0, "nsip.pdu_type", 0, 1, 12), (0, "nsip.transaction_id", 5, 1, 7), (0, "nsip.ie.04", 1, 4, 4),
+            (0, "nsip.ie.0b", 6, 6, 11)])])
+
+    def test_llc_виды(self):
+        д = llc(1, bytes([0x20 | 0x05, 0x50 | 0x08, 0x0C | 0x03]), bytes([0x03, 1, 2, 3, 4]) + b"\x08\x21")
+        р = р_из(д)
+        self.assertEqual(gb.llc(р, С, С + len(д)), "LLC LLGMM I, N(S) 85, N(R) 3, SACK; GSM GMM GMM Information")
+        self.assertEqual(дерево(р)[0], (("LLC", 0, 9), [
+            (0, "llcgprs.sapi", 0, 1, 1), (1, "llcgprs.cr", 0, 1, 0), (0, "llcgprs.control", 1, 3, 0x25),
+            (0, "llcgprs.sack", 4, 5, "4 байт"), (0, "llcgprs.fcs", 11, 3, int.from_bytes(fcs(д[:11]), "little"))]))
+        д = llc(0x41, bytes([0x80 | 0x10, 0x0C | 0x03]), b"\xaa\xbb")
+        р = р_из(д)
+        self.assertEqual(gb.llc(р, С, С + len(д)), "LLC LLGMM S, SACK, N(R) 3")
+        self.assertEqual(дерево(р), [(("LLC", 0, 5), [
+            (0, "llcgprs.sapi", 0, 1, 1), (1, "llcgprs.cr", 0, 1, 1), (0, "llcgprs.control", 1, 2, 0x90),
+            (0, "llcgprs.sack", 3, 2, "2 байт"), (0, "llcgprs.fcs", 5, 3, int.from_bytes(fcs(д[:5]), "little"))])])
+        xid = (bytes([0x0B << 2 | 0x80 | 1, 6 << 2]) + bytes(70) + bytes([0x01 << 2 | 0x80, 4 << 2])
+               + b"\x01\x02\x03\x04")
+        д = llc(1, bytes([0xEB]), xid)
+        р = р_из(д)
+        self.assertEqual(gb.llc(р, С, С + len(д)), "LLC LLGMM U, XID: Layer-3 Parameters, IOV-UI=16909060")
+        self.assertEqual(дерево(р), [(("LLC", 0, 80), [
+            (0, "llcgprs.sapi", 0, 1, 1), (1, "llcgprs.cr", 0, 1, 0), (0, "llcgprs.control", 1, 1, 0xEB),
+            (0, "llcgprs.fcs", 80, 3, int.from_bytes(fcs(д[:80]), "little")),
+            (0, "llcgprs.xid.type", 2, 72, 11), (0, "llcgprs.xid.type", 74, 6, 1)])])
+        self.assertEqual(р.п.ошибки, [])
+
+    def test_llc_границы_форматов(self):
+        for первый, вид in ((0x7F, "I"), (0x80, "S"), (0xBF, "S"), (0xC0, "UI"), (0xDF, "UI"), (0xE0, "U")):
+            управление = bytes([первый, 0x00, 0x00])[:{"I": 3, "S": 2, "UI": 2, "U": 1}[вид]]
+            д = llc(1, управление)
+            р = р_из(д)
+            self.assertTrue(gb.llc(р, С, С + len(д)).startswith(f"LLC LLGMM {вид},"), (hex(первый), вид))
+            self.assertEqual(р.п.ошибки, [], hex(первый))
+        # Нечётный N(R) кадра S и UI с октетом 0xCB (младший полубайт как у XID) — не XID.
+        д = llc(1, bytes([0x80, 0x0D]))
+        self.assertEqual(gb.llc(р_из(д), С, С + len(д)), "LLC LLGMM S, ACK, N(R) 3")
+        д = llc(1, bytes([0xCB, 0x01]), b"\x08\x21")
+        self.assertTrue(gb.llc(р_из(д), С, С + len(д)).endswith("GSM GMM GMM Information"))
+        # Зашифрованный UI без информации — без «зашифровано».
+        д = llc(1, bytes([0xC0, 0x03]))
+        self.assertEqual(gb.llc(р_из(д), С, С + len(д)), "LLC LLGMM UI, N(U) 0")
+
+    def test_xid_границы(self):
+        for параметры, ожидание in ((bytes([0x01 << 2 | 0x80]), []),                       # XL без второго октета
+                                    (bytes([0x05 << 2 | 0x80, 1 << 2]) + b"\x07", [("7", 3)]),
+                                    (bytes([0x02 << 2 | 3]) + b"\x01\x02\x03", [("66051", 4)])):
+            д = llc(1, bytes([0xEB]), параметры)
+            р = р_из(д)
+            gb.llc(р, С, С + len(д))
+            self.assertEqual([(x.текст, x.длина) for x in р.п.уровни[0].поля if x.ключ == "llcgprs.xid.type"], ожидание)
+            self.assertEqual(р.п.ошибки, [])
+
+    def test_sndcp(self):
+        д = bytes([0x40 | 5, 0x13, 9]) + b"zz"
+        р = р_из(д)
+        self.assertTrue(gb.sndcp(р, С, С + len(д)))
+        self.assertEqual(дерево(р)[0], (("SNDCP", 0, 3), [
+            (0, "sndcp.nsapi", 0, 1, 5), (1, "sndcp.f", 0, 1, 1), (1, "sndcp.t", 0, 1, 0), (1, "sndcp.m", 0, 1, 0),
+            (0, "sndcp.dcomp", 1, 1, "1/3"), (0, "sndcp.npduField1", 2, 1, 9)]))
+        д = bytes([0x20 | 0x10 | 5, 0x21, 0x07]) + b"zz"
+        р = р_из(д)
+        self.assertTrue(gb.sndcp(р, С, С + len(д)))
+        self.assertEqual(дерево(р)[0], (("SNDCP", 0, 3), [
+            (0, "sndcp.nsapi", 0, 1, 5), (1, "sndcp.f", 0, 1, 0), (1, "sndcp.t", 0, 1, 1), (1, "sndcp.m", 0, 1, 1),
+            (0, "sndcp.segment", 1, 1, 2), (0, "sndcp.npduField2", 1, 2, 0x107)]))
+        # Только заголовок, IPv6, заголовок длиннее данных.
+        р = р_из(bytes([0x65, 0x00, 0, 1]))
+        self.assertTrue(gb.sndcp(р, С, С + 4))
+        self.assertEqual([у.протокол for у in р.п.уровни], ["SNDCP"])
+        ip = с.ip6(с.udp(b"x", 1, 2, src="2001:db8::1", dst="2001:db8::2", v6=True), 17)
+        р = р_из(bytes([0x45, 0x00, 9]) + ip)
+        self.assertTrue(gb.sndcp(р, С, С + 3 + len(ip)))
+        self.assertEqual([у.протокол for у in р.п.уровни][:2], ["SNDCP", "IPv6"])
+        self.assertFalse(gb.sndcp(р_из(b"\x65\x00\x00"), С, С + 3))
+
+
+class ТестГраницGb(unittest.TestCase):
+    def test_элемент(self):
+        self.assertIsNone(gb._элемент(b"\x04", 0, 1))
+        self.assertIsNone(gb._элемент(b"\x04\x00", 0, 2))
+        self.assertEqual(gb._элемент(b"\x04\x00\x00", 0, 3), (4, 3, 0, 0))
+        self.assertEqual(gb._элемент(b"\x04\x80", 0, 2), (4, 2, 0, 0))
+        self.assertEqual(gb._элемент(b"\x04\x01\x02" + bytes(258), 0, 261), (4, 3, 258, 0))
+        self.assertIsNone(gb._элемент(b"\x0b", 0, 1, gb.NS_TV))
+        self.assertIsNone(gb._элемент(b"\x0b\x03\x00\x00\x00\x00", 0, 6, gb.NS_TV))
+        self.assertIsNone(gb._элемент(b"\x0b\x01\x0a\x00\x00", 0, 5, gb.NS_TV))
+        self.assertEqual(gb._элемент(b"\x0b\x02" + bytes(16), 0, 18, gb.NS_TV), (0x0B, 1, 17, 0))
+        self.assertEqual(len(gb.CRC24), 256)
+
+    def test_ns_и_bssgp_отказы(self):
+        pdu = ul(TLLI, llc_ui(1, ATTACH))
+        for данные, что in ((b"", "пусто"), (b"\x00", "UNITDATA из октета"), (b"\x00\x00\x00\x02", "без BSSGP"),
+                            (b"\x0c", "SNS-ACK без элементов"), (bytes([0x0C]) + tlv(0x04, b"\x00\x64"), "без транзакции"),
+                            (ns_ud(pdu, биты=0x80), "запасной бит")):
+            with self.subTest(что):
+                р = р_из(данные)
+                self.assertFalse(gb.ns(р, С, С + len(данные)))
+                self.assertEqual(р.п.уровни, [])
+        # Наименьший UNITDATA: BSSGP из одного октета (RADIO-STATUS без элементов).
+        р = р_из(ns_ud(b"\x0a"))
+        self.assertTrue(gb.ns(р, С, С + 5))
+        self.assertFalse(gb.bssgp_проба(р_из(b"\x01" + bytes(6)), С, С + 7))
+        self.assertTrue(gb.bssgp_проба(р_из(b"\x01" + bytes(7)), С, С + 8))
+        self.assertFalse(gb.bssgp_проба(р_из(b"\x01"), С + 1, С + 1))
+
+    def test_значения_ns_и_bssgp(self):
+        # NS: элемент из двух октетов не того вида — показывается октетами.
+        р = р_из(bytes([0x08]) + tlv(0x00, b"\x01") + tlv(0x02, b"\x0a\x0b"))
+        self.assertTrue(gb.ns(р, С, С + 8))
+        self.assertEqual([x.имя for x in р.п.уровни[0].поля][1:], ["Причина: O&M intervention", "NS PDU (2 байт)"])
+        self.assertIsNone(gb._значение(0x60, bytes(6)))
+        self.assertIsNone(gb._значение(0x60, bytes(4)))
+        self.assertIsNone(gb._значение(0x60, bytes(2)))
+        # Октетами — до 32 включительно, длиннее — числом.
+        р = р_из(ns_ud(bytes([0x41]) + tlv(0x60, bytes(32)) + tlv(0x61, bytes(33)), bvci=0))
+        self.assertTrue(gb.ns(р, С, С + 4 + 1 + 34 + 35))
+        тексты = [x.текст for x in р.п.уровни[1].поля if x.ключ in ("bssgp.ie.60", "bssgp.ie.61")]
+        self.assertEqual(тексты, ["00" * 32, "33 байт"])
+        # Mobile Id и NSEI — в сводке.
+        р = р_из(ns_ud(bytes([0x06]) + tlv(0x11, b"\xf4\x01\x02\x03\x04") + tlv(0x3E, b"\x00\x65"), bvci=0))
+        gb.ns(р, С, С + 4 + 1 + 7 + 4)
+        self.assertEqual(р.п.инфо, "BSSGP PAGING-PS, TMSI 01020304, NSEI 101")
