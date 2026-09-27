@@ -1722,6 +1722,23 @@ Q933_ОТЧЁТЫ = {0: "полный статус", 1: "проверка цел
 Q933_ЭЛЕМЕНТЫ = {0x51: "report", 0x53: "liv", 0x57: "pvc", 0x01: "report", 0x03: "liv", 0x07: "pvc"}
 
 
+#: Нагрузка FR без инкапсуляции RFC 2427 (так идёт, например, NS интерфейса Gb — 3GPP TS 48.016, 6.2):
+#: пробуются, если после адреса нет «0x03 + известный NLPID»; разборщик проверяет свои признаки сам.
+FR_БЕЗ_NLPID: list = []
+
+
+def _без_nlpid(р: Разбор, м: int) -> bool:
+    for разбор in FR_БЕЗ_NLPID:
+        снимок = _снимок(р)
+        try:
+            if разбор(р, м, len(р.д)):
+                return True
+        except (IndexError, ValueError, struct.error):
+            pass
+        _откат(р, снимок)
+    return False
+
+
 def fr(р: Разбор, м: int) -> None:
     """Кадр Frame Relay (LINKTYPE_FRELAY): адрес Q.922 (2–4 байта), затем инкапсуляция RFC 2427."""
     д = р.д
@@ -1765,6 +1782,10 @@ def fr(р: Разбор, м: int) -> None:
     if место >= len(д):
         return
     упр = д[место]
+    x = место + 2 if упр == 0x03 and место + 1 < len(д) and д[место + 1] == 0x00 else место + 1
+    известно = упр == 0x03 and x < len(д) and (д[x] in (0xCC, 0x8E, 0x83, 0x80) or (dlci == 0 and д[x] == 0x08))
+    if not известно and _без_nlpid(р, место):
+        return
     у.поле("Управление", "fr.control", f"0x{упр:02x}" + (" (UI)" if упр == 3 else ""), место, 1, упр)
     у.длина += 1
     if упр != 0x03:

@@ -7,19 +7,23 @@
   C/R, EA), управление (I/S/U по модулю 8), указатель длины (L, M, EL), в
   кадре SACCH — ещё два байта заголовка L1 (мощность и опережение);
 - **сообщение**: дискриминатор протокола (младший полубайт первого байта: 3 — CC,
-  5 — MM, 6 — RR, 9 — SMS, 11 — SS), тип сообщения (у MM, CC и SS два старших
-  бита — порядковый номер N(SD), в тип не входят).
+  5 — MM, 6 — RR, 8 — GMM, 9 — SMS, 10 — SM, 11 — SS), тип сообщения (у MM, CC и SS
+  два старших бита — порядковый номер N(SD), в тип не входят; у GMM и SM тип — весь
+  октет, 24.007 11.2.3.2.3).
 
 Из сообщений читается главное: идентификатор абонента (IMSI, TMSI, IMEI —
 24.008 10.5.1.4), LAI (MCC, MNC, LAC — 10.5.1.3), идентификатор соты,
-набранный номер CC SETUP (10.5.4.7). Названия сообщений — по таблицам Wireshark
+набранный номер CC SETUP (10.5.4.7); у GPRS — личность из Attach Request и Identity
+Response (9.4.1, 9.4.13), точка доступа (APN, 10.5.6.1) из Activate PDP Context
+Request (9.5.1), адрес PDP (10.5.6.4) из Activate PDP Context Accept (9.5.2), причина
+SM (10.5.6.6) из Deactivate PDP Context Request (9.5.14). Названия сообщений — по таблицам Wireshark
 (packet-gsm_a_rr.c gsm_a_dtap_msg_rr_strings, packet-gsm_a_dtap.c
 gsm_a_dtap_msg_mm/cc/sms/ss_strings, protocol_discriminator_vals).
 """
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+import ipaddress
 
 from ..razbor import ДОП_УРОВНИ, Разбор, данные
 
@@ -60,14 +64,67 @@ CC = {0x01: "Alerting", 0x08: "Call Confirmed", 0x02: "Call Proceeding", 0x07: "
       0x36: "Start DTMF Acknowledge", 0x37: "Start DTMF Reject", 0x3A: "Facility"}
 SMS = {0x01: "CP-DATA", 0x04: "CP-ACK", 0x10: "CP-ERROR"}
 SS = {0x2A: "Release Complete", 0x3A: "Facility", 0x3B: "Register"}
-ТИПЫ = {0x6: RR, 0x5: MM, 0x3: CC, 0x9: SMS, 0xB: SS}
+#: GPRS (24.008 10.4, таблицы 10.4 и 10.4a; Wireshark packet-gsm_a_gm.c gsm_a_dtap_msg_gmm/sm_strings).
+GMM = {1: 'Attach Request',
+ 2: 'Attach Accept',
+ 3: 'Attach Complete',
+ 4: 'Attach Reject',
+ 5: 'Detach Request',
+ 6: 'Detach Accept',
+ 8: 'Routing Area Update Request',
+ 9: 'Routing Area Update Accept',
+ 10: 'Routing Area Update Complete',
+ 11: 'Routing Area Update Reject',
+ 12: 'Service Request',
+ 13: 'Service Accept',
+ 14: 'Service Reject',
+ 16: 'P-TMSI Reallocation Command',
+ 17: 'P-TMSI Reallocation Complete',
+ 18: 'Authentication and Ciphering Req',
+ 19: 'Authentication and Ciphering Resp',
+ 20: 'Authentication and Ciphering Rej',
+ 21: 'Identity Request',
+ 22: 'Identity Response',
+ 28: 'Authentication and Ciphering Failure',
+ 32: 'GMM Status',
+ 33: 'GMM Information'}
+SM = {65: 'Activate PDP Context Request',
+ 66: 'Activate PDP Context Accept',
+ 67: 'Activate PDP Context Reject',
+ 68: 'Request PDP Context Activation',
+ 69: 'Request PDP Context Activation rej.',
+ 70: 'Deactivate PDP Context Request',
+ 71: 'Deactivate PDP Context Accept',
+ 72: 'Modify PDP Context Request(Network to MS direction)',
+ 73: 'Modify PDP Context Accept (MS to network direction)',
+ 74: 'Modify PDP Context Request(MS to network direction)',
+ 75: 'Modify PDP Context Accept (Network to MS direction)',
+ 76: 'Modify PDP Context Reject',
+ 77: 'Activate Secondary PDP Context Request',
+ 78: 'Activate Secondary PDP Context Accept',
+ 79: 'Activate Secondary PDP Context Reject',
+ 80: 'Reserved: was allocated in earlier phases of the protocol',
+ 81: 'Reserved: was allocated in earlier phases of the protocol',
+ 82: 'Reserved: was allocated in earlier phases of the protocol',
+ 83: 'Reserved: was allocated in earlier phases of the protocol',
+ 84: 'Reserved: was allocated in earlier phases of the protocol',
+ 85: 'SM Status',
+ 86: 'Activate MBMS Context Request',
+ 87: 'Activate MBMS Context Accept',
+ 88: 'Activate MBMS Context Reject',
+ 89: 'Request MBMS Context Activation',
+ 90: 'Request MBMS Context Activation Reject',
+ 91: 'Request Secondary PDP Context Activation',
+ 92: 'Request Secondary PDP Context Activation Reject',
+ 93: 'Notification'}
+ТИПЫ = {0x6: RR, 0x5: MM, 0x3: CC, 0x9: SMS, 0xB: SS, 0x8: GMM, 0xA: SM}
 #: У MM, CC и SS биты 8–7 типа — N(SD) (24.007 11.2.3.2.3), в тип не входят.
 С_НОМЕРОМ = (0x5, 0x3, 0xB)
 
 ВИДЫ_ИДЕНТ = {1: "IMSI", 2: "IMEI", 3: "IMEISV", 4: "TMSI/P-TMSI", 0: "нет"}
 
 
-def _цифры(байты: bytes, первая_старшая: Optional[int] = None) -> str:
+def _цифры(байты: bytes, первая_старшая: int | None = None) -> str:
     """BCD: младший полубайт — раньше; 0xF — заполнитель."""
     итог = [] if первая_старшая is None else [первая_старшая]
     for б in байты:
@@ -75,7 +132,7 @@ def _цифры(байты: bytes, первая_старшая: Optional[int] = 
     return "".join(str(ц) for ц in итог if ц < 10)
 
 
-def идентификатор(тело: bytes) -> Optional[Tuple[str, str]]:
+def идентификатор(тело: bytes) -> tuple[str, str] | None:
     """Mobile Identity (24.008 10.5.1.4) без длины: (вид, значение)."""
     if not тело:
         return None
@@ -89,13 +146,49 @@ def идентификатор(тело: bytes) -> Optional[Tuple[str, str]]:
     return None
 
 
-def lai(тело: bytes) -> Optional[str]:
+def lai(тело: bytes) -> str | None:
     """LAI (10.5.1.3): MCC и MNC цифрами BCD, LAC — 16 бит."""
     if len(тело) < 5:
         return None
     mcc = f"{тело[0] & 0xF}{тело[0] >> 4}{тело[1] & 0xF}"
     mnc = f"{тело[2] & 0xF}{тело[2] >> 4}" + ("" if тело[1] >> 4 == 0xF else f"{тело[1] >> 4}")
     return f"MCC {mcc}, MNC {mnc}, LAC {int.from_bytes(тело[3:5], 'big')}"
+
+
+def _tlv(тело: bytes, место: int):
+    """Необязательные элементы 24.008 (11.2.1.1): старший бит IEI — элемент в один октет, иначе TLV."""
+    while место < len(тело):
+        iei = тело[место]
+        if iei & 0x80:
+            место += 1
+            continue
+        if место + 2 > len(тело) or место + 2 + тело[место + 1] > len(тело):
+            return
+        yield iei, место + 2, тело[место + 1]
+        место += 2 + тело[место + 1]
+
+
+def _apn(б: bytes) -> str:
+    """APN (10.5.6.1; RFC 1035 3.1): метки с байтом длины — через точку."""
+    части, x = [], 0
+    while x < len(б):
+        части.append(б[x + 1:x + 1 + б[x]].decode("latin-1"))
+        x += 1 + б[x]
+    return ".".join(части)
+
+
+def _адрес_pdp(б: bytes) -> str:
+    """Адрес PDP (10.5.6.4): организация (1 — IETF), номер вида (0x21 IPv4, 0x57 IPv6, 0x8D IPv4v6), адрес."""
+    if len(б) < 2 or б[0] & 0x0F != 1:
+        return ""
+    вид, адрес = б[1], б[2:]
+    if вид == 0x21 and len(адрес) == 4:
+        return str(ipaddress.IPv4Address(адрес))
+    if вид == 0x57 and len(адрес) == 16:
+        return str(ipaddress.IPv6Address(адрес))
+    if вид == 0x8D and len(адрес) == 20:
+        return f"{ipaddress.IPv4Address(адрес[:4])}, {ipaddress.IPv6Address(адрес[4:])}"
+    return ""
 
 
 def _сведения(pd: int, тип: int, д: bytes, м: int, конец: int) -> str:
@@ -125,6 +218,29 @@ def _сведения(pd: int, тип: int, д: bytes, м: int, конец: int)
             место = 1 + 1 + тело[1]
             и = идентификатор(тело[место + 1:место + 1 + тело[место]])
             return f"{и[0]} {и[1]}" if и else ""
+        if pd == 8 and тип == 0x01 and len(тело) >= 1:            # Attach Request: сеть MS LV, вид+CKSN, DRX
+            место = 1 + тело[0] + 1 + 2
+            и = идентификатор(тело[место + 1:место + 1 + тело[место]])
+            return f"{и[0]} {и[1]}" if и else ""
+        if pd == 8 and тип == 0x16 and len(тело) >= 1:            # Identity Response (GMM)
+            и = идентификатор(тело[1:1 + тело[0]])
+            return f"{и[0]} {и[1]}" if и else ""
+        if pd == 0xA and тип == 0x41 and len(тело) >= 3:          # Activate PDP Context Request
+            место = 2 + 1 + тело[2]                               # NSAPI, LLC SAPI, QoS LV
+            место += 1 + тело[место]                              # адрес PDP LV
+            for iei, начало, дл in _tlv(тело, место):
+                if iei == 0x28:
+                    return f"APN {_apn(тело[начало:начало + дл])}"
+            return ""
+        if pd == 0xA and тип == 0x42 and len(тело) >= 2:          # Activate PDP Context Accept
+            место = 1 + 1 + тело[1] + 1                           # LLC SAPI, QoS LV, приоритет
+            for iei, начало, дл in _tlv(тело, место):
+                if iei == 0x2B:
+                    адрес = _адрес_pdp(тело[начало:начало + дл])
+                    return f"адрес {адрес}" if адрес else ""
+            return ""
+        if pd == 0xA and тип in (0x43, 0x46) and len(тело) >= 1:  # Reject / Deactivate Request: причина SM
+            return f"причина SM {тело[0]}"
         if pd == 3 and тип in (0x05, 0x0E):                       # Setup: номер вызываемого (IEI 0x5E)
             место = 0
             while место + 2 <= len(тело):
