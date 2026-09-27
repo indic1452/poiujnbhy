@@ -1579,15 +1579,29 @@ def _isis_tlv(р: Разбор, у, м: int, край: int, ид: int) -> None:
         место += 2 + дл
 
 
-def _llc_osi(р: Разбор, м: int, конец: int) -> None:
-    """DSAP 0xFE (OSI): первый байт — NLPID; 0x83 — IS-IS (его проверяет ``isis``), прочее — данные."""
+#: Разборщики PDU OSI по первому октету — NLPID (ISO/IEC TR 9577): IS-IS здесь, CLNP и ES-IS — модуль osi.
+OSI_NLPID: dict = {}
+
+
+def osi_pdu(р: Разбор, м: int, конец: int) -> bool:
+    """PDU OSI по NLPID; разборщик проверяет своё сам, чужое откатывается."""
+    разбор = OSI_NLPID.get(р.д[м]) if м < min(конец, len(р.д)) else None     # оборванный кадр: конца может не быть
+    if разбор is None:
+        return False
     снимок = _снимок(р)
     try:
-        if м < конец and isis(р, м, конец):
-            return
+        if разбор(р, м, конец):
+            return True
     except (IndexError, ValueError, struct.error):
         pass
     _откат(р, снимок)
+    return False
+
+
+def _llc_osi(р: Разбор, м: int, конец: int) -> None:
+    """DSAP 0xFE (OSI) и PPP 0x0023: первый байт — NLPID; не разобранное — данные."""
+    if osi_pdu(р, м, конец):
+        return
     nlpid = р.д[м] if м < len(р.д) else None
     данные(р, м, "OSI" + (f", NLPID 0x{nlpid:02x} ({NLPID.get(nlpid, '?')})" if nlpid is not None else ""), конец)
 
@@ -1783,7 +1797,8 @@ def fr(р: Разбор, м: int) -> None:
         return
     упр = д[место]
     x = место + 2 if упр == 0x03 and место + 1 < len(д) and д[место + 1] == 0x00 else место + 1
-    известно = упр == 0x03 and x < len(д) and (д[x] in (0xCC, 0x8E, 0x83, 0x80) or (dlci == 0 and д[x] == 0x08))
+    известно = упр == 0x03 and x < len(д) and (д[x] in (0xCC, 0x8E, 0x80) or д[x] in OSI_NLPID
+                                                       or (dlci == 0 and д[x] == 0x08))
     if not известно and _без_nlpid(р, место):
         return
     у.поле("Управление", "fr.control", f"0x{упр:02x}" + (" (UI)" if упр == 3 else ""), место, 1, упр)
@@ -1814,15 +1829,10 @@ def fr(р: Разбор, м: int) -> None:
         ipv4(р, место + 1)
     elif nlpid == 0x8E:
         ipv6(р, место + 1)
-    elif nlpid == 0x83:
-        снимок = _снимок(р)
-        try:
-            if isis(р, место, len(д)):
-                return
-        except (IndexError, ValueError, struct.error):
-            pass
-        _откат(р, снимок)
-        данные(р, место, "IS-IS (не разобран)")
+    elif nlpid in OSI_NLPID:
+        if osi_pdu(р, место, len(д)):
+            return
+        данные(р, место, f"{NLPID.get(nlpid, 'OSI')} (не разобран)")
     elif nlpid == 0x80:
         р.нужно(место + 1, 5)
         oui, pid = д[место + 1:место + 4], u16(д, место + 4)
@@ -2196,6 +2206,7 @@ for _тип, _разборщик in ((0x888E, eapol), (0x8809, медленны�
                          (0x88BA, sv), (0x0842, wol), (0x2000, cdp)):
     _по_ethertype(_тип, _разборщик)
 
+OSI_NLPID.setdefault(0x83, isis)
 ДОП_LLC.setdefault(0xFE, _llc_osi)
 # PPP, протокол 0x0023 «OSI Network Layer» (RFC 1377): в поле данных — PDU OSI, первый
 # байт — NLPID (так и у Wireshark: packet-ppp.h PPP_OSI, packet-osi.c dissect_osi).

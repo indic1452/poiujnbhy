@@ -1730,6 +1730,10 @@ def lapd(р: Разбор, м: int) -> None:
         from . import abis  # noqa: PLC0415
         с_данными = not (ea0 or not ea1) and (упр & 1 == 0 or LAPD_U.get(упр & 0xEF) == "UI")
         конец = _конец_кадра(р)
+        # DCC SDH (G.784): в информации — PDU OSI с NLPID (CLNP, ES-IS, IS-IS); разборщик проверяет себя сам.
+        from .kanalnye import osi_pdu  # noqa: PLC0415
+        if с_данными and osi_pdu(р, информация, конец):
+            return
         # Abis (GSM 08.56): SAPI 0 — RSL (48.058), SAPI 62 — OML (12.21); иначе SAPI 0 — Q.931.
         if sapi == 0 and с_данными and abis.rsl(р, информация, конец):
             return
