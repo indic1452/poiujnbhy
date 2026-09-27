@@ -122,9 +122,14 @@ class ТестEPS(unittest.TestCase):
         п = разобрать_пакет(s1ap(b"\x27" + bytes(5) + bytes([0x52, 0x00, 0xCE]), 11))   # носитель 5
         self.assertEqual("нулевой шифр, Deactivate EPS bearer context accept", п.уровни[-1].итог)
         # Незнакомый тип ESM или короткое — считаем зашифрованным; EMM из двух байт — простое.
-        for внутри in (bytes([0x02, 0x05, 0x99]), bytes([0x02, 0x05])):
+        for внутри in (bytes([0x02, 0x05, 0x99]), bytes([0x02, 0x05]), bytes([0x03, 0x05, 0xD9])):
             with self.subTest(внутри.hex()):
                 self.assertEqual("зашифровано", разобрать_пакет(s1ap(b"\x27" + bytes(5) + внутри, 11)).уровни[-1].итог)
+        # NAS-PDU не последний в S1AP: за ним байты чужого IE — читать их нельзя.
+        pdu = b"\x27" + bytes(5) + bytes([0x02, 0x05])
+        сообщение = на_sctp(aper_pdu(0, 11, 1, [(26, 0, aper_длина(len(pdu)) + pdu), (8, 0, b"\xd9\xd9")]), 18)
+        п = разобрать_пакет(сообщение)
+        self.assertEqual(("зашифровано", []), (п.уровни[-1].итог, п.ошибки))
         self.assertEqual("нулевой шифр, Attach complete",
                          разобрать_пакет(s1ap(b"\x27" + bytes(5) + b"\x07\x43", 11)).уровни[-1].итог)
 

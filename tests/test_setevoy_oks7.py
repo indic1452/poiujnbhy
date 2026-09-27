@@ -756,12 +756,55 @@ class ANSITCAPTests(unittest.TestCase):
                 ("RE: не INTEGER", ansi(0xE4, tid(4), компоненты(ber(0xEB, ber(0xCF, b"\1") + ber(0xF3, ber(0x04, b"\1")))))),
                 ("RE: хвост", ansi(0xE4, tid(4), компоненты(ber(0xEB, ber(0xCF, b"\1") + ber(0xF3, ber(0x02, b"\1") + b"\0\0"))))),
                 ("Reject без проблемы", ansi(0xE4, tid(4), компоненты(ber(0xEC, ber(0xCF, b"") + ber(0xF0, b""))))),
+                ("Reject без ID", ansi(0xE4, tid(4), компоненты(ber(0xEC, ber(0xD5, b"\1") + ber(0xF0, b""))))),
+                ("Reject без параметра", ansi(0xE4, tid(4), компоненты(ber(0xEC, ber(0xCF, b"") + ber(0xD5, b"\1"))))),
+                ("Reject: параметр не тот", ansi(0xE4, tid(4), компоненты(ber(0xEC, ber(0xCF, b"") + ber(0xD5, b"\1")
+                                                                           + ber(0x30, b""))))),
+                ("RE без ID", ansi(0xE4, tid(4), компоненты(ber(0xEB, ber(0xF3, ber(0x02, b"\1")))))),
+                ("RRNL без ID", ansi(0xE4, tid(4), компоненты(ber(0xEE, ber(0xF2, b""))))),
+                ("RE: два INTEGER", ansi(0xE4, tid(4), компоненты(ber(0xEB, ber(0xCF, b"\1") + ber(0xF3, ber(0x02, b"\1")
+                                                                                                   + ber(0x02, b"\1")))))),
+                ("RE: пусто внутри", ansi(0xE4, tid(4), компоненты(ber(0xEB, ber(0xCF, b"\1") + ber(0xF3, b""))))),
+                ("пустой пакет", ansi(0xE2)),
+                ("Invoke только с ID", ansi(0xE2, tid(4), компоненты(ber(0xE9, ber(0xCF, b"\1"))))),
                 ("два параметра", ansi(0xE4, tid(4), компоненты(ber(0xEA, ber(0xCF, b"\1") + ber(0xF2, b"") + ber(0xF2, b""))))),
                 ("битые компоненты", ansi(0xE2, tid(4), ber(0xE8, b"\xe9\x05\x00"))),
                 ("лишний байт", ansi(0xE2, tid(4), компоненты(ANSI_INVOKE)) + b"\x01"),
                 ("битый пакет", bytes([0xE2, 0x10]) + tid(4))):
             with self.subTest(имя):
-                self.assertEqual(["SCCP", "Данные"], self.разбор(tcap).стек)
+                п = self.разбор(tcap)
+                self.assertEqual((["SCCP", "Данные"], []), (п.стек, п.ошибки))
+
+    def test_места_полей(self):
+        диалог_ = ber(0xF9, ber(0xDA, b"\x01"))
+        re = ber(0xEB, ber(0xCF, b"\x02") + ber(0xF3, ber(0x02, b"\x05")) + ber(0xF2, b"\x01\x02"))
+        rj = ber(0xEC, ber(0xCF, b"\x03") + ber(0xD5, b"\x01\x01") + ber(0xF0, b""))
+        tcap = ansi(0xE4, tid(4), диалог_, компоненты(re, rj))
+        п = self.разбор(tcap)
+        н = п.уровни[-1].смещение
+        self.assertEqual(len(tcap), п.уровни[-1].длина)
+        места = {к: (поле(п, к).смещение - н, поле(п, к).длина) for к in (
+            "ansi_tcap.package_type", "ansi_tcap.identifier", "ansi_tcap.dialoguePortion", "ansi_tcap.component",
+            "ansi_tcap.componentIDs", "ansi_tcap.errorCode", "ansi_tcap.parameter", "ansi_tcap.rejectProblem")}
+        self.assertEqual({"ansi_tcap.package_type": (0, 1), "ansi_tcap.identifier": (2, 6),
+                          "ansi_tcap.dialoguePortion": (8, 5), "ansi_tcap.component": (15, 14),
+                          "ansi_tcap.componentIDs": (17, 3), "ansi_tcap.errorCode": (20, 5),
+                          "ansi_tcap.parameter": (25, 4), "ansi_tcap.rejectProblem": (34, 4)}, места)
+        п = self.разбор(ansi(0xF6, tid(4), ber(0xD7, b"\x06")))
+        н = п.уровни[-1].смещение
+        self.assertEqual((8, 3), (поле(п, "ansi_tcap.abortCause").смещение - н, поле(п, "ansi_tcap.abortCause").длина))
+        п = self.разбор(ansi(0xF6, tid(4), ber(0xF8, ber(0x28, b""))))
+        н = п.уровни[-1].смещение
+        self.assertEqual((8, 4), (поле(п, "ansi_tcap.userInformation").смещение - н,
+                                  поле(п, "ansi_tcap.userInformation").длина))
+
+    def test_неопределённая_длина(self):
+        # Пакет неопределённой длины (X.690 8.1.3.6): конец — за октетами 00 00.
+        tcap = bytes([0xE2, 0x80]) + tid(4) + компоненты(ANSI_INVOKE) + b"\x00\x00"
+        п = self.разбор(tcap)
+        self.assertEqual(["SCCP", "ANSI TCAP"], п.стек)
+        self.assertEqual(len(tcap), п.уровни[-1].длина)
+        self.assertEqual(["SCCP", "Данные"], self.разбор(tcap[:-1] + b"\x01").стек)
 
     def test_обрыв(self):
         все_обрывы(self, sccp_udt(адрес_pc(1, 14), адрес_pc(2, 14), ansi(0xE2, tid(4), компоненты(ANSI_INVOKE))), "SCCP")
@@ -785,6 +828,23 @@ class BERНеопределённаяTests(unittest.TestCase):
                 self.assertEqual(([2], ["0a0b"]), (поля(п)["gsm_map.opcode"], поля(п)["tcap.otid"]))
                 self.assertEqual([], п.ошибки)
 
+    def test_длина_из_3_октетов_и_многооктетные_теги(self):
+        otid = ber(0x48, b"\x0a\x0b")
+        # Длинная форма из 3 октетов — допустима.
+        tcap = ber(0x62, otid + b"\x6c\x83\x00\x00" + bytes([len(invoke())]) + invoke())
+        self.assertEqual(["SCCP", "TCAP", "MAP"], self.разбор(tcap).стек)
+        # Тег [PRIVATE 279] (9f 82 17) и [30] (bf 1e — составной) внутри параметра неопределённой длины.
+        аргумент = b"\x30\x80" + ber(0x04, b"\x01") + b"\x9f\x82\x17\x01\x07" + b"\xbf\x1e\x80" + ber(0x80, b"")\
+            + b"\x00\x00" + b"\x00\x00"
+        п = self.разбор(ber(0x62, otid + ber(0x6C, invoke(2, аргумент))))
+        self.assertEqual((["SCCP", "TCAP", "MAP"], []), (п.стек, п.ошибки))
+        # Содержимое — 15 октетов до 00 00 (3 + 5 + 7).
+        self.assertEqual("тег 0x30, 15 байт", поле(п, "tcap.parameter").текст)
+        # Многооктетный тег самого параметра — число из всех октетов.
+        компонент = ber(0xA1, ber(0x02, b"\x01") + ber(0x02, b"\x02") + b"\xbf\x82\x17\x00")
+        п = self.разбор(ber(0x62, otid + ber(0x6C, компонент)))
+        self.assertEqual(0xBF8217, поле(п, "tcap.parameter").сырое)
+
     def test_глубина(self):
         def вложено(n):
             return b"\x30\x80" * n + ber(0x04, b"") + b"\x00\x00" * n
@@ -796,12 +856,19 @@ class BERНеопределённаяTests(unittest.TestCase):
 
     def test_нарушения(self):
         otid = ber(0x48, b"\x0a\x0b")
-        for имя, tcap in (("простой с 0x80", ber(0x62, b"\x48\x80\x01\x00\x00" + ber(0x6C, invoke()))),
+        for имя, tcap in (("простой с 0x80", ber(0x62, b"\x48\x80\x05\x00\x00\x00" + ber(0x6C, invoke()))),
+                          ("одинокий байт в конце", ber(0x62, otid + ber(0x6C, invoke()) + b"\x05")),
+                          ("не конец в самом конце", b"\x62\x80" + otid + ber(0x6C, invoke()) + b"\x01\x00"),
+                          ("длина из 4 октетов", ber(0x62, otid + b"\x6c\x84\x00\x00\x00" + bytes([len(invoke())])
+                                                     + invoke())),
+                          ("элемент длиннее контейнера", ber(0x62, otid + ber(0x6C, invoke()[:-1]))),
+                          ("многооктетный тег без конца", ber(0x62, otid + ber(0x6C, invoke(2, b"\x9f\x82")))),
                           ("нет конца", ber(0x62, otid + b"\x6c\x80" + invoke())),
                           ("половина конца", ber(0x62, otid + b"\x6c\x80" + invoke() + b"\x00")),
                           ("битый внутри", ber(0x62, otid + b"\x6c\x80\xa1\x05\x00\x00"))):
             with self.subTest(имя):
-                self.assertEqual(["SCCP", "Данные"], self.разбор(tcap).стек)
+                п = self.разбор(tcap)
+                self.assertEqual((["SCCP", "Данные"], []), (п.стек, п.ошибки))
         # «00 01» — не конец содержимого, а элемент с тегом 0: конец — дальше.
         tcap = ber(0x62, otid + b"\x6c\x80" + invoke() + b"\x00\x01\x05" + b"\x00\x00")
         self.assertEqual(["SCCP", "Данные"], self.разбор(tcap).стек)          # тег 0 — не компонент
@@ -816,6 +883,15 @@ class НулиПослеTCAPTests(unittest.TestCase):
                 self.assertEqual(["SCCP", "TCAP", "MAP"], п.стек)
                 self.assertEqual([f"TCAP: после сообщения {n} нулевых байт (выравнивание внутри длины данных)"], п.ошибки)
                 self.assertEqual(len(tcap), п.уровни[1].длина)
+        # Сообщение неопределённой длины и нули после него.
+        неопр = b"\x62\x80" + ber(0x48, b"\x0a\x0b") + ber(0x6C, invoke(2)) + b"\x00\x00"
+        for n in (0, 1, 3):
+            with self.subTest(неопр=n):
+                п = разобрать_пакет(sccp_udt(адрес_pc(1, 6), адрес_pc(2, 6), неопр + bytes(n)), "SCCP")
+                self.assertEqual((["SCCP", "TCAP", "MAP"], len(неопр)), (п.стек, п.уровни[1].длина))
+                self.assertEqual(n > 0, bool(п.ошибки))
+        п = разобрать_пакет(sccp_udt(адрес_pc(1, 6), адрес_pc(2, 6), tcap), "SCCP")
+        self.assertEqual((п.уровни[1].смещение, 1), (поле(п, "tcap.message_type").смещение, поле(п, "tcap.message_type").длина))
         for хвост in (bytes(4), b"\x00\x01", b"\x01"):
             with self.subTest(хвост.hex()):
                 п = разобрать_пакет(sccp_udt(адрес_pc(1, 6), адрес_pc(2, 6), tcap + хвост), "SCCP")
@@ -894,6 +970,103 @@ class СегментацияSCCPTests(unittest.TestCase):
         self.assertEqual(15, len(oks7.SCCP_ВОЗВРАТ))
 
 
+class ПараметрыSCCPTests(unittest.TestCase):
+    """Места полей переменной и необязательной части SCCP (Q.713 3)."""
+
+    def test_счётчик_переходов_и_байтовые(self):
+        вызываемый = адрес_pc(10, 254)
+        # CR (4.2) с необязательными: счётчик переходов (3.18) и важность (3.19, байтами).
+        cr = bytes([0x01, 0x01, 0x02, 0x03, 0x02, 2, 1 + 1 + len(вызываемый)]) + bytes([len(вызываемый)]) \
+            + вызываемый + bytes([0x11, 1, 7, 0x12, 1, 5, 0x11, 2, 1, 2]) + b"\x00"
+        п = разобрать_пакет(cr, "SCCP")
+        self.assertEqual("SCCP", п.протокол)
+        н = 7 + 1 + len(вызываемый)                         # код первого необязательного параметра
+        self.assertEqual(([7], (н + 2, 1)), (поля(п)["sccp.hops"], (поле(п, "sccp.hops").смещение, поле(п, "sccp.hops").длина)))
+        параметры = [ф for ф in п.уровни[0].поля if ф.ключ == "sccp.parameter"]
+        self.assertEqual([(7, 1 + len(вызываемый)), (н + 1, 2, "7"), (н + 4, 2, "05"), (н + 7, 3, "0102")],
+                         [(параметры[0].смещение, параметры[0].длина)] + [(ф.смещение, ф.длина, ф.текст)
+                                                                          for ф in параметры[1:]])
+        значение = поле(п, "sccp.parameter_value")
+        self.assertEqual((н + 5, 1, "05"), (значение.смещение, значение.длина, значение.текст))
+        self.assertEqual(["05", "0102"], поля(п)["sccp.parameter_value"])
+        self.assertEqual([(7, 1)], [(ф.смещение, ф.длина) for ф in параметры[0].дети if ф.ключ == "sccp.parameter_length"])
+        self.assertEqual(len(cr), п.уровни[0].длина)
+
+    def test_сегментация_места(self):
+        tcap = tcap_begin_update_location()
+        # За сегментацией — важность: ссылка читается ровно из трёх октетов.
+        п = разобрать_пакет(sccp_xudt(адрес_pc(10, 6), адрес_pc(20, 6), tcap,
+                                      сегментация(1, 0, b"\x01\x02\x03") + bytes([0x12, 1, 0x7F])), "SCCP")
+        self.assertEqual(["SCCP", "TCAP", "MAP"], п.стек)
+        сег = [ф for ф in п.уровни[0].поля if ф.ключ == "sccp.parameter" and ф.сырое == 0x10][0]
+        self.assertEqual("сообщение целое", сег.текст)
+        места = [(ф.ключ.rsplit(".", 1)[1], ф.смещение - сег.смещение, ф.длина) for ф in сег.дети]
+        # Поле параметра начинается с октета длины (код — перед ним).
+        self.assertEqual([("parameter_length", 0, 1), ("first", 1, 1), ("class", 1, 1), ("remaining", 1, 1),
+                          ("slr", 2, 3)], места)
+        self.assertEqual([0x030201], поля(п)["sccp.segmentation.slr"])
+
+    def test_итог_и_подсистема(self):
+        # CC (4.3) с необязательным вызываемым: итог — первые четыре части.
+        вызываемый = адрес_pc(10, 254)
+        cc = bytes([0x02, 1, 2, 3, 4, 5, 6, 0x02, 1]) + bytes([0x03, len(вызываемый)]) + вызываемый + b"\x00"
+        п = разобрать_пакет(cc, "SCCP")
+        self.assertEqual("SCCP CC, DLR 0x030201, SLR 0x060504, класс 2", п.инфо)
+        # Подсистема — сначала по вызываемому: SSN 1 (SCMG), хотя вызывающий — RANAP (142).
+        п = разобрать_пакет(sccp_udt(адрес_pc(10, 1), адрес_pc(20, 142), bytes([1, 6, 0, 0, 0])), "SCCP")
+        self.assertEqual(["SCCP", "SCCPMG"], п.стек)
+
+
+class MTP3МестаTests(unittest.TestCase):
+    def test_поля_itu(self):
+        п = разобрать_пакет(bytes([0x53]) + метка(5, 6, 7) + sccp_udt(адрес_pc(1, 6), адрес_pc(2, 6),
+                                                                       tcap_begin_update_location()), "MTP3")
+        ф = поля(п)
+        self.assertEqual(([3], [1], [1]), (ф["mtp3.service_indicator"], ф["mtp3.network_indicator"], ф["mtp3.spare"]))
+        self.assertEqual([(0, 1), (0, 1), (0, 1), (0, 1), (1, 4), (1, 4), (1, 4)],
+                         [(поле(п, к).смещение, поле(п, к).длина) for к in (
+                             "mtp3.sio", "mtp3.service_indicator", "mtp3.network_indicator", "mtp3.spare",
+                             "mtp3.dpc", "mtp3.opc", "mtp3.sls")])
+        self.assertEqual(5, п.уровни[0].длина)
+
+    def test_поля_ansi(self):
+        udt = sccp_udt(адрес_pc(1, 6), адрес_pc(2, 6), tcap_begin_update_location())
+        п = разобрать_пакет(bytes([0x93]) + метка_ansi(1, 2, 3) + udt, "MTP3")
+        self.assertEqual(([1], [2]), (поля(п)["mtp3.priority"], поля(п)["mtp3.network_indicator"]))
+        self.assertEqual([(0, 1)] * 4, [(поле(п, к).смещение, поле(п, к).длина) for к in (
+            "mtp3.sio", "mtp3.service_indicator", "mtp3.network_indicator", "mtp3.priority")])
+
+    def test_оба_варианта_сходятся(self):
+        """CR, у которого от третьего октета — целый RLC: SCCP сходится и за меткой ITU, и за ANSI —
+        выбирается ITU."""
+        cr = bytes([0x01, 0x11, 0x22, 0x05, 0x02, 0x02, 0x00, 0x02, 0x42, 0x08])
+        self.assertTrue(oks7._годен_sccp(cr, 0, len(cr)) and oks7._годен_sccp(cr, 3, len(cr)))
+        п = разобрать_пакет(bytes([0x83]) + метка(5, 6, 7) + cr, "MTP3")
+        self.assertEqual((["MTP3", "SCCP"], "Message Transfer Part Level 3 (Q.704)"), (п.стек, п.уровни[0].полное))
+
+    def test_прямой_вызов(self):
+        def разбор(данные_, конец=None):
+            р = Разбор(Пакет(1, 0.0, данные_, len(данные_), "RAW"))
+            return oks7.mtp3(р, 0, len(данные_) if конец is None else конец), р.п
+        ок, п = разбор(bytes([0x83]) + метка(1, 2, 3)[:3])
+        self.assertEqual((False, []), (ок, п.уровни))
+        with self.assertRaises(oks7.Мало):
+            разбор(bytes([0x83]) + метка(1, 2, 3)[:3], 5)
+        self.assertTrue(разбор(bytes([0x85]) + метка(1, 2, 3) + isup_rel())[0])
+        self.assertTrue(разбор(bytes([0x80]) + метка(1, 2, 0) + bytes([0x14, 1, 2]))[0])
+
+    def test_управление_границы(self):
+        # Только метка — заголовка H0/H1 нет; ровно заголовок — без «Данных»; дальше — «Данные» с 6-го байта.
+        п = разобрать_пакет(bytes([0x80]) + метка(1, 2, 0), "MTP3")
+        self.assertEqual((["MTP3"], []), (п.стек, поля(п).get("mtp3mg.h0", [])))
+        п = разобрать_пакет(bytes([0x80]) + метка(1, 2, 0) + bytes([0x14]), "MTP3")
+        self.assertEqual(["MTP3"], п.стек)
+        self.assertEqual([(5, 1), (5, 1)], [(поле(п, к).смещение, поле(п, к).длина) for к in ("mtp3mg.h0", "mtp3mg.h1")])
+        self.assertEqual(6, п.уровни[0].длина)
+        п = разобрать_пакет(bytes([0x80]) + метка(1, 2, 0) + bytes([0x14, 0xAA, 0xBB]), "MTP3")
+        self.assertEqual((["MTP3", "Данные"], 6, 2), (п.стек, п.уровни[1].смещение, п.уровни[1].длина))
+
+
 class СборщикSCCPTests(unittest.TestCase):
     """Сборка сегментов (Q.714 4.1.1.2) по вызывающему адресу и местной ссылке."""
 
@@ -954,6 +1127,7 @@ class СборщикSCCPTests(unittest.TestCase):
         self.assertEqual({}, с.куски)
 
     def test_вытеснение(self):
+        self.assertEqual(4096, СборщикSCCP.ЖДАТЬ)             # предел начатых сборок — как у сборщика MP
         с = СборщикSCCP()
         с.ЖДАТЬ = 2
         for i in range(3):

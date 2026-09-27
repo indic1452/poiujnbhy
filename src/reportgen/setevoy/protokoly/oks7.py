@@ -1156,17 +1156,22 @@ _BER_ГЛУБИНА = 16
 
 
 def _tlv(д: bytes, м: int, конец: int, глубина: int = 0) -> tuple[int, int, int, int] | None:
-    """Элемент BER (X.690 8.1): тег (один октет), длина определённая (до 3 октетов) или
-    неопределённая (8.1.3.6: только у составного; содержимое — элементы до октетов 00 00).
-    Итог — (тег, начало значения, конец значения, конец элемента) или None, если не укладывается."""
-    if м + 2 > конец:
+    """Элемент BER (X.690 8.1): тег — один октет или многооктетный (8.1.2.4: младшие 5 бит 11111,
+    дальше номер по 7 бит, старший бит — «ещё октет»; такой тег — число из всех его октетов),
+    длина определённая (до 3 октетов) или неопределённая (8.1.3.6: только у составного; содержимое —
+    элементы до октетов 00 00). Итог — (тег, начало значения, конец значения, конец элемента) или
+    None, если не укладывается."""
+    н = м + 1
+    if д[м] & 0x1F == 0x1F:
+        while н < конец and д[н] & 0x80:
+            н += 1
+        н += 1
+    if н >= конец:
         return None
-    тег, дл = д[м], д[м + 1]
-    if тег & 0x1F == 0x1F:
-        return None
-    н = м + 2
+    тег, дл = int.from_bytes(д[м:н], "big"), д[н]
+    н += 1
     if дл == 0x80:
-        if not тег & 0x20 or глубина >= _BER_ГЛУБИНА:
+        if not д[м] & 0x20 or глубина >= _BER_ГЛУБИНА:
             return None
         к = н
         while к + 2 <= конец and (д[к] or д[к + 1]):
@@ -1179,7 +1184,7 @@ def _tlv(д: bytes, м: int, конец: int, глубина: int = 0) -> tuple[
         return тег, н, к, к + 2
     if дл & 0x80:
         n = дл & 0x7F
-        if n > 3 or н + n > конец:
+        if n > 3:
             return None
         дл = int.from_bytes(д[н:н + n], "big")
         н += n
@@ -1340,6 +1345,7 @@ TCAP_ПРИЛОЖЕНИЯ: list[Callable] = []
 TCAP_ANSI_ПАКЕТЫ = {0xE1: "Unidirectional", 0xE2: "Query With Permission", 0xE3: "Query Without Permission",
                     0xE4: "Response", 0xE5: "Conversation With Permission",
                     0xE6: "Conversation Without Permission", 0xF6: "Abort"}
+_ANSI_ПЕРВЫЙ = {bytes([т]) for т in TCAP_ANSI_ПАКЕТЫ}
 #: Длина TransactionID [PRIVATE 7]: 0 — Unidirectional, 4 — Query, Response, Abort; 8 — Conversation.
 _ANSI_TID = {0xE1: 0, 0xE2: 4, 0xE3: 4, 0xE4: 4, 0xE5: 8, 0xE6: 8, 0xF6: 4}
 TCAP_ANSI_КОМПОНЕНТЫ = {0xE9: "Invoke Last", 0xEA: "Return Result Last", 0xEB: "Return Error", 0xEC: "Reject",
@@ -1361,7 +1367,7 @@ def _ansi_компонент(д: bytes, тег: int, н: int, к: int) -> dict |
         if э[0][3] - э[0][2] > _ANSI_ИД[тег]:
             return None
         итог["ид"] = э.pop(0)
-    elif тег in (0xEA, 0xEE, 0xEB):                  # у ответов componentID обязателен
+    elif тег not in (0xE9, 0xED):                    # необязателен componentIDs только у Invoke
         return None
     if тег in (0xE9, 0xED):
         if not э or э[0][0] not in _ANSI_ОПЕРАЦИИ:
@@ -1371,13 +1377,12 @@ def _ansi_компонент(д: bytes, тег: int, н: int, к: int) -> dict |
         if not э or э[0][0] not in _ANSI_ОШИБКИ and э[0][0] != 0x02:
             return None
         т, _, вн, вк = э[0]
-        if т in _ANSI_ОШИБКИ:                            # явный тег: внутри INTEGER
-            внутри = _tlv(д, вн, вк)
-            if внутри is None or внутри[0] != 0x02 or внутри[3] != вк:
-                return None
+        if т in _ANSI_ОШИБКИ and [в[0] for в in _элементы(д, вн, вк) or ()] != [0x02]:
+            return None                                  # явный тег: внутри ровно один INTEGER
         итог["код"] = э.pop(0)
     elif тег == 0xEC:
-        if not э or э[0][0] != 0xD5:
+        # Reject: проблема [PRIVATE 21] и параметр — пустая SEQUENCE [PRIVATE 16] или SET [PRIVATE 18].
+        if [в[0] for в in э] not in ([0xD5, 0xF0], [0xD5, 0xF2]):
             return None
         итог["проблема"] = э.pop(0)
     if len(э) > 1:
@@ -1399,7 +1404,7 @@ def _проверка_ansi(д: bytes, м: int, конец: int):
     части = {0xC7: э[0]}
     допустимые = (0xF9, 0xD7, 0xF8) if тег == 0xF6 else (0xF9, 0xE8)
     for элемент in э[1:]:
-        if элемент[0] not in допустимые or элемент[0] in части:
+        if элемент[0] not in допустимые:                 # порядок: каждый следующий — правее прежнего
             return None
         допустимые = допустимые[допустимые.index(элемент[0]) + 1:]
         части[элемент[0]] = элемент
@@ -1501,7 +1506,7 @@ def tcap(р: Разбор, м: int, конец: int, ssn: Sequence[int | None] =
     обязательность элементов, размеры идентификаторов транзакций (1–4 октета).
     """
     д = р.д
-    if м < конец and д[м] in TCAP_ANSI_ПАКЕТЫ:
+    if д[м:м + 1] in _ANSI_ПЕРВЫЙ:
         return tcap_ansi(р, м, конец)
     проверка = _проверка_tcap(д, м, конец)
     хвост = 0
@@ -1509,7 +1514,7 @@ def tcap(р: Разбор, м: int, конец: int, ssn: Sequence[int | None] =
         # Нули после целого сообщения (меньше слова выравнивания) — встречаются у SUA, где
         # в длину Data попало выравнивание. Сообщение берётся по своей длине BER.
         внешний = _tlv(д, м, конец)
-        if внешний is None or not 0 < конец - внешний[3] < 4 or any(д[внешний[3]:конец]):
+        if внешний is None or конец - внешний[3] >= 4 or any(д[внешний[3]:конец]):
             return False
         проверка = _проверка_tcap(д, м, внешний[3])
         if проверка is None:
