@@ -396,3 +396,164 @@ class ТестРегистрация(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# -- прямые вызовы: раскладка полей и отказы без исключений -------------------------------------------
+
+from reportgen.setevoy.pole import Пакет  # noqa: E402
+from reportgen.setevoy.razbor import Разбор  # noqa: E402
+
+ОПИСАНИЕ = {"вид": "audio", "порт": 40000, "протокол": "RTP/AVP", "форматы": ["8", "101"], "адрес": "10.0.0.1",
+            "rtpmap": {101: "telephone-event/8000"}}
+
+
+def р_из(данные):
+    return Разбор(Пакет(2, 0.0, данные, len(данные), "RAW"), None, {})
+
+
+def поля_уровня(у):
+    """Поля уровня с вложенными (в порядке дерева): ключ, место, длина, сырое."""
+    итог = []
+
+    def обойти(список):
+        for x in список:
+            итог.append((x.ключ, x.смещение, x.длина, x.сырое))
+            обойти(x.дети)
+    обойти(у.поля)
+    return итог
+
+
+class ТестПрямойRTP(unittest.TestCase):
+    def test_раскладка_полного_заголовка(self):
+        доп = struct.pack(">II", 0xA, 0xB) + struct.pack(">HH", 0xBEDE, 1) + b"\x10\x20\x30\x40"
+        данные = b"\x99" + rtp(101, bytes([7, 0x7F, 0x01, 0x40]) + b"\x00\x02", первый=0xB2, маркер=1, номер=0x1234,
+                               отметка=0x01020304, ssrc=0xA1B2C3D4, доп=доп)
+        р = р_из(данные)
+        self.assertTrue(media.rtp(р, 1, len(данные), ОПИСАНИЕ))
+        у, с = р.п.уровни
+        self.assertEqual((у.протокол, у.смещение, у.длина), ("RTP", 1, 28))
+        self.assertEqual(поля_уровня(у), [
+            ("rtp.version", 1, 1, 2), ("rtp.padding", 1, 1, 1), ("rtp.ext", 1, 1, 1), ("rtp.cc", 1, 1, 2),
+            ("rtp.marker", 2, 1, 1), ("rtp.p_type", 2, 1, 101), ("rtp.seq", 3, 2, 0x1234),
+            ("rtp.timestamp", 5, 4, 0x01020304), ("rtp.ssrc", 9, 4, 0xA1B2C3D4), ("rtp.csrc.item", 13, 4, 0xA),
+            ("rtp.csrc.item", 17, 4, 0xB), ("rtp.ext.profile", 21, 2, 0xBEDE), ("rtp.ext.len", 23, 2, 8),
+            ("rtp.padding.count", 34, 1, 2), ("rtp.codec", 2, 1, 101)])
+        self.assertEqual([x.текст for x in у.поля if x.ключ == "rtp.csrc.item"], ["0x0000000a", "0x0000000b"])
+        self.assertEqual((с.протокол, с.смещение, с.длина), ("RTPEvent", 29, 4))
+        self.assertEqual(поля_уровня(с), [("rtpevent.event_id", 29, 1, 7), ("rtpevent.end_of_event", 30, 1, 0),
+                                          ("rtpevent.reserved", 30, 1, 1), ("rtpevent.volume", 30, 1, 63),
+                                          ("rtpevent.duration", 31, 2, 0x0140)])
+        self.assertEqual(р.п.нагрузка, bytes([7, 0x7F, 0x01, 0x40]))
+        self.assertEqual(р.п.инфо, "RTP Event DTMF 7, громкость 63, длительность 320")
+
+    def test_событие_не_из_добивки(self):
+        # Нагрузка 3 октета + добивка 2: события нет — октеты добивки ему не принадлежат.
+        данные = rtp(101, b"\x05\x0a\x03" + b"\x00\x02", первый=0xA0)
+        р = р_из(данные)
+        self.assertTrue(media.rtp(р, 0, len(данные), ОПИСАНИЕ))
+        self.assertEqual([у.протокол for у in р.п.уровни], ["RTP"])
+
+    def test_отказы(self):
+        for данные, что in ((rtp(8)[:11], "короче 12"), (rtp(8, первый=0x40), "версия 1"),
+                            (rtp(8, b"", первый=0x81), "CSRC не помещается"),
+                            (rtp(8, b"\xbe\xde\x00", первый=0x90), "нет заголовка расширения"),
+                            (rtp(8, b"\xbe\xde\x00\x01\x00\x00\x00", первый=0x90), "расширение длиннее"),
+                            (rtp(8, b"\x00\x00", первый=0xA0), "добивка 0"),
+                            (rtp(8, b"\x00\x03", первый=0xA0), "добивка длиннее нагрузки"),
+                            (b"\x80", "1 октет"), (b"", "пусто")):
+            with self.subTest(что):
+                р = р_из(данные)
+                self.assertFalse(media.rtp(р, 0, len(данные), ОПИСАНИЕ))
+                self.assertEqual(р.п.уровни, [])
+        # Границы: расширение без слов, добивка во всю нагрузку.
+        for данные, длина in ((rtp(8, b"\xbe\xde\x00\x00", первый=0x90), 16), (rtp(8, b"\x00\x02", первый=0xA0), 12),
+                              (rtp(8, b"", первый=0x81, доп=b"\x00\x00\x00\x01"), 16)):
+            р = р_из(данные)
+            self.assertTrue(media.rtp(р, 0, len(данные), ОПИСАНИЕ))
+            self.assertEqual(р.п.уровни[0].длина, длина)
+
+    def test_rtcp_на_порту_rtp(self):
+        ш = общий()
+        for тип in (200, 204):
+            пакет = bytes([0x80, тип]) + struct.pack(">HI", 6, 5) + bytes(20)
+            п = по_udp(пакет, 30000, 40000, шаблоны=ш)
+            self.assertEqual(п.стек[-1], "RTCP", тип)
+        for тип in (199, 205):
+            пакет = bytes([0x80, тип]) + struct.pack(">HI", 6, 5) + bytes(20)
+            п = по_udp(пакет, 30000, 40000, шаблоны=ш)
+            self.assertEqual((п.стек[-1], п.уровни[-1].полное), ("RTP", "Real-time Transport Protocol (по SDP)"))
+        # Один октет нагрузки — без ошибок и без RTP.
+        п = по_udp(b"\x80", 30000, 40000, шаблоны=ш)
+        self.assertEqual((п.ошибки, п.стек[-1]), ([], "Данные"))
+
+    def test_медиа_без_потока(self):
+        р = р_из(rtp(8))
+        self.assertFalse(media.медиа(р, 0, 12))
+        self.assertEqual(media._порты_udp(р), (None, None))
+
+
+class ТестПрямойT38(unittest.TestCase):
+    def test_раскладка_t30(self):
+        данные = b"\x00" + CSI
+        р = р_из(данные)
+        self.assertEqual(media._t30(р, 1, len(данные)), "CSI +7 495 1234567")
+        у = р.п.уровни[0]
+        self.assertEqual((у.смещение, у.длина), (1, 23))
+        self.assertEqual(поля_уровня(у), [("t30.Address", 1, 1, 0xFF), ("t30.Control", 2, 1, 0xC0),
+                                          ("t30.Facsimile_Control", 3, 1, 0x02),
+                                          ("t30.fif.number", 4, 20, "+7 495 1234567")])
+        for кадр in (b"\xff\xc0", b"\xfe\xc0\x02", b"\xff\xc1\x02"):
+            self.assertIsNone(media._t30(р_из(кадр), 0, len(кадр)))
+
+    def test_раскладка_udptl_и_ifp(self):
+        ifp = b"\xc0\x02" + элемент(0, кадр_t30(0x31)) + b"\x40"
+        данные = udptl(ifp, номер=0x0102, восстановление=b"\x80\x01\x02")
+        р = р_из(данные)
+        self.assertTrue(media.udptl(р, 0, len(данные)))
+        у, т, т30 = р.п.уровни
+        self.assertEqual(поля_уровня(у), [("udptl.seqnum", 0, 2, 0x0102), ("udptl.primary_ifp_packet_length", 2, 1, 9),
+                                          ("udptl.error_recovery", 12, 3, 1)])
+        self.assertEqual((у.длина, т.смещение, т.длина), (3, 3, 9))
+        self.assertEqual(поля_уровня(т), [("t38.Type_of_msg", 3, 1, 1), ("t38.t30_data", 3, 1, 0),
+                                          ("t38.field_type", 5, 1, 0), ("t38.field_data", 8, 3, "3 байт"),
+                                          ("t38.field_type", 11, 1, 4)])
+        self.assertEqual(т30.смещение, 8)
+        self.assertEqual(р.п.ошибки, [])
+        # Октет добивки заголовка IFP (бит 1) — не расширение.
+        р = р_из(udptl(b"\x05"))
+        self.assertTrue(media.udptl(р, 0, 6))
+        self.assertEqual(р.п.инфо, "T.38 ced, номер 5")
+        # Восстановление: первый бит 0 — предыдущие IFP (даже при единице в младшем бите).
+        р = р_из(udptl(b"\x04", восстановление=b"\x01\x00"))
+        media.udptl(р, 0, 6)
+        self.assertEqual(р.п.уровни[0].поля[-1].текст, "предыдущих IFP: 0")
+
+    def test_отказы_udptl(self):
+        for данные, что in ((b"", "пусто"), (b"\x00\x01\x01", "3 октета"), (b"\x00\x01\x00\x04", "длина 0"),
+                            (b"\x00\x01\x05\x04", "длиннее"), (b"\x00\x01\xc1\x04", "фрагмент"),
+                            (b"\x00\x01\x81", "длина без второго октета")):
+            with self.subTest(что):
+                р = р_из(данные)
+                self.assertFalse(media.udptl(р, 0, len(данные)))
+                self.assertEqual(р.п.уровни, [])
+
+    def test_поля_данных_по_битам(self):
+        # Элемент без данных с 1 в старшем бите вида (hdlc-fcs-OK-sig-end, 0 100) — данных не читается.
+        р = р_из(udptl(b"\xc0\x01\x40"))
+        self.assertTrue(media.udptl(р, 0, 6))
+        self.assertEqual((р.п.инфо, р.п.ошибки), ("T.38 v21, hdlc-fcs-OK-sig-end, номер 5", []))
+        # Данные сразу после элемента из второго полубайта (выравнивание на следующий октет).
+        р = р_из(udptl(b"\xc0\x02\x28\x00\x00\x55"))
+        self.assertTrue(media.udptl(р, 0, 9))
+        self.assertEqual([x[1] for x in поля_уровня(р.п.уровни[1]) if x[0] == "t38.field_data"], [8])
+        # Длина данных из одного октета (второго нет) — оборвано.
+        р = р_из(udptl(b"\xc0\x01\x80\x00", восстановление=b""))
+        media.udptl(р, 0, 7)
+        self.assertEqual(р.п.ошибки, ["T.38: поле данных оборвано"])
+        # Данных ровно на длину, и на октет меньше.
+        р = р_из(udptl(b"\xc0\x01\x80\x00\x00\x55", восстановление=b""))
+        media.udptl(р, 0, 9)
+        self.assertEqual(р.п.ошибки, [])
+        р = р_из(udptl(b"\xc0\x01\x80\x00\x01\x55", восстановление=b""))
+        media.udptl(р, 0, 9)
+        self.assertEqual(р.п.ошибки, ["T.38: поле данных оборвано"])

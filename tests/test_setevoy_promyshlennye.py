@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Промышленные протоколы и телефония поверх IP: пакеты собраны по стандартам.
 
 Сборка здесь своя и от разборщика не зависит: поля кладутся struct.pack'ом в
@@ -1019,3 +1018,109 @@ class СлучайныеДанныеTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# -- SDP: полная раскладка и описания потоков ---------------------------------------------------------
+
+from reportgen.setevoy.pole import Пакет  # noqa: E402
+from reportgen.setevoy.protokoly import promyshlennye  # noqa: E402
+from reportgen.setevoy.razbor import Разбор  # noqa: E402
+
+SDP_ПОЛНЫЙ = (b"v=0\r\no=- 1 2 IN IP4 10.0.0.1\r\ns=-\r\ni=sess\r\nc=IN IP4 10.0.0.1\r\nt=0 0\r\na=sendrecv\r\n"
+              b"m=audio 40000 RTP/AVP 8 101\r\ni=voice\r\nc=IN IP4 10.0.0.5\r\na=rtpmap:101 telephone-event/8000\r\n"
+              b"a=ptime:20\r\nm=video 0 RTP/AVP 31\r\n\r\n\r\n")
+
+
+def р_из(данные):
+    return Разбор(Пакет(1, 0.0, данные, len(данные), "RAW"), None, {})
+
+
+def дерево(у):
+    итог = []
+
+    def обойти(список, глубина):
+        for x in список:
+            итог.append((глубина, x.ключ, x.смещение, x.длина, x.сырое))
+            обойти(x.дети, глубина + 1)
+    обойти(у.поля, 0)
+    return итог
+
+
+class ТестSDPРаскладка(unittest.TestCase):
+    def test_дерево_полей(self):
+        собрано = []
+        сборщик = lambda р, описания: собрано.append(описания)  # noqa: E731
+        promyshlennye.SDP_ОПИСАНИЯ.append(сборщик)
+        try:
+            р = р_из(SDP_ПОЛНЫЙ)
+            self.assertTrue(promyshlennye.sdp(р, 0, len(SDP_ПОЛНЫЙ)))
+        finally:
+            promyshlennye.SDP_ОПИСАНИЯ.remove(сборщик)
+        у = р.п.уровни[0]
+        self.assertEqual((у.длина, у.итог), (len(SDP_ПОЛНЫЙ), "audio 40000, video 0, адрес 10.0.0.1"))
+        self.assertEqual(дерево(у), [
+            (0, "sdp.version", 0, 3, "0"), (0, "sdp.owner", 5, 23, "- 1 2 IN IP4 10.0.0.1"),
+            (1, "sdp.owner.username", 7, 1, "-"), (1, "sdp.owner.sessionid", 9, 1, "1"),
+            (1, "sdp.owner.version", 11, 1, "2"), (1, "sdp.owner.network_type", 13, 2, "IN"),
+            (1, "sdp.owner.address_type", 16, 3, "IP4"), (1, "sdp.owner.address", 20, 8, "10.0.0.1"),
+            (0, "sdp.session_name", 30, 3, "-"), (0, "sdp.session_info", 35, 6, "sess"),
+            (0, "sdp.connection_info", 43, 17, "IN IP4 10.0.0.1"),
+            (1, "sdp.connection_info.network_type", 45, 2, "IN"), (1, "sdp.connection_info.address_type", 48, 3, "IP4"),
+            (1, "sdp.connection_info.address", 52, 8, "10.0.0.1"), (0, "sdp.time", 62, 5, "0 0"),
+            (0, "sdp.session_attr", 69, 10, "sendrecv"), (0, "sdp.media", 81, 102, "audio 40000 RTP/AVP 8 101"),
+            (1, "sdp.media.media", 83, 5, "audio"), (1, "sdp.media.port", 89, 5, 40000),
+            (1, "sdp.media.proto", 95, 7, "RTP/AVP"), (1, "sdp.media.format", 103, 1, "8"),
+            (1, "sdp.media.format", 105, 3, "101"), (1, "sdp.media_title", 110, 7, "voice"),
+            (1, "sdp.connection_info", 119, 17, "IN IP4 10.0.0.5"),
+            (2, "sdp.connection_info.network_type", 121, 2, "IN"), (2, "sdp.connection_info.address_type", 124, 3, "IP4"),
+            (2, "sdp.connection_info.address", 128, 8, "10.0.0.5"),
+            (1, "sdp.media_attr", 138, 33, "rtpmap:101 telephone-event/8000"), (2, "sdp.rtpmap.pt", 147, 3, 101),
+            (2, "sdp.mime.type", 151, 15, "telephone-event"), (2, "sdp.sample_rate", 167, 4, 8000),
+            (1, "sdp.media_attr", 173, 10, "ptime:20"), (0, "sdp.media", 185, 20, "video 0 RTP/AVP 31"),
+            (1, "sdp.media.media", 187, 5, "video"), (1, "sdp.media.port", 193, 1, 0),
+            (1, "sdp.media.proto", 195, 7, "RTP/AVP"), (1, "sdp.media.format", 203, 2, "31")])
+        self.assertEqual(собрано, [[
+            {"вид": "audio", "порт": 40000, "протокол": "RTP/AVP", "форматы": ["8", "101"], "адрес": "10.0.0.5",
+             "rtpmap": {101: "telephone-event/8000"}},
+            {"вид": "video", "порт": 0, "протокол": "RTP/AVP", "форматы": ["31"], "адрес": "10.0.0.1", "rtpmap": {}}]])
+
+    def test_строки_не_по_правилам(self):
+        # rtpmap и c=/o= с другим числом частей — только строка; m= без числового порта — без описания.
+        данные = (b"v=0\r\no=- 1 2 IN IP4\r\nc=IN IP4\r\nm=audio x RTP/AVP 0\r\na=rtpmap:x PCMU\r\n"
+                  b"m=audio 5000\r\nm=image 6000 udptl t38\r\nc=IN IP4 10.0.0.9 extra\r\n")
+        собрано = []
+        сборщик = lambda р, описания: собрано.append(описания)  # noqa: E731
+        promyshlennye.SDP_ОПИСАНИЯ.append(сборщик)
+        try:
+            р = р_из(данные)
+            self.assertTrue(promyshlennye.sdp(р, 0, len(данные)))
+        finally:
+            promyshlennye.SDP_ОПИСАНИЯ.remove(сборщик)
+        ключи = {x[1] for x in дерево(р.п.уровни[0])}
+        for нет in ("sdp.owner.username", "sdp.connection_info.address", "sdp.rtpmap.pt"):
+            self.assertNotIn(нет, ключи)
+        self.assertEqual(собрано, [[{"вид": "image", "порт": 6000, "протокол": "udptl", "форматы": ["t38"],
+                                     "адрес": "", "rtpmap": {}}]])
+        # Атрибут и сведения до первого m= — сеанса, rtpmap до m= не относится к потоку.
+        данные = b"v=0\r\no=- 1 2 IN IP4 1.2.3.4\r\na=rtpmap:96 X/1\r\ni=s\r\nm=audio 7000 RTP/AVP 96\r\n"
+        собрано.clear()
+        promyshlennye.SDP_ОПИСАНИЯ.append(сборщик)
+        try:
+            р = р_из(данные)
+            self.assertTrue(promyshlennye.sdp(р, 0, len(данные)))
+        finally:
+            promyshlennye.SDP_ОПИСАНИЯ.remove(сборщик)
+        д = дерево(р.п.уровни[0])
+        self.assertIn((0, "sdp.session_attr", 29, 15, "rtpmap:96 X/1"), д)
+        self.assertIn((0, "sdp.session_info", 46, 3, "s"), д)
+        self.assertEqual(собрано[0][0]["rtpmap"], {})
+
+    def test_отказы(self):
+        for данные, что in ((b"v=1\r\no=- 1 2 IN IP4 1.2.3.4\r\n", "не v=0"), (b"v=0\r\n\r\n", "только v=0"),
+                            (b"v=0\r\nX=1\r\nm=audio 1 RTP/AVP 0\r\n", "не строчная буква"),
+                            (b"v=0\r\nx=1\r\nm=audio 1 RTP/AVP 0\r\n", "неизвестная строка"),
+                            (b"v=0\r\ns=-\r\n", "нет o= и m="), (b"v=0\r\nm=audio 1 RTP/AVP 0\r\n\r\nx", "пустая строка внутри")):
+            with self.subTest(что):
+                р = р_из(данные)
+                self.assertFalse(promyshlennye.sdp(р, 0, len(данные)))
+                self.assertEqual(р.п.уровни, [])

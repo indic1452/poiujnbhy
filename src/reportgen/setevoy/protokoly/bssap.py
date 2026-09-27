@@ -193,7 +193,7 @@ def _bssmap(р: Разбор, м: int, конец: int) -> bool:
             у.поле("TMSI", "gsm_a.tmsi", текст, x, 4, родитель=п)
             сводка.append(f"TMSI {текст}")
         elif iei == 0x0A and n >= 1:
-            разрешено = [f"A5/{i}" for i in range(8) if знач[0] >> i & 1]
+            разрешено = [f"A5/{i}" for i, бит in enumerate(f"{знач[0]:08b}"[::-1]) if бит == "1"]   # бит i — A5/i
             у.поле("Разрешённые алгоритмы", "gsm_a.bssmap.enc_info.permitted", ", ".join(разрешено) or "нет",
                    x, 1, знач[0], родитель=п)
             if n > 1:

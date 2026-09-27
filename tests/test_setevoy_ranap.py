@@ -58,3 +58,10 @@ class ТестRANAP(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ТестВариантов(unittest.TestCase):
+    def test_вариант_5_не_ranap(self):
+        # APER CHOICE RANAP-PDU: 4 варианта (0–3); индекс 4 — не RANAP.
+        self.assertNotIn("RANAP", по_dt1(aper_pdu(4, 0, 1, [(4, 0, b"\x00")])).стек)
+        self.assertIn("RANAP", по_dt1(aper_pdu(2, 0, 1, [(4, 0, b"\x00")])).стек)
