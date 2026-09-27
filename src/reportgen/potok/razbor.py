@@ -42,7 +42,7 @@ import numpy as np
 from . import (cikl, dlinnye, dvb, forni, gfp, hdlc, karta, kod, lineynye, oktety, pakety,
                ldpc, otn, pcs, pdh, pdh_na, peremezhenie, ploskost, polya, sdh, sinhro, skrembler, stafing,
                svyortka, tpc, turbo, vykalyvanie)
-from . import ccsds, dmr, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, trau, v110
+from . import ccsds, dmr, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, pocsag, trau, v110
 from .bity import в_байты, в_биты, инвертировать
 from .chtenie import Поток, прочитать
 from .nahodka import Находка
@@ -308,6 +308,13 @@ def _проверяемые(выборка: np.ndarray, глубина: int, п�
         ветвь.проверяемая(найдено, путь)
         return ветвь
     ветвь.не_найдено.append(f"DMR{где} (синхрослова пакетов с шагом 288 или 264 бит): нет")
+
+    # 1е. POCSAG: пакеты 544 бита по синхрослову 0x7CD215D8, BCH (31, 21), адреса и сообщения.
+    найдено = pocsag.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"POCSAG{где} (синхрослово 0x7CD215D8 и кодовые слова BCH (31, 21)): нет")
 
     # 2. HDLC: битстаффинг, затем октетный (асинхронный PPP, SLIP) — и что в кадрах.
     кадры = hdlc.найти(выборка)
