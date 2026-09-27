@@ -42,7 +42,7 @@ import numpy as np
 from . import (cikl, dlinnye, dvb, forni, gfp, hdlc, karta, kod, lineynye, oktety, pakety,
                ldpc, otn, pcs, pdh, pdh_na, peremezhenie, ploskost, polya, sdh, sinhro, skrembler, stafing,
                svyortka, tpc, turbo, vykalyvanie)
-from . import adsb, ccsds, dmr, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, pocsag, trau, v110
+from . import acars, adsb, ccsds, dmr, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, pocsag, trau, v110
 from .bity import в_байты, в_биты, инвертировать
 from .chtenie import Поток, прочитать
 from .nahodka import Находка
@@ -322,6 +322,13 @@ def _проверяемые(выборка: np.ndarray, глубина: int, п�
         ветвь.проверяемая(найдено, путь)
         return ветвь
     ветвь.не_найдено.append(f"ADS-B{где} (сообщения DF17/18 с верной CRC-24): нет")
+
+    # 1з. ACARS (ARINC 618): SYN SYN SOH, знаки с нечётной чётностью, CRC-16 блока.
+    найдено = acars.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"ACARS{где} (блоки SYN SYN SOH … ETX с верной CRC-16): нет")
 
     # 2. HDLC: битстаффинг, затем октетный (асинхронный PPP, SLIP) — и что в кадрах.
     кадры = hdlc.найти(выборка)
