@@ -1115,6 +1115,40 @@ class ТестSDPРаскладка(unittest.TestCase):
         self.assertIn((0, "sdp.session_info", 46, 3, "s"), д)
         self.assertEqual(собрано[0][0]["rtpmap"], {})
 
+    def собрать(self, данные, сдвиг=0):
+        собрано = []
+        сборщик = собрано.append
+        promyshlennye.SDP_ОПИСАНИЯ.append(lambda р, описания: сборщик(описания))
+        try:
+            р = Разбор(Пакет(1, 0.0, bytes(сдвиг) + данные + b"x=1\r\n", сдвиг + len(данные) + 5, "RAW"), None, {})
+            self.assertTrue(promyshlennye.sdp(р, сдвиг, сдвиг + len(данные)))
+        finally:
+            promyshlennye.SDP_ОПИСАНИЯ.pop()
+        return р, собрано[0]
+
+    def test_поток_без_форматов_и_длина_с_места(self):
+        данные = b"v=0\r\no=- 1 2 IN IP4 1.2.3.4\r\nm=audio 5000 RTP/AVP\r\n"
+        р, описания = self.собрать(данные, 16)
+        self.assertEqual(описания, [{"вид": "audio", "порт": 5000, "протокол": "RTP/AVP", "форматы": [],
+                                     "адрес": "", "rtpmap": {}}])
+        self.assertEqual((р.п.уровни[0].смещение, р.п.уровни[0].длина), (16, len(данные)))
+
+    def test_строки_потока_без_описания_не_к_прежнему(self):
+        """c= и rtpmap потока с нечисловым портом не приписываются предыдущему потоку."""
+        данные = (b"v=0\r\no=- 1 2 IN IP4 1.2.3.4\r\nm=audio 7000 RTP/AVP 0\r\nm=audio x RTP/AVP 8\r\n"
+                  b"c=IN IP4 10.0.0.5\r\na=rtpmap:8 PCMA/8000\r\n")
+        _, описания = self.собрать(данные)
+        self.assertEqual(описания, [{"вид": "audio", "порт": 7000, "протокол": "RTP/AVP", "форматы": ["0"],
+                                     "адрес": "", "rtpmap": {}}])
+        # c= сеанса (до первого m=) — адрес по умолчанию; c= потока — только его.
+        _, описания = self.собрать(b"v=0\r\no=- 1 2 IN IP4 1.2.3.4\r\nc=IN IP4 10.0.0.1\r\nm=audio 7000 RTP/AVP 0\r\n"
+                                   b"m=audio 7002 RTP/AVP 0\r\nc=IN IP4 10.0.0.2\r\n")
+        self.assertEqual([о["адрес"] for о in описания], ["10.0.0.1", "10.0.0.2"])
+
+    def test_rtpmap_только_в_атрибуте(self):
+        р, _ = self.собрать(b"v=0\r\no=- 1 2 IN IP4 1.2.3.4\r\ns=rtpmap:0 PCMU/8000\r\nm=audio 7000 RTP/AVP 0\r\n")
+        self.assertNotIn("sdp.rtpmap.pt", {x[1] for x in дерево(р.п.уровни[0])})
+
     def test_отказы(self):
         for данные, что in ((b"v=1\r\no=- 1 2 IN IP4 1.2.3.4\r\n", "не v=0"), (b"v=0\r\n\r\n", "только v=0"),
                             (b"v=0\r\nX=1\r\nm=audio 1 RTP/AVP 0\r\n", "не строчная буква"),

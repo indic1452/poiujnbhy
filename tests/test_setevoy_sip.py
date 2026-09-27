@@ -7,8 +7,9 @@ import unittest
 import _bootstrap  # noqa: F401
 import setevoy_sintez as с
 from reportgen.setevoy import prilozh
+from reportgen.setevoy.pole import Пакет
 from reportgen.setevoy.protokoly import sip
-from reportgen.setevoy.razbor import ДОП_УРОВНИ, разобрать_пакет
+from reportgen.setevoy.razbor import ДОП_УРОВНИ, Разбор, разобрать_пакет
 from test_setevoy_oks7 import isup_iam
 
 SDP = (b"v=0\r\no=alice 2890844526 2890844526 IN IP4 client.atlanta.example.com\r\ns=-\r\n"
@@ -223,6 +224,61 @@ class ТестГраницы(unittest.TestCase):
         self.assertEqual(sip._адрес("<sip:a@b"), ("", "<sip:a@b", {}))
         self.assertEqual(sip._пользователь("sips:u@h"), "u")
         self.assertEqual(sip._пользователь("urn:service:sos"), "urn:service:sos")
+
+    def test_разметка_частей_и_лишнего(self):
+        граница = b"b1"
+        тело = (b"--b1\r\nContent-Type: text/plain\r\n\r\nAAA\r\n--b1\r\nContent-Type: text/x\r\n\r\nBB"
+                b"\r\n--b1--\r\n")
+        данные = сообщение(b"MESSAGE sip:b SIP/2.0", [b"Content-Type: multipart/mixed;boundary=" + граница], тело)
+        п = по_udp(данные + b"XYZW")
+        у = [y for y in п.уровни if y.протокол == "SIP"][0]
+        начало_тела = у.смещение + len(данные) - len(тело)
+        части = [(x.смещение - начало_тела, x.длина) for x in у.поля if x.ключ == "sip.multipart.part"]
+        второй = тело.index(b"--b1\r\nContent-Type: text/x")
+        self.assertEqual(части, [(0, второй), (второй, тело.index(b"--b1--") - второй)])
+        лишнее = поля(п)["sip.extra"]
+        self.assertEqual((лишнее.смещение - у.смещение, лишнее.длина, лишнее.текст), (len(данные), 4, "4 байт"))
+        # Ровно до конца — без лишнего; Content-Length 0 — без поля тела.
+        п = по_udp(сообщение(b"OPTIONS sip:b SIP/2.0", [b"Max-Forwards: 2"], b""))
+        self.assertNotIn("sip.extra", поля(п))
+        self.assertNotIn("sip.msg_body", поля(п))
+        # Число в другом заголовке — не Content-Length.
+        п = по_udp(сообщение(b"OPTIONS sip:b SIP/2.0", [b"Max-Forwards: 2"], b"abcdef", длина=False))
+        self.assertEqual((поля(п)["sip.msg_body"].длина, "sip.extra" in поля(п)), (6, False))
+
+    def test_заголовки_на_краях(self):
+        п = по_udp(сообщение(b"OPTIONS sip:b SIP/2.0", [b"A: 1", b"B: 2", b"C: 3", b"  4", b"D: 5"]))
+        self.assertEqual([поля(п)[к].текст for к in ("sip.A", "sip.B", "sip.C", "sip.D")], ["1", "2", "3 4", "5"])
+        # Отображаемое имя с запятой — не список (запятая делит только Contact).
+        п = по_udp(сообщение(b"OPTIONS sip:b SIP/2.0", [b'From: "Doe, John" <sip:j@x>;tag=1',
+                                                       b"Contact: <sip:a@b>, <sip:c@d>"]))
+        ф = поля(п)
+        self.assertEqual((ф["sip.from.display.info"].текст, ф["sip.from.addr"].текст, ф["sip.contact.addr"].текст),
+                         ("Doe, John", "sip:j@x", "sip:a@b"))
+        # CSeq не из двух частей с числом — без разбора.
+        for cseq in (b"CSeq: x INVITE", b"CSeq: 1 INVITE extra", b"CSeq: 1"):
+            self.assertNotIn("sip.CSeq.seq", поля(по_udp(сообщение(b"OPTIONS sip:b SIP/2.0", [cseq]))), cseq)
+        # Via: пробел перед «;» допустим (SEMI = SWS ";" SWS); не SIP/2.0 — без разбора.
+        п = по_udp(сообщение(b"OPTIONS sip:b SIP/2.0", [b"Via: SIP/2.0/TCP 10.0.0.1:5060 ;branch=z9hG4bK1"]))
+        ф = поля(п)
+        self.assertEqual((ф["sip.Via.transport"].текст, ф["sip.Via.sent-by.address"].текст, ф["sip.Via.branch"].текст),
+                         ("TCP", "10.0.0.1:5060", "z9hG4bK1"))
+        self.assertNotIn("sip.Via.transport", поля(по_udp(сообщение(b"OPTIONS sip:b SIP/2.0", [b"Via: FOO bar"]))))
+        # Схема авторизации — до пробела или табуляции; пустое значение — пустая схема.
+        п = по_udp(сообщение(b"OPTIONS sip:b SIP/2.0", [b'Authorization: Digest\tusername="u" x']))
+        self.assertEqual((поля(п)["sip.auth.scheme"].текст, поля(п)["sip.auth.username"].текст), ("Digest", "u"))
+        п = по_udp(сообщение(b"OPTIONS sip:b SIP/2.0", [b"Authorization:"]))
+        self.assertEqual(поля(п)["sip.auth.scheme"].текст, "")
+        # Неизвестный метод: поле — ровно на методе.
+        ф = поля(по_udp(сообщение(b"FOO sip:bob@biloxi SIP/2.0", [])))["sip.unknown_method"]
+        self.assertEqual(ф.длина, 3)
+
+    def test_строки_и_сообщение_прямо(self):
+        self.assertEqual(sip._строки(b"\nX", 0, 2), ([], 1))
+        self.assertEqual(sip._строки(b"A: 1\r\n", 0, 6), (None, None))
+        р = Разбор(Пакет(1, 0.0, b"xyz", 3, "RAW"), None, {})
+        self.assertFalse(sip.sip(р, 0, 3))
+        self.assertEqual(р.п.уровни, [])
 
     def test_регистрация(self):
         self.assertIs(prilozh.ПОРТЫ_UDP[5060], sip.sip)

@@ -349,6 +349,8 @@ class ТестGPRS_L3(unittest.TestCase):
         self.assertEqual(list(gsm._tlv(b"\xa1\x28\x01\x05\x27\x00", 0)), [(0x28, 3, 1), (0x27, 6, 0)])
         self.assertEqual(list(gsm._tlv(b"\x28\x05\x01", 0)), [])
         self.assertEqual(list(gsm._tlv(b"\x28", 0)), [])
+        self.assertEqual(list(gsm._tlv(b"\x28\x02\x01", 0)), [])          # значение длиннее тела на байт
+        self.assertEqual(gsm._адрес_pdp(b""), "")
         self.assertEqual(gsm._apn(b"\x03abc"), "abc")
         self.assertEqual(gsm._apn(b""), "")
         # APN не найден, адреса нет — без сведений; Accept без адреса.
@@ -488,7 +490,6 @@ if __name__ == "__main__":
 from reportgen.setevoy.pole import Пакет  # noqa: E402
 from reportgen.setevoy.razbor import Разбор  # noqa: E402
 
-
 #: Прямые вызовы — не с нуля: иначе «конец − м» и «конец + м» не различить.
 С = 16
 
@@ -621,6 +622,51 @@ class ТестЭталонGb(unittest.TestCase):
 
 
 class ТестГраницGb(unittest.TestCase):
+    def test_имена_значений_ns(self):
+        for д, имя in ((bytes([0x0F, 0x01]) + tlv(0x04, b"\x00\x64") + tlv(0x05, b""), "End Flag"),
+                       (bytes([0x0C]) + tlv(0x04, b"\x00\x64") + b"\x07", "Номер транзакции")):
+            р = р_из(д)
+            self.assertTrue(gb.ns(р, С, С + len(д)))
+            self.assertEqual(р.п.уровни[0].поля[1].имя, имя)
+
+    def test_xid_xl_без_значения_в_конце(self):
+        д = llc(1, bytes([0xEB]), bytes([0x80 | 0x0B << 2, 0]))
+        р = р_из(д)
+        gb.llc(р, С, С + len(д))
+        self.assertEqual([(x.текст, x.смещение - С, x.длина) for x in р.п.уровни[0].поля if x.ключ == "llcgprs.xid.type"],
+                         [("0", 2, 2)])
+
+    def test_s_кадр_без_карты_sack(self):
+        for управление, хвост in ((bytes([0x80 | 0x10, 0x0C | 0x03]), b""), (bytes([0x80 | 0x10, 0x0C]), b"\xaa")):
+            д = llc(0x41, управление, хвост)
+            р = р_из(д)
+            gb.llc(р, С, С + len(д))
+            self.assertNotIn("llcgprs.sack", [x.ключ for x in р.п.уровни[0].поля], д.hex())
+
+    def test_llc_короче_заголовка(self):
+        р = р_из(b"\x01\xc0\x00\x00\x00")
+        gb.llc(р, С, С + 5)
+        self.assertEqual(р.п.ошибки, ["LLC: кадр короче заголовка и FCS"])
+        self.assertEqual((р.п.уровни[0].смещение, р.п.уровни[0].длина), (С, 5))
+
+    def test_sndcp_продолжение_подтверждаемого(self):
+        # Раньше падало: у продолжения SN-DATA нет номера N-PDU (44.065 7.2), а сводка его требовала.
+        р = р_из(b"\x15" + b"part")
+        self.assertTrue(gb.sndcp(р, С, С + 5))
+        self.assertEqual((р.п.уровни[0].итог, р.п.уровни[1].протокол), ("NSAPI 5, SN-DATA", "Данные"))
+
+    def test_sndcp_заголовок_ровно(self):
+        """Заголовок SNDCP (44.065 7.2): адрес; первый сегмент — ещё PCOMP/DCOMP; подтверждаемый первый —
+        номер N-PDU (1 октет); неподтверждаемый — номер сегмента и N-PDU (2 октета)."""
+        for первый_октет, заголовок in ((0x45, 3), (0x65, 4), (0x05, 1), (0x25, 3)):
+            with self.subTest(октет=hex(первый_октет)):
+                д = bytes([первый_октет]) + bytes(заголовок - 1)
+                р = р_из(д)
+                self.assertTrue(gb.sndcp(р, С, С + заголовок))
+                self.assertEqual(р.п.уровни[0].длина, заголовок)
+                if заголовок > 1:
+                    self.assertFalse(gb.sndcp(р_из(д), С, С + заголовок - 1))
+
     def test_элемент(self):
         self.assertIsNone(gb._элемент(b"\x04", 0, 1))
         self.assertIsNone(gb._элемент(b"\x04\x00", 0, 2))

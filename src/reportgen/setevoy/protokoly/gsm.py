@@ -147,8 +147,8 @@ def идентификатор(тело: bytes) -> tuple[str, str] | None:
 
 
 def lai(тело: bytes) -> str | None:
-    """LAI (10.5.1.3): MCC и MNC цифрами BCD, LAC — 16 бит."""
-    if len(тело) < 5:
+    """LAI (10.5.1.3) — ровно 5 октетов: MCC и MNC цифрами BCD, LAC — 16 бит."""
+    if len(тело) != 5:
         return None
     mcc = f"{тело[0] & 0xF}{тело[0] >> 4}{тело[1] & 0xF}"
     mnc = f"{тело[2] & 0xF}{тело[2] >> 4}" + ("" if тело[1] >> 4 == 0xF else f"{тело[1] >> 4}")
@@ -168,6 +168,21 @@ def _tlv(тело: bytes, место: int):
         место += 2 + тело[место + 1]
 
 
+def _дальше(тело: bytes, место: int) -> int:
+    """Место за элементом LV; LV за концом — конец тела."""
+    return место + 1 + тело[место] if место < len(тело) else len(тело)
+
+
+def _личность(тело: bytes, место: int) -> str:
+    """Mobile identity LV с места (10.5.1.4) — «вид значение»; оборванная или чужая — пусто."""
+    if место >= len(тело):
+        return ""
+    дл = тело[место]
+    б = тело[место + 1:место + 1 + дл]
+    и = идентификатор(б) if len(б) == дл else None
+    return f"{и[0]} {и[1]}" if и else ""
+
+
 def _apn(б: bytes) -> str:
     """APN (10.5.6.1; RFC 1035 3.1): метки с байтом длины — через точку."""
     части, x = [], 0
@@ -179,82 +194,57 @@ def _apn(б: bytes) -> str:
 
 def _адрес_pdp(б: bytes) -> str:
     """Адрес PDP (10.5.6.4): организация (1 — IETF), номер вида (0x21 IPv4, 0x57 IPv6, 0x8D IPv4v6), адрес."""
-    if len(б) < 2 or б[0] & 0x0F != 1:
+    if not б or б[0] & 0x0F != 1:
         return ""
-    вид, адрес = б[1], б[2:]
-    if вид == 0x21 and len(адрес) == 4:
+    вид, адрес = б[1:2], б[2:]
+    if вид == b"\x21" and len(адрес) == 4:
         return str(ipaddress.IPv4Address(адрес))
-    if вид == 0x57 and len(адрес) == 16:
+    if вид == b"\x57" and len(адрес) == 16:
         return str(ipaddress.IPv6Address(адрес))
-    if вид == 0x8D and len(адрес) == 20:
+    if вид == b"\x8d" and len(адрес) == 20:
         return f"{ipaddress.IPv4Address(адрес[:4])}, {ipaddress.IPv6Address(адрес[4:])}"
     return ""
 
 
 def _сведения(pd: int, тип: int, д: bytes, м: int, конец: int) -> str:
-    """Главное из сообщения — одной строкой (для итога)."""
+    """Главное из сообщения — одной строкой (для итога). Разметка тел — 24.008 9.x и 44.018 9.1.x;
+    оборванное сообщение даёт то, что успело прийти целиком."""
     тело = д[м:конец]
-    try:
-        if pd == 6 and тип == 0x21 and len(тело) >= 3:           # Paging Request Type 1
-            дл = тело[1]
-            и = идентификатор(тело[2:2 + дл])
-            return f"{и[0]} {и[1]}" if и else ""
-        if pd == 6 and тип in (0x1B,) and len(тело) >= 7:         # SI 3: Cell Identity, LAI
-            return f"CI {int.from_bytes(тело[0:2], 'big')}, {lai(тело[2:7])}"
-        if pd == 6 and тип == 0x1C and len(тело) >= 5:            # SI 4: LAI
-            return lai(тело[0:5]) or ""
-        if pd == 6 and тип == 0x27 and len(тело) >= 6:            # Paging Response: CKSN, classmark 2, ident
-            дл_к = тело[1]
-            место = 2 + дл_к
-            и = идентификатор(тело[место + 1:место + 1 + тело[место]])
-            return f"{и[0]} {и[1]}" if и else ""
-        if pd == 5 and тип == 0x08 and len(тело) >= 8:            # LU Request: тип, LAI, classmark 1, ident
-            и = идентификатор(тело[8:8 + тело[7]])
-            return f"{lai(тело[1:6])}; {и[0]} {и[1]}" if и else (lai(тело[1:6]) or "")
-        if pd == 5 and тип in (0x19,) and len(тело) >= 2:         # Identity Response
-            и = идентификатор(тело[1:1 + тело[0]])
-            return f"{и[0]} {и[1]}" if и else ""
-        if pd == 5 and тип == 0x24 and len(тело) >= 5:            # CM Service Request: тип, classmark 2, ident
-            место = 1 + 1 + тело[1]
-            и = идентификатор(тело[место + 1:место + 1 + тело[место]])
-            return f"{и[0]} {и[1]}" if и else ""
-        if pd == 8 and тип == 0x01 and len(тело) >= 1:            # Attach Request: сеть MS LV, вид+CKSN, DRX
-            место = 1 + тело[0] + 1 + 2
-            и = идентификатор(тело[место + 1:место + 1 + тело[место]])
-            return f"{и[0]} {и[1]}" if и else ""
-        if pd == 8 and тип == 0x16 and len(тело) >= 1:            # Identity Response (GMM)
-            и = идентификатор(тело[1:1 + тело[0]])
-            return f"{и[0]} {и[1]}" if и else ""
-        if pd == 0xA and тип == 0x41 and len(тело) >= 3:          # Activate PDP Context Request
-            место = 2 + 1 + тело[2]                               # NSAPI, LLC SAPI, QoS LV
-            место += 1 + тело[место]                              # адрес PDP LV
-            for iei, начало, дл in _tlv(тело, место):
-                if iei == 0x28:
-                    return f"APN {_apn(тело[начало:начало + дл])}"
-            return ""
-        if pd == 0xA and тип == 0x42 and len(тело) >= 2:          # Activate PDP Context Accept
-            место = 1 + 1 + тело[1] + 1                           # LLC SAPI, QoS LV, приоритет
-            for iei, начало, дл in _tlv(тело, место):
-                if iei == 0x2B:
-                    адрес = _адрес_pdp(тело[начало:начало + дл])
-                    return f"адрес {адрес}" if адрес else ""
-            return ""
-        if pd == 0xA and тип in (0x43, 0x46) and len(тело) >= 1:  # Reject / Deactivate Request: причина SM
-            return f"причина SM {тело[0]}"
-        if pd == 3 and тип in (0x05, 0x0E):                       # Setup: номер вызываемого (IEI 0x5E)
-            место = 0
-            while место + 2 <= len(тело):
-                iei = тело[место]
-                if iei == 0x5E:
-                    дл = тело[место + 1]
-                    номер = _цифры(тело[место + 3:место + 2 + дл])
-                    return f"номер {номер}"
-                if iei & 0x80:                                    # однобайтовый элемент (тип 1/2)
-                    место += 1
-                else:
-                    место += 2 + тело[место + 1]
-    except IndexError:
+    if pd == 6 and тип == 0x21:                                  # Paging Request Type 1: режим, личность 1 LV
+        return _личность(тело, 1)
+    if pd == 6 and тип == 0x1B:                                  # SI 3: Cell Identity, LAI
+        л = lai(тело[2:7])
+        return f"CI {int.from_bytes(тело[0:2], 'big')}, {л}" if л else ""
+    if pd == 6 and тип == 0x1C:                                  # SI 4: LAI
+        return lai(тело[0:5]) or ""
+    if pd == 6 and тип == 0x27:                                  # Paging Response: CKSN, classmark 2 LV, личность
+        return _личность(тело, _дальше(тело, 1))
+    if pd == 5 and тип == 0x08:                                  # LU Request: вид+CKSN, LAI, classmark 1, личность
+        return "; ".join(ч for ч in (lai(тело[1:6]), _личность(тело, 7)) if ч)
+    if pd in (5, 8) and тип == (0x19 if pd == 5 else 0x16):      # Identity Response (MM и GMM)
+        return _личность(тело, 0)
+    if pd == 5 and тип == 0x24:                                  # CM Service Request: вид+CKSN, classmark 2 LV, личность
+        return _личность(тело, _дальше(тело, 1))
+    if pd == 8 and тип == 0x01:                                  # Attach Request: сеть MS LV, вид+CKSN, DRX, личность
+        return _личность(тело, _дальше(тело, 0) + 3)
+    if pd == 0xA and тип == 0x41:                                # Activate PDP Context Request: NSAPI, SAPI, QoS LV,
+        for iei, начало, дл in _tlv(тело, _дальше(тело, _дальше(тело, 2))):   # адрес PDP LV, затем APN (0x28)
+            if iei == 0x28:
+                return f"APN {_apn(тело[начало:начало + дл])}"
         return ""
+    if pd == 0xA and тип == 0x42:                                # Activate PDP Context Accept: SAPI, QoS LV, приоритет
+        for iei, начало, дл in _tlv(тело, _дальше(тело, 1) + 1):
+            if iei == 0x2B:
+                адрес = _адрес_pdp(тело[начало:начало + дл])
+                return f"адрес {адрес}" if адрес else ""
+        return ""
+    if pd == 0xA and тип in (0x43, 0x46):                        # Reject / Deactivate Request: причина SM
+        return f"причина SM {тело[0]}" if тело else ""
+    if pd == 3 and тип == 0x05:                                  # Setup: номер вызываемого (IEI 0x5E, 10.5.4.7)
+        for iei, начало, дл in _tlv(тело, 0):
+            if iei == 0x5E:
+                номер = _цифры(тело[начало + 1:начало + дл])     # за октетом 3 (вид номера, план) — цифры
+                return f"номер {номер}" if номер else ""
     return ""
 
 

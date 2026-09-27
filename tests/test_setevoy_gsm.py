@@ -108,3 +108,82 @@ class GsmTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def lv(б):
+    return bytes([len(б)]) + б
+
+
+TMSI = b"\xf4\xc0\xde\x12\x34"
+ХВОСТ = b"\x99" * 8
+
+
+def сведения(pd, тип, тело):
+    """Главное из тела, лежащего не с начала буфера и с чужими байтами за концом."""
+    д = bytes(16) + тело + ХВОСТ
+    return gsm._сведения(pd, тип, д, 16, 16 + len(тело))
+
+
+class СведенияTests(unittest.TestCase):
+    """Сводка сообщения L3 по разметке 24.008 9.x / 44.018 9.1.x: каждое место — своё."""
+
+    ИМСИ = f"IMSI {IMSI}"
+    ЛАИ = "MCC 250, MNC 01, LAC 8000"
+
+    def test_rr(self):
+        self.assertEqual(сведения(6, 0x21, b"\x00" + lv(imsi_ident())), self.ИМСИ)
+        self.assertEqual(сведения(6, 0x21, b"\x00"), "")
+        self.assertEqual(сведения(6, 0x21, b"\x00" + lv(imsi_ident())[:-1]), "")      # личность оборвана
+        self.assertEqual(сведения(6, 0x1B, b"\x12\x34" + LAI_25001 + b"\x01\x02\x03"), f"CI 4660, {self.ЛАИ}")
+        self.assertEqual(сведения(6, 0x1B, b"\x12\x34" + LAI_25001[:4]), "")
+        self.assertEqual(сведения(6, 0x1C, LAI_25001 + b"\x01\x02\x03"), self.ЛАИ)
+        self.assertEqual(сведения(6, 0x1C, LAI_25001[:4]), "")
+        self.assertEqual(сведения(6, 0x27, b"\x07" + lv(b"\x33\x19\xa2") + lv(TMSI)), "TMSI C0DE1234")
+        self.assertEqual(сведения(6, 0x27, b"\x07"), "")
+        self.assertEqual(сведения(6, 0x27, b"\x07" + lv(b"\x33\x19\xa2")), "")
+
+    def test_mm(self):
+        lu = b"\x70" + LAI_25001 + b"\x33"
+        self.assertEqual(сведения(5, 0x08, lu + lv(imsi_ident())), f"{self.ЛАИ}; {self.ИМСИ}")
+        self.assertEqual(сведения(5, 0x08, lu), self.ЛАИ)
+        self.assertEqual(сведения(5, 0x08, lu + lv(TMSI)[:-2]), self.ЛАИ)
+        self.assertEqual(сведения(5, 0x08, lu[:5]), "")
+        self.assertEqual(сведения(5, 0x19, lv(imsi_ident())), self.ИМСИ)
+        self.assertEqual(сведения(8, 0x16, lv(TMSI)), "TMSI C0DE1234")
+        self.assertEqual((сведения(5, 0x16, lv(TMSI)), сведения(8, 0x19, lv(TMSI))), ("", ""))
+        self.assertEqual(сведения(5, 0x24, b"\x21" + lv(b"\x33\x19\xa2") + lv(TMSI)), "TMSI C0DE1234")
+        self.assertEqual(сведения(5, 0x24, b"\x21" + lv(b"\x33")), "")
+
+    def test_gmm_и_sm(self):
+        self.assertEqual(сведения(8, 0x01, lv(b"\xe5\xe0") + b"\x11\x00\x00" + lv(imsi_ident())), self.ИМСИ)
+        self.assertEqual(сведения(8, 0x01, lv(b"\xe5\xe0")), "")
+        apn = b"\x08internet"
+        запрос = b"\x05\x03" + lv(b"\x0b\x92\x1f") + lv(b"\x01\x21")
+        self.assertEqual(сведения(0xA, 0x41, запрос + b"\xa1\x28" + lv(apn)), "APN internet")
+        self.assertEqual(сведения(0xA, 0x41, запрос + b"\x27" + lv(b"\x80")), "")
+        self.assertEqual(сведения(0xA, 0x41, b"\x05"), "")
+        принятие = b"\x03" + lv(b"\x0b\x92\x1f") + b"\x01"
+        self.assertEqual(сведения(0xA, 0x42, принятие + b"\x2b" + lv(b"\x01\x21\x0a\x00\x00\x07")), "адрес 10.0.0.7")
+        self.assertEqual(сведения(0xA, 0x42, принятие + b"\x2b" + lv(b"\x01\x21\x0a")), "")
+        self.assertEqual(сведения(0xA, 0x42, принятие + b"\x27" + lv(b"\x80")), "")
+        for тип in (0x43, 0x46):
+            self.assertEqual(сведения(0xA, тип, b"\x1a"), "причина SM 26")
+            self.assertEqual(сведения(0xA, тип, b""), "")
+
+    def test_cc_setup(self):
+        номер = b"\x5e" + lv(b"\x81\x21\x43")
+        self.assertEqual(сведения(3, 0x05, b"\x04" + lv(b"\x60\x02") + b"\xa1" + номер), "номер 1234")
+        self.assertEqual(сведения(3, 0x05, b"\x5e" + lv(b"\x81")), "")
+        self.assertEqual(сведения(3, 0x05, b"\x04" + lv(b"\x60")), "")
+        self.assertEqual(сведения(3, 0x0E, номер), "")                               # Emergency setup — без номера
+        self.assertEqual(сведения(3, 0x05, номер[:-1]), "")                           # номер оборван
+
+    def test_чужие_типы_и_дискриминаторы(self):
+        """Разметка берётся по паре (дискриминатор, тип): чужая пара — без сводки."""
+        с_личностью = b"\x07" + lv(b"\x33\x19\xa2") + lv(TMSI)
+        attach = lv(b"\xe5\xe0") + b"\x11\x00\x00" + lv(imsi_ident())
+        for pd, тип, тело in ((6, 0x3F, с_личностью), (7, 0x27, с_личностью), (5, 0x3F, с_личностью),
+                              (7, 0x24, с_личностью), (8, 0x3F, attach), (7, 0x01, attach), (0xA, 0x3F, b"\x1a"),
+                              (7, 0x43, b"\x1a")):
+            with self.subTest(pd=pd, тип=hex(тип)):
+                self.assertEqual(сведения(pd, тип, тело), "")

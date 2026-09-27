@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Канальный уровень и глобальные сети: пакеты собраны здесь по стандартам, независимо от разборщика.
 
 Каждый протокол: поля (значения и места в байтах), фильтр по имени и по полю, обрыв пакета без
@@ -14,6 +13,7 @@ import _bootstrap  # noqa: F401
 import setevoy_sintez as с
 from reportgen.setevoy import прочитать_захват, разобрать_пакет
 from reportgen.setevoy.filtr import отобрать
+from reportgen.setevoy.protokoly import kanalnye
 from reportgen.setevoy.statistika import уровень_протокола
 
 MAC_А = bytes.fromhex("001122334455")
@@ -404,7 +404,6 @@ class SlowTests(unittest.TestCase):
     def test_esmc_уровни(self):
         """Один код SSM в разных вариантах сети — разные уровни (G.781, 5.5.1); eSSM уточняет уровень.
         Таблицы — как у Wireshark (packet-ossp.c): вариант I, II, III."""
-        from reportgen.setevoy.protokoly import kanalnye
         self.assertEqual(kanalnye.ESMC_QL, {
             "I": {2: "QL-PRC", 4: "QL-SSU-A", 8: "QL-SSU-B", 11: "QL-EEC1", 15: "QL-DNU"},
             "II": {0: "QL-STU", 1: "QL-PRS", 4: "QL-TNC", 7: "QL-ST2", 10: "QL-ST3", 13: "QL-ST3E",
@@ -842,6 +841,111 @@ class CdpTests(unittest.TestCase):
                                                            + сообщение[1:])).стек)
         self.assertNotIn("CDP", разобрать_пакет(кадр_802_3(b"\xaa\xaa\x03\x00\x00\x0c\x20\x00"
                                                            + сообщение[:-1])).стек)
+
+
+def fr_адрес(dlci, байт, cr=0, fecn=0, becn=0, de=0, dc=0):
+    """ITU-T Q.922, 3.3: поле адреса из 2, 3 или 4 байт (DLCI 10, 16 или 23 бита, в последнем — D/C)."""
+    бит_dlci = {2: 10, 3: 16, 4: 23}[байт]
+    хвост = dlci & ((1 << (бит_dlci - 10)) - 1)
+    верх = dlci >> (бит_dlci - 10)
+    б = [((верх >> 4) << 2) | (cr << 1), ((верх & 15) << 4) | (fecn << 3) | (becn << 2) | (de << 1)]
+    if байт == 3:
+        б.append((хвост << 2) | (dc << 1))
+    elif байт == 4:
+        б += [(хвост >> 6) << 1, ((хвост & 0x3F) << 2) | (dc << 1)]
+    б[-1] |= 1
+    return bytes(б)
+
+
+def раскладка_fr(п):
+    """(ключ, смещение, длина, сырое) всех полей FR с вложенными."""
+    у = [x for x in п.уровни if x.протокол == "FR"][0]
+    итог = []
+
+    def обойти(поля_):
+        for x in поля_:
+            итог.append((x.ключ, x.смещение, x.длина, x.сырое))
+            обойти(x.дети)
+    обойти(у.поля)
+    return итог
+
+
+class FrameRelayАдресTests(unittest.TestCase):
+    """Поле адреса Q.922 любой длины: DLCI, C/R, FECN, BECN, DE, D/C — по местам."""
+
+    def test_двухбайтовый_совпадает_с_q922(self):
+        self.assertEqual(fr_адрес(100, 2, fecn=1, de=1), q922(100, fecn=1, de=1))
+
+    def test_длины_адреса(self):
+        for dlci, байт, cr, fecn, becn, de, dc in ((0x2A5, 2, 1, 0, 1, 0, 0), (0x15A, 2, 0, 1, 0, 1, 0),
+                                                   (0xABCD, 3, 1, 0, 1, 0, 1), (0x5432, 3, 0, 1, 0, 1, 0),
+                                                   (0x5ABCDE, 4, 1, 1, 0, 0, 0), (0x2B5A3, 4, 0, 0, 1, 1, 1)):
+            with self.subTest(dlci=hex(dlci), байт=байт):
+                адрес = fr_адрес(dlci, байт, cr, fecn, becn, de, dc)
+                п = разобрать_пакет(адрес + b"\x03\xcc" + ИП, "Frame Relay")
+                self.assertEqual(п.стек[:2], ["FR", "IPv4"])
+                ожидаемо = [("fr.address", 0, байт, адрес.hex()), ("fr.dlci", 0, байт, dlci), ("fr.cr", 0, 1, cr),
+                            ("fr.fecn", 1, 1, fecn), ("fr.becn", 1, 1, becn), ("fr.de", 1, 1, de)]
+                if байт > 2:
+                    ожидаемо.append(("fr.dc", байт - 1, 1, dc))
+                ожидаемо += [("fr.control", байт, 1, 3), ("fr.nlpid", байт + 1, 1, 0xCC)]
+                self.assertEqual(раскладка_fr(п), ожидаемо)
+                у = п.уровни[0]
+                self.assertEqual(у.длина, байт + 2)
+                флаги = [и for и, б in (("FECN", fecn), ("BECN", becn), ("DE", de)) if б]
+                self.assertEqual(у.итог, f"DLCI {dlci}" + (f" [{', '.join(флаги)}]" if флаги else ""))
+                self.assertEqual(п.ошибки, [])
+
+    def test_только_адрес(self):
+        п = разобрать_пакет(q922(100), "Frame Relay")
+        self.assertEqual((п.стек, п.ошибки), (["FR"], []))
+        self.assertEqual(п.уровни[0].длина, 2)
+
+    def test_неверный_адрес_по_местам(self):
+        # Пять байт без EA: поле — первые 4 байта, данные — с пятого.
+        п = разобрать_пакет(bytes([0x10, 0x20, 0x30, 0x40, 0x50, 0x61]) + b"xyz", "Frame Relay")
+        self.assertEqual(раскладка_fr(п), [("fr.address", 0, 4, "10203040")])
+        self.assertTrue(п.уровни[0].поля[0].плохо)
+        self.assertEqual(п.ошибки, ["FR: поле адреса длиннее 4 байт (бит EA)"])
+        self.assertEqual((п.уровни[-1].протокол, п.уровни[-1].смещение), ("Данные", 4))
+        # EA=1 в первом байте: поле — весь адрес (2 или 3 байта), данные — за ним.
+        for адрес in (b"\x01\x01", b"\x01\x00\x01"):
+            п = разобрать_пакет(адрес + b"xyz", "Frame Relay")
+            self.assertEqual(раскладка_fr(п), [("fr.address", 0, len(адрес), адрес.hex())], адрес.hex())
+            self.assertTrue(п.уровни[0].поля[0].плохо)
+            self.assertEqual(п.ошибки, ["FR: первый байт адреса с EA=1"])
+            self.assertEqual((п.уровни[-1].протокол, п.уровни[-1].смещение), ("Данные", len(адрес)))
+
+    def test_известный_nlpid_не_отдаётся_разборщикам_без_nlpid(self):
+        """Кадр «0x03 [0x00] NLPID» с известным NLPID — не NS и не прочее без инкапсуляции RFC 2427."""
+        вызовы = []
+
+        def заглушка(р, м, конец):
+            вызовы.append(м)
+            р.уровень("Заглушка", "Заглушка", м).длина = конец - м
+            return True
+
+        kanalnye.FR_БЕЗ_NLPID.insert(0, заглушка)
+        try:
+            for хвост, свой in ((b"\x03\xcc" + ИП, True), (b"\x03\x00\xcc" + ИП, True), (b"\x03\x8e", True),
+                                (b"\x03\x80\x00\x00\x00\x08\x00", True), (b"\x03\x81", True),
+                                (b"\x03\x82", True), (b"\x03\x83", True), (b"\x03\x00\x81", True),
+                                (b"\x03\x55", False), (b"\x03\x00\x55", False), (b"\x05\xcc", False),
+                                (b"\x02\xcc", False), (b"\x04\xcc", False), (b"\x03\x08\x00\x75", False),
+                                (b"\x03\xcb", False), (b"\x03\xcd", False), (b"\x03\x8d", False),
+                                (b"\x03\x8f", False), (b"\x03\x7f", False), (b"\x03", False),
+                                (b"\x03\x01\xcc", False)):
+                with self.subTest(хвост=хвост[:4].hex()):
+                    вызовы.clear()
+                    п = разобрать_пакет(q922(100) + хвост, "Frame Relay")
+                    self.assertEqual(вызовы, [] if свой else [2])
+                    self.assertEqual("Заглушка" in п.стек, not свой)
+            # LMI — известен только на DLCI 0.
+            вызовы.clear()
+            п = разобрать_пакет(q922(0) + b"\x03\x08\x00\x75" + bytes([0x51, 1, 0, 0x53, 2, 5, 4]), "Frame Relay")
+            self.assertEqual((вызовы, п.стек), ([], ["FR", "LMI"]))
+        finally:
+            kanalnye.FR_БЕЗ_NLPID.remove(заглушка)
 
 
 class FrameRelayTests(unittest.TestCase):
