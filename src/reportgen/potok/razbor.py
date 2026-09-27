@@ -42,7 +42,7 @@ import numpy as np
 from . import (cikl, dlinnye, dvb, forni, gfp, hdlc, karta, kod, lineynye, oktety, pakety,
                ldpc, otn, pcs, pdh, pdh_na, peremezhenie, ploskost, polya, sdh, sinhro, skrembler, stafing,
                svyortka, tpc, turbo, vykalyvanie)
-from . import ccsds, dmr, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, pocsag, trau, v110
+from . import adsb, ccsds, dmr, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, pocsag, trau, v110
 from .bity import в_байты, в_биты, инвертировать
 from .chtenie import Поток, прочитать
 from .nahodka import Находка
@@ -315,6 +315,13 @@ def _проверяемые(выборка: np.ndarray, глубина: int, п�
         ветвь.проверяемая(найдено, путь)
         return ветвь
     ветвь.не_найдено.append(f"POCSAG{где} (синхрослово 0x7CD215D8 и кодовые слова BCH (31, 21)): нет")
+
+    # 1ж. ADS-B / Mode S: сообщения DF17/18 по 112 бит с нулевым остатком CRC-24.
+    найдено = adsb.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"ADS-B{где} (сообщения DF17/18 с верной CRC-24): нет")
 
     # 2. HDLC: битстаффинг, затем октетный (асинхронный PPP, SLIP) — и что в кадрах.
     кадры = hdlc.найти(выборка)
