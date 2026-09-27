@@ -533,6 +533,8 @@ class ТестГраницЧтения(unittest.TestCase):
     def test_lv_длиннее_сообщения(self):
         п = разобрать_пакет(s1ap_хвост(b"\x07\x56\x09" + личность(IMSI, 1)[:5]))
         self.assertIn("NAS EPS: сообщение оборвано", п.ошибки)
+        # Detach request: байт длины идентификатора — последний, значения нет.
+        self.assertIn("NAS EPS: сообщение оборвано", разобрать_пакет(s1ap_хвост(b"\x07\x45\x09\x05")).ошибки)
         self.assertNotIn("nas_eps.mobile_identity", поля(п, "NAS-EPS"))
 
     def test_простое_под_шифром_не_за_концом(self):
