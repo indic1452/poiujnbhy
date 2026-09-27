@@ -1072,6 +1072,12 @@ class MTP3МестаTests(unittest.TestCase):
             return oks7.mtp3(р, 0, len(данные_) if конец is None else конец), р.п
         ок, п = разбор(bytes([0x83]) + метка(1, 2, 3)[:3])
         self.assertEqual((False, []), (ок, п.уровни))
+        # С ненулевого места: 4 байта до конца — мало, хотя дальше в буфере ещё есть байты.
+        р = Разбор(Пакет(1, 0.0, b"\x01\x02\x03" + bytes([0x85]) + метка(1, 2, 3) + isup_rel(), 64, "RAW"))
+        self.assertEqual((False, []), (oks7.mtp3(р, 3, 7), р.п.уровни))
+        udt = sccp_udt(адрес_pc(1, 6), адрес_pc(2, 6), tcap_begin_update_location())
+        ок, п = разбор(bytes([0x83]) + метка_ansi(1, 2, 3) + udt)
+        self.assertEqual((True, "Message Transfer Part Level 3 (ANSI T1.111)"), (ок, п.уровни[0].полное))
         with self.assertRaises(oks7.Мало):
             разбор(bytes([0x83]) + метка(1, 2, 3)[:3], 5)
         self.assertTrue(разбор(bytes([0x85]) + метка(1, 2, 3) + isup_rel())[0])
@@ -1080,9 +1086,9 @@ class MTP3МестаTests(unittest.TestCase):
     def test_управление_границы(self):
         # Только метка — заголовка H0/H1 нет; ровно заголовок — без «Данных»; дальше — «Данные» с 6-го байта.
         п = разобрать_пакет(bytes([0x80]) + метка(1, 2, 0), "MTP3")
-        self.assertEqual((["MTP3"], []), (п.стек, поля(п).get("mtp3mg.h0", [])))
+        self.assertEqual((["MTP3"], [], []), (п.стек, поля(п).get("mtp3mg.h0", []), п.ошибки))
         п = разобрать_пакет(bytes([0x80]) + метка(1, 2, 0) + bytes([0x14]), "MTP3")
-        self.assertEqual(["MTP3"], п.стек)
+        self.assertEqual((["MTP3"], []), (п.стек, п.ошибки))
         self.assertEqual([(5, 1), (5, 1)], [(поле(п, к).смещение, поле(п, к).длина) for к in ("mtp3mg.h0", "mtp3mg.h1")])
         self.assertEqual(6, п.уровни[0].длина)
         п = разобрать_пакет(bytes([0x80]) + метка(1, 2, 0) + bytes([0x14, 0xAA, 0xBB]), "MTP3")
@@ -1170,6 +1176,12 @@ class SLTMTests(unittest.TestCase):
                 self.assertEqual([(6, 1), (7, 3)], [(поле(п, к).смещение, поле(п, к).длина)
                                                     for к in ("mtp3mg.test.length", "mtp3mg.test.pattern")])
                 self.assertEqual(10, п.уровни[0].длина)
+        # Только заголовок SLTM в конце кадра — образца нет, за концом не читаем.
+        п = разобрать_пакет(bytes([0x81]) + метка(1, 2, 0) + bytes([0x11]), "MTP3")
+        self.assertEqual((["MTP3"], [], []), (п.стек, п.ошибки, поля(п).get("mtp3mg.test.length", [])))
+        # Образец нулевой длины: один октет длины.
+        п = разобрать_пакет(bytes([0x81]) + метка(1, 2, 0) + bytes([0x11, 0x00]), "MTP3")
+        self.assertEqual((["MTP3"], [0], 7), (п.стек, поля(п)["mtp3mg.test.length"], п.уровни[0].длина))
         for имя, кадр in (("длина не та", bytes([0x81]) + метка(1, 2, 0) + bytes([0x11, 0x40]) + b"abc"),
                           ("меньше", bytes([0x81]) + метка(1, 2, 0) + bytes([0x11, 0x20]) + b"abc"),
                           ("не SLTM", bytes([0x81]) + метка(1, 2, 0) + bytes([0x31, 0x30]) + b"abc")):
