@@ -11,6 +11,9 @@ import _bootstrap  # noqa: F401
 import setevoy_sintez as с
 from reportgen.setevoy import разобрать_пакет, прочитать_захват
 from reportgen.setevoy.filtr import отобрать
+from reportgen.setevoy.pole import Пакет
+from reportgen.setevoy.protokoly import oks7
+from reportgen.setevoy.razbor import Разбор
 from reportgen.setevoy.statistika import уровень_протокола
 
 # -- сборка -------------------------------------------------------------------------------------
@@ -821,3 +824,21 @@ class ОборванныйКусокSctp(unittest.TestCase):
         пакет = _разобрать(_с.ethernet(_с.ipv4("10.0.0.1", "10.0.0.2", 132, sctp)))
         self.assertFalse(any("разбор прерван" in о for о in пакет.ошибки), пакет.ошибки)
         self.assertIn("SCTP", [у.протокол for у in пакет.уровни])
+
+
+class ТестISUPбезCIC(unittest.TestCase):
+    """Тело SIP-I (Q.1912.5): ISUP с октета типа, без CIC."""
+
+    def test_раскладка(self):
+        iam = isup_iam()[2:]
+        р = Разбор(Пакет(1, 0.0, b"\xee" + iam, 1 + len(iam), "RAW"))
+        self.assertTrue(oks7.isup(р, 1, 1 + len(iam), cic=False))
+        у = р.п.уровни[0]
+        ключи = [(x.ключ, x.смещение, x.длина) for x in у.поля[:2]]
+        self.assertEqual(ключи[0], ("isup.message_type", 1, 1))
+        self.assertNotIn("isup.cic", [x.ключ for x in у.поля])
+        self.assertEqual(у.итог, "IAM, → 4951234567, от 74951112233")
+        # С CIC те же байты — не ISUP (тип читается не там); без CIC пусто — тоже нет.
+        self.assertFalse(oks7.isup(Разбор(Пакет(1, 0.0, iam, len(iam), "RAW")), 0, len(iam)))
+        self.assertIsNone(oks7._проверка_isup(b"", 0, 0, cic=False))
+        self.assertIsNotNone(oks7._проверка_isup(isup_iam(), 0, len(isup_iam())))

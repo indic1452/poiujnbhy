@@ -40,10 +40,10 @@
   номер сообщения) по открытому описанию (Wireshark packet-skinny), только
   общеизвестные номера сообщений. TCP 2000.
 * SDP — RFC 8866, разд. 5 (строки v=, o=, s=, c=, t=, m=, a=), 6.6 (rtpmap);
-  подключается к SIP (UDP/TCP 5060) и MGCP: тело «v=0…» разбирается деревом.
+  тела MGCP и SIP (application/sdp — передаёт модуль sip) деревом; потоки — в ``SDP_ОПИСАНИЯ``.
 
-T.38 UDPTL не разбирается: у него нет своего порта (порт выдаёт SDP), а
-кодирование IFP (ASN.1 PER) по одному пакету не проверить надёжно.
+T.38 UDPTL и RTP с кодеком разбирает модуль media — по адресу и порту из SDP: своего
+порта у них нет.
 
 Каждый разборщик сначала проверяет всё, что стандарт делает проверяемым
 (магические значения, версии, CRC, сходимость длин с размером данных), и
@@ -2441,24 +2441,6 @@ def sdp(р: Разбор, м: int, конец: int) -> bool:
     return True
 
 
-def _sip_с_sdp(исходный: Callable) -> Callable:
-    """SIP из prilozh, а за ним — SDP в теле («v=0…» после пустой строки)."""
-    def разбор(р: Разбор, м: int, конец: int) -> bool:
-        if not исходный(р, м, конец):
-            return False
-        граница = р.д.find(b"\r\n\r\n", м, конец)
-        if 0 <= граница and граница + 4 < конец:
-            уровней = len(р.п.уровни)
-            try:
-                if sdp(р, граница + 4, конец):
-                    р.п.инфо += " (с SDP)"
-            except (Мало, IndexError, ValueError):
-                del р.п.уровни[уровней:]
-        return True
-    разбор.исходный = исходный
-    return разбор
-
-
 # == регистрация =========================================================================================
 
 def _строгий_opcua(р: Разбор, м: int, конец: int) -> bool:
@@ -2469,11 +2451,6 @@ prilozh.ПОРТЫ_TCP.update({20000: dnp3, 2404: iec104, 102: tpkt_iso, 44818: 
                           2944: megaco_tcp, 2945: megaco_tcp, 2000: skinny})
 prilozh.ПОРТЫ_UDP.update({20000: dnp3, 44818: enip_udp, 2222: cip_io, 47808: bacnet, 2427: mgcp, 2727: mgcp,
                           2944: megaco_udp, 2945: megaco_udp, 4569: iax2})
-for _транспорт, _таблица in (("udp", prilozh.ПОРТЫ_UDP), ("tcp", prilozh.ПОРТЫ_TCP)):
-    if 5060 in _таблица:
-        _таблица[5060] = _sip_с_sdp(_таблица[5060])
-    if "SIP" in prilozh.КАК[_транспорт]:
-        prilozh.КАК[_транспорт]["SIP"] = _sip_с_sdp(prilozh.КАК[_транспорт]["SIP"])
 prilozh.КАК["tcp"].update({"DNP3": dnp3, "IEC 104": iec104, "TPKT/COTP (S7, MMS)": tpkt_iso,
                            "EtherNet/IP": enip_tcp, "OPC UA": opcua, "MEGACO": megaco_tcp, "Skinny": skinny})
 prilozh.КАК["udp"].update({"DNP3": dnp3, "EtherNet/IP": enip_udp, "CIP I/O": cip_io, "BACnet/IP": bacnet,

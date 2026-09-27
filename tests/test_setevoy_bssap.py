@@ -5,8 +5,9 @@ import struct
 import unittest
 
 import _bootstrap  # noqa: F401
+from reportgen.setevoy.pole import Пакет
 from reportgen.setevoy.protokoly import bssap, oks7
-from reportgen.setevoy.razbor import ДОП_УРОВНИ, разобрать_пакет
+from reportgen.setevoy.razbor import ДОП_УРОВНИ, Разбор, разобрать_пакет
 from test_setevoy_abis import LU
 from test_setevoy_oks7 import IMSI, bcd, sccp_udt, адрес_pc
 
@@ -240,3 +241,17 @@ class ТестРаскладкиDTAP(unittest.TestCase):
             ("gsm_a.dtap.dlci.cc", 1, 1, 2), ("bssap.length", 2, 1, 2)])
         self.assertEqual(поля(п, "DTAP")["gsm_a.bssmap.msgtype_discriminator"].текст, "DTAP")
         self.assertEqual(по_dt1(dtap(b"\x05")).стек, ["SCCP", "Данные"])
+
+
+class ТестГраницПрямо(unittest.TestCase):
+    """Прямые вызовы: за концом данных (там, где в пакете дальше идут чужие байты) не читается."""
+
+    def test_элементы_и_заголовок(self):
+        self.assertIsNone(bssap._элементы(b"\x04", 0, 1))
+        self.assertIsNone(bssap._элементы(b"\x04\x05", 0, 1))
+        self.assertEqual(bssap._элементы(b"\x04\x00", 0, 2), [(4, 2, 0, 0)])
+        р = Разбор(Пакет(1, 0.0, b"\x00\x00\x01", 3, "RAW"))
+        self.assertFalse(bssap.bssap(р, 0, 2))
+        self.assertEqual(р.п.уровни, [])
+        р = Разбор(Пакет(1, 0.0, b"\x00\x01\x55", 3, "RAW"))
+        self.assertTrue(bssap.bssap(р, 0, 3))
