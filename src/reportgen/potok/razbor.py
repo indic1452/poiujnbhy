@@ -42,7 +42,7 @@ import numpy as np
 from . import (cikl, dlinnye, dvb, forni, gfp, hdlc, karta, kod, lineynye, oktety, pakety,
                ldpc, otn, pcs, pdh, pdh_na, peremezhenie, ploskost, polya, sdh, sinhro, skrembler, stafing,
                svyortka, tpc, turbo, vykalyvanie)
-from . import acars, adsb, ccsds, dmr, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, pocsag, trau, v110
+from . import acars, adsb, ccsds, dmr, dstar, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, pocsag, trau, v110
 from .bity import в_байты, в_биты, инвертировать
 from .chtenie import Поток, прочитать
 from .nahodka import Находка
@@ -329,6 +329,13 @@ def _проверяемые(выборка: np.ndarray, глубина: int, п�
         ветвь.проверяемая(найдено, путь)
         return ветвь
     ветвь.не_найдено.append(f"ACARS{где} (блоки SYN SYN SOH … ETX с верной CRC-16): нет")
+
+    # 1и. D-STAR: заголовки (свёрточный код, CRC) с позывными, сверхкадры речи, текст медленных данных.
+    найдено = dstar.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"D-STAR{где} (заголовок после 0x557650 с верной CRC, сверхкадры речи): нет")
 
     # 2. HDLC: битстаффинг, затем октетный (асинхронный PPP, SLIP) — и что в кадрах.
     кадры = hdlc.найти(выборка)
