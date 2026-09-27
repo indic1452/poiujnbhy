@@ -643,3 +643,26 @@ class ГраницыOSI(unittest.TestCase):
         for текст in (b"ACT-USER::a:1\x01;", b"ACT-USER::a:1\x7f;", b"ACT-USER::a:\x1f1;"):
             self.assertFalse(osi.tl1(р_хвост(текст), С, С + len(текст)), текст)
         self.assertTrue(osi.tl1(р_хвост(b"ACT-USER::a~b:1;"), С, С + 16))
+
+
+class КонецБуфера(unittest.TestCase):
+    """PDU в самом конце записи (за ним ничего): охранные проверки длины не дают читать за концом."""
+
+    def р_в_конце(self, pdu):
+        return Разбор(Пакет(1, 0.0, bytes(С) + pdu, С + len(pdu), "RAW"))
+
+    def test_короткие_в_конце(self):
+        clnp9 = bytes([0x81, 9, 1, 0, 0x1C, 0, 9, 0, 0])
+        self.assertFalse(osi.clnp(self.р_в_конце(clnp9), С, С + 9))
+        esis9 = bytes([0x82, 9, 1, 0, 4, 0, 5, 0, 0])
+        self.assertFalse(osi.esis(self.р_в_конце(esis9), С, С + 9))
+        self.assertFalse(osi.esis(self.р_в_конце(b"\x82\x09\x01"), С, С + 3))
+        # Адрес назначения доходит до конца заголовка и записи: адреса источника нет.
+        pdu = bytes([0x81, 11, 1, 0, 0x1C, 0, 11, 0, 0, 1, 0xAA])
+        self.assertFalse(osi.clnp(self.р_в_конце(pdu), С, С + 11))
+
+    def test_ish_с_пустым_net(self):
+        pdu = bytes([0x82, 10, 1, 0, 4, 0, 5, 0, 0, 0])
+        р = self.р_в_конце(pdu)
+        self.assertTrue(osi.esis(р, С, С + 10))
+        self.assertEqual(р.п.инфо, "ES-IS ISH, NET —, удержание 5 с")
