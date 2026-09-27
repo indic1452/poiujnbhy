@@ -42,7 +42,8 @@ import numpy as np
 from . import (cikl, dlinnye, dvb, forni, gfp, hdlc, karta, kod, lineynye, oktety, pakety,
                ldpc, otn, pcs, pdh, pdh_na, peremezhenie, ploskost, polya, sdh, sinhro, skrembler, stafing,
                svyortka, tpc, turbo, vykalyvanie)
-from . import acars, adsb, ccsds, dmr, dstar, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, p25, pocsag, trau, v110
+from . import (acars, adsb, ccsds, dmr, dstar, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, p25, pocsag,
+               trau, v110, ysf)
 from .bity import в_байты, в_биты, инвертировать
 from .chtenie import Поток, прочитать
 from .nahodka import Находка
@@ -315,6 +316,13 @@ def _проверяемые(выборка: np.ndarray, глубина: int, п�
         ветвь.проверяемая(найдено, путь)
         return ветвь
     ветвь.не_найдено.append(f"P25{где} (синхрослово 0x5575F5FF77FF и NID с верным BCH): нет")
+
+    # 1д″. System Fusion (YSF): кадры 960 бит, FICH (Golay, свёртка, CRC), позывные заголовка.
+    найдено = ysf.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        return ветвь
+    ветвь.не_найдено.append(f"System Fusion{где} (синхрослово 0xD471C9634D и FICH с верной CRC): нет")
 
     # 1е. POCSAG: пакеты 544 бита по синхрослову 0x7CD215D8, BCH (31, 21), адреса и сообщения.
     найдено = pocsag.найти(выборка)
