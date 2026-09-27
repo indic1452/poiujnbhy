@@ -124,12 +124,23 @@ SM = {65: 'Activate PDP Context Request',
 ВИДЫ_ИДЕНТ = {1: "IMSI", 2: "IMEI", 3: "IMEISV", 4: "TMSI/P-TMSI", 0: "нет"}
 
 
-def _цифры(байты: bytes, первая_старшая: int | None = None) -> str:
-    """BCD: младший полубайт — раньше; 0xF — заполнитель."""
+def _цифры(байты: bytes, первая_старшая: int | None = None, знаки: bool = False) -> str:
+    """BCD: младший полубайт — раньше; 0xF — заполнитель, после него цифр нет (24.008 10.5.1.4).
+
+    ``знаки`` — номер (10.5.4.7): 1010…1110 — «*», «#», «a», «b», «c»; иначе такие полубайты пропускаются.
+    """
     итог = [] if первая_старшая is None else [первая_старшая]
     for б in байты:
         итог += [б & 0x0F, б >> 4]
-    return "".join(str(ц) for ц in итог if ц < 10)
+    текст = []
+    for ц in итог:
+        if ц == 0xF:
+            break
+        if ц < 10:
+            текст.append(str(ц))
+        elif знаки:
+            текст.append("*#abc"[ц - 10])
+    return "".join(текст)
 
 
 def идентификатор(тело: bytes) -> tuple[str, str] | None:
@@ -155,12 +166,25 @@ def lai(тело: bytes) -> str | None:
     return f"MCC {mcc}, MNC {mnc}, LAC {int.from_bytes(тело[3:5], 'big')}"
 
 
-def _tlv(тело: bytes, место: int):
-    """Необязательные элементы 24.008 (11.2.1.1): старший бит IEI — элемент в один октет, иначе TLV."""
+#: Необязательные элементы GMM вида TV — без длины (24.008 9.4): IEI → октетов вместе с IEI.
+#: P-TMSI signature 0x19, READY timer 0x17, GMM cause 0x25, DRX parameter 0x27 (в SM 0x27 — PCO, TLV).
+GMM_TV = {0x19: 4, 0x17: 2, 0x25: 2, 0x27: 3}
+
+
+def rai(тело: bytes) -> str | None:
+    """RAI (10.5.5.15) — ровно 6 октетов: LAI и RAC."""
+    л = lai(тело[:5]) if len(тело) == 6 else None
+    return f"{л}, RAC {тело[5]}" if л else None
+
+
+def _tlv(тело: bytes, место: int, tv: dict | None = None):
+    """Необязательные элементы 24.008 (11.2.1.1): старший бит IEI — элемент в один октет, из ``tv`` —
+    TV заданной длины, иначе TLV."""
+    tv = tv or {}
     while место < len(тело):
         iei = тело[место]
-        if iei & 0x80:
-            место += 1
+        if iei & 0x80 or iei in tv:
+            место += tv.get(iei, 1)
             continue
         if место + 2 > len(тело) or место + 2 + тело[место + 1] > len(тело):
             return
@@ -227,6 +251,20 @@ def _сведения(pd: int, тип: int, д: bytes, м: int, конец: int)
         return _личность(тело, _дальше(тело, 1))
     if pd == 8 and тип == 0x01:                                  # Attach Request: сеть MS LV, вид+CKSN, DRX, личность
         return _личность(тело, _дальше(тело, 0) + 3)
+    if pd == 8 and тип == 0x0C:                                  # Service Request: вид+CKSN, P-TMSI LV
+        return _личность(тело, 1)
+    if pd == 8 and тип in (0x02, 0x08, 0x09):                    # Attach Accept, RAU Request, RAU Accept
+        # RAI: у Attach Accept — после результата, таймера и приоритета; у RAU Accept — после результата
+        # и таймера; у RAU Request — старый RAI после вида обновления, затем возможности MS (LV).
+        место_rai = {0x02: 3, 0x08: 1, 0x09: 2}[тип]
+        дальше = _дальше(тело, 7) if тип == 0x08 else место_rai + 6
+        части = [rai(тело[место_rai:место_rai + 6])]
+        for iei, начало, дл in _tlv(тело, дальше, GMM_TV):
+            if iei == 0x18:                                      # (выделенный) P-TMSI
+                части.append(_личность(тело, начало - 1))
+            elif iei == 0x1A:                                    # дополнительная личность (RAU Request)
+                части.append(f"доп. {_личность(тело, начало - 1)}")
+        return "; ".join(ч for ч in части if ч)
     if pd == 0xA and тип == 0x41:                                # Activate PDP Context Request: NSAPI, SAPI, QoS LV,
         for iei, начало, дл in _tlv(тело, _дальше(тело, _дальше(тело, 2))):   # адрес PDP LV, затем APN (0x28)
             if iei == 0x28:
@@ -243,7 +281,7 @@ def _сведения(pd: int, тип: int, д: bytes, м: int, конец: int)
     if pd == 3 and тип == 0x05:                                  # Setup: номер вызываемого (IEI 0x5E, 10.5.4.7)
         for iei, начало, дл in _tlv(тело, 0):
             if iei == 0x5E:
-                номер = _цифры(тело[начало + 1:начало + дл])     # за октетом 3 (вид номера, план) — цифры
+                номер = _цифры(тело[начало + 1:начало + дл], знаки=True)   # за октетом 3 — цифры
                 return f"номер {номер}" if номер else ""
     return ""
 

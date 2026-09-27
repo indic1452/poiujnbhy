@@ -270,6 +270,12 @@ def _eps_идентификатор(б: bytes) -> str | None:
     return None
 
 
+def _личность_24008(б: bytes) -> str | None:
+    """Mobile identity 24.008 10.5.1.4 (IMEISV в Security mode complete, M-TMSI в Extended service request)."""
+    и = gsm.идентификатор(б)
+    return f"{и[0]} {и[1]}" if и else None
+
+
 def _5gs_идентификатор(б: bytes) -> str | None:
     """5GS mobile identity (24.501 9.11.3.4)."""
     if not б:
@@ -279,7 +285,7 @@ def _5gs_идентификатор(б: bytes) -> str | None:
         формат = (б[0] >> 4) & 7
         if формат != 0 or len(б) < 8:
             return f"SUCI (формат SUPI {формат})"
-        plmn, маршрут, схема = _plmn(б[1:]), gsm._цифры(б[4:6]), б[6] & 0x0F
+        plmn, маршрут, схема = _plmn(б[1:]), gsm._цифры(б[4:6]) or "—", б[6] & 0x0F
         if схема == 0:
             return f"SUCI: IMSI {plmn.replace('-', '')}{gsm._цифры(б[8:])} (нулевая схема), маршрут {маршрут}"
         return (f"SUCI {plmn}, маршрут {маршрут}, схема {СХЕМЫ.get(схема, схема)}, ключ сети {б[7]}, "
@@ -363,6 +369,13 @@ def _esm(с: _Сообщение, x: int, край: int) -> None:
     if тип in (0xC3, 0xC7, 0xCB, 0xCD, 0xD1, 0xD3, 0xD5, 0xD7, 0xE8) and т < край:
         с.поле("Причина ESM", "esm.cause", ПРИЧИНЫ_ESM.get(д[т], д[т]), т, 1, д[т])
         с.сводка.append(f"причина: {ПРИЧИНЫ_ESM.get(д[т], д[т])}")
+    elif тип == 0xDA:                                       # ESM information response: APN (0x28)
+        ieis = _необязательные(д, т, край, TV_EPS)
+        if 0x28 in ieis:
+            м, n = ieis[0x28]
+            apn = _метки(д[м:м + n])
+            с.поле("APN", "esm.apn", apn, м, n)
+            с.сводка.append(f"APN {apn}")
     elif тип == 0xD0 and т < край:
         с.поле("Тип PDN", "esm.pdn_type", (д[т] >> 4) & 7, т, 1)
         ieis = _необязательные(д, т + 1, край, TV_EPS)
@@ -420,6 +433,14 @@ def _emm(с: _Сообщение, x: int, край: int) -> None:
         if т + 1 < край:
             м, n, _ = с.lv(т + 1)
             с.идентификатор(м, n, _eps_идентификатор)
+    elif тип == 0x5E:                                       # Security mode complete: IMEISV (0x23)
+        ieis = _необязательные(д, т, край, TV_EPS)
+        if 0x23 in ieis:
+            м, n = ieis[0x23]
+            с.идентификатор(м, n, _личность_24008)
+    elif тип == 0x4C:                                       # Extended service request: вид, KSI, M-TMSI LV
+        м, n, _ = с.lv(т + 1)
+        с.идентификатор(м, n, _личность_24008)
     elif тип == 0x50:                                       # GUTI reallocation command
         м, n, _ = с.lv(т)
         с.идентификатор(м, n, _eps_идентификатор, "Новый GUTI")
@@ -539,6 +560,14 @@ def _5gmm(с: _Сообщение, x: int, край: int) -> None:
     elif тип == 0x5C:                                       # Identity response
         м, n, _ = с.lv(т, длинная=True)
         с.идентификатор(м, n, _5gs_идентификатор)
+    elif тип == 0x5E:                                       # Security mode complete: IMEISV (0x77) и
+        ieis = _необязательные(д, т, край, TV_5GS)          # повторённое сообщение NAS (0x71, 24.501 8.2.26)
+        if 0x77 in ieis:
+            м, n = ieis[0x77]
+            с.идентификатор(м, n, _5gs_идентификатор)
+        if 0x71 in ieis:
+            м, n = ieis[0x71]
+            с.контейнер = (м, м + n)
     elif тип in (0x42, 0x54):                               # Registration accept, Configuration update command
         т2 = с.lv(т)[2] if тип == 0x42 else т
         ieis = _необязательные(д, т2, край, TV_5GS)
@@ -585,7 +614,7 @@ def nas_5gs(р: Разбор, м: int, конец: int) -> str | None:
         return None
     у = р.уровень("NAS-5GS", "NAS 5GS (TS 24.501)", м)
     с = _Сообщение(р, у, конец, "nas_5gs")
-    с.вложенное = None
+    с.вложенное = с.контейнер = None
     с.поле("Расширенный дискриминатор", "epd", "5GMM" if д[м] == 0x7E else "5GSM", м, 1, д[м])
     try:
         if д[м] == 0x2E:
@@ -614,6 +643,8 @@ def nas_5gs(р: Разбор, м: int, конец: int) -> str | None:
     у.итог = ", ".join(с.сводка)
     if с.вложенное:
         gsm.dtap(р, *с.вложенное)
+    if с.контейнер:
+        nas_5gs(р, *с.контейнер)
     return у.итог
 
 

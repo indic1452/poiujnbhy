@@ -187,3 +187,26 @@ class СведенияTests(unittest.TestCase):
                               (7, 0x43, b"\x1a")):
             with self.subTest(pd=pd, тип=hex(тип)):
                 self.assertEqual(сведения(pd, тип, тело), "")
+
+
+class BcdRaiTlvTests(unittest.TestCase):
+    def test_цифры_до_заполнителя_и_знаки(self):
+        self.assertEqual(gsm._цифры(bytes([0x21, 0x3F, 0x54])), "12")             # после 0xF цифр нет
+        self.assertEqual(gsm._цифры(bytes([0x0F, 0xFF])), "")
+        self.assertEqual(gsm._цифры(bytes([0x21, 0x43])), "1234")
+        self.assertEqual(gsm._цифры(bytes([0xA1, 0xCB, 0xED, 0xF0])), "10")
+        self.assertEqual(gsm._цифры(bytes([0xA1, 0xCB, 0xED, 0xF0]), знаки=True), "1*#abc0")
+        self.assertEqual(gsm._цифры(bytes([0x32]), 1), "123")
+
+    def test_rai_и_tv(self):
+        self.assertEqual(gsm.rai(LAI_25001 + b"\x07"), "MCC 250, MNC 01, LAC 8000, RAC 7")
+        self.assertIsNone(gsm.rai(LAI_25001))
+        self.assertIsNone(gsm.rai(LAI_25001 + b"\x07\x08"))
+        # TV без длины (0x19 — три октета значения) не принимается за TLV.
+        тело = b"\x19\x01\x02\x03" + b"\x18" + lv(TMSI)
+        self.assertEqual(list(gsm._tlv(тело, 0, gsm.GMM_TV)), [(0x18, 6, 5)])
+        self.assertEqual(list(gsm._tlv(тело, 0))[0], (0x19, 2, 1))
+        # RAU Accept: результат, таймер, RAI, сигнатура P-TMSI (TV), выделенный P-TMSI.
+        тело = b"\x00\x5e" + LAI_25001 + b"\x07" + b"\x19\x01\x02\x03" + b"\x18" + lv(TMSI)
+        self.assertEqual(сведения(8, 0x09, тело), "MCC 250, MNC 01, LAC 8000, RAC 7; TMSI C0DE1234")
+        self.assertEqual(сведения(8, 0x0C, b"\x01" + lv(TMSI)), "TMSI C0DE1234")

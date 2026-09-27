@@ -37,6 +37,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "httpx>=0.27", "ruff>=0.5"]
+# Эталоны для сверки разбора в тестах (только у разработчика, в продукт не входят): 3GPP (NAS, RANAP, S1AP,
+# NGAP, TCAP/MAP/CAP, ISUP, SCCP) — pycrate; каталог CRC — crccheck. Без них эти сверки пропускаются.
+etalon = ["pycrate>=0.8", "crccheck>=1.3"]
 
 [project.scripts]
 reportgen = "reportgen.cli:main"          # CLI: index, ingest, generate, verify, useradd, serve…
