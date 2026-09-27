@@ -625,6 +625,9 @@ class GtpUTests(Общее):
             return mobilnye.gtp_u(р, 0, len(сообщение)), р.п
         ок, п = прямо(gtpu(1)[:7])
         self.assertEqual((False, []), (ок, п.уровни))
+        # С ненулевого места: до конца 7 байт, хотя в буфере дальше ещё есть.
+        р = Разбор(Пакет(1, 0.0, b"\x01\x02\x03" + gtpu(1) + bytes(8), 64, "RAW"))
+        self.assertEqual((False, []), (mobilnye.gtp_u(р, 3, 10), р.п.уровни))
         ок, п = прямо(gtpu(1, флаги=0x32))
         self.assertEqual((True, ["GTP"]), (ок, п.стек))
         ок, п = прямо(gtpu(255, ВНУТРИ))
