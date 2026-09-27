@@ -42,7 +42,7 @@ import numpy as np
 from . import (cikl, dlinnye, dvb, forni, gfp, hdlc, karta, kod, lineynye, oktety, pakety,
                ldpc, otn, pcs, pdh, pdh_na, peremezhenie, ploskost, polya, sdh, sinhro, skrembler, stafing,
                svyortka, tpc, turbo, vykalyvanie)
-from . import ccsds, dmr, dvbs2, gbe, kanal, modem, mpeg_ts, trau, v110
+from . import ccsds, dmr, dvbs2, dvbs2_pl, gbe, kanal, modem, mpeg_ts, trau, v110
 from .bity import в_байты, в_биты, инвертировать
 from .chtenie import Поток, прочитать
 from .nahodka import Находка
@@ -254,6 +254,15 @@ def _проверяемые(выборка: np.ndarray, глубина: int, п�
                 ветвь.проверяемая(внутри, _дальше(путь, "GSE"))
         return ветвь
     ветвь.не_найдено.append(f"DVB-S2 после LDPC{где} (BBHEADER с верной CRC-8 в начале слов БЧХ): нет")
+
+    # 1б″. PLHEADER DVB-S2 (SOF + PLS): MODCOD, тип кадра, пилоты; данные кадров — дальше.
+    найдено = dvbs2_pl.найти(выборка)
+    if найдено is not None:
+        ветвь.проверяемая(найдено, путь)
+        if найдено.дальше is not None and len(найдено.дальше) >= 4096:
+            ветвь.влить(_ступень(найдено.дальше, глубина, _дальше(путь, "данные PLFRAME"), б))
+        return ветвь
+    ветвь.не_найдено.append(f"PLHEADER DVB-S2{где} (SOF 0x18D2E82 + PLS): нет")
 
     # 1б′. Gigabit Ethernet 1000BASE-X: 8B/10B, /S/ … /T/, кадры Ethernet с верной FCS.
     найдено = gbe.найти(выборка)
