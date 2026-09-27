@@ -150,7 +150,7 @@
 
 | Уровень | Разбирается |
 |---|---|
-| Канальный | Ethernet II, IEEE 802.3 + LLC/SNAP, STP/RSTP, 802.1Q/QinQ, MPLS (стек меток, псевдопровод), ARP/RARP, PPPoE (поиск и сеанс), PPP (LCP, IPCP, IPv6CP), LLDP, Linux SLL/SLL2, Cisco HDLC, BSD loopback |
+| Канальный | Ethernet II, IEEE 802.3 + LLC/SNAP, STP/RSTP, 802.1Q/QinQ, MPLS (стек меток, псевдопровод), ARP/RARP, PPPoE (поиск и сеанс), PPP (LCP с опциями MP и аутентификации, Echo, Protocol-Reject, Identification; IPCP с DNS; IPv6CP; CCP с MPPE/MPPC и Deflate, Reset; BACP, MPLSCP и др.; PAP, CHAP, EAP, BAP; **MP** — многоканальный PPP, RFC 1990: фрагменты с B и E, длинные и короткие номера, **сборка фрагментов** в захвате по классу и номерам, короткие номера — после Configure-Ack с опцией 18), LLDP, Linux SLL/SLL2, Cisco HDLC, BSD loopback |
 | Сетевой | IPv4 (опции, фрагменты, сборка), IPv6 (переходы, маршрут, опции получателя, фрагмент, AH), ICMP (с исходным пакетом), ICMPv6 (эхо, NS/NA, RS/RA), IGMP, GRE (ключ, номер, PPTP), ESP, AH, OSPF, VRRP |
 | Транспортный | TCP (флаги, опции MSS/масштаб окна/SACK/отметки времени), UDP, SCTP (куски, DATA) |
 | Прикладной | DNS/mDNS/LLMNR (сжатие имён, TCP), DHCP, NTP, SNMP v1/v2c (BER, OID), HTTP, SIP, RTSP, SSDP, TLS (записи, ClientHello/ServerHello, SNI, ALPN, версии), QUIC (заголовки), TFTP, Syslog, RADIUS, VXLAN, GTP-U, L2TPv2, BGP, Modbus/TCP, MQTT, RTP/RTCP (по признакам), IKE/ISAKMP, NetFlow v5/v9/IPFIX, BFD, RIP, FTP/SMTP/POP3/IMAP/Telnet/SSH/IRC (строки) |

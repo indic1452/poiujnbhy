@@ -35,8 +35,19 @@ IP_ПРОТОКОЛЫ = {0: "HOPOPT", 1: "ICMP", 2: "IGMP", 4: "IPv4-в-IP", 6: 
 ДОП_PPP: Dict[int, Callable] = {}
 #: Уровень протокола для дерева протоколов: имя → «канальный»/«сетевой»/«транспортный»/«прикладной».
 ДОП_УРОВНИ: Dict[str, str] = {}
-PPP_ПРОТОКОЛЫ = {0x0021: "IPv4", 0x0057: "IPv6", 0x0281: "MPLS", 0xC021: "LCP", 0x8021: "IPCP",
-                 0x8057: "IPv6CP", 0xC023: "PAP", 0xC223: "CHAP"}
+#: Номера протоколов PPP (RFC 1661; таблица — Wireshark packet-ppp.h, IANA ppp-numbers).
+PPP_ПРОТОКОЛЫ = {0x0021: "IPv4", 0x0057: "IPv6", 0x0281: "MPLS", 0x0283: "MPLS (групповой)", 0xC021: "LCP",
+                 0x8021: "IPCP", 0x8057: "IPv6CP", 0xC023: "PAP", 0xC223: "CHAP", 0xC227: "EAP",
+                 0x003D: "MP", 0x00FD: "сжатые данные (CCP)", 0x00FB: "сжатые данные звена (CCP)",
+                 0x80FD: "CCP", 0x80FB: "CCP звена", 0x8053: "ECP", 0x0053: "шифрованные данные (ECP)",
+                 0xC025: "LQR", 0xC029: "CBCP", 0xC02B: "BACP", 0xC02D: "BAP", 0x8281: "MPLSCP",
+                 0x8023: "OSINLCP", 0x8031: "BCP", 0x0031: "мостовой кадр (BCP)", 0x8207: "CDPCP",
+                 0x0207: "CDP", 0x002D: "сжатый TCP/IP (Ван Якобсон)", 0x002F: "несжатый TCP/IP (Ван Якобсон)",
+                 0x0001: "заполнение"}
+#: Управляющие протоколы с форматом LCP (RFC 1661, 5): код, идентификатор, длина, опции.
+PPP_УПРАВЛЯЮЩИЕ = {0xC021: "LCP", 0x8021: "IPCP", 0x8057: "IPv6CP", 0x80FD: "CCP", 0x80FB: "CCP",
+                   0x8053: "ECP", 0xC02B: "BACP", 0x8281: "MPLSCP", 0x8023: "OSINLCP", 0x8031: "BCP",
+                   0x8207: "CDPCP"}
 
 
 class Разбор:
@@ -378,42 +389,127 @@ def ppp(р: Разбор, м: int, *, с_адресом: bool = True) -> None:
         ipv6(р, м)
     elif протокол == 0x0281:
         mpls(р, м)
-    elif протокол in (0xC021, 0x8021, 0x8057):
-        ppp_управление(р, м, PPP_ПРОТОКОЛЫ[протокол])
+    elif протокол in PPP_УПРАВЛЯЮЩИЕ:
+        ppp_управление(р, м, PPP_УПРАВЛЯЮЩИЕ[протокол])
     elif протокол in ДОП_PPP:
         ДОП_PPP[протокол](р, м, len(р.д))
     else:
         данные(р, м, у.итог)
 
 
+PPP_КОДЫ = {1: "Configure-Request", 2: "Configure-Ack", 3: "Configure-Nak", 4: "Configure-Reject",
+            5: "Terminate-Request", 6: "Terminate-Ack", 7: "Code-Reject"}
+#: Коды только LCP (RFC 1661, 5.7–5.9; 12, 13 — RFC 1570) и только CCP (RFC 1962, 2.1).
+LCP_КОДЫ = {8: "Protocol-Reject", 9: "Echo-Request", 10: "Echo-Reply", 11: "Discard-Request",
+            12: "Identification", 13: "Time-Remaining"}
+CCP_КОДЫ = {14: "Reset-Request", 15: "Reset-Ack"}
+#: Опции LCP (Wireshark packet-ppp.c CI_*; RFC 1661, 1570, 1990, 2125).
+LCP_ОПЦИИ = {0: "Vendor-Specific", 1: "MRU", 2: "ACCM", 3: "Authentication-Protocol", 4: "Quality-Protocol",
+             5: "Magic-Number", 7: "сжатие поля протокола (PFC)", 8: "сжатие адреса и управления (ACFC)",
+             9: "FCS-Alternatives", 10: "Self-Describing-Pad", 11: "Numbered-Mode", 13: "Callback",
+             17: "MRRU (MP)", 18: "короткие номера MP (SSNH)", 19: "Endpoint Discriminator (MP)",
+             23: "Link Discriminator (BACP)", 27: "формат заголовка MP", 28: "Internationalization"}
+#: Алгоритмы CHAP в опции Authentication-Protocol (Wireshark chap_alg_rvals).
+CHAP_АЛГОРИТМЫ = {5: "MD5", 6: "SHA-1", 7: "SHA-256", 8: "SHA3-256", 128: "MS-CHAP", 129: "MS-CHAP-2"}
+#: Классы Endpoint Discriminator (RFC 1990, 5.1.3).
+MP_КЛАССЫ = {0: "пустой", 1: "локальный", 2: "IP-адрес", 3: "MAC IEEE 802.1", 4: "блок Magic-Number",
+             5: "номер телефонной сети"}
+#: Опции IPCP (RFC 1332, 1877, 2290) и CCP (RFC 1962 и далее).
+IPCP_ОПЦИИ = {1: "IP-Addresses", 2: "IP-Compression-Protocol", 3: "IP-адрес", 4: "Mobile-IPv4",
+              129: "первичный DNS", 130: "первичный NBNS", 131: "вторичный DNS", 132: "вторичный NBNS"}
+CCP_ОПЦИИ = {0: "OUI", 1: "Predictor 1", 2: "Predictor 2", 3: "Puddle Jumper", 16: "HP PPC", 17: "Stac LZS",
+             18: "MPPE/MPPC (Microsoft)", 19: "Gandalf FZA", 20: "V.42bis", 21: "BSD LZW", 23: "LZS-DCP",
+             24: "MVRCA", 25: "DCE", 26: "Deflate", 27: "V.44/LZJH"}
+
+
+def _опция_ppp(имя: str, тип: int, значение: bytes) -> str:
+    """Текст опции управляющего протокола PPP."""
+    if имя == "LCP":
+        название = LCP_ОПЦИИ.get(тип, f"опция {тип}")
+        if тип in (1, 17) and len(значение) == 2:
+            return f"{название} {u16(значение, 0)}"
+        if тип == 2 and len(значение) == 4:
+            return f"ACCM 0x{u32(значение, 0):08x}"
+        if тип == 3 and len(значение) >= 2:
+            протокол = u16(значение, 0)
+            текст = f"аутентификация {PPP_ПРОТОКОЛЫ.get(протокол, f'0x{протокол:04x}')}"
+            if протокол == 0xC223 and len(значение) == 3:
+                текст += f" ({CHAP_АЛГОРИТМЫ.get(значение[2], f'алгоритм {значение[2]}')})"
+            return текст
+        if тип == 5 and len(значение) == 4:
+            return f"Magic-Number 0x{u32(значение, 0):08x}"
+        if тип in (7, 8, 18) and not значение:
+            return название
+        if тип == 19 and значение:
+            класс = значение[0]
+            адрес = значение[1:]
+            текст = ip4(адрес, 0) if класс == 2 and len(адрес) == 4 else (
+                mac(адрес, 0) if класс == 3 and len(адрес) == 6 else адрес.hex())
+            return f"{название}: {MP_КЛАССЫ.get(класс, f'класс {класс}')} {текст}".rstrip()
+        return f"{название}: {значение.hex() or '(пусто)'}"
+    if имя == "IPCP":
+        название = IPCP_ОПЦИИ.get(тип, f"опция {тип}")
+        if тип in (3, 129, 130, 131, 132) and len(значение) == 4:
+            return f"{название} {ip4(значение, 0)}"
+        if тип == 2 and len(значение) >= 2:
+            сжатие = u16(значение, 0)
+            return f"{название}: " + ("Ван Якобсон" if сжатие == 0x002D else f"0x{сжатие:04x}")
+        return f"{название}: {значение.hex() or '(пусто)'}"
+    if имя == "CCP":
+        название = CCP_ОПЦИИ.get(тип, f"опция {тип}")
+        if тип == 18 and len(значение) == 4:
+            биты = u32(значение, 0)
+            есть = [т for б, т in ((0x01, "MPPC"), (0x20, "MPPE 40 бит"), (0x80, "MPPE 56 бит"),
+                                   (0x40, "MPPE 128 бит"), (0x01000000, "без состояния")) if биты & б]
+            return f"{название}: {', '.join(есть) or 'ничего'} (0x{биты:08x})"
+        if тип == 26 and len(значение) == 2:
+            return f"{название}: окно {2 ** ((значение[0] >> 4) + 8)} байт, метод {значение[0] & 0x0F}"
+        return f"{название}: {значение.hex() or '(пусто)'}"
+    return f"опция {тип}: {значение.hex() or '(пусто)'}"
+
+
 def ppp_управление(р: Разбор, м: int, имя: str) -> None:
-    """LCP / IPCP / IPv6CP: код, идентификатор, длина, опции TLV."""
+    """Управляющий протокол PPP (LCP, IPCP, IPv6CP, CCP, BACP, …): код, идентификатор, длина, опции TLV."""
     у = р.уровень(имя, имя, м)
     р.нужно(м, 4)
-    коды = {1: "Configure-Request", 2: "Configure-Ack", 3: "Configure-Nak", 4: "Configure-Reject",
-            5: "Terminate-Request", 6: "Terminate-Ack", 7: "Code-Reject", 8: "Protocol-Reject",
-            9: "Echo-Request", 10: "Echo-Reply", 11: "Discard-Request"}
+    коды = dict(PPP_КОДЫ)
+    if имя == "LCP":
+        коды.update(LCP_КОДЫ)
+    elif имя == "CCP":
+        коды.update(CCP_КОДЫ)
     код, ид, длина = р.д[м], р.д[м + 1], u16(р.д, м + 2)
     у.поле("Код", имя.lower() + ".code", коды.get(код, str(код)), м, 1, код)
     у.поле("Идентификатор", имя.lower() + ".identifier", ид, м + 1, 1)
     у.поле("Длина", имя.lower() + ".length", длина, м + 2, 2)
     у.длина = длина
+    у.итог = коды.get(код, str(код))
+    конец = min(len(р.д), м + длина)
     if код in (1, 2, 3, 4):
-        место, конец = м + 4, min(len(р.д), м + длина)
+        место = м + 4
         while место + 2 <= конец:
             тип, дл = р.д[место], max(2, р.д[место + 1])
-            значение = р.д[место + 2:место + дл]
-            if имя == "IPCP" and тип == 3 and len(значение) == 4:
-                текст = f"IP-адрес {ip4(значение, 0)}"
-            elif имя == "LCP" and тип == 1 and len(значение) == 2:
-                текст = f"MRU {u16(значение, 0)}"
-            elif имя == "LCP" and тип == 5 and len(значение) == 4:
-                текст = f"Magic-Number 0x{u32(значение, 0):08x}"
-            else:
-                текст = f"опция {тип}: {значение.hex() or '(пусто)'}"
-            у.поле(текст, имя.lower() + ".opt", текст, место, дл)
+            текст = _опция_ppp(имя, тип, р.д[место + 2:место + дл])
+            у.поле(текст, имя.lower() + ".opt", текст, место, дл, тип)
+            if имя == "LCP" and тип == 18:
+                у.поле("короткие номера MP", "lcp.opt.ssnh", код == 2, место, дл, код == 2)
             место += дл
-    у.итог = коды.get(код, str(код))
+    elif имя == "LCP" and код in (9, 10, 11, 12, 13) and длина >= 8:
+        р.нужно(м + 4, 4)
+        магия = u32(р.д, м + 4)
+        у.поле("Magic-Number", "lcp.magic_number", f"0x{магия:08x}", м + 4, 4, магия)
+        if код == 13 and длина >= 12:
+            у.поле("Осталось секунд", "lcp.seconds_remaining", u32(р.д, м + 8), м + 8, 4)
+            у.итог += f", {u32(р.д, м + 8)} с"
+        elif код == 12 and длина > 8:
+            сообщение = р.д[м + 8:конец].decode("utf-8", "replace")
+            у.поле("Сообщение", "lcp.message", сообщение, м + 8, конец - м - 8)
+            у.итог += f": «{сообщение}»"
+    elif имя == "LCP" and код == 8 and длина >= 6:
+        р.нужно(м + 4, 2)
+        отвергнут = u16(р.д, м + 4)
+        у.поле("Отвергнутый протокол", "lcp.rej_proto",
+               f"0x{отвергнут:04x} ({PPP_ПРОТОКОЛЫ.get(отвергнут, 'неизвестный')})", м + 4, 2, отвергнут)
+        у.итог += f" {PPP_ПРОТОКОЛЫ.get(отвергнут, f'0x{отвергнут:04x}')}"
     р.п.инфо = f"{имя} {у.итог}"
 
 
