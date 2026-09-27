@@ -212,6 +212,10 @@ class ТестVTP(unittest.TestCase):
         п = разобрать_пакет(snap(0x2003, bytes([1, 3, 0]) + домен(b"CORP") + struct.pack(">H", 5)))
         self.assertEqual(поля(п, "VTP")["vtp.start_value"].сырое, 5)
         self.assertEqual(п.инфо, "VTP Advertisement Request, домен «CORP»")
+        # Длина домена больше 32 — показываются только 32 байта поля, следующий байт уже не домен.
+        тело = bytes([1, 3, 0, 40]) + b"A" * 32 + b"BB"
+        п = разобрать_пакет(snap(0x2003, тело))
+        self.assertEqual(поля(п, "VTP")["vtp.md"].текст, "A" * 32)
         тело = bytes([1, 4, 0]) + домен(b"CORP") + struct.pack(">HH", 0, 15) + b"\xa0\x01"
         п = разобрать_пакет(snap(0x2003, тело, добивка=False))
         ф = поля(п, "VTP")

@@ -1061,7 +1061,7 @@ NGAP_ПРОЦЕДУРЫ = {4: "DownlinkNASTransport", 9: "ErrorIndication", 14: 
 X2AP_ПРОЦЕДУРЫ = {0: "handoverPreparation", 1: "handoverCancel", 2: "loadIndication", 3: "errorIndication",
                   4: "snStatusTransfer", 5: "uEContextRelease", 6: "x2Setup", 7: "reset",
                   8: "eNBConfigurationUpdate"}
-APER_ВИДЫ = {0: "initiatingMessage", 1: "successfulOutcome", 2: "unsuccessfulOutcome"}
+APER_ВИДЫ = {0: "initiatingMessage", 1: "successfulOutcome", 2: "unsuccessfulOutcome", 3: "outcome"}
 APER_ВАЖНОСТЬ = {0: "reject", 1: "ignore", 2: "notify"}
 
 
@@ -1101,9 +1101,11 @@ def _aper_ie(д: bytes, м: int, конец: int) -> Optional[List[Tuple[int, in
 APER_IE_РАЗБОР: Dict[Tuple[str, int], Callable[[Разбор, int, int], Optional[str]]] = {}
 
 
-def _aper_pdu(р: Разбор, м: int, конец: int, имя: str, полное: str, процедуры: Dict[int, str]) -> bool:
+def _aper_pdu(р: Разбор, м: int, конец: int, имя: str, полное: str, процедуры: Dict[int, str],
+              вариантов: int = 3) -> bool:
     """S1AP-PDU / NGAP-PDU / X2AP-PDU ::= CHOICE {initiatingMessage, successfulOutcome,
-    unsuccessfulOutcome, ...}: бит расширения 0 и индекс 0–2 (байт 0x00/0x20/0x40), затем
+    unsuccessfulOutcome, ...}: бит расширения 0 и индекс 0–2 (байт 0x00/0x20/0x40; у RANAP-PDU
+    четвёртый вариант outcome — ``вариантов`` = 4, байт 0x60), затем
     SEQUENCE {procedureCode INTEGER (0..255) — байт, criticality ENUMERATED (3) — 2 бита и
     выравнивание, value — открытый тип (определитель длины + байты)}. Длина PDU обязана
     совпасть с длиной куска DATA SCTP."""
@@ -1112,7 +1114,7 @@ def _aper_pdu(р: Разбор, м: int, конец: int, имя: str, полн�
     if есть - м < 4:
         return False
     б0, код, б2 = д[м], д[м + 1], д[м + 2]
-    if б0 not in (0x00, 0x20, 0x40) or б2 not in (0x00, 0x40, 0x80):
+    if б0 & 0x1F or б0 >> 5 >= вариантов or б2 not in (0x00, 0x40, 0x80):
         return False
     дл = _aper_длина(д, м + 3)
     if дл is None:
