@@ -1662,8 +1662,16 @@ def lapd(р: Разбор, м: int) -> None:
     у.итог = итог
     р.п.инфо = "LAPD " + итог
     if информация is not None and информация < len(д):
-        if sapi == 0 and not (ea0 or not ea1) and (упр & 1 == 0 or LAPD_U.get(упр & 0xEF) == "UI"):
-            _дальше(р, q931, информация, _конец_кадра(р), "информация LAPD, не Q.931")
+        from . import abis  # noqa: PLC0415
+        с_данными = not (ea0 or not ea1) and (упр & 1 == 0 or LAPD_U.get(упр & 0xEF) == "UI")
+        конец = _конец_кадра(р)
+        # Abis (GSM 08.56): SAPI 0 — RSL (48.058), SAPI 62 — OML (12.21); иначе SAPI 0 — Q.931.
+        if sapi == 0 and с_данными and abis.rsl(р, информация, конец):
+            return
+        if sapi == 62 and с_данными and abis.oml(р, информация, конец):
+            return
+        if sapi == 0 and с_данными:
+            _дальше(р, q931, информация, конец, "информация LAPD, не Q.931")
         else:
             _данные(р, информация, "управление TEI" if sapi == 63 else f"информация LAPD, SAPI {sapi}")
 
