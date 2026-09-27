@@ -859,6 +859,7 @@ class BERНеопределённаяTests(unittest.TestCase):
     def test_нарушения(self):
         otid = ber(0x48, b"\x0a\x0b")
         for имя, tcap in (("простой с 0x80", ber(0x62, b"\x48\x80\x05\x00\x00\x00" + ber(0x6C, invoke()))),
+                          ("простой нечётный с 0x80", ber(0x64, b"\x49\x80\x05\x00\x00\x00" + ber(0x6C, invoke()))),
                           ("одинокий байт в конце", ber(0x62, otid + ber(0x6C, invoke()) + b"\x05")),
                           ("не конец в самом конце", b"\x62\x80" + otid + ber(0x6C, invoke()) + b"\x01\x00"),
                           ("длина из 4 октетов", ber(0x62, otid + b"\x6c\x84\x00\x00\x00" + bytes([len(invoke())])
