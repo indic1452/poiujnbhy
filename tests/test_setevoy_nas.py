@@ -109,6 +109,25 @@ class ТестEPS(unittest.TestCase):
         п = разобрать_пакет(s1ap(b"\x57" + bytes(5) + ATTACH_ACC, 9))
         self.assertEqual(п.уровни[-1].итог, "зашифровано")
 
+    def test_esm_под_защитой(self):
+        """TS 24.301 9.1: ESM без обёртки EMM защищается заголовком EMM — внутри дискриминатор ESM."""
+        запрос = bytes([0x02, 0x05, 0xD9])                   # ESM information request: носитель 0, PTI 5
+        for заг, итог in ((1, "ESM information request"), (3, "ESM information request"),
+                          (2, "нулевой шифр, ESM information request"), (4, "нулевой шифр, ESM information request")):
+            with self.subTest(заг):
+                п = разобрать_пакет(s1ap(bytes([заг << 4 | 7]) + bytes(5) + запрос, 11))
+                self.assertEqual(итог, п.уровни[-1].итог)
+                ф = поля(п, "NAS-EPS")
+                self.assertEqual((5, 0), (ф["nas_eps.esm.proc_trans_id"].сырое, ф["nas_eps.bearer_id"].сырое))
+        п = разобрать_пакет(s1ap(b"\x27" + bytes(5) + bytes([0x52, 0x00, 0xCE]), 11))   # носитель 5
+        self.assertEqual("нулевой шифр, Deactivate EPS bearer context accept", п.уровни[-1].итог)
+        # Незнакомый тип ESM или короткое — считаем зашифрованным; EMM из двух байт — простое.
+        for внутри in (bytes([0x02, 0x05, 0x99]), bytes([0x02, 0x05])):
+            with self.subTest(внутри.hex()):
+                self.assertEqual("зашифровано", разобрать_пакет(s1ap(b"\x27" + bytes(5) + внутри, 11)).уровни[-1].итог)
+        self.assertEqual("нулевой шифр, Attach complete",
+                         разобрать_пакет(s1ap(b"\x27" + bytes(5) + b"\x07\x43", 11)).уровни[-1].итог)
+
     def test_целостность_без_шифра(self):
         сообщение = b"\x07\x5d\x02\x00" + lv(b"\xe0\xe0")
         п = разобрать_пакет(s1ap(b"\x37" + b"\x01\x02\x03\x04\x00" + сообщение, 11))

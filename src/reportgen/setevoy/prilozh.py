@@ -12,7 +12,7 @@ import struct
 from collections.abc import Callable
 
 from .pole import Мало, ip4, ip6, mac, u16, u32, печатное
-from .razbor import Разбор, esp, ethernet, ppp, голый_ip, данные
+from .razbor import Разбор, esp, ethernet, ppp, данные
 
 # -- DNS ----------------------------------------------------------------------------------
 
@@ -664,33 +664,6 @@ def vxlan(р: Разбор, м: int, конец: int) -> bool:
     return True
 
 
-def gtp_u(р: Разбор, м: int, конец: int) -> bool:
-    д = р.д
-    if конец - м < 8 or д[м] >> 5 != 1:
-        return False
-    флаги, тип, длина, teid = д[м], д[м + 1], u16(д, м + 2), u32(д, м + 4)
-    у = р.уровень("GTP", "GPRS Tunnelling Protocol (U)", м)
-    у.поле("Флаги", "gtp.flags", f"0x{флаги:02x}", м, 1, флаги)
-    у.поле("Тип сообщения", "gtp.message", {255: "G-PDU", 1: "Echo Request", 2: "Echo Response",
-                                             26: "Error Indication", 254: "End Marker"}.get(тип, тип), м + 1, 1, тип)
-    у.поле("Длина", "gtp.length", длина, м + 2, 2)
-    у.поле("TEID", "gtp.teid", f"0x{teid:08x}", м + 4, 4, teid)
-    место = м + 8
-    if флаги & 0x07:
-        место += 4
-        следующее = д[место - 1]
-        while флаги & 0x04 and следующее and место < конец:      # заголовки расширения
-            дл = д[место] * 4
-            следующее = д[место + дл - 1]
-            место += дл
-    у.длина = место - м
-    у.итог = f"TEID 0x{teid:08x}"
-    if тип == 255 and место < конец:
-        голый_ip(р, место)
-    else:
-        р.п.инфо = "GTP " + у.итог
-    return True
-
 
 def l2tp(р: Разбор, м: int, конец: int) -> bool:
     д = р.д
@@ -699,11 +672,11 @@ def l2tp(р: Разбор, м: int, конец: int) -> bool:
     флаги = u16(д, м)
     if флаги & 0x000F != 2:
         return False
-    t, l, s, o = флаги >> 15, (флаги >> 14) & 1, (флаги >> 11) & 1, (флаги >> 9) & 1
+    t, бит_l, s, o = флаги >> 15, (флаги >> 14) & 1, (флаги >> 11) & 1, (флаги >> 9) & 1
     у = р.уровень("L2TP", "Layer 2 Tunneling Protocol v2", м)
     у.поле("Флаги", "l2tp.flags", f"0x{флаги:04x} ({'управление' if t else 'данные'})", м, 2, флаги)
     место = м + 2
-    if l:
+    if бит_l:
         у.поле("Длина", "l2tp.length", u16(д, место), место, 2)
         место += 2
     у.поле("Туннель", "l2tp.tunnel", u16(д, место), место, 2)
@@ -714,7 +687,7 @@ def l2tp(р: Разбор, м: int, конец: int) -> bool:
     if o:
         место += 2 + u16(д, место)
     у.длина = место - м
-    у.итог = f"{'управление' if t else 'данные'}, туннель {u16(д, м + (4 if l else 2))}"
+    у.итог = f"{'управление' if t else 'данные'}, туннель {u16(д, м + (4 if бит_l else 2))}"
     if not t and место < конец:
         ppp(р, место)
     else:
@@ -995,7 +968,7 @@ def _http_как(протокол: str) -> Разборщик:
 ПОРТЫ_UDP: dict[int, Разборщик] = {
     53: dns, 5353: lambda р, м, к: dns(р, м, к, имя="mDNS"), 5355: lambda р, м, к: dns(р, м, к, имя="LLMNR"),
     67: dhcp, 68: dhcp, 69: tftp, 123: ntp, 161: snmp, 162: snmp, 514: syslog, 520: rip,
-    1812: radius, 1813: radius, 1645: radius, 1646: radius, 4789: vxlan, 2152: gtp_u, 1701: l2tp,
+    1812: radius, 1813: radius, 1645: radius, 1646: radius, 4789: vxlan, 1701: l2tp,
     5060: _http_как("SIP"), 1900: _http_как("SSDP"), 443: quic, 500: isakmp, 4500: udpencap,
     2055: netflow, 9995: netflow, 9996: netflow, 4739: netflow, 3784: bfd, 4784: bfd,
 }
@@ -1015,7 +988,7 @@ TLS_ПОРТЫ = {443, 8443, 993, 995, 465, 636, 5061, 853, 989, 990}
 КАК: dict[str, dict[str, Разборщик]] = {
     "udp": {"DNS": dns, "mDNS": ПОРТЫ_UDP[5353], "LLMNR": ПОРТЫ_UDP[5355], "DHCP": dhcp, "TFTP": tftp,
             "NTP": ntp, "SNMP": snmp, "Syslog": syslog, "RIP": rip, "RADIUS": radius, "VXLAN": vxlan,
-            "GTP-U": gtp_u, "L2TP": l2tp, "SIP": ПОРТЫ_UDP[5060], "SSDP": ПОРТЫ_UDP[1900], "QUIC": quic,
+            "L2TP": l2tp, "SIP": ПОРТЫ_UDP[5060], "SSDP": ПОРТЫ_UDP[1900], "QUIC": quic,
             "IKE": isakmp, "NetFlow/IPFIX": netflow, "BFD": bfd, "RTP/RTCP": rtp},
     "tcp": {"HTTP": http, "TLS": tls, "DNS": _dns_tcp, "BGP": bgp, "Modbus/TCP": modbus, "MQTT": mqtt,
             "SIP": ПОРТЫ_TCP[5060], "RTSP": ПОРТЫ_TCP[554], "FTP": ПОРТЫ_TCP[21], "SMTP": ПОРТЫ_TCP[25],

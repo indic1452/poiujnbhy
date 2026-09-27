@@ -449,11 +449,37 @@ def diameter_эвристика(р: Разбор, м: int, конец: int) -> b
 # GTPv1-C — 3GPP TS 29.060
 # ==============================================================================================
 
-GTP1_ТИПЫ = {1: "Echo Request", 2: "Echo Response", 3: "Version Not Supported",
-             16: "Create PDP Context Request", 17: "Create PDP Context Response",
-             18: "Update PDP Context Request", 19: "Update PDP Context Response",
-             20: "Delete PDP Context Request", 21: "Delete PDP Context Response",
-             31: "Supported Extension Headers Notification"}
+#: Типы сообщений (TS 29.060, 7.1, таблица 1); сверено с pycrate (tests/test_setevoy_etalon_gtp.py).
+GTP1_ТИПЫ = {1: "Echo Request", 2: "Echo Response", 3: "Version Not Supported", 4: "Node Alive Request",
+             5: "Node Alive Response", 6: "Redirection Request", 7: "Redirection Response",
+             16: "Create PDP Context Request", 17: "Create PDP Context Response", 18: "Update PDP Context Request",
+             19: "Update PDP Context Response", 20: "Delete PDP Context Request",
+             21: "Delete PDP Context Response", 22: "Initiate PDP Context Activation Request",
+             23: "Initiate PDP Context Activation Response", 26: "Error Indication",
+             27: "PDU Notification Request", 28: "PDU Notification Response",
+             29: "PDU Notification Reject Request", 30: "PDU Notification Reject Response",
+             31: "Supported Extension Headers Notification", 32: "Send Routeing Information for GPRS Request",
+             33: "Send Routeing Information for GPRS Response", 34: "Failure Report Request",
+             35: "Failure Report Response", 36: "Note MS GPRS Present Request",
+             37: "Note MS GPRS Present Response", 48: "Identification Request", 49: "Identification Response",
+             50: "SGSN Context Request", 51: "SGSN Context Response", 52: "SGSN Context Acknowledge",
+             53: "Forward Relocation Request", 54: "Forward Relocation Response",
+             55: "Forward Relocation Complete", 56: "Relocation Cancel Request", 57: "Relocation Cancel Response",
+             58: "Forward SRNS Context", 59: "Forward Relocation Complete Acknowledge",
+             60: "Forward SRNS Context Acknowledge", 61: "UE Registration Query Request",
+             62: "UE Registration Query Response", 70: "RAN Information Relay", 96: "MBMS Notification Request",
+             97: "MBMS Notification Response", 98: "MBMS Notification Reject Request",
+             99: "MBMS Notification Reject Response", 100: "Create MBMS Context Request",
+             101: "Create MBMS Context Response", 102: "Update MBMS Context Request",
+             103: "Update MBMS Context Response", 104: "Delete MBMS Context Request",
+             105: "Delete MBMS Context Response", 112: "MBMS Registration Request",
+             113: "MBMS Registration Response", 114: "MBMS De-Registration Request",
+             115: "MBMS De-Registration Response", 116: "MBMS Session Start Request",
+             117: "MBMS Session Start Response", 118: "MBMS Session Stop Request",
+             119: "MBMS Session Stop Response", 120: "MBMS Session Update Request",
+             121: "MBMS Session Update Response", 128: "MS Info Change Notification Request",
+             129: "MS Info Change Notification Response", 240: "Data Record Transfer Request",
+             241: "Data Record Transfer Response", 254: "End Marker", 255: "G-PDU"}
 #: TV-элементы (тип < 128): тип → (имя, длина значения). TS 29.060, 7.7 и таблица 37.
 GTP1_TV: dict[int, tuple[str, int]] = {
     1: ("Cause", 1), 2: ("IMSI", 8), 3: ("Routeing Area Identity", 6), 4: ("TLLI", 4), 5: ("P-TMSI", 4),
@@ -583,7 +609,7 @@ def _gtpv1_c(р: Разбор, м: int, конец: int) -> bool:
     у.поле("Номер N-PDU", "gtp.npdu_number", д[м + 10], м + 10, 1)
     у.поле("Следующее расширение", "gtp.next", д[м + 11], м + 11, 1)
     for вид, место_р, дл in расширения:
-        у.поле(f"Заголовок расширения 0x{вид:02x}", "gtp.ext_hdr", д[место_р:место_р + дл].hex(), место_р, дл, вид)
+        _gtp_расширение(у, д, вид, место_р, дл, GTP1_РАСШИРЕНИЯ)
     if _gtp1_ie(р, у, место, есть, оборван) is None:     # IE ровно до конца сообщения
         return False
     у.длина = есть - м
@@ -595,16 +621,202 @@ def _gtpv1_c(р: Разбор, м: int, конец: int) -> bool:
 
 
 # ==============================================================================================
+# GTP-U — 3GPP TS 29.281
+# ==============================================================================================
+
+#: Типы сообщений GTP-U (TS 29.281, 6.1, таблица 6.1-1); сверено с pycrate.
+GTPU_ТИПЫ = {1: "Echo Request", 2: "Echo Response", 26: "Error Indication",
+             31: "Supported Extension Headers Notification", 253: "Tunnel Status", 254: "End Marker", 255: "G-PDU"}
+#: Типы заголовков расширения (TS 29.281, 5.2.1, рисунок 5.2.1-3); сверено с pycrate.
+GTPU_РАСШИРЕНИЯ = {1: "Reserved - Control Plane only", 2: "Reserved - Control Plane only",
+                   3: "Long PDCP PDU Number", 32: "Service Class Indicator",
+                   64: "UDP source port of the triggering message", 129: "RAN Container",
+                   130: "Long PDCP PDU Number", 131: "Xw RAN Container", 132: "NR RAN Container",
+                   133: "PDU Session Container", 192: "PDCP PDU Number", 193: "Reserved - Control Plane only",
+                   194: "Reserved - Control Plane only"}
+#: Заголовки расширения, определённые в GTPv1-C (TS 29.060, 6.1, рисунок 2); прочие — как в GTP-U.
+GTP1_РАСШИРЕНИЯ = {1: "MBMS support indication", 2: "MS Info Change Reporting support indication",
+                   193: "Suspend Request", 194: "Suspend Response"}
+#: Вид PDU Session Container (TS 38.415, 5.5.2): DL/UL PDU SESSION INFORMATION.
+PDU_СЕАНС_ВИДЫ = {0: "DL", 1: "UL"}
+#: IE GTP-U (TS 29.281, 8): TV — тип → (имя, длина значения).
+GTPU_TV = {14: ("Recovery", 1), 16: ("TEID Data I", 4)}
+GTPU_TLV = {133: "GTP-U Peer Address", 255: "Private Extension"}
+
+
+def _gtp_расширение(у: Уровень, д: bytes, вид: int, м: int, дл: int, имена: dict[int, str]) -> str:
+    """Поле заголовка расширения (TS 29.281, 5.2.1): первый байт — длина в 4 байтах, последний —
+    тип следующего. Содержимое — между ними. Возвращает краткое описание для итога ("" — нет)."""
+    имя = имена.get(вид) or GTPU_РАСШИРЕНИЯ.get(вид, f"тип 0x{вид:02x}")
+    п = у.поле(f"Заголовок расширения: {имя}", "gtp.ext_hdr", имя, м, дл, вид)
+    у.поле("Длина (×4 байта)", "gtp.ext_hdr.length", дл // 4, м, 1, родитель=п)
+    с = д[м + 1:м + дл - 1]
+    if вид == 133:                                       # TS 38.415, 5.5.2.1 (DL) и 5.5.2.2 (UL)
+        тип, qfi = с[0] >> 4, с[1] & 0x3F
+        у.поле(f"Вид PDU: {PDU_СЕАНС_ВИДЫ.get(тип, тип)}", "gtp.ext_hdr.pdu_ses_con.pdu_type", тип, м + 1, 1,
+               родитель=п)
+        у.поле("QFI", "gtp.ext_hdr.pdu_ses_con.qos_flow_id", qfi, м + 2, 1, родитель=п)
+        if тип == 0:
+            у.поле("RQI", "gtp.ext_hdr.pdu_ses_con.reflec_qos_ind", с[1] >> 6 & 1, м + 2, 1, родитель=п)
+            if с[1] & 0x80 and с[2:]:                    # PPP: есть октет PPI
+                у.поле("PPI", "gtp.ext_hdr.pdu_ses_con.paging_policy_ind", с[2] >> 5, м + 3, 1, родитель=п)
+        return f"{PDU_СЕАНС_ВИДЫ.get(тип, f'вид {тип}')} QFI {qfi}"
+    if вид == 64:
+        у.поле("Порт UDP", "gtp.ext_hdr.udp_port", u16(с, 0), м + 1, 2, родитель=п)
+    elif вид == 32:
+        у.поле("SCI", "gtp.ext_hdr.sci", с[0], м + 1, 1, родитель=п)
+    elif вид in (3, 130) and с[2:]:                      # TS 29.281, 5.2.2.2A: 18 бит
+        у.поле("Номер PDCP PDU", "gtp.ext_hdr.pdcp_sn", u24(с, 0) & 0x3FFFF, м + 1, 3, родитель=п)
+    return ""
+
+
+def _gtpu_ie(у: Уровень, д: bytes, м: int, конец: int) -> list[str]:
+    """IE GTP-U (TS 29.281, 8). Незнакомый TV-тип — остановка. Возвращает описания для итога."""
+    итог = []
+    while м < конец:
+        тип = д[м]
+        if тип in GTPU_TV:
+            имя, дл = GTPU_TV[тип]
+            заг = 1
+        elif тип == 141:                                 # 8.5: число типов — 1 байт
+            имя, заг = "Extension Header Type List", 2
+            дл = д[м + 1] if м + заг <= конец else 0
+        elif тип >= 128:
+            имя, заг = GTPU_TLV.get(тип, f"IE {тип}"), 3
+            дл = u16(д, м + 1) if м + заг <= конец else 0
+        else:
+            у.поле(f"Незнакомый TV-элемент {тип}: дальше не разбирается", "gtp.ie.unknown", тип, м, конец - м)
+            break
+        з = д[м + заг:м + заг + дл]
+        if м + заг + дл > конец:
+            у.поле(f"{имя}: обрезан", "gtp.ie.type", имя, м, конец - м, тип)
+            break
+        if тип == 16:
+            текст = f"0x{u32(з, 0):08x}"
+        elif тип == 133:
+            текст = _ip(з)
+        elif тип == 141:
+            текст = ", ".join(GTPU_РАСШИРЕНИЯ.get(x, f"0x{x:02x}") for x in з) or "(пусто)"
+        elif тип == 14:
+            текст = str(з[0])
+        else:
+            текст = з.hex() or "(пусто)"
+        у.поле(f"{имя}: {текст}", "gtp.ie.type", текст, м, заг + дл, тип)
+        итог.append(f"{имя} {текст}")
+        м += заг + дл
+    return итог
+
+
+def gtp_u(р: Разбор, м: int, конец: int) -> bool:
+    """GTP-U (TS 29.281, 5): версия 1, PT=1; при E/S/PN — ещё 4 байта (номер, N-PDU, следующее
+    расширение). Длина — после первых 8 байт. G-PDU несёт пакет пользователя (IP)."""
+    д = р.д
+    if конец - м < 8 or д[м] >> 4 != 3:
+        return False
+    флаги, тип, длина, teid = д[м], д[м + 1], u16(д, м + 2), u32(д, м + 4)
+    есть = min(конец, м + 8 + длина)
+    имя = GTPU_ТИПЫ.get(тип, f"тип {тип}")
+    у = р.уровень("GTP", "GPRS Tunnelling Protocol (U)", м)
+    пф = у.поле("Флаги", "gtp.flags", f"0x{флаги:02x}", м, 1, флаги)
+    у.поле("Расширение (E)", "gtp.flags.e", флаги >> 2 & 1, м, 1, родитель=пф)
+    у.поле("Номер (S)", "gtp.flags.s", флаги >> 1 & 1, м, 1, родитель=пф)
+    у.поле("N-PDU (PN)", "gtp.flags.pn", флаги & 1, м, 1, родитель=пф)
+    у.поле("Тип сообщения", "gtp.message", имя, м + 1, 1, тип)
+    у.поле("Длина", "gtp.length", длина, м + 2, 2)
+    у.поле("TEID", "gtp.teid", f"0x{teid:08x}", м + 4, 4, teid)
+    итог = [f"TEID 0x{teid:08x}"] if тип == 255 else [имя, f"TEID 0x{teid:08x}"]
+    место = м + 8
+    следующее = 0
+    if флаги & 0x07:
+        if место + 4 > есть:
+            р.ошибка("GTP-U: нет необязательных полей заголовка (номер, N-PDU, расширение)")
+            у.длина = есть - м
+            у.итог = ", ".join(итог)
+            р.п.инфо = "GTP " + у.итог
+            return True
+        if флаги & 0x02:
+            у.поле("Номер", "gtp.seq_number", u16(д, место), место, 2)
+        if флаги & 0x01:
+            у.поле("Номер N-PDU", "gtp.npdu_number", д[место + 2], место + 2, 1)
+        if флаги & 0x04:
+            следующее = д[место + 3]
+            у.поле("Следующее расширение", "gtp.next", следующее, место + 3, 1)
+        место += 4
+    while следующее:                                     # цепочка заголовков расширения
+        дл = д[место] * 4 if место < есть else 0
+        if дл == 0 or место + дл > есть:
+            р.ошибка(f"GTP-U: заголовок расширения 0x{следующее:02x} ошибочной длины или обрезан")
+            место = есть
+            break
+        кратко = _gtp_расширение(у, д, следующее, место, дл, {})
+        if кратко:
+            итог.append(кратко)
+        следующее = д[место + дл - 1]
+        место += дл
+    у.длина = место - м
+    if тип == 255:
+        у.итог = ", ".join(итог)
+        if место < есть:
+            razbor.голый_ip(р, место)
+            return True
+    else:
+        итог += _gtpu_ie(у, д, место, есть)
+        у.длина = есть - м
+        у.итог = ", ".join(итог)
+    р.п.инфо = "GTP " + у.итог
+    return True
+
+
+# ==============================================================================================
 # GTPv2-C — 3GPP TS 29.274
 # ==============================================================================================
 
+#: Типы сообщений (TS 29.274, 6.1, таблица 6.1-1; S101/S121 — TS 29.276, Sv — TS 29.280);
+#: сверено с pycrate.
 GTP2_ТИПЫ = {1: "Echo Request", 2: "Echo Response", 3: "Version Not Supported Indication",
-             32: "Create Session Request", 33: "Create Session Response", 34: "Modify Bearer Request",
-             35: "Modify Bearer Response", 36: "Delete Session Request", 37: "Delete Session Response",
+             4: "Direct Transfer Request", 5: "Direct Transfer Response", 6: "Notification Request",
+             7: "Notification Response", 17: "RIM Information Transfer", 25: "SRVCC PS to CS Request",
+             26: "SRVCC PS to CS Response", 27: "SRVCC PS to CS Complete Notification",
+             28: "SRVCC PS to CS Complete Acknowledge", 29: "SRVCC PS to CS Cancel Notification",
+             30: "SRVCC PS to CS Cancel Acknowledge", 31: "SRVCC CS to PS Request", 32: "Create Session Request",
+             33: "Create Session Response", 34: "Modify Bearer Request", 35: "Modify Bearer Response",
+             36: "Delete Session Request", 37: "Delete Session Response", 38: "Change Notification Request",
+             39: "Change Notification Response", 40: "Remote UE Report Notification",
+             41: "Remote UE Report Acknowledge", 64: "Modify Bearer Command",
+             65: "Modify Bearer Failure Indication", 66: "Delete Bearer Command",
+             67: "Delete Bearer Failure Indication", 68: "Bearer Resource Command",
+             69: "Bearer Resource Failure Indication", 70: "Downlink Data Notification Failure Indication",
+             71: "Trace Session Activation", 72: "Trace Session Deactivation", 73: "Stop Paging Indication",
              95: "Create Bearer Request", 96: "Create Bearer Response", 97: "Update Bearer Request",
              98: "Update Bearer Response", 99: "Delete Bearer Request", 100: "Delete Bearer Response",
-             170: "Release Access Bearers Request", 171: "Release Access Bearers Response",
-             176: "Downlink Data Notification", 177: "Downlink Data Notification Acknowledge"}
+             101: "Delete PDN Connection Set Request", 102: "Delete PDN Connection Set Response",
+             103: "PGW Downlink Triggering Notification", 104: "PGW Downlink Triggering Acknowledge",
+             128: "Identification Request", 129: "Identification Response", 130: "Context Request",
+             131: "Context Response", 132: "Context Acknowledge", 133: "Forward Relocation Request",
+             134: "Forward Relocation Response", 135: "Forward Relocation Complete Notification",
+             136: "Forward Relocation Complete Acknowledge", 137: "Forward Access Context Notification",
+             138: "Forward Access Context Acknowledge", 139: "Relocation Cancel Request",
+             140: "Relocation Cancel Response", 141: "Configuration Transfer Tunnel", 149: "Detach Notification",
+             150: "Detach Acknowledge", 151: "CS Paging Indication", 152: "RAN Information Relay",
+             153: "Alert MME Notification", 154: "Alert MME Acknowledge", 155: "UE Activity Notification",
+             156: "UE Activity Acknowledge", 157: "ISR Status Indication", 158: "UE Registration Query Request",
+             159: "UE Registration Query Response", 160: "Create Forwarding Tunnel Request",
+             161: "Create Forwarding Tunnel Response", 162: "Suspend Notification", 163: "Suspend Acknowledge",
+             164: "Resume Notification", 165: "Resume Acknowledge",
+             166: "Create Indirect Data Forwarding Tunnel Request",
+             167: "Create Indirect Data Forwarding Tunnel Response",
+             168: "Delete Indirect Data Forwarding Tunnel Request",
+             169: "Delete Indirect Data Forwarding Tunnel Response", 170: "Release Access Bearers Request",
+             171: "Release Access Bearers Response", 176: "Downlink Data Notification",
+             177: "Downlink Data Notification Acknowledge", 179: "PGW Restart Notification",
+             180: "PGW Restart Notification Acknowledge", 200: "Update PDN Connection Set Request",
+             201: "Update PDN Connection Set Response", 211: "Modify Access Bearers Request",
+             212: "Modify Access Bearers Response", 231: "MBMS Session Start Request",
+             232: "MBMS Session Start Response", 233: "MBMS Session Update Request",
+             234: "MBMS Session Update Response", 235: "MBMS Session Stop Request",
+             236: "MBMS Session Stop Response", 240: "SRVCC CS to PS Response",
+             241: "SRVCC CS to PS Complete Notification", 242: "SRVCC CS to PS Complete Acknowledge",
+             243: "SRVCC CS to PS Cancel Notification", 244: "SRVCC CS to PS Cancel Acknowledge"}
 #: Типы IE (TS 29.274, 8.1, таблица 8.1-1).
 GTP2_IE = {1: "IMSI", 2: "Cause", 3: "Recovery", 71: "APN", 72: "AMBR", 73: "EBI", 74: "IP Address",
            75: "MEI", 76: "MSISDN", 77: "Indication", 78: "PCO", 79: "PAA", 80: "Bearer QoS", 82: "RAT Type",
@@ -2008,9 +2220,10 @@ def ldap(р: Разбор, м: int, конец: int) -> bool:
 # ==============================================================================================
 
 prilozh.ПОРТЫ_TCP.update({3868: diameter, 49: tacacs, 88: kerberos_tcp, 389: ldap})
-prilozh.ПОРТЫ_UDP.update({2123: gtp_c, 3386: gtp_prime, 8805: pfcp, 4729: gsmtap, 88: kerberos_udp, 389: ldap})
+prilozh.ПОРТЫ_UDP.update({2152: gtp_u, 2123: gtp_c, 3386: gtp_prime, 8805: pfcp, 4729: gsmtap, 88: kerberos_udp,
+                          389: ldap})
 prilozh.КАК["tcp"].update({"Diameter": diameter, "TACACS+": tacacs, "Kerberos": kerberos_tcp, "LDAP": ldap})
-prilozh.КАК["udp"].update({"GTP-C": gtp_c, "GTP'": gtp_prime, "PFCP": pfcp, "GSMTAP": gsmtap,
+prilozh.КАК["udp"].update({"GTP-U": gtp_u, "GTP-C": gtp_c, "GTP'": gtp_prime, "PFCP": pfcp, "GSMTAP": gsmtap,
                            "Kerberos": kerberos_udp, "CLDAP": ldap})
 prilozh.ЭВРИСТИКИ_TCP.append(diameter_эвристика)
 razbor.ДОП_SCTP_PPID.update({46: diameter, 18: s1ap, 60: ngap, 27: x2ap})
