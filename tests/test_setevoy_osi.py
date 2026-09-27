@@ -507,3 +507,139 @@ class ЭталонOSI(unittest.TestCase):
         р = р_хвост(b"ACT-USER:::;")
         osi.tl1(р, С, С + 12)
         self.assertEqual(р.п.инфо, "TL1 команда ACT-USER, TID —, CTAG —")
+
+
+class ГраницыOSI(unittest.TestCase):
+    """Добивание мутантов: флаги, поля длиннее байта, параметры впритык, данные по видам TPDU."""
+
+    def поля_уровня(self, р, номер=0):
+        return {x[1]: x for x in дерево(р)[номер][1]}
+
+    def test_флаги_и_двухбайтовые_поля(self):
+        for тип, флаги in ((0x1D, (0, 0, 0)), (0x3C, (0, 0, 1)), (0xDC, (1, 1, 0))):
+            pdu = clnp(тип, b"", сегмент=(1, 0, 0) if тип & 0x80 else None)
+            р = р_хвост(pdu)
+            self.assertTrue(osi.clnp(р, С, С + len(pdu)), hex(тип))
+            ф = self.поля_уровня(р)
+            self.assertEqual(tuple(ф[к][4] for к in ("clnp.cnf.segmentation", "clnp.cnf.more_segments",
+                                                     "clnp.cnf.report_error")), флаги, hex(тип))
+        # Длина сегмента и поля сегментации больше 255; нулевая сумма — поле из двух октетов.
+        данные_ = bytes(300)
+        pdu = clnp(0xDC, данные_, сегмент=(0x1234, 0x0102, 0x0304), сумма=False)
+        р = р_хвост(pdu)
+        self.assertTrue(osi.clnp(р, С, С + len(pdu)))
+        ф = self.поля_уровня(р)
+        self.assertEqual([ф[к][2:] for к in ("clnp.pdu.len", "clnp.checksum", "clnp.data_unit_identifier",
+                                             "clnp.segment_offset", "clnp.total_length")],
+                         [(5, 2, len(pdu)), (7, 2, 0), (42, 2, 0x1234), (44, 2, 0x0102), (46, 2, 0x0304)])      # 9 + 1 + 10 + 1 + 21
+
+    def test_er_с_чужим_заголовком_и_данные_по_видам(self):
+        pdu = clnp(0x01, b"\x05\x06\x07")
+        р = р_хвост(pdu)
+        self.assertTrue(osi.clnp(р, С, С + len(pdu)))
+        self.assertEqual((р.п.уровни[-1].полное, р.п.уровни[-1].длина), ("Данные: CLNP: отброшенный PDU", 3))
+        # MD несёт TPDU, ERQ — нет (данные эха).
+        ak = bytes([4, 0x60, 0, 1, 0])
+        for тип, стек in ((0x1D, "TP"), (0x1E, "Данные"), (0x1F, "Данные")):
+            pdu = clnp(тип, ak)
+            р = р_хвост(pdu)
+            self.assertTrue(osi.clnp(р, С, С + len(pdu)))
+            self.assertEqual(р.п.уровни[-1].протокол, стек, hex(тип))
+
+    def test_параметры_впритык(self):
+        # Один лишний октет после параметров — не параметр и не ошибка; параметр длиннее на октет — ошибка.
+        pdu = clnp(0x1C, b"", параметры=b"\xcd\x01\x05" + b"\x00", сумма=False)
+        р = р_хвост(pdu)
+        osi.clnp(р, С, С + len(pdu))
+        self.assertEqual(р.п.ошибки, [])
+        pdu = clnp(0x1C, b"", параметры=b"\xcd\x03\x05\x06", сумма=False)
+        р = р_хвост(pdu)
+        osi.clnp(р, С, С + len(pdu))
+        self.assertEqual(р.п.ошибки, ["CLNP: параметр длиннее заголовка"])
+        pdu = clnp(0x1C, b"", параметры=b"\xcd\x01\x05\xc5\x02\x0a\x0b", сумма=False)
+        р = р_хвост(pdu)
+        osi.clnp(р, С, С + len(pdu))
+        self.assertEqual([x.текст for x in р.п.уровни[0].поля if x.ключ == "clnp.option"], ["05", "0a0b"])
+
+    def test_esis_отказы_и_удержание(self):
+        тело = bytes([4]) + b"\x49\x00\x01\x02"
+        хорошо = с_суммой(bytes([0x82, 9 + len(тело), 1, 0, 4, 0x01, 0x2C, 0, 0]) + тело, 7)
+        р = р_хвост(хорошо)
+        self.assertTrue(osi.esis(р, С, С + len(хорошо)))
+        self.assertEqual(self.поля_уровня(р)["esis.htime"][2:], (5, 2, 300))
+        for плохое, что in ((b"\x81" + хорошо[1:], "NLPID CLNP"), (хорошо[:2] + b"\x02" + хорошо[3:], "версия 2"),
+                            (хорошо[:4] + b"\x03" + хорошо[5:], "тип 3"), (хорошо[:4] + b"\x05" + хорошо[5:], "тип 5")):
+            self.assertFalse(osi.esis(р_хвост(плохое), С, С + len(плохое)), что)
+
+    def test_tpdu_li_254_и_255(self):
+        параметры = b"\x85\x01\x07" + bytes(248)                   # до края заголовка при LI 255 — ровно
+        tpdu = bytes([255, 0x60, 0, 1, 0]) + параметры
+        self.assertIsNone(osi._tpdu(tpdu, 0, len(tpdu)))
+        tpdu = bytes([254, 0x60, 0, 1, 0]) + b"\x85\x00" + bytes(248)
+        self.assertEqual(osi._tpdu(tpdu, 0, len(tpdu)), (6, 254, 255))
+        self.assertEqual(osi._tpdu(bytes([2, 0xF0, 0x80]), 0, 3), (0xF, 2, 3))
+
+    def test_данные_по_видам_tpdu(self):
+        for tpdu, описание in ((bytes([4, 0x10, 0, 1, 0x83]) + b"q", "Данные: ISO 8073: данные ED"),
+                               (bytes([6, 0xE0, 0, 0, 0, 2, 0x40]) + b"cr", "Данные: ISO 8073: данные CR"),
+                               (bytes([6, 0xD0, 0, 1, 0, 2, 0x40]) + b"cc", "Данные: ISO 8073: данные CC"),
+                               (bytes([6, 0x80, 0, 1, 0, 2, 0]) + b"dr", "Данные: ISO 8073: данные DR"),
+                               (bytes([2, 0xF0, 0x05]) + b"frag", "Данные: ISO 8073: данные DT"),
+                               (bytes([4, 0x20, 0, 1, 0]) + b"ea", "Данные: ISO 8073: не TPDU")):
+            with self.subTest(описание):
+                р = р_хвост(tpdu)
+                self.assertTrue(osi.tp(р, С, С + len(tpdu)))
+                self.assertEqual(р.п.уровни[-1].полное, описание)
+        # Нераспознанные данные DT — сводка остаётся за транспортом.
+        tpdu = bytes([2, 0xF0, 0x85]) + b"\x01\x02"
+        р = р_хвост(tpdu)
+        osi.tp(р, С, С + len(tpdu))
+        self.assertTrue(р.п.инфо.startswith("TP DT"), р.п.инфо)
+
+    def test_параметры_после_постоянной_части(self):
+        """Параметр сразу за классом, причиной, номером — на своём месте (x сдвигается ровно на октет)."""
+        случаи = ((bytes([9, 0xD0, 0, 1, 0, 2, 0x43, 0x85, 1, 7]), 7, "cotp.opts", 3),
+                  (bytes([9, 0x80, 0, 1, 0, 2, 1, 0x85, 1, 7]), 7, None, None),
+                  (bytes([7, 0x10, 0, 1, 0x80, 0x85, 1, 7]), 5, None, None),
+                  (bytes([7, 0x60, 0, 1, 0x02, 0x85, 1, 7]), 5, None, None),
+                  (bytes([7, 0x70, 0, 1, 0x02, 0x85, 1, 7]), 5, None, None))
+        for tpdu, место, ключ, значение in случаи:
+            with self.subTest(tpdu=tpdu.hex()):
+                р = р_хвост(tpdu)
+                self.assertTrue(osi.tp(р, С, С + len(tpdu)))
+                ф = self.поля_уровня(р)
+                self.assertEqual(ф["cotp.parameter"][2:], (место, 3, 0x85))
+                if ключ:
+                    self.assertEqual(ф[ключ][4], значение)
+        # 0xC3 не из двух октетов и другой код из двух — обычные параметры.
+        tpdu = bytes([10, 0x60, 0, 1, 0, 0xC3, 1, 7, 0x86, 1, 9])
+        р = р_хвост(tpdu)
+        self.assertTrue(osi.tp(р, С, С + len(tpdu)))
+        self.assertEqual([x.ключ for x in р.п.уровни[0].поля][-2:], ["cotp.parameter", "cotp.parameter"])
+        tpdu = bytes([8, 0x60, 0, 1, 0, 0x86, 2, 0, 0])
+        р = р_хвост(tpdu)
+        self.assertTrue(osi.tp(р, С, С + len(tpdu)))
+        self.assertEqual(р.п.уровни[0].поля[-1].ключ, "cotp.parameter")
+
+    def test_tsap_печатные(self):
+        for tsap, текст in ((b"A B~", "A B~"), (b"A\x7f", "417f"), (b"A\x1f", "411f"), (b"", "")):
+            параметр = bytes([0xC1, len(tsap)]) + tsap
+            tpdu = bytes([6 + len(параметр), 0xE0, 0, 0, 0, 1, 0x40]) + параметр
+            р = р_хвост(tpdu)
+            self.assertTrue(osi.tp(р, С, С + len(tpdu)))
+            self.assertEqual(self.поля_уровня(р)["cotp.src-tsap"][4], текст, tsap)
+
+    def test_tl1_поля_ответа_и_автономного(self):
+        ответ = b"\r\n   NE1 06-07-15\r\nM  100 COMPLD\r\n;"
+        р = р_хвост(ответ)
+        self.assertTrue(osi.tl1(р, С, С + len(ответ)))
+        ф = self.поля_уровня(р)
+        self.assertEqual((ф["tl1.ctag"][4], ф["tl1.comp_code"][4]), ("100", "COMPLD"))
+        авария = b"\r\n   NE1\r\n*C 17 REPT ALM\r\n;"
+        р = р_хвост(авария)
+        self.assertTrue(osi.tl1(р, С, С + len(авария)))
+        ф = self.поля_уровня(р)
+        self.assertEqual((ф["tl1.alarm_code"][4], ф["tl1.atag"][4]), ("*C", "17"))
+        for текст in (b"ACT-USER::a:1\x01;", b"ACT-USER::a:1\x7f;", b"ACT-USER::a:\x1f1;"):
+            self.assertFalse(osi.tl1(р_хвост(текст), С, С + len(текст)), текст)
+        self.assertTrue(osi.tl1(р_хвост(b"ACT-USER::a~b:1;"), С, С + 16))

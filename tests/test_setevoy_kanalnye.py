@@ -923,7 +923,8 @@ class FrameRelayАдресTests(unittest.TestCase):
         self.assertTrue(разобрать_пакет(q922(100) + b"\x03\x00", "Frame Relay").ошибки)
         # IPv6 по NLPID 0x8E.
         ип6 = с.ip6(с.udp(b"x", 1, 2, src="2001:db8::1", dst="2001:db8::2", v6=True), 17)
-        self.assertEqual(разобрать_пакет(q922(100) + b"\x03\x8e" + ип6, "Frame Relay").стек[:2], ["FR", "IPv6"])
+        п = разобрать_пакет(q922(100) + b"\x03\x8e" + ип6, "Frame Relay")
+        self.assertEqual((п.стек[:2], п.уровни[1].смещение), (["FR", "IPv6"], 4))
 
     def test_snap_по_местам(self):
         п = разобрать_пакет(q922(200) + b"\x03\x00\x80\x00\x00\x00\x08\x00" + ИП, "Frame Relay")

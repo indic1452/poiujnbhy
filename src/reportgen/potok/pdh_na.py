@@ -205,8 +205,8 @@ def boc(dl: np.ndarray) -> list[tuple[int, int, int]]:
         годно = (слова[:, 0] == 0) & (слова[:, 7] == 0) & np.all(слова[:, 8:] == 1, axis=1)
         метки = np.where(годно, слова[:, 1:7] @ (1 << np.arange(5, -1, -1)), -1)
         начала = np.flatnonzero(np.diff(метки, prepend=np.nan))    # где метка меняется (и первое слово)
-        for начало, конец in zip(начала, np.r_[начала, n][1:], strict=True):
-            if метки[начало] >= 0 and конец - начало >= BOC_ПОВТОРОВ:
+        for начало, конец in np.column_stack((начала, np.r_[начала, n][1:])):
+            if годно[начало] and конец - начало >= BOC_ПОВТОРОВ:
                 серии.append((фаза + 16 * int(начало), int(метки[начало]), int(конец - начало)))
     return sorted(серии)
 
