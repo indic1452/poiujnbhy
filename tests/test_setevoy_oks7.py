@@ -892,7 +892,8 @@ class НулиПослеTCAPTests(unittest.TestCase):
             with self.subTest(неопр=n):
                 п = разобрать_пакет(sccp_udt(адрес_pc(1, 6), адрес_pc(2, 6), неопр + bytes(n)), "SCCP")
                 self.assertEqual((["SCCP", "TCAP", "MAP"], len(неопр)), (п.стек, п.уровни[1].длина))
-                self.assertEqual(n > 0, bool(п.ошибки))
+                self.assertEqual([f"TCAP: после сообщения {n} нулевых байт (выравнивание внутри длины данных)"]
+                                 if n else [], п.ошибки)
         п = разобрать_пакет(sccp_udt(адрес_pc(1, 6), адрес_pc(2, 6), tcap), "SCCP")
         self.assertEqual((п.уровни[1].смещение, 1), (поле(п, "tcap.message_type").смещение, поле(п, "tcap.message_type").длина))
         for хвост in (bytes(4), b"\x00\x01", b"\x01"):
