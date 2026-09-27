@@ -260,3 +260,13 @@ class ТестГраницПрямо(unittest.TestCase):
         р = Разбор(Пакет(1, 0.0, bytes(16) + b"\x01\x00\x02\x05", 20, "RAW"))
         self.assertFalse(bssap.bssap(р, 16, 20))
         self.assertIsNone(bssap._элементы(bytes(16) + b"\x04", 16, 17))
+        # DTAP из двух октетов в самом конце данных — не DTAP (и без чтения за концом).
+        р = Разбор(Пакет(1, 0.0, bytes(16) + b"\x01\x00", 18, "RAW"))
+        self.assertFalse(bssap.bssap(р, 16, 18))
+
+    def test_ключ_из_одного_октета_и_речь_вне_таблицы(self):
+        п = по_dt1(bssmap(0x53, tlv(0x0A, b"\x02\xaa")))
+        self.assertEqual(поля(п)["gsm_a.bssmap.enc_info_key"].текст, "aa")
+        п = по_dt1(bssmap(0x01, tlv(0x0B, b"\x15\x08")))
+        ф = поля(п)
+        self.assertEqual((ф["gsm_a.bssmap.speech_data_ind"].текст, ф["gsm_a.bssmap.speech_data_ind"].сырое), ("5", 5))
