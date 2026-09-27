@@ -935,7 +935,14 @@ class MTP3ANSITests(unittest.TestCase):
         п = разобрать_пакет(bytes([0x83]) + метка(5, 6, 7) + udt, "MTP3")
         self.assertEqual(("Message Transfer Part Level 3 (Q.704)", ["MTP3", "SCCP", "TCAP", "MAP"]),
                          (п.уровни[0].полное, п.стек))
-        все_обрывы(self, bytes([0x83]) + метка_ansi(1, 2, 3) + udt, "MTP3")
+        # Запись оборвана внутри заголовка SCCP: за меткой ANSI SCCP не проверить — остаётся ITU;
+        # оборвана дальше (строение сходится) — ANSI с отметкой обрыва.
+        кадр = bytes([0x83]) + метка_ansi(1, 2, 3) + udt
+        п = разобрать_пакет(кадр[:20], "MTP3", исходная_длина=len(кадр))
+        self.assertEqual(("Message Transfer Part Level 3 (Q.704)", ["MTP3", "Данные"]), (п.уровни[0].полное, п.стек))
+        п = разобрать_пакет(кадр[:40], "MTP3", исходная_длина=len(кадр))
+        self.assertEqual("Message Transfer Part Level 3 (ANSI T1.111)", п.уровни[0].полное)
+        все_обрывы(self, кадр, "MTP3")
 
 
 class СегментацияSCCPTests(unittest.TestCase):
