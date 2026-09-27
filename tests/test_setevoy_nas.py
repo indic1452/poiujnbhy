@@ -6,8 +6,9 @@ import struct
 import unittest
 
 import _bootstrap  # noqa: F401
+from reportgen.setevoy.pole import Пакет
 from reportgen.setevoy.protokoly import mobilnye, nas
-from reportgen.setevoy.razbor import ДОП_УРОВНИ, разобрать_пакет
+from reportgen.setevoy.razbor import ДОП_УРОВНИ, Разбор, разобрать_пакет
 from test_setevoy_mobilnye import aper_pdu, aper_длина, на_sctp
 
 
@@ -508,6 +509,9 @@ class ТестГраницЧтения(unittest.TestCase):
                 п = разобрать_пакет(s1ap_хвост(nas_pdu))
                 self.assertEqual(п.ошибки, [])
                 self.assertEqual(п.уровни[-1].протокол, "NAS-EPS")
+                # Последнее поле — тип сообщения: байт 0x41 за концом не прочитан как причина или вид.
+                self.assertIn(раскладка(п, "NAS-EPS")[-1][0], ("nas_eps.nas_msg_emm_type", "nas_eps.nas_msg_esm_type",
+                                                                "nas_eps.emm.rand"))
         п = разобрать_пакет(s1ap_хвост(b"\x07\x52\x00" + bytes(15)))
         self.assertNotIn("nas_eps.emm.rand", поля(п, "NAS-EPS"))
         # Пустой NAS-PDU — не NAS и не ошибка.
@@ -520,6 +524,11 @@ class ТестГраницЧтения(unittest.TestCase):
                 п = разобрать_пакет(ngap_хвост(nas_pdu))
                 self.assertEqual(п.ошибки, [])
                 self.assertEqual(п.уровни[-1].протокол, "NAS-5GS")
+                self.assertIn(раскладка(п, "NAS-5GS")[-1][0], ("nas_5gs.mm.message_type", "nas_5gs.sm.message_type"))
+        # Пустой участок (м = конец) — не NAS, хотя за ним байты NAS.
+        р = Разбор(Пакет(1, 0.0, bytes(16) + b"\x07\x55\x01", 19, "RAW"))
+        self.assertIsNone(nas.nas_eps(р, 16, 16))
+        self.assertIsNone(nas.nas_5gs(Разбор(Пакет(1, 0.0, bytes(16) + b"\x7e\x00\x5b\x01", 20, "RAW")), 16, 16))
 
     def test_lv_длиннее_сообщения(self):
         п = разобрать_пакет(s1ap_хвост(b"\x07\x56\x09" + личность(IMSI, 1)[:5]))
@@ -552,6 +561,8 @@ class ТестГраницЧтения(unittest.TestCase):
         self.assertEqual(nas._необязательные(b"\x28\x05ab", 0, 4, nas.TV_EPS), {})
         self.assertEqual(nas._необязательные(b"\x77\x00\x05ab", 0, 5, nas.TV_EPS), {})
         self.assertEqual(nas._необязательные(b"\x93\x28\x03abc\x13", 0, 7, nas.TV_EPS), {0x90: (0, 1), 0x28: (3, 3)})
+        # IEI 0x80 — тип 1 (полубайт), 0x7F — TLV-E (длина 2 байта).
+        self.assertEqual(nas._необязательные(b"\x80\x7f\x00\x01a", 0, 5, nas.TV_EPS), {0x80: (0, 1), 0x7F: (4, 1)})
         tv = next(iter(nas.TV_EPS))
         n = nas.TV_EPS[tv]
         self.assertEqual(nas._необязательные(bytes([tv]) + bytes(n - 1), 0, n, nas.TV_EPS), {tv: (1, n - 1)})
@@ -627,6 +638,7 @@ class ТестПолейEMM(unittest.TestCase):
                         b"\x07\x42\x02\x21" + lv(b"\x00") + lve(b"\x02\x01")):
             п = разобрать_пакет(s1ap_хвост(nas_pdu))
             self.assertEqual(п.ошибки, [], nas_pdu.hex())
+            self.assertNotIn("nas_eps.nas_msg_esm_type", поля(п, "NAS-EPS"))
         # Причина ESM внутри контейнера Attach accept — граница контейнера своя.
         п = разобрать_пакет(s1ap(b"\x07\x42\x02\x21" + lv(b"\x00") + lve(bytes([0x52, 0x01, 0xD1, 0x1B]))))
         self.assertEqual(поля(п, "NAS-EPS")["nas_eps.esm.cause"].сырое, 0x1B)

@@ -299,9 +299,9 @@ def _необязательные(д: bytes, x: int, край: int, tv: dict) ->
     полубайт (0x80…0xF0), значение — младший полубайт на месте IEI."""
     итог = {}
     while x < край:
-        iei = д[x]
-        if iei >= 0x80:
-            начало, n = x, 1
+        iei = ключ = д[x]
+        if iei >= 0x80:                                     # тип 1: IEI — старший полубайт
+            начало, n, ключ = x, 1, iei & 0xF0
         elif iei in tv:
             начало, n = x + 1, tv[iei] - 1
         elif iei & 0xF0 == 0x70:
@@ -314,7 +314,7 @@ def _необязательные(д: bytes, x: int, край: int, tv: dict) ->
             начало, n = x + 2, д[x + 1]
         if начало + n > край:                               # значение за концом сообщения — дальше не читать
             break
-        итог.setdefault(iei & 0xF0 if iei >= 0x80 else iei, (начало, n))
+        итог.setdefault(ключ, (начало, n))
         x = начало + n
     return итог
 
