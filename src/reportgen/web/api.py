@@ -2679,8 +2679,7 @@ def potok_bits(request: Request, job_id: str, stage: int = 0, start: int = 0,
 @router.get("/potok/{job_id}/periods")
 def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, Any]:
     """Кандидаты периода по автокорреляции."""
-    from ..potok import rastr  # noqa: PLC0415
-    from ..potok import cikl  # noqa: PLC0415
+    from ..potok import cikl, rastr  # noqa: PLC0415
     user = require_user(request)
     задания = _potok(request)
     _файл_бит_или_400(request, user, job_id, stage)
@@ -3195,15 +3194,19 @@ def sessions_get(request: Request, session_id: str) -> dict[str, Any]:
     """Сессия: участники и файлы (корни деревьев обработки) с производными узлами."""
     user = require_user(request)
     сессия = _сессия_или_404(request, user, session_id)
-    все = [з for з in _potok(request).список(user.id, [session_id]) if з.get("сессия") == session_id]
-    ид_всех = {з["ид"] for з in все}
-    корни = sorted((з for з in все if (з.get("от") or "").split("#")[0] not in ид_всех),
-                   key=lambda з: з.get("создано") or 0)
+    деревья = _potok(request).деревья_сессии(session_id)
+
+    def узлы(у: dict[str, Any]) -> list[dict[str, Any]]:
+        return [у] + [в for д in у["дети"] for в in узлы(д)]
+
+    все = [в for д in деревья for в in узлы(д)]
     return {"session": _сессия_кратко(request, user, сессия, все),
             "people": _люди(request, [сессия["владелец"], *(сессия.get("участники") or [])]),
-            "files": [{к: з.get(к) for к in ("ид", "имя", "байт", "состояние", "создано", "владелец",
+            "files": [{к: д.get(к) for к in ("ид", "имя", "байт", "состояние", "создано", "владелец",
                                              "разбирать")}
-                      | {"узлов": sum(1 for д in все if д["ид"] != з["ид"])} for з in корни]}
+                      | {"узлов": len(узлы(д)) - 1} for д in деревья],
+            # Деревья обработки всех файлов — стол сессии открывается одним запросом.
+            "trees": деревья}
 
 
 @router.patch("/sessions/{session_id}")

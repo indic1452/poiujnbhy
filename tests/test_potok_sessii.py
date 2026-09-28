@@ -568,6 +568,23 @@ class ЗаданияСессийTests(unittest.TestCase):
         self.assertEqual({общий, продолжение}, set(удалены))
         self.assertEqual([свой], [з["ид"] for з in self.з.список()])
 
+    def test_деревья_сессии(self):
+        а = self.з.создать(владелец=1, имя="a", данные=b"\x00" * 8, разбирать=False, сессия="dddddddddddd")
+        time.sleep(0.01)
+        б = self.з.создать(владелец=2, имя="b", данные=b"\x01" * 8, разбирать=False, сессия="dddddddddddd")
+        чужой = self.з.создать(владелец=1, имя="c", данные=b"\x02" * 8, разбирать=False, сессия="eeeeeeeeeeee")
+        for и in (а, б, чужой):
+            self.готово(и)
+        ребёнок = self.з.создать(владелец=2, имя="a → x", данные=b"\x00" * 8, разбирать=False,
+                                 от=f"{а}#0", сессия="dddddddddddd")
+        self.готово(ребёнок)
+        деревья = self.з.деревья_сессии("dddddddddddd")
+        self.assertEqual([а, б], [д["ид"] for д in деревья])                 # по времени добавления
+        self.assertEqual([ребёнок], [д["ид"] for д in деревья[0]["дети"]])
+        self.assertEqual((0, []), (деревья[0]["дети"][0]["этап_родителя"], деревья[1]["дети"]))
+        self.assertEqual(self.з.дерево(а, 1, ["dddddddddddd"]), деревья[0])     # то же, что дерево узла
+        self.assertEqual([], self.з.деревья_сессии("ffffffffffff"))
+
     def test_удалить_сессию_с_идущим_разбором(self):
         ид = self.з.создать(владелец=1, имя="a", данные=b"\x00" * 8, разбирать=False, сессия="bbbbbbbbbbbb")
         self.готово(ид)
@@ -650,6 +667,8 @@ class СессииЧерезСерверTests(unittest.TestCase):
                          [(с["id"], с["name"], с["files"], с["bytes"], с["mine"]) for с in сессии])
         сессия = к.get(f"/api/sessions/{сид}").json()
         self.assertEqual([ид], [ф["ид"] for ф in сессия["files"]])
+        self.assertEqual([ид], [д["ид"] for д in сессия["trees"]])
+        self.assertEqual(0, сессия["files"][0]["узлов"])
         self.assertEqual(["engineer"], [ч["login"] for ч in сессия["people"]])
         # Задания сессии не в «моих разборах».
         self.assertNotIn(ид, [з["ид"] for з in к.get("/api/potok").json()["items"]])
@@ -683,6 +702,9 @@ class СессииЧерезСерверTests(unittest.TestCase):
         self.assertEqual(р, к.get(f"/api/potok/{ид}/marks").json()["marks"])
         дерево = к.get(f"/api/potok/{ид}/tree").json()["tree"]
         self.assertEqual([новый], [д["ид"] for д in дерево["дети"]])
+        у_группы = к.get(f"/api/sessions/{сид}").json()
+        self.assertEqual(дерево, у_группы["trees"][0])
+        self.assertEqual((1, 1, 2), (у_группы["files"][0]["узлов"], у_группы["session"]["files"], у_группы["session"]["nodes"]))
         self.assertEqual(403, к.patch(f"/api/sessions/{сид}", json={"name": "моё"}).status_code)
         self.assertEqual(403, к.delete(f"/api/sessions/{сид}").status_code)
         self.assertEqual(403, к.delete(f"/api/potok/{новый}").status_code)   # чужой узел
@@ -864,7 +886,7 @@ const итог = случаи.map((с) => {
 });
 process.stdout.write(JSON.stringify(итог));
 """
-        готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=120)
+        готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=20)
         self.assertEqual(0, готово.returncode, готово.stderr)
         return json.loads(готово.stdout)
 
@@ -879,6 +901,12 @@ process.stdout.write(JSON.stringify(итог));
                              "до": int(g.integers(0, 4000)) * int(g.integers(0, 2))}
                             for п in g.integers(1, 300, int(g.integers(0, 4)))]})
             от, длина = int(g.integers(0, 3500)), int(g.integers(1, 1500))
+            случаи.append({"что": "маска", "р": р, "от": от, "длина": длина})
+            ждём.append([int(х) for х in rastr.маска_разметки(от + длина, р)[от:]])
+        # Правило с первого бита потока; правило «весь период» с концом участка внутри окна; пустой участок.
+        for р, от, длина in (({"отрезки": [], "правила": [{"период": 8, "сдвиг": 0, "ширина": 1, "от": 0, "до": 0}]}, 0, 20),
+                             ({"отрезки": [], "правила": [{"период": 4, "сдвиг": 1, "ширина": 4, "от": 0, "до": 10}]}, 2, 20),
+                             ({"отрезки": [], "правила": [{"период": 4, "сдвиг": 1, "ширина": 2, "от": 30, "до": 12}]}, 0, 40)):
             случаи.append({"что": "маска", "р": р, "от": от, "длина": длина})
             ждём.append([int(х) for х in rastr.маска_разметки(от + длина, р)[от:]])
         self.assertEqual(ждём, self.выполнить(случаи))
@@ -897,6 +925,12 @@ process.stdout.write(JSON.stringify(итог));
             случаи.append({"что": "отрезки", "шаги": шаги})
             слитые = rastr.проверить_разметку({"отрезки": [[i, 1] for i in sorted(множество)]})["отрезки"]
             ждём.append(слитые)
+        # Края: снять начало и конец отрезка ровно по его границам; снять касающееся — отрезок цел.
+        for шаги, слитые in (([[5, 10, True], [5, 7, False]], [[7, 3]]), ([[5, 10, True], [8, 10, False]], [[5, 3]]),
+                             ([[5, 10, True], [0, 5, False]], [[5, 5]]), ([[5, 10, True], [10, 12, False]], [[5, 5]]),
+                             ([[5, 10, True], [5, 10, False]], []), ([[5, 10, True], [10, 12, True]], [[5, 7]])):
+            случаи.append({"что": "отрезки", "шаги": шаги})
+            ждём.append(слитые)
         self.assertEqual(ждём, self.выполнить(случаи))
 
     def test_единицы_и_биты_строкой(self):
@@ -913,26 +947,30 @@ process.stdout.write(JSON.stringify(итог));
         self.assertEqual(ждём, self.выполнить(случаи))
 
     def test_имя_снимка_латиницей(self):
-        случаи = ["Запись Щука.bin", "ЁЖИК-2 ъ", "abc_1.2-x", "", "a/b:c*d", "Юля"]
-        self.assertEqual(["Zapis_Shchuka.bin", "EZhIK-2_", "abc_1.2-x", "massiv", "a_b_c_d", "Yulya"],
+        случаи = ["Запись Щука.bin", "ЁЖИК-2 ъ", "abc_1.2-x", "", "a/b:c*d", "Юля", "Log-X9.Z", "a  // b"]
+        self.assertEqual(["Zapis_Shchuka.bin", "EZhIK-2_", "abc_1.2-x", "massiv", "a_b_c_d", "Yulya", "Log-X9.Z", "a_b"],
                          self.выполнить([{"что": "латиницей", "текст": т} for т in случаи]))
 
     def test_итог_и_описание(self):
         g = np.random.default_rng(14)
         байты = g.integers(0, 256, 20000, dtype=np.uint8)
         биты = np.unpackbits(байты)
-        р = rastr.проверить_разметку({"отрезки": [[5, 70000], [150000, 10]],
+        # Отрезок у бита 94 464: в последнем куске подсчёта (65 536 бит на кусок) он лежит сразу за концом.
+        р = rastr.проверить_разметку({"отрезки": [[5, 70000], [94000, 1000], [150000, 10]],
                                       "правила": [{"период": 256, "сдвиг": 3, "ширина": 2}]})
         маска = rastr.маска_разметки(len(биты), р)
         итог = self.выполнить([{"что": "итог", "байты": байты.tolist(), "р": р, "n": len(биты)},
                                {"что": "описание", "р": р},
                                {"что": "описание", "р": {"отрезки": [[5, 5]], "правила": [
                                    {"период": 8, "сдвиг": 1, "ширина": 1, "от": 16, "до": 0}]}},
-                               {"что": "описание", "р": {"отрезки": [], "правила": []}}])
+                               {"что": "описание", "р": {"отрезки": [], "правила": []}},
+                               {"что": "описание", "р": {"отрезки": [[10, 3]], "правила": [
+                                   {"период": 16, "сдвиг": 2, "ширина": 3, "от": 0, "до": 50}]}}])
         self.assertEqual({"всего": int(маска.sum()), "единиц": int(биты[маска].sum())}, итог[0])
-        self.assertEqual("2 отрезк. (70010 бит); биты 3–4 с периодом 256", итог[1])
+        self.assertEqual("3 отрезк. (71010 бит); биты 3–4 с периодом 256", итог[1])
         self.assertEqual("биты 5–9; бит 1 с периодом 8 (участок 16…конец)", итог[2])
         self.assertEqual("пусто", итог[3])
+        self.assertEqual("биты 10–12; биты 2–4 с периодом 16 (участок 0…50)", итог[4])
 
 
 class СтраницаСессийTests(unittest.TestCase):

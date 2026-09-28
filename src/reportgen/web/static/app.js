@@ -9258,11 +9258,11 @@
     /** Отрезки после того, как [а, к) размечен (добавить) или очищен: слитые, по порядку. */
     function изменитьОтрезки(отрезки, а, к, добавить) {
         const итог = [];
+        // От каждого отрезка остаётся часть левее «а» и часть правее «к» (у непересекающихся — он весь).
         отрезки.forEach(([н, д]) => {
             const е = н + д;
-            if (е <= а || н >= к) { итог.push([н, д]); return; }
-            if (н < а) итог.push([н, а - н]);
-            if (е > к) итог.push([к, е - к]);
+            if (н < а) итог.push([н, Math.min(е, а) - н]);
+            if (е > к) итог.push([Math.max(н, к), е - Math.max(н, к)]);
         });
         if (добавить && к > а) итог.push([а, к - а]);
         итог.sort((x, y) => x[0] - y[0]);
@@ -9290,7 +9290,6 @@
         }
         р.правила.forEach((п) => {
             const а = Math.max(от, п.от || 0), к = Math.min(до, п.до || Infinity);
-            if (а >= к) return;
             if (п.ширина >= п.период) { out.fill(1, а - от, к - от); return; }
             for (let н = а - ((((а - п.сдвиг) % п.период) + п.период) % п.период); н < к; н += п.период) {
                 const x = Math.max(а, н), y = Math.min(к, н + п.ширина);
@@ -9534,11 +9533,10 @@
         async function загрузитьДерево(выбрать) {
             try {
                 if (sessionId) {
+                    // Сессия с деревьями всех файлов — одним запросом.
                     const сессия = await api.get('/api/sessions/' + encodeURIComponent(sessionId));
-                    const деревья = await Promise.all(сессия.files.map((ф) => api.get('/api/potok/' + encodeURIComponent(ф.ид) + '/tree')
-                        .then((d) => d.tree).catch(() => null)));
                     с.сессия = сессия;
-                    с.корень = { имя: сессия.session.name, деревья: деревья.filter(Boolean) };
+                    с.корень = { имя: сессия.session.name, деревья: сессия.trees || [] };
                 } else {
                     const data = await api.get('/api/potok/' + encodeURIComponent(jobId) + '/tree');
                     с.корень = data.tree;
