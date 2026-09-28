@@ -2972,6 +2972,45 @@ def potok_scrambler_search(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError(str(ошибка), 400) from None
 
 
+#: Статистическим тестам по умолчанию — миллион бит (рекомендация NIST SP 800-22), самое большее — 16 млн.
+СТАТИСТИКА_ПО = 1_000_000
+СТАТИСТИКА_ДО = 16_000_000
+
+
+@router.post("/potok/{job_id}/stats")
+def potok_stats(request: Request, job_id: str) -> dict[str, Any]:
+    """Тесты NIST SP 800-22 и характеристики ENT: над участком массива или над размеченными битами.
+
+    ``from`` и ``length`` — участок (бит); ``marks`` — взять размеченные биты массива
+    (разметка с сервера), из них — участок.
+    """
+    from ..potok import rastr, statistika_bit  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    этап = int(тело.get("stage") or 0)
+    _файл_бит_или_400(request, user, job_id, этап)
+    задания = _potok(request)
+    try:
+        от = max(0, int(тело.get("from") or 0))
+        длина = min(СТАТИСТИКА_ДО, max(1, int(тело.get("length") or СТАТИСТИКА_ПО)))
+    except (TypeError, ValueError):
+        raise ServiceError("участок: from и length — целые числа бит", 400) from None
+    по_разметке = bool(тело.get("marks"))
+    разметка = задания.разметка(job_id, этап) if по_разметке else None
+    if по_разметке and not (разметка["отрезки"] or разметка["правила"]):
+        raise ServiceError("у массива нет разметки", 400)
+
+    def посчитать():
+        # ENT считает байты участка, упакованные с его первого бита.
+        биты = (rastr.по_разметке(задания.биты(job_id, этап), разметка, "взять")[от:от + длина] if по_разметке
+                else задания.биты_участка(job_id, этап, от, от + длина))
+        return statistika_bit.проверить(биты)
+
+    итог = задания.запомнить(job_id, этап, "статистика:" + json.dumps(
+        {"от": от, "длина": длина, "разметка": разметка}, sort_keys=True, ensure_ascii=False), посчитать)
+    return итог | {"from": от, "marks": по_разметке}
+
+
 def _отбор_кадров(тело: dict[str, Any]) -> list[dict[str, Any]]:
     отбор = []
     for у in (тело.get("filter") or [])[:16]:

@@ -822,6 +822,21 @@ class СессииЧерезСерверTests(unittest.TestCase):
                                               json={"degree": 7, "taps": 2, "first": 8}).json()["лучшие"][0])
         self.assertEqual(400, к.post(f"/api/potok/{ид}/scrambler-search", json={"degree": 99}).status_code)
         self.assertEqual(400, к.post(f"/api/potok/{ид}/scrambler-search", json={"degree": "x"}).status_code)
+        # Статистика NIST и ENT: участок, размеченные биты; повтор — из памяти.
+        стат = к.post(f"/api/potok/{ид}/stats", json={"from": 8, "length": 4096}).json()
+        self.assertEqual((4096, 8, False), (стат["бит"], стат["from"], стат["marks"]))
+        self.assertEqual(int(б[8:8 + 4096].sum()), стат["единиц"])
+        self.assertEqual(512, стат["ent"]["байт"])
+        self.assertEqual(стат, к.post(f"/api/potok/{ид}/stats", json={"from": 8, "length": 4096}).json())
+        self.assertEqual(1000000, к.post(f"/api/potok/{ид}/stats", json={}).json()["бит"])
+        self.assertEqual(400, к.post(f"/api/potok/{ид}/stats", json={"marks": True}).status_code)   # разметки нет
+        self.assertEqual(400, к.post(f"/api/potok/{ид}/stats", json={"from": "x"}).status_code)
+        к.put(f"/api/potok/{ид}/marks", json={"marks": {"отрезки": [[100, 50], [1000, 30]]}})
+        по_меткам = к.post(f"/api/potok/{ид}/stats", json={"marks": True, "from": 10}).json()
+        ждём = np.concatenate([б[100:150], б[1000:1030]])[10:]
+        self.assertEqual((70, int(ждём.sum()), True), (по_меткам["бит"], по_меткам["единиц"], по_меткам["marks"]))
+        self.assertEqual(len(б), к.post(f"/api/potok/{ид}/stats", json={"length": 10 ** 9}).json()["бит"])   # весь массив
+        self.assertEqual(1, к.post(f"/api/potok/{ид}/stats", json={"length": -5}).json()["бит"])
         # Кандидаты периода — тоже из памяти при повторе.
         periods = к.get(f"/api/potok/{ид}/periods").json()["items"]
         self.assertEqual(periods, к.get(f"/api/potok/{ид}/periods").json()["items"])
