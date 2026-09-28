@@ -2650,6 +2650,15 @@ def potok_continue(request: Request, job_id: str) -> dict[str, Any]:
 
 # -- растр и ручные инструменты ----------------------------------------------------------
 
+def _файл_бит_или_400(request: Request, user, job_id: str, stage: int) -> None:
+    """Доступ к массиву и что у этапа есть биты — без распаковки самих бит."""
+    _задание_или_404(request, user, job_id)
+    try:
+        _potok(request).файл_бит(job_id, int(stage))
+    except (ValueError, OSError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
 def _биты_задания(request: Request, user, job_id: str, stage: int):
     _задание_или_404(request, user, job_id)
     try:
@@ -2671,9 +2680,12 @@ def potok_bits(request: Request, job_id: str, stage: int = 0, start: int = 0,
 def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, Any]:
     """Кандидаты периода по автокорреляции."""
     from ..potok import rastr  # noqa: PLC0415
+    from ..potok import cikl  # noqa: PLC0415
     user = require_user(request)
-    _биты_задания(request, user, job_id, stage)
-    return {"items": _potok(request).запомнить(job_id, stage, "периоды", rastr.периоды)}
+    задания = _potok(request)
+    _файл_бит_или_400(request, user, job_id, stage)
+    return {"items": задания.запомнить(job_id, stage, "периоды",
+                                       lambda: rastr.периоды(задания.биты_участка(job_id, stage, 0, cikl.ВЫБОРКА)))}
 
 
 @router.post("/potok/{job_id}/tool")
@@ -2917,15 +2929,17 @@ def potok_period_search(request: Request, job_id: str) -> dict[str, Any]:
     user = require_user(request)
     тело = _body(request)
     этап = int(тело.get("stage") or 0)
-    _биты_задания(request, user, job_id, этап)
+    _файл_бит_или_400(request, user, job_id, этап)
+    задания = _potok(request)
     try:
         параметры = {"от": int(тело.get("from") or 8), "до": int(тело.get("to") or 8192),
                      "шаг": int(тело.get("step") or 1), "глубина_от": int(тело.get("depth_min") or 8),
                      "глубина_до": int(тело.get("depth_max") or 64),
                      "качество": float(тело.get("quality") or 90)}
-        найдено = _potok(request).запомнить(
+        нужно = rastr.бит_поиску_периода(параметры["до"], параметры["глубина_до"])
+        найдено = задания.запомнить(
             job_id, этап, "поиск_периода:" + json.dumps(параметры, sort_keys=True),
-            lambda биты: rastr.поиск_периода(биты, **параметры))
+            lambda: rastr.поиск_периода(задания.биты_участка(job_id, этап, 0, нужно), **параметры))
     except (ValueError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     return {"items": найдено}
@@ -2938,20 +2952,22 @@ def potok_scrambler_search(request: Request, job_id: str) -> dict[str, Any]:
     user = require_user(request)
     тело = _body(request)
     этап = int(тело.get("stage") or 0)
-    _биты_задания(request, user, job_id, этап)
+    _файл_бит_или_400(request, user, job_id, этап)
+    задания = _potok(request)
     try:
         степень, отводов = int(тело.get("degree") or 0), int(тело.get("taps") or 2)
         первый = max(0, int(тело.get("first") or 0))
         аддитивный = bool(тело.get("additive"))
 
-        def посчитать(биты):
-            итог = skrembler.перебор_степени(биты[первый:], степень, отводов)
+        def посчитать():
+            биты = задания.биты_участка(job_id, этап, первый, первый + skrembler.ВЫБОРКА_ПЕРЕБОРА)
+            итог = skrembler.перебор_степени(биты, степень, отводов)
             if аддитивный:
                 for лучший in итог["лучшие"][:3]:
-                    лучший["аддитивный"] = skrembler.начальная_установка(биты[первый:], лучший["отводы"])
+                    лучший["аддитивный"] = skrembler.начальная_установка(биты, лучший["отводы"])
             return итог
 
-        return _potok(request).запомнить(
+        return задания.запомнить(
             job_id, этап, f"скремблер:{степень}:{отводов}:{первый}:{int(аддитивный)}", посчитать)
     except (ValueError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None

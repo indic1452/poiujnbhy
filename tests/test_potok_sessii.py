@@ -7,6 +7,9 @@
 """
 
 import json
+import re
+import shutil
+import subprocess
 import tempfile
 import time
 import unittest
@@ -217,6 +220,16 @@ class ПоискПериодаTests(unittest.TestCase):
         # При 100 % ни один столбец с ошибками не устойчив — маркера нет.
         self.assertEqual([], rastr.поиск_периода(б, от=1000, до=1000, качество=100))
 
+    def test_начала_потока_хватает(self):
+        # API отдаёт поиску только начало потока: итог тот же, что по всему потоку.
+        б = поток_с_маркером(3000, "1011001110001111", 1 << 25, начало=1234, ошибок=0.01)
+        for до, глубина in ((8192, 64), (4000, 32), (65536, 64)):
+            with self.subTest(до=до):
+                нужно = rastr.бит_поиску_периода(до, глубина)
+                self.assertLess(нужно, len(б))
+                self.assertEqual(rastr.поиск_периода(б, от=8, до=до, глубина_до=глубина),
+                                 rastr.поиск_периода(б[:нужно], от=8, до=до, глубина_до=глубина))
+
     def test_короткий_маркер_e1(self):
         б = поток_с_маркером(512, "0011011", 1 << 23, начало=1)
         найдено = rastr.поиск_периода(б, от=8, до=4096, глубина_от=4)
@@ -350,6 +363,24 @@ class ЗаданияСессийTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.з.файл_бит("20990101-000000-000000", 0)
 
+    def test_биты_участка(self):
+        данные = bytes(np.random.default_rng(2).integers(0, 256, 4096, dtype=np.uint8))
+        ид = self.з.создать(владелец=1, имя="a", данные=данные, разбирать=False)
+        self.готово(ид)
+        все = np.unpackbits(np.frombuffer(данные, np.uint8))
+        for от, до in ((0, 100), (3, 17), (13, 13), (8, 16), (5, None), (32760, 40000), (-4, 9), (20, 10)):
+            with self.subTest(от=от, до=до):
+                ждём = все[max(0, от):до] if до is None or до >= max(0, от) else все[:0]
+                кусок = self.з.биты_участка(ид, 0, от, до)
+                self.assertTrue(np.array_equal(ждём, кусок))
+                self.assertFalse(кусок.flags.writeable)
+        # Весь массив уже в памяти — участок берётся из неё, без чтения файла.
+        полные = self.з.биты(ид, 0)
+        self.assertIs(полные.base if полные.base is not None else полные,
+                      self.з.биты_участка(ид, 0, 10, 20).base)
+        with self.assertRaises(ValueError):
+            self.з.биты_участка(ид, 4, 0, 10)
+
     def test_память_ограничена(self):
         старый = модуль.КЭШ_БИТ
         модуль.КЭШ_БИТ = 8 * 1024 * 2 + 1
@@ -377,9 +408,10 @@ class ЗаданияСессийTests(unittest.TestCase):
         self.готово(ид)
         вызовов = []
 
-        def посчитать(биты):
-            вызовов.append(len(биты))
-            return {"бит": len(биты)}
+        def посчитать():
+            n = len(self.з.биты(ид, 0))
+            вызовов.append(n)
+            return {"бит": n}
 
         self.assertEqual({"бит": 512}, self.з.запомнить(ид, 0, "к", посчитать))
         self.assertEqual({"бит": 512}, self.з.запомнить(ид, 0, "к", посчитать))
@@ -627,6 +659,151 @@ class СессииЧерезСерверTests(unittest.TestCase):
         # Кандидаты периода — тоже из памяти при повторе.
         periods = к.get(f"/api/potok/{ид}/periods").json()["items"]
         self.assertEqual(periods, к.get(f"/api/potok/{ид}/periods").json()["items"])
+
+
+КОРЕНЬ = Path(__file__).resolve().parents[1]
+APP_JS = КОРЕНЬ / "src" / "reportgen" / "web" / "static" / "app.js"
+
+
+def функции_js(имена: list[str], константы: list[str]) -> str:
+    """Функции и константы из app.js — текстом, по имени (скобки считаются по вложенности)."""
+    текст = APP_JS.read_text(encoding="utf-8")
+    куски = []
+    for имя in константы:
+        начало = текст.index(f"    const {имя} = ")
+        i, глубина = начало, 0
+        while not (текст[i] == ";" and глубина == 0):
+            глубина += (текст[i] in "([{") - (текст[i] in ")]}")
+            i += 1
+        куски.append(текст[начало:i + 1])
+    for имя in имена:
+        начало = текст.index(f"    function {имя}(")
+        i = текст.index("{", текст.index(")", начало))
+        глубина = 0
+        while True:
+            if текст[i] == "{":
+                глубина += 1
+            elif текст[i] == "}":
+                глубина -= 1
+                if глубина == 0:
+                    break
+            i += 1
+        куски.append(текст[начало:i + 1])
+    return "\n".join(куски)
+
+
+@unittest.skipUnless(shutil.which("node"), "нужен node")
+class РазметкаВБраузереTests(unittest.TestCase):
+    """Разметка и подсчёт бит в битовом просмотре — те же, что на сервере.
+
+    Просмотр рисует метки сам (``маскаМеток``), а новый массив из разметки
+    делает сервер (``rastr.маска_разметки``): разойдись они — аналитик увидит
+    жёлтым одно, а в массив попадёт другое. Функции берутся прямо из app.js и
+    выполняются в node на тех же случаях, что и серверные.
+    """
+
+    def выполнить(self, случаи: list[dict]) -> list:
+        код = функции_js(["битМассива", "единицВОтрезке", "битыСтрокой", "пустаяРазметка", "изменитьОтрезки",
+                          "маскаМеток", "итогРазметки", "описатьРазметку"], ["ЕДИНИЦ_В_БАЙТЕ"])
+        код += """
+const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+const итог = случаи.map((с) => {
+    if (с.что === 'маска') { const out = new Uint8Array(с.длина + 5).fill(7); маскаМеток(с.р, с.от, с.длина, out); return Array.from(out.subarray(0, с.длина)); }
+    if (с.что === 'отрезки') { let о = []; с.шаги.forEach(([а, к, д]) => { о = изменитьОтрезки(о, а, к, д); }); return о; }
+    if (с.что === 'описание') return описатьРазметку(с.р);
+    const б = Uint8Array.from(с.байты);
+    if (с.что === 'единиц') return единицВОтрезке(б, с.а, с.к);
+    if (с.что === 'строкой') return битыСтрокой(б, с.а, с.к);
+    if (с.что === 'итог') return итогРазметки(с.р, б, с.n);
+    return null;
+});
+process.stdout.write(JSON.stringify(итог));
+"""
+        готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=120)
+        self.assertEqual(0, готово.returncode, готово.stderr)
+        return json.loads(готово.stdout)
+
+    def test_маска_как_на_сервере(self):
+        g = np.random.default_rng(11)
+        случаи, ждём = [], []
+        for _ in range(60):
+            р = rastr.проверить_разметку({
+                "отрезки": [[int(g.integers(0, 3000)), int(g.integers(1, 200))] for _ in range(int(g.integers(0, 6)))],
+                "правила": [{"период": int(п), "сдвиг": int(g.integers(0, 5000)), "ширина": int(g.integers(1, п + 1)),
+                             "от": int(g.integers(0, 400)) * int(g.integers(0, 2)),
+                             "до": int(g.integers(0, 4000)) * int(g.integers(0, 2))}
+                            for п in g.integers(1, 300, int(g.integers(0, 4)))]})
+            от, длина = int(g.integers(0, 3500)), int(g.integers(1, 1500))
+            случаи.append({"что": "маска", "р": р, "от": от, "длина": длина})
+            ждём.append([int(х) for х in rastr.маска_разметки(от + длина, р)[от:]])
+        self.assertEqual(ждём, self.выполнить(случаи))
+
+    def test_отрезки_как_множество(self):
+        g = np.random.default_rng(12)
+        случаи, ждём = [], []
+        for _ in range(80):
+            шаги, множество = [], set()
+            for _ in range(int(g.integers(1, 12))):
+                а = int(g.integers(0, 200))
+                к = а + int(g.integers(0, 40))
+                добавить = bool(g.integers(0, 2))
+                шаги.append([а, к, добавить])
+                множество = множество | set(range(а, к)) if добавить else множество - set(range(а, к))
+            случаи.append({"что": "отрезки", "шаги": шаги})
+            слитые = rastr.проверить_разметку({"отрезки": [[i, 1] for i in sorted(множество)]})["отрезки"]
+            ждём.append(слитые)
+        self.assertEqual(ждём, self.выполнить(случаи))
+
+    def test_единицы_и_биты_строкой(self):
+        g = np.random.default_rng(13)
+        байты = g.integers(0, 256, 64, dtype=np.uint8)
+        биты = np.unpackbits(байты)
+        случаи, ждём = [], []
+        for а, к in [(0, 512), (0, 0), (3, 3), (1, 7), (5, 21), (8, 16), (13, 500), (504, 512)] + [
+                tuple(sorted(int(x) for x in g.integers(0, 513, 2))) for _ in range(40)]:
+            случаи.append({"что": "единиц", "байты": байты.tolist(), "а": а, "к": к})
+            ждём.append(int(биты[а:к].sum()))
+            случаи.append({"что": "строкой", "байты": байты.tolist(), "а": а, "к": к})
+            ждём.append("".join(str(int(б)) for б in биты[а:к]))
+        self.assertEqual(ждём, self.выполнить(случаи))
+
+    def test_итог_и_описание(self):
+        g = np.random.default_rng(14)
+        байты = g.integers(0, 256, 20000, dtype=np.uint8)
+        биты = np.unpackbits(байты)
+        р = rastr.проверить_разметку({"отрезки": [[5, 70000], [150000, 10]],
+                                      "правила": [{"период": 256, "сдвиг": 3, "ширина": 2}]})
+        маска = rastr.маска_разметки(len(биты), р)
+        итог = self.выполнить([{"что": "итог", "байты": байты.tolist(), "р": р, "n": len(биты)},
+                               {"что": "описание", "р": р},
+                               {"что": "описание", "р": {"отрезки": [[5, 5]], "правила": [
+                                   {"период": 8, "сдвиг": 1, "ширина": 1, "от": 16, "до": 0}]}},
+                               {"что": "описание", "р": {"отрезки": [], "правила": []}}])
+        self.assertEqual({"всего": int(маска.sum()), "единиц": int(биты[маска].sum())}, итог[0])
+        self.assertEqual("2 отрезк. (70010 бит); биты 3–4 с периодом 256", итог[1])
+        self.assertEqual("биты 5–9; бит 1 с периодом 8 (участок 16…конец)", итог[2])
+        self.assertEqual("пусто", итог[3])
+
+
+class СтраницаСессийTests(unittest.TestCase):
+    """Разделы и клавиши интерфейса — на месте (проверка по тексту app.js, как у других страниц)."""
+
+    def test_интерфейс(self):
+        js = APP_JS.read_text(encoding="utf-8")
+        for кусок in ("route: 'sessions', href: '#/sessions', title: 'Сессии потоков'",
+                      "else if (route.name === 'session') await renderStol(view, null, route.id);",
+                      "else if (route.name === 'sessions') await renderSessions(view);",
+                      "'/raw?stage='", "'/marks'", "'/period-search'", "'/scrambler-search'",
+                      "'Быстрый поиск периода — массив '", "'Поиск скремблера — массив '", "'Разметка по периоду'",
+                      "['Полный автоанализ',", "'Удалить файл из сессии'", "'Поделиться'", "'Добавить файлы'",
+                      "e.key === 'F8'", "e.key === 'F3'", "e.key === 'F4'", "e.key === 'F1'",
+                      "e.key === '*' || код === 'NumpadMultiply'", "e.key === '/' || код === 'NumpadDivide'",
+                      "код === 'BracketRight'", "код === 'KeyM'", "метка1: rgba(255, 214, 0)", "выбор1: rgba(255, 255, 255)",
+                      "форма.append('sliced', '1')", "подключитьПеретаскивание(page"):
+            self.assertIn(кусок, js)
+        # Каждая клавиша из справки обработана.
+        self.assertGreaterEqual(len(re.findall(r"\['[^']+', '[^']+'\],", js[js.index("const КЛАВИШИ_ПРОСМОТРА"):
+                                                                          js.index("];", js.index("const КЛАВИШИ_ПРОСМОТРА"))])), 20)
 
 
 if __name__ == "__main__":
