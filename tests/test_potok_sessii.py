@@ -20,6 +20,7 @@ import numpy as np
 import _bootstrap  # noqa: F401
 import reportgen.potok.zadaniya as модуль
 from reportgen.potok import rastr, skrembler
+from reportgen.potok.cikl import автокорреляция, размер_бпф
 from reportgen.potok.sessii import Сессии, годный_ид
 from reportgen.potok.zadaniya import Задания
 
@@ -316,7 +317,6 @@ class БыстрыеОсновыTests(unittest.TestCase):
     """Длина БПФ, делители и автокорреляция — на них держится скорость поиска периода."""
 
     def test_размер_бпф(self):
-        from reportgen.potok.cikl import размер_бпф
         for n in list(range(1, 400)) + [1000, 4259840, 4194305, 2 ** 20 + 1]:
             р = размер_бпф(n)
             self.assertGreaterEqual(р, n)
@@ -341,7 +341,6 @@ class БыстрыеОсновыTests(unittest.TestCase):
             self.assertEqual([d for d in range(1, n + 1) if n % d == 0], rastr.делители(n), n)
 
     def test_автокорреляция_как_прямой_счёт(self):
-        from reportgen.potok.cikl import автокорреляция
         g = np.random.default_rng(21)
         for n, L in ((1000, 50), (4097, 300), (777, 776), (64, 1)):
             б = g.integers(0, 2, n, dtype=np.uint8)
