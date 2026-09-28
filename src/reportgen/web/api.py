@@ -3039,11 +3039,16 @@ def _отбор_кадров(тело: dict[str, Any]) -> list[dict[str, Any]]:
     отбор = []
     for у in (тело.get("filter") or [])[:16]:
         try:
+            if "bit" in у:
+                # Поле бит: ширина 1…64 с любого бита кадра.
+                отбор.append({"бит": int(у["bit"]), "ширина": int(у["width"]), "значение": int(у["value"]),
+                              "младшим": bool(у.get("lsb_first")), "не": bool(у.get("not"))})
+                continue
             отбор.append({"место": int(у["place"]), "значение": int(у["value"]),
                           "полубайт": {"hi": "старший", "lo": "младший"}.get(у.get("nibble") or "", ""),
                           "не": bool(у.get("not"))})
         except (KeyError, TypeError, ValueError):
-            raise ServiceError("отбор кадров: {place, value, nibble?, not?}", 400) from None
+            raise ServiceError("отбор кадров: {place, value, nibble?, not?} или {bit, width, value, lsb_first?, not?}", 400) from None
     return отбор
 
 
@@ -3077,6 +3082,23 @@ def potok_frame_column(request: Request, job_id: str) -> dict[str, Any]:
                                     int(тело.get("place") or 0), int(тело.get("width") or 1),
                                     _отбор_кадров(тело), "младший" if тело.get("order") == "lsb" else "старший")
     except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
+@router.post("/potok/{job_id}/framefield")
+def potok_frame_field(request: Request, job_id: str) -> dict[str, Any]:
+    """Статистика поля кадров любой длины: с бита ``bit`` шириной ``width`` бит (1…64), с отбором;
+    ``lsb_first`` — младшим битом вперёд; ``find`` — сколько кадров с этим значением."""
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
+    try:
+        искать = тело.get("find")
+        return rastr.поле_кадров(биты, int(тело.get("period") or 0), int(тело.get("shift") or 0),
+                                 int(тело.get("bit") or 0), int(тело.get("width") or 8), _отбор_кадров(тело),
+                                 bool(тело.get("lsb_first")), None if искать in (None, "") else int(искать))
+    except (TypeError, ValueError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
 
 

@@ -8830,7 +8830,7 @@ body.reading .msg .body {
 .stol-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 .stol-vscroll { writing-mode: vertical-lr; direction: ltr; width: 18px; height: auto; margin: 0; }
 .stol-hscroll { width: 100%; margin: 0; height: 14px; }
-.stol-colstats { width: 300px; flex-shrink: 0; overflow: auto; border-left: 1px solid var(--border); padding: 8px; font-size: 12.5px; }
+.stol-colstats { width: 380px; flex-shrink: 0; overflow: auto; border-left: 1px solid var(--border); padding: 8px; font-size: 12.5px; }
 .stol-verdict { background: var(--ok-soft); color: var(--text); border-radius: 6px; padding: 3px 8px; margin: 4px 0; }
 .stol-bitshare { margin-top: 8px; color: var(--muted); }
 .stol-filters { display: inline-flex; flex-wrap: wrap; gap: 4px; }
@@ -8870,6 +8870,9 @@ body.reading .msg .body {
 /* Профиль столбцов, инспектор значений, закладки, графики сведений (приёмы ImHex, URH, bitbench). */
 .stol-profile { position: relative; height: 26px; flex: none; overflow: hidden; background: #000; border-bottom: 1px solid #22262c; cursor: pointer; }
 .stol-profile[hidden] { display: none; }
+.stol-profile-close { position: absolute; top: 2px; right: 22px; width: 20px; height: 20px; padding: 0; border: 1px solid #3a4150; border-radius: 4px;
+    background: #15171d; color: #c9d1d9; font-size: 14px; line-height: 16px; cursor: pointer; }
+.stol-profile-close:hover { background: #262a33; color: #fff; }
 .stol-profile-canvas { display: block; }
 .stol-inspector { width: 320px; flex: none; overflow: auto; border-left: 1px solid var(--border); background: var(--panel); padding: 6px 8px; font-size: var(--fs-sm); }
 .stol-inspector[hidden] { display: none; }
@@ -8890,6 +8893,9 @@ body.reading .msg .body {
 .stol-ok { color: var(--ok); font-weight: 600; }
 .stol-bad { color: var(--danger); font-weight: 600; }
 .stol-autocorr { margin-top: 8px; }
+.stol-field-form { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 6px 0; font-size: var(--fs-sm); }
+.stol-field-values td, .stol-field-values th { white-space: nowrap; }
+.stol-field-values tr.is-clickable, .stol-field-values th.is-clickable { cursor: pointer; }
 .stol-empty { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; padding: 16px; }
 .stol-results-wrap { max-height: 46vh; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
 .stol-results { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
