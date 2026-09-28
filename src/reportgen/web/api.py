@@ -2687,6 +2687,29 @@ def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, An
                                        lambda: rastr.периоды(задания.биты_участка(job_id, stage, 0, cikl.ВЫБОРКА)))}
 
 
+#: График автокорреляции — лаги не дальше этого.
+АВТОКОРРЕЛЯЦИЯ_ДО = 1 << 16
+
+
+@router.get("/potok/{job_id}/autocorr")
+def potok_autocorr(request: Request, job_id: str, stage: int = 0, max: int = 8192) -> dict[str, Any]:  # noqa: A002
+    """Автокорреляция по лагам 0…max (по началу массива, как поиск периода) — для графика в окне поиска."""
+    from ..potok import cikl  # noqa: PLC0415
+    user = require_user(request)
+    _файл_бит_или_400(request, user, job_id, stage)
+    задания = _potok(request)
+    наибольший = min(АВТОКОРРЕЛЯЦИЯ_ДО, max if max > 0 else 8192)
+
+    def посчитать():
+        выборка = задания.биты_участка(job_id, stage, 0, cikl.ВЫБОРКА)
+        лагов = min(наибольший, len(выборка) // 2)
+        r = cikl.автокорреляция(выборка, лагов) if лагов >= 1 else []
+        return {"r": [round(float(x), 4) for x in r], "бит": len(выборка),
+                "шум": round(1.0 / len(выборка) ** 0.5, 5) if len(выборка) else 0.0}
+
+    return задания.запомнить(job_id, stage, f"автокорреляция:{наибольший}", посчитать)
+
+
 @router.post("/potok/{job_id}/tool")
 def potok_tool(request: Request, job_id: str) -> dict[str, Any]:
     """Быстрый инструмент над потоком этапа или каналом по маске."""
@@ -3007,7 +3030,8 @@ def potok_stats(request: Request, job_id: str) -> dict[str, Any]:
         return statistika_bit.проверить(биты)
 
     итог = задания.запомнить(job_id, этап, "статистика:" + json.dumps(
-        {"от": от, "длина": длина, "разметка": разметка}, sort_keys=True, ensure_ascii=False), посчитать)
+        {"от": от, "длина": длина, "разметка": разметка and {к: разметка[к] for к in ("отрезки", "правила")}},
+        sort_keys=True, ensure_ascii=False), посчитать)
     return итог | {"from": от, "marks": по_разметке}
 
 
