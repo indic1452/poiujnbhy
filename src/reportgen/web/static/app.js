@@ -9337,6 +9337,9 @@
         ['Ctrl + ← / →', 'указатель на 8 бит'],
         ['PgUp / PgDn, Home / End', 'страница; начало и конец строки'],
         ['Ctrl + Home / End', 'начало и конец массива'],
+        ['Ctrl + G', 'перейти к биту (или «байт N»)'],
+        ['Ctrl + C', 'копировать выделенные биты строкой 0/1'],
+        ['Alt + ↑ / ↓', 'соседний массив в таблице'],
         ['F8 / Shift + F8', 'разметить / снять метку шириной «Метка» с указателя, указатель — на строку ниже'],
         ['Ctrl + F8', 'разметка по периоду (бит k с периодом P во всём потоке)'],
         ['M', 'режим маркирования: мышь размечает (с Ctrl — снимает)'],
@@ -9664,6 +9667,15 @@
             if (цель) { выбратьМассив(цель.ключ); e.preventDefault(); }
         });
 
+        /** Соседний массив в таблице (по порядку столбцов и строк) — Alt + ↑ / ↓ из битового просмотра. */
+        function соседнийМассив(шаг) {
+            if (!с.массивы) return;
+            const порядок = с.массивы.узлы.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+            const i = порядок.findIndex((у) => у.ключ === с.выбран);
+            const цель = порядок[Math.max(0, Math.min(порядок.length - 1, i + шаг))];
+            if (цель && цель.ключ !== с.выбран) выбратьМассив(цель.ключ);
+        }
+
         function выбратьМассив(ключ) {
             с.выбран = ключ;
             const у = с.массивы.поКлючу[ключ];
@@ -9729,7 +9741,7 @@
             }
             (записи[String(у.stage)] || []).forEach((з_) => {
                 строки.push(h('div', { class: 'stol-j-op' }, '—— ' + new Date(з_.время * 1000).toLocaleTimeString('ru-RU') + ' · ' + з_.операция + ' ——'));
-                String(з_.текст || '').split('\n').forEach((т) => строки.push(h('div', { class: 'mono small' }, т)));
+                String(з_.текст || '').split('\n').forEach((т) => строки.push(h('div', { class: 'mono small' }, сМестами(т, у))));
                 if (з_.слой) {
                     строки.push(h('div', {}, h('button', { class: 'btn btn--sm', onclick: () => слойВМассив(у, з_.слой, з_.операция) }, 'Снять этот слой → новый массив'),
                         h('span', { class: 'mono small muted' }, ' ' + з_.слой)));
@@ -9742,6 +9754,28 @@
             append(журнал, строки);
             журнал.appendChild(заметка);
             журнал.scrollTop = журнал.scrollHeight;
+        }
+
+        /** Строка журнала, где «бит N» и «с бита N» — ссылки: щелчок ставит указатель просмотра туда. */
+        function сМестами(текст, у) {
+            const части = [];
+            let было = 0;
+            const шаблон = /(?:с\s+)?бит[а]?\s+(\d[\d\u00a0 ]*)/g;
+            let м;
+            while ((м = шаблон.exec(текст)) !== null) {
+                const i = Number(м[1].replace(/[\s\u00a0]/g, ''));
+                if (!Number.isFinite(i)) continue;
+                части.push(текст.slice(было, м.index));
+                части.push(h('a', { href: '#', class: 'stol-j-bit', title: 'Показать в битовом просмотре', onclick: (e) => {
+                    e.preventDefault();
+                    if (с.выбран !== у.ключ) выбратьМассив(у.ключ);
+                    if (с.нижняя !== 'биты') { с.нижняя = 'биты'; рисоватьНиз(); }
+                    setTimeout(() => просмотр.кБиту && просмотр.кБиту(i), 0);
+                } }, м[0].trimEnd()));
+                было = м.index + м[0].trimEnd().length;
+            }
+            части.push(текст.slice(было));
+            return части;
         }
 
         // -- операции: последние и избранные --
@@ -11125,7 +11159,10 @@
                 else if (ctrl && e.key === 'Home') указатель(0, e.shiftKey);
                 else if (ctrl && e.key === 'End') указатель(n - 1, e.shiftKey);
                 else if (ctrl && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) указатель(курсор() + (e.key === 'ArrowRight' ? 8 : -8), e.shiftKey);
+                else if (ctrl && код === 'KeyG') кБиту();
+                else if (ctrl && код === 'KeyC' && (с.отрезок || с.выделено.size)) копировать();
                 else if (ctrl) return false;
+                else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) соседнийМассив(e.key === 'ArrowDown' ? 1 : -1);
                 else if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) поставитьСдвиг(с.сдвиг + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 8 : 1));
                 else if (e.altKey) return false;
                 else if (e.key === '+' || e.key === '=' || код === 'NumpadAdd') шир(с.шаг);
@@ -11161,13 +11198,56 @@
             }
             холст.addEventListener('keydown', (e) => { if (клавиша(e)) { e.preventDefault(); e.stopPropagation(); } });
 
+            async function кБиту() {
+                const ответ = await promptDialog({ title: 'Перейти к биту', placeholder: 'номер бита (0…' + (всегоБит() - 1) + '), можно «байт 125»',
+                    value: с.курсор !== null ? String(с.курсор) : '' });
+                if (ответ === null || !String(ответ).trim()) return;
+                const м = /^\s*(байт\s*)?(\d+)(?:\.(\d))?\s*$/i.exec(String(ответ).replace(/\s(?=\d)/g, ''));
+                if (!м) { toast('Номер бита — число; «байт N» или «N.k» — байт и бит в нём', 'error'); return; }
+                const i = м[1] || м[3] !== undefined ? Number(м[2]) * 8 + Number(м[3] || 0) : Number(м[2]);
+                указатель(i, false);
+                холст.focus();
+            }
+            /** Выделенные биты — в буфер обмена строкой «0101…» (столбцы — по строкам, как на экране). */
+            function копировать() {
+                const n = всегоБит();
+                if (!х.байты || х.загружено() < 1) { toast('Массив ещё загружается', 'error'); return; }
+                let текст = '';
+                if (с.отрезок) {
+                    const к = Math.min(с.отрезок.к, n);
+                    if (к - с.отрезок.а > (8 << 20)) { toast('Больше 8 млн бит в буфер не кладём — сделайте из выделения массив', 'error'); return; }
+                    текст = битыСтрокой(х.байты, с.отрезок.а, к);
+                } else {
+                    const столбцы = Array.from(с.выделено).sort((a, b) => a - b);
+                    const строки_ = [];
+                    for (let r = 0; r < Math.min(с.всего_строк, 100000); r += 1) {
+                        const база = с.сдвиг + r * с.ширина;
+                        if (база + столбцы[столбцы.length - 1] >= n) break;
+                        строки_.push(столбцы.map((c) => битМассива(х.байты, база + c)).join(''));
+                    }
+                    текст = строки_.join('\n');
+                }
+                const готово = () => toast('Скопировано бит: ' + текст.replace(/\n/g, '').length.toLocaleString('ru-RU'), 'ok');
+                if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(текст).then(готово, () => запасной());
+                else запасной();
+                function запасной() {
+                    const поле = h('textarea', { style: { position: 'fixed', left: '-9999px' } }, текст);
+                    document.body.appendChild(поле);
+                    поле.select();
+                    try { document.execCommand('copy'); готово(); } catch (error) { toast('Не удалось скопировать', 'error'); }
+                    поле.remove();
+                    холст.focus();
+                }
+            }
+
             const отписка = х.слушать(() => { if (!холст.isConnected) { отписка(); return; } рисоватьСкоро(); });
             const наблюдатель = new ResizeObserver(() => { if (холст.isConnected) рисоватьСкоро(); else наблюдатель.disconnect(); });
             наблюдатель.observe(рамка);
             загрузитьМетки(у).then(рисоватьСкоро);
             рисоватьСкоро();
             if (!document.activeElement || document.activeElement === document.body) холст.focus({ preventScroll: true });
-            return { перерисовать: рисоватьСкоро, применитьШирину: () => { ширина.value = с.ширина; сдвиг.value = с.сдвиг; применитьШирину(); }, клавиша, холст };
+            return { перерисовать: рисоватьСкоро, применитьШирину: () => { ширина.value = с.ширина; сдвиг.value = с.сдвиг; применитьШирину(); }, клавиша, холст,
+                кБиту: (i) => { с.нижняя = 'биты'; указатель(i, false); холст.focus(); } };
         }
 
         function символCP1251(v) {

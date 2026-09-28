@@ -128,6 +128,12 @@ class РазметкаTests(unittest.TestCase):
             rastr.ОТРЕЗКОВ_ДО = старый
         self.assertEqual(1, rastr.проверить_разметку({"правила": [{"период": 8, "ширина": 8}]})["правила"][0]["ширина"] // 8)
         self.assertEqual(65536, rastr.проверить_разметку({"правила": [{"период": 65536}]})["правила"][0]["период"])
+        # Без периода правило — ошибка; без сдвига и ширины — место 0 шириной 1; период 1 — годен.
+        with self.assertRaises(ValueError):
+            rastr.проверить_разметку({"правила": [{"сдвиг": 1}]})
+        self.assertEqual([{"период": 5, "сдвиг": 0, "ширина": 1, "от": 0, "до": 0}],
+                         rastr.проверить_разметку({"правила": [{"период": 5}]})["правила"])
+        self.assertEqual(1, rastr.проверить_разметку({"правила": [{"период": 1}]})["правила"][0]["период"])
 
     def test_маска_правила_и_отрезки(self):
         р = {"отрезки": [[1, 2]], "правила": [{"период": 10, "сдвиг": 7, "ширина": 4, "от": 0, "до": 0}]}
@@ -185,6 +191,46 @@ class РазметкаTests(unittest.TestCase):
         self.assertEqual("убрать размеченные биты: биты 0–0",
                          rastr.описать_шаг({"вид": "разметка", "действие": "убрать",
                                             "разметка": {"отрезки": [[0, 1]]}}))
+
+
+class ШагиTests(unittest.TestCase):
+    """Проверка и выполнение шагов обработки: маска, слой, разметка, включение, ход."""
+
+    def test_маска(self):
+        шаг = rastr.проверить_шаги([{"вид": "маска", "маска": {"период": 8, "позиции": [8, 7, -1, 0, 7]}}])[0]
+        self.assertEqual({"вид": "маска", "вкл": True, "маска": {"период": 8, "сдвиг": 0, "позиции": [0, 7]}}, шаг)
+        self.assertEqual([0], rastr.проверить_шаги([{"вид": "маска", "маска": {"период": 1, "позиции": [0]}}])[0]["маска"]["позиции"])
+        self.assertEqual(rastr.ПЕРИОД_ДО, rastr.проверить_шаги([{"вид": "маска", "маска": {"период": rastr.ПЕРИОД_ДО,
+                                                                                          "позиции": [3]}}])[0]["маска"]["период"])
+        for плохой in ({"вид": "маска"}, {"вид": "маска", "маска": {"позиции": [0]}},
+                       {"вид": "маска", "маска": {"период": 8, "позиции": []}},
+                       {"вид": "маска", "маска": {"период": 8, "позиции": [8]}},
+                       {"вид": "маска", "маска": {"период": 0, "позиции": [0]}},
+                       {"вид": "маска", "маска": {"период": rastr.ПЕРИОД_ДО + 1, "позиции": [0]}}):
+            with self.subTest(плохой=плохой), self.assertRaises(ValueError):
+                rastr.проверить_шаги([плохой])
+
+    def test_слой_и_число_шагов(self):
+        шаги = rastr.проверить_шаги([{"вид": "слой", "слой": "  инверсия  ", "вкл": False},
+                                     {"вид": "слой", "слой": "x" * 600}])
+        self.assertEqual({"вид": "слой", "вкл": False, "слой": "инверсия"}, шаги[0])
+        self.assertEqual(500, len(шаги[1]["слой"]))
+        for плохой in ({"вид": "слой", "слой": "   "}, {"вид": "слой"}, {"слой": "инверсия"}, "инверсия"):
+            with self.subTest(плохой=плохой), self.assertRaises(ValueError):
+                rastr.проверить_шаги([плохой])
+        self.assertEqual(24, len(rastr.проверить_шаги([{"вид": "слой", "слой": "инверсия"}] * 24)))
+        with self.assertRaises(ValueError):
+            rastr.проверить_шаги([{"вид": "слой", "слой": "инверсия"}] * 25)
+
+    def test_применить_ход_и_выключенные(self):
+        биты = np.array([1, 0, 1, 1, 0, 0, 0, 1] * 4, dtype=np.uint8)
+        ход = []
+        итог, описание = rastr.применить(биты, [{"вид": "слой", "слой": "инверсия"},
+                                               {"вид": "слой", "слой": "инверсия", "вкл": False},
+                                               {"вид": "маска", "маска": {"период": 8, "позиции": [0]}}], ход=ход.append)
+        self.assertEqual([0] * 4, list(итог))
+        self.assertEqual(["шаг 1: инверсия", "шаг 3: канал по маске: период 8, сдвиг 0, позиции 0"], ход)
+        self.assertEqual(2, len(описание))
 
 
 class ПоискПериодаTests(unittest.TestCase):
@@ -264,6 +310,45 @@ class ПоискПериодаTests(unittest.TestCase):
         б = поток_с_маркером(300, "1" * 10 + "0" * 30, 300_000, начало=5)
         н = rastr.поиск_периода(б, от=300, до=300, глубина_до=24)[0]
         self.assertEqual((5, 24), (н["первый_бит"], н["глубина"]))
+
+
+class БыстрыеОсновыTests(unittest.TestCase):
+    """Длина БПФ, делители и автокорреляция — на них держится скорость поиска периода."""
+
+    def test_размер_бпф(self):
+        from reportgen.potok.cikl import размер_бпф
+        for n in list(range(1, 400)) + [1000, 4259840, 4194305, 2 ** 20 + 1]:
+            р = размер_бпф(n)
+            self.assertGreaterEqual(р, n)
+            м = р
+            for п in (2, 3, 5):
+                while м % п == 0:
+                    м //= п
+            self.assertEqual(1, м, (n, р))
+            # Наименьшее такое: между n и р нет 5-гладких чисел.
+            for к in range(n, р if n < 5000 else n):
+                м = к
+                for п in (2, 3, 5):
+                    while м % п == 0:
+                        м //= п
+                self.assertNotEqual(1, м, (n, к))
+        self.assertEqual([1, 2, 8, 1000, 4320000, 4199040, 1049760],
+                         [размер_бпф(n) for n in (1, 2, 7, 1000, 4259840, 4194305, 2 ** 20 + 1)])
+        self.assertEqual(1, размер_бпф(0))
+
+    def test_делители(self):
+        for n in list(range(1, 300)) + [65536, 2964, 9973 * 2, 1000000]:
+            self.assertEqual([d for d in range(1, n + 1) if n % d == 0], rastr.делители(n), n)
+
+    def test_автокорреляция_как_прямой_счёт(self):
+        from reportgen.potok.cikl import автокорреляция
+        g = np.random.default_rng(21)
+        for n, L in ((1000, 50), (4097, 300), (777, 776), (64, 1)):
+            б = g.integers(0, 2, n, dtype=np.uint8)
+            x = б.astype(np.float64) * 2 - 1
+            x -= x.mean()
+            прямо = np.array([np.dot(x[:n - k], x[k:]) / (n - k) for k in range(L + 1)]) / (x * x).mean()
+            self.assertTrue(np.allclose(прямо, автокорреляция(б, L), atol=1e-4), (n, L))
 
 
 class ПереборСкремблераTests(unittest.TestCase):
@@ -606,6 +691,55 @@ class СессииЧерезСерверTests(unittest.TestCase):
         self.assertEqual(404, к.get(f"/api/potok/{ид}").status_code)
         self.assertEqual([], к.get("/api/sessions").json()["items"])
         self.assertIsInstance(сессия_id_инженера, int)
+
+    def test_производные_в_сессии(self):
+        к = self.к
+        self.войти("engineer")
+        сид = к.post("/api/sessions", json={"name": "ветви"}).json()["id"]
+        ид = к.post(f"/api/sessions/{сид}/files",
+                    files={"file": ("a.bin", bytes(range(256)) * 8, "application/octet-stream")}).json()["id"]
+        self.дождаться(ид)
+        # Этап с битовым выходом и притоком — как после автомата.
+        папка = self.сеть.app.state.potok.папка / ид
+        (папка / "этап-1.bin").write_bytes(b"\x0f" * 64)
+        (папка / "приток-1-1.bin").write_bytes(b"\xf0" * 32)
+        состояние = json.loads((папка / "состояние.json").read_text(encoding="utf-8"))
+        состояние["этапы"] = [{"номер": 1, "уровень": "проба", "что": "проба", "выход": "биты", "выгрузка": "bin",
+                               "притоки": [{"номер": 1, "имя": "E1 №1", "бит": 256}]}]
+        (папка / "состояние.json").write_text(json.dumps(состояние, ensure_ascii=False), encoding="utf-8")
+        приток = к.post(f"/api/potok/{ид}/tributary", json={"stage": 1, "number": 1, "analyze": False}).json()["id"]
+        self.assertEqual(сид, self.дождаться(приток)["сессия"])
+        дальше = к.post(f"/api/potok/{ид}/continue", json={"stage": 1}).json()["id"]
+        self.assertEqual(сид, к.get(f"/api/potok/{дальше}").json()["сессия"])
+        # Пересборка производного и корня — тоже в сессии.
+        новый = к.post(f"/api/potok/{ид}/derive", json={"steps": [
+            {"вид": "разметка", "действие": "взять", "разметка": {"отрезки": [[0, 100]]}}]}).json()["id"]
+        self.дождаться(новый)
+        пересобран = к.post(f"/api/potok/{новый}/rebuild", json={"steps": [
+            {"вид": "разметка", "действие": "убрать", "разметка": {"отрезки": [[0, 8]]}}]}).json()["id"]
+        # Пересобирается из исходника (биты родителя, 16 384): без первых 8 — 16 376 бит, 2047 байт.
+        готов = self.дождаться(пересобран)
+        self.assertEqual((сид, 2047), (готов["сессия"], готов["байт"]))
+        self.assertEqual(400, к.post(f"/api/potok/{ид}/rebuild", json={"steps": [
+            {"вид": "разметка", "действие": "взять", "разметка": {"отрезки": [[0, 8]]}}]}).status_code)
+        self.assertEqual(400, к.post(f"/api/potok/{ид}/rebuild", json={"steps": [
+            {"вид": "маска", "маска": {"период": 8, "позиции": [0]}}]}).status_code)
+        корень = к.post(f"/api/potok/{ид}/rebuild", json={"steps": [{"вид": "слой", "слой": "инверсия"}],
+                                                         "profile": "быстро"}).json()["id"]
+        self.assertEqual(сид, к.get(f"/api/potok/{корень}").json()["сессия"])
+        # Заменить чужой узел участник не вправе, свой — вправе.
+        self.assertEqual(200, к.patch(f"/api/sessions/{сид}", json={"members": [self.ид_пользователя("gruppa")]}).status_code)
+        self.войти("gruppa")
+        self.assertEqual(403, к.post(f"/api/potok/{новый}/rebuild", json={"replace": True, "steps": []}).status_code)
+        self.assertEqual(200, к.get(f"/api/potok/{новый}").status_code)
+        свой = к.post(f"/api/potok/{новый}/derive", json={"steps": []}).json()["id"]
+        self.дождаться(свой)
+        заменён = к.post(f"/api/potok/{свой}/rebuild", json={"replace": True, "steps": []}).json()["id"]
+        self.assertEqual(404, к.get(f"/api/potok/{свой}").status_code)
+        self.assertEqual(сид, self.дождаться(заменён)["сессия"])
+        # Владелец сессии удаляет и чужой узел.
+        self.войти("engineer")
+        self.assertEqual(200, к.delete(f"/api/potok/{заменён}").status_code)
 
     def test_файлы_особых_видов_и_ошибки(self):
         к = self.к
