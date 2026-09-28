@@ -2514,6 +2514,32 @@ def _potok(request: Request):
     return задания
 
 
+def _sessii(request: Request):
+    """Сессии работы с потоками — общие столы нескольких файлов и людей."""
+    сессии = getattr(request.app.state, "sessii", None)
+    if сессии is None:
+        from ..potok.sessii import Сессии  # noqa: PLC0415
+        сессии = Сессии(Path(_settings(request).data_dir) / "sessii")
+        request.app.state.sessii = сессии
+    return сессии
+
+
+def _мои_сессии(request: Request, user) -> list[str]:
+    return _sessii(request).доступные(user.id)
+
+
+def _вправе_удалить(request: Request, user, состояние: dict[str, Any]) -> None:
+    """Узел сессии удаляет тот, кто его сделал, или владелец сессии — не любой участник."""
+    if состояние.get("владелец") == user.id or not состояние.get("сессия"):
+        return
+    try:
+        сессия = _sessii(request).прочитать(состояние["сессия"])
+    except KeyError:
+        сессия = {}
+    if сессия.get("владелец") != user.id:
+        raise ServiceError("удалить чужой узел сессии вправе только владелец сессии", 403)
+
+
 def _задание_или_404(request: Request, user, ид: str) -> dict[str, Any]:
     if not re.fullmatch(r"[0-9]{8}-[0-9]{6}-[0-9a-f]{6}", ид or ""):
         raise ServiceError("задание не найдено", 404)
@@ -2521,9 +2547,14 @@ def _задание_или_404(request: Request, user, ид: str) -> dict[str, A
         состояние = _potok(request).прочитать(ид)
     except KeyError:
         raise ServiceError("задание не найдено", 404) from None
-    # Как разговоры с помощником: разбор виден только тому, кто его запустил.
+    # Как разговоры с помощником: разбор виден только тому, кто его запустил, —
+    # или участникам сессии, в которой он лежит.
     if состояние.get("владелец") != user.id:
-        raise ServiceError("задание не найдено", 404)
+        сессия = состояние.get("сессия") or ""
+        try:
+            _sessii(request).для(сессия, user.id)
+        except KeyError:
+            raise ServiceError("задание не найдено", 404) from None
     return состояние
 
 
@@ -2578,7 +2609,7 @@ def potok_start(request: Request, file: UploadFile = File(...), profile: str = F
 @router.get("/potok")
 def potok_list(request: Request) -> dict[str, Any]:
     user = require_user(request)
-    return {"items": _potok(request).список(user.id)}
+    return {"items": _potok(request).список(user.id, без_сессий=True)}
 
 
 @router.get("/potok/{job_id}")
@@ -2641,7 +2672,8 @@ def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, An
     """Кандидаты периода по автокорреляции."""
     from ..potok import rastr  # noqa: PLC0415
     user = require_user(request)
-    return {"items": rastr.периоды(_биты_задания(request, user, job_id, stage))}
+    _биты_задания(request, user, job_id, stage)
+    return {"items": _potok(request).запомнить(job_id, stage, "периоды", rastr.периоды)}
 
 
 @router.post("/potok/{job_id}/tool")
@@ -2704,7 +2736,8 @@ def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
     ид = _potok(request).создать(владелец=user.id, имя=имя[:200],
                                  данные=np.packbits(биты).tobytes(),
                                  профиль=профиль, от=f"{job_id}#{этап}", шаги=шаги,
-                                 разбирать=bool(тело.get("analyze")), происхождение=описание)
+                                 разбирать=bool(тело.get("analyze")), происхождение=описание,
+                                 сессия=состояние.get("сессия") or "")
     return {"id": ид}
 
 
@@ -2826,6 +2859,104 @@ def potok_grid(request: Request, job_id: str, stage: int = 0, period: int = 64, 
     return rastr.сетка(_биты_задания(request, user, job_id, stage), period, shift, row, rows, col, cols, per)
 
 
+#: Байты массива для битового просмотра в браузере — за один запрос не больше этого.
+СЫРЫЕ_ДО = 64 << 20
+
+
+@router.get("/potok/{job_id}/raw")
+def potok_raw(request: Request, job_id: str, stage: int = 0, offset: int = 0, length: int = 0) -> Response:
+    """Байты массива как есть (старший бит первым): битовый просмотр рисует их сам.
+
+    Сдвиг растра, ширина, масштаб, разметка — всё в браузере, без запроса на
+    каждое движение. Большой массив берётся кусками (``offset``, ``length``);
+    полный размер — в заголовке X-Total-Bytes.
+    """
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    try:
+        файл = _potok(request).файл_бит(job_id, stage)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 409) from None
+    размер = файл.stat().st_size
+    начало = min(max(0, int(offset)), размер)
+    сколько = min(int(length) if length > 0 else СЫРЫЕ_ДО, СЫРЫЕ_ДО, размер - начало)
+    with файл.open("rb") as поток:
+        поток.seek(начало)
+        данные = поток.read(сколько)
+    return Response(данные, media_type="application/octet-stream",
+                    headers={"X-Total-Bytes": str(размер), "X-Offset": str(начало),
+                             "Cache-Control": "private, no-store"})
+
+
+@router.get("/potok/{job_id}/marks")
+def potok_marks(request: Request, job_id: str, stage: int = 0) -> dict[str, Any]:
+    """Разметка массива: отрезки и правила — общие для участников сессии."""
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    return {"marks": _potok(request).разметка(job_id, stage)}
+
+
+@router.put("/potok/{job_id}/marks")
+def potok_marks_save(request: Request, job_id: str) -> dict[str, Any]:
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    тело = _body(request)
+    try:
+        разметка = rastr.проверить_разметку(тело.get("marks") or {})
+    except (ValueError, KeyError, TypeError, IndexError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _potok(request).записать_разметку(job_id, int(тело.get("stage") or 0), разметка)
+    return {"marks": разметка}
+
+
+@router.post("/potok/{job_id}/period-search")
+def potok_period_search(request: Request, job_id: str) -> dict[str, Any]:
+    """Быстрый поиск периода по синхромаркеру: период, первый бит, вес, сам маркер."""
+    from ..potok import rastr  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    этап = int(тело.get("stage") or 0)
+    _биты_задания(request, user, job_id, этап)
+    try:
+        параметры = {"от": int(тело.get("from") or 8), "до": int(тело.get("to") or 8192),
+                     "шаг": int(тело.get("step") or 1), "глубина_от": int(тело.get("depth_min") or 8),
+                     "глубина_до": int(тело.get("depth_max") or 64),
+                     "качество": float(тело.get("quality") or 90)}
+        найдено = _potok(request).запомнить(
+            job_id, этап, "поиск_периода:" + json.dumps(параметры, sort_keys=True),
+            lambda биты: rastr.поиск_периода(биты, **параметры))
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    return {"items": найдено}
+
+
+@router.post("/potok/{job_id}/scrambler-search")
+def potok_scrambler_search(request: Request, job_id: str) -> dict[str, Any]:
+    """Поиск скремблера по одной степени: окно перебирает степени по очереди, с ходом и отменой."""
+    from ..potok import skrembler  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    этап = int(тело.get("stage") or 0)
+    _биты_задания(request, user, job_id, этап)
+    try:
+        степень, отводов = int(тело.get("degree") or 0), int(тело.get("taps") or 2)
+        первый = max(0, int(тело.get("first") or 0))
+        аддитивный = bool(тело.get("additive"))
+
+        def посчитать(биты):
+            итог = skrembler.перебор_степени(биты[первый:], степень, отводов)
+            if аддитивный:
+                for лучший in итог["лучшие"][:3]:
+                    лучший["аддитивный"] = skrembler.начальная_установка(биты[первый:], лучший["отводы"])
+            return итог
+
+        return _potok(request).запомнить(
+            job_id, этап, f"скремблер:{степень}:{отводов}:{первый}:{int(аддитивный)}", посчитать)
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
 def _отбор_кадров(тело: dict[str, Any]) -> list[dict[str, Any]]:
     отбор = []
     for у in (тело.get("filter") or [])[:16]:
@@ -2917,7 +3048,8 @@ def potok_tributary_node(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError(str(ошибка), 404) from None
     ид = _potok(request).создать(владелец=user.id, имя=f"{состояние['имя']} → {имя}"[:200], данные=данные,
                                  профиль=str(тело.get("profile") or "обычно"), от=f"{job_id}#{этап}",
-                                 разбирать=bool(тело.get("analyze", True)), происхождение=[f"приток: {имя}"])
+                                 разбирать=bool(тело.get("analyze", True)), происхождение=[f"приток: {имя}"],
+                                 сессия=состояние.get("сессия") or "")
     return {"id": ид}
 
 
@@ -2926,16 +3058,16 @@ def potok_tree(request: Request, job_id: str) -> dict[str, Any]:
     """Дерево обработки, в котором стоит разбор: корень, развилки по этапам, производные."""
     user = require_user(request)
     _задание_или_404(request, user, job_id)
-    return {"tree": _potok(request).дерево(job_id, user.id)}
+    return {"tree": _potok(request).дерево(job_id, user.id, _мои_сессии(request, user))}
 
 
 @router.delete("/potok/{job_id}")
 def potok_delete(request: Request, job_id: str) -> dict[str, Any]:
     """Удалить узел дерева и всю ветвь под ним."""
     user = require_user(request)
-    _задание_или_404(request, user, job_id)
+    _вправе_удалить(request, user, _задание_или_404(request, user, job_id))
     try:
-        удалены = _potok(request).удалить(job_id, user.id)
+        удалены = _potok(request).удалить(job_id, user.id, _мои_сессии(request, user))
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 409) from None
     _repos(request).audit.log("potok.delete", user=user, object_type="potok", object_id=job_id,
@@ -2972,21 +3104,198 @@ def potok_rebuild(request: Request, job_id: str) -> dict[str, Any]:
             владелец=user.id, имя=(f"{основа} → " + ("; ".join(описание) or "копия"))[:200],
             данные=(папка / "исходник.bin").read_bytes(), профиль=профиль,
             от=состояние.get("от") or "", шаги=шаги, разбирать=bool(тело.get("analyze")),
-            происхождение=описание)
+            происхождение=описание, сессия=состояние.get("сессия") or "")
     else:
-        if any(ш["вид"] == "маска" for ш in шаги):
-            raise ServiceError("у разбора нет маски — маска бывает у производного потока", 400)
+        if any(ш["вид"] != "слой" for ш in шаги):
+            raise ServiceError("у разбора нет маски и разметки — они бывают у производного потока", 400)
         новый = задания.создать(
             владелец=user.id, имя=состояние["имя"], данные=(папка / "вход.bin").read_bytes(),
             профиль=профиль, от=состояние.get("от") or "",
             снять=[ш["слой"] for ш in шаги if ш["вкл"]], символ=состояние.get("символ") or (),
-            фм=состояние.get("фм") or ())
+            фм=состояние.get("фм") or (), сессия=состояние.get("сессия") or "")
     if тело.get("replace"):
+        _вправе_удалить(request, user, состояние)
         try:
-            задания.удалить(job_id, user.id)
+            задания.удалить(job_id, user.id, _мои_сессии(request, user))
         except ValueError as ошибка:
             raise ServiceError(str(ошибка), 409) from None
     return {"id": новый}
+
+
+# -- сессии: общий стол нескольких файлов и людей -------------------------------------------
+
+def _сессия_или_404(request: Request, user, сессия: str) -> dict[str, Any]:
+    try:
+        return _sessii(request).для(сессия, user.id)
+    except KeyError:
+        raise ServiceError("сессия не найдена", 404) from None
+
+
+def _люди(request: Request, ид: Iterable[int]) -> list[dict[str, Any]]:
+    итог = []
+    for и in ид:
+        человек = _repos(request).users.get(int(и))
+        if человек is not None:
+            итог.append({"id": человек.id, "login": человек.login,
+                         "full_name": short_name(человек.full_name) or человек.login})
+    return итог
+
+
+def _сессия_кратко(request: Request, user, сессия: dict[str, Any], файлы: list[dict[str, Any]]
+                   ) -> dict[str, Any]:
+    свои = [ф for ф in файлы if ф.get("сессия") == сессия["ид"]]
+    владелец = _люди(request, [сессия["владелец"]])
+    return {"id": сессия["ид"], "name": сессия["имя"], "owner": сессия["владелец"],
+            "owner_name": владелец[0]["full_name"] if владелец else "",
+            "mine": сессия["владелец"] == user.id, "members": сессия.get("участники") or [],
+            "created": сессия.get("создано"), "changed": сессия.get("изменено"),
+            "files": sum(1 for ф in свои if not ф.get("от")), "nodes": len(свои),
+            "bytes": sum(int(ф.get("байт") or 0) for ф in свои if not ф.get("от"))}
+
+
+@router.get("/sessions")
+def sessions_list(request: Request) -> dict[str, Any]:
+    """Сессии пользователя — свои и те, которыми с ним поделились."""
+    user = require_user(request)
+    сессии = _sessii(request).список(user.id)
+    файлы = _potok(request).список(user.id, [с["ид"] for с in сессии])
+    return {"items": [_сессия_кратко(request, user, с, файлы) for с in сессии]}
+
+
+@router.post("/sessions")
+def sessions_create(request: Request) -> dict[str, Any]:
+    """Новая сессия — только имя; файлы добавляются потом."""
+    user = require_user(request)
+    try:
+        ид = _sessii(request).создать(владелец=user.id, имя=str(_body(request).get("name") or ""))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _repos(request).audit.log("sessions.create", user=user, object_type="session", object_id=ид)
+    return {"id": ид}
+
+
+@router.get("/sessions/{session_id}")
+def sessions_get(request: Request, session_id: str) -> dict[str, Any]:
+    """Сессия: участники и файлы (корни деревьев обработки) с производными узлами."""
+    user = require_user(request)
+    сессия = _сессия_или_404(request, user, session_id)
+    все = [з for з in _potok(request).список(user.id, [session_id]) if з.get("сессия") == session_id]
+    ид_всех = {з["ид"] for з in все}
+    корни = sorted((з for з in все if (з.get("от") or "").split("#")[0] not in ид_всех),
+                   key=lambda з: з.get("создано") or 0)
+    return {"session": _сессия_кратко(request, user, сессия, все),
+            "people": _люди(request, [сессия["владелец"], *(сессия.get("участники") or [])]),
+            "files": [{к: з.get(к) for к in ("ид", "имя", "байт", "состояние", "создано", "владелец",
+                                             "разбирать")}
+                      | {"узлов": sum(1 for д in все if д["ид"] != з["ид"])} for з in корни]}
+
+
+@router.patch("/sessions/{session_id}")
+def sessions_update(request: Request, session_id: str) -> dict[str, Any]:
+    """Переименовать сессию и (или) поделиться ею: участники — список id пользователей."""
+    user = require_user(request)
+    _сессия_или_404(request, user, session_id)
+    тело = _body(request)
+    участники = тело.get("members")
+    if участники is not None:
+        if not isinstance(участники, list):
+            raise ServiceError("участники — список id пользователей", 400)
+        try:
+            участники = [int(у) for у in участники]
+        except (TypeError, ValueError):
+            raise ServiceError("участники — список id пользователей", 400) from None
+        неизвестные = [у for у in участники if _repos(request).users.get(у) is None]
+        if неизвестные:
+            raise ServiceError(f"нет таких пользователей: {неизвестные}", 400)
+    try:
+        сессия = _sessii(request).изменить(session_id, user.id, имя=тело.get("name"), участники=участники)
+    except PermissionError as ошибка:
+        raise ServiceError(str(ошибка), 403) from None
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    if участники is not None:
+        _repos(request).audit.log("sessions.share", user=user, object_type="session", object_id=session_id,
+                                  details={"members": сессия["участники"]})
+    return {"ok": True}
+
+
+@router.post("/sessions/{session_id}/leave")
+def sessions_leave(request: Request, session_id: str) -> dict[str, Any]:
+    user = require_user(request)
+    _сессия_или_404(request, user, session_id)
+    try:
+        _sessii(request).покинуть(session_id, user.id)
+    except PermissionError as ошибка:
+        raise ServiceError(str(ошибка), 409) from None
+    return {"ok": True}
+
+
+@router.delete("/sessions/{session_id}")
+def sessions_delete(request: Request, session_id: str) -> dict[str, Any]:
+    """Удалить сессию со всеми файлами и производными — только владелец."""
+    user = require_user(request)
+    сессия = _сессия_или_404(request, user, session_id)
+    if сессия["владелец"] != user.id:
+        raise ServiceError("удалить сессию вправе только её владелец", 403)
+    try:
+        удалены = _potok(request).удалить_сессию(session_id)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 409) from None
+    _sessii(request).удалить(session_id, user.id)
+    _repos(request).audit.log("sessions.delete", user=user, object_type="session", object_id=session_id,
+                              details={"nodes": len(удалены)})
+    return {"deleted": удалены}
+
+
+@router.post("/sessions/{session_id}/files")
+def sessions_add_file(request: Request, session_id: str, file: UploadFile = File(...),
+                      start: str = Form(""), length: str = Form(""), sliced: str = Form(""),
+                      analyze: str = Form("")) -> dict[str, Any]:
+    """Файл в сессию: поток сразу виден битами; обрезка — с какого байта и сколько.
+
+    .Sig — тела пакетов подряд, текст с битами или HEX — сами биты: обрезается
+    уже поток. ``sliced`` — браузер сам вырезал кусок сырого файла (не гнать по
+    сети лишнее): здесь только записываем, откуда он.
+    """
+    from ..potok.chtenie import прочитать as прочитать_поток  # noqa: PLC0415
+    user = require_user(request)
+    _сессия_или_404(request, user, session_id)
+    settings = _settings(request)
+    name = _safe_name(Path(file.filename or "поток.bin").name) or "поток.bin"
+    try:
+        начало = max(0, int(start or 0))
+        сколько = max(0, int(length or 0))
+    except ValueError:
+        raise ServiceError("обрезка: начало и длина — целые числа байт", 400) from None
+    limit = settings.max_upload_mb * 1024 * 1024
+    данные = file.file.read(limit + 1)
+    if len(данные) > limit:
+        raise ServiceError(f"файл больше допустимых {settings.max_upload_mb} МБ", 413)
+    if not данные:
+        raise ServiceError("файл пуст", 400)
+    происхождение = []
+    if sliced:
+        поток = данные
+        происхождение.append(f"файл {name}: байты {начало}–{начало + len(данные) - 1}")
+    else:
+        разобранный = прочитать_поток(данные=данные, имя=name)
+        поток = разобранный.данные
+        происхождение.append(f"файл {name}: {разобранный.формат}")
+        происхождение += list(разобранный.заметки)[:4]
+        if начало or сколько:
+            if начало >= len(поток):
+                raise ServiceError(f"начало обрезки за концом потока ({len(поток)} байт)", 400)
+            поток = поток[начало:начало + сколько] if сколько else поток[начало:]
+            происхождение.append(f"обрезка: байты {начало}–{начало + len(поток) - 1} из {len(разобранный.данные)}")
+    if not поток:
+        raise ServiceError("после чтения файла поток пуст", 400)
+    ид = _potok(request).создать(владелец=user.id, имя=name, данные=поток, профиль="обычно",
+                                 разбирать=analyze in ("1", "true", "да"), происхождение=происхождение,
+                                 сессия=session_id)
+    _sessii(request).тронуть(session_id)
+    _repos(request).audit.log("sessions.file", user=user, object_type="session", object_id=session_id,
+                              details={"name": name, "bytes": len(поток), "job": ид})
+    return {"id": ид, "bytes": len(поток)}
 
 
 def _биты_поиска(request: Request, user, job_id: str, тело: dict[str, Any]):
