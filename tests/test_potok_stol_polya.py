@@ -119,8 +119,9 @@ class МенюСтолаTests(unittest.TestCase):
         обработчик = APP[начало:APP.index("});", начало)]
         self.assertIn("меню(e.clientX, e.clientY, пункты)", обработчик)
         self.assertNotIn("всплывающееМеню", обработчик)
-        for пункт in ("Поле из выделения", "Убрать выделенные столбцы", "удалить поле",
-                      "Поля: значения по видимым строкам"):
+        for пункт in ("Поле из выделенных столбцов", "Убрать выделенные столбцы", "удалить поле",
+                      "Поля: значения по видимым строкам", "Поток — с этого бита", "Копировать ",
+                      "Закладка на ", "Сравнить с другим массивом", "Сведения о массиве"):
             self.assertIn(пункт, обработчик)
         # Подменю у нижнего края окна не уходит за окно.
         self.assertIn("группа.addEventListener('mouseenter', () => вОкно(под))", APP)
@@ -128,12 +129,15 @@ class МенюСтолаTests(unittest.TestCase):
         self.assertIn("function меню(x, y, сверху)", APP)
         self.assertIn("stol-menu-top", APP[APP.index("function меню(x, y, сверху)"):])
 
-    def test_ширина_на_ходу_колесом_с_ctrl(self):
+    def test_колесо_масштаб_и_ширина(self):
         начало = APP.index("холст.addEventListener('wheel'")
         обработчик = APP[начало:APP.index("}, { passive: false });", начало)]
-        self.assertIn("if (e.ctrlKey) { шир(-Math.sign(e.deltaY) * (e.shiftKey ? 8 : 1)); return; }", обработчик)
-        # Ctrl проверяется раньше Shift: иначе Ctrl+Shift листал бы столбцы.
+        # Ctrl + колесо — масштаб (как в настольных средствах), Alt + колесо — длина строки ± шаг.
+        self.assertIn("if (e.ctrlKey || e.metaKey) { приблизить(-знак); return; }", обработчик)
+        self.assertIn("if (e.altKey) { шир(-знак * с.шаг); return; }", обработчик)
+        # Ctrl и Alt проверяются раньше Shift: иначе Ctrl+Shift листал бы столбцы.
         self.assertLess(обработчик.index("e.ctrlKey"), обработчик.index("if (e.shiftKey)"))
+        self.assertLess(обработчик.index("e.altKey"), обработчик.index("if (e.shiftKey)"))
 
     def test_загрузка_и_производные_ведут_на_стол(self):
         self.assertNotIn("navigate('#/potok/' + encodeURIComponent(data.id))", APP)
