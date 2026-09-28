@@ -233,6 +233,17 @@ class ШагиTests(unittest.TestCase):
         self.assertEqual(["шаг 1: инверсия", "шаг 3: канал по маске: период 8, сдвиг 0, позиции 0"], ход)
         self.assertEqual(2, len(описание))
 
+    def test_описание_слоя_с_подробностями(self):
+        # В описание шага идут три первые подробности снятого слоя, через «; ».
+        from unittest import mock  # noqa: PLC0415
+
+        from reportgen.potok.nahodka import Находка  # noqa: PLC0415
+        находка = Находка(уровень="проба", что="снят слой", мера="", уверенность=1.0,
+                          подробно=["один", "два", "три", "четыре"])
+        with mock.patch("reportgen.potok.razbor.снять_вручную", return_value=(np.zeros(8, np.uint8), находка)):
+            _, описание = rastr.применить(np.ones(8, np.uint8), [{"вид": "слой", "слой": "что-то"}])
+        self.assertEqual(["снят слой: один; два; три"], описание)
+
 
 class ПоискПериодаTests(unittest.TestCase):
     def test_маркер_в_случайном_потоке(self):
@@ -837,13 +848,14 @@ class РазметкаВБраузереTests(unittest.TestCase):
 
     def выполнить(self, случаи: list[dict]) -> list:
         код = функции_js(["битМассива", "единицВОтрезке", "битыСтрокой", "пустаяРазметка", "изменитьОтрезки",
-                          "маскаМеток", "итогРазметки", "описатьРазметку"], ["ЕДИНИЦ_В_БАЙТЕ"])
+                          "маскаМеток", "итогРазметки", "описатьРазметку", "латиницей"], ["ЕДИНИЦ_В_БАЙТЕ", "ЛАТИНИЦА"])
         код += """
 const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
 const итог = случаи.map((с) => {
     if (с.что === 'маска') { const out = new Uint8Array(с.длина + 5).fill(7); маскаМеток(с.р, с.от, с.длина, out); return Array.from(out.subarray(0, с.длина)); }
     if (с.что === 'отрезки') { let о = []; с.шаги.forEach(([а, к, д]) => { о = изменитьОтрезки(о, а, к, д); }); return о; }
     if (с.что === 'описание') return описатьРазметку(с.р);
+    if (с.что === 'латиницей') return латиницей(с.текст);
     const б = Uint8Array.from(с.байты);
     if (с.что === 'единиц') return единицВОтрезке(б, с.а, с.к);
     if (с.что === 'строкой') return битыСтрокой(б, с.а, с.к);
@@ -899,6 +911,11 @@ process.stdout.write(JSON.stringify(итог));
             случаи.append({"что": "строкой", "байты": байты.tolist(), "а": а, "к": к})
             ждём.append("".join(str(int(б)) for б in биты[а:к]))
         self.assertEqual(ждём, self.выполнить(случаи))
+
+    def test_имя_снимка_латиницей(self):
+        случаи = ["Запись Щука.bin", "ЁЖИК-2 ъ", "abc_1.2-x", "", "a/b:c*d", "Юля"]
+        self.assertEqual(["Zapis_Shchuka.bin", "EZhIK-2_", "abc_1.2-x", "massiv", "a_b_c_d", "Yulya"],
+                         self.выполнить([{"что": "латиницей", "текст": т} for т in случаи]))
 
     def test_итог_и_описание(self):
         g = np.random.default_rng(14)
