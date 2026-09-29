@@ -2530,14 +2530,20 @@ def _мои_сессии(request: Request, user) -> list[str]:
 
 def _вправе_удалить(request: Request, user, состояние: dict[str, Any]) -> None:
     """Узел сессии удаляет тот, кто его сделал, или владелец сессии — не любой участник."""
+    причина = _нельзя_удалить(request, user, состояние)
+    if причина:
+        raise ServiceError(причина, 403)
+
+
+def _нельзя_удалить(request: Request, user, состояние: dict[str, Any]) -> str:
+    """Почему пользователю нельзя удалить узел задания; пусто — можно (см. ``_вправе_удалить``)."""
     if состояние.get("владелец") == user.id or not состояние.get("сессия"):
-        return
+        return ""
     try:
         сессия = _sessii(request).прочитать(состояние["сессия"])
     except KeyError:
         сессия = {}
-    if сессия.get("владелец") != user.id:
-        raise ServiceError("удалить чужой узел сессии вправе только владелец сессии", 403)
+    return "" if сессия.get("владелец") == user.id else "удалить чужой узел сессии вправе только владелец сессии"
 
 
 def _задание_или_404(request: Request, user, ид: str) -> dict[str, Any]:
@@ -3163,18 +3169,54 @@ def potok_tree(request: Request, job_id: str) -> dict[str, Any]:
     return {"tree": _potok(request).дерево(job_id, user.id, _мои_сессии(request, user))}
 
 
+#: Сколько веток удаляется одним запросом — с запасом на любую таблицу массивов.
+ВЕТОК_ЗА_РАЗ = 1000
+
+
+@router.post("/potok/delete-many")
+def potok_delete_many(request: Request) -> dict[str, Any]:
+    """Удалить несколько веток таблицы массивов одним запросом: ``items`` — [{job, stage}].
+
+    Права — на каждую ветку; ветка, ушедшая вместе с выбранной выше (или не видная
+    пользователю), пропускается; чужая или с идущим разбором — не удаляется, но и не
+    мешает остальным: причина — в ``refused``.
+    """
+    user = require_user(request)
+    пункты = _body(request).get("items")
+    if not isinstance(пункты, list) or not 0 < len(пункты) <= ВЕТОК_ЗА_РАЗ:
+        raise ServiceError(f"нужен список веток: от 1 до {ВЕТОК_ЗА_РАЗ}", 400)
+    разобраны = []
+    for п in пункты:
+        try:
+            ид, этап = str(п["job"]), int(п.get("stage") or 0)
+        except (TypeError, KeyError, ValueError):
+            raise ServiceError("ветка — это {job, stage}", 400) from None
+        if not re.fullmatch(r"[0-9]{8}-[0-9]{6}-[0-9a-f]{6}", ид) or этап < 0:
+            raise ServiceError("ветка — это {job, stage}", 400)
+        разобраны.append((ид, этап))
+    итог = _potok(request).удалить_ветки(разобраны, user.id, _мои_сессии(request, user),
+                                         нельзя=lambda узел: _нельзя_удалить(request, user, узел))
+    _repos(request).audit.log("potok.delete", user=user, object_type="potok", object_id=разобраны[0][0],
+                              details={"nodes": len(итог["задания"]), "branches": len(разобраны),
+                                       "arrays": итог["массивов"]})
+    return {"deleted": итог["задания"], "stages": итог["этапы"], "arrays": итог["массивов"],
+            "skipped": итог["пропущено"], "refused": итог["отказано"]}
+
+
 @router.delete("/potok/{job_id}")
-def potok_delete(request: Request, job_id: str) -> dict[str, Any]:
-    """Удалить узел дерева и всю ветвь под ним."""
+def potok_delete(request: Request, job_id: str, stage: int = 0) -> dict[str, Any]:
+    """Удалить ветку дерева: узел и всё под ним — вход задания (``stage`` 0) или выход этапа автомата."""
     user = require_user(request)
     _вправе_удалить(request, user, _задание_или_404(request, user, job_id))
     try:
-        удалены = _potok(request).удалить(job_id, user.id, _мои_сессии(request, user))
+        ветка = _potok(request).удалить_ветку(job_id, stage, user.id, _мои_сессии(request, user))
+    except KeyError:
+        raise ServiceError("у задания нет такого этапа", 404) from None
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 409) from None
     _repos(request).audit.log("potok.delete", user=user, object_type="potok", object_id=job_id,
-                              details={"nodes": len(удалены)})
-    return {"deleted": удалены}
+                              details={"nodes": len(ветка["задания"]), "stage": stage, "arrays": ветка["массивов"]})
+    return {"deleted": ветка["задания"], "stages": ветка["этапов"], "arrays": ветка["массивов"]}
 
 
 @router.post("/potok/{job_id}/rebuild")
