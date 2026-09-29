@@ -9183,3 +9183,90 @@ i.pk-lvl {
     }
 }
 
+
+/* ======================================================================
+   Помощник на столе: выдвижная панель справа, поверх правой части стола.
+   Раскладка стола под ней не меняется — битовый просмотр не перерисовывается;
+   лента, ответ и поле вопроса — те же, что на странице помощника.
+   ====================================================================== */
+.stol-ai {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    width: min(460px, 94vw);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-left: 1px solid var(--border);
+    background: var(--panel);
+    box-shadow: var(--shadow-lg);
+    animation: stol-ai-in var(--dur-2) var(--ease);
+}
+.stol-ai[hidden] { display: none; }
+@keyframes stol-ai-in {
+    from { transform: translateX(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .stol-ai { animation: none; }
+}
+.stol-ai-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px 7px 14px;
+    border-bottom: 1px solid var(--border);
+}
+.stol-ai-title { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
+.stol-ai-title svg { width: 16px; height: 16px; flex: none; color: var(--accent); }
+.stol-ai-about { min-width: 0; color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stol-ai-actions { display: flex; align-items: center; gap: 2px; flex: none; }
+.stol-ai-close {
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+.stol-ai-close:hover { background: var(--panel-2); color: var(--text); }
+.stol-ai-close:focus-visible { outline: none; box-shadow: var(--ring); }
+.stol-ai-body { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; background: var(--bg); }
+.stol-ai-feed { gap: 12px; padding: 14px 12px; font-size: 13px; }
+.stol-ai-feed .msg .body { padding: 9px 12px; }
+.stol-ai-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-width: 320px;
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+}
+.stol-ai-empty b { color: var(--text); font-size: var(--fs-md); }
+.stol-ai-empty p { margin: 0; line-height: 1.5; }
+.stol-ai-mark {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+.stol-ai-mark svg { width: 20px; height: 20px; }
+.stol-ai-src { max-height: 38%; overflow: auto; padding: 6px 12px; border-top: 1px solid var(--border); font-size: 12.5px; }
+.stol-ai-src[hidden] { display: none; }
+.stol-ai-src summary { color: var(--muted); font-weight: 600; cursor: pointer; }
+.stol-ai-src-body { padding-top: 6px; }
+.stol-ai-composer { padding: 8px 10px 10px; border-top: 1px solid var(--border); }
+.stol-ai-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: var(--fs-xs); }
+/* Кнопка «Помощник» в шапке стола: открыта панель — кнопка нажата. */
+.stol-ai-toggle svg { width: 14px; height: 14px; }
+.stol-title-actions .stol-ai-toggle.is-on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line); }
