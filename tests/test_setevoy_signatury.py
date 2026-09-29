@@ -1056,5 +1056,52 @@ class МутантыIsoTests(unittest.TestCase):
         self.assertIsNone(poisk._iso(данные[:32769 + 130], 32769))
 
 
+class МутантыПоискаTests(unittest.TestCase):
+    def test_ebml_граница_заголовка_и_длина_элементов(self):
+        self.assertEqual("webm", poisk._ebml_вид(b"\x1a\x45\xdf\xa3\x82\x42\x82\x84webm", 0))   # заголовок обрезан
+        self.assertEqual("webm", poisk._ebml_вид(b"\x1a\x45\xdf\xa3\x81\x42\x82\x84webm", 0))
+        self.assertEqual("webm", poisk._ebml_вид(b"\x1a\x45\xdf\xa3\x8b\x42\x86\x81\x01\x42\x82\x84webm", 0))
+
+    def test_flv_далеко_от_начала(self):
+        данные = обр.flv()
+        self.assertEqual(len(данные), poisk._flv(b"\x00" * 37 + данные, 37))                  # конец данных
+        неверная = bytearray(данные)
+        struct.pack_into(">I", неверная, len(данные) - 4, 99)
+        self.assertEqual(len(данные) - 37, poisk._flv(b"\x00" * 37 + bytes(неверная), 37))
+
+    def test_macho_7_байт_на_команду(self):
+        сегмент = struct.pack("<II16sQQQQiiII", 0x19, 72, b"__TEXT", 0, 112, 0, 112, 5, 5, 0, 0)
+        данные = struct.pack("<IiiIIIII", 0xFEEDFACF, 7, 3, 2, 2, 80, 0, 0) + сегмент + struct.pack("<II", 0x26, 8)
+        self.assertEqual(0, poisk._macho(данные[:-1], 0))
+
+    def test_предел_находок_по_умолчанию_и_сдвиг_7(self):
+        поток = (b"\x00" * 16 + обр.gif()) * 501
+        биты = np.unpackbits(np.frombuffer(поток, dtype=np.uint8))
+        self.assertEqual(500, len(poisk.сигнатуры(биты, любой_сдвиг=False)))
+        self.assertEqual(500, len(poisk.сигнатуры_в_байтах(поток)))
+        данные = b"\x00" * 9 + обр.png()
+        биты = np.concatenate([np.zeros(7, dtype=np.uint8), np.unpackbits(np.frombuffer(данные, dtype=np.uint8))])
+        находки = [(н["бит"], н["сдвиг"], н["байт"]) for н in poisk.сигнатуры(биты) if н["что"] == "PNG"]
+        self.assertEqual([(8 * 9 + 7, 7, 9)], находки)
+
+    def test_предел_вхождений_подписи(self):
+        for повторов, найден in ((19999, True), (20000, False)):
+            with self.subTest(повторов=повторов):
+                поток = b"GIF89a" * повторов + обр.gif()
+                self.assertEqual(найден, any(н["что"] == "GIF" for н in poisk.сигнатуры_в_байтах(поток)))
+
+    def test_предел_до_отсева_частей(self):
+        # Предел — на находки до отсева частей: у MP3 из 5 кадров две находки (кадры 1 и 2), вторая — часть.
+        кадры = обр.mp3(5, id3=False)
+        поток = кадры + b"\x00" * 100 + кадры
+        self.assertEqual([0], [н["байт"] for н in poisk.сигнатуры_в_байтах(поток, предел=2)])
+        self.assertEqual([0, len(кадры) + 100], [н["байт"] for н in poisk.сигнатуры_в_байтах(поток, предел=4)])
+
+    def test_часть_с_нулевого_байта(self):
+        данные = обр.tar_([("a", b"1")])
+        self.assertEqual([(0, len(данные))], [(н["байт"], н["длина"]) for н in poisk.сигнатуры_в_байтах(данные)
+                                             if н["что"] == "tar"])
+
+
 if __name__ == "__main__":
     unittest.main()
