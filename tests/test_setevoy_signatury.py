@@ -591,5 +591,378 @@ class ОпознатьОшибкиTests(unittest.TestCase):
         self.assertEqual(zlib.crc32(b"x") & 0xFFFF, zlib.crc32(b"x") & 0xFFFF)
 
 
+# == Мутанты: поля и границы, которые обычные образцы не различают ==================================
+
+def нулевой_блок(данные):
+    """Номер первого нулевого блока tar."""
+    return next(i for i in range(len(данные) // 512) if not данные[i * 512:(i + 1) * 512].strip(b"\x00"))
+
+
+def заголовок_tar(сумма="%06o\x00 ", размер=b"00000000003\x00", время=b"14000000000\x00", имя=b"a.txt",
+                  ссылка=b""):
+    з = bytearray(512)
+    з[0:len(имя)] = имя
+    з[124:136] = размер
+    з[136:148] = время
+    з[156] = ord("0")
+    з[157:157 + len(ссылка)] = ссылка
+    з[257:265] = b"ustar\x0000"
+    з[148:156] = b" " * 8
+    з[148:156] = (сумма % sum(з)).encode()
+    return bytes(з)
+
+
+class МутантыОбщиеTests(unittest.TestCase):
+    def test_далеко_в_потоке_при_пределе_в_длину_образца(self):
+        # Файл в потоке далеко от начала, предел вырезаемого — его же длина (с запасом на хвост):
+        # обходы «пока место − начало < предела» не должны зависеть от места в потоке.
+        for имя, данные, что, расширение in обр.все():
+            with self.subTest(имя), mock.patch.object(poisk, "ФАЙЛ_ДО", len(данные) + 100):
+                до = b"\x00" * (2 * len(данные) + 1000)
+                self.assertEqual([(len(до), len(данные), расширение)], в_потоке(данные, что, до=до))
+
+
+class МутантыTarTests(unittest.TestCase):
+    def test_сумма_и_длина_значащими_цифрами(self):
+        длинные = dict(имя=b"\xff" * 100, ссылка=b"\xff" * 100)             # сумма ≥ 0o100000: 6 значащих цифр
+        self.assertEqual(3, poisk._tar_заголовок(заголовок_tar(**длинные), 0))
+        self.assertEqual(3, poisk._tar_заголовок(заголовок_tar("  %06o", **длинные), 0))   # без нуля в конце
+        self.assertEqual(3, poisk._tar_заголовок(заголовок_tar(время=b"14000000000 "), 0))  # байт 147 — пробел
+        self.assertEqual(8 ** 11, poisk._tar_заголовок(заголовок_tar(размер=b"100000000000"), 0))
+        self.assertEqual(512, poisk._tar_заголовок(заголовок_tar(размер=b"000000001000"), 0))
+
+    def test_версия_после_ustar_при_верной_сумме(self):
+        з = bytearray(заголовок_tar())
+        з[262] = ord("x")
+        з[148:156] = b" " * 8
+        з[148:156] = b"%06o\x00 " % sum(з)
+        данные = bytes(з) + b"abc" + bytes(509) + bytes(1024)
+        self.assertIsNotNone(poisk._tar_заголовок(bytes(з), 0))
+        self.assertIsNone(poisk._tar(данные, 257))
+        self.assertEqual(4 * 512, poisk._tar(заголовок_tar() + b"abc" + bytes(509) + bytes(1024), 257))
+
+    def test_второй_нулевой_блок(self):
+        данные = обр.tar_([("x.txt", b"abc")])
+        н = нулевой_блок(данные)
+        второй = bytearray(данные)
+        второй[(н + 1) * 512 + 3] = 1
+        self.assertEqual(0, poisk._tar(bytes(второй), 257))
+        self.assertEqual(0, poisk._tar(данные[:(н + 1) * 512 + 100], 257))      # второй нулевой оборван
+        self.assertEqual((н + 2) * 512, poisk._tar(данные[:(н + 2) * 512] + b"tail", 257))
+        self.assertEqual((н + 2) * 512, poisk._tar(данные[:(н + 2) * 512], 257))
+
+
+class МутантыRarTests(unittest.TestCase):
+    ГЛАВНЫЙ = b"Rar!\x1a\x07\x00" + обр._rar4_блок(0x73, 0, bytes(6))
+    КОНЕЦ = обр._rar4_блок(0x7B, 0x4000, b"")
+
+    def test_rar4_виды_блоков_на_границах(self):
+        self.assertEqual(0, poisk._rar4(обр.rar4()[:20 + 6], 0))                  # от блока — 6 байт из 7
+        for вид, итог in ((0x72, True), (0x71, False), (0x7C, False)):
+            данные = self.ГЛАВНЫЙ + обр._rar4_блок(вид, 0, b"") + self.КОНЕЦ
+            with self.subTest(вид=hex(вид)):
+                self.assertEqual(len(данные) if итог else 0, poisk._rar4(данные, 0))
+
+    def test_rar4_флаги(self):
+        пароль = b"Rar!\x1a\x07\x00" + обр._rar4_блок(0x73, 0x0080, bytes(6)) + self.КОНЕЦ
+        self.assertEqual(0, poisk._rar4(пароль, 0))
+        с_флагом = b"Rar!\x1a\x07\x00" + обр._rar4_блок(0x73, 0x0001, bytes(6)) + self.КОНЕЦ
+        self.assertEqual(len(с_флагом), poisk._rar4(с_флагом, 0))
+        комментарий = обр._rar4_блок(0x75, 0x0080, b"") + обр._rar4_блок(0x75, 0x0001, b"\x05\x00\x00\x00")
+        данные = self.ГЛАВНЫЙ + комментарий + self.КОНЕЦ
+        self.assertEqual(len(данные), poisk._rar4(данные, 0))
+
+    def test_rar4_файл_без_флага_и_большой(self):
+        def файл(флаги, атрибуты=0x20, старшие=b""):
+            тело = struct.pack("<IIBIIBBHI", 3, 3, 0, 0, 0, 20, 0x30, 5, атрибуты) + старшие + b"b.txt"
+            return обр._rar4_блок(0x74, флаги, тело) + b"abc"
+        for флаги, атрибуты, старшие in ((0, 0x20, b""), (0x8001, 0x20, b""),
+                                         (0x8100, 0x20000000, struct.pack("<II", 0, 1))):
+            данные = self.ГЛАВНЫЙ + файл(флаги, атрибуты, старшие) + self.КОНЕЦ
+            with self.subTest(флаги=hex(флаги)):
+                self.assertEqual(len(данные), poisk._rar4(данные, 0))
+
+    def test_rar5_границы_и_виды(self):
+        подпись = b"Rar!\x1a\x07\x01\x00"
+        self.assertIsNone(poisk._rar5(подпись + bytes(5), 0))
+        данные = обр.rar5()
+        первый = 4 + 1 + данные[12]
+        self.assertEqual(0, poisk._rar5(данные[:8 + первый - 1], 0))
+        служебный = обр._rar5_блок(3, 0x0002, обр._vint(3) + b"\x00\x01", b"DAT")
+        данные = подпись + обр._rar5_блок(1, 0, обр._vint(0)) + служебный + обр._rar5_блок(5, 0, обр._vint(0))
+        self.assertEqual(len(данные), poisk._rar5(данные, 0))
+        доп = подпись + обр._rar5_блок(1, 0x0001, обр._vint(3) + b"xyz") + обр._rar5_блок(5, 0, обр._vint(0))
+        self.assertEqual(len(доп), poisk._rar5(доп, 0))
+
+
+class МутантыZstdTests(unittest.TestCase):
+    def test_границы(self):
+        self.assertEqual(0, poisk._zstd(b"\x28\xb5\x2f\xfd\x20\x05", 0))
+        блок = ((5 << 3) | 1).to_bytes(3, "little") + b"abcde"
+        данные = b"\x28\xb5\x2f\xfd\x41" + b"\x40\x07\x00\x01" + блок                # окно, DID 1, FCS 2
+        self.assertEqual(len(данные), poisk._zstd(данные, 0))
+        сырой = (10 << 3).to_bytes(3, "little") + bytes(10)
+        плохой = (3 << 1).to_bytes(3, "little")
+        with mock.patch.object(poisk, "ФАЙЛ_ДО", 19):
+            self.assertEqual(0, poisk._zstd(b"\x28\xb5\x2f\xfd\x20\x05" + сырой + плохой, 0))
+
+
+def ole_собрать(секторы, *, всего_fat, в_заголовке, каталог=0xFFFFFFFE, difat=0xFFFFFFFE, difat_число=0):
+    """Составной документ версии 3 (сектор 512) из готовых секторов; сектор n лежит с (n + 1)·512."""
+    список = list(в_заголовке) + [0xFFFFFFFF] * (109 - len(в_заголовке))
+    заголовок = (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + bytes(16) + struct.pack("<HHHHH", 0x3E, 3, 0xFFFE, 9, 6)
+                 + bytes(6) + struct.pack("<IIIIIIIII", 0, всего_fat, каталог, 0, 4096, 0xFFFFFFFE, 0, difat,
+                                          difat_число) + struct.pack("<109I", *список))
+    return заголовок + b"".join(секторы)
+
+
+def сектор_fat(записи):
+    return struct.pack("<128I", *(list(записи) + [0xFFFFFFFF] * (128 - len(записи))))
+
+
+def запись_каталога(имя, длина=None):
+    имя16 = (имя + "\x00").encode("utf-16-le")
+    return имя16 + bytes(64 - len(имя16)) + struct.pack("<HBB", len(имя16) if длина is None else длина, 2, 1) + bytes(60)
+
+
+def сектор_каталога(*имена):
+    return b"".join(запись_каталога(и) for и in имена) + bytes(128 * (4 - len(имена)))
+
+
+class МутантыOleTests(unittest.TestCase):
+    ПУСТО = 0xFFFFFFFF
+    КОНЕЦ = 0xFFFFFFFE
+
+    def test_границы_данных(self):
+        данные = обр.ole()
+        self.assertEqual(0, poisk._ole(данные[:512], 0))
+        self.assertEqual(len(данные), poisk._ole(данные[:1024], 0))     # длина — по FAT, данных дальше может не быть
+        self.assertEqual("doc", poisk._ole_вид(данные[:1536], 0))
+        for длина in (1535, 1024 + 200):
+            with self.subTest(длина=длина):
+                self.assertEqual("ole", poisk._ole_вид(данные[:длина], 0))
+
+    def test_номера_fat_сверх_числа(self):
+        данные = bytearray(обр.ole())
+        struct.pack_into("<I", данные, 0x4C + 4, 7)                     # в списке второй номер, а FAT — один сектор
+        self.assertEqual(len(данные), poisk._ole(bytes(данные), 0))
+
+    def test_последний_занятый_в_секторе_fat(self):
+        for секторов in (110, 125, 126):
+            данные = обр.ole(размер=512 * секторов)
+            with self.subTest(секторов=секторов):
+                self.assertEqual(len(данные), poisk._ole(данные, 0))
+        только_fat = ole_собрать([сектор_fat([0xFFFFFFFD])], всего_fat=1, в_заголовке=[0])
+        self.assertEqual(1024, poisk._ole(только_fat, 0))
+
+    def test_второй_сектор_fat(self):
+        fat0 = сектор_fat([0xFFFFFFFD, 0xFFFFFFFD, self.КОНЕЦ])
+        fat1 = сектор_fat([self.КОНЕЦ])                                # занят только сектор 128
+        данные = ole_собрать([fat0, fat1, сектор_каталога("Root Entry")], всего_fat=2, в_заголовке=[0, 1], каталог=2)
+        self.assertEqual(130 * 512, poisk._ole(данные, 0))
+
+    def test_difat_за_концом_и_не_нужен(self):
+        fat = сектор_fat([0xFFFFFFFD, self.КОНЕЦ])
+        каталог = сектор_каталога("Root Entry", "WordDocument")
+        for всего, в_заголовке, difat, число, итог in ((1, [0], 50, 0, 1536), (1, [0], 50, 1, 1536),
+                                                       (2, [0], self.КОНЕЦ, 1, 1536), (2, [0], 50, 1, 0)):
+            данные = ole_собрать([fat, каталог], всего_fat=всего, в_заголовке=в_заголовке, каталог=1, difat=difat,
+                                 difat_число=число)
+            with self.subTest(всего=всего, difat=difat, число=число):
+                self.assertEqual(итог, poisk._ole(данные, 0))
+
+    def test_цепочка_difat_из_двух_секторов(self):
+        # FAT — 240 секторов (0…239), DIFAT — 240 и 241, каталог — 242. В заголовке 109 номеров, в первом DIFAT —
+        # 127 и ссылка на второй, во втором — 4 (и мусорный ноль сверх нужного числа). В последнем секторе FAT
+        # занята запись 0: длина по FAT — (239·128 + 2)·512, хотя данных меньше.
+        fat = [сектор_fat([]) for _ in range(240)]
+        fat[0] = сектор_fat([0xFFFFFFFD] * 128)
+        fat[1] = сектор_fat([0xFFFFFFFD] * 112 + [0xFFFFFFFC, 0xFFFFFFFC, self.КОНЕЦ])
+        fat[239] = сектор_fat([self.КОНЕЦ])
+        difat1 = struct.pack("<128I", *range(109, 236), 241)
+        difat2 = struct.pack("<128I", 236, 237, 238, 239, 0, *([self.ПУСТО] * 122), self.КОНЕЦ)
+        секторы = fat + [difat1, difat2, сектор_каталога("Root Entry", "Workbook")]
+        данные = ole_собрать(секторы, всего_fat=240, в_заголовке=range(109), каталог=242, difat=240, difat_число=2)
+        self.assertEqual((239 * 128 + 2) * 512, poisk._ole(данные, 0))
+        self.assertEqual("xls", poisk._ole_вид(данные, 0))
+        self.assertEqual(list(range(240)), poisk._ole_fat(данные, 0, 512))
+        self.assertEqual(list(range(236)), poisk._ole_fat(данные[:(242 + 1) * 512], 0, 512)[:236])
+        self.assertIsNone(poisk._ole_fat(данные[:(241 + 1) * 512 - 1], 0, 512))
+        # Число секторов DIFAT в заголовке — 1: второй не читается, хоть ссылка на него и есть.
+        одна = bytearray(данные)
+        struct.pack_into("<I", одна, 0x48, 1)
+        self.assertEqual(list(range(236)), poisk._ole_fat(bytes(одна), 0, 512))
+        self.assertEqual((242 + 2) * 512, poisk._ole(bytes(одна), 0))
+
+    def test_каталог_цепочкой_через_второй_сектор_fat(self):
+        # Каталог: 1 → 130 → 131; следующий за 1 — в FAT0, за 130 — в FAT1 (сектор 2), имя — только в 131.
+        fat0 = сектор_fat([0xFFFFFFFD, 130, 0xFFFFFFFD])
+        fat1 = сектор_fat([self.ПУСТО, self.ПУСТО, 131, self.КОНЕЦ])
+        секторы = [fat0, сектор_каталога("Root Entry", "Contents"), fat1] + [bytes(512)] * 127
+        секторы += [сектор_каталога("Ole"), сектор_каталога("WordDocument")]
+        данные = ole_собрать(секторы, всего_fat=2, в_заголовке=[0, 2], каталог=1)
+        self.assertEqual("doc", poisk._ole_вид(данные, 0))
+        self.assertEqual("doc", poisk._ole_вид(b"\x00" * 37 + данные, 37))
+        петля = bytearray(данные)
+        struct.pack_into("<I", петля, 512 + 4, 1)                       # 1 → 1: цепочка замкнута
+        self.assertEqual("ole", poisk._ole_вид(bytes(петля), 0))
+
+    def test_читается_только_каталог(self):
+        # Каталог — сектор 3; в секторах 1, 2 и 4 — записи с «WordDocument», но это не каталог.
+        чужой = сектор_каталога("WordDocument")
+        fat = сектор_fat([0xFFFFFFFD, self.КОНЕЦ, self.КОНЕЦ, self.КОНЕЦ, self.КОНЕЦ])
+        данные = ole_собрать([fat, чужой, чужой, сектор_каталога("Root Entry", "Contents"), чужой],
+                             всего_fat=1, в_заголовке=[0], каталог=3)
+        self.assertEqual("ole", poisk._ole_вид(данные, 0))
+        self.assertEqual("ole", poisk._ole_вид(b"\x00" * 37 + данные, 37))
+
+    def test_длина_имени_больше_64(self):
+        fat = сектор_fat([0xFFFFFFFD, self.КОНЕЦ])
+        каталог = запись_каталога("Root Entry") + запись_каталога("WordDocument", длина=66) + bytes(256)
+        данные = ole_собрать([fat, каталог], всего_fat=1, в_заголовке=[0], каталог=1)
+        self.assertEqual("doc", poisk._ole_вид(данные, 0))
+
+
+def tiff_из(записи, хвост=b"", ifd=8, до_ifd=b""):
+    """II: записи (тег, вид, число, поле) в IFD по смещению ifd, перед ним — до_ifd, за ним — хвост."""
+    return (b"II*\x00" + struct.pack("<I", ifd) + до_ifd + struct.pack("<H", len(записи))
+            + b"".join(struct.pack("<HHII", *з) for з in записи) + struct.pack("<I", 0) + хвост)
+
+
+class МутантыTiffTests(unittest.TestCase):
+    def test_границы_заголовка_и_ifd_в_конце(self):
+        self.assertEqual(0, poisk._tiff(b"II*\x00" + struct.pack("<I", 8), 0))
+        self.assertIsNone(poisk._tiff(b"II*\x00\x08\x00\x00", 0))
+        данные = tiff_из([(273, 4, 1, 8), (279, 4, 1, 4)], ifd=12, до_ifd=b"\x10\x20\x30\x40")
+        self.assertEqual(42, len(данные))
+        self.assertEqual(42, poisk._tiff(данные, 0))
+        self.assertEqual(0, poisk._tiff(данные[:-1], 0))
+        self.assertEqual(0, poisk._tiff(b"\x00" * 37 + данные[:40], 37))
+
+    def test_размеры_значений(self):
+        self.assertEqual(206, poisk._tiff(tiff_из([(300, 99, 6, 200)]), 0))       # неизвестный вид — 1 байт
+        self.assertEqual(305, poisk._tiff(tiff_из([(301, 1, 5, 300)]), 0))        # 5 байт — уже по смещению
+        self.assertEqual(38, poisk._tiff(tiff_из([(273, 1, 1, 200), (279, 4, 1, 10)]), 0))  # BYTE — не кусок
+
+    def test_массивы_кусков_у_конца_данных(self):
+        описание = tiff_из([(270, 2, 30, 38)], b"x" * 30)
+        self.assertEqual(68, poisk._tiff(описание, 0))
+        впритык = tiff_из([(273, 4, 2, 38), (279, 4, 2, 46)], struct.pack("<IIII", 100, 200, 10, 20))
+        self.assertEqual(220, poisk._tiff(впритык, 0))
+        за_концом = tiff_из([(273, 4, 3, 38), (279, 4, 1, 5)], struct.pack("<II", 100, 200))
+        self.assertEqual(50, poisk._tiff(за_концом, 0))
+        self.assertEqual(50, poisk._tiff(b"\x00" * 37 + за_концом, 37))
+
+
+class МутантыMpegTests(unittest.TestCase):
+    def test_кадры_с_особыми_полями(self):
+        # Бит 0 (выделение), частота 48 кГц, добивка у слоёв I и II.
+        for заголовок, длина in ((0xFFFB9001, 417), (0xFFFB9400, 384), (0xFFFF1600, 36), (0xFFFD2A00, 217)):
+            with self.subTest(hex(заголовок)):
+                self.assertEqual(длина, poisk._mpa_кадр(struct.pack(">I", заголовок), 0))
+
+    def test_id3_границы_и_поля(self):
+        кадр = b"\xff\xfb\x90\x00" + bytes(413)
+        self.assertEqual(0, poisk._mp3_id3(b"ID3\x03\x00\x00\x00\x00\x00\x00", 0))
+        self.assertIsNone(poisk._mp3_id3(b"ID3\x03\x00\x00\x00\x00\x00", 0))
+        for заголовок, тело in ((b"ID3\x02\x00\x00\x00\x00\x00\x01", b"\x00"),     # версия 2.2
+                                (b"ID3\x03\x00\x80\x00\x00\x00\x01", b"\x00"),     # флаг «несинхронизация»
+                                (b"ID3\x03\x00\x00\x00\x00\x00\x01", b"\xff")):    # тело с байта ≥ 0x80
+            with self.subTest(заголовок=заголовок, тело=тело):
+                self.assertEqual(11 + 417, poisk._mp3_id3(заголовок + тело + кадр, 0))
+        # Размер — все четыре байта по 7 бит: 1·2²¹ + 2·2¹⁴ + 3·2⁷ + 4; флаг 0x01 — не «подвал».
+        размер = (1 << 21) + (2 << 14) + (3 << 7) + 4
+        тег = b"ID3\x04\x00\x01\x01\x02\x03\x04" + bytes(размер)
+        self.assertEqual(len(тег) + 417, poisk._mp3_id3(тег + кадр, 0))
+
+
+class МутантыEbmlTests(unittest.TestCase):
+    def test_числа_и_размеры(self):
+        self.assertEqual((-1, 2), poisk._ebml_число(b"\x7f\xff", 0))
+        self.assertEqual((0x3FFE, 2), poisk._ebml_число(b"\x7f\xfe", 0))
+        данные = обр.webm()
+        self.assertEqual(11, poisk._ebml(b"\x1a\x45\xdf\xa3\x80" + b"\x18\x53\x80\x67\x81\x00", 0))
+        self.assertIsNone(poisk._ebml(данные[:14] + b"\x18\x53\x80\x67", 0))
+        self.assertEqual(19, poisk._ebml(данные[:14] + b"\x18\x53\x80\x67\x80", 0))
+
+    def test_doctype_среди_элементов_заголовка(self):
+        webm = b"\x42\x82\x84webm"
+        self.assertEqual("webm", poisk._ebml_вид(b"\x1a\x45\xdf\xa3\x8a\x42\x86\x80" + webm, 0))
+        self.assertEqual("webm", poisk._ebml_вид(b"\x1a\x45\xdf\xa3\x40\x07" + webm, 0))
+        self.assertEqual("mkv", poisk._ebml_вид(b"\x1a\x45\xdf\xa3\x80" + webm, 0))            # за заголовком
+        self.assertEqual("mkv", poisk._ebml_вид(b"\x1a\x45\xdf\xa3\x87\x42\x82\x84matr", 0))
+        self.assertEqual("mkv", poisk._ebml_вид(b"\x1a\x45\xdf\xa3\x87\x42\x82\x84we", 0))
+        self.assertEqual("mkv", poisk._ebml_вид(b"\x1a\x45\xdf\xa3\x85\x42\x86\xff\x42\x82", 0))
+
+
+class МутантыFlvTests(unittest.TestCase):
+    def метка(self, вид, данные):
+        return bytes([вид]) + len(данные).to_bytes(3, "big") + bytes(7) + данные + struct.pack(">I", 11 + len(данные))
+
+    def test_границы(self):
+        данные = обр.flv()
+        self.assertEqual(13, poisk._flv(данные[:13], 0))
+        self.assertIsNone(poisk._flv(данные[:12], 0))
+        self.assertEqual(len(данные), poisk._flv(данные + b"\x07" + bytes(10), 0))    # 11 байт, чужой вид
+        self.assertEqual(0, poisk._flv(данные + bytes(10), 0))
+        self.assertEqual(0, poisk._flv(данные[:-1], 0))
+        for смещение in (4, 8):
+            плохой = bytearray(данные)
+            плохой[4] = 0
+            struct.pack_into(">I", плохой, 5, смещение)
+            with self.subTest(смещение=смещение):
+                self.assertIsNone(poisk._flv(bytes(плохой), 0))
+
+    def test_виды_и_размер_метки(self):
+        данные = обр.flv()
+        for вид, входит in ((8, True), (18, True), (19, False), (17, False), (0x28, True)):
+            with self.subTest(вид=вид):
+                с_меткой = данные + self.метка(вид, b"abc")
+                self.assertEqual(len(с_меткой) if входит else len(данные), poisk._flv(с_меткой, 0))
+        большая = данные + self.метка(9, bytes(70000))
+        self.assertEqual(len(большая), poisk._flv(большая, 0))
+
+
+class МутантыAnnexBTests(unittest.TestCase):
+    def проверка(self, данные, м=0):
+        return next(ф.проверка for ф in poisk.ФОРМАТЫ if ф.имя == "H.264 (Annex B)")(данные, м)
+
+    def test_следующий_код_начала(self):
+        self.assertIsNone(self.проверка(b"\x00\x00\x00\x01\x67\x42\x00\x00\x01"))           # код в самом конце
+        self.assertEqual(0, self.проверка(b"\x00\x00\x00\x01\x67\x42\x00\x00\x01\x68"))
+        self.assertEqual(0, self.проверка(b"\x00\x00\x00\x01\x67\x00\x00\x01\x68\xce"))      # SPS из одного байта
+        self.assertEqual(0, self.проверка(b"\x00" * 37 + b"\x00\x00\x00\x01\x67\x42\x00\x00\x01\x68\xce", 37))
+
+
+class МутантыMachOTests(unittest.TestCase):
+    def заголовок(self, шире, команд, размер):
+        if шире:
+            return struct.pack("<IiiIIIII", 0xFEEDFACF, 7, 3, 2, команд, размер, 0, 0)
+        return struct.pack("<IiiIIII", 0xFEEDFACE, 7, 3, 2, команд, размер, 0)
+
+    def test_команда_из_8_байт_в_конце(self):
+        сегмент = struct.pack("<II16sQQQQiiII", 0x19, 72, b"__TEXT", 0, 112, 0, 112, 5, 5, 0, 0)
+        данные = self.заголовок(True, 2, 80) + сегмент + struct.pack("<II", 0x26, 8)
+        self.assertEqual(112, poisk._macho(данные, 0))
+
+    def test_поля_команд_у_конца_данных(self):
+        сегмент64 = struct.pack("<II16sQQQQiiII", 0x19, 72, b"__TEXT", 0, 0, 0, 5000, 5, 5, 0, 0)
+        данные = self.заголовок(True, 1, 72) + сегмент64
+        self.assertEqual(5000, poisk._macho(данные[:32 + 56], 0))
+        self.assertEqual(32 + 72, poisk._macho(данные[:32 + 55], 0))
+        сегмент32 = struct.pack("<II16sIIIIiiII", 0x1, 56, b"__TEXT", 0, 0, 100, 3400, 5, 5, 0, 0)
+        данные = self.заголовок(False, 1, 56) + сегмент32
+        self.assertEqual(3500, poisk._macho(данные, 0))
+        self.assertEqual(3500, poisk._macho(данные[:28 + 40], 0))
+        self.assertEqual(28 + 56, poisk._macho(данные[:28 + 39], 0))
+        подпись = struct.pack("<IIII", 0x1D, 16, 4000, 96)
+        данные = self.заголовок(False, 1, 16) + подпись
+        self.assertEqual(4096, poisk._macho(данные, 0))
+        self.assertEqual(28 + 16, poisk._macho(данные[:-1], 0))
+
+    def test_универсальный_короткий(self):
+        self.assertEqual(0, poisk._macho_fat(обр.macho_fat()[:8], 0))
+
+
 if __name__ == "__main__":
     unittest.main()

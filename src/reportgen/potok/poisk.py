@@ -413,7 +413,7 @@ def _tar_число(поле: bytes) -> int | None:
     if поле[:1] in (b"\x80", b"\xff"):              # base-256 (GNU): старший бит первого байта
         значение = int.from_bytes(поле[1:], "big")
         return значение - 256 ** (len(поле) - 1) if поле[:1] == b"\xff" else значение
-    текст = поле.split(b"\x00", 1)[0].strip()
+    текст = поле.partition(b"\x00")[0].strip()
     if not текст:
         return 0
     try:
@@ -466,20 +466,21 @@ def _rar4(д: bytes, м: int) -> int | None:
     старшие 32 бита размера на смещении 32; главный заголовок (0x73) сверяется CRC32 & 0xFFFF;
     конец — блок 0x7B. Зашифрованные заголовки (флаг главного 0x0080) не обойти — длина неизвестна."""
     место = м + 7
-    for i in range(1 << 16):
+    while место - м < ФАЙЛ_ДО:
+        первый = место == м + 7
         if место + 7 > len(д):
             return 0
         crc, вид, флаги, размер = struct.unpack_from("<HBHH", д, место)
         if размер < 7 or not 0x72 <= вид <= 0x7B:
-            return None if i == 0 else 0
-        if i == 0 and (вид != 0x73 or zlib.crc32(д[место + 2:место + размер]) & 0xFFFF != crc):
+            return None if первый else 0
+        if первый and (вид != 0x73 or zlib.crc32(д[место + 2:место + размер]) & 0xFFFF != crc):
             return None
         if вид == 0x73 and флаги & 0x0080:
             return 0
         if вид in (0x74, 0x7A):                     # файл и служебный: упакованный размер (+ старшие 32 бита)
+            if флаги & 0x0100 and struct.unpack_from("<I", д, место + 32)[0]:
+                return 0                            # больше 4 ГиБ — больше вырезаемого
             данные = struct.unpack_from("<I", д, место + 7)[0]
-            if флаги & 0x0100:
-                данные += struct.unpack_from("<I", д, место + 32)[0] << 32
         else:
             данные = struct.unpack_from("<I", д, место + 7)[0] if флаги & 0x8000 else 0
         место += размер + данные
@@ -504,15 +505,14 @@ def _rar5(д: bytes, м: int) -> int | None:
     размером и заголовком), размер заголовка (vint), тип, флаги; флаг 1 — размер доп. области, флаг 2 —
     размер данных за заголовком; конец — тип 5, зашифрованные заголовки — тип 4 (длина неизвестна)."""
     место = м + 8
-    for i in range(1 << 16):
-        if место + 5 > len(д):
-            return 0
-        try:
+    while место - м < ФАЙЛ_ДО:
+        первый = место == м + 8
+        try:                                        # короткие данные — IndexError у _vint
             размер, n = _vint(д, место + 4)
             if место + 4 + n + размер > len(д):
                 return 0
             if zlib.crc32(д[место + 4:место + 4 + n + размер]) != struct.unpack_from("<I", д, место)[0]:
-                return None if i == 0 else 0
+                return None if первый else 0
             вид, k = _vint(д, место + 4 + n)
             флаги, j = _vint(д, место + 4 + n + k)
             поле = место + 4 + n + k + j
@@ -611,17 +611,16 @@ def _ole(д: bytes, м: int) -> int | None:
     номера = _ole_fat(д, м, сектор)
     if номера is None or not номера:
         return 0
-    в_секторе, последний = сектор // 4, -1
+    в_секторе, последний = сектор // 4, None
     for i, н in enumerate(номера):
         место = м + (н + 1) * сектор
         if место + сектор > len(д):
             return 0
         записи = struct.unpack_from(f"<{в_секторе}I", д, место)
-        for j in range(в_секторе - 1, -1, -1):
-            if записи[j] != OLE_СВОБОДНЫЙ:
-                последний = max(последний, i * в_секторе + j)
-                break
-    return _итог((последний + 2) * сектор) if последний >= 0 else 0
+        занятые = [j for j, з in enumerate(записи) if з != OLE_СВОБОДНЫЙ]
+        if занятые:                                 # сектор FAT i описывает секторы с i·в_секторе
+            последний = i * в_секторе + занятые[-1]
+    return 0 if последний is None else _итог((последний + 2) * сектор)
 
 
 def _ole_вид(д: bytes, м: int) -> str:
@@ -632,19 +631,18 @@ def _ole_вид(д: bytes, м: int) -> str:
         return "ole"
     в_секторе = сектор // 4
 
-    def следующий(н: int) -> int:
-        if н // в_секторе >= len(номера):
-            return OLE_КОНЕЦ
+    def следующий(н: int) -> int:                   # номер FAT за концом — IndexError, конец цепочки
         return struct.unpack_from("<I", д, м + (номера[н // в_секторе] + 1) * сектор + 4 * (н % в_секторе))[0]
 
-    имена, н = set(), struct.unpack_from("<I", д, м + 0x30)[0]
+    # Записи каталога по 128 байт: имя UTF-16 до 64 байт с нулём в конце, длина имени — на 64 ([MS-CFB] 2.6).
+    # Особые номера (конец цепочки, свободный) огромны: такой сектор всегда «за концом данных».
+    имена, н, пройдено = set(), struct.unpack_from("<I", д, м + 0x30)[0], set()
     try:
-        for _ in range(4096):
-            if н >= OLE_КОНЕЦ - 3 or м + (н + 2) * сектор > len(д):
-                break
+        while н not in пройдено and м + (н + 2) * сектор <= len(д):
+            пройдено.add(н)
             for з in range(м + (н + 1) * сектор, м + (н + 2) * сектор, 128):
-                длина = min(struct.unpack_from("<H", д, з + 64)[0], 64)
-                имена.add(д[з:з + max(0, длина - 2)].decode("utf-16-le", "replace"))
+                длина = struct.unpack_from("<H", д, з + 64)[0]
+                имена.add(д[з:з + min(длина, 64)].decode("utf-16-le", "replace").rstrip("\x00"))
             н = следующий(н)
     except (struct.error, IndexError):
         pass
@@ -694,9 +692,7 @@ def _tiff(д: bytes, м: int) -> int | None:
     if ifd < 8:
         return None
     конец, виденные = ifd, set()
-    for _ in range(256):
-        if not ifd or ifd in виденные:
-            return _итог(конец)
+    while ifd and ifd not in виденные:             # цепочка IFD — до нуля или до повтора
         виденные.add(ifd)
         if м + ifd + 2 > len(д):
             return 0
@@ -716,7 +712,7 @@ def _tiff(д: bytes, м: int) -> int | None:
                 конец = max(конец, о + д_)
         конец = max(конец, ifd + 6 + 12 * записей)
         ifd = struct.unpack_from(порядок + "I", д, м + ifd + 2 + 12 * записей)[0]
-    return 0
+    return _итог(конец)
 
 
 #: Вид RIFF по форме (байты 8–11): WAVE, AVI, WebP, MIDI (libmagic Magdir/riff).
@@ -733,8 +729,7 @@ MP4_МАРКИ = ((b"qt  ", "mov"), (b"M4A ", "m4a"), (b"M4V ", "m4v"), (b"3gp",
 
 
 def _mp4_вид(д: bytes, м: int) -> str:
-    марка = д[м + 8:м + 12]
-    return next((р for метка, р in MP4_МАРКИ if марка.startswith(метка)), "mp4")
+    return next((р for метка, р in MP4_МАРКИ if д.startswith(метка, м + 8)), "mp4")
 
 
 #: MPEG-аудио (ISO 11172-3, 13818-3; FFmpeg mpegaudiotabs.h и mpegaudiodecheader.c): скорости, кбит/с —
@@ -778,8 +773,8 @@ def _mpa_кадры(д: bytes, место: int, наименьшее: int) -> in
     """Конец цепочки кадров MPEG-аудио с ``место`` (и тега ID3v1 «TAG», 128 байт); None — кадров меньше нужного."""
     кадров = 0
     while True:
-        длина = _mpa_кадр(д, место)
-        if длина is None or длина < 4:
+        длина = _mpa_кадр(д, место)                  # у допустимого заголовка — не меньше 24 байт
+        if длина is None:
             break
         if место + длина > len(д):                      # оборванный кадр — заголовок его всё же сошёлся
             return 0 if кадров + 1 >= наименьшее else None
@@ -811,9 +806,9 @@ def _ebml_число(д: bytes, м: int, id_: bool = False) -> tuple[int, int]:
     """VINT EBML (RFC 8794, 4): ширина — по нулям до бита-метки; у ID метка остаётся, у размера — снимается.
     Размер из одних единиц — «неизвестен» (−1)."""
     первый = д[м]
-    ширина = 8 - первый.bit_length() + 1
-    if not первый or ширина > 8:
+    if not первый:                                  # ширина больше 8 — не VINT
         raise ValueError("неверный VINT")
+    ширина = 8 - первый.bit_length() + 1
     if len(д) < м + ширина:
         raise IndexError("VINT за концом")
     значение = int.from_bytes(д[м:м + ширина], "big")
@@ -843,41 +838,47 @@ def _ebml(д: bytes, м: int) -> int | None:
 
 
 def _ebml_вид(д: bytes, м: int) -> str:
-    """WebM или Matroska — по DocType (ID 0x4282) в заголовке EBML (libmagic Magdir/matroska)."""
-    место = д.find(b"\x42\x82", м + 4, м + 64)
-    if место < 0:
-        return "mkv"
+    """WebM или Matroska — по DocType (ID 0x4282) среди элементов заголовка EBML (RFC 8794, 11.2.6;
+    libmagic Magdir/matroska)."""
     try:
-        размер, ширина = _ebml_число(д, место + 2)
+        размер, ширина = _ebml_число(д, м + 4)
+        место, конец = м + 4 + ширина, м + 4 + ширина + размер
+        while место < конец:
+            ид, ш_ид = _ebml_число(д, место, id_=True)
+            длина, ш = _ebml_число(д, место + ш_ид)
+            if ид == 0x4282:
+                return "webm" if д[место + ш_ид + ш:место + ш_ид + ш + длина] == b"webm" else "mkv"
+            место += ш_ид + ш + max(длина, 0)
     except (ValueError, IndexError):
-        return "mkv"
-    return "webm" if д[место + 2 + ширина:место + 2 + ширина + размер] == b"webm" else "mkv"
+        pass
+    return "mkv"
 
 
 def _flv(д: bytes, м: int) -> int | None:
     """FLV (Adobe FLV 10.1, прил. E; FFmpeg flvdec.c): заголовок «FLV», версия, флаги, смещение данных (≥ 9);
     PreviousTagSize0 = 0; метки: вид (8, 9, 18), размер (24 бита), время (24 + 8), поток 0, данные и
     PreviousTagSize = 11 + размер. Длина — до последней целой метки."""
-    if м + 13 > len(д) or д[м + 4] & 0xFA:
+    try:                                            # заголовок и PreviousTagSize0 за концом — не FLV
+        флаги, смещение = struct.unpack_from(">BI", д, м + 4)
+        нулевой = struct.unpack_from(">I", д, м + смещение)[0]
+    except struct.error:
         return None
-    смещение = struct.unpack_from(">I", д, м + 5)[0]
-    if смещение < 9 or м + смещение + 4 > len(д) or struct.unpack_from(">I", д, м + смещение)[0]:
+    if флаги & 0xFA or смещение < 9 or нулевой:
         return None
     место = м + смещение + 4
-    while место - м < ФАЙЛ_ДО:
+    while True:                                     # каждая метка — не меньше 15 байт: обход конечен
         if место == len(д):
-            return место - м
+            return _итог(место - м)
         if место + 11 > len(д):
             return 0
         вид, размер = д[место] & 0x1F, int.from_bytes(д[место + 1:место + 4], "big")
         if вид not in (8, 9, 18) or д[место + 8:место + 11] != b"\x00\x00\x00":
-            return место - м
+            return _итог(место - м)
         if место + 15 + размер > len(д):
             return 0
         if struct.unpack_from(">I", д, место + 11 + размер)[0] != 11 + размер:
-            return место - м
+            return _итог(место - м)
         место += 15 + размер
-    return 0
 
 
 def _annex_b(первый: int, маска: int, следующий: int, далее: int = 512) -> Callable[[bytes, int], int | None]:
@@ -886,8 +887,11 @@ def _annex_b(первый: int, маска: int, следующий: int, дал
     def проверка(д: bytes, м: int) -> int | None:
         if д[м + 4] & 0x80 or д[м + 4] & маска != первый:
             return None
-        место = д.find(b"\x00\x00\x01", м + 5, м + далее)
-        return 0 if место >= 0 and место + 3 < len(д) and д[место + 3] & маска == следующий else None
+        try:
+            место = д.index(b"\x00\x00\x01", м + 5, м + далее)
+        except ValueError:
+            return None
+        return 0 if место + 3 < len(д) and д[место + 3] & маска == следующий else None
     return проверка
 
 
