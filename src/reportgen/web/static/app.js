@@ -12430,7 +12430,7 @@
             const итог = h('div', { class: 'small muted', 'aria-live': 'polite' });
             const плитки = h('dl', { class: 'stol-gfp-summary' });
             const тело = h('tbody', {});
-            const таблица = h('table', { class: 'stol-results' },
+            const таблица = h('table', { class: 'stol-results stol-gfp-table' },
                 h('thead', {}, h('tr', {}, ['№', 'Бит', 'PLI', 'Вид', 'PTI', 'CID', 'Проверки'].map((т) => h('th', {}, т)))), тело);
             const ещё = h('button', { class: 'btn btn--sm btn--ghost', hidden: true, onclick: () => найти(true) }, 'Ещё кадры');
             let св = null, строки = [], всего = 0, выбран = 0, параметры = null, идёт = false;

@@ -8950,6 +8950,8 @@ body.reading .msg .body {
 .stol-scr-preview { max-height: 22vh; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; margin: 0; white-space: pre-wrap; }
 .stol-gfp-summary { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 0; font-size: 12.5px; }
 .stol-gfp-summary:empty { display: none; }
+/* Таблица кадров GFP: вид и проверки переносятся, чтобы все столбцы помещались в окне. */
+.stol-gfp-table td:nth-child(4), .stol-gfp-table td:last-child { white-space: normal; min-width: 12em; }
 .stol-gfp-summary dt { color: var(--muted); }
 .stol-gfp-summary dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .stol-results tr.is-bad td { color: var(--danger, #b3261e); }
