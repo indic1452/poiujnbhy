@@ -8816,9 +8816,10 @@ body.reading .msg .body {
 .stol-bottom-tabs button { padding: 5px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
 .stol-bottom-tabs button.is-active { color: var(--accent); border-bottom-color: var(--accent); }
 .stol-bottom-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.stol-toolbar { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; padding: 4px 8px; font-size: 12.5px; border-bottom: 1px solid var(--border); }
+.stol-toolbar { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding: 4px 8px; font-size: 12.5px; border-bottom: 1px solid var(--border); }
 .stol-toolbar label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); white-space: nowrap; }
 .stol-toolbar input[type=number], .stol-toolbar select { height: 26px; padding: 0 6px; font-size: 12.5px; width: auto; }
+.stol-toolbar select { padding-right: 22px; }
 .stol-toolbar .seg button { border: 0; border-right: 1px solid var(--border); background: none; padding: 0 9px; height: 26px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; }
 .stol-toolbar .seg button:last-child { border-right: 0; }
 .stol-toolbar .seg button.is-on { background: var(--accent); color: var(--accent-text); }
@@ -8862,7 +8863,7 @@ body.reading .msg .body {
 .page.stol, .page.sessions { position: relative; }
 .stol-status--line { background: #0b0d10; color: #9aa4ae; border-top: 1px solid #22262c; gap: 2px 14px; }
 .stol-status--line b { color: #e6edf3; font-weight: 600; }
-.stol-toolbar-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 2px; }
+.stol-toolbar-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 0; }
 .stol-toolbar .btn.is-on { background: #ffd600; color: #1b1b1b; border-color: #ffd600; }
 .stol-canvas.is-marking { cursor: cell; }
 .stol-canvas.is-resize { cursor: ew-resize; }
@@ -8893,6 +8894,22 @@ body.reading .msg .body {
 .stol-ok { color: var(--ok); font-weight: 600; }
 .stol-bad { color: var(--danger); font-weight: 600; }
 .stol-autocorr { margin-top: 8px; }
+/* Панель просмотра: меню «Вид» и «Инструменты», чипы включённого, полоса режима демультиплексирования. */
+.stol-toolbar-grow { flex: 1; }
+.stol-tb-group { display: inline-flex; align-items: center; gap: 5px; flex-wrap: nowrap; }
+.stol-toolbar .btn { padding: 0 8px; height: 26px; }
+.stol-toolbar .seg button { padding: 0 7px; }
+.stol-dd { display: inline-flex; align-items: center; gap: 4px; }
+.stol-dd-arrow { font-size: 10px; opacity: .7; }
+.stol-on { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.stol-demux-toggle.is-on { background: var(--mark-active); color: var(--text); border-color: var(--mark-active); }
+.stol-demux { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 5px 10px; font-size: var(--fs-sm);
+    background: var(--warn-soft); border-bottom: 1px solid var(--border); }
+.stol-demux[hidden] { display: none; }
+.stol-demux-title { font-weight: 600; color: var(--warn); }
+.stol-demux-hint { color: var(--muted); font-size: var(--fs-xs); margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 0; text-align: right; contain: inline-size; }
+.stol-demux-sel b { color: var(--text); }
+.stol-menu-sep { height: 1px; margin: 4px 6px; background: var(--border); }
 .stol-field-form { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 6px 0; font-size: var(--fs-sm); }
 .stol-field-values td, .stol-field-values th { white-space: nowrap; }
 .stol-field-values tr.is-clickable, .stol-field-values th.is-clickable { cursor: pointer; }
