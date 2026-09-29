@@ -402,9 +402,12 @@ class Settings:
 
     # -- захват с сети (страница «Захват с сети») ---------------------------
     #: С какой должности можно захватывать трафик машины-сервера: owner, head,
-    #: deputy, lead, senior, engineer (по умолчанию — инженер и выше) или off —
-    #: захват выключен для всех. Гостю захват не доступен никогда.
-    capture_min_role: str = "engineer"
+    #: deputy, lead (по умолчанию — начальник группы и выше), senior или off —
+    #: захват выключен для всех. Ниже старшего инженера не опускается: engineer
+    #: читается как senior (захват с карты видит трафик других людей). Гостю
+    #: захват не доступен никогда. Собственный трафик сервера (его порты TCP)
+    #: в захват не попадает при любой должности, петлю снимает только создатель.
+    capture_min_role: str = "lead"
     #: Потолки одного захвата: объём файла (МБ) и длительность (с). Меньше —
     #: можно задать на странице, больше — нельзя.
     capture_max_mb: int = 200
@@ -559,13 +562,48 @@ def settings_warnings(settings: Settings) -> list[str]:
         troubles.append(
             "реранкер включён, а смысловой поиск выключен: переупорядочивать "
             "будет только то, что нашлось словами. Включите embed_enabled")
-    from .store.models import ROLES  # noqa: PLC0415 — config не тянет модели при импорте
+    from .store.models import ROLE_RANK, ROLES  # noqa: PLC0415 — config не тянет модели при импорте
     роль = (settings.capture_min_role or "").strip().lower()
     if роль not in ROLES and роль != "off":
         troubles.append(
             f"capture_min_role = «{settings.capture_min_role}» — такой должности нет: захват с "
-            f"сети закрыт для всех. Допустимо: {', '.join(r for r in ROLES if r != 'guest')} или off")
+            f"сети закрыт для всех. Допустимо: {', '.join(r for r in ROLES if ROLE_RANK[r] >= ROLE_RANK[CAPTURE_ROLE_FLOOR])} или off")
+    elif роль in ROLES and ROLE_RANK[роль] < ROLE_RANK[CAPTURE_ROLE_FLOOR]:
+        troubles.append(
+            f"capture_min_role = «{settings.capture_min_role}» ниже старшего инженера: захват с карты "
+            f"видит трафик других людей, поэтому действует {CAPTURE_ROLE_FLOOR} (старший инженер и выше)")
+    if settings.capture_max_mb > settings.max_upload_mb:
+        troubles.append(
+            f"capture_max_mb = {settings.capture_max_mb} больше max_upload_mb = {settings.max_upload_mb}: "
+            f"захват крупнее {settings.max_upload_mb} МБ в анализатор пакетов не передать — только скачать. "
+            f"Уравняйте их или поднимите max_upload_mb")
     return troubles
+
+
+#: Ниже этой должности захват с сети не открывается никакой настройкой.
+CAPTURE_ROLE_FLOOR = "senior"
+
+
+def capture_own_ports(settings: Settings) -> tuple[int, ...]:
+    """Порты TCP приложения и его служб — захват с карты их не пишет никогда.
+
+    Приложение за nginx слушает http на ``port`` (docs/10: 127.0.0.1:8080), там
+    открытым текстом cookie сессий и пароли входа; llama-server, эмбеддинги и
+    реранкер — http на своих портах, там материалы дел. Для адреса без порта —
+    порт схемы (http — 80, https — 443: RFC 9110 §4.2.1, §4.2.2).
+    """
+    from urllib.parse import urlsplit  # noqa: PLC0415
+
+    порты = {int(settings.port)}
+    for адрес in (settings.llm_base_url, settings.embed_base_url, settings.rerank_base_url):
+        try:
+            части = urlsplit(str(адрес or ""))
+            порт = части.port or {"http": 80, "https": 443}.get(части.scheme.lower())
+        except ValueError:
+            continue
+        if порт:
+            порты.add(порт)
+    return tuple(sorted(п for п in порты if 1 <= п <= 65535))
 
 
 #: Имена, под которыми фон окна входа подхватывается сам — без правки

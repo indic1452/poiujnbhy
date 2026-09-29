@@ -15563,7 +15563,22 @@
         if (ф.к) части.push('к ' + ф.к);
         if (ф.хост) части.push('адрес ' + ф.хост);
         if (ф.порт) части.push('порт ' + ф.порт);
+        if ((ф.исключить || []).length) части.push('кроме TCP ' + ф.исключить.join(', ') + ' (порты самого сервера)');
         return части.join(', ');
+    }
+
+    /** Что делать опросу захвата после ошибки. 403/404 — захвата нет или он не ваш: опрос кончен.
+     *  Прочее (обрыв связи, перезапуск сервера, 502 от прокси) — повторить: захват на сервере идёт. */
+    function ошибкаОпросаЗахвата(error) {
+        const конец = error instanceof ApiError && (error.status === 403 || error.status === 404);
+        return { повторить: !конец, через: 2000 };
+    }
+
+    /** Захват другого человека (администратор смотрит и может остановить): подпись вместо кнопок обработки. */
+    function чужойЗахватСети(с) {
+        return с && с.можно_обработать === false
+            ? 'Захват пользователя ' + (с.кто || 'другого человека') + ': вам — только просмотр и остановка. Обрабатывает автор.'
+            : '';
     }
 
     const СОСТОЯНИЕ_ЗАХВАТА = { 'идёт': 'run', 'готово': 'done', 'ошибка': 'error', 'прерван': 'error' };
@@ -15636,7 +15651,8 @@
                     'aria-label': 'Выбрать карту ' + к.имя });
                 const строка = h('tr', { class: 'clickable' + (к.ид === выбор.карта ? ' is-selected' : ''), dataset: { card: к.ид } },
                     h('td', {}, переключатель),
-                    h('td', { class: 'primary' }, h('div', {}, h('b', {}, к.имя)), h('div', { class: 'muted small' }, к.описание || к.вид || '')),
+                    h('td', { class: 'primary' }, h('div', {}, h('b', {}, к.имя)), h('div', { class: 'muted small' }, к.описание || к.вид || ''),
+                        к.недоступна ? h('div', { class: 'small faint' }, к.недоступна) : null),
                     h('td', { class: 'small' }, адресаКарты(к).map((а) => h('div', {}, а)), адресаКарты(к).length ? null : h('span', { class: 'faint' }, 'нет')),
                     h('td', { class: 'small mono' }, к.mac || '—'),
                     h('td', {}, h('span', { class: 'potok-state is-' + (к.работает ? 'done' : 'wait') }, к.состояние),
@@ -15764,6 +15780,8 @@
                 Object.assign(тело, { адрес: адрес.value, порты: порты.value.trim(), группа: группа.value.trim() });
             } else {
                 if (!выбор.карта) { toast('Выберите сетевую карту', 'error'); return; }
+                const выбрана = карты.find((к) => к.ид === выбор.карта);
+                if (выбрана && выбрана.недоступна) { toast(выбрана.недоступна, 'error'); return; }
                 Object.assign(тело, { способ: способ.value, неразборчиво: неразборчиво.checked,
                     фильтр: { протокол: протокол.value, от: отКого.value.trim(), к: кому.value.trim(), порт: портФильтра.value || 0 } });
             }
@@ -15785,8 +15803,9 @@
         const шапка = h('div', { class: 'page-head' });
         const плитки = h('div', { class: 'tiles zs-tiles', 'aria-live': 'polite' });
         const порты = h('div', {});
+        const связь = h('div', {});
         const итог = h('div', {});
-        append(page, [шапка, плитки, порты, итог]);
+        append(page, [шапка, связь, плитки, порты, итог]);
         let последнее = null;
         async function обновить() {
             захватСети.таймер = null;
@@ -15794,12 +15813,20 @@
             try {
                 с = await api.get(путь);
             } catch (error) {
-                if (error instanceof Устарело) return;
-                clear(итог);
-                итог.appendChild(errorBox(error));
+                if (error instanceof Устарело || !page.isConnected) return;
+                const решение = ошибкаОпросаЗахвата(error);
+                clear(связь);
+                if (!решение.повторить) {
+                    связь.appendChild(errorBox(error));
+                    return;
+                }
+                // Один сбой не останавливает опрос: иначе счётчики застынут, а захват на сервере идёт.
+                связь.appendChild(h('div', { class: 'zs-note' }, 'Связь с сервером потеряна (' + errorText(error) + '), повторяем…'));
+                захватСети.таймер = setTimeout(обновить, решение.через);
                 return;
             }
             if (!page.isConnected) return;
+            clear(связь);
             рисовать(с);
             if (с.состояние === 'идёт') захватСети.таймер = setTimeout(обновить, 700);
             else if (!последнее || последнее.состояние === 'идёт') рисоватьИтог(с);
@@ -15848,9 +15875,10 @@
         }
         function рисоватьИтог(с) {
             clear(итог);
+            const чужой = чужойЗахватСети(с);
             итог.appendChild(h('div', { class: 'card card-pad zs-after' },
                 h('div', { class: 'card-title' }, 'Обработка'),
-                h('div', { class: 'row' },
+                чужой ? h('div', { class: 'muted' }, чужой) : h('div', { class: 'row' },
                     h('button', { class: 'btn btn--primary', onclick: (e) => вПакеты(e.currentTarget) }, 'Открыть в анализаторе пакетов'),
                     h('button', { class: 'btn', onclick: () => окноНагрузкиВСессию(capId, с) }, 'Нагрузку порта — в сессию потоков…'),
                     h('button', { class: 'btn btn--ghost', onclick: () => скачать() }, 'Скачать pcapng'),

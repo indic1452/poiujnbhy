@@ -27,7 +27,7 @@ from unittest import mock
 
 import _bootstrap  # noqa: F401
 import setevoy_sintez as с
-from reportgen.config import Settings, settings_warnings
+from reportgen.config import Settings, capture_own_ports, settings_warnings
 from reportgen.setevoy.chtenie import прочитать_захват
 from reportgen.setevoy.zahvat_seti import istochniki, karty, obrabotka, parametry, pcap_bib, zapis
 from reportgen.setevoy.zahvat_seti.istochniki import ОшибкаЗахвата
@@ -513,7 +513,46 @@ class ПараметрыTests(unittest.TestCase):
         self.assertFalse(Фильтр(протокол="arp").подходит(годный))
         tcp = р(с.eth(с.ip(с.tcp(b"", 5000, 80), 6)))
         self.assertTrue(Фильтр(порт=5000).подходит(tcp))
-        self.assertEqual({"протокол": "udp", "от": "10.0.0.1", "к": "10.0.0.2", "хост": "", "порт": 5000}, ф.в_словарь())
+        self.assertEqual({"протокол": "udp", "от": "10.0.0.1", "к": "10.0.0.2", "хост": "", "порт": 5000, "исключить": []},
+                         ф.в_словарь())
+
+    def test_порты_сервера_вычёркиваются_всегда(self):
+        """Трафик самого сервера (cookie сессий, пароли входа, запросы к llama-server) в захват не идёт."""
+        ф = Фильтр(исключить=(8000, 8080))
+        self.assertFalse(ф.пуст(), "с вычеркнутыми портами отбор нужен и без фильтра человека")
+        self.assertEqual("(not (ether proto 0x8100 or ether proto 0x88a8 or ether proto 0x9100) and "
+                         "not (tcp port 8000 or tcp port 8080)) or (vlan and (not (tcp port 8000 or tcp port 8080)))",
+                         ф.bpf())
+        self.assertEqual("not (tcp port 8000 or tcp port 8080)", ф.bpf(vlan=False))
+        с_портом = Фильтр(порт=5000, исключить=(8080,))
+        self.assertEqual("(tcp port 5000 or udp port 5000) and not (tcp port 8080)", с_портом.bpf(vlan=False))
+        self.assertEqual("(tcp port 5000 or udp port 5000)", Фильтр(порт=5000).bpf(vlan=False))
+        self.assertEqual("", Фильтр().bpf(vlan=False))
+        р = zapis.разобрать_кадр
+        к_серверу = р(с.eth(с.ip(с.tcp(b"Cookie: s=1", 50000, 8080), 6)))
+        от_сервера = р(с.eth(с.ip(с.tcp(b"", 8000, 50000), 6)))
+        чужой_tcp = р(с.eth(с.ip(с.tcp(b"", 50000, 5000), 6)))
+        udp_8080 = р(с.eth(с.ip(с.udp(b"", 1234, 8080, "10.0.0.1", "10.0.0.2"), 17, "10.0.0.1", "10.0.0.2")))
+        self.assertEqual([False, False, True, True], [ф.подходит(к) for к in (к_серверу, от_сервера, чужой_tcp, udp_8080)])
+        self.assertFalse(Фильтр(порт=8080, исключить=(8080,)).подходит(к_серверу), "и явный фильтр человека не открывает")
+        self.assertTrue(Фильтр(порт=8080, исключить=(8080,)).подходит(udp_8080), "UDP на тот же номер — не сервер")
+        # Проверка параметров: список — от сервера (чистится и сортируется), из запроса не берётся.
+        п = проверить({"режим": "карта", "карта": "eth0", "фильтр": {"исключить": [], "порт": 5}}, потолок_секунд=10,
+                      потолок_байт=1 << 20, исключить_порты=[8080, 8000, 0, 70000, 8080])
+        self.assertEqual((8000, 8080), п.фильтр.исключить)
+        self.assertEqual([8000, 8080], п.в_словарь()["фильтр"]["исключить"])
+        self.assertEqual((), проверить({"режим": "карта", "карта": "eth0"}, потолок_секунд=10, потолок_байт=1 << 20
+                                       ).фильтр.исключить)
+        self.assertEqual((), проверить({"режим": "udp", "порты": "5000"}, потолок_секунд=10, потолок_байт=1 << 20,
+                                       исключить_порты=[8080]).фильтр.исключить, "приём UDP чужой TCP не видит")
+
+    def test_порты_сервера_из_настроек(self):
+        self.assertEqual((8000, 8001, 8002, 8080), capture_own_ports(Settings.load()))
+        свои = Settings.load(port=9090, llm_base_url="http://10.0.0.5/v1", embed_base_url="https://x:8443/v1",
+                             rerank_base_url="нет-адреса")
+        self.assertEqual((80, 8443, 9090), capture_own_ports(свои))
+        self.assertEqual((443, 9090), capture_own_ports(Settings.load(port=9090, llm_base_url="https://llm/v1",
+                                                                        embed_base_url="http://[::1", rerank_base_url="")))
 
 
 # -- карты ------------------------------------------------------------------------------------
@@ -862,6 +901,27 @@ class PcapБиблиотекаTests(unittest.TestCase):
         self.assertEqual((24, 64, 0, 32), tuple(pcap_bib.длина_префикса(м) for м in
                                                 ("255.255.255.0", "ffff:ffff:ffff:ffff::", "0.0.0.0", "255.255.255.255")))
 
+    def test_адрес_из_sockaddr_bsd(self):
+        """macOS/BSD: sa_len (байт 0) и 8-битное семейство (байт 1); MAC — sockaddr_dl семейства AF_LINK = 18."""
+        def sa(байты):
+            буфер = ctypes.create_string_buffer(байты + b"\0" * (40 - len(байты)))
+            self.addCleanup(lambda: буфер)
+            return ctypes.cast(буфер, ctypes.POINTER(pcap_bib.sockaddr))
+        v4 = bytes([16, socket.AF_INET]) + b"\x13\x8c" + bytes([10, 1, 2, 3])          # sin_len, sin_family, порт
+        self.assertEqual(("ipv4", "10.1.2.3"), pcap_bib.адрес_из_sockaddr(sa(v4), bsd=True))
+        self.assertIsNone(pcap_bib.адрес_из_sockaddr(sa(v4), bsd=False), "16-битное чтение даёт 16 | 2 << 8 — не семейство")
+        v6 = bytes([28, socket.AF_INET6]) + b"\0" * 6 + ipaddress.IPv6Address("2001:db8::7").packed
+        self.assertEqual(("ipv6", "2001:db8::7"), pcap_bib.адрес_из_sockaddr(sa(v6), bsd=True))
+        # sockaddr_dl: len, family, index(2), type, nlen, alen, slen, data = имя карты + адрес.
+        dl = bytes([20, 18, 4, 0, 6, 3, 6, 0]) + b"en0" + bytes.fromhex("02aabbccddee")
+        self.assertEqual(("mac", "02:aa:bb:cc:dd:ee"), pcap_bib.адрес_из_sockaddr(sa(dl), bsd=True))
+        self.assertIsNone(pcap_bib.адрес_из_sockaddr(sa(bytes([20, 18, 4, 0, 24, 3, 0, 0]) + b"lo0"), bsd=True),
+                          "у петли адреса канального уровня нет (sdl_alen = 0)")
+        # На BSD 17 — не AF_PACKET (там это AF_ROUTE): sockaddr_ll-раскладку не применять.
+        self.assertIsNone(pcap_bib.адрес_из_sockaddr(sa(bytes([16, 17]) + bytes(14)), bsd=True))
+        self.assertIsNone(pcap_bib.адрес_из_sockaddr(sa(bytes([16, 99]) + bytes(14)), bsd=True))
+        self.assertEqual(sys.platform == "darwin" or "bsd" in sys.platform, pcap_bib.BSD)
+
     def test_пути_и_честная_причина(self):
         with mock.patch.object(pcap_bib, "WINDOWS", True), mock.patch.dict(os.environ, {"SystemRoot": r"C:\Win"}):
             пути = pcap_bib.пути_библиотеки("D:/свой/wpcap.dll")
@@ -1057,7 +1117,7 @@ class ИсточникиTests(unittest.TestCase):
         self.assertIn(("setsockopt", (socket.SOL_SOCKET, socket.SO_RCVBUF, istochniki.БУФЕР_ПРИЁМА)), в)
         self.assertIn(("setsockopt", (socket.SOL_SOCKET, 40, 1)), в)
         self.assertIn(("setsockopt", (socket.IPPROTO_IPV6, 49, 1)), в)
-        self.assertIn(("bind", ("::", 5004)), в)
+        self.assertIn(("bind", ("ff15::1", 5004, 0, 0)), в, "Linux: слушаем адрес группы (с номером карты)")
         self.assertIn(("setsockopt", (socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP,
                                       ipaddress.IPv6Address("ff15::1").packed + struct.pack("@I", 0))), в)
         self.assertEqual(("setblocking", False), в[-1])
@@ -1069,6 +1129,7 @@ class ИсточникиTests(unittest.TestCase):
         self.assertEqual(("socket", (socket.AF_INET, socket.SOCK_DGRAM)), в[0])
         self.assertIn(("setsockopt", (socket.IPPROTO_IP, 8, 1)), в)
         self.assertIn(("setsockopt", (socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, bytes([239, 1, 2, 3, 10, 0, 0, 5]))), в)
+        self.assertIn(("bind", ("239.1.2.3", 9)), в, "привязка к адресу карты на Linux отсекла бы группу")
         self.assertFalse(источник.любой)
         сокеты.clear()
         with mock.patch.object(istochniki, "WINDOWS", True):
@@ -1083,6 +1144,126 @@ class ИсточникиTests(unittest.TestCase):
         with self.assertRaises(ОшибкаЗахвата) as к:
             istochniki.ПриёмUDP("10.0.0.5", [9], фабрика=lambda *а: ПоддельныйСокет(ошибка_bind=отказ))
         self.assertEqual("занято", к.exception.вид, "WSAEACCES при bind — порт взят с исключительным доступом")
+
+    def test_udp_группа_на_выбранной_карте(self):
+        """Вступление в группу — на выбранной карте, а не на карте маршрута по умолчанию."""
+        сокеты = []
+
+        def фабрика(*арг):
+            сокеты.append(ПоддельныйСокет(*арг))
+            return сокеты[-1]
+
+        def вызовы(windows, адрес, группа, **карта):
+            сокеты.clear()
+            with mock.patch.object(istochniki, "WINDOWS", windows):
+                istochniki.ПриёмUDP(адрес, [9], группа=группа, фабрика=фабрика, **карта)
+            return сокеты[0].вызовы
+        IP, V6 = socket.IPPROTO_IP, socket.IPPROTO_IPV6
+        г = bytes([239, 1, 2, 3])
+        в = вызовы(False, "0.0.0.0", "239.1.2.3", карта_ipv4="10.0.0.7", индекс=3)
+        self.assertIn(("bind", ("239.1.2.3", 9)), в)
+        self.assertIn(("setsockopt", (IP, socket.IP_ADD_MEMBERSHIP, г + bytes([10, 0, 0, 7]))), в, "ip_mreq с адресом карты")
+        в = вызовы(False, "0.0.0.0", "239.1.2.3", индекс=3)
+        self.assertIn(("setsockopt", (IP, socket.IP_ADD_MEMBERSHIP, г + bytes(4) + struct.pack("@i", 3))), в,
+                      "карта без IPv4 — ip_mreqn с номером карты")
+        в = вызовы(False, "0.0.0.0", "239.1.2.3")
+        self.assertIn(("setsockopt", (IP, socket.IP_ADD_MEMBERSHIP, г + bytes(4))), в, "карта не выбрана — выберет система")
+        в = вызовы(False, "::", "ff02::fb", индекс=4)
+        self.assertIn(("bind", ("ff02::fb", 9, 0, 4)), в, "группа канального уровня — с номером карты")
+        self.assertIn(("setsockopt", (V6, socket.IPV6_JOIN_GROUP,
+                                      ipaddress.IPv6Address("ff02::fb").packed + struct.pack("@I", 4))), в)
+        в = вызовы(True, "0.0.0.0", "239.1.2.3", индекс=5)
+        self.assertIn(("bind", ("0.0.0.0", 9)), в, "Windows: привязка — как задал человек")
+        self.assertIn(("setsockopt", (IP, socket.IP_ADD_MEMBERSHIP, г + bytes([0, 0, 0, 5]))), в,
+                      "Windows: номер карты — адресом 0.x.x.x")
+        в = вызовы(True, "0.0.0.0", "239.1.2.3", карта_ipv4="10.0.0.7", индекс=5)
+        self.assertIn(("setsockopt", (IP, socket.IP_ADD_MEMBERSHIP, г + bytes([10, 0, 0, 7]))), в)
+        в = вызовы(True, "10.0.0.5", "239.1.2.3", карта_ipv4="10.0.0.7")
+        self.assertIn(("setsockopt", (IP, socket.IP_ADD_MEMBERSHIP, г + bytes([10, 0, 0, 5]))), в,
+                      "адрес карты, заданный человеком, главнее")
+        в = вызовы(False, "0.0.0.0", "")
+        self.assertIn(("bind", ("0.0.0.0", 9)), в)
+        self.assertFalse([в_ for в_ in в if в_[0] == "setsockopt" and в_[1][1] == socket.IP_ADD_MEMBERSHIP])
+
+    def test_udp_группа_из_менеджера(self):
+        """Менеджер передаёт выбранную в таблице карту приёму UDP; без карты — заметка про маршрут."""
+        from reportgen.setevoy.zahvat_seti import menedzher  # noqa: PLC0415
+        self.assertEqual(7, menedzher.номер_карты({"индекс": 7, "ид": "lo"}))
+        self.assertEqual(0, menedzher.номер_карты({"ид": "нет-такой-карты0"}))
+        self.assertEqual(0, menedzher.номер_карты({}))
+        if hasattr(socket, "if_nametoindex") and Path("/sys/class/net/lo").exists():
+            self.assertEqual(socket.if_nametoindex("lo"), menedzher.номер_карты({"ид": "lo"}))
+        сокеты = []
+
+        def фабрика(*арг):
+            сокеты.append(ПоддельныйСокет(*арг))
+            return сокеты[-1]
+        м = Менеджер(Path(tempfile.mkdtemp()), фабрика_сокетов=фабрика)
+        п = проверить({"режим": "udp", "адрес": "0.0.0.0", "порты": "9", "группа": "239.1.2.3", "карта": "eth9"},
+                      потолок_секунд=10, потолок_байт=1 << 20)
+        карта = {"ид": "eth9", "имя": "eth9", "ipv4": [{"адрес": "10.0.0.7", "префикс": 24}], "индекс": 3}
+        with mock.patch.object(istochniki, "WINDOWS", False):
+            источник, способ, заметки = м._источник(п, карта)
+        self.assertEqual("udp", способ)
+        self.assertEqual(("10.0.0.7", 3), (источник.карта_ipv4, источник.индекс))
+        self.assertIn(("setsockopt", (socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, bytes([239, 1, 2, 3, 10, 0, 0, 7]))),
+                      сокеты[0].вызовы)
+        self.assertIn("группа 239.1.2.3 — на карте eth9", заметки)
+        with mock.patch.object(istochniki, "WINDOWS", False):
+            источник, _, заметки = м._источник(п, None)
+        self.assertEqual(("", 0), (источник.карта_ipv4, источник.индекс))
+        self.assertTrue(any("выбрала система" in з for з in заметки), заметки)
+        без_группы = проверить({"режим": "udp", "порты": "9", "карта": "eth9"}, потолок_секунд=10, потолок_байт=1 << 20)
+        with mock.patch.object(istochniki, "WINDOWS", False):
+            источник, _, заметки = м._источник(без_группы, карта)
+        self.assertEqual(("", 0), (источник.карта_ipv4, источник.индекс), "без группы карта не нужна")
+        self.assertFalse([з for з in заметки if "группа" in з])
+
+    def test_pcap_прервать_и_закрыть_под_замком(self):
+        """pcap_breakloop после pcap_close — запись в освобождённую память: не вызывается никогда."""
+        class Lib:
+            def __init__(себя, канал=1):
+                себя.вызовы, себя.канал_ = [], канал
+                себя.закрывается = threading.Event()
+
+            def открыть(себя, устройство, **_):
+                себя.вызовы.append(("открыть", устройство))
+                return 77
+
+            def фильтр(себя, р, выражение):
+                себя.вызовы.append(("фильтр", выражение))
+
+            def канал(себя, р):
+                return себя.канал_
+
+            def прервать(себя, р):
+                себя.вызовы.append(("прервать", р))
+
+            def закрыть(себя, р):
+                себя.закрывается.set()
+                time.sleep(0.2)
+                себя.вызовы.append(("закрыть", р))
+        lib = Lib()
+        з = istochniki.ЗахватPcap(lib, "eth0", фильтр="A or (vlan and A)", фильтр_без_vlan="A")
+        self.assertEqual(("A or (vlan and A)", zapis.LINKTYPE_ETHERNET), (з.bpf, з.канал))
+        з.прервать()
+        self.assertEqual(("прервать", 77), lib.вызовы[-1], "пока открыт — будит")
+        поток = threading.Thread(target=з.закрыть)
+        поток.start()
+        self.assertTrue(lib.закрывается.wait(2))
+        з.прервать()                               # остановка приходит, пока поток закрывает дескриптор
+        поток.join()
+        з.прервать()
+        з.закрыть()
+        self.assertEqual([("закрыть", 77)], lib.вызовы[3:], "после pcap_close — ни breakloop, ни второго close")
+        # Канал не Ethernet (петля Npcap — DLT_NULL = 0): «vlan» там не собирается — второе выражение.
+        lib = Lib(канал=0)
+        з = istochniki.ЗахватPcap(lib, "\\Device\\NPF_Loopback", фильтр="A or (vlan and A)", фильтр_без_vlan="A")
+        self.assertEqual([("открыть", "\\Device\\NPF_Loopback"), ("фильтр", "A")], lib.вызовы)
+        self.assertEqual("A", з.bpf)
+        lib = Lib(канал=0)
+        istochniki.ЗахватPcap(lib, "x", фильтр="B")
+        self.assertEqual(("фильтр", "B"), lib.вызовы[-1], "второго выражения нет — первое")
 
     def test_udp_порт_занят(self):
         занятый = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1261,6 +1442,80 @@ class МенеджерTests(unittest.TestCase):
                 self.начать_udp(свободный_порт())
         self.assertIn("мало места", str(к.exception))
 
+    def test_место_бронируется_на_идущие_захваты(self):
+        """Два захвата по 4 МБ при 7 МБ сверх запаса: второй не начнётся, пока идёт первый."""
+        from reportgen.setevoy.zahvat_seti.menedzher import ЗАПАС_ДИСКА  # noqa: PLC0415
+        свободно = {"байт": ЗАПАС_ДИСКА + (7 << 20)}
+        with mock.patch("shutil.disk_usage", side_effect=lambda _: mock.Mock(free=свободно["байт"])):
+            первый = self.начать_udp(свободный_порт())
+            with self.assertRaises(ОшибкаЗахвата) as к:
+                self.начать_udp(свободный_порт())
+            self.assertEqual("занято", к.exception.вид)
+            self.assertIn("ещё допишут идущие захваты", str(к.exception))
+            self.assertEqual(1, len(self.м.идущие()))
+            self.м.остановить(первый)
+            второй = self.начать_udp(свободный_порт())          # бронь первого снята с его концом
+            self.assertEqual("идёт", self.м.состояние(второй)["состояние"])
+            self.м.остановить(второй)
+        self.assertEqual({}, self.м._бронь_места)
+
+    def test_бронь_снимается_при_неудачном_старте(self):
+        занятый = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.addCleanup(занятый.close)
+        занятый.bind(("127.0.0.1", 0))
+        with self.assertRaises(ОшибкаЗахвата):
+            self.начать_udp(занятый.getsockname()[1])
+        self.assertEqual({}, self.м._бронь_места)
+
+    def test_захват_останавливается_когда_место_кончается(self):
+        from reportgen.setevoy.zahvat_seti.menedzher import ЗАПАС_ДИСКА  # noqa: PLC0415
+        свободно = {"байт": 1 << 40}
+        with mock.patch("shutil.disk_usage", side_effect=lambda _: mock.Mock(free=свободно["байт"])):
+            ид = self.начать_udp(свободный_порт())
+            time.sleep(0.3)
+            self.assertEqual("идёт", self.м.состояние(ид)["состояние"])
+            свободно["байт"] = ЗАПАС_ДИСКА - 1                  # диск делят база и остальные данные сервера
+            с_ = self.дождаться_конца(ид, 5)
+        self.assertEqual("готово", с_["состояние"])
+        self.assertIn("мало места на диске сервера", с_["причина"])
+
+    def test_сбой_записи_заголовка_не_оставляет_хвостов(self):
+        """Упала запись SHB/IDB — источник закрыт (порт свободен), файл закрыт, папки нет."""
+        порт = свободный_порт()
+        открытые = []
+        настоящий_open = open
+
+        def запомнить_open(*а, **к):
+            ф = настоящий_open(*а, **к)
+            открытые.append(ф)
+            return ф
+        from reportgen.setevoy.zahvat_seti import menedzher  # noqa: PLC0415
+        for ошибка in (OSError(errno.EACCES, "Отказано в доступе"), ValueError("префикс 40")):
+            открытые.clear()
+            with mock.patch.object(menedzher.zapis, "ПисательPcapng", side_effect=ошибка), \
+                    mock.patch("builtins.open", side_effect=запомнить_open):
+                with self.assertRaises(type(ошибка)):
+                    self.начать_udp(порт)
+            self.assertTrue(открытые and all(ф.closed for ф in открытые), "файл захвата закрыт")
+            self.assertEqual([], list(self.папка.iterdir()) if self.папка.exists() else [], "папка убрана")
+            self.assertEqual(([], {}, {}), (self.м.идущие(), self.м._занято, self.м._бронь_места))
+        ид = self.начать_udp(порт)                               # сокет прежнего источника закрыт
+        self.м.остановить(ид)
+
+    def test_петля_только_с_разрешения(self):
+        if not Path("/sys/class/net/lo").exists():
+            self.skipTest("нет петли lo")
+        п = проверить({"режим": "карта", "карта": "lo", "способ": "af_packet"}, потолок_секунд=30, потолок_байт=4 << 20)
+        with self.assertRaises(ОшибкаЗахвата) as к:
+            self.м.начать(п, владелец=1, кто="")
+        self.assertEqual("права", к.exception.вид)
+        self.assertIn("только создатель системы", str(к.exception))
+        # Приём UDP с выбранной в таблице петлёй — не захват петли.
+        порт = свободный_порт()
+        п = проверить({"режим": "udp", "адрес": "127.0.0.1", "порты": [порт], "карта": "lo"},
+                      потолок_секунд=30, потолок_байт=4 << 20)
+        self.м.остановить(self.м.начать(п, владелец=1, кто=""))
+
     def test_нет_такой_карты_и_занятость_карты(self):
         п = проверить({"режим": "карта", "карта": "нет-такой"}, потолок_секунд=30, потолок_байт=4 << 20)
         with self.assertRaises(ОшибкаЗахвата) as к:
@@ -1302,9 +1557,9 @@ class МенеджерTests(unittest.TestCase):
                       потолок_секунд=30, потолок_байт=4 << 20)
         # Без libpcap BPF не собрать — отбор идёт в программе, и отфильтрованные видны в счётчике.
         with mock.patch.object(self.м, "библиотека", return_value=(None, "нет")):
-            ид = self.м.начать(п, владелец=1, кто="")
+            ид = self.м.начать(п, владелец=1, кто="", петля_можно=True)
         with self.assertRaises(ОшибкаЗахвата) as к:
-            self.м.начать(п, владелец=2, кто="")
+            self.м.начать(п, владелец=2, кто="", петля_можно=True)
         self.assertIn("карта уже занята", str(к.exception))
         lo = next(к for к in self.м.карты()[0] if к["ид"] == "lo")
         self.assertEqual(ид, lo["занята"]["ид"])
@@ -1327,7 +1582,7 @@ class МенеджерTests(unittest.TestCase):
         порт = свободный_порт()
         п = проверить({"режим": "карта", "карта": "lo", "способ": "libpcap", "фильтр": {"порт": порт}},
                       потолок_секунд=30, потолок_байт=4 << 20)
-        ид = м.начать(п, владелец=1, кто="")
+        ид = м.начать(п, владелец=1, кто="", петля_можно=True)
         time.sleep(0.3)
         self.о.sendto(b"L", ("127.0.0.1", порт))
         self.assertTrue(дождаться(lambda: м.состояние(ид)["пакетов"] >= 1, 5))
@@ -1489,6 +1744,9 @@ class ЗахватСервераTests(unittest.TestCase):
         self.к = self.сеть.client
         self.settings = self.сеть.app.state.settings
         self.settings.capture_libpcap = "/нет/libpcap.so"
+        # Захватывает старший инженер: ниже этой должности захват не открывается никакой настройкой.
+        self.settings.capture_min_role = "senior"
+        self.сеть.repos.users.create("starshiy", "пароль123", "Старшинов С. С.", "senior")
         self.addCleanup(lambda: getattr(self.сеть.app.state, "zahvat_seti", None) and
                         self.сеть.app.state.zahvat_seti.остановить_все())
         self.о = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1498,7 +1756,14 @@ class ЗахватСервераTests(unittest.TestCase):
         return [з.action for з in self.сеть.repos.audit.list()]
 
     def test_права_по_должностям(self):
+        self.assertEqual("lead", Settings().capture_min_role, "по умолчанию — начальник группы и выше")
         self.сеть.login("engineer")
+        for роль in ("senior", "engineer"):
+            self.settings.capture_min_role = роль
+            ответ = self.к.get("/api/zahvat")
+            self.assertEqual(403, ответ.status_code, роль)
+            self.assertIn("Старший инженер", ответ.json()["error"], "engineer читается как senior")
+        self.сеть.login("starshiy")
         ответ = self.к.get("/api/zahvat-karty")
         self.assertEqual(200, ответ.status_code, ответ.text)
         данные = ответ.json()
@@ -1518,13 +1783,15 @@ class ЗахватСервераTests(unittest.TestCase):
         self.assertIn("выключен", self.к.get("/api/zahvat").json()["error"])
         self.settings.capture_min_role = "начальник"
         self.assertIn("неизвестная должность", self.к.get("/api/zahvat").json()["error"])
-        self.settings.capture_min_role = "engineer"
+        for роль in ("guest", "engineer"):
+            self.settings.capture_min_role = роль
+            self.assertEqual(200, self.к.get("/api/zahvat").status_code, f"{роль} читается как senior — начальнику группы можно")
         self.сеть.repos.users.create("gost", "пароль123", "Гостев Г. Г.", "guest")
         self.сеть.login("gost")
         self.assertEqual(403, self.к.get("/api/zahvat-karty").status_code)
 
     def test_плохие_входные_данные(self):
-        self.сеть.login("engineer")
+        self.сеть.login("starshiy")
         for тело in ({"режим": "udp", "порты": "0"}, {"режим": "udp", "порты": "65536"}, {"режим": "udp", "порты": "x"},
                      {"режим": "udp", "порты": "5000", "адрес": "300.1.1.1"}, {"режим": "никакой"},
                      {"режим": "udp", "порты": "5000", "пределы": {"секунд": 3601}},
@@ -1544,7 +1811,7 @@ class ЗахватСервераTests(unittest.TestCase):
         return ответ.json()["id"]
 
     def test_весь_путь_udp(self):
-        self.сеть.login("engineer")
+        self.сеть.login("starshiy")
         порт = свободный_порт()
         ид = self.начать(порт, пакетов=4)
         ответ = self.к.post("/api/zahvat", json={"режим": "udp", "адрес": "127.0.0.1", "порты": str(порт)})
@@ -1556,11 +1823,17 @@ class ЗахватСервераTests(unittest.TestCase):
             self.о.sendto(д, ("127.0.0.1", порт))
         self.assertTrue(дождаться(lambda: self.к.get(f"/api/zahvat/{ид}").json()["состояние"] == "готово"))
         с_ = self.к.get(f"/api/zahvat/{ид}").json()
-        self.assertEqual((4, "Модем 2", "Инженеров И. И."), (с_["пакетов"], с_["имя"], с_["кто"]))
+        self.assertEqual((4, "Модем 2", "Старшинов С. С.", True), (с_["пакетов"], с_["имя"], с_["кто"], с_["можно_обработать"]))
         self.assertEqual([{"порт": порт, "датаграмм": 4, "байт": 60,
                            "источники": [{"адрес": "127.0.0.1", "датаграмм": 4}]}],
                          self.к.get(f"/api/zahvat/{ид}/ports").json()["ports"])
-        # В анализатор пакетов: захват разобран как обычный pcapng.
+        # В анализатор пакетов: захват разобран как обычный pcapng. Крупнее предела загрузки — 413:
+        # анализатор читает захват в память целиком.
+        self.settings.max_upload_mb = 0
+        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
+        self.assertEqual(413, ответ.status_code)
+        self.assertIn("больше допустимых для анализатора 0 МБ", ответ.json()["error"])
+        self.settings.max_upload_mb = 200
         пакеты = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}).json()["id"]
         self.assertTrue(дождаться(lambda: self.к.get(f"/api/pakety/{пакеты}").json()["состояние"] in ("готово", "ошибка")))
         разбор = self.к.get(f"/api/pakety/{пакеты}").json()
@@ -1596,13 +1869,23 @@ class ЗахватСервераTests(unittest.TestCase):
         self.assertEqual(b"\x0a\x0d\x0d\x0a", файл.content[:4])
         self.assertIn("Модем 2.pcapng", urllib_unquote(файл.headers["content-disposition"]))
         действия = self.действия()
-        for нужное in ("zahvat.start", "zahvat.pakety", "zahvat.session"):
+        for нужное in ("zahvat.start", "zahvat.pakety", "zahvat.session", "zahvat.file"):
             self.assertIn(нужное, действия)
+        выгрузка = next(з for з in self.сеть.repos.audit.list() if з.action == "zahvat.file")
+        self.assertEqual(ид, выгрузка.object_id)
+        подробности = выгрузка.details if isinstance(выгрузка.details, dict) else json.loads(выгрузка.details)
+        self.assertEqual((len(файл.content), "udp", [порт]), (подробности["bytes"], подробности["mode"], подробности["ports"]))
         self.сеть.login("zam")
-        self.assertEqual(200, self.к.get(f"/api/zahvat/{ид}").status_code, "администратор видит чужой захват")
-        self.assertEqual(404, self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}).status_code)
-        self.assertEqual(404, self.к.delete(f"/api/zahvat/{ид}").status_code)
+        ответ = self.к.get(f"/api/zahvat/{ид}")
+        self.assertEqual(200, ответ.status_code, "администратор видит чужой захват")
+        self.assertFalse(ответ.json()["можно_обработать"], "страница не покажет чужому кнопки обработки")
+        for ответ in (self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}), self.к.delete(f"/api/zahvat/{ид}"),
+                      self.к.get(f"/api/zahvat/{ид}/file"), self.к.get(f"/api/zahvat/{ид}/ports")):
+            self.assertEqual(403, ответ.status_code)
+            self.assertIn("захват пользователя Старшинов С. С.: вам — только просмотр и остановка", ответ.json()["error"])
         self.сеть.login("engineer")
+        self.assertEqual(403, self.к.get(f"/api/zahvat/{ид}").status_code, "инженеру захват не открыт вовсе")
+        self.сеть.login("starshiy")
         self.assertEqual(200, self.к.delete(f"/api/zahvat/{ид}").status_code)
         self.assertEqual(404, self.к.get(f"/api/zahvat/{ид}").status_code)
         self.assertIn("zahvat.delete", self.действия())
@@ -1612,22 +1895,23 @@ class ЗахватСервераTests(unittest.TestCase):
         return self.к.get(f"/api/potok/{job}/raw").content
 
     def test_стоп_и_чужой_инженер(self):
-        self.сеть.repos.users.create("engineer2", "пароль123", "Другов Д. Д.", "engineer")
-        self.сеть.login("engineer")
+        self.сеть.repos.users.create("senior2", "пароль123", "Другов Д. Д.", "senior")
+        self.сеть.login("starshiy")
         порт = свободный_порт()
         ид = self.начать(порт)
-        self.сеть.login("engineer2")
+        self.сеть.login("senior2")
         self.assertEqual(404, self.к.get(f"/api/zahvat/{ид}").status_code)
         self.assertEqual(404, self.к.post(f"/api/zahvat/{ид}/stop", json={}).status_code)
         ответ = self.к.post("/api/zahvat", json={"режим": "udp", "адрес": "127.0.0.1", "порты": str(порт)})
-        self.assertIn("Инженеров", ответ.json()["error"])
+        self.assertIn("Старшинов", ответ.json()["error"])
         self.сеть.login("gruppa")
         ответ = self.к.post(f"/api/zahvat/{ид}/stop", json={})
         self.assertEqual(200, ответ.status_code)
         self.assertEqual("готово", ответ.json()["состояние"])
         self.assertIn("остановлен по команде (Группин", ответ.json()["причина"])
         self.assertIn("zahvat.stop", self.действия())
-        self.сеть.login("engineer")
+        self.assertFalse(ответ.json()["можно_обработать"])
+        self.сеть.login("starshiy")
         self.assertEqual([ид], [з["ид"] for з in self.к.get("/api/zahvat").json()["items"]])
 
     def test_хранилище_не_в_копию(self):
@@ -1636,6 +1920,79 @@ class ЗахватСервераTests(unittest.TestCase):
         self.assertEqual([], [т for т in settings_warnings(Settings.load()) if "capture" in т])
         self.assertTrue([т for т in settings_warnings(Settings.load(capture_min_role="x")) if "capture_min_role" in т])
         self.assertEqual([], [т for т in settings_warnings(Settings.load(capture_min_role="off")) if "capture" in т])
+        ниже = [т for т in settings_warnings(Settings.load(capture_min_role="engineer")) if "capture_min_role" in т]
+        self.assertEqual(1, len(ниже))
+        self.assertIn("действует senior", ниже[0])
+        self.assertEqual([], [т for т in settings_warnings(Settings.load(capture_min_role="senior")) if "capture" in т])
+        крупнее = [т for т in settings_warnings(Settings.load(capture_max_mb=4096, max_upload_mb=200)) if "capture_max_mb" in т]
+        self.assertEqual(1, len(крупнее))
+        self.assertIn("не передать", крупнее[0])
+        self.assertEqual([], [т for т in settings_warnings(Settings.load(capture_max_mb=200, max_upload_mb=200))
+                              if "capture_max_mb" in т])
+
+    def test_менеджер_один_на_приложение(self):
+        """Два первых запроса сразу после запуска — один менеджер (обработчики идут в пуле потоков)."""
+        from reportgen.setevoy.zahvat_seti import menedzher  # noqa: PLC0415
+        from reportgen.web import api  # noqa: PLC0415
+        self.сеть.app.state.zahvat_seti = None
+        создано = []
+        настоящий = menedzher.Менеджер
+
+        def медленный(*а, **к):
+            time.sleep(0.2)                            # окно, в которое второй запрос успевает прийти
+            создано.append(настоящий(*а, **к))
+            return создано[-1]
+        запрос = mock.Mock(app=self.сеть.app)
+        итоги = []
+        with mock.patch.object(menedzher, "Менеджер", side_effect=медленный):
+            потоки = [threading.Thread(target=lambda: итоги.append(api._zahvat_seti(запрос))) for _ in range(2)]
+            for п in потоки:
+                п.start()
+            for п in потоки:
+                п.join()
+        self.assertEqual(1, len(создано))
+        self.assertEqual(2, len(итоги))
+        self.assertIs(итоги[0], итоги[1])
+        self.assertIs(self.сеть.app.state.zahvat_seti, итоги[0])
+
+    @unittest.skipUnless(sys.platform.startswith("linux") and можно_af_packet(), "AF_PACKET: нужен root")
+    def test_петля_и_порты_сервера(self):
+        """Петлю снимает только создатель; порты сервера (cookie, пароли входа) не пишутся даже ему."""
+        self.сеть.login("starshiy")
+        lo = next(к for к in self.к.get("/api/zahvat-karty").json()["karty"] if к["ид"] == "lo")
+        self.assertIn("только создатель", lo["недоступна"])
+        ответ = self.к.post("/api/zahvat", json={"режим": "карта", "карта": "lo", "способ": "af_packet"})
+        self.assertEqual(403, ответ.status_code)
+        self.assertIn("петлю снимает только создатель", ответ.json()["error"])
+        сервер = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.addCleanup(сервер.close)
+        сервер.bind(("127.0.0.1", 0))
+        сервер.listen(1)
+        self.settings.port = сервер.getsockname()[1]          # «приложение» слушает этот порт
+        self.сеть.login("admin")
+        lo = next(к for к in self.к.get("/api/zahvat-karty").json()["karty"] if к["ид"] == "lo")
+        self.assertEqual("", lo["недоступна"])
+        ответ = self.к.post("/api/zahvat", json={"режим": "карта", "карта": "lo", "способ": "af_packet",
+                                                 "фильтр": {"порт": self.settings.port}})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        ид = ответ.json()["id"]
+        с_ = self.к.get(f"/api/zahvat/{ид}").json()
+        self.assertIn(self.settings.port, с_["фильтр"]["исключить"])
+        self.assertIn(8000, с_["фильтр"]["исключить"], "и llama-server")
+        time.sleep(0.2)
+        клиент = socket.create_connection(("127.0.0.1", self.settings.port))
+        self.addCleanup(клиент.close)
+        клиент.sendall(b"POST /api/auth/login password=secret")
+        порт_udp = свободный_порт()
+        self.о.sendto(b"udp", ("127.0.0.1", порт_udp))
+        self.о.sendto(b"udp-same-port", ("127.0.0.1", self.settings.port))
+        time.sleep(0.3)
+        с_ = self.к.post(f"/api/zahvat/{ид}/stop", json={}).json()
+        self.assertEqual("готово", с_["состояние"])
+        кадры = [zapis.разобрать_кадр(з.данные) for з in прочитать_захват(self.сеть.app.state.zahvat_seti.файл(ид)).записи]
+        self.assertFalse([к for к in кадры if к.протокол == zapis.IP_TCP], "ни одного сегмента TCP сервера")
+        self.assertIn(b"udp-same-port", [к.нагрузка for к in кадры], "UDP на тот же номер — пишется")
+        self.assertGreater(с_["отфильтровано"], 0)
 
 
 NODE = shutil.which("node")
@@ -1675,6 +2032,38 @@ class СтраницаTests(unittest.TestCase):
         console.log(JSON.stringify([null, {}, { протокол: 'udp', от: '10.0.0.1', к: '10.0.0.2', хост: '10.0.0.3', порт: 5004 },
             { протокол: '', порт: 0 }, { хост: '::1' }].map(описаниеФильтра)));"""
         self.assertEqual(["", "", "UDP, от 10.0.0.1, к 10.0.0.2, адрес 10.0.0.3, порт 5004", "", "адрес ::1"], self.выполнить(код))
+        код = self.вырезать(self.js, "описаниеФильтра") + r"""
+        console.log(JSON.stringify([{ исключить: [8000, 8080] }, { порт: 5004, исключить: [8080] }, { исключить: [] }]
+            .map(описаниеФильтра)));"""
+        self.assertEqual(["кроме TCP 8000, 8080 (порты самого сервера)", "порт 5004, кроме TCP 8080 (порты самого сервера)", ""],
+                         self.выполнить(код))
+
+    def test_опрос_переживает_сбой_связи(self):
+        """Один сбой опроса не замораживает страницу: 403/404 — конец, прочее — повтор через 2 с."""
+        код = "class ApiError extends Error { constructor(s, m) { super(m); this.status = s; } }\n" + \
+            self.вырезать(self.js, "ошибкаОпросаЗахвата") + r"""
+        console.log(JSON.stringify([new ApiError(404, 'x'), new ApiError(403, 'x'), new ApiError(502, 'x'),
+            new ApiError(500, 'x'), new ApiError(0, 'x'), new TypeError('Failed to fetch')].map(ошибкаОпросаЗахвата)));"""
+        нет, да = {"повторить": False, "через": 2000}, {"повторить": True, "через": 2000}
+        self.assertEqual([нет, нет, да, да, да, да], self.выполнить(код))
+        страница = self.вырезать(self.js, "рисоватьЗахватСети")
+        ловушка = страница[страница.index("} catch (error) {"):страница.index("if (!page.isConnected) return;\n            clear(связь);")]
+        self.assertIn("захватСети.таймер = setTimeout(обновить, решение.через);", ловушка)
+        self.assertIn("if (!решение.повторить)", ловушка)
+        self.assertNotIn("clear(итог)", ловушка, "ошибка связи не стирает блок обработки")
+
+    def test_чужой_захват_без_кнопок_обработки(self):
+        код = self.вырезать(self.js, "чужойЗахватСети") + r"""
+        console.log(JSON.stringify([{ можно_обработать: false, кто: 'Старшинов С. С.' }, { можно_обработать: false },
+            { можно_обработать: true, кто: 'x' }, {}, null].map(чужойЗахватСети)));"""
+        self.assertEqual(["Захват пользователя Старшинов С. С.: вам — только просмотр и остановка. Обрабатывает автор.",
+                          "Захват пользователя другого человека: вам — только просмотр и остановка. Обрабатывает автор.",
+                          "", "", ""], self.выполнить(код))
+        итог = self.вырезать(self.js, "рисоватьИтог")
+        self.assertIn("чужой ? h('div', { class: 'muted' }, чужой) : h('div', { class: 'row' },", итог)
+        форма = self.вырезать(self.js, "renderZahvat")
+        self.assertIn("к.недоступна ? h('div', { class: 'small faint' }, к.недоступна) : null", форма)
+        self.assertIn("if (выбрана && выбрана.недоступна) { toast(выбрана.недоступна, 'error'); return; }", форма)
 
     def test_маршрут_и_остановка_опроса(self):
         код = self.вырезать(self.js, "parseHash") + r"""

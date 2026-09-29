@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import shutil
 import struct
 import threading
 import time
@@ -209,13 +210,18 @@ class Захваты:
 
     # -- приём ---------------------------------------------------------------------
 
-    def создать(self, *, владелец: int, имя: str, данные: bytes, от: str = "") -> str:
+    def создать(self, *, владелец: int, имя: str, данные: bytes = b"", от: str = "", путь: Path | None = None) -> str:
+        """Новый захват из байтов или из файла на диске (``путь`` — копируется потоком, не через память)."""
         ид = time.strftime("%Y%m%d-%H%M%S-") + secrets.token_hex(3)
         папка = self.папка / ид
         папка.mkdir(parents=True, exist_ok=True)
-        (папка / "исходник").write_bytes(данные)
+        if путь is not None:
+            shutil.copyfile(путь, папка / "исходник")
+        else:
+            (папка / "исходник").write_bytes(данные)
+        байт = (папка / "исходник").stat().st_size
         self._записать(ид, {"ид": ид, "владелец": владелец, "имя": имя, "от": от, "состояние": "ждёт",
-                            "создано": time.time(), "байт": len(данные), "пакетов": 0, "разобрано": 0,
+                            "создано": time.time(), "байт": байт, "пакетов": 0, "разобрано": 0,
                             "формат": "", "заметки": [], "ошибка": ""})
         threading.Thread(target=self._разобрать, args=(ид,), daemon=True, name="reportgen-pakety").start()
         self._прибрать(владелец)

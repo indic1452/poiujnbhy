@@ -9,6 +9,7 @@ import re
 import secrets
 import sqlite3
 import tempfile
+import threading
 import unicodedata
 import urllib.parse
 from collections.abc import Iterable
@@ -2508,16 +2509,26 @@ def pakety_ask(request: Request, cap_id: str) -> dict[str, Any]:
 _КОДЫ_ЗАХВАТА = {"права": 403, "занято": 409, "адрес": 400, "нет": 400, "ошибка": 400}
 
 
+#: Замок создания менеджера захватов: обработчики FastAPI идут в пуле потоков, и два первых
+#: запроса сразу после запуска иначе создали бы два менеджера — каждый со своими занятыми
+#: картами и портами, а захват «потерянного» нельзя было бы ни увидеть, ни остановить.
+_ZAHVAT_SETI_LOCK = threading.Lock()
+
+
 def _zahvat_seti(request: Request):
     """Менеджер захватов с сети — один на приложение, папка zahvat в data_dir."""
     менеджер = getattr(request.app.state, "zahvat_seti", None)
-    if менеджер is None:
-        from ..setevoy.zahvat_seti.menedzher import Менеджер  # noqa: PLC0415
-        settings = _settings(request)
-        менеджер = Менеджер(Path(settings.data_dir) / "zahvat", путь_libpcap=settings.capture_libpcap,
-                            потолок_секунд=max(1, int(settings.capture_max_seconds)),
-                            потолок_байт=max(1, int(settings.capture_max_mb)) << 20)
-        request.app.state.zahvat_seti = менеджер
+    if менеджер is not None:
+        return менеджер
+    with _ZAHVAT_SETI_LOCK:
+        менеджер = getattr(request.app.state, "zahvat_seti", None)
+        if менеджер is None:
+            from ..setevoy.zahvat_seti.menedzher import Менеджер  # noqa: PLC0415
+            settings = _settings(request)
+            менеджер = Менеджер(Path(settings.data_dir) / "zahvat", путь_libpcap=settings.capture_libpcap,
+                                потолок_секунд=max(1, int(settings.capture_max_seconds)),
+                                потолок_байт=max(1, int(settings.capture_max_mb)) << 20)
+            request.app.state.zahvat_seti = менеджер
     return менеджер
 
 
@@ -2527,12 +2538,15 @@ def _право_захвата(request: Request) -> User:
     Гостю — никогда (require_user). Отказ пишется в журнал: попытка снять
     трафик без права — то, что начальник должен видеть.
     """
+    from ..config import CAPTURE_ROLE_FLOOR  # noqa: PLC0415
     user = require_user(request)
     роль = (_settings(request).capture_min_role or "").strip().lower()
     причина = ""
+    if роль in ROLE_RANK and ROLE_RANK[роль] < ROLE_RANK[CAPTURE_ROLE_FLOOR]:
+        роль = CAPTURE_ROLE_FLOOR               # ниже старшего инженера не опускается (settings_warnings)
     if роль == "off":
         причина = "захват с сети выключен в настройках сервера (capture_min_role = off)"
-    elif роль not in ROLE_RANK or роль == "guest":
+    elif роль not in ROLE_RANK:
         причина = f"в настройках сервера указана неизвестная должность для захвата: «{роль}»"
     elif user.rank < ROLE_RANK[роль]:
         причина = f"захват с сети доступен с должности «{role_title_of(роль)}» и выше"
@@ -2544,13 +2558,23 @@ def _право_захвата(request: Request) -> User:
 
 
 def _захват_сети_или_404(request: Request, user, ид: str, *, свой: bool = False) -> dict[str, Any]:
-    """Захват — его владельцу; администратору — посмотреть и остановить (карта может быть нужна)."""
+    """Захват — его владельцу; администратору — посмотреть и остановить (карта может быть нужна).
+
+    ``можно_обработать`` — только у автора: страница не показывает чужому кнопки обработки.
+    Администратору, который пришёл обрабатывать чужой захват (``свой``), — 403 словами, а не
+    «не найден»: захват у него на экране.
+    """
     try:
         состояние = _zahvat_seti(request).состояние(ид)
     except KeyError:
         raise ServiceError("захват не найден", 404) from None
-    if состояние.get("владелец") != user.id and (свой or not user.is_admin):
+    свой_захват = состояние.get("владелец") == user.id
+    if not свой_захват and not user.is_admin:
         raise ServiceError("захват не найден", 404)
+    if not свой_захват and свой:
+        raise ServiceError(f"захват пользователя {состояние.get('кто') or 'другого человека'}: вам — только "
+                           "просмотр и остановка, обрабатывает автор", 403)
+    состояние["можно_обработать"] = свой_захват
     return состояние
 
 
@@ -2565,9 +2589,13 @@ def _законченный(request: Request, user, ид: str) -> dict[str, Any]
 def zahvat_cards(request: Request) -> dict[str, Any]:
     """Сетевые карты сервера, доступные способы захвата с причинами и потолки пределов."""
     import sys  # noqa: PLC0415
-    _право_захвата(request)
+    user = _право_захвата(request)
     менеджер = _zahvat_seti(request)
     карты, заметки = менеджер.карты()
+    for к in карты:
+        # Петля — внутренний трафик сервера: снимать её может только создатель системы.
+        к["недоступна"] = "" if user.is_owner or not к.get("петля") else \
+            "петлю снимает только создатель системы (на ней внутренний трафик сервера)"
     return {"karty": карты, "zametki": заметки, "sposoby": менеджер.возможности(),
             "idut": менеджер.идущие(), "platforma": "windows" if sys.platform == "win32" else sys.platform,
             "potolki": {"секунд": менеджер.потолок_секунд, "мегабайт": менеджер.потолок_байт >> 20}}
@@ -2581,18 +2609,25 @@ def zahvat_list(request: Request) -> dict[str, Any]:
 
 @router.post("/zahvat")
 def zahvat_start(request: Request) -> dict[str, Any]:
-    """Начать захват: {режим: udp|карта, адрес, порты, группа, карта, способ, фильтр, пределы, имя}."""
+    """Начать захват: {режим: udp|карта, адрес, порты, группа, карта, способ, фильтр, пределы, имя}.
+
+    Порты TCP самого сервера и его служб (capture_own_ports) из захвата с карты вычёркиваются
+    всегда; петлю снимает только создатель системы.
+    """
+    from ..config import capture_own_ports  # noqa: PLC0415
     from ..setevoy.zahvat_seti.istochniki import ОшибкаЗахвата  # noqa: PLC0415
     from ..setevoy.zahvat_seti.parametry import проверить  # noqa: PLC0415
     user = _право_захвата(request)
     менеджер = _zahvat_seti(request)
     тело = _body(request)
     try:
-        параметры = проверить(тело, потолок_секунд=менеджер.потолок_секунд, потолок_байт=менеджер.потолок_байт)
+        параметры = проверить(тело, потолок_секунд=менеджер.потолок_секунд, потолок_байт=менеджер.потолок_байт,
+                              исключить_порты=capture_own_ports(_settings(request)))
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     try:
-        ид = менеджер.начать(параметры, владелец=user.id, кто=short_name(user.full_name) or user.login)
+        ид = менеджер.начать(параметры, владелец=user.id, кто=short_name(user.full_name) or user.login,
+                             петля_можно=user.is_owner)
     except ОшибкаЗахвата as ошибка:
         _repos(request).audit.log("zahvat.start", user=user, object_type="zahvat",
                                   details={**параметры.в_словарь(), "error": str(ошибка)})
@@ -2631,7 +2666,13 @@ def zahvat_ports(request: Request, cap_id: str) -> dict[str, Any]:
 def zahvat_file(request: Request, cap_id: str) -> FileResponse:
     user = _право_захвата(request)
     состояние = _законченный(request, user, cap_id)
-    return _file_reply(_zahvat_seti(request).файл(cap_id), _safe_name(состояние["имя"]) + ".pcapng")
+    путь = _zahvat_seti(request).файл(cap_id)
+    # Выгрузка сырого трафика с машины — самое чувствительное действие захвата: в журнал.
+    _repos(request).audit.log("zahvat.file", user=user, object_type="zahvat", object_id=cap_id,
+                              details={"bytes": путь.stat().st_size, "mode": состояние.get("режим"),
+                                       "card": состояние.get("карта"), "ports": состояние.get("порты"),
+                                       "filter": состояние.get("фильтр")})
+    return _file_reply(путь, _safe_name(состояние["имя"]) + ".pcapng")
 
 
 @router.post("/zahvat/{cap_id}/to-pakety")
@@ -2646,11 +2687,17 @@ def zahvat_to_pakety(request: Request, cap_id: str) -> dict[str, Any]:
                 return {"id": прежний}
         except KeyError:
             pass
-    данные = _zahvat_seti(request).файл(cap_id).read_bytes()
-    ид = _pakety(request).создать(владелец=user.id, имя=_safe_name(состояние["имя"]) + ".pcapng", данные=данные)
+    путь = _zahvat_seti(request).файл(cap_id)
+    размер = путь.stat().st_size
+    предел = _settings(request).max_upload_mb
+    if размер > предел << 20:
+        # Тот же предел, что у загрузки в «Пакеты»: анализатор читает захват в память целиком.
+        raise ServiceError(f"захват {размер >> 20} МБ больше допустимых для анализатора {предел} МБ — "
+                           "скачайте pcapng или снимите захват с меньшим пределом объёма", 413)
+    ид = _pakety(request).создать(владелец=user.id, имя=_safe_name(состояние["имя"]) + ".pcapng", путь=путь)
     _zahvat_seti(request).отметить(cap_id, в_пакетах=ид)
     _repos(request).audit.log("zahvat.pakety", user=user, object_type="zahvat", object_id=cap_id,
-                              details={"pakety": ид, "bytes": len(данные)})
+                              details={"pakety": ид, "bytes": размер})
     return {"id": ид}
 
 

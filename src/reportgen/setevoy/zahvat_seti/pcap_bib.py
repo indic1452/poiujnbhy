@@ -12,8 +12,13 @@
 * ``struct pcap_stat`` в Windows длиннее на три поля (``ps_capt``, ``ps_sent``,
   ``ps_netdrop``, pcap.h под ``_WIN32``); ``pcap_stats`` их не заполняет, но
   место под них отводим — чтобы запись не вышла за структуру.
-* Семейство IPv6 в ``sockaddr``: Linux 10, Windows 23 — берём из модуля
-  ``socket`` той же машины, где работает библиотека.
+* Семейство IPv6 в ``sockaddr``: Linux 10, Windows 23, FreeBSD 28, macOS 30 —
+  берём из модуля ``socket`` той же машины, где работает библиотека.
+* ``struct sockaddr`` в Linux и Windows начинается с 16-битного семейства; в BSD
+  и macOS — с байта длины ``sa_len`` и 8-битного ``sa_family_t`` (FreeBSD
+  sys/socket.h и sys/_types.h, XNU bsd/sys/socket.h и _sa_family_t.h), MAC там —
+  ``struct sockaddr_dl`` семейства AF_LINK = 18 (net/if_dl.h: sdl_nlen в байте 5,
+  sdl_alen в байте 6, адрес — в sdl_data с 8-го байта после имени карты).
 
 Npcap ставит DLL в ``%SystemRoot%\\System32\\Npcap`` (руководство Npcap,
 «Npcap's DLLs»): грузим wpcap.dll полным путём — тогда загрузчик Windows ищет
@@ -32,6 +37,8 @@ from pathlib import Path
 from typing import Any
 
 WINDOWS = sys.platform == "win32"
+#: BSD-раскладка sockaddr (sa_len + 8-битное семейство): macOS, FreeBSD, OpenBSD, NetBSD, DragonFly.
+BSD = sys.platform == "darwin" or "bsd" in sys.platform or sys.platform.startswith("dragonfly")
 
 PCAP_ERRBUF_SIZE = 256
 PCAP_NETMASK_UNKNOWN = 0xFFFFFFFF
@@ -59,6 +66,7 @@ MAXIMUM_SNAPLEN = 262144
 ОПТИМИЗИРОВАТЬ_BPF = 1
 LINKTYPE_RAW = 101
 AF_PACKET_LINUX = 17                 # linux/socket.h; адрес карты — struct sockaddr_ll
+AF_LINK_BSD = 18                     # FreeBSD/XNU sys/socket.h; адрес карты — struct sockaddr_dl
 
 
 def тип_в_файл(dlt: int) -> int:
@@ -95,6 +103,7 @@ def структуры(windows: bool = WINDOWS) -> dict[str, type]:
 
 class sockaddr(ctypes.Structure):
     # Из общего sockaddr нужно только семейство; сам адрес читается по раскладке своего семейства.
+    # Поле — 16-битное семейство Linux/Windows; в BSD семейство читается байтом 1 (см. выше).
     _fields_ = [("sa_family", ctypes.c_ushort)]
 
 
@@ -142,21 +151,28 @@ def пути_библиотеки(свой: str = "") -> list[str]:
     return пути
 
 
-def адрес_из_sockaddr(sa: Any) -> tuple[str, str] | None:
+def адрес_из_sockaddr(sa: Any, bsd: bool = BSD) -> tuple[str, str] | None:
     """(«ipv4»|«ipv6»|«mac», текст) из указателя на sockaddr или None.
 
-    sockaddr_in: адрес с 4-го байта; sockaddr_in6: с 8-го (RFC 3493 §3.3);
-    sockaddr_ll (Linux, AF_PACKET): длина адреса в байте 11, адрес с 12-го
-    (linux/if_packet.h).
+    sockaddr_in: адрес с 4-го байта; sockaddr_in6: с 8-го (RFC 3493 §3.3; в BSD
+    те же смещения — netinet/in.h, netinet6/in6.h); sockaddr_ll (Linux,
+    AF_PACKET): длина адреса в байте 11, адрес с 12-го (linux/if_packet.h);
+    sockaddr_dl (BSD, AF_LINK): см. описание модуля.
     """
     if not sa:
         return None
-    семейство = sa.contents.sa_family
     адрес = ctypes.cast(sa, ctypes.c_void_p).value
+    семейство = ctypes.string_at(адрес + 1, 1)[0] if bsd else sa.contents.sa_family
     if семейство == socket.AF_INET:
         return "ipv4", socket.inet_ntop(socket.AF_INET, ctypes.string_at(адрес + 4, 4))
     if семейство == socket.AF_INET6:
         return "ipv6", socket.inet_ntop(socket.AF_INET6, ctypes.string_at(адрес + 8, 16))
+    if bsd:
+        if семейство == AF_LINK_BSD:
+            имя, длина = ctypes.string_at(адрес + 5, 2)             # sdl_nlen, sdl_alen
+            if длина:
+                return "mac", ctypes.string_at(адрес + 8 + имя, длина).hex(":")
+        return None
     if семейство == AF_PACKET_LINUX and not WINDOWS:
         длина = min(ctypes.string_at(адрес + 11, 1)[0], 8)       # sll_halen; sll_addr — 8 байт
         if длина:

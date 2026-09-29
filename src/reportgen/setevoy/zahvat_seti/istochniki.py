@@ -14,6 +14,18 @@
   ``struct in6_pktinfo``: ipi6_addr, ipi6_ifindex) — адрес получателя, когда
   слушаем все адреса; ``SO_RXQ_OVFL`` = 40 (asm-generic/socket.h, socket(7)) —
   сколько датаграмм сокет потерял с момента создания.
+* Многоадресная рассылка: вступление — ``IP_ADD_MEMBERSHIP`` со ``struct ip_mreq``
+  (imr_multiaddr, imr_interface: адрес карты; 0.0.0.0 — карту выбирает система)
+  или, на Linux без адреса IPv4 у карты, ``struct ip_mreqn`` с imr_ifindex
+  (linux/in.h; man IP_ADD_MEMBERSHIP(2const), ip_mreqn(2type)); в Windows номер
+  карты пишется в imr_interface как адрес 0.x.x.x (документация Microsoft «IP_MREQ
+  structure»). IPv6 — ``IPV6_JOIN_GROUP`` со ``struct ipv6_mreq`` (адрес группы,
+  номер карты; linux/in6.h, «IPV6_MREQ structure»). На Linux сокет, привязанный к
+  адресу карты, датаграмм группы не получает: доставка сверяет адрес привязки с
+  адресом получателя (net/ipv4/udp.c ``__udp_is_mcast_sock``, net/ipv6/udp.c
+  ``__udp_v6_is_mcast_sock``), поэтому с группой сокет привязывается к адресу
+  группы (для IPv6 — с номером карты: net/ipv6/af_inet6.c требует его у адресов
+  канального уровня). В Windows — к адресу, заданному человеком.
 * AF_PACKET — packet(7), linux/if_packet.h: ``SOL_PACKET`` = 263,
   ``PACKET_ADD_MEMBERSHIP`` = 1 с ``PACKET_MR_PROMISC`` = 1 (struct
   packet_mreq: mr_ifindex int, mr_type u16, mr_alen u16, mr_address[8]),
@@ -38,11 +50,12 @@ import select
 import socket
 import struct
 import sys
+import threading
 import time
 from typing import Any
 
 from . import zapis
-from .pcap_bib import PCAP_ERROR_BREAK, Libpcap, ОшибкаPcap, тип_в_файл
+from .pcap_bib import DLT_EN10MB, PCAP_ERROR_BREAK, Libpcap, ОшибкаPcap, тип_в_файл
 
 WINDOWS = sys.platform == "win32"
 
@@ -141,11 +154,21 @@ class ПриёмUDP(Источник):
 
     способ = "udp"
 
-    def __init__(self, адрес: str, порты: list[int], *, группа: str = "", фабрика: Any = socket.socket):
+    def __init__(self, адрес: str, порты: list[int], *, группа: str = "", карта_ipv4: str = "", индекс: int = 0,
+                 фабрика: Any = socket.socket):
+        """``карта_ipv4``/``индекс`` — адрес и номер карты, на которой вступать в группу (выбранная
+        в таблице карта); пусто/0 — карту выбирает система (по маршруту)."""
         self.адрес = адрес
         ip = ipaddress.ip_address(адрес)
         self.семейство = socket.AF_INET6 if ip.version == 6 else socket.AF_INET
         self.любой = ip.is_unspecified
+        self.группа = группа
+        self.карта_ipv4 = карта_ipv4
+        self.индекс = индекс
+        # Linux: привязка к адресу карты отсекает датаграммы группы — слушаем адрес группы.
+        привязка: tuple[Any, ...] = (адрес,)
+        if группа and not WINDOWS:
+            привязка = (группа,) if ipaddress.ip_address(группа).version == 4 else (группа, 0, индекс)
         self.сокеты: list[Any] = []
         self.порт_сокета: dict[Any, int] = {}
         self._потеряно: dict[Any, int] = {}
@@ -168,7 +191,7 @@ class ПриёмUDP(Источник):
                         else:
                             с.setsockopt(socket.IPPROTO_IPV6, IPV6_RECVPKTINFO, 1)
                 try:
-                    с.bind((адрес, порт))
+                    с.bind((привязка[0], порт, *привязка[1:]))
                 except OSError as ошибка:
                     raise понять_ошибку(ошибка, что=f"UDP {адрес}:{порт}", udp=True) from None
                 if группа:
@@ -184,12 +207,23 @@ class ПриёмUDP(Источник):
         г = ipaddress.ip_address(группа)
         try:
             if г.version == 4:
-                карта = b"\0\0\0\0" if self.любой else ipaddress.IPv4Address(self.адрес).packed
-                с.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, г.packed + карта)
+                с.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, self.запрос_группы(г))
             else:
-                с.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, г.packed + struct.pack("@I", 0))
+                с.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, г.packed + struct.pack("@I", self.индекс))
         except OSError as ошибка:
             raise понять_ошибку(ошибка, что=f"группа {группа}") from None
+
+    def запрос_группы(self, г: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bytes:
+        """ip_mreq (8 байт) или ip_mreqn (12 байт, Linux) — на какой карте вступать в группу IPv4."""
+        if not self.любой:
+            return г.packed + ipaddress.IPv4Address(self.адрес).packed       # адрес карты задал человек
+        if self.карта_ipv4:
+            return г.packed + ipaddress.IPv4Address(self.карта_ipv4).packed
+        if self.индекс and WINDOWS:
+            return г.packed + struct.pack("!I", self.индекс)                   # номер карты как 0.x.x.x
+        if self.индекс:
+            return г.packed + bytes(4) + struct.pack("@i", self.индекс)        # ip_mreqn.imr_ifindex
+        return г.packed + bytes(4)                                             # INADDR_ANY — выберет система
 
     def _получатель(self, служебные: list[tuple[int, int, bytes]], с: Any) -> str:
         for уровень, вид, данные in служебные:
@@ -242,10 +276,17 @@ class ПриёмUDP(Источник):
 class ЗахватPcap(Источник):
     """Кадры карты через libpcap (Linux) или Npcap (Windows); фильтр — BPF в драйвере."""
 
-    def __init__(self, lib: Libpcap, устройство: str, *, фильтр: str = "", неразборчиво: bool = True,
-                 snaplen: int = zapis.SNAPLEN):
+    def __init__(self, lib: Libpcap, устройство: str, *, фильтр: str = "", фильтр_без_vlan: str | None = None,
+                 неразборчиво: bool = True, snaplen: int = zapis.SNAPLEN):
+        """``фильтр_без_vlan`` — выражение для канала не Ethernet (петля Npcap — DLT_NULL, туннели —
+        DLT_RAW): «vlan» там не собирается (gencode.c gen_vlan), а отбор нужен тот же."""
         self.lib = lib
         self.способ = "npcap" if WINDOWS else "libpcap"
+        # pcap_breakloop из другого потока и pcap_close — под одним замком: pcap_close освобождает
+        # дескриптор (man pcap_close), а breakloop на Linux пишет в его poll_breakloop_fd
+        # (pcap-linux.c pcap_breakloop_linux) — после закрытия это чужой файл или падение.
+        self._замок = threading.Lock()
+        self._закрыт = False
         try:
             self.р = lib.открыть(устройство, snaplen=snaplen, неразборчиво=неразборчиво, таймаут_мс=200)
         except ОшибкаPcap as ошибка:
@@ -255,14 +296,15 @@ class ЗахватPcap(Источник):
             raise ОшибкаЗахвата(f"{self.способ}: {текст}" + (
                 " — нужен запуск от администратора / root" if вид == "права" else ""), вид) from None
         try:
-            if фильтр:
-                lib.фильтр(self.р, фильтр)
-                self.bpf = фильтр
+            канал = lib.канал(self.р)
+            выражение = фильтр if фильтр_без_vlan is None or канал == DLT_EN10MB else фильтр_без_vlan
+            if выражение:
+                lib.фильтр(self.р, выражение)
+                self.bpf = выражение
         except ОшибкаPcap as ошибка:
             lib.закрыть(self.р)
             raise ОшибкаЗахвата(str(ошибка)) from None
-        self.канал = тип_в_файл(lib.канал(self.р))
-        self._закрыт = False
+        self.канал = тип_в_файл(канал)
 
     def прочитать(self, таймаут: float) -> list[tuple[float, bytes, int]]:
         """Один пакет за вызов: на Linux (TPACKET_V3) pcap_next_ex без трафика не возвращается по
@@ -282,12 +324,15 @@ class ЗахватPcap(Источник):
         return None if с is None else с[1] + с[2]
 
     def прервать(self) -> None:
-        self.lib.прервать(self.р)
+        with self._замок:
+            if not self._закрыт:
+                self.lib.прервать(self.р)
 
     def закрыть(self) -> None:
-        if not self._закрыт:
-            self._закрыт = True
-            self.lib.закрыть(self.р)
+        with self._замок:
+            if not self._закрыт:
+                self._закрыт = True
+                self.lib.закрыть(self.р)
 
 
 # -- AF_PACKET ----------------------------------------------------------------------------
