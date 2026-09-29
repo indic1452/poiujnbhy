@@ -8945,6 +8945,12 @@ body.reading .msg .body {
 .stol-candidates { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .stol-progress { width: 100%; height: 10px; }
 .stol-scr-preview { max-height: 22vh; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; margin: 0; white-space: pre-wrap; }
+.stol-gfp-summary { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 0; font-size: 12.5px; }
+.stol-gfp-summary:empty { display: none; }
+.stol-gfp-summary dt { color: var(--muted); }
+.stol-gfp-summary dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.stol-results tr.is-bad td { color: var(--danger, #b3261e); }
+.stol-results tr.is-selected.is-bad td { color: inherit; }
 .stol-keys { border-collapse: collapse; font-size: 13px; }
 .stol-keys td { padding: 4px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .stol-keys kbd { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--bg); border: 1px solid var(--border);

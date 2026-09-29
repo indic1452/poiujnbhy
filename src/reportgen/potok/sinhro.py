@@ -146,8 +146,11 @@ def известные() -> list[tuple[str, np.ndarray]]:
                  np.unpackbits(np.array([0x47], dtype=np.uint8))))
     итог.append(("инвертированный синхробайт DVB 0xB8 — первый пакет группы из восьми",
                  np.unpackbits(np.array([0xB8], dtype=np.uint8))))
-    итог.append(("пустой кадр GFP (G.7041) после маски: B6AB31E0",
-                 np.unpackbits(np.frombuffer(gfp.МАСКА, dtype=np.uint8))))
+    # Пустой кадр GFP на линии — сама маска основного заголовка (PLI = 0, cHEC = 0).
+    for маска, откуда in gfp.МАСКИ.items():
+        итог.append((f"пустой кадр GFP (G.7041) после маски: {маска:08X}"
+                     + ("" if маска == 0xB6AB31E0 else f" — {откуда}"),
+                     np.unpackbits(np.frombuffer(маска.to_bytes(4, "big"), dtype=np.uint8))))
     # CCSDS 131.0-B; сверено по gr-satellites (ccsds_rs_deframer: _syncword).
     итог.append(("ASM CCSDS 0x1ACFFC1D (кадр телеметрии: блок РС (255, 223), рандомизатор, "
                  "свёрточный код 171/133)", np.unpackbits(np.frombuffer(ASM_CCSDS, dtype=np.uint8))))
