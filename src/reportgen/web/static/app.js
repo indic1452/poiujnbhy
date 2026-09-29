@@ -1083,10 +1083,11 @@
         { group: 'work', route: 'roster', href: '#/roster', title: 'Расход', icon: 'roster' },
         { group: 'know', route: 'chat', href: '#/chat', title: 'Помощник', icon: 'chat' },
         { group: 'know', route: 'library', href: '#/library', title: 'Библиотека', icon: 'library' },
-        // Разбор цифрового потока по этапам: от кодирования в линии до пакетов.
         // Сессии: файлы потоков на общем столе — битовый просмотр, операции, общий доступ.
+        // Отдельного пункта «Разбор потока» в меню нет: автоанализ — операция на столе
+        // (правая кнопка на массиве), помощник — в панели стола. Страница разборов
+        // осталась по адресу #/potok — на неё ведут «Разборы без сессии» и старые закладки.
         { group: 'know', route: 'sessions', href: '#/sessions', title: 'Сессии потоков', icon: 'desk' },
-        { group: 'know', route: 'potok', href: '#/potok', title: 'Разбор потока', icon: 'wave' },
         { group: 'know', route: 'pakety', href: '#/pakety', title: 'Пакеты', icon: 'net' },
         { group: 'dept', route: 'talks', href: '#/talks', title: 'Сообщения', icon: 'talks', count: 'talks' },
         { group: 'dept', route: 'users', href: '#/users', title: 'Военнослужащие', icon: 'users', adminOnly: true },
@@ -1103,8 +1104,9 @@
         { id: 'dept', title: 'Отдел' },
     ];
 
-    /** Какой пункт меню подсвечивать для вложенного экрана. */
-    const SECTION_OF = { case: 'cases', stol: 'potok', session: 'sessions' };
+    /** Какой пункт меню подсвечивать для вложенного экрана. Стол разбора и страница
+     *  разборов без сессии — часть «Сессий потоков»: своего пункта у них нет. */
+    const SECTION_OF = { case: 'cases', stol: 'sessions', session: 'sessions', potok: 'sessions' };
 
     function icon(name) {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -10052,6 +10054,241 @@
         return null;
     }
 
+    // -- помощник на столе: разговор о массиве в выдвижной панели справа --
+    //
+    // Раньше «Спросить помощника» уводил на страницу чата, и стол терялся:
+    // массив, строку, выделение приходилось искать заново. Теперь разговор
+    // идёт рядом с битами. Это не второй чат: лента, ответ потоком, разметка,
+    // источники, «Стоп» и «Продолжить ответ» — те же функции раздела
+    // «Помощник» (renderFeed, send, streamAnswer…), им только подставлены
+    // узлы панели вместо узлов страницы чата.
+
+    /** Ключ хранилища панели помощника: у сессии и у отдельного разбора — свой. */
+    function ключПомощникаСтола(sessionId, jobId) {
+        return 'stol-ai:' + (sessionId ? 's:' + sessionId : 'j:' + jobId);
+    }
+
+    /** Что браузер помнит о панели: открыта ли, какой разговор и о каком массиве. Испорченное — как пустое. */
+    function памятьПомощникаСтола(сырое) {
+        const п = сырое && typeof сырое === 'object' ? сырое : {};
+        const чат = Number(п.чат);
+        return {
+            открыта: п.открыта === true,
+            чат: Number.isInteger(чат) && чат > 0 ? чат : null,
+            ключ: typeof п.ключ === 'string' ? п.ключ : null,
+            подпись: typeof п.подпись === 'string' ? п.подпись : '',
+        };
+    }
+
+    /** Тело /ask о массиве: у выхода этапа разбора — вопрос об этом этапе с его подробностями, у входа — о потоке. */
+    function вопросОМассивеСтола(у) {
+        return у.stage > 0 ? { stage: у.stage, topic: 'этап' } : { stage: 0 };
+    }
+
+    /** Подпись разговора в шапке панели: о каком массиве спрашивали. */
+    function подписьМассиваПомощнику(у) {
+        return 'массив ' + у.номер + ' · «' + у.имя + '»';
+    }
+
+    /** Заводить ли новый разговор по «Спросить помощника». Открытый годится, только если он
+     *  о том же массиве и в нём ещё ничего не спросили: иначе каждое нажатие плодило бы пустые. */
+    function новыйРазговорОМассиве(память, открыт, у, сообщений) {
+        return !(память.чат !== null && память.чат === открыт && память.ключ === у.ключ && сообщений === 0);
+    }
+
+    /**
+     * Панель «Помощник» на столе — справа, поверх правой части страницы: раскладка стола
+     * под ней не меняется, битовый просмотр не перерисовывается. Открыта ли и какой
+     * разговор — помнит браузер (ключ — ключПомощникаСтола). `настройки.массив()` —
+     * выбранный на столе массив; `настройки.приСмене(открыта, изПанели)` — отметить кнопку
+     * в шапке и, если панель закрыли из неё самой, вернуть фокус на кнопку.
+     */
+    function панельПомощникаСтола(ключ, настройки) {
+        let память = памятьПомощникаСтола(хранилищеСтола(ключ, null));
+        const запомнить = (правка) => { память = Object.assign({}, память, правка); сохранитьСтола(ключ, память); };
+        const оЧём = h('span', { class: 'stol-ai-about' });
+        const вЧат = h('a', { class: 'btn btn--sm btn--ghost', hidden: true,
+            title: 'Тот же разговор на странице помощника: все разговоры, источники, архив' }, 'Открыть в Помощнике');
+        const лента = h('div', { class: 'panel-body chat-feed stol-ai-feed' });
+        const вниз = h('button', { class: 'feed-down', type: 'button', hidden: true,
+            title: 'Вернуться к концу разговора и следить за ответом', onclick: () => scrollFeed(true) }, '↓ к ответу');
+        const источники = h('div', { class: 'stol-ai-src-body' });
+        const складка = h('details', { class: 'stol-ai-src', hidden: true }, h('summary', {}, 'Источники ответа'), источники);
+        const вложения = h('div', { class: 'attach-list' });
+        const поле = h('textarea', {
+            class: 'composer-input', rows: '1', spellcheck: 'false', 'aria-label': 'Вопрос помощнику',
+            placeholder: 'Вопрос о массиве. Enter — спросить, Shift+Enter — новая строка',
+            oninput: () => {
+                growComposer(поле);
+                // Недописанный вопрос переживает уход со стола — и виден на странице помощника.
+                if (chat.current) saveDraft(chat.current.id, поле.value);
+            },
+            onkeydown: (e) => {
+                if (e.key === 'Escape') return;                 // закроет панель
+                e.stopPropagation();
+                if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); отправить(); }
+            },
+        });
+        const спросить_ = h('button', { class: 'btn btn--primary', type: 'button', onclick: () => отправить() }, 'Спросить');
+        const стоп = h('button', { class: 'btn btn--danger', type: 'button', hidden: true,
+            title: 'Прервать ответ', onclick: () => abortAnswer() }, 'Стоп');
+        const режим = buildModeSwitch();
+        const узел = h('aside', { class: 'stol-ai', hidden: true, 'aria-label': 'Помощник' },
+            h('div', { class: 'stol-ai-head' },
+                h('div', { class: 'stol-ai-title' }, icon('chat'), h('b', {}, 'Помощник'), оЧём),
+                h('div', { class: 'stol-ai-actions' },
+                    h('button', { class: 'btn btn--sm btn--ghost', type: 'button', title: 'Новый разговор о выбранном массиве',
+                        onclick: () => оВыбранном() }, 'Новый вопрос'),
+                    вЧат,
+                    h('button', { class: 'stol-ai-close', type: 'button', 'aria-label': 'Закрыть помощника',
+                        title: 'Закрыть (Esc)', onclick: () => закрыть() }, '×'))),
+            h('div', { class: 'stol-ai-body' }, лента, вниз),
+            складка,
+            h('div', { class: 'composer stol-ai-composer' },
+                h('div', { class: 'attach-bar', hidden: true }, вложения),
+                h('div', { class: 'composer-row' }, поле, спросить_, стоп),
+                h('div', { class: 'stol-ai-foot' }, режим, h('span', { class: 'faint' }, 'Esc — закрыть'))));
+        узел.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape' || e.defaultPrevented) return;
+            e.preventDefault();
+            e.stopPropagation();
+            закрыть();
+        });
+        ленточныеСобытия(лента);
+
+        /* Пустая лента: разговора нет — приглашение спросить о выбранном массиве;
+           разговор заведён, а вопрос ещё не задан — где он и что приложено. */
+        function пустаяЛента() {
+            if (chat.current) {
+                return h('div', { class: 'chat-empty stol-ai-empty' },
+                    h('b', {}, 'Вопрос готов — внизу'),
+                    h('p', {}, 'Ход разбора и приметы массива приложены к разговору. Поправьте вопрос, если нужно, и нажмите «Спросить».'));
+            }
+            return h('div', { class: 'chat-empty stol-ai-empty' },
+                h('div', { class: 'stol-ai-mark' }, icon('spark')),
+                h('b', {}, 'Спросите о массиве'),
+                h('p', {}, 'Помощник получит ход разбора и приметы выбранного массива и ответит со ссылками на документы библиотеки.'),
+                h('button', { class: 'btn btn--primary', type: 'button', onclick: () => оВыбранном() }, 'Спросить о выбранном массиве'));
+        }
+
+        // Узлы панели — узлы раздела «Помощник»: его функции рисуют сюда. Прежний
+        // разговор со страницы помощника к столу отношения не имеет — состояние с нуля.
+        resetChat();
+        chat.nodes = { feed: лента, down: вниз, input: поле, send: спросить_, stop: стоп, attachList: вложения,
+            sideBody: источники, складка: складка, mode: режим, пусто: пустаяЛента };
+
+        function нарисовать() {
+            const есть = !!chat.current;
+            оЧём.textContent = есть ? память.подпись : '';
+            вЧат.hidden = !есть;
+            складка.hidden = !есть;
+            if (есть) {
+                вЧат.href = '#/chat/' + encodeURIComponent(chat.current.id);
+                поле.value = loadDraft(chat.current.id);
+            }
+            growComposer(поле);
+            renderFeed();
+            renderAttachments();
+            renderChatSources();
+            renderModeSwitch();
+            syncStreaming();
+        }
+
+        /** Разговор с сервера — в панель. Удалённый на странице помощника забывается. */
+        async function загрузить(чатИд) {
+            let загружен = false;
+            try {
+                принятьРазговор(await api.get('/api/chats/' + encodeURIComponent(чатИд)));
+                загружен = true;
+            } catch (error) {
+                if (error instanceof ApiError && error.status === 404) {
+                    запомнить({ чат: null, ключ: null, подпись: '' });
+                    принятьРазговор({ chat: null });
+                    toast('Разговор с помощником не найден: возможно, он удалён', 'error');
+                } else toastError(error);
+            }
+            нарисовать();
+            return загружен;
+        }
+
+        /** Новый разговор о массиве: сервер прикладывает ход разбора и приметы и готовит вопрос. */
+        async function завести(у) {
+            clear(лента);
+            лента.appendChild(loadingBox('Готовлю вопрос о массиве ' + у.номер + '…'));
+            let d;
+            try {
+                d = await api.post('/api/potok/' + encodeURIComponent(у.job) + '/ask', вопросОМассивеСтола(у));
+            } catch (error) {
+                toastError(error);
+                нарисовать();
+                return false;
+            }
+            запомнить({ чат: d.chat.id, ключ: у.ключ, подпись: подписьМассиваПомощнику(у) });
+            saveDraft(d.chat.id, d.question);
+            return загрузить(d.chat.id);
+        }
+
+        function показать(да) {
+            const изПанели = !да && узел.contains(document.activeElement);
+            узел.hidden = !да;
+            запомнить({ открыта: да });
+            настройки.приСмене(да, изПанели);
+        }
+
+        /** Открыть панель; помнится разговор, которого здесь ещё нет, — загрузить его. */
+        async function открыть(сФокусом) {
+            показать(true);
+            if (память.чат !== null && !(chat.current && chat.current.id === память.чат)) await загрузить(память.чат);
+            else нарисовать();
+            if (сФокусом) поле.focus();
+        }
+
+        function закрыть() {
+            показать(false);
+        }
+
+        /** «Спросить помощника» о массиве: панель открывается, разговор — новый, если открытый не годится. */
+        async function спросить(у) {
+            показать(true);
+            // Помнится разговор об этом массиве, но он ещё не загружен — сперва загрузить: вдруг годится.
+            if (память.чат !== null && память.ключ === у.ключ && !chat.current) await загрузить(память.чат);
+            const открыт = chat.current ? chat.current.id : null;
+            const сообщений = chat.messages.length + (liveIsHere() ? 1 : 0);
+            if (!новыйРазговорОМассиве(память, открыт, у, сообщений) || await завести(у)) поле.focus();
+        }
+
+        function оВыбранном() {
+            const у = настройки.массив();
+            if (у) return спросить(у);
+            toast('Выберите массив в таблице — вопрос задаётся о нём', 'error');
+            return null;
+        }
+
+        /** Отправить вопрос. Разговора ещё нет — он заводится о выбранном массиве, а вопрос остаётся свой. */
+        async function отправить() {
+            const текст = поле.value;
+            if (!chat.current && текст.trim()) {
+                const у = настройки.массив();
+                if (!у) {
+                    toast('Выберите массив в таблице — вопрос задаётся о нём', 'error');
+                    return;
+                }
+                if (!await завести(у)) return;
+                поле.value = текст;
+            }
+            await send();
+        }
+
+        return {
+            узел: узел,
+            открыта: () => !узел.hidden,
+            переключить: () => (узел.hidden ? открыть(true) : закрыть()),
+            спросить: спросить,
+            /** Была открыта, когда уходили со стола, — открыть снова (фокус остаётся на столе). */
+            восстановить: () => (память.открыта ? открыть(false) : null),
+        };
+    }
+
     async function renderStol(view, jobId, sessionId) {
         clear(view);
         const page = h('div', { class: 'page stol' + (sessionId ? ' stol--session' : '') });
@@ -10105,6 +10342,18 @@
         page.appendChild(верх);
         page.appendChild(разделитель);
         page.appendChild(низ);
+        // Помощник — выдвижная панель справа, вне страницы: клавиши битового просмотра до неё не доходят.
+        const помощник = панельПомощникаСтола(ключПомощникаСтола(sessionId, jobId), {
+            массив: () => (с.массивы && с.массивы.поКлючу[с.выбран]) || null,
+            приСмене: (открыта, изПанели) => {
+                const кнопка = заголовок.querySelector('.stol-ai-toggle');
+                if (!кнопка) return;
+                кнопка.classList.toggle('is-on', открыта);
+                кнопка.setAttribute('aria-pressed', String(открыта));
+                if (изПанели) кнопка.focus();
+            },
+        });
+        описание.узел.appendChild(помощник.узел);
         // В сессии главное — биты: верх (таблица массивов, журнал) ниже.
         const высотаВерха = хранилищеСтола(sessionId ? 'stol-top-session' : 'stol-top', sessionId ? 26 : 36);
         page.style.setProperty('--stol-top', высотаВерха + '%');
@@ -10187,6 +10436,11 @@
         function рисоватьЗаголовок() {
             clear(заголовок);
             const к = с.корень;
+            const открыт = помощник.открыта();
+            const кнопкаПомощника = h('button', {
+                class: 'btn btn--sm btn--ghost stol-ai-toggle' + (открыт ? ' is-on' : ''), type: 'button', 'aria-pressed': String(открыт),
+                title: 'Разговор с помощником о выбранном массиве — справа, стол остаётся на месте', onclick: () => помощник.переключить(),
+            }, icon('chat'), 'Помощник');
             if (sessionId) {
                 const св = с.сессия.session;
                 const люди = с.сессия.people || [];
@@ -10203,6 +10457,7 @@
                             if (!имя || !имя.trim()) return;
                             try { await api.patch('/api/sessions/' + encodeURIComponent(sessionId), { name: имя.trim() }); await загрузитьДерево(); } catch (error) { toastError(error); }
                         } }, 'Переименовать') : null,
+                        кнопкаПомощника,
                         h('button', { class: 'btn btn--sm btn--ghost', title: 'Горячие клавиши битового просмотра (F1)', onclick: () => справкаПросмотра() }, 'Клавиши'),
                         h('button', { class: 'btn btn--sm btn--ghost', onclick: () => загрузитьДерево() }, 'Обновить')),
                 ]);
@@ -10212,6 +10467,7 @@
                 h('b', {}, к.имя),
                 h('span', { class: 'muted small' }, ' · массивов ' + с.массивы.узлы.length),
                 h('span', { class: 'stol-title-actions' },
+                    кнопкаПомощника,
                     h('a', { class: 'btn btn--sm btn--ghost', href: '#/potok/' + encodeURIComponent(jobId) }, 'Этапы и отчёт'),
                     h('button', { class: 'btn btn--sm btn--ghost', onclick: () => загрузитьДерево() }, 'Обновить'),
                     h('a', { class: 'btn btn--sm btn--ghost', href: '#/potok' }, 'Все разборы')),
@@ -10896,12 +11152,7 @@
                 document.body.appendChild(a); a.click(); a.remove();
                 return null;
             }
-            case 'помощник': {
-                const d = await api.post(путь + '/ask', { stage: у.stage });
-                saveDraft(d.chat.id, d.question);
-                navigate('#/chat/' + d.chat.id);
-                return null;
-            }
+            case 'помощник': помощник.спросить(у); return null;
             case 'автомат': {
                 const d = await api.post(путь + '/derive', { stage: у.stage, steps: [], analyze: true });
                 await вЖурнал(у, 'Автомат', '→ разбор автоматом запущен');
@@ -13918,6 +14169,7 @@
 
         рисоватьОперации();
         await загрузитьДерево();
+        помощник.восстановить();
         if (sessionId && файлыДляСессии && файлыДляСессии.сессия === sessionId) {
             const файлы = файлыДляСессии.файлы;
             файлыДляСессии = null;
@@ -14296,7 +14548,7 @@
             return;
         }
         if (!список.length) {
-            toast('Конфигураций пока нет — создайте на странице «Разбор потока» или сохраните шаги узла', 'error');
+            toast('Конфигураций пока нет — создайте на странице разборов («Сессии потоков» → «Разборы без сессии») или сохраните шаги узла', 'error');
             return;
         }
         const выбор = h('select', { 'aria-label': 'Конфигурация' }, список.map((к) =>
@@ -18004,16 +18256,7 @@
 
         if (chatId) {
             try {
-                const payload = await api.get('/api/chats/' + encodeURIComponent(chatId));
-                chat.current = payload.chat;
-                chat.messages = payload.messages || [];
-                // Файлы, приложенные, но ещё не отправленные с вопросом:
-                // инженер приложил дамп, отвлёкся, вернулся — всё на месте.
-                const all = payload.attachments || [];
-                chat.attachments = all.filter((item) => !item.message_id);
-                chat.sentAttachments = all.filter((item) => item.message_id);
-                const answers = chat.messages.filter((item) => item.role === 'assistant');
-                chat.sourcesOf = answers.length ? answers[answers.length - 1] : null;
+                принятьРазговор(await api.get('/api/chats/' + encodeURIComponent(chatId)));
             } catch (error) {
                 if (error instanceof ApiError && error.status === 404) {
                     // Разговор удалён — забываем его, иначе будем возвращаться
@@ -18056,6 +18299,20 @@
         }
     }
 
+    /** Разговор с сервера — в состояние раздела: сообщения, вложения, источники
+     *  последнего ответа. Тем же путём разговор открывает и панель помощника на столе. */
+    function принятьРазговор(payload) {
+        chat.current = payload.chat || null;
+        chat.messages = payload.messages || [];
+        // Файлы, приложенные, но ещё не отправленные с вопросом:
+        // инженер приложил дамп, отвлёкся, вернулся — всё на месте.
+        const all = payload.attachments || [];
+        chat.attachments = all.filter((item) => !item.message_id);
+        chat.sentAttachments = all.filter((item) => item.message_id);
+        const answers = chat.messages.filter((item) => item.role === 'assistant');
+        chat.sourcesOf = answers.length ? answers[answers.length - 1] : null;
+    }
+
     /** Идёт ли прямо сейчас ответ в открытом разговоре. */
     function liveIsHere() {
         return !!(chat.live && chat.current &&
@@ -18093,7 +18350,11 @@
 
     function focusChatPanel(name) {
         const bench = chat.nodes.bench;
-        if (!bench) return;
+        if (!bench) {
+            // Помощник в панели стола: источники — складной блок под лентой.
+            if (name === 'side' && chat.nodes.складка) chat.nodes.складка.open = true;
+            return;
+        }
         bench.dataset.panel = name;
         $$('button', chat.nodes.switcher).forEach((button) => {
             button.classList.toggle('btn--primary', button.dataset.panel === name);
@@ -18409,7 +18670,8 @@
         clear(feed);
         const live = liveIsHere() ? chat.live : null;
         if (!chat.messages.length && !live) {
-            feed.appendChild(emptyChatState());
+            // У панели помощника на столе пустая лента своя: примеры вопросов по библиотеке там ни к чему.
+            feed.appendChild(chat.nodes.пусто ? chat.nodes.пусто() : emptyChatState());
             return;
         }
         // Лента пересобирается целиком — и прокрутка при этом сбрасывается.
@@ -18582,7 +18844,8 @@
                     : 'Не удалось скопировать', ок ? 'ok' : 'error');
             }) : null,
             кнопка('print', 'Печать', () => печатьОтвета(body.closest('.msg'))),
-            кнопка('book', 'Читать', () => режимЧтения(true)));
+            // Режим чтения — у страницы помощника: на столе он спрятал бы поле вопроса.
+            chat.nodes.bench ? кнопка('book', 'Читать', () => режимЧтения(true)) : null);
     }
 
     /** Строки и ячейки таблицы — в текст с табуляцией. */
