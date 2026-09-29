@@ -2771,7 +2771,7 @@ def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
                                  данные=np.packbits(биты).tobytes(),
                                  профиль=профиль, от=f"{job_id}#{этап}", шаги=шаги,
                                  разбирать=bool(тело.get("analyze")), происхождение=описание,
-                                 сессия=состояние.get("сессия") or "")
+                                 сессия=состояние.get("сессия") or "", бит=len(биты))
     return {"id": ид}
 
 
@@ -2903,7 +2903,8 @@ def potok_raw(request: Request, job_id: str, stage: int = 0, offset: int = 0, le
 
     Сдвиг растра, ширина, масштаб, разметка — всё в браузере, без запроса на
     каждое движение. Большой массив берётся кусками (``offset``, ``length``);
-    полный размер — в заголовке X-Total-Bytes.
+    полный размер — в заголовке X-Total-Bytes, точная длина в битах (хвост последнего байта
+    бывает не в счёт) — в X-Total-Bits.
     """
     user = require_user(request)
     _задание_или_404(request, user, job_id)
@@ -2912,13 +2913,14 @@ def potok_raw(request: Request, job_id: str, stage: int = 0, offset: int = 0, le
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 409) from None
     размер = файл.stat().st_size
+    бит = _potok(request).длина_бит(job_id, stage)
     начало = min(max(0, int(offset)), размер)
     сколько = min(int(length) if length > 0 else СЫРЫЕ_ДО, СЫРЫЕ_ДО, размер - начало)
     with файл.open("rb") as поток:
         поток.seek(начало)
         данные = поток.read(сколько)
     return Response(данные, media_type="application/octet-stream",
-                    headers={"X-Total-Bytes": str(размер), "X-Offset": str(начало),
+                    headers={"X-Total-Bytes": str(размер), "X-Total-Bits": str(бит), "X-Offset": str(начало),
                              "Cache-Control": "private, no-store"})
 
 

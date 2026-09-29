@@ -97,6 +97,21 @@ class УсечениеTests(unittest.TestCase):
                 снять_вручную(биты.astype(np.uint8), плохое)
 
 
+    def test_обрезка_начала_и_конца(self):
+        g = np.random.default_rng(3)
+        биты = g.integers(0, 2, 1000, dtype=np.uint8)
+        for слой, от, до in (("обрезка начало 100 конец 8", 100, 992), ("обрезка начало 0 конец 0", 0, 1000),
+                             ("обрезка начало 7", 7, 1000), ("обрезка конец 999", 0, 1), ("обрезка начало 999 конец 0", 999, 1000),
+                             ("обрезать начало 1 конец 1", 1, 999)):
+            with self.subTest(слой=слой):
+                ряд, запись = снять_вручную(биты, слой)
+                self.assertTrue(np.array_equal(биты[от:до], ряд))
+                self.assertIn(f"осталось {до - от} бит из 1000", " ".join(запись.подробно))
+        for плохое in ("обрезка начало 1000", "обрезка конец 1000", "обрезка начало 500 конец 500", "обрезка начало 900 конец 200"):
+            with self.subTest(плохое=плохое), self.assertRaises(ValueError):
+                снять_вручную(биты, плохое)
+
+
 class СтолЧерезСерверTests(unittest.TestCase):
     def setUp(self):
         from test_web import WebTestCase
@@ -150,6 +165,35 @@ class СтолЧерезСерверTests(unittest.TestCase):
         self.assertEqual([], дерево["происхождение"])
         # Исходный массив скачивается как этап 0.
         self.assertEqual(кадры.tobytes(), к.get(f"/api/potok/{ид}/stage/0").content)
+
+    def test_обрезка_точная_длина_в_битах(self):
+        к = self.к
+        rng = np.random.default_rng(4)
+        данные = rng.integers(0, 256, 200).astype(np.uint8)
+        ид = к.post("/api/potok", data={"profile": "быстро"},
+                    files={"file": ("t.bin", данные.tobytes(), "application/octet-stream")}).json()["id"]
+        self.дождаться(ид)
+        новый = к.post(f"/api/potok/{ид}/derive", json={"stage": 0, "analyze": False,
+                                                          "steps": [{"вид": "слой", "слой": "обрезка начало 3 конец 10", "вкл": True}]}).json()["id"]
+        self.assertEqual("готово", self.дождаться(новый)["состояние"])
+        биты = np.unpackbits(данные)[3:-10]
+        self.assertEqual(1587, len(биты))
+        сырые = к.get(f"/api/potok/{новый}/raw")
+        self.assertEqual(("199", "1587"), (сырые.headers["X-Total-Bytes"], сырые.headers["X-Total-Bits"]))
+        self.assertEqual(np.packbits(биты).tobytes(), сырые.content)
+        self.assertEqual("1600", к.get(f"/api/potok/{ид}/raw").headers["X-Total-Bits"])
+        # Дальше — от точной длины: обрезка с конца на 7 бит оставляет 1580, а не 1585 с нулями хвоста.
+        дальше = к.post(f"/api/potok/{новый}/derive", json={"stage": 0, "analyze": False,
+                                                              "steps": [{"вид": "слой", "слой": "обрезка конец 7", "вкл": True}]}).json()["id"]
+        self.дождаться(дальше)
+        self.assertEqual("1580", к.get(f"/api/potok/{дальше}/raw").headers["X-Total-Bits"])
+        # Статистика и поле кадров — по точной длине.
+        self.assertEqual(1587, к.post(f"/api/potok/{новый}/stats", json={"length": 10 ** 6}).json()["бит"])
+        self.assertEqual(1587 // 64, к.post(f"/api/potok/{новый}/framefield", json={"period": 64}).json()["всего"])
+        # Производный без шагов (копия) — той же точной длины.
+        копия = к.post(f"/api/potok/{новый}/derive", json={"stage": 0, "analyze": False, "steps": []}).json()["id"]
+        self.дождаться(копия)
+        self.assertEqual("1587", к.get(f"/api/potok/{копия}/raw").headers["X-Total-Bits"])
 
     def test_притоки_отдельными_массивами(self):
         # E2 из четырёх E1: этап с притоками, каждый приток — файлом и новым узлом.
