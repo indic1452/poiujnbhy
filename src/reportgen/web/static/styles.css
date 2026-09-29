@@ -9013,6 +9013,41 @@ body.reading .msg .body {
 @media (max-width: 720px) {
     .stol-mx { grid-template-columns: 1fr; }
 }
+/* Окно «Модуляционный декодер»: слева поля как в софте аналитиков, справа созвездия, мини-растр и варианты. */
+.stol-md { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.stol-md-params { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: var(--fs-sm); }
+.stol-md-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; }
+.stol-md-row > span:first-child { color: var(--muted); }
+.stol-md-row select { flex: 1 1 10em; min-width: 0; }
+.stol-md-opt { display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer; }
+.stol-md-perm { width: 5.5em; }
+.stol-md-num { width: 6em; }
+.stol-md-table { flex: 1 1 8em; min-width: 6em; font-family: var(--font-mono); }
+.stol-md-row select.stol-md-tables { flex: 0 0 auto; width: 3.2em; }
+.stol-md-box { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px 8px; margin: 2px 0;
+    display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stol-md-box > legend { padding: 0 4px; color: var(--muted); font-weight: 600; }
+.stol-md-inner { display: flex; flex-direction: column; gap: 6px; padding-left: 20px; }
+.stol-md-result { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stol-md-planes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stol-md-plane { margin: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel); padding: 4px; min-width: 0; }
+.stol-md-plane figcaption { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stol-md-svg { display: block; width: 100%; max-height: 240px; }
+.stol-md-axis { stroke: var(--border); stroke-width: 0.01; }
+.stol-md-pt { fill: var(--accent); }
+.stol-md-lbl { fill: var(--text); font-family: var(--font-mono); text-anchor: middle; }
+.stol-md-over { fill: var(--warn); font-family: var(--font-mono); text-anchor: middle; font-weight: 700; }
+.stol-md-raster { display: block; width: 100%; max-height: 180px; background: #000; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    image-rendering: pixelated; }
+.stol-md-sum { display: flex; flex-direction: column; gap: 2px; word-break: break-all; }
+.stol-md-variants { max-height: 32vh; }
+.stol-md-help { background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius);
+    padding: 4px 10px; }
+.stol-md-help[hidden] { display: none; }
+.stol-md-help p { margin: 4px 0; }
+@media (max-width: 720px) {
+    .stol-md, .stol-md-planes { grid-template-columns: 1fr; }
+}
 /* «screen and» — чтобы последним блоком «max-width: 900px» оставался выдвижной ящик меню. */
 @media screen and (max-width: 900px) {
     .stol-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

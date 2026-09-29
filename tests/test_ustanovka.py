@@ -127,6 +127,7 @@ class ВКопиюПопадаетВсё(unittest.TestCase):
         места = {место["имя"]: место["в_копию"] for место in Settings.load().storage()}
         self.assertTrue(места["ldpc"])
         self.assertTrue(места["konfig"])                    # конфигурации обработки — труд аналитиков
+        self.assertTrue(места["ploskosti"])                 # плоскости модуляционного декодера (.etl)
         self.assertFalse(места["potok"])
         self.assertFalse(места["pakety"])
 
