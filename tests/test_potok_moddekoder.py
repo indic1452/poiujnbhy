@@ -1111,6 +1111,17 @@ class ПапкаЗаданийTests(unittest.TestCase):
             Задания(корень / "potok")
             self.assertEqual(["8fm.etl"], [п.name for п in мд.файлы()])
 
+    def test_папка_создаётся_при_старте_сервера(self):
+        from fastapi.testclient import TestClient  # noqa: PLC0415
+
+        from test_web import make_app  # noqa: PLC0415
+
+        with tempfile.TemporaryDirectory() as папка:
+            приложение, *_ = make_app(Path(папка), with_library=False)
+            self.assertFalse((Path(папка) / "ploskosti").exists())
+            with TestClient(приложение):
+                self.assertTrue((Path(папка) / "ploskosti").is_dir())
+
 
 class МоддекодерЧерезСерверTests(unittest.TestCase):
     def setUp(self):

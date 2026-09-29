@@ -79,6 +79,9 @@ def create_app(settings: Settings | None = None,
         # поиск выключен.
         for trouble in settings_warnings(settings):
             logger.warning("Настройки: %s", trouble)
+        # Папка плоскостей модуляционного декодера — сразу при старте: аналитик кладёт
+        # туда свои картинки созвездий (.etl) руками, ещё до первого разбора.
+        (Path(settings.data_dir) / "ploskosti").mkdir(parents=True, exist_ok=True)
         if service.vectors is not None:
             state = service.vectors.start_if_needed()
             if state.get("running"):
