@@ -9316,6 +9316,8 @@ i.pk-lvl {
 .stol-ai-src summary { color: var(--muted); font-weight: 600; cursor: pointer; }
 .stol-ai-src-body { padding-top: 6px; }
 .stol-ai-composer { padding: 8px 10px 10px; border-top: 1px solid var(--border); }
+/* Справа внизу — круглая кнопка уведомлений: поле и подвал панели её не заходят. */
+.stol-ai-composer .composer-row, .stol-ai-foot { margin-right: 52px; }
 .stol-ai-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: var(--fs-xs); }
 /* Кнопка «Помощник» в шапке стола: открыта панель — кнопка нажата. */
 .stol-ai-toggle svg { width: 14px; height: 14px; }
