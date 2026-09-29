@@ -62,6 +62,7 @@ import bisect
 import bz2
 import csv
 import email
+import email.errors
 import email.policy
 import io
 import json
@@ -366,7 +367,7 @@ def _раскодировать_2047(текст: str) -> str:
         return текст
     try:
         return str(make_header(decode_header(текст)))
-    except (ValueError, LookupError, UnicodeDecodeError):
+    except (ValueError, LookupError, email.errors.MessageError):
         return текст
 
 
@@ -398,7 +399,7 @@ def json_значения(данные: bytes, одно: bool = False) -> list[t
         return None
     декодер, итог, место, байт = json.JSONDecoder(), [], 0, 0
     while True:
-        пробелы = len(текст) - len(текст[место:].lstrip())
+        пробелы = len(текст[место:]) - len(текст[место:].lstrip())
         байт += len(текст[место:место + пробелы].encode())
         место += пробелы
         if место >= len(текст):
@@ -962,7 +963,7 @@ def tftp(udp: list[Соединение], сбор: Сбор, занятые: se
         блоки: list[tuple[int, bytes, int]] = []
         размер_блока, ошибка, поток = 512, "", ""
         for соед in udp:
-            if клиент not in соед.стороны:
+            if клиент not in соед.точки:
                 continue
             for отправитель, данные, н, _ in соед.датаграммы:
                 if not номер < н < следующий or отправитель[0] not in (клиент[0], сервер) or len(данные) < 4:
@@ -1133,7 +1134,9 @@ def _h264(пакеты: list[tuple[int, bytes]], видео: str) -> tuple[bytes
                 n = struct.unpack_from(">H", д, место)[0]
                 итог += _nal(д[место + 2:место + 2 + n], видео)
                 место += 2 + n
-        elif тип in (28, 29) and len(д) > 2:
+        elif тип in (28, 29):
+            if len(д) < 3:
+                continue
             s, e = д[1] >> 7, (д[1] >> 6) & 1
             if s:
                 if фрагмент is not None:
@@ -1628,13 +1631,14 @@ def имя_выгрузки(о: Объект, настройки: Настрой
     """Имя объекта в выгрузке по шаблону: «протокол» — номер и имя; «поток» — поток, время и имя; «номер»."""
     import datetime  # noqa: PLC0415
     if настройки.имена == "номер":
-        return f"объект-{о.номер:04d}" + (f".{о.имя.rsplit('.', 1)[-1]}" if "." in о.имя else "")
+        расширение = re.sub(r"[^0-9A-Za-z]", "", о.имя.rsplit(".", 1)[-1])[:8] if "." in о.имя else ""
+        return f"объект-{о.номер:04d}" + (f".{расширение}" if расширение else "")
     if настройки.имена == "поток":
         пояс = datetime.timezone(datetime.timedelta(minutes=настройки.пояс))
         когда = datetime.datetime.fromtimestamp(время or 0, пояс).strftime("%Y%m%dT%H%M%S")
         поток = re.sub(r"[^0-9A-Za-z.]+", "_", о.поток).strip("_")
-        return безопасное_имя(f"{о.номер:04d}-{поток}-{когда}-{о.имя}")
-    return безопасное_имя(f"{о.номер:04d}-{о.имя}")
+        return f"{о.номер:04d}-{поток}-{когда}-{безопасное_имя(о.имя)}"
+    return f"{о.номер:04d}-{безопасное_имя(о.имя)}"
 
 
 def время_текстом(время: float | None, пояс: int) -> str:

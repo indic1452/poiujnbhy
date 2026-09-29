@@ -130,9 +130,9 @@ def захват_всех_видов():
     for i in range(50):
         кадры.append(udp(rtp(0, 100 + i, 160 * i, 0x1234, отсчёты[160 * i:160 * i + 160]), 20000, 30000))
     # SIP с SDP: H.264 (96) и AMR (97) с событиями (101)
-    sdp = ("v=0\r\no=- 1 1 IN IP4 10.0.0.1\r\ns=-\r\nc=IN IP4 10.0.0.2\r\nt=0 0\r\n"
-           "m=video 30002 RTP/AVP 96\r\na=rtpmap:96 H264/90000\r\n"
-           "m=audio 30004 RTP/AVP 97 101\r\na=rtpmap:97 AMR/8000\r\na=rtpmap:101 telephone-event/8000\r\n").encode()
+    sdp = (b"v=0\r\no=- 1 1 IN IP4 10.0.0.1\r\ns=-\r\nc=IN IP4 10.0.0.2\r\nt=0 0\r\n"
+           b"m=video 30002 RTP/AVP 96\r\na=rtpmap:96 H264/90000\r\n"
+           b"m=audio 30004 RTP/AVP 97 101\r\na=rtpmap:97 AMR/8000\r\na=rtpmap:101 telephone-event/8000\r\n")
     кадры.append(udp(b"INVITE sip:b@10.0.0.2 SIP/2.0\r\nVia: SIP/2.0/UDP 10.0.0.1\r\nCall-ID: 1\r\nCSeq: 1 INVITE\r\n"
                      b"Content-Type: application/sdp\r\nContent-Length: %d\r\n\r\n" % len(sdp) + sdp, 5060, 5060))
     sps, pps, idr = b"\x67\x42\x00\x1e\xab", b"\x68\xce\x3c\x80", b"\x65" + bytes(range(256)) * 8

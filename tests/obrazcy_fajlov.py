@@ -67,7 +67,7 @@ def sqlite_():
         путь = os.path.join(папка, "b.sqlite")
         с = sqlite3.connect(путь)
         с.execute("create table t (a text)")
-        с.executemany("insert into t values (?)", [("строка %d" % i,) for i in range(50)])
+        с.executemany("insert into t values (?)", [(f"строка {i}",) for i in range(50)])
         с.commit()
         с.close()
         return open(путь, "rb").read()
