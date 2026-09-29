@@ -675,7 +675,9 @@ class СтраницаTests(unittest.TestCase):
 
     def test_страница_в_интерфейсе(self):
         js = (КОРЕНЬ / "src" / "reportgen" / "web" / "static" / "app.js").read_text(encoding="utf-8")
-        self.assertIn("route: 'potok', href: '#/potok', title: 'Разбор потока'", js)
+        # Своего пункта в меню у страницы разборов нет (автоанализ — на столе), адрес #/potok остался.
+        self.assertNotIn("title: 'Разбор потока'", js)
+        self.assertIn("href: '#/potok', title: 'Отдельные разборы без сессии'", js)
         self.assertIn("else if (route.name === 'potok') await renderPotok(view, route.id);", js)
         self.assertIn("остановитьОпросПотока();", js)
         self.assertIn("'/api/potok/' + encodeURIComponent(jobId) + '/continue'", js)
