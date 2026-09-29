@@ -3399,13 +3399,19 @@ def sessions_delete(request: Request, session_id: str) -> dict[str, Any]:
 @router.post("/sessions/{session_id}/files")
 def sessions_add_file(request: Request, session_id: str, file: UploadFile = File(...),
                       start: str = Form(""), length: str = Form(""), sliced: str = Form(""),
-                      analyze: str = Form("")) -> dict[str, Any]:
+                      analyze: str = Form(""), bit_order: str = Form("")) -> dict[str, Any]:
     """Файл в сессию: поток сразу виден битами; обрезка — с какого байта и сколько.
 
     .Sig — тела пакетов подряд, текст с битами или HEX — сами биты: обрезается
     уже поток. ``sliced`` — браузер сам вырезал кусок сырого файла (не гнать по
     сети лишнее): здесь только записываем, откуда он.
+
+    ``bit_order`` — какой бит байта в файле первый: ``msb``, ``lsb`` (так пишут
+    демодуляторы и старые средства отдела) или ``auto`` (по умолчанию: у сырого
+    файла — по синхромаркеру цикла, см. ``rastr.порядок_бит``). Поток на сервере
+    всегда хранится старшим битом первым — просмотр, поиск и операции видят одно.
     """
+    from ..potok import rastr  # noqa: PLC0415
     from ..potok.chtenie import прочитать as прочитать_поток  # noqa: PLC0415
     user = require_user(request)
     _сессия_или_404(request, user, session_id)
@@ -3416,6 +3422,9 @@ def sessions_add_file(request: Request, session_id: str, file: UploadFile = File
         сколько = max(0, int(length or 0))
     except ValueError:
         raise ServiceError("обрезка: начало и длина — целые числа байт", 400) from None
+    порядок = (bit_order or "auto").strip().lower()
+    if порядок not in ("auto", "msb", "lsb"):
+        raise ServiceError("порядок бит в байте: auto, msb или lsb", 400)
     limit = settings.max_upload_mb * 1024 * 1024
     данные = file.file.read(limit + 1)
     if len(данные) > limit:
@@ -3438,13 +3447,27 @@ def sessions_add_file(request: Request, session_id: str, file: UploadFile = File
             происхождение.append(f"обрезка: байты {начало}–{начало + len(поток) - 1} из {len(разобранный.данные)}")
     if not поток:
         raise ServiceError("после чтения файла поток пуст", 400)
+    # Порядок бит в байте: сырой файл — как записан (авто — по маркеру цикла); текст с
+    # битами и тела .Sig — уже в порядке линии, их разворачивает только явное «lsb».
+    сырой = bool(sliced) or разобранный.вид == "bin"
+    if порядок == "auto" and сырой:
+        определено = rastr.порядок_бит(поток)
+        младший = определено["порядок"] == "младший"
+        происхождение.append("порядок бит в байте определён: " + определено["причина"])
+    else:
+        младший = порядок == "lsb"
+        if порядок != "auto":
+            происхождение.append("порядок бит в байте задан: " + ("младший" if младший else "старший") + " бит байта первым")
+    if младший:
+        поток = rastr.развернуть_биты(поток)
     ид = _potok(request).создать(владелец=user.id, имя=name, данные=поток, профиль="обычно",
                                  разбирать=analyze in ("1", "true", "да"), происхождение=происхождение,
                                  сессия=session_id)
     _sessii(request).тронуть(session_id)
     _repos(request).audit.log("sessions.file", user=user, object_type="session", object_id=session_id,
                               details={"name": name, "bytes": len(поток), "job": ид})
-    return {"id": ид, "bytes": len(поток)}
+    return {"id": ид, "bytes": len(поток), "bit_order": "lsb" if младший else "msb",
+            "bit_order_note": next((п for п in происхождение if п.startswith("порядок бит")), "")}
 
 
 def _биты_поиска(request: Request, user, job_id: str, тело: dict[str, Any]):
