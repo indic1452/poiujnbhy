@@ -675,7 +675,8 @@
         append(footer, [options.footer]);
 
         function onKey(event) {
-            if (event.key === 'Escape') {
+            // Esc закрывает только верхнее окно (справка поверх окна не закрывает и его).
+            if (event.key === 'Escape' && root.lastElementChild === backdrop) {
                 event.stopPropagation();
                 close();
             }
@@ -10028,7 +10029,13 @@
         const pfcs = сч.pfcs || {};
         const всегоPfcs = Number(pfcs.верна || 0) + Number(pfcs.неверна || 0);
         if (всегоPfcs) итог.push(['pFCS', n(pfcs.верна) + ' верна из ' + n(всегоPfcs)]);
-        if ((сч.типы || []).length) итог.push(['UPI', сч.типы.map((т) => '0x' + Number(т.upi).toString(16).toUpperCase().padStart(2, '0') + ' ' + т.upi_словами + ' × ' + n(т.кадров)).join('; ')]);
+        // Виды кадров по UPI (PTI 100 — своя таблица); с pFCS и без, с EXI 0 и 1 — вместе.
+        const виды = new Map();
+        (сч.типы || []).forEach((т) => {
+            const ключ = (т.pti === 4 ? 'CMF ' : '') + '0x' + Number(т.upi).toString(16).toUpperCase().padStart(2, '0') + ' ' + т.upi_словами;
+            виды.set(ключ, (виды.get(ключ) || 0) + Number(т.кадров || 0));
+        });
+        if (виды.size) итог.push(['UPI', Array.from(виды, ([к, в]) => к + ' × ' + n(в)).join('; ')]);
         const cid = Object.entries(сч.cid || {});
         if (cid.length) итог.push(['CID', cid.map(([к, в]) => к + ' × ' + n(в)).join(', ')]);
         if (сч.длины) итог.push(['Длины (PLI)', сч.длины.от + '…' + сч.длины.до]);
@@ -12413,7 +12420,7 @@
             const выборМаски = выпадающий(МАСКИ_GFP, з.маска);
             const своя = h('input', { type: 'text', class: 'mono', value: з.своя || '', maxlength: 10, placeholder: 'например 000119D8',
                 title: 'Своя маска основного заголовка: 8 шестнадцатеричных знаков' });
-            const своеПоле = h('label', { class: 'field field--row', hidden: выборМаски.value !== 'своя' }, h('span', {}, 'Своя маска'), своя);
+            const своеПоле = h('label', { class: 'field field--row field--stack', hidden: выборМаски.value !== 'своя' }, h('span', {}, 'Своя маска'), своя);
             выборМаски.addEventListener('change', () => { своеПоле.hidden = выборМаски.value !== 'своя'; if (!своеПоле.hidden) своя.focus(); });
             const скремблер = выпадающий(СКРЕМБЛЕР_GFP, з.скремблер);
             const порядок = выпадающий(ПОРЯДОК_GFP, з.порядок);
@@ -12438,9 +12445,9 @@
                 title: 'GFP (G.7041) — массив ' + у.номер, wide: true,
                 body: h('div', { class: 'stol-dialog stol-search' },
                     h('div', { class: 'stol-search-params' },
-                        h('label', { class: 'field field--row' }, h('span', {}, 'Маска заголовка'), выборМаски), своеПоле,
-                        h('label', { class: 'field field--row' }, h('span', {}, 'Скремблер нагрузки'), скремблер),
-                        h('label', { class: 'field field--row' }, h('span', {}, 'Порядок бит в байте'), порядок),
+                        h('label', { class: 'field field--row field--stack' }, h('span', {}, 'Маска заголовка'), выборМаски), своеПоле,
+                        h('label', { class: 'field field--row field--stack' }, h('span', {}, 'Скремблер нагрузки'), скремблер),
+                        h('label', { class: 'field field--row field--stack' }, h('span', {}, 'Порядок бит в байте'), порядок),
                         первый.узел,
                         h('label', { class: 'small', title: 'Если с x¹⁶ + x¹² + x⁵ + 1 пика синдромов нет — перебрать CRC-16 каталога RevEng' }, многочлены, ' другие многочлены CRC-16, если нет пика'),
                         h('label', { class: 'small' }, пустые, ' показывать пустые кадры в таблице'),
@@ -12449,20 +12456,21 @@
                     h('div', { class: 'stol-search-results' }, итог, плитки, h('div', { class: 'stol-results-wrap' }, таблица), ещё)),
                 footer: [h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Выход'), кнЖурнал, кнCid, кнПоток, кнКадры, кнКлиенты, найтиКн],
             });
-            function рисовать() {
+            function рисовать(фокус) {
                 clear(плитки);
                 if (св) плиткиGFP(св).forEach(([подпись, значение]) => { плитки.appendChild(h('dt', {}, подпись)); плитки.appendChild(h('dd', {}, значение)); });
                 clear(тело);
                 строки.forEach((к, i) => {
-                    const tr = h('tr', { class: (i === выбран ? 'is-selected' : '') + (ошибкаКадраGFP(к) ? ' is-bad' : ''), title: 'бит ' + к.бит },
+                    const tr = h('tr', { tabindex: -1, class: (i === выбран ? 'is-selected' : '') + (ошибкаКадраGFP(к) ? ' is-bad' : ''), title: 'бит ' + к.бит },
                         h('td', { class: 'mono' }, String(к['№'])), h('td', { class: 'mono' }, Number(к.бит).toLocaleString('ru-RU')),
                         h('td', { class: 'mono' }, String(к.pli)), h('td', {}, видКадраGFP(к)),
                         h('td', { class: 'mono' }, к.pti === undefined || к.pti === null ? '' : Number(к.pti).toString(2).padStart(3, '0')),
                         h('td', { class: 'mono' }, к.cid === undefined || к.cid === null ? '' : String(к.cid)),
                         h('td', { class: 'small' }, проверкиКадраGFP(к)));
-                    tr.addEventListener('click', () => { выбран = i; рисовать(); });
+                    tr.addEventListener('click', () => { выбран = i; рисовать(true); });
                     tr.addEventListener('dblclick', () => { выбран = i; кМесту(к); });
                     тело.appendChild(tr);
+                    if (фокус && i === выбран) tr.focus();
                 });
                 ещё.hidden = строки.length >= всего;
                 ещё.textContent = 'Ещё кадры (показано ' + строки.length.toLocaleString('ru-RU') + ' из ' + всего.toLocaleString('ru-RU') + ')';
@@ -12498,7 +12506,7 @@
                     итог.textContent = errorText(error);
                 }
                 идёт = false;
-                рисовать();
+                рисовать(строки.length > 0);
             }
             function кМесту(к) {
                 if (!к) return;
@@ -12535,7 +12543,7 @@
             окно.modal.addEventListener('keydown', (e) => {
                 if (e.key === 'F1') { справка(); e.preventDefault(); e.stopPropagation(); return; }
                 if (['INPUT', 'SELECT'].includes(e.target.tagName) || !строки.length) return;
-                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { выбран = Math.max(0, Math.min(строки.length - 1, выбран + (e.key === 'ArrowDown' ? 1 : -1))); рисовать(); e.preventDefault(); }
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { выбран = Math.max(0, Math.min(строки.length - 1, выбран + (e.key === 'ArrowDown' ? 1 : -1))); рисовать(true); e.preventDefault(); }
                 else if (e.key === 'Enter') { кМесту(строки[выбран]); e.preventDefault(); }
             });
             [своя, первый.поле].forEach((п) => п.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); найти(false); } }));

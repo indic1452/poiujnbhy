@@ -2265,6 +2265,7 @@ input.is-bad {
     padding: 11px 16px;
     border-top: 1px solid var(--border);
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     justify-content: flex-end;
     align-items: center;
@@ -8942,6 +8943,8 @@ body.reading .msg .body {
 .stol-search-results { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field.field--row { display: grid; grid-template-columns: 1fr 7em; align-items: center; gap: 8px; margin: 0; font-size: 13px; }
 .field.field--row input { width: 100%; }
+.field.field--row.field--stack { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.field.field--row.field--stack select, .field.field--row.field--stack input { width: 100%; }
 .stol-candidates { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .stol-progress { width: 100%; height: 10px; }
 .stol-scr-preview { max-height: 22vh; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; margin: 0; white-space: pre-wrap; }
