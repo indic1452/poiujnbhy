@@ -1494,12 +1494,12 @@ process.stdout.write(JSON.stringify(итог));
                 self.assertAlmostEqual(z.imag, y2)
         [после] = self.выполнить([{"что": "после", "т": точки, "п": "x", "и": False}])
         self.assertEqual(точки, после)
-        [svg, svg2] = self.выполнить([{"что": "svg", "т": точки, "н": [["11", 0.5, 0.5]], "п": "вид <кода>"},
+        [svg, svg2] = self.выполнить([{"что": "svg", "т": точки, "н": [["11", 0.5, 0.5]], "п": 'вид <кода>=& "x"'},
                                       {"что": "svg", "т": [["1<b>", 0.0, 1.0], ["0", 0.0, -1.0]], "н": None, "п": ""}])
         self.assertEqual(4, svg.count("<circle"))
         self.assertEqual(5, svg.count("<text"))
         self.assertTrue(svg.startswith('<svg xmlns="http://www.w3.org/2000/svg" class="stol-md-svg" viewBox="-1.9 -1.9 3.8 3.8" '
-                                       'role="img" aria-label="вид кода"><line class="stol-md-axis"'), svg[:200])
+                                       'role="img" aria-label="вид кода= x"><line class="stol-md-axis"'), svg[:200])
         self.assertIn('viewBox="-1.9 -1.9 3.8 3.8"', svg)
         self.assertIn('<circle class="stol-md-pt" cx="0" cy="-1" r="0.05"/>', svg)
         self.assertIn('class="stol-md-over"', svg)

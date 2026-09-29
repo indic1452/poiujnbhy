@@ -9232,7 +9232,7 @@
         const R = 1.9;
         const мелко = (т) => /^[01]{1,6}$/.test(т) ? т : '?';
         const k = точки.length ? String(точки[0][0]).length : 1;
-        const шрифт = Math.max(0.1, Math.min(0.26, 1.4 / Math.max(4, Math.sqrt(точки.length) * k)));
+        const шрифт = Math.max(0.1, Math.min(0.26, 1.4 / (Math.sqrt(точки.length) * k)));
         const ч = (x) => (Math.round(x * 1000) / 1000).toString();
         const части = ['<svg xmlns="http://www.w3.org/2000/svg" class="stol-md-svg" viewBox="' + ч(-R) + ' ' + ч(-R) + ' ' + ч(2 * R) + ' ' + ч(2 * R) +
             '" role="img" aria-label="' + (подпись ? String(подпись).replace(/[<>&"]/g, '') : 'созвездие') + '">',
