@@ -17,6 +17,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ..fayly import записать_атомарно
+
 ИМЯ_НЕ_ДЛИННЕЕ = 120
 УЧАСТНИКОВ_НЕ_БОЛЬШЕ = 200
 _ИД = re.compile(r"[0-9a-f]{12}")
@@ -48,9 +50,7 @@ class Сессии:
     def _записать(self, сессия: dict[str, Any]) -> None:
         self.папка.mkdir(parents=True, exist_ok=True)
         путь = self._путь(сессия["ид"])
-        временный = путь.with_suffix(".tmp")
-        временный.write_text(json.dumps(сессия, ensure_ascii=False), encoding="utf-8")
-        временный.replace(путь)
+        записать_атомарно(путь, json.dumps(сессия, ensure_ascii=False))
 
     def создать(self, *, владелец: int, имя: str) -> str:
         сессия = {"ид": secrets.token_hex(6), "имя": _имя(имя), "владелец": int(владелец),

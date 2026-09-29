@@ -29,6 +29,8 @@ from typing import Any
 
 import numpy as np
 
+from ..fayly import записать_атомарно
+
 #: Сколько последних строк журнала хода держать.
 ЖУРНАЛ = 400
 #: Сколько заданий хранить на пользователя (старые удаляются; задания сессий — нет).
@@ -115,10 +117,7 @@ def _без_этапов_с(путь: Path, этап: int) -> None:
         все = json.loads(путь.read_text(encoding="utf-8"))
     except ValueError:
         return                                   # битый файл читается как пустой — его и не трогаем
-    временный = путь.with_suffix(".tmp")
-    временный.write_text(json.dumps({к: в for к, в in все.items() if int(к) < этап}, ensure_ascii=False),
-                         encoding="utf-8")
-    временный.replace(путь)
+    записать_атомарно(путь, json.dumps({к: в for к, в in все.items() if int(к) < этап}, ensure_ascii=False))
 
 
 class Задания:
@@ -476,9 +475,7 @@ class Задания:
                 все[str(int(этап))] = разметка
             else:
                 все.pop(str(int(этап)), None)
-            временный = путь.with_suffix(".tmp")
-            временный.write_text(json.dumps(все, ensure_ascii=False), encoding="utf-8")
-            временный.replace(путь)
+            записать_атомарно(путь, json.dumps(все, ensure_ascii=False))
 
     def биты_участка(self, ид: str, этап: int, от: int = 0, до: int | None = None) -> np.ndarray:
         """Биты [от, до) массива — без распаковки всего файла.
@@ -549,9 +546,7 @@ class Задания:
             записи.append(чистая)
             del записи[:-ЖУРНАЛ_СТОЛА]
             путь = self.папка / ид / "журнал-стола.json"
-            временный = путь.with_suffix(".tmp")
-            временный.write_text(json.dumps(журнал, ensure_ascii=False), encoding="utf-8")
-            временный.replace(путь)
+            записать_атомарно(путь, json.dumps(журнал, ensure_ascii=False))
         return чистая
 
     def приток(self, ид: str, этап: int, номер: int) -> tuple[bytes, str]:
@@ -711,10 +706,7 @@ class Задания:
         return json.loads((self.папка / ид / "состояние.json").read_text(encoding="utf-8"))
 
     def _записать(self, ид: str, состояние: dict[str, Any]) -> None:
-        путь = self.папка / ид / "состояние.json"
-        временный = путь.with_suffix(".tmp")
-        временный.write_text(json.dumps(состояние, ensure_ascii=False), encoding="utf-8")
-        временный.replace(путь)
+        записать_атомарно(self.папка / ид / "состояние.json", json.dumps(состояние, ensure_ascii=False))
 
     def _прибрать(self, владелец: int) -> None:
         свои = [з for з in self.список(владелец, без_сессий=True) if з["состояние"] in ("готово", "ошибка")]

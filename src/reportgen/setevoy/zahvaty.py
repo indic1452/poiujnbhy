@@ -28,6 +28,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
+from ..fayly import записать_атомарно
 from .chtenie import прочитать_захват
 from .filtr import нужны_байты, собрать
 from .pole import Пакет, сумма16
@@ -450,10 +451,7 @@ class Захваты:
         папка.rmdir()
 
     def _записать(self, ид: str, состояние: dict[str, Any]) -> None:
-        путь = self.папка / ид / "состояние.json"
-        временный = путь.with_suffix(".tmp")
-        временный.write_text(json.dumps(состояние, ensure_ascii=False), encoding="utf-8")
-        временный.replace(путь)
+        записать_атомарно(self.папка / ид / "состояние.json", json.dumps(состояние, ensure_ascii=False))
 
     def _прибрать(self, владелец: int) -> None:
         свои = [з for з in self.список(владелец) if з["состояние"] in ("готово", "ошибка")]

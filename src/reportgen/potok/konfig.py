@@ -20,6 +20,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from ..fayly import записать_атомарно
 from .rastr import проверить_шаги
 
 #: Сколько конфигураций у одного автора.
@@ -105,9 +106,7 @@ class Конфигурации:
                       "общая": bool(общая), "изменено": time.time()}
             self.папка.mkdir(parents=True, exist_ok=True)
             путь = self._путь(ид)
-            временный = путь.with_suffix(".tmp")
-            временный.write_text(json.dumps(запись, ensure_ascii=False, indent=1), encoding="utf-8")
-            временный.replace(путь)
+            записать_атомарно(путь, json.dumps(запись, ensure_ascii=False, indent=1))
         return {**запись, "своя": True}
 
     def удалить(self, ид: str, владелец: int) -> None:

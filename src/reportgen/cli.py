@@ -998,7 +998,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_potok.add_argument("--снять", "--strip", dest="strip", action="append", metavar="СЛОЙ",
                          help="сперва снять известный слой, дальше — вслепую; можно "
                               "несколько раз по порядку: «инверсия», «сдвиг 5», «nrzi», "
-                              "«nrzi», «скремблер 3,20», «свёрточный 171/133 K=7», "
+                              "«скремблер 3,20», «свёрточный 171/133 K=7», "
                               "«выколотый 171/133 K=7 шаблон 110110», «перемежение 12 7», "
                               "«pdh E2 приток 1», «плоскость 6»")
     p_potok.add_argument("--символ", "--bits", dest="bits", action="append", type=int,
