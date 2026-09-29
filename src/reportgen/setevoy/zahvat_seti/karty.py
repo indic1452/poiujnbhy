@@ -99,7 +99,7 @@ def адреса_getifaddrs() -> dict[str, list[dict[str, Any]]]:
                     if з.ifa_netmask else None
                 итог.setdefault(имя, []).append({
                     "вид": адрес[0], "адрес": адрес[1].split("%")[0],
-                    "префикс": длина_префикса(маска[1]) if маска and маска[0] == адрес[0] else None})
+                    "префикс": длина_префикса(маска[1]) if маска else None})
             у = з.ifa_next
     finally:
         libc.freeifaddrs(список)
@@ -109,7 +109,6 @@ def адреса_getifaddrs() -> dict[str, list[dict[str, Any]]]:
 #: linux/sockios.h: основной адрес IPv4 карты и его маска (netdevice(7)); ifreq — имя
 #: (IFNAMSIZ = 16 байт), затем объединение, где лежит struct sockaddr_in (адрес — с байта 4).
 SIOCGIFADDR, SIOCGIFNETMASK = 0x8915, 0x891B
-IFNAMSIZ = 16
 
 
 def адреса_ioctl(имена: list[str], if_inet6: Path = Path("/proc/net/if_inet6")) -> dict[str, list[dict[str, Any]]]:
@@ -124,17 +123,17 @@ def адреса_ioctl(имена: list[str], if_inet6: Path = Path("/proc/net/i
     итог: dict[str, list[dict[str, Any]]] = {}
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as с:
         for имя in имена:
-            запрос = struct.pack("256s", имя.encode()[:IFNAMSIZ - 1])
+            запрос = struct.pack("256s", имя.encode())          # ядро само обрывает имя на IFNAMSIZ
             try:
-                адрес = fcntl.ioctl(с.fileno(), SIOCGIFADDR, запрос)[20:24]
+                адрес = socket.inet_ntop(socket.AF_INET, fcntl.ioctl(с.fileno(), SIOCGIFADDR, запрос)[20:24])
             except OSError:
                 continue
             try:
                 маска = fcntl.ioctl(с.fileno(), SIOCGIFNETMASK, запрос)[20:24]
-                префикс: int | None = sum(bin(б).count("1") for б in маска)
+                префикс = длина_префикса(socket.inet_ntop(socket.AF_INET, маска))
             except OSError:
                 префикс = None
-            итог.setdefault(имя, []).append({"вид": "ipv4", "адрес": socket.inet_ntop(socket.AF_INET, адрес),
+            итог.setdefault(имя, []).append({"вид": "ipv4", "адрес": адрес,
                                              "префикс": префикс})
     try:
         строки = if_inet6.read_text(encoding="ascii", errors="replace").splitlines()
@@ -187,7 +186,7 @@ def карты_linux(корень: Path = Path("/sys/class/net"), адреса: 
             "ipv4": [{"адрес": а["адрес"], "префикс": а["префикс"]} for а in свои if а["вид"] == "ipv4"],
             "ipv6": [{"адрес": а["адрес"], "префикс": а["префикс"]} for а in свои if а["вид"] == "ipv6"],
             "состояние": СОСТОЯНИЯ.get("up" if работает else операция, операция), "работает": работает,
-            "скорость": скорость * 1_000_000 if скорость and скорость > 0 else None,
+            "скорость": скорость * 1_000_000 if скорость is not None and скорость > 0 else None,
             "mtu": _число(_прочитать(папка / "mtu")), "петля": петля, "arphrd": тип,
             "устройство_pcap": имя,
         })
@@ -198,11 +197,6 @@ def карты_linux(корень: Path = Path("/sys/class/net"), адреса: 
 
 class SOCKET_ADDRESS(ctypes.Structure):
     _fields_ = [("lpSockaddr", ctypes.c_void_p), ("iSockaddrLength", ctypes.c_int32)]
-
-
-class GUID(ctypes.Structure):
-    _fields_ = [("Data1", ctypes.c_uint32), ("Data2", ctypes.c_uint16), ("Data3", ctypes.c_uint16),
-                ("Data4", ctypes.c_uint8 * 8)]
 
 
 class IP_ADAPTER_UNICAST_ADDRESS_LH(ctypes.Structure):
@@ -216,6 +210,7 @@ class IP_ADAPTER_UNICAST_ADDRESS_LH(ctypes.Structure):
 
 
 class IP_ADAPTER_ADDRESSES_LH(ctypes.Structure):
+    # Как и у адреса, начало — union с ULONGLONG Alignment: выравнивание 8 даёт указатель Next.
     _fields_ = [("Length", ctypes.c_uint32), ("IfIndex", ctypes.c_uint32), ("Next", ctypes.c_void_p),
                 ("AdapterName", ctypes.c_void_p), ("FirstUnicastAddress", ctypes.c_void_p),
                 ("FirstAnycastAddress", ctypes.c_void_p), ("FirstMulticastAddress", ctypes.c_void_p),
@@ -225,14 +220,10 @@ class IP_ADAPTER_ADDRESSES_LH(ctypes.Structure):
                 ("Flags", ctypes.c_uint32), ("Mtu", ctypes.c_uint32), ("IfType", ctypes.c_uint32),
                 ("OperStatus", ctypes.c_int32), ("Ipv6IfIndex", ctypes.c_uint32),
                 ("ZoneIndices", ctypes.c_uint32 * 16), ("FirstPrefix", ctypes.c_void_p),
-                ("TransmitLinkSpeed", ctypes.c_uint64), ("ReceiveLinkSpeed", ctypes.c_uint64),
-                ("FirstWinsServerAddress", ctypes.c_void_p), ("FirstGatewayAddress", ctypes.c_void_p),
-                ("Ipv4Metric", ctypes.c_uint32), ("Ipv6Metric", ctypes.c_uint32), ("Luid", ctypes.c_uint64),
-                ("Dhcpv4Server", SOCKET_ADDRESS), ("CompartmentId", ctypes.c_uint32), ("NetworkGuid", GUID),
-                ("ConnectionType", ctypes.c_int32), ("TunnelType", ctypes.c_int32),
-                ("Dhcpv6Server", SOCKET_ADDRESS), ("Dhcpv6ClientDuid", ctypes.c_uint8 * 130),
-                ("Dhcpv6ClientDuidLength", ctypes.c_uint32), ("Dhcpv6Iaid", ctypes.c_uint32),
-                ("FirstDnsSuffix", ctypes.c_void_p)]
+                ("TransmitLinkSpeed", ctypes.c_uint64), ("ReceiveLinkSpeed", ctypes.c_uint64)]
+    # Дальше в IP_ADAPTER_ADDRESSES_LH (iptypes.h) — FirstWinsServerAddress … FirstDnsSuffix, всего
+    # 448 байт на x64. Они не читаются, а по цепочке идём по указателю Next, не по размеру
+    # структуры, — поэтому структура описана до ReceiveLinkSpeed.
 
 
 #: Семейства адресов Windows (ws2def.h): AF_INET = 2, AF_INET6 = 23.
@@ -284,13 +275,12 @@ def разобрать_адаптеры(первый: int) -> list[dict[str, Any
             if ip:
                 (ipv4 if ip[0] == "ipv4" else ipv6).append({"адрес": ip[1], "префикс": int(у_.OnLinkPrefixLength)})
             у, адресов = у_.Next, адресов + 1
-        длина_mac = min(int(а.PhysicalAddressLength), 8)
         операция = СОСТОЯНИЯ_WINDOWS.get(int(а.OperStatus), "unknown")
         скорость = int(а.ReceiveLinkSpeed)
         итог.append({
             "ид": имя_адаптера, "имя": строка_utf16(а.FriendlyName) or имя_адаптера,
             "описание": строка_utf16(а.Description), "вид": ВИДЫ_WINDOWS.get(int(а.IfType), f"IfType {а.IfType}"),
-            "mac": bytes(а.PhysicalAddress[:длина_mac]).hex(":") if длина_mac else "",
+            "mac": bytes(а.PhysicalAddress)[:int(а.PhysicalAddressLength)].hex(":"),
             "ipv4": ipv4, "ipv6": ipv6, "состояние": СОСТОЯНИЯ[операция], "работает": операция == "up",
             # «Неизвестно» Windows пишет как ULONG64 из единиц (документация GetAdaptersAddresses).
             "скорость": скорость if 0 < скорость < 0xFFFFFFFFFFFFFFFF else None,
@@ -335,20 +325,17 @@ def карты_из_pcap(устройства: list[dict[str, Any]]) -> list[dic
         работает = bool(у["флаги"] & PCAP_IF_UP) and bool(у["флаги"] & PCAP_IF_RUNNING)
         итог.append({"ид": у["имя"], "имя": у["имя"], "описание": у["описание"], "вид": "",
                      "mac": у.get("mac", ""),
-                     "ipv4": [а for а in у["адреса"] if а["вид"] == "ipv4"],
-                     "ipv6": [а for а in у["адреса"] if а["вид"] == "ipv6"],
+                     "ipv4": [{"адрес": а["адрес"], "префикс": а["префикс"]} for а in у["адреса"] if а["вид"] == "ipv4"],
+                     "ipv6": [{"адрес": а["адрес"], "префикс": а["префикс"]} for а in у["адреса"] if а["вид"] == "ipv6"],
                      "состояние": "работает" if работает else "отключена", "работает": работает,
                      "скорость": None, "mtu": None, "петля": bool(у["флаги"] & PCAP_IF_LOOPBACK),
                      "arphrd": None, "устройство_pcap": у["имя"]})
-    for к in итог:
-        for а in к["ipv4"] + к["ipv6"]:
-            а.pop("вид", None)
     return итог
 
 
 def сопоставить_npcap(карты: list[dict[str, Any]], устройства: list[dict[str, Any]]) -> None:
     """Имя устройства Npcap (\\Device\\NPF_{GUID}) — к карте с тем же GUID."""
-    по_guid = {у["имя"].rsplit("_", 1)[-1].upper(): у for у in устройства if "_{" in у["имя"]}
+    по_guid = {у["имя"][у["имя"].index("_{") + 1:].upper(): у for у in устройства if "_{" in у["имя"]}
     for к in карты:
         у = по_guid.get(str(к["ид"]).upper())
         к["устройство_pcap"] = у["имя"] if у else None

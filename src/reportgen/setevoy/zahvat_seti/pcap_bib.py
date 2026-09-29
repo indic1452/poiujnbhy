@@ -242,7 +242,7 @@ class Libpcap:
                     elif адрес:
                         маска = адрес_из_sockaddr(а.contents.netmask)
                         адреса.append({"вид": адрес[0], "адрес": адрес[1],
-                                       "префикс": длина_префикса(маска[1]) if маска and маска[0] == адрес[0] else None})
+                                       "префикс": длина_префикса(маска[1]) if маска else None})
                     а = а.contents.next
                 итог.append({"имя": self._текст(д.name), "описание": self._текст(д.description),
                              "адреса": адреса, "mac": mac, "флаги": int(д.flags)})

@@ -14,8 +14,8 @@ import json
 import os
 import shutil
 import socket
-import subprocess
 import struct
+import subprocess
 import sys
 import tempfile
 import time
@@ -214,6 +214,52 @@ class РазборКадраTests(unittest.TestCase):
         обрезанный = обрезанный[:2] + struct.pack("!H", 20 + 8 + 4) + обрезанный[4:] + b"\0" * 10
         self.assertEqual(b"abcd", р(с.eth(обрезанный)).нагрузка)
 
+    def test_границы_транспорта_ipv4(self):
+        р = zapis.разобрать_кадр
+
+        def пакет(протокол, тело, всего):
+            ip = с.ip(тело, протокол)
+            return с.eth(ip[:2] + struct.pack("!H", всего) + ip[4:])
+        udp8 = с.udp(b"", 1, 2)                                 # пустая датаграмма — ровно 8 байт
+        self.assertEqual((1, 2, b""), (р(пакет(17, udp8, 28)).порт_от, р(пакет(17, udp8, 28)).порт_к, р(пакет(17, udp8, 28)).нагрузка))
+        self.assertEqual((1, 2, None), (р(пакет(17, udp8, 27)).порт_от, р(пакет(17, udp8, 27)).порт_к, р(пакет(17, udp8, 27)).нагрузка),
+                         "7 байт UDP — порты есть, нагрузки нет")
+        self.assertEqual((1, 2), (р(пакет(17, udp8, 24)).порт_от, р(пакет(17, udp8, 24)).порт_к))
+        self.assertEqual((-1, -1), (р(пакет(17, udp8, 23)).порт_от, р(пакет(17, udp8, 23)).порт_к))
+        self.assertEqual(-1, р(пакет(17, udp8, 20) + b"\1" * 10).порт_к, "заголовок IP без данных, дальше — дополнение")
+        семь = с.udp(b"abc", 1, 2)
+        семь = семь[:4] + struct.pack("!H", 7) + семь[6:]
+        self.assertIsNone(р(с.eth(с.ip(семь, 17))).нагрузка, "длина UDP 7 < 8 — испорчена")
+        icmp = р(с.eth(с.ip(b"\x08\x00\x00\x00\x00\x01\x00\x01", 1)))
+        self.assertEqual((1, -1, -1), (icmp.протокол, icmp.порт_от, icmp.порт_к))
+        смещение1 = с.eth(с.ip(с.udp(b"zz", 1, 2), 17, флаги=0x0001))   # фрагмент со смещением 8 байт, MF = 0
+        self.assertEqual((True, -1), (р(смещение1).фрагмент, р(смещение1).порт_к))
+
+    def test_границы_ipv6(self):
+        р = zapis.разобрать_кадр
+        голый = с.eth(с.ip6(b"", 59), тип=0x86DD)                   # 14 + 40 байт, «нет следующего»
+        self.assertEqual((6, 59), (р(голый).версия, р(голый).протокол))
+        self.assertEqual(0, р(голый[:53]).версия)
+        arp = b"\0" * 12 + b"\x08\x06" + b"\x60" + b"\0" * 60
+        self.assertEqual((0x0806, 0), (р(arp).тип, р(arp).версия), "ARP, похожий на IPv6, — не IPv6")
+        сег = с.udp(b"abcdefgh", 1, 2, "2001:db8::1", "2001:db8::2", v6=True)
+        пакет = с.ip6(сег, 17, "2001:db8::1", "2001:db8::2")
+        короче = пакет[:4] + struct.pack("!H", 12) + пакет[6:] + b"\0" * 6
+        self.assertEqual(b"abcd", р(с.eth(короче, тип=0x86DD)).нагрузка, "длина нагрузки IPv6 ограничивает UDP")
+        # Hop-by-Hop на 16 байт (Hdr Ext Len = 1, заполнение Pad1 нулями), затем UDP.
+        hop16 = bytes([17, 1]) + b"\0" * 14
+        р16 = р(с.eth(с.ip6(hop16 + сег, 0, "2001:db8::1", "2001:db8::2"), тип=0x86DD))
+        self.assertEqual((17, 1, 2, b"abcdefgh"), (р16.протокол, р16.порт_от, р16.порт_к, р16.нагрузка))
+        ровно = р(с.eth(с.ip6(bytes([59, 0]) + b"\0" * 6, 0), тип=0x86DD))
+        self.assertEqual(59, ровно.протокол, "заголовок расширения ровно до конца пакета")
+        обрывок = р(с.eth(с.ip6(bytes([17, 0]) + b"\0" * 5, 0), тип=0x86DD))
+        self.assertEqual(0, обрывок.протокол, "оборванный заголовок расширения не читается")
+        # Фрагмент: поле «смещение» — старшие 13 бит, младшие — Res (2 бита) и M.
+        def фрагмент(слово):
+            return р(с.eth(с.ip6(bytes([17, 0]) + struct.pack("!H", слово) + b"\0\0\0\1" + сег, 44), тип=0x86DD))
+        self.assertEqual((True, -1), (фрагмент(1 << 3).фрагмент, фрагмент(1 << 3).порт_к), "смещение 1 — не первый")
+        self.assertEqual((True, 2), (фрагмент(0b110).фрагмент, фрагмент(0b110).порт_к), "Res не смещение — первый фрагмент")
+
     def test_не_ip_и_обрывки(self):
         self.assertEqual(0, zapis.разобрать_кадр(b"\0" * 10).тип)
         arp = zapis.разобрать_кадр(с.eth(b"\0" * 28, тип=0x0806))
@@ -328,6 +374,50 @@ class PcapngTests(unittest.TestCase):
         with open(путь, "rb") as f:
             self.assertEqual([], list(obrabotka.кадры_pcapng(f)))
 
+    @staticmethod
+    def блок(вид, тело, длина=None):
+        тело += b"\0" * (-len(тело) % 4)
+        длина = 12 + len(тело) if длина is None else длина
+        return struct.pack("<II", вид, длина) + тело + struct.pack("<I", длина)
+
+    def прочитать(self, данные):
+        путь = Path(tempfile.mkdtemp()) / "x.pcapng"
+        путь.write_bytes(данные)
+        with open(путь, "rb") as f:
+            return list(obrabotka.кадры_pcapng(f))
+
+    def test_опции_idb_и_время(self):
+        shb = self.блок(0x0A0D0D0A, struct.pack("<IHHq", 0x1A2B3C4D, 1, 0, -1))
+        опц = (struct.pack("<HH", 2, 3) + b"abc\0" + struct.pack("<HH", 3, 0)          # if_name «abc» (+1 байт), пустое описание
+               + struct.pack("<HH", 9, 1) + b"\x83\0\0\0" + struct.pack("<HH", 9, 1) + b"\x06\0\0\0"  # 2^-3; повтор не берётся
+               + struct.pack("<HH", 0, 0))
+        idb = self.блок(1, struct.pack("<HHI", 1, 0, 0) + опц)
+        голый_idb = self.блок(1, struct.pack("<HHI", 101, 0, 0))                          # тело ровно 8 байт, без опций
+        epb = self.блок(6, struct.pack("<IIIII", 0, 1, 8, 2, 2) + b"xy")
+        пустой = self.блок(6, struct.pack("<IIIII", 1, 0, 3, 0, 0))                     # пакет из 0 байт, интерфейс 1
+        чужой = self.блок(6, struct.pack("<IIIII", 2, 0, 0, 1, 1) + b"z")                # интерфейса 2 нет — пропуск
+        пустой_блок = self.блок(0xBAD, b"")                                              # неизвестный блок в 12 байт
+        итог = self.прочитать(shb + idb + голый_idb + пустой_блок + epb + пустой + чужой)
+        self.assertEqual([(((1 << 32) + 8) / 8, b"xy", 1), (3e-6, b"", 101)], итог)
+        self.assertEqual({2: b"abc", 3: b"", 9: b"\x83"}, obrabotka.опции_блока(опц, 0, "<"))
+        испорченная = struct.pack("<HH", 9, 5) + b"\x02"                                  # длина больше тела
+        self.assertEqual({9: b"\x02"}, obrabotka.опции_блока(испорченная, 0, "<"))
+        self.assertEqual({9: b""}, obrabotka.опции_блока(struct.pack("<HH", 9, 1), 0, "<"), "значения нет — пусто, не ошибка")
+        self.assertEqual({2: b""}, obrabotka.опции_блока(struct.pack("<HH", 2, 0), 0, "<"), "опция впритык к концу тела")
+        self.assertEqual((1e-6, 1e-9, 2.0 ** -10, 1.0), tuple(obrabotka.доля_секунды(б) for б in (b"", b"\x09", b"\x8a", b"\x00")))
+
+    def test_границы_блоков(self):
+        shb = self.блок(0x0A0D0D0A, struct.pack("<IHHq", 0x1A2B3C4D, 1, 0, -1))
+        idb = self.блок(1, struct.pack("<HHI", 1, 0, 0))
+        epb = self.блок(6, struct.pack("<IIIII", 0, 0, 1, 1, 1) + b"q")
+        self.assertEqual([b"q"], [д for _, д, _ in self.прочитать(shb + idb + epb + b"\0" * 7)], "хвост короче заголовка блока")
+        self.assertEqual([], self.прочитать(shb + idb + struct.pack("<II", 6, 8) + epb), "длина блока 8 < 12 — стоп")
+        self.assertEqual([], self.прочитать(shb + idb + struct.pack("<II", 6, 13) + b"\0" * 9 + epb), "длина не кратна 4 — стоп")
+        self.assertEqual([], self.прочитать(shb + idb + epb[:-5]), "тело короче объявленного — стоп")
+        self.assertEqual([], self.прочитать(shb + idb + epb[:-1]), "без хвостовой длины — оборван")
+        короткий_shb = struct.pack("<II", 0x0A0D0D0A, 8) + struct.pack("<I", 0x1A2B3C4D)
+        self.assertEqual([], self.прочитать(короткий_shb + idb + epb), "SHB короче своей магии")
+
     def test_большой_порядок_байт_и_разрешение_времени(self):
         """Чужой pcapng: big-endian SHB и if_tsresol = 9 (наносекунды) — наш поточный читатель понимает."""
         def блок(вид, тело):
@@ -359,6 +449,9 @@ class ПараметрыTests(unittest.TestCase):
             with self.assertRaises(ValueError, msg=плохо):
                 parametry.разобрать_порты(плохо)
         self.assertEqual(list(range(1, 17)), parametry.разобрать_порты("1-16"))
+        self.assertEqual([5], parametry.разобрать_порты("5-5"))
+        with self.assertRaisesRegex(ValueError, "диапазон «1-17»"):
+            parametry.разобрать_порты("1-17")
 
     def test_udp_по_умолчанию(self):
         п = self.п(режим="udp", порты="5004")
@@ -447,6 +540,11 @@ class КартыLinuxTests(unittest.TestCase):
         карта("eth8", address="00:00:00:00:00:00", operstate="lowerlayerdown", speed="-1", type="1", flags="0x1003")
         карта("tun0", operstate="unknown", type="65534", flags="0x10d1", carrier="1")
         (карта("wl0", operstate="dormant", type="1", flags="0x1003") / "wireless").mkdir()
+        карта("nofl0", operstate="unknown", carrier="1", speed="1")              # нет flags и type
+        карта("lo7", operstate="unknown", type="772", flags="0x1", carrier="1", speed="0")   # петля без IFF_LOOPBACK
+        карта("lb8", operstate="up", type="1", flags="0x9")                     # IFF_LOOPBACK при типе Ethernet
+        карта("dn9", operstate="down", type="1", flags="0x1003", carrier="1")
+        карта("nu0", operstate="unknown", type="1", flags="0x0", carrier="1")
         адреса = {"eth7": [{"вид": "ipv4", "адрес": "10.1.1.1", "префикс": 24},
                            {"вид": "ipv6", "адрес": "fe80::1", "префикс": 64}]}
         итог = {к["ид"]: к for к in karty.карты_linux(корень, адреса)}
@@ -458,6 +556,12 @@ class КартыLinuxTests(unittest.TestCase):
         self.assertEqual(("", "нет связи (кабель)", False, None), (e8["mac"], e8["состояние"], e8["работает"], e8["скорость"]))
         self.assertEqual(("ARPHRD 65534", True, "работает"), (итог["tun0"]["вид"], итог["tun0"]["работает"], итог["tun0"]["состояние"]))
         self.assertEqual(("Wi-Fi", "ожидает", False), (итог["wl0"]["вид"], итог["wl0"]["состояние"], итог["wl0"]["работает"]))
+        self.assertEqual((False, "ARPHRD 0", False, 10**6), (итог["nofl0"]["работает"], итог["nofl0"]["вид"],
+                                                             итог["nofl0"]["петля"], итог["nofl0"]["скорость"]))
+        self.assertEqual((True, True, None), (итог["lo7"]["петля"], итог["lo7"]["работает"], итог["lo7"]["скорость"]))
+        self.assertTrue(итог["lb8"]["петля"])
+        self.assertFalse(итог["dn9"]["работает"])
+        self.assertFalse(итог["nu0"]["работает"])
 
     def test_запасной_путь_ioctl_и_if_inet6(self):
         if not sys.platform.startswith("linux"):
@@ -465,13 +569,16 @@ class КартыLinuxTests(unittest.TestCase):
         файл = Path(tempfile.mkdtemp()) / "if_inet6"
         файл.write_text("fe800000000000000000000000000001 02 40 20 80     eth0\n"
                         "00000000000000000000000000000001 01 80 10 80       lo\n"
-                        "испорчено\n20010db8000000000000000000000001 03 zz 00 80 eth1\n", encoding="utf-8")
+                        "испорчено\n20010db8000000000000000000000001 03 zz 00 80 eth1\n"
+                        "20010db8000000000000000000000002 04 40 00 80\n"         # без имени карты
+                        "0001 05 40 00 80 eth2\n", encoding="utf-8")
         адреса = karty.адреса_ioctl(["lo", "нет-такой0"], файл)
         self.assertEqual([{"вид": "ipv4", "адрес": "127.0.0.1", "префикс": 8}, {"вид": "ipv6", "адрес": "::1", "префикс": 128}],
                          адреса["lo"])
         self.assertEqual([{"вид": "ipv6", "адрес": "fe80::1", "префикс": 64}], адреса["eth0"], "длина префикса — hex")
         self.assertNotIn("нет-такой0", адреса)
         self.assertNotIn("eth1", адреса)
+        self.assertNotIn("eth2", адреса)
         with mock.patch.object(karty, "адреса_getifaddrs", side_effect=OSError("нет netlink")):
             lo = next(к for к in karty.карты_linux() if к["ид"] == "lo")
         self.assertIn({"адрес": "127.0.0.1", "префикс": 8}, lo["ipv4"])
@@ -479,7 +586,10 @@ class КартыLinuxTests(unittest.TestCase):
     def test_getifaddrs_видит_петлю(self):
         if not sys.platform.startswith("linux"):
             self.skipTest("Linux")
-        self.assertIn({"вид": "ipv4", "адрес": "127.0.0.1", "префикс": 8}, karty.адреса_getifaddrs().get("lo", []))
+        адреса = karty.адреса_getifaddrs()
+        self.assertIn({"вид": "ipv4", "адрес": "127.0.0.1", "префикс": 8}, адреса.get("lo", []))
+        self.assertEqual({"ipv4", "ipv6"} & {а["вид"] for с_ in адреса.values() for а in с_}, {а["вид"] for с_ in адреса.values() for а in с_},
+                         "записи AF_PACKET (MAC) в адреса не попадают")
 
 
 def _utf16(буфер, место: int, текст: str) -> int:
@@ -497,10 +607,9 @@ class КартыWindowsTests(unittest.TestCase):
         ожидаемые = {"Length": 0, "IfIndex": 4, "Next": 8, "AdapterName": 16, "FirstUnicastAddress": 24,
                      "Description": 64, "FriendlyName": 72, "PhysicalAddress": 80, "PhysicalAddressLength": 88,
                      "Flags": 92, "Mtu": 96, "IfType": 100, "OperStatus": 104, "ZoneIndices": 112, "FirstPrefix": 176,
-                     "TransmitLinkSpeed": 184, "ReceiveLinkSpeed": 192, "Luid": 224, "Dhcpv4Server": 232,
-                     "NetworkGuid": 252, "Dhcpv6Server": 280, "Dhcpv6ClientDuid": 296, "FirstDnsSuffix": 440}
+                     "TransmitLinkSpeed": 184, "ReceiveLinkSpeed": 192}
         self.assertEqual(ожидаемые, {к: getattr(А, к).offset for к in ожидаемые})
-        self.assertEqual(448, ctypes.sizeof(А))
+        self.assertEqual(200, ctypes.sizeof(А), "описана до ReceiveLinkSpeed включительно")
         self.assertEqual({"Next": 8, "Address": 16, "OnLinkPrefixLength": 56},
                          {к: getattr(У, к).offset for к in ("Next", "Address", "OnLinkPrefixLength")})
         self.assertEqual(64, ctypes.sizeof(У))
@@ -533,13 +642,20 @@ class КартыWindowsTests(unittest.TestCase):
         б[80:86] = bytes.fromhex("0050569a0b0c")
         struct.pack_into("<IIIIiI", б, 88, 6, 0, 1500, 6, 1, 12)
         struct.pack_into("<QQ", б, 184, 10**9, 10**9)
-        # Адаптер 2: петля, скорость неизвестна (все единицы), состояние Down, без MAC и без Next.
-        struct.pack_into("<IIQQQ", б, 448, 448, 1, 0, 0, 0)
+        # Адаптер 2: петля, скорость неизвестна (все единицы), состояние Down, без MAC, дальше — адаптер 3.
+        struct.pack_into("<IIQQQ", б, 448, 448, 1, база + 3072, 0, 0)
         struct.pack_into("<QQ", б, 448 + 64, 0, база + имя_петли)
         struct.pack_into("<IIIIiI", б, 448 + 88, 0, 0, 1500, 24, 2, 1)
         struct.pack_into("<QQ", б, 448 + 184, 2**64 - 1, 2**64 - 1)
+        # Адаптер 3 @3072: IEEE 1394 с 8-байтовым адресом EUI-64, скорость 1 бит/с, состояние 5 (Dormant).
+        struct.pack_into("<IIQQQ", б, 3072, 448, 3, 0, 0, 0)
+        б[3072 + 80:3072 + 88] = bytes(range(1, 9))
+        struct.pack_into("<IIIIiI", б, 3072 + 88, 8, 0, 4096, 144, 5, 3)
+        struct.pack_into("<QQ", б, 3072 + 184, 7, 1)
         ctypes.memmove(буфер, bytes(б), len(б))
-        первый, второй = karty.разобрать_адаптеры(база)
+        первый, второй, третий = karty.разобрать_адаптеры(база)
+        self.assertEqual(("01:02:03:04:05:06:07:08", 1, "IEEE 1394", "ожидает", ""),
+                         (третий["mac"], третий["скорость"], третий["вид"], третий["состояние"], третий["имя"]))
         self.assertEqual({
             "ид": guid.decode(), "имя": "Ethernet 2 — стенд", "описание": "Intel(R) Ethernet Connection I219-LM",
             "вид": "Ethernet", "mac": "00:50:56:9a:0b:0c", "ipv4": [{"адрес": "192.0.2.5", "префикс": 24}],
@@ -553,7 +669,84 @@ class КартыWindowsTests(unittest.TestCase):
         karty.сопоставить_npcap(карты, [{"имя": "\\Device\\NPF_" + guid.decode().lower(), "описание": "Npcap"},
                                         {"имя": "\\Device\\NPF_Loopback", "описание": "Adapter for loopback"}])
         self.assertEqual("\\Device\\NPF_" + guid.decode().lower(), карты[0]["устройство_pcap"])
+        self.assertEqual("Intel(R) Ethernet Connection I219-LM", карты[0]["описание"], "своё описание не затирается")
         self.assertIsNone(карты[1]["устройство_pcap"])
+
+    def test_петли_в_цепочках_не_вешают(self):
+        """Испорченная цепочка (Next на себя) обрывается: 256 адаптеров, у адаптера — 64 адреса."""
+        буфер = ctypes.create_string_buffer(1024)
+        база = ctypes.addressof(буфер)
+        б = bytearray(1024)
+        struct.pack_into("<H", б, 600, 2)
+        б[604:608] = bytes([10, 0, 0, 1])
+        struct.pack_into("<IIQQi", б, 512, 64, 0, база + 512, база + 600, 16)       # адрес → сам на себя
+        б[512 + 56] = 32
+        struct.pack_into("<IIQQQ", б, 0, 448, 1, база, 0, база + 512)               # адаптер → сам на себя
+        struct.pack_into("<IIIIiI", б, 88, 0, 0, 1500, 6, 1, 1)
+        struct.pack_into("<QQ", б, 184, 0, 0xFFFFFFFFFFFFFFFE)
+        ctypes.memmove(буфер, bytes(б), len(б))
+        итог = karty.разобрать_адаптеры(база)
+        self.assertEqual(256, len(итог))
+        self.assertEqual([{"адрес": "10.0.0.1", "префикс": 32}] * 64, итог[0]["ipv4"])
+        self.assertEqual(0xFFFFFFFFFFFFFFFE, итог[0]["скорость"])
+        struct.pack_into("<Q", б, 192, 0)
+        ctypes.memmove(буфер, bytes(б), len(б))
+        self.assertIsNone(karty.разобрать_адаптеры(база)[0]["скорость"], "скорость 0 — неизвестна")
+
+    def test_вызов_GetAdaptersAddresses(self):
+        """Два вызова: узнать размер (ERROR_BUFFER_OVERFLOW = 111) и получить данные; прочие коды — ошибка."""
+        вызовы = []
+
+        def поддельная(семейство, флаги, резерв, буфер, размер):
+            вызовы.append((семейство, флаги, резерв, размер._obj.value))
+            if коды:
+                код = коды.pop(0)
+                if код == 111:
+                    размер._obj.value = 20000
+                return код
+            адаптер = bytearray(448)
+            struct.pack_into("<II", адаптер, 0, 448, 5)
+            struct.pack_into("<IIIIiI", адаптер, 88, 0, 0, 1500, 6, 2, 5)
+            ctypes.memmove(буфер, bytes(адаптер), 448)
+            return 0
+
+        библиотека = mock.Mock()
+        библиотека.GetAdaptersAddresses = поддельная
+        with mock.patch.object(ctypes, "WinDLL", create=True, return_value=библиотека) as windll:
+            коды = [111]
+            (карта,) = karty.карты_windows()
+            windll.assert_called_with("iphlpapi")
+            self.assertEqual([(0, 0x0E, None, 15 * 1024), (0, 0x0E, None, 20000)], вызовы)
+            self.assertEqual((5, "отключена", "Ethernet"), (карта["индекс"], карта["состояние"], карта["вид"]))
+            коды = [111] * 4
+            вызовы.clear()
+            with self.assertRaisesRegex(OSError, "буфер всё время мал"):
+                karty.карты_windows()
+            self.assertEqual(4, len(вызовы))
+            коды = [8]
+            with self.assertRaisesRegex(OSError, "ошибка 8"):
+                karty.карты_windows()
+
+    def test_перечень_по_платформе(self):
+        устройства = [{"имя": "\\Device\\NPF_{AB}", "описание": "Npcap: адаптер", "флаги": 0x6, "адреса": []}]
+        карта = {"ид": "{ab}", "описание": "", "устройство_pcap": None}
+        with mock.patch.object(karty, "WINDOWS", True):
+            with mock.patch.object(karty, "карты_windows", side_effect=lambda: [dict(карта)]):
+                (к,), заметки = karty.перечень(устройства)
+                self.assertEqual(("\\Device\\NPF_{AB}", "Npcap: адаптер", []), (к["устройство_pcap"], к["описание"], заметки))
+                (к,), _ = karty.перечень(None)
+                self.assertIsNone(к["устройство_pcap"])
+            with mock.patch.object(karty, "карты_windows", side_effect=OSError(5, "нет")):
+                карты, заметки = karty.перечень(None)
+                self.assertEqual([], карты)
+                self.assertIn("перечень карт Windows не получен", заметки[0])
+                карты, _ = karty.перечень(устройства)
+                self.assertEqual(["\\Device\\NPF_{AB}"], [к["ид"] for к in карты])
+        with mock.patch.object(karty, "WINDOWS", False), mock.patch.object(karty.Path, "is_dir", return_value=False):
+            карты, заметки = karty.перечень(None)
+            self.assertEqual(([], 1), (карты, len(заметки)))
+            карты, заметки = karty.перечень(устройства)
+            self.assertEqual((1, []), (len(карты), заметки))
 
     def test_строка_utf16_и_адрес(self):
         self.assertEqual("", karty.строка_utf16(0))
@@ -569,6 +762,9 @@ class КартыWindowsTests(unittest.TestCase):
         self.assertEqual((True, [{"адрес": "10.0.0.2", "префикс": 24}], [{"адрес": "fe80::2", "префикс": 64}]),
                          (список[0]["работает"], список[0]["ipv4"], список[0]["ipv6"]))
         self.assertEqual((False, True, "отключена"), (список[1]["работает"], список[1]["петля"], список[1]["состояние"]))
+        self.assertFalse(список[0]["петля"])
+        (только_running,) = karty.карты_из_pcap([{"имя": "x", "описание": "", "флаги": 0x4, "адреса": []}])
+        self.assertFalse(только_running["работает"])
 
 
 # -- libpcap: структуры, разбор адресов ---------------------------------------------------------
@@ -996,7 +1192,7 @@ class МенеджерTests(unittest.TestCase):
         self.assertEqual(("af_packet", 3, "достигнут предел пакетов"), (с_["способ"], с_["пакетов"], с_["причина"]))
         self.assertEqual("", с_["bpf"])
         self.assertGreater(с_["отфильтровано"], 0)
-        self.assertEqual(b"C0C1C2", obrabotka.нагрузка(self.м.файл(ид), порт)[0])
+        self.assertEqual(b"C0C1C2", obrabotka.нагрузка(self.м.файл(ид), порт, предел=1 << 20)[0])
         self.assertIsNone(next(к for к in self.м.карты()[0] if к["ид"] == "lo")["занята"])
 
     @unittest.skipUnless(путь_libpcap() and можно_af_packet(), "нужна libpcap и права")
@@ -1037,6 +1233,15 @@ class ОбработкаTests(unittest.TestCase):
 
     def test_заголовок_rtp(self):
         self.assertEqual((7, 0x1234, 12, 0), obrabotka.заголовок_rtp(rtp(7, b"x")))
+        self.assertEqual((7, 0x1234, 12, 0), obrabotka.заголовок_rtp(rtp(7, b"")), "ровно 12 байт — RTP без данных")
+        self.assertIsNone(obrabotka.заголовок_rtp(rtp(7, b"")[:11]))
+        self.assertEqual((7, 0x1234, 16, 0), obrabotka.заголовок_rtp(rtp(7, b"x", cc=1)))
+        self.assertEqual((7, 0x1234, 72, 0), obrabotka.заголовок_rtp(rtp(7, b"x", cc=15)))
+        пустое_расш = struct.pack("!HH", 0xBEDE, 0)
+        self.assertEqual((7, 0x1234, 16, 0), obrabotka.заголовок_rtp(rtp(7, b"", x=пустое_расш)), "расширение без слов, впритык")
+        self.assertIsNone(obrabotka.заголовок_rtp(rtp(7, b"", x=пустое_расш)[:15]))
+        self.assertEqual((7, 0x1234, 20, 0), obrabotka.заголовок_rtp(rtp(7, b"", cc=1, x=пустое_расш)))
+        self.assertEqual((7, 0x1234, 12, 2), obrabotka.заголовок_rtp(rtp(7, b"", p=2)), "одно дополнение, без данных")
         self.assertEqual((8, 0x1234, 20, 0), obrabotka.заголовок_rtp(rtp(8, b"x", cc=2)))
         расш = struct.pack("!HH", 0xBEDE, 2) + b"\0" * 8
         self.assertEqual((9, 0x1234, 24, 0), obrabotka.заголовок_rtp(rtp(9, b"x", x=расш)))
@@ -1051,28 +1256,35 @@ class ОбработкаTests(unittest.TestCase):
     def test_расширенные_номера(self):
         self.assertEqual([65534, 65535, 65536, 65537, 65535], obrabotka.расширить_номера([65534, 65535, 0, 1, 65535]))
         self.assertEqual([5, 3, 6], obrabotka.расширить_номера([5, 3, 6]))
+        self.assertEqual([0, -32768], obrabotka.расширить_номера([0, 32768]), "ровно полкруга — назад")
+        self.assertEqual([0, 32767], obrabotka.расширить_номера([0, 32767]))
         self.assertEqual([0, -1, 1], obrabotka.расширить_номера([0, 65535, 1]))
         self.assertEqual([], obrabotka.расширить_номера([]))
 
     def test_нагрузка_без_среза_и_со_срезом(self):
         путь = self.файл([(5004, "10.0.0.7", rtp(1, b"AAAA")), (5006, "10.0.0.7", b"other"),
                           (5004, "10.0.0.8", rtp(2, b"BBBB")), (5004, "10.0.0.7", b"\x80")])
-        поток, заметки, сводка = obrabotka.нагрузка(путь, 5004)
+        поток, заметки, сводка = obrabotka.нагрузка(путь, 5004, предел=1 << 20)
         self.assertEqual(rtp(1, b"AAAA") + rtp(2, b"BBBB") + b"\x80", поток)
         self.assertEqual(3, сводка["датаграмм"])
-        поток, заметки, сводка = obrabotka.нагрузка(путь, 5004, срез=12)
+        поток, заметки, сводка = obrabotka.нагрузка(путь, 5004, срез=12, предел=1 << 20)
         self.assertEqual(b"AAAABBBB", поток)
         self.assertEqual(1, сводка["короче_среза"])
+        _, _, сводка = obrabotka.нагрузка(путь, 5004, срез=16, предел=1 << 20)
+        self.assertEqual(1, сводка["короче_среза"], "ровно по срезу — не короче")
         self.assertTrue(any("короче среза: 1" in з for з in заметки))
-        поток, _, _ = obrabotka.нагрузка(путь, 5004, срез=12, источник="10.0.0.8")
+        поток, _, _ = obrabotka.нагрузка(путь, 5004, срез=12, источник="10.0.0.8", предел=1 << 20)
         self.assertEqual(b"BBBB", поток)
-        поток, заметки, сводка = obrabotka.нагрузка(путь, 5004, срез="rtp")
+        поток, заметки, сводка = obrabotka.нагрузка(путь, 5004, срез="rtp", предел=1 << 20)
         self.assertEqual((b"AAAABBBB", 1), (поток, сводка["не_rtp"]))
         self.assertIn("не RTP", " ".join(заметки))
         self.assertEqual([{"порт": 5004, "датаграмм": 3, "байт": 33,
                            "источники": [{"адрес": "10.0.0.7", "датаграмм": 2}, {"адрес": "10.0.0.8", "датаграмм": 1}]},
                           {"порт": 5006, "датаграмм": 1, "байт": 5, "источники": [{"адрес": "10.0.0.7", "датаграмм": 1}]}],
                          obrabotka.порты(путь))
+        поток, _, сводка = obrabotka.нагрузка(путь, 5004, предел=len(rtp(1, b"AAAA") + rtp(2, b"BBBB")) + 1)
+        self.assertEqual((rtp(1, b"AAAA") + rtp(2, b"BBBB") + b"\x80", False), (поток, сводка["обрезано_пределом"]),
+                         "предел ровно по объёму — не обрезано")
         поток, заметки, сводка = obrabotka.нагрузка(путь, 5004, предел=20)
         self.assertEqual((rtp(1, b"AAAA"), True), (поток, сводка["обрезано_пределом"]))
         self.assertIn("обрезана пределом", заметки[-1])
@@ -1081,18 +1293,45 @@ class ОбработкаTests(unittest.TestCase):
         порядок = [65533, 65535, 65534, 0, 0, 3, 2]            # перестановки, повтор, потеря номера 1, переход через 0
         путь = self.файл([(7000, "10.0.0.7", rtp(н, bytes([н & 0xFF]), p=2 if н == 3 else 0)) for н in порядок] +
                          [(7000, "10.0.0.7", rtp(9, b"S", ssrc=0x99))])
-        поток, заметки, сводка = obrabotka.нагрузка(путь, 7000, срез="rtp", упорядочить=True)
+        поток, заметки, сводка = obrabotka.нагрузка(путь, 7000, срез="rtp", упорядочить=True, предел=1 << 20)
         self.assertEqual(bytes([0xFD, 0xFE, 0xFF, 0, 2, 3]) + b"S", поток)
         self.assertEqual((2, 1, 1, 0), (сводка["переставлено_rtp"], сводка["пропущено_rtp"], сводка["повторы_rtp"],
                                         сводка["разрывы_rtp"]))
         self.assertEqual(["00001234", "00000099"], сводка["ssrc"])
+        self.assertFalse(сводка["обрезано_пределом"])
         self.assertTrue(any("несколько источников RTP" in з for з in заметки))
-        поток, _, сводка = obrabotka.нагрузка(путь, 7000, срез=12, упорядочить=True)
+        поток, _, сводка = obrabotka.нагрузка(путь, 7000, срез=12, упорядочить=True, предел=1 << 20)
         self.assertEqual(bytes([0xFD, 0xFE, 0xFF, 0, 2, 3, 0, 2]) + b"S", поток, "срез числом: дополнение RTP остаётся")
+        один = self.файл([(7000, "10.0.0.7", rtp(н, b"z")) for н in (1, 3002, 3003)])
+        _, заметки, сводка = obrabotka.нагрузка(один, 7000, срез="rtp", упорядочить=True, предел=1 << 20)
+        self.assertEqual((0, 3000), (сводка["разрывы_rtp"], сводка["пропущено_rtp"]), "скачок ровно 3000 — ещё потеря")
+        self.assertFalse(any("несколько источников" in з for з in заметки))
         скачок = self.файл([(7000, "10.0.0.7", rtp(н, b"z")) for н in (1, 2, 5000)])
-        _, заметки, сводка = obrabotka.нагрузка(скачок, 7000, срез="rtp", упорядочить=True)
+        _, заметки, сводка = obrabotka.нагрузка(скачок, 7000, срез="rtp", упорядочить=True, предел=1 << 20)
         self.assertEqual((1, 0), (сводка["разрывы_rtp"], сводка["пропущено_rtp"]))
         self.assertIn("разрывов нумерации 1", " ".join(заметки))
+
+    def test_порты_пределы_и_отбор(self):
+        путь = Path(tempfile.mkdtemp()) / "много.pcapng"
+        with open(путь, "wb") as f:
+            п = zapis.ПисательPcapng(f)
+            for порт in range(1, 1026):                     # 1025 разных портов — помнится 1024
+                п.пакет(0.0, zapis.кадр_udp(b"", "10.0.0.1", 9, "10.0.0.2", порт))
+            for i in range(9):                              # девять отправителей на порт 7 — показываются 8
+                п.пакет(0.0, zapis.кадр_udp(b"s", f"10.0.1.{i}", 9, "10.0.0.2", 7))
+            п.пакет(0.0, zapis.кадр_udp(b"null", "10.0.0.1", 9, "10.0.0.2", 0))
+            п.пакет(0.0, с.eth(с.ip(с.tcp(b"t", 1, 5555), 6)))
+            п.пакет(0.0, с.eth(с.ip(b"frag", 17, флаги=0x0002)))
+        список = obrabotka.порты(путь, предел=5000)
+        self.assertEqual(1024, len(список))
+        по_порту = {п["порт"]: п for п in список}
+        self.assertNotIn(5555, по_порту, "TCP — не UDP")
+        self.assertNotIn(-1, по_порту, "не первый фрагмент — без порта")
+        self.assertEqual(10, по_порту[7]["датаграмм"])
+        self.assertEqual(["10.0.0.1"] + [f"10.0.1.{i}" for i in range(7)], [и["адрес"] for и in по_порту[7]["источники"]])
+        self.assertEqual(64, len(obrabotka.порты(путь)))
+        поток, _, _ = obrabotka.нагрузка(путь, 0, предел=1 << 20)
+        self.assertEqual(b"null", поток, "порт 0 — тоже порт")
 
     def test_фрагменты_и_raw_ip(self):
         путь = Path(tempfile.mkdtemp()) / "raw.pcapng"
@@ -1100,7 +1339,7 @@ class ОбработкаTests(unittest.TestCase):
             п = zapis.ПисательPcapng(f, канал=zapis.LINKTYPE_RAW)
             п.пакет(0.0, с.ip(с.udp(b"raw", 1, 5), 17))
             п.пакет(1.0, с.ip(с.udp(b"frag", 1, 5), 17, флаги=0x2000))
-        поток, заметки, сводка = obrabotka.нагрузка(путь, 5)
+        поток, заметки, сводка = obrabotka.нагрузка(путь, 5, предел=1 << 20)
         self.assertEqual((b"raw", 1), (поток, сводка["фрагменты"]))
         self.assertIn("фрагментированные", " ".join(заметки))
         прочий = Path(tempfile.mkdtemp()) / "ppp.pcapng"
@@ -1305,6 +1544,12 @@ class СтраницаTests(unittest.TestCase):
                           "1,0 Гбит/с", "3500,0 Гбит/с", "0 бит/с"], итог["бит"])
         self.assertEqual(["10.0.0.1/24", "10.0.0.2", "fe80::1/64", "::1/0"], итог["адреса"])
         self.assertEqual([], итог["пусто"])
+
+    def test_фильтр_словами(self):
+        код = self.вырезать(self.js, "описаниеФильтра") + r"""
+        console.log(JSON.stringify([null, {}, { протокол: 'udp', от: '10.0.0.1', к: '10.0.0.2', хост: '10.0.0.3', порт: 5004 },
+            { протокол: '', порт: 0 }, { хост: '::1' }].map(описаниеФильтра)));"""
+        self.assertEqual(["", "", "UDP, от 10.0.0.1, к 10.0.0.2, адрес 10.0.0.3, порт 5004", "", "адрес ::1"], self.выполнить(код))
 
     def test_маршрут_и_остановка_опроса(self):
         код = self.вырезать(self.js, "parseHash") + r"""
