@@ -3532,6 +3532,55 @@ def potok_sync(request: Request, job_id: str) -> dict[str, Any]:
     return найдено
 
 
+# -- матрицы над GF(2): Гаусс, ранг, ядро, систематический вид, параметры кода --------------
+
+@router.post("/potok/matrix")
+def potok_matrix_gf2(request: Request) -> dict[str, Any]:
+    """Действие над матрицей GF(2) — для анализа кодов на рабочем столе.
+
+    ``op`` — действие (``matricy_gf2.ОПЕРАЦИИ``); исходная — ``A`` (строки «0101») или
+    ``source`` {job, stage, period, shift, rows}: кадры массива строками — ``period`` бит с
+    бита ``shift``, не больше ``rows`` строк; тогда в ответе ``поток`` — ранг и что он значит,
+    и первые строки ``A``. ``B``, ``b``, ``vectors`` — второе, если действию оно нужно.
+    """
+    from ..potok import matricy_gf2 as мат  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    оп = str(тело.get("op") or "")
+    if оп not in мат.ОПЕРАЦИИ:
+        raise ServiceError("неизвестное действие с матрицей; есть: " + ", ".join(мат.ОПЕРАЦИИ), 400)
+    источник = тело.get("source")
+    поток = None
+    if источник:
+        try:
+            job = str(источник["job"])
+            этап, длина, сдвиг, строк = (int(источник.get(к) or 0) for к in ("stage", "period", "shift", "rows"))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise ServiceError("источник: {job, stage, period, shift, rows} — массив и целые числа", 400) from None
+        _файл_бит_или_400(request, user, job, этап)
+        задания = _potok(request)
+        всего = задания.длина_бит(job, этап)
+        if not 0 <= сдвиг < всего:
+            raise ServiceError(f"первый бит — от 0 до {всего - 1}: в массиве {всего} бит", 400)
+        # Больше предела строк и столбцов не читается: лишнее всё равно отвергнет проверка размера.
+        до = сдвиг + min(длина, мат.МАТРИЦА_ДО) * min(строк, мат.МАТРИЦА_ДО)
+    try:
+        if источник:
+            A = мат.из_потока(задания.биты_участка(job, этап, сдвиг, до), длина, строк)
+            поток = мат.о_потоке(A) | {"сдвиг": сдвиг, "бит_в_массиве": всего}
+        else:
+            A = мат.разобрать(тело.get("A"), "A")
+        второе = мат.ВТОРОЕ.get(оп)
+        итог = мат.выполнить(оп, A, B=мат.разобрать(тело.get("B"), "B") if второе == "B" else None,
+                             b=мат.вектор(тело.get("b"), "b") if второе == "b" else None,
+                             векторы=мат.разобрать(тело.get("vectors"), "векторы") if второе == "векторы" else None)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    if поток:
+        итог.update(поток=поток, A=мат.строками(A[:мат.ПОКАЗАТЬ_СТРОК]))
+    return итог
+
+
 # -- матрицы LDPC: загружены из стандартов, общие для отдела ------------------------------
 
 @router.get("/potok-matrices")
