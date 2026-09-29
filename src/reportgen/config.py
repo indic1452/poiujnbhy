@@ -400,6 +400,20 @@ class Settings:
     session_ttl_hours: int = 12
     max_upload_mb: int = 200
 
+    # -- захват с сети (страница «Захват с сети») ---------------------------
+    #: С какой должности можно захватывать трафик машины-сервера: owner, head,
+    #: deputy, lead, senior, engineer (по умолчанию — инженер и выше) или off —
+    #: захват выключен для всех. Гостю захват не доступен никогда.
+    capture_min_role: str = "engineer"
+    #: Потолки одного захвата: объём файла (МБ) и длительность (с). Меньше —
+    #: можно задать на странице, больше — нельзя.
+    capture_max_mb: int = 200
+    capture_max_seconds: int = 3600
+    #: Путь к библиотеке захвата, если она не на обычном месте: wpcap.dll
+    #: Npcap (по умолчанию %SystemRoot%\System32\Npcap\wpcap.dll) или
+    #: libpcap.so. Пусто — искать самим.
+    capture_libpcap: str = ""
+
     def __post_init__(self) -> None:
         for name in ("data_dir", "db_path", "library_dir", "upload_dir", "export_dir",
                      "templates_dir", "glossary_path", "domains_path", "terms_path",
@@ -504,6 +518,10 @@ class Settings:
                       "в_копию": False, "что": "разборы потоков: пересчитаются из файла"})
         места.append({"имя": "pakety", "путь": str(корень / "pakety"), "папка": True,
                       "в_копию": False, "что": "разобранные захваты: пересчитаются из файла"})
+        # Захваты с сети — сырые записи трафика до обработки: большие и разовые, а всё
+        # нужное из них уходит в «Пакеты» и в сессии потоков — в копию не идут.
+        места.append({"имя": "zahvat", "путь": str(корень / "zahvat"), "папка": True,
+                      "в_копию": False, "что": "захваты с сети до обработки (pcapng)"})
         # Матрицы LDPC инженеры вставляют руками из стандартов — это труд,
         # и пересчитать его не из чего: в копию.
         места.append({"имя": "ldpc", "путь": str(корень / "ldpc"), "папка": True,
@@ -541,6 +559,12 @@ def settings_warnings(settings: Settings) -> list[str]:
         troubles.append(
             "реранкер включён, а смысловой поиск выключен: переупорядочивать "
             "будет только то, что нашлось словами. Включите embed_enabled")
+    from .store.models import ROLES  # noqa: PLC0415 — config не тянет модели при импорте
+    роль = (settings.capture_min_role or "").strip().lower()
+    if роль not in ROLES and роль != "off":
+        troubles.append(
+            f"capture_min_role = «{settings.capture_min_role}» — такой должности нет: захват с "
+            f"сети закрыт для всех. Допустимо: {', '.join(r for r in ROLES if r != 'guest')} или off")
     return troubles
 
 

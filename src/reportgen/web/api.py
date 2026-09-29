@@ -2502,6 +2502,219 @@ def pakety_ask(request: Request, cap_id: str) -> dict[str, Any]:
     return {"chat": chat.to_dict(), "question": вопрос}
 
 
+# -- захват с сети: карты сервера, приём UDP, захват с карты, обработка ---------------------
+
+#: Ошибка источника захвата → код ответа: нет прав у сервера, порт/карта заняты, прочее.
+_КОДЫ_ЗАХВАТА = {"права": 403, "занято": 409, "адрес": 400, "нет": 400, "ошибка": 400}
+
+
+def _zahvat_seti(request: Request):
+    """Менеджер захватов с сети — один на приложение, папка zahvat в data_dir."""
+    менеджер = getattr(request.app.state, "zahvat_seti", None)
+    if менеджер is None:
+        from ..setevoy.zahvat_seti.menedzher import Менеджер  # noqa: PLC0415
+        settings = _settings(request)
+        менеджер = Менеджер(Path(settings.data_dir) / "zahvat", путь_libpcap=settings.capture_libpcap,
+                            потолок_секунд=max(1, int(settings.capture_max_seconds)),
+                            потолок_байт=max(1, int(settings.capture_max_mb)) << 20)
+        request.app.state.zahvat_seti = менеджер
+    return менеджер
+
+
+def _право_захвата(request: Request) -> User:
+    """Захват трафика машины-сервера — с должности из настроек (capture_min_role) и выше.
+
+    Гостю — никогда (require_user). Отказ пишется в журнал: попытка снять
+    трафик без права — то, что начальник должен видеть.
+    """
+    user = require_user(request)
+    роль = (_settings(request).capture_min_role or "").strip().lower()
+    причина = ""
+    if роль == "off":
+        причина = "захват с сети выключен в настройках сервера (capture_min_role = off)"
+    elif роль not in ROLE_RANK or роль == "guest":
+        причина = f"в настройках сервера указана неизвестная должность для захвата: «{роль}»"
+    elif user.rank < ROLE_RANK[роль]:
+        причина = f"захват с сети доступен с должности «{role_title_of(роль)}» и выше"
+    if причина:
+        _repos(request).audit.log("zahvat.denied", user=user, object_type="zahvat",
+                                  details={"path": request.url.path, "reason": причина})
+        raise ServiceError(причина, 403)
+    return user
+
+
+def _захват_сети_или_404(request: Request, user, ид: str, *, свой: bool = False) -> dict[str, Any]:
+    """Захват — его владельцу; администратору — посмотреть и остановить (карта может быть нужна)."""
+    try:
+        состояние = _zahvat_seti(request).состояние(ид)
+    except KeyError:
+        raise ServiceError("захват не найден", 404) from None
+    if состояние.get("владелец") != user.id and (свой or not user.is_admin):
+        raise ServiceError("захват не найден", 404)
+    return состояние
+
+
+def _законченный(request: Request, user, ид: str) -> dict[str, Any]:
+    состояние = _захват_сети_или_404(request, user, ид, свой=True)
+    if состояние["состояние"] == "идёт":
+        raise ServiceError("захват ещё идёт — сначала остановите", 409)
+    return состояние
+
+
+@router.get("/zahvat-karty")
+def zahvat_cards(request: Request) -> dict[str, Any]:
+    """Сетевые карты сервера, доступные способы захвата с причинами и потолки пределов."""
+    import sys  # noqa: PLC0415
+    _право_захвата(request)
+    менеджер = _zahvat_seti(request)
+    карты, заметки = менеджер.карты()
+    return {"karty": карты, "zametki": заметки, "sposoby": менеджер.возможности(),
+            "idut": менеджер.идущие(), "platforma": "windows" if sys.platform == "win32" else sys.platform,
+            "potolki": {"секунд": менеджер.потолок_секунд, "мегабайт": менеджер.потолок_байт >> 20}}
+
+
+@router.get("/zahvat")
+def zahvat_list(request: Request) -> dict[str, Any]:
+    user = _право_захвата(request)
+    return {"items": _zahvat_seti(request).список(user.id)}
+
+
+@router.post("/zahvat")
+def zahvat_start(request: Request) -> dict[str, Any]:
+    """Начать захват: {режим: udp|карта, адрес, порты, группа, карта, способ, фильтр, пределы, имя}."""
+    from ..setevoy.zahvat_seti.istochniki import ОшибкаЗахвата  # noqa: PLC0415
+    from ..setevoy.zahvat_seti.parametry import проверить  # noqa: PLC0415
+    user = _право_захвата(request)
+    менеджер = _zahvat_seti(request)
+    тело = _body(request)
+    try:
+        параметры = проверить(тело, потолок_секунд=менеджер.потолок_секунд, потолок_байт=менеджер.потолок_байт)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    try:
+        ид = менеджер.начать(параметры, владелец=user.id, кто=short_name(user.full_name) or user.login)
+    except ОшибкаЗахвата as ошибка:
+        _repos(request).audit.log("zahvat.start", user=user, object_type="zahvat",
+                                  details={**параметры.в_словарь(), "error": str(ошибка)})
+        raise ServiceError(str(ошибка), _КОДЫ_ЗАХВАТА.get(ошибка.вид, 400)) from None
+    _repos(request).audit.log("zahvat.start", user=user, object_type="zahvat", object_id=ид,
+                              details=параметры.в_словарь())
+    return {"id": ид}
+
+
+@router.get("/zahvat/{cap_id}")
+def zahvat_state(request: Request, cap_id: str) -> dict[str, Any]:
+    user = _право_захвата(request)
+    return _захват_сети_или_404(request, user, cap_id)
+
+
+@router.post("/zahvat/{cap_id}/stop")
+def zahvat_stop(request: Request, cap_id: str) -> dict[str, Any]:
+    user = _право_захвата(request)
+    _захват_сети_или_404(request, user, cap_id)
+    шёл = _zahvat_seti(request).остановить(cap_id, f"остановлен по команде ({short_name(user.full_name) or user.login})")
+    if шёл:
+        _repos(request).audit.log("zahvat.stop", user=user, object_type="zahvat", object_id=cap_id)
+    return _захват_сети_или_404(request, user, cap_id)
+
+
+@router.get("/zahvat/{cap_id}/ports")
+def zahvat_ports(request: Request, cap_id: str) -> dict[str, Any]:
+    """Порты получателя UDP в захвате — для выбора нагрузки в сессию."""
+    from ..setevoy.zahvat_seti.obrabotka import порты  # noqa: PLC0415
+    user = _право_захвата(request)
+    _законченный(request, user, cap_id)
+    return {"ports": порты(_zahvat_seti(request).файл(cap_id))}
+
+
+@router.get("/zahvat/{cap_id}/file")
+def zahvat_file(request: Request, cap_id: str) -> FileResponse:
+    user = _право_захвата(request)
+    состояние = _законченный(request, user, cap_id)
+    return _file_reply(_zahvat_seti(request).файл(cap_id), _safe_name(состояние["имя"]) + ".pcapng")
+
+
+@router.post("/zahvat/{cap_id}/to-pakety")
+def zahvat_to_pakety(request: Request, cap_id: str) -> dict[str, Any]:
+    """Захват — в анализатор пакетов (хранилище «Пакеты»): разбор там же, в фоне."""
+    user = _право_захвата(request)
+    состояние = _законченный(request, user, cap_id)
+    прежний = состояние.get("в_пакетах")
+    if прежний:
+        try:
+            if _pakety(request).прочитать(прежний).get("владелец") == user.id:
+                return {"id": прежний}
+        except KeyError:
+            pass
+    данные = _zahvat_seti(request).файл(cap_id).read_bytes()
+    ид = _pakety(request).создать(владелец=user.id, имя=_safe_name(состояние["имя"]) + ".pcapng", данные=данные)
+    _zahvat_seti(request).отметить(cap_id, в_пакетах=ид)
+    _repos(request).audit.log("zahvat.pakety", user=user, object_type="zahvat", object_id=cap_id,
+                              details={"pakety": ид, "bytes": len(данные)})
+    return {"id": ид}
+
+
+@router.post("/zahvat/{cap_id}/to-session")
+def zahvat_to_session(request: Request, cap_id: str) -> dict[str, Any]:
+    """Нагрузка порта UDP — битовым потоком в сессию потоков.
+
+    Тело: {session, port, cut: число байт или "rtp", rtp_order, source, bit_order: msb|lsb|auto, analyze}.
+    """
+    from ..potok import rastr  # noqa: PLC0415
+    from ..setevoy.zahvat_seti.obrabotka import нагрузка  # noqa: PLC0415
+    from ..setevoy.zahvat_seti.parametry import адрес_ip, целое  # noqa: PLC0415
+    user = _право_захвата(request)
+    состояние = _законченный(request, user, cap_id)
+    тело = _body(request)
+    session_id = str(тело.get("session") or "")
+    _сессия_или_404(request, user, session_id)
+    try:
+        порт = целое(тело.get("port"), "порт", 1, 65535)
+        срез_ = тело.get("cut") or 0
+        срез: int | str = "rtp" if str(срез_).strip().lower() == "rtp" else целое(срез_, "срез заголовка, байт", 0, 65535)
+        источник = адрес_ip(тело.get("source"), "отправитель")
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    порядок = str(тело.get("bit_order") or "msb").strip().lower()
+    if порядок not in ("auto", "msb", "lsb"):
+        raise ServiceError("порядок бит в байте: auto, msb или lsb", 400)
+    settings = _settings(request)
+    поток, заметки, сводка = нагрузка(_zahvat_seti(request).файл(cap_id), порт, срез=срез,
+                                      упорядочить=bool(тело.get("rtp_order")), источник=источник,
+                                      предел=settings.max_upload_mb << 20)
+    if not поток:
+        raise ServiceError(f"у порта {порт} нет нагрузки: " + "; ".join(заметки), 400)
+    происхождение = [f"захват с сети «{состояние['имя']}»"] + заметки
+    if порядок == "auto":
+        определено = rastr.порядок_бит(поток)
+        младший = определено["порядок"] == "младший"
+        происхождение.append("порядок бит в байте определён: " + определено["причина"])
+    else:
+        младший = порядок == "lsb"
+        происхождение.append("порядок бит в байте задан: " + ("младший" if младший else "старший") + " бит байта первым")
+    if младший:
+        поток = rastr.развернуть_биты(поток)
+    имя = _safe_name(f"{состояние['имя']} — UDP {порт}.bin")
+    ид = _potok(request).создать(владелец=user.id, имя=имя, данные=поток, профиль="обычно",
+                                 разбирать=str(тело.get("analyze") or "") in ("1", "true", "True", "да"),
+                                 происхождение=происхождение, сессия=session_id)
+    _sessii(request).тронуть(session_id)
+    _repos(request).audit.log("zahvat.session", user=user, object_type="zahvat", object_id=cap_id,
+                              details={"session": session_id, "job": ид, "port": порт, "cut": срез,
+                                       "bytes": len(поток), "datagrams": сводка["взято"]})
+    return {"id": ид, "session": session_id, "bytes": len(поток), "notes": заметки,
+            "bit_order": "lsb" if младший else "msb"}
+
+
+@router.delete("/zahvat/{cap_id}")
+def zahvat_delete(request: Request, cap_id: str) -> dict[str, Any]:
+    user = _право_захвата(request)
+    _законченный(request, user, cap_id)
+    _zahvat_seti(request).удалить(cap_id)
+    _repos(request).audit.log("zahvat.delete", user=user, object_type="zahvat", object_id=cap_id)
+    return {"ok": True}
+
+
 # -- разбор потока: задания по этапам ------------------------------------------------
 
 def _potok(request: Request):

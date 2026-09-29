@@ -9322,3 +9322,20 @@ i.pk-lvl {
 /* Кнопка «Помощник» в шапке стола: открыта панель — кнопка нажата. */
 .stol-ai-toggle svg { width: 14px; height: 14px; }
 .stol-title-actions .stol-ai-toggle.is-on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line); }
+
+/* -- захват с сети ------------------------------------------------------------------ */
+.zahvat .zs-cards tr.is-selected td { background: var(--accent-soft, rgba(80, 120, 200, .08)); }
+.zahvat .zs-cards td { vertical-align: top; }
+.zahvat .zs-busy { color: var(--danger); margin-top: 2px; }
+.zahvat .zs-modes { margin: 4px 0 12px; padding-left: 0; background: transparent; }
+.zahvat .zs-fields { display: grid; gap: 8px; }
+.zahvat .zs-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.zahvat .zs-sub { margin-top: 14px; }
+.zahvat .zs-note { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--border-strong);
+    background: var(--panel); font-size: var(--fs-sm); color: var(--muted); }
+.zahvat .zs-error { color: var(--danger); font-weight: 500; }
+.zahvat .zs-tiles .tile-value { font-size: 24px; }
+.zahvat .zs-after .row { flex-wrap: wrap; gap: 8px; }
+.zs-dialog .field { display: grid; gap: 4px; }
+/* Плитки счётчиков перерисовываются каждые 0,7 с — вступление плиток сводки здесь мигало бы. */
+.zahvat .zs-tiles > .tile { animation: none; }

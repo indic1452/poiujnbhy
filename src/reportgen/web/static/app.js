@@ -1106,7 +1106,7 @@
 
     /** Какой пункт меню подсвечивать для вложенного экрана. Стол разбора и страница
      *  разборов без сессии — часть «Сессий потоков»: своего пункта у них нет. */
-    const SECTION_OF = { case: 'cases', stol: 'sessions', session: 'sessions', potok: 'sessions' };
+    const SECTION_OF = { case: 'cases', stol: 'sessions', session: 'sessions', potok: 'sessions', zahvat: 'pakety' };
 
     function icon(name) {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -2701,6 +2701,7 @@
         if (parts[0] === 'stol' && parts[1]) return { name: 'stol', id: decodeURIComponent(parts[1]) };
         if (parts[0] === 'session' && parts[1]) return { name: 'session', id: decodeURIComponent(parts[1]) };
         if (parts[0] === 'pakety') return { name: 'pakety', id: parts[1] ? decodeURIComponent(parts[1]) : null };
+        if (parts[0] === 'zahvat') return { name: 'zahvat', id: parts[1] ? decodeURIComponent(parts[1]) : null };
         if (parts[0] === 'library' && parts.length > 1) {
             // Идентификатор документа — путь вида «standards/obw-method».
             return { name: 'library', id: parts.slice(1).map(decodeURIComponent).join('/') };
@@ -2756,6 +2757,7 @@
         detachChat();
         stopTalkPoll();
         остановитьОпросПотока();
+        остановитьОпросЗахватаСети();
         // Гостю открыт один помощник. Забрёл по ссылке в другой раздел —
         // возвращаем к помощнику, не показывая отказ: он ничего не сделал
         // не так.
@@ -2795,6 +2797,7 @@
             else if (route.name === 'sessions') await renderSessions(view);
             else if (route.name === 'session') await renderStol(view, null, route.id);
             else if (route.name === 'pakety') await renderPakety(view, route.id);
+            else if (route.name === 'zahvat') await renderZahvat(view, route.id);
             else if (route.name === 'stats') await renderStats(view);
             else if (route.name === 'roster') await renderRoster(view);
             else if (route.name === 'chat') await renderChat(view, route.id);
@@ -14513,6 +14516,7 @@
         page.appendChild(h('div', { class: 'page-head' }, h('div', {}, h('h2', {}, 'Сессии')),
             h('div', { class: 'page-head-actions' },
                 h('a', { class: 'btn btn--ghost', href: '#/potok', title: 'Отдельные разборы без сессии' }, 'Разборы без сессии'),
+                h('a', { class: 'btn btn--ghost', href: '#/zahvat', title: 'Принять поток с аппаратуры по сети (порт UDP) и положить его в сессию' }, 'Захват с сети'),
                 h('button', { class: 'btn btn--primary', onclick: () => новая() }, 'Новая сессия'))));
         const список = h('div', { class: 'card sessions-list' }, loadingBox('Загружаем сессии…'));
         page.appendChild(список);
@@ -15522,6 +15526,435 @@
     const ПРИМЕРЫ_ФИЛЬТРА = 'tcp.port == 443 · ip.addr == 10.0.0.0/8 · dns.qry.name contains "mail" · ' +
         'port in {53 123} · http.request.method == "POST" · frame.len > 1000 and not arp · expert';
 
+    // =====================================================================
+    // Захват с сети: карты сервера, приём UDP на порт, захват кадров с карты
+    // =====================================================================
+
+    //: Опрос идущего захвата: таймер снимается при любом переходе (renderRoute).
+    const захватСети = { таймер: null };
+
+    function остановитьОпросЗахватаСети() {
+        if (захватСети.таймер) {
+            clearTimeout(захватСети.таймер);
+            захватСети.таймер = null;
+        }
+    }
+
+    /** Скорость словами: бит/с → «1,2 Мбит/с». */
+    function fmtBitRate(бит) {
+        const единицы = ['бит/с', 'кбит/с', 'Мбит/с', 'Гбит/с'];
+        let v = Number(бит) || 0;
+        let i = 0;
+        while (v >= 1000 && i < единицы.length - 1) { v /= 1000; i += 1; }
+        return (i === 0 ? v.toFixed(0) : v.toFixed(1).replace('.', ',')) + ' ' + единицы[i];
+    }
+
+    function адресаКарты(к) {
+        return (к.ipv4 || []).map((а) => а.адрес + (а.префикс != null ? '/' + а.префикс : ''))
+            .concat((к.ipv6 || []).map((а) => а.адрес + (а.префикс != null ? '/' + а.префикс : '')));
+    }
+
+    const СОСТОЯНИЕ_ЗАХВАТА = { 'идёт': 'run', 'готово': 'done', 'ошибка': 'error', 'прерван': 'error' };
+
+    async function renderZahvat(view, capId) {
+        clear(view);
+        const page = h('div', { class: 'page zahvat' });
+        const описание = сценаОписания(page, 'zahvat');
+        view.appendChild(описание.узел);
+        описание.добавить('захват', 'Захват с сети',
+            'Трафик снимается на машине-сервере отдела — там, куда подключена аппаратура. Браузер только управляет: ' +
+            'выбирает карту, порт и пределы, видит счётчики и забирает результат.',
+            'Приём UDP — сервер слушает адрес и порт (или несколько портов): аппаратура шлёт датаграммы, особых прав не нужно. ' +
+            'Захват с карты — все кадры Ethernet выбранной карты с фильтром: Windows — Npcap (или сырой сокет SIO_RCVALL: ' +
+            'только IPv4, от администратора), Linux — libpcap или AF_PACKET (root или CAP_NET_RAW).',
+            'Захват записывается в pcapng и после остановки открывается в анализаторе пакетов; нагрузка выбранного порта UDP ' +
+            '(со срезом заголовка, например RTP) уходит битовым потоком в сессию потоков.');
+        if (capId) {
+            await рисоватьЗахватСети(page, capId);
+            return;
+        }
+        page.appendChild(h('div', { class: 'page-head' },
+            h('div', {}, h('h2', {}, 'Захват с сети'),
+                h('div', { class: 'muted' }, 'Сетевые карты и порты сервера отдела')),
+            h('div', { class: 'page-head-actions' },
+                h('a', { class: 'btn btn--ghost', href: '#/pakety' }, 'Пакеты'),
+                h('a', { class: 'btn btn--ghost', href: '#/sessions' }, 'Сессии потоков'),
+                h('button', { class: 'btn', onclick: () => renderRoute(state.route) }, 'Обновить'))));
+        const основа = h('div', {}, loadingBox('Спрашиваем сервер о сетевых картах…'));
+        page.appendChild(основа);
+        let данные;
+        try {
+            данные = await api.get('/api/zahvat-karty');
+        } catch (error) {
+            clear(основа);
+            if (error instanceof ApiError && error.status === 403) {
+                основа.appendChild(h('div', { class: 'empty empty--error' }, h('h3', {}, 'Нет права на захват'),
+                    h('div', { class: 'empty-note' }, errorText(error)),
+                    h('div', { class: 'empty-note faint' }, 'Кому можно захватывать трафик сервера, задаёт настройка capture_min_role.')));
+                return;
+            }
+            основа.appendChild(errorBox(error));
+            return;
+        }
+        clear(основа);
+        const карты = данные.karty || [];
+        const способы = данные.sposoby || {};
+        const потолки = данные.potolki || {};
+        const выбор = { карта: (карты.find((к) => к.работает && !к.петля) || карты[0] || {}).ид || '', режим: 'udp' };
+        try {
+            const было = JSON.parse(localStorage.getItem('zahvat-form') || '{}');
+            if (было.режим) выбор.режим = было.режим;
+            if (было.карта && карты.some((к) => к.ид === было.карта)) выбор.карта = было.карта;
+        } catch (e) { /* без хранилища — по умолчанию */ }
+
+        // -- карты --
+        const таблица = h('tbody', {});
+        const картаУзел = h('div', { class: 'card card-pad' },
+            h('div', { class: 'card-title' }, 'Сетевые карты сервера'),
+            (данные.zametki || []).length ? h('div', { class: 'muted small' }, данные.zametki.join('; ')) : null,
+            карты.length ? h('div', { class: 'table-scroll' }, h('table', { class: 'grid zs-cards' },
+                h('thead', {}, h('tr', {}, h('th', {}, ''), h('th', {}, 'Карта'), h('th', {}, 'Адреса'), h('th', {}, 'MAC'),
+                    h('th', {}, 'Состояние'), h('th', {}, 'Скорость'))), таблица))
+                : emptyBox('Карт не видно', 'Сервер не нашёл ни одной сетевой карты.'));
+        page.appendChild(картаУзел);
+        function рисоватьКарты() {
+            clear(таблица);
+            карты.forEach((к) => {
+                const переключатель = h('input', { type: 'radio', name: 'zs-card', value: к.ид, checked: к.ид === выбор.карта,
+                    'aria-label': 'Выбрать карту ' + к.имя });
+                const строка = h('tr', { class: 'clickable' + (к.ид === выбор.карта ? ' is-selected' : ''), dataset: { card: к.ид } },
+                    h('td', {}, переключатель),
+                    h('td', { class: 'primary' }, h('div', {}, h('b', {}, к.имя)), h('div', { class: 'muted small' }, к.описание || к.вид || '')),
+                    h('td', { class: 'small' }, адресаКарты(к).map((а) => h('div', {}, а)), адресаКарты(к).length ? null : h('span', { class: 'faint' }, 'нет')),
+                    h('td', { class: 'small mono' }, к.mac || '—'),
+                    h('td', {}, h('span', { class: 'potok-state is-' + (к.работает ? 'done' : 'wait') }, к.состояние),
+                        к.занята ? h('div', { class: 'small zs-busy' }, 'занята: ' + (к.занята.кто || 'захват')) : null),
+                    h('td', { class: 'num' }, к.скорость ? fmtBitRate(к.скорость) : '—'));
+                строка.addEventListener('click', () => { выбор.карта = к.ид; рисоватьКарты(); рисоватьАдреса(); });
+                таблица.appendChild(строка);
+            });
+        }
+        рисоватьКарты();
+
+        // -- режим и параметры --
+        const режимы = h('div', { class: 'tabs zs-modes', role: 'tablist' });
+        const поляUDP = h('div', { class: 'zs-fields' });
+        const поляКарты = h('div', { class: 'zs-fields' });
+        const адрес = h('select', { 'aria-label': 'Адрес приёма' });
+        const порты = h('input', { type: 'text', placeholder: '5000 или 5000, 5002-5004', 'aria-label': 'Порты UDP', spellcheck: false });
+        const группа = h('input', { type: 'text', placeholder: 'необязательно, например 239.1.1.1', spellcheck: false });
+        append(поляUDP, [
+            h('label', { class: 'field' }, h('span', {}, 'Адрес приёма (IP карты сервера)'), адрес),
+            h('label', { class: 'field' }, h('span', {}, 'Порт UDP (можно несколько через запятую, диапазон — через дефис)'), порты),
+            h('label', { class: 'field' }, h('span', {}, 'Группа многоадресной рассылки'), группа),
+            h('div', { class: 'muted small' }, 'Прав администратора не нужно. Если порт занят другой программой, сервер так и скажет. ' +
+                'На Windows разрешите входящий UDP на этот порт в брандмауэре.')]);
+        function рисоватьАдреса() {
+            const к = карты.find((х) => х.ид === выбор.карта);
+            const прежний = адрес.value;
+            clear(адрес);
+            адрес.appendChild(h('option', { value: '0.0.0.0' }, 'все адреса IPv4 (0.0.0.0)'));
+            адрес.appendChild(h('option', { value: '::' }, 'все адреса IPv6 (::)'));
+            const свои = к ? (к.ipv4 || []).concat(к.ipv6 || []).map((а) => а.адрес) : [];
+            const прочие = [];
+            карты.forEach((х) => (х.ipv4 || []).concat(х.ipv6 || []).forEach((а) => {
+                if (свои.indexOf(а.адрес) === -1 && прочие.indexOf(а.адрес) === -1) прочие.push(а.адрес);
+            }));
+            свои.forEach((а) => адрес.appendChild(h('option', { value: а }, а + ' — ' + к.имя)));
+            прочие.forEach((а) => адрес.appendChild(h('option', { value: а }, а)));
+            if (прежний && Array.from(адрес.options).some((о) => о.value === прежний)) адрес.value = прежний;
+        }
+        рисоватьАдреса();
+
+        const способ = h('select', { 'aria-label': 'Способ захвата' },
+            h('option', { value: 'авто' }, 'выбрать самому'),
+            Object.keys(способы).filter((к) => к !== 'udp').map((к) => h('option', {
+                value: к, disabled: !способы[к].можно, title: способы[к].почему || '',
+            }, способы[к].название + (способы[к].можно ? (способы[к].версия ? ' — ' + способы[к].версия : '') : ' — недоступен'))));
+        const недоступно = Object.keys(способы).filter((к) => к !== 'udp' && !способы[к].можно);
+        const протокол = h('select', { 'aria-label': 'Протокол' },
+            [['', 'любой'], ['udp', 'UDP'], ['tcp', 'TCP'], ['icmp', 'ICMP'], ['ip', 'IPv4'], ['ip6', 'IPv6'], ['arp', 'ARP']]
+                .map(([з, т]) => h('option', { value: з }, т)));
+        const отКого = h('input', { type: 'text', placeholder: 'любой', spellcheck: false });
+        const кому = h('input', { type: 'text', placeholder: 'любой', spellcheck: false });
+        const портФильтра = h('input', { type: 'number', min: 1, max: 65535, placeholder: 'любой' });
+        const неразборчиво = h('input', { type: 'checkbox', checked: true });
+        append(поляКарты, [
+            h('label', { class: 'field' }, h('span', {}, 'Способ захвата'), способ),
+            недоступно.length ? h('div', { class: 'zs-note' }, недоступно.map((к) =>
+                h('div', {}, h('b', {}, способы[к].название + ': '), способы[к].почему))) : null,
+            h('div', { class: 'zs-row' },
+                h('label', { class: 'field' }, h('span', {}, 'Протокол'), протокол),
+                h('label', { class: 'field' }, h('span', {}, 'IP источника'), отКого),
+                h('label', { class: 'field' }, h('span', {}, 'IP получателя'), кому),
+                h('label', { class: 'field' }, h('span', {}, 'Порт (любой стороны)'), портФильтра)),
+            h('label', { class: 'small' }, неразборчиво, ' неразборчивый режим — и кадры, адресованные не этой машине')]);
+
+        const секунд = h('input', { type: 'number', min: 1, max: потолки.секунд, placeholder: String(потолки.секунд) });
+        const пакетов = h('input', { type: 'number', min: 1, placeholder: 'без предела' });
+        const мегабайт = h('input', { type: 'number', min: 1, max: потолки.мегабайт, placeholder: String(потолки.мегабайт) });
+        const имя = h('input', { type: 'text', placeholder: 'например: «Модем 2, выход данных»', maxlength: 80 });
+        const пуск = h('button', { class: 'btn btn--primary', onclick: () => начать() }, 'Старт');
+        [['udp', 'Приём UDP'], ['карта', 'Захват с карты']].forEach(([з, т]) => {
+            режимы.appendChild(h('button', { class: 'tab' + (выбор.режим === з ? ' is-active' : ''), role: 'tab', type: 'button',
+                'aria-selected': String(выбор.режим === з), dataset: { mode: з },
+                onclick: () => { выбор.режим = з; показатьРежим(); } }, т));
+        });
+        function показатьРежим() {
+            Array.from(режимы.children).forEach((к) => {
+                const да = к.dataset.mode === выбор.режим;
+                к.classList.toggle('is-active', да);
+                к.setAttribute('aria-selected', String(да));
+            });
+            поляUDP.hidden = выбор.режим !== 'udp';
+            поляКарты.hidden = выбор.режим !== 'карта';
+        }
+        показатьРежим();
+        page.appendChild(h('div', { class: 'card card-pad zs-form' },
+            h('div', { class: 'card-title' }, 'Что снимать'), режимы, поляUDP, поляКарты,
+            h('div', { class: 'card-title zs-sub' }, 'Пределы'),
+            h('div', { class: 'zs-row' },
+                h('label', { class: 'field' }, h('span', {}, 'Длительность, с (не больше ' + потолки.секунд + ')'), секунд),
+                h('label', { class: 'field' }, h('span', {}, 'Пакетов'), пакетов),
+                h('label', { class: 'field' }, h('span', {}, 'Объём, МБ (не больше ' + потолки.мегабайт + ')'), мегабайт)),
+            h('label', { class: 'field' }, h('span', {}, 'Имя захвата'), имя),
+            h('div', { class: 'row' }, пуск,
+                h('span', { class: 'muted small' }, 'Захват остановится сам по первому из пределов — или по кнопке «Стоп».'))));
+
+        // -- мои захваты --
+        const мои = h('div', { class: 'card card-pad' }, loadingBox('Загружаем захваты…'));
+        page.appendChild(мои);
+        try {
+            const список = (await api.get('/api/zahvat')).items || [];
+            clear(мои);
+            мои.appendChild(h('div', { class: 'card-title' }, 'Мои захваты'));
+            if (!список.length) мои.appendChild(emptyBox('Захватов ещё нет', 'Выберите карту или порт выше и нажмите «Старт».'));
+            else {
+                мои.appendChild(h('div', { class: 'potok-list' }, список.map((з) =>
+                    h('a', { class: 'potok-item', href: '#/zahvat/' + encodeURIComponent(з.ид) },
+                        h('b', {}, з.имя),
+                        h('span', { class: 'muted' }, fmtDateTime(з.начато * 1000) + ' · пакетов ' + fmtNumber(з.пакетов) + ' · ' +
+                            fmtBytes(з.байт) + (з.причина ? ' · ' + з.причина : '')),
+                        h('span', { class: 'potok-state is-' + (СОСТОЯНИЕ_ЗАХВАТА[з.состояние] || 'wait') }, з.состояние)))));
+            }
+        } catch (error) {
+            clear(мои);
+            мои.appendChild(errorBox(error));
+        }
+
+        async function начать() {
+            const тело = {
+                режим: выбор.режим, карта: выбор.карта, имя: имя.value.trim(),
+                пределы: { секунд: секунд.value || 0, пакетов: пакетов.value || 0, мегабайт: мегабайт.value || 0 },
+            };
+            if (выбор.режим === 'udp') {
+                if (!порты.value.trim()) { toast('Укажите порт UDP', 'error'); порты.focus(); return; }
+                Object.assign(тело, { адрес: адрес.value, порты: порты.value.trim(), группа: группа.value.trim() });
+            } else {
+                if (!выбор.карта) { toast('Выберите сетевую карту', 'error'); return; }
+                Object.assign(тело, { способ: способ.value, неразборчиво: неразборчиво.checked,
+                    фильтр: { протокол: протокол.value, от: отКого.value.trim(), к: кому.value.trim(), порт: портФильтра.value || 0 } });
+            }
+            try { localStorage.setItem('zahvat-form', JSON.stringify({ режим: выбор.режим, карта: выбор.карта })); } catch (e) { /* не обязательно */ }
+            пуск.disabled = true;
+            try {
+                const d = await api.post('/api/zahvat', тело);
+                navigate('#/zahvat/' + encodeURIComponent(d.id));
+            } catch (error) {
+                toastError(error);
+            } finally {
+                пуск.disabled = false;
+            }
+        }
+    }
+
+    async function рисоватьЗахватСети(page, capId) {
+        const путь = '/api/zahvat/' + encodeURIComponent(capId);
+        const шапка = h('div', { class: 'page-head' });
+        const плитки = h('div', { class: 'tiles zs-tiles', 'aria-live': 'polite' });
+        const порты = h('div', {});
+        const итог = h('div', {});
+        append(page, [шапка, плитки, порты, итог]);
+        let последнее = null;
+        async function обновить() {
+            захватСети.таймер = null;
+            let с;
+            try {
+                с = await api.get(путь);
+            } catch (error) {
+                if (error instanceof Устарело) return;
+                clear(итог);
+                итог.appendChild(errorBox(error));
+                return;
+            }
+            if (!page.isConnected) return;
+            рисовать(с);
+            if (с.состояние === 'идёт') захватСети.таймер = setTimeout(обновить, 700);
+            else if (!последнее || последнее.состояние === 'идёт') рисоватьИтог(с);
+            последнее = с;
+        }
+        function плитка(значение, подпись, заметка) {
+            return h('div', { class: 'tile' }, h('div', { class: 'tile-value' }, значение), h('div', { class: 'tile-label' }, подпись),
+                заметка ? h('div', { class: 'tile-note' }, заметка) : null);
+        }
+        function рисовать(с) {
+            clear(шапка);
+            const идёт = с.состояние === 'идёт';
+            const что = с.режим === 'udp' ? 'приём UDP ' + с.адрес + ' : ' + (с.порты || []).join(', ')
+                : 'карта ' + (с.карта_имя || с.карта) + ' · ' + с.способ + (с.bpf ? ' · фильтр ' + с.bpf.split(') or (vlan')[0].replace(/^\(/, '') : '');
+            append(шапка, [
+                h('div', {}, h('h2', {}, с.имя),
+                    h('div', { class: 'muted' }, что),
+                    h('div', { class: 'small' }, h('span', { class: 'potok-state is-' + (СОСТОЯНИЕ_ЗАХВАТА[с.состояние] || 'wait') }, с.состояние),
+                        с.причина ? ' ' + с.причина : '')),
+                h('div', { class: 'page-head-actions' },
+                    идёт ? h('button', { class: 'btn btn--primary zs-stop', onclick: () => стоп() }, 'Стоп') : null,
+                    h('a', { class: 'btn btn--ghost', href: '#/zahvat' }, 'Все захваты'))]);
+            clear(плитки);
+            append(плитки, [
+                плитка(fmtNumber(с.пакетов), 'пакетов', 'принято ' + fmtNumber(с.принято)),
+                плитка(fmtBytes(с.байт), 'объём', 'файл ' + fmtBytes(с.файл_байт)),
+                плитка(идёт ? fmtNumber(с.скорость_пакетов, 1) : '—', 'пакетов/с', идёт ? fmtBitRate(с.скорость_бит) : 'захват окончен'),
+                плитка(с.отброшено == null ? '—' : fmtNumber(с.отброшено), 'отброшено', 'потеряно ядром или драйвером'),
+                плитка(fmtNumber(с.отфильтровано), 'отфильтровано', с.режим === 'udp' ? 'фильтра нет' : 'не прошли фильтр'),
+                плитка(fmtNumber(с.длится, 1) + ' с', 'длится', 'предел ' + ((с.пределы || {}).секунд || '—') + ' с')]);
+            clear(порты);
+            const записи = Object.entries(с.по_портам || {}).sort((а, б) => б[1][0] - а[1][0]);
+            if (записи.length) {
+                порты.appendChild(h('div', { class: 'card card-pad' },
+                    h('div', { class: 'card-title' }, 'Порты UDP получателя'),
+                    h('div', { class: 'table-scroll' }, h('table', { class: 'grid' },
+                        h('thead', {}, h('tr', {}, h('th', {}, 'Порт'), h('th', {}, 'Датаграмм'), h('th', {}, 'Нагрузка'))),
+                        h('tbody', {}, записи.map(([порт, [n, б]]) => h('tr', {}, h('td', {}, порт), h('td', { class: 'num' }, fmtNumber(n)),
+                            h('td', { class: 'num' }, fmtBytes(б)))))))));
+            }
+            if ((с.заметки || []).length || с.ошибка) {
+                порты.appendChild(h('div', { class: 'zs-note' }, с.ошибка ? h('div', { class: 'zs-error' }, с.ошибка) : null,
+                    (с.заметки || []).map((з) => h('div', {}, з))));
+            }
+        }
+        function рисоватьИтог(с) {
+            clear(итог);
+            итог.appendChild(h('div', { class: 'card card-pad zs-after' },
+                h('div', { class: 'card-title' }, 'Обработка'),
+                h('div', { class: 'row' },
+                    h('button', { class: 'btn btn--primary', onclick: (e) => вПакеты(e.currentTarget) }, 'Открыть в анализаторе пакетов'),
+                    h('button', { class: 'btn', onclick: () => окноНагрузкиВСессию(capId, с) }, 'Нагрузку порта — в сессию потоков…'),
+                    h('button', { class: 'btn btn--ghost', onclick: () => скачать() }, 'Скачать pcapng'),
+                    h('button', { class: 'btn btn--ghost', onclick: () => удалить() }, 'Удалить'))));
+        }
+        async function стоп() {
+            try {
+                const с = await api.post(путь + '/stop');
+                рисовать(с);
+                if (с.состояние !== 'идёт') { рисоватьИтог(с); последнее = с; }
+            } catch (error) { toastError(error); }
+        }
+        async function вПакеты(кнопка) {
+            кнопка.disabled = true;
+            try {
+                const d = await api.post(путь + '/to-pakety');
+                navigate('#/pakety/' + encodeURIComponent(d.id));
+            } catch (error) { toastError(error); } finally { кнопка.disabled = false; }
+        }
+        async function скачать() {
+            try {
+                const result = await api.download(путь + '/file');
+                const url = URL.createObjectURL(result.blob);
+                const link = h('a', { href: url, download: result.filename });
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 30000);
+            } catch (error) { toastError(error); }
+        }
+        async function удалить() {
+            if (!(await confirmDialog({ title: 'Удалить захват?', danger: true, confirmText: 'Удалить',
+                message: 'Файл захвата будет удалён. То, что уже ушло в анализатор пакетов и в сессии, останется.' }))) return;
+            try { await api.del(путь); navigate('#/zahvat'); } catch (error) { toastError(error); }
+        }
+        await обновить();
+    }
+
+    /** Нагрузка порта UDP захвата — битовым потоком в сессию: порт, отправитель, срез заголовка, порядок RTP. */
+    async function окноНагрузкиВСессию(capId, состояние) {
+        const путь = '/api/zahvat/' + encodeURIComponent(capId);
+        let порты;
+        let сессии;
+        try {
+            [порты, сессии] = await Promise.all([api.get(путь + '/ports'), api.get('/api/sessions')]);
+        } catch (error) { toastError(error); return; }
+        порты = порты.ports || [];
+        сессии = сессии.items || [];
+        if (!порты.length) { toast('В захвате нет датаграмм UDP', 'error'); return; }
+        const порт = h('select', { 'aria-label': 'Порт UDP' }, порты.map((п) =>
+            h('option', { value: String(п.порт) }, п.порт + ' — датаграмм ' + fmtNumber(п.датаграмм) + ', ' + fmtBytes(п.байт))));
+        const отправитель = h('select', { 'aria-label': 'Отправитель' });
+        function рисоватьОтправителей() {
+            const п = порты.find((х) => String(х.порт) === порт.value) || порты[0];
+            clear(отправитель);
+            отправитель.appendChild(h('option', { value: '' }, 'все отправители'));
+            (п.источники || []).forEach((и) => отправитель.appendChild(h('option', { value: и.адрес }, и.адрес + ' — ' + fmtNumber(и.датаграмм))));
+        }
+        порт.addEventListener('change', рисоватьОтправителей);
+        рисоватьОтправителей();
+        const сессия = h('select', { 'aria-label': 'Сессия' },
+            h('option', { value: '' }, '— новая сессия —'),
+            сессии.map((с) => h('option', { value: с.id }, с.name + (с.mine ? '' : ' (от ' + (с.owner_name || '—') + ')'))));
+        const имяСессии = h('input', { type: 'text', value: состояние.имя, 'aria-label': 'Имя новой сессии' });
+        const имяПоле = h('label', { class: 'field' }, h('span', {}, 'Имя новой сессии'), имяСессии);
+        сессия.addEventListener('change', () => { имяПоле.hidden = !!сессия.value; });
+        const вид = h('select', { 'aria-label': 'Срез заголовка' },
+            h('option', { value: 'нет' }, 'ничего не отбрасывать'),
+            h('option', { value: 'байт' }, 'отбросить N байт в начале каждой датаграммы'),
+            h('option', { value: 'rtp' }, 'заголовок RTP целиком (с CSRC и расширением)'));
+        const байт = h('input', { type: 'number', min: 0, max: 65535, value: '12', style: { width: '7em' }, 'aria-label': 'Байт среза' });
+        const байтПоле = h('label', { class: 'small', hidden: true }, 'N = ', байт, ' байт (RTP без CSRC — 12)');
+        вид.addEventListener('change', () => { байтПоле.hidden = вид.value !== 'байт'; });
+        const упорядочить = h('input', { type: 'checkbox' });
+        const порядок = h('select', { 'aria-label': 'Порядок бит в байте' },
+            [['msb', 'старший бит первым (как в сети)'], ['lsb', 'младший бит первым'], ['auto', 'определить по маркеру цикла']]
+                .map(([з, т]) => h('option', { value: з }, т)));
+        const окно = openModal({
+            title: 'Нагрузку порта — в сессию потоков',
+            body: h('div', { class: 'stol-dialog zs-dialog' },
+                h('label', { class: 'field' }, h('span', {}, 'Порт UDP получателя'), порт),
+                h('label', { class: 'field' }, h('span', {}, 'Отправитель'), отправитель),
+                h('label', { class: 'field' }, h('span', {}, 'Срез заголовка'), вид), байтПоле,
+                h('label', { class: 'small' }, упорядочить, ' упорядочить по номеру RTP (пропуски и перестановки — в происхождение)'),
+                h('label', { class: 'field' }, h('span', {}, 'Порядок бит в байте'), порядок),
+                h('label', { class: 'field' }, h('span', {}, 'Сессия'), сессия), имяПоле,
+                h('div', { class: 'muted small' }, 'Тела датаграмм идут подряд в порядке прихода — одним массивом на столе сессии, сразу видным битами.')),
+            footer: [
+                h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Отмена'),
+                h('button', { class: 'btn btn--primary', onclick: (e) => отправить(e.currentTarget) }, 'В сессию'),
+            ],
+        });
+        async function отправить(кнопка) {
+            кнопка.disabled = true;
+            try {
+                let сид = сессия.value;
+                if (!сид) {
+                    const имя = имяСессии.value.trim();
+                    if (!имя) { toast('Назовите новую сессию', 'error'); return; }
+                    сид = (await api.post('/api/sessions', { name: имя })).id;
+                }
+                const d = await api.post(путь + '/to-session', {
+                    session: сид, port: Number(порт.value), source: отправитель.value,
+                    cut: вид.value === 'rtp' ? 'rtp' : (вид.value === 'байт' ? Number(байт.value) || 0 : 0),
+                    rtp_order: упорядочить.checked, bit_order: порядок.value,
+                });
+                окно.close();
+                toast('В сессию: ' + fmtBytes(d.bytes) + '. ' + (d.notes || []).slice(1).join('; '), 'ok', 8000);
+                navigate('#/session/' + encodeURIComponent(сид));
+            } catch (error) {
+                toastError(error);
+            } finally {
+                кнопка.disabled = false;
+            }
+        }
+    }
+
     async function renderPakety(view, capId) {
         clear(view);
         const page = h('div', { class: 'page pakety' });
@@ -15539,7 +15972,9 @@
         }
         const picker = h('input', { type: 'file', accept: '.pcap,.pcapng,.cap,.sig,.dmp' });
         const кнопка = h('button', { class: 'btn btn--primary', onclick: () => начать() }, 'Открыть');
-        page.appendChild(h('div', { class: 'page-head' }, h('div', {}, h('h2', {}, 'Пакеты'))));
+        page.appendChild(h('div', { class: 'page-head' }, h('div', {}, h('h2', {}, 'Пакеты')),
+            h('div', { class: 'page-head-actions' },
+                h('a', { class: 'btn', href: '#/zahvat', title: 'Снять трафик с сетевой карты или порта UDP сервера' }, 'Захват с сети'))));
         page.appendChild(h('div', { class: 'card card-pad potok-start' },
             h('label', { class: 'field' }, h('span', {}, 'Захват: pcap, pcapng или .sig (кадры с длиной)'), picker),
             h('div', { class: 'row' }, кнопка)));

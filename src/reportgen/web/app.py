@@ -88,6 +88,10 @@ def create_app(settings: Settings | None = None,
         # начинаем. Брошенная на полуслове запись хуже пяти секунд ожидания.
         if service.vectors is not None:
             service.vectors.stop()
+        # Захваты с сети: закрыть сокеты и дописать файлы (итог ISB), а не бросить на полуслове.
+        захваты = getattr(app.state, "zahvat_seti", None)
+        if захваты is not None:
+            захваты.остановить_все()
 
     app = FastAPI(
         lifespan=lifespan,
