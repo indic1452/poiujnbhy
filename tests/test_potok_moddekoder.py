@@ -1498,7 +1498,8 @@ process.stdout.write(JSON.stringify(итог));
                                       {"что": "svg", "т": [["1<b>", 0.0, 1.0], ["0", 0.0, -1.0]], "н": None, "п": ""}])
         self.assertEqual(4, svg.count("<circle"))
         self.assertEqual(5, svg.count("<text"))
-        self.assertIn('aria-label="вид кода"', svg)
+        self.assertTrue(svg.startswith('<svg xmlns="http://www.w3.org/2000/svg" class="stol-md-svg" viewBox="-1.9 -1.9 3.8 3.8" '
+                                       'role="img" aria-label="вид кода"><line class="stol-md-axis"'), svg[:200])
         self.assertIn('viewBox="-1.9 -1.9 3.8 3.8"', svg)
         self.assertIn('<circle class="stol-md-pt" cx="0" cy="-1" r="0.05"/>', svg)
         self.assertIn('class="stol-md-over"', svg)
@@ -1520,6 +1521,10 @@ process.stdout.write(JSON.stringify(итог));
         self.assertIn('<line class="stol-md-axis" x1="-1.9" y1="0" x2="1.9" y2="0"/>', мало)
         self.assertIn('<line class="stol-md-axis" x1="0" y1="-1.9" x2="0" y2="1.9"/>', мало)
         self.assertIn('<text class="stol-md-over" x="0.5" y="-0.16" font-size="0.221">11</text>', svg)
+        # Ось y картинки — вниз: точка выше центра рисуется с отрицательным y.
+        [одна] = self.выполнить([{"что": "svg", "т": [["1", 0.5, 0.25]], "н": [], "п": ""}])
+        self.assertIn('<circle class="stol-md-pt" cx="0.5" cy="-0.25" r="0.05"/>', одна)
+        self.assertIn('<text class="stol-md-lbl" x="0.5" y="-0.33" font-size="0.26">1</text>', одна)
         # Метка — от 1 до 6 знаков 0/1: пустая и из 7 знаков не выводятся.
         [края] = self.выполнить([{"что": "svg", "т": [["", 0.0, 1.0], ["0000000", 0.0, -1.0], ["111111", 1.0, 0.0]], "н": [], "п": ""}])
         self.assertEqual(2, края.count(">?</text>"))
@@ -1530,12 +1535,14 @@ process.stdout.write(JSON.stringify(итог));
                                 {"что": "растр", "б": байты, "бит": 70, "w": 8, "до": 3},
                                 {"что": "растр", "б": байты, "бит": 70, "w": 7.6, "до": 100},
                                 {"что": "растр", "б": байты, "бит": 70, "w": 0, "до": 2},
-                                {"что": "растр", "б": байты, "бит": 5, "w": 8, "до": 100}])
+                                {"что": "растр", "б": байты, "бит": 5, "w": 8, "до": 100},
+                                {"что": "растр", "б": [0x81], "бит": 8, "w": 4, "до": 9}])
         self.assertEqual([8, 8, биты[:64].tolist()], итоги[0])
         self.assertEqual([3, 8, биты[:24].tolist()], итоги[1])
         self.assertEqual([8, 8, биты[:64].tolist()], итоги[2])
         self.assertEqual([2, 1, биты[:2].tolist()], итоги[3])
         self.assertEqual([0, 8, []], итоги[4])
+        self.assertEqual([2, 4, [1, 0, 0, 0, 0, 0, 0, 1]], итоги[5])         # первый и последний бит — единицы
 
 
 if __name__ == "__main__":
