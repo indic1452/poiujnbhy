@@ -8976,6 +8976,43 @@ body.reading .msg .body {
 .stol-raster { flex: 1; overflow: auto; padding: 8px; }
 .stol-tribs { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow: auto; }
 .stol-tribs .row { display: flex; gap: 8px; align-items: center; }
+/* Окно «Матрицы над GF(2)»: слева исходная и действие, справа итог — матрицы моноширинно,
+   опорные столбцы подсвечены, номера строк и линейка столбцов не попадают в выделение. */
+.stol-mx { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.stol-mx-params { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.stol-mx-params .stol-pane-head { margin-top: 4px; padding: 4px 0; }
+.stol-mx-pane { display: flex; flex-direction: column; gap: 6px; }
+.stol-mx-pane[hidden] { display: none; }
+.stol-mx-src { align-self: flex-start; }
+.stol-mx-text { width: 100%; min-height: 72px; resize: vertical; font-family: var(--font-mono); font-size: var(--fs-sm); line-height: 1.4; }
+.stol-mx-params select { width: 100%; }
+.stol-mx-params .stol-field-form input { width: 6em; }
+.stol-mx-result { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.stol-mx-bar { display: flex; flex-wrap: wrap; gap: 6px; }
+.stol-mx-out { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-height: 64vh; overflow: auto; padding-right: 2px; }
+.stol-mx-sum { background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius);
+    padding: 8px 10px; font-size: var(--fs-sm); line-height: 1.5; }
+.stol-mx-block { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); min-width: 0; }
+.stol-mx-block > header { display: flex; justify-content: space-between; gap: 12px; padding: 4px 10px; font-size: var(--fs-sm); font-weight: 600;
+    background: var(--panel-2); border-bottom: 1px solid var(--border); border-radius: var(--radius) var(--radius) 0 0; }
+.stol-mx-block > header .muted { font-weight: 400; }
+.stol-mx-mat { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; white-space: pre; overflow: auto; max-height: 40vh; padding: 6px 10px; color: var(--text); }
+.stol-mx-ruler { color: var(--faint); user-select: none; }
+.stol-mx-rn { display: inline-block; min-width: 4ch; margin-right: 1.5ch; text-align: right; color: var(--faint); user-select: none; }
+.stol-mx-piv { background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 2px; }
+.stol-mx-row.is-pivot { background: var(--mark); }
+.stol-mx-row.is-changed { box-shadow: inset 3px 0 0 var(--accent); }
+.stol-mx-spec { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 10px; }
+.stol-mx-spec > div { display: flex; flex-direction: column; align-items: center; min-width: 3.5em; padding: 2px 8px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.stol-mx-spec b { color: var(--accent); }
+.stol-mx-spec span { color: var(--muted); }
+.stol-mx-steps > summary { cursor: pointer; font-size: var(--fs-sm); font-weight: 600; padding: 2px 0; }
+.stol-mx-step { margin: 6px 0 10px; }
+.stol-mx-step .stol-mx-mat { max-height: none; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-top: 3px; }
+@media (max-width: 720px) {
+    .stol-mx { grid-template-columns: 1fr; }
+}
 /* «screen and» — чтобы последним блоком «max-width: 900px» оставался выдвижной ящик меню. */
 @media screen and (max-width: 900px) {
     .stol-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
