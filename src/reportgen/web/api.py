@@ -3761,7 +3761,10 @@ def _моддекодер(request: Request, job_id: str, для_перебора
 
 @router.post("/potok/{job_id}/moddecoder/preview")
 def potok_moddecoder_preview(request: Request, job_id: str) -> dict[str, Any]:
-    """Просмотр: первые ``бит`` бит результата (упакованы, base64), мера структуры, таблица подстановки и шаг."""
+    """Просмотр: ``бит`` бит результата с бита ``с`` выборки (упакованы, base64), мера структуры, таблица и шаг.
+
+    ``с`` — чтобы строки мини-растра окна шли с той же фазы, что и строки просмотра (первый бит по модулю длины).
+    """
     import base64  # noqa: PLC0415
 
     import numpy as np  # noqa: PLC0415
@@ -3770,8 +3773,9 @@ def potok_moddecoder_preview(request: Request, job_id: str) -> dict[str, Any]:
     тело, н, выборка, всего = _моддекодер(request, job_id)
     try:
         показать = min(max(1, int(тело.get("бит") or 4096)), МОДДЕКОДЕР_ПРОСМОТР_ДО)
+        с = max(0, int(тело.get("с") or 0))
     except (TypeError, ValueError, OverflowError):
-        raise ServiceError("бит — сколько бит результата показать", 400) from None
+        raise ServiceError("бит и с — сколько бит результата показать и с какого", 400) from None
     try:
         д = moddekoder.декодер(н)
     except ValueError as ошибка:
@@ -3785,8 +3789,9 @@ def potok_moddecoder_preview(request: Request, job_id: str) -> dict[str, Any]:
         вариантов: int | None = moddekoder.число_вариантов(н)
     except ValueError:
         вариантов = None
-    return {"биты": base64.b64encode(np.packbits(ряд[:показать]).tobytes()).decode("ascii"),
-            "бит": int(min(показать, len(ряд))), "мера": round(moddekoder.мера(ряд, кадр), 3),
+    показано = ряд[с:с + показать]
+    return {"биты": base64.b64encode(np.packbits(показано).tobytes()).decode("ascii"),
+            "бит": int(len(показано)), "с": с, "мера": round(moddekoder.мера(ряд, кадр), 3),
             "мера_исходного": round(moddekoder.мера(выборка[:len(ряд)], кадр), 3),
             "таблица": list(д.таблица), "номера": list(д.номера), "метки": list(д.метки),
             "запись": moddekoder.запись(д.таблица or д.метки), "описание": д.описание, "слой": д.слой(),
