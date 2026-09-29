@@ -201,8 +201,9 @@ def _pdf(д: bytes, м: int) -> int | None:
         return None
     следующий = д.find(b"%PDF-", м + 5, м + ФАЙЛ_ДО)
     граница = следующий if следующий >= 0 else min(len(д), м + ФАЙЛ_ДО)
-    конец = д.rfind(b"%%EOF", м, граница)
-    if конец < 0:
+    try:
+        конец = д.rindex(b"%%EOF", м, граница)
+    except ValueError:                              # конца нет — длина неизвестна
         return 0
     # За маркером конца — перевод строки (CR LF, CR или LF): он ещё часть последней строки файла.
     конец += 5
@@ -216,8 +217,11 @@ def _zip(д: bytes, м: int) -> int | None:
     имя_дл = struct.unpack_from("<H", д, м + 26)[0]
     if not 0 < имя_дл < 1024:
         return None
-    конец = д.find(b"PK\x05\x06", м, м + ФАЙЛ_ДО)
-    if конец < 0 or конец + 22 > len(д):
+    try:
+        конец = д.index(b"PK\x05\x06", м, м + ФАЙЛ_ДО)
+    except ValueError:                              # конца каталога нет — длина неизвестна
+        return 0
+    if конец + 22 > len(д):
         return 0
     # Начало архива — конец каталога минус его размер и смещение (zipfile._EndRecData: concat); у
     # заголовка члена в середине архива оно не сходится — это не отдельный ZIP. ZIP64 (0xFFFFFFFF) — без сверки.
@@ -609,7 +613,7 @@ def _ole(д: bytes, м: int) -> int | None:
     if сектор is None:
         return None
     номера = _ole_fat(д, м, сектор)
-    if номера is None or not номера:
+    if номера is None:                              # пустой список — ниже «последний» не найдётся: тоже 0
         return 0
     в_секторе, последний = сектор // 4, None
     for i, н in enumerate(номера):
@@ -923,7 +927,7 @@ def _macho(д: bytes, м: int) -> int | None:
     команд, размер = struct.unpack_from(порядок + "II", д, м + 16)
     if not 0 < команд < 4096 or not 0 < размер < 1 << 24:
         return None
-    место, конец = м + (32 if шире else 28), 0
+    место, концы = м + (32 if шире else 28), []
     for _ in range(команд):
         if место + 8 > len(д):
             return 0
@@ -932,15 +936,15 @@ def _macho(д: bytes, м: int) -> int | None:
             return None
         if команда == 0x19 and место + 56 <= len(д):
             смещение, объём = struct.unpack_from(порядок + "QQ", д, место + 40)
-            конец = max(конец, смещение + объём)
+            концы.append(смещение + объём)
         elif команда == 0x1 and место + 40 <= len(д):
             смещение, объём = struct.unpack_from(порядок + "II", д, место + 32)
-            конец = max(конец, смещение + объём)
+            концы.append(смещение + объём)
         elif команда == 0x1D and место + 16 <= len(д):
             смещение, объём = struct.unpack_from(порядок + "II", д, место + 8)
-            конец = max(конец, смещение + объём)
+            концы.append(смещение + объём)
         место += длина
-    return _итог(max(конец, место - м))
+    return _итог(max([место - м, *концы]))
 
 
 def _macho_fat(д: bytes, м: int) -> int | None:
@@ -951,15 +955,15 @@ def _macho_fat(д: bytes, м: int) -> int | None:
     архитектур = struct.unpack_from(">I", д, м + 4)[0]
     if not 0 < архитектур < 20:
         return None
-    конец = 0
+    концы = []
     for i in range(архитектур):
         if м + 8 + 20 * i + 20 > len(д):
             return 0
         смещение, размер = struct.unpack_from(">II", д, м + 16 + 20 * i)
         if смещение < 8 + 20 * архитектур:
             return None
-        конец = max(конец, смещение + размер)
-    return _итог(конец)
+        концы.append(смещение + размер)
+    return _итог(max(концы))
 
 
 def _iso(д: bytes, м: int) -> int | None:

@@ -532,6 +532,40 @@ class ZipPdfTests(unittest.TestCase):
         struct.pack_into("<II", zip64, конец + 12, 0xFFFFFFFF, 5)
         self.assertEqual(len(данные) - второй, poisk._zip(bytes(zip64), второй))
 
+    def test_zip_заголовок_и_конец_каталога(self):
+        данные = обр.zip_([("a.txt", b"a" * 100)])
+        self.assertEqual(0, poisk._zip(данные[:30], 0))
+        self.assertIsNone(poisk._zip(данные[:29], 0))
+        self.assertEqual(0, poisk._zip(данные[:-22], 0))                # конца каталога нет
+        self.assertEqual(0, poisk._zip(данные[:-1], 0))                 # конец каталога оборван
+        for версия, итог in ((63, len(данные)), (64, None)):
+            испорчен = bytearray(данные)
+            struct.pack_into("<H", испорчен, 4, версия)
+            with self.subTest(версия=версия):
+                self.assertEqual(итог, poisk._zip(bytes(испорчен), 0))
+        for длина_имени in (1, 1023):
+            буфер = io.BytesIO()
+            with zipfile.ZipFile(буфер, "w") as z:
+                z.writestr("x" * длина_имени, b"1")
+            with self.subTest(длина_имени=длина_имени):
+                self.assertEqual(len(буфер.getvalue()), poisk._zip(буфер.getvalue(), 0))
+        длинное = bytearray(данные)
+        struct.pack_into("<H", длинное, 26, 1024)
+        self.assertIsNone(poisk._zip(bytes(длинное), 0))
+        буфер = io.BytesIO()
+        with zipfile.ZipFile(буфер, "w") as z:
+            z.writestr("a.txt", b"1")
+            z.comment = b"comment"
+        self.assertEqual(len(буфер.getvalue()), poisk._zip(буфер.getvalue() + b"tail", 0))
+
+    def test_вид_zip_по_окну_64_кб(self):
+        буфер = io.BytesIO()
+        with zipfile.ZipFile(буфер, "w", zipfile.ZIP_STORED) as z:
+            z.writestr("big.bin", bytes(40000))
+            z.writestr("[Content_Types].xml", "<Types/>")
+            z.writestr("word/document.xml", "<w/>")
+        self.assertEqual("docx", poisk._zip_вид(буфер.getvalue(), 0))
+
     def test_вид_zip(self):
         def с_mimetype(тип):
             буфер = io.BytesIO()
@@ -551,6 +585,9 @@ class ZipPdfTests(unittest.TestCase):
         self.assertEqual("apk", poisk._zip_вид(обр.zip_([("AndroidManifest.xml", "x")]), 0))
         дальний = bytes(1 << 16) + обр.zip_([("[Content_Types].xml", "x"), ("xl/a", "x")])
         self.assertEqual("zip", poisk._zip_вид(дальний[:1 << 16] + обр.zip_([("a", "b")]) + дальний[1 << 16:], 0))
+
+    def test_pdf_без_конца(self):
+        self.assertEqual(0, poisk._pdf(b"%PDF-1.4\n1 0 obj<<>>endobj\n", 0))
 
     def test_pdf_конец_строки(self):
         for хвост, длина in ((b"\r\n", 2), (b"\r", 1), (b"\n", 1), (b"", 0), (b" ", 0)):
@@ -682,6 +719,11 @@ class МутантыRarTests(unittest.TestCase):
             with self.subTest(флаги=hex(флаги)):
                 self.assertEqual(len(данные), poisk._rar4(данные, 0))
 
+    def test_предел_обхода_блоков(self):
+        with mock.patch.object(poisk, "ФАЙЛ_ДО", 40):
+            self.assertEqual(0, poisk._rar4(обр.rar4(), 0))
+            self.assertEqual(0, poisk._rar5(обр.rar5(), 0))
+
     def test_rar5_границы_и_виды(self):
         подпись = b"Rar!\x1a\x07\x01\x00"
         self.assertIsNone(poisk._rar5(подпись + bytes(5), 0))
@@ -788,6 +830,7 @@ class МутантыOleTests(unittest.TestCase):
         self.assertEqual(list(range(240)), poisk._ole_fat(данные, 0, 512))
         self.assertEqual(list(range(236)), poisk._ole_fat(данные[:(242 + 1) * 512], 0, 512)[:236])
         self.assertIsNone(poisk._ole_fat(данные[:(241 + 1) * 512 - 1], 0, 512))
+        self.assertEqual(0, poisk._ole(данные[:(241 + 1) * 512 - 1], 0))
         # Число секторов DIFAT в заголовке — 1: второй не читается, хоть ссылка на него и есть.
         одна = bytearray(данные)
         struct.pack_into("<I", одна, 0x48, 1)
@@ -815,6 +858,15 @@ class МутантыOleTests(unittest.TestCase):
                              всего_fat=1, в_заголовке=[0], каталог=3)
         self.assertEqual("ole", poisk._ole_вид(данные, 0))
         self.assertEqual("ole", poisk._ole_вид(b"\x00" * 37 + данные, 37))
+
+    def test_имя_по_длине_а_не_до_конца_поля(self):
+        # За нулём имени — старые байты (поле не обнулено): имя — ровно «длина» байт, остальное не читается.
+        fat = сектор_fat([0xFFFFFFFD, self.КОНЕЦ])
+        запись = bytearray(запись_каталога("Book"))
+        запись[10:14] = "Zz".encode("utf-16-le")
+        данные = ole_собрать([fat, запись_каталога("Root Entry") + bytes(запись) + bytes(256)],
+                             всего_fat=1, в_заголовке=[0], каталог=1)
+        self.assertEqual("xls", poisk._ole_вид(данные, 0))
 
     def test_длина_имени_больше_64(self):
         fat = сектор_fat([0xFFFFFFFD, self.КОНЕЦ])
@@ -962,6 +1014,46 @@ class МутантыMachOTests(unittest.TestCase):
 
     def test_универсальный_короткий(self):
         self.assertEqual(0, poisk._macho_fat(обр.macho_fat()[:8], 0))
+
+
+class МутантыMachOПределыTests(unittest.TestCase):
+    def тонкий(self, команд, размер=None):
+        команды = struct.pack("<II", 0x26, 8) * команд
+        return struct.pack("<IiiIIIII", 0xFEEDFACF, 7, 3, 2, команд, len(команды) if размер is None else размер, 0,
+                           0) + команды
+
+    def test_число_и_размер_команд(self):
+        self.assertEqual(0, poisk._macho(struct.pack("<IiiIIII", 0xFEEDFACE, 7, 3, 2, 1, 8, 0) + bytes(4), 0))
+        for команд, итог in ((4095, 32 + 8 * 4095), (4096, None)):
+            with self.subTest(команд=команд):
+                self.assertEqual(итог, poisk._macho(self.тонкий(команд), 0))
+        for размер, итог in ((1, 40), ((1 << 24) - 1, 40), (1 << 24, None)):
+            with self.subTest(размер=размер):
+                self.assertEqual(итог, poisk._macho(self.тонкий(1, размер), 0))
+
+    def fat(self, записи):
+        return struct.pack(">II", 0xCAFEBABE, len(записи)) + b"".join(
+            struct.pack(">iiIII", 7, 3, смещение, размер, 12) for смещение, размер in записи)
+
+    def test_универсальный_число_таблица_и_границы(self):
+        for архитектур, итог in ((19, 4196), (20, None)):
+            with self.subTest(архитектур=архитектур):
+                self.assertEqual(итог, poisk._macho_fat(self.fat([(4096, 100)] * архитектур), 0))
+        два = self.fat([(4096, 100), (8192, 100)])
+        self.assertEqual(48, len(два))
+        self.assertEqual(8292, poisk._macho_fat(два, 0))
+        for длина in (47, 30):
+            with self.subTest(длина=длина):
+                self.assertEqual(0, poisk._macho_fat(два[:длина], 0))
+        self.assertIsNone(poisk._macho_fat(self.fat([(4096, 100), (30, 100)]), 0))
+        self.assertEqual(8292, poisk._macho_fat(self.fat([(8192, 100), (48, 100)]), 0))
+
+
+class МутантыIsoTests(unittest.TestCase):
+    def test_граница_дескриптора(self):
+        данные = обр.iso()
+        self.assertEqual(len(данные), poisk._iso(данные[:32769 + 131], 32769))
+        self.assertIsNone(poisk._iso(данные[:32769 + 130], 32769))
 
 
 if __name__ == "__main__":
