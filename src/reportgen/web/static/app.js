@@ -9151,7 +9151,7 @@
     /** Перестановка бит метки «1,2,3», «312», «1 3 2» → { перестановка } (пусто — тождественная) или { ошибка } — как на сервере. */
     function перестановкаБит(текст, k) {
         const т = String(текст === undefined || текст === null ? '' : текст).trim();
-        let числа = т.length > 1 && т.length === k && /^\d+$/.test(т) ? т.split('').map(Number) : (т.match(/\d+/g) || []).map(Number);
+        let числа = т.length === k && /^\d+$/.test(т) ? т.split('').map(Number) : (т.match(/\d+/g) || []).map(Number);
         if (!числа.length) числа = Array.from({ length: k }, (_, i) => i + 1);
         const поПорядку = числа.slice().sort((a, b) => a - b);
         if (поПорядку.length !== k || поПорядку.some((ч, i) => ч !== i + 1)) return { ошибка: 'перестановка чисел 1…' + k + ' по одному разу' };

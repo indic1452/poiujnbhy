@@ -119,11 +119,12 @@ def плоскость(с: Созвездие) -> Плоскость:
     M = с.M
     xy = np.array([(x, y) for _, x, y in с.точки], dtype=float)
     метки = [int(м, 2) for м, _, _ in с.точки]
-    столбцы = sorted({round(float(x), 6) for x in xy[:, 0]})
-    строки = sorted({round(float(y), 6) for y in xy[:, 1]})
+    # Координаты точные: у картинки — половины и чётные, у встроенных округлены до 12 знаков.
+    столбцы = sorted(set(xy[:, 0].tolist()))
+    строки = sorted(set(xy[:, 1].tolist()))
     if M >= 8 and len(столбцы) * len(строки) == M:
-        i = [столбцы.index(round(float(x), 6)) for x in xy[:, 0]]
-        q = [строки.index(round(float(y), 6)) for y in xy[:, 1]]
+        i = [столбцы.index(x) for x in xy[:, 0].tolist()]
+        q = [строки.index(y) for y in xy[:, 1].tolist()]
         порядок = sorted(range(M), key=lambda j: (-q[j], i[j]))
         a, b = len(столбцы), len(строки)
         точки = np.array([(i[j] - (a - 1) / 2, q[j] - (b - 1) / 2) for j in порядок])
@@ -326,7 +327,7 @@ def найти(имя: str) -> Созвездие:
 def чистое_имя(имя: str) -> str:
     """Имя файла плоскости: без пути и лишних знаков, с расширением .etl."""
     имя = re.sub(r"[^\w .()\-]", "_", str(имя).replace("\\", "/").split("/")[-1]).strip(" .")
-    if len(имя) < 5 or not имя.lower().endswith(".etl"):
+    if not имя.lower().endswith(".etl"):
         raise ValueError("плоскость — файл с расширением .etl")
     return имя if len(имя) <= 120 else имя[:116] + имя[-4:]
 
@@ -366,7 +367,7 @@ def _числа(значение: Any, цифрами: int) -> list[int] | None:
         except (TypeError, ValueError, OverflowError):
             return None
     т = str(значение).strip()
-    if 1 < len(т) == цифрами and т.isdigit():
+    if len(т) == цифрами and т.isdigit():
         return [int(ц) for ц in т]
     return [int(ч) for ч in re.findall(r"\d+", т)]
 
@@ -463,7 +464,7 @@ def _сопоставление(н: Настройки) -> list[int]:
     до = np.hypot(*(xy[:, None, :] - цели[None, :, :]).transpose(2, 0, 1))
     между = np.hypot(*(цели[:, None, :] - цели[None, :, :]).transpose(2, 0, 1))
     np.fill_diagonal(между, np.inf)
-    if (до.min(axis=1) >= между.min() / 2 - 1e-9).any():
+    if (до.min(axis=1) >= между.min() / 2).any():
         название = f"ФМ-{len(цели)}" if код.вид == "ФМ" else f"КАМ-{len(цели)}"
         raise ValueError(f"поворот {н.поворот:g}° не переводит созвездие в себя; для {название} шаг {код.шаг:g}°")
     куда = до.argmin(axis=1).tolist()
@@ -476,8 +477,8 @@ def _сопоставление(н: Настройки) -> list[int]:
 def _номера_по_кругу(н: Настройки) -> list[int]:
     """Номер точки демодулятора → номер по окружности после инверсии и поворота (от наименьшего угла ≥ 0)."""
     M = 1 << н.k
-    углы = np.arange(M) * 360.0 / M * (-1 if н.инверсия else 1) + н.поворот
-    углы = np.round(углы, 7) % 360
+    # Углы — кратные 360/M (у M до 64 — точные двоичные дроби) плюс поворот: округлять нечего.
+    углы = (np.arange(M) * 360.0 / M * (-1 if н.инверсия else 1) + н.поворот) % 360
     return np.argsort(np.argsort(углы, kind="stable"), kind="stable").tolist()
 
 
