@@ -3736,7 +3736,11 @@ def potok_plane_file(request: Request, name: str) -> Response:
 
 
 def _моддекодер(request: Request, job_id: str, для_перебора: bool = False):
-    """Тело запроса окна декодера → (этап, настройки, выборка, всего бит) с проверкой доступа."""
+    """Тело запроса окна декодера → (тело, настройки, выборка от начала массива, всего бит) с проверкой доступа.
+
+    ``для_перебора`` — вариант и внешняя таблица не нужны (перебор размечает точки сам), «только_грей» —
+    из тела запроса, если есть.
+    """
     from ..potok import moddekoder  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
@@ -3747,7 +3751,6 @@ def _моддекодер(request: Request, job_id: str, для_перебора
     _файл_бит_или_400(request, user, job_id, этап)
     параметры = тело.get("параметры")
     if для_перебора and isinstance(параметры, dict):
-        # Перебор размечает точки вида кода сам: вариант и внешняя таблица ему не нужны.
         параметры = {**параметры, "вариант": 0, "таблица": "",
                      "только_грей": тело.get("только_грей", параметры.get("только_грей", True))}
     try:
@@ -3778,9 +3781,6 @@ def potok_moddecoder_preview(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError("бит и с — сколько бит результата показать и с какого", 400) from None
     try:
         д = moddekoder.декодер(н)
-    except ValueError as ошибка:
-        raise ServiceError(str(ошибка), 400) from None
-    try:
         кадр = moddekoder.кадр(тело.get("кадр"))
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None

@@ -719,7 +719,7 @@ class ДекВсехTests(unittest.TestCase):
         cls.x = hdlc_биты()
         cls.поток = передать(cls.x, мд.разобрать_etl(ФМ8_ETL), мд.найти("DVB-S2 8PSK"), 135, True)
 
-    def проверить_первым(self, итог, поток):
+    def проверить_первым(self, итог, поток, н):
         первый, второй = итог["лучшие"][:2]
         таблица = [int(ц) for ц in первый["таблица"]]
         self.assertTrue(np.array_equal(self.x, применить_вручную(поток, 3, таблица)))
@@ -731,14 +731,14 @@ class ДекВсехTests(unittest.TestCase):
         self.assertGreater(первый["мера"], итог["лучшие"][2]["мера"] + 5)
         self.assertGreater((первый["мера"] - итог["медиана"]) / итог["разброс"], 5)
         # Выбранный вариант декодирует весь поток — как «Декодирование».
-        self.assertTrue(np.array_equal(self.x, мд.декодер(replace(self.н, вариант=первый["номер"])).применить(поток)))
+        self.assertTrue(np.array_equal(self.x, мд.декодер(replace(н, вариант=первый["номер"])).применить(поток)))
 
     def test_верный_вариант_первым(self):
         self.н = настроить()
         итог = мд.перебор(self.поток, self.н, 1, 96)
         self.assertEqual((96, 1, 96, 96), (итог["всего"], итог["с"], итог["до"], len(итог["меры"])))
         self.assertEqual(20, len(итог["лучшие"]))
-        self.проверить_первым(итог, self.поток)
+        self.проверить_первым(итог, self.поток, self.н)
         # Медиана и разброс (MAD) — по всем мерам.
         меры = np.array(итог["меры"])
         self.assertAlmostEqual(float(np.median(меры)), итог["медиана"], places=3)
@@ -766,7 +766,7 @@ class ДекВсехTests(unittest.TestCase):
                 self.н = мд.настройки({"модуляция": "ФМ8", "демодулятор": "8fm.etl", "вид_кода": "8fm_dvbs2.ETL"})
                 self.assertFalse(self.н.вид_кода.встроенная)
                 итог = мд.перебор(self.поток, self.н, 1, 96)
-                self.проверить_первым(итог, self.поток)
+                self.проверить_первым(итог, self.поток, self.н)
             finally:
                 мд.КАТАЛОГ = старый
 
@@ -1093,6 +1093,23 @@ class ПапкаTests(unittest.TestCase):
             мд.сохранить("a.etl", ФМ8_ETL.encode())
         self.assertEqual("папка плоскостей не задана", str(о.exception))
         self.assertEqual([], мд.файлы())
+
+
+class ПапкаЗаданийTests(unittest.TestCase):
+    def test_папка_плоскостей_рядом_с_заданиями(self):
+        """Задания задают папку плоскостей рядом с собой и создают её (с родителями; второй раз — не мешает)."""
+        from reportgen.potok.zadaniya import Задания  # noqa: PLC0415
+
+        старый = мд.КАТАЛОГ
+        self.addCleanup(setattr, мд, "КАТАЛОГ", старый)
+        with tempfile.TemporaryDirectory() as папка:
+            корень = Path(папка) / "нет" / "данные"
+            Задания(корень / "potok")
+            self.assertEqual(корень / "ploskosti", мд.КАТАЛОГ)
+            self.assertTrue(мд.КАТАЛОГ.is_dir())
+            (мд.КАТАЛОГ / "8fm.etl").write_text(ФМ8_ETL, encoding="utf-8")
+            Задания(корень / "potok")
+            self.assertEqual(["8fm.etl"], [п.name for п in мд.файлы()])
 
 
 class МоддекодерЧерезСерверTests(unittest.TestCase):
