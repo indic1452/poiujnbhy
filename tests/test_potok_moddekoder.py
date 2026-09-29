@@ -957,6 +957,11 @@ class АвтоматTests(unittest.TestCase):
         имя, ряд = next(iter(найдено.дальше.items()))
         self.assertIn("относительная", имя)
         self.assertTrue(np.array_equal(x, ряд))
+        # Полная мера — только у лучшего по дешёвой (код проявился): из обоих вариантов, прежнего и по таблицам.
+        with unittest.mock.patch.object(ploskost, "ПОЛНАЯ_ЛУЧШИМ", 1):
+            найдено = ploskost.найти_фм(np.bitwise_xor.accumulate(x), 1, лучших=1)
+        self.assertTrue(найдено.подробно[0].endswith("; код проявился у 1 лучших по дешёвой мере — полная мера "
+                                                     "(со скремблером) только у них"), найдено.подробно[0])
 
     def test_подбор_в_кадрах_по_таблице_из_папки(self):
         """Код произведения в кадрах модема, метки — своей нумерацией из папки: её класс по инверсии — новый, он и выигрывает."""
@@ -1030,8 +1035,13 @@ class АвтоматTests(unittest.TestCase):
         self.assertEqual(list(ждём.values()), новые)
         self.assertTrue(новые)
         self.assertEqual([[в] for в in доп if "таблица" in в], ploskost._классы_плоскостей(3, классы, False))
-        # Для ФМ-4 новых таблиц нет вовсе.
+        # Для ФМ-4 новых таблиц нет вовсе (23 прежних варианта — все 4! перестановки, кроме тождественной).
         self.assertEqual([], [в for в in ploskost.варианты_плоскостей(2, ploskost.варианты_фм(2)) if "таблица" in в])
+        # ФМ-2: один прежний вариант (инверсия) — класс из одного; новых классов нет.
+        классы1 = ploskost.классы_по_инверсии(1)
+        self.assertEqual(1, len(классы1))
+        self.assertEqual(1, len(классы1[0]))
+        self.assertEqual([], ploskost._классы_плоскостей(1, классы1, True))
 
 
 # -- папка, API ------------------------------------------------------------------------------
@@ -1117,10 +1127,13 @@ class ПапкаЗаданийTests(unittest.TestCase):
         from test_web import make_app  # noqa: PLC0415
 
         with tempfile.TemporaryDirectory() as папка:
-            приложение, *_ = make_app(Path(папка), with_library=False)
-            self.assertFalse((Path(папка) / "ploskosti").exists())
+            данные = Path(папка) / "нет" / "данные"          # и родителей ещё нет
+            приложение, *_ = make_app(данные, with_library=False)
+            self.assertFalse((данные / "ploskosti").exists())
             with TestClient(приложение):
-                self.assertTrue((Path(папка) / "ploskosti").is_dir())
+                self.assertTrue((данные / "ploskosti").is_dir())
+            with TestClient(приложение):                      # второй запуск — папка уже есть
+                self.assertTrue((данные / "ploskosti").is_dir())
 
 
 class МоддекодерЧерезСерверTests(unittest.TestCase):
