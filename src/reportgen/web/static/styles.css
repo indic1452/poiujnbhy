@@ -8795,6 +8795,19 @@ body.reading .msg .body {
 .stol-node:hover rect { stroke: var(--accent); stroke-width: 2; }
 .stol-edge { stroke: var(--muted); fill: none; stroke-width: 1; }
 .stol-edge.is-manual { stroke: var(--accent); stroke-width: 1.4; }
+/* Отмеченные ветки (Ctrl+щелчок): подложка с рамкой вокруг массива — не путается с текущим (залит акцентом). */
+.stol-svg { user-select: none; }
+.stol-node rect.stol-mark { fill: none; stroke: none; }
+.stol-node.is-marked rect.stol-mark { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.stol-node.is-marked text { fill: var(--accent); font-weight: 700; }
+.stol-marked-info { font-weight: 400; }
+.stol-marked-info b { color: var(--accent); font-weight: 600; }
+.stol-menu-run.is-danger { color: var(--danger); }
+.stol-menu-run.is-danger:hover, .stol-menu-run.is-danger:focus-visible { background: var(--danger-soft); }
+/* Окно подтверждения удаления веток: что уходит и что не уйдёт. */
+.stol-del-list { margin: 8px 0 0; padding-left: 18px; max-height: 40vh; overflow: auto; }
+.stol-del-list li { margin: 4px 0; }
+.stol-del-warn { margin-top: 8px; padding: 4px 8px; border-radius: 6px; background: var(--warn-soft); color: var(--text); font-size: 12.5px; }
 .stol-status { font-size: 12px; padding: 3px 8px; border-top: 1px solid var(--border); display: flex; gap: 4px 16px; flex-wrap: wrap;
     color: var(--muted); background: var(--panel); font-variant-numeric: tabular-nums; min-height: 22px; }
 .stol-status--bits { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; }
