@@ -3209,7 +3209,8 @@ def potok_delete(request: Request, job_id: str, stage: int = 0) -> dict[str, Any
     user = require_user(request)
     _вправе_удалить(request, user, _задание_или_404(request, user, job_id))
     try:
-        ветка = _potok(request).удалить_ветку(job_id, stage, user.id, _мои_сессии(request, user))
+        ветка = _potok(request).удалить_ветку(job_id, stage, user.id, _мои_сессии(request, user),
+                                              нельзя=lambda узел: _нельзя_удалить(request, user, узел))
     except KeyError:
         raise ServiceError("у задания нет такого этапа", 404) from None
     except ValueError as ошибка:
@@ -3597,7 +3598,7 @@ def potok_matrix_gf2(request: Request) -> dict[str, Any]:
         try:
             job = str(источник["job"])
             этап, длина, сдвиг, строк = (int(источник.get(к) or 0) for к in ("stage", "period", "shift", "rows"))
-        except (KeyError, TypeError, ValueError, AttributeError):
+        except (KeyError, TypeError, ValueError, AttributeError, OverflowError):
             raise ServiceError("источник: {job, stage, period, shift, rows} — массив и целые числа", 400) from None
         _файл_бит_или_400(request, user, job, этап)
         задания = _potok(request)

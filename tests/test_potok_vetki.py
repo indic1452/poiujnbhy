@@ -255,6 +255,41 @@ class ВеткиЧерезСерверTests(unittest.TestCase):
                           "skipped": 1, "refused": []}, ответ)
         self.assertEqual([], к.get(f"/api/sessions/{сид}").json()["trees"])
 
+    def test_чужой_узел_внутри_своей_ветки(self):
+        # Участник не удаляет заодно со своей веткой узел, который под ней сделал другой участник:
+        # вся ветка отвергается (одной — 409, пачкой — отказ с причиной). Владелец сессии удаляет.
+        к = self.к
+        self.войти("engineer")
+        сид = к.post("/api/sessions", json={"name": "чужое внутри"}).json()["id"]
+        ид = к.post(f"/api/sessions/{сид}/files",
+                    files={"file": ("a.bin", bytes(range(256)) * 8, "application/octet-stream")}).json()["id"]
+        self.дождаться(ид)
+        люди = [self.сеть.repos.users.by_login(л).id for л in ("gruppa", "admin")]
+        self.assertEqual(200, к.patch(f"/api/sessions/{сид}", json={"members": люди}).status_code)
+        self.войти("gruppa")
+        свой = self.производный(ид, 0)
+        self.войти("admin")
+        чужой = self.производный(свой, 0)
+        self.войти("gruppa")
+        причина = "в ветке есть чужие узлы (1): их вправе удалить только их автор или владелец сессии"
+        ответ = к.delete(f"/api/potok/{свой}")
+        self.assertEqual((409, причина), (ответ.status_code, ответ.json()["error"]))
+        ответ = к.post("/api/potok/delete-many", json={"items": [{"job": свой}]}).json()
+        self.assertEqual(([], [{"ид": свой, "этап": 0, "причина": причина}]), (ответ["deleted"], ответ["refused"]))
+        self.assertEqual([200, 200], [к.get(f"/api/potok/{и}").status_code for и in (свой, чужой)])
+        # Автор чужого удаляет своё — и тогда ветка участника удаляется целиком.
+        self.войти("admin")
+        self.assertEqual([чужой], к.delete(f"/api/potok/{чужой}").json()["deleted"])
+        self.войти("gruppa")
+        self.assertEqual([свой], к.delete(f"/api/potok/{свой}").json()["deleted"])
+        # Владелец сессии удаляет и ветку с чужими узлами.
+        self.войти("gruppa")
+        свой = self.производный(ид, 0)
+        self.войти("admin")
+        чужой = self.производный(свой, 0)
+        self.войти("engineer")
+        self.assertEqual([свой, чужой], к.delete(f"/api/potok/{свой}").json()["deleted"])
+
     def test_проверка_пачки(self):
         к = self.к
         self.войти("engineer")

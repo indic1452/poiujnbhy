@@ -775,6 +775,12 @@ class МатрицыЧерезСерверTests(unittest.TestCase):
                          self.ошибка({"op": "ранг", "source": источник | {"period": "x"}}))
         self.assertEqual("источник: {job, stage, period, shift, rows} — массив и целые числа",
                          self.ошибка({"op": "ранг", "source": "x"}))
+        # JSON допускает Infinity: int() от него — OverflowError, и это тоже ошибка ввода (400), а не сбой.
+        for поле in ("period", "stage", "shift", "rows"):
+            о = self.к.post("/api/potok/matrix", headers={"Content-Type": "application/json"},
+                            content=json.dumps({"op": "ранг", "source": источник | {поле: float("inf")}}))
+            self.assertEqual((400, "источник: {job, stage, period, shift, rows} — массив и целые числа"),
+                             (о.status_code, о.json()["error"]), поле)
         self.ошибка({"op": "ранг", "source": источник | {"job": "20200101-000000-abcdef"}}, 404)
         self.ошибка({"op": "ранг", "source": источник | {"stage": 9}}, 400)
         # Чужой массив не виден.

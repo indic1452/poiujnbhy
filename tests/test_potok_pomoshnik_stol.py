@@ -111,7 +111,10 @@ class УстройствоTests(unittest.TestCase):
         for кусок in ("resetChat();", "chat.nodes = {", "renderFeed();", "await send();", "abortAnswer()"):
             self.assertIn(кусок, панель)
         # Разговор с сервера принимается одной функцией — и страницей помощника, и панелью.
-        self.assertEqual(2, self.js.count("принятьРазговор(await api.get('/api/chats/'"))
+        self.assertIn("принятьРазговор(await api.get('/api/chats/'", self.js)
+        self.assertIn("принятьРазговор(ответ);", панель)
+        # Ответ, пришедший после ухода со стола, общее состояние чата не трогает.
+        self.assertEqual(4, панель.count("if (!узел.isConnected) return false;"))
 
 
 if __name__ == "__main__":
