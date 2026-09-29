@@ -3682,6 +3682,137 @@ def potok_matrix_delete(request: Request, name: str) -> dict[str, Any]:
     return {"ok": True}
 
 
+# -- модуляционный декодер: плоскости (.etl), просмотр, перебор вариантов ------------------
+
+@router.get("/potok-planes")
+def potok_planes(request: Request) -> dict[str, Any]:
+    """Плоскости модуляционного декодера: встроенные и файлы .etl папки (битый — с ошибкой, список не роняет)."""
+    from ..potok import moddekoder  # noqa: PLC0415
+    require_user(request)
+    _potok(request)                     # задаёт папку плоскостей
+    return {"items": moddekoder.список()}
+
+
+@router.post("/potok-planes")
+def potok_plane_add(request: Request, file: UploadFile = File(...)) -> dict[str, Any]:
+    """Положить .etl в папку плоскостей: имя очищается, только .etl, до 64 КБ, битый не сохраняется."""
+    from ..potok import moddekoder  # noqa: PLC0415
+    user = require_user(request)
+    _potok(request)
+    данные = file.file.read(moddekoder.ETL_ДО + 1)
+    if len(данные) > moddekoder.ETL_ДО:
+        raise ServiceError(f"файл .etl больше {moddekoder.ETL_ДО // 1024} КБ — это не картинка созвездия", 413)
+    try:
+        плоскость = moddekoder.сохранить(file.filename or "", данные)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _repos(request).audit.log("potok.plane", user=user, object_type="ploskost", object_id=плоскость["имя"],
+                              details={"M": плоскость["M"], "вид": плоскость["вид"]})
+    return {"plane": плоскость}
+
+
+@router.get("/potok-planes/{name}")
+def potok_plane_file(request: Request, name: str) -> Response:
+    """Плоскость файлом .etl: из папки — как лежит (и битую — чтобы поправить), встроенную — картинкой."""
+    from ..potok import moddekoder  # noqa: PLC0415
+    require_user(request)
+    _potok(request)
+    встроенная = next((с for с in moddekoder.встроенные() if с.имя == name), None)
+    if встроенная is not None:
+        данные, имя = moddekoder.в_etl(встроенная).encode("utf-8"), f"{name}.etl"
+    else:
+        путь = moddekoder.файл(name)
+        if путь is None:
+            raise ServiceError(f"плоскости «{name}» нет ни среди встроенных, ни в папке плоскостей", 404)
+        данные, имя = путь.read_bytes(), путь.name
+    return Response(данные, media_type="application/octet-stream",
+                    headers={"Content-Disposition": _disposition(имя), "X-Content-Type-Options": "nosniff"})
+
+
+#: Просмотр модуляционного декодера: бит результата — не больше.
+МОДДЕКОДЕР_ПРОСМОТР_ДО = 1 << 17
+#: «Дек. всех»: секунд на одну часть перебора (окно просит части подряд, показывает ход).
+МОДДЕКОДЕР_СРОК = 2.0
+
+
+def _моддекодер(request: Request, job_id: str, для_перебора: bool = False):
+    """Тело запроса окна декодера → (этап, настройки, выборка, всего бит) с проверкой доступа."""
+    from ..potok import moddekoder  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        этап = int(тело.get("stage") or 0)
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("stage — номер этапа", 400) from None
+    _файл_бит_или_400(request, user, job_id, этап)
+    параметры = тело.get("параметры")
+    if для_перебора and isinstance(параметры, dict):
+        # Перебор размечает точки вида кода сам: вариант и внешняя таблица ему не нужны.
+        параметры = {**параметры, "вариант": 0, "таблица": "",
+                     "только_грей": тело.get("только_грей", параметры.get("только_грей", True))}
+    try:
+        н = moddekoder.настройки(параметры)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    задания = _potok(request)
+    return тело, н, задания.биты_участка(job_id, этап, 0, moddekoder.ВЫБОРКА_СИМВОЛОВ * н.k), \
+        задания.длина_бит(job_id, этап)
+
+
+@router.post("/potok/{job_id}/moddecoder/preview")
+def potok_moddecoder_preview(request: Request, job_id: str) -> dict[str, Any]:
+    """Просмотр: первые ``бит`` бит результата (упакованы, base64), мера структуры, таблица подстановки и шаг."""
+    import base64  # noqa: PLC0415
+
+    import numpy as np  # noqa: PLC0415
+
+    from ..potok import moddekoder  # noqa: PLC0415
+    тело, н, выборка, всего = _моддекодер(request, job_id)
+    try:
+        показать = min(max(1, int(тело.get("бит") or 4096)), МОДДЕКОДЕР_ПРОСМОТР_ДО)
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("бит — сколько бит результата показать", 400) from None
+    try:
+        д = moddekoder.декодер(н)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    try:
+        кадр = moddekoder.кадр(тело.get("кадр"))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    ряд = д.применить(выборка)
+    try:
+        вариантов: int | None = moddekoder.число_вариантов(н)
+    except ValueError:
+        вариантов = None
+    return {"биты": base64.b64encode(np.packbits(ряд[:показать]).tobytes()).decode("ascii"),
+            "бит": int(min(показать, len(ряд))), "мера": round(moddekoder.мера(ряд, кадр), 3),
+            "мера_исходного": round(moddekoder.мера(выборка[:len(ряд)], кадр), 3),
+            "таблица": list(д.таблица), "номера": list(д.номера), "метки": list(д.метки),
+            "запись": moddekoder.запись(д.таблица or д.метки), "описание": д.описание, "слой": д.слой(),
+            "символов": всего // н.k, "хвост": всего % н.k, "вариантов": вариантов}
+
+
+@router.post("/potok/{job_id}/moddecoder/all")
+def potok_moddecoder_all(request: Request, job_id: str) -> dict[str, Any]:
+    """«Дек. всех»: варианты с номерами с…по — мера каждого и лучшие; часть — не дольше ``МОДДЕКОДЕР_СРОК``.
+
+    ``кадр`` {длина, начало} — мера ещё и по строкам кода в кадрах (строка просмотра окна).
+    """
+    from ..potok import moddekoder  # noqa: PLC0415
+    тело, н, выборка, _ = _моддекодер(request, job_id, для_перебора=True)
+    try:
+        с, по = int(тело.get("с") or 1), int(тело.get("по") or 1)
+        лучших = min(100, int(тело.get("лучших") or 20))
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("с, по, лучших — номера и число вариантов", 400) from None
+    try:
+        return moddekoder.перебор(выборка, н, с, по, срок=МОДДЕКОДЕР_СРОК, лучших=лучших,
+                                  кадр=moddekoder.кадр(тело.get("кадр")))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
 def _приметы_этапа(request: Request, user, job_id: str, stage: int):
     """Состояние, этап с битовым потоком (этот или ближайший ранее), приметы и подсказки.
 

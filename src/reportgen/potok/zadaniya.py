@@ -124,11 +124,15 @@ class Задания:
     """Очередь заданий разбора с журналом хода и этапами."""
 
     def __init__(self, папка: Path):
-        from . import ldpc  # noqa: PLC0415
+        from . import ldpc, moddekoder  # noqa: PLC0415
         self.папка = Path(папка)
         # Матрицы LDPC, загруженные аналитиками, — в своей папке рядом (она
         # идёт в резервную копию, разборы — нет): слой «ldpc ИМЯ» находит их по имени.
         ldpc.КАТАЛОГ = self.папка.parent / "ldpc"
+        # Плоскости модуляционного декодера (.etl) — тоже рядом: аналитик кладёт туда свои
+        # картинки созвездий, окно и автомат видят их при каждом запросе.
+        moddekoder.КАТАЛОГ = self.папка.parent / "ploskosti"
+        moddekoder.КАТАЛОГ.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
         self._очередь: queue.Queue[str] = queue.Queue()
         self._журналы: dict[str, list[str]] = {}
