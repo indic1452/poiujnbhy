@@ -481,7 +481,7 @@ class TftpTests(unittest.TestCase):
         кадры.append(ос.udp(b"\x00\x03\x00\x02" + b"B" * 512, 3001, 4001))
         кадры.append(ос.udp(b"\x00\x05\x00\x03disk full\x00", 4001, 3001, src="10.0.0.2", dst="10.0.0.1"))
         а, б = объекты(кадры)
-        self.assertEqual(("TFTP", "конфиг.cfg", файл, "UDP 10.0.0.2:4000 → 10.0.0.1:3000", [3, 7, 9]),
+        self.assertEqual(("TFTP", "конфиг.cfg", файл, "UDP 10.0.0.2:4000 → 10.0.0.1:3000", [1, 3, 7, 9]),
                          (а.вид, а.имя, а.данные, а.поток, а.пакеты))
         self.assertEqual(["чтение (RRQ), режим octet, блок 600"], а.заметки)
         self.assertEqual(("up.bin", b"B" * 512), (б.имя, б.данные))
