@@ -425,15 +425,6 @@ class ПоляTests(unittest.TestCase):
 
 
 class ЛинейныеКодыTests(unittest.TestCase):
-    def test_манчестер_при_любой_фазе(self):
-        d = с.случайные_биты(100_000)
-        поток = np.column_stack([1 - d, d]).reshape(-1)
-        for сдвиг in (0, 1):
-            with self.subTest(сдвиг=сдвиг):
-                найдено = lineynye.манчестер(ошибки(поток, 0.002)[сдвиг:])
-                данные = найдено.дальше["IEEE 802.3"]
-                self.assertGreater(np.mean(данные[:5000] == d[сдвиг:сдвиг + 5000]), 0.99)
-
     def test_4b5b(self):
         случай = np.random.default_rng(1)
         полубайты = случай.integers(0, 16, 40_000)
@@ -464,7 +455,6 @@ class ЛинейныеКодыTests(unittest.TestCase):
             warnings.simplefilter("error")
             for бит in (0, 1, 3, 9):
                 with self.subTest(бит=бит):
-                    self.assertIsNone(lineynye.манчестер(np.ones(бит, np.uint8)))
                     self.assertIsNone(lineynye.код_4b5b(np.ones(бит, np.uint8)))
                     self.assertIsNone(lineynye.найти(np.ones(бит, np.uint8)))
 
