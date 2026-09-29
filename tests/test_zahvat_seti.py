@@ -18,6 +18,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import urllib.parse
@@ -781,6 +782,61 @@ class PcapБиблиотекаTests(unittest.TestCase):
         self.assertEqual(40 if ctypes.sizeof(ctypes.c_void_p) == 8 else 20, ctypes.sizeof(pcap_bib.pcap_if))
         self.assertEqual(8, ctypes.sizeof(pcap_bib.bpf_insn))
 
+    def test_кодировка_строк(self):
+        self.assertEqual(["utf-8", "utf-8", "utf-8", "mbcs"],
+                         [pcap_bib.кодировка_строк(u, w) for u, w in ((True, True), (True, False), (False, False), (False, True))])
+
+    def test_pcap_init_и_кодировка(self):
+        """Без pcap_init (WinPcap, старая libpcap) — ANSI в Windows; с ним — UTF-8, если вернул 0."""
+        class Функция:
+            def __init__(себя, итог=0):
+                себя.итог = итог
+
+            def __call__(себя, *а):
+                return себя.итог
+
+        def библиотека(pcap_init):
+            имена = ["pcap_lib_version", "pcap_findalldevs", "pcap_freealldevs", "pcap_open_live", "pcap_open_dead",
+                     "pcap_compile", "pcap_setfilter", "pcap_freecode", "pcap_next_ex", "pcap_stats", "pcap_breakloop",
+                     "pcap_datalink", "pcap_geterr", "pcap_close"]
+            lib = type("Lib", (), {})()
+            for имя in имена:
+                setattr(lib, имя, Функция())
+            if pcap_init is not None:
+                lib.pcap_init = Функция(pcap_init)
+            return lib
+        with mock.patch.object(pcap_bib, "WINDOWS", True):
+            for pcap_init, utf8 in ((None, False), (0, True), (-1, False)):
+                with mock.patch.object(ctypes, "CDLL", return_value=библиотека(pcap_init)):
+                    lib = pcap_bib.Libpcap("wpcap.dll")
+                self.assertEqual((utf8, "utf-8" if utf8 else "mbcs"), (lib.utf8, lib.кодировка), pcap_init)
+
+    @unittest.skipUnless(путь_libpcap() and можно_af_packet(), "нужна libpcap и права")
+    def test_живой_захват_через_libpcap(self):
+        lib = pcap_bib.Libpcap(путь_libpcap())
+        порт = свободный_порт()
+        р = lib.открыть("lo", snaplen=65535, неразборчиво=True, таймаут_мс=100)
+        сторож = threading.Timer(5, lib.прервать, args=(р,))
+        try:
+            with self.assertRaises(pcap_bib.ОшибкаPcap):
+                lib.фильтр(р, "udp port")
+            lib.фильтр(р, f"udp dst port {порт}")
+            о = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.addCleanup(о.close)
+            до = time.time()
+            о.sendto(b"no", ("127.0.0.1", порт ^ 1 or 1))
+            о.sendto(b"yes", ("127.0.0.1", порт))
+            сторож.start()
+            код, время, данные, длина = lib.следующий(р)
+            self.assertEqual((1, len(данные)), (код, длина))
+            self.assertEqual(b"yes", zapis.разобрать_кадр(данные).нагрузка, "фильтр BPF отбросил чужой порт")
+            self.assertLess(abs(время - до), 5, "время пакета — секунды + микросекунды")
+            lib.прервать(р)
+            self.assertEqual((pcap_bib.PCAP_ERROR_BREAK, None, None, None), lib.следующий(р))
+        finally:
+            сторож.cancel()
+            lib.закрыть(р)
+
     def test_тип_в_файл(self):
         self.assertEqual((101, 101, 1, 113, 0), tuple(pcap_bib.тип_в_файл(д) for д in (12, 14, 1, 113, 0)))
 
@@ -797,6 +853,10 @@ class PcapБиблиотекаTests(unittest.TestCase):
             ll = struct.pack("=HHiHBB", 17, 0, 2, 1, 0, 6) + bytes.fromhex("02aabbccddee")
             self.assertEqual(("mac", "02:aa:bb:cc:dd:ee"), pcap_bib.адрес_из_sockaddr(sa(ll)))
             self.assertIsNone(pcap_bib.адрес_из_sockaddr(sa(struct.pack("=HHiHBB", 17, 0, 2, 1, 0, 0))))
+            eui = struct.pack("=HHiHBB", 17, 0, 2, 1, 0, 9) + bytes(range(1, 10))     # halen 9 > 8 — берём 8
+            self.assertEqual(("mac", "01:02:03:04:05:06:07:08"), pcap_bib.адрес_из_sockaddr(sa(eui)))
+            чужое = struct.pack("=HHiHBB", 99, 0, 2, 1, 0, 6) + bytes(6)
+            self.assertIsNone(pcap_bib.адрес_из_sockaddr(sa(чужое)), "неизвестное семейство — не MAC")
         self.assertIsNone(pcap_bib.адрес_из_sockaddr(sa(struct.pack("=H", 99))))
         self.assertIsNone(pcap_bib.адрес_из_sockaddr(None))
         self.assertEqual((24, 64, 0, 32), tuple(pcap_bib.длина_префикса(м) for м in
@@ -816,6 +876,13 @@ class PcapБиблиотекаTests(unittest.TestCase):
             self.assertIsNone(lib)
             self.assertIn("libpcap не найдена", причина)
             self.assertIn("/нет/libpcap.so: файла нет", причина)
+        if sys.platform.startswith("linux"):
+            # Имя без пути ищет сам загрузчик; libc находится, но функций libpcap в ней нет.
+            with mock.patch.object(pcap_bib, "пути_библиотеки", return_value=["libc.so.6"]):
+                lib, причина = pcap_bib.загрузить()
+            self.assertIsNone(lib)
+            self.assertIn("libc.so.6:", причина)
+            self.assertNotIn("файла нет", причина)
 
     @unittest.skipUnless(путь_libpcap(), "libpcap не найдена (задайте REPORTGEN_TEST_LIBPCAP)")
     def test_живая_libpcap(self):
@@ -825,6 +892,21 @@ class PcapБиблиотекаTests(unittest.TestCase):
         self.assertIn("lo", устройства)
         self.assertIn({"вид": "ipv4", "адрес": "127.0.0.1", "префикс": 8}, устройства["lo"]["адреса"])
         self.assertTrue(устройства["lo"]["флаги"] & pcap_bib.PCAP_IF_LOOPBACK)
+        self.assertEqual({"ipv4", "ipv6"}, {"ipv4", "ipv6"} | {а["вид"] for у in устройства.values() for а in у["адреса"]},
+                         "MAC (AF_PACKET) — не в адресах, а отдельно")
+        if Path("/sys/class/net/eth0/address").exists() and "eth0" in устройства:
+            self.assertEqual(Path("/sys/class/net/eth0/address").read_text().strip(), устройства["eth0"]["mac"])
+        self.assertTrue(lib.utf8, "pcap_init(PCAP_CHAR_ENC_UTF_8) вернул 0")
+        if можно_af_packet():
+            р = lib.открыть("lo", snaplen=65535, неразборчиво=False, таймаут_мс=50)
+            try:
+                self.assertEqual(1, lib.канал(р))
+                статистика = lib.статистика(р)
+                self.assertEqual(3, len(статистика), "pcap_stats вернул 0 — счётчики есть")
+            finally:
+                lib.закрыть(р)
+        with self.assertRaisesRegex(pcap_bib.ОшибкаPcap, "нет-такой0"):
+            lib.открыть("нет-такой0", snaplen=65535, неразборчиво=True, таймаут_мс=50)
         программа = lib.скомпилировать("udp dst port 5000")
         self.assertTrue(программа and all(len(к) == 4 for к in программа))
         self.assertEqual(6, программа[-1][0], "последняя команда — BPF_RET")
@@ -881,6 +963,7 @@ class ИсточникиTests(unittest.TestCase):
         self.assertEqual("адрес", istochniki.понять_ошибку(OSError(errno.ENODEV, "x"), что="t").вид)
         self.assertEqual("ошибка", istochniki.понять_ошибку(OSError(errno.EIO, "беда"), что="t").вид)
         self.assertIn("IPv6", str(istochniki.понять_ошибку(OSError(errno.EAFNOSUPPORT, "x"), что="t")))
+        self.assertEqual("ошибка", istochniki.понять_ошибку(OSError("без номера"), что="t").вид)
         win = OSError(errno.EACCES, "x")
         win.winerror = 10013
         self.assertEqual("права", istochniki.понять_ошибку(win, что="t").вид)
@@ -958,6 +1041,48 @@ class ИсточникиTests(unittest.TestCase):
         self.assertEqual(("libpcap", "libpcap version 1.10"), (istochniki.выбрать_способ(оба), оба["libpcap"]["версия"]))
         npcap = istochniki.возможности(lib, "", windows=True, фабрика=ПоддельныйСокет)
         self.assertEqual("npcap", istochniki.выбрать_способ(npcap))
+
+    def test_udp_настройка_сокета(self):
+        """Семейство по адресу, SO_RCVBUF, IP_PKTINFO/IPV6_RECVPKTINFO и SO_RXQ_OVFL (Linux), группа, bind."""
+        сокеты = []
+
+        def фабрика(*арг):
+            сокеты.append(ПоддельныйСокет(*арг))
+            return сокеты[-1]
+        with mock.patch.object(istochniki, "WINDOWS", False):
+            источник = istochniki.ПриёмUDP("::", [5004, 5006], группа="ff15::1", фабрика=фабрика)
+        self.assertTrue(источник.любой and источник.pktinfo)
+        self.assertEqual([("socket", (socket.AF_INET6, socket.SOCK_DGRAM))] * 2, [с_.вызовы[0] for с_ in сокеты])
+        в = сокеты[0].вызовы
+        self.assertIn(("setsockopt", (socket.SOL_SOCKET, socket.SO_RCVBUF, istochniki.БУФЕР_ПРИЁМА)), в)
+        self.assertIn(("setsockopt", (socket.SOL_SOCKET, 40, 1)), в)
+        self.assertIn(("setsockopt", (socket.IPPROTO_IPV6, 49, 1)), в)
+        self.assertIn(("bind", ("::", 5004)), в)
+        self.assertIn(("setsockopt", (socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP,
+                                      ipaddress.IPv6Address("ff15::1").packed + struct.pack("@I", 0))), в)
+        self.assertEqual(("setblocking", False), в[-1])
+        self.assertEqual({5004, 5006}, set(источник.порт_сокета.values()))
+        сокеты.clear()
+        with mock.patch.object(istochniki, "WINDOWS", False):
+            источник = istochniki.ПриёмUDP("10.0.0.5", [9], группа="239.1.2.3", фабрика=фабрика)
+        в = сокеты[0].вызовы
+        self.assertEqual(("socket", (socket.AF_INET, socket.SOCK_DGRAM)), в[0])
+        self.assertIn(("setsockopt", (socket.IPPROTO_IP, 8, 1)), в)
+        self.assertIn(("setsockopt", (socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, bytes([239, 1, 2, 3, 10, 0, 0, 5]))), в)
+        self.assertFalse(источник.любой)
+        сокеты.clear()
+        with mock.patch.object(istochniki, "WINDOWS", True):
+            источник = istochniki.ПриёмUDP("0.0.0.0", [9], группа="239.1.2.3", фабрика=фабрика)
+        self.assertFalse(источник.pktinfo, "в Windows у сокетов Python нет recvmsg — адрес получателя не узнать")
+        self.assertEqual([("setsockopt", (socket.SOL_SOCKET, socket.SO_RCVBUF, istochniki.БУФЕР_ПРИЁМА)), ("bind", ("0.0.0.0", 9)),
+                          ("setsockopt", (socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, bytes([239, 1, 2, 3, 0, 0, 0, 0])))],
+                         сокеты[0].вызовы[1:-1])
+        self.assertIsNone(источник.отброшено())
+        отказ = OSError(errno.EACCES, "denied")
+        отказ.winerror = 10013
+        with self.assertRaises(ОшибкаЗахвата) as к:
+            istochniki.ПриёмUDP("10.0.0.5", [9], фабрика=lambda *а: ПоддельныйСокет(ошибка_bind=отказ))
+        self.assertEqual("занято", к.exception.вид, "WSAEACCES при bind — порт взят с исключительным доступом")
 
     def test_udp_порт_занят(self):
         занятый = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

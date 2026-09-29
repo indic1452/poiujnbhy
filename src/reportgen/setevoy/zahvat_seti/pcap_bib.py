@@ -53,7 +53,10 @@ PCAP_ERROR_IFACE_NOT_UP = -9
 PCAP_ERROR_PROMISC_PERM_DENIED = -11
 #: DLT (pcap/dlt.h) → LINKTYPE в файле (pcap-common.c, dlt_to_linktype): различаются
 #: только коды, чьи значения DLT разные на разных системах; остальные совпадают.
-DLT_RAW, DLT_RAW_OPENBSD = 12, 14
+DLT_EN10MB, DLT_RAW, DLT_RAW_OPENBSD = 1, 12, 14
+#: MAXIMUM_SNAPLEN (pcap-int.h); оптимизировать байткод в pcap_compile (любое ненулевое — «да»).
+MAXIMUM_SNAPLEN = 262144
+ОПТИМИЗИРОВАТЬ_BPF = 1
 LINKTYPE_RAW = 101
 AF_PACKET_LINUX = 17                 # linux/socket.h; адрес карты — struct sockaddr_ll
 
@@ -91,7 +94,8 @@ def структуры(windows: bool = WINDOWS) -> dict[str, type]:
 
 
 class sockaddr(ctypes.Structure):
-    _fields_ = [("sa_family", ctypes.c_ushort), ("sa_data", ctypes.c_char * 14)]
+    # Из общего sockaddr нужно только семейство; сам адрес читается по раскладке своего семейства.
+    _fields_ = [("sa_family", ctypes.c_ushort)]
 
 
 class pcap_addr(ctypes.Structure):
@@ -148,16 +152,22 @@ def адрес_из_sockaddr(sa: Any) -> tuple[str, str] | None:
     if not sa:
         return None
     семейство = sa.contents.sa_family
-    сырое = ctypes.string_at(ctypes.cast(sa, ctypes.c_void_p), 28)
+    адрес = ctypes.cast(sa, ctypes.c_void_p).value
     if семейство == socket.AF_INET:
-        return "ipv4", socket.inet_ntop(socket.AF_INET, сырое[4:8])
+        return "ipv4", socket.inet_ntop(socket.AF_INET, ctypes.string_at(адрес + 4, 4))
     if семейство == socket.AF_INET6:
-        return "ipv6", socket.inet_ntop(socket.AF_INET6, сырое[8:24])
-    if not WINDOWS and семейство == AF_PACKET_LINUX:
-        длина = min(сырое[11], 8)
+        return "ipv6", socket.inet_ntop(socket.AF_INET6, ctypes.string_at(адрес + 8, 16))
+    if семейство == AF_PACKET_LINUX and not WINDOWS:
+        длина = min(ctypes.string_at(адрес + 11, 1)[0], 8)       # sll_halen; sll_addr — 8 байт
         if длина:
-            return "mac", сырое[12:12 + длина].hex(":")
+            return "mac", ctypes.string_at(адрес + 12, длина).hex(":")
     return None
+
+
+def кодировка_строк(utf8: bool, windows: bool) -> str:
+    """Кодировка строк libpcap: UTF-8 после pcap_init(PCAP_CHAR_ENC_UTF_8) и всегда вне Windows;
+    иначе — ANSI-кодовая страница Windows (man pcap_init)."""
+    return "utf-8" if utf8 or not windows else "mbcs"
 
 
 def длина_префикса(маска: str) -> int:
@@ -205,19 +215,16 @@ class Libpcap:
         lib.pcap_close.argtypes = [p]
         lib.pcap_close.restype = None
         # pcap_init (libpcap ≥ 1.10): строки в UTF-8 — иначе в Windows имена карт в ANSI-кодировке.
-        self.utf8 = False
-        if hasattr(lib, "pcap_init"):
+        self.utf8 = hasattr(lib, "pcap_init")
+        if self.utf8:
             lib.pcap_init.argtypes = [ctypes.c_uint, ctypes.c_char_p]
             lib.pcap_init.restype = ctypes.c_int
             ошибка = ctypes.create_string_buffer(PCAP_ERRBUF_SIZE)
             self.utf8 = lib.pcap_init(PCAP_CHAR_ENC_UTF_8, ошибка) == 0
+        self.кодировка = кодировка_строк(self.utf8, WINDOWS)
 
     def _текст(self, сырое: bytes | None) -> str:
-        if not сырое:
-            return ""
-        if self.utf8 or not WINDOWS:
-            return сырое.decode("utf-8", "replace")
-        return сырое.decode("mbcs", "replace")
+        return сырое.decode(self.кодировка, "replace") if сырое else ""
 
     def версия(self) -> str:
         return self._текст(self.lib.pcap_lib_version())
@@ -253,8 +260,7 @@ class Libpcap:
 
     def открыть(self, устройство: str, *, snaplen: int, неразборчиво: bool, таймаут_мс: int) -> int:
         ошибка = ctypes.create_string_buffer(PCAP_ERRBUF_SIZE)
-        р = self.lib.pcap_open_live(устройство.encode("utf-8" if self.utf8 or not WINDOWS else "mbcs"),
-                                    snaplen, 1 if неразборчиво else 0, таймаут_мс, ошибка)
+        р = self.lib.pcap_open_live(устройство.encode(self.кодировка), snaplen, int(неразборчиво), таймаут_мс, ошибка)
         if not р:
             raise ОшибкаPcap(self._текст(ошибка.value) or "pcap_open_live не открыл устройство")
         return р
@@ -265,7 +271,7 @@ class Libpcap:
     def фильтр(self, р: int, выражение: str) -> None:
         """pcap_compile + pcap_setfilter; маска сети неизвестна — PCAP_NETMASK_UNKNOWN."""
         программа = bpf_program()
-        if self.lib.pcap_compile(р, ctypes.byref(программа), выражение.encode("ascii"), 1,
+        if self.lib.pcap_compile(р, ctypes.byref(программа), выражение.encode("ascii"), ОПТИМИЗИРОВАТЬ_BPF,
                                  PCAP_NETMASK_UNKNOWN) != 0:
             raise ОшибкаPcap(f"фильтр «{выражение}»: {self.ошибка(р)}")
         try:
@@ -274,14 +280,15 @@ class Libpcap:
         finally:
             self.lib.pcap_freecode(ctypes.byref(программа))
 
-    def скомпилировать(self, выражение: str, канал: int = 1, snaplen: int = 262144) -> list[tuple[int, int, int, int]]:
+    def скомпилировать(self, выражение: str, канал: int = DLT_EN10MB, snaplen: int = MAXIMUM_SNAPLEN
+                       ) -> list[tuple[int, int, int, int]]:
         """Байткод BPF для выражения без живой карты (pcap_open_dead) — для SO_ATTACH_FILTER."""
         р = self.lib.pcap_open_dead(канал, snaplen)
         if not р:
             raise ОшибкаPcap("pcap_open_dead не удался")
         try:
             программа = bpf_program()
-            if self.lib.pcap_compile(р, ctypes.byref(программа), выражение.encode("ascii"), 1,
+            if self.lib.pcap_compile(р, ctypes.byref(программа), выражение.encode("ascii"), ОПТИМИЗИРОВАТЬ_BPF,
                                      PCAP_NETMASK_UNKNOWN) != 0:
                 raise ОшибкаPcap(f"фильтр «{выражение}»: {self.ошибка(р)}")
             try:
