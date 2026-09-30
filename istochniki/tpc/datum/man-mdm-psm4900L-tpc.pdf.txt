@@ -1,0 +1,685 @@
+
+=====PAGE 1=====
+Rev 1.3 
+Page TPC-1
+Appendix TPC 
+M5 Turbo Product Codes FEC Addendum 
+ 
+1.0 
+Optional Turbo Product Codes FEC Overview 
+The installation of the optional Turbo Product Codes FEC Card provides the M5 Class modems 
+(PSM-4900/4900H/4900L and variants) with a greater level of functional capability. This optional 
+daughter card is designed to fit onto the main modem assembly and bypass the built-in main 
+Viterbi FEC under software control. Turbo Product Codes offers the maximum coding gain and 
+performance available in Forward Error Correction. 
+ 
+The Turbo Product Codes FEC is described in more detail in the following sections. The 
+abbreviation “TPC” is used interchangeably with “Turbo Product Codes FEC” throughout the rest 
+of this document. 
+ 
+• 
+“TPC” This is the short form or abbreviation for Turbo Product Codes. (Note: There is 
+also a Turbo Convolutional Code FEC which is not block oriented, but generally not 
+currently suitable for satellite communications.) 
+ 
+For the purposes of the remainder of this appendix the conventions for naming the different rates 
+of data entering and leaving the modem are: 
+ 
+• 
+ “Aggregate” data rate. The data rate that the modem transmit and receive is operating 
+at. This rate is always the same as or higher than the terrestrial data rate and is the rate 
+that includes the terrestrial rate plus the multiplexer overhead plus the FEC overhead. 
+• 
+“Terrestrial” data rate. The data rate presented on the main modem rear panel data 
+interface connector for connection to the DTE line side. 
+• 
+“ES to ES” or “ESC” data rate. The overhead channel rate presented as a service or 
+overhead channel on the modem rear panel connector J4. 
+ 
+Bit time delays introduced by the Turbo Product Codes FEC functions are given in the Unit 
+Specifications, Appendix A. 
+ 
+The Terms “M4” refer to the PSM-512/1500/2100/2100L modems and their variants. The Term 
+“M5” refers to the PSM-4900, 4900H, 4900L and its variants (some yet to be released). The 
+Turbo Product Codes FEC described here is only for use with M5 Modems. 
+ 
+1.1 
+Overview - Quick Start Guide  
+The main point to insure in setting up the Turbo Product Codes FEC is that the two ends of the 
+link must be set up in a complementary fashion. That is, whatever parameters on set on the 
+transmit at one end of the link must also be set the same for the receive on the other end. 
+• 
+If the option card is not already installed see the “Installation” section at the end of this 
+Appendix. The TPC option requires software version 0.62 or greater. Contact Datum 
+Systems If your modem requires a firmware upgrade. 
+• 
+The Turbo Product Codes FEC (Full or Short Block) can be individually selected in each 
+direction (transmit and receive) via the <Mod:Data - FEC> settings for the transmit 
+direction and the <Dem:Data - FEC> settings for the receive direction. Then the Code 
+Rate is set in the <Mod:Data – Code Rate> settings for the transmit direction and the 
+<Dem:Data – Code Rate>  The same settings must be used on both ends of the link in 
+each direction. 
+DATUM 
+SYSTEMS 
+
+=====PAGE 2=====
+ 
+M5 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 1.3 
+Page TPC-2
+• 
+Choose a mode of operation suitable for the service desired. In most cases the TPC 
+“Full” mode provides basic full capabilities taking advantage of the special features built 
+into the modem. 
+• 
+See the Turbo Product Codes FEC Descriptions in Sections 2.1 of this Appendix for more 
+information on refining the settings to optimize them for a particular application. 
+• 
+The Turbo Product Codes FEC can be used in conjunction with the IBS Multiplexer and 
+RS Option card, but the Reed-Solomon option cannot be enabled with TPC as it could 
+actually decrease performance. The Reed-Solomon is disabled automatically when the 
+TPC is enabled. The IBS Multiplexer options such as AUPC and overhead channels are 
+all still available when used in conjunction with the Turbo Product Codes FEC. 
+ 
+1.1.1 Overview - Modes of Operation  
+Turbo Product Codes FEC 
+The TPC option provides the following modes of operation. They are described more fully in later 
+sections of this Appendix. 
+ 
+Mode 
+Standard/ 
+Compatibility 
+Overhead 
+Ratio 
+Notes 
+Disabled 
+IESS-308/309 
+ 
+Reverts to Viterbi (or Reed-Solomon) as set.
+Full Rate ½ 
+Proprietary 
+2/1 
+Performance Optimized 
+Full Rate ¾ 
+Proprietary 
+4/3 
+Performance Optimized 
+Full Rate 7/8 
+Proprietary 
+8/7 
+Performance Optimized 
+Short Rate ¾ 
+Proprietary 
+4/3 
+Short Block, Delay minimized 
+Short Rate 7/8 
+Proprietary 
+8/7 
+Short Block, Delay minimized 
+Legacy ¾ : 7/8 
+Proprietary 
+4/3 : 8/7 
+Full mode, compatible with M5 modems 
+using firmware version lower than 0.76 
+CT Rate ¾  
+Comtech 
+4/3 
+Full mode, compatible with some Comtech 
+modems operating in QPSK Rate ¾ TPC 
+only. 
+Note: “Legacy” and “CT” modes only available in firmware versions 0.76 and above. 
+ 
+The overhead ratios for the TPC are identical to those for the standard Viterbi/convolutional 
+Codec, i.e. Rate ½, ¾ and 7/8. Note: Rate ½ is not available in the short block mode. 
+ 
+1.2 
+TPC Framing Overview 
+Framing of data is required for the Turbo Product Codes FEC functions of this card and FEC 
+type. That is because TPC functions are “block” oriented and synchronization to particular 
+locations in the bit stream are necessary. Generally the TPC processor operates on a complete 
+block of data at a time. 
+ 
+Two block sizes are used in the TPC. The standard block size is intended to optimize the TPC 
+performance. The alternate “Short” block is intended for special applications that require minimal 
+bit delay or latency. The latency of the short block is approximately 1/3 of that for the standard 
+block. The FEC decoder in the receive channel is normally the largest bit delay in the end-to-end 
+link. 
+ 
+2.0 
+  Turbo Product Codes FEC Description and Operation 
+The addition of a Turbo Product Codes FEC places a new Forward Error Correction (FEC) 
+process replacing (in parallel with) the existing Viterbi FEC. The two FECs are considered 
+alternate, and only one or the other can be selected at any one time. 
+ 
+
+=====PAGE 3=====
+ 
+M5 Satellite Modem Turbo Product Codes FEC 
+Rev 1.3 
+Page TPC-3
+The performance improvement achieved by the Turbo Product Codes FEC is significant, even as 
+compared to concatenated Reed-Solomon plus Viterbi FEC. For example, the BER vs. Eb/No 
+performance of concatenated Viterbi rate 3/4 coding with R-S is better than Viterbi rate 1/2 alone, 
+and it uses less bandwidth than the Viterbi rate 1/2 alone. 
+ 
+Like Reed-Solomon, Turbo Product Codes uses “block” framing which allows the use of a 
+synchronous scrambler and descrambler resulting in slightly improved performance relative to the 
+self-Synchronized scrambler normally used. See the scrambler use in Section 2.2 of this 
+Appendix 
+ 
+A simplified block diagram of the TPC Codec is shown in Figure 1 below. 
+ 
+Doppler FIFO
+Buf f er
+Doppler FIFO
+Buf f er
+Viterbi FEC Encoder
+Viterbi FEC Encoder
+Baseband Signal
+Processing
+Baseband Signal
+Processing
+V.35/Intelsat
+and
+Dif f erential
+Encoder
+V.35/Intelsat
+and
+Dif f erential
+Encoder
+Processor Control
+Processor Control
+Option
+Interface
+Connector
+P1
+Option
+Interface
+Connector
+P1
+Option
+Interface
+Connector
+P1
+Option
+Interface
+Connector
+P1
+Figure 1 -  M5 Modem TPC Diagram
+Baseband
+Signal
+Processing
+Baseband
+Signal
+Processing
+V.35/Intelsat
+and
+Dif f erential
+Decoder
+V.35/Intelsat
+and
+Dif f erential
+Decoder
+Out Clk
+In Clk
+MODULATOR
+DEMODULATOR
+Clock
+Control
+Clock
+Control
+TPC FEC Encoder &
+Sy nchronous Scrambler
+TPC FEC Encoder &
+Sy nchronous Scrambler
+Viterbi FEC Decoder
+Viterbi FEC Decoder
+TPC FEC Decoder &
+Sy nchronous
+Descrambler
+TPC FEC Decoder &
+Sy nchronous
+Descrambler
+Independent
+Transmit and
+Receiv e Control
+ 
+ 
+
+=====PAGE 4=====
+ 
+M5 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 1.3 
+Page TPC-4
+The Turbo Product Codes FEC function can be turned on and off under software control from 
+either the front panel or remote control. 
+ 
+2.1 
+ Controlling the Optional Turbo Product Codes FEC Functions 
+ 
+The PSM-4900 Modems automatically recognize the presence of the optional capabilities when 
+this option card is installed. Any of the Turbo Product Codes FEC properties can be programmed 
+from the front panel or remote control interface. Like other properties of these modems the latest 
+configuration of the TPC are saved in non-volatile memory and re-instated on power up. 
+ 
+The TPC FEC function is designed to replace or serve as an alternate to the modem’s built-in 
+Viterbi/convolutional Codec. The TPC option actually allows one of two alternate TPC functions to 
+be used; the standard “Full” and a low latency “Short” version. The user now has the choice 
+between 3 main FEC options in the Mod and Demod Data FEC parameter. These are Viterbi, 
+TPC Full and TPC Short in each direction (Transmit and Receive).  
+ 
+The same FEC Code Rate parameters options of Rate ½, ¾ and 7/8 apply to any of these codecs 
+just as with the standard Viterbi Codec. Rate ½ is not available with the “Short” block version of 
+TPC. The occupied bandwidth of the RF signal is identical between a Viterbi and TPC Codec at 
+the same FEC “Rate”. 
+ 
+The performance of the Full Block TPC in rates ¾ and 7/8 were further improved in modem 
+firmware revision 0.76, resulting in the need for a “Legacy” mode which allows modems with this 
+firmware revision or later to communcate properly with TPC modes used in prior firmware 
+equipped modems. The legacy modes should only be used in this case as the best performance 
+is achieved using the latest firmware. 
+ 
+Firmware revision 0.76 also includes a “CT” compatibility mode in TPC Rate ¾ when operating 
+with QPSK modulation. This mode provides specific compatibility with some Comtech modems 
+equipped with TPC. Currently these include the CDM550T, which only operates in TPC Rate ¾, 
+QPSK, and the CDM600, which includes that specific mode among others (other CDM600 TPC 
+modes are not compatible because of differences in the TPC chip used). 
+ 
+NOTE: 
+The user does not have to compute aggregate data rates for operation with the TPC 
+options. The terrestrial data rate is maintained when features that require adjusting the 
+aggregate rate are added or deleted. The modem internal software automatically 
+computes the proper aggregate rate and sets the modem accordingly.  
+ 
+NOTE: 
+The data rate entry at the front panel or remote control is the “Terrestrial” or user data 
+rate that the physical interface operates at, not the modem’s aggregate rate. 
+ 
+The TPC function has the same restrictions on maximum data rate as the standard Viterbi Codec 
+does at each FEC Code Rate. Attempts to program the data rate higher than possible at each 
+FEC Code Rate results in the modem sounding a warning beep and setting the data rate to the 
+maximum possible. 
+ 
+2.1.1 
+Scrambler Selection 
+ 
+The M5 modems have had a preferred scrambler setting in the “IESS 308” or “IESS-309” modes 
+for the modulator and demodulator. These modes automatically select the proper scrambler to 
+use when in any standard Intelsat IESS 308 or 309 modes. There is no IESS Standard covering 
+the new Turbo Product Codes FEC, and this auto mode no longer optimum in certain cases with 
+the TPC installed and enabled. Following is the guideline to use with the TPC: 
+
+=====PAGE 5=====
+ 
+M5 Satellite Modem Turbo Product Codes FEC 
+Rev 1.3 
+Page TPC-5
+• 
+When TPC is either not installed or not enabled the preferred scrambler and descrambler 
+is “IESS 308” or “IESS 309”. See below for the difference. 
+• 
+When TPC is enabled but the IBS multiplexer option is not installed or not enabled use 
+the new Scrambler and Descrambler option #7 “TPC Sync”. This mode uses a 
+synchronous scrambler specific to the TPC Codec. . Note with Software Version 0.73+: 
+Each time that TPC is enabled the modem automatically sets the TPC Sync 
+scrambler mode. To override, change to the desired scrambler after enabling TPC. 
+• 
+When both TPC and IBS multiplexer are installed and enabled use the “IESS 308” option. 
+ 
+Remember that the scrambler and descrambler may be set independently in each link direction. 
+ 
+The synchronous TPC scrambler is synchronized to the processed block itself. No lock time or bit 
+latency penalty is incurred by use of the synchronous scrambler, but a performance gain of 
+approximately 0.2 dB is realized relative to the self-synchronizing “V.35/Intelsat” scrambler. 
+ 
+IESS-308 Scrambler Mode Operation 
+• 
+With no mux or RS then the self-synchronizing Intelsat scrambler is enabled. 
+• 
+With just the IBS Mux enabled then the IBS synchronous scrambler is used 
+• 
+With just the R-S enabled then the R-S synchronous scrambler is used 
+• 
+With both IBS Mux and R-S enabled then the IBS synchronous scrambler is used. 
+ 
+IESS-309 Scrambler Mode Operation 
+The operation is the same as the IESS-308 option with the exception that  
+• 
+With just R-S enabled then the self-synchronizing Intelsat scrambler is used. 
+ 
+Fixed Scrambler Mode Operation 
+The V.35 and Intelsat scrambler modes use the V.35 and Intelsat self-synchronizing scramblers 
+respectively in all modes. 
+ 
+Alternate Scrambler Mode Operation 
+The alternate V.35 and alternate Intelsat scrambler mode performs a data inversion required by 
+some “Comstream” modems. 
+ 
+2.2 
+ Turbo Product Codes FEC Performance 
+Turbo Product Codes performance is the best possible of any currently available FEC. TPC offers 
+a significant performance improvement over even concatenated Reed-Solomon FEC 
+performance. 
+ 
+Turbo Product Codes FEC Highlights: 
+• 
+TPC Rate 1/2 has performance approximately 3 dB better than normal Viterbi Rate 1/2. 
+TPC Rate 7/8 will perform better than Viterbi Rate 1/2, but uses approximately 57% of the 
+bandwidth. 
+• 
+TPC Rate 3/4 has performance approximately equal to a concatenated Viterbi Rate 1/2 
+plus Reed-Solomon Codec, but uses approximately 60% of the bandwidth. In addition the 
+bit delay for the TPC link would be 44 ms at 64 kbps, while the Reed-Solomon/Viterbi 
+coding would result in a 75 ms end-to-end delay. (Some other manufacturers spec over 
+200 ms of delay in the same case). 
+• 
+Datum Systems' selectable "Short Block TPC" uses a smaller block size optimized for low 
+latency. The Short Block delay in the above example of Rate 3/4, 64 kbps is 
+approximately 14.8 ms. 
+• 
+Datum Systems' implementation of TPC outperforms other manufacturers performance 
+by 0.3 to 2 dB depending on the Code Rate settings. 
+
+=====PAGE 6=====
+ 
+M5 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 1.3 
+Page TPC-6
+• 
+TPC can provide better performance than 8PSK with Trellis Code Modulation and 
+concatenated Reed-Solomon as per IESS-310. For example TPC in QPSK mode at Rate 
+7/8 uses less than 5% more bandwidth but 1.2 dB less power at a BER of 1 part in 10 -7. 
+QPSK is also much less sensitive to phase noise and can operate successfully at lower 
+data rates than 8PSK. 
+ 
+The data and graphs below shows the typical performance of a Turbo Product Codes equipped 
+M5 class modem as compared to the typical performance of the standard Viterbi FEC. 
+ 
+ 
+Turbo Product Codes BER vs. Eb/No Performance 
+BER 
+1 Viterbi 
+Rate 1/2 
+2 Viterbi 
+Rate 3/4 
+3 Viterbi 
+Rate 7/8
+7 TPC 
+Rate ½ 
+Full 
+Block 
+8 TPC 
+Rate 3/4 
+Full 
+Block 
+9 TPC 
+Rate 7/8 
+Full 
+Block 
+10 TPC 
+Rate 3/4 
+Short 
+Block 
+11 TPC 
+Rate 7/8 
+Short 
+Block 
+1.00E-04
+4.20
+5.40
+6.05  
+  
+  
+  
+  
+1.00E-05
+4.80
+5.84
+6.80
+2.20
+3.23
+4.56
+3.90
+5.20
+1.00E-06
+5.47
+6.40
+7.52
+2.57
+3.35
+4.69
+4.07
+5.58
+1.00E-07
+6.00
+7.00
+8.20
+2.86
+3.46
+4.81
+4.30
+6.00
+1.00E-08
+6.40
+7.60
+8.78
+3.13
+3.56
+4.98
+4.56
+6.47
+1.00E-09
+6.80
+8.08  
+3.42
+3.65
+5.31
+4.87
+6.91
+1.00E-10  
+  
+  
+3.69
+3.78
+5.72
+5.20
+7.30
+ 
+Measurement Notes:  
+• 
+Viterbi measurements are all made with differential encoding enabled and the standard 
+V.35 scrambler. 
+• 
+TPC measurements are all made with the Turbo specific synchronous scrambler and no 
+differential encoding. 
+• 
+The graphs and data are measured in accordance with the IESS 308/309 standard 
+methods. 
+• 
+The data for TPC Full Block Revised using Firmware Revision 0.74 and above. 
+• 
+Data for TPC “Legacy” and “CT” modes of Firmware Revision 0.76 are not shown. 
+ 
+
+=====PAGE 7=====
+ 
+M5 Satellite Modem Turbo Product Codes FEC 
+Rev 1.3 
+Page TPC-7
+M5 Class Modem Typical Performance
+Turbo Product Codes and Viterbi
+1.00E-10
+1.00E-09
+1.00E-08
+1.00E-07
+1.00E-06
+1.00E-05
+1.00E-04
+2.00
+2.50
+3.00
+3.50
+4.00
+4.50
+5.00
+5.50
+6.00
+6.50
+7.00
+7.50
+8.00
+8.50
+9.00
+9.50 10.00
+Eb/No in dB
+BER
+1 Viterbi Rate 1/2
+2 Viterbi Rate 3/4
+3 Viterbi Rate 7/8
+7 TPC Rate 1/2
+8 TPC Rate 3/4
+9 TPC Rate 7/8
+3
+2
+1
+9
+8
+7
+DATUM 
+SYSTEMS 
+ 
+The graph below shows the performance of the standard “Full Block” TPC FEC and the low 
+latency “Short Block” TPC FEC. The short block modes trade off performance for low delay 
+achieved by using a smaller block size. 
+ 
+
+=====PAGE 8=====
+ 
+M5 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 1.3 
+Page TPC-8
+M5 Class Modem Typical Performance
+Standard and Short Block Turbo Product Codes
+1.00E-10
+1.00E-09
+1.00E-08
+1.00E-07
+1.00E-06
+1.00E-05
+1.00E-04
+2.00
+2.50
+3.00
+3.50
+4.00
+4.50
+5.00
+5.50
+6.00
+6.50
+7.00
+7.50
+8.00
+8.50
+9.00
+9.50 10.00
+Eb/No in dB
+BER
+7 TPC Rate 1/2
+8 TPC Rate 3/4
+9 TPC Rate 7/8
+10 TPC Rate 3/4 Short Block
+11 TPC Rate 7/8 Short Block
+11
+10
+9
+8
+7
+DATUM 
+SYSTEMS 
+ 
+ 
+3.0 
+ Installation 
+The Turbo Product Codes FEC Option is normally factory installed, but can be field installed by 
+technical personnel. The option card itself is an approximate 2.1-inch by 3.9 inch printed circuit 
+board, which plugs onto available header pins on the main modem assembly. Installation requires 
+removal of the modem unit cover, plugging the option card onto the main modem assembly and 
+then replacing the modem unit cover. 
+ 
+When installed the PSM-4900 main processor automatically recognizes the presence of the card 
+and its capabilities. It also adds appropriate front panel and remote control settings to allow 
+programming the added functionality provided. This is transparent to the user, who needs take no 
+action other than installation and setting for desired parameters. 
+ 
+Note that versions of main modem software prior to 0.62 do not support the Turbo 
+Product Codes FEC card. New software must be downloaded into the modem’s flash 
+memory to update it to the latest standard. 
+ 
+3.1 
+ Installing a Turbo Product Codes FEC Option Card 
+Remove the modem unit from service before installation of the TPC option. Unplug the modem 
+unit and remove the power cord from the rear for safety. 
+ 
+
+=====PAGE 9=====
+ 
+M5 Satellite Modem Turbo Product Codes FEC 
+Rev 1.3 
+Page TPC-9
+WARNING: Failure to remove power from the modem unit before removal of the cover can 
+expose the operator to hazardous voltages and result in harm to personnel and 
+equipment. 
+ 
+Place the unit on a flat surface and remove the 8 flathead screws holding the cover to the main 
+chassis using a number 2 Philips screwdriver. The location for the option card installation is 
+shown in the diagram below.  
+ 
+Position the connectors on the bottom of the option card over those on the main board and gently 
+push the pins on the main PWB into the two sockets on the option card. This will require firm 
+pressure directly over the connector pins. Do not press on the top and bottom of the option card 
+as it is unsupported here and may damage the board. When fully seated the top of the option 
+PCB surface is approximately even with the top edge of the connector plastic shroud to the right 
+of the option card.  
+ 
+Use extreme care in insuring that the pins are properly aligned between the option card 
+and the main board header. 
+ 
+Re-install the cover and plug the unit in. Using the front panel arrow keys scroll down to the 
+interface parameter and verify that the modem recognizes the newly installed card. The modem is 
+now ready to be put into service. 
+ 
+
+=====PAGE 10=====
+ 
+M5 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 1.3 
+Page TPC-10
+Main PCB
+IBS/RS OPTION
+DSA00-002
+Rear Panel
+U3
+U5
+J3 & J4 Connectors
+Turbo Product
+Codes FEC Board
+DSA01-003
+TPC/SEQ FEC OPTION
+Note proper
+alignment of all
+pins on both
+connectors
+when installing
+ 
+ 

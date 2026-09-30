@@ -1,0 +1,49 @@
+URL: https://www.manualslib.com/manual/1291805/Comtech-Ef-Data-Sdm-300a.html?page=344
+
+Specifications 
+C.3.3 
+Descrambling Types 
+The operator can select one of the following descrambling types: 
+CCITT V.35 
+CCITT V.35 
+Fairchild compatible 
+2^15-1 Synchronous 
+Modified V.35 
+None 
+C.3.4 
+Differential Decoder 
+The differential decoder takes care of one set of ambiguities due the error correction 
+codes being transparent. 
+• 
+C.3.5 
+BPSK Bit Ordering 
+The decoder has the ability to select whether I is the first bit or Q is the first bit in the 
+symbol word grouping for compatibility with any system. For standard mode Q is the 
+first bit. 
+• 
+• 
+C.3.6 
+Decoding 
+C.3.6.1 
+BPSK Encoding 
+The demodulator converts transmitted baseband data into a modified BPSK carrier 
+2.4 kbit/s to 1.25 Mbit/s (1/2 rate) . Using vector analysis of the constellation pattern, 
+BPSK represents one symbol with the carrier phase either at 0° or 180°. The 1/2 rate 
+encoding at the convolutional encoder two symbols output for every bit input. 
+C–14 
+EFData/Comstream compatible. Sequential only 
+Intelsat modified. Viterbi only 
+IBS, Drop & Insert, ASYNC, and IESS-310 
+Closed Network Reed-Solomon 
+On or Off 
+Viterbi (Standard/Non-Standard) 
+Sequential (Standard/Non-Standard) 
+Code Rate 
+1/2 
+Symbols/Bit 
+Bits/Hz 
+2 
+0.5 
+SDM-300A Satellite Modem 
+Rev. 4 
+ Table of  Contents 

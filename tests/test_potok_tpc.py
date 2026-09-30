@@ -136,7 +136,7 @@ class Снятие(unittest.TestCase):
     def test_строки_без_столбцов_не_код_произведения(self):
         rng = np.random.default_rng(4)
         строки = хэмминг(57, 6)(rng.integers(0, 2, (6000, 57)).astype(np.uint8)).reshape(-1)
-        with self.assertRaisesRegex(ValueError, "столбцов с чётным весом нет"):
+        with self.assertRaisesRegex(ValueError, "столбцов ни с чётным весом, ни с линейными связями нет"):
             tpc.снять(строки)
 
     def test_параметры_вручную(self):

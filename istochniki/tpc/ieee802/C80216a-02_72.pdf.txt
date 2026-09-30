@@ -1,0 +1,382 @@
+
+=====PAGE 1=====
+2002-07-02
+IEEE C802.16a-02/72
+ 
+0
+Project
+IEEE 802.16 Broadband Wireless Access Working Group <http://ieee802.org/16>
+Title
+Optional FEC Enhancement for WirelessMAN-SCa
+Date
+Submitted
+2002-07-02
+Source(s)
+Sean Sonander
+Akelia Wireless
+2 Venture Road
+Southampton, UK
+Brian Eidson
+Conexant Systems, Inc.
+Anader Benyamin- Seeyar
+Advantech AMT Company
+Voice: +44(0)2380 763716
+Fax:
++44(0)2380 763714
+sean@akelia.com
+Re:
+Abstract
+This document describes a revision to the Section 8.3.2.1.2.3, Document P802.16a/D4-2002
+Purpose
+The author intends to use this document in resolving an optional FEC comment
+Notice
+This document has been prepared to assist IEEE 802.16. It is offered as a basis for discussion and is not binding on
+the contributing individual(s) or organization(s). The material in this document is subject to change in form and
+content after further study. The contributor(s) reserve(s) the right to add, amend or withdraw material contained
+herein.
+Release
+The contributor grants a free, irrevocable license to the IEEE to incorporate material contained in this contribution,
+and any modifications thereof, in the creation of an IEEE Standards publication; to copyright in the IEEE’s name
+any IEEE Standards publication even though it may include portions of this contribution; and at the IEEE’s sole
+discretion to permit others to reproduce in whole or in part the resulting IEEE Standards publication. The
+contributor also acknowledges and accepts that this contribution may be made public by IEEE 802.16.
+Patent
+Policy and
+Procedures
+The contributor is familiar with the IEEE 802.16 Patent Policy and Procedures (Version 1.0)
+<http://ieee802.org/16/ipr/patents/policy.html>, including the statement “IEEE standards may include the known
+use of patent(s), including patent applications, if there is technical justification in the opinion of the standards-
+developing committee and provided the IEEE receives assurance from the patent holder that it will license applicants
+under reasonable terms and conditions for the purpose of implementing the standard.”
+Early disclosure to the Working Group of patent information that might be relevant to the standard is essential to
+reduce the possibility for delays in the development process and increase the likelihood that the draft publication will
+be approved for publication. Please notify the Chair <mailto:r.b.marks@ieee.org > as early as possible, in written
+or electronic form, of any patents (granted or under application) that may cover technology that is under
+consideration by or has been approved by IEEE 802.16. The Chair will disclose this notification via the IEEE
+802.16 web site <http://ieee802.org/16/ipr/patents/notices>.
+
+=====PAGE 2=====
+2002-07-02
+IEEE C802.16a-02/72
+ 
+1
+Optional FEC Enhancement for WirelessMAN-SCa
+Sean Sonander
+Akelia Wireless
+Brian Eidson
+Conexant Systems, Inc.
+Anader Benyamin- Seeyar
+Advantech AMT Company
+1 Block Turbo Codes
+Support of the Block Turbo Code (BTC) FEC is optional.
+1.1 Encoding
+A BTC is formed from block row codes, each with rate parameters (nx, kx) and block column codes, each with rate
+parameters (ny, ky). The BTC is encoded by writing data bits row by row into a two dimensional matrix as
+illustrated in Figure 1(a). kx information bits in each row are encoded into nx bits by using a constituent block (nx,
+kx) row code. ky bits in each column are then encoded into ny bits by using a constituent block (ny, ky) column
+code, where the check bits of the rows are also encoded. The resulting BTC will have block length nx×ny bits and
+information length kx×ky bits.
+information bits
+Checks
+Checks
+Check
+on
+Checks
+nx
+ny
+k x
+ky
+Checks
+Checks
+Check
+on
+Checks
+nx
+ny
+kx
+k y
+Information
+bits
+B
+Iy
+Ix
+Figure 1 – BTC (a) and Shortened BTC Structure (b)
+The constituent row code and constituent column code used to form the rows and columns of a BTC shall be
+specified by BTC-specific burst profile parameters. The constituent codes available for specification are listed in
+Table 1.
+All codes in Table 1 shall be formed by appending a check bit or check bits to the end of the information bits. A
+parity check code shall use one check bit, derived by exclusive-ORing the information bits.
+An extended Hamming component code shall use n-k check bits. The first n-k-1 check bits are the check bits of a
+(n-1, k) Hamming code derived from one of the generator polynomials listed in Table 2, while the last check bit is
+a parity check bit, derived by exclusive-ORing the n-1 information and parity bits of the (n-1, k) Hamming code.
+Table 1 - List of BTC Component Codes
+
+=====PAGE 3=====
+2002-07-02
+IEEE C802.16a-02/72
+ 
+2
+Constituent Codes (n, k)
+Code Type
+(64, 63), (32, 31), (16, 15),
+(8,7)
+Parity Check Codes
+(64, 57), (32, 26), (16, 11), (8,
+4)
+Extended Hamming Codes
+Table 2 – (n, k) Hamming Code Generator Polynomials
+n
+k
+Generator
+Polynomial
+63
+57
+X6+X+1
+31
+26
+X5+X2+1
+15
+11
+X4+X1+1
+7
+4
+X3+X1+1
+Shortening shall be used to reduce the size of a BTC FEC block, so that smaller source allocations may be
+transmitted over the channel. The parameters Ix, Iy and B specify the shortening of a BTC; they are applied as
+follows:
+Remove Ix columns from the encoded matrix, starting with the leftmost column.
+Remove Iy rows from the encoded matrix, starting with the top row.
+Remove B individual data bits from the top row starting with the lsb.
+Figure 1(b) illustrates an example of a shortened BTC. The resulting shortened BTC has block length (nx-Ix)(ny-
+Iy)-B bits, source information length (kx-Ix)(ky-Iy)-B bits and code rate
+(
+)(
+)
+(
+)(
+) B
+I
+n
+I
+n
+B
+I
+k
+I
+k
+R
+y
+y
+x
+x
+y
+y
+x
+x
+−
+−
+−
+−
+−
+−
+=
+Equation 1
+The parameters Ix, Iy and B are functions of row and column constituent codes and the length of the desired
+(shortened) BTC allocation. Clause 1.2 provides details on this functional relationship.
+If a source allocation is longer than a baseline BTC FEC block, as many full BTC blocks as possible shall be
+transmitted, followed by a last block, which shall be shortened if it does not fill a full BTC block.
+Data bit ordering for the composite BTC matrix is the left most bit in the first row is the lsb. the next bit in the first
+row is the next-to-lsb, and the last data bit in the last data row is msb. An encoded BTC block shall be read out of
+the encoded matrix (for transmission) as a serial bit stream, starting with the lsb and ending with the msb. This bit
+stream shall sent to a symbol mapper which uses a Gray map depicted in Figure 171 for BPSK and QPSK, and
+the pragmatic maps depicted in Figure 172 and Figure 173 for 16-QAM, 64-QAM and 256-QAM. If not enough
+encoded bits are available to fill the last symbol of an allocation, sufficient zero-valued bits (unscrambled) shall be
+appended to the end of the serial stream to complete the symbol.
+1.2 Constituent Code Selection and Shortening
+Two independent variables, Cbank and K, collectively specify the BTC encoding and shortening process. Cbank is a
+burst profile parameter specified by the MAC. Its values ranges from 1 to 5, where each integer refers to a unique
+set of constituent codes, chosen to set the code rate of the BTC. K is the desired information block length, in bits,
+to be transmitted within an allocation.
+Table 3 - Table 5 specify three code selection banks, each containing 4 different base BTCs, covering a range of
+information and encoded data block lengths. Each base BTC is composed of from the specified row and column
+
+=====PAGE 4=====
+2002-07-02
+IEEE C802.16a-02/72
+ 
+3
+codes. The code selection bank that most closely matches the desired code rate and performance should be chosen
+as the active code bank.
+Table 3 - BTC Code Selection Bank Cbank=1, Rate approx. 0.94
+Component Row Code (n x,
+k x)
+Component Column Code (n y,
+ky)
+Base BTC (n,
+k)
+(64, 63)
+(64, 63)
+(4096, 3969)
+(32, 31)
+(32, 31)
+(1024, 961)
+(16, 15)
+(16, 15)
+(256, 225)
+(8, 7)
+(8, 7)
+(64, 49)
+Table 4 - BTC Code Selection Bank Cbank=2, Rate approx 0.69
+Component Row Code (n x,
+k x)
+Component Column Code (n y,
+ky)
+Base BTC (n,
+k)
+(64, 57)
+(64, 57)
+(4096, 3249)
+(32, 26)
+(32, 26)
+(1024, 676)
+(16, 11)
+(16, 11)
+(256, 121)
+(8, 4)
+(8, 4)
+(64, 16)
+Table 5 - BTC Code Selection Bank Cbank=5, Rate Approx 0.8
+Component Row Code (n x,
+k x)
+Component Column Code (n y,
+ky)
+Base BTC (n,
+k)
+(64, 57)
+(64, 63)
+(4096, 3591)
+(32, 26)
+(32, 31)
+(1024, 806)
+(16, 11)
+(16, 15)
+(256, 165)
+(8, 4)
+(8, 7)
+(64, 28)
+For the chosen code selection bank Cbank, a corresponding row and column constituent code shall be chosen that
+best matches the total number of information bits, K, to be encoded. Then the result must be shortened to the exact
+information block size. The procedure for doing so is as follows:
+Step 1. Determine the row and column component codes.
+In any code selection bank Cbank, 4 base BTCs are given. The base BTC with the smallest information block
+length k, providing that K≤k shall be chosen. Should K exceed the largest information block length available in
+the code selection bank, the base BTC with the largest information block is selected, with parameters (n, k). From
+the total K information bits, blocks of k bits are encoded according to Clause 1.1, until the number of remaining
+information bits is less than k. The parameter K is then set to equal the remaining number of information bits.
+With code selection bank unchanged, the process repeats from Step 1.
+Should K be equal to kx×ky, then K fits exactly into the base BTC and the information bits are encoded as
+described in Clause 1.1 with no shortening. If this is not the case, then K is less than kx×ky, and the BTC made up
+from the component codes (nx, kx) and (ny, ky) must be shortened.
+
+=====PAGE 5=====
+2002-07-02 
+IEEE 802.16a-02/72
+ 
+4
+Step 2. Determine the shortening parameters.
+Determine bi, using
+1
+2
+0
+2
+.
+2
+1
+−
+<
+≤
+−
+
+
+
+
+
+
+
+
+
+
+
+
+−
+
+
+
+
+
+
+
+
+
+
+
++
+−
+=
+y
+y
+x
+i
+k
+i
+K
+i
+floor
+k
+i
+floor
+k
+b
+and choosing the integer i that assigns bi its lowest positive integer outcome. Ix, Iy and B are then calculated
+using Equation 2.
+(
+)(
+)
+K
+I
+k
+I
+k
+B
+i
+floor
+I
+i
+floor
+I
+y
+y
+x
+x
+y
+x
+−
+−
+−
+=
+
+
+
+
+=
+
+
+
++
+=
+2
+2
+1
+Equation 2
+With these shortening parameters, exactly K information bits may be used by the shortened BTC. The
+information bits are encoded according to Clause 1.1 with shortening.

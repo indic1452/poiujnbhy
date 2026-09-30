@@ -1,0 +1,44 @@
+URL: https://www.manualslib.com/manual/1291805/Comtech-Ef-Data-Sdm-300a.html?page=337
+
+SDM-300A Satellite Modem 
+C.2.3 
+Scrambling Types 
+The operator can select one of the following scrambling types: 
+CCITT V.35 
+CCITT V.35 
+Fairchild compatible 
+2^15-1 Synchronous 
+Modified V.35 
+None 
+C.2.4 
+Differential Encoder 
+The differential encoder (On or Off) takes care of one set of ambiguities due the error 
+correction codes being transparent. 
+C.2.5 
+BPSK Bit Ordering 
+The encoder has the ability to select whether I is the first bit or Q is the first bit in the 
+symbol word grouping for compatibility with any system. For standard operation Q is the 
+first bit. 
+• 
+• 
+C.2.6 
+Interleaver (Reed-Solomon Codec) 
+Observe the following: 
+• 
+• 
+• 
+• 
+Rev. 4 
+EFData/Comstream compatible. Sequential only 
+Intelsat modified. Viterbi only 
+IBS, Drop & Insert, ASYNC, and IESS-310 
+Closed Network Reed-Solomon 
+Viterbi (Standard/Non-Standard) 
+Sequential (Standard/Non-Standard) 
+QPSK - Depth 4 (IBS, IDR, D&I) 
+8PSK - Depth 4 (No Overhead, IBS, D&I) (IESS-310) 
+Depth 8 (Closed Network, Async) 
+8PSK - Depth 8 (IDR) (IESS-310) 
+Specifications 
+C–7 
+ Table of  Contents 

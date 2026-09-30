@@ -1,0 +1,2240 @@
+
+    US7356752B2 - Enhanced turbo product codes 
+        - Google Patents
+US7356752B2 - Enhanced turbo product codes 
+        - Google Patents
+  Enhanced turbo product codes 
+  Download PDF
+Info
+    Publication number
+    US7356752B2
+    US7356752B2
+    US09/808,884
+    US80888401A
+    US7356752B2
+    US 7356752 B2
+    US7356752 B2
+    US 7356752B2
+    US 80888401 A
+    US80888401 A
+    US 80888401A
+    US 7356752 B2
+    US7356752 B2
+    US 7356752B2
+    Authority
+    US
+    United States
+    Prior art keywords
+    hyper
+    data
+    parity
+    row
+    block
+    Prior art date
+    2000-03-14
+    Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.)
+      Expired - Lifetime, expires 2023-03-19
+  Application number
+  US09/808,884
+  Other versions
+      US20010050622A1
+      (en
+  Inventor
+  Eric John Hewitt
+  Bradley William Lindstrom
+  Peter Sean Ladow
+  Alan Robert Danielson
+  Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.)
+    Comtech Telecommunications Corp
+  Original Assignee
+  Comtech Telecommunications Corp
+  Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.)
+  2000-03-14
+  Filing date
+  2001-03-14
+  Publication date
+  2008-04-08
+    2001-03-14
+    Application filed by Comtech Telecommunications Corp
+    filed
+    Critical
+    Comtech Telecommunications Corp
+    2001-03-14
+    Priority to US09/808,884
+    priority
+    Critical
+    patent/US7356752B2/en
+    2001-08-27
+    Assigned to ADVANCED HARDWARE ARCHITECTURE, INC.
+    reassignment
+    ADVANCED HARDWARE ARCHITECTURE, INC.
+    ASSIGNMENT OF ASSIGNORS INTEREST (SEE DOCUMENT FOR DETAILS).
+    Assignors: LADOW, PETER SEAN, DANIELSON, ALAN ROBERT, LINDSTROM, BRADLEY WILLIAM, HEWITT, ERIC JOHN
+    2001-12-13
+    Publication of US20010050622A1
+    publication
+    Critical
+    patent/US20010050622A1/en
+    2002-09-26
+    Assigned to COMTECH TELECOMMUNICATIONS CORP.
+    reassignment
+    COMTECH TELECOMMUNICATIONS CORP.
+    ASSIGNMENT OF ASSIGNORS INTEREST (SEE DOCUMENT FOR DETAILS).
+    Assignors: ADVANCED HARDWARE ARCHITECTURES, INC.
+    2002-12-19
+    Assigned to COMTECH TELECOMMUNICATIONS CORP.
+    reassignment
+    COMTECH TELECOMMUNICATIONS CORP.
+    ASSIGNMENT OF ASSIGNORS INTEREST (SEE DOCUMENT FOR DETAILS).
+    Assignors: ADVANCED HARDWARE ARCHITECTURES, INC.
+    2008-04-08
+    Application granted
+    granted
+    Critical
+    2008-04-08
+    Publication of US7356752B2
+    publication
+    Critical
+    patent/US7356752B2/en
+    2016-03-03
+    Assigned to CITIBANK N.A., AS ADMINISTRATIVE AGENT
+    reassignment
+    CITIBANK N.A., AS ADMINISTRATIVE AGENT
+    SECURITY AGREEMENT
+    Assignors: COMTECH EF DATA CORP., COMTECH MOBILE DATACOM CORPORATION, COMTECH XICOM TECHNOLOGY, INC., TELECOMMUNICATION SYSTEMS, INC.
+    2023-03-19
+    Adjusted expiration
+    legal-status
+    Critical
+    Status
+    Expired - Lifetime
+    legal-status
+    Critical
+    Current
+Links
+          USPTO
+          USPTO PatentCenter
+          USPTO Assignment
+        Espacenet
+      Global Dossier
+        Discuss
+Images
+Classifications
+            H—ELECTRICITY
+            H03—ELECTRONIC CIRCUITRY
+            H03M—CODING; DECODING; CODE CONVERSION IN GENERAL
+            H03M13/00—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes
+            H03M13/29—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes
+            H03M13/2957—Turbo codes and decoding
+            H03M13/296—Particular turbo code structure
+            H03M13/2963—Turbo-block codes, i.e. turbo codes based on block codes, e.g. turbo decoding of product codes
+            H—ELECTRICITY
+            H03—ELECTRONIC CIRCUITRY
+            H03M—CODING; DECODING; CODE CONVERSION IN GENERAL
+            H03M13/00—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes
+            H03M13/29—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes
+            H03M13/2903—Methods and arrangements specifically for encoding, e.g. parallel encoding of a plurality of constituent codes
+            H—ELECTRICITY
+            H03—ELECTRONIC CIRCUITRY
+            H03M—CODING; DECODING; CODE CONVERSION IN GENERAL
+            H03M13/00—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes
+            H03M13/29—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes
+            H03M13/2906—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes using block codes
+            H03M13/2909—Product codes
+            H—ELECTRICITY
+            H03—ELECTRONIC CIRCUITRY
+            H03M—CODING; DECODING; CODE CONVERSION IN GENERAL
+            H03M13/00—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes
+            H03M13/29—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes
+            H03M13/2906—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes using block codes
+            H03M13/2918—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes using block codes with error correction codes in three or more dimensions, e.g. 3-dimensional product code where the bits are arranged in a cube
+            H—ELECTRICITY
+            H03—ELECTRONIC CIRCUITRY
+            H03M—CODING; DECODING; CODE CONVERSION IN GENERAL
+            H03M13/00—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes
+            H03M13/29—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes
+            H03M13/2906—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes using block codes
+            H03M13/2921—Coding, decoding or code conversion, for error detection or error correction; Coding theory basic assumptions; Coding bounds; Error probability evaluation methods; Channel models; Simulation or testing of codes combining two or more codes or code structures, e.g. product codes, generalised product codes, concatenated codes, inner and outer codes using block codes wherein error correction coding involves a diagonal direction
+Definitions
+        the present invention
+        relates to enhanced turbo product codes (eTPCs), in general, and in particular, a method for encoding hyper-product codes by diagonal encoding and an apparatus for doing the same.
+        eTPCs
+        enhanced turbo product codes
+        a product code
+        is a concatenation of two or more block codes C 1 and C 2 , each having parameters (n 1 , k 1 , d 1 ) and (n 2 , k 2 , d 2 ) where n is the codeword length, k is the number of information bits and d is the minimum Hamming distance.
+        the resulting product code
+        is (n 1  ⁇ n 2 , k 1  ⁇ k 2 , d 1  ⁇ d 2 ).
+        TPCs
+        Turbo Product Codes
+        TPCs
+        are a class of codes that offer performance closer to Shannon's limit than traditional concatenated codes.
+        TPCs
+        are the iterative soft decision decoding of a product code.
+        TPCs
+        are a class of codes with a wide range of flexibility in terms of performance, complexity and code rate. This flexibility allows TPCs to be used in a wide range of applications.
+        An enhanced turbo product code
+        is a code built with a TPC base.
+        the base code
+        can be any number of dimensions and may contain parity and/or extended Hamming constituent codes. When all axes of the code contain parity only constituent codes, the codes is a “hyper product code”.
+        Enhanced turbo product codes
+        include the N dimensional product of extending Hamming codes and simple parity codes followed by an additional parity calculation which is computed along a “hyper diagonal”, where the product code has one or more dimensions. ETPCs admit a low-complexity implementation and can be iteratively decoded with a soft-in soft-out (SISO) algorithm.
+        SISO
+        soft-in soft-out
+        the bits in the base code
+        are shuffled or interleaved according to a predetermined pattern.
+        the parity
+        is then computed over the new shuffled array.
+        the parity
+        is computed such that one additional row of bits is added to a 2-D TPC, or one additional plane is added to a 3-D TPC. This can be generalized to more dimensions since a n ⁇ 1 dimensional structure of parity bits is added to the code where “n” is the dimension of the base code.
+        eTPCs
+        In addition to bit error rate performance improvement, eTPCs also have value in terms of flexibility. System designers generally required a variety of block sizes and code rates when developing a system employing error correction. The ability to use the entire set of eTPCs (including turbo product codes, enhanced turbo product codes and any combination thereof) give great flexibility in choosing an exact code for a given system.
+        the code rate and Best Error Rate (BER) performance of TPCs
+        is dependent on the systematic, constituent block code codewords and the number of axes in the product code.
+        the set of eTPCs shown below
+        include codes of 2 or more dimensions, where the base code on each axis can include extended Hamming codes and/or parity codes or other equivalents.
+        the table below
+        shows the set of 2-D and 3-D eTPC code configurations:
+        an ‘H’
+        represents an extended Hamming code axis
+        a ‘P’
+        represents a parity only axis
+        a ‘+’
+        indicates a enhanced turbo product code containing the additional hyper-diagonal axis.
+        a HP+ code
+        contains an extended Hamming code in the X axis, a parity only code in the Y axis and an additional hyper-diagonal axis.
+        the minimum distance for codes containing the hyper-diagonal axis
+        depends on the length of the code axis and must be found by computer analysis.
+        the table
+        shows an estimate of the minimum distance for these codes in the right column. It is shown in the above table that the minimum distance for the codes increases as more axes of the code are coded. In addition, the minimum distance of the codes also increase as a hyper-diagonal axis is added to the code. In turn, the code rate in encoding the code decreases, which increases the performance of the encoder.
+        the diagonal parity bits or hyper-diagonal
+        is obtained by adding bits diagonally along the block by using the following equation:
+        the addition of the diagonal parity bits
+        increases the minimum Euclidean distance, dmin, of the code.
+        the diagonal axis
+        is often referred to as a hyper axis even when it is used with Hamming codes in the various axes.
+        the increased minimum distance
+        will result in a lower error floor of the code.
+        the addition of a hyper axis
+        can improve the performance of the code before the bound.
+        FIG. 1
+        generally illustrates the method of encoding in accordance with the present invention.
+        the x-axis of the code
+        is encoded by an x-axis encoder 10 which encodes each row resulting in a block of data having ky rows of nx bits per row (nx, ky).
+        This block of data
+        is input to a Y axis encoder 11 that encodes each column by adding data to the Y axis, resulting in a (nx, ny) block output.
+        the last step
+        includes a hyper axis encoder 12 which adds the diagonal parity bits to the code.
+        a parity only encode
+        is applied to all columns of the block. The result adds one row to the block, resulting in a (nx, ny+l ) output block.
+        the prior art method of encoding
+        has several disadvantages.
+        One full encoded 2-D block having a code (nx, ny) of storage
+        is required in the encoder to hold both the data array and the error correction coding (ECC) bits.
+        ECC
+        error correction coding
+        the encoder
+        has a one block latency. Latency is defined as the time between the first bit of a block of data is input into the encoder and the last bit of the same block is output from the encoder.
+        the prior art encoder
+        have a high latency, because the encoder cannot output the data array until it finishes encoding both rows and columns. To complete this encoding process, the encoder must receive the entire data array. Therefore, the first data bit of the block cannot be output until the last data bit of the same block is input making the latency one full block.
+        Many communications type systems
+        cannot handle high latency because of the Quality of Service constraints placed on the system. For example, a 1 ⁇ 2 second delay on a telephone line is undesirable, because the delay inhibits communication between the transmitting and
+        an encoder
+        than can encode the data ‘on the fly’ without storing the entire block in storage.
+        Such an encoder
+        should have very low latency because it would not store the data bits, but only store the error correction bits. The data bits would be transmitted immediately over the channel, making the latency near zero.
+        such an encoder
+        would have smaller storage requirements, because the encoder is not storing the data array itself.
+        a method of encoding a block of data having n dimensions
+        contains a plurality of systematic block code codewords, whereby the method comprises the steps of performing a parity calculation along a hyper diagonal in the block, wherein a parity result for the parity calculation is generated. Also, the step of adding the parity result to the block of data.
+        a parity sub-block
+        is added to the block of data, the parity sub-block having a plurality of parity bits, the method comprising the steps of causing the parity sub-block to be equal to a first sub-block rotated by a predetermined number of bits. Also, for each subsequent sub-block parallel to the first sub-block in the n-dimensional block, bit-wise XORing that parallel sub-block with the parity sub-block, wherein the parity sub-block is rotated by an appropriate number of bits.
+        a method of encoding a block of data having n-dimensions received from an input source
+        contains a plurality of information bits, the method comprising the steps of receiving a row of the block and immediately outputting the row. Encoding the information bits in the row, wherein a first set of encoded data is generated according to a first encoding scheme. Outputting the first set of encoded data. Encoding the information bits in a column according to a second encoding scheme, wherein a second set of encoded data is generated and iteratively updated according to the information bits in the row.
+        An encoder for encoding a block of data having a plurality of information bits
+        The encoder outputs the information bits immediately after receiving the information bits, the encoder comprising a first encoder module for encoding the information bits in a row of the block, wherein the first encoder generates a set of encoded row bits.
+        the second encoder
+        updates the encoded column bits for each row encoded by the first encoder.
+        a hyper encoder module
+        for hyper-diagonally encoding all information bits and all encoded bits diagonally along the block. The hyper encoder generates a set of parity results, whereby each parity result corresponds to a diagonal of the encoded bits.
+        An encoder for encoding a block of data into an encoded block of data
+        comprising: means for receiving the block of data, wherein the information bits received are immediately output by an output means.
+        First means for encoding each row according to a first encoding scheme
+        wherein the first means generates a row encoding result for each row encoded by the first encoding scheme.
+        Second means for encoding each column according to a second encoding scheme
+        wherein the second means generates a column encoding result for each column encoded by the second encoded scheme.
+        the column encoding result
+        is iteratively updated for each row encoded by the first means.
+        Means for hyper-diagonally encoding along the encoded block of data
+        the means for hyper-diagonally encoding generating a hyper parity result for each corresponding diagonal in the encoded block of data.
+        the encoder
+        outputs the information bits immediately after receiving the information bits, the encoder comprising a first encoder module for encoding the information bits in a row of the block, wherein the first encoder generates a set of encoded row bits.
+        a second encoder module for encoding the information bits in a column of the block
+        wherein the second encoder module generates a set of encoded column bits according to the information bits in each row.
+        the second encoder
+        updates the encoded column bits for each row encoded by the first encoder.
+        FIG. 1
+        illustrates a block diagram of an encoding method of a two dimensional code in accordance with the present invention.
+        FIG. 2
+        illustrates a block diagram of an encoding method of a three dimensional code in accordance with the present invention.
+        FIG. 3
+        illustrates a block diagram of an encoder of a two dimensional code in accordance with the present invention.
+        FIG. 4
+        illustrates a top level diagram of an encoder module in accordance with the present invention.
+        FIG. 5
+        illustrates a detailed diagram of a datapath module in accordance with the present invention.
+        FIG. 6
+        illustrates a detailed diagram of a hyper_encoder in accordance with the present invention.
+        FIG. 7
+        illustrates a detailed diagram of a control module in accordance with the present invention.
+        FIGS. 8 a , 8 b and 8 c
+        illustrate a two dimensional enhanced turbo product code in accordance with the present invention.
+        FIG. 9
+        illustrates a three dimensional enhanced turbo product code in accordance with the present invention.
+        FIG. 10 a
+        illustrates a two dimensional enhanced turbo product code having shortened bits in accordance with the present invention.
+        FIG. 10 b
+        illustrates a three dimensional enhanced turbo product code having shortened bits in accordance with the present invention.
+        the method for encoding a enhanced turbo product code (eTPC) using hyper-diagonal encoding
+        is shown in the following example.
+        the following diagram
+        illustrates a base 2-D parity only code along with lettering showing the order of the parity computation, whereby each letter in the block represents one bit.
+        the parity block shown in the diagram
+        has parameters of (5,4) ⁇ (6,4).
+        the data in the block
+        is consists of 4 rows and 4 columns of data, each row and column having 4 bits within. Since the block is an eTPC block, error correction bits such as extending Hamming codes or parity codes are added to each row and each column to have a block consisting of 5 rows and 5 columns.
+        a hyper parity row or array
+        may be added to the eTPC block as part of the block or separately.
+        the hyper parity array
+        contains the results of the hyper-diagonal parity calculation of the entire encoded eTPC block, which includes the information bits in the 4 ⁇ 4 block as well as the ECC bit ⁇
+        All the bits above
+        have the same letter (A through E) which are used to compute the added parity bits which are to be placed in the hyper parity row. For example, all bits labeled A and will have even parity and all bits labeled B will have even parity, etc.
+        Three dimensional hyper diagonal parity bits
+        are added by moving through all three axes of the 3-D array. Similarly, any numbers of dimensions can be built.
+        the encoder
+        performs the hyper diagonal by “rotating” the parity row after performing the parity calculation along a diagonal string of bits in the data block. For example, the encoder performs the parity calculation by diagonally traversing a string of bits A and positions the parity row to the right one column.
+        the encoder
+        performs the parity calculation by diagonally traversing a string of bits B and positions the parity row to the right one column. This continues until the encoder performs a parity calculation for all the strings. Thereafter, the encoder rotates the parity row to the right one column, which results in the parity row in the diagram above.
+        Other methods of hyper encoding
+        may be used. For the 2-D code above, the hyper-diagonal parity results can be computed moving down and to the left instead of down and to the right. In addition, multiple rows of additional parity can be added to the code.
+        the encoder
+        can encode codes with higher dimensions by adding one array to the code.
+        a (16,11) ⁇ (16,11) ⁇ (16,11)
+        may be encoded to be a (16,11) ⁇ (16,11) ⁇ (17,11) code.
+        the encoding
+        is done in the same function as the 2-D case, except that an additional encoder is added between the “Encode Y-axis” 21 module and the “Encode Hyper Axis” 22 module.
+        This module, labeled “Encode Z-axis” 23
+        executes the Z axis encoding.
+        the block
+        therefore is output as (nx, ny, nz+1).
+        the encoder of the present invention
+        uses a novel technique to limit the amount of storage space required for the encoding process and lower the latency of the encoder.
+        a simplified block diagram of the present invention
+        is shown in FIG. 3 .
+        the encoder 100 of present invention
+        inputs each bit of a two dimensional block of data into the x_encoder 40 , y_encoder 41 , and hyper_encoder 42 and then passes out the encoded data to be transmitted.
+        the x_encoder 40
+        contains n 1  ⁇ k 1 bits of storage, where the code in the X axis is (n 1 ,k 1 ).
+        the y_encoder 41
+        contains (n 2  ⁇ k 2 ) ⁇ k 1 bits of storage, and the hyper_encoder 42 contains n 1 bits of storage.
+        the encoding of a two dimensional block of data
+        proceeds as follows.
+        the data for the first row of the block
+        is input one or more bits at a time to each encoder and is immediately transmitted over the channel.
+        the x_encoder 40
+        encodes the first row as the data is input.
+        the y_encoder 41
+        encodes k 1 parallel codes, each corresponding to one column (k) of the array.
+        the hyper_encoder 42
+        encodes n 1 parallel parity codes, each corresponding to one hyper-diagonal of the array.
+        the x_encoder 40
+        encodes the row by performing an encoding scheme, such as adding extending Hamming codes, parity codes, or any equivalent to the row. After the x_encoder 40 is finished encoding the first row, it is ready to output the first row of ECC bits or set of encoded data. The input data stream is halted while the mux 43 outputs the first row of ECC bits to the y_encoder 41 and the mux 44 . Due to the halt of the data stream, the y_encoder 41 becomes idle during this time.
+        the memory in the x_encoder 40
+        is cleared by zeroing all bits in the memory of the x_encoder 40 , and the next row of data is input into the x_encoder 40 .
+        the y_encoder 41
+        then encodes and iteratively updates each column by its own encoding scheme as each subsequent row of data is input to the encoder 100 .
+        the hyper_encoder 42
+        updates by its own encoding scheme by encoding each hyper-diagonal parity bit as data enters the encoder 100 .
+        This process
+        iteratively continues until k 2 rows are output from the encoder 100 .
+        the y_encoder
+        finishes encoding all remaining column bits by performing a row by row parity calculation on all sets of encoded column bits.
+        the y_encoder 41
+        is ready to output all y axis ECC data.
+        the mux 44
+        is switched to allow y axis ECC data to be output from the encoder 100 while the x_encoder 40 continues to encode new code words and the hyper_encoder 42 continues to encode and update the data from the y axis ECC data.
+        the y axis ECC data
+        is exhausted.
+        the memory of the y_encoder 41
+        is cleared by zeroing all bits in the memory of the y_encoder 41 , and the hyper_encoder 42 has completed the hyper-diagonal encoding of the entire block. Following, the additional row of parity bits from the hyper_encoder 42 is output after the mux 45 is switched.
+        z_encoder
+        For a three dimensional block of data having (n, k, d) bits, z_encoder (not pictured) with a corresponding mux would be used to encode the d-planes of the data.
+        the z_encoder
+        encodes and iteratively updates each plane by its own encoding scheme as each initial and subsequent row is entered into the encoder 100 .
+        the z_encoder
+        uses the encoded ECC data generated by the x_encoder 40 and y_encoder 41 to encode the bits in the plane.
+        FIG. 3
+        illustrates that the rows are input first and the columns and hyper-diagonals are encoded according to the rows, it is not necessary for the method to occur in this manner. For example, the columns may be encoded first while the rows are updated, etc.
+        FIG. 4
+        illustrates a diagram of the encoder in accordance with the present invention.
+        the 100 encoder
+        includes four modules, namely the input module 102 ; datapath module 104 ; control module 106 and the output module 108 .
+        the input module 102
+        receives input data via a ready/accept handshake.
+        the data
+        is encoded within the datapath module and is then output through the output module 108 via ready/accept handshake.
+        the control module 106
+        contains the encoder configuration settings, state machines and control signals used for the encoding.
+        the output module 108
+        receives the encoded data from the datapath module 104 and control module 106 and outputs the encoded code.
+        the input module
+        receives the input data at a rate of DATA_RATE bits at a time, where DATA_RATE is the value representing the number of encoded data bits processed per clock cycle. The value of the DATA_RATE cannot exceed the minimum number of encoded bits in the x-axis of the block.
+        the input module 102
+        receives the input data and provides the required number of bits for the row being encoded. The number of data bits needed will depend on the encoding process and can be up to the value equal to the DATA-RATE bits.
+        the input module 102
+        receives a last_block_bits signal and last_block_row signal from the control module 106 which informs the input module 102 when the last bits are to be received into the input module 102 .
+        the control module 106
+        contains control logic which allows the input, datapath and output modules communicate to one another in order to encode the data.
+        the control module 106
+        is shown in more detail in FIG. 7 includes a register_control 300 ; in_data_control 302 ; block_control 304 ; out_data_control 306 ; x_encode_co y_encode_control 310 ; z_encode_control 312 ; and hyper_control 314 .
+        the register_control 300
+        registers all the input module control signals.
+        the in_data_control 302
+        generates control signals used to receive input data from the input module 102 .
+        the block_control 304
+        generates control signals to specify the block status.
+        the out_data_control 306
+        generates control signals used to output data from the output module 108 .
+        the x_encode_control 308
+        generates the control signals used for x-axis encoding done by the x_encoder 110 .
+        the y_encode_control and z_encode control
+        generate the controls used for the y and z axis encoding done by the y_encoder 112 and the z_encoder 114 , respectively.
+        the hyper_control signal
+        are used for hyper encoding done by the hyper encoder 116 .
+        the output module 106
+        receives data at DATA_RATE bits per clock and sends the output data at DATA_RATE bits per clock.
+        the data
+        also contains a first_bit and last_bit flags that indicate the position of the first and last bits of the block.
+        the state machine 316
+        operates in an idle mode until a reset_n_pulse in provided. Once the reset_n_pulse is provided, the state machine 316 enters the active state and does not return to the idle state until another reset_n_pulse is given. When data is input, the state machine outputs either the data, x_encoded bits, y_encoded bits, z_encoded bits or the hyper bits.
+        the datapath module 104 in FIG. 5
+        performs the encoding functions, details of which are illustrated in FIG. 5 .
+        the datapath module 104
+        encodes a three dimensional block of data in the x,y, and z dimensions and adds the hyper bits when the datapath is enabled. This is done by four separate encoder, including an x_encoder 110 , y_encoder 112 , z_encoder 114 and a hyper_encoder 116 .
+        the datapath module 104
+        would only use the x_encoder 110 , y_encoder 112 and hyper_encoder 116 .
+        Each encoder
+        examines the data stream and can output an independent encoded data stream out the path.
+        the data
+        gets clocked into the in reg register by a signal idata_in when the load_in_reg signal is active.
+        the data
+        is then sent to all of the encoder.
+        the data
+        is also sent to the output mux 120 as data_out.
+        the output mux 120
+        either passes the data out or selects the data from one or all of the encoder to pass out to the out_reg register.
+        the data
+        is clocked into the out_reg register when the load-out reg signal is active.
+        Each of the encoder
+        can alternatively communicate to external memory over a RAM bus structure.
+        the x_encoder 110 , y_encoder 112 , and z_encoder 114 modules
+        operate by Hamming code generator logic in addition to other logic which allows the encoder to add the systematic codewords on all data bits for the block of data.
+        the x_encoder 110
+        stores the Hamming and parity calculations in an internal register, such as a row encode storage array. For a DATA_RATE that is greater than 1 , the Hamming calculation for DATA_RATE bits is done in parallel.
+        a DATA_RATE equivalent to 1
+        causes the y_encoder 112 to store the Hamming calculation in an external memory, such as an external RAM or column encode storage array.
+        a DATA_RATE greater than 1
+        the data is stored in an external memory as groups DATA_RATE wide. This requires only 1/DATA_RATE the number of addresses and DATA_RATE times the number of bits per address.
+        the z_encoder 114
+        operates in the same way as the y_encoder 112 in that it stores the error correction bits in a plane encode storage array.
+        the hyper_encoder module 116
+        adds an extra row or column to a 2-D block or an extra plane of hyper bits to a 3-D block.
+        the hyper bits
+        are calculated by doing even parity along the diagonal axis of the block, and the resulting parity bits are stored in an external memory such as a parity array. All RAM address, data, and control signals are output on the RAM bus signals to the external memory.
+        the y_encoder
+        uses the least significant bits, the z_encoder, if present, will use the middle bits, and the hyper encoder uses the most significant bits.
+        the o_first signal
+        will assert on the first bit of the block out.
+        the o_last signal
+        will assert in the last bit of the block out. For DATA_RATE greater than 1, both signals can be asserted at the same time. It will be up to the user to determine which bits in the bus are first and last bits.
+        the hyper_encoder 116
+        traverses the diagonals in the input block and calculates the parity bits.
+        FIG. 6
+        illustrates the details of the hyper_encoder 116 in accordance with the present invention.
+        the hyper_encoder 116
+        includes a input pipestage 202 , a hyper core 200 and output pipestage 204 .
+        the input pipestage 202
+        registers all the data for use by the other modules in the hyper_encoder 116 .
+        Data
+        enters the hyper encoder through the input pipestage 202 via a ready/accept handshake, which is represented by enc_rdy and enc_accpt respectively.
+        the output pipestage 204
+        outputs data that is hyper encoded by a ready/accept handshake, which is represented by hyper_rdy and hyper_acpt respectively.
+        the hyper_core 200
+        has a hyper register or hyper array which is capable of storing a complete row.
+        the hyper_core 200
+        includes a control module within which initiates all the RAM reads and writes.
+        the registers
+        can hold an entire row.
+        data
+        is transferred between the previous row register and the hyper register.
+        an entire hyper plane
+        is stored in the hyper encoder. So, a RAM is used to hold the hyper plane parity bits.
+        the row
+        is built up in the hyper register. When the end of a row is reached, the row is written to the RAM.
+        the input data
+        is manipulated by positioning the previous row as discussed below and XORing with the input data. This data is then written to the RAM.
+        the previous row
+        is set to 0.
+        the previous row
+        is updated depending on which row it is in the plane. If the row is the last row in the plane, it receives the current data being written to the RAM. However, if the row is any other row in the plane, it receives the contents of the current RAM address to be written. There are exceptions. For example, during the first plane, the previous row is set to 0. Also, in the second plane, the regions that are within the shortr are set to 0. In theses cases, the previous row must be explicitly set to 0 to prevent the prior RAM contents from corrupting the hyper operation.
+        the hyper_encoder 116
+        calculates the parity along hyper-diagonals in a eTPC block.
+        the traversal of the hyper-diagonals
+        differ depending on the type of eTPC code. If the eTPC code is 2-D, there is one row of hyper parity bits added to the block as part of the block or separately. However, more than one row of hyper parity bits may be added to the block. In a 3-D eTPC code, an entire plane of hyper parity bits is added to block by the encoder 100 .
+        the data
+        is input starting from the upper left corner of a block. For the first row, the data is loaded into the hyper register at the output. At the end of the row, the data is XORed with the previous row register and stored into the previous row register. After the last DATA_RATE chunk of the eTPC block is transferred to the output, the data is transferred into the previous row register. Following, the result is transferred out to the output pipestage from the previous row register.
+        the hyper_reg register
+        When a word is completely within the hyper_reg register, it is written to the RAM. The address is then incremented. When the last row of a plane is written, the address is reset to 0. During the first plane, only data is written, and all reads are ignored. During subsequent planes, data is read from the RAM, put into previous row registers, and the data in the hyper register is written to the same address. When the last word of the last row of the last plane is transferred into the output pipestage, the address is reset to 0. The word in the hyper register is immediately output. When the last word of the hyper register is output to the output pipestage, the address is incremented. At the end of every row of hyper bits output, the address is incremented. When the address reaches the y size, the output is finished.
+        the encoder 100
+        may encoder data in higher dimensions and is thus not limited to the dimensions discussed above.
+        the encoder 100
+        uses the above method to encode the sub-blocks of data, such as rows, columns, etc.
+        the encoder 100
+        also supports code shortening. For example, the number of x, y, and z rows to drop is specified with the shortx(), shorty(), and shortz() inputs.
+        the shortb input
+        can be used to shorten the block size by an additional number of bits, whereas the shortr input can be used to shorten rows on the first plane of the block. These inputs allow the encoder 100 to encode block sizes of any length.
+        the bit shortening
+        will be taken off the first bits of the first x row. The shorted bits will not be output in the data stream.
+        shortb
+        represents a “bit shorten amount” signal which determines the number of bits in a row that must be shortened for a 2-D block.
+        shortr
+        In 2-D enhanced turbo product codes, shortr must be set to 0.
+        shortr
+        represents a “row shorten amount” signal which determines the number of bits on the first plane to be shortened. For 3-D blocks, the value for shortr determines the number of rows to shorten off the first plane.
+        the block in FIG. 10 a
+        illustrates the use of shortb in a 2-D enhanced turbo product code.
+        the “-” in an a bit
+        indicates shortened bits in the row, which are implicitly 0.
+        a “-”
+        is placed in each row which is shortened, namely addresses 0-4 in row 1.
+        the input data
+        does not start at the upper left hand corner of the plane, but instead begins after the last “-” character. This impacts the encoding process by changing where the data is initially stored. However, since the parity row is initially set at zero in the first step of the hyper encoding, the initial location of the data does not change the results or output of the hyper parity check.
+        the block in FIG. 10 b
+        illustrates the use of shortb and shortr in a 3-D enhanced turbo product code. Similar to the 2-D enhanced turbo product code with shortb, “—” characters are placed in the shortened rows and are implicitly 0. Again, input data is placed after the last “-” character, which changes where the data is initially stored. However, as in the 2-D block, the initial location of the data does not change the results or output of the hyper parity check, because the hyper parity plane is initially set to zero.
+        the hyper_index
+        is used to build the input vector, whereas addr is the address to the RAM. Shortr and shortb are handled by preloading the counters.
+        the hyper_index register
+        is used. The very first row of an incoming eTPC may be shortened by shortb bits.
+        an enc_start
+        which is the first word in an incoming codeword
+        the hyper_index register
+        is loaded with shortb+1.
+        the hyper_reg register
+        is cleared will all zeros except where the DATA_RATE received bits are located. This causes the shortb bits to become all zeros. From this point, as bits are input, they are loaded into the hyper_reg. For subsequent rows, all loading is done starting with hyper_index set at 0.
+        the addr_register
+        is used.
+        the address of the first word written
+        is shortr.
+        the RAM
+        is filled starting from shortr.
+        the address
+        wraps around to 0.
+        the addresses from 0 to short-1
+        do not hold data. All reads during the second plane are forced to 0. After the second plane, all address locations are valid. Addresses, are generated only for 3-D codes, not are not necessary for 2-D codes.
+        FIGS. 8 a - 8 c
+        illustrate several eTPC blocks of differing sizes.
+        the blocks
+        include the bits along the diagonals that the parity is calculated for.
+        the blocks shown in FIGS. 8 a - 8 c
+        contain extended Hamming codes that are illustrates a 7 ⁇ 7 block which becomes a 8 ⁇ 7 eTPC block after hyper encoding.
+        FIG. 8 b
+        illustrates a 15 ⁇ 5 block which becomes a 16 ⁇ 5 eTPC block after hyper encoding.
+        FIG. 8 c
+        illustrates a 4 ⁇ 8 block which becomes a 4 ⁇ 9 eTPC block after hyper encoding.
+        each bit of the block
+        represents the address number of the bit.
+        the hyper bits
+        are represented by the symbol “h” followed by the address number of each byte that the parity is calculated along.
+        each address in a row in the block
+        is positioned to the right in the subsequent row (along the y-axis). The data is input to the block one row at a time, starting from the left hand comer of each block. The data is input exactly as it appears in FIGS. 8 a - 8 c.
+        Data
+        is input row by row starting in the first row wherein the data, after being encoded by the x_encoder 110 , y_encoder 112 , and z_encoder 114 , contains extended Hamming code bits.
+        the positioning procedure
+        is performed on the subsequent arrays, such as rows or columns.
+        the following steps
+        are preferably performed. 1. Set the parity row for the block is set to zero (0).
+        a 0
+        is placed in every bit in the parity row.
+        parity row
+        is positioned by 1 to the right, the parity row may be positioned in any other direction. Further, the parity row is not limited to be rotated by 1 after each incoming row is XORed. Thus the parity row may also be positioned by more than two bit addresses or more.
+        FIG. 9
+        illustrates a diagram of a 3-D enhanced turbo product code.
+        the numbers in the blocks
+        are bits addresses, and the numbers prefaced by “h” are the hyper diagonals.
+        the parity bits in a 3-D block
+        are added as a plane to the block itself or as a separate plane.
+        the first plane
+        is represented as the block furthest to the left.
+        the second plane
+        is second to the left and the third plane is shown to the right of the second plane.
+        the parity plane
+        is farthest to the right.
+        the bits
+        are positioned down one column and positioned to the right by 1 bit or column as the parity check proceeds along the z-axis.
+        each row in each plane
+        is positioned down in the subsequent row and to the right by 1 bit or column with respect to the previous plane.
+        the last row
+        is moved up in the previous plane to the first row in the subsequent plane and moved to the right by 1 bit or column.
+        the process to determine the hyper parity bits for 3-D codes
+        are set forth below.
+        Data
+        is input row by row starting in the first plane wherein the data, after being encoded by the x_encoder 110 , y_encoder 112 , and z_encoder 114 , contains extended Hamming code bits.
+        the positioning procedure
+        is performed on the subsequent planes.
+        the process for determining hyper parity bits
+        are as follows: 1. Set the parity bits in the hyper plane to zero. 2. Rotate or position each row in subsequent plane to the right by 1 bit address, which may be a row or column. 3.
+        parity row
+        is positioned by 1 to the right, the parity row may be positioned in any other direction. Further, the parity row is not limited to be rotated by 1 after each incoming row is XORed. Thus the parity row may also be positioned by more than two bit addresses or more.
+Landscapes
+        Physics & Mathematics
+        (AREA)
+        Probability & Statistics with Applications
+        (AREA)
+        Engineering & Computer Science
+        (AREA)
+        Theoretical Computer Science
+        (AREA)
+        Error Detection And Correction
+        (AREA)
+Abstract
+A hyper encoder module encodes a block of data having a plurality of sub-blocks. Each sub-block includes a plurality of systematic block code codewords. A parity sub-block is added to the block. The parity sub-block is a first sub-block rotated by a predetermined number of bits. Each subsequent sub-block in the n-dimensional block is rotated by an appropriate number of bits and bit-wise XORed. An encoder method and apparatus which includes the hyper encoder module receives the block of data. A row of the block is immediately output and encoded by a first module according to a first encoding scheme. A column is encoded by a second module according to a second encoding scheme. A second set of encoded data is generated, iteratively updated and output by the second module. The hyper encoder module hyper-diagonally encodes the information bits as described above and then output.
+Description
+  RELATED APPLICATIONS
+This Patent Application claims priority under 35 U.S.C. 119(e) of the U.S. Provisional Patent Application, Ser. No. 60/189,345 filed Mar. 14, 2000, now abandoned, and entitled “ENHANCED TURBO PRODUCT CODES”. The Provisional Patent Application, Ser. No. 60/189,345 filed Mar. 14, 2000, and entitled “ENHANCED TURBO PRODUCT CODES” is also hereby incorporated by reference.
+  BACKGROUND OF THE INVENTION
+The present invention relates to enhanced turbo product codes (eTPCs), in general, and in particular, a method for encoding hyper-product codes by diagonal encoding and an apparatus for doing the same.
+A product code is a concatenation of two or more block codes C1 and C2, each having parameters (n1, k1, d1) and (n2, k2, d2) where n is the codeword length, k is the number of information bits and d is the minimum Hamming distance. The product code P=C1×C2 is obtained by placing k1×k2 information bits in an array of k1 rows and k2 columns. Following, the k1 rows are coded using code C1 and n2 columns are coded using C2. Thus, the resulting product code is (n1×n2, k1×k2, d1×d2). Under such construction, all rows of the matrix P are codewords of C1 and all columns of matrix P are codewords of C2. Product codes can be two dimensional or multi dimensional. However, when the dimensions of the product become higher, codes with larger euclidean distances (dmin) are more easily obtained, but at a cost of significant increase in block size.
+Turbo Product Codes (TPCs) is a class of codes that offer performance closer to Shannon's limit than traditional concatenated codes. TPCs are the iterative soft decision decoding of a product code. TPCs are a class of codes with a wide range of flexibility in terms of performance, complexity and code rate. This flexibility allows TPCs to be used in a wide range of applications.
+An enhanced turbo product code is a code built with a TPC base. The base code can be any number of dimensions and may contain parity and/or extended Hamming constituent codes. When all axes of the code contain parity only constituent codes, the codes is a “hyper product code”. Enhanced turbo product codes (eTPCs) include the N dimensional product of extending Hamming codes and simple parity codes followed by an additional parity calculation which is computed along a “hyper diagonal”, where the product code has one or more dimensions. ETPCs admit a low-complexity implementation and can be iteratively decoded with a soft-in soft-out (SISO) algorithm.
+To move from the base TPC to an eTPC , the bits in the base code are shuffled or interleaved according to a predetermined pattern. The parity is then computed over the new shuffled array. The parity is computed such that one additional row of bits is added to a 2-D TPC, or one additional plane is added to a 3-D TPC. This can be generalized to more dimensions since a n−1 dimensional structure of parity bits is added to the code where “n” is the dimension of the base code.
+In addition to bit error rate performance improvement, eTPCs also have value in terms of flexibility. System designers generally required a variety of block sizes and code rates when developing a system employing error correction. The ability to use the entire set of eTPCs (including turbo product codes, enhanced turbo product codes and any combination thereof) give great flexibility in choosing an exact code for a given system.
+The code rate and Best Error Rate (BER) performance of TPCs is dependent on the systematic, constituent block code codewords and the number of axes in the product code. The set of eTPCs shown below include codes of 2 or more dimensions, where the base code on each axis can include extended Hamming codes and/or parity codes or other equivalents. The table below shows the set of 2-D and 3-D eTPC code configurations:
+              Code
+              Estimated Minimum
+               Configurations  Distance
+              PP     
+              4
+              PP+
+              ~6
+              HP
+              8
+              HP+
+              ~10
+              HH
+              16
+              PPP
+              8
+              PPP+
+              ~12
+              HPP
+              16
+              HPP+
+              ~20
+              HH+
+              ~20
+              HHP
+              32
+              HHP+
+              ~40
+              HHH
+              64
+              HHH+
+              ~80
+In the table above, an ‘H’ represents an extended Hamming code axis, a ‘P’ represents a parity only axis, and a ‘+’ indicates a enhanced turbo product code containing the additional hyper-diagonal axis. For example, a HP+ code contains an extended Hamming code in the X axis, a parity only code in the Y axis and an additional hyper-diagonal axis. The minimum distance for codes containing the hyper-diagonal axis depends on the length of the code axis and must be found by computer analysis. The table shows an estimate of the minimum distance for these codes in the right column. It is shown in the above table that the minimum distance for the codes increases as more axes of the code are coded. In addition, the minimum distance of the codes also increase as a hyper-diagonal axis is added to the code. In turn, the code rate in encoding the code decreases, which increases the performance of the encoder.
+The diagonal parity bits or hyper-diagonal is obtained by adding bits diagonally along the block by using the following equation:
+        P i  =   ∑  k = 0    m 1  - 1   ⁢  B   i + k  , k        ( 1 )       
+where Bi,j is the (i,j)th product code bit. The diagonal parity bits can be generated by right “rotating” the ith row of the original product by i+1 bits, then adding each column to get the diagonal parity bits. Likewise, diagonal parity bits can also be generated by left rotating the ith row of the original product code by i−1 bits, then adding each column to get the diagonal parity bits.
+The addition of the diagonal parity bits increases the minimum Euclidean distance, dmin, of the code. The diagonal axis is often referred to as a hyper axis even when it is used with Hamming codes in the various axes. The increased minimum distance will result in a lower error floor of the code. Further, the addition of a hyper axis can improve the performance of the code before the bound.
+A prior art method of encoding is to place the data in a kx×ky (kx, ky) array of bits. FIG. 1 generally illustrates the method of encoding in accordance with the present invention. The x-axis of the code is encoded by an x-axis encoder 10 which encodes each row resulting in a block of data having ky rows of nx bits per row (nx, ky). This block of data is input to a Y axis encoder 11 that encodes each column by adding data to the Y axis, resulting in a (nx, ny) block output. The last step includes a hyper axis encoder 12 which adds the diagonal parity bits to the code. Then, a parity only encode is applied to all columns of the block. The result adds one row to the block, resulting in a (nx, ny+l ) output block.
+The prior art method of encoding has several disadvantages. One full encoded 2-D block having a code (nx, ny) of storage is required in the encoder to hold both the data array and the error correction coding (ECC) bits. In addition, the encoder has a one block latency. Latency is defined as the time between the first bit of a block of data is input into the encoder and the last bit of the same block is output from the encoder. The prior art encoder have a high latency, because the encoder cannot output the data array until it finishes encoding both rows and columns. To complete this encoding process, the encoder must receive the entire data array. Therefore, the first data bit of the block cannot be output until the last data bit of the same block is input making the latency one full block. Many communications type systems cannot handle high latency because of the Quality of Service constraints placed on the system. For example, a ½ second delay on a telephone line is undesirable, because the delay inhibits communication between the transmitting and receiving ends.
+What is needed is an efficient hardware implementation and method thereof of iterative encoding for eTPCs with a hyper diagonal parity array added, where the eTPC includes systematic bloc code codewords such as extended Hamming codes, parity codes as well as other codes. Using eTPCs with iterative diagonal encoding and decoding is advantageous, because such eTPC have an error floor of three to five orders of magnitude lower than the corresponding turbo-product codes.
+What is also needed is an encoder than can encode the data ‘on the fly’ without storing the entire block in storage. Such an encoder should have very low latency because it would not store the data bits, but only store the error correction bits. The data bits would be transmitted immediately over the channel, making the latency near zero. In addition, such an encoder would have smaller storage requirements, because the encoder is not storing the data array itself.
+  SUMMARY OF THE INVENTION
+A method of encoding a block of data having n dimensions. The block contains a plurality of systematic block code codewords, whereby the method comprises the steps of performing a parity calculation along a hyper diagonal in the block, wherein a parity result for the parity calculation is generated. Also, the step of adding the parity result to the block of data.
+A method of encoding a n-dimensional block of data having a plurality of (n−1) dimensional sub-blocks. Each sub-block including a plurality of systematic block code codewords. A parity sub-block is added to the block of data, the parity sub-block having a plurality of parity bits, the method comprising the steps of causing the parity sub-block to be equal to a first sub-block rotated by a predetermined number of bits. Also, for each subsequent sub-block parallel to the first sub-block in the n-dimensional block, bit-wise XORing that parallel sub-block with the parity sub-block, wherein the parity sub-block is rotated by an appropriate number of bits.
+A method of encoding a block of data having n-dimensions received from an input source. The block contains a plurality of information bits, the method comprising the steps of receiving a row of the block and immediately outputting the row. Encoding the information bits in the row, wherein a first set of encoded data is generated according to a first encoding scheme. Outputting the first set of encoded data. Encoding the information bits in a column according to a second encoding scheme, wherein a second set of encoded data is generated and iteratively updated according to the information bits in the row. Hyper-diagonally encoding the information bits in the block according to a parity encoding scheme, wherein a hyper set of encoded data is generated according to the information bits in the row and column and the first and second sets of encoded data. Outputting the updated second set of encoded data after all the information bits and all subsequent first sets of encoded data are outputted. Outputting the hyper set of encoded data.
+An encoder for encoding a block of data having a plurality of information bits. The encoder outputs the information bits immediately after receiving the information bits, the encoder comprising a first encoder module for encoding the information bits in a row of the block, wherein the first encoder generates a set of encoded row bits. A second encoder module for encoding the information bits in a column of the block, wherein the second encoder module generates a set of encoded column bits according to the information bits in each row. The second encoder updates the encoded column bits for each row encoded by the first encoder. A hyper encoder module for hyper-diagonally encoding all information bits and all encoded bits diagonally along the block. The hyper encoder generates a set of parity results, whereby each parity result corresponds to a diagonal of the encoded bits.
+An encoder for encoding a block of data into an encoded block of data. The block of data having a plurality of information bits arranged in a plurality of rows and columns, the encoder comprising: means for receiving the block of data, wherein the information bits received are immediately output by an output means. First means for encoding each row according to a first encoding scheme, wherein the first means generates a row encoding result for each row encoded by the first encoding scheme. Second means for encoding each column according to a second encoding scheme, wherein the second means generates a column encoding result for each column encoded by the second encoded scheme. The column encoding result is iteratively updated for each row encoded by the first means. Means for hyper-diagonally encoding along the encoded block of data, the means for hyper-diagonally encoding generating a hyper parity result for each corresponding diagonal in the encoded block of data.
+An encoder for encoding a block of data into an encoded block of data, the block of data having a plurality of information bits. The encoder outputs the information bits immediately after receiving the information bits, the encoder comprising a first encoder module for encoding the information bits in a row of the block, wherein the first encoder generates a set of encoded row bits. A second encoder module for encoding the information bits in a column of the block, wherein the second encoder module generates a set of encoded column bits according to the information bits in each row. The second encoder updates the encoded column bits for each row encoded by the first encoder.
+Other features and advantages of the present invention will become apparent after reviewing the detailed description of the preferred embodiments set forth below.
+    BRIEF DESCRIPTION OF THE DRAWINGS
+ FIG. 1 illustrates a block diagram of an encoding method of a two dimensional code in accordance with the present invention.
+ FIG. 2 illustrates a block diagram of an encoding method of a three dimensional code in accordance with the present invention.
+ FIG. 3 illustrates a block diagram of an encoder of a two dimensional code in accordance with the present invention.
+ FIG. 4 illustrates a top level diagram of an encoder module in accordance with the present invention.
+ FIG. 5 illustrates a detailed diagram of a datapath module in accordance with the present invention.
+ FIG. 6 illustrates a detailed diagram of a hyper_encoder in accordance with the present invention.
+ FIG. 7 illustrates a detailed diagram of a control module in accordance with the present invention.
+ FIGS. 8 a, 8 b and 8 c illustrate a two dimensional enhanced turbo product code in accordance with the present invention.
+ FIG. 9 illustrates a three dimensional enhanced turbo product code in accordance with the present invention.
+ FIG. 10 a illustrates a two dimensional enhanced turbo product code having shortened bits in accordance with the present invention.
+ FIG. 10 b illustrates a three dimensional enhanced turbo product code having shortened bits in accordance with the present invention.
+  DETAILED DESCRIPTION OF THE PREFERRED EMBODIMENT
+The method for encoding a enhanced turbo product code (eTPC) using hyper-diagonal encoding is shown in the following example. The following diagram illustrates a base 2-D parity only code along with lettering showing the order of the parity computation, whereby each letter in the block represents one bit. Specifically, the parity block shown in the diagram has parameters of (5,4)×(6,4). Thus, the data in the block is consists of 4 rows and 4 columns of data, each row and column having 4 bits within. Since the block is an eTPC block, error correction bits such as extending Hamming codes or parity codes are added to each row and each column to have a block consisting of 5 rows and 5 columns. In addition, a hyper parity row or array may be added to the eTPC block as part of the block or separately. The hyper parity array contains the results of the hyper-diagonal parity calculation of the entire encoded eTPC block, which includes the information bits in the 4×4 block as well as the ECC bit←
+All the bits above have the same letter (A through E) which are used to compute the added parity bits which are to be placed in the hyper parity row. For example, all bits labeled A and will have even parity and all bits labeled B will have even parity, etc. Three dimensional hyper diagonal parity bits are added by moving through all three axes of the 3-D array. Similarly, any numbers of dimensions can be built. In the above diagram, the encoder performs the hyper diagonal by “rotating” the parity row after performing the parity calculation along a diagonal string of bits in the data block. For example, the encoder performs the parity calculation by diagonally traversing a string of bits A and positions the parity row to the right one column. Following, the encoder performs the parity calculation by diagonally traversing a string of bits B and positions the parity row to the right one column. This continues until the encoder performs a parity calculation for all the strings. Thereafter, the encoder rotates the parity row to the right one column, which results in the parity row in the diagram above. Other methods of hyper encoding may be used. For the 2-D code above, the hyper-diagonal parity results can be computed moving down and to the left instead of down and to the right. In addition, multiple rows of additional parity can be added to the code.
+The encoder can encode codes with higher dimensions by adding one array to the code. Thus a (16,11)×(16,11)×(16,11)may be encoded to be a (16,11)×(16,11)×(17,11) code. As shown in FIG. 2, the encoding is done in the same function as the 2-D case, except that an additional encoder is added between the “Encode Y-axis” 21 module and the “Encode Hyper Axis” 22 module. This module, labeled “Encode Z-axis” 23 executes the Z axis encoding. The block therefore is output as (nx, ny, nz+1).
+The encoder of the present invention uses a novel technique to limit the amount of storage space required for the encoding process and lower the latency of the encoder. A simplified block diagram of the present invention is shown in FIG. 3. Instead of placing the data in a kx×ky array of bits, the encoder 100 of present invention inputs each bit of a two dimensional block of data into the x_encoder 40, y_encoder 41, and hyper_encoder 42 and then passes out the encoded data to be transmitted. The x_encoder 40 contains n1−k1 bits of storage, where the code in the X axis is (n1,k1). The y_encoder 41 contains (n2−k2)×k1 bits of storage, and the hyper_encoder 42 contains n1 bits of storage.
+The encoding of a two dimensional block of data proceeds as follows. The data for the first row of the block is input one or more bits at a time to each encoder and is immediately transmitted over the channel. The x_encoder 40 encodes the first row as the data is input. The y_encoder 41 encodes k1 parallel codes, each corresponding to one column (k) of the array. Finally, the hyper_encoder 42 encodes n1 parallel parity codes, each corresponding to one hyper-diagonal of the array.
+After the entire first row of k1 data bits is input, the x_encoder 40 encodes the row by performing an encoding scheme, such as adding extending Hamming codes, parity codes, or any equivalent to the row. After the x_encoder 40 is finished encoding the first row, it is ready to output the first row of ECC bits or set of encoded data. The input data stream is halted while the mux 43 outputs the first row of ECC bits to the y_encoder 41 and the mux 44. Due to the halt of the data stream, the y_encoder 41 becomes idle during this time. When the first row ECC bits for the x axis is output, the memory in the x_encoder 40 is cleared by zeroing all bits in the memory of the x_encoder 40, and the next row of data is input into the x_encoder 40. The y_encoder 41 then encodes and iteratively updates each column by its own encoding scheme as each subsequent row of data is input to the encoder 100. Similarly, the hyper_encoder 42 updates by its own encoding scheme by encoding each hyper-diagonal parity bit as data enters the encoder 100.
+This process iteratively continues until k2 rows are output from the encoder 100. Once k2 rows are output, the y_encoder finishes encoding all remaining column bits by performing a row by row parity calculation on all sets of encoded column bits. At this point, the y_encoder 41 is ready to output all y axis ECC data. The mux 44 is switched to allow y axis ECC data to be output from the encoder 100 while the x_encoder 40 continues to encode new code words and the hyper_encoder 42 continues to encode and update the data from the y axis ECC data. After n2 rows of the input data is encoded and output from the encoder 100, the y axis ECC data is exhausted. At this point, the memory of the y_encoder 41 is cleared by zeroing all bits in the memory of the y_encoder 41, and the hyper_encoder 42 has completed the hyper-diagonal encoding of the entire block. Following, the additional row of parity bits from the hyper_encoder 42 is output after the mux 45 is switched.
+For a three dimensional block of data having (n, k, d) bits, z_encoder (not pictured) with a corresponding mux would be used to encode the d-planes of the data. The z_encoder encodes and iteratively updates each plane by its own encoding scheme as each initial and subsequent row is entered into the encoder 100. The z_encoder uses the encoded ECC data generated by the x_encoder 40 and y_encoder 41 to encode the bits in the plane. Although FIG. 3 illustrates that the rows are input first and the columns and hyper-diagonals are encoded according to the rows, it is not necessary for the method to occur in this manner. For example, the columns may be encoded first while the rows are updated, etc.
+ FIG. 4 illustrates a diagram of the encoder in accordance with the present invention. The 100 encoder includes four modules, namely the input module 102; datapath module 104; control module 106 and the output module 108. The input module 102 receives input data via a ready/accept handshake. The data is encoded within the datapath module and is then output through the output module 108 via ready/accept handshake. The control module 106 contains the encoder configuration settings, state machines and control signals used for the encoding. The output module 108 receives the encoded data from the datapath module 104 and control module 106 and outputs the encoded code.
+The input module receives the input data at a rate of DATA_RATE bits at a time, where DATA_RATE is the value representing the number of encoded data bits processed per clock cycle. The value of the DATA_RATE cannot exceed the minimum number of encoded bits in the x-axis of the block. The input module 102 receives the input data and provides the required number of bits for the row being encoded. The number of data bits needed will depend on the encoding process and can be up to the value equal to the DATA-RATE bits. The input module 102 receives a last_block_bits signal and last_block_row signal from the control module 106 which informs the input module 102 when the last bits are to be received into the input module 102.
+The control module 106 contains control logic which allows the input, datapath and output modules communicate to one another in order to encode the data. The control module 106 is shown in more detail in FIG. 7 includes a register_control 300; in_data_control 302; block_control 304; out_data_control 306; x_encode_co y_encode_control 310; z_encode_control 312; and hyper_control 314. The register_control 300 registers all the input module control signals. The in_data_control 302 generates control signals used to receive input data from the input module 102. The block_control 304 generates control signals to specify the block status. The out_data_control 306 generates control signals used to output data from the output module 108. The x_encode_control 308 generates the control signals used for x-axis encoding done by the x_encoder 110. Likewise the y_encode_control and z_encode control generate the controls used for the y and z axis encoding done by the y_encoder 112 and the z_encoder 114, respectively. Further, the hyper_control signal are used for hyper encoding done by the hyper encoder 116. The output module 106 receives data at DATA_RATE bits per clock and sends the output data at DATA_RATE bits per clock. The data also contains a first_bit and last_bit flags that indicate the position of the first and last bits of the block.
+The state machine 316 operates in an idle mode until a reset_n_pulse in provided. Once the reset_n_pulse is provided, the state machine 316 enters the active state and does not return to the idle state until another reset_n_pulse is given. When data is input, the state machine outputs either the data, x_encoded bits, y_encoded bits, z_encoded bits or the hyper bits.
+The datapath module 104 in FIG. 5 performs the encoding functions, details of which are illustrated in FIG. 5. The datapath module 104 encodes a three dimensional block of data in the x,y, and z dimensions and adds the hyper bits when the datapath is enabled. This is done by four separate encoder, including an x_encoder 110, y_encoder 112, z_encoder 114 and a hyper_encoder 116. For a two dimensional block of data, the datapath module 104 would only use the x_encoder 110, y_encoder 112 and hyper_encoder 116. Each encoder examines the data stream and can output an independent encoded data stream out the path. The data gets clocked into the in reg register by a signal idata_in when the load_in_reg signal is active. The data is then sent to all of the encoder. The data is also sent to the output mux 120 as data_out. The output mux 120 either passes the data out or selects the data from one or all of the encoder to pass out to the out_reg register. The data is clocked into the out_reg register when the load-out reg signal is active. Each of the encoder can alternatively communicate to external memory over a RAM bus structure.
+The x_encoder 110, y_encoder 112, and z_encoder 114 modules operate by Hamming code generator logic in addition to other logic which allows the encoder to add the systematic codewords on all data bits for the block of data. In an embodiment, the x_encoder 110 stores the Hamming and parity calculations in an internal register, such as a row encode storage array. For a DATA_RATE that is greater than 1, the Hamming calculation for DATA_RATE bits is done in parallel. For the y_encoder 112, a DATA_RATE equivalent to 1 causes the y_encoder 112 to store the Hamming calculation in an external memory, such as an external RAM or column encode storage array. However, a DATA_RATE greater than 1, the data is stored in an external memory as groups DATA_RATE wide. This requires only 1/DATA_RATE the number of addresses and DATA_RATE times the number of bits per address. The z_encoder 114 operates in the same way as the y_encoder 112 in that it stores the error correction bits in a plane encode storage array.
+The hyper_encoder module 116 adds an extra row or column to a 2-D block or an extra plane of hyper bits to a 3-D block. The hyper bits are calculated by doing even parity along the diagonal axis of the block, and the resulting parity bits are stored in an external memory such as a parity array. All RAM address, data, and control signals are output on the RAM bus signals to the external memory. The y_encoder uses the least significant bits, the z_encoder, if present, will use the middle bits, and the hyper encoder uses the most significant bits.
+The o_first signal will assert on the first bit of the block out. The o_last signal will assert in the last bit of the block out. For DATA_RATE greater than 1, both signals can be asserted at the same time. It will be up to the user to determine which bits in the bus are first and last bits.
+The hyper_encoder 116 traverses the diagonals in the input block and calculates the parity bits. FIG. 6 illustrates the details of the hyper_encoder 116 in accordance with the present invention. The hyper_encoder 116 includes a input pipestage 202, a hyper core 200 and output pipestage 204. The input pipestage 202 registers all the data for use by the other modules in the hyper_encoder 116. Data enters the hyper encoder through the input pipestage 202 via a ready/accept handshake, which is represented by enc_rdy and enc_accpt respectively. Similarly, the output pipestage 204 outputs data that is hyper encoded by a ready/accept handshake, which is represented by hyper_rdy and hyper_acpt respectively.
+The hyper_core 200 has a hyper register or hyper array which is capable of storing a complete row. The hyper_core 200 includes a control module within which initiates all the RAM reads and writes. For 2-D enhanced turbo product codes, the registers can hold an entire row. Thus data is transferred between the previous row register and the hyper register. For a 3-D block, an entire hyper plane is stored in the hyper encoder. So, a RAM is used to hold the hyper plane parity bits. Thus, as data is transferred to the output pipestage 204, the row is built up in the hyper register. When the end of a row is reached, the row is written to the RAM. The input data is manipulated by positioning the previous row as discussed below and XORing with the input data. This data is then written to the RAM. During the entire first plane, the previous row is set to 0. The previous row is updated depending on which row it is in the plane. If the row is the last row in the plane, it receives the current data being written to the RAM. However, if the row is any other row in the plane, it receives the contents of the current RAM address to be written. There are exceptions. For example, during the first plane, the previous row is set to 0. Also, in the second plane, the regions that are within the shortr are set to 0. In theses cases, the previous row must be explicitly set to 0 to prevent the prior RAM contents from corrupting the hyper operation.
+The hyper_encoder 116 calculates the parity along hyper-diagonals in a eTPC block. The traversal of the hyper-diagonals differ depending on the type of eTPC code. If the eTPC code is 2-D, there is one row of hyper parity bits added to the block as part of the block or separately. However, more than one row of hyper parity bits may be added to the block. In a 3-D eTPC code, an entire plane of hyper parity bits is added to block by the encoder 100.
+The data is input starting from the upper left corner of a block. For the first row, the data is loaded into the hyper register at the output. At the end of the row, the data is XORed with the previous row register and stored into the previous row register. After the last DATA_RATE chunk of the eTPC block is transferred to the output, the data is transferred into the previous row register. Following, the result is transferred out to the output pipestage from the previous row register.
+When a word is completely within the hyper_reg register, it is written to the RAM. The address is then incremented. When the last row of a plane is written, the address is reset to 0. During the first plane, only data is written, and all reads are ignored. During subsequent planes, data is read from the RAM, put into previous row registers, and the data in the hyper register is written to the same address. When the last word of the last row of the last plane is transferred into the output pipestage, the address is reset to 0. The word in the hyper register is immediately output. When the last word of the hyper register is output to the output pipestage, the address is incremented. At the end of every row of hyper bits output, the address is incremented. When the address reaches the y size, the output is finished.
+It must be noted that although the encoder 100 is described encoding two and three dimensional codes, the encoder 100 may encoder data in higher dimensions and is thus not limited to the dimensions discussed above. For data being input into the encoder 100, where the data has more than three dimensions, the encoder 100 uses the above method to encode the sub-blocks of data, such as rows, columns, etc.
+The encoder 100 also supports code shortening. For example, the number of x, y, and z rows to drop is specified with the shortx(), shorty(), and shortz() inputs. The shortb input can be used to shorten the block size by an additional number of bits, whereas the shortr input can be used to shorten rows on the first plane of the block. These inputs allow the encoder 100 to encode block sizes of any length. The bit shortening will be taken off the first bits of the first x row. The shorted bits will not be output in the data stream.
+Since bits are shortened out in mixed amounts, the data input may not line up neatly in a block. Therefore, shortb and shortr are used to line the bits up within a block. Specifically, shortb represents a “bit shorten amount” signal which determines the number of bits in a row that must be shortened for a 2-D block. In 2-D enhanced turbo product codes, shortr must be set to 0. In addition, shortr represents a “row shorten amount” signal which determines the number of bits on the first plane to be shortened. For 3-D blocks, the value for shortr determines the number of rows to shorten off the first plane.
+The block in FIG. 10 a illustrates the use of shortb in a 2-D enhanced turbo product code. The “-” in an a bit indicates shortened bits in the row, which are implicitly 0. For FIG. 10 a, a “-” is placed in each row which is shortened, namely addresses 0-4 in row 1. The input data does not start at the upper left hand corner of the plane, but instead begins after the last “-” character. This impacts the encoding process by changing where the data is initially stored. However, since the parity row is initially set at zero in the first step of the hyper encoding, the initial location of the data does not change the results or output of the hyper parity check.
+The block in FIG. 10 b illustrates the use of shortb and shortr in a 3-D enhanced turbo product code. Similar to the 2-D enhanced turbo product code with shortb, “—” characters are placed in the shortened rows and are implicitly 0. Again, input data is placed after the last “-” character, which changes where the data is initially stored. However, as in the 2-D block, the initial location of the data does not change the results or output of the hyper parity check, because the hyper parity plane is initially set to zero.
+The are two counters that control the calculation of the hyper bits, namely hyper_index and addr. The hyper_index is used to build the input vector, whereas addr is the address to the RAM. Shortr and shortb are handled by preloading the counters. For shortb, the hyper_index register is used. The very first row of an incoming eTPC may be shortened by shortb bits. When an enc_start, which is the first word in an incoming codeword, is transferred with the data, the hyper_index register is loaded with shortb+1. The hyper_reg register is cleared will all zeros except where the DATA_RATE received bits are located. This causes the shortb bits to become all zeros. From this point, as bits are input, they are loaded into the hyper_reg. For subsequent rows, all loading is done starting with hyper_index set at 0.
+For shortr, the addr_register is used. At the start, the address of the first word written is shortr. The RAM is filled starting from shortr. At the end of a plane, the address wraps around to 0. At this point, the addresses from 0 to short-1 do not hold data. All reads during the second plane are forced to 0. After the second plane, all address locations are valid. Addresses, are generated only for 3-D codes, not are not necessary for 2-D codes.
+Having described the structure of the encoder 100 in accordance with the present invention, the functional aspect of the encoder 100 is now discussed. FIGS. 8 a-8 c illustrate several eTPC blocks of differing sizes. For 2-D blocks, the blocks include the bits along the diagonals that the parity is calculated for. The blocks shown in FIGS. 8 a-8 c contain extended Hamming codes that are illustrates a 7×7 block which becomes a 8×7 eTPC block after hyper encoding. FIG. 8 b illustrates a 15×5 block which becomes a 16×5 eTPC block after hyper encoding. FIG. 8 c illustrates a 4×8 block which becomes a 4×9 eTPC block after hyper encoding. In each figure, the numbers in each bit of the block represents the address number of the bit. Further, in each figure, the hyper bits are represented by the symbol “h” followed by the address number of each byte that the parity is calculated along. In each figure, each address in a row in the block is positioned to the right in the subsequent row (along the y-axis). The data is input to the block one row at a time, starting from the left hand comer of each block. The data is input exactly as it appears in FIGS. 8 a-8 c.  
+Data is input row by row starting in the first row wherein the data, after being encoded by the x_encoder 110, y_encoder 112, and z_encoder 114, contains extended Hamming code bits. After the last row is input for an array, the positioning procedure is performed on the subsequent arrays, such as rows or columns. To calculate the hyper parity bits for the eTPC block in accordance with the present invention, the following steps are preferably performed. 1. Set the parity row for the block is set to zero (0).
+Thus, a 0 is placed in every bit in the parity row. 2. “Rotate” or position the parity row to the right by 1 bit address, which may be a row or column. 3. XOR the incoming bits with the parity row. 4. Store the result in the parity row. The process is repeated from step 2 until the result for the XORing of the last row with the parity row is placed in the parity row. Once the result for the last row is placed in the parity row, the parity row is preferably rotated by 1 to the right and the result is output.
+These steps, however, do not have to necessarily occur in this order. Other combinations of the above steps in accordance with the present invention to encode the data may be performed to achieve the same result. It must also be noted that although the parity row is positioned by 1 to the right, the parity row may be positioned in any other direction. Further, the parity row is not limited to be rotated by 1 after each incoming row is XORed. Thus the parity row may also be positioned by more than two bit addresses or more.
+ FIG. 9 illustrates a diagram of a 3-D enhanced turbo product code. As in the previous figures for the 2-D enhanced turbo product code, the numbers in the blocks are bits addresses, and the numbers prefaced by “h” are the hyper diagonals. Unlike 2-D enhanced turbo product codes, the parity bits in a 3-D block are added as a plane to the block itself or as a separate plane. The first plane is represented as the block furthest to the left. Likewise, the second plane is second to the left and the third plane is shown to the right of the second plane. Further, the parity plane is farthest to the right. As in the 2-D enhanced turbo product code example, there is a positional relationship between the rows of the block. Preferably, in 3-D enhanced turbo product codes, the bits are positioned down one column and positioned to the right by 1 bit or column as the parity check proceeds along the z-axis. Thus, each row in each plane is positioned down in the subsequent row and to the right by 1 bit or column with respect to the previous plane. For each subsequent plane, the last row is moved up in the previous plane to the first row in the subsequent plane and moved to the right by 1 bit or column.
+The process to determine the hyper parity bits for 3-D codes are set forth below. Data is input row by row starting in the first plane wherein the data, after being encoded by the x_encoder 110, y_encoder 112, and z_encoder 114, contains extended Hamming code bits. After the last row is input for a plane, the positioning procedure is performed on the subsequent planes. Preferably, the process for determining hyper parity bits are as follows: 1. Set the parity bits in the hyper plane to zero. 2. Rotate or position each row in subsequent plane to the right by 1 bit address, which may be a row or column. 3.
+XOR the input plane with the hyper plane. 4. Store the result in the hyper plane. 5. Repeat steps 2-4 until the parity check is performed for the last plane. 6. Rotate or position each row in the hyper plane to the right by 1 bit address. 7. Output the plane.
+These steps, however, do not have to necessarily occur in this order. Other combinations of the above steps in accordance with the present invention to encode the data may be performed to achieve the same result. It must also be noted that although the parity row is positioned by 1 to the right, the parity row may be positioned in any other direction. Further, the parity row is not limited to be rotated by 1 after each incoming row is XORed. Thus the parity row may also be positioned by more than two bit addresses or more.
+The present invention has been described in terms of specific embodiments incorporating details to facilitate the understanding of the principles of construction and operation of the invention. Such reference herein to specific embodiments and details thereof is not intended to limit the scope of the claims appended hereto. It will be apparent to those skilled in the art that modification s may be made in the embodiment chosen for illustration without departing from the spirit and scope of the invention.
+Claims (13)
+1. A method of encoding a block of data having n-dimensions received from an input source, the block containing a plurality of information bits, the method comprising the steps of:
+receiving a row of the block and immediately outputting the row;
+encoding the information bits in the row by an X-axis encoder, thereby forming a first set of encoded data including a first parity data, wherein the first set of encoded data is generated according to a first encoding scheme and stored in a row encode storage array having a plurality of row array bits;
+outputting the first set of encoded data;
+resetting the row encode storage array after the first set of encoded data is output, wherein all row array bits are set to zero;
+encoding the information bits in a column by a Y-axis encoder according to a second encoding scheme, thereby forming a second set of encoded data including a second parity data, wherein the second set of encoded data is generated and iteratively updated according to the information bits in the row, and the Y-axis encoder is separate from the X-axis encoder;
+hyper-diagonally encoding the information bits in the block by a hyper-axis encoder according to a parity type encoding scheme, thereby forming a hyper set of encoded data comprising a plurality of hyper parity data values, each hyper parity data value is generated according to:
+the information bits in the row,
+the information bits in the column,
+the first parity data, and
+the second parity data,
+wherein at least one information bit in the row is located in a different row for the hyper set of encoded data than in the block, and the hyper-axis encoder is separate from the X-axis encoder and the Y-axis encoder;
+outputting the second set of encoded data after all the information bits and all subsequent first sets of encoded data are outputted; and
+outputting the hyper set of encoded data.
+2. The method of claim 1, wherein the second set of encoded data is encoded according to the first encoding scheme.
+3. The method of claim 1, wherein the second set of encoded data is encoded according to the second encoding scheme.
+4. The method according to claim 1 wherein the block of data is three dimensional, the block of data including a plane of encoded bits, wherein the plane is orthogonal to the row and the column.
+5. The method according to claim 4 further comprising the steps of:
+a. encoding the information bits in the plane according to a third encoding scheme, wherein a third set of encoded data is generated and iteratively updated corresponding to the information bits in the row; and
+b. outputting the third set encoded data after all subsequent second sets of encoded data are outputted.
+6. The method according to claim 4 wherein the hyper set of encoded data is stored in a hyper parity array, and the hyper parity array is a hyper parity plane.
+7. The method according to claim 1 wherein the second set of encoded data is stored in a column encode storage array.
+8. The method of claim 7 wherein the Y-axis encoder stores only the second parity data.
+9. The method according to claim 1, wherein the hyper set of encoded data is stored in a hyper parity array, wherein the hyper parity array includes a plurality of parity array bits.
+10. The method of claim 9, wherein the hyper-axis encoder stores only the hyper parity data values.
+11. The method according to claim 9 wherein the step of hyper-diagonally encoding further comprises:
+a. updating the hyper parity array by iteratively encoding the parity array for the information bits and the first set and the second set of encoded data for each row; and
+b. rotating the hyper parity array, wherein rotating the hyper parity array comprises relocating a plurality of the parity array bits in the array.
+12. The method according to claim 9 further comprising the step of initializing the hyper parity array such that all parity array bits are set to zero, wherein the step of initializing is executed before the information bits are encoded.
+13. The method of claim 1, wherein the X-axis encoder stores only the first parity data.
+      US09/808,884
+      2000-03-14
+      2001-03-14
+      Enhanced turbo product codes 
+      Expired - Lifetime
+        US7356752B2
+        (en)
+Priority Applications (1)
+          Application Number
+          Priority Date
+          Filing Date
+          Title
+            US09/808,884
+              US7356752B2
+                (en)
+          2000-03-14
+          2001-03-14
+          Enhanced turbo product codes 
+Applications Claiming Priority (2)
+          Application Number
+          Priority Date
+          Filing Date
+          Title
+            US18934500P
+          2000-03-14
+          2000-03-14
+            US09/808,884
+              US7356752B2
+                (en)
+          2000-03-14
+          2001-03-14
+          Enhanced turbo product codes 
+Publications (2)
+          Publication Number
+          Publication Date
+            US20010050622A1
+              US20010050622A1
+              (en)
+          2001-12-13
+            US7356752B2
+            true
+              US7356752B2
+              (en)
+          2008-04-08
+Family
+ID=26885046
+Family Applications (1)
+          Application Number
+          Title
+          Priority Date
+          Filing Date
+            US09/808,884
+            Expired - Lifetime
+              US7356752B2
+                (en)
+          2000-03-14
+          2001-03-14
+          Enhanced turbo product codes 
+Country Status (1)
+          Country
+          Link
+            US
+            (1)
+              US7356752B2
+              (en)
+Cited By (23)
+      * Cited by examiner, † Cited by third party
+          Publication number
+          Priority date
+          Publication date
+          Assignee
+          Title
+              US20030007487A1
+              (en)
+            *
+          2001-04-16
+          2003-01-09
+          Sindhushayana Nagabhushana T.
+          Method and an apparatus for use of codes in multicast transmission 
+              US20060190271A1
+              (en)
+            *
+          2003-02-27
+          2006-08-24
+          Kim Soo Y
+          Method for forming rate compatible code using high dimensional product codes 
+              US20070124652A1
+              (en)
+            *
+          2005-11-15
+          2007-05-31
+          Ramot At Tel Aviv University Ltd.
+          Method and device for multi phase error-correction 
+              US20080034272A1
+              (en)
+            *
+          2006-08-07
+          2008-02-07
+          Zining Wu
+          System and method for correcting errors in non-volatile memory using product codes 
+              US20110167316A1
+              (en)
+            *
+          2010-01-06
+          2011-07-07
+          Stmicroelectronics (Grenoble 2) Sas
+          Method and device for row and column interleaving of blocks of variable size 
+              US8484536B1
+              (en)
+            *
+          2010-03-26
+          2013-07-09
+          Google Inc.
+          Techniques for data storage, access, and maintenance 
+              US8601339B1
+              (en)
+          2010-06-16
+          2013-12-03
+          Google Inc.
+          Layered coding techniques for data storage 
+              US8615698B1
+              (en)
+            *
+          2011-09-28
+          2013-12-24
+          Google Inc.
+          Skewed orthogonal coding techniques 
+              US8621317B1
+              (en)
+          2011-07-25
+          2013-12-31
+          Google Inc.
+          Modified orthogonal coding techniques for storing data 
+              US8631304B2
+              (en)
+          2010-01-28
+          2014-01-14
+          Sandisk Il Ltd.
+          Overlapping error correction operations 
+              US8856619B1
+              (en)
+          2012-03-09
+          2014-10-07
+          Google Inc.
+          Storing data across groups of storage nodes 
+              US9160373B1
+              (en)
+          2012-09-24
+          2015-10-13
+          Marvell International Ltd.
+          Systems and methods for joint decoding of sector and track error correction codes 
+              US9231623B1
+              (en)
+            *
+          2013-09-11
+          2016-01-05
+          SK Hynix Inc.
+          Chase decoding for turbo-product codes (TPC) using error intersections 
+              US20160043741A1
+              (en)
+            *
+          2014-08-06
+          2016-02-11
+          SK Hynix Inc.
+          Coding method and device 
+              US20160149592A1
+              (en)
+            *
+          2014-11-20
+          2016-05-26
+          Sk Hynix Memory Solutions Inc.
+          Apparatus and method for turbo product codes 
+              US20160344426A1
+              (en)
+            *
+          2015-05-18
+          2016-11-24
+          Sk Hynix Memory Solutions Inc.
+          Performance optimization in soft decoding for turbo product codes 
+              US9553611B2
+              (en)
+            *
+          2014-11-27
+          2017-01-24
+          Apple Inc.
+          Error correction coding with high-degree overlap among component codes 
+              US10388400B2
+              (en)
+          2015-05-18
+          2019-08-20
+          SK Hynix Inc.
+          Generalized product codes for flash storage 
+              US10439649B2
+              (en)
+          2016-02-03
+          2019-10-08
+          SK Hynix Inc.
+          Data dependency mitigation in decoder architecture for generalized product codes for flash storage 
+              US10484020B2
+              (en)
+          2016-02-03
+          2019-11-19
+          SK Hynix Inc.
+          System and method for parallel decoding of codewords sharing common data 
+              US10498366B2
+              (en)
+          2016-06-23
+          2019-12-03
+          SK Hynix Inc.
+          Data dependency mitigation in parallel decoders for flash storage 
+              US10516418B2
+              (en)
+            *
+          2017-04-25
+          2019-12-24
+          Korea University Research And Business Foundation
+          Hybrid type iterative decoding method and apparatus 
+              US10523245B2
+              (en)
+          2016-03-23
+          2019-12-31
+          SK Hynix Inc.
+          Soft decoder for generalized product codes 
+Families Citing this family (19)
+      * Cited by examiner, † Cited by third party
+          Publication number
+          Priority date
+          Publication date
+          Assignee
+          Title
+              US7107505B2
+              (en)
+            *
+          2001-03-27
+          2006-09-12
+          Comtech Aha Corporation
+          Concatenated turbo product codes for high performance satellite and terrestrial communications 
+              US7146553B2
+              (en)
+            *
+          2001-11-21
+          2006-12-05
+          Infinera Corporation
+          Error correction improvement for concatenated codes 
+              ATE408931T1
+              (en)
+            *
+          2002-04-05
+          2008-10-15
+          Koninkl Philips Electronics Nv
+  METHOD AND APPARATUS FOR EMBEDDING AN ADDITIONAL LAYER OF ERROR CORRECTION IN AN ERROR CORRECTION CODE
+              US7296212B1
+              (en)
+            *
+          2002-11-15
+          2007-11-13
+          Broadwing Corporation
+          Multi-dimensional irregular array codes and methods for forward error correction, and apparatuses and systems employing such codes and methods 
+              US7225391B1
+              (en)
+            *
+          2002-12-17
+          2007-05-29
+          Altera Corporation
+          Method and apparatus for parallel computation of linear block codes 
+              KR100543447B1
+              (en)
+            *
+          2003-04-03
+          2006-01-23
+          삼성전자주식회사
+        Flash memory device with error correction
+              US7191388B1
+              (en)
+          2004-03-01
+          2007-03-13
+          Lattice Semiconductor Corporation
+          Fast diagonal interleaved parity (DIP) calculator 
+              US7415651B2
+              (en)
+            *
+          2004-06-02
+          2008-08-19
+          Seagate Technology
+          Data communication system with multi-dimensional error-correction product codes 
+              US7310767B2
+              (en)
+            *
+          2004-07-26
+          2007-12-18
+          Motorola, Inc.
+          Decoding block codes 
+              US7260762B2
+              (en)
+            *
+          2004-07-26
+          2007-08-21
+          Motorola, Inc.
+          Decoder performance for block product codes 
+              FI20055248A0
+              (en)
+            *
+          2005-05-25
+          2005-05-25
+          Nokia Corp
+  Encoding method, transmitter, network element and communication terminal
+              EP1886410A4
+              (en)
+          2005-05-25
+          2009-03-04
+          Nokia Corp
+        CODING METHOD, TRANSMITTER, NETWORK ELEMENT, AND COMMUNICATION TERMINAL
+              US8885276B2
+              (en)
+            *
+          2013-02-14
+          2014-11-11
+          Lsi Corporation
+          Systems and methods for shared layer data decoding 
+              GB2525430B
+              (en)
+            *
+          2014-04-25
+          2016-07-13
+          Ibm
+          Error-correction encoding and decoding 
+              US10312944B2
+              (en)
+            *
+          2017-03-17
+          2019-06-04
+          Micron Technology, Inc.
+          Error correction code (ECC) operations in memory for providing redundant error correction 
+              KR101811281B1
+              (en)
+            *
+          2017-04-17
+          2017-12-22
+          고려대학교 산학협력단
+          Method and apparatus for decoding 3 dimensional turbo product code based on crossing layers 
+              US10998922B2
+              (en)
+            *
+          2017-07-28
+          2021-05-04
+          Mitsubishi Electric Research Laboratories, Inc.
+          Turbo product polar coding with hard decision cleaning 
+              US11218165B2
+              (en)
+            *
+          2020-05-15
+          2022-01-04
+          Alibaba Group Holding Limited
+          Memory-mapped two-dimensional error correction code for multi-bit error tolerance in DRAM 
+              US12316342B2
+              (en)
+            *
+          2021-10-04
+          2025-05-27
+          Samsung Electronics Co., Ltd.
+          Product autoencoder for error-correcting via sub-stage processing 
+Citations (51)
+      * Cited by examiner, † Cited by third party
+          Publication number
+          Priority date
+          Publication date
+          Assignee
+          Title
+              US4295218A
+              (en)
+          1979-06-25
+          1981-10-13
+            Regents Of The University Of California
+          Error-correcting coding system 
+              US4559625A
+              (en)
+          1983-07-28
+          1985-12-17
+            Cyclotomics, Inc.
+          Interleavers for digital communications 
+              US4564945A
+              (en)
+            *
+          1983-06-20
+          1986-01-14
+            Reference Technology, Inc.
+          Error-correction code for digital data on video disc 
+              US4763331A
+              (en)
+          1985-12-11
+          1988-08-09
+            Nippon Telegraph And Telephone Corporation
+          Method for decoding error correcting block codes 
+              US4796260A
+              (en)
+          1987-03-30
+          1989-01-03
+            Scs Telecom, Inc.
+          Schilling-Manela forward error correction and detection code method and apparatus 
+              US4821290A
+              (en)
+          1988-02-09
+          1989-04-11
+            General Electric Company
+          Decoder for digital signal codes 
+              US4845714A
+              (en)
+          1987-06-08
+          1989-07-04
+            Exabyte Corporation
+          Multiple pass error correction process and apparatus for product codes 
+              US5157671A
+              (en)
+          1990-05-29
+          1992-10-20
+            Space Systems/Loral, Inc.
+          Semi-systolic architecture for decoding error-correcting codes 
+              US5351246A
+              (en)
+          1991-06-21
+          1994-09-27
+            International Business Machines Corporation
+          Method and means for coding and rebuilding that data contents of unavailable DASDs or rebuilding the contents of DASDs in error in the presence of reduced number of unavailable DASDs in a DASD array 
+              EP0625829A2
+              (en)
+          1993-05-21
+          1994-11-23
+            AT&T Corp.
+          Post processing method and apparatus symbol reliability generation 
+              US5369652A
+              (en)
+            *
+          1993-06-14
+          1994-11-29
+            International Business Machines Corporation
+          Error detection and correction having one data format recordable on record media using a diverse number of concurrently recorded tracks 
+              US5392299A
+              (en)
+            *
+          1992-01-15
+          1995-02-21
+            E-Systems, Inc.
+          Triple orthogonally interleaed error correction system 
+              US5406570A
+              (en)
+          1991-04-23
+          1995-04-11
+            France Telecom And Telediffusion De France
+          Method for a maximum likelihood decoding of a convolutional code with decision weighting, and corresponding decoder 
+              US5446747A
+              (en)
+          1991-04-23
+          1995-08-29
+            France Telecom
+          Error-correction coding method with at least two systematic convolutional codings in parallel, corresponding iterative decoding method, decoding module and decoder 
+              US5499254A
+              (en)
+          1994-08-31
+          1996-03-12
+            Nec Corporation
+          Apparatus for error-correct decoding in a digital data communications system 
+              US5541955A
+              (en)
+          1992-11-06
+          1996-07-30
+            Pericle Communications Company
+          Adaptive data rate modem 
+              US5559506A
+              (en)
+          1994-05-04
+          1996-09-24
+            Motorola, Inc.
+          Method and apparatus for encoding and decoding a digital radio signal 
+              US5563897A
+              (en)
+          1993-11-19
+          1996-10-08
+            France Telecom
+          Method for detecting information bits processed by concatenated block codes 
+              US5566191A
+              (en)
+          1992-05-12
+          1996-10-15
+            Hitachi, Ltd.
+          Soft decision maximum likelihood decoding method with adaptive metric 
+              US5657354A
+              (en)
+          1995-05-15
+          1997-08-12
+            Thesling, Iii; William H.
+          Planar approximating method for computing the log-likelihood ratio optimal signal metric of each component code decoder in 8-PSK block coded modulation systems 
+              US5684811A
+              (en)
+          1995-09-01
+          1997-11-04
+            Motorola, Inc.
+          Method and apparatus for decoding convolutionally encoded information 
+              US5703911A
+              (en)
+          1995-08-17
+          1997-12-30
+            Chung-Chin Chen
+          Decoding method for trellis codes with large free distances 
+              US5708667A
+              (en)
+          1993-08-10
+          1998-01-13
+            Fujitsu Limited
+          Method for detecting and correcting error by means of a high-dimension matrix and device using the same 
+              US5719884A
+              (en)
+          1995-07-27
+          1998-02-17
+            Hewlett-Packard Company
+          Error correction method and apparatus based on two-dimensional code array with reduced redundancy 
+              US5721746A
+              (en)
+          1996-04-19
+          1998-02-24
+            General Electric Company
+          Optimal soft-output decoder for tail-biting trellis codes 
+              US5721745A
+              (en)
+          1996-04-19
+          1998-02-24
+            General Electric Company
+          Parallel concatenated tail-biting convolutional code and decoder therefor 
+              US5729560A
+              (en)
+          1995-06-12
+          1998-03-17
+            Siemens Aktiengesellschaft
+          Method and coding means for protected transmission of data on the basis of multi-component coding 
+              US5761248A
+              (en)
+          1995-07-19
+          1998-06-02
+            Siemens Aktiengesellschaft
+          Method and arrangement for determining an adaptive abort criterion in iterative decoding of multi-dimensionally coded information 
+              US5787127A
+              (en)
+          1995-08-23
+          1998-07-28
+            Oki Electric Industry Co., Ltd.
+          Viterbi decoding method and apparatus with balance among memory and processing requirements 
+              US5787239A
+              (en)
+          1992-01-09
+          1998-07-28
+            Matsushita Graphic Communication Systems, Inc.
+          Image processing/communication system 
+              US5802116A
+              (en)
+          1996-04-04
+          1998-09-01
+            Lucent Technologies Inc.
+          Soft decision Viterbi decoding with large constraint lengths 
+              US5841818A
+              (en)
+          1996-01-17
+          1998-11-24
+            Chung-Chin Chen
+          Decoding method for trellis codes employing a convolutional processor 
+              US5898698A
+              (en)
+          1996-09-24
+          1999-04-27
+            Orckit Communications Ltd.
+          Multiple codeword interleaver method and apparatus 
+              US5901182A
+              (en)
+          1997-03-26
+          1999-05-04
+            Sharp Laboratories Of America, Inc.
+          Metric sifting in breadth-first decoding of convolutional coded data 
+              US5907582A
+              (en)
+          1997-08-11
+          1999-05-25
+            Orbital Sciences Corporation
+          System for turbo-coded satellite digital audio broadcasting 
+              US5930272A
+              (en)
+          1997-06-10
+          1999-07-27
+            Efficient Channel Coding, Inc.
+          Block decoding with soft output information 
+              US5999111A
+              (en)
+          1994-11-26
+          1999-12-07
+            Samsung Electronics Co., Ltd.
+          Variable length encoding/decoding apparatus using re-association of symbol-codeword for variable length code table 
+              US6104758A
+              (en)
+          1994-04-01
+          2000-08-15
+            Fujitsu Limited
+          Process and system for transferring vector signal with precoding for signal power reduction 
+              US6145111A
+              (en)
+          1997-08-14
+          2000-11-07
+            Her Majesty The Queen In Right Of Canada, As Represented By The Minister Of Industry Through Communications Research Centre
+          High-performance low-complexity error-correcting codes 
+              US6188797B1
+              (en)
+          1997-05-27
+          2001-02-13
+            Apple Computer, Inc.
+          Decoder for programmable variable length data 
+              US6367047B1
+              (en)
+            *
+          1998-10-20
+          2002-04-02
+            Ecrix
+          Multi-level error detection and correction technique for data storage recording device 
+              US6421804B1
+              (en)
+          1999-12-20
+          2002-07-16
+            Agere Systems Guardian Corp.
+          Generating reliability values for iterative decoding of block codes 
+              US20020101915A1
+              (en)
+          2000-07-21
+          2002-08-01
+            Song Zhang
+          Method and system for turbo encoding in ADSL 
+              US6460162B1
+              (en)
+          1998-05-04
+          2002-10-01
+            Alcatel
+          Product code iterative decoding 
+              US20020150167A1
+              (en)
+          2001-02-17
+          2002-10-17
+            Victor Demjanenko
+          Methods and apparatus for configurable or assymetric forward error correction 
+              US6484283B2
+              (en)
+          1998-12-30
+          2002-11-19
+            International Business Machines Corporation
+          Method and apparatus for encoding and decoding a turbo code in an integrated modem system 
+              US6499128B1
+              (en)
+          1999-02-18
+          2002-12-24
+            Cisco Technology, Inc.
+          Iterated soft-decision decoding of block codes 
+              US6526538B1
+              (en)
+          1998-09-28
+          2003-02-25
+            Comtech Telecommunications Corp.
+          Turbo product code decoder 
+              US6539367B1
+              (en)
+          2000-05-26
+          2003-03-25
+            Agere Systems Inc.
+          Methods and apparatus for decoding of general codes on probability dependency graphs 
+              US6594318B1
+              (en)
+          1999-12-02
+          2003-07-15
+            Qualcomm Incorporated
+          Method and apparatus for computing soft decision input metrics to a turbo decoder 
+              US6795507B1
+              (en)
+          1999-09-30
+          2004-09-21
+            Skyworks Solutions, Inc.
+          Method and apparatus for turbo decoding of trellis coded modulated signal transmissions 
+        2001
+            2001-03-14
+            US
+            US09/808,884
+            patent/US7356752B2/en
+            not_active
+            Expired - Lifetime
+Patent Citations (51)
+      * Cited by examiner, † Cited by third party
+          Publication number
+          Priority date
+          Publication date
+          Assignee
+          Title
+              US4295218A
+              (en)
+          1979-06-25
+          1981-10-13
+          Regents Of The University Of California
+          Error-correcting coding system 
+              US4564945A
+              (en)
+            *
+          1983-06-20
+          1986-01-14
+          Reference Technology, Inc.
+          Error-correction code for digital data on video disc 
+              US4559625A
+              (en)
+          1983-07-28
+          1985-12-17
+          Cyclotomics, Inc.
+          Interleavers for digital communications 
+              US4763331A
+              (en)
+          1985-12-11
+          1988-08-09
+          Nippon Telegraph And Telephone Corporation
+          Method for decoding error correcting block codes 
+              US4796260A
+              (en)
+          1987-03-30
+          1989-01-03
+          Scs Telecom, Inc.
+          Schilling-Manela forward error correction and detection code method and apparatus 
+              US4845714A
+              (en)
+          1987-06-08
+          1989-07-04
+          Exabyte Corporation
+          Multiple pass error correction process and apparatus for product codes 
+              US4821290A
+              (en)
+          1988-02-09
+          1989-04-11
+          General Electric Company
+          Decoder for digital signal codes 
+              US5157671A
+              (en)
+          1990-05-29
+          1992-10-20
+          Space Systems/Loral, Inc.
+          Semi-systolic architecture for decoding error-correcting codes 
+              US5406570A
+              (en)
+          1991-04-23
+          1995-04-11
+          France Telecom And Telediffusion De France
+          Method for a maximum likelihood decoding of a convolutional code with decision weighting, and corresponding decoder 
+              US5446747A
+              (en)
+          1991-04-23
+          1995-08-29
+          France Telecom
+          Error-correction coding method with at least two systematic convolutional codings in parallel, corresponding iterative decoding method, decoding module and decoder 
+              US5351246A
+              (en)
+          1991-06-21
+          1994-09-27
+          International Business Machines Corporation
+          Method and means for coding and rebuilding that data contents of unavailable DASDs or rebuilding the contents of DASDs in error in the presence of reduced number of unavailable DASDs in a DASD array 
+              US5787239A
+              (en)
+          1992-01-09
+          1998-07-28
+          Matsushita Graphic Communication Systems, Inc.
+          Image processing/communication system 
+              US5392299A
+              (en)
+            *
+          1992-01-15
+          1995-02-21
+          E-Systems, Inc.
+          Triple orthogonally interleaed error correction system 
+              US5566191A
+              (en)
+          1992-05-12
+          1996-10-15
+          Hitachi, Ltd.
+          Soft decision maximum likelihood decoding method with adaptive metric 
+              US5541955A
+              (en)
+          1992-11-06
+          1996-07-30
+          Pericle Communications Company
+          Adaptive data rate modem 
+              EP0625829A2
+              (en)
+          1993-05-21
+          1994-11-23
+          AT&T Corp.
+          Post processing method and apparatus symbol reliability generation 
+              US5369652A
+              (en)
+            *
+          1993-06-14
+          1994-11-29
+          International Business Machines Corporation
+          Error detection and correction having one data format recordable on record media using a diverse number of concurrently recorded tracks 
+              US5708667A
+              (en)
+          1993-08-10
+          1998-01-13
+          Fujitsu Limited
+          Method for detecting and correcting error by means of a high-dimension matrix and device using the same 
+              US5563897A
+              (en)
+          1993-11-19
+          1996-10-08
+          France Telecom
+          Method for detecting information bits processed by concatenated block codes 
+              US6104758A
+              (en)
+          1994-04-01
+          2000-08-15
+          Fujitsu Limited
+          Process and system for transferring vector signal with precoding for signal power reduction 
+              US5559506A
+              (en)
+          1994-05-04
+          1996-09-24
+          Motorola, Inc.
+          Method and apparatus for encoding and decoding a digital radio signal 
+              US5499254A
+              (en)
+          1994-08-31
+          1996-03-12
+          Nec Corporation
+          Apparatus for error-correct decoding in a digital data communications system 
+              US5999111A
+              (en)
+          1994-11-26
+          1999-12-07
+          Samsung Electronics Co., Ltd.
+          Variable length encoding/decoding apparatus using re-association of symbol-codeword for variable length code table 
+              US5657354A
+              (en)
+          1995-05-15
+          1997-08-12
+          Thesling, Iii; William H.
+          Planar approximating method for computing the log-likelihood ratio optimal signal metric of each component code decoder in 8-PSK block coded modulation systems 
+              US5729560A
+              (en)
+          1995-06-12
+          1998-03-17
+          Siemens Aktiengesellschaft
+          Method and coding means for protected transmission of data on the basis of multi-component coding 
+              US5761248A
+              (en)
+          1995-07-19
+          1998-06-02
+          Siemens Aktiengesellschaft
+          Method and arrangement for determining an adaptive abort criterion in iterative decoding of multi-dimensionally coded information 
+              US5719884A
+              (en)
+          1995-07-27
+          1998-02-17
+          Hewlett-Packard Company
+          Error correction method and apparatus based on two-dimensional code array with reduced redundancy 
+              US5703911A
+              (en)
+          1995-08-17
+          1997-12-30
+          Chung-Chin Chen
+          Decoding method for trellis codes with large free distances 
+              US5787127A
+              (en)
+          1995-08-23
+          1998-07-28
+          Oki Electric Industry Co., Ltd.
+          Viterbi decoding method and apparatus with balance among memory and processing requirements 
+              US5684811A
+              (en)
+          1995-09-01
+          1997-11-04
+          Motorola, Inc.
+          Method and apparatus for decoding convolutionally encoded information 
+              US5841818A
+              (en)
+          1996-01-17
+          1998-11-24
+          Chung-Chin Chen
+          Decoding method for trellis codes employing a convolutional processor 
+              US5802116A
+              (en)
+          1996-04-04
+          1998-09-01
+          Lucent Technologies Inc.
+          Soft decision Viterbi decoding with large constraint lengths 
+              US5721745A
+              (en)
+          1996-04-19
+          1998-02-24
+          General Electric Company
+          Parallel concatenated tail-biting convolutional code and decoder therefor 
+              US5721746A
+              (en)
+          1996-04-19
+          1998-02-24
+          General Electric Company
+          Optimal soft-output decoder for tail-biting trellis codes 
+              US5898698A
+              (en)
+          1996-09-24
+          1999-04-27
+          Orckit Communications Ltd.
+          Multiple codeword interleaver method and apparatus 
+              US5901182A
+              (en)
+          1997-03-26
+          1999-05-04
+          Sharp Laboratories Of America, Inc.
+          Metric sifting in breadth-first decoding of convolutional coded data 
+              US6188797B1
+              (en)
+          1997-05-27
+          2001-02-13
+          Apple Computer, Inc.
+          Decoder for programmable variable length data 
+              US5930272A
+              (en)
+          1997-06-10
+          1999-07-27
+          Efficient Channel Coding, Inc.
+          Block decoding with soft output information 
+              US5907582A
+              (en)
+          1997-08-11
+          1999-05-25
+          Orbital Sciences Corporation
+          System for turbo-coded satellite digital audio broadcasting 
+              US6145111A
+              (en)
+          1997-08-14
+          2000-11-07
+          Her Majesty The Queen In Right Of Canada, As Represented By The Minister Of Industry Through Communications Research Centre
+          High-performance low-complexity error-correcting codes 
+              US6460162B1
+              (en)
+          1998-05-04
+          2002-10-01
+          Alcatel
+          Product code iterative decoding 
+              US6526538B1
+              (en)
+          1998-09-28
+          2003-02-25
+          Comtech Telecommunications Corp.
+          Turbo product code decoder 
+              US6367047B1
+              (en)
+            *
+          1998-10-20
+          2002-04-02
+          Ecrix
+          Multi-level error detection and correction technique for data storage recording device 
+              US6484283B2
+              (en)
+          1998-12-30
+          2002-11-19
+          International Business Machines Corporation
+          Method and apparatus for encoding and decoding a turbo code in an integrated modem system 
+              US6499128B1
+              (en)
+          1999-02-18
+          2002-12-24
+          Cisco Technology, Inc.
+          Iterated soft-decision decoding of block codes 
+              US6795507B1
+              (en)
+          1999-09-30
+          2004-09-21
+          Skyworks Solutions, Inc.
+          Method and apparatus for turbo decoding of trellis coded modulated signal transmissions 
+              US6594318B1
+              (en)
+          1999-12-02
+          2003-07-15
+          Qualcomm Incorporated
+          Method and apparatus for computing soft decision input metrics to a turbo decoder 
+              US6421804B1
+              (en)
+          1999-12-20
+          2002-07-16
+          Agere Systems Guardian Corp.
+          Generating reliability values for iterative decoding of block codes 
+              US6539367B1
+              (en)
+          2000-05-26
+          2003-03-25
+          Agere Systems Inc.
+          Methods and apparatus for decoding of general codes on probability dependency graphs 
+              US20020101915A1
+              (en)
+          2000-07-21
+          2002-08-01
+          Song Zhang
+          Method and system for turbo encoding in ADSL 
+              US20020150167A1
+              (en)
+          2001-02-17
+          2002-10-17
+          Victor Demjanenko
+          Methods and apparatus for configurable or assymetric forward error correction 
+Non-Patent Citations (51)
+      * Cited by examiner, † Cited by third party
+          Title
+            "Single-Bit Correct, Double-Bit Error Checking/Correction Scheme," IBM Technical Disclosure Bulletin, May 1994, No. NN9405101.
+            A. Goalic et al., "Real-Time Turbo-Decoding of Product Codes on a Digital Signal Processor," Mar. 11, 1997, pp. 624-628.
+            A. Hunt and S. Crozier, "Hyper-Codes: High-Performance Low-Complexity Error-Correcting Codes," (no date or publisher listed).
+            A. J. Viterbi et al.,"Perspectives on Interleaved Concatenated Codes with Iterative Soft-Output Decoding," International Symposium on Turbo Codes, 1997, pp. 47-54.
+            A. Picart & R. Pyndiah, "Performance of Turbo-Decoded Product Codes Used in Multilevel Coding," IEEE, 1996, pp. 107-111.
+            C. Berrou et al., "A Low Complexity Soft-Output Viterbi Decoder Architecture," IEEE, 1993, pp. 737-740.
+            C. Berrou et al., "An IC for Turbo-Codes Encoding and Decoding," IEEE, 1995, pp. 90-91.
+            C. Berrou, "Near Optimum Error Correcting Coding and Decoding: Turbo-Codes," IEEE, vol. 44, No. 10, Oct. 1996, pp. 1261-1271.
+            C. Wang, "Asymptotic Performances of Nonrepetitive & Repetitive Turbo Codes," IEEE, 1997, pp. 1-6.
+            C. Wang, "On the Performance of Turbo Codes," IEEE, 1998, pp. 987-992.
+            D. Chase, "A Class of Algorithms for Decoding Block Codes with Channel Measurement Information," IEEE Transactions on Information Theory Jan. 1972, pp. 170-181.
+            D. Costello Jr. & H. Cabral, "The Effect of Turbo Codes on Figure 1," ITW, Feb. 1998, pp. 41-42.
+            D. Divsalar & F. Pollara, "Multiple Turbo Codes for Deep-Space Communications," TDA Progress Report 42-121, May 1995, pp. 66-77.
+            D. Divsalar & F. Pollara, "On the Design of Turbo Codes," TDA Progress Report 42-123, Nov. 1995, pp. 99-121.
+            D. Divsalar & F. Pollara, "Turbo Codes for Deep-Space Communications," TDA Progress Report 42-120, Feb. 1995, pp. 29-39.
+            D. Divsalar & F. Pollara, "Turbo Codes for PCS Applications," (no date or publisher listed).
+            Diagnosing On-Card Error Checking and Correcting Operations Using Latched Syndrome Data, IBM Technical Disclosure Bulletin, Oct. 1989, No. NA891026.
+            Eric Hewitt, "Turbo Product Codes for LDMS",1999 IEEE, Advanced Hardware Architectures, Inc., pp. 107-111.
+            F. Chiaraluce & R. Garello, "On the Asymptotic Performance of Hamming Product Codes", ISCTA 01, pp. 1-6, Jul. 15, 2001.
+            G. Battail et al., "Pseudo-Random Recursive Convolutional Coding For Near-Capacity Performance," IEEE, 1993, pp. 23-27.
+            G. Caire et al., "Bit-Interleaved Coded Modulation," IEEE, vol. 44, No. 3 May 1998, pp. 927-945.
+            G. Ungerboeck, "Channel Coding with Multilevel/ Phase Signals," IEEE Transactions on Information Theory vol. IT-28, No. 1, Jan. 1982.
+            H. Nickl,et al., "Approaching Shannon's capacity limit by 0.27 dB using Hamming codes in a 'turbo'- decoding scheme," ISIT 1997.
+            J. Hagenauer & P. Hoeher, "A Viterbi Algorithm with Soft-Decision Outputs and its Applications," IEEE, 1989, pp. 1680-1686.
+            J. Hagenauer, "Decoding of Binary Codes with Analog Networks," ITW, Feb. 1998, pp. 13-14.
+            J. Hagenauer, "Iterative Decoding of Binary Block and Convolutional Codes," IEEE Transactions on Information Theory, vol. 42, No. 2, Mar. 1996, pp. 429-445.
+            J. Hagenauer, P. Hoeher, "Algorithm with Soft-Decision Outputs and its Applications," IEEE 1989 pp. 1680-1686.
+            J. Lodge et al., "Separable Map "Filters" For The Decoding Of Product and Concatenated Codes," IEEE, 1993, pp. 1740-1745.
+            Jian Wang et al., "Performance Bounds on Product Codes with Hyper-Diagonal Parity", XP-001034704, Mar. 15, 2000, pp. WP7/1-6.
+            L. Bahl et al., "Optimal Decoding of Linear Codes for Minimizing Symbol Error Rate," IEEE Transactions on Information Theory, Jan. 1972, pp. 284-287, International Symposium on Information Theory, Asilomar, CA.
+            L. Tolhuizen & C.P.M.G. Baggen, "On the weight enumerator of product codes," Discrete Mathematics, 1992, vol. 106, No. 107 pp. 483-488.
+            L. Tolhuizen et al., "Union bounds on the performance of product codes," ISIT 1998, p. 267.
+            M. Moher, "Decoding Via Cross-Entropy Minimization," IEEE, 1993, pp. 809-813.
+            N. Seshadri & P. Hoeher, "On Post-Decision Symbol-Reliability Generation," IEEE, 1993, pp. 741-745.
+            O. Acikel & W. Ryan, "High Rate Turbo Codes for BPSK/QPSK Channels," IEEE, 1998, pp. 422-427.
+            O. Acikel & W. Ryan, "Punctured Turbo Codes for BPSK/QPSK Channels," (no publisher listed), Mar. 1999, pp. 1-30.
+            O. Acikel, "Implementation Issues for High Rate Turbo Codes on BPSK/QPSK Channels," (no publisher listed), Mar. 1999, pp. 1-12.
+            P. Adde et al., "Design and performance of a product code turbo encoding-decoding prototype," pp. 214-219. Ann Telecommun., vol. S4, No. 3-4, 1999.
+            P. Elias, "Error-Free Coding," IRE Transactions on Information Theory, 1954, pp. 29-37.
+            P. Hoeher, "Advances in Soft-Output Decoding," IEEE, 1993, pp. 793-797.
+            Pascale Ferry et al., Turbo-Decoder Synchronisation Procedure. Application to the CAS5093 Integrated Circuit, ICECS '96, pp. 168-171.
+            R. Pyndiah et al., "Performance of Block Turbo Coded 16-QAM and 64-QAM Modulations," IEEE, 1995, pp. 1039-1043.
+            R. Pyndiah, "Near-Optimum Decoding of Product Codes: Block Turbo Codes," IEEE Transactions on Communications, vol. 46, No. 8, Aug. 1998, pp. 1003-1010.
+            S. Benedetto et al, "Analysis, Design, and Iterative Decoding of Double Serially Concatenated Codes with Interleavers," IEEE Journal on Selected Areas in Communications, vol. 16, No. 2, Feb. 1998, pp. 231-244.
+            S. Benedetto et al.,"Soft-Output Decoding Algorithms for Continuous Decoding of Parallel Concatenated Convolutional Codes," IEEE, 1996, pp. 112-117.
+            S. Cambanis & M. Habib, "Finite Sampling Approximations for non-Band-Limited Signals," IEEE, vol. 25, No. 5, Jul. 1981 p. 67.
+            S. Dolinar et al., "Code Performance as a Function of Block Size," TMO Progress Report 42-133, May 1998, pp. 1-23.
+            S. Hirasawa et al., "Modified Product Codes," IEEE 1984, vol. 1T-30, No. 2, pp. 299-306.
+            S. Reddy & J. Robinson, "Random Error and Burst Correction by Iterated Codes," IEEE 1970, pp. 170-181.
+            U. Wachsmann et al., "Multilevel Codes: Theoretical Concepts and Practical Design Rules," IEEE, vol. 25, No. 5, Jul. 1999, pp. 1361-1391.
+            W. Blackert & S. Wilson, "Turbo Trellis Coded Modulation," University of Virginia[undated][no page Nos.].
+Cited By (39)
+    * Cited by examiner, † Cited by third party
+        Publication number
+        Priority date
+        Publication date
+        Assignee
+        Title
+            US8656246B2
+            (en)
+          *
+        2001-04-16
+        2014-02-18
+        Qualcomm Incorporated
+        Method and an apparatus for use of codes in multicast transmission 
+            US20030007487A1
+            (en)
+          *
+        2001-04-16
+        2003-01-09
+        Sindhushayana Nagabhushana T.
+        Method and an apparatus for use of codes in multicast transmission 
+            US7546509B2
+            (en)
+          *
+        2003-02-27
+        2009-06-09
+        Electronics And Telecommunications Research Institute
+        Method for forming rate compatible code using high dimensional product codes 
+            US20060190271A1
+            (en)
+          *
+        2003-02-27
+        2006-08-24
+        Kim Soo Y
+        Method for forming rate compatible code using high dimensional product codes 
+            US8086931B2
+            (en)
+        2005-11-15
+        2011-12-27
+        Ramot At Tel Aviv University Ltd.
+        Method and device for multi phase error-correction 
+            US7844877B2
+            (en)
+          *
+        2005-11-15
+        2010-11-30
+        Ramot At Tel Aviv University Ltd.
+        Method and device for multi phase error-correction 
+            US8375272B2
+            (en)
+        2005-11-15
+        2013-02-12
+        Ramot At Tel Aviv University Ltd.
+        Method and device for multi phase error-correction 
+            US20100169737A1
+            (en)
+          *
+        2005-11-15
+        2010-07-01
+        Ramot At Tel Aviv University Ltd.
+        Method and device for multi phase error-correction 
+            US20070124652A1
+            (en)
+          *
+        2005-11-15
+        2007-05-31
+        Ramot At Tel Aviv University Ltd.
+        Method and device for multi phase error-correction 
+            US8046660B2
+            (en)
+          *
+        2006-08-07
+        2011-10-25
+        Marvell World Trade Ltd.
+        System and method for correcting errors in non-volatile memory using product codes 
+            US20080034272A1
+            (en)
+          *
+        2006-08-07
+        2008-02-07
+        Zining Wu
+        System and method for correcting errors in non-volatile memory using product codes 
+            US8566664B2
+            (en)
+        2006-08-07
+        2013-10-22
+        Marvell World Trade Ltd.
+        System and method for correcting errors in non-volatile memory using products codes 
+            US20110167316A1
+            (en)
+          *
+        2010-01-06
+        2011-07-07
+        Stmicroelectronics (Grenoble 2) Sas
+        Method and device for row and column interleaving of blocks of variable size 
+            US8812917B2
+            (en)
+          *
+        2010-01-06
+        2014-08-19
+        Stmicroelectronics (Grenoble 2) Sas
+        Method and device for row and column interleaving of blocks of variable size 
+            US8631304B2
+            (en)
+        2010-01-28
+        2014-01-14
+        Sandisk Il Ltd.
+        Overlapping error correction operations 
+            US8484536B1
+            (en)
+          *
+        2010-03-26
+        2013-07-09
+        Google Inc.
+        Techniques for data storage, access, and maintenance 
+            US8601339B1
+            (en)
+        2010-06-16
+        2013-12-03
+        Google Inc.
+        Layered coding techniques for data storage 
+            US8683294B1
+            (en)
+        2010-06-16
+        2014-03-25
+        Google Inc.
+        Efficient encoding of homed data 
+            US8719675B1
+            (en)
+        2010-06-16
+        2014-05-06
+        Google Inc.
+        Orthogonal coding for data storage, access, and maintenance 
+            US8640000B1
+            (en)
+        2010-06-16
+        2014-01-28
+        Google Inc.
+        Nested coding techniques for data storage 
+            US8621317B1
+            (en)
+        2011-07-25
+        2013-12-31
+        Google Inc.
+        Modified orthogonal coding techniques for storing data 
+            US8615698B1
+            (en)
+          *
+        2011-09-28
+        2013-12-24
+        Google Inc.
+        Skewed orthogonal coding techniques 
+            US8856619B1
+            (en)
+        2012-03-09
+        2014-10-07
+        Google Inc.
+        Storing data across groups of storage nodes 
+            US9490849B1
+            (en)
+          *
+        2012-09-24
+        2016-11-08
+        Marvell International Ltd.
+        Systems and methods for configuring product codes for error correction in a hard disk drive 
+            US9160373B1
+            (en)
+        2012-09-24
+        2015-10-13
+        Marvell International Ltd.
+        Systems and methods for joint decoding of sector and track error correction codes 
+            US9214964B1
+            (en)
+          *
+        2012-09-24
+        2015-12-15
+        Marvell International Ltd.
+        Systems and methods for configuring product codes for error correction in a hard disk drive 
+            US9231623B1
+            (en)
+          *
+        2013-09-11
+        2016-01-05
+        SK Hynix Inc.
+        Chase decoding for turbo-product codes (TPC) using error intersections 
+            US20160043741A1
+            (en)
+          *
+        2014-08-06
+        2016-02-11
+        SK Hynix Inc.
+        Coding method and device 
+            US20160149592A1
+            (en)
+          *
+        2014-11-20
+        2016-05-26
+        Sk Hynix Memory Solutions Inc.
+        Apparatus and method for turbo product codes 
+            US9906241B2
+            (en)
+          *
+        2014-11-20
+        2018-02-27
+        SK Hynix Inc.
+        Apparatus and method for turbo product codes 
+            US9553611B2
+            (en)
+          *
+        2014-11-27
+        2017-01-24
+        Apple Inc.
+        Error correction coding with high-degree overlap among component codes 
+            US20160344426A1
+            (en)
+          *
+        2015-05-18
+        2016-11-24
+        Sk Hynix Memory Solutions Inc.
+        Performance optimization in soft decoding for turbo product codes 
+            US9935659B2
+            (en)
+          *
+        2015-05-18
+        2018-04-03
+        SK Hynix Inc.
+        Performance optimization in soft decoding for turbo product codes 
+            US10388400B2
+            (en)
+        2015-05-18
+        2019-08-20
+        SK Hynix Inc.
+        Generalized product codes for flash storage 
+            US10439649B2
+            (en)
+        2016-02-03
+        2019-10-08
+        SK Hynix Inc.
+        Data dependency mitigation in decoder architecture for generalized product codes for flash storage 
+            US10484020B2
+            (en)
+        2016-02-03
+        2019-11-19
+        SK Hynix Inc.
+        System and method for parallel decoding of codewords sharing common data 
+            US10523245B2
+            (en)
+        2016-03-23
+        2019-12-31
+        SK Hynix Inc.
+        Soft decoder for generalized product codes 
+            US10498366B2
+            (en)
+        2016-06-23
+        2019-12-03
+        SK Hynix Inc.
+        Data dependency mitigation in parallel decoders for flash storage 
+            US10516418B2
+            (en)
+          *
+        2017-04-25
+        2019-12-24
+        Korea University Research And Business Foundation
+        Hybrid type iterative decoding method and apparatus 
+Also Published As
+          Publication number
+          Publication date
+              US20010050622A1
+              (en)
+          2001-12-13
+Similar Documents
+          Publication
+          Publication Date
+          Title
+                US20010050622A1
+                (en)
+            2001-12-13
+          Enhanced turbo product codes 
+                JP4955150B2
+                (en)
+            2012-06-20
+  Highly parallel MAP decoder
+                US6763494B2
+                (en)
+            2004-07-13
+          Turbo product code decoder 
+                US6385751B1
+                (en)
+            2002-05-07
+          Programmable, reconfigurable DSP implementation of a Reed-Solomon encoder/decoder 
+                US6304991B1
+                (en)
+            2001-10-16
+          Turbo code interleaver using linear congruential sequence 
+                KR100502609B1
+                (en)
+            2005-07-20
+          Encoder using low density parity check code and encoding method thereof 
+                EP1030455B1
+                (en)
+            2004-04-21
+          Interleaving method, interleaving apparatus, turbo encoding method, and turbo encoder 
+                JP3359913B1
+                (en)
+            2002-12-24
+        Interleaver for use in serial chain convolutional encoder in mobile communication system and interleaving method thereof
+                US8843810B2
+                (en)
+            2014-09-23
+          Method and apparatus for performing a CRC check 
+                CN101917199A
+                (en)
+            2010-12-15
+        LDPC encoding method and device
+                CN100568745C
+                (en)
+            2009-12-09
+        Interleaver and Interleaving Method in Communication System
+                US8321746B2
+                (en)
+            2012-11-27
+          Systems and methods for quasi-cyclic LDPC code production and decoding 
+                US8010867B2
+                (en)
+            2011-08-30
+          Error correction code decoding device 
+                CN101371448B
+                (en)
+            2011-07-13
+          Fast encoding and decoding methods and related devices 
+                US20020162072A1
+                (en)
+            2002-10-31
+          Concatenated turbo product codes for high performance satellite and terrestrial communications 
+                US7734989B2
+                (en)
+            2010-06-08
+          Multi-standard turbo interleaver using tables 
+                JP2008118628A
+                (en)
+            2008-05-22
+          Error correction code decoding device 
+                KR100628201B1
+                (en)
+            2006-09-26
+        Turbo decoding method
+                US7594156B2
+                (en)
+            2009-09-22
+          High-efficiency compact turbo-decoder 
+                JP4733403B2
+                (en)
+            2011-07-27
+        Decoder, data storage device, and data error correction method
+                CA2402257C
+                (en)
+            2010-04-13
+          Enhanced turbo product codes 
+                CN1496009A
+                (en)
+            2004-05-12
+        Performance Improvement Method of 3D Concatenated Product Codes
+                JPH07226687A
+                (en)
+            1995-08-22
+        Error correction processor
+                US7102549B1
+                (en)
+            2006-09-05
+          Method and apparatus for programmable codeword encoding and decoding using truncated codewords 
+                JP4507443B2
+                (en)
+            2010-07-21
+        Interleaving method and interleaving apparatus
+Legal Events
+          Date
+          Code
+          Title
+          Description
+          2001-08-27
+          AS
+          Assignment
+              Owner name:
+              ADVANCED HARDWARE ARCHITECTURE, INC., WASHINGTON
+              Free format text:
+              ASSIGNMENT OF ASSIGNORS INTEREST;ASSIGNORS:HEWITT, ERIC JOHN;LINDSTROM, BRADLEY WILLIAM;DANIELSON, ALAN ROBERT;AND OTHERS;REEL/FRAME:012112/0285;SIGNING DATES FROM 20010618 TO 20010731
+          2002-09-26
+          AS
+          Assignment
+              Owner name:
+              COMTECH TELECOMMUNICATIONS CORP., NEW YORK
+              Free format text:
+              ASSIGNMENT OF ASSIGNORS INTEREST;ASSIGNOR:ADVANCED HARDWARE ARCHITECTURES, INC.;REEL/FRAME:013330/0758
+              Effective date:
+              20020731
+          2002-12-19
+          AS
+          Assignment
+              Owner name:
+              COMTECH TELECOMMUNICATIONS CORP., NEW YORK
+              Free format text:
+              ASSIGNMENT OF ASSIGNORS INTEREST;ASSIGNOR:ADVANCED HARDWARE ARCHITECTURES, INC.;REEL/FRAME:013609/0035
+              Effective date:
+              20020731
+          2008-03-19
+          STCF
+          Information on status: patent grant
+              Free format text:
+              PATENTED CASE
+          2011-08-12
+          FPAY
+          Fee payment
+              Year of fee payment:
+              4
+          2015-04-08
+          FPAY
+          Fee payment
+              Year of fee payment:
+              8
+          2016-03-03
+          AS
+          Assignment
+              Owner name:
+              CITIBANK N.A., AS ADMINISTRATIVE AGENT, NEW YORK
+              Free format text:
+              SECURITY AGREEMENT;ASSIGNORS:COMTECH EF DATA CORP.;COMTECH XICOM TECHNOLOGY, INC.;COMTECH MOBILE DATACOM CORPORATION;AND OTHERS;REEL/FRAME:037993/0001
+              Effective date:
+              20160223
+          2019-04-09
+          MAFP
+          Maintenance fee payment
+              Free format text:
+              PAYMENT OF MAINTENANCE FEE, 12TH YEAR, LARGE ENTITY (ORIGINAL EVENT CODE: M1553); ENTITY STATUS OF PATENT OWNER: LARGE ENTITY
+              Year of fee payment:
+              12

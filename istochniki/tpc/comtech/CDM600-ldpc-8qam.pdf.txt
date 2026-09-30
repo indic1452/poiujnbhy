@@ -1,0 +1,590 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+New Forward Error Correction and  
+Modulation Technologies 
+ 
+Low Density Parity Check (LDPC) Coding 
+and 8-QAM Modulation in the  
+CDM-600 Satellite Modem 
+ 
+ 
+ 
+Richard Miller 
+Senior Vice President, New Technology 
+Comtech EF Data 
+ 
+ 
+ 
+Revision 4 – January 25, 2005 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 2=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+This page is intentionally left blank. 
+
+=====PAGE 3=====
+LDPC Forward Error Correction and 8-QAM Modulation                                                                                    Rev 4 – January 25, 2005 
+ 
+© 2005 Comtech EF Data 
+                                                                                                    Page 1 
+Introduction 
+In the past few years there has been an unprecedented resurgence in interest in Forward Error Correction 
+(FEC) technology. The start of this new interest has its origins in the work done by Claude Berrou et al, and 
+the landmark paper in 1993 - Near Shannon Limit Error Correcting Coding and Decoding - Turbo Codes. 
+FEC is considered an essential component in all wireless and satellite communications in order to reduce the 
+power and bandwidth requirements for reliable data transmission. 
+ 
+Claude Shannon, considered by many to be the father of modern communications theory, first established, in 
+his 1948 paper A Mathematical Theory of Communication, the concept of Channel Capacity. This places an 
+absolute limit on how fast it is possible to transmit error-free data within a channel of a given bandwidth, and 
+with given noise conditions within that channel. He concluded that it would only be possible to approach this 
+limit through the use of source encoding - what is familiar today as Forward Error Correction. He postulated 
+that if it were possible to store every possible message in the receiver, finding the stored message that most 
+closely matched the incoming message would yield an optimum decoding method. However, for all but the 
+shortest bit sequences, the memory required for this, and the time taken to perform the comparisons, makes 
+this approach impractical. For all practical purposes, the memory requirement and the decoding latency 
+become infinite. 
+ 
+For many years there were few advances in the quest to approach the Shannon Limit. The Viterbi algorithm 
+heralded a major step forward, followed in the early 1990s by the concatenation of a Viterbi decoder with 
+Reed-Solomon hard-decision block codes. However, it remained clear that the Shannon Limit was still an 
+elusive target. Berrou’s work on Turbo Codes showed, through the use of an ingeniously simple approach 
+(multiple, or iterative decoding passes) that it is possible to achieve performance close to the Shannon Limit. 
+Berrou’s early work dealt exclusively with iteratively-decoded convolutional codes (Turbo Convolutional 
+Coding, or TCC), but in time the iterative approach was applied to a particular class of block codes called 
+Product Codes - hence Turbo Product Coding (TPC). TPC exhibits inherently low decoding latency 
+compared with TCC, and so is considered much more desirable for 2-way, interactive satellite 
+communications applications. 
+ 
+In August 1999, Comtech became the first company in the world to offer, on a commercial basis, satellite 
+modems that incorporate TPC. Since its inception, Comtech has continued to develop and refine its 
+implementation of TPC in its products, and now offers a comprehensive range of code rates (from Rate 5/16 
+to Rate 0.95) and modulations (from BPSK to 16-QAM). However, in the past few years, as part of the 
+general interest in Turbo coding, a third class of Turbo coding has emerged, namely Low Density Parity 
+Check Codes (LDPC). It is more like TPC than TCC, in that it is an iteratively-decoded block code. Gallager 
+first suggested this in 1962, but at the time, the implementation complexity was considered to be too great, 
+and for decades it remained of purely academic interest. Now, however, with silicon gates being cheap, 
+plentiful and fast, an LDPC decoder can easily be accommodated in a large Field Programmable Gate Array 
+(FPGA) device. Further interest in LDPC was stimulated in 2003, when the Digital Video Broadcasting (DVB) 
+committee adopted LDPC codes (proposed by Hughes Network Systems) as the basis for the new DVB-S2 
+standard.  
+ 
+The LDPC method on its own produces an undesirable ‘flaring’ in the Bit Error Rate (BER) vs. Eb/No 
+characteristic, and for this reason it is desirable to concatenate a short BCH code with LDPC. This 
+concatenation produces almost vertical BER vs. Eb/No curves, as can be seen in the performance graphs 
+that are presented later. 
+ 
+In order to take full advantage of the coding gain increase that LDPC provides, it became necessary to find 
+an alternative to 8-PSK. Comtech EF Data has therefore developed an 8-QAM approach that permits 
+acquisition and tracking at much lower values of Eb/No than 8-PSK. A discussion of this approach follows 
+the presentation of the performance results for LDPC. 
+ 
+Comtech EF Data has chosen the CDM-600 platform as the first satellite modem in which to implement both 
+LDPC and 8-QAM. 
+ 
+LDPC versus TPC 
+So, is LDPC better than TPC? The answer must be ‘sometimes, but not always’, and there are issues, such 
+as latency, that must be taken into consideration. The graph shown below illustrates the performance of 
+various TPC and LDPC modes relative to the Shannon Limit - the Channel Capacity is shown for both QPSK 
+
+=====PAGE 4=====
+LDPC Forward Error Correction and 8-QAM Modulation                                                                                    Rev 4 – January 25, 2005 
+ 
+© 2005 Comtech EF Data 
+                                                                                                    Page 2 
+and 8-PSK. Error free transmission is not possible for values of spectral efficiency (capacity) vs. Eb/No 
+above these limit curves. The horizontal distance to the limit provides a metric of overall performance.  
+ 
+It can be seen from this graph that for Code Rates above 3/4, Comtech’s TPCs are very close (1 - 1.5 dB) 
+from the Shannon Limit. However, at 3/4 and below, LDPCs are performing 0.7 - 1.2 dB better than TPCs.  
+ 
+ 
+ 
+ 
+It is clear that in order to provide the best possible performance over the range of code rates from 1/2 to 
+0.95, both an LDPC and a TPC codec need to be offered. 
+ 
+In order to meet this requirement, Comtech EF Data has developed a combination LDPC/TPC Codec 
+module that can be added to the CDM-600 Modem, and which provides the following operating modes: 
+ 
+TPC Modes - completely compatible with the 
+2nd generation (High Rate) modes: 
+Rate 5/16, 21/44 BPSK 
+Rate 1/2, 3/4, 7/8, 0.95 QPSK/OQPSK 
+Rate 3/4, 7/8, 0.95 8-PSK 
+Rate 3/4, 7/8 16-QAM 
+ 
+LDPC Modes: 
+Rate 1/2 BPSK 
+Rate 1/2, 2/3, 3/4 QPSK/OQPSK 
+Rate 2/3, 3/4 8-PSK  
+Rate 2/3, 3/4 8-QAM 
+Rate 3/4 16-QAM 
+This new LDPC/TPC codec module may be installed in any existing CDM-600, as a simple field upgrade, or 
+already installed in new modems ordered from the factory. It requires Firmware Version 1.6.1 (or higher) to 
+be installed.  
+ 
+Please contact the Sales Department at Comtech EF Data for pricing and delivery information. 
+ 
+The table that follows compares all TPC and LDPC modes available in Comtech EF Data’s CDM-600, and 
+shows Eb/No performance and spectral efficiency (occupied bandwidth) for each case. This information will 
+be of particular interest to satellite operators wishing to simultaneously balance transponder power and 
+bandwidth. The large number of modes offered will permit, in the majority of cases, significant power and/or 
+bandwidth savings when compared with existing schemes such as concatenated Viterbi/Reed-Solomon, or 
+the popular 8-PSK/Trellis/Reed-Solomon (Intelsat IESS-310). 
+
+=====PAGE 5=====
+LDPC Forward Error Correction and 8-QAM Modulation                                                                                    Rev 4 – January 25, 2005 
+ 
+© 2005 Comtech EF Data 
+                                                                                                    Page 3 
+Following the Table, BER vs. Eb/No curves are shown for the new LDPC cases. 
+ 
+Comparison of all Comtech EF Data TPC and LDPC Modes 
+(CDM-600 with LDPC/TPC Codec and Firmware Version 1.6.1) 
+ 
+Mode 
+Eb/No at 
+BER = 10-6 
+(typical) 
+Eb/No at 
+BER = 10-8 
+(typical) 
+Spectral 
+Efficiency 
+(bps per 
+Hertz) 
+Symbol Rate 
+Occupied * 
+Bandwidth 
+for 1 Mbps 
+Carrier 
+QPSK Rate 1/2 Viterbi  * 
+5.5 dB 
+6.8 dB 
+1.00 bps/Hz 
+1.0 x bit rate 
+1190 kHz 
+BPSK Rate 1/2 LDPC 
+1.7 dB 
+1.9 dB 
+0.50 bps/Hz 
+2.0 x bit rate 
+2380 kHz 
+BPSK Rate 21/44 TPC 
+2.6 dB 
+2.9 dB 
+0.48 bps/Hz 
+2.1 x bit rate 
+2493 kHz 
+BPSK Rate 5/16 TPC 
+2.1 dB 
+2.4 dB 
+0.31 bps/Hz 
+3.2 x bit rate 
+3808 kHz 
+QPSK/OQPSK Rate 1/2 LDPC 
+1.7 dB 
+1.9 dB 
+1.00 bps/Hz 
+1.0 x bit rate 
+1190 kHz 
+QPSK/OQPSK Rate 1/2 TPC 
+2.6 dB 
+2.8 dB 
+0.96 bps/Hz 
+1.05 x bit rate 
+1246 kHz 
+QPSK/OQPSK Rate 2/3 LDPC 
+2.1 dB 
+2.3 dB 
+1.33 bps/Hz 
+0.75 x bit rate 
+892 kHz 
+QPSK/OQPSK Rate 3/4 LDPC 
+2.7 dB 
+2.9 dB 
+1.50 bps/Hz 
+0.67 x bit rate 
+793 kHz 
+QPSK/OQPSK Rate 3/4 TPC 
+3.3 dB 
+4.0 dB 
+1.50 bps/Hz 
+0.67 x bit rate 
+793 kHz 
+QPSK/OQSK Rate 7/8 TPC 
+4.0 dB 
+4.2 dB 
+1.75 bps/Hz 
+0.57 x bit rate 
+678 kHz 
+QPSK/OQPSK Rate 0.95 TPC 
+6.0 dB 
+ 6.5 dB 
+1.90 bps/Hz 
+0.53 x bit rate 
+626 kHz 
+8-PSK Rate 2/3 TCM ** 
+and RS (IESS-310) 
+5.6 dB 
+6.2 dB 
+1.82 bps/Hz 
+0.56 x bit rate 
+666 kHz 
+8-QAM Rate 2/3 LDPC 
+4.3 dB 
+4.5 dB 
+2.00 bps/Hz 
+0.50 x bit rate 
+595 kHz 
+8-QAM Rate 3/4 LDPC 
+4.7 dB 
+5.0 dB 
+2.25 bps/Hz 
+0.44 x bit rate 
+529 kHz 
+8-PSK Rate 3/4 TPC 
+5.7 dB 
+6.3 dB 
+2.25 bps/Hz 
+0.44 x bit rate 
+529 kHz 
+8-PSK Rate 7/8 TPC 
+6.6 dB 
+6.8 dB 
+2.62 bps/Hz 
+0.38 x bit rate 
+453 kHz 
+8-PSK Rate 0.95 TPC 
+8.9 dB 
+9.9 dB 
+2.85 bps/Hz 
+0.35 x bit rate 
+377 kHz 
+16-QAM Rate 3/4 LDPC 
+6.4 dB 
+6.6 dB 
+3.00 bps/Hz 
+0.33 x bit rate 
+396 kHz 
+16-QAM Rate 3/4 TPC 
+7.0 dB 
+7.7 dB 
+3.00 bps/Hz 
+0.33 x bit rate 
+396 kHz 
+16-QAM Rate 7/8 TPC 
+7.7 dB 
+7.9 dB 
+3.50 bps/Hz 
+0.28 x bit rate 
+340 kHz 
+16-QAM Rate 3/4   ** 
+Viterbi/Reed-Solomon 
+7.5 dB 
+8.0 dB 
+2.73 bps/Hz 
+0.37 x bit rate 
+435 kHz 
+16-QAM Rate 7/8  ** 
+Viterbi/Reed-Solomon 
+9.0 dB 
+9.5 dB 
+3.18 bps/Hz 
+0.31 x bit rate 
+374 kHz 
+ 
+  * 
+The occupied bandwidth is defined at the width of the transmitted spectrum taken at the –10 dB points 
+on the plot of power spectral density. This equates to 1.19 x symbol rate for the CDM-600 transmit 
+filtering. 
+**     Included for comparative purposes 
+
+=====PAGE 6=====
+LDPC Forward Error Correction and 8-QAM Modulation                                                                                    Rev 4 – January 25, 2005 
+ 
+© 2005 Comtech EF Data 
+                                                                                                    Page 4 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+1E-4
+1E-3
+1E-2
+1E-1
+1           2           3           4           5           6          7           8           9         10          11         12   
+Eb/No in dB
+Uncoded
+BPSK/QPSK
+Comtech LDPC/BCH Codec
+Rate 1/2 BPSK/QPSK
+Rate 2/3 QPSK
+Rate 3/4 QPSK
+1           2           3           4           5           6          7           8           9         10          11         12  
+BER
+Rate 2/3
+QPSK
+Rate 3/4
+QPSK
+Rate 1/2 
+BPSK/QPSK
+
+=====PAGE 7=====
+LDPC Forward Error Correction and 8-QAM Modulation                                                                                    Rev 4 – January 25, 2005 
+ 
+© 2005 Comtech EF Data 
+                                                                                                    Page 5 
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+1E-4
+1E-3
+1E-2
+1E-1
+1          2           3           4           5          6           7           8           9          10          11        12    
+Eb/No in dB
+Uncoded
+BPSK/QPSK
+Comtech LDPC/BCH Codec
+Rate 2/3 8-QAM
+Rate 3/4 8-QAM
+(shows comparison with 
+8-PSK/TCM/RS)
+1          2           3           4           5          6           7           8           9          10          11        12   
+BER
+Rate 3/4 8-QAM/LDPC
+30% more bandwidth efficient
+1.2dB less power requirement
+than typical 8-PSK/TCM/RS
+Rate 2/3 8-QAM/LDPC
+11% more bandwidth efficient
+1.7dB less power requirement
+than typical 8-PSK/TCM/RS
+Uncoded
+8-PSK
+8-PSK/TCM/RS 
+(IESS-310 - typical
+ performance)
+
+=====PAGE 8=====
+LDPC Forward Error Correction and 8-QAM Modulation                                                                                    Rev 4 – January 25, 2005 
+ 
+© 2005 Comtech EF Data 
+                                                                                                    Page 6 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+1E-4
+1E-3
+1E-2
+1E-1
+1           2           3           4           5           6          7            8           9          10          11        12   
+Eb/No in dB
+ Rate 3/4
+16-QAM
+Uncoded BPSK/QPSK
+1           2           3           4           5           6          7            8           9          10          11        12  
+BER
+Comtech LDPC/BCH Codec
+Rate 3/4 16-QAM
+Uncoded 16-QAM
+
+=====PAGE 9=====
+LDPC Forward Error Correction and 8-QAM Modulation                                                                                    Rev 4 – January 25, 2005 
+ 
+© 2005 Comtech EF Data 
+                                                                                                    Page 7 
+End-to-End Processing Delay 
+It is an unfortunate fact, but FEC methods that provide increased coding gain inevitably do so at the expense 
+of increased processing delay (latency). The closer to the Shannon Limit that a code approaches, the higher 
+the decoding delay. In many applications, IP transport being a prime example, latency is a significant issue. 
+ 
+As with TPC, the coding gain achievable with LDPC is a direct function of the block size used for the 
+encoding process. In all the TPC modes employed in the CDM-600, a 4 kbit block size is used, with the 
+exception of the Rate 7/8 case, which uses a 16 kbit block. This leads to an end-to-end latency of 
+approximately 120 ms at a data rate of 128 kbps.  
+ 
+All of the LDPC modes also use a 16 kbit block size, and as a consequence, end-to-end latency will be 
+broadly comparable to the Rate 7/8 TPC case. Comtech EF Data is continuing to investigate methods for 
+reducing latency to the theoretical minimum possible. 
+ 
+ 
+The new challenges of LDPC 
+It can be seen from the performance graphs that LDPC is capable of producing quasi-error-free performance 
+at exceptionally low values of Eb/No. This now starts to push the limits of demodulator performance - in order 
+to take advantage of the improved coding gain of LDPCs, the demodulator must now acquire and track 
+signals in noise conditions that are extremely challenging for the modem designer. While it is possible to 
+produce acceptable demodulator performance for BPSK, QPSK and 16-QAM, the 8-PSK case provides a 
+particularly difficult challenge. When the DVB committee addressed the DVB-S2 specification, they 
+recognized that, at the values of Eb/No that are dictated by LDPC performance, the gain of an 8-PSK phase 
+detector is becoming vanishingly small, and hence a conventional approach becomes impractical. To 
+overcome this, they included so-called pilot symbols to aid in the acquisition and tracking process. However, 
+this complicates both the modulator and the demodulator design, and as a result, Comtech EF Data looked 
+for an alternative approach. 8-QAM provided the answer. 
+ 
+ 
+8-QAM 
+What is 8-QAM, and why is it important? Unlike 8-PSK, which comprises 8 equally-spaced constellation 
+points around a unit-circle, 8-QAM is comprised of exactly half of a 16-QAM signal. Fortuitously, the 8-QAM 
+constellation possesses some unique properties that can be exploited to permit acquisition and tracking of 
+signals at noise levels 2 - 3 dB worse than is possible with 8-PSK. This is, then, a perfect match for the 
+expected Eb/No values that LDPC demands. Naturally, it has exactly the same spectral efficiency as 8-PSK. 
+ 
+While the 8-QAM constellation itself is not new, Comtech has performed much original work related to the 
+choice of optimum mapping and soft decision decoding, and, of course, on the techniques for acquiring and 
+tracking 8-QAM signals. This work is the subject of a pending patent application filed by Comtech EF Data. 
+ 
+The basic performance of uncoded 8-QAM is inherently better than uncoded 8-PSK (by a few tenths of a 
+dB), but has a slightly higher peak-to-average power ratio than 8-PSK. In most linear transponders, this 
+should not be considered a problem.  
+ 
+Our practical experience of combining 8-QAM with LDPC has shown exceptionally robust performance - the 
+demodulator threshold is comfortably below the level where the LDPC codec performance fails. For many 
+years, the 8-PSK/Trellis/Reed-Solomon approach has been considered the standard to beat. Now, for the 
+first time, performance is possible that is superior in both power and bandwidth utilization. 
+ 
+ 
+Conclusion 
+The attached table and graphs of Eb/No vs. BER indicate the extraordinary level of performance that is 
+possible with both TPC and LDPC. With the wide choice of codes, modulation formats and code rates 
+available, Comtech EF Data believes that it is now possible, using a single modem platform, to choose a 
+modulation/code/code rate combination that will simultaneously optimize power and bandwidth for any given 
+transponder. This powerful technology will afford satellite operators the opportunity to maximize both 
+throughput and revenues. 
+
+=====PAGE 10=====
+LDPC Forward Error Correction and 8-QAM Modulation                                                                                    Rev 4 – January 25, 2005 
+ 
+© 2005 Comtech EF Data 
+                                                                                                    Page 8 
+ 
+Comtech EF Data has carried out a large number of link budget analyses to determine the cost savings of 
+TPC, LDPC and 8-QAM. Compared with the already powerful Rate 7/8 TPC case, there are LDPC modes 
+that offer 10% total cost savings in transponder costs. However, more impressively, when compared with  
+8-PSK/Trellis/Reed-Solomon, the cost savings achievable are around 18%. For more details on the link 
+budget analyses that have yielded these extraordinary figures, please contact: 
+ 
+Daniel Enns 
+Senior Vice President, Strategic Marketing & Business Development  
+Comtech EF Data 
+2114 West 7th Street 
+Tempe AZ 85381 
+Tel: 480 333 2200 
+e-mail: denns@comtechefdata.com 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

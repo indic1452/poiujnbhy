@@ -1,0 +1,306 @@
+
+=====PAGE 1=====
+ThIs product is covered under multiple patents held or licensed by Comtech AHA 
+Corporation.
+This product is covered by a Turbo Code Patent License from France Telecom - 
+TDF - Groupe des ecoles des telecommunications.        
+comtech aha corporation
+comtech aha corporation
+PRODUCT BRIEF
+AHA4524
+(4 Kbit Block Version)
+TURBO PRODUCT CODE ENCODER/DECODER
+The AHA4524 device is a single-chip Turbo 
+Product Code (TPC) Forward Error Correction 
+(FEC) Encoder/Decoder. This device integrates 
+independent TPC encoder and decoder functions, 
+and can be configured for full or half duplex 
+operation. In addition to TPC coding, the device 
+includes helical interleaving, CRC computation, 
+and data scrambling. Each of the functional blocks 
+can be independently bypassed. Figure 1 shows the 
+functional block diagram.
+The encoder and decoder accept data and 
+configuration through a synchronous 3-wire or data 
+bus interface designed to connect directly to a DSP 
+or user logic.
+Encoder and decoder configuration registers are 
+written and read through the same interface as the 
+data. Configuration registers may be accessed at the 
+start of every block transfer.
+The encode datapath, with all functional blocks 
+enabled, computes and inserts CRC bits, scrambles 
+the data, inserts error correction code (ECC) bits, 
+and helically interleaves the data. The decoder 
+datapath is the reverse of the encoder datapath. With 
+all functional blocks enabled, the received data is 
+helically deinterleaved before decoding. The 
+decoder output is descrambled, and the CRC is 
+computed to verify data integrity. Decoded data is 
+then output in a serial bit stream. 
+The decoder input interface includes an option to 
+accept 4 bit parallel soft metric data symbols. The 
+parallel decoder input is used to support a symbol per 
+transfer for fast channel input rates. The AHA4524 
+also includes fast code changing feature which 
+allows the device to process multiple block types 
+simultaneously.
+FEATURES
+PERFORMANCE:
+• 60 Mbit/sec channel rate and 50 Mbit/sec payload 
+data rate for (64,57)x(64,57) code with 3 
+iterations
+• Integrated 16 bit scrambler and descrambler
+• Integrated 32 bit CRC computation and 
+verification
+• Supports two dimensional (2D) and three 
+dimensional (3D) Turbo Product Codes
+• Supports 2D enhanced Turbo Product Codes
+• Correction count for channel SNR estimation
+• Simultaneously processes multiple block types
+FLEXIBILITY:
+• Code Rates from 0.25 to 0.97
+• Encoded block Sizes from 64 bits to 4 Kbits
+• Programmable code shortening supports exact 
+block sizes
+• Programmable decoder input quantization for up 
+to 4 bit wide soft metrics
+• Programmable iterations up to 255 per block
+• 4 programmable block configurations which are 
+selectable for fast code changing
+• On chip PLL allows low frequency system clock
+CHANNEL INTERFACE:
+• Synchronous 3-wire input and output ports 
+designed to be compatible with DSP serial ports
+• Bus mode input and output ports designed to be 
+compatible with a DSP bus
+• Chip selects on encoder and decoder ports for full 
+or half-duplex operation
+• Pin selectable interface control signal polarity
+• Decoder supports 4 bit parallel soft metric input 
+data for fast decode operation
+SYSTEM INTERFACE:
+• Secondary input communication cycles are used 
+for accessing the AHA4524 configuration 
+registers through the data ports
+• Block status is optionally output at the end of 
+every decoded block to provide correction and 
+CRC error information
+ELECTRICAL:
+• 3.3V I/O, 1.8V core operation
+• 5V tolerant inputs
+• TTL signal compatible
+• 64 pin TQFP Package
+• Commercial or Industrial temperature rating
+查询AHA4524供应商
+捷多邦，专业PCB打样工厂，24小时加急出货
+
+=====PAGE 2=====
+comtech aha corporation
+Figure 1:
+AHA4524 Functional Block Diagram
+SYSTEM APPLICATION
+Figure 2 is a block diagram of a wireless system 
+that shows AHA4524 being used as a TPC 
+encoder/decoder. During decoding, data is routed 
+between the Analog Front End (AFE) and 
+ASIC/DSP through a serial port. The data is then 
+processed in the ASIC/DSP to block and prepare the 
+data for the AHA4524 decoder. Data blocks are then 
+transferred to the AHA4524 for TPC decoding. 
+Data received from AHA4524 is then routed to 
+memory/peripheral functions. Encoding is done in a 
+similar manner where the ECC bits are added to the 
+block of data. The encoded data block is further 
+processed for modulation and frame 
+synchronization as required, then transmitted.
+Figure 2:
+System Block Diagram, Wireless Communication
+C_DATA
+Descrambler
+AHA4524
+DECODER
+CRC
+Verification
+eTPC
+Decoder
+D_DATA
+Configuration
+Registers
+Helical
+Deinterleaver
+U_DATA
+ENCODER
+E_DATA
+I/O
+Formatter
+Scrambler
+Helical
+Interleaver
+eTPC
+Encoder
+Configuration
+Registers
+CRC
+Computation
+I/O
+Formatter
+Transmit
+AHA4524
+(Encoder)
+ASIC / DSP
+Memory /
+Peripheral
+Analog
+Front End
+(AFE)
+AHA4524
+(Decoder)
+ASIC / DSP
+Memory /
+Peripheral
+
+=====PAGE 3=====
+comtech aha corporation
+CODE PERFORMANCE
+Table 1 gives an abridged list of possible codes supported by AHA4524, along with the code rate and 
+coding gain of each code. This is a very small subset of supported codes. AHA can provide software to 
+assist the code selection process.
+Table 1:
+Partial Code List and Performance
+*
+Estimated Coding Gain is measured on a Binary Input Additive White Gaussian Noise (AWGN) channel at 10-6 Bit Error Rate 
+(BER) and 3 iterations.
++
+enhanced TPC (includes hyper axis). In enhanced codes, the Y axis is shortened by one. The shortening and addition of hyper 
+axis is included in the code description.
+Figure 3:
+Comparison of TPC Code Types
+CODE
+(X)x(Y)x(Z)
+BLOCK SIZE
+(bits)
+DATA SIZE
+(bits)
+RATE
+CODING GAIN*
+(dB)
+MAX CHANNEL RATE AT
+3 ITERATIONS
+(Mb/s)
+(64,63)x(64,62)+
+4096
+3906
+0.954
+4.4
+39.2
+(64,57)x(64,62)+
+4096
+3534
+0.863
+5.8
+39.2
+(64,57)x(64,57)
+4096
+3249
+0.793
+6.7
+60.0
+(32,26)x(32,26)x(4,3)
+4096
+2028
+0.495
+7.3
+40.8
+TPC @ 3 Iterations 
+1.E-10
+1.E-09
+1.E-08
+1.E-07
+1.E-06
+1.E-05
+1.E-04
+1.E-03
+1.E-02
+1.E-01
+1.E+00
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+Eb/No (dB)
+Bit Error Rate P(e)
+Uncoded BPSK
+RS(255,239)  R=.937 
+TPC(64,63)x(64,62)+  R=.954
+TPC(64,57)x(64,62)+ R=.863
+TPC(64,57)^2  R=.793
+TPC(32,26)x(32,26)x(4,3 )  R=.495
+
+=====PAGE 4=====
+comtech aha corporation
+PB4524_0204
+© 2005 Comtech AHA Corp.
+comtech aha corporation
+1126 Alturas Drive
+fax: 208.892.5601
+tel: 208.892.5600
+e-mail: sales@aha.com
+www.aha.com
+Moscow, ID 83843-8331
+A subsidiary of Comtech Telecommunications Corporation
+Figure 4:
+ TPC Performance with 3, 8 and 32 Iterations
+ABOUT AHA
+Comtech AHA Corporation (AHA) develops 
+and markets superior integrated circuits, boards, 
+and intellectual property core technology for 
+communications systems architects worldwide. 
+AHA has been setting the standard in Forward Error 
+Correction and Lossless Data Compression 
+technology for many years and provides flexible, 
+cost-effective solutions for today’s growing 
+bandwidth and reliability challenges. Comtech 
+AHA Corporation is a wholly owned subsidiary of 
+Comtech Telecommuncations Corp. (NASDAQ: 
+CMTL). For more information, visit www.aha.com.
+ORDERING INFORMATION
+TPC (64,57)^2, rate 0.793 @ 3,  8, and 32 Iterations 
+1.E-10
+1.E-09
+1.E-08
+1.E-07
+1.E-06
+1.E-05
+1.E-04
+1.E-03
+1.E-02
+1.E-01
+1.E+00
+0
+1
+2
+3
+4
+5
+6
+Eb/No (dB)
+Bit Error Rate P(e)
+Uncoded BPSK
+TPC(64,57)^2, 3 iter
+TPC (64,57)^2, 8 iter
+TPC(64,57)^2, 32 iter
+PART NUMBER
+DESCRIPTION
+AHA4524A-031 PTC 4 Kbit Block TPC Encoder/ 
+Decoder - Commercial Temp
+AHA4524A-031 PTI
+4 Kbit Block TPC Encoder/ 
+Decoder - Industrial Temp

@@ -1,0 +1,141 @@
+URL: https://www.manualslib.com/manual/1291805/Comtech-Ef-Data-Sdm-300a.html?page=343
+
+SDM-300A Satellite Modem 
+Table C-4. Demodulator Digital Data Rated (Continued) 
+Modulation 
+Type 
+8PSK 2/3 
+8PSK 2/3 
+QPSK 1/2 
+QPSK 1/2 
+8PSK 2/3 
+8PSK 2/3 
+QPSK 3/4 
+QPSK 3/4 
+QPSK 3/4 
+QPSK 3/4 
+8PSK 2/3 
+8PSK 2/3 
+8PSK 2/3 
+8PSK 2/3 
+BPSK 1/1 
+QPSK 1/1 
+OQPSK 1/1 
+C.3.2 
+Demodulation and FEC Decoding Types 
+Table C-5 shows combinations of demodulation and forward error correction decoding. 
+Viterbi, K7 
+Viterbi, K7 
+Reed-Solomon 
+Viterbi, K7 
+Viterbi, K7, TCM 
+Viterbi, K7 
+Reed-Solomon 
+Viterbi, K7, TCM 
+Reed-Solomon 
+EFD 
+Compatible 
+Viterbi, K7, TCM 
+Reed-Solomon 
+IESS-310 
+Compatible 
+Sequential 
+Sequential 
+Reed-Solomon 
+Sequential 
+Sequential 
+Reed-Solomon 
+Uncoded 
+Rev. 4 
+Decoding Type 
+IBS 
+IBS and Reed-Solomon 
+D&I 
+D&I and Reed-Solomon 
+ASYNC 
+ASYNC and Reed-Solomon 
+IDR, T1 
+IDR, T1 and Reed-Solomon 
+IDR, E1 
+IDR, E1, and Reed-Solomon 
+IDR, T1 
+IDR, T1, and Reed-Solomon 
+IDR, E1 
+IDR, E1, and Reed-Solomon 
+None 
+None 
+None 
+Table C-5. Demodulation FEC Decoding 
+Decoder 
+1/2 
+1/2 
+225/205 Closed 
+1/2, 3/4, 7/8 
+2/3 
+1/2, 3/4, 7/8 
+225/205 Closed or IDR T1, 
+126/112 IBS and D&I, 
+219/201 IDR E1 
+2/3 
+225/205 Closed or IDR T1, 
+126/112 IBS and D&I, 
+219/201 IDR E1 
+2/3 
+219/201 [4] No Overhead, 
+219/201 [4] IBS and D&I, 
+219/201 [8] IDR T1/E1 
+1/2 
+1/2 
+225/205 Closed 
+1/2, 3/4, 7/8 
+1/2, 3/4, 7/8 
+225/205 Closed 
+1/1 
+Data Rate Range 
+512 kbit/s 
+512 kbit/s 
+64 kbit/s 
+64 kbit/s 
+512 kbit/s 
+512 kbit/s 
+1544 kbit/s 
+1544 kbit/s 
+2048 kbit/s 
+2048 kbit/s 
+1544 kbits 
+1544 kbits 
+2048 kbits 
+2048 kbits 
+4.8 Kbit/s 
+9.6 kbit/s 
+9.6 kbit/s 
+Code Rate 
+Modulation 
+BPSK 
+BPSK 
+QPSK, OQPSK 
+8PSK 
+QPSK, OQPSK 
+8PSK 
+8PSK 
+BPSK 
+BPSK 
+QPSK, OQPSK 
+QPSK, OQPSK 
+QPSK, OQPSK 
+BPSK 
+QPSK, OQPSK 
+Specifications 
+2048 kbit/s 
+2048 kbit/s 
+1920 kbit/s 
+1920 kbit/s 
+2048 kbit/s 
+2048 kbit/s 
+Fixed Rate 
+Fixed Rate 
+2.5 Mbit/s 
+5.0 Mbit/s 
+5.0 Mbit/s 
+C–13 
+ Table of  Contents 

@@ -1,0 +1,38 @@
+URL: https://www.manualslib.com/manual/721439/Comtech-Ef-Data-Cdm-625.html?page=126
+
+CDM-625 Advanced Satellite Modem 
+Front Panel Operation 
+5.2.1.3.8 CONFIG: Tx  Scrambler 
+Tx Scrambler = IESS (Normal,IESS,Off) 
+Use the 
+arrow keys to select Normal, IESS, or Off, and then press ENTER. 
+▲▼ 
+The modem automatically selects the actual scrambler used for Normal, depending on the exact 
+operating mode: 
+• 
+If framing = IBS/D&I, the IESS-309 scrambler is used. 
+• 
+If Reed-Solomon is on but IBS/D&I is off, its frame synchronous scrambler is used per 
+IESS-310, App. H. An exception to this is legacy EF Data Reed-Solomon, which uses a 
+proprietary modified V.35 scrambler instead. 
+• 
+If framing = EDMAC/2/3 and Reed-Solomon is off, its frame synchronous scrambler is 
+used. 
+• 
+If configured for TPC (Turbo) encoding and all of the above settings are off, the TPC 
+frame scrambler is used except for 8-QAM. 
+For CDM-570 compatibility, TPC with 8-QAM uses the V.35 scrambler. 
+• 
+ITU V.35 scrambler (Intelsat variant) is the default scrambler when all of the above 
+settings are off. 
+When selecting IESS, the default ITU V.35 scrambler specified in IESS-315 takes priority over all 
+"normal" scramblers and is used instead. Therefore, for many operating modes, the two 
+scrambler choices are redundant. 
+When using TPC and Carrier-in-Carrier simultaneously, the IESS-315 (V.35) scrambler is the only 
+permitted choice. 
+IESS-315 V.35 Scrambler 
+5–20 
+Revision 13 
+MN-CDM625 
+() 
+ Table of  Contents 

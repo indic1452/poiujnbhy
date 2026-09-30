@@ -1,0 +1,202 @@
+
+=====PAGE 1=====
+2004-03-16 
+IEEE C802.16d-04/13r1 
+ 
+ 
+   
+0
+ 
+Project 
+IEEE 802.16 Broadband Wireless Access Working Group <http://ieee802.org/16> 
+Title 
+Updates to Block Turbo Coding for OFDM 
+Date 
+Submitted 
+2004-03-16 
+Source(s) 
+Brian Banister, Comtech AHA 
+bbaniste@aha.com 
+Re: 
+ 
+Abstract 
+This submission addresses additional changes required to the Turbo Coding section of OFDM to 
+accommodate shorter blocks found in subchannel mode. 
+Purpose 
+Submitted for review by 802.16 members 
+Notice 
+This document has been prepared to assist IEEE 802.16. It is offered as a basis for discussion and is not binding on 
+the contributing individual(s) or organization(s). The material in this document is subject to change in form and 
+content after further study. The contributor(s) reserve(s) the right to add, amend or withdraw material contained 
+herein. 
+Release 
+The contributor grants a free, irrevocable license to the IEEE to incorporate material contained in this contribution, 
+and any modifications thereof, in the creation of an IEEE Standards publication; to copyright in the IEEE’s name 
+any IEEE Standards publication even though it may include portions of this contribution; and at the IEEE’s sole 
+discretion to permit others to reproduce in whole or in part the resulting IEEE Standards publication. The 
+contributor also acknowledges and accepts that this contribution may be made public by IEEE 802.16. 
+Patent 
+Policy and 
+Procedures 
+The contributor is familiar with the IEEE 802.16 Patent Policy and Procedures 
+<http://ieee802.org/16/ipr/patents/policy.html>, including the statement "IEEE standards may include the known use 
+of patent(s), including patent applications, provided the IEEE receives assurance from the patent holder or applicant 
+with respect to patents essential for compliance with both mandatory and optional portions of the standard." Early 
+disclosure to the Working Group of patent information that might be relevant to the standard is essential to reduce 
+the possibility for delays in the development process and increase the likelihood that the draft publication will be 
+approved for publication. Please notify the Chair <mailto:chair@wirelessman.org> as early as possible, in written or 
+electronic form, if patented technology (or technology under patent application) might be incorporated into a draft 
+standard being developed within the IEEE 802.16 Working Group. The Chair will disclose this notification via the 
+IEEE 802.16 web site <http://ieee802.org/16/ipr/patents/notices>. 
+
+=====PAGE 2=====
+2004-03-16 
+IEEE C802.16d-04/13r1  
+ 
+ 
+   
+1
+Modifications to Block Turbo Coding for OFDM 
+Brian Banister, Comtech AHA 
+ 
+Introduction 
+Subchannels in OFDM result in smaller block sizes, and the descriptions for block Turbo Codes (BTC) were modified 
+during Session 29 to accommodate the smaller block sizes. The included text provides updates for the BTC mode. 
+ 
+[Apply the following changes to Table 192 in Section 8.3.3.2.2:] 
+  
+Coded Bits 
+Approximate Rate 
+Constituent Code 
+Code Parameters 
+ 
+ 
+ 
+Ix 
+Iy 
+B 
+Q 
+96 
+1/2 
+(8,7)(32,26) 
+4 
+8 
+0 
+6 
+ 
+3/4 
+(16,15)(16,15) 
+6 
+6 
+4 
+5 
+144 
+3/5 
+(16,15)(16,11) 
+7 
+0 
+0 
+0 
+ 
+5/6 
+(16,15)(16,15) 
+4 
+4 
+0 
+1 
+192 
+3/8 
+(16,11)(16,11) 
+2 
+2 
+4 
+5 
+ 
+2/3 
+(8,7)(32,26) 
+2 
+0 
+0 
+2 
+ 
+5/6 
+(16,15)(16,15) 
+2 
+2 
+4 
+5 
+288 
+1/2 
+(16,11)(32,26) 
+0 
+14 
+0 
+4 
+ 
+3/4 
+(16,15)(32,26) 
+7 
+0 
+0 
+0 
+384 
+1/2 
+(16,11)(32,26) 
+0 
+8 
+0 
+6 
+ 
+3/4 
+(16,15)(32,26) 
+4 
+0 
+0 
+6 
+576 
+1/2 
+(32,26)(32,26) 
+8 
+8 
+0 
+4 
+ 
+3/4 
+(16,15)(64,57) 
+7 
+0 
+0 
+0 
+768 
+3/5 
+(32,26)(32,26) 
+4 
+4 
+16 
+4 
+ 
+4/5 
+(64,57)(16,15) 
+6 
+2 
+44 
+3 
+1152 
+2/3 
+(64,57)(32,26) 
+28 
+0 
+0 
+2 
+ 
+5/6 
+(32,31)(64,57) 
+13 
+3 
+7 
+5 
+ 
+[Additionally, Add the following row back into to the bottom of Table 188 in Section 8.3.3.2.2] 
+(8,7) 
+Parity check code 
+ 

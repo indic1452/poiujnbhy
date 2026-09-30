@@ -1,0 +1,1918 @@
+
+=====PAGE 1=====
+Rev 0.8 
+Page TPC-1
+Appendix TPC 
+M500 Turbo Product Codes FEC Addendum 
+ 
+1.0 
+Optional Turbo Product Codes FEC Overview 
+The installation of the optional Turbo Product Codes FEC Card provides the M500 Class modems 
+(PSM-500/500H/500L and variants) with a greater level of functional capability. This optional FEC 
+card is designed to fit into one of the two FEC card slots on the main modem assembly. In order 
+to conserve the available slots in the M500 modem the card also contains the capability of 
+running the Viterbi and Reed-Solomon FECs, and therefore only one card is required for all 
+standard and TPC functions. Turbo Product Codes offers very high coding gain and performance 
+as compared to Viterbi either alone or concatenated with Reed-Solomon. 
+ 
+The TPC FEC decoder is built using industry standard FEC ASIC “chips”. There are two chips in 
+common usage: the first is a relatively low speed, 5 Mbps version which is capable of all standard 
+TPC functions except a standard rate 7/8 in a 16k byte processing block. This is the same chip as 
+used in the PSM-4900 series of modems. The second chip is a newer but more expensive chip 
+that contains a 16k byte processing block and is capable of operating to the full speed of the 
+modem’s processing, which is approximately 29.52 Mbps. This newer 16k chip is also capable of 
+operating in the 4k block modes for compatibility with the 4k chip except for two PSM-4900 
+compatible modes at rate ¾ and 7/8. These operating mode exceptions are a limitation in the 
+chips themselves and not in the Datum Systems’ implementation. For this reason we offer 
+multiple variations of the TPC FEC option card. 
+ 
+The M500 TPC is available in 3 variations listed here and shown in Table 1: 
+! TPC-4k – Base Viterbi, R-S card with added TPC-4k chip capable of operating to 
+approximately 5 Mbps depending on modulation, code rate and interface. 
+! TPC-16k – Base Viterbi, R-S card with added TPC-16k chip capable of operating to 
+approximately 20+ Mbps depending on modulation, code rate and interface. 
+! TPC-20k – Base Viterbi, R-S card with both TPC-4k and 16k chips added, capable of 
+operating in all available TPC modes to approximately 20+ Mbps depending on 
+modulation, code rate and interface. 
+ 
+Table 1 - TPC FEC Card Variations 
+FEC Module Part Number 
+Vit 
+R-S
+TPC-4k
+TPC-16k
+Max Data Rate 
+Viterbi/R-S DRA05-002-01 
+X 
+X 
+  
+  
+29.52 Mbps 
+TPC-4k 
+DRA05-002-02 
+X 
+X 
+X 
+  
+5 Mbps 
+TPC-16k 
+DRA05-002-03 
+X 
+X 
+  
+X 
+29.52 Mbps 
+TPC-20k 
+DRA05-002-04 
+X 
+X 
+X 
+X 
+29.52 Mbps 
+ 
+The Turbo Product Codes FEC is described in more detail in the following sections. The 
+abbreviation “TPC” is used interchangeably with “Turbo Product Codes FEC” throughout the rest 
+of this document. There are 2 versions of the M500 Turbo Product Codes option available, the 
+TPC4k and TPC16k referring to the maximum block size as described below. 
+ 
+• 
+“TPC” This is the short form or abbreviation for Turbo Product Codes. (Note: There is 
+also a Turbo Convolutional Code FEC which is not block oriented, but generally not 
+currently suitable for satellite communications.) 
+• 
+ “TPC4k” This is the short form or abbreviation for a Turbo Product Codes using a 
+decoder with a maximum 4,000 byte processing block. This TPC option is compatible 
+with the TPC used in the previous PSM-4900 (M5) modem series. It is limited to a 
+maximum data rate of approximately 5 Mbps. 
+DATUM 
+SYSTEMS 
+
+=====PAGE 2=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 0.8 
+Page TPC-2
+• 
+ “TPC16k” This is the short form or abbreviation for a Turbo Product Codes using a 
+decoder with a maximum 16,000 byte processing block. This TPC option is backward 
+compatible with the TPC used in the previous PSM-4900 modem series. It is also 
+capable of higher performance because of its larger processing block size. The larger 
+block size also presents longer latency, or processing time. It is capable of a maximum 
+data rate of approximately 20+ Mbps. 
+ 
+For the purposes of the remainder of this appendix the conventions for naming the different rates 
+of data entering and leaving the modem are: 
+ 
+• 
+ “Aggregate” data rate. The data rate that the modem transmit and receive is operating 
+at. This rate is always the same as or higher than the terrestrial data rate and is the rate 
+that includes the terrestrial rate plus the multiplexer overhead plus the FEC overhead. 
+• 
+“Terrestrial” data rate. The data rate presented on the main modem rear panel data 
+interface connector for connection to the DTE line side. 
+• 
+“ES to ES” or “ESC” data rate. The overhead channel rate presented as a service or 
+overhead channel on the modem rear panel connector J4. 
+ 
+Bit time delays introduced by the two variations of Turbo Product Codes FEC functions are given 
+in the Unit Specifications, Appendix A. 
+ 
+The Term “M5” refers to the PSM-4900, 4900H, 4900L and its variants, while the Term “M500” 
+refers to the PSM-500, 500H, 500L and its variants. The Turbo Product Codes FEC described 
+here is only unique to and only for use with M500 series of satellite modems. 
+ 
+1.1 
+Overview - Quick Start Guide  
+The main point to insure in setting up the Turbo Product Codes FEC is that the two ends of the 
+link must be set up in a complementary fashion. That is, whatever parameters on set on the 
+transmit at one end of the link must also be set the same for the receive on the other end. 
+• 
+If the option card is not already installed see the “Installation” section at the end of this 
+Appendix. The TPC option requires software version 0.20 or greater. Go to the Datum 
+Systems web site or Contact Datum Systems If your modem requires a firmware 
+upgrade. 
+• 
+The Turbo Product Codes FEC can be individually selected in each direction (transmit 
+and receive) via the <Mod:Data - FEC> settings for the transmit direction and the 
+<Dem:Data - FEC> settings for the receive direction. Then the Code Rate is set in the 
+<Mod:Data – Code Rate> settings for the transmit direction and the <Dem:Data – Code 
+Rate>  The same settings must be used on both ends of the link in each direction, but the 
+two directions may be different, one perhaps not even using TPC. 
+• 
+Choose a mode of operation suitable for the service desired. In most cases where M5 
+series modem compatibility is required the TPC “Full” mode provides basic full 
+capabilities taking advantage of the special features built into the modem. When 
+communicating with another M500 series or some Comtech modems using the same 
+chips, then the “CT” modes offer the most compatibility plus operation at 8PSK and 
+16QAM modulation modes. 
+• 
+See the Turbo Product Codes FEC Descriptions in Sections 2.1 of this Appendix for more 
+information on refining the settings to optimize them for a particular application. 
+• 
+The Turbo Product Codes FEC can be used in conjunction with the IBS Multiplexer, but 
+the Reed-Solomon option cannot be enabled with TPC as it could actually decrease 
+performance. The Reed-Solomon is disabled automatically when the TPC is enabled. 
+The IBS Multiplexer options such as AUPC and overhead channels are all still available 
+when used in conjunction with the Turbo Product Codes FEC. 
+ 
+
+=====PAGE 3=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+Rev 0.8 
+Page TPC-3
+1.1.1 Overview - Modes of Operation  
+Turbo Product Codes FEC 
+The TPC option provides the following modes of operation. Note that the Viterbi and Reed-
+Solomon operating modes are also shown because the TPC cards also provide Viterbi/TCM. 
+Table 2 - PSM-500 Series FEC Option Table 
+FEC 
+Type 
+Sel 
+# 
+FEC Type 
+Option 
+Sel 
+# 
+Code 
+Rates 
+Available
+Sel 
+#
+R-S 
+Option
+Modulation Modes (see notes) 
+  
+  
+  
+  
+  
+  
+  
+BPSK QPSK OQPSK 8PSK 8QAM 16QAM 16APSK
+None 0 N/A 
+0 
+N/A 
+0  
+# # 
+# 
+  
+  
+  
+  
+  
+    
+  
+  
+    
+  
+  
+  
+  
+  
+  
+  
+Viterbi 1  Normal 
+0 
+1/2 
+0
+# 
+# # 
+# 
+  
+  
+# 
+$ 
+  
+    
+  
+3/4 
+1
+# 
+# # 
+# 
+  
+  
+# 
+  
+  
+    
+  
+5/6 
+2
+# 
+# # 
+# 
+  
+  
+# 
+  
+  
+    
+  
+7/8 
+3
+# 
+# # 
+# 
+  
+  
+# 
+  
+  
+   Swap C0/C1 
+1 
+1/2 
+0
+# 
+# # 
+# 
+  
+  
+# 
+  
+  
+    
+  
+3/4 
+1
+# 
+# # 
+# 
+  
+  
+# 
+  
+  
+    
+  
+5/6 
+2
+# 
+# # 
+# 
+  
+  
+# 
+  
+  
+    
+  
+7/8 
+3
+# 
+# # 
+# 
+  
+  
+# 
+  
+  
+   CT 
+2 
+3/4 
+1
+#% 
+$ 
+$ 
+$ 
+  
+  
+# 
+  
+  
+    
+  
+7/8 
+2
+#% 
+$ 
+$ 
+$ 
+  
+  
+# 
+  
+  
+    
+  
+  
+    
+  
+  
+  
+  
+  
+  
+  
+TCM 
+2   
+0 
+2/3 
+0
+# 
+  
+  
+  
+# 
+  
+  
+  
+  
+    
+  
+  
+    
+  
+  
+  
+  
+  
+  
+  
+TPC 
+4  Advanced 
+0 0.453-16k 0  
+# # 
+# 
+$ 
+$ 
+# 
+  
+  
+    
+  
+1/2-16k 
+1  
+# # 
+# 
+$ 
+$ 
+# 
+  
+ 
+   
+  
+1/2-4k 
+2  
+# # 
+# 
+$ 
+$ 
+# 
+  
+ 
+   
+  
+3/4-16k 
+3  
+# # 
+# 
+# 
+$ 
+# 
+  
+ 
+   
+  
+3/4-4k 
+4  
+# # 
+# 
+# 
+$ 
+# 
+  
+ 
+   
+  
+7/8-16k 
+5  
+# # 
+# 
+# 
+$ 
+# 
+  
+ 
+   
+  
+7/8-4k 
+6  
+# # 
+# 
+# 
+$ 
+# 
+  
+ 
+   
+  
+0.922-16k 7  
+# # 
+# 
+# 
+$ 
+# 
+  
+ 
+   
+  
+0.950-4k
+8  
+# # 
+# 
+# 
+$ 
+# 
+  
+  
+   M5 Full 
+1 
+1/2 
+0  
+# # 
+  
+  
+  
+  
+  
+  
+      *TPC4k Only 
+  
+3/4 
+1  
+# # 
+  
+  
+  
+  
+  
+  
+    
+  
+7/8 
+2  
+# # 
+  
+  
+  
+  
+  
+  
+   M5 Short 
+2 
+  
+    
+$ 
+$ 
+  
+  
+  
+  
+  
+  
+    
+  
+3/4 
+1  
+# # 
+  
+  
+  
+  
+  
+  
+      *TPC4k Only 
+  
+7/8 
+2  
+# # 
+  
+  
+  
+  
+  
+  
+  M5 Legacy 
+3 
+  
+    
+  
+  
+  
+  
+  
+  
+  
+  
+    
+  
+3/4 
+1  
+# # 
+  
+  
+  
+  
+  
+  
+    
+  
+7/8 
+2  
+# # 
+  
+  
+  
+  
+  
+  
+   CT 
+4 
+5/16 
+0  
+# 
+  
+  
+  
+  
+  
+  
+  
+    
+  
+21/44 
+1  
+# # 
+# 
+  
+  
+  
+  
+  
+    
+  
+3/4 
+2  
+# # 
+# 
+# # 
+# 
+  
+  
+      *TPC16k only 
+  
+7/8 
+3  
+# # 
+# 
+# # 
+# 
+  
+  
+    
+  
+0.95 
+4  
+# # 
+# 
+# # 
+# 
+  
+  
+    
+  
+  
+    
+  
+  
+  
+  
+  
+  
+  
+
+=====PAGE 4=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 0.8 
+Page TPC-4
+ 
+Notes: 
+1. 8QAM and 16APSK modes to be determined. 
+2. The TPC M5 Full, Short and Legacy modes are intended for PSM-4900 Compatibility. 
+3. Not yet shown are S-Tec or other FECs in development. 
+4. TPC 4k/16k restrictions apply to that line and Code Rate only. 
+5. TPC4k Max data rate limits see below. 
+6. TPC16k operates up to 20+ Mbps depending on Feature Set and modulation. 
+7. The Viterbi, Rate 3/4 & 7/8, 16QAM CT mode only for Comtech modem compatibility as 
+they only operate in this mode with R-S at 220, 200, depth of 4. R-S is auto-enabled. 
+8. TPC CT Rate 7/8 is currently the only mode that utilizes the full 16k block processing in 
+the TPC16k chip. All others utilize the 4k block size. 
+ 
+TPC4k M5 Mode Limits: Rate 1/2 = 2.46 Mbps, Rate 3/4 or 7/8 = 4.92 Mbps. 
+TPC4k CT Mode Limits: Rate 5/16 = 2.048 Mbps, Rate 21/44 = 3.2 Mbps, Rate 3/4 = 5 Mbps,  
+Rate 0.95 = 6.6 Mbps. 
+ 
+1.2 
+TPC Framing Overview 
+Framing of data is required for the Turbo Product Codes FEC functions of this card and FEC 
+type. That is because TPC functions are “block” oriented and synchronization to particular 
+locations in the bit stream are necessary. Generally the TPC processor operates on a complete 
+block of data at a time. 
+ 
+The TPC codecs are capable of multiple block sizes, and three block sizes are used in the current 
+implementation, depending on the chip used. The standard block size is approximately 4k bytes 
+intended to optimize the TPC performance and provide compatibility with the M5 series of Datum 
+Systms modems plus many competitive modems. The alternate Datum Proprietary “Short” block 
+is intended for special applications that require minimal bit delay or latency. The latency of the 
+short block is approximately 1/3 of that for the standard block. The FEC decoder in the receive 
+channel is normally the largest bit delay in the end-to-end link. 
+ 
+The TPC16k chip can use either of these two block sizes and in addition has a larger block size 
+of approximately 16k bytes. By convention this larger block is only used for the CT mode rate 7/8. 
+The Datum Systems’ proprietary “Advanced” mode offers both 4k and 16k block sizes for most 
+code rates, allowing the maximum flexibility with either chip. The 16k chip is capable of using 
+either block size in Advanced mode and selecting the larger block size will improve performance 
+at the expense of latency. 
+ 
+Additionally note that the TPC16k chip is not capable of operating in the M5 Full mode at rate 3/4 
+or the M5 Short mode at rate 7/8. These are limitations in the chip itself. 
+ 
+1.3 
+TPC Inter-Operability and Compatibility 
+Although the Intelsat IESS-315 describes the use of TPC in satellite links it does not specify many 
+of the actual parameters used for a particular manufacturer or service. The result is that very few 
+different modem manufacturers use the same set of parameters in configuring the TPC operation. 
+Of primary importance to Datum Systems is insuring optimal performance in links, then 
+compatibility and interoperability with its own modems, and last compatibility with other 
+manufacturers modems. The TPC modes named “M5” are only known to be compatible with 
+other M5 or M500 series of Datum Systems’ modems. The “CT” or Competative Technology 
+modes are specifically designed to be compatible with at least the Comtech CDM570 and 
+CDM600 modems. The TPC Advanced modes are proprietary optimizations by Datum Systems 
+and are only known to be compatible with other PSM-500 series modems. 
+ 
+
+=====PAGE 5=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+Rev 0.8 
+Page TPC-5
+2.0 
+  Turbo Product Codes FEC Description and Operation 
+The addition of a Turbo Product Codes FEC places a new Forward Error Correction (FEC) 
+process replacing (in parallel with) the existing Viterbi FEC. The two FECs are considered 
+alternate, and only one or the other can be selected at any one time. The two directions of a link 
+are indepent however and the FEC used in each direction may be different. Of course the 
+transmit encoder and receive decoder in any one direction must match exactly. 
+ 
+The performance improvement achieved by the Turbo Product Codes FEC is significant, even as 
+compared to concatenated Reed-Solomon plus Viterbi FEC. For example, the BER vs. Eb/No 
+performance of concatenated Viterbi rate 3/4 coding with R-S is better than Viterbi rate 1/2 alone, 
+and it uses less bandwidth than the Viterbi rate 1/2 alone. 
+ 
+Like Reed-Solomon, Turbo Product Codes uses “block” framing which allows the use of a 
+synchronous scrambler and descrambler resulting in slightly improved performance relative to the 
+self-Synchronized scrambler normally used. See the scrambler use in Section 2.2 of this 
+Appendix 
+ 
+A simplified block diagram of the modem baseband processinga and where the TPC Codec is 
+applied is shown in Figure 1 below. 
+ 
+
+=====PAGE 6=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 0.8 
+Page TPC-6
+Doppler
+FIFO Buffer
+Viterbi FEC Encoder
+Baseband Signal
+Processing
+V.35/Intelsat
+and
+Differential
+Encoder
+Processor Control
+Option
+Interface
+Connector
+P1
+Option
+Interface
+Connector
+P1
+Figure 1 -  M500 Modem TPC Diagram
+Baseband
+Signal
+Processing
+V.35/Intelsat
+and
+Differential
+Decoder
+Out Clk
+In Clk
+MODULATOR
+DEMODULATOR
+Clock
+Control
+TPC FEC Encoder &
+Synchronous Scrambler
+Viterbi FEC Decoder
+TPC FEC Decoder &
+Synchronous
+Descrambler
+Independent
+Transmit and
+Receive Control
+ 
+ 
+The Turbo Product Codes FEC function can be turned on and off under software control from 
+either the front panel or remote control. 
+ 
+2.1 
+ Controlling the Optional Turbo Product Codes FEC Functions 
+ 
+The PSM-500 Modems automatically recognize the presence of the optional capabilities when 
+this option card is installed. Any of the Turbo Product Codes FEC properties can be programmed 
+from the front panel or remote control interface. Like other properties of these modems the latest 
+configuration of the TPC are saved in non-volatile memory and re-instated on power up. 
+ 
+The TPC FEC function is designed to replace or serve as an alternate to the modem’s built-in 
+Viterbi/convolutional Codec. The TPC option actually allows one of several alternate TPC 
+
+=====PAGE 7=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+Rev 0.8 
+Page TPC-7
+functions to be used; the TPC4k can operate in standard “Full” and a low latency “Short” version. 
+the TPC16k can operate in standard “Extended” (16k block size) standard “Full” (4k block size) 
+and a low latency “Short” (~2k block size) version. The CT mode only uses the larger 16k block 
+size for improved performance in the rate 7/8 case, but provides the higher data rate capability in 
+all modes. 
+ 
+The same FEC Code Rate parameters options of Rate ½, ¾ and 7/8 apply to any of these codecs 
+just as with the standard Viterbi Codec. Rate ½ is not available with the “Short” block version of 
+TPC. The occupied bandwidth of the RF signal is identical between a Viterbi and TPC Codec at 
+the same FEC “Rate”. 
+ 
+The “CT” compatibility mode of the TPC provides specific compatibility with some Comtech 
+modems equipped with TPC. Currently these include the CDM550T, CDM570 and the CDM600. 
+We cannot guarantee absolute compatiblility with other manufacturers modems since their 
+operating modes may change at any time. 
+ 
+NOTE: 
+The user does not have to compute aggregate data rates for operation with the TPC 
+options. The terrestrial data rate is maintained when features that require adjusting the 
+aggregate rate are added or deleted. The modem internal software automatically 
+computes the proper aggregate rate and sets the modem accordingly.  
+ 
+NOTE: 
+The data rate entry at the front panel or remote control is the “Terrestrial” or user data 
+rate that the physical interface operates at, not the modem’s aggregate rate. 
+ 
+The TPC function has the same restrictions on maximum data rate as the standard Viterbi Codec 
+does at each FEC Code Rate. Attempts to program the data rate higher than possible at each 
+FEC Code Rate results in the modem sounding a warning beep and setting the data rate to the 
+maximum possible. 
+ 
+Selecting FEC operating modes is slightly more complex in the PSM-500 series of modems than 
+previous versions due to the large number of FECs supported. The 500 series uses 3 parameters 
+to determine the FEC operation: Type, Option and Code Rate, each represented by an integer 
+selection value as shown in Table 2 above. The PSM-500 modem leads the user through 
+selecting all of the parameters necessary when changing the FEC type to insure that a valid 
+mode is selected. 
+ 
+2.1.1 
+Scrambler Selection 
+ 
+The M500 modems have a new preferred scrambler setting of “Auto”. This selection provides the 
+optimal scrambler setting for all FEC modes for the modulator and demodulator. These modes 
+automatically select the proper scrambler to use typically resulting in standard Intelsat IESS 308 
+or 309 modes. There is no IESS Standard covering the new Turbo Product Codes FEC, and this 
+auto mode follows specific guidelines to insure compatibility. 
+ 
+Remember that the scrambler and descrambler may be set independently in each link direction. 
+ 
+The synchronous TPC scrambler is synchronized to the processed block itself. No lock time or bit 
+latency penalty is incurred by use of the synchronous scrambler, but a performance gain of 
+approximately 0.2 dB is realized relative to the self-synchronizing “V.35/Intelsat” scrambler. 
+ 
+IESS-308 Scrambler Mode Operation 
+• 
+With no mux or RS then the self-synchronizing Intelsat scrambler is enabled. 
+• 
+With just the IBS Mux enabled then the IBS synchronous scrambler is used 
+• 
+With just the R-S enabled then the R-S synchronous scrambler is used 
+
+=====PAGE 8=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 0.8 
+Page TPC-8
+• 
+With both IBS Mux and R-S enabled then the IBS synchronous scrambler is used. 
+ 
+IESS-309 Scrambler Mode Operation 
+The operation is the same as the IESS-308 option with the exception that  
+• 
+With just R-S enabled then the self-synchronizing Intelsat scrambler is used. 
+ 
+Fixed Scrambler Mode Operation 
+The V.35 and Intelsat scrambler modes use the V.35 and Intelsat self-synchronizing scramblers 
+respectively in all modes. 
+ 
+Alternate Scrambler Mode Operation 
+The alternate V.35 and alternate Intelsat scrambler mode performs a data inversion required by 
+some “Comstream” modems. 
+ 
+2.2 
+ Turbo Product Codes FEC Performance 
+Turbo Product Codes performance is one of the best possible of currently available FECs. TPC 
+offers a significant performance improvement over even concatenated Reed-Solomon FEC 
+performance. 
+ 
+Turbo Product Codes FEC Highlights: 
+• 
+TPC Rate 1/2 has performance approximately 3 dB better than normal Viterbi Rate 1/2. 
+TPC Rate 7/8 will perform better than Viterbi Rate 1/2, but uses approximately 57% of the 
+bandwidth. 
+• 
+TPC Rate 3/4 has performance approximately equal to a concatenated Viterbi Rate 1/2 
+plus Reed-Solomon Codec, but uses approximately 60% of the bandwidth. In addition the 
+bit delay for the TPC link would be 44 ms at 64 kbps, while the Reed-Solomon/Viterbi 
+coding would result in a 75 ms end-to-end delay. (Some other manufacturers spec over 
+200 ms of delay in the same case). 
+• 
+Datum Systems' selectable "Short Block TPC" uses a smaller block size optimized for low 
+latency. The Short Block delay in the above example of Rate 3/4, 64 kbps is 
+approximately 14.8 ms. 
+• 
+Datum Systems' implementation of TPC outperforms other manufacturers performance 
+by 0.3 to 2 dB depending on the Code Rate settings. 
+• 
+TPC can provide better performance than 8PSK with Trellis Code Modulation and 
+concatenated Reed-Solomon as per IESS-310. For example TPC in QPSK mode at Rate 
+7/8 uses less than 5% more bandwidth but 1.2 dB less power at a BER of 1 part in 10 -7. 
+QPSK is also much less sensitive to phase noise and can operate successfully at lower 
+data rates than 8PSK. 
+• 
+The new M500 “CT” modes not only provide compatibility with common Comtech 
+modems, but extend TPC operation into the new M500 series 8PSK and 16QAM 
+modulation modes. 
+• 
+The best TPC performance is achieved at the CT mode rate 7/8 using the TPC16k chip. 
+This is because that is the only current mode that uses the full 16k block size of this chip 
+set. The delay or latency when using this mode is however significantly increased. 
+ 
+The data and graphs below shows the typical performance of a Turbo Product Codes equipped 
+M5 class modem as compared to the typical performance of the standard Viterbi FEC. 
+ 
+
+=====PAGE 9=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+Rev 0.8 
+Page TPC-9
+2.2.1 
+TPC M5 Compatible Modes 
+ 
+The Table below shows TPC performance in modes compatible with the M5 series of modems for 
+BPSK and QPSK operation. All shown modes are available up to 5 Mbps using the TPC-4k 
+variation FEC card. Viterbi Performance is shown for comparison purposes. 
+ 
+The Eb/No values shown are those referenced to the customer data rate at the decoder output. 
+Performance would appear improved if measured relative to the decoder input (i.e. at the satellite 
+data rate). All values shown are using the synchronous TPC scrambler. 
+ 
+TPC M5 Compatible Modes 
+ 
+Turbo Product Codes FEC M5 Full Mode Typical 
+Performance Data 
+ 
+Rate ½  
+Rate ¾  
+Rate 7/8  
+MTOCR 
+14100 
+14110 
+14120 
+BER 
+Eb/No  
+Eb/No 
+Eb/No 
+10-4 
+ 
+ 
+ 
+10-5 
+2.20 
+3.00 
+4.80 
+10-6 
+2.50 
+3.23 
+5.12 
+10-7 
+2.80 
+3.50 
+5.50 
+10-8 
+3.09 
+3.84 
+5.88 
+10-9 
+3.40 
+4.15 
+6.31 
+10-10 
+3.70 
+4.50 
+6.80 
+ 
+ 
+Turbo Product Codes FEC M5 Short Block Mode 
+Typical Performance Data 
+ 
+Rate ½  
+Rate ¾  
+Rate 7/8  
+MTOCR 
+14200 
+14210 
+14220 
+BER 
+Eb/No  
+Eb/No 
+Eb/No 
+10-4 
+ 
+ 
+ 
+10-5 
+ 
+3.90 
+5.20 
+10-6 
+ 
+4.07 
+5.58 
+10-7 
+ 
+4.30 
+6.00 
+10-8 
+ 
+4.56 
+6.47 
+10-9 
+ 
+4.87 
+6.91 
+10-10 
+ 
+5.20 
+7.30 
+ 
+ 
+Turbo Product Codes FEC M5 Legacy Mode 
+Typical Performance Data 
+ 
+Rate ½  
+Rate ¾  
+Rate 7/8  
+MTOCR 
+14300 
+14310 
+14320 
+BER 
+Eb/No  
+Eb/No 
+Eb/No 
+10-4 
+ 
+ 
+ 
+10-5 
+ 
+3.2 dB 
+4.6 dB 
+10-6 
+ 
+3.3 dB 
+4.7 dB 
+10-7 
+ 
+3.5 dB 
+4.8 dB 
+10-8 
+ 
+3.6 dB 
+5.0 dB 
+10-9 
+ 
+3.7 dB 
+5.3 dB 
+10-10 
+ 
+3.9 dB 
+5.5 dB 
+ 
+
+=====PAGE 10=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 0.8 
+Page TPC-10
+TPC M5 Compatible Modes Waterfall Curves 
+Note: M5 Legacy mode not shown 
+ 
+Datum Systems M500 Modem Performance
+14100 - TPC M5 Full - QPSK - Rate 1/2
+14110 - TPC M5 Full - QPSK - Rate 3/4
+14120 - TPC M5 Full - QPSK - Rate 7/8
+14210 - TPC M5 Short- QPSK - Rate 3/4
+14220 - TPC M5 Short- QPSK - Rate 7/8
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-11
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+0.1
+Eb/No
+BER
+DATUM 
+SYSTEMS 
+M5 Compatible TPC Modes
+ 
+ 
+ 
+
+=====PAGE 11=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+Rev 0.8 
+Page TPC-11
+2.2.2 
+TPC CT Compatible Modes 
+ 
+The TPC Advanced FEC option is a new TPC implementation proprietary to Datum Systems. 
+These specific modes were optimized for optimized performance covering a broad range of 
+system needs. They will typically outperform any TPC modes by any modem manufacturer. 
+ 
+TPC Advanced FEC Performance for BPSK, QPSK and OQPSK  
+Required Eb/No in dB 
+Rate --> 0.453-16k 1/2-16k 
+1/2-4k 
+3/4-16k 
+3/4-4k 
+7/8-16k 
+7/8-4k 0.922-16k
+0.95-4k 
+BER 
+14000 
+14010 
+14020 
+14030 
+14040 
+14050 
+14060 
+14070 
+14080 
+1.00E-03 
+1.44
+1.90 
+1.82
+2.54
+2.89
+3.62
+3.83 
+4.47
+5.02
+1.00E-04 
+1.51
+2.01 
+1.97
+2.61
+3.06
+3.72
+4.02 
+4.60
+5.30
+1.00E-05 
+1.58
+2.08 
+2.09
+2.67
+3.20
+3.80
+4.18 
+4.70
+5.52
+1.00E-06 
+1.63
+2.15 
+2.20
+2.72
+3.32
+3.87
+4.31 
+4.77
+5.75
+1.00E-07 
+1.68
+2.22 
+2.38
+2.76
+3.43
+3.93
+4.44 
+4.84
+6.10
+1.00E-08 
+1.73
+2.27 
+2.72
+2.81
+3.52
+3.98
+4.56 
+4.91
+6.59
+1.00E-09 
+1.78
+2.32 
+3.12
+2.85
+3.62
+4.04
+4.68 
+4.97
+7.10
+ 
+ 
+Datum Systems M500 Modem Performance
+14000 - TPC Adv Rate 0.453-16k
+14010 - TPC Adv Rate 1/2-16k
+14020 - TPC Adv Rate 1/2-4k
+14030 - TPC Adv Rate 3/4-16k
+14040 - TPC Adv Rate 3/4-4k
+14050 - TPC Adv Rate 7/8-16k
+14060 - TPC Adv Rate 7/8-4k
+14070 - TPC Adv Rate 0.922-16k
+14080 - TPC Adv Rate 0.950-4k
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+0.1
+Eb/No
+BER
+DATUM 
+SYSTEMS 
+TPC Advanced QPSK
+ 
+ 
+
+=====PAGE 12=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 0.8 
+Page TPC-12
+ 
+TPC Advanced FEC Performance for 8PSK 
+Required Eb/No in dB 
+Rate --> 
+3/4-16k 
+3/4-4k 
+7/8-16k 
+7/8-4k 0.922-16k
+0.95-4k 
+BER 
+34030 
+34040 
+34050 
+34060 
+34070 
+34080 
+1.00E-03 
+4.85 
+5.31 
+6.40
+6.59
+7.38
+8.00
+1.00E-04 
+4.94 
+5.52 
+6.51
+6.82
+7.52
+8.32
+1.00E-05 
+5.01 
+5.68 
+6.59
+7.00
+7.63
+8.58
+1.00E-06 
+5.08 
+5.82 
+6.66
+7.14
+7.72
+8.90
+1.00E-07 
+5.13 
+5.96 
+6.74
+7.28
+7.80
+9.33
+1.00E-08 
+5.19 
+6.08 
+6.81
+7.46
+7.87
+9.86
+1.00E-09 
+5.25 
+6.19 
+6.88
+7.73
+7.94
+10.36
+ 
+ 
+Datum Systems M500 Modem Performance
+34030 - TPC Adv 8PSK, Rate 3/4-16k
+34040 - TPC Adv 8PSK, Rate 3/4-4k
+34050 - TPC Adv 8PSK, Rate 7/8-16k
+34060 - TPC Adv 8PSK, Rate 7/8-4k
+34070 - TPC Adv 8PSK, Rate 0.922-16k
+34080 - TPC Adv 8PSK, Rate 0.95-4k
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+0.1
+Eb/No
+BER
+DATUM 
+SYSTEMS 
+TPC Advanced 8PSK
+ 
+ 
+
+=====PAGE 13=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+Rev 0.8 
+Page TPC-13
+ 
+TPC Advanced FEC Performance for 16QAM  
+Required Eb/No in dB 
+Rate --> 0.453-16k 1/2-16k 
+1/2-4k 
+3/4-16k 
+3/4-4k 
+7/8-16k 
+7/8-4k 0.922-16k
+0.95-4k 
+BER 
+64000 
+64010 
+64020 
+64030 
+64040 
+64050 
+64060 
+64070 
+64080 
+1.00E-03 
+4.28
+4.57 
+4.63
+5.64
+6.19
+7.10
+7.23 
+8.02
+8.63
+1.00E-04 
+4.40
+4.69 
+4.84
+5.73
+6.40
+7.22
+7.46 
+8.17
+8.94
+1.00E-05 
+4.49
+4.80 
+5.08
+5.81
+6.56
+7.31
+7.63 
+8.27
+9.23
+1.00E-06 
+4.58
+4.88 
+5.46
+5.88
+6.71
+7.39
+7.78 
+8.36
+9.53
+1.00E-07 
+4.75
+4.96 
+5.86
+5.93
+6.84
+7.46
+7.95 
+8.44
+9.94
+1.00E-08 
+4.98
+5.06 
+6.22
+5.98
+6.96
+7.52
+8.09 
+8.51
+10.41
+1.00E-09 
+5.15
+5.16 
+6.59
+6.04
+7.07
+7.58
+8.23 
+8.59
+10.86
+ 
+ 
+Datum Systems M500 Modem Performance
+64000 - TPC Adv 16QAM, Rate 0.453-16k
+64010 - TPC Adv 16QAM, Rate 1/2-16k
+64020 - TPC Adv 16QAM, Rate 1/2-4k
+64030 - TPC Adv 16QAM, Rate 3/4-16k
+64040 - TPC Adv 16QAM, Rate 3/4-4k
+64050 - TPC Adv 16QAM, Rate 7/8-16k
+64060 - TPC Adv 16QAM, Rate 7/8-4k
+64070 - TPC Adv 16QAM, Rate 0.922-16k
+64080 - TPC Adv 16QAM, Rate 0.95-4k
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+11
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+0.1
+Eb/No
+BER
+DATUM 
+SYSTEMS 
+TPC Advanced 16QAM
+ 
+
+=====PAGE 14=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 0.8 
+Page TPC-14
+2.2.3 
+TPC CT Compatible Modes 
+The “CT” compatible modes are specifically intended to provide maximum compatiblitlity with 
+competing satellite modems such as the Comtech CDM5xx and 600 series. 
+ 
+You will notice in each of these data sets that the performance at Rate 7/8 is improved over the 
+other rates. That is because by convention Rate 7/8 is only available and uses the 16k block 
+mode, providing better performance. All other rates use the 4k block mode only, but if set with the 
+TPC16k chip version of the FEC card will be capable of up to the full 20 Mbps rate of the modem. 
+ 
+TPC CT FEC Performance for BPSK, QPSK and OQPSK 
+Required Eb/No in dB 
+Rate --> 
+5/16 
+21/44 
+3/4 
+7/8 
+0.95 
+BER 
+14400 
+14410 
+14420 
+14430 
+14440 
+1.00E-03  
+1.69 
+2.70
+3.56
+4.97
+1.00E-04  
+1.89 
+2.89
+3.65
+5.25
+1.00E-05  
+2.13 
+3.05
+3.72
+5.50
+1.00E-06  
+2.45 
+3.24
+3.78
+5.78
+1.00E-07  
+2.79 
+3.49
+3.84
+6.16
+1.00E-08  
+3.07 
+3.84
+3.92
+6.63
+1.00E-09  
+3.34 
+4.17
+4.00
+7.12
+ 
+ 
+Datum Systems M500 Modem Performance
+14410 - TPC-CT, QPSK, Rate 21/44
+14420 - TPC-CT, QPSK, Rate 3/4
+14430 - TPC-CT QPSK, Rate 7/8-16k
+14440 - TPC-CT, QPSK, Rate 0.95
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+0.1
+Eb/No
+BER
+DATUM 
+SYSTEMS 
+TPC-CT QPSK
+ 
+ 
+
+=====PAGE 15=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+Rev 0.8 
+Page TPC-15
+ 
+TPC CT FEC Performance for 8PSK 
+Required Eb/No in dB 
+Rate --> 
+3/4 
+7/8 
+0.95 
+BER 
+34420 
+34430 
+34440 
+1.00E-03 
+5.06 
+6.33 
+8.01
+1.00E-04 
+5.27 
+6.44 
+8.33
+1.00E-05 
+5.45 
+6.52 
+8.60
+1.00E-06 
+5.64 
+6.59 
+8.88
+1.00E-07 
+6.01 
+6.67 
+9.35
+1.00E-08 
+6.43 
+6.75 
+9.81
+1.00E-09 
+6.87 
+6.85 
+10.27
+ 
+Datum Systems M500 Modem Performance
+34420 - TPC-CT, 8PSK, Rate 3/4
+34430 - TPC-CT 8PSK, Rate 7/8-16k
+34440 - TPC-CT, 8PSK, Rate 0.95
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+0.1
+Eb/No
+BER
+DATUM 
+SYSTEMS 
+TPC-CT 8PSK
+ 
+ 
+ 
+
+=====PAGE 16=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 0.8 
+Page TPC-16
+ 
+TPC CT FEC Performance for 16QAM
+Required Eb/No in dB 
+Rate --> 
+3/4 
+7/8 
+0.95 
+BER 
+64420 
+64430 
+64440 
+1.00E-03 
+5.98 
+7.04 
+8.64
+1.00E-04 
+6.20 
+7.15 
+8.96
+1.00E-05 
+6.42 
+7.24 
+9.26
+1.00E-06 
+6.69 
+7.31 
+9.59
+1.00E-07 
+7.04 
+7.40 
+10.01
+1.00E-08 
+7.42 
+7.52 
+10.52
+1.00E-09 
+7.80 
+7.70 
+11.05
+ 
+ 
+Datum Systems M500 Modem Performance
+64420 - TPC-CT 16QAM, Rate 3/4
+64430 - TPC-CT 16QAM, Rate 7/8-16k
+64440 - TPC-CT 16QAM, Rate 0.95
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+11
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+0.1
+Eb/No
+BER
+DATUM 
+SYSTEMS 
+TPC-CT 16QAM
+ 
+
+=====PAGE 17=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+Rev 0.8 
+Page TPC-17
+ 
+3.0 
+ Installation 
+The Turbo Product Codes FEC Option is normally factory installed, but can be field installed by 
+technical personnel. The option card itself is an approximate 2.1-inch by 3.9 inch printed circuit 
+board with an SO-DIMM form factor and connector as used commonly for memory in laptop 
+computers. The modem main board has two mating connectors capable of handling two different 
+FEC cards.  
+ 
+As shown in Table 1-1 any TPC card also contains the standard Viterbi, TCM and Reed-Solomon 
+functions and therefore only one card is required unless an S-Tec or some other type of FEC is 
+also used in the modem. If a TPC card is installed in a modem which currently has the standard 
+Viterbi, TCM, R-S card, that card may be removed and full functionality is still maintained. 
+ 
+Installation requires removal of the modem unit cover, plugging the option card onto the main 
+modem assembly and then replacing the modem unit cover. 
+ 
+When installed the PSM-500 main processor automatically recognizes the presence of the card 
+and its capabilities. It also adds appropriate front panel and remote control settings to allow 
+programming the added functionality provided. This is transparent to the user, who needs take no 
+action other than installation and setting for desired parameters. 
+ 
+Note that the FEC card itself holds the software and firmware required to operate. The 
+main modem software may need to be updated however to recognize and use a newer 
+FEC card. Software versions after 0.43 recognize all TPC variations. 
+ 
+3.1 
+ Installing a Turbo Product Codes FEC Option Card 
+Remove the modem unit from service before installation of the TPC option. Unplug the modem 
+unit and remove the power cord from the rear for safety. 
+ 
+WARNING: Failure to remove power from the modem unit before removal of the cover can 
+expose the operator to hazardous voltages and result in harm to personnel and 
+equipment. 
+ 
+Place the unit on a flat surface and remove the 8 flathead screws holding the cover to the main 
+chassis using a number 2 Philips screwdriver. The location for the option card installation is 
+shown in the diagram below.  
+ 
+FEC Option cards are built on a SO-DIMM 144 pin platform basis, and installation is similar to 
+installing memory in computers that use this type of connector system. The PSM-500 has two 
+FEC slots available and the connectors for each are adjacent and on a 22.5 degree angle from 
+the main board surface. The two slots are intended to be identical except that the one closest to 
+the center of the main board is called “B” and the other is called “A”.  
+ 
+Position the new card to be installed into an empty slot at an approximate 45 degree angle to the 
+main board surface and push the edge fingers int the connector making certain that it is properly 
+seated. There are alignment cutouts on the card which insure that it can only be put in one way. 
+Then rotate the card down toward the main board surface until the latches snap into place holding 
+the board in that position. 
+ 
+Use extreme care in insuring that the pins are properly aligned between the option card 
+and the main board connector. 
+ 
+Re-install the cover and plug the unit in. Using the front panel arrow keys scroll down to the 
+interface parameter and verify that the modem recognizes the newly installed card. The modem is 
+now ready to be put into service. 
+
+=====PAGE 18=====
+ 
+M500 Satellite Modem Turbo Product Codes FEC 
+ 
+ 
+Rev 0.8 
+Page TPC-18
+ 
+M500 Series Main PCB
+FEC Slot A
+Rear Panel
+Latches
+Interface Option
+Connector
+TPC16k
+TPC4k
+Flash
+FPGA
+DRA05-002
+FEC Slot B
+FEC Card
+Main PCB
+Side View
+Showing Insertion
+Top View
+J3 and J4 Connectors
+Slot B must be empty
+to install in Slot A
+ 

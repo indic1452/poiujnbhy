@@ -1,0 +1,259 @@
+
+=====PAGE 1=====
+ 
+2114 West 7th Street, Tempe, Arizona 85281 USA Voice 1 480 333 2200 
+Fax 1 480 333 2540 
+Email sales@comtechefdata.com 
+Comtech EF Data reserves the right to change specifications of products described in this document at any time without notice and without obligation to notify any person of such changes. Information in this 
+document may differ from that published in other Comtech EF Data documents. Refer to the website or contact Customer Service for the latest released product information. 
+© 2008 Comtech EF Data 
+Part Number ds-cdd564_564L_562L.docx 
+12/4/2008 
+Modems 
+CDD-564, CDD-564L & CDD-562L 
+IP Demodulators 
+INTRODUCTION 
+The CDD-564, CDD-564L and CDD-562L are integrated IP 
+demodulators that receive 2 or 4 independent 70/140 MHz 
+or L-Band channels (depending on model) and combine 
+the output into a single 10/100 BaseT Ethernet port for 
+transmission onto the LAN. The demodulators and the 
+integrated IP Module are housed in a 1RU chassis. The 
+demodulators are designed to operate with Comtech EF 
+Data’s IP-enabled products including modems and 
+Performance Enhancement Proxies. 
+FEATURES FOR EACH DEMODULATOR  
+• CDD-564: 50 to 90 or 100 to 180 MHz IF range 
+• CDD-564L: 950 to 1950 MHz each demodulator 
+• CDD-562L: 950 to 1950 MHz 
+• 16 kbps to 9.98 Mbps data rate 
+• Fast acquisition demodulator 
+• BPSK, QPSK demodulation (8-PSK/8-QAM, 16-QAM 
+optional) 
+• 2nd Generation Turbo Product Coding (TPC) forward 
+error correction 
+• LNB support: 10 MHz reference and LNB power 
+STANDARD FEATURES 
+• Static IP routing for unicast and multicast 
+• Management via SNMP, Web or Telnet 
+• IGMP v1 and v2 
+• Support for Point-to-Point, Point-to-Multi-Point and 
+hybrid network topologies 
+• 10/100 BaseT Ethernet data interface (RJ-45) 
+• Firmware upgrade via FTP 
+• FAST feature upgrades at the factory or in the field 
+• Front Panel LEDs for Unit Status, Stored Event and 
+the status of each of the four receive channels 
+• Interoperable with the CDM-570/L-IP , CDM-IP 550, 
+and CDM-IP 300L 
+QUALITY OF SERVICE (QoS) 
+The CDD-564/L and CDD-562L transparently pass the 
+QoS prioritization established at the transmit end by the 
+CDM-570/L-IP Satellite Modem. 
+HEADER DECOMPRESSION OPTION 
+Header compression reduces the bandwidth required for 
+Voice over Internet Protocol (VoIP) by as much as 60%. 
+Example: A G.729 voice codec, operating at 8 kbps, 
+requires 32 kbps bandwidth once encapsulated into an 
+IP/UDP/RTP frame. With IP/UDP/RTP header 
+compression, the same voice call needs only 10.8 kbps 
+total WAN satellite bandwidth. Typical Web/HTTP traffic 
+can be reduced by 10% via IP/TCP header compression. 
+Each demodulator can be independently configured for 
+header decompression. 
+PAYLOAD DECOMPRESSION OPTION 
+Payload compression can reduce the required satellite 
+bandwidth by up to 40%. Each demodulator can be 
+independently configured for payload decompression. 
+NETWORK TOPOLOGIES 
+The CDD-564/L and CDD-562L simplify hub installations 
+by reducing rack space and costs by providing four 
+independent demodulators in a 1RU chassis. A bank of 
+CDD-564/L or CDD-562L demodulators is ideal for a 
+star topology network consisting of a shared outbound 
+carrier with multiple return carriers from the remote 
+sites. 
+At remote sites, the CDD-564/L or CDD-562L enables 
+mesh connectivity between multiple sites. Operating in 
+mesh topology with direct links between sites eliminates 
+double-hop through the hub, thereby conserving 
+bandwidth and reducing latency. 
+VIPERSAT MANAGEMENT SYSTEM INTEGRATION 
+A Vipersat powered network integrates this advanced 
+demodulator with a powerful network management tool, 
+the Vipersat Management System (VMS). In addition to 
+the traditional Monitoring and Control of the CDM-570/L-
+IP modems, CDD-564/L and CDD-562L demodulators, 
+the VMS allows these devices to share bandwidth, and 
+when needed, switch automatically to a dedicated SCPC 
+channel. 
+VMS provides for dynamic bandwidth allocation while in 
+SCPC mode, automatically altering the bandwidth based 
+on traffic conditions. This effectively enables the 
+network to better handle connection oriented 
+applications and reduce network congestion, jitter and 
+latency. The VMS also allows for dynamic point-to-point 
+mesh connections to be established between remotes. 
+
+=====PAGE 2=====
+CDD-564, CDD-564L & CDD-562L IP Demodulators 
+ 
+Advanced Communication Solutions 
+www.comtechefdata.com 
+SYSTEM SPECIFICATIONS 
+Frequency Range 
+CDD-564: 50 to 90 or 100 to 180 MHz,
+CDD-564L & CDD-562L: 950 to 1950 MHz, 
+100 Hz frequency resolution 
+Inputs 
+CDD-564: 4 separate BNC Type
+CDD-564L: 4 separate Type N female 
+CDD-562L: 2 separate Type N female 
+Input Impedance 
+CDD-564: 50 or 75Ω user selectable, 17 dB 
+minimum return loss 
+CDD-564L & CDD-562L: 50Ω, 17 dB minimum 
+return loss 
+Traffic & Management 
+Interface 
+10/100BaseT Ethernet, RJ-45 
+Command Line Interface 
+(CLI) 
+RS-232, RJ-11  
+Factory Test Connector 
+DB-9 male 
+Frequency Reference 
+± 0.06 ppm, 32 to 122ºF (0 to 50ºC) internal  
+External – none 
+Symbol Rate Range 
+16 ksps to 3.0 Msps 
+Demodulation, FEC and Data Rate Range – Each demodulator 
+independently configurable in 1 bps increments (See the User’s Manual for 
+details) 
+Rate 5/16 BPSK TPC 
+16 kbps to 0.937 Mbps
+Rate 21/44 BPSK TPC 
+16 kbps to 1.430 Mbps
+Rate 21/44 QPSK TPC 
+16 kbps to 2.860 Mbps
+Rate 3/4 QPSK TPC 
+16 kbps to 4.500 Mbps
+Rate 7/8 QPSK TPC 
+16 kbps to 5.250 Mbps
+Rate 0.95 QPSK TPC 
+16 kbps to 5.666 Mbps
+Rate 3/4 8-PSK/8-QAM TPC 
+16 kbps to 6.750 Mbps
+Rate 7/8 8-PSK/8-QAM TPC 
+16 kbps to 7.875 Mbps
+Rate 0.95 8-PSK/8-QAM TPC 
+16 kbps to 8.500 Mbps
+Rate 3/4 16-QAM TPC 
+16 kbps to 9.000 Mbps
+Rate 7/8 16-QAM TPC 
+16 kbps to 9.980 Mbps
+Descrambling 
+Comtech or IESS-315 
+DEMODULATOR 
+Input Power Range 
+CDD-564: -30 to –60 dBm 
+CDD-564L & CDD-562L: 
+ -130 + 10 log(Symbol Rate) to 
+ -90 + 10 log(Symbol Rate) 
+Max Composite Level 
++40 dBc, up to -10 dBm for CDD-564L & 
+CDD-562L 
++35 dBc, up to –5 dBm for CDD-564 
+Acquisition Range 
+± 1 to ± 32 kHz (1 kHz steps) < 625 ksps 
+± 1 to ± 200 kHz ≥ 625 ksps (CDD-564L & 
+CDD-562L) 
+Monitor Functions 
+Eb/No, Frequency Offset, BER, LNB current 
+and voltage, Rx receive signal level 
+LNB SUPPORT (CDD-564L) 
+LNB Voltage 
++13 volts, +18 volts and +24 volts DC or OFF
+at 500 mA max per Rx Input 
+10 MHz Reference  
+Power Level 
+-3 dBm ± 3dB via Rx center conductor. 
+Selectable ON or OFF per Rx Input 
+ 
+ENVIRONMENTAL AND PHYSICAL 
+Temperature:
+ Operating 
+ Storage 
+32 to 122ºF (0 to 50ºC) 
+-13 to 185ºF (-25 to 85ºC) 
+Power Supply
+100 to 240 volts AC, 50/60 Hz 
+Optional 48 VDC Input (38 to 60)  
+Power Consumption
+75 W typical (140 W max – powering 4 LNBs) 
+Physical Dimensions
+1RU high, 16 inches deep (40.6 cm)
+Weight
+7 lbs (3.2 kg)  
+Agency Approvals
+CE Mark 
+FCC Part 15 Class B 
+NETWORK PROTOCOLS 
+RFC 768 – UDP
+RFC 1812 – IPv4 Routers 
+RFC 791 – IP
+RFC 2045 – MIME 
+RFC 792 – ICMP
+RFC 2236 -  IGMP v2 
+RFC 793 – TCP
+RFC 2474 – Diff Serv 
+RFC 826 – ARP
+RFC 2475 - ADS 
+RFC 856 – Telnet
+RFC 2578 – SMI 
+RFC 862 – Ping
+RFC 2616 – HTTP 
+RFC 894 – IP
+RFC 2821 – SMTP 
+RFC 959 – FTP
+RFC 3412 – SNMP 
+RFC 1112 – IP Multicast
+RFC 3416 – SNMPv2 
+RFC 1213 – SNMP MIB II
+RFC 3418 – SNMP MIB 
+AVAILABLE OPTIONS 
+How Enabled
+Option
+Standard
+Variable Rate to 512 kbps 
+FAST
+Variable Rate to 2.048 Mbps 
+FAST
+Variable Rate to 5.0 Mbps 
+FAST
+Variable Rate to 9.98 Mbps 
+FAST
+8-PSK/8-QAM Demodulation 
+FAST
+16-QAM Demodulation 
+FAST
+Header Decompression 
+FAST
+Payload Decompression 
+Hardware
+-48 VDC Prime Power Supply 
+VIPERSAT OPERATION MODE 
+Vipersat operation is enabled via a FAST feature code. Networks can easily 
+start off in point-to-point or point-to-multipoint configurations. As the network 
+grows and users wish to take advantage of the bandwidth on demand 
+savings by implementing a Vipersat network, demodulators can easily be 
+upgraded to Vipersat mode. Vipersat mode provides for the ability to operate 
+in the following demodulation/FEC rates: 
+ 
+STDMA 
+QPSK, Rate 3/4 Turbo FEC – all STDMA modes. 
+Data Rate Range: 64 kbps – 4.5 Mbps 
+SCPC 
+All Turbo Product Code FEC rates as detailed herein 
+ 
+ 
