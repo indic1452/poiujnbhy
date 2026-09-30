@@ -134,8 +134,19 @@ class VLSNR(unittest.TestCase):
                 self.assertEqual(list(range(xs, k)), ldpc.информационные(с.матрица).tolist())
                 э = next(э for э in ldpc_std.список() if э["имя"] == имя)
                 self.assertEqual(str(Fraction(k - xs, n - xs - xp)), э["скорость"])
+                self.assertEqual((n, k - xs), (э["n"], э["k"]))
         # 2/9 нормального кадра — 61 560 бит в канале (табл. 19b).
         self.assertIn("61 560", текст_s2x()[текст_s2x().index("Table 19b"):][:400])
+
+    def test_тип_в_окне(self):
+        """«DVB-S2X VL-SNR» — один тип, сразу за «DVB-S2X medium», девять MODCOD табл. 19a."""
+        from reportgen.potok import ldpc_katalog
+        типы = [т["тип"] for т in ldpc_katalog.типы()]
+        self.assertEqual(1, типы.count("DVB-S2X VL-SNR"))
+        self.assertEqual("DVB-S2X medium (32400)", типы[типы.index("DVB-S2X VL-SNR") - 1])
+        т = next(т for т in ldpc_katalog.типы() if т["тип"] == "DVB-S2X VL-SNR")
+        self.assertEqual([имя for имя, *_ in VL], [с["коды"][0] for с in т["скорости"]])
+        self.assertIn("QPSK 2/9 normal", т["скорости"][0]["подпись"])
 
     def test_снятие_каждого_с_ошибками(self):
         rng = np.random.default_rng(19)
@@ -251,6 +262,15 @@ class ПеремежениеS2X(unittest.TestCase):
         rng = np.random.default_rng(12)
         данные = rng.integers(0, 2, (2, 9360)).astype(np.uint8)
         поток = np.concatenate([перемежить(кодировать(u, ряды, 16200), "2130") for u in данные])
+        ряд, _ = ldpc.снять(поток, запись["схема"], начало=0)
+        self.assertTrue(np.array_equal(данные.reshape(-1), ряд))
+        # Без порядка столбцов — по порядку: у 4+12APSK четыре столбца «0123».
+        with tempfile.TemporaryDirectory() as d:
+            путь = Path(d) / "s2x_bez_poryadka.txt"
+            путь.write_text(текст.replace("4+12APSK 2130", "4+12APSK"), encoding="utf-8")
+            запись = л._из_файла(путь)
+        self.assertNotIn("ошибка", запись, запись)
+        поток = np.concatenate([перемежить(кодировать(u, ряды, 16200), "0123") for u in данные])
         ряд, _ = ldpc.снять(поток, запись["схема"], начало=0)
         self.assertTrue(np.array_equal(данные.reshape(-1), ряд))
 

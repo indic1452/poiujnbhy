@@ -279,6 +279,7 @@ class КадрыИПостобработка(unittest.TestCase):
         # Datum 512: LDPC-Gen2 у 512 нет, J = 2 и P = 12 — только в типе «F-LDPC (патент)».
         нет = ldpc_okno.автомат(поток, {"тип": "Datum 512", "синхро": {"вид": "сосредоточенное", "слово": СЛОВО, "длина": N}}, типы)
         self.assertIsNone(нет["найдено"])
+        self.assertIn("вслепую по нагрузке кадров (слово до 2048 бит) — тоже нет", нет["почему"])
         есть = ldpc_okno.автомат(поток, {"тип": "F-LDPC TrellisWare (патент)", "блок": 512,
                                           "синхро": {"вид": "сосредоточенное", "слово": СЛОВО, "длина": N}}, типы)
         self.assertEqual("fldpc-k512-j2-p12", есть["найдено"]["код"])
@@ -307,17 +308,37 @@ class Вслепую(unittest.TestCase):
         слова = [np.array(патент.кодировать(d.tolist(), 2, 16), np.uint8) for d in данные]
         N = 32 + 2 * 512 + 40                                   # два слова в кадре и 40 бит заполнения
         поток = кадры_модема(слова, N, сдвиг=123)
+        # Ошибки линии (2·10⁻⁴) и инверсия всего потока: синхрослово находится инверсным.
+        поток ^= (rng.random(len(поток)) < 2e-4).astype(np.uint8)
+        поток = (1 - поток).astype(np.uint8)
         п = {"тип": "Comtech", "синхро": {"вид": "сосредоточенное", "слово": СЛОВО, "длина": N}}
         итог = ldpc_okno.автомат(поток, п, ldpc_katalog.с_файлами([]), бюджет=120)
         н = итог["найдено"]
         self.assertIsNotNone(н, итог)
         self.assertTrue(н["вслепую"])
+        self.assertEqual(0, н["начало"])
+        self.assertTrue(90 < н["сошлось"] < 100, н["сошлось"])
+        self.assertEqual(н["сошлось"], round(н["сошлось"], 1))
+        self.assertNotEqual(н["сошлось"], round(н["сошлось"]))          # есть десятые
         self.assertEqual("вслепую-512-256", н["код"])
         self.assertIn("LDPC (512, 256)", н["что"])
         файл = self.папка / "вслепую-512-256.alist"
         self.assertTrue(файл.exists())
         м = ldpc.прочитать("вслепую-512-256")
         self.assertEqual((512, 256), (м.n, м.m))
+        # Файл — полноценный alist (Маккей): номера по столбцам и по строкам (с 1, добиты нулями) — одна и та же H.
+        ч = [int(x) for x in файл.read_text(encoding="utf-8").split("\n", 1)[1].split()]
+        n_, m_, вс, вр = ч[:4]
+        вес_ст, вес_стр = ч[4:4 + n_], ч[4 + n_:4 + n_ + m_]
+        по_столбцам = np.array(ч[4 + n_ + m_:4 + n_ + m_ + n_ * вс]).reshape(n_, вс)
+        по_строкам = np.array(ч[4 + n_ + m_ + n_ * вс:]).reshape(m_, вр)
+        пары = {(i, c) for i, с in enumerate(м.строки) for c in с.tolist()}
+        self.assertEqual(пары, {(r - 1, c) for c in range(n_) for r in по_столбцам[c] if r})
+        self.assertEqual(пары, {(i, c - 1) for i in range(m_) for c in по_строкам[i] if c})
+        self.assertEqual(вес_ст, [int((р > 0).sum()) for р in по_столбцам])
+        self.assertEqual(вес_стр, [int((р > 0).sum()) for р in по_строкам])
+        self.assertEqual((вс, вр), (max(вес_ст), max(вес_стр)))
+        self.assertFalse((по_строкам[по_строкам > 0] > n_).any() or (по_столбцам[по_столбцам > 0] > m_).any())
         # Каждая проверка найденной H выполняется на всех словах (это проверки кода, а не случайные).
         for h in м.строки[:64]:
             self.assertFalse(any(int(с[h].sum()) % 2 for с in слова[:50]))
@@ -326,10 +347,101 @@ class Вслепую(unittest.TestCase):
         ряд, _ = снять_вручную(поток, слой)
         кадров = len(ряд) // 512
         np.testing.assert_array_equal(данные[:кадров * 2].reshape(-1)[:len(ряд)], ряд)
-        # Файл отдела теперь в «Нестандарт» и находится обычным автоматом (по матрице).
+        # Файл отдела теперь в «Нестандарт» и находится обычным автоматом (по матрице), а не вслепую.
         типы = ldpc_katalog.с_файлами(ldpc.список())
         нест = next(т for т in типы if т["тип"] == "Нестандарт")
         self.assertIn("вслепую-512-256", [к for с in нест["скорости"] for к in с["коды"]])
+        снова = ldpc_okno.автомат(поток, {**п, "тип": "Нестандарт"}, типы, бюджет=120)["найдено"]
+        self.assertEqual("вслепую-512-256", снова["код"])
+        self.assertNotIn("вслепую", снова)
+
+    def test_бюджет_вслепую_остаток(self):
+        """Вслепую получает остаток бюджета автомата (не меньше 10 с)."""
+        from unittest import mock
+        from reportgen.potok import dlinnye
+        слова = [np.zeros(512, np.uint8)] * 8
+        поток = кадры_модема(слова, 32 + 1024, сдвиг=0)
+        п = {"тип": "Comtech", "синхро": {"вид": "сосредоточенное", "слово": СЛОВО, "длина": 32 + 1024}}
+        with mock.patch.object(dlinnye, "найти_в_кадрах", return_value=None) as найти:
+            итог = ldpc_okno.автомат(поток, п, ldpc_katalog.с_файлами([]), бюджет=100)
+        бюджет = найти.call_args.kwargs["бюджет"]
+        self.assertTrue(95 < бюджет <= 100, бюджет)
+        self.assertIn("вслепую по нагрузке кадров", итог["почему"])
+        with mock.patch.object(dlinnye, "найти_в_кадрах", return_value=None) as найти:
+            ldpc_okno.автомат(поток, п, ldpc_katalog.с_файлами([]), бюджет=3)
+        self.assertEqual(10.0, найти.call_args.kwargs["бюджет"])
+        # Без кадров вслепую не ищется, и в ответе об этом ни слова.
+        без = ldpc_okno.автомат(поток, {"тип": "Comtech"}, ldpc_katalog.с_файлами([]))
+        self.assertNotIn("вслепую по нагрузке", без["почему"])
+
+
+def малый_код(слов: int, сид: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    """Свой код (64, 32): H = [A | I], у A в каждом столбце три единицы; слова систематические, p = A·d."""
+    rng = np.random.default_rng(сид)
+    A = np.zeros((32, 32), np.uint8)
+    for c in range(32):
+        A[rng.choice(32, 3, replace=False), c] = 1
+    данные = rng.integers(0, 2, (слов, 32)).astype(np.uint8)
+    return данные, np.concatenate([данные, (данные.astype(int) @ A.T % 2).astype(np.uint8)], axis=1)
+
+
+class ВслепуюВКадрах(unittest.TestCase):
+    """dlinnye.найти_в_кадрах: длина слова — из нагрузки кадров, без перебора окна."""
+
+    def test_хвост_нагрузки(self):
+        from reportgen.potok import dlinnye
+        rng = np.random.default_rng(1)
+        н = rng.integers(0, 2, (20, 100)).astype(np.uint8)
+        н[:, 60:] = 0
+        self.assertEqual(40, dlinnye.хвост_нагрузки(н))
+        н[:, 59] = 1                                            # постоянный последний бит слова
+        self.assertEqual(41, dlinnye.хвост_нагрузки(н))
+        self.assertEqual(0, dlinnye.хвост_нагрузки(н[:1]))       # один кадр — не видно
+        self.assertEqual(0, dlinnye.хвост_нагрузки(rng.integers(0, 2, (2, 50)).astype(np.uint8)))
+        self.assertEqual(50, dlinnye.хвост_нагрузки(np.ones((3, 50), np.uint8)))
+        # Ошибки линии в заполнении: при 20 кадрах и больше столбец постоянен, если одно значение — в 95 %.
+        н = rng.integers(0, 2, (40, 100)).astype(np.uint8)
+        н[:, 60:] = 1
+        н[3, 99] = н[17, 99] = 0                                 # 2 из 40 — 5 %
+        self.assertEqual(40, dlinnye.хвост_нагрузки(н))
+        н[5, 99] = 0                                             # 3 из 40 — 7,5 %: уже не заполнение
+        self.assertEqual(0, dlinnye.хвост_нагрузки(н))
+        мало = н[:19].copy()
+        мало[:, 60:] = 1
+        мало[0, 99] = 0                                          # 19 кадров — только строго одинаковые
+        self.assertEqual(0, dlinnye.хвост_нагрузки(мало))
+
+    def test_мин_сумма_с_проверками_веса_1(self):
+        """Проверка веса 1 («бит = 0», постоянный бит слова) не ломает декодер: бит обнуляется."""
+        from reportgen.potok import dlinnye
+        H = np.zeros((2, 6), np.uint8)
+        H[0, 2] = 1
+        H[1, [0, 1, 3]] = 1
+        W = np.array([[1, 1, 1, 0, 0, 0], [0, 0, 0, 0, 1, 1]], np.uint8)
+        слова, чисто = dlinnye.мин_сумма(W, H)
+        np.testing.assert_array_equal([[1, 1, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1]], слова)
+        self.assertTrue(чисто.all())
+
+    def test_длины_из_нагрузки(self):
+        from reportgen.potok import dlinnye
+        _, слова = малый_код(400)
+        # Четыре слова по 64 в кадре, без хвоста: n = 64 (не 128 и не 256).
+        н, H = dlinnye.найти_в_кадрах(слова.reshape(100, 256))
+        self.assertEqual(64, н.свойства["n"])
+        self.assertEqual(32, н.свойства["k"])
+        self.assertFalse(any(int(с @ h) % 2 for с in слова[:50] for h in H))
+        # Одно слово в кадре (m = 1), хвоста нет.
+        н1, _ = dlinnye.найти_в_кадрах(слова.reshape(400, 64))
+        self.assertEqual(64, н1.свойства["n"])
+        # Хвост ровно в половину нагрузки — ещё не «почти вся постоянна».
+        половина = np.concatenate([слова.reshape(400, 64), np.zeros((400, 64), np.uint8)], axis=1)
+        self.assertEqual(64, dlinnye.найти_в_кадрах(половина)[0].свойства["n"])
+        # Нагрузка вся постоянна — кода нет.
+        self.assertIsNone(dlinnye.найти_в_кадрах(np.zeros((400, 256), np.uint8)))
+        # Предел длины: n = до — ещё пробуется, n > до — нет.
+        два = слова.reshape(200, 128)
+        self.assertEqual(64, dlinnye.найти_в_кадрах(два, до=64)[0].свойства["n"])
+        self.assertIsNone(dlinnye.найти_в_кадрах(два, до=63))
 
 
 @есть_источники
