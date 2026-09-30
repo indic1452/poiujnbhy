@@ -470,6 +470,151 @@ class АнализаторПакетовTests(unittest.TestCase):
         self.assertEqual(["MPLS", "IPv4"], [у.протокол for у in п.уровни][:2])
 
 
+def раскладка_gfp(п) -> list[tuple]:
+    """(ключ, смещение, длина, сырое, плохо) всех полей уровня GFP с вложенными."""
+    итог = []
+
+    def обойти(поля_):
+        for x in поля_:
+            итог.append((x.ключ, x.смещение, x.длина, x.сырое, x.плохо))
+            обойти(x.дети)
+    обойти(п.уровни[0].поля)
+    return итог
+
+
+def кадр_gfp(область: bytes) -> bytes:
+    """Кадр GFP для pcap: основной заголовок без маски (эталонная CRC) и область нагрузки."""
+    pli = len(область).to_bytes(2, "big")
+    return pli + г.crc16(pli).to_bytes(2, "big") + область
+
+
+class РазборщикРаскладкаTests(unittest.TestCase):
+    """Раскладка полей GFP-F по G.7041 (места, длины, сырые значения) и края разборщика."""
+
+    def test_раскладка_линейного_кадра_с_pfcs(self):
+        eth = ETHERNET[0]
+        кадр = кадр_gfp(г.нагрузка(eth, pfi=True, cid=7))
+        п = разобрать_пакет(кадр, "GFP-F")
+        pli = len(кадр) - 4
+        конец = len(кадр)
+        chec, thec, ehec = (int.from_bytes(кадр[м:м + 2], "big") for м in (2, 6, 10))
+        pfcs = int.from_bytes(кадр[-4:], "big")
+        fcs = int.from_bytes(кадр[-8:-4], "little")
+        self.assertEqual([("gfp.pli", 0, 2, pli, False), ("gfp.chec", 2, 2, chec, False),
+                          ("gfp.type", 4, 2, 0x1101, False), ("gfp.pti", 4, 1, 0, False), ("gfp.pfi", 4, 1, 1, False),
+                          ("gfp.exi", 4, 1, 1, False), ("gfp.upi", 5, 1, 1, False), ("gfp.thec", 6, 2, thec, False),
+                          ("gfp.cid", 8, 1, 7, False), ("gfp.spare", 9, 1, 0, False), ("gfp.ehec", 10, 2, ehec, False),
+                          ("gfp.fcs", конец - 4, 4, pfcs, False), ("eth.fcs", конец - 8, 4, fcs, False)],
+                         раскладка_gfp(п))
+        у = п.уровни[0]
+        self.assertEqual((0, 12), (у.смещение, у.длина))
+        self.assertEqual(["GFP", "Ethernet", "IPv4"], [x.протокол for x in п.уровни][:3])
+        self.assertEqual(12, п.уровни[1].смещение)
+        поля = {x.ключ: x.текст for x in у.поля}
+        self.assertEqual(f"0x{pfcs:08x} [верна]", поля["gfp.fcs"])
+        self.assertEqual(f"0x{thec:04x} [верен]", поля["gfp.thec"])
+        # (Сумма TCP синтетического пакета не считана — это не GFP.)
+        self.assertEqual([], [о for о in п.ошибки if not о.startswith("TCP")])
+        # Запас не нуль — eHEC неверен и говорит, каким должен быть.
+        плохой = bytearray(кадр)
+        плохой[9] = 0x5A
+        п = разобрать_пакет(bytes(плохой), "GFP-F")
+        поле = [x for x in п.уровни[0].поля if x.ключ == "gfp.ehec"][0]
+        self.assertEqual((True, f"0x{ehec:04x} [неверен, должен быть 0x{г.crc16(bytes([7, 0x5A])):04x}]"),
+                         (поле.плохо, поле.текст))
+        self.assertEqual(("gfp.spare", 9, 1, 0x5A, False), раскладка_gfp(п)[9])
+
+    def test_без_pfcs_и_без_расширенного(self):
+        кадр = кадр_gfp(г.нагрузка(ETHERNET[1]))
+        п = разобрать_пакет(кадр, "GFP-F")
+        self.assertEqual(["gfp.pli", "gfp.chec", "gfp.type", "gfp.pti", "gfp.pfi", "gfp.exi", "gfp.upi", "gfp.thec", "eth.fcs"],
+                         [x[0] for x in раскладка_gfp(п)])
+        self.assertEqual(("gfp.pfi", 4, 1, 0, False), раскладка_gfp(п)[4])
+        self.assertEqual(8, п.уровни[0].длина)
+        # pFCS над пустым полем данных: 4 байта после заголовков — это pFCS; 3 — не pFCS.
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(b"", pfi=True, upi=0xF0)), "GFP-F")
+        self.assertEqual(("gfp.fcs", 8, 4, г.crc32_старшим(b""), False), раскладка_gfp(п)[-1])
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(b"", upi=0xF0)[:4] + b"\x01\x02\x03"), "GFP-F")
+        self.assertNotIn("gfp.fcs", [x[0] for x in раскладка_gfp(п)])
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(b"", pfi=True, upi=0xF0)[:4] + b"\x01\x02\x03"), "GFP-F")
+        self.assertNotIn("gfp.fcs", [x[0] for x in раскладка_gfp(п)])
+
+    def test_хвост_за_кадром_не_входит(self):
+        # Запись длиннее PLI: pFCS и FCS Ethernet — в конце кадра по PLI, а не записи.
+        кадр = кадр_gfp(г.нагрузка(ETHERNET[2], pfi=True)) + b"\xAA\xBB\xCC\xDD\xEE"
+        п = разобрать_пакет(кадр, "GFP-F")
+        р = {x[0]: x for x in раскладка_gfp(п)}
+        конец = len(кадр) - 5
+        self.assertEqual(("gfp.fcs", конец - 4, 4, int.from_bytes(кадр[конец - 4:конец], "big"), False), р["gfp.fcs"])
+        self.assertEqual(("eth.fcs", конец - 8, 4, int.from_bytes(кадр[конец - 8:конец - 4], "little"), False), р["eth.fcs"])
+        # Запись короче PLI — ошибка «PLI больше записанного»; ровно по PLI — без ошибок.
+        кадр = кадр_gfp(г.нагрузка(ETHERNET[2]))
+        self.assertEqual([], [о for о in разобрать_пакет(кадр, "GFP-F").ошибки if not о.startswith("TCP")])
+        self.assertIn(f"PLI {len(кадр) - 4} больше записанного ({len(кадр) - 5} байт)",
+                      разобрать_пакет(кадр[:-1], "GFP-F").ошибки)
+
+    def test_пустой_служебный_и_граница_кадра_клиента(self):
+        п = разобрать_пакет(bytes(4), "GFP-F")
+        self.assertEqual(("пустой кадр", 4, []), (п.уровни[0].итог, п.уровни[0].длина, п.ошибки))
+        п = разобрать_пакет(bytes(5), "GFP-F")
+        self.assertEqual(["в пустом кадре есть нагрузка"], п.ошибки)
+        for pli in (1, 3):
+            with self.subTest(pli=pli):
+                п = разобрать_пакет(кадр_gfp(bytes(pli)), "GFP-F")
+                self.assertEqual(("служебный кадр (резерв)", 4), (п.уровни[0].итог, п.уровни[0].длина))
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(b"", upi=0xF0)), "GFP-F")
+        self.assertEqual("данные клиента: для нужд производителей, PLI 4", п.уровни[0].итог)
+
+    def test_оборванные_заголовки(self):
+        полный = кадр_gfp(г.нагрузка(ETHERNET[0], cid=1))
+        for длина in (3, 7, 11):
+            with self.subTest(длина=длина):
+                п = разобрать_пакет(полный[:длина], "GFP-F")
+                self.assertIn("пакет оборван: заголовок длиннее записанных байт", п.ошибки)
+                self.assertFalse(any(о.startswith("разбор прерван") for о in п.ошибки), п.ошибки)
+        п = разобрать_пакет(полный[:5], "GFP-F")
+        self.assertIn("пакет оборван: заголовок длиннее записанных байт", п.ошибки)
+        # Линейный заголовок без данных клиента — ровно 12 байт, не оборван.
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(b"", upi=0xF0, cid=3)), "GFP-F")
+        self.assertEqual(([], 12), (п.ошибки, п.уровни[0].длина))
+        self.assertEqual(("gfp.ehec", 10, 2, г.crc16(bytes([3, 0])), False), раскладка_gfp(п)[-1])
+
+    def test_ethernet_от_18_байт_и_pti_101(self):
+        # Самый короткий Ethernet с FCS — 18 байт (заголовок 14 + FCS 4); 17 — уже не Ethernet.
+        короткий = г.ethernet_с_fcs(bytes(6) + bytes(6) + b"\x88\xb5")
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(короткий)), "GFP-F")
+        self.assertEqual(["GFP", "Ethernet"], [x.протокол for x in п.уровни][:2])
+        self.assertEqual(("eth.fcs", 22, 4, int.from_bytes(короткий[-4:], "little"), False), раскладка_gfp(п)[-1])
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(короткий[1:])), "GFP-F")
+        self.assertNotIn("Ethernet", [x.протокол for x in п.уровни])
+        # Управляющая связь (PTI 101) — тем же разбором клиента, что и данные.
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(ETHERNET[0], pti=5)), "GFP-F")
+        self.assertEqual(["GFP", "Ethernet", "IPv4"], [x.протокол for x in п.уровни][:3])
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(ПАКЕТЫ[0], pti=5, upi=16)), "GFP-F")
+        self.assertEqual(["GFP", "IPv4"], [x.протокол for x in п.уровни][:2])
+        п = разобрать_пакет(кадр_gfp(г.нагрузка(ПАКЕТЫ[0], pti=6, upi=16)), "GFP-F")
+        self.assertEqual(["GFP", "Данные"], [x.протокол for x in п.уровни][:2])
+
+    def test_не_с_начала_записи(self):
+        from reportgen.setevoy.protokoly import gfp as разборщик  # noqa: PLC0415
+        from reportgen.setevoy.razbor import Пакет, Разбор  # noqa: PLC0415
+        кадр = кадр_gfp(г.нагрузка(ETHERNET[0], cid=2))
+        пакет = Пакет(1, 0.0, b"\x00\x00\x00" + кадр, len(кадр) + 3, "GFP-F")
+        разборщик.gfp(Разбор(пакет), 3)
+        у = пакет.уровни[0]
+        self.assertEqual((3, 12), (у.смещение, у.длина))
+        self.assertEqual("данные клиента: Ethernet (кадровое отображение), канал 2, PLI " + str(len(кадр) - 4), у.итог)
+
+    def test_hec_и_pfcs_по_эталону(self):
+        from reportgen.setevoy.protokoly import gfp as разборщик  # noqa: PLC0415
+        g = np.random.default_rng(5)
+        for _ in range(40):
+            д = g.integers(0, 256, 2, dtype=np.uint8).tobytes()
+            self.assertEqual(г.crc16(д), разборщик.hec(д))
+            д = g.integers(0, 256, int(g.integers(0, 90)), dtype=np.uint8).tobytes()
+            self.assertEqual(г.crc32_старшим(д), разборщик.pfcs(д))
+
+
 @unittest.skipUnless(shutil.which("node"), "нужен node")
 class ОкноСтолаTests(unittest.TestCase):
     """Чистая логика окна GFP стола — прямо из app.js в node; слой окна понимает сервер."""
@@ -529,6 +674,49 @@ process.stdout.write(JSON.stringify(случаи.map(([ф, ...а]) => ({маск
         self.assertEqual("cHEC верен · tHEC верен · eHEC верен · pFCS верна", проверки[6])
         self.assertEqual("cHEC верен · tHEC верен · eHEC верен · pFCS неверна", проверки[8])
         self.assertEqual([False] * 8 + [True], ошибки)
+
+    def test_плитки_каждая_строкой(self):
+        # Сводка, собранная вручную: у каждой плитки — точный текст (числа по-русски, с пробелами).
+        св = {"маска": "5A17C3E9", "маска_словами": "нестандартная", "пустой": "5A 17 C3 E9", "доля": 0.98765,
+              "скремблер": "нет",
+              "счёт": {"кадров": 12345, "пустых": 1000, "служебных": 2, "данных_клиента": 3000, "cmf": 7,
+                       "исправлено_chec": 4, "thec": {"верен": 2990, "исправлен": 3, "ошибка": 5, "прогрев": 2},
+                       "pfcs": {"неверна": 2}, "cid": {"0": 1500, "5": 1500}, "длины": {"от": 64, "до": 1522},
+                       "потерь": 6, "потери_бит": [8, 16000, 24, 32, 40, 48],
+                       "типы": [{"pti": 0, "upi": 16, "upi_словами": "IPv4", "кадров": 2000},
+                                {"pti": 0, "upi": 16, "upi_словами": "IPv4", "кадров": 1000},
+                                {"pti": 4, "upi": 240, "upi_словами": "свой", "кадров": 7},
+                                {"pti": 0, "upi": 3, "upi_словами": "FC"}]}}
+        пустая = {"маска": "B6AB31E0", "маска_словами": "стандарт", "пустой": "B6", "скремблер": "x43",
+                  "счёт": {"потерь": 5, "потери_бит": [1, 2, 3, 4, 5], "thec": {}, "pfcs": {"верна": 3}}}
+        голая = {"маска": "1", "маска_словами": "м", "пустой": "п", "скремблер": "инверсия", "счёт": {}}
+        итог = self.выполнить([["плиткиGFP", св], ["плиткиGFP", пустая], ["плиткиGFP", голая]])
+        self.assertEqual([
+            ["Маска", "5A17C3E9 — нестандартная"], ["Пустой кадр на линии", "5A 17 C3 E9"],
+            ["Кадров", "12\xa0345 · в синхронизме 98,8 % байт"], ["Пустых / служебных", "1\xa0000 / 2"],
+            ["С данными клиента / CMF", "3\xa0000 / 7"], ["Исправлено cHEC", "4"],
+            ["tHEC", "2\xa0990 верен, 3 исправлен, 5 ошибка, 2 прогрев"], ["pFCS", "0 верна из 2"],
+            ["UPI", "0x10 IPv4 × 3\xa0000; CMF 0xF0 свой × 7; 0x03 FC × 0"], ["CID", "0 × 1\xa0500, 5 × 1\xa0500"],
+            ["Длины (PLI)", "64…1522"], ["Потери синхронизации", "6 — с бита 8, 16\xa0000, 24, 32, 40…"],
+            ["Скремблер", "нет"]], итог[0])
+        self.assertEqual([
+            ["Маска", "B6AB31E0 — стандарт"], ["Пустой кадр на линии", "B6"], ["Кадров", "0 · в синхронизме 0,0 % байт"],
+            ["Пустых / служебных", "0 / 0"], ["С данными клиента / CMF", "0 / 0"], ["Исправлено cHEC", "0"],
+            ["tHEC", "0 верен"], ["pFCS", "3 верна из 3"], ["Потери синхронизации", "5 — с бита 1, 2, 3, 4, 5"],
+            ["Скремблер", "x⁴³ + 1 снят"]], итог[1])
+        self.assertEqual(["Потери синхронизации", "нет"], итог[2][-2])
+        self.assertEqual(["Скремблер", "нет, нагрузка инвертирована"], итог[2][-1])
+
+    def test_маска_вид_и_ошибка_строки(self):
+        итог = self.выполнить([
+            ["маскаGFP", "своя", "99999999"], ["маскаGFP", "своя", "0x0001 19d8"],
+            ["видКадраGFP", {"вид": "служебный", "upi_словами": "x"}], ["видКадраGFP", {"вид": "пустой", "оборван": True}],
+            ["видКадраGFP", {"вид": "CMF", "upi_словами": "RDI", "оборван": True}], ["видКадраGFP", {"вид": "данные"}],
+            ["ошибкаКадраGFP", {"ehec": "ошибка"}], ["ошибкаКадраGFP", {"thec": "ошибка"}], ["ошибкаКадраGFP", {"pfcs": "неверна"}],
+            ["ошибкаКадраGFP", {"оборван": True}], ["ошибкаКадраGFP", {"thec": "исправлен", "ehec": "верен", "pfcs": "верна", "оборван": False}],
+            ["проверкиКадраGFP", {"chec": "исправлен"}]])
+        self.assertEqual(["99999999", "000119D8", "служебный", "пустой", "CMF · RDI · оборван", "данные",
+                          True, True, True, True, False, "cHEC исправлен"], итог)
 
     def test_окно_в_меню_и_клавишах(self):
         from test_potok_sessii import APP_JS  # noqa: PLC0415
