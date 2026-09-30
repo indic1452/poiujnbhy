@@ -1,0 +1,2558 @@
+
+=====PAGE 1=====
+SATELLITE TRANSMISSION 
+                                               
+   
+         
+ 
+ 
+ 
+ 
+INTERMEDIATE DATA RATE (IDR) EQUIPMENT  
+IN C BAND 
+ 
+GENERIC  REQUIREMENTS 
+(No. GR/IDR-01/04.NOV2006) 
+ 
+(Supersedes GR No. GR/IDR-01/03. JUN 2001) 
+ 
+ 
+ISSUE - 4 
+ 
+ 
+ 
+ 
+© TEC 
+ 
+ 
+ 
+ 
+ 
+DEPARTMENT OF TELECOMMUNICATIONS 
+GOVERNMENT OF INDIA 
+TELECOMMUNICATION ENGINEERING CENTRE 
+KHURSHID LAL BHAVAN, JANPATH 
+NEW DELHI 110001 
+INDIA 
+ 
+ 
+  
+All Rights Reserved and no part of this publication may be reproduced, stored in a 
+retrieval system, or transmitted, in any form or by any means, electronic, mechanical,  
+photocopying, recording or otherwise without written permission from the 
+Telecommunication Engineering Centre, New Delhi.  
+
+=====PAGE 2=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+HISTORY SHEET 
+ 
+GR Title 
+GR No. 
+Remarks 
+Intermediate Data Rate 
+(IDR) Equipment 
+operating in C band. 
+G/IDR-01/01.MAR 92 
+First Release of GR 
+Intermediate Data Rate 
+(IDR) Equipment 
+operating in C band. 
+G/IDR-01/02.FEB 95 
+Second Release of GR 
+Intermediate Data Rate 
+(IDR) Equipment 
+operating in C band. 
+Amendment No.1  
+Amendment No.2 
+Amendment No.3 
+GR/IDR-01/03.JUN2001 
+Third Release of GR 
+ 
+ 
+Issued on 1.1.2003 
+Issued on 13.4.2004 
+Issued on 28.6.2004 
+Intermediate Data Rate 
+(IDR) Equipment 
+operating in C band. 
+ 
+GR/IDR-01/04.NOV2006 
+Fifth Release of GR with 
+changed format and after 
+incorporating all the three 
+amendments 
+
+=====PAGE 3=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+CONTENTS 
+ 
+Clause No. 
+Requirement 
+Page No. 
+ 
+References 
+ii 
+PART  1 
+TECHNICAL  REQUIREMENTS 
+1.0 
+Scope 
+1 
+1.1 
+Functional & Technical Requirements 
+1 
+1.1.1 
+Functional Requirements 
+1 
+1.2 
+Technical Requirements 
+2 
+1.2.1 
+Up-converter 
+2 
+1.2.2 
+Down-converter 
+4 
+1.2.3 
+Transmit System and Satellite Equalizer 
+5 
+1.2.4 
+Modulator 
+6 
+1.2.5 
+Demodulator 
+7 
+1.2.6 
+Buffers 
+8 
+1.2.7 
+Timing Accuracy 
+9 
+1.2.8 
+Terrestrial Interfaces 
+9 
+1.2.9 
+Redundancy 
+10 
+1.3 
+Monitoring and Controls 
+10 
+1.4 
+Indicators 
+11 
+1.5 
+Alarms 
+12 
+1.6 
+Engineering Service Channel (ESC) 
+12 
+1.7 
+MTBF 
+13 
+1.8 
+Marking 
+13 
+PART  2 
+GENERAL  REQUIREMENTS 
+2.0 
+General Requirements 
+16 
+2.1 
+Engineering Requirements 
+16 
+2.2 
+Operational Requirements 
+17 
+2.3 
+Quality Requirements 
+17 
+2.4 
+Environmental Requirements for Equipment 
+18 
+2.5 
+Maintenance Requirements 
+18 
+2.6 
+Power Supply 
+18 
+2.7 
+Accessories 
+19 
+2.8 
+Documentation 
+19 
+2.9 
+Protection Requirements 
+20 
+2.10 
+Safety Requirements 
+20 
+2.11 
+Electromagnetic Compatibility (EMC) 
+20 
+ 
+TABLE 1 & TABLE 2 
+22 
+ 
+TABLE 3 
+23 
+ 
+Annexure for the Purchaser 
+25 
+ 
+Abbreviations 
+26 
+ 
+
+=====PAGE 4=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+REFERENCES 
+ 
+All the standards are subject to revision. The versions/issues of the standards indicated in this 
+GR, or their subsequent versions/editions shall be applicable. 
+ 
+TEC GRs/IRs 
+ 
+ 
+TEC standard no. SD/EMI-02/02.SEP 2001 with Amendment No.1 1 dated 30.5.2003 and 
+Corrigendum dated 6.5.2005. 
+ 
+QA DOCUMENTS  
+ 
+ 
+- QM 115 (1997) - Reliability Methods and Predictions 
+- QM 118 - Quality and Reliability in product Design 
+- QM 205 - Guidelines for Standard of Workmanship for Printed Boards 
+- QM 206 - Guidelines for Standard of Workmanship for Printed Board Assemblies  
+- QM 210 - Guidelines for Standard of Workmanship for Surface Mounted Devices   
+- QM 301 - Transmission Equipment General Documentation. 
+- QM 333 (1990) – Specification for environmental testing of electronic equipments for 
+transmission and switching use, for operation, transportation and storage. 
+ 
+ITU RECOMMENDATIONS  
+ 
+- ITU-R  S.522-5, S.614-4, S.579-6   ITU-T  V.36, G.703, G.712 
+ 
+OTHER STANDARDS  
+ 
+- ISO 9001:2000 
+- IS 8437 {1993}- Guide on the effects of current passing through the human body 
+- IS 13252 {2003}- Safety of information technology equipment including electrical business 
+equipment 
+- IS  12063 (1987) -  Classification of degree of protection provided by enclosures of the 
+electrical equipment 
+- IS  10437 (1986) – Safety requirements of radio transmitting equipments. 
+- CISPR 22 {2003}- Limits and methods of measurement of radio disturbance characteristics 
+of Information Technology Equipment. 
+- IEC 61000-4-2 {2001}- Testing and measurement techniques of Electrostatic discharge 
+immunity test. 
+- IEC 61000-4-4 -{1995 with Amendment 1 (2000) and Amendment 2 (2001)} Testing and 
+measurement techniques of electrical fast transients/burst immunity test. 
+- IEC 61000-4-3 -{2002} Radiated RF Electromagnetic Field Immunity test. 
+- IEC 61000-4-5 - {2001} Test & Measurement techniques for Surge immunity tests. 
+- IEC 61000-4-6 -{2001} Immunity to conducted disturbances, induced by radio frequency 
+fields. 
+- IESS  308 Rev.11, 310 Rev.3 
+ 
+ 
+
+=====PAGE 5=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+PART  1 
+ 
+ 
+TECHNICAL REQUIREMENTS 
+GR No. GR/IDR-01/04 NOV2006 
+
+=====PAGE 6=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1.0   SCOPE 
+ 
+          This document provides the generic characteristics of Intermediate Data Rate (IDR) 
+equipment  for operating with all types of earth stations working in INSAT system 
+using modulation switchable between QPSK and TCM-8PSK with options for  
+information rate as N*64 kbps (where N=1 to 32), 2.048 Mbps,  8.448 Mbps and 
+34.368 Mbps. The design of IDR carriers shall be based upon the ITU-R 
+Recommendations S.522-5, S.614-4 and S.579-6. These carriers may share 
+transponders with carriers employing other approved modulation techniques and/or 
+with other IDR carriers. The occupied satellite bandwidth unit for these carriers is 
+equal to 0.7(QPSK)/0.467(TCM-8 PSK) times the transmission rate inclusive of guard 
+band between adjacent carriers. The specifications of Up/Down converters  forming 
+part of the IDR Equipment  have also been provided. The system shall be configured 
+with redundancy of (1:1) for remote station and (N:1) for main station where N can be 
+upto 7. 
+ 
+1.1  FUNCTIONAL AND TECHNICAL REQUIREMENTS 
+ 
+1.1.1     FUNCTIONAL  REQUIREMENTS 
+ 
+1.1.1.1  IDR equipment shall be designed to comply with ITU-R Recommendations S.522-5, 
+S.614-4   and S.579-6.  
+ 
+1.1.1.2  The IDR Equipment shall support the concatenation of Reed-Solomon (RS) code. 
+The shortened systematic Reed-Solomon Codes are listed in Table-1.  
+ 
+1.1.1.3  Since errors from the decoder  tend to occur in bursts, block interleaving shall be 
+employed in conjunction with the RS outercode to reduce the correlation among  
+erroneous symbols in a RS Code word. The interleaving details  shall be as per IESS 
+308 Rev.11 and IESS 310 Rev.3 documents. 
+ 
+1.1.1.4 For IDR Carrier with rate 2 Mb/s, the RS Encoder/ Interleaver shall be inserted after  
+the 96 kb/s ESC overhead framing unit and before the FEC encoder. On the receive 
+side (demodulator) the RS decoder/de-interleaver shall be inserted after the FEC 
+decoder and before the 96 kb/s ESC overhead deframing unit. 
+ 
+1.1.1.5  It shall be possible to enable or disable the use of RS outer coding from the front-
+panel control of the IDR channel unit. 
+ 
+1.1.1.6  Since the transmission rate and FEC used for IDR modulator and demodulator may 
+be  different for the transmit (modulator) and receive (demodulator) paths, it shall be 
+possible to independently select the same or different RS codecs for RS encoder and 
+decoder respectively  in  order to be compatible with the transmission rates (hence 
+RS code words) being used by the IDR modulator and demodulator, irrespective of 
+the inner FEC rate ( 1/2 or 3/4  with QPSK modulation and 2/3 with TCM-8PSK 
+modulation) being used. 
+ 
+1.1.1.7   Programmability of the RS Codec shall be provided to allow maximum flexibility 
+and ease of use in selecting the different RS Codes corresponding to the various IDR 
+information rates. 
+
+=====PAGE 7=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1.1.1.8  Synchronization and scrambling requirements shall be as per IESS 308 Rev.11 and 
+IESS 310 Rev 3. 
+ 
+1.1.1.9  When using the RS outer  coding, the following shall be provided: 
+  
+a)  An indication of the composite rate (i.e., information rate plus overhead) Eb/No at 
+the input  to the RS decoder. The Eb/No reading shall be derived from the inner 
+FEC modem and shall have an accuracy of equal to or better than 0.5dB   over a 
+range extending from the point at which the inner FEC modem loses 
+synchronization to a maximum value of at least 10 dB. Design objectives are:  an 
+Eb/No measurement accuracy of  0.25 dB (or  better) for Eb/No values less than 
+or equal to 10 dB and a maximum Eb/No readout of 15dB (±1 dB accuracy, for 
+10dB<Eb/No 15dB). 
+ 
+              b) A "low Eb/No" alarm to signify the onset of degraded RS decoder performance. 
+The activation of this alarm shall only trigger appropriate audible and visual 
+indicators. It shall be  possible to adjust the trigger level for this alarm over an 
+Eb/No range of 5 dB to 7 dB in incremental steps of 0.25 dB. 
+ 
+          c)  The BER at the input to the RS decoder shall be displayed over a range of about 
+10-2 to at least 10-9. 
+ 
+          d)  The BER at the output to the RS decoder shall be displayed over a range of 10-4 to 
+at least 10-10. This BER value shall be derived from the input BER versus output 
+BER performance characteristic of the RS decoder (e.g., by using a look-up table 
+of the transfer characteristic). 
+ 
+1.2  TECHNICAL REQUIREMENTS 
+ 
+1.2.1 Up Converter  
+ 
+     a) Output Frequency 
+ :  5.925 to 6.425 GHz 
+ 
+     b) Frequency sense       
+       :  No inversion 
+ 
+     c) Input Frequency  
+       :  70 ± 18 MHz 
+     
+     d) Input level range                    :  -35 dBm to -15 dBm 
+ 
+     e) Input Impedance                    :  75 Ohms Unbalanced 
+ 
+     f) Input Return loss                   :  23 dB minimum 
+     
+ g) Input Connector type             :  BNC Female 
+ 
+     h) Frequency  Selection              :  By Synthesizer with 125 KHz  step size. 
+      i) Output Impedance                  :  50 Ohms Unbalanced  
+    
+ j) Output Return loss                  :  20 dB minimum 
+
+=====PAGE 8=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+     k) 1 dB compression point          :  0 dBm 
+ 
+     l) Output Connector type            :  SMA (Female) 
+ 
+m) Output Level Range               :  -20 dBm to 0 dBm 
+     
+ n) Output Level stability  
+:    0.25 dB/day Over 25C  10°C with constant Input  
+ 
+     o) IF-RF Gain   
+                    :   15 dB minimum 
+ 
+     p) Gain Response                       :    0.50 dB/36 MHz 
+ 
+     q) Gain adjustment                     :   20 dB in steps of 0.5dB  
+ 
+     r) Inter modulation                      :   -30 dBc for two carriers at       
+         products                                      a level of -3 dBm. each at output. 
+ 
+     s) AM/PM Conversion                :    0.2°/dB 
+ 
+     t) Group delay                             :   Linear     : 0.05 ns/MHz. 
+                                                             Parabolic : 0.005 ns/MHz2. 
+                                                             Ripple      : 1 ns p-p/±18 MHz 
+     u) Spurious output: 
+i) Signal related                   :  -50dBc 
+ii) Signal independent         :  -70dBm at minimum attenuation  
+iii) Harmonics  
+        :  -25dBc 
+ 
+      v) Frequency Stability               :   0.1 ppm/day at a constant temperature of 25C 
+ 
+      w) Phase Noise                          : -55 dBc/Hz at 100 Hz offset 
+                                                           -70 dBc/Hz at 1 KHz offset 
+                                                           -80 dBc/Hz at 10 KHz offset 
+                                                           -90 dBc/Hz at 100 KHz offset  
+                                                           -100 dBc/Hz at 1 MHz offset 
+                                                     
+The single side band phase noise due to both 
+                                                     
+the continuous and spurious components  
+                                                     
+integrated over the bandwidth of 10 Hz to  
+                                                       
+0.3R Hz away from the centre frequency.                                                 
+                                                       
+where R is the transmission rate  in  bits/s,  
+                                                       
+which should not exceed 2 deg rms. 
+ 
+1.2.2  Down Converter  
+        
+     a)    Input Frequency           
+:  3.7 GHz to 4.2 GHz                                                                              
+                
+b)    Frequency sense    
+ :  No inversion 
+ 
+  
+c)    Output Frequency        
+:  70  18 MHz  
+      
+
+=====PAGE 9=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+d)   Input Level Range         
+:  -60 dBm to -20 dBm  
+ 
+e)    Input Impedance           
+:  50 Ohms Unbalanced 
+ 
+     f)    Input Return loss         
+:  20 dB Minimum 
+ 
+     g)    Input Connector Type  
+:  SMA Female  
+      
+h)   Frequency Selection                  :  By frequency synthesizer with 125 kHz step       
+                                                                 size. 
+      
+     i)    Output Impedance        
+:  75 Ohms Unbalanced 
+ 
+     j)    Output Return loss       
+:  23 dB Minimum 
+ 
+ k) 1 dB compression point  
+:  + 5 dBm 
+ 
+     
+l)  Output Connector Type   
+:  BNC Female 
+ 
+ m)   Output Level Range       
+:  -35 dBm to +5 dBm  
+ 
+     n)    Output Level Stability   
+:  ± 0.25 dB/Day over 25°C±10°C  
+     
+o)   RF /IF Gain                 
+:  45 dB Minimum 
+ 
+ p)   Gain Response            
+:  ± 0.50 dB/36 MHz 
+ 
+q)   Gain adjustment range   
+:  20 dB in steps of 0.5dB 
+ 
+r)   Inter modulation           
+:  -40dBc for two carriers at a level of -3 dBm 
+            Products  
+ 
+   
+   each at output.  
+ 
+s)    AM/PM Conversion    
+:   0.2°/dB 
+ 
+t)    Group delay                 
+:   Linear     : 0.05 ns/MHz  
+                                                                Parabolic : 0.005 ns/MHz2 
+                                                                Ripple     : 1ns peak to peak / 18 MHz 
+    u)    Spurious :            
+ 
+ 
+i) 
+Signal related          
+:  -50dBc 
+ii) 
+Signal independent  
+:  -70dBm at minimum attenuation  
+iii) 
+Harmonics 
+ 
+:  -25dBc 
+ 
+v)    Frequency Stability       
+:  0.1 ppm/day at a constant temperature of 25C 
+ 
+     w)    Phase  Noise                
+:  -55 dBc/Hz at 100 Hz offset 
+                                                               -70 dBc/Hz at 1 KHz offset 
+                                                               -80 dBc/Hz at 10 KHz offset 
+                                                               -90 dBc/Hz at 100 KHz offset  
+                                                               -100 dBc/Hz at 1 MHz offset 
+                                                             The single side band phase noise due to both  the                                    
+
+=====PAGE 10=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+                                                             continuous and spurious components integrated  
+                                                             over the bandwidth of 10 Hz to 0.3R Hz  away  
+                                                             from the center frequency  where R is the                  
+                                                             transmission rate in bits/s, should not exceed  
+                                                             2 deg rms. 
+ 
+x)   Noise Figure                
+:  15 dB Maximum      
+ 
+y)   Image Rejection           
+:  70 dB  
+ 
+     z)   Monitoring & Alarms   
+: Power ON Indicator 
+  REF frequency monitoring, Los  phase lock.  
+  Summary Fail alarm, Potential free contact  
+    
+1.2.3 Transmit System and Satellite Equalizer (Not mandatory for 2 Mbps IDR) 
+      
+    a) Input Centre Frequency  
+: 70 MHz 
+ 
+b) Input Impedance             
+: 75 Ohms/BNC  
+ 
+    c) Input Return Loss            
+: 20 dB minimum 
+ 
+    d) Input Level                 
+ 
+: 0 to -20 dBm 
+ 
+    e) Output Centre Frequency     
+: 70 MHz 
+    
+f) Output Level                 
+: 0 to -20 dBm 
+ 
+g) Transmit Equalization over 7018 MHz: 
+ 
+i) Amplitude                
+:  Slope +2.5 dB. 
+                         
+                           Parabolic upto 1dB/MHz2  
+ii) Group Delay            
+: -6ns to + 11ns 
+ 
+   h) Satellite Group Delay       
+:  Linear Slope:      0 to  1ns/MHz  
+            over 7018 MHz  
+ 
+   Parabolic      :      0 to 25ns/MHz2   
+ 
+1.2.4 Modulator:  
+      
+a)  IF input Range      
+ 
+:  70MHz  18 MHz, step size 22.5 kHz 
+ 
+b)  Information Rate  
+ 
+:   i)   N*64 kbps (where N=1 to 32)  
+      Note:  Option to be indicated 
+    ii)   2.048 Mbps 
+                 by the purchaser.                   iii)   8.448 Mbps 
+iv)   34.368 Mbps  
+c)  Scrambler              
+ 
+:  As per ITU-T  Recommendation V.36 
+ 
+d) Coding                  
+ 
+:  Convolutional 
+ 
+e)   Rate                
+ 
+ 
+:  Switchable between 1/2 (QPSK), 3/4  (QPSK)  
+                                                               and 2/3  (TCM-8PSK). 
+
+=====PAGE 11=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+             Inner Code               
+:  Convolution Encoding / Pragmatic TCM encoding 
+ 
+ Outer Code             
+ 
+:  Reed-Solomon Code (see Table 1). 
+ 
+f)   Modulation                    
+ :  Switchable between QPSK and TCM-8PSK 
+ 
+g)  IF Interface          
+ 
+:  BNC  female, 75 ohms unbalanced  
+ 
+h)  Output return loss         
+ 
+:  > 18 dB  
+ 
+i)  Output level         
+ 
+:  0 dBm 
+ 
+j) Level Adjustability     
+ 
+:  0 to 20 dB varied through the front panel key 
+ 
+ 
+ 
+ 
+ 
+   board in steps of 0.5 dB. 
+ 
+ k)  Level Stability         
+ 
+:   0.2 dB/day at constant temperature of  25°C.  
+ 
+ l)  On/Off Levels           
+ 
+:  50 dB minimum 
+ 
+ m) Output Spurious Levels                :  -40  dBc/4 kHz for rates less than and equal to 2.048 
+Mbps  
+ 
+ 
+    
+ 
+ 
+               -50  dBc/4 kHz for rates above 2.048 Mbps  
+ 
+ n) Phase accuracy          
+ 
+:  +2° 
+ 
+ o) Amplitude accuracy      
+ 
+:  + 0.2 dB 
+ 
+1.2.5 Demodulator: 
+ 
+     a) IF Input Range  
+ 
+:  70MHz  18 MHz, step size 22.5 kHz 
+      
+     b) Output Data             
+ 
+:   i)  N*64 kbps(where N=1 to 32) 
+         Note:  Option to be indicated     ii)  2.048 Mbps 
+                    by the purchaser.               iii)  8.448 Mbps 
+iv) 34.368 Mbps 
+ 
+c) Descrambler      
+ 
+:  As per ITU-T Recommendation V.36 
+ 
+     d) Decoding                
+ 
+:  Viterbi / TCM (inner) 
+                                    
+   
+   Reed-Solomon (outer)  (see Table 1) 
+     e) Rate                
+ 
+ 
+:  Switchable between 1/2 (QPSK), 3/4  (QPSK)  
+                                                               and 2/3  (TCM-8PSK). 
+ 
+     f) Demodulation             
+ 
+: Switchable between QPSK and TCM-8PSK 
+ 
+     g) IF Interface            
+ 
+:  BNC female, 75 ohms unbalanced 
+ 
+     h) I/P return loss         
+ 
+:  > 18 dB  
+    
+  i) Input level  
+ 
+ 
+:  -45 dBm to -35 dBm 
+ 
+
+=====PAGE 12=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+     j) Bit Error Ratio (IF loop back): 
+ 
+ The Eb/No is referred to the modulated carrier power and to the composite data rate 
+(information rate + overhead) entering the RS Encoder. Eb/No values include a 0.3  dB 
+allowance for increased inter-symbol interference (ISI) caused by  allowing the use of 
+analog modem filters whose designs are based on the transmission rate  without the use of 
+RS outer coding. 
+ 
+     
+i) With RS Coding:  
+   
+ 
+      Composite Data rate Eb/No (dB) 
+BER  better 
+than  
+Rate  
+1/2 (QPSK)  
+Rate  
+3/4 (QPSK) 
+Rate 
+2/3 ( TCM) 
+10-4 
+ 
+ 
+6.1 dB    
+10-6 
+4.1 dB 
+5.6 dB 
+6.5 dB 
+10-7 
+4.2 dB 
+5.8 dB 
+6.7 dB 
+10-8 
+4.4 dB 
+6.0 dB 
+6.9 dB 
+10-10 
+5.0 dB 
+6.3 dB 
+7.3 dB 
+          
+ For transmission over the satellite an RF link degradation of 0.4 dB for 10-4,10-6, 10-7  
+and 10-8 relative to the modems IF loop back performance is needed to account for 
+possible degradation to phase noise, imperfect amplitude/group delay  equalisation,  
+adjacent channel interference (ACI) and transponder non-linearities. At a BER of 10-10, 
+the IF-RF degradation for rate 3/4 FEC is 0.7 dB, for rate 1/2 FEC , 0.9 dB and for 2/3,  
+0.6 dB. 
+ 
+ii) 
+Without RS Coding: 
+ 
+ 
+Due to the steepness of the BER versus Eb/No response curve when using the Reed-
+Solomon outer coding, an inordinately long period of time is necessary to detect a 
+sufficient number of errors to determine the BER performance with  reasonable degree 
+of confidence at even moderate Eb/No values. Assuming that the Reed-Solomon outer 
+codec is functioning, determining the BER performance of the codec without the Reed-
+Solomon outer coding, i.e., the performance of the inner code only, would enable users 
+to quickly determine whether or not the modem is functioning correctly. As a guideline, 
+the following BER versus Eb/No performance (IF loopback) is suggested. 
+  
+      Composite Data rate Eb/No (dB) 
+BER  better 
+than 
+Rate  
+1/2 (QPSK) 
+Rate  
+3/4 (QPSK) 
+Rate  
+2/3 (TCM) 
+10-3 
+4.2 dB 
+ 5.3 dB 
+ 6.3 dB 
+10-4 
+ 
+ 
+ 7.3 dB 
+10-5 
+ 
+ 
+ 8.2 dB 
+10-6 
+6.1 dB 
+ 7.6 dB 
+ 9.0 dB 
+10-7 
+6.7 dB 
+ 8.3 dB 
+ 9.8 dB 
+10-8 
+7.2 dB 
+ 8.8 dB 
+10.4 dB 
+10-10 
+9.0 dB 
+10.3 dB 
+ 
+    
+
+=====PAGE 13=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 1.2.6  Buffers 
+ 
+a)  Minimum Buffer Size   : 1.5 ms to 19.5 ms as per table below 
+  
+Satellite orbit 
+inclination 
+(degrees) 
+ 
+Buffer capacity (ms) for various circuit 
+configurations 
+ 
+Case 1 
+ 
+Case 2 
+ 
+Case 3 
+ 
+Case 4 
+ 
+0.1(Nominal) 
+0.5 
+1.0 
+1.5 
+2.0 
+2.5 
+3.0 
+1.5 
+2.5 
+3.9 
+5.5 
+6.9 
+8.5 
+9.9 
+2.4 
+4.4 
+7.4 
+10.4 
+13.2 
+16.4 
+19.2 
+2.7 
+4.7 
+7.7 
+10.7 
+13.5 
+16.7 
+19.5 
+ 
+No buffer 
+required 
+ 
+Notes: 
+Case 1 :  Digital network at both ends. 
+Case 2 :  One end of the link remotely timed from other end. 
+Case 3 :  Recovered timing from one station is used for transmitting to   
+               another  network 
+                      Case 4:   No synchronous digital network at either end and no buffer   
+                                     requirements 
+ 
+     b)  Terrestrial Frame length : 125 s to 2 ms 
+ 
+     c)  Slip Size               
+  :  Multiples of terrestrial frame length. 
+ 
+     d)  Control    
+ 
+ :  From front panel      
+ 
+     e)  Indicators              
+  :  To be viewed from front panel & remote.   
+ 
+1.2.7 Timing Accuracy           :  2.048 Mbps/2 MHz digital signal in both directions of    
+transmissions shall be derived in one of the following ways: 
+                                                    
+a) From a clock with an accuracy of 1x10-11  
+ 
+b) From an incoming clock received                                                      
+from a remote earth station by satellite.  
+                                                           In this case the remote earth station must                                       
+                                                           derive  timing by method (a) above  
+ 
+                                                     c)  In cases where there is no synchronous        
+                                                          digital network at either end, but the channels 
+                                                          are converted to analog voice circuits, the 
+                                                          internal clock of the PCM MUX equipment 
+                                                          is of an accuracy of about 50x10-6. 
+ 
+
+=====PAGE 14=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+                                                     d) As an emergency backup a local clock with       
+                                                         a long term stability of atleast 1x10-5 per month 
+                                                         shall be used. 
+ 
+1.2.8  Terrestrial Interfaces: 
+            
+         N*64 kbps (N=1 to 32)    :  ITU-T Recommendation G.703 
+      120 ohms symmetric pair     
+ 
+         2.048 Mbps 
+ 
+   :  ITU-T Recommendation G.703 
+                                                    120 ohms symmetric pair     
+    
+         8.448 Mbps 
+ 
+   :  ITU-T Recommendation G.703 
+                                                    75 ohms BNC, unbalanced   
+ 
+        34.368 Mbps 
+ 
+ :  ITU-T Recommendation G.703 
+                                                   75 ohms BNC, unbalanced   
+ 
+SNMP V.2  
+ 
+:  for NMS 
+ 
+1.2.9  Redundancy 
+ 
+ 
+          
+ 
+Switchover Modes  
+ 
+: Independent for receive/ transmit chains 
+             
+ 
+ 
+ 
+  Automatic with lockout override 
+                                  
+              Manual 
+                                  
+              Remote or Local 
+ 
+              Monitoring                 
+: Standby modem continually sampled for status 
+ 
+   Display                       
+: Front panel display of relevant status   
+      
+              Remote Mode             
+: Via serial link 
+ 
+              Power Supplies            
+: Redundant 
+         Multitransponder          
+: Optional for upto four transponders with 
+              operation                    
+   transponder hopping switch. 
+              
+    
+ 
+ 
+1.3  Monitoring & Controls 
+ 
+1.3.1 Common to all modules : Lamp test (Lights all indicators) 
+ 
+                                                              Reset (Causes full restart of  microprocessor). 
+                                                
+1.3.2 Modulator  
+ 
+        
+: TX Channel Frequency 
+  TX Power Level continuous in steps of 0.5 dB 
+ Differential Encoder, ON/OFF 
+ Scrambler, ON/OFF 
+ Baseband loopback, ON/OFF 
+
+=====PAGE 15=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+TX Carrier, ON/OFF 
+   
+Force switch over in 1:1 redundancy mode,  
+Normal/Force 
+  Transmit CW  (Continuous Wave: no phase 
+transitions),  
+ON/OFF 
+1/0 Sequence Generator, Normal/Sequence 
+(211-1) Sequence Generator, Normal/PN Sequence 
+ 
+1.3.3 Demodulator            
+ 
+:   RX channel frequency 
+ 
+                                     
+  
+    IF loopback,ON/OFF 
+ 
+                                     
+   
+    Baseband loopback, ON/OFF 
+                                  
+  1.3.4 Decoder/Buffer Module 
+:    
+    Plesiochronous Buffer Bypass, ON/OFF  
+ 
+                                                                Plesiochronous Buffer  Frame Length  
+ 
+    Plesiochronous Buffer Re-center    
+                                                    
+    Differential decoder, ON/OFF 
+ 
+                                                                FEC decoder rate, 1/2 or 3/4 for QPSK-IDR 
+    and 2/3 for TCM-IDR 
+ 
+                                                                Descrambler, ON/OFF 
+                                                               (Above functions to be set from modem front panel). 
+ 
+ 1.3.5 Engineering Service 
+:  Voice 
+              Channel                                    Single/Multidestination (optional) 
+                                                               Duplex Mode 
+ 
+1.4 Indicators  
+ 
+1.4.1 Common to all modules 
+ 
+     Power ON/OFF 
+ 
+ 
+:  Signals all voltages present 
+ 
+     Online                     
+ 
+:  Signifies active unit for redundant operation  
+ 
+     Local                    
+ 
+:  Manual control 
+ 
+     Loopback                  
+ 
+:  Test mode indication/warning 
+ 
+ 1.4.2 Demodulator 
+ 
+     Dem Lock                  
+ 
+:  Demod loops are locked and tracking       
+                      
+     Carrier Lock              
+ 
+:  Carrier loop is locked 
+
+=====PAGE 16=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+     BTL Lock                     
+ 
+:  Bit timing loop is locked 
+ 
+     Synth Lock                
+ 
+:  Receive synthesizer locked 
+ 
+1.4.3 Modulator 
+ 
+     Carrier On  
+ 
+ 
+:  Modulator healthy and transmitting 
+ 
+     Clk Gen Lock            
+ 
+:  Clock Generator loops locked 
+ 
+     TX Syn Lock               
+ 
+:  TX Synthesizers locked  
+ 
+1.4.4 Decoder/Buffer Module 
+ 
+     DBM Syn                 
+ 
+:  Decoder in sync  
+ 
+     Decoder Syn               
+ 
+:  Viterbi decoder synchronised 
+ 
+     Buffer Center             
+ 
+:  Buffer re-center occurred 
+ 
+1.4.5 Upconverter  
+ 
+:  Power on indicator 
+ 
+1.4.6 Down converter 
+ 
+:   Power on indicator 
+ 
+1.5  Alarms : 
+ 
+1.5.1 Common to all modules: 
+     
+Fault                     
+ 
+:  Signals a module fault 
+  
+1.5.2  Demodulator: 
+     
+ IFL Fault                  
+:  Loss of IF input  
+     
+1.5.3 Modulator: 
+       
+Input Loss                  
+:  Input data from interface lost 
+ 
+1.5.4  Decoder/Buffer Module: 
+      
+Frame Slip                 
+:  Buffer over/under flow occurred 
+      
+T1 Alarm                   
+:  Interface module generated alarm 
+ 
+1.5.5 Upconverter 
+ 
+ 
+:  Summary fail alarm   
+ 
+1.5.6  Down converter 
+ 
+:  Summary fail alarm 
+ 
+1.6 Engineering Service Channel (ESC) : 
+ 
+a)  Type     
+ 
+ 
+:  Digital 
+ 
+b)  Overhead Rate  
+ 
+:  96 kbps for data rate at 2.048 Mbps and above. 
+ 
+
+=====PAGE 17=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+c)  Capacity 
+ 
+ 
+:  Two channels of 32 kbps for voice & voice band  
+                                                          data; One channel of 8 kbps for data (RS-422  
+                                                          Interface)  and  Four alarms 
+ 
+    d)   Features 
+ 
+            :  Pass band of 0.3 to 3.4 kHz with calling facility                   
+   on  either buzzer or ringer with visual indication  
+   (with reset facility) and handset. Potential free  
+ contact for  extension of buzzer/ringer calling    
+ facility to a centralised place shall be provided.       
+ Contact points for extension of audio alarm shall        
+ also be provided. 
+ 
+   e)  Nominal 4W Trans/ 
+ 
+:    3 dBm preferable. Level adjustment facility to 
+        receive line up level 
+ 
+    be provided. The range of adjustment may be  
+ 
+        at monitoring points                       indicated. Suitable access for line up shall also 
+        (600 Ohms)  
+ 
+ 
+    be provided. 
+ 
+   f)   V.F. response 
+ 
+ 
+:   As per ITU-T Recommendation G-712. 
+ 
+      g)   Clock Rate                  
+:  1 kHz (Derived from incoming data stream 
+normally). 
+ 
+   h)   Backup clock             
+ 
+:  1 kHz with 1x10-5 per month. 
+                                     
+ 
+    (in case of failure of normal clock.) 
+  
+  i)   Frame length              
+ 
+:  125 s         
+ 
+1.7   MTBF:  50,000 hours minimum 
+ 
+1.8   MARKING: Equipment shall be marked suitably as under 
+a. Name of manufacturer 
+b Year of manufacturing 
+c  Frequency of operation 
+ 
+ 
+
+=====PAGE 18=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+PART  2 
+ 
+ 
+GENERAL REQUIREMENTS 
+GR No. GR/IDR-01/04. NOV2006 
+
+=====PAGE 19=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+2.0    GENERAL REQUIREMENTS  
+ 
+2.1     Engineering requirements 
+2.1.1 The joints in the equipment shall have protection as per BIS standard IS 12063 {1987}” 
+Classification of degree of protection provided by enclosures of the electrical 
+equipment” {equivalent to IEC-529} to meet at least the protection level of IP-65. 
+ 
+2.1.2 The equipment should follow proper construction practice to minimise unintended 
+radiations due to leakage from any gap or monitoring points. All unused if/rf ports 
+and monitoring points should be terminated. The power flux density shall not exceed 
+1 mW/cm2 at a distance of 2.5 cms. 
+2.1.3   The equipment shall adopt state-of-the-art technology.  
+2.1.4   The equipment shall be of compact and composite construction and lightweight.  The 
+actual dimensions and weight shall be furnished by the manufacturer. 
+2.1.5  All connectors shall be reliable and of standard type to ensure for over 500 failure-free 
+mating operations under the environmental conditions specified. 
+ 
+2.1.6   All connectors and the cable used shall be of low loss type and suitably shielded. 
+ 
+2.1.7   The equipment shall be housed in standard 19” ( 600 mm) rack or slim rack with a 
+maximum height of 2250 mm and with front access. For outdoor equipment (or part of 
+equipment), construction practice shall be followed as specified. 
+ 
+2.1.8  The equipment shall preferably work on natural cooling. However, the use of in-built DC 
+operated fans is permitted in some equipment. An alarm shall be extended to indicate 
+failure of fan/fans. MTBF of each fan shall be more than 50,000 hours. 
+ 
+2.1.9 
+The supervisory indications and other control switches shall be provided at convenient 
+locations on the bay preferably at a height around 1500 mm for ease of maintenance. 
+ 
+2.1.10 
+The plug-in units shall be hot swappable to allow their removal/insertion while the 
+equipment is in energized condition. 
+ 
+2.1.11 
+The mechanical design and construction of each/unit shall be inherently robust and rigid 
+under all conditions of operation, adjustment, replacement, storage and transport and 
+conforming to para 12 of BSNL QA document No. QM-333 {latest issue} “Specification 
+for environmental testing of electronic equipments for transmission and switching use”. 
+ 
+2.1.12 
+Each sub-assembly shall be clearly marked with schematic reference to show its function, 
+so that it is identifiable from the layout diagram in the handbook. 
+ 
+2.1.13 
+Each terminal block and individual tags shall be numbered suitably with clear identifying 
+code and shall correspond to the associated wiring drawings. 
+ 
+2.1.14 
+All controls, switches, indicators etc. shall be clearly marked to show their circuit 
+designation and functions. 
+ 
+
+=====PAGE 20=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+2.1.15   Important Do’s and Don’ts about the operation of the equipment shall be clearly 
+indicated at a convenient place on the equipment. 
+ 
+2.2 
+OPERATIONAL REQUIREMENTS 
+ 
+2.2.1 The manufacturer shall guarantee the satisfactory performance of the equipment               
+            without any degradation in performance up to at an altitude upto 3,600 meters. 
+ 
+2.2.2 The equipment should be able to work without any degradation in performance in 
+saline atmosphere near coastal areas and should be protected against corrosion. 
+ 
+2.2.3 Visual indication to show power ON/OFF status shall be provided.  
+ 
+2.2.4   Suitable visual indications shall be provided. (It is suggested that green colour for healthy 
+and red colour for unhealthy conditions may be provided. Some other colour may be used 
+for non urgent alarms). 
+ 
+2.2.5 The software/hardware in equipment shall not pose any problem due to changes in     
+            date and time caused by events such as changeover leap year etc. in the normal 
+functioning of the equipment. 
+ 
+2.2.6 The equipment shall be provided with the proper dummy load connecting facilities, 
+cooling arrangements, input/output, isolation /monitoring ports, as required.  
+ 
+2.3 
+QUALITY REQUIREMENTS 
+ 
+2.3.1 The manufacturer shall furnish the MTBF value.  MTBF shall meet the values 
+specified in GR.  The calculations shall be based on the guidelines in either BSNL QA 
+document no. QM-115 {1997} "Reliability Methods and Predictions" or any other 
+international standard.  
+2.3.2  The equipment shall be manufactured in accordance with International quality 
+management system ISO 9001:2000 for which the manufacturer should be duly 
+accredited. A quality plan describing the quality assurance system followed by the 
+manufacturer would be required to be submitted. 
+And 
+The equipment shall be manufactured as per the latest BSNL QA Guidelines indicated 
+in Quality Manuals QM 118 {Quality and Reliability in product Design}, QM 205 
+{Guidelines for Standard of Workmanship for Printed Boards}, QM 206 {Guidelines 
+for Standard of Workmanship for Printed Board Assemblies}, QM 210 {Guidelines 
+for Standard of Workmanship for Surface Mounted Devices} and QM 301 
+{Transmission Equipment General Documentation}.The supplier shall furnish a 
+certification from the manufacturer to this effect, which shall be verified at the time of 
+technical specifications evaluation. 
+2.4       ENVIRONMENTAL REQUIREMENTS FOR EQUIPMENT 
+2.4.1  The equipment shall conform to the requirements for the Category B2 of the 
+Environment Categories specified in BSNL QA document QM-333 {1990} 
+"Specification for environmental testing of electronic equipments for transmission 
+
+=====PAGE 21=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+and switching use" for operation, transportation and storage, including vibration and 
+corrosion (salt mist). 
+ 
+2.5      MAINTENANCE REQUIREMENTS 
+ 
+2.5.1  Maintenance philosophy is to replace faulty units/subsystems after quick on-line 
+analysis through monitoring sockets, alarm indications and Built-in Test Equipment. 
+The actual repair will be undertaken at centralised repair centers. The corrective 
+measures at site shall involve replacement of faulty units/sub-systems. 
+ 
+2.5.2 The equipment shall have easy access for servicing and maintenance. 
+ 
+2.5.3 Suitable alarms shall be provided for identification of faults in the system and faulty units. 
+2.5.4 Suitable provision shall be made for extension of summary alarms.  
+ 
+2.5.5 Ratings and types of fuses used are to be indicated  
+ 
+2.6      POWER SUPPLY 
+ 
+2.6.1   The equipments shall be fed from the station power plant. The equipment shall meet 
+the following requirements in respect of the power supply:- 
+ 
+2.6.2 Nominal power supply is -48Volts DC, with a variation over the range -44Volts to -
+57V. The equipment should operate over this range without any degradation in 
+performance. 
+ 
+2.6.3 The equipment shall be protected in case of voltage variation beyond the above 
+specified range and also against input reverse polarity. The manufacturer shall furnish 
+the value of guaranteed input voltage upto which no irreversible damage to the 
+equipment will occur. 
+ 
+2.6.4 The actual power consumption shall be furnished by the manufacturer. 
+ 
+2.6.5 The derived DC voltages in the equipment shall have protection against over voltages, 
+short circuit and overload. 
+ 
+2.6.6 The equipment shall have the option of operating from two independent sources of 
+input power supply. 
+ 
+2.6.7 The equipment requiring AC mains shall operate from AC power supply without any 
+degradation in the performance 
+Nominal AC voltage for Single Phase shall be 230 V with variation of -15% to + 
+10%, at 50 ± 2 Hz. 
+ Nominal AC voltage for Three Phase shall be 415 V with variation of -15% to + 
+10%, at 50 ± 2 Hz. 
+ 
+2.7        ACCESSORIES 
+ 
+2.7.1  
+The supplier shall provide one complete set of: 
+
+=====PAGE 22=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+a)  All the necessary interfaces, connectors, connecting cables and accessories 
+required for satisfactory and convenient operation of the equipment. Types of 
+connectors, adopters to be used and the accessories of the approved quality shall be 
+clearly indicated in the operating manuals which should be in conformity with the 
+detailed list in the GR. 
+a) Software and the arrangements to load the software at site. 
+ 
+2.7.2 
+Special tools, extender boards, extender cables and accessories essential for 
+installation, operation and maintenance of the equipment shall be clearly indicated 
+and supplied along with the equipment. 
+2.7.3 
+Special tools, extender boards, extender cables and accessories essential for repair 
+of the equipment shall be clearly indicated and supplied in case the same are 
+ordered. 
+ 
+2.8       DOCUMENTATION 
+ 
+2.8.1    TECHNICAL LITERATURE 
+ 
+2.8.1.1  Technical literature in English or Hindi with complete layout, detailed block 
+schematic and circuit diagram of various assemblies with test voltages/waveforms at 
+different test points of the units shall be provided.  All aspects of installation, 
+operation, maintenance and repair shall be covered in the manuals. The soft copy as 
+well as hard copy of the manuals shall also be provided. The manuals shall include 
+the following manuals. 
+ 
+2.8.2    INSTALLATION, OPERATION AND MAINTENANCE MANUAL  
+a. Safety measures to be observed in handling the equipment; 
+b. Precautions for installation, operation and maintenance; 
+c. Test jigs and fixtures required, and procedures for routine maintenance, 
+preventive maintenance, troubleshooting and subassembly replacement; 
+d. Illustration of internal and external mechanical parts. 
+e. Detailed description about the operation of the software used in the equipment 
+including its installation, loading, debugging, etc. 
+ 
+2.8.3    REPAIR MANUAL 
+a.  List of replaceable parts used, including their sources and the approving 
+authority; 
+b.  Detailed ordering information for all the replaceable parts shall be listed in the 
+manual  to facilitate reordering of spares as and when required;  
+c. Procedure with flowchart for troubleshooting and subassembly replacement 
+shall be provided. Test fixtures and accessories required for repair shall also be 
+indicated. Systematic troubleshooting charts (fault-tree) shall be given for the 
+probable faults with their remedial actions. 
+ 
+2.9      PROTECTION REQUIREMENTS 
+ 
+2.9.1   The equipment shall have a terminal for grounding the rack. 
+ 
+2.9.2  Protection against short circuit/open circuit in the accessible points shall be provided. 
+ 
+
+=====PAGE 23=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+2.9.3   All switches/controls on front panel shall have suitable safeguards against accidental 
+operation. 
+ 
+2.9.4 The equipment shall be adequately safeguarded to prevent entry of dust, insects and 
+lizards. 
+ 
+2.10   SAFETY REQUIREMENTS 
+ 
+2.10.1 The operating personnel should be protected against shock hazards as per IS 8437 
+{1993} “Guide on the effects of current passing through the human body” [equivalent 
+to IEC publication 60479-1{1984}]. 
+ 
+2.10.2 The equipment shall conform to IS 13252 {2003} “Safety of information technology 
+equipment including electrical business equipment” [equivalent to IEC publication 
+60950 {2001}] and IS 10437 {1986} “Safety requirements of radio transmitting 
+equipments” [equivalent to IEC publication 60215]. 
+ 
+2.11  ELECTROMAGNETIC COMPATIBILITY (EMC)  
+ 
+2.11.1 The equipment shall conform to the EMC requirements as per the following standards 
+and limits indicated therein.  A test certificate and test report shall be furnished from 
+test agency which should be an accredited one, and details of accreditation shall be 
+submitted. Following test results should be furnished:- 
+2.11.2 Conducted and radiated emissions:- To comply with Class A of CISPR 22 {2003} 
+"Limits and  methods  of measurement  of radio disturbance characteristics of 
+Information Technology Equipments"; 
+ 
+2.11.3 Electrostatic discharge:- To comply with IEC 61000-4-2 {2001} "Testing and 
+measurement techniques of Electrostatic discharge immunity test" under following 
+test levels: 
+              a. Contact discharge level 2 {± 4 kV}; 
+               b. Air discharge level 3 {± 8 kV}; 
+ 
+2.11.4 Fast transients common mode (burst):- To comply with IEC 61000-4-4 {1995 with 
+Amendment No.1 (2000) and Amendment No.2 (2001)} "Testing and measurement 
+techniques of electrical fast transients/burst immunity test" under Level 2 {1 kV for 
+DC power lines; 1 kV for signal control lines}; 
+ 
+ 
+2.11.5 Immunity:- IEC 61000-4-3 {2002} "Radiated RF Electromagnetic Field  Immunity 
+test" under Test level 2  {test  field strength of 3 V/m}for general purposes in 
+frequency range 80 MHz to 1000 MHz and under test level 3 (10 V/m) for protection 
+against digital radio telephones in frequency ranges 800 MHz to 960 MHz and 1.4 
+GHz to 2.0 GHz. 
+ 
+2.11.6 Surges line to earth coupling and line to line coupling:- To comply with IEC 61000-4-
+5 {2001}"Test & Measurement techniques for  Surge immunity  tests" under test 
+levels of 0.5 kV for line to line coupling  and 1 kV for line to earth coupling; 
+ 
+2.11.7 Radio frequency common mode:- To comply with IEC 61000-4-6 {2001} "Immunity 
+to conducted disturbances, induced by radio frequency fields" under the test level 2 {3 
+
+=====PAGE 24=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+V r.m.s.}; Clamp injection method for DC lines and Signal Control lines. 
+ 
+2.11.8 For tests for checking compliance to above EMC requirements, the method of 
+measurements shall be in accordance with IEC/CISPR and TEC standard no. 
+SD/EMI-02/02.SEP.2001 (with all amendments) and the references mentioned 
+therein. Alternatively, corresponding relevant Euro Norms of the above IEC/CISPR 
+standards are also acceptable subject to the condition that above mentioned frequency 
+ranges and test levels are met as per TEC standard no. SD/EMI-02/02 SEP.2001 (with 
+all amendments). The details of IEC/CISPR and corresponding Euro Norms are as 
+under 
+ 
+IEC/CISPR 
+ Euro Norm 
+CISPR 22 
+ EN 55022 
+IEC 61000-4-2  EN 61000-4-2 
+IEC 61000-4-3  EN 61000-4-3 
+IEC 61000-4-4  EN 61000-4-4 
+IEC 61000-4-5  EN 61000-4-5 
+IEC 61000-4-6  EN 61000-4-6 
+
+=====PAGE 25=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+TABLE-1 
+ 
+i) REED-SOLOMON CODES FOR QPSK-IDR 
+ 
+Information 
+Rate (kb/s) 
+RS Code 
+(n, k, t)1 
+Bandwidth 
+Expansion 
+[(n/k)-1] 
+Inter 
+leaving 
+depth 
+Maximum2 
+RS Codec 
+delay (ms) 
+64 
+(126, 112, 7) 
+0.125 
+4 
+115 
+256 
+(126, 112, 7) 
+0.125 
+4 
+029 
+384 
+(126, 112, 7) 
+0.125 
+4 
+019 
+704 
+(126, 112, 7) 
+0.125 
+4 
+010 
+2048 
+(219, 201, 9) 
+0.0896 
+4 
+007 
+8448 
+(194, 178, 8) 
+0.0899 
+4 
+0<2 
+34368 
+(208, 192, 8) 
+0.0833 
+4 
+0<2 
+ 
+                    
+ii)  REED-SOLOMON CODE FOR TCM-IDR 
+ 
+Type of 
+Service 
+Recommende
+d information 
+Rates (kbit/s) 
+RS Code 
+(n,k) 1  
+Bandwidth 
+Expansion 
+[(n/k)-1] 
+Inter-
+leaving 
+Depth (Id) 
+Maximum2 
+RS Codec 
+Delay (ms) 
+Small 
+TCM/IDR  
+512 
+1024 
+(219,201) 
+0.0896 
+4 
+19 
+10 
+TCM/IDR 
+(With 96 
+kbit/s 
+overhead) 
+2048 
+8448 
+34368 
+ 
+ 
+(219,201) 
+ 
+0.0896 
+ 
+8 
+8 
+2 
+<1 
+ 
+ 
+Notes:    1.  n = code length, k = information symbols, and t = symbol error  correcting  
+                   capability. 
+2. Design objective 
+TABLE - 2 
+ 
+For E3 IDR, the bandwidth occupied for Rate ½  QPSK (with and without RS coding) 
+exceeds 36MHz, hence, for 34.368 Mbps, only Rate ¾ QPSK and Rate 2/3 8PSK options 
+should be mentioned. Info rate: 34.368 + 0.096 = 34.464 Mbps. 
+ 
+Scheme 
+Transmission 
+rate 
+(Mbps) 
+Symbol rate (Mbps) 
+Occupied bandwidth 
+MHz (alpha = 0.35) 
+½  QPSK 
+68.928 
+34.464 
+46.53 
+¾ QPSK 
+45.952 
+22.976 
+31.02 
+2/3 TCM-8PSK 
+51.696 
+17.232 
+23.26 
+RS (208, 192) ½ 
+QPSK 
+74.672 
+37.336 
+50.40 
+RS (208, 192) ¾ 
+QPSK 
+49.781 
+24.89 
+33.60 
+RS (219/201) 2/3  
+TCM-8PSK 
+56.325 
+18.775 
+25.35 
+ 
+ 
+
+=====PAGE 26=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+TABLE – 3 
+ 
+Bandwidth Calculations for IDR carriers 
+ 
+Data Rate in 
+Mbps 
+Scheme 
+Transmission 
+Rate in Mbps 
+Symbol Rate in 
+Mbps 
+Occupied 
+Bandwidth MHz 
+(alpha = 0.35) 
+2.048 + 
+96 Kbps 
+ESC data 
+1/2QPSK 
+4.288 
+2.144 
+2.8944 
+RS (208,192)  
+1/2 QPSK 
+4.645 
+2.3225 
+3.135 
+3/4QPSK 
+2.859 
+1.4295 
+1.9299 
+RS (208,192)  
+3/4 QPSK 
+3.096 
+1.548 
+2.089 
+2/3 TCM-8PSK 
+3.126 
+1.072 
+1.447 
+RS (219/201)  
+2/3 TCM- 8PSK 
+3.504 
+1.168 
+1.577 
+ 
+ 
+ 
+ 
+ 
+8.448 + 96 
+Kbps 
+ESC data 
+1/2QPSK 
+17.088 
+8.544 
+11.534 
+RS (208,192)  
+1/2 QPSK 
+18.512 
+9.256 
+12.496 
+3/4QPSK 
+11.392 
+5.696 
+7.690 
+RS (208,192) 
+ 3/4 QPSK 
+12.341 
+6.17 
+8.33 
+2/3 TCM-8PSK 
+12.816 
+4.272 
+5.767 
+RS (219/201)  
+2/3 TCM- 8PSK 
+13.963 
+4.654 
+6.283 
+ 
+ 
+ 
+ 
+ 
+34.368+96 
+Kbps 
+ESC data 
+1/2QPSK 
+68.928 
+34.914 
+47.134 
+RS (208,192)  
+1/2 QPSK 
+74.672 
+37.336 
+50.404 
+3/4QPSK 
+45.952 
+22.976 
+31.018 
+RS (208,192)  
+3/4 QPSK 
+49.781 
+24.890 
+33.602 
+2/3 TCM-8PSK 
+51.696 
+17.232 
+23.26 
+RS (219/201)  
+2/3 TCM- 8PSK 
+56.325 
+18.775 
+25.34 
+STM1 CARRIER 
+155.52MBPS 
+8 PSK 
+O.9 TPC 
+172.8 
+57.6 
+70.272(1.22 
+TIMES SR) 
+ 
+NOTE :  
+ 
+1. Transmission Rate = Data Rate * Inverse of FEC Rate 
+2. T.R with RS Coding = Value at 3 * 208/192  for QPSK , 
+    Value at 3 * 219/201 for TCM 8PSK 
+3. Symbol Rate= Transmission Rate/2 for QPSK. 
+                        Transmission Rate/3 for TCM 8PSK 
+4. Spreading factor of 1.2 times the symbol rate is used for filters. 
+5. A typical value of 0.15 times symbol rate is used as guard band.. 
+
+=====PAGE 27=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+6. Occupied Bandwidth is 1.35 times Symbol Rate 
+7. The bandwidth of the carrier at the -3.8 dB points is approx the same as the symbol 
+rate. 
+8. The bandwidth of the carrier at the -12 dB points is approx 1.28 times the symbol rate. 
+The occupied bandwidth, i.e. spacing between carriers is approx 1.35 times the 
+symbol rate 
+9. The allocated bandwidth of the carrier at the –40 dB points is approx 1.4 times of the 
+symbol Rate 
+ 
+No. of E1 carriers per 36 MHz Transponder  in different modulation schemes 
+ 
+ 
+QPSK 
+RATE ½ 
+RS ON 
+QPSK 
+RATE1/2 
+RS OFF 
+QPSK 
+RATE3/4 
+RS ON 
+QPSK 
+RATE3/4 
+RS OFF 
+8 PSK 
+RATE 2/3 
+RS ON 
+8 PSK 
+RATE 2/3 
+RS OFF 
+Eb/N0 in dB 
+@ 1E-6 BER 
+4.1 
+6.1 
+5.6 
+7.35 
+6 
+8.6 
+Power 
+limited 
+40 
+24 
+26 
+16 
+24 
+12 
+Bandwidth 
+limited 
+10 
+12 
+16 
+18 
+22 
+24 
+Actual No. 
+of carriers 
+10 
+12 
+16 
+16 
+22 
+12 
+ 
+Overhead of 96 kbps added to the basic rate for all data rates.  Link calculations done for C 
+band transponder EIRP 34 dBW, G/T –5 dB/K 
+ 
+No. of  carriers per 36MHz transponder in different modulation schemes 
+(Bandwidth limited case) 
+ 
+ 
+QPSK 
+RATE ½ 
+RS ON 
+QPSK 
+RATE 1/2 
+RS OFF 
+QPSK 
+RATE 3/4 
+RS ON 
+QPSK 
+RATE 3/4 
+RS OFF 
+8 PSK 
+RATE 2/3 
+RS ON 
+8 PSK 
+RATE 2/3 
+RS OFF 
+ E1 
+10 
+12 
+16 
+18 
+22 
+24 
+ E2 
+2 
+3 
+4 
+4 
+5 
+6 
+ E3 
+0 
+0 
+1 
+1 
+1 
+1 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+   
+ 
+ 
+ 
+
+=====PAGE 28=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Annex for the reference of the purchaser 
+(To form part of the GR) 
+ 
+6.1 The clauses contained in this Annex are for the reference of the purchaser only and 
+these clauses shall not be tested during Type Approval testing. 
+ 
+a. As and when software bugs are found/determined, the manufacturer shall provide 
+patches/firmware replacement if involved as mutually agreed between purchaser 
+of equipment and supplier. Modified documentation wherever applicable shall 
+also be supplied. 
+b. The manufacturer/supplier shall furnish the list of recommended spares. 
+c. The supplier shall have maintenance/repair facility in India. 
+d.   The purchaser shall have the option to call for the equipment which shall work 
+upto an altitude of 3600 meters without any degradation in the performance”. 
+ 
+
+=====PAGE 29=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+   ABBREVIATIONS 
+ 
+ 
+ADPCM 
+ 
+ 
+ Adaptive Differential Pulse Code Modulation 
+ 
+AM  
+ 
+ 
+ 
+Amplitude modulation 
+ 
+BER  
+ 
+ 
+ Bit Error Ratio 
+BNC  
+ 
+ 
+ Bayonet nut coupling 
+ 
+BSNL  
+ 
+ 
+ Bharat Sanchar Nigam Limited 
+           cm 
+ 
+ 
+ 
+ centimeter 
+ 
+C 
+ 
+ 
+ 
+ degree Celsius 
+      
+CISPR 
+ 
+ 
+ International Special Committee on Radio                                   
+ 
+ 
+ 
+ 
+ Interference  
+DC 
+ 
+ 
+ 
+ Direct current 
+dB        
+ 
+  
+ decibel 
+dBc 
+ 
+ 
+ 
+ decibels referenced  to the carrier level 
+DCME 
+ 
+ 
+ Digital  circuit multiplication equipment 
+ 
+dBm                  
+ 
+ decibels referenced  to a milli Watt 
+ 
+Eb/No  
+ 
+ 
+ Energy per bit/Noise spectral density  
+
+=====PAGE 30=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+EMC    
+ 
+ 
+ Electromagnetic Compatibility        
+ 
+EMI  
+ 
+ 
+ Electromagnetic Interference 
+ 
+ESC 
+ 
+ 
+ 
+ Engineering Service Channel 
+FEC  
+ 
+ 
+ Forward Error Correction 
+GHz     
+ 
+ 
+ Giga Hertz 
+   
+GR      
+ 
+ 
+ Generic Requirements 
+    
+Hz 
+ 
+ 
+ 
+ Hertz 
+           IEC 
+International Electrotechnical Commission 
+ 
+IESS  
+ 
+ 
+ Intelsat Earth Station Standards 
+IF 
+ 
+ 
+ 
+ Intermediate Frequency 
+IFL 
+ 
+ 
+ 
+ Intermediate Frequency loss 
+INSAT 
+ 
+ 
+ Indian Satellite System 
+IP 
+ 
+ 
+   
+ International protection : designator for degrees of 
+     
+protection in conjunction with two numerals  
+ 
+IS     
+ 
+ 
+    
+ Indian Standard                     
+     
+ISO     
+ 
+    
+ International Standardisation Organisation  
+ 
+ITU 
+   
+ 
+    
+ International Telecommunication Union 
+
+=====PAGE 31=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+kbps  
+ 
+    
+ kilo bits per second 
+kHz 
+                          
+ kilo Hertz 
+kV 
+ 
+ 
+   
+kilovolt 
+LO 
+ 
+ 
+ 
+Local oscillator  
+Mbps  
+ 
+  
+Mega bits per second 
+MHz  
+ 
+  
+Mega Hertz 
+mm  
+ 
+ 
+  
+milli meter 
+ms 
+ 
+ 
+  
+milli second 
+mW 
+ 
+ 
+ 
+milli watt 
+MTBF  
+ 
+  
+Mean Time Between Failure    
+ 
+MUX  
+ 
+  
+Multiplexing 
+ 
+ns 
+ 
+ 
+  
+nano second 
+p-p 
+ 
+ 
+  
+peak to peak 
+PCM  
+ 
+  
+Pulse Code Modulation 
+PM 
+ 
+ 
+ 
+Phase modulation 
+            PSK 
+ 
+ 
+ 
+Phase shift keying 
+QA      
+ 
+ 
+Quality Assurance 
+
+=====PAGE 32=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+QM     
+ 
+ 
+Quality Manual 
+  
+QPSK  
+ 
+ 
+Quadrature phase shift keying 
+REF   
+ 
+ 
+Reference 
+RF      
+ 
+ 
+Radio Frequency 
+            rms                                          Root mean square 
+ 
+RS 
+ 
+ 
+ 
+Reed-Solomon 
+ 
+RX 
+ 
+ 
+ 
+Receive 
+            SMA    
+ 
+ 
+Subminiature Adapter  
+ 
+TCM  
+ 
+ 
+Trellis-Coded Modulation 
+ 
+TX 
+ 
+ 
+ 
+Transmit 
+V 
+ 
+ 
+ 
+Volts 
+V/m 
+ 
+ 
+ 
+volts/meter 
+ 
+W 
+ 
+ 
+ 
+Watt 
+ 
+ s 
+ 
+ 
+ 
+micro second 
+ 

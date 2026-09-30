@@ -1,0 +1,9234 @@
+
+=====PAGE 1=====
+2004-04-28 
+IEEE C802.16d-04/74r3 
+ 
+ 
+   
+ 
+Project 
+IEEE 802.16 Broadband Wireless Access Working Group <http://ieee802.org/16> 
+Title 
+H-ARQ support corrections, for OFDMA PHY mode 
+Date 
+Submitted 
+2004-04-28 
+Source(s) 
+Panyuh Joo, Seungjoo Maeng, Jaeho Jeon, 
+Soonyoung Yoon, Jeong-Heon Kim, Jaehyok 
+Lee, Myungkwang Byun, Inseok Hwang, 
+Jaehee Cho, Jiho Jang, Sanghoon Sung, 
+Geunhwi Lim, Hong Sung Chang, Yong 
+Chang, JungWon Kim, TaeWon Kim 
+Samsung Electronics Co. Ltd. 
+Yigal Leiba, Zion Hadad, Yossi Segal,            
+Itzik Kitroser 
+Runcom Technologies 
+Choongil Yeh, Hyoungsoo Lim, Yuro Lee, 
+Jongee Oh, DongSeung Kwon,                
+ETRI                                     
+panyuh@samsung.com 
+yigall@runcom.co.il 
+lim@etri.re.kr 
+Re: 
+Sponsor re-circulation Ballot  
+Abstract 
+H-ARQ support corrections, for OFDMA PHY mode 
+Purpose 
+Adoption of proposed changes into P802.16-REVd/D4-2004 
+Notice 
+This document has been prepared to assist IEEE 802.16. It is offered as a basis for discussion and is not binding on 
+the contributing individual(s) or organization(s). The material in this document is subject to change in form and 
+content after further study. The contributor(s) reserve(s) the right to add, amend or withdraw material contained 
+herein. 
+Release 
+The contributor grants a free, irrevocable license to the IEEE to incorporate material contained in this contribution, 
+and any modifications thereof, in the creation of an IEEE Standards publication; to copyright in the IEEE’s name 
+any IEEE Standards publication even though it may include portions of this contribution; and at the IEEE’s sole 
+discretion to permit others to reproduce in whole or in part the resulting IEEE Standards publication. The 
+contributor also acknowledges and accepts that this contribution may be made public by IEEE 802.16. 
+Patent 
+Policy and 
+Procedures 
+The contributor is familiar with the IEEE 802.16 Patent Policy and Procedures (Version 1.0) 
+<http://ieee802.org/16/ipr/patents/policy.html>, including the statement “IEEE standards may include the known 
+use of patent(s), including patent applications, if there is technical justification in the opinion of the standards-
+developing committee and provided the IEEE receives assurance from the patent holder that it will license 
+applicants under reasonable terms and conditions for the purpose of implementing the standard.” 
+ 
+Early disclosure to the Working Group of patent information that might be relevant to the standard is essential to 
+reduce the possibility for delays in the development process and increase the likelihood that the draft publication 
+will be approved for publication. Please notify the Chair <mailto:r.b.marks@ieee.org > as early as possible, in 
+written or electronic form, of any patents (granted or under application) that may cover technology that is under 
+consideration by or has been approved by IEEE 802.16. The Chair will disclose this notification via the IEEE 
+802.16 web site <http://ieee802.org/16/ipr/patents/notices>. 
+
+=====PAGE 2=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+In page 529, line 47, correct section 8.4.9.2.3.1 as shown below: 
+ 
+8.4.9.2.3.1 CTC encoder 
+The Convolutional Turbo Code defined in this section is designed to enable support of hybrid ARQ (H-ARQ). H-ARQ 
+implementation is optional. The Convolutional Turbo Code encoder, including its constituent encoder, is depicted in Figure 240. It 
+uses a double binary Circular Recursive Systematic Convolutional code. The bits of the data to be encoded are alternately fed to A and 
+B, starting with the MSB of the first byte being fed to A. The encoder is fed by blocks of k bits or N couples (k = 2*N bits). For all the 
+frame sizes k is a multiple of 8 and N is a multiple of 4. Further N shall be limited to: 8 ≤ N/4 ≤1024. 
+ 
+The polynomials defining the connections are described in octal and symbol notations as follows: 
+— For the feedback branch: 0xB, equivalently 1+D+D3 (in symbolic notation) 
+— For the Y parity bit: 0xD, equivalently 1+D2 +D3 
+— For the W parity bit: 0x9, equivalently 1 +D3 
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+Figure 240—CTC encoder 
+ 
+First, the encoder (after initialization by the circulation state Sc 1 , see 8.4.9.2.3.3) is fed the sequence in the natural order (position 1) 
+with the incremental address i = 0 .. N–1. This first encoding is called SC1  encoding. Then the encoder (after initialization by the 
+circulation state Sc2 , see 8.4.9.2.3.3) is fed by the interleaved sequence (switch in position 2) with incremental address j = 0, … N–1. 
+This second encoding is called C2 encoding. 
+The order in which the encoded bit shall be fed into the interleaver (8.4.9.3) subpacket generation block (8.4.9.2.3.4) is: 
+ 
+ 
+N
+N
+N
+N
+N
+N
+W
+W
+W
+Y
+Y
+Y
+W
+W
+W
+Y
+Y
+Y
+B
+B
+B
+A
+A
+A
+W
+Y
+W
+Y
+B
+A
+2
+22
+21
+2
+22
+21
+1
+12
+11
+1
+12
+11
+2
+1
+2
+1
+2
+2
+1
+1
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+m
+m
+m
+m
+m
+m
+=
+ 
+ 
+1
+,2
+1,2
+0
+,2
+1
+,1
+1,1
+0,1
+1
+,2
+1,2
+0
+,2
+1
+,1
+1,1
+0
+,1
+1
+1
+0
+,0
+2
+1
+2
+1
+,...,
+,
+,
+,...,
+,
+,
+,...,
+,
+,
+,...,
+,
+,
+,
+,...,
+,
+,
+,
+,
+,
+−
+−
+−
+−
+−
+−
+=
+N
+N
+N
+N
+N
+N
+W
+W
+W
+W
+W
+W
+Y
+Y
+Y
+Y
+Y
+Y
+B
+A
+B
+A
+W
+W
+Y
+Y
+B
+A
+ 
+ 
+where M is the number of parity bits. 
+Note that the interleaver (8.4.9.3) shall not be used when using CTC 
+ 
+
+=====PAGE 3=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Table 284 gives the block sizes, code rates, channel efficiency, and code parameters for the different modulation and coding schemes. 
+As 64-QAM is optional, the codes for this modulation shall only be implemented if the modulation is implemented. 
+ 
+The encoding block size shall depend on the number of subchannels allocated and the modulation specified for the current 
+transmission. Concatenation of a number of subchannels shall be performed in order to make larger blocks of coding where it is 
+possible, with the limitation of not passing the largest block under the same coding rate (the block defined by 64-QAM modulation). 
+Table ccc specifies the concatenation of subchannels for different allocations and modulations. The concatenation rule shall not be 
+used when using H-ARQ. 
+For any modulation and FEC rate, given an allocation of n subchannels, we define the following parameters: 
+j 
+modulo
+n 
+ 
+ 
+m
+        
+          
+          
+          
+          
+          
+j)
+floor(n / 
+ 
+k 
+s
+subchannel
+ 
+allocated
+ 
+of
+number 
+ 
+n 
+rate
+ 
+FEC
+ 
+and
+ 
+modulation
+ 
+on the
+dependent 
+parameter 
+ 
+ j
+=
+=
+=
+=
+                     (aaa) 
+Table bbb shows the rules used for subchannel concatenation, 
+ 
+Table bbb—Subchannel concatenation rule for CTC 
+ 
+Number of 
+subchannels 
+Subchannels concatenated 
+n <= j 
+n≠7 
+1 block of n subchannels 
+n=7 
+1 block of 4 subchannels 
+1 block of 3 subchannels 
+n > j 
+(k-1) blocks of j subcahnnels 
+1 block of Lb1 subchannels 
+1 block of Lb2 subchannels 
+Where: 
+Lb1 = ceil((m+j)/2) 
+Lb2 = floor((m+j)/2) 
+If (Lb1 == 7) or (Lb2 == 7) 
+   Lb1 = Lb1 + 1; Lb2 = Lb2 – 1; 
+ 
+Table ccc—Encoding Subchannel concatenation for different allocations and modulations in CTC 
+ 
+
+=====PAGE 4=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Modulation 
+and rate 
+j 
+QPSK 1/2 
+j = 10 
+QPSK 3/4 
+j = 6 
+QAM16 1/2 
+j = 5 
+QAM16 3/4 
+j = 3 
+QAM64 1/2 
+j = 3 
+QAM64 2/3 
+j = 2 
+QAM64 3/4 
+j = 2 
+QAM64 5/6 
+j = 2 
+ 
+Table 284 gives the block sizes, code rates, channel efficiency, and code parameters for the different modulation and coding schemes. 
+As 64-QAM is optional, the codes for this modulation shall only be implemented if the modulation is implemented. Table hhh shows 
+code parameters for HARQ. 
+ 
+Table 256—Optimal CTC channel coding per modulation 
+Modulation 
+Data 
+block size 
+(bytes) 
+Encoded 
+data block 
+size (bytes) 
+Code 
+rate 
+N 
+P0 
+P1 
+P2 
+P3 
+QPSK 
+6 
+12 
+1/2 
+24 
+5 
+0 
+0 
+0 
+QPSK 
+12 
+24 
+1/2 
+48 
+13 
+24 
+0 
+24 
+QPSK 
+18 
+36 
+1/2 
+72 
+11 
+6 
+0 
+6 
+QPSK 
+24 
+48 
+1/2 
+96 
+7 
+48 
+24 
+72 
+QPSK 
+30 
+60 
+1/2 
+120 
+13 
+60 
+0 
+60 
+QPSK 
+36 
+72 
+1/2 
+144 
+17 
+74 
+72 
+2 
+QPSK 
+48 
+96 
+1/2 
+192 
+11 
+96 
+48 
+144 
+QPSK 
+54 
+108 
+1/2 
+216 
+13 
+108 
+0 
+108 
+QPSK 
+60 
+120 
+1/2 
+240 
+13 
+120 
+60 
+180 
+QPSK 
+9 
+12 
+3/4 
+36 
+11 
+18 
+0 
+18 
+QPSK 
+18 
+24 
+3/4 
+72 
+11 
+6 
+0 
+6 
+QPSK 
+27 
+36 
+3/4 
+108 
+11 
+54 
+56 
+2 
+QPSK 
+36 
+48 
+3/4 
+144 
+17 
+74 
+72 
+2 
+QPSK 
+45 
+60 
+3/4 
+180 
+11 
+90 
+0 
+90 
+QPSK 
+54 
+72 
+3/4 
+216 
+13 
+108 
+0 
+108 
+QAM16 
+12 
+24 
+1/2 
+48 
+13 
+24 
+0 
+24 
+QAM16 
+24 
+48 
+1/2 
+96 
+7 
+48 
+24 
+72 
+QAM16 
+36 
+72 
+1/2 
+144 
+17 
+74 
+72 
+2 
+QAM16 
+48 
+96 
+1/2 
+192 
+11 
+96 
+48 
+144 
+QAM16 
+60 
+120 
+1/2 
+240 
+13 
+120 
+60 
+180 
+QAM16 
+18 
+24 
+3/4 
+72 
+11 
+6 
+0 
+6 
+QAM16 
+36 
+48 
+3/4 
+144 
+17 
+74 
+72 
+2 
+QAM16 
+54 
+108 
+3/4 
+216 
+13 
+108 
+0 
+108 
+QAM64 
+18 
+36 
+1/2 
+72 
+11 
+6 
+0 
+6 
+QAM64 
+36 
+72 
+1/2 
+144 
+17 
+74 
+72 
+2 
+QAM64 
+54 
+108 
+1/2 
+216 
+13 
+108 
+0 
+108 
+QAM64 
+24 
+36 
+2/3 
+96 
+7 
+48 
+24 
+72 
+QAM64 
+48 
+72 
+2/3 
+192 
+11 
+96 
+48 
+144 
+QAM64 
+27 
+36 
+3/4 
+108 
+11 
+54 
+56 
+2 
+QAM64 
+54 
+72 
+3/4 
+216 
+13 
+108 
+0 
+108 
+QAM64 
+30 
+36 
+5/6 
+120 
+13 
+60 
+0 
+60 
+QAM64 
+60 
+72 
+5/6 
+240 
+13 
+120 
+60 
+180 
+ 
+
+=====PAGE 5=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Table hhh—Optimal CTC channel coding per modulation when supporting H-ARQ 
+Data 
+block size 
+(bytes) 
+N 
+P0 
+P1 
+P2 
+P3 
+6 
+24 
+5 
+0 
+0 
+0 
+12 
+48 
+13 
+24 
+0 
+24 
+18 
+72 
+11 
+6 
+0 
+6 
+24 
+96 
+7 
+48 
+24 
+72 
+36 
+144 
+17 
+74 
+72 
+2 
+48 
+192 
+11 
+96 
+48 
+144 
+60 
+240 
+13 
+120 
+60 
+180 
+120 
+480 
+13 
+240 
+120 
+360 
+240 
+960 
+13 
+480 
+240 
+720 
+360 
+1440 
+17 
+720 
+360 
+540 
+480 
+1920 
+17 
+960 
+480 
+1440 
+600 
+2400 
+17 
+1200
+600 
+1800 
+ 
+ 
+In page 532, line 40, correct the text as shown below: 
+ 
+8.4.9.2.3.4 Subpacket generation 
+Proposed FEC structure punctures the mother codeword to generate subpacket with various coding rates.  The subpacket is also used 
+as H-ARQ packet transmission. Figure bbb244 shows block diagram of subpacket generation. 1/3 CTC encoded codeword goes 
+through interleaving block and the puncturing is performed. Figure 245 shows block diagram of the interleaving block. The puncturing 
+is performed to select the consecutive interleaved bit sequence that starts at any point of whole codeword. For the first transmission, 
+the subpacket is generated to select the consecutive interleaved bit sequence that starts from the first bit of the systematic part of the 
+mother codeword. The length of the subpacket is chosen according to the needed coding rate reflecting the channel condition. The first 
+subpacket can also be used as a codeword with the needed coding rate for a burst where H-ARQ is not applied.  
+ 
+
+
+	
+
+
+
+	
+	
+
+
+	
+
+
+
+	
+	
+ 
+Figure 244— Block diagram of subpacket generation 
+ 
+
+
+
+
+A
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+
+B
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+1Y
+2
+Y
+1
+W
+2
+W
+ 
+Figure 245— Block diagram of the interleaving scheme 
+ 
+ 
+
+=====PAGE 6=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+8.4.9.2.3.4.1 Symbol Separation 
+All of the encoded symbols shall be demultiplexed into 6 subblocks denoted 
+1
+2
+1
+,
+,
+,
+,
+W
+Y
+Y
+B
+A
+and 
+2
+W . The encoder output symbols 
+shall be sequentially distributed into 6 subblocks with the first encoder output symbols going to the A subblock, the second encoder 
+output going to the B subblock, the third to the 
+1Y subblock, the fourth to the 
+2
+Y subblock, the fifth to the 
+1
+W subblock, the sixth to 
+the 
+2
+W subblock, etc.   
+ 
+8.4.9.2.3.4.2 Subblock Interleaving 
+The six subblocks shall be interleaved separately. The interleaving is performed by the unit of symbol. The sequence of interleaver 
+output symbols for each subblock shall be generated by the procedure described below. The entire subblock of symbols  to be 
+interleaved is written into an array at addresses from 0 to the number of the symbols minus one (N-1), and the interleaved symbols are 
+read out in a permuted order with the i -th symbol being read from an address, 
+i
+AD (
+0
+=
+i
+ to 
+1
+−
+N
+), as follows:  
+1. Determine the subblock interleaver parameters, m and J . Table ddd gives these parameters. 
+2. Initialize i and k to 0. 
+3. Form a tentative output address 
+kT according to the formula 
+
+)
+/
+(
+)
+mod
+(
+2
+J
+k
+BRO
+J
+k
+T
+m
+m
+k
++
+=
+, 
+where 
+)
+(y
+BROm
+ indicates the bit-reversed m-bit value of y (i.e., BRO3(6) = 3). 
+4. If 
+kT is less than N , 
+k
+i
+T
+AD =
+ and increment i and k by 1. Otherwise, discard 
+kT and increment k only.  
+5. Repeat steps 3 and 4 until all N interleaver output addresses are obtained.  
+The parameters for the subblock interleavers are specified in Table ddd.  
+ 
+Table ddd – The parameters for the subblock interleavers 
+ 
+Subblock Interleaver Parameters 
+Data block size (bits) 
+N 
+ 
+EP 
+N 
+m 
+J 
+48 
+24 
+3 
+3 
+72 
+36 
+4 
+3 
+96 
+48 
+4 
+3 
+144 
+72 
+5 
+3 
+192 
+96 
+5 
+3 
+216 
+108 
+6 
+3 
+240 
+120 
+6 
+2 
+288 
+144 
+6 
+3 
+384 
+192 
+6 
+3 
+432 
+216 
+6 
+4 
+480 
+240 
+7 
+2 
+ 
+ 
+Table eee – The parameters for the subblock interleavers when supporting H-ARQ  
+ 
+Subblock Interleaver Parameters 
+Data block size (bits) 
+N 
+ 
+EP 
+N 
+m 
+J 
+48 
+24 
+3 
+3 
+96 
+48 
+4 
+3 
+
+=====PAGE 7=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+144 
+72 
+5 
+3 
+192 
+96 
+5 
+3 
+288 
+144 
+6 
+3 
+384 
+192 
+6 
+3 
+480 
+240 
+7 
+2 
+960 
+480 
+8 
+2 
+1920 
+960 
+9 
+2 
+2880 
+1440 
+9 
+3 
+3840 
+1920 
+10 
+2 
+4800 
+2400 
+10 
+3 
+ 
+8.4.9.2.3.54.3 Interleaving block 
+The puncturing process is very common to generate various coding rates with Turbo code families. However, the puncturing should 
+guarantee the complementary characteristics of the punctured codeword. In other words, the parity bits of the punctured codeword 
+should be chosen uniformly from the parity bits of a constituent encoder. The parity bits of the punctured codeword should have even 
+number of parities from the two constituent encoders. Because the puncturing is just a simple process to select the subpacket, the 
+proposed FEC structure rely such complementary property on the interleaving block. 
+Figure ccc245 shows block diagram of the interleaving scheme of the proposed FEC structure. At first, the CTC encoder output is 
+separated into a sublock. Then the interleaving is applied for the bit sequence within the sublock. It guarantees the uniformity of the 
+interleaved codeword. Next, Symbol grouping is performed such that the parity bits from the two constituent encoders are interlaced 
+bit by bit. The systematic part of the 1/3 CTC encoder is located at the head of the interleaved codeword. In this way, the proposed 
+FEC structure ensures the quasi complementary characteristics of the interleaved codeword and thus, complementary characteristics of 
+the subpacket. We just say “quasi complementary” for the case of breaking the complementariness of few bits after puncturing. 
+ 
+
+
+
+
+AB
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+1Y
+2
+Y
+1
+W
+2
+W
+ 
+Figure 245— Block diagram of the interleaving scheme 
+ 
+ 
+8.4.9.2.3.4.3 Symbol grouping 
+The channel interleaver output sequence shall consist of the interleaved A and B subblock sequence followed by a symbol-by-
+symbol multiplexed sequence of the interleaved 
+1Y and 
+2
+Y subblock sequences followed by a symbol-by-symbol multiplexed 
+sequence of the interleaved 
+1
+W and 
+2
+W subblock sequences. The symbol-by-symbol multiplexed sequence of interleaved 
+1Y and 
+2
+Y 
+subblock sequences shall consist of the first output bit from the 
+1Y subblock interleaver, the first output bit from the 
+2
+Y subblock 
+interleaver, the second output bit from the 
+1Y subblock interleaver, the second output bit from the 
+2
+Y subblock interleaver, etc. The 
+symbol-by-symbol multiplexed sequence of interleaved 
+1
+W and 
+2
+W subblock sequences shall consist of the first output bit from the 
+1
+W subblock interleaver, the first output bit from the 
+2
+W subblock interleaver, the second output bit from the 
+1
+W subblock 
+
+=====PAGE 8=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+interleaver, the second output bit from the 
+2
+W subblock interleaver, etc. Figure 245 shows the interleaving scheme. 
+ 
+8.4.9.2.3.6.4.4 Symbol selection 
+Lastly, symbol selection is performed to generate the subpacket. We call the puncturing block as the symbol selection in the viewpoint 
+of subpacket generation. 
+Mother code is transmitted with one of subpackets. The symbols in a subpacket are formed by selecting specific sequences of symbols 
+from the interleaved CTC encoder output sequence. The resulting subpacket sequence is a binary sequence of symbols for the 
+modulator. 
+ 
+Let  
+k              be the subpacket index when H-ARQ is enabled. k=0 for the first transmission and increases by one 
+for the next subpacket. k = 0 when H-ARQ is not used. 
+NEP          be the number of bits in the encoder packet (before encoding) 
+NSCHk      be the number of subchannel(s) allocated for the k-th subpacket 
+mk            be the modulation order for the k th subpacket (mk = 2 for QPSK, 4 for 16QAM, and 6 for 64-
+QAM); and 
+SPIDk be the subpacket ID for the k-th subpacket, (for the first subpacket, SPIDk=0 = 0). 
+Also, let the scrambled and selected symbols be numbered from zero with the 0-th symbol being the first symbol in the sequence. 
+Then, the index of the i-th symbol for the k-th subpacket shall be 
+)
+*
+3
+mod(
+)
+(
+,
+EP
+k
+i
+k
+N
+i
+F
+S
++
+=
+ 
+where 
+1
+0
+−
+=
+K
+L
+to
+i
+,  
+k
+SCHk
+k
+m
+N
+L
+*
+*
+48
+=
+, and 
+)
+*
+3
+mod(
+)
+*
+(
+EP
+k
+k
+k
+N
+L
+SPID
+F =
+. 
+The NEP, NSCHk, mk and SPID values are determined by the BS and can be inferred by the SS through the allocation size in the DL-
+MAP and UL-MAP. The mk parameter is determined in the next subsection. The above symbol selection makes the followings 
+possible.  
+1. The first transmission includes the systematic part of the mother code. Thus, it can be used as the codeword for a burst where the H-
+ARQ is not applied. 
+2. The location of the subpacket can be determined by the SPID itself without the knowledge of previous subpacket. It is very 
+important property for H-ARQ retransmission. 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 9=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+ 
+In page 535, line 17, Add a new section as shown below: 
+ 
+8.4.9.2.3.6.5 Optional H-ARQ Support 
+H-ARQ implementation is optional. The randomization block in 8.4.9.1, the concatenation scheme in 8.4.9.2.3.1 and the interleaving 
+in 8.4.9.3 shall not be applied for the encoding described in this section. 
+ 
+8.4.9.2.3. 6.5.1 Padding 
+MAC PDU (or concatenated MAC PDUs) is a basic unit processed in this channel coding and modulation blocks. When the size of 
+MAC PDU (or concatenated MAC PDUs) is not the element in the allowed set for H-ARQ, ‘1’s are padded at the end of MAC PDU 
+(or concatenated MAC PDUs). The amount of the padding is the same as the difference between the size of the PDU (or concatenated 
+MAC PDUs) and the smallest element in the allowed set that is not less than the size of the PDU (or concatenated MAC PDUs). The 
+padded packet is input into the Randomization block. 
+The allowed set is {32, 80, 128, 176, 272, 368, 464, 944, 1904, 2864, 3824, 4784, 9584, 14384, 19184, 23984} bits. 
+ 
+8.4.9.2.3. 6.5.2 Randomization 
+The randomization is performed on each allocation (burst), which means that for each allocation of a data block the randomizer shall 
+be used independently. 
+The Pseudo Random Binary Sequence (PRBS) generator shall be 
+15
+14
+1
+X
+X
++
++
+ as shown in Figure eee. Each data byte to be 
+transmitted shall enter sequentially into the randomizer, MSB first. The seed value shall be used to calculate the randomization bits, 
+which are combined in an XOR operation with the serialized bit stream of each burst. The randomizer sequence is applied to the 
+output from the padding block. The bit issued from the randomizer shall be applied to the CRC encoder. 
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+ 
+Figure eee – PRBS of the randomizer 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+ 
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+ 
+Figure fff – Initialization construction for the PRBS of the randomizer 
+
+=====PAGE 10=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+The scrambler is initialized with the vector created as shown in Figure fff. The lowest 5 bits are IDcell or UL_IDcell and the other bits 
+are set ‘0’. 
+ 
+8.4.9.2.3. 6.5.3 CRC encoding 
+When H-ARQ is applied to a packet, error detection is provided on the padded packet through a Cyclic Redundancy Check (CRC). 
+The size of the CRC is 16 bits. CRC16-CCITT, as defined in ITU-T Recommendation X.25, shall be included at the end of the padded 
+and randomized packet. The CRC covers both the padded bits and the information part of the padded and randomized packet. After 
+the CRC operation, The packet size shall belong to set {48, 96, 144, 192, 288, 384, 480, 960, 1920, 2880, 3840, 4800, 9600, 14400, 
+19200, 24000}. 
+ 
+8.4.9.2.3. 6.5.4 Fragmentation 
+When the size after the padding and CRC encoding is n*4800 bits they are separately encoded by the block of 4800 bits and 
+concatenated as the same order of the separation before modulation. No operation is performed for the packet whose size after the 
+padding and CRC encoding is not more than 4800 bits. 
+The bits output from the fragmentation block are denoted by 
+EP
+Nr
+r
+r
+r
+,
+,
+,
+,
+3
+2
+1
+
+, and this sequence is defined as encoder packet. 
+NEP is the number of the bits in an encoder packet and defined as encoder packet size. The values of NEP are 48, 96, 144, 192, 288, 
+384, 480, 960, 1920, 2880, 3840, 4800.  
+ 
+8.4.9.2.3. 6.5.5 CTC encoding and subpacket generation 
+The CTC encoding and subpacket generation is same as the operation described in 8.4.9.2.3.1~8.4.9.2.3.4. 
+ 
+8.4.9.2.3.6.4.6.5.6 Modulation order of DL traffic burst 
+For DL, the modulation order (2 for QPSK, 4 for 16-QAM, and 6 for 64-QAM) shall be set for all the allowed transmission formats as 
+shown in table kkk. The transmission format is given by the NEP (Encoding Packet Size) and the NSCH (number of allotted 
+subchannels). NEP per an encoding packet is {144, 192, 288, 384, 480, 960, 1920, 2880, 3840, 4800}. The NSCH per an encoding 
+packet is {1~480}. In the table, the numbers in the first row are NEP’s and the numbers in the remaining rows are NSCH’s and related 
+parameters. 
+The supportable modulation schemes are QPSK, 16QAM, and 64QAM. When the NEP and the NSCH are given, the modulation order is 
+determined by the value of MPR (Modulation order Product code Rate). The MPR means the effective number of the information bit 
+transmitted per a subcarrier and is defined as follows. 
+ 
+48
+SCH
+EP
+N
+N
+MPR
+⋅
+=
+ 
+Then, the modulation order is specified by the following rule: 
+i) 
+If 
+5.1
+0
+<
+< MPR
+, then a QPSK (modulation order 2) is used 
+ii) 
+If 
+0.3
+5.1
+<
+≤MPR
+, then a 16QAM (modulation order 4) is used 
+iii) 
+If 
+4.5
+0.3
+<
+≤MPR
+, then a 64QAM (modulation order 6) is used 
+The effective code rate is equal to MPR divided by the modulation order (i.e. 2 for QPSK). 
+The information of Nep and Nsch shall be signaled in DL, UL MAP. Instead of the actual values of Nep and Nsch, the encoded value 
+of Nep (Nep code) and Nsch (Nsch code) shall be used for the signaling. They are encoded by 4 bits, respectively. The encoding of 
+Nep (Nep code) is shown in Table lll. The encoding of Nsch (Nsch code) is performed per Nep value. For each Nep, there are less 
+than 16 kinds of Nsch values and they are encoded from ‘0’(the smallest number of subchannels) to ‘15’ in increasing order. When the 
+kinds of Nsch for a Nep is smaller than 16 and it is z, the smallest z codes are used. When the fragmentation is applied and the number 
+of the subpackets for an allocation is n, n*Nep and Nsch (the number of subchannels allocated for a subpacket) should be signaled. 
+The encoding for n*Nep (Nep code) is also shown in Table lll. The encoded value of Nsch (Nsch code) should be interpreted as Nsch 
+for a subpacket, and n*Nsch for the whole allocation. 
+
+=====PAGE 11=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Table kkk – Transmission format and modulation level for DL 
+
+
+
+		
+
+	
+	
+
+
+		
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=====PAGE 12=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+	
+
+	
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=====PAGE 13=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=====PAGE 14=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=====PAGE 15=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+ 
+Table lll – NEP Encoding 
+NEP 
+48  
+96 
+144 
+192 
+288 
+384 
+480 
+960 
+1920 
+2880 
+3840 
+4800 
+9600 
+14400 
+19200 
+24000 
+Encoding 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+11 
+12 
+13 
+14 
+15 
+ 
+
+=====PAGE 16=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+8.4.9.2.3.6.5.5.7 Modulation order of UL traffic burst 
+For UL, the modulation order (2 for QPSK and 4 for 16-QAM) shall be set for all the allowed transmission formats as shown in Table 
+mmm. The transmission format is given by the NEP (Encoding Packet Size) and the NSCH (number of allotted subchannels). NEP per an 
+encoding packet is {48, 96, 144, 192, 288, 384, 480, 960, 1920, 2880, 3840, 4800}. The NSCH per an encoding packet is {1~288}. In 
+the table, the numbers in the first row are NEP’s and the numbers in the remaining rows are NSCH’s and related parameters. 
+The supportable modulation schemes are QPSK and 16QAM. When the NEP and the NSCH are given, the modulation order is 
+determined by the value of MPR (Modulation order Product code Rate). The MPR means the effective number of the information bit 
+transmitted per subcarrier and is defined as follows. 
+SCH
+EP
+N
+N
+MPR
+⋅
+= 48
+ 
+Then, the modulation order is specified by the following rule: 
+i) 
+If 
+5.1
+0
+<
+< MPR
+, then a QPSK (modulation order 2) is used 
+ii) 
+If 
+4.3
+5.1
+<
+≤MPR
+, then a 16QAM (modulation order 4) is used 
+The effective code rate is equal to MPR divided by the modulation order (i.e. 2 for QPSK). 
+The information of Nep and Nsch shall be signaled in UL MAP. Instead of the actual values of Nep and Nsch, the encoded value of 
+Nep (Nep code) and Nsch (Nsch code) shall be used for the signaling. They are encoded by 4 bits, respectively. The encoding of Nep 
+(Nep code) is shown in Table lll. The encoding of Nsch (Nsch code) is performed per Nep value. For each Nep, there are less than 16 
+kinds of Nsch values and they are encoded from ‘0’(the smallest number of subchannels) to ‘15’ in increasing order. When the kinds 
+of Nsch for a Nep is smaller than 16 and it is z, the smallest z codes are used. When the fragmentation is applied and the number of the 
+subpackets for an allocation is n, n*Nep and Nsch (the number of subchannels allocated for a subpacket) should be signaled. The 
+encoding for n*Nep (Nep code) is also shown in Table lll. The encoded value of Nsch (Nsch code) should be interpreted as Nsch for a 
+subpacket, and n*Nsch for the whole allocation. 
+ 
+Table mmm – Transmission format and modulation level for UL 
+
+
+
+	
+	
+
+
+
+
+
+
+	
+
+
+
+
+
+
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+	
+
+
+	
+
+ 
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=====PAGE 17=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+	
+	
+	
+	
+
+
+
+
+	
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+=====PAGE 18=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+	
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 	
+	
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=====PAGE 19=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+52.00  
+
+
+
+
+
+
+
+
+
+
+
+
+1.54  
+
+
+
+
+
+
+
+
+
+
+
+
+4.00  
+
+
+
+
+
+
+
+
+
+
+
+
+  5/13  
+
+
+
+
+
+
+
+
+
+
+
+
+0.38  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+76.00 
+
+
+
+
+
+
+
+
+
+
+
+
+1.32 
+
+
+
+
+
+
+
+
+
+
+
+
+2.00 
+
+
+
+
+
+
+
+
+
+
+
+
+25/38 
+
+
+
+
+
+
+
+
+
+
+
+
+0.66 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+=====PAGE 20=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+	
+
+
+	
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+	
+	
+ 
+ 
+In page 488 line 43, add a new paragraph: 
+ 
+8.4.5.4.9 UL ACK channel 
+The uplink ACK (Acknowledgement) provides feedback for Downlink Hybrid ARQ. This channel shall only be supported by SS 
+supporting H-ARQ. The SS transmits ACK or NAK feedback for Downlink packet data. One ACK channel occupies half subchannel 
+(3 pieces of 3x3 uplink tile) of the PUSC optional permutation. 
+
+=====PAGE 21=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+The ACK channel is orthogonally modulated. The acknowledgement bit 
+ACK
+n
+B
+of the n-th ACK channel shall be ‘0’ (ACK) if the 
+corresponding downlink packet has been successfully received; otherwise, it shall be a ‘1’ (NAK). The k-th orthogonal modulation 
+symbol of the n-th ACK channel, 
+ACK
+k
+n
+M ,
+ (k=0,1,…,8 and n=0,1,…, 
+1
+−
+ACK
+N
+) is made as shown in Table ppp. 
+ 
+Table ppp- Orthogonal Modulation for ACK channel 
+ACK
+n
+B
+ 
+ACK
+k
+n
+M
+,
+ 
+0 
+1 1 1 1 1 
+1 1 1 1 
+1 
+1 
+
+
+
+
+
+
+3
+2
+exp
+π
+j
+ 
+
+
+
+
+
+
+3
+4
+exp
+π
+j
+ 
+
+
+
+
+
+
+3
+2
+exp
+π
+j
+ 
+
+
+
+
+
+
+3
+4
+exp
+π
+j
+ 
+1 
+
+
+
+
+
+
+3
+4
+exp
+π
+j
+ 1 
+
+
+
+
+
+
+3
+2
+exp
+π
+j
+ 
+ 
+Then the modulated symbols are mapped to the subcarriers allocated to the n-th ACK channel, as follows. 
+
+
+
+
+
+
+
+
+
+=
+
+
+
+
+
+
+=
+
+
+
+
+
+
+=
+=
+−
+−
+26
+,
+,
+19
+,
+18
+3
+4
+exp
+17
+,
+,
+10
+,9
+3
+2
+exp
+8
+,
+,1,0
+18
+,
+9
+,
+,
+,
+
+
+
+k
+if
+M
+j
+k
+if
+M
+j
+k
+if
+M
+c
+ACK
+k
+n
+ACK
+k
+n
+ACK
+k
+n
+ACK
+k
+n
+π
+π
+ 
+where 
+ 
+ACK
+k
+nc ,
+ = mapping symbol of the k-th ACK subcarrier in the n-th ACK channel  
+ 
+ACK
+k
+n
+M ,
+= modulation symbol index of the k-th modulation symbol made from the n-th ACK bit as shown in Table ppp 
+ 
+n = ACK channel index from the set [0 ~
+1
+−
+ACK
+N
+] 
+ 
+k = ACK subcarrier index of an ACK channel from the set [0 ~ 26] 
+
+=====PAGE 22=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+In page 243, line 41, modify the text to read: 
+6.4.167 MAC support for H-ARQ 
+Hybrid automatic repeat request (H-ARQ) scheme is an optional part of the MAC and can be enabled on a per-terminal basis. H-ARQ 
+may be supported only for the OFDMA PHY. The per-terminal H-ARQ and associated parameters shall be specified and negotiated 
+during initialization procedure. A terminal burst cannot have a mixture of H-ARQ and non-H-ARQ traffic.  
+One or more MAC PDUs can be concatenated and an H-ARQ packet formed by adding a CRC to the PHY burst. Figure 125 shows 
+how the H-ARQ encoder packet is constructed.  
+ 
+MAC
+HDR
+Payload
+MAC
+HDR
+Payload
+MAC PDU (variable length)
+MAC PDU (variable length)
+CRC
+Parity bits
+H-ARQ packet mapped onto the PHY burst
+ 
+Figure 125—Construction of H-ARQ encoder packet 
+ 
+Each encoder packet is encoded according to the PHY specification, and four subpackets are generated from the encoded result. A 
+subpacket identifier (SPID) is used to distinguish the four subpackets. In case of downlink communication, a BS can send one of the 
+subpackets in a burst transmission. Because of the redundancy among the subpackets, SS can correctly decode the original encoder 
+packet even before it receives all four subpackets. Whenever receiving the first subpacket, the SS attempts to decode the original 
+encoder packet from it. If it succeeds, the SS sends an ACK to the BS, so that the BS stops sending additional subpackets of the 
+encoder packet. Otherwise, the SS sends a NAK, which causes the BS to transmit one subpacket selected from the four. These 
+procedures go on until the SS successfully decodes the encoder packet. When the SS receives more than one subpacket, it tries to 
+decode the encoder packet from ever-received subpackets. 
+The rule of subpacket transmission is as follows, 
+ 
+1. 
+At the first transmission, BS shall send the subpacket labeled ‘00’. 
+2. 
+BS may send one among subpackets labeled ‘00’, ‘01’, ‘10’, or ‘11’ in any order, as long as the total number of 
+transmitted subpackets does not exceed the maximum number of H-ARQ retransmission specified in CD message 
+.  
+3. 
+BS can send more than one copy of any subpacket, and can omit any subpacket except the subpacket labeled ‘00’ . 
+ 
+In order to specify the start of a new transmission, one-bit H-ARQ identifier sequence number (AI_SN) is toggled on every successful 
+transmission of an encoder packet on the same H-ARQ channel. If the AI_SN changes, the receiver treats the corresponding subpacket 
+as a subpacket belongs to a new encoder packet, and discards ever-received subpackets with the same ARQ identifier. 
+The H-ARQ scheme is basically a stop-and-wait protocol. The ACK is sent by the SS after a fixed delay (synchronous ACK) defined 
+by H-ARQ_ACK_DELAY H-ARQ DL ACK delay offset which is specified in DCD message. Timing of retransmission is, however, 
+flexible and corresponds to the asynchronous part of the H-ARQ. The ACK/NAK is a differential binary PSK modulated signal sent 
+by the SS sent by the BS using the H-ARQ Bitmap IE, and sent by a SS using the fast feedback UL subchannel. 
+The H-ARQ scheme supports multiple H-ARQ channels per a connection, each of which may have an encoder packet transaction 
+pending. The number of H-ARQ channels in use is determined by BS. These ARQ channels are distinguished by an H-ARQ channel 
+identifier (ACID). The ACID for any subpackets can be uniquely identified by the control information carried in the MAPs. 
+H-ARQ (Hybrid Automatic Repeat reQuest) can be used to mitigate the effect of channel and interference fluctuation. H-ARQ renders 
+performance improvement due to SNR gain and time diversity achieved by combining previously erroneously decoded packet and 
+retransmitted packet, and due to additional coding gain by IR (Incremental Redundancy). 
+
+=====PAGE 23=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+ 
+6.4.17.1 Subpacket generation 
+H-ARQ operates at the FEC block level. The FEC encoder is responsible for generating the H-ARQ subpackets, as defined in the 
+relevant PHY section. The subpackets are combined by the receiver FEC decoder as part of the decoding process. 
+6.4.17.12 DL/UL ACK/NAK signaling 
+For DL/UL H-ARQ, fast ACK/NAK signaling is necessary. For the fast ACK/NAK signaling of DL H-ARQ channel, a dedicated 
+PHY layer ACK/NAK channel is designed in UL. For the fast ACK/NAK signaling of UL H-ARQ channel fast feedback, H-ARQ 
+ACK message is designed. 
+6.4.17.3 H-ARQ parameter signaling 
+The parameters for each subpacket should be signaled independent of the subpacket burst itself. The parameters for each subpacket 
+include SPID (Subpacket Identifier. The BS shall set this field to the subpacket identifier for the subpacket transmission.), ACID 
+(ARQ Channel Identifier. The BS shall set this field to the ARQ channel identifier for the subpacket transmission.), and AI_SN (ARQ 
+identifier sequence number. This toggles between ‘0’ and ‘1’ on successfully transmitting each encoder packet with the same ARQ 
+channel.). For the signaling of those parameters, H-ARQ Allocation IE is defined and the IE is to be placed in a DL-MAP or UL-MAP 
+for a burst where H-ARQ is used. 
+6.4.17.4 CQICH Operations 
+This section describes the operation scenarios and requirements of CQICH, which is designed for H-ARQ enabled SS. 
+After an SS turns on its power, the only appropriate subchannels that can be allocated to the MSS are normal subchannels. To 
+determine the M/C level of normal subchannels, the average CINR measurement is enough for the BS to determine the M/C levels of 
+uplink and downlink. As soon as the BS and the MSS know the capabilities of both entities’ modulation and coding, the BS may 
+allocate a CQICH subchannel using a CQICH Control IE (see 8.4.5.x.x.2 CQICH Control IE). Then, the MSS reports the average 
+CINR of the BS’ preamble. From then on, the BS is able to determine the M/C level. A CINR measurement is quantized into 32 levels 
+and encoded into 5 information bits.  
+ 
+At any time, the BS may de-allocate the SS’ CQICH by putting another CQICH Control IE with Duration d = 0000. Before the 
+CQICH life timer which is set at the receipt of the CQICH Control IE expires, sending another CQICH Control IE overwrites all the 
+information related to the CQICH such as Allocation Index, Period, Frame offset, and Duration. Hence, unless the BS refreshes the 
+timer, the SS should stop reporting as soon as the timer expires. However, in case of sending the MAP IE for re-allocation or de-
+allocation, the BS should make sure if the previous CQICH is released before it is re-allocated to another SS.  
+ 
+The SS sends the REP-RSP message in an unsolicited fashion to BS to trigger Band AMC operation. The triggering conditions are 
+given by TLV encodings in UCD messages. The REP-RSP (see 11.12 for the TLV encodings) includes the CINR measurements of 
+five best bands. Only when an SS reports its BS the CINR measurements of Band AMC channels, its logical definition is differently 
+made as follows. If the number of bands is less than or equal to 12, it is the same as the original one. However, if it is 24 (1024 FFT in 
+10 MHz), two contiguous bands are paired and 12 logical bands are newly defined. Hence, band 2n and band (2n+1) are paired and the 
+paired band is the n-th band. If the number of bands is 48 (2048 FFT in 20 MHz), the two contiguous bands are paired and 
+renumbered the same as a 24 band system. Then, if the LSB of an SS’ MAC address is 1, it only uses the odd-numbered bands. If not, 
+it only uses the even-numbered bands. Hence, for example, the LSB of an SS’ MAC address is 1, (4m+2, 4m+3) bands are paired and 
+the paired band is the m-th band of the SS. Similarly, for an even-numbered SS, (4m, 4m+1) bands are paired and the paired band is 
+the m-th band of the SS. 
+ 
+The BS acknowledges the trigger by allocating Band AMC subchannels. From the next frame when the SS sent the REP-RSP, the SS 
+starts reporting the differential of CINR five selected bands (increment: 1 and decrement: 0 with a step of 1 dB) on its CQICH. If the 
+BS does not allocate the Band AMC subchannels within the specified delay (CQICH Band AMC Transition Delay) in the UCD 
+message, the SS reports the updated average CINR of the preamble for normal subchannel allocations.  
+ 
+When the BS wants to trigger the transition to Band AMC mode or update the CINR reports, it sends the REP-REQ message (see 
+11.11 for the TLV encodings). When the SS receives the message, it replies with REP-RSP. When the BS receives the REP-RSP, it 
+should synchronize the selection of bands reported and their CINR. Unless the BS allocates normal subchannels, the SS reports the 
+differential increment compared to the most up-to-date report from the next CQI reporting frame.  
+ 
+ 
+
+=====PAGE 24=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+In page 480, line 50, add the following text: 
+ 
+8.4.5.3.8 H-ARQ MAP Pointer IE 
+This IE shall only be used by a BS supporting H-ARQ, for SS supporting H-ARQ. 
+ 
+Table 255—H-ARQ MAP Pointer IE 
+ 
+Syntax 
+Size 
+Notes 
+H-ARQ_Pointer_DL_IE ( ) {
+  
+  
+Extended DIUC
+4 bits 
+H-ARQ MAP pointer = 0x05 
+Length
+4 bit 
+Length = 0x02 
+AMC DIUC
+4 bits  
+Indicates the AMC level of the burst containing a 
+H-ARQ MAP message. 
+No. Slots
+8 bits 
+The number of slots allocated for the burst 
+containing a H-ARQ MAP message. 
+Reserved
+4 bits 
+ 
+}
+ 
+ 
+ 
+ 
+AMC DIUC 
+Indicates the burst profile used for the H-ARQ MAP message. 
+No. Slots 
+The number of OFDMA slots allocated for the burst containing a H-ARQ MAP message. The H-ARQ MAP message shall directly 
+follows the DL MAP, the number of the slots allocated for the H-ARQ MAP message.  
+ 
+
+=====PAGE 25=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+In page 104, line 21, add the following text: 
+ 
+6.3.2.3.44 H-ARQ MAP message 
+ 
+This section describes the H-ARQ MAP message, which is designed for H-ARQ enabled SS. This IE shall only be used by a BS 
+supporting H-ARQ, for SS supporting H-ARQ. 
+ 
+ 
+6.3.2.3.44.1 H-ARQ MAP message format 
+ 
+The H-ARQ MAP message format is presented in Table 1. This message includes Compact DL/UL-MAP_IE and defines the access 
+information for the downlink and uplink burst of H-ARQ enabled SS. This message shall be sent without a generic MAC header. 
+BS may broadcast multiple H-ARQ MAP messages using multiple burst after the MAP message. Each H-ARQ MAP message should 
+have a different modulation and coding rate. If the frame contains DCD or UCD message following the MAP message, the H-ARQ 
+MAP should follow DCD or UCD message. 
+The DL-MAP_IEs in the MAP message describe the location and coding and modulation schemes of the bursts. The order of DL-
+MAP_IEs in the MAP message and the bursts for H-ARQ MAP messages is determined by the coding and modulation scheme of the 
+burst. The burst for H-ARQ MAP message with lower rate coding and modulation should be placed before other bursts for H-ARQ 
+MAP message.  
+The presence of the H-ARQ MAP message format is indicated by the contents of the three most significant bits of the first data 
+byte of a burst. These bytes overlay the HT and EC bits of a generic MAC header. When these bits are both set to 1 (an invalid 
+combination for a standard header) and followed by 1 bits of 1, the Compact DL-MAP format is present.  
+ 
+ 
+Table 1 Format of H-ARQ MAP 
+Syntax 
+Size 
+Notes 
+H-ARQ_MAP_Message_Format ( ) { 
+  
+  
+  H-ARQ MAP Indicator = 111 
+3 bits 
+ Set to binary 111 
+  H-ARQ _UL-MAP appended 
+1 bit 
+  
+  CRC appended 
+1 bit 
+ 
+  Map message length 
+9 bits 
+Length of H-ARQ MAP in bytes 
+  DL IE count 
+6 bits 
+Number of DL IE in the burst 
+  for (i=0; i < DL IE count; i++){ 
+  
+  
+    Compact_ DL-MAP_IE() 
+variable   
+  } 
+  
+  
+  If (Compact_UL-MAP appended ==1){ 
+ 
+ 
+    while (map data remains) { 
+ 
+ 
+      Compact_UL-MAP_IE() 
+variable  
+    } 
+ 
+ 
+  } 
+ 
+ 
+  if !(byte boundary) { 
+  
+  
+    Padding nibble 
+4 bits 
+  
+  } 
+  
+  
+} 
+  
+  
+H-ARQ MAP Indicator 
+The value of binary 111 means this message is a H-ARQ MAP Message  
+Compact UL-MAP appended 
+A value of 1 indicates a compact UL-MAP is appended to the current compact DL-MAP data structure 
+CRC appended 
+A value of one indicates a CRC-32 value is appended to the end of the H-ARQ MAP data. The CRC is computed 
+across all bytes of the H-ARQ MAP starting with the byte containing the H-ARQ MAP indicator through the last 
+byte of the map as specified by the Map message length field. The CRC calculation is the same as that used for 
+standard MAC messages. A value of zero indicates that no CRC is appended. 
+MAP message length 
+This value specifies the length of the H-ARQ MAP message beginning with the byte containing the H-ARQ MAP 
+
+=====PAGE 26=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+indicator and ending with the last byte of the H-ARQ MAP message. The length includes the computed 32-bit CRC 
+value if the CRC appended indicator is on. 
+DL IE count 
+This field holds the number of IE entries in the following list of DL-MAP IEs. 
+ 
+ 
+Table 2 and Table 3 represent the types of compact DL/UL MAP. 
+ 
+Table 2 Compact_DL-MAP_IE Types 
+Compact DL-MAP Type 
+Description 
+0 
+Normal subchannel 
+1 
+Band AMC 
+2 
+Safety 
+3 
+DIUC 
+4 
+Format_Configuration_IE 
+5 
+H-ARQ_ACK_BITMAP_IE  
+6 
+Reserved 
+7 
+Extension 
+ 
+Table 3 Compact_UL-MAP_IE Types 
+Compact_UL-MAP Type 
+Description 
+0 
+Normal subchannel 
+1 
+Band AMC 
+2 
+Safety 
+3 
+UIUC 
+4 
+H-ARQ_Region_IE 
+5 
+CQI_Region_IE 
+6 
+Reserved 
+7 
+Extension 
+ 
+ 
+6.3.2.3.44.2 Format Configuration 
+ 
+Table 4 represents the format of Format_Configuration_IE that configures CID type, safety pattern, maximum logical bands and frame 
+structure. The format should be set to default value at the start of each frame. 
+ 
+Table 4 Format_Configuration_IE 
+Syntax 
+Size 
+Notes 
+Compact_DL-MAP_IE( ) { 
+  
+ 
+  DL-MAP Type = 4 
+3 bits 
+Format_Configuration_IE 
+  New Format Indication 
+1 bits 
+0 = Use the format configured by the latest 
+Format_Configuration_IE 
+1 = New format  
+  if (New Format Indication == 1) { 
+ 
+ 
+    CID Type 
+2 bits 
+00 = Normal CID 
+01 = RCID11 (default) 
+10 = RCID7  
+11 = RCID3 
+ 
+     Safety Pattern 
+10 bits  
+     Subchannel Type for Band AMC  
+2 bit 
+See Band AMC specification. 
+00 = Default type (default) 
+01 = 1x6 type 
+
+=====PAGE 27=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+10 = 2x3 type 
+11 = 3x2 type 
+      Max Logical Bands   
+2 bits 
+0 = 3 bands, 
+1 = 6 bands, 
+2 = 12 bands (default) 
+3 = 24 bands  
+     No. Symbols for Broadcast 
+4 bits 
+ No. Symbol, (default = 0) 
+     No. Symbols for DL Band AMC 
+4 bits 
+ No. Symbol, (default = 0) 
+     No. Symbols for UL Band AMC 
+4 bits 
+ No. Symbol, (default = 0) 
+  } 
+ 
+ 
+} 
+ 
+ 
+ 
+ 
+ 
+New Format Indication  
+If this value set to 0, the format should be configured by the latest Format Configuration_IE in the previous 
+frames. Otherwise, whole parameters in Format Configuration IE should be configured. The configured 
+parameters are valid for the following Compact_DL/UL_MAP_IE.  
+At the start of each frame all parameters are set to default values. 
+CID Type 
+This value specifies CID type used in the Compact_DL/UL_MAP_IE.  
+Safety Pattern 
+If this value is less than 16, the number of safety bins is 12 and the indices of allocated bins for safety are 
+16m+x, where x is the value of Safety Pattern and m = 0 ~ 11. If this value is not less than 16, the number of 
+safety bins is 24 and the indices of allocated bins for safety are 16m+x’ and 16m+(x’+8), where x’ = x – 16 
+and m = 0~11. 
+Subchannel Type for Band AMC 
+This value specifies the subchannel type for Band AMC subchannel. See related PHY specification. 
+No. Symbols for Broadcast 
+This specifies the number of symbols allocated for Broadcast subchannel. 
+No. Symbols for DL Band AMC 
+This specifies the number of symbols allocated for DL Band AMC subchannel. 
+The other DL symbols excluding the symbols for Broadcast and DL Band are allocated for the DL Normal subchannel. 
+No. Symbols for UL Band AMC 
+This specifies the number of symbols allocated for UL Band AMC subchannel. 
+The other UL symbols excluding the symbols for UL Band are allocated for the UL Normal subchannel. 
+Max Logical Bands 
+This value specifies the maximum number of logical bands for Band AMC. The size of 3 fields (No. Selected Bands, 
+Band BITMAP and Band Index) in the DL/UL-MAP_IE for Bands AMC depends on this value. Table 5 represents 
+the fields in the DL/UL-MAP_IE and specific values.  
+ 
+Table 5 Field length for Band AMC MAP_IE 
+ 
+Logical Bands 
+24 bands 
+12 bands 6 bands 3 bands 
+Max Logical Bands  
+11 
+10 
+01 
+00 
+Nb-Band (# of bits for No. Selected Bands) 4 bits 
+4 bits 
+4 bits 
+0 bits 
+Nb-BITMAP (# of bits for Band BITMAP) 
+24 bits 
+12 bits 
+8 bits 
+4 bits 
+Nb-Index (# of bits for Band Index) 
+8 bits 
+4 bits 
+4 bits 
+0 bits 
+ 
+ 
+6.3.2.3.44.3 Reduced CID 
+ 
+Table 6 presents the format of reduced CID.  BS may use reduced CID instead of basic CID or multicast CID to reduce the size of H-
+ARQ MAP message. The type of reduced CID is determined by BS considering the range of basic CIDs of SS connected with the BS 
+and specified by the RCID_Type field of the Format Configuration IE.  
+
+=====PAGE 28=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+The reduced CID is composed of 1 bit of prefix and n-bits of LSB of CID of SS. The prefix is set to 1 for the broadcast CID or 
+multicast CID and set to 0 for basic CID. The reduced CID can not be used instead of transport CID, primary management CID or 
+secondary management CID.  
+ 
+Figure 1 shows the decoding of reduced CID when the RCID_Type is set to 3. 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+Figure 1 Reduced CID Decoding 
+ 
+ 
+Table 6 RCID_IE format 
+Syntax 
+Size 
+Notes 
+RCID_IE ( ) { 
+  
+Support of Reduced CID 
+  if (RCID_Type == 0){ 
+  
+RCID_Type is specified in Format_Configuration_IE 
+    CID  
+16 
+normal CID 
+  }else{ 
+ 
+ 
+    Prefix 
+1 
+for multicast, AAS, Padding & broadcast burst temporary disable 
+RCID 
+    if ( Prefix == 1){ 
+  
+  
+      RCID 11 
+11 
+11 LSB of multicast, AAS or broadcast CID 
+    }else{ 
+  
+  
+     if (RCID_Type == 1){ 
+  
+  
+        RCID 11 
+11 
+11 LSB of basic CID 
+      } else if (RCID_Type == 2){ 
+  
+  
+        RCID 7 
+7 
+7 LSB of basic CID 
+      } else if (RCID_Type == 3){ 
+  
+  
+        RCID 3 
+3 
+3 LSB of basic CID 
+      }  
+  
+  
+    } 
+  
+  
+  } 
+  
+  
+} 
+  
+  
+ 
+CID  
+
+=====PAGE 29=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Normal 16 bits CID 
+Prefix 
+A value of one indicates that 11 bits RCID for broadcast and multicast follows the prefix. Otherwise, the n-bits 
+RCID for basic CID follows the prefix. The value of n is determined by the RCID_Type field in 
+Format_Configuration_IE. 
+RCID n 
+n-bits LSB of CID 
+ 
+ 
+6.3.2.3.44.4 H-ARQ Control IE 
+ 
+The format of H-ARQ_Control_IE , which includes encoding/decoding information for H-ARQ enabled DL/UL bursts,  is presented 
+in Table 7. This IE shall be located in the compact DL/UL MAP_IE. 
+ 
+Table 7 H-ARQ_Control_IE format 
+Syntax 
+Size 
+Notes 
+H-ARQ_Control_IE () { 
+  
+In DL/UL-MAP 
+  Prefix 
+1 bit 
+0 = Temporary disable H-ARQ 
+1 = enable H-ARQ 
+  if (Prefix ==1){ 
+ 
+ 
+    AI_SN 
+1 bits 
+H-ARQ ID Seq. No 
+    SPID 
+2 bits 
+Subpacket ID 
+    ACID 
+4 bits 
+H-ARQ CH ID 
+  } else{ 
+ 
+ 
+    Reserved 
+3 bit 
+ 
+  } 
+ 
+ 
+} 
+ 
+  
+ 
+Prefix 
+Indicates whether H-ARQ is enabled or not. 
+ 
+AI_SN 
+Defines ARQ Identifier Sequence Number. This is toggled  between ‘0’ and ‘1’ on successfully transmitting each 
+encoder packet with the same ARQ channel. 
+ 
+SPID 
+Defines SubPacket ID, which is used to identify the four subpackets generated from an encoder packet. 
+ 
+ACID 
+Defines H-ARQ Channel ID, which is used to identify H-ARQ channels. Each connection can have multiple H-
+ARQ channels, each of which may have an encoder packet transaction pending.  
+ 
+6.3.2.3.44.5 CQICH Control IE 
+ 
+ 
+Table 8 Format of CQICH Control IE 
+Syntax 
+Size 
+Notes 
+CQICH_Control_IE () { 
+  
+CQICH indicator 
+1 bit If the indicator is set to 1, the CQICH Control IE follows. 
+if CQICH indicator == 1 { 
+  
+
+=====PAGE 30=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Allocation Index 
+6 bits Index to the channel in a frame the CQI report should be transmitted by the 
+SS.  
+Period (=p) 
+2 bits A CQI feedback is transmitted on the CQI channels indexed by the (CQI 
+Channel Index) by the SS in every 2^p frames. 
+Frame offset 
+3 bits 
+The MSS starts reporting at the frame of which the number has the same 3 
+LSB as the specified frame offset. If the current frame is specified, the MSS 
+should start reporting in 8 frames 
+Duration (=d) 
+4 bits 
+A CQI feedback is transmitted on the CQI channels indexed by the (CQI 
+Channel Index) by the SS for 2^(d-1) frames. If d is 0000, the CQICH is de-
+allocated. If d is 1111, the MSS should report until the BS command for the 
+MSS to stop. 
+ } else { 
+ 
+ 
+Reserved 
+   3 bits  
+} 
+ 
+ 
+} 
+ 
+ 
+ 
+Each field of the IE represents the following parameters: 
+ 
+Allocation Index 
+It indicates its position from the start of the CQICH region 
+ 
+Period  
+It informs the SS of the period of CQI reports 
+ 
+Frame offset  
+It informs the SS of when to start. The SS starts reporting at the frame of which the number has the same 3 LSB as 
+the specified frame offset. If the current frame is specified, the SS should start reporting in 8 frames 
+ 
+Duration  
+It indicates when the SS should stop reporting unless the CQICH allocation is refreshed beforehand. If duration d == 
+0000, the BS is intended to de-allocate the CQICH. If d == 1111, the CQICH is allocated indefinitely and the SS 
+should report until the BS commands the SS to stop, which happens it receives another MAP_IE with d =0000. 
+ 
+6.3.2.3.44.6 Compact DL-MAP IE  
+6.3.2.3.44.6.1 Compact DL-MAP IE for Normal Subchannel 
+ Table 9 Compact_DL-MAP_IE for normal subchannel 
+Syntax 
+Size 
+Notes 
+Compact_DL-MAP_IE () { 
+ 
+ 
+  DL-MAP Type =0 
+3 bits 
+ 
+  UL-MAP append  
+1 bits 
+ 
+  RCID_IE 
+variable 
+See Reduced CID section 
+  Nep code 
+4 bits 
+Code of encoder packet bits (see FEC & CTC section) 
+  Nsch code 
+4 bits 
+Code of allocated subchannels (see FEC & CTC section) 
+  H-ARQ_Control_IE 
+variable 
+See H-ARQ section 
+  CQICH_Control_IE 
+variable 
+See CQICH section 
+
+=====PAGE 31=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+  if(UL-MAP append){ 
+ 
+ 
+    Nep code for UL 
+4 bits 
+ # of encoder packet bits 
+    Nsch code for UL 
+4 bits 
+  
+    H-ARQ_Control_IE for UL 
+variable 
+ 
+  } 
+ 
+ 
+} 
+  
+  
+ 
+DL-MAP Type 
+This value specifies the type of the compact DL-MAP IE. A value of 0 indicates the Normal Subchannel. 
+UL-MAP append  
+A value of 1 indicates the uplink access information is appended to the end of the DL-MAP IE.  
+RCID_IE 
+Represent the assignment of the IE. 
+Nep code, Nsch code 
+The combination of Nep code and Nsch code indicates the number of allocated subchannels and scheme of coding 
+and modulation for the DL burst. 
+Nep code for UL, Nsch code for UL 
+The combination of Nep code and Nsch code indicates the number of allocated subchannels and scheme of coding 
+and modulation for the UL burst. 
+ 
+6.3.2.3.44.6.2 Compact DL-MAP IE for Band AMC Subchannel 
+ 
+ 
+ Table 10 Compact_DL-MAP_IE for band AMC 
+Syntax 
+Size 
+Notes 
+Compact_DL-MAP_IE () { 
+ 
+ 
+  DL-MAP Type =1 
+3 bits 
+ 
+  Reserved 
+1 bit 
+ 
+  RCID_IE 
+variable 
+  
+  Nep code 
+4 bits 
+Code of encoder packet bits (see FEC & CTC section) 
+  Nsch code 
+4 bits 
+Code of allocated subchannels (see FEC & CTC section) 
+  Nband  
+Nb-Band bits 
+Number of bands, 0 = use BITMAP instead 
+  if(Nband == 0 ){ 
+ 
+ 
+    Band BITMAP 
+Nb-BITMAP bits 
+n-th LSB is 1 if n-th band is selected 
+  }else { 
+  
+  
+    for (i=0;i< Nband ; i++) 
+ 
+ 
+      Band Index 
+Nb-Index bits 
+Band selection.  
+  } 
+ 
+ 
+ Allocation Mode 
+2 bit 
+Indicates the subchannel allocation mode. 
+00 = same  number of  subchannels for the selected bands 
+01 = different number of subchannels for the selected bands 
+10 = total number of subchannels for the selected bands 
+determined by Nsch code and Nep code 
+11 = reserved 
+    Reserved  
+2 bits 
+ 
+  if(Allocation Mode == 00){ 
+ 
+ 
+    No. Subchannels 
+8 bits 
+ 
+  } else  if( Allocation Mode == 01){ 
+ 
+ 
+    for (i=0;i< band count ;i++){ 
+  
+If Nband is 0, band count is the number of ‘1’ in Band BITMAP. 
+Otherwise band count is Nband. 
+
+=====PAGE 32=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+      No. Subchannels  
+8 bits 
+Number of subchannels per band 
+    } 
+  
+  
+  } 
+ 
+ 
+  H-ARQ_Control_IE 
+variable 
+ 
+  CQICH_Control_IE 
+variable 
+ 
+} 
+  
+  
+ 
+ 
+ 
+ 
+DL-MAP Type 
+This value specifies the type of the compact DL-MAP IE. A value of 1 indicates the Band AMC Subchannel. 
+RCID_IE 
+Represent the assignment of the IE. 
+Nep code, Nsch code 
+The combination of Nep code and Nsch code indicates the number of allocated subchannels and scheme of coding 
+and modulation for the DL burst. 
+Nband  
+Indicates the number of bands selected for the burst. If this value is set to 0, the Band BITMAP is used to indicate 
+the number and the position of selected bands instead. The number of the maximum logical bands determines the 
+length of this field. 
+Band BITMAP 
+This BITMAP is valid when Nband is 0. The n-th LSB of the Band BITMAP is set to 1 when the n-th logical band 
+is selected for the burst. If the number of the maximum logical bands is 12 then the length of the Band BITMAP is 
+12 bits. The band count is set to the number of ‘1’s in the Band BITMAP. The number of the maximum logical 
+bands determines the length of this field. 
+Band Index 
+This value indexes the selected band offset and is valid when Nband is larger than 0. The number of the maximum 
+logical bands determines the length of this field. 
+Allocation Mode 
+This value indicates the subchannel allocation mode in the selected bands.  
+The value is set to binary 00 when the same numbers of subchannels are allocated in the selected bands by the 
+following field ‘No. Subchannels’.  
+The value is set to 01 when different numbers of subchannels are allocated in each selected bands by the following 
+fields “No. Subchannels”.  
+The value is set to 10 when the total number of subchannels allocated in the selected bands is defined by Nsch code 
+and Nep code. The subchannels fill from the bands with lowest index. 
+The allocation mode variant is shown in Figure 2. 
+No. Subchannels 
+This value indicates the number of subchannels allocated for this burst. 
+ 
+
+=====PAGE 33=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+	
+		
+					
+			
+	
+	
+
+	
+		
+	
+
+	
+
+	
+
+	
+ 
+	
+ 
+	
+ 
+	
+ 
+	
+		
+
+
+
+
+ 	
+ 
+
+	
+ 	
+ 
+Figure 2 Subchannel allocation modes of Compact DL-MAP_IE for Band AMC 
+ 
+6.3.2.3.44.6.3 Compact DL-MAP IE for Safety Subchannel 
+ 
+Table 11 Compact_DL-MAP_IE for safety 
+Syntax 
+Size 
+Notes 
+Compact_DL-MAP_IE () { 
+ 
+ 
+  DL-MAP Type =2 
+3 bits 
+ 
+  UL-MAP append 
+1 bit 
+ 
+  RCID_IE 
+variable 
+  
+  Nep code 
+4 bits 
+Code of encoder packet bits (see FEC & CTC section) 
+  Nsch code 
+4 bits 
+Code of allocated subchannels (see FEC & CTC section) 
+  BIN Offset 
+8 bits 
+  
+  H-ARQ_Control_IE 
+variable 
+ 
+  CQICH_Control_IE 
+variable 
+ 
+  if (UL-MAP append) { 
+ 
+ 
+    Nep code for UL 
+4 bits 
+Code of encoder packet bits (see FEC & CTC section) 
+    Nsch code for UL 
+4 bits 
+Code of allocated subchannels (see FEC & CTC section) 
+    BIN Offset for UL 
+8 bits 
+  
+
+=====PAGE 34=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+    H-ARQ_Control_IE for UL 
+variable 
+ 
+  }     
+ 
+ 
+} 
+  
+  
+ 
+DL-MAP Type 
+This value specifies the type of the compact DL-MAP IE.  
+A value of 2 indicates the Safety Subchannel. 
+UL-MAP append  
+A value of 1 indicates the uplink access information is appended to the end of the DL-MAP IE.  
+RCID_IE 
+Represent the assignment of the IE. 
+Nep code, Nsch code 
+The combination of Nep code and Nsch code indicates the number of allocated subchannels and scheme of coding 
+and modulation for the burst. 
+BIN Offset 
+The offset of the BIN allocated for this DL burst. See appropriate specification. 
+Nep code for UL, Nsch code for UL 
+The combination of Nep code and Nsch code indicates the number of allocated subchannels and scheme of coding 
+and modulation for the UL burst. 
+BIN Offset for UL 
+The offset of the BIN allocated for this UL burst. See appropriate specification. 
+ 
+6.3.2.3.44.6.4 Compact DL-MAP IE for DIUC Subchannel 
+ 
+ 
+Table 12 Compact_DL-MAP_IE for DIUC 
+Syntax 
+Size 
+Notes 
+Compact_DL-MAP_IE () { 
+ 
+ 
+  DL-MAP Type = 3 
+3 bits 
+DIUC type 
+  Reserved  
+1 bits 
+ 
+  DIUC 
+4 bits 
+See DIUC section 
+  RCID_IE 
+variable 
+  
+  No. Subchannels  
+8 bits 
+The number of subchannels allocated by the IE 
+} 
+  
+  
+ 
+DL-MAP Type 
+This value specifies the type of the compact DL-MAP IE. A value of 3 indicates the DIUC type. 
+DIUC 
+This value indicates the usage of this burst. 
+RCID_IE 
+Represent the assignment of the IE. 
+No. Subchannels 
+This value indicates the number of subchannels allocated by the IE. 
+ 
+6.3.2.3.44.6.5 Compact DL-MAP IE for H-ARQ ACK BITMAP  
+ 
+The H-ARQ_ACK_Bitmap information for the H-ARQ enabled UL bursts is delivered through the Compact_DL-MAP_IE as shown 
+in Table 13. The bit position in the bitmap is determined by the order of the H-ARQ enabled UL bursts in the UL-MAP. The frame 
+offset between the UL burst and the H-ARQ-ACK-BITMAP is specified by “H-ARQ_ACK_Delay_for UL Burst” field in the DCD 
+message.  
+For example, when a SS transmits a H-ARQ enabled burst at i-th frame and the burst is j-th H-ARQ enabled burst in the MAP, the SS 
+should receive H-ARQ ACK at j-th bit of the BITMAP which is sent by the BS at i+(frame offset)-th frame. 
+ 
+
+=====PAGE 35=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Table 13 Compact_DL-MAP_IE for H-ARQ_ACK_BITMAP 
+Syntax 
+Size 
+Notes 
+Compact_DL-MAP_IE () { 
+ 
+ 
+  DL-MAP Type = 5 
+3 bits 
+H-ARQ ACK BITMAP IE 
+  Reserved  
+1 bit 
+ 
+  BITMAP Length 
+4 bits 
+Length in Bytes 
+  BITMAP 
+variable 
+  
+} 
+ 
+ 
+ 
+DL-MAP Type 
+Defines the type of Compact DL-MAP. If the type value is 5, the Compact DL-MAP is for H-ARQ-ACK-BITMAP. 
+ 
+BITMAP Length 
+Specifies the length of the following BITMAP field. 
+ 
+BITMAP 
+Includes H-ARQ ACK information for H-ARQ enabled UL bursts. The size of BITMAP should be equal or larger 
+than the number of H-ARQ enabled UL-bursts.  
+ 
+ 
+ 
+ 
+6.3.2.3.44.6.6 Compact DL-MAP IE for Extension 
+ 
+ 
+Table 14 Compact_DL-MAP_IE for extension 
+Syntax 
+Size 
+Notes 
+Compact_DL-MAP_IE () { 
+ 
+ 
+  DL-MAP Type = 7 
+3 bits 
+Extension type 
+  DL-MAP Sub-Type  
+5 bits 
+Extension sub type 
+  Length 
+4 bits 
+Length of the IE in Bytes 
+  Payload 
+ variable 
+Sub-type dependent payload 
+} 
+  
+  
+Total 
+ 
+  
+ 
+DL-MAP Type 
+This value specifies the type of the compact DL-MAP IE. A value of 7 indicates the extension type. 
+ 
+DL-MAP Sub-Type 
+This value specifies the sub-type of the compact DL-MAP IE.  
+Length 
+This indicates the length of this IE in Bytes. If a SS can’t recognize the DL-MAP Sub-Type, it skips the IE. 
+Payload 
+The payload depends on the value of DL-MAP Sub-Type. The length of payload is Length -1 Bytes. 
+ 
+6.3.2.3.44.7 UL-MAP_IE 
+6.3.2.3.44.7.1 Compact UL-MAP IE for Normal Subchannel 
+Table 15 Compact_UL-MAP_IE for normal subchannel 
+Syntax 
+Size 
+Notes 
+
+=====PAGE 36=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Compact_UL-MAP_IE () { 
+ 
+ 
+  UL-MAP Type = 0 
+3 bits 
+ 
+  Reserved  
+1 bit 
+ 
+  RCID_IE 
+variable 
+  
+  Nep code 
+4 bits 
+ 
+  Nsch code.  
+4 bits 
+  
+  H-ARQ_Control_IE 
+ 
+ 
+} 
+ 
+ 
+UL-MAP Type 
+This value specifies the type of the compact UL-MAP IE. A value of 0 indicates the Normal Subchannel. 
+RCID_IE 
+Represent the assignment of the IE. 
+Nep code, Nsch code 
+The combination of Nep code and Nsch code indicates the number of allocated subchannels and scheme of coding 
+and modulation for the DL burst. 
+ 
+6.3.2.3.44.7.2 Compact UL-MAP IE for Band AMC Subchannel 
+ 
+Table 16 Compact_UL-MAP_IE for band AMC 
+
+=====PAGE 37=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+ 
+ 
+ 
+UL-MAP Type 
+This value specifies the type of the compact UL-MAP IE. A value of 1 indicates the Band AMC Subchannel. 
+RCID_IE 
+Represent the assignment of the IE. 
+Nep code, Nsch code 
+The combination of Nep code and Nsch code indicates the number of allocated subchannels and scheme of coding 
+and modulation for the UL burst. 
+Nband  
+Indicates the number of bands selected for the burst. If this value is set to 0, the Band BITMAP is used to indicate 
+the number and the position of selected bands instead. The number of the maximum logical bands determines the 
+length of this field. 
+Band BITMAP 
+This BITMAP is valid when Nband is 0. The n-th LSB of the Band BITMAP is set to 1 when the n-th logical band 
+is selected for the burst. If the number of the maximum logical bands is 12 then the length of the Band BITMAP is 
+12 bits. The band count is set to the number of ‘1’s in the Band BITMAP. The number of the maximum logical 
+bands determines the length of this field. 
+Band Index 
+Syntax 
+Size 
+Notes 
+Compact_UL-MAP_IE () { 
+ 
+ 
+  UL-MAP Type = band 
+3 bits 
+ 
+  Reserved  
+1 bit 
+ 
+  RCID_IE 
+variable 
+ 
+  Nep code 
+4 bits 
+Number of encapsulate packet 
+  Nsch code 
+4 bits 
+ 
+  Nband 
+Nb-Band bits 
+Indicates the number of selected bands. 
+0 = BITMAP indicates the number and offset of selected bands  
+  if(Nband == 0 ){ 
+ 
+ 
+    Band BITMAP 
+Nb-BITMAP bits n-th LSB is 1 if n-th band is selected 
+  }else { 
+  
+  
+    for (i=0;i<Nband;i++) 
+ 
+ 
+      Band Index 
+Nb-Index bits 
+Band selection.  
+  } 
+ 
+ 
+   Allocation Mode 
+2 bits 
+Indicates the subchannel allocation mode. 
+00 = same  No. subchannel for the selected bands 
+01 = different No. subchannel for the selected bands 
+10 = total No. subchannels for the selected bands determined by 
+Nsch code 
+  Reserved 
+2 bits 
+ 
+  if( Allocation Mode == 0){ 
+ 
+ 
+    No. Subchannels 
+8 bits 
+ 
+  } else  if( Allocation Mode == 1){ 
+ 
+ 
+    for (i=0;i< band count ;i++){ 
+  
+If Nband is 0, band count is the number of ‘1’ in Band BITMAP. 
+Otherwise band count is Nband. 
+      No. Subchannels 
+8 bits 
+Number of subchannels per band 
+    } 
+  
+  
+  } 
+ 
+ 
+  H-ARQ_Control_IE 
+variable 
+ 
+} 
+ 
+ 
+
+=====PAGE 38=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+This value indexes the selected band offset and is valid when Nband is larger than 0. The number of the maximum 
+logical bands determines the length of this field. 
+Allocation Mode 
+This value indicates the subchannel allocation mode in the selected bands.  
+The value is set to binary 00 when the same numbers of subchannels are allocated in the selected bands by the 
+following field ‘No. Subchannels’.  
+The value is set to 01 when different numbers of subchannels are allocated in each selected bands by the following 
+fields “No. Subchannels”.  
+The value is set to 10 when the total number of subchannels allocated in the selected bands is defined by Nsch code 
+and Nep code. The subchannels fill from the bands with lowest index. 
+The allocation mode variant is shown in Figure 2. 
+No. Subchannels 
+This value indicates the number of subchannels allocated for this burst. 
+ 
+6.3.2.3.44.7.3 Compact UL-MAP IE for Safety Subchannel 
+ 
+Table 17 Compact_UL-MAP_IE for safety 
+Syntax 
+Size 
+Notes 
+Compact_UL-MAP_IE () { 
+ 
+ 
+  UL-MAP Type = 2 
+3 bits 
+ 
+  Reserved  
+1 bit 
+ 
+  RCID_IE 
+variable 
+ 
+  Nep code 
+4 bits 
+ 
+  Nsch code 
+4 bits 
+ 
+  BIN Offset 
+8 bits 
+  
+  H-ARQ_Control_IE 
+variable 
+ 
+} 
+  
+  
+ 
+UL-MAP Type 
+This value specifies the type of the compact UL-MAP IE.  
+A value of 2 indicates the Safety Subchannel. 
+UL-MAP append  
+A value of 1 indicates the uplink access information is appended to the end of the UL-MAP IE.  
+RCID_IE 
+Represent the assignment of the IE. 
+Nep code, Nsch code 
+The combination of Nep code and Nsch code indicates the number of allocated subchannels and scheme of coding 
+and modulation for the burst. 
+BIN Offset 
+The offset of the BIN allocated for this UL burst. See appropriate specification. 
+ 
+6.3.2.3.44.7.4 Compact UL-MAP IE for UIUC Subchannel 
+ 
+Table 18. Compact_UL-MAP_IE for UIUC 
+Syntax 
+Size 
+Notes 
+Compact_UL-MAP_IE () { 
+ 
+ 
+  UL-MAP Type = 4 
+3 bits 
+ 
+  Reserved  
+1 bits 
+ 
+  UIUC 
+4 bits 
+ 
+
+=====PAGE 39=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+  RCID_IE 
+variable 
+  
+  No. Subchannels  
+8 bits 
+  
+} 
+  
+  
+UL-MAP Type 
+This value specifies the type of the compact UL-MAP IE. A value of 3 indicates the UIUC type. 
+UIUC 
+This value indicates the usage of this burst. 
+RCID_IE 
+Represent the assignment of the IE. 
+No. Subchannels 
+This value indicates the number of subchannels allocated by the IE. 
+ 
+6.3.2.3.44.7.5 Compact UL-MAP IE for H-ARQ Region Allocation  
+The H-ARQ ACK region information is delivered through the Compact_UL-MAP_IE as shown in Table 19. SS sends ACK 
+information for H-ARQ enabled DL bursts in the H-ARQ region specified by the IE.  
+ 
+The subchannels in the H-ARQ region are divided into two half-subchannels. The first half-subchannel is composed of first, third and 
+fifth tiles and the second half-subchannel is composed of second, fourth and sixth tiles. In the H-ARQ Region, the 2n-th half-
+subchannel is the first half-subchannel and the (2n+1)-th half-subchannel is the second half-subchannel of the n-th subchannel. 
+ 
+The H-ARQ enabled SS that receives H-ARQ DL burst at i-th frame should transmit ACK signal through the half-subchannel in the 
+H-ARQ region at (i+j)-th frame. The frame offset ‘j’ is defined by the “H-ARQ ACK Delay for DL Burst” field in the UCD message.  
+The half-subchannel offset in the H-ARQ Region is determined by the order of H-ARQ enabled DL burst in the H-ARQ MAP.  For 
+example, when a SS receives a H-ARQ enabled burst at i-th frame and the burst is n-th H-ARQ enabled burst in the H-ARQ MAP, the 
+SS should transmit H-ARQ ACK at n-th half-subchannel in H-ARQ Region that is allocated by the BS at the (i+j)-th frame. 
+ 
+Table 19 Compact UL-MAP IE for H-ARQ Region 
+Syntax 
+Size 
+Notes 
+Compact_UL-MAP_IE () { 
+ 
+ 
+  UL-MAP Type = 4 
+3 bits 
+H-ARQ_Region_IE 
+  H-ARQ Region Change Indication 
+1 bit 
+0: no region change 
+1: region changed 
+  if(H-ARQ Region Change Indication == 1) { 
+ 
+ 
+    OFDMA Symbol offset  
+8 bits 
+ 
+    Subchannel offset  
+8 bits 
+ 
+    No. OFDMA Symbols  
+8 bits 
+ 
+    No. Subchannels  
+8 bits 
+ 
+  } 
+ 
+ 
+} 
+ 
+ 
+ 
+H-ARQ Region Change Indication 
+Indicates whether the region for H-ARQ ACK is changed or not. 
+ 
+OFDMA Symbol offset  
+Subchannel offset  
+No. OFDMA Symbols  
+No. Subchannels  
+Specify the start symbol offset, the start subchannel offset, the number of allocated symbols and the number of 
+subchannels for the H-ARQ acknowledgement region respectively.  
+
+=====PAGE 40=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+ 
+6.3.2.3.44.7.6 Compact UL-MAP IE for CQICH Region Allocation 
+ 
+The CQI region information is delivered through the Compact_UL-MAP_IE as shown in Table 20. SS sends CQI report in CQI 
+region. 
+ 
+Table 20 Compact UL-MAP IE for CQI Region 
+Syntax 
+Size 
+Notes 
+Compact_UL-MAP_IE () { 
+ 
+ 
+  UL-MAP Type = 5 
+3 bits 
+CQI_Region_IE 
+  CQI Region Change Indication 
+1 bits 
+0: no region change 
+1: region changed 
+  if(CQI Region Change Indication == 1) { 
+ 
+ 
+    OFDMA Symbol offset  
+8 bits 
+ 
+    Subchannel offset  
+8 bits 
+ 
+    No. OFDMA Symbols  
+8 bits 
+ 
+    No. Subchannels  
+8 bits 
+ 
+  }   
+ 
+ 
+} 
+ 
+ 
+ 
+CQI Region Change Indication 
+Indicates whether the region for CQI is changed or not. 
+ 
+ 
+OFDMA Symbol offset  
+Subchannel offset  
+No. OFDMA Symbols  
+No. Subchannels  
+Specify the start symbol offset, the start subchannel offset, the number of allocated symbols and the number of 
+subchannels for the CQI report region respectively.  
+ 
+6.3.2.3.44.7.6 Compact UL-MAP IE for Extension  
+ 
+Table 21 Compact_UL-MAP_IE for extension 
+Syntax 
+Size 
+Notes 
+Compact_UL-MAP_IE () { 
+ 
+ 
+  UL-MAP Type = 7 
+3 bits 
+ 
+  UL-MAP Sub-Type  
+5 bits 
+ 
+  Length 
+4 bits 
+ Length of this IE in Bytes 
+  Payload 
+ 
+Sub-type dependent payload 
+} 
+  
+  
+ 
+UL-MAP Type 
+This value specifies the type of the compact UL-MAP IE. A value of 7 indicates the extension type. 
+ 
+UL-MAP Sub-Type 
+This value specifies the sub-type of the compact UL-MAP IE.  
+Length 
+This indicates the length of this IE in Bytes. If a SS can’t recognize the UL-MAP Sub-Type, it skips the IE. 
+
+=====PAGE 41=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Payload 
+The payload depends on the value of UL-MAP Sub-Type. The length of payload is Length -1 Bytes. 
+ 
+Add the following rows to table 365: 
+ 
+Name 
+Type 
+Length 
+Value 
+Band AMC Allocation 
+Threshold 
+157 
+1 
+dB unit 
+Band AMC Release  
+Threshold 
+158 
+1 
+dB unit 
+Band AMC  Allocation 
+Timer 
+159 
+1 
+Frame unit 
+Band AMC Release  
+Timer 
+160 
+1 
+Frame unit 
+Band Status Reporting 
+MAX Period 
+161 
+1 
+Frame unit 
+Band AMC Retry Timer 
+162 
+1 
+Frame unit 
+Safety Channel 
+Allocation Threshold 
+163 
+1 
+dB unit 
+Safety Channel Release 
+Threshold 
+164 
+1 
+dB unit 
+Safety Channel 
+Allocation Timer 
+165 
+1 
+Frame unit 
+Safety Channel  Release 
+Timer 
+166 
+1 
+Frame unit 
+Bin Status Reporting 
+MAX Period 
+167 
+1 
+Frame unit 
+Safety Channel Retry 
+Timer 
+168 
+1 
+Frame unit 
+H-ARQ ACK delay for 
+UL burst 
+169 
+1 
+1 = 1 frame offset 
+2 = 2 frame offset 
+3 = 3 frame offset 
+CQICH Band AMC 
+Transition Delay 
+170 
+1 
+Frame unit  
+ 
+ 
+Add the folllwing rows to Table 312—DCD channel encoding: 
+ 
+Name 
+Type 
+Length 
+Value 
+H-ARQ ACK delay for 
+DL burst 
+17 
+1 
+1 = 1 frame offset 
+2 = 2 frame offset 
+3 = 3 frame offset 
+ 
+ 
+[Change the table in section 11.8.3.7.2 and 11.8.3.7.3] 
+ 
+
+=====PAGE 42=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+11.8.3.7.2 OFDMA SS demodulator 
+Type 
+Length 
+Value 
+Scope 
+5.12.2 
+1 
+bit #0: 64-QAM 
+bit #1: BTC 
+bit #2: CTC 
+bit #3: STC 
+bit #4: AAS 
+bit #5-7: Reserved 
+bit #5: H-ARQ 
+bit #6-7: Reserved, shall be set to 0 
+SBC-REQ 
+(see 6.4.2.3.23) 
+SBC-RSP 
+(see 6.4.2.3.24) 
+ 
+ 
+11.8.3.7.3 OFDMA SS modulator 
+Type 
+Length 
+Value 
+Scope 
+5.12.2 
+1 
+bit #0: 64-QAM 
+bit #1: BTC 
+bit #2: CTC 
+bit #3-7: Reserved, set to 0 
+bit #3: H-ARQ 
+bit #4-7: Reserved, shall be set to 0 
+SBC-REQ 
+(see 6.4.2.3.23) 
+SBC-RSP 
+(see 6.4.2.3.24) 
+ 
+11.8.3.7.4 OFDMA SS modulator 
+ 
+Type 
+Length 
+Value 
+Scope 
+5.12.3 
+1 
+The number of HARQ ACK Channel 
+SBC-REQ 
+(see 6.4.2.3.23) 
+SBC-RSP 
+(see 6.4.2.3.24) 
+ 
+ 
+[Change the table in section 11.11 and 11.12] 
+ 
+11.11 TLV of REP-REQ 
+Add the following parameters: 
+ 
+Name 
+Type 
+Length 
+Value 
+00 = Normal subchannel, 
+01 = Band AMC Channel, 
+10 = Safety Channel, 
+Channel Type request 
+2.1 
+1 
+11 = Reserved for future 
+ 
+ 
+11.12 TLV of REP-RSP 
+Add the following parameters: 
+ 
+REP-REQ 
+Name 
+Type 
+Length
+Value 
+
+=====PAGE 43=====
+2004-04-28 
+IEEE C802.16.d-04_74r3 
+ 
+ 
+   
+Channel Type 
+request in 
+WirelessMAN-
+OFDMA PHY 
+ 
+ 
+ 
+ 
+ 
+Reported 
+Channel Type 
+2.1 
+1 
+00 = Normal subchannel, 
+ 
+ 
+ 
+ 
+01 = Band AMC Channel, 
+ 
+ 
+ 
+ 
+10 = Safety Channel, 
+ 
+ 
+ 
+ 
+11 = Reserved for future 
+Channel Type type in 
+WirelessMAN-
+OFDMA PHY = 00 
+Normal 
+subchannel 
+Report 
+2.2 
+1 
+First 5 bits for the CINR measurement report 
+and the rest for don’t care 
+Channel Type type in 
+WirelessMAN-
+OFDMA PHY = 01 
+Band AMC 
+Report 
+2.3 
+4 
+First 12 bits for the band indicating bitmap 
+and Next 25 bits for CINR reports (5 bits per 
+each band) 
+Channel Type type in 
+WirelessMAN-
+OFDMA PHY = 10 
+Safety Channel 
+Report 
+2.3 
+5 
+The first 20 bits for the reported bin indices 
+and the next 20 bits for CINR reports (5 bits 
+for each bin) 
+ 
+ 
