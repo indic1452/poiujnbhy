@@ -1042,11 +1042,12 @@ class ОкноСтолаTests(unittest.TestCase):
     def выполнить(self, случаи):
         from test_potok_sessii import функции_js  # noqa: PLC0415
         код = функции_js(["маскаGFP", "слойGFP", "видКадраGFP", "проверкиКадраGFP", "ошибкаКадраGFP", "плиткиGFP",
-                          "участокGFP"], [])
+                          "участокGFP", "дальшеGFP", "параметрыGFP"], [])
         код += """
+const БИТ_УЧАСТКА_GFP = 1 << 25, БИТ_ДО_GFP = 1 << 26;
 const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
 process.stdout.write(JSON.stringify(случаи.map(([ф, ...а]) => ({маскаGFP, слойGFP, видКадраGFP, проверкиКадраGFP, ошибкаКадраGFP, плиткиGFP,
-    участокGFP})[ф](...а))));
+    участокGFP, дальшеGFP, параметрыGFP})[ф](...а))));
 """
         готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=20)
         self.assertEqual(0, готово.returncode, готово.stderr)
@@ -1147,13 +1148,26 @@ process.stdout.write(JSON.stringify(случаи.map(([ф, ...а]) => ({маск
         self.assertEqual([["Участок", "биты 0…8\xa0191 из 19\xa0200"], ["Участок", "биты 8\xa0192…16\xa0383 из 19\xa0200"],
                           ["Участок", "биты 16\xa0384…19\xa0199 из 19\xa0200"]], [п[-1] for п in итог[6:9]])
         self.assertEqual(["Скремблер", "Скремблер"], [п[-1][0] for п in итог[9:]])
+        итог = self.выполнить([["дальшеGFP", {"участок": у}] for у in случаи] + [["дальшеGFP", None]])
+        self.assertEqual(["Дальше — с бита 8\xa0192", "Дальше — с бита 16\xa0384", None, None, None, None], итог)
+
+    def test_параметры_запроса(self):
+        поля = {"stage": 2, "маска": "авто", "скремблер": "да", "порядок": "младший", "многочлен": "авто"}
+        итог = self.выполнить([["параметрыGFP", {**поля, "первый": п, "бит": б}] for п, б in
+                               ((8192.4, 33554432), (-5, 0), (None, 100), (7, 1 << 30), (0, 5000.6), (0, 4096))])
+        self.assertEqual({"stage": 2, "mask": "авто", "scrambler": "да", "order": "младший", "poly": "авто",
+                          "first": 8192, "bits": 1 << 25}, итог[0])
+        self.assertEqual([(8192, 1 << 25), (0, 1 << 25), (0, 4096), (7, 1 << 26), (0, 5001), (0, 4096)],
+                         [(д["first"], д["bits"]) for д in итог])
 
     def test_окно_участок_и_дальше_в_коде(self):
         from test_potok_sessii import APP_JS  # noqa: PLC0415
         текст = APP_JS.read_text(encoding="utf-8")
         for кусок in ("const БИТ_УЧАСТКА_GFP = 1 << 25, БИТ_ДО_GFP = 1 << 26;", "первый.узел, длина.узел,",
-                      "bits: Math.min(БИТ_ДО_GFP, Math.max(4096, Math.round(длина.значение() || БИТ_УЧАСТКА_GFP)))",
-                      "плитки, дальше, h('div', { class: 'stol-results-wrap' }, таблица), ещё)", "первый.поле.value = String(у.дальше); найти(false);",
+                      "первый: первый.значение(), бит: длина.значение() });",
+                      "плитки, дальше, h('div', { class: 'stol-results-wrap' }, таблица), ещё)",
+                      "первый.поле.value = String(участокGFP(св).дальше); найти(false);",
+                      "дальше.hidden = надпись === null;", "[своя, первый.поле, длина.поле].forEach(",
                       "[первый, длина].forEach((п) => п.узел.classList.add('field--stack'));"):
             self.assertIn(кусок, текст)
 
