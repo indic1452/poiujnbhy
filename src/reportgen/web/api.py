@@ -3067,7 +3067,11 @@ def progon_delete(request: Request, run_id: str) -> dict[str, Any]:
 @router.get("/dekodirovat-kak/razborshchiki")
 def decode_as_dissectors(request: Request) -> dict[str, Any]:
     """Все разборщики анализатора — для выбора «Разобрать как…» с поиском."""
-    from ..setevoy.dekodirovat_kak import ДАННЫЕ, ПОЛЯ_ПРЕДЛОЖЕНИЯ, список_разборщиков  # noqa: PLC0415
+    from ..setevoy.dekodirovat_kak import (  # noqa: PLC0415
+        ДАННЫЕ,
+        ПОЛЯ_ПРЕДЛОЖЕНИЯ,
+        список_разборщиков,
+    )
     require_user(request)
     return {"items": список_разборщиков(), "данные": ДАННЫЕ, "поля": ПОЛЯ_ПРЕДЛОЖЕНИЯ}
 

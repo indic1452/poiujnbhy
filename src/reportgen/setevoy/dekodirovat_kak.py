@@ -31,6 +31,7 @@ doc/wsug_src/wsug_customize.adoc), аналитик управляет выбо�
 
 from __future__ import annotations
 
+import functools
 import inspect
 import json
 import re
@@ -528,7 +529,7 @@ def разобрать_по_правилам(данные_: bytes, канал: s
         try:
             текущий()
         except Перехват as п:
-            шаг = (lambda п=п: р.повернуть(п))
+            шаг = functools.partial(р.повернуть, п)
         except Мало:
             пакет.ошибки.append("пакет оборван: заголовок длиннее записанных байт")
             if пакет.уровни:

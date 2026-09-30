@@ -29,7 +29,15 @@ import _bootstrap  # noqa: F401
 import setevoy_sintez as с
 from reportgen.config import Settings, capture_own_ports, settings_warnings
 from reportgen.setevoy.chtenie import прочитать_захват
-from reportgen.setevoy.zahvat_seti import chtec, istochniki, karty, obrabotka, parametry, pcap_bib, zapis
+from reportgen.setevoy.zahvat_seti import (
+    chtec,
+    istochniki,
+    karty,
+    obrabotka,
+    parametry,
+    pcap_bib,
+    zapis,
+)
 from reportgen.setevoy.zahvat_seti.istochniki import ОшибкаЗахвата
 from reportgen.setevoy.zahvat_seti.menedzher import Менеджер
 from reportgen.setevoy.zahvat_seti.parametry import Фильтр, проверить
