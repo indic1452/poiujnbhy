@@ -697,6 +697,9 @@ class ВыходыTests(unittest.TestCase):
         от = 5 + 8 * len(первый)
         р = gfp.разобрать(ряд[от:], от_бита=от)
         self.assertEqual(ПАКЕТЫ[1:12], клиенты(р))
+        self.assertEqual({"от": от, "до": len(ряд), "всего": len(ряд)}, р.участок())
+        self.assertEqual({"от": от, "до": len(ряд), "всего": len(ряд) + 1},
+                         gfp.разобрать(ряд[от:], от_бита=от, всего_бит=len(ряд) + 1).участок())
         слой = gfp.слой(р, "клиенты")
         self.assertEqual(f"gfp маска 000119D8 скремблер да с бита {от} выход клиенты", слой)
         # «Поток нагрузки», «По каналам CID», «В журнал» окна — слои сводки, с того же места.
@@ -1038,10 +1041,12 @@ class ОкноСтолаTests(unittest.TestCase):
 
     def выполнить(self, случаи):
         from test_potok_sessii import функции_js  # noqa: PLC0415
-        код = функции_js(["маскаGFP", "слойGFP", "видКадраGFP", "проверкиКадраGFP", "ошибкаКадраGFP", "плиткиGFP"], [])
+        код = функции_js(["маскаGFP", "слойGFP", "видКадраGFP", "проверкиКадраGFP", "ошибкаКадраGFP", "плиткиGFP",
+                          "участокGFP"], [])
         код += """
 const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
-process.stdout.write(JSON.stringify(случаи.map(([ф, ...а]) => ({маскаGFP, слойGFP, видКадраGFP, проверкиКадраGFP, ошибкаКадраGFP, плиткиGFP})[ф](...а))));
+process.stdout.write(JSON.stringify(случаи.map(([ф, ...а]) => ({маскаGFP, слойGFP, видКадраGFP, проверкиКадраGFP, ошибкаКадраGFP, плиткиGFP,
+    участокGFP})[ф](...а))));
 """
         готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=20)
         self.assertEqual(0, готово.returncode, готово.stderr)
@@ -1131,6 +1136,27 @@ process.stdout.write(JSON.stringify(случаи.map(([ф, ...а]) => ({маск
         self.assertEqual(["Потери синхронизации", "нет"], итог[2][-2])
         self.assertEqual(["Скремблер", "нет, нагрузка инвертирована"], итог[2][-1])
 
+    def test_участок_и_дальше(self):
+        случаи = [{"от": 0, "до": 8192, "всего": 19200}, {"от": 8192, "до": 16384, "всего": 19200},
+                  {"от": 16384, "до": 19200, "всего": 19200}, {"от": 0, "до": 19200, "всего": 19200}, None]
+        итог = self.выполнить([["участокGFP", {"участок": у}] for у in случаи] + [["участокGFP", None]]
+                              + [["плиткиGFP", {"маска": "1", "пустой": "п", "счёт": {}, "участок": у}] for у in случаи])
+        self.assertEqual([{"текст": "биты 0…8\xa0191 из 19\xa0200", "дальше": 8192},
+                          {"текст": "биты 8\xa0192…16\xa0383 из 19\xa0200", "дальше": 16384},
+                          {"текст": "биты 16\xa0384…19\xa0199 из 19\xa0200", "дальше": None}, None, None, None], итог[:6])
+        self.assertEqual([["Участок", "биты 0…8\xa0191 из 19\xa0200"], ["Участок", "биты 8\xa0192…16\xa0383 из 19\xa0200"],
+                          ["Участок", "биты 16\xa0384…19\xa0199 из 19\xa0200"]], [п[-1] for п in итог[6:9]])
+        self.assertEqual(["Скремблер", "Скремблер"], [п[-1][0] for п in итог[9:]])
+
+    def test_окно_участок_и_дальше_в_коде(self):
+        from test_potok_sessii import APP_JS  # noqa: PLC0415
+        текст = APP_JS.read_text(encoding="utf-8")
+        for кусок in ("const БИТ_УЧАСТКА_GFP = 1 << 25, БИТ_ДО_GFP = 1 << 26;", "первый.узел, длина.узел,",
+                      "bits: Math.min(БИТ_ДО_GFP, Math.max(4096, Math.round(длина.значение() || БИТ_УЧАСТКА_GFP)))",
+                      "таблица), ещё, дальше)", "первый.поле.value = String(у.дальше); найти(false);"):
+            self.assertIn(кусок, текст)
+        self.assertEqual((1 << 25, 1 << 26), (gfp.БИТ_ДО // 2, gfp.БИТ_ДО))
+
     def test_маска_вид_и_ошибка_строки(self):
         итог = self.выполнить([
             ["маскаGFP", "своя", "99999999"], ["маскаGFP", "своя", "0x0001 19d8"],
@@ -1156,6 +1182,7 @@ process.stdout.write(JSON.stringify(случаи.map(([ф, ...а]) => ({маск
         self.assertIn("Предустановки: B6AB31E0 (G.7041)", маска)
         self.assertIn("HUNT → PRESYNC → SYNC", справка["Выделение кадров"])
         self.assertIn("F1", справка)
+        self.assertIn("«разобраны биты X…Y из Z», «Дальше» — следующий участок", справка["Участок"])
 
     def test_окно_в_меню_и_клавишах(self):
         from test_potok_sessii import APP_JS  # noqa: PLC0415
@@ -1224,6 +1251,32 @@ class ОкноЧерезСерверTests(unittest.TestCase):
             имена.append(self.дождаться(ответ["id"], "pakety")["имя"])
         self.assertEqual(["gfp — GFP клиенты, CID 2, массив 0.pcap", "gfp — GFP клиенты, массив 0.pcap"], имена)
         self.assertEqual(400, к.post(f"/api/potok/{ид}/gfp/pakety", json={"mask": "B6AB31E0"}).status_code)
+
+    def test_участок_в_сводке_и_дальше(self):
+        # Окно разбирает участок: сводка пишет, какие биты разобраны, и откуда дальше; слои — с того же места.
+        from unittest import mock  # noqa: PLC0415
+
+        к = self.к
+        self.сеть.login("engineer")
+        сид = к.post("/api/sessions", json={"name": "gfp-у"}).json()["id"]
+        ид = self.загрузить(сид, "пустые.bin", г.поток([None] * 600))          # 19 200 бит
+        with mock.patch.object(gfp, "БИТ_ДО", 1 << 14):
+            св = к.post(f"/api/potok/{ид}/gfp", json={}).json()["сводка"]
+            self.assertEqual({"от": 0, "до": 8192, "всего": 19200}, св["участок"])
+            self.assertEqual("разобраны биты 0…8191 из 19200; дальше — с бита 8192", св["строки"][-1])
+            self.assertEqual("gfp маска B6AB31E0 скремблер да выход поток", св["слой_поток"])
+            св = к.post(f"/api/potok/{ид}/gfp", json={"first": 8192, "bits": 8192}).json()["сводка"]
+            self.assertEqual({"от": 8192, "до": 16384, "всего": 19200}, св["участок"])
+            self.assertEqual("разобраны биты 8192…16383 из 19200; дальше — с бита 16384", св["строки"][-1])
+            self.assertEqual("gfp маска B6AB31E0 скремблер да с бита 8192 выход поток", св["слой_поток"])
+            св = к.post(f"/api/potok/{ид}/gfp", json={"first": 16384, "bits": 8192}).json()["сводка"]
+            self.assertEqual({"от": 16384, "до": 19200, "всего": 19200}, св["участок"])
+            self.assertEqual("разобраны биты 16384…19199 из 19200", св["строки"][-1])
+            св = к.post(f"/api/potok/{ид}/gfp", json={"bits": 1 << 20}).json()["сводка"]
+            self.assertEqual({"от": 0, "до": 16384, "всего": 19200}, св["участок"])
+        св = к.post(f"/api/potok/{ид}/gfp", json={}).json()["сводка"]
+        self.assertEqual({"от": 0, "до": 19200, "всего": 19200}, св["участок"])
+        self.assertFalse(any(с_.startswith("разобраны биты") for с_ in св["строки"]))
 
     def test_не_gfp_найдено_нет_с_причиной(self):
         # SDH без GFP: «заголовки» есть, осмысленных кадров нет — окно пишет «найдено: нет» и почему.
