@@ -90,5 +90,46 @@ class RsIessTests(unittest.TestCase):
             iess.снять(биты, "рс iess 225 205")
 
 
+def _выколоть(u: np.ndarray, x: str, y: str, mil: bool) -> np.ndarray:
+    """Свой кодер НСК: 171/133 K = 7 (EN 300 421 рис. 3) регистром-списком, шаблон табл. 2;
+    MIL-STD-188-165B — во 2-м и следующих символах периода I и Q переставлены (табл. I–II)."""
+    рег = [0] * 6
+    переданные = []
+    for t, e in enumerate(u.tolist()):
+        X = e ^ рег[0] ^ рег[1] ^ рег[2] ^ рег[5]
+        Y = e ^ рег[1] ^ рег[2] ^ рег[4] ^ рег[5]
+        рег = [e] + рег[:5]
+        if x[t % len(x)] == "1":
+            переданные.append(X)
+        if y[t % len(y)] == "1":
+            переданные.append(Y)
+    п = np.array(переданные, dtype=np.uint8)
+    P = (x + y).count("1")
+    п = п[:len(п) // P * P].reshape(-1, P)
+    if mil:
+        п[:, 2::2], п[:, 3::2] = п[:, 3::2].copy(), п[:, 2::2].copy()
+    return п.reshape(-1)
+
+
+class НскTests(unittest.TestCase):
+    U = np.random.default_rng(8).integers(0, 2, 30_000).astype(np.uint8)
+
+    def test_dvb_и_mil(self):
+        for скорость, x, y, mil in (("3/4", "101", "110", False), ("7/8", "1000101", "1111010", False),
+                                    ("2/3", "10", "11", False), ("5/6", "10101", "11010", False),
+                                    ("3/4", "101", "110", True), ("7/8", "1000101", "1111010", True)):
+            with self.subTest(скорость=скорость, mil=mil):
+                п = _выколоть(self.U, x, y, mil)
+                п ^= (np.random.default_rng(1).random(len(п)) < 0.002).astype(np.uint8)
+                ряд, находка = razbor.снять_вручную(п, f"нск {скорость}" + (" mil" if mil else ""))
+                self.assertTrue(np.array_equal(self.U[:5000], ряд[:5000]), находка.подробно)
+
+    def test_сск_и_кбк_честно(self):
+        with self.assertRaisesRegex(ValueError, "многочлены кода есть только в IESS-309"):
+            razbor.снять_вручную(self.U, "сск")
+        with self.assertRaisesRegex(ValueError, "расшифровки нет"):
+            razbor.снять_вручную(self.U, "кбк")
+
+
 if __name__ == "__main__":
     unittest.main()
