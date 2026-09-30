@@ -82,6 +82,10 @@ def create_app(settings: Settings | None = None,
         # Папка плоскостей модуляционного декодера — сразу при старте: аналитик кладёт
         # туда свои картинки созвездий (.etl) руками, ещё до первого разбора.
         (Path(settings.data_dir) / "ploskosti").mkdir(parents=True, exist_ok=True)
+        # Папка матриц LDPC отдела — тоже при старте, с памяткой о форматах: файлы (alist, базовая с Z,
+        # адреса DVB, H в тексте) кладут туда руками, автомат и окно «LDPC» пробуют их сами.
+        from ..potok import ldpc  # noqa: PLC0415 — numpy только при старте, не при импорте
+        ldpc.подготовить_каталог(Path(settings.data_dir) / "ldpc")
         if service.vectors is not None:
             state = service.vectors.start_if_needed()
             if state.get("running"):

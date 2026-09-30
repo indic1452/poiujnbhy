@@ -1,0 +1,1311 @@
+
+=====PAGE 1=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Unlocking the Potential of LDPC, 
+White Paper 
+New “FlexLDPC” Coding from 
+Datum Systems   
+for  
+All M7 and PSM-500 Series Modems  
+ 
+ 
+DATUM SYSTEMS INC. 
+15 Great Oaks Blvd 
+San Jose, CA  95119 U.S.A. 
+Telephone: (408) 365-9745 
+Fax: (408) 365-0471 
+Visit us at:  www.datumsystems.com 
+ 
+ 
+
+=====PAGE 2=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Introduction 
+Today, a new class of FEC is available from Datum Systems, “FlexLDPC”, which leverages the Flexible LDPC (F-
+LDPC) technology from TrellisWare Technologies, Inc.  F-LDPC provides a single powerful FEC code solution for 
+any satellite link.  Datum System’s chose TrellisWare’s F-LDPC for its LDPC implementation because it offers 
+outstanding performance and flexibility in both block sizes and code rates.  
+Until recently, advances in forward error correction (FEC) design, such as Viterbi, Sequential, Trellis Code 
+Modulation (TCM), Concatenated Viterbi/Reed-Solomon, Turbo Product Codes (TPC) or Low Density Parity 
+Check codes (LDPC) have not been able to provide a complete solution to the requirements of a modern 
+satellite communication channel.   Typically, there are many tradeoffs between bandwidth, power, processing 
+delay and coding gains that in the past have required the use of several different classes of FEC.  Datum 
+Systems has solved this dilemma using the F-LDPC core. 
+Years of field experience and simulation have shown that the performance of the modern iterative codes in 
+widespread use today for satellite communications (TPC and LDPC) offer outstanding coding gain 
+improvements over the legacy Intelsat coding methods of Sequential, Viterbi/Reed-Solomon and TCM.  The 
+disadvantages of the modern codes were usually (1) the large block sizes required for maximum coding gain 
+result in large processing delays at low data rates, and (2) the cost of the hardware required for the iterative 
+decoding and large block sizes can be prohibitive for high data rates.  Datum’s implementation of F-LDPC 
+provides an exceptional range of code rates and block sizes that deliver excellent performance.  In addition, 
+advances in FPGA technology and decoder design provide high data rate throughput with low associated 
+hardware cost. 
+ 
+Overview of Turbo Codes 
+Turbo codes have their origins in a landmark 1993 paper by Claude Berrou and Alain Glavieux, who introduced 
+the technique of iterative, or parallel decoding, which they termed “Turbo codes”.    The Turbo name has been 
+retained in the literature and industry as a name for certain types of iterative codes.  TPCs and LDPCs are all 
+considered Turbo codes.   Berrou and Glavieux’s iterative technique was soon applied to many types of FECs, 
+and the TPC was developed and introduced to the market over a decade ago.   LDPCs, on the other hand, have 
+been around for much longer, having been invented by Robert Gallagher in his Ph.D. thesis in 1960.  The idea 
+sat nearly dormant for over 30 years, then was revived in the mid 1990’s as hardware technology became 
+available that made implementation practical.  LDPCs have become popular in certain segments of the satellite 
+industry, primarily the broadcast segment, as LDPCs are a part of the DVB-S2 standard.  The term “traditional 
+LDPC” will be used here to denote LDPC codes that are based on the optimization of parity check matrices.  F-
+LDPC is a new breakthrough in FEC design that is a structured LDPC.  This allows for the easy construction of 
+parity-check matrices, and other advantages that are explained below. 
+ 
+
+=====PAGE 3=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Advantage of a flexible-LDPC codec design over TPCs and traditional LDPCs 
+In order to optimize a given satellite link, it is advantageous for any FEC to have many different FEC rates and 
+block sizes.  TPCs, traditional LDPCs, and F-LDPC are all types of block codes, that is, the decoding process 
+works on the fixed number of data bits.  Flexibility in FEC rate addresses the issue of power vs. bandwidth 
+tradeoffs.  Flexibility in block size allows processing delay vs. power to be addressed for a target Bit Error Rate 
+(BER).  Additionally, many of the constituent codes for TPC have inferior BER performance.  Traditional LDPCs 
+can be easily punctured, which permits code rate flexibility, but the block size is determined by the discovery 
+and optimization of well-performing parity check matrices that are quite difficult to calculate.   Datum’s 
+implementation of F-LDPC has a unique design that incorporates a large number of constituent codes and 
+permits puncturing of parity bits.  This combination provides great flexibility in both selectable FEC rates (7 
+code rates of 1/2, 2/3, 3/4, 14/17, 7/8, 10/11 & 16/17) AND block sizes (7 block sizes of 256, 512, 1k, 2k, 4k, 8k 
+& 16 k).  This flexibility allows the satellite link to be fine-tuned to an unprecedented scale. 
+Turbo codes, including TPCs, traditional LDPCs, and F-LDPC require multiple iteration passes through the 
+decoder before the maximum number of errors can be corrected.  The maximum decoding data rate is 
+determined by the decoder complexity and the number of iteration passes required to correct most (or all) of 
+the channel errors.   TPC codes generally require a small number of iterations, and the decoding process is of 
+medium complexity, therefore decoding can occur at reasonably high bit rates utilizing moderate to somewhat 
+expensive hardware implementations.   Traditional-LDPCs require a much larger number of iterations, and the 
+decoding process is highly complex.  Thus, in general, for a given data rate, the traditional LDPC decoding 
+requires more expensive hardware to implement.   F-LDPC provides the best of both worlds.  The decoding 
+process requires a smaller number of iterations, and the decoding architecture is of fairly low complexity, 
+which provides for both high throughput and low decoder implementation cost. 
+ 
+Comparison of TPC, traditional LDPC and Datum System’s flexible LDPC Performance 
+For any noisy communication channel there exists a theoretical maximum information rate for the channel for 
+any particular noise level.  This limit is called the Shannon limit of the channel, and the equations describing 
+this maximum information rate were first presented by Claude Shannon in 1948.  Shannon’s equations 
+describe an upper limit for FEC efficiency vs. BER and noise level.  Classes of FEC codes and differing code rates 
+and block sizes are often evaluated for performance by how close they approach the Shannon limit.   Although 
+there is much in the literature describing TPCs and traditional LDPCs that approach the Shannon limit, these 
+are typically only at optimized code rates and block sizes.    For example, TPCs perform best at high code rates 
+(0.95) and large block sizes (i.e. 16kbit), but this is not a practical code for a low data rate, power limited 
+satellite link.  The fact is that TPC, traditional LDPC and Datum’s LDPC all perform very close to the Shannon 
+limit under certain conditions.  A more practical way to compare competing FEC types is to stack up their 
+performance in real-world satellite channel situations. 
+ 
+
+=====PAGE 4=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Are flexible-LDPCs better than TPCs?  The answer is YES!  As shown in Figure - 1, performance graphs for 
+Datum Systems’ LDPC Rate 3/4 vs. Industry Standard TPC Rate 3/4 for 8PSK and QPSK show a clear advantage 
+for F-LDPC.  For the 8psk case, the F-LDPC 1k block has the same BER performance as Compatible TPC, but 
+with almost half the end to end delay.  The Flexible LDPC 2k block offered by Datum has roughly the same 
+delay as the Industry Standard TPC, but with 0.5 dB better performance at 1E-7 BER.  The same results hold for 
+QPSK.    
+ 
+Datum Systems PSM-500 Modem Typical BER Performance
+   Datum - B/QPSK, F-LDPC-1k Block, Rate 3/4
+   Datum - 8PSK, F- LDPC-1k Block, Rate 3/4
+   Datum - B/QPSK, F-LDPC-2k Block, Rate 3/4
+   Datum - 8PSK, F-LDPC-2k Block, Rate 3/4
+   Industry Standard - B/QPSK, TPC, Rate 3/4
+   Industry Standard - 8PSK, TPC, Rate 3/4
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+21.8
+21.8
+47
+47
+41.9
+41.9
+ 
+Figure - 1 
+ 
+The advantage of flexible LDPC over TPC is more dramatic in Figure 2, which shows performance graphs for 
+Datum LDPC Rate 1/2 vs. Industry Standard TPC rate 21/44 (which is not as bandwidth efficient as Rate 1/2).   
+In Figure - 2, LDPC Rate 1/2 1k block not only has less than 1/3 of the delay as Compatible TPC, but the 
+performance is over 0.7 dB better at 1E-7. 
+ 
+ 
+Modem Latency @ 64kbps 
+is given at bottom of 
+respective BER curve in 
+milliseconds (ms) 
+
+=====PAGE 5=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+Datum Systems PSM-500 Modem Typical BER Performance
+   Datum - B/QPSK, F-LDPC-1k Block, Rate 1/2
+   Datum - B/QPSK, F-LDPC-2k Block, Rate 1/2
+   Datum - B/QPSK, F-LDPC-2k Block, Rate 2/3
+   Datum - B/QPSK, F-LDPC-2k Block, Rate 3/4
+   Industry Standard - B/QPSK, TPC, Rate 21/44
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+25.3 
+41
+49.6
+44.4
+41.9
+ 
+Figure - 2 
+ 
+Is Datum’s flexible-LDPC option better than traditional LDPCs?  The answer again is YES!  As shown in Figure – 
+3, the performance graphs for Datum LDPC Rate 3/4 vs. Traditional LDPC Rate 3/4 for 16QAM show a clear 
+advantage for Datum LDPC.   As shown in the Figure, the Datum LDPC Rate 3/4 2k Block has the same 
+performance as Traditional LDPC Rate 3/4, but at less than 1/9 the delay!  The Datum LDPC Rate 3/4 4k Block 
+has about 0.5 dB better BER performance, but at less than 1/4 the delay! 
+ 
+Modem Latency @ 64kbps 
+is given at bottom of 
+respective BER curve in 
+milliseconds (ms) 
+
+=====PAGE 6=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+Datum Systems PSM-500 Modem Typical BER Performance
+   Datum - 16QAM, F-LDPC-2k Block, Rate 3/4
+   Datum - 16QAM, F-LDPC-4k Block, Rate 3/4
+   Traditional - 16QAM, LDPC, Rate 3/4
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+82.4
+395
+41.9
+ 
+Figure -3 
+Conclusion and Datum LDPC Highlights 
+Datum Systems has integrated a highly Scalable and Flexible LDPC option into its M7 and PSM-500 Series 
+satellite modems.   This quantum leap in LDPC capability removes the barriers that forced users of traditional 
+LDPC’s to decide between high performance and low latency.  Datum Systems’ LDPC can give you both.  In 
+addition, this new low cost implementation makes it very cost competitive to current Turbo Product Codes, 
+with significantly better performance and lower latency. 
+Additional Datum LDPC Highlights Include: 
+• No longer need both TPC and LDPC to maximize modem performance 
+• Datum LDPC performs  across all available data rates, code rates, block sizes and modulation types 
+• 7 well distributed code rates and 7 selectable block sizes for unprecedented link design flexibility  
+• Flexible LDPC block sizes now offer many low latency alternatives to traditional LDPC or TPC 
+• Datum LDPC outperforms TPC across the board; BER vs. EB/N0 vs. Latency 
+• All PSM-500 models are LDPC Decoder card field upgradable.  LDPC Encoder is a standard option.  
+• Software Key Enabled upgrade to LDPC-Limited (2k and below) option available for PSM-500 Series 
+• M7 Series modems are all key code upgradable to FlexLDPC (2k and 16k options). Hardware standard. 
+• Datum’s fast and reliable acquisition fully supports all flexible LDPC modes 
+Modem Latency @ 64kbps 
+is given at bottom of 
+respective BER curve in 
+milliseconds (ms) 
+
+=====PAGE 7=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+64 kbps
+128 kbps
+256 kbps
+512 kbps
+Viterbi, Rate 1/2
+2.8 ms
+1.4 ms
+0.7 ms
+0.3 ms
+Viterbi, Rate 1/2 + Reed Solomon
+61.5 ms
+30.8 ms
+15.4 ms
+7.7 ms
+TCM, Rate 2/3
+7.5 ms
+3.8 ms
+1.9 ms
+0.9 ms
+TCM, Rate 2/3 + Reed Solomon
+110.6 ms
+55.3 ms
+27.7 ms
+13.8 ms
+TPC Advanced, Rate 1/2-4k
+42.7 ms
+21.4 ms
+10.8 ms
+5.5 ms
+TPC Advanced, Rate 3/4-4k
+46.1 ms
+23.2 ms
+11.7 ms
+6.0 ms
+TPC Advanced, Rate 7/8-4k
+58.9 ms
+29.6 ms
+14.9 ms
+7.6 ms
+TPC Advanced, Rate 0.950-4k
+64.9 ms
+32.6 ms
+16.4 ms
+8.3 ms
+LDPC, Rate 1/2 & 256 Block
+7.2 ms
+3.7 ms
+1.9 ms
+1.0 ms
+LDPC, Rate 1/2 & 512 Block
+13.4 ms
+6.8 ms
+3.5 ms
+1.8 ms
+LDPC, Rate 1/2 & 1k Block
+25.3 ms
+12.8 ms
+6.6 ms
+3.4 ms
+LDPC, Rate 1/2 & 2k Block
+49.6 ms
+25.1 ms
+12.8 ms
+6.7 ms
+LDPC, Rate 1/2 & 4k Block
+98.0 ms
+49.5 ms
+25.2 ms
+13.1 ms
+LDPC, Rate 1/2 & 8k Block
+195.0 ms
+98.5 ms
+50.2 ms
+26.1 ms
+LDPC, Rate 1/2 & 16k Block
+388.6 ms
+196.2 ms
+100.0 ms
+51.9 ms
+LDPC, Rate 2/3 & 256 Block
+6.7 ms
+3.4 ms
+1.8 ms
+1.0 ms
+LDPC, Rate 2/3 & 512 Block
+12.2 ms
+6.2 ms
+3.2 ms
+1.7 ms
+LDPC, Rate 2/3 & 1k Block
+22.8 ms
+11.6 ms
+5.9 ms
+3.1 ms
+LDPC, Rate 2/3 & 2k Block
+44.4 ms
+22.5 ms
+11.5 ms
+6.0 ms
+LDPC, Rate 2/3 & 4k Block
+87.5 ms
+44.3 ms
+22.6 ms
+11.8 ms
+LDPC, Rate 2/3 & 8k Block
+173.7 ms
+87.8 ms
+44.9 ms
+23.4 ms
+LDPC, Rate 2/3 & 16k Block
+346.1 ms
+175.0 ms
+89.4 ms
+46.5 ms
+LDPC, Rate 3/4 & 256 Block
+6.7 ms
+3.4 ms
+1.8 ms
+1.0 ms
+LDPC, Rate 3/4 & 512 Block
+11.5 ms
+5.9 ms
+3.0 ms
+1.6 ms
+LDPC, Rate 3/4 & 1k Block
+21.8 ms
+11.0 ms
+5.7 ms
+3.0 ms
+LDPC, Rate 3/4 & 2k Block
+41.9 ms
+21.2 ms
+10.9 ms
+5.7 ms
+LDPC, Rate 3/4 & 4k Block
+82.4 ms
+41.7 ms
+21.4 ms
+11.2 ms
+LDPC, Rate 3/4 & 8k Block
+163.1 ms
+82.5 ms
+42.2 ms
+22.1 ms
+LDPC, Rate 3/4 & 16k Block
+325.0 ms
+164.4 ms
+84.1 ms
+43.9 ms
+LDPC, Rate 14/17 & 256 Block
+6.3 ms
+3.3 ms
+1.7 ms
+0.9 ms
+LDPC, Rate 14/17 & 512 Block
+11.1 ms
+5.7 ms
+2.9 ms
+1.6 ms
+LDPC, Rate 14/17 & 1k Block
+20.6 ms
+10.5 ms
+5.4 ms
+2.8 ms
+LDPC, Rate 14/17 & 2k Block
+39.6 ms
+20.1 ms
+10.3 ms
+5.4 ms
+LDPC, Rate 14/17 & 4k Block
+77.6 ms
+39.3 ms
+20.2 ms
+10.6 ms
+LDPC, Rate 14/17 & 8k Block
+153.9 ms
+77.9 ms
+39.9 ms
+20.9 ms
+LDPC, Rate 14/17 & 16k Block
+306.3 ms
+155.0 ms
+79.4 ms
+41.6 ms
+LDPC, Rate 7/8 & 256 Block
+6.5 ms
+3.3 ms
+1.7 ms
+0.9 ms
+LDPC, Rate 7/8 & 512 Block
+10.8 ms
+5.5 ms
+2.9 ms
+1.5 ms
+LDPC, Rate 7/8 & 1k Block
+20.0 ms
+10.2 ms
+5.2 ms
+2.8 ms
+LDPC, Rate 7/8 & 2k Block
+38.1 ms
+19.3 ms
+9.9 ms
+5.2 ms
+LDPC, Rate 7/8 & 4k Block
+74.6 ms
+37.8 ms
+19.4 ms
+10.2 ms
+LDPC, Rate 7/8 & 8k Block
+147.3 ms
+74.7 ms
+38.3 ms
+20.1 ms
+LDPC, Rate 7/8 & 16k Block
+293.6 ms
+148.7 ms
+76.3 ms
+40.0 ms
+LDPC, Rate 10/11 & 256 Block
+6.1 ms
+3.2 ms
+1.7 ms
+0.9 ms
+LDPC, Rate 10/11 & 512 Block
+10.6 ms
+5.4 ms
+2.8 ms
+1.5 ms
+LDPC, Rate 10/11 & 1k Block
+19.3 ms
+9.9 ms
+5.1 ms
+2.7 ms
+LDPC, Rate 10/11 & 2k Block
+37.0 ms
+18.8 ms
+9.7 ms
+5.1 ms
+LDPC, Rate 10/11 & 4k Block
+72.3 ms
+36.6 ms
+18.8 ms
+9.9 ms
+LDPC, Rate 10/11 & 8k Block
+143.0 ms
+72.5 ms
+37.2 ms
+19.6 ms
+LDPC, Rate 10/11 & 16k Block
+284.5 ms
+144.1 ms
+74.0 ms
+38.9 ms
+LDPC, Rate 16/17 & 256 Block
+6.1 ms
+3.1 ms
+1.6 ms
+0.9 ms
+LDPC, Rate 16/17 & 512 Block
+10.2 ms
+5.2 ms
+2.7 ms
+1.4 ms
+LDPC, Rate 16/17 & 1k Block
+18.9 ms
+9.6 ms
+5.0 ms
+2.6 ms
+LDPC, Rate 16/17 & 2k Block
+35.8 ms
+18.2 ms
+9.4 ms
+5.0 ms
+LDPC, Rate 16/17 & 4k Block
+70.2 ms
+35.6 ms
+18.3 ms
+9.7 ms
+LDPC, Rate 16/17 & 8k Block
+138.7 ms
+70.3 ms
+36.1 ms
+19.0 ms
+LDPC, Rate 16/17 & 16k Block
+276.1 ms
+139.9 ms
+71.8 ms
+37.8 ms
+PSM-500 Series Modem Processing Delay Table
+ 
+
+=====PAGE 8=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Datum LDPC Code Rate Selections 
+Datum Systems’ sought to provide our users a fairly even distribution of BER curves.  First, common code rates 
+were chosen because of their popularity to satellite equipment operators.  Secondly, additional code rates 
+were chosen to fill in the holes and to provide smooth and even BER vs. EB/N0 distribution curves.  The curves 
+shown in Figure – 4 permit the user the flexibility to fine tune their link budget calculations. 
+ 
+Example of Flexible LDPC Code Rate Distribution 
+Datum Systems PSM-500 Modem Typical BER Performance
+   45500 - 8QAM, F-LDPC-8k Block, Rate 1/2
+   45510 - 8QAM, F-LDPC-8k Block, Rate 2/3
+   45520 - 8QAM, F-LDPC-8k Block, Rate 3/4
+   45530 - 8QAM, F-LDPC-8k Block, Rate 14/17
+   45540 - 8QAM, F-LDPC-8k Block, Rate 7/8
+   45550 - 8QAM, F-LDPC-8k Block, Rate 10/11
+   45560 - 8QAM, F-LDPC-8k Block, Rate 16/17
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+11
+11.5
+12
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+Example of Code Rate Distribustion
+from Datum System's Flexible LDPC
+ 
+Figure - 4 
+ 
+ 
+ 
+ 
+
+=====PAGE 9=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Maximizing your throughput at Higher Data Rates 
+Is there a way to maximize higher data rate throughput?  Yes!  Datum Systems’ LDPC permits users the 
+flexibility of selecting higher code rates together with larger block sizes.  As shown in Figure – 5 below, a code 
+rate of 16/17 with a block size of 16k provides excellent performance with virtually no overhead.   Only 1 
+overhead bit is used for every 16 bits of real data.  This will extensively increase your data throughput on both 
+point-to-point and point-to multipoint configurations. 
+As an example, in many point-to-multipoint satellite network configurations, the outbound carriers, or 
+sometimes referred to as forward channels, have high data rate requirements because they feed  many 
+remote locations through a single high data rate out-bound carrier.  The use of higher codes rates increases 
+the available bandwidth to the customer without the additional costs.  
+ 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15660 - B/QPSK, F-LDPC-16k Block, Rate 16/17
+   35660 - 8PSK, F-LDPC-16k Block, Rate 16/17
+   45660 - 8QAM, F-LDPC-16k Block, Rate 16/17
+   65660 - 16QAM, F-LDPC-16k Block, Rate 16/17
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+11
+11.5
+12
+12.5
+13
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+Figure - 5 
+ 
+ 
+
+=====PAGE 10=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Spectral Efficiency vs. EB/No for Datum LDPC-16k 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 11=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+Typical Performance Curves for Selected LDPC Block Sizes and Code Rates 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15600 - B/QPSK, F-LDPC-16k Block, Rate 1/2
+   45600 - 8QAM, F-LDPC-16k Block, Rate 1/2
+   65600 - 16QAM, F-LDPC-16k Block, Rate 1/2
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15610 - B/QPSK, F-LDPC-16k Block, Rate 2/3
+   35610 - 8PSK, F-LDPC-16k Block, Rate 2/3
+   45610 - 8QAM, F-LDPC-16k Block, Rate 2/3
+   65610 - 16QAM, F-LDPC-16k Block, Rate 2/3
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+Datum LDPC-16k Block      
+Code Rate 2/3              
+B/QPSK, 8PSK           
+8QAM, 16QAM 
+Datum LDPC-16k Block      
+Code Rate 1/2              
+B/QPSK, 8QAM, 16QAM 
+
+=====PAGE 12=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15620 - B/QPSK, F-LDPC-16k Block, Rate 3/4
+   35620 - 8PSK, F-LDPC-16k Block, Rate 3/4
+   45620 - 8QAM, F-LDPC-16k Block, Rate 3/4
+   65620 - 16QAM, F-LDPC-16k Block, Rate 3/4
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+ 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15640 - B/QPSK, F-LDPC-16k Block, Rate 7/8
+   35640 - 8PSK, F-LDPC-16k Block, Rate 7/8
+   45640 - 8QAM, F-LDPC-16k Block, Rate 7/8
+   65640 - 16QAM, F-LDPC-16k Block, Rate 7/8
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+Datum LDPC-16k Block     
+Code Rate 7/8             
+B/QPSK, 8PSK             
+8QAM, 16QAM 
+Datum LDPC-16k Block      
+Code Rate 3/4             
+B/QPSK, 8PSK              
+8QAM, 16QAM 
+
+=====PAGE 13=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15400 - B/QPSK, F-LDPC-4k Block, Rate 1/2
+   45400 - 8QAM, F-LDPC-4k Block, Rate 1/2
+   65400 - 16QAM, F-LDPC-4k Block, Rate 1/2
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+ 
+Datum LDPC-4k Block       
+Code Rate 1/2             
+B/QPSK, 8QAM, 16QAM 
+
+=====PAGE 14=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15410 - B/QPSK, F-LDPC-4k Block, Rate 2/3
+   35410 - 8PSK, F-LDPC-4k Block, Rate 2/3
+   45410 - 8QAM, F-LDPC-4k Block, Rate 2/3
+   65410 - 16QAM, F-LDPC-4k Block, Rate 2/3
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+Datum LDPC-4k Block    
+Code Rate 2/3           
+B/QPSK, 8PSK           
+8QAM, 16QAM 
+
+=====PAGE 15=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15420 - B/QPSK, F-LDPC-4k Block, Rate 3/4
+   35420 - 8PSK, F-LDPC-4k Block, Rate 3/4
+   45420 - 8QAM, F-LDPC-4k Block, Rate 3/4
+   65420 - 16QAM, F-LDPC-4k Block, Rate 3/4
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+ 
+Datum LDPC-4k Block    
+Code Rate 3/4           
+B/QPSK, 8PSK           
+8QAM, 16QAM 
+
+=====PAGE 16=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15440 - B/QPSK, F-LDPC-4k Block, Rate 7/8
+   35440 - 8PSK, F-LDPC-4k Block, Rate 7/8
+   45440 - 8QAM, F-LDPC-4k Block, Rate 7/8
+   65440 - 16QAM, F-LDPC-4k Block, Rate 7/8
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15300 - B/QPSK, F-LDPC-2k Block, Rate 1/2
+   45300 - 8QAM, F-LDPC-2k Block, Rate 1/2
+   65300 - 16QAM, F-LDPC-2k Block, Rate 1/2
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+ 
+Datum LDPC-2k Block     
+Code Rate 1/2            
+B/QPSK, 8QAM, 16QAM 
+Datum LDPC-4k Block    
+Code Rate 7/8           
+B/QPSK, 8PSK           
+8QAM, 16QAM 
+
+=====PAGE 17=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15310 - B/QPSK, F-LDPC-2k Block, Rate 2/3
+   35310 - 8PSK, F-LDPC-2k Block, Rate 2/3
+   45310 - 8QAM, F-LDPC-2k Block, Rate 2/3
+   65310 - 16QAM, F-LDPC-2k Block, Rate 2/3
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+Datum LDPC-2k Block     
+Code Rate 2/3           
+B/QPSK, 8PSK            
+8QAM, 16QAM 
+
+=====PAGE 18=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+ 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15320 - B/QPSK, F-LDPC-2k Block, Rate 3/4
+   35320 - 8PSK, F-LDPC-2k Block, Rate 3/4
+   45320 - 8QAM, F-LDPC-2k Block, Rate 3/4
+   65320 - 16QAM, F-LDPC-2k Block, Rate 3/4
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+ 
+Datum LDPC-2k Block     
+Code Rate 3/4           
+B/QPSK, 8PSK            
+8QAM, 16QAM 
+
+=====PAGE 19=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+August 16, 2013 
+Revision B 
+Datum Systems PSM-500 Modem Typical BER Performance
+   15340 - B/QPSK, F-LDPC-2k Block, Rate 7/8
+   35340 - 8PSK, F-LDPC-2k Block, Rate 7/8
+   45340 - 8QAM, F-LDPC-2k Block, Rate 7/8
+   65340 - 16QAM, F-LDPC-2k Block, Rate 7/8
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+7.5
+8
+8.5
+9
+9.5
+10
+10.5
+11
+11.5
+1E-10
+1E-9
+1E-8
+1E-7
+1E-6
+1E-5
+0.0001
+0.001
+0.01
+Eb/No
+BER
+ 
+Datum LDPC-2k Block     
+Code Rate 7/8           
+B/QPSK, 8PSK            
+8QAM, 16QAM 

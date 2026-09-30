@@ -1,0 +1,732 @@
+
+=====PAGE 1=====
+CDM-625A Advanced Satellite Modem 
+ 
+ 
+Satellite Modems 
+ 
+ 
+ 
+ 
+ 
+Overview 
+The CDM-625A Advanced Satellite Modem builds on our legacy of providing the 
+most efficient and reliable satellite modems. With support for VersaFEC® Forward 
+Error Correction (FEC), the revolutionary DoubleTalk Carrier-in-Carrier 
+bandwidth compression, additional rolloffs and advanced packet processing, the 
+CDM-625A provides significant savings under all conditions. This combination of 
+advanced technologies enables multi-dimensional optimization, allowing satellite 
+communications users to: 
+• Minimize operating expenses (OPEX)  
+• Maximize throughput without using additional transponder resources 
+• Maximize availability (margin) without using additional transponder resources 
+• Minimize capital expenses (CAPEX) by allowing a smaller BUC/HPA and/or 
+antenna 
+• Or, a combination to meet specific business needs 
+ 
+Features 
+• DoubleTalk Carrier-in-Carrier bandwidth compression  
+• Carrier-in-Carrier Automatic Power Control 
+• VersaFEC-2 High Performance LDPC with Adaptive Coding 
+and Modulation (ACM), Short Block and Long Block 
+• VersaFEC FEC with Adaptive Coding and Modulation (ACM) 
+• 5%, 10%, 15%, 20%, 25% and 35% Filter Rolloff 
+• Packet Processor with header compression, payload 
+compression, advanced Quality of Service (QoS) and 
+Managed Switch Mode with VLAN support 
+• Integrated 4-port managed Ethernet switch with VLAN and 
+QoS 
+• Jumbo frame support  
+• Dual Band Capability: 70/140 MHz and extended L-Band 
+(950 – 2250 MHz) in same unit  
+• Data Rate: 18 kbps to 25 Mbps  
+• Symbol Rate: 18 ksps to 12.5 Msps 
+• Modulation: BPSK, QPSK/OQPSK, 8PSK/8-QAM/8-ARY, 
+16-QAM/16-ARY, 32-ARY  
+• FEC: Viterbi, Sequential, Concatenated Reed Solomon, 
+TCM, Turbo Product Code (TPC) (IESS-315 Compliant), 
+LDPC Code, VersaFEC (low-latency LDPC) and VersaFEC-
+2 (high performance LDPC) 
+• Widest Range of data interfaces: EIA-422/530, V.35, G.703 
+T1, G.703 E1, G.703 T2, G.703 E2, Quad G.703 E1, ASI, 
+LVDS, HSSI, 4-port 10/100Base-T Ethernet 
+• IEEE 1588v2 Precision Time Protocol  
+• Sub Mux to multiplex IP/Ethernet traffic with serial or G.703 
+traffic 
+• Drop & insert for T1/E1 
+• Enhanced D&I++ for single T1/E1 & quad E1 
+• Management: 10/100Base-T Ethernet with SNMP, Distant 
+End SNMP Proxy, HTTP, Telnet and EIA-232/EIA-485 
+• RADIUS Client 
+• Carrier ID using MetaCarrier® Technology 
+• Embedded Distant-end Monitor and Control (EDMAC) 
+• Automatic Uplink Power Control (AUPC) 
+• Engineering Service Channel (ESC/ESC++) 
+• Standard high-stability internal reference (± 6 x 10-8) 
+• 5-tap Adaptive Equalizer 
+• L-Band TX: 10 MHz reference for BUC, FSK 
+communications and optional BUC power supply 
+• L-Band RX: 10 MHz reference and LNB power supply  
+• L-Band: Advanced FSK for LPOD M&C 
+• 1:1 and 1:10 redundancy switches available 
+• Backwards compatible with CDM-625 
+• Environmentally Resistant version (CDMER-625A) available 
+ 
+Doubletalk Carrier-in-Carrier  
+DoubleTalk Carrier-in-Carrier, based on patented “Adaptive Cancellation” technology, allows transmit and receive carriers of a duplex 
+link to share the same transponder bandwidth.  DoubleTalk Carrier-in-Carrier is complementary to all advances in modem technology, 
+including advanced FEC and modulation techniques. As these technologies approach theoretical limits of power and bandwidth 
+efficiencies, DoubleTalk Carrier-in-Carrier utilizing advanced signal processing techniques provides a new dimension in bandwidth 
+efficiency. 
+ 
+www.comtechefdata.com 
+Typical Users 
+• Mobile Network Operators 
+• Telecom Operators 
+• Satellite Service Providers 
+• Government & Military 
+• Enterprise 
+• Offshore 
+ 
+Common Applications 
+• Mobile Backhaul 
+• G.703 Trunking 
+• IP Trunking 
+• Offshore & Maritime Communications 
+• Enterprise 
+• Communications on-the-Move 
+• Satellite News Gathering 
+
+=====PAGE 2=====
+Figure 1 shows the typical full-duplex satellite link, where the two carriers are adjacent to each other.  
+ 
+Figure 2 shows the typical DoubleTalk Carrier-in-Carrier operation, where the two carriers are overlapping, thus sharing the same 
+spectrum. 
+ 
+ 
+Figure 1 
+ 
+Figure 2 
+ 
+When observed on a spectrum analyzer, only the Composite is visible. Carrier 1 and Carrier 2 are shown in Figure 2 for reference only. 
+ 
+As DoubleTalk Carrier-in-Carrier allows equivalent spectral efficiency using a lower order modulation and/or code rate, it can reduce the 
+power required to close the link thereby reducing CAPEX by allowing a smaller BUC/Amplifier and/or antenna. Alternatively, DoubleTalk 
+Carrier-in-Carrier can be used to achieve very high spectral efficiencies E.g., DoubleTalk Carrier-in-Carrier when used with 16-ARY 
+modulation approaches the bandwidth efficiency of 256-ARY (8 bps/Hz).  
+ 
+When combined with VersaFEC-2 or VersaFEC and optimized transmit filter rolloff, it can provide unprecedented savings in 
+transponder bandwidth and power utilization. This allows for its successful deployment in bandwidth-limited and power-limited 
+scenarios, as well as reduction in earth station BUC/HPA power requirements.  
+ 
+Carrier-in-Carrier® is a Registered Trademark of Comtech EF Data 
+DoubleTalk® is a Registered Trademark of Raytheon Applied Signal Technology 
+VersaFEC  is a Registered Trademark of Comtech EF Data 
+ 
+Carrier-in-Carrier Automatic Power Control (CnC-APC) 
+The patent-pending Carrier-in-Carrier Automatic Power Control (CnC-APC) mechanism enables modems on both sides of a CnC link to 
+automatically measure and compensate for rain fade while maintaining the Total Composite Power.  In addition to automatically 
+compensating for rain fade, CnC-APC also enables the modems to share link margin, i.e. a modem in clear sky conditions can 
+effectively transfer excess link margin to a distant end modem experiencing fade, thereby further enhancing overall availability. 
+ 
+VersaFEC-2 High Performance LDPC Forward Error Correction 
+CDM-625A offers a new high performance LDPC FEC specifically design to optimize performance at low and mid-tier symbol rates.  
+VersaFEC-2 long-block provides 38 ModCods (BPSK to 32-ARY) with performance generally better than DVB-S2 at significantly lower 
+latency and short-block provides 36 ModCods (BPSK to 32-ARY) with higher coding gain than first generation VersaFEC and similar 
+latency.  All higher order constellations are quasi-circular for optimal peak-to-average performance.  Both CCM and ACM operation is 
+support for long block and short block. 
+ 
+VersaFEC Forward Error Correction 
+CDM-625A offers VersaFEC, a patent-pending system of high-performance LDPC codes designed to provide maximum coding gain 
+while minimizing latency. VersaFEC is designed to support ACM and CCM mode of operation 
+ 
+The Ultra Low Latency (ULL) codes provide even lower latency compared to standard VersaFEC codes. 
+ 
+Adaptive Coding & Modulation (ACM) 
+Satellite users have traditionally relied on worst case link margin to overcome rain fade which leads to significant inefficiencies. ACM 
+can provide significant increase in throughput as well as availability. ACM converts the fade margin into increased capacity making it 
+possible to more than double the throughput for Ku-band operation. Even under deep fade, ACM may be able to maintain the link at the 
+lower MODCOD thereby increasing availability. It is tightly integrated with packet processor QoS which allows higher priority, mission 
+critical traffic to be maintained even during fade. 
+ 
+Low Density Parity Check Codes (LDPC) & Turbo Product Codes (TPC) 
+CDM-625A offers an integrated LDPC and 2nd Generation TPC codec. LDPC is an advanced Forward Error Correction technique 
+capable of providing performance much closer to Shannon limit. The current LDPC implementation can provide 0.7 to 1.2 dB additional 
+coding gain compared to an equivalent TPC code. 
+ 
+In order to take full advantage of the increased coding gain provided by LDPC, Comtech EF Data has developed a patented 8-QAM 
+modulation that allows for acquisition and tracking at much lower Eb/No compared to 8PSK. 
+ 
+
+=====PAGE 3=====
+Dual Band Capability 
+CDM-625A supports 70/140 MHz and extended L-Band (950 – 2250 MHz) capability in the same unit with independently selectable 
+transmit and receive IF. This simplifies sparing and stocking in networks requiring 70/140 MHz and L-Band units. 
+ 
+4-Port Managed Ethernet Switch with VLAN & QoS 
+CDM-625A incorporates a 4-port 10/100Base-T managed Ethernet switch with VLAN capability and priority-based Quality of Service. 
+Access (Native) Mode and Trunk Mode are supported. Traffic can be prioritized using port-based priority or VLAN priority. The modem 
+supports jumbo frames with maximum Ethernet frame size of 2048 bytes. 
+ 
+Packet Processor 
+The optional high-performance Packet Processor enables efficient IP networking and transport over satellite with low overhead 
+encapsulation, header compression, payload compression and advance Quality of Service to the CDM-625A. The QoS combined with 
+header and payload compression ensures the highest quality of service with minimal jitter and latency for real-time traffic, priority 
+treatment of mission critical applications and maximum bandwidth efficiency. 
+ 
+Packet processor supports Routed mode as well as Managed Switch Mode of operation. In managed switch mode, it operates as a 
+layer 2 switch with VLAN support, enabling seamless integration with existing infrastructure while providing full optimization including 
+low overhead Streamline Encapsulation, header compression and payload compression and advanced QoS. 
+ 
+Header Compression 
+The Packet Processor incorporates industry-leading header compression for Ethernet and IP traffic. In managed switch mode, header 
+compression can reduce the 54 byte Ethernet/IP/UDP/RTP header to as little as 1 byte. For TCP/IP, the 54 byte header (including 
+Ethernet) is reduced to as little as 3 bytes. For applications such as VoIP, header compression can provide bandwidth savings 
+exceeding 65%. E.g. the 8 kbps G.729 voice codec requires 31.2 kbps once encapsulated into an Ethernet frame with IP/UDP/RTP. 
+With header compression, the same voice call needs about 9 kbps – a saving of almost 70%. And, bandwidth requirements for typical 
+Web/HTTP traffic can be reduced by 10% or more with TCP/IP header compression. 
+ 
+Payload Compression 
+The Packet Processor incorporates industry-leading GZIP based payload compression for IP/Ethernet traffic. Implemented in hardware 
+for maximum throughput and efficiency, payload compression can typically reduce the required satellite bandwidth by 30-40%. 
+ 
+Streamline Encapsulation (SLE) 
+The Packet Processor incorporates Comtech EF Data’s patent-pending low overhead Streamline Encapsulation (SLE). SLE can reduce 
+the encapsulation overhead by as much as 65% compared to industry standard HDLC. 
+ 
+Advanced Quality of Service (QoS) 
+The Packet Processor incorporates multi-level QoS to ensure the highest quality service with minimal jitter and latency for real-time 
+traffic, priority treatment of mission critical applications and maximum bandwidth efficiency. Supported modes are: 
+• DiffServ – Industry-standard method of providing QoS enabling seamless co-existence in networks that implement DiffServ   
+• Max/Priority – Provides traffic prioritization with the ability to limit maximum traffic per priority class 
+• Min/Max – Provides a Committed Information Rate (CIR) to each user defined class of traffic with the ability to allow a higher 
+burstable rate depending on availability 
+ 
+A powerful classifier supports packet classification by Protocol, VLAN ID / range, ToS Byte, Source IP (or subnet), Destination IP (or 
+subnet), Source Port (or Range), Destination Port (or Range) and DSCP (for DiffServ). 
+ 
+Quad E1 Interface (QDI) with Enhanced D&I++ 
+The CDM-625A supports a Quad E1 interface that can aggregate up to four full or fractional E1s into a single carrier, with very low 
+overhead. This provides significant CAPEX savings by reducing the number of modems and could possibly reduce the BUC/HPA size 
+by eliminating the multi-carrier backoff. A proprietary, closed network drop & insert (D&I++) allows for dropping or inserting any 
+combination of 1 to 31 time slots on each E1. D&I++ is supported for E1-CCS only. 
+ 
+IP Sub Multiplexer 
+The IP sub mux allows multiplexing IP/Ethernet traffic with serial or G.703 traffic into a single carrier. This is particularly useful for 
+cellular backhaul when both E1 and IP backhaul is required. This reduces the number of modems and could possibly reduce the 
+BUC/HPA size by eliminating the multi-carrier backoff. The IP sub mux ratio ranges from 9:1 (IP data rate is 9 times that of the serial or 
+G.703 data rate) to as low as 1:59. IP sub mux can also be used to provision an overhead IP channel for management when using non 
+IP/Ethernet traffic interfaces. 
+ 
+EDMAC & AUPC 
+The CDM-625A supports EDMAC, EDMAC-2, EDMAC-3 and AUPC. EDMAC/EDMAC-2/EDMAC-3 can be used to monitor and control 
+the distant end of a satellite link using a proprietary overhead channel. EDMAC-3 is also used for SNMP management of the distant 
+end modem. AUPC automatically adjusts modem transmit power based on feedback from the distant end modem to maintain the 
+desired Eb/No. AUPC and EDMAC are supported for point-to-point duplex links. 
+ 
+Management & SNMP Proxy 
+The modem can be managed via the front panel, the remote M&C port (EIA-232/EIA-485), or the 10/100Base-T Ethernet port.  With 
+support for SNMP, HTTP and Telnet, the modem can be easily integrated into an IP-based management system. 
+
+=====PAGE 4=====
+The CDM-625A can also act as SNMP proxy for the distant end CDM-625A. This allows distant end CDM-625A management using 
+SNMP without requiring an end-to-end IP link. 
+ 
+RADIUS Client  
+The CDM-625A supports the Remote Authentication Dial In User Service (RADIUS) client enabling centralized user authentication for 
+management access to the modem by web browser and telnet. RADIUS client supports Password Authentication Protocol (PAP) and 
+Challenge-Handshake Authentication Protocol (CHAP). 
+ 
+IEEE 1588v2 Precision Time Protocol (PTP) 
+PTP has emerged as the key technology for frequency, time and phase synchronization over a packet network. The CDM-625A 
+incorporates hardware support for PTP, thereby significantly improving synchronization accuracy for satellite backhaul. 
+ 
+Advanced FSK for LPOD Monitoring & Control 
+The Advanced FSK allows for monitoring and control of LPOD through modem front panel menus, serial remote control and Telnet. 
+ 
+Specifications 
+Data Rate 
+18 kbps to 25 Mbps, in 1 bps steps 
+(modulation, FEC & data interface dependent) 
+Symbol Rate  
+18 ksps to 12.5 Msps  
+Operating 
+Frequency 
+50 – 180 MHz (standard) and  
+950 – 2250 MHz (option) 
+100 Hz resolution, independent TX and RX 
+operation 
+Major Operating 
+Modes 
+(See User Manual 
+for Details) 
+Open network, per IESS-308 / 309 / 310 / 314 
+transparent, closed network per IESS-315  
+LDPC / TPC Codec (option) 
+VersaFEC Codec (option) with ACM or Constant 
+Coding & Modulation (CCM)  
+EDMAC Framed with/without AUPC 
+RS Outer Codec 
+High rate ESC / Enhanced ESC (ESC++) 
+Drop & insert (D&I) /Enhanced D&I++ (option) 
+Quad E1 drop & insert (QDI) (option) 
+DoubleTalk Carrier-in-Carrier (option) 
+FEC & Modulation 
+None 
+Uncoded BPSK/QPSK/OQPSK 
+Viterbi: k=7, per 
+IESS-308/309 
+ 
+Rate 1/2 BPSK/QPSK/OQPSK 
+Rate 3/4 QPSK/OQPSK 
+Rate 7/8 QPSK/OQPSK 
+Viterbi with Reed 
+Solomon 
+Rate 3/4 16-QAM 
+Rate 7/8 16-QAM 
+Sequential 
+See CDM-625A user manual for details 
+Reed Solomon 
+Open network and closed network modes 
+TCM (Per IESS-310) 8PSK/TCM Rate 2/3 
+Integrated LDPC 
+and TPC (2nd Gen) 
+Codec (Optional 
+Plug-in Module) 
+ 
+LDPC Code Rates 
+Rate 1/2 BPSK/QPSK/OQPSK 
+Rate 2/3 QPSK/OQPSK/8PSK/8-QAM 
+Rate 3/4 QPSK/OQPSK/8PSK/8-QAM/16-QAM 
+TPC Code Rates 
+Rate 5/16 BPSK  
+Rate 21/44 BPSK/QPSK/OQPSK 
+Rate 3/4 QPSK/OQPSK/8PSK/8-QAM/16-QAM 
+Rate 7/8 QPSK/OQPSK/8PSK/8-QAM/16-QAM 
+Rate 0.95 QPSK/OQPSK/8PSK/8-QAM 
+VersaFEC Codec 
+(Option) 
+BPSK Rate 0.488 
+QPSK Rate 0.533, 0.631, 0.706, 0.803 
+8-QAM Rate 0.576 (ECCM), 0.642, 0.711, 0.780 
+16-QAM Rate 0.644 (ECCM), 0.731, 0.780, 0.829, 
+0.853 
+BPSK 0.493 (ULL) 
+QPSK 0.493, 0.654, 0.734 (ULL) 
+VersaFEC-2 Codec 
+(Option) 
+Long Block: 
+BPSK Rate 0,489 
+QPSK Rate 0.489, 0.537, 0.586, 0.611, 0.635, 
+0.660, 0.684, 0.733 
+8-ARY Rate 0.521, 0.537, 0.562, 0.586, 0.611, 
+0.635, 0.660, 0.684, 0.708, 0.733 
+16-ARY Rate 0.586, 0.611, 0.635, 0.660, 0.684, 
+0.708, 0.733, 0.757, 0.782 
+32-ARY Rate 0.660, 0.684, 0.708, 0.733, 0.757, 
+0.782, 0.801, 0.831, 0.855, 0.879 
+ 
+Short Block:  
+BPSK Rate 0,489 
+QPSK Rate 0.489, 0.537, 0.586, 0.611, 0.635, 
+0.660, 0.684, 0.733 
+8-ARY Rate 0.521, 0.537, 0.562, 0.586, 0.611, 
+0.635, 0.660, 0.684, 0.708, 0.733 
+16-ARY Rate 0.586, 0.611, 0.635, 0.660, 0.684, 
+0.708, 0.733, 0.757, 0.782 
+32-ARY Rate 0.660, 0.684, 0.708, 0.733, 0.757, 
+0.782, 0.801, 0.831  
+Scrambling 
+IDR Mode, no RS, - per ITU V.35 (Intelsat variant) 
+IBS mode, no RS - per IESS-309, externally 
+frame synchronized 
+Transparent Closed Network mode, no RS or 
+Turbo coding - per ITU V.35 (Intelsat variant) 
+EDMAC mode, no RS coding - externally frame 
+synchronized - proprietary 
+Turbo Product Code/LDPC/VersaFEC modes - 
+externally frame synchronized - proprietary 
+All RS modes - externally frame synchronized per 
+IESS-308/309/310 
+Management 
+10/100Base-T Ethernet with SNMP, HTTP and 
+Telnet support, EIA-232, EIA-485 (2- or 4-wire) 
+Form C Relays 
+Hardware fault, RX and TX traffic alarms, open 
+network backward alarms   
+External Reference 
+(Input OR Output) 
+BNC connector 
+Input: 1, 2, 5, or 10 MHz, -6 dBm to  
++10 dBm, 50 /75  (nominal)  
+Output: 10 MHz, 2.7 V peak-to-peak  
+± 0.4 V, low impedance output 
+ 
+Data Interfaces 
+EIA-422/-530 DCE, Up to 14 Mbps 
+25-pin D-sub (female) 
+V.35 DCE, Up to 14 Mbps 
+LVDS Serial, Up to 25 Mbps 
+25-pin D-sub (female) 
+HSSI Serial, Up to 25 Mbps 
+G.703 T1, 1.544 Mbps  
+(Balanced 100 ) 
+9-pin D-sub (female) 
+or 
+BNC (female) 
+G.703 T2, 6.312 Mbps  
+(Unbalanced 75  or balanced 110 ) 
+G.703 E1, 2.048 Mbps  
+(Unbalanced 75  or balanced 120 ) 
+G.703 E2, 8.448 Mbps (Unbalanced 75 ) 
+ASI, Up to 25 Mbps 
+BNC (female) 
+Additional 2.048 Mbps E1 Ports for Quad-
+E1 (Balanced 120 ) 
+9-pin D-sub (female) 
+Overhead Data 
+44-pin High-density D-
+sub (male) 
+Modem Alarms 
+15-pin D-sub (male) 
+4-port 10/100Base-T Managed Ethernet 
+Switch 
+(Optional Packet Processor Available) 
+4 x RJ-45 
+
+=====PAGE 5=====
+Modulator 
+Frequency Stability  
+± 0.06 ppm (± 6 x 10-8), 0° to 50°C (32° to  
+122°F) with internal reference 
+Transmit Filtering 
+Per IESS-308 
+Alpha (Rolloff) 
+5%, 10%, 15%, 20%, 25%, 35% 
+Harmonics and 
+Spurious 
+Better than -60 dBc/4 kHz  
+(typically <-65 dBc/4kHz) 
+Measured from 1 to 500 MHz  
+(50-180 MHz band) 
+Measured F0 ± 500 MHz  
+(950-2250 MHz band) 
+Transmit On/Off Ratio -60 dBc minimum 
+Output Phase Noise 
+< 0.480° rms double sided, 100 Hz to 1 MHz 
+(Minimum 16 dB better overall than the Intelsat 
+IESS-308/309 requirements) 
+dB/Hz  
+Frequency Offset 
+-63.0  
+100 Hz 
+-73.0  
+1 kHz 
+-83.0  
+10 kHz 
+-93.0  
+100 kHz 
+Fundamental AC line spurious is -42 dBc or 
+lower 
+The sum of all other single sideband spurious, 
+from  
+0 to 0.75 x symbol rate, is -48 dBc or lower 
+Output Power 
+50-180 MHz: 
+0 to -25 dBm, 0.1 dB steps 
+950-2250 MHz:  
+0 to -40 dBm, 0.1 dB steps 
+Power Accuracy 
+50-180 MHz:  
+± 0.5 dB over frequency, data rate, modulation 
+type and temperature range of 15 to 35° C 
+± 0.8 dB over frequency, data rate, modulation 
+type and temperature range of 0 to 50° C 
+950-2250 MHz: 
+± 0.7 dB over frequency, data rate, modulation 
+type and temperature range of 15 to 35° C 
+± 1.0 dB over frequency, data rate, modulation 
+type and temperature range of 0 to 50° C  
+Output Impedance & 
+Return Loss 
+50-180 MHz: 50 /75 , 16 dB minimum 
+return loss (18 dB typical), BNC connector 
+950-2250 MHz: 50 , 19 dB minimum return 
+loss 
+(21 dB typical), Type-N connector 
+Clocking Options 
+Internal, ± 0.06 ppm (SCT) 
+External, locking over a ± 100 ppm range (TT) 
+Loop timing (RX satellite clock) – supports 
+asymmetric operation  
+External clock 
+External TX Carrier 
+Off 
+By TTL ‘low’ signal or external contact closure 
+BUC Reference  
+(10 MHz) 
+Via TX IF center conductor, 10.0 MHz  
+± 0.06 ppm (with internal reference), 
+selectable on/off, 0.0 dBm ± 3 dB 
+BUC Power Supply  
+(HW Option) 
+24 VDC, 4.17 Amps max., 90 W @ 50° C    
+48 VDC, 3.125 Amps max., 150 W @ 50° C 
+(180 W @ 30° C) 
+Supplied through TX IF center conductor and 
+selectable on/off via M&C control 
+ 
+Demodulator 
+Input Power Range, 
+Desired Carrier 
+50-180 MHz: -105 + 10 log (symbol rate) to  
+-70 + 10 log (symbol rate) dBm 
+950-2250 MHz: -130 + 10 log (symbol rate) to -
+80 + 10 log (symbol rate) dBm 
+Max Composite 
+Operating Level 
+50-180 MHz: 
+94 – 10 log (symbol rate, desired carrier) dBc, 
++10 dBm max., with the additional requirement 
+that within ± 10 MHz of the desired carrier the 
+composite power is ≤ +30 dBc 
+950-2250 MHz: 
+102 – 10 log (symbol rate, desired carrier) dBc, 
++10 dBm max., with the additional requirement 
+that within ± 10 MHz of the desired carrier the 
+composite power is ≤ +30 dBc  
+ 
+Absolute Maximum 
++20 dBm 
+Adaptive Equalizer 
+5-tap design, selectable on/off 
+Acquisition Range 
+Programmable in 1kHz increments 
+Below 64 
+ksymbols/sec 
+± 1 kHz to ± (Rs/2) kHz, where Rs = symbol rate 
+in ksymbols/sec 
+Between 64 and  
+389 ksymbols/sec 
+± 1 kHz to ± 32 kHz 
+Above 389 
+ksymbols/sec 
+± 1 kHz to ± (0.1 * Rs) kHz, up to a maximum of 
+± 300 kHz 
+Acquisition Time 
+Highly dependent on data rate, FEC rate, and 
+demodulator acquisition range.  
+E.g. 120 ms average at 64 kbps, R1/2 QPSK, ± 
+10 kHz acquisition sweep range,  
+6 dB Eb/No 
+Plesiochronous/ 
+Doppler Buffer 
+Selectable from 64 to 262,144 bits, in 16-bit 
+steps (Additional limitations for G.704 frame 
+boundaries) 
+Receive Clock 
+RX satellite, TX terrestrial, external reference 
+Clock Tracking  
+ 100 ppm minimum 
+LNB Reference (10 
+MHz) 
+Via RX IF center conductor, 10.0 MHz  
+± 0.06 ppm (with internal reference), selectable 
+on/off, -3.0 dBm ± 3 dB 
+LNB Voltage 
+Selectable on/off, 13 VDC, 18 VDC per DiSEq 
+4.2 and 24 VDC at 500 mA maximum 
+Monitor Functions 
+Eb/N0 estimate, corrected BER, frequency 
+offset, buffer fill state, receive signal level 
+ 
+DoubleTalk Carrier-in-Carrier 
+Delay Range 
+0 to 330 ms  
+Power Spectral Density 
+Ratio  
+(Interferer to Desired) 
+BSPK/QPSK/8PSK/8-QAM: –7 dB to +11 dB  
+16-QAM: -7 dB to +7 dB 
+Maximum Symbol Rate 
+Ratio 
+3:1 (TX:RX or RX:TX) 
+Eb/No Degradation 
+ 
+0 dB Power Spectral Density Ratio 
+BPSK/QPSK/OQPSK: 0.3 dB 
+8-QAM: 0.4 dB    
+8PSK: 0.5 dB    
+8-ARY: 0.4 dB      
+16-QAM: 0.6 dB 
+16-ARY; 0.6 dB 
+32-ARY: 0.6 dB 
++10 dB power spectral density ratio 
+Additional 0.3 dB 
+Satellite Restrictions 
+ 
+Satellite in “loop-back” mode (i.e., the 
+transmit station can receive itself) 
+“Non-processing” satellite (i.e., does not 
+demodulate or remodulate the signal) 
+ 
+Available Options 
+Hardware 100 – 240 VAC, 120 W AC primary power supply 
+Hardware -48 VDC, 125 W primary power supply 
+Hardware -24 VDC, 120 W primary power supply 
+Hardware 24 VDC, 90 W @ 50°C BUC power supply, AC, 24 VDC or 
+48 VDC primary power supply 
+Hardware 48 VDC, 150 W @ 50°C (180 W @ 30°C) BUC power 
+supply, AC or 48 VDC primary power supply 
+Hardware VersaFEC-2 Codec module 
+Hardware Integrated TPC (2nd generation) and LDPC Codec module 
+Hardware Packet Processor 
+Hardware Environmentally Resistant (ER) Version 
+FAST 
+L-Band IF (in addition to 70/140 MHz) 
+FAST 
+Modem data rate – 10 Mbps, 15 Mbps, 20 Mbps or 25 
+Mbps 
+FAST 
+8PSK and 8-QAM modulation (8-QAM requires TPC/LDPC 
+or VersaFEC Codec) 
+FAST 
+16-QAM modulation 
+FAST 
+TPC/LDPC Codec data rate – 10 Mbps, 15 Mbps, 20 Mbps 
+or 25 Mbps 
+FAST 
+Activate DoubleTalk Carrier-in-Carrier Feature  
+FAST 
+DoubleTalk Carrier-in-Carrier Data Rate (full) – 512 kbps, 
+1.1 Mbps, 2.5 Mbps, 5 Mbps, 10 Mbps, 15 Mbps, 20 Mbps 
+or 25 Mbps 
+FAST 
+DoubleTalk Carrier-in-Carrier Data Rate (fractional) – 2.5 
+Mbps, 5 Mbps, 10 Mbps, 15 Mbps, 20 Mbps or 25 Mbps 
+
+=====PAGE 6=====
+FAST 
+VersaFEC Codec data rate (CCM) – 1.1 Mbps, 2.5 Mbps, 5 
+Mbps or 16 Mbps 
+FAST 
+VersaFEC Codec symbol rate (ACM) – 300 ksps, 1.2 Msps 
+or 
+4.1 Msps 
+FAST 
+Open network – IBS with high rate IBS ESC, IDR and audio 
+FAST 
+D&I / D&I++ for single Port T1/E1 
+FAST 
+D&I++ For Quad E1 Port 2, 3 and 4 
+FAST 
+Quality of Service (requires Packet Processor) 
+FAST 
+Header Compression (requires Packet Processor) 
+FAST 
+Payload Compression (requires Packet processor) 
+FAST 
+Advanced Network Timing (IEEE 1588v2 PTP) 
+FAST 
+VersaFEC-2 Codec data rate (CCM) – 5 Mbps, 10 Mbps, 
+15 Mbps, 20 Mbps or 25 Mbps 
+FAST 
+VersaFEC-2 Codec symbol rate (ACM) – 1.2 Msps, 2.0 
+Msps, 4.1 Msps, 8.0 Msps or 12.5 Msps 
+ 
+Accessories 
+CRS-170A 
+1:1 Modem Redundancy Switch (L-Band) 
+CRS-180 
+1:1 Modem Redundancy Switch (70/140 MHz) 
+CRS-300 
+1:10 Modem Redundancy Switch 
+(Not available with Packet Processor) 
+CRS-280 
+1:10 IF Redundancy Switch (70/140 MHz) 
+CRS-280L 
+1:10 IF Redundancy Switch (L-Band) 
+CRS-500 
+1:N Modem Redundancy System 
+(For use with Packet Processor Only) 
+CRS-
+282XXX 
+1:10 IF Redundancy Switch  
+(For use with CRS-500) 
+ 
+Environmental and Physical 
+Temperature 
+Operating: 0 to 50°C (32 to 122°F) 
+ 
+Storage: -40 to 85°C (-40 to 185°F) 
+Humidity 
+95% maximum, non-condensing 
+Power Supply 
+100 – 240 VAC, +6%/-10%, 50/60 Hz, auto 
+sensing 
+-24 VDC (HW option) 
+-48 VDC (HW option) 
+Dimensions (1RU) 
+(height x width x 
+depth)  
+1.75” x 19.0” x 17.65” 
+(4.4 x 48 x 44.8 cm) approximate 
+Weight 
+10.8 lbs (4.9 kg) maximum, with all option 
+modules and 48 VDC BUC power supply installed 
+CE Mark 
+EN 301 489-1 (ERM) 
+EN55022 (Emissions) 
+EN55024 (Immunity) 
+EN 61000‐3‐2 
+EN 61000‐3‐3 
+EN60950 (Safety) 
+FCC 
+FCC Part 15, Subpart B 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+2114 West 7th Street, Tempe, Arizona 85281 USA   
+Voice: +1.480.333.2200  ●  Fax: +1.480.333.2540  ●  Email: sales@comtechefdata.com 
+See all of Comtech EF Data’s Patents and Patents Pending at http://patents.comtechefdata.com 
+Comtech EF Data reserves the right to change specifications of products described in this document at any time without notice and without obligation to notify any person of such changes. Information 
+in this document may differ from that published in other Comtech EF Data documents. Refer to the website or contact Customer Service for the latest released product information 
+© 2018 Comtech EF Data 
+ 
+1/25/2018 
+ 

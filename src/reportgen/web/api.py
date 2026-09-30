@@ -4082,6 +4082,93 @@ def potok_matrix_delete(request: Request, name: str) -> dict[str, Any]:
     return {"ok": True}
 
 
+# -- окно «LDPC» стола: типы кода как у отдела, файлы матриц папки ldpc, просмотр, автомат ---------
+
+@router.get("/potok-ldpc-types")
+def potok_ldpc_types(request: Request) -> dict[str, Any]:
+    """«Тип LDPC кода»: список отдела, встроенные семейства и «Нестандарт» — со скоростями, кодами и
+    файлами отдела из папки ldpc (битый файл — с ошибкой, список не роняет)."""
+    from ..potok import ldpc, ldpc_katalog  # noqa: PLC0415
+    require_user(request)
+    _potok(request)                     # задаёт папку матриц
+    файлы = ldpc.список()
+    return {"types": ldpc_katalog.с_файлами(файлы), "files": [ф for ф in файлы if ф.get("файл")],
+            "folder": str(ldpc.КАТАЛОГ or "")}
+
+
+#: Файл матрицы отдела — не больше (alist длинного кода DVB — единицы мегабайт).
+LDPC_ФАЙЛ_ДО = 32 * 1024 * 1024
+
+
+@router.post("/potok-ldpc-files")
+def potok_ldpc_file_add(request: Request, file: UploadFile = File(...)) -> dict[str, Any]:
+    """Положить файл матрицы в папку ldpc отдела: разбирается до сохранения, битый не сохраняется."""
+    from ..potok import ldpc  # noqa: PLC0415
+    user = require_user(request)
+    _potok(request)
+    данные = file.file.read(LDPC_ФАЙЛ_ДО + 1)
+    if len(данные) > LDPC_ФАЙЛ_ДО:
+        raise ServiceError("файл матрицы больше 32 МБ", 413)
+    имя_файла = Path(file.filename or "").name
+    суффикс = Path(имя_файла).suffix.lower()
+    if суффикс not in ldpc.РАСШИРЕНИЯ:
+        raise ServiceError("файл матрицы — " + ", ".join(ldpc.РАСШИРЕНИЯ), 400)
+    имя = ldpc._имя_файла(Path(имя_файла))
+    try:
+        матрица, поля, вид = ldpc.разобрать_файл(данные.decode("utf-8", errors="replace"), имя_файла)
+    except ValueError as ошибка:
+        raise ServiceError(f"матрица не разобрана: {ошибка}", 400) from None
+    if имя in ldpc.файлы() or (ldpc.КАТАЛОГ / f"{имя}.json").exists():
+        raise ServiceError(f"матрица «{имя}» в папке уже есть", 409)
+    (ldpc.КАТАЛОГ / f"{имя}{суффикс}").write_bytes(данные)
+    _repos(request).audit.log("potok.ldpc-file", user=user, object_type="ldpc", object_id=имя,
+                              details={"n": матрица.n, "m": матрица.m, "вид": вид})
+    return {"file": {"имя": имя, "вид": вид, "n": матрица.n, "m": матрица.m}}
+
+
+def _ldpc_окно(request: Request, job_id: str):
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        этап = int(тело.get("stage") or 0)
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("stage — номер этапа", 400) from None
+    _файл_бит_или_400(request, user, job_id, этап)
+    параметры = тело.get("параметры")
+    if not isinstance(параметры, dict):
+        raise ServiceError("параметры окна — объект", 400)
+    return параметры, _potok(request), этап
+
+
+@router.post("/potok/{job_id}/ldpc/preview")
+def potok_ldpc_preview(request: Request, job_id: str) -> dict[str, Any]:
+    """«Просмотр»: декодировать начало массива с постобработкой; слои — для «Декодирования»."""
+    import base64  # noqa: PLC0415
+
+    import numpy as np  # noqa: PLC0415
+
+    from ..potok import ldpc_okno  # noqa: PLC0415
+    параметры, задания, этап = _ldpc_окно(request, job_id)
+    try:
+        итог = ldpc_okno.просмотр(задания.биты_участка(job_id, этап, 0, 1 << 22), параметры)
+    except (ValueError, KeyError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    ряд = итог.pop("биты")[:1 << 17]
+    return {**итог, "биты": base64.b64encode(np.packbits(ряд).tobytes()).decode("ascii"), "показано": int(len(ряд))}
+
+
+@router.post("/potok/{job_id}/ldpc/auto")
+def potok_ldpc_auto(request: Request, job_id: str) -> dict[str, Any]:
+    """«Автомат»: код, схема передачи и начало слова — сами, среди кодов выбранного типа (или всех)."""
+    from ..potok import ldpc, ldpc_katalog, ldpc_okno  # noqa: PLC0415
+    параметры, задания, этап = _ldpc_окно(request, job_id)
+    try:
+        return ldpc_okno.автомат(задания.биты_участка(job_id, этап, 0, ldpc_okno.АВТОМАТ_БИТ), параметры,
+                                 ldpc_katalog.с_файлами(ldpc.список()))
+    except (ValueError, KeyError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
 # -- модуляционный декодер: плоскости (.etl), просмотр, перебор вариантов ------------------
 
 @router.get("/potok-planes")

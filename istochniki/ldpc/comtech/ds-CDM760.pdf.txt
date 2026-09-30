@@ -1,0 +1,1880 @@
+
+=====PAGE 1=====
+CDM-760 Advanced High-Speed Trunking and Broadcast Modem 
+ 
+ 
+Satellite Modems 
+ 
+ 
+ 
+Overview 
+The CDM-760 Advanced High-Speed Trunking and Broadcast Modem builds on our 
+award-winning family of high-speed, ultra efficient trunking modems. The CDM-760 
+further enhances our offerings to include ultra wide band symbol rates, near theoretical 
+performance with minimal implementation loss, a variety of high efficiency MODCOD 
+selections. Configurable as a true DVB-S2&S2X broadcast modulator, demodulator or 
+Modem and supports HTS, GEO and MEO mode operation with hitless antenna handover 
+and satellite handover.  
+ 
+The CDM-760 Advanced High-Speed Trunking and Broadcast Modem was designed to 
+be the most efficient, highest throughput, point-to-point modem available. Accommodating 
+the most demanding Internet Service Providers, Broadcasters and telco backhaul links by 
+offering users the most advanced combination of space segment saving capabilities while 
+minimizing overhead.     
+ 
+The CDM-760 offers an expansive range of symbol rates (100 ksps to 150 Msps) and data rates (100 kbps to >720 Mbps) simplex. In a 
+duplex setting, this is >1.4 Gbps or 300 Msps. The onboard Ethernet interfaces support Super Jumbo Frames from 64 Bytes to >10,000 
+Bytes and will process Ethernet frames at a blazing > 1.2 Million packets / second.  With the optional Packet Processor card installed 
+the CDM-760 can support > 350,000 packets per second while performing simultaneous Header Compression and QoS. 
+ 
+Comtech offers a variety of open or closed network specifications and MODCOD selections. The CDM-760 can be configured to run as 
+DVB-S2 (EN 302 307), DVB-S2X (EN 302 307-2) open standard waveforms, or with Comtech’s DVB-S2-EB1& EB2 (Efficiency Boost) 
+waveforms. All waveforms are interoperable with ACM and the CDM-760 DPD (Dynamic Pre-Distortion). DPD allows satellite amplifiers 
+to push further into saturation, maximizing transponder efficiency. The pre-distortion function is constantly optimized by the modem and 
+does not require any user intervention. 
+ 
+Implementing Adaptive Coding and Modulation (ACM) operation allows link margin to be converted to user capacity during non-faded 
+conditions by taking advantage of the actual signal to noise ratio rather than calculated worst case signal to noise. 
+ 
+By using the best encapsulation methods, the CDM-760 further increases throughput by using minimal overhead. In G.703 
+synchronous mode, users can implement monitor and control over the satellite with no additional overhead. When using Ethernet 
+bridge mode, less than 1% overhead is used for encapsulation. 
+ 
+An optional high-speed packet processor card has a powerful user-defined QoS engine for traffic shaping, performing header 
+compression (greatly reducing WAN capacity with smaller packets >60%), and enables static routing.  The optional K4 GZIP lossless 
+compression engine performs real-time compression of user payload. Performance testing shows a 52% to 59% compression rate 
+when tested against an industry standard Calgary Corpus profile. 
+ 
+DVB-CID ETSI TS 103 129 is the ETSI standard for combating satellite interference and is largely based on Comtech EF Data’s award-
+winning MetaCarrier® technology. MetaCarrier technology embeds and detects a small message and unique ID within a video or data 
+satellite carrier. This embedded message and ID significantly reduce the time to identify and clear interference sources. 
+ 
+Additionally, the CDM-760 leverages our powerful DoubleTalk® Carrier-in-Carrier® “Adaptive Cancellation” technology. With the ability 
+to overlay TX and RX carriers, Carrier-in-Carrier enables the operator to establish the perfect balance between bandwidth and power, 
+enabling the best possible use of the satellite resource and reducing operating expenses (OPEX). 
+ 
+These technologies alone offer enormous savings to the ISP, Broadcaster and telco operator. When used in combination, however, the 
+capacity savings cannot be matched. The innovative high-performance architecture of the CDM-760 allows efficient networking and 
+transport over satellite links while supporting a wide range of applications and network topologies. 
+ 
+ 
+ 
+www.comtechefdata.com 
+Typical Users 
+• Mobile Operators / Telecom 
+• Broadcasters 
+• ISPs  
+• Government & Military 
+ 
+Common Applications 
+• IP & Telco Trunking  
+• DVB-S2 & S2X Video Delivery 
+• HTS, GEO and MEO Trunking 
+• Disaster Recovery & Emergency 
+Communications 
+
+=====PAGE 2=====
+ 
+CDM-760 Back Panel 
+Features 
+• Symbol Rate: 0.1 to 150 Msps 
+• Data Rate: 0.1 to >720 Mbps (Simplex), >1.4 Gbps (Duplex) 
+• DVB-S2 ETSI EN 302 307 & DVB-S2X EN 302 307-2 compliant 
+• DVB-S2-EB1&EB2 Efficiency Boost technology 
+• DoubleTalk Carrier-in-Carrier bandwidth compression 
+• ACM and CCM 
+• Embedded MetaCarrier DVB-CID ETSI TS 103 129 
+• GSE –  low overhead <1% encapsulation 
+• K4 GZIP lossless compression 
+• Automatic Uplink Power Control (AUPC) 
+• Dynamic Pre-Distortion (DPD) 
+• Super Jumbo Frame 64 - 10,240 Byte Support (In Non Packet Processor Mode) 
+• Packet Processor with > 190,000 PPS simplex and > 350,000 PPS duplex 
+• 9,000 Byte Jumbo Frame (In Packet Processor Mode) 
+• Layer 3 Routed Mode operation with up to 256 static routes (>105,000 PPS simplex, >150,000 PPS duplex) 
+• Modulation: QPSK, 8PSK, 16APSK, 32APSK, 64APSK, 128APSK, 256APSK 
+• Dual IF: 70/140 MHz, L-Band and L-Band monitor (standard) 
+• LNB power and 10MHz reference, BUC 10MHz reference 
+• Data Interfaces 
+▪ 2 Gigabit 10/100/1000Base-T interfaces (standard) 
+▪ 1 Optical Gigabit interface (optional) 
+▪ Processes > 600,000 pps simplex, 1.2M pps duplex 
+▪ PIIC optional interface cards 
+▪ ASI (DVB Asynchronous Serial Interface) 
+▪ G.703 E3/T3/STS-1 (34.368, 44.736, 51.84 Mbps) 
+▪ STM-1 Copper SDH (155.52 Mbps) 
+▪ OC-3 SONET single mode or multi-mode 1300 nm (155.52 Mbps) 
+• Multistream capable (Multi-Interface mux) 
+• Supports FSS, HTS, GEO, MEO and LEO mode operation 
+• Management: HTTP, SNMP, Telnet, RS-232/485 with In-band (over satellite) M&C control 
+• 1:1 and 1:N redundancy switching available 
+ 
+Doubletalk Carrier-in-Carrier  
+DoubleTalk Carrier-in-Carrier, based on patented “Adaptive Cancellation” technology, allows transmit and receive carriers of a duplex 
+link to share the same transponder space.  
+ 
+Figure 1 shows the typical full duplex satellite link, where the two carriers are adjacent to each other. Figure 2 shows the typical 
+DoubleTalk Carrier-in-Carrier operation, where the two carriers are overlapping, thus sharing the same spectrum. 
+ 
+ 
+Figure 1 
+ 
+Figure 2 
+ 
+When observed on a spectrum analyzer, only the Composite is visible. Carrier 1 and Carrier 2 are shown in Figure 2 for reference only. 
+ 
+Carrier-in-Carrier® is a Registered Trademark of Comtech EF Data 
+DoubleTalk® is a Registered Trademark of Raytheon Applied Signal Technology 
+
+=====PAGE 3=====
+Packet Processor  
+The optional High-Speed Packet Processor enables efficient IP networking and transport over satellite with a processing engine 
+capable of handling >190,000 PPS simplex and >350,000 PPS duplex.  The packet processor performs header compression and 
+Quality of Service (QoS) ensuring the highest quality of service with minimal jitter and latency for real-time traffic, priority treatment of 
+mission critical applications and maximum bandwidth efficiency.  
+ 
+The Packet processor functions in Managed Switch Mode of operating as a layer 2 switch with VLAN and MPLS support.   
+ 
+Header Compression  
+The Packet Processor incorporates industry-leading header compression for Ethernet and IP traffic. In managed switch mode, header 
+compression can reduce the 54 byte Ethernet/IP/UDP/RTP header to as little as 1 byte. For applications such as VoIP, header 
+compression can provide bandwidth savings exceeding 65%. E.g. the 8 kbps G.729 voice codec requires 31.2 kbps once encapsulated 
+into an Ethernet frame with IP/UDP/RTP. With header compression, the same voice call needs about 9 kbps – a saving of almost 70%. 
+And, bandwidth requirements for typical Web/HTTP traffic can be reduced by 10% or more with TCP/IP header compression. 
+ 
+Supported Layer 2, 2+ Headers 
+ 
+Supported Layer 3 Headers 
+Ethernet 
+IP 
+Ethernet + VLAN 
+TCP 
+Ethernet + VLAN + VLAN 
+UDP 
+Ethernet + MPLS 
+RTP (Codec Independent) 
+Ethernet + MPLS + MPLS 
+  
+  
+  
+  
+  
+Ethernet + VLAN + MPLS 
+Ethernet + VLAN + MPLS + MPLS 
+Ethernet + VLAN + VLAN + MPLS 
+Ethernet + VLAN + VLAN + MPLS + MPLS 
+ 
+Traffic Shaping Functionality (QoS)  
+Traffic Shaping Functionality (QoS) – The high-speed packet processor functions in a layer 2 mode of operation while performing the 
+three processes that comprise traffic shaping:  Classification, Prioritization and Drain. 
+ 
+• Classification of traffic is the basic mechanism by which a packet or frame can be sorted and associated with a particular group or 
+priority. The more flexible a classification engine is, the more likely the high value services can be protected. 
+ 
+• Prioritization of traffic is a method of assigning various value levels to a particular packet or frame.  Prioritization ensures that the 
+packets / frames are “ordered” in such a manner that the highest level of protection is provided to the most valuable traffic. 
+ 
+• Drain – Once the packets or frames are classified and prioritized, it needs to be determined how to drain the traffic.  Does your 
+network require you to pass all high level traffic in a strict priority manner such that lower priority traffic could be “starved” in times 
+of congestion? Or, can determinations be made about the maximum and minimum levels of service you can accept on a per 
+classification basis?   The CDM-760 packet processor gives the operator or service provider many options to choose from. 
+ 
+▪ DiffServ – Industry-standard method of providing QoS enabling seamless co-existence in networks that implement DiffServ 
+▪ Max/Priority – Provides traffic prioritization with the ability to limit maximum traffic per priority class 
+▪ Min/Max – Provides a Committed Information Rate (CIR) to each user defined class of traffic with the ability to allow a higher 
+burstable rate depending on availability 
+▪ Max/Priority with Weighting Mode 
+o 
+Weights are applied all queues that have not reached their max BW limit 
+o 
+Once the max BW is reached, the scheduler will not drain any more data irrespective of its weights 
+▪ Min/MAX with Weighting Mode 
+o 
+First serves the minimum BW 
+o 
+Once the minimum BW is met, the weights are applied until the Max BW is met 
+o 
+Once the max BW is met, the scheduler will not drain any more data 
+ 
+Classification 
+Prioritization 
+Drain 
+• DiffServ 
+• MPLS 
+• VLAN 
+• Protocol 
+• Source IP Address 
+• Destination IP Address 
+• Source Port 
+• Destination Port 
+• Up to 8 different levels of 
+prioritization 
+• Weighting can be enabled 
+per level 
+• DiffServ 
+• Max / Priority 
+• Min / Max 
+• Max / Priority with Weighting 
+• Min / Max with Weighting 
+ 
+Layer 3 Routed Mode 
+In some cases, it may be desirable to function in a layer 3 routed mode of operation.  The packet processor can be configured to run as 
+a layer 3 device with static routing.  The packet processor can have up to 256 static routes based on destination IP address mask. The 
+packet processor in layer 3 routed mode can support >105,000 PPS simplex or >150,000 PPS duplex. 
+ 
+
+=====PAGE 4=====
+Specifications 
+ 
+Symbol Rate Range 
+100 Ksps to 150 Msps (Simplex) in 1 sps 
+steps (modulation dependent over 
+64APSK) 
+Modulation Type 
+DVB-S2/S2X:  ETSI EN 302 307 / 302 
+307-2 compliant 
+DVB-S2-EB1&EB2:  DVB-S2 with 
+Efficiency Boost technology 
+FECFrame 
+Normal (64,800 bits) or  
+Short (16,200 bits) 
+Pilots 
+On or off 
+Alpha (Rolloff) 
+DVB-S2 and EB1:  20%, 25% or 35% 
+DVB-S2X and EB2: 
+5%, 10%, 15%, 20%, 25%, 35% 
+Management 
+Front panel keypad / display RS-232 
+/485, or  
+10/100Base-T with SNMP, Telnet, HTTP  
+Reflash 
+Ethernet management port  
+Frequency Stability 
+Internal, stability ± 0.06 ppm 
+External Reference Input / 
+Output (BNC Female) 
+Internal, 1, 2, 5 or 10 MHz for IF and 
+data, internally phase locked.  
+Output: off or internal 10 MHz 
+Form C 
+Modulator, demodulator and unit fault 
+Spectral Sense 
+Normal and inverted 
+Configuration Retention 
+Non-volatile memory; Returns upon 
+power up 
+ 
+Options 
+Type 
+Option 
+FAST 
+DVB-S2X with DVB-S2-EB1 & EB2 
+FAST 
+Symbol rate options 
+FAST & Hardware 
+Carrier-in-Carrier options 
+FAST & Hardware 
+Packet Processor (Can not be installed 
+with any PIIC data interface cards) 
+FAST & Hardware 
+K4 GZIP lossless compression 
+FAST 
+ACM point to point client / controller 
+FAST 
+DPD (Dynamic Pre-Distortion) 20 Msps – 
+63 Msps 
+FAST 
+Optical Gigbit Ethernet enable 
+Hardware 
+PIIC optional interface cards: 
+ASI (DVB Asynchronous Serial Interface) 
+G.703 E3/T3/STS-1 (34.368, 44.736, 
+51.84 Mbps) 
+STM-1 Copper SDH (155.52 Mbps) 
+OC-3 SONET single mode or multi-mode 
+1300 nm (155.52 Mbps) 
+Hardware 
+Rack slides 
+ 
+Modulator (Dual IF) 
+70/140 MHz  
+50 to 180 MHz in 100 Hz steps 
+Impedance / Connector 
+75 , BNC female. Return loss ≥ 18 dB 
+Output Power 
+0 to -25 dBm, 0.1 dB steps (70/140 MHz) 
+Power Accuracy 
+± 0.5 dB of nominal at 25C; Within  
+± 0.5 dB from 25C value at same 
+frequency 
+L-Band  
+950 to 2150 MHz in 100 Hz steps 
+Impedance / Connector 
+50 Ω, Type N female. Return loss ≥ 15 
+dB 
+Output Power 
+0 to -40 dBm, 0.1 dB steps 
+Power Accuracy 
+± 0.5 dB of nominal at 25C 
+± 0.5 dB from 25C value at same 
+frequency 
+L-Band Monitor 
+Same as L-Band or 900 + 70/140 MHz IF 
+at  
+-27 dBm ± 3 dB 
+Harmonics and Spurs 
+< 60 dBc/4kHz, modulated carrier; 
+Excludes spectral mask area 
+External TX Carrier Off 
+TTL low signal  
+Quadrature Phase Error and 
+Amplitude Imbalance 
+Sideband 35 dB below unmodulated 
+carrier 
+ 
+Demodulator (Dual IF)  
+70/140 MHz  
+50 to 180 MHz in 100 Hz steps 
+Impedance / Connector 
+75 , BNC female. Return loss 15 dB min. 
+Input Power 
+Desired carrier:   
+Min. = -58 + 10Log (SRMSPS) dBm 
+Max. = -23 + 10Log (SRMSPS) dBm 
+or +10 dBm whichever is less. 
+Max. Composite Power 
++20 dBm or = 14 + 10Log (180 / SRMSPS) 
+dBc 
+(whichever is less) 
+L-Band  
+950 to 2150 in 100 Hz steps 
+Impedance / Connector 
+50 Ω, Type N female. Return loss 10 dB 
+min.  
+Input Power 
+Desired carrier:   
+Min. = -70 + 10Log (SRMSPS)dBm 
+Max. = -20 + 10Log (SRMSPS) dBm 
+or +20 dBm whichever is less. 
+Maximum Composite 
++20 dBm or = 43 – 10Log (SRMSPS) dBc 
+(whichever is less) 
+ 
+Doubletalk Carrier-In-Carrier 
+Symbol Rate Range 
+1 Msps to 63 Msps in 1sps steps 
+Delay Range 
+0 to 300 ms  
+(factory default 230 – 290 ms) 
+CnC Ratio  
++7 dB to -7 dB interferer to desired 
+Es/No degradation (dB) 
+measured at 0.0 dB CnC 
+Ratio 
+QPSK: 0.3 dB 
+ 
+8PSK:  0.3 dB  
+ 
+16APSK:  0.4 dB  
+ 
+ 
+32APSK: 0.5 dB 
+64APSK: 0.6 dB 
+128APSK: 0.7 dB 
+256APSK: 0.8 dB 
+  
+Symbol Rate Ratio 
+Max 3:1 TX/RX or RX/TX 
+Satellite Configuration 
+Transmit station sees own carrier. Non-
+processing satellite. 
+ 
+Base Unit Connectors 
+Alarm Connector  
+(DB-15 Male) 
+Form C: TX, RX and unit faults 
+External TX carrier off  
+IQ test point 
+Unit Management 
+DB-9 male with RS-232 and RS-485 2-
+wire / 4-wire 
+RJ-45 Ethernet (maximum Ethernet 
+packet size 
+1536 bytes including Ethernet header & 
+CRC) 
+TX & RX IF Connectors 
+BNC female (70/140 MHz) 
+Type-N female (L-Band) 
+L-Band Monitor 
+SMA female 
+Ethernet Data Interfaces on 
+main modem (Non-Packet 
+Processor) 
+2 x RJ-45 10/100/1000Base-T Ethernet 
+1 x Optical Gibabit Ethernet (optional) 
+Note:  All Data GigE interfaces support 
+super jumbo frames with a maximum 
+Ethernet frame size of 10,240 bytes 
+including Ethernet header & CRC 
+Packet Processor Interface 
+4 x RJ-45 10/100/1000Base-T Ethernet 
+interface (User Traffic), 1 x RJ11 (CLI 
+serial), 1 x 10/100/1000Base-T Ethernet 
+interface (Management) Note:  Cannot 
+use any PIIC interfaces cards if Packet 
+Processor is installed.  Packet processor 
+card will support super jumbo frames with 
+a maximum Ethernet frame size of 9,000 
+bytes including Ethernet header & CRC 
+ 
+Test Functions 
+Data Test Pattern 2^10-1, 2^15-1, 2^23-1 compatible with BERT on TX 
+data on applicable interfaces  
+CW 
+Modulation disabled and CW signal is transmitted 
+SSB Carrier 
+Provides suppressed carrier and suppressed 
+sideband  
+Loopback 
+Full-duplex only 
+ 
+
+=====PAGE 5=====
+ 
+ 
+Environmental and Physical 
+Temperature 
+ 
+Operating 
+0 to 50C (32 to 122F) 
+Storage 
+-40 to 70C (-40 to 158F) 
+Humidity 
+95% maximum, non-condensing 
+Power Supply Input 
+100-240 VAC 50/60 Hz 
+43-60 VDC (48 VDC option) 
+Power Consumption  
+120 VAC at 60 Hz 
+230 VAC at 50 Hz 
+48 VDC 
+ 
+88 W, 93 VA typical 
+88 W, 133 VA typical 
+85 W typical 
+Dimensions (1RU) 
+(height x width x depth) 
+1.75” x 19” x 18.65”  
+(48 x 47.4 x 4.4 cm) 
+Weight 
+15 lbs (6.8 kg) 
+AC Receptacles 
+Includes restraint for standard IEC-320 inlet 
+Agency Compliance 
+CE Mark and FCC part 15 
+ 
+Accessories 
+Type 
+Option 
+1:1 Modem Redundancy 
+CRS-170A (L-Band), CRS-180 (70/140 
+MHz) 
+1:N Modem Redundancy 
+CRS-500 70/140 MHz or L-Band (Only for 
+use with 10/100/1000Base-T or G.703 
+T3/E3/STS-1 interfaces) 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+DVBS2, Normal Block, Pilot ON, QEF (PER 1E-7)
+Performance measured using 30Msps operation, 20% ROF and AWGN noise
+MOD
+FEC
+Min SR 
+(Msps)
+Max SR 
+(Msps)
+Min DR 
+(Mbps)
+Max DR 
+(Mbps)
+Spec Eff 
+(Bits / Hz)
+QEF     Eb/No
+QEF     Es/No
+QPSK
+1/4
+0.1
+150
+0.05
+72
+0.48
+1.1
+-2.1
+QPSK
+1/3
+0.1
+150
+0.06
+96
+0.64
+0.9
+-1.0
+QPSK
+2/5
+0.1
+150
+0.08
+115.5
+0.77
+1.0
+-0.1
+QPSK
+1/2
+0.1
+150
+0.10
+144.80
+0.97
+1.5
+1.3
+QPSK
+3/5
+0.1
+150
+0.12
+174.00
+1.16
+1.9
+2.5
+QPSK
+2/3
+0.1
+150
+0.13
+193.70
+1.29
+2.2
+3.3
+QPSK
+3/4
+0.1
+150
+0.15
+217.80
+1.45
+2.7
+4.3
+QPSK
+4/5
+0.1
+150
+0.15
+232.40
+1.55
+3.0
+4.9
+QPSK
+5/6
+0.1
+150
+0.16
+242.30
+1.62
+3.3
+5.4
+QPSK
+8/9
+0.1
+150
+0.17
+258.60
+1.72
+4.0
+6.4
+QPSK
+9/10
+0.1
+150
+0.17
+261.90
+1.75
+4.2
+6.6
+8PSK
+3/5
+0.1
+120
+0.17
+208.80
+1.74
+3.7
+6.1
+8PSK
+2/3
+0.1
+120
+0.19
+232.30
+1.94
+3.6
+6.5
+8PSK
+3/4
+0.1
+120
+0.22
+261.40
+2.18
+4.8
+8.2
+8PSK
+5/6
+0.1
+120
+0.24
+290.60
+2.42
+5.8
+9.6
+8PSK
+8/9
+0.1
+120
+0.26
+310.30
+2.59
+6.9
+11.0
+8PSK
+9/10
+0.1
+120
+0.26
+314.20
+2.62
+7.1
+11.3
+16APSK
+2/3
+0.1
+90
+0.26
+231.80
+2.58
+5.4
+9.5
+16APSK
+3/4
+0.1
+90
+0.29
+260.60
+2.90
+6.0
+10.6
+16APSK
+4/5
+0.1
+90
+0.31
+278.10
+3.09
+6.5
+11.4
+16APSK
+5/6
+0.1
+90
+0.32
+290.00
+3.22
+6.9
+12.0
+16APSK
+8/9
+0.1
+90
+0.34
+309.60
+3.44
+7.8
+13.2
+16APSK
+9/10
+0.1
+90
+0.35
+313.50
+3.48
+8.1
+13.5
+32APSK
+3/4
+0.1
+72
+0.36
+260.90
+3.62
+7.6
+13.2
+32APSK
+4/5
+0.1
+72
+0.39
+278.40
+3.87
+8.1
+14.0
+32APSK
+5/6
+0.1
+72
+0.40
+290.20
+4.03
+8.7
+14.8
+32APSK
+8/9
+0.1
+72
+0.43
+309.80
+4.30
+9.9
+16.2
+32APSK
+9/10
+0.1
+72
+0.44
+313.70
+4.36
+10.1
+16.5
+
+=====PAGE 6=====
+ 
+ 
+ 
+MOD
+FEC
+Min SR 
+(Msps)
+Max SR 
+(Msps)
+Min DR 
+(Mbps)
+Max DR 
+(Mbps)
+Spec Eff 
+(Bits / Hz)
+QEF Eb/No       QEF Es/No     
+QPSK
+1/4
+0.1
+150
+0.05
+72
+0.48
+1.1
+-2.1
+QPSK
+13/45
+0.1
+150
+0.06
+83.10
+0.55
+0.7
+-1.9
+QPSK
+1/3
+0.1
+150
+0.06
+96
+0.64
+0.9
+-1.0
+QPSK
+2/5
+0.1
+150
+0.08
+115.5
+0.77
+1.0
+-0.1
+QPSK
+9/20
+0.1
+150
+0.09
+130.20
+0.87
+0.9
+0.3
+QPSK
+1/2
+0.1
+150
+0.1
+144.80
+0.97
+1.5
+1.3
+QPSK
+11/20
+0.1
+150
+0.11
+159.40
+1.06
+1.3
+1.6
+QPSK
+3/5
+0.1
+150
+0.12
+174.00
+1.16
+1.9
+2.5
+QPSK
+2/3
+0.1
+150
+0.13
+193.70
+1.29
+2.2
+3.3
+QPSK
+3/4
+0.1
+150
+0.15
+217.80
+1.45
+2.7
+4.3
+QPSK
+4/5
+0.1
+150
+0.15
+232.40
+1.55
+3.0
+4.9
+QPSK
+5/6
+0.1
+150
+0.16
+242.30
+1.62
+3.3
+5.4
+QPSK
+8/9
+0.1
+150
+0.17
+258.60
+1.72
+4.0
+6.4
+QPSK
+9/10
+0.1
+150
+0.17
+261.90
+1.75
+4.2
+6.6
+8PSK
+5/9-L
+0.1
+150
+0.16
+241.50
+1.61
+2.7
+4.8
+8PSK
+26/45-L
+0.1
+150
+0.17
+251.20
+1.67
+3.0
+5.2
+8PSK
+3/5
+0.1
+150
+0.17
+261.00
+1.74
+3.7
+6.1
+8PSK
+23/36
+0.1
+150
+0.19
+278.00
+1.85
+3.5
+6.2
+8PSK
+2/3
+0.1
+150
+0.19
+290.40
+1.94
+3.6
+6.5
+8PSK
+25/36
+0.1
+150
+0.20
+302.30
+2.02
+4.1
+7.1
+8PSK
+13/18
+0.1
+150
+0.21
+314.50
+2.10
+4.4
+7.6
+8PSK
+3/4
+0.1
+150
+0.22
+326.70
+2.18
+4.8
+8.2
+8PSK
+5/6
+0.1
+150
+0.24
+363.30
+2.42
+5.8
+9.6
+8PSK
+8/9
+0.1
+150
+0.26
+387.90
+2.59
+6.9
+11.0
+8PSK
+9/10
+0.1
+150
+0.26
+392.70
+2.62
+7.1
+11.3
+16APSK
+1/2-L 
+0.1
+150
+0.19
+288.80
+1.93
+3.4
+6.2
+16APSK
+8/15-L
+0.1
+150
+0.21
+308.20
+2.05
+3.6
+6.7
+16APSK
+5/9-L
+0.1
+150
+0.21
+321.20
+2.14
+3.7
+7.0
+16APSK
+26/45
+0.1
+150
+0.22
+334.10
+2.23
+4.2
+7.7
+16APSK
+3/5
+0.1
+150
+0.23
+347.10
+2.31
+4.4
+8.0
+16APSK
+3/5-L
+0.1
+150
+0.23
+347.10
+2.31
+4.0
+7.6
+16APSK
+28/45
+0.1
+150
+0.24
+360.00
+2.40
+4.5
+8.3
+16APSK
+23/36
+0.1
+150
+0.25
+369.70
+2.46
+4.6
+8.5
+16APSK
+2/3-L
+0.1
+150
+0.26
+385.90
+2.57
+4.5
+8.6
+16APSK
+2/3
+0.1
+150
+0.26
+386.30
+2.58
+5.4
+9.5
+16APSK
+25/36
+0.1
+150
+0.27
+402.10
+2.68
+5.2
+9.5
+16APSK
+13/18
+0.1
+150
+0.28
+418.30
+2.79
+5.4
+9.9
+16APSK
+3/4
+0.1
+150
+0.29
+434.40
+2.90
+6.0
+10.6
+16APSK
+7/9
+0.1
+150
+0.30
+450.60
+3.00
+6.0
+10.8
+16APSK
+4/5
+0.1
+150
+0.31
+463.50
+3.09
+6.5
+11.4
+16APSK
+5/6
+0.1
+150
+0.32
+483.30
+3.22
+6.9
+12.0
+16APSK
+77/90
+0.1
+150
+0.33
+495.90
+3.31
+7.0
+12.2
+16APSK
+8/9
+0.1
+150
+0.34
+516.00
+3.44
+7.8
+13.2
+16APSK
+9/10
+0.1
+150
+0.35
+522.50
+3.48
+8.1
+13.5
+32APSK
+2/3-L
+0.1
+150
+0.32
+482.80
+3.22
+6.3
+11.4
+32APSK
+32/45
+0.1
+150
+0.34
+515.20
+3.43
+6.6
+12.0
+32APSK
+11/15
+0.1
+150
+0.35
+531.40
+3.54
+7.0
+12.5
+32APSK
+3/4
+0.1
+150
+0.36
+543.50
+3.62
+7.6
+13.2
+32APSK
+7/9
+0.1
+150
+0.38
+563.70
+3.76
+7.6
+13.3
+32APSK
+4/5
+0.1
+150
+0.39
+579.90
+3.87
+8.1
+14.0
+32APSK
+5/6
+0.1
+150
+0.40
+604.70
+4.03
+8.7
+14.8
+32APSK
+8/9
+0.1
+150
+0.43
+645.50
+4.30
+9.9
+16.2
+32APSK
+9/10
+0.1
+150
+0.44
+653.60
+4.36
+10.1
+16.5
+64APSK
+32/45-L
+0.1
+150
+0.41
+616.70
+4.11
+8.3
+14.4
+64APSK
+11/15
+0.1
+150
+0.42
+636.10
+4.24
+8.9
+15.2
+64APSK
+7/9
+0.1
+150
+0.45
+674.90
+4.50
+9.4
+15.9
+64APSK
+4/5
+0.1
+150
+0.46
+694.20
+4.63
+9.6
+16.3
+64APSK
+5/6
+0.1
+150
+0.48
+723.30
+4.82
+10.1
+16.9
+128apsk
+3/4
+0.1
+135
+0.51
+681.80
+5.05
+11.8
+18.8
+128apsk
+7/9
+0.1
+135
+0.52
+706.10
+5.23
+12.4
+19.6
+256apsk
+29/45-L
+0.1
+120
+0.50
+595.20
+4.96
+11.1
+18.1
+256apsk
+2/3-L
+0.1
+120
+0.51
+615.60
+5.13
+10.9
+18.1
+256apsk
+31/45-L
+0.1
+120
+0.53
+636.00
+5.30
+12.1
+19.3
+256apsk
+32/45
+0.1
+120
+0.55
+656.40
+5.47
+12.3
+19.7
+256apsk
+11/15-L
+0.1
+120
+0.56
+676.80
+5.64
+12.4
+19.9
+256apsk
+3/4
+0.1
+120
+0.58
+692.40
+5.77
+13.2
+20.8
+Performance measured using 30Msps operation, 20% ROF and AWGN noise
+DVB-S2X Normal Block, Pilot ON, QEF (FER 1E-5)
+
+=====PAGE 7=====
+ 
+ 
+ 
+ 
+ 
+ 
+2114 West 7th Street, Tempe, Arizona 85281 USA   
+Voice: +1.480.333.2200  ●  Fax: +1.480.333.2540  ●  Email: sales@comtechefdata.com 
+See all of Comtech EF Data’s Patents and Patents Pending at http://patents.comtechefdata.com 
+Comtech EF Data reserves the right to change specifications of products described in this document at any time without notice and without obligation to notify any person of such changes. Information 
+in this document may differ from that published in other Comtech EF Data documents. Refer to the website or contact Customer Service for the latest released product information 
+© 2019 Comtech EF Data 
+ 
+10/30/2019 
+ 
+MOD
+FEC
+Min SR 
+(Msps)
+Max SR 
+(Msps)
+Min DR 
+(Mbps)
+Max DR 
+(Mbps)
+Spec Eff 
+(Bits / Hz)
+QEF Eb/No    
+( * = EB2)
+QEF Es/No    
+( * = EB2)
+QPSK
+1/4
+0.1
+150
+0.05
+72.00
+0.48
+1.1 / 1*
+-2.1 / -2.2*
+QPSK
+53/180
+0.1
+150
+0.06
+85.50
+0.57
+1 / 0.9*
+-1.4 / -1.5*
+QPSK
+1/3
+0.1
+150
+0.06
+96.00
+0.64
+0.9 / 0.8*
+-1 / -1.1*
+QPSK
+11/30
+0.1
+150
+0.07
+106.50
+0.71
+1.0
+-0.5
+QPSK
+2/5
+0.1
+150
+0.08
+115.50
+0.77
+1.0
+-0.1
+QPSK
+77/180
+0.1
+150
+0.08
+123.00
+0.82
+1.2
+0.3
+QPSK
+83/180
+0.1
+150
+0.09
+133.50
+0.89
+1.3
+0.8
+QPSK
+1/2
+0.1
+150
+0.10
+145.50
+0.97
+1.4
+1.3
+QPSK
+8/15
+0.1
+150
+0.10
+154.50
+1.03
+1.6
+1.7
+QPSK
+17/30
+0.1
+150
+0.11
+165.00
+1.10
+1.7
+2.1
+QPSK
+3/5
+0.1
+150
+0.12
+174.00
+1.16
+1.9
+2.5
+QPSK
+19/30
+0.1
+150
+0.12
+183.00
+1.22
+1.9
+2.8
+QPSK
+2/3
+0.1
+150
+0.13
+193.50
+1.29
+2.2
+3.3
+QPSK
+127/180
+0.1
+150
+0.14
+205.50
+1.37
+2.4
+3.8
+QPSK
+3/4
+0.1
+150
+0.15
+217.50
+1.45
+2.7
+4.3
+QPSK
+4/5
+0.1
+150
+0.16
+232.50
+1.55
+3.0
+4.9
+QPSK
+5/6
+0.1
+150
+0.16
+243.00
+1.62
+3.3
+5.4
+QPSK
+31/36
+0.1
+150
+0.17
+250.50
+1.67
+3.7
+5.9
+QPSK
+8/9
+0.1
+150
+0.17
+258.00
+1.72
+4.0
+6.4
+QPSK
+9/10
+0.1
+150
+0.18
+262.50
+1.75
+4.2
+6.6
+8PSK
+17/30
+0.1
+120
+0.16
+196.80
+1.64
+3.8
+5.9
+8PSK
+3/5
+0.1
+120
+0.17
+208.80
+1.74
+3.7
+6.1
+8PSK
+19/30
+0.1
+120
+0.18
+220.80
+1.84
+3.9
+6.5
+8PSK
+2/3
+0.1
+120
+0.19
+232.80
+1.94
+4.0
+6.9
+8PSK
+127/180
+0.1
+120
+0.21
+246.00
+2.05
+4.7 / 4.5*
+7.8 / 7.6*
+8PSK
+3/4
+0.1
+120
+0.22
+261.60
+2.18
+4.8 / 4.7*
+8.2 / 8.1*
+8PSK
+4/5
+0.1
+120
+0.23
+278.40
+2.32
+5.3
+9.0
+8PSK
+5/6
+0.1
+120
+0.24
+290.40
+2.42
+5.8
+9.6
+8PSK
+31/36
+0.1
+120
+0.25
+300.00
+2.50
+6.3
+10.3
+8PSK
+8/9
+0.1
+120
+0.26
+310.80
+2.59
+6.9
+11.0
+8PSK
+9/10
+0.1
+120
+0.26
+314.40
+2.62
+7.1
+11.3
+16APSK
+19/30
+0.1
+90
+0.24
+219.60
+2.44
+5.3 / 5*
+9.2 / 8.9*
+16APSK
+2/3
+0.1
+90
+0.26
+231.30
+2.57
+5.4 / 5.1*
+9.5 / 9.2*
+16APSK
+127/180
+0.1
+90
+0.27
+244.80
+2.72
+5.7 / 5.5*
+10 / 9.8*
+16APSK
+3/4
+0.1
+90
+0.29
+261.00
+2.90
+6 / 5.9*
+10.6 / 10.5*
+16APSK
+4/5
+0.1
+90
+0.31
+278.10
+3.09
+6.5 / 6.3*
+11.4 / 11.2*
+16APSK
+5/6
+0.1
+90
+0.32
+289.80
+3.22
+6.9 / 6.7*
+12 / 11.8*
+16APSK
+31/36
+0.1
+90
+0.33
+299.70
+3.33
+7.6 / 7.2*
+12.8 / 12.4*
+16APSK
+8/9
+0.1
+90
+0.34
+309.60
+3.44
+7.8 / 7.6*
+13.2 / 13*
+16APSK
+9/10
+0.1
+90
+0.35
+313.20
+3.48
+8.1 / 7.9*
+13.5 / 13.3*
+32APSK
+127/180
+0.1
+72
+0.34
+245.52
+3.41
+7.2 / 7*
+12.5 / 12.3*
+32APSK
+3/4
+0.1
+72
+0.36
+260.64
+3.62
+7.5 / 7.3*
+13.1 / 12.9*
+32APSK
+4/5
+0.1
+72
+0.39
+278.64
+3.87
+8.1 / 8*
+14 / 13.9*
+32APSK
+5/6
+0.1
+72
+0.40
+290.16
+4.03
+8.7 / 8.4*
+14.8 / 14.5*
+32APSK
+31/36
+0.1
+72
+0.42
+299.52
+4.16
+9.2 / 8.9*
+15.4 / 15.1*
+32APSK
+8/9
+0.1
+72
+0.43
+309.60
+4.30
+9.9 / 9.4*
+16.2 / 15.7*
+32APSK
+9/10
+0.1
+72
+0.44
+313.92
+4.36
+10.1 / 9.8*
+16.5 / 16.2*
+64APSK *
+ 4/5
+0.1
+54
+0.46
+250.02
+4.63
+NA / 10.4*
+NA / 17.1*
+64APSK *
+ 5/6
+0.1
+54
+0.48
+260.28
+4.82
+NA / 11.1*
+NA / 17.9*
+64APSK *
+31/36
+0.1
+54
+0.50
+268.92
+4.98
+NA / 11.5*
+NA / 18.5*
+64APSK *
+ 8/9
+0.1
+54
+0.52
+278.10
+5.15
+NA / 12.3*
+NA / 19.4*
+64APSK *
+ 9/10
+0.1
+54
+0.52
+281.88
+5.22
+NA / 12.7*
+NA / 19.9*
+EB1 / EB2*, Normal Block, Pilot ON, QEF (PER 1E-7)
+Performance measured using 30Msps operation, 20% ROF and AWGN noise

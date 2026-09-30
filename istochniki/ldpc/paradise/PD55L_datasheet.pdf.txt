@@ -1,0 +1,1442 @@
+
+=====PAGE 1=====
+Evolution Series 
+PD55L 
+L-Band Satellite Modem 
+1 OF 6 
+205084 REV H  ECO 16241 
+ Paradise Datacom LLC 
+Paradise Datacom Ltd. 
+ 328 Innovation Blvd. 
+1 Wheaton Road, Witham 
+ State College, PA 16803 USA 
+Essex CM8 3UJ England 
+ Tel: 1 (814) 238-3450 
+Tel: +44(0) 1376 515636 
+ Fax: 1 (814) 238-3829 
+Fax: +44(0) 1376 533764 
+www.paradisedata.com 
+The Evolution Series PD55L is a 55Mbps 
+Open Network/Closed Network L-Band  
+Modem, fully compliant with IESS-308, 309, 
+310, 314, 315, offering a range of data  
+interfaces including Ethernet, HSSI, serial 
+LVDS, plus a range of modulation schemes 
+including 16QAM. An optional integrated 
+BUC / LNB power supply and high-stability 
+10MHz reference simplifies system  
+architecture, and FSK control of the BUC is 
+also available via the Modem. The Evolution 
+Series Satellite Modem embodies a new  
+design concept whereby core functions are 
+implemented with programmable logic, which 
+allows easy reconfiguration to the needs of 
+the user, and provides future-proof flexibility. 
+The Modem firmware and software is easily 
+upgraded through an Ethernet management 
+port, plus an innovative new menu structure 
+makes configuration a simple procedure. Ad-
+vanced user interfaces support the display of 
+text in different languages for universal ap-
+peal, and a unique Web User Interface offers 
+full remote control and in-depth performance 
+analysis tools using Internet Explorer without 
+special Monitor & Control software. 
+X MIL 188/165A compliant 
+X Field upgradeable feature set 
+X 4.8kbps to 10Mbps in the base modem; options to 55Mbps 
+X RS422, X.21, V.35, RS232 interfaces; HSSI, Serial LVDS, 
+Eurocom D/1, Quad E1, G.703 E1/E2/E3/T1/T2/T3 (options) 
+Sat-Abis (optional) and Ethernet, IP Acceleration (optional) 
+X BUC control via FSK (optional) 
+X Ethernet Bridging, plus Brouting (option) 
+X BPSK, QPSK, OQPSK, 8PSK (option), FastLink 8QAM 
+(option) & 16QAM (option) 
+X Multi-rate 2nd Generation Turbo (TPC), Viterbi, TCM,  
+ 
+Sequential, FastLink Low Latency LDPC & Reed-Solomon 
+FEC options 
+X 950 - 1950MHz L-Band in 100Hz steps, option to 2050MHz 
+X Paired Carrier carrier re-use (option) 
+X Closed Network, Closed Network + ESC, IBS/SMS (option) 
+and IDR (option) 
+X Drop and Insert to E1/T1 (option) with extended  
+functions: RBS, CAS 
+X Built-in 1:1 Redundancy Controller 
+X Embedded web server offers full M&C 
+X DC power to the LNB (standard), DC power to the BUC 
+(optional) 
+X 48V dc Primary Power input option 
+ 
+ 
+X Web User Interface available via embedded web server  
+ 
+including (patent pending); Receive Spectrum Analyzer,  
+ 
+Receive Constellation Monitor, BER Tester and  
+ 
+graphing Eb/No, Rx Power, BER plus other parameters, 
+using Internet Explorer 
+X Ethernet with embedded web server and SNMP  
+network management support 
+X RS485 multi-drop addressable 
+X M&C via Satellite ESC channel for distant control of  
+ 
+Modems and other devices 
+X RS232 for direct PC connection 
+OVERVIEW 
+EASE OF OPERATION 
+FEATURES 
+REMOTE CONTROL & WEB INTERFACE 
+
+=====PAGE 2=====
+2 OF 6 
+205084 REV H  ECO 16241 
+Common Main Specifications 
+Parameter 
+Evolution Series Modem 
+Modulation Scheme 
+BPSK, QPSK, OQPSK, 8PSK (Option), 8APSK 
+(Option), 16QAM (Option) 
+L-band Freq. Range 
+950 - 1950MHz 
+L-band Frequency  
+Resolution 
+100Hz 
+Traffic Interface  
+- Electrical 
+Ethernet (10/100 BaseT) IP Traffic on RJ45 with link 
+and traffic indicators.  Electronically selectable with  
+other interfaces fitted. 
+RS422 including X.21 DCE and DTE emulation, V.35  a
+nd RS232 on EIA530 connector 25 pin female 
+D-type (Option), EIA530 maximum 10Mbps, RS232 
+max 100kbps 
+Serial LVDS 25 pin female D-type (Option) 
+HSSI 50 pin HD SCSI-2 connector (Option)  
+G.703 balanced on EIA530 
+G.703 unbalanced on BNC female 75Ω 
+Quad E1 G.703 balanced on RJ45 
+IP Traffic card 10/100/1000 BaseT on RJ45 
+Eurocom D/1 on 25 pin male D-type includes:  
+  Eurocom D <16kbps to >2,048kbps AMI coded 
+  Eurocom C 256kbps, 512kbps, 1,024kbps and  
+  2,048kbps HDB3 coded, plus 
+  Eurocom G 16kbps or 32kbps diphase coded 
+MultiMux feature allows a mix of multiple G.703 
+interfaces plus IP and/or EIA530 traffic with a limit of 
+2,048kbps per MultiMux traffic port (4 x ports max) 
+User Traffic 
+Data Rate 
+4.8kbps – 10Mbps  
+Extension of base operation to 16,896kbps (Option) 
+Extension of 16,896kbps to 25Mbps (Option) 
+Extension of 25Mbps to 55Mbps (Option)  
+Extensions are cumulative 
+User Traffic Data  
+Rate Resolution 
+1bps 
+Note: The combination of FEC Rate, Modulation scheme and Satellite  
+Overhead limits the Traffic Data Rate Range in all modes.   
+User Data Rate Range 
+– Closed Network 
+4.8kbps to 55Mbps no Satellite Overhead  
+(with high Data Rate options) 
+User Data Rate  
+Range – Minimum 
+Overhead (Closed 
+Network plus ESC) 
+As Closed Network above except limits inclusive 
+of overhead of approximately 1.4 times the ESC  
+baud rate. Resolution of 1bps. Supports ESC rate  
+from 110 baud to >38.4kbaud.  
+User Data Rate Range 
+– IBS/SMS Option 
+4.8kbps to 10 Mbps (6.7% Satellite Overhead  
+added). Resolution of 1bps. 
+User Data Rate Range 
+– IDR Option 
+4.8kbps to 10 Mbps (96k overhead added)  
+Resolution of 8k (limitation of frame structure) 
+Audio Channels Option  
+(P1348 emulation  
+mode) 
+Used with IBS/SMS satellite framing and IDR Options 
+to provide 2 x audio 32kbps ADPCM coded channels 
+within a 64kbps IBS carrier, and 2 x audio 32kbps 
+ADPCM coded channels plus 64kbps data within 
+a 128kbps IBS carrier  
+Inner Forward  
+Error Correction 
+Viterbi BPSK/QPSK/OQPSK – Rates 1/2, 3/4, 7/8,  
+k=7 to IESS-308/309  
+Option: Sequential BPSK/QPSK/OQPSK – Rates 1/2, 
+3/4, 7/8 up to 2,048kbps maximum 
+Option: TCM 8PSK – Rate 2/3 to IESS-310  
+Option: TPC BPSK – Rates 5/16, 21/44, 
+0.493 (Paradise), 2/3, 3/4, 0.789 (Paradise), 
+7/8 (Paradise), Rate 7/8 de facto  
+Option: TPC QPSK/OQPSK – Rates 5/16, 21/44, 
+0.493 (Paradise), 2/3, 3/4, 0.789 (Paradise), 
+7/8 (Paradise), Rate 7/8 de facto, Rate 0.93 (Paradise)  
+Option: TPC 8PSK - Rates 3/4 de facto,  
+7/8 de facto, Rate 0.93 (Paradise)   
+Option: TPC 16QAM - Rates 3/4 de facto,  
+7/8 de facto, Rate 0.93 (Paradise) 
+Option: FastLink LDPC Short FECFRAME=16,200 
+ 
+Outer Forward  
+Error Correction 
+Concatenated Intelsat Reed-Solomon  
+Outer Codec to IESS308/310 with Custom Option 
+offering variable code rate.  
+Maximum traffic rate 10Mbps. 
+Scrambling – IBS/SMS 
+Option 
+Synchronised to framing per IESS-309 up to 10 Mbps 
+Scrambling –
+IDR Option and  
+Closed Network 
+With RS Coding: synchronised to RS overhead. 
+Without RS Coding and Non-TPC FEC: V.35 self-
+synchronising No RS Coding with TPC FEC:  
+2^12-1 up to 10 Mbps  
+Scrambling –
+Closed Network  
+Plus ESC 
+32kbps or above: synchronised to ESC overhead. 
+Less than 32kbps: as per closed network. V.35 Scram-
+bler has CCITT Intelsat “FDC” and “Linkabit” modes 
+up to 55Mbps (with high Data Rate options) 
+L-band Connector 
+N type female 
+L-band Impedance 
+50Ω  
+Return Loss  
+14dB typical 
+Internal Frequency  
+Reference - Ageing 
+4E-8/yr  
+External  
+Reference 
+Clocking Only: 1-10MHz in 1kHz steps.  
+Clocking and RF Frequency: 10MHz, 0dBm±1dB 
+Traffic Interface -  
+Options  
+Demodulator Specifications 
+Parameter 
+Evolution Series Modem 
+Input Range 
+Wanted Signal 
+Minimum level -130dBm + 10 log symbol rate 
+Range 50dB above min, limited to –20dBm max 
+Maximum  
+Composite Signal 
+30dB above level of desired input up to a maximum 
+of -10dBm 
+Frequency  
+Acquisition Range 
+Selectable from ±1kHz to ±32kHz up to 10 Msps 
+ (1kHz steps)  
+±10kHz to ±250kHz above 10 Mbps (10kHz steps) 
+Acquisition Threshold 
+<5dB Es/No QPSK 
+Acquisition Time 
+At 9.6kbps, less than 1s at 6dB Es/No QPSK  
+At 10 Mbps, less than 100ms at 6dB Es/No QPSK 
+Clock Tracking Range 
+±100ppm minimum 
+Receive Filtering 
+Selectable 
+Intelsat IESS compliant α = 0.35, α = 0.25, α = 0.20 
+Performance  
+Monitoring 
+Measured Eb/No (range 0-15dB, ±0.2dB). Measured  
+Frequency Offset (100Hz resolution). 
+Wanted signal level strength indicator centred on 
+the middle of the Rx input range. 
+AGC Output 
+Buffered direct AGC output for antenna tracking, etc. 
+Clocking and Buffering Specifications 
+Parameter 
+Evolution Series Modem 
+Clock  
+Integrity 
+Frequency Locked Loops give phase-hit immune operation 
+even with poor clock sources such as routers etc. 
+Tx Clocking 
+Internal 
+Standard (±1ppm)  
+External 
+Tracking range ±100ppm/min 
+Rx Clock 
+Slaves Tx timing from Rx clock. (Includes 
+full asymmetric operation) 
+Rx Clocking 
+Buffer Disable Clock from Satellite 
+Tx Input clock 
+Plesiochronous. (Includes full asymmetric 
+operation) 
+Internal 
+Standard 4E-8/yr 
+External timing clock (DTE interface only) 
+Station Reference (see below) 
+Station  
+Reference  
+Inputs 
+75Ω BNC female Station Clock Connector, transformer  
+isolated. 1MHz to 10MHz in 1kHz steps (accepts  
+sinusoidal >0dBm or square-wave e.g. G.703 para 10) 
+120Ω RS422 compatible input, 1MHz to 10MHz in 1kHz steps 
+via Async ESC connector 
+NB: When set to 10MHz, the station reference may replace 
+internal reference to internal circuitry. The unit automatically 
+switches back to internal reference if station reference fails. 
+Buffer Size 
+Selectable in 1ms increments from 0ms to 99ms.  
+Automatically adjusted to slip an integer number of terrestrial 
+multi-frame lengths for framed rates. Buffer storage: 256k max 
+Intelsat Reed--Solomon Codec  
+& Custom Option Specifications 
+Parameter 
+Evolution Series Modem 
+Maximum traffic rate 
+10Mbps 
+Format 
+Concatenated Reed--Solomon outer codec to     
+IESS-308/310. 
+Code Rate 
+Default n, k, t = (126, 112, 7) depth 4. Automatically 
+switches to: (225, 205, 10)  depth 4 for 1544kbps 
+IDR mode or (219, 201, 9) depth 4 for 2048kbps IDR 
+mode and TCM<=1544kbps or (219, 201, 9) depth 8 
+for TCM >1544kbps. 
+Processing Delay 
+(bits) 
+Combined encoder and decoder: 8 x (2n-k+60) 
+Combined Interleaver/De-Interleaver: 8 x n x Depth 
+(Calculate delay time using data rate including RS 
+overhead). 
+Custom Option 
+When fitted allows arbitrary selection of n and k to 
+provide fully variable code rate. 60<=n<=255, (n-20)
+<=k<=(n-2) in steps of 2. Interleaving depth of 4 or 8. 
+The custom option allows use of shorter code words 
+to reduce interleaver/de-interleaver delay on low 
+data rate circuits. 
+Drop & Insert Option Specifications 
+Parameter 
+Evolution Series Modem 
+Bearer Types 
+T1-D4, T1-ESF and E1-G.732 
+Timeslot Selection 
+Independent selection of arbitrary timeslots for both 
+drop and insert. 
+Bearer Generation 
+The terrestrial bearer may be looped through the 
+Drop Mux then Insert Mux, or terminated after the 
+drop Mux and a new blank bearer generated by the 
+insert Mux. The bearer generated within Insert Mux 
+provides full multiframe and CRC support and may 
+be generated from Tx clock, station reference, 
+satellite clock or internal reference.  
+Bearer Backup 
+In the event that the Insert Mux bearer clock is  
+lost, or AIS is supplied, then the Insert Mux will 
+switch temporarily to bearer generation mode in 
+order to preserve the receive traffic. The backup  
+bearer may be generated from the station  
+reference, satellite clock or internal reference. 
+Terrestrial CRC 
+Fully supported, with front panel display of terrestrial 
+error rate based on CRC (T1-ESF and G.732) or 
+Frame Alignment Word errors (all bearer types). 
+Timeslot ID  
+The IBS/SMS or Closed Net Plus ESC overhead 
+maintains the identity of individual Drop/Insert 
+timeslots for N=1,2,3,4,5,6,8,10,12,15,16, 20, 
+24 and 30. (See extended option below). 
+Extended Drop & Insert Option Specifications 
+Parameter 
+Evolution Series Modem 
+Timeslot  
+Re-Ordering 
+Selected timeslots may be independently  
+re-ordered on both Tx and Rx paths. 
+Multi-Destinational  
+Working 
+All or only a subset of the received data may be   
+inserted into the terrestrial bearer on the receive 
+path for multi-destinational working. 
+Timeslot ID  
+Maintenance 
+The IBS/SMS or Closed Net Plus ESC is extended 
+to maintain the identity of individual timeslots for 
+all values of N from 1 to 31. 
+Signalling 
+Both Channel Associated Signalling (CAS) and 
+Robbed Bit Signalling (RBS) are fully supported.  
+For G.732 Drop/Insert, CAS signalling is extracted 
+from terrestrial TS16 and carried over the satellite 
+in IBS/SMS TS16 and TS48 before re-inserting 
+into the distant terrestrial TS16. For RBS, the IBS 
+or Closed Net Plus ESC overheads maintain the 
+identity of the in-band signalling and it is re-
+inserted into the terrestrial multi-frame in the 
+correct positions to maintain the RBS. 
+Modulator Specifications 
+Parameter 
+Evolution Series Modem 
+Output Power Level 
+-5 to –30dBm Continuously Variable in 0.1dB steps 
+Output Level Stability 
+±0.5dB, 0ºC to 40ºC 
+Transmit Filtering 
+Selectable 
+Intelsat IESS 
+compliant α = 0.35 
+α = 0.25           α = 0.20 
+Occupied Bandwidth 
+1.2 x Symbol Rate                
+1.13 x SR 
+ 1.1 x SR 
+Recommended 
+Channel Spacing 
+1.4 x Symbol Rate 
+1.27 x SR 
+ 1.2 x SR 
+Phase Accuracy 
+±2º maximum 
+Amplitude Accuracy 
+±0.2dB maximum 
+Carrier Suppression 
+-30dBc minimum 
+Output Phase Noise 
+As IESS-308, nominally 3dB better. 
+Output Frequency   
+Stability 
+4E-8/yr  
+Harmonics 
+Better than –55dBc/ 4kHz in band 
+Spurious 
+Better than –55dBc/ 4kHz in band 
+Transmit On/Off Ratio 
+55dB minimum 
+External Transmit  
+Inhibit 
+By external contact closure or by TTL signal  
+applied to rear panel Alarms & AGC connector 
+Adaptive Signal 
+Predistorter 
+Option: Use with 16QAM to relax HPA backoff by up to 
+1.6dB. Compensates for HPA non-linearities. 
+Framing and Deframing Specifications 
+Parameter 
+Evolution Series Modem 
+Closed Network Format 
+Unframed, no overhead. 
+IBS/SMS  
+Option Format 
+Intelsat IBS to IESS-309 and IESS-310 up to 
+10 Mbps, and Eutelsat SMS to EESS-501. 
+IDR Option Format 
+Intelsat IDR to IESS-308 and IESS-310 up to 
+10 Mbps. 
+Closed Network  
+plus ESC Format 
+Provides variable rate asynchronous ESC, 
+optional synchronous scrambler > 32kbps to 
+replace error multiplying V.35 scrambler, optional 
+backward alarm facility and optional timeslot 
+ID maintenance when used with Drop/Insert, 
+all in minimum possible overhead down to <0.5% 
+Format of Other Modes 
+For custom options, see handbook.  
+Poor BER Performance 
+Deframer includes extended threshold operation 
+that improves performance when used with Reed-
+Solomon in very poor BER conditions (where a 
+single uncorrectable RS codeword can contain 
+enough corrupt frame alignment words to knock 
+an Intelsat specified deframer out of frame  
+sync). Up to 10 Mbps 
+Data Rate Specifications   
+Modulation/FEC 
+FEC Rate 
+de facto 
+Min  
+Data Rate 
+(kbps) 
+Max  
+Data Rate 
+(Mbps) 
+BPSK VIT / SEQ 
+1/2 
+4.8 
+10 / 2 
+BPSK VIT / SEQ 
+3/4 
+7.2 
+15 / 2 
+BPSK VIT / SEQ 
+7/8 
+8.4 
+17.5 / 2 
+BPSK VIT RS  
+1/2 
+4.8 
+8.8 
+BPSK VIT RS  
+3/4 
+6.4 
+13.3 
+BPSK VIT RS  
+7/8 
+7.5 
+15.5 
+O/QPSK VIT / SEQ 
+1/2 
+9.6 
+20 / 2 
+O/QPSK VIT / SEQ 
+3/4 
+14.4 
+30 / 2 
+O/QPSK VIT / SEQ 
+7/8 
+16.8 
+35 / 2 
+O/QPSK VIT RS  
+1/2 
+8.6 
+17.7 
+O/QPSK VIT RS  
+3/4 
+12.8 
+26.6 
+O/QPSK VIT RS  
+7/8 
+15 
+31.1 
+O/QPSK TPC  
+1/2 
+9.6 
+20 
+O/QPSK TPC  
+3/4 
+14.4 
+30 
+O/QPSK TPC  
+7/8 
+16.8 
+35 
+O/QPSK TPC  
+0.93 
+17.9 
+37.2 
+8PSK TCM  
+2/3 
+19.2 
+40 
+8PSK TCM RS  
+2/3 
+17.7 
+36.7 
+8PSK/8APSK TPC  
+3/4 
+21.6 
+45 
+8PSK/8APSK TPC  
+7/8 
+25.2 
+52.5 
+8PSK/8APSK TPC  
+0.93 
+26.8 
+55 
+16QAM TPC  
+3/4 
+28.8 
+55 
+16QAM TPC  
+7/8 
+33.6 
+55 
+16QAM TPC  
+0.93 
+35.8 
+55 
+BER Performance - Guaranteed dB (Typical)  
+  
+Rate 
+1/2 
+Rate 
+3/4 
+Rate 
+7/8 
+Rate  
+2/3 
+Rate 
+0.93 
+Viterbi QPSK  
+1E-4 
+4.7 (4.4) 6.1 (5.8) 7.1 (6.8) 
+  
+ 
+1E-8 
+7.2 (6.9) 8.8 (8.5) 9.5 (9.2) 
+  
+ 
+Sequential 
+(64kbps)  
+1E-4 
+4.3 (4.0) 5.4 (5.1) 6.4 (6.1) 
+ 
+ 
+1E-8 
+6.4 (6.1) 7.3 (7.0) 8.6 (8.3) 
+ 
+ 
+Sequential 
+(2048kbps) 
+1E-4 
+5.6 (5.3) 6.1 (5.8) 6.9 (6.6) 
+ 
+ 
+1E-8 
+7.5 (7.2) 8.1 (7.8) 8.4 (8.1) 
+ 
+ 
+Turbo (TPC) 
+QPSK 
+1E-4 
+2.7 (2.4) 3.5 (3.2) 4.1 (3.8) 
+  
+ 
+1E-6 
+ 
+ 
+ 
+ 
+6.3 (6.0) 
+1E-8 
+3.3 (3.0) 4.5 (4.2) 4.5 (4.2) 
+  
+6.8 (6.5) 
+Turbo (TPC) 
+8PSK 
+1E-4 
+  
+5.6 (5.3) 6.8 (6.5) 
+  
+ 
+1E-6 
+ 
+ 
+ 
+ 
+9.2 (8.9) 
+1E-8 
+  
+6.8 (6.3) 7.2 (6.8) 
+  
+9.9 (9.6) 
+Turbo (TPC) 
+16QAM 
+1E-3 
+  
+6.5 (6.2) 7.7 (7.4) 
+  
+ 
+1E-6 
+ 
+ 
+ 
+ 
+10.0 (9.7) 
+1E-7 
+  
+7.8 (7.5) 8.2 (7.8) 
+ 
+ 
+1E-8 
+  
+ 
+ 
+  
+10.7 (10.4) 
+8PSK/TCM 
+1E-3 
+  
+  
+  
+6.3 (6.0) 
+ 
+1E-8 
+  
+  
+  
+10.4 (10.1) 
+ 
+8PSK/TCM + 
+Reed-Solomon  
+(all rates)  
+1E-4 
+  
+  
+  
+6.1 (5.8) 
+ 
+1E-10 
+  
+  
+  
+7.3 (7.0) 
+ 
+
+=====PAGE 3=====
+3 OF 6 
+205084 REV H  ECO 16241 
+Advanced ESC and Advanced Aux  
+Option Specifications 
+Parameter 
+Evolution Series Modem 
+ESC/Aux Port 
+A single port provides the interface for optional high 
+rate async ESC (IBS/SMS option or Closed Net Plus 
+ESC) or the Intelsat low rate async IBS ESC channel. 
+Electrical  
+Interface 
+RS232, RS422 or RS485 external interfaces or 
+internal link to remote M&C port (software selected). 
+Other devices externally wired in parallel with M&C  
+port can also be accessed remotely. 
+Async ESC  
+Option 
+Closed 
+Net Plus 
+ESC 
+Overhead scales to provide any user 
+specified async ESC baud rate  
+whatever the satellite data rate. 
+ESC limit is approximately 70% of  
+main channel rate,overhead varies 
+ from <0.5% to >70%. 
+IBS   
+Option 
+High rate async data using from 1/32nd 
+to 22/32nd of the IBS overhead,  
+providing async baud rates from 0.2% 
+to 5.1% of the terrestrial rate (e.g. up 
+to >2400 baud at 64kbps). Includes 
+modes compatible with the P300 and 
+P400 Series, P230 & P1300/P1361 
+(using 20/32nd of the overhead). 
+IBS Aux  
+Data  
+Channel 
+With IBS option and Advanced Aux option: Intelsat 
+low rate async ESC definition carried in bit 1 of 
+TS32 providing a synchronous channel at 1/480th of 
+the data rate, allowing up to one quarter of this 
+rate for over-sampled async data. Compliant with 
+Intelsat IESS-403 low rate ESC definition. 
+IDR Option Specifications 
+Parameter 
+Evolution Series Modem 
+IDR ESC Audio  
+Two 32kbps ADPCM channels 
+Interface 
+4-wire 600Ω, +7dBm to –16dBm (programmable in 
+0.1dB steps). 
+Backward  
+Alarms 
+Outputs: Four “form C” relays. 
+Inputs: Four protected inputs, short to 0V to send 
+alarm with matching summary  Rx fail output. Alarm  
+inputs software configurable for:   
+a) All external patch,  
+b) 1=Rx fail and 2--4 =external patch,  
+c) 1=Rx fail and 2--4=OK,  
+d) 1--4=Rx fail 
+ESC/Aux  
+Ports 
+When the IDR option is fitted, independent ESC & 
+Aux ports on the IDR option replace the single 
+shared ESC/Aux port on the base unit. 
+ESC Port 
+RS232, RS422 or RS485 external interfaces or 
+internal link to remote M&C port (software selected). 
+No external cabling required between the 
+ESC and M&C ports for M&C via ESC channel within 
+overhead. Other devices externally wired in parallel 
+with M&C port can also be accessed remotely. 
+Provides clock, data and sync (octet timing) lines. 
+IDR 
+Synchronous access to 8kbps IDR ESC. 
+With the Async ESC option,  async ESC 
+access to the 8kbps IDR ESC is provided 
+giving up to a 9600 baud async channel 
+Others 
+IBS and Closed Net Plus ESC facilities a
+s before installation of IDR option, but  
+now on ESC port on IDR card not  
+shared ESC/Aux port of base unit. 
+Aux Port 
+RS232 or RS422 (user selectable). Provides clock 
+and data lines. 
+IDR 
+Provides 32 or 64kbps access 
+in place of one or both audio ESC  
+channels. 
+IBS 
+Intelsat low rate ESC mode as  
+previously but now via Aux port on IDR  
+card not shared ESC Aux port of base  
+unit. IDR option also adds sync IBS  
+mode, configurable to use between 
+1/32nd and 21/32nd of the IBS overhead 
+providing a full sync Aux port at 
+between 0.2% and 4.3% of the main  
+data rate. Aux port provides satellite 
+timing information for P1500 slave  
+Frequency Standard when not  
+configured for Aux data access. 
+Traffic Log Specifications 
+Parameter 
+Evolution Series Modem 
+Capacity 
+Over 6000 entries 
+Entry Format 
+Fault message with time and date stamp. 
+Separate entry when fault clears/changes. 
+AUPC Specifications 
+Parameter 
+Evolution Series Modem 
+Modes of  
+Operation 
+Monitor of distant Eb/No and BER only, full distant 
+Eb/No maintenance. Unidirectional or Bi-directional 
+operation. 
+Communication  
+Link 
+Utilises asynchronous ESC channel on IBS/SMS,  
+IDR and Closed Network plus ESC carriers (ESC  
+from 300 baud, i.e., overheads down to less than  
+1%). Maximum data rate 10 Mbps 
+User Parameters 
+Target Eb/No, positive power offset, negative power 
+offset 
+EZ BERT Option Specifications 
+Parameter 
+Evolution Series Modem 
+BER Channel 
+The BERT may operate through main traffic, ESC or 
+Aux data channels, or outputted via the terrestrial 
+interface.  Use of ESC & Aux data channels allows 
+continuous real traffic BER performance monitoring 
+whilst the modem carries traffic. 
+Test Patterns 
+PRBS 2^N-1: N=6, 7, 9, 11, 15, 19, 20, 23. All 1s, All 
+0s, Alternate Patterns, Sparce Patterns, QRSS, User. 
+Compatible with common stand-alone BER testers. 
+Results 
+Display of error count and average BER. 
+Autolog 
+Automatic logging of average BER and other parame-
+ters at regular intervals. 
+Common Specifications 
+Parameter 
+Evolution Series Modem 
+Loop-backs 
+Interface Loop (Local and Remote) 
+Framer Loop (Local) 
+RS Loop (Local) 
+FEC Loop (Local) 
+Deframer/Framer Loop (Remote) 
+Internal IF loopback (local, automatically 
+matching Rx IF frequency to Tx) 
+Test Modes 
+Transmit CW (Pure Carrier) 
+Transmit Alternate 1-0 Pattern 
+Wideband spectrum analyzer display 
+EZ Audio: 1kHz test tone on audio channels 
+in IDR and P1348 emulation modes 
+Alarm Relays 
+4 Independent Change-Over Contacts: 
+Unit Fault, 
+Rx Traffic Fault 
+Tx Traffic Fault, 
+Deferred Alarm (backward alarm, BER or 
+Eb/No below user set threshold) 
+Controller 
+Motorola PowerPC 
+Embedded Software 
+Revised embedded software may be 
+downloaded into FLASH memory via 
+Ethernet port with modem remaining in 
+equipment rack. 
+Configuration 
+Memories 
+20 configurations can be stored and recalled 
+from the front panel or remote M&C.  
+Memories can be labelled with text string to 
+aid identification. 
+User Interface 
+Clear and intuitive operator interface with 
+plain English dialogue (other languages 
+supported). Graphic display, backlit, high 
+contrast, wide angle LCD. 17 key tactile full 
+keyboard. 
+Remote Monitor 
+And Control 
+For multi-drop applications, RS485 interface. 
+For direct to PC applications, RS232 
+interface (front panel selectable). M&C port 
+may be directly internally linked to ESC port 
+for “over-the-satellite” M&C without cabling. 
+Ethernet (10/100 BaseT) via RJ45,  
+embedded Web server, SNMP agent V1, 
+V2c and V3 
+Redundancy Fea-
+tures 
+  
+1:1 redundancy controller built in. “Y” cables 
+passively split data maintaining impedances. 
+IF inputs/outputs are passively split/
+combined outside the units. Off-line unit tri-
+states data outputs and mutes Tx carrier. 
+Monitor 
+0-10V analogue output (Signal level, Eb/No, 
+or Rx offset frequency) on Alarms & AGC 
+connector Buffered constellation monitor port 
+on Async ESC connector 
+Mechanical 
+1U chassis – 410mm deep, excluding front 
+panel handles and rear panel connectors 
+and fans. 
+Weight 
+3.5 kg 
+Power Supply 
+100-240VAC, +6%, -10%, 1A @100V, 0.5A 
+@ 240V, 47-63Hz. 
+Fused IEC connector (live and neutral 
+fused). 
+48 Volts DC option 
+Safety 
+EN60950-1 
+EMC 
+EN55022 Class B (Emissions) 
+EN55082 Part 1 (Immunity) 
+Environmental 
+Operating Temperature Range 0-50ºC 
+BUC/LNB Facilities 
+Parameter 
+Evolution Series Modem 
+BUC Power Supply 
+Options 
+Mains input, +48V DC 2A output (100W) to 
+BUC via Tx IFL 
+Mains input, +24V DC 4A output (100W) to 
+BUC via Tx IFL 
+Mains input, +48V DC 3.5A output (180W) 
+to BUC via Tx IFL 
+Mains input, +24V DC 6A output (180W) to 
+BUC via Tx IFL 
++/-48V DC input, +48V DC 3.5A output 
+(180W) to BUC via Tx IFL 
++/-48V DC input, +24V DC 6A output 
+(180W) to BUC via Tx IFL 
++48V DC input, +48V DC 3.5A output 
+(180W) to BUC via Tx IFL 
+LNB Power 
+(standard) 
++15/24V 0.5A DC to LNB via Rx IFL - user 
+configurable 
+FSK Control Option 
+Requires a BUC Power Supply to be fitted. 
+Allows monitor & control of a compatible 
+BUC from the Modem, via the Tx IFL 
+10MHz  
+Reference via IFL 
+Option 
+10MHz may be provided via the Tx IFL to 
+the BUC (between 0 & –3dBm) and via the 
+Rx IFL to the LNB (between 0 & +3dBm) 
+Evolution Series     
+PD55L L-Band Satellite Modem 
+Ethernet Traffic   
+Parameter 
+Evolution Series Modem 
+Throughput  
+Performance 
+The maximum modem throughput depends on IP 
+traffic format and the features enabled.  Bridged IP/
+UDP data can be processed up to the maximum 
+data rate of the modem. Please seek assistance 
+from Paradise Datacom in evaluating your particular 
+requirements. 
+Routing and 
+Bridging 
+Bridging (standard). 
+Basic routing with static routes (standard). 
+Dynamic routing option: RIP V1 and V2; OSPF V2 
+and V3; BGP V4. 
+TCP Acceleration 
+Typical throughput level of 90% of link capacity. 
+5,000 concurrent accelerated TCP connection limit. 
+If running on base modem then TCP acceleration is 
+limited to a maximum of 10Mbps; with the P3714 IP 
+Traffic card option, TCP acceleration will run to the 
+maximum data rate for the modem. 
+If used with an IP Traffic card then includes HTTP 
+Acceleration (prefetches web page inline objects to 
+reduce web page download times). 
+Header  
+Compression 
+Requires P3714 IP Traffic card option (other than 
+for Ethernet header compression, which can also 
+run on the base modem). Robust Header Compres-
+sion to RFC 3095 profile 2 (IP/UDP). Reduces 
+Ethernet/IP/UDP header sizes typically by 90%. 1-
+way packet processing limit: 58,000 pps; 2-way 
+limit: 44,000 pps. Also includes Ethernet header 
+compression (compresses 14-byte Ethernet frame 
+to typically one byte). 
+Traffic Shaping 
+Provides guaranteed throughput levels for specific 
+IP streams, using standard Committed Information 
+Rate and Burst Information Rate settings. Stream 
+differentiation is by IP address, IEEE 802.1p priority 
+class, Diffserv DSCP class or MPLS EXP field. 
+VLAN Support 
+IEEE 802.1q VLAN support (standard). 
+IEEE 802.1p Quality of Service (packet prioritisa-
+tion) using strict priority or fair weighting queuing. 
+IP over DVB 
+Encapsulation/ 
+Decapsulation 
+Requires P3714 IP Traffic card option. Supports MPE, 
+ULE and Paradise PXE. Includes MPE air MAC 
+address filtering. 
+DVB-S2 IP  
+Multistreaming 
+Requires P3714 IP Traffic card option. Point-to-
+multipoint CCM and VCM multistreaming. VCM allows 
+the FEC error correction to vary for each remote. 
+DVB-S2 ACM 
+Dynamically varies point-to-point FEC strength and 
+throughput, maximising throughput for the actual link 
+conditions. 
+DHCP, SNMP 
+DHCP (standard) for automatic allocation of M&C IP 
+address. SNMP (standard) v1, v2c and v3. 
+Web Server 
+Standard. Embedded web server (standard) M&C 
+interface. 
+IP Diagnostic 
+Graphs 
+Standard. Shows throughput (bps, pps); dropped, 
+errored packet counts. 
+Operating mode 
+Can be operated in stand-alone, 1:1 or 1:N  
+redundancy configuration.   
+
+=====PAGE 4=====
+4 OF 6 
+205084 REV H  ECO 16241 
+Evolution Series     
+PD55L L-Band Satellite Modem 
+Paired Carrier Operation 
+Paired Carrier 
+Disabled 
+ 
+ 
+ 
+ 
+Paired Carrier 
+Enabled 
+Can save 50% 
+on space segment 
+Paired Carrier 
+Parameter 
+EVOLUTION Series Modem 
+Paired Carrier  
+Transmit and receive carriers are overlaid on top of 
+each other in the same space segment.  Echo 
+cancellation techniques are used in the demodulator 
+to cancel the transmit carrier and extract the wanted 
+receive carrier signal . 
+Paired Carrier 
+data rate options 
+512kbps, 1024kbps, 2.5Mbps, 5Mbps, 10Mbps, 
+15Mbps, 20Mbps, 25Mbps, 40Mbps, 50Mbps 
+and 55Mbps traffic rate 
+Paired Carrier technology allows both the uplink and 
+downlink signals to occupy the same space segment.  
+An adaptive self-interference cancellation technique 
+removes the uplink signal components generated by 
+the local terminal from the received signal off satellite, 
+allowing demodulation of the far end signal. 
+PAIRED CARRIER MODEM SCHEMATIC 
+A unique Web User Interface provides full Monitor & Control plus graphing 
+of Eb/No, BER, Receive Power and other operating parameters, plus       
+a Receive Spectrum Analyser, Receive Constellation Monitor and BER 
+Tester for detailed signal analysis and performance validation via Internet 
+Explorer.  Logged graph data can be sent via email to any email address. 
+Built-in Spectrum Analyser for Receive Carrier, Adjacent Carrier and 
+Super-Wide Monitoring (3 bandwidth settings). 
+Built-in Receive Constellation Display for channel diagnostics. 
+Simple to use EZ-BERT BER Tester Option allows real time bit error 
+measurements through traffic or ESC channel, or between the  
+terrestrial ports. 
+Web User Interface 
+
+=====PAGE 5=====
+5 OF 6 
+205084 REV H  ECO 16241 
+ 
+Options 
+Description 
+PD55L 
+L-Band Base Modem 
+ 
+3 
+BPSK /QPSK/OQPSK, 4.8kbps to 10Mbps, 1bps variable rate, closed network modem. Ethernet 10/100 BaseT on RJ45 for M&C, unaccelerated Ethernet 10/100 BaseT on RJ45 via traffic or 
+overhead (Ethernet Bridging) 
+Includes: Viterbi FEC, Rates 1/2, 3/4 & 7/8 with k=7 
+Intelsat Reed-Solomon Outer Codec to IESS 308 
+Advanced ESC: Variable rate Async channel for Closed Net plus ESC operation. 
+AUPC: Automatic Uplink Power Control (operates through ESC channel) 
+L-band: 950- 1950MHz with 100Hz resolution, includes High Stability 4 x 10-8 internal reference 
+Remote Web Browser based monitoring tools (Spectrum Display, Constellation Monitor and link performance versus time) plus SMTP email client for status notification 
+DHCP allowing IP address to be allocated dynamically via external DHCP network server 
+Static Routing max 64 routes.  Ethernet header compression at data rates up to 2Mbps 
+IEEE 802.1p QoS supporting choice of strict priority queuing or fair weighting queuing, IEEE 802.1q VLAN support  
+Adds Data Rates to 16,896kbps 
+ 
+Extends base operation to 16,896kbps 
+Adds Data Rates to 25MBps 
+ 
+Extends 16,896kbps operation to 25Mbps - requires 16,896kbps option 
+Adds Data Rates to 55MBps 
+ 
+Extends 25Mbps operation to 55Mbps - requires 16,896kbps & 25Mbps options 
+Wideband L-band 
+ 
+Extends L-band coverage to 950-2050MHz in 100Hz steps 
+Dynamic Routing 
+ 
+Adds Dynamic Routing, supports RIP, OSPF and BGP, plus 64 static routes.  Can be used with the base IP Traffic interface or IP traffic card. 
+TCP Acceleration 
+ 
+Point-to-Point and Point-to-Multipoint TCP/IP Acceleration to 10Mbps on base Ethernet port, subject to prevailing data rate limits - overcomes performance problems associated with TCP over 
+satellite 
+Ethernet Brouting 
+ 
+Ethernet Brouting for Point-to-Multipoint operation when there is a non-satellite return path - can be used with base Ethernet port or IP Traffic card 
+IP Traffic Shaping 
+ 
+Supports allocation of CIR and BIR plus priority for IP Streams identified by IP Address, Diffserv Class, IEEE 802.1p priority tag or MPLS EXP field.  Can be used with the base IP Traffic 
+Interface or the IP Traffic card.  
+Position 1 
+(must choose 1 option) 
+hardware option    
+ 
+EIA 530 D25 DCE providing selectable RS422/X.21/V.35/RS232, also balanced G.703 if G.703 option fitted 
+ 
+IDR operation to IESS 308. Two audio ESC channels, synchronous 8kbps ESC, four form `C` backward alarms & Async ESC access to IDR 8k sync channel - includes EZ Audio test tone 
+generator 
+ 
+Sat-Abis Interface card (DOUBLE HEIGHT CARD - negates fitting any option in position 2) 
+One E1/fractional E1 port on RJ45 enabled - maximum aggregate traffic rate 2048kbps in all cases 
+ 
+Blank Panel 
+Position 1 
+Sat-Abis card options 
+- can only be used with the 
+Sat-Abis Interface card 
+ 
+Adds Port 2, E1/fractional E1 on RJ45, requires Sat-Abis Interface in position 1 
+ 
+Adds Port 3, E1/fractional E1 on RJ45, requires Sat-Abis Interface in position 1 plus Port 2 activated 
+ 
+Adds Port 4, E1/fractional E1 on RJ45, requires Sat-Abis Interface in position 1 plus Ports 2 and 3 activated 
+Position 2 
+(must choose 1 option) 
+hardware option  
+ 
+LVDS on D25 
+ 
+EIA 530 D25 DCE providing selectable RS422/X.21/V.35/RS232, also balanced G.703 if G.703 option fitted 
+ 
+HSSI on HD50 50-way SCSI-2 connector 
+ 
+IP Traffic card providing TCP acceleration to 16,896kbps (P-P and P-MP), subject to prevailing data rate limits, also provides HTTP Acceleration by prefetching webpage inline objects to reduce 
+webpage download time - requires either Blank Panel or EIA 530 in position 1 
+ 
+Eurocom D1 on D25 male - pin compatible with P300 Eurocom 
+ 
+Eurocom D1 / EIA530 on D25 female 
+ 
+Quad E1 Multiplexer with 1 x RJ45 port enabled plus integral G.703 and Drop & Insert included - includes IBS/SMS satellite framing 
+ 
+Blank Panel 
+Position 2 
+Quad E1 Mux options 
+- only used with  
+Quad E1 Mux card  
+ 
+Adds Port 2 with Drop & Insert to Quad E1 card - requires Quad E1 Mux in Position 2 
+ 
+Adds Port 3 with Drop & Insert to Quad E1 card - requires Quad E1 Mux in Position 2 with Port 2 option 
+ 
+Adds Port 4 with Drop & Insert to Quad E1 card - requires Quad E1 Mux in Position 2 with Port 2 option & Port 3 option 
+ 
+MultiMux - Allows base IP traffic and/or EIA 530 traffic, if EIA 530 interface fitted, to be used in place of 1 or 2 x Quad E1 ports. Each MultiMux port limited to 2,048kbps traffic rate. 
+ 
+Adds TCP acceleration up to 25Mbps on IP Traffic card, subject to prevailing data rate limits - requires IP Traffic card in Position 2 
+ 
+Adds TCP acceleration up to 55Mbps on IP Traffic card, subject to prevailing data rate limits - requires IP Traffic card in Position 2 and requires 25Mbps acceleration option 
+ 
+Adds Robust Header Compression to RFC 3059 (IP/UDP/RTP) at throughput rates to 16,896kbps, subject to prevailing data rate limits - requires IP Traffic card in Position 2 
+Position 3 
+(must choose 1 option) 
+hardware option 
+ 
+No BNC traffic interface - if no G.703 option 
+ 
+2 x BNC sockets providing unbalanced G.703 75 ohm - supplied only with G.703 option 
+Low Rate TPC 
+2nd Generation Turbo  
+10Mbps maximum 
+Subject to prevailing data rate 
+limits  
+ 
+Rates 5/16, 21/44, 0.493, 2/3, 3/4, 0.789, 7/8 Paradise (low latency) in BPSK, QPSK, OQPSK 
+Rate 7/8 in QPSK, OQPSK 
+Rate 0.93 Paradise in QPSK, OQPSK 
+Rates 3/4, 7/8, 0.93 Paradise in 8PSK - requires 8PSK option 
+Rates 3/4, 7/8, 0.93 Paradise in 16QAM - requires 16QAM option 
+High Rate TPC 
+2nd Generation Turbo  
+Extension to 55Mbps, requires 
+Low Rate TPC 
+Subject to prevailing data rate 
+limits  
+ 
+Rates 5/16, 21/44, 0.493, 2/3, 3/4, 0.789, 7/8 Paradise (low latency) in BPSK, QPSK, OQPSK 
+Rate 7/8 in QPSK, OQPSK 
+Rate 0.93 Paradise in QPSK, OQPSK 
+Rates 3/4, 7/8, 0.93 Paradise in 8PSK - requires 8PSK option 
+Rates 3/4, 7/8, 0.93 Paradise in 16QAM - requires 16QAM option 
+Sequential FEC  
+Limited to 2,048kbps maximum 
+ 
+Rates 1/2, 3/4, 7/8 in BPSK, QPSK, OQPSK 
+FastLink 
+Low Latency LDPC 
+subject to prevailing data rate 
+limits 
+ 
+FastLink LDPC ready (hardware option) - requires additional FastLink LDPC software features below 
+ 
+FastLink LDPC up to 1Mbps, supports BPSK and QPSK, also supports 8PSK - requires 8PSK option, Fastlink 8QAM - requires Fastlink 8QAM option, FastLink 16APSK - requires FastLink 
+16APSK option, FastLink 32APSK - requires FastLink 32APSK option, FastLink 64QAM - requires FastLink 64QAM option, and 16QAM - requires 16QAM option.  Must have FastLink LDPC 
+ready option. 
+ 
+FastLink LDPC extension to 2.5Mbps - requires Fastlink LDPC to 1Mbps 
+ 
+FastLink LDPC extension to 5Mbps - requires Fastlink LDPC to 1Mbps and extension to 2.5Mbps 
+ 
+FastLink LDPC extension to 10Mbps - requires Fastlink LDPC to 1Mbps plus extension to 2.5Mbps and extension to 5Mbps 
+ 
+FastLink LDPC extension to 25Mbps - requires Fastlink LDPC to 1Mbps plus extension to 2.5Mbps, extension to 5Mbps and extension to 10Mbps 
+Position 2 
+IP Traffic card options  
+ 
+FastLink LDPC extension to 55Mbps - requires Fastlink LDPC to 1Mbps plus extension to 2.5Mbps, extension to 5Mbps, extension to 10Mbps and extension to 25Mbps 
+Fully configurable - only pay for what you need! 
+S
+E
+L
+E
+C
+T
+ 
+Y
+O
+U
+R
+ 
+O
+P
+T
+I
+O
+N
+S
+ 
+H
+E
+R
+E
+ 
+Evolution Series     
+PD55L L-Band Satellite Modem 
+Configuration options continue on next page. 
+
+=====PAGE 6=====
+6 OF 6 
+205084 REV H  ECO 16241 
+Evolution Series     
+PD55L L-Band Satellite Modem 
+ 
+Options 
+Description 
+FastLink 8QAM 
+ 
+FastLink 8QAM - requires FastLink LDPC 
+FastLink 16APSK 
+ 
+FastLink 16APSK - requires FastLink LDPC 
+FastLink 32APSK  
+ 
+FastLink 32APSK - requires FastLink LDPC 
+FastLink 64QAM  
+ 
+FastLink 64QAM - requires FastLink LDPC 
+8PSK 
+Including TCM 
+ 
+Rate 2/3 8PSK Pragmatic TCM to IESS 310 
+supports 8PSK Turbo - requires 2nd Generation Turbo FEC  
+supports FastLink 8PSK - requires FastLink LDPC 
+16QAM 
+ 
+16QAM - requires either 2nd Generation Turbo FEC option or LDPC option 
+IBS / SMS 
+ 
+Satellite Framing to IESS 309 with low rate Intelsat ESC (to IESS 403) & High Rate IBS/SMS ESC 
+Audio Channels 
+ 
+P1348 Emulation mode for IBS 64kbps carrier (2xaudio) or 128kbps (2xaudio + 64kbps data) - requires IBS / SMS & IDR options 
+G.703 
+ 
+E1, T1, E2, T2, E3, T3 interfaces (hardware option) - requires either EIA 530 or BNC sockets for traffic 
+Drop / Insert 
+ 
+T1/E1 linear order Drop/Insert. Drop/Insert can operate with any interface, although G.703 is typically used (requires G.703 option if used in G.703 mode) 
+Extended D/I 
+ 
+Independent timeslot re-ordering on Tx & Rx. Signaling (E1 CAS & T1 RBS). Rx Partial Insert for multi-destinational working,  
+Timeslot ID maintenance for N=1 to 31 with IBS / SMS or Closed Net plus ESC - requires Drop / Insert option 
+G.703 Clock Extension 
+ 
+Provides a stable G.703 E1 or T1 reference clock over satellite when traffic is NOT E1 or T1 
+Advanced AUX 
+ 
+Variable rate synchronous Aux channel for IBS / SMS - requires IBS / SMS option; IDR 32/64kbps in place of one/both audio ADPCM ESC channels - requires IDR option 
+Custom 
+ 
+Custom RS Outer Codec values of n, k and interleaver depth. Custom IBS / SMS modes, allocation of overhead between ESC and Aux channels in IBS / SMS, custom backward alarms in  
+IBS / SMS, and Closed Net plus ESC - requires IBS/SMS option. Custom IDR mode - requires IDR option. 
+EZ BERT - PRBS Tester 
+ 
+Internal Bit Error Rate Tester (BERT) can run through main data channel, or ESC/Aux channels, or output/input via the terrestrial interface 
+OM-73 
+ 
+OM-73 Scrambling, symbol mapping and Viterbi compatibility 
+24V 100W BUC PSU 
+ 
+P3532 AC Input, 24V 100W DC to Tx BUC (hardware option) 
+48V 100W BUC PSU 
+ 
+P3531 AC Input, 48V 100W DC to Tx BUC (hardware option) 
+24V 180W BUC PSU 
+ 
+P3536 AC Input, 24V 180W DC to Tx BUC (hardware option) 
+48V 180W BUC PSU 
+ 
+P3535 AC Input, 48V 180W DC to Tx BUC (hardware option) 
+48V DC Input 
+ 
+K3002 Floating 48V DC Primary power input in place of 100-240V AC input  (hardware option) 
+48V DC in & 24V BUC PSU 
+ 
+Floating 48V DC Input with P3538 +24V 180W DC to Tx BUC - requires K3002 option (hardware option)  
+48V DC in & 48V BUC PSU 
+ 
+Floating 48V DC Input with P3537 +48V 180W DC to Tx BUC - requires K3002 option (hardware option)  
++48V DC in & 48V BUC PSU 
+ 
+Non-Floating +48V DC Input with P3539 +48V 180W DC to Tx BUC - requires K3002 option (hardware option) 
+FSK Control 
+ 
+Controls and monitors single-box Paradise Datacom BUC from the Modem (hardware option) 
+High Output 10MHz Reference 
+ 
+P3508 Increases Tx port 10MHz Reference level to +5dBm for interfacing to RFT 5000 Series BUC (hardware option) 
+Adaptive Signal Predistorter 
+ 
+Use with 16QAM to relax HPA backoff by up to 1.6dB. Compensates for HPA non-linearities in ground segment and/or transponder.  Requires 16QAM option. 
+Tx Only operation 
+ 
+Transmit functions only 
+Rx Only operation 
+ 
+Receive functions only 
+ 
+P3603 - Paired Carrier Ready, allows carriers to be overlapped thereby reducing the required satellite bandwidth.  
+(hardware option) - requires additional cumulative software options below depending upon data rate required 
+ 
+Paired Carrier up to 512kbps traffic rate - requires Paired Carrier Ready option 
+ 
+Extends Paired Carrier up to 1024kbps traffic rate - requires 512kbps option 
+ 
+Extends Paired Carrier up to 2.5Mbps traffic rate - requires 1024kbps option 
+ 
+Extends Paired Carrier up to 5Mbps traffic rate - requires 2.5Mbps option 
+ 
+Extends Paired Carrier up to 10Mbps traffic rate - requires 5Mbps option 
+ 
+Extends Paired Carrier up to 15Mbps traffic rate - requires 10Mbps option 
+ 
+Extends Paired Carrier up to 20Mbps traffic rate - requires 15Mbps option 
+ 
+Extends Paired Carrier up to 25Mbps traffic rate - requires 20Mbps option 
+ 
+Extends Paired Carrier up to 40Mbps traffic rate - requires 25Mbps option 
+ 
+Extends Paired Carrier up to 50Mbps traffic rate - requires 40Mbps option 
+ 
+Extends Paired Carrier up to 55Mbps traffic rate - requires 50Mbps option 
+Ruggedisation 
+ 
+Adds extra ruggedisation for hostile environments 
+Paired Carrier (carrier   
+re-use) subject to prevailing  
+modem data rate limits. 
+Minimum occupied band- 
+width limit of 150kHz, and 
+maximum occupied bandwidth 
+limit of 36MHz  
+Fully configurable - only pay for what you need! 
+Paradise Datacom reserves the right to change specifications of products described in this document at any time without notice and without obligation to notify any person of such changes. Refer to the website or contact Sales or Customer 
+Service for the latest product information. 
+S
+E
+L
+E
+C
+T
+ 
+ 
+O
+P
+T
+I
+O
+N
+S
+ 

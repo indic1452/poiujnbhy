@@ -1,0 +1,407 @@
+=====word/document.xml=====
+
+IEEE P802.11Wireless LANs
+Proposed SFD Text on code matrices for  length 1344 LDPC codeword
+	Date:  2016-05-16
+	Author(s):
+	Name
+	Affiliation
+	Address
+	Phone
+	email
+	Shadi Abu-Surra
+	
+	
+	
+	Shadi.as@samsung.com
+	Kaushik Josiam
+	
+	
+	
+	k.josiam@samsung.com
+	Rakesh Taori
+	
+	
+	
+	Rakesh.taori@samsung.com
+	SangHyun Chang
+	
+	
+	
+	S29.chang@samsung.com
+	-62865205740Abstract
+This document provides specification framework document text for including the code matrices for  length 1344 LDPC codeword that is being proposed for 802.11ay.  The proposal is captured in [2].
+00Abstract
+This document provides specification framework document text for including the code matrices for  length 1344 LDPC codeword that is being proposed for 802.11ay.  The proposal is captured in [2].
+
+
+Instructions to the editor: Please add the contents below to the IEEE 802.11ay Specification Framework Document[1] 
+LDPC parity matrices
+General
+An LDPC codeword of size equal to 1344 bits is defined through the use of lifting matrices. A lifting matrix acts on the code matrix to generate a larger matrix as follows:
+A ‘0’ in the lifting matrix acts on the Z×Z cyclic-permutation matrix Pi in the code matrix (at the same location) to create the 2Z×2Z matrix:
+i
+	-1
+	-1
+	i
+	A ‘1’ in the lifting matrix acts on the Z×Z cyclic-permutation matrix Pi in the code matrix (at the same location) to create the 2Z×2Z matrix:
+-1
+	i
+	i
+	-1
+	A ‘-1’ in the lifting matrix acts on the Z×Z zero matrix in the code matrix to create the 2Z×2Z zero matrix.
+NOTE—The cyclic-permutation matrix Pi is defined in 20.3.8.
+Rate-1/2 LDPC code matrix for generating 1344 bits codeword
+The lifting matrix in  REF _Ref450564669 \r \h Table 2 is applied to the rate-1/2 LDPC code matrix specified in Table 20-6.
+—Rate-1/2 lifting matrix
+0
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	0
+	-1
+	1
+	-1
+	-1
+	1
+	0
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	1
+	-1
+	1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	0
+	0
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	1
+	-1
+	1
+	-1
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	-1
+	0
+	-1
+	-1
+	-1
+	0
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	-1
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	0
+	-1
+	1
+	0
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	-1
+	1
+	-1
+	0
+	0
+	
+Rate-5/8 LDPC code matrix for generating 1344 bits codeword
+The lifting matrix in  REF _Ref450564675 \r \h Table 3 is applied to the rate-5/8 LDPC code matrix specified in Table 20-7.
+—Rate-5/8 lifting matrix
+0
+	0
+	1
+	1
+	0
+	0
+	1
+	1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	1
+	-1
+	1
+	-1
+	1
+	0
+	0
+	1
+	1
+	0
+	0
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	1
+	-1
+	1
+	-1
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	1
+	0
+	-1
+	-1
+	-1
+	0
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	0
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	0
+	-1
+	1
+	0
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	0
+	
+Rate-3/4 LDPC code matrix for generating 1344 bits codeword
+The lifting matrix in  REF _Ref450564679 \r \h Table 4 is applied to the rate-3/4 LDPC code matrix specified in Table 20-8.
+—Rate-3/4 lifting matrix
+0
+	0
+	1
+	1
+	1
+	0
+	0
+	1
+	0
+	0
+	1
+	1
+	0
+	-1
+	-1
+	-1
+	1
+	0
+	1
+	1
+	1
+	1
+	0
+	0
+	1
+	1
+	0
+	1
+	1
+	0
+	-1
+	-1
+	0
+	0
+	0
+	0
+	0
+	1
+	0
+	0
+	0
+	0
+	0
+	1
+	-1
+	1
+	0
+	-1
+	1
+	0
+	1
+	1
+	0
+	1
+	0
+	1
+	0
+	-1
+	1
+	0
+	1
+	0
+	0
+	0
+	
+Rate-13/16 LDPC code matrix for generating 1344 bits codeword
+The lifting matrix in  REF _Ref450564683 \r \h Table 5 is applied to the rate-13/16 LDPC code matrix specified in Table 20-9.
+—Rate-13/16 lifting matrix
+1
+	0
+	1
+	1
+	1
+	1
+	0
+	0
+	1
+	1
+	0
+	1
+	1
+	0
+	-1
+	-1
+	0
+	0
+	0
+	0
+	0
+	1
+	0
+	0
+	0
+	0
+	0
+	1
+	1
+	1
+	0
+	-1
+	1
+	0
+	1
+	1
+	0
+	1
+	0
+	1
+	0
+	0
+	1
+	0
+	1
+	0
+	0
+	0
+	References:
+[1]   HYPERLINK "https://mentor.ieee.org/802.11/dcn/15/11-15-1358-03-00ay-specification-framework-for-tgay.doc" https://mentor.ieee.org/802.11/dcn/15/11-15-1358-03-00ay-specification-framework-for-tgay.doc
+[2] Shadi Abu-Surra et.al., “Length 1344 LDPC codes for 11ay”, IEEE 802.11-16/0676r0

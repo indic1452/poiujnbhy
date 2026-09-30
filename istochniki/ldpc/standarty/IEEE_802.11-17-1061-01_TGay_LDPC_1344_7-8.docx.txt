@@ -1,0 +1,269 @@
+=====word/document.xml=====
+
+IEEE P802.11Wireless LANs
+Draft text in 30.3.6.7 Rate-7/8 LDPC code matrix for generating 1344 bits codeword
+	Date:  2017-6-15
+	Author(s):
+	Name
+	Affiliation
+	Address
+	Phone
+	email
+	Yan Xin
+	Huawei Technologies
+	303 Terry Fox Dr., Kanata, ON, Canada K2K 3J1
+	+1 613-979-1792
+	yan.xin@huawei.com
+	Min Yan
+	Huawei Technologies
+	
+	
+	yanmin.yan@huawei.com
+	Wei Lin
+	Huawei Technologies
+	
+	
+	lin.linwei@huawei.com
+	
+	
+	
+	
+	
+	Guido Montorsi
+	Politecnico di Torino
+	Corso Duca degli Abruzzi 24 – Torino, Italy
+	
+	guido.montorsi@polito.it
+	Sergio Benedetto
+	Politecnico di Torino
+	Corso Duca degli Abruzzi 24 – Torino, Italy
+	
+	sergio.benedetto@polito.it
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	Abstract
+
+This document proposes specification text for subclause 30.3.6.7 defining the lifting matrix and the code matrix for the rate 7/8 LDPC code with codeword length 1344. 
+
+
+
+Discussion:
+(11-17-0069-00-00ay-rate 78 1344-ldpc code for 11ay)
+Editor: It is proposed to add the following text in the current subclause to the draft spec. [1].
+
+30.3.6.7 Rate-7/8 LDPC code matrix for generating 1344 bits codeword
+
+The lifting matrix in Table 30 is applied to the rate-3/4 LDPC code matrix specified in Table 20-8.
+
+Table 30 — Rate-7/8 lifting matrix
+1
+	1
+	0
+	0
+	0
+	0
+	0
+	1
+	1
+	0
+	1
+	0
+	0
+	-1
+	-1
+	-1
+	1
+	0
+	0
+	1
+	1
+	1
+	1
+	1
+	1
+	1
+	1
+	0
+	1
+	1
+	-1
+	-1
+	0
+	0
+	1
+	1
+	1
+	1
+	1
+	0
+	0
+	1
+	0
+	1
+	-1
+	0
+	1
+	-1
+	0
+	1
+	1
+	0
+	0
+	0
+	0
+	0
+	0
+	-1
+	0
+	1
+	0
+	0
+	0
+	0
+	
+Summing the 1st&amp; 5th, 2nd&amp;6th, 3rd&amp;7th and 4th&amp;8th rows of the lifted matrix H = 336 rows x 1344 columns, Z=42, generated with the lifting matrixed specified in Table 30 yields the rate 7/8 LDPC code matrix H = 168 rows x 1344 columns, Z=42.
+
+Table 31 — Rate-7/8 LDPC code matrix
+(Each nonblank element i in the table is the cyclic permutation matrix Pi of size Z × Z; blank entries represent the zero matrix of size Z × Z)
+37
+	35
+	31
+	19
+	41
+	18
+	22
+	23
+	40
+	11
+	41
+	21
+	39
+	6
+	20
+	6
+	32
+	28
+	18
+	9
+	12
+	17
+	3
+	29
+	28
+	
+	0
+	
+	
+	13
+	
+	
+	35
+	37
+	19
+	31
+	18
+	41
+	23
+	22
+	11
+	40
+	21
+	41
+	6
+	39
+	6
+	20
+	28
+	32
+	9
+	18
+	17
+	12
+	29
+	3
+	
+	28
+	
+	0
+	13
+	
+	
+	
+	25
+	29
+	30
+	22
+	0
+	4
+	34
+	8
+	31
+	33
+	3
+	22
+	14
+	17
+	15
+	4
+	4
+	27
+	
+	28
+	14
+	20
+	27
+	18
+	13
+	24
+	13
+	23
+	22
+	
+	24
+	
+	29
+	25
+	22
+	30
+	4
+	0
+	8
+	34
+	33
+	31
+	22
+	3
+	17
+	14
+	4
+	15
+	27
+	4
+	28
+	
+	20
+	14
+	18
+	27
+	24
+	13
+	23
+	13
+	
+	22
+	
+	24
+	
+
+Reference:
+Draft P802.11ay_D0.35
+SP: Do you agree to include the parity check matrix shown in “11-17-1061-00-00ay-rate 78 1344-LDPC code matrix” in the IEEE 802.11ay Draft Spec.? 
+

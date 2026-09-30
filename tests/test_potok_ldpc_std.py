@@ -1,7 +1,7 @@
 """Встроенные коды LDPC стандартов: состав, размеры и ранг, кодирование, снятие автоматом.
 
 Таблицы сверены при сборке данных (DVB-S2 — xdsopl против AFF3CT, 5G NR — AFF3CT
-против srsRAN_4G); здесь — что из них строятся коды нужных размеров и ранга,
+против srsRAN_4G; прочие семейства — в test_potok_ldpc_semeystva.py по первоисточникам); здесь — что из них строятся коды нужных размеров и ранга,
 что слово DVB, закодированное накопителем прямо по описанию таблицы, проходит
 все проверки, и что автомат находит и снимает код сам.
 """
@@ -87,13 +87,27 @@ class Состав(unittest.TestCase):
         имена = [к["имя"] for к in коды]
         self.assertEqual(len(имена), len(set(имена)))
         self.assertEqual(sum(1 for и in имена if и.startswith("nr-")), 102)
-        self.assertEqual(sum(1 for и in имена if и.startswith("dvb-")), 70)
+        self.assertEqual(sum(1 for и in имена if и.startswith("dvb-")), 70 + 9)          # + VL-SNR S2X
+        self.assertEqual(sum(1 for и in имена if и.startswith("80211ad-")), 5)
+        self.assertEqual(sum(1 for и in имена if и.startswith("80211ay-")), 5)
         self.assertEqual(sum(1 for и in имена if и.startswith("wifi-")), 12)
-        self.assertEqual(len(имена), 192)
+        self.assertEqual(sum(1 for и in имена if и.startswith("wimax-")), 114 + 19)      # + 5/6 «-v68»
+        self.assertEqual(sum(1 for и in имена if и.startswith("ghn-")), 11)
+        self.assertEqual(sum(1 for и in имена if и.startswith("docsis31-")), 3)
+        self.assertEqual(sum(1 for и in имена if и.startswith("ar4ja-")), 9)
+        self.assertEqual(sum(1 for и in имена if и.startswith("ccsds-")), 4)
+        self.assertEqual(sum(1 for и in имена if и.startswith("atsc3-")), 24)
+        self.assertEqual(sum(1 for и in имена if и.startswith("dtmb-")), 3)
+        self.assertEqual(sum(1 for и in имена if и.startswith("fldpc-")), 78)
+        self.assertEqual(len(имена), 470)
         for и in ("nr-bg1-z384", "nr-bg2-z2", "dvb-s2-64800-32400", "dvb-s2-16200-7200",
-                  "10gbase-t-2048-1723", "wifi-648-540", "ar4ja-10240-4096"):
+                  "10gbase-t-2048-1723", "wifi-648-540", "ar4ja-10240-4096", "wimax-2304-1920",
+                  "ccsds-c2-8160-7136", "atsc3-64800-8640", "fldpc-k16384-j2-p16",
+                  "fldpc-k128-j3-p9", "wimax-2304-1920-v68", "ghn-4536-4320", "docsis31-1120-840",
+                  "80211ad-624-546", "80211ay-1344-1176", "dvb-s2x-vl-16200-1-5-sf2"):                  # любой (K, J, P) патента — по имени
             self.assertTrue(ldpc_std.есть(и), и)
-        for и in ("nr-bg1-z385", "nr-bg3-z8", "dvb-s2-1-1", "nr-bg1", ""):
+        for и in ("nr-bg1-z385", "nr-bg3-z8", "dvb-s2-1-1", "nr-bg1", "", "fldpc-k100-j2-p16",
+                  "fldpc-k256-j2-p7", "wimax-576-289"):
             self.assertFalse(ldpc_std.есть(и), и)
 
     def test_nr_размеры_и_ранг(self):
@@ -145,7 +159,8 @@ class Состав(unittest.TestCase):
         self.assertEqual("первые 540 позиций (по стандарту)", ldpc.информационные_сводка(ldpc_std.матрица("wifi-648-540"))[1])
         self.assertEqual("первые k позиций (проверочная часть — накопитель)",
                          ldpc.информационные_сводка(ldpc_std.матрица("dvb-s2-16200-7200"))[1])
-        for имя in ("ccsds-128-64", "wimax-576-288", "wran-480-360"):
+        self.assertEqual("первые 64 позиций (по стандарту)", ldpc.информационные_сводка(ldpc_std.матрица("ccsds-128-64"))[1])
+        for имя in ("wimax-576-288", "wran-480-360"):
             with self.subTest(имя=имя):
                 м = ldpc_std.матрица(имя)
                 self.assertFalse(ldpc._треугольная_справа(м))
@@ -245,7 +260,7 @@ class Состав(unittest.TestCase):
         self.assertTrue(all(np.array_equal(a, b) for a, b in zip(прочитано.строки, м.строки, strict=False)))
 
     def test_ar4ja_схема_из_файла(self):
-        """AR4JA (CCSDS): последние 4 блок-столбца не передаются — по шаблону из файла источника;
+        """AR4JA (CCSDS 131.0-B-5, 7.4.2.5): последние M = 2048 позиций не передаются;
         в потоке слово 8192 бит, скорость 1/2."""
         схема = ldpc_std.схема("ar4ja-10240-4096")
         self.assertEqual((схема.длина, схема.выколоты[0], схема.выколоты[-1]), (8192, 8192, 10239))

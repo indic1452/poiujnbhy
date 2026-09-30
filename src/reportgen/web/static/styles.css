@@ -9061,6 +9061,15 @@ body.reading .msg .body {
     padding: 4px 10px; }
 .stol-md-help[hidden] { display: none; }
 .stol-md-help p { margin: 4px 0; }
+/* Окно «LDPC» — вкладка декодера как в софте отдела */
+.stol-ldpc-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 2px; }
+.stol-ldpc-tab { padding: 3px 10px; border: 1px solid transparent; border-bottom: none; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    color: var(--muted); background: none; font: inherit; cursor: pointer; }
+button.stol-ldpc-tab:hover { color: var(--text); }
+.stol-ldpc-tab.is-active { border-color: var(--border); background: var(--panel); color: var(--text); font-weight: 600; margin-bottom: -1px; }
+.stol-ldpc-info { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.stol-ldpc-files { display: flex; flex-direction: column; gap: 2px; max-height: 9em; overflow: auto; overflow-wrap: anywhere; }
+.stol-md-row[hidden] { display: none; }
 @media (max-width: 720px) {
     .stol-md, .stol-md-planes { grid-template-columns: 1fr; }
 }

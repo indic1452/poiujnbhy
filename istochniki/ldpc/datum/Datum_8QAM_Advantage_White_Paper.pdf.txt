@@ -1,0 +1,203 @@
+
+=====PAGE 1=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc.
+January 16, 2013 
+Revision - 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+White Paper 
+ 
+“Datum 8QAM Advantage” 
+8QAM/8PSK Performance Comparison 
+ 
+All M7 and PSM-500 Series Modems  
+ 
+ 
+DATUM SYSTEMS INC. 
+15 Great Oaks Blvd 
+San Jose, CA  95119 U.S.A. 
+Telephone: (408) 365-9745 
+Fax: (408) 365-0471 
+Visit us at:  www.datumsystems.com 
+ 
+ 
+
+=====PAGE 2=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc.
+January 16, 2013 
+Revision - 
+ 
+Introduction 
+Presented here is a brief comparison of Datum Systems’ 8QAM Modulation, a leading Competitive 
+Technology “CT” 8QAM design and the Industry Standard 8PSK Constellations types through a Norsat 
+1010XRT 1 watt Ku band BUC.  Keep in mind; different modulation formats have different peak-to-
+average power ratios.  Generally therefore, the lower the peak-to-average power ratio the more power 
+at RF  
+Datum’s 8-QAM has been optimized for the best BER and power performance.  The optimal 8-QAM 
+modulation constellation configuration is dependent on Es/No which is unique to 8QAM and a select 
+group of other modulation formats.  Therefore three 8-QAM constellations were created A, B and C to 
+each cover a specific range of Es/No to best match each FEC mode offered by Datum.  The optimum       
+8-QAM constellation is selected automatically by the modem based on the FEC mode selected.              
+For Example: 
+Datum 8-QAM-A is used by the following FEC modes: 
+ 
+LDPC 256 – 16k Block, Code Rate 1/2 
+ 
+LDPC 512 – 16k Block, Code Rate 2/3 
+ 
+LDPC 1k – 16k Block, Code Rate 3/4 
+ 
+LDPC 8k – 16k Block, Code Rate 14/17 
+ 
+TPC Advanced 0.453-16k 
+ 
+TPC Advanced 1/2-4k, 1/2-16k 
+ 
+TPC Advanced 3/4-4k, 3/4-16k 
+Datum 8-QAM-B is used by the following FEC modes: 
+ 
+LDPC 256 Block, Code Rate 2/3 
+ 
+LDPC 256 – 512 Block, Code Rate 3/4 
+ 
+LDPC 512 – 4k Block, Code Rate 14/17 
+ 
+LDPC 1k – 16k Block, Code Rate 7/8 
+ 
+LDPC 1k – 16k Block, Code Rate 10/11 
+ 
+LDPC 4k – 16k Block, Code Rate 16/17 
+ 
+TPC Advanced 7/8-4k, 7/8-16k 
+ 
+TPC Advanced 0.922-16k 
+ 
+TPC CT Code Rate 3/4 
+ 
+TPC CT Code Rate 7/8 
+Datum 8-QAM-C is used by the following FEC modes: 
+ 
+LDPC 256 Block, Code Rate 14/17 
+ 
+LDPC 256 – 512 Block, Code Rate 7/8 
+ 
+LDPC 256 – 512 Block, Code Rate 10/11 
+ 
+LDPC 256 – 2k Block, Code Rate 16/17 
+ 
+TPC Advanced 0.950-4k 
+ 
+TPC CT Code Rate 0.95
+
+=====PAGE 3=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+January 16, 2013 
+Revision - 
+ 
+Performance Comparisons 
+Relative Peak-to-Average Power Ratios of Modulation Constellation Points 
+Standard 8PSK 
+0.00 dB 
+Datum 8-QAM-A 
+1.42 dB 
+Datum 8-QAM-B 
+1.37 dB 
+Datum 8-QAM-C 
+1.80 dB 
+CT 8-QAM 
+2.55 dB 
+ 
+The data below was collected with a PSM-500 using LDPC FEC, 16k data block size and a code rate of 3/4 at 10 Mbps. 10 
+Mbps was used to speed BER testing. 
+Industry Standard 8PSK 
+Output 
+Power 
+Spectrum Growth 
+(Power 1 Side) 
+BER 
+Degradation 
+360 mW 
+-40 dBc 
+< 0.05 dB 
+850 mW 
+-30 dBc 
+< 0.1 dB 
+1000 mW 
+-27 dBc 
+≈ 0.1 dB 
+ 
+Datum’s 8-QAM 
+Output 
+Power 
+Spectrum Growth 
+(Power 1 Side) 
+BER 
+Degradation 
+280 mW 
+-40 dBc 
+< 0.05 dB 
+650 mW 
+-30 dBc 
+< 0.1 dB 
+800 mW 
+-27 dBc 
+≈ 0.1 dB 
+ 
+Competitive Technology 8-QAM 
+Output 
+Power 
+Spectrum Growth 
+(Power 1 Side) 
+BER 
+Degradation 
+240 mW 
+-40 dBc 
+< 0.1 dB 
+580 mW 
+-30 dBc 
+≈ 0.1 dB 
+745 mW 
+-27 dBc 
+≈ 0.5 dB 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 4=====
+Datum Systems Inc. 
+                                     Copyright © 2013 Datum Systems, Inc. 
+January 16, 2013 
+Revision - 
+ 
+Conclusion 
+With 8PSK, the full power of the BUC is available with about 0.1 dB of BER degradation.  With Datum’s 8-QAM, a back off 
+of about 1 dB is required to produce both similar BER degradation and spectral growth as 8PSK.  With “CT” 8-QAM a 
+back off of about 2.4 dB is required to produce similar BER degradation compared to 8PSK.  Therefore Datum’s 8-QAM 
+can output about 1.4 dB more power out of the transmit BUC for similar BER degradation as compared to “CT” 8-QAM. 
+It takes about 1.3 dB of BUC power back off for “CT” 8-QAM to have similar spectral growth but it incurs an additional 
+0.4 dB BER performance reduction in doing so.  Therefore overall the effective output power is reduced by an additional 
+0.4 dB, or 0.7 dB overall, compared to Datum’s 8-QAM. 
+  1.3 dB  “CT” Required 8-QAM back off (for similar spectral growth) 
+- 1.0 dB  Datum Required 8-QAM back off 
+_________ 
+  0.3 dB  Difference 
++ 0.4 dB  “CT’s” Reduced BER Performance due to reduced back off 
+_________ 
+  0.7 dB  “CT’s” Overall Reduced Effective Power for Similar Spectral Growth 
+ 
+This has the additional penalty of increasing the power on the satellite by 0.4 dB with no corresponding improvement in 
+BER when using “CT’s” 8-QAM with 1.3 dB of back off.  Increasing the back off on “CT’s” 8-QAM to 2.4 dB eliminates the 
+excess satellite power but reduces the BUC’s available output power by 1.4 dB compared to Datum’s 8-QAM.  Datum’s 
+8-QAM clearly performs better in every way saving the link operator money at each step of the way. 
+ 
