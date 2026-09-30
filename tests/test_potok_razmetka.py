@@ -1907,3 +1907,30 @@ class ПоискСтрокTests(unittest.TestCase):
         self.assertEqual([0, 1, 2, 3], итог["класс"]["класс"])
         self.assertIsNone(итог["второй_класс"])
         self.assertIn(обратная(π), итог["таблицы"])
+
+
+class WAVTests(unittest.TestCase):
+    def test_wav_битые_заголовки(self):
+        def riff(*куски):
+            тело = b"WAVE" + b"".join(имя + struct.pack("<I", len(данные)) + данные + (b"\x00" if len(данные) % 2 else b"")
+                                      for имя, данные in куски)
+            return b"RIFF" + struct.pack("<I", len(тело)) + тело
+        x = np.array([1, 2, 3, 4] * 8, "<i2").tobytes()
+        pcm = struct.pack("<HHIIHH", 1, 2, 8000, 32000, 4, 16)
+        for данные, ждём in (
+                (b"RIFF\x00\x00\x00\x00WAVX" + b"\x00" * 20, "не WAV: нет заголовка RIFF/WAVE"),
+                (b"RIFF1234WAV", "не WAV: нет заголовка RIFF/WAVE"),
+                (riff((b"fmt ", pcm[:15]), (b"data", x)), "WAV без блока fmt или data"),
+                (riff((b"fmt ", pcm), (b"data", b"")), "отсчётов 0: для облака нужно хотя бы 16"),
+                (riff((b"fmt ", struct.pack("<HHIIHH", 0xFFFE, 2, 8000, 32000, 4, 16) + b"\x00" * 9), (b"data", x)),
+                 "WAV: формат 65534, 16 бит — поддерживаются PCM 8/16/24/32 и float32")):
+            with self.subTest(ждём), self.assertRaises(ValueError) as о:
+                iq.прочитать(данные, "wav")
+            self.assertEqual(ждём, str(о.exception))
+        # PCM с добавкой в fmt (26 байт) — подформат не читается: это не WAVE_FORMAT_EXTENSIBLE.
+        z, _ = iq.прочитать(riff((b"fmt ", pcm + b"\x03\x00" * 5), (b"data", x)))
+        self.assertEqual([1 + 2j, 3 + 4j], z[:2].tolist())
+        # Расширенный ровно в 26 байт — подформат (PCM) читается.
+        ext = struct.pack("<HHIIHH", 0xFFFE, 2, 8000, 32000, 4, 16) + struct.pack("<HHIH", 8, 16, 3, 1)
+        self.assertEqual(26, len(ext))
+        self.assertEqual([1 + 2j, 3 + 4j], iq.прочитать(riff((b"fmt ", ext), (b"data", x)))[0][:2].tolist())
