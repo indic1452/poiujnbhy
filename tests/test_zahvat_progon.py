@@ -297,6 +297,33 @@ class ЧтецTests(Папка):
         путь.write_bytes(shb + idb + self.блок(6, b"\0" * 16))
         self.assertEqual([], list(chtec.записи(путь)), "EPB короче 20 байт полей — пропуск")
 
+    def test_opb_с_потерями_spb_обрезанный_и_пустой(self):
+        """OPB: номер интерфейса — 16 бит, за ним drops_count (не часть номера, как в EPB);
+        SPB: записано не больше, чем есть байт в блоке; SPB с нулевой длиной — пустая запись."""
+        shb = self.блок(0x0A0D0D0A, struct.pack("<IHHq", 0x1A2B3C4D, 1, 0, -1))
+        idb = self.блок(1, struct.pack("<HHI", 1, 0, 0))                           # snaplen 0 — без предела
+        opb = self.блок(2, struct.pack("<HHIIII", 0, 3, 0, 1_000_000, 2, 2) + b"OP")
+        обрезанный = self.блок(3, struct.pack("<I", 100) + b"01234567")              # в линии 100, в файле 8
+        пустой = self.блок(3, struct.pack("<I", 0))
+        путь = self.т / "spb.pcapng"
+        путь.write_bytes(shb + idb + opb + обрезанный + пустой)
+        self.assertEqual([(1.0, b"OP", 2), (1.0, b"01234567", 100), (1.0, b"", 0)],
+                         [(в, д, и) for в, д, и, _ in chtec.записи(путь)])
+
+    def test_старший_порядок_и_второй_интерфейс(self):
+        """Файл со старшим порядком байт (SHB 1A 2B 3C 4D), EPB на интерфейсе 1 — канал второго IDB."""
+        def блок(тип, тело):
+            тело += b"\0" * (-len(тело) % 4)
+            return struct.pack(">II", тип, 12 + len(тело)) + тело + struct.pack(">I", 12 + len(тело))
+        данные = (блок(0x0A0D0D0A, struct.pack(">IHHq", 0x1A2B3C4D, 1, 0, -1))
+                  + блок(1, struct.pack(">HHI", 1, 0, 0)) + блок(1, struct.pack(">HHI", 101, 0, 0))
+                  + блок(6, struct.pack(">IIIII", 1, 0, 2_000_000, 3, 3) + b"\x45\x00\x00"))
+        путь = self.т / "be.pcapng"
+        путь.write_bytes(данные)
+        записи = list(chtec.записи(путь))
+        self.assertEqual([(2.0, b"\x45\x00\x00", 3)], [(в, д, и) for в, д, и, _ in записи])
+        self.assertEqual(прочитать_захват(путь).записи[0].канал, записи[0][3], "канал второго IDB — как у читателя")
+
     def test_заголовок_pcap_без_записей_и_snaplen(self):
         путь = self.т / "пусто.pcap"
         путь.write_bytes(struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 1234, 101))
@@ -368,6 +395,14 @@ class ДеревоTests(unittest.TestCase):
         self.assertEqual({"A": 1, "…прочие": 3}, {д_["протокол"]: д_["пакетов"] for д_ in дети})
         self.assertEqual(4, д.узлов)
 
+    def test_потолок_таблиц_портов(self):
+        т = {}
+        for i in range(8):
+            progon._учесть(т, f"к{i}", 10, 5)
+        progon._учесть(т, "к0", 7, 5)                          # старый ключ и на пределе — свой
+        self.assertEqual(["к0", "к1", "к2", "к3", "к4", "прочие"], list(т))
+        self.assertEqual(([2, 17], [3, 30]), (т["к0"], т["прочие"]))
+
 
 class УпорядочениеTests(unittest.TestCase):
     def test_переставленные_выходят_по_номеру(self):
@@ -401,6 +436,19 @@ class УпорядочениеTests(unittest.TestCase):
         self.assertEqual(65535, у.расширить(1, 65535), "опоздавший после перехода — в прошлом круге")
         self.assertEqual(1, у.сводка["переставлено_rtp"])
 
+    def test_границы_полукруга_и_разрыва(self):
+        у = progon.Упорядочение(окно=0)
+        у.расширить(1, 0)
+        self.assertEqual(32767, у.расширить(1, 32767), "меньше полукруга вперёд — вперёд")
+        у = progon.Упорядочение(окно=0)
+        у.расширить(1, 0)
+        self.assertEqual(-32768, у.расширить(1, 32768), "ровно полкруга — назад (RFC 3550 §A.1)")
+        у = progon.Упорядочение(окно=0)
+        for номер in (100, 101 + progon.MAX_DROPOUT, 102 + 2 * progon.MAX_DROPOUT + 1):
+            у.добавить(1, номер, b"x")
+        self.assertEqual((progon.MAX_DROPOUT, 1), (у.сводка["пропущено_rtp"], у.сводка["разрывы_rtp"]),
+                         "скачок ровно MAX_DROPOUT — пропуски, на один больше — разрыв")
+
 
 class ВыходTests(Папка):
     def выход(self, **к):
@@ -429,6 +477,38 @@ class ВыходTests(Папка):
         сводка = в.сводка()
         self.assertEqual((4, 3, 1, 1, ["00001234"]), (сводка["датаграмм"], сводка["взято"], сводка["не_rtp"],
                                                       сводка["переставлено_rtp"], сводка["ssrc"]))
+
+    def test_срез_rtp_без_порядка_дополнение_и_ровно_срез(self):
+        в = self.выход(срез="rtp")
+        в.учесть(кадр_udp(rtp(1, b"AB")))
+        с_дополнением = bytearray(rtp(2, b"CD" + b"\0\0\3"))
+        с_дополнением[0] |= 0x20                               # P: последние 3 октета — дополнение
+        в.учесть(кадр_udp(bytes(с_дополнением)))
+        в.закрыть()
+        self.assertEqual(b"ABCD", (self.т / "в.bin").read_bytes())
+        в = progon.Выход(self.т / "в2.bin", порт=5004)
+        self.addCleanup(в.файл.close)
+        в.учесть(кадр_udp(b"whole"))
+        в.закрыть()
+        self.assertEqual(b"whole", (self.т / "в2.bin").read_bytes(), "по умолчанию — без среза")
+        в = progon.Выход(self.т / "в3.bin", порт=5004, срез=5)
+        self.addCleanup(в.файл.close)
+        в.учесть(кадр_udp(b"12345"))
+        в.закрыть()
+        self.assertEqual((0, 1, 0), (в.с["короче_среза"], в.с["взято"], в.с["байт"]), "ровно срез — не короче")
+
+    def test_состояние_захвата_перечитывается_не_чаще_300_мс(self):
+        (self.т / "состояние.json").write_text(json.dumps({"состояние": "идёт"}), encoding="utf-8")
+        к = progon.Кадры({"вид": "захват", "папка": str(self.т)})
+        часы = {"t": 100.0}
+        with mock.patch.object(progon.time, "monotonic", lambda: часы["t"]):
+            self.assertTrue(к.захват_идёт())
+            (self.т / "состояние.json").write_text(json.dumps({"состояние": "готово"}), encoding="utf-8")
+            часы["t"] = 100.3
+            self.assertTrue(к.захват_идёт(), "через 0,3 с — ещё прежнее")
+            часы["t"] = 100.31
+            self.assertFalse(к.захват_идёт(), "позже — перечитано")
+        self.assertFalse(progon.Кадры({"вид": "файлы", "файлы": []}).захват_идёт(), "файлы — не захват")
 
     def test_фрагмент_без_нагрузки(self):
         в = self.выход()

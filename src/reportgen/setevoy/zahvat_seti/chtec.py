@@ -153,7 +153,7 @@ class ЧтецФайла:
             if голова is None:
                 return None
             if голова[:4] == SHB:
-                self.порядок = "<" if голова[8:12] == b"\x4d\x3c\x2b\x1a" else ">"
+                self.порядок = "<" if голова[8:] == b"\x4d\x3c\x2b\x1a" else ">"      # голова — 12 байт
                 self.интерфейсы = []
             вид, длина = struct.unpack_from(self.порядок + "II", голова)
             if длина < 12 or длина % 4 or длина > БЛОК_ДО:
