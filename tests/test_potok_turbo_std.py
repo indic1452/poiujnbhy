@@ -1,0 +1,267 @@
+"""Турбокоды стандартов (TCC): свой кодер по тексту стандарта → ошибки → данные бит в бит.
+
+Кодер тестов — ``turbo_koder`` (побитовые циклы по формулам первоисточников, без общих
+таблиц с анализатором); таблицы анализатора сверяются с текстом самих стандартов
+(istochniki/turbo/…*.pdf.txt). Вслепую: выколотый 1/2 UMTS и CCSDS (с маркером и без),
+1/3 CCSDS; ложных находок нет на случайном потоке, свёрточном коде и RSC 1/2; турбокод
+с перемежителем вне каталога — честно «схема не опознана», без данных, и автомат на нём
+не уходит в цепочку ложных блочных кодов (предел времени).
+"""
+
+import re
+import time
+import unittest
+
+import numpy as np
+
+import _bootstrap  # noqa: F401
+import potok_sintez as с
+import turbo_koder as тк
+from reportgen.potok import razbor, svyortka
+from reportgen.potok import turbo_std as ts
+
+
+def данные(блоков: int, K: int, сид: int = 1) -> np.ndarray:
+    return np.random.default_rng(сид).integers(0, 2, (блоков, K), dtype=np.uint8)
+
+
+def поток(кодер, u: np.ndarray, маркер: str = "") -> np.ndarray:
+    м = list(np.unpackbits(np.frombuffer(bytes.fromhex(маркер), dtype=np.uint8))) if маркер else []
+    return np.concatenate([м + list(кодер([int(b) for b in ряд])) for ряд in u]).astype(np.uint8)
+
+
+class КодерыСовпадают(unittest.TestCase):
+    """Кодер анализатора (по решётке и раскладке) = свой кодер теста по тексту стандарта."""
+
+    def сверить(self, схема, кодер, u):
+        свой = np.array([кодер([int(b) for b in ряд]) for ряд in u], dtype=np.uint8)
+        self.assertTrue(np.array_equal(свой, схема.закодировать(u)), схема.имя)
+
+    def test_umts_все_виды_матрицы(self):
+        # R = 5, 10, 20; C = p − 1, p, p + 1; K = R·C при C = p + 1 (обмен U); 481…530 (p = 53);
+        # особые T для 2281…2480 и 3161…3210; предельные 40 и 5114.
+        for K in (40, 159, 160, 200, 201, 481, 530, 1080, 2281, 3200, 5114, 997):
+            with self.subTest(K=K):
+                self.сверить(ts.umts(K), тк.umts_кодировать, данные(2, K, K))
+
+    def test_umts_согласование_скорости(self):
+        for K, E in ((40, 88), (200, 300), (1000, 2008), (1000, 2500), (531, 1100)):
+            with self.subTest(K=K, E=E):
+                self.сверить(ts.umts(K, E), lambda u, E=E: тк.umts_согласовать(тк.umts_кодировать(u), E),
+                             данные(2, K, E))
+
+    def test_lte_кольцевой_буфер(self):
+        таблица = тк.lte_таблица()
+        for K, E, rv in ((40, 132, 0), (40, 500, 3), (512, 1000, 1), (1024, 2048, 2), (6144, 9000, 0)):
+            with self.subTest(K=K, E=E, rv=rv):
+                self.сверить(ts.lte(K, E, rv),
+                             lambda u, K=K, E=E, rv=rv: тк.lte_согласовать(тк.lte_кодировать(u, *таблица[K]), E, rv),
+                             данные(1, K, K))
+
+    def test_ccsds_все_скорости(self):
+        for k in (1784, 8920):
+            for скорость in ("1/2", "1/3", "1/4", "1/6"):
+                with self.subTest(k=k, скорость=скорость):
+                    self.сверить(ts.ccsds(k, скорость), lambda u, r=скорость: тк.ccsds_кодировать(u, r),
+                                 данные(1, k, k))
+
+    def test_rcs_все_размеры_и_скорости(self):
+        for N in ts.RCS_ПАРАМЕТРЫ:
+            for скорость in ts.RCS_ВЫКАЛЫВАНИЕ:
+                with self.subTest(N=N, скорость=скорость):
+                    self.сверить(ts.rcs(N, скорость), lambda u, r=скорость: тк.rcs_кодировать(u, r),
+                                 данные(1, 2 * N, N))
+
+    def test_rcs_обратный_порядок(self):
+        u = данные(1, 424)
+        прямой = тк.rcs_кодировать([int(b) for b in u[0]], "1/2")
+        обратный = ts.rcs(212, "1/2", "обратный").закодировать(u)[0]
+        # п. 6.4.4.4: сначала Y1,Y2 (и W), затем A,B.
+        self.assertEqual(прямой[424:] + прямой[:424], обратный.tolist())
+
+
+class ДекодерИсправляет(unittest.TestCase):
+    def проверить(self, схема, кодер, u, доля):
+        кодовые = np.array([кодер([int(b) for b in ряд]) for ряд in u], dtype=np.uint8)
+        принято = тк.ошибки(кодовые, доля)
+        self.assertGreater(int((принято != кодовые).sum()), 0)
+        итог, св = схема.декодировать(1.0 - 2.0 * принято)
+        self.assertTrue(np.array_equal(итог, u), f"{схема.имя}: ошибок {int((итог != u).sum())}")
+
+    def test_umts_1_3_и_1_2(self):
+        self.проверить(ts.umts(1000), тк.umts_кодировать, данные(4, 1000), 0.04)
+        self.проверить(ts.umts(1000, 2008), lambda u: тк.umts_согласовать(тк.umts_кодировать(u), 2008),
+                       данные(4, 1000, 2), 0.01)
+
+    def test_lte(self):
+        f = тк.lte_таблица()[1024]
+        self.проверить(ts.lte(1024, 2048, 0), lambda u: тк.lte_согласовать(тк.lte_кодировать(u, *f), 2048, 0),
+                       данные(3, 1024), 0.01)
+
+    def test_ccsds(self):
+        for скорость, доля in (("1/2", 0.015), ("1/6", 0.06)):
+            self.проверить(ts.ccsds(1784, скорость), lambda u, r=скорость: тк.ccsds_кодировать(u, r),
+                           данные(2, 1784), доля)
+
+    def test_rcs(self):
+        for скорость, доля in (("1/3", 0.04), ("2/3", 0.005)):
+            self.проверить(ts.rcs(212, скорость), lambda u, r=скорость: тк.rcs_кодировать(u, r),
+                           данные(4, 424), доля)
+
+
+class ТаблицыПоТекстуИсточника(unittest.TestCase):
+    """Числа анализатора — те же, что в тексте стандартов (istochniki/turbo)."""
+
+    def test_umts_табл_2(self):
+        с_ = тк.страницы(тк.ИСТОЧНИКИ / "tcc/3gpp/ETSI_TS_125_212_v17.0.0_UMTS.pdf.txt")
+        текст = "".join(с_.values())
+        б = текст[текст.index("Table 2: List of prime number p and associated primitive root v"):]
+        б = б[:б.index("4.2.3.2.3.2")]
+        числа = [int(ч) for ч in re.findall(r"^\s*(\d+)\s*$", б, re.M)]
+        self.assertEqual(ts.UMTS_ПРОСТЫЕ, dict(zip(числа[0::2], числа[1::2], strict=True)))
+        # И это наименьшие первообразные корни (как их понимает свой кодер).
+        self.assertTrue(all(тк._первообразный(p) == v for p, v in ts.UMTS_ПРОСТЫЕ.items()))
+
+    def test_lte_qpp(self):
+        self.assertEqual(ts.LTE_QPP, тк.lte_таблица())
+
+    def test_lte_столбцы(self):
+        с_ = тк.страницы(тк.ИСТОЧНИКИ / "tcc/3gpp/ETSI_TS_136_212_v17.1.0_LTE.pdf.txt")
+        текст = " ".join(" ".join(т.split()) for т in с_.values())
+        self.assertIn("< 0, 16, 8, 24, 4, 20, 12, 28, 2, 18, 10, 26, 6, 22, 14, 30, 1, 17, 9, 25, 5, 21, "
+                      "13, 29, 3, 19, 11, 27, 7, 23, 15, 31 >", текст)
+        self.assertEqual(list(ts.LTE_P), тк.P_LTE)
+
+    def test_ccsds(self):
+        с_ = тк.страницы(тк.ИСТОЧНИКИ / "tcc/ccsds/CCSDS_131.0-B-5.pdf.txt")
+        с42 = " ".join(с_[42].split())
+        self.assertEqual(list(ts.CCSDS_ПРОСТЫЕ), [int(x) for x in re.findall(r"p\d = (\d+)", с42)])
+        с66 = " ".join(с_[66].split())
+        for скорость, маркер in ts.CCSDS_ASM.items():
+            м = re.search(rf"ASM for rate-{скорость} Turbo[^:]*: ([0-9A-F ]+?) (?:ASM|FIRST)", с66)
+            self.assertEqual(маркер, м.group(1).replace(" ", ""))
+        с44 = " ".join(с_[44].split()) + " ".join(с_[43].split())
+        for g in ("G0 = 10011", "G1 = 11011", "G2 = 10101", "G3 = 11111"):
+            self.assertIn(g, с44)
+
+    def test_rcs_табл_9(self):
+        т = (тк.ИСТОЧНИКИ / "tcc/dvb-rcs/ETSI_EN_301_790_v1.5.1_DVB-RCS.pdf.txt").read_text(errors="replace")
+        б = т[т.index("Table 9: Turbo code permutation parameters"):]
+        б = б[:б.index("6.4.4.2")]
+        строки = {int(N): tuple(map(int, (a, b, c_, d))) for N, a, b, c_, d in
+                  re.findall(r"N = (\d+) \(\d+ bytes\)\s*\n\s*(\d+)\s*\n\s*\{(\d+),(\d+),(\d+)\}", б)}
+        self.assertEqual(ts.RCS_ПАРАМЕТРЫ, строки)
+        # Правило чёт/нечет (стр. 31) — у перестановки по табл. 9.
+        for N in строки:
+            π = ts.rcs_перемежитель(N)
+            self.assertEqual(sorted(π.tolist()), list(range(N)))
+            self.assertTrue(all(i % 2 != j % 2 for j, i in enumerate(π.tolist())))
+
+
+class Вслепую(unittest.TestCase):
+    def test_umts_1_2_с_любого_бита(self):
+        u = данные(40, 1000, 7)
+        п = тк.ошибки(поток(lambda x: тк.umts_согласовать(тк.umts_кодировать(x), 2008), u), 0.003)
+        for сдвиг in (0, 5, 777):
+            with self.subTest(сдвиг=сдвиг):
+                н = ts.найти(п[сдвиг:])
+                self.assertIn("UMTS (TS 25.212) K = 1000, E = 2008", н.что)
+                первый = -(-сдвиг // 2008)
+                d = н.дальше.reshape(-1, 1000)
+                self.assertTrue(np.array_equal(u[первый:первый + len(d)], d))
+                self.assertEqual(f"tcc umts 1000 e 2008 начало {первый * 2008 - сдвиг}", н.свойства["указание"])
+
+    def test_ccsds_1_2_и_1_3_с_маркером_и_без(self):
+        u = данные(26, 1784, 8)
+        for скорость in ("1/2", "1/3"):
+            for маркер in ("", ts.CCSDS_ASM[скорость]):
+                with self.subTest(скорость=скорость, маркер=bool(маркер)):
+                    п = тк.ошибки(поток(lambda x, r=скорость: тк.ccsds_кодировать(x, r), u, маркер), 0.004)[1001:]
+                    н = ts.найти(п)
+                    self.assertIn(f"CCSDS (131.0-B-5) k = 1784, скорость {скорость}", н.что)
+                    d = н.дальше.reshape(-1, 1784)
+                    self.assertTrue(np.array_equal(u[1:1 + len(d)], d))
+
+    def test_не_турбо(self):
+        self.assertIsNone(ts.найти(с.случайные_биты(200_000, сид=3)))
+        self.assertIsNone(ts.найти(svyortka.кодировать(с.случайные_биты(60_000), [0o171, 0o133], 7)))
+        # RSC 1/2 (13/15) без второго кодера: связь держится на всех шагах — не турбокод.
+        u = с.случайные_биты(60_000, сид=4)
+        p, _ = с.rsc(u)
+        self.assertIsNone(ts.найти(np.column_stack([u, p]).reshape(-1)))
+
+    def test_перемежитель_вне_каталога_честно(self):
+        u = данные(60, 1000, 9)
+        схема = ts.umts(1000, 2008)
+        схема.π = np.random.default_rng(5).permutation(1000)
+        п = тк.ошибки(схема.закодировать(u).reshape(-1), 0.003)
+        н = ts.найти(п[11:])
+        self.assertIn("турбокод (PCCC) выколотый 1/2, RSC 13/15 (UMTS, LTE), блок 2008 бит — схема не опознана",
+                      н.что)
+        self.assertIsNone(н.дальше)
+        self.assertTrue(н.свойства["турбо"])
+
+
+class Автомат(unittest.TestCase):
+    """Выколотый турбокод 1/2 автомат снимает быстро и без ложной цепочки блочных кодов."""
+
+    def разобрать(self, п):
+        начало = time.monotonic()
+        р = razbor.разобрать(данные=np.packbits(п).tobytes(), имя="t.bin", профиль="быстро")
+        return р, time.monotonic() - начало
+
+    def test_снимает_до_ip(self):
+        биты = np.unpackbits(np.frombuffer(с.hdlc(с.пакеты_ip(150)), dtype=np.uint8))
+        u = биты[:len(биты) // 1000 * 1000].reshape(-1, 1000)
+        п = тк.ошибки(поток(lambda x: тк.umts_согласовать(тк.umts_кодировать(x), 2008), u), 0.003)[333:]
+        р, секунд = self.разобрать(п)
+        что = [н.что for н in р.находки]
+        self.assertIn("турбокод UMTS (TS 25.212) K = 1000, E = 2008 (согласование скорости)", что[0])
+        self.assertTrue(any("пакеты IP" in ч for ч in что))
+        self.assertFalse(any("линейный блочный" in ч for ч in что))
+        self.assertLess(секунд, 60)
+
+    def test_вне_каталога_без_ложной_цепочки(self):
+        u = данные(120, 1000, 10)
+        схема = ts.umts(1000, 2008)
+        схема.π = np.random.default_rng(6).permutation(1000)
+        п = тк.ошибки(схема.закодировать(u).reshape(-1), 0.003)
+        р, секунд = self.разобрать(п)
+        что = [н.что for н in р.находки]
+        self.assertEqual(1, len(что))
+        self.assertIn("схема не опознана", что[0])
+        self.assertLess(секунд, 60)
+
+
+class СлойВручную(unittest.TestCase):
+    def test_umts_и_ccsds_asm(self):
+        u = данные(10, 1000, 11)
+        п = тк.ошибки(поток(lambda x: тк.umts_согласовать(тк.umts_кодировать(x), 2008), u), 0.003)[100:]
+        ряд, находка = razbor.снять_вручную(п, "tcc umts 1000 e 2008 начало 1908")
+        self.assertTrue(np.array_equal(u[1:].reshape(-1), ряд))
+        self.assertTrue(any("TS 125 212" in с_ for с_ in находка.подробно))
+        u = данные(6, 1784, 12)
+        п = тк.ошибки(поток(lambda x: тк.ccsds_кодировать(x, "1/4"), u, ts.CCSDS_ASM["1/4"]), 0.01)[500:]
+        ряд, _ = razbor.снять_вручную(п, "tcc ccsds 1784 1/4 asm")
+        self.assertTrue(np.array_equal(u[1:].reshape(-1), ряд))
+
+    def test_rcs_и_lte(self):
+        u = данные(5, 424, 13)
+        п = поток(lambda x: тк.rcs_кодировать(x, "1/2"), u)
+        ряд, _ = razbor.снять_вручную(тк.ошибки(п, 0.01), "tcc rcs 212 1/2")
+        self.assertTrue(np.array_equal(u.reshape(-1), ряд))
+        f = тк.lte_таблица()[512]
+        u = данные(4, 512, 14)
+        п = поток(lambda x: тк.lte_согласовать(тк.lte_кодировать(x, *f), 1100, 1), u)
+        ряд, _ = razbor.снять_вручную(тк.ошибки(п, 0.01), "tcc lte 512 e 1100 rv 1")
+        self.assertTrue(np.array_equal(u.reshape(-1), ряд))
+
+    def test_ошибка_указания(self):
+        with self.assertRaises(ValueError):
+            razbor.снять_вручную(с.случайные_биты(1000), "tcc что-то")
+        with self.assertRaises(ValueError):
+            razbor.снять_вручную(с.случайные_биты(1000), "tcc rcs 100 1/2")
+
+
+if __name__ == "__main__":
+    unittest.main()
