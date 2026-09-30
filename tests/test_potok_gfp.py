@@ -1153,8 +1153,38 @@ process.stdout.write(JSON.stringify(случаи.map(([ф, ...а]) => ({маск
         текст = APP_JS.read_text(encoding="utf-8")
         for кусок in ("const БИТ_УЧАСТКА_GFP = 1 << 25, БИТ_ДО_GFP = 1 << 26;", "первый.узел, длина.узел,",
                       "bits: Math.min(БИТ_ДО_GFP, Math.max(4096, Math.round(длина.значение() || БИТ_УЧАСТКА_GFP)))",
-                      "таблица), ещё, дальше)", "первый.поле.value = String(у.дальше); найти(false);"):
+                      "плитки, дальше, h('div', { class: 'stol-results-wrap' }, таблица), ещё)", "первый.поле.value = String(у.дальше); найти(false);",
+                      "[первый, длина].forEach((п) => п.узел.classList.add('field--stack'));"):
             self.assertIn(кусок, текст)
+
+    def test_уведомления_над_подвалом_окна(self):
+        # Уведомление не закрывает кнопки подвала модального окна: пока окно открыто, стопка
+        # уведомлений стоит над его подвалом (глазами — снимок сценария рецензента).
+        from test_potok_sessii import APP_JS, функции_js  # noqa: PLC0415
+        код = функции_js(["местоУведомлений"], []) + """
+const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+const box = { style: { bottom: 'было' } };
+let подвалы = [], запрос = null;
+const $ = (с) => (с === '#toasts' ? box : null);
+const window = { innerHeight: 900 };
+const document = { querySelectorAll: (с) => { запрос = с; return подвалы; } };
+process.stdout.write(JSON.stringify(случаи.map((верхи) => {
+    подвалы = верхи.map((в) => ({ childElementCount: в === null ? 0 : 3, getBoundingClientRect: () => ({ top: в }) }));
+    местоУведомлений();
+    return [box.style.bottom, запрос];
+})));
+"""
+        готово = subprocess.run(["node", "-e", код], input=json.dumps([[], [800], [700, 800.4], [890], [899], [None]]),
+                                capture_output=True, text=True, timeout=20)
+        self.assertEqual(0, готово.returncode, готово.stderr)
+        итог = json.loads(готово.stdout)
+        self.assertEqual({"#modal-root > .modal-backdrop > .modal > footer"}, {з for _, з in итог})
+        # Без окна — место из CSS; над подвалом верхнего окна на 8 пикселей, не ниже 16; пустой подвал — как без окна.
+        self.assertEqual(["", "108px", "108px", "18px", "16px", ""], [б for б, _ in итог])
+        текст = APP_JS.read_text(encoding="utf-8")
+        for где in ("box.appendChild(node);\n        местоУведомлений();", "root.appendChild(backdrop);\n        местоУведомлений();",
+                    "backdrop.remove();\n            местоУведомлений();", "window.addEventListener('resize', () => местоУведомлений());"):
+            self.assertIn(где, текст)
         self.assertEqual((1 << 25, 1 << 26), (gfp.БИТ_ДО // 2, gfp.БИТ_ДО))
 
     def test_маска_вид_и_ошибка_строки(self):

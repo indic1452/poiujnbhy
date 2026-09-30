@@ -645,10 +645,23 @@
             text,
             h('button', { class: 'close', title: 'Закрыть', onclick: () => node.remove() }, '×'));
         box.appendChild(node);
+        местоУведомлений();
         const lifetime = ttl || (kind === 'error' ? 12000 : 5000);
         setTimeout(() => node.remove(), lifetime);
         return { set: (value) => { text.textContent = value; }, close: () => node.remove() };
     }
+
+    /** Уведомления — над подвалом верхнего модального окна, если оно открыто: иначе они закрывают его
+     *  кнопки (в окне GFP — «В журнал», «По каналам CID» и т. д.). Без окна — на своём месте из CSS. */
+    function местоУведомлений() {
+        const box = $('#toasts');
+        if (!box) return;
+        const подвалы = document.querySelectorAll('#modal-root > .modal-backdrop > .modal > footer');
+        const подвал = подвалы.length ? подвалы[подвалы.length - 1] : null;
+        box.style.bottom = подвал && подвал.childElementCount
+            ? Math.max(16, Math.round(window.innerHeight - подвал.getBoundingClientRect().top + 8)) + 'px' : '';
+    }
+    window.addEventListener('resize', () => местоУведомлений());
 
     function toastError(error) {
         // Отвергнутый ответ прежнего раздела — не беда, о ней не кричим.
@@ -685,6 +698,7 @@
         function close() {
             document.removeEventListener('keydown', onKey, true);
             backdrop.remove();
+            местоУведомлений();
             if (options.onClose) options.onClose();
         }
 
@@ -693,6 +707,7 @@
         });
         document.addEventListener('keydown', onKey, true);
         root.appendChild(backdrop);
+        местоУведомлений();
         if (options.focus) setTimeout(() => { const node = $(options.focus, modal); if (node) node.focus(); }, 30);
         return { close: close, modal: modal, body: body, footer: footer };
     }
@@ -13037,6 +13052,8 @@
             const пустые = h('input', { type: 'checkbox', checked: !!з.пустые });
             const первый = полеДиалога({}, 'первый', 'С бита', 0, 'С какого бита массива разбирать (указатель сейчас на ' + (с.курсор !== null ? с.курсор : '—') + ')');
             const длина = полеДиалога(з, 'бит', 'Бит в участке', БИТ_УЧАСТКА_GFP, 'Сколько бит разбирать с «С бита»: от 4096 до ' + БИТ_ДО_GFP.toLocaleString('ru-RU') + ' (больше — медленнее)');
+            // Номера бит — до восьми знаков: поле во всю ширину колонки, подпись над ним.
+            [первый, длина].forEach((п) => п.узел.classList.add('field--stack'));
             const итог = h('div', { class: 'small muted', 'aria-live': 'polite' });
             const плитки = h('dl', { class: 'stol-gfp-summary' });
             const тело = h('tbody', {});
@@ -13065,7 +13082,7 @@
                         h('label', { class: 'small' }, пустые, ' показывать пустые кадры в таблице'),
                         h('div', { class: 'small muted' }, 'Маска, место заголовков, скремблер и порядок бит находятся по самому потоку; ' +
                             'двойной щелчок или Enter по кадру — к его месту в битовом просмотре. F1 — справка.')),
-                    h('div', { class: 'stol-search-results' }, итог, плитки, h('div', { class: 'stol-results-wrap' }, таблица), ещё, дальше)),
+                    h('div', { class: 'stol-search-results' }, итог, плитки, дальше, h('div', { class: 'stol-results-wrap' }, таблица), ещё)),
                 footer: [h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Выход'), кнЖурнал, кнCid, кнПоток, кнКадры, кнКлиенты, найтиКн],
             });
             function рисовать(фокус) {
@@ -13088,7 +13105,7 @@
                 ещё.textContent = 'Ещё кадры (показано ' + строки.length.toLocaleString('ru-RU') + ' из ' + всего.toLocaleString('ru-RU') + ')';
                 const у = участокGFP(св);
                 дальше.hidden = !у || у.дальше === null;
-                if (у && у.дальше !== null) дальше.textContent = 'Дальше — с бита ' + у.дальше.toLocaleString('ru-RU') + ' (' + у.текст + ')';
+                if (у && у.дальше !== null) дальше.textContent = 'Дальше — с бита ' + у.дальше.toLocaleString('ru-RU');
                 [кнКлиенты, кнКадры, кнПоток, кнЖурнал].forEach((к) => { к.disabled = !св; });
                 кнCid.disabled = !св || !Object.keys(св.слои_cid || {}).length;
             }
