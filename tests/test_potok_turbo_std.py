@@ -8,7 +8,10 @@
 не уходит в цепочку ложных блочных кодов (предел времени).
 """
 
+import json
 import re
+import shutil
+import subprocess
 import time
 import unittest
 
@@ -265,3 +268,75 @@ class СлойВручную(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(shutil.which("node"), "нужен node")
+class ОкноКодовTests(unittest.TestCase):
+    """Вкладки окна «Коды» и пункты стола из app.js; слой каждого пункта понимает сервер."""
+
+    @classmethod
+    def setUpClass(cls):
+        from test_potok_sessii import функции_js  # noqa: PLC0415
+        код = функции_js([], ["ВКЛАДКИ_КОДОВ", "МОДУЛЯЦИИ_ПОИСКА", "ОПЕРАЦИИ_СТОЛА"])
+        код += "process.stdout.write(JSON.stringify({в: ВКЛАДКИ_КОДОВ, о: ОПЕРАЦИИ_СТОЛА}));"
+        готово = subprocess.run(["node", "-e", код], capture_output=True, text=True, timeout=20)
+        assert готово.returncode == 0, готово.stderr
+        д = json.loads(готово.stdout)
+        cls.вкладки = д["в"]
+        cls.операции = {о["id"]: о for о in д["о"]}
+
+    @staticmethod
+    def заполнить(о, значения=None):
+        """Как ``заполнить`` в app.js: флаг — его текст, приставка — перед непустым значением."""
+        значения = значения or {}
+        def поле(м):
+            п = next(x for x in о.get("поля", []) if x["ключ"] == м.group(1))
+            в = значения.get(п["ключ"], п.get("по", False if "флаг" in п else ""))
+            if "флаг" in п:
+                return п["флаг"] if в else ""
+            if "приставка" in п:
+                return п["приставка"] + str(в).strip() if str(в).strip() else ""
+            return str(в).strip()
+        return re.sub(r"\s+", " ", re.sub(r"\{([^}]+)\}", поле, о["слой"])).strip()
+
+    def test_вкладки_как_у_отдела(self):
+        self.assertEqual(["TCC", "НСК", "ССК", "RS", "Trellis", "КБК"], [в["имя"] for в in self.вкладки])
+        for в in self.вкладки:
+            for ид in в["пункты"]:
+                self.assertIn(ид, self.операции, в["имя"])
+        self.assertEqual([], next(в for в in self.вкладки if в["имя"] == "ССК")["пункты"])
+        self.assertIn("IESS-309", next(в for в in self.вкладки if в["имя"] == "ССК")["суть"])
+
+    def test_слои_по_умолчанию_понимает_сервер(self):
+        о = self.операции
+        self.assertEqual("tcc авто", self.заполнить(о["c-tcc"]))
+        self.assertEqual("tcc ccsds 1784 1/2", self.заполнить(о["c-tcc-set"]))
+        self.assertEqual("tcc umts 1000 1/2 e 2008 начало 5",
+                         self.заполнить(о["c-tcc-set"], {"семья": "umts", "размер": 1000, "e": "2008", "начало": " 5 "}))
+        self.assertEqual("tcc ccsds 1784 1/4 asm", self.заполнить(о["c-tcc-set"], {"скорость": "1/4", "asm": True}))
+        self.assertEqual("нск 3/4", self.заполнить(о["c-nsk"]))
+        self.assertEqual("нск 7/8 mil", self.заполнить(о["c-nsk"], {"скорость": "7/8", "mil": True}))
+        self.assertEqual("рс iess idr e1 глубина 4", self.заполнить(о["c-rs-iess"]))
+        self.assertEqual("trellis 8psk", self.заполнить(о["c-trellis"]))
+        # Сервер снимает каждый такой слой на потоке своего кодера.
+        u = данные(3, 1784, 21)
+        ряд, _ = razbor.снять_вручную(поток(lambda x: тк.ccsds_кодировать(x, "1/2"), u),
+                                      self.заполнить(о["c-tcc-set"]))
+        self.assertTrue(np.array_equal(u.reshape(-1), ряд))
+        биты, д = тк.iess_поток(24, 219, 201, 4, сид=3)
+        ряд, _ = razbor.снять_вручную(биты, self.заполнить(о["c-rs-iess"]))
+        self.assertTrue(np.array_equal(д.reshape(-1), np.packbits(ряд)))
+        for ид in ("c-nsk", "c-trellis", "c-tcc"):
+            try:
+                razbor.снять_вручную(с.случайные_биты(30_000, сид=9), self.заполнить(о[ид]))
+            except ValueError as ошибка:
+                self.assertNotIn("не понимаю", str(ошибка))
+
+    def test_окно_в_меню(self):
+        from test_potok_sessii import APP_JS  # noqa: PLC0415
+        текст = APP_JS.read_text(encoding="utf-8")
+        for кусок in ("case 'коды-окно': окноКодов(у); return null;",
+                      "['Коды: TCC, НСК, ССК, RS, Trellis, КБК…', () => окноКодов(у)]",
+                      "{ id: 'c-codes', раздел: 'ПУ код', имя: 'Коды как в декодере отдела: TCC, НСК, ССК, RS, Trellis, КБК…', "
+                      "вид: 'действие', сделать: 'коды-окно' }"):
+            self.assertIn(кусок, текст)
