@@ -7,17 +7,23 @@
 совпадений окон сверяется с прямым подсчётом окон по потоку.
 """
 
+import cmath
+import io
 import itertools
 import math
 import os
+import struct
 import time
 import unittest
+import wave
 from pathlib import Path
 
 import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
+from reportgen.potok import iq
+from reportgen.potok import moddekoder as мд
 from reportgen.potok import razmetka as р
 
 ОБРАЗЕЦ = Path(os.environ.get("K2964_ОБРАЗЕЦ", "/tmp/claude-0/-home-user-poiujnbhy/da6b639e-7ecd-5b07-9c36-bf7a3fd312ff/"
@@ -529,3 +535,347 @@ class ПоискиВФонеTests(unittest.TestCase):
         иды = [п.начать(4, lambda ход: time.sleep(0.2)) for _ in range(3)]
         self.assertNotIn(иды[0], п._все)
         self.assertEqual(2, len(п._все))
+
+
+# -- вход I/Q -------------------------------------------------------------------------------------
+
+def облако_эталон(имя: str, n: int, *, поворот: float, инверсия: bool, шум: float, сид: int = 1):
+    """Отсчёты: точка плоскости с меткой метки[i] (идеальные координаты), затем инверсия (сопряжение) и поворот."""
+    п = мд.плоскость(мд.найти(имя))
+    точки = {м: complex(x, y) for м, (x, y) in zip(п.метки, п.xy, strict=True)}
+    rng = np.random.default_rng(сид)
+    метки = rng.integers(0, len(п.метки), n)
+    z = np.array([точки[int(м)] for м in метки])
+    z = np.conj(z) if инверсия else z
+    z = z * cmath.exp(1j * math.radians(поворот)) + шум * (rng.standard_normal(n) + 1j * rng.standard_normal(n))
+    return метки, z, п
+
+
+def в_int16(z: np.ndarray, масштаб=8000.0, порядок="<") -> bytes:
+    x = np.empty(2 * len(z))
+    x[0::2], x[1::2] = z.real * масштаб, z.imag * масштаб
+    return np.round(x).astype(порядок + "i2").tobytes()
+
+
+class ВходIQTests(unittest.TestCase):
+    def test_форматы(self):
+        z = np.array([1 + 2j, -3 - 4j, 5 - 6j] * 8)
+        x = np.empty(2 * len(z))
+        x[0::2], x[1::2] = z.real, z.imag
+        for формат, байты, ждём in (
+                ("int8", x.astype("i1").tobytes(), z),
+                ("uint8", (x + 127.5).astype("u1").tobytes(), (np.floor(x + 127.5) - 127.5)[0::2] + 1j * (np.floor(x + 127.5) - 127.5)[1::2]),
+                ("int16", x.astype("<i2").tobytes(), z),
+                ("float32", x.astype("<f4").tobytes(), z)):
+            with self.subTest(формат):
+                прочитано, описание = iq.прочитать(байты, формат)
+                np.testing.assert_allclose(ждём, прочитано)
+                self.assertIn(формат, описание)
+        прочитано, описание = iq.прочитать(x.astype(">i2").tobytes(), "int16", порядок="старший")
+        np.testing.assert_allclose(z, прочитано)
+        self.assertEqual("int16, I и Q чередованием, старший байт первым", описание)
+        прочитано, описание = iq.прочитать(b"\x00\x01" + x.astype("<f4").tobytes(), "float32", пропуск=2, каналы="QI")
+        np.testing.assert_allclose(z.imag + 1j * z.real, прочитано)
+        self.assertTrue(описание.endswith("; каналы Q, I"))
+        # Хвост, не кратный паре отсчётов, отбрасывается.
+        self.assertEqual(len(z), len(iq.прочитать(x.astype("i1").tobytes() + b"\x05", "int8")[0]))
+        for байты, формат, ошибка in (
+                (b"\x00" * 64, "авто", "формат отсчётов не определить по байтам: укажите int8, uint8, int16 или float32 (или WAV)"),
+                (b"\x00" * 64, "wav", "не WAV: нет заголовка RIFF/WAVE"),
+                (b"\x00" * 64, "int12", "формат отсчётов: int8, uint8, int16, float32 или WAV"),
+                (b"\x00" * 20, "int8", "отсчётов 10: для облака нужно хотя бы 16")):
+            with self.subTest(ошибка), self.assertRaises(ValueError) as о:
+                iq.прочитать(байты, формат)
+            self.assertEqual(ошибка, str(о.exception))
+        with self.assertRaises(ValueError):
+            iq.прочитать(b"\x00" * 64, "int16", порядок="средний")
+        with self.assertRaises(ValueError):
+            iq.прочитать(b"\x00" * 64, "int16", каналы="II")
+        # Не конечные отсчёты (NaN) отбрасываются.
+        y = x.astype("<f4")
+        y[0] = np.nan
+        self.assertEqual(len(z) - 1, len(iq.прочитать(y.tobytes(), "float32")[0]))
+
+    def test_wav(self):
+        z = np.array([1000 - 2000j, -3000 + 4000j] * 20)
+        x = np.empty(2 * len(z), "<i2")
+        x[0::2], x[1::2] = z.real, z.imag
+        буфер = io.BytesIO()
+        with wave.open(буфер, "wb") as w:
+            w.setnchannels(2)
+            w.setsampwidth(2)
+            w.setframerate(48000)
+            w.writeframes(x.tobytes())
+        прочитано, описание = iq.прочитать(буфер.getvalue())
+        np.testing.assert_allclose(z, прочитано)
+        self.assertEqual("WAV: 2 канала, 16 бит, PCM, 48000 Гц", описание)
+        # 24 бита и 8 бит (без знака) — через модуль wave; float32 — заголовок вручную (формат 3, блок LIST перед data).
+        for бит, данные, ждём in ((24, b"".join(int(v).to_bytes(3, "little", signed=True) for v in x), z),
+                                  (8, (np.clip(x // 256, -128, 127) + 128).astype("u1").tobytes(),
+                                   (np.clip(x // 256, -128, 127))[0::2] + 1j * (np.clip(x // 256, -128, 127))[1::2])):
+            буфер = io.BytesIO()
+            with wave.open(буфер, "wb") as w:
+                w.setnchannels(2)
+                w.setsampwidth(бит // 8)
+                w.setframerate(8000)
+                w.writeframes(данные)
+            with self.subTest(бит=бит):
+                np.testing.assert_allclose(ждём, iq.прочитать(буфер.getvalue(), "wav")[0])
+        f = x.astype("<f4").tobytes()
+        fmt = struct.pack("<HHIIHH", 3, 2, 1000, 8000, 8, 32)
+        riff = b"WAVE" + b"fmt " + struct.pack("<I", 16) + fmt + b"LIST" + struct.pack("<I", 3) + b"abc\x00" + \
+            b"data" + struct.pack("<I", len(f)) + f
+        прочитано, описание = iq.прочитать(b"RIFF" + struct.pack("<I", len(riff)) + riff)
+        np.testing.assert_allclose(z, прочитано)
+        self.assertIn("32 бит, float", описание)
+        # Один канал и неизвестный формат — отказ; нет data — отказ.
+        моно = io.BytesIO()
+        with wave.open(моно, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(8000)
+            w.writeframes(x.tobytes())
+        with self.assertRaises(ValueError) as о:
+            iq.прочитать(моно.getvalue())
+        self.assertEqual("WAV: каналов 1, а для I/Q нужно два", str(о.exception))
+        fmt = struct.pack("<HHIIHH", 2, 2, 1000, 8000, 8, 4)
+        riff = b"WAVE" + b"fmt " + struct.pack("<I", 16) + fmt + b"data" + struct.pack("<I", 64) + b"\x00" * 64
+        with self.assertRaises(ValueError) as о:
+            iq.прочитать(b"RIFF" + struct.pack("<I", len(riff)) + riff)
+        self.assertEqual("WAV: формат 2, 4 бит — поддерживаются PCM 8/16/24/32 и float32", str(о.exception))
+        with self.assertRaises(ValueError) as о:
+            iq.прочитать(b"RIFF\x04\x00\x00\x00WAVE")
+        self.assertEqual("WAV без блока fmt или data", str(о.exception))
+        # WAVE_FORMAT_EXTENSIBLE: подформат — первые два байта GUID.
+        fmt = struct.pack("<HHIIHH", 0xFFFE, 2, 1000, 8000, 4, 16) + struct.pack("<HHI", 22, 16, 3) + struct.pack("<H", 1) + b"\x00" * 14
+        данные = x.tobytes()
+        riff = b"WAVE" + b"fmt " + struct.pack("<I", len(fmt)) + fmt + b"data" + struct.pack("<I", len(данные)) + данные
+        np.testing.assert_allclose(z, iq.прочитать(b"RIFF" + struct.pack("<I", len(riff)) + riff)[0])
+
+    def test_облако_поворот_и_решения(self):
+        for имя, поворот, инверсия, шум in (("DVB-S2 8PSK", 17.0, False, 0.07), ("КАМ16 Грей", 33.0, True, 0.05),
+                                             ("DVB-S2 16APSK (γ 3,15)", 5.0, False, 0.03), ("ФМ4 Грей", 71.0, True, 0.1)):
+            метки, z, п = облако_эталон(имя, 12000, поворот=поворот, инверсия=инверсия, шум=шум)
+            with self.subTest(имя):
+                сырьё, _ = iq.прочитать(в_int16(z * 1.7 + (0.3 - 0.2j)), "int16")
+                о = iq.облако(сырьё)
+                self.assertEqual(len(п.метки), о["точек"])
+                self.assertEqual([2, 4, 8, 16, 32, 64][:len(о["оценки"])], [x["точек"] for x in о["оценки"]])
+                идеал = np.array([complex(x, y) for x, y in п.xy])
+                в = iq.выровнять(о["центры"], о["веса"], идеал, шаг=п.шаг)
+                # Поворот, снимающий канал: −φ по модулю шага симметрии. Инверсия у созвездий, симметричных
+                # отражению (все эти), по облаку не отличима от поворота: берётся без инверсии, поворот — свой.
+                self.assertFalse(в["инверсия"])
+                ждём = (поворот if инверсия else -поворот) % п.шаг
+                if not инверсия:
+                    self.assertAlmostEqual(0.0, (в["поворот"] - ждём + п.шаг / 2) % п.шаг - п.шаг / 2, delta=0.6)
+                self.assertLess(в["ошибка"], 0.05)
+                # Решения по плоскости — метки с точностью до симметрии: отображение истинная → решённая — перестановка.
+                решено = iq.по_плоскости(iq.повернуть((сырьё - о["середина"]) / о["масштаб"], в["поворот"], в["инверсия"]),
+                                         идеал, np.array(п.метки))
+                истинные = np.array(п.метки)[метки]
+                пары = {}
+                for t, d in zip(истинные.tolist(), решено.tolist(), strict=True):
+                    пары.setdefault(t, []).append(d)
+                отображение = {t: max(set(d), key=d.count) for t, d in пары.items()}
+                self.assertEqual(len(п.метки), len(set(отображение.values())))
+                совпало = np.mean([отображение[t] == d for t, d in zip(истинные.tolist(), решено.tolist(), strict=True)])
+                self.assertGreater(совпало, 0.99)
+                # По кластерам — тоже перестановка.
+                кл = iq.по_кластерам(iq.повернуть((сырьё - о["середина"]) / о["масштаб"], в["поворот"], в["инверсия"]),
+                                     iq.повернуть(о["центры"], в["поворот"], в["инверсия"]))
+                self.assertEqual(set(range(len(п.метки))), set(кл.tolist()))
+
+    def test_k_средних_и_отделимость(self):
+        rng = np.random.default_rng(3)
+        центры = np.array([0, 10, 10j, 10 + 10j])
+        z = центры[rng.integers(0, 4, 4000)] + 0.3 * (rng.standard_normal(4000) + 1j * rng.standard_normal(4000))
+        ц, м = iq.k_средних(z, 4)
+        self.assertEqual(sorted(np.round(центры).tolist(), key=lambda c: (c.real, c.imag)),
+                         sorted(np.round(ц).tolist(), key=lambda c: (c.real, c.imag)))
+        self.assertTrue(np.array_equal(м, np.abs(z[:, None] - ц[None, :]).argmin(axis=1)))
+        self.assertGreater(iq.отделимость(z, ц, м), 20)
+        self.assertEqual(0.0, iq.отделимость(z, ц[:1], np.zeros(len(z), int)))
+        with self.assertRaises(ValueError):
+            iq.k_средних(z[:3], 4)
+        # Порядок чтения: сверху вниз, слева направо.
+        self.assertEqual([2, 3, 0, 1], iq.порядок_чтения(центры).tolist())
+        K, оценки = iq.число_точек(z)
+        self.assertEqual(4, K)
+        self.assertEqual(max(оценки, key=lambda о: о["отделимость"])["точек"], 4)
+        with self.assertRaises(ValueError):
+            iq.облако(z, точек=3)
+        with self.assertRaises(ValueError):
+            iq.число_точек(z[:10])
+
+    def test_iq_в_разметку_вслепую(self):
+        """Облако 8PSK со своей разметкой модулятора: решения по кластерам — затем ЛРП находит разметку."""
+        x = лрп(12000, (23, 18))[:11997]
+        rng = np.random.default_rng(9)
+        своя = rng.permutation(8)                                 # метка t → точка своя[t] по кругу
+        углы = 2 * np.pi * своя[р.в_символы(x, 3)] / 8 + math.radians(12)
+        z = np.exp(1j * углы) + 0.08 * (rng.standard_normal(len(углы)) + 1j * rng.standard_normal(len(углы)))
+        сырьё, _ = iq.прочитать(в_int16(z), "int16")
+        о = iq.облако(сырьё, точек=8)
+        метки = iq.по_кластерам((сырьё - о["середина"]) / о["масштаб"], о["центры"])
+        ит = р.искать(р.в_биты(метки, 3), 3, мера="лрп", срок=120)
+        self.assertIsNotNone(ит)
+        self.assertEqual(23, берлекэмп(list(р.применить(р.в_биты(метки, 3), 3, ит.таблица)[:400])))
+
+
+# -- общие плоскости, своя разметка, .etl с координатами -----------------------------------------
+
+class ОбщиеПлоскостиTests(unittest.TestCase):
+    def test_координаты_в_etl(self):
+        текст = ("# 16APSK своя, 2026\n; примечание 0101 не точка\n# вид: общее\n"
+                 + "\n".join(f"{format(i, '04b')} = {r:.4f} @ {а:.2f}°" if i % 3 else f"{format(i, '04b')}: {r * math.cos(math.radians(а)):.6f}, "
+                              f"{r * math.sin(math.radians(а)):.6f}"
+                              for i, (r, а) in enumerate([(1.0, 45 + 90 * j) for j in range(4)] + [(2.6, 15 + 30 * j) for j in range(12)])))
+        с_ = мд.разобрать_etl(текст, "apsk.etl")
+        self.assertEqual((16, True, "общее"), (с_.M, с_.точные, с_.вид))
+        п = мд.плоскость(с_)
+        self.assertEqual("общее", п.вид)
+        self.assertEqual(90.0, п.шаг)
+        self.assertAlmostEqual(1.0, float(np.mean([x * x + y * y for x, y in п.xy])))
+        # Выгрузка общей плоскости — строками координат; разбор выгрузки — те же точки по номерам.
+        снова = мд.разобрать_etl(мд.в_etl(с_))
+        np.testing.assert_allclose(np.array(п.xy), np.array(мд.плоскость(снова).xy), atol=1e-5)
+        self.assertEqual(п.метки, мд.плоскость(снова).метки)
+        # Точные координаты по окружности через равные углы — это ФМ (порядок по углу, как у картинки).
+        фм = мд.разобрать_etl("\n".join(f"{format(v, '03b')} = 1 @ {45 * n + 10}" for n, v in enumerate([0, 1, 3, 2, 6, 7, 5, 4])))
+        self.assertEqual(("ФМ", (0, 1, 3, 2, 6, 7, 5, 4)), (мд.плоскость(фм).вид, мд.плоскость(фм).метки))
+        # Сетка координатами — КАМ; неравные углы — общее.
+        кам = мд.разобрать_etl("\n".join(f"{format(4 * i + q, '04b')} = {2 * i - 3} {2 * q - 3}" for i in range(4) for q in range(4)))
+        self.assertEqual("КАМ", мд.плоскость(кам).вид)
+        неравно = мд.разобрать_etl("00 = 1 0\n01 = 0 1\n10 = -1 0\n11 = 0.6 -0.8")
+        self.assertEqual("общее", мд.плоскость(неравно).вид)
+        self.assertEqual(360.0, мд.плоскость(неравно).шаг)
+        # Картинка APSK: точки на одном луче — только по «# вид: общее».
+        картинка = "  01  11\n\n  00  10\n"
+        # Внутренняя и внешняя точки на одном луче (кольца 4 + 4): у картинки ФМ порядок по углу не определён.
+        кольца = "000         001\n   010   011\n\n   110   111\n100         101\n"
+        self.assertEqual("ФМ", мд.плоскость(мд.разобрать_etl(картинка)).вид)
+        self.assertEqual("общее", мд.плоскость(мд.разобрать_etl("# вид: общее\n" + кольца)).вид)
+        with self.assertRaises(ValueError):
+            мд.разобрать_etl(кольца)
+
+    def test_ошибки_координат(self):
+        for текст, ждём in (
+                ("00 = 1 0\n01 = 0 1\n10 = -1 0\n11 0 -1", "строка 4: «11 0 -1» — ждём «метка = x y» (или «метка = r @ угол»)"),
+                ("# вид: круглый\n00 01\n10 11", "вид «круглый»: ФМ, КАМ или общее"),
+                ("# вид: КАМ\n000 = 1 0\n001 = 0 1\n010 = -1 0\n011 = 0 -1\n100 = 2 0\n101 = 0 2\n110 = -2 0\n111 = 0 -2",
+                 "вид «КАМ», а точки не заполняют сетку: различных столбцов 5, строк 5, точек 8"),
+                ("# вид: общее\n00 = 1 0\n01 = 1 0\n10 = -1 0\n11 = 0 -1", "точки «00» и «01» совпадают"),
+                ("# вид: общее\n00 = 1 1\n01 = 1 1\n10 = 1 1\n11 = 1 1", "все точки созвездия совпадают"),
+                ("00 = inf 0\n01 = 0 1\n10 = -1 0\n11 = 0 -1", "строка 1: «00 = inf 0» — ждём «метка = x y» (или «метка = r @ угол»)")):
+            with self.subTest(ждём), self.assertRaises(ValueError) as о:
+                мд.разобрать_etl(текст)
+            self.assertEqual(ждём, str(о.exception))
+        # Десятичная запятая и знак «∠» полярной записи.
+        с_ = мд.разобрать_etl("0 = 1,5 ∠ 0\n1 = 1,5 ∠ 180")
+        self.assertEqual([("0", 1.5, 0.0), ("1", -1.5, 1.5 * math.sin(math.pi))], [(м, round(x, 9), y) for м, x, y in с_.точки])
+
+    def test_встроенные_общие(self):
+        # 16APSK и 32APSK — кольца 4+12 и 4+12+16 (радиусы из таблиц GNU Radio), шаг 90°.
+        for имя, кольца in (("DVB-S2 16APSK (γ 3,15)", [4, 12]), ("DVB-S2 32APSK (γ 2,84; 5,27)", [4, 12, 16])):
+            с_ = мд.найти(имя)
+            радиусы = np.round([math.hypot(x, y) for _, x, y in с_.точки], 6)
+            self.assertEqual(кольца, [int((радиусы == r).sum()) for r in sorted(set(радиусы))])
+            self.assertEqual(("общее", 90.0), (мд.плоскость(с_).вид, мд.плоскость(с_).шаг))
+        с_ = мд.найти("DVB-S2 16APSK (γ 3,15)")
+        точки = {м: complex(x, y) for м, x, y in с_.точки}
+        # m_16apsk[12] = r1·e^{iπ/4}, m_16apsk[4] = r2·e^{iπ/12}, γ = 3,15.
+        self.assertAlmostEqual(cmath.exp(1j * math.pi / 4), точки["1100"])
+        self.assertAlmostEqual(3.15 * cmath.exp(1j * math.pi / 12), точки["0100"])
+        # Кресты: 32 и 128 точек без углов квадрата, симметричны; метки — по порядку чтения.
+        for имя, сторона, срез in (("КАМ32 крест", 6, 1), ("КАМ128 крест", 12, 2)):
+            с_ = мд.найти(имя)
+            места = {(int(x), int(y)) for _, x, y in с_.точки}
+            ждём = {(2 * i - сторона + 1, 2 * j - сторона + 1) for i in range(сторона) for j in range(сторона)
+                    if not ((i < срез or i >= сторона - срез) and (j < срез or j >= сторона - срез))}
+            self.assertEqual(ждём, места)
+            self.assertEqual(list(range(с_.M)), [int(м, 2) for м, _, _ in с_.точки])
+            self.assertEqual(90.0, мд.плоскость(с_).шаг)
+        # КАМ64 и КАМ256: Грей уровня по каждой оси, соседи по сетке отличаются одним битом.
+        for имя in ("КАМ64 Грей", "КАМ256 Грей", "КАМ8 прямоугольная Грей"):
+            п = мд.плоскость(мд.найти(имя))
+            self.assertEqual("КАМ", п.вид)
+            self.assertTrue(all(bin(п.метки[a] ^ п.метки[b]).count("1") == 1 for a, b in п.соседи))
+        self.assertEqual(180.0, мд.плоскость(мд.найти("КАМ8 прямоугольная Грей")).шаг)
+
+    def test_декодер_общей_плоскости(self):
+        """Поворот на 90° 16APSK против независимого счёта: умножение на i и ближайшая точка."""
+        с_ = мд.найти("DVB-S2 16APSK (γ 3,15)")
+        н = мд.настройки({"модуляция": "АФМ16", "демодулятор": с_.имя, "вид_кода": с_.имя, "поворот": 90},
+                         найти_=lambda и: мд.найти(и))
+        точки = {int(м, 2): complex(x, y) for м, x, y in с_.точки}
+        ждём = [min(точки, key=lambda t: abs(точки[t] - точки[v] * 1j)) for v in range(16)]
+        self.assertEqual(ждём, list(мд.декодер(н).таблица))
+        with self.assertRaises(ValueError) as о:
+            мд.декодер(мд.настройки({"модуляция": "АФМ16", "демодулятор": с_.имя, "вид_кода": с_.имя, "поворот": 45}))
+        self.assertEqual("поворот 45° не переводит созвездие в себя; для этой плоскости -16 шаг 90°", str(о.exception))
+        with self.assertRaises(ValueError):
+            мд.настройки({"модуляция": "АФМ16", "демодулятор": с_.имя, "вид_кода": с_.имя, "относительная": True})
+        self.assertEqual(("АФМ", 5), мд.модуляция("apsk-32"))
+        # Соседи у APSK — по кольцам: кодов Грея больше предела — отказ словами.
+        with self.assertRaises(ValueError) as о:
+            мд.число_вариантов(н)
+        self.assertEqual("вариантов кода Грея больше 100000: перебор для 16 точек не поддерживается", str(о.exception))
+        # Соседи общей плоскости — ближе 1,25 наименьшего расстояния каждой из пары: у креста 32 — по сетке.
+        п = мд.плоскость(мд.найти("КАМ32 крест"))
+        self.assertEqual(52, len(п.соседи))
+        # Нет ни одного кода Грея (треугольник соседей) — отказ «нет разметок кодом Грея».
+        треугольник = мд.разобрать_etl("# вид: общее\n00 = 0 0\n01 = 1 0\n10 = 0.5 0.866\n11 = 5 5")
+        н3 = мд.настройки({"модуляция": "АФМ4", "демодулятор": "т", "вид_кода": "т"}, найти_=lambda и: треугольник)
+        with self.assertRaises(ValueError) as о:
+            мд.число_вариантов(н3)
+        self.assertIn("нет разметок кодом Грея", str(о.exception))
+
+    def test_своя_разметка(self):
+        основа = мд.найти("DVB-S2 16APSK (γ 3,15)")
+        п = мд.плоскость(основа)
+        метки = [format(м, "04b") for м in п.метки]
+        метки[0], метки[5] = метки[5], метки[0]
+        своя = мд.своя_разметка(основа, метки, "своя.etl")
+        сп = мд.плоскость(своя)
+        self.assertEqual("общее", сп.вид)
+        np.testing.assert_allclose(np.array(п.xy), np.array(сп.xy), atol=1e-12)
+        self.assertEqual([int(м, 2) for м in метки], list(сп.метки))
+        снова = мд.плоскость(мд.разобрать_etl(мд.в_etl(своя)))
+        self.assertEqual(сп.метки, снова.метки)
+        # ФМ и КАМ основы — своя разметка той же формы (картинкой выгружается и разбирается так же).
+        for имя in ("ФМ8 Грей", "КАМ16 Грей"):
+            о = мд.найти(имя)
+            по = мд.плоскость(о)
+            м_ = [format(м, f"0{о.k}b") for м in по.метки][::-1]
+            с2 = мд.своя_разметка(о, м_, "x.etl")
+            self.assertEqual((по.вид, [int(м, 2) for м in м_]), (мд.плоскость(с2).вид, list(мд.плоскость(с2).метки)))
+            self.assertEqual(мд.плоскость(с2).метки, мд.плоскость(мд.разобрать_etl(мд.в_etl(с2))).метки)
+        for метки_, ждём in ((метки[:15], "меток 15, а точек 16"), (["0000"] * 16, "метка «0000» повторяется: у каждой точки своя"),
+                             (метки[:15] + ["2"], "метка «2»: 4 символов 0 и 1"), (метки[:15] + ["00000"], "метка «00000»: 4 символов 0 и 1")):
+            with self.subTest(ждём), self.assertRaises(ValueError) as о:
+                мд.своя_разметка(основа, метки_, "x.etl")
+            self.assertEqual(ждём, str(о.exception))
+
+    def test_слой_б64(self):
+        rng = np.random.default_rng(4)
+        для = {7: 128, 8: 256}
+        for k, M in для.items():
+            таблица = tuple(rng.permutation(M).tolist())
+            д = мд.Декодер(k, таблица, описание="КАМ" + str(M))
+            слой = д.слой()
+            self.assertTrue(слой.startswith(f"моддекодер {k} б64: "))
+            self.assertLessEqual(len(слой), мд.СЛОЙ_ДО)
+            self.assertEqual(таблица, мд.из_слоя(слой).таблица)
+            номера, метки_ = tuple(rng.permutation(M).tolist()), tuple(rng.permutation(M).tolist())
+            о = мд.Декодер(k, номера=номера, метки=метки_)
+            self.assertEqual((номера, метки_), (мд.из_слоя(о.слой()).номера, мд.из_слоя(о.слой()).метки))
+            x = rng.integers(0, 2, k * 50).astype(np.uint8)
+            ряд, _ = мд.снять(x, слой)
+            self.assertTrue(np.array_equal(метки_в_биты([таблица[int("".join(map(str, x[i:i + k])), 2)] for i in range(0, len(x), k)], k), ряд))
+        self.assertEqual("моддекодер 6: " + " ".join(map(str, range(64))), мд.Декодер(6, tuple(range(64))).слой())
+        for слой, ждём in (("моддекодер 8 б64: AAEC", "таблица: байты в base64 — перестановка чисел 0…255"),
+                           ("моддекодер 8 б64: !!!", "таблица: байты в base64 — перестановка чисел 0…255")):
+            with self.subTest(слой), self.assertRaises(ValueError) as о:
+                мд.из_слоя(слой)
+            self.assertEqual(ждём, str(о.exception))

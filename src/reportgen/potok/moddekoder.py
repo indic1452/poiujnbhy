@@ -701,9 +701,10 @@ class Декодер:
         """Шаг обработки — самодостаточный: таблица прямо в тексте, описание — в скобках.
 
         От 128 точек таблица числами длиннее шага (500 знаков) — она пишется байтами в base64
-        («моддекодер 8 б64: …»).
+        (алфавит URL-safe, без «/»: «моддекодер 8 б64: …»).
         """
-        запись_ = (lambda т: base64.b64encode(bytes(т)).decode("ascii")) if self.k >= СЛОЙ_Б64_ОТ else \
+        # Алфавит base64 без «/» и «+» (URL-safe): «/» разделяет таблицы относительного режима.
+        запись_ = (lambda т: base64.urlsafe_b64encode(bytes(т)).decode("ascii")) if self.k >= СЛОЙ_Б64_ОТ else \
             (lambda т: " ".join(map(str, т)))
         б64 = " б64" if self.k >= СЛОЙ_Б64_ОТ else ""
         if self.номера:
@@ -764,7 +765,10 @@ def из_слоя(указание: str) -> Декодер:
         if not м.group(2):
             return _таблица(т, M, что)
         try:
-            return _таблица(list(base64.b64decode(т.strip(), validate=True)), M, что)
+            сжато = т.strip()
+            if not re.fullmatch(r"[A-Za-z0-9_\-]*={0,2}", сжато):
+                raise ValueError(что)
+            return _таблица(list(base64.urlsafe_b64decode(сжато)), M, что)
         except (ValueError, TypeError):
             raise ValueError(f"{что}: байты в base64 — перестановка чисел 0…{M - 1}") from None
 
