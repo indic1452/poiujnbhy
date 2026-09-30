@@ -314,6 +314,23 @@ class НагрузкаTests(unittest.TestCase):
                                                                                     кадры[5], кадры[6])])
         self.assertEqual([п for i, п in enumerate(ETHERNET[:10]) if i not in (0, 7)], клиенты(р))
 
+    def test_короткие_области(self):
+        # Линейный заголовок — только если в области есть все 8 байт; короче 4 байт — поля типа нет.
+        тип = bytes([0x01, 0x01])                     # PTI 000, PFI 0, EXI 1, UPI 1
+        заголовок = тип + г.crc16(тип).to_bytes(2, "big")
+        доп = bytes([5, 0])
+        линейный = заголовок + доп + г.crc16(доп).to_bytes(2, "big")
+        к = gfp.разобрать_нагрузку(0, линейный)
+        self.assertEqual((5, "верен", b""), (к.cid, к.ehec, к.данные))
+        к = gfp.разобрать_нагрузку(0, линейный[:7])
+        self.assertEqual((None, "", b"\x05\x00" + линейный[6:7]), (к.cid, к.ehec, к.данные))
+        к = gfp.разобрать_нагрузку(0, линейный[:8] + b"xyz")
+        self.assertEqual((5, b"xyz"), (к.cid, к.данные))
+        self.assertEqual("ошибка", gfp.разобрать_нагрузку(0, заголовок + доп + b"\x00\x01").ehec)
+        self.assertEqual(("мало байт", None), (gfp.разобрать_нагрузку(0, заголовок[:3]).thec,
+                                               gfp.разобрать_нагрузку(0, заголовок[:3]).pti))
+        self.assertEqual(("верен", 1), (gfp.разобрать_нагрузку(0, заголовок).thec, gfp.разобрать_нагрузку(0, заголовок).upi))
+
     def test_cid_ehec_pfcs(self):
         области = [г.нагрузка(п, cid=i % 3, pfi=i % 2 == 1) for i, п in enumerate(ETHERNET[:30])]
         области[10] = bytearray(области[10])
