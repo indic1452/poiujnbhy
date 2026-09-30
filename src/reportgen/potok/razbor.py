@@ -54,6 +54,7 @@ from . import (
     gbe,
     gfp,
     hdlc,
+    iess,
     kanal,
     karta,
     kod,
@@ -83,6 +84,7 @@ from . import (
     tetra,
     tpc,
     trau,
+    trellis,
     turbo,
     turbo_std,
     v110,
@@ -1747,6 +1749,15 @@ def снять_вручную(биты: np.ndarray, указание: str) -> tu
             raise ValueError("V.110: синхрокомбинация кадра 80 бит не найдена ни прямо, ни через RA2")
         ряд = найдено.дальше
         подробно += [f"{найдено.что}: {найдено.мера}"] + list(найдено.подробно)
+    elif вид in ("trellis", "tcm", "треллис"):
+        # «trellis 8psk|16qam [код dsng|грей|натуральный] [поворот r] [отражение]» — прагматический
+        # TCM по меткам символов (EN 301 210).
+        ряд, подробно_ = trellis.снять(np.asarray(биты, dtype=np.uint8), слова)
+        подробно += подробно_
+    elif вид in ("рс", "rs") and "iess" in слова:
+        # «рс iess N K [глубина I]» — внешний РС IESS-308/309/310 с перемежением.
+        ряд, подробно_ = iess.снять(np.asarray(биты, dtype=np.uint8), слова)
+        подробно += подробно_
     elif вид in ("tcc", "турбо", "turbo"):
         # «tcc umts K [e E] [шаблон x/y1/y2] | lte K e E [rv r] | ccsds k 1/2 [asm] | rcs N 1/2
         # [обратный]» и «[начало N]» — турбокод стандарта (TS 25.212/36.212, CCSDS 131.0-B, EN 301 790).
