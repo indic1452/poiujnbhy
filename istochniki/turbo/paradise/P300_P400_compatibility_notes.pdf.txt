@@ -1,0 +1,434 @@
+
+=====PAGE 1=====
+Compatibility Notes for 
+P300 & P400 Series Satellite Modems
+(Including Viterbi and Sequential 
+FEC options)
+Doc ref: p:\p400.ser\d-wp\p400comp.wpd
+Issue 4
+Covering software versions V1.00 or later
+Paradise Datacom Limited
+Paradise Datacom LLC
+1 Wheaton Road
+1012 E. Boal Avenue
+Witham, Essex, CM8 3TD, England.
+Boalsburg, PA 16827, U.S.A.
+Phone 01376 515636 (Int + 44 1376...).
+Phone 814-466-6275 (Int + 1 814...)
+Fax 01376 533764
+Fax 814-466-3341
+http://www.paradise.co.uk
+http://www.paradisedata.com
+PARADISE DATACOM maintains a continuing programme of product improvement
+ and therefore reserves the right to change specifications without notice
+
+=====PAGE 2=====
+Table of Contents
+1
+INTRODUCTION . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1
+2
+E.F. DATA SDM-650B . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+2.1
+Description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+2.2
+Interworking Configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+2.3
+Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+2.4
+Recommendations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+3
+E.F. DATA SDM-300 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+3.1
+Description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+3.2
+Interworking Configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+3.3
+Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+3.4
+Recommendations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+3.5
+Additional Tests . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+3.6
+Description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+3.7
+Interworking Reed-Solomon . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+3.8
+Closed Network Compatibility . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+3.9
+IBS Compatibility . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+3.10 IDR Compatibility . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+3.11 Other SDM-300 Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+4
+COMSTREAM CM701 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+4.1
+Description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+4.2
+Interworking Configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+4.3
+Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+4.4
+Recommendations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+5
+RADYNE-COMSTREAM 2401L, 2401LS, 2401LB/ST . . . . . . . . . . . . . 6
+5.1
+Description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+5.2
+Interworking Configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+5.3
+Other Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+5.4
+Recommendations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+6
+FAIRCHILD SM2900 & SM290 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+6.1
+Description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+6.2
+Interworking Configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+6.3
+Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+6.4
+Recommendations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+7
+SSE DATACOM SM3000 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+7.1
+Description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+7.2
+Interworking Configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+7.3
+Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+7.4
+Recommendations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+
+=====PAGE 3=====
+1
+INTRODUCTION
+This document was originally written for the P400 Series of Satellite Modems, but is equally applicable to
+the P300 series. Wherever “P400 Series” is mentioned in the text it applies equally to the P300 Series.
+The document summarises the results of inter-compatibility tests we have performed between the our
+products and equipment from other manufacturers. These are tests we have performed in ideal conditions
+in our development laboratory, to save operators having to perform similar tests over satellite with the
+language & test equipment difficulties this can often involve.
+It is our intent that the P400 Series (and P300 Series) should interwork with modems from all
+manufacturers, in as many of  the modes these other products offer as possible. Some specific proprietary
+modes of other equipment are not provide by the P400/P300  series, but for all products listed there are
+at least some modes in which both  equipments will inter-operate.
+This document and the tests performed are as accurate as we can achieve, but there may be special cases
+where equipment has been modified from its standard condition by the manufacturer, and is no longer
+compatible with the standard equipment (and therefore not with the P400 series either). Where we are
+aware that non standard equipment, or equipment with many different variations in the field exists, we have
+made a comment in the test results.
+If you find any inaccuracies in this document, of are aware of any other equipment which should be
+included, then we will be very pleased to hear from you. Please contact our normal technical support staff
+with any extra information you might have available.
+
+=====PAGE 4=====
+2
+E.F. DATA SDM-650B
+These tests were performed in our US facility by Paradise Staff with SDM-650B fitted with software version
+2.66.
+2.1
+Description
+The SDM-650B is an older design of which thousands are deployed throughout the world. The basic
+modem is closed network only and has a sequential only FEC scheme with a limited choice of data rates.
+Scrambling is specified as CCITT V.35 only and may be disabled.
+It appears there have been numerous versions of the SDM-650B shipped over the years and it is not easy
+to determine what the specific facilities of the unit might be. Configuration is by a mix of software and links
+or switches on various PCB's.
+Different revision of hardware have different mixes of links & switches to configure the unit. This is
+important as it is very useful to have a manual which matches the hardware release and software revision
+level of the equipment you are actually using where possible.
+"Compatibility Kits" for the SDM-650B exist according to the manual and it is apparent from one customers
+feedback that they can significantly affect inter-operation with other modems (as they would be intended
+to do).
+2.2
+Interworking Configuration
+These tests were performed using QPSK at 70MHz IF, with ½ rate Sequential FEC. Apart from the normal
+matching of configuration, the following is also required:
+Differential encoding/decoding must be on, this is user controlled on the SDM-650B, but always on
+in the P400 series.
+Spectrum Invert must be active in both directions, without this the P400 series will show either
+"Demod Unlocked" or "FEC Sync Loss (Spect Inv ?)", the SDM-650B will also fail to lock. Spectrum
+Invert can be provided as follows:
+On the P400 series (from the front panel)
+On the SDM-650B by "compatibility kit"
+Both directions, but at either site. NOT both sites (which then cancels !)
+Data Invert in both directions. This can be provided in several ways:
+Use links or switches on the SDM-650B to invert the input & output data on the interface (some
+models).
+Swop the A&B pairs of the input & output data at one end of the link.
+Use a scrambler / descrambler at one end which uses the same scrambling pattern but inverts
+the data. Selecting a V.35 style Linkabit scrambler on the P400 series provides the inverse
+of the Intelsat V.35 scrambler, which is very similar to the CCITT scrambler the SDM-650B is
+specified to have. At worst this will result in a 1x10
+ background error rate due to scrambler
+-12
+incompatibility.
+2.3
+Notes
+Demod Lock Time: The SDM-650B is a very old modem with a purely swept carrier detection scheme,
+and as such it can take a long time to acquire the carrier and for the demod to lock. In the tests we
+performed using a modem limited to 56kbps & 112kbps, the demod might take up to two minutes to lock
+(at 56kbps). This is long enough for most people to determine it doesn't work, and be tempted to change
+the configuration !
+2.4
+Recommendations
+1.
+Have the right version of the manual for the hardware / software on the SDM-650B you are using.
+2.
+Because of the variation in links & switches between SDM-650B models, you are likely to require test
+equipment (eg Firebirds) to get the link operating initially.
+
+=====PAGE 5=====
+3
+E.F. DATA SDM-300
+These tests were performed at our UK facility by Paradise staff with an SDM300.
+3.1
+Description
+3.2
+Interworking Configuration
+These tests were performed with the modem type set to CUSTOM, Intelsat Open. The data rate was
+1024kbps Closed Network with  BPSK and QPSK at 70MHz IF, with ½, ¾ and I rate Sequential and Viterbi
+FEC. Apart from the normal matching of configuration, the following is also required:
+Scrambling: set the P400 series modem to V35, CCITT.
+Viterbi FEC
+Note the SDM 300 does not provide ¾ or I rate FEC in BPSK
+Tx and Rx data phase (ie data inversion control)  must be set to normal on the SDM 300
+Note: Spectrum Inversion may be necessary on SDM300 Modems for some FEC rates (e.g. Rate 3/4).
+Sequential FEC
+Note the SDM 300 does not provide ¾ or I rate FEC in BPSK
+In BPSK and QPSK modes the data must be inverted at one end of the link in both directions.
+This is best achieved by setting the Tx and Rx data phase to invert on the SDM 300. 
+Additionally in QPSK mode requires spectrum invert at one end of the link in both directions.
+Both directions, but at either site. NOT both sites (which then cancels !)
+3.3
+Notes
+The SDM 300 has several manufacturer compatible modes accessible only when the modem type is
+set to CUSTOM , these are:
+FDC closed, EFD closed, Intelsat Op, CSC closed, SDM 51 compliant
+Changing the manufacturer mode appears to change a variety of data invert, spectrum invert,
+scrambler, FEC and filter shape settings.
+3.4
+Recommendations
+For closed network, used the Intelsat Open setting which means that filter settings etc will be
+compatible with the P400 series.
+For Open Network (IBS) and IDR operation, use the IDR (SDM 308) and IBS (SDM 309) settings
+available.
+
+=====PAGE 6=====
+3.5
+Additional Tests
+These tests were performed at our US facility by Paradise staff with an SDM300. 
+3.6
+Description
+3.7
+Interworking Reed-Solomon
+Reed Solomon WILL NOT INTER-OPERATE in "Closed Network", or "IDR" service modes, due to the
+incompatibility of the two modem's RS scramblers. While Paradise equipment has many scramblers to
+choose from, none were found to work with the SDM-300's RS scrambler under any circumstances. 
+Reed Solomon WILL INTER-OPERATE in IBS service mode.  However, please note that in some
+cases the RS n,k,t,d values need to be manually selected in the Paradise modem under the menu
+selection RS - "Other", due to the non-standard RS parameters implemented in the SDM300.  These
+specific cases are: >1544kbps - Paradise must use RS - "Other" set to 219,201,9,4, since the SDM-300
+uses these n,k,t,d values (normally the Paradise "Intelsat" default values above 1544kbps are
+219,201,9,8).
+Otherwise, the standard "Intelsat" values are the default settings in both modems. 
+3.8
+Closed Network Compatibility
+Paradise "Closed Network" Service mode is only compatible with the SDM-300 set to either "Intelsat
+Open" or "EFD Closed" Modem type. RS is not compatible (see Reed Solomon Compatibility section
+above).
+"Closed + ESC" mode on the SDM-300 is not compatible with Paradise or other Modems.
+3.9
+IBS Compatibility
+"IBS" service mode is fully compatible with the SDM-300, including RS (see Reed Solomon
+Compatibility section above).
+3.10
+IDR Compatibility
+"IDR" service mode is compatible with the SDM-300, with some qualifications: 
+a. RS is not compatible (see Reed Solomon Compatibility section above).
+b. The SDM-300 only supports T1 & E1 (1544 & 2048 kbps) data rates in IDR mode.
+3.11
+Other SDM-300 Notes
+Viterbi FEC: 
+Any SDM-300 firmware version less than 6.1.1 requires the Tx spectrum to be inverted when, and only
+when, Viterbi 3/4 Rate FEC is used.
+Sequential FEC:  
+a. In BPSK & QPSK modulation modes, the SDM-300's "Data Invert"  must be set for "Invert" on both
+Tx and Rx. 
+b. In QPSK mode the spectrum must be set to "Invert"  on the SDM-300's for both Tx & Rx.
+
+=====PAGE 7=====
+4
+COMSTREAM CM701
+These tests were performed at our UK facility by Paradise and Comstream Staff with a CM701 fitted
+with: M&C s/w v5.0, Demod s/w v4.3, Mod s/w V4.4, Mod gate array v4.4.
+4.1
+Description
+The CM701 is getting rather `long in the tooth` now days, but there is a large installed base.
+4.2
+Interworking Configuration
+These tests were performed at 1024kbps using BPSK and QPSK at 70MHz IF, with ½, ¾ and I  rate
+Sequential and Viterbi FEC. Apart from the normal matching of configuration, the following is also
+required:
+Differential encoding/decoding must be on, this is user controlled on the CM701, but always on
+in the P400 series.
+Tx and Rx data invert set to normal
+Spectrum Invert with Viterbi FEC
+Most modem manufacturers use this parameter to control the PQ symbol pairing when in BPSK
+mode. However the CM701 does not have such functionality, hence when in BPSK mode the P400
+series modems need to have the Tx spectrum Invert set to ‘invert’ (in order to match the CM701
+symbol pairing). The P400 Rx does not matter as the P400 series auto detects the symbol pairing
+and adjusts to match. In QPSK modes however the setting at both ends needs to be normal.
+Spectrum Invert with Sequential FEC
+With sequential FEC in QPSK mode it is necessary to have Spectrum Invert active at one end of
+the link in both directions. For BPSK, the spectrum invert has to be at the P440 end (in both
+directions) to make the BPSK symbol pairings match the CM701. Both directions, but at one end.
+NOT both ends (which then cancels !)
+Scramblers The Comstream CM701 provides two V35 scramblers `IDR MAN` and `Comstream`.
+IDR MAN will interwork with Intelsat V35. However Comstream (apparently CCITT V35) causes a
+data inversion when interworking with CCITT V35. If you are forced to interwork with a CM701 with
+scrambling set to Comstream do one of the following:
+1.
+On the CM701 enable the Data Invert parameter on same path that has the Comstream
+Scrambler active
+2.
+On the P400 series modems use the Linkabit Scrambler/Descrambler, which will have the
+effect of inverting the sense of the data, and hence correcting the overall sense. However
+Linkabit is an inversion of Intelsat V35 scrambling which is very similar to the CCITT
+scrambler, but will cause a 1x10
+ background error rate.
+-12
+4.3
+Notes
+Sequential FEC: The CM701 rate 3/4 sequential is not Intelsat compliant and will not interwork with the
+P400 (in 3/4 Rate sequential mode). The P300 however has a special Comstream compatible mode
+(see Handbook appendix E) and will interwork correctly.
+4.4
+Recommendations
+1.
+The CM701 an Tx and Rx  energy dispersal setting was always set to x1 (although it's not too
+descriptive about what that actually means)
+2.
+The CM701 has two Tx and Rx filter selections ‘SMS Filtering’ and ‘Comstream Filtering’. Select
+SMS filtering to match the P400 series modem filters. Interworking is possible with the CM701 set
+to Comstream filtering, but there will be a slight BER degradation.
+
+=====PAGE 8=====
+5
+RADYNE-COMSTREAM 2401L, 2401LS, 2401LB/ST
+These test were conducted in our US facility by Paradise staff with a 2401L fitted with software version
+8.9.
+5.1
+Description
+This section applies to all three models of Comstream-Radyne equipment listed, since Modem
+functions are functionally the same, except where noted.
+The Radyne-Comstream 2401 modem comes in several models, such as 2401L (L-band Tx & Rx),
+2401LB/ST (L-Band with ODU Driver), and 2401LS (L-Band Low Speed). The 2401L has a maximum
+data rate of 2048kbps in QPSK and OQPSK, and 1024kbps in BPSK modulation modes. The 2401LS is
+the same except for it's maximum data rate is 1024kbps in QPSK and OQPSK, and 512kbps in BPSK
+modulation mode. The 2401LB/ST has the features of the 2401L, plus a high-stability 10MHz reference
+and power supply for a BUC or SSPA. It also has a power supply  for a LNB. This last model would be
+equivalent to the Paradise P310 Modem.
+5.2
+Interworking Configuration
+These test were conducted using a variety of modulation settings (BPSK, QPSK, OQPSK), the different
+maximum data rates, (1024 - BPSK, 2048 - QPSK & OQPSK), different Viterbi FEC rates (1/2, 3/4, 7/8),
+Scrambling (Intelsat V.35), and other possible configuration settings. Apart from the normal matching of
+configurations, the following is also required:
+Differential Encoding/Decoding must be "ON" on the 2401 (it is always on in the P300/P310).
+Service type (P300/P310) must be Closed Network only, no other service mode was found to be
+compatible with the 2401, including Closed+ESC, IBS/SMS, and IDR.
+Scrambling Note: the 2401 uses "V.35-IESS" which is the same as the P300/P310 "V.35 Intelsat", and
+is automatically set in the P300/P310 modem when the P300/P310 scrambling is set to "Normal" for
+both Tx & Rx. It is necessary to set all parameters in the 2401, including setting the desired scrambler
+on one menu, then "Enable" it on another menu for both Tx & Rx.
+Reed-Solomon is compatible with a P300/P310, however, on the 2401 you must go to the
+"Mod/ReedSolomon" menu then "Enable" RS, then go to the "Mod/Data/Scrmbl Set" menu and set the
+scrambling to "RS Scrmblr" . Then go to the "Mod/Data/Scrmbl Ctrl" and "Enable" it. 
+Then repeat for the Demod menu.
+5.3
+Other Notes
+The 2401 Spectrum Invert for Tx & Rx, as well as Data Invert for Tx & Rx should be set to "Normal".
+The units tested did not have the optional Sequential FEC, and so were not tested, although we think
+they should be compatible at all rates.
+5.4
+Recommendations
+P300/P310: Use Closed Network, any modulation, any Viterbi FEC rate, use RS if desired, "Normal"
+scrambler in the P300/P310.  DO NOT use any other service mode.
+2401:
+Use any modulation, any Viterbi FEC rate, "V.35-IESS" scrambler, and use RS if desired.
+P300/P310: Use Closed Network, any modulation, any Viterbi FEC rate, use RS if desired , "Normal"
+scrambler in the P300/P310. DO NOT use any other service mode.
+2401:
+Use any modulation, any Viterbi FEC rate, "V.35-IESS" scrambler, and use RS if desired.
+
+=====PAGE 9=====
+6
+FAIRCHILD SM2900 & SM290
+These tests were performed at our UK facility by Paradise Staff with a FAIRCHILD SM2900 fitted with
+S/W V6.7, and a SM290 fitted with S/W V0.1L
+6.1
+Description
+For `Open Network` IBS, or IDR, the SM290 uses an external framing unit (the Paradise P1300, but
+often badged as a Fairchild product). The SM2900 uses an internal framing unit (Paradise design).
+6.2
+Interworking Configuration
+These tests were performed at 1024kbps QPSK, 70MHz IF, with ½ and ¾ rate Viterbi FEC and ½, ¾,
+and I rate Sequential FEC. Apart from the normal matching of configuration, the following is also
+required:
+Differential encoding/decoding must be on, this is user controlled on the SM2900, but always on
+in the P400 series.
+Scrambling The SM2900 & SM290 has a matching scrambler / descrambler for all but CCITT V35.
+Note the ‘V35' setting on the SM2900 & SM290 corresponds to INTELSAT V35 on the P400 series
+when in Viterbi mode, but in Sequential mode the SM2900&SM290 introduce an extra data
+inversion before the scrambler, and after the descrambler. Therefore it is necessary to change
+scrambler settings when in sequential mode if the SM2900 & SM290 is set to ‘V35'. In this case set
+the P400 series modem to Linkabit, which is an inverse of  INTELSAT V35 (to compensate for this
+extra inversion).
+6.3
+Notes
+With the SM290 and external framing unit it is possible to set multiple scramblers active (ie on the
+framing unit and on the modem). The SM2900 attempted to provide all the functionality of the SM290
+and P1300 combination but with an internal framing unit, right down to dumb things like being able to
+activate multiple scramblers. When a Reed-Solomon Internal Framing Board is fitted to the SM2900
+modem it gets worse, and the operator has three independent (& diverse) screens with which to control
+the three scramblers (V.35, IBS, and Reed-Solomon).
+If you have to interwork with a SM290/P1300 or a SM2900 with multiple scramblers active, then use the
+`Custom` option on the P400 series which allows you to activate multiple scramblers specifically to
+work with equipment such as this.
+6.4
+Recommendations
+Leave the P400 scrambling set to `Normal`, and get the configuration of the other equipment right !
+
+=====PAGE 10=====
+7
+SSE DATACOM SM3000
+These tests were performed at our UK facility by Paradise staff using a SSE SM3000 with S/W V2.6
+7.1
+Description
+The SM3000 & SM4000 are Fairchild / SSE's 1U high replacements for the 2U SM2900. The SM4000
+is a higher data rate version of the SM3000.
+7.2
+Interworking Configuration
+These tests were performed at 1024kbps using BPSK and QPSK at 70MHz IF, with ½, ¾, & I rate
+Viterbi and ½, ¾, & I  rate Sequential FEC. Apart from the normal matching of configuration, the
+following is also required:
+Differential encoding/decoding must be on, this is user controlled on the SM3000, but always on
+in the P400 series.
+Scrambling
+On the SM3000 the `308` scrambler option is actually inverted Intelsat V35 (corresponding to the
+`Linkabit` definition on the P400 series)
+The `V.35` option is non-inverted Intelsat V.35 (`Intelsat` on the P400 series).
+There appears to be no CCITT V.35 mode on the SM3000.
+In Viterbi FEC mode this all works as expected (assuming you set the modes as they are shown to
+correspond above). For some reason in Sequential FEC mode the SM3000 adds an extra
+inversion, resulting in the inverse of the Viterbi scrambling modes. ie in Sequential mode SM3000-
+`308` = P400-Intelsat, and SM3000-`V.35` = P400-Linkabit, and 
+7.3
+Notes
+As described for the SM290 and SM2900 previously, multiple scramblers can be activated. If you have
+to interwork with a SM3000 with multiple scramblers active, then use the `Custom` option on the P400
+series which allows you to activate multiple scramblers specifically to work with equipment such as this.
+7.4
+Recommendations
+Leave the P400 scrambling set to `Normal`, and get the configuration of the other equipment right !

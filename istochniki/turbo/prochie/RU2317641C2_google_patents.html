@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>RU2317641C2 - Способ и устройство обработки сигналов линий связи по модели сигнала и перепрограммируемым электрическим схемам 
+        - Google Patents</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="referrer" content="origin-when-crossorigin">
+    <link rel="canonical" href="https://patents.google.com/patent/RU2317641C2/ru">
+    <meta name="description" content="
+     Изобретение относится к области радиотехники, цифровой и вычислительной техники и может быть использовано при приеме, демодуляции и обработке сигналов спутниковых и радиорелейных линий связи. Техническим результатом является расширение функциональных возможностей. Для этого сигнал принимают, демодулируют, преобразуют в цифровую форму, синтезируют модель обрабатываемого сигнала, выбирают номенклатуру и ресурс программируемых логических интегральных схем (ПЛИС), ПЗУ, ОЗУ, контроллеров, микропроцессоров, средств вычислительной техники, других перепрограммируемых или программно-управляемых электрорадиоизделий (ЭРИ) и создают схему соединений; конфигурируют ЭРИ по выполняемым функциям в сигнале, создают загрузочный модуль контролируемого сигнала, проверяют работоспособность полученной схемы методом моделирования или на реальном сигнале, в случае неудачи определяют локальный неработоспособный участок перепрограммируемых ЭРИ и корректируют программно схему, в случае успеха - заносят программу в банк электрических схем, по каждому новому сигналу повторяют вышеуказанные операции и формируют банк загрузочных модулей под различные сигналы, что позволяет автоматически настраиваться на любой сигнал при повторном выходе на него. Для обработки любого сигнала, имеющегося в банке загрузочных модулей, достаточно выбрать нужный загрузочный модуль и запрограммировать ЭРИ. Двухканальное приемно-демодулирующее устройство содержит последовательно соединенные радиоприемное устройство, блок аналого-цифрового преобразования, набор N-когерентных цифровых демодуляторов помехоустойчивые декодеры, а также интерфейс шины VME, контроллер и персональную электронно-вычислительную машину. Все устройства кроме персональной электронно-вычислительной машины комплексируются в конструктиве типа Евроблок - выполнены на перепрограммируемых или электронно-управляемых электрорадиоизделиях. 2 н.п. ф-лы, 3 ил.   
+   
+   ">
+    <meta name="DC.type" content="patent">
+    <meta name="DC.title" content="Способ и устройство обработки сигналов линий связи по модели сигнала и перепрограммируемым электрическим схемам 
+       ">
+    <meta name="DC.date" content="2005-05-17" scheme="dateSubmitted">
+    <meta name="DC.description" content="
+     Изобретение относится к области радиотехники, цифровой и вычислительной техники и может быть использовано при приеме, демодуляции и обработке сигналов спутниковых и радиорелейных линий связи. Техническим результатом является расширение функциональных возможностей. Для этого сигнал принимают, демодулируют, преобразуют в цифровую форму, синтезируют модель обрабатываемого сигнала, выбирают номенклатуру и ресурс программируемых логических интегральных схем (ПЛИС), ПЗУ, ОЗУ, контроллеров, микропроцессоров, средств вычислительной техники, других перепрограммируемых или программно-управляемых электрорадиоизделий (ЭРИ) и создают схему соединений; конфигурируют ЭРИ по выполняемым функциям в сигнале, создают загрузочный модуль контролируемого сигнала, проверяют работоспособность полученной схемы методом моделирования или на реальном сигнале, в случае неудачи определяют локальный неработоспособный участок перепрограммируемых ЭРИ и корректируют программно схему, в случае успеха - заносят программу в банк электрических схем, по каждому новому сигналу повторяют вышеуказанные операции и формируют банк загрузочных модулей под различные сигналы, что позволяет автоматически настраиваться на любой сигнал при повторном выходе на него. Для обработки любого сигнала, имеющегося в банке загрузочных модулей, достаточно выбрать нужный загрузочный модуль и запрограммировать ЭРИ. Двухканальное приемно-демодулирующее устройство содержит последовательно соединенные радиоприемное устройство, блок аналого-цифрового преобразования, набор N-когерентных цифровых демодуляторов помехоустойчивые декодеры, а также интерфейс шины VME, контроллер и персональную электронно-вычислительную машину. Все устройства кроме персональной электронно-вычислительной машины комплексируются в конструктиве типа Евроблок - выполнены на перепрограммируемых или электронно-управляемых электрорадиоизделиях. 2 н.п. ф-лы, 3 ил.   
+   
+   ">
+    <meta name="citation_patent_application_number" content="RU:2005114993/09A">
+    <meta name="citation_pdf_url" content="https://patentimages.storage.googleapis.com/53/62/67/cd1d861de99351/RU2317641C2.pdf">
+    <meta name="citation_patent_number" content="RU:2317641:C2">
+    <meta name="DC.date" content="2008-02-20" scheme="issue">
+    <meta name="DC.contributor" content="Роман Валентинович Емельянов" scheme="inventor">
+    <meta name="DC.contributor" content="Валерий Дмитриевич Христианов" scheme="inventor">
+    <meta name="DC.contributor" content="Анатолий Федорович Гончаров" scheme="inventor">
+    <meta name="DC.contributor" content="Андрей Абдулаевич Махмудов" scheme="inventor">
+    <meta name="DC.contributor" content="Александр Петрович Гавриленко" scheme="inventor">
+    <meta name="DC.contributor" content="Владимир Тимофеевич Савушкин" scheme="inventor">
+    <meta name="DC.contributor" content="Евгений Сергеевич Шеляпин" scheme="inventor">
+    <meta name="DC.contributor" content="Федеральное государственное унитарное предприятие &#34;Ростовский-на-Дону научно-исследовательский институт радиосвязи&#34; (ФГУП РНИИРС)" scheme="assignee">
+    <meta name="DC.relation" content="RU:41217:U1" scheme="references">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,400italic,500,500italic,700">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Product+Sans">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700">
+
+    <style>
+      
+      #gb { top: 15px; left: auto; right: 0; width: auto; min-width: 135px !important; }   
+      body { transition: none; }
+    </style>
+    <script></script>
+
+    <script>
+      window.version = 'patent-search.search_20260819_RC00';
+
+      function sendFeedback() {
+        userfeedback.api.startFeedback({
+          'productId': '713680',
+          'bucket': 'patent-search-web',
+          'productVersion': window.version,
+        });
+      }
+
+      window.experiments = {};
+      window.experiments.patentCountries = "ae,ag,al,am,ao,ap,ar,at,au,aw,az,ba,bb,bd,be,bf,bg,bh,bj,bn,bo,br,bw,bx,by,bz,ca,cf,cg,ch,ci,cl,cm,cn,co,cr,cs,cu,cy,cz,dd,de,dj,dk,dm,do,dz,ea,ec,ee,eg,em,ep,es,fi,fr,ga,gb,gc,gd,ge,gh,gm,gn,gq,gr,gt,gw,hk,hn,hr,hu,ib,id,ie,il,in,ir,is,it,jo,jp,ke,kg,kh,km,kn,kp,kr,kw,kz,la,lc,li,lk,lr,ls,lt,lu,lv,ly,ma,mc,md,me,mg,mk,ml,mn,mo,mr,mt,mw,mx,my,mz,na,ne,ng,ni,nl,no,nz,oa,om,pa,pe,pg,ph,pl,pt,py,qa,ro,rs,ru,rw,sa,sc,sd,se,sg,si,sk,sl,sm,sn,st,su,sv,sy,sz,td,tg,th,tj,tm,tn,tr,tt,tw,tz,ua,ug,us,uy,uz,vc,ve,vn,wo,yu,za,zm,zw";
+      
+      
+      window.experiments.keywordWizard = true;
+      
+      
+      
+      window.experiments.definitions = true;
+      window.experiments.plogs = true;
+
+      window.Polymer = {
+        dom: 'shady',
+        lazyRegister: true,
+      };
+    </script>
+
+    <script src="//www.gstatic.com/patent-search/frontend/patent-search.search_20260819_RC00/scs/compiled_dir/webcomponentsjs/webcomponents-lite.min.js"></script>
+    <link rel="import" href="//www.gstatic.com/patent-search/frontend/patent-search.search_20260819_RC00/scs/compiled_dir/search-app-vulcanized.html">
+  </head>
+  <body unresolved>
+    
+    
+    <script></script>
+    <script src="//www.gstatic.com/patent-search/frontend/patent-search.search_20260819_RC00/scs/compiled_dir/search-app-vulcanized.js"></script>
+    <search-app>
+      
+      
+
+      <article class="result" itemscope itemtype="http://schema.org/ScholarlyArticle">
+  <h1 itemprop="pageTitle">RU2317641C2 - Способ и устройство обработки сигналов линий связи по модели сигнала и перепрограммируемым электрическим схемам 
+        - Google Patents</h1>
+  <span itemprop="title">Способ и устройство обработки сигналов линий связи по модели сигнала и перепрограммируемым электрическим схемам 
+       </span>
+
+  <meta itemprop="type" content="patent">
+  <a href="https://patentimages.storage.googleapis.com/53/62/67/cd1d861de99351/RU2317641C2.pdf" itemprop="pdfLink">Download PDF</a>
+  <h2>Info</h2>
+
+  <dl>
+    <dt>Publication number</dt>
+    <dd itemprop="publicationNumber">RU2317641C2</dd>
+    <meta itemprop="numberWithoutCodes" content="2317641">
+    <meta itemprop="kindCode" content="C2">
+    <meta itemprop="publicationDescription" content="Patent for an invention or claims of a patent for an invention (second level)">
+    <span>RU2317641C2</span>
+    <span>RU2005114993/09A</span>
+    <span>RU2005114993A</span>
+    <span>RU2317641C2</span>
+    <span>RU 2317641 C2</span>
+    <span>RU2317641 C2</span>
+    <span>RU 2317641C2</span>
+    <span>RU 2005114993/09 A</span>
+    <span>RU2005114993/09 A</span>
+    <span>RU 2005114993/09A</span>
+    <span>RU 2005114993 A</span>
+    <span>RU2005114993 A</span>
+    <span>RU 2005114993A</span>
+    <span>RU 2317641 C2</span>
+    <span>RU2317641 C2</span>
+    <span>RU 2317641C2</span>
+
+    <dt>Authority</dt>
+    <dd itemprop="countryCode">RU</dd>
+    <dd itemprop="countryName">Russia</dd>
+
+    <dt>Prior art keywords</dt>
+    <dd itemprop="priorArtKeywords" repeat>signal</dd>
+    <dd itemprop="priorArtKeywords" repeat>reprogrammable</dd>
+    <dd itemprop="priorArtKeywords" repeat>digital</dd>
+    <dd itemprop="priorArtKeywords" repeat>radio</dd>
+    <dd itemprop="priorArtKeywords" repeat>devices</dd>
+
+    <dt>Prior art date</dt>
+    <dd><time itemprop="priorArtDate" datetime="2005-05-17">2005-05-17</time></dd>
+
+    
+  </dl>
+
+  <dt>Application number</dt>
+  <dd itemprop="applicationNumber">RU2005114993/09A</dd>
+
+  <dt>Other languages</dt>
+  <dd itemprop="otherLanguages" itemscope repeat>
+    <a href="/patent/RU2317641C2/en">
+      <span itemprop="name">English</span> (<span itemprop="code">en</span>)
+    </a>
+  </dd>
+
+  <dt>Other versions</dt>
+  <dd itemprop="directAssociations" itemscope repeat>
+    <a href="/patent/RU2005114993A/ru">
+      <span itemprop="publicationNumber">RU2005114993A</span>
+      (<span itemprop="primaryLanguage">ru</span>
+    </a>
+  </dd>
+
+  <dt>Inventor</dt>
+  <dd itemprop="inventor" repeat>Роман Валентинович Емельянов</dd>
+  <dd itemprop="inventor" repeat>Валерий Дмитриевич Христианов</dd>
+  <dd itemprop="inventor" repeat>Анатолий Федорович Гончаров</dd>
+  <dd itemprop="inventor" repeat>Андрей Абдулаевич Махмудов</dd>
+  <dd itemprop="inventor" repeat>Александр Петрович Гавриленко</dd>
+  <dd itemprop="inventor" repeat>Владимир Тимофеевич Савушкин</dd>
+  <dd itemprop="inventor" repeat>Евгений Сергеевич Шеляпин</dd>
+
+  
+
+  <dt>Original Assignee</dt>
+  <dd itemprop="assigneeOriginal" repeat>Федеральное государственное унитарное предприятие &#34;Ростовский-на-Дону научно-исследовательский институт радиосвязи&#34; (ФГУП РНИИРС)</dd>
+
+  <dt>Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.)</dt>
+  <dd><time itemprop="priorityDate" datetime="2005-05-17">2005-05-17</time></dd>
+
+  <dt>Filing date</dt>
+  <dd><time itemprop="filingDate" datetime="2005-05-17">2005-05-17</time></dd>
+
+  <dt>Publication date</dt>
+  <dd><time itemprop="publicationDate" datetime="2008-02-20">2008-02-20</time></dd>
+
+  
+  <dd itemprop="events" itemscope repeat>
+    <time itemprop="date" datetime="2005-05-17">2005-05-17</time>
+    <span itemprop="title">Application filed by Федеральное государственное унитарное предприятие &#34;Ростовский-на-Дону научно-исследовательский институт радиосвязи&#34; (ФГУП РНИИРС)</span>
+    <span itemprop="type">filed</span>
+    <span itemprop="critical" content="true" bool>Critical</span>
+    
+    
+    
+    <span itemprop="assigneeSearch">Федеральное государственное унитарное предприятие &#34;Ростовский-на-Дону научно-исследовательский институт радиосвязи&#34; (ФГУП РНИИРС)</span>
+  </dd>
+  <dd itemprop="events" itemscope repeat>
+    <time itemprop="date" datetime="2005-05-17">2005-05-17</time>
+    <span itemprop="title">Priority to RU2005114993/09A</span>
+    <span itemprop="type">priority</span>
+    <span itemprop="critical" content="true" bool>Critical</span>
+    
+    
+    <span itemprop="documentId">patent/RU2317641C2/ru</span>
+    
+  </dd>
+  <dd itemprop="events" itemscope repeat>
+    <time itemprop="date" datetime="2006-11-20">2006-11-20</time>
+    <span itemprop="title">Publication of RU2005114993A</span>
+    <span itemprop="type">publication</span>
+    <span itemprop="critical" content="true" bool>Critical</span>
+    
+    
+    <span itemprop="documentId">patent/RU2005114993A/ru</span>
+    
+  </dd>
+  <dd itemprop="events" itemscope repeat>
+    <time itemprop="date" datetime="2008-02-20">2008-02-20</time>
+    <span itemprop="title">Application granted</span>
+    <span itemprop="type">granted</span>
+    <span itemprop="critical" content="true" bool>Critical</span>
+    
+    
+    
+    
+  </dd>
+  <dd itemprop="events" itemscope repeat>
+    <time itemprop="date" datetime="2008-02-20">2008-02-20</time>
+    <span itemprop="title">Publication of RU2317641C2</span>
+    <span itemprop="type">publication</span>
+    <span itemprop="critical" content="true" bool>Critical</span>
+    
+    
+    <span itemprop="documentId">patent/RU2317641C2/ru</span>
+    
+  </dd>
+
+  <h2>Links</h2>
+  <ul>
+    
+
+    <li itemprop="links" itemscope repeat>
+        <meta itemprop="id" content="espacenetLink">
+        <a href="https://worldwide.espacenet.com/publicationDetails/biblio?CC=RU&amp;NR=2317641C2&amp;KC=C2&amp;FT=D" itemprop="url" target="_blank"><span itemprop="text">Espacenet</span></a>
+      </li>
+      
+
+    
+
+    <li itemprop="links" itemscope repeat>
+      <meta itemprop="id" content="globalDossierLink">
+      <a href="https://globaldossier.uspto.gov/result/application/RU/2005114993/1" itemprop="url" target="_blank"><span itemprop="text">Global Dossier</span></a>
+    </li>
+
+    
+
+      
+
+      
+
+      
+      <li itemprop="links" itemscope repeat>
+        <meta itemprop="id" content="stackexchangeLink">
+        <a href="https://patents.stackexchange.com/questions/tagged/RU2317641C2" itemprop="url"><span itemprop="text">Discuss</span></a>
+      </li>
+  </ul>
+
+  
+
+  <section>
+    <h2>Images</h2>
+    <ul>
+      <li itemprop="images" itemscope repeat>
+        <img itemprop="thumbnail" src="https://patentimages.storage.googleapis.com/46/93/4e/e3104eaa3e4add/00000002.png">
+        <meta itemprop="full" content="https://patentimages.storage.googleapis.com/a7/2e/26/7db61779b8fbca/00000002.png">
+        <ul>
+          <li itemprop="callouts" itemscope repeat>
+            <meta itemprop="figurePage" content="0">
+            <meta itemprop="id" content="12">
+            <meta itemprop="label" content="interleaving depth">
+            <span itemprop="bounds" itemscope>
+              <meta itemprop="left" content="1651">
+              <meta itemprop="top" content="1660">
+              <meta itemprop="right" content="1691">
+              <meta itemprop="bottom" content="1685">
+            </span>
+          </li>
+          <li itemprop="callouts" itemscope repeat>
+            <meta itemprop="figurePage" content="0">
+            <meta itemprop="id" content="12">
+            <meta itemprop="label" content="interleaving depth">
+            <span itemprop="bounds" itemscope>
+              <meta itemprop="left" content="1649">
+              <meta itemprop="top" content="2151">
+              <meta itemprop="right" content="1689">
+              <meta itemprop="bottom" content="2171">
+            </span>
+          </li>
+          <li itemprop="callouts" itemscope repeat>
+            <meta itemprop="figurePage" content="0">
+            <meta itemprop="id" content="12">
+            <meta itemprop="label" content="interleaving depth">
+            <span itemprop="bounds" itemscope>
+              <meta itemprop="left" content="1661">
+              <meta itemprop="top" content="2325">
+              <meta itemprop="right" content="1700">
+              <meta itemprop="bottom" content="2346">
+            </span>
+          </li>
+          <li itemprop="callouts" itemscope repeat>
+            <meta itemprop="figurePage" content="0">
+            <meta itemprop="id" content="4">
+            <meta itemprop="label" content="decoder">
+            <span itemprop="bounds" itemscope>
+              <meta itemprop="left" content="692">
+              <meta itemprop="top" content="1407">
+              <meta itemprop="right" content="707">
+              <meta itemprop="bottom" content="1437">
+            </span>
+          </li>
+          <li itemprop="callouts" itemscope repeat>
+            <meta itemprop="figurePage" content="0">
+            <meta itemprop="id" content="5">
+            <meta itemprop="label" content="software unit">
+            <span itemprop="bounds" itemscope>
+              <meta itemprop="left" content="1843">
+              <meta itemprop="top" content="1662">
+              <meta itemprop="right" content="1870">
+              <meta itemprop="bottom" content="1686">
+            </span>
+          </li>
+          <li itemprop="callouts" itemscope repeat>
+            <meta itemprop="figurePage" content="0">
+            <meta itemprop="id" content="5">
+            <meta itemprop="label" content="software unit">
+            <span itemprop="bounds" itemscope>
+              <meta itemprop="left" content="1663">
+              <meta itemprop="top" content="1822">
+              <meta itemprop="right" content="1692">
+              <meta itemprop="bottom" content="1845">
+            </span>
+          </li>
+          <li itemprop="callouts" itemscope repeat>
+            <meta itemprop="figurePage" content="0">
+            <meta itemprop="id" content="5">
+            <meta itemprop="label" content="software unit">
+            <span itemprop="bounds" itemscope>
+              <meta itemprop="left" content="1665">
+              <meta itemprop="top" content="1987">
+              <meta itemprop="right" content="1691">
+              <meta itemprop="bottom" content="2009">
+            </span>
+          </li>
+          <li itemprop="callouts" itemscope repeat>
+            <meta itemprop="figurePage" content="0">
+            <meta itemprop="id" content="5">
+            <meta itemprop="label" content="software unit">
+            <span itemprop="bounds" itemscope>
+              <meta itemprop="left" content="1848">
+              <meta itemprop="top" content="2324">
+              <meta itemprop="right" content="1870">
+              <meta itemprop="bottom" content="2344">
+            </span>
+          </li>
+        </ul>
+      </li>
+      <li itemprop="images" itemscope repeat>
+        <img itemprop="thumbnail" src="https://patentimages.storage.googleapis.com/6a/4d/55/4e9142039504cd/00000003.png">
+        <meta itemprop="full" content="https://patentimages.storage.googleapis.com/67/e6/06/ca2aa6b37b37bd/00000003.png">
+        <ul>
+        </ul>
+      </li>
+    </ul>
+  </section>
+
+  
+
+  
+
+  
+
+  
+
+  <section>
+    <h2>Landscapes</h2>
+    <ul>
+      <li itemprop="landscapes" itemscope repeat>
+        <span itemprop="name">Circuits Of Receivers In General</span>
+        (<span itemprop="type">AREA</span>)
+      </li>
+      <li itemprop="landscapes" itemscope repeat>
+        <span itemprop="name">Detection And Prevention Of Errors In Transmission</span>
+        (<span itemprop="type">AREA</span>)
+      </li>
+    </ul>
+  </section>
+
+
+  <section itemprop="abstract" itemscope>
+    <h2>Abstract</h2>
+    
+    <div itemprop="content" html><abstract mxw-id="PA145499233" lang="RU" load-source="patent-office">
+    <div class="abstract">Изобретение относится к области радиотехники, цифровой и вычислительной техники и может быть использовано при приеме, демодуляции и обработке сигналов спутниковых и радиорелейных линий связи. Техническим результатом является расширение функциональных возможностей. Для этого сигнал принимают, демодулируют, преобразуют в цифровую форму, синтезируют модель обрабатываемого сигнала, выбирают номенклатуру и ресурс программируемых логических интегральных схем (ПЛИС), ПЗУ, ОЗУ, контроллеров, микропроцессоров, средств вычислительной техники, других перепрограммируемых или программно-управляемых электрорадиоизделий (ЭРИ) и создают схему соединений; конфигурируют ЭРИ по выполняемым функциям в сигнале, создают загрузочный модуль контролируемого сигнала, проверяют работоспособность полученной схемы методом моделирования или на реальном сигнале, в случае неудачи определяют локальный неработоспособный участок перепрограммируемых ЭРИ и корректируют программно схему, в случае успеха - заносят программу в банк электрических схем, по каждому новому сигналу повторяют вышеуказанные операции и формируют банк загрузочных модулей под различные сигналы, что позволяет автоматически настраиваться на любой сигнал при повторном выходе на него. Для обработки любого сигнала, имеющегося в банке загрузочных модулей, достаточно выбрать нужный загрузочный модуль и запрограммировать ЭРИ. Двухканальное приемно-демодулирующее устройство содержит последовательно соединенные радиоприемное устройство, блок аналого-цифрового преобразования, набор N-когерентных цифровых демодуляторов помехоустойчивые декодеры, а также интерфейс шины VME, контроллер и персональную электронно-вычислительную машину. Все устройства кроме персональной электронно-вычислительной машины комплексируются в конструктиве типа Евроблок - выполнены на перепрограммируемых или электронно-управляемых электрорадиоизделиях. 2 н.п. ф-лы, 3 ил.</div>
+  </abstract>
+  </div>
+  </section>
+
+  <section itemprop="description" itemscope>
+    <h2>Description</h2>
+    
+    <div itemprop="content" html><div mxw-id="PDES84145529" lang="RU" load-source="patent-office" class="description">
+    <div num="1" class="description-paragraph">Изобретение относится к области радиотехники, цифровой и вычислительной техники и может быть использовано при приеме, демодуляции и обработке сигналов спутниковых и радиорелейных линий связи.</div>
+    <div num="2" class="description-paragraph">Бурное развитие цифровых методов передачи информации в спутниковых и радиорелейных линиях связи привело к многообразию преобразований сигналов на передающей стороне, таких как:</div>
+    <div num="3" class="description-paragraph">- поэтапное формирование групповых потоков различного уровня иерархического уплотнения, начиная от телеграфных, факсимильных передач до IV уровня иерархического уплотнения [Л.С. Левин и др. «Цифровые системы передачи информации», М.: Радио и связь, 1982 - 1],</div>
+    <div num="4" class="description-paragraph">- помехоустойчивое кодирование систематическими, несистематическими сверточными кодами и турбокодами;</div>
+    <div num="5" class="description-paragraph">- аддитивное и мультипликативное скремблирование;</div>
+    <div num="6" class="description-paragraph">- дифференциальное кодирование;</div>
+    <div num="7" class="description-paragraph">- перемежение цифровых потоков;</div>
+    <div num="8" class="description-paragraph">- кодирование кодами Рида-Соломона;</div>
+    <div num="9" class="description-paragraph">- фазовая модуляция с различными видами (ФМ2, ФМ4, ФМ4С, ФМ8, КАМ16, КАМ32, КАМ64, КАМ128, КАМ256);</div>
+    <div num="10" class="description-paragraph">- различные промежуточные частоты;</div>
+    <div num="11" class="description-paragraph">- различные высокие частоты по восходящей и нисходящей линиям. Каждое из этих преобразований имеет несколько степеней свободы, преобразования могут выполняться в различной последовательности, отдельные преобразования могут отсутствовать, что подтверждается многообразием рекомендаций МККТТ и ITU.</div>
+    <div num="12" class="description-paragraph">До недавних пор под каждую рекомендацию МККТТ и ITU разрабатывалась своя специализированная аппаратура [1, стр.185-200].</div>
+    <div num="13" class="description-paragraph">Появление в массовом производстве перепрограммируемых логических интегральных схем (ПЛИС) позволило строить аппаратуру обработки цифровых сигналов по моделям сигнала и перепрограммируемым схемам электрическим.</div>
+    <div num="14" class="description-paragraph">Так в [патент №2220498 от 27.12.2004 г. «Способ обработки цифровых потоков по модели сигнала и перепрограммируемым схемам электрическим» - 2] предложен способ, взятый за прототип, при котором сигнал демодулируют, преобразуют в цифровой поток и синтезируют модель сигнала, по модели сигнала создают электрическую схему устройства обработки цифровых потоков и определяют ресурс и номенклатуру перепрограммируемых логических интегральных схем, необходимых для ее реализации, создают загрузочный модуль под контролируемый сигнал, проверяют работоспособность полученной схемы методом моделирования или на реальном сигнале в случае создания макета, при этом в случае неудачи определяют локальный неработоспособный фрагмент перепрограммируемых логических интегральных схем и корректируют программно схему и загрузочный модуль, а в случае успеха заносят программу в банк электрических схем, выполненных в виде загрузочных модулей, причем по каждому новому сигналу повторяют вышеуказанные операции и формируют банк загрузочных модулей под различные сигналы.</div>
+    <div num="15" class="description-paragraph">Большим недостатком способа является возможность создания ограниченного круга устройств по обработке только цифровых потоков, в пределах возможностей ПЛИС, т.к. на них можно строить элементы цифровых схем.</div>
+    <div num="16" class="description-paragraph">В [патент на полезную модель №41217 от 10.10.2004 г. «Многоканальное приемно-демодулирующее устройство фазоманипулированных сигналов и сигналов квадратурной амплитудной манипуляции - 3] приведено приемно-демодулирующее устройство, принятое за прототип, содержащее последовательно соединенные радиоприемное устройство (РПУ), блок аналого-цифрового преобразования и набор N-цифровых демодулирующих устройств, входы которых подключены к выходу блока аналого-цифрового преобразователя.</div>
+    <div num="17" class="description-paragraph">Недостатками этого устройства являются малые функциональные возможности, в частности отсутствие средств помехоустойчивого декодирования, дескремблирования, деперемежения, декодирования кодов Рида-Соломона, отсутствие функций управления и взаимодействия.</div>
+    <div num="18" class="description-paragraph">Целью изобретения является расширение функциональных возможностей способа и устройства за счет расширения номенклатуры используемых перепрограммируемых микросхем и средств вычислительной техники.</div>
+    <div num="19" class="description-paragraph">Основанием для этого является появление помимо ПЛИС широкого круга перепрограммируемых или программно перестраиваемых электрорадиоизделий (ЭРИ), таких как:</div>
+    <div num="20" class="description-paragraph">- перепрограммируемые постоянные запоминающие устройства (ПЗУ);</div>
+    <div num="21" class="description-paragraph">- оперативные запоминающие устройства (ОЗУ);</div>
+    <div num="22" class="description-paragraph">- контроллеры;</div>
+    <div num="23" class="description-paragraph">- микропроцессоры;</div>
+    <div num="24" class="description-paragraph">- синтезаторы частоты;</div>
+    <div num="25" class="description-paragraph">- управляемые гетеродины;</div>
+    <div num="26" class="description-paragraph">- средства вычислительной техники, в том числе и персональные электронно-вычислительные машины.</div>
+    <div num="27" class="description-paragraph">Для достижения указанной цели предлагается способ, при котором сигнал принимают, демодулируют, преобразуют в цифровой поток и синтезируют модель сигнала.</div>
+    <div num="28" class="description-paragraph">Согласно изобретению по модели сигнала создают электрическую схему устройства обработки сигналов и определяют ресурс и номенклатуру перепрограммируемых логических интегральных схем, ОЗУ, ПЗУ, микропроцессоров, контроллеров, средств вычислительной техники и других перепрограммируемых или программно-управляемых электрорадиоизделий, необходимых для ее реализации, создают загрузочный модуль под контролируемый сигнал с выполнением операций от приема сигнала до выделения канальной информации, проверяют работоспособность полученной схемы обработки сигналов линий связи в тракте от приема до выделения канальной информации методом моделирования или на реальном сигнале в случае создания макета, при этом в случае неудачи определяют локальный неработоспособный фрагмент перепрограммируемых или программно-управляемых ЭРИ и корректируют программно схему и загрузочный модуль, а в случае успеха заносят программу обработки сигналов линий связи в банк электрических схем, выполненных в виде загрузочных модулей, причем по каждому новому сигналу повторяют вышеуказанные операции и формируют банк загрузочных модулей под различные сигналы, что позволяет автоматически настраиваться на сигнал при повторном выходе на него, в котором дополнительно при создании электрических схем устройств обработки сигналов определяют ресурс, помимо ПЛИС, также перепрограммируемых ПЗУ, ОЗУ, микропроцессоров, контроллеров, средств вычислительной техники и других перепрограммируемых или программно-управляемых ЭРИ.</div>
+    <div num="29" class="description-paragraph">Устройство содержит последовательно соединенные радиоприемное устройство и блок аналого-цифрового преобразования и набор N-когерентных цифровых демодуляторов, входы которых подключены к выходам блока аналого-цифрового преобразования. Согласно изобретению в каждое демодулирующее устройство введены мезонин помехоустойчивого декодирования, включающий в свой состав последовательно соединенные помехоустойчивый декодер, дескремблер, деперемежитель, декодер кодов Рида-Соломона и дескремблер аддитивный, а также интерфейс шины VME, контроллер типа MVME 2700, и персональная электронно-вычислительная машина с блоком программного обеспечения, при этом входы мезонина помехоустойчивого декодирования подключены к выходам когерентного цифрового демодулятора, а входы/выходы приемно-демодулирующего модуля, контроллера типа MVME 2700, интерфейса шины VME подключены к шине VME, вторые входы/выходы контроллера типа MVME 2700 подключены к выходам/входам персональной электронно-вычислительной машины. При этом все устройства кроме персональной электронно-вычислительной машины комплексируются в конструктиве Евроблок (крейт).</div>
+    <div num="30" class="description-paragraph">Сочетание отличительных признаков и свойства предлагаемого способа и устройства соответствует критерию новизны и изобретательского уровня.</div>
+    <div num="31" class="description-paragraph">На фиг.1 и 2 приведена функциональная схема одного из устройств (двухканальное приемно-демодулирующее устройство - ПДМ-2К), реализующих предлагаемый способ, на фиг.3 - фотография макета ПДМ-2К.</div>
+    <div num="32" class="description-paragraph">По предлагаемому способу осуществляют следующую последовательность операций:</div>
+    <div num="33" class="description-paragraph">- сигнал принимают и преобразуют в промежуточную частоту, определяют частоту настройки гетеродина РПУ;</div>
+    <div num="34" class="description-paragraph">- определяют параметры сигнала по промежуточной частоте, такие как полоса частот, скорость передачи информации, вид фазовой модуляции;</div>
+    <div num="35" class="description-paragraph">- по этим данным сигнал демодулируют, преобразуют в цифровой поток;</div>
+    <div num="36" class="description-paragraph">- синтезируют модель сигнала (определяют местоположение и структуру синхросигналов, длительность кадра-суперкадра, тип помехоустойчивого кода, скремблера, перемежителя, местоположение служебных и компонентных потоков и их количество, команды стаффинга и бит стаффинга, вид импульсной модуляции, при этом, если имеется спецификация на данный сигнал, то он и являются моделью сигнала, если спецификации нет, то данные о сигнале формируются по результатам анализа сигнала);</div>
+    <div num="37" class="description-paragraph">- определяют номенклатуру и ресурс необходимых для всех контролируемых сигналов перепрограммируемых или программно-управляемых ЭРИ (ПЛИС, ОЗУ, ПЗУ, контроллеров, микропроцессоров, средств вычислительной техники и др. перепрограммируемых или программно-управляемых ЭРИ) и создают электрическую схему их соединений;</div>
+    <div num="38" class="description-paragraph">- по модели сигнала программируют ЭРИ по выполняемым функциям в контролируемом сигнале, т.е. создают загрузочный модуль под обрабатываемый сигнал с выполнением операций от приема сигнала до выделения канальной информации;</div>
+    <div num="39" class="description-paragraph">- проверяют работоспособность полученной схемы обработки сигналов линий связи в тракте от приема до выделения канальной информации методом моделирования или по реальному сигналу при создании макета, в случае неудачи определяют локальный неработоспособный участок перепрограммируемых или программно-управляемых ЭРИ и корректируют программно схему и загрузочный модуль, а в случае успеха заносят программу обработки сигналов линий связи в банк электрических схем под данный сигнал в виде загрузочного модуля;</div>
+    <div num="40" class="description-paragraph">- по каждому новому сигналу повторяют вышеуказанные операции и создают банк электрических схем под каждую модель сигнала, что позволяет автоматически настраиваться на сигнал при повторном выходе на него.</div>
+    <div num="41" class="description-paragraph">Использование предлагаемого способа с широкой номенклатурой перепрограммируемых или программно-управляемых ЭРИ позволяет создать перепрограммируемые или программно-управляемые электрические схемы целого ряда устройств; РПУ; демодуляторов ФМ и КАМ сигналов; помехоустойчивых декодеров практически всех существующих систематических и несистематических декодеров, декодеров турбокодов; дескремблеров; деперемежителей; декодеров кодов Рида-Соломона, демультиплексоров сигналов различного уровня иерархического уплотнения; каналовыделяющих устройств; устройств обработки каналов индивидуальной и общей сигнализации; устройств отбора информации по техническим признакам; устройств внутриканальной демодуляции, а также устройств анализа системных и структурных параметров контролируемых сигналов.</div>
+    <div num="42" class="description-paragraph">При этом эти устройства позволяют программно адаптироваться к изменяющейся сигнальной среде и появлению сигналов с новой структурой без физического изменения схем электрических в пределах заложенного ресурса перепрограммируемых ЭРИ.</div>
+    <div num="43" class="description-paragraph">Предлагаемое устройство (ПДМ-2К) содержит последовательно соединенные РПУ ПД-140-1 и блок аналого-цифрового преобразования 2, к выходам которого подключены два когерентных цифровых демодулятора 3<sub>1</sub>, 3<sub>2</sub>, выходы которых подключены к соответствующим входам мезонинов помехоустойчивого (ПУ) декодирования 4<sub>1</sub>, 4<sub>2</sub>, включающих в свой состав помимо ПУ декодера последовательно соединенные дескремблер, деперемежитель, декодер кода Рида-Соломона и дескремблер аддитивный, а также последовательно соединенные блок программного обеспечения 5, ПЭВМ 6 и контроллер типа MVME 2700 7, при этом модуль ПДМ-2К, контроллер типа MVME 2700 7 через интерфейс шины VME 8 и шину VME объединены в единую систему управления и взаимодействия.</div>
+    <div num="44" class="description-paragraph">Загрузочный модуль (ПО 5) через ПЭВМ 6, контроллер MVME 2700 7, шину VME и интерфейс шины VME 8 заносится во все составные части ПДМ-2К.</div>
+    <div num="45" class="description-paragraph">Устройство работает следующим образом.</div>
+    <div num="46" class="description-paragraph">Входной сигнал диапазона (950-2150) МГц подается на вход приемника ПД140 1, в котором осуществляется перенос группового сигнала на промежуточную частоту (ПЧ) 140 МГц и его предварительная фильтрация, а также регулировка усиления для обеспечения требуемого уровня сигнала на входе блока аналого-цифрового преобразования (АЦП) 2.</div>
+    <div num="47" class="description-paragraph">В состав устройства 1 входят:</div>
+    <div num="48" class="description-paragraph">- преобразователь ПД140 ИУЯД.468151.561 (U1);</div>
+    <div num="49" class="description-paragraph">- усилители ИУЯД.468732.280 (А1), ИУЯД.468732.281 (А2);</div>
+    <div num="50" class="description-paragraph">- фильтр на поверхностных акустических волнах (ПАВ) 140-48 (Z1).</div>
+    <div num="51" class="description-paragraph">Преобразователь U1 работает следующим образом. Входные сигналы в диапазоне частот 950-2150 МГц подаются на усилитель на микросхеме D3 с параметрами, обеспечивающими необходимый коэффициент шума ПД140. Далее по тракту расположены аттенюаторы 0/-10дБ на микросхемах D4 и D13, предназначенные для расширения динамического диапазона преобразователя и совместно с дискретным аттенюатором D8 и плавным D12 обеспечивают необходимую регулировку коэффициента передачи преобразователя. После аттенюатора D4 сигнал поступает на преселектор D5, D7, D9, предназначенный для предварительной фильтрации входных сигналов и обеспечивающий подавление побочных каналов приема. В связи с тем, что преобразователь разработан с одним преобразованием частоты, для дополнительного подавления зеркального канала использован фазовый метод, для чего в преобразователе использованы делитель мощности W2, два смесителя D14 и D15, квадратурные делители мощности W1 по ПЧ и W3 по гетеродину.</div>
+    <div num="52" class="description-paragraph">Для формирования частот гетеродина, необходимых для преобразования сигналов входного диапазона в диапазон ПЧ, в состав преобразователя входит синтезатор G1 (D16-D19). Для установки частоты настройки преобразователя на синтезатор G1 подается код загрузки от управляющей ПЭВМ 6 по шине VME через интерфейс 8.</div>
+    <div num="53" class="description-paragraph">Нижнее значение частоты первого гетеродина составляет 1190 МГц при настройке преобразователя на частоту 950 МГц. Верхнее значение частоты гетеродина составляет 2190 МГц при настройке преобразователя на частоту 2050 МГц. Переход с верхней настройки гетеродина на нижнюю происходит на частоте 2050 МГц. Перестройка гетеродина по частоте осуществляется в синтезаторе G1 (D16-D19). При переходе с верхней частоты настройки на нижнюю переключаются выходы смесителей D14 и D15 на квадратурный делитель мощности W1 коммутаторами D1 и D2. Усилители D6, D10, D11 обеспечивают нужный уровень выходного сигнала преобразователя. Управляющее напряжение на преселектор D5, D7, D9, управление аттенюаторами D4, D13, переключение верхней/нижней боковой, управление синтезатором G1 (D16-D19) осуществляются через разъем X1 устройства U1</div>
+    <div num="54" class="description-paragraph">С целью обеспечения высоких параметров по избирательности в качестве фильтра основной селекции по ПЧ 140 МГц применен фильтр на ПАВ Z1 c полосой 48 МГц. Для обеспечения заданного коэффициента передачи и оптимального согласования фильтра Z1 использованы усилители: А1 - эмиттерный повторитель на входе фильтра Z1 и А2 на выходе фильтра Z1 - усилитель на полевом транзисторе с низким коэффициентом шума. На выходе усилителя А2 установлен согласующий дифференциальный трансформатор, с выхода которого высокочастотный (ВЧ) сигнал подается непосредственно на АЦП 2 (D7) через разъем Х4.</div>
+    <div num="55" class="description-paragraph">Синтезатор тактовой частоты для АЦП 2 выполнен на микросхемах D1, D6, D8, D12, D13. Частота дискретизации сигнала аналого-цифровым преобразователем 2 составляет 186.667 МГц. Сигнал этой частоты формируется генератором управляемого напряжением (ГУН) D2 и через формирователь парафазного сигнала D4 подается на второй вход АЦП (D7), первый вход которого является входом АЦП 2. Сигнал с D2 через делитель частоты на два D3 и усилитель D5 подается также на микросхему D8. В то же время на D8 через компаратор D6 поступает сигнал опорного генератора D1 с частотой 10 МГц. В ПЛИС D8 реализованы алгоритмы деления частоты на 6 и 56 для сигналов опорного генератора и ГУН D2, соответственно, а также частотно-фазовый дискриминатор (ЧФД). Если частота ГУН D2 не равна в точности 186.667 МГц, то на выходе ЧФД появляется управляющее напряжение, призванное скомпенсировать имеющуюся расстройку по частоте. Сигнал с выхода ЧФД подается на пропорционально-интегрирующий фильтр (ПИФ), выполненный на операционном усилителе (ОУ) D13. Выходной сигнал ОУ суммируется с постоянным напряжением с выхода стабилизатора D12 (для обеспечения требуемого диапазона управляющего напряжения) и подается на управляющий вход ГУН D2.</div>
+    <div num="56" class="description-paragraph">В схеме АЦП 2 предусмотрена возможность использования внешнего опорного генератора D1, сигнал с которого подается на ПЛИС D8 через разъем X1 и компаратор D6. При этом необходимо выставить джампер ХР1 в соответствующее положение.</div>
+    <div num="57" class="description-paragraph">С выхода АЦП D7 оцифрованный сигнал в виде 12-разрядных отсчетов поступает на ПЛИС D18, реализующей в себе преобразователь Гильберта и детектор первой АРУ1. С выхода АРУ1 сигнал управления через цифроаналоговый преобразователь (ЦАП) D25 подается на разъем Х3. После преобразователя Гильберта отсчеты синфазного и квадратурного подканалов подаются на два канала цифровой обработки сигнала - демодуляторы 3<sub>1</sub>, 3<sub>2</sub>, выполненные на ПЛИС D19 и D20. ПЛИС D18 выдает также код напряжения преселлектора D5, D7, D9 приемника 1, который загружается в ЦАП D10. Управляющее напряжение преселлектора с ЦАП D10 через ОУ D14 поступает на разъем Х3. Микросхема REF (D11) является источником высокостабильного опорного напряжения для ЦАП D10 и ЦАП D25.</div>
+    <div num="58" class="description-paragraph">Каждый демодулятор 3<sub>1</sub>, 3<sub>2</sub> включает в себя квадратурный детектор, полифазный (ПФФ) и оптимальный фильтры, схемы восстановления несущей (СВН) и тактовой частот (СВТ), АРУ2. После квадратурного переноса сигнала на нулевую частоту сигнал поступает в ПФФ. Он позволяет получить требуемую для дальнейшей обработки частоту дискретизации сигнала. После ПФФ сигнал фильтруется в оптимальной полосе. Маска фильтра может перегружаться из внешнего файла. Отфильтрованный сигнал поступает на схему АРУ2, сужающую динамический диапазон сигналов на входе СВН. С выхода АРУ2 сигналы обоих каналов подаются на корректор амплитудно-частотной характеристики (АЧХ) и группового времени запаздывания (ГВЗ), реализованный в ПЛИС D21. Для вычисления и перезагрузки коэффициентов фильтров корректора к нему подключен сигнальный процессор D22. Алгоритм восстановления несущей частоты загружается в ОЗУ D23 и D24.</div>
+    <div num="59" class="description-paragraph">Откорректированный сигнал каждого канала подается на соответствующий ему модуль декодирования, выполненный в виде мезонина. На выходе каждого декодера 4<sub>1</sub>, 4<sub>2</sub> формируются сигналы в сопровождении тактовой частоты, которые поступают на ПЛИС D21. Отсюда сигналы подаются либо через формирователи D26, D27 на разъемы передней панели Х14...X18, либо в дифференциальной форме на разъем Х13.</div>
+    <div num="60" class="description-paragraph">Интерфейс шины VME 8 выполнен на ПЛИС D17 и формирователях D15, D16, обеспечивающих совместимость параметров сигналов, выдаваемых ПЛИС D17, с требованиями шины VME.</div>
+    <div num="61" class="description-paragraph">На микросхемах D28, D31, D32 выполнены линейные стабилизаторы для питания аналоговых цепей модуля. Импульсные стабилизаторы D29, D30 служат для формирования напряжений питания цифровых цепей схемы.</div>
+    <div num="62" class="description-paragraph">Мезонин помехоустойчивого декодера 4<sub>1</sub>, 4<sub>2</sub> ИУЯД. 467755.053 (в дальнейшем - декодер) предназначен для помехоустойчивого декодирования несистематических сверточных кодов, систематических сверточных кодов, решетчатых кодов, кодов Рида-Соломона, блочных турбокодов, а также деперемежения, дифференциального декодирования и дескремблирования.</div>
+    <div num="63" class="description-paragraph">Декодеры 4<sub>1</sub>, 4<sub>2</sub> выполнены в виде модулей, устанавливаемых на плату модуля, и выполняют функции:</div>
+    <div num="64" class="description-paragraph">- декодера несистематических сверточных кодов по алгоритму Витерби;</div>
+    <div num="65" class="description-paragraph">-декодера систематических сверточных кодов по последовательному алгоритму;</div>
+    <div num="66" class="description-paragraph">- декодера решетчатых кодов;</div>
+    <div num="67" class="description-paragraph">- декодера блочных турбокодов;</div>
+    <div num="68" class="description-paragraph">- дифференциального декодера;</div>
+    <div num="69" class="description-paragraph">- деперемежителя;</div>
+    <div num="70" class="description-paragraph">- декодера кодов Рида-Соломона;</div>
+    <div num="71" class="description-paragraph">- дескремблеров V.35, V.35C и аддитивного.</div>
+    <div num="72" class="description-paragraph">С выхода демодулятора 3<sub>1</sub>, 3<sub>2</sub> 8-битные мягкие решения синфазного и квадратурного каналов в сопровождении канальной тактовой частоты и удвоенной канальной тактовой частоты через разъем Х2 поступают на ПЛИС ПУ декодера D2. В ПЛИС D2 реализованы декодер несистематических сверточных кодов по алгоритму Витерби, декодер систематических сверточных кодов по последовательному алгоритму, декодер решетчатых кодов, а также мультиплексор. Декодер турбокодов реализован на специализированной микросхеме D3. Тактовую частоту 50 МГц для последовательного декодера и для декодера турбокодов обеспечивает тактовый генератор, реализованы на микросхеме D1. Микросхема статического ОЗУ D4 с организацией 256К×16 используется для хранения таблицы преобразования отсчетов квадратурных каналов в метрики для Trellis декодера. Также микросхема D4 используется для накопления сигнала при автоматическом анализе параметров ПУ кодирования принимаемого сигнала. Выбор нужного декодера и настройка его параметров осуществляется управляющей ЭВМ 6 через контроллер MVME 2700 7 по шине VME 8 и по внутренней шине адреса и данных демодулятора 3<sub>1</sub>, 3<sub>2</sub> через разъем X1. С выхода ПЛИС D2 декодированный сигнал поступает на ПЛИС D5. В ПЛИС D5 сигнал подвергается дифференциальному декодированию, дескремблированию (V35 или 3.20С), а затем поступает на деперемежитель. Там осуществляется кадровая и суперкадровая синхронизация принимаемого сигнала, а также байтовое деперемежение на глубину 4, 8, 12 или 16 строк. Далее сигнал после деперемежения поступает на декодер кодов Рида-Соломона, также реализованный на ПЛИС D5. Выходной сигнал с декодера Рида-Соломона при необходимости подвергается аддитивному дескремблированию и через разъем Х2 поступает на выход модуля. Напряжения питания декодера +3,3 В и +1,5 В поступают с платы ПДМ-2К через разъем X1.</div>
+    <div num="73" class="description-paragraph">Построение ПДМ-2К по предлагаемому способу обеспечивает:</div>
+    <div num="74" class="description-paragraph">- прием сигналов в диапазоне частот 950-2150 МГц и когерентную демодуляцию двух независимых сигналов в полосе 48 МГц и с видами модуляции: ФМ2, ФМ4, ФМ4С, ФМ8, KAM16 в диапазоне скоростей от 1,5 кбит/с до 10 Мбит/с для ФМ2; от 3,0 кбит/с до 20 Мбит/с для ФМ4, ФМ4С; от 4,5 кбит/с до 30 Мбит/с для ФМ8; от 0 кбит/с до 40 Мбит/с для КАМ16;</div>
+    <div num="75" class="description-paragraph">- помехоустойчивое декодирование несистематических сверточных кодов (НСК) по алгоритму Витерби с «мягким» решением, образованных на основе базового сверточного кода 1/2 типа (171, 133) методом выкалывания с относительными скоростями 1/2, 2/3, 3/4, 5/6, 7/8 в диапазоне скоростей входных потоков до 10 Мбод в соответствии с рекомендациями IESS 308, 309, 310, 312 для видов модуляции ФМ2, ФМ4, ФМ4С;</div>
+    <div num="76" class="description-paragraph">- помехоустойчивое декодирование систематических сверточных кодов (ССК) по последовательному алгоритму с кодовыми скоростями 1/2, 3/4, 7/8 и кодовым ограничением до 104, в том числе по рекомендации IESS 309 (REV 7), в диапазоне скоростей входных потоков до 10 Мбит/с для видов модуляции ФМ2, ФМ4, ФМ4С;</div>
+    <div num="77" class="description-paragraph">- помехоустойчивое декодирование турбокодов с относительной скоростью 3/4, 21/44, 5/16 для видов модуляции ФМ2, ФМ4, ФМ4С, ФМ8, КАМ16;</div>
+    <div num="78" class="description-paragraph">- декодирование каскадных ПУ кодов с перемежением и блоковым кодированием в последовательности (ССК/НСК → перемежитель → блоковый код)</div>
+    <div num="79" class="description-paragraph">- декодирование каскадных ПУ кодов НСК 1/2, НСК 2/3, НСК 3/4, НСК 5/6, НСК 7/8 с перемежением и блоковым кодированием Рида-Соломона (204,188) с глубиной перемежения 12 по спецификации EN300421;</div>
+    <div num="80" class="description-paragraph">- декодирование решетчатых кодов (Trellis) с относительными скоростями 2/3,5/6 и 8/9 для сигналов ФМ8 со скоростью до 10 Мбод</div>
+    <div num="81" class="description-paragraph">- декодирование решетчатых кодов (Trellis) с относительными скоростями 3/4 и 7/8 для сигналов КАМ16 со скоростью до 10 Мбод;</div>
+    <div num="82" class="description-paragraph">- цифровую фильтрацию сигналов в соответствии со спецификациями IESS 309, IESS 310, EN300421, EN300429;</div>
+    <div num="83" class="description-paragraph">- коррекцию АЧХ и ГВЗ с глубиной коррекции ±4 символа;</div>
+    <div num="84" class="description-paragraph">- автоматический и ручной поиск несущей и тактовой частот принимаемых сигналов с программируемым диапазоном и шагом (для тактовой частоты - ТЧ) поиска;</div>
+    <div num="85" class="description-paragraph">- измерение частоты сигналов восстоновленной несущей и тактовой с точностью не хуже 5·10<sup>-5</sup>;</div>
+    <div num="86" class="description-paragraph">- измерение ОСШ и отношения Eb/NO сигналов;</div>
+    <div num="87" class="description-paragraph">- работоспособность при уровне входного сигнала от минус 50 до минус 100 дБ/Вт;</div>
+    <div num="88" class="description-paragraph">- формирование сигналов на выходах «С1», «С2», «С3», «С4», «Т» амплитудой не менее 2.4В (ТТЛ) на нагрузке 50 Ом при длине кабеля до 3 м;</div>
+    <div num="89" class="description-paragraph">- выдачу декодированных сигналов на пользовательский ряд разъема Р2 в формате LVDS;</div>
+    <div num="90" class="description-paragraph">- инверсию информационных сигналов и сигнала тактовой частоты;</div>
+    <div num="91" class="description-paragraph">- формирование и вывод на экран монитора частотной панорамы в диапазоне частот от 950 до 2150 МГц;</div>
+    <div num="92" class="description-paragraph">- формирование и вывод на экран монитора спектра первой, второй, четвертой и восьмой гармоник принимаемого сигнала с центральной частотой от 950 до 2150 МГц;</div>
+    <div num="93" class="description-paragraph">- измерение амплитудных и частотных параметров сигнала и его гармоник. Непрерывное когерентное накопление спектра;</div>
+    <div num="94" class="description-paragraph">- формирование и вывод на экран монитора векторных диаграмм принимаемого сигнала;</div>
+    <div num="95" class="description-paragraph">- вывод на экран монитора АЧХ используемого цифрового фильтра в линейном или логарифмическом масштабе;</div>
+    <div num="96" class="description-paragraph">- автоматическую настройку на сигнал после его кратковременного пропадания;</div>
+    <div num="97" class="description-paragraph">- ток потребления по цепям электропитания: «+5 В» - не более 2 А, «+12 В» - не более 1 А, «-12 В» - не более 0.3 А.</div>
+    <div num="98" class="description-paragraph">Работоспособность макета ПДМ-2К проверена от имитационных и реальных сигналов. Результаты положительные.</div>
+    <div num="99" class="description-paragraph">Разработка и изготовление по предлагаемому способу модулей демультиплексоров, каналовыделяющих устройств и других модулей обработки позволяет скомплексировать в конструктиве Евроблок (крейт) сквозной тракт обработки сигналов от приема до выделения канальной информации.</div>
+  </div>
+  </div>
+  </section>
+
+  <section itemprop="claims" itemscope>
+    <h2>Claims (<span itemprop="count">2</span>)</h2>
+    
+    <div itemprop="content" html><div mxw-id="PCLM75812945" lang="RU" load-source="patent-office" class="claims">
+    <div class="claim"> <div num="1" class="claim">
+      <div class="claim-text">1. Способ обработки сигналов линий связи по модели сигнала и перепрограммируемым электрическим схемам, при котором сигнал демодулируют, преобразуют в цифровой поток и синтезируют модель сигнала, отличающийся тем, что перед демодуляцией сигнал принимают, по модели сигнала создают электрическую схему устройства обработки сигналов линий связи и определяют номенклатуру и ресурс перепрограммируемых логических интегральных схем, оперативных запоминающих устройств, постоянных запоминающих устройств, микропроцессоров, контроллеров, синтезаторов частот гетеродина, синтезаторов тактовой частоты, аналого-цифровых преобразователей, помехоустойчивых декодеров,   цифроаналоговых  преобразователей, полифазных фильтров, аттенюаторов, средств вычислительной техники и других перепрограммируемых или программно-управляемых электрорадиоизделий, необходимых для ее реализации, создают загрузочный модуль под контролируемый сигнал, с выполнением операций от приема сигнала до выделения канальной информации, проверяют работоспособность полученной схемы обработки сигналов линий связи в тракте от приема до выделения канальной информации методом моделирования или на реальном сигнале в случае создания макета, при этом в случае неудачи определяют локальный неработоспособный фрагмент перепрограммируемых или программно управляемых электрорадиоизделий и корректируют программно схему и загрузочный модуль, а в случае успеха заносят программу обработки сигналов линий связи в банк электрических схем, причем по каждому новому сигналу повторяют вышеуказанные операции и формируют банк загрузочных модулей под все сигналы, что позволяет автоматически настраиваться на сигнал при повторном выходе на него.</div>
+    </div>
+    </div> <div class="claim"> <div num="2" class="claim">
+      <div class="claim-text">2. Двухканальное приемно-демодулирующее устройство по предлагаемому способу, содержащее последовательно соединенные радиоприемное устройство и блок аналого-цифрового преобразования, к выходу которого подключены входы двух когерентных цифровых демодуляторов, отличающееся тем, что в каждый когерентный цифровой демодулятор введены последовательно соединенные помехоустойчивый декодер, дескремблер, деперемежитель, декодер кодов Рида-Соломона и дескремблер аддитивный, а также интерфейс шины VME, контроллер типа MVME 2700 и персональная электронно-вычислительная машина с блоком программного обеспечения, при этом входы помехоустойчивого декодера подключены к выходам когерентного цифрового демодулятора, а входы/выходы приемно-демодулирующего модуля, контроллера типа MVME 2700, интерфейса шины VME подключены к шине VME, вторые входы/выходы контроллера типа MVME 2700 подключены к выходам/входам персональной электронно-вычислительной машины, при этом все устройства, кроме персональной электронно-вычислительной машины, комплексируются в конструктиве Евроблок - крейт.</div>
+    </div>
+  </div> </div>
+  </div>
+  </section>
+
+  <section itemprop="application" itemscope>
+
+    <section itemprop="metadata" itemscope>
+      <span itemprop="applicationNumber">RU2005114993/09A</span>
+      <span itemprop="priorityDate">2005-05-17</span>
+      <span itemprop="filingDate">2005-05-17</span>
+      <span itemprop="title">Способ и устройство обработки сигналов линий связи по модели сигнала и перепрограммируемым электрическим схемам 
+       </span>
+      
+      
+      <a href="/patent/RU2317641C2/ru">
+        <span itemprop="representativePublication">RU2317641C2</span>
+        (<span itemprop="primaryLanguage">ru</span>)
+      </a>
+    </section>
+
+    <h2>Priority Applications (1)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Application Number</th>
+          <th>Priority Date</th>
+          <th>Filing Date</th>
+          <th>Title</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="priorityApps" itemscope repeat>
+          <td>
+            <span itemprop="applicationNumber">RU2005114993/09A</span>
+            
+            <a href="/patent/RU2317641C2/ru">
+              <span itemprop="representativePublication">RU2317641C2</span>
+                (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+          </td>
+          <td itemprop="priorityDate">2005-05-17</td>
+          <td itemprop="filingDate">2005-05-17</td>
+          <td itemprop="title">Способ и устройство обработки сигналов линий связи по модели сигнала и перепрограммируемым электрическим схемам 
+       </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Applications Claiming Priority (1)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Application Number</th>
+          <th>Priority Date</th>
+          <th>Filing Date</th>
+          <th>Title</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="appsClaimingPriority" itemscope repeat>
+          <td>
+            <span itemprop="applicationNumber">RU2005114993/09A</span>
+            <a href="/patent/RU2317641C2/ru">
+              <span itemprop="representativePublication">RU2317641C2</span>
+                (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+          </td>
+          <td itemprop="priorityDate">2005-05-17</td>
+          <td itemprop="filingDate">2005-05-17</td>
+          <td itemprop="title">Способ и устройство обработки сигналов линий связи по модели сигнала и перепрограммируемым электрическим схемам 
+       </td>
+        </tr>
+      </tbody>
+    </table>
+
+    
+
+    
+
+    <h2>Publications (2)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Publication Number</th>
+          <th>Publication Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="pubs" itemscope repeat>
+          <td>
+            <span itemprop="publicationNumber">RU2005114993A</span>
+            
+            <a href="/patent/RU2005114993A/ru">
+              RU2005114993A
+              (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+          </td>
+          <td itemprop="publicationDate">2006-11-20</td>
+        </tr>
+        <tr itemprop="pubs" itemscope repeat>
+          <td>
+            <span itemprop="publicationNumber">RU2317641C2</span>
+            
+            <span itemprop="thisPatent">true</span>
+            <a href="/patent/RU2317641C2/ru">
+              RU2317641C2
+              (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+          </td>
+          <td itemprop="publicationDate">2008-02-20</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </section>
+
+  <section itemprop="family" itemscope>
+    <h1>Family</h1>
+    <h2>ID=37501902</h2>
+
+    <h2>Family Applications (1)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Application Number</th>
+          <th>Title</th>
+          <th>Priority Date</th>
+          <th>Filing Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="applications" itemscope repeat>
+          <td>
+            <span itemprop="applicationNumber">RU2005114993/09A</span>
+            
+            
+            <a href="/patent/RU2317641C2/ru">
+              <span itemprop="representativePublication">RU2317641C2</span>
+                (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+          </td>
+          <td itemprop="priorityDate">2005-05-17</td>
+          <td itemprop="filingDate">2005-05-17</td>
+          <td itemprop="title">Способ и устройство обработки сигналов линий связи по модели сигнала и перепрограммируемым электрическим схемам 
+       </td>
+        </tr>
+      </tbody>
+    </table>
+
+    
+
+    
+
+    <h2>Country Status (1)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Country</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="countryStatus" itemscope repeat>
+          <td>
+            <span itemprop="countryCode">RU</span>
+            (<span itemprop="num">1</span>)
+            <meta itemprop="thisCountry" content="true">
+          </td>
+          <td>
+            <a href="/patent/RU2317641C2/ru">
+              <span itemprop="representativePublication">RU2317641C2</span>
+              (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Cited By (3)</h2>
+    <table>
+      <caption>* Cited by examiner, † Cited by third party</caption>
+      <thead>
+        <tr>
+          <th>Publication number</th>
+          <th>Priority date</th>
+          <th>Publication date</th>
+          <th>Assignee</th>
+          <th>Title</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="forwardReferencesOrig" itemscope repeat>
+          <td>
+            <a href="/patent/RU2494542C2/ru">
+              <span itemprop="publicationNumber">RU2494542C2</span>
+              (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+            <span itemprop="examinerCited">*</span>
+            
+          </td>
+          <td itemprop="priorityDate">2008-04-18</td>
+          <td itemprop="publicationDate">2013-09-27</td>
+          <td><span itemprop="assigneeOriginal">Астриум Лимитед</span></td>
+          <td itemprop="title">Модульная система цифровой обработки для полезных нагрузок спутников связи 
+       </td>
+        </tr>
+        <tr itemprop="forwardReferencesOrig" itemscope repeat>
+          <td>
+            <a href="/patent/RU2756024C1/ru">
+              <span itemprop="publicationNumber">RU2756024C1</span>
+              (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+            <span itemprop="examinerCited">*</span>
+            
+          </td>
+          <td itemprop="priorityDate">2020-09-14</td>
+          <td itemprop="publicationDate">2021-09-24</td>
+          <td><span itemprop="assigneeOriginal">Акционерное общество &#34;ОКБ-Планета&#34; АО &#34;ОКБ-Планета&#34;</span></td>
+          <td itemprop="title">Цифровое устройство определения спектра принимаемых сигналов с высоким разрешением по частоте 
+       </td>
+        </tr>
+        <tr itemprop="forwardReferencesOrig" itemscope repeat>
+          <td>
+            <a href="/patent/RU2784002C1/ru">
+              <span itemprop="publicationNumber">RU2784002C1</span>
+              (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+            <span itemprop="examinerCited">*</span>
+            
+          </td>
+          <td itemprop="priorityDate">2022-03-09</td>
+          <td itemprop="publicationDate">2022-11-23</td>
+          <td><span itemprop="assigneeOriginal">Акционерное общество &#34;Ульяновский механический завод&#34;</span></td>
+          <td itemprop="title">Процессор цифрового разделения квадратур 
+       </td>
+        </tr>
+      </tbody>
+    </table>
+
+    
+
+    <h2>Citations (1)</h2>
+    <table>
+      <caption>* Cited by examiner, † Cited by third party</caption>
+      <thead>
+        <tr>
+          <th>Publication number</th>
+          <th>Priority date</th>
+          <th>Publication date</th>
+          <th>Assignee</th>
+          <th>Title</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="backwardReferencesOrig" itemscope repeat>
+          <td>
+            <a href="/patent/RU41217U1/ru">
+              <span itemprop="publicationNumber">RU41217U1</span>
+              (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+            <span itemprop="examinerCited">*</span>
+            
+          </td>
+          <td itemprop="priorityDate">2004-03-04</td>
+          <td itemprop="publicationDate">2004-10-10</td>
+          <td>
+            <span itemprop="assigneeOriginal">Федеральное государственное унитарное предприятие &#34;Ростовский-на-Дону научно-исследовательский институт радиосвязи&#34;</span>
+          </td>
+          <td itemprop="title">Многоканальное приемно-демодулирующее устройство фазоманипулированных сигналов и сигналов квадратурной амплитудной манипуляции 
+       </td>
+        </tr>
+      </tbody>
+    </table>
+
+    
+
+    <ul>
+      <li itemprop="applicationsByYear" itemscope repeat>
+        <span itemprop="year">2005</span>
+        <ul>
+          <li itemprop="application" itemscope repeat>
+            <span itemprop="filingDate">2005-05-17</span>
+            <span itemprop="countryCode">RU</span>
+            <span itemprop="applicationNumber">RU2005114993/09A</span>
+            <a href="/patent/RU2317641C2/ru"><span itemprop="documentId">patent/RU2317641C2/ru</span></a>
+            <span itemprop="legalStatusCat">active</span>
+            <span itemprop="legalStatus"></span>
+            <span itemprop="thisApp" content="true" bool></span>
+          </li>
+        </ul>
+      </li>
+    </ul>
+
+    </section>
+
+  <section>
+    <h2>Patent Citations (1)</h2>
+    <table>
+      <caption>* Cited by examiner, † Cited by third party</caption>
+      <thead>
+        <tr>
+          <th>Publication number</th>
+          <th>Priority date</th>
+          <th>Publication date</th>
+          <th>Assignee</th>
+          <th>Title</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="backwardReferences" itemscope repeat>
+          <td>
+            <a href="/patent/RU41217U1/ru">
+              <span itemprop="publicationNumber">RU41217U1</span>
+              (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+            <span itemprop="examinerCited">*</span>
+            
+          </td>
+          <td itemprop="priorityDate">2004-03-04</td>
+          <td itemprop="publicationDate">2004-10-10</td>
+          <td><span itemprop="assigneeOriginal">Федеральное государственное унитарное предприятие &#34;Ростовский-на-Дону научно-исследовательский институт радиосвязи&#34;</span></td>
+          <td itemprop="title">Многоканальное приемно-демодулирующее устройство фазоманипулированных сигналов и сигналов квадратурной амплитудной манипуляции 
+       </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  
+
+  <h2>Cited By (4)</h2>
+  <table>
+    <caption>* Cited by examiner, † Cited by third party</caption>
+    <thead>
+      <tr>
+        <th>Publication number</th>
+        <th>Priority date</th>
+        <th>Publication date</th>
+        <th>Assignee</th>
+        <th>Title</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr itemprop="forwardReferences" itemscope repeat>
+        <td>
+          <a href="/patent/RU2494542C2/ru">
+            <span itemprop="publicationNumber">RU2494542C2</span>
+            (<span itemprop="primaryLanguage">ru</span>)
+          </a>
+          <span itemprop="examinerCited">*</span>
+          
+        </td>
+        <td itemprop="priorityDate">2008-04-18</td>
+        <td itemprop="publicationDate">2013-09-27</td>
+        <td><span itemprop="assigneeOriginal">Астриум Лимитед</span></td>
+        <td itemprop="title">Модульная система цифровой обработки для полезных нагрузок спутников связи 
+       </td>
+      </tr>
+      <tr itemprop="forwardReferences" itemscope repeat>
+        <td>
+          <a href="/patent/US8634414B2/en">
+            <span itemprop="publicationNumber">US8634414B2</span>
+            (<span itemprop="primaryLanguage">en</span>)
+          </a>
+          
+          
+        </td>
+        <td itemprop="priorityDate">2008-04-18</td>
+        <td itemprop="publicationDate">2014-01-21</td>
+        <td><span itemprop="assigneeOriginal">Astrium Limited</span></td>
+        <td itemprop="title">Modular digital processing system for telecommunications satellite payloads 
+       </td>
+      </tr>
+      <tr itemprop="forwardReferences" itemscope repeat>
+        <td>
+          <a href="/patent/RU2756024C1/ru">
+            <span itemprop="publicationNumber">RU2756024C1</span>
+            (<span itemprop="primaryLanguage">ru</span>)
+          </a>
+          <span itemprop="examinerCited">*</span>
+          
+        </td>
+        <td itemprop="priorityDate">2020-09-14</td>
+        <td itemprop="publicationDate">2021-09-24</td>
+        <td><span itemprop="assigneeOriginal">Акционерное общество &#34;ОКБ-Планета&#34; АО &#34;ОКБ-Планета&#34;</span></td>
+        <td itemprop="title">Цифровое устройство определения спектра принимаемых сигналов с высоким разрешением по частоте 
+       </td>
+      </tr>
+      <tr itemprop="forwardReferences" itemscope repeat>
+        <td>
+          <a href="/patent/RU2784002C1/ru">
+            <span itemprop="publicationNumber">RU2784002C1</span>
+            (<span itemprop="primaryLanguage">ru</span>)
+          </a>
+          <span itemprop="examinerCited">*</span>
+          
+        </td>
+        <td itemprop="priorityDate">2022-03-09</td>
+        <td itemprop="publicationDate">2022-11-23</td>
+        <td><span itemprop="assigneeOriginal">Акционерное общество &#34;Ульяновский механический завод&#34;</span></td>
+        <td itemprop="title">Процессор цифрового разделения квадратур 
+       </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <section>
+    <h2>Also Published As</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Publication number</th>
+          <th>Publication date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="docdbFamily" itemscope repeat>
+          <td>
+            <a href="/patent/RU2005114993A/ru">
+              <span itemprop="publicationNumber">RU2005114993A</span>
+              (<span itemprop="primaryLanguage">ru</span>)
+            </a>
+          </td>
+          <td itemprop="publicationDate">2006-11-20</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Similar Documents</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Publication</th>
+          <th>Publication Date</th>
+          <th>Title</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/EP0920164B1/en">
+                <span itemprop="publicationNumber">EP0920164B1</span>
+                (<span itemprop="primaryLanguage">en</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2006-10-11">2006-10-11</time>
+            
+            
+          </td>
+          <td itemprop="title">Coding and modulation method and apparatus for its implementation 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/CN1098004C/zh">
+                <span itemprop="publicationNumber">CN1098004C</span>
+                (<span itemprop="primaryLanguage">zh</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2003-01-01">2003-01-01</time>
+            
+            
+          </td>
+          <td itemprop="title">通信方法、基站和终端设备 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/EP1811670B1/en">
+                <span itemprop="publicationNumber">EP1811670B1</span>
+                (<span itemprop="primaryLanguage">en</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2010-03-10">2010-03-10</time>
+            
+            
+          </td>
+          <td itemprop="title">Number controlled oscillator and a method of establishing an event clock 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/US7180952B1/en">
+                <span itemprop="publicationNumber">US7180952B1</span>
+                (<span itemprop="primaryLanguage">en</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2007-02-20">2007-02-20</time>
+            
+            
+          </td>
+          <td itemprop="title">Coding rate reduction for turbo codes 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/US6347385B1/en">
+                <span itemprop="publicationNumber">US6347385B1</span>
+                (<span itemprop="primaryLanguage">en</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2002-02-12">2002-02-12</time>
+            
+            
+          </td>
+          <td itemprop="title">Interleavers for turbo code 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/JP2004096768A/ja">
+                <span itemprop="publicationNumber">JP2004096768A</span>
+                (<span itemprop="primaryLanguage">ja</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2004-03-25">2004-03-25</time>
+            
+            
+          </td>
+          <td itemprop="title">データ通信システムの伝送率整合装置及び方法 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/CN1993893A/zh">
+                <span itemprop="publicationNumber">CN1993893A</span>
+                (<span itemprop="primaryLanguage">zh</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2007-07-04">2007-07-04</time>
+            
+            
+          </td>
+          <td itemprop="title">集成低中频陆地音频广播接收机及其相关方法 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/KR20120041251A/ko">
+                <span itemprop="publicationNumber">KR20120041251A</span>
+                (<span itemprop="primaryLanguage">ko</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2012-04-30">2012-04-30</time>
+            
+            
+          </td>
+          <td itemprop="title">저밀도 패리티 검사 코딩 및 성상 매핑을 사용한 데이터 송신 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/KR20030077644A/ko">
+                <span itemprop="publicationNumber">KR20030077644A</span>
+                (<span itemprop="primaryLanguage">ko</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2003-10-01">2003-10-01</time>
+            
+            
+          </td>
+          <td itemprop="title">임의-접속 다방향 ｃｄｍａ2000 터보 코드 인터리버 
+     </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/CN1332910A/zh">
+                <span itemprop="publicationNumber">CN1332910A</span>
+                (<span itemprop="primaryLanguage">zh</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2002-01-23">2002-01-23</time>
+            
+            
+          </td>
+          <td itemprop="title">用于多标准通信终端的电路装置 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/JP2011523542A/ja">
+                <span itemprop="publicationNumber">JP2011523542A</span>
+                (<span itemprop="primaryLanguage">ja</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2011-08-11">2011-08-11</time>
+            
+            
+          </td>
+          <td itemprop="title">放送受信機システム 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/CN1171677A/zh">
+                <span itemprop="publicationNumber">CN1171677A</span>
+                (<span itemprop="primaryLanguage">zh</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="1998-01-28">1998-01-28</time>
+            
+            
+          </td>
+          <td itemprop="title">通信方法,通信装置,接收方法和接收装置 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/US7903756B2/en">
+                <span itemprop="publicationNumber">US7903756B2</span>
+                (<span itemprop="primaryLanguage">en</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2011-03-08">2011-03-08</time>
+            
+            
+          </td>
+          <td itemprop="title">System and method for communicating data using waveform with extended preamble 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/US20180367150A1/en">
+                <span itemprop="publicationNumber">US20180367150A1</span>
+                (<span itemprop="primaryLanguage">en</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2018-12-20">2018-12-20</time>
+            
+            
+          </td>
+          <td itemprop="title">System, Method and Apparatus for Phase Hits and Microphonics Cancellation 
+     </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/CN1171673A/zh">
+                <span itemprop="publicationNumber">CN1171673A</span>
+                (<span itemprop="primaryLanguage">zh</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="1998-01-28">1998-01-28</time>
+            
+            
+          </td>
+          <td itemprop="title">通信方法和通信设备 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/JP2011522478A/ja">
+                <span itemprop="publicationNumber">JP2011522478A</span>
+                (<span itemprop="primaryLanguage">ja</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2011-07-28">2011-07-28</time>
+            
+            
+          </td>
+          <td itemprop="title">放送受信機システム 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/JP2002185429A/ja">
+                <span itemprop="publicationNumber">JP2002185429A</span>
+                (<span itemprop="primaryLanguage">ja</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2002-06-28">2002-06-28</time>
+            
+            
+          </td>
+          <td itemprop="title">部分帯域干渉チャネルに対する隠れパンクチャリングに基づくチャネルコーディング 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/RU2305375C2/ru">
+                <span itemprop="publicationNumber">RU2305375C2</span>
+                (<span itemprop="primaryLanguage">ru</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2007-08-27">2007-08-27</time>
+            
+            
+          </td>
+          <td itemprop="title">Многоканальное приемно-демодулирующее устройство фазоманипулированных сигналов систем связи 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/KR20090102847A/ko">
+                <span itemprop="publicationNumber">KR20090102847A</span>
+                (<span itemprop="primaryLanguage">ko</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2009-09-30">2009-09-30</time>
+            
+            
+          </td>
+          <td itemprop="title">순환 리던던시 코드 서명 비교를 구비한 터보 디코더 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/JP6267496B2/ja">
+                <span itemprop="publicationNumber">JP6267496B2</span>
+                (<span itemprop="primaryLanguage">ja</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2018-01-24">2018-01-24</time>
+            
+            
+          </td>
+          <td itemprop="title">ワイヤレスマイク用ｏｆｄｍ送信装置、受信装置及び送受信システム 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/JP5472298B2/ja">
+                <span itemprop="publicationNumber">JP5472298B2</span>
+                (<span itemprop="primaryLanguage">ja</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2014-04-16">2014-04-16</time>
+            
+            
+          </td>
+          <td itemprop="title">送信装置および受信装置 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            <meta itemprop="isPatent" content="true">
+              <a href="/patent/WO2001086821A2/en">
+                <span itemprop="publicationNumber">WO2001086821A2</span>
+                (<span itemprop="primaryLanguage">en</span>)
+              </a>
+            
+            
+          </td>
+          <td>
+            <time itemprop="publicationDate" datetime="2001-11-15">2001-11-15</time>
+            
+            
+          </td>
+          <td itemprop="title">Improved error floor turbo codes 
+       </td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            
+            <meta itemprop="isScholar" content="true">
+              <meta itemprop="scholarID" content="2654472019055818599">
+              <a href="/scholar/2654472019055818599"><span itemprop="scholarAuthors">Langlais et al.</span></a>
+            
+          </td>
+          <td>
+            
+            <time itemprop="publicationDate" datetime="1999">1999</time>
+            
+          </td>
+          <td itemprop="title">Synchronisation in the carrier recovery of a satellite link using turbo-codes with the help of tentative decisions</td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            
+            <meta itemprop="isScholar" content="true">
+              <meta itemprop="scholarID" content="10732570602139441632">
+              <a href="/scholar/10732570602139441632"><span itemprop="scholarAuthors">Muzammil</span></a>
+            
+          </td>
+          <td>
+            
+            <time itemprop="publicationDate" datetime="2023">2023</time>
+            
+          </td>
+          <td itemprop="title">Design and Implementation of 4-QAM Transceiver on FPGA using MATLAB/SIMULINK Model</td>
+        </tr>
+        <tr itemprop="similarDocuments" itemscope repeat>
+          <td>
+            
+            <meta itemprop="isScholar" content="true">
+              <meta itemprop="scholarID" content="1646316248664458555">
+              <a href="/scholar/1646316248664458555"><span itemprop="scholarAuthors">Fernando et al.</span></a>
+            
+          </td>
+          <td>
+            
+            <time itemprop="publicationDate" datetime="2001">2001</time>
+            
+          </td>
+          <td itemprop="title">Suitability of turbo coded OFDM for LEO satellite channels in global mobile communications</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Legal Events</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Code</th>
+          <th>Title</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr itemprop="legalEvents" itemscope repeat>
+          <td><time itemprop="date" datetime="2009-12-10">2009-12-10</time></td>
+          <td itemprop="code">PC4A</td>
+          <td itemprop="title">Invention patent assignment</td>
+          <td>
+            <p itemprop="attributes" itemscope repeat>
+              <strong itemprop="label">Effective date</strong>:
+              <span itemprop="value">20091021</span>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+</article>
+
+    </search-app>
+    
+    <script></script>
+    <script type="text/javascript" src="//www.gstatic.com/feedback/api.js"></script>
+    <script type="text/javascript" src="//www.gstatic.com/feedback/js/help/prod/service/lazy.min.js"></script>
+    <script type="text/javascript">
+      if (window.help && window.help.service) {
+        helpApi = window.help.service.Lazy.create(0, {apiKey: 'AIzaSyDTEI_0tLX4varJ7bwK8aT-eOI5qr3BmyI', locale: 'en-US'});
+        window.requestedSurveys = new Set();
+        window.requestSurvey = function(triggerId) {
+          if (window.requestedSurveys.has(triggerId)) {
+            return;
+          }
+          window.requestedSurveys.add(triggerId);
+          helpApi.requestSurvey({
+            triggerId: triggerId,
+            enableTestingMode: false,
+            callback: (requestSurveyCallbackParam) => {
+              if (!requestSurveyCallbackParam.surveyData) {
+                return;
+              }
+              helpApi.presentSurvey({
+                productData: {
+                  productVersion: window.version,
+                  customData: {
+                    "experiments": "",
+                  },
+                },
+                surveyData: requestSurveyCallbackParam.surveyData,
+                colorScheme: 1,
+                customZIndex: 10000,
+              });
+            }
+          });
+        };
+
+        window.requestSurvey('YXTwAsvoW0kedxbuTdH0RArc9VhT');
+      }
+    </script>
+    <script src="/sw/null_loader.js"></script>
+  </body>
+</html>

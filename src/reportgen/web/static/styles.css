@@ -9501,3 +9501,6 @@ button.pk-hier-col:hover { color: var(--accent); }
 .dk-form .field { display: grid; gap: 4px; }
 .dk-hints { flex-wrap: wrap; gap: 4px; }
 .pg-port-hints { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+/* Окно «Коды» стола: вкладки как в декодере отдела. */
+.stol-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
+.stol-codes-panel { max-width: 44rem; display: grid; gap: 0.4rem; }
