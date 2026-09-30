@@ -112,6 +112,9 @@ class МаскаTests(unittest.TestCase):
         self.assertIsNone(gfp.разобрать(г.в_ряд(данные, сдвиг=7, порядок="младший"), маска=0x000119D8,
                                         порядок="старший"))
         self.assertIsNone(gfp.разобрать(г.в_ряд(данные), маска=0xB6AB31E0))
+        # И заданной маске нужен пик: в коротком ряду — не меньше ПОДРЯД мест с её синдромом.
+        self.assertEqual(8, len(gfp.разобрать(г.в_ряд(г.поток([None] * 8)), маска=0xB6AB31E0).выделение.места))
+        self.assertIsNone(gfp.разобрать(г.в_ряд(г.поток([None] * 7)), маска=0xB6AB31E0))
 
     def test_другой_многочлен_crc16(self):
         кадры = [None, None] + [г.нагрузка(п, многочлен=0x8005) for п in ETHERNET[:30]]
@@ -148,6 +151,16 @@ class МаскаTests(unittest.TestCase):
         с_ = np.full(40, 7, dtype=np.uint16)
         с_[::3] = 0x55
         self.assertIsNone(gfp.маска_по_местам(np.zeros(40, dtype=np.uint8), с_, 0x55))
+        # Пары соседей голосуют: одна пара — мало, разные PLI — нет большинства.
+        с_ = np.zeros(200, dtype=np.uint16)
+        с_[[0, 10, 30]] = 0x55
+        self.assertIsNone(gfp.маска_по_местам(np.zeros(200, dtype=np.uint8), с_, 0x55))
+        # Соседи дальше всего на 4 + FFFF байт (PLI = FFFF), дальше — уже не соседи.
+        for d, ждём in ((0xFFFF + 4, 0xFFFF), (0xFFFF + 5, None)):
+            с_ = np.zeros(3 * d, dtype=np.uint16)
+            с_[[0, d, 2 * d]] = 0x55
+            м = gfp.маска_по_местам(np.zeros(3 * d, dtype=np.uint8), с_, 0x55)
+            self.assertEqual(ждём, None if м is None else м >> 16)
         # Короче заголовка — синдромов нет.
         self.assertEqual(0, len(gfp.синдромы(np.zeros(3, dtype=np.uint8))))
 
