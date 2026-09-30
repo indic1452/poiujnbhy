@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import contextlib
 import heapq
+import ipaddress
 import json
 import os
 import queue
@@ -107,6 +108,14 @@ class Дерево:
                     "кончаются": у[0] - sum(д["пакетов"] for д in дети), "дети": дети}
 
         return [узел("Кадры", self.корень, (), True)]
+
+
+def _адрес_ip(адрес: str | None) -> bool:
+    try:
+        ipaddress.ip_address(адрес or "")
+    except ValueError:
+        return False
+    return True
 
 
 def _учесть(таблица: dict[str, list[int]], ключ: str, байт: int, предел: int) -> None:
@@ -424,7 +433,8 @@ class Прогон:
         стек = п.стек
         if п.порт_к is not None and ("UDP" in стек or "TCP" in стек):
             _учесть(self.порты, f"{'UDP' if 'UDP' in стек else 'TCP'} {п.порт_к}", длина, ПОРТОВ_ДО)
-        if п.источник and п.получатель and ("IPv4" in стек or "IPv6" in стек):
+        # Диалог IP — когда оба адреса IP: у оборванного заголовка IP адреса остаются от Ethernet.
+        if _адрес_ip(п.источник) and _адрес_ip(п.получатель):
             а, б = sorted((п.источник, п.получатель))
             _учесть(self.диалоги, f"{а} ↔ {б}", длина, ДИАЛОГОВ_ДО)
         if self.выход is not None:

@@ -656,6 +656,135 @@ class ПрогонTests(Папка):
         self.assertEqual(2, ход["пакетов"])
         self.assertTrue(any("пропущено кусков: 3" in з for з in ход["заметки"]), ход["заметки"])
 
+    def test_кадры_заметка_о_пропуске_ровно_и_без_пропуска(self):
+        def цепочка(папка, удалить=()):
+            папка.mkdir()
+            (папка / "состояние.json").write_text(json.dumps({"состояние": "готово"}), encoding="utf-8")
+            ц = zapis.ЦепочкаPcapng(папка, интерфейс=ИНТЕРФЕЙС, пакетов_куска=1)
+            for i in range(3):
+                ц.пакет(float(i), кадр_udp(bytes([i])))
+            ц.закрыть()
+            for н in удалить:
+                ц.путь(н).unlink()
+            к = progon.Кадры({"вид": "захват", "папка": str(папка)})
+            записи = []
+            while (з := к.следующий()) not in (None, False):
+                записи.append(з)
+            к.закрыть()
+            return len(записи), к.заметки
+        self.assertEqual((3, []), цепочка(self.т / "целый"), "без пропусков — без заметок")
+        n, заметки = цепочка(self.т / "без0", удалить=(0,))
+        self.assertEqual(2, n)
+        self.assertEqual(1, len(заметки))
+        self.assertIn("куски 0…0", заметки[0])
+        self.assertIn("пропущено кусков: 1", заметки[0])
+
+    def test_кадры_без_файла_состояния_и_дочитывание_последнего(self):
+        папка = self.т / "захват"
+        папка.mkdir()
+        к = progon.Кадры({"вид": "захват", "папка": str(папка)})
+        self.assertFalse(к.захват_идёт(), "нет состояния — захват не идёт")
+        # Запись, пришедшая между «пусто» и «захват кончился», дочитывается.
+        ц = zapis.ЦепочкаPcapng(папка, интерфейс=ИНТЕРФЕЙС)
+        ц.пакет(0.0, кадр_udp(b"a"))
+        ц.сбросить()
+        к = progon.Кадры({"вид": "захват", "папка": str(папка)})
+        self.assertIsNotNone(к.следующий())
+
+        def кончился():
+            ц.пакет(1.0, кадр_udp(b"b"))
+            ц.сбросить()
+            return False
+        with mock.patch.object(к, "захват_идёт", кончился):
+            запись = к.следующий()
+        self.assertTrue(запись, "дописанная в последний миг запись не потеряна")
+        self.assertEqual(1.0, запись[0])
+        к.закрыть()
+        ц.закрыть()
+
+    def test_умолчания_прогона(self):
+        путь = self.файл([кадр_udp(b"a"), кадр_udp(b"b")])
+        п = progon.Прогон(self.т, {"источник": {"вид": "файлы", "файлы": [str(путь)]}}, __import__("queue").Queue())
+        self.assertEqual(0.0, п.скорость, "без скорости — максимально")
+        п.работать()
+        ход = json.loads((self.т / "ход.json").read_text(encoding="utf-8"))
+        self.assertEqual((2, 0, "готово"), (ход["пакетов"], ход["ошибок"], ход["состояние"]))
+
+    def test_ход_темп_списки_и_заметки(self):
+        путь = self.файл([кадр_udp(b"a")])
+        п = progon.Прогон(self.т, {"источник": {"вид": "файлы", "файлы": [str(путь)]}}, __import__("queue").Queue())
+        ход = lambda: json.loads((self.т / "ход.json").read_text(encoding="utf-8"))  # noqa: E731
+        часы = {"t": 50.0}
+        with mock.patch.object(progon.time, "monotonic", lambda: часы["t"]):
+            for t, пакетов in ((50.0, 0), (50.0, 0), (51.0, 100), (53.0, 300)):
+                часы["t"], п.пакетов = t, пакетов
+                п._ход("идёт", сразу=True)                  # два раза в одно время — без деления на ноль
+            self.assertEqual(100.0, ход()["темп"], "(300 − 0) / (53 − 50)")
+            часы["t"], п.пакетов = 54.5, 400
+            п._ход("идёт", сразу=True)
+            self.assertEqual(66.7, ход()["темп"], "окно 3 с — отметки 53 и 54,5: (400 − 300) / 1,5")
+            часы["t"] = 54.6
+            п._ход("идёт")                                 # 0,1 с после прошлого — не пишется
+            часы["t"], п.пакетов = 55.2, 401
+            п._ход("идёт")                                 # 0,7 с — пишется
+        self.assertEqual(401, ход()["пакетов"])
+        п.порты = {"UDP 1": [5, 10], "UDP 2": [3, 900], "UDP 3": [9, 1]}
+        п.диалоги = {f"д{i}": [100 - i, i * 10] for i in range(40)}
+        п.кадры.заметки = [f"з{i}" for i in range(25)]
+        п._ход("идёт", сразу=True)
+        х = ход()
+        self.assertEqual(["UDP 3", "UDP 1", "UDP 2"], [р[0] for р in х["порты"]], "порты — по числу пакетов")
+        self.assertEqual(32, len(х["диалоги"]))
+        self.assertEqual(["д39", "д38"], [р[0] for р in х["диалоги"][:2]], "диалоги — по байтам")
+        self.assertEqual([f"з{i}" for i in range(5, 25)], х["заметки"], "последние 20 заметок")
+        п.кадры.закрыть()
+
+    def test_темп_по_отметкам_времени(self):
+        """Скорость ×2: пакеты с отметками 1000,0…1000,4 проходят примерно за 0,2 с."""
+        путь = self.т / "время.pcap"
+        путь.write_bytes(с.pcap([кадр_udp(bytes([i])) for i in range(5)], времена=[1000.0 + i * 0.1 for i in range(5)]))
+        к = __import__("queue").Queue()
+        п = progon.Прогон(self.т, {"источник": {"вид": "файлы", "файлы": [str(путь)]}, "скорость": 2}, к)
+        поток = threading.Thread(target=п.работать)
+        начало = time.monotonic()
+        поток.start()
+        поток.join(10)
+        прошло = time.monotonic() - начало
+        if поток.is_alive():
+            к.put({"к": "стоп"})
+            поток.join(5)
+        self.assertLess(прошло, 5, "темп — от первой отметки, а не от нуля эпохи")
+        self.assertGreaterEqual(прошло, 0.15)
+        self.assertEqual(5, п.пакетов)
+
+    def test_диалоги_только_ip_и_счёт_ошибок(self):
+        arp = с.eth(bytes.fromhex("000108000604000102030405060a000001000000000000000a000002"), тип=0x0806)
+        оборван = кадр_udp(b"abc")[:14 + 10]
+        путь = self.файл([arp, оборван, кадр_udp(b"ok")])
+        ход = прогнать(self.т, {"источник": {"вид": "файлы", "файлы": [str(путь)]}, "скорость": 0})
+        self.assertEqual(["10.0.0.1 ↔ 10.0.0.2"], [д[0] for д in ход["диалоги"]], "ARP и оборванный IPv4 (адреса MAC) — не диалог IP")
+        self.assertEqual(1, ход["ошибок"])
+
+    def test_процесс_прогона_выходит_при_открытом_stdin(self):
+        """Прогон отдельным процессом кончается сам, хотя сервер держит его stdin открытым."""
+        import os  # noqa: PLC0415
+        import subprocess  # noqa: PLC0415
+        import sys  # noqa: PLC0415
+        путь = self.файл([кадр_udp(b"a")])
+        (self.т / "задание.json").write_text(json.dumps({"источник": {"вид": "файлы", "файлы": [str(путь)]},
+                                                         "скорость": 0}), encoding="utf-8")
+        корень = Path(__file__).resolve().parent.parent / "src"
+        процесс = subprocess.Popen([sys.executable, "-m", "reportgen.setevoy.zahvat_seti.progon", str(self.т)],
+                                   stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                   env={**os.environ, "PYTHONPATH": str(корень)})
+        try:
+            self.assertEqual(0, процесс.wait(60))
+        finally:
+            процесс.kill()
+            процесс.stdin.close()
+            процесс.wait()
+        self.assertEqual("готово", json.loads((self.т / "ход.json").read_text(encoding="utf-8"))["состояние"])
+
     def test_ошибка_внутри_не_роняет(self):
         путь = self.файл([кадр_udp(b"a")])
         with mock.patch.object(progon.Дерево, "учесть", side_effect=RuntimeError("сбой")):
