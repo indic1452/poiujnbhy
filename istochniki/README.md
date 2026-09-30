@@ -4,9 +4,9 @@
 
 ## ldpc
 
-Первоисточники по кодам LDPC (встроенные семейства, режимы модемов, закрытые семейства). Скачано 2026-09-29…30 через открытую сеть; файлов больше 40 МБ нет. Страницы — по номеру страницы PDF. Руководства и даташиты Comtech, Paradise, Datum скачаны со сторонних зеркал (sky-brokers, ai-sat и др.; даташит Q-Flex — cherry-white.co.uk): распространять ли их вне отдела, решает отдел. Сверки в `ldpc/proverki/` (запуск: `python3 istochniki/ldpc/proverki/sverka_fldpc.py` и т. д.) проходят на этих файлах.
+Первоисточники по кодам LDPC (встроенные семейства, режимы модемов, закрытые семейства). Скачано 2026-09-29…30 через открытую сеть; файлов больше 40 МБ нет. Страницы — по номеру страницы PDF. Руководства и даташиты Comtech, Paradise, Datum скачаны со сторонних зеркал (sky-brokers, ai-sat и др.; даташит Q-Flex — cherry-white.co.uk): распространять ли их вне отдела, решает отдел. Сверки и построение таблиц в `ldpc/proverki/` (запуск из корня репозитория: `python3 istochniki/ldpc/proverki/sverka_fldpc.py`, `postroit_docsis.py` и т. д.) проходят на этих файлах; `postroit_docsis.py` читает матрицы DOCSIS 3.1 с картинок стр. 60 (шаблоны цифр) и сверяет с текстом IEEE 802.3bn.
 
-Не положено (ссылка только): 802.11ad-phy-sim (github.com/jirimilos/802.11ad-phy-sim, f986bfc) — без лицензии; AFF3CT configuration_files (github.com/aff3ct/configuration_files, d8441dd) — без файла лицензии, из него взяты прежние встроенные коды (5G NR и др.); стандарты IEEE 802.11/802.16/802.3an — платные; ARIB STD-B44, GB 20600 — недоступны.
+Не положено (ссылка только): 802.11ad-phy-sim (github.com/jirimilos/802.11ad-phy-sim, f986bfc) — без лицензии; AFF3CT configuration_files (github.com/aff3ct/configuration_files, d8441dd) — без файла лицензии, из него взяты прежние встроенные коды (5G NR и др.), а dec/LDPC/WIMAX_480_576.alist — третий голос за 50 в блоке (3, 0) WiMAX 5/6 (сдвиг 12 = ⌊50·24/96⌋; см. proverki/postroit_wimax.py); стандарты IEEE 802.11/802.16/802.3an — платные; ARIB STD-B44, GB 20600 — недоступны.
 
 ### Файлы
 
@@ -105,6 +105,17 @@
 | `standarty/ITU-T_G.9960_2009.pdf.txt` | получено здесь | 2026-09-30 | `b63d68b723d371dad2a274e95d1cbf0f8643077f780318cd0f7a335c7039d332` | текст, извлечённый из PDF того же имени (для поиска и сверок) |
 | `standarty/ieee802.3bn_hajduczenia_3bn_01_0913.pdf.txt` | получено здесь | 2026-09-30 | `672302e00f9f748decc4c0ff80db2a585faea5941a9603a035ae386a7a993503` | текст, извлечённый из PDF того же имени (для поиска и сверок) |
 | `trellisware/11-04-0953-03.strings.txt` | получено здесь | 2026-09-30 | `abc45a0a66629ff827941ae19db2819b0b1ac5c1082c901481c7ea463b5a1ee0` | текст слайдов, извлечённый strings |
+| `proverki/postroit_atsc.py` | получено здесь | 2026-09-30 | `d0f9d85a7435060c3b891bd556ecabeeaab265d90a02d474861385bd831765c7` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_ccsds.py` | получено здесь | 2026-09-30 | `9be30de1b4748513854f20f356d286df20f3869dd720d46374769a5ad4b49167` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_docsis.log` | получено здесь | 2026-09-30 | `25a82ac68b76d25d27573ef3c121acd4b61cd367fbf29a6a7211a0e39746e158` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_docsis.py` | получено здесь | 2026-09-30 | `4c96191f0850f03819682d348018638dbe74bbab3d11856b87b43da532a839e5` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_dtmb.py` | получено здесь | 2026-09-30 | `ebaafda74e6245365736f9ec13917b3422af0be69482b398fe0570aeb8b3e96c` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_fldpc.py` | получено здесь | 2026-09-30 | `c96fe1a020a8b15efd5d42f1ed4ba6d30bd8bef9c6aff43fc1025494c70b80bb` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_ghn.log` | получено здесь | 2026-09-30 | `d8cbc23f25609037bdac06fe1eaaafe495157bba0beb7bd2e9493398c5a6924e` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_ghn.py` | получено здесь | 2026-09-30 | `f899534a1bdf8ccc974d0839cdc15e9494d86578e432f2f350da3193c9821090` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_obshchee.py` | получено здесь | 2026-09-30 | `c5d5197e45bf72f9207dc7da0ce3d3cae04dc9d04b74adf02f02af2fc7df4dfc` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_wimax.log` | получено здесь | 2026-09-30 | `92e3ae83abcacc64cb16a362e41a7bb482f7fb03c715aa18333ef9d6123c3133` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
+| `proverki/postroit_wimax.py` | получено здесь | 2026-09-30 | `a0b094b95be54d0aa523971bbfb83169bfda59f929c6ed4dc16603286fc0ca6c` | построение таблиц встроенных кодов из источников (с assert; пишет src/reportgen/potok/data/ldpc_*.json) |
 | `postroeno/wimax_yaldpc_576_r12.alist` | получено здесь | 2026-09-30 | `5eb17ecc24ffeeabd54d06095036908d3a663bc33f6192ef084ccfb80876b72e` | построено из открытого кода (см. ниже, «Построено») |
 | `postroeno/alist_labrador/alist_labrador_TC128.alist` | получено здесь | 2026-09-30 | `302360fbf8a30287d83a74d5e399f2e92e0ab59028f3b953910444be3c9f74e8` | построено из открытого кода (см. ниже, «Построено») |
 | `postroeno/alist_labrador/alist_labrador_TC256.alist` | получено здесь | 2026-09-30 | `0ca033d20ca26990d0eff5fbbecc1f7127c1ad83998b61866243be05f879c255` | построено из открытого кода (см. ниже, «Построено») |

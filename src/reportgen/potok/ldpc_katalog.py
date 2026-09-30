@@ -108,7 +108,10 @@ def типы() -> list[dict]:
         ("5G NR, базовый граф 1", "nr-bg1-", "3GPP TS 38.212, 5.3.2 (AFF3CT, srsRAN_4G, Sionna)"),
         ("5G NR, базовый граф 2", "nr-bg2-", "3GPP TS 38.212, 5.3.2"),
         ("Wi-Fi 802.11n", "wifi-", "IEEE 802.11n (tavildar/LDPC, Sionna, AFF3CT)"),
-        ("WiMAX 802.16e", "wimax-", "IEEE 802.16e (yaldpc, FEC dshekhalev, wimax_ldpc_lib)"),
+        ("WiMAX 802.16e", "wimax-", "IEEE 802.16e (yaldpc, FEC dshekhalev, wimax_ldpc_lib); у 5/6 блок (3, 0) — 50 "
+                                    "(wimax_ldpc_lib, G.9960, AFF3CT), вариант «-v68» — 68 (yaldpc, FEC)"),
+        ("G.hn (ITU-T G.9960)", "ghn-", "ITU-T G.9960 (10/2009), 7.1.3.2, табл. 7-18, 7-19 (материнские = WiMAX 1/2, 2/3B, 5/6)"),
+        ("DOCSIS 3.1 (восходящий)", "docsis31-", "CableLabs DOCSIS 3.1 PHY I15, 7.4.3.2 (стр. 60); IEEE 802.3bn (черновик)"),
         ("CCSDS AR4JA", "ar4ja-", "CCSDS 131.0-B-5, 7.4"),
         ("CCSDS C2 (8160, 7136)", "ccsds-c2-", "CCSDS 131.0-B-5, 7.3"),
         ("CCSDS TC", "ccsds-", "CCSDS 231.0-B-4, 4"),
@@ -121,7 +124,9 @@ def типы() -> list[dict]:
         коды = [э for э in встроенные if str(э["имя"]).startswith(приставка)
                 and not (приставка == "ccsds-" and str(э["имя"]).startswith("ccsds-c2-"))]
         итог.append({"тип": тип, "ключ": приставка.rstrip("-"), "закрыт": False, "источник": источник, "пометка": "",
-                     "скорости": [{"подпись": f"n = {э['n']}, k = {э['k']} ({э['скорость']})", "коды": [э["имя"]],
+                     "скорости": [{"подпись": f"n = {э['n']}, k = {э['k']} ({э['скорость']})" + (
+                                       f", в канале {ldpc_std.длина_в_потоке(э['имя'])}"
+                                       if ldpc_std.длина_в_потоке(э["имя"]) != э["n"] else ""), "коды": [э["имя"]],
                                    "примечание": str(э["откуда"])[:200]} for э in коды]})
     # F-LDPC по патенту: все 45 скоростей кодера 1500 и J = 6, 14, 20 без выкалывания, для 8 длин блока.
     скорости = []

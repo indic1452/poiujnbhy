@@ -89,17 +89,19 @@ class Состав(unittest.TestCase):
         self.assertEqual(sum(1 for и in имена if и.startswith("nr-")), 102)
         self.assertEqual(sum(1 for и in имена if и.startswith("dvb-")), 70)
         self.assertEqual(sum(1 for и in имена if и.startswith("wifi-")), 12)
-        self.assertEqual(sum(1 for и in имена if и.startswith("wimax-")), 114)
+        self.assertEqual(sum(1 for и in имена if и.startswith("wimax-")), 114 + 19)      # + 5/6 «-v68»
+        self.assertEqual(sum(1 for и in имена if и.startswith("ghn-")), 11)
+        self.assertEqual(sum(1 for и in имена if и.startswith("docsis31-")), 3)
         self.assertEqual(sum(1 for и in имена if и.startswith("ar4ja-")), 9)
         self.assertEqual(sum(1 for и in имена if и.startswith("ccsds-")), 4)
         self.assertEqual(sum(1 for и in имена if и.startswith("atsc3-")), 24)
         self.assertEqual(sum(1 for и in имена if и.startswith("dtmb-")), 3)
         self.assertEqual(sum(1 for и in имена if и.startswith("fldpc-")), 78)
-        self.assertEqual(len(имена), 418)
+        self.assertEqual(len(имена), 451)
         for и in ("nr-bg1-z384", "nr-bg2-z2", "dvb-s2-64800-32400", "dvb-s2-16200-7200",
                   "10gbase-t-2048-1723", "wifi-648-540", "ar4ja-10240-4096", "wimax-2304-1920",
                   "ccsds-c2-8160-7136", "atsc3-64800-8640", "fldpc-k16384-j2-p16",
-                  "fldpc-k128-j3-p9"):                  # любой (K, J, P) патента — по имени
+                  "fldpc-k128-j3-p9", "wimax-2304-1920-v68", "ghn-4536-4320", "docsis31-1120-840"):                  # любой (K, J, P) патента — по имени
             self.assertTrue(ldpc_std.есть(и), и)
         for и in ("nr-bg1-z385", "nr-bg3-z8", "dvb-s2-1-1", "nr-bg1", "", "fldpc-k100-j2-p16",
                   "fldpc-k256-j2-p7", "wimax-576-289"):

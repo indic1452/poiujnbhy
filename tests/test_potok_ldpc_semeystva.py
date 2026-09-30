@@ -15,6 +15,7 @@
 
 import re
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import numpy as np
@@ -137,6 +138,47 @@ class FLDPCПоПатенту(unittest.TestCase):
                     # Полное слово (без выкалывания) удовлетворяет всем проверкам H.
                     полное = np.array(self.патент.кодировать(u.tolist(), J, 16), dtype=np.uint8)
                     self.assertTrue(синдром_ноль(ldpc_flex.матрица(K, J), полное))
+        # Длинные группы: бит данных входит в одну проверку трижды (K = 128, J = 27; K = 512, J = 52) —
+        # в H он остаётся (сумма по модулю 2), а дважды — сокращается.
+        for K, J in ((128, 27), (512, 52)):
+            with self.subTest(K=K, J=J):
+                u = rng.integers(0, 2, K).astype(np.uint8)
+                полное = np.array(self.патент.кодировать(u.tolist(), J, 16), dtype=np.uint8)
+                self.assertTrue(np.array_equal(ldpc_flex.кодировать(u, J), полное))
+                self.assertTrue(синдром_ноль(ldpc_flex.матрица(K, J), полное))
+                self.assertEqual(K, len(ldpc.информационные(ldpc_flex.матрица(K, J))))
+
+    def test_вслепую_256_при_ошибках(self):
+        """Datum/Paradise 256, 1/2 без матрицы: при ошибках 10⁻³ ранговый метод теряет проверки (опорные слова
+        с ошибками), добор по случайным наборам слов восстанавливает все 256; на чистом потоке добора нет."""
+        from reportgen.potok import dlinnye  # noqa: PLC0415
+        rng = np.random.default_rng(12)
+        слова = [np.array(self.патент.кодировать(rng.integers(0, 2, 256).tolist(), 2, 16), np.uint8) for _ in range(1100)]
+        чистый = np.concatenate([rng.integers(0, 2, 5).astype(np.uint8)] + слова)
+        шумный = чистый ^ (rng.random(len(чистый)) < 1e-3).astype(np.uint8)
+        with unittest.mock.patch.object(dlinnye, "проверки_с_шумом", wraps=dlinnye.проверки_с_шумом) as добор:
+            н = dlinnye.найти(чистый, до=600, бюджет=300)
+            self.assertEqual("LDPC (512, 256)", н.что)
+            self.assertEqual(0, добор.call_count)
+            н = dlinnye.найти(шумный, до=600, бюджет=300)
+            # Граница слова при ошибках находится с промахом (здесь на 4 бита): добор — ещё раз после сдвига.
+            self.assertEqual(2, добор.call_count)
+        self.assertEqual("LDPC (512, 256)", н.что)
+        self.assertEqual(5, н.свойства["начало"])
+        данные = np.concatenate([w[:256] for w in слова])
+        self.assertGreater(float(np.mean(н.дальше[:len(данные)] == данные[:len(н.дальше)])), 0.999)
+
+    def test_имена_кодов(self):
+        """Имя «fldpc-kK-jJ-pP»: K — из таблиц патента, J от 2 до 64, P — 8…16 (табл. 42)."""
+        for имя, итог in (("fldpc-k1024-j6-p16", (1024, 6, 16)), ("FLDPC-K128-J2-P8", (128, 2, 8)),
+                          ("fldpc-k16384-j64-p16", (16384, 64, 16)), ("fldpc-k1024-j1-p16", None),
+                          ("fldpc-k1024-j65-p16", None), ("fldpc-k1000-j2-p16", None), ("fldpc-k1024-j2-p7", None),
+                          ("fldpc-k1024-j2-p17", None), ("fldpc-k1024-j2", None), ("", None), (None, None),
+                          ("fldpc-k1000-j1-p7", None), ("fldpc-k1024-j65-p7", None)):
+            with self.subTest(имя=имя):
+                self.assertEqual(итог, ldpc_flex.разобрать_имя(имя))
+        self.assertEqual("fldpc-k512-j4-p12", ldpc_flex.имя(512, 4, 12))
+        self.assertEqual("fldpc-k512-j4-p16", ldpc_flex.имя(512, 4))
 
     def test_все_режимы_datum(self):
         """Все 78 разных кодов режимов Datum: схема стандарта равна патентному кодеру по длине и месту бит."""
@@ -190,6 +232,14 @@ class FLDPCПоПатенту(unittest.TestCase):
             self.assertEqual((2 * J, 16), ldpc_flex.равносильный(K, J, 8))
         u = rng.integers(0, 2, 256).tolist()
         self.assertNotEqual(self.патент.кодировать(u, 2, 12), self.патент.кодировать(u, 4, 16)[:len(u) + 192])
+        # 2K на J не делится, но групп по J чётное число (⌈512/6⌉ = 86) — тоже одно слово; нечётное
+        # (K = 128: ⌈256/6⌉ = 43) — у (12, 16/16) на бит чётности больше, коды разные.
+        self.assertEqual(self.патент.кодировать(u, 6, 8), self.патент.кодировать(u, 12, 16))
+        self.assertEqual((12, 16), ldpc_flex.равносильный(256, 6, 8))
+        u = u[:128]
+        self.assertEqual(len(self.патент.кодировать(u, 6, 8)) + 1, len(self.патент.кодировать(u, 12, 16)))
+        self.assertEqual((6, 8), ldpc_flex.равносильный(128, 6, 8))
+        self.assertEqual((6, 9), ldpc_flex.равносильный(256, 6, 9))
 
     def test_автомат_находит_режим_datum(self):
         rng = np.random.default_rng(8)
@@ -306,6 +356,12 @@ class WiMAX(unittest.TestCase):
             кус = svh[svh.index(f"Hc_{вид} = '{{"):]
             кус = кус[:кус.index("}};") + 3]
             базы[вид] = [[int(x) for x in re.findall(r"-?\d+", р)] for р in re.findall(r"'\{([-\d,\s]+)\}", кус)]
+        # 5/6: в FEC (и yaldpc) в блоке (3, 0) — 68, в wimax_ldpc_lib, G.9960 и AFF3CT — 50. Основной код — 50,
+        # вариант «-v68» — 68.
+        self.assertEqual(68, базы["56"][3][0])
+        базы["56-v68"] = [list(р) for р in базы["56"]]
+        базы["56"] = [list(р) for р in базы["56"]]
+        базы["56"][3][0] = 50
         файл = {"12": "0_5", "23A": "0_66A", "23B": "0_66B", "34A": "0_75A", "34B": "0_75B", "56": "0_83"}
         совпало = 0
         for n in range(576, 2305, 96):
@@ -319,14 +375,12 @@ class WiMAX(unittest.TestCase):
                               for r, ряд in enumerate(база) for c, s in enumerate(ряд) if s >= 0 for i in range(z)}
                     м = ldpc_std.матрица(имя)
                     self.assertEqual(эталон, пары_матрицы(м))
-                    _, _, пары = alist(ИСТОЧНИКИ / "otkrytyj_kod" / "wimax_ldpc_lib" / "alist" / f"wimax_{n}_{файл[вид]}.alist")
-                    if вид == "56":
-                        # wimax_ldpc_lib расходится ровно в блоке (3, 0) — там 68 по yaldpc и FEC.
-                        self.assertEqual({(a // z, b // z) for a, b in пары ^ эталон}, {(3, 0)})
-                    else:
+                    if вид in файл:
+                        _, _, пары = alist(ИСТОЧНИКИ / "otkrytyj_kod" / "wimax_ldpc_lib" / "alist" / f"wimax_{n}_{файл[вид]}.alist")
                         self.assertEqual(пары, эталон)
                         совпало += 1
-        self.assertEqual(95, совпало)
+        self.assertEqual(114, совпало)
+        self.assertEqual(133, sum(1 for э in ldpc_std.список() if str(э["имя"]).startswith("wimax-")))
 
     def test_снятие_576_288(self):
         м = ldpc_std.матрица("wimax-576-288")
@@ -338,6 +392,138 @@ class WiMAX(unittest.TestCase):
         _, подробно = ldpc.снять(поток, ldpc_std.схема("wimax-576-288"))
         self.assertIn("начало слова — бит 33", подробно[0])
         self.assertIn("синдром обнулился у 8 (100.0 %)", " ".join(подробно))
+
+
+# -- G.hn (ITU-T G.9960) и DOCSIS 3.1 --------------------------------------------------------------------
+
+def из_базы(база: list[list[int]], b: int) -> np.ndarray:
+    """H из базовой матрицы: −1 — нулевой блок b × b, s ≥ 0 — единичная, сдвинутая вправо на s."""
+    H = np.zeros((len(база) * b, len(база[0]) * b), np.uint8)
+    for r, ряд in enumerate(база):
+        for c, s in enumerate(ряд):
+            if s >= 0:
+                H[r * b + np.arange(b), c * b + (np.arange(b) + s) % b] = 1
+    return H
+
+
+def систематически(H: np.ndarray, u: np.ndarray) -> np.ndarray:
+    """Слово [u | p] с H·[u | p]ᵀ = 0: p — из H_p·p = H_d·u (исключение Гаусса по модулю 2)."""
+    m, n = H.shape
+    k = n - m
+    A = np.concatenate([H[:, k:], ((H[:, :k].astype(np.int64) @ u) % 2).astype(np.uint8)[:, None]], axis=1)
+    строка = 0
+    for столбец in range(m):
+        опора = строка + int(np.argmax(A[строка:, столбец]))
+        assert A[опора, столбец], "проверочная часть вырождена"
+        A[[строка, опора]] = A[[опора, строка]]
+        другие = np.flatnonzero(A[:, столбец])
+        другие = другие[другие != строка]
+        A[другие] ^= A[строка]
+        строка += 1
+    return np.concatenate([u, A[:, -1]]).astype(np.uint8)
+
+
+@есть_источники
+class GHn(unittest.TestCase):
+    """Эталон — текст G.9960 (стр. 46–49 PDF): материнские матрицы, сдвиг ⌊a·b/96⌋, табл. 7-18 и 7-19."""
+
+    @classmethod
+    def setUpClass(cls):
+        текст = (ИСТОЧНИКИ / "standarty" / "ITU-T_G.9960_2009.pdf.txt").read_text(encoding="utf-8")
+        cls.мат = {}
+        for м, строк in (("1/2", 12), ("2/3", 8), ("5/6", 4)):
+            кусок = текст[текст.index(f"Hc with rate RM ={м}") if м != "5/6" else текст.index("Hc with rate RM =5/6"):]
+            кусок = кусок[кусок.index("be:") + 3:]
+            ч = [int(x) for x in re.findall(r"-?\d+", кусок)][:строк * 24]
+            cls.мат[м] = [ч[i * 24:(i + 1) * 24] for i in range(строк)]
+
+    def H(self, м: str, NM: int) -> np.ndarray:
+        b = NM // 24
+        return из_базы([[s if s < 0 else s * b // 96 for s in ряд] for ряд in self.мат[м]], b)
+
+    def test_все_коды_табл_7_19(self):
+        # (скорость, K, материнский, N_FEC) — табл. 7-19; шаблоны — табл. 7-18.
+        шаблоны = {1008: [1] * 240 + [0] * 48 + [1] * 720 + [0] * 96 + [1] * 48,
+                   4536: [1] * 216 + [0] * 216 + [1] * 4320 + [0] * 432}
+        for K, м, NF in ((168, "1/2", 336), (960, "1/2", 1920), (4320, "1/2", 8640), (960, "2/3", 1440),
+                         (4320, "2/3", 6480), (960, "5/6", 1152), (4320, "5/6", 5184), (960, "5/6", 1080),
+                         (4320, "5/6", 4860), (960, "5/6", 1008), (4320, "5/6", 4536)):
+            with self.subTest(K=K, NF=NF):
+                a, b_ = map(int, м.split("/"))
+                NM = K * b_ // a
+                H = self.H(м, NM)
+                имя = f"ghn-{NF}-{K}"
+                self.assertEqual(set(zip(*np.nonzero(H), strict=True)), {(int(r), int(c)) for r, c in пары_матрицы(ldpc_std.матрица(имя))})
+                if NF == NM:
+                    оставлено = np.ones(NM, bool)
+                elif NF in шаблоны:
+                    оставлено = np.array(шаблоны[NF], bool)
+                else:                                       # 16/18: pp16(1) = [1 … 1 0]
+                    оставлено = np.arange(NM) % 16 != 15
+                self.assertEqual(NF, int(оставлено.sum()))
+                с = ldpc_std.схема(имя)
+                self.assertEqual(np.flatnonzero(~оставлено).tolist(), с.выколоты.tolist())
+                self.assertEqual(NF, с.длина)
+
+    def test_снятие_20_21_и_заголовок(self):
+        rng = np.random.default_rng(31)
+        for K, м, NF, выбор in ((960, "5/6", 1008, lambda NM: np.array([1] * 240 + [0] * 48 + [1] * 720 + [0] * 96 + [1] * 48, bool)),
+                                (168, "1/2", 336, lambda NM: np.ones(NM, bool))):
+            with self.subTest(NF=NF):
+                a, b_ = map(int, м.split("/"))
+                NM = K * b_ // a
+                H = self.H(м, NM)
+                данные = rng.integers(0, 2, (6, K)).astype(np.uint8)
+                слова = [систематически(H, u) for u in данные]
+                for w in слова:
+                    self.assertFalse(((H.astype(int) @ w) % 2).any())
+                поток = np.concatenate([rng.integers(0, 2, 17).astype(np.uint8)] + [w[выбор(NM)] for w in слова])
+                ряд, подробно = ldpc.снять(поток, ldpc_std.схема(f"ghn-{NF}-{K}"))
+                self.assertIn("начало слова — бит 17", подробно[0])
+                np.testing.assert_array_equal(данные.reshape(-1), ряд[:данные.size])
+
+
+@есть_источники
+class DOCSIS31(unittest.TestCase):
+    """Эталон — текст таблиц 101–3…101–5 черновика IEEE 802.3bn (те же коды); в DOCSIS 3.1 (стр. 60 — картинка)
+    у (1120, 840) в строке 5 столбце 20 — 1 вместо «−1» черновика."""
+
+    def база_802_3bn(self, n: int, k: int, столбцов: int) -> list[list[int]]:
+        текст = (ИСТОЧНИКИ / "standarty" / "ieee802.3bn_hajduczenia_3bn_01_0913.pdf.txt").read_text(encoding="utf-8")
+        текст = re.sub(r"=====PAGE \d+=====\s*\n\d+\n(?:\d+\n){54}", "\n", текст)
+        H = [[None] * столбцов for _ in range(5)]
+        for м in re.finditer(rf"LDPC \({n}, {k}\) code matrix, columns (\d+)-(\d+)\s*\nRow\s*\nColumn\s*\n", текст):
+            от, до = int(м.group(1)), int(м.group(2))
+            ч = [int(x) for x in re.findall(r"-?\d+", текст[м.end():м.end() + 4000])][до - от + 1:]
+            for r in range(5):
+                H[r][от - 1:до] = ч[1:до - от + 2]
+                ч = ч[до - от + 2:]
+        return H
+
+    def test_три_кода(self):
+        for n, k, L in ((16200, 14400, 360), (5940, 5040, 180), (1120, 840, 56)):
+            with self.subTest(n=n):
+                база = self.база_802_3bn(n, k, n // L)
+                if n == 1120:
+                    self.assertEqual(-1, база[4][19])
+                    база[4][19] = 1
+                H = из_базы(база, L)
+                имя = f"docsis31-{n}-{k}"
+                self.assertEqual(set(zip(*np.nonzero(H), strict=True)), {(int(r), int(c)) for r, c in пары_матрицы(ldpc_std.матрица(имя))})
+                self.assertEqual(list(range(k)), ldpc.информационные(ldpc_std.матрица(имя)).tolist())
+                self.assertEqual(n, ldpc_std.схема(имя).длина)
+
+    def test_снятие_1120(self):
+        база = self.база_802_3bn(1120, 840, 20)
+        база[4][19] = 1
+        H = из_базы(база, 56)
+        rng = np.random.default_rng(32)
+        данные = rng.integers(0, 2, (5, 840)).astype(np.uint8)
+        поток = np.concatenate([rng.integers(0, 2, 5).astype(np.uint8)] + [систематически(H, u) for u in данные])
+        поток[rng.choice(np.arange(5, len(поток)), 8, replace=False)] ^= 1
+        ряд, подробно = ldpc.снять(поток, ldpc_std.схема("docsis31-1120-840"))
+        self.assertIn("начало слова — бит 5", подробно[0])
+        np.testing.assert_array_equal(данные.reshape(-1), ряд[:данные.size])
 
 
 # -- ATSC 3.0 ------------------------------------------------------------------------------------------

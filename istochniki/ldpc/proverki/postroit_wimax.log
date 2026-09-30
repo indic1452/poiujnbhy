@@ -1,0 +1,4 @@
+WiMAX: шесть базовых матриц yaldpc = FEC (dshekhalev)
+WiMAX 5/6: с 50 в блоке (3, 0) — ровно материнский 5/6 текста G.9960
+WiMAX: все 114 кодов совпали с alist wimax_ldpc_lib целиком
+ВСЁ СОВПАЛО; записано src/reportgen/potok/data/ldpc_wimax.json
