@@ -22,6 +22,7 @@ import potok_sintez as с
 from gfp_zahvat import КАДРЫ as ЗАХВАТ
 from reportgen.potok import crc as crc_
 from reportgen.potok import crc_katalog, gfp, gfp_tablicy, kanal, konfig, rastr, sdh, sinhro
+from reportgen.potok.nahodka import Находка
 from reportgen.potok.razbor import Ветвь, _вложенный_gfp, разобрать, снять_вручную
 from reportgen.potok.zadaniya import выгрузка
 from reportgen.setevoy import прочитать_захват, разобрать_пакет
@@ -362,9 +363,44 @@ class ВыходыTests(unittest.TestCase):
         self.assertEqual("GFP (G.7041): Ethernet (кадровое отображение)", ветвь.находки[0].суть)
         self.assertEqual(0x000119D8, ветвь.находки[0].свойства["маска"])
         self.assertFalse(_вложенный_gfp(Ветвь(), gfp.gfp(г.в_ряд(г.поток(кадры_эталона(20)))), ""))
+        # Без данных клиентов (одни пустые кадры) и не GFP — вложенного нет.
+        self.assertFalse(_вложенный_gfp(Ветвь(), gfp.gfp(г.в_ряд(г.поток([None] * 30))), ""))
+        self.assertFalse(_вложенный_gfp(Ветвь(), Находка("канальный", "HDLC", 1.0, "", дальше=[b"x"]), ""))
         разбор = разобрать(данные=внешний, имя="вложенный.bin")
         self.assertEqual(["канальный", "канальный", "сетевой"], [н.уровень for н in разбор.находки])
         self.assertIn("данные клиентов GFP", разбор.находки[1].путь)
+
+    def test_автомат_смешанные_клиенты_и_не_ip(self):
+        # Клиенты разных UPI: для выгрузки — кадры GFP целиком (171), а IP ищется в данных клиентов.
+        кадры = []
+        for i, e in enumerate(ETHERNET[:40]):
+            кадры += [None, г.нагрузка(e) if i % 5 else г.нагрузка(bytes(range(60)), upi=0xF0)]
+        разбор = разобрать(данные=г.поток(кадры), имя="смесь.bin")
+        self.assertEqual(["канальный", "сетевой"], [н.уровень for н in разбор.находки])
+        self.assertEqual(171, разбор.находки[0].дальше.канал)
+        # Не IP и не вложенный GFP — клиенты идут к опознанию канального протокола и формата полей.
+        rng = np.random.default_rng(1)
+        кадры = [x for _ in range(40) for x in (None, г.нагрузка(rng.integers(0, 256, 90, dtype=np.uint8).tobytes(),
+                                                                upi=0xF0))]
+        разбор = разобрать(данные=г.поток(кадры), имя="не-ip.bin")
+        self.assertEqual(["GFP (G.7041): для нужд производителей"], [н.что for н in разбор.находки])
+        self.assertIn("IP и известный формат в кадрах: нет", разбор.не_найдено)
+
+    def test_вложений_до_трёх(self):
+        """GFP в GFP в GFP в GFP: три вложения ищутся (и IP за третьим), четвёртое — уже нет."""
+        def вложить(поток_, маска):
+            куски = [поток_[i:i + 100] for i in range(0, len(поток_), 100)]
+            return г.поток([x for к in куски for x in (None, г.нагрузка(к, upi=0xF0))], маска)
+        поток_ = г.поток(кадры_эталона(12), 0x000119D8)
+        for маска in (0xB6AB3325, 0x5A17C3E9, 0xB6AB31E0):
+            поток_ = вложить(поток_, маска)
+        ветвь = Ветвь()
+        self.assertTrue(_вложенный_gfp(ветвь, gfp.gfp(г.в_ряд(поток_)), ""))
+        self.assertEqual(["канальный"] * 3 + ["сетевой"], [н.уровень for н in ветвь.находки])
+        self.assertEqual([0x5A17C3E9, 0xB6AB3325, 0x000119D8], [н.свойства["маска"] for н in ветвь.находки[:3]])
+        ветвь = Ветвь()
+        self.assertTrue(_вложенный_gfp(ветвь, gfp.gfp(г.в_ряд(вложить(поток_, 0x000119D8))), ""))
+        self.assertEqual(["канальный"] * 3, [н.уровень for н in ветвь.находки])
 
     def test_gfp_в_vc4_sdh(self):
         from test_potok_sdh import stm, vc4_кадры  # noqa: PLC0415
