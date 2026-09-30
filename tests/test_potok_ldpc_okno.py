@@ -5,14 +5,19 @@
 кадры модема и распределённое синхрослово — собраны здесь же по описанию окна.
 """
 
+import base64
+import json
+import shutil
+import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
 import numpy as np
 
 import _bootstrap  # noqa: F401
-from reportgen.potok import ldpc, ldpc_katalog, ldpc_okno, ldpc_std, sinhro
+from reportgen.potok import ldpc, ldpc_flex, ldpc_katalog, ldpc_okno, ldpc_std, sinhro
 from reportgen.potok.razbor import снять_вручную
 from test_potok_ldpc_semeystva import ИСТОЧНИКИ, ПатентFLDPC, есть_источники
 
@@ -147,7 +152,18 @@ class Каталог(unittest.TestCase):
         self.assertEqual(["0.533", "0.631", "0.706", "0.803"], по["Versa FEC QPSK"])
         self.assertEqual(["0.576", "0.642", "0.711", "0.780"], по["Versa FEC 8QAM"])
         self.assertEqual(["0.493", "0.654", "0.734"], по["Versa FEC ULL QPSK"])
-        self.assertEqual(["1/2", "2/3", "3/4", "14/17", "7/8", "10/11", "16/17"], по["Datum 16K"])
+        # FlexLDPC (M7): 7 скоростей (White Paper стр. 3); у 2k…16k ещё LDPC-Gen2 (M7XC MIB) — 12, три общие.
+        флекс = ["1/2", "2/3", "3/4", "14/17", "7/8", "10/11", "16/17"]
+        ген2 = ["1/2", "8/15", "4/7", "8/13", "2/3", "16/23", "8/11", "16/21", "4/5", "16/19", "8/9", "16/17"]
+        self.assertEqual(флекс, по["Datum 1K"])
+        self.assertEqual(флекс + [с for с in ген2 if с not in флекс], по["Datum 16K"])
+        датум16 = {с["подпись"]: с for с in next(т for т in ldpc_katalog.типы() if т["тип"] == "Datum 16K")["скорости"]}
+        # 2/3: у FlexLDPC — J = 4 без выкалывания; у Gen2 — все (J, P) патента с этой скоростью.
+        self.assertEqual(ldpc_flex.варианты_скорости("2/3", K=16384)[0], (4, 16))
+        self.assertEqual([ldpc_flex.имя(16384, J, P) for J, P in ldpc_flex.варианты_скорости("2/3", K=16384)],
+                         датум16["2/3"]["коды"])
+        self.assertIn("Datum M7XC LDPC-Gen2", датум16["2/3"]["примечание"])
+        self.assertIn("Datum FlexLDPC (M7, PSM-500)", датум16["2/3"]["примечание"])
         self.assertEqual(11, len(по["DVB-S2 normal"]))
         self.assertEqual(10, len(по["DVB-S2 short"]))
         датум = {с["подпись"]: с["коды"] for с in next(т for т in ldpc_katalog.типы() if т["тип"] == "Datum 1K")["скорости"]}
@@ -194,9 +210,28 @@ class КадрыИПостобработка(unittest.TestCase):
                                                      "длина_слова": 32}, "аддитивный_dvb": True}
         итог = ldpc_okno.просмотр(поток, п)
         self.assertEqual(100.0, итог["сошлось"])
-        self.assertEqual(f"аддитивный отводы 14,15 кадр 1024 начальное {ldpc_okno.dvb_первые()}", итог["слои"][1])
+        # ПСП DVB сбрасывается в начале каждого BBFRAME — данных одного слова (512 бит), не кадра модема.
+        self.assertEqual(f"аддитивный отводы 14,15 кадр 512 начальное {ldpc_okno.dvb_первые()}", итог["слои"][1])
         self.assertTrue(np.array_equal(итог["биты"].reshape(-1, 512), self.данные[:len(итог["биты"]) // 512]))
         self.assertIn("хвост 13 бит (заполнение) отброшен", " ".join(итог["подробно"]))
+
+    def test_dvb_с_синхрословом_на_выходе(self):
+        слова = self.слова(dvb=True)
+        L = len(слова[0])
+        N = 32 + L + 5                                     # одно слово в кадре и хвост
+        поток = кадры_модема(слова, N, сдвиг=3)
+        п = {"код": "fldpc-k512-j2-p12", "аддитивный_dvb": True,
+             "синхро": {"вид": "сосредоточенное", "слово": СЛОВО, "длина": N, "выводить": True}}
+        итог = ldpc_okno.просмотр(поток, п)
+        self.assertEqual(f"аддитивный отводы 14,15 кадр 544 начальное {ldpc_okno.dvb_первые()} пропуск 32", итог["слои"][1])
+        блоки = итог["биты"].reshape(-1, 544)
+        self.assertTrue(np.array_equal(блоки[:, :32], np.tile(sinhro.слово(СЛОВО), (len(блоки), 1))))
+        self.assertTrue(np.array_equal(блоки[:, 32:], self.данные[:len(блоки)]))
+        # Два слова в кадре и синхрослово на выходе: ПСП сбрасывается у каждого слова — одним слоем не снять.
+        with self.assertRaisesRegex(ValueError, "одном слове"):
+            ldpc_okno.постобработка({**п, "синхро": {**п["синхро"], "длина": 32 + 2 * L}})
+        self.assertEqual(f"аддитивный отводы 14,15 кадр 512 начальное {ldpc_okno.dvb_первые()}",
+                         ldpc_okno.постобработка({**п, "синхро": {**п["синхро"], "длина": 32 + 2 * L, "выводить": False}})[0])
 
     def test_распределённое_инверсное_с_синхрословом(self):
         слова = self.слова()
@@ -215,15 +250,17 @@ class КадрыИПостобработка(unittest.TestCase):
         self.assertEqual(["скремблер 18,23", "инверсия"], ldpc_okno.постобработка(п))
         поток = np.concatenate(self.слова())
         итог = ldpc_okno.просмотр(поток, п)
-        # Эталон: самосинхронизирующийся дескремблер y[i] = x[i] ⊕ x[i−18] ⊕ x[i−23], затем инверсия.
-        x = self.данные.reshape(-1)[:len(итог["биты"])].astype(np.uint8)
+        # Эталон: самосинхронизирующийся дескремблер y[i] = x[i] ⊕ x[i−18] ⊕ x[i−23], затем инверсия;
+        # первые 23 бита (регистр ещё не заполнен) слой «скремблер» не выдаёт.
+        x = self.данные.reshape(-1)[:len(итог["биты"]) + 23].astype(np.uint8)
         y = x.copy()
         y[18:] ^= x[:-18]
         y[23:] ^= x[:-23]
-        self.assertTrue(np.array_equal(итог["биты"][23:], (1 - y)[23:]))
+        self.assertGreater(len(итог["биты"]), 4000)
+        self.assertTrue(np.array_equal(итог["биты"], (1 - y)[23:]))
 
     def test_проверка_параметров(self):
-        for п, слово in (({"код": "нет такого"}, "встроенного кода"), ({"код": "a b"}, "выберите код"),
+        for п, слово in (({"код": "нет-такого"}, "каталог матриц LDPC не задан|нет матрицы"), ({"код": "нет такого"}, "выберите код"), ({"код": "a b"}, "выберите код"),
                          ({"код": "fldpc-k512-j2-p12", "синхро": {"вид": "распределённое", "слово": СЛОВО, "длина": 1000}},
                           "не делится"),
                          ({"код": "fldpc-k512-j2-p12", "синхро": {"вид": "сосредоточенное", "слово": СЛОВО, "длина": 900,
@@ -231,7 +268,7 @@ class КадрыИПостобработка(unittest.TestCase):
                          ({"код": "fldpc-k512-j2-p12", "мультипликативный": "abc"}, "отводы"),
                          ({"код": "fldpc-k512-j2-p12", "перемежение": "QPSK"}, "перемежение")):
             with self.subTest(п=п), self.assertRaisesRegex((ValueError, KeyError), слово):
-                ldpc_okno.просмотр(np.zeros(20000, np.uint8), п) if "нет такого" in п["код"] else \
+                ldpc_okno.просмотр(np.zeros(20000, np.uint8), п) if "нет-такого" in п["код"] else \
                     (ldpc_okno.слой(п), ldpc_okno.постобработка(п))
 
     def test_автомат_типа_с_синхрословом(self):
@@ -254,60 +291,191 @@ class КадрыИПостобработка(unittest.TestCase):
 class ЧерезСервер(unittest.TestCase):
     """API окна: типы, загрузка файла матрицы, просмотр и автомат по массиву задания."""
 
-    @classmethod
-    def setUpClass(cls):
-        from test_web import WebTestCase  # noqa: PLC0415
+    def setUp(self):
+        from test_web import WebTestCase  # noqa: PLC0415 — общая заготовка веб-тестов
 
         class Сеть(WebTestCase):
-            def runTest(self):
+            def runTest(себя):
                 pass
 
-        cls.сеть = Сеть()
-        cls.сеть.setUp()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.сеть.tearDown()
-
-    def test_окно_целиком(self):
+        self.старый = ldpc.КАТАЛОГ
+        self.addCleanup(setattr, ldpc, "КАТАЛОГ", self.старый)
+        self.сеть = Сеть()
+        self.сеть.setUp()
+        self.addCleanup(self.сеть.tearDown)
         self.сеть.login("engineer")
-        к = self.сеть.client
+        self.к = self.сеть.client
+        self.assertEqual(200, self.к.get("/api/potok-ldpc-types").status_code)   # задания и папка ldpc
+
+    def задание(self, поток: np.ndarray) -> str:
+        з = self.сеть.app.state.potok
+        ид = з.создать(владелец=self.сеть.repos.users.by_login("engineer").id, имя="ldpc.bin",
+                       данные=np.packbits(поток).tobytes(), разбирать=False, бит=len(поток))
+        for _ in range(200):
+            if з.прочитать(ид)["состояние"] == "готово":
+                break
+            time.sleep(0.05)
+        return ид
+
+    def test_папка_создаётся_при_старте_сервера(self):
+        from fastapi.testclient import TestClient  # noqa: PLC0415
+
+        from test_web import make_app  # noqa: PLC0415
+
+        with tempfile.TemporaryDirectory() as папка:
+            приложение, *_ = make_app(Path(папка), with_library=False)
+            self.assertFalse((Path(папка) / "ldpc").exists())
+            with TestClient(приложение):
+                self.assertTrue((Path(папка) / "ldpc" / "_ПРОЧТИ.txt").is_file())
+
+    def test_типы_и_файлы(self):
+        к = self.к
         типы = к.get("/api/potok-ldpc-types").json()
         self.assertTrue(Path(типы["folder"]).is_dir())
+        self.assertEqual(str(self.сеть.tmp / "ldpc"), типы["folder"])
         self.assertEqual("Comtech", типы["types"][0]["тип"])
-        # Файл матрицы: битый — 400, годный — в папке и в «Нестандарт».
-        плохой = к.post("/api/potok-ldpc-files", files={"file": ("x.alist", b"ерунда")})
+        self.assertEqual([], типы["files"])
+        # Файл матрицы: битый — 400, чужое расширение — 400, годный — в папке и в «Нестандарт».
+        плохой = к.post("/api/potok-ldpc-files", files={"file": ("x.alist", "ерунда".encode())})
         self.assertEqual(400, плохой.status_code)
+        self.assertFalse((self.сеть.tmp / "ldpc" / "x.alist").exists())
         не_тот = к.post("/api/potok-ldpc-files", files={"file": ("x.exe", b"1 0")})
         self.assertEqual(400, не_тот.status_code)
         ответ = к.post("/api/potok-ldpc-files", files={"file": ("мой код.h", b"1101\n0111\n")})
         self.assertEqual(200, ответ.status_code, ответ.text)
-        self.assertEqual("мой_код", ответ.json()["file"]["имя"])
+        self.assertEqual({"имя": "мой_код", "вид": "H в тексте", "n": 4, "m": 2}, ответ.json()["file"])
+        self.assertTrue((self.сеть.tmp / "ldpc" / "мой_код.h").is_file())
         self.assertEqual(409, к.post("/api/potok-ldpc-files", files={"file": ("мой код.h", b"1101\n0111\n")}).status_code)
-        нестандарт = next(т for т in к.get("/api/potok-ldpc-types").json()["types"] if т["тип"] == "Нестандарт")
+        типы = к.get("/api/potok-ldpc-types").json()
+        нестандарт = next(т for т in типы["types"] if т["тип"] == "Нестандарт")
         self.assertEqual(["мой_код"], [и for с in нестандарт["скорости"] for и in с["коды"]])
-        # Массив с кадрами модема: просмотр и автомат.
+        self.assertEqual(["мой_код"], [ф["имя"] for ф in типы["files"]])
+        # Файл «comtech…» — к каждой скорости типа Comtech.
+        self.assertEqual(200, к.post("/api/potok-ldpc-files", files={"file": ("comtech_16k.h", b"1101\n0111\n")}).status_code)
+        comtech = к.get("/api/potok-ldpc-types").json()["types"][0]
+        self.assertEqual([["comtech_16k"]] * 3, [с["коды"] for с in comtech["скорости"]])
+
+    def test_просмотр_и_автомат(self):
         патент = ПатентFLDPC()
         rng = np.random.default_rng(4)
-        данные = rng.integers(0, 2, (20, 256)).astype(np.uint8)
+        данные = rng.integers(0, 2, (40, 256)).astype(np.uint8)
         слова = [np.array(патент.кодировать(d.tolist(), 4, 16), np.uint8) for d in данные]
         N = 32 + 2 * 384 + 3
         поток = кадры_модема(слова, N, сдвиг=9)
-        job = self.сеть.задание_из_бит(поток) if hasattr(self.сеть, "задание_из_бит") else None
-        if job is None:
-            ответ = к.post("/api/potok", files={"file": ("ldpc.bin", np.packbits(поток).tobytes())},
-                           data={"профиль": "быстро", "разбирать": "0"})
-            self.assertIn(ответ.status_code, (200, 201), ответ.text)
-            job = ответ.json().get("id") or ответ.json().get("job", {}).get("id")
+        ид = self.задание(поток)
         п = {"тип": "Datum 256", "код": "fldpc-k256-j4-p16",
              "синхро": {"вид": "сосредоточенное", "слово": СЛОВО, "длина": N, "длина_слова": 32}}
-        просмотр = к.post(f"/api/potok/{job}/ldpc/preview", json={"stage": 0, "параметры": п})
+        просмотр = self.к.post(f"/api/potok/{ид}/ldpc/preview", json={"stage": 0, "параметры": п})
         self.assertEqual(200, просмотр.status_code, просмотр.text)
-        self.assertEqual(100.0, просмотр.json()["сошлось"])
-        авто = к.post(f"/api/potok/{job}/ldpc/auto", json={"stage": 0, "параметры": {**п, "код": "", "скорость": ""}})
+        о = просмотр.json()
+        self.assertEqual(100.0, о["сошлось"])
+        self.assertEqual((384, 256, 384), (о["n"], о["k"], о["в_потоке"]))   # J = 4: 2K/J = 128 бит чётности
+        self.assertEqual(["ldpc fldpc-k256-j4-p16 синхро " + "".join(map(str, sinhro.слово(СЛОВО).tolist()))
+                          + f" длина {N}"], о["слои"])
+        выход = np.unpackbits(np.frombuffer(base64.b64decode(о["биты"]), np.uint8))[:о["показано"]]
+        np.testing.assert_array_equal(данные[:len(выход) // 256].reshape(-1), выход[:len(выход) // 256 * 256])
+        авто = self.к.post(f"/api/potok/{ид}/ldpc/auto", json={"stage": 0, "параметры": {**п, "код": "", "скорость": "1/2"}})
+        self.assertEqual(200, авто.status_code, авто.text)
+        # У Datum 256 скорость 1/2 — J = 2; поток — J = 4 (2/3): в «1/2» не найдено, в «2/3» — найдено.
+        self.assertIsNone(авто.json()["найдено"])
+        авто = self.к.post(f"/api/potok/{ид}/ldpc/auto", json={"stage": 0, "параметры": {**п, "код": "", "скорость": "2/3"}})
         self.assertEqual("fldpc-k256-j4-p16", авто.json()["найдено"]["код"])
-        плохо = к.post(f"/api/potok/{job}/ldpc/preview", json={"stage": 0, "параметры": {"код": "?"}})
+        self.assertEqual(100.0, авто.json()["найдено"]["сошлось"])
+        плохо = self.к.post(f"/api/potok/{ид}/ldpc/preview", json={"stage": 0, "параметры": {"код": "?"}})
         self.assertEqual(400, плохо.status_code)
+        self.assertEqual(400, self.к.post(f"/api/potok/{ид}/ldpc/preview", json={"stage": 0, "параметры": "x"}).status_code)
+        self.assertEqual(400, self.к.post(f"/api/potok/{ид}/ldpc/auto", json={"stage": "а", "параметры": п}).status_code)
+        self.assertEqual(404, self.к.post("/api/potok/20200101-000000-abcdef/ldpc/preview",
+                                          json={"stage": 0, "параметры": п}).status_code)
+
+
+# -- окно в браузере: функции app.js в node --------------------------------------------------
+
+@unittest.skipUnless(shutil.which("node"), "нужен node")
+class ОкноВБраузере(unittest.TestCase):
+    """Проверка полей окна до запроса, скорости типа с блоками, поиск кода в каталоге — функции app.js в node."""
+
+    ФУНКЦИИ = ["битСинхрослова", "ошибкаОкнаLDPC", "скоростиТипаLDPC", "гдеКодLDPC"]
+
+    def выполнить(self, случаи: list[dict]) -> list:
+        from test_potok_sessii import функции_js  # noqa: PLC0415
+
+        код = функции_js(self.ФУНКЦИИ, []) + """
+const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+const итог = случаи.map((с) => {
+    switch (с.что) {
+    case 'бит': return битСинхрослова(с.т);
+    case 'ошибка': return ошибкаОкнаLDPC(с.п, с.закрыт);
+    case 'скорости': return скоростиТипаLDPC(с.т, с.блок).map((x) => x.подпись);
+    case 'где': { const г = гдеКодLDPC(с.типы, с.текущий, с.код); return г ? [г.т.тип, г.с.подпись] : null; }
+    default: return null;
+    }
+});
+process.stdout.write(JSON.stringify(итог));
+"""
+        готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=60)
+        self.assertEqual(0, готово.returncode, готово.stderr)
+        return json.loads(готово.stdout)
+
+    def test_длина_синхрослова_как_на_сервере(self):
+        тексты = ["0x1ACFFC1D", "1ACFFC1Dh", "0b0110", "0110 1011", "1_0_1_1", "", None, "0xZZ", "12", "0x", "01"]
+        итоги = self.выполнить([{"что": "бит", "т": т} for т in тексты])
+        for т, итог in zip(тексты, итоги, strict=True):
+            try:
+                ожидание = len(sinhro.слово(str(т or "")))
+            except ValueError:
+                ожидание = None
+            if ожидание is not None:
+                self.assertEqual(ожидание, итог, т)
+        self.assertEqual([32, 32, 4, 8, 4, 0, 0, 0, 8, 0, 2], итоги)
+
+    def test_ошибки_окна_как_у_сервера(self):
+        годное = {"тип": "Datum 256", "код": "fldpc-k256-j4-p16",
+                  "синхро": {"вид": "сосредоточенное", "слово": СЛОВО, "длина": 803, "длина_слова": 32}}
+        случаи = [
+            (годное, False, ""),
+            ({**годное, "код": ""}, True, "матрица типа «Datum 256» закрыта: положите файл отдела в папку ldpc («Загрузить…»)"),
+            ({**годное, "код": ""}, False, "нет кода для этой скорости"),
+            ({**годное, "синхро": {**годное["синхро"], "слово": "101"}}, False, "синхрослово — биты или HEX, не короче 4 бит"),
+            ({**годное, "синхро": {**годное["синхро"], "слово": "1011"}}, False, "длина синхрослова 32, а в поле 4 бит"),
+            ({**годное, "синхро": {**годное["синхро"], "длина": 32}}, False, "длина кадра — больше синхрослова"),
+            ({**годное, "синхро": {**годное["синхро"], "длина": 33}}, False, ""),
+            ({**годное, "синхро": {**годное["синхро"], "вид": "распределённое", "длина": 800}}, False, ""),
+            ({**годное, "синхро": {**годное["синхро"], "вид": "распределённое", "длина": 801}}, False,
+             "распределённое: длина кадра не делится на длину синхрослова"),
+            ({**годное, "синхро": {"вид": "нет", "слово": "", "длина": 0}}, False, ""),
+            ({**годное, "мультипликативный": "18,23"}, False, ""),
+            ({**годное, "мультипликативный": ""}, False, ""),
+            ({**годное, "мультипликативный": "а,б"}, False, "отводы мультипликативного дескремблера — «18,23»"),
+            ({**годное, "синхро": {**годное["синхро"], "длина_слова": 0}}, False, "")]
+        итоги = self.выполнить([{"что": "ошибка", "п": п, "закрыт": з} for п, з, _ in случаи])
+        self.assertEqual([о for _, _, о in случаи], итоги)
+        # Что окно пропускает, сервер собирает в слой (и наоборот — отказ сервера окно ловит заранее).
+        for (п, _, о), итог in zip(случаи, итоги, strict=True):
+            if итог == "" and п.get("код"):
+                ldpc_okno.слой(п)
+            elif п.get("код") and "мультипликатив" not in о:
+                with self.assertRaises(ValueError):
+                    ldpc_okno.слой(п)
+
+    def test_скорости_типа_и_поиск_кода(self):
+        типы = ldpc_katalog.типы()
+        flex = next(т for т in типы if т["ключ"] == "fldpc")
+        по_блоку = self.выполнить([{"что": "скорости", "т": flex, "блок": K} for K in (256, "1024", 99)])
+        for K, подписи in zip((256, 1024, 99), по_блоку, strict=True):
+            self.assertEqual([с["подпись"] for с in flex["скорости"] if с["блок"] == K], подписи)
+        self.assertTrue(по_блоку[0] and по_блоку[1] and not по_блоку[2])
+        datum = next(т for т in типы if т["тип"] == "Datum 1K")
+        [все] = self.выполнить([{"что": "скорости", "т": datum, "блок": 256}])
+        self.assertEqual([с["подпись"] for с in datum["скорости"]], все)       # без блоков — все скорости
+        self.assertEqual([[]], self.выполнить([{"что": "скорости", "т": None, "блок": 1}]))
+        где = self.выполнить([
+            {"что": "где", "типы": типы, "текущий": "F-LDPC TrellisWare (патент)", "код": "fldpc-k1024-j6-p16"},
+            {"что": "где", "типы": типы, "текущий": "Comtech", "код": "fldpc-k1024-j6-p16"},
+            {"что": "где", "типы": типы, "текущий": "Comtech", "код": "нет-такого"}])
+        self.assertEqual("F-LDPC TrellisWare (патент)", где[0][0])
+        self.assertEqual(["Datum 1K", "3/4"], где[1])
+        self.assertIsNone(где[2])
 
 
 if __name__ == "__main__":
