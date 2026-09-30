@@ -1576,7 +1576,7 @@ class ПомощникиПоискаTests(unittest.TestCase):
                 return np.ones(len(таблицы))
 
         р_ = р.перебор(Ровно(), 3)
-        self.assertEqual((1e-9, 0.0), (р_["разброс"], р_["отрыв"]))
+        self.assertEqual((0.0, 0.0), (р_["разброс"], р_["отрыв"]))
 
     def test_местный_поиск_счёт_и_ход(self):
         ходы = []
