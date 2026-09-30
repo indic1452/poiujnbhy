@@ -1185,6 +1185,14 @@ class ИсточникиTests(unittest.TestCase):
             принято += len(пачка)
         self.assertGreater(принято, 0)
         self.assertEqual(200, принято + приём.отброшено(), "отправлено = принято + отброшено")
+        # Нет SO_MEMINFO (старое ядро) — счёт по SO_RXQ_OVFL; у сокета без отметок — ноль.
+        class БезMeminfo:
+            def getsockopt(self, *а):
+                raise OSError("нет SO_MEMINFO")
+        приём.сокеты = [БезMeminfo(), БезMeminfo()]
+        приём._потеряно = {приём.сокеты[0]: 7}
+        self.assertEqual(7, приём.отброшено())
+        приём.сокеты = []
 
     def test_udp_настройка_сокета(self):
         """Семейство по адресу, SO_RCVBUF, IP_PKTINFO/IPV6_RECVPKTINFO и SO_RXQ_OVFL (Linux), группа, bind."""

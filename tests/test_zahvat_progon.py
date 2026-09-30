@@ -1854,19 +1854,40 @@ class СтраницаTests(unittest.TestCase):
 
     def test_переход_по_кускам(self):
         from test_oblik import PRELUDE  # noqa: PLC0415
-        код = PRELUDE + "const api = { get: async (п) => ({ total: 5, п }) }; function navigate() {} function toastError() {}\n" + \
-            self.вырезать(self.js, "навигацияКусков") + r"""
+        код = PRELUDE + r"""
+        const журнал = [];
+        const api = { get: async (п) => { журнал.push('get ' + п); return { total: 5 }; },
+                      post: async (п) => { журнал.push('post ' + п); return { id: 'P1' }; } };
+        function navigate(к) { журнал.push('go ' + к); } function toastError() {}
+        """ + self.вырезать(self.js, "навигацияКусков") + r"""
         const текст = (у) => typeof у === 'string' ? у : у.textContent !== undefined ? у.textContent
             : у.kids.filter((к) => !к.hidden).map(текст).join(' ');
-        const узлы = [{ от: 'zahvat:20260930-044335-e6aab2#0' }, { от: 'zahvat:20260930-044335-e6aab2#4' },
-            { от: 'zahvat:20260930-044335-e6aab2#весь' },
+        const найти = (у, т) => typeof у === 'string' ? null : (текст(у) === т ? у : у.kids.map((к) => найти(к, т)).find(Boolean) || null);
+        const ид = '20260930-194359-09af90';
+        const узлы = [{ от: 'zahvat:' + ид + '#0' }, { от: 'zahvat:' + ид + '#4' }, { от: 'zahvat:' + ид + '#весь' },
+            { от: 'zahvat:' + ид + '#1' }, { от: 'zahvat:' + ид + '#3' },
             { от: '12#1' }, { от: '' }, {}, { от: 'zahvat:../x#1' }, { от: 'zahvat:../x#весь' }].map((с) => навигацияКусков(с));
-        setTimeout(() => console.log(JSON.stringify(узлы.map((у) => у && текст(у)))), 20);"""
+        const сразу = узлы.map((у) => у && текст(у));
+        setTimeout(async () => {
+            const после = узлы.map((у) => у && текст(у));
+            await найти(узлы[3], 'следующий кусок →').attrs.onclick({ currentTarget: {} });
+            await найти(узлы[3], '← предыдущий кусок').attrs.onclick({ currentTarget: {} });
+            console.log(JSON.stringify({ сразу, после, журнал, ссылка: найти(узлы[2], 'К захвату').attrs.href }));
+        }, 20);"""
         итог = self.выполнить(код)
-        self.assertEqual("Кусок 1 из 5 захвата с сети следующий кусок → К захвату", итог[0])
-        self.assertEqual("Кусок 5 из 5 захвата с сети ← предыдущий кусок К захвату", итог[1], "у последнего нет «следующего»")
-        self.assertEqual("Весь захват с сети, все куски подряд К захвату", итог[2])
-        self.assertEqual([None, None, None, None, None], итог[3:])
+        ид = "20260930-194359-09af90"
+        self.assertEqual("Кусок 1 захвата с сети следующий кусок → К захвату", итог["сразу"][0], "до ответа — без числа кусков")
+        после = итог["после"]
+        self.assertEqual("Кусок 1 из 5 захвата с сети следующий кусок → К захвату", после[0])
+        self.assertEqual("Кусок 5 из 5 захвата с сети ← предыдущий кусок К захвату", после[1], "у последнего нет «следующего»")
+        self.assertEqual("Весь захват с сети, все куски подряд К захвату", после[2])
+        self.assertEqual("Кусок 2 из 5 захвата с сети ← предыдущий кусок следующий кусок → К захвату", после[3])
+        self.assertEqual("Кусок 4 из 5 захвата с сети ← предыдущий кусок следующий кусок → К захвату", после[4])
+        self.assertEqual([None] * 5, после[5:])
+        self.assertEqual(f"#/zahvat/{ид}", итог["ссылка"])
+        self.assertEqual([f"get /api/zahvat/{ид}/chunks?offset=0&limit=1"] * 4, итог["журнал"][:4])
+        self.assertEqual([f"post /api/zahvat/{ид}/to-pakety?chunk=2", "go #/pakety/P1",
+                          f"post /api/zahvat/{ид}/to-pakety?chunk=0", "go #/pakety/P1"], итог["журнал"][4:])
 
     def test_подключено_к_страницам(self):
         маршрут = self.вырезать(self.js, "renderRoute")
