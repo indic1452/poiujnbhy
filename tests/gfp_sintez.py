@@ -43,15 +43,17 @@ def ethernet_с_fcs(кадр: bytes) -> bytes:
 
 
 def нагрузка(данные: bytes, *, pti: int = 0, upi: int = 1, pfi: bool = False, cid: int | None = None,
-             запас: int = 0, плохой_thec: bool = False, многочлен: int = 0x1021) -> bytes:
-    """Область нагрузки: поле типа с tHEC, [CID, запас, eHEC], данные, [pFCS]."""
+             запас: int = 0, плохой_thec: bool = False, многочлен: int = 0x1021,
+             порядок_hec: str = "big") -> bytes:
+    """Область нагрузки: поле типа с tHEC, [CID, запас, eHEC], данные, [pFCS].
+    ``порядок_hec`` — «little»: tHEC и eHEC младшим байтом вперёд (нестандартная аппаратура)."""
     exi = 0 if cid is None else 1
     тип = bytes([(pti << 5) | (int(pfi) << 4) | exi, upi])
     thec = crc16(тип, многочлен) ^ (0x0101 if плохой_thec else 0)
-    область = тип + thec.to_bytes(2, "big")
+    область = тип + thec.to_bytes(2, порядок_hec)
     if cid is not None:
         доп = bytes([cid, запас])
-        область += доп + crc16(доп, многочлен).to_bytes(2, "big")
+        область += доп + crc16(доп, многочлен).to_bytes(2, порядок_hec)
     область += данные
     if pfi:
         область += crc32_старшим(данные).to_bytes(4, "big")
@@ -74,15 +76,16 @@ class Скремблер:
 
 
 def поток(кадры: Sequence[bytes | None], маска: int = 0xB6AB31E0, *, скремблер: bool = True,
-          многочлен: int = 0x1021) -> bytes:
-    """Кадры подряд: None — пустой кадр, байты — область нагрузки (PLI = её длина)."""
+          многочлен: int = 0x1021, порядок_hec: str = "big") -> bytes:
+    """Кадры подряд: None — пустой кадр, байты — область нагрузки (PLI = её длина);
+    ``порядок_hec`` — «little»: cHEC младшим байтом вперёд."""
     м = маска.to_bytes(4, "big")
     скр = Скремблер()
     итог = bytearray()
     for кадр in кадры:
         область = b"" if кадр is None else bytes(кадр)
         pli = len(область).to_bytes(2, "big")
-        заголовок = pli + crc16(pli, многочлен).to_bytes(2, "big")
+        заголовок = pli + crc16(pli, многочлен).to_bytes(2, порядок_hec)
         итог += bytes(a ^ b for a, b in zip(заголовок, м, strict=True))
         итог += скр(область) if скремблер and область else область
     return bytes(итог)

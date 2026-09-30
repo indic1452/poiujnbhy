@@ -123,11 +123,47 @@ class МаскаTests(unittest.TestCase):
         self.assertIn("многочлен авто", gfp.слой(р))
         self.assertTrue(all(м.P != 0x1021 or м.refin for м in gfp.модели_каталога()))
 
+    def test_cHEC_младшим_байтом_вперёд(self):
+        # Нестандартная аппаратура: HEC младшим байтом вперёд. Маска — как на линии (пустой кадр — она сама),
+        # и слой по найденной маске снимает тот же GFP.
+        кадры = [None, None] + [г.нагрузка(п, многочлен=0x8005, cid=1, порядок_hec="little") for п in ETHERNET[:30]]
+        ряд = г.в_ряд(г.поток(кадры, 0x12345678, многочлен=0x8005, порядок_hec="little"))
+        р = gfp.разобрать(ряд, многочлен="авто")
+        self.assertEqual((0x8005, "little", 0x12345678), (р.модель.P, р.модель.порядок, р.маска))
+        self.assertEqual(ETHERNET[1:30], клиенты(р))
+        self.assertEqual({"верен": 29}, р.счёт()["ehec"])
+        self.assertTrue(gfp.пустой_на_линии(р.маска, р.порядок).startswith("12 34 56 78"))
+        ряд_, _ = gfp.снять(ряд, gfp.слой(р, "клиенты"))
+        self.assertEqual(b"".join(ETHERNET[1:30]), np.packbits(ряд_).tobytes())
+
     def test_маска_по_местам_большинством(self):
         б = np.frombuffer(г.поток(кадры_эталона(10), 0x000119D8), dtype=np.uint8)
         с_ = gfp.синдромы(б)
         self.assertEqual(0x000119D8, gfp.маска_по_местам(б, с_, gfp.синдром_маски(0x000119D8)))
         self.assertIsNone(gfp.маска_по_местам(б, с_, 0x1234))
+        # Хватает трёх заголовков (двух пар соседей, согласных между собой).
+        б = np.frombuffer(г.поток([г.нагрузка(e) for e in ETHERNET[:3]], 0x000119D8), dtype=np.uint8)
+        self.assertEqual(0x000119D8, gfp.маска_по_местам(б, gfp.синдромы(б), gfp.синдром_маски(0x000119D8)))
+        # Места ближе 4 байт (PLI < 0) не голосуют.
+        с_ = np.full(40, 7, dtype=np.uint16)
+        с_[::3] = 0x55
+        self.assertIsNone(gfp.маска_по_местам(np.zeros(40, dtype=np.uint8), с_, 0x55))
+        # Короче заголовка — синдромов нет.
+        self.assertEqual(0, len(gfp.синдромы(np.zeros(3, dtype=np.uint8))))
+
+    def test_пики_выше_случайного(self):
+        # λ = мест / 65 536; пик — не меньше λ + 6·√λ + 4 (при λ = 16 — 44), не больше четырёх лучших.
+        def пики(особые, лишних=0):
+            счёт = np.full(65536, 16, dtype=np.int64)
+            for s_, n in особые.items():
+                счёт[s_] = n
+            счёт[1000:1000 + sum(n - 16 for n in особые.values()) - лишних] -= 1
+            return gfp._пики(np.repeat(np.arange(65536), счёт).astype(np.uint16), 4)
+        self.assertEqual([(5, 44)], пики({5: 44, 9: 43}))
+        self.assertEqual([(5, 50), (9, 45), (3, 44)], пики({9: 45, 5: 50, 3: 44, 7: 43}))
+        # На одно место больше — порог чуть выше 44, и 44 уже не пик.
+        self.assertEqual([(5, 45)], пики({5: 45, 9: 44}, лишних=1))
+        self.assertEqual([], gfp._пики(np.zeros(0, dtype=np.uint16), 4))
 
 
 class ВыделениеTests(unittest.TestCase):
