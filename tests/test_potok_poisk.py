@@ -35,6 +35,7 @@ def png():
 def docx():
     буфер = io.BytesIO()
     with zipfile.ZipFile(буфер, "w") as z:
+        z.writestr("[Content_Types].xml", "<Types/>")
         z.writestr("word/document.xml", "<w>текст</w>")
     return буфер.getvalue()
 
