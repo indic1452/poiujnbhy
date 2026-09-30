@@ -9360,7 +9360,7 @@ i.pk-lvl {
 .pg-tile { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-2); }
 .pg-tile-value { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .pg-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; }
-@media (max-width: 900px) { .pg-body { grid-template-columns: 1fr; } }
+@media (max-width: 960px) { .pg-body { grid-template-columns: 1fr; } }
 .pg-tree { max-height: 420px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 0; }
 .pg-tree-row { display: grid; grid-template-columns: 18px 10px minmax(80px, 1fr) 80px 76px minmax(40px, 90px) 52px; gap: 6px;
     align-items: center; padding: 2px 8px 2px 4px; font-size: var(--fs-sm); }
@@ -9385,3 +9385,5 @@ i.pk-lvl {
 .dk-rule.is-off { opacity: .55; }
 .dk-rule-main { display: flex; align-items: center; gap: 8px; flex: 1; }
 .dk-form .field { display: grid; gap: 4px; }
+.dk-hints { flex-wrap: wrap; gap: 4px; }
+.pg-port-hints { display: inline-flex; flex-wrap: wrap; gap: 4px; }

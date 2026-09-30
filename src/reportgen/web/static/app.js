@@ -15907,11 +15907,17 @@
             }
         }
         // Куски захвата — постранично: каждый закрытый кусок открывается в анализаторе отдельно.
-        const куски = { смещение: 0, по: 50 };
+        // Сначала — последняя страница: у долгого захвата с кольцом ранние куски уже удалены.
+        const куски = { смещение: 0, по: 50, первый: true };
         async function рисоватьКуски(с) {
             let d;
             try {
                 d = await api.get(путь + '/chunks?offset=' + куски.смещение + '&limit=' + куски.по);
+                if (куски.первый && d.total > куски.по) {
+                    куски.смещение = Math.floor((d.total - 1) / куски.по) * куски.по;
+                    d = await api.get(путь + '/chunks?offset=' + куски.смещение + '&limit=' + куски.по);
+                }
+                куски.первый = false;
             } catch (error) { return; }
             if (!page.isConnected) return;
             clear(кускиУзел);
@@ -16276,8 +16282,9 @@
     async function окноПравилаПоПолюДК(над, пример, послеИзменения) {
         try { await разборщикиАнализатора(); } catch (error) { toastError(error); return; }
         const протокол = h('input', { type: 'text', value: над || '', 'aria-label': 'Протокол', spellcheck: false });
-        const поле = h('input', { type: 'text', list: 'dk-fields', placeholder: 'например, udp.port', 'aria-label': 'Поле', spellcheck: false });
-        const подсказки = h('datalist', { id: 'dk-fields' });
+        const поле = h('input', { type: 'text', placeholder: 'например, udp.port', 'aria-label': 'Поле', spellcheck: false });
+        // Подсказки полей — кнопками под полем (как таблицы Decode As Wireshark для протокола).
+        const подсказки = h('div', { class: 'row dk-hints' });
         const значение = h('input', { type: 'text', placeholder: 'например, 5004 или 0x88b5', 'aria-label': 'Значение', spellcheck: false });
         const как = h('button', { type: 'button', class: 'btn' }, 'выбрать…');
         let выбран = '';
@@ -16289,7 +16296,8 @@
             clear(подсказки);
             const все = Object.values(декодироватьКак.поля || {}).flat();
             const свои = (декодироватьКак.поля || {})[протокол.value.trim()] || [];
-            свои.concat(все.filter((к) => !свои.includes(к))).forEach((к) => подсказки.appendChild(h('option', { value: к })));
+            (свои.length ? свои : все).forEach((к) => подсказки.appendChild(h('button', { type: 'button', class: 'btn btn--sm btn--ghost',
+                onclick: () => { поле.value = к; } }, к)));
             if (!поле.value && свои.length) поле.value = свои[0];
         }
         протокол.addEventListener('input', рисоватьПодсказки);
@@ -16401,8 +16409,9 @@
         скорость.value = сохранено.скорость != null ? String(сохранено.скорость) : (источник.вид === 'zahvat' ? '0' : '1');
         if (!скорость.value) скорость.value = '1';
         const портВыхода = h('input', { type: 'number', min: 1, max: 65535, placeholder: 'нет', value: сохранено.порт || '',
-            'aria-label': 'Порт UDP выходных данных', class: 'pg-port', list: 'pg-ports-' + источник.вид });
-        const портыСписок = h('datalist', { id: 'pg-ports-' + источник.вид });
+            'aria-label': 'Порт UDP выходных данных', class: 'pg-port' });
+        // Порты UDP, увиденные прогоном, — кнопками рядом с полем: щелчок подставляет порт.
+        const портыСписок = h('span', { class: 'pg-port-hints' });
         const срез = h('select', { 'aria-label': 'Срез заголовка' },
             h('option', { value: '0' }, 'без среза'), h('option', { value: 'байт' }, 'N байт'), h('option', { value: 'rtp' }, 'заголовок RTP'));
         const байт = h('input', { type: 'number', min: 0, max: 65535, value: сохранено.байт || '12', class: 'pg-cut', 'aria-label': 'Байт среза' });
@@ -16561,7 +16570,9 @@
             таблицы.appendChild(табл('Диалоги IP', ['Узлы', 'Пакетов', 'Байт'],
                 (ход.диалоги || []).slice(0, 12).map(([к, n, б]) => [к, n, fmtBytes(б)])));
             clear(портыСписок);
-            (ход.порты || []).filter(([к]) => /^UDP /.test(к)).forEach(([к]) => портыСписок.appendChild(h('option', { value: к.slice(4) })));
+            (ход.порты || []).filter(([к]) => /^UDP \d+$/.test(к)).slice(0, 6).forEach(([к]) => портыСписок.appendChild(h('button', {
+                type: 'button', class: 'btn btn--sm btn--ghost', title: 'Выходные данные — этот порт',
+                onclick: () => { портВыхода.value = к.slice(4); запомнить(); } }, к.slice(4))));
         }
 
         function рисоватьВыход(ход) {

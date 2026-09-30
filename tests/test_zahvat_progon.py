@@ -238,6 +238,75 @@ class ЧтецTests(Папка):
         self.assertEqual(5, len(прочитать_захват(склейка).записи))
 
 
+    def блок(self, тип, тело):
+        тело += b"\0" * (-len(тело) % 4)
+        return struct.pack("<II", тип, 12 + len(тело)) + тело + struct.pack("<I", 12 + len(тело))
+
+    def test_opb_и_spb(self):
+        """OPB (устаревший, тип 2) и SPB (тип 3: без времени, длина — по snaplen интерфейса)."""
+        shb = self.блок(0x0A0D0D0A, struct.pack("<IHHq", 0x1A2B3C4D, 1, 0, -1))
+        idb = self.блок(1, struct.pack("<HHI", 1, 0, 6))                           # snaplen 6
+        opb = self.блок(2, struct.pack("<HHIIII", 0, 0, 0, 3_000_000, 5, 9) + b"ABCDE")
+        spb = self.блок(3, struct.pack("<I", 10) + b"0123456789")
+        spb_короче = self.блок(3, struct.pack("<I", 3) + b"xyz")
+        пустой = self.блок(3, b"")                                                    # тело меньше 4 — пропуск
+        путь = self.т / "старые.pcapng"
+        путь.write_bytes(shb + idb + opb + spb + spb_короче + пустой)
+        self.assertEqual([(3.0, b"ABCDE", 9, "Ethernet"), (3.0, b"012345", 10, "Ethernet"), (3.0, b"xyz", 3, "Ethernet")],
+                         list(chtec.записи(путь)))
+        без_snaplen = shb + self.блок(1, struct.pack("<HHI", 1, 0, 0)) + spb
+        путь.write_bytes(без_snaplen)
+        self.assertEqual([b"0123456789"], [д for _, д, _, _ in chtec.записи(путь)], "snaplen 0 — без предела")
+        путь.write_bytes(shb + spb)
+        self.assertEqual([], list(chtec.записи(путь)), "SPB до IDB — не к чему отнести")
+        путь.write_bytes(shb + idb + self.блок(6, b"\0" * 16))
+        self.assertEqual([], list(chtec.записи(путь)), "EPB короче 20 байт полей — пропуск")
+
+    def test_заголовок_pcap_без_записей_и_snaplen(self):
+        путь = self.т / "пусто.pcap"
+        путь.write_bytes(struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 1234, 101))
+        with chtec.ЧтецФайла(путь) as ч:
+            self.assertEqual((0, ""), (ч.snaplen, ч.вид))
+            self.assertIsNone(ч.следующий())
+            self.assertEqual(("pcap", 1234, "IP", ""), (ч.вид, ч.snaplen, ч.канал, ч.испорчен))
+        путь.write_bytes(struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 1234, 101)[:23])
+        with chtec.ЧтецФайла(путь) as ч:
+            self.assertIsNone(ч.следующий())
+            self.assertEqual("", ч.вид, "заголовок ещё не дописан")
+
+    def test_пределы_записи_и_блока(self):
+        путь = self.т / "п.pcap"
+        путь.write_bytes(с.pcap([b"12345678", b"123456789"]))
+        with mock.patch.object(chtec, "ЗАПИСЬ_ДО", 8):
+            with chtec.ЧтецФайла(путь) as ч:
+                self.assertEqual(b"12345678", ч.следующий()[1], "ровно предел — можно")
+                self.assertIsNone(ч.следующий())
+                self.assertIn("испорчена", ч.испорчен)
+        путь = self.т / "п.pcapng"
+        путь.write_bytes(с.pcapng([b"x" * 8]))
+        размер_epb = 12 + 20 + 8
+        with mock.patch.object(chtec, "БЛОК_ДО", размер_epb):
+            self.assertEqual([b"x" * 8], [д for _, д, _, _ in chtec.записи(путь)], "блок ровно в предел — можно")
+        with mock.patch.object(chtec, "БЛОК_ДО", размер_epb - 4):
+            with chtec.ЧтецФайла(путь) as ч:
+                self.assertIsNone(ч.следующий())
+                self.assertIn("испорчен", ч.испорчен)
+
+    def test_файл_без_дескриптора(self):
+        """Файл-объект без fileno (BytesIO): размер — переходом в конец, место чтения не сбивается."""
+        import io  # noqa: PLC0415
+        данные = с.pcap([b"a" * 5, b"b" * 7])
+        ч = chtec.ЧтецФайла(self.т / "нет", файл=io.BytesIO(данные))
+        self.assertEqual(len(данные), ч._размер())
+        self.assertEqual([b"a" * 5, b"b" * 7], [ч.следующий()[1], ч.следующий()[1]])
+        self.assertIsNone(ч.следующий())
+        self.assertEqual(len(данные), ч._размер())
+
+    def test_опции_с_обрывком_в_конце(self):
+        self.assertEqual({}, chtec.опции_блока(b"\x02\x00\x00", 0, "<"), "меньше 4 байт — не опция")
+        self.assertEqual({2: b"ab"}, chtec.опции_блока(struct.pack("<HH", 2, 2) + b"ab\0\0" + b"\x09\x00\x01", 0, "<"))
+
+
 # -- прогон: дерево, упорядочение, выход ----------------------------------------------------
 
 class ДеревоTests(unittest.TestCase):
@@ -743,6 +812,10 @@ class РазборПоПравиламTests(unittest.TestCase):
         п = стек(self.dns(), [{"вид": "поле", "над": "UDP", "поле": "udp.port", "значение": 5000, "как": "DNS", "ид": "00000001"}])
         self.assertEqual(["Ethernet", "IPv4", "UDP", "DNS"], п.стек)
         self.assertEqual(["00000001"], п.правила)
+        self.assertEqual(len(self.dns()), п.исходная_длина, "без исходной длины — длина записанного")
+        п2 = дк.разобрать_по_правилам(self.dns(), исходная_длина=1500, как={"правила": [дк.проверить_правило(
+            {"вид": "протокол", "протокол": "UDP"})]}, номер=7, время=2.5)
+        self.assertEqual((1500, 7, 2.5), (п2.исходная_длина, п2.номер, п2.время))
         self.assertIn("example.com", п.инфо)
         п = стек(self.dns(5001), [{"вид": "поле", "над": "UDP", "поле": "udp.port", "значение": 5000, "как": "DNS"}])
         self.assertEqual(["Ethernet", "IPv4", "UDP", "Данные"], п.стек, "другой порт — правило молчит")
@@ -831,6 +904,164 @@ class РазборПоПравиламTests(unittest.TestCase):
         self.assertEqual("UDP", итог["правила"][0]["протокол"])
         with self.assertRaises(ValueError):
             проверить_как({"правила": [{"вид": "x"}]})
+
+
+class ДКГраницыTests(unittest.TestCase):
+    """Границы «Декодировать как» — по итогам мутационной проверки."""
+
+    def test_разборщик_вернул_нет(self):
+        from reportgen.setevoy.pole import Пакет  # noqa: PLC0415
+        from reportgen.setevoy.razbor import Разбор  # noqa: PLC0415
+
+        def отказ(р, м):
+            р.уровень("Проба", "Проба", м)
+            return False
+
+        def ок(р, м, конец):
+            р.уровень("Проба", "Проба", м).длина = конец - м
+        р = Разбор(Пакет(1, 0.0, b"\0" * 20, 20, "Ethernet"), None, None)
+        self.assertFalse(дк.Разборщик("П", "канал", "", "", отказ, 2).вызвать(р, 0, 20))
+        self.assertEqual([], р.п.уровни, "«нет» от разборщика — его уровни откатываются")
+        self.assertTrue(дк.Разборщик("П", "канал", "", "", ок, 3).вызвать(р, 4, 20))
+        self.assertEqual([("Проба", 4, 16)], [(у.протокол, у.смещение, у.длина) for у in р.п.уровни])
+
+    def test_псевдозаголовок_для_сумм(self):
+        """UDP, разобранный по правилу, проверяет сумму с адресами ближайшего IP ниже (или нулями)."""
+        правило = [{"вид": "протокол", "протокол": "UDP", "действие": "вместо", "как": "UDP"}]
+        for кадр in (кадр_udp(b"abcde"),
+                     с.eth(с.ip6(с.udp(b"abcde", 1, 2, src="2001:db8::1", dst="2001:db8::2", v6=True), 17), тип=0x86DD)):
+            п = стек(кадр, правило)
+            udp = next(у for у in п.уровни if у.протокол == "UDP")
+            сумма = next(ф for ф in udp.поля if ф.ключ == "udp.checksum")
+            self.assertIn("[верна]", сумма.текст, п.стек)
+            self.assertEqual([], п.ошибки)
+        # Под UDP нет IP (правило «Ethernet → UDP»): псевдозаголовок — нули, как у IPv4.
+        правило = [{"вид": "поле", "над": "Ethernet", "поле": "eth.type", "значение": "0x88b5", "как": "UDP"}]
+        верный = с.eth(с.udp(b"xyz", 7, 9, src="0.0.0.0", dst="0.0.0.0"), тип=0x88B5)
+        п = стек(верный, правило)
+        self.assertEqual(["Ethernet", "UDP", "Данные"], п.стек)
+        self.assertIn("[верна]", next(ф for ф in п.уровни[1].поля if ф.ключ == "udp.checksum").текст)
+        без_суммы = с.eth(struct.pack("!HHHH", 7, 9, 11, 0) + b"xyz", тип=0x88B5)
+        п = стек(без_суммы, правило)
+        self.assertEqual("0x0000 (не используется)", next(ф for ф in п.уровни[1].поля if ф.ключ == "udp.checksum").текст,
+                         "IPv4-вид нулевого псевдозаголовка: сумма 0 — «не считалась» (RFC 768)")
+
+    def test_служебные_реестра(self):
+        self.assertEqual(3, дк._обязательных(object()), "без подписи — как у большинства: (р, м, конец)")
+        self.assertEqual(4, дк._обязательных(lambda р, м, к, п: None))
+
+        def длинный(р, м):
+            """Раз два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать тринадцать
+            четырнадцать пятнадцать шестнадцать семнадцать восемнадцать девятнадцать двадцать двадцать один
+            двадцать два двадцать три двадцать четыре двадцать пять.
+
+            Второй абзац в описание не идёт."""
+        о = дк._описание(длинный)
+        self.assertEqual(240, len(о))
+        self.assertNotIn("\n", о)
+        self.assertNotIn("Второй", дк._описание(длинный))
+
+    def test_ключи_встроенных_разборщиков(self):
+        р = дк.реестр()
+        ключи = {"VLAN (802.1Q)": "EtherType 0x8100", "MPLS": "EtherType 0x8847", "PPPoE": "EtherType 0x8863",
+                 "LLDP": "EtherType 0x88cc", "CESoETH (MEF 8)": "EtherType 0x88d8", "TCP": "протокол IP 6",
+                 "UDP": "протокол IP 17", "ICMP": "протокол IP 1", "ICMPv6": "протокол IP 58", "IGMP": "протокол IP 2",
+                 "GRE": "протокол IP 47", "ESP": "протокол IP 50", "AH": "протокол IP 51", "VRRP": "протокол IP 112",
+                 "SCTP": "протокол IP 132", "OSPF": "протокол IP 89", "LLC (802.2)": "длина вместо EtherType"}
+        for имя, ключ in ключи.items():
+            self.assertIn(имя, р, имя)
+            self.assertEqual(ключ, р[имя].ключ, имя)
+        self.assertEqual("кадр целиком с этого места", р["Ethernet"].описание)
+        self.assertIn("по признакам заголовка", р["Авто (по признакам)"].описание)
+        for группа in {в.группа for в in р.values()}:
+            свои = [в for в in р.values() if в.группа == группа]
+            self.assertEqual(len(свои), len({id(в.функция) for в in свои}), f"{группа}: разборщик — один раз")
+            self.assertEqual(len(свои), len({в.имя.lower() for в in свои}), f"{группа}: имена без повторов")
+
+    def test_значения_полей_на_границах(self):
+        for з in (0, 1, (1 << 64) - 1):
+            self.assertEqual(з, дк._значение(з))
+        for з in (-1, 1 << 64):
+            with self.assertRaises(ValueError):
+                дк._значение(з)
+        self.assertEqual(дк.ПРАВИЛ_ДО, len(дк.проверить_правила(
+            [{"вид": "протокол", "протокол": f"P{i}"} for i in range(дк.ПРАВИЛ_ДО)])))
+
+    def test_таблица_пуста_и_включено_по_умолчанию(self):
+        self.assertTrue(дк.Таблица([]).пуста())
+        for правило in ({"вид": "протокол", "протокол": "A", "действие": "данные"},
+                        {"вид": "протокол", "протокол": "A", "действие": "снять"},
+                        {"вид": "поле", "над": "A", "поле": "a.b", "значение": 1, "как": "данные"}):
+            self.assertFalse(дк.Таблица([правило]).пуста(), правило)
+        self.assertTrue(дк.Таблица([{"вид": "протокол", "протокол": "A", "действие": "данные", "вкл": False}]).пуста())
+
+    def test_совпадение_поля(self):
+        from reportgen.setevoy.pole import Уровень  # noqa: PLC0415
+        у = Уровень("X", "X", 0, 4)
+        у.поле("Код", "x.kod", "Альфа (1)", 0, 1, 1)
+        у.поле("Тип", "x.tip", "7", 1, 1, "строка")
+        self.assertTrue(дк._совпало(у, "x.kod", "Альфа"), "по первому слову текста")
+        self.assertTrue(дк._совпало(у, "x.kod", 1), "по сырому")
+        self.assertTrue(дк._совпало(у, "x.tip", 7), "по тексту")
+        self.assertFalse(дк._совпало(у, "x.kod", "Бета"))
+        self.assertFalse(дк._совпало(у, "x.nет", 1))
+        self.assertIsNone(дк._число(у, "x.tip"), "не целое — не длина")
+        self.assertIsNone(дк._число(у, "x.нет"))
+        self.assertEqual(1, дк._число(у, "x.kod"))
+
+    def test_конец_вложенного(self):
+        """Дополнение кадра Ethernet не попадает в данные: конец — по длине UDP, IPv4, IPv6."""
+        def дополнить(к):
+            return к + b"\xEE" * (80 - len(к))
+        п = стек(дополнить(кадр_udp(b"ab")), [{"вид": "протокол", "протокол": "Данные", "после": "UDP", "действие": "вместо",
+                                                "как": "данные"}])
+        self.assertEqual(2, п.уровни[-1].длина, "по длине UDP")
+        п = стек(дополнить(кадр_udp(b"abcd")), [{"вид": "протокол", "протокол": "UDP"}])
+        self.assertEqual(12, п.уровни[-1].длина, "по длине IPv4 (Total Length), без дополнения")
+        v6 = с.eth(с.ip6(с.udp(b"abcd", 1, 2, src="2001:db8::1", dst="2001:db8::2", v6=True), 17), тип=0x86DD)
+        п = стек(дополнить(v6), [{"вид": "протокол", "протокол": "UDP"}])
+        self.assertEqual(["Ethernet", "IPv6", "Данные"], п.стек)
+        self.assertEqual(12, п.уровни[-1].длина, "по длине IPv6 (Payload Length)")
+        # Длина UDP меньше 8 — поле испорчено: конец берётся по IPv4.
+        кадр = bytearray(дополнить(кадр_udp(b"abcd")))
+        struct.pack_into("!H", кадр, 14 + 20 + 4, 5)
+        п = стек(bytes(кадр), [{"вид": "протокол", "протокол": "Данные", "после": "UDP", "действие": "вместо", "как": "данные"}])
+        self.assertEqual(4, п.уровни[-1].длина)
+        # Отмеченная уровнем ниже нагрузка — её конец.
+        from reportgen.setevoy.pole import Пакет  # noqa: PLC0415
+        from reportgen.setevoy.razbor import Разбор  # noqa: PLC0415
+        р = Разбор(Пакет(1, 0.0, b"\0" * 30, 30, "Ethernet"), None, None)
+        р.нагрузка(10, 16)
+        self.assertEqual(16, дк.конец_вложенного(р, 10))
+        self.assertEqual(30, дк.конец_вложенного(р, 11), "нагрузка с другого места — не та")
+        self.assertEqual(30, дк.конец_вложенного(р, 0))
+
+    def test_снятый_заголовок_нулевой_длины(self):
+        from reportgen.setevoy.pole import Уровень  # noqa: PLC0415
+        з = дк._снятый(Уровень("X", "X", 5, 0), 5, b"\0" * 10)
+        self.assertEqual((5, 0, "X убран, 0 байт"), (з.смещение, з.длина, з.итог))
+        self.assertEqual(0, дк._снятый(Уровень("X", "X", 5, 0), 3, b"\0" * 10).длина, "не отрицательная")
+
+    def test_снять_с_после_на_первом_уровне(self):
+        arp = с.eth(bytes.fromhex("0001080006040001") + b"\0" * 20, тип=0x0806)
+        п = стек(arp, [{"вид": "протокол", "протокол": "Ethernet", "после": "ARP", "действие": "снять"}])
+        self.assertEqual(["Ethernet", "ARP"], п.стек, "под первым уровнем ничего нет — «после ARP» не совпало")
+        п = стек(arp, [{"вид": "протокол", "протокол": "Ethernet", "после": "ARP", "действие": "снять", "как": "данные"}])
+        self.assertEqual(["Ethernet", "ARP"], п.стек)
+        self.assertEqual([], п.ошибки)
+        п = стек(кадр_udp(с.dns_запрос("a.b"), порт_к=5000),
+                 [{"вид": "протокол", "протокол": "UDP", "после": "IPv4", "действие": "снять", "как": "DNS"}])
+        self.assertEqual(["Ethernet", "IPv4", "Данные", "DNS"], п.стек)
+        п = стек(кадр_udp(с.dns_запрос("a.b"), порт_к=5000),
+                 [{"вид": "протокол", "протокол": "UDP", "после": "Ethernet", "действие": "снять", "как": "DNS"}])
+        self.assertEqual(["Ethernet", "IPv4", "UDP", "Данные"], п.стек)
+
+    def test_поворотов_не_больше_предела(self):
+        кадр = кадр_udp(b"x", порт_к=40000)
+        for _ in range(12):
+            кадр = кадр_udp(кадр, порт_к=40000)
+        п = стек(кадр, [{"вид": "поле", "над": "UDP", "поле": "udp.port", "значение": 40000, "как": "Ethernet"}])
+        self.assertEqual(дк.ПЕРЕХВАТОВ_ДО + 1, п.стек.count("Ethernet"))
 
 
 class ПравилаЛюдейTests(Папка):
