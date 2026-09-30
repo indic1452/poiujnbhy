@@ -754,6 +754,21 @@ process.stdout.write(JSON.stringify(случаи.map(([ф, ...а]) => ({маск
         self.assertEqual(["99999999", "000119D8", "служебный", "пустой", "CMF · RDI · оборван", "данные",
                           True, True, True, True, False, "cHEC исправлен"], итог)
 
+    def test_справка_окна(self):
+        from test_potok_sessii import функции_js  # noqa: PLC0415
+        код = функции_js([], ["СПРАВКА_GFP"]) + "process.stdout.write(JSON.stringify(СПРАВКА_GFP));"
+        готово = subprocess.run(["node", "-e", код], capture_output=True, text=True, timeout=20)
+        self.assertEqual(0, готово.returncode, готово.stderr)
+        справка = dict(json.loads(готово.stdout))
+        for что, текст in справка.items():
+            self.assertNotIn("NaN", текст, что)
+        маска = справка["Маска"]
+        self.assertIn("одинаков при любой маске", маска)
+        self.assertIn("бит — места заголовков", маска)
+        self.assertIn("Предустановки: B6AB31E0 (G.7041)", маска)
+        self.assertIn("HUNT → PRESYNC → SYNC", справка["Выделение кадров"])
+        self.assertIn("F1", справка)
+
     def test_окно_в_меню_и_клавишах(self):
         from test_potok_sessii import APP_JS  # noqa: PLC0415
         текст = APP_JS.read_text(encoding="utf-8")
