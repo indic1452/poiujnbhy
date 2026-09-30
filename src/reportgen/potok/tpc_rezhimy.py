@@ -118,8 +118,9 @@ def _остаток(степень: int, g: int) -> int:
     """x^степень mod g над GF(2)."""
     r = g.bit_length() - 1
     v = 1 << степень
-    while v.bit_length() - 1 >= r:
-        v ^= g << (v.bit_length() - 1 - r)
+    for i in range(степень, r - 1, -1):                 # старшие степени — по одной, сверху вниз
+        if v >> i & 1:
+            v ^= g << (i - r)
     return v
 
 
