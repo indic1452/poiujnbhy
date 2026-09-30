@@ -856,7 +856,8 @@ def данные_блоков(г: Геометрия, блоки: np.ndarray) ->
 
 _AHA4501 = "istochniki/tpc/aha/AHA4501.pdf, стр. 18 PDF (стр. 14 документа), Table 4"
 _AHA4524 = "istochniki/tpc/aha/dzsc_200902051616359075.pdf (AHA4524, PB4524_0204), стр. 3, Table 1"
-_RADYNE = "istochniki/tpc/radyne/DMD20-DMD20LBST_manual.pdf, стр. 157–158 PDF (7-1, 7-2)"
+_RADYNE = ("istochniki/tpc/radyne/DMD20-DMD20LBST_manual.pdf, стр. 157–158 PDF (7-1, 7-2); DMD2401 — "
+           "radyne/DMD2401_manualzilla-7249084.pdf, стр. 87 PDF («20 = TPC 0.7932D, 21 = TPC 0.4953D»)")
 _RADYNE_13 = "istochniki/tpc/radyne/DMD20-DMD20LBST_manual.pdf, стр. 59 PDF («1/3 Rate Turbo (.325)»)"
 _ADVANTECH = "istochniki/tpc/prochie/advantech_WP-Turbo-FEC-132191.pdf"
 _OFDM = "istochniki/tpc/ieee802/C80216d-04_13r1.pdf, стр. 2 (Table 192, 8.3.3.2.2)"

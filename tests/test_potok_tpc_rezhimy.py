@@ -608,7 +608,9 @@ class Синхрометки(unittest.TestCase):
                 self.assertIs(в.метки, метки)
                 self.assertEqual((в.T, в.фаза), (N, 77))
                 self.assertIn(метки.текст(), в.слой())
-                self.assertIn(f"(T={N * P // (P - L)})" if m > 1 else f"(T={N}+метки)", в.подпись())
+                # T в подписи — блок с его долей меток, если она целая (0.495: 4096·8252/8192 = 4126).
+                T = N * P / (P - L)
+                self.assertIn(f"(T={int(T)})" if T == int(T) else f"(T={N}+метки)", в.подпись())
                 выход, н = razbor.снять_вручную(ряд, в.слой() + " без скремблера")
                 self.assertEqual(выход.tolist(), данные.reshape(-1).tolist())
                 self.assertIn("синхрометки", " ".join(н.подробно))
@@ -1075,6 +1077,10 @@ class СверкаСФайламиИсточников(unittest.TestCase):
         self.assertIn("0.495 - (32,26) x (32,26) x (4,3)", radyne)
         self.assertIn("0.793 - (64,57) x (64,57)", radyne)
         self.assertIn("1/3 Rate Turbo (.325)", radyne.replace("|", " "))
+        # DMD2401 (стр. 87 PDF): 0.793 — двумерный, 0.495 — трёхмерный, как в каталоге.
+        dmd2401 = _текст("radyne/DMD2401_manualzilla-7249084.pdf.txt")
+        self.assertIn("20 = TPC 0.7932D |21 = TPC 0.4953D", dmd2401)
+        self.assertEqual((т.режим("Radyne-0.793").измерений, т.режим("Radyne-0.495").измерений), (2, 3))
         self.assertEqual([_коды_оси(т.режим(и)) for и in ("Radyne-0.495", "Radyne-0.793", "Radyne-0.325")],
                          [[(32, 26), (32, 26), (4, 3)], [(64, 57), (64, 57)], [(16, 11)] * 3])
         cdm = _текст("comtech/MN-CDM570-570L.pdf.txt")
@@ -1216,7 +1222,8 @@ class ВсеРежимыКаталога(unittest.TestCase):
                 в = т.оценить(ряд, р, T)
                 self.assertIsNotNone(в)
                 self.assertEqual((в.T, в.фаза), (T, фаза))
-                self.assertGreaterEqual(в.чисто, 0.9)
+                # У eTPC из кодов чётности (Datum-0.950-4k) при 1e-3 неисправимы 3 блока из 24 (см. ниже).
+                self.assertGreaterEqual(в.чисто, 0.85)
                 выход, н = т.снять(ряд, р, T=T, фаза=в.фаза, бит_укор=в.бит_укор,
                                   гипер=(в.гипер_сдвиг + в.гипер_смещение) if р.гипер else None)
                 г = т.геометрия(р, бит_укор=в.бит_укор)
@@ -1232,7 +1239,7 @@ class ВсеРежимыКаталога(unittest.TestCase):
                     if ошибок[i] <= радиус:
                         self.assertEqual(выход[i].tolist(), данные[i].tolist(), f"блок {i}, ошибок {ошибок[i]}")
                 self.assertGreaterEqual(доля, 0.999)
-                self.assertGreaterEqual(н.уверенность, 0.9)
+                self.assertGreaterEqual(н.уверенность, 0.85)
                 if доля == 1.0:
                     итог_бит_в_бит.append(р.ид)
         # Все, кроме крошечного (12,11)² 802.16 с двумя ошибками в одном блоке этого потока и eTPC из кодов
