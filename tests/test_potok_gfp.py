@@ -422,6 +422,24 @@ class НагрузкаTests(unittest.TestCase):
                       "\n".join(gfp.строки_сводки(р)))
         self.assertEqual("0x941F", gfp.сводка(р)["gfp_t"]["многочлен"])
 
+    def test_gfp_t_отражённая_crc_суперблока(self):
+        # CRC суперблока ищется вслепую — и отражённая с ненулевым начальным (CRC-16/MODBUS), младшим байтом.
+        def modbus(данные):
+            рег = 0xFFFF
+            for байт in данные:
+                рег ^= байт
+                for _ in range(8):
+                    рег = (рег >> 1) ^ 0xA001 if рег & 1 else рег >> 1
+            return рег
+        g = np.random.default_rng(4)
+        области = []
+        for _ in range(10):
+            тела = [g.integers(0, 256, 65, dtype=np.uint8).tobytes() for _ in range(2)]
+            области.append(г.нагрузка(b"".join(т + modbus(т).to_bytes(2, "little") for т in тела), upi=6))
+        р = gfp.разобрать(г.в_ряд(г.поток([x for о in области for x in (None, о)])))
+        self.assertEqual((0x8005, True, "little", 1.0), (р.gfp_t["crc"]["P"], р.gfp_t["crc"]["refout"],
+                                                        р.gfp_t["crc"]["порядок"], р.gfp_t["верных_crc"]))
+
 
 class ВыходыTests(unittest.TestCase):
     def test_кадры_клиентов_с_типом_канала_pcap(self):
