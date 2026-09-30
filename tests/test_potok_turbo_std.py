@@ -296,6 +296,13 @@ class Вслепую(unittest.TestCase):
                       н.что)
         self.assertIsNone(н.дальше)
         self.assertTrue(н.свойства["турбо"])
+        self.assertTrue(н.мера.startswith("составляющий код RSC 13/15 (UMTS, LTE): связь систематики"))
+
+    def test_начало_по_второй_на_коротком_потоке(self):
+        схема = ts.ccsds(1784, "1/2")
+        с_ = ts.СОСТАВЛЯЮЩИЕ[1]
+        self.assertIsNone(ts._начало_по_второй(с.случайные_биты(5000), схема, с_, 0, 2, time.monotonic() + 5))
+        self.assertIsNone(ts._начало_по_второй(с.случайные_биты(20_000), схема, с_, 0, 2, time.monotonic() + 30))
 
 
 class Автомат(unittest.TestCase):
