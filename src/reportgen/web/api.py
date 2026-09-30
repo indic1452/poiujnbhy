@@ -4994,6 +4994,165 @@ def potok_moddecoder_all(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError(str(ошибка), 400) from None
 
 
+# -- поиск блочных турбокодов (ТКБ): каталог режимов, поиск, просмотр, сохранение --------------
+
+#: Поиск ТКБ: секунд на одну часть перебора режимов (окно просит части подряд, показывает ход).
+ТКБ_СРОК = 2.0
+#: Просмотр ТКБ: сколько блоков декодировать, сколько бит данных отдать.
+ТКБ_ПРОСМОТР_БЛОКОВ = 64
+ТКБ_ПРОСМОТР_БИТ = 1 << 16
+
+
+@router.get("/potok-tkb/modes")
+def potok_tkb_modes(request: Request) -> dict[str, Any]:
+    """Каталог режимов ТКБ: коды, размеры, скорость, источник (файл и страница) и отметка достоверности."""
+    from ..potok import tpc_rezhimy  # noqa: PLC0415
+    require_user(request)
+    return {"items": [tpc_rezhimy.описание(р) for р in tpc_rezhimy.КАТАЛОГ]}
+
+
+def _ткб_этап(request: Request, job_id: str) -> tuple[dict[str, Any], Any, int]:
+    """Тело запроса окна ТКБ → (тело, выборка бит этапа, этап) с проверкой доступа."""
+    from ..potok import tpc_rezhimy  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        этап = int(тело.get("stage") or 0)
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("stage — номер этапа", 400) from None
+    _файл_бит_или_400(request, user, job_id, этап)
+    return тело, _potok(request).биты_участка(job_id, этап, 0, tpc_rezhimy.ВЫБОРКА), этап
+
+
+@router.post("/potok/{job_id}/tkb/search")
+def potok_tkb_search(request: Request, job_id: str) -> dict[str, Any]:
+    """Поиск блочных турбокодов: режимы каталога с номерами с…по (часть — не дольше ``ТКБ_СРОК``).
+
+    ``синхрослово`` (0/1) или ``кадр`` — длина кадра; без них длина кадра ищется по циклу
+    потока (при первой части, ``с`` = 0; дальше окно присылает найденные ``кадры`` обратно).
+    ``слепой`` — вместо каталога слепой поиск (последняя часть окна). ``метки`` — синхрометки
+    (AHA4501, US7085987): при первой части ищутся по потоку (если не ``без_меток``) и возвращаются,
+    окно присылает их обратно; режимы пробуются и на ряде без меток.
+    """
+    from ..potok import razbor, tpc, tpc_rezhimy  # noqa: PLC0415
+    тело, ряд, _ = _ткб_этап(request, job_id)
+    try:
+        с = int(тело.get("с") or 0)
+        по = int(тело.get("по") or 10 ** 6)
+        кадры = [int(к) for к in (тело.get("кадры") or []) if int(к) > 0]
+        кадр = int(тело.get("кадр") or 0)
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("с, по, кадр, кадры — целые числа", 400) from None
+    синхрослово = str(тело.get("синхрослово") or "")
+    if any(ч not in "01 " for ч in синхрослово):
+        raise ServiceError("синхрослово — нули и единицы", 400)
+    имена = тело.get("режимы") or []
+    if not isinstance(имена, list):
+        raise ServiceError("режимы — список имён режимов каталога", 400)
+    try:
+        режимы = [tpc_rezhimy.режим(str(и)) for и in имена] or list(tpc_rezhimy.КАТАЛОГ)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    по = min(по, len(режимы))
+    if кадр:
+        кадры = sorted(set(кадры) | {кадр})
+    elif с == 0 and not кадры:
+        кадры = tpc_rezhimy.длины_кадра(ряд, синхрослово)
+    метки = None
+    м = тело.get("метки")
+    if isinstance(м, dict):
+        try:
+            метки = tpc_rezhimy.Метки(int(м["период"]), int(м["длина"]), int(м["начало"]), str(м.get("слово") or ""),
+                                      int(м.get("через") or 0), int(м.get("инв") or 0))
+        except (KeyError, TypeError, ValueError, OverflowError):
+            raise ServiceError("метки — {период, длина, начало[, через, инв]} целыми", 400) from None
+        if not 0 < метки.длина < метки.период:
+            raise ServiceError("метки: длина — от 1 до периода − 1", 400)
+    elif с == 0 and not тело.get("без_меток") and not тело.get("слепой"):
+        метки = tpc_rezhimy.найти_метки(ряд, tpc_rezhimy.периоды_меток(ряд, кадры))
+    if тело.get("слепой"):
+        варианты = []
+        try:
+            if кадры:
+                данные, находка = tpc.снять_в_кадрах(ряд, razbor.начала_кадров(ряд, кадры[0]), кадры[0])
+                находка.свойства["слой"] = f"ткб кадр {кадры[0]}"
+            else:
+                данные, находка = tpc.снять(ряд)
+                находка.свойства["слой"] = (f"ткб строка {находка.свойства['строка']} начало "
+                                            f"{находка.свойства['начало']} столбец {находка.свойства['столбец']} "
+                                            f"блок {находка.свойства['блок']}"
+                                            + (f" глубина {находка.свойства['глубина']} плоскость "
+                                               f"{находка.свойства['плоскость']}" if находка.свойства.get("глубина")
+                                               else " двумерный"))
+            if находка.уверенность >= tpc_rezhimy.НАЙДЕН_ОТ:
+                в = tpc_rezhimy.Вариант(tpc_rezhimy.КАТАЛОГ[0], int(находка.свойства.get("кадр") or 0),
+                                        int(находка.свойства.get("начало_блока") or 0), float(находка.уверенность),
+                                        чисто=float(находка.уверенность), слепой=True, находка=находка)
+                варианты.append(в.в_словарь())
+        except ValueError:
+            pass
+        return {"найдено": варианты, "по": по, "всего": len(режимы), "кадры": кадры}
+    итог = tpc_rezhimy.поиск(ряд, режимы=режимы, кадры=кадры, с=с, по=по, срок=ТКБ_СРОК, метки=метки)
+    return {"найдено": [в.в_словарь() for в in tpc_rezhimy.упорядочить(итог["найдено"])],
+            "по": итог["по"], "всего": итог["всего"], "кадры": кадры,
+            "метки": метки.в_словарь() if метки is not None else None}
+
+
+def _ткб_снять(request: Request, job_id: str, слой: str, весь: bool):
+    """Снять ТКБ слоем окна (``ткб режим …`` или слепой ``ткб …``): (данные, находка, всего бит этапа)."""
+    from ..potok import razbor, tpc_rezhimy  # noqa: PLC0415
+    тело, ряд, этап = _ткб_этап(request, job_id)
+    if not слой.lower().startswith("ткб"):
+        raise ServiceError("слой ТКБ начинается со слова «ткб»", 400)
+    if весь:
+        ряд = _potok(request).биты_участка(job_id, этап, 0, None)
+    else:
+        ряд = ряд[:max(1, int(тело.get("бит") or tpc_rezhimy.ВЫБОРКА))]
+    try:
+        данные, находка = razbor.снять_вручную(ряд, слой)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    return данные, находка, ряд
+
+
+@router.post("/potok/{job_id}/tkb/preview")
+def potok_tkb_preview(request: Request, job_id: str) -> dict[str, Any]:
+    """Просмотр варианта: подробности снятия, начало данных (base64) и первый блок с разметкой мест."""
+    import base64  # noqa: PLC0415
+
+    import numpy as np  # noqa: PLC0415
+
+    from ..potok import tpc_rezhimy  # noqa: PLC0415
+    тело = _body(request)
+    слой = str(тело.get("слой") or "").strip()
+    данные, находка, ряд = _ткб_снять(request, job_id, слой, False)
+    показать = min(len(данные), ТКБ_ПРОСМОТР_БИТ)
+    блок: dict[str, Any] | None = None
+    м = re.search(r"режим\s+(\S+)", слой, re.IGNORECASE)
+    if м:
+        # Слой снят — режим в каталоге есть; раскладка — с укорочением B, подобранным по кадру.
+        г = tpc_rezhimy.геометрия(tpc_rezhimy.режим(м.group(1)), бит_укор=(находка.свойства or {}).get("бит_укор"))
+        блок = {"форма": list(г.форма), "метки": base64.b64encode(tpc_rezhimy.метки_мест(г).tobytes()).decode("ascii")}
+    # Первая строка подробностей слоя ТКБ — что снято и мера (находка слоя — «снято по указанию»).
+    return {"что": находка.подробно[0] if находка.подробно else находка.что, "мера": находка.мера,
+            "уверенность": находка.уверенность, "подробно": находка.подробно, "биты": base64.b64encode(np.packbits(данные[:показать]).tobytes()).decode("ascii"),
+            "бит": int(показать), "данных": int(len(данные)), "блок": блок,
+            "свойства": {к: v for к, v in (находка.свойства or {}).items() if isinstance(v, (int, float, str))}}
+
+
+@router.post("/potok/{job_id}/tkb/save")
+def potok_tkb_save(request: Request, job_id: str) -> Response:
+    """«Сохранить REC»: данные ТКБ снятого варианта по всему этапу — файлом (биты упакованы, старший первым)."""
+    import numpy as np  # noqa: PLC0415
+    тело = _body(request)
+    слой = str(тело.get("слой") or "").strip()
+    данные, находка, _ = _ткб_снять(request, job_id, слой, True)
+    имя = re.sub(r"[^\w.-]+", "_", str((находка.свойства or {}).get("режим") or "tkb")).strip("_") or "tkb"
+    return Response(np.packbits(данные).tobytes(), media_type="application/octet-stream",
+                    headers={"Content-Disposition": _disposition(f"{имя}.rec"), "X-Content-Type-Options": "nosniff",
+                             "X-Bits": str(len(данные))})
+
+
 def _приметы_этапа(request: Request, user, job_id: str, stage: int):
     """Состояние, этап с битовым потоком (этот или ближайший ранее), приметы и подсказки.
 

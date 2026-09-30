@@ -1,0 +1,224 @@
+
+=====PAGE 1=====
+2002-07-09 
+IEEE 802.16a-02/73r1
+0
+Project
+IEEE 802.16 Broadband Wireless Access Working Group <http://ieee802.org/16>
+Title
+Block Turbo Codes for 802.16 optional coding
+Date
+Submitted
+2002-07-09
+Source(s)
+Brian A. Banister
+Advanced Hardware Architectures
+2345 NE Hopkins Court
+Pullman WA 99163-5601
+Voice: 509-336-7108
+Fax:
+509-334-9000
+bbaniste@aha.com
+Re:
+Abstract
+Demonstrates that the current optional coding scheme does provide material gains, correcting
+comparisons made in C802.16a-02/59.
+Purpose
+Defend BTCs from claims made in C802.16a-02/59
+Notice
+This document has been prepared to assist IEEE 802.16. It is offered as a basis for discussion and is not binding on
+the contributing individual(s) or organization(s). The material in this document is subject to change in form and
+content after further study. The contributor(s) reserve(s) the right to add, amend or withdraw material contained
+herein.
+Release
+The contributor grants a free, irrevocable license to the IEEE to incorporate material contained in this contribution,
+and any modifications thereof, in the creation of an IEEE Standards publication; to copyright in the IEEE’s name
+any IEEE Standards publication even though it may include portions of this contribution; and at the IEEE’s sole
+discretion to permit others to reproduce in whole or in part the resulting IEEE Standards publication. The
+contributor also acknowledges and accepts that this contribution may be made public by IEEE 802.16.
+Patent
+Policy and
+Procedures
+The contributor is familiar with the IEEE 802.16 Patent Policy and Procedures (Version 1.0)
+<http://ieee802.org/16/ipr/patents/policy.html>, including the statement “IEEE standards may include the known use
+of patent(s), including patent applications, if there is technical justification in the opinion of the standards-
+developing committee and provided the IEEE receives assurance from the patent holder that it will license
+applicants under reasonable terms and conditions for the purpose of implementing the standard.”
+Early disclosure to the Working Group of patent information that might be relevant to the standard is essential to
+reduce the possibility for delays in the development process and increase the likelihood that the draft publication
+will be approved for publication. Please notify the Chair <mailto:r.b.marks@ieee.org > as early as possible, in
+written or electronic form, of any patents (granted or under application) that may cover technology that is under
+consideration by or has been approved by IEEE 802.16. The Chair will disclose this notification via the IEEE
+802.16 web site <http://ieee802.org/16/ipr/patents/notices>.
+
+=====PAGE 2=====
+2002-07-09
+IEEE 802.16.a-02/73r1
+1
+Optional Coding Schemes for 802.16
+Brian A. Banister
+Advanced Hardware Architectures
+Optional Coding
+This contribution demonstrates that the current optional coding scheme provides material gains over the
+mandatory coding scheme. The mandatory coding scheme performance is modeled using convolutional codes,
+using simulation points read off of the graphs in [1]. This paper further demonstrates that the claimed additional
+gains in [1] beyond the current optional coding scheme are immaterial.
+The results presented below are for the AWGN channel. We regret that insufficient time was available to verify
+or compare to the fading channel simulations presented in [1]. We only mention in passing that the SUI results
+presented in [2], and by implication, in [1], assume a static channel model, failing to accommodate the channel
+model’s time varying statistics.
+As the thrust of this paper is to respond to [1], there is no new text or modification necessary for the standard.
+Performance of Optional FEC Schemes
+In this section, we compare the performance of the current optional coding scheme, block turbo codes (BTCs),
+with convolutional turbo codes (CTCs). As the author of [1] (iCODING) is unwilling to release reference
+software, the CTCs used for reference are supplied by Communications Research Centre, Canada (CRC).
+iCODING indicates improved results beyond that obtained by CRC, particularly in regards to where the CTC
+error floor begins. However, there are no means available to independently verify iCODINGs claimed results,
+as iCODING offers no software, and appears to have not published the claimed modifications to the CTC.
+Optimal log likelihood ratios (LLRs) are used by both the BTC and CTC. The CTC LLRs were computed in
+floating point precision and then quantized internally to the CRC software to 8 bits [3]. The remainder of the
+processing occurs in 16 bit precision [3]. The one exception to this is for the 64QAM example, where the I and
+Q values are quantized to 6 bits each, prior to the LLR computation. The BTC simulations assume 7 soft bits
+for each I and Q value. Early stopping detection was enabled for both systems, and showed similar average
+number of iterations, typically on the order of 1.5 to 2 iterations for BER at or below 1e-6. The coding rates
+shown in the figures are the actual coding rates, accounting for all shortening or puncturing, and for termination
+of the convolutional codes for the CTC (4 uncoded bits).
+For the optional mode of rate 3/4, QPSK OFDM mode in AWGN, it is observed and conceded that the CTC
+offers an improvement on the order of 0.5 dB at a BER of 1e-6. However, shortly below 1e-6, the performance
+of the CTC begins to degrade as it hits its error floor. By a BER of 1e-8, it is observed that the BTC offers gain
+beyond that of the CTC. The BER advantage of the BTC increases for increasing SNR. It is also noted that the
+packet error rate (PER) of the BTC is superior to the CTC for PER below about 5e-5.
+
+=====PAGE 3=====
+2002-07-09
+IEEE 802.16.a-02/73r1
+2
+2
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+10
+-10
+10
+-8
+10
+-6
+10
+-4
+10
+-2
+10
+0
+Eb/No (dB)
+Error
+rate
+Rate 3/4, AWGN, QPSK, Coded BS=48 bytes
+BTC (0.747) BER
+BTC (0.747) PER
+CTC (0.740) (CRC) PER
+CTC (0.740) (CRC) BER
+CC (0.75) BER
+Figure 1, Optional channel coding for rate 3/4 QPSK OFDM mode in AWGN.
+For the optional mode of rate 3/5, 16-QAM OFDM mode in AWGN, very similar BER and PER rates are
+observed for BER above 1e-4 and PER above 1e-4. Below 1e-4, and prior to the CTC reaching the error floor,
+the CTC gains up to an additional 0.3 dB. The error floor is seen in the figure to begin around a BER of 1e-6,
+with the BTC expected to have the advantage below a BER of 1e-8. For the PER, the BTC begins to have an
+advantage at 1e-4.
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+7
+10
+-7
+10
+-6
+10
+-5
+10
+-4
+10
+-3
+10
+-2
+10
+-1
+10
+0
+Eb/No (dB)
+Error
+rate
+Rate 3/5, AWGN, 16-QAM, Coded BS=96 bytes
+BTC (0.609) BER
+BTC (0.609) PER
+CTC (0.595) (CRC)
+CTC (0.595) (CRC) BER
+CC (0.60) BER
+Figure 2, Optional channel coding for rate 3/5 16-QAM OFDM mode in AWGN.
+
+=====PAGE 4=====
+2002-07-09
+IEEE 802.16.a-02/73r1
+3
+7.4
+7.8
+8.2
+8.6
+9
+9.4
+9.8
+10.2
+10.6
+11
+11.4
+10
+-8
+10
+-6
+10
+-4
+10
+-2
+10
+0
+Rate 2/3, AWGN, 64-QAM, Coded BS=144 bytes
+Eb/No (dB)
+Error
+rate
+BTC (0.660) BER
+BTC (0.660) PER
+CTC (0.663) (CRC)
+CTC (0.663) (CRC) BER
+Figure 3, Optional channel coding for rate 2/3 64-QAM OFDM mode in AWGN.
+At higher throughput rates, obtained by higher order modulation schemes and accompanied by larger block
+sizes, the CTC error floor becomes even more of a detriment. As seen in Figure 3, the PER for the CTC is
+significantly impacted by the error floor, with a factor of 100 difference in packet error probabilities between the
+BTC and CTC at Eb/No of 11 dB. As observed in the earlier figures, we note that the CTC does provide an
+additional gain over the BTC at a BER of 1e-6, but looses this advantage at lower BERs.
+Conclusion
+The significant coding gains claimed in [1] are only applicable over a small region on the performance curves.
+From a BER/PER performance, the results above indicate the CTC/BTC debate is 6 of one, and half a dozen of
+the other. To claim that either the BTC or the CTC offers no material gains over the mandatory mode is strictly
+a marketing ploy. Other concerns, such as latency and low cost parts availability, may be of greater concern
+than the small performances differences at a particular Eb/No operating point. The BTC technology is currently
+in production from multiple vendors. Since the block codes are based upon standard constituents with no
+randomized components (interleavers for example), interoperability already exists. The CTC community is not
+yet as stabilized and settled upon a common interleaver or even constituent codes. With the number of patents
+filed, it may be difficult for more than a single provider to generate a standards compliant part, should the CTC
+be included. Naturally, this jeopardizes the cost constraints. Given the short time remaining for the
+standardization process, we recommend that the BTC be retained as the optional coding method.
+References
+[1] Brian Edmonston, “Convolutional turbo codes for 802.16,” IEEE C802.16a-02/59, May 15, 2002.
+[2] B. Bougard, and J. David, “Comparison between a new convolutional turbo coding scheme and the current
+block turbo coding scheme for HiperMAN,” BRAN29d050, June 27, 2002.
+[3] Paul Guinand, Personal correspondence, Communications Research Center Canada, June 25, 2002.
