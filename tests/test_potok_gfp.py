@@ -822,8 +822,66 @@ class ОкноЧерезСерверTests(unittest.TestCase):
             self.assertEqual((29, канал), (ответ["кадров"], ответ["канал"]))
             захват = self.дождаться(ответ["id"], "pakety")
             self.assertEqual("готово", захват["состояние"])
-        self.assertEqual(400, к.post(f"/api/potok/{ид}/gfp/pakety", json={"mask": "авто", "cid": 7}).status_code)
+        нет = к.post(f"/api/potok/{ид}/gfp/pakety", json={"mask": "авто", "cid": 7})
+        self.assertEqual((400, "кадров с данными нет в канале CID 7"), (нет.status_code, нет.json()["error"]))
+        self.assertEqual(400, к.post(f"/api/potok/{ид}/gfp/pakety", json={"cid": "два"}).status_code)
+        # Имя захвата: с каналом CID и без.
+        имена = []
+        for тело in ({"cid": 2}, {}):
+            ответ = к.post(f"/api/potok/{ид}/gfp/pakety", json=тело).json()
+            имена.append(self.дождаться(ответ["id"], "pakety")["имя"])
+        self.assertEqual(["gfp — GFP клиенты, CID 2, массив 0.pcap", "gfp — GFP клиенты, массив 0.pcap"], имена)
         self.assertEqual(400, к.post(f"/api/potok/{ид}/gfp/pakety", json={"mask": "B6AB31E0"}).status_code)
+
+    def загрузить(self, сид, имя, данные):
+        ид = self.к.post(f"/api/sessions/{сид}/files", data={"bit_order": "msb"},
+                         files={"file": (имя, данные, "application/octet-stream")}).json()["id"]
+        self.дождаться(ид)
+        return ид
+
+    def test_параметры_участок_таблица_и_кэш(self):
+        from unittest import mock  # noqa: PLC0415
+
+        к = self.к
+        self.сеть.login("engineer")
+        сид = к.post("/api/sessions", json={"name": "gfp-п"}).json()["id"]
+        пустые = г.поток([None] * 600)                       # 2400 байт — 600 пустых кадров
+        ид = self.загрузить(сид, "пустые.bin", пустые)
+        сдвинутые = np.packbits(np.concatenate([[1], г.в_ряд(пустые)[:-1]]).astype(np.uint8)).tobytes()
+        ид1 = self.загрузить(сид, "сдвиг.bin", сдвинутые)
+        def всего(ид_, **тело):
+            d = к.post(f"/api/potok/{ид_}/gfp", json={"idle": True, **тело}).json()
+            return d["таблица"]["всего"] if d.get("найдено") else d
+        with mock.patch.object(gfp, "БИТ_ДО", 1 << 14):
+            # Участок: по умолчанию половина предела (8192 бит = 256 кадров), не меньше 4096 бит.
+            self.assertEqual(256, всего(ид))
+            self.assertEqual(128, всего(ид, bits=1))
+            self.assertEqual(127, всего(ид1, bits=1))     # с бита 1 — 4095 бит, 511 байт
+            self.assertEqual(512, всего(ид, bits=1 << 20))
+            # Страница таблицы: с нулевого по умолчанию, 200 строк, не больше 500 и не меньше 1.
+            def строки(**тело):
+                т = к.post(f"/api/potok/{ид}/gfp", json={"idle": True, "bits": 1 << 14, **тело}).json()["таблица"]
+                return т["от"], len(т["строки"]), т["строки"][0]["№"]
+            self.assertEqual((0, 200, 0), строки())
+            self.assertEqual((0, 500, 0), строки(limit=10000))
+            self.assertEqual((0, 1, 0), строки(limit=-3, offset=-5))
+            self.assertEqual(400, к.post(f"/api/potok/{ид}/gfp", json={"offset": "abc"}).status_code)
+            # Маска с 0x, причина «не найдено» с заданной маской.
+            self.assertEqual("B6AB31E0", к.post(f"/api/potok/{ид}/gfp", json={"mask": "0xB6AB31E0"}).json()["сводка"]["маска"])
+            d = к.post(f"/api/potok/{ид}/gfp", json={"mask": "000119D8"}).json()
+            self.assertFalse(d["найдено"])
+            self.assertIn("с этой маской", d["причина"])
+            # Разборы помнятся (три последних): повтор первого из трёх — без нового расчёта.
+            настоящий = gfp.разобрать
+            with mock.patch.object(gfp, "разобрать", side_effect=настоящий) as разбор:
+                for бит in (4096, 5000, 6000, 4096):
+                    всего(ид, bits=бит)
+                self.assertEqual(3, разбор.call_count)
+        # Другой многочлен CRC-16 — только с «poly: авто».
+        кадры = [None, None] + [г.нагрузка(п, многочлен=0x8005) for п in ETHERNET[:20]]
+        ид2 = self.загрузить(сид, "8005.bin", г.поток(кадры, 0x12345678, многочлен=0x8005))
+        self.assertFalse(к.post(f"/api/potok/{ид2}/gfp", json={}).json()["найдено"])
+        self.assertEqual("12345678", к.post(f"/api/potok/{ид2}/gfp", json={"poly": "авто"}).json()["сводка"]["маска"])
 
 
 if __name__ == "__main__":
