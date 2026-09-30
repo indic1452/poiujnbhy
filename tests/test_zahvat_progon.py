@@ -1854,15 +1854,19 @@ class СтраницаTests(unittest.TestCase):
 
     def test_переход_по_кускам(self):
         from test_oblik import PRELUDE  # noqa: PLC0415
-        код = PRELUDE + "const api = {}; function navigate() {} function toastError() {}\n" + \
+        код = PRELUDE + "const api = { get: async (п) => ({ total: 5, п }) }; function navigate() {} function toastError() {}\n" + \
             self.вырезать(self.js, "навигацияКусков") + r"""
-        const текст = (у) => typeof у === 'string' ? у : у.kids.map(текст).join(' ');
-        console.log(JSON.stringify([{ от: 'zahvat:20260930-044335-e6aab2#0' }, { от: 'zahvat:20260930-044335-e6aab2#4' },
-            { от: '12#1' }, { от: '' }, {}, { от: 'zahvat:../x#1' }].map((с) => { const у = навигацияКусков(с); return у && текст(у); })));"""
+        const текст = (у) => typeof у === 'string' ? у : у.textContent !== undefined ? у.textContent
+            : у.kids.filter((к) => !к.hidden).map(текст).join(' ');
+        const узлы = [{ от: 'zahvat:20260930-044335-e6aab2#0' }, { от: 'zahvat:20260930-044335-e6aab2#4' },
+            { от: 'zahvat:20260930-044335-e6aab2#весь' },
+            { от: '12#1' }, { от: '' }, {}, { от: 'zahvat:../x#1' }, { от: 'zahvat:../x#весь' }].map((с) => навигацияКусков(с));
+        setTimeout(() => console.log(JSON.stringify(узлы.map((у) => у && текст(у)))), 20);"""
         итог = self.выполнить(код)
-        self.assertEqual("Кусок 1 захвата с сети следующий кусок → К захвату", итог[0])
-        self.assertEqual("Кусок 5 захвата с сети ← предыдущий кусок следующий кусок → К захвату", итог[1])
-        self.assertEqual([None, None, None, None], итог[2:])
+        self.assertEqual("Кусок 1 из 5 захвата с сети следующий кусок → К захвату", итог[0])
+        self.assertEqual("Кусок 5 из 5 захвата с сети ← предыдущий кусок К захвату", итог[1], "у последнего нет «следующего»")
+        self.assertEqual("Весь захват с сети, все куски подряд К захвату", итог[2])
+        self.assertEqual([None, None, None, None, None], итог[3:])
 
     def test_подключено_к_страницам(self):
         маршрут = self.вырезать(self.js, "renderRoute")
