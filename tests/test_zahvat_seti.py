@@ -33,6 +33,7 @@ from reportgen.setevoy.zahvat_seti import (
     chtec,
     istochniki,
     karty,
+    menedzher,
     obrabotka,
     parametry,
     pcap_bib,
@@ -1248,7 +1249,7 @@ class ИсточникиTests(unittest.TestCase):
 
     def test_udp_группа_из_менеджера(self):
         """Менеджер передаёт выбранную в таблице карту приёму UDP; без карты — заметка про маршрут."""
-        from reportgen.setevoy.zahvat_seti import menedzher  # noqa: PLC0415
+
         self.assertEqual(7, menedzher.номер_карты({"индекс": 7, "ид": "lo"}))
         self.assertEqual(0, menedzher.номер_карты({"ид": "нет-такой-карты0"}))
         self.assertEqual(0, menedzher.номер_карты({}))
@@ -1482,6 +1483,27 @@ class МенеджерTests(unittest.TestCase):
         self.assertEqual((300, 300, "остановлен по команде"), (с_["принято"], с_["пакетов"], с_["причина"]))
         self.assertEqual([i.to_bytes(2, "big") for i in range(300)],
                          [zapis.разобрать_кадр(з_.данные).нагрузка for з_ in записи_кусков(self.м, ид)])
+        self.assertFalse([з_ for з_ in с_["заметки"] if "дочитывание" in з_])
+        # Поток, который не кончается, дочитывается не дольше ДОЧИТЫВАТЬ — и об этом заметка.
+        ид = self.начать_udp(свободный_порт())
+        з = self.м._идут[ид]
+
+        def бесконечный(таймаут):
+            if not з.стоп.is_set():
+                time.sleep(0.02)
+                return []
+            time.sleep(0.01)
+            з.источник.сведения = [(2, "10.0.0.1:1", 1)]
+            return [(time.time(), кадр, len(кадр))]
+
+        з.источник.прочитать = бесконечный
+        кадр = zapis.кадр_udp(b"x", "10.0.0.1", 1, "10.0.0.2", 2)
+        with mock.patch.object(menedzher, "ДОЧИТЫВАТЬ", 0.3):
+            self.м.остановить(ид)
+            с_ = self.дождаться_конца(ид)
+        self.assertTrue(5 <= с_["пакетов"] <= 60, с_["пакетов"])
+        self.assertIn("«Стоп»: дочитывание принятого ядром прервано через 0.3 с — поток не кончался; остаток буфера "
+                      "сокета не записан", с_["заметки"])
         # У libpcap/Npcap дочитывания нет: pcap_next_ex на Linux без трафика может не вернуться.
         self.assertEqual((True, True, True, False), (istochniki.ПриёмUDP.дочитывать, istochniki.ЗахватAFPacket.дочитывать,
                                                      istochniki.ЗахватSioRcvall.дочитывать, istochniki.ЗахватPcap.дочитывать))
@@ -1578,7 +1600,7 @@ class МенеджерTests(unittest.TestCase):
             ф = настоящий_open(*а, **к)
             открытые.append(ф)
             return ф
-        from reportgen.setevoy.zahvat_seti import menedzher  # noqa: PLC0415
+
         for ошибка in (OSError(errno.EACCES, "Отказано в доступе"), ValueError("префикс 40")):
             открытые.clear()
             with mock.patch.object(menedzher.zapis, "ПисательPcapng", side_effect=ошибка), \
@@ -2036,7 +2058,7 @@ class ЗахватСервераTests(unittest.TestCase):
 
     def test_менеджер_один_на_приложение(self):
         """Два первых запроса сразу после запуска — один менеджер (обработчики идут в пуле потоков)."""
-        from reportgen.setevoy.zahvat_seti import menedzher  # noqa: PLC0415
+
         from reportgen.web import api  # noqa: PLC0415
         self.сеть.app.state.zahvat_seti = None
         создано = []
