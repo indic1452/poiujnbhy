@@ -549,9 +549,11 @@ class ZipPdfTests(unittest.TestCase):
                 z.writestr("x" * длина_имени, b"1")
             with self.subTest(длина_имени=длина_имени):
                 self.assertEqual(len(буфер.getvalue()), poisk._zip(буфер.getvalue(), 0))
-        длинное = bytearray(данные)
-        struct.pack_into("<H", длинное, 26, 1024)
-        self.assertIsNone(poisk._zip(bytes(длинное), 0))
+        for длина_имени in (0, 1024):
+            плохое = bytearray(данные)
+            struct.pack_into("<H", плохое, 26, длина_имени)
+            with self.subTest(длина_имени=длина_имени):
+                self.assertIsNone(poisk._zip(bytes(плохое), 0))
         буфер = io.BytesIO()
         with zipfile.ZipFile(буфер, "w") as z:
             z.writestr("a.txt", b"1")
@@ -588,6 +590,12 @@ class ZipPdfTests(unittest.TestCase):
 
     def test_pdf_без_конца(self):
         self.assertEqual(0, poisk._pdf(b"%PDF-1.4\n1 0 obj<<>>endobj\n", 0))
+
+    def test_pdf_два_подряд_и_без_длины(self):
+        первый = b"%PDF-1.4\n1 0 obj<<>>endobj\n%%EOF\n"
+        self.assertEqual(len(первый), poisk._pdf(первый + b"%PDF-1.5\nx\n%%EOF\n", 0))
+        self.assertEqual(0, poisk._pdf(b"%PDF-1.4\nx\n%PDF-1.5\n%%EOF\n", 0))
+        self.assertEqual(("FLAC", "flac", 0), опознать(b"fLaC" + bytes(40)))
 
     def test_pdf_конец_строки(self):
         for хвост, длина in ((b"\r\n", 2), (b"\r", 1), (b"\n", 1), (b"", 0), (b" ", 0)):

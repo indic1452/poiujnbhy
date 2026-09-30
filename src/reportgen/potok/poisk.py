@@ -196,11 +196,16 @@ def _gif(д: bytes, м: int) -> int | None:
     return 0
 
 
+_PDF_ВЕРСИЯ = re.compile(rb"%PDF-\d\.\d")
+
+
 def _pdf(д: bytes, м: int) -> int | None:
-    if not re.match(rb"%PDF-\d\.\d", д[м:м + 8]):
+    if not _PDF_ВЕРСИЯ.match(д, м):
         return None
-    следующий = д.find(b"%PDF-", м + 5, м + ФАЙЛ_ДО)
-    граница = следующий if следующий >= 0 else min(len(д), м + ФАЙЛ_ДО)
+    try:                                            # следующий PDF — граница поиска конца этого
+        граница = д.index(b"%PDF-", м + 5, м + ФАЙЛ_ДО)
+    except ValueError:
+        граница = min(len(д), м + ФАЙЛ_ДО)
     try:
         конец = д.rindex(b"%%EOF", м, граница)
     except ValueError:                              # конца нет — длина неизвестна
