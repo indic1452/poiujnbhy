@@ -580,7 +580,9 @@ class РазборGFP:
         в = self.выделение
         pli = np.array(в.pli, dtype=np.int64)
         к = list(self.кадры.values())
-        thec = Counter(х.thec for х in к)
+        # Кадр, оборванный концом участка, проверить нельзя: tHEC и pFCS считаются без него.
+        целые = [х for х in к if not х.оборван]
+        thec = Counter(х.thec for х in целые)
         типы = Counter((х.pti, х.pfi, х.exi, х.upi) for х in к if х.pti is not None and not х.прогрев)
         с_данными = [х for х in к if х.pti == 0 and not х.прогрев]
         длины = pli[pli >= 4]
@@ -594,9 +596,9 @@ class РазборGFP:
             "исправлено_chec": int(sum(в.исправлен)),
             "потерь": len(в.потери), "потери_бит": [self.бит(м) for м in в.потери[:200]],
             "thec": {"верен": thec["верен"], "исправлен": thec["исправлен"], "ошибка": thec["ошибка"],
-                     "прогрев": sum(1 for х in к if х.прогрев), "мало": thec["мало байт"]},
+                     "прогрев": thec["прогрев"], "мало": thec["мало байт"]},
             "ehec": dict(Counter(х.ehec for х in к if х.ehec)),
-            "pfcs": dict(Counter(х.pfcs for х in к if х.pfcs)),
+            "pfcs": dict(Counter(х.pfcs for х in целые if х.pfcs)),
             "типы": [{"pti": pti, "pfi": pfi, "exi": exi, "upi": upi, "кадров": n,
                       "upi_словами": имя_upi(pti, upi)}
                      for (pti, pfi, exi, upi), n in типы.most_common(12)],
@@ -910,7 +912,8 @@ def таблица(р: РазборGFP, от: int = 0, сколько: int = 200
                   "вид": "пустой" if pli == 0 else "служебный" if pli < 4 else "нагрузка"}
         if к is not None:
             строка.update({"pti": к.pti, "pfi": к.pfi, "exi": к.exi, "upi": к.upi, "cid": к.cid,
-                           "thec": к.thec, "ehec": к.ehec, "pfcs": к.pfcs, "оборван": к.оборван,
+                           "thec": к.thec, "ehec": к.ehec, "pfcs": "" if к.оборван else к.pfcs,
+                           "оборван": к.оборван,
                            "upi_словами": имя_upi(к.pti, к.upi) if к.pti is not None else "",
                            "данных": len(к.данные)})
             if к.прогрев:
