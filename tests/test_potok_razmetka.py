@@ -10,9 +10,12 @@
 import cmath
 import io
 import itertools
+import json
 import math
 import os
+import shutil
 import struct
+import subprocess
 import time
 import unittest
 import wave
@@ -22,9 +25,11 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from reportgen.potok import iq
+from reportgen.potok import iq, modem, ploskost
 from reportgen.potok import moddekoder as мд
 from reportgen.potok import razmetka as р
+from test_potok_sessii import функции_js
+from test_potok_tpc3 import comtech
 
 ОБРАЗЕЦ = Path(os.environ.get("K2964_ОБРАЗЕЦ", "/tmp/claude-0/-home-user-poiujnbhy/da6b639e-7ecd-5b07-9c36-bf7a3fd312ff/"
                                               "scratchpad/250_V_8085_8PSK_7556_K2964.bit"))
@@ -879,3 +884,297 @@ class ОбщиеПлоскостиTests(unittest.TestCase):
             with self.subTest(слой), self.assertRaises(ValueError) as о:
                 мд.из_слоя(слой)
             self.assertEqual(ждём, str(о.exception))
+
+
+# -- автомат ---------------------------------------------------------------------------------------
+
+def вне_группы(k: int, сид: int) -> list[int]:
+    """Случайная перестановка меток, которой нет среди вариантов группы и таблиц плоскостей (истинная → принятая)."""
+    M = 1 << k
+    метки = метки_в_биты(range(M), k)
+    группа = {tuple(р.в_символы(ploskost.преобразовать_фм(метки, k, **в), k).tolist())
+              for в in ploskost.варианты_фм(k) + ploskost.варианты_плоскостей(k, ploskost.варианты_фм(k)) if "номера" not in в}
+    rng = np.random.default_rng(сид)
+    while True:
+        π = rng.permutation(M).tolist()
+        # Декодер ищет таблицу принятая → истинная; ни она, ни её инверсии бит метки не должны быть в группе.
+        if all(tuple(np.asarray(обратная(π)) ^ c) not in группа for c in range(M)):
+            return π
+
+
+class АвтоматTests(unittest.TestCase):
+    def setUp(self):
+        self.старый = мд.КАТАЛОГ
+        self.addCleanup(setattr, мд, "КАТАЛОГ", self.старый)
+        мд.КАТАЛОГ = None
+
+    def test_кадры_модема_разметка_вслепую(self):
+        данные = np.random.default_rng(5).integers(0, 2, (48, 39, 57)).astype(np.uint8)
+        поток, начала = comtech(данные, приставка=501, ошибок=1e-3)
+        поток = поток[:len(поток) // 3 * 3]
+        π = вне_группы(3, 7)
+        принятые = передать(поток, 3, π)
+        итог = modem.код_в_кадрах(принятые, начала, 2964, фм=[3], срок_вслепую=120)
+        self.assertIsNotNone(итог)
+        (плоскость, код), данные_ = итог
+        self.assertIn("разметка найдена вслепую по строкам кода в кадрах", плоскость.что)
+        self.assertTrue(плоскость.свойства["вслепую"])
+        self.assertIn(плоскость.свойства["вариант"]["таблица"], р.равноценные(обратная(π), 8))
+        self.assertTrue(any("35 классов чётности × 576 перестановок" in п for п in плоскость.подробно))
+        self.assertIn("(64, 57) × (46, 39)", код.что)
+        self.assertEqual(1.0, код.свойства.get("блоков_чисто", код.уверенность) if "блоков_чисто" in код.свойства else 1.0)
+        self.assertGreaterEqual(код.уверенность, 0.95)
+        # Разметка без вслепую (срок 0) — не находится.
+        self.assertIsNone(modem.код_в_кадрах(принятые, начала, 2964, фм=[3], срок_вслепую=0))
+        # Имя варианта вслепую.
+        self.assertEqual("разметка вслепую: таблица 1 0", ploskost.имя_фм({"таблица": [1, 0], "имя": "таблица 1 0", "вслепую": True}, 1))
+
+    def test_поток_разметка_вслепую(self):
+        x = лрп(60000, (23, 18))
+        x = x[:len(x) // 3 * 3]
+        π = вне_группы(3, 9)
+        найдено = ploskost.найти_фм(передать(x, 3, π), 3, лучших=1, бюджет=2)
+        self.assertIsNotNone(найдено)
+        self.assertIn("разметка найдена вслепую", найдено.что)
+        имя, ряд = next(iter(найдено.дальше.items()))
+        self.assertTrue(имя.startswith("разметка вслепую: таблица "))
+        self.assertLessEqual(берлекэмп(list(ряд[3000:3400])), 26)
+        self.assertIn(найдено.свойства["вариант"]["таблица"], р.равноценные(обратная(π), 8))
+        # До 8 точек — только; у 16 — не ищется в сплошном потоке автоматом.
+        self.assertIsNone(ploskost.вслепую_фм(передать(x[:len(x) // 4 * 4], 4, list(range(16))), 4, 0, None))
+
+    @unittest.skipUnless(ОБРАЗЕЦ.exists(), "нет образца аналитика K2964")
+    def test_образец_k2964_с_перемешанной_разметкой(self):
+        """Образец аналитика: метки 8PSK перемешаны случайной перестановкой вне группы — автомат находит разметку, ТКБ снимается."""
+        биты = np.unpackbits(np.frombuffer(ОБРАЗЕЦ.read_bytes(), np.uint8), bitorder="little")
+        π = вне_группы(3, 11)
+        принятые = р.применить(биты, 3, π)                            # принятая = π[метка файла]
+        начало = time.monotonic()
+        итог = modem.разобрать_кадры(принятые, 5928, фм=[3], срок_вслепую=120)
+        self.assertIsNotNone(итог)
+        (плоскость, код), данные, сведения = итог
+        self.assertEqual(2964, сведения["кадр"])
+        self.assertIn("разметка найдена вслепую", плоскость.что)
+        self.assertIn("(64, 57) × (46, 39)", код.что)
+        self.assertGreaterEqual(код.уверенность, 0.95)
+        self.assertLess(time.monotonic() - начало, 400)
+
+
+# -- API -------------------------------------------------------------------------------------------
+
+class РазметкаЧерезСерверTests(unittest.TestCase):
+    def setUp(self):
+        from test_web import WebTestCase  # noqa: PLC0415 — общая заготовка веб-тестов
+
+        class Сеть(WebTestCase):
+            def runTest(себя):
+                pass
+
+        self.старый = мд.КАТАЛОГ
+        self.addCleanup(setattr, мд, "КАТАЛОГ", self.старый)
+        self.сеть = Сеть()
+        self.сеть.setUp()
+        self.addCleanup(self.сеть.tearDown)
+        self.сеть.login("engineer")
+        self.к = self.сеть.client
+        self.assertEqual(200, self.к.get("/api/potok-planes").status_code)
+        self.сессия = self.к.post("/api/sessions", json={"name": "разметка"}).json()["id"]
+
+    def массив(self, биты: np.ndarray | None = None, данные: bytes | None = None, имя="поток.bin") -> str:
+        з = self.сеть.app.state.potok
+        владелец = self.сеть.repos.users.by_login("engineer").id
+        ид = з.создать(владелец=владелец, имя=имя, данные=данные if данные is not None else np.packbits(биты).tobytes(),
+                       разбирать=False, бит=None if биты is None else len(биты), сессия=self.сессия)
+        for _ in range(200):
+            if з.прочитать(ид)["состояние"] == "готово":
+                break
+            time.sleep(0.05)
+        return ид
+
+    def дождаться(self, ид: str) -> dict:
+        for _ in range(1200):
+            с_ = self.к.get(f"/api/potok-blind/{ид}").json()
+            if с_["готово"]:
+                return с_
+            time.sleep(0.1)
+        self.fail("поиск не закончился")
+
+    def test_анализ_синхрослово_и_поиск(self):
+        поток, длина = кадры_строк(120, ошибок=1e-3)
+        π = np.random.default_rng(2).permutation(8).tolist()
+        принятые = передать(поток, 3, π)
+        ид = self.массив(принятые)
+        а = self.к.post(f"/api/potok/{ид}/moddecoder/analysis", json={"stage": 0, "модуляция": "ФМ8"})
+        self.assertEqual(200, а.status_code, а.text)
+        self.assertEqual((200, 0), (а.json()["кадр"], а.json()["места"][0]["начало"]))
+        self.assertEqual(400, self.к.post(f"/api/potok/{ид}/moddecoder/analysis", json={"stage": 0, "модуляция": "ФМ7"}).status_code)
+        self.assertEqual(400, self.к.post(f"/api/potok/{ид}/moddecoder/analysis",
+                                          json={"stage": 0, "модуляция": "ФМ8", "фаза": 3}).status_code)
+        # Синхрослово 24 бита покрывает не все 8 символов: остальное — перебором по байтовой мере.
+        с_ = self.к.post(f"/api/potok/{ид}/moddecoder/sync", json={"stage": 0, "модуляция": "ФМ8",
+                                                                  "слово": "".join(map(str, СИНХРО24))})
+        self.assertEqual(200, с_.status_code, с_.text)
+        d = с_.json()
+        покрыто = {int(a): б for a, б in d["варианты"][0]["соответствие"].items()}
+        self.assertEqual({π[t]: t for t in р.в_символы(СИНХРО24, 3).tolist()}, покрыто)
+        self.assertEqual(len(покрыто), d["покрыто"])
+        self.assertTrue(all(d["таблица"][v] == t for v, t in покрыто.items()) if "таблица" in d else True)
+        for тело, ждём in (({"слово": "xyz"}, 400), ({"из_библиотеки": "нет такого"}, 400), ({"слово": "101"}, 400)):
+            self.assertEqual(ждём, self.к.post(f"/api/potok/{ид}/moddecoder/sync",
+                                               json={"stage": 0, "модуляция": "ФМ8", **тело}).status_code)
+        # Поиск по строкам в кадрах — в фоне, с ходом.
+        н = self.к.post(f"/api/potok/{ид}/moddecoder/blind", json={"stage": 0, "модуляция": "ФМ8", "мера": "строки",
+                                                                    "кадр": {"длина": длина, "начало": 0}, "срок": 120})
+        self.assertEqual(200, н.status_code, н.text)
+        с_ = self.дождаться(н.json()["поиск"])
+        self.assertEqual("", с_["ошибка"])
+        self.assertEqual(1.0, с_["доля"])
+        self.assertIn(обратная(π), с_["итог"]["равноценные"])
+        self.assertEqual(0, с_["итог"]["фаза"])
+        # Ошибки запроса.
+        for тело, ждём in (({"мера": "строки"}, "мера «строки» — по кадрам: включите «Мера по кадрам» (строка просмотра — кадр)"),
+                           ({"мера": "авось"}, "мера: авто, строки, лрп или байты"),
+                           ({"срок": 5000}, "срок — от 1 до 600 с"), ({"фаза": 5}, "фаза — от 0 до 2"),
+                           ({"старт": "0123"}, "старт: перестановка чисел 0…7 по одному разу")):
+            with self.subTest(тело):
+                о = self.к.post(f"/api/potok/{ид}/moddecoder/blind", json={"stage": 0, "модуляция": "ФМ8", **тело})
+                self.assertEqual((400, ждём), (о.status_code, о.json()["error"]))
+        self.assertEqual(404, self.к.get("/api/potok-blind/нет").status_code)
+        self.assertEqual(404, self.к.post("/api/potok-blind/нет/stop", json={}).status_code)
+        # Остановка и чужой поиск.
+        x = np.random.default_rng(3).integers(0, 2, 60000).astype(np.uint8)
+        ид2 = self.массив(x)
+        п = self.к.post(f"/api/potok/{ид2}/moddecoder/blind", json={"stage": 0, "модуляция": "ФМ8", "мера": "байты"}).json()["поиск"]
+        self.assertEqual({"ok": True}, self.к.post(f"/api/potok-blind/{п}/stop", json={}).json())
+        self.assertIn(self.дождаться(п)["ошибка"], ("остановлено", ""))
+        self.сеть.login("admin")
+        self.assertEqual(404, self.к.get(f"/api/potok-blind/{п}").status_code)
+
+    def test_библиотека_и_своя_плоскость(self):
+        d = self.к.get("/api/potok-sync-library").json()["items"]
+        self.assertTrue(any(э["имя"].startswith("ASM CCSDS") and э["биты"].startswith("00011010") for э in d))
+        основа = "DVB-S2 16APSK (γ 3,15)"
+        точки = next(п for п in self.к.get("/api/potok-planes").json()["items"] if п["имя"] == основа)["точки"]
+        метки = [т[0] for т in точки]
+        метки[0], метки[1] = метки[1], метки[0]
+        о = self.к.post("/api/potok-planes/own", json={"основа": основа, "метки": метки, "имя": "моя APSK"})
+        self.assertEqual(400, о.status_code)                               # не .etl
+        о = self.к.post("/api/potok-planes/own", json={"основа": основа, "метки": метки, "имя": "моя-apsk.etl"})
+        self.assertEqual(200, о.status_code, о.text)
+        self.assertEqual(("моя-apsk.etl", "общее", 16), (о.json()["plane"]["имя"], о.json()["plane"]["вид"], о.json()["plane"]["M"]))
+        self.assertEqual(метки, [т[0] for т in о.json()["plane"]["точки"]])
+        о = self.к.post("/api/potok-planes/own", json={"основа": основа, "метки": метки, "имя": "моя-apsk.etl"})
+        self.assertEqual((400, "плоскость «моя-apsk.etl» уже есть в папке: другое имя или «заменить»"), (о.status_code, о.json()["error"]))
+        метки[2], метки[3] = метки[3], метки[2]
+        о = self.к.post("/api/potok-planes/own", json={"основа": основа, "метки": метки, "имя": "моя-apsk.etl", "заменить": True})
+        self.assertEqual(метки, [т[0] for т in о.json()["plane"]["точки"]])
+        for тело, ждём in (({"метки": "0000"}, "метки — список меток точек по номерам"),
+                           ({"метки": ["0000"] * 16}, "метка «0000» повторяется: у каждой точки своя"),
+                           ({"основа": "нет"}, "плоскости «нет» нет ни среди встроенных, ни в папке плоскостей")):
+            о = self.к.post("/api/potok-planes/own", json={"основа": основа, "метки": метки, "имя": "x.etl", **тело})
+            self.assertEqual((400, ждём), (о.status_code, о.json()["error"]))
+
+    def test_iq_облако_и_решения(self):
+        метки, z, п = облако_эталон("DVB-S2 8PSK", 6000, поворот=20.0, инверсия=False, шум=0.06)
+        ид = self.массив(данные=в_int16(z), имя="iq.i16")
+        о = self.к.post(f"/api/potok/{ид}/moddecoder/iq", json={"stage": 0, "формат": "int16"})
+        self.assertEqual(200, о.status_code, о.text)
+        d = о.json()
+        self.assertEqual((8, 6000), (d["точек"], d["отсчётов"]))
+        self.assertEqual(8, len(d["центры"]))
+        self.assertLessEqual(len(d["облако"]), iq.ОБЛАКО_ДО)
+        лучшая = d["плоскости"][0]
+        self.assertIn(лучшая["имя"], ("ФМ8 натуральный", "ФМ8 Грей", "DVB-S2 8PSK"))
+        self.assertAlmostEqual(25.0, лучшая["поворот"], delta=0.6)                 # −20° по модулю 45°
+        # Решения по плоскости DVB-S2 8PSK — новый массив в той же сессии.
+        р_ = self.к.post(f"/api/potok/{ид}/moddecoder/iq/decide", json={"stage": 0, "формат": "int16", "точек": 8,
+                                                                        "поворот": лучшая["поворот"], "плоскость": "DVB-S2 8PSK"})
+        self.assertEqual(200, р_.status_code, р_.text)
+        новый = р_.json()["id"]
+        self.assertEqual(18000, р_.json()["бит"])
+        з = self.сеть.app.state.potok
+        self.assertEqual(self.сессия, з.прочитать(новый)["сессия"])
+        биты = self.к.get(f"/api/potok/{новый}/bits", params={"stage": 0, "start": 0, "count": 18000})
+        self.assertEqual(200, биты.status_code)
+        # По кластерам и ошибки.
+        р_ = self.к.post(f"/api/potok/{ид}/moddecoder/iq/decide", json={"stage": 0, "формат": "int16", "точек": 8})
+        self.assertEqual(200, р_.status_code)
+        self.assertTrue(any("номера кластеров" in с_ for с_ in р_.json()["описание"]))
+        for путь, тело, ждём in (("iq", {"формат": "int12"}, "формат отсчётов: int8, uint8, int16, float32 или WAV"),
+                                 ("iq", {"формат": "int16", "точек": 3}, "число точек — степень двойки от 2 до 256"),
+                                 ("iq/decide", {"формат": "int16", "точек": 8, "плоскость": "КАМ16 Грей"},
+                                  "плоскость «КАМ16 Грей» — 16 точек, а в облаке 8"),
+                                 ("iq/decide", {"формат": "int16", "поворот": "сорок"}, "поворот — градусы")):
+            о = self.к.post(f"/api/potok/{ид}/moddecoder/{путь}", json={"stage": 0, **тело})
+            self.assertEqual((400, ждём), (о.status_code, о.json()["error"]))
+
+
+# -- окно в браузере: функции app.js в node --------------------------------------------------
+
+@unittest.skipUnless(shutil.which("node"), "нужен node")
+class ОкноРазметкиВБраузереTests(unittest.TestCase):
+    ФУНКЦИИ = ["меткиИзТаблицы", "плохиеМетки", "svgРазметки", "повернутьОблако", "ходПоиска", "описаниеАнализа",
+               "шагиДекодирования", "разобратьМодуляцию"]
+
+    def выполнить(self, случаи: list[dict]) -> list:
+        код = функции_js(self.ФУНКЦИИ, []) + """
+const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+process.stdout.write(JSON.stringify(случаи.map((с) => {
+    switch (с.что) {
+    case 'метки': return меткиИзТаблицы(с.т, с.таблица, с.k);
+    case 'плохие': return плохиеМетки(с.м, с.k);
+    case 'svg': return svgРазметки(с.т, с.м, с.в, с.п);
+    case 'облако': return повернутьОблако(с.т, с.п, с.и);
+    case 'ход': return ходПоиска(с.с);
+    case 'анализ': return описаниеАнализа(с.а);
+    case 'шаги': return шагиДекодирования(с.с, с.ф);
+    case 'модуляция': return разобратьМодуляцию(с.т);
+    default: return null;
+    }
+})));
+"""
+        готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=60)
+        self.assertEqual(0, готово.returncode, готово.stderr)
+        return json.loads(готово.stdout)
+
+    def test_функции_окна(self):
+        точки = [["00", 1, 0], ["01", 0, 1], ["11", -1, 0], ["10", 0, -1]]
+        rng = np.random.default_rng(1)
+        а = р.анализ(метки_в_биты(np.concatenate([np.concatenate([[7, 7, 0, 1], rng.integers(0, 8, 40)]) for _ in range(80)]), 3),
+                     3, фаза=0)
+        итоги = self.выполнить([
+            {"что": "метки", "т": точки, "таблица": [3, 2, 1, 0], "k": 2},
+            {"что": "метки", "т": точки, "таблица": [3, 2, 9, 0], "k": 2},
+            {"что": "плохие", "м": ["00", "01", "01", "2", "110"], "k": 2},
+            {"что": "svg", "т": точки, "м": ["00", "01", "<b>", "10"], "в": 1, "п": [2]},
+            {"что": "облако", "т": [[1, 0], [0, 1]], "п": 90, "и": True},
+            {"что": "ход", "с": {"доля": 0.4567, "ход": "классы", "прошло": 3.25, "осталось": 12.4}},
+            {"что": "ход", "с": {"доля": 1, "ход": "", "прошло": 30, "осталось": None}},
+            {"что": "анализ", "а": а},
+            {"что": "шаги", "с": "моддекодер 3: 0 1 2 3 4 5 6 7", "ф": 2},
+            {"что": "шаги", "с": "моддекодер 1: 1 0", "ф": 0},
+            {"что": "модуляция", "т": "apsk 16"},
+        ])
+        self.assertEqual(["11", "10", "00", "01"], итоги[0])
+        self.assertEqual(["11", "10", "00", "10"], итоги[1])                  # метка вне таблицы — остаётся своя
+        self.assertEqual([1, 2, 3, 4], итоги[2])
+        svg = итоги[3]
+        self.assertEqual(4, svg.count('data-n="'))
+        self.assertIn('class="stol-md-pt is-selected"', svg)
+        self.assertIn('class="stol-md-pt is-bad"', svg)
+        self.assertNotIn("<b>", svg)
+        self.assertIn(">?</text>", svg)
+        np.testing.assert_allclose([[0, 1], [1, 0]], итоги[4], atol=1e-12)
+        self.assertEqual("46 % · классы · прошло 3,3 с · осталось ≈ 12 с", итоги[5])
+        self.assertEqual("100 % ·  · прошло 30 с", итоги[6])
+        текст = "\n".join(итоги[7])
+        self.assertIn("Граница символа — бит 0", текст)
+        self.assertIn("Постоянно с символа 0 кадра: 7 7 0 1", текст)
+        self.assertIn("Повтор через 44 симв. (132 бит), отрыв ", текст)
+        self.assertNotIn("кадр —", текст)                                        # кадр равен повтору
+        self.assertEqual("Повторяющихся символов на одних местах не видно: период кадра по символам не найден",
+                         self.выполнить([{"что": "анализ", "а": {**а, "период": None}}])[0][1])
+        self.assertEqual([{"вид": "слой", "слой": "обрезка начало 2 конец 0", "вкл": True},
+                          {"вид": "слой", "слой": "моддекодер 3: 0 1 2 3 4 5 6 7", "вкл": True}], итоги[8])
+        self.assertEqual([{"вид": "слой", "слой": "моддекодер 1: 1 0", "вкл": True}], итоги[9])
+        self.assertEqual({"вид": "АФМ", "M": 16, "k": 4}, итоги[10])
