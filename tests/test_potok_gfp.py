@@ -340,7 +340,7 @@ class НагрузкаTests(unittest.TestCase):
         self.assertEqual(("x43", 1.0), (р.скремблер, р.доли_thec["x43"]))
         р = gfp.разобрать(г.в_ряд(г.поток(кадры_эталона(20))))
         self.assertEqual(1.0, р.доли_thec["x43"])
-        self.assertEqual((0.0, 0), gfp.доля_thec({1: b"abc"}, set()))
+        self.assertEqual(0.0, gfp.доля_thec({1: b"abc"}, set()))
 
     def test_cid_ehec_pfcs(self):
         области = [г.нагрузка(п, cid=i % 3, pfi=i % 2 == 1) for i, п in enumerate(ETHERNET[:30])]
@@ -398,19 +398,27 @@ class НагрузкаTests(unittest.TestCase):
                     рег = ((рег << 1) ^ 0x941F) & 0xFFFF if рег & 0x8000 else (рег << 1) & 0xFFFF
             return рег
         g = np.random.default_rng(3)
-        области = []
-        for _ in range(12):
+        области, флаги = [], []
+        for н in range(12):
             блоки = b""
-            for _ in range(2):
-                тело = g.integers(0, 256, 64, dtype=np.uint8).tobytes() + bytes([0b10010000])
-                блоки += тело + crc941f(тело).to_bytes(2, "big")
+            for б in range(3):
+                флаг = int(g.integers(0, 256))
+                тело = g.integers(0, 256, 64, dtype=np.uint8).tobytes() + bytes([флаг])
+                crc = crc941f(тело) ^ (1 if (н, б) == (5, 1) else 0)          # один суперблок с плохой CRC
+                блоки += тело + crc.to_bytes(2, "big")
+                if н:
+                    флаги.append(флаг)
             области.append(г.нагрузка(блоки, upi=6))
+        # Не суперблоки: кадровое отображение (UPI 1) и CMF той же длины, данные не кратные 67 байтам, пустые.
+        области += [г.нагрузка(bytes(134)), г.нагрузка(bytes(67), pti=4, upi=3), г.нагрузка(bytes(100), upi=6),
+                    г.нагрузка(b"", upi=6)]
         р = gfp.разобрать(г.в_ряд(г.поток([x for о in области for x in (None, о)])))
-        self.assertEqual(22, р.gfp_t["суперблоков"])
-        self.assertEqual((16, 0x941F, None, 0, 1.0), (р.gfp_t["crc"]["w"], р.gfp_t["crc"]["P"], р.gfp_t["crc"]["init"],
-                                                     р.gfp_t["crc"]["вклад"], р.gfp_t["верных_crc"]))
-        self.assertEqual(0.25, р.gfp_t["доля_управляющих"])
-        self.assertIn("GFP-T: суперблоков 64B/65B — 22; CRC-16 суперблока найдена вслепую: многочлен 0x941F",
+        self.assertEqual(33, р.gfp_t["суперблоков"])
+        self.assertEqual((16, 0x941F, None, 0), (р.gfp_t["crc"]["w"], р.gfp_t["crc"]["P"], р.gfp_t["crc"]["init"],
+                                                 р.gfp_t["crc"]["вклад"]))
+        self.assertEqual(32 / 33, р.gfp_t["верных_crc"])
+        self.assertEqual(float(np.unpackbits(np.array(флаги, dtype=np.uint8)).mean()), р.gfp_t["доля_управляющих"])
+        self.assertIn("GFP-T: суперблоков 64B/65B — 33; CRC-16 суперблока найдена вслепую: многочлен 0x941F",
                       "\n".join(gfp.строки_сводки(р)))
         self.assertEqual("0x941F", gfp.сводка(р)["gfp_t"]["многочлен"])
 
