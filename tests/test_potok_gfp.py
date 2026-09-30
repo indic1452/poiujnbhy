@@ -211,6 +211,9 @@ class ВыделениеTests(unittest.TestCase):
         р = self.разобрать(данные)
         с_ = р.счёт()
         self.assertEqual([8 * места[11]], с_["потери_бит"])
+        # Доля байт в синхронизме — от первого заголовка: всё, кроме потерянного кадра.
+        потерян = 4 + len(self.КАДРЫ[11] or b"")
+        self.assertEqual((len(данные) - потерян) / len(данные), р.доля)
         self.assertEqual(len(self.КАДРЫ) - 1, с_["кадров"])
         self.assertEqual([м for i, м in enumerate(места) if i != 11], р.выделение.места)
         self.assertEqual([1] * 11 + [2] * (len(места) - 12), р.выделение.серия)
