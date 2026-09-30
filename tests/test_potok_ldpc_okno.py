@@ -552,7 +552,8 @@ class ЧерезСервер(unittest.TestCase):
 class ОкноВБраузере(unittest.TestCase):
     """Проверка полей окна до запроса, скорости типа с блоками, поиск кода в каталоге — функции app.js в node."""
 
-    ФУНКЦИИ = ["битСинхрослова", "ошибкаОкнаLDPC", "скоростиТипаLDPC", "гдеКодLDPC"]
+    ФУНКЦИИ = ["битСинхрослова", "ошибкаОкнаLDPC", "скоростиТипаLDPC", "гдеКодLDPC", "видыПеремеженияLDPC",
+               "типПослеАвтоматаLDPC"]
 
     def выполнить(self, случаи: list[dict]) -> list:
         from test_potok_sessii import функции_js  # noqa: PLC0415
@@ -565,6 +566,8 @@ const итог = случаи.map((с) => {
     case 'ошибка': return ошибкаОкнаLDPC(с.п, с.закрыт);
     case 'скорости': return скоростиТипаLDPC(с.т, с.блок).map((x) => x.подпись);
     case 'где': { const г = гдеКодLDPC(с.типы, с.текущий, с.код); return г ? [г.т.тип, г.с.подпись] : null; }
+    case 'перемежения': return видыПеремеженияLDPC();
+    case 'тип после': return типПослеАвтоматаLDPC(с.н, с.текущий);
     default: return null;
     }
 });
@@ -573,6 +576,23 @@ process.stdout.write(JSON.stringify(итог));
         готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=60)
         self.assertEqual(0, готово.returncode, готово.stderr)
         return json.loads(готово.stdout)
+
+    def test_перемежения_окна_как_на_сервере(self):
+        """Список перемежений окна — все виды, что сервер знает у кодов (DVB-S2, MODCOD S2X, F-LDPC), и каждый
+        принимается слоем окна."""
+        виды, после1, после2 = self.выполнить([{"что": "перемежения"}, {"что": "тип после", "н": {"вслепую": True},
+                                                                         "текущий": "Comtech"},
+                                               {"что": "тип после", "н": {"код": "x"}, "текущий": "Comtech"}])
+        значения = [в for в, _ in виды]
+        self.assertEqual(["", "1367", "8PSK", "16APSK", "32APSK"], значения[:5])
+        сервер = {вид for имя in [э["имя"] for э in ldpc_std.список()] for вид, _ in ldpc_std.перемежения(имя)}
+        self.assertEqual(сервер, set(значения[1:]))
+        for в, подпись in виды[1:]:
+            self.assertTrue(подпись.startswith(в + " ") or в == "1367", подпись)
+            self.assertIn("перемежение " + в, ldpc_okno.слой({"код": "dvb-s2-16200-9720", "перемежение": в}))
+        self.assertEqual("нет", виды[0][1])
+        self.assertTrue(all(п.endswith("(DVB-S2X)") for _, п in виды[5:]))
+        self.assertEqual(("Нестандарт", "Comtech"), (после1, после2))
 
     def test_длина_синхрослова_как_на_сервере(self):
         тексты = ["0x1ACFFC1D", "1ACFFC1Dh", "0b0110", "0110 1011", "1_0_1_1", "", None, "0xZZ", "12", "0x", "01", "0x0990"]
