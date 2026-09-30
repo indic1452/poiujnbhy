@@ -12869,7 +12869,7 @@
             const холст = h('canvas', { class: 'stol-md-raster', width: 1, height: 1 });
             const отчёт = h('div', { class: 'small stol-md-sum' }, h('span', { class: 'muted' }, '«Просмотр» — начало результата растром по длине строки просмотра и отчёт декодера.'));
             const списокФайлов = h('div', { class: 'small stol-ldpc-files' });
-            const загрузка = h('input', { type: 'file', accept: '.alist,.qc,.base,.adr,.h,.txt', hidden: true });
+            const загрузка = h('input', { type: 'file', hidden: true });   // без фильтра: окно Windows прячет незнакомые расширения
             const помощь = h('div', { class: 'small stol-md-help', hidden: true },
                 h('p', {}, 'Тип кода — как в декодере отдела. У Comtech, Versa FEC и Paradise матриц в открытом доступе нет: коды этих типов — файлы отдела ' +
                     'в папке ldpc, чьё имя начинается с «comtech», «versafec», «paradise». Datum — код F-LDPC TrellisWare по патенту US 7,673,213 ' +
