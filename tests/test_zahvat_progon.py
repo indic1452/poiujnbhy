@@ -811,7 +811,9 @@ class ПрогонTests(Папка):
         self.assertEqual({"порт": 5, "срез": "rtp", "упорядочить": True, "источник": "10.0.0.1"},
                          progon.проверить_выход({"порт": "5", "срез": "RTP", "упорядочить": 1, "источник": "10.0.0.1"}))
         self.assertEqual(12, progon.проверить_выход({"порт": 5, "срез": 12})["срез"])
-        for плохо in ([1], {"порт": 0}, {"порт": 70000}, {"порт": 5, "срез": -1}, {"порт": 5, "источник": "1.2"}):
+        self.assertEqual((65535, 0), tuple(progon.проверить_выход({"порт": 65535, "срез": 0})[к] for к in ("порт", "срез")))
+        for плохо in ([1], {"порт": 0}, {"порт": 65536}, {"порт": 5, "срез": -1}, {"порт": 5, "срез": 65536},
+                      {"порт": 5, "источник": "1.2"}):
             with self.assertRaises(ValueError, msg=плохо):
                 progon.проверить_выход(плохо)
 
@@ -864,6 +866,43 @@ class ПрогоныTests(Папка):
                 п.выход(плохой)
         with self.assertRaises(KeyError):
             п.сначала("20260101-000000-abcdef")
+
+    def test_процесс_среда_мета_и_прерванный_без_хода(self):
+        import os  # noqa: PLC0415
+        self.assertTrue(progon.Прогоны(self.т / "умолч").процессом, "по умолчанию — отдельным процессом")
+        вызовы = []
+
+        class Процесс:
+            stdin = mock.Mock()
+
+            def __init__(self, аргументы, **к):
+                вызовы.append((аргументы, к))
+
+            def poll(self):
+                return 0                                    # «процесс» сразу кончился, ход не писал
+
+            def wait(self, *_):
+                return 0
+        п = progon.Прогоны(self.т / "проц", процессом=True, фабрика_процесса=Процесс)
+        import reportgen  # noqa: PLC0415
+        корень = str(Path(reportgen.__file__).resolve().parents[1])
+        with mock.patch.dict(os.environ, {"PYTHONPATH": "/прежний"}):
+            ид = п.начать(владелец=1, кто="", источник={"вид": "pakety", "ид": "a"}, задание={"источник": {}})
+        self.assertEqual(корень + os.pathsep + "/прежний", вызовы[0][1]["env"]["PYTHONPATH"])
+        self.assertEqual(["-m", "reportgen.setevoy.zahvat_seti.progon"], вызовы[0][0][1:3])
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("PYTHONPATH", None)
+            п.начать(владелец=2, кто="", источник={"вид": "pakety", "ид": "b"}, задание={"источник": {}, "скорость": 0})
+        self.assertEqual(корень, вызовы[1][1]["env"]["PYTHONPATH"])
+        self.assertEqual(0, п._мета(ид)["скорость"], "без скорости — 0 (максимально)")
+        (п.папка / ид / "журнал.txt").write_text("x" * 400 + "y" * 600, encoding="utf-8")
+        с_ = п.состояние(ид)
+        self.assertEqual(("ошибка", 0), (с_["состояние"], с_["пакетов"]), "хода нет, процесс кончился — прервался")
+        self.assertEqual("прогон прервался: " + "y" * 600, с_["ошибка"], "хвост журнала — 600 знаков")
+        with self.assertRaises(KeyError):
+            п.выход(ид)                                      # у прогона без выходных данных файла нет
+        п.сначала(ид, {"источник": {}})
+        self.assertEqual(0, п._мета(ид)["скорость"])
 
     def test_пределы_одновременности(self):
         п = self.прогоны()
