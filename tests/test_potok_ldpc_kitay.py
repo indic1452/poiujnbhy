@@ -98,8 +98,8 @@ def кодер_gf64(з: dict):
     n = з["n"] // 6
     k = n - m
     H = [[0] * n for _ in range(m)]
-    for i, (сим, эл) in enumerate(zip(з["индексы"], з["элементы"])):
-        for j, h in zip(сим, эл):
+    for i, (сим, эл) in enumerate(zip(з["индексы"], з["элементы"], strict=True)):
+        for j, h in zip(сим, эл, strict=True):
             H[i][j] = h
     A = [H[i][k:] + H[i][:k] for i in range(m)]          # [H2 | H1]
     for c in range(m):
@@ -110,7 +110,7 @@ def кодер_gf64(з: dict):
         for r in range(m):
             if r != c and A[r][c]:
                 f = A[r][c]
-                A[r] = [v ^ умн(f, w) for v, w in zip(A[r], A[c])]
+                A[r] = [v ^ умн(f, w) for v, w in zip(A[r], A[c], strict=True)]
 
     def кодировать(символы: list[int]) -> list[int]:
         p = []

@@ -34,7 +34,7 @@
 | `beidou/PocketSDR_sdr_ldpc.c` | https://github.com/tomojitakasu/PocketSDR (03787da), src/sdr_ldpc.c | 2026-09-30 | `c60a744fa94565447d3edd94f2fe7fa67224d91c20c6acfed261cc3fe5a40cdc` | второй источник H_BCNV1_SF2/SF3, H_BCNV2, H_BCNV3 (idx/ele) — совпали с ICD число в число |
 | `beidou/PocketSDR_LICENSE.txt` | то же, LICENSE.txt | 2026-09-30 | `39c288fca458c029c607ae8331b5923eb41f34a3f5eb4a4523917d4fbf2eba36` | лицензия BSD-2 |
 | `dvb-s2-kitay/GY_T_338-2020.pdf` | https://gdj.beijing.gov.cn/zwxx/tzgg2/202012/P020201208354808929125.pdf | 2026-09-30 | `e98a2fef02b37c46c52970e5cae01a1c2a8f18e2c81cec8a1f3f8229fb6d16b1` | GY/T 338-2020 «数字电视卫星传输信道编码和调制规范» (скан): предисловие — перевод ETSI EN 302 307-1 v1.4.1 (DVB-S2), разработчики (в т. ч. 航天恒星科技有限公司 — CASC); новых кодов нет |
-| `proverki/sborka_kitay.py` | свой скрипт | 2026-09-30 | `ae4666e7bf32a2bf6daae03e6496c0c60b0e2ccb2941d01f1ca1158080ece434` | сборка данных с assert |
+| `proverki/sborka_kitay.py` | свой скрипт | 2026-09-30 | `0bbfa11819301c0e1911a784ac6100a64d56312925ad70a533fe8878d31d0bc6` | сборка данных с assert |
 | `proverki/sborka_kitay.log` | свой скрипт | 2026-09-30 | `275dded3ae3569952b53324b031757335140f38b94965b1eaa54d756a7f94c08` | журнал прогона |
 
 ### Сверки
