@@ -272,6 +272,7 @@ class ВыделениеTests(unittest.TestCase):
         for служебные, первый in (([b"abc", b"def"], 0), ([b"abc", b"de"], 1)):
             р = self.разобрать(г.поток([None, None, *служебные] + кадры_эталона(5)[2:]))
             self.assertEqual(ETHERNET[первый:5], клиенты(р))
+            self.assertEqual((первый, 0), (р.счёт()["thec"]["прогрев"], р.счёт()["thec"]["ошибка"]))
 
     def test_оборванный_последний_кадр(self):
         данные = г.поток(self.КАДРЫ)[:-20]
