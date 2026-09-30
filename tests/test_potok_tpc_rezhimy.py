@@ -608,7 +608,7 @@ class Синхрометки(unittest.TestCase):
                 self.assertIs(в.метки, метки)
                 self.assertEqual((в.T, в.фаза), (N, 77))
                 self.assertIn(метки.текст(), в.слой())
-                self.assertIn(f"(T={N}+метки)", в.подпись())
+                self.assertIn(f"(T={N * P // (P - L)})" if m > 1 else f"(T={N}+метки)", в.подпись())
                 выход, н = razbor.снять_вручную(ряд, в.слой() + " без скремблера")
                 self.assertEqual(выход.tolist(), данные.reshape(-1).tolist())
                 self.assertIn("синхрометки", " ".join(н.подробно))
@@ -1331,7 +1331,7 @@ class ТкбЧерезСервер(unittest.TestCase):
         в = d["найдено"][0]
         self.assertEqual(в["метки"], м)
         self.assertEqual(в["слой"], "ткб режим AHA4524-0.863 кадр 4096 фаза 77 метки 1040 16 77 инверсия 4 0")
-        self.assertEqual(в["подпись"], "0.850 (T=4096+метки) (64,57)x(64,62)+ [метки 16/1040, инв., укор., AHA4524 (eTPC)]")
+        self.assertEqual(в["подпись"], "0.850 (T=4160) (64,57)x(64,62)+ [метки 16/1040, инв., укор., AHA4524 (eTPC)]")
         d2 = self.к.post(путь + "search", json={**тело, "с": 0, "кадры": d["кадры"], "метки": м}).json()
         self.assertEqual(d2["найдено"][0]["слой"], в["слой"])
         d3 = self.к.post(путь + "search", json={**тело, "без_меток": True}).json()
