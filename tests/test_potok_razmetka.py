@@ -1501,3 +1501,108 @@ class ЭтапАTests(unittest.TestCase):
         e = np.array([6, 60, 30, 60, 61, 63, 70, 78, 90])
         ждём = [True, True, True, True, False, False, False, False, True]
         self.assertEqual(ждём, мера._переменные(a, e).tolist())
+
+
+class ПомощникиПоискаTests(unittest.TestCase):
+    def test_классы_и_равноценные(self):
+        т = р._по_классу([0, 1, 4, 7], 8)
+        self.assertEqual((576, 8), т.shape)
+        self.assertEqual(576, len({tuple(x) for x in т.tolist()}))
+        вес = [bin(v).count("1") % 2 for v in range(8)]
+        self.assertTrue(all(вес[x[v]] == (0 if v in (0, 1, 4, 7) else 1) for x in т.tolist() for v in range(8)))
+        self.assertEqual((4, 4), р._по_классу([0, 3], 4).shape)
+        self.assertEqual([[2, 0, 1, 3], [3, 1, 0, 2], [0, 2, 3, 1], [1, 3, 2, 0]], р.равноценные([2, 0, 1, 3], 4))
+        п = р.по_классам_инверсии(8)
+        self.assertEqual((5040, 8), п.shape)
+        self.assertTrue((п[:, 0] == 0).all())
+        self.assertEqual(5040, len({tuple(x) for x in п.tolist()}))
+        self.assertEqual([[0, 1, 0, 1], [0, 0, 1, 1]], р.чётность_меток(np.array([[0, 1, 3, 2], [3, 0, 1, 2]]), 4).tolist())
+        self.assertEqual(40320, len(р.все_перестановки(8)))
+        self.assertEqual([[0, 1], [1, 0]], р.все_перестановки(2).tolist())
+
+    def test_старты_и_основы(self):
+        основы = [[0, 1, 2, 3, 4, 5, 6, 7], [7, 6, 5, 4, 3, 2, 1, 0]]
+        ждём = set()
+        for о in основы:
+            for п in itertools.permutations(range(3)):
+                for c in range(8):
+                    ждём.add(tuple(int("".join(format(о[v], "03b")[i] for i in п), 2) ^ c for v in range(8)))
+        старты = р.старты_группы(3, основы)
+        self.assertEqual(ждём, {tuple(x) for x in старты.tolist()})
+        self.assertEqual(len(ждём), len(старты))
+        часть = р.старты_группы(3, основы, до=10, сид=4)
+        self.assertEqual(10, len(часть))
+        self.assertTrue({tuple(x) for x in часть.tolist()} <= ждём)
+        self.assertEqual(часть.tolist(), р.старты_группы(3, основы, до=10, сид=4).tolist())
+        self.assertNotEqual(часть.tolist(), р.старты_группы(3, основы, до=10, сид=5).tolist())
+        self.assertEqual(48, len(р.старты_группы(3)))                          # без основ — тождественная
+        # Основы ФМ-8: повороты и отражения по кругу в коде Грея и натуральном — прямым счётом.
+        грей = [n ^ (n >> 1) for n in range(8)]
+        ждём = {tuple(range(8))}
+        for код in (грей, list(range(8))):
+            for r in range(8):
+                for отр in (False, True):
+                    ждём.add(tuple(код[((-код.index(v) if отр else код.index(v)) + r) % 8] for v in range(8)))
+        self.assertEqual(ждём, {tuple(x) for x in р.основы_плоскостей(3)})
+        # У КАМ (чётное k) — ещё симметрии квадрата; ФМ-128 и дальше — без поворотов по кругу.
+        # ФМ-16: те же 64 по кругу и ещё симметрии квадрата (k чётное) — больше, чем по кругу.
+        грей4 = [n ^ (n >> 1) for n in range(16)]
+        по_кругу = {tuple(код[((-код.index(v) if отр else код.index(v)) + r) % 16] for v in range(16))
+                    for код in (грей4, list(range(16))) for r in range(16) for отр in (False, True)}
+        основы16 = {tuple(x) for x in р.основы_плоскостей(4)}
+        self.assertTrue(по_кругу < основы16)
+
+    def test_перебор_статистика(self):
+        class Мера:
+            имя = "сумма"
+
+            def оценить(self, таблицы):
+                return (np.asarray(таблицы) * np.arange(len(таблицы[0]))).sum(axis=1).astype(float)
+
+        р_ = р.перебор(Мера(), 4, лучших=3)
+        все = р.все_перестановки(4)
+        меры = (все * np.arange(4)).sum(axis=1).astype(float)
+        медиана = float(np.median(меры))
+        разброс = 1.4826 * float(np.median(np.abs(меры - медиана)))
+        self.assertEqual([[0, 1, 2, 3], [0, 1, 3, 2], [0, 2, 1, 3]], р_["таблицы"])      # при равной — по номеру
+        self.assertEqual([14.0, 13.0, 13.0], р_["меры"])
+        self.assertEqual((round(медиана, 3), round(разброс, 4), 24, 24), (р_["медиана"], р_["разброс"], р_["оценено"], р_["всего"]))
+        self.assertEqual(round((14 - медиана) / разброс, 1), р_["отрыв"])
+        # Все меры равны — разброс нулевой: отрыв считается от 1e-9, а не делением на ноль.
+        class Ровно:
+            имя = "ровно"
+
+            def оценить(self, таблицы):
+                return np.ones(len(таблицы))
+
+        р_ = р.перебор(Ровно(), 3)
+        self.assertEqual((1e-9, 0.0), (р_["разброс"], р_["отрыв"]))
+
+    def test_местный_поиск_счёт_и_ход(self):
+        ходы = []
+        ит = р.местный_поиск(lambda т: np.zeros(len(т)), np.arange(8)[None, :], срок=30, ход=lambda д, т: ходы.append((round(д, 3), т)))
+        self.assertEqual(list(range(8)), ит["таблица"])
+        self.assertEqual((0.0, 0.0), (ит["мера"], ит["мера_стартов"]))
+        self.assertEqual(1 + 28 + 3 * (1 + 28), ит["оценено"])
+        self.assertEqual([(0.25, "старт 1 из 1"), (0.5, "отжиг 1 из 3"), (0.75, "отжиг 2 из 3"), (1.0, "отжиг 3 из 3")], ходы)
+        # Отжиг уходит из местного максимума: мера — совпадения с целью, кроме «ловушки» (обмен двух меток).
+        цель = np.arange(8)
+        ловушка = цель.copy()
+        ловушка[[0, 1]] = [1, 0]
+
+        def мера(т):
+            т = np.asarray(т)
+            совпало = (т == цель).sum(axis=1).astype(float)
+            return np.where((т == ловушка).all(axis=1), 7.5, совпало)
+
+        ит = р.местный_поиск(мера, ловушка[None, :], срок=30, отжиг=20, сид=2)
+        self.assertEqual(цель.tolist(), ит["таблица"])
+        self.assertEqual((8.0, 7.5), (ит["мера"], ит["мера_стартов"]))
+        # Срок вышел — подъёма нет, мера старта.
+        ит = р.местный_поиск(мера, ловушка[None, :], срок=0.0)
+        self.assertEqual((ловушка.tolist(), 7.5), (ит["таблица"], ит["мера"]))
+
+    def test_итог_в_словарь(self):
+        и = р.Итог([1, 0], 3.5, "как", ["x"], [[1, 0]], {"время": 1.0})
+        self.assertEqual({"таблица": [1, 0], "мера": 3.5, "как": "как", "подробно": ["x"], "равноценные": [[1, 0]],
+                          "время": 1.0}, и.в_словарь())
