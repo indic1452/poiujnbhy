@@ -94,6 +94,8 @@ def увеличить_буфер(с: Any, размер: int = БУФЕР_ПРИ
             return
     with contextlib.suppress(OSError):
         с.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, размер)
+
+
 #: Наибольшая датаграмма UDP (IPv4: 65535 − 20 − 8) — буфер приёма с запасом.
 ДАТАГРАММА = 65535
 

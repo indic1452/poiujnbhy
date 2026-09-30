@@ -1121,6 +1121,28 @@ class ИсточникиTests(unittest.TestCase):
         npcap = istochniki.возможности(lib, "", windows=True, фабрика=ПоддельныйСокет)
         self.assertEqual("npcap", istochniki.выбрать_способ(npcap))
 
+    def test_буфер_приёма_без_прав(self):
+        """Без CAP_NET_ADMIN SO_RCVBUFFORCE отказывает — тогда обычный SO_RCVBUF; в Windows — сразу он."""
+        class Без(ПоддельныйСокет):
+            def setsockopt(себя, *а):
+                себя.вызовы.append(("setsockopt", а))
+                if а[1] == 33:
+                    raise PermissionError(errno.EPERM, "нет прав")
+        с_ = Без()
+        with mock.patch.object(istochniki, "WINDOWS", False):
+            istochniki.увеличить_буфер(с_, 1000)
+        self.assertEqual([("setsockopt", (socket.SOL_SOCKET, 33, 1000)),
+                          ("setsockopt", (socket.SOL_SOCKET, socket.SO_RCVBUF, 1000))], с_.вызовы[1:])
+        с_ = ПоддельныйСокет()
+        with mock.patch.object(istochniki, "WINDOWS", False):
+            istochniki.увеличить_буфер(с_, 1000)
+        self.assertEqual([("setsockopt", (socket.SOL_SOCKET, 33, 1000))], с_.вызовы[1:], "удалось — второго нет")
+        с_ = ПоддельныйСокет()
+        with mock.patch.object(istochniki, "WINDOWS", True):
+            istochniki.увеличить_буфер(с_)
+        self.assertEqual([("setsockopt", (socket.SOL_SOCKET, socket.SO_RCVBUF, istochniki.БУФЕР_ПРИЁМА))],
+                         с_.вызовы[1:])
+
     def test_udp_настройка_сокета(self):
         """Семейство по адресу, SO_RCVBUF, IP_PKTINFO/IPV6_RECVPKTINFO и SO_RXQ_OVFL (Linux), группа, bind."""
         сокеты = []
@@ -1133,7 +1155,9 @@ class ИсточникиTests(unittest.TestCase):
         self.assertTrue(источник.любой and источник.pktinfo)
         self.assertEqual([("socket", (socket.AF_INET6, socket.SOCK_DGRAM))] * 2, [с_.вызовы[0] for с_ in сокеты])
         в = сокеты[0].вызовы
-        self.assertIn(("setsockopt", (socket.SOL_SOCKET, socket.SO_RCVBUF, istochniki.БУФЕР_ПРИЁМА)), в)
+        self.assertIn(("setsockopt", (socket.SOL_SOCKET, 33, istochniki.БУФЕР_ПРИЁМА)), в,
+                      "Linux: SO_RCVBUFFORCE — мимо предела net.core.rmem_max")
+        self.assertNotIn(("setsockopt", (socket.SOL_SOCKET, socket.SO_RCVBUF, istochniki.БУФЕР_ПРИЁМА)), в)
         self.assertIn(("setsockopt", (socket.SOL_SOCKET, 40, 1)), в)
         self.assertIn(("setsockopt", (socket.IPPROTO_IPV6, 49, 1)), в)
         self.assertIn(("bind", ("ff15::1", 5004, 0, 0)), в, "Linux: слушаем адрес группы (с номером карты)")
