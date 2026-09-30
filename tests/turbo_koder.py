@@ -452,3 +452,60 @@ def iess_поток(слов: int, n: int, k: int, глубина: int, сид: 
     групп = слов // глубина
     поток = словa[:групп * глубина].reshape(групп, глубина, n).transpose(0, 2, 1).reshape(-1)
     return np.unpackbits(поток.astype(np.uint8)), данные[:групп * глубина]
+
+
+#: Рис. 10 (стр. 18) — прочитано с изображения: угол → (U2, U1, C1) для 5/6 и 8/9.
+DSNG_8PSK_1CBPS = {22.5: (0, 0, 0), 67.5: (0, 0, 1), 112.5: (0, 1, 0), 157.5: (0, 1, 1),
+                   202.5: (1, 0, 0), 247.5: (1, 0, 1), 292.5: (1, 1, 0), 337.5: (1, 1, 1)}
+
+
+def _ссылки(текст: str) -> list[tuple[str, int]]:
+    """«B7 B3 D7» → [(B, 7), (B, 3), (D, 7)] — строка табл. 3 от FIRST к LAST."""
+    return [(т[0], int(т[1])) for т in текст.split()]
+
+
+def dsng_tcm_1(биты: list[int], режим: str) -> list[complex]:
+    """8PSK 5/6, 8/9 и 16QAM 7/8 по табл. 3 (строки переписаны от FIRST к LAST) и табл. 4."""
+    буквы = {"5/6": "ABDFG", "8/9": "ABDF", "7/8": "ABDFGHL"}[режим]
+    if режим == "5/6":
+        E = [_ссылки("A7 A6 A5 A4 A3 A2 A1 A0")]
+        NE = {4: "B7 B3 D7 D3 F7 F3 G7 G3", 3: "B6 B2 D6 D2 F6 F2 G6 G2",
+              2: "B5 B1 D5 D1 F5 F1 G5 G1", 1: "B4 B0 D4 D0 F4 F0 G4 G0"}
+    elif режим == "8/9":
+        E = [_ссылки("A7 A5 A3 A1"), _ссылки("A6 A4 A2 A0")]
+        NE = {6: "B7 B1 F7 F5", 5: "B6 B0 F6 F4", 4: "B5 D7 D3 F3", 3: "B4 D6 D2 F2",
+              2: "B3 D5 D1 F1", 1: "B2 D4 D0 F0"}
+    else:
+        E = [_ссылки("A7 A4 A1 F6 F3 F0 H5 H2"), _ссылки("A6 A3 A0 F5 F2 H7 H4 H1"),
+             _ссылки("A5 A2 F7 F4 F1 H6 H3 H0")]
+        NE = {4: "B7 B3 D7 D3 G7 G3 L7 L3", 3: "B6 B2 D6 D2 G6 G2 L6 L2",
+              2: "B5 B1 D5 D1 G5 G1 L5 L1", 1: "B4 B0 D4 D0 G4 G0 L4 L0"}
+    NE = {k: _ссылки(v) for k, v in NE.items()}
+    на = 8 * len(буквы)
+    рег = [0] * 6
+    точки = []
+    for н in range(0, len(биты) // на * на, на):
+        байты = {б: биты[н + 8 * i:н + 8 * i + 8] for i, б in enumerate(буквы)}
+
+        def бит(ссылка):
+            return байты[ссылка[0]][7 - ссылка[1]]
+        for g in range(len(E[0])):
+            XY = []
+            for поток_e in E:                         # E3 (или E2) первым — «E-serial»
+                e = бит(поток_e[g])
+                XY.append((e ^ рег[0] ^ рег[1] ^ рег[2] ^ рег[5], e ^ рег[1] ^ рег[2] ^ рег[4] ^ рег[5]))
+                рег = [e] + рег[:5]
+            ne = {k: бит(v[g]) for k, v in NE.items()}
+            if режим == "5/6":
+                символы = [(ne[4], ne[3], XY[0][0]), (ne[2], ne[1], XY[0][1])]
+            elif режим == "8/9":
+                символы = [(ne[6], ne[5], XY[0][0]), (ne[4], ne[3], XY[0][1]), (ne[2], ne[1], XY[1][1])]
+            else:
+                (X1, Y1), (X2, Y2), (X3, Y3) = XY
+                for u2, u1, c2, c1 in ((ne[4], ne[3], Y1, X1), (ne[2], ne[1], X3, Y2)):
+                    точки.append(complex(DSNG_16QAM[(u1, c1)], DSNG_16QAM[(u2, c2)]))
+                continue
+            for м in символы:
+                угол = next(а for а, мм in DSNG_8PSK_1CBPS.items() if мм == м)
+                точки.append(complex(np.cos(np.deg2rad(угол)), np.sin(np.deg2rad(угол))))
+    return точки

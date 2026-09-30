@@ -387,7 +387,7 @@ class ОкноКодовTests(unittest.TestCase):
         self.assertEqual("нск 3/4", self.заполнить(о["c-nsk"]))
         self.assertEqual("нск 7/8 mil", self.заполнить(о["c-nsk"], {"скорость": "7/8", "mil": True}))
         self.assertEqual("рс iess idr e1 глубина 4", self.заполнить(о["c-rs-iess"]))
-        self.assertEqual("trellis 8psk", self.заполнить(о["c-trellis"]))
+        self.assertEqual("trellis 8psk 2/3", self.заполнить(о["c-trellis"]))
         # Сервер снимает каждый такой слой на потоке своего кодера.
         u = данные(3, 1784, 21)
         ряд, _ = razbor.снять_вручную(поток(lambda x: тк.ccsds_кодировать(x, "1/2"), u),

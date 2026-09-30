@@ -68,6 +68,47 @@ class TrellisTests(unittest.TestCase):
         self.assertTrue(np.array_equal(данные[:, :8], ряд.reshape(-1, 24)[:, :8]))
 
 
+class TrellisВыколотыйTests(unittest.TestCase):
+    """8PSK 5/6, 8/9 (1 кодированный бит на символ) и 16QAM 7/8 (кодер 3/4 выколотый)."""
+    ДАННЫЕ = np.random.default_rng(6).integers(0, 2, 56 * 400).tolist()
+    РЕЖИМЫ = (("8psk 5/6", "8psk", 1, 3), ("8psk 8/9", "8psk", 1, 3), ("16qam 7/8", "16qam", 2, 4))
+
+    def метки(self, точки_, модуляция, c):
+        т, м = trellis.точки(модуляция, c)
+        return м[np.abs(точки_[:, None] - т[None, :]).argmin(axis=1)]
+
+    def test_кодер_совпадает_и_без_ошибок(self):
+        for имя, модуляция, c, k in self.РЕЖИМЫ:
+            with self.subTest(имя=имя):
+                точки_ = np.array(тк.dsng_tcm_1(self.ДАННЫЕ, имя.split()[1]))
+                метки_ = self.метки(точки_, модуляция, c)
+                self.assertTrue(np.array_equal(метки_, trellis.закодировать(np.array(self.ДАННЫЕ), имя)))
+                ряд, _ = razbor.снять_вручную(в_биты(метки_, k), f"trellis {имя}")
+                self.assertTrue(np.array_equal(np.array(self.ДАННЫЕ[:len(ряд)]), ряд))
+
+    def test_кодированные_биты_исправляются(self):
+        # Ошибка в соседнюю точку: кодированный бит восстанавливает Витерби; некодированный
+        # по жёсткой метке может остаться неоднозначным (две точки на равном расстоянии).
+        случай = np.random.default_rng(7)
+        for имя, модуляция, c, k in self.РЕЖИМЫ:
+            with self.subTest(имя=имя):
+                точки_ = np.array(тк.dsng_tcm_1(self.ДАННЫЕ, имя.split()[1]))
+                # 7/8 — самый слабый код (кодер 3/4, два кодированных бита на символ).
+                сбой = случай.random(len(точки_)) < (0.02 if c == 1 else 0.004)
+                if модуляция == "8psk":
+                    точки_[сбой] *= np.exp(1j * np.pi / 4 * случай.choice([-1, 1], сбой.sum()))
+                else:
+                    точки_[сбой] += np.where(точки_[сбой].real < 0, 2, -2)
+                р = trellis.режим(имя)
+                ряд, _ = razbor.снять_вручную(в_биты(self.метки(точки_, модуляция, c), k),
+                                              f"trellis {имя} поворот 0 код dsng")
+                данные = np.array(self.ДАННЫЕ[:len(ряд)]).reshape(-1, 8 * р.байт)
+                ряд = ряд.reshape(-1, 8 * р.байт)
+                кодированные = [8 * e[0] + 7 - e[1] for g in р.E for e in g]
+                self.assertTrue(np.array_equal(данные[:, кодированные], ряд[:, кодированные]))
+                self.assertLess(float((данные != ряд).mean()), 0.02)
+
+
 class RsIessTests(unittest.TestCase):
     def test_idr_e1_глубина_4_и_8(self):
         for глубина in (4, 8):
