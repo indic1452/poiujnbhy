@@ -258,6 +258,14 @@ class ТаблицыРежимов(unittest.TestCase):
         self.assertEqual(f"{51 * 49 / 3748:.4f}"[:5], "0.666")
         self.assertEqual(self.размеры("отдел-(32,21)²K"), (1024, 441))
         self.assertEqual(self.размеры("отдел-(32,26)x(32,21)K"), (1024, 546))
+        # Datum Advanced: имя режима — первые три знака скорости k/T.
+        for ид, имя, T in (("Datum-0.453-16k", "0.453", 16384), ("Datum-0.922-16k", "0.922", 16384),
+                           ("Datum-0.950-4k", "0.950", 4112)):
+            k = self.размеры(ид)[1]
+            self.assertIn(имя, (f"{k / T:.4f}"[:5], f"{k / T:.3f}"), ид)
+            self.assertEqual(т.режим(ид).кадр or self.размеры(ид)[0], T)
+        self.assertEqual(т.режим("Datum-0.453-16k").коды, "(32,26)x(32,26)x(16,11)")
+        self.assertEqual(т.режим("Datum-0.922-16k").коды, "(128,120)x(128,126)+")
         self.assertTrue(all(р.метка in "ФАГС" and р.источник for р in т.КАТАЛОГ))
         self.assertEqual(len({р.ид.lower() for р in т.КАТАЛОГ}), len(т.КАТАЛОГ))
 
@@ -913,13 +921,15 @@ class ОкноТкбВNode(unittest.TestCase):
 
     def выполнить(self, случаи):
         from test_potok_sessii import функции_js  # noqa: PLC0415
-        код = функции_js(["проверитьПоляТкб", "порядокВариантовТкб", "ходПоискаТкб", "раскладкаБлокаТкб"], []) + """
+        код = функции_js(["проверитьПоляТкб", "порядокВариантовТкб", "ходПоискаТкб", "раскладкаБлокаТкб",
+                          "описаниеМетокТкб"], []) + """
 const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
 process.stdout.write(JSON.stringify(случаи.map((с) => {
     switch (с.что) {
     case 'поля': return проверитьПоляТкб(с.с, с.к);
     case 'порядок': return с.в.slice().sort(порядокВариантовТкб).map((в) => в.и);
     case 'ход': return ходПоискаТкб(с.п, с.в, с.с);
+    case 'метки': return описаниеМетокТкб(с.м);
     case 'раскладка': { const р = раскладкаБлокаТкб(с.ф, с.ш); return [р.вРяд, р.рядов, р.ширина, р.высота, с.i.map((i) => р.место(i))]; }
     default: return null;
     }
@@ -928,6 +938,13 @@ process.stdout.write(JSON.stringify(случаи.map((с) => {
         готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=60)
         self.assertEqual(0, готово.returncode, готово.stderr)
         return json.loads(готово.stdout)
+
+    def test_метки(self):
+        итог = self.выполнить([{"что": "метки", "м": м} for м in (
+            None, {}, {"длина": 0, "период": 5}, {"длина": 20, "период": 12308, "через": 0},
+            {"длина": 16, "период": 1040, "через": 4})])
+        self.assertEqual(итог, ["", "", "", " · метки 20 бит через 12308",
+                                " · метки 16 бит через 1040 (каждая 4-я инвертирована — начало блока)"])
 
     def test_поля(self):
         случаи = [("", ""), ("0101 0101", ""), ("01010101", "4104"), ("0101010", ""), ("0102", ""), (None, None),
@@ -1066,6 +1083,12 @@ class СверкаСФайламиИсточников(unittest.TestCase):
         self.assertEqual(round(len(г.данные) / г.размер, 3), 0.872)
         г = т.геометрия(т.режим("Advantech-0.923"))
         self.assertEqual(round(len(г.данные) / г.размер, 3), 0.923)
+        datum = _текст("datum/man-mdm-psm500-tpc.pdf.txt")
+        for имя in ("0.453-16k", "0.922-16k 7", "0.950-4k", "1/2-4k", "7/8-16k"):
+            self.assertIn(имя, datum)
+        self.assertIn("Although the Intelsat IESS-315 describes the use of TPC in satellite links it does not specify "
+                      "many |of the actual parameters", datum)
+        self.assertIn("specifically designed to be compatible with at least the Comtech CDM570 and |CDM600", datum)
 
 class СлепоеБезЧётности(unittest.TestCase):
     """Строки и столбцы по пространству проверок: Хэмминг без бита чётности, БЧХ (31,21)."""
@@ -1205,8 +1228,10 @@ class ВсеРежимыКаталога(unittest.TestCase):
                 self.assertGreaterEqual(н.уверенность, 0.9)
                 if доля == 1.0:
                     итог_бит_в_бит.append(р.ид)
-        # Все, кроме крошечного (12,11)² 802.16 с двумя ошибками в одном блоке этого потока.
-        self.assertEqual(set(р.ид for р in т.КАТАЛОГ) - set(итог_бит_в_бит), {"802.16-OFDM-144-5/6"})
+        # Все, кроме крошечного (12,11)² 802.16 с двумя ошибками в одном блоке этого потока и eTPC из кодов
+        # чётности Datum-0.950-4k: в трёх блоках по 5–8 ошибок, и у пяти ошибок блока 16 два разных набора
+        # мест одного наименьшего веса дают тот же синдром — жёсткими решениями неразличимо.
+        self.assertEqual(set(р.ид for р in т.КАТАЛОГ) - set(итог_бит_в_бит), {"802.16-OFDM-144-5/6", "Datum-0.950-4k"})
 
 
 class ТкбЧерезСервер(unittest.TestCase):
@@ -1286,6 +1311,31 @@ class ТкбЧерезСервер(unittest.TestCase):
             self.assertEqual([(в["T"], в["фаза"]) for в in d["найдено"]], [(4128, фаза)])
         d = self.к.post(путь, json={"stage": 0, "режимы": ["Radyne-0.793"], "синхрослово": слово[:16]}).json()
         self.assertEqual(d["кадры"], [4128])
+
+    def test_синхрометки(self):
+        """Метки находятся при первой части, возвращаются окну и принимаются обратно; «без_меток» — не ищутся."""
+        _, ряд, данные, слово, k = поток_с_метками("AHA4524-0.863", 16, m=4, блоков=48)
+        путь = f"/api/potok/{self.задание(ряд)}/tkb/"
+        тело = {"stage": 0, "режимы": ["AHA4524-0.863"]}
+        d = self.к.post(путь + "search", json=тело).json()
+        м = d["метки"]
+        self.assertEqual((м["период"], м["длина"], м["начало"], м["через"], м["инв"]), (1040, 16, 77, 4, 0))
+        self.assertEqual(м["слово"], "".join(map(str, слово)))
+        в = d["найдено"][0]
+        self.assertEqual(в["метки"], м)
+        self.assertEqual(в["слой"], "ткб режим AHA4524-0.863 кадр 4096 фаза 77 метки 1040 16 77 инверсия 4 0")
+        self.assertEqual(в["подпись"], "0.850 (T=4096+метки) (64,57)x(64,62)+ [метки 16/1040, инв., укор., AHA4524 (eTPC)]")
+        d2 = self.к.post(путь + "search", json={**тело, "с": 0, "кадры": d["кадры"], "метки": м}).json()
+        self.assertEqual(d2["найдено"][0]["слой"], в["слой"])
+        d3 = self.к.post(путь + "search", json={**тело, "без_меток": True}).json()
+        self.assertIsNone(d3["метки"])
+        self.assertEqual(d3["найдено"], [])
+        п = self.к.post(путь + "preview", json={"stage": 0, "слой": в["слой"] + " без скремблера"}).json()
+        биты = np.unpackbits(np.frombuffer(base64.b64decode(п["биты"]), np.uint8))[:п["бит"]]
+        self.assertEqual(биты.tolist(), данные.reshape(-1)[:len(биты)].tolist())
+        for плохо in ({"период": 10, "длина": 10, "начало": 0}, {"период": "x", "длина": 1, "начало": 0}, {"длина": 3}):
+            о = self.к.post(путь + "search", json={**тело, "метки": плохо})
+            self.assertEqual(400, о.status_code)
 
     def test_ошибки_запроса(self):
         for тело, текст in (({"stage": 0, "с": "x"}, "с, по, кадр, кадры — целые числа"),
