@@ -116,17 +116,20 @@ def типы() -> list[dict]:
     семейства = [
         ("5G NR, базовый граф 1", "nr-bg1-", "3GPP TS 38.212, 5.3.2 (AFF3CT, srsRAN_4G, Sionna)"),
         ("5G NR, базовый граф 2", "nr-bg2-", "3GPP TS 38.212, 5.3.2"),
-        ("Wi-Fi 802.11n", "wifi-", "IEEE 802.11n (tavildar/LDPC, Sionna, AFF3CT)"),
+        ("Wi-Fi 802.11n/ac", "wifi-", "IEEE 802.11n, у 802.11ac — те же коды (tavildar/LDPC, Sionna, AFF3CT)"),
         ("WiMAX 802.16e", "wimax-", "IEEE 802.16e (yaldpc, FEC dshekhalev, wimax_ldpc_lib); у 5/6 блок (3, 0) — 50 "
                                     "(wimax_ldpc_lib, G.9960, AFF3CT), вариант «-v68» — 68 (yaldpc, FEC)"),
         ("G.hn (ITU-T G.9960)", "ghn-", "ITU-T G.9960 (10/2009), 7.1.3.2, табл. 7-18, 7-19 (материнские = WiMAX 1/2, 2/3B, 5/6)"),
         ("DOCSIS 3.1 (восходящий)", "docsis31-", "CableLabs DOCSIS 3.1 PHY I15, 7.4.3.2 (стр. 60); IEEE 802.3bn (черновик)"),
         ("CCSDS AR4JA", "ar4ja-", "CCSDS 131.0-B-5, 7.4"),
-        ("CCSDS C2 (8160, 7136)", "ccsds-c2-", "CCSDS 131.0-B-5, 7.3"),
+        ("CCSDS C2 (8176, 7154) и (8160, 7136)", "ccsds-c2-", "CCSDS 131.0-B-5, 7.3; порождающая — прил. C, табл. C-1"),
         ("CCSDS TC", "ccsds-", "CCSDS 231.0-B-4, 4"),
         ("ATSC 3.0 normal", "atsc3-64800", "ATSC A/322, прил. A.1"),
         ("ATSC 3.0 short", "atsc3-16200", "ATSC A/322, прил. A.2"),
         ("DTMB", "dtmb-", "GB 20600 (dtmb-sdr; источник один)"),
+        ("IEEE 802.11ad (60 ГГц)", "80211ad-", "IEEE 802.11-10/0433r2 (TGad), 21.3.8, табл. 69–72 = 11-16/0676r1; "
+                                              "7/8 (624) — 11-16/1495r1"),
+        ("IEEE 802.11ay (1344)", "80211ay-", "IEEE 802.11-16/0692r0, 11-17/1061r1 (TGay)"),
         ("10GBASE-T", "10gbase-", "IEEE 802.3an (AFF3CT; источник один)"),
         ("WRAN", "wran-", "IEEE 802.22 (AFF3CT; источник один)")]
     for тип, приставка, источник in семейства:

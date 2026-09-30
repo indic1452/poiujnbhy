@@ -1,0 +1,1573 @@
+=====ppt/slides/slide1.xml=====
+
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+Slide 1
+Length 1344 LDPC codes for 11ay
+Date: 2016-05-17
+Authors:
+
+=====ppt/slides/slide2.xml=====
+
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+Slide 2
+Abstract
+We propose a Length-1344 LDPC block based on 11ad codes for use in 11ay
+About 1 dB of coding gain compared to length-672 code set in 11ad.
+
+=====ppt/slides/slide3.xml=====
+
+Introduction
+Channel bonding and MIMO are core features of 11ay specification.
+To realize the 20Gbps+ throughput goal specified in the PAR
+In this presentation, we propose enhancements to the 11ad channel coding scheme that can provide “significant” PER performance improvement when large packets are to be transmitted
+We propose the use of a longer length LDPC code for 11ay
+11ad had defined 672 length LDPC codes.  We investigate a LDPC code design that is twice  that length – i.e., length 1344 LDPC code.
+~1dB gain over 11ad LDPC codes
+
+
+Slide 3
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+
+=====ppt/slides/slide4.xml=====
+
+Length 1344 LDPC codes
+We propose new longer block LDPC block based on 11ad codes
+Two-step lifting matrices with in-place property.
+11ad codes are in-place.
+Designed in-place 2nd lifting  The larger codes are also in-place.
+
+Architecture advantages for the two-step lifting design.
+Allow re-use of the 11ad decoding machine wrapped with MUX and Memory.
+Facilitate scalable architectures (easy to support 2x, 3x, …)
+Provide better granularity  higher efficiency. 
+
+
+Slide 4
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+
+=====ppt/slides/slide5.xml=====
+
+Proposed rate-13/16
+5
+The lifting matrix above are applied on this 11ad base matrix.
+29
+	30
+	0
+	8
+	33
+	22
+	17
+	4
+	27
+	28
+	20
+	27
+	24
+	23
+	-1
+	-1
+	37
+	31
+	18
+	23
+	11
+	21
+	6
+	20
+	32
+	9
+	12
+	29
+	10
+	0
+	13
+	-1
+	25
+	22
+	4
+	34
+	31
+	3
+	14
+	15
+	4
+	2
+	14
+	18
+	13
+	13
+	22
+	24
+	1
+	0
+	1
+	1
+	1
+	1
+	0
+	0
+	1
+	1
+	0
+	1
+	1
+	0
+	-1
+	-1
+	0
+	0
+	0
+	0
+	0
+	1
+	0
+	0
+	0
+	0
+	0
+	1
+	1
+	1
+	0
+	-1
+	1
+	0
+	1
+	1
+	0
+	1
+	0
+	1
+	0
+	0
+	1
+	0
+	1
+	0
+	0
+	0
+	-1
+	29
+	29
+	-1
+	4
+	-1
+	-1
+	4
+	
+
+
+The lifting factor, Z, is 42 in both length-672 (11ad) and length-1344 proposed codes.
+Both codes share the same set of shifters.
+Simplify designing shared decoder for 11ad + length-1344 codes (See, Appendix II)  
+2nd lifting
+11ad code
+Note: If the 2nd lifting is all ‘0’s (or, all ‘1’s), then the length-1344 codes is an interleaving of two length-672 codes (No coding gain). It is the optimized mix of ‘0’s and ‘1’s in the 2nd lifting that gives the coding gain. Also, it is clear that a decoding machine with programmable 2nd lifting allow decoding one length-1344 or two length-672 codes. 
+length-1344 code
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide6.xml=====
+
+Proposed rate-3/4 code
+6
+N=1344
+Zp = 2
+The lifting matrix above are applied on this 11ad base matrix.
+35
+	19
+	41
+	22
+	40
+	41
+	39
+	6
+	28
+	18
+	17
+	3
+	28
+	-1
+	-1
+	-1
+	29
+	30
+	0
+	8
+	33
+	22
+	17
+	4
+	27
+	28
+	20
+	27
+	24
+	23
+	-1
+	-1
+	37
+	31
+	18
+	23
+	11
+	21
+	6
+	20
+	32
+	9
+	12
+	29
+	-1
+	0
+	13
+	-1
+	25
+	22
+	4
+	34
+	31
+	3
+	14
+	15
+	4
+	-1
+	14
+	18
+	13
+	13
+	22
+	24
+	0
+	0
+	1
+	1
+	1
+	0
+	0
+	1
+	0
+	0
+	1
+	1
+	0
+	-1
+	-1
+	-1
+	1
+	0
+	1
+	1
+	1
+	1
+	0
+	0
+	1
+	1
+	0
+	1
+	1
+	0
+	-1
+	-1
+	0
+	0
+	0
+	0
+	0
+	1
+	0
+	0
+	0
+	0
+	0
+	1
+	-1
+	1
+	0
+	-1
+	1
+	0
+	1
+	1
+	0
+	1
+	0
+	1
+	0
+	-1
+	1
+	0
+	1
+	0
+	0
+	0
+	May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide7.xml=====
+
+Proposed rate-5/8 code
+7
+N=1344
+Zp = 2
+The lifting matrix above are applied on this 11ad base matrix.
+20
+	36
+	34
+	31
+	20
+	7
+	41
+	34
+	-1
+	10
+	41
+	-1
+	-1
+	-1
+	-1
+	-1
+	30
+	27
+	-1
+	18
+	-1
+	12
+	20
+	14
+	2
+	25
+	15
+	6
+	-1
+	-1
+	-1
+	-1
+	35
+	-1
+	41
+	-1
+	40
+	-1
+	39
+	-1
+	28
+	-1
+	-1
+	3
+	28
+	-1
+	-1
+	-1
+	29
+	-1
+	0
+	-1
+	-1
+	22
+	-1
+	4
+	-1
+	28
+	-1
+	27
+	24
+	23
+	-1
+	-1
+	-1
+	31
+	-1
+	23
+	-1
+	21
+	-1
+	20
+	-1
+	9
+	12
+	-1
+	-1
+	0
+	13
+	-1
+	-1
+	22
+	-1
+	34
+	31
+	-1
+	14
+	-1
+	4
+	-1
+	-1
+	-1
+	-1
+	-1
+	22
+	24
+	0
+	0
+	1
+	1
+	0
+	0
+	1
+	1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	1
+	-1
+	1
+	-1
+	1
+	0
+	0
+	1
+	1
+	0
+	0
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	1
+	-1
+	1
+	-1
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	1
+	0
+	-1
+	-1
+	-1
+	0
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	0
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	0
+	-1
+	1
+	0
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	0
+	May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide8.xml=====
+
+Proposed rate-1/2 code
+8
+0
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	0
+	-1
+	1
+	-1
+	-1
+	1
+	0
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	1
+	-1
+	1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	0
+	0
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	1
+	-1
+	1
+	-1
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	-1
+	0
+	-1
+	-1
+	-1
+	0
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	-1
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	0
+	-1
+	1
+	0
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	-1
+	1
+	-1
+	0
+	0
+	40
+	-1
+	38
+	-1
+	13
+	-1
+	5
+	-1
+	18
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	34
+	-1
+	35
+	-1
+	27
+	-1
+	-1
+	30
+	2
+	1
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	36
+	-1
+	31
+	-1
+	7
+	-1
+	34
+	-1
+	10
+	41
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	27
+	-1
+	18
+	-1
+	12
+	20
+	-1
+	-1
+	-1
+	15
+	6
+	-1
+	-1
+	-1
+	-1
+	35
+	-1
+	41
+	-1
+	40
+	-1
+	39
+	-1
+	28
+	-1
+	-1
+	3
+	28
+	-1
+	-1
+	-1
+	29
+	-1
+	0
+	-1
+	-1
+	22
+	-1
+	4
+	-1
+	28
+	-1
+	27
+	-1
+	23
+	-1
+	-1
+	-1
+	31
+	-1
+	23
+	-1
+	21
+	-1
+	20
+	-1
+	-1
+	12
+	-1
+	-1
+	0
+	13
+	-1
+	-1
+	22
+	-1
+	34
+	31
+	-1
+	14
+	-1
+	4
+	-1
+	-1
+	-1
+	13
+	-1
+	22
+	24
+	N=1344
+Zp = 2
+The lifting matrix above are applied on this 11ad base matrix.
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide9.xml=====
+
+Proposed rate-7/8 code
+Rate-7/8 length-1248 is derived by puncturing the first 96 parity bits of the rate-13/16 length-1344 code.
+As is currently done in 11ad (adopted recently in Revmc)
+
+Slide 9
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+
+=====ppt/slides/slide10.xml=====
+
+1344 lifting matrices are in-place
+10
+1
+	0
+	1
+	1
+	1
+	1
+	0
+	0
+	1
+	1
+	0
+	1
+	1
+	0
+	-1
+	-1
+	0
+	0
+	0
+	0
+	0
+	1
+	0
+	0
+	0
+	0
+	0
+	1
+	1
+	1
+	0
+	-1
+	1
+	0
+	1
+	1
+	0
+	1
+	0
+	1
+	0
+	0
+	1
+	0
+	1
+	0
+	0
+	0
+	0
+	0
+	1
+	1
+	1
+	0
+	0
+	1
+	0
+	0
+	1
+	1
+	0
+	-1
+	-1
+	-1
+	1
+	0
+	1
+	1
+	1
+	1
+	0
+	0
+	1
+	1
+	0
+	1
+	1
+	0
+	-1
+	-1
+	0
+	0
+	0
+	0
+	0
+	1
+	0
+	0
+	0
+	0
+	0
+	1
+	-1
+	1
+	0
+	-1
+	1
+	0
+	1
+	1
+	0
+	1
+	0
+	1
+	0
+	-1
+	1
+	0
+	1
+	0
+	0
+	0
+	0
+	0
+	1
+	1
+	0
+	0
+	1
+	1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	1
+	-1
+	1
+	-1
+	1
+	0
+	0
+	1
+	1
+	0
+	0
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	1
+	-1
+	1
+	-1
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	1
+	0
+	-1
+	-1
+	-1
+	0
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	0
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	0
+	-1
+	1
+	0
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	0
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	0
+	-1
+	1
+	-1
+	-1
+	1
+	0
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	-1
+	-1
+	-1
+	1
+	-1
+	1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	0
+	0
+	-1
+	-1
+	-1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	-1
+	1
+	-1
+	1
+	-1
+	-1
+	1
+	-1
+	0
+	-1
+	1
+	-1
+	1
+	-1
+	0
+	-1
+	-1
+	-1
+	0
+	-1
+	0
+	-1
+	1
+	-1
+	0
+	-1
+	-1
+	0
+	-1
+	-1
+	1
+	0
+	-1
+	-1
+	0
+	-1
+	1
+	0
+	-1
+	0
+	-1
+	0
+	-1
+	-1
+	-1
+	1
+	-1
+	0
+	0
+	
+
+
+
+
+
+
+
+Rate
+1/2
+Rate
+5/8
+Rate
+3/4
+Rate 13/16
+Non ‘-1’ values in the same column and in rows of the same color are identical. 
+In-place property lower the decoding complexity for fully-parallel (flooding) architectures.  
+Both 11ad codes and the proposed 2nd lifting are in-place  1344 codes are in-place.
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide11.xml=====
+
+Simulation setup
+Simulation environment:
+Packet length 4096 Bytes.
+OFDM tone mappings for QPSK, 16-QAM, and 64-QAM are shown in Appendix I. 
+Conference Room model used in 11ad [2].
+Fs = 5.28 GHz
+Directional Tx – Directional Rx
+NLOS
+No HW impairments.
+Ideal channel estimation.
+MMSE equalization.
+
+
+
+
+11
+[2] 2015-TECH-Samsung-0002-00-Channel Coding Framework for 802.11ay - Channel Bonding and MIMO in OFDM PHY
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide12.xml=====
+
+In-place two-step lifting performance: QPSK
+12
+Coding gains @ 1% PER :
+0.75, 0.65, 0.7 dB
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide13.xml=====
+
+In-place two-step lifting performance: QPSK
+13
+~ 0.8 dB gain
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide14.xml=====
+
+In-place two-step lifting performance: 16-QAM
+14
+Coding gains @ 1% PER :
+1.0, 1.6, 1.0, 0.7, 1.0  dB
+Note: Rate-7/8 is created by puncturing the rate-13/16 code
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide15.xml=====
+
+In-place two-step lifting performance: 16-QAM
+15
+~ 0.8 dB gain
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide16.xml=====
+
+In-place two-step lifting performance: 64-QAM
+16
+Coding gains @ 1% PER:
+1.4, 1.15, 0.5, 1.0 dB
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide17.xml=====
+
+In-place two-step lifting performance: 64-QAM
+17
+~ 0.8 dB gain
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide18.xml=====
+
+Theoretical improvement of the proposed L1344 over the L672 in 11ad
+minimum distance
+	
+	
+	 Rate
+	L1344
+	L672 (11ad)
+	1/2
+	19
+	17
+	5/8
+	13
+	12
+	3/4
+	12
+	9
+	13/16
+	8
+	6
+	Slide 18
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+Number of 6-cycles
+	
+	
+	 Rate
+	L1344
+	L672 (11ad)
+	1/2
+	84
+	504
+	5/8
+	168
+	714
+	3/4
+	5796
+	7476
+	13/16
+	1680
+	2646
+	Proposed L1344 Two-step code set has larger minimum distances than the L672 (11ad) codes.
+
+The minimum cycle-size of any code in both sets is 6.
+Two-step lifting codes have significantly lower number of 6-cycles than that in the L672 (11ad) codes.
+
+=====ppt/slides/slide19.xml=====
+
+Summary
+Two step lifting matrix construction for new longer block length LDPC codes with 11ad codes “in-place”
+Compared to 11ad, longer codes have ~ 1 dB gain and another ~1dB can be extracted from interleaving
+Two step lifting has better minimum-distance and small-cycle properties than extended lifting. 
+
+Architecture advantages for the two-step lifting design.
+Allow re-use of the 11ad decoding machine wrapped with MUX and Memory.
+Facilitate scalable architectures (easy to support 2x, 3x, …)
+Provide better granularity  higher efficiency. 
+Slide 19
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+
+=====ppt/slides/slide20.xml=====
+
+Straw Poll
+Do you agree to use the code matrices listed in slides 5-8 for length 1344 LDPC code in IEEE 802.11ay?
+
+
+
+
+27Y/0N/8A
+
+Slide 20
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+
+=====ppt/slides/slide21.xml=====
+
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+Slide 21
+References
+[11ad] IEEE 802.11ad-2012 standard.
+[2] 11-09-0334-08-00ad-channel-models-for-60-ghz-wlan-systems.
+
+=====ppt/slides/slide22.xml=====
+
+Appendix I
+Slide 22
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+
+=====ppt/slides/slide23.xml=====
+
+OFDM parameters for 2x channel bonding(only for simulation purpose)
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}Parameter
+	Notation
+	Value (11ad)
+	Value (2x)
+	FFT Size
+	NFFT
+	512
+	1024
+	Number of data subcarriers
+	NSD
+	336
+	672
+	Number of pilot subcarriers
+	NSP
+	16
+	32
+	OFDM sampling frequency
+	Fs
+	2640 MHz
+	5280 MHz
+	Subcarrier frequency spacing
+	ΔF
+	5.16  MHz
+	5.16 MHz
+	Guard Interval/Cyclic Prefix
+	TGI
+	128/Fs= ~48ns
+	256/Fs= ~48ns
+	-209
+ 209
+Ref [11ad]
+ 32
+ -32
+ 386
+ -386
+
+
+
+
+
+
+
+23
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide24.xml=====
+
+Simulation setup
+Slide 24
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+OFDM Tone Mapping: QPSK
+
+=====ppt/slides/slide25.xml=====
+
+Simulation setup
+Slide 25
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+OFDM Tone Mapping: 16-QAM
+
+=====ppt/slides/slide26.xml=====
+
+Simulation setup
+Slide 26
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+OFDM Tone Mapping: 64-QAM
+
+=====ppt/slides/slide27.xml=====
+
+Appendix II
+Slide 27
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+
+=====ppt/slides/slide28.xml=====
+
+ 11ad machine
+Check Node 41 (degree 16)
+Check Node 0 (degree 16)
+42 Shifter
+42 Shifter
+… 16x …
+Gamma
+Proc.
+Gamma
+Proc.
+… 16x …
+Layered Decoder: Architectures (1x Throughput*)
+28
+ 11ad machine
+Check Node 41 (degree 16)
+Check Node 0 (degree 16)
+42 Shifter
+42 Shifter
+… 16x …
+Gamma
+Proc.
+Gamma
+Proc.
+… 16x …
+42 values
+LLR
+Mem.
+42 values
+LLR
+Mem.
+42 values
+MUX
+LLR
+Mem.
+42 values
+LLR
+Mem.
+… 16x …
+… 16x …
+LLR
+Mem.
+42 values
+LLR
+Mem.
+42 values
+MUX
+11ad LDPC decoder
+11ad + 2-step 1344 shared LDPC decoder
+Re-use of the 11ad decoding machine wrapped with MUX and Memory
+Only 4% increase in area due to the extra MUXs (excluding the memory)
+* 1x throughput relative to 11ad machine assuming same number of iterations.
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide29.xml=====
+
+ 11ad machine
+Check Node 41 (degree 16)
+Check Node 0 (degree 16)
+42 Shifter
+42 Shifter
+… 16x …
+Gamma
+Proc.
+Gamma
+Proc.
+… 16x …
+Layer Decoder: Architectures (2x Throughput*)
+29
+11ad + 2-step 1344 shared LDPC decoder
+ 11ad machine
+Check Node 41 (degree 16)
+Check Node 0 (degree 16)
+42 Shifter
+42 Shifter
+… 16x …
+Gamma
+Proc.
+Gamma
+Proc.
+… 16x …
+LLR
+Mem.
+42 values
+MUX
+… 16x …
+LLR
+Mem.
+42 values
+LLR
+Mem.
+42 values
+MUX
+LLR
+Mem.
+42 values
+Scalable Architecture in throughput increase, which reuse the 11ad machine
+
+* 2x throughput relative to 11ad machine assuming same number of iterations.
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+
+=====ppt/slides/slide30.xml=====
+
+Appendix III
+Slide 30
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+
+=====ppt/slides/slide31.xml=====
+
+Theoretical comparison: Proposed L1344, 11ad codes with Z=84 (instead of Z =42), and L672 in 11ad
+Slide 31
+Shadi Abu-Surra, Samsung Electronics
+May 2016
+minimum distance
+	
+	
+	
+	 Rate
+	L1344
+	11ad w/ Z =84
+	L672 (11ad)
+	1/2
+	19
+	18
+	17
+	5/8
+	13
+	13
+	12
+	3/4
+	12
+	9
+	9
+	13/16
+	8
+	6
+	6
+	Number of 6-cycles
+	
+	
+	
+	 Rate
+	L1344
+	11ad w/ Z =84
+	L672 (11ad)
+	1/2
+	84
+	420
+	504
+	5/8
+	168
+	756
+	714
+	3/4
+	5796
+	9492
+	7476
+	13/16
+	1680
+	3948
+	2646
+	Proposed L1344 Two-step code set has larger minimum distances than the 11ad w/ Z-84 codes.
+
+The minimum cycle-size of any code in both sets is 6.
+Proposed two-step lifting codes have significantly lower number of 6-cycles than that in the 11ad w/ Z-84 codes.
+
+=====ppt/slides/slide32.xml=====
+
+Performance comparison: Proposed L1344 vs 11ad codes with Z=84 (instead of Z =42)
+May 2016
+Shadi Abu-Surra, Samsung Electronics
+Slide 32
+Proposed codes provides about [0.1,  0.2, 0.2, 0.6] dB gain over AWGN channel, and up to 0.9 dB gain over Conference Room channel.

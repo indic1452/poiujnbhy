@@ -334,6 +334,37 @@ class CCSDS(unittest.TestCase):
         итог, подробно = ldpc.снять(поток ^ ошибки, ldpc_std.схема("ccsds-c2-8160-7136"), начало=0)
         self.assertTrue(np.array_equal(итог.reshape(-1, 7136), np.array(данные)), подробно)
 
+    def test_c2_подкод_8176_7154_по_порождающей_прил_c(self):
+        """Порождающая систематического подкода (8176, 7154) — [I | B], B из 14 × 2 циркулянтов 511 × 511
+        табл. C-1 (прил. C; 128 шестнадцатеричных цифр, левый бит — добавленный нуль; следующая строка
+        циркулянта — сдвиг вправо на 1). Слово (8160, 7136) по 7.3.5 — 18 нулей впереди отброшены, два
+        нуля в конце; снятие даёт 7136 бит сообщения."""
+        текст = (ИСТОЧНИКИ / "standarty" / "CCSDS_131.0-B-5_TM_coding.pdf.txt").read_text(encoding="utf-8")
+        кус = текст[текст.index("Table C-1:  Table of Circulants for the Generator Matrix"):]
+        кус = re.sub(r"\n=====PAGE \d+=====(?:.*\n){5}Circulant \n1st row of circulant \n", "\n", кус)
+        строки = {(int(i), int(j)): (а + б).strip() for i, j, а, б in
+                  re.findall(r"b(\d+),(\d) \n([0-9A-F]+)\s*\n([0-9A-F]+)", кус)}
+        self.assertEqual(28, len(строки))
+        B = np.zeros((7154, 1022), np.uint8)
+        for (i, j), шестн in строки.items():
+            self.assertEqual(128, len(шестн), (i, j))
+            ряд = np.array([int(x) for x in bin(int(шестн, 16))[2:].zfill(512)][1:], np.uint8)   # 511 бит
+            for t_ in range(511):
+                B[(i - 1) * 511 + t_, (j - 1) * 511:j * 511] = np.roll(ряд, t_)
+        м = ldpc_std.матрица("ccsds-c2-8176-7156")
+        rng = np.random.default_rng(71)
+        сообщения = rng.integers(0, 2, (3, 7136)).astype(np.uint8)
+        слова = []
+        for s in сообщения:
+            u = np.concatenate([np.zeros(18, np.uint8), s])
+            слово = np.concatenate([u, (u.astype(np.int64) @ B % 2).astype(np.uint8)])
+            self.assertTrue(синдром_ноль(м, слово))
+            слова.append(np.concatenate([слово[18:], [0, 0]]).astype(np.uint8))
+        поток = np.concatenate(слова)
+        поток[rng.choice(len(поток), 15, replace=False)] ^= 1
+        итог, подробно = ldpc.снять(поток, ldpc_std.схема("ccsds-c2-8160-7136"), начало=0)
+        self.assertTrue(np.array_equal(сообщения.reshape(-1), итог), подробно)
+
     def test_tc_по_порождающей_стандарта(self):
         текст = (ИСТОЧНИКИ / "standarty" / "CCSDS_231.0-B-4_TC_coding.pdf.txt").read_text(encoding="utf-8")
         for n, заголовок in ((128, "Table 4-1:  Generator Matrix for (n=128,k=64)"),
