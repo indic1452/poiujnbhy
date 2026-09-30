@@ -126,6 +126,10 @@ class Формат:
     расширение: str
     подпись: bytes
     проверка: Callable[[bytes, int], int | None]   # длина файла, 0 — неизвестна, None — не он
+    #: Где подпись от начала файла (MP4 — 4, tar — 257, ISO 9660 — 32769); проверке дают место подписи.
+    сдвиг: int = 0
+    #: Расширение по содержимому (DOCX/XLSX в ZIP, DOC/XLS в OLE, WAV/AVI в RIFF): (данные, начало файла) → расширение.
+    вид: Callable[[bytes, int], str] | None = None
 
 
 def _jpeg(д: bytes, м: int) -> int | None:
@@ -192,13 +196,24 @@ def _gif(д: bytes, м: int) -> int | None:
     return 0
 
 
+_PDF_ВЕРСИЯ = re.compile(rb"%PDF-\d\.\d")
+
+
 def _pdf(д: bytes, м: int) -> int | None:
-    if not re.match(rb"%PDF-\d\.\d", д[м:м + 8]):
+    if not _PDF_ВЕРСИЯ.match(д, м):
         return None
-    следующий = д.find(b"%PDF-", м + 5, м + ФАЙЛ_ДО)
-    граница = следующий if следующий >= 0 else min(len(д), м + ФАЙЛ_ДО)
-    конец = д.rfind(b"%%EOF", м, граница)
-    return конец + 5 - м if конец >= 0 else 0
+    try:                                            # следующий PDF — граница поиска конца этого
+        граница = д.index(b"%PDF-", м + 5, м + ФАЙЛ_ДО)
+    except ValueError:
+        граница = min(len(д), м + ФАЙЛ_ДО)
+    try:
+        конец = д.rindex(b"%%EOF", м, граница)
+    except ValueError:                              # конца нет — длина неизвестна
+        return 0
+    # За маркером конца — перевод строки (CR LF, CR или LF): он ещё часть последней строки файла.
+    конец += 5
+    конец += 2 if д[конец:конец + 2] == b"\r\n" else 1 if д[конец:конец + 1] in (b"\r", b"\n") else 0
+    return конец - м
 
 
 def _zip(д: bytes, м: int) -> int | None:
@@ -207,18 +222,43 @@ def _zip(д: bytes, м: int) -> int | None:
     имя_дл = struct.unpack_from("<H", д, м + 26)[0]
     if not 0 < имя_дл < 1024:
         return None
-    конец = д.find(b"PK\x05\x06", м, м + ФАЙЛ_ДО)
-    if конец < 0 or конец + 22 > len(д):
+    try:
+        конец = д.index(b"PK\x05\x06", м, м + ФАЙЛ_ДО)
+    except ValueError:                              # конца каталога нет — длина неизвестна
         return 0
+    if конец + 22 > len(д):
+        return 0
+    # Начало архива — конец каталога минус его размер и смещение (zipfile._EndRecData: concat); у
+    # заголовка члена в середине архива оно не сходится — это не отдельный ZIP. ZIP64 (0xFFFFFFFF) — без сверки.
+    размер, смещение = struct.unpack_from("<II", д, конец + 12)
+    if 0xFFFFFFFF not in (размер, смещение) and конец - размер - смещение != м:
+        return None
     return конец + 22 + struct.unpack_from("<H", д, конец + 20)[0] - м
 
 
+#: Первый член ZIP «mimetype» без сжатия и без доп. поля (длина имени 8 на смещении 26) — ODF и EPUB;
+#: подвиды — как в libmagic Magdir/archive (vnd.oasis.opendocument.<вид>).
+_ODF = ((b"application/vnd.oasis.opendocument.text", "odt"),
+        (b"application/vnd.oasis.opendocument.spreadsheet", "ods"),
+        (b"application/vnd.oasis.opendocument.presentation", "odp"),
+        (b"application/vnd.oasis.opendocument.graphics", "odg"),
+        (b"application/epub+zip", "epub"))
+#: Office Open XML: [Content_Types].xml и каталог части — как в libmagic Magdir/msooxml.
+_OOXML = ((b"word/", "docx"), (b"xl/", "xlsx"), (b"ppt/", "pptx"), (b"visio/", "vsdx"))
+
+
 def _zip_вид(д: bytes, м: int) -> str:
-    """Что внутри ZIP: docx/xlsx/pptx/odt/jar/apk — по именам в каталоге."""
-    окно = д[м:м + 1 << 16]
-    for метка, расширение in ((b"word/", "docx"), (b"xl/", "xlsx"), (b"ppt/", "pptx"),
-                              (b"META-INF/MANIFEST.MF", "jar"), (b"AndroidManifest.xml", "apk"),
-                              (b"mimetypeapplication/vnd.oasis.opendocument.text", "odt")):
+    """Что внутри ZIP — по членам: ODF/EPUB по «mimetype», DOCX/XLSX/PPTX по [Content_Types].xml, JAR, APK."""
+    окно = д[м:м + (1 << 16)]
+    if окно[26:38] == b"\x08\x00\x00\x00mimetype":
+        for метка, расширение in _ODF:
+            if окно[38:38 + len(метка)] == метка:
+                return расширение
+    if b"[Content_Types].xml" in окно:
+        for метка, расширение in _OOXML:
+            if метка in окно:
+                return расширение
+    for метка, расширение in ((b"META-INF/MANIFEST.MF", "jar"), (b"AndroidManifest.xml", "apk")):
         if метка in окно:
             return расширение
     return "zip"
@@ -361,36 +401,653 @@ def _без_длины(проверка: Callable[[bytes, int], bool]) -> Callab
     return lambda д, м: 0 if проверка(д, м) else None
 
 
+def _итог(длина: int) -> int:
+    """Длина файла, если он не больше вырезаемого; больше — «неизвестна» (0)."""
+    return длина if длина <= ФАЙЛ_ДО else 0
+
+
+# -- архивы: tar, RAR, CAB, Zstandard -------------------------------------------------------------
+
+#: tar: заголовок 512 байт, «ustar» на смещении 257 (POSIX «ustar\0», GNU «ustar »), сумма — на 148 (8 байт,
+#: восьмеричная; считается по заголовку с пробелами на её месте), длина — на 124 (12 байт: восьмеричная или
+#: base-256 со старшим битом). Данные идут за заголовком блоками по 512 у обычных файлов, неизвестных видов и
+#: служебных (длинное имя L/K, pax x/g/X); конец архива — два нулевых блока, дальше добивка до записи
+#: 20 × 512 (Python tarfile.py: RECORDSIZE, calc_chksums, _proc_builtin; libmagic Magdir/archive).
+TAR_БЛОК = 512
+TAR_ЗАПИСЬ = 20 * 512
+_TAR_БЕЗ_ДАННЫХ = frozenset(b"123456")          # жёсткая и символьная ссылки, устройства, каталог, FIFO
+
+
+def _tar_число(поле: bytes) -> int | None:
+    if поле[:1] in (b"\x80", b"\xff"):              # base-256 (GNU): старший бит первого байта
+        значение = int.from_bytes(поле[1:], "big")
+        return значение - 256 ** (len(поле) - 1) if поле[:1] == b"\xff" else значение
+    текст = поле.partition(b"\x00")[0].strip()
+    if not текст:
+        return 0
+    try:
+        return int(текст, 8)
+    except ValueError:
+        return None
+
+
+def _tar_заголовок(д: bytes, н: int) -> int | None:
+    """Длина данных члена, если заголовок в ``н`` цел (сумма сошлась); иначе None."""
+    заголовок = д[н:н + TAR_БЛОК]
+    if len(заголовок) < TAR_БЛОК:
+        return None
+    сумма = _tar_число(заголовок[148:156])
+    if сумма != 256 + sum(заголовок[:148]) + sum(заголовок[156:]):
+        return None
+    размер = _tar_число(заголовок[124:136])
+    if размер is None or размер < 0:
+        return None
+    return 0 if заголовок[156] in _TAR_БЕЗ_ДАННЫХ else размер
+
+
+def _tar(д: bytes, м: int) -> int | None:
+    начало = м - 257
+    if начало < 0 or д[м + 5:м + 6] not in (b"\x00", b" ") or _tar_заголовок(д, начало) is None:
+        return None
+    место = начало
+    while место - начало < ФАЙЛ_ДО:
+        блок = д[место:место + TAR_БЛОК]
+        if len(блок) < TAR_БЛОК:
+            return 0
+        if not блок.strip(b"\x00"):
+            if д[место + TAR_БЛОК:место + 2 * TAR_БЛОК].strip(b"\x00") or len(д) < место + 2 * TAR_БЛОК:
+                return 0
+            конец = место + 2 * TAR_БЛОК
+            добивка = -(конец - начало) % TAR_ЗАПИСЬ
+            if len(д) >= конец + добивка and not д[конец:конец + добивка].strip(b"\x00"):
+                конец += добивка
+            return _итог(конец - начало)
+        размер = _tar_заголовок(д, место)
+        if размер is None:
+            return 0
+        место += TAR_БЛОК + -(-размер // TAR_БЛОК) * TAR_БЛОК
+    return 0
+
+
+def _rar4(д: bytes, м: int) -> int | None:
+    """RAR 1.5–4.x (libarchive archive_read_support_format_rar.c): блоки «CRC16, тип, флаги, размер»;
+    флаг 0x8000 — за заголовком ADD_SIZE (у файла — упакованный размер), у файла с флагом 0x0100 — ещё
+    старшие 32 бита размера на смещении 32; главный заголовок (0x73) сверяется CRC32 & 0xFFFF;
+    конец — блок 0x7B. Зашифрованные заголовки (флаг главного 0x0080) не обойти — длина неизвестна."""
+    место = м + 7
+    while место - м < ФАЙЛ_ДО:
+        первый = место == м + 7
+        if место + 7 > len(д):
+            return 0
+        crc, вид, флаги, размер = struct.unpack_from("<HBHH", д, место)
+        if размер < 7 or not 0x72 <= вид <= 0x7B:
+            return None if первый else 0
+        if первый and (вид != 0x73 or zlib.crc32(д[место + 2:место + размер]) & 0xFFFF != crc):
+            return None
+        if вид == 0x73 and флаги & 0x0080:
+            return 0
+        if вид in (0x74, 0x7A):                     # файл и служебный: упакованный размер (+ старшие 32 бита)
+            if флаги & 0x0100 and struct.unpack_from("<I", д, место + 32)[0]:
+                return 0                            # больше 4 ГиБ — больше вырезаемого
+            данные = struct.unpack_from("<I", д, место + 7)[0]
+        else:
+            данные = struct.unpack_from("<I", д, место + 7)[0] if флаги & 0x8000 else 0
+        место += размер + данные
+        if вид == 0x7B:
+            return _итог(место - м)
+    return 0
+
+
+def _vint(д: bytes, м: int) -> tuple[int, int]:
+    """Число RAR 5: по 7 бит от младших, старший бит — «дальше» (не больше 10 байт); (значение, байт)."""
+    значение = 0
+    for i in range(10):
+        б = д[м + i]
+        значение |= (б & 0x7F) << (7 * i)
+        if not б & 0x80:
+            return значение, i + 1
+    raise ValueError("vint длиннее 10 байт")
+
+
+def _rar5(д: bytes, м: int) -> int | None:
+    """RAR 5 (libarchive archive_read_support_format_rar5.c, process_base_block): блок — CRC32 (над
+    размером и заголовком), размер заголовка (vint), тип, флаги; флаг 1 — размер доп. области, флаг 2 —
+    размер данных за заголовком; конец — тип 5, зашифрованные заголовки — тип 4 (длина неизвестна)."""
+    место = м + 8
+    while место - м < ФАЙЛ_ДО:
+        первый = место == м + 8
+        try:                                        # короткие данные — IndexError у _vint
+            размер, n = _vint(д, место + 4)
+            if место + 4 + n + размер > len(д):
+                return 0
+            if zlib.crc32(д[место + 4:место + 4 + n + размер]) != struct.unpack_from("<I", д, место)[0]:
+                return None if первый else 0
+            вид, k = _vint(д, место + 4 + n)
+            флаги, j = _vint(д, место + 4 + n + k)
+            поле = место + 4 + n + k + j
+            if флаги & 1:
+                поле += _vint(д, поле)[1]
+            данные = _vint(д, поле)[0] if флаги & 2 else 0
+        except (IndexError, ValueError):
+            return 0
+        if вид == 4:
+            return 0
+        место += 4 + n + размер + данные
+        if вид == 5:
+            return _итог(место - м)
+    return 0
+
+
+def _cab(д: bytes, м: int) -> int | None:
+    """CAB (CFHEADER — libarchive archive_read_support_format_cab.c): cbCabinet на 8 — длина всего файла,
+    версия 1.3 (байты 25 и 24), папок и файлов (на 26 и 28) — не ноль."""
+    if м + 36 > len(д):
+        return None
+    размер = struct.unpack_from("<I", д, м + 8)[0]
+    папок, файлов = struct.unpack_from("<HH", д, м + 26)
+    if д[м + 24:м + 26] != b"\x03\x01" or not папок or not файлов or размер < 36:
+        return None
+    return _итог(размер)
+
+
+def _zstd(д: bytes, м: int) -> int | None:
+    """Кадр Zstandard (RFC 8878; facebook/zstd doc/zstd_compression_format.md): дескриптор заголовка
+    (FCS-флаг — биты 7–6, одиночный сегмент — 5, резерв — 3 и ноль, сумма содержимого — 2, DID — 1–0),
+    окно (если не одиночный сегмент), DID 0/1/2/4 байта, FCS 0(1)/2/4/8; блоки: 3 байта «от младшего»
+    (последний — бит 0, вид — 1–2, размер — 3–23; RLE — один байт; вид 3 запрещён; не больше 128 КиБ);
+    за последним — 4 байта суммы, если есть флаг."""
+    if м + 6 > len(д) or д[м + 4] & 0x08:
+        return None
+    fhd = д[м + 4]
+    одиночный = bool(fhd & 0x20)
+    место = м + 5 + (0 if одиночный else 1) + (0, 1, 2, 4)[fhd & 3] + (int(одиночный), 2, 4, 8)[fhd >> 6]
+    while место - м < ФАЙЛ_ДО:
+        if место + 3 > len(д):
+            return 0
+        заголовок = д[место] | д[место + 1] << 8 | д[место + 2] << 16
+        вид, размер = (заголовок >> 1) & 3, заголовок >> 3
+        if вид == 3 or размер > 128 << 10:
+            return None
+        место += 3 + (1 if вид == 1 else размер)
+        if заголовок & 1:
+            return _итог(место - м + (4 if fhd & 0x04 else 0))
+    return 0
+
+
+# -- документы: OLE (DOC/XLS/PPT/MSG), RTF ------------------------------------------------------------
+
+#: OLE2 (составной документ; заголовок — olefile.py, StructuredStorageHeader): порядок байт 0xFFFE на 0x1C,
+#: сдвиг сектора на 0x1E (9 — 512 байт при версии 3, 12 — 4096 при версии 4 на 0x1A), число секторов FAT
+#: на 0x2C, начало каталога — 0x30, начало и число секторов DIFAT — 0x44 и 0x48, первые 109 номеров
+#: секторов FAT — с 0x4C. Сектор n лежит с (n + 1)·размер; свободный в FAT — 0xFFFFFFFF.
+OLE_СВОБОДНЫЙ = 0xFFFFFFFF
+OLE_КОНЕЦ = 0xFFFFFFFE
+#: Потоки в каталоге, по которым назван документ (как в libmagic Magdir/ole2compounddocs: Word — WordDocument,
+#: Excel — Workbook/Book, PowerPoint — «PowerPoint Document», Outlook — __substg1.0_…, Visio — VisioDocument).
+OLE_ПОТОКИ = (("WordDocument", "doc"), ("Workbook", "xls"), ("Book", "xls"), ("PowerPoint Document", "ppt"),
+              ("VisioDocument", "vsd"))
+
+
+def _ole_сектор(д: bytes, м: int) -> int | None:
+    if м + 512 > len(д) or struct.unpack_from("<H", д, м + 0x1C)[0] != 0xFFFE:
+        return None
+    версия, сдвиг = struct.unpack_from("<H", д, м + 0x1A)[0], struct.unpack_from("<H", д, м + 0x1E)[0]
+    if (версия, сдвиг) not in ((3, 9), (4, 12)):
+        return None
+    return 1 << сдвиг
+
+
+def _ole_fat(д: bytes, м: int, сектор: int) -> list[int] | None:
+    """Номера секторов FAT: из заголовка и по цепочке DIFAT; None — сектор за концом данных."""
+    всего = struct.unpack_from("<I", д, м + 0x2C)[0]
+    номера = [н for н in struct.unpack_from("<109I", д, м + 0x4C) if н != OLE_СВОБОДНЫЙ][:всего]
+    difat, осталось = struct.unpack_from("<II", д, м + 0x44)
+    в_секторе = сектор // 4
+    while len(номера) < всего and осталось and difat < OLE_КОНЕЦ:
+        место = м + (difat + 1) * сектор
+        if место + сектор > len(д):
+            return None
+        записи = struct.unpack_from(f"<{в_секторе}I", д, место)
+        номера += [н for н in записи[:-1] if н != OLE_СВОБОДНЫЙ][:всего - len(номера)]
+        difat, осталось = записи[-1], осталось - 1
+    return номера
+
+
+def _ole(д: bytes, м: int) -> int | None:
+    сектор = _ole_сектор(д, м)
+    if сектор is None:
+        return None
+    номера = _ole_fat(д, м, сектор)
+    if номера is None:                              # пустой список — ниже «последний» не найдётся: тоже 0
+        return 0
+    в_секторе, последний = сектор // 4, None
+    for i, н in enumerate(номера):
+        место = м + (н + 1) * сектор
+        if место + сектор > len(д):
+            return 0
+        записи = struct.unpack_from(f"<{в_секторе}I", д, место)
+        занятые = [j for j, з in enumerate(записи) if з != OLE_СВОБОДНЫЙ]
+        if занятые:                                 # сектор FAT i описывает секторы с i·в_секторе
+            последний = i * в_секторе + занятые[-1]
+    return 0 if последний is None else _итог((последний + 2) * сектор)
+
+
+def _ole_вид(д: bytes, м: int) -> str:
+    """DOC, XLS, PPT, MSG или VSD — по именам потоков в каталоге (цепочка секторов по FAT)."""
+    сектор = _ole_сектор(д, м)
+    номера = _ole_fat(д, м, сектор) if сектор else None
+    if not номера:
+        return "ole"
+    в_секторе = сектор // 4
+
+    def следующий(н: int) -> int:                   # номер FAT за концом — IndexError, конец цепочки
+        return struct.unpack_from("<I", д, м + (номера[н // в_секторе] + 1) * сектор + 4 * (н % в_секторе))[0]
+
+    # Записи каталога по 128 байт: имя UTF-16 до 64 байт с нулём в конце, длина имени — на 64 ([MS-CFB] 2.6).
+    # Особые номера (конец цепочки, свободный) огромны: такой сектор всегда «за концом данных».
+    имена, н, пройдено = set(), struct.unpack_from("<I", д, м + 0x30)[0], set()
+    try:
+        while н not in пройдено and м + (н + 2) * сектор <= len(д):
+            пройдено.add(н)
+            for з in range(м + (н + 1) * сектор, м + (н + 2) * сектор, 128):
+                длина = struct.unpack_from("<H", д, з + 64)[0]
+                имена.add(д[з:з + min(длина, 64)].decode("utf-16-le", "replace").rstrip("\x00"))
+            н = следующий(н)
+    except (struct.error, IndexError):
+        pass
+    for имя, расширение in OLE_ПОТОКИ:
+        if имя in имена:
+            return расширение
+    return "msg" if any(и.startswith("__substg1.0_") for и in имена) else "ole"
+
+
+def _rtf(д: bytes, м: int) -> int | None:
+    """RTF: весь документ — группа «{\\rtf1 … }»; скобки \\{ \\} \\\\ экранированы, \\binN — N байт как есть
+    (Microsoft RTF 1.9.1, группы и \\bin; подпись — libmagic Magdir/rtf)."""
+    if not д[м + 5:м + 6].isdigit():
+        return None
+    глубина, место, конец = 0, м, min(len(д), м + ФАЙЛ_ДО)
+    знаки = re.compile(rb"[{}]|\\bin(-?\d+) ?|\\.", re.S)
+    while True:
+        н = знаки.search(д, место, конец)
+        if н is None:
+            return 0
+        место = н.end()
+        if н.group(1) is not None:
+            место += max(0, int(н.group(1)))
+        elif н.group() == b"{":
+            глубина += 1
+        elif н.group() == b"}":
+            глубина -= 1
+            if not глубина:
+                return место - м
+
+
+# -- изображения, звук, видео: TIFF, RIFF, MP4, MP3, Matroska, FLV, MPEG-TS ------------------------
+
+#: Размеры типов полей TIFF 6.0 (BYTE … DOUBLE; Wireshark file-tiff.c, tiff_type_len).
+TIFF_ТИПЫ = {1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8}
+#: Пары «смещения — длины» кусков изображения: полосы (273/279), плитки (324/325), JPEG (513/514).
+TIFF_КУСКИ = ((273, 279), (324, 325), (513, 514))
+
+
+def _tiff(д: bytes, м: int) -> int | None:
+    """TIFF: IFD по цепочке (число записей, записи по 12 байт, смещение следующего), значения длиннее
+    4 байт — по смещению, куски изображения — по парам «смещения, длины»; длина — дальний конец."""
+    порядок = "<" if д[м] == 0x49 else ">"
+    if м + 8 > len(д):
+        return None
+    ifd = struct.unpack_from(порядок + "I", д, м + 4)[0]
+    if ifd < 8:
+        return None
+    конец, виденные = ifd, set()
+    while ifd and ifd not in виденные:             # цепочка IFD — до нуля или до повтора
+        виденные.add(ifd)
+        if м + ifd + 2 > len(д):
+            return 0
+        записей = struct.unpack_from(порядок + "H", д, м + ifd)[0]
+        if м + ifd + 6 + 12 * записей > len(д):
+            return 0
+        значения: dict[int, tuple[int, ...]] = {}
+        for i in range(записей):
+            тег, вид, число, поле = struct.unpack_from(порядок + "HHII", д, м + ifd + 2 + 12 * i)
+            размер = TIFF_ТИПЫ.get(вид, 1) * число
+            место = поле if размер > 4 else ifd + 2 + 12 * i + 8
+            конец = max(конец, место + размер)
+            if вид in (3, 4) and any(тег in пара for пара in TIFF_КУСКИ) and место + размер <= len(д) - м:
+                значения[тег] = struct.unpack_from(f"{порядок}{число}{'H' if вид == 3 else 'I'}", д, м + место)
+        for смещения, длины in TIFF_КУСКИ:
+            for о, д_ in zip(значения.get(смещения, ()), значения.get(длины, ()), strict=False):
+                конец = max(конец, о + д_)
+        конец = max(конец, ifd + 6 + 12 * записей)
+        ifd = struct.unpack_from(порядок + "I", д, м + ifd + 2 + 12 * записей)[0]
+    return _итог(конец)
+
+
+#: Вид RIFF по форме (байты 8–11): WAVE, AVI, WebP, MIDI (libmagic Magdir/riff).
+RIFF_ВИДЫ = {b"WAVE": "wav", b"AVI ": "avi", b"WEBP": "webp", b"RMID": "rmi"}
+
+
+def _riff_вид(д: bytes, м: int) -> str:
+    return RIFF_ВИДЫ.get(д[м + 8:м + 12], "riff")
+
+
+#: Марки ISO BMFF (байты 8–11 файла): QuickTime, M4A, 3GPP, HEIF, AVIF (libmagic Magdir/animation).
+MP4_МАРКИ = ((b"qt  ", "mov"), (b"M4A ", "m4a"), (b"M4V ", "m4v"), (b"3gp", "3gp"), (b"3g2", "3g2"),
+             (b"heic", "heic"), (b"heix", "heic"), (b"mif1", "heif"), (b"avif", "avif"))
+
+
+def _mp4_вид(д: bytes, м: int) -> str:
+    return next((р for метка, р in MP4_МАРКИ if д.startswith(метка, м + 8)), "mp4")
+
+
+#: MPEG-аудио (ISO 11172-3, 13818-3; FFmpeg mpegaudiotabs.h и mpegaudiodecheader.c): скорости, кбит/с —
+#: [MPEG-1 / MPEG-2 и 2.5][слой I, II, III][индекс 0–14]; частоты MPEG-1 (у MPEG-2 — вдвое, у 2.5 — вчетверо меньше).
+MPA_СКОРОСТИ = (((0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448),
+                 (0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384),
+                 (0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320)),
+                ((0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256),
+                 (0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160),
+                 (0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160)))
+MPA_ЧАСТОТЫ = (44100, 48000, 32000)
+
+
+def _mpa_кадр(д: bytes, м: int) -> int | None:
+    """Длина кадра MPEG-аудио по заголовку (ff_mpa_check_header, ff_mpegaudio_decode_header); None — не кадр."""
+    if м + 4 > len(д):
+        return None
+    з = struct.unpack_from(">I", д, м)[0]
+    if (з & 0xFFE00000 != 0xFFE00000 or з & (3 << 19) == 1 << 19 or not з & (3 << 17)
+            or з & (0xF << 12) in (0, 0xF << 12) or з & (3 << 10) == 3 << 10):
+        return None
+    if з & (1 << 20):
+        lsf, mpeg25 = int(not з & (1 << 19)), 0
+    else:
+        lsf, mpeg25 = 1, 1
+    слой = 4 - ((з >> 17) & 3)
+    частота = MPA_ЧАСТОТЫ[(з >> 10) & 3] >> (lsf + mpeg25)
+    скорость, добивка = MPA_СКОРОСТИ[lsf][слой - 1][(з >> 12) & 0xF], (з >> 9) & 1
+    if слой == 1:
+        return (скорость * 12000 // частота + добивка) * 4
+    if слой == 2:
+        return скорость * 144000 // частота + добивка
+    return скорость * 144000 // (частота << lsf) + добивка
+
+
+#: Сколько кадров подряд должно сойтись у MP3 без ID3 (одна пара байт синхронизации — не доказательство).
+MPA_КАДРОВ = 4
+
+
+def _mpa_кадры(д: bytes, место: int, наименьшее: int) -> int | None:
+    """Конец цепочки кадров MPEG-аудио с ``место`` (и тега ID3v1 «TAG», 128 байт); None — кадров меньше нужного."""
+    кадров = 0
+    while True:
+        длина = _mpa_кадр(д, место)                  # у допустимого заголовка — не меньше 24 байт
+        if длина is None:
+            break
+        if место + длина > len(д):                      # оборванный кадр — заголовок его всё же сошёлся
+            return 0 if кадров + 1 >= наименьшее else None
+        место += длина
+        кадров += 1
+    if кадров < наименьшее:
+        return None
+    return место + (128 if д[место:место + 3] == b"TAG" and место + 128 <= len(д) else 0)
+
+
+def _mp3_id3(д: bytes, м: int) -> int | None:
+    """ID3v2 (ff_id3v2_match, ff_id3v2_tag_len): версия 2–4, размер — 4 байта по 7 бит, флаг 0x10 — ещё
+    10 байт; за тегом — кадры MPEG-аудио."""
+    if м + 10 > len(д) or not 2 <= д[м + 3] <= 4 or д[м + 4] == 0xFF or any(б & 0x80 for б in д[м + 6:м + 10]):
+        return None
+    размер = 10 + (д[м + 6] << 21 | д[м + 7] << 14 | д[м + 8] << 7 | д[м + 9]) + (10 if д[м + 5] & 0x10 else 0)
+    if м + размер >= len(д):
+        return 0
+    конец = _mpa_кадры(д, м + размер, 1)
+    return None if конец is None else _итог(конец - м) if конец else 0
+
+
+def _mp3(д: bytes, м: int) -> int | None:
+    конец = _mpa_кадры(д, м, MPA_КАДРОВ)
+    return None if конец is None else _итог(конец - м) if конец else 0
+
+
+def _ebml_число(д: bytes, м: int, id_: bool = False) -> tuple[int, int]:
+    """VINT EBML (RFC 8794, 4): ширина — по нулям до бита-метки; у ID метка остаётся, у размера — снимается.
+    Размер из одних единиц — «неизвестен» (−1)."""
+    первый = д[м]
+    if not первый:                                  # ширина больше 8 — не VINT
+        raise ValueError("неверный VINT")
+    ширина = 8 - первый.bit_length() + 1
+    if len(д) < м + ширина:
+        raise IndexError("VINT за концом")
+    значение = int.from_bytes(д[м:м + ширина], "big")
+    if id_:
+        return значение, ширина
+    значение &= (1 << (7 * ширина)) - 1
+    return (-1 if значение == (1 << (7 * ширина)) - 1 else значение), ширина
+
+
+def _ebml(д: bytes, м: int) -> int | None:
+    """EBML (RFC 8794): заголовок EBML (ID 0x1A45DFA3) и за ним Segment (0x18538067, RFC 9559) с размером;
+    длина — оба элемента целиком. Размер Segment «неизвестен» — длина неизвестна."""
+    try:
+        размер, ширина = _ebml_число(д, м + 4)
+        if размер < 0:
+            return None
+        место = м + 4 + ширина + размер
+        if место + 4 > len(д):
+            return 0
+        ид, ш_ид = _ebml_число(д, место, id_=True)
+        if ид != 0x18538067:
+            return None
+        размер_с, ш_с = _ebml_число(д, место + ш_ид)
+    except (ValueError, IndexError):
+        return None
+    return _итог(место + ш_ид + ш_с + размер_с - м) if размер_с >= 0 else 0
+
+
+def _ebml_вид(д: bytes, м: int) -> str:
+    """WebM или Matroska — по DocType (ID 0x4282) среди элементов заголовка EBML (RFC 8794, 11.2.6;
+    libmagic Magdir/matroska)."""
+    try:
+        размер, ширина = _ebml_число(д, м + 4)
+        место, конец = м + 4 + ширина, м + 4 + ширина + размер
+        while место < конец:
+            ид, ш_ид = _ebml_число(д, место, id_=True)
+            длина, ш = _ebml_число(д, место + ш_ид)
+            if ид == 0x4282:
+                return "webm" if д[место + ш_ид + ш:место + ш_ид + ш + длина] == b"webm" else "mkv"
+            место += ш_ид + ш + max(длина, 0)
+    except (ValueError, IndexError):
+        pass
+    return "mkv"
+
+
+def _flv(д: bytes, м: int) -> int | None:
+    """FLV (Adobe FLV 10.1, прил. E; FFmpeg flvdec.c): заголовок «FLV», версия, флаги, смещение данных (≥ 9);
+    PreviousTagSize0 = 0; метки: вид (8, 9, 18), размер (24 бита), время (24 + 8), поток 0, данные и
+    PreviousTagSize = 11 + размер. Длина — до последней целой метки."""
+    try:                                            # заголовок и PreviousTagSize0 за концом — не FLV
+        флаги, смещение = struct.unpack_from(">BI", д, м + 4)
+        нулевой = struct.unpack_from(">I", д, м + смещение)[0]
+    except struct.error:
+        return None
+    if флаги & 0xFA or смещение < 9 or нулевой:
+        return None
+    место = м + смещение + 4
+    while True:                                     # каждая метка — не меньше 15 байт: обход конечен
+        if место == len(д):
+            return _итог(место - м)
+        if место + 11 > len(д):
+            return 0
+        вид, размер = д[место] & 0x1F, int.from_bytes(д[место + 1:место + 4], "big")
+        if вид not in (8, 9, 18) or д[место + 8:место + 11] != b"\x00\x00\x00":
+            return _итог(место - м)
+        if место + 15 + размер > len(д):
+            return 0
+        if struct.unpack_from(">I", д, место + 11 + размер)[0] != 11 + размер:
+            return _итог(место - м)
+        место += 15 + размер
+
+
+def _annex_b(первый: int, маска: int, следующий: int, далее: int = 512) -> Callable[[bytes, int], int | None]:
+    """Поток NAL с кодами начала (ITU-T H.264, прил. B): за первым набором параметров — следующий (SPS → PPS,
+    VPS → SPS) с кодом 00 00 01 в пределах ``далее`` байт. Длина — неизвестна (идёт до конца потока)."""
+    def проверка(д: bytes, м: int) -> int | None:
+        if д[м + 4] & 0x80 or д[м + 4] & маска != первый:
+            return None
+        try:
+            место = д.index(b"\x00\x00\x01", м + 5, м + далее)
+        except ValueError:
+            return None
+        return 0 if место + 3 < len(д) and д[место + 3] & маска == следующий else None
+    return проверка
+
+
+#: Пакет транспортного потока MPEG-2 (ISO/IEC 13818-1): 188 байт, синхробайт 0x47; подпись — начало PAT
+#: (PID 0, начало блока), подтверждение — синхробайты пяти пакетов подряд (libmagic Magdir/animation).
+TS_ПАКЕТ = 188
+TS_ПАКЕТОВ = 5
+
+
+def _ts(д: bytes, м: int) -> int | None:
+    место = м
+    while место < len(д) and д[место] == 0x47 and место - м < ФАЙЛ_ДО:
+        место += TS_ПАКЕТ
+    пакетов = (min(место, len(д)) - м) // TS_ПАКЕТ
+    return пакетов * TS_ПАКЕТ if пакетов >= TS_ПАКЕТОВ else None
+
+
+# -- исполняемые Mach-O, образы ISO 9660, PEM ---------------------------------------------------------
+
+def _macho(д: bytes, м: int) -> int | None:
+    """Mach-O (mach-o/loader.h): заголовок (magic, cputype, cpusubtype, filetype, ncmds, sizeofcmds, flags
+    [, reserved у 64-бит]); длина — дальний конец сегментов LC_SEGMENT (0x1) / LC_SEGMENT_64 (0x19,
+    fileoff и filesize) и подписи LC_CODE_SIGNATURE (0x1D, dataoff и datasize)."""
+    магия = д[м:м + 4]
+    порядок = ">" if магия[:3] == b"\xfe\xed\xfa" else "<"
+    шире = магия in (b"\xfe\xed\xfa\xcf", b"\xcf\xfa\xed\xfe")
+    if м + 32 > len(д):
+        return None
+    команд, размер = struct.unpack_from(порядок + "II", д, м + 16)
+    if not 0 < команд < 4096 or not 0 < размер < 1 << 24:
+        return None
+    место, концы = м + (32 if шире else 28), []
+    for _ in range(команд):
+        if место + 8 > len(д):
+            return 0
+        команда, длина = struct.unpack_from(порядок + "II", д, место)
+        if длина < 8:
+            return None
+        if команда == 0x19 and место + 56 <= len(д):
+            смещение, объём = struct.unpack_from(порядок + "QQ", д, место + 40)
+            концы.append(смещение + объём)
+        elif команда == 0x1 and место + 40 <= len(д):
+            смещение, объём = struct.unpack_from(порядок + "II", д, место + 32)
+            концы.append(смещение + объём)
+        elif команда == 0x1D and место + 16 <= len(д):
+            смещение, объём = struct.unpack_from(порядок + "II", д, место + 8)
+            концы.append(смещение + объём)
+        место += длина
+    return _итог(max([место - м, *концы]))
+
+
+def _macho_fat(д: bytes, м: int) -> int | None:
+    """Универсальный Mach-O (mach-o/fat.h): 0xCAFEBABE, число архитектур < 20 (иначе это класс Java —
+    libmagic Magdir/cafebabe), записи fat_arch по 20 байт: cputype, cpusubtype, offset, size, align."""
+    if м + 8 > len(д):
+        return None
+    архитектур = struct.unpack_from(">I", д, м + 4)[0]
+    if not 0 < архитектур < 20:
+        return None
+    концы = []
+    for i in range(архитектур):
+        if м + 8 + 20 * i + 20 > len(д):
+            return 0
+        смещение, размер = struct.unpack_from(">II", д, м + 16 + 20 * i)
+        if смещение < 8 + 20 * архитектур:
+            return None
+        концы.append(смещение + размер)
+    return _итог(max(концы))
+
+
+def _iso(д: bytes, м: int) -> int | None:
+    """ISO 9660 (ECMA-119; libarchive archive_read_support_format_iso9660.c): основной дескриптор тома в
+    секторе 16 (байт 32768): вид 1, «CD001», версия 1; размер тома (в блоках) — на 80 (LE) и 84 (BE),
+    размер блока — на 128 (LE) и 130 (BE); длина — их произведение."""
+    начало = м - 32769
+    if начало < 0 or д[м - 1] != 1 or м + 131 > len(д) or д[м + 5] != 1:
+        return None
+    блоков, блоков_be = struct.unpack_from("<I", д, м + 79)[0], struct.unpack_from(">I", д, м + 83)[0]
+    блок, блок_be = struct.unpack_from("<H", д, м + 127)[0], struct.unpack_from(">H", д, м + 129)[0]
+    if блоков != блоков_be or блок != блок_be or блок not in (512, 1024, 2048):
+        return None
+    return _итог(блоков * блок)
+
+
+#: Текстовая обёртка PKIX (RFC 7468, 3, «lax»): метка из печатных знаков без дефиса по краям, тело base64.
+PEM = re.compile(rb"-----BEGIN ((?:[\x21-\x2c\x2e-\x7e](?:[- ]?[\x21-\x2c\x2e-\x7e])*)?)-----"
+                 rb"[\sA-Za-z0-9+/=]{0,1048576}?-----END \1-----[ \t]*(?:\r\n|\r|\n)?")
+
+
+def _pem(д: bytes, м: int) -> int | None:
+    н = PEM.match(д, м)
+    return н.end() - м if н else None
+
+
+def _pem_вид(д: bytes, м: int) -> str:
+    """Расширение по метке: CERTIFICATE — crt, X509 CRL — crl, CERTIFICATE REQUEST — csr, ключи — key."""
+    метка = PEM.match(д, м).group(1)
+    return {b"CERTIFICATE": "crt", b"X509 CRL": "crl", b"CERTIFICATE REQUEST": "csr"}.get(
+        метка, "key" if метка.endswith(b"KEY") else "pem")
+
+
 ФОРМАТЫ: list[Формат] = [
     Формат("JPEG", "jpg", b"\xff\xd8\xff", _jpeg),
     Формат("PNG", "png", b"\x89PNG\r\n\x1a\n", _png),
     Формат("GIF", "gif", b"GIF87a", _gif),
     Формат("GIF", "gif", b"GIF89a", _gif),
     Формат("PDF", "pdf", b"%PDF-", _pdf),
-    Формат("ZIP", "zip", b"PK\x03\x04", _zip),
-    Формат("RAR 4", "rar", b"Rar!\x1a\x07\x00", _без_длины(lambda д, м: True)),
-    Формат("RAR 5", "rar", b"Rar!\x1a\x07\x01\x00", _без_длины(lambda д, м: True)),
+    Формат("ZIP", "zip", b"PK\x03\x04", _zip, вид=_zip_вид),
+    Формат("RAR 4", "rar", b"Rar!\x1a\x07\x00", _rar4),
+    Формат("RAR 5", "rar", b"Rar!\x1a\x07\x01\x00", _rar5),
     Формат("7-Zip", "7z", b"7z\xbc\xaf\x27\x1c", _7z),
+    Формат("tar", "tar", b"ustar", _tar, сдвиг=257),
+    Формат("CAB", "cab", b"MSCF\x00\x00\x00\x00", _cab),
     Формат("GZIP", "gz", b"\x1f\x8b\x08", _gzip),
     Формат("BZIP2", "bz2", b"BZh", lambda д, м: _распаковка(bz2.BZ2Decompressor)(д, м)
            if м + 10 <= len(д) and 0x31 <= д[м + 3] <= 0x39 and д[м + 4:м + 10] == b"\x31\x41\x59\x26\x53\x59" else None),
     Формат("XZ", "xz", b"\xfd7zXZ\x00", _распаковка(lambda: lzma.LZMADecompressor(lzma.FORMAT_XZ))),
+    Формат("Zstandard", "zst", b"\x28\xb5\x2f\xfd", _zstd),
     Формат("BMP", "bmp", b"BM", _bmp),
-    Формат("TIFF", "tif", b"II*\x00", _без_длины(lambda д, м: 8 <= struct.unpack_from("<I", д, м + 4)[0] < 1 << 26
-                                                    if м + 8 <= len(д) else False)),
-    Формат("TIFF", "tif", b"MM\x00*", _без_длины(lambda д, м: 8 <= struct.unpack_from(">I", д, м + 4)[0] < 1 << 26
-                                                    if м + 8 <= len(д) else False)),
-    Формат("RIFF", "riff", b"RIFF", _riff),
+    Формат("TIFF", "tif", b"II*\x00", _tiff),
+    Формат("TIFF", "tif", b"MM\x00*", _tiff),
+    Формат("RIFF", "riff", b"RIFF", _riff, вид=_riff_вид),
     Формат("Ogg", "ogg", b"OggS", _ogg),
     Формат("FLAC", "flac", b"fLaC", _без_длины(lambda д, м: м + 8 <= len(д) and д[м + 4] & 0x7F == 0)),
-    Формат("MP3 (ID3)", "mp3", b"ID3", _без_длины(lambda д, м: м + 10 <= len(д) and 2 <= д[м + 3] <= 4
-                                                   and all(б < 0x80 for б in д[м + 6:м + 10]))),
-    Формат("MP4/MOV", "mp4", b"ftyp", _mp4),
+    Формат("MP3 (ID3)", "mp3", b"ID3", _mp3_id3),
+    *(Формат("MP3", "mp3", синхро, _mp3) for синхро in (b"\xff\xfb", b"\xff\xfa", b"\xff\xf3", b"\xff\xf2")),
+    Формат("MP4/MOV", "mp4", b"ftyp", _mp4, сдвиг=4, вид=_mp4_вид),
+    Формат("Matroska/WebM", "mkv", b"\x1a\x45\xdf\xa3", _ebml, вид=_ebml_вид),
+    Формат("FLV", "flv", b"FLV\x01", _flv),
+    Формат("MPEG-TS", "ts", b"\x47\x40\x00", _ts),
+    # Файлы AMR (RFC 4867, 5.1) и потоки Annex B: H.264 — SPS (тип 7 в младших 5 битах, libmagic Magdir/animation
+    # «JVT NAL sequence»), затем PPS (8); H.265 — VPS (тип 32: байт 0x40, RFC 7798, 1.1.4), затем SPS (33: 0x42).
+    Формат("AMR", "amr", b"#!AMR\n", _без_длины(lambda д, м: True)),
+    Формат("AMR-WB", "awb", b"#!AMR-WB\n", _без_длины(lambda д, м: True)),
+    Формат("H.264 (Annex B)", "h264", b"\x00\x00\x00\x01", _annex_b(7, 0x1F, 8)),
+    Формат("H.265 (Annex B)", "h265", b"\x00\x00\x00\x01", _annex_b(0x40, 0x7E, 0x42)),
     Формат("ELF", "elf", b"\x7fELF", _elf),
     Формат("PE (EXE/DLL)", "exe", b"MZ", _pe),
+    *(Формат("Mach-O", "macho", магия, _macho) for магия in (b"\xfe\xed\xfa\xce", b"\xce\xfa\xed\xfe",
+                                                             b"\xfe\xed\xfa\xcf", b"\xcf\xfa\xed\xfe")),
+    Формат("Mach-O (универсальный)", "macho", b"\xca\xfe\xba\xbe", _macho_fat),
     Формат("SQLite", "sqlite", b"SQLite format 3\x00", _sqlite),
-    Формат("OLE2 (DOC/XLS/MSG)", "ole", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", _без_длины(lambda д, м: True)),
+    Формат("OLE2 (DOC/XLS/PPT/MSG)", "ole", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", _ole, вид=_ole_вид),
+    Формат("RTF", "rtf", b"{\\rtf", _rtf),
+    Формат("ISO 9660", "iso", b"CD001", _iso, сдвиг=32769),
     Формат("Сертификат X.509 (DER)", "der", b"\x30\x82", _der),
+    Формат("PEM", "pem", b"-----BEGIN ", _pem, вид=_pem_вид),
     Формат("pcap", "pcap", b"\xd4\xc3\xb2\xa1", _без_длины(lambda д, м: м + 24 <= len(д) and д[м + 4:м + 6] == b"\x02\x00")),
     Формат("pcapng", "pcapng", b"\x0a\x0d\x0d\x0a", _без_длины(lambda д, м: д[м + 8:м + 12] in (b"\x4d\x3c\x2b\x1a",
                                                                                                b"\x1a\x2b\x3c\x4d"))),
@@ -398,35 +1055,78 @@ def _без_длины(проверка: Callable[[bytes, int], bool]) -> Callab
 ]
 
 
+#: Виды, у которых подпись повторяется внутри файла как его часть, а не как вложенный файл.
+ЧАСТИ_ФАЙЛА = frozenset({"tar", "mp3", "ts"})
+
+
 def сигнатуры(биты: np.ndarray, *, любой_сдвиг: bool = True, инверсия: bool = False,
               предел: int = 500) -> list[dict[str, object]]:
     """Файлы в потоке: подпись и структура сошлись. Позиция — в битах; длина — если известна."""
     найдено: list[dict[str, object]] = []
     for сдвиг, инв, вид in виды(биты, сдвиги=range(8) if любой_сдвиг else (0,), инверсия=инверсия):
-        for формат in ФОРМАТЫ:
-            for место in _все(вид, формат.подпись, 20000):
-                try:
-                    длина = формат.проверка(вид, место)
-                except (struct.error, IndexError):
-                    длина = None
+        _найти_в(вид, сдвиг, инв, найдено, предел)
+    return _без_повторов(найдено, предел)
+
+
+def сигнатуры_в_байтах(данные: bytes, предел: int = 500) -> list[dict[str, object]]:
+    """То же для байт, выровненных по границе (собранный поток TCP/UDP), — без перевода в биты."""
+    найдено: list[dict[str, object]] = []
+    _найти_в(данные, 0, False, найдено, предел)
+    return _без_повторов(найдено, предел)
+
+
+def _найти_в(вид: bytes, сдвиг: int, инв: bool, найдено: list[dict[str, object]], предел: int) -> None:
+    for формат in ФОРМАТЫ:
+        for место in _все(вид, формат.подпись, 20000):
+            начало = место - формат.сдвиг
+            try:
+                длина = формат.проверка(вид, место)
                 if длина is None:
                     continue
-                начало = место - 4 if формат.имя == "MP4/MOV" else место
-                расширение = _zip_вид(вид, место) if формат.имя == "ZIP" else формат.расширение
-                найдено.append({"что": формат.имя, "расширение": расширение, "бит": 8 * начало + сдвиг,
-                                "сдвиг": сдвиг, "инверсия": инв, "байт": начало, "длина": int(длина)})
-                if len(найдено) >= предел:
-                    break
+                расширение = формат.вид(вид, начало) if формат.вид else формат.расширение
+            except (struct.error, IndexError, ValueError):
+                continue
+            найдено.append({"что": формат.имя, "расширение": расширение, "бит": 8 * начало + сдвиг,
+                            "сдвиг": сдвиг, "инверсия": инв, "байт": начало, "длина": int(длина)})
+            if len(найдено) >= предел:
+                break
+
+
+def _без_повторов(найдено: list[dict[str, object]], предел: int) -> list[dict[str, object]]:
     # Вложенные подписи (JPEG внутри ZIP без сжатия, миниатюра в JPEG) оставляем:
-    # аналитику важно и то, и другое. Повторы одной находки — нет.
+    # аналитику важно и то, и другое. Повторы одной находки — нет; и частей того же файла
+    # (заголовки членов tar, кадры MP3, повторные PAT транспортного потока) — тоже нет.
     найдено.sort(key=lambda н: (н["бит"], н["что"]))
-    итог, было = [], set()
+    итог, было, концы = [], set(), {}
     for н in найдено:
         ключ = (н["бит"], н["что"], н["инверсия"])
-        if ключ not in было:
-            было.add(ключ)
-            итог.append(н)
+        часть = (н["расширение"], н["сдвиг"], н["инверсия"])
+        if ключ in было or н["расширение"] in ЧАСТИ_ФАЙЛА and н["байт"] < концы.get(часть, 0):
+            continue
+        было.add(ключ)
+        итог.append(н)
+        if н["длина"]:
+            конец = н["байт"] + н["длина"]
+            концы[часть] = max(концы.get(часть, конец), конец)
     return итог[:предел]
+
+
+def опознать(данные: bytes) -> dict[str, object] | None:
+    """Вид файла по содержимому (магия с начала данных и сверка структуры), а не по имени и типу:
+    {"что", "расширение", "длина"} первого сошедшегося формата или None."""
+    for формат in ФОРМАТЫ:
+        место = формат.сдвиг
+        if данные[место:место + len(формат.подпись)] != формат.подпись:
+            continue
+        try:
+            длина = формат.проверка(данные, место)
+            if длина is None:
+                continue
+            расширение = формат.вид(данные, 0) if формат.вид else формат.расширение
+        except (struct.error, IndexError, ValueError):
+            continue
+        return {"что": формат.имя, "расширение": расширение, "длина": int(длина)}
+    return None
 
 
 def вырезать(биты: np.ndarray, бит: int, длина: int, инверсия: bool = False) -> bytes:

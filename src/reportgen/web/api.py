@@ -11,6 +11,7 @@ import sqlite3
 import tempfile
 import unicodedata
 import urllib.parse
+from collections import Counter
 from collections.abc import Iterable
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
@@ -2300,8 +2301,9 @@ def pakety_packet(request: Request, cap_id: str, number: int) -> dict[str, Any]:
 
 @router.get("/pakety/{cap_id}/stats")
 def pakety_stats(request: Request, cap_id: str, kind: str = "hierarchy", level: str = "ip",
-                 filter: str = "") -> dict[str, Any]:
-    """Статистика по отобранным пакетам: протоколы, диалоги, узлы, время, DNS, HTTP, TLS, ошибки."""
+                 filter: str = "", path: str = "") -> dict[str, Any]:
+    """Статистика по отобранным пакетам: протоколы, диалоги, узлы, время, DNS, HTTP, TLS, ошибки;
+    protocol — соотношения узла дерева протоколов по ``path``."""
     from ..setevoy import statistika  # noqa: PLC0415
     user = require_user(request)
     _готовый(request, user, cap_id)
@@ -2324,9 +2326,15 @@ def pakety_stats(request: Request, cap_id: str, kind: str = "hierarchy", level: 
     if kind == "errors":
         return {"items": statistika.ошибки(сводки)}
     if kind == "overview":
+        from ..setevoy import obekty  # noqa: PLC0415
         поля = [захваты.поля(cap_id)[i] for i in номера]
         нагрузки = захваты.нагрузки(cap_id)
-        return statistika.обзор(сводки, поля, [нагрузки[i] for i in номера])
+        итог = statistika.обзор(сводки, поля, [нагрузки[i] for i in номера])
+        if итог.get("пакетов"):
+            итог["объекты"] = obekty.по_видам(захваты.объекты(cap_id, filter, _настройки_выдачи(request)))
+        return итог
+    if kind == "protocol":
+        return statistika.узел_протокола(сводки, _путь_протокола(path))
     if kind == "unknown":
         нагрузки = захваты.нагрузки(cap_id)
         return {"items": statistika.неизвестные(сводки, [нагрузки[i] for i in номера])}
@@ -2407,6 +2415,114 @@ def pakety_file(request: Request, cap_id: str, flow: str, offset: int = 0, lengt
                              "filename*=UTF-8''" + urllib.parse.quote(f"из-потока-{max(0, offset)}.{расширение}")})
 
 
+#: Пределы настроек выдачи объектов, которые может задать пользователь (сервер не должен упасть).
+ОБЪЕКТЫ_НАИБ_МБ = 64
+ZIP_НАИБ_МБ = 1024
+ОБЪЕКТОВ_НАИБ = 50000
+
+
+def _настройки_выдачи(request: Request):
+    """Настройки выдачи из параметров запроса (страница «Пакеты» хранит их у пользователя в браузере):
+    decompress, silence (0/1), audio (wav/raw), video (annexb/nal), json (pretty/compact), maxobj и maxzip (МБ),
+    maxcount, names (proto/flow/num), tz (минуты к UTC)."""
+    from ..setevoy.obekty import Настройки  # noqa: PLC0415
+    п = request.query_params
+
+    def да(имя: str) -> bool:
+        return п.get(имя, "1") not in ("0", "false", "no")
+
+    def число(имя: str, по: int, наиб: int, наим: int = 1) -> int:
+        try:
+            return max(наим, min(наиб, int(п.get(имя, по))))
+        except ValueError:
+            return по
+
+    по = Настройки()
+    return Настройки(снимать_сжатие=да("decompress"), тишина=да("silence"),
+                     звук="сырой" if п.get("audio") == "raw" else "wav",
+                     видео="nal" if п.get("video") == "nal" else "annexb", json_отступ=п.get("json") == "pretty",
+                     объект_до=число("maxobj", по.объект_до >> 20, ОБЪЕКТЫ_НАИБ_МБ) << 20,
+                     байт_до=число("maxzip", по.байт_до >> 20, ZIP_НАИБ_МБ) << 20,
+                     объектов_до=число("maxcount", по.объектов_до, ОБЪЕКТОВ_НАИБ),
+                     имена={"flow": "поток", "num": "номер"}.get(п.get("names", ""), "протокол"),
+                     пояс=число("tz", 0, 14 * 60, -14 * 60))
+
+
+def _объекты(request: Request, cap_id: str, фильтр: str, путь: str = "") -> tuple[dict[str, Any], list[Any], Any]:
+    """(итог сборки, объекты — все или только с пакетами протокола по ``путь``, настройки)."""
+    user = require_user(request)
+    _готовый(request, user, cap_id)
+    _отобранные(request, cap_id, фильтр)
+    настройки = _настройки_выдачи(request)
+    захваты = _pakety(request)
+    итог = захваты.объекты(cap_id, фильтр, настройки)
+    объекты = итог["объекты"]
+    if путь:
+        стек = _путь_протокола(путь)
+        сводки = захваты.сводки(cap_id)
+        объекты = [о for о in объекты if any(сводки[н - 1]["стек"][:len(стек)] == стек for н in о.пакеты)]
+    return итог, объекты, настройки
+
+
+def _путь_протокола(путь: str) -> list[str]:
+    """Путь узла дерева протоколов: «Ethernet/IPv4/TCP» → ["Ethernet", "IPv4", "TCP"]."""
+    return [ч for ч in путь.split("/") if ч]
+
+
+def _имя_в_заголовке(имя: str, запасное: str) -> str:
+    return (f'attachment; filename="{запасное}"; filename*=UTF-8\'\'' + urllib.parse.quote(имя, safe=""))
+
+
+@router.get("/pakety/{cap_id}/objects")
+def pakety_objects(request: Request, cap_id: str, filter: str = "", kind: str = "", path: str = "") -> dict[str, Any]:
+    """Объекты и файлы захвата (как «Экспорт объектов» Wireshark, шире): вид, имя, тип, длина, поток, пакеты,
+    заметки, вид по содержимому и опись архивов; под фильтром отбора пакетов; ``path`` — только объекты протокола."""
+    итог, объекты, _ = _объекты(request, cap_id, filter, path)
+    виды = [в for в in kind.split(",") if в]
+    отобрано = [о for о in объекты if not виды or о.вид in виды]
+    return {"items": [о.в_словарь() for о in отобрано], "виды": dict(Counter(о.вид for о in объекты)),
+            "всего": len(объекты), "байт": sum(len(о.данные) for о in объекты),
+            "отброшено": итог["отброшено"], "заметки": итог["заметки"]}
+
+
+@router.get("/pakety/{cap_id}/object/{number}")
+def pakety_object(request: Request, cap_id: str, number: int, filter: str = "", member: int = -1) -> Response:
+    """Один объект (или член его архива, ``member`` — номер в описи) — файлом."""
+    from ..setevoy import obekty  # noqa: PLC0415
+    итог, объекты, настройки = _объекты(request, cap_id, filter)
+    о = next((о for о in объекты if о.номер == number), None)
+    if о is None:
+        raise ServiceError("нет такого объекта", 404)
+    if member >= 0:
+        try:
+            имя, данные = obekty.член(о.данные, о.расширение, member)
+        except ValueError as ошибка:
+            raise ServiceError(str(ошибка), 404) from None
+        имя = obekty.безопасное_имя(имя)
+        тип = "application/octet-stream"
+    else:
+        данные, тип = о.данные, о.тип if о.тип.startswith("audio/") else "application/octet-stream"
+        время = итог["время"].get(о.пакеты[0]) if о.пакеты else None
+        имя = о.имя if настройки.имена == "протокол" else obekty.имя_выгрузки(о, настройки, время)
+        имя = obekty.безопасное_имя(имя)
+    запасное = f"object-{number}" + (f"-{member}" if member >= 0 else "") + (
+        "." + re.sub(r"[^0-9A-Za-z]", "", имя.rsplit(".", 1)[-1])[:8] if "." in имя else "")
+    return Response(данные, media_type=тип, headers={"Content-Disposition": _имя_в_заголовке(имя, запасное),
+                                                     "X-Content-Type-Options": "nosniff"})
+
+
+@router.get("/pakety/{cap_id}/objects.zip")
+def pakety_objects_zip(request: Request, cap_id: str, filter: str = "", kind: str = "", path: str = "") -> Response:
+    """Все объекты (или отобранные виды) одним ZIP: имена без повторов и «..», опись.csv, что отброшено."""
+    from ..setevoy import obekty  # noqa: PLC0415
+    итог, объекты, настройки = _объекты(request, cap_id, filter, path)
+    состояние = _pakety(request).прочитать(cap_id)
+    данные = obekty.zip_объектов({**итог, "объекты": объекты}, [в for в in kind.split(",") if в], настройки)
+    имя = f"{Path(состояние['имя']).stem}-объекты.zip"
+    return Response(данные, media_type="application/zip",
+                    headers={"Content-Disposition": _имя_в_заголовке(имя, "objects.zip")})
+
+
 @router.get("/pakety/{cap_id}/stream/{number}")
 def pakety_stream(request: Request, cap_id: str, number: int) -> dict[str, Any]:
     """Следовать за потоком TCP/UDP/SCTP, в котором стоит пакет."""
@@ -2421,12 +2537,40 @@ def pakety_stream(request: Request, cap_id: str, number: int) -> dict[str, Any]:
 
 
 @router.get("/pakety/{cap_id}/export")
-def pakety_export(request: Request, cap_id: str, filter: str = "", format: str = "pcap") -> Response:
-    """Отобранные пакеты — pcap или CSV (номер, время, адреса, протокол, длина, сведения)."""
+def pakety_export(request: Request, cap_id: str, filter: str = "", format: str = "pcap", path: str = "") -> Response:
+    """Отобранные пакеты — pcap, pcapng, CSV (номер, время, адреса, протокол, длина, сведения), JSON (список)
+    или dissect (полный разбор — дерево полей). ``path`` — только пакеты узла дерева протоколов."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
     user = require_user(request)
     состояние = _готовый(request, user, cap_id)
     номера = _отобранные(request, cap_id, filter)
     основа = Path(состояние["имя"]).stem
+    захваты = _pakety(request)
+    if path:
+        стек = _путь_протокола(path)
+        сводки_ = захваты.сводки(cap_id)
+        номера = [i for i in номера if сводки_[i]["стек"][:len(стек)] == стек]
+        основа += "-" + vygruzka.безопасно(стек[-1] if стек else "все")
+    настройки = _настройки_выдачи(request)
+    if format == "pcapng":
+        return Response(захваты.выгрузить_pcapng(cap_id, номера), media_type="application/octet-stream",
+                        headers={"Content-Disposition": _имя_в_заголовке(основа + "-отбор.pcapng", "export.pcapng")})
+    if format == "json":
+        список = vygruzka.список_пакетов([захваты.сводки(cap_id)[i] for i in номера], настройки.пояс)
+        return Response(vygruzka.json_байты(список, настройки.json_отступ), media_type="application/json",
+                        headers={"Content-Disposition": _имя_в_заголовке(основа + "-список.json", "list.json")})
+    if format == "dissect":
+        сводки_ = захваты.сводки(cap_id)
+
+        def поток_json():
+            yield b"["
+            for j, i in enumerate(номера):
+                п = next(iter(vygruzka.разбор([захваты.пакет(cap_id, сводки_[i]["номер"])])))
+                yield (b"," if j else b"") + vygruzka.json_байты(п, настройки.json_отступ)
+            yield b"]"
+        return StreamingResponse(поток_json(), media_type="application/json",
+                                 headers={"Content-Disposition": _имя_в_заголовке(основа + "-разбор.json",
+                                                                                  "dissect.json")})
     if format == "csv":
         import csv  # noqa: PLC0415
         import io  # noqa: PLC0415
@@ -2445,6 +2589,133 @@ def pakety_export(request: Request, cap_id: str, filter: str = "", format: str =
     return Response(данные, media_type="application/vnd.tcpdump.pcap",
                     headers={"Content-Disposition": "attachment; filename*=UTF-8''"
                              + urllib.parse.quote(основа + "-отбор.pcap")})
+
+
+def _отбор_сводок(request: Request, cap_id: str, фильтр: str) -> tuple[dict[str, Any], list[int], list[Any]]:
+    user = require_user(request)
+    состояние = _готовый(request, user, cap_id)
+    номера = _отобранные(request, cap_id, фильтр)
+    сводки = _pakety(request).сводки(cap_id)
+    return состояние, номера, [сводки[i] for i in номера]
+
+
+@router.get("/pakety/{cap_id}/stats-file")
+def pakety_stats_file(request: Request, cap_id: str, kind: str = "hierarchy", format: str = "csv",
+                      filter: str = "") -> Response:
+    """Таблица статистики файлом (CSV или JSON): hierarchy — дерево протоколов с долями, conversations-eth/ip/
+    tcp/udp, endpoints, time, dns, http, tls, errors, unknown."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
+    состояние, номера, сводки = _отбор_сводок(request, cap_id, filter)
+    имена = {"hierarchy": "иерархия", "conversations-eth": "диалоги-eth", "conversations-ip": "диалоги-ip",
+             "conversations-tcp": "диалоги-tcp", "conversations-udp": "диалоги-udp", "endpoints": "узлы",
+             "time": "время", "dns": "dns", "http": "http", "tls": "tls", "errors": "ошибки", "unknown": "неизвестные"}
+    if kind not in имена or format not in ("csv", "json"):
+        raise ServiceError("вид таблицы или формат не известен", 400)
+    захваты = _pakety(request)
+    if kind == "hierarchy":
+        from ..setevoy import statistika  # noqa: PLC0415
+        таблица: Any = statistika.иерархия_строками(statistika.иерархия(сводки)[0])
+    else:
+        поля, нагрузки = захваты.поля(cap_id), захваты.нагрузки(cap_id)
+        таблица = vygruzka.статистика(сводки, [поля[i] for i in номера], [нагрузки[i] for i in номера])[имена[kind]]
+    настройки = _настройки_выдачи(request)
+    имя = f"{Path(состояние['имя']).stem}-{имена[kind]}.{format}"
+    данные = vygruzka.csv_байты(таблица) if format == "csv" else vygruzka.json_байты(таблица, настройки.json_отступ)
+    return Response(данные, media_type="text/csv; charset=utf-8" if format == "csv" else "application/json",
+                    headers={"Content-Disposition": _имя_в_заголовке(имя, f"stats.{format}")})
+
+
+@router.get("/pakety/{cap_id}/fields")
+def pakety_fields(request: Request, cap_id: str, path: str, format: str = "csv", filter: str = "") -> Response:
+    """Поля протокола узла дерева (все разобранные поля этого уровня у его пакетов): CSV или JSON."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
+    состояние, _, сводки = _отбор_сводок(request, cap_id, filter)
+    стек = _путь_протокола(path)
+    if not стек or format not in ("csv", "json"):
+        raise ServiceError("нужен путь узла и формат csv или json", 400)
+    свои = [с["номер"] for с in сводки if с["стек"][:len(стек)] == стек][:vygruzka.РАЗБОР_ДО]
+    захваты = _pakety(request)
+    строки = vygruzka.поля_по_протоколам((захваты.пакет(cap_id, н) for н in свои), стек).get(стек[-1], [])
+    настройки = _настройки_выдачи(request)
+    имя = f"{Path(состояние['имя']).stem}-поля-{vygruzka.безопасно(стек[-1])}.{format}"
+    данные = vygruzka.csv_байты(строки) if format == "csv" else vygruzka.json_байты(строки, настройки.json_отступ)
+    return Response(данные, media_type="text/csv; charset=utf-8" if format == "csv" else "application/json",
+                    headers={"Content-Disposition": _имя_в_заголовке(имя, f"fields.{format}")})
+
+
+@router.get("/pakety/{cap_id}/streams.zip")
+def pakety_streams_zip(request: Request, cap_id: str, filter: str = "", path: str = "") -> Response:
+    """Сырые потоки TCP/UDP по направлениям (.bin) одним ZIP с описью; ``path`` — только потоки узла дерева."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
+    состояние, номера, сводки = _отбор_сводок(request, cap_id, filter)
+    нагрузки = _pakety(request).нагрузки_тр(cap_id)
+    настройки = _настройки_выдачи(request)
+    архив = vygruzka.Архив(настройки.байт_до, настройки.пояс)
+    for имя, данные, сторона, транспорт in vygruzka.потоки(сводки, [нагрузки[i] for i in номера],
+                                                            _путь_протокола(path)):
+        архив.положить(имя, данные, "сырой поток по направлению", поток=сторона.поток,
+                       пакеты=[н for _, н in сторона.карта], протокол=транспорт)
+    файл = архив.закрыть(отступ=настройки.json_отступ)
+    return Response(файл.read(), media_type="application/zip",
+                    headers={"Content-Disposition": _имя_в_заголовке(f"{Path(состояние['имя']).stem}-потоки.zip",
+                                                                     "streams.zip")})
+
+
+@router.get("/pakety/{cap_id}/report")
+def pakety_report(request: Request, cap_id: str, filter: str = "", format: str = "html") -> Response:
+    """Отчёт-обзор захвата: HTML без внешних ресурсов или текст."""
+    from ..setevoy import obekty, statistika, vygruzka  # noqa: PLC0415
+    состояние, номера, сводки = _отбор_сводок(request, cap_id, filter)
+    захваты = _pakety(request)
+    поля, нагрузки = захваты.поля(cap_id), захваты.нагрузки(cap_id)
+    настройки = _настройки_выдачи(request)
+    обзор = statistika.обзор(сводки, [поля[i] for i in номера], [нагрузки[i] for i in номера])
+    итог = захваты.объекты(cap_id, filter, настройки)
+    страница, текст = vygruzka.отчёт(состояние["имя"], обзор, statistika.иерархия_строками(
+        statistika.иерархия(сводки)[0]), obekty.по_видам(итог), итог["объекты"], настройки.пояс)
+    основа = Path(состояние["имя"]).stem
+    if format == "txt":
+        return Response(текст.encode(), media_type="text/plain; charset=utf-8",
+                        headers={"Content-Disposition": _имя_в_заголовке(основа + "-обзор.txt", "report.txt")})
+    return Response(страница.encode(), media_type="application/octet-stream",
+                    headers={"Content-Disposition": _имя_в_заголовке(основа + "-обзор.html", "report.html"),
+                             "X-Content-Type-Options": "nosniff"})
+
+
+@router.get("/pakety/{cap_id}/outputs")
+def pakety_outputs(request: Request, cap_id: str, filter: str = "") -> dict[str, Any]:
+    """Что можно выгрузить из отбора: пункты (ключ, группа, название, отмечен ли по умолчанию) и сколько чего."""
+    from ..setevoy import obekty, vygruzka  # noqa: PLC0415
+    _, номера, сводки = _отбор_сводок(request, cap_id, filter)
+    итог = _pakety(request).объекты(cap_id, filter, _настройки_выдачи(request))
+    виды = obekty.по_видам(итог)
+    ртп = sum(н for в, н in виды.items() if в in vygruzka.RTP_ВИДЫ)
+    потоков = len({("TCP" in с["стек"], *sorted(((с["источник"], с["порт_от"]), (с["получатель"], с["порт_к"]))))
+                   for с in сводки if с.get("порт_от") is not None and ({"TCP", "UDP"} & set(с["стек"]))})
+    сколько = {"pcap": len(номера), "pcapng": len(номера), "list-csv": len(номера), "list-json": len(номера),
+               "dissect-json": min(len(номера), vygruzka.РАЗБОР_ДО),
+               "fields-csv": len({п for с in сводки for п in с["стек"]}), "stats": 12,
+               "objects": sum(виды.values()) - ртп, "rtp": ртп, "streams": потоков, "report": 2}
+    return {"items": [{"ключ": к, "группа": г, "название": н, "отмечен": о, "сколько": сколько[к]}
+                      for к, г, н, о in vygruzka.ВЫХОДЫ], "виды": виды, "отброшено": итог["отброшено"]}
+
+
+@router.get("/pakety/{cap_id}/bundle.zip")
+def pakety_bundle(request: Request, cap_id: str, filter: str = "", items: str = "") -> Response:
+    """Отмеченное одним ZIP: папки по видам, опись.csv и опись.json (путь, что, откуда, время, размер, SHA-256)."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
+    состояние, _, _ = _отбор_сводок(request, cap_id, filter)
+    пункты = [п for п in items.split(",") if п]
+    if not пункты or any(п not in vygruzka.КЛЮЧИ for п in пункты):
+        raise ServiceError("отметьте, что выгружать: " + ", ".join(vygruzka.КЛЮЧИ), 400)
+    файл = vygruzka.собрать_выгрузку(_pakety(request), cap_id, filter, пункты, _настройки_выдачи(request))
+
+    def куски():
+        with файл:
+            while кусок := файл.read(1 << 20):
+                yield кусок
+    return StreamingResponse(куски(), media_type="application/zip", headers={
+        "Content-Disposition": _имя_в_заголовке(f"{Path(состояние['имя']).stem}-выгрузка.zip", "bundle.zip")})
 
 
 @router.post("/pakety/{cap_id}/ask")
