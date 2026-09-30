@@ -464,7 +464,7 @@ def кадр_udp(нагрузка: bytes, отправитель: str, порт_
 
 def кадр_из_ip(пакет: bytes) -> bytes:
     """Пакет IP без канального уровня (SIO_RCVALL, AF_PACKET SOCK_DGRAM) — в кадр Ethernet."""
-    return ethernet(пакет, ETHERTYPE_IPV6 if пакет[:1] and пакет[0] >> 4 == 6 else ETHERTYPE_IPV4)
+    return ethernet(пакет, ETHERTYPE_IPV6 if пакет and пакет[0] >> 4 == 6 else ETHERTYPE_IPV4)
 
 
 # -- разбор кадра Ethernet до UDP (для фильтра и для нагрузки порта) -------------------------
