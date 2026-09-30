@@ -9427,3 +9427,7 @@ button.pk-hier-col:hover { color: var(--accent); }
 /* Кнопка «Помощник» в шапке стола: открыта панель — кнопка нажата. */
 .stol-ai-toggle svg { width: 14px; height: 14px; }
 .stol-title-actions .stol-ai-toggle.is-on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line); }
+
+/* Окно «Коды» стола: вкладки как в декодере отдела. */
+.stol-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
+.stol-codes-panel { max-width: 44rem; display: grid; gap: 0.4rem; }
