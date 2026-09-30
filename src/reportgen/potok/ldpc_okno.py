@@ -58,8 +58,9 @@ def слой(п: dict[str, Any]) -> str:
         части += ["укорочены", _позиции(п["укорочены"])]
     перемежение = str(п.get("перемежение") or "").strip()
     if перемежение:
-        if not re.fullmatch(r"1367|(?:8PSK|16APSK|32APSK)(?:\s+\d{3,5})?", перемежение, re.I):
-            raise ValueError("перемежение — 1367 (F-LDPC) или 8PSK/16APSK/32APSK [порядок столбцов]")
+        if not re.fullmatch(r"1367|(?:8PSK|\d+(?:\+\d+)*(?:rb)?APSK)(?:\s+\d{3,8})?", перемежение, re.I):
+            raise ValueError("перемежение — 1367 (F-LDPC) или модуляция DVB-S2/S2X (8PSK, 16APSK, 32APSK, 4+12APSK, "
+                             "8+8APSK, …, 256APSK) [порядок столбцов]")
         части += ["перемежение", перемежение]
     с = п.get("синхро") or {}
     вид = str(с.get("вид") or "нет")

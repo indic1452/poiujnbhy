@@ -12793,8 +12793,11 @@
             const сведения = h('div', { class: 'small muted stol-ldpc-info' });
             const выколоты = h('input', { type: 'text', value: з.выколоты, placeholder: 'по стандарту', class: 'stol-md-table', 'aria-label': 'Выколотые позиции' });
             const укорочены = h('input', { type: 'text', value: з.укорочены, placeholder: 'по стандарту', class: 'stol-md-table', 'aria-label': 'Укороченные позиции' });
-            const перемежение = h('select', { 'aria-label': 'Перемежение бит' }, [['', 'нет'], ['1367', '1367·i mod M (F-LDPC)'], ['8PSK', '8PSK (DVB-S2)'],
-                ['16APSK', '16APSK (DVB-S2)'], ['32APSK', '32APSK (DVB-S2)']].map(([v, т]) => h('option', { value: v, selected: v === з.перемежение }, т)));
+            // Порядок столбцов подставляет сервер — по стандарту выбранного кода (EN 302 307-1 5.3.3, EN 302 307-2 табл. 9a/9b).
+            const перемежение = h('select', { 'aria-label': 'Перемежение бит' }, [['', 'нет'], ['1367', '1367·i mod M (F-LDPC)'], ['8PSK', '8PSK (DVB-S2/S2X)'],
+                ['16APSK', '16APSK (DVB-S2)'], ['32APSK', '32APSK (DVB-S2)']].concat(['4+12APSK', '8+8APSK', '2+4+2APSK', '4+12+16rbAPSK',
+                '4+8+4+16APSK', '8+16+20+20APSK', '16+16+16+16APSK', '4+12+20+28APSK', '256APSK'].map((v) => [v, v + ' (DVB-S2X)']))
+                .map(([v, т]) => h('option', { value: v, selected: v === з.перемежение }, т)));
             const безСинхро = радио('нет', з.синхро === 'нет', 'Нет');
             const сосредоточенное = радио('сосредоточенное', з.синхро === 'сосредоточенное', 'Сосредоточенное');
             const распределённое = радио('распределённое', з.синхро === 'распределённое', 'Распределённое');
