@@ -43,15 +43,38 @@ class КодерыСовпадают(unittest.TestCase):
     def test_umts_все_виды_матрицы(self):
         # R = 5, 10, 20; C = p − 1, p, p + 1; K = R·C при C = p + 1 (обмен U); 481…530 (p = 53);
         # особые T для 2281…2480 и 3161…3210; предельные 40 и 5114.
-        for K in (40, 159, 160, 200, 201, 481, 530, 1080, 2281, 3200, 5114, 997):
+        for K in (40, 159, 160, 200, 201, 481, 530, 531, 1060, 1080, 2281, 2480, 2481, 3161, 3210, 3211,
+                  3200, 5114, 997):
             with self.subTest(K=K):
                 self.сверить(ts.umts(K), тк.umts_кодировать, данные(2, K, K))
 
     def test_umts_согласование_скорости(self):
-        for K, E in ((40, 88), (200, 300), (1000, 2008), (1000, 2500), (531, 1100)):
+        for K, E in ((40, 88), (40, 131), (40, 130), (40, 132), (200, 300), (1000, 2008), (1000, 2500),
+                     (531, 1100)):
             with self.subTest(K=K, E=E):
                 self.сверить(ts.umts(K, E), lambda u, E=E: тк.umts_согласовать(тк.umts_кодировать(u), E),
                              данные(2, K, E))
+
+    def test_umts_по_шаблону(self):
+        for шаблон in ("11/10/01", "111/100/011", "1/1/0"):
+            with self.subTest(шаблон=шаблон):
+                x, y1, y2 = шаблон.split("/")
+
+                def кодер(u, x=x, y1=y1, y2=y2):
+                    c = тк.umts_кодировать(u)
+                    K = len(u)
+                    return [c[3 * k + b] for k in range(K) for b, строка in enumerate((x, y1, y2))
+                            if строка[k % len(строка)] == "1"] + c[3 * K:]
+                self.сверить(ts.umts_шаблон(200, шаблон), кодер, данные(2, 200, 5))
+        for плохой in ("11/10", "11/1/01", "12/10/01", "11/10/01/1"):
+            with self.assertRaises(ValueError):
+                ts.umts_шаблон(40, плохой)
+
+    def test_lte_длина_по_умолчанию(self):
+        self.assertEqual(3 * 40 + 12, ts.lte(40).длина)
+        self.assertEqual(1, ts.lte(40, 1).длина)
+        with self.assertRaises(ValueError):
+            ts.lte(40, 0)
 
     def test_lte_кольцевой_буфер(self):
         таблица = тк.lte_таблица()
