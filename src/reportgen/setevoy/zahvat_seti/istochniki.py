@@ -137,6 +137,8 @@ class Источник:
     канал = zapis.LINKTYPE_ETHERNET
     способ = ""
     bpf = ""                            # выражение, которое отбирает уже ядро/драйвер
+    #: После «Стоп» дочитать принятое ядром: у сокетов ``прочитать(0)`` не ждёт.
+    дочитывать = True
 
     def прочитать(self, таймаут: float) -> list[tuple[float, bytes, int]]:
         raise NotImplementedError
@@ -297,6 +299,8 @@ class ПриёмUDP(Источник):
 
 class ЗахватPcap(Источник):
     """Кадры карты через libpcap (Linux) или Npcap (Windows); фильтр — BPF в драйвере."""
+
+    дочитывать = False                  # pcap_next_ex без трафика может ждать (см. прочитать)
 
     def __init__(self, lib: Libpcap, устройство: str, *, фильтр: str = "", фильтр_без_vlan: str | None = None,
                  неразборчиво: bool = True, snaplen: int = zapis.SNAPLEN):
