@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 
 import _bootstrap  # noqa: F401
-from reportgen.potok import ldpc, ldpc_kitay, ldpc_std
+from reportgen.potok import gf2, ldpc, ldpc_kitay, ldpc_std
 from reportgen.potok.razbor import снять_вручную
 
 КОРЕНЬ = Path(__file__).resolve().parents[1]
@@ -194,6 +194,18 @@ class МатрицаПроекта(unittest.TestCase):
         слово[7] ^= 1
         self.assertTrue((H @ слово % 2).any())
         self.assertEqual(ldpc_kitay.умножить_gf64(2, 32), 3)      # x·x⁵ = x⁶ = 1 + x
+        for a in range(64):                                      # вся таблица — по своим степеням
+            for b in range(64):
+                self.assertEqual(ldpc_kitay.умножить_gf64(a, b), умн(a, b))
+
+    def test_строк_n_минус_k_и_ранг_beidou(self):
+        """У всех кодов строк H — n − k; у двоичного образа BeiDou ранг — n − k (ни одна из 6
+        двоичных проверок каждой проверки над GF(64) не потеряна и не слита с соседней)."""
+        for имя, з in ЗАПИСИ.items():
+            м = ldpc_kitay.матрица(имя)
+            self.assertEqual((м.n, м.m), (з["n"], з["n"] - з["k"]), имя)
+            if з.get("gf64"):
+                self.assertEqual(gf2.ранг(м.плотная()), з["n"] - з["k"], имя)
 
 
 class ПримерICD(unittest.TestCase):
