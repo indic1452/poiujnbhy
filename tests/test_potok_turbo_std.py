@@ -83,6 +83,20 @@ class КодерыСовпадают(unittest.TestCase):
         self.assertEqual(прямой[424:] + прямой[:424], обратный.tolist())
 
 
+class РешёткиTests(unittest.TestCase):
+    def test_векторы_проверяются(self):
+        with self.assertRaises(AssertionError):
+            ts.решётка_rsc("0011", ["1101"], "без текущего входа в обратной связи")
+        with self.assertRaises(AssertionError):
+            ts.решётка_rsc("1011", ["11011"], "прямой длиннее обратной")
+
+    def test_rcs_как_на_рис_16(self):
+        # Состояние 0, вход (A, B) = (1, 0): в s1 — 1, Y = W = 1; (0, 1): B ещё и в s2, s3.
+        р = ts.RCS_РЕШЁТКА
+        self.assertEqual((4, [1, 1]), (int(р.следующее[0, 2]), р.выходы[0, 2].tolist()))
+        self.assertEqual((7, [1, 1]), (int(р.следующее[0, 1]), р.выходы[0, 1].tolist()))
+
+
 class ДекодерИсправляет(unittest.TestCase):
     def проверить(self, схема, кодер, u, доля):
         кодовые = np.array([кодер([int(b) for b in ряд]) for ряд in u], dtype=np.uint8)

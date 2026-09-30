@@ -43,7 +43,7 @@ class Решётка:
     имя: str
     следующее: np.ndarray                 # S × M
     выходы: np.ndarray                    # S × M × n — проверочные биты
-    бит_входа: int = 1                    # 1 — двоичный, 2 — дуобинарный (A, B)
+    бит_входа: int                        # 1 — двоичный, 2 — дуобинарный (A, B)
     хвост_вход: np.ndarray | None = None  # S — вход, обнуляющий регистр (для хвоста)
     пред_s: np.ndarray = field(init=False)
     пред_m: np.ndarray = field(init=False)
@@ -84,7 +84,7 @@ def решётка_rsc(обратная: str, прямые: list[str], имя: s
         for u in (0, 1):
             a = u ^ обр
             for n, g in enumerate(G):
-                выходы[s, u, n] = ((g[0] & a) + sum(g[i + 1] & D[i] for i in range(m))) & 1
+                выходы[s, u, n] = (g[0] & a) ^ (sum(g[i + 1] & D[i] for i in range(m)) & 1)
             новое = [a] + D[:-1]
             следующее[s, u] = sum(b << i for i, b in enumerate(новое))
     return Решётка(имя, следующее, выходы, 1, хвост)
