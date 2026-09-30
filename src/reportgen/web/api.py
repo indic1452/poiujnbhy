@@ -9,6 +9,7 @@ import re
 import secrets
 import sqlite3
 import tempfile
+import threading
 import unicodedata
 import urllib.parse
 from collections import Counter
@@ -3292,6 +3293,91 @@ def potok_scrambler_search(request: Request, job_id: str) -> dict[str, Any]:
             job_id, этап, f"скремблер:{степень}:{отводов}:{первый}:{int(аддитивный)}:{кадр}:{начало_кадра}", посчитать)
     except (ValueError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
+
+
+#: Разборы GFP окна стола: последние несколько (с областями нагрузки — для страниц таблицы и
+#: выгрузки кадров в анализатор пакетов без повторного расчёта).
+_GFP_ПОМНИТЬ = 3
+_gfp_кэш: dict[tuple, Any] = {}
+_gfp_замок = threading.Lock()
+
+
+def _разбор_gfp(request: Request, user, job_id: str, тело: dict[str, Any]):
+    """GFP в массиве по параметрам окна: маска (авто/HEX), скремблер, порядок бит, многочлен, участок."""
+    from ..potok import gfp  # noqa: PLC0415
+    этап = int(тело.get("stage") or 0)
+    _файл_бит_или_400(request, user, job_id, этап)
+    задания = _potok(request)
+    маска_ = str(тело.get("mask") or "авто").strip()
+    if маска_ != "авто" and not re.fullmatch(r"(0x)?[0-9A-Fa-f]{8}", маска_):
+        raise ServiceError("маска — «авто» или 8 шестнадцатеричных знаков", 400)
+    маска = "авто" if маска_ == "авто" else int(маска_[-8:], 16)
+    скремблер = str(тело.get("scrambler") or "авто")
+    порядок = str(тело.get("order") or "авто")
+    многочлен = "авто" if тело.get("poly") == "авто" else "стандарт"
+    if скремблер not in ("авто", "да", "нет", "инверсия") or порядок not in ("авто", "старший", "младший"):
+        raise ServiceError("скремблер — авто/да/нет/инверсия, порядок — авто/старший/младший", 400)
+    первый = max(0, int(тело.get("first") or 0))
+    бит = min(gfp.БИТ_ДО, max(4096, int(тело.get("bits") or gfp.БИТ_ДО // 2)))
+    файл = задания.файл_бит(job_id, этап)
+    ключ = (str(файл), файл.stat().st_mtime_ns, str(маска), скремблер, порядок, многочлен, первый, бит)
+    with _gfp_замок:
+        if ключ in _gfp_кэш:
+            return _gfp_кэш[ключ], этап
+    биты = задания.биты_участка(job_id, этап, первый, первый + бит)
+    итог = gfp.разобрать(биты, маска=маска, скремблер=скремблер, порядок=порядок, многочлен=многочлен,
+                         от_бита=первый)
+    with _gfp_замок:
+        _gfp_кэш[ключ] = итог
+        while len(_gfp_кэш) > _GFP_ПОМНИТЬ:
+            _gfp_кэш.pop(next(iter(_gfp_кэш)))
+    return итог, этап
+
+
+@router.post("/potok/{job_id}/gfp")
+def potok_gfp(request: Request, job_id: str) -> dict[str, Any]:
+    """GFP (G.7041) в массиве: сводка (маска, пустой кадр на линии, счёт) и страница таблицы кадров."""
+    from ..potok import gfp  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        р, _ = _разбор_gfp(request, user, job_id, тело)
+        if р is None:
+            return {"найдено": False, "причина": "заголовков GFP с верным cHEC подряд не найдено"
+                    + ("" if (тело.get("mask") or "авто") == "авто" else " с этой маской")
+                    + " ни при одном битовом сдвиге и порядке бит"}
+        return {"найдено": True, "сводка": gfp.сводка(р),
+                "таблица": gfp.таблица(р, max(0, int(тело.get("offset") or 0)),
+                                       min(500, max(1, int(тело.get("limit") or 200))),
+                                       пустые=bool(тело.get("idle", False)))}
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
+@router.post("/potok/{job_id}/gfp/pakety")
+def potok_gfp_pakety(request: Request, job_id: str) -> dict[str, Any]:
+    """Кадры GFP в анализатор пакетов: клиенты (тип канала по UPI) или кадры GFP целиком (171)."""
+    from ..potok import gfp  # noqa: PLC0415
+    from ..potok.zadaniya import выгрузка  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        р, этап = _разбор_gfp(request, user, job_id, тело)
+        cid = тело.get("cid")
+        cid = None if cid in (None, "") else int(cid)
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    if р is None:
+        raise ServiceError("GFP не найден", 400)
+    кадры = gfp.кадры_gfp(р, cid) if тело.get("what") == "кадры" else gfp.клиентские_кадры(р, cid)
+    if not кадры:
+        raise ServiceError("кадров с данными нет" + (f" в канале CID {cid}" if cid is not None else ""), 400)
+    данные, _ = выгрузка(кадры, "кадры")
+    состояние = _potok(request).прочитать(job_id)
+    имя = (f"{Path(состояние['имя']).stem} — GFP {'кадры' if тело.get('what') == 'кадры' else 'клиенты'}"
+           + (f", CID {cid}" if cid is not None else "") + f", массив {этап}.pcap")
+    ид = _pakety(request).создать(владелец=user.id, имя=имя, данные=данные, от=f"{job_id}#{этап}")
+    return {"id": ид, "кадров": len(кадры), "канал": кадры.канал}
 
 
 #: Статистическим тестам по умолчанию — миллион бит (рекомендация NIST SP 800-22), самое большее — 16 млн.
