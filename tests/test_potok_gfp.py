@@ -8,6 +8,7 @@ HUNT → PRESYNC → SYNC по всему потоку, нагрузка (x⁴³
 
 import json
 import random
+import re
 import shutil
 import struct
 import subprocess
@@ -265,6 +266,60 @@ class БезСкремблераTests(unittest.TestCase):
                     self.assertEqual((маска, "нет"), (р.маска, р.скремблер))
                     self.assertEqual(к_.ozhidanie(st)["klienty"], клиенты(р))
                     self.assertEqual(маска, gfp.gfp(ряд).свойства["маска"])
+
+
+class НеGFPTests(unittest.TestCase):
+    """Потоки без GFP (генераторы рецензента: случайные, HDLC, ATM, SDH STM-1): слепой поиск
+    находит в них «заголовки» с нестандартной маской, но окно и ручной слой не называют их GFP —
+    то же условие, что у автомата (маска из предустановок или 8 осмысленных кадров с tHEC)."""
+
+    ГЕНЕРАТОРЫ = (("случайные", к_.sluch), ("HDLC", к_.hdlc), ("ATM", к_.atm), ("SDH STM-1", к_.sdh))
+
+    def test_не_gfp_в_окне_и_слое(self):
+        for имя, ген in self.ГЕНЕРАТОРЫ:
+            for сид in range(5):
+                with self.subTest(имя=имя, сид=сид):
+                    ряд = np.unpackbits(np.frombuffer(ген(random.Random(1000 + сид), 1 << 18), dtype=np.uint8))
+                    р, причина = gfp.разобрать_с_причиной(ряд)
+                    self.assertIsNone(р)
+                    if причина:
+                        self.assertRegex(причина, "не GFP")
+                    if сид == 0:
+                        self.assertIsNone(gfp.gfp(ряд))
+                        with self.assertRaisesRegex(ValueError, "^GFP: "):
+                            снять_вручную(ряд, "gfp маска авто выход клиенты")
+
+    def test_причина_и_заданная_маска(self):
+        # SDH: «заголовки» с верным cHEC подряд есть, кадров с верным tHEC нет.
+        ряд = np.unpackbits(np.frombuffer(к_.sdh(random.Random(1000), 1 << 18), dtype=np.uint8))
+        р, причина = gfp.разобрать_с_причиной(ряд)
+        м = re.fullmatch(r"заголовки с верным cHEC есть \(маска ([0-9A-F]{8}) не из предустановок, кадров (\d+)\), "
+                         r"но ни одного кадра с верным tHEC и известным типом \(нужно не меньше 8\) — не GFP; "
+                         r"с заданной маской кадры разбираются без этой проверки", причина)
+        self.assertIsNotNone(м, причина)
+        with self.assertRaisesRegex(ValueError, "^GFP: заголовки с верным cHEC есть"):
+            снять_вручную(ряд, "gfp")
+        # Заданную маску выбрал человек — разбор без проверки.
+        заданная = gfp.разобрать(ряд, маска=int(м.group(1), 16))
+        self.assertEqual(int(м.group(2)), len(заданная.выделение.места))
+        self.assertEqual("", gfp.сомнение(заданная) if gfp.осмысленных(заданная) >= 8 else "")
+
+    def test_сомнение(self):
+        р = gfp.разобрать(г.в_ряд(г.поток(кадры_эталона(10), 0x5A17C3E9)))
+        self.assertEqual("", gfp.сомнение(р))                         # 9 осмысленных кадров
+        р = gfp.разобрать(г.в_ряд(г.поток(кадры_эталона(9), 0x5A17C3E9)))
+        self.assertEqual("", gfp.сомнение(р))                         # ровно 8 — достаточно
+        р, причина = gfp.разобрать_с_причиной(г.в_ряд(г.поток(кадры_эталона(8), 0x5A17C3E9)))
+        self.assertIsNone(р)
+        self.assertIn("кадров лишь 7 с верным tHEC", причина)
+        р = gfp.разобрать(г.в_ряд(г.поток(кадры_эталона(8), 0x5A17C3E9)), маска=0x5A17C3E9)
+        self.assertIn("кадров лишь 7", gfp.сомнение(р))
+        # Предустановка и её инверсия — без кадров с нагрузкой; меньше 8 кадров — не GFP.
+        for маска in (0xB6AB3325, 0xB6AB3325 ^ 0xFFFFFFFF):
+            self.assertEqual("", gfp.сомнение(gfp.разобрать(г.в_ряд(г.поток([None] * 8, маска)), маска=маска)))
+        р = gfp.разобрать(г.в_ряд(г.поток([None] * 9)), маска=0xB6AB31E0)
+        р.выделение.места = р.выделение.места[:7]
+        self.assertEqual("заголовков с верным cHEC подряд — 7 кадров, меньше 8: не GFP", gfp.сомнение(р))
 
 
 class ВыделениеTests(unittest.TestCase):
@@ -1093,6 +1148,19 @@ class ОкноЧерезСерверTests(unittest.TestCase):
         self.assertEqual(["gfp — GFP клиенты, CID 2, массив 0.pcap", "gfp — GFP клиенты, массив 0.pcap"], имена)
         self.assertEqual(400, к.post(f"/api/potok/{ид}/gfp/pakety", json={"mask": "B6AB31E0"}).status_code)
 
+    def test_не_gfp_найдено_нет_с_причиной(self):
+        # SDH без GFP: «заголовки» есть, осмысленных кадров нет — окно пишет «найдено: нет» и почему.
+        к = self.к
+        self.сеть.login("engineer")
+        сид = к.post("/api/sessions", json={"name": "sdh"}).json()["id"]
+        ид = self.загрузить(сид, "sdh.bin", к_.sdh(random.Random(1000), 1 << 18))
+        d = к.post(f"/api/potok/{ид}/gfp", json={"mask": "авто"}).json()
+        self.assertFalse(d["найдено"])
+        self.assertRegex(d["причина"], "^заголовки с верным cHEC есть .* — не GFP")
+        ответ = к.post(f"/api/potok/{ид}/gfp/pakety", json={"mask": "авто"})
+        self.assertEqual(400, ответ.status_code)
+        self.assertRegex(ответ.json()["error"], "^GFP не найден: заголовки с верным cHEC есть")
+
     def загрузить(self, сид, имя, данные):
         ид = self.к.post(f"/api/sessions/{сид}/files", data={"bit_order": "msb"},
                          files={"file": (имя, данные, "application/octet-stream")}).json()["id"]
@@ -1132,8 +1200,8 @@ class ОкноЧерезСерверTests(unittest.TestCase):
             self.assertFalse(d["найдено"])
             self.assertIn("с этой маской", d["причина"])
             # Разборы помнятся (три последних): повтор первого из трёх — без нового расчёта.
-            настоящий = gfp.разобрать
-            with mock.patch.object(gfp, "разобрать", side_effect=настоящий) as разбор:
+            настоящий = gfp.разобрать_с_причиной
+            with mock.patch.object(gfp, "разобрать_с_причиной", side_effect=настоящий) as разбор:
                 for бит in (4096, 5000, 6000, 4096):
                     всего(ид, bits=бит)
                 self.assertEqual(3, разбор.call_count)
