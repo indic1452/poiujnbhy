@@ -17657,10 +17657,16 @@
                 navigate('#/pakety/' + encodeURIComponent(d.id));
             } catch (error) { toastError(error); } finally { if (кнопка) кнопка.disabled = false; }
         };
-        return h('div', { class: 'row pg-chunks-nav' },
-            h('span', { class: 'muted small' }, 'Кусок ' + (кусок + 1) + ' захвата с сети'),
+        const подпись = h('span', { class: 'muted small' }, 'Кусок ' + (кусок + 1) + ' захвата с сети');
+        const следующий = h('button', { class: 'btn btn--sm pg-next-chunk', onclick: (e) => перейти(кусок + 1, e.currentTarget) }, 'следующий кусок →');
+        // Сколько кусков — у захвата: у последнего «следующего» нет (иначе щелчок — лишь «такого куска нет»).
+        api.get('/api/zahvat/' + encodeURIComponent(захват) + '/chunks?offset=0&limit=1').then((d) => {
+            подпись.textContent = 'Кусок ' + (кусок + 1) + ' из ' + d.total + ' захвата с сети';
+            следующий.hidden = кусок + 1 >= d.total;
+        }).catch(() => {});
+        return h('div', { class: 'row pg-chunks-nav' }, подпись,
             кусок > 0 ? h('button', { class: 'btn btn--sm', onclick: (e) => перейти(кусок - 1, e.currentTarget) }, '← предыдущий кусок') : null,
-            h('button', { class: 'btn btn--sm', onclick: (e) => перейти(кусок + 1, e.currentTarget) }, 'следующий кусок →'),
+            следующий,
             h('a', { class: 'btn btn--sm btn--ghost', href: '#/zahvat/' + encodeURIComponent(захват) }, 'К захвату'));
     }
 
