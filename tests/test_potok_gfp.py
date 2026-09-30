@@ -303,10 +303,15 @@ class НагрузкаTests(unittest.TestCase):
         области = [bytearray(г.нагрузка(п)) for п in ETHERNET[:10]]
         области[3][1] ^= 0x04          # бит UPI: 1 → 5, исправляется обратно
         области[5][3] ^= 0x01          # бит tHEC
+        области[2][1] ^= 0x01          # последний бит UPI (бит 15)
+        области[4][2] ^= 0x80          # первый бит tHEC (бит 16)
+        области[6][0] ^= 0x80          # первый бит PTI (бит 0): 000 → 100 (CMF), исправляется обратно
         области[7] = bytearray(г.нагрузка(ETHERNET[7], плохой_thec=True))
         р = gfp.разобрать(г.в_ряд(г.поток([x for о in области for x in (None, bytes(о))])))
-        self.assertEqual({"верен": 6, "исправлен": 2, "ошибка": 1, "прогрев": 1, "мало": 0}, р.счёт()["thec"])
-        self.assertEqual(1, [р.кадры[i] for i in sorted(р.кадры)][3].upi)
+        self.assertEqual({"верен": 3, "исправлен": 5, "ошибка": 1, "прогрев": 1, "мало": 0}, р.счёт()["thec"])
+        кадры = [р.кадры[i] for i in sorted(р.кадры)]
+        self.assertEqual([(0, 0, 0, 1)] * 5, [(к.pti, к.pfi, к.exi, к.upi) for к in (кадры[2], кадры[3], кадры[4],
+                                                                                    кадры[5], кадры[6])])
         self.assertEqual([п for i, п in enumerate(ETHERNET[:10]) if i not in (0, 7)], клиенты(р))
 
     def test_cid_ehec_pfcs(self):
