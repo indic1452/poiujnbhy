@@ -1960,3 +1960,16 @@ class WAVTests(unittest.TestCase):
         with self.assertRaises(ValueError) as о:
             iq.прочитать(b"RIFF" + struct.pack("<I", len(только_данные)) + только_данные)
         self.assertEqual("WAV без блока fmt или data", str(о.exception))
+
+    def test_wav_края_значений(self):
+        # 24 бита: 2^22 — положительное, −2^23 — отрицательное (граница знака).
+        значения = [1 << 22, -(1 << 23), (1 << 23) - 1, -1] * 8
+        данные = b"".join(int(v).to_bytes(3, "little", signed=True) for v in значения)
+        fmt = struct.pack("<HHIIHH", 1, 2, 8000, 48000, 6, 24)
+        тело = b"WAVE" + b"fmt " + struct.pack("<I", 16) + fmt + b"data" + struct.pack("<I", len(данные)) + данные
+        z, _ = iq.прочитать(b"RIFF" + struct.pack("<I", len(тело)) + тело)
+        self.assertEqual([(1 << 22) - 1j * (1 << 23), ((1 << 23) - 1) - 1j], z[:2].tolist())
+        # Описание int8 — без порядка байт; 16 отсчётов — можно, 15 — мало.
+        self.assertEqual("int8, I и Q чередованием", iq.прочитать(bytes(32), "int8")[1])
+        with self.assertRaises(ValueError):
+            iq.прочитать(bytes(30), "int8")
