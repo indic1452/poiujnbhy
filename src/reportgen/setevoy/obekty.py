@@ -1130,7 +1130,7 @@ def _h264(пакеты: list[tuple[int, bytes]], видео: str) -> tuple[bytes
             итог += _nal(д, видео)
         elif тип in (24, 25):
             место = 3 if тип == 25 else 1
-            while место + 2 <= len(д):
+            while место + 2 < len(д):                       # размер и хотя бы байт NAL
                 n = struct.unpack_from(">H", д, место)[0]
                 итог += _nal(д[место + 2:место + 2 + n], видео)
                 место += 2 + n
@@ -1174,7 +1174,7 @@ def _h265(пакеты: list[tuple[int, bytes]], видео: str) -> tuple[bytes
             итог += _nal(д, видео)
         elif тип == 48:
             место = 2
-            while место + 2 <= len(д):
+            while место + 2 < len(д):                       # размер и хотя бы байт NAL
                 n = struct.unpack_from(">H", д, место)[0]
                 итог += _nal(д[место + 2:место + 2 + n], видео)
                 место += 2 + n

@@ -325,3 +325,63 @@ class TftpTests(unittest.TestCase):
                  ос.udp(b"\x00\x01r\x00octet\x00", 3000, 69),
                  self.данные(1, b"READ")]
         self.assertEqual({"w.txt": b"WRITE", "r.txt": b"READ"}, {о.имя: о.данные for о in объекты(кадры)})
+
+
+# == RTP ===============================================================================================================
+
+class ЗаголовокRtpTests(unittest.TestCase):
+    def test_csrc_расширение_и_границы(self):
+        self.assertEqual((0, 0, 1, 2, 3, b"PAYLOAD"), obekty.заголовок_rtp(ос.rtp(0, 1, 2, 3, b"PAYLOAD", csrc=(9,))))
+        с_расширением = ос.rtp(0, 1, 2, 0x12345678, b"xyz", csrc=(7,), расширение=b"\x10\x20\x30\x40")
+        self.assertEqual(b"xyz", obekty.заголовок_rtp(с_расширением)[5])
+        пустое = bytes([0x90]) + ос.rtp(0, 1, 2, 3, b"")[1:] + b"\xbe\xde\x00\x00"
+        self.assertEqual(b"", obekty.заголовок_rtp(пустое)[5])
+        self.assertIsNone(obekty.заголовок_rtp(пустое[:-1]))
+        self.assertIsNone(obekty.заголовок_rtp(ос.rtp(0, 1, 2, 3, b"")[:11]))
+
+
+def биты_в_байты(биты):
+    биты += "0" * (-len(биты) % 8)
+    return int(биты, 2).to_bytes(len(биты) // 8, "big")
+
+
+class ЗвукВидеоTests(unittest.TestCase):
+    def test_wav_добивка_нечётного(self):
+        for отсчёты in (b"\x01", b"\x01\x02\x03", b"\x01\x02"):
+            with self.subTest(n=len(отсчёты)):
+                данные = obekty.wav(отсчёты, 7)
+                self.assertEqual(58 + len(отсчёты) + len(отсчёты) % 2, len(данные))     # RIFF, fmt 18, fact, data
+                self.assertTrue(данные.endswith(отсчёты + b"\x00" * (len(отсчёты) % 2)))
+
+    def test_amr_октеты_границы(self):
+        self.assertEqual([(15, 1, b"")], obekty._amr_октеты(b"\xf0\x7d", obekty.AMR_БИТ))       # бит P в ToC
+        self.assertIsNone(obekty._amr_октеты(b"\xf0" + bytes([12 << 3]), obekty.AMR_БИТ))        # FT = длине таблицы
+        речь = bytes(range(23))
+        self.assertEqual([(1, 1, речь)], obekty._amr_октеты(b"\xf0\x0c" + речь, obekty.AMR_WB_БИТ))  # 177 бит
+
+    def test_amr_полоса_границы(self):
+        два_пустых = биты_в_байты("1111" + "111111" + "011111")
+        self.assertEqual([(15, 1, b""), (15, 1, b"")], obekty._amr_полоса(два_пустых, obekty.AMR_БИТ))
+        self.assertIsNone(obekty._amr_полоса(два_пустых + b"\x00", obekty.AMR_БИТ))          # добивка ≥ 8 бит
+        self.assertEqual([(14, 1, b"")], obekty._amr_полоса(биты_в_байты("1111" + "011101"), obekty.AMR_БИТ))
+        for ft in (12, 13):
+            with self.subTest(ft=ft):
+                self.assertIsNone(obekty._amr_полоса(биты_в_байты("1111" + "0" + format(ft, "04b") + "1"), obekty.AMR_БИТ))
+        речь = "10" * 59                                                             # 118 бит — ровно до конца
+        итог = obekty._amr_полоса(биты_в_байты("1111" + "000101" + речь), obekty.AMR_БИТ)
+        self.assertEqual([(2, 1, биты_в_байты(речь))], итог)
+        речь = "1" + "0" * 175 + "1"                                                 # 177 бит (AMR-WB 8,85)
+        итог = obekty._amr_полоса(биты_в_байты("1111" + "000011" + речь), obekty.AMR_WB_БИТ)
+        self.assertEqual([(1, 1, биты_в_байты(речь))], итог)
+        self.assertEqual(23, len(итог[0][2]))
+
+    def test_h264_тип_23_stap_и_короткий_fu(self):
+        данные, заметки = obekty._h264([(1, b"\x17abc")], "annexb")
+        self.assertEqual((b"\x00\x00\x00\x01\x17abc", []), (данные, заметки))
+        данные, _ = obekty._h264([(1, b"\x18\x00\x01\x09\x00\x00")], "annexb")                # размер 0 в конце
+        self.assertEqual(b"\x00\x00\x00\x01\x09", данные)
+        данные, заметки = obekty._h264([(1, b"\x7c\x85"), (2, b"\x7c\x45tail")], "annexb")    # начало FU без данных
+        self.assertEqual(b"", данные)
+        self.assertEqual(["NAL, оборванных пропуском пакетов (FU без начала или конца): 1 — выброшены"], заметки)
+        данные, _ = obekty._h265([(1, b"\x60\x01\x00\x01\x09\x00\x00")], "annexb")
+        self.assertEqual(b"\x00\x00\x00\x01\x09", данные)
