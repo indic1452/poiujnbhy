@@ -78,8 +78,22 @@ RCVALL_OFF, RCVALL_ON = 0, 1
 
 #: Сколько кадров забирать за один проход — чтобы счётчики и остановка не ждали.
 ПАЧКА = 2000
-#: Буфер приёма сокета: запас на всплески, пока поток пишет файл.
-БУФЕР_ПРИЁМА = 8 * 1024 * 1024
+#: Буфер приёма сокета: запас на всплески, пока поток пишет файл (при сотнях мегабит в секунду
+#: 32 МБ — около секунды потока). Обычный SO_RCVBUF ядро Linux урезает до net.core.rmem_max;
+#: SO_RCVBUFFORCE (= 33, asm-generic/socket.h; socket(7): «privileged process (CAP_NET_ADMIN)
+#: can perform the same task as SO_RCVBUF, but the rmem_max limit can be overridden») — нет.
+БУФЕР_ПРИЁМА = 32 * 1024 * 1024
+SO_RCVBUFFORCE = 33
+
+
+def увеличить_буфер(с: Any, размер: int = БУФЕР_ПРИЁМА) -> None:
+    """Большой буфер приёма: SO_RCVBUFFORCE (Linux, с правами), иначе SO_RCVBUF (урежется до предела ОС)."""
+    if not WINDOWS:
+        with contextlib.suppress(OSError):
+            с.setsockopt(socket.SOL_SOCKET, SO_RCVBUFFORCE, размер)
+            return
+    with contextlib.suppress(OSError):
+        с.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, размер)
 #: Наибольшая датаграмма UDP (IPv4: 65535 − 20 − 8) — буфер приёма с запасом.
 ДАТАГРАММА = 65535
 
@@ -180,8 +194,7 @@ class ПриёмUDP(Источник):
                 except OSError as ошибка:
                     raise понять_ошибку(ошибка, что=f"UDP {адрес}") from None
                 self.сокеты.append(с)
-                with contextlib.suppress(OSError):
-                    с.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, БУФЕР_ПРИЁМА)
+                увеличить_буфер(с)
                 if self.pktinfo:
                     with contextlib.suppress(OSError):
                         с.setsockopt(socket.SOL_SOCKET, SO_RXQ_OVFL, 1)
@@ -228,15 +241,18 @@ class ПриёмUDP(Источник):
     def _получатель(self, служебные: list[tuple[int, int, bytes]], с: Any) -> str:
         for уровень, вид, данные in служебные:
             if уровень == socket.IPPROTO_IP and вид == IP_PKTINFO and len(данные) >= 12:
-                return str(ipaddress.IPv4Address(данные[8:12]))          # in_pktinfo.ipi_addr
+                return socket.inet_ntop(socket.AF_INET, данные[8:12])     # in_pktinfo.ipi_addr
             if уровень == socket.IPPROTO_IPV6 and вид == IPV6_PKTINFO and len(данные) >= 16:
-                return str(ipaddress.IPv6Address(данные[:16]))           # in6_pktinfo.ipi6_addr
+                return socket.inet_ntop(socket.AF_INET6, данные[:16])     # in6_pktinfo.ipi6_addr
             if уровень == socket.SOL_SOCKET and вид == SO_RXQ_OVFL and len(данные) >= 4:
                 self._потеряно[с] = struct.unpack("@I", данные[:4])[0]
         return self.адрес
 
     def прочитать(self, таймаут: float) -> list[tuple[float, bytes, int]]:
+        """Пачка кадров; ``сведения`` — к каждому (порт получателя, «адрес:порт» отправителя, байт
+        нагрузки): менеджеру не нужно разбирать синтезированный кадр ради счётчиков."""
         итог: list[tuple[float, bytes, int]] = []
+        self.сведения = сведения = []
         for с in _ждать(self.сокеты, таймаут):
             порт = self.порт_сокета.get(с)
             if порт is None:
@@ -245,7 +261,7 @@ class ПриёмUDP(Источник):
                 try:
                     if self.pktinfo:
                         данные, служебные, _, откуда = с.recvmsg(ДАТАГРАММА, 256)
-                        получатель = self._получатель(служебные, с)
+                        получатель = self._получатель(служебные, с) if служебные else self.адрес
                     else:
                         данные, откуда = с.recvfrom(ДАТАГРАММА)
                         получатель = self.адрес
@@ -255,10 +271,14 @@ class ПриёмUDP(Источник):
                     # Windows отвечает WSAECONNRESET на датаграмму после ICMP «порт недоступен» —
                     # это не наша ошибка, приём продолжается.
                     break
-                if ipaddress.ip_address(получатель).version != ipaddress.ip_address(откуда[0].split("%")[0]).version:
+                от = откуда[0]
+                if "%" in от:
+                    от = от.split("%", 1)[0]                     # зона IPv6 (fe80::1%eth0) — не часть адреса
+                if (":" in получатель) != (":" in от):          # версии IP разные (адрес получателя неизвестен)
                     получатель = "::" if self.семейство == socket.AF_INET6 else "0.0.0.0"
-                кадр = zapis.кадр_udp(данные, откуда[0].split("%")[0], откуда[1], получатель, порт)
+                кадр = zapis.кадр_udp(данные, от, откуда[1], получатель, порт)
                 итог.append((time.time(), кадр, len(кадр)))
+                сведения.append((порт, f"{от}:{откуда[1]}", len(данные)))
         return итог
 
     def отброшено(self) -> int | None:
@@ -372,8 +392,7 @@ class ЗахватAFPacket(Источник):
         self._буфер = bytearray(zapis.SNAPLEN)
         self._потеряно = 0
         try:
-            with contextlib.suppress(OSError):
-                self.с.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, БУФЕР_ПРИЁМА)
+            увеличить_буфер(self.с)
             if bpf and self.сырой:
                 self._фильтр(bpf)
                 self.bpf = bpf_текст

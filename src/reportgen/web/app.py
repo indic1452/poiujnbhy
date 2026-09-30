@@ -92,6 +92,10 @@ def create_app(settings: Settings | None = None,
         захваты = getattr(app.state, "zahvat_seti", None)
         if захваты is not None:
             захваты.остановить_все()
+        # Прогоны захватов — отдельные процессы: остановить, чтобы не пережили сервер.
+        прогоны = getattr(app.state, "progony", None)
+        if прогоны is not None:
+            прогоны.остановить_все()
 
     app = FastAPI(
         lifespan=lifespan,

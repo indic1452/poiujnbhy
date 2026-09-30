@@ -29,7 +29,7 @@ import _bootstrap  # noqa: F401
 import setevoy_sintez as с
 from reportgen.config import Settings, capture_own_ports, settings_warnings
 from reportgen.setevoy.chtenie import прочитать_захват
-from reportgen.setevoy.zahvat_seti import istochniki, karty, obrabotka, parametry, pcap_bib, zapis
+from reportgen.setevoy.zahvat_seti import chtec, istochniki, karty, obrabotka, parametry, pcap_bib, zapis
 from reportgen.setevoy.zahvat_seti.istochniki import ОшибкаЗахвата
 from reportgen.setevoy.zahvat_seti.menedzher import Менеджер
 from reportgen.setevoy.zahvat_seti.parametry import Фильтр, проверить
@@ -50,6 +50,15 @@ def дождаться(условие, секунд=10.0):
             return True
         time.sleep(0.05)
     return False
+
+
+def записи_кусков(менеджер, ид):
+    """Все записи захвата по кускам подряд — читателем захватов проекта (каждый кусок — свой pcapng)."""
+    return [з for путь in менеджер.файлы(ид) for з in прочитать_захват(путь).записи]
+
+
+def размер_кусков(менеджер, ид) -> int:
+    return sum(путь.stat().st_size for путь in менеджер.файлы(ид))
 
 
 def можно_af_packet() -> bool:
@@ -360,20 +369,17 @@ class PcapngTests(unittest.TestCase):
         self.assertEqual([к for _, к in кадры], [з.данные for з in захват.записи])
         self.assertEqual(["Ethernet"] * 7, [з.канал for з in захват.записи])
         self.assertAlmostEqual(1003.5, захват.записи[3].время, places=5)
-        with open(путь, "rb") as f:
-            свои = list(obrabotka.кадры_pcapng(f))
-        self.assertEqual([к for _, к in кадры], [д for _, д, _ in свои])
-        self.assertEqual({1}, {т for _, _, т in свои})
+        свои = list(chtec.записи(путь))
+        self.assertEqual([к for _, к in кадры], [д for _, д, _, _ in свои])
+        self.assertEqual({"Ethernet"}, {т for _, _, _, т in свои})
 
     def test_оборванный_файл_читается_до_обрыва(self):
         путь = self.записать([(1.0, b"A" * 60), (2.0, b"B" * 60)])
         д = путь.read_bytes()
         путь.write_bytes(д[:len(д) - 100 - 20])               # без ISB и без хвоста второго EPB
-        with open(путь, "rb") as f:
-            self.assertEqual([b"A" * 60], [д for _, д, _ in obrabotka.кадры_pcapng(f)])
+        self.assertEqual([b"A" * 60], [д for _, д, _, _ in chtec.записи(путь)])
         путь.write_bytes(д[:40] + b"\x06\0\0\0\x05\0\0\0")      # длина блока не кратна 4 — стоп
-        with open(путь, "rb") as f:
-            self.assertEqual([], list(obrabotka.кадры_pcapng(f)))
+        self.assertEqual([], list(chtec.записи(путь)))
 
     @staticmethod
     def блок(вид, тело, длина=None):
@@ -384,8 +390,7 @@ class PcapngTests(unittest.TestCase):
     def прочитать(self, данные):
         путь = Path(tempfile.mkdtemp()) / "x.pcapng"
         путь.write_bytes(данные)
-        with open(путь, "rb") as f:
-            return list(obrabotka.кадры_pcapng(f))
+        return [(время, данные, канал) for время, данные, _, канал in chtec.записи(путь)]
 
     def test_опции_idb_и_время(self):
         shb = self.блок(0x0A0D0D0A, struct.pack("<IHHq", 0x1A2B3C4D, 1, 0, -1))
@@ -399,13 +404,13 @@ class PcapngTests(unittest.TestCase):
         чужой = self.блок(6, struct.pack("<IIIII", 2, 0, 0, 1, 1) + b"z")                # интерфейса 2 нет — пропуск
         пустой_блок = self.блок(0xBAD, b"")                                              # неизвестный блок в 12 байт
         итог = self.прочитать(shb + idb + голый_idb + пустой_блок + epb + пустой + чужой)
-        self.assertEqual([(((1 << 32) + 8) / 8, b"xy", 1), (3e-6, b"", 101)], итог)
-        self.assertEqual({2: b"abc", 3: b"", 9: b"\x83"}, obrabotka.опции_блока(опц, 0, "<"))
+        self.assertEqual([(((1 << 32) + 8) / 8, b"xy", "Ethernet"), (3e-6, b"", "IP")], итог)
+        self.assertEqual({2: b"abc", 3: b"", 9: b"\x83"}, chtec.опции_блока(опц, 0, "<"))
         испорченная = struct.pack("<HH", 9, 5) + b"\x02"                                  # длина больше тела
-        self.assertEqual({9: b"\x02"}, obrabotka.опции_блока(испорченная, 0, "<"))
-        self.assertEqual({9: b""}, obrabotka.опции_блока(struct.pack("<HH", 9, 1), 0, "<"), "значения нет — пусто, не ошибка")
-        self.assertEqual({2: b""}, obrabotka.опции_блока(struct.pack("<HH", 2, 0), 0, "<"), "опция впритык к концу тела")
-        self.assertEqual((1e-6, 1e-9, 2.0 ** -10, 1.0), tuple(obrabotka.доля_секунды(б) for б in (b"", b"\x09", b"\x8a", b"\x00")))
+        self.assertEqual({9: b"\x02"}, chtec.опции_блока(испорченная, 0, "<"))
+        self.assertEqual({9: b""}, chtec.опции_блока(struct.pack("<HH", 9, 1), 0, "<"), "значения нет — пусто, не ошибка")
+        self.assertEqual({2: b""}, chtec.опции_блока(struct.pack("<HH", 2, 0), 0, "<"), "опция впритык к концу тела")
+        self.assertEqual((1e-6, 1e-9, 2.0 ** -10, 1.0), tuple(chtec.доля_секунды(б) for б in (b"", b"\x09", b"\x8a", b"\x00")))
 
     def test_границы_блоков(self):
         shb = self.блок(0x0A0D0D0A, struct.pack("<IHHq", 0x1A2B3C4D, 1, 0, -1))
@@ -414,7 +419,7 @@ class PcapngTests(unittest.TestCase):
         self.assertEqual([b"q"], [д for _, д, _ in self.прочитать(shb + idb + epb + b"\0" * 7)], "хвост короче заголовка блока")
         self.assertEqual([], self.прочитать(shb + idb + struct.pack("<II", 6, 8) + epb), "длина блока 8 < 12 — стоп")
         self.assertEqual([], self.прочитать(shb + idb + struct.pack("<II", 6, 13) + b"\0" * 9 + epb), "длина не кратна 4 — стоп")
-        self.assertEqual([], self.прочитать(shb + idb + epb[:-5]), "тело короче объявленного — стоп")
+        self.assertEqual([], self.прочитать(shb + idb + epb[:-5]), "тело короче объявленного — ждём дописи")
         self.assertEqual([], self.прочитать(shb + idb + epb[:-1]), "без хвостовой длины — оборван")
         короткий_shb = struct.pack("<II", 0x0A0D0D0A, 8) + struct.pack("<I", 0x1A2B3C4D)
         self.assertEqual([], self.прочитать(короткий_shb + idb + epb), "SHB короче своей магии")
@@ -430,9 +435,8 @@ class PcapngTests(unittest.TestCase):
         epb = блок(6, struct.pack(">IIIII", 0, 0, 1_500_000_000, len(пакет), len(пакет)) + пакет)
         путь = Path(tempfile.mkdtemp()) / "be.pcapng"
         путь.write_bytes(shb + idb + epb)
-        with open(путь, "rb") as f:
-            (время, данные, тип), = list(obrabotka.кадры_pcapng(f))
-        self.assertEqual((101, пакет), (тип, данные))
+        (время, данные, _, тип), = list(chtec.записи(путь))
+        self.assertEqual(("IP", пакет), (тип, данные))
         self.assertAlmostEqual(1.5, время)
         self.assertEqual([(10, b"ns")], [(р.порт_к, р.нагрузка) for _, р in obrabotka.датаграммы(путь)])
 
@@ -456,7 +460,22 @@ class ПараметрыTests(unittest.TestCase):
 
     def test_udp_по_умолчанию(self):
         п = self.п(режим="udp", порты="5004")
-        self.assertEqual(("0.0.0.0", [5004], 600, parametry.ПАКЕТОВ_ДО, 50 << 20), (п.адрес, п.порты, п.секунд, п.пакетов, п.байт))
+        self.assertEqual(("0.0.0.0", [5004], 600, 0, 50 << 20), (п.адрес, п.порты, п.секунд, п.пакетов, п.байт),
+                         "потолки настроек — пределы по умолчанию; пакетов — без предела")
+        п = проверить({"режим": "udp", "порты": "5004"})
+        self.assertEqual((0, 0, 0), (п.секунд, п.пакетов, п.байт), "без потолков и без пределов — захват без ограничений")
+        self.assertEqual((64 << 20, 100_000, 0, 0, True), (п.кусок_байт, п.кусок_пакетов, п.кусок_секунд, п.кольцо, п.на_лету))
+        п = проверить({"режим": "udp", "порты": "5004", "пределы": {"пакетов": 10 ** 12, "секунд": 86400 * 30},
+                       "куски": {"мегабайт": 16, "пакетов": 1000, "секунд": 60, "кольцо": 2}, "на_лету": False})
+        self.assertEqual((10 ** 12, 86400 * 30, 16 << 20, 1000, 60, 2, False),
+                         (п.пакетов, п.секунд, п.кусок_байт, п.кусок_пакетов, п.кусок_секунд, п.кольцо, п.на_лету))
+        self.assertEqual({"байт": 16 << 20, "пакетов": 1000, "секунд": 60, "кольцо": 2}, п.в_словарь()["куски"])
+        self.assertEqual(8 << 20, проверить({"режим": "udp", "порты": "1"}, кусок_до=8 << 20).кусок_байт,
+                         "кусок по умолчанию не больше предела анализатора")
+        for плохо in ({"мегабайт": 9}, {"пакетов": 999}, {"пакетов": 200_001}, {"секунд": 86401}, {"кольцо": 1},
+                      {"кольцо": 100_000}, [1]):
+            with self.assertRaises(ValueError, msg=плохо):
+                проверить({"режим": "udp", "порты": "1", "куски": плохо}, кусок_до=8 << 20)
         п = self.п(режим="udp", адрес="::1", порты=[9], пределы={"секунд": 5, "пакетов": 7, "мегабайт": 2}, имя="мой/захват\x01")
         self.assertEqual(("::1", 5, 7, 2 << 20, "мойзахват"), (п.адрес, п.секунд, п.пакетов, п.байт, п.имя))
 
@@ -1390,9 +1409,10 @@ class МенеджерTests(unittest.TestCase):
         self.assertEqual(("готово", "достигнут предел пакетов", 5), (с_["состояние"], с_["причина"], с_["пакетов"]))
         self.assertEqual({str(порт): [5, 10]}, с_["по_портам"])
         self.assertEqual(["127.0.0.1"], sorted({к.split(":")[0] for к in с_["источники"]}))
-        захват = прочитать_захват(self.м.файл(ид))
-        self.assertEqual([b"%02d" % i for i in range(5)], [zapis.разобрать_кадр(з.данные).нагрузка for з in захват.записи])
-        self.assertEqual(с_["файл_байт"], self.м.файл(ид).stat().st_size)
+        self.assertEqual([b"%02d" % i for i in range(5)], [zapis.разобрать_кадр(з.данные).нагрузка
+                                                            for з in записи_кусков(self.м, ид)])
+        self.assertEqual(с_["файл_байт"], размер_кусков(self.м, ид))
+        self.assertEqual((с_["файл_байт"], 1, 0), (с_["на_диске"], с_["кусков"], с_["кусков_удалено"]))
         ид2 = self.начать_udp(порт, пакетов=1)                  # порт освобождён
         self.м.остановить(ид2)
         self.assertEqual("остановлен по команде", self.м.состояние(ид2)["причина"])
@@ -1411,9 +1431,9 @@ class МенеджерTests(unittest.TestCase):
             time.sleep(0.002)
         с_ = self.дождаться_конца(ид)
         self.assertEqual("достигнут предел объёма", с_["причина"])
-        self.assertLessEqual(self.м.файл(ид).stat().st_size, 1 << 20)
-        self.assertGreater(self.м.файл(ид).stat().st_size, (1 << 20) - 70000)
-        self.assertEqual(с_["пакетов"], len(прочитать_захват(self.м.файл(ид)).записи))
+        self.assertLessEqual(размер_кусков(self.м, ид), 1 << 20)
+        self.assertGreater(размер_кусков(self.м, ид), (1 << 20) - 70000)
+        self.assertEqual(с_["пакетов"], len(записи_кусков(self.м, ид)))
 
     def test_скорость_по_отсчётам(self):
         self.assertEqual((0.0, 0.0), Менеджер.скорость([], 10.0, 0, 0))
@@ -1529,12 +1549,13 @@ class МенеджерTests(unittest.TestCase):
                                                            "начато": 1.0, "имя": "x"}), encoding="utf-8")
         м = Менеджер(self.папка)
         с_ = м.состояние(старый.name)
-        self.assertEqual(("прерван", "сервер перезапускался во время захвата"), (с_["состояние"], с_["причина"]))
+        self.assertEqual(("прерван", "сервер перезапускался во время захвата: записанное цело, у последнего куска "
+                          "нет итога"), (с_["состояние"], с_["причина"]))
         for плохой in ("../x", "20260101-000000-ABCDEF", ""):
             with self.assertRaises(KeyError):
                 м.состояние(плохой)
             with self.assertRaises(KeyError):
-                м.файл(плохой)
+                м.файлы(плохой)
             with self.assertRaises(KeyError):
                 м.удалить(плохой)
         for i in range(12):
@@ -1572,7 +1593,7 @@ class МенеджерTests(unittest.TestCase):
         self.assertEqual(("af_packet", 3, "достигнут предел пакетов"), (с_["способ"], с_["пакетов"], с_["причина"]))
         self.assertEqual("", с_["bpf"])
         self.assertGreater(с_["отфильтровано"], 0)
-        self.assertEqual(b"C0C1C2", obrabotka.нагрузка(self.м.файл(ид), порт, предел=1 << 20)[0])
+        self.assertEqual(b"C0C1C2", obrabotka.нагрузка(self.м.файлы(ид), порт, предел=1 << 20)[0])
         self.assertIsNone(next(к for к in self.м.карты()[0] if к["ид"] == "lo")["занята"])
 
     @unittest.skipUnless(путь_libpcap() and можно_af_packet(), "нужна libpcap и права")
@@ -1744,11 +1765,15 @@ class ЗахватСервераTests(unittest.TestCase):
         self.к = self.сеть.client
         self.settings = self.сеть.app.state.settings
         self.settings.capture_libpcap = "/нет/libpcap.so"
-        # Захватывает старший инженер: ниже этой должности захват не открывается никакой настройкой.
+        self.settings.capture_worker_process = False             # прогоны — потоком: быстрее и без процессов
+        self.settings.capture_disk_reserve_mb = 64
+        # Здесь захватывает старший инженер (настройка), по умолчанию — инженер и выше.
         self.settings.capture_min_role = "senior"
         self.сеть.repos.users.create("starshiy", "пароль123", "Старшинов С. С.", "senior")
         self.addCleanup(lambda: getattr(self.сеть.app.state, "zahvat_seti", None) and
                         self.сеть.app.state.zahvat_seti.остановить_все())
+        self.addCleanup(lambda: getattr(self.сеть.app.state, "progony", None) and
+                        self.сеть.app.state.progony.остановить_все())
         self.о = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.addCleanup(self.о.close)
 
@@ -1756,19 +1781,24 @@ class ЗахватСервераTests(unittest.TestCase):
         return [з.action for з in self.сеть.repos.audit.list()]
 
     def test_права_по_должностям(self):
-        self.assertEqual("lead", Settings().capture_min_role, "по умолчанию — начальник группы и выше")
+        self.assertEqual("engineer", Settings().capture_min_role, "по умолчанию — инженер и выше")
+        self.assertEqual((0, 0), (Settings().capture_max_mb, Settings().capture_max_seconds), "без потолков")
         self.сеть.login("engineer")
-        for роль in ("senior", "engineer"):
-            self.settings.capture_min_role = роль
-            ответ = self.к.get("/api/zahvat")
-            self.assertEqual(403, ответ.status_code, роль)
-            self.assertIn("Старший инженер", ответ.json()["error"], "engineer читается как senior")
+        self.settings.capture_min_role = "engineer"
+        self.assertEqual(200, self.к.get("/api/zahvat").status_code, "инженеру по умолчанию можно")
+        self.settings.capture_min_role = "senior"
+        ответ = self.к.get("/api/zahvat")
+        self.assertEqual(403, ответ.status_code)
+        self.assertIn("Старший инженер", ответ.json()["error"])
         self.сеть.login("starshiy")
         ответ = self.к.get("/api/zahvat-karty")
         self.assertEqual(200, ответ.status_code, ответ.text)
         данные = ответ.json()
         self.assertIn("udp", данные["sposoby"])
-        self.assertEqual({"секунд": 3600, "мегабайт": 200}, данные["potolki"])
+        self.assertEqual({"секунд": 0, "мегабайт": 0}, данные["potolki"])
+        self.assertEqual({"мегабайт": 64, "мегабайт_до": 200, "пакетов": 100_000, "пакетов_до": 200_000}, данные["kuski"])
+        self.assertEqual(64 << 20, данные["zapas"])
+        self.assertGreater(данные["svobodno"], 0)
         if Path("/sys/class/net/lo").exists():
             self.assertIn("lo", [к["ид"] for к in данные["karty"]])
         self.settings.capture_min_role = "lead"
@@ -1785,18 +1815,24 @@ class ЗахватСервераTests(unittest.TestCase):
         self.assertIn("неизвестная должность", self.к.get("/api/zahvat").json()["error"])
         for роль in ("guest", "engineer"):
             self.settings.capture_min_role = роль
-            self.assertEqual(200, self.к.get("/api/zahvat").status_code, f"{роль} читается как senior — начальнику группы можно")
+            self.assertEqual(200, self.к.get("/api/zahvat").status_code, f"{роль}: начальнику группы можно")
+        self.сеть.login("engineer")
+        self.settings.capture_min_role = "guest"
+        self.assertEqual(200, self.к.get("/api/zahvat").status_code, "guest в настройке читается как engineer")
         self.сеть.repos.users.create("gost", "пароль123", "Гостев Г. Г.", "guest")
         self.сеть.login("gost")
         self.assertEqual(403, self.к.get("/api/zahvat-karty").status_code)
 
     def test_плохие_входные_данные(self):
+        self.settings.capture_max_seconds, self.settings.capture_max_mb = 3600, 200     # потолки заданы
         self.сеть.login("starshiy")
         for тело in ({"режим": "udp", "порты": "0"}, {"режим": "udp", "порты": "65536"}, {"режим": "udp", "порты": "x"},
                      {"режим": "udp", "порты": "5000", "адрес": "300.1.1.1"}, {"режим": "никакой"},
                      {"режим": "udp", "порты": "5000", "пределы": {"секунд": 3601}},
                      {"режим": "udp", "порты": "5000", "пределы": {"мегабайт": 201}},
-                     {"режим": "карта", "карта": "lo", "фильтр": {"от": "1.2.3"}}):
+                     {"режим": "карта", "карта": "lo", "фильтр": {"от": "1.2.3"}},
+                     {"режим": "udp", "порты": "5000", "куски": {"мегабайт": 201}},
+                     {"режим": "udp", "порты": "5000", "куски": {"кольцо": 1}}):
             ответ = self.к.post("/api/zahvat", json=тело)
             self.assertEqual(400, ответ.status_code, тело)
             self.assertTrue(ответ.json()["error"])
@@ -1833,12 +1869,13 @@ class ЗахватСервераTests(unittest.TestCase):
         ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
         self.assertEqual(413, ответ.status_code)
         self.assertIn("больше допустимых для анализатора 0 МБ", ответ.json()["error"])
+        self.assertEqual(404, self.к.post(f"/api/zahvat/{ид}/to-pakety?chunk=5", json={}).status_code)
         self.settings.max_upload_mb = 200
         пакеты = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}).json()["id"]
         self.assertTrue(дождаться(lambda: self.к.get(f"/api/pakety/{пакеты}").json()["состояние"] in ("готово", "ошибка")))
         разбор = self.к.get(f"/api/pakety/{пакеты}").json()
-        self.assertEqual(("готово", "pcapng", 4, "Модем 2.pcapng", ""), (разбор["состояние"], разбор["формат"],
-                                                                         разбор["пакетов"], разбор["имя"], разбор["от"]))
+        self.assertEqual(("готово", "pcapng", 4, "Модем 2.pcapng", f"zahvat:{ид}#0"),
+                         (разбор["состояние"], разбор["формат"], разбор["пакетов"], разбор["имя"], разбор["от"]))
         уровни = [у["протокол"] for у in self.к.get(f"/api/pakety/{пакеты}/packet/1").json()["уровни"]]
         self.assertEqual(["Ethernet", "IPv4", "UDP"], уровни[:3])
         self.assertEqual(пакеты, self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}).json()["id"], "второй раз — тот же")
@@ -1920,15 +1957,13 @@ class ЗахватСервераTests(unittest.TestCase):
         self.assertEqual([], [т for т in settings_warnings(Settings.load()) if "capture" in т])
         self.assertTrue([т for т in settings_warnings(Settings.load(capture_min_role="x")) if "capture_min_role" in т])
         self.assertEqual([], [т for т in settings_warnings(Settings.load(capture_min_role="off")) if "capture" in т])
-        ниже = [т for т in settings_warnings(Settings.load(capture_min_role="engineer")) if "capture_min_role" in т]
+        ниже = [т for т in settings_warnings(Settings.load(capture_min_role="guest")) if "capture_min_role" in т]
         self.assertEqual(1, len(ниже))
-        self.assertIn("действует senior", ниже[0])
-        self.assertEqual([], [т for т in settings_warnings(Settings.load(capture_min_role="senior")) if "capture" in т])
-        крупнее = [т for т in settings_warnings(Settings.load(capture_max_mb=4096, max_upload_mb=200)) if "capture_max_mb" in т]
-        self.assertEqual(1, len(крупнее))
-        self.assertIn("не передать", крупнее[0])
-        self.assertEqual([], [т for т in settings_warnings(Settings.load(capture_max_mb=200, max_upload_mb=200))
-                              if "capture_max_mb" in т])
+        self.assertIn("действует engineer", ниже[0])
+        for роль in ("engineer", "senior", "lead"):
+            self.assertEqual([], [т for т in settings_warnings(Settings.load(capture_min_role=роль)) if "capture" in т])
+        self.assertFalse(места["progon"]["в_копию"])
+        self.assertTrue(места["dekodirovat_kak"]["в_копию"], "правила аналитиков — их труд")
 
     def test_менеджер_один_на_приложение(self):
         """Два первых запроса сразу после запуска — один менеджер (обработчики идут в пуле потоков)."""
@@ -1989,10 +2024,11 @@ class ЗахватСервераTests(unittest.TestCase):
         time.sleep(0.3)
         с_ = self.к.post(f"/api/zahvat/{ид}/stop", json={}).json()
         self.assertEqual("готово", с_["состояние"])
-        кадры = [zapis.разобрать_кадр(з.данные) for з in прочитать_захват(self.сеть.app.state.zahvat_seti.файл(ид)).записи]
+        кадры = [zapis.разобрать_кадр(з.данные) for з in записи_кусков(self.сеть.app.state.zahvat_seti, ид)]
         self.assertFalse([к for к in кадры if к.протокол == zapis.IP_TCP], "ни одного сегмента TCP сервера")
         self.assertIn(b"udp-same-port", [к.нагрузка for к in кадры], "UDP на тот же номер — пишется")
-        self.assertGreater(с_["отфильтровано"], 0)
+        # Отбор — программой (счётчик «отфильтровано») или BPF в ядре, если есть libpcap для сборки.
+        self.assertTrue(с_["отфильтровано"] > 0 or с_["bpf"], с_)
 
 
 NODE = shutil.which("node")

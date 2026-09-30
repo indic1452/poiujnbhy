@@ -1,8 +1,7 @@
 """Обработка захвата после остановки: какие порты UDP в нём есть и нагрузка порта — одним потоком.
 
-Файл читается поблочно (pcapng: SHB задаёт порядок байт, IDB — тип канала,
-EPB/SPB — пакеты; draft-ietf-opsawg-pcapng), без предела числа пакетов и без
-загрузки целиком в память — захват бывает в сотни мегабайт.
+Куски захвата читаются подряд и поблочно (chtec.py: pcap и pcapng), без предела
+числа пакетов и без загрузки целиком в память — захват идёт часами.
 
 Нагрузка порта — тела датаграмм UDP с этим портом получателя подряд, в
 порядке прихода; из каждой можно отбросить N байт заголовка или ровно
@@ -16,11 +15,11 @@ EPB/SPB — пакеты; draft-ietf-opsawg-pcapng), без предела чи�
 from __future__ import annotations
 
 import struct
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any
 
-from . import zapis
+from . import chtec, zapis
 
 #: Порядок номеров RTP: разница номеров меньше половины круга — вперёд (RFC 3550 §A.1).
 ПОЛКРУГА = 1 << 15
@@ -29,81 +28,38 @@ from . import zapis
 MAX_DROPOUT = 3000
 
 
-def опции_блока(тело: bytes, место: int, порядок: str) -> dict[int, bytes]:
-    """Опции блока pcapng (TLV: код u16, длина u16, значение с дополнением до 4) до opt_endofopt.
-
-    Значение режется по объявленной длине, но не дальше конца тела: испорченная
-    длина даёт короткое (или пустое) значение, а не чтение за концом. Повтор кода
-    — берётся первое значение.
-    """
-    итог: dict[int, bytes] = {}
-    while место + 4 <= len(тело):
-        код, дл = struct.unpack_from(порядок + "HH", тело, место)
-        if код == zapis.OPT_ENDOFOPT:
-            break
-        итог.setdefault(код, тело[место + 4:место + 4 + дл])
-        место += 4 + дл + (-дл % 4)
-    return итог
-
-
-def доля_секунды(if_tsresol: bytes) -> float:
-    """Единица времени интерфейса: if_tsresol — 10^-v, при старшем бите — 2^-(v & 0x7F); нет опции — 10^-6."""
-    if not if_tsresol:
-        return 1e-6
-    v = if_tsresol[0]
-    return 2.0 ** -(v & 0x7F) if v & 0x80 else 10.0 ** -v
-
-
-def кадры_pcapng(файл: BinaryIO) -> Iterator[tuple[float, bytes, int]]:
-    """(время, данные, тип канала) каждого пакета файла pcapng — по одному, потоком."""
-    порядок = "<"
-    каналы: list[tuple[int, float]] = []
-    while True:
-        голова = файл.read(8)
-        if len(голова) < 8:
-            return
-        if голова[:4] == b"\x0a\x0d\x0d\x0a":                 # SHB: тип одинаков при любом порядке байт
-            магия = файл.read(4)
-            порядок = "<" if магия == b"\x4d\x3c\x2b\x1a" else ">"
-            каналы = []
-            голова += магия
-        вид, длина = struct.unpack_from(порядок + "II", голова)
-        if длина < len(голова) + 4 or длина % 4:
-            return                                      # испорчен — дальше не читаем
-        тело = голова[8:] + файл.read(длина - len(голова) - 4)
-        if len(тело) + 12 < длина or len(файл.read(4)) < 4:
-            return                                      # оборван (захват ещё пишется)
-        if вид == zapis.БЛОК_IDB and len(тело) >= 8:
-            каналы.append((struct.unpack_from(порядок + "H", тело)[0],
-                           доля_секунды(опции_блока(тело, 8, порядок).get(zapis.IF_TSRESOL, b""))))
-        elif вид == zapis.БЛОК_EPB and len(тело) >= 20:
-            номер, старшие, младшие, записано, _ = struct.unpack_from(порядок + "IIIII", тело)
-            if номер < len(каналы):
-                тип, доля = каналы[номер]
-                yield ((старшие << 32) | младшие) * доля, тело[20:20 + записано], тип
-
-
-def _в_ethernet(данные: bytes, тип: int) -> bytes | None:
-    if тип == zapis.LINKTYPE_ETHERNET:
+def _в_ethernet(данные: bytes, канал: str) -> bytes | None:
+    if канал == "Ethernet":
         return данные
-    if тип == zapis.LINKTYPE_RAW:
+    if канал in ("IP", "IPv4", "IPv6"):
         return zapis.кадр_из_ip(данные)
     return None
 
 
-def датаграммы(путь: Path) -> Iterator[tuple[float, zapis.Сведения]]:
-    """Разобранные кадры UDP захвата (кадры других протоколов и уровней пропускаются)."""
-    with open(путь, "rb") as файл:
-        for время, данные, тип in кадры_pcapng(файл):
-            кадр = _в_ethernet(данные, тип)
-            if кадр is None:
-                continue
-            с = zapis.разобрать_кадр(кадр)
-            if с.протокол == zapis.IP_UDP and с.порт_к >= 0:
-                yield время, с
+def _пути(пути: Path | Iterable[Path]) -> list[Path]:
+    return [Path(пути)] if isinstance(пути, (str, Path)) else [Path(п) for п in пути]
 
 
-def порты(путь: Path, предел: int = 64) -> list[dict[str, Any]]:
+def датаграммы(пути: Path | Iterable[Path]) -> Iterator[tuple[float, zapis.Сведения]]:
+    """Разобранные кадры UDP захвата — по всем кускам подряд (кадры других протоколов и
+    уровней пропускаются; файла нет — кольцо его уже удалило — пропускается)."""
+    for путь in _пути(пути):
+        try:
+            чтец = chtec.ЧтецФайла(путь)
+        except FileNotFoundError:
+            continue
+        with чтец:
+            while (запись := чтец.следующий()) is not None:
+                время, данные, _, канал = запись
+                кадр = _в_ethernet(данные, канал)
+                if кадр is None:
+                    continue
+                с = zapis.разобрать_кадр(кадр)
+                if с.протокол == zapis.IP_UDP and с.порт_к >= 0:
+                    yield время, с
+
+
+def порты(путь: Path | Iterable[Path], предел: int = 64) -> list[dict[str, Any]]:
     """Порты получателя UDP в захвате: датаграмм, байт нагрузки, отправители (до 8)."""
     итог: dict[int, dict[str, Any]] = {}
     for _, с in датаграммы(путь):
@@ -160,7 +116,7 @@ def расширить_номера(номера: list[int]) -> list[int]:
     return итог
 
 
-def нагрузка(путь: Path, порт: int, *, срез: int | str = 0, упорядочить: bool = False,
+def нагрузка(путь: Path | Iterable[Path], порт: int, *, срез: int | str = 0, упорядочить: bool = False,
              источник: str = "", предел: int) -> tuple[bytes, list[str], dict[str, Any]]:
     """Нагрузка порта одним потоком байт, заметки словами и сводка (счётчики)."""
     по_rtp = срез == "rtp"

@@ -1013,6 +1013,10 @@ def проверить_как(правила: dict[str, str]) -> dict[str, str]:
         raise ValueError(f"правил «разбирать как» не больше {ПРАВИЛ_ДО}")
     итог = {}
     for ключ, имя in правила.items():
+        if ключ == "правила":               # «Декодировать как» по полям и протоколам — dekodirovat_kak.py
+            from .dekodirovat_kak import проверить_правила  # noqa: PLC0415
+            итог[ключ] = проверить_правила(имя)
+            continue
         м = re.fullmatch(r"(tcp|udp):(\d{1,5})", str(ключ).strip().lower())
         if not м or not 1 <= int(м.group(2)) <= 65535:
             raise ValueError(f"«{ключ}»: нужно tcp:ПОРТ или udp:ПОРТ, порт 1–65535")

@@ -400,22 +400,28 @@ class Settings:
     session_ttl_hours: int = 12
     max_upload_mb: int = 200
 
-    # -- захват с сети (страница «Захват с сети») ---------------------------
+    # -- захват с сети (страница «Захват с сети») и прогон захватов ---------
     #: С какой должности можно захватывать трафик машины-сервера: owner, head,
-    #: deputy, lead (по умолчанию — начальник группы и выше), senior или off —
-    #: захват выключен для всех. Ниже старшего инженера не опускается: engineer
-    #: читается как senior (захват с карты видит трафик других людей). Гостю
-    #: захват не доступен никогда. Собственный трафик сервера (его порты TCP)
-    #: в захват не попадает при любой должности, петлю снимает только создатель.
-    capture_min_role: str = "lead"
-    #: Потолки одного захвата: объём файла (МБ) и длительность (с). Меньше —
-    #: можно задать на странице, больше — нельзя.
-    capture_max_mb: int = 200
-    capture_max_seconds: int = 3600
+    #: deputy, lead, senior, engineer (по умолчанию — инженер и выше) или off —
+    #: захват выключен для всех. Гостю захват не доступен никогда. Собственный
+    #: трафик сервера (его порты TCP) в захват не попадает при любой должности,
+    #: петлю снимает только создатель.
+    capture_min_role: str = "engineer"
+    #: Потолки одного захвата: объём (МБ) и длительность (с). 0 — без потолка:
+    #: захват идёт часами и сутками, пока его не остановят или пока на диске
+    #: есть место. Меньше потолка можно задать на странице, больше — нельзя.
+    capture_max_mb: int = 0
+    capture_max_seconds: int = 0
+    #: Запас свободного места на диске, МБ: меньше — захват не начинается, а
+    #: идущий честно останавливается (записанное остаётся целым).
+    capture_disk_reserve_mb: int = 1024
     #: Путь к библиотеке захвата, если она не на обычном месте: wpcap.dll
     #: Npcap (по умолчанию %SystemRoot%\System32\Npcap\wpcap.dll) или
     #: libpcap.so. Пусто — искать самим.
     capture_libpcap: str = ""
+    #: Прогон захвата — отдельным процессом (не отнимает время у приёма и у
+    #: страниц). false — потоком в процессе сервера.
+    capture_worker_process: bool = True
 
     def __post_init__(self) -> None:
         for name in ("data_dir", "db_path", "library_dir", "upload_dir", "export_dir",
@@ -524,7 +530,12 @@ class Settings:
         # Захваты с сети — сырые записи трафика до обработки: большие и разовые, а всё
         # нужное из них уходит в «Пакеты» и в сессии потоков — в копию не идут.
         места.append({"имя": "zahvat", "путь": str(корень / "zahvat"), "папка": True,
-                      "в_копию": False, "что": "захваты с сети до обработки (pcapng)"})
+                      "в_копию": False, "что": "захваты с сети до обработки (куски pcapng)"})
+        места.append({"имя": "progon", "путь": str(корень / "progon"), "папка": True,
+                      "в_копию": False, "что": "прогоны захватов: ход и выходные данные — пересчитаются"})
+        # Правила «Декодировать как» — выбор аналитиков, пересчитать не из чего: в копию.
+        места.append({"имя": "dekodirovat_kak", "путь": str(корень / "dekodirovat_kak"), "папка": True,
+                      "в_копию": True, "что": "правила «Декодировать как» каждого человека"})
         # Матрицы LDPC инженеры вставляют руками из стандартов — это труд,
         # и пересчитать его не из чего: в копию.
         места.append({"имя": "ldpc", "путь": str(корень / "ldpc"), "папка": True,
@@ -562,26 +573,19 @@ def settings_warnings(settings: Settings) -> list[str]:
         troubles.append(
             "реранкер включён, а смысловой поиск выключен: переупорядочивать "
             "будет только то, что нашлось словами. Включите embed_enabled")
-    from .store.models import ROLE_RANK, ROLES  # noqa: PLC0415 — config не тянет модели при импорте
+    from .store.models import ROLES  # noqa: PLC0415 — config не тянет модели при импорте
     роль = (settings.capture_min_role or "").strip().lower()
     if роль not in ROLES and роль != "off":
         troubles.append(
             f"capture_min_role = «{settings.capture_min_role}» — такой должности нет: захват с "
-            f"сети закрыт для всех. Допустимо: {', '.join(r for r in ROLES if ROLE_RANK[r] >= ROLE_RANK[CAPTURE_ROLE_FLOOR])} или off")
-    elif роль in ROLES and ROLE_RANK[роль] < ROLE_RANK[CAPTURE_ROLE_FLOOR]:
-        troubles.append(
-            f"capture_min_role = «{settings.capture_min_role}» ниже старшего инженера: захват с карты "
-            f"видит трафик других людей, поэтому действует {CAPTURE_ROLE_FLOOR} (старший инженер и выше)")
-    if settings.capture_max_mb > settings.max_upload_mb:
-        troubles.append(
-            f"capture_max_mb = {settings.capture_max_mb} больше max_upload_mb = {settings.max_upload_mb}: "
-            f"захват крупнее {settings.max_upload_mb} МБ в анализатор пакетов не передать — только скачать. "
-            f"Уравняйте их или поднимите max_upload_mb")
+            f"сети закрыт для всех. Допустимо: {', '.join(r for r in ROLES if r != 'guest')} или off")
+    elif роль == "guest":
+        troubles.append("capture_min_role = guest: гостю захват не доступен никогда — действует engineer")
     return troubles
 
 
-#: Ниже этой должности захват с сети не открывается никакой настройкой.
-CAPTURE_ROLE_FLOOR = "senior"
+#: Ниже этой должности захват с сети не открывается никакой настройкой (гостю — никогда).
+CAPTURE_ROLE_FLOOR = "engineer"
 
 
 def capture_own_ports(settings: Settings) -> tuple[int, ...]:

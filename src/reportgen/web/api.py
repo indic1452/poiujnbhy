@@ -2194,9 +2194,13 @@ def pakety_protocols(request: Request) -> dict[str, Any]:
 def pakety_decode_as(request: Request, cap_id: str) -> dict[str, Any]:
     """Задать правила «разбирать как» ({"udp:5000": "DNS"}) и разобрать захват заново."""
     user = require_user(request)
-    _захват_или_404(request, user, cap_id)
+    состояние = _захват_или_404(request, user, cap_id)
+    правила = dict(_body(request).get("rules") or {})
+    # Правила «Декодировать как» (по полям и протоколам) задаются своим окном — порты их не стирают.
+    if "правила" not in правила and (состояние.get("как") or {}).get("правила"):
+        правила["правила"] = состояние["как"]["правила"]
     try:
-        правила = _pakety(request).разбирать_как(cap_id, _body(request).get("rules") or {})
+        правила = _pakety(request).разбирать_как(cap_id, правила)
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 409 if "разбирается" in str(ошибка) else 400) from None
     return {"rules": правила}
@@ -2239,7 +2243,7 @@ def pakety_upload(request: Request, file: UploadFile = File(...)) -> dict[str, A
             b"\x0a\x0d\x0d\x0a") else данные)
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    ид = _pakety(request).создать(владелец=user.id, имя=name, данные=данные)
+    ид = _pakety(request).создать(владелец=user.id, имя=name, данные=данные, как=_как_человека(request, user))
     _repos(request).audit.log("pakety.upload", user=user, object_type="pakety", object_id=ид,
                               details={"name": name, "bytes": len(данные)})
     return {"id": ид}
@@ -2509,8 +2513,8 @@ def pakety_ask(request: Request, cap_id: str) -> dict[str, Any]:
 _КОДЫ_ЗАХВАТА = {"права": 403, "занято": 409, "адрес": 400, "нет": 400, "ошибка": 400}
 
 
-#: Замок создания менеджера захватов: обработчики FastAPI идут в пуле потоков, и два первых
-#: запроса сразу после запуска иначе создали бы два менеджера — каждый со своими занятыми
+#: Замок создания менеджеров захватов и прогонов: обработчики FastAPI идут в пуле потоков, и два
+#: первых запроса сразу после запуска иначе создали бы два менеджера — каждый со своими занятыми
 #: картами и портами, а захват «потерянного» нельзя было бы ни увидеть, ни остановить.
 _ZAHVAT_SETI_LOCK = threading.Lock()
 
@@ -2526,10 +2530,42 @@ def _zahvat_seti(request: Request):
             from ..setevoy.zahvat_seti.menedzher import Менеджер  # noqa: PLC0415
             settings = _settings(request)
             менеджер = Менеджер(Path(settings.data_dir) / "zahvat", путь_libpcap=settings.capture_libpcap,
-                                потолок_секунд=max(1, int(settings.capture_max_seconds)),
-                                потолок_байт=max(1, int(settings.capture_max_mb)) << 20)
+                                потолок_секунд=max(0, int(settings.capture_max_seconds)),
+                                потолок_байт=max(0, int(settings.capture_max_mb)) << 20,
+                                запас_диска=max(0, int(settings.capture_disk_reserve_mb)) << 20,
+                                кусок_до=max(1, int(settings.max_upload_mb)) << 20)
             request.app.state.zahvat_seti = менеджер
     return менеджер
+
+
+def _progony(request: Request):
+    """Прогоны захватов — один менеджер на приложение, папка progon в data_dir."""
+    менеджер = getattr(request.app.state, "progony", None)
+    if менеджер is not None:
+        return менеджер
+    with _ZAHVAT_SETI_LOCK:
+        менеджер = getattr(request.app.state, "progony", None)
+        if менеджер is None:
+            from ..setevoy.zahvat_seti.progon import Прогоны  # noqa: PLC0415
+            settings = _settings(request)
+            менеджер = Прогоны(Path(settings.data_dir) / "progon", процессом=bool(settings.capture_worker_process))
+            request.app.state.progony = менеджер
+    return менеджер
+
+
+def _правила_людей(request: Request):
+    менеджер = getattr(request.app.state, "dekodirovat_kak", None)
+    if менеджер is None:
+        from ..setevoy.dekodirovat_kak import ПравилаЛюдей  # noqa: PLC0415
+        менеджер = ПравилаЛюдей(Path(_settings(request).data_dir) / "dekodirovat_kak")
+        request.app.state.dekodirovat_kak = менеджер
+    return менеджер
+
+
+def _как_человека(request: Request, user, как: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Правила «разбирать как» захвата плюс включённые правила «Декодировать как» человека."""
+    from ..setevoy.dekodirovat_kak import с_правилами  # noqa: PLC0415
+    return с_правилами(как, _правила_людей(request).прочитать(user.id))
 
 
 def _право_захвата(request: Request) -> User:
@@ -2543,7 +2579,7 @@ def _право_захвата(request: Request) -> User:
     роль = (_settings(request).capture_min_role or "").strip().lower()
     причина = ""
     if роль in ROLE_RANK and ROLE_RANK[роль] < ROLE_RANK[CAPTURE_ROLE_FLOOR]:
-        роль = CAPTURE_ROLE_FLOOR               # ниже старшего инженера не опускается (settings_warnings)
+        роль = CAPTURE_ROLE_FLOOR               # гостю — никогда (settings_warnings)
     if роль == "off":
         причина = "захват с сети выключен в настройках сервера (capture_min_role = off)"
     elif роль not in ROLE_RANK:
@@ -2575,6 +2611,8 @@ def _захват_сети_или_404(request: Request, user, ид: str, *, св
         raise ServiceError(f"захват пользователя {состояние.get('кто') or 'другого человека'}: вам — только "
                            "просмотр и остановка, обрабатывает автор", 403)
     состояние["можно_обработать"] = свой_захват
+    if свой_захват:
+        состояние["прогон"] = _progony(request).найти(user.id, {"вид": "zahvat", "ид": ид})
     return состояние
 
 
@@ -2587,8 +2625,10 @@ def _законченный(request: Request, user, ид: str) -> dict[str, Any]
 
 @router.get("/zahvat-karty")
 def zahvat_cards(request: Request) -> dict[str, Any]:
-    """Сетевые карты сервера, доступные способы захвата с причинами и потолки пределов."""
+    """Сетевые карты сервера, доступные способы захвата с причинами, потолки и настройки кусков."""
     import sys  # noqa: PLC0415
+
+    from ..setevoy.zahvat_seti import parametry  # noqa: PLC0415
     user = _право_захвата(request)
     менеджер = _zahvat_seti(request)
     карты, заметки = менеджер.карты()
@@ -2598,7 +2638,11 @@ def zahvat_cards(request: Request) -> dict[str, Any]:
             "петлю снимает только создатель системы (на ней внутренний трафик сервера)"
     return {"karty": карты, "zametki": заметки, "sposoby": менеджер.возможности(),
             "idut": менеджер.идущие(), "platforma": "windows" if sys.platform == "win32" else sys.platform,
-            "potolki": {"секунд": менеджер.потолок_секунд, "мегабайт": менеджер.потолок_байт >> 20}}
+            "potolki": {"секунд": менеджер.потолок_секунд, "мегабайт": менеджер.потолок_байт >> 20},
+            "kuski": {"мегабайт": min(parametry.КУСОК_МБ, менеджер.кусок_до >> 20 or parametry.КУСОК_МБ),
+                      "мегабайт_до": менеджер.кусок_до >> 20, "пакетов": parametry.КУСОК_ПАКЕТОВ,
+                      "пакетов_до": parametry.КУСОК_ПАКЕТОВ_ДО},
+            "svobodno": менеджер.свободно(), "zapas": менеджер.запас_диска}
 
 
 @router.get("/zahvat")
@@ -2607,12 +2651,39 @@ def zahvat_list(request: Request) -> dict[str, Any]:
     return {"items": _zahvat_seti(request).список(user.id)}
 
 
+def _задание_прогона(request: Request, user, источник: dict[str, Any], *, скорость: float,
+                     выход: dict[str, Any] | None) -> dict[str, Any]:
+    """Задание прогона: откуда читать, правила разбора человека, скорость, выходные данные."""
+    как: dict[str, Any] = {}
+    if источник["вид"] == "zahvat":
+        откуда = {"вид": "захват", "папка": str(_zahvat_seti(request).папка / источник["ид"])}
+    else:
+        состояние = _захват_или_404(request, user, источник["ид"])
+        как = {к: з for к, з in (состояние.get("как") or {}).items() if к != "правила"}
+        откуда = {"вид": "файлы", "файлы": [str(_pakety(request).папка / источник["ид"] / "исходник")]}
+    полное = _как_человека(request, user, как)
+    return {"источник": откуда, "скорость": скорость, "выход": выход,
+            "как": {к: з for к, з in полное.items() if к != "правила"}, "правила": полное.get("правила") or []}
+
+
+def _начать_прогон(request: Request, user, источник: dict[str, Any], *, скорость: float,
+                   выход: dict[str, Any] | None, имя: str) -> str:
+    задание = _задание_прогона(request, user, источник, скорость=скорость, выход=выход)
+    try:
+        return _progony(request).начать(владелец=user.id, кто=short_name(user.full_name) or user.login,
+                                        источник=источник, задание=задание, имя=имя)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 409) from None
+
+
 @router.post("/zahvat")
 def zahvat_start(request: Request) -> dict[str, Any]:
-    """Начать захват: {режим: udp|карта, адрес, порты, группа, карта, способ, фильтр, пределы, имя}.
+    """Начать захват: {режим: udp|карта, адрес, порты, группа, карта, способ, фильтр, пределы, куски,
+    на_лету, имя}. Пределы — только если заданы: без них захват идёт, пока его не остановят.
 
     Порты TCP самого сервера и его служб (capture_own_ports) из захвата с карты вычёркиваются
-    всегда; петлю снимает только создатель системы.
+    всегда; петлю снимает только создатель системы. ``на_лету`` — прогон захвата следом за
+    записью: дерево протоколов и статистика растут по ходу захвата.
     """
     from ..config import capture_own_ports  # noqa: PLC0415
     from ..setevoy.zahvat_seti.istochniki import ОшибкаЗахвата  # noqa: PLC0415
@@ -2622,7 +2693,7 @@ def zahvat_start(request: Request) -> dict[str, Any]:
     тело = _body(request)
     try:
         параметры = проверить(тело, потолок_секунд=менеджер.потолок_секунд, потолок_байт=менеджер.потолок_байт,
-                              исключить_порты=capture_own_ports(_settings(request)))
+                              исключить_порты=capture_own_ports(_settings(request)), кусок_до=менеджер.кусок_до)
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     try:
@@ -2634,7 +2705,14 @@ def zahvat_start(request: Request) -> dict[str, Any]:
         raise ServiceError(str(ошибка), _КОДЫ_ЗАХВАТА.get(ошибка.вид, 400)) from None
     _repos(request).audit.log("zahvat.start", user=user, object_type="zahvat", object_id=ид,
                               details=параметры.в_словарь())
-    return {"id": ид}
+    ответ: dict[str, Any] = {"id": ид, "progon": None}
+    if параметры.на_лету:
+        try:
+            ответ["progon"] = _начать_прогон(request, user, {"вид": "zahvat", "ид": ид}, скорость=0, выход=None,
+                                             имя="на лету")
+        except ServiceError as ошибка:
+            ответ["progon_error"] = f"обработка на лету не начата: {ошибка}"
+    return ответ
 
 
 @router.get("/zahvat/{cap_id}")
@@ -2653,61 +2731,142 @@ def zahvat_stop(request: Request, cap_id: str) -> dict[str, Any]:
     return _захват_сети_или_404(request, user, cap_id)
 
 
+def _куски_кратко(куски: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [{к: з for к, з in кусок.items() if к != "путь"} for кусок in куски]
+
+
+@router.get("/zahvat/{cap_id}/chunks")
+def zahvat_chunks(request: Request, cap_id: str, offset: int = 0, limit: int = 200) -> dict[str, Any]:
+    """Куски захвата (постранично): номер, пакетов, байт, время, есть ли файл, в «Пакетах» ли."""
+    user = _право_захвата(request)
+    состояние = _захват_сети_или_404(request, user, cap_id)
+    куски = _zahvat_seti(request).куски(cap_id)
+    offset, limit = max(0, int(offset)), max(1, min(1000, int(limit)))
+    в_пакетах = состояние.get("в_пакетах_куски") or {}
+    страница = _куски_кратко(куски[offset:offset + limit])
+    for к in страница:
+        к["в_пакетах"] = в_пакетах.get(str(к["кусок"]))
+    return {"items": страница, "total": len(куски), "offset": offset}
+
+
 @router.get("/zahvat/{cap_id}/ports")
 def zahvat_ports(request: Request, cap_id: str) -> dict[str, Any]:
     """Порты получателя UDP в захвате — для выбора нагрузки в сессию."""
     from ..setevoy.zahvat_seti.obrabotka import порты  # noqa: PLC0415
     user = _право_захвата(request)
     _законченный(request, user, cap_id)
-    return {"ports": порты(_zahvat_seti(request).файл(cap_id))}
+    return {"ports": порты(_zahvat_seti(request).файлы(cap_id))}
 
 
 @router.get("/zahvat/{cap_id}/file")
-def zahvat_file(request: Request, cap_id: str) -> FileResponse:
+def zahvat_file(request: Request, cap_id: str, chunk: int | None = None) -> Response:
+    """Захват одним файлом pcapng (куски подряд — склейка файлов pcapng тоже pcapng) или один кусок."""
     user = _право_захвата(request)
     состояние = _законченный(request, user, cap_id)
-    путь = _zahvat_seti(request).файл(cap_id)
+    файлы = _zahvat_seti(request).файлы(cap_id)
+    if chunk is not None:
+        файлы = [ф for ф in файлы if ф.stem.isdigit() and int(ф.stem) == chunk]
+        if not файлы:
+            raise ServiceError("такого куска нет (или кольцо его уже удалило)", 404)
+    if not файлы:
+        raise ServiceError("файлов захвата нет", 404)
+    всего = sum(ф.stat().st_size for ф in файлы)
     # Выгрузка сырого трафика с машины — самое чувствительное действие захвата: в журнал.
     _repos(request).audit.log("zahvat.file", user=user, object_type="zahvat", object_id=cap_id,
-                              details={"bytes": путь.stat().st_size, "mode": состояние.get("режим"),
+                              details={"bytes": всего, "chunk": chunk, "mode": состояние.get("режим"),
                                        "card": состояние.get("карта"), "ports": состояние.get("порты"),
                                        "filter": состояние.get("фильтр")})
-    return _file_reply(путь, _safe_name(состояние["имя"]) + ".pcapng")
+    имя = _safe_name(состояние["имя"]) + (f" — кусок {chunk + 1}" if chunk is not None else "") + ".pcapng"
+    if len(файлы) == 1:
+        return _file_reply(файлы[0], имя)
+
+    def куски_подряд():
+        for ф in файлы:
+            with suppress(OSError), open(ф, "rb") as файл:
+                while блок := файл.read(1 << 20):
+                    yield блок
+
+    return StreamingResponse(куски_подряд(), media_type="application/octet-stream",
+                             headers={"Content-Disposition": _disposition(имя), "X-Content-Type-Options": "nosniff"})
+
+
+#: Сколько кусков одного захвата держать открытыми в «Пакетах» (остальные — по запросу заново).
+_КУСКОВ_В_ПАКЕТАХ = 3
 
 
 @router.post("/zahvat/{cap_id}/to-pakety")
-def zahvat_to_pakety(request: Request, cap_id: str) -> dict[str, Any]:
-    """Захват — в анализатор пакетов (хранилище «Пакеты»): разбор там же, в фоне."""
+def zahvat_to_pakety(request: Request, cap_id: str, chunk: int = 0) -> dict[str, Any]:
+    """Кусок захвата — в анализатор пакетов (хранилище «Пакеты»): многофайловый захват открывается
+    по кускам (страницами), разбор — в фоне, с правилами «Декодировать как» человека."""
     user = _право_захвата(request)
     состояние = _законченный(request, user, cap_id)
-    прежний = состояние.get("в_пакетах")
+    куски = _zahvat_seti(request).куски(cap_id)
+    кусок = next((к for к in куски if к["кусок"] == chunk), None)
+    if кусок is None or not кусок["есть"]:
+        raise ServiceError("такого куска нет (или кольцо его уже удалило)", 404)
+    в_пакетах: dict[str, str] = dict(состояние.get("в_пакетах_куски") or {})
+    прежний = в_пакетах.get(str(chunk))
     if прежний:
         try:
             if _pakety(request).прочитать(прежний).get("владелец") == user.id:
                 return {"id": прежний}
         except KeyError:
             pass
-    путь = _zahvat_seti(request).файл(cap_id)
-    размер = путь.stat().st_size
+    размер = кусок["путь"].stat().st_size
     предел = _settings(request).max_upload_mb
     if размер > предел << 20:
-        # Тот же предел, что у загрузки в «Пакеты»: анализатор читает захват в память целиком.
-        raise ServiceError(f"захват {размер >> 20} МБ больше допустимых для анализатора {предел} МБ — "
-                           "скачайте pcapng или снимите захват с меньшим пределом объёма", 413)
-    ид = _pakety(request).создать(владелец=user.id, имя=_safe_name(состояние["имя"]) + ".pcapng", путь=путь)
-    _zahvat_seti(request).отметить(cap_id, в_пакетах=ид)
+        raise ServiceError(f"кусок {размер >> 20} МБ больше допустимых для анализатора {предел} МБ — скачайте его "
+                           "или снимайте захват с куском поменьше", 413)
+    номер = куски.index(кусок)
+    имя = _safe_name(состояние["имя"]) + (f" — кусок {chunk + 1} из {len(куски)}" if len(куски) > 1 else "") + ".pcapng"
+    ид = _pakety(request).создать(владелец=user.id, имя=имя, путь=кусок["путь"], от=f"zahvat:{cap_id}#{chunk}",
+                                  как=_как_человека(request, user))
+    в_пакетах[str(chunk)] = ид
+    # Держать в «Пакетах» не больше нескольких кусков одного захвата: прочие открываются заново.
+    while len(в_пакетах) > _КУСКОВ_В_ПАКЕТАХ:
+        старый_кусок = next(iter(в_пакетах))
+        with suppress(KeyError, OSError):
+            _pakety(request).удалить(в_пакетах[старый_кусок])
+        del в_пакетах[старый_кусок]
+    _zahvat_seti(request).отметить(cap_id, в_пакетах_куски=в_пакетах, в_пакетах=ид)
     _repos(request).audit.log("zahvat.pakety", user=user, object_type="zahvat", object_id=cap_id,
-                              details={"pakety": ид, "bytes": размер})
+                              details={"pakety": ид, "chunk": chunk, "bytes": размер, "index": номер})
     return {"id": ид}
+
+
+def _в_сессию(request: Request, user, session_id: str, поток: bytes, *, имя: str, происхождение: list[str],
+              порядок: str, analyze: Any) -> tuple[str, bool]:
+    """Байты — битовым потоком в сессию потоков (как «Добавить файлы»): порядок бит, узел, аудит."""
+    from ..potok import rastr  # noqa: PLC0415
+    if порядок == "auto":
+        определено = rastr.порядок_бит(поток)
+        младший = определено["порядок"] == "младший"
+        происхождение.append("порядок бит в байте определён: " + определено["причина"])
+    else:
+        младший = порядок == "lsb"
+        происхождение.append("порядок бит в байте задан: " + ("младший" if младший else "старший") + " бит байта первым")
+    if младший:
+        поток = rastr.развернуть_биты(поток)
+    ид = _potok(request).создать(владелец=user.id, имя=_safe_name(имя), данные=поток, профиль="обычно",
+                                 разбирать=str(analyze or "") in ("1", "true", "True", "да"),
+                                 происхождение=происхождение, сессия=session_id)
+    _sessii(request).тронуть(session_id)
+    return ид, младший
+
+
+def _порядок_бит(тело: dict[str, Any]) -> str:
+    порядок = str(тело.get("bit_order") or "msb").strip().lower()
+    if порядок not in ("auto", "msb", "lsb"):
+        raise ServiceError("порядок бит в байте: auto, msb или lsb", 400)
+    return порядок
 
 
 @router.post("/zahvat/{cap_id}/to-session")
 def zahvat_to_session(request: Request, cap_id: str) -> dict[str, Any]:
-    """Нагрузка порта UDP — битовым потоком в сессию потоков.
+    """Нагрузка порта UDP — битовым потоком в сессию потоков (по всем кускам захвата).
 
     Тело: {session, port, cut: число байт или "rtp", rtp_order, source, bit_order: msb|lsb|auto, analyze}.
     """
-    from ..potok import rastr  # noqa: PLC0415
     from ..setevoy.zahvat_seti.obrabotka import нагрузка  # noqa: PLC0415
     from ..setevoy.zahvat_seti.parametry import адрес_ip, целое  # noqa: PLC0415
     user = _право_захвата(request)
@@ -2722,30 +2881,16 @@ def zahvat_to_session(request: Request, cap_id: str) -> dict[str, Any]:
         источник = адрес_ip(тело.get("source"), "отправитель")
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    порядок = str(тело.get("bit_order") or "msb").strip().lower()
-    if порядок not in ("auto", "msb", "lsb"):
-        raise ServiceError("порядок бит в байте: auto, msb или lsb", 400)
+    порядок = _порядок_бит(тело)
     settings = _settings(request)
-    поток, заметки, сводка = нагрузка(_zahvat_seti(request).файл(cap_id), порт, срез=срез,
+    поток, заметки, сводка = нагрузка(_zahvat_seti(request).файлы(cap_id), порт, срез=срез,
                                       упорядочить=bool(тело.get("rtp_order")), источник=источник,
                                       предел=settings.max_upload_mb << 20)
     if not поток:
         raise ServiceError(f"у порта {порт} нет нагрузки: " + "; ".join(заметки), 400)
-    происхождение = [f"захват с сети «{состояние['имя']}»"] + заметки
-    if порядок == "auto":
-        определено = rastr.порядок_бит(поток)
-        младший = определено["порядок"] == "младший"
-        происхождение.append("порядок бит в байте определён: " + определено["причина"])
-    else:
-        младший = порядок == "lsb"
-        происхождение.append("порядок бит в байте задан: " + ("младший" if младший else "старший") + " бит байта первым")
-    if младший:
-        поток = rastr.развернуть_биты(поток)
-    имя = _safe_name(f"{состояние['имя']} — UDP {порт}.bin")
-    ид = _potok(request).создать(владелец=user.id, имя=имя, данные=поток, профиль="обычно",
-                                 разбирать=str(тело.get("analyze") or "") in ("1", "true", "True", "да"),
-                                 происхождение=происхождение, сессия=session_id)
-    _sessii(request).тронуть(session_id)
+    ид, младший = _в_сессию(request, user, session_id, поток, имя=f"{состояние['имя']} — UDP {порт}.bin",
+                            происхождение=[f"захват с сети «{состояние['имя']}»"] + заметки, порядок=порядок,
+                            analyze=тело.get("analyze"))
     _repos(request).audit.log("zahvat.session", user=user, object_type="zahvat", object_id=cap_id,
                               details={"session": session_id, "job": ид, "port": порт, "cut": срез,
                                        "bytes": len(поток), "datagrams": сводка["взято"]})
@@ -2757,9 +2902,238 @@ def zahvat_to_session(request: Request, cap_id: str) -> dict[str, Any]:
 def zahvat_delete(request: Request, cap_id: str) -> dict[str, Any]:
     user = _право_захвата(request)
     _законченный(request, user, cap_id)
+    прогоны = _progony(request)
+    прогон = прогоны.найти(user.id, {"вид": "zahvat", "ид": cap_id})
+    if прогон:
+        прогоны.остановить(прогон)
     _zahvat_seti(request).удалить(cap_id)
     _repos(request).audit.log("zahvat.delete", user=user, object_type="zahvat", object_id=cap_id)
     return {"ok": True}
+
+
+# -- прогон захвата: старт, пауза, стоп, сначала, скорость, выходные данные ------------------
+
+def _источник_прогона(request: Request, user, данные: Any) -> dict[str, Any]:
+    """{вид: pakety|zahvat, ид} — и проверка, что источник этого человека."""
+    if not isinstance(данные, dict):
+        raise ServiceError("источник прогона: {вид: pakety или zahvat, ид}", 400)
+    вид, ид = str(данные.get("вид") or ""), str(данные.get("ид") or "")
+    if вид == "zahvat":
+        _право_захвата(request)
+        _захват_сети_или_404(request, user, ид, свой=True)
+    elif вид == "pakety":
+        _захват_или_404(request, user, ид)
+    else:
+        raise ServiceError("источник прогона: pakety (захват «Пакетов») или zahvat (захват с сети)", 400)
+    return {"вид": вид, "ид": ид}
+
+
+def _прогон_или_404(request: Request, user, ид: str) -> dict[str, Any]:
+    try:
+        состояние = _progony(request).состояние(ид)
+    except KeyError:
+        raise ServiceError("прогон не найден", 404) from None
+    if состояние.get("владелец") != user.id:
+        raise ServiceError("прогон не найден", 404)
+    return состояние
+
+
+def _выход_и_скорость(тело: dict[str, Any]) -> tuple[float, dict[str, Any] | None]:
+    from ..setevoy.zahvat_seti.progon import проверить_выход, проверить_скорость  # noqa: PLC0415
+    try:
+        return проверить_скорость(тело.get("скорость", 1)), проверить_выход(тело.get("выход"))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
+@router.post("/progon")
+def progon_start(request: Request) -> dict[str, Any]:
+    """Начать прогон: {источник: {вид, ид}, скорость: 0 (максимально) | 1 (как записано) | ×N,
+    выход: {порт, срез, упорядочить, источник} | null}. Правила разбора — текущие правила человека."""
+    user = require_user(request)
+    тело = _body(request)
+    источник = _источник_прогона(request, user, тело.get("источник"))
+    скорость, выход = _выход_и_скорость(тело)
+    ид = _начать_прогон(request, user, источник, скорость=скорость, выход=выход,
+                        имя=str(тело.get("имя") or "")[:80])
+    _repos(request).audit.log("progon.start", user=user, object_type="progon", object_id=ид,
+                              details={"source": источник, "speed": скорость, "output": выход})
+    return {"id": ид}
+
+
+@router.get("/progon")
+def progon_find(request: Request, source: str = "") -> dict[str, Any]:
+    """Последний прогон источника («pakety:<ид>» или «zahvat:<ид>») — чтобы страница снова
+    подключилась к ходу после перезагрузки."""
+    user = require_user(request)
+    вид, _, ид = source.partition(":")
+    найден = _progony(request).найти(user.id, {"вид": вид, "ид": ид})
+    return {"progon": _прогон_или_404(request, user, найден) if найден else None}
+
+
+@router.get("/progon/{run_id}")
+def progon_state(request: Request, run_id: str) -> dict[str, Any]:
+    user = require_user(request)
+    return _прогон_или_404(request, user, run_id)
+
+
+@router.post("/progon/{run_id}/control")
+def progon_control(request: Request, run_id: str) -> dict[str, Any]:
+    """Команда: {команда: пауза|продолжить|стоп|скорость|сначала, значение, выход}. «Сначала» —
+    заново с начала с текущими правилами человека (и новыми скоростью и выходом, если заданы)."""
+    user = require_user(request)
+    состояние = _прогон_или_404(request, user, run_id)
+    тело = _body(request)
+    команда = str(тело.get("команда") or "")
+    прогоны = _progony(request)
+    try:
+        if команда == "сначала":
+            скорость, выход = _выход_и_скорость({"скорость": тело.get("скорость", состояние.get("скорость", 1)),
+                                                 "выход": тело.get("выход", состояние.get("выход"))})
+            задание = _задание_прогона(request, user, _источник_прогона(request, user, состояние["источник"]),
+                                       скорость=скорость, выход=выход)
+            прогоны.сначала(run_id, задание)
+        else:
+            прогоны.команда(run_id, команда, тело.get("значение"))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400 if "команда" in str(ошибка) or "скорость" in str(ошибка) else 409) from None
+    _repos(request).audit.log("progon.control", user=user, object_type="progon", object_id=run_id,
+                              details={"command": команда})
+    return _прогон_или_404(request, user, run_id)
+
+
+@router.get("/progon/{run_id}/output")
+def progon_output(request: Request, run_id: str) -> FileResponse:
+    user = require_user(request)
+    состояние = _прогон_или_404(request, user, run_id)
+    try:
+        путь = _progony(request).выход(run_id)
+    except KeyError:
+        raise ServiceError("у прогона нет выходных данных", 404) from None
+    порт = (состояние.get("выход") or {}).get("порт", "")
+    return _file_reply(путь, _safe_name(f"прогон {run_id} — UDP {порт}.bin"))
+
+
+@router.post("/progon/{run_id}/to-session")
+def progon_to_session(request: Request, run_id: str) -> dict[str, Any]:
+    """Выходные данные прогона (нагрузка порта) — битовым потоком в сессию: {session, bit_order, analyze}."""
+    user = require_user(request)
+    состояние = _прогон_или_404(request, user, run_id)
+    тело = _body(request)
+    session_id = str(тело.get("session") or "")
+    _сессия_или_404(request, user, session_id)
+    порядок = _порядок_бит(тело)
+    try:
+        путь = _progony(request).выход(run_id)
+    except KeyError:
+        raise ServiceError("у прогона нет выходных данных", 404) from None
+    предел = _settings(request).max_upload_mb << 20
+    with open(путь, "rb") as файл:
+        поток = файл.read(предел + 1)
+    обрезано = len(поток) > предел
+    поток = поток[:предел]
+    if not поток:
+        raise ServiceError("выходные данные прогона пусты", 400)
+    выход = состояние.get("выход") or {}
+    сводка = (состояние.get("выход") if isinstance(состояние.get("выход"), dict) else {}) or {}
+    происхождение = [f"прогон «{состояние.get('имя') or run_id}»: нагрузка UDP порта {выход.get('порт')}"
+                     + (f", срез {выход.get('срез')}" if выход.get("срез") else "")
+                     + (", упорядочено по номеру RTP в окне" if выход.get("упорядочить") else ""),
+                     f"датаграмм взято {сводка.get('взято', '?')} из {сводка.get('датаграмм', '?')}"]
+    if обрезано:
+        происхождение.append(f"обрезано до {предел >> 20} МБ (max_upload_mb); целиком — «Скачать .bin»")
+    ид, младший = _в_сессию(request, user, session_id, поток, имя=f"прогон — UDP {выход.get('порт')}.bin",
+                            происхождение=происхождение, порядок=порядок, analyze=тело.get("analyze"))
+    _repos(request).audit.log("progon.session", user=user, object_type="progon", object_id=run_id,
+                              details={"session": session_id, "job": ид, "bytes": len(поток)})
+    return {"id": ид, "session": session_id, "bytes": len(поток), "cut_to_limit": обрезано,
+            "bit_order": "lsb" if младший else "msb"}
+
+
+@router.delete("/progon/{run_id}")
+def progon_delete(request: Request, run_id: str) -> dict[str, Any]:
+    user = require_user(request)
+    _прогон_или_404(request, user, run_id)
+    _progony(request).удалить(run_id)
+    return {"ok": True}
+
+
+# -- «Декодировать как» и «убрать протокол»: правила человека ------------------------------
+
+@router.get("/dekodirovat-kak/razborshchiki")
+def decode_as_dissectors(request: Request) -> dict[str, Any]:
+    """Все разборщики анализатора — для выбора «Разобрать как…» с поиском."""
+    from ..setevoy.dekodirovat_kak import ДАННЫЕ, ПОЛЯ_ПРЕДЛОЖЕНИЯ, список_разборщиков  # noqa: PLC0415
+    require_user(request)
+    return {"items": список_разборщиков(), "данные": ДАННЫЕ, "поля": ПОЛЯ_ПРЕДЛОЖЕНИЯ}
+
+
+def _правила_ответ(правила: list[dict[str, Any]]) -> dict[str, Any]:
+    from ..setevoy.dekodirovat_kak import описать  # noqa: PLC0415
+    return {"items": [{**п, "описание": описать(п)} for п in правила]}
+
+
+@router.get("/dekodirovat-kak")
+def decode_as_rules(request: Request) -> dict[str, Any]:
+    user = require_user(request)
+    return _правила_ответ(_правила_людей(request).прочитать(user.id))
+
+
+@router.post("/dekodirovat-kak")
+def decode_as_add(request: Request) -> dict[str, Any]:
+    """Добавить правило (правило для того же места заменяет прежнее)."""
+    user = require_user(request)
+    try:
+        правила = _правила_людей(request).добавить(user.id, _body(request).get("rule"))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _repos(request).audit.log("dekodirovat_kak.add", user=user, object_type="dekodirovat_kak",
+                              details={"rule": _body(request).get("rule")})
+    return _правила_ответ(правила)
+
+
+@router.put("/dekodirovat-kak")
+def decode_as_replace(request: Request) -> dict[str, Any]:
+    user = require_user(request)
+    try:
+        правила = _правила_людей(request).записать(user.id, _body(request).get("rules") or [])
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    return _правила_ответ(правила)
+
+
+@router.patch("/dekodirovat-kak/{rule_id}")
+def decode_as_toggle(request: Request, rule_id: str) -> dict[str, Any]:
+    user = require_user(request)
+    try:
+        правила = _правила_людей(request).изменить(user.id, rule_id, вкл=bool(_body(request).get("вкл")))
+    except KeyError:
+        raise ServiceError("правило не найдено", 404) from None
+    return _правила_ответ(правила)
+
+
+@router.delete("/dekodirovat-kak/{rule_id}")
+def decode_as_delete(request: Request, rule_id: str) -> dict[str, Any]:
+    user = require_user(request)
+    try:
+        правила = _правила_людей(request).удалить(user.id, rule_id)
+    except KeyError:
+        raise ServiceError("правило не найдено", 404) from None
+    return _правила_ответ(правила)
+
+
+@router.post("/pakety/{cap_id}/decode-rules")
+def pakety_apply_decode_rules(request: Request, cap_id: str) -> dict[str, Any]:
+    """Применить текущие правила «Декодировать как» человека к захвату «Пакетов» и разобрать заново."""
+    user = require_user(request)
+    состояние = _захват_или_404(request, user, cap_id)
+    как = _как_человека(request, user, состояние.get("как"))
+    как.setdefault("правила", [])
+    try:
+        _pakety(request).разбирать_как(cap_id, как)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 409 if "разбирается" in str(ошибка) else 400) from None
+    return {"ok": True, "rules": len(как["правила"])}
 
 
 # -- разбор потока: задания по этапам ------------------------------------------------
