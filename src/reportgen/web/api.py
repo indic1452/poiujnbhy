@@ -3325,8 +3325,10 @@ def _разбор_gfp(request: Request, user, job_id: str, тело: dict[str, A
         if ключ in _gfp_кэш:
             return _gfp_кэш[ключ], этап
     биты = задания.биты_участка(job_id, этап, первый, первый + бит)
-    итог = gfp.разобрать(биты, маска=маска, скремблер=скремблер, порядок=порядок, многочлен=многочлен,
-                         от_бита=первый)
+    # Слепой поиск проходит ту же проверку, что автомат: иначе «GFP» в HDLC, ATM, SDH.
+    итог = gfp.разобрать_с_причиной(биты, маска=маска, скремблер=скремблер, порядок=порядок,
+                                    многочлен=многочлен, от_бита=первый,
+                                    всего_бит=задания.длина_бит(job_id, этап))
     with _gfp_замок:
         _gfp_кэш[ключ] = итог
         while len(_gfp_кэш) > _GFP_ПОМНИТЬ:
@@ -3341,11 +3343,12 @@ def potok_gfp(request: Request, job_id: str) -> dict[str, Any]:
     user = require_user(request)
     тело = _body(request)
     try:
-        р, _ = _разбор_gfp(request, user, job_id, тело)
+        (р, причина), _ = _разбор_gfp(request, user, job_id, тело)
         if р is None:
-            return {"найдено": False, "причина": "заголовков GFP с верным cHEC подряд не найдено"
-                    + ("" if (тело.get("mask") or "авто") == "авто" else " с этой маской")
-                    + " ни при одном битовом сдвиге и порядке бит"}
+            return {"найдено": False, "причина": причина or (
+                "заголовков GFP с верным cHEC подряд не найдено"
+                + ("" if (тело.get("mask") or "авто") == "авто" else " с этой маской")
+                + " ни при одном битовом сдвиге и порядке бит")}
         return {"найдено": True, "сводка": gfp.сводка(р),
                 "таблица": gfp.таблица(р, max(0, int(тело.get("offset") or 0)),
                                        min(500, max(1, int(тело.get("limit") or 200))),
@@ -3362,13 +3365,13 @@ def potok_gfp_pakety(request: Request, job_id: str) -> dict[str, Any]:
     user = require_user(request)
     тело = _body(request)
     try:
-        р, этап = _разбор_gfp(request, user, job_id, тело)
+        (р, причина), этап = _разбор_gfp(request, user, job_id, тело)
         cid = тело.get("cid")
         cid = None if cid in (None, "") else int(cid)
     except (ValueError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     if р is None:
-        raise ServiceError("GFP не найден", 400)
+        raise ServiceError("GFP не найден" + (f": {причина}" if причина else ""), 400)
     кадры = gfp.кадры_gfp(р, cid) if тело.get("what") == "кадры" else gfp.клиентские_кадры(р, cid)
     if not кадры:
         raise ServiceError("кадров с данными нет" + (f" в канале CID {cid}" if cid is not None else ""), 400)
