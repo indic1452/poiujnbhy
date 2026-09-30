@@ -418,7 +418,7 @@ process.stdout.write(JSON.stringify(итог));
         return json.loads(готово.stdout)
 
     def test_длина_синхрослова_как_на_сервере(self):
-        тексты = ["0x1ACFFC1D", "1ACFFC1Dh", "0b0110", "0110 1011", "1_0_1_1", "", None, "0xZZ", "12", "0x", "01"]
+        тексты = ["0x1ACFFC1D", "1ACFFC1Dh", "0b0110", "0110 1011", "1_0_1_1", "", None, "0xZZ", "12", "0x", "01", "0x0990"]
         итоги = self.выполнить([{"что": "бит", "т": т} for т in тексты])
         for т, итог in zip(тексты, итоги, strict=True):
             try:
@@ -427,7 +427,7 @@ process.stdout.write(JSON.stringify(итог));
                 ожидание = None
             if ожидание is not None:
                 self.assertEqual(ожидание, итог, т)
-        self.assertEqual([32, 32, 4, 8, 4, 0, 0, 0, 8, 0, 2], итоги)
+        self.assertEqual([32, 32, 4, 8, 4, 0, 0, 0, 8, 0, 2, 16], итоги)
 
     def test_ошибки_окна_как_у_сервера(self):
         годное = {"тип": "Datum 256", "код": "fldpc-k256-j4-p16",
