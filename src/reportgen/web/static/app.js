@@ -17641,6 +17641,11 @@
 
     /** Захват «Пакетов», пришедший куском захвата с сети: переход к соседним кускам. */
     function навигацияКусков(состояние) {
+        const весь = /^zahvat:([0-9]{8}-[0-9]{6}-[0-9a-f]{6})#весь$/.exec(String(состояние.от || ''));
+        if (весь) {
+            return h('div', { class: 'row pg-chunks-nav' }, h('span', { class: 'muted small' }, 'Весь захват с сети, все куски подряд'),
+                h('a', { class: 'btn btn--sm btn--ghost', href: '#/zahvat/' + encodeURIComponent(весь[1]) }, 'К захвату'));
+        }
         const м = /^zahvat:([0-9]{8}-[0-9]{6}-[0-9a-f]{6})#(\d+)$/.exec(String(состояние.от || ''));
         if (!м) return null;
         const [, захват, номер] = м;
