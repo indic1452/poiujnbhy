@@ -1,0 +1,1128 @@
+
+=====PAGE 1=====
+ 
+M7XC  
+Compact Satellite Modem Manual 
+ 
+Appendix F: 
+Point to Multi-Point VCM / ACM 
+Operation 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 2=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+ii 
+ 
+ 
+Table of Contents 
+1 
+Preface ................................................................................................. iii 
+2 
+Point to Multi-Point VCM / ACM Operation Overview and Theory ......... 5 
+3 
+Outbound Traffic Optimization ............................................................... 5 
+4 
+Configuring VCM/ACM Operation on M7XC modems ........................... 9 
+ 
+VCM/ACM Network Modem Count Examples: ............................................... 9 
+ 
+Outbound VCM/ACM VLAN Tags ................................................................ 10 
+5 
+Hub TX/RX Modem Configuration ....................................................... 11 
+ 
+Hub TX/RX Modem >Unit>WAN Data Port Configuration ............................ 11 
+ 
+Hub TX/RX Modem >Tx>Modulator VCM/ACM Configuration ..................... 13 
+ 
+Hub TX/RX Modem >Tx>MCC VCM/ACM Configuration ............................. 18 
+ 
+Hub TX/RX Modem >Rx>Demodulator VCM/ACM Configuration ................ 18 
+ 
+Hub TX/RX Modem >Rx>MCC VCM/ACM Configuration ............................ 19 
+6 
+Hub RX-Only Demod Configuration .................................................... 20 
+ 
+Hub RX-Only Demod >Unit>WAN Data Port Configuration ......................... 20 
+ 
+Hub RX-Only Demod >Tx>Modulator VCM/ACM Configuration ................... 20 
+ 
+Hub Rx-Only Demod >Tx>MCC VCM/ACM Configuration ........................... 20 
+ 
+Hub RX-Only Demod >Rx>Demodulator VCM/ACM Configuration .............. 21 
+ 
+Hub RX-Only Demod >Rx>MCC VCM/ACM Configuration .......................... 22 
+7 
+Remote Modem Configuration ............................................................. 23 
+ 
+Remote Modem >Unit>WAN Data Port Configuration .................................. 23 
+ 
+Remote Modem >Tx>Modulator VCM/ACM Configuration ........................... 23 
+ 
+Remote Modem >Tx>MCC VCM/ACM Configuration .................................. 23 
+ 
+Remote Modem >Rx>Demodulator VCM/ACM Configuration ...................... 23 
+ 
+Remote Modem >Rx>MCC VCM/ACM Configuration .................................. 23 
+ 
+Inbound VCM/ACM Demodulator Remote Site ............................................ 23 
+ 
+Figures 
+FIGURE 2-1 VCM/ACM OVERVIEW ........................................................................................... 5 
+FIGURE 3-1 VCM/ACM WITH VARIOUS REMOTE ES/NO .......................................................... 6 
+FIGURE 3-2 VCM/ACM SITE MODCOD PROTECTION ........ ERROR! BOOKMARK NOT DEFINED. 
+FIGURE 3-3 ........................................................................ ERROR! BOOKMARK NOT DEFINED. 
+FIGURE 3-4 VCM/ACM OUTBOUND CARRIER WITH PROTECTED MODCODS ................ ERROR! 
+BOOKMARK NOT DEFINED. 
+FIGURE 3-5 VCM/ACM WITH MODCOD AND VLAN OUTBOUND ..... ERROR! BOOKMARK NOT 
+DEFINED. 
+FIGURE 3-6 VCM/ACM VLAN MAPPING TO MODCOD ..... ERROR! BOOKMARK NOT DEFINED. 
+FIGURE 5-1 .............................................................................................................................. 13 
+FIGURE 5-2 ........................................................................ ERROR! BOOKMARK NOT DEFINED. 
+FIGURE 5-3 COMMON OUTBOUND MODULATOR SETTINGS FOR HUB ................................. 14 
+ 
+ 
+
+=====PAGE 3=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+iii 
+ 
+ 
+ 
+NOTE: All appendices may not be present in manual. Some appendixes may be 
+shipped with the option. 
+ 
+1 
+Preface 
+This Appendix is to be used in conjunction with the main M7XC manual.  The manual 
+and appendices are intended for use by personnel with reasonable knowledge of 
+satellite communications and earth station terminology. This manual provides 
+Installation, Operating, and Maintenance procedures for the M7XC Compact Satellite 
+Modem and available options.   
+ 
+Revision History 
+Release Date 
+Comments 
+06/16/2024 
+Initial Public Release   
+ 
+ 
+ 
+ 
+
+=====PAGE 4=====
+
+=====PAGE 5=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+5 
+ 
+2 
+Point to Multi-Point VCM / ACM Operation Overview and Theory 
+In a Point to Multi-Point network environment a common operational configuration is to 
+configure the “outbound traffic” (from Hub site to Remote Sites) as a single broadcast 
+carrier from hub to satellite and satellite to remote.  Traffic that is destined to a particular 
+site or broadcast and multi-cast traffic destined to multiple sites are decoded and 
+ingested by the appropriate site(s). 
+ 
+Returning traffic (often called inbound traffic) is generated at the remote site location 
+and sent back to the Hub.  This return traffic can be via FDMA SCPC carrier, Dynamic 
+Carrier Assignment or co-exist on shared carriers in the time domain such as TDMA.  
+For the purposes of this Appendix, we will focus on FDMA return carriers.  
+ 
+ 
+Figure 2-1 VCM/ACM Overview 
+ 
+ 
+ 
+3 
+Outbound Traffic Optimization 
+In a shared outbound Pt to Multi-Pt configuration as shown in Figure 2-1, even though 
+all sites are receiving and demodulating the same signal from the Hub location, 
+differences in antenna size, weather conditions, position within the satellite beam or 
+mobility applications can show large variations in receive signal quality and signal 
+strength. 
+ 
+Hub Site
+Remote 
+Site 1
+Remote 
+Site 2
+Remote 
+Site 3
+Remote 
+Site 4
+Remote 
+Site N
+.
+.
+.
+
+=====PAGE 6=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+6 
+ 
+An outbound Hub carrier that is received by multiple remote sites at varying quality 
+levels historically meant that all of the outbound user traffic had to be “protected” with a 
+single, fixed modulation and coding scheme (MODCOD) that ensured the most 
+disadvantaged site could demodulate and decode the signal as shown in the below 
+example (Figure 3-1).  
+ 
+Site 1 has the lowest perceived signal quality due being a mobile site with a small 
+antenna.  The demodulator Es/No reading of 2.5dB is the weakest in the example 
+network. Historical networks would limit all of the Hub Outbound traffic to a MODCOD 
+that could be locked to signal of 2.5dB or lower without errors to guarantee link 
+availability to all sites. 
+ 
+ 
+Figure 3-1 VCM/ACM with Various Remote Es/No 
+ 
+A more modern method to deal with varied remote site signal quality is to 
+compartmentalize the Outbound user traffic into bursts that are encapsulated with 
+varying levels of protection.  The method is commonly referred to as ACM (Adaptive 
+Coding and Modulation).  In this way the outbound aggregate traffic is packaged with 
+multiple levels of protection such that sites that benefit from a higher signal quality can 
+receive higher MODCODs when their signal is strong and maximize user traffic while 
+other sites will use more robust signal protection at the expense of lower user 
+throughput for the same BW used.  Datum offers a dynamic outbound ACM operation 
+where each site is dynamically sent data in the best fit MODCOD rather than a fixed 
+MODCOD for the site or the network. 
+ 
+Hub Site
+Remote 
+Site 1
+Remote 
+Site 2
+Remote 
+Site 3
+Remote 
+Site 4
+Remote 
+Site N
+.
+.
+.
+Es/No: 11.6 dB
+Es/No: 11.8 dB
+Es/No: 8.1 dB
+Es/No: 5.7 dB
+Es/No: 2.5 dB
+
+=====PAGE 7=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+7 
+ 
+Using the remote site demodulator Es/No values and looking at the DVB-S2X 
+MODCOD table, we can see the best fit MODCOD per site to be: 
+ 
+ 
+Figure 3-2 Best Fit MODCOD By Site # 
+ 
+MOD
+FEC
+Spec Eff (Bits / 
+Hz)
+QEF Es/No       
+VLAN MAPPING
+QPSK
+1/4
+0.4800
+-2.35
+QPSK
+13/45
+0.5543
+-2.03
+QPSK
+1/3
+0.6400
+-1.24
+QPSK
+2/5
+0.7700
+-0.30
+QPSK
+9/20
+0.8680
+0.22
+QPSK
+1/2
+0.9653
+1.00
+QPSK
+11/20
+1.0627
+1.45
+QPSK
+3/5
+1.1600
+2.23
+Site 1
+QPSK
+2/3
+1.2908
+3.10
+QPSK
+3/4
+1.4521
+4.03
+QPSK
+4/5
+1.5494
+4.68
+8PSK
+3/5
+1.7400
+5.50
+Site 3
+8PSK
+23/36
+1.8531
+6.12
+16APSK
+26/45
+2.2275
+7.51
+16APSK
+3/5
+2.3138
+7.80
+16APSK
+28/45
+2.4001
+8.10
+16APSK
+23/36
+2.4648
+8.38
+16APSK
+2/3
+2.5750
+8.97
+16APSK
+25/36
+2.6806
+9.27
+16APSK
+13/18
+2.7884
+9.71
+16APSK
+3/4
+2.8960
+10.21
+16APSK
+7/9
+3.0042
+10.65
+16APSK
+4/5
+3.0900
+11.03
+Site 2
+16APSK
+5/6
+3.2220
+11.61
+16APSK
+77/90
+3.3062
+11.99
+32APSK
+32/45
+3.4344
+11.75
+Site 4
+32APSK
+11/15
+3.5424
+12.17
+32APSK
+3/4
+3.6230
+12.73
+DVB-S2X Normal Block
+Performance 
+
+=====PAGE 8=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+8 
+ 
+ 
+Figure 3-3 Site Best Fit MODCOD 
+ 
+ 
+In the ACM environment a shared Outbound carrier contains one or more MODCODs 
+that in aggregate, make up the full Outbound carrier.  A “Paired Rx Channel” represents 
+a unique “virtual” Hub to remote carrier that has it’s own specific best-fit MODCOD for 
+that remote at that specific time.  A “Paired Rx Channel” can have one or more Queues 
+associated with that virtual carrier.  Each Queue is associated with a VLAN tag as seen 
+by the Modulator’s Ingress Buffer.  See below for how this is mapped: 
+ 
+ 
+Figure 3-4 Mapping VLAN Tag > Queue > Paired Rx Carrier 
+ 
+ 
+ 
+The Hub Outbound traffic will now be an aggregate of all sites traffic using the best fit 
+MODOCD for those sites 
+Hub Site
+Remote 
+Site 1
+Remote 
+Site 2
+Remote 
+Site 3
+Remote 
+Site 4
+Remote 
+Site N
+.
+.
+.
+VLAN ID: 101
+VLAN ID: 102
+VLAN ID: 103
+VLAN ID: 104
+VLAN ID: 10X
+Es/No: 11.6 dB
+Es/No: 11.8 dB
+Es/No: 8.1 dB
+Es/No: 5.7 dB
+Es/No: 2.5 dB
+Site 1 = QPSK 3/5
+Site 2 = 16APSK 4/5
+Site 3 = 8PSK 3/5
+Site 4 = 32APSK 32/45
+Hub TX
+Modulator
+VLAN IDs are mapped to 
+Queues
+VLAN ID# 101
+VLAN ID# 102
+VLAN ID# 103
+VLAN ID# 104
+VLAN ID# XXX
+Map VLAN ID# 
+to Queues
+Queues are mapped to Paired 
+Rx Channels and thus to a 
+specific remote site which has 
+a best fit MODCOD.
+
+=====PAGE 9=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+9 
+ 
+ 
+4 
+Configuring VCM/ACM Operation on M7XC modems 
+ 
+Now that we understand the theory of Outbound VCM operation and the benefits of 
+maximizing the satellite efficiency on a per site basis we can configure the modems to 
+function in a VCM environment. 
+ 
+For the purposes of this manual, we will associate the following names to the various 
+modems in the VCM/ACM Network: 
+ 
+Hub TX/RX Modem:  The M7XC configured as the Tx modem at the Hub site that is 
+responsible for transmitting the shared Tx outbound carrier and multi-demod landing 
+up to 16 sites (Flex LDPC) or 2 sites (DVB-S2X). 
+ 
+Hub RX-Only Demod: One or more M7XC modems configured as a demod or multi-
+demod ONLY.  This Rx-Only demod is capable of landing up to sixteen (16) Flex 
+LDPC sites, or two (2) DVB-S2X sites, or one (1) site running DSSS.  Note: Hub Rx-
+Only Demods are ONLY needed if the VCM/ACM network requires more sites that the 
+Hub RX/RX Modem is capable of.  The TOTAL number of sites that the VCM/ACM 
+network can have can not exceed 16 sites.  
+ 
+Remote Modem:  A remote site in a VCM/ACM network 
+ 
+ VCM/ACM Network Modem Count Examples: 
+ 
+Network 1: High Density 16 Sites (all remote return carriers are within 100MHz 
+continuous bandwidth) 
+Hub Site 
+Waveforms 
+Count 
+Hub TX/RX Modem 
+TX: DVB-S2X VCM 
+RX: (16) Flex LDPC 
+1 
+ 
+ 
+ 
+Remote Sites: 
+Waveforms 
+Count 
+Remote Modem 
+RX: DVB-S2X VCM 
+TX: Flex LDPC 
+16 
+ 
+Network 2: High Capacity 16 Sites (each set of 2 DVB-S2X return carriers are within 
+100MHz continuous bandwidth per set) 
+Hub Site 
+Waveforms 
+Count 
+Hub TX/RX Modem 
+TX: DVB-S2X VCM 
+RX: (2) DVB-S2X 
+1 
+ 
+ 
+ 
+Hub RX-Only Demod 
+TX: None 
+RX: (2) DVB-S2X          
+7 
+ 
+ 
+ 
+
+=====PAGE 10=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+10 
+ 
+ 
+ 
+ 
+Remote Sites: 
+Waveforms 
+Count 
+Remote Modem 
+RX: DVB-S2X VCM 
+TX: DVB-S2X 
+16 
+ 
+Network 3: Mixed Use 16 Sites (8 LDPC carriers, 6 High Capacity DVB-S2X return 
+carriers and 2 DSSS return carriers) 
+Hub Site 
+Waveforms 
+Count 
+Hub TX/RX Modem 
+TX: DVB-S2X VCM 
+RX: (8) Flex LDPC 
+1 
+ 
+ 
+ 
+Hub RX-Only Demod 
+TX: None 
+RX: (2) DVB-S2X          
+3 
+ 
+ 
+ 
+Hub RX-Only Demod 
+TX: None 
+RX: (1) DSSS          
+2 
+ 
+ 
+ 
+Remote Sites: 
+Waveforms 
+Count 
+Remote Modem 
+RX: DVB-S2X VCM 
+TX: Flex LDPC 
+8 
+ 
+ 
+ 
+Remote Modem 
+RX: DVB-S2X VCM 
+TX: DVB-S2X 
+6 
+ 
+ 
+ 
+Remote Modem 
+RX: DVB-S2X VCM 
+TX: DSSS 
+2 
+ 
+ 
+ Outbound VCM/ACM VLAN Tags 
+VCM works in conjunction with VLAN 802.1Q tagging.  Ideally, user traffic at the Hub 
+site that is destined for the remote sites should be pre-identified and pre-tagged by 
+an external router / switch or 3rd party device.  Associating a subnet or set of IP / 
+MAC address to a VLAN ID of a remote site is outside of the scope of this Appendix and 
+should be discussed with the proper networking staff.  Using one mechanism or 
+another, any traffic that is strictly destined for a specific remote site should be 
+encapsulated with the outermost VLAN tag unique to that remote site.  VLAN tags for 
+broadcast or multicast traffic can also be configured by the networking staff. 
+ 
+Once the Hub to Remote user traffic is properly tagged the hub modem can be 
+configured to perform a lookup to associate a VLAN tag or VLAN range to a VCM 
+selection and therefore a MODCOD level of protection. 
+ 
+
+=====PAGE 11=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+11 
+ 
+5 
+VCM ACM Network Example 
+The following sections to configure an actual VCM/ACM network will use the below 
+diagrams as a reference for the overall network configuration.  It is suggested to create 
+a similar diagram for any real network planning purposes. 
+ 
+Figure 5-1 Sample Network 
+ 
+6 
+Hub TX/RX Modem Configuration 
+ Hub TX/RX Modem >Unit>WAN Data Port Configuration 
+The Hub modulator is responsible for accepting all user traffic from the LAN side of the 
+modulator and moving the traffic into the proper VCM bucket.  To do this, it must accept 
+all traffic or optionally accept a “range” of traffic that is associated with the VLAN ID’s of 
+the remote sites ro configured broadcast VLAN IDs. Goto the Unit>WAN Data Port page 
+of the Hub Modem GUI.  Configure the Hub Modulator’s Unit/WAN Data Port VLAN 
+filters in the following way: 
+ 
+Table 5-1 VLAN Ingress Tag Filter Selections 
+Ingress VLAN Tag Filter 
+Operation 
+Off 
+Will accept all user traffic with or without VLAN tags 
+and pass them to the WAN for transmission 
+Pass Match, Strip Tag 
+Will only accept VLAN tags within a user defined 
+range into the modem.  It will associate the packet 
+with the proper VCM bucket / queue but strip the 
+VLAN tag before sending to the satellite WAN.  In 
+this way the remote will NOT see a VLAN tag 
+Hub TX/RX 
+Modem
+Remote 
+Site 1
+Remote 
+Site 2
+Remote 
+Site 3
+Remote 
+Site 4
+Ingress and Egress Pass Match Pass Tag VLAN 101
+Rx: DVB-S2X VCM receiving Paired Rx Channel #1
+Tx: DVB-S2X with MCC Address: 1
+Ingress: VLAN Data Pass ALL, Pass Tag (=setting OFF)
+Egress: VLAN Data Pass ALL, Pass Tag (=setting OFF)
+Modulator TX MCC Address: (set to 0)
+Demod #1: DVB-S2X, Receiving Remote 1, associated with Paired Rx Channel #1
+Demod #2: DVB-S2X, Receiving Remote 2, , associated with Paired Rx Channel #2
+Hub RX-Only 
+Demod
+Ingress: None
+Egress: VLAN Data Pass ALL, Pass Tag (=setting OFF)
+Modulator TX MCC Address: (associated with Hub TX/RX Modulator set to 0)
+Demod #1: DVB-S2X Receiving Remote 3, , associated with Paired Rx Channel #3
+Demod #2: DVB-S2X Receiving Remote 4, , associated with Paired Rx Channel #4
+Ingress and Egress Pass Match Pass Tag VLAN 102
+Rx: DVB-S2X VCM receiving Paired Rx Channel #2
+Tx: DVB-S2X with MCC Address: 2
+Ingress and Egress Pass Match Pass Tag VLAN 103
+Rx: DVB-S2X VCM receiving Paired Rx Channel #3
+Tx: DVB-S2X with MCC Address: 3
+Ingress and Egress Pass Match Pass Tag VLAN 104
+Rx: DVB-S2X VCM receiving Paired Rx Channel #4
+Tx: DVB-S2X with MCC Address: 4
+
+=====PAGE 12=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+12 
+ 
+Pass, Append Tag 
+Will accept all user traffic with or without VLAN tags 
+and will “PUSH” a new user defined VLAN tag on all 
+packets. NOTE: Not suggested at Hub Modulator 
+Pass Match, Pass Tag 
+Modulator will only pass those packets with 
+matching VLAN tag, and will keep the VLAN tag on 
+the packet when sent over the satellite WAN.  
+NOTE: Not suggested at Hub Modulator 
+Pass Range Match, Pass Tag 
+Modulator will only pass those packets with a VLAN 
+tag within the user defined range of VLAN IDs and 
+will keep the VLAN tag on the packet when sent 
+over the satellite WAN. 
+ 
+ 
+The most common configurations of the Hub Modulator Ingress VLAN Tag Filter are:  
+1. Off  - send all traffic 
+2. Pass Range Match, Pass Tag – Only send traffic that is within the VLANs I care 
+about 
+3. Pass Match, Strip Tag – Used when the remotes are not going to filter on VLANs 
+ 
+Similarly, a selection is made for the Hub Modulator’s Egress VLAN Tag Filter or what 
+exits the modems LAN port: 
+ 
+Table 5-2 VLAN Egress Tag Filter Selections 
+Egress VLAN Tag Filter 
+Operation 
+Off 
+Will accept all user traffic with or without VLAN tags 
+and pass them to the WAN for transmission 
+Pass, Append Tag 
+Will accept all traffic and PUSH a user defined 
+VLAN ID tag onto each packet 
+Pass Match, Strip Tag 
+Modulator will only pass those packets with 
+matching VLAN tag, and will remove the VLAN tag 
+on the packet when sent onto the LAN 
+Pass Match, Pass Tag 
+Modulator will only pass those packets with 
+matching VLAN tag, and will keep the VLAN tag on 
+the packet when sent onto the LAN 
+Pass Range Match, Pass Tag 
+Modulator will only pass those packets with a VLAN 
+tag within the user defined range of VLAN IDs and 
+will keep the VLAN tag on the packet when sent 
+onto the LAN. 
+ 
+Selections are made on the GUI see Figure 5-1 
+ 
+
+=====PAGE 13=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+13 
+ 
+ 
+Figure 6-1 HUB TX/RX Modem >Unit>WAN GUI 
+ 
+The Remote modems will also be configured in a similar manner to either accept all 
+traffic, a specific VLAN ID or a range of VLAN IDs and pass or POP the actual tag. 
+ 
+ 
+ Hub TX/RX Modem >Tx>Modulator VCM/ACM Configuration 
+Configure the Hub to Remote or “Outbound” carrier.  This is the outbound carrier that all 
+remotes will demodulate and will decode and ingest data that is specifically destined for 
+a particular remote or set of remotes from the Hub.  This outbound carrier configuration 
+will have many common properties for all remotes such as the carrier frequency, symbol 
+rate and ROF values.  Data within this common carrier is segregated by VLAN and 
+placed into one or more “Queues”. 
+The common settings of the outbound carrier are all market with an asterisk “*”.  The 
+common settings are found in the upper section of the >Tx>Modulator tab when the 
+waveform is set to “DVB-S2X VCM”. 
+
+=====PAGE 14=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+14 
+ 
+ 
+Figure 6-2 Hub TX/RX Modulator >Tx>Modulator TX Carrier Common Settings 
+• Waveform*: The waveform should be must be set to “DVB-S2X VCM” to allow Pt-
+Multi-Pt or Hub/Spoke operation where the outbound carrier will be running VCM 
+or ACM.  A setting of “DVB-S2X” or any other waveform can be used for Pt-Multi-
+Pt operation but the system will ONLY be capable of CCM operation in that 
+configuration.  DVB-S2X VCM is nominal setting. 
+• Carrier Frequency*: Set the DVB-S2X outbound carrier center frequency.  This is 
+the frequency all remotes demods will be tuned to. 
+• Symbol Rate*: Set the DVB-S2X outbound symbol rate.  This is the symbol rate 
+all remotes demods will be tuned to. 
+• Frame Size*, Pilot*, PLS Scrambler*: Set these parameters according to normal 
+carrier parameters for the outbound carrier.  These parameters must match the 
+remote demods parameters for all settings.  Normal settings user are: 
+o Frame Size: Normal 
+o Pilot: On 
+o PLS Scrambler: 0 
+
+=====PAGE 15=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+15 
+ 
+ 
+Figure 6-3 Hub TX/RX Modulator >Tx>Modulator Queue Specific Settings 
+ 
+• Queue Service: This can be set Per Queue (per Remote site) 
+o Off:  This Queue will not be used 
+o DVB-S2X (ACM to the site is not enabled) 
+o DVB-S2X ACM Preferred: Typical MODCODs used in a DVB-S2X 
+outbound with ACM.  Use this setting for most applications where the 
+linearity of the outbound carrier is typical or not known. 
+o DVB-S2X ACM Preferred-L:  Use ONLY if your Hub outbound carrier is 
+extremely linear (this will give you a small user throughput advantage over 
+DVB-S2X ACM Preferred but only if the carrier is nearly ideal and has 
+near linear amplifier backoff) 
+o Broadcast to All Destinations: Can ONLY be used when configuring 
+Queue 1.  This queue and Queue Service can be used if broadcast 
+(destined to all remotes) has been tagged with a specific VLAN ID prior to 
+hitting the Hub TX/RX modem.  All traffic filling this Queue will be sent to 
+all remotes at the lowest common MODCOD used by any one remote. 
+• Queue VLAN ID:  This is the outermost VLAN tag of a VLAN tagged Ethernet 
+frame.  If the outmost VLAN tag matches the Queue VLAN ID that Ethernet 
+frame will be sent to the corresponding Queue being currently configured (in this 
+example Queue 3) 
+
+=====PAGE 16=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+16 
+ 
+• Queue Paired RX Channel:  This is the channel identifier that will be embedded 
+in the sent message, a remote site with the matching Queue Paired RX Channel 
+identifier will be allowed to demodulate and decode this user traffic. 
+• Queue CIR Mode: Normal is the nominal setting.  A setting of Periodic will allow 
+other queues to drain out of order in rare cases of low latency settings. 
+• Queue Min Es/No: User selected between -5.0 and 1.99dB.  This setting will 
+essentially give a floor to the lowest MODCOD to be used for the Queue in cases 
+or poor weather or link outage.  The lower the value allowed the more robust the 
+link will stay up but the lower the user throughput. A user may want to set this the 
+minimum to allow the link to stay up as long as possible or may want to set it to a 
+higher level such as 1 or 2 so that VERY low MODCODs are not used to try and 
+attain the “Desired Queue CIR”.  A low MODCOD combined with an excessive 
+Desired CIR can result in too many frames being used to attain one Queue’s CIR 
+and thus penalizing the entire network. 
+• Queue Max Es/No: User selected between -4.99 and 25dB.  This setting will 
+essentially give a ceiling to the maximum MODCOD to be used for the Queue.  A 
+ceiling MODCOD may be desirable to limit the user traffic to a particular site or to 
+prevent higher order MODCODs such as 64APSk and > from running if the link is 
+not highly linear. 
+• Desired Queue CIR:  This is the minimum user Datarate (committed information 
+rate) that is desired for use by the currently selected Queue.  The Hub modulator 
+will attempt to give more or less outbound DVB-S2X frames to satisfy this 
+Queue’s Desired CIR.  A low MODCOD setting or a low Queue Min Es/No may 
+require a substantial percentage of the hub TX carrier to meet high Desired CIR 
+figures when running at low MODCODs. 
+• Repeat all steps above to configure the remaining Queues in the network. 
+
+=====PAGE 17=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+17 
+ 
+ 
+Figure 6-4 Hub TX/RX Modem >Tx>Modulator Queue Common Settings 
+ 
+The following settings impact all Queues at the Hub TX/RX Modulator: 
+ 
+• Desired Drain Time:  User selectable from 100 – 500ms. This is the target 
+maximum time for a packet placed into a Queue to wait to drain to the WAN.  
+Lower settings can be used to show improvement in jitter while higher settings 
+can be used to increase efficiency 
+• Drain Time @ Min ModCods:  Read only status as an indicator to the operator 
+that IF all queues met their Queue Min Es/No at the same time, it would take 
+this much time to drain all queues and meet the combined Total Desired CIR.  If 
+this number is substantially greater than your “Desired Drain Time” you may want 
+to consider increasing the Min Es/No per Queue, reducing your Desired Queue 
+CIR,  or increase the overall capacity of your TX link. 
+• Total Desired CIR:  The addition of all Queue(s) Desired Queue CIR plus some 
+modem overhead 
+• Total CIR @ Min ModCods: This is the maximum user throughput of the total 
+system if all sites were running at their lowest MODCOD. 
+• Queue Live Time:  The maximum amount of time an Ethernet frame can stay in a 
+queue without being transmitted due to drain congestion.  After this time the 
+packet will be discarded.  
+
+=====PAGE 18=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+18 
+ 
+• Queue Remote ID: A 28 character ID that can be set by the operator as a name 
+for the Queue selected. 
+• ACM section:  (see M7XC_Appendix_E_ACM_Operation). 
+ 
+ Hub TX/RX Modem >Tx>MCC VCM/ACM Configuration 
+ 
+Figure 6-5 TX/RX Modem >Tx>MCC GUI 
+ 
+Set the MCC Address on the >Tx>MCC to a value of “0”.  All remotes will use this as 
+their destination address for things like ACM, Remote Es/No etc. 
+ Hub TX/RX Modem >Rx>Demodulator VCM/ACM Configuration 
+ 
+Figure 6-6 TX/RX Modem >Rx>Demodulator GUI 
+ 
+• Waveform*: Set the waveform to match that of the remote site modulator.  In this 
+case our Hub Demod Only is receiving multiple DVB-S2X carriers.  This can be 
+set to DVB-S2X (as shown) or LDPC-Gen2, or DSSS LDPC-Gen2.  DO NOT 
+USE DVB-S2X VCM as this waveform is only received by the remotes, not the 
+Hub. 
+• Total Channels*: Set this to the total number of channels that the Hub RX-only 
+multi-demod will be using.  Maximum demod count depends on the waveform 
+mode. 
+o LDPC Gen-2:  
+ 
+1-16 demods 
+o DVB-S2X:  
+ 
+ 
+1-2 demods 
+o DSSS LDPC Gen-2:  
+1 demod (Total Channels will not appear) 
+• Channel: Set to On for each channel you are configuring (in the above example 
+we are configuring channel 1 as seen on the right side of the GUI) 
+
+=====PAGE 19=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+19 
+ 
+• Center Frequency*: This set’s the 100MHz center of the multi-demod receiver 
+tuner.  All demods configured for this specific modem can only be tuned within 
+this frequency band.  Band = center frequency +/- 50MHz. 
+• Carrier Frequency: This must match the far side remote TX frequency that this 
+demod is landing.  In this case channel 1 demod. 
+• Symbol Rate: Match the symbol rate of the far side remote transmitter symbol 
+rate 
+• All other parameters configure normally. 
+• Repeat steps shown in section 5.4 for ALL CHANNELS (demods) listed on 
+the right side of the GUI. 
+ Hub TX/RX Modem >Rx>MCC VCM/ACM Configuration 
+ 
+Figure 6-7 Hub TX/RX Modem >Rx>MCC GUI 
+• MCC Address: Set this to the address of the Hub TX/RX Modem >TX>MCC 
+address. 
+• Remote Tx Path: For all demods that are in the same physical unit as the 
+modulator (all in the Hub TX/RX Modem) this should be set to “Out MCC Port” 
+this will be different on the Hub RX-ONLY Demod configured later) 
+• Remote Tx MCC Address:  This should be set to match the Tx MCC address of 
+the Remote Modem the demodulator is landing.  In our case we are configuring 
+demod #1 landing Remote number 1 with Tx MCC address of 1. 
+• Repeat steps shown in section 5.4 for ALL CHANNELS (demods) listed on 
+the right side of the GUI. 
+ 
+
+=====PAGE 20=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+20 
+ 
+7 
+Hub RX-Only Demod Configuration (optional if you have Hub RX-Only Demods) 
+ Hub RX-Only Demod >Unit>WAN Data Port Configuration 
+ 
+Figure 7-1 Hub RX-Only >Unit>Data Port GUI 
+• Egress VLAN Tag Filter: Set to Off this will have the effect of sending all traffic to 
+the user data port. 
+ 
+ Hub RX-Only Demod >Tx>Modulator VCM/ACM Configuration 
+ 
+Figure 7-2 Hub Rx-Only >Tx>Modulator GUI 
+• Waveform: Set to OFF as this is a demod only.  All other parameters will be 
+hidden. 
+ 
+ Hub Rx-Only Demod >Tx>MCC VCM/ACM Configuration 
+• Note the >TX>MCC page will be hidden as there is no modulator configured 
+ 
+
+=====PAGE 21=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+21 
+ 
+ Hub RX-Only Demod >Rx>Demodulator VCM/ACM Configuration 
+ 
+Figure 7-3 HUB RX-ONLY >Rx>Demodulator GUI 
+• Waveform*: Set the waveform to match that of the remote site modulator.  In this 
+case our Hub Demod Only is receiving multiple DVB-S2X carriers.  This can be 
+set to DVB-S2X (as shown) or LDPC-Gen2, or DSSS LDPC-Gen2.  DO NOT 
+USE DVB-S2X VCM as this waveform is only received by the remotes, not the 
+Hub. 
+• Total Channels*: Set this to the total number of channels that the Hub RX-only 
+multi-demod will be using.  Maximum demod count depends on the waveform 
+mode. 
+o LDPC Gen-2:  
+ 
+1-16 demods 
+o DVB-S2X:  
+ 
+ 
+1-2 demods 
+o DSSS LDPC Gen-2:  
+1 demod (Total Channels will not appear) 
+• Channel: Set to On for each channel you are configuring (in the above example 
+we are configuring channel 1 as seen on the right side of the GUI) 
+• Center Frequency*: This set’s the 100MHz center of the multi-demod receiver 
+tuner.  All demods configured for this specific modem can only be tuned within 
+this frequency band.  Band = center frequency +/- 50MHz. 
+• Carrier Frequency: This must match the far side remote TX frequency that this 
+demod is landing.  In this case channel 1 demod. 
+• Symbol Rate: Match the symbol rate of the far side remote transmitter symbol 
+rate 
+• All other parameters configure normally. 
+• Repeat steps shown in section 6.4 for ALL CHANNELS (demods) listed on 
+the right side of the GUI. 
+ 
+
+=====PAGE 22=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+22 
+ 
+ Hub RX-Only Demod >Rx>MCC VCM/ACM Configuration 
+ 
+Figure 7-4 Hub RX-Only >Rx>MCC GUI 
+• MCC Address*:  Match the MCC address of the Hub TX/RX Modem TX MCC 
+address.  In this case 0. 
+• Remote Tx Path: For the Hub RX-Only demodulators this MUST BE SET to “Out 
+Data Port”.  This will allow ACM and other special messages to be set to the Hub’s 
+modulator that is performing ACM.  When this selection is made you will see an 
+entry for the “Tx Hub MAC Address” 
+• Tx Hub MAC Address*: This is Hub TX/RX Modem’s MAC address it can be found 
+by going to the Hub TX/RX Modem and searching looking at the >Unit>Mgmt Port 
+GUI screen and locating the “MAC Address” field (see below example). 
+ 
+Figure 7-5 Locating Hub TX/RX Modem MAC Address 
+  
+• Tx Hub Channel ID:  This must match the far side remote’s “Queue Paired Rx 
+Channel” on the Hub TX/RX Modem >Tx>Modulator section as set in 5.2 for this 
+particular remote.  It should also match the “Receive From Tx Queue” of the 
+remote site >Rx>Demodulator as seen in section XXXXX of the remote site that 
+the demod is landing.  In this example.  The Hub RX-Only demod/channel #1 is 
+landing remote site #3 which is configured process data from Hub TX/RX Modem 
+Queue #3. 
+• Remote Tx MCC Address:  Must match the far side remote’s Tx MCC address. 
+ 
+
+=====PAGE 23=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+23 
+ 
+8 
+Remote Modem Configuration 
+ Remote Modem >Unit>WAN Data Port Configuration 
+ Remote Modem >Tx>Modulator VCM/ACM Configuration 
+ Remote Modem >Tx>MCC VCM/ACM Configuration 
+ Remote Modem >Rx>Demodulator VCM/ACM Configuration 
+ Remote Modem >Rx>MCC VCM/ACM Configuration 
+ 
+ 
+ Inbound VCM/ACM Demodulator Remote Site 
+Each remote site in a DVB-S2X-VCM system must configure their demodulator to 
+interface with the Hub outbound modulator.  When configuring a remote site demod the 
+following settings are available: 
+ 
+ 
+Figure 8-1 Remote Modem >Rx>Demodulator Configuration 
+Goto the >Rx>Demodulator tab. 
+• Demodulator: Be sure this is configured for DVB-S2X VCM for proper operation 
+• Carrier Frequency: Set frequency to match the far side Hub TX carrier frequency 
+• Minimum +/- Acquisition Range:  Standard operation is to set this to 10% of the 
+hub TX symbol rate up to a maximum of +/- 250KHz.  Any carrier that is 2.5Msps 
+or larger use the +/-250KHz setting.  Narrower setting for smaller outbound Hub 
+carriers can be used for faster acquisition but going too narrow may cause the 
+carrier acquisition to be too narrow to aquire. 
+• Roll-Off:  Match the Hub TX carrier ROF 
+• Symbol Rate: Match the Hub TX SR 
+• PLS Descrambler Sequence:  Match the Hub PLS Scrambler Sequence 
+• Receive From TX Queue:  Select the Queue that you want to receive at the site 
+(match from the >Hub>TX>Modulator> Queue Paired Rx Channel). 
+ 
+
+=====PAGE 24=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+24 
+ 
+After this is completed the remote site configured will only receive VLANs associated 
+with the Hub Queue VLAN ID associated with the Queue Paired Rx Channel you have 
+selected (as well as any Broadcast configured Queue). 
+ 
+9 
+Hub Switch Configuration (3rd party example only) 
+ 
+VCM L2 Managed Switch Setup 
+This configuration is used for testing the DVB-S2X VCM waveform in a 4 remote 
+system.  A diagram of the Hub side of the system is shown below: 
+ 
+  Managed L2 Switch
+P3
+P1
+P2
+TBERD 6000A
+M7XC #1
+(Modulator + 2x Demodulator)
+M7XC #2
+(2x Demodulator)
+[101,102,103,104]
+ 
+ 
+The TBERD 6000A is the Hub network.  M7XC #1 transmits the outbound shared 
+carrier to all four remotes.   M7XC #1 also receives the return channels from remotes #1 
+and #2.   M7XC receives the return channels from remotes #3 and #4. 
+
+=====PAGE 25=====
+Datum Systems 
+ 
+M7XC Manual Appendix F v.1.1 
+25 
+ 
+M7XC#1 maps VLAN 101 to remote #1, VLAN 102 to remote #2, VLAN 103 to remote 
+#3 and VLAN 104 to remote #4. 
+The traffic between the TBERD and switch port 1 (P1) is a VLAN trunk carrying traffic 
+for all remotes in VLANs 101, 102, 103, 104.   The traffic between switch port 2 (P2) 
+and M7XC #1 carries transmit traffic for all remotes in VLANs 101, 102, 103 ,104, and 
+carries receive traffic from remote #1 and remote #2 in VLANs 101, 102.   The traffic 
+between switch port 3 (P3) and M7XC #2 carries transmit traffic in VLANs 103, 104 
+which is dropped by M7XC #2, and carries receive traffic from remote #3 and remote #4 
+in VLANs 103 and 104. 
+Untagged traffic must go between P2 and P3 to allow ACM Es/N0 packets from P3 to 
+P2 and the ACK for those packets from P3 to P2. 
+An unmanaged switch cannot be used, and return traffic from VLANs 103 and 104 is 
+learned at P3, and the switch will then send transmit traffic for VLANs 103 and 104 to 
+P3 instead of P2. 
+The solution is to apply the appropriate VLANs to P1, P2 and P3, and mirror the 
+transmit traffic from P3 to P2.  When mirroring the transmit traffic from P3 to P2, P2 
+should have "Network Traffic" = "Enabled" (Cisco) or "Ingress State" = "Enable" 
+(Planet). 
+Setup: 
+1. VCM TRAFFIC 
+1.1. Create VLANs 101, 102, 103 & 104. 
+1.2. Assign VLAN 101, 102, 103 & 104 to P1 (tagged). 
+1.3. Assign VLAN 101 & 102 to P2 (tagged). 
+1.4. Assign VLAN 103 & 104 to P3 (tagged) 
+1.5. Mirror P3 Tx (Egress) to P2 with Traffic=Enabled or Ingress State=Enable. 
+2. ACM TRAFFIC (optional, this will prevent ACM traffic from hitting the TBERD) 
+2.1. Create VLAN 2 
+2.2. Assign VLAN 2 to P2 (untagged). 
+2.3. Assign VLAN 2 to P3 (untagged). 
+ 
+Attached are two configuration files, one for PLANET IGS-801M, and one for Cisco 
+C1300-8FP-2G 
+planet@100-startup-config.cfg (PLANET IGS-801M). 
+cisco-p3-p2-mirror-works.txt (Cisco C1300). 
+cisco-p3-p2-mirror-
+works.txt
+planet@100-startu
+p-config.cfg
+ 

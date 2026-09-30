@@ -1,0 +1,1064 @@
+
+=====PAGE 1=====
+Q-Flex™ 
+Dual IF/L-Band Satellite Modem 
+The Q-Flex™ modem embodies a new concept 
+in satellite modem technology - a flexible soft-
+ware-defined modem that does what you want, 
+now and in the future. 
+The Q-Flex™ modem’s flexible hardware  
+platform provides IF and L-band operation in 
+one unit. While its powerful processor makes it 
+ideal for handling IP traffic, the Q-Flex™ modem 
+can be fitted with virtually any type of terrestrial 
+interface and will operate at data rates up to 
+155Mbps. 
+Flexible pricing is achieved by enabling only 
+the features you need at any time. Future-
+proofing is assured by convenient software up-
+grades via Ethernet or a memory stick. 
+The Q-Flex™ modem supports the most power-
+ful bandwidth-saving technology available. 
+Paired Carrier™ overlays transmit and receive 
+carriers reducing satellite bandwidth by 50% 
+(using ViaSat’s patented PCMA technology). 
+Both DVB-S2, renowned for its robustness and  
+bandwidth efficiency, and its successor, DVB-
+S2X are supported. 
+FastLink™ low-latency LDPC is optimised for 
+latency-sensitive applications while giving coding 
+gain that is close to the theoretical limits. 
+Bandwidth-saving IP features include accelera-
+tion and header and payload compression. 
+X Dual IF/L-band operation 
+X Data rates to 155Mbps 
+X XStream IP™ is an integrated suite of ad-
+vanced IP optimization & traffic manage-
+ment features including TCP acceleration, 
+header & payload compression, dynamic 
+routing, traffic shaping, encryption & ACM 
+X DVB-S2X, FastLink™ LDPC & TPC 
+X Terrestrial interfaces include Ethernet & op-
+tical Ethernet, EIA-530, G.703, ASI, OC-3 & 
+STM-1 
+X Optimized spectral roll-offs, including 5% 
+X Paired Carrier™ carrier overlay 
+X LinkGuard™ signal-under-carrier interfer-
+ence detection 
+X Built-in spectrum & constellation monitors 
+X New! DVB-S2X! 
+X New! DVB Carrier ID! Fully compliant with 
+DVB-CID standard! 
+X New! Secure AAA RADIUS login using your 
+normal company network login credentials! 
+OVERVIEW 
+FEATURES 
+Advanced Bandwidth-Efficient Features 
+1 OF 5 
+210058 REV C  ECO 17631 
+Applications 
+ Teledyne Paradise Datacom LLC 
+Teledyne Paradise Datacom Ltd. 
+ 328 Innovation Blvd., Suite 100 
+2&3 The Matchyns, London Road, Rivenhall End 
+ State College, PA 16803 USA 
+Witham, Essex, CM8 3HA United Kingdom 
+ Tel: 1 (814) 238-3450 
+Tel: +44(0) 1376 515636 
+www.paradisedata.com 
+X IP trunking and IP backhaul 
+X Corporate networking 
+X Mobile/G.703 backhaul 
+X Disaster recovery 
+X Maritime communications 
+X Satellite news gathering 
+X High-speed trains 
+
+=====PAGE 2=====
+Q-Flex™     
+Dual IF/L-Band Satellite Modem 
+2 OF 5 
+210058 REV C  ECO 17631 
+Demodulator 
+Input Range 
+IF minimum: 
+  -115 + 10 log (symbol rate) 
+L-band minimum:  
+  -130 + 10 log (symbol  rate) 
+IF/L-band maximum: 
+  -80 + 10 log (symbol rate) 
+Maximum  
+Composite 
++10dBm 
+Wanted-to-
+composite 
+IF: -94 + 10 log (symbol rate) 
+L-band: -102 + 10 log (symbol rate) 
+Frequency  
+Sweep Width 
+ 
+Up to 10Msps: ±1kHz to ±32kHz  
+  (1kHz steps) 
+Above 10Msps: ±10kHz to ±250kHz  
+  (10kHz steps) 
+Acquisition 
+Time 
+Dependent on FEC, data rate and 
+sweep width (at 9.6kbps, less than 
+1s at 6dB Es/No QPSK; at 10Mbps, 
+ less than 100ms at 6dB Es/No QPSK) 
+Clock Tracking  
+Range 
+±100ppm minimum 
+Receive Filter 
+Roll-off 
+5%, 10%, 15%, 20%, 25%, 35% 
+ 
+AGC Output 
+Buffered direct AGC output for 
+antenna peaking 
+LNB 10MHz 
+Reference 
+Via IFL cable; 10MHz ± 0.001 ppm; 
+0dBm ± 3dB 
+LNB Voltage 
+Selectable 13V, 15V, 18V or 24V DC to 
+LNB via IFL cable; maximum 0.5A 
+Modulator 
+Output Power 
+IF: 0 to –25dBm (0.1dB steps) 
+L-band: 0 to –40dBm (0.1dB steps) 
+Output Power 
+Stability/Accuracy 
+Stability: ±0.5dB, 0ºC to 50ºC 
+Accuracy: ±0.375dBm 
+Transmit Filter 
+Roll-off 
+5%, 10%, 15%, 20%, 25%, 35% 
+ 
+Phase Accuracy 
+±2º maximum 
+Amplitude 
+Accuracy 
+±0.2dB maximum 
+Carrier 
+Suppression 
+-30dBc minimum 
+Output 
+Phase Noise 
+As EN 302 307 and IESS-316, 
+nominally 3dB better 
+Harmonics 
+Better than –55dBc/ 4kHz in band (at 
+0dBm to –30dBm output) 
+Spurious 
+Better than –55dBc/ 4kHz in band (at 
+0dBm to –30dBm output) 
+Transmit On/Off 
+Ratio 
+55dB minimum 
+BUC PSU Option 
+24V or 48V DC via IFL cable, 200W 
+BUC 10MHz 
+Reference 
+Via IFL cable; 10MHz ± 0.001 ppm; 
+3dBm ± 3dB 
+FSK Control 
+Allows monitor & control of a compat-
+ible L-band BUC from the modem via 
+the Tx IFL cable 
+Main Specifications 
+Frequency 
+IF: 50 to 90MHz & 100 to 180MHz 
+  (resolution 100Hz) (BNC connector) 
+L-band: 950 to 2050MHz (resolution 
+  100Hz) (N-type connector) 
+L-band option: Extends L-band opera- 
+  tion to 2150MHz 
+Data Rate 
+ 
+Operation to 2,048kbps provided as 
+standard 
+Extension options: 5Mbps, 10Mbps, 
+25Mbps, 60Mbps, 100Mbps and 
+155.52Mbps 
+Symbol Rate 
+Limits 
+DVB-S2X: 100ksps to 50Msps 
+DVB-S2: 350ksps to 37.5Msps 
+FastLink™ LDPC: 18ksps to 40Msps 
+TPC: 9ksps to 40Msps 
+Operating 
+Modes 
+DVB-S2X (EN 302 307-2) option 
+DVB-S2 (EN 302 307-1) option 
+Closed Network (+ ESC) (IESS-315) 
+IBS/IDR (IESS-308/309/310/314) options 
+Scrambling 
+DVB-S2/DVB-S2X: As per EN 302 307 
+IBS: As per IESS-309 
+Closed Network + ESC: Synchronised 
+  to ESC overhead 
+Impedance 
+IF: 50Ω/75Ω 
+L-band: 50Ω  
+Return Loss  
+IF: 18dB typical 
+L-band: 14dB typical 
+Redundancy 
+1:1 or up to 1:16 redundancy 
+Data Rate 
+Limits 
+DVB-S2X: 100kbps to 155.52Mbps 
+DVB-S2: 350kbps to 132Mbps 
+FastLink™ LDPC: 18kbps to 100Mbps 
+TPC: 4.8kbps to 60Mbps 
+1bps resolution 
+Traffic Interfaces 
+Base modem (standard): 
+  Gigabit Ethernet (single RJ45) for IP traffic  
+Traffic options: 
+  4-port Gigabit Ethernet switch (extends base modem 
+    Ethernet traffic port with another 3 Ethernet ports, 
+    creating 4-port switch) 
+  Optical Gigabit Ethernet/STM-1/OC-3 (Small Form- 
+    Factor pluggable module) 
+  EIA-530 (RS422, X.21, V.35 and RS232 on 25-pin 
+    D-type female) 
+  G.703 E1/T1, E2/T2, E3/T3 (balanced on RJ45; 
+    unbalanced 75Ω BNC female) 
+  Quad E1 G.703 (balanced RJ45) 
+  Quad ASI (75Ω BNC female) 
+  Serial LVDS (25-pin D-type female) 
+  HSSI (50-pin HD SCSI-2 connector) 
+  IDR (to IESS 308; 50-way female D type connector) 
+Ethernet: Standard Features  
+Bridging and 
+Static Routing 
+Trunking mode: Hardware Layer 2 
+  bridge supporting 155Mbps bi- 
+  directional traffic (at up to 500,000 
+  packets per second); zero jitter 
+Layer 2 bridge & Layer 3 router: 
+  Software processing capability of 
+  up to 150,000 packets per second 
+IPv4/IPv6 
+Dual IPV4/IPV6 TCP/IP supporting 
+IPv4 and IPv6 bridging and routing 
+VLAN Support 
+IEEE 802.1q VLAN support 
+IEEE 802.1p Quality of Service 
+(packet prioritisation) using strict 
+priority or fair weighting queuing 
+DHCP, SNMP 
+DHCP for automatic allocation of 
+M&C IP address. SNMP v1, v2c & v3 
+Web Server 
+Modem web server M&C interface 
+IP Diagnostic 
+Graphs 
+Shows Tx, Rx throughput (bps, pps); 
+dropped, errored packet counts 
+TCP/IP 
+Packet 
+Generator/
+Analyser 
+Generates & analyses TCP & UDP 
+packet streams, allowing modem-to-
+modem IP testing without any other 
+test equipment 
+Ethernet MTU 
+Size 
+Standard: 10k bytes 
+Optical Ethernet: 16k bytes 
+Forward Error Correction 
+DVB-S2X 
+ 
+Includes sup-
+port for DVB-S2 
+ 
+Rates support-
+ed by DVB-S2X 
+that are not part 
+of DVB-S2 are 
+shown in italics 
+QPSK 1/4, 1/3, 2/5, 1/2, 3/5, 2/3, 3/4,  
+  4/5, 5/6, 8/9, 9/10, 13/45, 9/20, 
+ 11/20, 11/45, 4/15, 14/45, 7/15, 8/15, 
+  32/45 
+8PSK 3/5, 2/3, 3/4, 5/6, 8/9, 9/10, 
+  23/26, 25/36, 13/18, 7/15, 8/15, 
+  26/45, 32/45 
+16APSK 2/3, 3/4, 4/5, 5/6, 8/9, 9/10, 
+  26/45, 3/5, 28/45, 23/36, 25/36, 
+  13/18, 7/9, 77/90, 7/15, 8/15, 32/45  
+32APSK 3/4, 4/5, 5/6, 8/9, 9/10, 
+  32/45, 11/15, 7/9, 2/3 
+64APSK 11/15, 7/9, 4/5, 5/6 
+DVB-S2 
+QPSK 1/4, 1/3, 2/5, 1/2, 3/5, 2/3, 3/4,  
+  4/5, 5/6, 8/9, 9/10 
+8PSK 3/5, 2/3, 3/4, 5/6, 8/9, 9/10 
+16APSK 2/3, 3/4, 4/5, 5/6, 8/9, 9/10 
+FastLink™ 
+Low-Latency 
+LDPC 
+BPSK 0.499 
+QPSK/OQPSK 0.532, 0.639, 0.710, 
+  0.798 
+8PSK/8QAM 0.639, 0.710, 0.778 
+16APSK/16QAM 0.726, 0.778, 0.828, 
+  0.851 
+32APSK 0.778, 0.828, 0.886, 0.938 
+64QAM 0.828, 0.886, 0.938, 0.960 
+TPC 
+BPSK 5/16, 21/44, 3/4, 7/8 
+QPSK/OQPSK 5/16, 21/44, 3/4, 7/8, 
+  0.93 
+8PSK 3/4, 7/8, 0.93   
+16QAM 3/4, 7/8, 0.93 
+Others 
+ 
+DVB-S: QPSK 1/2, 2/3, 3/4, 5/6 
+DVB-DSNG: 8PSK 2/3, 5/6, 8/9; 
+  16QAM 3/4, 7/8 
+Viterbi: BPSK/QPSK/OQPSK 1/2, 3/4, 
+  7/8 
+TCM: 8PSK 2/3 
+Sequential: BPSK/(O)QPSK 1/2, 3/4, 
+  7/8 
+Reed-Solomon outer codec available 
+with Viterbi and TCM 
+DVB-S2X Low-
+latency Mode 
+ 
+Paradise 
+proprietary 
+extension to 
+DVB-S2X 
+Very Short Frame: (Frame size of 
+  5,400 bits, reducing latency to 33% of 
+  standard DVB-S2 Short frame) 
+  QPSK/8PSK/16APSK/32APSK 2/5, 
+    7/15, 8/15, 3/5, 2/3, 11/15, 4/5, 
+   13/15, 14/15 
+Ultra Short Frame: (Frame size of 
+  3,240 bits, reducing latency to 20% of 
+  standard DVB-S2 Short frame) 
+  QPSK/8PSK/16APSK/32APSK 1/3, 
+    4/9, 5/9, 2/3, 7/9, 8/9 
+Ethernet: XStream IP™ Option 
+XStream IP™ is an integrated set of IP optimization 
+and traffic management features designed for maxi-
+mum reliability and bandwidth efficiency. The maxi-
+mum throughput depends on features & traffic format 
+Traffic 
+Shaping 
+Provides guaranteed throughput for 
+priority traffic, using Committed and 
+Burst Information Rates. Stream 
+differentiation is by IP address, IEEE 
+802.1p priority, Diffserv DSCP, PID, 
+VLAN ID or MPLS EXP 
+Header  
+Compression 
+Robust Header Compression (RFC 
+3095). Reduces Ethernet/IP/UDP/
+TCP/RTP header sizes typically by 
+90%. 1-way packet processing limit: 
+60,000 pps; 2-way limit: 45,000 pps. 
+Includes Ethernet header compres-
+sion (compresses 14-byte Ethernet 
+frame to typically one byte) 
+Payload 
+Compression  
+Uses Deflate algorithm (RFC 1951) 
+to compress TCP & UDP packets; 
+typical payload compression of 50% 
+Dynamic 
+Routing 
+RIP V1, V2; OSPF V2, V3; BGP V4 
+TCP 
+Acceleration 
+ 
+Typical throughput level of 90% of 
+link capacity. Supports 10,000 con-
+current accelerated TCP connections 
+(plus at least 40,000 unaccelerated 
+TCP connections) up to 100Mbps 
+AAA RADIUS 
+Secure User 
+Login 
+ 
+Authentication, Authorisation & Ac-
+counting. Greater access control & 
+accountability. Replaces standard 
+modem login with user’s personal 
+company network login credentials 
+AES-256 
+Encryption 
+Supported on Q-FlexE™ model only. 
+See separate Q-FlexE™ datasheet 
+Ethernet: XStream IP™ DVB-S2 
+Provided as standard as part of DVB-S2 & DVB-S2X 
+ACM 
+ 
+Dynamically varies modcod with 
+varying link conditions, maximises 
+throughput at all times by converting 
+unused link margin into additional 
+throughput; 100% link availability 
+VCM 
+ 
+Supports transmission/reception of 
+two ASI streams or, one ASI stream 
+with one IP stream, each with its own 
+modcod for optimal throughput 
+IP-over- 
+DVB 
+Encapsulation 
+ 
+Supports the transmission of IP 
+packets with/without Ethernet frames 
+over DVB-S2; encapsulates & de-
+capsulates using MPE (EN 301 192), 
+ULE (RFC 4326) or Paradise PXE 
+
+=====PAGE 3=====
+Q-Flex™     
+Dual IF/L-Band Satellite Modem 
+3 OF 5 
+210058 REV C  ECO 17631 
+Paired Carrier™ Option 
+Paired Carrier™  Transmit and receive carriers are 
+overlaid in the same space segment.  
+Echo cancellation techniques are used 
+to cancel the unwanted transmit carrier 
+leaving the wanted receive carrier 
+Paired Carrier™ 
+data rate 
+options 
+(30kHz to 
+54MHz occu-
+pied bandwidth) 
+256kbps, 512kbps, 1024kbps, 
+2.5Mbps, 5Mbps, 10Mbps, 15Mbps, 
+20Mbps, 25Mbps, 30Mbps, 40Mbps, 
+50Mbps, 60Mbps, 80Mbps, 100Mbps 
+and 155Mbps traffic rate 
+ 
+Power 
+asymmetry 
+-10dB to +10dB 
+Symbol rate 
+asymmetry 
+Up to 12:1 
+Eb/No 
+degradation 
+Typically < 0.5dB 
+(0.7dB for 16QAM/16APSK with 10dB 
+power asymmetry; 1dB or more for 
+32APSK and higher) 
+Mobile 
+Operation 
+Uses GPS data to continually 
+recalculate position relative to satellite, 
+allowing uninterrupted operation in 
+mobile environments anywhere in 
+satellite footprint 
+Test Facilities and Alarm Outputs 
+Bit error rate tester operates over 
+main traffic, ESC or Aux channels, 
+allowing BER monitoring while on 
+traffic. Not available in DVB-S2 mode 
+Supports various test patterns com-
+patible with common BER testers 
+Other test 
+modes 
+Transmit CW (pure carrier) 
+Transmit alternate 1-0 pattern 
+Simulated satellite delay for TCP/IP 
+packets 
+Alarm Relays 
+4 Independent Form C relays for unit, 
+Tx, Rx and backward alarms 
+BER Tester 
+Mechanical/Environmental 
+Size 
+1U chassis, 410mm deep excluding 
+front panel handles and rear panel 
+connectors and fans 
+Weight 
+3.5kg 
+Power 
+Supply 
+90 to 264VAC, 1A @100V, 0.5A @ 
+240V, 47 to 63Hz 
+Fused IEC connector (live and neutral 
+fused); 24V and 48V DC options 
+Compliances 
+FCC, CE and RoHS compliant 
+Safety 
+Standards 
+EN60950-1:2006 
+Emissions 
+and 
+Immunity 
+Emissions: EN55022:2006 Class B 
+Immunity: EN55024:1998 (+ A1:2001 
++ A2:2003 
+Operating 
+Temperature 
+Standard: 0 to 50ºC (storage: -40ºC 
+  to 70ºC) 
+Extended: 0 to 55ºC when fitted with 
+  Ruggedisation option 
+Humidity 
+95% relative humidity, non-
+condensing 
+FastLink™ Performance 
+Eb/No (dB) at BER 5E-8 
+ 
+Low BER 
+Balanced 
+Low Latency 
+BPSK 
+0.499 
+2.1 
+2.9 
+3.4 
+(O)QPSK 
+0.532 
+2.2 
+2.6 
+2.9 
+(O)QPSK 
+0.639 
+2.4 
+2.8 
+3.2 
+(O)QPSK 
+0.710 
+2.7 
+3.3 
+3.7 
+(O)QPSK 
+0.798 
+3.3 
+3.9 
+4.4 
+8PSK 
+0.639 
+5.9 (QEF*) 
+6.2 (QEF*) 
+6.7 (QEF*) 
+8PSK 
+0.710 
+5.9 (QEF*) 
+5.5 
+5.9 
+8PSK 
+0.778 
+5.7 
+6.1 
+6.6 
+8QAM 
+0.639 
+4.5 
+4.8 
+5.1 
+8QAM 
+0.710 
+5 
+5.4 
+5.7 
+8QAM 
+0.778 
+5.6 
+5.9 
+6.3 
+16APSK 
+0.726 
+7.2 (QEF*) 
+7.7 (QEF*) 
+8.1 (QEF*) 
+16APSK 
+0.778 
+7.4 (QEF*) 
+7.9 (QEF*) 
+8.3 (QEF*) 
+16APSK 
+0.828 
+7.7 
+8.2 
+8.5 
+16APSK 
+0.851 
+8 
+8.5 
+8.9 
+16QAM 
+0.726 
+7.6 (QEF*) 
+7.5 
+7.7 
+16QAM 
+0.778 
+7 
+7.6 
+7.9 
+16QAM 
+0.828 
+7.5 
+8.0 
+8.2 
+16QAM 
+0.851 
+7.8 
+8.2 
+8.6 
+32APSK 
+0.778 
+9.4 
+9.9 
+10.3 
+32APSK 
+0.828 
+10.1 
+10.7 
+11.2 
+32APSK 
+0.886 
+11.1 
+11.6 
+12.2 
+32APSK 
+0.938 
+12.9 
+13.5 
+14.3 
+DVB-S2 Performance (for DVB-S2X performance, see separate datasheet) 
+Eb/No (dB) for Normal (64k) frames at QEF* (Es/No in brackets) 
+ 
+Rate 
+1/4 
+Rate 
+1/3 
+Rate 
+2/5 
+Rate  
+1/2 
+Rate 
+3/5 
+Rate 
+2/3 
+Rate 
+3/4 
+Rate 
+4/5 
+Rate 
+5/6 
+Rate 
+8/9 
+Rate 
+9/10 
+QPSK  
+1.5 (-1.6) 1.1 (-0.7) 
+1.3 (0.3) 
+1.5 (1.5) 
+2.0 (2.8) 
+2.2 (3.4) 
+2.6 (4.3) 
+3.0 (5.0) 
+3.3 (5.5) 
+4.0 (6.5) 
+4.2 (6.7) 
+8PSK 
+ 
+ 
+ 
+ 
+3.8 (6.3) 
+4.1 (7.1) 
+4.9 (8.4) 
+ 
+5.8 (9.7) 
+6.8 (11.0) 
+7.0 (11.3) 
+16APSK 
+ 
+ 
+ 
+ 
+ 
+5.4 (9.6) 
+6.0 (10.7) 
+6.5 (11.5) 
+6.8 (12.0) 
+7.7 (13.2) 
+7.9 (13.4) 
+* Note: QEF is defined as a BER of 5E-12 (this is 
+equivalent to a PER of approximately 5E-9).  
+ 
+In relation to FastLink™, the QEF point is used for 
+modcods where there is no discernible gradation in 
+BER performance (i.e. once the demodulator has 
+locked then the modem will operate at the QEF 
+point only). 
+TPC Performance 
+Eb/No (dB) at BER 5E-8 
+ 
+Rate 
+1/2 
+Rate 
+3/4 
+Rate 
+7/8 
+Rate 
+0.93 
+ 
+BPSK, (O)QPSK 
+3.0 
+4.2 
+4.2 
+6.5 
+ 
+8PSK 
+  
+6.3 
+6.8 
+9.6 
+ 
+16QAM 
+  
+7.6 
+7.9 
+10.4 
+ 
+DVB-S/DSNG Performance 
+Eb/No (dB) at QEF* 
+ 
+Rate 
+2/3 
+Rate 
+3/4 
+Rate  
+5/6 
+Rate  
+7/8 
+Rate 
+8/9 
+QPSK 
+4.6 
+4.0 
+4.6 
+5.3  
+ 
+8PSK 
+6.9  
+ 
+8.9 
+  
+9.4 
+16QAM 
+  
+9.0 
+ 
+10.7 
+ 
+Rate 
+1/2 
+3.9 
+ 
+ 
+Note for operation with DVB-S2 Short (16k) 
+frames, an Eb/No increase of 0.3dB is required 
+(worst case) with respect to the corresponding 
+modcod for Normal frame performance. 
+Built-in Spectrum Analyser showing LinkGuard™ Signal-Under-Carrier interference detection without/with interferer present. 
+DVB Carrier ID Option (ETSI TS 103 129) 
+Supports the identification of interfering carriers. Allows 
+identification of individual modem carriers by superimpos-
+ing a low-power CID waveform onto the carrier with negli-
+gible degradation. The CID waveform contains a unique 
+Carrier ID and other identity information. A carrier monitor-
+ing system is required to decode CID waveforms. 
+The DVB Carrier ID option is available as a software 
+upgrade for all Q-Series modems 
+ClearLinQ™ Adaptive Tx Predistorter 
+Option 
+Corrects for linear & non-linear distortion in the RF chain 
+(i.e. amplifier and transponder). Applicable to all FECs  
+and modulations (including DVB-S2X, DVB-S2, TPC & 
+FastLink™). Maximises amplifier output power and mini-
+mises required back-off. Up to 2dB performance gain 
+‘Before and after’ constellations showing ClearLinQ™ Adaptive 
+Tx Pre-distorter compensating for severe non-linear signal dis-
+tortion to a 32APSK carrier  
+
+=====PAGE 4=====
+Q-Flex™     
+Dual IF/L-Band Satellite Modem 
+4 OF 5 
+210058 REV C  ECO 17631 
+ 
+Option Description                       Fully configurable - pay only for what you need! 
+Base Modem 
+ 
+3 
+4.8kbps to 2.048Mbps Closed Network (+ ESC) modem with two Ethernet 10/100/1000 BaseT RJ45s for M&C and 
+  traffic respectively; Ethernet bridge, static routing; IPv4/IPv6; IEEE 802.1p QoS; IEEE 802.1q VLAN; 10k bytes MTU 
+IF operation 50 to 90MHz and 100 to 180MHz 
+L-band operation 950 to 2050MHz; high-stability 10MHz reference; FSK 
+TPC: BPSK, QPSK, OQPSK, 8PSK and 16QAM; to 60Mbps subject to prevailing modem data rate 
+LinkGuard™: Signal-under-carrier interference detection web spectrum graph showing received spectrum and any 
+  interference underneath the received carrier while on traffic; automated alarm when interference rises above user-set 
+  threshold; supported for FastLink™, TPC and DVB-S2X for all modulations 
+AUPC: Automatic Uplink Power Control 
+Web browser monitoring tools: Spectrum display, constellation monitor, TCP/IP throughput 
+Internal Bit Error Rate Tester (BERT): For non-DVB-S2/DVB-S2X operation only 
+TCP/IP Packet Generator/Analyser: Generates and analyses TCP and UDP packet streams, allowing modem-to- 
+  modem IP testing without the need for any other test equipment 
+Tx-only 
+ 
+Transmit functions only 
+Rx-only 
+ 
+Receive functions only 
+Data Rate  
+ 
+5Mbps data rate: Extends base operation to 5Mbps 
+ 
+10Mbps data rate: Extends 5Mbps operation to 10Mbps 
+ 
+25Mbps data rate: Extends 10Mbps operation to 25Mbps 
+ 
+60Mbps data rate: Extends 25Mbps operation to 60Mbps 
+ 
+100Mbps data rate: Extends 60Mbps operation to 100Mbps (FastLink™, DVB-S2 & DVB-S2X only) 
+ 
+155.52Mbps data rate: Extends 100Mbps operation to 155.52Mbps (DVB-S2 & DVB-S2X only) 
+XStream IP™ 
+ 
+Traffic Shaping: Supports CIR/BIR/priority settings for IP streams classified by IP address, Diffserv class, IEEE 802.1p 
+priority tag, MPLS EXP field, VLAN ID and MPEG2 transport stream PID 
+ 
+Header Compression: IP/UDP/TCP/RTP packet header compression (RFC 3095) plus Ethernet header compression 
+ 
+Payload Compression: TCP/UDP packet payload compression using the Deflate algorithm (RFC 1951) 
+ 
+Dynamic Routing: RIP, OSPF and BGP 
+ 
+TCP Acceleration: Up to 10,000 concurrent accelerated TCP connections to 100Mbps subject to prevailing data rate 
+ 
+AES-256 Encryption: Please note that AES-256 Encryption (TCP/IP packet payload encryption using AES with 256-bit 
+keys) is supported on the Q-FlexE model only. The Q-FlexE is identical to the standard Q-Flex in every other respect 
+XStream IP™ DVB
+-S2 
+Provided as stand-
+ard as part of DVB-
+S2 & DVB-S2X 
+options 
+ 
+IP-over-DVB Encapsulation: Encapsulation of IP packets and Ethernet frames over DVB-S2 using Paradise XStream 
+Protocol (PXE), MPE or ULE 
+ 
+ACM: DVB-S2/DVB-S2X ACM 
+ 
+VCM: Allows either two ASI streams, or one ASI stream and one IP stream, to be multiplexed onto a single carrier; re-
+quires Quad ASI hardware option 
+DVB-S2X 
+To 155Mbps sub-
+ject to prevailing 
+modem data rate 
+limits 
+ 
+DVB-S2X CCM Tx: DVB-S2 QPSK, 8PSK, 16APSK & 32APSK Tx operation per EN 302 307-1. DVB-S2X QPSK, 
+8PSK, 16APSK, 32APSK & 64APSK Tx operation per EN 302 307-2. Includes 5%, 10%, 15%, 20%, 25% & 35% spec-
+tral roll-offs. Includes XStream IP™ DVB-S2, which comprises ACM, VCM and IP-over-DVB encapsulation 
+ 
+DVB-S2X CCM Rx: Add-on card (P3609) supporting DVB-S2 QPSK, 8PSK, 16APSK & 32APSK Rx operation per EN 
+302 307-1. DVB-S2X QPSK, 8PSK, 16APSK, 32APSK & 64APSK Rx operation per EN 302 307-2. Includes 5%, 10%, 
+15%, 20%, 25% & 35% spectral roll-offs. Includes XStream IP™ DVB-S2, which comprises ACM, VCM and IP-over-
+DVB decapsulation 
+DVB-S2 
+Low-cost DVB-S2 
+option; to 155Mbps 
+subject to modem 
+data rate limits 
+ 
+DVB-S2 CCM Tx: DVB-S2 QPSK, 8PSK & 16APSK Tx operation per EN 302 307-1. Includes 15%, 20%, 25% & 35% 
+spectral roll-offs. Includes XStream IP™ DVB-S2, which comprises ACM, VCM and IP-over-DVB encapsulation 
+ 
+DVB-S2 CCM Rx: Add-on card (P3604) supporting DVB-S2 QPSK, 8PSK & 16APSK Rx operation per EN 302 307-1. 
+Includes 15%, 20%, 25% & 35% spectral roll-offs. Includes XStream IP™ DVB-S2, which comprises ACM, VCM and IP-
+over-DVB decapsulation. Please note that this add-on card is physically different to the DVB-S2X add-on card! 
+DVB-S2X Low-
+latency Mode 
+Proprietary exten-
+sion to DVB-S2X 
+ 
+Very Short Frame: Frame size of 5,400 bits, reducing latency to 33% of standard DVB-S2 Short frame; supports 
+  QPSK/8PSK/16APSK/32APSK 2/5, 7/15, 8/15, 3/5, 2/3, 11/15, 4/5, 13/15, 14/15 
+Ultra Short Frame: Frame size of 3,240 bits, reducing latency to 20% of standard DVB-S2 Short frame; supports 
+  QPSK/8PSK/16APSK/32APSK 1/3, 4/9, 5/9, 2/3, 7/9, 8/9 
+ClearLinQ™ Adap-
+tive Tx Predistorter 
+ 
+Corrects for linear & non-linear distortion in the RF chain. Applicable to all FECs  and modulations including DVB-S2X, 
+DVB-S2, FastLink™ & TPC 
+FastLink™ 
+Low-latency LDPC 
+ 
+Add-on card (P3605); includes BPSK, QPSK, OQPSK, 8PSK, 8QAM, 16APSK, 16QAM, 32APSK & 64QAM; to 
+100Mbps subject to prevailing modem data rate limits 
+ 
+AAA RADIUS Secure User Login: Authentication, Authorisation & Accounting. Greater access control & accountability. 
+Replaces standard modem login with user’s personal company network login credentials 
+Configuration options continue on next page. 
+
+=====PAGE 5=====
+Q-Flex™     
+Dual IF/L-Band Satellite Modem 
+5 OF 5 
+210058 REV C  ECO 17631 
+ 
+Option Description                Fully configurable - pay only for what you need! 
+ 
+Paired Carrier™ add-on card P3607 (requires one or more options below) 
+ 
+Paired Carrier™ up to 256kbps (requires Paired Carrier™ add-on card) 
+ 
+Extends Paired Carrier™ up to 512kbps 
+ 
+Extends Paired Carrier™ up to 1.024Mbps 
+ 
+Extends Paired Carrier™ up to 2.5Mbps 
+ 
+Extends Paired Carrier™ up to 5Mbps 
+ 
+Extends Paired Carrier™ up to 10Mbps 
+ 
+Extends Paired Carrier™ up to 15Mbps 
+ 
+Extends Paired Carrier™ up to 20Mbps 
+ 
+Extends Paired Carrier™ up to 25Mbps 
+ 
+Extends Paired Carrier™ up to 30Mbps 
+ 
+Extends Paired Carrier™ up to 40Mbps 
+ 
+Extends Paired Carrier™ up to 50Mbps 
+ 
+Extends Paired Carrier™ up to 60Mbps 
+ 
+Extends Paired Carrier™ up to 80Mbps 
+ 
+Extends Paired Carrier™ up to 100Mbps 
+ 
+Extends Paired Carrier™ up to 155.52Mbps 
+Terrestrial Interfaces  
+(Please choose up to four 
+hardware options)   
+ 
+4-port Gigabit Ethernet Switch: Extends base modem Ethernet traffic port with 3 Ethernet ports, creating 4-port switch 
+ 
+Optical Gigabit Ethernet/STM-1/OC-3: Small Form-factor Pluggable module; supports single-mode & multi-mode fibre 
+& all wavelengths; supports all standard fibre connector types such as SC & LC (subject to provision of suitable mating 
+socket for SFP cage) 
+ 
+G.703: Provides unbalanced G.703 on 2xBNC 75Ω sockets and balanced G.703 on RJ45; includes G.703 clock exten-
+sion, which  provides a high-stability reference clock over satellite (alternative to GPS); includes Drop & Insert; supports 
+E1, T1, E2, T2, E3 & T3 
+ 
+EIA-530: D25 DCE supporting RS422/X.21/V.35/RS232 
+ 
+Quad E1: Balanced G.703 on 4xRJ45; all four ports support Drop & Insert and are enabled as standard; IBS satellite 
+framing enabled as standard; MultiMux enabled as standard, which allows IP and/or EIA530 traffic, if EIA530 interface 
+fitted, in place of one or two Quad E1 ports (each MultiMux port is limited to 2.048Mbps traffic rate) 
+ 
+Quad ASI: 4xBNC 75Ω sockets; includes DVB-S/DSNG FEC (which can be used with all terrestrial interfaces) 
+ 
+Serial LVDS: On 25-way D-type connector 
+ 
+HSSI: On HD50 50-way SCSI-2 connector 
+ 
+IDR: To IESS-308; 50-way female D-type connector; includes Advanced AUX (variable rate synchronous Aux channel; 
+includes option to replace IDR audio channels with serial data); includes Audio option (for IBS carriers this allows 2 x 
+audio in 64kbps or 2 x audio+64kbps data in 128kbps - requires IBS option) 
+Optimised Spectral 
+Roll-off 
+ 
+Extends the standard 35%, 25% and 20% roll-off factors to include 5%, 10% and 15% roll-offs for FastLink™, TPC & 
+legacy FECs including DVB-S 
+Wideband 
+ 
+Extends L-band operation upper frequency limit from 2050MHz to 2150MHz  
+DVB-CID 
+ 
+DVB Carrier ID:  Tx carrier identification per ETSI 103 129 
+IBS 
+ 
+Satellite framing to IESS 309 with low-rate Intelsat ESC (to IESS 403) and high-rate IBS ESC 
+Legacy FEC 
+ 
+Sequential FEC (limited to 2.048Mbps); TCM 8PSK 2/3 to IESS 310; Viterbi BPSK/QPSK/OQPSK FEC rates 1/2, 3/4 
+& 7/8; Intelsat Reed-Solomon outer codec 
+24V DC Input 
+ 
+K3023 24V DC primary power input (in place of 100 to 240V AC input); DC input attaches via a screw-terminal connect-
+or plate 
+48V DC Input 
+ 
+K3018 48V DC primary power input (in place of 100 to 240V AC input); DC input attaches via a screw-terminal connect-
+or plate 
+24V 200W BUC PSU 
+ 
+P3543 AC input, 24V 200W DC to Tx BUC 
+48V 200W BUC PSU 
+ 
+P3544 AC input, 48V 200W DC to Tx BUC 
+48V In & 24V BUC PSU 
+ 
+P3545 Floating 48V DC input; +24V 200W DC to Tx BUC; DC input attaches via a screw-terminal connector plate 
+48V In & 48V BUC PSU 
+ 
+P3546 Floating 48V DC input; +48V 200W DC to Tx BUC; DC input attaches via a screw-terminal connector plate 
++48V In & 48V BUC PSU 
+ 
+P3547 +48V DC input; +48V 200W DC to Tx BUC; DC input attaches via a screw-terminal connector plate 
+Paired Carrier™ 
+ 
+Subject to prevailing  
+modem data rate limits. 
+ 
+Occupied bandwidth: 
+minimum 30kHz; maxi-
+mum 54MHz 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Note that Paired Carrier™ 
+is also available as a low-
+cost 90-day per annum 
+license for redundancy 
+system standby modems 
+- please contact Sales for 
+details 
+Ruggedisation 
+ 
+Ruggedises the modem for harsh environments (fans with higher airflow, heatsinks on key components, etc.) 
+Packet Synchronisation 
+ 
+Supports IEEE 1588 Precision Time Protocol Version 2 
+Teledyne Paradise Datacom reserves the right to change specifications of products described in this document at any time without notice and without obligation to notify any person of such changes.  
+Refer to the website or contact Sales or Customer Support for the latest product information. The information contained herein is classified EAR99 under the U.S. Export Administration Regulations. The 
+modem itself is classified ECCN 5A991.b.4 and is subject to U.S. Department of Commerce export control. Export re-export or diversion contrary to U.S. law is prohibited.  
