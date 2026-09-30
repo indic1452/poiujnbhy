@@ -16761,6 +16761,11 @@
         }
     }
 
+    /** Адрес «в анализатор»: кусок (и нулевой!) — по номеру; без номера — весь захват одним захватом «Пакетов». */
+    function адресЗахватаВПакеты(путь, кусок) {
+        return путь + '/to-pakety' + (кусок === undefined || кусок === null ? '' : '?chunk=' + кусок);
+    }
+
     async function рисоватьЗахватСети(page, capId) {
         const путь = '/api/zahvat/' + encodeURIComponent(capId);
         const шапка = h('div', { class: 'page-head' });
@@ -16888,9 +16893,11 @@
             итог.appendChild(h('div', { class: 'card card-pad zs-after' },
                 h('div', { class: 'card-title' }, 'Обработка'),
                 чужой ? h('div', { class: 'muted' }, чужой) : h('div', { class: 'row' },
-                    h('button', { class: 'btn btn--primary', onclick: (e) => вПакеты(e.currentTarget) }, 'Открыть в анализаторе пакетов'),
+                    h('button', { class: 'btn btn--primary', onclick: (e) => вПакеты(e.currentTarget) },
+                        (с.кусков || 1) > 1 ? 'Открыть весь захват в анализаторе' : 'Открыть в анализаторе пакетов'),
                     h('button', { class: 'btn', onclick: () => окноНагрузкиВСессию(capId, с) }, 'Нагрузку порта — в сессию потоков…'),
-                    h('button', { class: 'btn btn--ghost', onclick: () => скачать() }, 'Скачать pcapng'),
+                    // Ссылкой, а не через память страницы: многочасовой захват — гигабайты, браузер пишет их прямо в файл.
+                    h('a', { class: 'btn btn--ghost zs-download', href: путь + '/file', download: '' }, 'Скачать pcapng'),
                     h('button', { class: 'btn btn--ghost', onclick: () => удалить() }, 'Удалить'))));
         }
         async function стоп() {
@@ -16903,20 +16910,9 @@
         async function вПакеты(кнопка, кусок) {
             кнопка.disabled = true;
             try {
-                const d = await api.post(путь + '/to-pakety' + (кусок ? '?chunk=' + кусок : ''));
+                const d = await api.post(адресЗахватаВПакеты(путь, кусок));
                 navigate('#/pakety/' + encodeURIComponent(d.id));
             } catch (error) { toastError(error); } finally { кнопка.disabled = false; }
-        }
-        async function скачать() {
-            try {
-                const result = await api.download(путь + '/file');
-                const url = URL.createObjectURL(result.blob);
-                const link = h('a', { href: url, download: result.filename });
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                setTimeout(() => URL.revokeObjectURL(url), 30000);
-            } catch (error) { toastError(error); }
         }
         async function удалить() {
             if (!(await confirmDialog({ title: 'Удалить захват?', danger: true, confirmText: 'Удалить',

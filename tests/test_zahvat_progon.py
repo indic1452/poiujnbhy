@@ -1668,6 +1668,49 @@ class СерверTests(unittest.TestCase):
         self.assertEqual({"ok": True}, self.к.delete(f"/api/progon/{прогон_}").json())
         self.assertEqual(404, self.к.get(f"/api/progon/{прогон_}").status_code)
 
+    def test_многофайловый_захват_открывается_целиком(self):
+        """«Открыть в анализаторе» у законченного многофайлового захвата — все куски одним захватом
+        «Пакетов» (склейка секций pcapng), а не только первый кусок; не помещается — 413 словами."""
+        import socket  # noqa: PLC0415
+
+        from test_zahvat_seti import свободный_порт  # noqa: PLC0415
+        порт = свободный_порт()
+        ответ = self.к.post("/api/zahvat", json={"режим": "udp", "адрес": "127.0.0.1", "порты": str(порт), "имя": "Стенд",
+                                                 "куски": {"пакетов": 1000}, "на_лету": False})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        ид = ответ.json()["id"]
+        self.addCleanup(lambda: self.сеть.app.state.zahvat_seti.остановить_все())
+        о = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.addCleanup(о.close)
+        for i in range(2500):
+            о.sendto(i.to_bytes(4, "big"), ("127.0.0.1", порт))
+            if i % 200 == 0:
+                time.sleep(0.01)
+        self.assertTrue(дождаться(lambda: self.к.get(f"/api/zahvat/{ид}").json()["пакетов"] == 2500))
+        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
+        self.assertEqual(409, ответ.status_code, "идущий захват целиком не открыть — только закрытые куски")
+        self.к.post(f"/api/zahvat/{ид}/stop", json={})
+        self.assertEqual(3, self.к.get(f"/api/zahvat/{ид}/chunks").json()["total"])
+        self.settings.max_upload_mb = 0
+        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
+        self.assertEqual(413, ответ.status_code)
+        self.assertIn("откройте его по кускам", ответ.json()["error"])
+        self.settings.max_upload_mb = 200
+        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        пакеты = ответ.json()["id"]
+        self.assertTrue(дождаться(lambda: self.к.get(f"/api/pakety/{пакеты}").json()["состояние"] == "готово"))
+        с_ = self.к.get(f"/api/pakety/{пакеты}").json()
+        self.assertEqual((2500, "Стенд — весь, 3 куска.pcapng", f"zahvat:{ид}#весь"), (с_["пакетов"], с_["имя"], с_["от"]))
+        последний = self.к.get(f"/api/pakety/{пакеты}/packet/2500").json()
+        self.assertEqual(["Ethernet", "IPv4", "UDP"], [у["протокол"] for у in последний["уровни"]][:3])
+        self.assertEqual(пакеты, self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}).json()["id"], "второй раз — тот же")
+        self.assertFalse(list((self.сеть.app.state.zahvat_seti.папка / ид).glob("*.tmp")), "склейка не остаётся на диске")
+        # Кусок по-прежнему открывается отдельно.
+        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety?chunk=2", json={})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        self.assertNotEqual(пакеты, ответ.json()["id"])
+
     def test_куски_идущего_захвата(self):
         """Закрытые куски идущего захвата открываются в анализаторе; пишущийся — 409."""
         import socket  # noqa: PLC0415
@@ -1726,6 +1769,16 @@ class СтраницаTests(unittest.TestCase):
         итог = subprocess.run([shutil.which("node"), "-e", код], capture_output=True, text=True, encoding="utf-8", timeout=60)
         self.assertEqual(0, итог.returncode, итог.stderr)
         return json.loads(итог.stdout.strip().splitlines()[-1])
+
+    def test_адрес_в_анализатор_кусок_и_весь(self):
+        # Нулевой кусок — тоже кусок: без номера сервер открывает весь многофайловый захват.
+        код = self.вырезать(self.js, "адресЗахватаВПакеты") + r"""
+        console.log(JSON.stringify([адресЗахватаВПакеты('/z', 0), адресЗахватаВПакеты('/z', 3), адресЗахватаВПакеты('/z'),
+                                    адресЗахватаВПакеты('/z', null)]));"""
+        self.assertEqual(["/z/to-pakety?chunk=0", "/z/to-pakety?chunk=3", "/z/to-pakety", "/z/to-pakety"], self.выполнить(код))
+        # «Скачать pcapng» — ссылкой: гигабайты многочасового захвата не держатся в памяти страницы.
+        self.assertNotIn("api.download(путь + '/file')", self.js)
+        self.assertIn("href: путь + '/file', download: ''", self.js)
 
     def test_поле_и_значение_правила(self):
         код = self.вырезать(self.js, "ключПравилаДК") + self.вырезать(self.js, "значениеПравилаДК") + r"""

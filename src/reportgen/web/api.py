@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import secrets
+import shutil
 import sqlite3
 import tempfile
 import threading
@@ -3065,39 +3066,22 @@ def zahvat_file(request: Request, cap_id: str, chunk: int | None = None) -> Resp
 _КУСКОВ_В_ПАКЕТАХ = 3
 
 
-@router.post("/zahvat/{cap_id}/to-pakety")
-def zahvat_to_pakety(request: Request, cap_id: str, chunk: int = 0) -> dict[str, Any]:
-    """Кусок захвата — в анализатор пакетов (хранилище «Пакеты»): многофайловый захват открывается
-    по кускам (страницами), разбор — в фоне, с правилами «Декодировать как» человека. Закрытые
-    куски идущего захвата — тоже: не дожидаясь конца многочасовой записи."""
-    user = _право_захвата(request)
-    состояние = _захват_сети_или_404(request, user, cap_id, свой=True)
-    куски = _zahvat_seti(request).куски(cap_id)
-    кусок = next((к for к in куски if к["кусок"] == chunk), None)
-    if кусок is None or not кусок["есть"]:
-        raise ServiceError("такого куска нет (или кольцо его уже удалило)", 404)
-    if кусок.get("идёт"):
-        # Закрытые куски идущего захвата открываются сразу; пишущийся — когда закроется.
-        raise ServiceError("этот кусок ещё пишется — откройте его, когда начнётся следующий, или остановите захват", 409)
+def _в_пакеты(request: Request, user, cap_id: str, состояние: dict[str, Any], ключ: str, *, путь: Path,
+              имя: str, подробности: dict[str, Any]) -> str:
+    """Файл захвата — в анализатор пакетов (один раз: повторно — тот же захват «Пакетов»); держать
+    открытыми не больше нескольких кусков одного захвата, прочие открываются заново по щелчку."""
     в_пакетах: dict[str, str] = dict(состояние.get("в_пакетах_куски") or {})
-    прежний = в_пакетах.get(str(chunk))
+    прежний = в_пакетах.get(ключ)
     if прежний:
         try:
             if _pakety(request).прочитать(прежний).get("владелец") == user.id:
-                return {"id": прежний}
+                return прежний
         except KeyError:
             pass
-    размер = кусок["путь"].stat().st_size
-    предел = _settings(request).max_upload_mb
-    if размер > предел << 20:
-        raise ServiceError(f"кусок {размер >> 20} МБ больше допустимых для анализатора {предел} МБ — скачайте его "
-                           "или снимайте захват с куском поменьше", 413)
-    номер = куски.index(кусок)
-    имя = _safe_name(состояние["имя"]) + (f" — кусок {chunk + 1} из {len(куски)}" if len(куски) > 1 else "") + ".pcapng"
-    ид = _pakety(request).создать(владелец=user.id, имя=имя, путь=кусок["путь"], от=f"zahvat:{cap_id}#{chunk}",
+    ид = _pakety(request).создать(владелец=user.id, имя=имя, путь=путь, от=f"zahvat:{cap_id}#{ключ}",
                                   как=_как_человека(request, user))
-    в_пакетах[str(chunk)] = ид
-    # Держать в «Пакетах» не больше нескольких кусков одного захвата: прочие открываются заново.
+    в_пакетах.pop(ключ, None)
+    в_пакетах[ключ] = ид
     while len(в_пакетах) > _КУСКОВ_В_ПАКЕТАХ:
         старый_кусок = next(iter(в_пакетах))
         with suppress(KeyError, OSError):
@@ -3105,7 +3089,68 @@ def zahvat_to_pakety(request: Request, cap_id: str, chunk: int = 0) -> dict[str,
         del в_пакетах[старый_кусок]
     _zahvat_seti(request).отметить(cap_id, в_пакетах_куски=в_пакетах, в_пакетах=ид)
     _repos(request).audit.log("zahvat.pakety", user=user, object_type="zahvat", object_id=cap_id,
-                              details={"pakety": ид, "chunk": chunk, "bytes": размер, "index": номер})
+                              details={"pakety": ид, **подробности})
+    return ид
+
+
+def _куски_словами(n: int) -> str:
+    return f"{n} " + ("кусок" if n % 10 == 1 and n % 100 != 11 else
+                      "куска" if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14) else "кусков")
+
+
+@router.post("/zahvat/{cap_id}/to-pakety")
+def zahvat_to_pakety(request: Request, cap_id: str, chunk: int | None = None) -> dict[str, Any]:
+    """Захват — в анализатор пакетов (хранилище «Пакеты»), разбор в фоне, с правилами «Декодировать
+    как» человека. Без ``chunk`` — весь законченный захват одним захватом «Пакетов» (куски подряд:
+    склейка секций pcapng — тоже pcapng), если он помещается в предел анализатора; иначе — по
+    кускам (``chunk``): закрытые куски идущего захвата открываются сразу, не дожидаясь конца
+    многочасовой записи."""
+    user = _право_захвата(request)
+    состояние = _захват_сети_или_404(request, user, cap_id, свой=True)
+    куски = _zahvat_seti(request).куски(cap_id)
+    предел = _settings(request).max_upload_mb
+    есть = [к for к in куски if к["есть"]]
+    if chunk is None and len(куски) <= 1:
+        chunk = куски[0]["кусок"] if куски else 0
+    if chunk is None:
+        if состояние["состояние"] == "идёт":
+            raise ServiceError("захват ещё идёт — целиком он откроется после остановки; закрытые куски "
+                               "открываются уже сейчас (список кусков ниже)", 409)
+        if not есть:
+            raise ServiceError("файлов захвата нет (кольцо удалило все куски)", 404)
+        всего = sum(к["путь"].stat().st_size for к in есть)
+        if всего > предел << 20:
+            raise ServiceError(f"захват {всего >> 20} МБ больше допустимых для анализатора {предел} МБ — откройте его "
+                               "по кускам (список кусков ниже) или скачайте", 413)
+        удалено = len(куски) - len(есть)
+        имя = (_safe_name(состояние["имя"]) + f" — весь, {_куски_словами(len(есть))}"
+               + (f" (кольцо удалило {удалено})" if удалено else "") + ".pcapng")
+        склейка = _zahvat_seti(request).папка / cap_id / f"весь-{secrets.token_hex(4)}.tmp"
+        try:
+            with open(склейка, "wb") as итог:
+                for к in есть:
+                    with open(к["путь"], "rb") as файл:
+                        shutil.copyfileobj(файл, итог, 1 << 20)
+            ид = _в_пакеты(request, user, cap_id, состояние, "весь", путь=склейка, имя=имя,
+                           подробности={"chunk": "весь", "chunks": len(есть), "bytes": всего})
+        finally:
+            with suppress(OSError):
+                склейка.unlink()
+        return {"id": ид}
+    кусок = next((к for к in куски if к["кусок"] == chunk), None)
+    if кусок is None or not кусок["есть"]:
+        raise ServiceError("такого куска нет (или кольцо его уже удалило)", 404)
+    if кусок.get("идёт"):
+        # Закрытые куски идущего захвата открываются сразу; пишущийся — когда закроется.
+        raise ServiceError("этот кусок ещё пишется — откройте его, когда начнётся следующий, или остановите захват", 409)
+    размер = кусок["путь"].stat().st_size
+    if размер > предел << 20:
+        raise ServiceError(f"кусок {размер >> 20} МБ больше допустимых для анализатора {предел} МБ — скачайте его "
+                           "или снимайте захват с куском поменьше", 413)
+    номер = куски.index(кусок)
+    имя = _safe_name(состояние["имя"]) + (f" — кусок {chunk + 1} из {len(куски)}" if len(куски) > 1 else "") + ".pcapng"
+    ид = _в_пакеты(request, user, cap_id, состояние, str(chunk), путь=кусок["путь"], имя=имя,
+                   подробности={"chunk": chunk, "bytes": размер, "index": номер})
     return {"id": ид}
 
 
