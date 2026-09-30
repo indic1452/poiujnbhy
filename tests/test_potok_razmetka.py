@@ -18,6 +18,7 @@ import struct
 import subprocess
 import time
 import unittest
+import unittest.mock
 import wave
 from pathlib import Path
 
@@ -934,7 +935,10 @@ class АвтоматTests(unittest.TestCase):
         x = лрп(60000, (23, 18))
         x = x[:len(x) // 3 * 3]
         π = вне_группы(3, 9)
-        найдено = ploskost.найти_фм(передать(x, 3, π), 3, лучших=1, бюджет=2)
+        # Группа здесь находит «структуру» и сама (часть бит метки верна — видна ПСП большей степени): чтобы
+        # проверить путь «группа не дала → вслепую», её оценка подменяется пустой.
+        with unittest.mock.patch.object(ploskost, "_оценить", lambda выборка, в, п, до: (0.0, [], 0)):
+            найдено = ploskost.найти_фм(передать(x, 3, π), 3, лучших=1, бюджет=50)
         self.assertIsNotNone(найдено)
         self.assertIn("разметка найдена вслепую", найдено.что)
         имя, ряд = next(iter(найдено.дальше.items()))
