@@ -562,3 +562,79 @@ class СборкаВсегоTests(unittest.TestCase):
         о.кусок("к", b"GET /ws HTTP/1.1\r\nUpgrade: websocket\r\n\r\n")
         о.кусок("с", b"HTTP/1.1 101 S\r\n\r\n\x81\x0e{\"a\":1}{\"b\":2}")
         self.assertEqual(["WebSocket"], [х.вид for х in объекты(о.пакеты)])
+
+
+class Подробности3Tests(unittest.TestCase):
+    def test_дальний_сегмент_позади(self):
+        # Сегмент на 1,5 ГиБ позади первого — раньше него (разность со знаком), пропуск не заполнен.
+        о = ос.Обмен(seq_с=1000)
+        о.кусок("с", b"abc")
+        о.кусок("с", b"far", seq=(1000 - 3 * (1 << 29)) & 0xFFFFFFFF)
+        (соед,), _ = стороны(о.пакеты)
+        сторона = соед.стороны[("10.0.0.2", 80)]
+        self.assertEqual((b"farabc", [(3, 3 * (1 << 29) - 3, False)]), (bytes(сторона.данные), сторона.пропуски))
+
+    def test_сигнатура_сразу_за_разобранным(self):
+        о = ос.Обмен()
+        о.кусок("к", b"GET /a HTTP/1.1\r\n\r\n")
+        о.кусок("с", b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi" + обр.png())
+        self.assertEqual(["HTTP", "по сигнатуре"], [х.вид for х in объекты(о.пакеты)])
+
+    def test_websocket_длина_64_бита_со_старшим_байтом(self):
+        self.assertEqual(([], 0), obekty.кадры_websocket(b"\x82\x7f" + bytes([1, 0, 0, 0, 0, 0, 0, 5]) + b"hello", 0))
+
+    def test_tftp_окна_запросов(self):
+        def rrq(порт, имя):
+            return ос.udp(b"\x00\x01" + имя + b"\x00octet\x00", порт, 69)
+
+        def data(порт, блок, содержимое):
+            return ос.udp(b"\x00\x03" + struct.pack(">H", блок) + содержимое, 4000 + порт, порт, src="10.0.0.2",
+                          dst="10.0.0.1")
+        кадры = [rrq(3000, b"a"), rrq(3100, b"d"), data(3000, 1, b"1"), data(3100, 1, b"4444"),
+                 rrq(3000, b"b"), data(3000, 1, b"B" * 512), data(3000, 2, b"22"),
+                 rrq(3000, b"c"), data(3000, 1, b"333")]
+        self.assertEqual({"a.txt": b"1", "d.txt": b"4444", "b.txt": b"B" * 512 + b"22", "c.txt": b"333"},
+                         {о.имя: о.данные for о in объекты(кадры)})
+
+    def test_stap_и_ap_из_одного_nal_и_fu_b(self):
+        self.assertEqual(b"\x00\x00\x00\x01\x09", obekty._h264([(1, b"\x18\x00\x01\x09")], "annexb")[0])
+        self.assertEqual(b"\x00\x00\x00\x01\x09", obekty._h265([(1, b"\x60\x01\x00\x01\x09")], "annexb")[0])
+        # FU-B (29): индикатор 0x7D, DON 2 байта в первом; заголовок NAL — F и NRI индикатора (0x60) и тип 5.
+        данные, _ = obekty._h264([(1, b"\x7d\xc5\x00\x07xy")], "annexb")
+        self.assertEqual(b"\x00\x00\x00\x01\x65xy", данные)
+
+
+class Подробности4Tests(unittest.TestCase):
+    def test_тип_потока_только_из_шума(self):
+        кадры = [ос.udp(ос.rtp(т, н, 160 * н, 5, b"\x10"), 20000, 30000) for н, т in ((1, 13), (2, 105))]
+        sdp = {"10.0.0.2|30000": [0, {"вид": "audio", "rtpmap": {105: "CN/8000"}}]}
+        сводки, нагрузки, _ = ос.разобрать(кадры)
+        (о,) = obekty.собрать(сводки, нагрузки, sdp=sdp)["объекты"]
+        self.assertEqual("кодек CN/8000 (тип 13, по SDP)", о.заметки[1])
+
+    def test_amr_не_разобран(self):
+        пакеты = [(1, (1, 0, 0, 0, b"\xf0\xc4", 1))]
+        _, _, _, з = obekty._преобразовать("AMR", 8000, пакеты, obekty.Настройки())
+        self.assertEqual(["пакет не разобран как AMR — пропущен"], з)
+
+    def test_без_типа_и_содержимого_bin(self):
+        о = obekty.Объект("HTTP", "x", "", bytes(range(256)), "п", [1])
+        obekty._дополнить(о, obekty.Настройки())
+        self.assertEqual("x.bin", о.имя)
+
+    def test_имя_gzip_короткое(self):
+        self.assertEqual("", obekty._имя_gzip(b"\x1f\x8b\x08"))
+        self.assertEqual("", obekty._имя_gzip(b"\x1f\x8b\x08\x08" + bytes(6) + b"noend"))
+
+    def test_канал_данных_по_адресам_управления(self):
+        # Объявлен чужой адрес (NAT): канал данных — к адресу стороны управления на объявленный порт.
+        for команды, данные_к, порт_данных in (
+                ([b"PASV", b"227 ok (10,9,9,9,195,80)", b"RETR a"], False, 50000),
+                ([b"PORT 10,9,9,9,19,137", b"200 ok", b"RETR a"], True, 5001)):
+            у = ос.Обмен(порт_к=40001, порт_с=21)
+            for строка in команды:
+                у.кусок("с" if строка[:1].isdigit() else "к", строка + b"\r\n")
+            д = ос.Обмен(порт_к=порт_данных if данные_к else 40002, порт_с=20 if данные_к else порт_данных)
+            д.кусок("с" if not данные_к else "к", b"DATA")
+            with self.subTest(порт=порт_данных):
+                self.assertEqual([("FTP", b"DATA")], [(о.вид, о.данные) for о in объекты(у.пакеты + д.пакеты)])
