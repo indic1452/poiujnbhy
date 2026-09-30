@@ -7,6 +7,7 @@ HUNT → PRESYNC → SYNC по всему потоку, нагрузка (x⁴³
 """
 
 import json
+import random
 import shutil
 import struct
 import subprocess
@@ -17,6 +18,7 @@ import zlib
 import numpy as np
 
 import _bootstrap  # noqa: F401
+import gfp_koder as к_
 import gfp_sintez as г
 import potok_sintez as с
 from gfp_zahvat import КАДРЫ as ЗАХВАТ
@@ -41,6 +43,21 @@ def кадры_эталона(сколько: int = 40, пустых: int = 2, *
 
 def клиенты(р) -> list[bytes]:
     return [к.данные for к in р.клиенты()]
+
+
+def бит_массива(бит_линии: int, порядок: str, от: int = 0) -> int:
+    """Где бит линии в массиве (файл читается старшим битом вперёд): при файле младшим битом
+    вперёд бит линии L лежит в байте L // 8 файла, в разряде L % 8 от младшего. ``от`` — массив
+    взят с этого бита файла."""
+    return (бит_линии if порядок == "старший" else 8 * (бит_линии // 8) + 7 - бит_линии % 8) - от
+
+
+def поток_кодера(маска: int, сид: int, **смесь) -> tuple[bytes, dict, list[int]]:
+    """Поток независимого кодера рецензента: байты, ожидание приёмника, места заголовков."""
+    st = к_.Stream(mask=маска, scramble=смесь.pop("scramble", True), x43_seed=сид)
+    к_.smes(random.Random(сид), st, **смесь)
+    байты, места = st.build()
+    return байты, к_.ozhidanie(st), места
 
 
 class МаскаTests(unittest.TestCase):
@@ -68,7 +85,7 @@ class МаскаTests(unittest.TestCase):
                     self.assertEqual(маска ^ (0xFFFFFFFF if инверсия else 0), р.маска)
                     self.assertEqual((сдвиг, порядок, "x43"), (р.сдвиг, р.порядок, р.скремблер))
                     self.assertEqual(len(кадры), len(р.выделение.места))
-                    self.assertEqual([сдвиг + 8 * м for м in г.места_заголовков(кадры)],
+                    self.assertEqual([бит_массива(сдвиг + 8 * м, порядок) for м in г.места_заголовков(кадры)],
                                      [р.бит(м) for м in р.выделение.места])
                     # Первый кадр с нагрузкой — в прогреве x⁴³ (начало регистра неизвестно).
                     self.assertEqual(ETHERNET[1:40], клиенты(р))
@@ -177,6 +194,54 @@ class МаскаTests(unittest.TestCase):
         # На одно место больше — порог чуть выше 44, и 44 уже не пик.
         self.assertEqual([(5, 45)], пики({5: 45, 9: 44}, лишних=1))
         self.assertEqual([], gfp._пики(np.zeros(0, dtype=np.uint16), 4))
+
+
+class ПорядокБитTests(unittest.TestCase):
+    """Файл младшим битом вперёд — биты линии развернуты в каждом байте файла; граница байта
+    GFP от границы байта файла не зависит (сдвиг 0–7). Потоки — независимый кодер рецензента."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.байты, cls.ждём, cls.места = поток_кодера(0x000119D8, 12, n_data=40)
+
+    def test_все_сдвиги_при_обоих_порядках(self):
+        for порядок in ("старший", "младший"):
+            for сдвиг in range(8):
+                файл = к_.file_bytes(self.байты, shift=сдвиг, lsb_first=порядок == "младший", seed=сдвиг)
+                ряд = np.unpackbits(np.frombuffer(файл, dtype=np.uint8))
+                for задан in ("авто", порядок):
+                    with self.subTest(порядок=порядок, сдвиг=сдвиг, задан=задан):
+                        р = gfp.разобрать(ряд, порядок=задан)
+                        self.assertEqual((0x000119D8, порядок, сдвиг), (р.маска, р.порядок, р.сдвиг))
+                        self.assertEqual(self.ждём["kadrov"], р.счёт()["кадров"])
+                        self.assertEqual(self.ждём["klienty"], клиенты(р))
+                        self.assertEqual([бит_массива(сдвиг + 8 * м, порядок) for м in self.места],
+                                         [р.бит(м) for м in р.выделение.места])
+                н = gfp.gfp(ряд)
+                self.assertEqual(0x000119D8, н.свойства["маска"])
+
+    def test_участок_не_с_границы_байта_файла(self):
+        # Окно берёт участок с бита «от»: байты файла в нём начинаются с бита (−от) mod 8.
+        файл = к_.file_bytes(self.байты, shift=3, lsb_first=True)
+        ряд = np.unpackbits(np.frombuffer(файл, dtype=np.uint8))
+        for от in (1, 5, 8, 13):
+            with self.subTest(от=от):
+                р = gfp.разобрать(ряд[от:], от_бита=от)
+                self.assertEqual((0x000119D8, "младший"), (р.маска, р.порядок))
+                места = [бит_массива(3 + 8 * м, "младший") for м in self.места]
+                места = [м for м in места if м >= от + 8]
+                self.assertEqual(места[-len(р.выделение.места):], [р.бит(м) for м in р.выделение.места])
+                self.assertEqual(self.ждём["klienty"][-5:], клиенты(р)[-5:])
+
+    def test_генератор_тестов_по_модели_кодера(self):
+        # gfp_sintez.в_ряд с «младший» — то же, что файл кодера рецензента младшим битом вперёд.
+        for сдвиг in (0, 3):
+            ряд = г.в_ряд(self.байты, сдвиг=сдвиг, порядок="младший")
+            эталон = np.unpackbits(np.frombuffer(к_.file_bytes(self.байты, shift=сдвиг, lsb_first=True),
+                                                 dtype=np.uint8))
+            self.assertEqual(len(эталон), len(ряд))
+            self.assertTrue(np.array_equal(эталон[сдвиг:], ряд[сдвиг:]) if сдвиг == 0 else
+                            np.array_equal(эталон[8:], ряд[8:]))
 
 
 class ВыделениеTests(unittest.TestCase):
