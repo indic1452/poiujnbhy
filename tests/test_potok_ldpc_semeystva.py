@@ -148,26 +148,6 @@ class FLDPCПоПатенту(unittest.TestCase):
                 self.assertTrue(синдром_ноль(ldpc_flex.матрица(K, J), полное))
                 self.assertEqual(K, len(ldpc.информационные(ldpc_flex.матрица(K, J))))
 
-    def test_вслепую_256_при_ошибках(self):
-        """Datum/Paradise 256, 1/2 без матрицы: при ошибках 10⁻³ ранговый метод теряет проверки (опорные слова
-        с ошибками), добор по случайным наборам слов восстанавливает все 256; на чистом потоке добора нет."""
-        from reportgen.potok import dlinnye  # noqa: PLC0415
-        rng = np.random.default_rng(12)
-        слова = [np.array(self.патент.кодировать(rng.integers(0, 2, 256).tolist(), 2, 16), np.uint8) for _ in range(1100)]
-        чистый = np.concatenate([rng.integers(0, 2, 5).astype(np.uint8)] + слова)
-        шумный = чистый ^ (rng.random(len(чистый)) < 1e-3).astype(np.uint8)
-        with unittest.mock.patch.object(dlinnye, "проверки_с_шумом", wraps=dlinnye.проверки_с_шумом) as добор:
-            н = dlinnye.найти(чистый, до=600, бюджет=300)
-            self.assertEqual("LDPC (512, 256)", н.что)
-            self.assertEqual(0, добор.call_count)
-            н = dlinnye.найти(шумный, до=600, бюджет=300)
-            # Граница слова при ошибках находится с промахом (здесь на 4 бита): добор — ещё раз после сдвига.
-            self.assertEqual(2, добор.call_count)
-        self.assertEqual("LDPC (512, 256)", н.что)
-        self.assertEqual(5, н.свойства["начало"])
-        данные = np.concatenate([w[:256] for w in слова])
-        self.assertGreater(float(np.mean(н.дальше[:len(данные)] == данные[:len(н.дальше)])), 0.999)
-
     def test_имена_кодов(self):
         """Имя «fldpc-kK-jJ-pP»: K — из таблиц патента, J от 2 до 64, P — 8…16 (табл. 42)."""
         for имя, итог in (("fldpc-k1024-j6-p16", (1024, 6, 16)), ("FLDPC-K128-J2-P8", (128, 2, 8)),
@@ -266,6 +246,35 @@ class FLDPCПоПатенту(unittest.TestCase):
 
 
 # -- CCSDS ------------------------------------------------------------------------------------------
+
+@есть_источники
+class ВслепуюFLDPC(unittest.TestCase):
+    """Слепое восстановление коротких блоков Datum/Paradise (без матрицы) — долгое, отдельным классом."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.патент = ПатентFLDPC()
+
+    def test_вслепую_256_при_ошибках(self):
+        """Datum/Paradise 256, 1/2 без матрицы: при ошибках 10⁻³ ранговый метод теряет проверки (опорные слова
+        с ошибками), добор по случайным наборам слов восстанавливает все 256; на чистом потоке добора нет."""
+        from reportgen.potok import dlinnye  # noqa: PLC0415
+        rng = np.random.default_rng(12)
+        слова = [np.array(self.патент.кодировать(rng.integers(0, 2, 256).tolist(), 2, 16), np.uint8) for _ in range(1100)]
+        чистый = np.concatenate([rng.integers(0, 2, 5).astype(np.uint8)] + слова)
+        шумный = чистый ^ (rng.random(len(чистый)) < 1e-3).astype(np.uint8)
+        with unittest.mock.patch.object(dlinnye, "проверки_с_шумом", wraps=dlinnye.проверки_с_шумом) as добор:
+            н = dlinnye.найти(чистый, до=600, бюджет=300)
+            self.assertEqual("LDPC (512, 256)", н.что)
+            self.assertEqual(0, добор.call_count)
+            н = dlinnye.найти(шумный, до=600, бюджет=300)
+            # Граница слова при ошибках находится с промахом (здесь на 4 бита): добор — ещё раз после сдвига.
+            self.assertEqual(2, добор.call_count)
+        self.assertEqual("LDPC (512, 256)", н.что)
+        self.assertEqual(5, н.свойства["начало"])
+        данные = np.concatenate([w[:256] for w in слова])
+        self.assertGreater(float(np.mean(н.дальше[:len(данные)] == данные[:len(н.дальше)])), 0.999)
+
 
 @есть_источники
 class CCSDS(unittest.TestCase):
