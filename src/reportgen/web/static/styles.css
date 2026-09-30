@@ -2265,6 +2265,7 @@ input.is-bad {
     padding: 11px 16px;
     border-top: 1px solid var(--border);
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     justify-content: flex-end;
     align-items: center;
@@ -8942,9 +8943,24 @@ body.reading .msg .body {
 .stol-search-results { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field.field--row { display: grid; grid-template-columns: 1fr 7em; align-items: center; gap: 8px; margin: 0; font-size: 13px; }
 .field.field--row input { width: 100%; }
-.stol-candidates { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.field.field--row.field--stack { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.field.field--row.field--stack select, .field.field--row.field--stack input { width: 100%; }
+.stol-candidates { display: flex; flex-direction: column; gap: 4px; }
+/* Пики автокорреляции по весу: невысокий список рядом с графиком, строка под указателем графика подсвечена. */
+.stol-acf-wrap { max-height: 22vh; }
+.stol-acf-peaks { outline: none; }
+.stol-acf-peaks tr { cursor: pointer; }
+.stol-results tr.is-hover:not(.is-selected) { background: var(--accent-soft); }
 .stol-progress { width: 100%; height: 10px; }
 .stol-scr-preview { max-height: 22vh; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; margin: 0; white-space: pre-wrap; }
+.stol-gfp-summary { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 0; font-size: 12.5px; }
+.stol-gfp-summary:empty { display: none; }
+/* Таблица кадров GFP: вид и проверки переносятся, чтобы все столбцы помещались в окне. */
+.stol-gfp-table td:nth-child(4), .stol-gfp-table td:last-child { white-space: normal; min-width: 12em; }
+.stol-gfp-summary dt { color: var(--muted); }
+.stol-gfp-summary dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.stol-results tr.is-bad td { color: var(--danger, #b3261e); }
+.stol-results tr.is-selected.is-bad td { color: inherit; }
 .stol-keys { border-collapse: collapse; font-size: 13px; }
 .stol-keys td { padding: 4px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .stol-keys kbd { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--bg); border: 1px solid var(--border);
@@ -9012,6 +9028,41 @@ body.reading .msg .body {
 .stol-mx-step .stol-mx-mat { max-height: none; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-top: 3px; }
 @media (max-width: 720px) {
     .stol-mx { grid-template-columns: 1fr; }
+}
+/* Окно «Модуляционный декодер»: слева поля как в софте аналитиков, справа созвездия, мини-растр и варианты. */
+.stol-md { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.stol-md-params { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: var(--fs-sm); }
+.stol-md-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; }
+.stol-md-row > span:first-child { color: var(--muted); }
+.stol-md-row select { flex: 1 1 10em; min-width: 0; }
+.stol-md-opt { display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer; }
+.stol-md-perm { width: 5.5em; }
+.stol-md-num { width: 6em; }
+.stol-md-table { flex: 1 1 8em; min-width: 6em; font-family: var(--font-mono); }
+.stol-md-row select.stol-md-tables { flex: 0 0 auto; width: 3.2em; }
+.stol-md-box { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px 8px; margin: 2px 0;
+    display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stol-md-box > legend { padding: 0 4px; color: var(--muted); font-weight: 600; }
+.stol-md-inner { display: flex; flex-direction: column; gap: 6px; padding-left: 20px; }
+.stol-md-result { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stol-md-planes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stol-md-plane { margin: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel); padding: 4px; min-width: 0; }
+.stol-md-plane figcaption { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stol-md-svg { display: block; width: 100%; max-height: 240px; }
+.stol-md-axis { stroke: var(--border); stroke-width: 0.01; }
+.stol-md-pt { fill: var(--accent); }
+.stol-md-lbl { fill: var(--text); font-family: var(--font-mono); text-anchor: middle; }
+.stol-md-over { fill: var(--warn); font-family: var(--font-mono); text-anchor: middle; font-weight: 700; }
+.stol-md-raster { display: block; width: 100%; max-height: 180px; background: #000; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    image-rendering: pixelated; }
+.stol-md-sum { display: flex; flex-direction: column; gap: 2px; word-break: break-all; }
+.stol-md-variants { max-height: 32vh; }
+.stol-md-help { background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius);
+    padding: 4px 10px; }
+.stol-md-help[hidden] { display: none; }
+.stol-md-help p { margin: 4px 0; }
+@media (max-width: 720px) {
+    .stol-md, .stol-md-planes { grid-template-columns: 1fr; }
 }
 /* «screen and» — чтобы последним блоком «max-width: 900px» оставался выдвижной ящик меню. */
 @media screen and (max-width: 900px) {
@@ -9103,20 +9154,22 @@ i.pk-lvl {
 
 .pk-hier-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
     align-items: start;
 }
 .pk-hier-list {
     max-height: 62vh;
     overflow: auto;
-    padding: 4px 0;
+    padding: 0 0 4px;
     outline: none;
 }
 .pk-hier-list:focus-visible { box-shadow: 0 0 0 2px var(--accent-line) inset; }
+/* Строка дерева — имя и девять столбцов долей (как Protocol Hierarchy Wireshark); узко — прокрутка вбок. */
 .pk-hier-row {
     display: grid;
-    grid-template-columns: 18px 12px minmax(80px, 1fr) 84px minmax(60px, 140px) 58px;
+    grid-template-columns: minmax(180px, 1.6fr) minmax(120px, 1.1fr) 76px minmax(120px, 1.1fr) 84px 88px 88px 88px 84px 88px;
+    min-width: 1120px;
     align-items: center;
     gap: 8px;
     min-height: 30px;
@@ -9124,6 +9177,32 @@ i.pk-lvl {
     cursor: pointer;
     border-left: 3px solid transparent;
 }
+.pk-hier-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    cursor: default;
+    font-size: var(--fs-sm);
+    color: var(--muted);
+}
+.pk-hier-head:hover { background: var(--panel); }
+.pk-hier-col { display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: var(--fs-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.pk-hier-col.is-sorted { color: var(--text); }
+button.pk-hier-col { border: 0; background: none; padding: 4px 0; cursor: pointer; text-align: right; line-height: 1.2; }
+button.pk-hier-col:hover { color: var(--accent); }
+.pk-hier-col .pk-hier-track { flex: 1; }
+.pk-hier-name { display: flex; align-items: center; gap: 4px; }
+.pk-hier-thr { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: var(--fs-sm); }
+.pk-hier-threshold { width: 72px; }
+.pk-seg { display: flex; height: 18px; border-radius: 4px; overflow: hidden; background: var(--panel-2); margin: 2px 0 8px; }
+.pk-seg-part { background: var(--lvl); color: var(--text); font-size: 11px; line-height: 18px; white-space: nowrap; overflow: hidden;
+    padding: 0 4px; border-right: 1px solid var(--panel); }
+.pk-seg-part.pk-lvl--все { background: var(--panel-2); }
+.pk-node-ratio { margin-top: 10px; }
+.pk-dir { margin: 6px 0; }
+.pk-node-out { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .pk-hier-row:hover { background: var(--panel-2); }
 .pk-hier-row.is-selected { background: var(--accent-soft); border-left-color: var(--accent); }
 .pk-hier-row.is-match .pk-hier-name { background: var(--mark); border-radius: 3px; }
@@ -9158,12 +9237,38 @@ i.pk-lvl {
 .pk-node-kids .pk-ov-fill { background: var(--lvl); }
 .pk-hier .pk-node-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 @media screen and (max-width: 900px) {
-    .pk-hier-grid { grid-template-columns: minmax(0, 1fr); }
-    .pk-hier-row { grid-template-columns: 18px 12px minmax(60px, 1fr) 70px 50px; }
-    .pk-hier-track { display: none; }
     .pk-hier-legend { margin-left: 0; }
+    .pk-node-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .pk-hier-grid > .card { margin: 0; }
+
+/* -- пакеты: объекты и файлы, выходные данные, настройка выдачи -- */
+.pk-obj-head { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.pk-obj-head h3 { margin: 0 8px 0 0; }
+.pk-obj-kinds .btn.is-active { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.pk-obj .pk-obj-name { font-weight: 500; word-break: break-all; min-width: 140px; max-width: 260px; }
+.pk-obj .pk-obj-type { max-width: 170px; word-break: break-all; }
+.pk-obj .pk-obj-flow { max-width: 170px; word-break: break-word; }
+.pk-obj .pk-obj-notes { max-width: 300px; word-break: break-word; color: var(--muted); }
+.pk-obj .pk-obj-act { white-space: nowrap; }
+.pk-obj-head .row { gap: 8px; flex-wrap: wrap; align-items: center; }
+.pk-obj .pk-obj-act > * { margin: 0 4px 4px 0; vertical-align: middle; }
+.pk-obj-audio { height: 30px; max-width: 220px; }
+.pk-obj-sub > td { background: var(--panel-2); }
+.pk-obj-members { font-size: var(--fs-sm); margin: 0; }
+.pk-json { max-height: 60vh; overflow: auto; margin: 0; padding: 10px; background: var(--panel-2); border-radius: var(--radius);
+    font-family: var(--font-mono); font-size: var(--fs-sm); white-space: pre-wrap; word-break: break-word; }
+.pk-out-group { border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px 10px; margin: 0 0 10px; }
+.pk-out-group legend { color: var(--muted); font-size: var(--fs-sm); padding: 0 4px; }
+.pk-out-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; padding: 4px 0; }
+.pk-out-links { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.btn.is-disabled { opacity: .5; pointer-events: none; }
+.pk-set { display: flex; flex-direction: column; gap: 10px; }
+.pk-set-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 240px); gap: 12px; align-items: center; }
+.pk-set-flag { display: inline-flex; align-items: center; gap: 6px; }
+@media screen and (max-width: 600px) {
+    .pk-set-row { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* ======================================================================
    Описание обработки: правая сворачиваемая панель у потоков и пакетов.

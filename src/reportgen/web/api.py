@@ -12,6 +12,7 @@ import tempfile
 import threading
 import unicodedata
 import urllib.parse
+from collections import Counter
 from collections.abc import Iterable
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
@@ -2305,8 +2306,9 @@ def pakety_packet(request: Request, cap_id: str, number: int) -> dict[str, Any]:
 
 @router.get("/pakety/{cap_id}/stats")
 def pakety_stats(request: Request, cap_id: str, kind: str = "hierarchy", level: str = "ip",
-                 filter: str = "") -> dict[str, Any]:
-    """Статистика по отобранным пакетам: протоколы, диалоги, узлы, время, DNS, HTTP, TLS, ошибки."""
+                 filter: str = "", path: str = "") -> dict[str, Any]:
+    """Статистика по отобранным пакетам: протоколы, диалоги, узлы, время, DNS, HTTP, TLS, ошибки;
+    protocol — соотношения узла дерева протоколов по ``path``."""
     from ..setevoy import statistika  # noqa: PLC0415
     user = require_user(request)
     _готовый(request, user, cap_id)
@@ -2329,9 +2331,15 @@ def pakety_stats(request: Request, cap_id: str, kind: str = "hierarchy", level: 
     if kind == "errors":
         return {"items": statistika.ошибки(сводки)}
     if kind == "overview":
+        from ..setevoy import obekty  # noqa: PLC0415
         поля = [захваты.поля(cap_id)[i] for i in номера]
         нагрузки = захваты.нагрузки(cap_id)
-        return statistika.обзор(сводки, поля, [нагрузки[i] for i in номера])
+        итог = statistika.обзор(сводки, поля, [нагрузки[i] for i in номера])
+        if итог.get("пакетов"):
+            итог["объекты"] = obekty.по_видам(захваты.объекты(cap_id, filter, _настройки_выдачи(request)))
+        return итог
+    if kind == "protocol":
+        return statistika.узел_протокола(сводки, _путь_протокола(path))
     if kind == "unknown":
         нагрузки = захваты.нагрузки(cap_id)
         return {"items": statistika.неизвестные(сводки, [нагрузки[i] for i in номера])}
@@ -2412,6 +2420,114 @@ def pakety_file(request: Request, cap_id: str, flow: str, offset: int = 0, lengt
                              "filename*=UTF-8''" + urllib.parse.quote(f"из-потока-{max(0, offset)}.{расширение}")})
 
 
+#: Пределы настроек выдачи объектов, которые может задать пользователь (сервер не должен упасть).
+ОБЪЕКТЫ_НАИБ_МБ = 64
+ZIP_НАИБ_МБ = 1024
+ОБЪЕКТОВ_НАИБ = 50000
+
+
+def _настройки_выдачи(request: Request):
+    """Настройки выдачи из параметров запроса (страница «Пакеты» хранит их у пользователя в браузере):
+    decompress, silence (0/1), audio (wav/raw), video (annexb/nal), json (pretty/compact), maxobj и maxzip (МБ),
+    maxcount, names (proto/flow/num), tz (минуты к UTC)."""
+    from ..setevoy.obekty import Настройки  # noqa: PLC0415
+    п = request.query_params
+
+    def да(имя: str) -> bool:
+        return п.get(имя, "1") not in ("0", "false", "no")
+
+    def число(имя: str, по: int, наиб: int, наим: int = 1) -> int:
+        try:
+            return max(наим, min(наиб, int(п.get(имя, по))))
+        except ValueError:
+            return по
+
+    по = Настройки()
+    return Настройки(снимать_сжатие=да("decompress"), тишина=да("silence"),
+                     звук="сырой" if п.get("audio") == "raw" else "wav",
+                     видео="nal" if п.get("video") == "nal" else "annexb", json_отступ=п.get("json") == "pretty",
+                     объект_до=число("maxobj", по.объект_до >> 20, ОБЪЕКТЫ_НАИБ_МБ) << 20,
+                     байт_до=число("maxzip", по.байт_до >> 20, ZIP_НАИБ_МБ) << 20,
+                     объектов_до=число("maxcount", по.объектов_до, ОБЪЕКТОВ_НАИБ),
+                     имена={"flow": "поток", "num": "номер"}.get(п.get("names", ""), "протокол"),
+                     пояс=число("tz", 0, 14 * 60, -14 * 60))
+
+
+def _объекты(request: Request, cap_id: str, фильтр: str, путь: str = "") -> tuple[dict[str, Any], list[Any], Any]:
+    """(итог сборки, объекты — все или только с пакетами протокола по ``путь``, настройки)."""
+    user = require_user(request)
+    _готовый(request, user, cap_id)
+    _отобранные(request, cap_id, фильтр)
+    настройки = _настройки_выдачи(request)
+    захваты = _pakety(request)
+    итог = захваты.объекты(cap_id, фильтр, настройки)
+    объекты = итог["объекты"]
+    if путь:
+        стек = _путь_протокола(путь)
+        сводки = захваты.сводки(cap_id)
+        объекты = [о for о in объекты if any(сводки[н - 1]["стек"][:len(стек)] == стек for н in о.пакеты)]
+    return итог, объекты, настройки
+
+
+def _путь_протокола(путь: str) -> list[str]:
+    """Путь узла дерева протоколов: «Ethernet/IPv4/TCP» → ["Ethernet", "IPv4", "TCP"]."""
+    return [ч for ч in путь.split("/") if ч]
+
+
+def _имя_в_заголовке(имя: str, запасное: str) -> str:
+    return (f'attachment; filename="{запасное}"; filename*=UTF-8\'\'' + urllib.parse.quote(имя, safe=""))
+
+
+@router.get("/pakety/{cap_id}/objects")
+def pakety_objects(request: Request, cap_id: str, filter: str = "", kind: str = "", path: str = "") -> dict[str, Any]:
+    """Объекты и файлы захвата (как «Экспорт объектов» Wireshark, шире): вид, имя, тип, длина, поток, пакеты,
+    заметки, вид по содержимому и опись архивов; под фильтром отбора пакетов; ``path`` — только объекты протокола."""
+    итог, объекты, _ = _объекты(request, cap_id, filter, path)
+    виды = [в for в in kind.split(",") if в]
+    отобрано = [о for о in объекты if not виды or о.вид in виды]
+    return {"items": [о.в_словарь() for о in отобрано], "виды": dict(Counter(о.вид for о in объекты)),
+            "всего": len(объекты), "байт": sum(len(о.данные) for о in объекты),
+            "отброшено": итог["отброшено"], "заметки": итог["заметки"]}
+
+
+@router.get("/pakety/{cap_id}/object/{number}")
+def pakety_object(request: Request, cap_id: str, number: int, filter: str = "", member: int = -1) -> Response:
+    """Один объект (или член его архива, ``member`` — номер в описи) — файлом."""
+    from ..setevoy import obekty  # noqa: PLC0415
+    итог, объекты, настройки = _объекты(request, cap_id, filter)
+    о = next((о for о in объекты if о.номер == number), None)
+    if о is None:
+        raise ServiceError("нет такого объекта", 404)
+    if member >= 0:
+        try:
+            имя, данные = obekty.член(о.данные, о.расширение, member)
+        except ValueError as ошибка:
+            raise ServiceError(str(ошибка), 404) from None
+        имя = obekty.безопасное_имя(имя)
+        тип = "application/octet-stream"
+    else:
+        данные, тип = о.данные, о.тип if о.тип.startswith("audio/") else "application/octet-stream"
+        время = итог["время"].get(о.пакеты[0]) if о.пакеты else None
+        имя = о.имя if настройки.имена == "протокол" else obekty.имя_выгрузки(о, настройки, время)
+        имя = obekty.безопасное_имя(имя)
+    запасное = f"object-{number}" + (f"-{member}" if member >= 0 else "") + (
+        "." + re.sub(r"[^0-9A-Za-z]", "", имя.rsplit(".", 1)[-1])[:8] if "." in имя else "")
+    return Response(данные, media_type=тип, headers={"Content-Disposition": _имя_в_заголовке(имя, запасное),
+                                                     "X-Content-Type-Options": "nosniff"})
+
+
+@router.get("/pakety/{cap_id}/objects.zip")
+def pakety_objects_zip(request: Request, cap_id: str, filter: str = "", kind: str = "", path: str = "") -> Response:
+    """Все объекты (или отобранные виды) одним ZIP: имена без повторов и «..», опись.csv, что отброшено."""
+    from ..setevoy import obekty  # noqa: PLC0415
+    итог, объекты, настройки = _объекты(request, cap_id, filter, path)
+    состояние = _pakety(request).прочитать(cap_id)
+    данные = obekty.zip_объектов({**итог, "объекты": объекты}, [в for в in kind.split(",") if в], настройки)
+    имя = f"{Path(состояние['имя']).stem}-объекты.zip"
+    return Response(данные, media_type="application/zip",
+                    headers={"Content-Disposition": _имя_в_заголовке(имя, "objects.zip")})
+
+
 @router.get("/pakety/{cap_id}/stream/{number}")
 def pakety_stream(request: Request, cap_id: str, number: int) -> dict[str, Any]:
     """Следовать за потоком TCP/UDP/SCTP, в котором стоит пакет."""
@@ -2426,12 +2542,40 @@ def pakety_stream(request: Request, cap_id: str, number: int) -> dict[str, Any]:
 
 
 @router.get("/pakety/{cap_id}/export")
-def pakety_export(request: Request, cap_id: str, filter: str = "", format: str = "pcap") -> Response:
-    """Отобранные пакеты — pcap или CSV (номер, время, адреса, протокол, длина, сведения)."""
+def pakety_export(request: Request, cap_id: str, filter: str = "", format: str = "pcap", path: str = "") -> Response:
+    """Отобранные пакеты — pcap, pcapng, CSV (номер, время, адреса, протокол, длина, сведения), JSON (список)
+    или dissect (полный разбор — дерево полей). ``path`` — только пакеты узла дерева протоколов."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
     user = require_user(request)
     состояние = _готовый(request, user, cap_id)
     номера = _отобранные(request, cap_id, filter)
     основа = Path(состояние["имя"]).stem
+    захваты = _pakety(request)
+    if path:
+        стек = _путь_протокола(path)
+        сводки_ = захваты.сводки(cap_id)
+        номера = [i for i in номера if сводки_[i]["стек"][:len(стек)] == стек]
+        основа += "-" + vygruzka.безопасно(стек[-1] if стек else "все")
+    настройки = _настройки_выдачи(request)
+    if format == "pcapng":
+        return Response(захваты.выгрузить_pcapng(cap_id, номера), media_type="application/octet-stream",
+                        headers={"Content-Disposition": _имя_в_заголовке(основа + "-отбор.pcapng", "export.pcapng")})
+    if format == "json":
+        список = vygruzka.список_пакетов([захваты.сводки(cap_id)[i] for i in номера], настройки.пояс)
+        return Response(vygruzka.json_байты(список, настройки.json_отступ), media_type="application/json",
+                        headers={"Content-Disposition": _имя_в_заголовке(основа + "-список.json", "list.json")})
+    if format == "dissect":
+        сводки_ = захваты.сводки(cap_id)
+
+        def поток_json():
+            yield b"["
+            for j, i in enumerate(номера):
+                п = next(iter(vygruzka.разбор([захваты.пакет(cap_id, сводки_[i]["номер"])])))
+                yield (b"," if j else b"") + vygruzka.json_байты(п, настройки.json_отступ)
+            yield b"]"
+        return StreamingResponse(поток_json(), media_type="application/json",
+                                 headers={"Content-Disposition": _имя_в_заголовке(основа + "-разбор.json",
+                                                                                  "dissect.json")})
     if format == "csv":
         import csv  # noqa: PLC0415
         import io  # noqa: PLC0415
@@ -2450,6 +2594,133 @@ def pakety_export(request: Request, cap_id: str, filter: str = "", format: str =
     return Response(данные, media_type="application/vnd.tcpdump.pcap",
                     headers={"Content-Disposition": "attachment; filename*=UTF-8''"
                              + urllib.parse.quote(основа + "-отбор.pcap")})
+
+
+def _отбор_сводок(request: Request, cap_id: str, фильтр: str) -> tuple[dict[str, Any], list[int], list[Any]]:
+    user = require_user(request)
+    состояние = _готовый(request, user, cap_id)
+    номера = _отобранные(request, cap_id, фильтр)
+    сводки = _pakety(request).сводки(cap_id)
+    return состояние, номера, [сводки[i] for i in номера]
+
+
+@router.get("/pakety/{cap_id}/stats-file")
+def pakety_stats_file(request: Request, cap_id: str, kind: str = "hierarchy", format: str = "csv",
+                      filter: str = "") -> Response:
+    """Таблица статистики файлом (CSV или JSON): hierarchy — дерево протоколов с долями, conversations-eth/ip/
+    tcp/udp, endpoints, time, dns, http, tls, errors, unknown."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
+    состояние, номера, сводки = _отбор_сводок(request, cap_id, filter)
+    имена = {"hierarchy": "иерархия", "conversations-eth": "диалоги-eth", "conversations-ip": "диалоги-ip",
+             "conversations-tcp": "диалоги-tcp", "conversations-udp": "диалоги-udp", "endpoints": "узлы",
+             "time": "время", "dns": "dns", "http": "http", "tls": "tls", "errors": "ошибки", "unknown": "неизвестные"}
+    if kind not in имена or format not in ("csv", "json"):
+        raise ServiceError("вид таблицы или формат не известен", 400)
+    захваты = _pakety(request)
+    if kind == "hierarchy":
+        from ..setevoy import statistika  # noqa: PLC0415
+        таблица: Any = statistika.иерархия_строками(statistika.иерархия(сводки)[0])
+    else:
+        поля, нагрузки = захваты.поля(cap_id), захваты.нагрузки(cap_id)
+        таблица = vygruzka.статистика(сводки, [поля[i] for i in номера], [нагрузки[i] for i in номера])[имена[kind]]
+    настройки = _настройки_выдачи(request)
+    имя = f"{Path(состояние['имя']).stem}-{имена[kind]}.{format}"
+    данные = vygruzka.csv_байты(таблица) if format == "csv" else vygruzka.json_байты(таблица, настройки.json_отступ)
+    return Response(данные, media_type="text/csv; charset=utf-8" if format == "csv" else "application/json",
+                    headers={"Content-Disposition": _имя_в_заголовке(имя, f"stats.{format}")})
+
+
+@router.get("/pakety/{cap_id}/fields")
+def pakety_fields(request: Request, cap_id: str, path: str, format: str = "csv", filter: str = "") -> Response:
+    """Поля протокола узла дерева (все разобранные поля этого уровня у его пакетов): CSV или JSON."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
+    состояние, _, сводки = _отбор_сводок(request, cap_id, filter)
+    стек = _путь_протокола(path)
+    if not стек or format not in ("csv", "json"):
+        raise ServiceError("нужен путь узла и формат csv или json", 400)
+    свои = [с["номер"] for с in сводки if с["стек"][:len(стек)] == стек][:vygruzka.РАЗБОР_ДО]
+    захваты = _pakety(request)
+    строки = vygruzka.поля_по_протоколам((захваты.пакет(cap_id, н) for н in свои), стек).get(стек[-1], [])
+    настройки = _настройки_выдачи(request)
+    имя = f"{Path(состояние['имя']).stem}-поля-{vygruzka.безопасно(стек[-1])}.{format}"
+    данные = vygruzka.csv_байты(строки) if format == "csv" else vygruzka.json_байты(строки, настройки.json_отступ)
+    return Response(данные, media_type="text/csv; charset=utf-8" if format == "csv" else "application/json",
+                    headers={"Content-Disposition": _имя_в_заголовке(имя, f"fields.{format}")})
+
+
+@router.get("/pakety/{cap_id}/streams.zip")
+def pakety_streams_zip(request: Request, cap_id: str, filter: str = "", path: str = "") -> Response:
+    """Сырые потоки TCP/UDP по направлениям (.bin) одним ZIP с описью; ``path`` — только потоки узла дерева."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
+    состояние, номера, сводки = _отбор_сводок(request, cap_id, filter)
+    нагрузки = _pakety(request).нагрузки_тр(cap_id)
+    настройки = _настройки_выдачи(request)
+    архив = vygruzka.Архив(настройки.байт_до, настройки.пояс)
+    for имя, данные, сторона, транспорт in vygruzka.потоки(сводки, [нагрузки[i] for i in номера],
+                                                            _путь_протокола(path)):
+        архив.положить(имя, данные, "сырой поток по направлению", поток=сторона.поток,
+                       пакеты=[н for _, н in сторона.карта], протокол=транспорт)
+    файл = архив.закрыть(отступ=настройки.json_отступ)
+    return Response(файл.read(), media_type="application/zip",
+                    headers={"Content-Disposition": _имя_в_заголовке(f"{Path(состояние['имя']).stem}-потоки.zip",
+                                                                     "streams.zip")})
+
+
+@router.get("/pakety/{cap_id}/report")
+def pakety_report(request: Request, cap_id: str, filter: str = "", format: str = "html") -> Response:
+    """Отчёт-обзор захвата: HTML без внешних ресурсов или текст."""
+    from ..setevoy import obekty, statistika, vygruzka  # noqa: PLC0415
+    состояние, номера, сводки = _отбор_сводок(request, cap_id, filter)
+    захваты = _pakety(request)
+    поля, нагрузки = захваты.поля(cap_id), захваты.нагрузки(cap_id)
+    настройки = _настройки_выдачи(request)
+    обзор = statistika.обзор(сводки, [поля[i] for i in номера], [нагрузки[i] for i in номера])
+    итог = захваты.объекты(cap_id, filter, настройки)
+    страница, текст = vygruzka.отчёт(состояние["имя"], обзор, statistika.иерархия_строками(
+        statistika.иерархия(сводки)[0]), obekty.по_видам(итог), итог["объекты"], настройки.пояс)
+    основа = Path(состояние["имя"]).stem
+    if format == "txt":
+        return Response(текст.encode(), media_type="text/plain; charset=utf-8",
+                        headers={"Content-Disposition": _имя_в_заголовке(основа + "-обзор.txt", "report.txt")})
+    return Response(страница.encode(), media_type="application/octet-stream",
+                    headers={"Content-Disposition": _имя_в_заголовке(основа + "-обзор.html", "report.html"),
+                             "X-Content-Type-Options": "nosniff"})
+
+
+@router.get("/pakety/{cap_id}/outputs")
+def pakety_outputs(request: Request, cap_id: str, filter: str = "") -> dict[str, Any]:
+    """Что можно выгрузить из отбора: пункты (ключ, группа, название, отмечен ли по умолчанию) и сколько чего."""
+    from ..setevoy import obekty, vygruzka  # noqa: PLC0415
+    _, номера, сводки = _отбор_сводок(request, cap_id, filter)
+    итог = _pakety(request).объекты(cap_id, filter, _настройки_выдачи(request))
+    виды = obekty.по_видам(итог)
+    ртп = sum(н for в, н in виды.items() if в in vygruzka.RTP_ВИДЫ)
+    потоков = len({("TCP" in с["стек"], *sorted(((с["источник"], с["порт_от"]), (с["получатель"], с["порт_к"]))))
+                   for с in сводки if с.get("порт_от") is not None and ({"TCP", "UDP"} & set(с["стек"]))})
+    сколько = {"pcap": len(номера), "pcapng": len(номера), "list-csv": len(номера), "list-json": len(номера),
+               "dissect-json": min(len(номера), vygruzka.РАЗБОР_ДО),
+               "fields-csv": len({п for с in сводки for п in с["стек"]}), "stats": 12,
+               "objects": sum(виды.values()) - ртп, "rtp": ртп, "streams": потоков, "report": 2}
+    return {"items": [{"ключ": к, "группа": г, "название": н, "отмечен": о, "сколько": сколько[к]}
+                      for к, г, н, о in vygruzka.ВЫХОДЫ], "виды": виды, "отброшено": итог["отброшено"]}
+
+
+@router.get("/pakety/{cap_id}/bundle.zip")
+def pakety_bundle(request: Request, cap_id: str, filter: str = "", items: str = "") -> Response:
+    """Отмеченное одним ZIP: папки по видам, опись.csv и опись.json (путь, что, откуда, время, размер, SHA-256)."""
+    from ..setevoy import vygruzka  # noqa: PLC0415
+    состояние, _, _ = _отбор_сводок(request, cap_id, filter)
+    пункты = [п for п in items.split(",") if п]
+    if not пункты or any(п not in vygruzka.КЛЮЧИ for п in пункты):
+        raise ServiceError("отметьте, что выгружать: " + ", ".join(vygruzka.КЛЮЧИ), 400)
+    файл = vygruzka.собрать_выгрузку(_pakety(request), cap_id, filter, пункты, _настройки_выдачи(request))
+
+    def куски():
+        with файл:
+            while кусок := файл.read(1 << 20):
+                yield кусок
+    return StreamingResponse(куски(), media_type="application/zip", headers={
+        "Content-Disposition": _имя_в_заголовке(f"{Path(состояние['имя']).stem}-выгрузка.zip", "bundle.zip")})
 
 
 @router.post("/pakety/{cap_id}/ask")
@@ -3665,6 +3936,91 @@ def potok_scrambler_search(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError(str(ошибка), 400) from None
 
 
+#: Разборы GFP окна стола: последние несколько (с областями нагрузки — для страниц таблицы и
+#: выгрузки кадров в анализатор пакетов без повторного расчёта).
+_GFP_ПОМНИТЬ = 3
+_gfp_кэш: dict[tuple, Any] = {}
+_gfp_замок = threading.Lock()
+
+
+def _разбор_gfp(request: Request, user, job_id: str, тело: dict[str, Any]):
+    """GFP в массиве по параметрам окна: маска (авто/HEX), скремблер, порядок бит, многочлен, участок."""
+    from ..potok import gfp  # noqa: PLC0415
+    этап = int(тело.get("stage") or 0)
+    _файл_бит_или_400(request, user, job_id, этап)
+    задания = _potok(request)
+    маска_ = str(тело.get("mask") or "авто").strip()
+    if маска_ != "авто" and not re.fullmatch(r"(0x)?[0-9A-Fa-f]{8}", маска_):
+        raise ServiceError("маска — «авто» или 8 шестнадцатеричных знаков", 400)
+    маска = "авто" if маска_ == "авто" else int(маска_[-8:], 16)
+    скремблер = str(тело.get("scrambler") or "авто")
+    порядок = str(тело.get("order") or "авто")
+    многочлен = "авто" if тело.get("poly") == "авто" else "стандарт"
+    if скремблер not in ("авто", "да", "нет", "инверсия") or порядок not in ("авто", "старший", "младший"):
+        raise ServiceError("скремблер — авто/да/нет/инверсия, порядок — авто/старший/младший", 400)
+    первый = max(0, int(тело.get("first") or 0))
+    бит = min(gfp.БИТ_ДО, max(4096, int(тело.get("bits") or gfp.БИТ_ДО // 2)))
+    файл = задания.файл_бит(job_id, этап)
+    ключ = (str(файл), файл.stat().st_mtime_ns, str(маска), скремблер, порядок, многочлен, первый, бит)
+    with _gfp_замок:
+        if ключ in _gfp_кэш:
+            return _gfp_кэш[ключ], этап
+    биты = задания.биты_участка(job_id, этап, первый, первый + бит)
+    итог = gfp.разобрать(биты, маска=маска, скремблер=скремблер, порядок=порядок, многочлен=многочлен,
+                         от_бита=первый)
+    with _gfp_замок:
+        _gfp_кэш[ключ] = итог
+        while len(_gfp_кэш) > _GFP_ПОМНИТЬ:
+            _gfp_кэш.pop(next(iter(_gfp_кэш)))
+    return итог, этап
+
+
+@router.post("/potok/{job_id}/gfp")
+def potok_gfp(request: Request, job_id: str) -> dict[str, Any]:
+    """GFP (G.7041) в массиве: сводка (маска, пустой кадр на линии, счёт) и страница таблицы кадров."""
+    from ..potok import gfp  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        р, _ = _разбор_gfp(request, user, job_id, тело)
+        if р is None:
+            return {"найдено": False, "причина": "заголовков GFP с верным cHEC подряд не найдено"
+                    + ("" if (тело.get("mask") or "авто") == "авто" else " с этой маской")
+                    + " ни при одном битовом сдвиге и порядке бит"}
+        return {"найдено": True, "сводка": gfp.сводка(р),
+                "таблица": gfp.таблица(р, max(0, int(тело.get("offset") or 0)),
+                                       min(500, max(1, int(тело.get("limit") or 200))),
+                                       пустые=bool(тело.get("idle", False)))}
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
+@router.post("/potok/{job_id}/gfp/pakety")
+def potok_gfp_pakety(request: Request, job_id: str) -> dict[str, Any]:
+    """Кадры GFP в анализатор пакетов: клиенты (тип канала по UPI) или кадры GFP целиком (171)."""
+    from ..potok import gfp  # noqa: PLC0415
+    from ..potok.zadaniya import выгрузка  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        р, этап = _разбор_gfp(request, user, job_id, тело)
+        cid = тело.get("cid")
+        cid = None if cid in (None, "") else int(cid)
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    if р is None:
+        raise ServiceError("GFP не найден", 400)
+    кадры = gfp.кадры_gfp(р, cid) if тело.get("what") == "кадры" else gfp.клиентские_кадры(р, cid)
+    if not кадры:
+        raise ServiceError("кадров с данными нет" + (f" в канале CID {cid}" if cid is not None else ""), 400)
+    данные, _ = выгрузка(кадры, "кадры")
+    состояние = _potok(request).прочитать(job_id)
+    имя = (f"{Path(состояние['имя']).stem} — GFP {'кадры' if тело.get('what') == 'кадры' else 'клиенты'}"
+           + (f", CID {cid}" if cid is not None else "") + f", массив {этап}.pcap")
+    ид = _pakety(request).создать(владелец=user.id, имя=имя, данные=данные, от=f"{job_id}#{этап}")
+    return {"id": ид, "кадров": len(кадры), "канал": кадры.канал}
+
+
 #: Статистическим тестам по умолчанию — миллион бит (рекомендация NIST SP 800-22), самое большее — 16 млн.
 СТАТИСТИКА_ПО = 1_000_000
 СТАТИСТИКА_ДО = 16_000_000
@@ -4367,6 +4723,142 @@ def potok_matrix_delete(request: Request, name: str) -> dict[str, Any]:
     return {"ok": True}
 
 
+# -- модуляционный декодер: плоскости (.etl), просмотр, перебор вариантов ------------------
+
+@router.get("/potok-planes")
+def potok_planes(request: Request) -> dict[str, Any]:
+    """Плоскости модуляционного декодера: встроенные и файлы .etl папки (битый — с ошибкой, список не роняет)."""
+    from ..potok import moddekoder  # noqa: PLC0415
+    require_user(request)
+    _potok(request)                     # задаёт папку плоскостей
+    return {"items": moddekoder.список()}
+
+
+@router.post("/potok-planes")
+def potok_plane_add(request: Request, file: UploadFile = File(...)) -> dict[str, Any]:
+    """Положить .etl в папку плоскостей: имя очищается, только .etl, до 64 КБ, битый не сохраняется."""
+    from ..potok import moddekoder  # noqa: PLC0415
+    user = require_user(request)
+    _potok(request)
+    данные = file.file.read(moddekoder.ETL_ДО + 1)
+    if len(данные) > moddekoder.ETL_ДО:
+        raise ServiceError(f"файл .etl больше {moddekoder.ETL_ДО // 1024} КБ — это не картинка созвездия", 413)
+    try:
+        плоскость = moddekoder.сохранить(file.filename or "", данные)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _repos(request).audit.log("potok.plane", user=user, object_type="ploskost", object_id=плоскость["имя"],
+                              details={"M": плоскость["M"], "вид": плоскость["вид"]})
+    return {"plane": плоскость}
+
+
+@router.get("/potok-planes/{name}")
+def potok_plane_file(request: Request, name: str) -> Response:
+    """Плоскость файлом .etl: из папки — как лежит (и битую — чтобы поправить), встроенную — картинкой."""
+    from ..potok import moddekoder  # noqa: PLC0415
+    require_user(request)
+    _potok(request)
+    встроенная = next((с for с in moddekoder.встроенные() if с.имя == name), None)
+    if встроенная is not None:
+        данные, имя = moddekoder.в_etl(встроенная).encode("utf-8"), f"{name}.etl"
+    else:
+        путь = moddekoder.файл(name)
+        if путь is None:
+            raise ServiceError(f"плоскости «{name}» нет ни среди встроенных, ни в папке плоскостей", 404)
+        данные, имя = путь.read_bytes(), путь.name
+    return Response(данные, media_type="application/octet-stream",
+                    headers={"Content-Disposition": _disposition(имя), "X-Content-Type-Options": "nosniff"})
+
+
+#: Просмотр модуляционного декодера: бит результата — не больше.
+МОДДЕКОДЕР_ПРОСМОТР_ДО = 1 << 17
+#: «Дек. всех»: секунд на одну часть перебора (окно просит части подряд, показывает ход).
+МОДДЕКОДЕР_СРОК = 2.0
+
+
+def _моддекодер(request: Request, job_id: str, для_перебора: bool = False):
+    """Тело запроса окна декодера → (тело, настройки, выборка от начала массива, всего бит) с проверкой доступа.
+
+    ``для_перебора`` — вариант и внешняя таблица не нужны (перебор размечает точки сам), «только_грей» —
+    из тела запроса, если есть.
+    """
+    from ..potok import moddekoder  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        этап = int(тело.get("stage") or 0)
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("stage — номер этапа", 400) from None
+    _файл_бит_или_400(request, user, job_id, этап)
+    параметры = тело.get("параметры")
+    if для_перебора and isinstance(параметры, dict):
+        параметры = {**параметры, "вариант": 0, "таблица": "",
+                     "только_грей": тело.get("только_грей", параметры.get("только_грей", True))}
+    try:
+        н = moddekoder.настройки(параметры)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    задания = _potok(request)
+    return тело, н, задания.биты_участка(job_id, этап, 0, moddekoder.ВЫБОРКА_СИМВОЛОВ * н.k), \
+        задания.длина_бит(job_id, этап)
+
+
+@router.post("/potok/{job_id}/moddecoder/preview")
+def potok_moddecoder_preview(request: Request, job_id: str) -> dict[str, Any]:
+    """Просмотр: ``бит`` бит результата с бита ``с`` выборки (упакованы, base64), мера структуры, таблица и шаг.
+
+    ``с`` — чтобы строки мини-растра окна шли с той же фазы, что и строки просмотра (первый бит по модулю длины).
+    """
+    import base64  # noqa: PLC0415
+
+    import numpy as np  # noqa: PLC0415
+
+    from ..potok import moddekoder  # noqa: PLC0415
+    тело, н, выборка, всего = _моддекодер(request, job_id)
+    try:
+        показать = min(max(1, int(тело.get("бит") or 4096)), МОДДЕКОДЕР_ПРОСМОТР_ДО)
+        с = max(0, int(тело.get("с") or 0))
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("бит и с — сколько бит результата показать и с какого", 400) from None
+    try:
+        д = moddekoder.декодер(н)
+        кадр = moddekoder.кадр(тело.get("кадр"))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    ряд = д.применить(выборка)
+    try:
+        вариантов: int | None = moddekoder.число_вариантов(н)
+    except ValueError:
+        вариантов = None
+    показано = ряд[с:с + показать]
+    return {"биты": base64.b64encode(np.packbits(показано).tobytes()).decode("ascii"),
+            "бит": int(len(показано)), "с": с, "мера": round(moddekoder.мера(ряд, кадр), 3),
+            "мера_исходного": round(moddekoder.мера(выборка[:len(ряд)], кадр), 3),
+            "таблица": list(д.таблица), "номера": list(д.номера), "метки": list(д.метки),
+            "запись": moddekoder.запись(д.таблица or д.метки), "описание": д.описание, "слой": д.слой(),
+            "символов": всего // н.k, "хвост": всего % н.k, "вариантов": вариантов}
+
+
+@router.post("/potok/{job_id}/moddecoder/all")
+def potok_moddecoder_all(request: Request, job_id: str) -> dict[str, Any]:
+    """«Дек. всех»: варианты с номерами с…по — мера каждого и лучшие; часть — не дольше ``МОДДЕКОДЕР_СРОК``.
+
+    ``кадр`` {длина, начало} — мера ещё и по строкам кода в кадрах (строка просмотра окна).
+    """
+    from ..potok import moddekoder  # noqa: PLC0415
+    тело, н, выборка, _ = _моддекодер(request, job_id, для_перебора=True)
+    try:
+        с, по = int(тело.get("с") or 1), int(тело.get("по") or 1)
+        лучших = min(100, int(тело.get("лучших") or 20))
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("с, по, лучших — номера и число вариантов", 400) from None
+    try:
+        return moddekoder.перебор(выборка, н, с, по, срок=МОДДЕКОДЕР_СРОК, лучших=лучших,
+                                  кадр=moddekoder.кадр(тело.get("кадр")))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
 def _приметы_этапа(request: Request, user, job_id: str, stage: int):
     """Состояние, этап с битовым потоком (этот или ближайший ранее), приметы и подсказки.
 
@@ -4475,7 +4967,7 @@ CAPTURE_ATTACH = {
 #: Модель читать их не может — ни по объёму, ни по сути: вместо потока ей
 #: уходит отчёт анализатора (reportgen.potok) — код, скремблер, цикл,
 #: каналы, HDLC, IP — с мерами уверенности.
-STREAM_ATTACH = {".bin", ".sig", ".dat", ".raw", ".bits", ".hex", ".pcap", ".cap"}
+STREAM_ATTACH = {".bin", ".sig", ".dpo", ".dat", ".raw", ".bits", ".hex", ".pcap", ".cap"}
 
 
 #: Расширения, текст в которых берётся распознаванием, а не чтением.
