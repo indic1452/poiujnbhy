@@ -351,10 +351,10 @@ class Кадр:
     прогрев: bool = False       # заголовок типа в первых 43 битах после захвата синхронизма
     оборван: bool = False       # конец кадра за концом ряда
     thec: str = ""              # «верен», «исправлен», «ошибка», «прогрев», «мало байт»
-    pti: int | None = None
-    pfi: int = 0
-    exi: int = 0
-    upi: int = 0
+    pti: int | None = None      # поле типа — None, пока не прочитано (прогрев, ошибка tHEC, мало байт)
+    pfi: int | None = None
+    exi: int | None = None
+    upi: int | None = None
     cid: int | None = None
     ehec: str = ""              # «верен», «ошибка» или «» (нет расширенного заголовка)
     pfcs: str = ""              # «верна», «неверна» или «» (нет pFCS)
