@@ -12622,8 +12622,9 @@
             const тело = h('tbody', {});
             const таблица = h('table', { class: 'stol-results stol-tkb-list' },
                 h('thead', {}, h('tr', {}, ['№', 'Вариант', 'Чисто', 'Проверки осей', 'Источник'].map((т) => h('th', {}, т)))), тело);
-            const холст = h('canvas', { class: 'stol-tkb-block', width: 1, height: 1, role: 'img', 'aria-label': 'Раскладка блока' });
-            const растр = h('canvas', { class: 'stol-md-raster', width: 1, height: 1, role: 'img', 'aria-label': 'Начало данных' });
+            // До «Просмотра» холсты скрыты: пустой холст выглядел бы чёрной полосой.
+            const холст = h('canvas', { class: 'stol-tkb-block', width: 1, height: 1, role: 'img', 'aria-label': 'Раскладка блока', hidden: true });
+            const растр = h('canvas', { class: 'stol-md-raster', width: 1, height: 1, role: 'img', 'aria-label': 'Начало данных', hidden: true });
             const легенда = h('div', { class: 'small stol-tkb-legend' });
             const подробно = h('div', { class: 'small stol-tkb-details' }, h('span', { class: 'muted' }, 'Выберите вариант и нажмите «Просмотр».'));
             const помощь = h('div', { class: 'small stol-md-help', hidden: true },
@@ -12745,7 +12746,8 @@
                 ['выколото', '#f0ad4e'], ['гиперчётность', '#8e5bd6'], ['нули Q', '#7a7f87']];
             function рисоватьБлок(блок) {
                 clear(легенда);
-                if (!блок) { холст.width = 1; холст.height = 1; return; }
+                холст.hidden = !блок;
+                if (!блок) return;
                 const [Z, Y, X] = блок.форма;
                 const метки = Uint8Array.from(atob(блок.метки), (ч) => ч.charCodeAt(0));
                 const р = раскладкаБлокаТкб(блок.форма, 1024);
@@ -12775,6 +12777,7 @@
                 const байты = Uint8Array.from(atob(d.биты), (ч) => ч.charCodeAt(0));
                 const п = пикселиРастра(байты, d.бит, ширина, 96);
                 растр.width = п.ширина; растр.height = Math.max(1, п.строк);
+                растр.hidden = false;
                 const кк = растр.getContext('2d');
                 const img = кк.createImageData(п.ширина, Math.max(1, п.строк));
                 for (let i = 0; i < п.биты.length; i += 1) {

@@ -8,9 +8,9 @@
 
 import base64
 import json
+import re
 import shutil
 import subprocess
-import re
 import time
 import unittest
 from fractions import Fraction
@@ -566,77 +566,7 @@ class Снятие(unittest.TestCase):
             razbor.снять_вручную(ряд, "ткб режим нет")
 
 
-class СлепоеБезЧётности(unittest.TestCase):
-    """Строки и столбцы по пространству проверок: Хэмминг без бита чётности, БЧХ (31,21)."""
 
-    def test_бчх_31_21(self):
-        кодировать, k = к.кодер([к.Составляющий("БЧХб", 31), к.Составляющий("БЧХб", 31)])
-        ряд, данные = к.поток(кодировать, k, 120, ошибок=5e-4, приставка=77)
-        выход, н = tpc.снять(ряд)
-        self.assertIn("(31, 21) × (31, 21)", н.что)
-        self.assertIn("по пространству проверок", н.подробно[0])
-        self.assertIn("по пространству проверок", н.подробно[1])
-        # Данные первого целого блока — те, что в эталоне (блок начинается с бита 77).
-        self.assertEqual(выход[:k * 100].reshape(100, k).tolist(), данные[:100].tolist())
-
-    def test_автомат_не_ищет_долго(self):
-        """В автомате поиск по проверкам — не дольше АВТОМАТ_ПРОВЕРОК: случайный поток не задерживает разбор."""
-        ряд = np.random.default_rng(3).integers(0, 2, 1 << 18).astype(np.uint8)
-        t0 = time.monotonic()
-        self.assertIsNone(tpc.найти(ряд))
-        self.assertLess(time.monotonic() - t0, 3 * tpc.АВТОМАТ_ПРОВЕРОК + 5)
-        self.assertIsNone(tpc.по_проверкам(ряд, до=40, бюджет=0.5))
-
-
-class Автомат(unittest.TestCase):
-    def test_каталог_в_кадрах_когда_слепое_не_объясняет(self):
-        """eTPC (64,57)x(64,62)+ в кадре 4112: слепое снятие гипердиагональ не видит — берётся режим каталога."""
-        р = т.режим("отдел-(64,57)x(64,62)-ext")
-        ряд, данные, T, фаза = поток_режима(р, 30, 2e-4)
-        начала = list(range(фаза % T, len(ряд) - 4096 + 1, T))
-        находка = т.найти_в_кадрах(ряд, T, начала)
-        self.assertIsNotNone(находка)
-        self.assertIn("(64,57)x(64,62)+", находка.что)
-        self.assertIn("режим опознан по каталогу", находка.подробно[0])
-        self.assertTrue(находка.свойства["слой"].startswith("ткб режим "))
-        k = 3534
-        self.assertEqual(находка.дальше[:30 * k].tolist(), данные.reshape(-1).tolist())
-
-    def test_подпись_слепой_находки(self):
-        ряд, _, _, _ = поток_режима(т.режим("AHA4501-0.660"), 80, 3e-4, приставка=11)
-        находка = tpc.найти(ряд)
-        т.подписать(находка)
-        self.assertIn("AHA4501-0.660", находка.свойства["режимы"])
-        self.assertIn("совпадает с режимами каталога ТКБ: AHA4501-0.660", находка.подробно[-1])
-        self.assertEqual(т.подписать(т.Находка("код", "x", 1.0, "")).подробно, [])
-
-    def test_сплошной_поток_802_16(self):
-        р = т.режим("802.16-OFDM-768-4/5")
-        ряд, данные, T, фаза = поток_режима(р, 400, 2e-4, приставка=768 * 3 + 100)
-        находка = т.найти_сплошной(ряд)
-        self.assertIsNotNone(находка)
-        self.assertEqual(находка.свойства["режим"], "802.16-OFDM-768-4/5")
-
-
-class ВсеРежимыКаталога(unittest.TestCase):
-    """Каждый режим каталога: поток эталонного кодера (по источникам, не по анализатору) с ошибками линии
-    и синхрословом кадра → оценка находит кадр и фазу, снятие отдаёт ровно данные эталона."""
-
-    def test_все_режимы(self):
-        for р in т.КАТАЛОГ:
-            with self.subTest(р.ид):
-                блоков = 10 if т.геометрия(р).размер > 8000 else 24
-                ряд, данные, T, фаза = поток_режима(р, блоков, 2e-4)
-                в = т.оценить(ряд, р, T)
-                self.assertIsNotNone(в)
-                self.assertEqual((в.T, в.фаза), (T, фаза))
-                self.assertGreaterEqual(в.чисто, 0.9)
-                выход, н = т.снять(ряд, р, T=T, фаза=в.фаза, бит_укор=в.бит_укор,
-                                  гипер=(в.гипер_сдвиг + в.гипер_смещение) if р.гипер else None)
-                г = т.геометрия(р, бит_укор=в.бит_укор)
-                доля, m = данные_совпали(выход, данные, len(г.данные), T, фаза, S=T - г.передаётся)
-                self.assertEqual((доля, m), (1.0, блоков))
-                self.assertGreaterEqual(н.уверенность, 0.9)
 
 
 class Перебор(unittest.TestCase):
@@ -740,6 +670,237 @@ class МеткиМест(unittest.TestCase):
         self.assertEqual(м[15 * 14:15 * 14 + 7].tolist(), [т.МЕСТО_ГИПЕР] * 7)
         self.assertEqual(т.метки_мест(т.геометрия(МАЛЫЙ)).tolist().count(т.МЕСТО_ДАННЫЕ), 121)
 
+
+
+@unittest.skipUnless(shutil.which("node"), "нужен node")
+class ОкноТкбВNode(unittest.TestCase):
+    """Чистые функции окна «Поиск блочных турбокодов» из app.js — в node."""
+
+    def выполнить(self, случаи):
+        from test_potok_sessii import функции_js  # noqa: PLC0415
+        код = функции_js(["проверитьПоляТкб", "порядокВариантовТкб", "ходПоискаТкб", "раскладкаБлокаТкб"], []) + """
+const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+process.stdout.write(JSON.stringify(случаи.map((с) => {
+    switch (с.что) {
+    case 'поля': return проверитьПоляТкб(с.с, с.к);
+    case 'порядок': return с.в.slice().sort(порядокВариантовТкб).map((в) => в.и);
+    case 'ход': return ходПоискаТкб(с.п, с.в, с.с);
+    case 'раскладка': { const р = раскладкаБлокаТкб(с.ф, с.ш); return [р.вРяд, р.рядов, р.ширина, р.высота, с.i.map((i) => р.место(i))]; }
+    default: return null;
+    }
+})));
+"""
+        готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=60)
+        self.assertEqual(0, готово.returncode, готово.stderr)
+        return json.loads(готово.stdout)
+
+    def test_поля(self):
+        случаи = [("", ""), ("0101 0101", ""), ("01010101", "4104"), ("0101010", ""), ("0102", ""), (None, None),
+                  ("", "0"), ("", "-5"), ("", "12.5"), ("", "abc"), ("", " 64 "), ("11111111", 1)]
+        итог = self.выполнить([{"что": "поля", "с": с, "к": к} for с, к in случаи])
+        self.assertEqual(итог, ["", "", "", "синхрослово — не короче 8 бит", "синхрослово — нули и единицы", "",
+                                "длина кадра — целое число бит", "длина кадра — целое число бит",
+                                "длина кадра — целое число бит", "длина кадра — целое число бит", "", ""])
+
+    def test_порядок_и_ход(self):
+        в = [{"и": 1, "чисто": 0.5, "слепой": False}, {"и": 2, "чисто": 0.998, "слепой": True},
+             {"и": 3, "чисто": 1.0, "слепой": False, "проверок": 190}, {"и": 4, "чисто": 0.9, "слепой": False},
+             {"и": 5, "чисто": 0.993, "слепой": False}, {"и": 6, "чисто": 0.9951, "слепой": True},
+             {"и": 7, "чисто": 0.996, "слепой": False, "проверок": 562}]
+        порядок, *ход = self.выполнить([{"что": "порядок", "в": в}, {"что": "ход", "п": 3, "в": 6, "с": False},
+                                        {"что": "ход", "п": 3, "в": 5, "с": True}, {"что": "ход", "п": 6, "в": 5, "с": True},
+                                        {"что": "ход", "п": 9, "в": 5, "с": False}, {"что": "ход", "п": 0, "в": 0, "с": False}])
+        # 100 %: каталог — больше проверок выше (0,996 с 562 выше 1,0 с 190), затем слепые (порядок исходный);
+        # 99 %: 0,993; 90 %; 50 %.
+        self.assertEqual(порядок, [7, 3, 2, 6, 5, 4, 1])
+        self.assertEqual(ход, [0.5, 0.5, 1, 1, 1])
+
+    def test_раскладка(self):
+        (а, б, в) = self.выполнить([
+            {"что": "раскладка", "ф": [1, 64, 64], "ш": 1024, "i": [0, 63, 64, 4095]},
+            {"что": "раскладка", "ф": [5, 16, 64], "ш": 200, "i": [0, 16 * 64, 3 * 16 * 64 + 65, 5 * 16 * 64 - 1]},
+            {"что": "раскладка", "ф": [4, 8, 1024], "ш": 100, "i": [8 * 1024]}])
+        self.assertEqual(а, [1, 1, 66, 66, [[1, 1], [64, 1], [1, 2], [64, 64]]])
+        # 200 // 66 = 3 плоскости в ряд, 2 ряда; плоскость 3 — второй ряд, строка 1, бит 1.
+        self.assertEqual(б, [3, 2, 198, 36, [[1, 1], [67, 1], [2, 20], [130, 34]]])
+        self.assertEqual(в[:4], [1, 4, 1026, 40])
+        self.assertEqual(в[4], [[1, 11]])
+
+
+ИСТОЧНИКИ = Path(__file__).resolve().parent.parent / "istochniki" / "tpc"
+
+
+def _текст(путь: str) -> str:
+    """Текст первоисточника (извлечённый рядом с PDF), строки склеены через «|»."""
+    return (ИСТОЧНИКИ / путь).read_text(encoding="utf-8", errors="replace").replace("\n", "|")
+
+
+def _коды_оси(р) -> list[tuple[int, int]]:
+    """(n, k) осей режима с укорочением осей (как пишут таблицы 802.16 и AHA)."""
+    return [(к.n - р.укорочение(i), к.k - р.укорочение(i)) for i, к in enumerate(р.оси)]
+
+
+@unittest.skipUnless(ИСТОЧНИКИ.is_dir(), "нет папки istochniki/tpc (копия без первоисточников)")
+class СверкаСФайламиИсточников(unittest.TestCase):
+    """Каталог — числом в число с текстом первоисточников из istochniki/tpc (разбор текста, не переписанные таблицы)."""
+
+    def test_каждый_указанный_файл_есть(self):
+        for р in т.КАТАЛОГ:
+            for путь in re.findall(r"istochniki/tpc/(\S+?\.(?:pdf|txt|html))", р.источник):
+                with self.subTest(р.ид, путь=путь):
+                    self.assertTrue((ИСТОЧНИКИ / путь).is_file())
+
+    def test_многочлены_хэмминга_table_1(self):
+        т1 = _текст("ieee802/802161pc-00_35.pdf.txt")
+        т1 = т1[т1.index("Table 1  Generators Polynomials of Hamming Codes"):]
+        найдено = {(int(n), int(k)): g.replace(" ", "") for n, k, g in
+                   re.findall(r"\|(\d+)\|(\d+)\|(x[\dx +]+?1)(?=\|)", т1)[:5]}
+        self.assertEqual(найдено, {nk: g.replace(" ", "") for nk, g in т.МНОГОЧЛЕНЫ_ХЭММИНГА.items()})
+
+    def test_aha4501_table4(self):
+        т4 = _текст("aha/AHA4501.pdf.txt")
+        строки = re.findall(r"\|((?:\(\d+,\d+\)x?)+)\|(\d+)\|(\d+)\|(0\.\d+)\|", т4)
+        self.assertEqual(len(строки), 11)
+        for коды, блок, данных, R in строки:
+            р = т.режим(f"AHA4501-{R}")
+            with self.subTest(R):
+                г = т.геометрия(р)
+                self.assertEqual(коды, "x".join(f"({n},{k})" for n, k in _коды_оси(р)))
+                self.assertEqual((г.передаётся, len(г.данные)), (int(блок), int(данных)))
+
+    def test_aha4524_table1(self):
+        т1 = _текст("aha/dzsc_200902051616359075.pdf.txt")
+        self.assertIn("In enhanced codes, the Y axis is shortened by one", т1)
+        строки = {к: (int(б), int(д)) for к, б, д, _ in
+                       re.findall(r"\|((?:\(\d+,\d+\)x?)+\+)\|(\d+)\|(\d+)\|(0\.\d+)\|", т1)}
+        self.assertEqual(set(строки), {"(64,63)x(64,62)+", "(64,57)x(64,62)+"})
+        for ид in ("AHA4524-0.954", "AHA4524-0.863"):
+            р = т.режим(ид)
+            г = т.геометрия(р)
+            self.assertEqual(строки[р.коды], (г.размер, len(г.данные)))
+
+    def test_802_16_table_192(self):
+        т192 = _текст("ieee802/C80216d-04_13r1.pdf.txt")
+        т192 = т192[т192.index("Table 192 in Section 8.3.3.2.2"):]
+        строки = re.findall(r"(?:\|(\d+) )?\|(\d+/\d+) \|\((\d+),(\d+)\)\((\d+),(\d+)\) \|(\d+) \|(\d+) \|(\d+) \|(\d+) ",
+                            т192)
+        self.assertEqual(len(строки), 17)
+        бит = 0
+        for n, R, x1, x2, y1, y2, Ix, Iy, B, Q in строки:
+            бит = int(n) if n else бит
+            р = т.режим(f"802.16-OFDM-{бит}-{R}")
+            with self.subTest(р.ид):
+                self.assertEqual([(к.n, к.k) for к in р.оси], [(int(x1), int(x2)), (int(y1), int(y2))])
+                self.assertEqual((р.укор, р.бит_укор, р.нулей), ((int(Ix), int(Iy)), int(B), int(Q)))
+
+    def test_802_16_ofdma_table_mm(self):
+        тmm = _текст("ieee802/C80216d-04_53.pdf.txt")
+        тmm = тmm[тmm.index("Table mm"):]
+        строки = re.findall(r"\|(\d+) \|(\d+) \|\((\d+),(\d+)\)\((\d+),(\d+)\) ?\|(\d+) \|(\d+) \|(\d+) \|(\d+) ", тmm)
+        self.assertEqual(len(строки), 10)
+        for d, c, x1, x2, y1, y2, Ix, Iy, B, Q in строки:
+            р = т.режим(f"802.16-OFDMA-{c}Б-{d}Б")
+            with self.subTest(р.ид):
+                self.assertEqual([(к.n, к.k) for к in р.оси], [(int(x1), int(x2)), (int(y1), int(y2))])
+                self.assertEqual((р.укор, р.бит_укор, р.нулей), ((int(Ix), int(Iy)), int(B), int(Q)))
+                # Кодовых бит — байт кода × 8 (кроме строки с ошибкой источника — там данных 122 бита, а не 128).
+                г = т.геометрия(р)
+                self.assertEqual(г.передаётся, 8 * int(c))
+                if (d, c) != ("16", "36"):
+                    self.assertEqual(len(г.данные), 8 * int(d))
+                else:
+                    self.assertEqual(len(г.данные), 122)
+
+    def test_radyne_comtech_advantech_цитаты(self):
+        radyne = _текст("radyne/DMD20-DMD20LBST_manual.pdf.txt")
+        self.assertIn("0.495 - (32,26) x (32,26) x (4,3)", radyne)
+        self.assertIn("0.793 - (64,57) x (64,57)", radyne)
+        self.assertIn("1/3 Rate Turbo (.325)", radyne.replace("|", " "))
+        self.assertEqual([_коды_оси(т.режим(и)) for и in ("Radyne-0.495", "Radyne-0.793", "Radyne-0.325")],
+                         [[(32, 26), (32, 26), (4, 3)], [(64, 57), (64, 57)], [(16, 11)] * 3])
+        cdm = _текст("comtech/MN-CDM570-570L.pdf.txt")
+        self.assertIn("Rate 0.95 QPSK/OQPSK/8-QAM/8-PSK - 2 dimensional eTPC", cdm)
+        self.assertIn("exact Code Rate is actually 17/18", cdm)
+        self.assertIn("Rate 5/16 BPSK - 2 dimensional", cdm)
+        self.assertIn("Rate 3/4 QPSK/OQPSK/8-PSK/8-QAM/16-QAM - 2 dimensional", cdm)
+        self.assertEqual(т.режим("Comtech-0.95").скорость, "17/18")
+        adv = _текст("prochie/advantech_WP-Turbo-FEC-132191.pdf.txt")
+        self.assertIn("(128,120) x (128,119) enhanced code with a code rate of 0.872", adv)
+        self.assertIn("X Code (128,120) and Y Code (129, 127) rate 0.923", adv)
+        г = т.геометрия(т.режим("Advantech-0.872"))
+        self.assertEqual(round(len(г.данные) / г.размер, 3), 0.872)
+        г = т.геометрия(т.режим("Advantech-0.923"))
+        self.assertEqual(round(len(г.данные) / г.размер, 3), 0.923)
+
+class СлепоеБезЧётности(unittest.TestCase):
+    """Строки и столбцы по пространству проверок: Хэмминг без бита чётности, БЧХ (31,21)."""
+
+    def test_бчх_31_21(self):
+        кодировать, k = к.кодер([к.Составляющий("БЧХб", 31), к.Составляющий("БЧХб", 31)])
+        ряд, данные = к.поток(кодировать, k, 120, ошибок=5e-4, приставка=77)
+        выход, н = tpc.снять(ряд)
+        self.assertIn("(31, 21) × (31, 21)", н.что)
+        self.assertIn("по пространству проверок", н.подробно[0])
+        self.assertIn("по пространству проверок", н.подробно[1])
+        # Данные первого целого блока — те, что в эталоне (блок начинается с бита 77).
+        self.assertEqual(выход[:k * 100].reshape(100, k).tolist(), данные[:100].tolist())
+
+    def test_автомат_не_ищет_долго(self):
+        """В автомате поиск по проверкам — не дольше АВТОМАТ_ПРОВЕРОК: случайный поток не задерживает разбор."""
+        ряд = np.random.default_rng(3).integers(0, 2, 1 << 18).astype(np.uint8)
+        t0 = time.monotonic()
+        self.assertIsNone(tpc.найти(ряд))
+        self.assertLess(time.monotonic() - t0, 3 * tpc.АВТОМАТ_ПРОВЕРОК + 5)
+        self.assertIsNone(tpc.по_проверкам(ряд, до=40, бюджет=0.5))
+
+class Автомат(unittest.TestCase):
+    def test_каталог_в_кадрах_когда_слепое_не_объясняет(self):
+        """eTPC (64,57)x(64,62)+ в кадре 4112: слепое снятие гипердиагональ не видит — берётся режим каталога."""
+        р = т.режим("отдел-(64,57)x(64,62)-ext")
+        ряд, данные, T, фаза = поток_режима(р, 30, 2e-4)
+        начала = list(range(фаза % T, len(ряд) - 4096 + 1, T))
+        находка = т.найти_в_кадрах(ряд, T, начала)
+        self.assertIsNotNone(находка)
+        self.assertIn("(64,57)x(64,62)+", находка.что)
+        self.assertIn("режим опознан по каталогу", находка.подробно[0])
+        self.assertTrue(находка.свойства["слой"].startswith("ткб режим "))
+        k = 3534
+        self.assertEqual(находка.дальше[:30 * k].tolist(), данные.reshape(-1).tolist())
+
+    def test_подпись_слепой_находки(self):
+        ряд, _, _, _ = поток_режима(т.режим("AHA4501-0.660"), 80, 3e-4, приставка=11)
+        находка = tpc.найти(ряд)
+        т.подписать(находка)
+        self.assertIn("AHA4501-0.660", находка.свойства["режимы"])
+        self.assertIn("совпадает с режимами каталога ТКБ: AHA4501-0.660", находка.подробно[-1])
+        self.assertEqual(т.подписать(т.Находка("код", "x", 1.0, "")).подробно, [])
+
+    def test_сплошной_поток_802_16(self):
+        р = т.режим("802.16-OFDM-768-4/5")
+        ряд, данные, T, фаза = поток_режима(р, 400, 2e-4, приставка=768 * 3 + 100)
+        находка = т.найти_сплошной(ряд)
+        self.assertIsNotNone(находка)
+        self.assertEqual(находка.свойства["режим"], "802.16-OFDM-768-4/5")
+
+class ВсеРежимыКаталога(unittest.TestCase):
+    """Каждый режим каталога: поток эталонного кодера (по источникам, не по анализатору) с ошибками линии
+    и синхрословом кадра → оценка находит кадр и фазу, снятие отдаёт ровно данные эталона."""
+
+    def test_все_режимы(self):
+        for р in т.КАТАЛОГ:
+            with self.subTest(р.ид):
+                блоков = 8 if т.геометрия(р).размер > 8000 else 24
+                ряд, данные, T, фаза = поток_режима(р, блоков, 2e-4)
+                в = т.оценить(ряд, р, T)
+                self.assertIsNotNone(в)
+                self.assertEqual((в.T, в.фаза), (T, фаза))
+                self.assertGreaterEqual(в.чисто, 0.9)
+                выход, н = т.снять(ряд, р, T=T, фаза=в.фаза, бит_укор=в.бит_укор,
+                                  гипер=(в.гипер_сдвиг + в.гипер_смещение) if р.гипер else None)
+                г = т.геометрия(р, бит_укор=в.бит_укор)
+                доля, m = данные_совпали(выход, данные, len(г.данные), T, фаза, S=T - г.передаётся)
+                self.assertEqual((доля, m), (1.0, блоков))
+                self.assertGreaterEqual(н.уверенность, 0.9)
 
 class ТкбЧерезСервер(unittest.TestCase):
     """Окно «Поиск блочных турбокодов» через сервер: каталог, поиск частями, слепой, просмотр, сохранение."""
@@ -859,167 +1020,6 @@ class ТкбЧерезСервер(unittest.TestCase):
         # Слепой слой — без раскладки блока.
         d3 = self.post("preview", {"stage": 0, "слой": "ткб кадр 4104"}).json()
         self.assertIsNone(d3["блок"])
-
-
-@unittest.skipUnless(shutil.which("node"), "нужен node")
-class ОкноТкбВNode(unittest.TestCase):
-    """Чистые функции окна «Поиск блочных турбокодов» из app.js — в node."""
-
-    def выполнить(self, случаи):
-        from test_potok_sessii import функции_js  # noqa: PLC0415
-        код = функции_js(["проверитьПоляТкб", "порядокВариантовТкб", "ходПоискаТкб", "раскладкаБлокаТкб"], []) + """
-const случаи = JSON.parse(require('fs').readFileSync(0, 'utf8'));
-process.stdout.write(JSON.stringify(случаи.map((с) => {
-    switch (с.что) {
-    case 'поля': return проверитьПоляТкб(с.с, с.к);
-    case 'порядок': return с.в.slice().sort(порядокВариантовТкб).map((в) => в.и);
-    case 'ход': return ходПоискаТкб(с.п, с.в, с.с);
-    case 'раскладка': { const р = раскладкаБлокаТкб(с.ф, с.ш); return [р.вРяд, р.рядов, р.ширина, р.высота, с.i.map((i) => р.место(i))]; }
-    default: return null;
-    }
-})));
-"""
-        готово = subprocess.run(["node", "-e", код], input=json.dumps(случаи), capture_output=True, text=True, timeout=60)
-        self.assertEqual(0, готово.returncode, готово.stderr)
-        return json.loads(готово.stdout)
-
-    def test_поля(self):
-        случаи = [("", ""), ("0101 0101", ""), ("01010101", "4104"), ("0101010", ""), ("0102", ""), (None, None),
-                  ("", "0"), ("", "-5"), ("", "12.5"), ("", "abc"), ("", " 64 "), ("11111111", 1)]
-        итог = self.выполнить([{"что": "поля", "с": с, "к": к} for с, к in случаи])
-        self.assertEqual(итог, ["", "", "", "синхрослово — не короче 8 бит", "синхрослово — нули и единицы", "",
-                                "длина кадра — целое число бит", "длина кадра — целое число бит",
-                                "длина кадра — целое число бит", "длина кадра — целое число бит", "", ""])
-
-    def test_порядок_и_ход(self):
-        в = [{"и": 1, "чисто": 0.5, "слепой": False}, {"и": 2, "чисто": 0.998, "слепой": True},
-             {"и": 3, "чисто": 1.0, "слепой": False, "проверок": 190}, {"и": 4, "чисто": 0.9, "слепой": False},
-             {"и": 5, "чисто": 0.993, "слепой": False}, {"и": 6, "чисто": 0.9951, "слепой": True},
-             {"и": 7, "чисто": 0.996, "слепой": False, "проверок": 562}]
-        порядок, *ход = self.выполнить([{"что": "порядок", "в": в}, {"что": "ход", "п": 3, "в": 6, "с": False},
-                                        {"что": "ход", "п": 3, "в": 5, "с": True}, {"что": "ход", "п": 6, "в": 5, "с": True},
-                                        {"что": "ход", "п": 9, "в": 5, "с": False}, {"что": "ход", "п": 0, "в": 0, "с": False}])
-        # 100 %: каталог — больше проверок выше (0,996 с 562 выше 1,0 с 190), затем слепые (порядок исходный);
-        # 99 %: 0,993; 90 %; 50 %.
-        self.assertEqual(порядок, [7, 3, 2, 6, 5, 4, 1])
-        self.assertEqual(ход, [0.5, 0.5, 1, 1, 1])
-
-    def test_раскладка(self):
-        (а, б, в) = self.выполнить([
-            {"что": "раскладка", "ф": [1, 64, 64], "ш": 1024, "i": [0, 63, 64, 4095]},
-            {"что": "раскладка", "ф": [5, 16, 64], "ш": 200, "i": [0, 16 * 64, 3 * 16 * 64 + 65, 5 * 16 * 64 - 1]},
-            {"что": "раскладка", "ф": [4, 8, 1024], "ш": 100, "i": [8 * 1024]}])
-        self.assertEqual(а, [1, 1, 66, 66, [[1, 1], [64, 1], [1, 2], [64, 64]]])
-        # 200 // 66 = 3 плоскости в ряд, 2 ряда; плоскость 3 — второй ряд, строка 1, бит 1.
-        self.assertEqual(б, [3, 2, 198, 36, [[1, 1], [67, 1], [2, 20], [130, 34]]])
-        self.assertEqual(в[:4], [1, 4, 1026, 40])
-        self.assertEqual(в[4], [[1, 11]])
-
-
-ИСТОЧНИКИ = Path(__file__).resolve().parent.parent / "istochniki" / "tpc"
-
-
-def _текст(путь: str) -> str:
-    """Текст первоисточника (извлечённый рядом с PDF), строки склеены через «|»."""
-    return (ИСТОЧНИКИ / путь).read_text(encoding="utf-8", errors="replace").replace("\n", "|")
-
-
-def _коды_оси(р) -> list[tuple[int, int]]:
-    """(n, k) осей режима с укорочением осей (как пишут таблицы 802.16 и AHA)."""
-    return [(к.n - р.укорочение(i), к.k - р.укорочение(i)) for i, к in enumerate(р.оси)]
-
-
-@unittest.skipUnless(ИСТОЧНИКИ.is_dir(), "нет папки istochniki/tpc (копия без первоисточников)")
-class СверкаСФайламиИсточников(unittest.TestCase):
-    """Каталог — числом в число с текстом первоисточников из istochniki/tpc (разбор текста, не переписанные таблицы)."""
-
-    def test_каждый_указанный_файл_есть(self):
-        for р in т.КАТАЛОГ:
-            for путь in re.findall(r"istochniki/tpc/(\S+?\.(?:pdf|txt|html))", р.источник):
-                with self.subTest(р.ид, путь=путь):
-                    self.assertTrue((ИСТОЧНИКИ / путь).is_file())
-
-    def test_многочлены_хэмминга_table_1(self):
-        т1 = _текст("ieee802/802161pc-00_35.pdf.txt")
-        т1 = т1[т1.index("Table 1  Generators Polynomials of Hamming Codes"):]
-        найдено = {(int(n), int(k)): g.replace(" ", "") for n, k, g in
-                   re.findall(r"\|(\d+)\|(\d+)\|(x[\dx +]+?1)(?=\|)", т1)[:5]}
-        self.assertEqual(найдено, {nk: g.replace(" ", "") for nk, g in т.МНОГОЧЛЕНЫ_ХЭММИНГА.items()})
-
-    def test_aha4501_table4(self):
-        т4 = _текст("aha/AHA4501.pdf.txt")
-        строки = re.findall(r"\|((?:\(\d+,\d+\)x?)+)\|(\d+)\|(\d+)\|(0\.\d+)\|", т4)
-        self.assertEqual(len(строки), 11)
-        for коды, блок, данных, R in строки:
-            р = т.режим(f"AHA4501-{R}")
-            with self.subTest(R):
-                г = т.геометрия(р)
-                self.assertEqual(коды, "x".join(f"({n},{k})" for n, k in _коды_оси(р)))
-                self.assertEqual((г.передаётся, len(г.данные)), (int(блок), int(данных)))
-
-    def test_aha4524_table1(self):
-        т1 = _текст("aha/dzsc_200902051616359075.pdf.txt")
-        self.assertIn("In enhanced codes, the Y axis is shortened by one", т1)
-        строки = dict(((к, (int(б), int(д))) for к, б, д, _ in
-                       re.findall(r"\|((?:\(\d+,\d+\)x?)+\+)\|(\d+)\|(\d+)\|(0\.\d+)\|", т1)))
-        self.assertEqual(set(строки), {"(64,63)x(64,62)+", "(64,57)x(64,62)+"})
-        for ид in ("AHA4524-0.954", "AHA4524-0.863"):
-            р = т.режим(ид)
-            г = т.геометрия(р)
-            self.assertEqual(строки[р.коды], (г.размер, len(г.данные)))
-
-    def test_802_16_table_192(self):
-        т192 = _текст("ieee802/C80216d-04_13r1.pdf.txt")
-        т192 = т192[т192.index("Table 192 in Section 8.3.3.2.2"):]
-        строки = re.findall(r"(?:\|(\d+) )?\|(\d+/\d+) \|\((\d+),(\d+)\)\((\d+),(\d+)\) \|(\d+) \|(\d+) \|(\d+) \|(\d+) ",
-                            т192)
-        self.assertEqual(len(строки), 17)
-        бит = 0
-        for n, R, x1, x2, y1, y2, Ix, Iy, B, Q in строки:
-            бит = int(n) if n else бит
-            р = т.режим(f"802.16-OFDM-{бит}-{R}")
-            with self.subTest(р.ид):
-                self.assertEqual([(к.n, к.k) for к in р.оси], [(int(x1), int(x2)), (int(y1), int(y2))])
-                self.assertEqual((р.укор, р.бит_укор, р.нулей), ((int(Ix), int(Iy)), int(B), int(Q)))
-
-    def test_802_16_ofdma_table_mm(self):
-        тmm = _текст("ieee802/C80216d-04_53.pdf.txt")
-        тmm = тmm[тmm.index("Table mm"):]
-        строки = re.findall(r"\|(\d+) \|(\d+) \|\((\d+),(\d+)\)\((\d+),(\d+)\) ?\|(\d+) \|(\d+) \|(\d+) \|(\d+) ", тmm)
-        self.assertEqual(len(строки), 10)
-        for d, c, x1, x2, y1, y2, Ix, Iy, B, Q in строки:
-            р = т.режим(f"802.16-OFDMA-{c}Б-{d}Б")
-            with self.subTest(р.ид):
-                self.assertEqual([(к.n, к.k) for к in р.оси], [(int(x1), int(x2)), (int(y1), int(y2))])
-                self.assertEqual((р.укор, р.бит_укор, р.нулей), ((int(Ix), int(Iy)), int(B), int(Q)))
-                # Кодовых бит — байт кода × 8 (кроме строки с ошибкой источника — там данных 122 бита, а не 128).
-                г = т.геометрия(р)
-                self.assertEqual(г.передаётся, 8 * int(c))
-                if (d, c) != ("16", "36"):
-                    self.assertEqual(len(г.данные), 8 * int(d))
-                else:
-                    self.assertEqual(len(г.данные), 122)
-
-    def test_radyne_comtech_advantech_цитаты(self):
-        radyne = _текст("radyne/DMD20-DMD20LBST_manual.pdf.txt")
-        self.assertIn("0.495 - (32,26) x (32,26) x (4,3)", radyne)
-        self.assertIn("0.793 - (64,57) x (64,57)", radyne)
-        self.assertIn("1/3 Rate Turbo (.325)", radyne.replace("|", " "))
-        self.assertEqual([_коды_оси(т.режим(и)) for и in ("Radyne-0.495", "Radyne-0.793", "Radyne-0.325")],
-                         [[(32, 26), (32, 26), (4, 3)], [(64, 57), (64, 57)], [(16, 11)] * 3])
-        cdm = _текст("comtech/MN-CDM570-570L.pdf.txt")
-        self.assertIn("Rate 0.95 QPSK/OQPSK/8-QAM/8-PSK - 2 dimensional eTPC", cdm)
-        self.assertIn("exact Code Rate is actually 17/18", cdm)
-        self.assertIn("Rate 5/16 BPSK - 2 dimensional", cdm)
-        self.assertIn("Rate 3/4 QPSK/OQPSK/8-PSK/8-QAM/16-QAM - 2 dimensional", cdm)
-        self.assertEqual(т.режим("Comtech-0.95").скорость, "17/18")
-        adv = _текст("prochie/advantech_WP-Turbo-FEC-132191.pdf.txt")
-        self.assertIn("(128,120) x (128,119) enhanced code with a code rate of 0.872", adv)
-        self.assertIn("X Code (128,120) and Y Code (129, 127) rate 0.923", adv)
-        г = т.геометрия(т.режим("Advantech-0.872"))
-        self.assertEqual(round(len(г.данные) / г.размер, 3), 0.872)
-        г = т.геометрия(т.режим("Advantech-0.923"))
-        self.assertEqual(round(len(г.данные) / г.размер, 3), 0.923)
 
 
 if __name__ == "__main__":

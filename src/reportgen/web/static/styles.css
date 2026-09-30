@@ -9049,8 +9049,10 @@ body.reading .msg .body {
 .stol-tkb-progress progress { flex: 1 1 8em; }
 .stol-tkb-pct { min-width: 3.5em; text-align: right; font-weight: 600; }
 .stol-tkb-list td:nth-child(2) { white-space: normal; min-width: 18em; }
+.stol-tkb-list td:nth-child(4), .stol-tkb-list td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; min-width: 7em; }
 .stol-tkb-block { display: block; max-width: 100%; max-height: 260px; image-rendering: pixelated; background: #10141a;
     border: 1px solid var(--border); border-radius: var(--radius-sm); align-self: flex-start; min-width: 64px; width: auto; }
+.stol-tkb canvas[hidden] { display: none; }
 .stol-tkb-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
 .stol-tkb-key { display: inline-flex; align-items: center; gap: 4px; }
 .stol-tkb-key i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; border: 1px solid var(--border); }
