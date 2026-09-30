@@ -490,7 +490,7 @@ class РазборGFP:
     скремблер: str                        # «x43», «нет», «инверсия»
     доли_thec: dict[str, float]           # режим → доля верных tHEC
     всего_байт: int
-    от_бита: int = 0                      # с какого бита массива взят ряд
+    от_бита: int                          # с какого бита массива взят ряд
     gfp_t: dict[str, Any] | None = None
 
     def бит(self, место_байт: int) -> int:
@@ -503,7 +503,7 @@ class РазборGFP:
         в = self.выделение
         if not в.места:
             return 0.0
-        return min(1.0, в.байт_в_синхронизме / max(1, self.всего_байт - в.места[0]))
+        return min(1.0, в.байт_в_синхронизме / (self.всего_байт - в.места[0]))   # заголовок в ряду — не 0
 
     def клиенты(self, cid: int | None = None) -> list[Кадр]:
         """Кадры данных клиента (PTI 000) с верным или исправленным tHEC, без прогрева."""
@@ -512,7 +512,7 @@ class РазборGFP:
 
     def счёт(self) -> dict[str, Any]:
         в = self.выделение
-        pli = np.array(в.pli, dtype=np.int64) if в.pli else np.zeros(0, dtype=np.int64)
+        pli = np.array(в.pli, dtype=np.int64)
         к = list(self.кадры.values())
         thec = Counter(х.thec for х in к)
         типы = Counter((х.pti, х.pfi, х.exi, х.upi) for х in к if х.pti is not None and not х.прогрев)
