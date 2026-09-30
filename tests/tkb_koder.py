@@ -172,3 +172,49 @@ def поток(кодировать, k: int, блоков: int, *, синхро:
     if ошибок:
         ряд = ряд ^ (rng.random(len(ряд)) < ошибок).astype(np.uint8)
     return ряд, данные
+
+
+def поток_с_метками(кодировать, k: int, блоков: int, слово: np.ndarray, *, блоков_на_метку: int = 1,
+                    меток_на_блок: int = 1, ошибок: float = 0.0, приставка: int = 0, сид: int = 1):
+    """Поток с синхрометками: (поток, данные блоков, номер бита первой метки).
+
+    AHA4501 [стр. 9–10 PDF, п. 2.6.1]: «OSYNC is asserted with the first data bit
+    of each x output blocks … The system can then use OSYNC to insert a
+    synchronization mark in the encoded data stream» — метка перед первым битом
+    каждого x-го блока (``блоков_на_метку``). US7085987: «synchronization marks
+    are … placed throughout the block, with inverted sync marks placed at the
+    beginning of each ETPC block» — ``меток_на_блок`` меток на блок через равные
+    доли, первая — инвертированная.
+    """
+    rng = np.random.default_rng(сид)
+    данные = rng.integers(0, 2, (блоков, k)).astype(np.uint8)
+    кодовые = np.concatenate([кодировать(д) for д in данные])
+    N = len(кодовые) // блоков
+    части = [rng.integers(0, 2, приставка).astype(np.uint8)]
+    if меток_на_блок > 1:
+        assert N % меток_на_блок == 0
+        доля = N // меток_на_блок
+        for i in range(блоков * меток_на_блок):
+            части.append(слово ^ 1 if i % меток_на_блок == 0 else слово)
+            части.append(кодовые[i * доля:(i + 1) * доля])
+    else:
+        for i in range(0, блоков, блоков_на_метку):
+            части.append(слово)
+            части.append(кодовые[i * N:(i + блоков_на_метку) * N])
+    ряд = np.concatenate(части)
+    if ошибок:
+        ряд = ряд ^ (rng.random(len(ряд)) < ошибок).astype(np.uint8)
+    return ряд, данные, приставка
+
+
+def рандомизатор_802_16(n: int) -> np.ndarray:
+    """C80216a-02/55, стр. 3, п. 8.3.3.1.1: «LFSR possessing characteristic polynomial 1 + X14 + X15 …
+    preset … to the value 100101010000000» — своя запись: регистр целым числом, ячейка i (1…15) —
+    бит 15 − i; выход — ячейки 14 и 15 (биты 1 и 0), вдвигается в ячейку 1 (бит 14)."""
+    рег = int("100101010000000", 2)
+    выход = np.zeros(n, np.uint8)
+    for i in range(n):
+        b = ((рег >> 1) ^ рег) & 1
+        выход[i] = b
+        рег = (рег >> 1) | (b << 14)
+    return выход
