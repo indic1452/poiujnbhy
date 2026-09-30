@@ -9250,6 +9250,42 @@
     }
 
     /** Биты мини-растра: строк × ширина значений 0/1 из упакованных байт (старший бит первым), не больше строкДо строк. */
+    /** Длина синхрослова в битах, как читает сервер (sinhro.слово): «0110…» и «0b…» — биты, «0x1ACF…» и «…h» — HEX; иначе 0. */
+    function битСинхрослова(т) {
+        const t = String(т || '').replace(/\s+/g, '').replace(/_/g, '').toLowerCase();
+        if (/^0b[01]+$/.test(t)) return t.length - 2;
+        if (/^[01]+$/.test(t)) return t.length;
+        const x = t.replace(/^0x/, '').replace(/h$/, '');
+        return /^[0-9a-f]+$/.test(x) ? x.length * 4 : 0;
+    }
+
+    /** Что не так в параметрах окна «LDPC» до запроса (те же правила, что у сервера, ldpc_okno) — или ''. */
+    function ошибкаОкнаLDPC(п, закрыт) {
+        const с = п.синхро || {};
+        const s = битСинхрослова(с.слово);
+        if (!п.код) return закрыт ? 'матрица типа «' + п.тип + '» закрыта: положите файл отдела в папку ldpc («Загрузить…»)' : 'нет кода для этой скорости';
+        if (с.вид && с.вид !== 'нет') {
+            if (s < 4) return 'синхрослово — биты или HEX, не короче 4 бит';
+            if (с.длина_слова && с.длина_слова !== s) return 'длина синхрослова ' + с.длина_слова + ', а в поле ' + s + ' бит';
+            if (!(с.длина > s)) return 'длина кадра — больше синхрослова';
+            if (с.вид === 'распределённое' && с.длина % s) return 'распределённое: длина кадра не делится на длину синхрослова';
+        }
+        if (п.мультипликативный !== undefined && п.мультипликативный !== '' && !/\d/.test(п.мультипликативный)) return 'отводы мультипликативного дескремблера — «18,23»';
+        return '';
+    }
+
+    /** Скорости типа кода окна «LDPC»: у типа с блоками — только выбранного блока. */
+    function скоростиТипаLDPC(т, блок) {
+        if (!т) return [];
+        return т.скорости.filter((с) => !т.блоки || String(с.блок) === String(блок));
+    }
+
+    /** Где в каталоге код: сперва в текущем типе, иначе в первом, где он есть; нет — null. */
+    function гдеКодLDPC(типы, текущий, код) {
+        const все = типы.flatMap((т) => т.скорости.map((с) => ({ т, с })));
+        return все.find((x) => x.т.тип === текущий && x.с.коды.includes(код)) || все.find((x) => x.с.коды.includes(код)) || null;
+    }
+
     function пикселиРастра(байты, бит, ширина, строкДо) {
         const w = Math.max(1, Math.round(ширина) || 1);
         const строк = Math.max(0, Math.min(строкДо, Math.floor(бит / w)));
@@ -9318,6 +9354,7 @@
         { id: 'c-punct', раздел: 'ПУ код', имя: 'Выколотый свёрточный…', вид: 'слой', слой: 'выколотый {g} K={K} шаблон {шаблон}',
             поля: [{ ключ: 'g', подпись: 'многочлены', по: '171/133', текст: true }, { ключ: 'K', подпись: 'K', по: 7 },
                 { ключ: 'шаблон', подпись: 'шаблон выкалывания', по: '110110', текст: true }] },
+        { id: 'c-ldpc-win', раздел: 'ПУ код', имя: 'LDPC (как в декодере отдела)…', вид: 'действие', сделать: 'ldpc-окно' },
         { id: 'c-ldpc', раздел: 'ПУ код', имя: 'LDPC по матрице…', вид: 'слой', слой: 'ldpc {имя}{выколоты}{укорочены}',
             поля: [{ ключ: 'имя', подпись: 'имя загруженной матрицы', по: '', текст: true },
                 { ключ: 'выколоты', подпись: 'выколотые позиции (0-191)', по: '', текст: true, приставка: ' выколоты ' },
@@ -11264,6 +11301,7 @@
             case 'обрезка': окноОбрезки(у); return null;
             case 'матрицы': окноМатриц(у); return null;
             case 'моддекодер': окноМоддекодера(у); return null;
+            case 'ldpc-окно': окноLDPC(у); return null;
             case 'период-ак': {
                 вЖурналВременно(у, 'поиск периода…');
                 const d = await api.get(путь + '/periods?stage=' + у.stage);
@@ -12544,6 +12582,283 @@
             });
             обновитьПодписьВарианта();
             загрузитьПлоскости();
+        }
+
+        /**
+         * Окно «LDPC» — как вкладка LDPC декодера софта отдела: тип кода (список отдела, все встроенные
+         * семейства и «Нестандарт» — файлы папки ldpc), скорость, схема передачи, кадровая синхронизация
+         * (синхрослово сосредоточенное или распределённое, длина кадра и синхрослова, выводить ли его),
+         * постобработка (мультипликативный дескремблер, аддитивный DVB 1+x¹⁴+x¹⁵, инверсия выхода).
+         * «Просмотр» — начало результата растром и отчёт, «Декодирование» — новый массив шагами слоёв
+         * (остаёмся на исходном), «Автомат» — код и схема сами среди кодов выбранного типа (или всех).
+         */
+        function окноLDPC(у) {
+            if (!у || !у.биты) return;
+            const путь = '/api/potok/' + encodeURIComponent(у.job) + '/ldpc/';
+            const з = Object.assign({ тип: 'Datum 1K', блок: '', скорость: '', код: '', выколоты: '', укорочены: '', перемежение: '',
+                синхро: 'нет', слово: '', длина: '', длина_слова: '', выводить: false, мульт: false, отводы: '', dvb: false, инверсия: false },
+            хранилищеСтола('stol-ldpc', {}));
+            let типы = [], файлы = [], папка = '', последний = null;
+            const имяГруппы = 'ldpc-' + Math.random().toString(36).slice(2, 8);
+            const радио = (значение, вкл, подпись) => {
+                const r = h('input', { type: 'radio', name: имяГруппы + '-s', value: значение, checked: вкл });
+                return { r, узел: h('label', { class: 'stol-md-opt' }, r, ' ' + подпись) };
+            };
+            const тип = h('select', { 'aria-label': 'Тип LDPC кода' });
+            const блок = h('select', { 'aria-label': 'Блок данных', hidden: true });
+            const скорость = h('select', { 'aria-label': 'Скорость кодирования' });
+            const код = h('select', { 'aria-label': 'Код' });
+            const сведения = h('div', { class: 'small muted stol-ldpc-info' });
+            const выколоты = h('input', { type: 'text', value: з.выколоты, placeholder: 'по стандарту', class: 'stol-md-table', 'aria-label': 'Выколотые позиции' });
+            const укорочены = h('input', { type: 'text', value: з.укорочены, placeholder: 'по стандарту', class: 'stol-md-table', 'aria-label': 'Укороченные позиции' });
+            const перемежение = h('select', { 'aria-label': 'Перемежение бит' }, [['', 'нет'], ['1367', '1367·i mod M (F-LDPC)'], ['8PSK', '8PSK (DVB-S2)'],
+                ['16APSK', '16APSK (DVB-S2)'], ['32APSK', '32APSK (DVB-S2)']].map(([v, т]) => h('option', { value: v, selected: v === з.перемежение }, т)));
+            const безСинхро = радио('нет', з.синхро === 'нет', 'Нет');
+            const сосредоточенное = радио('сосредоточенное', з.синхро === 'сосредоточенное', 'Сосредоточенное');
+            const распределённое = радио('распределённое', з.синхро === 'распределённое', 'Распределённое');
+            const длинаКадра = h('input', { type: 'number', min: 8, value: з.длина, class: 'stol-md-num', 'aria-label': 'Длина кадра' });
+            const длинаСлова = h('input', { type: 'number', min: 4, value: з.длина_слова, class: 'stol-md-num', 'aria-label': 'Длина синхрослова' });
+            const слово = h('input', { type: 'text', value: з.слово, placeholder: '0x1ACFFC1D или 0110…', class: 'stol-md-table', 'aria-label': 'Синхрослово' });
+            const выводить = h('input', { type: 'checkbox', checked: !!з.выводить });
+            const мульт = h('input', { type: 'checkbox', checked: !!з.мульт });
+            const отводы = h('input', { type: 'text', value: з.отводы, placeholder: '18,23', class: 'stol-md-perm', 'aria-label': 'Отводы мультипликативного дескремблера' });
+            const dvb = h('input', { type: 'checkbox', checked: !!з.dvb });
+            const инверсия = h('input', { type: 'checkbox', checked: !!з.инверсия });
+            const состояние = h('div', { class: 'small', 'aria-live': 'polite' });
+            const холст = h('canvas', { class: 'stol-md-raster', width: 1, height: 1 });
+            const отчёт = h('div', { class: 'small stol-md-sum' }, h('span', { class: 'muted' }, '«Просмотр» — начало результата растром по длине строки просмотра и отчёт декодера.'));
+            const списокФайлов = h('div', { class: 'small stol-ldpc-files' });
+            const загрузка = h('input', { type: 'file', accept: '.alist,.qc,.base,.adr,.h,.txt', hidden: true });
+            const помощь = h('div', { class: 'small stol-md-help', hidden: true },
+                h('p', {}, 'Тип кода — как в декодере отдела. У Comtech, Versa FEC и Paradise матриц в открытом доступе нет: коды этих типов — файлы отдела ' +
+                    'в папке ldpc, чьё имя начинается с «comtech», «versafec», «paradise». Datum — код F-LDPC TrellisWare по патенту US 7,673,213 ' +
+                    '(гипотеза: значения патента по умолчанию). «Нестандарт» — все файлы папки: alist, базовая матрица сдвигов с «Z = …», ' +
+                    'таблица адресов DVB с «n = …, k = …», H строками 0/1; примечания «# выколоты: …», «# перемежение: 1367».'),
+                h('p', {}, 'Синхрослово сосредоточенное — в начале каждого кадра; распределённое — по одному биту через длина кадра / длина слова бит. ' +
+                    'В кадре без синхрослова — целое число слов кода, хвост — заполнение. «Выводить синхрослово» — перед данными каждого кадра.'),
+                h('p', {}, 'Постобработка — по порядку: мультипликативный (самосинхронизирующийся) дескремблер с отводами, аддитивный DVB ' +
+                    '1+x¹⁴+x¹⁵ с начальным 100101010000000 заново в каждом блоке выхода (EN 302 307-1, 5.2.2), инверсия выхода.'));
+            const кнАвтомат = h('button', { class: 'btn', onclick: () => автомат() }, 'Автомат');
+            const окно = openModal({
+                title: 'Декодер: LDPC — массив ' + у.номер, wide: true,
+                body: h('div', { class: 'stol-dialog stol-md stol-ldpc' },
+                    h('div', { class: 'stol-md-params' },
+                        h('div', { class: 'stol-ldpc-tabs', role: 'tablist', 'aria-label': 'Вкладки декодера' },
+                            h('button', { type: 'button', class: 'stol-ldpc-tab', title: 'Кадровая синхронизация — поля ниже',
+                                onclick: () => { const п = длинаКадра.closest('fieldset'); п.scrollIntoView({ block: 'nearest' }); длинаКадра.focus(); } }, 'Кадр. синхр.'),
+                            h('span', { class: 'stol-ldpc-tab is-active', role: 'tab', 'aria-selected': 'true' }, 'LDPC')),
+                        h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Тип LDPC кода'),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Тип'), тип),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Блок'), блок),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Скорость кодирования'), скорость),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Код'), код),
+                            сведения),
+                        h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Схема передачи'),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Выколоты'), выколоты),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Укорочены'), укорочены),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Перемежение'), перемежение)),
+                        h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Кадровая синхронизация'),
+                            h('div', { class: 'stol-md-row', role: 'radiogroup', 'aria-label': 'Синхрослово' }, безСинхро.узел, сосредоточенное.узел, распределённое.узел),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Длина кадра'), длинаКадра),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Длина синхрослова'), длинаСлова),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Синхрослово'), слово),
+                            h('label', { class: 'stol-md-opt' }, выводить, ' Выводить синхрослово')),
+                        h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Постобработка'),
+                            h('div', { class: 'stol-md-row' }, h('label', { class: 'stol-md-opt' }, мульт, ' Мультипликативный дескремблер'), отводы),
+                            h('label', { class: 'stol-md-opt' }, dvb, ' Аддитивный дескремблер DVB (14,15)'),
+                            h('label', { class: 'stol-md-opt' }, инверсия, ' Инверсия выхода')),
+                        h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Нестандарт: папка ldpc'),
+                            списокФайлов,
+                            h('div', { class: 'stol-md-row' }, h('button', { class: 'btn btn--sm', onclick: () => загрузка.click(),
+                                title: 'Положить файл матрицы в папку ldpc отдела' }, 'Загрузить…'), загрузка)),
+                        состояние),
+                    h('div', { class: 'stol-md-result' }, помощь,
+                        h('div', { class: 'stol-pane-head' }, 'Просмотр'), холст, отчёт)),
+                footer: [h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Выход'),
+                    h('button', { class: 'btn btn--ghost', onclick: () => { помощь.hidden = !помощь.hidden; } }, 'Помощь'),
+                    кнАвтомат,
+                    h('button', { class: 'btn', onclick: () => посмотреть() }, 'Просмотр'),
+                    h('button', { class: 'btn btn--primary', onclick: () => декодировать() }, 'Декодирование')],
+            });
+            function текущийТип() { return типы.find((т) => т.тип === тип.value); }
+            function сказать(текст, плохо) {
+                состояние.className = 'small' + (плохо ? ' stol-bad' : ' muted');
+                состояние.textContent = текст;
+            }
+            function заполнитьТипы() {
+                const было = тип.value || з.тип;
+                clear(тип);
+                типы.forEach((т) => тип.appendChild(h('option', { value: т.тип }, т.тип + (т.закрыт ? ' — закрыт' : ''))));
+                тип.value = типы.some((т) => т.тип === было) ? было : (типы[0] || {}).тип || '';
+                заполнитьБлоки();
+            }
+            function заполнитьБлоки() {
+                const т = текущийТип();
+                const было = блок.value || з.блок;
+                clear(блок);
+                блок.hidden = !(т && т.блоки);
+                блок.parentNode.hidden = блок.hidden;
+                if (т && т.блоки) т.блоки.forEach((b) => блок.appendChild(h('option', { value: String(b) }, b + ' бит данных')));
+                if (т && т.блоки) блок.value = т.блоки.map(String).includes(String(было)) ? String(было) : String(т.блоки[0]);
+                заполнитьСкорости();
+            }
+            function скоростиТипа() { return скоростиТипаLDPC(текущийТип(), блок.value); }
+            function заполнитьСкорости() {
+                const было = скорость.value || з.скорость;
+                clear(скорость);
+                скоростиТипа().forEach((с_, i) => скорость.appendChild(h('option', { value: String(i) }, с_.подпись + (с_.коды.length ? '' : ' — нет матрицы'))));
+                const i = скоростиТипа().findIndex((с_) => с_.подпись === было);
+                if (i >= 0) скорость.value = String(i);
+                заполнитьКоды();
+            }
+            function заполнитьКоды() {
+                const т = текущийТип();
+                const с_ = скоростиТипа()[Number(скорость.value) || 0];
+                const было = код.value || з.код;
+                clear(код);
+                (с_ ? с_.коды : []).forEach((и) => код.appendChild(h('option', { value: и }, и)));
+                if (с_ && с_.коды.includes(было)) код.value = было;
+                clear(сведения);
+                if (т) {
+                    if (т.пометка) сведения.appendChild(h('div', { class: т.закрыт ? 'stol-bad' : '' }, т.пометка));
+                    if (с_ && с_.примечание) сведения.appendChild(h('div', {}, с_.примечание));
+                    сведения.appendChild(h('div', {}, 'Источник: ' + т.источник));
+                }
+                проверить();
+            }
+            function рисоватьФайлы() {
+                clear(списокФайлов);
+                списокФайлов.appendChild(h('div', { class: 'muted' }, 'Папка: ' + (папка || '—') + (файлы.length ? '' : ' — файлов нет')));
+                файлы.forEach((ф) => списокФайлов.appendChild(h('div', { class: ф.ошибка ? 'stol-bad' : '' },
+                    ф.файл + ' — ' + (ф.ошибка ? 'не разобран: ' + ф.ошибка : ф.вид + ', n = ' + ф.n + ', k = ' + ф.k +
+                        (ф.выколоты ? ', выколоты ' + ф.выколоты : '') + (ф.перемежение ? ', перемежение ' + ф.перемежение : '')))));
+            }
+            function синхроВид() { return распределённое.r.checked ? 'распределённое' : сосредоточенное.r.checked ? 'сосредоточенное' : 'нет'; }
+            function параметры() {
+                const с_ = скоростиТипа()[Number(скорость.value) || 0];
+                return { тип: тип.value, блок: блок.hidden ? '' : блок.value, скорость: с_ ? с_.подпись : '', код: код.value,
+                    выколоты: выколоты.value.trim(), укорочены: укорочены.value.trim(), перемежение: перемежение.value,
+                    синхро: { вид: синхроВид(), слово: слово.value.trim(), длина: Number(длинаКадра.value) || 0,
+                        длина_слова: Number(длинаСлова.value) || 0, выводить: выводить.checked },
+                    мультипликативный: мульт.checked ? отводы.value.trim() : '', аддитивный_dvb: dvb.checked, инверсия: инверсия.checked };
+            }
+            function запомнить() {
+                const п = параметры();
+                сохранитьСтола('stol-ldpc', { тип: п.тип, блок: п.блок, скорость: п.скорость, код: п.код, выколоты: п.выколоты, укорочены: п.укорочены,
+                    перемежение: п.перемежение, синхро: п.синхро.вид, слово: п.синхро.слово, длина: длинаКадра.value, длина_слова: длинаСлова.value,
+                    выводить: п.синхро.выводить, мульт: мульт.checked, отводы: отводы.value.trim(), dvb: п.аддитивный_dvb, инверсия: п.инверсия });
+            }
+            /** Проверка полей до запроса: код, синхрослово и его длина, отводы. */
+            function проверить() {
+                const п = параметры();
+                const ошибка = ошибкаОкнаLDPC(п, !!(текущийТип() && текущийТип().закрыт))
+                    || (мульт.checked && !/\d/.test(отводы.value) ? 'отводы мультипликативного дескремблера — «18,23»' : '');
+                if (ошибка) { сказать(ошибка, true); return null; }
+                сказать(п.код + (п.синхро.вид !== 'нет' ? ' · кадр ' + п.синхро.длина + ', синхрослово ' + п.синхро.вид : '') +
+                    (п.мультипликативный ? ' · дескремблер ' + п.мультипликативный : '') + (п.аддитивный_dvb ? ' · ПСП DVB' : '') + (п.инверсия ? ' · инверсия' : ''), false);
+                return п;
+            }
+            async function загрузитьТипы() {
+                try {
+                    const d = await api.get('/api/potok-ldpc-types');
+                    типы = d.types || []; файлы = d.files || []; папка = d.folder || '';
+                } catch (error) { сказать(errorText(error), true); }
+                заполнитьТипы();
+                рисоватьФайлы();
+            }
+            async function посмотреть() {
+                const п = проверить();
+                if (!п) return null;
+                запомнить();
+                try {
+                    сказать('декодирование начала массива…', false);
+                    const d = await api.post(путь + 'preview', { stage: у.stage, параметры: п });
+                    последний = d;
+                    const ширина = Math.max(1, Math.min(4096, с.ширина));
+                    const байты = Uint8Array.from(atob(d.биты), (ч) => ч.charCodeAt(0));
+                    const пк = пикселиРастра(байты, d.показано, ширина, 128);
+                    холст.width = пк.ширина; холст.height = Math.max(1, пк.строк);
+                    const кк = холст.getContext('2d');
+                    const img = кк.createImageData(пк.ширина, Math.max(1, пк.строк));
+                    for (let i = 0; i < пк.биты.length; i += 1) {
+                        const v = пк.биты[i] ? 230 : 18;
+                        img.data[4 * i] = v; img.data[4 * i + 1] = v; img.data[4 * i + 2] = v; img.data[4 * i + 3] = 255;
+                    }
+                    кк.putImageData(img, 0, 0);
+                    clear(отчёт);
+                    отчёт.appendChild(h('div', {}, h('b', {}, d.сошлось === null ? 'синдром не считан' : 'синдром обнулился у ' + String(d.сошлось).replace('.', ',') + ' % слов'),
+                        ' · код (' + d.n + ', ' + d.k + '), в потоке слово ' + d.в_потоке + ' бит · на выходе ' + d.бит.toLocaleString('ru-RU') + ' бит'));
+                    d.подробно.forEach((т) => отчёт.appendChild(h('div', { class: 'muted' }, т)));
+                    отчёт.appendChild(h('div', { class: 'mono' }, d.слои.join(' → ')));
+                    сказать(d.сошлось !== null && d.сошлось < 50 ? 'меньше половины слов сошлось — не тот код, схема или начало' : 'просмотр готов', d.сошлось !== null && d.сошлось < 50);
+                    return d;
+                } catch (error) {
+                    сказать(errorText(error), true);
+                    return null;
+                }
+            }
+            async function декодировать() {
+                const d = await посмотреть();
+                if (!d) return;
+                try {
+                    const новый_ = await api.post('/api/potok/' + encodeURIComponent(у.job) + '/derive',
+                        { stage: у.stage, steps: d.слои.map((сл) => ({ вид: 'слой', слой: сл, вкл: true })), analyze: false });
+                    await вЖурнал(у, 'LDPC', d.подробно.join('\n'), d.слои.join(' → '));
+                    await загрузитьДерево(у.ключ);
+                    const новый = с.массивы && с.массивы.поКлючу[новый_.id + ':0'];
+                    toast('LDPC → новый массив' + (новый ? ' ' + новый.номер : '') + '. Этот массив остался', 'ok', 5000);
+                } catch (error) { toastError(error); }
+            }
+            async function автомат() {
+                // Автомат пробует все скорости (и блоки) выбранного типа: скорость как раз и ищется.
+                const п = Object.assign(параметры(), { скорость: '', блок: '' });
+                запомнить();
+                кнАвтомат.disabled = true;
+                сказать('автомат: пробую коды ' + (п.тип ? 'типа «' + п.тип + '», все скорости' : 'все') + '…', false);
+                try {
+                    const d = await api.post(путь + 'auto', { stage: у.stage, параметры: п });
+                    if (!d.найдено) { сказать(d.почему, true); return; }
+                    const н = d.найдено;
+                    // Найденный код — в поля окна: тип и скорость, где он есть, схема, перемежение.
+                    const где = гдеКодLDPC(типы, тип.value, н.код);
+                    if (где) {
+                        тип.value = где.т.тип; заполнитьБлоки();
+                        if (где.т.блоки) { блок.value = String(где.с.блок); заполнитьСкорости(); }
+                        скорость.value = String(скоростиТипа().indexOf(где.с)); заполнитьКоды(); код.value = н.код;
+                    }
+                    выколоты.value = н.выколоты; укорочены.value = н.укорочены;
+                    перемежение.value = (н.перемежение || '').split(' ')[0];
+                    сказать('найдено: ' + н.что + ' — ' + н.мера, false);
+                    await посмотреть();
+                } catch (error) {
+                    сказать(errorText(error), true);
+                } finally { кнАвтомат.disabled = false; }
+            }
+            загрузка.addEventListener('change', async () => {
+                const файл = загрузка.files && загрузка.files[0];
+                загрузка.value = '';
+                if (!файл) return;
+                const данные = new FormData();
+                данные.append('file', файл, файл.name);
+                try {
+                    const d = await uploadFile('/api/potok-ldpc-files', данные);
+                    toast('Матрица «' + d.file.имя + '» в папке ldpc: ' + d.file.вид + ', n = ' + d.file.n, 'ok', 4000);
+                    await загрузитьТипы();
+                    тип.value = 'Нестандарт'; заполнитьБлоки();
+                    const i = скоростиТипа().findIndex((с_) => с_.коды.includes(d.file.имя));
+                    if (i >= 0) { скорость.value = String(i); заполнитьКоды(); }
+                } catch (error) { toastError(error); }
+            });
+            тип.addEventListener('change', заполнитьБлоки);
+            блок.addEventListener('change', заполнитьСкорости);
+            скорость.addEventListener('change', заполнитьКоды);
+            [код, перемежение, выводить, мульт, dvb, инверсия].forEach((п) => п.addEventListener('change', проверить));
+            [безСинхро, сосредоточенное, распределённое].forEach((о) => о.r.addEventListener('change', проверить));
+            [выколоты, укорочены, длинаКадра, длинаСлова, слово, отводы].forEach((п) => п.addEventListener('input', проверить));
+            окно.modal.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'file') { e.preventDefault(); посмотреть(); }
+            });
+            загрузитьТипы();
         }
 
         /** Быстрый поиск периода по синхромаркеру: параметры, таблица «период — первый бит — вес», «Принять». */

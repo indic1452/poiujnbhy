@@ -232,7 +232,7 @@ class ЧерезСервер(unittest.TestCase):
                                                   "text": прототип(), "z": Z, "punctured": "0-9999"})
         self.assertEqual(400, плохо.status_code)
         встроенные = к.get("/api/potok-matrices").json()["builtin"]
-        self.assertEqual(192, len(встроенные))
+        self.assertEqual(418, len(встроенные))
         nr = next(к for к in встроенные if к["имя"] == "nr-bg1-z384")
         self.assertEqual((nr["n"], nr["k"], nr["выколоты"]), (26112, 8448, "0-767"))
 
