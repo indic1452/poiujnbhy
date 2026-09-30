@@ -149,6 +149,23 @@ class ДекодерИсправляет(unittest.TestCase):
         self.проверить(ts.umts(1000, 2008), lambda u: тк.umts_согласовать(тк.umts_кодировать(u), 2008),
                        данные(4, 1000, 2), 0.01)
 
+    def test_umts_на_пределе(self):
+        # 11 % ошибок в жёстких решениях: верный обмен внешней информацией справляется,
+        # а с ошибкой в ней (апостериорная + входная вместо разности) — нет.
+        u = данные(8, 1000, 1)
+        кодовые = np.array([тк.umts_кодировать([int(b) for b in р]) for р in u], dtype=np.uint8)
+        итог, _ = ts.umts(1000).декодировать(1.0 - 2.0 * тк.ошибки(кодовые, 0.11, сид=2))
+        self.assertTrue(np.array_equal(u, итог))
+
+    def test_размеры_вне_стандарта(self):
+        for вызов in (lambda: ts.umts(39), lambda: ts.umts(5115), lambda: ts.lte(41), lambda: ts.ccsds(1785, "1/2"),
+                      lambda: ts.ccsds(1784, "2/3"), lambda: ts.rcs(100, "1/2"), lambda: ts.rcs(212, "5/6"),
+                      lambda: ts.umts(40, 200), lambda: ts.lte(40, 100, 4), lambda: ts.umts_шаблон(40, "11/10")):
+            with self.assertRaises(ValueError):
+                вызов()
+        self.assertEqual(40, ts.umts(40).K)
+        self.assertEqual(5114, len(ts.umts_перемежитель(5114)))
+
     def test_lte(self):
         f = тк.lte_таблица()[1024]
         self.проверить(ts.lte(1024, 2048, 0), lambda u: тк.lte_согласовать(тк.lte_кодировать(u, *f), 2048, 0),
