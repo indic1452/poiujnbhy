@@ -379,11 +379,12 @@ def рс(слов: int, n: int, k: int, *, многочлен: int = 0x11D, пе
 
 def gfp(кадры: Sequence[bytes], *, пустых_между: int = 2, upi: int = 0x01) -> bytes:
     """GFP (G.7041): основной заголовок с cHEC и маской B6AB31E0, заголовок типа
-    с tHEC, нагрузка под самосинхронизирующимся скремблером x⁴³ + 1."""
-    from reportgen.potok import crc as crc_
+    с tHEC, нагрузка под самосинхронизирующимся скремблером x⁴³ + 1. CRC — своя
+    (эталонный генератор gfp_sintez), не код анализатора."""
+    from gfp_sintez import crc16
 
     def hec(данные):
-        return crc_.crc(данные, 16, 0x1021, 0, False, False, 0).to_bytes(2, "big")
+        return crc16(данные).to_bytes(2, "big")
 
     маска = bytes.fromhex("B6AB31E0")
     пустой = bytes(a ^ b for a, b in zip(b"\0\0" + hec(b"\0\0"), маска, strict=False))

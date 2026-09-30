@@ -452,6 +452,21 @@ class СтраницаПакетовTests(unittest.TestCase):
         self.assertEqual(400, к.post("/api/pakety", files={"file": ("x.pcap", b"not a capture at all" * 5,
                                                                     "application/octet-stream")}).status_code)
 
+    def test_dpo_и_выбор_файла_без_фильтра(self):
+        # .dpo — те же кадры с двухбайтовой длиной, что и .sig: вид узнаётся по содержимому.
+        к = self.сеть.client
+        self.сеть.login("engineer")
+        import potok_sintez as пс
+        кадры = [с.ip(с.udp(b"x" * (20 + i), 5000 + i, 53), 17) for i in range(12)]
+        ид = self.загрузить(пс.sig(кадры), имя="запись.dpo")
+        состояние = к.get(f"/api/pakety/{ид}").json()
+        self.assertEqual(("готово", 12), (состояние["состояние"], к.get(f"/api/pakety/{ид}/list").json()["всего"]))
+        # Окно выбора файла не фильтрует по расширению: Windows прячет .sig/.dpo при фильтре.
+        from pathlib import Path
+        js = (Path(__file__).resolve().parents[1] / "src/reportgen/web/static/app.js").read_text(encoding="utf-8")
+        for фильтр in ("accept: '.pcap", "accept: '.etl", "accept: '.alist"):
+            self.assertNotIn(фильтр, js)
+
     def test_из_разбора_потока(self):
         к = self.сеть.client
         self.сеть.login("engineer")

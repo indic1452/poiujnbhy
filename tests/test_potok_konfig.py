@@ -13,6 +13,11 @@ from reportgen.potok.konfig import Конфигурации, НетДоступ�
 ШАГИ = [{"вид": "слой", "слой": "инверсия"}, {"вид": "маска", "маска": {"период": 8, "сдвиг": 0, "позиции": [0, 1, 2, 3]}}]
 
 
+def без_встроенных(список):
+    """Встроенные общие конфигурации (GFP) есть всегда — их проверяет test_potok_gfp."""
+    return [з for з in список if not з.get("встроенная")]
+
+
 class ХранилищеTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -26,7 +31,7 @@ class ХранилищеTests(unittest.TestCase):
         общая = self.к.сохранить(2, имя="Общая", шаги=ШАГИ, общая=True)
         self.к.сохранить(2, имя="Личная чужая", шаги=ШАГИ)
         self.assertEqual([("РРЛ вида А", True), ("Общая", False)],
-                         [(з["имя"], з["своя"]) for з in self.к.список(1)])
+                         [(з["имя"], з["своя"]) for з in без_встроенных(self.к.список(1))])
         self.assertEqual("Общая", self.к.прочитать(общая["ид"], 1)["имя"])
         with self.assertRaises(НетДоступа):
             self.к.сохранить(1, имя="захват", шаги=ШАГИ, ид=общая["ид"])
@@ -42,7 +47,7 @@ class ХранилищеTests(unittest.TestCase):
         з2 = self.к.сохранить(1, имя="Б", шаги=ШАГИ[:1], ид=з["ид"], общая=True)
         self.assertEqual((з["ид"], "Б", 1, True, время), (з2["ид"], з2["имя"], len(з2["шаги"]), з2["общая"], з2["создано"]))
         self.к.удалить(з["ид"], 1)
-        self.assertEqual([], self.к.список(1))
+        self.assertEqual([], без_встроенных(self.к.список(1)))
         for плохой in ("../x", "zzzzzzzzzzzz", 5):
             with self.subTest(плохой=плохой), self.assertRaises(KeyError):
                 self.к.прочитать(плохой, 1)
@@ -77,7 +82,7 @@ class ХранилищеTests(unittest.TestCase):
     def test_испорченный_файл_не_роняет_список(self):
         self.к.сохранить(1, имя="Целая", шаги=ШАГИ)
         (Path(self._tmp.name) / "0123456789ab.json").write_text("{не json", encoding="utf-8")
-        self.assertEqual(["Целая"], [з["имя"] for з in self.к.список(1)])
+        self.assertEqual(["Целая"], [з["имя"] for з in без_встроенных(self.к.список(1))])
 
 
 class ЧерезСерверTests(unittest.TestCase):
@@ -120,7 +125,7 @@ class ЧерезСерверTests(unittest.TestCase):
         ответ = к.post("/api/potok-configs", json={"name": "Инверсия и полубайт", "steps": ШАГИ, "description": "проба"})
         self.assertEqual(200, ответ.status_code, ответ.text)
         ид_к = ответ.json()["ид"]
-        self.assertEqual(["Инверсия и полубайт"], [з["имя"] for з in к.get("/api/potok-configs").json()["items"]])
+        self.assertEqual(["Инверсия и полубайт"], [з["имя"] for з in без_встроенных(к.get("/api/potok-configs").json()["items"])])
         self.assertEqual(400, к.post("/api/potok-configs", json={"name": "", "steps": ШАГИ}).status_code)
         self.assertEqual(404, к.post("/api/potok-configs", json={"name": "x", "steps": ШАГИ, "id": "0" * 12}).status_code)
         файл = к.get(f"/api/potok-configs/{ид_к}/export")
