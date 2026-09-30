@@ -4132,6 +4132,328 @@ def potok_moddecoder_all(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError(str(ошибка), 400) from None
 
 
+# -- разметка вслепую, синхрослово, своя разметка, вход I/Q ----------------------------------
+
+#: Разметка вслепую: бит массива для поиска — не больше; срок поиска по умолчанию и наибольший, секунд.
+РАЗМЕТКА_БИТ_ДО = 1 << 23
+РАЗМЕТКА_СРОК = 60.0
+РАЗМЕТКА_СРОК_ДО = 600.0
+
+
+def _k_модуляции(тело: dict[str, Any]) -> int:
+    from ..potok import moddekoder  # noqa: PLC0415
+    try:
+        return moddekoder.модуляция(тело.get("модуляция"))[1]
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
+def _целое(тело: dict[str, Any], ключ: str, по: int, от: int, до: int) -> int:
+    try:
+        значение = int(тело.get(ключ) if тело.get(ключ) not in (None, "") else по)
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError(f"{ключ} — целое число", 400) from None
+    if not от <= значение <= до:
+        raise ServiceError(f"{ключ} — от {от} до {до}", 400)
+    return значение
+
+
+def _биты_разметки(request: Request, user, job_id: str, тело: dict[str, Any]):
+    этап = _целое(тело, "stage", 0, 0, 10 ** 6)
+    _файл_бит_или_400(request, user, job_id, этап)
+    return _potok(request).биты_участка(job_id, этап, 0, РАЗМЕТКА_БИТ_ДО)
+
+
+def _кадры_разметки(биты, кадр: Any, k: int):
+    """Кадры для меры строк: {длина, начало} строки просмотра → (начала, длина кадра); цикл — по служебным словам."""
+    from ..potok import cikl, moddekoder  # noqa: PLC0415
+    if not кадр:
+        return None
+    try:
+        длина, начало = moddekoder.кадр(кадр)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    try:
+        найдено = cikl.кадры(биты, длина)
+    except (ValueError, IndexError):
+        найдено = None
+    if найдено is not None and найдено[1]["кадр"] % k == 0:
+        return найдено[0], int(найдено[1]["кадр"])
+    return list(range(начало % длина, len(биты) - длина, длина)), длина
+
+
+@router.post("/potok/{job_id}/moddecoder/analysis")
+def potok_moddecoder_analysis(request: Request, job_id: str) -> dict[str, Any]:
+    """Анализ на уровне символов (от разметки не зависит): частоты, переходы, период кадра, постоянные места."""
+    from ..potok import razmetka  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    k = _k_модуляции(тело)
+    фаза = тело.get("фаза")
+    фаза = None if фаза in (None, "", "авто") else _целое(тело, "фаза", 0, 0, k - 1)
+    биты = _биты_разметки(request, user, job_id, тело)
+    return razmetka.анализ(биты, k, фаза=фаза)
+
+
+def _слово_синхро(тело: dict[str, Any]):
+    """Синхрослово из запроса: «слово» — биты (0/1) или HEX с «0x»; «из_библиотеки» — имя известного."""
+    import numpy as np  # noqa: PLC0415
+
+    from ..potok import sinhro  # noqa: PLC0415
+    имя = str(тело.get("из_библиотеки") or "").strip()
+    if имя:
+        слово = next((э for н, э in sinhro.известные() if н == имя), None)
+        if слово is None:
+            raise ServiceError(f"в библиотеке нет синхрослова «{имя}»", 400)
+        return np.asarray(слово, dtype=np.uint8), имя
+    текст = str(тело.get("слово") or "").strip()
+    try:
+        слово = sinhro.слово(текст)
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(f"синхрослово: {ошибка}", 400) from None
+    if len(слово) < 4:
+        raise ServiceError("синхрослово: не короче 4 бит", 400)
+    return np.asarray(слово, dtype=np.uint8), текст
+
+
+@router.get("/potok-sync-library")
+def potok_sync_library(request: Request) -> dict[str, Any]:
+    """Библиотека синхрослов (для «Разметки по синхрослову»): имя и биты."""
+    from ..potok import sinhro  # noqa: PLC0415
+    require_user(request)
+    return {"items": [{"имя": н, "бит": len(э), "биты": "".join(str(int(б)) for б in э)} for н, э in sinhro.известные()]}
+
+
+@router.post("/potok/{job_id}/moddecoder/sync")
+def potok_moddecoder_sync(request: Request, job_id: str) -> dict[str, Any]:
+    """Разметка по синхрослову: постоянные символы кадра ↔ биты слова; непокрытое — перебором по мере."""
+    import numpy as np  # noqa: PLC0415
+
+    from ..potok import razmetka  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    k = _k_модуляции(тело)
+    M = 1 << k
+    слово, имя = _слово_синхро(тело)
+    биты = _биты_разметки(request, user, job_id, тело)
+    анализ = razmetka.анализ(биты, k)
+    места = анализ.get("места") or []
+    if not места:
+        raise ServiceError("постоянных мест в кадре не видно: период кадра по символам не найден — синхрослово "
+                           "не к чему приложить", 400)
+    варианты = []
+    for место in места:
+        for символы in [место["символы"]] + ([место["символы_нечётных"]] if место.get("чередуется") else []):
+            for в in razmetka.по_синхрослову(слово, символы, k)[:4]:
+                варианты.append({**в, "место": место["начало"], "соответствие": {str(a): б for a, б in в["соответствие"].items()}})
+    варианты.sort(key=lambda в: (-в["покрыто"], -в["пар"]))
+    if not варианты:
+        raise ServiceError("синхрослово не сходится с постоянными символами кадра ни при одном сдвиге (и инверсии): "
+                           "другое слово или другая модуляция", 400)
+    лучший = варианты[0]
+    соответствие = {int(a): б for a, б in лучший["соответствие"].items()}
+    итог: dict[str, Any] = {"слово": имя, "анализ": {"кадр": анализ.get("кадр"), "фаза": анализ["фаза"]},
+                            "варианты": варианты[:8], "покрыто": лучший["покрыто"], "M": M}
+    if лучший["покрыто"] >= M - 1:
+        итог["таблица"] = razmetka.дополнения(соответствие, M)[0].tolist()
+        итог["как"] = "синхрослово покрыло все символы" if лучший["покрыто"] == M else \
+            "синхрослово покрыло все символы, кроме одного (он — на оставшееся место)"
+        return итог
+    try:
+        таблицы = razmetka.дополнения(соответствие, M)
+    except ValueError as ошибка:
+        итог["как"] = str(ошибка)
+        return итог
+    символы = razmetka.в_символы(np.asarray(биты), k, анализ["фаза"])
+    мера = razmetka.МераБайт(символы[:razmetka.ВЫБОРКА_БАЙТ], k) if M <= 8 else None
+    if мера is None:
+        итог["как"] = f"покрыто {лучший['покрыто']} из {M}: остальное — «Разметка вслепую» от этого соответствия"
+        return итог
+    р = razmetka.перебор(мера, M, таблицы=таблицы, лучших=5)
+    итог.update(таблица=р["таблицы"][0], как=f"покрыто {лучший['покрыто']} из {M}; остальные "
+                f"{M - лучший['покрыто']} символов — перебором {len(таблицы)} дополнений по байтовой мере "
+                f"(лучшая {р['меры'][0]:g}, отрыв {р['отрыв']:g} разбросов)", дополнения=р)
+    return итог
+
+
+@router.post("/potok/{job_id}/moddecoder/blind")
+def potok_moddecoder_blind(request: Request, job_id: str) -> dict[str, Any]:
+    """Разметка вслепую — в фоне: {поиск}; ход — GET …/blind/{поиск}, остановить — POST …/blind/{поиск}/stop."""
+    import numpy as np  # noqa: PLC0415
+
+    from ..potok import razmetka  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    k = _k_модуляции(тело)
+    мера = str(тело.get("мера") or "авто")
+    if мера not in ("авто", "строки", "лрп", "байты"):
+        raise ServiceError("мера: авто, строки, лрп или байты", 400)
+    фаза = _целое(тело, "фаза", 0, 0, k - 1)
+    try:
+        срок = float(тело.get("срок") or РАЗМЕТКА_СРОК)
+    except (TypeError, ValueError):
+        raise ServiceError("срок — секунд", 400) from None
+    if not 1 <= срок <= РАЗМЕТКА_СРОК_ДО:
+        raise ServiceError(f"срок — от 1 до {РАЗМЕТКА_СРОК_ДО:g} с", 400)
+    старт = тело.get("старт")
+    биты = np.asarray(_биты_разметки(request, user, job_id, тело))
+    кадры = _кадры_разметки(биты, тело.get("кадр"), k)
+    if мера == "строки" and кадры is None:
+        raise ServiceError("мера «строки» — по кадрам: включите «Мера по кадрам» (строка просмотра — кадр)", 400)
+    старты = None
+    if старт not in (None, "", []):
+        from ..potok import moddekoder  # noqa: PLC0415
+        try:
+            старты = np.array([moddekoder._таблица(старт, 1 << k, "старт")], dtype=np.int64)
+        except ValueError as ошибка:
+            raise ServiceError(str(ошибка), 400) from None
+
+    def задача(ход):
+        итог = razmetka.искать(биты, k, мера=мера, кадры=кадры, фаза=фаза, срок=срок, ход=ход, старты=старты)
+        return None if итог is None else {**итог.в_словарь(), "фаза": фаза}
+
+    ид = razmetka.ПОИСКИ.начать(user.id, задача, f"разметка вслепую: {1 << k} точек, мера «{мера}»")
+    return {"поиск": ид}
+
+
+@router.get("/potok-blind/{search_id}")
+def potok_blind_state(request: Request, search_id: str) -> dict[str, Any]:
+    from ..potok import razmetka  # noqa: PLC0415
+    user = require_user(request)
+    try:
+        return razmetka.ПОИСКИ.состояние(search_id, user.id)
+    except KeyError:
+        raise ServiceError("поиск не найден", 404) from None
+
+
+@router.post("/potok-blind/{search_id}/stop")
+def potok_blind_stop(request: Request, search_id: str) -> dict[str, Any]:
+    from ..potok import razmetka  # noqa: PLC0415
+    user = require_user(request)
+    try:
+        razmetka.ПОИСКИ.остановить(search_id, user.id)
+    except KeyError:
+        raise ServiceError("поиск не найден", 404) from None
+    return {"ok": True}
+
+
+@router.post("/potok-planes/own")
+def potok_plane_own(request: Request) -> dict[str, Any]:
+    """«Своя разметка»: геометрия плоскости-основы, свои метки точкам (по номерам точек) — новый .etl в папку."""
+    from ..potok import moddekoder  # noqa: PLC0415
+    user = require_user(request)
+    _potok(request)
+    тело = _body(request)
+    try:
+        основа = moddekoder.найти(str(тело.get("основа") or ""))
+        имя = moddekoder.чистое_имя(str(тело.get("имя") or ""))
+        метки = тело.get("метки")
+        if not isinstance(метки, list):
+            raise ValueError("метки — список меток точек по номерам")
+        с = moddekoder.своя_разметка(основа, метки, имя)
+        if moddekoder.файл(имя) is not None and not тело.get("заменить"):
+            raise ValueError(f"плоскость «{имя}» уже есть в папке: другое имя или «заменить»")
+        плоскость = moddekoder.сохранить(имя, moddekoder.в_etl(с).encode("utf-8"))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _repos(request).audit.log("potok.plane", user=user, object_type="ploskost", object_id=плоскость["имя"],
+                              details={"M": плоскость["M"], "вид": плоскость["вид"], "своя": True})
+    return {"plane": плоскость}
+
+
+#: Вход I/Q: байт массива — не больше.
+IQ_БАЙТ_ДО = 64 << 20
+
+
+def _iq(request: Request, user, job_id: str, тело: dict[str, Any]):
+    """Отсчёты I/Q из байт массива: (отсчёты, описание, облако)."""
+    import numpy as np  # noqa: PLC0415
+
+    from ..potok import iq  # noqa: PLC0415
+    этап = _целое(тело, "stage", 0, 0, 10 ** 6)
+    _файл_бит_или_400(request, user, job_id, этап)
+    биты = _potok(request).биты_участка(job_id, этап, 0, IQ_БАЙТ_ДО * 8)
+    данные = np.packbits(np.asarray(биты[:len(биты) // 8 * 8], dtype=np.uint8)).tobytes()
+    if тело.get("развернуть"):
+        данные = np.packbits(np.unpackbits(np.frombuffer(данные, np.uint8)).reshape(-1, 8)[:, ::-1]).tobytes()
+    try:
+        z, описание = iq.прочитать(данные, str(тело.get("формат") or "авто"),
+                                   порядок=str(тело.get("порядок") or "младший"),
+                                   каналы=str(тело.get("каналы") or "IQ"),
+                                   пропуск=_целое(тело, "пропуск", 0, 0, 1 << 20))
+        облако = iq.облако(z, точек=_целое(тело, "точек", 0, 0, 256))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    return z, описание, облако
+
+
+def _идеал(плоскость) -> Any:
+    import numpy as np  # noqa: PLC0415
+    return np.array([complex(x, y) for x, y in плоскость.xy])
+
+
+@router.post("/potok/{job_id}/moddecoder/iq")
+def potok_moddecoder_iq(request: Request, job_id: str) -> dict[str, Any]:
+    """Облако I/Q массива: число точек (задано или найдено), центры, поворот к плоскостям, точки для картинки."""
+    from ..potok import iq, moddekoder  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    z, описание, о = _iq(request, user, job_id, тело)
+    плоскости = []
+    for с in moddekoder.годные(о["точек"]):
+        п = moddekoder.плоскость(с)
+        в = iq.выровнять(о["центры"], о["веса"], _идеал(п), шаг=п.шаг)
+        плоскости.append({"имя": с.имя, "вид": п.вид, **в})
+    плоскости.sort(key=lambda п: п["ошибка"])
+    return {"описание": описание, "отсчётов": int(len(z)), "точек": о["точек"], "оценки": о["оценки"],
+            "отделимость": о["отделимость"],
+            "центры": [[round(float(c.real), 4), round(float(c.imag), 4)] for c in о["центры"]],
+            "веса": [int(в) for в in о["веса"]],
+            "облако": [[round(float(c.real), 3), round(float(c.imag), 3)] for c in о["показ"]],
+            "плоскости": плоскости[:12]}
+
+
+@router.post("/potok/{job_id}/moddecoder/iq/decide")
+def potok_moddecoder_iq_decide(request: Request, job_id: str) -> dict[str, Any]:
+    """Жёсткие решения по облаку → новый массив в той же сессии: метки плоскости или номера кластеров."""
+    import numpy as np  # noqa: PLC0415
+
+    from ..potok import iq, moddekoder, razmetka  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    состояние = _задание_или_404(request, user, job_id)
+    z, описание, о = _iq(request, user, job_id, тело)
+    try:
+        поворот = float(тело.get("поворот") or 0)
+    except (TypeError, ValueError):
+        raise ServiceError("поворот — градусы", 400) from None
+    инверсия = bool(тело.get("инверсия"))
+    k = о["точек"].bit_length() - 1
+    приведённые = iq.повернуть((z - о["середина"]) / о["масштаб"], поворот, инверсия)
+    имя_плоскости = str(тело.get("плоскость") or "")
+    if имя_плоскости:
+        try:
+            с = moddekoder.найти(имя_плоскости)
+        except ValueError as ошибка:
+            raise ServiceError(str(ошибка), 400) from None
+        if с.M != о["точек"]:
+            raise ServiceError(f"плоскость «{с.имя}» — {с.M} точек, а в облаке {о['точек']}", 400)
+        п = moddekoder.плоскость(с)
+        метки = iq.по_плоскости(приведённые, _идеал(п), np.array(п.метки))
+        как = f"метки плоскости «{с.имя}»"
+    else:
+        метки = iq.по_кластерам(приведённые, iq.повернуть(о["центры"], поворот, инверсия))
+        как = "номера кластеров по порядку чтения (своя разметка — ищите «Разметкой вслепую»)"
+    биты = razmetka.в_биты(метки, k)
+    происхождение = [f"вход I/Q: {описание}; отсчётов {len(z)}", f"созвездие {о['точек']} точек (отделимость "
+                     f"{о['отделимость']:g}); поворот {поворот:g}°" + (", инверсия спектра" if инверсия else ""),
+                     f"жёсткие решения: {как}"]
+    ид = _potok(request).создать(владелец=user.id, имя=f"{состояние['имя']} → решения I/Q ({о['точек']} точек)"[:200],
+                                 данные=np.packbits(биты).tobytes(), профиль="обычно", разбирать=False,
+                                 происхождение=происхождение, сессия=состояние.get("сессия") or "", бит=len(биты))
+    return {"id": ид, "бит": int(len(биты)), "описание": происхождение}
+
+
 def _приметы_этапа(request: Request, user, job_id: str, stage: int):
     """Состояние, этап с битовым потоком (этот или ближайший ранее), приметы и подсказки.
 
