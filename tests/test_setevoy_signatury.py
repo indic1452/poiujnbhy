@@ -669,7 +669,7 @@ class МутантыОбщиеTests(unittest.TestCase):
 
 class МутантыTarTests(unittest.TestCase):
     def test_сумма_и_длина_значащими_цифрами(self):
-        длинные = dict(имя=b"\xff" * 100, ссылка=b"\xff" * 100)             # сумма ≥ 0o100000: 6 значащих цифр
+        длинные = {"имя": b"\xff" * 100, "ссылка": b"\xff" * 100}             # сумма ≥ 0o100000: 6 значащих цифр
         self.assertEqual(3, poisk._tar_заголовок(заголовок_tar(**длинные), 0))
         self.assertEqual(3, poisk._tar_заголовок(заголовок_tar("  %06o", **длинные), 0))   # без нуля в конце
         self.assertEqual(3, poisk._tar_заголовок(заголовок_tar(время=b"14000000000 "), 0))  # байт 147 — пробел

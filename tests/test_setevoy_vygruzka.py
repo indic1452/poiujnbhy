@@ -11,18 +11,20 @@ import subprocess
 import tempfile
 import time
 import unittest
+import urllib.parse
 import zipfile
 from collections import Counter
 from pathlib import Path
+
+from fastapi.testclient import TestClient
 
 import _bootstrap  # noqa: F401
 import obekty_sintez as ос
 import setevoy_sintez as с
 from reportgen.setevoy import obekty, statistika, vygruzka
+from reportgen.web import api as web_api
 from test_potok_sessii import функции_js
 from test_web import make_app
-
-from fastapi.testclient import TestClient
 
 
 def таблица_csv(данные: bytes) -> list[dict]:
@@ -246,16 +248,14 @@ class ВыгрузкиЧерезСервер(unittest.TestCase):
 
 
 def urllib_unquote(текст):
-    import urllib.parse
     return urllib.parse.unquote(текст)
 
 
 class НастройкиВыдачиTests(unittest.TestCase):
     def настройки(self, **п):
-        from reportgen.web import api
         class Запрос:
             query_params = п
-        return api._настройки_выдачи(Запрос())
+        return web_api._настройки_выдачи(Запрос())
 
     def test_значения_по_умолчанию_и_пределы(self):
         н = self.настройки()

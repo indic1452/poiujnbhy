@@ -5,8 +5,8 @@
 import gzip
 import io
 import os
-import tarfile
 import struct
+import tarfile
 import unittest
 import zlib
 from unittest import mock
