@@ -591,17 +591,17 @@ class Подробности3Tests(unittest.TestCase):
             return ос.udp(b"\x00\x03" + struct.pack(">H", блок) + содержимое, 4000 + порт, порт, src="10.0.0.2",
                           dst="10.0.0.1")
         кадры = [rrq(3000, b"a"), rrq(3100, b"d"), data(3000, 1, b"1"), data(3100, 1, b"4444"),
-                 rrq(3000, b"b"), data(3000, 1, b"B" * 512), data(3000, 2, b"22"),
-                 rrq(3000, b"c"), data(3000, 1, b"333")]
-        self.assertEqual({"a.txt": b"1", "d.txt": b"4444", "b.txt": b"B" * 512 + b"22", "c.txt": b"333"},
+                 rrq(3000, b"b"), data(3000, 1, b"22"),
+                 rrq(3000, b"c"), data(3000, 1, b"C" * 512), data(3000, 2, b"333")]
+        self.assertEqual({"a.txt": b"1", "d.txt": b"4444", "b.txt": b"22", "c.txt": b"C" * 512 + b"333"},
                          {о.имя: о.данные for о in объекты(кадры)})
 
     def test_stap_и_ap_из_одного_nal_и_fu_b(self):
         self.assertEqual(b"\x00\x00\x00\x01\x09", obekty._h264([(1, b"\x18\x00\x01\x09")], "annexb")[0])
         self.assertEqual(b"\x00\x00\x00\x01\x09", obekty._h265([(1, b"\x60\x01\x00\x01\x09")], "annexb")[0])
-        # FU-B (29): индикатор 0x7D, DON 2 байта в первом; заголовок NAL — F и NRI индикатора (0x60) и тип 5.
-        данные, _ = obekty._h264([(1, b"\x7d\xc5\x00\x07xy")], "annexb")
-        self.assertEqual(b"\x00\x00\x00\x01\x65xy", данные)
+        # FU-B (29): индикатор 0x7D, DON 2 байта в первом; заголовок NAL — F и NRI индикатора (0x60) и тип 6.
+        данные, _ = obekty._h264([(1, b"\x7d\xc6\x00\x07xy")], "annexb")
+        self.assertEqual(b"\x00\x00\x00\x01\x66xy", данные)
 
 
 class Подробности4Tests(unittest.TestCase):
