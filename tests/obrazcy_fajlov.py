@@ -5,6 +5,7 @@
 корректные образцы по описанию формата, поле за полем (источники — в poisk.py у проверок).
 """
 
+import base64
 import bz2
 import gzip
 import io
@@ -240,7 +241,6 @@ def iso(блоков=20):
 
 
 def pem(метка="CERTIFICATE"):
-    import base64
     тело = base64.encodebytes(bytes(range(100))).replace(b"\n", b"\r\n")
     return f"-----BEGIN {метка}-----\r\n".encode() + тело + f"-----END {метка}-----\r\n".encode()
 

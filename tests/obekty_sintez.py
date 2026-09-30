@@ -5,8 +5,13 @@
 Захваты.нагрузки_тр (по «тр», иначе по «нагр»).
 """
 
+import base64
+import gzip
+import json
+import math
 import struct
 
+import obrazcy_fajlov as обр
 import setevoy_sintez as с
 from reportgen.setevoy import zahvaty
 from reportgen.setevoy.razbor import разобрать_пакет
@@ -56,7 +61,6 @@ def rtp(тип, номер, отметка, ssrc, нагрузка, маркер
 
 def письмо_с_вложением(png):
     """Письмо MIME: текст с точкой в начале строки и вложение PNG в base64 с именем по RFC 2047."""
-    import base64
     return ("From: a@b\r\nTo: c@d\r\nSubject: =?UTF-8?B?0J7RgtGH0ZHRgg==?=\r\nMIME-Version: 1.0\r\n"
             "Content-Type: multipart/mixed; boundary=XX\r\n\r\n--XX\r\nContent-Type: text/plain\r\n\r\n"
             ".строка с точкой\r\nтекст\r\n--XX\r\nContent-Type: image/png\r\nContent-Disposition: attachment; "
@@ -67,10 +71,6 @@ def письмо_с_вложением(png):
 def захват_всех_видов():
     """Кадры захвата, где есть все виды объектов: HTTP (длина, chunked+gzip, multipart, JSON), WebSocket, FTP,
     TFTP, SMTP, RTP (PCMU, H.264 по SDP, AMR с DTMF), JSON в UDP, JPEG в своём протоколе."""
-    import gzip
-    import json
-
-    import obrazcy_fajlov as обр
     кадры = []
     о = Обмен(порт_к=41000, порт_с=80)
     о.кусок("к", b"GET /files/%D0%BE%D1%82%D1%87%D1%91%D1%82.docx HTTP/1.1\r\nHost: x\r\n\r\n")
@@ -124,7 +124,6 @@ def захват_всех_видов():
     м.куски("к", письмо.replace(b"\r\n.", b"\r\n..") + b"\r\n.\r\n", 300)
     кадры += м.пакеты
     # RTP: PCMU (тип 0), 50 пакетов по 20 мс — тон
-    import math
     отсчёты = bytes((0x7F if math.sin(2 * math.pi * 440 * i / 8000) >= 0 else 0xFF) - int(
         abs(math.sin(2 * math.pi * 440 * i / 8000)) * 60) for i in range(8000))
     for i in range(50):
