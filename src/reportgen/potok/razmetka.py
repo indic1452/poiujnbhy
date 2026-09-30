@@ -489,17 +489,16 @@ class МераСтрок:
         """Окна [a, a + L) всех длин: (длина, место, вид, i, j, группа) — вид 0: без частичных, 1: начало, 2: конец."""
         k, Q = self.k, self.Q
         n = k * Q
-        L = np.concatenate([np.full(max(0, n - дл + 1), дл) for дл in range(от, min(до, n // 2) + 1)])
-        a = np.concatenate([np.arange(max(0, n - дл + 1)) for дл in range(от, min(до, n // 2) + 1)])
+        # Окна внутри кадра: a < n, e ≤ n; частичный символ в конце — при e < n, он есть в кадре.
+        L = np.concatenate([np.full(n - дл + 1, дл) for дл in range(от, min(до, n // 2) + 1)])
+        a = np.concatenate([np.arange(n - дл + 1) for дл in range(от, min(до, n // 2) + 1)])
         e = a + L
         ra, re_ = a % k, e % k
         вид = np.full(len(a), -1)
         вид[(ra == 0) & (re_ == 0)] = 0
         вид[(ra != 0) & (re_ == 0)] = 1
         вид[(ra == 0) & (re_ != 0)] = 2
-        годно = (вид >= 0) & (e // k <= Q) & (a // k < Q)
-        вид[(вид == 2) & (e // k >= Q)] = -1
-        годно &= (вид >= 0) & self._переменные(a, e)
+        годно = (вид >= 0) & self._переменные(a, e)
         return L[годно], a[годно], вид[годно], (a // k)[годно], (e // k)[годно]
 
     def классы(self, *, от: int = СТРОКА_ОТ, до: int = СТРОКА_ДО, срок: float | None = None,
@@ -519,8 +518,7 @@ class МераСтрок:
         начала_ключей = np.concatenate([[0], np.cumsum(ключ_L)])
         n_g = np.stack([(self.S == g).sum(axis=0) for g in range(M)])       # M × Q
         var_гр = (2 * n_g * (n_g - 1)).sum(axis=0).astype(np.float64)       # по месту частичного символа
-        var = np.where(вид == 0, 2.0 * F * (F - 1), np.where(вид == 1, var_гр[np.minimum(i, self.Q - 1)],
-                                                               var_гр[np.minimum(j, self.Q - 1)]))
+        var = np.where(вид == 0, 2.0 * F * (F - 1), np.where(вид == 1, var_гр[i], var_гр[np.minimum(j, self.Q - 1)]))
         # Различные пары (начальный символ, конечный) каждого вида окна — энергии считаются только у них.
         пары, обратно = [], []
         for в_ in range(3):

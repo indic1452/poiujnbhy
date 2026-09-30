@@ -1455,7 +1455,7 @@ def классы_эталон(S: np.ndarray, k: int, h: np.ndarray, от: int, �
             с_[0] += E
             с_[1] += var
     итог = [(L, o, E / math.sqrt(max(1e-9, var))) for (L, o), (E, var) in накоп.items()]
-    return sorted(итог, key=lambda т: -т[2])
+    return sorted(итог, key=lambda т: (-round(т[2], 9), т[0], т[1]))           # при равном — по длине и началу
 
 
 class ЭтапАTests(unittest.TestCase):
@@ -1476,14 +1476,16 @@ class ЭтапАTests(unittest.TestCase):
         self.assertEqual([0, 3, 5, 6], итог[0]["класс"])
         self.assertAlmostEqual(лучший[2], итог[0]["отрыв"], delta=0.051)
         self.assertEqual((лучший[0], лучший[1]), (итог[0]["длина"], итог[0]["начало"]))
-        # Кандидаты — лучшие различные длины с их началом и отрывом.
+        # Кандидаты — лучшие различные длины с их началом и отрывом; все длины (кандидатов — сколько угодно).
         различные = []
         for L, o, z in ждём:
             if all(L != d[0] for d in различные):
-                различные.append((L, o, round(z, 1)))
-        self.assertEqual([(L, o) for L, o, _ in различные[:р.КАНДИДАТОВ_ДЛИН]], [(L, o) for L, o, _ in итог[0]["кандидаты"]])
-        for (_, _, z), (_, _, zz) in zip(различные[:р.КАНДИДАТОВ_ДЛИН], итог[0]["кандидаты"], strict=True):
-            self.assertAlmostEqual(z, zz, delta=0.051)
+                различные.append((L, o, round(float(z), 1)))
+        with unittest.mock.patch.object(р, "КАНДИДАТОВ_ДЛИН", 1000):
+            ходы = []
+            итог = мера.классы(только=[h], от=8, до=40, ход=lambda д, т: ходы.append((д, т)))
+        self.assertEqual([(1.0, "классы чётности: 1 из 1")], ходы)
+        self.assertEqual(различные, [tuple(к) for к in итог[0]["кандидаты"]])
         # Все классы (без «только»): 35 у ФМ-8, по убыванию отрыва, у каждого — свой перебор.
         все = мера.классы(от=8, до=40)
         self.assertEqual(35, len(все))
