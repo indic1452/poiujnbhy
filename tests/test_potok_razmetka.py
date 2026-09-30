@@ -1534,6 +1534,7 @@ class ПомощникиПоискаTests(unittest.TestCase):
         self.assertEqual(len(ждём), len(старты))
         часть = р.старты_группы(3, основы, до=10, сид=4)
         self.assertEqual(10, len(часть))
+        self.assertEqual(10, len({tuple(x) for x in часть.tolist()}))                 # выборка без повторов
         self.assertTrue({tuple(x) for x in часть.tolist()} <= ждём)
         self.assertEqual(часть.tolist(), р.старты_группы(3, основы, до=10, сид=4).tolist())
         self.assertNotEqual(часть.tolist(), р.старты_группы(3, основы, до=10, сид=5).tolist())
@@ -1553,6 +1554,8 @@ class ПомощникиПоискаTests(unittest.TestCase):
                     for код in (грей4, list(range(16))) for r in range(16) for отр in (False, True)}
         основы16 = {tuple(x) for x in р.основы_плоскостей(4)}
         self.assertTrue(по_кругу < основы16)
+        грей6 = [n ^ (n >> 1) for n in range(64)]
+        self.assertIn([грей6[(грей6.index(v) + 1) % 64] for v in range(64)], р.основы_плоскостей(6))    # ФМ-64 — по кругу
 
     def test_перебор_статистика(self):
         class Мера:
@@ -1601,6 +1604,7 @@ class ПомощникиПоискаTests(unittest.TestCase):
         self.assertEqual(list(range(8)), ит["таблица"])
         self.assertEqual((0.0, 0.0), (ит["мера"], ит["мера_стартов"]))
         self.assertEqual(1 + 28 + 3 * (1 + 28), ит["оценено"])
+        self.assertTrue(0 <= ит["время"] < 30)
         self.assertEqual([(0.25, "старт 1 из 1"), (0.5, "отжиг 1 из 3"), (0.75, "отжиг 2 из 3"), (1.0, "отжиг 3 из 3")], ходы)
         # Отжиг уходит из местного максимума: мера — совпадения с целью, кроме «ловушки» (обмен двух меток).
         цель = np.arange(8)
