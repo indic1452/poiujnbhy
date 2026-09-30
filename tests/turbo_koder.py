@@ -434,7 +434,7 @@ def iess_рс(данные: list[int], n: int, k: int) -> list[int]:
     g = [1]
     for i in range(120, 120 + n - k):
         корень = α[i % 255]
-        g = [a ^ _gf_умн(b, корень) for a, b in zip(g + [0], [0] + g)]
+        g = [a ^ _gf_умн(b, корень) for a, b in zip(g + [0], [0] + g, strict=True)]
     остаток = [0] * (n - k)
     for d in данные:
         обратная = d ^ остаток[0]
@@ -487,7 +487,7 @@ def dsng_tcm_1(биты: list[int], режим: str) -> list[complex]:
     for н in range(0, len(биты) // на * на, на):
         байты = {б: биты[н + 8 * i:н + 8 * i + 8] for i, б in enumerate(буквы)}
 
-        def бит(ссылка):
+        def бит(ссылка, байты=байты):
             return байты[ссылка[0]][7 - ссылка[1]]
         for g in range(len(E[0])):
             XY = []
