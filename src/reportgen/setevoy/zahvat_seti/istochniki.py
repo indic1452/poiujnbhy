@@ -63,6 +63,8 @@ WINDOWS = sys.platform == "win32"
 IP_PKTINFO = 8
 IPV6_RECVPKTINFO, IPV6_PKTINFO = 49, 50
 SO_RXQ_OVFL = 40
+#: SO_MEMINFO (asm-generic/socket.h) — u32[SK_MEMINFO_VARS] (linux/sock_diag.h), SK_MEMINFO_DROPS = 8: sk_drops.
+SO_MEMINFO, SK_MEMINFO_VARS, SK_MEMINFO_DROPS = 55, 9, 8
 SOL_PACKET = 263
 PACKET_ADD_MEMBERSHIP, PACKET_DROP_MEMBERSHIP = 1, 2
 PACKET_MR_PROMISC = 1
@@ -286,7 +288,18 @@ class ПриёмUDP(Источник):
         return итог
 
     def отброшено(self) -> int | None:
-        return sum(self._потеряно.values()) if self._потеряно else (None if not self.pktinfo else 0)
+        """Потери сокетов: счётчик ядра sk_drops (SO_MEMINFO, Linux ≥ 4.12) — он точен и в конце. SO_RXQ_OVFL
+        у датаграммы — потери на миг, когда она встала в очередь: потерь после последней принятой он не видит."""
+        if not self.pktinfo:
+            return None
+        итог = 0
+        for с in self.сокеты:
+            try:
+                сведения = с.getsockopt(socket.SOL_SOCKET, SO_MEMINFO, 4 * SK_MEMINFO_VARS)
+                итог += struct.unpack_from("@I", сведения, 4 * SK_MEMINFO_DROPS)[0]
+            except (OSError, struct.error):
+                итог += self._потеряно.get(с, 0)
+        return итог
 
     def закрыть(self) -> None:
         for с in self.сокеты:

@@ -1162,6 +1162,24 @@ class ИсточникиTests(unittest.TestCase):
         self.assertEqual([("setsockopt", (socket.SOL_SOCKET, socket.SO_RCVBUF, istochniki.БУФЕР_ПРИЁМА))],
                          с_.вызовы[1:])
 
+    @unittest.skipUnless(sys.platform.startswith("linux"), "SO_MEMINFO — Linux")
+    def test_udp_потери_после_последней_принятой(self):
+        """SO_RXQ_OVFL у датаграммы — число потерь в миг, когда она встала в очередь: потери после последней
+        принятой (конец всплеска) так не видны. Итог берётся из счётчика сокета (SO_MEMINFO, sk_drops)."""
+        порт = свободный_порт()
+        приём = istochniki.ПриёмUDP("127.0.0.1", [порт])
+        self.addCleanup(приём.закрыть)
+        приём.сокеты[0].setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 2048)    # очередь — на пару датаграмм
+        о = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.addCleanup(о.close)
+        for _ in range(200):
+            о.sendto(b"x" * 100, ("127.0.0.1", порт))
+        принято = 0
+        while пачка := приём.прочитать(0.05):
+            принято += len(пачка)
+        self.assertGreater(принято, 0)
+        self.assertEqual(200, принято + приём.отброшено(), "отправлено = принято + отброшено")
+
     def test_udp_настройка_сокета(self):
         """Семейство по адресу, SO_RCVBUF, IP_PKTINFO/IPV6_RECVPKTINFO и SO_RXQ_OVFL (Linux), группа, bind."""
         сокеты = []
