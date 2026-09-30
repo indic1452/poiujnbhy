@@ -330,6 +330,17 @@ class НагрузкаTests(unittest.TestCase):
         self.assertEqual(("мало байт", None), (gfp.разобрать_нагрузку(0, заголовок[:3]).thec,
                                                gfp.разобрать_нагрузку(0, заголовок[:3]).pti))
         self.assertEqual(("верен", 1), (gfp.разобрать_нагрузку(0, заголовок).thec, gfp.разобрать_нагрузку(0, заголовок).upi))
+        # pFCS и при пустом поле данных; трёх байт на pFCS мало — это данные.
+        к = gfp.разобрать_нагрузку(0, г.нагрузка(b"", pfi=True))
+        self.assertEqual(("верна", b""), (к.pfcs, к.данные))
+        к = gfp.разобрать_нагрузку(0, г.нагрузка(b"", pfi=True)[:7])
+        self.assertEqual(("", 3), (к.pfcs, len(к.данные)))
+        # Доля верных tHEC для выбора скремблера: без прогрева, и области из одного поля типа — тоже.
+        р = gfp.разобрать(г.в_ряд(г.поток([x for _ in range(30) for x in (None, г.нагрузка(b""))])))
+        self.assertEqual(("x43", 1.0), (р.скремблер, р.доли_thec["x43"]))
+        р = gfp.разобрать(г.в_ряд(г.поток(кадры_эталона(20))))
+        self.assertEqual(1.0, р.доли_thec["x43"])
+        self.assertEqual((0.0, 0), gfp.доля_thec({1: b"abc"}, set()))
 
     def test_cid_ehec_pfcs(self):
         области = [г.нагрузка(п, cid=i % 3, pfi=i % 2 == 1) for i, п in enumerate(ETHERNET[:30])]
