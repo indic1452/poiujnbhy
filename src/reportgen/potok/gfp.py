@@ -337,7 +337,7 @@ def выделить(б: np.ndarray, с: np.ndarray, синдром: int, мас
             итог.серия.append(серия)
             итог.байт_в_синхронизме += min(4 + pli, n - p)
             p += 4 + pli
-        k = int(np.searchsorted(верные, p + 1))
+        k = int(np.searchsorted(верные, p))        # сам p не верен (потеря) или за концом ряда
     return итог
 
 
