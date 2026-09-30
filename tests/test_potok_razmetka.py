@@ -1561,6 +1561,7 @@ class ПомощникиПоискаTests(unittest.TestCase):
             def оценить(self, таблицы):
                 return (np.asarray(таблицы) * np.arange(len(таблицы[0]))).sum(axis=1).astype(float)
 
+        self.assertEqual(40320, р.перебор(Мера(), 8, срок=100)["оценено"])     # срок не вышел — оценены все пачки
         р_ = р.перебор(Мера(), 4, лучших=3)
         все = р.все_перестановки(4)
         меры = (все * np.arange(4)).sum(axis=1).astype(float)
