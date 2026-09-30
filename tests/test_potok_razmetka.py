@@ -1934,3 +1934,29 @@ class WAVTests(unittest.TestCase):
         ext = struct.pack("<HHIIHH", 0xFFFE, 2, 8000, 32000, 4, 16) + struct.pack("<HHIH", 8, 16, 3, 1)
         self.assertEqual(26, len(ext))
         self.assertEqual([1 + 2j, 3 + 4j], iq.прочитать(riff((b"fmt ", ext), (b"data", x)))[0][:2].tolist())
+
+    def test_wav_хвосты_и_форматы(self):
+        def riff(fmt, данные):
+            тело = b"WAVE" + b"fmt " + struct.pack("<I", len(fmt)) + fmt + b"data" + struct.pack("<I", len(данные)) + данные
+            return b"RIFF" + struct.pack("<I", len(тело)) + тело
+        z = np.array([1000 - 2000j, -3000 + 400j] * 10)
+        x = np.empty(2 * len(z))
+        x[0::2], x[1::2] = z.real, z.imag
+        for тег, бит, данные, ждём in (
+                (3, 32, x.astype("<f4").tobytes(), z),
+                (1, 16, x.astype("<i2").tobytes(), z),
+                (1, 32, x.astype("<i4").tobytes(), z),
+                (1, 24, b"".join(int(v).to_bytes(3, "little", signed=True) for v in x), z),
+                (1, 8, (np.clip(x // 256, -128, 127) + 128).astype("u1").tobytes(),
+                 np.clip(x // 256, -128, 127)[0::2] + 1j * np.clip(x // 256, -128, 127)[1::2])):
+            fmt = struct.pack("<HHIIHH", тег, 2, 8000, 8000 * бит // 4, бит // 4, бит)
+            for хвост in {b"", b"\x01", b"\x01" * (бит // 4 - 1)}:                  # короче кадра из двух отсчётов
+                with self.subTest(тег=тег, бит=бит, хвост=len(хвост)):
+                    np.testing.assert_allclose(ждём, iq.прочитать(riff(fmt, данные + хвост))[0])
+        with self.assertRaises(ValueError) as о:
+            iq.прочитать(riff(struct.pack("<HHIIHH", 3, 2, 8000, 48000, 6, 24), b"\x00" * 60))
+        self.assertEqual("WAV: формат 3, 24 бит — поддерживаются PCM 8/16/24/32 и float32", str(о.exception))
+        только_данные = b"WAVE" + b"data" + struct.pack("<I", 8) + b"\x00" * 8
+        with self.assertRaises(ValueError) as о:
+            iq.прочитать(b"RIFF" + struct.pack("<I", len(только_данные)) + только_данные)
+        self.assertEqual("WAV без блока fmt или data", str(о.exception))
