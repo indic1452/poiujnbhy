@@ -318,6 +318,50 @@ sudoedit /etc/reportgen/reportgen.env
 материала для помощника (26 000 знаков) — он посчитан от окна 32768 на два
 слота, см. 10.4.
 
+### Захват с сети (по желанию)
+
+Страница «Захват с сети» (docs/21 р. 21.7) принимает UDP на порт без особых
+прав — откройте только входящий порт в брандмауэре (`ufw allow 5004/udp` или
+правило nftables). Захват кадров с карты требует `CAP_NET_RAW`, а служба
+`reportgen.service` намеренно урезана: семейства адресов — только
+`AF_INET AF_INET6 AF_UNIX`, прав — никаких. Если захват с карты нужен:
+
+```bash
+sudo systemctl edit reportgen
+```
+
+```ini
+[Service]
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_PACKET AF_NETLINK
+```
+
+(`AF_NETLINK` — чтобы список карт показывал все адреса; без него адреса
+берутся запасным путём, только основной IPv4.) libpcap необязательна: без неё
+работает AF_PACKET; с ней (`apt install libpcap0.8`) — отбор BPF в ядре. Кто
+может захватывать, задаёт `REPORTGEN_CAPTURE_MIN_ROLE` (по умолчанию
+`engineer`; `off` — никто), потолки — `REPORTGEN_CAPTURE_MAX_MB` и
+`REPORTGEN_CAPTURE_MAX_SECONDS` (по умолчанию 0 — без потолков: захват идёт
+часами и сутками, кусками на диск), запас свободного места, при котором захват
+останавливается сам, — `REPORTGEN_CAPTURE_DISK_RESERVE_MB` (1024), свой путь к
+библиотеке — `REPORTGEN_CAPTURE_LIBPCAP`; прогон захвата — отдельным процессом
+(`REPORTGEN_CAPTURE_WORKER_PROCESS`, по умолчанию `true`). Для потоков в сотни
+Мбит/с дайте службе ещё `CAP_NET_ADMIN` (в `AmbientCapabilities` и
+`CapabilityBoundingSet`): тогда приёмный буфер UDP в 32 МБ ставится мимо
+`net.core.rmem_max` (`SO_RCVBUFFORCE`, socket(7)); иначе поднимите
+`net.core.rmem_max` через `sysctl`.
+
+На Windows входящий UDP разрешается правилом брандмауэра (от администратора):
+
+```powershell
+netsh advfirewall firewall add rule name="reportgen UDP 5004" dir=in action=allow protocol=UDP localport=5004
+```
+
+Npcap ставится отдельно из комплекта (docs/15, р. 15.10); без
+него захват с карты идёт сырым сокетом и требует запуска сервера от
+администратора.
+
 ### Обёртка для CLI (сделайте это до всего остального)
 
 Команды CLI, работающие с базой, должны видеть **те же** настройки, что и

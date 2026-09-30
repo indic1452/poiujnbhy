@@ -400,6 +400,29 @@ class Settings:
     session_ttl_hours: int = 12
     max_upload_mb: int = 200
 
+    # -- захват с сети (страница «Захват с сети») и прогон захватов ---------
+    #: С какой должности можно захватывать трафик машины-сервера: owner, head,
+    #: deputy, lead, senior, engineer (по умолчанию — инженер и выше) или off —
+    #: захват выключен для всех. Гостю захват не доступен никогда. Собственный
+    #: трафик сервера (его порты TCP) в захват не попадает при любой должности,
+    #: петлю снимает только создатель.
+    capture_min_role: str = "engineer"
+    #: Потолки одного захвата: объём (МБ) и длительность (с). 0 — без потолка:
+    #: захват идёт часами и сутками, пока его не остановят или пока на диске
+    #: есть место. Меньше потолка можно задать на странице, больше — нельзя.
+    capture_max_mb: int = 0
+    capture_max_seconds: int = 0
+    #: Запас свободного места на диске, МБ: меньше — захват не начинается, а
+    #: идущий честно останавливается (записанное остаётся целым).
+    capture_disk_reserve_mb: int = 1024
+    #: Путь к библиотеке захвата, если она не на обычном месте: wpcap.dll
+    #: Npcap (по умолчанию %SystemRoot%\System32\Npcap\wpcap.dll) или
+    #: libpcap.so. Пусто — искать самим.
+    capture_libpcap: str = ""
+    #: Прогон захвата — отдельным процессом (не отнимает время у приёма и у
+    #: страниц). false — потоком в процессе сервера.
+    capture_worker_process: bool = True
+
     def __post_init__(self) -> None:
         for name in ("data_dir", "db_path", "library_dir", "upload_dir", "export_dir",
                      "templates_dir", "glossary_path", "domains_path", "terms_path",
@@ -504,6 +527,15 @@ class Settings:
                       "в_копию": False, "что": "разборы потоков: пересчитаются из файла"})
         места.append({"имя": "pakety", "путь": str(корень / "pakety"), "папка": True,
                       "в_копию": False, "что": "разобранные захваты: пересчитаются из файла"})
+        # Захваты с сети — сырые записи трафика до обработки: большие и разовые, а всё
+        # нужное из них уходит в «Пакеты» и в сессии потоков — в копию не идут.
+        места.append({"имя": "zahvat", "путь": str(корень / "zahvat"), "папка": True,
+                      "в_копию": False, "что": "захваты с сети до обработки (куски pcapng)"})
+        места.append({"имя": "progon", "путь": str(корень / "progon"), "папка": True,
+                      "в_копию": False, "что": "прогоны захватов: ход и выходные данные — пересчитаются"})
+        # Правила «Декодировать как» — выбор аналитиков, пересчитать не из чего: в копию.
+        места.append({"имя": "dekodirovat_kak", "путь": str(корень / "dekodirovat_kak"), "папка": True,
+                      "в_копию": True, "что": "правила «Декодировать как» каждого человека"})
         # Матрицы LDPC инженеры вставляют руками из стандартов — это труд,
         # и пересчитать его не из чего: в копию.
         места.append({"имя": "ldpc", "путь": str(корень / "ldpc"), "папка": True,
@@ -544,7 +576,41 @@ def settings_warnings(settings: Settings) -> list[str]:
         troubles.append(
             "реранкер включён, а смысловой поиск выключен: переупорядочивать "
             "будет только то, что нашлось словами. Включите embed_enabled")
+    from .store.models import ROLES  # noqa: PLC0415 — config не тянет модели при импорте
+    роль = (settings.capture_min_role or "").strip().lower()
+    if роль not in ROLES and роль != "off":
+        troubles.append(
+            f"capture_min_role = «{settings.capture_min_role}» — такой должности нет: захват с "
+            f"сети закрыт для всех. Допустимо: {', '.join(r for r in ROLES if r != 'guest')} или off")
+    elif роль == "guest":
+        troubles.append("capture_min_role = guest: гостю захват не доступен никогда — действует engineer")
     return troubles
+
+
+#: Ниже этой должности захват с сети не открывается никакой настройкой (гостю — никогда).
+CAPTURE_ROLE_FLOOR = "engineer"
+
+
+def capture_own_ports(settings: Settings) -> tuple[int, ...]:
+    """Порты TCP приложения и его служб — захват с карты их не пишет никогда.
+
+    Приложение за nginx слушает http на ``port`` (docs/10: 127.0.0.1:8080), там
+    открытым текстом cookie сессий и пароли входа; llama-server, эмбеддинги и
+    реранкер — http на своих портах, там материалы дел. Для адреса без порта —
+    порт схемы (http — 80, https — 443: RFC 9110 §4.2.1, §4.2.2).
+    """
+    from urllib.parse import urlsplit  # noqa: PLC0415
+
+    порты = {int(settings.port)}
+    for адрес in (settings.llm_base_url, settings.embed_base_url, settings.rerank_base_url):
+        try:
+            части = urlsplit(str(адрес or ""))
+            порт = части.port or {"http": 80, "https": 443}.get(части.scheme.lower())
+        except ValueError:
+            continue
+        if порт:
+            порты.add(порт)
+    return tuple(sorted(п for п in порты if 1 <= п <= 65535))
 
 
 #: Имена, под которыми фон окна входа подхватывается сам — без правки
