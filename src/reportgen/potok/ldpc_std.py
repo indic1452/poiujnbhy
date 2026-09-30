@@ -35,6 +35,8 @@ from pathlib import Path
 
 import numpy as np
 
+from . import ldpc_kitay  # коды КНР (ABS-S, CMMB, DTMB, BeiDou) — отдельным модулем
+
 ДАННЫЕ = Path(__file__).with_name("data")
 #: Столбцов базового графа NR и столбцов данных в нём.
 NR_СТОЛБЦОВ = {1: 68, 2: 52}
@@ -82,7 +84,8 @@ def _nr_имя(имя: str) -> tuple | None:
 
 
 def есть(имя: str) -> bool:
-    return _nr_имя(имя) is not None or имя in _dvb() or имя in _wifi() or имя in _прочие()
+    return (_nr_имя(имя) is not None or имя in _dvb() or имя in _wifi() or имя in _прочие()
+            or ldpc_kitay.есть(имя))
 
 
 def список() -> list[dict[str, object]]:
@@ -98,6 +101,7 @@ def список() -> list[dict[str, object]]:
     for имя, к in list(_dvb().items()) + list(_wifi().items()) + list(_прочие().items()):
         итог.append({"имя": имя, "семейство": к["семейство"], "n": к["n"], "k": к["k"],
                      "скорость": к["скорость"], "откуда": к["откуда"], "выколоты": к.get("выколоты", "")})
+    итог += ldpc_kitay.список()
     return sorted(итог, key=lambda э: (э["семейство"], э["n"], э["k"]))
 
 
@@ -128,6 +132,8 @@ def матрица(имя: str):
     if имя in _прочие():
         к = _прочие()[имя]
         return ldpc.Матрица(к["n"], [np.array(с, dtype=np.int64) for с in к["строки"]], к["откуда"])
+    if ldpc_kitay.есть(имя):
+        return ldpc_kitay.матрица(имя)
     raise ValueError(f"встроенного кода «{имя}» нет")
 
 
@@ -165,7 +171,7 @@ def схема(имя: str, перемежение: str = ""):
     if nr:
         выколоты = np.arange(2 * nr[1], dtype=np.int64)
     else:
-        выколоты = ldpc.позиции(str((_dvb().get(имя) or _прочие().get(имя) or {}).get("выколоты", "")), м.n)
+        выколоты = ldpc.позиции(str((_dvb().get(имя) or _прочие().get(имя) or ldpc_kitay.записи().get(имя) or {}).get("выколоты", "")), м.n)
     с = ldpc.Схема(м, выколоты, np.array([], dtype=np.int64))
     if перемежение:
         столбцы = dict(перемежения(имя)).get(перемежение)

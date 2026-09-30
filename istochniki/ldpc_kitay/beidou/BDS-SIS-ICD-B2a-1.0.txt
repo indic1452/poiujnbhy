@@ -1,0 +1,10345 @@
+=====PAGE 1
+ 
+ 
+ 
+BeiDou Navigation Satellite System 
+Signal In Space 
+Interface Control Document 
+Open Service Signal B2a (Version 1.0) 
+ 
+ 
+ 
+ 
+ 
+ 
+China Satellite Navigation Office 
+December, 2017 
+
+=====PAGE 2
+ 
+ 
+ 
+
+=====PAGE 3
+2017 China Satellite Navigation Office 
+I 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Table of Contents 
+1 Statement .......................................................................................................... 1 
+2 Scope ................................................................................................................ 1 
+3 BDS Overview ................................................................................................. 1 
+3.1 Space Constellation ................................................................................. 1 
+3.2 Coordinate System ................................................................................... 2 
+3.3 Time System ............................................................................................ 3 
+4 Signal Characteristics ...................................................................................... 3 
+4.1 Signal Structure ........................................................................................ 3 
+4.2 Signal Modulation ................................................................................... 4 
+4.2.1 Modulation ..................................................................................... 4 
+4.2.2 B2a Signal ...................................................................................... 5 
+4.3 Logic Levels ............................................................................................ 6 
+4.4 Signal Polarization ................................................................................... 6 
+4.5 Carrier Phase Noise ................................................................................. 6 
+4.6 Spurious ................................................................................................... 7 
+4.7 Correlation Loss ....................................................................................... 7 
+4.8 Data/Code Coherence .............................................................................. 7 
+4.9 Signal Coherence ..................................................................................... 7 
+4.10 Received Power Levels on Ground ......................................................... 7 
+5 Ranging Code Characteristics .......................................................................... 8 
+5.1 Ranging Code Structure ........................................................................... 8 
+5.2 B2a Ranging Codes ................................................................................. 9 
+5.2.1 B2a Primary Codes ........................................................................ 9 
+
+=====PAGE 4
+2017 China Satellite Navigation Office 
+II 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+5.2.2 B2a Secondary Codes ..................................................................14 
+5.3 Non-standard Codes ...............................................................................17 
+6 Navigation Message Structure .......................................................................18 
+6.1 Navigation Message Overview ..............................................................18 
+6.1.1 Navigation Message Types ..........................................................18 
+6.1.2 Cyclic Redundancy Check ..........................................................18 
+6.2 B-CNAV2 Navigation Message .............................................................19 
+6.2.1 Brief Description .........................................................................19 
+6.2.2 Coding Methods ..........................................................................20 
+6.2.3 Data Format .................................................................................22 
+7 Navigation Message Parameters and Algorithms ..........................................27 
+7.1 Ranging Code Number ..........................................................................27 
+7.2 Message Types .......................................................................................27 
+7.3 System Time Parameters ........................................................................28 
+7.4 Issue Of Data .........................................................................................28 
+7.4.1 Issue Of Data, Ephemeris ............................................................28 
+7.4.2 Issue Of Data, Clock ....................................................................29 
+7.4.3 IODE and IODC Usage Constraints ............................................31 
+7.5 Clock Correction Parameters .................................................................31 
+7.5.1 Parameters Description ................................................................31 
+7.5.2 User Algorithm ............................................................................32 
+7.6 Group Delay differential Parameters .....................................................33 
+7.6.1 Parameters Description ................................................................33 
+7.6.2 User Algorithm ............................................................................34 
+
+=====PAGE 5
+2017 China Satellite Navigation Office 
+III 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+7.7 Ephemeris Parameters ...........................................................................35 
+7.7.1 Parameters Description ................................................................35 
+7.7.2 User Algorithm ............................................................................37 
+7.8 Ionospheric Delay Correction Model Parameters .................................38 
+7.8.1 Parameters Description ................................................................38 
+7.8.2 Single Frequency Algorithm ........................................................39 
+7.8.3 Dual Frequency Algorithm ..........................................................46 
+7.9 Midi Almanac Parameters ......................................................................48 
+7.9.1 Parameters Description ................................................................48 
+7.9.2 User Algorithm ............................................................................50 
+7.10 Reduced Almanac parameters................................................................52 
+7.10.1 Parameters Description ................................................................52 
+7.10.2 User Algorithm ............................................................................52 
+7.11 Earth Orientation Parameters .................................................................53 
+7.11.1 Parameters Description ................................................................53 
+7.11.2 User Algorithm ............................................................................54 
+7.12 BDT-UTC Time Offset Parameters .......................................................54 
+7.12.1 Parameters Description ................................................................54 
+7.12.2 User Algorithm ............................................................................55 
+7.13 BDT-GNSS Time Offset Parameters .....................................................57 
+7.13.1 Parameters Description ................................................................57 
+7.13.2 User Algorithm ............................................................................58 
+7.14 Satellite Health Status ............................................................................58 
+7.15 Satellite Integrity Status Flag .................................................................59 
+
+=====PAGE 6
+2017 China Satellite Navigation Office 
+IV 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+7.16 Signal In Space Accuracy Index ............................................................60 
+7.17 Signal In Space Monitoring Accuracy Index .........................................61 
+8 Acronyms .......................................................................................................62 
+Annex: Non-binary LDPC Encoding and Decoding Methods ............................64 
+ 
+
+=====PAGE 7
+2017 China Satellite Navigation Office 
+1 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+1 Statement 
+China Satellite Navigation Office is responsible for the preparation, 
+revision, distribution, and retention of BeiDou Navigation Satellite System 
+Signal In Space Interface Control Document (hereinafter referred to as ICD), 
+and reserves the right for final explanation of this ICD. 
+2 Scope 
+The construction and development of BeiDou Navigation Satellite System 
+(BDS) is divided into three phases: BDS-1, BDS-2, and BDS-3 in sequence. 
+This document defines the characteristics of the open service signal B2a 
+transmitted from the BDS space segment to the BDS user segment. Furthermore, 
+the B2a signal is transmitted by the Medium Earth Orbit (MEO) satellites and 
+the Inclined GeoSynchronous Orbit (IGSO) satellites of BDS-3 for providing 
+open services, and shall not be transmitted by the Geostationary Earth Orbit 
+(GEO) satellites. 
+3 BDS Overview 
+3.1 
+Space Constellation 
+The basic space constellation of BDS-3 consists of 3 GEO satellites, 3 
+IGSO satellites, and 24 MEO satellites. According to actual situation, spare 
+satellites may be deployed in orbit. The GEO satellites operate in orbit at an 
+altitude of 35,786 kilometers and are located at 80°E, 110.5°E, and 140°E 
+respectively. The IGSO satellites operate in orbit at an altitude of 35,786 
+
+=====PAGE 8
+2017 China Satellite Navigation Office 
+2 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+kilometers and an inclination of the orbital planes of 55 degrees with reference 
+to the equatorial plane. The MEO satellites operate in orbit at an altitude of 
+21,528 kilometers and an inclination of the orbital planes of 55 degrees with 
+reference to the equatorial plane. 
+3.2 
+Coordinate System 
+The BeiDou Coordinate System is adopted by BDS, with the abbreviation 
+as BDCS. The definition of BDCS is in accordance with the specifications of 
+the International Earth Rotation and Reference System Service (IERS), and it is 
+consistent with the definition of the China Geodetic Coordinate System 2000 
+(CGCS2000). BDCS and CGCS2000 have the same ellipsoid parameters, which 
+is defined as follows: 
+(1) Definition of origin, axis and scale 
+The origin is located at the Earth’s center of mass. The Z-Axis is the 
+direction of the IERS Reference Pole (IRP). The X-Axis is the intersection of 
+the IERS Reference Meridian (IRM) and the plane passing through the origin 
+and normal to the Z-Axis. The Y-Axis, together with Z-Axis and X-Axis, 
+constitutes a right-handed orthogonal coordinate system. 
+The length unit is the international system of units (SI) meter. 
+(2) Definition of the BDCS Ellipsoid 
+The geometric center of the BDCS Ellipsoid coincides with the Earth’s 
+center of mass, and the rotational axis of the BDCS Ellipsoid is the Z-Axis. The 
+parameters of the BDCS Ellipsoid are shown in Table 3-1. 
+
+=====PAGE 9
+2017 China Satellite Navigation Office 
+3 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Table 3-1 Parameters of the BDCS Ellipsoid 
+No. 
+Parameter 
+Definition 
+1 
+ 
+Semi-major axis 
+a=6378137.0 m 
+2 
+ 
+Geocentric gravitational constant 
+14
+μ=3.986004418 10
+
+ m3/s2 
+3 
+ 
+Flattening 
+f=1/298.257222101 
+4 
+ 
+Earth’s rotation rate 
+-5
+e=7.2921150 10
+
+
+ rad/s 
+3.3 
+Time System 
+The BeiDou Navigation Satellite System Time (BDT) is adopted by the 
+BDS as time reference. BDT adopts the international system of units (SI) 
+second as the base unit, and accumulates continuously without leap seconds. 
+The start epoch of BDT is 00:00:00 on January 1, 2006 of Coordinated 
+Universal Time (UTC). BDT connects with UTC via UTC (NTSC), and the 
+deviation of BDT to UTC is maintained within 50 nanoseconds (modulo 1 
+second). The leap second information is broadcast in the navigation message. 
+4 Signal Characteristics 
+The signal characteristics described in this chapter pertain to the B2a signal 
+contained within the 20.46MHz bandwidth with a center frequency of 1176.45 
+MHz. 
+4.1 
+Signal Structure 
+The carrier frequencies, modulations, and symbol rates of the B2a signal 
+are shown in Table 4-1. 
+ 
+
+=====PAGE 10
+2017 China Satellite Navigation Office 
+4 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Table 4-1 Structure of the B2a signal 
+Signal 
+Signal component 
+Carrier 
+frequency 
+ (MHz) 
+Modulation 
+Symbol rate 
+(sps) 
+B2a 
+Data component 
+B2a_data 
+1176.45 
+BPSK(10) 
+200 
+Pilot component 
+B2a_pilot 
+BPSK(10) 
+0 
+4.2 
+Signal Modulation 
+4.2.1 Modulation 
+In the following sections, a power normalized complex envelope is used to 
+describe a modulated signal. 
+Assume that the complex envelope expression of a modulated signal is 
+ 
+
+
+
+1
+2
+j
+X
+X
+X
+s
+t
+s
+t
+s
+t
+
+
+ 
+(4-1) 
+where, j is an imaginary unit, 
+
+1
+X
+s
+t is the real part of the complex envelope, 
+which represents the in-phase component of the signal; 
+
+2
+X
+s
+t is the imaginary 
+part of complex envelope, which represents the quadrature component of the 
+signal. 
+
+Xs
+t is the baseband form of the signal, describing the structure and 
+content of the signal before carrier modulation. 
+The expression of the modulated signal can be also described as 
+ 
+
+
+
+
+
+
+
+1
+2
+2
+cos 2π
+sin 2π
+X
+X
+X
+X
+X
+X
+S
+t
+P
+s
+t
+f t
+s
+t
+f t
+
+
+
+
+
+ 
+(4-2) 
+where, 
+Xf is the carrier frequency, and 
+X
+P is the signal power. 
+
+X
+S
+t 
+completely expresses a carrier-modulated bandpass signal. 
+Therefore, 
+
+Xs
+t and 
+
+X
+S
+t are the different expressions of the same 
+
+=====PAGE 11
+2017 China Satellite Navigation Office 
+5 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+signal, and they can be transformed from one to the other. 
+4.2.2 B2a Signal 
+The complex envelope of the B2a signal is expressed as 
+ 
+
+
+
+B2a
+B2a_data
+B2a_pilot
+j
+s
+t
+s
+t
+s
+t
+
+
+ 
+(4-3) 
+where, the data component 
+
+B2a_data
+s
+t is generated from the navigation message 
+data 
+
+B2a_data
+D
+t modulated with the ranging code 
+
+B2a_data
+C
+t , while the pilot 
+component 
+
+B2a_pilot
+s
+t contains the ranging code 
+
+B2a_pilot
+C
+t only. They both 
+adopt BPSK(10) modulation. The power ratio of the data component to the pilot 
+component is 1:1. The expressions of these two components are shown below, 
+respectively: 
+ 
+
+
+B2a_data
+B2a_data
+B2a_data
+1
+( )
+2
+s
+t
+D
+t
+C
+t
+
+
+ 
+(4-4) 
+ 
+
+B2a_pilot
+B2a_pilot
+1
+( )
+2
+s
+t
+C
+t
+
+ 
+(4-5) 
+where, 
+
+B2a_data
+D
+t is defined as follows:  
+ 
+
+
+
+
+B2a_data
+B2a_data
+B2a_data
+B2a_data
+T
+k
+D
+t
+d
+k p
+t
+kT
+
+
+
+
+
+ 
+(4-6) 
+where, 
+B2a_data
+d
+ is the navigation message data of the B2a signal, and 
+B2a_data
+T
+ is 
+the chip width of the corresponding data. 
+The expressions of 
+
+B2a_data
+C
+t and 
+
+B2a_pilot
+C
+t are given as follows:  
+ 
+
+
+
+
+
+
+B2a_data
+c_B2a
+1
+B2a_data
+B2a_data
+B2a_data
+c_B2a
+0
+N
+T
+n
+k
+C
+t
+c
+k p
+t
+N
+n
+k T
+
+
+
+
+
+
+
+
+ 
+(4-7) 
+ 
+
+
+
+
+
+
+B2a_pilot
+c_B2a
+1
+B2a_pilot
+B2a_pilot
+B2a_pilot
+c_B2a
+0
+N
+T
+n
+k
+C
+t
+c
+k p
+t
+N
+n
+k T
+
+
+
+
+
+
+
+
+ 
+(4-8) 
+
+=====PAGE 12
+2017 China Satellite Navigation Office 
+6 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+where, 
+B2a_data
+c
+ and 
+B2a_pilot
+c
+ are the ranging code sequences (with the values of 
+±1) of the data component and the pilot component respectively. 
+B2a_data
+N
+ and 
+B2a_pilot
+N
+ are the ranging code length of the corresponding components with the 
+same values of 10230. 
+c_B2a
+c_B2a
+=1/
+T
+R
+ is the chip width of the B2a ranging code. 
+c_B2a
+R
+=10.23 Mbps is the chip rate of the B2a ranging code. 
+Table 4-2 shows the components of the B2a signal as well as the 
+modulation, phase relationship and power ratio of each component. 
+Table 4-2 Modulation characteristics of the B2a signal 
+Component 
+Modulation 
+Phase relationship 
+Power ratio 
+
+B2a_data
+s
+t 
+BPSK(10) 
+0 
+1/2 
+
+B2a_pilot
+s
+t 
+BPSK(10) 
+90 
+1/2 
+4.3 
+Logic Levels 
+The correspondence between the logic level code bits used to modulate the 
+signal and the signal level is shown in Table 4-3. 
+Table 4-3 Logic to signal level assignment 
+Logic level 
+Signal level 
+1 
+-1.0 
+0 
++1.0 
+4.4 
+Signal Polarization 
+The transmitted signals are Right-Hand Circularly Polarized (RHCP). 
+4.5 
+Carrier Phase Noise 
+The phase noise spectral density of the un-modulated carrier will allow a 
+third-order phase locked loop with 10 Hz one-sided noise bandwidth to track the 
+
+=====PAGE 13
+2017 China Satellite Navigation Office 
+7 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+carrier to an accuracy of 0.1 radians RMS. 
+4.6 
+Spurious 
+The transmitted spurious signal shall not exceed -50dBc. 
+4.7 
+Correlation Loss 
+The correlation loss due to payload distortions shall not exceed 0.6dB. 
+4.8 
+Data/Code Coherence 
+The edge of each data symbol is aligned with the edge of the 
+corresponding ranging code chip. The start of the first chip of the periodic 
+ranging codes is aligned with the start of a data symbol. 
+The edge of each secondary chip is aligned with the edge of a primary code 
+chip. The start of the first chip of the primary codes is aligned with the start of a 
+secondary code chip. 
+4.9 
+Signal Coherence 
+The time difference between the ranging code phases of all signal 
+components shall not exceed 10 nanoseconds. 
+4.10 Received Power Levels on Ground 
+The minimum received power levels on ground are shown in Table 4-4. 
+They are measured at the output of a 0 dBi RHCP user receiving antenna (or 3 
+dBi linearly polarized user receiving antenna) when the satellites are above a 
+5-degree elevation angle. 
+
+=====PAGE 14
+2017 China Satellite Navigation Office 
+8 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Table 4-4 Minimum received power levels on ground 
+Signal 
+Satellite type 
+Minimum received power (dBW)* 
+B2a 
+MEO satellite 
+-156 
+IGSO satellite 
+-158 
+*For the signal that contains a data component and a pilot component, the 
+minimum received power is the combined power of the data component and the 
+pilot component. The power distribution between the data component and the 
+pilot component is defined by the modulation method. The effective power ratio 
+offset between the components shall be less than 0.5 dB. 
+The BDS satellites shall provide the B2a signal with the following 
+characteristics: the off-axis relative power shall not decrease by more than 2dB 
+from the edge of the Earth to nadir. 
+5 Ranging Code Characteristics 
+5.1 
+Ranging Code Structure 
+The B2a ranging codes are the tiered codes which are generated by 
+XORing the primary codes with secondary codes. The chip width of the 
+secondary code has the same length as one period of a primary code, and the 
+start of a secondary code chip is strictly aligned with the start of the first chip of 
+a primary code. The timing relationships are shown in Figure 5-1. 
+The first chip
+The second chip
+The NS
+th chip
+Primary 
+code
+Secondary 
+code 
+Tiered 
+code
+The first  period
+（NC chips）
+The NS
+th period
+（NC chips）
+Total chip number NC ×NS
+The second period
+（NC chips）
+ 
+Figure 5-1 Timing relationships of the primary code and secondary code 
+
+=====PAGE 15
+2017 China Satellite Navigation Office 
+9 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+The characteristics of the B2a ranging codes are shown in Table 5-1. 
+Table 5-1 Characteristics of the B2a ranging codes 
+Signal 
+component 
+Primary 
+code type 
+Primary 
+code length 
+(chip) 
+Primary 
+code period 
+(ms) 
+Secondary 
+code type 
+Secondary 
+code length 
+(chip) 
+Secondary 
+code period 
+(ms) 
+B2a data 
+component 
+Gold 
+10230 
+1 
+Fixed 
+sequence 
+5 
+5 
+B2a pilot 
+component 
+Gold 
+10230 
+1 
+Truncated 
+Weil 
+100 
+100 
+For a given MEO/IGSO satellite, a unique pseudo-random noise (PRN) 
+ranging code number is assigned to all operational signals. Furthermore, the 
+B1C and B2a signals transmitted by one satellite have the same PRN number. 
+5.2 
+B2a Ranging Codes 
+5.2.1 B2a Primary Codes 
+The B2a primary codes (for both data and pilot components) have the same 
+chip rate of 10.23Mcps, and have the same length of 10230 chips. Each 
+primary code is obtained by expanding the Gold code that is generated by 
+shifting and modulo-2 addition based on two 13-stage linear feedback shift 
+registers. The generator polynomials for each B2a data component primary 
+code are 
+ 
+5
+11
+13
+1
+3
+5
+9
+11
+12
+13
+2
+( )
+1
+( )
+1
+g x
+x
+x
+x
+x
+g
+x
+x
+x
+x
+x
+x
+x
+
+
+
+
+
+
+
+
+
+
+ 
+(5-1) 
+And, the generator polynomials for each B2a pilot component primary 
+code are 
+ 
+3
+6
+7
+13
+1
+5
+7
+8
+12
+13
+2
+( )
+1
+( )
+1
+g x
+x
+x
+x
+x
+g
+x
+x
+x
+x
+x
+x
+x
+
+
+
+
+
+
+
+
+
+
+ 
+(5-2) 
+
+=====PAGE 16
+2017 China Satellite Navigation Office 
+10 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+The implementations of the primary code generators for the B2a data and 
+pilot components are shown in Figure 5-2 and Figure 5-3, respectively. 
+1,1c
+1,2
+c
+1,3
+c
+1,11
+c
+1,12
+c
+1,13
+c
+1,1s
+1,2s
+1,3s
+1,11
+s
+1,12
+s
+1,13
+s
+2,1
+s
+2,2
+s
+2,3
+s
+2,11
+s
+2,12
+s
+2,13
+s
+2,1
+c
+2,2
+c
+2,3
+c
+2,11
+c
+2,12
+c
+2,13
+c
+
+
+Register 1
+Register 1
+ initial value
+Register 2
+Register 2 
+initial value
+
+Output 
+Clock（code rate）
+Register 1 reset control 
+Register 2 reset control
+XOR gate
+1,4
+c
+1,5
+c
+1,6
+c
+1,7
+c
+1,8c
+1,9
+c
+1,10
+c
+2,4
+c
+2,5
+c
+2,6
+c
+2,7
+c
+2,8
+c
+2,9
+c
+2,10
+c
+2,4
+s
+2,5
+s
+2,6
+s
+2,7
+s
+2,8
+s
+2,9
+s
+2,10
+s
+1,4
+s
+1,5s
+1,6
+s
+1,7
+s
+1,8s
+1,9s
+1,10
+s
+
+
+
+
+
+
+ 
+Figure 5-2 Primary code generator of the B2a data components 
+1,1
+c
+1,2
+c
+1,3
+c
+1,11
+c
+1,12
+c
+1,13
+c
+1,1
+s
+1,2
+s
+1,3
+s
+1,11
+s
+1,12
+s
+1,13
+s
+2,1
+s
+2,2
+s
+2,3
+s
+2,11
+s
+2,12
+s
+2,13
+s
+2,1
+c
+2,2
+c
+2,3
+c
+2,11
+c
+2,12
+c
+2,13
+c
+Register 1
+Register 1
+ initial value
+Register 2
+Register 2
+Initial value
+
+Output 
+Clock (code rate)
+Register 1 reset control
+ XOR gate
+1,4
+c
+1,5
+c
+1,6
+c
+1,7
+c
+1,8
+c
+1,9
+c
+1,10
+c
+2,4
+c
+2,5
+c
+2,6
+c
+2,7
+c
+2,8
+c
+2,9
+c
+2,10
+c
+2,4
+s
+2,5
+s
+2,6
+s
+2,7
+s
+2,8
+s
+2,9
+s
+2,10
+s
+1,4
+s
+1,5
+s
+1,6
+s
+1,7
+s
+1,8
+s
+1,9
+s
+1,10
+s
+
+
+
+Register 2 reset control
+
+
+
+
+
+ 
+Figure 5-3 Primary code generator of the B2a pilot components 
+For a given satellite, the primary code generators for the B2a data and pilot 
+components use different polynomials, but they start with the same initial bit 
+values. In a code generator whether for a data component or for a pilot 
+component, the initial bit values of register 1 are all “1”, and the initial bit 
+values of register 2 are given in Table 5-2 and Table 5-3, arranged as 
+2,1
+2,2
+2,3
+2,13
+,
+,
+,
+,
+s
+s
+s
+s
+
+
+
+
+. At the start of each primary code period, both register 1 and 
+
+=====PAGE 17
+2017 China Satellite Navigation Office 
+11 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+register 2 are simultaneously reset to their corresponding initial bit values. 
+Furthermore, register 1 is reset at the end of the 8190th chip in each period of a 
+primary code. A primary code with the length of 10230 chips is finally obtained 
+by repeating the above procedure. 
+There are a total of 126 B2a primary codes, of which 63 codes are for the 
+data components and the other 63 codes for the pilot components. The detailed 
+parameters are shown in Table 5-2 and Table 5-3, in which, the values of both 
+the first 24 chips and the last 24 chips are expressed in an octal form. The MSB 
+(i.e., the first chip of the primary codes) is transmitted first. 
+Table 5-2 Primary code parameters of the B2a data components 
+PRN 
+Initial bit values of register 2 
+(binary) 
+The first 24 chips 
+(octal) 
+The last 24 chips 
+(octal) 
+1 
+1 0 0 0 0 0 0 1 0 0 1 0 1 
+26771056 
+42646672 
+2 
+1 0 0 0 0 0 0 1 1 0 1 0 0 
+64771737 
+43261240 
+3 
+1 0 0 0 0 1 0 1 0 1 1 0 1 
+22570544 
+22122147 
+4 
+1 0 0 0 1 0 1 0 0 1 1 1 1 
+03270060 
+37130044 
+5 
+1 0 0 0 1 0 1 0 1 0 1 0 1 
+25270173 
+62604441 
+6 
+1 0 0 0 1 1 0 1 0 1 1 1 0 
+42473731 
+32223757 
+7 
+1 0 0 0 1 1 1 1 0 1 1 1 0 
+42073211 
+75444074 
+8 
+1 0 0 0 1 1 1 1 1 1 0 1 1 
+10070275 
+72155517 
+9 
+1 0 0 1 1 0 0 1 0 1 0 0 1 
+32630236 
+23340625 
+10 
+1 0 0 1 1 1 1 0 1 1 0 1 0 
+51032336 
+70730557 
+11 
+1 0 1 0 0 0 0 1 1 0 1 0 1 
+24751346 
+12470110 
+12 
+1 0 1 0 0 0 1 0 0 0 1 0 0 
+67350347 
+43367447 
+13 
+1 0 1 0 0 0 1 0 1 0 1 0 1 
+25350426 
+42740075 
+14 
+1 0 1 0 0 0 1 0 1 1 0 1 1 
+11351730 
+26275034 
+15 
+1 0 1 0 0 0 1 0 1 1 1 0 0 
+61353105 
+77007136 
+16 
+1 0 1 0 0 1 0 1 0 0 0 1 1 
+16553042 
+21516371 
+17 
+1 0 1 0 0 1 1 1 1 0 1 1 1 
+04152767 
+57170016 
+18 
+1 0 1 0 1 0 0 0 0 0 0 0 1 
+37653046 
+73363551 
+19 
+1 0 1 0 1 0 0 1 1 1 1 1 0 
+40653671 
+01726764 
+20 
+1 0 1 0 1 1 0 1 0 1 0 1 1 
+12450445 
+65504556 
+21 
+1 0 1 0 1 1 0 1 1 0 0 0 1 
+34450556 
+30230153 
+
+=====PAGE 18
+2017 China Satellite Navigation Office 
+12 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+PRN 
+Initial bit values of register 2 
+(binary) 
+The first 24 chips 
+(octal) 
+The last 24 chips 
+(octal) 
+22 
+1 0 1 1 0 0 1 0 1 0 0 1 1 
+15311110 
+06600771 
+23 
+1 0 1 1 0 0 1 1 0 0 0 1 0 
+56310431 
+10770505 
+24 
+1 0 1 1 0 1 0 0 1 1 0 0 0 
+71511012 
+76447734 
+25 
+1 0 1 1 0 1 0 1 1 0 1 1 0 
+44511144 
+05425133 
+26 
+1 0 1 1 0 1 1 1 1 0 0 1 0 
+54112361 
+44374741 
+27 
+1 0 1 1 0 1 1 1 1 1 1 1 1 
+00112147 
+77505753 
+28 
+1 0 1 1 1 0 0 0 1 0 0 1 0 
+55611514 
+30732736 
+29 
+1 0 1 1 1 0 0 1 1 1 1 0 0 
+60611442 
+43750131 
+30 
+1 0 1 1 1 1 0 1 0 0 0 0 1 
+36413134 
+24525367 
+31 
+1 0 1 1 1 1 1 0 0 1 0 0 0 
+73011377 
+41152341 
+32 
+1 0 1 1 1 1 1 0 1 0 1 0 0 
+65011630 
+73304761 
+33 
+1 0 1 1 1 1 1 1 0 1 0 1 1 
+12011007 
+01741554 
+34 
+1 0 1 1 1 1 1 1 1 0 0 1 1 
+14012245 
+35421025 
+35 
+1 1 0 0 0 0 1 0 1 0 0 0 1 
+35360637 
+50337664 
+36 
+1 1 0 0 0 1 0 0 1 0 1 0 0 
+65561423 
+44445660 
+37 
+1 1 0 0 0 1 0 1 1 0 1 1 1 
+04561753 
+04256075 
+38 
+1 1 0 0 1 0 0 0 1 0 0 0 1 
+35662052 
+50515704 
+39 
+1 1 0 0 1 0 0 0 1 1 0 0 1 
+31663710 
+53542760 
+40 
+1 1 0 0 1 1 0 1 0 1 0 1 1 
+12463151 
+71045216 
+41 
+1 1 0 0 1 1 0 1 1 0 0 0 1 
+34463042 
+24771613 
+42 
+1 1 0 0 1 1 1 0 1 0 0 1 0 
+55063612 
+23705725 
+43 
+1 1 0 1 0 0 1 0 1 0 1 0 1 
+25322050 
+75623014 
+44 
+1 1 0 1 0 0 1 1 1 0 1 0 0 
+64321071 
+54464775 
+45 
+1 1 0 1 0 1 1 0 0 1 0 1 1 
+13121416 
+45712211 
+46 
+1 1 0 1 1 0 1 0 1 0 1 1 1 
+05223044 
+53232723 
+47 
+1 1 1 0 0 0 0 1 1 0 1 0 0 
+64742223 
+57720500 
+48 
+1 1 1 0 0 1 0 0 0 0 0 1 1 
+17543106 
+45401000 
+49 
+1 1 1 0 0 1 0 0 0 1 0 1 1 
+13542644 
+46456064 
+50 
+1 1 1 0 0 1 0 1 0 0 0 1 1 
+16542346 
+52156646 
+51 
+1 1 1 0 0 1 0 1 0 1 0 0 0 
+72542534 
+06245671 
+52 
+1 1 1 0 1 0 0 1 1 1 0 1 1 
+10643011 
+42540225 
+53 
+1 1 1 0 1 1 0 0 1 0 1 1 1 
+05440046 
+33645207 
+54 
+1 1 1 1 0 0 1 0 0 1 0 0 0 
+73302166 
+16264764 
+55 
+1 1 1 1 0 1 0 0 1 0 1 0 0 
+65502351 
+00166336 
+56 
+1 1 1 1 0 1 0 0 1 1 0 0 1 
+31502177 
+33717324 
+57 
+1 1 1 1 0 1 1 0 1 1 0 1 0 
+51103567 
+23234454 
+58 
+1 1 1 1 0 1 1 1 1 1 0 0 0 
+70101476 
+55337366 
+59 
+1 1 1 1 0 1 1 1 1 1 1 1 1 
+00103243 
+04145264 
+60 
+1 1 1 1 1 1 0 1 1 0 1 0 1 
+24403035 
+66364214 
+
+=====PAGE 19
+2017 China Satellite Navigation Office 
+13 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+PRN 
+Initial bit values of register 2 
+(binary) 
+The first 24 chips 
+(octal) 
+The last 24 chips 
+(octal) 
+61 
+0 0 1 0 0 0 0 0 0 0 0 1 0 
+57754771 
+16642116 
+62 
+1 1 0 1 1 1 1 1 1 0 1 0 1 
+24021305 
+46402740 
+63 
+0 0 0 1 1 1 1 0 1 0 0 1 0 
+55037136 
+06147764 
+Table 5-3 Primary code parameters of the B2a pilot components 
+PRN 
+Initial bit values of register 2 
+(binary) 
+The first 24 chips 
+(octal) 
+The last 24 chips 
+(octal) 
+1 
+1 0 0 0 0 0 0 1 0 0 1 0 1 
+26772435 
+05133452 
+2 
+1 0 0 0 0 0 0 1 1 0 1 0 0 
+64771100 
+32506731 
+3 
+1 0 0 0 0 1 0 1 0 1 1 0 1 
+22573033 
+46030461 
+4 
+1 0 0 0 1 0 1 0 0 1 1 1 1 
+03272567 
+46247217 
+5 
+1 0 0 0 1 0 1 0 1 0 1 0 1 
+25270312 
+25242712 
+6 
+1 0 0 0 1 1 0 1 0 1 1 1 0 
+42471450 
+30604612 
+7 
+1 0 0 0 1 1 1 1 0 1 1 1 0 
+42073477 
+46162133 
+8 
+1 0 0 0 1 1 1 1 1 1 0 1 1 
+10071171 
+01037517 
+9 
+1 0 0 1 1 0 0 1 0 1 0 0 1 
+32631672 
+70661477 
+10 
+1 0 0 1 1 1 1 0 1 1 0 1 0 
+51030525 
+11057614 
+11 
+1 0 1 0 0 0 0 1 1 0 1 0 1 
+24752054 
+60410454 
+12 
+1 0 1 0 0 0 1 0 0 0 1 0 0 
+67350376 
+57214270 
+13 
+1 0 1 0 0 0 1 0 1 0 1 0 1 
+25353643 
+60621113 
+14 
+1 0 1 0 0 0 1 0 1 1 0 1 1 
+11350203 
+05270220 
+15 
+1 0 1 0 0 0 1 0 1 1 1 0 0 
+61350565 
+55150062 
+16 
+1 0 1 0 0 1 0 1 0 0 0 1 1 
+16550214 
+30076625 
+17 
+1 0 1 0 0 1 1 1 1 0 1 1 1 
+04153006 
+40344732 
+18 
+1 0 1 0 1 0 0 0 0 0 0 0 1 
+37653767 
+46567772 
+19 
+1 0 1 0 1 0 0 1 1 1 1 1 0 
+40650022 
+62054544 
+20 
+1 0 1 0 1 1 0 1 0 1 0 1 1 
+12453537 
+12272230 
+21 
+1 0 1 0 1 1 0 1 1 0 0 0 1 
+34451342 
+71277735 
+22 
+1 0 1 1 0 0 1 0 1 0 0 1 1 
+15311341 
+56036234 
+23 
+1 0 1 1 0 0 1 1 0 0 0 1 0 
+56311044 
+17154331 
+24 
+1 0 1 1 0 1 0 0 1 1 0 0 0 
+71513035 
+43013023 
+25 
+1 0 1 1 0 1 0 1 1 0 1 1 0 
+44513245 
+50115176 
+26 
+1 0 1 1 0 1 1 1 1 0 0 1 0 
+54110251 
+56313110 
+27 
+1 0 1 1 0 1 1 1 1 1 1 1 1 
+00112144 
+13102726 
+28 
+1 0 1 1 1 0 0 0 1 0 0 1 0 
+55613763 
+37225071 
+29 
+1 0 1 1 1 0 0 1 1 1 1 0 0 
+60613513 
+24323124 
+30 
+1 0 1 1 1 1 0 1 0 0 0 0 1 
+36410413 
+20375533 
+31 
+1 0 1 1 1 1 1 0 0 1 0 0 0 
+73012122 
+15635105 
+
+=====PAGE 20
+2017 China Satellite Navigation Office 
+14 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+PRN 
+Initial bit values of register 2 
+(binary) 
+The first 24 chips 
+(octal) 
+The last 24 chips 
+(octal) 
+32 
+1 0 1 1 1 1 1 0 1 0 1 0 0 
+65013702 
+67011450 
+33 
+1 0 1 1 1 1 1 1 0 1 0 1 1 
+12010047 
+43522666 
+34 
+1 0 1 1 1 1 1 1 1 0 0 1 1 
+14010654 
+41666474 
+35 
+1 1 0 0 0 0 1 0 1 0 0 0 1 
+35362324 
+06151354 
+36 
+1 1 0 0 0 1 0 0 1 0 1 0 0 
+65563410 
+76525270 
+37 
+1 1 0 0 0 1 0 1 1 0 1 1 1 
+04561575 
+20632513 
+38 
+1 1 0 0 1 0 0 0 1 0 0 0 1 
+35663035 
+26643303 
+39 
+1 1 0 0 1 0 0 0 1 1 0 0 1 
+31663420 
+52433060 
+40 
+1 1 0 0 1 1 0 1 0 1 0 1 1 
+12463063 
+04062730 
+41 
+1 1 0 0 1 1 0 1 1 0 0 0 1 
+34461616 
+67067235 
+42 
+1 1 0 0 1 1 1 0 1 0 0 1 0 
+55061754 
+47416277 
+43 
+1 1 0 1 0 0 1 0 1 0 1 0 1 
+25322640 
+51407764 
+44 
+1 1 0 1 0 0 1 1 1 0 1 0 0 
+64322743 
+66451710 
+45 
+1 1 0 1 0 1 1 0 0 1 0 1 1 
+13120015 
+75211676 
+46 
+1 1 0 1 1 0 1 0 1 0 1 1 1 
+05223510 
+66732705 
+47 
+1 1 1 0 0 0 0 1 1 0 1 0 0 
+64741454 
+24716231 
+48 
+1 1 1 0 0 1 0 0 0 0 0 1 1 
+17543717 
+43326034 
+49 
+1 1 1 0 0 1 0 0 0 1 0 1 1 
+13543302 
+37156357 
+50 
+1 1 1 0 0 1 0 1 0 0 0 1 1 
+16540127 
+35671252 
+51 
+1 1 1 0 0 1 0 1 0 1 0 0 0 
+72541267 
+61241434 
+52 
+1 1 1 0 1 0 0 1 1 1 0 1 1 
+10642411 
+56632466 
+53 
+1 1 1 0 1 1 0 0 1 0 1 1 1 
+05441614 
+13706174 
+54 
+1 1 1 1 0 0 1 0 0 1 0 0 0 
+73300134 
+71335154 
+55 
+1 1 1 1 0 1 0 0 1 0 1 0 0 
+65502720 
+42104070 
+56 
+1 1 1 1 0 1 0 0 1 1 0 0 1 
+31500435 
+07315646 
+57 
+1 1 1 1 0 1 1 0 1 1 0 1 0 
+51103347 
+51233462 
+58 
+1 1 1 1 0 1 1 1 1 1 0 0 0 
+70102511 
+46425113 
+59 
+1 1 1 1 0 1 1 1 1 1 1 1 1 
+00102277 
+16705351 
+60 
+1 1 1 1 1 1 0 1 1 0 1 0 1 
+24401515 
+23126772 
+61 
+1 0 1 0 0 1 0 0 0 0 1 1 0 
+47551324 
+77540116 
+62 
+0 0 1 0 1 1 1 1 1 1 0 0 0 
+70057625 
+31062540 
+63 
+0 0 0 1 1 0 1 0 1 0 1 0 1 
+25236023 
+01076040 
+5.2.2 B2a Secondary Codes 
+For different satellites, the secondary codes of the B2a data components 
+
+=====PAGE 21
+2017 China Satellite Navigation Office 
+15 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+are the same, while the secondary codes of the B2a pilot components are 
+different. 
+The secondary codes of the B2a data components are the fixed 5-bit 
+sequences with the bit values of 00010 in binary. The MSB is transmitted first. 
+The secondary codes for the B2a pilot components are generated by 
+truncating the Weil codes, and the process is described as follows: 
+In general, a Weil code sequence of length N is defined as 
+ 
+(
+)
+( )
+((
+) mod N)
+W k
+w
+L k
+L k
+w
+
+
+
+；
+,
+0,1,2,...,N 1
+k 
+ 
+(5-3) 
+where, 
+( )
+L k is a legendre sequence of length N, and w represents the phase 
+difference between two legendre sequences. A legendre sequence 
+( )
+L k of 
+length N is defined as 
+ 
+
+0
+0
+1
+0, and if there exists an integer  which makes
+mod N)
+ 
+(
+0
+2
+, k =
+L k
+, k
+x
+k = x
+, else
+ 
+
+
+
+
+
+
+ 
+(5-4) 
+where，mod is a modulo division operation. 
+Finally, a ranging code of length N0 is obtained by cyclically truncating the 
+Weil code of length N. The truncated sequence is given as 
+ 
+
+
+
+
+
+
+; ;
+=
++
+1 mod N;
+c n w p
+W
+n p
+w
+
+,
+0
+0,1,2,...,N
+1
+n 
+ 
+(5-5) 
+where，p is the truncation point in the range of 1 to N, which means the 
+Weil code is truncated from the pth bit. 
+The secondary codes for the B2a pilot components have the same length of 
+100 chips. The secondary codes are generated by truncating the Weil codes 
+which have a length of 1021 chips. The value of w is in the range of 1 to 510. 
+
+=====PAGE 22
+2017 China Satellite Navigation Office 
+16 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Specific parameters of the secondary codes of the B2a pilot components 
+are shown in Table 5-4. In this table, both the first 24 chips and the last 24 chips 
+are expressed in an octal form. The MSB is transmitted first. 
+Table 5-4 Secondary code parameters of the B2a pilot components 
+PRN 
+Phase 
+difference (w) 
+Truncation 
+point (p) 
+The first 24 chips 
+(octal) 
+The last 24 chips 
+(octal) 
+1 
+123 
+138 
+32063050 
+65322167 
+2 
+55 
+570 
+51032554 
+16507723 
+3 
+40 
+351 
+26031355 
+03244075 
+4 
+139 
+77 
+00016672 
+51467525 
+5 
+31 
+885 
+43414712 
+46604555 
+6 
+175 
+247 
+03313653 
+56202042 
+7 
+350 
+413 
+41103653 
+71007450 
+8 
+450 
+180 
+42370454 
+34256747 
+9 
+478 
+3 
+06231051 
+40430077 
+10 
+8 
+26 
+37047570 
+06442617 
+11 
+73 
+17 
+36242432 
+16314440 
+12 
+97 
+172 
+62600563 
+05321123 
+13 
+213 
+30 
+77411542 
+56573352 
+14 
+407 
+1008 
+41654772 
+55730776 
+15 
+476 
+646 
+63255352 
+01324146 
+16 
+4 
+158 
+16034451 
+17500531 
+17 
+15 
+170 
+56753432 
+66634453 
+18 
+47 
+99 
+62660722 
+37240150 
+19 
+163 
+53 
+11300714 
+32673101 
+20 
+280 
+179 
+46564670 
+76643076 
+21 
+322 
+925 
+51453710 
+41236437 
+22 
+353 
+114 
+75520773 
+47126073 
+23 
+375 
+10 
+55105576 
+24605443 
+24 
+510 
+584 
+31050323 
+07347067 
+25 
+332 
+60 
+76030274 
+41470462 
+26 
+7 
+3 
+61576715 
+07552423 
+27 
+13 
+684 
+21353627 
+15306360 
+28 
+16 
+263 
+11326621 
+43507041 
+29 
+18 
+545 
+77304426 
+12537651 
+30 
+25 
+22 
+26565352 
+32362347 
+31 
+50 
+546 
+34135261 
+14550406 
+32 
+81 
+190 
+30407566 
+60014143 
+33 
+118 
+303 
+52113374 
+61116102 
+
+=====PAGE 23
+2017 China Satellite Navigation Office 
+17 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+PRN 
+Phase 
+difference (w) 
+Truncation 
+point (p) 
+The first 24 chips 
+(octal) 
+The last 24 chips 
+(octal) 
+34 
+127 
+234 
+54145235 
+20702236 
+35 
+132 
+38 
+63100104 
+23455231 
+36 
+134 
+822 
+35317452 
+17352571 
+37 
+164 
+57 
+10714032 
+07417741 
+38 
+177 
+668 
+43602423 
+47415564 
+39 
+208 
+697 
+13700511 
+36550046 
+40 
+249 
+93 
+67442654 
+41615230 
+41 
+276 
+18 
+42621301 
+70270411 
+42 
+349 
+66 
+25413532 
+73527103 
+43 
+439 
+318 
+73475715 
+20344205 
+44 
+477 
+133 
+60600610 
+33470052 
+45 
+498 
+98 
+22362271 
+73213175 
+46 
+88 
+70 
+73341370 
+21175624 
+47 
+155 
+132 
+76412463 
+71174640 
+48 
+330 
+26 
+10475522 
+77336306 
+49 
+3 
+354 
+31662361 
+52645772 
+50 
+21 
+58 
+72164341 
+10166636 
+51 
+84 
+41 
+03600703 
+62442252 
+52 
+111 
+182 
+12734207 
+47205776 
+53 
+128 
+944 
+66744236 
+67053707 
+54 
+153 
+205 
+66354613 
+12103375 
+55 
+197 
+23 
+42710457 
+01304276 
+56 
+199 
+1 
+72744364 
+62223707 
+57 
+214 
+792 
+76720625 
+03111453 
+58 
+256 
+641 
+46643276 
+34250037 
+59 
+265 
+83 
+53525215 
+71514224 
+60 
+291 
+7 
+42453402 
+36620001 
+61 
+324 
+111 
+26604754 
+70502406 
+62 
+326 
+96 
+35027021 
+07344636 
+63 
+340 
+92 
+12073317 
+30264212 
+5.3 
+Non-standard Codes 
+The non-standard codes are used to protect the user from tracking the 
+anomalous navigation signals, which are not for utilization by the user. 
+Therefore, they are not defined in this document. 
+
+=====PAGE 24
+2017 China Satellite Navigation Office 
+18 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+6 Navigation Message Structure 
+6.1 
+Navigation Message Overview 
+6.1.1 Navigation Message Types 
+The B2a signal broadcasts the B-CNAV2 navigation message. 
+6.1.2 Cyclic Redundancy Check 
+The B-CNAV2 navigation message uses a cyclic redundancy check (CRC), 
+and more specifically, CRC-24Q. The generator polynomial of CRC-24Q is 
+ 
+
+24
+0
+i
+i
+i
+g x
+g x
+
+
+ 
+(6-1) 
+where, 
+1,
+0,1,3,4,5,6,7,10,11,14,17,18,23,24
+0,
+i
+i
+g
+else
+
+
+
+
+. 
+Furthermore, 
+
+g x can be expressed as follows: 
+ 
+
+
+1
+g x
+x p x
+
+
+ 
+(6-2) 
+where, 
+
+23
+17
+13
+12
+11
+9
+8
+7
+5
+3
+1
+p x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+
+
+
+
+
+
+
+
+
+
+. 
+A message sequence 
+i
+m (
+1
+i = ~ k ) of length k can be expressed as a 
+polynomial below: 
+ 
+
+2
+1
+1
+2
+1
+k
+k
+k
+k
+m x
+m
+m
+x
+m
+x
+m x
+
+
+
+
+
+
+
+
+ 
+(6-3) 
+Through dividing polynomial 
+
+24
+m x x with the generator polynomial 
+
+g x , 
+the residue is supposed to be the following polynomial: 
+ 
+
+2
+23
+24
+23
+22
+1
+R x
+p
+p x
+p x
+p x
+
+
+
+
+
+ 
+(6-4) 
+where, 
+1p
+2p ……
+24
+p is the corresponding output sequence regarded as the 
+CRC check sequence. 
+
+=====PAGE 25
+2017 China Satellite Navigation Office 
+19 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+During the implementation, the initial bit values of the register are set to all 
+“0”. 
+6.2 
+B-CNAV2 Navigation Message 
+6.2.1 Brief Description 
+The B-CNAV2 navigation message is broadcast on the B2a signal. More 
+specifically, the B-CNAV2 message data are modulated on the B2a data 
+component. The basic frame structure of B-CNAV2 is defined in Figure 6-1. 
+Each frame has a length of 600 symbols, and its symbol rate is 200sps, so the 
+transmission of one frame lasts for 3 seconds. 
+Message symbols
+576 symbols
+Pre
+24 symbols
+600 symbols  3s
+288 bits
+Message data
+234 bits
+PRN
+6 bits
+MesType
+6 bits
+CRC
+24 bits
+SOW
+18 bits
+64-ary LDPC(96,48)
+MSB
+LSB
+After error correction encoding:
+Before error correction encoding:
+ 
+Figure 6-1 B-CNAV2 frame structure 
+The first 24 symbols of each frame is preamble (Pre) with the value of 
+0xE24DE8 in hexadecimal (i.e., 111000100100110111101000 in binary). The 
+MSB is transmitted first. 
+Each frame before error correction encoding has a length of 288 bits, 
+containing PRN (6 bits), Message Type (Mestype, 6 bits), Seconds Of Week 
+
+=====PAGE 26
+2017 China Satellite Navigation Office 
+20 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+(SOW, 18 bits), message data (234 bits), and CRC check bits (24 bits). PRN, 
+MesType, SOW, and message data participate in the CRC calculation. As a 
+result of 64-ary LDPC(96, 48) encoding, the frame length becomes 576 
+symbols. 
+6.2.2 Coding Methods 
+The B-CNAV2 navigation messages are encoded with 64-ary LDPC(96, 48) 
+code. Each codeword symbol is composed of 6 bits and defined in GF(26) 
+domain with a primitive polynomial of 
+
+6
+1
+p x = + x+ x . A vector representation 
+(MSB first) is used to describe the mapping relationship between non-binary 
+symbols and binary bits. The message length k is equal to 48 codeword symbols, 
+i.e., 288 bits. The check matrix is a sparse matrix Ｈ48,96 of 48 rows and 96 
+columns defined in GF(26) domain with the primitive polynomial of 
+
+6
+1
+p x = + x+ x , of which the first 48×48 part corresponds to the information 
+symbols and the last 48×48 part corresponds to the check symbols. The 
+locations of its non-zero elements are defined as follows: 
+H48, 96, index= [ 
+19 
+46 
+49 
+76 
+5 
+29 
+53 
+71 
+17 
+30 
+64 
+72 
+22 
+36 
+59 
+82 
+22 
+41 
+68 
+94 
+20 
+44 
+54 
+75 
+9 
+41 
+61 
+86 
+6 
+47 
+60 
+89 
+8 
+40 
+60 
+87 
+15 
+26 
+66 
+81 
+19 
+24 
+67 
+95 
+2 
+26 
+50 
+72 
+5 
+38 
+70 
+89 
+16 
+34 
+64 
+92 
+21 
+45 
+55 
+74 
+0 
+24 
+48 
+78 
+23 
+37 
+58 
+83 
+15 
+43 
+56 
+91 
+18 
+47 
+48 
+77 
+14 
+42 
+57 
+90 
+6 
+30 
+54 
+76 
+14 
+27 
+67 
+80 
+17 
+35 
+65 
+93 
+7 
+46 
+61 
+88 
+1 
+25 
+49 
+79 
+12 
+45 
+69 
+79 
+18 
+25 
+66 
+94 
+23 
+40 
+69 
+95 
+8 
+36 
+51 
+84 
+3 
+38 
+56 
+86 
+0 
+29 
+62 
+85 
+2 
+39 
+57 
+87 
+11 
+33 
+59 
+81 
+20 
+43 
+74 
+93 
+13 
+32 
+63 
+91 
+11 
+35 
+52 
+83 
+16 
+31 
+65 
+73 
+4 
+28 
+52 
+70 
+1 
+28 
+63 
+84 
+12 
+33 
+62 
+90 
+21 
+42 
+75 
+92 
+7 
+31 
+55 
+77 
+9 
+37 
+50 
+85 
+10 
+34 
+53 
+82 
+4 
+39 
+71 
+88 
+13 
+44 
+68 
+78 
+3 
+27 
+51 
+73 
+10 
+32 
+58 
+80 
+
+=====PAGE 27
+2017 China Satellite Navigation Office 
+21 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+] 
+where, each element is a non-binary symbol in GF(26) domain. The elements 
+are described by a vector representation as follows:  
+H48, 96, element= [ 
+1 
+45 
+15 
+6 
+1 
+44 
+53 
+24 
+45 
+15 
+6 
+1 
+30 
+24 
+1 
+44 
+18 
+15 
+32 
+61 
+3 
+55 
+9 
+34 
+35 
+31 
+50 
+44 
+45 
+15 
+6 
+1 
+24 
+1 
+44 
+53 
+30 
+24 
+1 
+44 
+32 
+42 
+47 
+37 
+6 
+1 
+45 
+15 
+44 
+53 
+24 
+1 
+39 
+36 
+34 
+33 
+44 
+53 
+24 
+1 
+44 
+53 
+24 
+1 
+45 
+15 
+6 
+1 
+6 
+1 
+45 
+15 
+24 
+1 
+44 
+53 
+9 
+41 
+57 
+58 
+32 
+61 
+18 
+40 
+1 
+45 
+15 
+6 
+22 
+14 
+2 
+50 
+24 
+1 
+44 
+30 
+30 
+24 
+1 
+44 
+15 
+46 
+45 
+44 
+45 
+15 
+6 
+1 
+1 
+44 
+30 
+24 
+24 
+1 
+44 
+53 
+15 
+6 
+1 
+45 
+53 
+24 
+1 
+44 
+7 
+38 
+23 
+54 
+1 
+45 
+15 
+6 
+44 
+53 
+24 
+1 
+57 
+25 
+9 
+41 
+35 
+13 
+51 
+60 
+33 
+45 
+36 
+34 
+6 
+1 
+45 
+15 
+6 
+1 
+45 
+15 
+6 
+1 
+45 
+15 
+44 
+35 
+31 
+50 
+26 
+27 
+37 
+5 
+24 
+1 
+44 
+30 
+33 
+42 
+14 
+5 
+24 
+1 
+44 
+30 
+24 
+1 
+44 
+30 
+1 
+44 
+53 
+24 
+1 
+44 
+30 
+24 
+] 
+The above matrix shall be read from top to bottom in the same column, and 
+from left to right column after column. In the same column, the four numbers of 
+each row correspond to four non-zero elements in the matrix. The reading rules 
+for H48, 96 are shown in Figure 6-2. 
+
+=====PAGE 28
+2017 China Satellite Navigation Office 
+22 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Initialize parameters
+i=0
+48 rows totally,  j=0
+i<48 
+j<4
+Assign values to non-zero positions
+H48,96(i,H48,96,index(i,j))=H48,96,element(i,j)
+j=j+1
+From the next row
+i = i+1
+Yes
+No
+No
+Yes
+Start
+End
+ 
+Figure 6-2 H48, 96 reading flow chart 
+For more information about the encoding and decoding methods, please 
+refer to Annex. 
+6.2.3 Data Format 
+At most 63 message types can be defined for the B-CNAV2 navigation 
+message. Currently, eight valid message types have been defined, i.e., Message 
+Type 10, 11, 30, 31, 32, 33, 34, and 40. Their bit allocation formats are shown in 
+Figure 6-3 ~ Figure 6-10. 
+The broadcast order of the B-CNAV2 message types may be dynamically 
+adjusted, however Message Types 10 and 11 shall be broadcast continuously 
+together. The user should recognize its MesType every time when a B-CNAV2 
+navigation message is received. 
+
+=====PAGE 29
+2017 China Satellite Navigation Office 
+23 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+288 bits
+Pre
+MesType
+6 bits
+SOW
+18 bits
+CRC
+24 bits
+PRN
+6 bits
+SISMAI
+4 bits
+Ephemeris I
+203 bits
+DIF
+(B2a)
+1bit
+SIF
+(B2a)
+1bit
+AIF
+(B2a)
+1bit
+DIF
+(B1C)
+1bit
+SIF
+(B1C)
+1bit
+AIF
+(B1C)
+1bit
+WN
+13 bits
+IODE
+8 bits
+LSB
+MSB
+Direction of data flow
+MSB first
+ 
+Figure 6-3 Bit allocation for B-CNAV2 Message Type 10 
+Pre
+MesType
+6 bits
+SOW
+18 bits
+HS
+2 bits
+CRC
+24 bits
+PRN
+6 bits
+SISMAI
+4 bits
+Ephemeris  II
+222 bits
+DIF
+(B2a)
+1 bit
+SIF
+(B2a)
+1 bit
+AIF
+(B2a)
+1 bit
+DIF
+(B1C)
+1 bit
+SIF
+(B1C)
+1 bit
+AIF
+(B1C)
+1 bit
+288 bits
+LSB
+MSB
+Direction of data flow
+MSB first
+ 
+Figure 6-4 Bit allocation for B-CNAV2 Message Type 11 
+Pre
+MesType
+6 bits
+SOW
+18 bits
+HS
+2 bits
+CRC
+24 bits
+PRN
+6 bits
+SISMAI
+4 bits
+DIF
+(B2a)
+1bit
+SIF
+(B2a)
+1bit
+AIF
+(B2a)
+1bit
+DIF
+(B1C)
+1bit
+SIF
+(B1C)
+1bit
+AIF
+(B1C)
+1bit
+Clock 
+correction 
+parameters
+69 bits
+TGDB2ap
+12 bits
+IODC
+10 bits
+ISCB2ad
+12 bits
+Ionospheric delay 
+correction model 
+parameters
+74 bits
+Rev
+33 bits
+288 bits
+LSB
+MSB
+TGDB1Cp
+12 bits
+Direction of data flow
+MSB first
+ 
+Figure 6-5 Bit allocation for B-CNAV2 Message Type 30 
+Pre
+MesType
+6 bits
+SOW
+18 bits
+HS
+2 bits
+CRC
+24 bits
+PRN
+6 bits
+SISMAI
+4 bits
+DIF
+(B2a)
+1bit
+SIF
+(B2a)
+1bit
+AIF
+(B2a)
+1bit
+DIF
+(B1C)
+1bit
+SIF
+(B1C)
+1bit
+AIF
+(B1C)
+1bit
+Clock 
+correction 
+parameters
+69 bits
+Rev
+8 bits
+IODC
+10 bits
+Reduced 
+almanac
+38 bits
+Reduced 
+almanac
+38 bits
+Reduced 
+almanac
+38 bits
+WNa
+13 bits
+toa
+8 bits
+288 bits
+LSB
+MSB
+Direction of data flow
+MSB first
+ 
+Figure 6-6 Bit allocation for B-CNAV2 Message Type 31 
+ (Note: Each Message Type 31 broadcasts reduced almanac parameters for three satellites, while WNa and toa in 
+this frame are the reference time of these reduced almanacs) 
+Pre
+MesType
+6 bits
+SOW
+18 bits
+HS
+2 bits
+CRC
+24 bits
+PRN
+6 bits
+SISMAI
+4 bits
+DIF
+(B2a)
+1bit
+SIF
+(B2a)
+1bit
+AIF
+(B2a)
+1bit
+DIF
+(B1C)
+1bit
+SIF
+(B1C)
+1bit
+AIF
+(B1C)
+1bit
+Clock 
+correction 
+parameters
+69 bits
+Rev
+5 bits
+EOP parameters 
+138 bits
+IODC
+10 bits
+288 bits
+LSB
+MSB
+Direction of data flow
+MSB first
+ 
+Figure 6-7 Bit allocation for B-CNAV2 Message Type 32 
+Pre
+MesType
+6 bits
+SOW
+18 bits
+HS
+2 bits
+CRC
+24 bits
+PRN
+6 bits
+SISMAI
+4 bits
+DIF
+(B2a)
+1bit
+SIF
+(B2a)
+1bit
+AIF
+(B2a)
+1bit
+DIF
+(B1C)
+1bit
+SIF
+(B1C)
+1bit
+AIF
+(B1C)
+1bit
+Clock 
+correction 
+parameters
+69 bits
+Rev
+16 bits
+BGTO
+parameters
+68 bits
+Reduced 
+almanac
+38 bits
+288 bits
+LSB
+MSB
+IODC
+10 bits
+WNa
+13 bits
+toa
+8 bits
+Direction of data flow
+MSB first
+ 
+Figure 6-8 Bit allocation for B-CNAV2 Message Type 33 
+(Note: Each Message Type 33 broadcasts reduced almanac parameters for one satellite, while WNa and toa in 
+this frame are the reference time of this reduced almanac) 
+
+=====PAGE 30
+2017 China Satellite Navigation Office 
+24 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Pre
+MesType
+6 bits
+SOW
+18 bits
+HS
+2 bits
+CRC
+24 bits
+PRN
+6 bits
+SISMAI
+4 bits
+DIF
+(B2a)
+1bit
+SIF
+(B2a)
+1bit
+AIF
+(B2a)
+1bit
+DIF
+(B1C)
+1bit
+SIF
+(B1C)
+1bit
+AIF
+(B1C)
+1bit
+SISAIoc
+22 bits
+Rev
+24 bits
+BDT-UTC time 
+offset parameters
+97 bits
+Clock 
+correction 
+parameters
+69 bits
+IODC
+10 bits
+288 bits
+LSB
+MSB
+Direction of data flow
+MSB first
+ 
+Figure 6-9 Bit allocation for B-CNAV2 Message Type 34 
+Pre
+MesType
+6 bits
+SOW
+18 bits
+HS
+2 bits
+CRC
+24 bits
+PRN
+6 bits
+SISMAI
+4 bits
+DIF
+(B2a)
+1bit
+SIF
+(B2a)
+1bit
+AIF
+(B2a)
+1bit
+DIF
+(B1C)
+1bit
+SIF
+(B1C)
+1bit
+AIF
+(B1C)
+1bit
+SISAIoc
+22 bits
+Rev
+39 bits
+Midi almanac
+156  bits
+SISAIoe
+5 bits
+288 bits
+LSB
+MSB
+Direction of data flow
+MSB first
+ 
+Figure 6-10 Bit allocation for B-CNAV2 Message Type 40 
+Among the parameters in the above message types, "ephemeris I", 
+"ephemeris II", "clock correction parameters", "SISAIoc", "ionospheric delay 
+correction model parameters", "BDT-UTC time offset parameters", "reduced 
+almanac", "EOP parameters", "BGTO parameters", and “midi almanac” are data 
+blocks further constituted of a set of parameters. Data blocks "ephemeris I" and 
+"ephemeris II" constitute a complete set of ephemeris parameters together. The 
+detailed bit allocations of 10 data blocks are shown in Figure 6-11 ~ Figure 
+6-20. 
+11 bits
+2 bits
+26 bits
+25 bits 
+17 bits
+23 bits
+33 bits
+33 bits
+33 bits
+A
+
+A
+0n
+
+0n
+
+0
+M
+e
+
+MSB
+LSB
+oe
+t
+SatType
+ 
+Figure 6-11 Bit allocation for ephemeris I (203bits) 
+33 bits
+33 bits
+19 bits
+15 bits
+16 bits
+16 bits
+24 bits
+24 bits
+21 bits
+MSB
+0
+
+0i
+
+0i
+is
+C
+ic
+C
+rs
+C
+rc
+C
+21 bits
+LSB
+us
+C
+uc
+C
+ 
+Figure 6-12 Bit allocation for ephemeris II (222 bits) 
+
+=====PAGE 31
+2017 China Satellite Navigation Office 
+25 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+11 bits
+25 bits
+22 bits
+11 bits
+MSB
+0a
+1a
+2a
+LSB
+oc
+t
+ 
+Figure 6-13 Bit allocation for clock correction parameters (69 bits) 
+11 bits
+3 bits
+3 bits
+5 bits
+op
+t
+ocb
+SISAI
+oc1
+SISAI
+oc2
+SISAI
+MSB
+LSB
+ 
+Figure 6-14 Bit allocation for SISAIoc (22 bits) 
+10 bits
+8 bits
+8 bits
+8 bits
+8 bits
+8 bits
+8 bits
+8 bits
+8 bits
+MSB
+LSB
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+ 
+Figure 6-15 Bit allocation for ionospheric delay correction model parameters (74 bits) 
+16 bits
+13 bits
+7 bits
+8 bits
+16 bits
+MSB
+13 bits
+13 bits
+3 bits
+8 bits
+LSB
+0UTC
+A
+1UTC
+A
+2UTC
+A
+LS
+t
+
+ott
+ot
+WN
+DN
+LSF
+t
+
+LSF
+WN
+ 
+Figure 6-16 Bit allocation for BDT-UTC time offset parameters (97 bits) 
+6 bits
+2 bits
+8 bits
+7 bits
+7 bits
+MSB
+A
+
+0
+
+0
+
+8 bits
+LSB
+Health
+SatType
+a
+PRN
+ 
+Figure 6-17 Bit allocation for reduced almanac parameters (38 bits) 
+16 bits
+21 bits
+15 bits
+21 bits
+15 bits
+31 bits
+19 bits
+MSB
+LSB
+_
+PM
+X
+
+1
+UT
+
+_
+PM
+Y
+
+_
+PM
+Y
+_
+PM
+X
+EOP
+t
+1
+UT
+
+
+ 
+Figure 6-18 Bit allocation for EOP parameters (138 bits) 
+3 bits
+13 bits
+16 bits
+16 bits
+13 bits
+MSB
+7 bits
+LSB
+GNSS ID
+0BGTO
+WN
+0BGTO
+t
+0BGTO
+A
+1BGTO
+A
+2BGTO
+A
+ 
+Figure 6-19 Bit allocation for BGTO parameters (68 bits) 
+
+=====PAGE 32
+2017 China Satellite Navigation Office 
+26 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+6 bits
+2 bits
+13 bits
+8 bits
+11 bits
+11 bits
+17 bits
+16 bits
+11 bits
+MSB
+16 bits
+16 bits
+11 bits
+10 bits
+8 bits
+LSB
+e
+i
+A
+0
+
+
+
+0
+M
+0
+fa
+1
+fa
+a
+PRN
+SatType
+a
+WN
+oat
+Health
+ 
+Figure 6-20 Bit allocation for midi almanac parameters (156 bits) 
+The message parameters in the B-CNAV2 navigation message will be 
+described in the corresponding sections listed in Table 6-1. 
+Table 6-1 Descriptions of parameters in the B-CNAV2 navigation message 
+No. 
+Message parameter 
+Parameter description 
+1 
+ 
+PRN 
+See Section 7.1 for details 
+2 
+ 
+MesType 
+See Section 7.2 for details 
+3 
+ 
+SOW 
+See Section 7.3 for details 
+4 
+ 
+IODE 
+See Section 7.4.1 for details 
+5 
+ 
+IODC 
+See Section 7.4.2 for details 
+6 
+ 
+Clock correction parameters 
+See Section 7.5 for details 
+7 
+ 
+TGDB2ap 
+See Section 7.6 for details 
+8 
+ 
+ISCB2ad 
+See Section 7.6 for details 
+9 
+ 
+TGDB1Cp 
+See Section 7.6 for details 
+10  
+Ephemeris parameters 
+ (Ephemeris I, Ephemeris II) 
+See Section 7.7 for details 
+11  
+Ionospheric delay correction model 
+parameters 
+See Section 7.8 for details 
+12  
+Midi almanac parameters 
+See Section 7.9 for details 
+13  
+WNa 
+See Section 7.10 for details 
+14  
+toa 
+See Section 7.10 for details 
+15  
+Reduced almanac parameters 
+See Section 7.10 for details 
+16  
+EOP parameters 
+See Section 7.11 for details 
+17  
+BDT-UTC time offset parameter 
+See Section 7.12 for details 
+
+=====PAGE 33
+2017 China Satellite Navigation Office 
+27 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+18  
+BGTO parameters 
+See Section 7.13 for details 
+19  
+HS 
+See Section 7.14 for details 
+20  
+DIF 
+See Section 7.15 for details 
+21  
+SIF 
+See Section 7.15 for details 
+22  
+AIF 
+See Section 7.15 for details 
+23  
+SISAIoe 
+See Section 7.16 for details 
+24  
+SISAIoc 
+See Section 7.16 for details 
+25  
+SISMAI 
+See Section 7.17 for details 
+26  
+CRC 
+See Section 6.1.2 for details 
+7 Navigation Message Parameters and Algorithms 
+7.1 
+Ranging Code Number 
+PRN broadcasted in the navigation messages is an unsigned integer with a 
+length of 6 bits. Its effective value is in the range of 1 to 63. 
+7.2 
+Message Types 
+MesType is used to identify the message types of the B-CNAV2 frames. It 
+is an unsigned integer with a length of 6 bits. Its definition is shown in Table 
+7-1. 
+Table 7-1 Message type definition 
+MesType (Binary) 
+Message type 
+000000 
+Invalid 
+001010 
+Message Type 10 
+001011 
+Message Type 11 
+011110 
+Message Type 30 
+011111 
+Message Type 31 
+100000 
+Message Type 32 
+
+=====PAGE 34
+2017 China Satellite Navigation Office 
+28 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+100001 
+Message Type 33 
+100010 
+Message Type 34 
+101000 
+Message Type 40 
+Others 
+Reserved 
+7.3 
+System Time Parameters 
+The system time parameters broadcasted in B-CNAV2 contain Seconds Of 
+Week (SOW) and Week Number (WN). The definitions of the system time 
+parameters are shown in Table 7-2. 
+Table 7-2 Definitions of the system time parameters 
+Parameter 
+Definition 
+No. of 
+bits 
+Scale 
+factor 
+Effective 
+range 
+Unit 
+SOW 
+Seconds of week 
+18 
+3 
+0~604797 
+s 
+WN 
+Week number 
+13 
+1 
+0~8191 
+week 
+SOW is broadcast in all message types of B-CNAV2. The epoch denoted 
+by SOW corresponds to the rising edge of the first chip of the current frame 
+preamble. SOW counts from zero at 00:00:00 each Sunday in BDT and is reset 
+to zero at the end of each week. 
+WN is the week number of BDT and is broadcast in B-CNAV2 Message 
+Type 10. WN counts from zero at the origin of BDT (i.e., 00:00:00, January 1, 
+2006 UTC). 
+7.4 
+Issue Of Data 
+7.4.1 Issue Of Data, Ephemeris 
+Issue Of Data, Ephemeris (IODE) has a length of 8 bits. It has the 
+following two meanings. 
+
+=====PAGE 35
+2017 China Satellite Navigation Office 
+29 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+(1) IODE indicates the issue number of a set of ephemeris parameters. The 
+IODE value will be updated when any ephemeris parameter is updated. The 
+user can recognize whether any ephemeris parameter has changed by checking 
+any change in IODE. 
+(2) The IODE values indicate the range of the ephemeris data age. The 
+ephemeris data age is the extrapolated time interval of the ephemeris parameters. 
+It is defined as the offset between the ephemeris parameters reference time (toe) 
+and the last measured time for generating the ephemeris parameters. The 
+relationship between the IODE values and the ephemeris data age is shown in 
+Table 7-3. 
+Table 7-3 Relationship between the IODE values and the ephemeris data age 
+IODE value 
+Ephemeris data age* 
+0~59 
+Less than 12 hours 
+60~119 
+12 hours ~ 24 hours 
+120~179 
+1day ~ 7days 
+180~239 
+Reserved 
+240~255 
+More than 7 days 
+7.4.2 Issue Of Data, Clock 
+Issue Of Data, Clock (IODC) has a length of 10 bits. It has the following 
+two meanings. 
+(1) IODC indicates the issue number of a set of clock correction 
+parameters. The IODC value will be updated when any clock correction 
+
+=====PAGE 36
+2017 China Satellite Navigation Office 
+30 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+parameter is updated. The user can recognize whether any clock correction 
+parameter has changed by checking any change in IODC. 
+(2) The IODC values indicate the range of the clock correction data age. 
+The clock correction data age is the extrapolated time interval of the clock 
+correction parameters. It is defined as the offset between the clock correction 
+parameters reference time (toc) and the last measured time for generating the 
+clock correction parameters. The range of the clock correction data age is 
+defined by the 2 MSBs of IODC together with the 8 LSBs of IODC. The 
+relationship between the IODC values and the clock correction data age is 
+shown in Table 7-4. 
+Table 7-4 Relationship between the IODC values and the clock correction data age 
+2 MSBs of IODC 
+8 LSBs of IODC 
+Clock correction data age* 
+0 
+0~59 
+Less than 12 hours 
+60~119 
+12 hours ~ 24 hours 
+120~179 
+1day ~ 7days 
+180~239 
+Reserved 
+240~255 
+More than 7 days 
+1 
+0~59 
+Less than 12 tours 
+60~119 
+Less than 12 hours 
+120~179 
+Less than 1 day 
+180~239 
+Reserved 
+240~255 
+No more than 7 days 
+2 
+0~59 
+More than 12 hours 
+60~119 
+More than 24 hours 
+120~179 
+More than 7 days 
+180~239 
+Reserved 
+240~255 
+More than 7 days 
+3 
+Reserved 
+Reserved 
+
+=====PAGE 37
+2017 China Satellite Navigation Office 
+31 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+7.4.3 IODE and IODC Usage Constraints 
+For a matched pair of ephemeris data and clock correction data, IODE and 
+the 8 LSBs of IODC keep consistent with each other and are updated 
+synchronously. 
+When the IODE value received by the user is the same as the 8 LSBs of 
+IODC, i.e., the ephemeris data match with the clock correction data in the 
+current navigation message, the user can use this matched pair of ephemeris 
+data and clock correction data whose issue number can be identified by the 
+IODE. 
+The IODE value received by the user may be different from the 8 LSBs of 
+IODC during the update of the ephemeris and clock correction data, due to the 
+the time delay of message transmission. The user shall use the preceding 
+matched pair of ephemeris data and clock correction data until the updated 
+IODE and the 8 LSBs of IODC are the same. The values of IODE and IODC 
+shall not be repeated within one day, except that the data age is more than seven 
+days. 
+7.5 
+Clock Correction Parameters 
+7.5.1 Parameters Description 
+A set of clock correction parameters identified by an IODC contains four 
+parameters: 
+oc
+t
+, 
+0
+a , 
+1a , and 
+2
+a . The definitions and characteristics of the 
+clock correction parameters are shown in Table 7-5. 
+
+=====PAGE 38
+2017 China Satellite Navigation Office 
+32 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Table 7-5 Definitions of the clock correction parameters 
+No. 
+Parameter 
+Definition 
+No. of 
+bits 
+Scale  
+factor 
+Effective 
+range** 
+Unit 
+1 
+oc
+t
+ 
+Clock correction 
+parameters reference time 
+11 
+300 
+0~604500 
+s 
+2 
+0a 
+Satellite clock time bias 
+correction coefficient 
+25* 
+2-34 
+-- 
+s 
+3 
+1a 
+Satellite clock time drift 
+correction coefficient 
+22* 
+2-50 
+-- 
+s/s 
+4 
+2a 
+Satellite clock time drift 
+rate correction coefficient 
+11* 
+2-66 
+-- 
+s/s2 
+* Parameters so indicated are two’s complement, with the sign bit (+ or -) occupying the 
+MSB. 
+** Unless otherwise indicated in this column, effective range is the maximum range 
+attainable with indicated bit allocation and scale factor. 
+7.5.2 User Algorithm 
+The user shall compute the BDT time of signal transmission as 
+ 
+sv
+sv
+t
+t
+t
+
+
+ 
+(7-1) 
+where, t is the BDT time of signal transmission (in seconds), 
+sv
+t is the 
+effective satellite ranging code phase time at time of signal transmission (in 
+seconds), 
+svt
+
+ is the satellite ranging code phase time offset which is computed 
+by the equation (in seconds): 
+ 
+
+
+
+
+2
+sv
+0
+1
+oc
+2
+oc
+r
+t
+a
+a t
+t
+a t
+t
+t
+
+
+
+
+
+
+ 
+(7-2) 
+where, the sensitivity of 
+sv
+t to t is negligible, which allow the user to 
+approximate t by 
+sv
+t . rt is the relativistic correction term (in seconds) 
+which is defined as follows: 
+ 
+F
+sin
+
+
+
+
+r
+k
+t
+e
+A
+E 
+(7-3) 
+where, e is the eccentricity of the satellite orbit, which is given in the 
+ephemeris parameters; 
+
+=====PAGE 39
+2017 China Satellite Navigation Office 
+33 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+A is the square root of semi-major axis of the satellite orbit, which is 
+computed from the ephemeris parameters; 
+k
+E is the eccentric anomaly of the satellite orbit, which is computed from 
+the ephemeris parameters;  
+1 2
+2
+F=
+2μ
+C
+
+; 
+14
+3
+2
+μ=3.986004418 10 m s
+
+, is the geocentric gravitational constant; 
+8
+C
+2.99792458 10 m s
+
+
+, is the speed of light. 
+7.6 
+Group Delay differential Parameters 
+7.6.1 Parameters Description 
+The satellite equipment group delay is defined as the delay between the 
+signal radiated output of a specific satellite (measured at the antenna phase 
+center) and the output of that satellite’s on-board frequency source. The ranging 
+code phase offset caused by the satellite equipment group delay can be 
+compensated with clock correction parameter 
+0a and group delay differential 
+parameters. 
+The equipment group delay of the B3I signal is included in the clock 
+correction parameter 
+0a broadcasted in the navigation message, which is the 
+reference equipment group delay for the B1C and B2a signals. 
+TGDB1Cp is group delay differential between the B1C pilot component and 
+the B3I signal, and TGDB2ap is group delay differential between the B2a pilot 
+component and the B3I signal. Both TGDB1Cp and TGDB2ap are broadcast in the 
+B-CNAV2 message, which are used to compensate for the equipment group 
+delay of the B1C pilot component and the B2a pilot component respectively. 
+
+=====PAGE 40
+2017 China Satellite Navigation Office 
+34 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+ISCB2ad is broadcast in the B-CNAV2 message to compensate for the group 
+delay differential between the B2a data component and the B2a pilot 
+component. 
+The definition and characteristics of the group delay differential parameters 
+are shown in Table 7-6. 
+Table 7-6 Definitions of the group delay differential parameters 
+No. 
+Parameter 
+Definition 
+No. of 
+bits 
+Scale 
+factor 
+Effective 
+range** 
+Unit 
+1  
+TGDB1Cp 
+Group delay differential of 
+the B1C pilot component 
+12* 
+2-34 
+-- 
+s 
+2  
+TGDB2ap 
+Group delay differential of 
+the B2a pilot component 
+12* 
+2-34 
+-- 
+s 
+3  
+ISCB2ad 
+Group delay differential 
+between the B2a data and 
+pilot components 
+12* 
+2-34 
+-- 
+s 
+* Parameters so indicated are two’s complement, with the sign bit (+ or -)occupying the MSB. 
+** Unless otherwise indicated in this column, effective range is the maximum range attainable 
+with indicated bit allocation and scale factor. 
+7.6.2 User Algorithm 
+The single frequency user processing pseudorange from the B2a pilot 
+component shall further correct the ranging code phase with the equation as 
+follows: 
+ 
+
+
+SV
+SV
+GDB2ap
+B2ap
+T
+t
+t
+
+
+
+ 
+(7-4) 
+The single frequency user processing pseudorange from the B2a data 
+component shall further correct the ranging code phase with the equation as 
+follows: 
+ 
+
+
+SV
+SV
+GDB2ap
+B2ad
+B2ad
+T
+ISC
+t
+t
+
+
+
+
+ 
+(7-5) 
+
+=====PAGE 41
+2017 China Satellite Navigation Office 
+35 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+where, 
+SV
+t
+
+ is the satellite ranging code phase offset which is defined in 
+Section 7.5. 
+7.7 
+Ephemeris Parameters 
+7.7.1 Parameters Description 
+A set of satellite ephemeris parameters identified by an IODE consists of a 
+satellite orbit type parameter and 18 quasi-Keplerian orbital parameters. 
+The descriptions of the ephemeris parameters are shown in Table 7-7. 
+Table 7-7 Descriptions of the ephemeris parameters 
+No. 
+Parameter 
+Definition 
+1 
+ 
+oet 
+Ephemeris reference time 
+2 
+ 
+SatType 
+Satellite orbit type 
+3 
+ 
+A
+ 
+Semi-major axis difference at reference time 
+4 
+ 
+A 
+Change rate in semi-major axis 
+5 
+ 
+0n
+
+ 
+Mean motion difference from computed value 
+at reference time 
+6 
+ 
+0
+n 
+Rate of mean motion difference from computed 
+value at reference time 
+7 
+ 
+0
+M 
+Mean anomaly at reference time 
+8 
+ 
+e 
+Eccentricity 
+9 
+ 
+ 
+Argument of perigee 
+10  
+0
+ 
+Longitude of ascending node of orbital plane at 
+weekly epoch 
+11  
+0i 
+Inclination angle at reference time 
+12  
+ 
+Rate of right ascension 
+13  
+0i 
+Rate of inclination angle 
+14  
+is
+C 
+Amplitude of sine harmonic correction term to 
+the angle of inclination 
+15  
+ic
+C 
+Amplitude of cosine harmonic correction term 
+to the angle of inclination 
+16  
+rs
+C 
+Amplitude of sine harmonic correction term to 
+the orbit radius 
+
+=====PAGE 42
+2017 China Satellite Navigation Office 
+36 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+17  
+rc
+C 
+Amplitude of cosine harmonic correction term 
+to the orbit radius 
+18  
+us
+C 
+Amplitude of sine harmonic correction to the 
+argument of latitude 
+19  
+uc
+C 
+Amplitude of cosine harmonic correction to the 
+argument of latitude 
+The definitions of the ephemeris parameters are shown in Table 7-8. 
+Table 7-8 Definitions of the ephemeris parameters 
+No. 
+Parameter 
+No. of bits 
+Scale factor 
+Effective range** 
+Unit 
+1  
+oet 
+11 
+300 
+0~604500 
+s 
+2  
+SatType**** 
+2 
+-- 
+-- 
+-- 
+3  
+A
+
+*** 
+26* 
+9
+2 
+-- 
+m 
+4  
+A 
+25* 
+21
+2
+ 
+-- 
+m/s 
+5  
+0n
+
+ 
+17* 
+44
+2 
+ 
+-- 
+π/s 
+6  
+0
+n 
+23* 
+57
+2
+ 
+-- 
+π/s2 
+7  
+0
+M 
+33* 
+32
+2
+ 
+-- 
+π 
+8  
+e 
+33 
+34
+2
+ 
+-- 
+dimensionless 
+9  
+ 
+33* 
+32
+2
+ 
+-- 
+π 
+10  
+0
+ 
+33* 
+32
+2
+ 
+-- 
+π 
+11  
+0i 
+33* 
+32
+2
+ 
+-- 
+π 
+12  
+ 
+19* 
+44
+2
+ 
+-- 
+π/s 
+13  
+0i 
+15* 
+44
+2
+ 
+-- 
+π/s 
+14  
+is
+C 
+16* 
+30
+2
+ 
+-- 
+rad 
+15  
+ic
+C 
+16* 
+30
+2
+ 
+-- 
+rad 
+16  
+rs
+C 
+24* 
+8
+2
+ 
+-- 
+m 
+17  
+rc
+C 
+24* 
+8
+2
+ 
+-- 
+m 
+18  
+us
+C 
+21* 
+30
+2
+ 
+-- 
+rad 
+19  
+uc
+C 
+21* 
+30
+2
+ 
+-- 
+rad 
+* Parameters so indicated are two’s complement, with the sign bit (+ or -)occupying the 
+MSB. 
+** Unless otherwise indicated in this column, effective range is the maximum range 
+attainable with indicated bit allocation and scale factor. 
+*** Semi-major axis reference value:  
+ref
+27906100 m
+MEO
+A
+
+（
+），
+ref
+42162200 m
+IGSO/GEO
+A
+
+（
+）. 
+**** Meaning of SatType (in binary): 01 indicates the GEO satellite, 10 indicates the 
+IGSO satellite, 11 indicates the MEO satellite, and 00 is reserved. 
+
+=====PAGE 43
+2017 China Satellite Navigation Office 
+37 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+7.7.2 User Algorithm 
+The user shall compute the corresponding coordinate of the satellite 
+antenna phase center in BDCS, according to the ephemeris parameters. The 
+related user algorithms are shown in Table 7-9. 
+Table 7-9 User algorithms for the ephemeris parameters 
+Formula 
+Description 
+14
+3
+2
+μ=3.986004418 10 m s
+
+ 
+Geocentric gravitational constant of BDCS 
+5
+e
+7.2921150 10 rad s
+
+
+
+ 
+Earth’s rotation rate of BDCS 
+π
+3.1415926535898
+
+ 
+Ratio of a circle’s circumference to its diameter 
+oe
+kt
+t
+t
+
+** 
+Time from ephemeris reference time 
+0
+ref
+A
+A
+A
+
+
+* 
+Semi-major axis at reference time 
+
+0
+k
+k
+A
+A
+A t
+
+
+ 
+Semi-major axis 
+0
+3
+0
+μ
+n
+A
+
+ 
+Computed mean motion (rad/s) at reference time 
+0
+0
+1 2
+A
+k
+n
+n
+n t
+
+
+
+
+ 
+Mean motion difference from computed value 
+0
+A
+A
+n
+n
+n
+
+
+ 
+Corrected mean motion 
+0
+k
+A k
+M
+M
+n t
+
+
+ 
+Mean anomaly 
+sin
+k
+k
+k
+M
+E
+e
+E
+
+
+ 
+Kepler’s equation for eccentric anomaly (may be solved by 
+iteration)  
+2
+1
+sin
+sin
+1
+cos
+cos
+cos
+1
+cos
+k
+k
+k
+k
+k
+k
+e
+E
+e
+E
+E
+e
+e
+E
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+True anomaly  
+
+
+k
+k
+
+
+ 
+Argument of latitude 
+
+=====PAGE 44
+2017 China Satellite Navigation Office 
+38 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+
+
+
+
+
+
+
+
+
+
+
+
+us
+uc
+rs
+rc
+is
+ic
+sin 2
+cos 2
+sin 2
+cos 2
+sin 2
+cos 2
+
+
+
+
+
+
+
+
+
+
+
+k
+k
+k
+k
+k
+k
+k
+k
+k
+u
+C
+C
+r
+C
+C
+i
+C
+C
+
+
+
+
+
+
+
+
+
+ 
+Argument of latitude correction 
+Radius correction 
+Inclination correction 
+k
+k
+k
+u
+u
+
+
+
+
+ 
+Corrected argument of latitude 
+
+
+1
+cos
+
+
+
+
+k
+k
+k
+k
+r
+A
+e
+E
+r 
+Corrected radius 
+0
+0
+
+
+
+
+
+k
+k
+k
+i
+i
+i t
+i 
+Corrected inclination 
+cos
+sin
+k
+k
+k
+k
+k
+k
+x
+r
+u
+y
+r
+u
+
+
+
+
+
+ 
+Position in orbital plane 
+
+
+0
+e
+e oe
+k
+kt
+t
+
+
+ 
+Corrected longitude of ascending node 
+cos
+cos
+sin
+sin
+cos
+cos
+sin
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+X
+x
+y
+i
+Y
+x
+y
+i
+Z
+y
+i
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+Coordinate of the MEO/IGSO satellite antenna phase 
+center in BDCS 
+* Semi-major axis reference value: 
+ref
+27906100m
+MEO
+A
+
+（
+） 
+ref
+42162200m
+IGSO/GEO
+A
+
+（
+）. 
+** In the equation, t is the BDT time of signal transmission, i.e., the BDT time corrected 
+for transit time; 
+kt is the total time difference between t and the ephemeris reference time 
+oe
+t after taking account of the beginning or end of week crossovers, that is, if 
+302400
+kt 
+, 
+subtract 604800 seconds from 
+kt , else if 
+302400
+kt 
+, add 604800 seconds to 
+kt . 
+7.8 
+Ionospheric Delay Correction Model Parameters 
+7.8.1 Parameters Description 
+The BeiDou Global Ionospheric delay correction Model (BDGIM) 
+contains nine parameters which are used to correct the effect of ionospheric 
+delay for the single frequency user. Descriptions of these parameters are shown 
+in Table 7-10. 
+For the dual frequency user applying the B1C and B2a signals, the effect of 
+the ionospheric delay shall be corrected by using the dual frequency 
+ionosphere-free pseudorange. 
+
+=====PAGE 45
+2017 China Satellite Navigation Office 
+39 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Table 7-10 Descriptions of the ionospheric delay correction model parameters 
+Parameter 
+No. of bits 
+Scale factor 
+Effective range** 
+Unit 
+1
+ 
+10 
+2-3 
+-- 
+TECu 
+2
+ 
+8* 
+2-3 
+-- 
+TECu 
+3
+ 
+8 
+2-3 
+-- 
+TECu 
+4
+ 
+8 
+2-3 
+-- 
+TECu 
+5
+ 
+8 
+-2-3 
+-- 
+TECu 
+6
+ 
+8* 
+2-3 
+-- 
+TECu 
+7
+ 
+8* 
+2-3 
+-- 
+TECu 
+8
+ 
+8* 
+2-3 
+-- 
+TECu 
+9
+ 
+8* 
+2-3 
+-- 
+TECu 
+* Parameters so indicated are two’s complement, with the sign bit (+ or -) occupying 
+the MSB. 
+** Unless otherwise indicated in this column, effective range is the maximum range 
+attainable with indicated bit allocation and scale factor. 
+7.8.2 Single Frequency Algorithm 
+The BeiDou Global Ionospheric delay correction Model (BDGIM) is based 
+on the modified spherical harmonics method. According to BDGIM, the user 
+shall compute the ionospheric delay correction by using the equation as follows: 
+ 
+16
+9
+F
+0
+2
+1
+40.28 10
+ion
+i
+i
+i
+T
+M
+A
+A
+f
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-6) 
+Where, 
+ion
+T
+ is the line-of-sight (LOS) ionospheric delay along the signal 
+propagation path from satellite to receiver (in meters). 
+F
+M is the ionospheric 
+mapping function for the conversion between vertical and slant total electron 
+
+=====PAGE 46
+2017 China Satellite Navigation Office 
+40 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+contents (TEC), which is referred to Equation (7-17); f is the carrier frequency 
+of the current signal (in Hertz); 
+
+
+1~ 9
+i i
+
+
+ are the BDGIM parameters (in 
+TECu) which are defined in Table 7-10; 
+
+
+1~ 9
+iA i 
+ are calculated by 
+Equation (7-11); 
+0A is the predictive ionospheric delay (in TECu) which is 
+calculated by Equation (7-14). 
+According to BDGIM, the specific steps for the user to calculate the LOS 
+ionospheric delay along the signal propagation path from satellite to receiver are 
+listed as follows: 
+(1) Calculation of the ionospheric pierce point (IPP) position 
+ indicates the Earth’s central angle between the user position and IPP (in 
+radians), which is given by 
+ 
+ion
+π
+Re
+arcsin
+cos
+2
+Re H
+E
+E
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-7) 
+where, E is the elevation angle between the user and satellite (in radians); 
+ion
+H
+ is the altitude of the ionospheric single-layer shell; Re is the mean radius 
+of the Earth. 
+The geographic latitude 
+g
+ and longitude 
+g
+ of the Earth projection of 
+IPP are calculated as 
+ 
+arcsin(sin
+cos
+cos
+sin
+cos
+)
+sin
+sin
+cos
+arctan cos
+sin
+sin
+g
+u
+u
+u
+g
+u
+u
+g
+A
+A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-8) 
+where, 
+u
+ and 
+u
+ are the user geographic latitude and longitude, respectively; 
+A is the azimuth angle between the user and satellite (in radians). 
+In the Earth-fixed reference frame, the geomagnetic latitude 
+m
+ and 
+
+=====PAGE 47
+2017 China Satellite Navigation Office 
+41 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+longitude 
+m
+ of the Earth projection of IPP are calculated as follows: 
+ 
+
+
+M
+M
+M
+M
+M
+M
+arcsin sin
+sin
+cos
+cos
+cos(
+)
+cos
+sin(
+) cos
+arctan
+sin
+sin
+sin
+m
+g
+g
+g
+g
+g
+m
+m
+g
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-9) 
+where 
+M
+ and 
+M
+ are the geographic latitude and longitude of the north 
+magnetic pole (both in radians), respectively. 
+In the solar-fixed reference frame, the geomagnetic latitude  and 
+longitude  of IPP are calculated as 
+ 
+M
+M
+M
+sin(
+)
+arctan sin
+cos(
+)
+m
+lon
+m
+lon
+S
+S
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-10) 
+where, 
+lon
+S
+ is the mean geographic longitude of the sun (in radians), which is 
+calculated as 
+
+
+
+
+
+π
+1
+2
+int
+lon
+S
+t
+t
+
+
+
+
+, t is the time (in days) of calculation epoch 
+expressed by Modified Julian Date (MJD), and 
+
+int  means rounding down. 
+(2) Calculation of 
+
+
+1~ 9
+iA i 
+ 
+iA is calculated as follows: 
+ 
+|
+|,|
+|
+|
+|,|
+|
+(sin
+) cos(
+)
+0
+(sin
+) sin(
+)
+0
+i
+i
+i
+i
+n
+m
+i
+i
+i
+n
+m
+i
+i
+P
+m
+m
+A
+P
+m
+m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-11) 
+where, the values of 
+in and 
+i
+m are shown in Table 7-11. 
+Table 7-11 Values of 
+in and 
+i
+m 
+ 
+ 
+ 
+ and  are calculated by Equation (7-10); 
+,n m
+P
+ is the normalized 
+Legendre function with degree n and order m, which is calculated as 
+i 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+i
+i
+n m 
+0/0 
+1/0 
+1/1 
+1/-1 
+2/0 
+2/1 
+2/-1 
+2/2 
+2/-2 
+
+=====PAGE 48
+2017 China Satellite Navigation Office 
+42 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+,
+,
+,
+n m
+n m
+n m
+P
+N
+P
+
+
+ (both n and m are taken the absolute values); 
+,
+n m
+N
+ is the 
+normalization function, which is calculated as 
+ 
+
+
+0,
+,
+0,
+(
+)! (2
+1) (2
+)
+!
+1
+0
+0
+0
+m
+n m
+m
+n
+m
+n
+N
+n
+m
+m
+m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+，
+，
+
+
+ 
+(7-12) 
+,n m
+P
+ is the classic, un-normalized Legendre function, which is calculated 
+as 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2
+2
+,
+,
+,
+1,
+2,
+,
+sin
+2
+1 !! 1
+sin
+,
+sin
+sin
+2
+1
+sin
+,
+1
+2
+1 sin
+sin
+1
+sin
+sin
+,
+n
+n n
+n m
+m m
+n
+m
+n
+m
+n m
+P
+n
+n
+m
+P
+m
+P
+n
+m
+n
+P
+n
+m
+P
+P
+else
+n
+m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-13) 
+where, 
+
+
+
+
+2
+1 !!
+2
+1
+2
+3
+1
+n
+n
+n
+
+
+
+
+
+, and 
+
+
+0,0 sin
+1
+P
+. 
+(3) Calculation of the predictive ionospheric delay 
+0A 
+0A is calculated as follows: 
+ 
+17
+0
+1
+|
+|,|
+|
+|
+|,|
+|
+,
+(sin
+) cos(
+)
+0
+(sin
+) sin(
+)
+0
+j
+j
+j
+j
+j
+j
+j
+n
+m
+j
+j
+j
+n
+m
+j
+j
+A
+B
+P
+m
+m
+B
+P
+m
+m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-14) 
+where, the values of 
+jn and 
+j
+m are shown in Table 7-11; 
+
+
+|
+|,|
+| sin
+j
+j
+n
+m
+P
+ is 
+calculated by Equation (7-12) and (7-13); 
+
+
+1~17
+j
+j
+
+
+ are calculated as 
+follows: 
+ 
+
+
+
+
+
+
+12
+0,
+,
+,
+1
+cos
+sin
+2
+j
+j
+k j
+k
+p
+k j
+k
+p
+k
+k
+k
+a
+a
+t
+b
+t
+T
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-15) 
+where, 
+,
+k j
+a
+ and 
+,
+k j
+b
+ are the non-broadcast coefficients of BDGIM as shown in 
+
+=====PAGE 49
+2017 China Satellite Navigation Office 
+43 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Table 7-12 (in TECu); 
+kT is the period for prediction corresponding to the 
+individual non-broadcast coefficients as shown in Table 7-12; 
+pt is an odd hour  
+(in days) of the corresponding day (01:00:00, 03:00:00, 05:00:00..., or 23:00:00 
+in MJD), while the user should choose a 
+pt which is nearest to the time of the 
+calculation epoch. 
+(4) Calculation of the vertical ionospheric delay of IPP 
+The vertical ionospheric delay (in TECu) of IPP is calculated as 
+ 
+9
+0
+1
+i
+i
+i
+VTEC
+A
+A
+
+
+
+
+ 
+(7-16) 
+(5) Calculation of the ionospheric mapping function 
+F
+M of IPP 
+The ionospheric mapping function 
+F
+M of IPP is calculated as follows: 
+ 
+
+F
+2
+ion
+1
+Re
+1
+cos
+Re H
+M
+E
+
+
+
+
+
+
+
+
+
+
+ 
+(7-17) 
+where, Re, 
+ion
+H
+, and E have been defined in Equation (7-7). 
+(6) Calculation of the LOS ionospheric delay along the signal propagation 
+path 
+According to the calculated VTEC and 
+F
+M , the LOS ionospheric delay 
+along the signal propagation path from satellite to receiver can be calculated by 
+Equation (7-6). 
+In the above equations, the related parameter values are suggested as 
+Altitude of the ionospheric single-layer shell: 
+ion
+H
+400 km
+
+; 
+Mean radius of the Earth: Re
+6378 km
+
+; 
+
+=====PAGE 50
+2017 China Satellite Navigation Office 
+44 
+BDS-SIS-ICD-B2a -1.0 
+2017-12 
+Geographic longitude of the north magnetic pole: 
+M
+72.58
+π  rad
+180
+
+
+
+
+
+
+; 
+Geographic latitude of the north magnetic pole: 
+M
+80.27
+π  rad
+180
+
+
+
+
+
+. 
+ 
+
+=====PAGE 51
+2017 China Satellite Navigation Office 
+45 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+Table 7-12 BDGIM non-broadcast coefficients and periods for prediction 
+     Parameter 
+ 
+No. k 
+No. j 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+11 
+12 
+13 
+14 
+15 
+16 
+17 
+Period 
+Tk / day 
+nj/mj 
+3/0 
+3/1 
+3/-1 
+3/2 
+3/-2 
+3/3 
+3/-3 
+4/0 
+4/1 
+4/-1 
+4/2 
+4/-2 
+5/0 
+5/1 
+5/-1 
+5/2 
+5/-2 
+0 
+0,j
+a
+ 
+-0.61 
+-1.31 
+-2.00 
+-0.03 
+0.15 
+-0.48 
+-0.40 
+2.28 
+-0.16 
+-0.21 
+-0.10 
+-0.13 
+0.21 
+0.68 
+1.06 
+0 
+-0.12 
+- 
+1 
+k, j
+a
+-0.51 
+-0.43 
+0.34 
+-0.01 
+0.17 
+0.02 
+-0.06 
+0.30 
+0.44 
+-0.28 
+-0.31 
+-0.17 
+0.04 
+0.39 
+-0.12 
+0.12 
+0 
+1 
+k, j
+b
+ 
+0.23 
+-0.20 
+-0.31 
+0.16 
+-0.03 
+0.02 
+0.04 
+0.18 
+0.34 
+0.45 
+0.19 
+-0.25 
+-0.12 
+0.18 
+0.40 
+-0.09 
+0.21 
+2 
+k, j
+a
+ 
+-0.06 
+-0.05 
+0.06 
+0.17 
+0.15 
+0 
+0.11 
+-0.05 
+-0.16 
+0.02 
+0.11 
+0.04 
+0.12 
+0.07 
+0.02 
+-0.14 
+-0.14 
+0.5 
+k, j
+b
+0.02 
+-0.08 
+-0.06 
+-0.11 
+0.15 
+-0.14 
+0.01 
+0.01 
+0.04 
+-0.14 
+-0.05 
+0.08 
+0.08 
+-0.01 
+0.01 
+0.11 
+-0.12 
+3 
+k, j
+a
+ 
+0.01 
+-0.03 
+0.01 
+-0.01 
+0.05 
+-0.03 
+0.05 
+-0.03 
+-0.01 
+0 
+-0.08 
+-0.04 
+0 
+-0.02 
+-0.03 
+0 
+-0.03 
+0.33 
+k, j
+b
+0 
+-0.02 
+-0.03 
+-0.05 
+-0.01 
+-0.07 
+-0.03 
+-0.01 
+0.02 
+-0.01 
+0.03 
+-0.10 
+0.01 
+0.05 
+-0.01 
+0.04 
+0.00 
+4 
+k, j
+a
+-0.01 
+0 
+0.01 
+0 
+0.01 
+0 
+-0.01 
+-0.01 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+14.6 
+k, j
+b
+ 
+0 
+-0.02 
+0.01 
+0 
+-0.01 
+0.01 
+0 
+-0.02 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+5 
+k, j
+a
+0 
+0 
+0.03 
+0.01 
+0.02 
+0.01 
+0 
+-0.02 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+27.0 
+k, j
+b
+ 
+0.01 
+0 
+0 
+0.01 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+6 
+k, j
+a
+-0.19 
+-0.02 
+0.12 
+-0.10 
+0.06 
+0 
+-0.02 
+-0.08 
+-0.02 
+-0.07 
+0.01 
+0.03 
+0.15 
+0.06 
+-0.05 
+-0.03 
+-0.10 
+121.6 
+k, j
+b
+-0.09 
+0.07 
+0.03 
+0.06 
+0.09 
+0.01 
+0.02 
+0 
+-0.04 
+-0.02 
+-0.01 
+0.01 
+-0.10 
+0 
+-0.01 
+0.02 
+0.05 
+7 
+k, j
+a
+ 
+-0.18 
+0.06 
+-0.55 
+-0.02 
+0.09 
+-0.08 
+0 
+0.86 
+-0.18 
+-0.05 
+-0.07 
+0.04 
+0.14 
+-0.03 
+0.37 
+-0.11 
+-0.12 
+182.51 
+k, j
+b
+0.15 
+-0.31 
+0.13 
+0.05 
+-0.09 
+-0.03 
+0.06 
+-0.36 
+0.08 
+0.05 
+0.06 
+-0.02 
+-0.05 
+0.06 
+-0.20 
+0.04 
+0.07 
+8 
+k, j
+a
+ 
+1.09 
+-0.14 
+-0.21 
+0.52 
+0.27 
+0 
+0.11 
+0.17 
+0.23 
+0.35 
+-0.05 
+0.02 
+-0.60 
+0.02 
+0.01 
+0.27 
+0.32 
+365.25 
+k, j
+b
+ 
+0.50 
+-0.08 
+-0.38 
+0.36 
+0.14 
+0.04 
+0 
+0.25 
+0.17 
+0.27 
+-0.03 
+-0.03 
+-0.32 
+-0.10 
+0.20 
+0.10 
+0.30 
+9 
+k, j
+a
+-0.34 
+-0.09 
+-1.22 
+0.05 
+0.15 
+-0.29 
+-0.17 
+1.58 
+-0.06 
+-0.15 
+0.00 
+0.13 
+0.28 
+-0.08 
+0.62 
+-0.01 
+-0.04 
+4028.71 
+k, j
+b
+ 
+0 
+-0.11 
+-0.22 
+0.01 
+0.02 
+-0.03 
+-0.01 
+0.49 
+-0.03 
+-0.02 
+0.01 
+0.02 
+0.04 
+-0.04 
+0.16 
+-0.02 
+-0.01 
+10 
+k, j
+a
+-0.13 
+0.07 
+-0.37 
+0.05 
+0.06 
+-0.11 
+-0.07 
+0.46 
+0.00 
+-0.04 
+0.01 
+0.07 
+0.09 
+-0.05 
+0.15 
+-0.01 
+0.01 
+2014.35 
+k, j
+b
+0.05 
+0.03 
+0.07 
+0.02 
+-0.01 
+0.03 
+0.02 
+-0.04 
+-0.01 
+-0.01 
+0.02 
+0.03 
+0.02 
+-0.04 
+-0.04 
+-0.01 
+0 
+11 
+k, j
+a
+ 
+-0.06 
+0.13 
+-0.07 
+0.03 
+0.02 
+-0.05 
+-0.05 
+0.01 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+1342.90 
+k, j
+b
+0.03 
+-0.02 
+0.04 
+-0.01 
+-0.03 
+0.02 
+0.01 
+0.04 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+12 
+k, j
+a
+ 
+-0.03 
+0.08 
+-0.01 
+0.04 
+0.01 
+-0.02 
+-0.02 
+-0.04 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+1007.18 
+k, j
+b
+0.04 
+-0.02 
+-0.04 
+0.00 
+-0.01 
+0 
+0.01 
+0.07 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+
+=====PAGE 52
+2017 China Satellite Navigation Office 
+46 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+7.8.3 Dual Frequency Algorithm 
+For the dual frequency user applying the B1C and B2a signals, the 
+effect of the ionospheric delay shall be corrected by using the dual 
+frequency ionosphere-free pseudorange. 
+The dual frequency user processing pseudorange from the B1C pilot 
+component and B2a pilot component shall correct the ionospheric delay 
+with the equation as follows: 
+ 
+B2ap
+12
+B1Cp
+GDB2ap
+12
+GDB1Cp
+B1Cp-B2ap
+12
+12
+C (T
+T
+)
+1
+1
+PR
+k
+PR
+k
+PR
+k
+k
+
+
+
+
+
+
+
+
+
+ 
+(7-18) 
+The dual frequency user processing pseudorange from the B1C pilot 
+component and B2a data component shall correct the ionospheric delay 
+with the equation as follows:  
+ 
+B2ad
+12
+B1Cp
+GDB2ap
+B2ad
+12
+GDB1Cp
+B1Cp-B2ad
+12
+12
+C (T
+ISC
+T
+)
+1
+1
+PR
+k
+PR
+k
+PR
+k
+k
+
+
+
+
+
+
+
+
+
+
+ (7-19) 
+The dual frequency user processing pseudorange from the B1C data 
+component and B2a pilot component shall correct the ionospheric delay 
+with the equation as follows: 
+ 
+B2ap
+12
+B1Cd
+GDB2ap
+12
+GDB1Cp
+12
+B1Cd
+B1Cd-B2ap
+12
+12
+C (T
+T
+ISC
+)
+1
+1
+PR
+k
+PR
+k
+k
+PR
+k
+k
+
+
+
+
+
+
+
+
+
+
+
+ (7-20) 
+The dual frequency user processing pseudorange from the B1C data 
+component and B2a data component shall correct the ionospheric delay 
+with the equation as follows: 
+
+=====PAGE 53
+2017 China Satellite Navigation Office 
+47 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+ 
+B2ad
+12
+B1Cd
+B1Cd-B2ad
+12
+GDB2ap
+B2ad
+12
+GDB1Cp
+12
+B1Cd
+12
+1
+C (T
+ISC
+T
+ISC
+)
+1
+PR
+k
+PR
+PR
+k
+k
+k
+k
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-21) 
+where, 
+2
+12
+1575.42
+1176.45
+
+
+
+
+
+
+k
+, is the factor associated with frequency; 
+B1Cp-B2ap
+PR
+ is the dual frequency ionosphere-free pseudorange 
+between the B1C pilot component and the B2a pilot component; 
+B1Cp-B2ad
+PR
+is the dual frequency ionosphere-free pseudorange 
+between the B1C pilot component and the B2a data component; 
+B1Cd-B2ap
+PR
+ is the dual frequency ionosphere-free pseudorange 
+between the B1C data component and the B2a pilot component; 
+B1Cd-B2ad
+PR
+ is the dual frequency ionosphere-free pseudorange 
+between the B1C data component and the B2a data component; 
+B1Cp
+PR
+ is the measured pseudorange of the B1C pilot component 
+(corrected by the clock correction but not corrected by TGDB1Cp); 
+B1Cd
+PR
+ is the measured pseudorange of the B1C data component 
+(corrected by the clock correction but not corrected by TGDB1Cp and 
+ISCB1Cd); 
+B2ap
+PR
+ is the measured pseudorange of the B2a pilot component 
+(corrected by the clock correction but not corrected by TGDB2ap); 
+B2ad
+PR
+ is the measured pseudorange of the B2a data component 
+(corrected by the clock correction but not corrected by TGDB2ap and 
+ISCB2ad); 
+
+=====PAGE 54
+2017 China Satellite Navigation Office 
+48 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+GDB1Cp
+T
+ is the group delay differential of the B1C pilot component; 
+GDB2ap
+T
+ is the group delay differential of the B2a pilot component; 
+B1Cd
+ISC
+ is the group delay differential between the B1C data 
+component and the B1C pilot component, referring to BeiDou Navigation 
+Satellite System Signal In Space Interface Control Document Open 
+Service Signal B1C (Version 1.0); 
+B2ad
+ISC
+ is the group delay differential between the B2a data 
+component and the B2a pilot component; 
+8
+C
+2.99792458 10 m s
+
+
+ is the speed of light. 
+7.9 
+Midi Almanac Parameters 
+7.9.1 Parameters Description 
+The midi almanac contains 14 parameters. The definitions of the midi 
+almanac parameters are described in Table 7-13. 
+Table 7-13 Definitions of the midi almanac parameters 
+No. 
+Parameter 
+Definition 
+No. of 
+bits 
+Scale 
+factor 
+Effective 
+range** 
+Unit 
+1 
+ 
+a
+PRN 
+PRN number of the 
+corresponding almanac 
+data 
+6 
+1 
+1~63 
+-- 
+2 
+ 
+SatType*** 
+Satellite orbit type 
+2 
+-- 
+-- 
+-- 
+3 
+ 
+a
+WN 
+Almanac reference 
+week number  
+13 
+1 
+-- 
+week 
+4 
+ 
+oa
+t
+ 
+Almanac reference time 
+8 
+212 
+0~602112 
+s 
+5 
+ 
+e 
+Eccentricity 
+11 
+2-16 
+-- 
+-- 
+6 
+ 
+i 
+Correction of 
+inclination angle 
+relative to reference 
+value at reference time 
+11* 
+2-14 
+-- 
+π 
+
+=====PAGE 55
+2017 China Satellite Navigation Office 
+49 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+7 
+ 
+A 
+Square root of 
+semi-major axis 
+17 
+4
+2
+ 
+-- 
+m1/2 
+8 
+ 
+0
+ 
+Longitude of ascending 
+node of orbital plane at 
+weekly epoch 
+16* 
+15
+2
+ 
+-- 
+π 
+9 
+ 
+ 
+Rate of right ascension 
+11* 
+2-33 
+-- 
+π/s 
+10  
+ 
+Argument of perigee 
+16* 
+15
+2
+ 
+-- 
+π 
+11  
+0
+M 
+Mean anomaly at 
+reference time 
+16* 
+15
+2
+ 
+-- 
+π 
+12  
+0
+fa
+ 
+Satellite clock time bias 
+correction coefficient 
+11* 
+20
+2
+ 
+-- 
+s 
+13  
+1
+fa 
+Satellite clock time drift 
+correction coefficient 
+10* 
+2-37 
+-- 
+s/s 
+14  
+Health 
+Satellite health 
+information 
+8 
+— 
+— 
+— 
+* Parameters so indicated are two’s complement, with the sign bit (+ or -) occupying the 
+MSB. 
+** Unless otherwise indicated in this column, effective range is the maximum range 
+attainable with indicated bit allocation and scale factor. 
+*** Meaning of SatType (in binary): 01 indicates the GEO satellite, 10 indicates the 
+IGSO satellite, 11 indicates the MEO satellite, and 00 is reserved. 
+The parameter Health indicates the satellite health status with a 
+length of 8 bits. The definitions of the satellite health information are 
+described in Table 7-14. 
+Table 7-14 Definitions of the satellite health information 
+Information bit 
+Value 
+Definition 
+The 8th bit (MSB) 
+0 
+Satellite clock is healthy 
+1 
+* 
+The 7th bit 
+0 
+B1C signal is normal 
+1 
+B1C signal is abnormal** 
+The 6th bit 
+0 
+B2a signal is normal 
+1 
+B2a signal is abnormal ** 
+
+=====PAGE 56
+2017 China Satellite Navigation Office 
+50 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+The 5th ~ 1st bit 
+0 
+Reserved 
+1 
+Reserved 
+* When the 8th bit is 1, that the last 7 bits are “0000000” represents the satellite clock 
+is not available and that the last 7 bits are “1111111” represents the satellite is 
+abnormal or permanent shutdown. 
+**The abnormal signal indicates that the signal power is over 10dB lower than the 
+rated value. 
+7.9.2 User Algorithm 
+The user shall compute the BDT time of signal transmission as 
+ 
+sv
+sv
+
+
+t
+t
+t 
+(7-22) 
+where, t is the BDT time of signal transmission (in seconds), 
+sv
+t is the 
+satellite ranging code phase time at time of signal transmission (in 
+seconds), 
+svt
+
+ is the satellite ranging code phase time offset which is 
+computed by the equation (in seconds): 
+ 
+
+
+sv
+0
+1
+oa
+f
+f
+t
+a
+a
+t
+t
+
+
+
+
+ 
+(7-23) 
+where, the almanac reference time 
+oa
+t counts from the start of the 
+almanac reference week number (
+a
+WN ). 
+The user calculates the satellite position by using the midi almanac 
+parameters. The related user algorithms are shown in Table 7-15. 
+Table 7-15 User algorithms for the midi almanac parameters 
+Formula 
+Description 
+14
+3
+2
+μ=3.986004418 10 m s
+
+ 
+Geocentric gravitational constant of 
+BDCS 
+5
+e
+7.2921150 10 rad s
+
+
+
+ 
+Earth’s rotation rate of BDCS 
+π
+3.1415926535898
+
+ 
+Ratio of a circle’s circumference to its 
+diameter 
+
+=====PAGE 57
+2017 China Satellite Navigation Office 
+51 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+
+
+2
+A
+A
+
+ 
+Semi-major axis 
+0
+3
+n
+A
+
+
+ 
+Computed mean motion (rad/s) at 
+reference time 
+oa
+kt
+t
+t
+
+* 
+Time from ephemeris reference time 
+0
+0
+k
+k
+M
+M
+n t
+
+
+ 
+Mean anomaly 
+sin
+k
+k
+k
+M
+E
+e
+E
+
+
+ 
+Kepler’s equation for eccentric anomaly 
+(may be solved by iteration)  
+2
+1
+sin
+sin
+1
+cos
+cos
+cos
+1
+cos
+k
+k
+k
+k
+k
+k
+e
+E
+e
+E
+E
+e
+e
+E
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+True anomaly  
+k
+k
+
+
+
+
+
+ 
+Argument of latitude 
+
+
+1
+cos
+k
+k
+r
+A
+e
+E
+
+
+ 
+radius 
+cos
+sin
+k
+k
+k
+k
+k
+k
+x
+r
+y
+r
+
+
+
+
+
+
+
+ 
+Position in orbital plane 
+
+
+0
+e
+e oa
+k
+kt
+t
+
+
+ 
+Corrected longitude of ascending node 
+0
+i
+i
+i
+
+
+
+** 
+Inclination at reference time 
+cos
+cos sin
+sin
+cos cos
+sin
+
+
+
+
+
+
+
+
+
+
+
+
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+X
+x
+y
+i
+Y
+x
+y
+i
+Z
+y
+i
+ 
+Coordinate of the satellite antenna phase 
+center in BDCS 
+* In the equation, t is the BDT time of signal transmission, i.e., the BDT time 
+corrected for transit time; 
+kt is the total time difference between t and the almanac 
+reference time 
+oa
+t after taking account of the beginning or end of week crossovers, 
+that is, if 
+302400
+kt 
+, subtract 604800 seconds from 
+kt , else if 
+302400
+kt 
+, add 
+604800 seconds to 
+kt . 
+** For the MEO/IGSO satellites, 
+0
+0.30π
+i 
+; for the GEO satellites, 
+0
+0.00
+i 
+. 
+
+=====PAGE 58
+2017 China Satellite Navigation Office 
+52 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+7.10 Reduced Almanac parameters 
+7.10.1 Parameters Description 
+The definitions and characteristics of the reduced almanac 
+parameters are shown in Table 7-16. 
+Table 7-16 Definitions of the reduced almanac parameters 
+No. 
+Parameter 
+Definition 
+No. of 
+bits 
+Scale 
+factor 
+Effective 
+range** 
+Unit 
+1 
+ 
+a
+PRN 
+PRN number of the 
+corresponding almanac 
+data 
+6 
+1 
+1~63 
+-- 
+2 
+ 
+SatType***** 
+Satellite orbit type 
+2 
+-- 
+-- 
+-- 
+3 
+ 
+A
+
+*** 
+Correction of 
+semi-major axis relative 
+to reference value at 
+reference time 
+8* 
+29 
+-- 
+m 
+4 
+ 
+0
+ 
+Longitude of ascending 
+node of orbital plane at 
+weekly epoch 
+7* 
+2-6 
+-- 
+π 
+5 
+ 
+0
+
+**** 
+Argument of latitude at 
+reference time 
+7* 
+2-6 
+-- 
+π 
+6 
+ 
+Health 
+Satellite health 
+information 
+8 
+— 
+— 
+— 
+* Parameters so indicated are two’s complement, with the sign bit (+ or -) occupying the 
+MSB. 
+** Unless otherwise indicated in this column, effective range is the maximum range 
+attainable with indicated bit allocation and scale factor. 
+*** Semi-major axis reference value:  
+ref
+27906100m
+MEO
+A
+
+（
+） 
+ref
+42162200m
+IGSO/GEO
+A
+
+（
+）. 
+**** Φ0=M0+ω, relative to the following reference values: 
+e = 0; 
+δi = 0, i = 55 degrees (MEO/IGSO), i = 0 degree (GEO). 
+***** Meaning of SatType (in binary): 01 indicates the GEO satellite, 10 indicates the 
+IGSO satellite, 11 indicates the MEO satellite, and 00 is reserved. 
+7.10.2 User Algorithm 
+The user algorithm for the reduced almanac parameters is the same 
+
+=====PAGE 59
+2017 China Satellite Navigation Office 
+53 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+as the user algorithm for the midi almanac specified in Table 7-15. Other 
+parameters appearing in the equations of Table 7-15, but not provided by 
+the reduced almanac with the reference values, are set to zero for satellite 
+position determination. 
+The definitions of the almanac reference week number 
+a
+WN and 
+the almanac reference time 
+oa
+t corresponding to the reduced almanac are 
+shown in Table 7-17. 
+Table 7-17 Definitions of the almanac reference time parameters 
+No. 
+Parameter 
+Definition 
+No. of 
+bits 
+Scale 
+factor 
+Effective 
+range 
+Unit 
+1 
+a
+WN 
+Almanac reference 
+week number  
+13 
+1 
+0~8191 
+week 
+2 
+oat 
+Almanac reference 
+time 
+8 
+212 
+0~602112 
+s 
+7.11 Earth Orientation Parameters 
+7.11.1 Parameters Description 
+The definitions of the Earth Orientation Parameters are shown in 
+Table 7-18.  
+Table 7-18 Definitions of the Earth Orientation Parameters 
+Parameter 
+Definition 
+No. of 
+bits 
+Scale 
+factor 
+Effective 
+range** 
+Unit 
+tEOP 
+EOP data reference time 
+16 
+24 
+0~604784 
+s 
+_
+PM
+X 
+X-Axis polar motion value 
+at reference time 
+21* 
+2-20 
+-- 
+arc-seconds 
+•
+_
+PM
+X 
+X-Axis polar motion drift at 
+reference time 
+15* 
+2-21 
+-- 
+arc-seconds/day 
+_
+PM
+Y 
+Y-Axis polar motion value 
+at reference time 
+21* 
+2-20 
+-- 
+arc-seconds  
+•
+_
+PM
+Y 
+Y-Axis polar motion drift at 
+reference time 
+15* 
+2-21 
+-- 
+arc-seconds/day 
+
+=====PAGE 60
+2017 China Satellite Navigation Office 
+54 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+1
+UT 
+UT1-UTC difference at 
+reference time 
+31* 
+2-24 
+-- 
+s 
+•
+1
+UT
+
+ 
+Rate of UT1-UTC 
+difference at reference time 
+19* 
+2-25 
+-- 
+s/day 
+* Parameters so indicated are two’s complement, with the sign bit (+ or -) occupying the MSB. 
+** Unless otherwise indicated in this column, effective range is the maximum range attainable 
+with indicated bit allocation and scale factor. 
+7.11.2 User Algorithm 
+The BDCS coordinate of the satellite antenna phase center is 
+calculated by using the ephemeris parameters. If the user needs to convert 
+it to the corresponding Earth Centered Inertial (ECI) coordinate, the 
+related transformation matrix shall be calculated by using the algorithms 
+which are shown in Table 7-19. 
+The full coordinate transformation algorithms can be accomplished 
+in accordance with the IERS specifications. 
+Table 7-19 User algorithms for the EOP parameters 
+Formula 
+Description 
+
+
+EOP
+UT1 
+ UTC 
+1 
+1 
+ 
+UT
+UT
+t
+t
+
+
+
+
+ 
+UT1-UTC difference at time t 
+
+
+•
+EOP
+ 
+ 
+_
+ 
+ 
+_
+ 
+ 
+ 
+px
+PM
+X
+PM
+X
+t
+t
+
+
+
+ 
+
+
+•
+EOP
+ 
+ 
+_ 
+ 
+_
+ 
+ 
+py
+PM
+Y
+PM
+Y
+t
+t
+
+
+
+ 
+Polar motion in the X-Axis at time t 
+Polar motion in the Y-Axis at time t 
+Note: t is the BDT time of signal transmission. 
+7.12 BDT-UTC Time Offset Parameters 
+7.12.1 Parameters Description 
+The BDT-UTC time offset parameters represent the relationship 
+
+=====PAGE 61
+2017 China Satellite Navigation Office 
+55 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+between BDT and UTC time. The definitions and characteristics of the 
+BDT-UTC time offset parameters are shown in Table 7-20. 
+Table 7-20 Definitions of the BDT-UTC time offset parameters 
+No. 
+Parameter 
+Definition 
+No. of 
+bits 
+Scale 
+factor 
+Effective 
+range** 
+Unit 
+1 
+0UTC
+A
+ 
+Bias coefficient of BDT 
+time scale relative to UTC 
+time scale 
+16* 
+2-35 
+-- 
+s 
+2 
+1UTC
+A
+ 
+Drift coefficient of BDT 
+time scale relative to UTC 
+time scale 
+13* 
+2-51 
+-- 
+s/s 
+3 
+2UTC
+A
+ 
+Drift rate coefficient of 
+BDT time scale relative to 
+UTC time scale 
+7* 
+2-68 
+-- 
+s/s2 
+4 
+LS
+t
+
+ 
+Current or past leap 
+second count 
+8* 
+1 
+-- 
+s 
+5 
+ott 
+Reference time of week  
+16 
+24 
+0~604784 
+s 
+6 
+ot
+WN 
+Reference week number  
+13 
+1 
+-- 
+week 
+7 
+LSF
+WN
+ 
+Leap second reference 
+week number  
+13 
+1 
+-- 
+week 
+8 
+DN 
+Leap second reference day 
+number  
+3 
+1 
+0~6 
+day 
+9 
+LSF
+t
+
+ 
+Current or future leap 
+second count  
+8* 
+1 
+-- 
+s 
+* Parameters so indicated are two’s complement, with the sign bit (+ or -) occupying the MSB. 
+** Unless otherwise indicated in this column, effective range is the maximum range attainable 
+with indicated bit allocation and scale factor. 
+7.12.2 User Algorithm 
+Three different cases of calculating BDT-UTC time offset are listed 
+as follows: 
+(1) Whenever the leap second time indicated by WNLSF and DN is 
+not in the past (relative to the user’s present time) and the user’s present 
+time does not fall in the time span which starts six hours prior to the leap 
+second time and ends six hours after the leap second time, 
+UTC
+t
+ is 
+
+=====PAGE 62
+2017 China Satellite Navigation Office 
+56 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+calculated according to the following equations: 
+ 
+UTC
+E
+UTC
+ (
+) mod 86400
+t
+t
+t
+
+
+ 
+(7-24) 
+ 
+
+
+
+
+
+
+
+
+UTC
+LS
+0UTC
+1UTC
+E
+ot
+ot
+2
+2UTC
+E
+ot
+ot
+604800 WN 
+ WN
+ 604800 WN 
+ WN
+t
+t
+A
+A
+t
+t
+A
+t
+t
+
+
+
+
+
+
+
+
+
+
+
+ 
+(7-25) 
+where, tE is the BDT time as estimated by the user. 
+(2) Whenever the user’s present time falls within the time span 
+which starts six hours prior to the leap second time and ends six hours 
+after the leap second time, 
+UTC
+t
+ is calculated according to the following 
+equations: 
+ 
+UTC
+LSF
+LS
+ W mod (86400 
+)
+t
+t
+t
+
+
+
+ 
+(7-26) 
+ 
+
+
+E
+UTC
+W 
+ (
+ 43200) mod 86400
+43200
+t
+t
+
+
+
+
+ 
+(7-27) 
+where, the calculation method of ΔtUTC is shown in Equation (7-25). 
+(3) Whenever the leap second time indicated by WNLSF and DN is in 
+the past (relative to the user’s present time) and the user’s present time 
+does not fall in the time span which starts six hours prior to the leap 
+second time and ends six hours after the leap second time, 
+UTC
+t
+ is 
+calculated according to the following equations: 
+ 
+UTC
+E
+UTC
+ (
+) mod 86400
+t
+t
+t
+
+
+ 
+(7-28) 
+ 
+
+
+
+
+
+
+
+
+UTC
+LSF
+0UTC
+1UTC
+E
+ot
+ot
+2
+2UTC
+E
+ot
+ot
+ 604800 WN 
+ WN
++
+ 604800 WN 
+ WN
+t
+t
+A
+A
+t
+t
+A
+t
+t
+
+
+
+
+
+
+
+
+
+
+ (7-29) 
+
+=====PAGE 63
+2017 China Satellite Navigation Office 
+57 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+7.13 BDT-GNSS Time Offset Parameters 
+7.13.1 Parameters Description 
+The BDT-GNSS Time Offset (BGTO) parameters are used to 
+calculate the time offsets between BDT and other GNSS time. The 
+definitions and characteristics of the BGTO parameters are shown in 
+Table 7-21. 
+Table 7-21 Definitions of the BGTO parameters 
+No. 
+Parameter 
+Definition 
+No. of 
+bits 
+Scale 
+factor 
+Effective 
+range** 
+Unit 
+1 
+GNSS ID 
+GNSS type 
+identification 
+3 
+-- 
+-- 
+dimensionless 
+2 
+0BGTO
+WN
+ 
+Reference week 
+number 
+13 
+1 
+-- 
+week 
+3 
+0BGTO
+t
+ 
+Reference time of 
+week 
+16 
+24 
+0~604784 
+s 
+4 
+0BGTO
+A
+ 
+Bias coefficient of 
+BDT time scale 
+relative to GNSS 
+time scale 
+16* 
+2-35 
+-- 
+s 
+5 
+1BGTO
+A
+ 
+Drift coefficient of 
+BDT time scale 
+relative to GNSS 
+time scale 
+13* 
+2-51 
+-- 
+s/s 
+6 
+2BGTO
+A
+ 
+Drift rate 
+coefficient of BDT 
+time scale relative 
+to GNSS time scale 
+7* 
+2-68 
+-- 
+s/s2 
+* Parameters so indicated are two’s complement, with the sign bit (+ or -)occupying the 
+MSB. 
+** Unless otherwise indicated in this column, effective range is the maximum range 
+attainable with indicated bit allocation and scale factor. 
+GNSS ID is used to identify different navigation satellite systems, 
+and its definition is as follows: 
+000 indicates that the present BGTO parameters are not available; 
+
+=====PAGE 64
+2017 China Satellite Navigation Office 
+58 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+001 indicates GPS; 
+010 indicates Galileo; 
+011 indicates GLONASS; 
+100 to 111 are reserved. 
+The 
+0BGTO
+WN
+,
+0BGTO
+t
+,
+0BGTO
+A
+,
+1BGTO
+A
+,and 
+2BGTO
+A
+ broadcasted in the 
+same frame correspond to the system identified by GNSS ID. The BGTO 
+parameters broadcasted in different frames may be different, and the user 
+should recognize GNSS ID every time when the BGTO parameters are 
+received. 
+7.13.2 User Algorithm 
+The relationship between BDT and other GNSS time is given by the 
+equation as follows: 
+ 
+
+
+
+
+Systems
+BD
+GNSS
+0BGTO
+1BGTO
+BD
+0BGTO
+BGTO
+2
+2BGTO
+BD
+0BGTO
+BGTO
+604800 WN
+WN
+604800 WN
+WN
+t
+t
+t
+A
+A
+t
+t
+A
+t
+t
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(7-30) 
+where, 
+Systems
+t
+
+ is in seconds; 
+BD
+t
+ and 
+GNSS
+t
+ are the BDT time and other 
+GNSS time, respectively. 
+7.14 Satellite Health Status 
+Satellite Health Status (HS) is an unsigned integer with a length of 2 
+bits, which indicates the health status of the transmitting satellite. The 
+definitions of the satellite health status parameter are shown in Table 
+7-22. 
+
+=====PAGE 65
+2017 China Satellite Navigation Office 
+59 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+Table 7-22 Definitions of the satellite health status parameter 
+HS value 
+Definition 
+Description 
+0 
+The satellite is healthy 
+The satellite provides services 
+1 
+The satellite is unhealthy or in 
+the test 
+The satellite does not provide 
+services 
+2 
+Reserved 
+Reserved 
+3 
+Reserved 
+Reserved 
+7.15 Satellite Integrity Status Flag 
+The satellite integrity status flag contains three parameters: data 
+integrity flag (DIF), signal integrity flag (SIF), and accuracy integrity flag 
+(AIF). Each of them has a length of 1 bit, and their definitions are shown 
+in Table 7-23. 
+Table 7-23. Definitions of the satellite integrity status flag parameters 
+Parameter 
+Value 
+Definition 
+DIF 
+0 
+The error of message parameters broadcasted in 
+this signal does not exceed the predictive accuracy 
+1 
+The error of message parameters broadcasted in 
+this signal exceeds the predictive accuracy 
+SIF 
+0 
+This signal is normal 
+1 
+This signal is abnormal 
+AIF 
+0 
+SISMAI* value of this signal is valid 
+1 
+SISMAI value of this signal is invalid 
+* The definitions of SISMAI will be shown in Section 7.17. 
+The B2a integrity status flag parameters (DIF(B2a), SIF(B2a), AIF(B2a)) 
+are only broadcast in B-CNAV2. The B1C integrity status flag parameters 
+(DIF(B1C), SIF(B1C), AIF(B1C)) are broadcast in B-CNAV2, as well as in the 
+B1C navigation message.  
+Because of the higher update rate of the B-CNAV2 message, it is 
+recommended that the dual frequency user, using the B1C and B2a 
+
+=====PAGE 66
+2017 China Satellite Navigation Office 
+60 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+signals, applies the integrity status flag parameters which are broadcast 
+by the B2a signal preferentially. 
+The specific definitions of the signal integrity status flag parameters 
+will be published in a future update of this ICD. 
+7.16 Signal In Space Accuracy Index 
+The signal in space accuracy describes the predictive accuracy of the 
+orbital parameters and clock correction parameters broadcasted in the 
+navigation message. It contains the along-track and cross-track accuracy 
+of the satellite orbit (SISAoe) and the satellite orbital radius and satellite 
+clock correction accuracy (SISAoc). 
+The signal in space accuracy index parameters broadcasted in the 
+navigation message are used to calculate SISAoe and SISAoc, which 
+contain five parameters as follows: 
+(1) SISAIoe: satellite orbit along-track and cross-track accuracy 
+(SISAoe) index; 
+(2) SISAIocb: satellite orbit radius and fixed satellite clock bias 
+accuracy (SISAocb) index; 
+(3) SISAIoc1: satellite clock bias accuracy (SISAoc1) index; 
+(4) SISAIoc2: satellite clock drift accuracy (SISAoc2) index; 
+(5) top: time of week for data prediction. 
+The specific definitions of the signal in space accuracy index 
+parameters will be published in a future update of this ICD. 
+
+=====PAGE 67
+2017 China Satellite Navigation Office 
+61 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+7.17 Signal In Space Monitoring Accuracy Index 
+The estimated error of the signal in space accuracy is described by 
+the zero-mean Gaussian distribution model. The signal in space 
+monitoring accuracy (SISMA) is the variance of the Gaussian distribution, 
+which is indicated by the signal in space monitoring accuracy index 
+(SISMAI). 
+The specific definitions of the signal in space monitoring accuracy 
+index parameters will be published in a future update of this ICD. 
+ 
+
+=====PAGE 68
+2017 China Satellite Navigation Office 
+62 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+8 Acronyms 
+BDCS 
+BeiDou Coordinate System 
+BDGIM 
+BeiDou Global Ionospheric delay correction Model 
+BDS 
+BeiDou Navigation Satellite System 
+BDT 
+BeiDou Navigation Satellite System Time 
+BGTO 
+BDT-GNSS Time Offset 
+bps 
+bits per second 
+BPSK 
+Binary Phase Shift Keying 
+CDMA 
+Code Division Multiple Access 
+CGCS2000 
+China Geodetic Coordinate System 2000 
+CRC 
+Cyclic Redundancy Check 
+ECI 
+Earth Centered Inertial 
+EOP 
+Earth Orientation Parameters 
+GEO 
+Geostationary Earth Orbit 
+GF 
+Galois Field 
+GLONASS 
+GLObal NAvigation Satellite System 
+GNSS 
+Global Navigation Satellite System 
+GPS 
+Global Positioning System 
+ICD 
+Interface Control Document 
+IERS 
+International Earth Rotation and Reference 
+Systems Service 
+IGSO 
+Inclined GeoSynchronous Orbit 
+IODC 
+Issue Of Data, Clock 
+IODE 
+Issue Of Data, Ephemeris 
+IPP 
+Ionoshperic Pierce Point 
+IRM 
+IERS Reference Meridian 
+IRP 
+IERS Reference Pole 
+LDPC 
+Low Density Parity Check 
+LOS 
+Line Of Sight 
+LSB 
+Least Significant Bit 
+
+=====PAGE 69
+2017 China Satellite Navigation Office 
+63 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+Mcps 
+Mega chips per second 
+MEO 
+Medium Earth Orbit 
+MJD 
+Modified Julian Date 
+MSB 
+Most Significant Bit 
+NTSC 
+National Time Service Center 
+PRN 
+Pseudo-Random Noise 
+RHCP 
+Right-Hand Circular Polarization 
+RMS 
+Root Mean Square 
+SOW 
+Seconds Of Week 
+sps 
+symbols per second 
+TEC 
+Total Electron Content 
+TECu 
+Total Electron Content unit 
+UT 
+Universal Time 
+UTC 
+Universal Time Coordinated 
+WN 
+Week Number 
+
+=====PAGE 70
+2017 China Satellite Navigation Office 
+64 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+Annex: Non-binary LDPC Encoding and Decoding Methods 
+1. Non-binary LDPC Encoding 
+The generator matrix G is obtained from the parity-check matrix 
+1
+2
+[
+,
+]
+
+H
+H H of the non-binary LDPC(n, k) code. And then, the codeword 
+c of length n can be generated by encoding the input information 
+sequence m of length k with the generator matrix G, i.e., 
+=
+[
+, ]
+
+
+
+0
+1
+n-1
+c = (c ,c ,
+,c
+) m G
+m p , where, 
+(0
+)
+j
+j
+n
+
+
+c
+ is the jth codeword 
+symbol, and 
+1
+T
+2
+1
+(
+)
+
+
+
+
+p
+m
+H
+H
+is the check sequence. 
+The method for generating the generator matrix G is given as 
+follows: 
+Step 1: The matrix H of size (n-k) × n is expressed as: 
+1
+2
+[
+,
+]
+
+H
+H H , 
+where the size of 
+1
+H is (n-k) × k, and the size of 
+2
+H is (n- k) × (n-k). 
+Step 2: Convert the matrix H into the systematic form, i.e., multiply 
+H with 
+1
+2
+
+H
+ from the left to generate a parity-check matrix 
+1
+2
+1
+[
+,
+]
+n k
+
+
+
+
+
+H
+H
+H I
+, where 
+n k
+
+I
+ is a unit matrix of size (n-k) × (n-k). 
+Step 3: The generator matrix is computed as 
+1
+T
+2
+1
+[
+,(
+) ]
+k
+
+
+
+G
+I
+H
+H
+, 
+where 
+kI is a unit matrix of size k×k. 
+(1) Encoding Example 
+The B-CNAV2 message data are encoded by one 64-ary LDPC(96, 
+48) code. Assume that the input information is 
+[001010 110010 010011 100001 001010 100110 010000 101001 101100 101111 
+011100 000101 001110 111010 001001 110100 100010 111111 
+000101 011100 
+
+=====PAGE 71
+2017 China Satellite Navigation Office 
+65 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+000110 111101 000000 110001 110100 110111 000101 011001 010000 110011 
+011011 111010 001011 010000 001001 001000 110111 100101 100011 001001 
+110110 100111 010110 100000 011001 000100 001111 000111]  
+ 
+after encoding, the output codeword is 
+[001010 110010 010011 100001 001010 100110 010000 101001 101100 101111 
+011100 000101 001110 111010 001001 110100 100010 111111 000101 011100 
+000110 111101 000000 110001 110100 110111 000101 011001 010000 110011 
+011011 111010 001011 010000 001001 001000 110111 100101 100011 001001 
+110110 100111 010110 100000 011001 000100 001111 000111 100000 001000 
+101101 111001 001011 110111 101101 111111 000000 100011 000110 101110 
+101011 001100 100001 100101 010111 010010 000101 000010 111011 001010 
+101111 101100 011000 101010 010011 000001 000001 001101 111000 001100 
+111001 110101 100111 110100 101111 010111 111010 111111 101100 011111 
+101011 000010 000110 000001 110000 101100]  
+ 
+ 
+ 
+(2) Mapping Relationship 
+After 64-ary LDPC encoding, each codeword symbol is composed 
+of 6 bits, which is defined over GF(26) domain with the primitive 
+polynomial of 
+
+6
+1
+p x = +x+x . Each element in Galois field can be 
+described by the vector representation and power representation. 
+The mapping from the vector representation of 64 field elements to 
+the power representation is shown as follows: 
+[∞ 
+0 
+1 
+6 
+2 
+12 
+7 
+26 
+3 
+32 
+13 
+35 
+8 
+48 
+27 
+18 
+4 
+24 
+33 
+16 
+14 
+52 
+36 
+54 
+9 
+45 
+49 
+38 
+28 
+41 
+19 
+56 
+5 
+62 
+25 
+11 
+34 
+31 
+17 
+47 
+15 
+23 
+53 
+51 
+37 
+44 
+55 
+40 
+10 61 
+46 
+30 
+50 
+22 
+39 
+43 
+29 
+60 
+42 
+21 
+20 
+59 
+57 
+58] 
+The mapping from the power representation of 63 non-zero elements 
+
+=====PAGE 72
+2017 China Satellite Navigation Office 
+66 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+to the vector representation is shown as follows: 
+[1 
+2 
+4 
+8 
+16 
+32 
+3 
+6 
+12 
+24 
+48 
+35 
+5 
+10 
+20 
+40 
+19 38 
+15 
+30 
+60 
+59 
+53 
+41 
+17 
+34 
+7 
+14 
+28 
+56 
+51 
+37 
+9 
+18 
+36 
+11 
+22 
+44 
+27 
+54 
+47 
+29 
+58 
+55 
+45 
+25 
+50 
+39 
+13 26 
+52 
+43 
+21 
+42 
+23 
+46 
+31 
+62 
+63 
+61 
+57 
+49 
+33]  
+2. Non-binary LDPC Decoding 
+One codeword 
+
+0
+1
+n-1
+c = (c ,c ,
+,c
+) generated by the non-binary LDPC 
+encoding is transmitted over a channel with the modulation. On the 
+receiving side, the corresponding sequence 
+
+0
+1
+n-1
+y = (y ,y ,
+,y
+) is received, 
+where 
+,0
+,1
+, -1
+(
+,
+,
+,
+)
+j
+j
+j r
+y
+y
+y
+
+jy =
+ is the received information corresponding to 
+the jth codeword symbol 
+jc (
+GF( ), =2r
+j
+q
+q
+
+c
+ and 0
+j
+n
+
+). 
+The parity-check matrix H of the non-binary LDPC code can be 
+used to check the correctness of the received sequence y. The specific 
+method is described as follows: 
+A hard decision codeword ˆ
+ˆ
+ˆ
+ˆ
+0
+1
+n-1
+c = (c ,c ,
+,c
+)
+
+ is obtained by making 
+hard decision on the received sequence y bit by bit. The check sum is 
+calculated as 
+T
+ˆ
+
+s
+cH . If 
+
+s
+0 (for any , 0
+i
+i
+m
+
+, 
+,
+ˆ
+0
+i
+j
+i j
+j N
+c h
+
+
+
+, in the 
+Galois field), ˆc is the correct output, otherwise ˆc is erroneous. 
+The parity-check matrix H describes the connection relationship of 
+the check node CN and the variable node VN, i.e., the reliability 
+information can be transmitted between the connected CN and VN. For 
+the parity-check matrix H of size m n
+
+, each element 
+,i j
+h is an 
+element in GF( )
+q , while each row corresponds to a check node CN and 
+
+=====PAGE 73
+2017 China Satellite Navigation Office 
+67 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+each column corresponds to a variable node VN. 
+Two index sets are given as follows: 
+,
+{ :0
+,
+0},0
+j
+i j
+M
+i
+i
+m h
+j
+n
+
+
+
+
+ 
+,
+{ :0
+,
+0},0
+i
+i j
+N
+j
+j
+n h
+i
+m
+
+
+
+
+
+ 
+If 
+,
+0
+i j
+h
+, the check node CNi is connected to the variable node VN j . 
+The reliability vector transmitted from the variable node VN j to the 
+connected check node CNi (
+j
+i
+M
+
+) is denoted as V2C j
+i
+, and can be 
+used to calculate the check sum of CNi . The reliability vector transmitted 
+from the check node CNi to the connected variable node VN j (
+i
+j
+N
+
+) 
+is denoted as C2Vi
+j
+, and can be used to estimate the symbol value of 
+VN j . 
+V2C j
+i
+ and 
+C2Vi
+j
+ are iterated by using the reliability 
+transmitting decoding algorithm to correct the received sequence y , and 
+then the codeword c is correctly estimated. 
+Two iterative reliability transmitting decoding algorithms used to 
+estimate the codeword c are listed in the following contents. 
+(1) Extended Min-Sum Method 
+Set the mean noise value of the additive white Gaussian noise 
+channel as zero and the variance as 
+2
+. The reliability vector 
+j
+L is 
+calculated according to the received symbol vector 
+jy corresponding to 
+each codeword symbol 
+jc . The reliability vector 
+j
+L consists of all q 
+Galois field elements 
+GF( )
+x
+q
+
+ and their logarithmic likelihood ratio 
+(LLR) values LLR( )
+x , where the lth (0
+l
+q
+) element of 
+j
+L consists of 
+
+=====PAGE 74
+2017 China Satellite Navigation Office 
+68 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+the lth Galois field symbol xl and its LLR value. The logarithmic 
+likelihood ratio of the Galois field element x in the reliability vector 
+j
+L 
+is 
+1
+,
+,
+0
+2
+2
+|
+|
+ˆ
+(
+| )
+LLR( )
+log(
+)
+(
+| )
+r
+j b
+j b
+j
+b
+j
+y
+P
+x
+x
+P
+x
+
+
+
+
+
+
+y
+y
+ 
+where ˆx is the element in GF( )
+q which maximizes the probability 
+(
+| )
+j
+P
+x
+y
+, i.e., the hard decision symbol of 
+j
+y . The bit sequences of the 
+Galois 
+field 
+elements 
+x
+ and 
+ˆx
+ are 
+0
+1
+1
+(
+,
+,....,
+)
+r
+x
+x x
+x 
+
+ and 
+0
+1
+1
+ˆ
+ˆ
+ˆ
+ˆ
+(
+,
+,....,
+)
+r
+x
+x x
+x 
+
+, respectively. 
+,
+ˆ
+ XOR 
+j b
+b
+b
+x
+x
+
+
+, where XOR is 
+exclusive-OR operation, that is, if 
+bx and ˆbx are the same, 
+,
+0
+j b
+
+, 
+otherwise, 
+,
+1
+j b
+
+. 
+In the extended Min-Sum decoding algorithm, the length of each 
+reliability vector 
+j
+L is reduced from q to 
+ (
+)
+m
+m
+n
+n
+q , i.e., truncating the 
+m
+n most reliable field elements (i.e., the smallest LLR values) from the 
+reliability vector. The extended Min-Sum decoding algorithm is shown as 
+follows: 
+Initialization: Set the maximum number of iterations as 
+max
+itr
+ and the current iteration 
+number itr as zero. The reliability vector 
+j
+L (0
+j
+n
+
+
+) is calculated from 
+the received vector 
+jy . Initialize all V2C j
+i
+ vectors of each variable node 
+VN j with 
+j
+L . 
+Step 1: For each variable node VN j ( 0
+j
+n
+
+
+), the decision symbol ˆ jc and the 
+reliability vector V2C j
+i
+ are calculated according to the variable node 
+
+=====PAGE 75
+2017 China Satellite Navigation Office 
+69 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+updating rule. 
+Step 2: Calculate the check sum 
+T
+ˆ
+
+s
+cH . If 
+
+s
+0, output the decision sequence and 
+exit the decoding, otherwise, go into Step 3. 
+Step 3: For each check node CNi ( 0
+i
+m
+
+), the reliability vector C2Vi
+j
+ is 
+calculated according to the check node updating rule. 
+Step 4: Let itr=itr+1. If 
+max
+itr
+itr
+
+, exit decoding and declare a decoding failure, 
+otherwise, go into Step 1. 
+1) Updating Rules of Variable Nodes 
+If the current iteration number itr=0, the reliability vector 
+j
+L of 
+each codeword symbol is arranged in ascending order according to its 
+LLR values of the q field elements. The first 
+m
+n elements in the sorted 
+j
+L constitute the truncated reliability vector 
+(
+,LLR(
+))
+
+m
+m
+m
+j,n
+n
+n
+L
+x
+x
+. 
+Initialize V2C j
+i
+ as 
+m
+'
+j,n
+L
+: 
+,
+,
+V2C
+. 
+(
+ 
+,LLR(
+))
+j
+i
+i j
+i j
+h
+h
+
+
+
+m
+m
+m
+m
+j,n
+j,n
+n
+n
+'L
+L
+x
+.
+x
+ 
+where 
+m
+n
+x
+ is the vector containing the 
+m
+n truncated Galois field 
+elements, and 
+,
+. i j
+h
+m
+n
+x
+ is the Galois field multiplication of 
+,i j
+h and 
+m
+n 
+Galois field elements in 
+m
+n
+x
+. 
+If the current iteration number itr
+0
+
+, it is assumed that C2Vf
+j
+ is 
+the reliability vector of length 
+m
+n which is transmitted from the 
+connected CN f to VN j and then the reliability vector V2C j
+i
+ can be 
+calculated 
+by 
+using 
+all 
+the 
+received 
+reliability 
+vector 
+C2V
+(
+,
+)
+f
+j
+j
+f
+M
+f
+i
+
+
+
+ as follows: 
+1
+,
+,
+,
+(
+V2C
+. (
+C
+)
+,
+2V
+. 
+)
+Rs
+R
+L
+m
+j
+j
+i
+i j
+f
+j
+f j
+j
+n
+f
+M
+j
+i
+j
+i
+f
+i
+h
+h
+
+
+
+
+
+
+
+
+
+
+ 
+where the Galois field element 
+1
+,f j
+h is the inverse element of 
+,f j
+h
+, i.e., 
+
+=====PAGE 76
+2017 China Satellite Navigation Office 
+70 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+1
+,
+,
+.
+1
+f j
+f j
+h
+h
+
+. In the above equation, the sum operation adds the LLR values 
+of the same elements in each reliability vector C2Vi
+j
+. ( )
+m
+n operation 
+indicates that the field elements in the reliability vector are sorted by 
+ascending order and then the first 
+m
+n different Galois field elements are 
+truncated. 
+j
+i
+
+Rs
+ is a vector consisting of the first 
+m
+n Galois field 
+elements, and 
+j
+i
+
+R
+ is a vector consisting of the corresponding LLR 
+values. The LLR of the 
+m
+q
+n
+
+ Galois field elements discarded from the 
+reliability vector C2Vi
+j
+ is set as the sum of the maximum LLR value in 
+C2Vi
+j
+ and a fixed offset. After each reliability vector V2C j
+i
+ is 
+calculated, the LLR value of each element in the reliability vector 
+subtracts 
+min
+LLR
+ which is the minimum LLR value in this reliability 
+vector. 
+In addition, a decision should be made on each variable node in each 
+iteration. The Galois field element corresponding to 
+min
+LLR
+ in the 
+reliability vector 
+1
+,
+{
+C2V
+. 
+}
+j
+f
+j
+f j
+j
+f
+M
+h
+
+
+
+
+L
+ of length q is selected as a 
+decision value. The related decision formula is 
+1
+,
+GF( )
+ˆ
+arg min {
+C2V
+. 
+},0
+j
+j
+f
+j
+f j
+j
+x
+q
+f
+M
+c
+h
+j
+n
+
+
+
+
+
+
+
+
+
+L
+ 
+The decision symbol ˆ jc is transmitted together with the reliability 
+vector V2C j
+i
+ to the corresponding check node. It is checked whether 
+the current iteration decoding vector 
+0
+1
+1
+ˆ
+ˆ
+ˆ
+ˆ
+(
+,
+,....,
+)
+n
+c c
+c 
+
+c
+ satisfies that 
+T
+ˆ
+
+s
+cH is a zero vector. 
+ 
+
+=====PAGE 77
+2017 China Satellite Navigation Office 
+71 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+2) Updating Rules of Check Nodes 
+For each check node CNi (0
+i
+m
+
+), all reliability vectors V2C j
+i
+ 
+from the connected variable nodes are received. The reliability vector 
+C2Vi
+j
+ is calculated by 
+,
+C2V
+V2C
+i
+i
+j
+i
+N
+j
+
+
+
+
+
+
+
+
+ 
+where, each sum operation is defined as the basic calculation of the check 
+node; when two reliability vectors containing 
+m
+n Galois field elements 
+and their LLR vectors are inputted, the candidate element is obtained by 
+the sum of the Galois field elements of different reliability vectors, and 
+their LLR values are calculated at the same time. The LLR values of the 
+candidate elements are sorted by ascending order and then the first 
+m
+n 
+LLR values are truncated. The output reliability vector consists of the 
+m
+n 
+LLR values and their Galois field elements. 
+The two input reliability vectors of the check nodes is given as 
+(
+,
+)
+s
+U U and (
+,
+)
+s
+Q Q , and the output reliability vector is given as (
+,
+)
+s
+V V , 
+where U , Q , V are the LLR vectors of length 
+m
+n arranged in 
+ascending order, and 
+s
+U , 
+s
+Q , 
+s
+V are the corresponding Galois field 
+element vectors. According to the input reliability vectors, the reliability 
+matrix M of size 
+m
+m
+n
+n
+
+ and the Galois field element matrix Ms are 
+constructed as follows: 
+[ , ]
+[ ]
+[ ]
+s
+s
+s
+M d
+U d
+Q
+
+
+
+
+ 
+[ , ]
+[ ]
+[ ]
+M d
+U d
+Q
+
+
+
+
+ 
+
+=====PAGE 78
+2017 China Satellite Navigation Office 
+72 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+where, 
+,
+{0,1,...,
+1}
+m
+d
+n
+
+
+ and  is the Galois field addition operation. 
+The basic formula for the check node is 
+[ ]
+[ , ]
+,
+[0,1,...,
+1]
+[ ]
+min
+{
+[ , ]}
+,0
+s
+s
+m
+V
+M
+d
+m
+d
+n
+V
+M d
+n
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+The implementation of the above equation can be completed by 
+operating the register S of size 
+m
+n as follows: 
+Initialize: Store the first column of M into S, and let 
+[ ]
+[ ,0]
+S
+M
+
+
+
+, 
+{0,1,...,
+1}
+m
+n
+
+
+. Let 
+0
+
+. 
+Step 1: Find the minimum value in S. (Suppose 
+[ ,
+]
+M d  is the smallest value of the 
+corresponding S.) 
+Step 2: If the Galois field element corresponding to the found minimum value does 
+not exist in Vs, 
+[ ]
+V  is filled with the minimum value in S, and 
+[ ]
+s
+V  is 
+filled with the corresponding Galois field element, and 
+1
+
+
+
+
+. 
+Otherwise, no action. 
+Step 3: Replace the minimum value in S by 
+[ ,
+1]
+M d 
+, i.e., the element on the right 
+of the corresponding element in M. 
+Step 4: Go to Step 1 until 
+m
+n
+
+. 
+(2) Fixed Path Decoding Method 
+The fixed path decoding method is an efficient decoding algorithm, 
+and its algorithm procedure is consistent with that of the extended 
+Min-Sum method, except that the check node updating rules is different. 
+Take check nodes with row weight dc=4 (i.e., each check node receives 
+four input reliability vectors) as an example, the check node updating 
+rules of the fixed path decoding method are described as follows: 
+For each check node CNi (0
+i
+m
+
+), the fixed path deviation value 
+
+=====PAGE 79
+2017 China Satellite Navigation Office 
+73 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+vector 
+(
+,
+)
+
+i
+i
+i
+E
+Rs R
+ of length 8+2
+m
+n is calculated by using four 
+received reliability vectors V2C
+(
+,
+)
+j
+i
+j
+i
+j
+i
+
+
+
+Rs
+R
+(
+i
+j
+N
+
+) transmitted from 
+the connected variable nodes, where 
+i
+Rs is the Galois field element 
+vector of length 8+2
+m
+n (the vector may contain the same Galois field 
+elements), and 
+i
+R is the corresponding LLR vector. 
+In order to compute each fixed path deviation value, the four 
+reliability vectors V2C j
+i
+ are sorted in ascending order according to the 
+LLR values
+[1]
+j
+i
+R 
+ of the second elements V2C
+[1]
+(
+[1],
+[1])
+j
+i
+j
+i
+j
+i
+Rs
+R
+
+
+
+
+ 
+(i.e., its subscript is “1”) of V2C j
+i
+. The four sorted vectors are defined 
+as (
+,
+)
+ι,i
+ι,i
+Rs
+R
+, 0
+4
+
+
+, i.e., 
+0,
+1,
+2,
+3,
+[1]
+[1]
+[1]
+[1]
+i
+i
+i
+i
+R
+R
+R
+R
+
+
+
+, where 
+,i
+Rs is 
+the Galois field element vector of length 
+m
+n , and 
+,i
+R
+ is the 
+corresponding LLR vector. Then, the fixed path deviation value vector 
+(
+,
+)
+
+i
+i
+i
+E
+Rs R
+ is computed according to 
+,i
+Rs
+ and 
+,i
+R
+ which are 
+calculated by the equations as follows: 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+,
+0
+4
+1,
+,
+0
+4,
+1
+0,
+4,
+,
+1
+4,
+4
+0,
+1,
+2,
+3,
+0,
+1,
+2,
+3,
+10,
+,
+0
+4,
+10
+,
+0 ,
+0
+1
+0 ,
+1
+4
+1
+1
+0 ,
+5
+7
+0
+1
+1
+0 ,
+8
+0
+1
+0
+1 ,
+9
+2
+0 ,
+10
+14
+i
+e
+i
+i
+e
+i
+e
+i
+i
+e
+i
+i
+i
+i
+i
+i
+i
+i
+i
+e
+i
+i
+e
+i
+Rs
+e
+Rs
+Rs
+e
+Rs
+Rs
+Rs
+e
+Rs
+Rs
+Rs
+Rs
+e
+Rs e
+Rs
+Rs
+Rs
+Rs
+e
+Rs
+Rs
+e
+Rs
+e
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+,
+0
+4,
+,
+,
+0
+4,
+11
+0 ,
+14
+11
+8
+0 ,
+11
+8
+2
+i
+m
+i
+m
+i
+m
+m
+Rs
+e
+n
+Rs
+e
+n
+Rs
+n
+e
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+=====PAGE 80
+2017 China Satellite Navigation Office 
+74 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+
+
+
+
+
+
+
+
+
+
+
+1,
+0,
+4,
+1,
+6,
+10,
+,
+,
+0,
+0
+1 ,
+1
+4
+1
+1 ,
+5
+7
+1
+1 ,
+8
+9
+2 ,
+10
+14
+11 ,
+14
+11
+8
+,
+11
+8
+2
+e
+i
+i
+e
+i
+i
+i
+e
+i
+e
+i
+i
+m
+i
+m
+m
+m
+e
+R
+e
+R
+R
+e
+R e
+R
+R
+e
+R
+e
+R
+e
+e
+n
+R
+e
+n
+n
+e
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+Where,  and  represent the subscripts l of the vectors (
+,
+)
+ι,i
+ι,i
+Rs
+R
+ 
+whose ( 
+/ 2
+1
+
+
+
+
+
+m
+n
+)th LLR values (i.e., its subscript is 
+2
+m
+n
+
+
+
+) are the 
+minimum and second smallest values, respectively. The sum operation 
+and  in the above equation are the Galois field addition operation.  
+Set two flag vectors T and T of length 8+2
+m
+n and initialize them 
+to all “1” vectors. The updating rules for the first 0
+8
+2
+R
+m
+k
+n
+
+
+ values 
+of the flag vectors T and T is defined by the following equations: 
+,
+,
+,
+,
+1,
+[
+]
+[
+/ 2 ]
+[
+]
+0,
+[
+]
+[
+/ 2 ]
+1,
+[
+]
+[
+/ 2 ]
+[
+]
+0,
+[
+]
+[
+/ 2 ]
+i
+R
+i
+m
+R
+i
+R
+i
+m
+i
+R
+i
+m
+R
+i
+R
+i
+m
+R k
+R
+n
+T k
+R k
+R
+n
+R k
+R
+n
+T k
+R k
+R
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+According to the fixed path deviation vector and the flag vectors, 
+Four output reliability vectors (
+,
+)
+i,ι
+i,ι
+Us
+U
+ of length 
+m
+n are updated by 
+the following equations: 
+
+
+,
+,
+(
+0 )
+m
+i
+i
+i
+n
+s
+Rs w
+Rs
+
+
+
+
+U
+ 
+
+,
+(
+)
+m
+i
+i
+n
+R w
+
+U
+ 
+where, 0
+4
+l
+, and the value range of w is determined by the different 
+cases. In the case of 
+0
+l , if 
+0
+, the value range of w is 
+
+=====PAGE 81
+2017 China Satellite Navigation Office 
+75 
+BDS-SIS-ICD-B2a-1.0 
+2017-12 
+
+
+
+| [ ]
+1
+{
+0}
+{1
+4}
+{8
+10}
+{10
+11
+}
+m
+w T w
+w
+w
+w
+w
+n
+
+
+
+
+
+
+
+
+
+ 
+otherwise, the value range of w is 
+
+
+
+| [ ]
+1
+{
+0}
+{1
+4}
+{8
+10}
+{10
+14}
+{
+11
+}
+m
+w T w
+w
+w
+w
+w
+w
+n
+
+
+
+
+
+
+
+
+
+
+In the case of 1
+4
+l
+, if l
+
+
+, the value range of w is 
+
+
+
+
+| [ ]
+1
+{0
+7} {10
+14} {
+11
+}
+{
+1}
+{
+4
+}
+{
+10
+}
+m
+w T w
+w
+w
+w
+n
+w
+w
+w
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+otherwise, the value range of w is 
+
+
+
+
+| [ ]
+1
+{0
+7}
+{10
+11
+}
+{
+1}
+{
+4
+}
+{
+10
+}
+m
+w T w
+w
+w
+n
+w
+w
+w
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+,i
+Us
+z
+
+ (0
+m
+z
+n
+
+
+) corresponds to 
+
+
+, 0
+i
+i
+Rs w
+Rs
+
+ calculated by the 
+mn 
+smallest values of w, which doesn’t need to eliminate the same symbols 
+of 
+
+,i
+Us
+z
+
+. Meanwhile, 
+
+,i
+U
+z
+
+ is the corresponding LLR value of 
+
+,i
+Us
+z
+
+. 
+The order of the four reliability vectors (
+,
+)
+i,ι
+i,ι
+Us
+U
+ is aligned with 
+the four sorted input vectors (
+,
+)
+ι,i
+ι,i
+Rs
+R
+. Each input vector (
+,
+)
+ι,i
+ι,i
+Rs
+R
+ 
+corresponds to a C2Vi
+j
+ vector and a V2C j
+i
+ vector. According to the 
+same method as calculating (
+,
+)
+ι,i
+ι,i
+Rs
+R
+ from V2C j
+i
+, each reliability 
+vector C2V
+(
+,
+)
+i
+j
+
+i,ι
+i,ι
+Us
+U
+ can be updated by using the four reliability 
+vectors (
+,
+)
+i,ι
+i,ι
+Us
+U
+. 

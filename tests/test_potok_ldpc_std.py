@@ -89,7 +89,7 @@ class Состав(unittest.TestCase):
         self.assertEqual(sum(1 for и in имена if и.startswith("nr-")), 102)
         self.assertEqual(sum(1 for и in имена if и.startswith("dvb-")), 70)
         self.assertEqual(sum(1 for и in имена if и.startswith("wifi-")), 12)
-        self.assertEqual(len(имена), 192)
+        self.assertEqual(len([и for и in имена if not ldpc_std.ldpc_kitay.есть(и)]), 192)  # и коды КНР
         for и in ("nr-bg1-z384", "nr-bg2-z2", "dvb-s2-64800-32400", "dvb-s2-16200-7200",
                   "10gbase-t-2048-1723", "wifi-648-540", "ar4ja-10240-4096"):
             self.assertTrue(ldpc_std.есть(и), и)
