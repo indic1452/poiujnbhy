@@ -1684,3 +1684,98 @@ class МераСтрокТочноTests(unittest.TestCase):
         годные = [н for н in начала if н % 3 == 0 and н + 1 + 30 <= len(биты)]       # Q = 29 // 3 + 1 = 10 символов
         self.assertEqual(len(годные), len(кадры))
         self.assertEqual([р.в_символы(биты[н + 1:н + 31], 3).tolist() for н in годные], кадры.tolist())
+
+
+class ВходIQКраяTests(unittest.TestCase):
+    def test_выровнять_несимметричное(self):
+        """Созвездие без симметрии отражения: инверсия и поворот находятся (поворот — к идеалу, против часовой)."""
+        идеал = np.array([1.0 + 0j, 0.2 + 1j, -1.0 + 0.1j, -0.4 - 1j])
+        идеал = (идеал - идеал.mean()) / math.sqrt(np.mean(np.abs(идеал - идеал.mean()) ** 2))
+        for инверсия, φ in ((False, 37.3), (True, 211.9), (False, 359.9)):
+            with self.subTest(инверсия=инверсия, φ=φ):
+                # Отсчёты: идеал повёрнут на −φ (и сопряжён) — снимающий поворот φ.
+                центры = идеал * cmath.exp(-1j * math.radians(φ))
+                центры = np.conj(центры) if инверсия else центры
+                в = iq.выровнять(центры, np.ones(4), идеал)
+                self.assertEqual(инверсия, в["инверсия"])
+                self.assertAlmostEqual(0.0, ((в["поворот"] - φ) + 180) % 360 - 180, delta=0.01)
+                self.assertLess(в["ошибка"], 1e-4)
+        # По модулю шага; у самого шага — ноль.
+        идеал = np.exp(1j * np.pi / 2 * np.arange(4))
+        в = iq.выровнять(идеал * cmath.exp(-1j * math.radians(100)), np.ones(4), идеал, шаг=90)
+        self.assertAlmostEqual(10.0, в["поворот"], delta=0.01)
+        в = iq.выровнять(идеал * cmath.exp(-1j * math.radians(89.9999999)), np.ones(4), идеал, шаг=90)
+        self.assertEqual(0.0, в["поворот"])
+        # Веса: точка с нулевым весом не влияет.
+        в = iq.выровнять(np.append(идеал * cmath.exp(-1j * math.radians(20)), 5 + 5j), np.array([1, 1, 1, 1, 0]), идеал, шаг=90)
+        self.assertAlmostEqual(20.0, в["поворот"], delta=0.01)
+        self.assertLess(в["ошибка"], 1e-4)
+
+    def test_привести_и_облако(self):
+        центры = np.array([1 + 1j, 3 + 1j])
+        self.assertEqual((2 + 1j, 1.0), iq.привести(None, центры, np.array([5, 5])))
+        с_, м = iq.привести(None, центры, np.array([3, 1]))
+        self.assertAlmostEqual(1.5 + 1j, с_)
+        self.assertAlmostEqual(math.sqrt(0.75 * 0.25 + 0.25 * 2.25), м)
+        self.assertEqual((1 + 1j, 1.0), iq.привести(None, np.array([1 + 1j]), np.array([4])))   # разброс ноль — масштаб 1
+        rng = np.random.default_rng(2)
+        z = np.exp(1j * np.pi / 2 * rng.integers(0, 4, 20000)) + 0.05 * (rng.standard_normal(20000) + 1j * rng.standard_normal(20000))
+        о = iq.облако(z, точек=4)
+        self.assertEqual((4, [], iq.ОБЛАКО_ДО), (о["точек"], о["оценки"], len(о["показ"])))
+        self.assertEqual(4, len(о["центры"]))
+        self.assertAlmostEqual(1.0, float(np.sum(np.abs(о["центры"]) ** 2 * о["веса"]) / np.sum(о["веса"])), places=6)
+        for точек in (3, 512, 1):
+            with self.assertRaises(ValueError):
+                iq.облако(z, точек=точек)
+        мало = iq.облако(z[:100])
+        self.assertEqual([2, 4, 8], [о_["точек"] for о_ in мало["оценки"]])      # K · 8 не больше отсчётов
+        self.assertEqual(100, len(мало["показ"]))
+
+    def test_решения_кусками_и_порядок(self):
+        rng = np.random.default_rng(3)
+        идеал = np.array([1, 1j, -1, -1j])
+        z = идеал[rng.integers(0, 4, 70000)]
+        метки = iq.по_плоскости(z, идеал, np.array([3, 2, 1, 0]))
+        self.assertEqual(70000, len(метки))
+        self.assertTrue(np.array_equal(метки, 3 - np.abs(z[:, None] - идеал[None, :]).argmin(axis=1)))
+        кл = iq.по_кластерам(z, идеал)
+        self.assertTrue(np.array_equal(кл, np.array([2, 0, 1, 3])[np.abs(z[:, None] - идеал[None, :]).argmin(axis=1)]))
+        self.assertEqual([0], iq.порядок_чтения(np.array([2 + 2j])).tolist())
+        # Строка — с допуском четверти наименьшего расстояния: чуть ниже — та же строка, слева направо.
+        self.assertEqual([1, 0, 2], iq.порядок_чтения(np.array([1 + 1.1j, 0 + 1.2j, 0.5 + 0j])).tolist())
+
+    def test_k_средних_поправка_и_пустые(self):
+        # Три различных значения и четыре кластера: пустой кластер уходит в дальний отсчёт — без NaN.
+        z = np.array([0j, 10 + 0j, 10j] * 30)
+        ц, м = iq.k_средних(z, 4, запусков=1)
+        self.assertFalse(np.isnan(ц).any())
+        self.assertEqual(set(range(len(ц))) >= set(м.tolist()), True)
+        # Поправка: два центра на одной точке, один — на двух: слить и разделить.
+        rng = np.random.default_rng(4)
+        точки = np.array([0, 4, 4j, 4 + 4j])
+        z = точки[rng.integers(0, 4, 4000)] + 0.2 * (rng.standard_normal(4000) + 1j * rng.standard_normal(4000))
+        плохие = np.array([0 - 0.3j, 0 + 0.3j, 4j, 2 + 4j])
+        м = np.abs(z[:, None] - плохие[None, :]).argmin(axis=1)
+        разброс = float(np.mean(np.abs(z - плохие[м]) ** 2))
+        ц, м, р_ = iq._поправить(z, плохие, м, разброс, np.random.default_rng(1), 60)
+        self.assertEqual(sorted(np.round(точки).tolist(), key=lambda c: (c.real, c.imag)),
+                         sorted(np.round(ц).tolist(), key=lambda c: (c.real, c.imag)))
+        self.assertLess(р_, разброс)
+        # Уже хорошие центры поправка не трогает.
+        м = np.abs(z[:, None] - точки[None, :]).argmin(axis=1)
+        ц2, _, р2 = iq._поправить(z, точки.astype(complex), м, float(np.mean(np.abs(z - точки[м]) ** 2)), np.random.default_rng(1), 60)
+        self.assertTrue(np.array_equal(точки, ц2))
+
+    def test_wav_pcm32_и_пропуск(self):
+        x = np.array([100000, -200000, 300000, -400000] * 8, "<i4")
+        буфер = io.BytesIO()
+        with wave.open(буфер, "wb") as w:
+            w.setnchannels(2)
+            w.setsampwidth(4)
+            w.setframerate(8000)
+            w.writeframes(x.tobytes())
+        z, описание = iq.прочитать(буфер.getvalue())
+        np.testing.assert_allclose(x[0::2] + 1j * x[1::2], z)
+        self.assertIn("32 бит, PCM", описание)
+        y = np.arange(40, dtype="i1")
+        self.assertEqual(iq.прочитать(y.tobytes(), "int8")[0].tolist(), iq.прочитать(y.tobytes(), "int8", пропуск=-5)[0].tolist())
