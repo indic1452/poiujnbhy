@@ -3,7 +3,9 @@
 (найдено мутационной проверкой, см. docs/21-pakety.md, 21.5а)."""
 
 import gzip
+import io
 import os
+import tarfile
 import struct
 import unittest
 import zlib
@@ -385,3 +387,178 @@ class ЗвукВидеоTests(unittest.TestCase):
         self.assertEqual(["NAL, оборванных пропуском пакетов (FU без начала или конца): 1 — выброшены"], заметки)
         данные, _ = obekty._h265([(1, b"\x60\x01\x00\x01\x09\x00\x00")], "annexb")
         self.assertEqual(b"\x00\x00\x00\x01\x09", данные)
+
+
+class Rtp2Tests(unittest.TestCase):
+    def поток(self, тип, пакеты, sport=20000, dport=30000, src="10.0.0.1", dst="10.0.0.2", ssrc=5):
+        return [ос.udp(ос.rtp(тип, н, отметка, ssrc, нагрузка), sport, dport, src=src, dst=dst)
+                for н, отметка, нагрузка in пакеты]
+
+    def test_обратное_направление_и_имя(self):
+        кадры = self.поток(0, [(1, 0, b"\x01" * 8)]) + self.поток(0, [(1, 0, b"\x02" * 8)], 30000, 20000, "10.0.0.2",
+                                                                    "10.0.0.1", ssrc=6)
+        self.assertEqual({"rtp-10.0.0.1-20000-10.0.0.2-30000-00000005.wav", "rtp-10.0.0.2-30000-10.0.0.1-20000-00000006.wav"},
+                         {о.имя for о in объекты(кадры)})
+
+    def test_комфортный_шум_не_основной(self):
+        кадры = self.поток(13, [(1, 0, b"\x10"), (2, 160, b"\x10"), (3, 320, b"\x10")]) + self.поток(0, [(4, 480, b"\x01" * 8)])
+        (о,) = объекты(кадры)
+        self.assertEqual(("RTP-звук", "кодек PCMU/8000 (тип 0)"), (о.вид, о.заметки[1]))
+        (о,) = объекты(self.поток(13, [(1, 0, b"\x10"), (2, 160, b"\x10")]))
+        self.assertEqual(("RTP-звук", "кодек CN/8000 (тип 13)", "rtp.bin"), (о.вид, о.заметки[1], о.имя.split(".", 1)[1][-7:]))
+
+    def test_dtmf_короткие_и_код_15(self):
+        пакеты = [(1, 0, bytes([15, 0x80, 0, 160])), (2, 160, b"\x05\x80\x00"), (3, 320, bytes([16, 0x80, 0, 160]))]
+        self.assertEqual("Dflash", obekty._dtmf([(н, отм, 101, 0, н_, 0) for н, отм, н_ in пакеты]))
+
+    def test_g711_без_пропусков_и_частота(self):
+        н = obekty.Настройки()
+        пакеты = [(1, (1, 0, 0, 0, b"\x01" * 4, 1)), (2, (2, 4, 0, 0, b"\x02" * 4, 2))]
+        данные, _, _, з = obekty._преобразовать("PCMU", 16000, пакеты, н)
+        self.assertEqual(([], 16000), (з, struct.unpack_from("<I", данные, 24)[0]))
+        данные, _, _, _ = obekty._преобразовать("PCMA", 0, пакеты, н)
+        self.assertEqual(8000, struct.unpack_from("<I", данные, 24)[0])
+
+    def test_amr_потери_по_кадрам_в_пакете_и_подряд(self):
+        два = bytes([0xF0, 0x80 | 15 << 3 | 4, 15 << 3 | 4])                      # два кадра NO_DATA в пакете
+        пакеты = [(1, (1, 0, 0, 0, два, 1)), (2, (2, 0, 0, 0, два, 2)), (4, (4, 0, 0, 0, два, 3))]
+        данные, _, _, з = obekty._преобразовать("AMR", 8000, пакеты, obekty.Настройки())
+        self.assertEqual(b"#!AMR\n" + bytes([15 << 3 | 4]) * 8, данные)
+        self.assertEqual(["потерянные кадры — NO_DATA: 2"], з)
+        полоса = биты_в_байты("1111" + "011111")
+        данные, _, _, з = obekty._преобразовать("AMR", 8000, [(1, (1, 0, 0, 0, полоса, 1)), (2, (2, 0, 0, 0, полоса, 2))],
+                                                 obekty.Настройки())
+        self.assertEqual(["режим с экономией полосы (RFC 4867, 4.3)"], з)
+
+    def test_видео_расширения(self):
+        for кодировка, расширение in (("H264", "h264"), ("H265", "h265")):
+            with self.subTest(кодировка):
+                self.assertEqual(расширение, obekty._преобразовать(кодировка, 90000, [], obekty.Настройки())[1])
+
+    def test_h265_короткие_тип_47_слой_и_обрывы(self):
+        self.assertEqual((b"", []), obekty._h265([(1, b"\x02\x01")], "annexb"))
+        данные, _ = obekty._h265([(1, bytes([47 << 1, 1]) + b"z")], "annexb")
+        self.assertEqual(b"\x00\x00\x00\x01" + bytes([47 << 1, 1]) + b"z", данные)
+        данные, _ = obekty._h265([(1, bytes([49 << 1 | 1, 1, 0xC0 | 19]) + b"q")], "annexb")    # LayerId, S и E
+        self.assertEqual(b"\x00\x00\x00\x01" + bytes([19 << 1 | 1, 1]) + b"q", данные)
+        _, заметки = obekty._h265([(1, bytes([98, 1, 0x80 | 1]) + b"a"), (2, bytes([98, 1, 0x80 | 1]) + b"b")], "annexb")
+        self.assertEqual(["NAL, оборванных пропуском пакетов (FU без начала или конца): 2 — выброшены"], заметки)
+        _, заметки = obekty._h265([(1, bytes([98, 1, 1]) + b"a")], "annexb")
+        self.assertEqual(["NAL, оборванных пропуском пакетов (FU без начала или конца): 1 — выброшены"], заметки)
+
+
+class АрхивыДополнениеTests(unittest.TestCase):
+    def gzip_с(self, флаги, поля=b"", имя=b"a.txt"):
+        return b"\x1f\x8b\x08" + bytes([флаги]) + bytes(6) + поля + имя + b"\x00" + zlib.compress(b"x")[2:]
+
+    def test_имя_gzip(self):
+        self.assertEqual("a.txt", obekty._имя_gzip(self.gzip_с(0x08)))
+        self.assertEqual("a.txt", obekty._имя_gzip(self.gzip_с(0x09)))
+        self.assertEqual("a.txt", obekty._имя_gzip(self.gzip_с(0x0C, b"\x02\x01" + b"e" * 258)))
+        self.assertEqual("", obekty._имя_gzip(self.gzip_с(0x01)))
+        self.assertEqual("", obekty._имя_gzip(self.gzip_с(0x08)[:10]))
+        self.assertEqual("", obekty._имя_gzip(self.gzip_с(0x08)[:9] + b"\x00"))
+
+    def test_опись_на_пределе_и_члены(self):
+        архив = обр.zip_([("a", b"1"), ("b", b"22")])
+        with mock.patch.object(obekty, "СОСТАВ_ДО", 2):
+            self.assertEqual([], obekty.состав(архив, "zip")[1])
+        буфер = io.BytesIO()
+        with tarfile.open(fileobj=буфер, mode="w") as t:
+            for имя, данные in (("x", b"xx"), ("y", b"yyy")):
+                инфо = tarfile.TarInfo(имя)
+                инфо.size = len(данные)
+                t.addfile(инфо, io.BytesIO(данные))
+        архив_tar = буфер.getvalue()
+        with mock.patch.object(obekty, "СОСТАВ_ДО", 2):
+            self.assertEqual([], obekty.состав(архив_tar, "tar")[1])
+        self.assertEqual(("a", b"1"), obekty.член(архив, "zip", 0))
+        self.assertEqual(("x", b"xx"), obekty.член(архив_tar, "tar", 0))
+        with mock.patch.object(obekty, "ОБЪЕКТ_ДО", 2):
+            self.assertEqual(("b", b"22"), obekty.член(архив, "zip", 1))
+            self.assertEqual(("x", b"xx"), obekty.член(архив_tar, "tar", 0))
+
+    def test_json_с_отступами_без_экранирования(self):
+        о = obekty.Объект("JSON", "a.json", "application/json", '{"я":1}'.encode(), "п", [1])
+        obekty._дополнить(о, obekty.Настройки(json_отступ=True))
+        self.assertEqual('{\n  "я": 1\n}'.encode(), о.данные)
+
+    def test_расширение_по_содержимому_и_сверка(self):
+        о = obekty.Объект("HTTP", "img", "", обр.png(), "п", [1])
+        obekty._дополнить(о, obekty.Настройки())
+        self.assertEqual(("img.png", []), (о.имя, о.заметки))
+        о = obekty.Объект("HTTP", "a.jpg", "", обр.zip_([("a", b"1")]), "п", [1])
+        obekty._дополнить(о, obekty.Настройки())
+        self.assertEqual(["по содержимому — ZIP, а не .jpg"], о.заметки)
+        о = obekty.Объект("HTTP", "a.docx", "", обр.zip_([("a", b"1")]), "п", [1])
+        obekty._дополнить(о, obekty.Настройки())
+        self.assertEqual([], о.заметки)
+
+    def test_имя_выгрузки_по_номеру_8_знаков(self):
+        о = obekty.Объект("HTTP", "a.abcdefghij", "", b"", "п", [1], номер=3)
+        self.assertEqual("объект-0003.abcdefgh", obekty.имя_выгрузки(о, obekty.Настройки(имена="номер"), None))
+
+
+class СборкаВсегоTests(unittest.TestCase):
+    def test_http_без_имени_номера_и_коды(self):
+        о = ос.Обмен()
+        о.кусок("к", b"POST http://h HTTP/1.1\r\nContent-Length: 1\r\n\r\nqGET http://h HTTP/1.1\r\n\r\n")
+        о.кусок("с", b"HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 099 X\r\nContent-Length: 1\r\n\r\nr"
+                     b"HTTP/1.1 199 X\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\ns"
+                     b"HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nt")
+        имена = [(х.имя, х.данные, х.заметки[0]) for х in объекты(о.пакеты)]
+        self.assertEqual([("http-1-1.txt", b"q", "запрос POST http://h"), ("http-1-1.txt", b"r", "ответ 99 на POST http://h"),
+                          ("http-1-2.txt", b"s", "ответ 200 на GET http://h"), ("http-1-3.txt", b"t", "ответ 200")], имена)
+
+    def test_json_по_типу_и_одно_значение(self):
+        for тип, тело, вид in ((b"text/html", b'{"a":1}', "HTTP"), (b"application/json", b'{"a":1}{"b":2}', "HTTP"),
+                               (b"text/plain", b'{"a":1}', "JSON")):
+            о = ос.Обмен()
+            о.кусок("к", b"GET /x HTTP/1.1\r\n\r\n")
+            о.кусок("с", b"HTTP/1.1 200 OK\r\nContent-Type: " + тип + b"\r\nContent-Length: %d\r\n\r\n" % len(тело) + тело)
+            with self.subTest(тип=тип, тело=тело):
+                self.assertEqual([вид], [х.вид for х in объекты(о.пакеты)])
+
+    def test_udp_два_json_в_датаграмме(self):
+        self.assertEqual(["json-1-1.json", "json-1-2.json"], [о.имя for о in объекты([ос.udp(b'{"a":1}{"b":2}', 7000, 7001)])])
+
+    def test_предел_сигнатур_в_потоке(self):
+        о = ос.Обмен(порт_с=9999)
+        о.куски("с", (обр.gif() + b"\x00" * 3) * 201)
+        self.assertEqual(200, len(объекты(о.пакеты)))
+
+    def test_разобранные_соединения_не_каналы_данных(self):
+        у = ос.Обмен(порт_к=40001, порт_с=21)
+        for кто, строка in (("к", b"PASV"), ("с", b"227 ok (10,0,0,2,31,144)"), ("к", b"RETR a"),
+                            ("к", b"EPSV"), ("с", b"229 ok (|||21|)"), ("к", b"RETR b")):
+            у.кусок(кто, строка + b"\r\n")
+        http = ос.Обмен(порт_к=40002, порт_с=8080)
+        http.кусок("к", b"GET /h HTTP/1.1\r\n\r\n")
+        http.кусок("с", b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi")
+        self.assertEqual([("HTTP", "h.txt")], [(о.вид, о.имя) for о in объекты(у.пакеты + http.пакеты)])
+
+    def test_канал_данных_без_команды_целиком_и_без_сигнатур(self):
+        у = ос.Обмен(порт_к=40001, порт_с=21)
+        у.кусок("к", b"PASV\r\n")
+        у.кусок("с", b"227 ok (10,0,0,2,195,81)\r\n")
+        д = ос.Обмен(порт_к=40002, порт_с=50001)
+        д.кусок("с", обр.png())
+        self.assertEqual([("FTP", "ftp-data-2.png")], [(о.вид, о.имя) for о in объекты(у.пакеты + д.пакеты)])
+
+    def test_websocket_контекст_по_заголовку(self):
+        def кадр(данные):
+            return b"\xc1" + bytes([len(данные)]) + данные
+        общий = zlib.compressobj(wbits=-15)
+        сжатые = [(общий.compress(b"hello hello") + общий.flush(zlib.Z_SYNC_FLUSH))[:-4] for _ in range(2)]
+        о = ос.Обмен(порт_с=8080)
+        о.кусок("к", b"GET /ws HTTP/1.1\r\nUpgrade: websocket\r\n\r\n")
+        о.кусок("с", b"HTTP/1.1 101 S\r\nSec-WebSocket-Extensions: permessage-deflate; server_no_context_takeover\r\n\r\n"
+                + кадр(сжатые[0]) + кадр(сжатые[1]) + b"\x82\x01\x00")
+        а, б, в = [х for х in объекты(о.пакеты) if х.вид == "WebSocket"]
+        self.assertEqual(b"hello hello", а.данные)
+        self.assertTrue(б.заметки[0].startswith("permessage-deflate: не распаковалось"))
+        self.assertEqual(("application/octet-stream", "text/plain"), (в.тип, а.тип))
+        о = ос.Обмен(порт_с=8080)
+        о.кусок("к", b"GET /ws HTTP/1.1\r\nUpgrade: websocket\r\n\r\n")
+        о.кусок("с", b"HTTP/1.1 101 S\r\n\r\n\x81\x0e{\"a\":1}{\"b\":2}")
+        self.assertEqual(["WebSocket"], [х.вид for х in объекты(о.пакеты)])
