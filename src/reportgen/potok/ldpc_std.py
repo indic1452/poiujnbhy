@@ -42,7 +42,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import ldpc_flex
+from . import ldpc_flex, ldpc_kitay  # коды КНР (ABS-S, CMMB, BeiDou) — отдельным модулем
 
 ДАННЫЕ = Path(__file__).with_name("data")
 #: Столбцов базового графа NR и столбцов данных в нём.
@@ -315,6 +315,12 @@ def _реестр() -> dict[str, dict]:
     for имя, к in _json("dtmb").items():
         добавить(имя, к["семейство"], к["n"], к["k"], к["скорость"], к["откуда"], lambda и=имя: _dtmb(и),
                  к["выколоты"])
+    # Коды КНР (ABS-S, CMMB, BeiDou; ldpc_kitay). DTMB там — те же коды из dtmb-sdr, что выше
+    # под именами dtmb-7488-*: второй раз не добавляются.
+    for имя, з in ldpc_kitay.записи().items():
+        if з["семейство"] != "КНР: DTMB":
+            добавить(имя, з["семейство"], int(з["n"]), int(з["k"]), з["скорость"], з["откуда"],
+                     lambda и=имя: ldpc_kitay.матрица(и), з.get("выколоты", ""))
     for имя, к in _json("80211ad").items():
         выколоты = к["выколоты"]
         добавить(имя, к["семейство"], к["n"], к["k"], к["скорость"], к["откуда"],
