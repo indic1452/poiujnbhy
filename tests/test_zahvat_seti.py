@@ -737,7 +737,17 @@ class КартыWindowsTests(unittest.TestCase):
                                         {"имя": "\\Device\\NPF_Loopback", "описание": "Adapter for loopback"}])
         self.assertEqual("\\Device\\NPF_" + guid.decode().lower(), карты[0]["устройство_pcap"])
         self.assertEqual("Intel(R) Ethernet Connection I219-LM", карты[0]["описание"], "своё описание не затирается")
-        self.assertIsNone(карты[1]["устройство_pcap"])
+        # Петля Windows снимается устройством Npcap \Device\NPF_Loopback (у него нет GUID адаптера).
+        self.assertEqual("\\Device\\NPF_Loopback", карты[1]["устройство_pcap"])
+        карты = [dict(первый)]                       # петлевой карты в перечне нет — устройство отдельной картой
+        karty.сопоставить_npcap(карты, [{"имя": "\\Device\\NPF_Loopback", "описание": "Adapter for loopback", "флаги": 1,
+                                         "адреса": [], "mac": ""}])
+        self.assertEqual(2, len(карты))
+        self.assertEqual(("\\Device\\NPF_Loopback", True, "Adapter for loopback"),
+                         (карты[1]["устройство_pcap"], карты[1]["петля"], карты[1]["описание"]))
+        карты = [dict(второй)]
+        karty.сопоставить_npcap(карты, [{"имя": "\\Device\\NPF_{0000}", "описание": "чужой", "флаги": 0, "адреса": []}])
+        self.assertEqual((1, None), (len(карты), карты[0]["устройство_pcap"]), "прочие несопоставленные — не карты")
 
     def test_петли_в_цепочках_не_вешают(self):
         """Испорченная цепочка (Next на себя) обрывается: 256 адаптеров, у адаптера — 64 адреса."""

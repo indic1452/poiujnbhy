@@ -334,13 +334,21 @@ def карты_из_pcap(устройства: list[dict[str, Any]]) -> list[dic
 
 
 def сопоставить_npcap(карты: list[dict[str, Any]], устройства: list[dict[str, Any]]) -> None:
-    """Имя устройства Npcap (\\Device\\NPF_{GUID}) — к карте с тем же GUID."""
+    """Имя устройства Npcap (\\Device\\NPF_{GUID}) — к карте с тем же GUID. Петля Npcap
+    (\\Device\\NPF_Loopback, флаг PCAP_IF_LOOPBACK; GUID адаптера у неё нет) — к петлевой карте
+    Windows (IfType 24), а если её в перечне нет — отдельной картой: иначе петлю не снять вовсе."""
+    from .pcap_bib import PCAP_IF_LOOPBACK  # noqa: PLC0415
     по_guid = {у["имя"][у["имя"].index("_{") + 1:].upper(): у for у in устройства if "_{" in у["имя"]}
+    петли = [у for у in устройства if "_{" not in у["имя"]
+             and (у["имя"].lower().endswith("npf_loopback") or у.get("флаги", 0) & PCAP_IF_LOOPBACK)]
     for к in карты:
         у = по_guid.get(str(к["ид"]).upper())
+        if у is None and к.get("петля") and петли:
+            у = петли.pop(0)
         к["устройство_pcap"] = у["имя"] if у else None
         if у and not к["описание"]:
             к["описание"] = у["описание"]
+    карты.extend({**к, "вид": "петля"} for к in карты_из_pcap(петли))
 
 
 def перечень(устройства_pcap: list[dict[str, Any]] | None = None) -> tuple[list[dict[str, Any]], list[str]]:
