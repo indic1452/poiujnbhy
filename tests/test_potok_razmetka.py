@@ -131,10 +131,12 @@ def окна_прямо(биты: np.ndarray, k: int) -> float:
     for r in range(k):
         T = -(-(r + 8) // k)
         n = n_симв - T
+        if n <= 0:
+            continue
         окна = [int("".join(map(str, биты[k * i + r:k * i + r + 8])), 2) for i in range(n)]
         h = np.bincount(окна, minlength=256)
         итог.append(256 * (h.astype(float) ** 2).sum() / n ** 2 - 1)
-    return float(np.mean(итог))
+    return float(np.mean(итог)) if итог else 0.0
 
 
 # -- (а) анализ символов ------------------------------------------------------------------------
@@ -271,10 +273,11 @@ class МерыTests(unittest.TestCase):
 
     def test_байтовая_мера_как_прямой_подсчёт(self):
         rng = np.random.default_rng(2)
-        for k, n in ((3, 900), (4, 700), (5, 500), (2, 800)):
+        for k, n in ((3, 900), (4, 700), (5, 500), (2, 800), (1, 300), (8, 300), (3, 4), (3, 3)):
             M = 1 << k
             символы = rng.integers(0, M, n)
-            символы[100:300] = np.tile(rng.integers(0, M, 5), 40)          # повторы — чтобы мера была не нулевой
+            if n >= 300:
+                символы[100:300] = np.tile(rng.integers(0, M, 5), 40)      # повторы — чтобы мера была не нулевой
             м = р.МераБайт(символы, k)
             таблицы = np.array([rng.permutation(M) for _ in range(3)] + [np.arange(M)])
             with self.subTest(k=k):
@@ -1419,3 +1422,82 @@ class КраяTests(unittest.TestCase):
                 self.assertEqual(ждём, [int(о[0]) for о in м.отрезки])
                 self.assertTrue(all(len(о) == 20 for о in м.отрезки))
         self.assertEqual([0], [int(о[0]) for о in р.МераЛРП(np.arange(100), 3, отрезков=1, длина=60).отрезки])
+
+
+def классы_эталон(S: np.ndarray, k: int, h: np.ndarray, от: int, до: int) -> list[tuple[int, int, float]]:
+    """Этап А прямым перебором окон: (длина, начало, отрыв) всех ключей по убыванию отрыва (h — чётность по символу)."""
+    F, Q = S.shape
+    n = k * Q
+    M = 1 << k
+    пост = np.stack([(S == g).mean(axis=0) for g in range(M)]).max(axis=0) >= 0.5
+    чёт = h[S].astype(np.int64)
+    накоп: dict[tuple[int, int], list[float]] = {}
+    for L in range(от, min(до, n // 2) + 1):
+        for a in range(0, n - L + 1):
+            e = a + L
+            ra, re_ = a % k, e % k
+            qa, qe = a // k, e // k
+            if (ra and re_) or qa >= Q or (re_ and qe >= Q) or пост[qa:-(-e // k)].any():
+                continue
+            if not ra and not re_:
+                знак, группы = 1 - 2 * (чёт[:, qa:qe].sum(axis=1) % 2), np.zeros(F, int)
+            elif ra:
+                знак, группы = 1 - 2 * (чёт[:, qa + 1:qe].sum(axis=1) % 2), S[:, qa]
+            else:
+                знак, группы = 1 - 2 * (чёт[:, qa:qe].sum(axis=1) % 2), S[:, qe]
+            E = var = 0.0
+            for g in set(группы.tolist()):
+                в = группы == g
+                E += float(знак[в].sum()) ** 2 - в.sum()
+                var += 2.0 * в.sum() * (в.sum() - 1)
+            ключ = (L, a % L)
+            с_ = накоп.setdefault(ключ, [0.0, 0.0])
+            с_[0] += E
+            с_[1] += var
+    итог = [(L, o, E / math.sqrt(max(1e-9, var))) for (L, o), (E, var) in накоп.items()]
+    return sorted(итог, key=lambda т: -т[2])
+
+
+class ЭтапАTests(unittest.TestCase):
+    def test_классы_как_перебор_окон(self):
+        rng = np.random.default_rng(4)
+        F, Q = 12, 40
+        S = rng.integers(0, 8, (F, Q))
+        S[:, :2] = [5, 1]                                    # синхрослово — постоянные места
+        S[:6, 20] = 3                                        # ровно половина кадров — тоже постоянное место
+        S[:, -1] = rng.integers(0, 6, F)                     # в последнем символе нет меток 6 и 7
+        # Строки 10 бит с бита 7: чётность меток целых символов и частичного в начале (по группам) — постоянна.
+        мера = р.МераСтрок(S, 3)
+        h = np.array([0, 1, 1, 0, 1, 0, 0, 1], np.uint8)
+        итог = мера.классы(только=[h], от=8, до=40)
+        self.assertEqual(1, len(итог))
+        ждём = классы_эталон(S, 3, h, 8, 40)
+        лучший = ждём[0]
+        self.assertEqual([0, 3, 5, 6], итог[0]["класс"])
+        self.assertAlmostEqual(лучший[2], итог[0]["отрыв"], delta=0.051)
+        self.assertEqual((лучший[0], лучший[1]), (итог[0]["длина"], итог[0]["начало"]))
+        # Кандидаты — лучшие различные длины с их началом и отрывом.
+        различные = []
+        for L, o, z in ждём:
+            if all(L != d[0] for d in различные):
+                различные.append((L, o, round(z, 1)))
+        self.assertEqual([(L, o) for L, o, _ in различные[:р.КАНДИДАТОВ_ДЛИН]], [(L, o) for L, o, _ in итог[0]["кандидаты"]])
+        for (_, _, z), (_, _, zz) in zip(различные[:р.КАНДИДАТОВ_ДЛИН], итог[0]["кандидаты"], strict=True):
+            self.assertAlmostEqual(z, zz, delta=0.051)
+        # Все классы (без «только»): 35 у ФМ-8, по убыванию отрыва, у каждого — свой перебор.
+        все = мера.классы(от=8, до=40)
+        self.assertEqual(35, len(все))
+        self.assertEqual(sorted((в["отрыв"] for в in все), reverse=True), [в["отрыв"] for в in все])
+        for в in все[:3]:
+            h_ = np.array([0 if v in в["класс"] else 1 for v in range(8)], np.uint8)
+            self.assertAlmostEqual(классы_эталон(S, 3, h_, 8, 40)[0][2], в["отрыв"], delta=0.051)
+
+    def test_переменные_места(self):
+        S = np.random.default_rng(1).integers(0, 8, (10, 30))
+        S[:, 20] = 4                                          # постоянное место в середине
+        S[:5, 25] = 2                                         # ровно половина — тоже
+        мера = р.МераСтрок(S, 3)
+        a = np.array([0, 0, 3, 57, 58, 60, 62, 75, 78])
+        e = np.array([6, 60, 30, 60, 61, 63, 70, 78, 90])
+        ждём = [True, True, True, True, False, False, False, False, True]
+        self.assertEqual(ждём, мера._переменные(a, e).tolist())
