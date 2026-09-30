@@ -9258,6 +9258,52 @@
         return { строк, ширина: w, биты: итог };
     }
 
+    // --- Поиск блочных турбокодов (ТКБ): чистые функции окна (проверяются в node) ---
+
+    /** Поля окна ТКБ: синхрослово (0/1, пробелы допустимы, не короче 8) и длина кадра — текст ошибки или ''. */
+    function проверитьПоляТкб(слово, кадр) {
+        const с = String(слово || '').replace(/\s+/g, '');
+        if (/[^01]/.test(с)) return 'синхрослово — нули и единицы';
+        if (с && с.length < 8) return 'синхрослово — не короче 8 бит';
+        const к = String(кадр == null ? '' : кадр).trim();
+        if (к && !(Number.isInteger(Number(к)) && Number(к) > 0)) return 'длина кадра — целое число бит';
+        return '';
+    }
+
+    /**
+     * Порядок вариантов ТКБ — как на сервере: чище блоки (с точностью до процента) — выше; при равной чистоте
+     * каталог раньше слепого, затем код с большим числом проверок (подкод сходится на том же потоке).
+     */
+    function порядокВариантовТкб(a, b) {
+        const да = Math.round(a.чисто * 100), дб = Math.round(b.чисто * 100);
+        if (да !== дб) return дб - да;
+        if (!a.слепой !== !b.слепой) return a.слепой ? 1 : -1;
+        return (b.проверок || 0) - (a.проверок || 0);
+    }
+
+    /** Ход поиска ТКБ, 0…1: просмотрено режимов из всех (слепой поиск — ещё одна часть). */
+    function ходПоискаТкб(просмотрено, всего, слепой) {
+        const частей = всего + (слепой ? 1 : 0);
+        return частей > 0 ? Math.min(1, просмотрено / частей) : 1;
+    }
+
+    /**
+     * Раскладка блока ТКБ на холсте: плоскости рядом слева направо (перенос, если не влезают в ширинуДо точек),
+     * между ними — промежуток в 2 точки. Итог — размер холста и место (x, y) каждого бита блока.
+     */
+    function раскладкаБлокаТкб(форма, ширинаДо) {
+        const [Z, Y, X] = форма;
+        const вРяд = Math.max(1, Math.min(Z, Math.floor(ширинаДо / (X + 2))));
+        const рядов = Math.ceil(Z / вРяд);
+        return {
+            вРяд, рядов, ширина: вРяд * (X + 2), высота: рядов * (Y + 2),
+            место: (i) => {
+                const z = Math.floor(i / (Y * X)), y = Math.floor(i / X) % Y, x = i % X;
+                return [(z % вРяд) * (X + 2) + 1 + x, Math.floor(z / вРяд) * (Y + 2) + 1 + y];
+            },
+        };
+    }
+
     // =====================================================================
     // Рабочий стол анализа потока: сетка массивов, меню операций, журнал
     // массива, битовый просмотр и таблица кадров — на одном экране, как в
@@ -12617,13 +12663,6 @@
                 состояние.className = 'small' + (плохо ? ' stol-bad' : ' muted');
                 состояние.textContent = текст;
             }
-            function проверитьПоля() {
-                const слово = синхрослово.value.replace(/\s+/g, '');
-                if (/[^01]/.test(слово)) return 'синхрослово — нули и единицы';
-                if (слово && слово.length < 8) return 'синхрослово — не короче 8 бит';
-                if (кадр.value.trim() && !(Number(кадр.value) > 0)) return 'длина кадра — целое число бит';
-                return '';
-            }
             function рисоватьСписок() {
                 clear(тело);
                 найдено.forEach((в, i) => {
@@ -12642,11 +12681,6 @@
                 выбран = i;
                 рисоватьСписок();
             }
-            function порядок(a, b) {
-                // Лучшие первыми: чище блоки, затем каталог раньше слепого (у режима — источник и имя).
-                if (Math.abs(b.чисто - a.чисто) > 0.005) return b.чисто - a.чисто;
-                return (a.слепой ? 1 : 0) - (b.слепой ? 1 : 0);
-            }
             async function загрузитьКаталог() {
                 try {
                     каталог = (await api.get('/api/potok-tkb/modes')).items || [];
@@ -12661,7 +12695,7 @@
                 });
             }
             async function искать() {
-                const ошибка = проверитьПоля();
+                const ошибка = проверитьПоляТкб(синхрослово.value, кадр.value);
                 if (ошибка) { сказать(ошибка, true); return; }
                 запомнить();
                 идёт = true; стоп = false; найдено = []; выбран = -1; кадры = [];
@@ -12676,9 +12710,9 @@
                     while (!стоп) {
                         const d = await api.post(путь + 'search', Object.assign({}, запрос, { с: с_, кадры }));
                         всего = d.всего; кадры = d.кадры || кадры;
-                        найдено = найдено.concat(d.найдено || []).sort(порядок);
+                        найдено = найдено.concat(d.найдено || []).sort(порядокВариантовТкб);
                         с_ = d.по;
-                        const доля = всего ? с_ / (всего + (слепой.checked ? 1 : 0)) : 1;
+                        const доля = ходПоискаТкб(с_, всего, слепой.checked);
                         ход.value = доля; процент.textContent = Math.round(доля * 100) + '%';
                         сказать('Режимов ' + с_ + ' из ' + всего + (кадры.length ? ' · кадр T = ' + кадры.join(', ') : ' · кадр не найден — блоки подряд') + '…');
                         рисоватьСписок();
@@ -12687,7 +12721,7 @@
                     if (!стоп && слепой.checked) {
                         сказать('Слепой поиск…');
                         const d = await api.post(путь + 'search', Object.assign({}, запрос, { с: всего, кадры, слепой: true }));
-                        найдено = найдено.concat(d.найдено || []).sort(порядок);
+                        найдено = найдено.concat(d.найдено || []).sort(порядокВариантовТкб);
                     }
                     ход.value = стоп ? ход.value : 1;
                     if (!стоп) процент.textContent = '100%';
@@ -12714,22 +12748,17 @@
                 if (!блок) { холст.width = 1; холст.height = 1; return; }
                 const [Z, Y, X] = блок.форма;
                 const метки = Uint8Array.from(atob(блок.метки), (ч) => ч.charCodeAt(0));
-                // Плоскости — рядом слева направо (перенос, если не влезают), между ними — промежуток.
-                const вРяд = Math.max(1, Math.min(Z, Math.floor(1024 / (X + 2))));
-                const рядов = Math.ceil(Z / вРяд);
-                холст.width = вРяд * (X + 2); холст.height = рядов * (Y + 2);
+                const р = раскладкаБлокаТкб(блок.форма, 1024);
+                холст.width = р.ширина; холст.height = р.высота;
                 const кк = холст.getContext('2d');
-                кк.fillStyle = '#10141a'; кк.fillRect(0, 0, холст.width, холст.height);
                 const img = кк.createImageData(холст.width, холст.height);
-                img.data.fill(0);
+                for (let i = 3; i < img.data.length; i += 4) { img.data[i - 3] = 0x10; img.data[i - 2] = 0x14; img.data[i - 1] = 0x1a; img.data[i] = 255; }
                 const rgb = ЦВЕТА_МЕСТ.map(([, ц]) => [parseInt(ц.slice(1, 3), 16), parseInt(ц.slice(3, 5), 16), parseInt(ц.slice(5, 7), 16)]);
-                for (let z = 0; z < Z; z += 1) {
-                    const ox = (z % вРяд) * (X + 2) + 1, oy = Math.floor(z / вРяд) * (Y + 2) + 1;
-                    for (let y = 0; y < Y; y += 1) for (let x = 0; x < X; x += 1) {
-                        const ц = rgb[метки[(z * Y + y) * X + x]] || rgb[0];
-                        const i = 4 * ((oy + y) * холст.width + ox + x);
-                        img.data[i] = ц[0]; img.data[i + 1] = ц[1]; img.data[i + 2] = ц[2]; img.data[i + 3] = 255;
-                    }
+                for (let j = 0; j < метки.length; j += 1) {
+                    const [x, y] = р.место(j);
+                    const ц = rgb[метки[j]] || rgb[0];
+                    const i = 4 * (y * холст.width + x);
+                    img.data[i] = ц[0]; img.data[i + 1] = ц[1]; img.data[i + 2] = ц[2]; img.data[i + 3] = 255;
                 }
                 кк.putImageData(img, 0, 0);
                 // Мелкий блок — крупнее: целое увеличение до ~640 точек по ширине.
@@ -12737,7 +12766,7 @@
                 холст.style.width = (холст.width * масштаб) + 'px';
                 ЦВЕТА_МЕСТ.forEach(([имя, ц], i) => {
                     if (!метки.includes(i)) return;
-                    легенда.appendChild(h('span', { class: 'stol-tkb-key' }, h('i', { style: 'background:' + ц }), имя));
+                    легенда.appendChild(h('span', { class: 'stol-tkb-key' }, h('i', { style: { background: ц } }), имя));
                 });
                 легенда.appendChild(h('span', { class: 'muted' }, Z > 1 ? Z + ' плоскостей × ' + Y + ' строк × ' + X + ' бит' : Y + ' строк × ' + X + ' бит'));
             }
@@ -12763,7 +12792,7 @@
                     рисоватьБлок(d.блок);
                     рисоватьДанные(d);
                     clear(подробно);
-                    подробно.appendChild(h('div', {}, h('b', {}, d.что), ' — ' + d.мера));
+                    подробно.appendChild(h('div', {}, h('b', {}, d.что)));
                     подробно.appendChild(h('div', { class: 'mono' }, 'слой: ' + в.слой));
                     d.подробно.forEach((строка) => подробно.appendChild(h('div', {}, строка)));
                     сказать('Данных ' + d.данных.toLocaleString('ru-RU') + ' бит (по выборке); строки растра — по ' +
@@ -12790,11 +12819,13 @@
                 сказать('Сохранение: снимаю ' + в.слой + ' по всему массиву…');
                 try {
                     const r = await request(путь + 'save', { method: 'POST', body: { stage: у.stage, слой: в.слой }, expect: 'blob' });
-                    const a = h('a', { href: URL.createObjectURL(r.blob), download: r.filename || 'tkb.rec' });
+                    // Латиницей: кириллицу в имени скачиваемого файла браузер может заменить на «download».
+                    const имя = латиницей('tkb-' + (в.слепой ? 'slepoy' : в.ид)) + '.rec';
+                    const a = h('a', { href: URL.createObjectURL(r.blob), download: имя });
                     document.body.appendChild(a);
                     a.click();
                     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-                    сказать('Сохранено: ' + (r.filename || 'tkb.rec') + ' — ' + r.blob.size.toLocaleString('ru-RU') + ' байт');
+                    сказать('Сохранено: ' + имя + ' — ' + r.blob.size.toLocaleString('ru-RU') + ' байт');
                 } catch (error) { сказать(errorText(error), true); }
             }
             [синхрослово, кадр].forEach((п) => п.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!идёт) искать(); } }));
