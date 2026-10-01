@@ -1109,7 +1109,7 @@ class РазметкаЧерезСерверTests(unittest.TestCase):
         self.assertEqual(200, р_.status_code)
         self.assertTrue(any("номера кластеров" in с_ for с_ in р_.json()["описание"]))
         for путь, тело, ждём in (("iq", {"формат": "int12"}, "формат отсчётов: int8, uint8, int16, float32 или WAV"),
-                                 ("iq", {"формат": "int16", "точек": 3}, "число точек — степень двойки от 2 до 256"),
+                                 ("iq", {"формат": "int16", "точек": 3}, "число точек — степень двойки от 2 до 1024"),
                                  ("iq/decide", {"формат": "int16", "точек": 8, "плоскость": "КАМ16 Грей"},
                                   "плоскость «КАМ16 Грей» — 16 точек, а в облаке 8"),
                                  ("iq/decide", {"формат": "int16", "поворот": "сорок"}, "поворот — градусы")):
@@ -1762,7 +1762,7 @@ class ВходIQКраяTests(unittest.TestCase):
         self.assertEqual((4, [], iq.ОБЛАКО_ДО), (о["точек"], о["оценки"], len(о["показ"])))
         self.assertEqual(4, len(о["центры"]))
         self.assertAlmostEqual(1.0, float(np.sum(np.abs(о["центры"]) ** 2 * о["веса"]) / np.sum(о["веса"])), places=6)
-        for точек in (3, 512, 1):
+        for точек in (3, 2048, 1):
             with self.assertRaises(ValueError):
                 iq.облако(z, точек=точек)
         мало = iq.облако(z[:100])
