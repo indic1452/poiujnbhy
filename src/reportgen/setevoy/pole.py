@@ -138,11 +138,17 @@ def u64(д: bytes, м: int) -> int:
 
 
 def mac(д: bytes, м: int) -> str:
-    return ":".join(f"{б:02x}" for б in д[м:м + 6])
+    часть = д[м:м + 6]
+    if type(часть) is bytes:            # то же, что ":".join(f"{б:02x}" …), но в разы быстрее
+        return часть.hex(":")
+    return ":".join(f"{б:02x}" for б in часть)
 
 
 def ip4(д: bytes, м: int) -> str:
-    return str(ipaddress.IPv4Address(д[м:м + 4]))
+    б = д[м:м + 4]
+    if type(б) is bytes and len(б) == 4:  # то же, что str(IPv4Address(…)) для четырёх байт
+        return f"{б[0]}.{б[1]}.{б[2]}.{б[3]}"
+    return str(ipaddress.IPv4Address(б))
 
 
 def ip6(д: bytes, м: int) -> str:

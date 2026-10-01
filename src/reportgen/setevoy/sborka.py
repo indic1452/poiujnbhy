@@ -40,12 +40,23 @@ def _сводка(п: Пакет, поля: dict[str, list[Any]]) -> dict[str, A
     return с
 
 
+#: Значения этих типов идут в фильтр как есть; прочие — строкой (не длиннее 200 знаков).
+_ПРОСТЫЕ = frozenset({int, float, bool, type(None)})
+
+
 def _для_фильтра(поля: dict[str, list[Any]]) -> dict[str, list[Any]]:
     итог = {}
+    простые = _ПРОСТЫЕ
     for к, значения in поля.items():
         if к in БЕЗ_ФИЛЬТРА:
             continue
-        итог[к] = [з if isinstance(з, (int, float, bool)) or з is None else str(з)[:200] for з in значения]
+        # Чаще всего все значения — числа: список берётся как есть (тот же итог, без поэлементной сборки).
+        for з in значения:
+            if type(з) not in простые:
+                итог[к] = [з if isinstance(з, (int, float, bool)) or з is None else str(з)[:200] for з in значения]
+                break
+        else:
+            итог[к] = list(значения)
     return итог
 
 

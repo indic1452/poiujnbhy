@@ -4,8 +4,10 @@
 
 * ``индекс.bin`` — по записи на пакет (``ЗАПИСЬ``, 48 байт): где байты пакета (в
   исходном файле или в ``пакеты.bin``), канал, где его сводка и плоские поля;
-* ``сводки.z`` и ``поля.z`` — сводки для списка и поля для фильтров: строки JSON,
-  сжатые блоками (zlib) — без сжатия они в десяток раз больше самих пакетов;
+* ``сводки.z`` и ``поля.z`` — сводки для списка и поля для фильтров: блоками по
+  ``СТРОК_В_БЛОКЕ`` пакетов (список словарей pickle, сжатый zlib) — без сжатия они в
+  десяток раз больше самих пакетов, а pickle пишется и читается в разы быстрее JSON.
+  Файлы пишет и читает только сам сервер (чужие данные в них не подкладываются);
 * ``время.f8``, ``длина.u4``, ``поток.u8`` — столбцы на пакет: время, исходная длина,
   отпечаток потока TCP/UDP/SCTP (64 бита; 0 — не поток) — для графика времени и
   «следовать за потоком» без чтения сводок;
@@ -19,9 +21,9 @@
 from __future__ import annotations
 
 import contextlib
-import hashlib
 import json
 import os
+import pickle
 import struct
 import threading
 import time
@@ -54,10 +56,15 @@ assert ЗАПИСЬ.size == ЗАПИСЬ_ТИП.itemsize == 48
 
 
 def отпечаток_потока(ключ: tuple | None) -> int:
-    """64-битный отпечаток ключа потока (statistika.ключ_потока); 0 — у пакета нет потока."""
+    """64-битный отпечаток ключа потока (statistika.ключ_потока); 0 — у пакета нет потока.
+
+    Две CRC-32 (по ключу и по ключу задом наперёд) — быстро и одинаково в любом процессе;
+    совпадение отпечатков у разных потоков не страшно: «следовать за потоком» сверяет ключи
+    у найденных пакетов заново."""
     if ключ is None:
         return 0
-    return int.from_bytes(hashlib.blake2b(repr(ключ).encode("utf-8"), digest_size=8).digest(), "little") or 1
+    сырые = repr(ключ).encode("utf-8")
+    return (zlib.crc32(сырые) << 32 | zlib.crc32(сырые[::-1])) or 1
 
 
 def прочитать_json(путь: Path, по_умолчанию: Any = None) -> Any:
@@ -77,10 +84,6 @@ def прочитать_json(путь: Path, по_умолчанию: Any = None)
     return по_умолчанию
 
 
-def _дамп(значение: Any) -> bytes:
-    return json.dumps(значение, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-
-
 class Писатель:
     """Дописывает пакеты в хранилище; ``сбросить()`` делает накопленное видимым читателям."""
 
@@ -94,8 +97,8 @@ class Писатель:
         self.каналы: list[str] = []
         self._каналов_записано = -1
         self._ждут: list[tuple] = []          # (место, длина, канал, признаки, время, длина_исх, поток)
-        self._сводки: list[bytes] = []
-        self._поля: list[bytes] = []
+        self._сводки: list[dict[str, Any]] = []
+        self._поля: list[dict[str, Any]] = []
         self.записано = 0                     # видно читателям
         self._сброшено = time.monotonic()
         with contextlib.suppress(OSError):
@@ -119,8 +122,8 @@ class Писатель:
             self._место_пакетов += len(данные)
             признаки |= В_КОПИИ
         self._ждут.append((место, len(данные), self.номер_канала(канал), признаки, время, длина, поток))
-        self._сводки.append(_дамп(сводка))
-        self._поля.append(_дамп(поля))
+        self._сводки.append(сводка)
+        self._поля.append(поля)
         if len(self._ждут) >= СТРОК_В_БЛОКЕ:
             self._блок()
         if time.monotonic() - self._сброшено >= СБРОС_КАЖДЫЕ:
@@ -136,7 +139,7 @@ class Писатель:
             return
         места = {}
         for имя, строки in ((СВОДКИ, self._сводки), (ПОЛЯ, self._поля)):
-            сжато = zlib.compress(b"\n".join(строки), СЖАТИЕ)
+            сжато = zlib.compress(pickle.dumps(строки, pickle.HIGHEST_PROTOCOL), СЖАТИЕ)
             места[имя] = (self._места[имя], len(сжато))
             self._ф[имя].write(сжато)
             self._места[имя] += len(сжато)
@@ -182,7 +185,7 @@ class Хранилище:
 
     def __init__(self, папка: Path):
         self.папка = Path(папка)
-        self._блоки: OrderedDict[tuple[str, int], list[bytes]] = OrderedDict()
+        self._блоки: OrderedDict[tuple[str, int], list[dict[str, Any]]] = OrderedDict()
         self._lock = threading.Lock()
         self._каналы: list[str] = []
 
@@ -229,7 +232,7 @@ class Хранилище:
 
     # -- блоки сводок и полей --
 
-    def _блок(self, вид: str, место: int, длина: int, ф=None) -> list[bytes]:
+    def _блок(self, вид: str, место: int, длина: int, ф=None) -> list[dict[str, Any]]:
         ключ = (вид, место)
         with self._lock:
             строки = self._блоки.get(ключ)
@@ -243,14 +246,15 @@ class Хранилище:
         else:
             ф.seek(место)
             сжато = ф.read(длина)
-        строки = zlib.decompress(сжато).split(b"\n")
+        строки = pickle.loads(zlib.decompress(сжато))  # noqa: S301 — файл пишет сам сервер
         with self._lock:
             self._блоки[ключ] = строки
             while len(self._блоки) > self.БЛОКОВ_В_ПАМЯТИ:
                 self._блоки.popitem(last=False)
         return строки
 
-    def _строки(self, вид: str, записи: np.ndarray) -> list[bytes]:
+    def _строки(self, вид: str, записи: np.ndarray) -> list[dict[str, Any]]:
+        """Словари пакетов (копии верхнего уровня: блок в кэше остаётся нетронутым)."""
         if not len(записи):
             return []
         места = записи["сводки" if вид == СВОДКИ else "поля"]
@@ -263,20 +267,20 @@ class Хранилище:
                 if место != прежнее:
                     строки = self._блок(вид, место, длина, ф)
                     прежнее = место
-                итог.append(строки[i])
+                итог.append(dict(строки[i]))
         return итог
 
     def сводки(self, от: int, до: int) -> list[dict[str, Any]]:
-        return [json.loads(с) for с in self._строки(СВОДКИ, self.записи(от, до))]
+        return self._строки(СВОДКИ, self.записи(от, до))
 
     def поля(self, от: int, до: int) -> list[dict[str, Any]]:
-        return [json.loads(с) for с in self._строки(ПОЛЯ, self.записи(от, до))]
+        return self._строки(ПОЛЯ, self.записи(от, до))
 
     def сводки_по(self, номера) -> list[dict[str, Any]]:
-        return [json.loads(с) for с in self._строки(СВОДКИ, self.записи_по(номера))]
+        return self._строки(СВОДКИ, self.записи_по(номера))
 
     def поля_по(self, номера) -> list[dict[str, Any]]:
-        return [json.loads(с) for с in self._строки(ПОЛЯ, self.записи_по(номера))]
+        return self._строки(ПОЛЯ, self.записи_по(номера))
 
     def сводка(self, номер: int) -> dict[str, Any]:
         """Сводка пакета (номер с 0)."""
