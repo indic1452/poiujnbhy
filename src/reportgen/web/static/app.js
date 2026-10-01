@@ -17076,7 +17076,7 @@
     }
 
     function состояниеКласс(состояние) {
-        return { 'готово': 'done', 'ошибка': 'error', 'идёт': 'run', 'ждёт': 'wait' }[состояние] || 'wait';
+        return { 'готово': 'done', 'ошибка': 'error', 'отменено': 'error', 'идёт': 'run', 'ждёт': 'wait' }[состояние] || 'wait';
     }
 
     async function рисоватьЗадание(page, jobId, описание) {
@@ -17131,10 +17131,11 @@
                 if (подсказкиУзел.hidden && (!последний || последний.выгрузка === 'bin')) {
                     показатьПодсказки(последний ? последний.номер : 0, false);
                 }
-            } else if (data.состояние === 'ошибка') {
+            } else if (data.состояние === 'ошибка' || data.состояние === 'отменено') {
                 clear(этапы);
                 этапы.appendChild(h('div', { class: 'empty empty--error' },
-                    h('h3', {}, 'Разбор прервался'), h('div', { class: 'empty-note' }, data.ошибка || '')));
+                    h('h3', {}, data.состояние === 'отменено' ? 'Разбор отменён' : 'Разбор прервался'),
+                    h('div', { class: 'empty-note' }, data.ошибка || '')));
             } else {
                 clear(этапы);
                 этапы.appendChild(loadingBox(data.состояние === 'ждёт'
@@ -17172,6 +17173,10 @@
                     data.состояние === 'готово' && data.разбирать === false ? h('button', {
                         class: 'btn btn--primary', onclick: () => разобратьЭтот(),
                     }, 'Разобрать автоматом') : null,
+                    data.состояние === 'ждёт' || data.состояние === 'идёт' ? h('button', {
+                        class: 'btn', title: 'Ждущий разбор снимается с очереди, идущий останавливается за секунды',
+                        onclick: () => отменитьЭтот(),
+                    }, 'Отменить') : null,
                     h('a', { class: 'btn', href: '#/potok' }, 'Все разборы')),
             ]);
         }
@@ -17507,6 +17512,16 @@
                 toastError(error);
             } finally {
                 кнопка.disabled = false;
+            }
+        }
+
+        async function отменитьЭтот() {
+            try {
+                await api.post('/api/potok/' + encodeURIComponent(jobId) + '/cancel', {});
+                остановитьОпросПотока();
+                обновить();
+            } catch (error) {
+                toastError(error);
             }
         }
 
