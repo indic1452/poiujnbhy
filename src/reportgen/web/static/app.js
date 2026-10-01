@@ -20789,7 +20789,7 @@
                         h('a', { class: 'btn btn--sm', href: путь + '/fields' + сФильтром() + '&format=csv' + адресУзла(у), download: '' }, 'Поля → CSV'),
                         h('a', { class: 'btn btn--sm', href: путь + '/fields' + сФильтром() + '&format=json' + адресУзла(у), download: '' }, 'JSON'),
                         транспорт ? h('a', { class: 'btn btn--sm', href: путь + '/streams.zip' + сФильтром() + адресУзла(у), download: '' }, 'Потоки → .bin (ZIP)') : null,
-                        h('span', { class: 'pk-node-objects muted small' }, 'объекты: считаю…'));
+                        h('span', { class: 'pk-node-objects muted small' }));
                     карточка.appendChild(выходы);
                     api.get(путь + '/stats?kind=protocol&filter=' + encodeURIComponent(с.фильтр) + адресУзла(у)).then((р) => {
                         if (мой !== номерКарточки) return;
@@ -20804,16 +20804,21 @@
                                 h('div', { class: 'muted small' }, н_.пакетов_аб + ' пак. · ' + fmtBytes(н_.байт_аб) + ' → / ← ' + н_.пакетов_ба + ' пак. · ' + fmtBytes(н_.байт_ба))));
                         });
                     }).catch((error) => { if (мой === номерКарточки) { clear(соотношения); соотношения.appendChild(errorBox(error)); } });
-                    if (с.живо) {
-                        выходы.querySelector('.pk-node-objects').textContent = 'объекты — когда разбор кончится (сборка потоков тяжёлая)';
-                    } else api.get(путь + '/objects' + сФильтром() + адресУзла(у)).then((р) => {
-                        if (мой !== номерКарточки) return;
-                        const место = выходы.querySelector('.pk-node-objects');
-                        clear(место);
-                        if (!р.всего) { место.textContent = 'объектов нет'; return; }
-                        место.append('объектов: ' + р.всего + ' (' + Object.entries(р.виды).map(([в, н_]) => в + ' ' + н_).join(', ') + ') ',
-                            h('a', { class: 'btn btn--sm', href: путь + '/objects.zip' + сФильтром() + адресУзла(у), download: '' }, 'Скачать объекты (ZIP)'));
-                    }).catch(() => { if (мой === номерКарточки) выходы.querySelector('.pk-node-objects').textContent = 'объекты: не удалось'; });
+                    // Объекты протокола — по кнопке: сборка потоков тяжёлая, а щелчков по дереву много.
+                    const место = выходы.querySelector('.pk-node-objects');
+                    clear(место);
+                    место.appendChild(h('button', { class: 'btn btn--sm', onclick: async (e) => {
+                        e.currentTarget.disabled = true;
+                        место.textContent = 'объекты: собираю потоки…';
+                        try {
+                            const р = await api.get(путь + '/objects' + сФильтром() + адресУзла(у));
+                            if (мой !== номерКарточки) return;
+                            clear(место);
+                            if (!р.всего) { место.textContent = 'объектов нет'; return; }
+                            место.append('объектов: ' + р.всего + ' (' + Object.entries(р.виды).map(([в, н_]) => в + ' ' + н_).join(', ') + ') ',
+                                h('a', { class: 'btn btn--sm', href: путь + '/objects.zip' + сФильтром() + адресУзла(у), download: '' }, 'Скачать объекты (ZIP)'));
+                        } catch (error) { if (мой === номерКарточки) место.textContent = 'объекты: ' + errorText(error); }
+                    } }, 'Объекты этого протокола…'));
                 }
             }
 
