@@ -1685,7 +1685,7 @@ class СерверTests(unittest.TestCase):
 
     def test_многофайловый_захват_открывается_целиком(self):
         """«Открыть в анализаторе» у законченного многофайлового захвата — все куски одним захватом
-        «Пакетов» (склейка секций pcapng), а не только первый кусок; не помещается — 413 словами."""
+        «Анализа пакетов» (куски по порядку), а не только первый кусок; у идущего — вживую, следом за записью."""
         import socket  # noqa: PLC0415
 
         from test_zahvat_seti import свободный_порт  # noqa: PLC0415
@@ -1702,25 +1702,21 @@ class СерверTests(unittest.TestCase):
             if i % 200 == 0:
                 time.sleep(0.01)
         self.assertTrue(дождаться(lambda: self.к.get(f"/api/zahvat/{ид}").json()["пакетов"] == 2500))
-        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
-        self.assertEqual(409, ответ.status_code, "идущий захват целиком не открыть — только закрытые куски")
-        self.к.post(f"/api/zahvat/{ид}/stop", json={})
-        self.assertEqual(3, self.к.get(f"/api/zahvat/{ид}/chunks").json()["total"])
-        self.settings.max_upload_mb = 0
-        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
-        self.assertEqual(413, ответ.status_code)
-        self.assertIn("откройте его по кускам", ответ.json()["error"])
-        self.settings.max_upload_mb = 200
+        # Идущий приём целиком — анализ вживую: запись «Анализа пакетов» читает куски следом за записью.
         ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
         self.assertEqual(200, ответ.status_code, ответ.text)
         пакеты = ответ.json()["id"]
+        self.assertTrue(дождаться(lambda: self.к.get(f"/api/pakety/{пакеты}").json()["пакетов"] == 2500))
+        self.assertNotEqual("готово", self.к.get(f"/api/pakety/{пакеты}").json()["состояние"], "приём идёт — анализ ждёт")
+        self.к.post(f"/api/zahvat/{ид}/stop", json={})
+        self.assertEqual(3, self.к.get(f"/api/zahvat/{ид}/chunks").json()["total"])
         self.assertTrue(дождаться(lambda: self.к.get(f"/api/pakety/{пакеты}").json()["состояние"] == "готово"))
         с_ = self.к.get(f"/api/pakety/{пакеты}").json()
-        self.assertEqual((2500, "Стенд — весь, 3 куска.pcapng", f"zahvat:{ид}#весь"), (с_["пакетов"], с_["имя"], с_["от"]))
+        self.assertEqual((2500, "Стенд — вживую.pcapng", f"zahvat:{ид}#весь"), (с_["пакетов"], с_["имя"], с_["от"]))
         последний = self.к.get(f"/api/pakety/{пакеты}/packet/2500").json()
         self.assertEqual(["Ethernet", "IPv4", "UDP"], [у["протокол"] for у in последний["уровни"]][:3])
         self.assertEqual(пакеты, self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}).json()["id"], "второй раз — тот же")
-        self.assertFalse(list((self.сеть.app.state.zahvat_seti.папка / ид).glob("*.tmp")), "склейка не остаётся на диске")
+        self.assertFalse(list((self.сеть.app.state.zahvat_seti.папка / ид).glob("*.tmp")), "склейки на диске нет")
         # Кусок по-прежнему открывается отдельно.
         ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety?chunk=2", json={})
         self.assertEqual(200, ответ.status_code, ответ.text)

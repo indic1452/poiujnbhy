@@ -1994,15 +1994,12 @@ class ЗахватСервераTests(unittest.TestCase):
         self.assertEqual([{"порт": порт, "датаграмм": 4, "байт": 60,
                            "источники": [{"адрес": "127.0.0.1", "датаграмм": 4}]}],
                          self.к.get(f"/api/zahvat/{ид}/ports").json()["ports"])
-        # В анализатор пакетов: захват разобран как обычный pcapng. Крупнее предела загрузки — 413:
-        # анализатор читает захват в память целиком.
+        # В анализ пакетов: приём разобран как обычный pcapng. Предел загрузки форм (max_upload_mb) анализу
+        # не мешает: он читает файл потоком, не в память.
         self.settings.max_upload_mb = 0
-        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
-        self.assertEqual(413, ответ.status_code)
-        self.assertIn("больше допустимых для анализатора 0 МБ", ответ.json()["error"])
         self.assertEqual(404, self.к.post(f"/api/zahvat/{ид}/to-pakety?chunk=5", json={}).status_code)
-        self.settings.max_upload_mb = 200
         пакеты = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}).json()["id"]
+        self.settings.max_upload_mb = 200
         self.assertTrue(дождаться(lambda: self.к.get(f"/api/pakety/{пакеты}").json()["состояние"] in ("готово", "ошибка")))
         разбор = self.к.get(f"/api/pakety/{пакеты}").json()
         self.assertEqual(("готово", "pcapng", 4, "Модем 2.pcapng", f"zahvat:{ид}#0"),

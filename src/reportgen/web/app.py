@@ -103,6 +103,11 @@ def create_app(settings: Settings | None = None,
         прогоны = getattr(app.state, "progony", None)
         if прогоны is not None:
             прогоны.остановить_все()
+        # Разборы и отборы «Анализа пакетов» — отдельные процессы: остановить, чтобы не пережили сервер
+        # (после запуска прерванные разборы начнутся заново сами).
+        пакеты = getattr(app.state, "pakety", None)
+        if пакеты is not None:
+            пакеты.закрыть()
 
     app = FastAPI(
         lifespan=lifespan,
