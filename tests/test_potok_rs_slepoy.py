@@ -175,6 +175,46 @@ class ПрефиксTests(unittest.TestCase):
         self.assertEqual(len(d), 5 * 1000 - 15)
         self.assertEqual(set(d.tolist()), {1, 2, 3, 4, 5})
 
+    def test_пары_края(self):
+        """Пара первого и последнего значения короткого ряда; пустой итог — пустые массивы."""
+        н, d = R.пары(np.array([1, 2, 1]), 1, 1, 10)
+        self.assertEqual((н.tolist(), d.tolist()), ([0], [2]))
+        н, d = R.пары(np.array([1, 2, 3, 4]), 1, 1, 10)
+        self.assertEqual((н.shape, d.shape), ((0,), (0,)))
+        н, d = R.пары(np.array([5, 5]), 2, 1, 10)                  # равны, но разные вычеты по модулю 2
+        self.assertEqual((len(н), len(d)), (0, 0))
+
+    def test_клетки_и_счёт_как_перебором(self):
+        """Окна каждой клетки (N, строка) и счёт пар — как прямым перебором начал t."""
+        г = np.random.default_rng(3)
+        for I, N_от, N_до, L in ((1, 6, 15, 200), (3, 6, 12, 157), (4, 5, 9, 61), (2, 6, 40, 70)):
+            кл = R._клетки(I, N_от, N_до, L)
+            for i in range(len(кл.N)):
+                N, строка = int(кл.N[i]), int(кл.строка[i])
+                окон = sum(1 for t in range(max(0, L - N * I)) if (t // I) % N == строка)
+                self.assertEqual(кл.окон[i], окон, (I, N, строка))
+                self.assertEqual((кл.N[кл.сосед[i]], кл.строка[кл.сосед[i]]), (N, (строка + 1) % N))
+                self.assertEqual(кл.смещение[N - N_от] + строка, i)
+            self.assertEqual(len(кл.N), sum(range(N_от, N_до + 1)))
+            P = г.integers(0, 4, L)
+            н, d = R.пары(P, I, N_от * I, N_до * I)
+            s, s_N = R.счёт(н, d, кл, 0.25)
+            for i in г.choice(len(кл.N), 25, replace=False):
+                N, строка = int(кл.N[i]), int(кл.строка[i])
+                рядом = [строка] + ([(строка + 1) % N] if I > 1 else [])
+                c = sum(1 for t in range(L - N * I) if P[t] == P[t + N * I] and (t // I) % N in рядом)
+                окон = sum(кл.окон[кл.смещение[N - N_от] + r] for r in рядом)
+                self.assertAlmostEqual(s[i], float(R.мера(np.array([c]), np.array([окон * 0.25]))[0]), places=9)
+            for N in range(N_от, N_до + 1):
+                c = sum(1 for t in range(L - N * I) if P[t] == P[t + N * I])
+                ожид = float(R.мера(np.array([c]), np.array([max(L - N * I, 0) * 0.25]))[0])
+                self.assertAlmostEqual(s_N[N - N_от], ожид, places=9)
+
+    def test_фон(self):
+        self.assertEqual(R._фон(np.arange(256), 8), 1 / 256)
+        self.assertEqual(R._фон(np.zeros(10, dtype=np.int64), 8), 1.0)
+        self.assertAlmostEqual(R._фон(np.array([0, 0, 1, 1]), 4), 0.5)
+
     def test_мера_чернова(self):
         self.assertAlmostEqual(float(R.мера(np.array([10.0]), np.array([1.0]))[0]), 10 * np.log(10) - 9, places=9)
         self.assertEqual(R.мера(np.array([1.0, 0.5]), np.array([1.0, 2.0])).tolist(), [0.0, 0.0])
@@ -184,7 +224,7 @@ class ПрефиксTests(unittest.TestCase):
         г = np.random.default_rng(2)
         из_двойного = {в_двойной(x): x for x in range(256)}
         for m, порядок, базис in [(8, "старший", "обычный"), (8, "младший", "двойной"), (5, "младший", "обычный"),
-                                  (10, "старший", "обычный")]:
+                                  (10, "старший", "обычный"), (7, "старший", "обычный"), (9, "младший", "обычный")]:
             с = г.integers(0, 1 << m, 300)
             биты = R.в_биты(с, m, порядок, базис)
             сдвиги = np.arange(m) if порядок == "младший" else np.arange(m - 1, -1, -1)
@@ -475,6 +515,35 @@ class ПоискTests(unittest.TestCase):
         self.assertTrue(any(к.ступень == 2 and к.p == 0x1F5 for к in глубоко))
         self.assertFalse(any(к.базис == "двойной" and к.m != 8 for к in глубоко))
         self.assertEqual(max(к.I for к in глубоко), 16)
+
+    def test_план_точно(self):
+        """Состав и порядок плана: «быстро» — поимённо, остальные — по составу."""
+        from collections import Counter
+        К = R.Конфигурация
+        частые = (1, 2, 4, 5, 3, 8)
+        популярные = [(0x187, "старший", "двойной"), (0x187, "старший", "обычный"), (0x11D, "старший", "обычный")]
+        ожидается = ([К(1, 8, tuple(range(8)), I) for I in частые]
+                     + [К(2, 8, (0,), I, p, о, б) for p, о, б in популярные for I in частые]
+                     + [К(1, m, tuple(range(m)), I) for m in (7, 4, 5, 6, 10, 3, 9) for I in (1, 2)])
+        self.assertEqual(R.план("быстро"), ожидается)
+        обычно = R.план("обычно")
+        self.assertEqual(обычно[:24], ожидается[:24])
+        self.assertEqual(len(обычно), 112)
+        self.assertEqual(Counter((к.ступень, к.m, len(к.фазы), к.порядок, к.базис) for к in обычно),
+                         Counter({(2, 8, 7, "старший", "двойной"): 6, (2, 8, 7, "старший", "обычный"): 12,
+                                  (2, 8, 1, "старший", "двойной"): 6, (2, 8, 1, "старший", "обычный"): 12,
+                                  (2, 8, 8, "младший", "обычный"): 12, (2, 8, 8, "младший", "двойной"): 6,
+                                  (1, 8, 8, "старший", "обычный"): 16,
+                                  **{(1, m, m, "старший", "обычный"): 6 for m in (7, 4, 5, 6, 10, 3, 9)}}))
+        self.assertEqual(sorted({к.I for к in обычно if к.ступень == 1 and к.m == 8}), list(range(1, 17)))
+        self.assertEqual(sorted({к.I for к in обычно if к.ступень == 1 and к.m == 5}), [1, 2, 3, 4, 5, 8])
+        глубоко = R.план("глубоко")
+        self.assertEqual(len(глубоко), 1460)
+        self.assertEqual(глубоко[:112], обычно)
+        сч = Counter((к.ступень, к.m) for к in глубоко)
+        self.assertEqual((сч[2, 8], сч[2, 10], сч[2, 4], сч[1, 3]), (480, 360, 12, 16))
+        self.assertEqual({к.p for к in глубоко if к.ступень == 2 and к.m == 8}, set(R.многочлены_поля(8)))
+        self.assertEqual(R.план("нет такого"), обычно)
 
     def test_стоп_и_срок(self):
         биты, _ = поток(255, 223, блоков=150)
