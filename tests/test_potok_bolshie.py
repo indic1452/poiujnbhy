@@ -439,6 +439,42 @@ class ЗагрузкиTests(unittest.TestCase):
             self.assertEqual([], [п.name for п in Path(tmp).iterdir() if п.name.startswith(другая)])
 
 
+class ЗагрузкиГраницыTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.з = Загрузки(Path(self._tmp.name))
+
+    def test_объём_ид_кусок(self):
+        for размер in (0, -1):
+            with self.assertRaises(ОшибкаЗагрузки) as о:
+                self.з.начать(владелец=1, имя="п", размер=размер, сведения={})
+            self.assertEqual(0, о.exception.принято)
+        ид = self.з.начать(владелец=1, имя="п", размер=1, сведения={})["ид"]
+        for плохой in ("g" * 16, ид[:15], ид + "0", ид.upper() if ид.upper() != ид else "A" * 16):
+            with self.assertRaises(KeyError):
+                self.з.прочитать(плохой, 1)
+        большой = self.з.начать(владелец=1, имя="б", размер=(32 << 20) + 1, сведения={})["ид"]
+        with self.assertRaisesRegex(ОшибкаЗагрузки, "кусок больше 32 МБ") as о:
+            self.з.дописать(большой, 1, 0, bytes((32 << 20) + 1))
+        self.assertEqual(0, о.exception.принято)
+        self.assertEqual(32 << 20, self.з.дописать(большой, 1, 0, bytes(32 << 20)))
+
+    def test_уборка_брошенных(self):
+        старая = self.з.начать(владелец=1, имя="с", размер=5, сведения={})["ид"]
+        with mock.patch("reportgen.potok.zagruzki.time.time", return_value=time.time() + 7 * 24 * 3600 - 60):
+            self.з.прибрать()
+        self.assertEqual(1, len(self.з.список(1)))                      # без минуты неделя — ещё лежит
+        with mock.patch("reportgen.potok.zagruzki.time.time", return_value=time.time() + 7 * 24 * 3600 + 60):
+            свежая = self.з.начать(владелец=1, имя="н", размер=5, сведения={})["ид"]   # уборка — при начале новой
+        self.assertEqual([свежая], [з["ид"] for з in self.з.список(1)])
+        self.assertFalse((Path(self._tmp.name) / f"{старая}.part").exists())
+        (Path(self._tmp.name) / "битая.json").write_text("{")
+        self.з.прибрать()
+        self.assertFalse((Path(self._tmp.name) / "битая.json").exists())
+        self.assertEqual([], self.з.список(2))
+
+
 class ЧерезСерверTests(unittest.TestCase):
     def setUp(self):
         from test_web import WebTestCase  # noqa: PLC0415
