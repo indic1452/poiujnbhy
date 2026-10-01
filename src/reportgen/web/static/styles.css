@@ -9647,3 +9647,10 @@ div.stol-decoder-op { border: 0; padding: 0; }
 
 /* Меню: длинное имя раздела («Военнослужащие», «Сессии потоков» жирным) — целиком, а в узком меню — с многоточием. */
 .side-nav a > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* Шапка стола: ход автомата — своей строкой под именем сессии, имя не сжимается до «А…». */
+.stol-title { flex-wrap: wrap; row-gap: 4px; }
+.stol-title > b { min-width: 6em; flex: 0 1 auto; }
+.stol-title > .stol-progress { order: 10; flex: 1 1 100%; }
+/* Строка состояния таблицы массивов — одной строкой: длинное описание этапа — с многоточием (целиком — в подсказке). */
+.stol-pane > .stol-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

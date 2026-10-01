@@ -1195,7 +1195,8 @@ process.stdout.write(JSON.stringify(случаи.map((верхи) => {
                                 capture_output=True, text=True, timeout=20)
         self.assertEqual(0, готово.returncode, готово.stderr)
         итог = json.loads(готово.stdout)
-        self.assertEqual({"#modal-root > .modal-backdrop > .modal > footer"}, {з for _, з in итог})
+        # Плавающие окна (поиск, декодеры) уведомления не сдвигают: под ними страница, а не затемнение.
+        self.assertEqual({"#modal-root > .modal-backdrop:not(.modal-backdrop--float) > .modal > footer"}, {з for _, з in итог})
         # Без окна — место из CSS; над подвалом верхнего окна на 8 пикселей, не ниже 16; пустой подвал — как без окна.
         self.assertEqual(["", "108px", "108px", "18px", "16px", ""], [б for б, _ in итог])
         текст = APP_JS.read_text(encoding="utf-8")

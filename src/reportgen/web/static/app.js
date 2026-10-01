@@ -732,9 +732,9 @@
             document.removeEventListener('keydown', onKey, true);
             const фокусБылВОкне = modal.contains(document.activeElement) || document.activeElement === document.body;
             backdrop.remove();
+            местоУведомлений();
             if (фокусБылВОкне && былФокус && былФокус.isConnected && былФокус.focus) былФокус.focus({ preventScroll: true });
             if (options.место && ОТКРЫТЫЕ_ОКНА.get(options.место) === окно) ОТКРЫТЫЕ_ОКНА.delete(options.место);
-            местоУведомлений();
             if (options.onClose) options.onClose();
         }
 
@@ -743,8 +743,8 @@
         });
         document.addEventListener('keydown', onKey, true);
         root.appendChild(backdrop);
-        if (плавающее) плавающееОкно(modal, header, options.место);
         местоУведомлений();
+        if (плавающее) плавающееОкно(modal, header, options.место);
         if (options.focus) setTimeout(() => { const node = $(options.focus, modal); if (node) node.focus(); }, 30);
         else if (плавающее) setTimeout(() => { if (modal.isConnected && !modal.contains(document.activeElement)) modal.focus({ preventScroll: true }); }, 30);
         const окно = { close: close, modal: modal, body: body, footer: footer, свернуть: свёрнуто };
@@ -11781,10 +11781,13 @@
             }
             return с.полные[job];
         }
+        //: Задания, которые уже просили остановить: кнопка — «Останавливается…», второй раз не жмётся.
+        const останавливаются = new Set();
         async function остановитьАвтомат(у) {
             try {
                 await api.post('/api/potok/' + encodeURIComponent(у.job) + '/stop', {});
-                toast('Автомат остановится после текущей проверки и выдаст то, что уже нашёл', 'info');
+                останавливаются.add(у.job);
+                toast('Автомат остановится после текущей проверки (она бывает и в несколько минут) и выдаст то, что уже нашёл', 'info', 8000);
             } catch (error) { toastError(error); }
             delete полныеКогда[у.job];
             await загрузитьДерево();
@@ -11809,8 +11812,14 @@
                 h('span', { class: 'stol-progress-bar', title: 'Время от предела профиля «' + (з.профиль || 'обычно') + '»' },
                     h('span', { style: { width: Math.round(х.доля * 100) + '%' } })),
                 h('span', { class: 'stol-progress-time' }, х.ждёт ? '' : минутыСекунды(х.секунд) + ' из ≤ ' + минутыСекунды(х.предел)),
-                х.ждёт ? null : h('button', { class: 'btn btn--sm', type: 'button', onclick: () => остановитьАвтомат(у) }, 'Остановить'),
+                х.ждёт ? null : кнопкаСтоп(у),
             ]);
+        }
+        function кнопкаСтоп(у, класс) {
+            const уже = останавливаются.has(у.job);
+            return h('button', { class: 'btn btn--sm' + (класс ? ' ' + класс : ''), type: 'button', disabled: уже,
+                title: 'Автомат закончит текущую проверку и выдаст то, что уже нашёл', onclick: () => остановитьАвтомат(у) },
+            уже ? 'Останавливается…' : 'Остановить');
         }
         async function журналЗадания(job, заново) {
             if (заново || !с.журнал[job]) с.журнал[job] = (await api.get('/api/potok/' + encodeURIComponent(job) + '/journal')).journal || {};
@@ -11826,16 +11835,21 @@
 
         async function рисоватьЖурнал() {
             const у = с.массивы && с.массивы.поКлючу[с.выбран];
-            clear(журнал);
-            if (!у) return;
+            if (!у) { clear(журнал); return; }
             let з, записи;
+            // Журнал очищается, когда новое уже пришло: при опросе идущего автомата он не мигает пустым.
             try {
                 [з, записи] = await Promise.all([полное(у.job), журналЗадания(у.job)]);
             } catch (error) {
+                clear(журнал);
                 журнал.appendChild(errorBox(error));
                 return;
             }
             if (с.выбран !== у.ключ) return;
+            const былаЗаметка = журнал.querySelector('.stol-note[data-key="' + CSS.escape(у.ключ) + '"]');
+            const текстЗаметки = былаЗаметка ? былаЗаметка.value : '';
+            const вЗаметке = былаЗаметка && document.activeElement === былаЗаметка;
+            clear(журнал);
             const строки = [];
             строки.push(h('div', { class: 'stol-j-head' }, '—— Массив ' + у.номер + ' ——'));
             if (у.stage === 0) {
@@ -11865,12 +11879,15 @@
                         h('span', { class: 'mono small muted' }, ' ' + з_.слой)));
                 }
             });
-            const заметка = h('input', { type: 'text', placeholder: 'заметка к массиву — Enter', class: 'stol-note' });
+            const заметка = h('input', { type: 'text', placeholder: 'заметка к массиву — Enter', class: 'stol-note', 'data-key': у.ключ });
             заметка.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && заметка.value.trim()) { вЖурнал(у, 'заметка', заметка.value.trim()); заметка.value = ''; }
             });
             append(журнал, строки);
             журнал.appendChild(заметка);
+            // Недописанная заметка переживает перерисовку журнала (опрос идущего автомата).
+            if (текстЗаметки) заметка.value = текстЗаметки;
+            if (вЗаметке) заметка.focus({ preventScroll: true });
             журнал.scrollTop = журнал.scrollHeight;
         }
 
@@ -11880,7 +11897,7 @@
             return h('div', { class: 'stol-j-progress' },
                 h('div', {}, h('b', {}, х.ждёт ? 'Автоанализ ждёт очереди' : 'Автоанализ идёт ' + минутыСекунды(х.секунд)),
                     х.ждёт ? '' : h('span', { class: 'muted' }, ' (предел профиля «' + (з.профиль || 'обычно') + '» — ' + минутыСекунды(х.предел) + ')'),
-                    х.ждёт ? null : h('button', { class: 'btn btn--sm stol-j-stop', type: 'button', onclick: () => остановитьАвтомат(у) }, 'Остановить')),
+                    х.ждёт ? null : кнопкаСтоп(у, 'stol-j-stop')),
                 h('div', { class: 'stol-progress-bar stol-progress-bar--wide' }, h('span', { style: { width: Math.round(х.доля * 100) + '%' } })),
                 h('div', { class: 'small' }, 'Сейчас: ' + х.сейчас),
                 х.найдено.length ? h('div', { class: 'small' }, 'Найдено пока: ', h('ol', { class: 'stol-j-found' }, х.найдено.map((т) => h('li', {}, т)))) : null,
@@ -24675,7 +24692,7 @@
      */
     function понятнаяОшибкаМодели(текст) {
         const т = String(текст || '');
-        if (/Connection refused|Errno 111|Errno -?[23]\b|Name or service not known|No route to host|Network is unreachable/i.test(т)) {
+        if (/Connection refused|Errno 111\b|Errno -[23]\b|Name or service not known|No route to host|Network is unreachable/i.test(т)) {
             return 'Сервер модели не запущен или недоступен — ответ не сформирован. Поиск по библиотеке работает: найденные ' +
                 'документы — в источниках справа. Сообщите администратору, что сервер модели не отвечает.';
         }
