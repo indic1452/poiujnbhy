@@ -5250,9 +5250,12 @@ def potok_moddecoder_blind(request: Request, job_id: str) -> dict[str, Any]:
                     поиск.пул.отменить(поиск)
                     raise
                 try:
-                    return поиск.ждать(0.3)
+                    итог = поиск.ждать(0.3)
                 except TimeoutError:
                     continue
+                with suppress(razmetka.Остановлено):
+                    ход(*последний)                   # последний ход (доля 1) — пришёл до итога
+                return итог
         except ispolniteli.Отменено:
             raise razmetka.Остановлено from None
 
