@@ -90,7 +90,7 @@
     --chat-left-w: 288px;
     --chat-right-w: 344px;
     --topbar-h: 52px;
-    --side-w: 208px;
+    --side-w: 222px;
     --side-w-min: 52px;
 }
 
@@ -9644,3 +9644,6 @@ div.stol-decoder-op { border: 0; padding: 0; }
 .form-grid--one { grid-template-columns: 1fr; }
 .form-grid--one > input, .form-grid--one > textarea { width: 100%; box-sizing: border-box; }
 .opis-handle { width: 24px; }
+
+/* Меню: длинное имя раздела («Военнослужащие», «Сессии потоков» жирным) — целиком, а в узком меню — с многоточием. */
+.side-nav a > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
