@@ -364,6 +364,58 @@ class НакопительTests(unittest.TestCase):
         self.assertEqual(len(self.сводки), счёт["пакетов"], "числа пакетов точные и сверх потолка")
 
 
+class НакопительСлучайноTests(unittest.TestCase):
+    """Сводки-заготовки с краевыми случаями (пустые адреса, равные времена, пустая нагрузка, свои пакеты на себя)
+    — накопитель против statistika на сотнях случайных наборов."""
+
+    def сводки(self, г, n):
+        стеки = [["Ethernet", "IPv4", "UDP", "Данные"], ["Ethernet", "IPv4", "TCP", "HTTP"], ["Ethernet", "ARP"],
+                 ["Ethernet", "IPv6", "UDP", "DNS"], ["IP", "Данные"], ["Ethernet", "IPv4", "TCP", "Данные"], ["Данные"]]
+        адреса = ["", "10.0.0.1", "10.0.0.2", "10.0.0.3"]
+        итог = []
+        for i in range(n):
+            стек = list(г.choice(стеки))
+            с_ = {"номер": i + 1, "время": float(г.choice([1, 1, 2, 3, 5, 8])), "длина": г.randrange(0, 1500),
+                  "стек": стек, "протокол": стек[-1] if стек else "?", "источник": г.choice(адреса),
+                  "получатель": г.choice(адреса), "инфо": "", "ошибки": г.choice([[], [], ["TCP: контрольная сумма x"],
+                                                                                 ["IPv4: обрыв (5)"]])}
+            if "TCP" in стек or "UDP" in стек:
+                с_["порт_от"], с_["порт_к"] = г.choice([(80, 5000), (5000, 80), (53, 53), (None, None)])
+            else:
+                с_["порт_от"] = с_["порт_к"] = None
+            if г.random() < 0.3:
+                с_["mac"] = [г.choice(["aa", "bb"]), г.choice(["aa", "cc"])]
+            нагр = г.choice([None, [0, 0], [10, 5], [0, 7]])
+            if нагр is not None:
+                с_["нагр"] = нагр
+            итог.append(с_)
+        return итог
+
+    def test_как_statistika(self):
+        import random
+        г = random.Random(5)
+        for k in range(150):
+            сводки = self.сводки(г, г.randrange(0, 40))
+            н = Накопитель()
+            for с_ in сводки:
+                н.добавить(с_, {})
+            с = json.loads(json.dumps(н.снимок()))
+            with self.subTest(k=k):
+                self.assertEqual(json.loads(json.dumps(statistika.иерархия(сводки))), с["иерархия"])
+                for уровень in ("eth", "ip", "tcp", "udp"):
+                    self.assertEqual(json.loads(json.dumps(statistika.диалоги(сводки, уровень))), с["диалоги"][уровень])
+                self.assertEqual(json.loads(json.dumps(statistika.узлы(сводки))), с["узлы"])
+                self.assertEqual(statistika.ошибки(сводки), с["ошибки"])
+                пути = {tuple(с_["стек"][:i]) for с_ in сводки for i in range(len(с_["стек"]) + 1)} | {()}
+                for путь in пути:
+                    self.assertEqual(json.loads(json.dumps(statistika.узел_протокола(сводки, list(путь)))),
+                                     узел_из_снимка(с["узлы_дерева"], list(путь)))
+                груз = [b"x" * с_["нагр"][1] if с_.get("нагр") else None for с_ in сводки]
+                эталон = statistika.неизвестные(сводки, груз)
+                self.assertEqual([(г_["группа"], г_["пакетов"], г_["первые"], г_["длины"]) for г_ in эталон],
+                                 [(г_["группа"], г_["пакетов"], г_["первые"], г_["длины"]) for г_ in с["неизвестные"]])
+
+
 class ЗахватыПотокомTests(unittest.TestCase):
     """Захваты: разбор в фоне (потоком и процессом), загрузка кусками, отборы следом за разбором."""
 
