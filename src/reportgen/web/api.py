@@ -3462,24 +3462,69 @@ def pakety_apply_decode_rules(request: Request, cap_id: str) -> dict[str, Any]:
 
 # -- разбор потока: задания по этапам ------------------------------------------------
 
-def _potok(request: Request):
-    """Очередь заданий разбора потока — одна на приложение, папка в data_dir."""
-    задания = getattr(request.app.state, "potok", None)
+#: Задания и сессии заводятся один раз на приложение: два первых запроса одновременно не должны
+#: завести две очереди над одной папкой (каждая подхватила бы незавершённые разборы).
+_ПОТОК_ЗАМОК = threading.Lock()
+
+
+def открыть_задания(app: Any):
+    """Очередь заданий разбора потока — одна на приложение, папка в data_dir; исполнители — по настройкам."""
+    задания = getattr(app.state, "potok", None)
     if задания is None:
-        from ..potok.zadaniya import Задания  # noqa: PLC0415 — numpy только здесь
-        задания = Задания(Path(_settings(request).data_dir) / "potok")
-        request.app.state.potok = задания
+        with _ПОТОК_ЗАМОК:
+            задания = getattr(app.state, "potok", None)
+            if задания is None:
+                from ..potok.zadaniya import Задания  # noqa: PLC0415 — numpy только здесь
+                settings = app.state.settings
+                задания = Задания(Path(settings.data_dir) / "potok",
+                                  разборов=int(getattr(settings, "potok_razborov", 0) or 0),
+                                  стол=int(getattr(settings, "potok_stol", 0) or 0),
+                                  на_человека=int(getattr(settings, "potok_na_cheloveka", 0) or 0),
+                                  процессы=bool(getattr(settings, "potok_processy", True)))
+                app.state.potok = задания
     return задания
+
+
+def _potok(request: Request):
+    return открыть_задания(request.app)
 
 
 def _sessii(request: Request):
     """Сессии работы с потоками — общие столы нескольких файлов и людей."""
     сессии = getattr(request.app.state, "sessii", None)
     if сессии is None:
-        from ..potok.sessii import Сессии  # noqa: PLC0415
-        сессии = Сессии(Path(_settings(request).data_dir) / "sessii")
-        request.app.state.sessii = сессии
+        with _ПОТОК_ЗАМОК:
+            сессии = getattr(request.app.state, "sessii", None)
+            if сессии is None:
+                from ..potok.sessii import Сессии  # noqa: PLC0415
+                сессии = Сессии(Path(_settings(request).data_dir) / "sessii")
+                request.app.state.sessii = сессии
     return сессии
+
+
+def _посчитать(request: Request, user, функция, *args: Any, срок: float | None = None) -> Any:
+    """Тяжёлый расчёт стола — в исполнителе (отдельный процесс), не в процессе сервера.
+
+    Пока исполнитель считает, эта нить сервера только ждёт: интерпретатор свободен для
+    лёгких запросов остальных людей. Ошибки расчёта (ValueError и т. п.) поднимаются здесь —
+    обработчик превращает их в 400, как прежде.
+    """
+    from ..potok import ispolniteli  # noqa: PLC0415
+    try:
+        return _potok(request).посчитать(функция, *args, владелец=user.id, срок=срок)
+    except ispolniteli.СрокВышел as ошибка:
+        raise ServiceError(f"расчёт остановлен: {ошибка}", 504) from None
+    except ispolniteli.Отменено:
+        raise ServiceError("расчёт отменён: сервер останавливается", 503) from None
+    except ispolniteli.ОшибкаИсполнителя as ошибка:
+        raise ServiceError(f"расчёт не выполнен: {ошибка}", 500) from None
+
+
+def _источник(request: Request, job_id: str, stage: int):
+    try:
+        return _potok(request).источник(job_id, int(stage))
+    except (ValueError, OSError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
 
 
 def _мои_сессии(request: Request, user) -> list[str]:
@@ -3643,12 +3688,13 @@ def potok_bits(request: Request, job_id: str, stage: int = 0, start: int = 0,
 @router.get("/potok/{job_id}/periods")
 def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, Any]:
     """Кандидаты периода по автокорреляции."""
-    from ..potok import cikl, rastr  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     задания = _potok(request)
     _файл_бит_или_400(request, user, job_id, stage)
+    источник = _источник(request, job_id, stage)
     return {"items": задания.запомнить(job_id, stage, "периоды",
-                                       lambda: rastr.периоды(задания.биты_участка(job_id, stage, 0, cikl.ВЫБОРКА)))}
+                                       lambda: _посчитать(request, user, stol_raschety.периоды, источник))}
 
 
 #: График автокорреляции — лаги не дальше этого.
@@ -3658,43 +3704,35 @@ def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, An
 @router.get("/potok/{job_id}/autocorr")
 def potok_autocorr(request: Request, job_id: str, stage: int = 0, max: int = 8192) -> dict[str, Any]:  # noqa: A002
     """Автокорреляция по лагам 0…max (по началу массива, как поиск периода) — для графика в окне поиска."""
-    from ..potok import cikl  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     _файл_бит_или_400(request, user, job_id, stage)
     задания = _potok(request)
     наибольший = min(АВТОКОРРЕЛЯЦИЯ_ДО, max if max > 0 else 8192)
-
-    def посчитать():
-        выборка = задания.биты_участка(job_id, stage, 0, cikl.ВЫБОРКА)
-        лагов = min(наибольший, len(выборка) // 2)
-        r = cikl.автокорреляция(выборка, лагов) if лагов >= 1 else []
-        return {"r": [round(float(x), 4) for x in r], "бит": len(выборка),
-                "шум": round(1.0 / len(выборка) ** 0.5, 5) if len(выборка) else 0.0}
-
-    return задания.запомнить(job_id, stage, f"автокорреляция:{наибольший}", посчитать)
+    источник = _источник(request, job_id, stage)
+    return задания.запомнить(job_id, stage, f"автокорреляция:{наибольший}",
+                             lambda: _посчитать(request, user, stol_raschety.автокорреляция, источник, наибольший))
 
 
 @router.post("/potok/{job_id}/tool")
 def potok_tool(request: Request, job_id: str) -> dict[str, Any]:
     """Быстрый инструмент над потоком этапа или каналом по маске."""
-    from ..potok import rastr  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
-    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
+    этап = int(тело.get("stage") or 0)
+    _файл_бит_или_400(request, user, job_id, этап)
     try:
-        if тело.get("mask"):
-            биты = rastr.по_маске(биты, тело["mask"])
-        найдено = rastr.инструмент(
-            биты, str(тело.get("tool") or ""), int(тело.get("k") or 0),
-            **({"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0),
-                "пропуск": int(тело.get("skip") or 0),
-                "отводы": [int(t) for t in re.findall(r"\d+", str(тело.get("taps") or ""))]}
-               if тело.get("tool") == "скремблер-кадр" else
-               {"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0)}
-               if тело.get("tool") == "поля" else {}))
+        параметры = ({"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0),
+                      "пропуск": int(тело.get("skip") or 0),
+                      "отводы": [int(t) for t in re.findall(r"\d+", str(тело.get("taps") or ""))]}
+                     if тело.get("tool") == "скремблер-кадр" else
+                     {"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0)}
+                     if тело.get("tool") == "поля" else {})
+        return _посчитать(request, user, stol_raschety.инструмент, _источник(request, job_id, этап),
+                          тело.get("mask"), str(тело.get("tool") or ""), int(тело.get("k") or 0), параметры)
     except (ValueError, KeyError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    return {"found": rastr.в_словарь(найдено), "bits": int(len(биты))}
 
 
 @router.post("/potok/{job_id}/derive")
