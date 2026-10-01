@@ -911,6 +911,8 @@ class ПоискTests(unittest.TestCase):
         self.assertEqual((сч[2, 8], сч[2, 10], сч[2, 4], сч[1, 3]), (480, 360, 12, 16))
         self.assertEqual({к.p for к in глубоко if к.ступень == 2 and к.m == 8}, set(R.многочлены_поля(8)))
         self.assertEqual(R.план("нет такого"), обычно)
+        for к in глубоко:                                             # фазы — все 0…m−1 или одна 0, или 1…7
+            self.assertIn(к.фазы, (tuple(range(к.m)), (0,), tuple(range(1, к.m))), к)
 
     def test_стоп_и_срок(self):
         биты, _ = поток(255, 223, блоков=150)
