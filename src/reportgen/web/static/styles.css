@@ -9654,3 +9654,6 @@ div.stol-decoder-op { border: 0; padding: 0; }
 .stol-title > .stol-progress { order: 10; flex: 1 1 100%; }
 /* Строка состояния таблицы массивов — одной строкой: длинное описание этапа — с многоточием (целиком — в подсказке). */
 .stol-pane > .stol-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Несколько кнопок в пустом месте — с промежутком, а не впритык. */
+.empty-act { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }

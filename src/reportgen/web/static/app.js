@@ -12006,7 +12006,9 @@
             const заголовок = h('button', { class: 'stol-menu-name', role: 'menuitem', tabindex: -1, type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
                 onclick: () => открытьГруппу(группа, true) }, h('span', {}, имя), h('span', { 'aria-hidden': 'true' }, '›'));
             const группа = h('div', { class: 'stol-menu-group' + (класс ? ' ' + класс : '') }, заголовок, под);
-            группа.addEventListener('mouseenter', () => открытьГруппу(группа, false));
+            // Наведение открывает подменю, только если мышью правда водят: меню, открытое с клавиатуры под
+            // неподвижным указателем, иначе отдало бы подменю тому разделу, над которым указатель стоит.
+            группа.addEventListener('mouseenter', () => { if (открытое && открытое.dataset.mouse) открытьГруппу(группа, false); });
             return группа;
         }
         function открытьГруппу(группа, фокус) {
@@ -12033,6 +12035,12 @@
             const { раскладка, откуда, годна } = раскладкаДля(у);
             const изТаблицы = !сверху;
             const корень = h('div', { class: 'stol-menu', role: 'menu', 'aria-label': 'Операции над массивом ' + у.номер });
+            корень.addEventListener('mousemove', (e) => {
+                if (корень.dataset.mouse) return;
+                корень.dataset.mouse = '1';
+                const г = e.target.closest && e.target.closest('.stol-menu-group');
+                if (г) открытьГруппу(г, false);
+            });
             const поиск = h('input', { type: 'search', class: 'stol-menu-find', placeholder: 'Найти операцию…', 'aria-label': 'Найти операцию',
                 autocomplete: 'off', spellcheck: false });
             const найдено = h('div', { class: 'stol-menu-found', hidden: true, role: 'group', 'aria-label': 'Найденные операции' });
