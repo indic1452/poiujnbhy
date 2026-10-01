@@ -637,7 +637,11 @@ class Задания:
         if int(этап) == 0:
             файл = self.папка / ид / "вход.bin"
             if not файл.exists():
-                if self._прочитать_файл(ид).get("ссылка"):
+                try:
+                    ссылка = self._прочитать_файл(ид).get("ссылка")
+                except (OSError, ValueError):
+                    ссылка = None
+                if ссылка:
                     raise ValueError("массив — ссылка на файл сервера: его читает источник()")
                 raise ValueError("поток массива ещё не готов")
             return файл
