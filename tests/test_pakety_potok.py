@@ -331,7 +331,7 @@ class НакопительTests(unittest.TestCase):
         self.assertTrue({"mDNS", "LLMNR"} <= {п for с_ in сводки for п in с_["стек"]}, "в смеси есть mDNS и LLMNR")
         self.assertEqual(sum(1 for с_ in сводки if с_["ошибки"]), счёт["с_ошибками"])
         tcp = [с_ for с_ in сводки if "TCP" in с_["стек"]]
-        self.assertEqual((len(tcp), sum(1 for с_ in tcp if any(о.startswith("TCP: контрольная") for о in с_["ошибки"]))),
+        self.assertEqual((len(tcp), sum(1 for с_ in сводки if any(о.startswith("TCP: контрольная") for о in с_["ошибки"]))),
                          (счёт["tcp"], счёт["tcp_суммы"]))
         self.assertGreater(счёт["tcp_суммы"], 0)
         # Потоки — как «Выходные данные» считали прежде (по всем сводкам).
@@ -472,7 +472,8 @@ class НакопительБогатоTests(unittest.TestCase):
         for i in range(n):
             вид = г.randrange(7)
             а, б = г.choice(адреса), г.choice(адреса)
-            порты = (г.choice([53, 80, 443, 1023, 1024, 1025, 40000 + г.randrange(30)]), г.choice([53, 80, 1024, 5000]))
+            порты = (г.choice([21, 22, 25, 53, 80, 110, 443, 1023, 1024, 1025, 40000 + г.randrange(30)]),
+                     г.choice([21, 22, 23, 25, 53, 80, 110, 143, 1024, 5000]))
             п: dict = {}
             if вид == 0:
                 стек = ["Ethernet", "IPv4", "UDP", г.choice(["DNS", "mDNS", "LLMNR"])]
@@ -617,6 +618,32 @@ class НакопительБогатоTests(unittest.TestCase):
         # TCP без портов (фрагмент) потоком не считается.
         н.добавить(self.сводка(5, "c", "s", стек=["E", "IPv4", "TCP"]), {})
         self.assertEqual(1, н.раздел("счёт")["потоков"])
+
+    def test_обзор_на_краях(self):
+        import random
+        сводки, поля = self.набор(random.Random(23), 400)
+        j = lambda x: json.loads(json.dumps(x))  # noqa: E731
+
+        def сверить(свои, свои_поля):
+            н = Накопитель()
+            for с_, п in zip(свои, свои_поля, strict=True):
+                н.добавить(с_, п)
+            эталон = j(statistika.обзор(свои, свои_поля, [None] * len(свои)))
+            for к in ("файлов", "файлы"):
+                эталон.pop(к, None)
+            self.assertEqual(эталон, j(н.раздел("обзор")))
+
+        # Только запросы DNS (ответов нет): приметы «без ответа» нет.
+        запросы = [(с_, п) for с_, п in zip(сводки, поля, strict=True) if п.get("dns.flags.response") == [0]]
+        сверить([с_ for с_, _ in запросы], [п for _, п in запросы])
+        # Ровно половина TCP с плохой суммой — примета есть.
+        tcp_плохо = next(с_ for с_ in сводки if "TCP" in с_["стек"] and any(о.startswith("TCP: контрольная") for о in с_["ошибки"]))
+        tcp_хорошо = next(с_ for с_ in сводки if "TCP" in с_["стек"] and not с_["ошибки"])
+        сверить([tcp_плохо, tcp_хорошо], [{}, {}])
+        # Длительность меньше секунды и нулевая.
+        короткие = [dict(с_, время=1000 + i * 0.01) for i, с_ in enumerate(сводки[:30])]
+        сверить(короткие, поля[:30])
+        сверить(сводки[:1], поля[:1])
 
     def test_потолок_ждущих_ответа_http(self):
         from reportgen.setevoy import nakopitel
