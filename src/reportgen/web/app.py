@@ -86,6 +86,10 @@ def create_app(settings: Settings | None = None,
         # адреса DVB, H в тексте) кладут туда руками, автомат и окно «LDPC» пробуют их сами.
         from ..potok import ldpc  # noqa: PLC0415 — numpy только при старте, не при импорте
         ldpc.подготовить_каталог(Path(settings.data_dir) / "ldpc")
+        # Задания разбора потоков — сразу при старте: незавершённые до перезапуска разборы
+        # снова встают в очередь, не дожидаясь, пока кто-нибудь откроет страницу.
+        from .api import открыть_задания  # noqa: PLC0415
+        открыть_задания(app)
         if service.vectors is not None:
             state = service.vectors.start_if_needed()
             if state.get("running"):
@@ -103,6 +107,11 @@ def create_app(settings: Settings | None = None,
         прогоны = getattr(app.state, "progony", None)
         if прогоны is not None:
             прогоны.остановить_все()
+        # Исполнители разборов и стола — отдельные процессы: погасить. Идущие разборы остаются
+        # «идёт» на диске и при следующем запуске начнутся заново.
+        задания = getattr(app.state, "potok", None)
+        if задания is not None:
+            задания.закрыть()
 
     app = FastAPI(
         lifespan=lifespan,
