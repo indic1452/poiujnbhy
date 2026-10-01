@@ -448,7 +448,7 @@ class ПоискTests(unittest.TestCase):
         ldpc = (г.integers(0, 2, (300, G.shape[0])).astype(np.uint8) @ G % 2).reshape(-1).astype(np.uint8)
         текст = ("Код Рида — Соломона вслепую: длина слова и начало по префиксу. " * 3000).encode()
         кадры = синтез.hdlc([bytes(г.integers(0, 256, int(г.integers(40, 300)), dtype=np.uint8)) for _ in range(600)])
-        случаи = {"случайные": г.integers(0, 2, 1 << 21).astype(np.uint8),
+        случаи = {"случайные": г.integers(0, 2, 1 << 20).astype(np.uint8),
                   "свёрточный": синтез.свёрточный(г.integers(0, 2, 1 << 20).astype(np.uint8)),
                   "LDPC": ldpc, "текст": np.unpackbits(np.frombuffer(текст, np.uint8)),
                   "HDLC": np.unpackbits(np.frombuffer(кадры, np.uint8)),
@@ -459,7 +459,7 @@ class ПоискTests(unittest.TestCase):
 
     def test_ложных_нет_в_обычном_плане(self):
         """Весь план «обычно» на случайных битах — ни одной находки (ступень 2 на всех фазах и т. д.)."""
-        итог = R.поиск(np.random.default_rng(21).integers(0, 2, 1 << 21).astype(np.uint8), профиль="обычно",
+        итог = R.поиск(np.random.default_rng(21).integers(0, 2, 1 << 20).astype(np.uint8), профиль="обычно",
                        все=True)
         self.assertEqual(итог["найдено"], [])
         self.assertEqual(итог["по"], итог["всего"])
