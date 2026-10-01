@@ -247,6 +247,7 @@ class ИсточникTests(unittest.TestCase):
         self.assertTrue(np.array_equal(биты[:5], ист.биты(-3, 5)))
         self.assertTrue(np.array_equal(биты[-4:], ист.биты(len(биты) - 4, len(биты) + 100)))
         self.assertEqual(0, len(ист.биты(50, 40)))
+        self.assertEqual((0, 0, 0), (len(ист.биты(0, 0)), len(ист.биты(0, -5)), len(ист.биты(5, 0))))
         self.assertEqual(0, len(ист.биты(len(биты) + 9, len(биты) + 20)))
         self.assertTrue(np.array_equal(биты[100:], ист.биты(100)))
         self.assertTrue(np.array_equal(биты[3:1003], np.concatenate(list(ист.куски(77, 3, 1003)))))
@@ -264,6 +265,7 @@ class ИсточникTests(unittest.TestCase):
         окно = Окно(Источник(путь, бит=12))
         self.assertEqual(int(биты[11]), int(окно[-1]))
         self.assertEqual(int(биты[0]), int(окно[-12]))
+        self.assertEqual((int(биты[0]), int(биты[5])), (int(окно[0]), int(окно[5])))
         for плохой in (12, -13):
             with self.assertRaises(IndexError):
                 окно[плохой]
