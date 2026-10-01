@@ -226,17 +226,27 @@ def _ядро(строки: Sequence[int], n: int) -> list[int]:
 
 
 def уолш(вектор: np.ndarray) -> np.ndarray:
-    """Быстрое преобразование Уолша — Адамара."""
-    a = вектор.astype(np.float64).copy()
+    """Быстрое преобразование Уолша — Адамара.
+
+    Два буфера попеременно, без копий на каждом шаге. Целый вектор, у которого сумма
+    модулей меньше 2²⁴ (гистограмма окон — сумма равна числу окон), считается во float32:
+    все промежуточные суммы — целые меньше 2²⁴, они во float32 точны, итог тот же, а
+    памяти гоняется вдвое меньше.
+    """
+    v = np.asarray(вектор)
+    целый = v.dtype.kind in "iub" or bool(np.all(v == np.floor(v)))
+    a = v.astype(np.float32 if целый and float(np.abs(v).sum()) < (1 << 24) else np.float64)
+    if a is v or np.shares_memory(a, v):
+        a = a.copy()
+    b = np.empty_like(a)
     h = 1
     while h < len(a):
-        a = a.reshape(-1, 2 * h)
-        x = a[:, :h].copy()
-        a[:, :h] += a[:, h:]
-        a[:, h:] = x - a[:, h:]
-        a = a.reshape(-1)
+        x, y = a.reshape(-1, 2, h), b.reshape(-1, 2, h)
+        np.add(x[:, 0], x[:, 1], out=y[:, 0])
+        np.subtract(x[:, 0], x[:, 1], out=y[:, 1])
+        a, b = b, a
         h *= 2
-    return a
+    return a.astype(np.float64)
 
 
 def _окна(биты: np.ndarray, ширина: int, шаг: int, начало: int = 0) -> np.ndarray:

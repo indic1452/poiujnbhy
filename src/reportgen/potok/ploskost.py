@@ -61,11 +61,15 @@ def _из_грея(g: np.ndarray, бит: int) -> np.ndarray:
 
 def _символы(биты: np.ndarray, k: int, порядок: str) -> np.ndarray:
     сколько = len(биты) // k
-    блоки = биты[:сколько * k].reshape(сколько, k).astype(np.int64)
+    блоки = биты[:сколько * k].reshape(сколько, k)
     if порядок == "младший":
         блоки = блоки[:, ::-1]
-    веса = 1 << np.arange(k - 1, -1, -1)
-    return (блоки * веса).sum(axis=1)
+    # Число из k бит, старший — первый: сдвигом и «или» по столбцам (без умножения на веса).
+    итог = np.zeros(сколько, dtype=np.int64)
+    for j in range(k):
+        итог <<= 1
+        итог |= блоки[:, j]
+    return итог
 
 
 def _в_биты(символы: np.ndarray, k: int, порядок: str) -> np.ndarray:
