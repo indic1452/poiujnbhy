@@ -9597,7 +9597,13 @@
                 ' · I ' + x.toFixed(3).replace('.', ',') + ', Q ' + y.toFixed(3).replace('.', ',');
         }
         холст.addEventListener('wheel', (e) => { e.preventDefault(); const г = где(e); крупнее(e.deltaY < 0, г.x, г.y); }, { passive: false });
-        холст.addEventListener('mousedown', (e) => { тянуть = { x: e.clientX, y: e.clientY, цx, цy, сдвинуто: false }; });
+        холст.addEventListener('mousedown', (e) => {
+            // Фокус — без прокрутки окна: иначе холст сдвигается между нажатием и отпусканием, и щелчок попадает в другую точку.
+            e.preventDefault();
+            if (холст.focus) холст.focus({ preventScroll: true });
+            const г = где(e);
+            тянуть = { x: e.clientX, y: e.clientY, цx, цy, сдвинуто: false, точка: точкаУКурсора(точки, г.x, г.y, Math.max(шаг / 2, 8 * г.d / г.в.м)) };
+        });
         холст.addEventListener('mousemove', (e) => {
             const г = где(e);
             if (тянуть && (e.buttons & 1)) {
@@ -9610,14 +9616,13 @@
             if (n !== наведена) { наведена = n; строка.textContent = описать(n); рисовать(); }
         });
         холст.addEventListener('mouseleave', () => { наведена = -1; тянуть = null; рисовать(); });
-        холст.addEventListener('mouseup', (e) => {
+        холст.addEventListener('mouseup', () => {
             const был = тянуть;
             тянуть = null;
-            if (был && был.сдвинуто) return;
-            const г = где(e);
-            // Точность щелчка: ближайшая точка, не дальше половины шага сетки (или 8 пикселей при мелком масштабе).
-            const n = точкаУКурсора(точки, г.x, г.y, Math.max(шаг / 2, 8 * г.d / г.в.м));
-            if (n >= 0 && щелчок) щелчок(n);
+            if (!был || был.сдвинуто) return;
+            // Точность щелчка: точка под курсором в миг нажатия — ближайшая, не дальше половины шага сетки
+            // (или 8 пикселей при мелком масштабе); промах между точками не выбирает соседнюю.
+            if (был.точка >= 0 && щелчок) щелчок(был.точка);
         });
         холст.addEventListener('dblclick', () => { масштаб = 1; цx = 0; цy = 0; рисовать(); });
         холст.addEventListener('keydown', (e) => {
@@ -13545,7 +13550,7 @@
                 clear(телоВариантов);
                 лучшие.forEach((в, i) => {
                     const tr = h('tr', { class: i === выбран ? 'is-selected' : '', tabindex: '-1' },
-                        h('td', { class: 'mono' }, String(в.номер)), h('td', { class: 'mono' }, в.таблица),
+                        h('td', { class: 'mono' }, String(в.номер)), h('td', { class: 'mono', title: в.таблица.length > 60 ? в.таблица : null }, короткаяЗапись(в.таблица, 60)),
                         h('td', { class: 'mono' }, в.мера.toFixed(1).replace('.', ',')),
                         h('td', { class: 'mono' }, ((в.мера - р.медиана) / Math.max(1e-4, р.разброс)).toFixed(1).replace('.', ',') + ' σ'),
                         h('td', { class: 'small' }, в.как || ''));
@@ -13555,7 +13560,9 @@
                 });
                 clear(выборВарианта);
                 if (!лучшие.length) выборВарианта.appendChild(h('option', { value: '' }, 'нажмите «Дек. всех»'));
-                лучшие.forEach((в, i) => выборВарианта.appendChild(h('option', { value: String(в.номер), selected: i === выбран }, описаниеВарианта(в, р))));
+                // У 512–1024 точек таблица — тысячи знаков: в списке — её начало.
+                лучшие.forEach((в, i) => выборВарианта.appendChild(h('option', { value: String(в.номер), selected: i === выбран },
+                    описаниеВарианта(Object.assign({}, в, { таблица: короткаяЗапись(в.таблица, 80) }), р))));
             }
             function выбрать(i) {
                 const в = лучшие[i];
