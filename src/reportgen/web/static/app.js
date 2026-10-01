@@ -21466,7 +21466,7 @@
         const полеМасштаб = h('select', {}, [1, 2, 3, 4, 6, 8].map((z) =>
             h('option', { value: z, selected: z === с.масштаб }, z + ' пикс.')));
         const видКнопки = ['биты', 'HEX', 'DEC', 'BIN', 'ТЕКСТ'].map((вид) =>
-            h('button', { class: 'btn btn--sm' + (вид === с.вид ? ' is-on' : ''), onclick: () => { с.вид = вид; рисовать(); } }, вид));
+            h('button', { class: 'btn btn--sm' + (вид === с.вид ? ' is-on' : ''), 'data-vid': вид, onclick: () => { с.вид = вид; рисовать(); } }, ПОДПИСИ_ВИДА[вид] || вид));
         const кандидаты = h('span', { class: 'rastr-cands' });
         const полоса = h('canvas', { class: 'rastr-bar', height: 18 });
         const холст = h('canvas', { class: 'rastr-canvas', height: 480, tabindex: 0 });
@@ -21639,7 +21639,7 @@
         }
 
         function рисовать() {
-            видКнопки.forEach((кнопка) => кнопка.classList.toggle('is-on', кнопка.textContent === с.вид));
+            видКнопки.forEach((кнопка) => кнопка.classList.toggle('is-on', кнопка.dataset.vid === с.вид));
             кандидаты.querySelectorAll('button').forEach((кнопка) =>
                 кнопка.classList.toggle('is-on', Number(кнопка.dataset.period) === с.период));
             const колонок = Math.max(1, Math.min(с.период - с.столбец, Math.floor(РАСТР_ШИРИНА_ДО / с.масштаб)));
@@ -22149,7 +22149,8 @@
         }
 
         загрузить();
-        setTimeout(() => холст.focus(), 30);
+        // Фокус — без прокрутки: иначе панель растра съезжала и срезала верх заголовка над «Длина строки».
+        setTimeout(() => холст.focus({ preventScroll: true }), 30);
     }
 
     async function renderStats(view) {
