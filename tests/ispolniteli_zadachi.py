@@ -66,3 +66,26 @@ def глотает_исключения():
         except Exception:  # noqa: BLE001
             pass
     return "не отменилась"
+
+
+def медленное_задание(папка, каталоги, разбирать, сек=1.5):
+    """Вместо разбора: пишет «идёт», шлёт ход, спит ``сек`` (останавливается отменой), итог — «готово»."""
+    import json  # noqa: PLC0415
+    from pathlib import Path  # noqa: PLC0415
+
+    from reportgen.fayly import записать_атомарно  # noqa: PLC0415
+    путь = Path(папка) / "состояние.json"
+    с = json.loads(путь.read_text(encoding="utf-8"))
+    с.update(состояние="идёт", начато=time.time())
+    записать_атомарно(путь, json.dumps(с, ensure_ascii=False))
+    конец = time.monotonic() + сек
+    шаг = 0
+    while time.monotonic() < конец:
+        ispolniteli.сообщить("ход", f"медленно {шаг} pid {os.getpid()}")
+        шаг += 1
+        time.sleep(0.05)
+    return {"состояние": "готово", "закончено": time.time(), "секунд": сек, "pid": os.getpid()}
+
+
+def упавшее_задание(папка, каталоги, разбирать, текст="разбор упал"):
+    raise ValueError(текст)
