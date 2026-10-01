@@ -782,7 +782,8 @@
         };
         const было = место && ПОЛОЖЕНИЯ_ОКОН.get(место);
         if (было) поставить(было.x, было.y);
-        else поставить(window.innerWidth - modal.offsetWidth - 16, 64);
+        // Справа — с отступом под кнопку уведомлений в правом нижнем углу: она не закрывает подвал окна.
+        else поставить(window.innerWidth - modal.offsetWidth - 72, 64);
         modal.style.zIndex = String(++слойОкна);
         modal.addEventListener('pointerdown', () => { modal.style.zIndex = String(++слойОкна); }, true);
         header.addEventListener('pointerdown', (e) => {
@@ -826,7 +827,8 @@
             const dialog = openModal({
                 title: options.title || 'Введите значение',
                 narrow: true,
-                body: h('div', { class: 'form-grid' },
+                // Одна колонка: поле — во всю ширину окна, подсказка-пример не обрезана.
+                body: h('div', { class: 'form-grid form-grid--one' },
                     options.message ? h('div', { class: 'muted' }, options.message) : null,
                     box || input,
                     options.note ? h('div', { class: 'small muted' }, options.note) : null),
@@ -1278,12 +1280,12 @@
     }
 
     /**
-     * Шапка меню: главное действие и вход в поиск.
+     * Шапка меню: главное действие.
      *
      * Работа отдела начинается с письма — значит, кнопка «Зарегистрировать»
      * должна быть там, где её ищут не глядя, а не третьей в ряду на экране
-     * писем. Поиск рядом с ней, с подписью сочетания клавиш: человек,
-     * увидевший «Ctrl K» один раз, дальше пользуется им, а не мышью.
+     * писем. Поиск — один, в шапке страницы, с подписью «Ctrl K»: вторая такая
+     * же кнопка в меню была лишней остановкой при обходе клавишей Tab.
      */
     function buildNavHead() {
         const голова = h('div', { class: 'side-head' });
@@ -1295,12 +1297,6 @@
                 onclick: () => { casesState.pendingNew = true; },
             }, icon('plus'), h('span', {}, 'Новое письмо')));
         }
-        голова.appendChild(h('button', {
-            class: 'side-search',
-            type: 'button',
-            title: 'Поиск по системе (Ctrl+K)',
-            onclick: () => openPalette(),
-        }, icon('search'), h('span', {}, 'Поиск'), h('kbd', {}, 'Ctrl K')));
         return голова;
     }
 
@@ -8868,8 +8864,8 @@
                                 h('div', {},
                                     h('b', {}, 'Сейчас никто не загружен письмами'),
                                     h('div', { class: 'small muted' },
-                                        'Свободны все ' + idle.length + ' '
-                                        + plural(idle.length, 'человек', 'человека', 'человек')
+                                        (idle.length === 1 ? 'Свободен 1 человек' : 'Свободны все ' + idle.length + ' '
+                                            + plural(idle.length, 'человек', 'человека', 'человек'))
                                         + ' — есть кому поручить новое.'))))));
                 }
                 if (!idle.length) return;
@@ -8880,8 +8876,7 @@
                             onclick: () => { idleShown = !idleShown; drawRows(); },
                         }, idleShown
                             ? 'Скрыть свободных'
-                            : 'Показать ещё ' + idle.length + ' '
-                                + plural(idle.length, 'свободного', 'свободных', 'свободных')))));
+                            : 'Показать свободных (' + idle.length + ')'))));
             }
 
             function addRow(person) {
@@ -9124,6 +9119,30 @@
         'синхро 0x1ACFFC1D ошибок 2 · кадры 0x47 длина 1504 · реверс 8 · xor 0xFF · прореживание 2 фаза 1 · ' +
         'фм 3 (или «фм 3 поворот 2 отражение») · метки 2: 0 1 3 2 · биты символа 4: 1 0 3 2 · ' +
         'ldpc ИМЯ выколоты 0-191 укорочены 1000-1023 · ldpc nr-bg1-z384 · ldpc dvb-s2-64800-38880 перемежение 8PSK';
+
+    /** Образцы слоёв из подсказки ПРИМЕРЫ_СЛОЁВ: «скремблер 3,20», «nrzi»… (варианты «(или …)» — отдельными). */
+    function образцыСлоёв(текст) {
+        const тело = String(текст || '').split('\n').slice(1).join(' ');
+        const итог = [];
+        тело.split(' · ').forEach((кусок) => {
+            const м = /^(.*?)\s*\(или «(.+)»\)\s*$/.exec(кусок.trim());
+            (м ? [м[1], м[2]] : [кусок]).map((т) => т.trim()).filter(Boolean).forEach((т) => { if (!итог.includes(т)) итог.push(т); });
+        });
+        return итог;
+    }
+
+    /** «Добавить слой ▾» под полем слоёв: образец — новой строкой, дальше его числа правят в поле. */
+    function выборСлоя(поле) {
+        const выбор = h('select', { class: 'layer-pick', 'aria-label': 'Добавить слой из образцов' },
+            h('option', { value: '' }, 'Добавить слой из образцов…'), образцыСлоёв(ПРИМЕРЫ_СЛОЁВ).map((т) => h('option', { value: т }, т)));
+        выбор.addEventListener('change', () => {
+            if (!выбор.value) return;
+            поле.value = (поле.value.trim() ? поле.value.replace(/\s+$/, '') + '\n' : '') + выбор.value;
+            выбор.value = '';
+            поле.focus();
+        });
+        return выбор;
+    }
 
     // -- матрицы над GF(2): окно «Матрицы» рабочего стола (считает сервер — /api/potok/matrix) --
 
@@ -12440,7 +12459,7 @@
                 const d = await api.get(путь + '/hints?stage=' + у.stage);
                 const п = d.signs || {};
                 const строки = ['единиц ' + ((п.доля_единиц || 0) * 100).toFixed(1) + ' % · энтропия байта ' + (п.энтропия_байт || 0) +
-                    ' · серия до ' + (п.серия_до || 0) + ' · в паузах ' + ((п.в_паузах || 0) * 100).toFixed(1) + ' % · связи ' + (п.связи_сигм || 0) + 'σ'];
+                    ' · серия до ' + (п.серия_до || 0) + ' · в паузах ' + ((п.в_паузах || 0) * 100).toFixed(1).replace('.', ',') + ' % · связи ' + (п.связи_сигм || 0) + 'σ'];
                 (d.items || []).forEach((и, i) => строки.push((i + 1) + '. ' + и.что + (и.почему ? ' — ' + и.почему : '')));
                 return вЖурнал(у, 'Приметы и подсказки', строки.join('\n'));
             }
@@ -13380,7 +13399,7 @@
             const пункты = текущая.пункты.map((ид) => ОПЕРАЦИИ_СТОЛА.find((x) => x.id === ид)).filter(Boolean);
             if (!пункты.length) панель.appendChild(h('p', { class: 'muted small' }, 'Снять нечем — см. выше.'));
             пункты.forEach((о) => панель.appendChild(формаВоВкладке(о, у)));
-            const окно = openModal({ title: 'Декодер — массив ' + у.номер, wide: true, плавающее: true, место: 'декодер',
+            const окно = openModal({ title: 'Декодер — массив ' + у.номер, плавающее: true, место: 'декодер',
                 body: h('div', { class: 'stol-decoder' }, ярлыки, панель),
                 footer: [h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Закрыть')] });
             return окно;
@@ -13468,7 +13487,7 @@
                 } }, '⤓');
             const кнПросмотр = h('button', { class: 'btn', onclick: () => посмотреть() }, 'Просмотр');
             const кнДекодирование = h('button', { class: 'btn btn--primary', onclick: () => декодировать() }, 'Декодирование');
-            const кнВсе = h('button', { class: 'btn', onclick: () => (идёт ? (стоп = true) : декВсех()) }, 'Дек. всех');
+            const кнВсе = h('button', { class: 'btn', onclick: () => (идёт ? (стоп = true) : декВсех()) }, 'Декодировать все варианты');
             // -- вкладки: Декодер · Разметка вслепую · Своя разметка · Вход I/Q ------------------------
             const анализИтог = h('div', { class: 'small stol-md-text', 'aria-live': 'polite' });
             const словоВвод = h('input', { type: 'text', value: з.слово, class: 'stol-md-table', placeholder: '0x1ACFFC1D или 0011…',
@@ -13580,7 +13599,7 @@
                         состояние),
                     h('div', { class: 'stol-md-result' }, картинка, iqХолст, помощь,
                         h('div', { class: 'stol-pane-head' }, 'Просмотр'), холст, итогПросмотра,
-                        h('div', { class: 'stol-pane-head' }, 'Дек. всех'), ход, итогПеребора,
+                        h('div', { class: 'stol-pane-head' }, 'Все варианты'), ход, итогПеребора,
                         h('div', { class: 'stol-results-wrap stol-md-variants' }, таблицаВариантов))),
                 footer: [h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Закрыть'),
                     h('button', { class: 'btn btn--ghost', title: 'F1', onclick: () => { помощь.hidden = !помощь.hidden; } }, 'Помощь'),
@@ -14061,7 +14080,7 @@
                     итогПеребора.className = 'small stol-bad';
                 } finally {
                     идёт = false;
-                    кнВсе.textContent = 'Дек. всех';
+                    кнВсе.textContent = 'Декодировать все варианты';
                 }
             }
             загрузка.addEventListener('change', async () => {
@@ -14733,7 +14752,7 @@
                 }
                 просмотр.применитьШирину();
                 вЖурнал(у, 'Поиск периода', найдено.slice(0, 12).map((т) => 'период ' + т.период + ', первый бит ' + т.первый_бит + ', вес ' +
-                    т.вес.toFixed(3) + ', маркер ' + т.маркер + (т.заметка ? ' (' + т.заметка + ')' : '')).join('\n') +
+                    т.вес.toFixed(3).replace('.', ',') + ', маркер ' + т.маркер + (т.заметка ? ' (' + т.заметка + ')' : '')).join('\n') +
                     '\nпринят период ' + н.период + ', первый бит ' + н.первый_бит);
                 окно.close();
             }
@@ -14907,7 +14926,7 @@
                 const н = все[выбран];
                 if (!н) return;
                 окно.close();
-                вЖурнал(у, 'Поиск скремблера', все.slice(0, 10).map((т) => т.полином + ' — мера ' + т.мера.toFixed(3) + ', нулей ' + (т.нули * 100).toFixed(1) + ' %' +
+                вЖурнал(у, 'Поиск скремблера', все.slice(0, 10).map((т) => т.полином + ' — мера ' + т.мера.toFixed(3).replace('.', ',') + ', нулей ' + (т.нули * 100).toFixed(1).replace('.', ',') + ' %' +
                     (аддитивный.checked && т.аддитивный ? ', начальная установка: ' + описатьУстановку(т.аддитивный) : ', самосинхр.: регистр ' + (т.самосинхр || ''))).join('\n') +
                     '\nпринят ' + н.полином, слой(н));
             }
@@ -14956,6 +14975,7 @@
             const кнПоток = h('button', { class: 'btn', disabled: true, onclick: () => потокВМассив() }, 'Поток нагрузки в новый массив');
             const кнCid = h('button', { class: 'btn', disabled: true, onclick: () => поКаналам() }, 'По каналам CID');
             const кнЖурнал = h('button', { class: 'btn', disabled: true, onclick: () => вЖурналGFP() }, 'В журнал');
+            [кнКлиенты, кнКадры, кнПоток, кнCid, кнЖурнал].forEach((к) => { к.hidden = true; });
             const найтиКн = h('button', { class: 'btn btn--primary', onclick: () => найти(false) }, 'Найти');
             const окно = openModal({
                 title: 'GFP (G.7041) — массив ' + у.номер, wide: true, плавающее: true, место: 'gfp',
@@ -14993,8 +15013,10 @@
                 const надпись = дальшеGFP(св);
                 дальше.hidden = надпись === null;
                 дальше.textContent = надпись || 'Дальше';
-                [кнКлиенты, кнКадры, кнПоток, кнЖурнал].forEach((к) => { к.disabled = !св; });
+                [кнКлиенты, кнКадры, кнПоток, кнЖурнал].forEach((к) => { к.disabled = !св; к.hidden = !св; });
                 кнCid.disabled = !св || !Object.keys(св.слои_cid || {}).length;
+                // До результата в подвале — только «Найти»: пять неактивных кнопок в два ряда только путали.
+                кнCid.hidden = кнCid.disabled;
             }
             async function найти(продолжить) {
                 if (идёт) return;
@@ -15152,8 +15174,9 @@
                 onclick: () => переключитьРежим() }, 'Демультиплексирование');
             const холст = h('canvas', { class: 'stol-canvas', tabindex: 0, 'aria-label': 'Битовый просмотр массива ' + у.номер });
             const рамка = h('div', { class: 'stol-canvas-wrap' }, холст);
-            const полоса = h('input', { type: 'range', class: 'stol-vscroll', min: 0, max: 0, value: 0, 'aria-label': 'Прокрутка по строкам' });
-            const гполоса = h('input', { type: 'range', class: 'stol-hscroll', min: 0, max: 0, value: 0, 'aria-label': 'Прокрутка по столбцам' });
+            // Полосы прокрутки — для мыши: с клавиатуры листает само поле битов, и Tab на них не останавливается.
+            const полоса = h('input', { type: 'range', class: 'stol-vscroll', min: 0, max: 0, value: 0, tabindex: -1, 'aria-label': 'Прокрутка по строкам' });
+            const гполоса = h('input', { type: 'range', class: 'stol-hscroll', min: 0, max: 0, value: 0, tabindex: -1, 'aria-label': 'Прокрутка по столбцам' });
             const статус = h('div', { class: 'stol-status stol-status--bits stol-status--line', 'aria-live': 'off' });
             const кнопкаПанели = (т, подсказка, fn, класс) => h('button', { class: 'btn btn--sm ' + (класс || 'btn--ghost'), title: подсказка, onclick: fn }, т);
             // Редкое — в двух меню: «Вид» (как показывать) и «Инструменты» (что сделать); включённое в виде — чипами рядом.
@@ -17076,6 +17099,15 @@
             return { перерисовать: загрузитьСкоро, применитьШирину: загрузитьСкоро };
         }
 
+        // Tab на столе — по кругу: таблица массивов → частые → журнал → вкладки и панель просмотра → поле битов →
+        // снова таблица. Фокус стоит на битах (последнее на странице), и раньше Tab уводил в описание и меню слева.
+        page.addEventListener('keydown', (e) => {
+            if (e.key !== 'Tab' || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+            if (e.target && e.target.classList && e.target.classList.contains('stol-canvas')) {
+                e.preventDefault();
+                сетка.focus();
+            }
+        });
         // -- клавиши битового просмотра — где бы ни был фокус на столе (кроме полей ввода и таблицы массивов) --
         page.addEventListener('keydown', (e) => {
             const т = e.target;
@@ -17342,7 +17374,7 @@
         page.appendChild(h('div', { class: 'page-head' }, h('div', {}, h('h2', {}, 'Сессии')),
             h('div', { class: 'page-head-actions' },
                 h('a', { class: 'btn btn--ghost', href: '#/potok', title: 'Отдельные разборы без сессии' }, 'Разборы без сессии'),
-                h('a', { class: 'btn btn--ghost', href: '#/zahvat', title: 'Принять поток с аппаратуры по сети (порт UDP) и положить его в сессию' }, 'Захват с сети'),
+                h('a', { class: 'btn btn--ghost', href: '#/zahvat', title: 'Принять поток с аппаратуры по сети (порт UDP) и положить его в сессию' }, 'Приём с сети'),
                 h('button', { class: 'btn btn--primary', onclick: () => новая() }, 'Новая сессия'))));
         const список = h('div', { class: 'card sessions-list' }, loadingBox('Загружаем сессии…'));
         page.appendChild(список);
@@ -17689,7 +17721,17 @@
             await рисоватьЗадание(page, jobId, описание);
             return;
         }
-        const picker = h('input', { type: 'file' });
+        // Выбор файла — кнопкой и перетаскиванием, как в сессиях (без голого «Choose File»); без фильтра расширений.
+        const picker = h('input', { type: 'file', hidden: true });
+        const имяФайла = h('span', { class: 'muted small' }, 'файл не выбран — или перетащите его сюда');
+        picker.addEventListener('change', () => { const ф = (picker.files || [])[0]; имяФайла.textContent = ф ? ф.name + ' · ' + fmtBytes(ф.size) : 'файл не выбран'; });
+        const выборФайла = h('span', { class: 'file-pick' }, h('button', { class: 'btn', type: 'button', onclick: () => picker.click() }, 'Выбрать файл…'), имяФайла, picker);
+        подключитьПеретаскивание(page, (файлы) => {
+            const перенос = new DataTransfer();
+            перенос.items.add(файлы[0]);
+            picker.files = перенос.files;
+            picker.dispatchEvent(new Event('change'));
+        }, 'Отпустите — файл встанет в «Файл потока»');
         const профиль = h('select', {}, ПРОФИЛИ_РАЗБОРА.map((п) =>
             h('option', { value: п[0], selected: п[0] === 'обычно' }, п[1])));
         const слои = h('textarea', { rows: 3, placeholder: ПРИМЕРЫ_СЛОЁВ });
@@ -17707,9 +17749,9 @@
             'переберёт повороты и отражения созвездия, перестановки бит метки и код Грея; без указания она берётся ' +
             'из имени файла («…_8PSK_…»). Конфигурация — свои шаги до разбора, по порядку.');
         page.appendChild(h('div', { class: 'card card-pad potok-start' },
-            h('label', { class: 'field' }, h('span', {}, 'Файл потока (.bin, .sig, .dpo, .dat, .raw, .bits, .hex, .pcap)'), picker),
+            h('div', { class: 'field' }, h('span', {}, 'Файл потока (.bin, .sig, .dpo, .dat, .raw, .bits, .hex, .pcap)'), выборФайла),
             h('label', { class: 'field' }, h('span', {}, 'Профиль'), профиль),
-            h('label', { class: 'field' }, h('span', {}, 'Снять вручную (необязательно)'), слои),
+            h('label', { class: 'field' }, h('span', {}, 'Снять вручную (необязательно)'), слои, выборСлоя(слои)),
             h('label', { class: 'field', title: 'Если файл — метки с выхода демодулятора ФМ или КАМ: анализатор ' +
                     'переберёт повороты и отражения созвездия, перестановки бит метки и код Грея и возьмёт вариант, ' +
                     'при котором проявляется скремблер или код. Без указания модуляция берётся из имени файла («…_8PSK_…»)' },
@@ -17917,7 +17959,7 @@
                     h('div', { class: 'muted' },
                         fmtBytes(data.байт) + ' · профиль «' + data.профиль + '»' +
                         (data.снять && data.снять.length ? ' · снято вручную: ' + data.снять.join('; ') : '') +
-                        (data.секунд ? ' · разбор ' + data.секунд.toFixed(1) + ' с' : ''),
+                        (data.секунд ? ' · разбор ' + data.секунд.toFixed(1).replace('.', ',') + ' с' : ''),
                         data.от ? h('span', {},
                             (data.происхождение && data.происхождение.length ? ' · выделен из ' : ' · продолжение '),
                             h('a', { href: '#/potok/' + encodeURIComponent(data.от.split('#')[0]) },
@@ -17969,7 +18011,7 @@
                     h('summary', {}, 'Другие гипотезы на этом уровне: ' + этап.альтернативы.length),
                     h('ul', {}, этап.альтернативы.map((строка) => h('li', {}, строка))))
                 : null;
-            const действия = h('div', { class: 'row' },
+            const действия = h('div', { class: 'row potok-stage-actions' },
                 этап.выгрузка ? h('button', {
                     class: 'btn btn--sm', onclick: () => скачать(этап),
                     title: 'Поток после этого этапа: биты — .bin, кадры — .sig, пакеты IP — .pcap',
@@ -18309,7 +18351,7 @@
                 body: h('div', {},
                     h('p', { class: 'muted' }, 'Поток после этапа «' + этап.что + '» разберётся заново. ' +
                         'Если вы знаете следующий слой, снимите его здесь — дальше анализатор пойдёт сам.'),
-                    h('label', { class: 'field' }, h('span', {}, 'Снять вручную'), слои),
+                    h('label', { class: 'field' }, h('span', {}, 'Снять вручную'), слои, выборСлоя(слои)),
                     h('label', { class: 'field' }, h('span', {}, 'Профиль'), профиль)),
                 footer: [
                     h('button', { class: 'btn', onclick: () => dialog.close() }, 'Отмена'),

@@ -9547,7 +9547,7 @@ button.pk-hier-col:hover { color: var(--accent); }
 
 /* Окно «Декодер»: вкладки кодов сверху, пункты снятия слоя — прямо во вкладке. */
 .stol-decoder { display: flex; flex-direction: column; gap: 10px; }
-.stol-md.stol-decoder { gap: 10px 16px; }
+.stol-md.stol-decoder { display: grid; gap: 10px 16px; }
 .stol-md.stol-decoder > .stol-decoder-tabs { grid-column: 1 / -1; }
 .stol-decoder-tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--border); }
 .stol-decoder-tab { border: 0; background: none; font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer; color: var(--muted);
@@ -9635,3 +9635,12 @@ div.stol-decoder-op { border: 0; padding: 0; }
 /* Окно «Добавить файл»: пустой или неотправляемый файл — зачёркнут, с пояснением. */
 .session-file.is-bad .session-file-name b { text-decoration: line-through; color: var(--muted); }
 .session-file-note { color: var(--warn-text, var(--text)); }
+
+/* Разбор потока: кнопки этапа — с промежутками; выбор файла — кнопкой, как в сессиях; образцы слоёв. */
+.potok-stage-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.file-pick { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.layer-pick { margin-top: 6px; max-width: 100%; }
+
+.form-grid--one { grid-template-columns: 1fr; }
+.form-grid--one > input, .form-grid--one > textarea { width: 100%; box-sizing: border-box; }
+.opis-handle { width: 24px; }

@@ -5734,7 +5734,7 @@ class InterfaceCopyTests(unittest.TestCase):
         которых не видно тех, у кого горит.
         """
         self.assertIn("const idle = people.filter(", self.js)
-        self.assertIn("'Показать ещё ' + idle.length", self.js)
+        self.assertIn("'Показать свободных (' + idle.length + ')'", self.js)
         self.assertIn("'Скрыть свободных'", self.js)
 
     def test_the_whole_name_is_asked_for_where_a_person_is_entered(self):
