@@ -1281,8 +1281,8 @@ class АвтоматTests(unittest.TestCase):
         from unittest import mock
         имена = [и for и, _, _ in razbor._детекторы(np.zeros(10, np.uint8), self.бюджет(), 0)]
         i = имена.index("код Рида — Соломона вслепую")
-        self.assertEqual(имена[i - 1], "ТКБ (турбокод блочный)")
-        self.assertLess(i, имена.index("турбокод стандарта (UMTS, LTE, CCSDS; выколотый 1/2)"))
+        self.assertEqual(имена[i - 1], "турбокод стандарта (UMTS, LTE, CCSDS; выколотый 1/2)")
+        self.assertLess(имена.index("ТКБ (турбокод блочный)"), i)
         self.assertLess(i, имена.index("скремблер"))
         self.assertLess(i, имена.index("свёрточный 1/2 и короткий блочный код"))
         детекторы = {и: (в, ш) for и, в, ш in razbor._детекторы(np.zeros(10, np.uint8), self.бюджет(), 2)}
