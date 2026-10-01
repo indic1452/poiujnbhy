@@ -363,7 +363,7 @@ class ПоискTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             р.искать(x, 3, мера="строки")
         with self.assertRaises(ValueError):
-            р.искать(x, 9)
+            р.искать(x, 11)                                                   # больше 10 бит (КАМ-1024)
         ит = р.искать(x, 1)
         self.assertEqual([[0, 1], [1, 0]], ит.равноценные)
         self.assertIsNone(р.искать(x[:150], 3, мера="лрп"))                   # короче отрезка ЛРП
