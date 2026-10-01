@@ -132,11 +132,11 @@ def символы(биты: np.ndarray, m: int, фаза: int = 0, порядо
 
 def в_биты(символы_: np.ndarray, m: int, порядок: str = "старший", базис: str = "обычный") -> np.ndarray:
     """Обратное к ``символы``: символы обычного базиса → биты потока."""
-    с = np.asarray(символы_, dtype=np.int64).reshape(-1)
+    с = np.asarray(символы_, dtype=np.int64).ravel()
     if базис == "двойной":
         с = _двойной_базис()[0][с]
     сдвиги = np.arange(m - 1, -1, -1) if порядок == "старший" else np.arange(m)
-    return ((с[:, None] >> сдвиги) & 1).astype(np.uint8).reshape(-1)
+    return ((с[:, None] >> сдвиги) & 1).astype(np.uint8).ravel()
 
 
 # -- префикс и пары равных значений --------------------------------------------------------------
@@ -156,8 +156,8 @@ def префикс(с: np.ndarray, I: int = 1, j: int = 0, p: int | None = None)
         сдвиг = (-j * np.arange(Q, dtype=np.int64)) % Q
         v = np.where(v == 0, 0, степень[логарифм[v] + сдвиг[строка]])
     P = np.zeros((T // I + 1, I), dtype=np.int64)
-    P[1:] = np.bitwise_xor.accumulate(v.reshape(-1, I), axis=0)
-    return P.reshape(-1)
+    P[1:] = np.bitwise_xor.accumulate(v.reshape(T // I, I), axis=0)
+    return P.ravel()
 
 
 def пары(P: np.ndarray, I: int, d_от: int, d_до: int, шагов: int = ПАР_ШАГОВ_ДО
@@ -217,7 +217,7 @@ class _Клетки:
         U = np.maximum(self.L - self.N * self.I, 0)               # начала t ∈ [0, U)
         R, остаток = U // self.I, U % self.I
         self.окон = (self.I * (R // self.N + (self.строка < R % self.N))
-                     + остаток * (self.строка == R % self.N)).astype(np.float64)
+                     + np.where(self.строка == R % self.N, остаток, 0)).astype(np.float64)
         self.сосед = np.repeat(self.смещение[:-1], Nы) + (self.строка + 1) % self.N
 
     def клетка(self, начала: np.ndarray, d: np.ndarray) -> np.ndarray:
@@ -232,7 +232,7 @@ def _клетки(I: int, N_от: int, N_до: int, L: int) -> _Клетки:
 
 def _фон(P: np.ndarray, m: int) -> float:
     """Вероятность случайного равенства: не меньше 2^−m и вероятности совпадения значений P."""
-    частоты = np.bincount(P, minlength=1 << m) / max(1, len(P))
+    частоты = np.bincount(P) / len(P)
     return max(2.0 ** -m, float((частоты ** 2).sum()))
 
 
@@ -247,7 +247,7 @@ def счёт(начала: np.ndarray, d: np.ndarray, кл: _Клетки, фо�
     s = мера(c, окон * фон)
     Nы = np.arange(кл.N_от, кл.N_до + 1)
     всего = np.bincount(d // кл.I - кл.N_от, minlength=len(Nы)).astype(np.float64)
-    s_N = мера(всего, np.maximum(кл.L - Nы * кл.I, 0) * фон)
+    s_N = мера(всего, (кл.L - Nы * кл.I) * фон)              # окон ≤ 0 — пар нет, мера 0
     return s, s_N
 
 
