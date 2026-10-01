@@ -9533,3 +9533,93 @@ button.pk-hier-col:hover { color: var(--accent); }
 /* Окно «Коды» стола: вкладки как в декодере отдела. */
 .stol-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
 .stol-codes-panel { max-width: 44rem; display: grid; gap: 0.4rem; }
+
+/* Вид массива под номером в таблице массивов: «файл», «автомат», «цикл», «плоскость», «код»… */
+.stol-svg text.stol-node-kind { font: 9px system-ui, sans-serif; fill: var(--muted); font-weight: 400; }
+
+/* Плавающее окно стола: без затемнения, страница под ним живая; тянется за заголовок, сворачивается в него. */
+.modal-backdrop--float { background: transparent; pointer-events: none; display: block; padding: 0; }
+.modal--float { position: fixed; pointer-events: auto; max-height: calc(100vh - 80px); box-shadow: var(--shadow-lg, 0 10px 32px rgba(0, 0, 0, .35)); }
+.modal--float > header { cursor: move; user-select: none; }
+.modal--float.is-collapsed > .modal-body, .modal--float.is-collapsed > footer { display: none; }
+.modal-head-actions { margin-left: auto; display: inline-flex; gap: 2px; }
+.modal > header .modal-head-actions .btn { margin-left: 0; }
+
+/* Окно «Декодер»: вкладки кодов сверху, пункты снятия слоя — прямо во вкладке. */
+.stol-decoder { display: flex; flex-direction: column; gap: 10px; }
+.stol-md.stol-decoder { gap: 10px 16px; }
+.stol-md.stol-decoder > .stol-decoder-tabs { grid-column: 1 / -1; }
+.stol-decoder-tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--border); }
+.stol-decoder-tab { border: 0; background: none; font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer; color: var(--muted);
+    border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.stol-decoder-tab:hover { color: var(--text); }
+.stol-decoder-tab.is-active { color: var(--text); font-weight: 600; border-bottom-color: var(--accent); }
+.stol-decoder-op { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; }
+div.stol-decoder-op { border: 0; padding: 0; }
+.stol-decoder-op > summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.stol-decoder-op .stol-dialog { margin-top: 8px; }
+.stol-decoder-op-act { display: flex; gap: 8px; justify-content: flex-end; }
+.stol-decoder-more { margin-top: 8px; }
+.stol-decoder-more > summary { cursor: pointer; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+/* «Дополнительно ▾» в подвале окна: редкие кнопки списком вверх. */
+.modal-more { position: relative; }
+.modal-more > summary { list-style: none; }
+.modal-more > summary::-webkit-details-marker { display: none; }
+.modal-more-list { position: absolute; bottom: calc(100% + 4px); left: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-lg); white-space: nowrap; z-index: 2; }
+
+/* Меню стола: поиск сверху, категории по пути разбора, справка и удаление внизу. Подменю открывается и
+   наведением, и с клавиатуры (класс is-open), у правого края экрана — влево. */
+.stol-menu { min-width: 250px; max-width: 340px; }
+.stol-menu-search { padding: 2px 2px 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.stol-menu-find { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text); }
+.stol-menu-find:focus { outline: 2px solid var(--accent-line, var(--accent)); outline-offset: -1px; }
+.stol-menu-name { width: 100%; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.stol-menu-name:focus-visible, .stol-menu-group.is-open > .stol-menu-name { background: var(--accent-soft); outline: none; }
+.stol-menu-group:hover > .stol-submenu, .stol-menu-group:focus-within > .stol-submenu { display: none; }
+.stol-menu-group.is-open > .stol-submenu { display: block; }
+.stol-submenu.is-left { left: auto; right: calc(100% - 4px); }
+.stol-menu-group.is-more > .stol-menu-name { color: var(--muted); }
+.stol-menu-group.is-fav > .stol-menu-name { font-weight: 600; }
+.stol-menu-sub { padding: 6px 10px 2px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.stol-menu-run { display: flex; align-items: baseline; gap: 10px; }
+.stol-menu-text { flex: 1; min-width: 0; }
+.stol-menu-key { font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0 4px; background: var(--bg); white-space: nowrap; }
+.stol-menu-where { font-size: 11px; color: var(--muted); white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.stol-menu-found { max-height: min(60vh, 520px); overflow-y: auto; }
+.stol-menu-found .stol-menu-run { white-space: normal; }
+.stol-menu-bottom { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+.stol-menu-bottom .stol-menu-sep { margin: 4px 6px; }
+.stol-menu-run:focus { background: var(--accent-soft); outline: none; }
+/* Частые на столе: имя целиком в две строки, клавиша справа; «Последние» — свёрнутым списком. */
+.stol-op { display: flex; align-items: baseline; gap: 6px; white-space: normal; line-height: 1.25; }
+.stol-op-name { flex: 1; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.stol-recent > summary { cursor: pointer; list-style: none; border-top: 1px solid var(--border); }
+.stol-recent > summary::before { content: '▸ '; }
+.stol-recent[open] > summary::before { content: '▾ '; }
+.stol-pane--ops .stol-pane-head .muted { font-weight: 400; }
+
+/* Палитра: горячая клавиша операции — справа в строке. */
+.cmd-keys { margin-left: auto; font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+
+/* Ход автомата: в шапке стола (виден при любом выбранном массиве) и в журнале массива. */
+.stol-title-info { white-space: nowrap; }
+.stol-progress { display: inline-flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; font-size: 12.5px;
+    padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); overflow: hidden; }
+.stol-progress[hidden] { display: none; }
+.stol-progress-spin { width: 12px; height: 12px; border-width: 2px; flex: none; margin: 0; }
+.stol-progress-link { border: 0; background: none; font: inherit; font-weight: 600; color: var(--text); cursor: pointer; padding: 0; white-space: nowrap; }
+.stol-progress-link:hover { text-decoration: underline; }
+.stol-progress-now { min-width: 0; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.stol-progress-bar { flex: 0 0 90px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.stol-progress-bar > span { display: block; height: 100%; background: var(--accent); transition: width .5s; }
+.stol-progress-bar--wide { flex: none; width: 100%; margin: 4px 0; }
+.stol-progress-time { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); }
+.stol-j-progress { border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; margin: 6px 0; background: var(--bg); }
+.stol-j-stop { margin-left: 8px; }
+.stol-j-found { margin: 2px 0 2px 18px; padding: 0; }
+.stol-j-log > summary { cursor: pointer; }
+.modal:focus { outline: none; }
