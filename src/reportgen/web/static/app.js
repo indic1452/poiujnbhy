@@ -1103,8 +1103,10 @@
         // Отдельного пункта «Разбор потока» в меню нет: автоанализ — операция на столе
         // (правая кнопка на массиве), помощник — в панели стола. Страница разборов
         // осталась по адресу #/potok — на неё ведут «Разборы без сессии» и старые закладки.
-        { group: 'know', route: 'sessions', href: '#/sessions', title: 'Сессии потоков', icon: 'desk' },
-        { group: 'know', route: 'pakety', href: '#/pakety', title: 'Анализ пакетов', icon: 'net' },
+        // Группа «Анализ» — путь аналитика: потоки на столе, пакеты, приём с сети сервера.
+        { group: 'analiz', route: 'sessions', href: '#/sessions', title: 'Сессии потоков', icon: 'desk' },
+        { group: 'analiz', route: 'pakety', href: '#/pakety', title: 'Анализ пакетов', icon: 'net' },
+        { group: 'analiz', route: 'zahvat', href: '#/zahvat', title: 'Приём с сети', icon: 'wave' },
         { group: 'dept', route: 'talks', href: '#/talks', title: 'Сообщения', icon: 'talks', count: 'talks' },
         { group: 'dept', route: 'users', href: '#/users', title: 'Военнослужащие', icon: 'users', adminOnly: true },
         // Метрики — сводка по работе отдела целиком: сколько писем, чьи
@@ -1117,12 +1119,13 @@
     const SECTION_GROUPS = [
         { id: 'work', title: 'Работа' },
         { id: 'know', title: 'Знание' },
+        { id: 'analiz', title: 'Анализ' },
         { id: 'dept', title: 'Отдел' },
     ];
 
     /** Какой пункт меню подсвечивать для вложенного экрана. Стол разбора и страница
      *  разборов без сессии — часть «Сессий потоков»: своего пункта у них нет. */
-    const SECTION_OF = { case: 'cases', stol: 'sessions', session: 'sessions', potok: 'sessions', zahvat: 'pakety' };
+    const SECTION_OF = { case: 'cases', stol: 'sessions', session: 'sessions', potok: 'sessions' };
 
     function icon(name) {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -17801,14 +17804,14 @@
 
         // -- карты --
         const таблица = h('tbody', {});
-        const картаУзел = h('div', { class: 'card card-pad' },
+        // Таблица карт нужна только приёму с сетевой карты: она — в его полях, а не над формой.
+        const картаУзел = h('div', { class: 'zs-cards-box' },
             h('div', { class: 'card-title' }, 'Сетевые карты сервера'),
             (данные.zametki || []).length ? h('div', { class: 'muted small' }, данные.zametki.join('; ')) : null,
             карты.length ? h('div', { class: 'table-scroll' }, h('table', { class: 'grid zs-cards' },
                 h('thead', {}, h('tr', {}, h('th', {}, ''), h('th', {}, 'Карта'), h('th', {}, 'Адреса'), h('th', {}, 'MAC'),
                     h('th', {}, 'Состояние'), h('th', {}, 'Скорость'))), таблица))
                 : emptyBox('Карт не видно', 'Сервер не нашёл ни одной сетевой карты.'));
-        page.appendChild(картаУзел);
         function рисоватьКарты() {
             clear(таблица);
             карты.forEach((к) => {
@@ -17891,9 +17894,9 @@
             placeholder: потолки.мегабайт ? 'не больше ' + потолки.мегабайт : 'без предела' });
         const куски = данные.kuski || {};
         const кусокМБ = h('input', { type: 'number', min: 1, max: куски.мегабайт_до || null, placeholder: String(куски.мегабайт || 64),
-            'aria-label': 'Кусок, МБ' });
-        const кусокС = h('input', { type: 'number', min: 1, max: 86400, placeholder: 'не менять по времени', 'aria-label': 'Кусок, секунд' });
-        const кольцо = h('input', { type: 'number', min: 2, placeholder: 'хранить все куски', 'aria-label': 'Кольцо, кусков' });
+            'aria-label': 'Часть записи, МБ' });
+        const кусокС = h('input', { type: 'number', min: 1, max: 86400, placeholder: 'не менять по времени', 'aria-label': 'Часть записи, секунд' });
+        const кольцо = h('input', { type: 'number', min: 2, placeholder: 'хранить все части', 'aria-label': 'Кольцо, частей' });
         const наЛету = h('input', { type: 'checkbox', checked: false, 'aria-label': 'Обработка на лету' });
         const анализВживую = h('input', { type: 'checkbox', checked: true, 'aria-label': 'Анализ пакетов вживую' });
         const имя = h('input', { type: 'text', placeholder: 'например: «Модем 2, выход данных»', maxlength: 80 });
@@ -17913,24 +17916,27 @@
             поляКарты.hidden = выбор.режим !== 'карта';
         }
         показатьРежим();
+        поляКарты.prepend(картаУзел);
         page.appendChild(h('div', { class: 'card card-pad zs-form' },
-            h('div', { class: 'card-title' }, 'Что снимать'), режимы, поляUDP, поляКарты,
+            h('div', { class: 'card-title' }, 'Что принимать'), режимы, поляUDP, поляКарты,
+            h('div', { class: 'row zs-start' },
+                h('label', { class: 'field' }, h('span', {}, 'Имя сеанса приёма'), имя), пуск,
+                h('span', { class: 'muted small' }, 'Без пределов приём идёт, пока его не остановят кнопкой «Стоп».')),
+            h('label', { class: 'small' }, анализВживую, ' анализ пакетов вживую — дерево протоколов, статистика и список растут по ходу приёма'),
             h('div', { class: 'card-title zs-sub' }, 'Пределы — если нужны'),
             h('div', { class: 'zs-row' },
                 h('label', { class: 'field' }, h('span', {}, 'Длительность, с'), секунд),
                 h('label', { class: 'field' }, h('span', {}, 'Пакетов'), пакетов),
                 h('label', { class: 'field' }, h('span', {}, 'Объём, МБ'), мегабайт)),
-            h('details', { class: 'zs-chunks' }, h('summary', {}, 'Запись кусками (как dumpcap -b)'),
+            h('details', { class: 'zs-chunks' }, h('summary', {}, 'Запись частями'),
                 h('div', { class: 'zs-row' },
-                    h('label', { class: 'field' }, h('span', {}, 'Новый кусок через, МБ'), кусокМБ),
-                    h('label', { class: 'field' }, h('span', {}, 'Новый кусок через, с'), кусокС),
-                    h('label', { class: 'field' }, h('span', {}, 'Кольцо: хранить последних кусков'), кольцо)),
+                    h('label', { class: 'field' }, h('span', {}, 'Новая часть через, МБ'), кусокМБ),
+                    h('label', { class: 'field' }, h('span', {}, 'Новая часть через, с'), кусокС),
+                    h('label', { class: 'field' }, h('span', {}, 'Кольцо: хранить последних частей'), кольцо)),
                 h('div', { class: 'muted small' }, 'Пакеты сразу пишутся на диск сервера цепочкой файлов pcapng — память не растёт, ' +
-                    'сколько бы ни шёл приём. Кольцо удаляет старшие куски: для круглосуточного наблюдения «последние N».')),
-            h('label', { class: 'small' }, анализВживую, ' анализ пакетов вживую — дерево протоколов, статистика и список растут по ходу приёма'),
-            h('label', { class: 'small' }, наЛету, ' прогон на лету — обработка с выходом нагрузки порта UDP по ходу приёма'),
-            h('label', { class: 'field' }, h('span', {}, 'Имя сеанса приёма'), имя),
-            h('div', { class: 'row' }, пуск,
+                    'сколько бы ни шёл приём. Кольцо удаляет старшие части: для круглосуточного наблюдения «последние N».')),
+            h('label', { class: 'small' }, наЛету, ' обработка на лету — выход нагрузки порта UDP в файл по ходу приёма'),
+            h('div', { class: 'row' },
                 h('span', { class: 'muted small' }, 'Без пределов приём идёт, пока его не остановят кнопкой «Стоп», — часами и сутками. ' +
                     'Кончится место на диске сервера — приём остановится сам, записанное останется целым' +
                     (данные.svobodno ? ' (свободно ' + fmtBytes(данные.svobodno) + ')' : '') + '.'))));
@@ -18064,7 +18070,7 @@
                 плитка(с.отброшено == null ? '—' : fmtNumber(с.отброшено), 'отброшено', 'потеряно ядром или драйвером'),
                 плитка(fmtNumber(с.отфильтровано), 'отфильтровано', с.режим === 'udp' ? 'фильтра нет' : 'не прошли фильтр'),
                 плитка(fmtДлительность(с.длится), 'длится', (с.пределы || {}).секунд ? 'предел ' + с.пределы.секунд + ' с' : 'без предела'),
-                плитка(fmtNumber(с.кусков || 1), 'кусков pcapng', 'на диске ' + fmtBytes(с.на_диске || 0) +
+                плитка(fmtNumber(с.кусков || 1), 'частей записи', 'на диске ' + fmtBytes(с.на_диске || 0) +
                     (с.кусков_удалено ? ', кольцо удалило ' + с.кусков_удалено : ''))]);
             clear(порты);
             const записи = Object.entries(с.по_портам || {}).sort((а, б) => б[1][0] - а[1][0]);
@@ -18100,7 +18106,7 @@
             const можно = с.можно_обработать !== false;
             const листать = (на) => () => { куски.смещение = Math.max(0, куски.смещение + на); рисоватьКуски(последнее || с); };
             кускиУзел.appendChild(h('div', { class: 'card card-pad zs-chunks-card' },
-                h('div', { class: 'card-title' }, 'Куски записи: ' + d.total),
+                h('div', { class: 'card-title' }, 'Части записи: ' + d.total),
                 h('div', { class: 'table-scroll' }, h('table', { class: 'grid' },
                     h('thead', {}, h('tr', {}, ['№', 'Пакетов', 'Объём', 'Время', ''].map((т) => h('th', {}, т)))),
                     h('tbody', {}, d.items.map((к) => h('tr', { dataset: { chunk: к.кусок } },
@@ -18397,14 +18403,14 @@
     }
 
     /** Подключить «Декодировать как» к узлу страницы: правая кнопка на протоколе или поле. */
-    function подключитьДК(узел, послеИзменения) {
+    function подключитьДК(узел, послеИзменения, открытьОкно) {
         узел.addEventListener('contextmenu', (event) => {
             const место = местоДК(event.target);
             if (!место || !место.протокол || место.протокол === 'Кадры') return;
             const п = место.протокол;
             const поверх = место.ниже ? ' поверх ' + место.ниже : '';
             const правило = (доп) => Object.assign({ вид: 'протокол', протокол: п }, доп);
-            const пункты = ['«Декодировать как» · ' + п + поверх];
+            const пункты = ['Разбирать как · ' + п + поверх];
             if (место.поле) {
                 const ключ = ключПравилаДК(место.поле);
                 const значение = значениеПравилаДК(место.значение);
@@ -18439,7 +18445,7 @@
             if (место.ниже) {
                 пункты.push(['Правило по полю ' + место.ниже + '…', () => окноПравилаПоПолюДК(место.ниже, п, послеИзменения)]);
             }
-            пункты.push(null, ['Все правила «Декодировать как»…', () => окноПравилДК(послеИзменения)]);
+            пункты.push(null, ['Разбирать как… (все правила)', () => (открытьОкно || окноПравилДК)(послеИзменения)]);
             показатьМенюДК(event, пункты);
         });
     }
@@ -18495,7 +18501,9 @@
     }
 
     /** Список правил человека: включить, выключить, удалить, добавить. */
-    async function окноПравилДК(послеИзменения) {
+    /** Одно окно «Разбирать как…»: ``порты`` — правила по портам этой записи (узел и сохранение), выше
+     *  правил по протоколам и полям; без них — только правила человека (для всех его записей). */
+    async function окноПравилДК(послеИзменения, порты) {
         const список = h('div', { class: 'dk-rules' }, loadingBox('Загружаем правила…'));
         let изменено = false;
         function рисовать(правила) {
@@ -18519,10 +18527,13 @@
             });
         }
         const окно = openModal({
-            title: 'Правила «Декодировать как»', wide: true,
+            title: 'Разбирать как…', wide: true,
             body: h('div', {},
-                h('p', { class: 'muted small' }, 'Правила ваши: применяются ко всем вашим записям, к повторному прогону и к приёму с сети. ' +
-                    'Выключенное правило хранится, но не действует.'),
+                порты ? h('h4', {}, 'По портам — эта запись') : null,
+                порты ? порты.узел : null,
+                порты ? h('h4', {}, 'По протоколам и полям — ваши правила') : null,
+                h('p', { class: 'muted small' }, 'Правила ваши: применяются ко всем вашим записям, к повторной обработке и к приёму с сети. ' +
+                    'Выключенное правило хранится, но не действует. Правая кнопка на протоколе в дереве — быстрые правила.'),
                 список,
                 h('div', { class: 'row' },
                     h('button', { class: 'btn btn--sm', onclick: () => { окно.close(); окноПравилаПоПолюДК('UDP', '', послеИзменения); } }, 'Правило по полю…'),
@@ -18532,7 +18543,12 @@
                         try { рисовать((await api.post('/api/dekodirovat-kak', { rule: { вид: 'протокол', протокол: протокол.trim(), действие: 'данные' } })).items || []); изменено = true; }
                         catch (error) { toastError(error); }
                     } }, 'Убрать протокол…'))),
-            footer: [h('button', { class: 'btn btn--primary', onclick: () => окно.close() }, 'Готово')],
+            footer: порты ? [
+                h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Закрыть'),
+                h('button', { class: 'btn btn--primary', onclick: async () => {
+                    if (await порты.сохранить()) { изменено = false; окно.close(); }
+                } }, 'Разобрать заново'),
+            ] : [h('button', { class: 'btn btn--primary', onclick: () => окно.close() }, 'Готово')],
             onClose: () => { if (изменено && послеИзменения) послеИзменения(); },
         });
         try { рисовать((await api.getGlobal('/api/dekodirovat-kak')).items || []); } catch (error) { clear(список); список.appendChild(errorBox(error)); }
@@ -18565,14 +18581,14 @@
      *  «Декодировать как» поменялись (например, разобрать захват «Пакетов» заново). */
     function панельПрогона(источник, опции) {
         опции = опции || {};
-        const узел = h('div', { class: 'card card-pad pg-panel', 'aria-label': 'Прогон записи' });
+        const узел = h('div', { class: 'card card-pad pg-panel', 'aria-label': 'Повторная обработка' });
         const п = { ид: null, ход: null, правил: null };
         const хранилище = 'progon-' + источник.вид;
         let сохранено = {};
         try { сохранено = JSON.parse(localStorage.getItem(хранилище) || '{}') || {}; } catch (e) { сохранено = {}; }
-        const скорость = h('select', { 'aria-label': 'Скорость прогона', class: 'pg-speed' },
+        const скорость = h('select', { 'aria-label': 'Скорость обработки', class: 'pg-speed' },
             СКОРОСТИ_ПРОГОНА.map(([з, т]) => h('option', { value: з }, т)));
-        скорость.value = сохранено.скорость != null ? String(сохранено.скорость) : (источник.вид === 'zahvat' ? '0' : '1');
+        скорость.value = сохранено.скорость != null ? String(сохранено.скорость) : '0';   // по умолчанию — максимально
         if (!скорость.value) скорость.value = '1';
         const портВыхода = h('input', { type: 'number', min: 1, max: 65535, placeholder: 'нет', value: сохранено.порт || '',
             'aria-label': 'Порт UDP выходных данных', class: 'pg-port' });
@@ -18588,11 +18604,11 @@
         const кнопки = h('div', { class: 'row pg-buttons' });
         const строка = h('div', { class: 'pg-status', 'aria-live': 'polite' });
         const плитки = h('div', { class: 'pg-tiles' });
-        const дерево = h('div', { class: 'pg-tree', role: 'tree', 'aria-label': 'Дерево протоколов прогона' });
+        const дерево = h('div', { class: 'pg-tree', role: 'tree', 'aria-label': 'Дерево протоколов обработки' });
         const таблицы = h('div', { class: 'pg-tables' });
         const выход = h('div', { class: 'pg-out' });
         const заметки = h('div', { class: 'pg-notes small muted' });
-        const правила = h('button', { class: 'btn btn--sm btn--ghost', onclick: () => окноПравилДК(правилаПоменялись) }, 'Правила «Декодировать как»…');
+        const правила = h('button', { class: 'btn btn--sm btn--ghost', onclick: () => окноПравилДК(правилаПоменялись) }, 'Разбирать как…');
         const раскрыто = new Set(['Кадры']);
         const виденные = new Set();
         байт.hidden = срез.value !== 'байт';
@@ -18603,10 +18619,10 @@
         });
 
         append(узел, [
-            h('div', { class: 'pg-head' }, h('div', { class: 'card-title' }, 'Прогон через обработку'),
+            h('div', { class: 'pg-head' }, h('div', { class: 'card-title' }, 'Повторная обработка'),
                 h('span', { class: 'muted small' }, источник.вид === 'zahvat'
-                    ? 'Приём с сети прогоняется по кускам — пока он идёт, следом за записью. Можно прогнать заново после смены правил.'
-                    : 'Повторная прогонка файла, как у проигрывателя: дерево протоколов, статистика и выходные данные растут по ходу.'),
+                    ? 'Приём с сети обрабатывается по частям записи — пока он идёт, следом за ней. После смены правил можно обработать заново.'
+                    : 'Обработка записи заново, как у проигрывателя, — нужна для выхода нагрузки порта UDP в файл и после смены правил.'),
                 правила),
             h('div', { class: 'pg-controls' },
                 кнопки,
@@ -18621,7 +18637,7 @@
                             'его можно скачать или отправить битовым потоком в сессию.')))),
             строка, плитки,
             h('div', { class: 'pg-body' }, h('div', { class: 'pg-tree-card' }, h('div', { class: 'muted small' },
-                'Дерево протоколов по ходу прогона. Правая кнопка на протоколе — «Убрать протокол» или «Разобрать как…».'), дерево), таблицы),
+                'Дерево протоколов по ходу обработки. Правая кнопка на протоколе — «Убрать протокол» или «Разобрать как…».'), дерево), таблицы),
             выход, заметки]);
         подключитьДК(дерево, правилаПоменялись);
 
@@ -18676,14 +18692,14 @@
             const кн = (текст, действие, класс, подсказка) => h('button', { type: 'button', class: 'btn btn--sm ' + (класс || ''),
                 title: подсказка || '', onclick: действие }, текст);
             if (!п.ид) {
-                кнопки.appendChild(кн('▶ Старт', старт, 'btn--primary pg-start', 'Прогнать запись через обработку'));
+                кнопки.appendChild(кн('▶ Старт', старт, 'btn--primary pg-start', 'Обработать запись заново'));
                 return;
             }
             if (идёт && с === 'пауза') кнопки.appendChild(кн('▶ Продолжить', () => команда('продолжить'), 'btn--primary pg-resume'));
             else if (идёт) кнопки.appendChild(кн('❚❚ Пауза', () => команда('пауза'), 'pg-pause'));
-            else кнопки.appendChild(кн('▶ Старт', сначала, 'btn--primary pg-start', 'Прогнать заново с начала с текущими правилами'));
+            else кнопки.appendChild(кн('▶ Старт', сначала, 'btn--primary pg-start', 'Обработать заново с начала с текущими правилами'));
             if (идёт) кнопки.appendChild(кн('■ Стоп', () => команда('стоп'), 'pg-stop'));
-            кнопки.appendChild(кн('⏮ Сначала', сначала, 'pg-restart', 'С начала — с текущими правилами «Декодировать как», скоростью и выходными данными'));
+            кнопки.appendChild(кн('⏮ Сначала', сначала, 'pg-restart', 'С начала — с текущими правилами «Разбирать как», скоростью и выходными данными'));
         }
 
         function плитка(значение, подпись) {
@@ -18818,7 +18834,7 @@
                 ход.причина ? h('span', { class: 'muted small' }, ' ' + ход.причина) : null,
                 ход.ошибка ? h('span', { class: 'zs-error small' }, ' ' + ход.ошибка) : null,
                 ход.скорость != null ? h('span', { class: 'muted small' }, ' · скорость ' + (Number(ход.скорость) ? '×' + fmtNumber(ход.скорость, ход.скорость % 1 ? 2 : 0) : 'максимально')) : null,
-                ход.правил ? h('span', { class: 'muted small' }, ' · правил «Декодировать как»: ' + ход.правил) : null]);
+                ход.правил ? h('span', { class: 'muted small' }, ' · правил «Разбирать как»: ' + ход.правил) : null]);
             clear(плитки);
             const сработало = Object.values(ход.правила || {}).reduce((а, б) => а + б, 0);
             append(плитки, [
@@ -18873,7 +18889,7 @@
     function навигацияКусков(состояние) {
         const весь = /^zahvat:([0-9]{8}-[0-9]{6}-[0-9a-f]{6})#весь$/.exec(String(состояние.от || ''));
         if (весь) {
-            return h('div', { class: 'row pg-chunks-nav' }, h('span', { class: 'muted small' }, 'Весь приём с сети, все куски подряд'),
+            return h('div', { class: 'row pg-chunks-nav' }, h('span', { class: 'muted small' }, 'Весь приём с сети, все части подряд'),
                 h('a', { class: 'btn btn--sm btn--ghost', href: '#/zahvat/' + encodeURIComponent(весь[1]) }, 'К приёму'));
         }
         const м = /^zahvat:([0-9]{8}-[0-9]{6}-[0-9a-f]{6})#(\d+)$/.exec(String(состояние.от || ''));
@@ -18887,15 +18903,15 @@
                 navigate('#/pakety/' + encodeURIComponent(d.id));
             } catch (error) { toastError(error); } finally { if (кнопка) кнопка.disabled = false; }
         };
-        const подпись = h('span', { class: 'muted small' }, 'Кусок ' + (кусок + 1) + ' приёма с сети');
-        const следующий = h('button', { class: 'btn btn--sm pg-next-chunk', onclick: (e) => перейти(кусок + 1, e.currentTarget) }, 'следующий кусок →');
+        const подпись = h('span', { class: 'muted small' }, 'Часть ' + (кусок + 1) + ' приёма с сети');
+        const следующий = h('button', { class: 'btn btn--sm pg-next-chunk', onclick: (e) => перейти(кусок + 1, e.currentTarget) }, 'следующая часть →');
         // Сколько кусков — у захвата: у последнего «следующего» нет (иначе щелчок — лишь «такого куска нет»).
         api.get('/api/zahvat/' + encodeURIComponent(захват) + '/chunks?offset=0&limit=1').then((d) => {
-            подпись.textContent = 'Кусок ' + (кусок + 1) + ' из ' + d.total + ' приёма с сети';
+            подпись.textContent = 'Часть ' + (кусок + 1) + ' из ' + d.total + ' приёма с сети';
             следующий.hidden = кусок + 1 >= d.total;
         }).catch(() => {});
         return h('div', { class: 'row pg-chunks-nav' }, подпись,
-            кусок > 0 ? h('button', { class: 'btn btn--sm', onclick: (e) => перейти(кусок - 1, e.currentTarget) }, '← предыдущий кусок') : null,
+            кусок > 0 ? h('button', { class: 'btn btn--sm', onclick: (e) => перейти(кусок - 1, e.currentTarget) }, '← предыдущая часть') : null,
             следующий,
             h('a', { class: 'btn btn--sm btn--ghost', href: '#/zahvat/' + encodeURIComponent(захват) }, 'К приёму'));
     }
@@ -19176,8 +19192,17 @@
             page.replaceWith(новая);
             рисоватьЗахват(новая, capId);
         };
-        page.appendChild(панельПрогона({ вид: 'pakety', ид: capId }, { имя: состояние.имя, послеПравил: разобратьЗаново }));
-        подключитьДК(page, разобратьЗаново);
+        // Повторная обработка нужна редко (выход нагрузки порта UDP в файл): свёрнута, панель строится при раскрытии.
+        const обработка = h('details', { class: 'card pk-reproc' },
+            h('summary', {}, 'Повторная обработка — выход нагрузки порта UDP в файл, как у проигрывателя…'));
+        обработка.addEventListener('toggle', () => {
+            if (обработка.open && !обработка.dataset.есть) {
+                обработка.dataset.есть = '1';
+                обработка.appendChild(панельПрогона({ вид: 'pakety', ид: capId }, { имя: состояние.имя, послеПравил: разобратьЗаново }));
+            }
+        });
+        page.appendChild(обработка);
+        подключитьДК(page, разобратьЗаново, () => разбиратьКак());
         page.appendChild(h('div', { class: 'card card-pad pk-filterbar' },
             h('div', { class: 'row' },
                 полеФильтра,
@@ -20243,34 +20268,28 @@
                 });
             }
             рисовать();
-            const окно = openModal({
-                title: 'Разбирать как',
-                body: h('div', {},
-                    h('p', { class: 'muted small' }, 'Порт службы → разборщик. Выбор проверяется на данных: если пакет не подошёл, ' +
-                        'это видно в ошибках, и разбор идёт дальше обычным путём. «Не разбирать» — когда угадывание ошибается.'),
-                    список,
-                    h('button', { class: 'btn btn--sm', onclick: () => { правила.push({ т: 'udp', порт: '', имя: протоколы.udp[0] }); рисовать(); } }, 'Добавить правило'),
-                    ошибка),
-                footer: [
-                    h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Отмена'),
-                    h('button', { class: 'btn btn--primary', onclick: async () => {
-                        const rules = {};
-                        правила.filter((п_) => String(п_.порт).trim()).forEach((п_) => { rules[п_.т + ':' + String(п_.порт).trim()] = п_.имя; });
-                        try {
-                            await api.post(путь + '/decode-as', { rules });
-                        } catch (error) {
-                            ошибка.textContent = errorText(error);
-                            return;
-                        }
-                        окно.close();
-                        toast('Запись разбирается заново с правилами «разбирать как»', 'ok');
-                        // Новая страница вместо прежней: обработчики прежней снимутся сами.
-                        const новая = h('div', { class: page.className });
-                        page.replaceWith(новая);
-                        рисоватьЗахват(новая, capId);
-                    } }, 'Разобрать заново'),
-                ],
-            });
+            const узел = h('div', {},
+                h('p', { class: 'muted small' }, 'Порт службы → разборщик. Выбор проверяется на данных: если пакет не подошёл, ' +
+                    'это видно в ошибках, и разбор идёт дальше обычным путём. «Не разбирать» — когда угадывание ошибается.'),
+                список,
+                h('button', { class: 'btn btn--sm', onclick: () => { правила.push({ т: 'udp', порт: '', имя: протоколы.udp[0] }); рисовать(); } }, 'Добавить правило'),
+                ошибка);
+            await окноПравилДК(разобратьЗаново, { узел, сохранить: async () => {
+                const rules = {};
+                правила.filter((п_) => String(п_.порт).trim()).forEach((п_) => { rules[п_.т + ':' + String(п_.порт).trim()] = п_.имя; });
+                try {
+                    await api.post(путь + '/decode-as', { rules });
+                } catch (error) {
+                    ошибка.textContent = errorText(error);
+                    return false;
+                }
+                toast('Запись разбирается заново с правилами «Разбирать как»', 'ok');
+                // Новая страница вместо прежней: обработчики прежней снимутся сами.
+                const новая = h('div', { class: page.className });
+                page.replaceWith(новая);
+                рисоватьЗахват(новая, capId);
+                return true;
+            } });
         }
 
         function фильтрПотока(data) {

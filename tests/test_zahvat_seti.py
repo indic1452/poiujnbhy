@@ -2234,7 +2234,7 @@ class СтраницаTests(unittest.TestCase):
         console.log(JSON.stringify(['#/zahvat', '#/zahvat/20260929-150737-3deda1', '#/zahvat/a%2Fb'].map(parseHash)));"""
         self.assertEqual([{"name": "zahvat", "id": None}, {"name": "zahvat", "id": "20260929-150737-3deda1"},
                           {"name": "zahvat", "id": "a/b"}], self.выполнить(код))
-        self.assertIn("zahvat: 'pakety'", self.js, "подсветка пункта «Пакеты» для экрана захвата")
+        self.assertIn("route: 'zahvat', href: '#/zahvat', title: 'Приём с сети'", self.js, "свой пункт меню «Приём с сети»")
         self.assertIn("остановитьОпросЗахватаСети();", self.вырезать(self.js, "renderRoute"))
         self.assertIn("renderZahvat(view, route.id)", self.вырезать(self.js, "рисоватьРаздел"))
         for страница in ("renderPakety", "renderSessions"):

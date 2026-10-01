@@ -8648,6 +8648,25 @@ body.reading .msg .body {
 .pk-progress-bar.is-paused > span { opacity: .45; }
 .pk-live-note { margin: 0 0 6px; }
 .pk-upload-list { display: grid; gap: 2px; margin-top: 6px; }
+/* Широкий экран: список слева, разбор пакета справа — виден сразу, без прокрутки страницы. */
+@media (min-width: 1200px) {
+  .pk-split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; align-items: stretch; }
+  .pk-split > .pk-vhead, .pk-split > .pk-vlist, .pk-split > .pk-vfoot { grid-column: 1; }
+  .pk-split > .pk-detail { grid-column: 2; grid-row: 1 / span 3; border-left: 1px solid var(--border); overflow: auto;
+    max-height: calc(100vh - 120px); position: sticky; top: 8px; }
+  .pk-vlist { height: calc(100vh - 360px); min-height: 280px; }
+  .pk-split > .pk-detail .pk-panes { grid-template-columns: minmax(0, 1fr); }
+  .pk-split > .pk-detail .pk-side { max-width: none; }
+  .pk-split > .pk-detail .pk-tree { max-height: 38vh; }
+}
+/* Компактная шапка записи и свёрнутая повторная обработка. */
+.pakety .page-head-actions .btn { padding-top: 3px; padding-bottom: 3px; font-size: var(--fs-sm); }
+.pk-reproc { margin-bottom: 10px; }
+.pk-reproc > summary { cursor: pointer; padding: 8px 12px; font-size: var(--fs-sm); color: var(--muted, inherit); }
+.pk-reproc[open] > summary { border-bottom: 1px solid var(--border); }
+.pk-reproc > .pg-panel { box-shadow: none; border: 0; margin: 0; }
+.pk-filterbar { padding-top: 8px; padding-bottom: 8px; }
+.pk-filterbar .pk-chips { margin-top: 4px; }
 .pk-table { font-size: var(--fs-sm); width: 100%; }
 .pk-table th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
 .pk-table td { padding-top: 2px; padding-bottom: 2px; white-space: nowrap; }
@@ -9554,3 +9573,8 @@ button.pk-hier-col:hover { color: var(--accent); }
 /* Окно «Коды» стола: вкладки как в декодере отдела. */
 .stol-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
 .stol-codes-panel { max-width: 44rem; display: grid; gap: 0.4rem; }
+
+/* «Приём с сети»: «Старт» — сразу под полями режима; карты — только в режиме сетевой карты. */
+.zs-start { align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 10px 0 6px; }
+.zs-start .field { flex: 1 1 260px; margin: 0; }
+.zs-cards-box { margin-bottom: 10px; }
