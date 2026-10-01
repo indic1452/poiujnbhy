@@ -204,6 +204,52 @@ class ХранилищеTests(unittest.TestCase):
         х.сводки(0, 1)[0]["номер"] = -1
         self.assertEqual(1, х.сводки(0, 1)[0]["номер"])
 
+    def test_разреженные_номера_и_ряд(self):
+        from reportgen.setevoy import hranilishe
+        п = Писатель(self.папка, копировать=False)
+        исходник = bytearray()
+        for i in range(300):
+            кадр = bytes([i % 256]) * 3
+            п.добавить(данные=кадр, место=len(исходник), канал="Ethernet", сводка={"номер": i + 1, "нагр": None},
+                       поля={"i": [i]}, время=i * 0.5, длина=3, поток=0)
+            исходник += кадр
+        п.закрыть()
+        (self.папка / "исходник").write_bytes(bytes(исходник))
+        х = Хранилище(self.папка)
+        self.assertEqual(300, х.число())
+        self.assertEqual([bytes([7]) * 3, bytes([299 % 256]) * 3], х.кадры_по([7, 299]))
+        # Номера далеко друг от друга — записи читаются по одной (не одним куском между ними).
+        старое = hranilishe.ЗАПИСЬ
+        self.assertEqual([1, 300], [з["номер"] for з in х.сводки_по(np.array([0, 299]))])
+        self.assertEqual(старое.size, 48)
+        self.assertEqual(0, len(х.записи(5, 5)))
+        self.assertEqual(0, len(х.записи_по([])))
+        self.assertEqual([0.0, 0.5], х.времена(0, 2).tolist())
+        self.assertEqual([3, 3], х.длины(298, 400).tolist())
+        with self.assertRaises(IndexError):
+            х.сводка(300)
+        with self.assertRaises(IndexError):
+            х.кадр(300)
+        ряд = Ряд(х, "поля")
+        self.assertEqual([{"i": [299]}, {"i": [0]}], [ряд[-1], ряд[0]])
+        self.assertEqual([{"i": [0]}, {"i": [2]}], ряд[0:4:2])
+        self.assertEqual(300, len(ряд[:]))
+        with self.assertRaises(IndexError):
+            ряд[300]
+        self.assertEqual(Ряд(х, "кадры", [1, 2]), [bytes([1]) * 3, bytes([2]) * 3])
+        self.assertNotEqual(Ряд(х, "кадры", [1, 2]), [bytes([1]) * 3])
+        Ряд.ПОРЦИЯ, старое_п = 7, Ряд.ПОРЦИЯ
+        self.addCleanup(setattr, Ряд, "ПОРЦИЯ", старое_п)
+        self.assertEqual([з["i"][0] for з in Ряд(х, "поля")], list(range(300)))
+        self.assertEqual([з["i"][0] for з in Ряд(х, "поля")[5:20]], list(range(5, 20)))
+        self.assertEqual(Ряд(х, "поля")[13], {"i": [13]})
+        # Файл по ссылке изменили — кадры не читаются, сводки — читаются.
+        from reportgen.fayly_ssylki import ФайлИзменён, отпечаток
+        чужой = Хранилище(self.папка, self.папка / "исходник", {**отпечаток(self.папка / "исходник"), "размер": 1})
+        with self.assertRaises(ФайлИзменён):
+            чужой.кадр(1)
+        self.assertEqual(2, чужой.сводка(1)["номер"])
+
     def test_отпечаток_потока(self):
         а = отпечаток_потока(("TCP", ("10.0.0.1", 80), ("10.0.0.2", 5000)))
         self.assertEqual(а, отпечаток_потока(("TCP", ("10.0.0.1", 80), ("10.0.0.2", 5000))))
@@ -577,6 +623,34 @@ class ОчередьTests(unittest.TestCase):
             time.sleep(0.05)
         self.assertTrue(дождаться(lambda: len(порядок) == 4))
         self.assertEqual(["а1", "б1", "а2", "а3"], порядок)
+
+    def test_команды_и_остановка_работы_потоком(self):
+        from reportgen.setevoy import raboty
+        получено = []
+
+        def исполнить(вид, аргументы, команды):
+            while True:
+                к = команды.get(timeout=10)
+                получено.append(к["к"])
+                if к["к"] == "стоп":
+                    return
+
+        старое = raboty._исполнить
+        raboty._исполнить = исполнить
+        self.addCleanup(setattr, raboty, "_исполнить", старое)
+        д = Диспетчер(разборов=1, процессы=True)          # процессом=False у работы — поток и при процессах
+        self.addCleanup(д.закрыть)
+        self.assertEqual({"разбор": 1, "отбор": max(2, min(8, os.cpu_count() or 2))}, д.места)
+        д.поставить(Работа("разбор", "к", 1, ["к"], процессом=False))
+        self.assertTrue(дождаться(lambda: д.идёт("к")))
+        self.assertTrue(д.команда("к", {"к": "пауза"}))
+        self.assertFalse(д.команда("нет", {"к": "пауза"}))
+        self.assertEqual({"места": {"разбор": 1, "отбор": д.места["отбор"]}, "идут": {"разбор": 1, "отбор": 0},
+                          "ждут": {"разбор": 0, "отбор": 0}}, д.сводка())
+        д.остановить("к", "проверка", ждать=5)
+        self.assertEqual(["пауза", "стоп"], получено)
+        self.assertFalse(д.идёт("к"))
+        self.assertIsNone(д.в_очереди("к"))
 
     def test_спящая_работа_места_не_занимает(self):
         from reportgen.setevoy import raboty
