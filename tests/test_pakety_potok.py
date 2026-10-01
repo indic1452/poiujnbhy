@@ -462,6 +462,163 @@ class НакопительСлучайноTests(unittest.TestCase):
                                  [(г_["группа"], г_["пакетов"], г_["первые"], г_["длины"]) for г_ in с["неизвестные"]])
 
 
+class НакопительБогатоTests(unittest.TestCase):
+    """Много разных имён, узлов, диалогов, групп и ошибок (сверх «первых N» снимка), поля DNS/HTTP/TLS,
+    дробные времена — накопитель против statistika по всем разделам, включая обзор."""
+
+    def набор(self, г, n):
+        адреса = [f"10.0.{i // 50}.{i % 50}" for i in range(40)] + [""]
+        сводки, поля = [], []
+        for i in range(n):
+            вид = г.randrange(7)
+            а, б = г.choice(адреса), г.choice(адреса)
+            порты = (г.choice([53, 80, 443, 1023, 1024, 1025, 40000 + г.randrange(30)]), г.choice([53, 80, 1024, 5000]))
+            п: dict = {}
+            if вид == 0:
+                стек = ["Ethernet", "IPv4", "UDP", г.choice(["DNS", "mDNS", "LLMNR"])]
+                ответ = г.random() < 0.5
+                п = {"dns.flags.response": [int(ответ)], "dns.qry.name": [f"n{г.randrange(15)}.ru"], "dns.qry.type": ["A"],
+                     "dns.id": [г.randrange(5)], **({"dns.a": ["1.2.3.4"], "dns.flags.rcode": [г.randrange(3)]} if ответ else {})}
+                if г.random() < 0.2:
+                    п = {k: v for k, v in п.items() if k != "dns.flags.response"}
+            elif вид == 1:
+                стек = ["Ethernet", "IPv4", "TCP", "HTTP"]
+                if г.random() < 0.6:
+                    п = {"http.request.method": ["GET"], "http.host": [f"h{г.randrange(14)}"], "http.request.uri": ["/"],
+                         **({"http.user_agent": ["ua"]} if г.random() < 0.5 else {})}
+                    if г.random() < 0.2:
+                        del п["http.host"]
+                else:
+                    п = {"http.response.code": [г.choice([200, 404])]}
+            elif вид == 2:
+                стек = ["Ethernet", "IPv4", "TCP", "TLS"]
+                п = {"tls.handshake.type": [г.choice(["ClientHello", "ServerHello"])]}
+                for ключ in ("tls.handshake.extensions_server_name", "tls.handshake.extensions_alpn_str",
+                             "tls.handshake.extensions.supported_version"):
+                    if г.random() < 0.7:
+                        п[ключ] = [f"s{г.randrange(14)}"]
+            elif вид == 3:
+                стек = ["Ethernet", "IPv4", "UDP", "Данные"]
+            elif вид == 4:
+                стек = [г.choice(["SLL", "Ethernet"]), "IPv6", "TCP", "Данные"]
+            elif вид == 5:
+                стек = ["Ethernet", "IPv4", "TCP"]
+            else:
+                стек = ["Ethernet", "ARP"]
+            с_ = {"номер": i + 1, "время": round(1000 + г.random() * 3.3333333, 7) if г.random() < 0.9 else 1000.5,
+                  "длина": г.randrange(40, 1500), "стек": стек, "протокол": стек[-1] if стек[-1] != "Данные" else стек[-2],
+                  "источник": а, "получатель": б, "инфо": "",
+                  "ошибки": г.choice([[], [], [], [f"TCP: контрольная сумма {г.randrange(9)} (x)"],
+                                      [f"IPv{г.randrange(9)}: обрыв: ещё {г.randrange(3)} (5)"], ["без двоеточия"]])}
+            if "TCP" in стек or "UDP" in стек:
+                с_["порт_от"], с_["порт_к"] = порты
+            else:
+                с_["порт_от"] = с_["порт_к"] = None
+            if "Ethernet" in стек:
+                с_["mac"] = [f"aa:{г.randrange(6)}", f"bb:{г.randrange(6)}"]
+            if стек[-1] == "Данные":
+                с_["нагр"] = [0, г.randrange(1, 60)]
+                if г.random() < 0.5:
+                    с_["порт_от"] = с_.get("порт_от") or 7000 + г.randrange(40)
+                    с_["порт_к"] = с_.get("порт_к") or 8000 + г.randrange(40)
+            сводки.append(с_)
+            поля.append(п)
+        return сводки, поля
+
+    def test_всё_как_statistika(self):
+        import random
+        г = random.Random(17)
+        for k in range(12):
+            сводки, поля = self.набор(г, г.choice([300, 900]))
+            н = Накопитель()
+            for с_, п in zip(сводки, поля, strict=True):
+                н.добавить(с_, п)
+            с = json.loads(json.dumps(н.снимок()))
+            j = lambda x: json.loads(json.dumps(x))  # noqa: E731
+            with self.subTest(k=k):
+                self.assertEqual(j(statistika.иерархия(сводки)), с["иерархия"])
+                for уровень in ("eth", "ip", "tcp", "udp"):
+                    self.assertEqual(j(statistika.диалоги(сводки, уровень)), с["диалоги"][уровень])
+                self.assertEqual(j(statistika.узлы(сводки)), с["узлы"])
+                self.assertEqual(j(statistika.ошибки(сводки)), с["ошибки"])
+                for вид in ("dns", "http", "tls"):
+                    self.assertEqual(j(getattr(statistika, вид)(сводки, поля)), с[вид])
+                обзор = j(statistika.обзор(сводки, поля, [None] * len(сводки)))
+                обзор.pop("файлов")
+                обзор.pop("файлы")
+                self.assertEqual(обзор, с["обзор"])
+                for путь in {tuple(с_["стек"][:i]) for с_ in сводки for i in range(len(с_["стек"]) + 1)}:
+                    self.assertEqual(j(statistika.узел_протокола(сводки, list(путь))),
+                                     узел_из_снимка(с["узлы_дерева"], list(путь)))
+                груз = [b"x" * с_["нагр"][1] if с_.get("нагр") else None for с_ in сводки]
+                эталон = statistika.неизвестные(сводки, груз)
+                self.assertEqual([(г_["группа"], г_["пакетов"], г_["первые"], г_["длины"]) for г_ in эталон],
+                                 [(г_["группа"], г_["пакетов"], г_["первые"], г_["длины"]) for г_ in с["неизвестные"]])
+        self.assertEqual({"пакетов": 0}, Накопитель().раздел("обзор"))
+        self.assertEqual(0.0, Накопитель().длительность())
+
+    def test_флаги_неполноты_узла(self):
+        from reportgen.setevoy import nakopitel
+        for имя, значение in (("ПАР_УЗЛА_ДО", 3), ("АДРЕСОВ_УЗЛА_ДО", 4)):
+            старое = getattr(nakopitel, имя)
+            setattr(nakopitel, имя, значение)
+            self.addCleanup(setattr, nakopitel, имя, старое)
+        н = Накопитель()
+        for i, (а, б) in enumerate([("1", "2"), ("1", "3"), ("1", "4"), ("2", "3"), ("2", "2")]):
+            н.добавить({"номер": i + 1, "время": 1.0, "длина": 1, "стек": ["X"], "протокол": "X", "источник": а,
+                        "получатель": б, "ошибки": [], "порт_от": None, "порт_к": None}, {})
+        узел = н.раздел("узлы_дерева")["X"]
+        self.assertEqual((3, 4, True), (узел["диалогов"], узел["узлов"], узел.get("неполно")))
+        н2 = Накопитель()
+        for i, (а, б) in enumerate([("1", "2"), ("3", "4"), ("1", "2")]):
+            н2.добавить({"номер": i + 1, "время": 1.0, "длина": 1, "стек": ["X"], "протокол": "X", "источник": а,
+                         "получатель": б, "ошибки": [], "порт_от": None, "порт_к": None}, {})
+        self.assertNotIn("неполно", н2.раздел("узлы_дерева")["X"], "адресов ровно потолок — полно")
+        self.assertEqual(4, н2.раздел("узлы_дерева")["X"]["узлов"])
+
+    def test_потолки_строк_и_групп_точно(self):
+        from reportgen.setevoy import nakopitel
+        for имя, значение in (("СТРОК_ДО", 3), ("ОБРАЗЦОВ", 2), ("ГРУПП_ДО", 2), ("ИМЁН_ДО", 2), ("НАБОР_DNS_ДО", 2),
+                              ("ДИАЛОГОВ_ДО", 2), ("УЗЛОВ_ДО", 2)):
+            старое = getattr(nakopitel, имя)
+            setattr(nakopitel, имя, значение)
+            self.addCleanup(setattr, nakopitel, имя, старое)
+        import random
+        сводки, поля = self.набор(random.Random(3), 400)
+        н = Накопитель()
+        for с_, п in zip(сводки, поля, strict=True):
+            н.добавить(с_, п)
+        self.assertEqual((3, 3, 3), (len(н.раздел("dns")), len(н.раздел("http")), len(н.раздел("tls"))))
+        счёт = н.раздел("счёт")
+        self.assertEqual(len(statistika.tls(сводки, поля)), счёт["tls"])
+        self.assertEqual(len(statistika.dns(сводки, поля)), счёт["dns"])
+        группы = н.раздел("неизвестные")
+        self.assertEqual(2, len(группы))
+        self.assertTrue(all(len(г_["образцы"]) == 2 for г_ in группы))
+        self.assertEqual(2, len(н.имена_dns))
+        self.assertLessEqual(len(н.запросы_dns), 2)
+        # Сколько пакетов не попало в таблицы диалогов и узлов — ровно.
+        ip = [с_ for с_ in сводки if {"IPv4", "IPv6"} & set(с_["стек"])]
+        ключи, мимо = [], 0
+        for с_ in ip:
+            к = tuple(sorted((с_["источник"], с_["получатель"])))
+            if к not in ключи:
+                if len(ключи) >= 2:
+                    мимо += 1
+                    continue
+                ключи.append(к)
+        self.assertEqual(мимо, счёт["диалогов_мимо"]["ip"])
+        узлы, мимо_у = [], 0
+        for с_ in ip:
+            for адрес in (с_["источник"], с_["получатель"]):
+                if адрес not in узлы:
+                    if len(узлы) >= 2:
+                        мимо_у += 1
+                        continue
+                    узлы.append(адрес)
+        self.assertEqual(мимо_у, счёт["узлов_мимо"])
+
+
 class ЗахватыПотокомTests(unittest.TestCase):
     """Захваты: разбор в фоне (потоком и процессом), загрузка кусками, отборы следом за разбором."""
 
