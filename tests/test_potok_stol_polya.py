@@ -124,7 +124,7 @@ class МенюСтолаTests(unittest.TestCase):
                       "Закладка на ", "Сравнить с другим массивом", "Сведения о массиве"):
             self.assertIn(пункт, обработчик)
         # Подменю у нижнего края окна не уходит за окно.
-        self.assertIn("группа.addEventListener('mouseenter', () => открытьГруппу(группа, false))", APP)
+        self.assertIn("группа.addEventListener('mouseenter', () => { if (открытое && открытое.dataset.mouse) открытьГруппу(группа, false); });", APP)
         # Действия по месту — над разделами операций.
         self.assertIn("function меню(x, y, сверху)", APP)
         self.assertIn("stol-menu-top", APP[APP.index("function меню(x, y, сверху)"):])
