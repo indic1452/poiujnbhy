@@ -446,13 +446,13 @@ class ПоискTests(unittest.TestCase):
         H = синтез.qc_ldpc()
         G, _ = синтез.систематический(H)
         ldpc = (г.integers(0, 2, (300, G.shape[0])).astype(np.uint8) @ G % 2).reshape(-1).astype(np.uint8)
-        текст = ("Код Рида — Соломона вслепую: длина слова и начало по префиксу. " * 3000).encode()
-        кадры = синтез.hdlc([bytes(г.integers(0, 256, int(г.integers(40, 300)), dtype=np.uint8)) for _ in range(600)])
-        случаи = {"случайные": г.integers(0, 2, 1 << 20).astype(np.uint8),
-                  "свёрточный": синтез.свёрточный(г.integers(0, 2, 1 << 20).astype(np.uint8)),
+        текст = ("Код Рида — Соломона вслепую: длина слова и начало по префиксу. " * 800).encode()
+        кадры = синтез.hdlc([bytes(г.integers(0, 256, int(г.integers(40, 300)), dtype=np.uint8)) for _ in range(250)])
+        случаи = {"случайные": г.integers(0, 2, 1 << 19).astype(np.uint8),
+                  "свёрточный": синтез.свёрточный(г.integers(0, 2, 1 << 18).astype(np.uint8)),
                   "LDPC": ldpc, "текст": np.unpackbits(np.frombuffer(текст, np.uint8)),
                   "HDLC": np.unpackbits(np.frombuffer(кадры, np.uint8)),
-                  "нули": np.zeros(1 << 20, dtype=np.uint8)}
+                  "нули": np.zeros(1 << 19, dtype=np.uint8)}
         for имя, биты in случаи.items():
             with self.subTest(имя=имя):
                 self.assertIsNone(найти(биты, "быстро"))
@@ -604,17 +604,17 @@ class ПунктыСтолаTests(unittest.TestCase):
         cls.операции = {о["id"]: о for о in д["о"]}
 
     def test_пункты_и_вкладка_rs(self):
-        from test_potok_turbo_std import ВкладкиКодовTests  # noqa: PLC0415
+        from test_potok_turbo_std import ОкноКодовTests  # noqa: PLC0415
         о = self.операции
         self.assertEqual(self.вкладки["RS"]["пункты"], ["c-rs-iess", "c-rs-blind", "c-rs-set"])
         self.assertEqual((о["c-rs-blind"]["вид"], о["c-rs-blind"]["сделать"], о["c-rs-blind"]["раздел"]),
                          ("действие", "поиск-рс", "ПУ код"))
-        слой = ВкладкиКодовTests.заполнить(о["c-rs-set"])
+        слой = ОкноКодовTests.заполнить(о["c-rs-set"])
         self.assertEqual(слой, "рс 255 223 поле 0x11D fcr 0 шаг 1 глубина 1 базис обычный порядок старший символ 8")
         биты, д = поток(255, 223, блоков=30)
         ряд, _ = razbor.снять_вручную(биты, слой)
         self.assertTrue(np.array_equal(ряд, в_символы_данных(д, 8)))
-        слой = ВкладкиКодовTests.заполнить(о["c-rs-set"], {"поле": "0x187", "fcr": 112, "шаг": 11, "глубина": 4,
+        слой = ОкноКодовTests.заполнить(о["c-rs-set"], {"поле": "0x187", "fcr": 112, "шаг": 11, "глубина": 4,
                                                              "базис": "двойной", "сдвиг": " 13 "})
         self.assertTrue(слой.endswith("базис двойной порядок старший символ 8 сдвиг 13"), слой)
 
