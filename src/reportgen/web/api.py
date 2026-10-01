@@ -428,6 +428,8 @@ def config(request: Request) -> dict[str, Any]:
         "llm": {"model": settings.llm_model, "base_url": settings.llm_base_url,
                 "kind": settings.llm_kind},
         "auth_enabled": settings.auth_enabled,
+        # Предел загрузки: окна добавления файлов проверяют размер до отправки, а не после неё.
+        "upload_mb": settings.max_upload_mb,
         "brand": {
             "name": settings.brand_name,
             "short": settings.brand_short,

@@ -9623,3 +9623,15 @@ div.stol-decoder-op { border: 0; padding: 0; }
 .stol-j-found { margin: 2px 0 2px 18px; padding: 0; }
 .stol-j-log > summary { cursor: pointer; }
 .modal:focus { outline: none; }
+
+/* Помощник на столе — столбец рядом со столом, а не слой поверх него: кнопки шапки стола остаются видны. */
+.opis-scene > .stol-ai { position: relative; inset: auto; flex: none; width: min(420px, 34vw); box-shadow: none; z-index: auto; }
+
+/* Модель не отвечает — подпись рядом с красной точкой. */
+.llm-dot.is-down { position: relative; margin-right: 118px; }
+.llm-dot.is-down::after { content: 'Модель: нет связи'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    white-space: nowrap; font-size: 12px; color: var(--danger); }
+
+/* Окно «Добавить файл»: пустой или неотправляемый файл — зачёркнут, с пояснением. */
+.session-file.is-bad .session-file-name b { text-decoration: line-through; color: var(--muted); }
+.session-file-note { color: var(--warn-text, var(--text)); }
