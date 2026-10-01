@@ -203,6 +203,37 @@ class ИсточникTests(unittest.TestCase):
         with self.assertRaisesRegex(ФайлИзменён, "удалён"):
             ист.байты(0, 1)
 
+    def test_умолчания_и_ключ(self):
+        ист = Источник(self.папка / "ф.bin")
+        self.assertEqual(self.данные, ист.байты())
+        self.assertTrue(np.array_equal(в_биты(self.данные), ист.биты()))
+        self.assertTrue(np.array_equal(в_биты(self.данные), np.concatenate(list(ист.куски()))))
+        self.assertEqual(self.данные, b"".join(ист.байты_кусками(7777)))
+        self.assertEqual((str(self.папка / "ф.bin"), 0, 800_000, False), (ист.ключ[0], ист.ключ[3], ист.ключ[4], ист.ключ[5]))
+        по_ссылке = Источник(self.папка / "ф.bin", ссылка=отпечаток(self.папка / "ф.bin"), смещение=8)
+        self.assertEqual(отпечаток(self.папка / "ф.bin")["хэш"], по_ссылке.ключ[1])
+        self.assertEqual((8, 799_936), по_ссылке.ключ[2:4])
+
+    def test_отпечаток_видит_хвост_большого_файла(self):
+        """Файл больше мегабайта: переписанный конец (тот же объём) — не тот же файл; середина не в отпечатке."""
+        путь = self.папка / "большой.bin"
+        данные = bytearray(np.random.default_rng(9).bytes(3 << 20))
+        путь.write_bytes(bytes(данные))
+        ссылка = отпечаток(путь)
+        данные[(3 << 20) // 2] ^= 1                         # середина — вне отпечатка, время то же
+        путь.write_bytes(bytes(данные))
+        os.utime(путь, ns=(ссылка["изменён_нс"] + 1, ссылка["изменён_нс"] + 1))
+        self.assertIsNotNone(сверить(ссылка))
+        данные[-1] ^= 1
+        путь.write_bytes(bytes(данные))
+        with self.assertRaisesRegex(ФайлИзменён, "переписан"):
+            сверить(ссылка)
+        данные[-1] ^= 1
+        данные[5] ^= 1
+        путь.write_bytes(bytes(данные))
+        with self.assertRaisesRegex(ФайлИзменён, "переписан"):
+            сверить(ссылка)
+
     def test_целый_файл_связывается(self):
         ист = Источник(self.папка / "ф.bin")
         ист.в_файл(self.папка / "копия.bin")
