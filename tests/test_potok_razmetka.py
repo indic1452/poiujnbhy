@@ -1202,11 +1202,11 @@ process.stdout.write(JSON.stringify(случаи.map((с) => {
         точки16 = [[format(i, "04b"), i / 10, -i / 10] for i in range(16)]
         случаи.append((точки16, ["0000"] + ["1"] * 15, -1, []))
         случаи.append((точки16, ["1"] + ["0000"] * 15, -1, []))
-        # 64 точки по 2 и по 1 биту; метки в 8 знаков — выводятся, в 9 — нет.
+        # 64 точки по 2 и по 1 биту; метки в 10 знаков (КАМ-1024) — выводятся, в 11 — нет.
         точки64 = [[format(i, "06b"), (i % 8) / 4 - 1, (i // 8) / 4 - 1] for i in range(64)]
         случаи.append((точки64, ["01"] * 64, -1, []))
         случаи.append((точки64, ["1"] * 64, -1, []))
-        случаи.append(([["00000000", 1, 0], ["11111111", -1, 0]], ["00000000", "000000000"], -1, []))
+        случаи.append(([["0000000000", 1, 0], ["1111111111", -1, 0]], ["0000000000", "00000000000"], -1, []))
         итоги = self.выполнить([{"что": "svg", "т": т, "м": м, "в": в, "п": п} for т, м, в, п in случаи])
         ч = lambda x: round(x, 3)  # noqa: E731
         for (точки, метки, выбрана, плохие), svg in zip(случаи, итоги, strict=True):
@@ -1229,7 +1229,7 @@ process.stdout.write(JSON.stringify(случаи.map((с) => {
                 self.assertAlmostEqual(ч(px), float(x), delta=0.0011)
                 self.assertAlmostEqual(ч(-py - 0.08), float(y), delta=0.0011)
                 self.assertAlmostEqual(ч(шрифт), float(fs), delta=0.0011)
-                self.assertEqual(метки[i] if re.fullmatch(r"[01]{1,8}", метки[i]) else "?", подпись)
+                self.assertEqual(метки[i] if re.fullmatch(r"[01]{1,10}", метки[i]) else "?", подпись)
             self.assertTrue(svg.endswith("</svg>"))
 
     def test_тексты_окна_точно(self):
@@ -1268,6 +1268,20 @@ process.stdout.write(JSON.stringify(случаи.map((с) => {
         self.assertEqual(["11", "01", "00", "10"], итоги[6])                  # −1 и 1,5 — не метки
         self.assertEqual([0], итоги[7])
 
+
+    def test_анализ_1024_частоты_и_граница(self):
+        """У 1024 символов — 16 самых частых (при равных — меньший номер раньше), а не тысяча чисел."""
+        частоты = [0.0005] * 1024
+        частоты[700], частоты[3], частоты[5] = 0.02, 0.01, 0.01
+        а = {"фаза": 9, "символов": 65536, "k": 10, "период": None, "частоты": частоты, "повторов_подряд": 0.001,
+             "повторов_ждать": 0.001, "частые_переходы": [[1, 2, 3]]}
+        [т] = self.выполнить([{"что": "анализ", "а": а}])
+        self.assertEqual("Граница символа — бит 9 · символов 65\xa0536", т[0])
+        верх = [700, 3, 5] + [v for v in range(1024) if v not in (3, 5, 700)][:13]
+        self.assertEqual("Частоты (16 самых частых из 1024): " + " ".join(
+            f"{v}:{частоты[v] * 100:.1f}%".replace(".", ",") for v in верх), т[2])
+        а8 = {**а, "частоты": [0.125] * 8}
+        self.assertEqual("Частоты: " + " ".join(f"{v}:12,5%" for v in range(8)), self.выполнить([{"что": "анализ", "а": а8}])[0][2])
 
 # -- края: точные значения против независимого счёта ---------------------------------------------
 
@@ -1980,3 +1994,204 @@ class WAVTests(unittest.TestCase):
         self.assertEqual("int8, I и Q чередованием", iq.прочитать(bytes(32), "int8")[1])
         with self.assertRaises(ValueError):
             iq.прочитать(bytes(30), "int8")
+
+
+# -- до 1024 точек: вход I/Q, разметка вслепую, анализ ------------------------------------------------
+
+def облако_кам(имя: str, n: int, оср: float, поворот: float, инверсия: bool, сид: int = 5):
+    """Отсчёты созвездия ``имя`` с ОСШ (Es/N0, дБ), поворотом и инверсией; (отсчёты, номера точек, точки, метки)."""
+    с_ = мд.найти(имя)
+    z0 = np.array([complex(x, y) for _, x, y in с_.точки])
+    z0 = (z0 - z0.mean()) / math.sqrt(np.mean(np.abs(z0 - z0.mean()) ** 2))
+    метки = np.array([int(м, 2) for м, _, _ in с_.точки])
+    rng = np.random.default_rng(сид)
+    номера = rng.integers(0, len(z0), n)
+    σ = math.sqrt(1 / (2 * 10 ** (оср / 10)))
+    z = z0[номера] * cmath.exp(1j * math.radians(поворот))
+    z = np.conj(z) if инверсия else z
+    z = z + σ * (rng.standard_normal(n) + 1j * rng.standard_normal(n))
+    return 3000 * z + (40 - 25j), номера, z0, метки
+
+
+class До1024IQTests(unittest.TestCase):
+    def test_ближайшие_по_ячейкам_точно(self):
+        """Ячейки дают ровно то же, что полный перебор: и в облаке, и для выбросов далеко за краем, и у неровных точек."""
+        rng = np.random.default_rng(1)
+        for точки in (np.array([complex(x, y) for _, x, y in мд.найти("DOCSIS 3.1 КАМ512 (крест)").точки]),
+                      rng.standard_normal(700) + 1j * rng.standard_normal(700),
+                      np.exp(2j * np.pi * np.arange(256) / 256)):
+            z = np.concatenate([точки[rng.integers(0, len(точки), 5000)] + 0.3 * (rng.standard_normal(5000) + 1j * rng.standard_normal(5000)),
+                                40 * (rng.standard_normal(300) + 1j * rng.standard_normal(300)), точки[:50]])
+            прямо = np.array([int(np.argmin(np.abs(точки - т))) for т in z])
+            self.assertTrue(np.array_equal(прямо, iq._Ячейки(точки).ближайшие(z)))
+            self.assertTrue(np.array_equal(прямо, iq._ближайшие(z, точки)))
+        # Совпавшие точки (медиана расстояний — ноль) и одна точка — полный перебор.
+        self.assertEqual([0, 0], iq._Ячейки(np.array([1 + 1j] * 200)).ближайшие(np.array([0j, 5 + 5j])).tolist())
+        self.assertIsNone(iq._Ячейки(np.array([2j])).таблица)
+
+    def test_облако_1024_и_512(self):
+        for имя, оср, поворот, инверсия in (("DOCSIS 3.1 КАМ1024", 40, 17.3, False), ("КАМ1024 Грей", 40, 61.0, True),
+                                             ("DOCSIS 3.1 КАМ512 (крест)", 37, 200.0, True)):
+            with self.subTest(имя=имя):
+                z, номера, z0, метки = облако_кам(имя, 150000, оср, поворот, инверсия)
+                сырьё, _ = iq.прочитать(в_int16(z, 1.0), "int16")
+                M = len(z0)
+                начало = time.monotonic()
+                о = iq.облако(сырьё, точек=M)
+                self.assertLess(time.monotonic() - начало, 30)
+                self.assertEqual(M, о["точек"])
+                self.assertGreater(о["отделимость"], 4)
+                п = мд.плоскость(мд.найти(имя))
+                идеал = np.array([complex(x, y) for x, y in п.xy])
+                в = iq.выровнять(о["центры"], о["веса"], идеал, шаг=п.шаг)
+                # Квадрат и крест симметричны отражению: инверсия по облаку неотличима от поворота — сверяется то, что
+                # центры легли на точки, и поворот при той инверсии, что совпала.
+                self.assertLess(в["ошибка"], 0.01)
+                if в["инверсия"] == инверсия:
+                    φ = (-поворот if not инверсия else поворот) % 90
+                    self.assertAlmostEqual(0, ((в["поворот"] - φ) + 45) % 90 - 45, delta=0.2)
+                # Каждой точке созвездия — ровно один центр.
+                ц = iq.повернуть(о["центры"], в["поворот"], в["инверсия"])
+                self.assertEqual(M, len(set(np.abs(ц[:, None] - идеал[None, :]).argmin(axis=1).tolist())))
+                # Жёсткие решения: при верной из 4 симметрий — все метки верны (почти: ОСШ конечно).
+                приведённые = (сырьё - о["середина"]) / о["масштаб"]
+                ждём = метки[номера]
+                лучше = 0.0
+                for r in range(4):
+                    for отразить in (False, True):
+                        у_ = iq.повернуть(приведённые, в["поворот"], в["инверсия"])
+                        у_ = iq.повернуть(np.conj(у_) if отразить else у_, 90 * r, False)
+                        лучше = max(лучше, float(np.mean(iq.по_плоскости(у_, идеал, np.array(п.метки)) == ждём)))
+                self.assertGreater(лучше, 0.999)
+                # По кластерам: номер кластера по порядку чтения — тот же, что номер ближайшего центра.
+                кл = iq.по_кластерам(приведённые[:20000], о["центры"])
+                номер = iq.порядок_чтения(о["центры"])
+                self.assertTrue(np.array_equal(кл, номер[np.abs(приведённые[:20000, None] - о["центры"][None, :]).argmin(axis=1)]))
+
+    def test_k_средних_большое_k_поправка(self):
+        """Поправка пачкой: у центров, сдвоенных на одной точке, и двух точек под одним центром — слить и разделить."""
+        rng = np.random.default_rng(4)
+        точки = np.array([complex(x, y) for x in range(16) for y in range(16)]) * 4
+        z = точки[rng.integers(0, 256, 40000)] + 0.2 * (rng.standard_normal(40000) + 1j * rng.standard_normal(40000))
+        плохие = точки.copy().astype(complex)
+        плохие[0], плохие[1] = 0.3j, -0.3j                          # два центра на точке 0, точку 4j не покрывает никто
+        плохие[[2, 3]] = плохие[[2, 3]] + 0j
+        плохие[1] = 0 - 0.3j
+        плохие[17] = (точки[17] + точки[18]) / 2                    # один центр на двух точках 17 и 18 …
+        плохие[18] = 0.25 + 0.1j                                    # … а его пара — у точки 0
+        м = iq._ближайшие(z, плохие)
+        разброс = float(np.mean(np.abs(z - плохие[м]) ** 2))
+        ц, м2, р2 = iq._поправить_пачкой(z, плохие, м, разброс, np.random.default_rng(1), 60)
+        self.assertLess(р2, разброс)
+        self.assertEqual(256, len(set(np.abs(ц[:, None] - точки[None, :]).argmin(axis=1).tolist())))
+        self.assertLess(float(np.max(np.min(np.abs(ц[:, None] - точки[None, :]), axis=0))), 0.1)
+        # Хорошие центры поправка не трогает.
+        м = iq._ближайшие(z, точки)
+        ц3, _, _ = iq._поправить_пачкой(z, точки.astype(complex), м, float(np.mean(np.abs(z - точки[м]) ** 2)), np.random.default_rng(1), 60)
+        self.assertTrue(np.array_equal(точки, ц3))
+        # Быстрый путь — с БОЛЬШОЕ_K кластеров; отсчётов меньше, чем кластеров, — отказ.
+        ц4, м4 = iq.k_средних(z[:20000], 256)
+        self.assertEqual(256, len(set(np.abs(ц4[:, None] - точки[None, :]).argmin(axis=1).tolist())))
+        self.assertTrue(np.array_equal(м4, np.abs(z[:20000, None] - ц4[None, :]).argmin(axis=1)))
+        with self.assertRaises(ValueError):
+            iq.k_средних(z[:100], 128)
+
+
+class До1024ВслепуюTests(unittest.TestCase):
+    def test_старты_соседи_перестановки(self):
+        п = р.перестановки_бит(10)
+        self.assertEqual(len(п), len(set(п)))
+        self.assertTrue(all(sorted(x) == list(range(10)) for x in п))
+        self.assertIn(tuple(range(10)), п)
+        self.assertIn(tuple(range(9, -1, -1)), п)
+        self.assertIn((5, 6, 7, 8, 9, 0, 1, 2, 3, 4), п)
+        self.assertIn((0, 5, 1, 6, 2, 7, 3, 8, 4, 9), п)                   # вперемешку ↔ половинами
+        self.assertIn((0, 2, 4, 6, 8, 1, 3, 5, 7, 9), п)
+        self.assertEqual(22, len(п))
+        начало = time.monotonic()
+        с_ = р.старты_группы(10, р.основы_плоскостей(10), до=4096)
+        self.assertLess(time.monotonic() - начало, 20)
+        self.assertLessEqual(len(с_), 4096)
+        self.assertTrue(all(sorted(т) == list(range(1024)) for т in с_[:50].tolist()))
+        self.assertIn(list(range(1024)), с_.tolist())
+        # Соседи: выборка пар без повторов — каждая таблица отличается от исходной ровно в двух местах.
+        т = np.random.default_rng(2).permutation(1024)
+        для = р.соседи(т, до=500, сид=3)
+        self.assertEqual(500, len(для))
+        пары = {tuple(np.flatnonzero(x != т).tolist()) for x in для}
+        self.assertEqual(500, len(пары))
+        self.assertTrue(all(len(x) == 2 for x in пары))
+        частые = list(range(100, 140))
+        для = р.соседи(т, до=100, частые=частые)
+        пары = [tuple(np.flatnonzero(x != т).tolist()) for x in для]
+        self.assertEqual([(a, b) for a, b in itertools.combinations(range(100, 114), 2)], пары)   # 14·13/2 = 91 ≤ 100
+        self.assertEqual(16 * 15 // 2, len(р.соседи(np.arange(16), до=1000)))         # до больше всех пар — все
+        self.assertEqual((0, 2), р.соседи(np.arange(2), до=0, частые=[0, 1]).shape)
+
+    def test_мера_окон_как_прямой_счёт(self):
+        rng = np.random.default_rng(6)
+        k = 10
+        символы = rng.integers(0, 1 << k, 300)
+        таблицы = np.array([rng.permutation(1 << k) for _ in range(20)])
+        м = р.МераОкон(символы, k)
+        for т, значение in zip(таблицы, м.оценить(таблицы), strict=True):
+            биты = "".join(format(int(т[v]), f"0{k}b") for v in символы)
+            итог = 0.0
+            for r in range(k):
+                окна = [int(биты[i:i + 8], 2) for i in range(r, len(биты) - 7, k)]
+                h = np.bincount(окна, minlength=256)
+                итог += 256 * (h.astype(float) ** 2).sum() / len(окна) ** 2 - 1
+            self.assertAlmostEqual(итог / k, значение, places=9)
+        # Инверсия бит метки (x ⊕ c) меры не меняет.
+        np.testing.assert_allclose(м.оценить(таблицы), м.оценить(таблицы ^ 0x2A5), atol=1e-9)
+        self.assertIsInstance(р.дешёвая_мера(символы, 10), р.МераОкон)
+        self.assertIsInstance(р.дешёвая_мера(символы % 256, 8), р.МераБайт)
+        self.assertEqual([0.0], р.МераОкон(символы[:0], k).оценить(таблицы[:1]).tolist())
+
+    def test_вслепую_1024_симметрия_и_срок(self):
+        """КАМ-1024: принятые метки — симметрия квадрата (поворот 90° в коде Грея по осям); находится в срок."""
+        k, M = 10, 1024
+        кадры = [с.ethernet(п) for п in с.пакеты_ip(200, сид=2)]
+        x = np.unpackbits(np.frombuffer(с.hdlc(кадры, флагов_между=20), np.uint8))
+        x = x[:len(x) // k * k]
+        метки = р.в_биты(np.arange(M), k)
+        т = np.asarray(р.в_символы(ploskost.преобразовать(метки, k, порядок="старший", раскладка="половинами",
+                                                         код="Грей", симметрия="поворот 90°"), k))
+        принятые = р.в_биты(т[р.в_символы(x, k)], k)
+        ходы = []
+        начало = time.monotonic()
+        ит = р.искать(принятые, k, мера="байты", срок=60, ход=lambda д, т_: ходы.append(д))
+        self.assertLess(time.monotonic() - начало, 75)
+        self.assertIsNotNone(ит)
+        обратная_т = np.argsort(т).tolist()
+        self.assertIn(обратная_т, ит.равноценные)
+        self.assertLessEqual(len(ит.равноценные), р.РАВНОЦЕННЫХ_ДО)
+        self.assertTrue(ходы and max(ходы) <= 1.0)
+        self.assertIn("среди самых частых меток", " ".join(ит.подробно))
+        # Срок соблюдается и на случайном потоке (структуры нет — None), КАМ-512.
+        шум = np.random.default_rng(3).integers(0, 2, 9 * 20000).astype(np.uint8)
+        начало = time.monotonic()
+        self.assertIsNone(р.искать(шум, 9, мера="байты", срок=8))
+        self.assertLess(time.monotonic() - начало, 8 + 15)
+        with self.assertRaises(ValueError):
+            р.искать(шум, 11, мера="байты", срок=1)
+
+    def test_анализ_1024_быстро(self):
+        rng = np.random.default_rng(1)
+        n, P = 1 << 16, 500
+        символы = rng.integers(0, 1024, n)
+        места = np.arange(n) % P < 6
+        символы[места] = np.array([3, 1000, 517, 64, 64, 900])[np.arange(n)[места] % P]
+        начало = time.monotonic()
+        а = р.анализ(р.в_биты(символы, 10), 10, фаза=0)
+        self.assertLess(time.monotonic() - начало, 20)
+        self.assertEqual(P, а["период"]["символов"])
+        self.assertEqual(P, а["кадр"])
+        self.assertEqual([3, 1000, 517, 64, 64, 900], а["места"][0]["символы"])
+        self.assertIsNone(а["переходы"])
+        self.assertEqual(1024, len(а["частоты"]))
+        self.assertEqual(8, len(а["частые_переходы"]))
+        # Период по группам младших бит — тот же, что прямым счётом совпадений символов.
+        прямо = период_эталон(символы[:20000], 1024, 1000)
+        self.assertEqual(P, прямо["символов"])
+        self.assertEqual(P, р.период(символы[:20000], 1024, до=1000)["символов"])
