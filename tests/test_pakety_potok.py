@@ -725,6 +725,103 @@ class СтраницаЧерезСерверTests(unittest.TestCase):
         self.assertEqual(["A", "Начальству"], [к["имя"] for к in self.к.get("/api/files/roots").json()["items"]])
 
 
+class ФайлыПоСсылкеTests(unittest.TestCase):
+    """fayly_ssylki напрямую: папки из настроек, права, разрешение путей, обзор и поиск, отпечаток."""
+
+    def setUp(self):
+        from types import SimpleNamespace
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.корень = Path(self._tmp.name)
+        self.данные = self.корень / "data"
+        self.настройки = SimpleNamespace(data_dir=self.данные, input_dirs=[])
+        self.человек = lambda роль: SimpleNamespace(role=роль, rank={"guest": -10, "engineer": 0, "head": 40}[роль])
+
+    def test_папки_по_умолчанию_и_из_настроек(self):
+        from reportgen import fayly_ssylki as ф
+        п = ф.папки(self.настройки)
+        self.assertEqual([("Входные файлы сервера", self.данные / "vhod")], [(x.имя, x.путь) for x in п])
+        self.assertTrue((self.данные / "vhod").is_dir())
+        self.настройки.input_dirs = ["  ", str(self.корень / "A"), {"name": "Б", "path": str(self.корень / "B"), "role": "HEAD"},
+                                     {"путь": str(self.корень / "C"), "роль": "нет такой"}]
+        п = ф.папки(self.настройки)
+        self.assertEqual(["A", "Б", "C"], [x.имя for x in п])
+        self.assertEqual("head", п[1].роль)
+        self.assertEqual(п[0].ид, ф.папки(self.настройки)[0].ид, "ид папки постоянен")
+        self.assertEqual(["A"], [x.имя for x in ф.доступные(self.настройки, self.человек("engineer"))])
+        self.assertEqual(["A", "Б"], [x.имя for x in ф.доступные(self.настройки, self.человек("head"))])
+        self.assertEqual([], ф.доступные(self.настройки, self.человек("guest")))
+        with self.assertRaises(ф.ОшибкаПути):
+            ф.найти_папку(self.настройки, self.человек("engineer"), п[1].ид)
+        self.assertEqual("Б", ф.найти_папку(self.настройки, self.человек("head"), п[1].ид).имя)
+        self.assertEqual({"id": п[0].ид, "имя": "A"}, п[0].в_словарь())
+
+    def test_пути_и_обзор(self):
+        from reportgen import fayly_ssylki as ф
+        корень = self.корень / "vh"
+        (корень / "a" / "b").mkdir(parents=True)
+        (корень / "a" / "b" / "x.pcap").write_bytes(b"12345")
+        (корень / "a" / "Y.PCAP").write_bytes(b"1")
+        (корень / "z.txt").write_bytes(b"")
+        (self.корень / "снаружи").mkdir()
+        (self.корень / "снаружи" / "s.pcap").write_bytes(b"s")
+        ссылки = True
+        try:
+            os.symlink(self.корень / "снаружи", корень / "наружу")
+            os.symlink(корень / "a", корень / "внутрь")
+        except OSError:
+            ссылки = False
+        п = ф.Папка("1", "vh", корень)
+        self.assertEqual(корень.resolve() / "a" / "b", ф.разрешить(п, "a\\b"))
+        self.assertEqual(корень.resolve(), ф.разрешить(п, ""))
+        self.assertEqual(корень.resolve() / "a", ф.разрешить(п, "./a/."))
+        for плохой in ("..", "a/../../x", "/etc", "C:/x", "c:x", "\\\\srv\\share", "a\x00b"):
+            with self.subTest(плохой), self.assertRaises(ф.ОшибкаПути):
+                ф.разрешить(п, плохой)
+        список = ф.список(п)
+        self.assertEqual(["a", "z.txt"] + (["внутрь"] if ссылки else []), sorted(э["имя"] for э in список["элементы"]))
+        self.assertEqual(("", False), (список["путь"], список["обрезано"]))
+        self.assertTrue(список["элементы"][0]["папка"], "папки — первыми")
+        вложенный = ф.список(п, "a")
+        self.assertEqual(["b", "Y.PCAP"], [э["имя"] for э in вложенный["элементы"]])
+        self.assertEqual((1, "a/Y.PCAP"), (вложенный["элементы"][1]["размер"], вложенный["элементы"][1]["путь"]))
+        найдено = ф.список(п, "", "pcap")
+        self.assertIn("a/b/x.pcap", [э["путь"] for э in найдено["элементы"]])
+        self.assertIn("a/Y.PCAP", [э["путь"] for э in найдено["элементы"]], "поиск без учёта регистра")
+        self.assertNotIn("s.pcap", [э["имя"] for э in найдено["элементы"]], "ссылка наружу не обходится")
+        with self.assertRaises(ф.ОшибкаПути):
+            ф.список(п, "z.txt")
+        with self.assertRaises(ф.ОшибкаПути):
+            ф.список(ф.Папка("2", "нет", self.корень / "нет"))
+        if ссылки:
+            with self.assertRaises(ф.ОшибкаПути):
+                ф.файл(п, "наружу/s.pcap")
+        self.assertEqual(корень.resolve() / "a" / "b" / "x.pcap", ф.файл(п, "a/b/x.pcap"))
+        with self.assertRaises(ф.ОшибкаПути):
+            ф.файл(п, "a")
+        старые = ф.НАХОДОК_ДО
+        ф.НАХОДОК_ДО = 1
+        self.addCleanup(setattr, ф, "НАХОДОК_ДО", старые)
+        self.assertEqual((1, True), (len(ф.список(п, "", "a")["элементы"]), ф.список(п, "", "a")["обрезано"]))
+        ф.НАХОДОК_ДО = старые
+        старые_э = ф.ЭЛЕМЕНТОВ_ДО
+        ф.ЭЛЕМЕНТОВ_ДО = 1
+        self.addCleanup(setattr, ф, "ЭЛЕМЕНТОВ_ДО", старые_э)
+        self.assertEqual((1, True), (len(ф.список(п)["элементы"]), ф.список(п)["обрезано"]))
+
+    def test_отпечаток(self):
+        from reportgen import fayly_ssylki as ф
+        путь = self.корень / "f.pcap"
+        путь.write_bytes(b"abc")
+        о = ф.отпечаток(путь)
+        self.assertEqual(3, о["размер"])
+        self.assertEqual("", ф.проверить_отпечаток(путь, о))
+        self.assertIn("изменён", ф.проверить_отпечаток(путь, {**о, "размер": 4}))
+        self.assertIn("изменён", ф.проверить_отпечаток(путь, {**о, "изменён_нс": о["изменён_нс"] + 1}))
+        путь.unlink()
+        self.assertIn("удалён", ф.проверить_отпечаток(путь, о))
+
+
 @unittest.skipUnless(shutil.which("node"), "нужен node")
 class ФункцииСтраницыTests(unittest.TestCase):
     """Виртуальный список, куски загрузки, ход разбора — функции app.js в node."""
