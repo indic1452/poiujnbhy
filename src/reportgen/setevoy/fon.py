@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import queue
 import sys
 import threading
@@ -453,6 +454,9 @@ def _читать_команды(очередь: queue.Queue) -> None:
 
 
 def main(аргументы: list[str]) -> int:
+    if hasattr(os, "nice"):
+        with contextlib.suppress(OSError):
+            os.nice(10)                     # страницы сервера — впереди фоновой работы
     очередь: queue.Queue = queue.Queue()
     threading.Thread(target=_читать_команды, args=(очередь,), daemon=True).start()
     if аргументы[1] == "разбор":
