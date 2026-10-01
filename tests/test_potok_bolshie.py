@@ -234,6 +234,48 @@ class ИсточникTests(unittest.TestCase):
         with self.assertRaisesRegex(ФайлИзменён, "переписан"):
             сверить(ссылка)
 
+    def test_границы_окон(self):
+        """Окна за краями урезаются, как срезы массива: не ошибка и не чужие байты."""
+        д, путь = self.данные, self.папка / "ф.bin"
+        ист = Источник(путь)
+        биты = в_биты(д)
+        self.assertEqual(д[:10], ист.байты(-5, 10))
+        self.assertEqual(д[-3:], ист.байты(len(д) - 3, 100))
+        self.assertEqual(b"", ист.байты(len(д) + 5, 10))
+        self.assertEqual(b"", ист.байты(10, -1))
+        self.assertEqual(д[7:], ист.байты(7))
+        self.assertTrue(np.array_equal(биты[:5], ист.биты(-3, 5)))
+        self.assertTrue(np.array_equal(биты[-4:], ист.биты(len(биты) - 4, len(биты) + 100)))
+        self.assertEqual(0, len(ист.биты(50, 40)))
+        self.assertEqual(0, len(ист.биты(len(биты) + 9, len(биты) + 20)))
+        self.assertTrue(np.array_equal(биты[100:], ист.биты(100)))
+        self.assertTrue(np.array_equal(биты[3:1003], np.concatenate(list(ист.куски(77, 3, 1003)))))
+        self.assertTrue(np.array_equal(биты[-20:], np.concatenate(list(ист.куски(7, len(биты) - 20, len(биты) + 50)))))
+        self.assertEqual([1] * 10, [len(к) for к in ист.куски(0, 0, 10)])        # кусок не меньше бита
+        self.assertEqual([], list(ист.куски(8, -10, 0)))
+        за_концом = Источник(путь, смещение=len(д) + 10)
+        self.assertEqual((len(д), 0, 0), (за_концом.смещение, за_концом.байт, за_концом.бит))
+        self.assertEqual((0, len(д), len(д) * 8), (Источник(путь, смещение=-4).смещение, Источник(путь, смещение=-4).байт,
+                                                    Источник(путь, смещение=-4).бит))
+        часть = Источник(путь, смещение=10, байт=10**9, бит=10**12)
+        self.assertEqual((len(д) - 10, (len(д) - 10) * 8), (часть.байт, часть.бит))
+        self.assertEqual((0, 0), (Источник(путь, байт=-3).байт, Источник(путь, бит=-3).бит))
+        self.assertEqual(13, Источник(путь, байт=2, бит=13).бит)
+        окно = Окно(Источник(путь, бит=12))
+        self.assertEqual(int(биты[11]), int(окно[-1]))
+        self.assertEqual(int(биты[0]), int(окно[-12]))
+        for плохой in (12, -13):
+            with self.assertRaises(IndexError):
+                окно[плохой]
+        with self.assertRaises(ValueError):
+            окно[0:10:2]
+        self.assertTrue(np.array_equal(биты[2:12], окно[2:100]))
+        self.assertTrue(np.array_equal(биты[:12], окно[0:12:1]))
+        self.assertTrue(Источник(путь).целый_файл())
+        for не_целый in (Источник(путь, смещение=1), Источник(путь, байт=len(д) - 1), Источник(путь, развернуть=True),
+                         Источник(путь, ссылка=отпечаток(путь))):
+            self.assertFalse(не_целый.целый_файл())
+
     def test_целый_файл_связывается(self):
         ист = Источник(self.папка / "ф.bin")
         ист.в_файл(self.папка / "копия.bin")
