@@ -428,6 +428,8 @@ def config(request: Request) -> dict[str, Any]:
         "llm": {"model": settings.llm_model, "base_url": settings.llm_base_url,
                 "kind": settings.llm_kind},
         "auth_enabled": settings.auth_enabled,
+        # Предел загрузки: окна добавления файлов проверяют размер до отправки, а не после неё.
+        "upload_mb": settings.max_upload_mb,
         "brand": {
             "name": settings.brand_name,
             "short": settings.brand_short,
@@ -3672,6 +3674,18 @@ def potok_continue(request: Request, job_id: str) -> dict[str, Any]:
     return {"id": ид}
 
 
+@router.post("/potok/{job_id}/stop")
+def potok_stop(request: Request, job_id: str) -> dict[str, Any]:
+    """Остановить автомат: разбор кончается с тем, что уже нашёл (этапы до остановки остаются в таблице)."""
+    user = require_user(request)
+    состояние = _задание_или_404(request, user, job_id)
+    if состояние.get("состояние") not in ("ждёт", "идёт"):
+        raise ServiceError("разбор уже закончен", 409)
+    if not _potok(request).остановить(job_id):
+        raise ServiceError("разбор ещё в очереди — остановить нечего; чтобы он не начался, удалите этот узел", 409)
+    return {"ok": True}
+
+
 # -- растр и ручные инструменты ----------------------------------------------------------
 
 def _файл_бит_или_400(request: Request, user, job_id: str, stage: int) -> None:
@@ -3782,8 +3796,11 @@ def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
     except (ValueError, KeyError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     описание = [rastr.описать_шаг(ш) for ш in шаги if ш["вкл"]]
+    # Без шагов — копия массива для автомата или просто копия: «→ этап 0» не говорит ничего
+    # (так подписывались все узлы автомата, запущенного со стола).
+    без_шагов = ("автомат" if тело.get("analyze") else "копия") + (f" этапа {этап}" if этап else "")
     имя = f"{состояние['имя']} → " + (f"«{конфигурация['имя']}»" if конфигурация
-                                      else "; ".join(описание) or f"этап {этап}")
+                                      else "; ".join(описание) or без_шагов)
     ид = _potok(request).создать(владелец=user.id, имя=имя[:200],
                                  данные=np.packbits(биты).tobytes(),
                                  профиль=профиль, от=f"{job_id}#{этап}", шаги=шаги,
