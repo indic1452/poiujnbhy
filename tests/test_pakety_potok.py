@@ -51,6 +51,9 @@ def смесь(n: int = 60) -> list[bytes]:
             кадры.append(с.eth(с.ip(bytes(сег), 6, src="10.0.0.3", dst="10.0.0.4")))
         elif вид == 4:
             кадры.append(с.eth(с.ip(с.icmp(8, 0, b"abcd" * 4), 1, src="10.0.0.5", dst="10.0.0.6")))
+        elif вид == 5 and i % 3 == 0:
+            кадры.append(с.eth(с.ip(с.udp(с.dns_запрос(f"m{i}.local", ид=i), 5353 if i % 2 else 5355,
+                                          5353 if i % 2 else 5355), 17)))
         elif вид == 5:
             кадры.append(с.eth(с.ip6(с.udp(b"\x11" * 30, 5000, 6000, src="2001:db8::1", dst="2001:db8::2", v6=True), 17),
                                тип=0x86DD))
@@ -222,9 +225,10 @@ class НакопительTests(unittest.TestCase):
         for i, к in enumerate(кадры, start=1):
             п = разобрать_пакет(к, "Ethernet", номер=i, время=времена(len(кадры))[i - 1])
             cls.поля.append(_для_фильтра(п.поля_фильтра()))
+        cls.кадры = кадры
         cls.н = Накопитель()
-        for с_, п in zip(cls.сводки, cls.поля, strict=True):
-            cls.н.добавить(с_, п)
+        for с_, п, к in zip(cls.сводки, cls.поля, кадры, strict=True):
+            cls.н.добавить(с_, п, len(к))
         cls.снимок = json.loads(json.dumps(cls.н.снимок(), default=str))
 
     def как_json(self, x):
@@ -269,6 +273,82 @@ class НакопительTests(unittest.TestCase):
         мои = self.снимок["неизвестные"]
         self.assertEqual([(г["группа"], г["пакетов"], г["первые"], г["длины"]) for г in эталон],
                          [(г["группа"], г["пакетов"], г["первые"], г["длины"]) for г in мои])
+
+    def test_счёт(self):
+        счёт = self.снимок["счёт"]
+        сводки = self.сводки
+        self.assertEqual((len(сводки), sum(с_["длина"] for с_ in сводки)), (счёт["пакетов"], счёт["байт"]))
+        self.assertEqual(max(len(к) for к in self.кадры), счёт["макс_кадр"])
+        self.assertEqual(max(с_["нагр"][1] for с_ in сводки if с_.get("нагр")), счёт["макс_нагрузка"])
+        self.assertEqual((len(statistika.dns(сводки, self.поля)), len(statistika.http(сводки, self.поля)),
+                          len(statistika.tls(сводки, self.поля))), (счёт["dns"], счёт["http"], счёт["tls"]))
+        self.assertTrue({"mDNS", "LLMNR"} <= {п for с_ in сводки for п in с_["стек"]}, "в смеси есть mDNS и LLMNR")
+        self.assertEqual(sum(1 for с_ in сводки if с_["ошибки"]), счёт["с_ошибками"])
+        tcp = [с_ for с_ in сводки if "TCP" in с_["стек"]]
+        self.assertEqual((len(tcp), sum(1 for с_ in tcp if any(о.startswith("TCP: контрольная") for о in с_["ошибки"]))),
+                         (счёт["tcp"], счёт["tcp_суммы"]))
+        self.assertGreater(счёт["tcp_суммы"], 0)
+        # Потоки — как «Выходные данные» считали прежде (по всем сводкам).
+        потоков = len({("TCP" in с_["стек"], *sorted(((с_["источник"], с_["порт_от"]), (с_["получатель"], с_["порт_к"]))))
+                      for с_ in сводки if с_.get("порт_от") is not None and ({"TCP", "UDP"} & set(с_["стек"]))})
+        self.assertEqual(потоков, счёт["потоков"])
+        пар = {(путь, tuple(sorted((с_["источник"], с_["получатель"]))))
+               for с_ in сводки if с_["источник"] and с_["получатель"]
+               for путь in [tuple(с_["стек"][:i]) for i in range(len(с_["стек"]) + 1)]}
+        self.assertEqual(len(пар), счёт["пар"])
+        узлов = {tuple(с_["стек"][:i]) for с_ in сводки for i in range(1, len(с_["стек"]) + 1)}
+        self.assertEqual(len(узлов) + 1, счёт["узлов_дерева"], "узлы дерева и корень")
+        self.assertEqual((0, {}, []), (счёт["узлов_мимо"], счёт["диалогов_мимо"], счёт["неполно"]))
+        # Примета «суммы TCP» — когда у большинства TCP сумма не сошлась.
+        плохие = Накопитель()
+        for с_, п in zip(сводки, self.поля, strict=True):
+            if any(о.startswith("TCP: контрольная") for о in с_["ошибки"]):
+                плохие.добавить(с_, п)
+        self.assertTrue(any("сумма" in п["что"] for п in плохие.раздел("обзор")["приметы"]))
+        self.assertFalse(any("сумма" in п["что"] for п in self.снимок["обзор"]["приметы"]))
+
+    def test_потолки_точно_на_границе(self):
+        from reportgen.setevoy import nakopitel
+        for имя, значение in (("УЗЛОВ_ДЕРЕВА_ДО", 4), ("ПАР_ВСЕГО_ДО", 5), ("УЗЛОВ_ДО", 3), ("ЖДУТ_HTTP_ДО", 2)):
+            старое = getattr(nakopitel, имя)
+            setattr(nakopitel, имя, значение)
+            self.addCleanup(setattr, nakopitel, имя, старое)
+        н = Накопитель()
+        for с_, п in zip(self.сводки, self.поля, strict=True):
+            н.добавить(с_, п)
+        счёт = н.раздел("счёт")
+        self.assertEqual((5, 3), (счёт["пар"], счёт["узлов"]))
+
+        def обойти(у):
+            yield у
+            for д in у["дети"]:
+                yield from обойти(д)
+        узлы = list(обойти(н.раздел("иерархия")[0]))
+        self.assertEqual(4, sum(1 for у in узлы if у["протокол"] != "…прочие"), "своих узлов (с корнем) — ровно потолок")
+        self.assertEqual(счёт["узлов_дерева"], len(узлы))
+        self.assertGreater(счёт["узлов_мимо"], 0)
+        имена = vydacha.имена_протоколов(н.раздел("иерархия"))
+        self.assertIn("…прочие", имена)
+        self.assertTrue(any("дерево протоколов" in з for з in счёт["неполно"]))
+        self.assertTrue(any("HTTP" in з for з in счёт["неполно"]), "ждущих ответа HTTP больше потолка")
+        # Ждущих ответа HTTP — не больше потолка: сверх него запросы не ждут, и их ответ не сопоставится.
+        ждут: dict = {}
+        ждёт, совпало = 0, 0
+        for с_, п in zip(self.сводки, self.поля, strict=True):
+            if "HTTP" not in с_["стек"]:
+                continue
+            if "http.request.method" in п:
+                if ждёт < 2:
+                    ждут.setdefault((с_["источник"], с_.get("порт_от"), с_["получатель"], с_.get("порт_к")), []).append(1)
+                    ждёт += 1
+            elif "http.response.code" in п:
+                обратный = (с_["получатель"], с_.get("порт_к"), с_["источник"], с_.get("порт_от"))
+                if ждут.get(обратный):
+                    ждут[обратный].pop()
+                    ждёт -= 1
+                    совпало += 1
+        self.assertGreater(совпало, 0)
+        self.assertEqual(совпало, sum(1 for з in н.раздел("http") if з["код"] != ""))
 
     def test_потолки_честно_отмечены(self):
         from reportgen.setevoy import nakopitel
