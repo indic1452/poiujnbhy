@@ -9576,8 +9576,10 @@ button.pk-hier-col:hover { color: var(--accent); }
 .stol-codes-panel { max-width: 44rem; display: grid; gap: 0.4rem; }
 
 /* «Приём с сети»: «Старт» — сразу под полями режима; карты — только в режиме сетевой карты. */
-.zs-start { align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 10px 0 6px; }
-.zs-start .field { flex: 1 1 260px; margin: 0; }
+.zs-form .row.zs-start { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 12px 0 8px; }
+.zs-form .zs-start .field { flex: 0 1 520px; width: auto; min-width: 220px; margin: 0; }
+.zs-form .zs-start .btn { flex: 0 0 auto; }
+.zs-form .zs-start .muted { flex: 1 1 200px; align-self: center; }
 .zs-cards-box { margin-bottom: 10px; }
 
 /* Обзор файлов сервера (открыть по ссылке). */
