@@ -2104,6 +2104,67 @@ class До1024IQTests(unittest.TestCase):
             iq.k_средних(z[:100], 128)
 
 
+    def test_поправка_пачкой_точно(self):
+        """Один круг поправки без шагов Ллойда — прямым счётом: «лишняя» пара (два центра на точке 0) сливается в
+        средневзвешенный, «двойной» кластер (один центр на точках 20j и 10 + 20j) делится по главной оси разброса."""
+        rng = np.random.default_rng(8)
+        точки = np.array([0, 10, 20j, 10 + 20j])
+        z = точки[np.repeat(np.arange(4), 500)] + 0.1 * (rng.standard_normal(2000) + 1j * rng.standard_normal(2000))
+        ц = np.array([-0.2 + 0j, 0.2 + 0j, 5 + 20j, 10 + 0j])
+        м = iq._ближайшие(z, ц)
+        разброс = float(np.mean(np.abs(z - ц[м]) ** 2))
+        счёт = np.bincount(м, minlength=4)
+        ширина = np.bincount(м, weights=np.abs(z - ц[м]) ** 2, minlength=4) / счёт
+        слито = (ц[0] * счёт[0] + ц[1] * счёт[1]) / (счёт[0] + счёт[1])
+        d = z[м == 2] - z[м == 2].mean()
+        угол = 0.5 * math.atan2(2 * float(np.mean(d.real * d.imag)), float(np.mean(d.real ** 2 - d.imag ** 2)))
+        сдвиг = math.sqrt(ширина[2]) * cmath.exp(1j * угол)
+        with unittest.mock.patch.object(iq, "КРУГОВ_ПОПРАВКИ", 1):
+            новые, м2, р2 = iq._поправить_пачкой(z, ц, м, разброс, np.random.default_rng(1), 0)
+        np.testing.assert_allclose([слито, ц[2] - сдвиг, ц[2] + сдвиг, ц[3]], новые, atol=1e-9)
+        self.assertLess(р2, разброс)
+        self.assertTrue(np.array_equal(м2, iq._ближайшие(z, новые)))
+        # Хуже не стало бы — не принимается: при уже хороших центрах — те же центры.
+        с_, _, _ = iq._поправить_пачкой(z, точки.astype(complex), iq._ближайшие(z, точки), 0.02, np.random.default_rng(1), 0)
+        self.assertTrue(np.array_equal(точки, с_))
+        # Полный путь (с Ллойдом и кругами) — к точкам.
+        итог, _, _ = iq._поправить_пачкой(z, ц, м, разброс, np.random.default_rng(1), 60)
+        self.assertLess(float(np.max(np.min(np.abs(итог[:, None] - точки[None, :]), axis=0))), 0.05)
+
+    def test_ячейки_почти_без_полного_расчёта(self):
+        """Полным расчётом — только сомнительные отсчёты (за краем облака): у облака КАМ-1024 таких доли процента."""
+        с_ = мд.плоскость(мд.найти("DOCSIS 3.1 КАМ1024"))
+        точки = np.array([complex(x, y) for x, y in с_.xy])
+        rng = np.random.default_rng(3)
+        z = точки[rng.integers(0, 1024, 50000)] + 0.01 * (rng.standard_normal(50000) + 1j * rng.standard_normal(50000))
+        полных = []
+        прежняя = iq._ближайшие_все
+
+        def считать(z_, ц_):
+            полных.append(len(z_))
+            return прежняя(z_, ц_)
+
+        with unittest.mock.patch.object(iq, "_ближайшие_все", считать):
+            итог = iq._Ячейки(точки).ближайшие(z)
+        self.assertLess(sum(полных), 0.01 * len(z))
+        self.assertTrue(np.array_equal(итог, прежняя(z, точки)))
+
+    def test_облако_края_числа_точек(self):
+        rng = np.random.default_rng(2)
+        z = np.array([-1.0, 1.0])[rng.integers(0, 2, 4000)] + 0.05 * rng.standard_normal(4000) + 3 + 2j
+        о = iq.облако(z, точек=2)
+        self.assertEqual(2, о["точек"])
+        self.assertAlmostEqual(0.0, abs(np.mean(о["показ"])), delta=0.05)          # показ — приведён к центру
+        for плохо in (3, 6, 2048, 1):
+            with self.assertRaises(ValueError):
+                iq.облако(z, точек=плохо)
+        ц, м = iq.k_средних(z[:5], 5)                                          # кластеров столько же, сколько отсчётов
+        self.assertEqual(sorted(z[:5].tolist(), key=lambda c: (c.real, c.imag)), sorted(ц.tolist(), key=lambda c: (c.real, c.imag)))
+        self.assertEqual(1, len(iq.k_средних(z, 1)[0]))
+        with self.assertRaises(ValueError):
+            iq.k_средних(z, 0)
+
+
 class До1024ВслепуюTests(unittest.TestCase):
     def test_старты_соседи_перестановки(self):
         п = р.перестановки_бит(10)
@@ -2134,6 +2195,34 @@ class До1024ВслепуюTests(unittest.TestCase):
         self.assertEqual([(a, b) for a, b in itertools.combinations(range(100, 114), 2)], пары)   # 14·13/2 = 91 ≤ 100
         self.assertEqual(16 * 15 // 2, len(р.соседи(np.arange(16), до=1000)))         # до больше всех пар — все
         self.assertEqual((0, 2), р.соседи(np.arange(2), до=0, частые=[0, 1]).shape)
+
+    def test_старты_края_и_соседи_точно(self):
+        # 7 бит (одна основа): все сочетания 7! × 128 (меньше миллиона); 8 бит (57 основ × 40 320 × 256) —
+        # устроенные перестановки, классами (c = 0).
+        с7 = р.старты_группы(7, р.основы_плоскостей(7), до=10 ** 6)
+        self.assertEqual(5040 * 128, len(с7))
+        с8 = р.старты_группы(8, р.основы_плоскостей(8), до=10 ** 6)
+        self.assertLessEqual(len(с8), len(р.основы_плоскостей(8)) * len(р.перестановки_бит(8)))
+        self.assertGreater(len(с8), 100)
+        часть = р.старты_группы(8, р.основы_плоскостей(8), до=300, сид=2)
+        self.assertEqual(300, len({tuple(т) for т in часть.tolist()}))                  # выборка без повторов
+        self.assertTrue({tuple(т) for т in часть.tolist()} <= {tuple(т) for т in с8.tolist()})
+        for k in (8, 9):
+            п = р.перестановки_бит(k)
+            self.assertTrue(all(sorted(x) == list(range(k)) for x in п), k)
+        self.assertEqual(18, len(р.перестановки_бит(9)))                             # 9 сдвигов × 2 и половины уже среди них
+        # Выборка пар: ровно те номера, что дал генератор, — пары по строкам (i < j).
+        т = np.arange(64)
+        для = р.соседи(т, до=2000, сид=5)
+        номера = np.sort(np.random.default_rng(5).choice(2016, 2000, replace=False))
+        все_пары = [(i, j) for i in range(64) for j in range(i + 1, 64)]
+        self.assertEqual([все_пары[n] for n in номера], [tuple(np.flatnonzero(x != т).tolist()) for x in для])
+        # Пределы бит.
+        with self.assertRaises(ValueError):
+            р.искать(np.zeros(100, np.uint8), 0)
+        self.assertIsNone(р.искать(np.zeros(100, np.uint8), 10, мера="байты", срок=1))
+        # Мера окон: выборка короче окна при части сдвигов — нули, без деления на ноль.
+        self.assertEqual([0.0], р.МераОкон(np.array([5]), 10).оценить(np.arange(1024)[None, :]).tolist())
 
     def test_мера_окон_как_прямой_счёт(self):
         rng = np.random.default_rng(6)
