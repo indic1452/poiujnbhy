@@ -542,7 +542,10 @@ class СлойTests(unittest.TestCase):
                             ("рс 255 223", "слов с нулевыми синдромами нет")]:
             with self.subTest(слой=слой), self.assertRaisesRegex(ValueError, текст):
                 razbor.снять_вручную(шум, слой)
-        # «рс iess …» — прежний слой IESS, не этот.
+
+    def test_iess_прежний_слой(self):
+        """«рс iess …» — прежний слой IESS, не этот."""
+        шум = np.random.default_rng(1).integers(0, 2, 20_000).astype(np.uint8)
         with self.assertRaisesRegex(ValueError, "RS \\(219, 201\\) IESS"):
             razbor.снять_вручную(шум, "рс iess idr e1 глубина 4")
 
