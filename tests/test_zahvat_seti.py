@@ -1594,7 +1594,7 @@ class МенеджерTests(unittest.TestCase):
             with self.assertRaises(ОшибкаЗахвата) as к:
                 self.начать_udp(свободный_порт())
             self.assertEqual("занято", к.exception.вид)
-            self.assertIn("ещё допишут идущие захваты", str(к.exception))
+            self.assertIn("ещё допишут идущие приёмы", str(к.exception))
             self.assertEqual(1, len(self.м.идущие()))
             self.м.остановить(первый)
             второй = self.начать_udp(свободный_порт())          # бронь первого снята с его концом
@@ -1680,7 +1680,7 @@ class МенеджерTests(unittest.TestCase):
                                                            "начато": 1.0, "имя": "x"}), encoding="utf-8")
         м = Менеджер(self.папка)
         с_ = м.состояние(старый.name)
-        self.assertEqual(("прерван", "сервер перезапускался во время захвата: записанное цело, у последнего куска "
+        self.assertEqual(("прерван", "сервер перезапускался во время приёма: записанное цело, у последнего куска "
                           "нет итога"), (с_["состояние"], с_["причина"]))
         for плохой in ("../x", "20260101-000000-ABCDEF", ""):
             with self.assertRaises(KeyError):
@@ -2020,7 +2020,7 @@ class ЗахватСервераTests(unittest.TestCase):
         self.assertEqual(развёрнутые, self.сырые(работа["id"]))
         состояние = self.к.get(f"/api/potok/{работа['id']}").json()
         self.assertEqual(сид, состояние["сессия"])
-        self.assertTrue(any("захват с сети" in з for з in состояние["происхождение"]))
+        self.assertTrue(any("приём с сети" in з for з in состояние["происхождение"]))
         self.assertTrue(any("упорядочено по номеру RTP" in з for з in состояние["происхождение"]))
         for тело, код in (({"session": сид, "port": 0}, 400), ({"session": сид, "port": порт, "cut": -1}, 400),
                           ({"session": сид, "port": порт, "bit_order": "x"}, 400),
@@ -2047,7 +2047,7 @@ class ЗахватСервераTests(unittest.TestCase):
         for ответ in (self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}), self.к.delete(f"/api/zahvat/{ид}"),
                       self.к.get(f"/api/zahvat/{ид}/file"), self.к.get(f"/api/zahvat/{ид}/ports")):
             self.assertEqual(403, ответ.status_code)
-            self.assertIn("захват пользователя Старшинов С. С.: вам — только просмотр и остановка", ответ.json()["error"])
+            self.assertIn("приём пользователя Старшинов С. С.: вам — только просмотр и остановка", ответ.json()["error"])
         self.сеть.login("engineer")
         self.assertEqual(403, self.к.get(f"/api/zahvat/{ид}").status_code, "инженеру захват не открыт вовсе")
         self.сеть.login("starshiy")
@@ -2220,8 +2220,8 @@ class СтраницаTests(unittest.TestCase):
         код = self.вырезать(self.js, "чужойЗахватСети") + r"""
         console.log(JSON.stringify([{ можно_обработать: false, кто: 'Старшинов С. С.' }, { можно_обработать: false },
             { можно_обработать: true, кто: 'x' }, {}, null].map(чужойЗахватСети)));"""
-        self.assertEqual(["Захват пользователя Старшинов С. С.: вам — только просмотр и остановка. Обрабатывает автор.",
-                          "Захват пользователя другого человека: вам — только просмотр и остановка. Обрабатывает автор.",
+        self.assertEqual(["Приём пользователя Старшинов С. С.: вам — только просмотр и остановка. Обрабатывает автор.",
+                          "Приём пользователя другого человека: вам — только просмотр и остановка. Обрабатывает автор.",
                           "", "", ""], self.выполнить(код))
         итог = self.вырезать(self.js, "рисоватьИтог")
         self.assertIn("чужой ? h('div', { class: 'muted' }, чужой) : h('div', { class: 'row' },", итог)

@@ -2259,7 +2259,7 @@ def _проверить_начало(начало: bytes, *, весь: bool) -> 
     if not начало:
         raise ServiceError("файл пуст", 400)
     if вид_по_началу(начало, весь=весь) is None:
-        raise ServiceError("файл не похож на захват: ни pcap, ни pcapng, ни .sig (кадры с длиной)", 400)
+        raise ServiceError("файл не похож на сетевую запись: ни pcap, ни pcapng, ни .sig (кадры с длиной)", 400)
 
 
 def _место_на_диске(request: Request, нужно: int) -> None:
@@ -2413,6 +2413,14 @@ def pakety_packets(request: Request, cap_id: str, filter: str = "", offset: int 
     limit = max(1, min(limit, 5000))
     offset = max(0, offset)
     return {**_ход_отбора(отбор), "offset": offset, "items": отбор.сводки(offset, offset + limit)}
+
+
+@router.get("/pakety/{cap_id}/position")
+def pakety_position(request: Request, cap_id: str, number: int, filter: str = "") -> dict[str, Any]:
+    """Место пакета в отборе (строка списка, с 0) — чтобы страница прокрутила к нему; null — не отобран."""
+    user = require_user(request)
+    _готовый(request, user, cap_id)
+    return {"место": _отбор(request, cap_id, filter).место(number)}
 
 
 @router.get("/pakety/{cap_id}/packet/{number}")
@@ -2979,11 +2987,11 @@ def _право_захвата(request: Request) -> User:
     if роль in ROLE_RANK and ROLE_RANK[роль] < ROLE_RANK[CAPTURE_ROLE_FLOOR]:
         роль = CAPTURE_ROLE_FLOOR               # гостю — никогда (settings_warnings)
     if роль == "off":
-        причина = "захват с сети выключен в настройках сервера (capture_min_role = off)"
+        причина = "приём с сети выключен в настройках сервера (capture_min_role = off)"
     elif роль not in ROLE_RANK:
-        причина = f"в настройках сервера указана неизвестная должность для захвата: «{роль}»"
+        причина = f"в настройках сервера указана неизвестная должность для приёма с сети: «{роль}»"
     elif user.rank < ROLE_RANK[роль]:
-        причина = f"захват с сети доступен с должности «{role_title_of(роль)}» и выше"
+        причина = f"приём с сети доступен с должности «{role_title_of(роль)}» и выше"
     if причина:
         _repos(request).audit.log("zahvat.denied", user=user, object_type="zahvat",
                                   details={"path": request.url.path, "reason": причина})
@@ -3001,12 +3009,12 @@ def _захват_сети_или_404(request: Request, user, ид: str, *, св
     try:
         состояние = _zahvat_seti(request).состояние(ид)
     except KeyError:
-        raise ServiceError("захват не найден", 404) from None
+        raise ServiceError("сеанс приёма не найден", 404) from None
     свой_захват = состояние.get("владелец") == user.id
     if not свой_захват and not user.is_admin:
-        raise ServiceError("захват не найден", 404)
+        raise ServiceError("сеанс приёма не найден", 404)
     if not свой_захват and свой:
-        raise ServiceError(f"захват пользователя {состояние.get('кто') or 'другого человека'}: вам — только "
+        raise ServiceError(f"приём пользователя {состояние.get('кто') or 'другого человека'}: вам — только "
                            "просмотр и остановка, обрабатывает автор", 403)
     состояние["можно_обработать"] = свой_захват
     if свой_захват:
@@ -3017,7 +3025,7 @@ def _захват_сети_или_404(request: Request, user, ид: str, *, св
 def _законченный(request: Request, user, ид: str) -> dict[str, Any]:
     состояние = _захват_сети_или_404(request, user, ид, свой=True)
     if состояние["состояние"] == "идёт":
-        raise ServiceError("захват ещё идёт — сначала остановите", 409)
+        raise ServiceError("приём ещё идёт — сначала остановите", 409)
     return состояние
 
 
@@ -3173,7 +3181,7 @@ def zahvat_file(request: Request, cap_id: str, chunk: int | None = None) -> Resp
         if not файлы:
             raise ServiceError("такого куска нет (или кольцо его уже удалило)", 404)
     if not файлы:
-        raise ServiceError("файлов захвата нет", 404)
+        raise ServiceError("файлов приёма нет", 404)
     всего = sum(ф.stat().st_size for ф in файлы)
     # Выгрузка сырого трафика с машины — самое чувствительное действие захвата: в журнал.
     _repos(request).audit.log("zahvat.file", user=user, object_type="zahvat", object_id=cap_id,
@@ -3333,7 +3341,7 @@ def zahvat_to_session(request: Request, cap_id: str) -> dict[str, Any]:
     if not поток:
         raise ServiceError(f"у порта {порт} нет нагрузки: " + "; ".join(заметки), 400)
     ид, младший = _в_сессию(request, user, session_id, поток, имя=f"{состояние['имя']} — UDP {порт}.bin",
-                            происхождение=[f"захват с сети «{состояние['имя']}»"] + заметки, порядок=порядок,
+                            происхождение=[f"приём с сети «{состояние['имя']}»"] + заметки, порядок=порядок,
                             analyze=тело.get("analyze"))
     _repos(request).audit.log("zahvat.session", user=user, object_type="zahvat", object_id=cap_id,
                               details={"session": session_id, "job": ид, "port": порт, "cut": срез,
@@ -3368,7 +3376,7 @@ def _источник_прогона(request: Request, user, данные: Any) 
     elif вид == "pakety":
         _захват_или_404(request, user, ид)
     else:
-        raise ServiceError("источник прогона: pakety (захват «Пакетов») или zahvat (захват с сети)", 400)
+        raise ServiceError("источник прогона: pakety (запись «Анализа пакетов») или zahvat (приём с сети)", 400)
     return {"вид": вид, "ид": ид}
 
 

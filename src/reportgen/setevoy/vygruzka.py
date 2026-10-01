@@ -204,7 +204,7 @@ def потоки(сводки: Sequence[Сводка], нагрузки: Sequenc
 def отчёт(имя: str, обзор: dict[str, Any], дерево: list[dict[str, Any]], виды: dict[str, int],
           объекты: Sequence[obekty.Объект], пояс: int = 0) -> tuple[str, str]:
     """(HTML, текст) — обзор захвата одной страницей: объём, протоколы, диалоги, имена, объекты, приметы."""
-    строки_т = [f"Обзор захвата «{имя}»", ""]
+    строки_т = [f"Обзор записи «{имя}»", ""]
     if not обзор.get("пакетов"):
         строки_т.append("Под фильтр не попало ни одного пакета.")
         return "<!doctype html><meta charset=utf-8><title>Обзор</title><p>Пакетов нет.</p>", "\n".join(строки_т)
@@ -228,7 +228,7 @@ def отчёт(имя: str, обзор: dict[str, Any], дерево: list[dict[
                 + "</table>")
 
     части = [
-        f"<h1>Обзор захвата «{html.escape(имя)}»</h1>",
+        f"<h1>Обзор записи «{html.escape(имя)}»</h1>",
         "<div class=tiles>" + "".join(f"<div><b>{html.escape(str(з))}</b><span>{html.escape(и)}</span></div>"
                                       for и, з in итоги) + "</div>",
         "<h2>Протоколы</h2>" + таблица(("Протокол", "% пакетов", "Пакеты", "% байт", "Байты", "бит/с"), (
@@ -249,7 +249,7 @@ def отчёт(имя: str, обзор: dict[str, Any], дерево: list[dict[
              "solid #d0d7de;border-radius:8px;padding:8px 12px}.tiles b{display:block;font-size:18px}.muted{color:#667}"
              "@media (prefers-color-scheme: dark){body{background:#15181c;color:#e6e8eb}th{background:#22272e}"
              "th,td,.tiles div{border-color:#3a414a}}")
-    return ("<!doctype html><html lang=ru><head><meta charset=utf-8><title>Обзор захвата</title>"
+    return ("<!doctype html><html lang=ru><head><meta charset=utf-8><title>Обзор записи</title>"
             f"<style>{стиль}</style></head><body>" + "".join(части) + "</body></html>"), текст
 
 

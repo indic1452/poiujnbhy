@@ -105,6 +105,20 @@ class Отбор:
             сырые = ф.read((до - от) * 4)
         return np.frombuffer(сырые, dtype="<u4").astype(np.int64)
 
+    def место(self, номер: int) -> int | None:
+        """Место пакета (номер с 1) в отборе (с 0) или None — не отобран (или ещё не проверен)."""
+        n = self.число()
+        if self.папка is None:
+            return номер - 1 if 1 <= номер <= n else None
+        for от in range(0, n, 1 << 20):
+            часть = self.номера(от, от + (1 << 20))
+            i = int(np.searchsorted(часть, номер - 1))
+            if i < len(часть) and int(часть[i]) == номер - 1:
+                return от + i
+            if len(часть) and int(часть[-1]) > номер - 1:
+                return None
+        return None
+
     def снимок(self, раздел: str, по_умолчанию: Any = None) -> Any:
         папка = self.папка or (self.з.папка / self.ид)
         return прочитать_json(папка / "статистика" / f"{раздел}.json", по_умолчанию)
