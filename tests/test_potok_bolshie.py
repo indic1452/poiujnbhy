@@ -352,7 +352,7 @@ class АвтоанализБольшогоTests(unittest.TestCase):
 
 class ШагиЦепочкиTests(unittest.TestCase):
     def test_преобразования_с_начала_до_проверяемого(self):
-        from reportgen.potok.nahodka import Находка
+        from reportgen.potok.nahodka import Находка  # noqa: PLC0415
         н = lambda уровень, что, **св: Находка(уровень=уровень, что=что, уверенность=1.0, мера="", свойства=св)  # noqa: E731
         цепочка = [н("скремблер", "самосинхронизирующийся скремблер 1 + x^-3 + x^-20"),
                    н("код", "ТКБ режима", слой="ткб режим Radyne-0.793 кадр 2964"),
