@@ -203,11 +203,11 @@ class _Клетки:
     N_от: int
     N_до: int
     L: int
-    смещение: np.ndarray = field(default=None)       # начало клеток длины N
-    N: np.ndarray = field(default=None)              # N клетки
-    строка: np.ndarray = field(default=None)         # строка клетки
-    окон: np.ndarray = field(default=None)           # окон (начал t) в клетке
-    сосед: np.ndarray = field(default=None)          # следующая строка той же N
+    смещение: np.ndarray = field(init=False)        # начало клеток длины N
+    N: np.ndarray = field(init=False)               # N клетки
+    строка: np.ndarray = field(init=False)          # строка клетки
+    окон: np.ndarray = field(init=False)            # окон (начал t) в клетке
+    сосед: np.ndarray = field(init=False)           # следующая строка той же N
 
     def __post_init__(self) -> None:
         Nы = np.arange(self.N_от, self.N_до + 1, dtype=np.int64)
@@ -414,17 +414,17 @@ class Код:
     ступень: int
     мера: float
     #: Начала блоков (в символах потока с этой фазой); блок — I слов с шагом I.
-    блоки: np.ndarray = field(default=None, repr=False)
-    сплошь: bool = True
-    кадр: int = 0                          # период кадра в символах (если не сплошь)
-    в_кадре: tuple[int, ...] = ()          # начала блоков в кадре (вычеты по модулю кадра)
-    чистых_до: float = 0.0                 # доля слов с нулевыми синдромами до исправления
-    исправлено: int = 0
-    исправлено_слов: int = 0
-    неисправимых: int = 0
-    слов: int = 0
-    данные: np.ndarray = field(default=None, repr=False)
-    итог: str = ""
+    блоки: np.ndarray
+    сплошь: bool
+    кадр: int                              # период кадра в символах (если не сплошь)
+    в_кадре: tuple[int, ...]               # начала блоков в кадре (вычеты по модулю кадра)
+    чистых_до: float                       # доля слов с нулевыми синдромами до исправления
+    исправлено: int
+    исправлено_слов: int
+    неисправимых: int
+    слов: int
+    данные: np.ndarray
+    итог: str
 
     @property
     def корней(self) -> int:
@@ -485,7 +485,7 @@ def _степени_j(m: int, глубоко: bool) -> list[int]:
     if m <= 6:
         return list(range(1, q1))
     шаг = 2 if глубоко else (8 if m <= 8 else 32)
-    return [j for j in range(0, q1, шаг) if j] + ([1] if шаг > 1 else [])
+    return [j for j in range(шаг, q1, шаг)] + [1]
 
 
 @dataclass
@@ -493,7 +493,7 @@ class _Кандидат:
     s: float
     фаза: int
     N: int
-    строка: int
+    строка: int | None                     # строка свёртки; у кандидата в кадрах — нет
     j: int
     начала: np.ndarray
     без_свёртки: bool = False
@@ -555,7 +555,7 @@ def _кандидаты(с: np.ndarray, конф: Конфигурация, фа
         начала, d = пары_по_j[j]
         к = в_кадрах(np.sort(начала[d == N * I]), N, I)
         if к is not None and к[0] >= МЕРА_ОТ and (not итог or к[0] > итог[0].s):
-            итог.insert(0, _Кандидат(к[0], фаза, N, -1, j, к[1], без_свёртки=True))
+            итог.append(_Кандидат(к[0], фаза, N, None, j, к[1], без_свёртки=True))
     return итог
 
 
@@ -637,9 +637,8 @@ def чистые_начала(с: np.ndarray, N: int, I: int, п: dict) -> np.nd
     d = N * I
     равны = np.flatnonzero(P[:-d] == P[d:])
     равны = равны[равны + (N - 1) * I < len(с)]
-    if not len(равны):
-        return равны
-    S = rs_bch.синдромы(слова_по_началам(с, равны, N, I), п["многочлен"], п["fcr"], п["корней"], п["шаг"])
+    S = rs_bch.синдромы(с[равны[:, None] + I * np.arange(N)[None, :]], п["многочлен"], п["fcr"], п["корней"],
+                        п["шаг"])
     return равны[~S.any(axis=1)]
 
 
@@ -699,10 +698,13 @@ def раскладка(длина: int, чистые: np.ndarray, N: int, I: int
                 в_кадре.append(int(r_))
         if len(в_кадре) * d > F:
             continue
-        блоки = (np.arange(длина // F + 1, dtype=np.int64)[:, None] * F
-                 + np.asarray(в_кадре, dtype=np.int64)[None, :]).reshape(-1)
-        return False, int(F), tuple(sorted(в_кадре)), np.sort(блоки[блоки + d <= длина])
+        return False, int(F), tuple(sorted(в_кадре)), блоки_в_кадрах(длина, F, в_кадре, d)
     return сплошь
+
+
+def блоки_в_кадрах(длина: int, F: int, в_кадре: Iterable[int], d: int) -> np.ndarray:
+    """Начала блоков (длины d) с вычетами ``в_кадре`` по модулю кадра F, целиком в ряду длины ``длина``."""
+    return np.sort(np.concatenate([np.arange(r, длина - d + 1, F, dtype=np.int64) for r in в_кадре]))
 
 
 def снять(с: np.ndarray, *, m: int, I: int, N: int, корней: int, p: int, fcr: int, шаг: int,
@@ -718,12 +720,12 @@ def снять(с: np.ndarray, *, m: int, I: int, N: int, корней: int, p: 
         return np.zeros(0, dtype=np.uint8), np.zeros(0, dtype=np.int64), 0, 0.0
     индексы = (блоки[:, None, None] + np.arange(I)[None, :, None]
                + I * np.arange(N)[None, None, :])                   # блок × слово × символ
-    слова = с[индексы].reshape(-1, N)
+    слова = с[индексы].reshape(len(блоки) * I, N)
     S = rs_bch.синдромы(слова, p, fcr, корней, шаг)
     чистых = float((~S.any(axis=1)).mean())
     исправленные, исправлено = rs_bch.исправить(слова, p, fcr, корней, шаг)
     k = N - корней
-    данные = исправленные.reshape(len(блоки), I, N)[:, :, :k].transpose(0, 2, 1).reshape(-1)
+    данные = исправленные.reshape(len(блоки), I, N)[:, :, :k].transpose(0, 2, 1).ravel()
     return в_биты(данные, m, порядок, базис), исправлено, len(слова), чистых
 
 
@@ -766,9 +768,7 @@ def искать_в(биты: np.ndarray, конф: Конфигурация, *,
         if проверено is None:
             continue
         п, порядок, базис = проверено
-        фаза, чистые = лучшая_фаза(биты, конф.m, конф.I, канд.N, п, порядок, базис, символов=сколько)
-        if len(чистые) < 2:
-            continue
+        фаза, _ = лучшая_фаза(биты, конф.m, конф.I, канд.N, п, порядок, базис, символов=сколько)
         код = собрать(биты, m=конф.m, фаза=фаза, I=конф.I, N=канд.N, п=п, порядок=порядок, базис=базис,
                       ступень=конф.ступень, мера_=канд.s)
         if код is not None:
@@ -787,12 +787,11 @@ def мельче(биты: np.ndarray, код: Код) -> Код:
     while True:
         лучше = None
         for d in range(2, ГЛУБИНА_ДО // код.I + 1):
-            if код.N % d or код.N // d < N_ОТ or not код.сплошь:
+            if код.N % d or код.N // d < N_ОТ:
                 continue
             I2, N2 = код.I * d, код.N // d
             с = символы(биты, код.m, код.фаза, код.порядок, код.базис)
-            блоки = код.блоки[:max(1, СЛОВ_ОПОЗНАНИЯ // I2 + 1)]
-            начала = (блоки[:, None] + np.arange(I2)[None, :]).reshape(-1)
+            начала = (код.блоки[:СЛОВ_ОПОЗНАНИЯ, None] + np.arange(I2)[None, :]).ravel()
             слова = слова_по_началам(с, начала, N2, I2)
             if not len(слова):
                 continue
@@ -989,9 +988,7 @@ def снять_слоем(биты: np.ndarray, слова: str) -> tuple[np.nda
         if п["кадр"]:
             F = п["кадр"] // m
             в_кадре = tuple(первый + b // m for b in п["блоки"])
-            блоки = (np.arange(len(с) // F + 1, dtype=np.int64)[:, None] * F
-                     + np.asarray(в_кадре, dtype=np.int64)[None, :]).reshape(-1)
-            блоки = np.sort(блоки[блоки + N * I <= len(с)])
+            блоки = блоки_в_кадрах(len(с), F, в_кадре, N * I)
             код = _код_по_блокам(биты, п, код_, фаза, блоки, False, F, в_кадре)
         else:
             блоки = np.arange(первый, len(с) - N * I + 1, N * I, dtype=np.int64)
