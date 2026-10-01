@@ -2373,6 +2373,54 @@ def pakety_control(request: Request, cap_id: str) -> dict[str, Any]:
     return _захват_или_404(request, user, cap_id)
 
 
+# -- файлы на сервере по ссылке (общие для «Анализа пакетов» и разбора потоков) ----------------
+
+@router.get("/files/roots")
+def files_roots(request: Request) -> dict[str, Any]:
+    """Папки входных файлов сервера, видные этому человеку."""
+    from .. import fayly_ssylki  # noqa: PLC0415
+    user = require_user(request)
+    return {"items": [п.в_словарь() for п in fayly_ssylki.доступные(_settings(request), user)]}
+
+
+@router.get("/files/list")
+def files_list(request: Request, root: str, path: str = "", q: str = "") -> dict[str, Any]:
+    """Содержимое папки (``path`` — относительно корня ``root``) или поиск по имени вглубь (``q``):
+    имя, путь, папка ли, размер, время изменения."""
+    from .. import fayly_ssylki  # noqa: PLC0415
+    user = require_user(request)
+    try:
+        папка = fayly_ssylki.найти_папку(_settings(request), user, root)
+        итог = fayly_ssylki.список(папка, path, q[:200])
+    except fayly_ssylki.ОшибкаПути as ошибка:
+        raise ServiceError(str(ошибка), 404 if "нет" in str(ошибка) or "не найдена" in str(ошибка) else 400) from None
+    return {"root": папка.ид, "имя": папка.имя, **итог}
+
+
+def _файл_по_ссылке(request: Request, user, тело: dict[str, Any]) -> Path:
+    """Файл из папки входных файлов по {root, path} — для разбора на месте."""
+    from .. import fayly_ssylki  # noqa: PLC0415
+    try:
+        папка = fayly_ssylki.найти_папку(_settings(request), user, str(тело.get("root") or ""))
+        return fayly_ssylki.файл(папка, str(тело.get("path") or ""))
+    except fayly_ssylki.ОшибкаПути as ошибка:
+        raise ServiceError(str(ошибка), 404 if "нет" in str(ошибка) or "не найдена" in str(ошибка) else 400) from None
+
+
+@router.post("/pakety/from-file")
+def pakety_from_file(request: Request) -> dict[str, Any]:
+    """Открыть файл сервера по ссылке ({root, path}): без загрузки и без копии — разбор читает его на месте."""
+    user = require_user(request)
+    путь = _файл_по_ссылке(request, user, _body(request))
+    with open(путь, "rb") as ф:
+        начало = ф.read(4 << 20)
+    _проверить_начало(начало, весь=путь.stat().st_size <= len(начало))
+    ид = _pakety(request).создать(владелец=user.id, имя=путь.name, ссылка=путь, как=_как_человека(request, user))
+    _repos(request).audit.log("pakety.from-file", user=user, object_type="pakety", object_id=ид,
+                              details={"path": str(путь), "bytes": путь.stat().st_size})
+    return {"id": ид}
+
+
 @router.post("/pakety/from-potok")
 def pakety_from_potok(request: Request) -> dict[str, Any]:
     """Пакеты или кадры после этапа разбора потока — в анализ пакетов."""
@@ -3066,7 +3114,7 @@ def _задание_прогона(request: Request, user, источник: dic
     else:
         состояние = _захват_или_404(request, user, источник["ид"])
         как = {к: з for к, з in (состояние.get("как") or {}).items() if к != "правила"}
-        откуда = {"вид": "файлы", "файлы": [str(_pakety(request).папка / источник["ид"] / "исходник")]}
+        откуда = {"вид": "файлы", "файлы": [str(_pakety(request).путь_данных(источник["ид"]))]}
     полное = _как_человека(request, user, как)
     return {"источник": откуда, "скорость": скорость, "выход": выход,
             "как": {к: з for к, з in полное.items() if к != "правила"}, "правила": полное.get("правила") or []}

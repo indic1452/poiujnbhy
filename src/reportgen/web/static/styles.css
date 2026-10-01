@@ -8633,14 +8633,15 @@ body.reading .msg .body {
 .pk-vspace { width: 1px; }
 .pk-vhead, .pk-vrows { table-layout: fixed; width: 100%; }
 .pk-vhead { margin: 0; }
-.pk-vrows tr { height: 24px; }
-.pk-vrows td { overflow: hidden; text-overflow: ellipsis; max-height: 24px; }
-.pk-vrows td.pk-info { white-space: nowrap; min-width: 0; }
+.pk-table.pk-vrows tr { height: 24px; }
+.pk-table.pk-vrows td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 24px; padding-top: 0; padding-bottom: 0; line-height: 24px; }
+.pk-table.pk-vrows td.pk-info { white-space: nowrap; min-width: 0; }
+.pk-table.pk-vhead th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pk-vrows tr.pk-vwait td { background: transparent; }
 .pk-vfoot { justify-content: space-between; padding: 4px 10px; border-bottom: 1px solid var(--border); }
 /* Ход загрузки и разбора. */
 .pk-progress { display: grid; gap: 6px; margin-bottom: 12px; }
-.pk-progress-row { gap: 10px; align-items: center; flex-wrap: wrap; }
+.pk-progress-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .pk-progress-text { font-variant-numeric: tabular-nums; }
 .pk-progress-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
 .pk-progress-bar > span { display: block; height: 100%; background: var(--accent, #2f6fde); transition: width .4s ease; }
@@ -9578,3 +9579,10 @@ button.pk-hier-col:hover { color: var(--accent); }
 .zs-start { align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 10px 0 6px; }
 .zs-start .field { flex: 1 1 260px; margin: 0; }
 .zs-cards-box { margin-bottom: 10px; }
+
+/* Обзор файлов сервера (открыть по ссылке). */
+.fs-pick .row { gap: 8px; margin-bottom: 8px; }
+.fs-pick input[type=search] { flex: 1 1 auto; }
+.fs-list { max-height: 55vh; overflow: auto; }
+.fs-list tr.is-clickable { cursor: pointer; }
+.fs-crumbs { gap: 2px; margin-bottom: 6px; }

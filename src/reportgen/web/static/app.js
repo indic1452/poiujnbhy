@@ -18990,6 +18990,31 @@
         return итог;
     }
 
+    //: Память открытых записей «Анализа пакетов» в этом окне: вкладка, фильтр, выбранный пакет, дерево,
+    //: место прокрутки и последние данные вкладок — возврат к записи мгновенный (данные дорисовываются
+    //: следом, если разбор ушёл вперёд). Последние 12 записей; фильтр, вкладка и пакет — ещё и в sessionStorage.
+    const состоянияЗаписей = new Map();
+    const ЗАПИСЕЙ_ПОМНИТЬ = 12;
+
+    function памятьЗаписи(capId) {
+        let п = состоянияЗаписей.get(capId);
+        if (!п) {
+            п = { кэш: new Map(), с: null };
+            try { п.сохранено = JSON.parse(sessionStorage.getItem('pk-zapis-' + capId) || 'null'); } catch (e) { п.сохранено = null; }
+        }
+        состоянияЗаписей.delete(capId);
+        состоянияЗаписей.set(capId, п);
+        while (состоянияЗаписей.size > ЗАПИСЕЙ_ПОМНИТЬ) состоянияЗаписей.delete(состоянияЗаписей.keys().next().value);
+        return п;
+    }
+
+    /** Что из состояния страницы записи помнить: вкладка, фильтр, уровень диалогов, выбранный пакет. */
+    function сохранитьЗапись(capId, с) {
+        try {
+            sessionStorage.setItem('pk-zapis-' + capId, JSON.stringify({ фильтр: с.фильтр, вкладка: с.вкладка, уровень: с.уровень, выбран: с.выбран }));
+        } catch (e) { /* хранилище недоступно — помнит только память окна */ }
+    }
+
     //: Загрузки файлов «Анализа пакетов», идущие в этом окне: ид → {имя, размер, принято, стоп, ошибка, …}.
     //: Живут, пока открыта вкладка браузера: страница записи показывает ход и после перехода по разделам.
     const загрузкиПакетов = new Map();
@@ -19067,6 +19092,74 @@
         з.отмена.abort();
     }
 
+    /** Обзор файлов сервера (папки входных файлов из настроек): папки, поиск по имени вглубь, размер и дата;
+     *  выбор файла — ``опции.выбрать({root, path, имя, размер})``. Общий для «Анализа пакетов» и потоков:
+     *  большой файл открывается по ссылке, без загрузки через браузер. */
+    async function выбратьФайлНаСервере(опции) {
+        опции = опции || {};
+        let корни;
+        try {
+            корни = (await api.getGlobal('/api/files/roots')).items || [];
+        } catch (error) { toastError(error); return; }
+        if (!корни.length) { toast('Папок входных файлов на сервере нет — их задаёт администратор (input_dirs)', 'error'); return; }
+        const к = { root: корни[0].id, путь: '' };
+        const выборКорня = h('select', { 'aria-label': 'Папка сервера' }, корни.map((r) => h('option', { value: r.id }, r.имя)));
+        const поиск = h('input', { type: 'search', placeholder: 'Найти файл по имени (во всех подпапках)…', 'aria-label': 'Найти файл' });
+        const крошки = h('div', { class: 'row fs-crumbs small' });
+        const таблица = h('tbody', {});
+        const заметка = h('div', { class: 'muted small' });
+        выборКорня.addEventListener('change', () => { к.root = выборКорня.value; к.путь = ''; поиск.value = ''; загрузить(); });
+        let таймер = null;
+        поиск.addEventListener('input', () => { clearTimeout(таймер); таймер = setTimeout(загрузить, 300); });
+        async function загрузить() {
+            clear(таблица);
+            таблица.appendChild(h('tr', {}, h('td', { colspan: 3, class: 'muted' }, 'Читаем папку…')));
+            let d;
+            try {
+                d = await api.getGlobal('/api/files/list?root=' + encodeURIComponent(к.root) + '&path=' + encodeURIComponent(к.путь) +
+                    '&q=' + encodeURIComponent(поиск.value.trim()));
+            } catch (error) {
+                clear(таблица);
+                таблица.appendChild(h('tr', {}, h('td', { colspan: 3 }, errorBox(error))));
+                return;
+            }
+            clear(крошки);
+            const части = d.путь ? d.путь.split('/') : [];
+            крошки.appendChild(h('button', { class: 'linklike', onclick: () => { к.путь = ''; поиск.value = ''; загрузить(); } }, d.имя));
+            части.forEach((ч, i) => {
+                крошки.appendChild(h('span', { class: 'muted' }, ' / '));
+                крошки.appendChild(h('button', { class: 'linklike', onclick: () => { к.путь = части.slice(0, i + 1).join('/'); поиск.value = ''; загрузить(); } }, ч));
+            });
+            clear(таблица);
+            if (!d.элементы.length) таблица.appendChild(h('tr', {}, h('td', { colspan: 3, class: 'muted' }, поиск.value.trim() ? 'Ничего не нашлось' : 'Папка пуста')));
+            d.элементы.forEach((э) => таблица.appendChild(h('tr', {
+                class: 'is-clickable', tabindex: 0,
+                onclick: () => {
+                    if (э.папка) { к.путь = э.путь; поиск.value = ''; загрузить(); return; }
+                    окно.close();
+                    опции.выбрать({ root: к.root, path: э.путь, имя: э.имя, размер: э.размер });
+                },
+            },
+            h('td', { class: э.папка ? 'fs-dir' : '' }, (поиск.value.trim() ? э.путь : э.имя) + (э.папка ? '/' : '')),
+            h('td', { class: 'num' }, э.папка ? '' : fmtBytes(э.размер)),
+            h('td', { class: 'small' }, fmtDateTime(э.изменён * 1000)))));
+            заметка.textContent = d.обрезано ? 'Показаны не все: уточните поиск.' : '';
+        }
+        const окно = openModal({
+            title: опции.заголовок || 'Файл на сервере', wide: true,
+            body: h('div', { class: 'fs-pick' },
+                h('p', { class: 'muted small' }, 'Файл открывается на месте, по ссылке: без загрузки через браузер и без копии — ' +
+                    'гигабайты начинают разбираться сразу. Положить файл в эти папки можно по сети (общая папка) или администратору.'),
+                h('div', { class: 'row' }, корни.length > 1 ? выборКорня : null, поиск),
+                крошки,
+                h('div', { class: 'table-scroll fs-list' }, h('table', { class: 'table' },
+                    h('thead', {}, h('tr', {}, h('th', {}, 'Имя'), h('th', {}, 'Размер'), h('th', {}, 'Изменён'))), таблица)),
+                заметка),
+            footer: [h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Отмена')],
+        });
+        загрузить();
+    }
+
     async function renderPakety(view, capId) {
         clear(view);
         const page = h('div', { class: 'page pakety' });
@@ -19094,7 +19187,17 @@
         page.appendChild(h('div', { class: 'card card-pad potok-start' },
             h('label', { class: 'field' }, h('span', {}, 'Файл: pcap, pcapng, .sig или .dpo (кадры с длиной) — любого размера'), picker),
             h('div', { class: 'row' }, кнопка,
-                h('span', { class: 'muted small' }, 'Файл грузится кусками; разбор начинается сразу, страницу можно не держать открытой.')),
+                h('button', { class: 'btn', title: 'Файл из папки сервера — по ссылке, без загрузки через браузер', onclick: () => выбратьФайлНаСервере({
+                    заголовок: 'Открыть файл сервера в анализе пакетов',
+                    выбрать: async (ф) => {
+                        try {
+                            const d = await api.post('/api/pakety/from-file', { root: ф.root, path: ф.path });
+                            navigate('#/pakety/' + encodeURIComponent(d.id));
+                        } catch (error) { toastError(error); }
+                    },
+                }) }, 'Файл на сервере…'),
+                h('span', { class: 'muted small' }, 'Файл грузится кусками; разбор начинается сразу, страницу можно не держать открытой. ' +
+                    'Гигабайты быстрее открыть с сервера — «Файл на сервере…».')),
             ходЗагрузки));
         const списокУзел = h('div', { class: 'card card-pad' }, loadingBox('Загружаем записи…'));
         page.appendChild(списокУзел);
@@ -19152,6 +19255,16 @@
         const с = { фильтр: '', выбран: null, вкладка: 'пакеты', смещение: 0, всего: 0, отобрано: 0,
             вид: 'HEX', порядок: 'старший', база: 'frame', начало: 0, столбцов: 64, ширина: 1, уровень: 'ip',
             живо: РАЗБОР_ИДЁТ.includes(состояние.состояние), ходОтбора: null };
+        // Возврат к записи: вкладка, фильтр, дерево, выбранный пакет — как оставили; данные вкладок — из памяти.
+        const память = памятьЗаписи(capId);
+        const прежнее = память.с || память.сохранено;
+        if (прежнее) {
+            ['фильтр', 'вкладка', 'уровень', 'дерево', 'видыОбъектов', 'вид', 'порядок', 'база', 'начало', 'столбцов', 'ширина']
+                .forEach((к) => { if (прежнее[к] !== undefined && прежнее[к] !== null) с[к] = прежнее[к]; });
+            if (прежнее.выбран) с.перейти = прежнее.выбран;
+        }
+        память.с = с;
+        const кэш = память.кэш;
         const полеФильтра = h('input', { type: 'text', class: 'pk-filter', placeholder: ПРИМЕРЫ_ФИЛЬТРА, spellcheck: false,
             list: 'pk-filter-history', 'aria-label': 'Фильтр пакетов (клавиша /)' });
         const история = h('datalist', { id: 'pk-filter-history' });
@@ -19433,13 +19546,30 @@
             if (с.вкладка === 'пакеты') return тихо && списокЖивой ? списокЖивой.обновить() : списокПакетов();
             if (с.вкладка === 'матрица') return тихо ? null : матрица();
             if (с.вкладка === 'объекты') return тихо ? null : объектыИФайлы();
-            if (!тихо) тело.appendChild(loadingBox('Считаем…'));
+            сохранитьЗапись(capId, с);
             const вид = { протоколы: 'hierarchy', диалоги: 'conversations', узлы: 'endpoints', время: 'time', dns: 'dns',
                 http: 'http', tls: 'tls', ошибки: 'errors', неизвестные: 'unknown', обзор: 'overview' }[с.вкладка];
+            const ключКэша = вид + '|' + с.уровень + '|' + с.фильтр;
+            if (!тихо && кэш.has(ключКэша)) {
+                нарисоватьВкладку(вид, кэш.get(ключКэша), false);
+                тихо = true;                         // показали из памяти — свежие данные дорисуем без «Считаем…»
+            } else if (!тихо) тело.appendChild(loadingBox('Считаем…'));
             try {
                 const data = await api.get(путь + '/stats?kind=' + вид + '&filter=' + encodeURIComponent(с.фильтр) +
                     (вид === 'conversations' ? '&level=' + с.уровень : ''));
                 if (мой !== номерПоказа || !page.isConnected) return;
+                кэш.set(ключКэша, data);
+                нарисоватьВкладку(вид, data, тихо);
+            } catch (error) {
+                if (error instanceof Устарело || мой !== номерПоказа) return;
+                if (тихо) return;
+                clear(тело);
+                тело.appendChild(errorBox(error));
+            }
+        }
+
+        function нарисоватьВкладку(вид, data, тихо) {
+            {
                 учестьХодОтбора(data.ход);
                 const прокрутка = window.scrollY;
                 clear(тело);
@@ -19450,11 +19580,6 @@
                 ({ hierarchy: иерархия, conversations: диалогиТаблица, endpoints: узлы, time: время, dns: таблицаDns, http: таблицаHttp, tls: таблицаTls,
                     errors: ошибки, unknown: неизвестные, overview: обзор })[вид](data);
                 if (тихо) window.scrollTo(0, прокрутка);
-            } catch (error) {
-                if (error instanceof Устарело || мой !== номерПоказа) return;
-                if (тихо) return;
-                clear(тело);
-                тело.appendChild(errorBox(error));
             }
         }
 
@@ -19477,8 +19602,13 @@
             const деталь = h('div', { class: 'pk-detail' },
                 h('div', { class: 'muted pk-hint' }, 'Выберите пакет — здесь будут его уровни и байты.'));
             тело.appendChild(h('div', { class: 'card pk-split' }, шапка, прокрутка, низ, деталь));
-            const д = { всего: 0, страницы: new Map(), грузятся: new Set(), выбранИндекс: -1, начало: null, номерЗапроса: 0, нет: false };
+            const ключСписка = 'список|' + с.фильтр;
+            const былое = кэш.get(ключСписка);
+            const д = { всего: былое ? былое.всего : 0, страницы: былое ? былое.страницы : new Map(), грузятся: new Set(),
+                выбранИндекс: былое ? былое.выбранИндекс : -1, начало: былое ? былое.начало : null, номерЗапроса: 0, нет: false };
+            кэш.set(ключСписка, д);
             const мойПоказ = номерПоказа;
+            сохранитьЗапись(capId, с);
 
             async function загрузитьСтраницу(п) {
                 if (д.грузятся.has(п)) return;
@@ -19551,6 +19681,7 @@
                 });
             });
             new ResizeObserver(() => рисовать()).observe(прокрутка);
+            прокрутка.addEventListener('scroll', () => { д.сверху = прокрутка.scrollTop; }, { passive: true });
 
             /** Вживую: сколько пакетов теперь; неполная последняя страница — заново; «следить» — к концу. */
             async function обновить() {
@@ -19587,6 +19718,7 @@
                 }
                 if (!п) return;
                 с.выбран = п.номер;
+                сохранитьЗапись(capId, с);
                 clear(деталь);
                 деталь.appendChild(loadingBox('Разбираем пакет…'));
                 try {
@@ -19606,8 +19738,16 @@
                 выбрать(Math.max(0, Math.min(д.всего - 1, куда)));
                 event.preventDefault();
             });
-            await загрузитьСтраницу(0);
-            рисовать();
+            if (былое) {
+                // Возврат к записи: строки из памяти — сразу, на том же месте; свежие — следом.
+                рисовать();
+                if (д.сверху) { прокрутка.scrollTop = д.сверху; рисовать(); }
+                if (д.выбранИндекс >= 0 && с.перейти === с.выбран) { const i = д.выбранИндекс; с.перейти = null; выбрать(i); }
+                обновить();
+            } else {
+                await загрузитьСтраницу(0);
+                рисовать();
+            }
             // Переход к пакету (из «Объектов и файлов», дерева протоколов): его место в отборе — у сервера.
             if (с.перейти) {
                 const цель = с.перейти;
@@ -20838,6 +20978,7 @@
             }
         }
 
+        полеФильтра.value = с.фильтр;
         рисоватьВкладки();
         рисоватьХод(состояние);
         опрос.рев = состояние.рев;

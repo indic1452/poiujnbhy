@@ -183,8 +183,13 @@ class Хранилище:
     #: Сколько распакованных блоков держать (на захват).
     БЛОКОВ_В_ПАМЯТИ = 48
 
-    def __init__(self, папка: Path):
+    def __init__(self, папка: Path, исходник: Path | None = None, отпечаток: dict[str, Any] | None = None):
         self.папка = Path(папка)
+        #: Откуда байты пакетов: свой исходник или файл на сервере по ссылке (тогда ``отпечаток`` — его
+        #: размер и время: изменённый или удалённый файл даёт понятную ошибку, а не чужие байты).
+        self.исходник = Path(исходник) if исходник is not None else self.папка / ИСХОДНИК
+        self.отпечаток = отпечаток
+        self._сверено = 0.0
         self._блоки: OrderedDict[tuple[str, int], list[dict[str, Any]]] = OrderedDict()
         self._lock = threading.Lock()
         self._каналы: list[str] = []
@@ -290,8 +295,19 @@ class Хранилище:
 
     # -- байты пакетов --
 
+    def _сверить(self) -> None:
+        if self.отпечаток is None or time.monotonic() - self._сверено < 1.0:
+            return
+        from ..fayly_ssylki import ФайлИзменён, проверить_отпечаток  # noqa: PLC0415
+        беда = проверить_отпечаток(self.исходник, self.отпечаток)
+        if беда:
+            raise ФайлИзменён(беда)
+        self._сверено = time.monotonic()
+
     def _кадры(self, записи: np.ndarray) -> list[bytes]:
         итог: list[bytes] = []
+        if len(записи) and not np.all(записи["признаки"] & В_КОПИИ):
+            self._сверить()
         файлы: dict[bool, Any] = {}
         try:
             for место, длина, признаки in zip(записи["место"].tolist(), записи["длина"].tolist(),
@@ -299,7 +315,7 @@ class Хранилище:
                 копия = bool(признаки & В_КОПИИ)
                 ф = файлы.get(копия)
                 if ф is None:
-                    ф = файлы[копия] = open(self.папка / (ПАКЕТЫ if копия else ИСХОДНИК), "rb")  # noqa: SIM115
+                    ф = файлы[копия] = open(self.папка / ПАКЕТЫ if копия else self.исходник, "rb")  # noqa: SIM115
                 ф.seek(место)
                 итог.append(ф.read(длина))
         finally:

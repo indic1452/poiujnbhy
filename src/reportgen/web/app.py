@@ -290,6 +290,13 @@ def _install_handlers(app: FastAPI) -> None:
             logger.error("Ошибка сервиса: %s", error, exc_info=True)
         return JSONResponse(status_code=error.status, content={"error": str(error)})
 
+    from ..fayly_ssylki import ОшибкаПути, ФайлИзменён
+
+    @app.exception_handler(ОшибкаПути)
+    async def path_error_handler(request: Request, error: ОшибкаПути) -> JSONResponse:
+        # Файл, открытый по ссылке, изменён или удалён на сервере — 409 словами, а не «внутренняя ошибка».
+        return JSONResponse(status_code=409 if isinstance(error, ФайлИзменён) else 400, content={"error": str(error)})
+
     @app.exception_handler(Exception)
     async def unhandled_handler(request: Request, error: Exception) -> JSONResponse:
         logger.exception("Необработанная ошибка при %s %s", request.method, request.url.path)

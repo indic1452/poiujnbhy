@@ -437,6 +437,11 @@ class Settings:
     #: Наибольший файл для «Анализа пакетов», МБ; 0 — без предела (сколько есть
     #: места на диске сервера с запасом capture_disk_reserve_mb).
     pakety_max_mb: int = 0
+    #: Папки входных файлов на сервере («открыть по ссылке», без загрузки через
+    #: браузер): строки-пути или {"имя", "путь", "роль"}; сетевая папка Windows —
+    #: "\\\\сервер\\share". Пусто — одна папка <data_dir>/vhod. Роль — с какой
+    #: должности папка видна (по умолчанию всем, кроме гостя).
+    input_dirs: list = field(default_factory=list)
 
     def __post_init__(self) -> None:
         for name in ("data_dir", "db_path", "library_dir", "upload_dir", "export_dir",
