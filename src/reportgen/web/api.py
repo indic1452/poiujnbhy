@@ -3694,7 +3694,14 @@ def potok_tool(request: Request, job_id: str) -> dict[str, Any]:
                if тело.get("tool") == "поля" else {}))
     except (ValueError, KeyError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    return {"found": rastr.в_словарь(найдено), "bits": int(len(биты))}
+    итог = rastr.в_словарь(найдено)
+    if итог is not None and not any(п.startswith("слой для снятия: ") for п in итог["подробно"]):
+        # Инструмент нашёл то же, что автомат, — и шагом стола это снимается так же (журнал → «Снять»).
+        from ..potok.razbor import слои_находки  # noqa: PLC0415
+        слои = слои_находки(найдено)
+        if len(слои) == 1:
+            итог["подробно"].append(f"слой для снятия: {слои[0]}")
+    return {"found": итог, "bits": int(len(биты))}
 
 
 @router.post("/potok/{job_id}/derive")

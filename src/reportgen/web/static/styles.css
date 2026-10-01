@@ -9533,3 +9533,10 @@ button.pk-hier-col:hover { color: var(--accent); }
 /* Окно «Коды» стола: вкладки как в декодере отдела. */
 .stol-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
 .stol-codes-panel { max-width: 44rem; display: grid; gap: 0.4rem; }
+
+/* «Как в автомате» в окнах поиска стола: находка, шаги, подсказка. */
+.stol-auto-result { display: grid; gap: 6px; padding: 8px; margin: 6px 0; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
+.stol-auto-find { display: grid; gap: 3px; padding-top: 4px; border-top: 1px dashed var(--border); }
+.stol-auto-find:first-of-type { border-top: 0; }
+.stol-auto-find .mono { overflow-wrap: anywhere; white-space: normal; }
+.stol-auto-find .btn { justify-self: start; }
