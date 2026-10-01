@@ -1020,6 +1020,99 @@ class РазборTests(unittest.TestCase):
         self.assertIn("в блоке 3264 бит", н.что)
 
 
+class АвтоматTests(unittest.TestCase):
+    """Встраивание в разбор: срок и план по профилю и уровню, место среди детекторов, останов уровня,
+    пакеты 204 не DVB — без долгого разбора (поиск подменён)."""
+
+    def бюджет(self, профиль="обычно", осталось=10 ** 6):
+        return razbor.Бюджет(конец=time.monotonic() + осталось, профиль=razbor.ПРОФИЛИ[профиль])
+
+    def test_срок_и_план(self):
+        from unittest import mock
+        находка = razbor.Находка(уровень="код", что="РС", уверенность=1.0, мера="")
+        for профиль, глубина, план, срок in (("быстро", 0, "быстро", 20.0), ("обычно", 0, "обычно", 90.0),
+                                              ("обычно", 1, "обычно", 30.0), ("глубоко", 0, "глубоко", 600.0),
+                                              ("глубоко", 2, "глубоко", 30.0), ("быстро", 3, "быстро", 20.0)):
+            with self.subTest(профиль=профиль, глубина=глубина), \
+                    mock.patch.object(razbor.rs_slepoy, "найти", return_value=находка) as найти:
+                н = razbor._рс_вслепую(np.zeros(8, np.uint8), self.бюджет(профиль), глубина)
+                self.assertIs(н, находка)
+                self.assertTrue(н.свойства["опознан"])
+                кв = найти.call_args.kwargs
+                self.assertEqual(кв["профиль"], план)
+                self.assertAlmostEqual(кв["бюджет"], срок, places=0)
+                self.assertFalse(кв["стоп"]())
+                находка.свойства.clear()
+        with mock.patch.object(razbor.rs_slepoy, "найти", return_value=None) as найти:
+            self.assertIsNone(razbor._рс_вслепую(np.zeros(8, np.uint8), self.бюджет("обычно", 5.0), 0))
+            self.assertAlmostEqual(найти.call_args.kwargs["бюджет"], 5.0, places=0)
+            razbor._рс_вслепую(np.zeros(8, np.uint8), self.бюджет("обычно", -10.0), 0)
+            self.assertEqual(найти.call_args.kwargs["бюджет"], 1.0)
+            self.assertTrue(найти.call_args.kwargs["стоп"]())
+            б = self.бюджет()
+            б.профиль = {**б.профиль}
+            del б.профиль["рс"]
+            razbor._рс_вслепую(np.zeros(8, np.uint8), б, 0)
+            self.assertEqual((найти.call_args.kwargs["профиль"], найти.call_args.kwargs["бюджет"]), ("быстро", 20.0))
+
+    def test_место_среди_детекторов(self):
+        from unittest import mock
+        имена = [и for и, _, _ in razbor._детекторы(np.zeros(10, np.uint8), self.бюджет(), 0)]
+        i = имена.index("код Рида — Соломона вслепую")
+        self.assertEqual(имена[i - 1], "ТКБ (турбокод блочный)")
+        self.assertLess(i, имена.index("турбокод стандарта (UMTS, LTE, CCSDS; выколотый 1/2)"))
+        self.assertLess(i, имена.index("скремблер"))
+        self.assertLess(i, имена.index("свёрточный 1/2 и короткий блочный код"))
+        детекторы = {и: (в, ш) for и, в, ш in razbor._детекторы(np.zeros(10, np.uint8), self.бюджет(), 2)}
+        with mock.patch.object(razbor, "_рс_вслепую", return_value=None) as рс:
+            вызов, шаг = детекторы["код Рида — Соломона вслепую"]
+            self.assertIsNone(вызов())
+            self.assertEqual(рс.call_args.args[2], 2)
+            self.assertEqual(шаг, "после декодирования РС")
+        систематические = {и: (в, ш) for и, в, ш in razbor._систематические(np.zeros(10, np.uint8), self.бюджет(), None, 0)}
+        self.assertIn("код Рида — Соломона вслепую", систематические)
+        with mock.patch.object(razbor, "_рс_вслепую", return_value=None) as рс:
+            систематические["код Рида — Соломона вслепую"][0]()
+            self.assertEqual(рс.call_args.args[2], 1)              # под кадрами — как ниже верхнего уровня
+
+    def test_опознанный_рс_останавливает_уровень(self):
+        from unittest import mock
+        рс = razbor.Находка(уровень="код", что="код РС", уверенность=0.9, мера="", свойства={"опознан": True},
+                            дальше=np.zeros(100, np.uint8), вид_дальше="биты")
+        звали = []
+        детекторы = [("код Рида — Соломона вслепую", lambda: рс, "после РС"),
+                     ("скремблер", lambda: звали.append(1), "после скремблера")]
+        with mock.patch.object(razbor, "_детекторы", return_value=детекторы), \
+                mock.patch.object(razbor, "_проверяемые", return_value=None):
+            ветвь = razbor._ступень(np.zeros(1000, np.uint8), 0, "", self.бюджет())
+        self.assertEqual(звали, [])
+        self.assertIn("поток: скремблер — не проверялось: поток опознан как код РС", ветвь.другие)
+        self.assertEqual(ветвь.находки[0].что, "код РС")
+
+    def test_пакеты_204_не_dvb(self):
+        from unittest import mock
+        биты, _ = поток(203, 187, блоков=40, синхро=format(0x47, "08b"))
+        рс = razbor.Находка(уровень="код", что="код РС", уверенность=0.9, мера="м")
+        with mock.patch.object(razbor, "_рс_вслепую", return_value=рс) as вызов:
+            ветвь = razbor._проверяемые(биты, 0, "", self.бюджет())
+        self.assertEqual(вызов.call_args.args[2], 1)
+        self.assertIn("код РС — в пакетах 204 байт (не DVB)", [н.что for н in ветвь.находки])
+        with mock.patch.object(razbor, "_рс_вслепую", return_value=None):
+            ветвь = razbor._проверяемые(биты, 0, "", self.бюджет())
+        self.assertTrue(any("слепой поиск РС не нашёл кода" in н for н in ветвь.не_найдено))
+        with mock.patch.object(razbor, "_рс_вслепую") as вызов:              # DVB — слепой не нужен
+            razbor._проверяемые(np.unpackbits(np.frombuffer(синтез.dvb(40, перемежать=False), np.uint8)), 0, "",
+                                self.бюджет())
+        вызов.assert_not_called()
+
+    def test_слой_в_снять_вручную(self):
+        биты, д = поток(204, 188, блоков=20)
+        ряд, н = razbor.снять_вручную(биты, "rs 204 188")
+        self.assertTrue(np.array_equal(ряд, в_символы_данных(д, 8)))
+        self.assertEqual((н.свойства["N"], н.свойства["слой"].split()[:3]), (204, ["рс", "204", "188"]))
+        self.assertTrue(н.подробно[0].startswith("код Рида — Соломона (204, 188)"))
+
+
 # -- окно стола: пункты app.js и поиск через сервер ------------------------------------------------
 
 
