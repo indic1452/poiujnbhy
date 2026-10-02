@@ -265,6 +265,54 @@ class ЗаданияПараллельноTests(unittest.TestCase):
         self.assertLess(time.monotonic() - начало, 1.5 * 3)           # не друг за другом
         self.assertTrue(all("медленно 0" in " ".join(с["журнал"]) for с in состояния))
 
+    def test_остановить_автомат_в_процессе(self):
+        # Настоящий автомат в процессе-исполнителе: «Остановить» кладёт метку, разбор кончается с найденным
+        # (как по исчерпанию времени) — «готово», а не «ошибка» и не снятый процесс.
+        import numpy as np
+        задания = Задания(self.папка, разборов=1)
+        данные = np.random.default_rng(3).integers(0, 256, 200_000, dtype=np.uint8).tobytes()
+        ид = задания.создать(владелец=1, имя="шум.bin", данные=данные, профиль="глубоко")
+        self.assertFalse(задания.остановить("нет-такого"))
+        self.assertTrue(дождаться(lambda: ид in задания.идущие(), 60))
+        time.sleep(2)
+        начало = time.monotonic()
+        self.assertTrue(задания.остановить(ид))
+        состояние = self.готово(задания, ид, срок=240)
+        self.assertEqual("готово", состояние["состояние"])
+        self.assertLess(time.monotonic() - начало, 240)
+        self.assertIn("остановлено оператором", " ".join(состояние["журнал"]))
+        self.assertFalse((self.папка / ид / zadaniya.СТОП_ФАЙЛ).exists())     # метка не остаётся
+        self.assertFalse(задания.остановить(ид))                               # уже готово
+
+    def test_метка_стопа_исчерпывает_бюджет(self):
+        from reportgen.potok import razbor
+        стоп = Path(self._tmp.name) / "стоп"
+        б = razbor.Бюджет(конец=time.monotonic() + 600, профиль=razbor.ПРОФИЛИ["обычно"])
+        было = razbor._ТЕКУЩИЙ.бюджет
+        razbor._ТЕКУЩИЙ.бюджет = б
+        self.addCleanup(setattr, razbor._ТЕКУЩИЙ, "бюджет", было)
+        готово = threading.Event()
+        нить = threading.Thread(target=zadaniya._ждать_стопа, args=(стоп, готово), daemon=True)
+        нить.start()
+        time.sleep(zadaniya.СТОП_КАЖДЫЕ * 2)
+        self.assertFalse(б.вышел())                    # метки нет — разбор идёт
+        стоп.write_bytes(b"1")
+        нить.join(5)
+        self.assertFalse(нить.is_alive())
+        self.assertTrue(б.вышел())
+        self.assertEqual(0.0, б.конец)
+        # Без метки, но разбор кончился — нить выходит и бюджет не трогает.
+        б2 = razbor.Бюджет(конец=time.monotonic() + 600, профиль=razbor.ПРОФИЛИ["обычно"])
+        razbor._ТЕКУЩИЙ.бюджет = б2
+        стоп.unlink()
+        готово2 = threading.Event()
+        нить2 = threading.Thread(target=zadaniya._ждать_стопа, args=(стоп, готово2), daemon=True)
+        нить2.start()
+        готово2.set()
+        нить2.join(5)
+        self.assertFalse(нить2.is_alive())
+        self.assertFalse(б2.вышел())
+
     def test_очередь_по_людям_и_отмена(self):
         задания = Медленные(self.папка, разборов=1)
         а = [задания.создать(владелец=1, имя=f"а{i}", данные=b"\x00") for i in range(4)]
