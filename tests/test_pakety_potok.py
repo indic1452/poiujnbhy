@@ -1163,6 +1163,105 @@ class ОчередьTests(unittest.TestCase):
             self.assertTrue(дождаться(lambda: запущено == ["спит", "второй"]))
 
 
+    def test_места_по_ядрам(self):
+        from unittest import mock
+        for ядер, места in ((None, (4, 2)), (1, (2, 2)), (4, (8, 4)), (6, (12, 6)), (20, (16, 8))):
+            with mock.patch("os.cpu_count", return_value=ядер):
+                д = Диспетчер()
+            self.assertEqual({"разбор": места[0], "отбор": места[1]}, д.места, ядер)
+            self.assertTrue(д.процессы)
+            self.assertIs(subprocess.Popen, д.фабрика)
+        self.assertEqual({"разбор": 3, "отбор": 5}, Диспетчер(разборов=3, отборов=5).места)
+
+    def test_работа_мелочи(self):
+        р = Работа("разбор", "к", 1, ["к"])
+        self.assertTrue(р.процессом)
+        self.assertFalse(р.жива(), "не запущенная работа не жива")
+        self.assertFalse(р.спит(), "без файла хода — не спит")
+        with tempfile.TemporaryDirectory() as t:
+            ход = Path(t) / "ход.json"
+            for состояние, спит in (("пауза", True), ("ждёт данных", True), ("идёт", False)):
+                ход.write_text(json.dumps({"состояние": состояние}), encoding="utf-8")
+                self.assertEqual(спит, Работа("разбор", "к", 1, ["к"], ход_файл=ход).спит(), состояние)
+            ход.write_text("{битый", encoding="utf-8")
+            self.assertFalse(Работа("разбор", "к", 1, ["к"], ход_файл=ход).спит())
+
+        # Команда процессу — строка JSON в stdin; ждать() — кончилась ли.
+        class Процесс:
+            def __init__(себя):
+                себя.stdin = __import__("io").BytesIO()
+                себя.код = None
+
+            def poll(себя):
+                return себя.код
+
+            def wait(себя, секунд=None):
+                if себя.код is None:
+                    raise subprocess.TimeoutExpired("x", секунд)
+                return себя.код
+
+            def kill(себя):
+                себя.код = -9
+
+        р.процесс = Процесс()
+        р.послать({"к": "пауза", "почему": "проверка ё"})
+        self.assertEqual({"к": "пауза", "почему": "проверка ё"}, json.loads(р.процесс.stdin.getvalue().decode("utf-8")))
+        self.assertTrue(р.процесс.stdin.getvalue().endswith(b"\n"))
+        self.assertFalse(р.ждать(0.01))
+        р.процесс.код = 0
+        self.assertTrue(р.ждать(0.01))
+
+    def test_диспетчер_очередь_сводка_закрытие(self):
+        from reportgen.setevoy import raboty
+        ворота = threading.Event()
+        self.addCleanup(ворота.set)
+
+        def исполнить(вид, аргументы, команды):
+            ворота.wait(10)
+
+        старое = raboty._исполнить
+        raboty._исполнить = исполнить
+        self.addCleanup(setattr, raboty, "_исполнить", старое)
+        д = Диспетчер(разборов=1, отборов=1, процессы=False)
+        self.addCleanup(д.закрыть)
+        д.поставить(Работа("разбор", "р1", 1, ["р1"], процессом=False))
+        поток = д._поток
+        self.assertTrue(поток.daemon)
+        д.поставить(Работа("разбор", "р2", 1, ["р2"], процессом=False))
+        д.поставить(Работа("отбор", "о1", 1, ["о1", "x"], процессом=False))
+        д.поставить(Работа("отбор", "о2", 1, ["о2", "x"], процессом=False))
+        self.assertIs(поток, д._поток, "цикл очереди — один")
+        self.assertTrue(дождаться(lambda: д.идёт("р1") and д.идёт("о1")))
+        self.assertEqual({"разбор": 1, "отбор": 1}, д.сводка()["ждут"])
+        self.assertEqual({"разбор": 1, "отбор": 1}, д.сводка()["идут"])
+        self.assertTrue(д.снять_из_очереди("р2"))
+        self.assertFalse(д.снять_из_очереди("р2"))
+        self.assertEqual({"разбор": 0, "отбор": 1}, д.сводка()["ждут"])
+        ворота.set()
+        д.закрыть()
+        поток.join(3)
+        self.assertFalse(поток.is_alive(), "после закрытия цикл очереди кончается")
+
+    def test_исполнить_разбор_и_отбор(self):
+        from unittest import mock
+
+        from reportgen.setevoy import fon, raboty
+        вызовы = []
+
+        class Работник:
+            def __init__(себя, *арг):
+                вызовы.append(арг)
+
+            def работать(себя):
+                вызовы.append("работать")
+
+        команды = queue.Queue()
+        with mock.patch.object(fon, "Разбор", Работник), mock.patch.object(fon, "Отбор", Работник):
+            raboty._исполнить("разбор", ["/a"], команды)
+            raboty._исполнить("отбор", ["/a", "/b"], команды)
+        self.assertEqual([(Path("/a"), команды), "работать", (Path("/a"), Path("/b"), команды), "работать"], вызовы)
+
+
 class СтраницаЧерезСерверTests(unittest.TestCase):
     """API: загрузка кусками, ход, управление, место пакета, файлы по ссылке и их защита."""
 
