@@ -1,1 +1,0 @@
-Simple wrapper for BCH encoder and decoder modules to support DVB-S2/S2X bch modes. There is no any testbench
