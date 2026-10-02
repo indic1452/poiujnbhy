@@ -9670,3 +9670,9 @@ div.stol-decoder-op { border: 0; padding: 0; }
 /* Первая строка шапки стола — имя, сведения и кнопки — не переносится: сведения сжимаются с многоточием. */
 .stol-title > .stol-title-info { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
 .stol-head > .stol-progress { min-height: 26px; box-sizing: border-box; padding: 3px 12px; }
+/* «Как в автомате» в окнах поиска стола: находка, шаги, подсказка. */
+.stol-auto-result { display: grid; gap: 6px; padding: 8px; margin: 6px 0; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
+.stol-auto-find { display: grid; gap: 3px; padding-top: 4px; border-top: 1px dashed var(--border); }
+.stol-auto-find:first-of-type { border-top: 0; }
+.stol-auto-find .mono { overflow-wrap: anywhere; white-space: normal; }
+.stol-auto-find .btn { justify-self: start; }

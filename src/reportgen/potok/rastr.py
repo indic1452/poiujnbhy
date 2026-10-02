@@ -782,9 +782,12 @@ def проверить_шаги(шаги: Sequence[dict[str, Any]]) -> list[dict
     return итог
 
 
-def применить(биты: np.ndarray, шаги: Sequence[dict[str, Any]], ход=None
-              ) -> tuple[np.ndarray, list[str]]:
-    """Включённые шаги по порядку: маска канала или снятие слоя. Биты и описание."""
+def применить(биты: np.ndarray, шаги: Sequence[dict[str, Any]], ход=None,
+              свойства: list[dict[str, Any]] | None = None) -> tuple[np.ndarray, list[str]]:
+    """Включённые шаги по порядку: маска канала или снятие слоя. Биты и описание.
+
+    ``свойства`` — сюда по шагу складываются свойства находки слоя (у ТКБ — блок данных, кадр).
+    """
     from .razbor import снять_вручную  # noqa: PLC0415 — круговой импорт
 
     описание: list[str] = []
@@ -803,6 +806,8 @@ def применить(биты: np.ndarray, шаги: Sequence[dict[str, Any]],
             биты, запись = снять_вручную(биты, шаг["слой"])
             описание.append(запись.что + (": " + "; ".join(запись.подробно[:3])
                                            if запись.подробно else ""))
+            if свойства is not None:
+                свойства.append(dict(запись.свойства or {}))
         if not len(биты):
             raise ValueError(f"после шага {номер} поток пуст")
     return биты, описание
