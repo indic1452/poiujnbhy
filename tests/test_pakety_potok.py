@@ -1081,6 +1081,24 @@ class ЗахватыПотокомTests(unittest.TestCase):
         self.assertEqual([self.кадры[0], self.кадры[5], self.кадры[139]], [з.данные for з in прочитать_захват(данные=ng).записи])
 
 
+class mock_среда:
+    """Временно дополнить os.environ."""
+
+    def __init__(self, добавить):
+        self.добавить = добавить
+
+    def __enter__(self):
+        self.было = {к: os.environ.get(к) for к in self.добавить}
+        os.environ.update(self.добавить)
+
+    def __exit__(self, *_):
+        for к, в in self.было.items():
+            if в is None:
+                os.environ.pop(к, None)
+            else:
+                os.environ[к] = в
+
+
 class ОчередьTests(unittest.TestCase):
     """Диспетчер: места по видам, честно между людьми, ждущие данных места не занимают."""
 
@@ -1206,6 +1224,86 @@ class ОчередьTests(unittest.TestCase):
         self.assertEqual("б1", запущено[2])
         for в in ворота.values():
             в.set()
+
+    def test_запуск_процессом_и_запасной_поток(self):
+        """Процесс: python -m reportgen.setevoy.fon <вид> <аргументы>, папка — последний аргумент, журнал — там же,
+        PYTHONPATH — с корнем пакета; не запустился — работа идёт потоком; кончилась — сообщает один раз."""
+        import io
+        import reportgen
+        from reportgen.setevoy import raboty
+        запуски, кончились = [], []
+
+        class Процесс:
+            def __init__(себя):
+                себя.stdin = io.BytesIO()
+                себя.код = None
+
+            def poll(себя):
+                return себя.код
+
+            def wait(себя, секунд=None):
+                return себя.код
+
+            def kill(себя):
+                себя.код = -9
+
+        def фабрика(команда, **к):
+            запуски.append((команда, к))
+            return Процесс()
+
+        with tempfile.TemporaryDirectory() as t:
+            захват, отбор = Path(t) / "з", Path(t) / "о"
+            захват.mkdir(); отбор.mkdir()
+            д = Диспетчер(отборов=1, процессы=True, фабрика=фабрика)
+            self.addCleanup(д.закрыть)
+            д.поставить(Работа("отбор", "о", 1, [str(захват), str(отбор)], кончилась=кончились.append))
+            self.assertTrue(дождаться(lambda: len(запуски) == 1))
+            команда, к = запуски[0]
+            self.assertEqual(["-m", "reportgen.setevoy.fon", "отбор", str(захват), str(отбор)], команда[1:])
+            self.assertEqual(str(отбор), к["cwd"])
+            self.assertEqual(0, к["creationflags"])
+            self.assertIs(subprocess.PIPE, к["stdin"])
+            self.assertEqual(str(отбор / "журнал.txt"), к["stderr"].name)
+            корень = str(Path(reportgen.__file__).resolve().parents[1])
+            self.assertEqual(корень, к["env"]["PYTHONPATH"].split(os.pathsep)[0])
+            with mock_среда({"PYTHONPATH": "/x"}):
+                д.поставить(Работа("отбор", "о2", 1, [str(захват), str(отбор)]))
+                д.остановить("о")
+                self.assertTrue(дождаться(lambda: len(запуски) == 2))
+            self.assertEqual(корень + os.pathsep + "/x", запуски[1][1]["env"]["PYTHONPATH"])
+            д._идут["о2"].процесс.код = 0
+            д.обойти()
+            self.assertEqual([], кончились, "остановленная работа — не «кончилась сама»")
+            # Кончилась сама — сообщает один раз.
+            д.поставить(Работа("отбор", "о3", 1, [str(захват), str(отбор)], кончилась=кончились.append))
+            self.assertTrue(дождаться(lambda: "о3" in д._идут and д._идут["о3"].процесс is not None))
+            д._идут["о3"].процесс.код = 0
+            д.обойти()
+            д.обойти()
+            self.assertEqual(["о3"], [р.ключ for р in кончились])
+
+            # Процесс не запускается — работа идёт потоком, причина — в журнале.
+            def не_запускается(команда, **к):
+                raise OSError("нет python")
+
+            выполнено = []
+            старое = raboty._исполнить
+            raboty._исполнить = lambda вид, аргументы, команды: выполнено.append((вид, аргументы))
+            self.addCleanup(setattr, raboty, "_исполнить", старое)
+            д2 = Диспетчер(разборов=1, процессы=True, фабрика=не_запускается)
+            self.addCleanup(д2.закрыть)
+            р = Работа("разбор", "р", 1, [str(захват)])
+            д2.поставить(р)
+            self.assertTrue(дождаться(lambda: выполнено == [("разбор", [str(захват)])]))
+            self.assertTrue(р.поток.daemon)
+            self.assertIn("работа идёт потоком", (захват / "журнал.txt").read_text(encoding="utf-8"))
+            # Работа «не процессом» при процессах — потоком, фабрика не зовётся.
+            д3 = Диспетчер(разборов=1, процессы=True, фабрика=не_запускается)
+            self.addCleanup(д3.закрыть)
+            (захват / "журнал.txt").unlink()
+            д3.поставить(Работа("разбор", "р3", 1, [str(захват)], процессом=False))
+            self.assertTrue(дождаться(lambda: len(выполнено) == 2))
+            self.assertFalse((захват / "журнал.txt").exists())
 
     def test_места_по_ядрам(self):
         from unittest import mock
