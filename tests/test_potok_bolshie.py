@@ -358,6 +358,29 @@ class ЧтениеБольшихTests(unittest.TestCase):
         self.assertEqual(целиком, по_кускам)
 
 
+class СтатистикаКускамиTests(unittest.TestCase):
+    def test_энтропия_и_частые_по_счёту(self):
+        self.assertEqual(8.0, statistika.энтропия_частот(np.ones(256, dtype=np.int64) * 7))
+        self.assertEqual(1.0, statistika.энтропия_частот(np.array([5, 5] + [0] * 254)))
+        self.assertEqual(0.0, statistika.энтропия_частот(np.zeros(256, dtype=np.int64)))
+        self.assertEqual(0.0, statistika.энтропия(np.zeros(0, dtype=np.uint8)))
+        self.assertEqual(0.0, statistika.энтропия(np.zeros(10, dtype=np.uint8)))
+        self.assertAlmostEqual(1.5, statistika.энтропия(np.array([0, 0, 1, 2], dtype=np.uint8)))
+        частоты = statistika.частоты_кусками([bytes([1, 1, 2]), b"", bytes([2, 255])])
+        self.assertEqual((256, 2, 2, 1, 5), (len(частоты), частоты[1], частоты[2], частоты[255], частоты.sum()))
+        данные = bytes([7] * 50 + [9] * 30 + list(range(100, 120)))
+        с_ = statistika.посчитать(данные)
+        self.assertEqual(100, с_.байт)
+        self.assertEqual([(7, 0.5), (9, 0.3)], с_.частые[:2])
+        self.assertEqual(6, len(с_.частые))
+        по_частотам = statistika.посчитать(данные[:10], частоты=np.bincount(np.frombuffer(данные, np.uint8), minlength=256))
+        self.assertEqual((100, с_.энтропия, [(7, 0.5), (9, 0.3)]), (по_частотам.байт, по_частотам.энтропия, по_частотам.частые[:2]))
+        # Битовая часть — по выборке: ровно выборка_бит // 8 байт.
+        выборка = statistika.посчитать(bytes([0xFF] * 8 + [0] * 8), выборка_бит=64)
+        self.assertEqual((1.0, 0, 64), (выборка.единиц, выборка.серия_нулей, выборка.серия_единиц))
+        self.assertEqual(0.5, statistika.посчитать(bytes([0xFF] * 8 + [0] * 8)).единиц)
+
+
 class АвтоанализБольшогоTests(unittest.TestCase):
     def test_по_источнику_то_же_что_по_байтам(self):
         """Большой путь (источник: начало в память, счёт байт кусками) находит ту же цепочку."""
