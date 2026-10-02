@@ -10235,7 +10235,7 @@
      "страница|строки": "стр. 52 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "8.5.2",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "47 проверочных столбцов пересчитаны по g(x), все 16 строк 64 бит = op25 p25craft.bch_64_16_23_encode; g = G_BCH проекта; 64-й бит задан матрицей (не общая чётность: строка 1 имеет вес 27)",
@@ -10262,14 +10262,14 @@
      "страница|строки": "стр. 29 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "Table 5-3",
-     "положен": true
+     "положен": false
     },
     {
      "файл": "istochniki/katalog/mobilnaya/p25/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "страница|строки": "стр. 28 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "5.7",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "строки пересчитаны, ENCODING_TABLE_23127 MMDVMHost совпал",
@@ -10295,7 +10295,7 @@
      "страница|строки": "стр. 29 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "Table 5-4",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "= MMDVMHost ['1063']/['15113_1']",
@@ -10321,14 +10321,14 @@
      "страница|строки": "стр. 30 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "5.9",
-     "положен": true
+     "положен": false
     },
     {
      "файл": "istochniki/katalog/mobilnaya/p25/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "страница|строки": "стр. 32 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "PHDR",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "g и матрицы пересчитаны; = MMDVMHost RS634717 ENCODE_MATRIX_*",
@@ -10353,7 +10353,7 @@
      "страница|строки": "стр. 28 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "5.6",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "пример и CCS_PARITY совпали",
@@ -10379,14 +10379,14 @@
      "страница|строки": "стр. 45 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "Table 7-2",
-     "положен": true
+     "положен": false
     },
     {
      "файл": "istochniki/katalog/mobilnaya/p25/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "страница|строки": "стр. 46 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "Table 7-4",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "= MMDVMHost P25Trellis",
@@ -10411,14 +10411,14 @@
      "страница|строки": "стр. 24 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "5.3",
-     "положен": true
+     "положен": false
     },
     {
      "файл": "istochniki/katalog/mobilnaya/p25/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "страница|строки": "стр. 25 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "Table 5-1",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "формула совпала с MMDVMHost P25Audio.cpp и op25 p25p2_vf.cc",
@@ -10444,21 +10444,21 @@
      "страница|строки": "стр. 34 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "6.x",
-     "положен": true
+     "положен": false
     },
     {
      "файл": "istochniki/katalog/mobilnaya/p25/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "страница|строки": "стр. 35 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "CRC-32",
-     "положен": true
+     "положен": false
     },
     {
      "файл": "istochniki/katalog/mobilnaya/p25/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "страница|строки": "стр. 37 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
      "что": "CRC-9",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "многочлены из текста",
@@ -10485,14 +10485,14 @@
      "страница|строки": "стр. 149 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102.BBAC_TDMA_MAC_Layer_Description.pdf",
      "что": "Annex A g(x)",
-     "положен": true
+     "положен": false
     },
     {
      "файл": "istochniki/katalog/mobilnaya/p25/TIA-102.BBAC_TDMA_MAC_Layer.pdf",
      "страница|строки": "стр. 12 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102.BBAC_TDMA_MAC_Layer_Description.pdf",
      "что": "Table 5-5",
-     "положен": true
+     "положен": false
     },
     {
      "файл": "istochniki/katalog/mobilnaya/kod/op25/op25/gr-op25_repeater/lib/p25p2_tdma.h",
@@ -10525,7 +10525,7 @@
      "страница|строки": "стр. 12 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102.BBAC_TDMA_MAC_Layer_Description.pdf",
      "что": "Table 5-4, C0",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "все 128 кодовых слов (G, C0) = isch_map op25 p25p2_isch.cc; d_min = 16 полным перебором",
@@ -10555,7 +10555,7 @@
      "страница|строки": "стр. 46 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102.BBAC_TDMA_MAC_Layer_Description.pdf",
      "что": "Table 5-2",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "кодер по G = _duid_lookup op25 для всех 16 слов; d_min = 4",
@@ -10582,7 +10582,7 @@
      "страница|строки": "стр. 65 (номер страницы PDF)",
      "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102.BBAC_TDMA_MAC_Layer_Description.pdf",
      "что": "7.2 (4)",
-     "положен": true
+     "положен": false
     }
    ],
    "проверка": "разбиение регистра op25 apps/tdma/lfsr.py по степеням 40/35/29/24/10 совпадает с многочленом",
