@@ -1,0 +1,2198 @@
+
+=====PAGE 1=====
+ 
+Rec.  ITU-R  BS.1547 
+1 
+RECOMMENDATION  ITU-R  BS.1547 
+Terrestrial component of systems for hybrid satellite-terrestrial digital  
+sound broadcasting to vehicular, portable and fixed receivers  
+in the frequency range 1 400-2 700 MHz 
+(Question ITU-R 107/10) 
+(2001) 
+The ITU Radiocommunication Assembly, 
+considering 
+a) 
+that there is an increasing interest worldwide for terrestrial and satellite digital sound 
+broadcasting (DSB) to vehicular, portable and fixed receivers in the frequency range 30-3 000 MHz 
+for local, regional and national coverage; 
+b) 
+that the ITU-R has already adopted Recommendations ITU-R BS.774 and ITU-R BO.789 
+to indicate the necessary requirements for DSB systems to vehicular, portable and fixed receivers 
+for terrestrial and satellite delivery, respectively; 
+c) 
+that by operating the broadcasting-satellite service (BSS) (sound) in an hybrid configuration 
+the service objectives listed in b) above can be more adequately met; 
+d) 
+that Recommendations ITU-R BS.774 and ITU-R BO.789 recognize the benefits of 
+complementary use of terrestrial and satellite systems, and call for a DSB system allowing a 
+common receiver with common processing very large scale integration (VLSI) circuits and 
+manufacturing of low-cost receivers through mass production; 
+e) 
+that Digital System DH described in Annex 2 meets most or all of the requirements of 
+Recommendations ITU-R BS.774 and ITU-R BO.789, and that the system has been field tested and 
+demonstrated in more than one country; 
+f) 
+that Digital System E described in Annex 3, meets most or all of the requirements of 
+Recommendations ITU-R BS.774 and ITU-R BO.789, and that it has been field tested; 
+g) 
+that some systems included in Recommendation ITU-R BO.1130 have a terrestrial 
+component which allows augmentation of the BSS (sound) part, hence creating a hybrid 
+satellite/terrestrial system; 
+h) 
+that at the 7th World Conference of Broadcasting Unions (Mexico, 27-30 April 1992), the 
+World Broadcasting Unions unanimously resolved (literal quote): 
+ 
+“1. that efforts should be made to agree on a unique worldwide standard for DAB and 
+ 
+ 2. to urge administrations to give consideration to the benefits for the consumer of 
+common source and channel coding and implementation of Digital Sound 
+Broadcasting on a worldwide basis at 1.5 GHz”; 
+
+=====PAGE 2=====
+2 
+Rec.  ITU-R  BS.1547 
+j) 
+that the World Administrative Radio Conference (Malaga-Torremolinos, 1992) 
+(WARC-92) allocated the band 1 452-1 492 MHz to the BSS (sound) and complementary terrestrial 
+broadcasting service for the provision of DSB. Also, additional footnote allocations were included 
+for specific countries in the band 2 310-2 360 MHz and in the band 2 535-2 655 MHz in Radio 
+Regulations (RR) Nos. 5.393 and 5.418, 
+noting 
+a) 
+that a summary of the digital systems that allow hybrid operation is presented in Annex 1; 
+b) 
+that condensed system descriptions for Digital System DH and E are given in Annexes 2 
+and 3; 
+c) 
+that complete systems descriptions of Digital System DH and E are contained in the DSB 
+Handbook, 
+recommends 
+1 
+that administrations that wish to implement hybrid satellite/terrestrial DSB services meeting 
+most or all of the requirements as stated in Recommendation ITU-R BS.774 should consider either 
+of the two Digital Systems, DH or E, using Table 1 to evaluate their respective merits. (see Note 1). 
+This should be done in conjunction with the consideration of Recommendation ITU-R BO.1130 for 
+the satellite portion in view of the selection of an overall hybrid BSS (sound) system.  
+NOTE 1 – Technology in this area is developing rapidly. Accordingly, if additional systems 
+meeting the requirements given in Recommendation ITU-R BS.774 are developed, they may also 
+be recommended for use when brought to the attention of the ITU-R. Administrations engaged in 
+the development of DSB systems should make efforts to bring about, as much as possible, 
+harmonization with other systems already developed or currently under development. 
+ 
+TABLE  1 
+Performance of Digital Systems DH and E evaluated on the basis of the recommended 
+technical and operating characteristics listed in Recommendation ITU-R BS.774 
+ 
+ 
+Characteristics from 
+Recommendation ITU-R BS.774
+(condensed wording) 
+Digital System DH  
+Digital System E  
+1. Range of audio quality and 
+types of reception 
+Range is from 16 kbit/s to 
+128 kbit/s per audio channel in 
+increments of 16 kbit/s. Each 
+16 kbit/s increment can be split 
+into two 8 kbit/s services. 
+MPEG-2 and MPEG-2.5 
+Layer III audio coding are used. 
+The system is intended for 
+vehicular, portable and fixed 
+reception 
+Range is from 16 kbit/s to 
+320 kbit/s per audio channel in 
+any increment size. MPEG-2 AAC 
+audio coding is used. 
+The system is intended for 
+vehicular, portable and fixed 
+reception 
+
+=====PAGE 3=====
+ 
+Rec.  ITU-R  BS.1547 
+3 
+TABLE  1  (continued ) 
+ 
+ 
+ 
+ 
+Characteristics from 
+Recommendation ITU-R BS.774 
+(condensed wording) 
+Digital System DH 
+Digital System E 
+2. Spectrum efficiency better 
+than FM 
+FM stereo quality achievable in 
+less than 200 kHz bandwidth; 
+co-channel and adjacent channel 
+protection requirements much 
+less than that for FM. (QPSK 
+modulation with concatenated 
+block and convolution error 
+correcting coding) 
+FM stereo quality achievable in 
+less than 200 kHz bandwidth; 
+co-channel and adjacent channel 
+protection requirements much less 
+than that for FM. (CDM based on 
+QPSK modulation with 
+concatenated block and 
+convolutional error correcting 
+coding) 
+3. Performance in multipath and 
+shadowing environments 
+The system is a hybrid 
+satellite/terrestrial system 
+designed for diversity reception 
+of a TDM signal via satellite 
+complemented by a terrestrially 
+retransmitted MCM signal. MCM 
+is especially designed for 
+multipath operation. It works by 
+power summing the echoes 
+falling within a given time 
+interval 
+System is especially designed for 
+multipath environment. It works 
+on the basis of receiving power 
+summation of multipath using a 
+RAKE receiver. 
+This feature allows the use of on-
+channel repeaters to cover 
+shadowed areas. Also, more than 
+1 s blackout will be recovered 
+using segmented convolutional bit 
+wise interleaver 
+4. Common receiver signal 
+processing for satellite and 
+terrestrial broadcasting 
+Receivers are being developed for 
+TDM-MCM reception in urban 
+environments, including mobile 
+applications. A TDM-MCM 
+signal is radiated from terrestrial 
+transmitters that repeat the 
+satellite TDM. 
+Circular polarization is used for 
+satellite reception, vertical for 
+terrestrial. 
+External antennas are used for 
+mobile 
+This system is based on the 
+simultaneous reception from both 
+satellite and complementary on-
+channel repeaters. Allows the use 
+of the same receiver, from the RF 
+front end to the audio and data 
+output 
+Adoption of MPEG-2 systems 
+achieves maximum 
+interoperability among the same 
+kind of digital broadcasting 
+receivers, e.g. ISDB-S, ISDB-T, 
+and DVB-T, DVB-S through 
+using future interconnection 
+mechanism, i.e. IEEE1394 
+
+=====PAGE 4=====
+4 
+Rec.  ITU-R  BS.1547 
+TABLE  1  (continued ) 
+ 
+ 
+Characteristics from 
+Recommendation ITU-R BS.774 
+(condensed wording) 
+Digital System DH 
+Digital System E 
+5. Reconfiguration and quality 
+vs. number of programme 
+trade-offs 
+A flexible 16 kbit/s building 
+block multiplex is employed. Up 
+to 8 blocks can be assigned to 
+each broadcast channel in order to 
+trade off programme audio 
+quality against number of 
+services. Assignment to services 
+is dynamically adjustable. 
+FM-quality audio achieved at 
+64 kbit/s. All blocks are error 
+protected. Data service transports 
+streamed data and data packets 
+Multiplexing of payload data is 
+based on MPEG-2 systems. Audio 
+data rate can be selected in any 
+step in order to trade off 
+programme audio quality against 
+the number of services. 
+Higher-data rate service is 
+possible using more than one 
+CDM channel per programme 
+audio stream 
+6. Extent of coverage vs. 
+number of programme 
+trade-offs 
+The system is optimized for 
+diversity reception from 
+satellite(s) and terrestrial 
+repeaters. The trade off between 
+extent of coverage and system 
+throughput is fixed 
+Data rate of single CDM channel 
+can be selected from 236 kbit/s to 
+413 kbit/s through using 
+punctured convolutional coding. 
+(Code rate can be selected from 
+1/2, 2/3, 3/4, 5/6 or 7/8) 
+7. Common receiver for 
+different means of 
+programme delivery: 
+ 
+– 
+Mixed/hybrid 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+– 
+Terrestrial 
+augmentations  
+ 
+ 
+ 
+ 
+ 
+ 
+– 
+Cable distribution 
+ 
+ 
+ 
+– Allows hybrid use of satellite 
+and complementary terrestrial 
+transmissions in the bands 
+allocated for BSS (sound) by 
+WARC-92. A common 
+receiver will receive the 
+satellite TDM and the 
+terrestrial MCM emissions 
+that reinforce the satellite 
+emissions. 
+– Allows local, subnational and 
+national services with TDM-
+MCM modulation in terrestrial 
+SFNs and TDM-QPSK in 
+satellite line-of-sight via a 
+common receiver.  
+ 
+– Signal can be carried 
+transparently by cable 
+ 
+ 
+ 
+– Allows the use of the same 
+band as terrestrial sound 
+broadcasting (mixed) as well as 
+the use of terrestrial on-channel 
+repeaters to reinforce the 
+satellite coverage (hybrid) 
+resulting in all these channels 
+being received transparently by 
+a common receiver. 
+ 
+– Allows local, subnational and 
+national terrestrial services 
+with the same modulation with 
+a single transmitter or multiple 
+transmitters operating in a SFN 
+to take advantage of a common 
+receiver. 
+– Signal can be carried 
+transparently by cable 
+
+=====PAGE 5=====
+ 
+Rec.  ITU-R  BS.1547 
+5 
+TABLE  1  (end) 
+ 
+ 
+Characteristics from 
+Recommendation ITU-R BS.774 
+(condensed wording) 
+Digital System DH 
+Digital System E 
+8. 
+PAD capability 
+PAD comprising text (dynamic 
+labels) and graphics with 
+conditional access control can be 
+delivered  
+PAD multiplexing is based on 
+MPEG-2 systems. Data services 
+are available using any CDM 
+channel and a part of CDM 
+channel 
+9. 
+Flexible assignment of 
+services 
+The multiplex can be dynamically 
+re-configured in a fashion 
+transparent to the user 
+The multiplex can be dynamically 
+re-configured in a fashion 
+transparent to the user 
+10. Compatibility of multiplex 
+structure with OSI 
+Multiplex structure is compatible 
+with the OSI layered model 
+The system multiplex structure is 
+fully compliant with MPEG-2 
+systems architecture 
+11. Value-added data capability 
+Capacity in increments of 8 kbit/s 
+up to the full 1.536 Mbit/s 
+capacity of the TDM can be 
+assigned to independent data for 
+the delivery of business data, 
+paging, still pictures graphics etc. 
+under conditional access control 
+if desired. A data connector is 
+provided on the receivers for 
+interfacing to information 
+networks 
+Capacity at any rate up to the full 
+payload capacity (depends on the 
+number of CDM channels 
+multiplexed) can be assigned to 
+independent data for the delivery 
+of business data, paging, still 
+pictures graphics etc. under 
+conditional access control if 
+desired 
+12. Receiver low-cost  
+manufacturing 
+The satellite and MCM-TDM 
+signal reception and digital 
+processing will be embedded in 
+microchips suitable for mass 
+production 
+The system was specifically 
+optimized to enable an initial low 
+complexity vehicular receiver 
+deployment. Standardization 
+group has been established to 
+achieve low cost receivers based 
+on large scale integration mass 
+production techniques 
+AAC: 
+advanced audio coding 
+CDM:  
+code division multiplex 
+DVB: 
+digital video broadcasting 
+FM: 
+frequency modulation 
+IEEE: 
+Institute of Electrical and Electronics Engineers 
+ISDB: 
+integrated services digital broadcasting 
+MCM 
+multi-carrier modulation 
+MPEG: 
+Moving Pictures Experts Group 
+OSI: 
+open system interconnection 
+PAD: 
+programme associated data 
+QPSK: 
+quadrature phase shift keying 
+RF: 
+radio frequency 
+SFN: 
+single frequency network 
+TDM: 
+time division multiplex 
+
+=====PAGE 6=====
+6 
+Rec.  ITU-R  BS.1547 
+ANNEX  1 
+Summaries of digital systems 
+1 
+Summary of Digital System DH 
+Digital System DH, also known as the hybrid satellite/terrestrial WorldSpace system, is designed to 
+provide satellite digital audio and data broadcasting for vehicular, fixed and portable reception by 
+inexpensive common receivers. The satellite delivery component of Digital System DH is based on 
+the same TDM broadcast channel transport used in Digital System DS but with several significant 
+enhancements designed to improve line-of-sight reception in areas partially shadowed by trees. 
+These enhancements include fast QPSK phase ambiguity recovery, early/late time diversity and 
+maximum likelihood combination of early/late time diversity signals. 
+It extends the system structure of Digital System DS by adding the terrestrial delivery system 
+component based on MCM. MCM is a multipath-resistant orthogonal frequency division multiplex 
+(OFDM) technique that has gained wide acceptance for pervasive mobile reception from terrestrial 
+emitters. The MCM extension improves upon the techniques which are common in systems such as 
+Eureka 147, which is one standard utilized for terrestrial microwave digital audio broadcast 
+services. MCM utilizes multiple frequencies to avoid frequency selective fades to avoid deleterious 
+effects of delay spread. 
+2 
+Summary of Digital System E 
+Digital System E, also known as the Association of Radio Industries and Businesses (ARIB) 
+system, is designed to provide satellite and complementary terrestrial on-channel repeater (hybrid) 
+services for high quality audio and multimedia data for vehicular, portable and fixed reception. It 
+has been designed to optimize performance for both satellite and terrestrial on-channel repeater 
+service delivery in the 2 630-2 655 MHz band. This is achieved through the use of CDM based on 
+QPSK modulation with concatenated block and convolutional error correcting coding. The Digital 
+System E receiver uses state-of-the-art microwave and digital large-scale integrated circuit 
+technology with the primary objective of achieving low-cost production and high-quality 
+performance. 
+ 
+ 
+ANNEX  2 
+Digital System DH 
+1 
+Introduction 
+Digital System DH, also known as the hybrid satellite/terrestrial WorldSpace system, is designed to 
+provide satellite digital audio and data broadcasting for vehicular, fixed and portable reception by 
+inexpensive common receivers. It extends the system structure of Digital System DS, described in 
+Recommendation ITU-R BO.1130. Digital System DS was designed to optimize performance 
+
+=====PAGE 7=====
+ 
+Rec.  ITU-R  BS.1547 
+7 
+for satellite delivery using coherent QPSK modulation with block and convolutional coding, and 
+non-linear amplification at travelling wave tube amplifier (TWTA) saturation. It is now operating 
+over Africa using the WorldSpace AfriStar satellite at 21° East and over Asia using the AsiaStar 
+satellite at 105° East. The system provides for a flexible TDM of digitized audio and data sources to 
+be modulated onto a downlink TDM carrier, and uses a hierarchical multiplex structure of three 
+layers (physical, service and transport) that conforms to the OSI Model as recommended in 
+Recommendation ITU-R BT.807. 
+Since the launch of AfriStar in October 1998 Digital System DS system has been delivering a 
+satellite direct digital broadcast service over Africa. With the launch of AsiaStar in March 2000 the 
+same service has started over Asia. Both satellites are delivering direct digital broadcast signal 
+reception with very high margins of 4 to 13 dB within their outer beam coverage contour areas of 
+28 million km2. Digital audio signals are being uplinked to transparent and processing payloads 
+from diversely located uplink earth stations in the satellite global beams and broadcast via AfriStar 
+over three 5.7° to 6° width beams covering Africa and the Middle East, and three more beams via 
+AsiaStar from Indonesia and India to Korea and China. Four differently manufactured 1.5 GHz 
+receivers receive these signals. 
+Digital System DH extends the reception performance of Digital System DS to deliver robust mobile 
+reception performance to urban regions that suffer severe blockage by buildings and trees. A Digital 
+System DH architecture has now been specified. It provides terrestrial augmentation for DSB 
+services in a mixed satellite/terrestrial configuration to mobile receivers as well as static and 
+portable receivers. The development work has reached the stage where system validation testing has 
+taken place using the AfriStar Satellite and a three-transmitter SFN in Erlangen, Germany. Further 
+tests are planned in Pretoria, Republic of South Africa. 
+The satellite delivery component of Digital System DH is based on the same TDM broadcast 
+channel transport used in Digital System DS but with several significant enhancements designed to 
+improve line-of-sight reception in areas partially shadowed by trees. These enhancements include 
+fast QPSK phase ambiguity recovery every 1.4375 ms, early/late time diversity and maximum 
+likelihood combination of early/late time diversity signals. 
+The terrestrial delivery system component is based on MCM. MCM is a multipath-resistant OFDM 
+technique that has gained wide acceptance for pervasive mobile reception from terrestrial emitters. 
+The MCM extension improves upon the techniques that are common in systems such as Digital 
+System A, which is one standard used for terrestrial digital audio broadcast services. MCM utilizes 
+multiple frequencies to avoid frequency selective fades thereby avoiding deleterious effects of delay 
+spread. The MCM modulation scheme is most suitable for reliable reception in urban mobile 
+environments, and leads to spectrum efficient solutions when SFNs are used. A new Digital 
+System DH receiver design extends and improves upon the Digital System DS design for satellite 
+signal reception. It adds an MCM terrestrial reception branch to receive terrestrial signal single 
+frequency network emissions. It uses two radio frequency tuner branches and demodulates the same 
+TDM stream from both the satellite and terrestrial signal components. For its MCM extension, new 
+terrestrial transport and physical layer specifications are added to the current service, transport and 
+
+=====PAGE 8=====
+8 
+Rec.  ITU-R  BS.1547 
+physical layers of Digital System DS. Because the terrestrial transport directly modulates the TDM 
+baseband symbols recovered by receivers at each terrestrial station of a terrestrial re-radiation 
+network onto MCM carriers, the terrestrial transport is referred to as TDM-MCM. 
+The following sections describe in more detail the satellite and terrestrial retransmission 
+components of Digital System DH. 
+With the inclusion of the terrestrial delivery component, Digital System DH can meet the service 
+requirements stipulated not just in Recommendation ITU-R BO.789, but also Recommendation 
+ITU-R BS.774 for satellite and complementary terrestrial delivery of digital sound broadcasting. 
+2 
+System overview 
+2.1 
+Layer structure of Digital System DH 
+Digital System DH uses the system layer structure illustrated in Fig. 1. It comprises service, 
+transport and physical layers for both the TDM satellite segment and the TDM-MCM terrestrial 
+repeater segment. 
+1547-01
+Service
+component
+layer
+Service
+layer
+Broadcast
+channel
+transport
+layer
+Multiplex
+transport
+layer
+Physical layer
+Satellite
+physical
+layer
+Terrestrial
+physical
+layer
+Broadcast segment
+Space segment
+Repeater segment
+Receiver segment
+QPSK
+modulator
+TDM format 
+encoder
+(broadcast channel
+transport layer
+to multiplex
+transport layer)
+TDM format
+encoder
+(service component
+layer to
+broadcast channel
+transport layer)
+Studio
+Feeder-link station
+Audio
+Image
+Data
+Geostationary
+satellite with
+transparent and
+processed payloads
+QPSK
+demodulator
+QPSK
+demodulator
+Audio
+Image
+Data
+TDM/MCM
+format
+decoder
+Transport
+layer
+adaptation
+MCM
+modulator
+MCM
+demodulator
+TDM/MCM
+selector
+FIGURE 1
+The WorldSpace Digital System DH signal layers with the MCM extension
+ 
+
+=====PAGE 9=====
+ 
+Rec.  ITU-R  BS.1547 
+9 
+2.2 
+Satellite broadcast segment 
+2.2.1 
+Service layer  
+The service layer comprises audio, image and data source coders. WorldSpace uses a variation of 
+International Organization for Standardization (ISO) MPEG 2 Layer III called MPEG 2.5 Layer III 
+for audio and ISO Joint Photographic Experts Group (JPEG) for image. The source data is 
+organized into 432 ms broadcast channel frames in prime rate increments of 16 kbit/s. Prime rate 
+increments are the building bricks of the baseband multiplex architecture. A broadcast channel 
+frame can support up to eight service components, each carrying a rate from 8 kbit/s to 128 kbit/s, 
+that can be individually accessed at the receiver. Each prime rate increment can support two 8 kbit/s 
+service components. The sum of service component rates in a broadcast channel must not exceed 
+128 kbit/s. A broadcast channel transports a mix of services such as music, talk in selectable 
+multiple languages, images associated with the latter and data in the form of packets or streaming. 
+Each broadcast channel frame carries a service control header (SCH) which at a receiver provides a 
+broadcast channel frame synchronization preamble and the information needed to identify the type 
+of information carried, the information rate, the identity of the various services carried, ancillary 
+information related to the various services, alpha-numeric text display, narrow casting of services, 
+selection of the accessed services and authorization to access restricted and subscription services to 
+individual users. 
+2.2.2 
+Transport layer 
+2.2.2.1 
+Time diversity only 
+For time diversity only using one satellite, the transport layer uses the architecture shown in Fig. 2. 
+It accepts the bits of the broadcast channels from the service layer and first organizes them into 
+symbols, each carrying two bits. Forward error correction (FEC), using the concatenation of a 
+Reed-Solomon (RS) block coder and a convolution coder, next codes the symbols. Puncturing of 
+the latter coder output creates two complementary companion error correction protected broadcast 
+channels. One of the punctured broadcast channels is designated as the early channel. It is 
+interleaved over a 432 ms frame to combat short term reception fades. Its companion punctured 
+broadcast channel, designated as the late channel, is delayed for approximately 4.32 s. This channel 
+is intended for reception by the current standard WorldSpace receivers as well as by the new mobile 
+radios. Also, it is not interleaved because doing so would render it incompatible for reception by a 
+conventional WorldSpace receiver. The 4.32 s delay between the early and late broadcast channels 
+provides long delay protection to combat blockages of satellite signal reception by bridges, short 
+tunnels and trees as a vehicle travels along highways at typical speeds. The two companion 
+punctured broadcast channels are then division multiplexed into the TDM stream along with other 
+mobile and non-mobile conventional broadcast channels. The system is intended to carry a mix of 
+conventional broadcast channels for reception by the ordinary WorldSpace satellite broadcast 
+receivers and complementary pairs of punctured broadcast channels, one early and one late, for 
+reception by mobile receivers. 
+
+=====PAGE 10=====
+10 
+Rec.  ITU-R  BS.1547 
+1547-02
+Transmitter
+FEC
+coder
+Puncture
+and split
+TDM mux
+Delay
+Puncture A
+= Early
+Puncture B
+= Late
+Receiver
+Delay
+FEC
+decoder
+TDM demux
+Early
+Early and late
+Early and late
+Late
+FIGURE 2
+Time diversity with a single satellite
+Broadcast
+channel
+Broadcast
+channel
+ 
+ 
+2.2.2.2 
+Time and space diversity 
+The satellite broadcast transport layer architecture for time and space diversity, illustrated in Fig. 3, 
+uses two satellites spaced apart from one another by 15° to 35° along the geostationary orbit. It is 
+best if the bisector between the satellites is centred over the intended earth coverage area. It uses the 
+same early and late broadcast channel architecture described above for the time only diversity case. 
+However, two TDM carriers are used, one transported by each satellite. Each may carry a mix of 
+early and late broadcast channels or one can be designated to carry only early and the other only 
+late. Also conventional broadcast channels not intended for mobile reception can be mixed with 
+those for mobile. This is possible because every broadcast channel has its own broadcast channel 
+identifier (BCID) that is used at the receiver to select specific broadcast channels from one or either 
+of two received TDM stream(s). 
+1547-03
+Transmitter
+FEC
+coder
+Puncture
+and split
+TDM mux
+Delay
+Puncture A
+= Early
+Puncture B
+= Late
+Broadcast
+channel
+Receiver
+Delay
+FEC
+decoder
+TDM demux
+Early
+Early
+Late
+Late
+FIGURE 3
+Space and time diversity with two satellites
+Late
+Early
+Broadcast
+channel
+ 
+
+=====PAGE 11=====
+ 
+Rec.  ITU-R  BS.1547 
+11 
+2.2.2.3 
+Broadcast channel frame and FEC 
+Figure 4 shows a broadcast channel frame containing three service fields. Each service field carries 
+a rate that is an integer multiple ni of the 16 kbit/s prime rate increment. Thus within each 432 ms 
+frame, a service field i carrying a rate ni × 16 kbit/s has assigned to it ni × 6 912 bits. The bit rate of 
+a service field has a range from 16 kbit/s to 128 kbit/s. Also the bit rate of a broadcast channel has a 
+range from 16 kbit/s to 128 kbit/s. A broadcast channel can carry a maximum of eight service 
+components that have rates ranging from 8 kbit/s to 128 kbit/s. Note that service components are in 
+multiples of 8 kbit/s. Hence, whenever a service component’s rate is an odd multiple of 8 kbit/s, a 
+dummy 8 kbit/s must be appended to produce an integer multiple of 16 kbit/s for the service fields 
+in a broadcast channel. The total number of service fields in a broadcast channel is n = Σi (ni). To 
+prepare for transport, each 6 912-bit service field prime rate increment of a broadcast channel is 
+assigned 224 bits in a SCH bringing the number of bits per broadcast channel frame to n × 7 136. 
+The broadcast channel frame is next FEC coded by a 223,255 RS block coder to yield an output of 
+n × 8 160 bits per frame. To prepare for mobile service, the output of the RS coder is next supplied 
+to a R 1/4 convolution coder whose output is split into two R 1/2 convolution coded broadcast 
+channels, one destined to be the early broadcast channel and the other the late broadcast channel. At 
+this point there are n × 16 320 bits assigned to the n service fields in each broadcast channel. The n 
+service fields are next demultiplexed into n prime rate channels (PRCs). Adding a 96-bit preamble 
+to each PRC brings the total to 16 416 bits per PRC. 
+ 
+1547-04
+SCH
+n × 224 bits
+Service field 1
+n1 × 6 912 bits
+Service field 2
+n2 × 6 912 bits
+Service field 3
+n3 × 6 912 bits
+Frame duration = 432 ms
+Service segment, n = ∑i (ni)
+Service control header
+(SCH)
+n × 6 912 bits
+FIGURE 4
+Broadcast channel frame
+ 
+ 
+2.2.2.4 
+Terrestrial transport 
+If an originating studio is remote from an uplink station, the PRCs of a broadcast channel are 
+transported to the station over terrestrial digital telephony links. This is typically done via 
+ITU-T Recommendation G.736 digital telephony multiplexes. If the originating studio is collocated 
+at or near the originating studio, the signals are simply transported over a local cable. The signal 
+transported is that generated at the output of the RS block coded level. At this point the broadcast 
+channels are said to be carried in a protected form. At the uplink stations the PRCs of the protected 
+broadcast channels arriving from a multiplicity of origins are synchronously aligned by means of a 
+plesiochronous buffer to prepare them for uplinking to the satellite. Next the PRCs of the protected 
+
+=====PAGE 12=====
+12 
+Rec.  ITU-R  BS.1547 
+broadcast channels are R 1/4 convolution coded and split by complementary puncturing into the 
+R 1/2 convolutionally encoded early and late broadcast channels. The latter PRCs of the broadcast 
+channels are next uplinked to the satellite communications payload. The system has two ways to 
+transport via the satellite communications payload. One is that via a processing payload and the 
+other that via a transparent payload. 
+2.2.2.5 
+Uplinking to the satellite 
+For the PRCs of broadcast channels destined to the processing payload, the uplink signals are 
+transported in a frequency division multiple access (FDMA) format. Each FDMA signal comprises 
+a 38 kbit/s QPSK modulated digital stream operating on carriers separated by 38 kHz in sets of 
+48 contiguous band carriers. Thus each 48-carrier set occupies 1 824 kHz of bandwidth. Six of these 
+sets are uplinked to the satellite at frequencies located between 7 025 and 7 075 MHz. Onboard the 
+satellite 96 PRCs of the FEC coded broadcast channels are demodulated to their symbol level, 
+synchronously aligned. The PRCs of each broadcast channel can be routed to one, two or three 
+TDM multiplexers. The routed symbols are time division multiplexed into 2 622 sets of 96 symbols 
+each in a 138 ms TDM frame period. At the start of each TDM frame there are attached a 
+96-symbol master frame preamble (MFP) and a 2 112 symbol time slot control word (TSCW) 
+making the entire frame 253 920 symbols long and yielding a symbol rate of 1 840 000 symbols/s. 
+Hence, each TDM carrier requires a bandwidth of 2.3 MHz. For improved robustness in transport 
+and reception, a pseudo random symbol sequence is modulo-two added to scramble symbols of the 
+TDM stream. Operationally, these TDM streams can support twenty-four 64 kbit/s broadcast 
+channels for FM stereo quality audio service using the MPEG 2.5 Layer III source coder. Three 
+processing payload TDM streams, QPSK modulated onto three carriers, are transmitted, one in each 
+of three beams on different frequencies between 1 467 and 1 492 MHz. In each of the three 
+downlink beams, the beam centre equivalent isotropically radiated power (e.i.r.p.) of each carrier is 
+53.5 dBW. The −3 dB beamwidth is approximately 6°. 
+For the transparent payload, at the uplink station the PRCs of the R 1/2 convolutionally encoded 
+broadcast channel signals are multiplexed onto a TDM carrier. An aggregate of 96 PRCs, converted 
+to 2-bit symbols, is time multiplexed into 2 622 groups. Each group contains one symbol of the 
+96 PRCs carried in a TDM frame period of 0.138 s. To this is added an MFP of 96 symbols and a 
+time slot control channel of 2 112 symbols to yield a total TDM frame of 253 920 symbols and a 
+rate of 1.84 Mbit/s. The bandwidth needed to accommodate this TDM stream using QPSK 
+modulation is typically 2.3 MHz. The 96 PRCs carried in the TDM stream carry the traffic of the 
+mix of broadcast channels for both mobile and non-mobile services. 
+For broadcast channels intended only for non-mobile (direct-line-of-sight) reception, a 
+R 1/2 convolutional coder is used after the RS coder. This R 1/2 convolution coder and the R 1/4 
+punctured to R 1/2 convolution coder used for the late mobile channel are compatible to the same 
+receive side Viterbi decoder. In all other regards broadcast channel processing and TDM 
+multiplexing for mobile and non-mobile receivers is the same. 
+
+=====PAGE 13=====
+ 
+Rec.  ITU-R  BS.1547 
+13 
+2.3 
+MCM implementation 
+The TDM to MCM conversion of the satellite TDM symbol stream to a TDM-MCM signal for 
+terrestrial re-radiation is illustrated in Fig. 5. For the time diversity only system, the resulting TDM-
+MCM signal is re-radiated by multiple terrestrial stations of a SFN. 
+ 
+1547-05
+1.5 GHz QPSK TDM carrier
+from satellite
+QPSK
+demodulator
+Symbol to sub-
+carrier mapping
+MCM modulator
+HPA
+Satellite TDM re-radiated
+on MCM carrier
+FIGURE 5
+TDM to MCM conversion and terrestrial re-radiation
+Transmit tower
+HPA: high power amplifier
+ 
+ 
+Using a 1.2 m diameter off-set-feed parabolic antenna connected to a WorldSpace receiver, the 
+satellite QPSK TDM carrier is demodulated to its baseband TDM symbol signal form. It is next 
+converted to a TDM-MCM form using the processing steps shown in Fig. 6. The TDM symbols are 
+mapped to MCM sub-carrier symbols by constructing a multicarrier signal in the frequency domain. 
+To do this the TDM symbols are first ordered into a row-column format, each column 
+corresponding to an MCM symbol. The TDM symbol row elements of the column correspond to the 
+individual MCM sub-carriers of an MCM symbol. To create the time domain signal for each MCM 
+symbol, an inverse fast Fourier transform (IFFT) operates on the row elements of each column to 
+generate a multiplicity of differential QPSK (DQPSK) signals, one for each TDM symbol. To 
+mitigate intersymbol interference (ISI), a guard interval is inserted between MCM symbols by time 
+domain compressing and repeating parts of the output sequence of the IFFT. 
+A time domain view of an MCM frame comprises a sequence of MCM symbols as shown in Fig. 7. 
+Each MCM frame starts with an amplitude modulated synchronization sequence (AMSS) that is 
+used at the receiver to recover MCM frame timing synchronization and carrier frequency and phase 
+recovery. Each MCM frame comprises 23 MCM symbols. Each MCM symbol carries 552 DQPSK 
+modulated carriers, one for each 2-bit TDM symbol plus one more carrier that is the phase reference 
+for the DQPSK modulation. Each MCM symbol ends with a guard interval in which a time segment 
+of length equal to the guard time but sampled at the start of the MCM symbol is repeated. The 
+MCM frames are themselves formatted into a frame of 138 ms duration that is equal to the length of 
+a TDM frame. At the receiver, this AMSS accommodates synchronization of the TDM frames 
+recovered from the satellite and terrestrial paths. 
+
+=====PAGE 14=====
+14 
+Rec.  ITU-R  BS.1547 
+Temp 6/46-06
+1547-06
+0
+t
+f
+I
+1
+1
+0
+f
+Q
+t
+I
+t
+Q
+Data
+(bit stream)
+source
+Guard
+interval
+insertion
+Transmitter
+HPA
+MCM transmitter
+D
+A
+C
+Mapping
+bit → carrier
+IFFT
+Preamble
+insertion
+Cyclic prefix
+Data
+(bit stream)
+sink
+Extract
+framing
+information
+Receiver
+front-end
+MCM receiver
+A
+D
+C
+Mapping
+carrier → bits
+FFT
+Symbol framing/carrier frequency
+synchronization unit
+Terrestrial
+channel
+Add
+framing
+information
+Guard
+interval
+removal
+FIGURE 6
+TDM to MCM conversion
+Extraction
+ADC: analogue-to-digital converter
+DAC: digital-to-analogue converter
+FFT: fast Fourier transform 
+ 
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+1547-07
+22 218 samples = 6.9 ms
+An MCM frame contains 23 MCM symbols
+There are 20 MCM frames per 138 ms TDM frame
+AMSS = 207 samples
+MCM symbol = 957 samples
+MCM guard interval = 189 samples
+FIGURE 7
+Time domain view of MCM frame
+ 
+ 
+2.4 
+MCM waveform parameters 
+The MCM parameters being used for the mobile operations in the band 1 467-1 492 MHz are given 
+in Table 2. 
+
+=====PAGE 15=====
+ 
+Rec.  ITU-R  BS.1547 
+15 
+TABLE  2 
+MCM parameters 
+ 
+ 
+Further details of the MCM signal construction are illustrated in Fig. 8. 
+DQPSK-mapping
+Guard interval
+insertion
+MCM frame multiplexer
+1547-08
+189
+552 symbols
+552 + 1 active carriers
+IFFT
+768 samples
+768 samples
+207 samples
+22 218 samples
+TDM symbols for one MCM symbol
+DQPSK-mapping
+Guard interval
+insertion
+MCM frame multiplexer
+Guardband needed for filtering
+MCM symbol (in frequency domain)
+MCM symbol (in time domain)
+Guard interval for ISI counteraction
+(guard interval is cyclic prefix)
+MCM symbol and
+guard interval
+Synchronization sequence
+6.9 ms (fsamp = 3.22 × 106 samples/s)
+Final MCM signal
+bandwidth = 2.319 MHz
+FIGURE 8
+TDM-MCM processing steps summary
+One every 23 symbols
+23 symbols per frame
+ 
+Parameter 
+Value 
+FFT length 
+768 
+DQPSK active carriers  
+552 
+DQPSK reference carrier  
+1 per MCM symbol 
+TDM symbol → MCM symbol mapping 
+552 two-bit TDM symbols per MCM symbol using 
+DQPSK 
+MCM symbols per MCM frame 
+23 
+MCM symbol frame length 
+6.9 ms 
+Symbol duration 
+297.21 µs 
+Guard interval 
+58.70 µs included symbol duration 
+AMSS synchronization preamble 
+(at start of each MCM frame) 
+64.29 µs 
+Framing 
+20 MCM symbols (138 ms) 
+Sampling frequency  
+3.22 MHz 
+Bandwidth  
+2.32 MHz 
+
+=====PAGE 16=====
+16 
+Rec.  ITU-R  BS.1547 
+The theoretical spectrum of the MCM signal is shown in Fig. 9. Note the very rapid out-of-band 
+fall-off that is typical of the MCM modulation process and aids in reduction of adjacent channel 
+interference. 
+ 
+1547-09
+–2
+–1
+0
+1
+2
+5
+0
+–5
+–10
+–15
+–20
+–25
+–30
+–35
+–40
+–45
+–2.5
+–1.5
+–0.5
+0.5
+1.5
+2.5
+Frequency (MHz)
+Normalized level (dB)
+FIGURE 9
+Theoretical MCM spectrum
+ 
+ 
+2.5 
+Time diversity delay between early and late broadcast channels 
+For time only diversity early and late boadcast channels may be transmitted as two different 
+broadcast channels on one TDM carrier from one satellite and for time and space diversity from two 
+separated satellites having, on two TDM carriers, one from each satellite. 
+Regarding the magnitude of the delay time needed for effective time diversity reception, experiment 
+data from studies conducted by the German Aerospace Research and Test Establishment (DFVLR 
+now referred to as DLR) in 1985 in Europe in connection with the Prosat/Prodat system and reported 
+in the Proceedings of the Seventh International Conference on Digital Satellite Communications 
+(ICDSC-7), Munich, Germany, 12-16 May 1986, p. 537-541 provide guidance. These experiments 
+were performed via the MARECS-A satellite in geostationary orbit positioned at 15° West longitude. 
+The data was collected for a vehicle travelling on rural highways at a speed of 60 km/h. Results of 
+specific interest here are plotted in Fig. 3b of the reference cited. A subset of the data taken from the 
+latter Figure is re-plotted here in Fig. 10. 
+Two curves are shown for mobile reception by a vehicle travelling on a highway at a speed of 
+60 km/h. One is without and the other with time diversity. They show the relationship between fade 
+duration exceeded for 1% of the time in seconds on the vertical axis and receive threshold relative 
+to mean received power in dB on the horizontal axis. The curve without diversity shows that for a 
+receive threshold of −10 dB the fade duration exceeds 4 s less than 1% of the time. With diversity 
+the receive threshold is reduced to −2.7 dB. Conversely, fades having a duration of 4 s or less occur 
+99% of the time for a receive threshold of −10 dB without time diversity and −2.7 dB with time 
+diversity. The system described in this text will have a delay time of 4.28 s. 
+
+=====PAGE 17=====
+ 
+Rec.  ITU-R  BS.1547 
+17 
+1547-10
+–10
+–100
+100
+10
+1
+–1
+4
+Tf  (s) 
+Receive threshold relative to mean received power (dB)
+FIGURE 10
+Fade duration ≥ Tf vs. ratio of receive threshold to mean received power (dB) for a time
+share of fade of 1% for highway mobile reception with and without time diversity
+No diversity
+With diversity
+0.1
+–2.7
+ 
+ 
+ 
+2.6 
+Receiving scenarios of hybrid satellite/terrestrial signals 
+The overall scenario of the mix of satellite line-of-sight combined with terrestrial reinforcement for 
+mobile reception is illustrated in Fig. 11. The scenario is composed of three regions which are 
+discussed in the following. 
+2.6.1 
+Outer region – Dominantly satellite reception region 
+The outermost region, shown as the outer annulus around a large city in Fig. 11, comprises mostly 
+wide-open rural areas across which highways interconnect major cities and rural roads interconnect 
+small towns. Along most of the highways and roads, line-of-sight satellite reception will be possible 
+for a large fraction of the time a vehicle moves along. However, inadvertently, a vehicle will 
+encounter small regions where buildings and trees will interfere with direct line-of-sight satellite 
+reception even if time and space diversity are available. Thus, in many such rural regions, terrestrial 
+reinforcement stations re-radiating the TDM-MCM signal will be installed, particularly where the 
+volume of service justifies doing so. These are likely to be 10 dBW to 20 dBW e.i.r.p. transmitters 
+used principally for regions where the service availability using the satellite signals only would not 
+be sufficient. 
+
+=====PAGE 18=====
+18 
+Rec.  ITU-R  BS.1547 
+1547-11
+Urban
+centre
+Sub-urban
+Rural
+area
+MCM only
+2-arm receiver: MCM and 1 satellite
+3-arm receiver: MCM and 2 satellites
+(time/space/signal diversity gain)
+2 satellites
+(time/space diversity gain)
+FIGURE 11
+Reception scenarios
+ 
+ 
+2.6.2 
+Intermediate region – Mix of satellite and terrestrial signals region 
+This is a transitional zone between intense urban and suburban/rural areas. It is composed of islands 
+of tall housing and business clusters interspersed with a low rise suburban housing and rural 
+settings. Thus, the satellite only signal is likely to be insufficient for full coverage. More intense use 
+of terrestrial re-radiation is needed than in the rural region. As required by the topology, terrestrial 
+repeaters radiating the TDM-MCM signal at power levels of 10 dBW to 20 dBW will be installed to 
+provide the required service availability. 
+2.6.3 
+Inner region – Dominant use of the terrestrial signal 
+For urban centres only, terrestrial repeaters provide the coverage. Single frequency networks of 
+multiple repeaters radiating the TDM-MCM signal at 30 dBW and higher are used to cover a 
+complete urban centre if the coverage radius of one transmitter is not sufficient. 
+2.6.4 
+Vehicle transiting through the regions 
+As a vehicle transits toward the urban centre through the various regions of the scenario of Fig. 11, 
+it will encounter various signal strengths and mixes of terrestrial re-radiated and satellite signals. 
+In open rural areas of the outer annulus, a vehicle will be a long distance, even over the radio 
+horizon, from the nearest urban TDM-MCM re-radiators; hence, the satellite signal will dominate. 
+In this case, a satellite receiver arm(s) will demodulate the TDM carrier(s), recover the early and 
+late “tuned” broadcast channels and combine them by means of maximum likelihood FEC decoding 
+to recover the broadcast channel bits. 
+
+=====PAGE 19=====
+ 
+Rec.  ITU-R  BS.1547 
+19 
+As the vehicle transits into the intermediate region, it will begin to encounter increasing levels 
+of TDM-MCM signal. The receiver, using its FEC decoders, examines and compares the 
+terrestrial and satellite signal quality in terms of estimated bit error ratios (BERter and BERsat). 
+Receiver reception stays with the satellite signal as long as it continues to deliver a 
+BERsat = ∆ × BERter, ∆ ≥ 1. When the latter condition becomes “not true” receiver reception 
+switches to the terrestrial signal. Only when the satellite signal BER decreases such that 
+BERter = ∆ × BERsat will reception switch again to the satellite signal. If BERter and BERsat are 
+both too low for satisfactory reception, reception ceases. Values of ∆ may be as great as 10. 
+A vehicle transiting in the intermediate region and also in the outer region will encounter towns, 
+mountains and forests where line-of-sight to the satellite(s) is blocked. TDM-MCM terrestrial 
+re-radiation repeaters are likely to be installed to achieve seamless coverage for travellers and local 
+residents. Thus a receiver will cycle between terrestrial reception and satellite reception as the 
+receiver performs the quality processing and switching in terms of BER. It is important that such 
+switching occur with a minimum of interrupt to the continuity of service. For audio services, 
+inaudible interrupts may be tolerated however, for data, such interrupts may cause the loss of 
+service continuity. Measures to avoid such interrupts will be implemented. 
+When a transiting vehicle enters the centre region, reception is essentially 100% via the terrestrial 
+signal. This is by design that involves the deliberate deployment of terrestrial re-radiators to 
+accomplish pervasive coverage. Furthermore, once the receiver locks on to the terrestrial signal, the 
+design of the signal quality comparator, as described above, is such as to inhibit return to satellite 
+reception until the latter is dominantly the better. The value of ∆ governs this aspect of the 
+switching action. 
+2.7 
+Receiver architecture 
+Two receiver architectures are described in the following, one for time only diversity and the other 
+for time and space diversity. 
+The time-only diversity receiver is shown in Fig. 12. It employs a combined antenna for satellite 
+and terrestrial reception that connects to two receiver arms, one for satellite and the other for 
+terrestrial. The satellite arm comprises a satellite tuner that selects a desired TDM satellite carrier, a 
+QPSK demodulator to recover the TDM symbol stream and a TDM demultiplexer that selects a 
+desired pair of complimentary early and late broadcast channels. An FEC decoder that uses a 
+Viterbi maximum likelihood FEC trellis decoder synchronously combines the delayed early signal 
+and the late signal. Delay of the early signal is implemented in the TDM demultiplexer. Precise 
+synchronization needed for the combining is accomplished by aligning the preambles of the early 
+and late broadcast channel frames. The post detection combiner is a switch that selects the broadcast 
+channel of either the satellite or terrestrial receiver arms based on the quality measurement 
+previously described. The MCM arm of the receiver operates simultaneously and independently of 
+the satellite. It tunes to the desired MCM carrier and demodulates it to the TDM symbol stream. 
+From there on it operates precisely the same way as the satellite arm. The post detection combiner 
+connects the terrestrial arm or the satellite arm to the output depending on its logic declaration as to 
+which has the better quality. The selected broadcast channel is then demultiplexed into its 
+constituent service components. 
+
+=====PAGE 20=====
+20 
+Rec.  ITU-R  BS.1547 
+1547-12
+Satellite
+tuner
+QPSK
+demodulator
+TDM
+demux
+FEC
+decoder
+Post
+detection
+combiner
+Broadcast
+channel
+decoder
+Data
+decoder
+MPEG
+decoder
+RS
+uncorrected errors
+FEC
+decoder
+TDM
+demux
+MCM
+demodulator
+Terrestrial
+tuner
+Satellite +
+terrestial
+antenna +
+LNA
+New Digital System DH mobile receiver modules
+FIGURE 12
+Time-only diversity receiver
+RS
+uncorrected errors
+ 
+ 
+ 
+ 
+The time and space diversity receiver is shown in Fig. 13. It uses three arms, two for satellite signal 
+reception and one for terrestrial signal reception. All three arms share the same antenna and low 
+noise amplifier (LNA). One satellite signal will carry only early broadcast channels and the other 
+only late broadcast channels. The third arm receives the terrestrial signal that comprises a TDM-
+MCM carrier transporting the TDM. The TDM transported via terrestrial re-radiation is that 
+carrying only early broadcast channels received at the terrestrial re-radiating station directly from 
+the satellite. Each satellite arm comprises a satellite tuner that selects a desired TDM satellite 
+carrier, a QPSK demodulator to recover the TDM symbol stream and a TDM demultiplexer. One 
+arm delivers the desired early broadcast channel and the other the companion late broadcast channel 
+to a FEC decoder that uses a Viterbi maximum likelihood FEC trellis decoder to synchronously 
+combine the delayed early signal and the late signal. The required delay of the early signal is 
+implemented in the TDM demultiplexer. Precise alignment needed for the Viterbi decoder 
+combining is accomplished by aligning the preambles of the early and late broadcast channel 
+frames. The MCM arm of the receiver operates simultaneously and independently of the satellite. It 
+tunes to the MCM carrier and demodulates it to recover the TDM symbol stream, demultiplexes the 
+TDM stream to recover the desired early broadcast channel and FEC decodes the latter in a Viterbi 
+decoder. The latter broadcast channel will have to be delayed to bring it into synchronization with 
+the broadcast channel recovered from the satellite arm. Some of the latter delay will have been 
+introduced at the terrestrial re-radiating stations as incidental in the conversion from TDM to TDM-
+MCM. Precise synchronization needed for post detection combining is accomplished by aligning 
+the preambles of the early and late broadcast channel frames. The post detection combiner connects 
+the terrestrial arm or the satellite arm to the output depending on its logic declaration as to which 
+has the better quality. The selected broadcast channel is then demultiplexed into its constituent 
+service components. 
+
+=====PAGE 21=====
+ 
+Rec.  ITU-R  BS.1547 
+21 
+1547-13
+Satellite
+tuner 1
+QPSK
+demodulator
+TDM
+demux
+FEC
+decoder
+Post
+detection
+combiner
+Broadcast
+channel
+decoder
+Data
+decoder
+MPEG
+decoder
+RS
+uncorrected errors
+FEC
+decoder
+TDM
+demux
+MCM
+demodulator
+Terrestrial
+tuner
+Satellite +
+terrestrial
+antenna +
+LNA
+New Digital System DH mobile receiver modules
+FIGURE 13
+Time and space diversity receiver
+RS
+uncorrected errors
+Satellite
+tuner 2
+QPSK
+demodulator
+TDM
+demux
+ 
+ 
+ 
+ANNEX  3 
+Digital System E 
+1 
+Introduction 
+Digital System E is designed to provide satellite and complementary terrestrial on-channel repeater 
+services for high quality audio and multimedia data for vehicular, portable and fixed reception. It 
+has been designed to optimize performance for both satellite and terrestrial on-channel repeater 
+services delivery in the 2 630-2 655 MHz band. This is achieved through the use of CDM based on 
+QPSK modulation with concatenated code using RS code and convolutional error correcting 
+coding. The Digital System E receiver uses state-of-the-art microwave and digital large-scale 
+integrated circuit technology with the primary objective of achieving low-cost production and high-
+quality performance. 
+The main features of this system are that: 
+– 
+the system is the first digital sound broadcasting system to be tested in the field using the 
+2 630-2 655 MHz band that is assigned to BSS (sound) in some countries; 
+– 
+MPEG-2 system architecture is adopted in order to achieve flexible multiplexing of many 
+broadcasting services and interoperability with other digital broadcasting services. This is 
+the first BSS (sound) system to adopt MPEG-2 systems; 
+– 
+MPEG-2 AAC is adopted for audio source coding. AAC gives the most efficient audio 
+compression performance for high quality audio broadcasting services; 
+
+=====PAGE 22=====
+22 
+Rec.  ITU-R  BS.1547 
+– 
+vehicular reception is the main target of this system. Stable reception was confirmed in 
+high-speed vehicles in the course of corroborative testing; 
+– 
+typically, satellite signals can be received using omni-directional single element antenna in 
+the horizontal plane; for vehicles, two-antenna diversity reception is preferable. 
+2 
+System overview 
+Figure 14 shows the system overview. This BSS (sound) system consists of a feeder-link earth 
+station, a broadcasting satellite, two types of terrestrial gap-fillers, and portable, fixed and vehicular 
+receivers. 
+The signal is first transmitted from a feeder-link earth station to a broadcasting satellite, using a 
+fixed-satellite service (FSS) uplink (the 14 GHz band for example). The signal is converted from 
+the 14 GHz band to the 2.6 GHz band in the satellite. The 2.6 GHz band signal is amplified using a 
+satellite transponder up to a desired level and this signal is broadcast over the service area using a 
+large transmitting antenna on the satellite. 
+The main programmes broadcast by this system are high quality sound services in the first stage and 
+multimedia services, including data broadcasting, in the following stage. 
+Listeners/viewers of this service can receive the broadcast signal via the satellite using small 
+antennas with low directivity. To generate enough e.i.r.p. for vehicular reception, the space station 
+will need to be equipped with a large transmit antenna and high-power transponders. 
+The major issues related to signal propagation in the 2.6 GHz band are shadowing and blocking of 
+the direct satellite path. This system uses two techniques to cope with the various types of 
+shadowing and blocking. 
+The first is a bit-wise de-interleaver in the receiver to counter shadowing and blocking caused by 
+small objects. This shadowing and blocking is manifest in a vehicular reception environment as 
+solid bursts of noise in the received signal of up to, approximately, a second. 
+A solid burst of noise is distributed over a time period of several seconds using this de-interleaver to 
+fit the error-correcting capabilities of this system. 
+The second method to alleviate signal fades caused by shadowing and blocking is the inclusion of 
+gap-fillers in the system design. Such gap-fillers retransmit the satellite signal. These gap-fillers are 
+expected to cover the area blocked by, for example, buildings and large constructions. There are 
+two types of gap-fillers in this system, the so-called direct amplifying gap-filler and the frequency 
+conversion gap-filler to cover different types of blocked areas. 
+The direct amplifying gap-filler only amplifies the 2.6 GHz band signal broadcast from the satellite. 
+This type of gap-filler is inherently limited to low gain amplification to avoid undesired oscillation 
+caused by signal coupling between transmitting and receiving antennas. This gap-filler covers a 
+narrow area of direct path up to a 500 m long line-of-sight area. 
+
+=====PAGE 23=====
+ 
+Rec.  ITU-R  BS.1547 
+23 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1547-14
+FIGURE 14
+System overview
+Blocking/
+shadowing
+Portable receiver
+Fixed receiver
+Vehicular receiver
+2.6 GHz band
+11 GHz band
+or
+2.6 GHz band
+11 GHz band
+14/11 GHz
+bands
+Satellite control
+station
+Earth station
+2.6 GHz band
+Contents provider
+Direct
+amplifying
+gap filler
+Spotlight
+gap filler
+Frequency
+conversion
+gap filler
+Broadcasting
+satellite
+ 
+
+=====PAGE 24=====
+24 
+Rec.  ITU-R  BS.1547 
+However, a frequency conversion gap-filler is intended to cover a large area within a 3 km radius. 
+The satellite fed signal uses a different frequency other than the 2.6 GHz band, for example, the 
+11 GHz band. 
+In such circumstances, multipath fading appears in the area where more than two broadcasting 
+signals are received. In this broadcasting system, the CDM technique is adopted to secure a stable 
+reception of the multipath-faded signal. By using a RAKE technique and antenna diversity in the 
+receiver, a large improvement in the receiver’s performance is expected in the limited 
+multipath-fading environment. 
+The spotlight type gap-filler, also shown in Fig. 14, could improve the multipath environment 
+where the CDM and RAKE receiver cannot decode properly without this gap-filler. This is a major 
+feature of the CDM system. Spotlight gap-filler can either use amplification or frequency 
+conversion to satisfy the specific requirement of the target area to be improved. 
+In CDM systems, different broadcasters will use different orthogonal codes for spreading the signal 
+in order to broadcast their own programmes independently. Power flux-density (pfd) per unit 
+bandwidth is relatively low because the CDM signal is spread over a wide frequency band. 
+3 
+Physical layer and modulation 
+Figure 15 shows the basic block diagram of the broadcasting system and Fig. 16 shows a detailed 
+block diagram of the CDM part of Fig. 15. In the following, the basic parameters and capabilities of 
+channel coding and modulation of this broadcasting system are provided. 
+ 
+Byte
+Convolutional
+1547-15
+Byte
+interleaver
+Bit
+interleaver
+Convolutional
+encoder
+RS encoder
+(204,188)
+Payload
+data
+Payload
+data
+RS encoder
+(204,188)
+Byte
+interleaver
+Convolutional
+encoder
+Bit
+interleaver
+Modulated
+signal
+CDM
+Pilot symbol
+Pilot channel
+control data
+Encoder
+Convolutional
+encoder
+Byte
+Interleaver
+Bit
+interleaver
+Payload
+data
+Control data,
+etc.
+RS encoder
+(204,188)
+RS encoder
+(96,80)
+Byte
+interleaver
+FIGURE 15
+Block diagram of broadcasting system
+ 
+
+=====PAGE 25=====
+ 
+Rec.  ITU-R  BS.1547 
+25 
+1547-16
+I
+Q
+FIGURE 16
+Detailed block diagram of CDM
+Multiplexer
+Modulated
+signal
+Carrier
+QPSK
+modulation
+Pseudo-random
+sequence
+Serial
+to
+I/Q
+Data
+Walsh code
+No. n
+Modulo 2 adder
+ 
+ 
+3.1 
+Frequency band 
+This system can be used in various frequency bands, but the main target is the 2 630-2 655 MHz 
+band. Since this is the highest frequency band allocated to BSS (sound), the received signals are 
+likely to experience the highest Doppler shift. 
+3.2 
+Bandwidth 
+Basic bandwidth is 25 MHz. 
+3.3 
+Polarization 
+The system uses circular-polarization, however a complementary terrestrial repeater may use either 
+circular-polarization or linear-polarization. 
+3.4 
+Modulation 
+The CDM scheme is adopted for modulation, both of the satellite link and the terrestrial gap filler 
+link. As shown in Fig. 16, one data sequence is first converted from a serial bit stream to I and Q 
+data sequences. Then each I and Q data sequence is spread by the same unique Walsh code (No. n) 
+and a truncated M-sequence. These spread data are modulated into a QPSK signal. Modulated 
+signals, each signal being identified by its Walsh code, are multiplexed with each other in the same 
+frequency band. 
+3.4.1 
+Modulation of carrier 
+One pilot channel and several broadcasting channels comprise one whole CDM modulated 
+broadcasting system as shown in Fig. 15. A broadcasting channel and part of the pilot channel data 
+stream use QPSK modulation for the component modulation, while pilot symbols, frame 
+synchronization symbol and a frame counter as defined in § 4.3, carried in the pilot channel data 
+stream, are modulated using binary phase shift keying (BPSK). 
+
+=====PAGE 26=====
+26 
+Rec.  ITU-R  BS.1547 
+3.4.2 
+Symbol mapping 
+Symbol mapping of QPSK and BPSK is shown in Fig. 17. In this system, QPSK is demodulated 
+using coherent phase detection. 
+1547-17
+I
+Q
+(I, Q)
+(0,1)
+(1,0)
+(0,0)
+(1,1)
+I
+Q
+0
+1
+FIGURE 17
+Symbol mappings of QPSK and BPSK modulation
+ 
+ 
+3.5 
+Chip rate 
+Chip rate is 16.384 MHz and processing gain is 64. 
+3.6 
+Signature sequence and spreading sequence 
+Walsh codes of 64-bit length and a truncated M-sequence of 2 048-bit length are adopted as the 
+signature sequence and the spreading sequence respectively. This spreading sequence is obtained by 
+truncating maximum length sequences of 4 095-bit length generated, using 12-stage feedback shift 
+register sequence. 
+3.7 
+Data spreading 
+Signature sequences and spreading sequences are modulo-2 added to the original I and Q sequence 
+as shown in Fig. 16. 
+3.8 
+Roll-off factor 
+The transmitted signal is filtered by square-root raised cosine filter. The roll-off factor is 0.22. 
+3.9 
+The number of CDM channels 
+Theoretically, this system can multiplex 64 CDM channels because a 64-chip length Walsh code is 
+adopted. In the corroborative testing, 30 CDM channels out of a possible 64 channels are 
+multiplexed to achieve stable reception in multipath environments. 
+4 
+Channel coding 
+4.1 
+Error correction coding 
+Concatenated code, comprised of a K = 7 convolutional code as inner code and shortened RS 
+(204,188) code as outer code, is adopted for forward error protection scheme. 
+
+=====PAGE 27=====
+ 
+Rec.  ITU-R  BS.1547 
+27 
+4.1.1 
+Outer code 
+Outer code is the same as for other digital broadcasting systems. The original RS (255,235) code is 
+defined as follows: 
+Code generator polynomial: 
+g(x) = (x + λ0) (x + λ1) (x + λ2) ... (x + λ15), 
+where λ = 02h 
+Field generator polynomial: 
+P(x) = x8 + x4 + x3 + x2 + 1 
+The shortened RS code can be implemented by adding 51 bytes, all set to zero, in front of the 
+information bytes at the input of the RS (255,239) encoder. After the RS coding procedure, these 
+null bytes are discarded. 
+4.1.2 
+Inner code 
+K = 7 convolutional code is adopted as the inner code of this system. Any code rate can be selected 
+from 1/2, 2/3, 3/4, 5/6 and 7/8 by a puncturing technique for each broadcasting channel. These code 
+rates are signalled using the control data of the pilot channel. Rate 1/2 convolutional code is used 
+for the pilot channel. 
+4.2 
+Interleaving 
+Byte-wise convolutional interleaving is used between outer coding and inner coding. Furthermore, 
+bit-wise convolutional interleaving with three-segment grouping is adopted after the inner coding. 
+4.2.1 
+Byte-wise interleaving 
+Byte-wise interleaving is the same as for other digital broadcasting systems, for example DVB-S, 
+DVB-T, ISDB-S and ISDB-T. 
+4.2.2 
+Bit-wise interleaving 
+Figure 18 shows the working mechanism of the bit-wise interleaver and also Fig. 19 shows the 
+conceptual diagram of the bit-wise interleaver and de-interleaver. The time delay of the bit-wise 
+interleaver can be selected from eight possible positions defined in Table 3, for each broadcasting 
+channel by using control data in the pilot channel. In the corroborative testing, position 5 was 
+selected; hence the bit-wise interleaver has about 3.257 s delay to recover up to 1.2 s blackout of the 
+received signal. 
+4.3 
+Pilot channel 
+Payload data is transmitted through broadcasting channels, whilst the system adopts a pilot channel 
+to simplify receiver’s synchronization and to transmit system control data. 
+The Pilot channel has three functions. The first is to transmit a unique word for frame 
+synchronization and a frame counter for super frame synchronization. The second is to send the 
+pilot symbol and the third is to transmit control data to facilitate receiver functions. 
+
+=====PAGE 28=====
+28 
+Rec.  ITU-R  BS.1547 
+1547-18
+FIGURE 18
+Bit-wise interleaver
+51 × 34 × m bits
+51 × m bits
+51 bits
+51 × 17 × m bit delay
+51 × m bit delay
+51 × 34 × m bit delay
+51 × 17 × m bits
+ 
+1547-19
+51 × 34 × m
+51 × 17 × m
+51 × m
+51 × 33 × m
+51 × 50 × m
+0
+0
+1
+1
+2
+2
+3
+3
+49
+50
+49
+50
+0
+0
+1
+1
+2
+2
+3
+3
+49
+49
+50
+50
+51 × 50 × m
+51 × 16 × m
+51 × 33 × m
+51 × 49 × m
+51 × 17 × m
+FIGURE 19
+Conceptual diagram of bit-wise interleaver and de-interleaver
+Interleaver
+De-interleaver
+ 
+TABLE  3 
+Selectable positions of bit-wise interleaving size 
+ 
+ 
+Position 
+Value of parameter m 
+0 
+0 
+1 
+53 
+2 
+109 
+3 
+218 
+4 
+436 
+5 
+654 
+6 
+981 
+7 
+1 308 
+
+=====PAGE 29=====
+ 
+Rec.  ITU-R  BS.1547 
+29 
+4.3.1 
+Frame and super frame 
+Figure 20 shows the transmission frame and super transmission frame of this system. 
+1547-20
+PS
+D1
+PS
+D2
+PS
+D50
+PS
+D51
+250 µs
+FIGURE 20
+Frame and super frame in pilot channel
+Frame
+No. 0
+Frame
+No. 1
+Frame
+No. 2
+Frame
+No. 3
+Frame
+No. 4
+Frame
+No. 5
+1 frame = 12.750 ms
+1 super frame = 6 frames = 76.5 ms
+PS: 
+pilot symbol (32 bits)
+D1: 
+unique word (32 bits)
+D2: 
+frame counter (32 bits)
+D3 to D51: 
+control data, etc.
+ 
+ 
+A pilot symbol is inserted every 250 µs as described in the next section. One transmission frame 
+comprises 51 times, one pilot symbol insertion period that has 12.75 ms time period. The first 
+symbol D1 (4 bytes or 32 bits), other than pilot symbols, is the unique word. 
+Six transmission frames give a super transmission frame that has a 76.5 ms time period. The second 
+symbol D2 is the frame counter, which assists the receivers to establish super frame 
+synchronization. Any broadcasting channel with arbitrary puncturing rate can be synchronized in 
+one super frame time period because this is the least common multiple of unit time intervals of each 
+broadcasting channel with any possible punctured rate of convolutional code. 
+4.3.2 
+Pilot symbol 
+Special data embedded in the pilot channel are pilot symbols that are composed of 32-bit length 
+continuing run of data 1. Using these pilot symbols, a receiver can analyse received signal profiles 
+(path-search analysis) and these results are used to assist a RAKE receiver function. Pilot symbols 
+are transmitted every 250 µs. 
+In order to improve the accuracy of path-search analysis, the pilot channel may have more signal 
+power than a broadcasting channel. In corroborative testing, the pilot channel had twice the signal 
+power of a broadcasting channel. 
+5 
+Service multiplexing 
+ISO/IEC 13818-1 (MPEG-2 systems) is adopted as the service multiplex. Considering maximum 
+interoperability among a number of digital broadcasting systems, e.g. DVB-S, DVB-T, ISDB-S and 
+ISDB-T, this system can exchange broadcasting data streams with other broadcasting systems 
+through this interfacing point. 
+
+=====PAGE 30=====
+30 
+Rec.  ITU-R  BS.1547 
+In this system some services, which are to come in the future, can be adopted if such future 
+broadcasting services have adaptation capabilities for MPEG-2 systems. 
+6 
+Source coding 
+6.1 
+Audio source coding 
+MPEG-2 AAC (ISO/IEC 13818-7) is selected for this system. In order to use an AAC bit stream in 
+MPEG-2 systems environment, the audio data transport stream (ADTS) is adopted. 
+6.2 
+Data coding 
+Various types of data broadcasting are applicable including mono-media (e.g. video source coding, 
+text) and multimedia (mixture of audio, video, text and data) as long as these data structures are 
+MPEG-2 systems compliant. 
+7 
+Example of an application of Digital System E 
+7.1 
+Satellite link 
+In this example, a geostationary satellite with a large transmission antenna is assumed. The 
+feeder-link signal is fed from an earth station in the 14 GHz band while the service link (downlink) 
+is to the Japanese service area using the 2.6 GHz band. Major characteristics of the satellite are 
+given below: 
+– 
+Feeder-link signal frequency: 14 GHz band 
+– 
+Downlink frequency: 
+2 642.5 MHz 
+– 
+Downlink bandwidth: 
+25 MHz 
+– 
+e.i.r.p.:  
+ 
+more than 67 dBW (within service area, including 
+antenna-pointing losses) 
+7.1.1 
+Spectrum 
+The spectrum of the output signal from the satellite broadcasting station is shown in Fig. 21 in the 
+case of 2 dB output back-off (OBO). In this case, an output signal is simulated using a non-linear 
+amplifier which has similar input/output characteristic to a typical satellite transponder. 
+7.1.2 
+BER versus C/N0 performances under an additive white Gaussian noise (AWGN) 
+environment 
+BER versus C/N0 performances under an AWGN environment were measured for various kinds of 
+output back-off and frequency offset. 
+Figure 22 shows BER versus C/N0 performances for different output back-off values of a satellite 
+simulator. Unless otherwise noted, the following conditions were assumed in order to measure BER 
+versus C/N0 performances described in this section. 
+− 
+BER was measured at the point after Viterbi decoding. 
+− 
+Coding rate used in convolutional coding was 1/2. 
+
+=====PAGE 31=====
+ 
+Rec.  ITU-R  BS.1547 
+31 
+− 
+Data rate after Viterbi decoder was 256 kbit/s. 
+− 
+Two-branch antenna diversity was used. 
+ 
+ 
+1547-21
+(dB)
+f0
+f0 + 10
+f0 + 20
+f0 + 30
+f0 + 40
+f0 + 50
+f0 – 10
+f0 – 20
+f0 – 40
+f0 – 30
+f0 – 50
+0
+–10
+–20
+–30
+–40
+–50
+–60
+–70
+–80
+FIGURE 21
+Spectrum of output signal from satellite (2 dB OBO)
+(simulated using non-linear amplifier)
+f0 = 2 642.5 MHz
+Bandwidth = 25 MHz
+ 
+ 
+ 
+According to Fig. 22, when output back-off of a satellite simulator is set at the operating point 
+(2 dB), the required C/N0, which is defined in this system as C/N0 where BER is equal to 2 × 10–4, 
+is 56.4 dB(Hz). Because the theoretical value of the required C/N0 for an ideal reception is 
+54.3 dB(Hz), measured implementation loss is 2.1 dB. 
+When output back-off is set 1 dB below the operating point, the required C/N0 is 0.1 dB higher. On 
+the other hand, when OBO is set 1 dB above the operating point, the required C/N0 is 0.1 dB lower. 
+Hence, degradations of BER performance due to this non-linearity are very small but observable. 
+Figure 23 shows BER versus C/N0 performances for different frequency offsets at the receiver. 
+Note that the OBO is 2 dB and other conditions other than the frequency offset level are the same as 
+in Fig. 22. According to Fig. 23, degradation of required C/N0 is 0.3 dB for each case of ± 264 Hz 
+(= ±1 × 10–7 at 2 642.5 MHz) frequency offset, hence the measured degradation due to frequency 
+offset up to ± 264 Hz is small. 
+
+=====PAGE 32=====
+32 
+Rec.  ITU-R  BS.1547 
+During these tests, the quality of received sound was monitored and it was confirmed that a 
+degradation of less than perceptible grade was not observed, while the measured BER was less than 
+2 × 10–4 at the output of the Viterbi decoder. Programme selection was also checked and it was 
+confirmed that changing to another programme worked successfully and the broadcast content was 
+received correctly. 
+ 
+1547-22
+52
+53
+54
+55
+56
+57
+58
+59
+10–1
+10–3
+10–2
+10–4
+10–5
+10–6
+10–7
+1
+C/N0 (dB(Hz))
+FIGURE 22
+BER versus C/N0 under AWGN environment
+for different levels of transponder OBO
+BER (after Viterbi decoder)
+Ideal receiver with linear amplifier
+OBO  = 1 dB
+OBO  = 3 dB
+OBO  = 2 dB
+ 
+
+=====PAGE 33=====
+ 
+Rec.  ITU-R  BS.1547 
+33 
+1547-23
+53
+54
+55
+56
+57
+58
+10–1
+10–3
+10–2
+10–4
+10–5
+10–6
+10–7
+1
+C/N0 (dB(Hz))
+FIGURE 23
+BER vs. C/N0 under AWGN environment for different frequency offsets
+BER (after Viterbi decoder)
+Frequency offset = 0 Hz
+Frequency offset = +264 Hz
+Frequency offset = –264 Hz
+ 
+ 
+7.2 
+Gap filler 
+7.2.1 
+Direct amplifying gap filler 
+The main purpose of the direct amplifying gap filler is to allow reception of the broadcast signal 
+directly from broadcasting satellite, to amplify it and to transmit it to the signal blocked area. 
+– 
+Receiving frequency: 
+2 630-2 655 MHz 
+– 
+Transmitting frequency: 2 630-2 655 MHz 
+– 
+e.i.r.p.: 
+1.7 dBm 
+– 
+Coverage area: 
+line-of-sight area up to 500 m from the station. 
+
+=====PAGE 34=====
+34 
+Rec.  ITU-R  BS.1547 
+7.2.2 
+Frequency conversion gap filler 
+This equipment receives 11/12 GHz band feeder signals from the satellite, converts them to the 
+2.6 GHz band, amplifies up to the desired level, and transmits them to the signal blocked area. The 
+major characteristics of the equipment are: 
+– 
+Receiving frequency: 
+11/12 GHz bands 
+– 
+Transmitting frequency: 2 630-2 655 MHz 
+– 
+e.i.r.p.:  
+ 
+60.7 dBm 
+– 
+Coverage:  
+circular area up to 3 km radius. 
+ 
+7.3 
+Experimental results of high-speed vehicular receptions 
+One of the main features of this system is its capability for vehicular reception. In the corroborative 
+testing, high-speed vehicular reception was examined carefully in laboratory and field tests. BER 
+versus C/N0 is shown in Fig. 24 for laboratory test results. There is only a small degradation of BER 
+characteristics for 50 km/h, 100 km/h and 150 km/h. Field testing for high-speed vehicular 
+reception was conducted at speeds of up to 100 km/h on the Chuo highway along the west side of 
+the Tokyo metropolitan area. 
+ 
+7.4 
+Receiver model 
+Characteristics of typical vehicular receivers for this system are given below and Fig. 25 shows the 
+block diagram of a typical vehicular receiver. 
+– 
+Centre frequency: 
+2 642.5 MHz 
+– 
+Input signal bandwidth: 
+25 MHz 
+– 
+Figure of merit (G/T): 
+more than –21.8 dB (K–1)  
+ 
+Antenna gain: 
+more than 2.5 dBi for satellite reception 
+more than 0 dBi for terrestrial reception  
+ 
+Noise figure: 
+less than 1.5 dB 
+– 
+Demodulation: 
+pilot symbol aided coherent demodulation and 
+ 
+RAKE receiver with six fingers 
+– 
+Diversity: 
+two-antenna diversity 
+– 
+Receiving filter: 
+square-root raised cosine roll-off filter 
+ 
+(roll-off factor is 22%) 
+– 
+Decoding of convolutional code: soft-decision Viterbi decoding 
+– 
+Implementation loss: 
+less than 2 dB (degradation from the theoretical value 
+at BER = 2 × 10–4). 
+
+=====PAGE 35=====
+ 
+Rec.  ITU-R  BS.1547 
+35 
+ 
+ 
+1547-24
+10–1
+10–2
+10–3
+10–4
+10–5
+10–6
+10–7
+55
+56
+57
+58
+59
+60
+61
+62
+63
+C/N0 (dB(Hz))
+50 km/h
+100 km/h
+150 km/h
+FIGURE 24
+BER vs. C/N0 for high-speed reception (50 km/h, 100 km/h and 150 km/h)
+BER (after Viterbi decoder)
+ 
+ 
+ 
+
+=====PAGE 36=====
+36 
+Rec.  ITU-R  BS.1547 
+1547-25
+FIGURE 25
+Block diagram of typical receiver
+Broadcast channel decoding/SI, ECM, EMM, etc.
+Bit
+de-interleaver
+Viterbi
+decoder
+Byte
+de-interleaver
+RS decoder
+(204,188)
+Tuner
+CDM
+demodu-
+lator
+Receiver
+input
+Tuner
+Byte
+de-interleaver
+Viterbi
+decoder
+RS decoder
+(96,80)
+Receiver
+control
+Bit
+de-interleaver
+Byte
+de-interleaver
+RS decoder
+(204,188)
+Viterbi
+decoder
+Broadcast channel decoding No. N/service data
+Pilot channel decoding
+Broadcast channel decoding No. M/service data
+Control
+data
+Mux
+Descramble
+Demux
+Audio
+decoder
+Data
+decoder
+Transport
+stream
+ 
+ 

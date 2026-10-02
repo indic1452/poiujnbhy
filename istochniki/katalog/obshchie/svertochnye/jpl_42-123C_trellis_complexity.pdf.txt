@@ -1,0 +1,1836 @@
+
+=====PAGE 1=====
+ 
+     
+TDA Progress Report 42-123
+November 15, 1995
+The Trellis Complexity of Convolutional Codes
+R. J. McEliece
+Communications Systems and Research Section
+and
+California Institute of Technology
+Pasadena, California
+W. Lin1
+It has long been known that convolutional codes have a natural, regular trellis
+structure that facilitates the implementation of Viterbi’s algorithm [30,10]. It has
+gradually become apparent that linear block codes also have a natural, though not
+in general a regular, “minimal” trellis structure, which allows them to be decoded
+with a Viterbi-like algorithm [2,31,22,11,27,14,12,16,24,25,8,15]. In both cases, the
+complexity of the Viterbi decoding algorithm can be accurately estimated by the
+number of trellis edges per encoded bit. It would, therefore, appear that we are
+in a good position to make a fair comparison of the Viterbi decoding complex-
+ity of block and convolutional codes. Unfortunately, however, this comparison is
+somewhat muddled by the fact that some convolutional codes, the punctured con-
+volutional codes [4], are known to have trellis representations that are signiﬁcantly
+less complex than the conventional trellis. In other words, the conventional trellis
+representation for a convolutional code may not be the minimal trellis representa-
+tion. Thus, ironically, at present we seem to know more about the minimal trellis
+representation for block than for convolutional codes. In this article, we provide a
+remedy, by developing a theory of minimal trellises for convolutional codes. (A sim-
+ilar theory has recently been given by Sidorenko and Zyablov [29].) This allows us
+to make a direct performance-complexity comparison for block and convolutional
+codes.
+A by-product of our work is an algorithm for choosing, from among all
+generator matrices for a given convolutional code, what we call a trellis-minimal
+generator matrix, from which the minimal trellis for the code can be directly con-
+structed. Another by-product is that, in the new theory, punctured convolutional
+codes no longer appear as a special class, but simply as high-rate convolutional
+codes whose trellis complexity is unexpectedly small.
+I. Introduction
+We begin with the standard deﬁnition of a convolutional code [9,26], always assuming that the under-
+lying ﬁeld is F = GF(2). An (n, k) convolutional code C is a k-dimensional subspace of F(D)n, where
+F(D) is the ﬁeld of rational functions in the indeterminate D over the ﬁeld F. The memory, or degree,
+1 Graduate student at the California Institute of Technology, Pasadena, California.
+122
+
+=====PAGE 2=====
+ 
+ 
+ 
+of C, is the smallest integer m such that C has an encoder requiring only m delay units. An (n, k) convo-
+lutional code with memory m is said to be a (n, k, m) convolutional code. The free distance of C is the
+minimum Hamming weight of any codeword in C. An (n, k, m) convolutional code with free distance d is
+said to be an (n, k, m, d) code.
+A minimal generator matrix G(D) for an (n, k, m) convolutional code C is a k ×n matrix with polyno-
+mial entries, whose row space is C, such that the direct-form realization of an encoder for C based on G(D)
+uses exactly m delay elements [9,26]. From a minimal generator matrix G(D), or rather from a physical
+encoder built using G(D) as a blueprint, it is possible to construct a conventional trellis representation
+for C. This trellis is, in principle, inﬁnite, but it has a very regular structure, consisting (after a short
+initial transient) of repeated copies of what we shall call the “trellis module” associated with G(D). The
+trellis module consists of 2m initial states and 2m ﬁnal states, with each initial state being connected by
+a directed edge to exactly 2k ﬁnal states. Thus, the trellis module has 2k+m edges. Each edge is labeled
+with an n-bit binary vector, namely, the output produced by the encoder in response to the given state
+transition. Thus, each edge has length (measured in edge labels) n, and so the total edge length of the
+conventional trellis module is n2k+m. Since each trellis module represents the encoder’s response to k
+input bits, we are led to deﬁne the conventional trellis complexity of the trellis module as
+n
+k · 2m+k
+edge labels per encoded bit
+(1)
+or edges per bit, for short. If the code C is decoded using Viterbi’s maximum-likelihood algorithm on the
+trellis [30,10], the work factor involved in updating the metrics and survivors at each trellis module is
+proportional to the edge length of the trellis module, so that the trellis complexity as deﬁned in Eq. (1)
+is a measure of the eﬀort per decoded bit required by Viterbi’s algorithm. (For a more detailed discussion
+of the complexity of Viterbi’s algorithm on a trellis, see [25, Section 2].)
+For example, consider the (3, 2, 2) convolutional code with minimal generator matrix given by
+G1(D) =
+µ
+1 + D
+1 + D
+1
+D
+0
+1 + D
+¶
+(2)
+This code has the largest possible free distance, viz., dfree = 3, for any (3, 2, 2) code. A “direct-form”
+encoder based on the generator matrix G1(D) is shown in Fig. 1. If the input pair is (u1, u2) and the
+state of the encoder is (s, t), then the output (x1, x2, x3) is given by
+x1 = u1
++ s + t
+x2 = u1
++ s
+x3 = u1 + u2
++ t
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(3)
+and the “next state” is just the input pair (u1, u2). The conventional trellis module for the code with
+minimal generator matrix G1(D) given in Eq. (2) is shown in Fig. 2. The three-bit edge label on the
+edge from (s, t) to (u1, u2) is the triple (x1, x2, x3) given in Eq. (3). The total edge length is 48, so that
+the conventional trellis complexity corresponding to the matrix G1(D) is 48/2 = 24 edges per bit, as
+predicted by Eq. (1).
+But we can do substantially better than this, if we use the fact that this particular code is a punctured
+convolutional code.
+We now brieﬂy review the theory of punctured convolutional codes to see how
+simpliﬁed trellises result.
+123
+
+=====PAGE 3=====
+ 
+   
+s
+t
+x 1
+x 2
+x 3
+u 1
+u 2
+Fig. 1. A direct-form encoder based on the generator
+matrix G1(D ) in Eq. (2).  The input is (u1, u2), the
+output is (x1, x2, x3), and the state of the encoder is
+(s, t ).  (The boxes labeled s and t are unit delay
+elements.)
+101
+001
+00
+01
+10
+11
+00
+01
+10
+11
+000
+111
+110
+100
+010
+011
+111
+001
+110
+000
+011
+010
+100
+101
+Fig. 2.  The conventional trellis module
+for the code with minimal generator
+matrix G1(D ) given in Eq. (2).
+If we begin with a parent (N, 1, m) convolutional code, and block it to depth k, i.e., group the input
+bit stream into blocks of k bits each, the result is an (Nk, k, m) convolutional code. If we now delete,
+or puncture, all but n bits from each Nk-bit output block, the result is an (n, k, m) convolutional code.2
+This punctured code can be represented by a trellis whose trellis module is built from k copies of the
+trellis modules from the parent (N, 1, m) code, each of which has only 2m+1 edges, so that the total
+number of edge labels on the trellis module is n · 2m+1, which means that the trellis complexity of an
+(n, k, m) punctured code is
+n
+k · 2m+1
+edges per bit
+(4)
+which is a factor of 2k−1 smaller than the complexity of the conventional trellis given in Eq. (1). For
+k = 1, this is no improvement, but for larger values of k, the decoding complexity reduction aﬀorded
+2 In fact, the memory of the punctured code may be less than m, but for most interesting punctured codes, no memory
+reduction will take place.
+124
+
+=====PAGE 4=====
+ 
+ 
+   
+by puncturing becomes increasingly signiﬁcant. And while the class of punctured convolutional codes
+is considerably smaller than the class of unrestricted convolutional codes, nevertheless many punctured
+convolutional codes with good performance properties are known [4,13,3,7], and punctured convolutional
+codes, especially high-rate ones, are often preferred in practice.
+For example, consider the (2, 1, 2, 5) convolutional code deﬁned by the minimal generator matrix
+G2(D) = ( 1 + D + D2
+1 + D2 )
+(5)
+The conventional trellis module for this code is shown in Fig. 3. If we block this code into blocks of
+size k = 2, we obtain a (4, 2, 2) convolutional code, still with dfree = 5, for which the conventional trellis
+module is two copies of the trellis module shown in Fig. 3; see Fig. 4.
+Now we can do the puncturing. Take the (4, 2, 2) code, as represented by the trellis module in Fig. 4,
+and delete the second output bit on each of the edges in the second part of the module. The result is shown
+in Fig. 5. This structure can be thought of as the trellis module for a (3, 2, 2) code; the corresponding
+dfree turns out to be 3. According to Eq. (1), the conventional trellis complexity of a (3, 2, 2) code is
+3/2 · 24 = 24 edges per bit. But if we use instead the punctured trellis corresponding to the k = 2
+blocked version of the parent (2, 1, 2) code, we ﬁnd from Eq. (4), or Fig. 5, that the trellis complexity is
+instead only 3/2 · 23 = 12 edges per bit. In fact, it can be shown that this punctured (3, 2, 2) code is the
+same as the conventional code with generator matrix G1(D) given in Eq. (2). (Indeed, this example is
+taken almost verbatim from [4], where it was used to illustrate the way puncturing can reduce decoding
+complexity.)
+00
+01
+10
+11
+00
+10
+00
+01
+10
+11
+11
+00
+11
+10
+01
+01
+Fig. 3. The trellis module for
+the (2,1,2) code with genera-
+tor matrix G       (D ) = (1 + D  + D  2
+1 +D 2); total edge length is
+16, so the trellis complexity is
+16 edges per bit.
+2
+00
+01
+10
+11
+00
+01
+10
+11
+00
+11
+11
+00
+10
+01
+01
+10
+00
+11
+00
+10
+01
+01
+10
+11
+Fig. 4.  The trellis module for the (4,2,2)
+code obtained from the code of Fig. 3
+by blocking the inputs in blocks of size
+2; total edge length is 32, so the trellis
+complexity is 32/2 = 16 edges per bit,
+the same as for the original code.
+1
+00
+01
+10
+11
+00
+01
+10
+11
+00
+11
+11
+00
+10
+01
+01
+10
+0
+1
+0
+1
+0
+0
+1
+Fig. 5.  The trellis module for the
+(3,2,2) punctured code obtained from
+the code of Fig. 4 by deleting every
+fourth bit; total edge length is 16 + 8 =
+24, so the trellis complexity is 24/2 =
+12 edges per bit.
+It seems mysterious that an ordinary-looking generator matrix like G1(D) produces a code whose
+trellis complexity can be signiﬁcantly reduced (if one knows that it is, in fact, a punctured code), whereas
+for an almost identical code, say one deﬁned by the generator matrix
+µ
+1 + D
+D
+1 + D
+D
+1
+1
+¶
+no such reduction is apparently possible. In Section II, we will resolve this mystery by developing a
+simple algorithm for constructing the minimum possible trellis for any convolutional code. Our technique
+will always ﬁnd a simpliﬁed trellis for a punctured code, with complexity at least as small as that given
+by Eq. (4), even if we are not told in advance that the code can be obtained by puncturing. But more
+125
+
+=====PAGE 5=====
+ 
+   
+important, it will often result in considerable simpliﬁcation of the trellis representation of a convolutional
+code that is not a punctured code. We will illustrate this with worked examples in Sections II and III
+and numerical tables in the Appendix.
+II. Construction of Minimal Trellises
+If G(D) is a minimal generator matrix for an (n, k, m) convolutional code C, then we can write G(D)
+in the form
+G(D) = G0 + G1D + · · · + GLDL
+(6)
+where G0, · · · , GL are k × n scalar matrices (i.e., matrices whose entries are from GF(2)), and L is the
+maximum degree of any entry of G(D). If we concatenate the L + 1 matrices G0, · · · , GL, we obtain a
+k × (L + 1)n scalar matrix, which we denote by eG:
+eG = ( G0
+G1
+· · ·
+GL )
+(7)
+It is well known [23, Chapter 9] that the matrix eG and its shifts can be used to build a scalar generator
+matrix Gscalar for the code C (for simplicity of notation, we illustrate the case L = 2):
+Gscalar =
+
+
+G0
+G1
+G2
+G0
+G1
+G2
+G0
+G1
+G2
+G0
+G1
+G2
+...
+
+
+(8)
+The matrix in Eq. (8) is, except for the fact that it continues forever, the generator matrix for a binary
+block code (with a very regular structure), and so the techniques that have been developed for ﬁnding
+minimal trellises for block codes are useful for constructing trellis representations for convolutional codes.
+Here we apply the techniques developed in [25, Section 7], which show how to construct a trellis directly
+from any generator matrix for a given block code, and the minimal trellis if the generator is in minimal
+span form, to construct a trellis for C based on the inﬁnite scalar generator matrix Gscalar.
+The trellis module for the trellis associated with Gscalar corresponds to the (L+1)k×n matrix module,
+bG =
+
+
+
+
+GL
+GL−1
+...
+G0
+
+
+
+
+(9)
+which repeatedly appears as a vertical “slice” in Gscalar. Using the techniques in [25, Section 7], it is easy
+to show that the number of edges in this trellis module is
+edge count =
+n
+X
+j=1
+2aj
+(10)
+126
+
+=====PAGE 6=====
+ 
+ 
+ 
+where aj is the number of active entries in the jth column of the matrix module bG. (An element is called
+active if it belongs to the active span of one of the rows of eG. We will elaborate on this below.) Our
+object, then, is to ﬁnd a generator matrix for which the edge count in the corresponding trellis module is
+as small as possible.
+To clarify these ideas, we consider the (3, 2, 1) code with (minimal) generator matrix
+G3(D) =
+µ
+1
+0
+1
+1
+1 + D
+1 + D
+¶
+(11)
+According to Eq. (1), the conventional trellis complexity for this code is 12 edges per bit. However, we
+can do better. The scalar matrix f
+G3 corresponding to G3(D) is [cf. Eq. (7)]
+f
+G3 =
+µ
+1
+0
+1
+0
+0
+0
+1
+1
+1
+0
+1
+1
+¶
+(12)
+In Eq. (12), we have shown the active elements of each row, i.e., the entries from the ﬁrst nonzero entry
+to the last nonzero entry, in boldface. The span length of (i.e., the number of active entries in) the ﬁrst
+row is, therefore, three; and the span length of the second row is six. The matrix module corresponding
+to f
+G3 is [cf. Eq. (9)]
+c
+G3 =
+
+
+
+0
+0
+0
+0
+1
+1
+1
+0
+1
+1
+1
+1
+
+
+
+Thus, a1 = 3, a2 = 3, and a3 = 3, which by Eq. (10) means that the corresponding trellis module
+has 23 + 23 + 23 = 24 edges. Since each trellis module represents two encoded bits, the resulting trellis
+complexity is 24/2 = 12 edges per bit. Since we have already noted that the conventional trellis complexity
+for this code is also 12 edges per bit, the trellis corresponding to G3(D) is not better than (in fact, it is
+isomorphic to) the conventional trellis. To do better, we need to ﬁnd a generator matrix for the code for
+which P
+i 2ai is less than 24. Using the results of [25, Section 6], it is possible to show that minimizing
+P
+i 2ai is equivalent to minimizing P
+i ai, i.e., the total span length of the corresponding eG, and so we
+shall look for generator matrices for which the span of eG is reduced.
+Note that if we add the ﬁrst row of G3(D) to the second row, the resulting generator matrix, which is
+still minimal, is
+G′
+3(D) =
+µ
+1
+0
+1
+0
+1 + D
+D
+¶
+The scalar matrix f
+G′
+3 corresponding to G′
+3(D) is [cf. Eq. (7)]
+f
+G′
+3 =
+µ
+1
+0
+1
+0
+0
+0
+0
+1
+0
+0
+1
+1
+¶
+(13)
+The span length of the ﬁrst row of G′
+3(D) is three, and the span length of the second row is ﬁve, and so
+the total span length is eight, one less than that of G3(D). The matrix module corresponding to f
+G′
+3 is
+[cf. Eq. (9)]
+127
+
+=====PAGE 7=====
+ 
+ 
+   
+c
+G′
+3 =
+
+
+
+0
+0
+0
+0
+1
+1
+1
+0
+1
+0
+1
+0
+
+
+
+Here a1 = 2, a2 = 3, and a3 = 3, and so by Eq. (10) the corresponding trellis module has 22 +23 +23 = 20
+edges, so that the resulting trellis complexity is 20/2 = 10 edges per bit.
+The trellis module itself,
+constructed using the technique described in [25, Section 7] is shown in Fig. 6.
+0
+1
+1
+0
+0
+1
+1
+1
+1
+0
+0
+0
+Fig.  6.  The trellis module for  the  (3,2,1) code with generator  matrix
+G 3 (D ).  (Solid edges represent "0" code bits, and dashed edges
+represent "1" code bits.  The labels on the vertices correspond to the
+information bits.)
+But we can do still better. If we multiply the ﬁrst row of G′
+3(D) by D and add it to the second row,
+the resulting generator matrix, which is still minimal, is
+G′′
+3(D) =
+µ
+1
+0
+1
+D
+1 + D
+0
+¶
+The scalar matrix f
+G′′
+3 corresponding to G′′
+3(D) is [cf. Eq. (7)]
+f
+G′′
+3 =
+µ
+1
+0
+1
+0
+0
+0
+0
+1
+0
+1
+1
+0
+¶
+(14)
+The span length of G′′
+3(D) is seven, one less than that of G′
+3(D). The matrix module corresponding to
+f
+G′′
+3 is [cf. Eq. (9)]
+c
+G′′
+3 =
+
+
+
+0
+0
+0
+1
+1
+0
+1
+0
+1
+0
+1
+0
+
+
+
+Here a1 = 2, a2 = 3, and a3 = 2, and so by Eq. (10), the corresponding trellis module has 22+23+22 = 16
+edges, so that the resulting trellis complexity is 16/2 = 8 edges per bit. The trellis module itself, again
+constructed using the techniques described in [25, Section 7] is shown in Fig. 7.
+128
+
+=====PAGE 8=====
+ 
+ 
+   
+0
+1
+0
+1
+0
+1
+0
+1
+Fig.  7.   The trellis module for the  (3,2,1) code with generator matrix
+G 3 (D ).  This is the minimal trellis module for this code.
+Furthermore, it is easy to see that there is no generator matrix for this code with span length less than
+seven, so that the trellis module shown in Fig. 7 yields the minimal trellis for the code. Alternatively, we
+examine the scalar generator matrix for the code corresponding to f
+G′′
+3 [cf. Eq. (8)]:
+Gscalar =
+
+
+1
+0
+1
+0
+0
+0
+0
+1
+0
+1
+1
+0
+1
+0
+1
+0
+0
+0
+0
+1
+0
+1
+1
+0
+0
+1
+0
+1
+0
+0
+0
+0
+1
+0
+1
+1
+0
+...
+
+
+(15)
+In Eq. (15), we see that Gscalar has the property that no column contains more than one underlined entry,
+the leftmost nonzero entry in its row (L), or more than one overlined entry, the rightmost nonzero entry
+in its row (R). Thus, Gscalar has the LR property, and so, if it were a ﬁnite matrix, it would produce
+the minimal trellis for the code [25, Sec. 6]. To circumvent the problem that Gscalar is inﬁnite, we can
+deﬁne the Mth truncation of the code C, denoted by C[M], as the ((M + L)n, Mk) block code obtained
+by taking only the ﬁrst Mk rows of Gscalar, i.e., the code with Mk × (M + L)n generator matrix
+G[M]
+scalar =
+
+
+1
+0
+1
+0
+0
+0
+0
+1
+0
+1
+1
+0
+1
+0
+1
+0
+0
+0
+0
+1
+0
+1
+1
+0
+...
+1
+0
+1
+0
+0
+0
+0
+1
+0
+1
+1
+0
+
+
+(16)
+Plainly, if Gscalar has the LR property, so does G[M]
+scalar, for all M ≥1. Thus, it follows from the standard
+theory of trellises for block codes that the matrix G[M]
+scalar produces the minimal trellis for C[M], for all M,
+and so we can safely call the inﬁnite trellis, built from trellis modules corresponding to bG, the minimal
+trellis for the code. (Note that, in this example, the ratio of the conventional trellis complexity to the
+minimal trellis complexity is 12/8 = 3/2. If this code were punctured, then according to Eqs. (1) and
+(4), the ratio would be at least 2. Thus, we conclude that the code with generator matrix G3(D) as given
+in Eq. (11) is not a punctured code, which shows that the theory of minimal trellises for convolutional
+codes goes beyond merely “explaining” punctured codes.)
+The preceding argument, though it was presented in terms of a speciﬁc example, is entirely general. It
+shows that a basic generator matrix G(D) produces a minimal trellis if and only if G(D) has the property
+that the span length of the corresponding eG cannot be reduced by an operation of the form
+129
+
+=====PAGE 9=====
+ 
+ 
+  
+gi(D) ←gi(D) + Dℓgj(D)
+where gi(D) is the ith row of G(D) and ℓis an integer in the range 0 ≤ℓ≤L. We shall call a generator
+matrix with this property a trellis-minimal generator matrix for C. A trellis-minimal generator matrix
+must be minimal, but the converse need not be true, as the example of this section shows. Furthermore,
+it can be shown that the set of trellis-minimal generator matrices for a given code C coincides with the
+set of generator matrices for which the span length of the corresponding eG is a minimum. In the next
+section, we will give two more examples of minimal trellises.
+III. Two More Examples
+Our ﬁrst example is for the code whose generator matrix is given in Eq. (2).
+The corresponding
+decomposition [cf. Eq. (6)] is
+G1(D) =
+µ
+1
+1
+1
+0
+0
+1
+¶
++
+µ
+1
+1
+0
+1
+0
+1
+¶
+D
+The scalar matrix eG is, thus,
+eG1 =
+µ
+1
+1
+1
+1
+1
+0
+0
+0
+1
+1
+0
+1
+¶
+and the matrix module bG from Eq. (9) is then
+bG1 =
+
+
+
+1
+1
+0
+1
+0
+1
+1
+1
+1
+0
+0
+1
+
+
+
+(17)
+Since there are three active entries in each column of bG, it follows from Eq. (10) that the edge count for
+the trellis module is 23 + 23 + 23 = 24, so that the trellis complexity for this trellis module is 24/2 = 12
+edges per bit, the same as given by Eq. (4) for the punctured trellis. To actually construct the trellis
+module, we can use the techniques of [25, Section 7], and the result is shown in Fig. 8. Finally, we note
+that the Gscalar corresponding to the matrix bG1 of Eq. (17) is [cf. Eq. (8)]
+
+
+1
+1
+1
+1
+1
+0
+0
+0
+1
+1
+0
+1
+1
+1
+1
+1
+1
+0
+0
+0
+1
+1
+0
+1
+1
+1
+1
+1
+1
+0
+0
+0
+1
+1
+0
+1
+...
+
+
+which has the LR property, and so G1(D) is trellis-minimal. (This code is the ﬁrst code listed in Table 2
+in the Appendix.)
+130
+
+=====PAGE 10=====
+ 
+ 
+   
+0
+1
+0
+1
+0
+1
+0
+1
+0
+1
+0
+1
+Fig. 8.  The trellis module for the (3,2,2) code with generator matrix
+G1(D).  This module is isomorphic to the one in Fig. 5.
+As our second example, we consider a partial-unit-memory code, taken from [20,1]. It is an (8, 4, 3)
+code with dfree = 8 and with minimal generator matrix (as taken from [1])
+G(D) =
+
+
+
+11111111
+11101000
+10110100
+10011010
+
+
++
+
+
+
+00000000
+11011000
+10101100
+10010110
+
+
+D
+(18)
+The conventional trellis complexity for this code is, by Eq. (1), 8/4 · 27 = 256 edges per bit. We can
+reduce this number to 120, as follows. First, we concatenate the two matrices in Eq. (18), obtaining the
+following 4 × 16 scalar matrix eG:
+eG =
+
+
+
+1
+1
+1
+1
+1
+1
+1
+1
+0
+0
+0
+0
+0
+0
+0
+0
+1
+1
+1
+0
+1
+0
+0
+0
+1
+1
+0
+1
+1
+0
+0
+0
+1
+0
+1
+1
+0
+1
+0
+0
+1
+0
+1
+0
+1
+1
+0
+0
+1
+0
+0
+1
+1
+0
+1
+0
+1
+0
+0
+1
+0
+1
+1
+0
+
+
+
+Next, using the techniques developed in [25, Section 6], we perform a series of elementary row operations
+on eG, transforming it to the minimal span, or trellis oriented form, eG′:
+eG′ =
+
+
+
+1
+1
+1
+1
+1
+1
+1
+1
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+0
+1
+1
+1
+1
+1
+0
+1
+1
+0
+0
+0
+0
+1
+0
+0
+1
+0
+1
+1
+1
+0
+1
+0
+1
+1
+0
+0
+0
+0
+1
+0
+1
+1
+1
+0
+0
+0
+1
+1
+1
+0
+1
+0
+
+
+
+(19)
+The matrix module bG deﬁned in Eq. (9) is, thus,
+131
+
+=====PAGE 11=====
+ 
+ 
+  
+bG =
+
+
+
+
+
+
+
+
+
+
+
+0
+0
+0
+0
+0
+0
+0
+0
+1
+1
+0
+1
+1
+0
+0
+0
+1
+0
+1
+0
+1
+1
+0
+0
+0
+0
+1
+1
+1
+0
+1
+0
+1
+1
+1
+1
+1
+1
+1
+1
+0
+0
+0
+1
+0
+1
+1
+1
+0
+1
+0
+0
+1
+0
+1
+1
+0
+0
+1
+0
+1
+1
+1
+0
+
+
+
+
+
+
+
+
+
+
+
+and so by Eq. (10) the total edge length of the trellis module is 24 +25 +26 +27 +27 +26 +25 +24 = 480.
+Since each trellis module represents four encoded bits, it follows that the trellis complexity is 480/4 = 120
+edges per bit, compared to the conventional trellis complexity, cited above, of 256 edges per bit.
+The matrix Gscalar corresponding to the matrix eG′ in Eq. (19) is easily seen to have the LR property,
+and so the generator matrix [cf. Eq. (19)]
+G′(D) =
+
+
+
+1
+1
+1
+1
+1
+1
+1
+1
+0
+0
+0
+1
+0
+1
+1
+1
+0
+1
+0
+0
+1
+0
+1
+1
+0
+0
+1
+0
+1
+1
+1
+0
+
+
++
+
+
+
+0
+0
+0
+0
+0
+0
+0
+0
+1
+1
+0
+1
+1
+0
+0
+0
+1
+0
+1
+0
+1
+1
+0
+0
+0
+0
+1
+1
+1
+0
+1
+0
+
+
+D
+is trellis-minimal. However, the trellis complexity can be reduced still further, if we allow column per-
+mutations of the original generator matrix G(D) in Eq. (18). Indeed, by computer search, we have found
+that one minimal complexity column permutation for this particular code is the permutation (01243567),
+which results in the generator matrix [cf. Eq. (18)]
+G(D) =
+
+
+
+11111111
+11110000
+10101100
+10011010
+
+
++
+
+
+
+00000000
+11011000
+10110100
+10001110
+
+
+D
+(20)
+Then, after putting the minimal generator matrix of Eq. (20) into trellis-minimal form, it becomes
+G(D) =
+
+
+
+11111111
+00001111
+01111111
+00111111
+
+
++
+
+
+
+00000000
+11111000
+11111100
+11111110
+
+
+D
+(21)
+The trellis complexity of the generator matrix in Eq. (21) turns out to be 104 edges per encoded bit.
+(This code is the seventh code listed in Table 6 in the Appendix.) The minimal trellis complexity of unit
+memory and partial unit memory convolutional codes has also been studied in [6] and [32].
+IV. LTC Versus ACG
+In this section, we will attempt to compare the trellis complexity of a number of codes to their perfor-
+mance. To do this, we deﬁne the logarithmic trellis complexity (LTC) of a code, block or convolutional,
+as the base-2 logarithm of the minimal trellis complexity (edges per encoded bit) and the asymptotic
+coding gain (ACG) as the code’s rate times its minimum (or free) distance. An empirical study, based on
+existing tables of convolutional codes (e.g., the tables in [19,28,20,5,7]), reveals the interesting fact that
+LTC / ACG lies between 1.5 and 2.0 for most “good” convolutional codes. For example, for the (3, 2, 2, 3)
+132
+
+=====PAGE 12=====
+ 
+    
+code discussed in Section III, the ratio is 1.79, and for the (8, 4, 3, 8) code, it is 1.68. By comparison, for
+the “NASA standard” (2, 1, 6, 10) convolutional code, for which, as for all (n, 1, m) convolutional codes,
+the minimal trellis complexity is given by the formula of Eq. (1), the ratio is 1.60. In the Appendix, we
+list the (ACG, LTC) pairs for a large number of convolutional codes and a few block codes. In Fig. 9,
+we show a scatter plot of these pairs. It is interesting to note how close most of these pairs are to the
+line of slope 2. This experimental fact may be related to a recent theorem of Lafourcade and Vardy [18],
+which implies that for any sequence of block codes with a ﬁxed rate R > 0 and ﬁxed value of d/n > 0, as
+n →∞,
+lim inf
+n→∞
+LTC
+ACG ≥2
+(22)
+In any case, we have been able to show that for all codes, the ratio LTC / ACG must be strictly greater
+than 1. (This result is similar to Theorem 3 in [17].)
+15
+10
+5
+x
+xx
+x
+2
+4
+6
+8
+10
+12
+14
+30
+25
+20
+SLOPE = 1
+SLOPE = 2
+X
+CONVOLUTIONAL CODES
+BLOCK CODES
+ACG
+Fig. 9.  A scatter plot of the pairs (ACG, LTC) for the codes listed
+in the Appendix.
+LTC
+V. Conclusion and Open Problems
+In this article, we have shown that every convolutional code has a unique minimal trellis representation,
+which is in many cases considerably simpler than the conventional trellis for the code. We have also
+presented a simple technique for actually constructing the minimal trellis for any convolutional code,
+and we have numerically computed the trellis complexity for many convolutional codes. In principle, the
+theory of minimal trellises for convolutional codes can be deduced from the general Forney–Trott theory
+[12], but we believe the observation that the Viterbi decoding complexity of many convolutional codes,
+including many nonpunctured codes, can thereby be reduced systematically is new, as are the details of
+the algorithms for producing the minimal trellises.
+We close with a list of research problems that suggest themselves.
+133
+
+=====PAGE 13=====
+ 
+  
+(1) A given convolutional code will, in general, have many diﬀerent minimal generator ma-
+trices [21], but as we saw in Section II, not all minimal generator matrices are trellis
+minimal. What can be said about the class of trellis minimal generator matrices?
+(2) A theoretical explanation of the experimental observation that most of the codes shown
+in Fig. 9 lie near the line of slope 2 would be welcome.
+(3) The design and implementation of Viterbi’s algorithm on conventional trellises is well
+understood. Since the techniques described here lead to greatly reduced trellis complex-
+ity, it would be worthwhile to make a careful study of how best to implement Viterbi’s
+algorithm on minimal trellises.
+(4) From our current viewpoint, punctured convolutional codes are just codes whose trellis
+module has fewer edges than would normally be expected. Indeed, it is easy to prove
+that the minimal trellis complexity of any punctured convolutional code is at least as
+small as the punctured trellis complexity given in Eq. (4). This is because in the scalar
+matrix eG for a punctured code, certain entries are guaranteed to be zero. For example,
+for a (4, 3, 3) punctured code, the matrix eG has the template structure
+eG =
+
+
+x
+x
+x
+x
+x
+x
+0
+0
+0
+0
+x
+x
+x
+x
+x
+0
+0
+0
+0
+x
+x
+x
+x
+x
+
+
+where the x’s can be arbitrary (actually, there are restrictions on the x’s that depend in
+detail on how the code is constructed), but the eight zero positions must be respected.
+Any (4, 3, 3) convolutional code with such a template structure will have trellis complexity
+at most 4/3·24 = 211/3. An obvious question is whether other low complexity templates
+support good convolutional codes.
+(5) In our computer-aided search for the “best” column permutation of the (8, 4, 3, 8) code,
+we found that each of the 8! = 40, 326 possible column permutations had minimal trellis
+complexity of either 120 or 104. This strongly suggests an equivalence among permu-
+tations that, if understood theoretically, could make it much simpler to ﬁnd the best
+column permutation.
+Finally, we remark that when the bulk of this article was written, we were not aware of the important
+earlier work of Sidorenko and Zyablov [29], which deals explicitly with the minimal trellis for a convo-
+lutional code, and we wish to acknowledge their priority. Their work, like ours, develops the theory of
+minimal trellises for convolutional codes from the corresponding theory for block codes. However, their
+trellis construction is based on the parity-check matrix of the code rather than the generator matrix,
+and their emphasis is quite diﬀerent. One advantage of the Sidorenko–Zyablov approach is that it leads
+to the following upper bound on the number of nodes at depth i in the minimal trellis for a (n, k, m)
+convolutional code [29, Theorem 1]:
+Ni ≤2m+min(k,n−k)
+It is not easy to derive this bound using our methods. On the other hand, the present article contains a
+number of things not present in [29], among them being
+134
+
+=====PAGE 14=====
+ 
+  
+(1) The observation that the minimal trellis for a punctured convolutional code is at least
+as simple as the punctured trellis.
+(2) The concept of a trellis-minimal generator matrix for a convolutional code, and an algo-
+rithm for computing one.
+(3) The ACG versus LTC comparison for block and convolutional codes.
+References
+[1] K. Abdel-Ghaﬀar, R. J. McEliece, and G. Solomon, “Some Partial Unit Memory
+Convolutional Codes,” The Telecommunications and Data Acquisition Progress
+Report 42-107, July–September 1991, Jet Propulsion Laboratory, Pasadena, Cal-
+ifornia, pp. 57–72, November 15, 1991. Also see Proc. 1991 International Sym-
+posium on Information Theory, Budapest, p. 196, June 1991.
+[2] L. R. Bahl, J. Cocke, F. Jelinek, and J. Raviv, “Optimal Decoding of Linear
+Codes for Minimizing Symbol Error Rate,” IEEE Trans. Inform. Theory, vol.
+IT-20, pp. 284–287, March 1974.
+[3] G. B´egin and D. Haccoun, “High-Rate Punctured Convolutional Codes: Struc-
+ture Properties and Construction Technique,” IEEE Trans. Comm., vol.
+COM-37, pp. 1381–1385, December 1989.
+[4] J. B. Cain, G. C. Clark, and J. M. Geist, “Punctured Convolutional Codes of
+Rate (n −1)/n and Simpliﬁed Maximum Likelihood Decoding,” IEEE Trans.
+Inform. Theory, vol. IT-25, pp. 97–100, January 1979.
+[5] D. G. Daut, J. W. Modestino, and L. D. Wismer, “New Short Constraint Length
+Convolutional Code Construction for Selected Rational Rates,” IEEE Trans.
+Inform. Theory, vol. IT-28, pp. 794–800, September 1982.
+[6] U. Dettmar and U. Sorger, “On Maximum Likelihood Decoding of Unit Mem-
+ory Codes,” Proc. 6th Swedish–Russian International Workshop on Information
+Theory, pp. 184–188, August 1993.
+[7] A. Dholakia, Introduction to Convolutional Codes with Applications, Boston:
+Kluwer Academic Publishers, 1994.
+[8] S. Dolinar, L. Ekroot, A. Kiely, R. McEliece, and W. Lin, “The Permutation Trel-
+lis Complexity of Linear Block Codes,” Proc. 32nd Annual Allerton Conference
+on Communication, Control, and Computing, Allerton Park, Illinois, pp. 60–74,
+September 1994.
+[9] G. D. Forney Jr., “Convolutional Codes I: Algebraic Structure,” IEEE Trans.
+Inform. Theory, vol. IT-16, pp. 268–278, November 1970.
+[10] G. D. Forney, Jr., “The Viterbi Algorithm,” Proc. IEEE, vol. 61, pp. 268–276,
+March 1973.
+[11] G. D. Forney, Jr., “Coset Codes—Part II: Binary Lattices and Related Codes,”
+IEEE Trans. Inform. Theory, vol. IT-34, pp. 1152–1187, September 1988.
+135
+
+=====PAGE 15=====
+ 
+ 
+[12] G. D. Forney, Jr., and M. D. Trott, “The Dynamics of Group Codes: State
+Spaces, Trellis Diagrams, and Canonical Encoders,” IEEE Trans. Inform. The-
+ory, vol. IT-39, pp. 1491–1513, September 1993.
+[13] D. Haccoun and G. B´egin, “High-Rate Punctured Convolutional Codes for
+Viterbi and Sequential Decoding,” IEEE Trans. Comm., vol. COM-37, pp. 1113–
+1125, November 1989.
+[14] B. Honary, G. Markarian, and M. Darnell, “Trellis Decoding for Block Codes,”
+Proc. 3rd IEE Int. Symp. Comm. Theory Appl., Ambleside, United Kingdom,
+pp. 79–93, July 1993.
+[15] A. Kiely, S. Dolinar, R. McEliece, L. Ekroot, and W. Lin, “Trellis Decoding
+Complexity of Linear Block Codes,” to appear in IEEE Trans. Inform. Theory,
+vol. IT-42, November 1996.
+[16] F. R. Kschischang and V. Sorokine, “On the Trellis Structure of Block Codes,”
+IEEE Trans. Inform. Theory, vol. IT-41, November 1995, in press.
+[17] A. Lafourcade and A. Vardy, “Asymptotically Good Codes Have Inﬁnite Trellis
+Complexity,” IEEE Trans. Inform. Theory, vol. IT-41, pp. 555–559, March 1995.
+[18] A. Lafourcade and A. Vardy, “Lower Bounds on Trellis Complexity of Block
+Codes,”IEEE Trans. Inform. Theory, vol. IT-41, November 1995, in press.
+[19] K. Larsen, “Short Convolutional Codes With Maximal Free Distance for Rates
+1/2, 1/3, and 1/4,” IEEE Trans. Inform. Theory, vol. IT-19, pp. 371–372, May
+1973.
+[20] G. S. Lauer, “Some Optimal Partial-Unit-Memory Codes,” IEEE Trans. Inform.
+Theory, vol. IT-25, pp. 540–547, March 1979.
+[21] K. Lumbard and R. J. McEliece, “Counting Minimal Generator Matrices,” Proc.
+1994 IEEE Inter. Symp. Inform. Theory, Trondheim, Norway, p. 18, June 1994.
+[22] J. L. Massey, “Foundations and Methods of Channel Coding,” Proc. Int. Conf.
+Inform. Theory and Systems, NTG-Fachberichte, vol. 65, pp. 148–157, 1978.
+[23] R. J. McEliece, The Theory of Information and Coding, Reading, Massachusetts:
+Addison-Wesley, 1977.
+[24] R. J. McEliece, “The Viterbi Decoding Complexity of Linear Block Codes,” Proc.
+1994 IEEE Inter. Symp. Inform. Theory, Trondheim, Norway, p. 341, June 1994.
+[25] R. J. McEliece, “On the BCJR Trellis,” to appear in IEEE Trans. Inform. The-
+ory., vol. IT-42, 1996.
+[26] R. J. McEliece, “The Algebraic Theory of Convolutional Codes,” to appear as a
+chapter in the Handbook of Coding Theory, edited by R. A. Brualdi, W. C. Huﬀ-
+man, and V. Pless, Amsterdam: Elsinore Science Publishers, 1996.
+[27] D. J. Muder, “Minimal Trellises for Block Codes,” IEEE Trans. Inform. Theory,
+vol. IT-34, pp. 1049–1053, September 1988.
+[28] E. Paaske, “Short Binary Convolutional Codes With Maximal Free Distance,”
+IEEE Trans. Inform. Theory, vol. IT-20, pp. 683–688, September 1974.
+[29] V. Sidorenko and V. Zyablov, “Decoding of Convolutional Codes Using a Syn-
+drome Trellis,” IEEE Trans. Inform. Theory, vol. IT-40, pp. 1663–1666, Septem-
+ber 1994.
+136
+
+=====PAGE 16=====
+ 
+  
+[30] A. J. Viterbi, “Error Bounds for Convolutional Codes and an Asymptotically Op-
+timum Decoding Algorithm,” IEEE Trans. Inform. Theory, vol. IT-13, pp. 260–
+269, April 1967.
+[31] J. K. Wolf, “Eﬃcient Maximum Likelihood Decoding of Linear Block Codes,”
+IEEE Trans. Inform. Theory, vol. IT-24, pp. 76–80, January 1978.
+[32] V. Zyablov and V. Sidorenko, “Soft Decision Maximum Likelihood Decoding of
+Partial Unit Memory Codes,” Problems of Information Transmission, vol. 28,
+no. 1, pp. 18–22, July 1992.
+Appendix
+Tables of LTC Versus ACG
+In this appendix, we list the ACG and the LTC for a large number of “good” convolutional codes and
+a few block codes. A scatter plot of these (ACG, LTC) pairs appears as Fig. 9 in Section IV.
+Table 1. Best (2,1,m) codes.a
+LTC–ACG
+Code
+LTC
+ACG
+ratio
+(2,1,2,5)
+4
+2.5
+1.60
+(2,1,3,6)
+5
+3
+1.67
+(2,1,4,7)
+6
+3.5
+1.71
+(2,1,5,8)
+7
+4
+1.75
+(2,1,6,10)
+8
+5
+1.60
+(2,1,8,12)
+10
+6
+1.67
+(2,1,10,14)
+12
+7
+1.71
+(2,1,11,15)
+13
+7.5
+1.73
+(2,1,12,16)
+14
+8
+1.75
+(2,1,14,18)
+16
+9
+1.78
+(2,1,15,19)
+17
+9.5
+1.79
+(2,1,16,20)
+18
+10
+1.80
+(2,1,18,22)
+20
+11
+1.82
+(2,1,21,24)
+23
+12
+1.92
+(2,1,23,26)
+25
+13
+1.92
+(2,1,25,27)
+27
+13.5
+2.00
+(2,1,27,28)
+29
+14
+2.07
+(2,1,30,30)
+32
+15
+2.13
+a From pp. 85–88 in [7].
+137
+
+=====PAGE 17=====
+ 
+Table 2. Best (3,2,m) codes.a
+LTC–ACG
+Code
+LTC
+ACG
+ratio
+(3,2,2,3)
+3.58
+2.00
+1.79
+(3,2,3,4)
+5.00
+2.67
+1.87
+(3,2,4,5)
+6.00
+3.33
+1.80
+(3,2,5,6)
+7.00
+4.00
+1.75
+(3,2,6,7)
+8.00
+4.67
+1.71
+(3,2,7,8)
+9.00
+5.33
+1.69
+(3,2,8,8)
+10.00
+5.33
+1.88
+(3,2,9,9)
+11.00
+6.00
+1.83
+(3,2,10,10)
+12.00
+6.67
+1.80
+a From p. 90 in [7].
+Table 3. Best (4,3,m) codes.a
+LTC–ACG
+Code
+LTC
+ACG
+ratio
+(4,3,3,4)
+5.00
+3.00
+1.67
+(4,3,5,5)
+7.00
+3.75
+1.87
+(4,3,6,6)
+8.00
+4.50
+1.78
+(4,3,8,7)
+10.00
+5.25
+1.90
+(4,3,9,8)
+11.00
+6.00
+1.83
+a From p. 90 in [7].
+Table 4. Best (3,1,m) codes.a
+LTC–ACG
+Code
+LTC
+ACG
+ratio
+(3,1,2,8)
+4.58
+2.67
+1.72
+(3,1,3,10)
+5.58
+3.33
+1.68
+(3,1,4,12)
+6.58
+4.00
+1.64
+(3,1,5,13)
+7.58
+4.33
+1.75
+(3,1,6,15)
+8.58
+5.00
+1.72
+(3,1,7,16)
+9.58
+5.33
+1.80
+(3,1,8,18)
+10.58
+6.00
+1.76
+(3,1,9,20)
+11.58
+6.67
+1.74
+(3,1,10,22)
+12.58
+7.33
+1.72
+(3,1,11,24)
+13.58
+8.00
+1.70
+(3,1,12,24)
+14.58
+8.00
+1.82
+(3,1,13,26)
+15.58
+8.67
+1.80
+a From p. 89 in [7].
+138
+
+=====PAGE 18=====
+ 
+Table 5. Best (4,1,m) codes.a
+LTC–ACG
+Code
+LTC
+ACG
+ratio
+(4,1,2,10)
+5.00
+2.50
+2.00
+(4,1,3,13)
+6.00
+3.25
+1.85
+(4,1,4,16)
+7.00
+4.00
+1.75
+(4,1,5,18)
+8.00
+4.50
+1.78
+(4,1,6,20)
+9.00
+5.00
+1.80
+(4,1,7,22)
+10.00
+5.50
+1.82
+(4,1,8,24
+11.00
+6.00
+1.83
+(4,1,9,27)
+12.00
+6.75
+1.78
+(4,1,10,29)
+13.00
+7.25
+1.79
+(4,1,11,32)
+14.00
+8.00
+1.75
+(4,1,12,33)
+15.00
+8.25
+1.82
+(4,1,13,36)
+16.00
+9.00
+1.78
+a From p. 89 in [7].
+Table 6. Some block codes and partial unit memory
+convolutional codes.
+LTC–ACG
+Code
+LTC
+ACG
+ratio
+[8,4,4]
+3.46
+2.00
+1.73
+Self-dual code
+[24,12,8]
+8.22
+4.00
+2.06
+Golay code
+[32,16,8]
+8.64
+4.00
+2.16
+BCHa code
+[48,24,12]
+15.13
+6.00
+2.52
+Self-dual code
+[n, n −1, 2]
+2.00
+2(n−1)
+n
+n
+n−1
+Parity-check code
+[n, 1, n]
+1 + log2 n
+1
+1 + log2 n
+Repetition code
+(8,4,3,8)
+6.70
+4.00
+1.68
+PUMb code
+(24,12,7,12)
+15.58
+6.00
+2.60
+PUM code
+(24,12,10,16)
+18.58
+8.00
+2.32
+PUM code
+a Bose–Chaudhuri–Hocquenghem.
+b Partial unit memory.
+139

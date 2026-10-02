@@ -1,0 +1,1464 @@
+
+=====PAGE 1=====
+Recommendation for Space Data System Standards 
+CCSDS SPACE LINK 
+PROTOCOLS OVER 
+ETSI DVB-S2 STANDARD 
+RECOMMENDED STANDARD 
+CCSDS 131.3-B-2 
+BLUE BOOK 
+April 2022 
+
+=====PAGE 2=====
+Recommendation for Space Data System Standards 
+CCSDS SPACE LINK 
+PROTOCOLS OVER 
+ETSI DVB-S2 STANDARD 
+RECOMMENDED STANDARD 
+CCSDS 131.3-B-2 
+BLUE BOOK 
+April 2022 
+
+=====PAGE 3=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page i 
+April 2022 
+AUTHORITY 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Issue: 
+Recommended Standard, Issue 2 
+ 
+ 
+Date: 
+April 2022 
+ 
+ 
+Location: 
+Washington, DC, USA 
+ 
+ 
+ 
+ 
+ 
+This document has been approved for publication by the Management Council of the 
+Consultative Committee for Space Data Systems (CCSDS) and represents the consensus 
+technical agreement of the participating CCSDS Member Agencies.  The procedure for 
+review and authorization of CCSDS documents is detailed in Organization and Processes for 
+the Consultative Committee for Space Data Systems (CCSDS A02.1-Y-4), and the record of 
+Agency participation in the authorization of this document can be obtained from the CCSDS 
+Secretariat at the email address below. 
+ 
+ 
+This document is published and maintained by: 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+Email: secretariat@mailman.ccsds.org 
+
+=====PAGE 4=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page ii 
+April 2022 
+STATEMENT OF INTENT 
+The Consultative Committee for Space Data Systems (CCSDS) is an organization officially 
+established by the management of its members. The Committee meets periodically to address 
+data systems problems that are common to all participants, and to formulate sound technical 
+solutions to these problems. Inasmuch as participation in the CCSDS is completely 
+voluntary, the results of Committee actions are termed Recommended Standards and are 
+not considered binding on any Agency. 
+This Recommended Standard is issued by, and represents the consensus of, the CCSDS 
+members.  Endorsement of this Recommendation is entirely voluntary. Endorsement, 
+however, indicates the following understandings: 
+o Whenever a member establishes a CCSDS-related standard, this standard will be in 
+accord with the relevant Recommended Standard. Establishing such a standard 
+does not preclude other provisions which a member may develop. 
+o Whenever a member establishes a CCSDS-related standard, that member will 
+provide other CCSDS members with the following information: 
+ 
+-- The standard itself. 
+ 
+-- The anticipated date of initial operational capability. 
+ 
+-- The anticipated duration of operational service. 
+o Specific service arrangements shall be made via memoranda of agreement. Neither 
+this Recommended Standard nor any ensuing standard is a substitute for a 
+memorandum of agreement. 
+No later than five years from its date of issuance, this Recommended Standard will be 
+reviewed by the CCSDS to determine whether it should: (1) remain in effect without change; 
+(2) be changed to reflect the impact of new technologies, new requirements, or new 
+directions; or (3) be retired or canceled. 
+In those instances when a new version of a Recommended Standard is issued, existing 
+CCSDS-related member standards and implementations are not negated or deemed to be non-
+CCSDS compatible.  It is the responsibility of each member to determine when such 
+standards or implementations are to be modified.  Each member is, however, strongly 
+encouraged to direct planning for its new standards and implementations towards the later 
+version of the Recommended Standard. 
+
+=====PAGE 5=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page iii 
+April 2022 
+FOREWORD 
+Through the process of normal evolution, it is expected that expansion, deletion, or 
+modification of this document may occur.  This Recommended Standard is therefore subject 
+to CCSDS document management and change control procedures, which are defined in the 
+Organization and Processes for the Consultative Committee for Space Data Systems 
+(CCSDS A02.1-Y-4).  Current versions of CCSDS documents are maintained at the CCSDS 
+Web site: 
+http://www.ccsds.org/ 
+Questions relating to the contents or status of this document should be sent to the CCSDS 
+Secretariat at the email address indicated on page i. 
+
+=====PAGE 6=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page iv 
+April 2022 
+At time of publication, the active Member and Observer Agencies of the CCSDS were: 
+Member Agencies 
+– Agenzia Spaziale Italiana (ASI)/Italy. 
+– Canadian Space Agency (CSA)/Canada. 
+– Centre National d’Etudes Spatiales (CNES)/France. 
+– China National Space Administration (CNSA)/People’s Republic of China. 
+– Deutsches Zentrum für Luft- und Raumfahrt (DLR)/Germany. 
+– European Space Agency (ESA)/Europe. 
+– Federal Space Agency (FSA)/Russian Federation. 
+– Instituto Nacional de Pesquisas Espaciais (INPE)/Brazil. 
+– Japan Aerospace Exploration Agency (JAXA)/Japan. 
+– National Aeronautics and Space Administration (NASA)/USA. 
+– UK Space Agency/United Kingdom. 
+Observer Agencies 
+– 
+Austrian Space Agency (ASA)/Austria. 
+– 
+Belgian Science Policy Office (BELSPO)/Belgium. 
+– 
+Central Research Institute of Machine Building (TsNIIMash)/Russian Federation. 
+– 
+China Satellite Launch and Tracking Control General, Beijing Institute of Tracking and 
+Telecommunications Technology (CLTC/BITTT)/China. 
+– 
+Chinese Academy of Sciences (CAS)/China. 
+– 
+China Academy of Space Technology (CAST)/China. 
+– 
+Commonwealth Scientific and Industrial Research Organization (CSIRO)/Australia. 
+– 
+Danish National Space Center (DNSC)/Denmark. 
+– 
+Departamento de Ciência e Tecnologia Aeroespacial (DCTA)/Brazil. 
+– 
+Electronics and Telecommunications Research Institute (ETRI)/Korea. 
+– 
+European Organization for the Exploitation of Meteorological Satellites (EUMETSAT)/Europe. 
+– 
+European Telecommunications Satellite Organization (EUTELSAT)/Europe. 
+– 
+Geo-Informatics and Space Technology Development Agency (GISTDA)/Thailand. 
+– 
+Hellenic National Space Committee (HNSC)/Greece. 
+– 
+Hellenic Space Agency (HSA)/Greece. 
+– 
+Indian Space Research Organization (ISRO)/India. 
+– 
+Institute of Space Research (IKI)/Russian Federation. 
+– 
+Korea Aerospace Research Institute (KARI)/Korea. 
+– 
+Ministry of Communications (MOC)/Israel. 
+– 
+Mohammed Bin Rashid Space Centre (MBRSC)/United Arab Emirates. 
+– 
+National Institute of Information and Communications Technology (NICT)/Japan. 
+– 
+National Oceanic and Atmospheric Administration (NOAA)/USA. 
+– 
+National Space Agency of the Republic of Kazakhstan (NSARK)/Kazakhstan. 
+– 
+National Space Organization (NSPO)/Chinese Taipei. 
+– 
+Naval Center for Space Technology (NCST)/USA. 
+– 
+Netherlands Space Office (NSO)/The Netherlands. 
+– 
+Research Institute for Particle & Nuclear Physics (KFKI)/Hungary. 
+– 
+Scientific and Technological Research Council of Turkey (TUBITAK)/Turkey. 
+– 
+South African National Space Agency (SANSA)/Republic of South Africa. 
+– 
+Space and Upper Atmosphere Research Commission (SUPARCO)/Pakistan. 
+– 
+Swedish Space Corporation (SSC)/Sweden. 
+– 
+Swiss Space Office (SSO)/Switzerland. 
+– 
+United States Geological Survey (USGS)/USA. 
+
+=====PAGE 7=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page v 
+April 2022 
+DOCUMENT CONTROL 
+ 
+Document 
+Title 
+Date 
+Status 
+CCSDS 
+131.3-B-1 
+CCSDS Space Link Protocols over 
+ETSI DVB-S2 Standard, 
+Recommended Standard, Issue 1 
+March 2013 Original issue, 
+superseded 
+CCSDS 
+131.3-B-2 
+CCSDS Space Link Protocols over 
+ETSI DVB-S2 Standard, 
+Recommended Standard, Issue 2 
+April 2022 
+Current issue: 
+– adds support for the 
+Unified Space Data 
+Link Protocol; 
+– extends use for 
+ground-to-space and 
+space-to-space 
+applications; 
+– adds applicability of 
+CCSDS Radio 
+Frequency and 
+Modulation Standard; 
+– replaces CADU with 
+SMTF; 
+– changes the number 
+of MODCOD to 
+include the Dummy 
+PLFrame. 
+EC 1 
+Editorial Change 1 
+October 
+2024 
+– Corrects figure and 
+table listings in table of 
+contents; 
+– changes page size to 
+A4. 
+NOTE – Substantive changes from the original issue are marked with change bars in the 
+inside margin. 
+ 
+ 
+October 2024 
+
+=====PAGE 8=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page vi 
+April 2022 
+CONTENTS 
+Section 
+Page 
+1 
+INTRODUCTION ........................................................................................................ 1-1 
+ 
+1.1 
+BACKGROUND .................................................................................................... 1-1 
+1.2 
+PURPOSE ............................................................................................................... 1-1 
+1.3 
+SCOPE .................................................................................................................... 1-1 
+1.4 
+APPLICABILITY .................................................................................................... 1-2 
+1.5 
+DOCUMENT STRUCTURE .................................................................................. 1-2 
+1.6 
+NOMENCLATURE ................................................................................................ 1-3 
+1.7 
+DEFINITIONS AND CONVENTIONS ............................................................... 1-3 
+1.8 
+PATENTED TECHNOLOGIES ........................................................................... 1-5 
+1.9 
+REFERENCE DOCUMENTS ............................................................................... 1-6 
+ 
+2 OVERVIEW .................................................................................................................... 2-1 
+ 
+2.1 
+ARCHITECTURE ................................................................................................... 2-1 
+2.2 
+SUMMARY OF FUNCTIONS ............................................................................... 2-1 
+2.3 
+INTERNAL ORGANIZATION ............................................................................ 2-2 
+ 
+3 SMTF STREAM GENERATION ................................................................................ 3-1 
+ 
+3.1 
+OVERVIEW ............................................................................................................ 3-1 
+3.2 
+INPUT CCSDS TRANSFER FRAMES .................................................................. 3-1 
+3.3 
+SYNCH-MARKED TRANSFER FRAME .............................................................. 3-1 
+ 
+4 DVB-S2 TRANSMISSION ............................................................................................ 4-1 
+ 
+4.1 
+OVERVIEW ............................................................................................................ 4-1 
+4.2 
+DVB-S2 MODE ADAPTATION FORMAT .......................................................... 4-1 
+4.3 
+AVERAGE SIGNAL ENERGY ............................................................................. 4-1 
+4.4 
+SHAPING FILTERING ......................................................................................... 4-1 
+ 
+5 MANAGED PARAMETERS ........................................................................................ 5-1 
+ 
+5.1 
+OVERVIEW ............................................................................................................ 5-1 
+5.2 
+PERMANENT MANAGED PARAMETERS ........................................................ 5-1 
+5.3 
+VARIABLE MANAGED PARAMETERS ............................................................. 5-3 
+ 
+ANNEX A SERVICE DEFINITION (NORMATIVE) ................................................ A-1 
+ANNEX B SECURITY, SANA AND PATENT CONSIDERATIONS  
+(INFORMATIVE) ......................................................................................... B-1 
+
+=====PAGE 9=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page vii 
+April 2022 
+CONTENTS (continued) 
+Section 
+Page 
+ANNEX C ACRONYMS AND TERMS (INFORMATIVE) ........................................ C-1 
+ANNEX D DVB-S2 SPECTRAL EFFICIENCIES AND MODCOD  
+IDENTIFIERS (INFORMATIVE) ............................................................. D-1 
+Figure 
+1-1 
+Bit Numbering Convention ............................................................................................ 1-5 
+2-1 
+Relationship with OSI Layers ......................................................................................... 2-1 
+2-2 
+Stream Format While Transmitting CCSDS Transfer Frames Using DVB-S2 ................... 2-3 
+Table 
+5-1 
+Permanent Managed Parameters for Transfer Frame Synchronization ............................ 5-2 
+5-2 
+Permanent Managed Parameters for DVB-S2 Transmission ........................................... 5-2 
+5-3 
+Variable Managed Parameters ......................................................................................... 5-3 
+ 
+
+=====PAGE 10=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 1-1 
+April 2022 
+1 INTRODUCTION 
+1.1 
+BACKGROUND 
+The high demand in TV broadcasting has pushed the European Telecommunications 
+Standards Institute (ETSI) to define a new satellite communication standard called Digital 
+Video Broadcasting—Satellite—Second Generation (DVB-S2) (reference [1]). This standard 
+is suited to high data rate transmissions, and proposes variable or adaptive coding and 
+modulation with high power and bandwidth efficiencies. 
+1.2 
+PURPOSE 
+The purpose of this document is to define a recommended interface between CCSDS Space 
+Link Protocols (references [3], [4], and [7]) and the DVB-S2 telecom standard 
+(reference [1]), and to recommend options of the DVB-S2 standard suited to high data rate 
+transmission applications, such as Earth Exploration Satellite Services (EESS) payload 
+telemetry. However, this Recommended Standard may be also adopted for other high data 
+rate applications (either space-to-ground, ground-to-space, and space-to-space) and services 
+(e.g., the space research service), as long as compliance to CCSDS recommendations for 
+Radio Frequency modulations in (reference [8]) is ensured. 
+1.3 
+SCOPE 
+The DVB-S2 standard (reference [1]) proposes advanced modulation techniques (QPSK, 
+8PSK, 16APSK and 32APSK) and a wide range of coding rates (from 1/4 to 9/10) with near-
+Shannon coding schemes (LDPC codes). This high number of modulation and coding 
+schemes allows a wide range of possibilities to satisfy specific mission constraints. 
+Moreover, to maximize the system throughput, it is possible to adapt the transmitted 
+waveform (and the useful data rate) to the variable conditions of the link. The DVB-S2 
+standard can actually implement Variable Coding and Modulation (VCM) mode, which 
+adapts the transmission scheme to the channel conditions following a predetermined schedule 
+(for example, following a dynamic link budget). When a channel is available to provide 
+feedback (e.g., via a command link), the transmission scheme can be dynamically adjusted 
+using the Adaptive Coding and Modulation (ACM) mode. 
+The use of the DVB-S2 standard for telemetry enables the use of generic Very High Scale 
+Integrated Circuits (VHSIC) Hardware Description Language (VHDL) Intellectual Property 
+(IP) modules for developments. The use of a widely implemented standard simplifies finding 
+transmitting or receiving equipment to check compatibility. Finally, for the ground part, 
+some telecom DVB-S2 receivers or Application Specific Integrated Circuits (ASICs) 
+developed for the telecom market could be reused. 
+
+=====PAGE 11=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 1-2 
+April 2022 
+This Recommended Standard is an adaptation profile describing how to use the DVB-S2 
+standard to transmit CCSDS Transfer Frames. The interface between CCSDS and DVB-S2 is 
+based on the Attached Synchronization Marker (ASM) and  Synch-Marked Transfer Frame 
+(SMTF) already introduced in reference [2]. 
+DVB-S2 is used in this adaptation profile as a complete and self-sufficient standard, and 
+definitions and specifications taken from DVB-S2 are applicable only in the context of this 
+Recommended Standard.  However, individual DVB-S2 functions or components (e.g., 
+VCM/ACM, 8-PSK, and higher-order modulations) might be reused, redefined, and/or 
+respecified by CCSDS in future Recommended Standards. 
+1.4 
+APPLICABILITY 
+This Recommended Standard applies to the creation of Agency standards and to data 
+communications over space links between CCSDS Agencies in cross-support situations for 
+applications such as EESS and SRS. This Recommended Standard includes comprehensive 
+specification of the data formats and procedures for inter-Agency cross support. It is neither a 
+specification of, nor a design for, real systems that may be implemented for existing or future 
+missions. 
+The Recommended Standard specified in this document is to be invoked through the normal 
+standards programs of each CCSDS Agency and is applicable to those missions for which 
+cross support based on capabilities described in this Recommended Standard is anticipated. 
+Where mandatory capabilities are clearly indicated in sections of this Recommended 
+Standard, it is mandatory to implement them when this document is used as a basis for cross 
+support. Where options are allowed or implied, implementation of these options is subject to 
+specific bilateral cross-support agreements between the Agencies involved. 
+1.5 
+DOCUMENT STRUCTURE 
+Section 1 presents the background, purpose, scope, applicability, and rationale of this 
+Recommended Standard and lists the conventions, definitions, and references used 
+throughout the document. 
+Section 2 provides an overview of the system architecture. 
+Section 3 specifies the SMTF stream generation. 
+Section 4 specifies the DVB-S2 transmission of the SMTF stream. 
+Section 5 specifies managed parameters. 
+Annex Α provides the service definition. 
+Annex B discusses security, Space Assigned Numbers Authority (SANA), and patent 
+considerations. 
+
+=====PAGE 12=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 1-3 
+April 2022 
+Annex C lists acronyms and terms used within this document. 
+Annex D lists MODCOD available in the DVB-S2 standard. 
+1.6 
+NOMENCLATURE 
+1.6.1 NORMATIVE TEXT 
+The following conventions apply for the normative specifications in this Recommended 
+Standard: 
+a) the words ‘shall’ and ‘must’ imply a binding and verifiable specification; 
+b) the word ‘should’ implies an optional, but desirable, specification; 
+c) the word ‘may’ implies an optional specification; 
+d) the words ‘is’, ‘are’, and ‘will’ imply statements of fact. 
+NOTE – These conventions do not imply constraints on diction in text that is clearly 
+informative in nature. 
+1.6.2 INFORMATIVE TEXT 
+In the normative sections of this document, informative text is set off from the normative 
+specifications either in notes or under one of the following subsection headings: 
+– Overview; 
+– Background; 
+– Rationale; 
+– Discussion. 
+1.7 
+DEFINITIONS AND CONVENTIONS 
+1.7.1 DEFINITIONS 
+1.7.1.1 Definitions from the Open System Interconnection (OSI) Basic Reference 
+Model  
+This Recommended Standard makes use of a number of terms defined in reference [5]. The 
+use of those terms in this Recommended Standard shall be understood in a generic sense, i.e., 
+in the sense that those terms are generally applicable to any of a variety of technologies that 
+provide for the exchange of information between real systems. Those terms are: 
+a) Data Link Layer; 
+
+=====PAGE 13=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 1-4 
+April 2022 
+b) Physical Layer; 
+c) service; 
+d) service data unit. 
+1.7.1.2 Definitions from OSI Service Definition Conventions 
+This Recommended Standard makes use of a number of terms defined in reference [6]. The 
+use of those terms in this Recommended Standard shall be understood in a generic sense, i.e., 
+in the sense that those terms are generally applicable to any of a variety of technologies that 
+provide for the exchange of information between real systems. Those terms are: 
+a) indication; 
+b) primitive; 
+c) request; 
+d) service provider; 
+e) service user. 
+1.7.1.3 Definition of SMTF  
+The SMTF is introduced in reference [2] and consists in the concatenation of an ASM and a 
+Transfer Frame.   
+1.7.1.4 Definitions from ETSI DVB-S2 Standard 
+This Recommended Standard makes use of a number of terms defined in reference [1].  
+a) DATAFIELD and DFL are defined in paragraph 5.1.5 of reference [1]. 
+b) BBHEADER is defined in paragraph 5.1.6 of reference [1]. 
+c) FECFRAME is defined in paragraph 5.3 of reference [1]. 
+d) PLFRAME is defined in paragraph 5.5 of reference [1].  
+e) Dummy PLFRAME is defined in paragraph 5.5.1 of reference [1].  
+f) PLHEADER and MODCOD are defined in paragraph 5.5.2 of reference [1]. 
+
+=====PAGE 14=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 1-5 
+April 2022 
+1.7.2 CONVENTIONS 
+In this document, the following convention is used to identify each bit in an N-bit field.  The 
+first bit in the field to be transmitted (i.e., the most left justified when drawing a figure) is 
+defined to be ‘Bit 0’; the following bit is defined to be ‘Bit 1’ and so on up to ‘Bit N–1’. 
+When the field is used to express a binary value (such as a counter), the Most Significant Bit 
+(MSB) shall be the first transmitted bit of the field, i.e., ‘Bit 0’ (see figure 1-1). 
+BIT 0
+BIT N–1
+N-BIT DATA FIELD
+FIRST BIT TRANSFERRED = MSB
+ 
+Figure 1-1:  Bit Numbering Convention 
+In accordance with standard data-communications practice, data fields are often grouped into 
+8-bit ‘words’ which conform to the above convention. Throughout this Recommended 
+Standard, such an 8-bit word is called an ‘octet’. 
+The numbering for octets within a data structure starts with ‘0’. 
+1.8 
+PATENTED TECHNOLOGIES 
+The CCSDS draws attention to the fact that it is claimed that compliance with this document 
+may involve the use of patents. 
+The CCSDS takes no position concerning the evidence, validity, and scope of these patent 
+rights. 
+The holders of these patent rights have assured the CCSDS that they are willing to negotiate 
+licenses under reasonable and non-discriminatory terms and conditions with applicants 
+throughout the world. In this respect, the statements of the holders of these patent rights are 
+registered with CCSDS. Information can be obtained from the CCSDS Secretariat at the 
+address indicated on page i. Contact information for the holders of these patent rights is 
+provided in annex B. 
+Attention is drawn to the possibility that some of the elements of this document may be the 
+subject of patent rights other than those identified above. The CCSDS shall not be held 
+responsible for identifying any or all such patent rights. 
+
+=====PAGE 15=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 1-6 
+April 2022 
+1.9 
+REFERENCE DOCUMENTS 
+The following publications contain provisions which, through reference in this text, 
+constitute provisions of this document.  At the time of publication, the editions indicated 
+were valid.  All publications are subject to revision, and users of this document are 
+encouraged to investigate the possibility of applying the most recent editions of the 
+publications indicated below.  The CCSDS Secretariat maintains a register of currently valid 
+CCSDS publications. 
+[1] 
+Digital Video Broadcasting (DVB); Second Generation Framing Structure, Channel 
+Coding and Modulation Systems for Broadcasting, Interactive Services, News 
+Gathering and Other Broadband Satellite Applications; Part 1: DVB-S2. ETSI EN 302 
+307-1 V1.4.1 (2014-07). Sophia-Antipolis: ETSI, 2014. 
+NOTE – ETSI standards are available for free download at https://www.etsi.org. 
+[2] 
+TM Synchronization and Channel Coding.  Recommendation for Space Data System 
+Standards, CCSDS 131.0-B-3.  Blue Book.  Issue 3.  Washington, D.C.: CCSDS, 
+September 2017. 
+[3] 
+TM Space Data Link Protocol.  Recommendation for Space Data System Standards, 
+CCSDS 132.0-B-3.  Blue Book.  Issue 3.  Washington, D.C.: CCSDS, October 2021. 
+[4] 
+AOS Space Data Link Protocol.  Recommendation for Space Data System Standards, 
+CCSDS 732.0-B-4.  Blue Book.  Issue 4.  Washington, D.C.: CCSDS, October 2021. 
+[5] 
+Information Technology—Open Systems Interconnection—Basic Reference Model: The 
+Basic Model.  International Standard, ISO/IEC 7498-1:1994.  2nd ed.  Geneva:  ISO, 
+1994. 
+[6] 
+Information Technology—Open Systems Interconnection—Basic Reference Model—
+Conventions for the Definition of OSI Services.  International Standard, ISO/IEC 
+10731:1994.  Geneva:  ISO, 1994. 
+[7] 
+Unified Space Data Link Protocol.  Recommendation for Space Data System 
+Standards, CCSDS 732.1-B-2.  Blue Book.  Issue 2.  Washington, D.C.: CCSDS, 
+October 2021. 
+[8] 
+Radio Frequency and Modulation Systems—Part 1: Earth Stations and Spacecraft. 
+Issue 31. Recommendation for Space Data System Standards (Blue Book), CCSDS 
+401.0-B-32. Washington, D.C.: CCSDS, October 2021. 
+
+=====PAGE 16=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 2-1 
+April 2022 
+2 OVERVIEW 
+2.1 
+ARCHITECTURE 
+Figure 2-1 illustrates the relationship of this Recommended Standard to the Open Systems 
+Interconnection reference model (reference [5]). Two sublayers of the Data Link Layer are 
+defined for CCSDS space link protocols. The TM, AOS, and Unified Space Data Link 
+Protocols specified in references [3], [4], and [7], respectively, correspond to the Data Link 
+Protocol Sublayer, and provide functions for transferring data using the protocol data unit 
+called the Transfer Frame. The Synchronization and Channel Coding Sublayer provides 
+methods of synchronization and channel coding for transferring Transfer Frames over a space 
+link while the Physical Layer provides the RF and modulation methods for transferring a 
+stream of bits over a space link in a single direction. 
+This Recommended Standard covers the functions of both the Synchronization and Channel 
+Coding Sublayer and the Physical Layer, the latter for what concerns the modulation 
+schemes. Reference [8] covers additional features of the Physical Layer like frequency bands 
+and polarizations that are not described or referenced here. 
+Network and
+Upper Layers
+Data Link Layer
+Physical Layer
+Data Link Protocol
+Sublayer
+Synchronization and
+Channel Coding Sublayer
+Network and Upper
+Layers
+Physical Layer
+TM, AOS, or USLP
+Space Data Link Protocol:
+SMTF Stream Generation
+DVB-S2 Transmission
+OSI Layers
+CCSDS Layers
+CCSDS Protocols
+RECOMMENDED
+STANDARD
+CONTENT
+ 
+Figure 2-1:  Relationship with OSI Layers 
+2.2 
+SUMMARY OF FUNCTIONS 
+2.2.1 GENERAL 
+This Recommended Standard provides the following functions for transferring Transfer 
+Frames via a stream of bits over a space link: 
+a) pseudo-randomizing; 
+b) error correction coding and modulation; 
+
+=====PAGE 17=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 2-2 
+April 2022 
+c) Transfer Frame synchronization; 
+d) Transfer Frame validation. 
+2.2.2 PSEUDO-RANDOMIZING 
+Pseudo-randomizing is specified in the DVB-S2 standard. No other pseudo-randomizing of 
+Transfer Frames is required. 
+2.2.3 ERROR CORRECTION CODING AND MODULATION 
+Error correction coding and modulation are specified in the DVB-S2 standard. No other error 
+correction coding of Transfer Frames is required. 
+2.2.4 TRANSFER FRAME SYNCHRONIZATION 
+This Recommended Standard specifies an Attached Sync Marker (ASM) for synchronizing 
+Transfer Frames at the receiver. 
+2.2.5 TRANSFER FRAME VALIDATION 
+After decoding is performed, the upper layers at the receiving end also need to know whether 
+or not each decoded Transfer Frame can be used as a valid data unit; i.e., an indication of the 
+quality of the received frame is needed. This function is called Frame Validation. In this 
+Recommended Standard, the Frame Error Control Field defined in references [3], [4], and [7] 
+is used for Transfer Frame Validation at the receiver. 
+2.3 
+INTERNAL ORGANIZATION 
+2.3.1 SENDING END 
+2.3.1.1 General 
+Figure 2-2 illustrates the frame structures and stream formats at different stages of processing 
+for the sending end. 
+2.3.1.2 SMTF Stream Generation 
+This Recommended Standard specifies a method to generate a data stream including CCSDS 
+Transfer Frames received from the layer above by embedding each CCSDS Transfer Frame 
+into a SMTF. This method also allows CCSDS Transfer Frame synchronization at the 
+receiver by using an ASM. ASM and SMTF are defined in reference [2]. 
+
+=====PAGE 18=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 2-3 
+April 2022 
+2.3.1.3 DVB-S2 Transmission 
+This Recommended Standard specifies the DVB-S2 options to transmit the SMTF stream. 
+DVB-S2 functions are not detailed here and the reader must refer to reference [1]. 
+Some important characteristics of the DVB-S2 transmission, as used in this Recommended 
+Standard, are summarized here: 
+– DVB-S2 transmission is frame oriented: a continuous binary stream to be transmitted 
+is sliced into blocks of Data Field Length (DFL) bits, with DFL depending on the 
+coding rate and the FECFRAME size; Physical Layer frames (PLFRAMEs) are then 
+transmitted continuously on the RF link. 
+– For a given channel symbol rate, the input (SMTF stream) data rate depends on the 
+modulation, the coding rate, the FECFRAME size and the pilot insertion status; the 
+input data rate can be derived from the channel symbol rate using the table in annex D. 
+– A combination of a modulation and a coding rate is called a MODCOD as per DVB-
+S2 terminology. 
+ 
+Input CCSDS Transfer Frames
+SMTF stream
+DVB-S2 DATAFIELD blocks
+ASM 
+(32 bits)
+DVB-S2 
+slicer
+DVB-S2
+radio frequency 
+modulated 
+signal
+DVB-S2 standard
+M bits
+M bits
+M bits
+M bits
+M bits
+M bits
+DFL bits
+DFL bits
+DFL bits
+ 
+Figure 2-2:  Stream Format While Transmitting CCSDS Transfer Frames Using DVB-S2 
+
+=====PAGE 19=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 2-4 
+April 2022 
+2.3.2 RECEIVING END 
+At the receiving end: 
+– the DVB-S2 demodulator accepts a radio frequency modulated signal and delivers a 
+SMTF stream; 
+– Transfer Frame synchronization allows recovery of CCSDS Transfer Frames in the 
+SMTF stream for delivery of those frames to the Data Link Protocol Sublayer. 
+
+=====PAGE 20=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 3-1 
+April 2022 
+3 SMTF STREAM GENERATION 
+3.1 
+OVERVIEW 
+CCSDS Transfer Frame synchronization is necessary at the receiver. Consequently, an ASM 
+is introduced before transmission. Error correction coding and pseudo-randomization are 
+performed at the DVB-S2 transmission level. 
+3.2 
+INPUT CCSDS TRANSFER FRAMES 
+3.2.1 Input Transfer Frames shall be either TM Transfer Frames as specified in reference [3], 
+AOS Transfer Frames as specified in reference [4], or USLP Transfer Frame as specified in 
+reference [7]. 
+NOTE – Per A2.1 only fixed-length frames are accepted when using USLP Transfer 
+Frames. 
+3.2.2 The Transfer Frames length shall vary between the following minimum and 
+maximum values: 223 octets (1784 bits) and 65536 octets (524288 bits). 
+3.2.3 Error correction coding and pseudo-randomization shall be performed only at the 
+DVB-S2 transmission level. 
+3.3 
+SYNCH-MARKED TRANSFER FRAME 
+3.3.1 For each Transfer Frame, the system shall construct a SMTF containing the ASM and 
+the Transfer Frame. 
+3.3.2 The ASM shall be the 32-bit (4-octet) marker with value 1ACFFC1D in hex defined 
+in reference [2]. 
+NOTE – In this book, the SMTF stream consists of a stream of fixed-length Transfer 
+Frames with each Transfer Frame immediately preceded by an ASM. The ASM 
+attached to a Transfer Frame immediately follows the end of the previous 
+Transfer Frame. 
+ 
+ 
+
+=====PAGE 21=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 4-1 
+April 2022 
+4 DVB-S2 TRANSMISSION 
+4.1 
+OVERVIEW 
+In this section, main characteristics of the DVB-S2 transmission of the SMTF stream are 
+specified. Definitions and vocabulary of the DVB-S2 standard (reference [1]) are used. 
+4.2 
+DVB-S2 MODE ADAPTATION FORMAT 
+4.2.1 The RF signal shall conform to the DVB-S2 standard (reference [1]). 
+4.2.2 The SMTF stream shall be transmitted using the single input continuous Generic 
+Stream (GS) mode adaptation format of the DVB-S2 standard (paragraph 5.1 of reference [1]). 
+NOTES 
+1 
+No particular alignment between the Transfer Frames of the SMTF stream and the 
+DVB-S2 DATAFIELD is needed. 
+2 
+Following table 3 of reference [1], the first 3 bits of the BBHEADER are 
+consequently ‘011’ (‘01’: generic continuous stream, ‘1’: single input stream). 
+4.2.3 The DVB-S2 slicer shall allocate a number of input bits equal to the maximum DVB-
+S2 DATAFIELD capacity. 
+NOTES  
+1 
+In other words, padding (paragraph 5.2.1 of reference [1]) is not used. 
+2 
+This maximum DATAFIELD capacity is equal to Kbch-80 bits and depends on the 
+considered coding rate and FECFRAME size. 
+3 
+In the DVB-S2 standard, the channel symbol rate does not change during a 
+transmission; consequently, the required input (SMTF stream) data rate changes 
+whenever the MODCOD changes during a transmission. 
+4 
+When the current MODCOD is modified during transmission using VCM or ACM, 
+the DVB-S2 slicer applies the change without discarding or truncating or impairing 
+the SMTF stream, according to the DVB-S2 standard. 
+4.3 
+AVERAGE SIGNAL ENERGY  
+4.3.1 The average channel symbol energy E shall be equal to 1 as defined in paragraphs 
+5.4.3 and 5.4.4 of reference [1]. 
+4.4 
+SHAPING FILTERING 
+4.4.1 The power spectrum density mask in annex A of reference [1] shall not be applied to 
+the transmitted signal in this Recommended Standard. 
+
+=====PAGE 22=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 5-1 
+April 2022 
+5 MANAGED PARAMETERS 
+5.1 
+OVERVIEW 
+5.1.1 Some parameters associated with coding, synchronization, and modulation are 
+handled by management rather than by inline communications protocol. The managed 
+parameters are generally those which tend to be static for long periods of time, and whose 
+change generally signifies a major reconfiguration of the modulation, synchronization, and 
+channel coding systems associated with a particular mission, i.e., parameters that are fixed 
+within a mission phase. However, as mentioned in annex A, the coding and modulation 
+scheme defined in this book also supports parameters that can be changed from one time 
+interval to the next, within a sequence of time intervals in a mission phase. These two types 
+are referenced in this section respectively as Permanent Managed Parameters and Variable 
+Managed Parameters. 
+5.1.2 Through the use of a management system, management conveys the required 
+information to the coding, synchronization, and modulation systems. 
+5.1.3 In this section, the managed parameters used by coding, synchronization and 
+modulation systems are listed. These parameters are defined in an abstract sense and are not 
+intended to imply any particular implementation of a management system. 
+5.2 
+PERMANENT MANAGED PARAMETERS 
+5.2.1 GENERAL 
+5.2.1.1 All the managed parameters specified in this section shall be fixed for all Transfer 
+Frames on a Physical Channel during a given Mission Phase. 
+5.2.1.2 The Frame Error Control Field defined in reference [3], reference [4], or reference 
+[7] shall be present. 
+NOTE – The Frame Error Control Field is used for Frame Validation as mentioned in 2.2.5. 
+5.2.2 MANAGED PARAMETERS FOR TRANSFER FRAME 
+SYNCHRONIZATION 
+The managed parameters for Transfer Frame Synchronization shall be those specified in table 
+5-1. 
+
+=====PAGE 23=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 5-2 
+April 2022 
+Table 5-1:  Permanent Managed Parameters for Transfer Frame Synchronization 
+Managed Parameter 
+Allowed Values 
+Transfer Frame Length (octets) 
+Integer: 223 to 65536 
+5.2.3 MANAGED PARAMETERS FOR DVB-S2 TRANSMISSION 
+The managed parameters for DVB-S2 transmission shall be those specified in table 5-2.  
+NOTE – MODCOD, FECFRAME size and pilot insertion status are variable managed 
+parameters, and are indicated with an asterisk in table 5-2. 
+Table 5-2:  Permanent Managed Parameters for DVB-S2 Transmission 
+Managed Parameter 
+Allowed Values 
+Transmission mode 
+CCM, VCM, or ACM 
+Baseband pulse shaping roll-off factor 
+0.2, 0.25, or 0.35 
+Dummy PLFRAME utilization  
+YES or NO 
+Scrambling code number n 
+Integer: 0 to 262141 (see 
+paragraph 5.5.4 of reference [1]) 
+Number of MODCOD* supported during a given 
+mission phase 
+Integer: 1 to 29 
+(For MODCOD coding, see table 
+12 paragraph 5.5.2.2 of 
+reference [1].) 
+List of MODCOD* supported during a given mission 
+phase 
+List of integers (dimension = 
+‘Number of MODCOD supported 
+during a given mission phase’). 
+Each integer of the list is in the 
+range 0 to 28 and corresponds 
+to a supported MODCOD. 
+(For MODCOD coding, see table 
+12 paragraph 5.5.2.2 of 
+reference [1].) 
+Supported FECFRAME size* 
+Short, Normal or both 
+Supported pilot insertion status* 
+ON, OFF or both 
+
+=====PAGE 24=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page 5-3 
+April 2022 
+5.3 
+VARIABLE MANAGED PARAMETERS 
+The managed parameters specified in table 5-3 shall be fixed on a Physical Channel within 
+one interval of a given Mission Phase. 
+Table 5-3: Variable Managed Parameters  
+Managed Parameter 
+Allowed Values 
+Current MODCOD 
+Integer: 0 to 28 
+ 
+(For MODCOD coding, see 
+table 12 paragraph 5.5.2.2 
+of reference [1].) 
+Current FECFRAME size 
+Short or Normal 
+Current pilot insertion status 
+ON or OFF 
+NOTE – These variable managed parameters are indicated in the PLHEADER of the 
+transmitted signal; it is consequently not needed to provide them to the receiver 
+working in VCM/ACM mode. 
+ 
+
+=====PAGE 25=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page A-1 
+April 2022 
+ANNEX A 
+ 
+SERVICE DEFINITION 
+  
+(NORMATIVE) 
+A1  OVERVIEW 
+A1.1 BACKGROUND 
+This annex provides service definition in the form of primitives, which present an abstract 
+model of the logical exchange of data and control information between the service provider 
+and the service user. The definitions of primitives are independent of specific implementation 
+approaches. 
+The parameters of the primitives are specified in an abstract sense and specify the 
+information to be made available to the user of the primitives. The way in which a specific 
+implementation makes this information available is not constrained by this specification.  In 
+addition to the parameters specified in this annex, an implementation can provide other 
+parameters to the service user (e.g., parameters for controlling the service, monitoring 
+performance, facilitating diagnosis, and so on). 
+A2  OVERVIEW OF THE SERVICE 
+A2.1  The present ‘CCSDS Space Link Protocols over ETSI DVB-S2’ Recommended 
+Standard provides unidirectional (one way) transfer of a sequence of fixed-length TM, AOS, 
+or USLP Transfer Frames at constant frame rate over a Physical Channel across a space link, 
+with optional error detection/correction. 
+A2.2 The value of the constant frame rate can be changed from one-time interval to the 
+next, within a sequence of time intervals in a mission phase. There can be multiple time 
+intervals within a mission phase. This annex does not specify the method for synchronizing 
+the data exchange between the service user and the service provider when there is a change 
+of frame rate: the synchronization is considered to be part of system management and is out 
+of the scope of this annex. 
+A2.3  Only one user can use this service on a Physical Channel, and Transfer Frames from 
+different users are not multiplexed together within one Physical Channel. 
+
+=====PAGE 26=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page A-2 
+April 2022 
+A3  SERVICE PARAMETERS 
+A3.1 FRAME 
+A3.1.1 
+ The Frame parameter is the service data unit of this service and shall be either a TM 
+Transfer Frame defined in reference [3], an AOS Transfer Frame defined in reference [4], or a 
+USLP Transfer Frame defined in reference [7]. 
+A3.1.2  The length of any Transfer Frame transferred on a Physical Channel is established 
+by management. 
+A3.2 QUALITY INDICATOR 
+The Quality Indicator parameter shall be used to notify the user at the receiving end of the 
+service that there is an uncorrectable error in the received Transfer Frame. 
+A3.3 SEQUENCE INDICATOR 
+The Sequence Indicator parameter shall be used to notify the user at the receiving end of the 
+service that one or more Transfer Frames of the Physical Channel have been lost as the result 
+of a loss of frame synchronization. 
+A4  SERVICE PRIMITIVES 
+A4.1 GENERAL 
+A4.1.1 The service primitives associated with this service are: 
+a) ChannelAccess.request; 
+b) ChannelAccess.indication. 
+A4.1.2 The ChannelAccess.request primitive shall be passed from the service user at the 
+sending end to the service provider to request that a Frame be transferred through the 
+Physical Channel to the user at the receiving end. 
+A4.1.3 The ChannelAccess.indication shall be passed from the service provider to the 
+service user at the receiving end to deliver a Frame. 
+A4.2 ChannelAccess.request 
+A4.2.1 Function 
+The ChannelAccess.request primitive is the service request primitive for this service. 
+
+=====PAGE 27=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page A-3 
+April 2022 
+A4.2.2 Semantics 
+The ChannelAccess.request primitive shall provide a parameter as follows: 
+ChannelAccess.request 
+(Frame) 
+A4.2.3 When Generated 
+The ChannelAccess.request primitive shall be passed to the service provider to request it to 
+process and send the Frame. 
+A4.2.4 Effect On Receipt 
+Receipt of the ChannelAccess.request primitive shall cause the service provider to perform 
+the functions described in 2.2 and to transfer the resulting channel symbols. 
+A4.3 ChannelAccess.indication 
+A4.3.1 Function 
+The ChannelAccess.indication primitive is the service indication primitive for this service. 
+A4.3.2 Semantics 
+The ChannelAccess.indication primitive shall provide parameters as follows: 
+ChannelAccess.indication 
+(Frame, 
+Quality Indicator, 
+Sequence Indicator) 
+A4.3.3 When Generated 
+The ChannelAccess.indication primitive shall be passed from the service provider to the 
+service user at the receiving end to deliver a Frame. 
+A4.3.4 Effect On Receipt 
+The effect of receipt of the ChannelAccess.indication primitive by the service user is 
+undefined. 
+ 
+
+=====PAGE 28=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page B-1 
+April 2022 
+ANNEX B 
+ 
+SECURITY, SANA AND PATENT CONSIDERATIONS 
+  
+(INFORMATIVE) 
+B1 
+SECURITY CONSIDERATIONS 
+B1.1 
+SECURITY BACKGROUND 
+It is assumed that security is provided by encryption, authentication methods, and access 
+control to be performed at higher layers (application and/or transport layers and/or data link 
+layer). Mission and service providers are expected to select from recommended security 
+methods, suitable to the specific application profile. Specification of these security methods 
+and other security provisions is outside the scope of this Recommended Standard. The 
+modulation, synchronization, and coding layers have the objective of delivering data with the 
+minimum possible amount of residual errors. There is an extremely low probability of 
+undetected errors that may escape the scrutiny performed during reception with the 
+recommended DVB-S2 standard. If some extra performances are expected in terms of 
+probability of undetected errors, the CRC code of the CCSDS Transfer Frame must be used 
+with the data in order to insure that residual errors are detected and the frame flagged. These 
+errors may affect the encryption process in unpredictable ways, possibly affecting the 
+decryption stage and producing data loss, but will not compromise the security of the data. 
+B1.2 
+ SECURITY CONCERNS WITH RESPECT TO THE CCSDS DOCUMENT 
+Security concerns in the areas of data privacy, authentication, access to resources control, 
+availability of resources, and auditing are to be addressed in higher layers and are not related 
+to this Recommended Standard. The modulation, synchronization, and coding layers do not 
+affect the proper functioning of methods used to achieve such protection at higher layers, 
+except for undetected errors, as explained above. 
+Concerning the data integrity, the physical integrity of data bits is protected from channel 
+errors by the modulation, synchronization, and coding systems specified in the DVB-S2 
+Standard. In case of congestion or disruption of the link, the modulation, synchronization, 
+and coding layers described in this Recommended Standard based on DVB-S2 provide 
+methods for frame resynchronization. 
+B1.3 
+ POTENTIAL THREATS AND ATTACK SCENARIOS 
+An eavesdropper can receive and decode the codewords insofar as the proposed standard is 
+publicly available and widely used in the Digital Video and Data Broadcasting community, 
+but will not be able to get to the user data if proper encryption is performed at a higher layer. 
+
+=====PAGE 29=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page B-2 
+April 2022 
+An interferer could affect the performance of the demodulator, degrading then the receive 
+signal-to-noise ratio by an in-band signal (pure carrier, modulated bursts, radar, or ‘chirp’ 
+signals, etc.) and cause data losses. Another type of interferer could send some properly 
+modulated and also properly encoded data and could then produce a congestion of the 
+receiver with unwanted data, but such data would be rejected by authentication if 
+implemented at a higher layer. Such interference or jamming must be dealt with at the 
+Physical Layer and through proper spectrum regulatory entities and/or anti-jamming 
+modulation techniques, which are outside the scope of the present Recommended Standard. 
+B1.4 
+ CONSEQUENCES OF NOT APPLYING SECURITY TO THE 
+TECHNOLOGY 
+There are no specific security measures prescribed for the demodulation, synchronization, 
+and coding layers. Therefore, consequences of not applying security are only imputable to 
+the lack of proper security measures in upper layers. Residual undetected errors may produce 
+additional data loss when the link carries encrypted data. 
+B2 
+SANA CONSIDERATIONS 
+The recommendations of this document do not require any action from SANA. 
+B3 
+PATENT CONSIDERATIONS 
+Implementers of this Recommended Standard should be aware that DVB-S2 is covered by a 
+set of patents for which a global license can be obtained from: 
+S2 Licensing 
+Attention: John T. Whelan 
+135 West Dares Beach Road, Suite 204 
+Prince Frederick, Maryland 20678 
+United States of America 
+Telephone: 410-535-6554 
+Facsimile: 410-535-6077  
+E-mail: jwhelan@S2licensing.com 
+ 
+
+=====PAGE 30=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page C-1 
+April 2022 
+ANNEX C 
+ 
+ACRONYMS AND TERMS 
+  
+(INFORMATIVE) 
+32APSK 
+32-ary amplitude and phase shift keying 
+16APSK 
+16-ary amplitude and phase shift keying 
+8PSK 
+8-ary phase shift keying 
+ACM 
+adaptive coding and modulation 
+AOS 
+Advanced Orbiting Systems 
+ASIC 
+application specific integrated circuit 
+ASM 
+attached synchronization marker 
+BB 
+baseband 
+BBFRAME 
+baseband frame in the DVB-S2 standard 
+BBHEADER header of BBFRAME in the DVB-S2 standard 
+BCH 
+Bose-Chaudhuri-Hocquenghem 
+BPSK 
+binary phase shift keying 
+CCM 
+constant coding and modulation 
+CCSDS 
+Consultative Committee for Space Data Systems 
+CRC 
+cyclic redundancy check 
+DFL 
+data field length in the DVB-S2 standard 
+DVB 
+Digital Video Broadcasting project 
+DVB-S2 
+DVB system of second generation for satellite broadcasting 
+Eb/No 
+bit energy and noise power spectral density ratio 
+EESS 
+Earth Exploration Satellites Systems 
+Es/No 
+channel symbol energy and noise power spectral density ratio 
+ETSI 
+European Telecommunications Standards Institute 
+FEC 
+forward error correction 
+FECFRAME 
+forward error correction in the DVB-S2 standard 
+FER 
+frame error rate 
+GS 
+generic stream 
+ITU 
+International Telecommunications Union 
+LDPC 
+low density parity check 
+MODCOD 
+modulation and coding identifier of the DVB-S2 standard 
+MPEG 
+Moving Pictures Experts Group 
+MSB 
+most significant bit 
+NA 
+not applicable 
+OID 
+only idle data 
+OSI 
+Open Systems Interconnection 
+PLFRAME 
+Physical Layer frame in the DVB-S2 standard 
+PLHEADER 
+header of the PLFRAME in the DVB-S2 standard 
+QPSK 
+quaternary phase shift keying 
+RF 
+radio frequency 
+
+=====PAGE 31=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page C-2 
+April 2022 
+SMTF 
+synch-marked transfer frame 
+SNR 
+signal power to noise power ratio 
+SOF 
+start of frame 
+SRC 
+square root raised cosine 
+SRS 
+space research service 
+SYNC  
+synchronization octet 
+TM 
+telemetry 
+USLP 
+Unified Space data Link Protocol 
+VCM 
+variable coding and modulation 
+VHDL 
+VHSIC Hardware Description Language 
+VHSIC 
+very high scale integrated circuit 
+ 
+
+=====PAGE 32=====
+CCSDS RECOMMENDED STANDARD FOR CCSDS SPACE LINK PROTOCOLS OVER DVB-S2 
+CCSDS 131.3-B-2 
+Page D-1 
+April 2022 
+ANNEX D 
+ 
+DVB-S2 SPECTRAL EFFICIENCIES AND MODCOD IDENTIFIERS 
+  
+(INFORMATIVE) 
+The following spectral efficiencies consider the SMTF stream as the useful content to be 
+transmitted. Consequently, the required bit rate at the input of the DVB-S2 transmitter is 
+equal to the product of the selected spectral efficiency listed in the following table with the 
+channel symbol rate used on the physical link.  
+MODCOD 
+Modulation 
+LDPC code 
+identifier 
+spectral efficiency [bits/symbol]  
+short frame 
+with pilots 
+short frame 
+without pilots 
+normal frame 
+with pilots 
+normal frame 
+without pilots 
+0 
+Unmodulated 
+None 
+0 
+0 
+0 
+0 
+1 
+QPSK 
+1/4 
+0.3575 
+0.3653 
+0.4786 
+0.4902 
+2 
+QPSK 
+1/3 
+0.6155 
+0.6291 
+0.6408 
+0.6564 
+3 
+QPSK 
+2/5 
+0.7446 
+0.7609 
+0.7706 
+0.7894 
+4 
+QPSK 
+1/2 
+0.8306 
+0.8488 
+0.9653 
+0.9889 
+5 
+QPSK 
+3/5 
+1.1317 
+1.1565 
+1.1600 
+1.1883 
+6 
+QPSK 
+2/3 
+1.2607 
+1.2884 
+1.2908 
+1.3223 
+7 
+QPSK 
+3/4 
+1.3897 
+1.4203 
+1.4521 
+1.4875 
+8 
+QPSK 
+4/5 
+1.4757 
+1.5082 
+1.5494 
+1.5872 
+9 
+QPSK 
+5/6 
+1.5618 
+1.5961 
+1.6153 
+1.6547 
+10 
+QPSK 
+8/9 
+1.6908 
+1.7280 
+1.7244 
+1.7665 
+11 
+QPSK 
+9/10 
+  
+  
+1.7460 
+1.7886 
+12 
+8PSK 
+3/5 
+1.6920 
+1.7253 
+1.7396 
+1.7800 
+13 
+8PSK 
+2/3 
+1.8850 
+1.9220 
+1.9357 
+1.9806 
+14 
+8PSK 
+3/4 
+2.0779 
+2.1188 
+2.1775 
+2.2281 
+15 
+8PSK 
+5/6 
+2.3351 
+2.3811 
+2.4223 
+2.4786 
+16 
+8PSK 
+8/9 
+2.5280 
+2.5778 
+2.5859 
+2.6460 
+17 
+8PSK 
+9/10 
+  
+  
+2.6184 
+2.6792 
+18 
+16APSK 
+2/3 
+2.5052 
+2.5488 
+2.5746 
+2.6372 
+19 
+16APSK 
+3/4 
+2.7616 
+2.8097 
+2.8963 
+2.9667 
+20 
+16APSK 
+4/5 
+2.9326 
+2.9836 
+3.0905 
+3.1656 
+21 
+16APSK 
+5/6 
+3.1035 
+3.1575 
+3.2219 
+3.3002 
+22 
+16APSK 
+8/9 
+3.3599 
+3.4184 
+3.4395 
+3.5231 
+23 
+16APSK 
+9/10 
+  
+  
+3.4827 
+3.5673 
+24 
+32APSK 
+3/4 
+3.4192 
+3.4931 
+3.6233 
+3.7033 
+25 
+32APSK 
+4/5 
+3.6308 
+3.7093 
+3.8662 
+3.9516 
+26 
+32APSK 
+5/6 
+3.8424 
+3.9255 
+4.0306 
+4.1195 
+27 
+32APSK 
+8/9 
+4.1599 
+4.2498 
+4.3029 
+4.3979 
+28 
+32APSK 
+9/10 
+  
+  
+4.3569 
+4.4530 
+NOTE – The MODCOD 0 is adopted for Dummy PLFRAME as specified in paragraph 
+5.5.1 of reference [1]. 

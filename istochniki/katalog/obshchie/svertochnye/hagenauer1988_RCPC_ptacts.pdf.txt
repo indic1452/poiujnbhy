@@ -1,0 +1,1357 @@
+
+=====PAGE 1=====
+IEEE TRANSACTIONS ON COMMUNICATIONS, VOL. 36, NO. 4, APRIL 1988 
+389 
+Rate-Compatible Punctured Convolutional Codes 
+(RCPC Codes) and their Applications 
+JOACHIM HAGENAUER, SENIOR MEMBER, 
+IEEE 
+Abstract-The concept of punctured convolutional codes is extended 
+by puncturing a low rate 1/N code periodically with period P to obtain a 
+family of codes with rate P /(P + I ) where I can be varied between 1 and 
+( N - 1)P. A rate-compatibility restriction on the puncturing tables 
+ensures that all code bits of high rate codes are used by the lower rate 
+codes. This allows transmission of incremental redundancy in ARQ/FEC 
+schemes and continuous rate variation to change from low to high error 
+protection within a data frame. Families of RCPC codes with rates 
+between 8/9 and 1/4 are given for memories Mfrom 3 to 6 (8 to 64 trellis 
+states) together with the relevant distance spectra. These codes are almost 
+as good as the best known general convolutional codes of the respective 
+rates. It is shown that the same Viterbi decoder can be used for all RCPC 
+codes of the same M by controlling the metric memory access through the 
+puncturing rule, the soft decision and the channel state information 
+(CSI). The performance of RCPC codes on Gaussian and fading channels 
+is shown under vsrious quantization and CSI conditions. The application 
+of RCPC codes to hybrid ARQ/FEC schemes is discussed for Gaussian 
+and Rayleigh fading channels using CSI to optimize throughput. If a 
+source coder supplies a source significance information (SSI) indicating 
+the relative importance of bits, a flexible unequal error protection scheme 
+can be designed with RCPC codes which minimizes the redundancy 
+overhead. 
+I. INTRODUCTION 
+HE design of an error correction coding system usually 
+T consists of selecting a fixed code with a certain rate and 
+correction capability matched to the protection requirement of 
+all the data to be transmitted and adapted to the average or 
+worst channel conditions to be expected [l]. In many cases, 
+however, one would like to be more flexible because the data 
+to be transmitted have different error protection needs and the 
+channel is time varying or has insufficiently known parame- 
+ters. Consequently, flexible channel encoding and an adaptive 
+decoder are required. As Fig. 1 shows, the information to be 
+transmitted might carry source significance information (SSI) 
+indicating different protection requirements. Examples in- 
+clude control and signaling bits in a data stream, most 
+significant bits in a PCM word, or side information like 
+quantizer slopes, or filter coefficients in more sophisticated 
+voice encoding schemes 123. On the other hand, the channel 
+characteristics or the channel state might vary considerably, as 
+encountered in mobile or multipath radio transmission, in a 
+jamming environment, during rain fading, or in HF transmis- 
+sion. This is indicated in Fig. 1 by the channel state 
+information CSI. In rare cases the instantaneous CSI is 
+available at the encoder where code adaptation could take 
+place. Mostly the receiver only can use a CSI-like fading 
+Paper approved by the Editor for Coding Theory and Application of the 
+IEEE Communications Society. Manuscript received December 22, 1986; 
+revised June 5, 1987. This paper was presented in part at the 1986 
+International Symposium on Information Theory, Ann Arbor, MI, October 
+1986, and ICC’87, Seattle, WA, June 1987. 
+The author is with the German Aerospace Research Establishment 
+(DFVLR), D-803 1 Oberpfaffenhofen, West Germany. 
+IEEE Log Number 8718991. 
+4 
+I 
+VARIABLE 
+ENCODER 
+SOURCE 
+RATE 
+CHANNEL 
+DECODER 
+SINK 
+I 
+SSI 
+SOURCE 
+SIGNIFICANCE 
+INFORMATION 
+CSI 
+CHANNEL 
+STATE 
+INFORMATION 
+Fig. 1. Coded transmission scheme with source significance information 
+(SSI) and channel state information (CSI). 
+depth, noise level variation, short-term signal loss, or jammer 
+activity. The CSI can significantly improve decoder perform- 
+ance together with soft decisions at the receiver. Whenever a 
+return channel is available, the CSI can be indirectly relayed to 
+the transmitter by asking for a retransmission as employed in 
+automatic repeat request (ARQ) systems. Such ARQ systems 
+can also be combined with forward error correction (FEC) to 
+yield type I or type I1 ARQIFEC hybrid schemes [3], [4]. The 
+latter schemes nicely match the average channel rate or the 
+throughput with the channel conditions and some of them use 
+different FEC codes for repeated transmission attempts. The 
+scenarios shown in Fig. 1 require variable codes adapted to the 
+source and channel needs. We wish to change the code rate, 
+i.e., the number of check bits, and hence the correction power 
+of the code during transmission of an information frame 
+according to source and channel needs. For practical purposes, 
+we would like to have not just switching between a set of 
+encoders and decoders, but one encoder and one decoder 
+which can be modified without changing their basic structure. 
+This can be achieved by not transmitting certain code bits, 
+namely, by puncturing the code. Mandelbaum [SI was the first 
+to propose punctured codes for transmitting redundancy in 
+incremental steps by using Reed-Solomon codes. In order to 
+accommodate soft decisions and CSI at the receiver, a 
+maximum likelihood decoder is required. This motivates the 
+use of convolutional codes and the Viterbi algorithm for 
+decoding. 
+Punctured convolutional codes were first introduced by 
+Cain, Clark, and Geist [6] mainly for the purpose of obtaining 
+simpler Viterbi decoding for rate K/N codes with two 
+branches arriving at each node instead of 2 K branches. They 
+obtained codes of rate 213 and 3/4 by puncturing rate 1/2 
+codes. These punctured codes were almost as good as the best 
+known codes. Some of the good codes used the same basic rate 
+1/2 generators. Later, Yasuda et al. [7], [8] found a family of 
+( N - l)/Ncodes by puncturing 1/2 codes for N u p to 14, and 
+built selectable rate encoders and Viterbi decoders using soft 
+decisions. 
+In this paper, the concept of punctured convolutional codes 
+is modified for the generation of a family of codes by adding a 
+rate-compatibility restriction to the puncturing rule. The 
+restriction implies that all the code bits of a high rate punctured 
+0090-6778/88/04OO-0389!$01 .OO 0 
+1988 IEEE 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 1 of 12
+
+=====PAGE 2=====
+390 
+code are used by the lower rate codes; or in other words, the 
+high rate codes are embedded into the lower rate codes of the 
+family. If the higher rate codes are not sufficiently powerful to 
+decode channel errors, only supplemental bits which were 
+previously punctured have to be transmitted in order to 
+upgrade the code. Furthermore, since codes are compatible, 
+rate variation within a data frame is possible to achieve 
+unequal error protection. In Section II, the necessary defini- 
+tions and the performance criterion for the class of rate 
+compatible punctured convolutional codes (RCPC codes) are 
+given. Section III reports the results of a computer search for 
+families of RCPC codes of rate P/(P + I), with rates 
+between 114 and 8/9. The analytically calculated and simulated 
+performance of some codes on Gaussian, Rayleigh, and Rice 
+fading channels is shown in Section IV. Modified type 11 
+ARQIFEC schemes with RCPC schemes shown in Section V 
+allow a minimum number of transmitted bits as well as soft 
+decision and CSI adaptive decoding and compare favorable to 
+previous known schemes. Unequal error protection with 
+RCPC codes is discussed in Section VI. 
+II. DEFINITION 
+AND PERFORMANCE CRITERION OF RCPC CODES 
+In order to explain rate-compatible punctured codes, we 
+start with the example of Fig. 2 where a rate R = 112 
+convolutional code with memory M = 2 is punctured 
+periodically with period P = 4. We describe the binary 
+information symbols and the binary code symbols XI, and x2, 
+by values 
+1. A zero in the puncturing table means that the 
+code symbol is not to be transmitted. In the upper example of 
+Fig. 2, the fourth bit of the upper branch and the second and 
+third bit of the lower branch are not transmitted. The 
+puncturing table can be viewed as a modulo P rule for 
+multiplexing the two streams of code bits. Instead of transmit- 
+ting2*P= 2*40nlyP+ I = P + 1 = 5bitsaretransmitted 
+per P = 4 information bits. Therefore, we have generated a 
+code with rate R = 4/5 by using only P + I“1” ’S instead of 
+2 P “1” ’s in the puncturing table, which can be described by 
+the N x P matrix 
+IEEE TRANSACTIONS ON COMMUNICATIONS, VOL. 36, NO. 4, APRIL 1988 
+1 1 1 0 
+.(1)=(1 
+0 0 1) - 
+Suppose the code rate with 415 and with the puncturing table 
+u(1) is not p o w e m enough to correct the channel errors. A 
+more redundant and therefore more powerful code with lower 
+rates 416, 417, or 418 would be necessary. Instead of 
+transmitting all the code bits of a completely different low rate 
+code, the lower rate code should utilize the bits already 
+transmitted. Then only additional incremental redundancy bits 
+have to be transmitted. Additional “1” ’s in the puncturing 
+tables of the lower rate codes can therefore be placed only 
+where zeros appeared in the puncturing matrix of the previous 
+higher rate code, for example, 
+Thus, for I = 1 to 4, we get a compatible family of codes 
+derived from the mother code 112 with rates 4/5,4/6,4/7, 418 
+which use only incremental redundancy. The question, of 
+course, is whether all these codes in the family are good and 
+whether noncatastrophic codes exist. This will be discussed in 
+Section III. On the receiving side the decoder using the Viterbi 
+algorithm (VA) has to know the current puncturing rule u. The 
+VA receives real values yi when full soft decision is used. 
+Alternatively, the decoder can use quantized values of yo. The 
+VA finds the path with the maximum likelihood metric for 
+PUNCTURING 
+TIME j 
+I
+2
+3
+4
+5
+ 
+X.: 
++4 *I 
+-1 -1 *I 
+I 
+GENERATOR 
+PUNCTURING 
+MATRIX 
+Fig. 2. Example of a punctured convolutional code with two rate compatible 
+puncturing tables. 
+statistically independent yii by calculating 
+J 
+max 
+Xi 
+j = I 
+rn 
+where the metric increment is 
+and a,+p = a, due to periodic puncturing. a, = 0 means that 
+this xil(“) has not been transmitted and y, is not available. 
+Actually, it is not necessary to insert any dummy data at the 
+receiver as suggested in 171. The Viterbi algorithm operates on 
+the trellis of the 1 / N mother code with two branches leaving at 
+each state. Equation (2) simply means that for ab = 1 the 
+metric ROM is accessed using the address ~ v ( ~ ) y ~ j 
+to add a 
+metric increment and for a, = 0 it is not accessed. 
+For a fading channel, the transmitted signal is multiplied by 
+a fading factor aF. If interleaving is assumed, up is an 
+independent positive real random variable with density p ( a ~ ) , 
+i.e., Rayleigh or Rice. If this factor can be estimated at the 
+receiver and is used as a CSI the ML-metric for coherent 
+transmission is 191 
+N 
+= 2 ajjaijFx iT)yjj. 
+(3) 
+i= 1 
+As expected, a deep fade (ai, + 0) has the same effect as 
+puncturing (aii = 0). 
+A. General Definitiori of RCPC Codes 
+A family of RCPC codes is described by the mother code of 
+rate R = 1 /Nand memory M having the generator tap matrix 
++M+ 
+I-+ 
+(4) 
+with the tap connections gik E (0, 1) where a 1 represents a 
+connection from the kth shift register stage to the ith output. 
+Together with N, the puncturing period P determines the 
+range of code rates 
+P 
+P+I 
+R = - 
+I= 1, - - * ( N - l)P 
+(5) 
+between P / ( P + 1) and 1/N. The RCPC codes are punctured 
+codes of the mother code with puncturing matrices 
++ P + 
+with ai(f ) E (0, 1) where 0 implies puncturing. 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 2 of 12
+
+=====PAGE 3=====
+HAGENAUER: (RCPC CODES) AND THEIR APPLICATIONS 
+39 1 
+The rate-compatibility restriction implies the following 
+(7a) 
+rule: 
+if aj,(lo) = 1 then aij(l) = 1 for all I 2 lo 2 1 
+or equivalently 
+if ai,(lo)=O then a,,(l)=O for all I 5 lo 5 ( N - l ) P - 1 . 
+(7b) 
+€3. Criterion of Goodness for RCPC Codes 
+With Viterbi decoding the usual optimality criterion is a 
+large free distance dfree, 
+a small number of paths ad. and a 
+small information error weight cd on all paths with d z df, . 
+More specifically, one has Viterbi’s upper bound an error 
+event probability [ 131 
+and for the bit error probability 
+(9) 
+Pd is the probability that the wrong path at distance d is 
+selected. The so-called distance spectra {ad} and {cd}, which 
+should be as small as possible, depend only on the code, 
+namely, on N, 
+M, P , g , and a(I ). Due to the time-varying 
+nature of the RCPC codes, P different starting points for 
+diverging paths have to be considered to obtain the total 
+numbers ad and cd. Since RCPC codes are a subclass of 
+punctured codes, which in turn is a subclass of the general K / 
+N codes, it has still to be shown that the RCPC restriction is 
+not too severe to prevent “good” codes from being located in 
+this subclass. A degree of freedom can be gained by increasing 
+the period P. RCPC codes constitute a specific class of time- 
+varying codes with a fixed generator but periodically time- 
+varying puncturing. We know that some time-varying codes 
+are better than fixed codes [lo] and some random coding 
+theorems hold only for time-varying codes. Therefore, some 
+improvement may be possible by using a higher period P. 
+Note that P has to be sufficiently large if codes of specific rates 
+are to occur in the same RCPC family. The complexity of the 
+VA decoder of an RCPC code in terms of add, compare and 
+select operations per decoded bit is 2 0 2 ~ , 
+whereas a general 
+K/N code requires (2 K2 M ) / K such operations where M is the 
+total encoder memory. At the RCPC decoder, an N * P 
+ambiguity has to be resolved in the incoming data stream and 
+the decision depths of punctured codes are generally longer 
+[SI. The last disadvantage is not severe, when as in most 
+applications, data frames are transmitted with sync words and 
+proper termination of short frames. 
+111. RESULTS 
+OF THE SEARCH FOR GOOD RCPC CODES 
+No constructive method is known for determining the 
+generator matrix g and the puncturing matrices a( I ) for a 
+RCPC code family. Therefore a computer search has been 
+performed under some restrictions. For distances d 2 df,,, , 
+ad, cd, and the path length distribution has been determined by 
+a stack algorithm similar to Cedervall’s algorithm [ 111. 
+The basic steps to find a family of good RCPC codes are: 
+Step 1 : Select mother code with rate 1 /N, 
+memory M, and 
+generator g. Select puncturing period P. For I = I,,, 
+= ( N - 
+l)P set a(,) = (1). 
+For I = (N - l)P to 2 perform steps 2-4. 
+Step 2: Amongst the elements aii(I) which are “1” select 
+one and set it to “0” [compatibility rule (7b)l. Observe that 
+cyclic column permutations give the same code performance. 
+Step 3: Determine dfre, and cd for d 2 dfree. 
+Step 4: Repeat steps 2 and 3 to find a( I - 1) with maximal 
+d,, and minimal cd for d = df,,, df,, + 1. If only 
+catastrophic codes can be found, use next best code at level I. 
+The results of the computer search for the M = 4 code 
+family are given in some detail in Table I, whereas for the 
+other codes of memory M = 3, 5, 6, only a ( [ ) and the cd 
+values are given in Table 11. The codes have a period P = 8 
+with a subperiod of P = 4 and are punctured mostly in steps 
+A I = 2 in such a way as to arrive at the best known code of 
+rate 1/2. This implies that the mother codes of rate 1/3 or 1/4 
+are not necessarily the best known code of this rate. This is the 
+case for M = 4 and 6 where one path exists at a distance 
+which is one less than the best known free distance [3]. 
+Table I11 shows a comparison of the most important distance 
+parameters of RCPC codes, punctured codes, and general KIN 
+codes for rates where results are available. This and other 
+comparisons show that RCPC codes are almost as good as the 
+other codes. By increasing the period P one can even obtain 
+slightly better codes as shown for M = 3 and rate 213 code. P 
+= 4 gives a greater variety in selecting the puncturing 
+positions. In this case, cd/P for d = df, , * . , dfr, + 5 is less 
+than the corresponding numbers for the code with P = 2 and 
+therefore a better BER performance can be expected over the 
+whole SNR range. This result is a further confirmation that 
+time-varying codes are better than fixed codes and that time- 
+varying codes become better with increasing time period. In 
+[lo], an example is given where g is time varying. Here, we 
+fix g and puncture in a time-varying manner. 
+One disadvantage of punctured codes is that error events at 
+high rates and higher distances can be quite long. This was 
+previously observed in [7]. To give an example, we have 
+plotted in Fig. 3 the path length distribution of an R = 4/5 
+code with M = 4, P = 4. Paths at df, + 3 = 6 can be up to 
+50 information bits long. For high rate codes, this requires a 
+longer path memory. 
+Iv. PERFORMANCE OF RCPC CODES ON GAUSSIAN 
+AND FADING 
+CHANNELS 
+The performance of RCPC codes on a Gaussian channel 
+with soft decision and on interleaved Rayleigh and Rician 
+channels using different degrees of channel state information 
+has been evaluated using (9) and the distance spectrum { cd} in 
+Tables I and 11. For the Gaussian case simulation results are 
+also given. Fig. 4 shows the transmission scheme over a 
+nonfrequency-selective fading channel with multiplicative 
+distortion aF, with E{ag} = 1 and 
+p,(aF) = 2aF(1 + C/M) exp [ - (a;(l+ C / M ) + C/M)] 
+. zo(2aF-\IC/M(1+ C / M ) ) . (10) 
+For a Ricean channel, C / M is the ratio of the direct to 
+diffusely reflected signal energy. With C/M = 0 we have 
+Rayleigh fading, with C/M + 00 we obtain the Gaussian 
+channel. In the fading case we assume perfect interleaving, 
+which means that the CSI values aF and the received code 
+values y are statistically independent with density function 
+(10). Since we consider a varying code rate, we describe the 
+channel SNR by Es/No rather than by Eb/No = E~/RNQ. 
+A 
+reduced rate consequently means reduced throughput. The 
+Viterbi algorithm for decoding the RCPC code uses the metric 
+(3). In the following, we give the values for ciF = aiiF and y = 
+y,, which the decoder uses in different cases, as well as the 
+resulting Pd to be used in the evaluation of the BER in (9). 
+a) Gaussian channel [ 131 
+&= 1 
+y analog or finely quantized 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 3 of 12
+
+=====PAGE 4=====
+392 
+IEEE TRANSACTIONS ON COMMUNICATIONS, VOL. 36, NO. 4, APRIL 1988 
+TABLE I 
+PUNCTURING TABLES a(/ ), Cd, AND ad VALUES FOR RCPC CODES WITH MEMORY M = 4. PERIOD P = 8 AND 
+RATES R = P/(P + I ) = 8/(8 + I ) , I = 1, 2, 4, 6, . .., 24 
+RCPC CODE: M=4 P=8 
+b) Rayleigh and Rice fading with hard decisions on y (YH) 
+and no CSI, a not used (AN): YHAN 
+&=l, 
+y = +1. 
+( p d - 1 
+d even 
+with the channel bit error rate 
+c) Rayleigh fading with soft decisions on y (YS) and full 
+CSI (AS) with perfect estimation of the analogy amplitude a ~ : 
+YSAS 
+&= aF 
+y analog or finely quantized 
+Pd is equivalent to the error probability of a dth order 
+maximum ratio diversity system and can be upper bounded by 
+191 
+1 
+d) Rayleigh fading with hard decision (YH) and hard CSI 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 4 of 12
+
+=====PAGE 5=====
+HAGENAUER: (RCPC CODES) AND THEIR APPLICATIONS 
+393 
+TABLE 11 
+PERIOD P = 8 AND RATES R = P/ (P + I ) = 8/(8 + I), I = 1, 2, 4, 6, ..-, 14, 16 
+PUNCTURING TABLES a(i) AND Cd VALUES FOR RCPC CODES WITH MEMORY M = 3, 5, 6. 
+RCPC CODE: M = 3 
+1 -3g I 7;; I El; I BI; I 8;;; 
+I El;; 
+1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0 1111 1111 1111 1111 1111 1111 
+1001 ooo1 1001 1001 1101 1101 1101 1101 1111 1111 1111 1111 
+m m woo m m woo m m m m loo0 loo( 
+1 6 
+8/20 
+215 
+1111 1111 
+1111 1111 
+1 0 1 0 101( 
+!E 
+1111 1111 1111 1111 
+1111 1111 1111 1111 
+1 1 1 0 1 1 1 0 1111 1111 
+d 
+1 
+19 
+20 
+RCPC CODE: M = 5 
+1 R 1 
+1 
+1111 1111 1111 1111 1111 1111 
+1111 1111 1111 1111 1111 1111 
+1 0 1 0 1 0 1 0 1 1 1 0 1 1 1 0 1111 1111 
+d 
+1 
+I 
+I 
+I 
+5608 
+796 
+292 
+1 3 4 
+E 
+CODE 
+1101 
+1111 
+1011 
+CODE 
+111101 
+101011 
+100111 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 5 of 12
+
+=====PAGE 6=====
+394 
+ai9 
+ai9 
+1111 0111 
+lo00 lo00 
+ow0 ow0 
+IEEE TRANSACTIONS ON COMMUNICATIONS, VOL. 36, NO. 4, APRIL 1988 
+8/10 
+8112 
+8/14 
+8/16 
+8/18 
+a120 
+a122 
+8/24 
+415 
+213 
+417 
+112 
+419 
+4/10 
+4/11 
+113 
+1111 1111 1111 1111 1111 1111 1111 1111 1 1 1 1 1111 1111 1 1 1 1 1111 1111 1111 1 1 1 1 
+1wo lo00 1010 1010 1110 1110 1111 1111 1111 1111 1111 1111 1111 1111 1111 1111 
+woo woo oooo woo m woo m woo 1000 lo00 1100 1100 1110 1110 1111 1111 
+2 
+3 
+4 
+24 
+740 
+24 
+51 
+133211 
+3761 
+I 
+I 
+I 
+I 
+I 
+I 
+I 
+CODE 
+1011011 
+1111001 
+1100101 
+TABLE 111 
+COMPARISON 
+OF 
+RCPC CODES 
+WITH 
+PUNCTURED 
+AND 
+GENERAL 
+CONVOLUTIONAL CODES 
+Rate Memory 
+RCPC-Codes 
+Punctured Codes I81 
+General KIN Codes 
+dfree CdfreeIP 
+dfree CdfreelP 
+dfree 
+1 ) 
+4
+5
+2
+ 
+M = 3 
+4
+1
+ 2 
+4 I31 
+4
+4
+4
+ 
+213 
+M = 6 
+6 
+1.5 
+2 
+6 
+1.5 
+2 
+7 131 
+M = 3 
+3 
+L z 
+4 
+3 
+3.5 
+4 
+2 [I21 
+M = 6 
+4 
+3 
+4 
+4
+3
+ 4 
+415 
+M = 3 
+2 
+L& 8 
+2 
+0.8 
+8 
+8 I9 
+M = 6 
+3 
+3 
+8 
+3 
+1.6 
+8 
+M = 3 
+4 
+0.5 
+4 
+4 I121 
+417 
+M = 5 
+6 
+1.25 
+4 
+6 [121 
+With memory to give an equal number of total branches per information bit in the 
+VA. 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 6 of 12
+
+=====PAGE 7=====
+HAGENAUER (RCPC CODES) AND THEIR APPLICATIONS 
+INTERLEAVER 
+I 
+- 
+I 
+I + 
+SOURCE 
+ENCODER 
+t 
+1 
+c y 
+L- 
+CHANNEL 
+a 
+STATE - 
+a(!) 
+u = & Z s 1 
+- - - - - +- - - ESTIMATOR 
+RATE 
+PUYC%JRlNG 
+SELECTION ~x 
+TABLE 
+~ ( 0 ~ 1 : 
+RAYLEIGH, RICE 
+9 , 
+--- O F --- 
+DATA 
+SINK 
+D
+~
+~
+~
+~
+E
+R
+ 
+DEINTERLEAVER. 
+r 
+,, 
+3 
+DISTANCE 8 
+d 
+5
+t
+ 
+I 
+I 
+I 
+I 
+I 
+I 
+0 
+IO 
+20 
+30 
+40 
+50 
+60 
+70 
+~ 
+PATHLENGTH l
+p
+ 
+Fig. 3. Number of paths with length I, at distance d for a RCPC code of rate 
+R = 4/5, P = 4, M = 4. 
+395 
+1600 
+1400 
+I200 
+I000 
+800 
+600 
+400 
+200 
+0 
+(AH): YHAH 
+1-Ps 
+log - 
+for aF< aT 
+P B 
+l-PG 
+log - 
+PG 
+(14) 
+for aF r_ aT 
+CiF = 
+where aT is an optimized threshold. By partial integration in 
+(12), we obtain Pc as the channel BER above the threshold aT 
+and Ps as the BER below a T [9]. P d can be calculated in closed 
+form. The result is given in 191 and 1141. 
+Fig. 5 shows the simulated RCPC performance for the 
+Gaussian channel. Simulation and an analytical upper bound at 
+a BER of 
+differ only by approximately 0.2 dB. The 
+performance curves for the Rayleigh channel with the scheme 
+described in Fig. 4 and in Section IV show that RCPC codes 
+with rates between 4/5 and 1/3 cover a broad range of SNR 
+and BER. At a BER of 
+a 1-bit CSI gains 7.9 dB at rate 2/3 
+and 2.6 dB at rate 1/3 relative to hard decisions without CSI. 
+The Rice channel with C/M = 7 dB is typical for mobile 
+satellite communications to ships with small antennas, to cars 
+in open areas, and to airplanes with hemispherical antennas 
+1141. As Fig. 7 shows, the RCPC codes using basically the 
+same encoder and the same Viterbi decoder with only 16 
+states and two branches per state can cover a SNR between 4 
+0 1 
+3 4 
+5 
+6 
+7 
+8 
+9 40 
+IO loq 
+(E,/Nol 
+d6 + 
+Fig. 5. BER perfombe of RCPC codes on Gaussian channels, N = 3, 
+P = 8, I = 1,2,4, -.., 16, rate = 8/(8 + I ) , M = 4 simulation with 
+soft decision. 
+and 17 dB to achieve a BER of 
+This means that the same 
+link can serve users with a gain variation of 13 dB by 
+adaptively changing the rate between 4/5 and 1/3 at the 
+expense of throughput. 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 7 of 12
+
+=====PAGE 8=====
+396 
+IEEE TRANSACTIONS ON COMMUNICATIONS, VOL. 36, NO. 4, ApRlL 1988 
+This method goes back to Mandelbaum [5] and includes 
+variations like code combining [15], [16] and memory ARQ 
+We propose to use rate compatible punctured convolutional 
+codes (RCPC Codes) with Viterbi algorithm (VA) decoding 
+for successive parity transmission. The principle of the 
+proposed ARQ/FEC scheme is not to repeat information or 
+parity bits if the transmission is unsuccessful as in previous 
+type I1 ARQ/FEC schemes, but to transmit additional code bits 
+of a lower rate RCPC code until the code is powerful enough 
+to enable decoding. This includes several decoding attempts 
+on the receive side, which seem especially feasible for 
+applications in mobile or low rate systems where the data rate 
+is in the kbit/s range and the VA decoder would run on a chip 
+at a higher rate. 
+A. ARQ/FEC Protocol with RCPC Codes 
+The ARQ/FEC protocol performs the following steps while 
+transmitting a block I of information, which contains typically 
+n = 100 to lo00 bits. 
+1171. 
+Encoding: 
+1) Add n, parity bits to form an error detection code Co, 
+Le., 16 or more CRC bits. 
+2) Add M “0” or known bits to properly terminate the 
+encoder memory and the decoder trellis for the “information” 
+block (n + nc). M is the memory of the convolutional 
+encoder. 
+3) Use the 1/N encoder to encode the convolutional code 
+and store it at the transmitter, possibly in a matrix as in Fig. 8. 
+The matrix is oiily conceptual and can be modified in several 
+ways to accommodate interleaving. 
+Transmitting and decoding: 
+1) Transmit the first P columns of the matrix. 
+2) Transmit additional columns of the matrix up to index I 
+according to the puncturing table. 
+3) Decode RCPC code of rate P/(P + I ) with Viterbi 
+algorithm. 
+4) Check the syndrome of code CO. If the syndrome is zero 
+output I and send ACK to the transmitter. If the syndrome of 
+CO is not zero increase I and repeat steps (2)-(4). 
+If decoding is still not successful for I = (N - 1)P, Le., R 
+= 1/N, several possibilities exists. A higher order protocol 
+could take over or ask for a repetition of the whole procedure 
+starting at step 1). Code combining as suggested by Chase [15] 
+could be used to repeat the whole 1/N code Lr times and 
+combine it with the already transmitted code. Actually, the VA 
+uses in this case the same trellis as for all the RCPC codes, but 
+the ML metric (3) is changed to 
+IO lop (E,/No)dO-. 
+Fig. 6. BER performance of RCPC codes on an interleaved Rayleigh 
+channel,N=3,P=8,1=2,4;..,16,rateR=8/(8+l),M=4; 
+analytic upper bound YHAH: hard decision, 1 bit CSI. 
+4Olop (E,/No) 
+d0-b 
+Fig. 7. BER performance of RCPC codes on an interleaved Rice channel 
+C/M = 7 dB, YHAN: hard decision, no CSI, N = 3, P = 8, I = 2, 4, 
+. . 
+e , 16, rate R = 8/(8 + I ) , M = 4, analytic upper bound. 
+V. THE APPLICATION 
+OF RCPC CODES 
+TO HYBRILI ARQ/FEC 
+TRANSMISSION 
+For data transmission schemes where a return channel is 
+available, automatic repeat request (ARQ) schemes guarantee 
+high reliability at high and moderate channel qualities. The 
+throughput performance degrades if the channel is bad or time 
+varying. A combination with forward error correction (FEC) 
+to form a hybrid system combines the advantages of both 
+methods. A broad variety of hybrid systems has been 
+suggested, a good overview of the literature is given in [3] and 
+[4]. Some more recent proposals can be found in [ 151-[ 191. A 
+so-called “type II hybrid system” 141 uses a rate 112 invertible 
+code and alternately sends coded sequences (“information” 
+and “parity” sequences) which are either detected to be 
+correct or combined for FEC decoding. Block and convolu- 
+tional FEC codes have been used and extensions to rate 2/3 
+and 314 have been reported [41. Typically, the “throughput- 
+versus-channel quality”-curves exhibit a saddle at the FEC 
+code rate and some of the schemes require different decoders 
+at different stages of the detection and decoding algorithm. A 
+more natural scheme than alternate code and parity transmis- 
+sion seems tg be successive parity transmission to build up a 
+code which is finally powerful enough to decode the message. 
+Consequently, none of the already transmitted code bits are 
+thrown away but are used to improve FEC decoding, 
+preferably with ML decoding. As in most other hybrid 
+schemes an outer high rate block-code detects decoding errors. 
+where index r indicates the rth repeated transmission. Note 
+that by repeating all code bits L, times the free distance is 
+increased by a factor of Lr [ 151 and the numbers of the weight 
+spectrum are unchanged 
+Note that a repetition code is almost optimal only for low rates 
+such as 1/8, 1/16 [15]. By halving the code rate the distance 
+usually is more than twice as shown in Table I for memory M 
+= 4. This enables a gain in E b / N o on the Gaussian channel. 
+This type of code combining as expressed in (15) can be 
+viewed as maximum ratio combining of the received y,, 
+values. The combined y values which equal the inner sum of 
+the right side in (15) are then used by the original code for ML 
+decoding. 
+In the following analysis, we will assume that decoding 
+stops with the 1/N code in step 4). Consequently, there exists 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 8 of 12
+
+=====PAGE 9=====
+HAGENAUER: (RCPC CODES) AND THEIR APPLICATIONS 
+397 
+sequence number of the decoding attempt using the RCPC 
+code with puncturing tables a(lk) with 
+/I < 12 < * ' < /k< ' ' e 1,. 
+Let PEF( 
+1,) be the probability that the FEC decoding at the kth 
+step results in errors which are detected by Co . We will give an 
+approximate analysis where we assume that the K decoding 
+attempts have statistically independent outcomes. Then we 
+have 
+K 
+k- 1 
+K 
+IAV= 
+lk(1 -pEF(lk)) * n pEF(li)+ IK 
+pEF(li) ( I 7 ) 
+k= I 
+i=O 
+i = O 
+where we define &(IO) 
+= 1. 
+procedure is then 
+The frame error rate of the unsuccessful ARQ/FEC 
+FER = PEF( 1 ~ ) . 
+(18) 
+We can include in the analysis a delay TD caused by the round- 
+trip time and the decoding time by replacing fk in (17) by 
+lk := min {IK, Ik+PTD/(T,(n+nc+rn))}. (19) 
+Similarly, a loss or error in the ACK signal on the return 
+channel, causing unnecessary transmission up to IK, can be 
+accommodated. For the probability Pm(&), 
+we only can give 
+an upper bound by using (9) to calculate the probability that an 
+error event occurs for the transmitted bits 
+#I4 
+I I I 
+RATE 
+TABLE 
+TABLES SHOW POSITION OF COLUMN BITS TO BE 
+TRANSMITTED BY THE I-TH STEP 
+Fig. 8. ARQ-FEC encoding scheme with RCPC codes. 
+a probability that the frame with information block I was not 
+error-free decoded. This frame error rate FER will be 
+calculated and should be sufficiently small. It should be 
+pointed out that we are completely free in which steps we 
+increase 1. The number of steps depends on the ratio of frame 
+arriving time (information rate) to frame decoding time 
+(decoder speed). For extremely varying channel conditions an 
+exponential increase could be useful, i.e., I = 1, 2, 4, 8, 16. 
+This would mean to perform less FEC decoding attempts than 
+the maximum number possible. This is at the cost of a slightly 
+smaller throughput because in the example, the loth attempt 
+could have been successful, saving the transmission 1 1-16 in 
+the above example. 
+With this type of protocol an acknowledgement (ACK) is 
+only sent after successful decoding of a frame. The encoder 
+would send more and more code bits until it receives the ACK. 
+Assume that decoding is successful at step fs. If there is a 
+round-trip delay TD involved in the transmission with rate 11 
+Ts, the encoder would transmit T D / T ~ 
+unnecessary bits, 
+which would slightly reduce the throughput. This will be 
+shown in the analysis. If the ACK is lost, the encoder keeps 
+transmitting unnecessary code bits until I = (N - 1)P. If the 
+probability of an ACK loss or error is small the effect on the 
+throughput is negligible. Thus, the return channel is used only 
+once per frame and a bad return channel does not confuse the 
+basic protocol. 
+8. Throughput Anafysis 
+We will describe the performance of the hybrid ARQ/FEC 
+scheme by two figures of merit: the average throughput RAY 
+and the probability that a frame or packet with n information 
+bits is finally not correctly decoded, the so-called frame error 
+rate FER. The throughput is 
+I 
+n 
+P 
+.- 
+RAV= n + n, +M P + 1, 
+la v is the average number of additionally transmitted bits per P 
+information bits. From Fig. 8 this can be interpreted as the 
+average number of additionally transmitted columns. P/(P + 
+IAV) is the effective code rate of the FEC code. Due to the 
+overhead of n, parity check bits and M terminating bits with n, 
++ M 4 n, the throughput is slightly smaller than the effective 
+FEC code rate. We assume that the error detecting code CO 
+achieves a very low probability of undetected errors which 
+will be ignored in the subsequent analysis. If the (n + n,, n) 
+error detection code CO 
+falls into the class which satisfies [20] 
+Rob {error undetected} < 2 - 
+a very low error probability can be achieved when n, is at 
+least 16. Typically, one would use a cyclic redundancy check 
+CRC common in data transmission protocols. Let fk be the 
+The values a d depend on the code, p d depends on the channel 
+and the detection scheme and can be selected from the values 
+given in Section Iv and in [9]. Recall that Pd usually assumes 
+sufficient interleaving. By using (20) in (17) and (16), we 
+obtain a lower bound for the throughput RA v and by using (20) 
+in (19), we get an upper bound on the FER. 
+Two examples will be given to show the performance of the 
+RCPC codes in the hybrid ARQ/FEC scheme. The same code 
+with M = 4, N = 3, P = 8 will be used, which has fairly low 
+decoding complexity with 16 states and 32 add, compare and 
+select operations per decoded bit. Fig. 9 shows the throughput 
+on a Gaussian channel with hard and soft decisions as 
+calculated by the lower bound method described. The simula- 
+tions show that for this case the bound is accurate within 1 dB. 
+The benefits of soft decisions are clearly observable. Due to 
+the overhead R~~approaches 
+0.97 for high SNR. At low SNR, 
+RAV approaches 0.323 and the frame error rate is high. The 
+RCPC scheme which uses adaptive code rates between 1 and 
+1/3 has generally a better throughput than comparable schemes 
+described in [4] and its throughput curve constitutes a kind of 
+envelope to the corresponding fixed rate schemes. In Fig. 10 
+the performance on a fully interleaved Rayleigh channel is 
+given. In this case, decoding starts with I = 1, Le., the 8/9 
+code and ends with the 1/3 code. Several degrees of CSI are 
+given as described in Section IV: YHAN, YHAH, and YSAS. 
+Note that for a Rayleigh channel with Es/No = 10 dB a frame 
+error rate of less than 
+and a throughput of 0.7 can be 
+easily achieved. Simulation results and analytic bounds agree 
+within 1 dB. 
+VI. THE &'PLICATION 
+OF RcPc CODES TO UNEQUAL ERROR 
+PROTECTION 
+In many applications it is required to provide different levels 
+of error protection for different parts of an information 
+sequence or block. Some examples have been given in the 
+introduction. We assume that the source or the source coder 
+supplies us with some information about the relative impor- 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 9 of 12
+
+=====PAGE 10=====
+398 
+IEEE TRANSACTIONS ON COMMUNICATIONS, VOL. 36, NO. 4, APRIL 1988 
+0.2 1 
+1 
+10-4 
+10-3 
+10-2 
+10-1 
+CHANNEL EER 4 
+E , / N , e 
+7 
+6 
+5 
+4 
+3 2 1 0 
+dB 
+Fig. 9. ARQlFEC throughput with RCPC codes on a Gaussian channel with 
+1 , 
+soft and hz@ decisions (BSC). Code: P = 8, N = 3, I = 0, 1, 2, 4, 
+16, M = 4. Frame: n = 8 x 125, n, = 28. 
+1 
+, 
+I 7 
+1 
+NOICSI (YH;Nl, 1 
+0 
+4 
+8 
+12 
+dE 
+I S 
+20 
+E,INo 4 
+e I BIT CSI (YHAH) 
+0 2 
+X FULL CSI IYSAS) 
+C A L C u L A T T >iMULATioN 
+0 
+Fig. 10. ARQIFEC throughput and frame error rate FER on an interleaved 
+Rayleigh channel, hard decision, and CSI. Code: P = 8, N = 3, I = 1,2, 
+4, - . * , 16, M = 4. Frame: n = 8 x 48, n, = 34. 
+tance or susceptibility to errors of certain information bits or 
+groups of information bits. We will call this source signifi- 
+cance information (SSI). An example of an SSI would be the 
+required BER after decoding for certain groups of information 
+bits. Assume, that in a black of n information bits we have K 
+groups with n k information bits in the kth group requiring an 
+PER of P b k after decoding. In this case, P b k would be the SSI 
+and 
+C nk=n. 
+An example is given in Fig. 11 where we have ordered the 
+information bits according to their relative importance and 
+their error protection needs P b k . Of course one could now 
+separately encode the K groups by K different encoders and 
+use K different decoders according to the protection needs. 
+Besides the increased overhead and complexity some numbers 
+nk might be rather small and exclude the use of powerful 
+longer codes. Instead, we wish to use one encoder and one 
+decoder which provides the protection requirements with a 
+minimum of redundancy and overhead. Very little is known in 
+the literature about unequal error protection of this type by 
+block or convolutional codes. A recent reference is [21] where 
+more literature is quoted; Most recently the extension of this 
+K 
+k= 1 
+Fig. 11. Data frame with information bits grouped according to their error 
+protection requirement (source significance information Pbk). RCPC codes 
+assigned to the groups. 
+concept to convolutional codes has been reported 1261. It 
+seems, however, that only a limited amount of variability can 
+be introduced and only short or low rate codes have been used. 
+Furthermore, no ML decoding results have been shown. 
+Another interesting unequal protection scheme with two codes 
+has been reported in 1221, which combines block and 
+convolutional codes. 
+RCPC codes are well suited for this application. In the 
+example of Fig. 11, the ordered information bits are shifted 
+into the shift register of a 1/N, memory M RCPC code. 
+During the nl information bits the puncturing matrix a(lJ is 
+used as the relevant rule for the multiplexer. As soon as the 
+first bit of the second groqp enters the encoder the puncturing 
+table, a(h) will be used. After another n2 information bits or 
+encoder shifts, the table is switched to a(l3), etc. The procedure 
+is easier to follow when n k is an integer multiple of the 
+puncturing period P, however, this is not a strict requirement. 
+At the kth step P + /k code bits are transmitted per P 
+information bits using the R C X code with index lk and rate R k 
+= P/(P + Ik). The frame is terminated after the group n K by 
+shifting A4 “0” bits into the shift register, thus transmitting 
+M / R K overhead code bits necessary for proper termination of 
+the trellis. The average code rate is then 
+nk 
+k = l 
+R = 
+K 
+n k . (P + lk)/P + M(P -k l K ) / P 
+k= I 
+The rate-compatibility condition (7a) is crucial. In a 
+transitional phase between two matrices a ( l k ) and a(&+ 
+1) 
+where / k + , > l k we have to guarantee, that despite the 
+transition, the distance properties of all paths originating in 
+code lk do not suffer a loss of distance due to transitions, thus 
+guaranteeing at least the designed performance. Fig. 12 shows 
+the same error paths relative to the correct all-zero path in 
+RCPC-code / k : path 1 having distance d, is not effected by a 
+transition, whereas path 2 extends into the lower rate code 
+/k+ I . The rate-compatibility condition (7a) guarantees that the 
+I,+ 
+c d e does not puncture any “1” on the path. Due to less 
+puncturing it might happen that additional “1” ’s occur on the 
+part B of the path, which would cause a d2 > dl. Therefore, 
+some of the (ad} and (6) 
+values have to be assigned to higher 
+distances if the path is not terminated at the transition. Thus, 
+the rate compatibility restriction guarantees that transitional 
+paths do have a distance which is at least the distance of the 
+same path within the higher rate code and at most the distance 
+of the same path within the lower rate code. If two punctured 
+codes without the rate compatibility restriction are used at a 
+rate transition, it can happen that a transitional path has a 
+distance which is even lower than the distance of the same path 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 10 of 12
+
+=====PAGE 11=====
+HAGENAUER: (RCPC CODES) AND THEIR APPLICATIONS 
+399 
+PATH 1 
+PATH 2 
+DISTANCE d i 
+DISTANCE d,L d, 
+Fig. 12. Error paths in a time varying RCPC code during a transition period 
+between code rates. 
+CODE RATE 
+lo-’ 
+CHANNEL: 
+1 h 
+GAUSS 
+2-CPSK 
+YHAN 
+€,/NO 
+= 3.5 dB 
+CODE: 
+RCPC 
+M = 3 
+‘I 
+p = 4 
+10-31 7.;. 
+lFF 
+DEVIATION 
+10-4-1 
+I I I I I I I I I . 
+5 
+10 
+15 
+BYTE NR. 
+Fig. 13. Measured short term bit error rate in a data frame with unequal 
+error protection using RCPC codes. 
+within the higher rate code. This would lead to a bad error 
+behavior in the transition region. One can easily construct such 
+an example. 
+It is useful to order the information as described with 
+increasing importance. Decoding errors typically occur at the 
+beginning of paths and the last M information bits of each 
+error path are error free. However, the transitional paths (path 
+2) to lower rates generally have higher distances and therefore 
+errors occur with lower probability. Simulations show that this 
+type of ordering leads to a smaller number of total errors. 
+Error paths can extend over many transitions. All paths will be 
+properly terminated by the tail forcing the decoder to the all- 
+zero state. Ordering the information bits from lower to higher 
+rate codes would require proper zero termination at each 
+change of rate. We conclude this section by giving an example 
+of the simulated performance of the RCPC code with unequal 
+error protection within one data frame of 128 bits. As Fig. 13 
+shows the code rate is changing from 4/5 to 418 while the 
+measured short term BER is improving by a factor of 100. As 
+discussed above, the bits close to a transition to the next lower 
+rate get a better protection. 
+VII. CONCLUSIONS 
+We have described the concept of forward error correction 
+codes which are obtained from low rate convolutional codes 
+by puncturing them periodically in a rate-compatible manner. 
+Surprisingly, this restriction still produced good codes relative 
+to the best known codes of comparable complexity. In such a 
+way, a whole family of codes with different rates is available 
+using the same encoder and the same ML-decoder employing 
+the Viterbi algorithm. Only the puncturing rule, i.e., the 
+multiplexer switching pattern is changed. Since in most 
+transmission schemes, channel rate is fixed due to modulation 
+and channel filter requirements, changing the code rate means 
+a change of information rate and a buffer for the incoming 
+information stream is required. One disadvantage of punctured 
+codes with high rate is that error paths can be quite long, as 
+shown in Fig. 3 and in [7]. This requires either long path 
+memories in the VA, framed transmission as employed in 
+most packet oriented transmission schemes, or periodically 
+inserted synchronization patterns or known data bits. In a 
+decoder implementation, the basic Viterbi algorithm runs on 
+the same trellis for all the codes. This suggests a VLSI for the 
+Viterbi-decoding algorithm where only the control and the 
+memory access is changed according to the rate, the channel 
+conditions, and the channel state information (CSI). 
+Since the compatibility condition ensures that only incre- 
+mental redundancy is used for lower rate codes, RCPC codes 
+are suitable for ARQIFEC protocols and unequal error 
+protection as shown in Sections V and VI. Of course, both 
+methods can be combined to adapt unequal error protection to 
+varying channel conditions. For instance, the transmission 
+security of a frame with a set of unequal error protection codes 
+using rates (1, 8/10, 8/14) can be upgraded to a set of (8/10, 81 
+12, 8/16) codes when the channel conditions get worse by 
+transmitting another two check bits per 8 information bits. 
+The concept of RCPC codes can be combined with the 
+concept of nested codes [25] where the Viterbi decoder can 
+work also with M - 1, M - 2, - - on a reduced set of states. 
+Codes have been found which satisfy both the RCPC and the 
+nested condition. Furthermore, the concept of RCPC codes 
+could also be used to find a family of ‘‘good’’ codes with high 
+memory suitable for sequential decoding [3]. ‘‘Good’’ would 
+mean that all the codes with different rates need a rapidly 
+growing distance profile [3]. In an ARQ/FEC application, the 
+error detection via the Co code could be replaced by a time-out 
+condition in the Fano or stack algorithm. 
+The design of combined source and channel coding as 
+described for voice transmission in [23] and for image 
+transmission in 1241 gets a new degree of freedom by using 
+RCPC codes because the code rate can be changed within a 
+data frame and during transmission according to the needs 
+[27]. In other words, source significance information SSI, 
+channel state information CSI, and check information from the 
+decoded bits can be used for the adaptation of the encoding and 
+ML-decoding algorithm of RCPC codes. 
+ACKNOWLEDGMENT 
+The author would like to thank H. Osthoff for writing the 
+computer search program used in Section III as part of his 
+Dipl. Ing. thesis at the Technical University Munchen. 
+REFERENCES 
+G. C. Clark and J. B. Cain, Error-Correction Coding for Digitaf 
+Communications. New York: Plenum, 1981. 
+N. S. Jayant and P. Noll, Digital Coding of Waveform, Principles 
+and Applications to Speech and Video. Englewood Cliffs, NJ: 
+Prentice Hall, 1984. 
+S. Lin and D. J. Costello, Jr., Error Control Coding: Fundamentals 
+and Applications. 
+S. Lin, D. J. Costello, and M. J. Miller, “Automatic repeat-request 
+error control schemes,” ZEEE Commun. Mag., vol. 12, pp. 5-17, 
+Dec. 1984. 
+D. M. Mandelbaum, “An adaptive-feedback coding scheme using 
+incremental redundancy,” ZEEE Trans. Znform. Theory, vol. IT-20, 
+pp. 388-389, May 1974. 
+J. B. Cain, G. C. Clark, and J. M. Geist, “Punctured convolutional 
+codes of rate (n - l)/n and simplified maximum likelihood decod- 
+ing,” ZEEE Tram. Znform. Theory, vol. IT-25, pp. 97-100, Jan. 
+1979. 
+Y. Yasuda et ai., “Development of variable-rate Viterbi decoder and 
+its performance characteristics,” in Proc. 6th Znt. Con$ Digit. 
+Satellite Commun., Phoenix, AZ, Sept. 1983, pp. XII-24-XII-31. 
+Y. Yasuda, K. Kashdri, and Y. Hirata, “High rate punctured 
+convolutional codes for soft decision Viterbi decoding,” ZEEE Trans. 
+Cornmun., vol. COM-32, pp. 315-319, Mar. 1984. 
+J. Hagenauer, “Viterbi decoding of convolutional codes for fading and 
+Englewood Cliffs, NJ: Prentice Hall, 1983. 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 11 of 12
+
+=====PAGE 12=====
+400 
+IEEE TRANSACTIONS ON COMMUNICATIONS, VOL. 36, NO. 4, APRIL 1988 
+burst channels,” in Proc. 1980 Int. Zurich Sem., Mar. 1980, pp. 
+M. Mooser, “Some periodic convolutional codes better than any fixed 
+code,” IEEE Trans. Inform. Theory, vol. IT-29, pp. 750-751, Sept. 
+1983. 
+M. Cedervall, “Contribution to the decoding and structure of convolu- 
+tional codes,’’ Ph.D. dissertation, Univ. Lund, Sweden, 1983. 
+D. G. Daut, J. W. Modestino, and L. D. Wismer, “New short 
+constraint length convolutional code constructions for selected rational 
+rates,” IEEE Trans. Inform. Theory, vol. IT-28, pp. 794-800, Sept. 
+1982. 
+A. J. Viterbi and J. K. Omura, Principles of Digital Communication 
+and Coding. 
+J. Hagenauer and E. Lutz, “Forward error correcting coding for fading 
+compensation in mobile satellite channels,” IEEE J. Select. Areas 
+Commun., vol. SAC-5, pp. 215-225, Feb. 1987. 
+D. Chase, “Code combining-A 
+maximum likelihood decoding ap- 
+proach for combining an arbitrary number of noisy packets,” IEEE 
+Trans. Commun., vol. COM-33, pp. 385-393, May 1985. 
+D. Chase, P. D. Mullins, and J. K. Wolf, “Application of code 
+combining to a selective repeat ARQ link,” in 1985 IEEE Military 
+Commun. Conf. MILCOM ’85, Conf. Rec., vol. 1, pp. 247-252, 
+1985. 
+J. J. Metzner and D. Chang, “Efficient selective repeat ARQ strategies 
+for very noisy and fluctuating channels,” IEEE Trans. Commun., 
+vol. COM-33, pp. 409416, May 1985. 
+H. Krishna and S. D. Morgera, “A new error control scheme for 
+hybrid ARQ systems,’’ in Proc. ICC 1986, Toronto, Ont., Canada, 
+T. Kasami, S. Lin, and D. J. Costello, “Performance analysis of a 
+concatenated coding scheme for error control,” in Proc. ICC 1984, 
+Amsterdam, The Netherlands, pp. 769-773. 
+J. K. Wolf, A. M. Michelson, and A. H. Levesque, “On the 
+probability of undetected error for linear block codes,” IEEE Trans. 
+Commun., vol. COM-30, pp. 317-324, Feb. 1982. 
+W. J. Gils, “Linear unequal error protection codes from shorter 
+codes.” IEEE Trans. Inform. Theory, vol. IT-30, pp. 544-546, May 
+1984. 
+L. Kittel and P. Piret, “Compound coding with unequal error 
+G2.1-G2.7. 
+New York: McGraw Hill, 1979. 
+pp. 637-645. 
+protection for digital mobile radio systems,” (in German), NTG 
+Fachberichte, no. 90, “Bewegliche Funkdienste,” pp. 178-185, VDE 
+Verlag, Frankfurt, Germany, 1985. 
+D. J. Goodman and C. E. Sundberg, “Combined source and channel 
+coding for variable-bit-rate speech transmission,” Bell Syst. Tech. J., 
+vol. 62, no. 7, pp. 2017-2036, Sept. 1983. 
+D. G. Daut and J. W. Modestino, “Two dimensional DPCM image 
+transmission over fading channels,” IEEE Trans. Commun., vol. 
+COM-31, pp. 315-328, Mar. 1983. 
+F. Hemmati, “A versatile Viterbi processor for decoding variable gain/ 
+rate convolutional codes,” presented at Proc. 7th Int. Conf. Digital 
+Satellite Commun., Munich, West Germany, May 1986. 
+R. Palazzo, Jr., “On the linear unequal error protection convolutional 
+codes,’’ in Proc. GLOEECOM 1986, Houston, TX, pp. 1367-1371. 
+R. V. Cox, J. Hagenauer, N. Senhadri, and C.-E. Sundberg, “A sub- 
+band coder designed for combined source and channel coding,” 
+presented at Proc. ICASSP 1988, New York, Apr. 1988. 
+* 
+Joachim Hagenauer (M’78-SM’87) received the 
+Ing (grad) degree from Ohm-Polytechnic Nurn- 
+berg, in 1963, and the Dip1 -1ng. and the Dr -1ng. 
+degrees in electrical engineering from Technical 
+University Darmstadt, in 1968 and 1974, respec- 
+tively. 
+At Darmstadt University he served as an Asslst- 
+ant Professor and Dozent From May 1975 to 
+September 1976 he held a postdoctoral fellowship at 
+the IBM T J Watson Research Center, Yorktown 
+Heights, NY, workmg on error correction coding 
+for magnetic recording. Since 1977 he has been with the German Aerospace 
+Research (DFVLR) at Oberpfaffenhofen-since May 1980 as the Head of the 
+Communication Theory Group. His research interests include convolutional 
+coding, data transrmssion via fading channels, and mobile communications 
+During 1986/87 he spent a sabbatical year as an “Otto Lilienthal Fellow” at 
+AT&T Bell Laboratories, Crawford Hill, NJ workmg on joint sourceichannel 
+coding and on trellis coded modulation. 
+Authorized licensed use limited to: IEEE Publications Operations Staff. Downloaded on June 03,2020 at 15:52:19 UTC from IEEE Xplore.  Restrictions apply. 
+Cradlepoint Ex. 1013 
+Cradlepoint, Inc., et al. v. Sisvel Int'l S.A., IPR2020-01099 
+Page 12 of 12

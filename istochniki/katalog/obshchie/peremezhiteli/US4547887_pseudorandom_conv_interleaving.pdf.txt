@@ -1,0 +1,343 @@
+
+=====PAGE 1=====
+United States Patent [19] 111] Patent Number: 4,547,887
+Mui [45] Date of Patent: Oct. 15, 1985
+| [54] PSEUDO-RANDOM CONVOLUTIONAL No. 3, May 1970, John L. Ramsey, “Realization of
+INTERLEAVING Optimum Interieavers”’.
+| JEEE Transactions on Communications Technology,
+[75] Inventor: Shou Y. Mui, Carlisle, Mass. vol. COM-19, No. 5, Oct. 1971, G. David Forney, Jr.,
+| “Burst-Correcting Codes for the Classic Bursty Chan-
+[73} Assignee: The United States of America as nel”. ne es for the Classic Bursty Chan
+represented by the Secretary of the
+: | Army, Washington, D.C. Primary Examiner—Benedict V. Safourek
+: Attorney, Agent, or Firm—Anthony T. Lane; Jeremiah
+[21] Appl.-No.: 556,661 G. Murray; Robert A. Maikis |
+[22] Filed: Nov. 30, 1983 [57] ABSTRACT
+, A method and apparatus for interleaving and deinter-
+[SL] Unt. C4 oo eeseeeeeerereeeseeseeeree GOOF 11/10 leaving psuedo-randomly a digital signal which is trans-
+: [52] U.S. CL. occccsececccsesesccrsssssecsssertcsssereae SPOS I: 371/44 mitted over a transmission channel is disclosed. A re-
+[58] Field of Search ............... 178/22.04, 22.05, 22.06; ceived bit stream is interleaved such that the order of
+370/68, 82; 371/2, 37, 39, 40, 43, 44, 45; 375/1 the bits is varied In a non-random manner. The order of
+the interleaved bits 1s permutated in a pseudo-random
+[56] References Cited manner and the bits are then transmitted over a trans-
+U.S. PATENT DOCUMENTS mission channel. The received bits are inverse permuted
+3,508,197 4/1970 Tong ccesecsssssessesresessecesseueeeee 371/44 80.88 to return the order of the received bits to the order
+; 4,291,406 9/1981 Bahl et al. seems 371/44 Of the bits after the non-random interleaving step. The
+4,394,642 7/1983 Currie et al. ................... 371/40 Imverse permuted bits are then deinterleaved in the
+| 4,425,644 1/1984 Scholz ou... ceccccececcctecesesseseree STL/S2 reverse order in which they were interleaved so as to
+titute th 1g ,
+OTHER PUBLICATIONS reconstitute the original bit stream
+JEEE Transactions on Information Theory, vol. IT~-16, 14 Claims, 3 Drawing Figures
+| TTT TT TT TTT ST mee mn
+: 2 | 3 :
+| CL 2 ae CL |
+—s — | ‘oo pot!
+| |
+INPUT TRANSMISSION | | | WUVEFCSE F/XED OUTPUT
+FUXEO
+el “ere ouarn ies} eer
+i a ze mie _ 4
+
+=====PAGE 2=====
+U.S. Patent Oct. 15, 1985 Sheetl of2 4,547,887
+NN N
+| NIN
+oe - YW
+; es as es ae
+oe od ce] |
+NT |
+, | ri | | NSS
+- | { _ Pye | | xT Sy | .
+: I a e+ AY po Res ” 7
+TIS ITS |
+SR Pal} t ) ff} 1 8 a]
+a Fi R | | | | w} INBP or |
+, | | & Jo rR
+| | | : | S Wy AS ‘
+Oo | oon Na |
+en ~~ $e
+oe TR
+| na |X Na
+wy ¥ S ¥ LN
+| a ce SON |
+NaN s 8
+Oo TRS \ 7
+_ rr ee oie
+a Sp gk Cae
+, | Si 1 |
+| I Q aed ee
+| ' ) 4 | Ny | oN ~ i
+| | | 7 | LS ART 7
+oO ) eee LL —— — — ,
+NN a Sy Ny. . ee
+
+=====PAGE 3=====
+| US. Patent Oct. 15,1985 Sheet20f2 4,547,887
+\ cles a
+. LS ON ON ON | 7
+| , x 8 . | .
+- .
+.s
+SdK | P |
+7 +
+1} Y ATKS | | IS SN ok ; | |
+| . x yy Y i | %
+H[SESSHETS BR] |) Bea
+| Ne & ~ | .> |
+ANAT S| Q: Sk TAKS
+7 7 WH 8] (S88 | pe
+eal. ¢ S$ oe
+| : ——
+-_
+— , 3 |
+YK | | |
+| _§ \N |
+—— SoG § |
+a Poo —
+
+=====PAGE 4=====
+4,247,887 :
+1 2
+shift register of that delay line will receive a clock signal
+PSEUDO-RANDOM CONVOLUTIONAL which causes each of the elements stored in that shift
+_ INTERLEAVING register to shift to the right by 1. Each successive shift
+register has j more bits than the prior shift register such
+| : GOVERNMENT RIGHTS 5 that each successive delay line delays the bits applied
+The Government has rights in this invention pursuant thereto by an additional J bits. |
+to Contract No. DAAK 80-81-C-0039 awarded by the The output of each of the delay lines 12-1 through
+Department of the Army. 12-I 1s connected to a transmission channel 16 via a
+commutator 18 which switches from one delay line to
+BACKGROUND OF THE INVENTION 10 the next in cyclic fashion in synchronism with commu-
+The present invention is directed towards a method tator 14. Again, while commutator 18 is shown as a
+and apparatus for interleaving and deinterleaving mechanical commutator, an electronic commutator will
+pseudorandomly a digital signal transmitted over a | normailly be used.
+transmission channel which introduces random or burst As a result of the foregoing, an interleaver input of . —
+errors or specific error patterns into the information to !> ..ajaj41aj42... will result in the following interleaver
+be transmitted. More particularly, the present invention output:
+is directed towards a method and apparatus utilizing
+pseudorandom convolutional tnterleaving to minimize
+the effect of these errors on the information being trans- 66 QI) (F WNDE UT Mee Gp Po YY Gia ip Po tdm Dye e = O Dee
+mitted. 20
+It is well known that errors in the transmission of
+digital information which would otherwise occur as a I<—— i ——>|
+result of channel noise can be minimized by forward
+error-correction encoding an input digital sequence
+before it is applied to the transmission channel and then 2> /<—___—__— >|
+decoding the digital sequence when it is received at the
+other side of the transmission channel. This result fol- a . .
+lows from the Shannon channel coding theory whichis | Wherein I is the number of delay lines and J=jl. _
+described, for example, in A. J. Viterbi and J. K. The interleaved bits transmitted over the transmission
+Omura, Principles of Digital Communication and Coding 30 Channel 16 is received by a deinterleaver 20 which 1s
+(1979), constructed in the reverse manner to interleaver 10 such
+Most practical decoders are designed to correct ran- __ that the first delay line has (1-1)) bits of storage and the
+dom channel errors. The performance of random-error- final delay line has no storage. The reconstructed input
+correction decoders degrades in the face of burst errors signal will appear at the output of deinterleaver 20 with
+in the transmission channel. If the error burst is too 35 a total delay of J(I-1) bits. |
+| long, the decoder will not be able to properly recon- The result of the foregoing is that the convolutional
+struct the original signal. An effective remedy to this interleaver of FIG. 1 (known generally as an (I,J) inter-
+problem is the use of an interleaver which randomizes leaver) will sufficiently randomize channel error bursts
+the errors (separates them in time) and permits the de- at the output of deinterleaver 20 as long as the error
+coder to work properly. 40 burst remains below J bits in length. Particularly, as
+A known fixed convolutional interleaver-deinter- long as the transmission channel 16 introduces error
+leaver 1s IHustrated in FIG. 1. Fixed convolutional inter- bursts of length no longer than J bits, then the errors in
+leaving has been described by J. S. Ramsey (reference: the output signal appearing at the output of deinter-
+| “Realization of Optimum Interleavers”, IEEE Trans. leaver 20 results from that burst will be separated by at
+on Inform. Th., Vol. IT-16, No. 3, pp. 338-345, May 45 least I-2 bits, which can be made acceptable by choos-
+1970) and G. D. Forney, Jr. (reference: “‘Burst-Correct- ing the parameter I appropriately. |
+ing Codes for the Classical Bursty Channel’, JEEE While the foregoing structure successfully random-
+Trans. on Comm. Tech., Vol. COM-19, No. 5, pp. izes error bursts below J bits in length, certain periodic
+772-781, Oct. 1971). As shown therein, an mput signal error patterns (as opposed to error bursts) cannot be
+(a continuous bit stream) is applied to an interleaver 10 50 sufficiently randomized. For example, an error pattern
+which temporarily stores the received bits and transmits having one error every J+ 1 bits would result in I suc-
+them in a different, but non-random, order from which cessive bit errors at the output of deinterleaver 20. The
+they were received. In the embodiment illustrated, in- primary object of the present invention is to provide
+terleaver 10 comprises I delay lines 12-1 through 12-I, protection against such periodic error patterns, as well
+each of which receives a successive bit of the input 55 as protection against error bursts of J bits or less.
+digital signal. To this end, a commutator 14 switches
+from one delay line to the next in cyclic fashion at the BRIEF DESCRIPTION OF THE INVENTION
+bit rate of the input signal. While commutator 14 is In order to decrease the sensitivity of the system the
+shown as a mechanical element, it should be recognized periodic channel errors, the present invention inter-
+by those skilled in the art that the commutator will 60 poses a permutation device between the fixed convolu-
+normally be formed electronically using, for example, tional interleaver and the transmission channel and in-
+| an appropriate transistor switching network. terposes a depermutation device between the transmis-
+Each of the delay lines, except delay line 12-1, in- sion channel and the fixed convolutional deinterleaver.
+cludes a shift register (unnumbered) to which the bits The permutation and depermutation devices can be of
+applied to that delay line is stepped at a frequency of 65 either a fixed length or variable length type. In either
+| f/I, wherein f is the bit rate of the digital input signal. case, a block of bits received from the fixed convolu-
+To this end, each time a given delay line 12-2 through tional interleaver 1s permuted (that is, the order of the
+12-I receives another bit of the input digital signal, the bits of that block are scrambled in a pseudo-random
+
+=====PAGE 5=====
+4,547,887
+3 4 }
+manner) and the permuted information is transmitted 40, 42 while the output of permutator 32 is connected to
+over the transmission channel. This information 1s re- the DATA-OUT outputs thereof.
+ceived by the inverse permutator which reverses the Each RAM 40, 42 has a storage capacity at least equal
+permutation process such that the order of each bit tn to the block length L. At any given instant, one of the :
+each block of bits is returned to its original sequence 5 RAMs 40, 42 will be receiving and storing the bits of a
+and then the bit information is applied toadeinterleaver | present data block while the remaining RAM 40, 42 will
+so as to reconstruct the original digital information. be transmitting (in permuted order) the bits of the last
+data block. That RAM 40, 42 which is receiving bits of
+BRIEF DESCRIPTION OF THE DRAWINGS the present data block will be referred to as the receiv-
+For the purpose of illustrating the invention, there is 10 ing RAM and is operated in the receive mode (it will be
+shown in the drawings several embodiments which are | Writing information into its memory locations), while
+presently preferred, it being understood, however, that the RAM 40, 42 which is transmitting in permutated
+this invention ts not limited to the precise arrangements order the bits of the prior data block will be referred tO
+and instrumentalities shown. as the transmitting RAM and 1S operated in the transmit
+FIG. 1 is a schematic diagram of a conventional con- !5 Mode (it will be reading information out of its memory
+volutional interleaver. locations). The operation of RAMs 40, 42 is controlled
+FIG. 2 is a block diagram of a fixed length pseudoran- by a control circuit 44 which alternately transfers each
+dom convolutional interleaver in accordance with the RAM 40, 42 between the Tecelving and transmitting
+present invention. mode of operation. Control circuit 44 includes a counter
+FIG. 3 is a block diagram illustrating one possible 20 46 whose count input CT receives the clock signal SCL
+construction of the permutator of FIG. 2. generated by clock 28. The count in counter 46 is incre-
+mented by | in response to each successive clock signal.
+DETAILED DESCRIPTION OF THE The output of counter 46 is applied to a comparator 48
+PREFERRED EMBODIMENTS which compares the count in counter 46 to a reference
+Referring to FIG. 2, a transmitter 22 receives from a 25 value REF equal to the block length L minus 1. When-
+forward-error-correction encoder a digital input signal ever the count in counter 46 - equal to L TMES L,
+— 7 comparator 48 will generate a binary “1” which ts ap-
+(a continuous bit stream) and applies it to a transmission plied to the reset input RST of counter 46 and will cause
+channel 24 after appropriate interleaving. The transmit-
+. . . the count in counter 46 to reset to 0. As a result, a posi-
+ted signal is recetved by a receiver 26 which deinter-
+the bit inf P 4 tes digital output 30 tive going pulse will appear at the output of comparator
+COMES ENE OE UPOR MANOR Qn’ BERGEALES Gen at OMPL 48 each time the receiving RAM 40, 42 has received an
+which faithfully reproduces the ordering of the original entire data block of L. bits.
+input bits. The deinterleaver output Is sent to a forward- The output of comparator 48 is also applied to a flip-
+error-correction decoder. flop 50 whose outputs toggle in response to each succes-
+| The transmitter 22 includes a master clock 28, a fixed 35 sive pulse appearing at the output of comparator 48.
+interleaver 30 and a permutator 32. The receiver in- The Q output of flip-flop 50 is applied to the read/write
+cludes a master clock 34, an inverse permutator 36 and input W/R of RAM 40 while the O output of flip-flop
+a fixed deinterleaver 38. The clocks 28, 34 serve to 50 is applied to the read/write input W/R of RAM 42.
+synchronize the operation of elements 30, 32, 36 and 38 In this manner, whenever flip-flop 50 is set, RAM 40
+to ensure time transparency of the bit stream. The 49 will be operated in the receiving mode while RAM 42
+clocks must be synchronized with each other, as well as will be operated in the transmit mode. Conversely,
+with the bit rate of the input signal. Synchronism be- whenever flip-flop 50 is reset, RAM 40 will be operated
+tween clocks 28, 34 can be performed in any known in the transmit mode, while RAM 42 will be operated in
+manner, for example by the periodic transmission of a the receive mode.
+synchronizing signal. While the manner in which the 45 When the RAM 40, 42 is operated in the receive
+input digital signal is generated does not form a part of mode, its read/write input W/R will be at the binary
+the present invention, the bit rate of the input digital = 1" level and it will read the bit applied to its DATA-
+signal must be synchronized with the frequency of the IN tnput into the storage location tdentified by the ad-
+clock 28. To this end, the clock signals generated by dress signal applied to its ADDRESS input whenever
+clock 28 can be applied to the source of the digital 59 the clock signal CL applied to its CLOCK input goes
+signals, 1.e., the forward-error-correction encoder, to high. Conversely, whenever the RAM 40, 42 1S Oper-
+cause the bits of the digital signal to be applied to the ated in the transmit mode, its read/write input W/R .
+transmitter 22 at the clock rate. will be at the binary ‘‘0” level and it will transfer to its
+The fixed interleaver 30 can take the form illustrated DATA-OUT output that bit stored at the storage loca-
+in FIG. 1, with the commutators 14, 16 being switched 55 tion identified by the address signal applied to its AD-
+from delay line to delay line at the frequency of the DRESS input when the clock signal CL applied to its
+clock signals of clock 28. CLOCK input goes high.
+The permutator 32 divides the output sequence of the The RAMs 40, 42 are switched between the transmit
+| interleaver 30 into sub-sequences or data blocks L bits and receive modes by a logic circuit comprising AND
+in length and permutes (changes) the order at which the 60 gate 52-58. AND gates 52, 54 receive the Q output of |
+bits of that block are transmitted in a pseudo-random flip-flop 50 while AND gates 56, 58 receive the Q out- |
+manner. This can be achieved using either a fixed or a put of flip-flop 50. AND gates 52, 56 determine the
+variable block length L. One possible permutator hav- address signal to be applied to the ADDRESS input of
+ing a fixed block length L is dlustrated in FIG. 3. RAM 40. When RAM 40 ts operating in the receive
+As shown therein, a pair of random access memories 65 mode, the ADDRESS input must be incremented se-
+(RAMs) 40, 42 are connected in parallel between the quentially for each data bit applied to the DATA-IN
+input and output of permutator 32. The input of permu- input of RAM 40. To this end, the output of counter 46
+tator 32 is connected to the DATA-IN inputs of RAMs is gated through AND gate 50 whenever the Q output
+
+=====PAGE 6=====
+5 4,547,887 6
+of flip-flop 50 is set (and RAM 40 ts being operated in receiving a stream of bits;
+the receive mode). When RAM 40 1s operated in the interleaving the order of said bits in a non-random
+transmit mode, the address signals applied to the AD- manner; ~
+DRESS input of RAM 40 must vary in a pseudo-ran- permuting the order of said interleaved bits in a pseu-
+dom manner such as to permute the manner in which 5 do-random manner:
+the received bits of the last data block are transmitted transmitting said permuted, interleaved bits over a
+| by the permutator 32. To this end, the output of counter transmission channel:
+46 is applied to a random number generator 60 which receiving said transmitted bits;
+generates a pseudo-random number PRN for each clock inverse permuting said received bits so as to return
+pulse. The pseudo-random number PRN generated by 10 the order of said received bits to the order of said
+random number generator 60 1s applied to AND gate 56 bits after said interleaving step; and thereafter
+and will be gated thereby and applied to the AD- deinterleaving said bits in the reverse order in which
+DRESS input of RAM 40 whenever the Q output of they were interleaved so as to reconstitute the
+flip-flop 50 is at the binary “1” level. original said bit stream.
+| The pseudo-random number PRN generated by ran- 152. The method of claim 1, wherein said stream of bits
+dom number generator 60 IS applied to AND gate 54 is a continuous bit stream.
+and the output of counter 46 is applied to AND gate 98 3. The method of claim 1, wherein said permutation
+| so as to similarly ensure that RAM 42 will read the data step comprises the steps of
+bits applied to its DATA-IN input into successive ad- dividing said interleaved bits into a plurality of data
+dress locations when the RAM 42 is operated in the 20 blocks: and
+PeCSING mode and to ensure that the stored bits will be for each individual data block, rearranging the order
+reac out i a antie eneere Tra by din of the bits in that said data block in a pseudo-ran-
+om number generator 60 when is operated in dom manner. |
+| the transmit mode. . . ,
+‘The circuit of FIG. 3 can be simply modified to oper- 25 b| 4. Cee -. thor of cam 3, wherein each said data
+ate as a variable length permutator (1.e. a permutator 5 Th ° “tho ve e _ .
+whose data block length L varies) by modifying the - he met od on eran 3, wherein the length of cach
+| random number generator 60 and changing the refer- said data block 1s varied —_ pseudo-random manner.
+ence value applied to the non-inverting input of com- 6. The method of claim I, wherein said interleaving
+parator 48. By way of simple example, it will first be 30 step Is carried out msi & convolutional interleaver.
+presumed that the fixed length permutator described h Apparatus lor interleaving a digital signal to be
+: above permutes the input bits in bit blocks of 10 bits transmitted over a transmission channel, said apparatus
+each. In that case, the reference value REF would be 9 COMpTISNg-
+and the count in counter 46 would cycle between 0 and an interleaver for interleaving the order of the stream
+9. The random number generator 60 would generate the 35 of bits in a non-random manner; —
+: number 0 through 9 in a permuted order as a function of a Peet bite for permuting the order or said Inter-
+| the output of counter 46. Cav In a pseudo- m manner,
+Ina variable length permutator, the number of bits in a transmitter for transmitting said permuted, inter-
+successive data blocks could vary in a pseudo-random leaved bits over a transmission channel.
+manner. The block length could not vary in a truly 40 8. The apparatus of claim 7, wherein said permutator
+| random manner since the receiver 26 must reverse the COMPMISING: —_ —
+. permutation process and must therefore know the order _ means for dividing said interleaved bits into a plural-
+in which the block lengths change. For this reason, the ity of data blocks; and a
+sequence of block lengths must repeat after some prede- means for rearranging the order of the bits in each
+termined time period. By way of simple example, the 45 respective said data block in a pseudo-random man-
+~ block lengths may vary in the following order: 8, 4, 12, ner. . . .
+6, 15 and 5 for a total of 50 bits. While this 50-bit se- 9. The apparatus of claim 8, wherein each said data
+quence will continually repeat itself, the subsequence of block ts of equal length. _ |
+each bit block will vary. 10. The apparatus of claim 8, wherein the length of
+The control circuit 44 of FIG. 3 can easily be modi- 50 each said data block is varied in a pseudo-random man-
+fied to operate in this manner by setting the reference ner.
+value REF equal to 50 and by programming the random 11. Apparatus, comprising:
+| number generator 60 (or replacing it with a new ran- (a) a transmitter including:
+dom number generator) in such a manner that it will (1) an interleaver having an input and an output,
+generate pseudo-random numbers which will first per- 55 the input of said interleaver receiving a stream of
+mute the numbers 0 through 7 (corresponding to the bits, said interleaver interleaving the order of
+first 8 bit block), will then permute the numbers 8 said bits in a non-random manner and applying
+through 11 (corresponding to the second bit clock), etc. said interleaved bits to the output of said inter-
+The present invention may be embodied in other leaver;
+specific forms without departing from the spirit or es- 60 (2) a permutator having an input and an output, the
+sential attributes thereof and, accordingly, reference input of said permutator being coupled to the
+| should be made to the appended claims, rather than the output of said interleaver, said permutator per-
+foregoing specification, as indicating the scope of the muting the order of said iterleaved bits in a
+invention. _ pseudo-random manner and applying said inter-
+| What is claimed 1s: 65 leaved, permuted bits to said output thereof, said
+| 1. A method for interleaving and deinterleaving a output being connected to a transmission chan-
+digital signal transmitted over a transmission channel, "nel; and
+said method comprising the steps of: (b) a receiver, including: |
+
+=====PAGE 7=====
+— 4,547,887
+7 8
+(1) an inverse permutator having an input and an said bit stream, said deinterleaver applying said
+output, the input of said inverse permutator reconstituted bit stream to the output thereof.
+being connected to said transmission channel and 12. The apparatus of claim 11, wherein said permuta-
+receiving said transmitted bits, said inverse per- tor comprises:
+mutator permuting said received bits so as tO 5 means for dividing said interleaved bits into a plural-
+return the order of said received bits to the order ity of data blocks; and
+of said bits after they have been interleaved by means for rearran in the order of the bits in each
+said interleaver, said inverse permuted bits being aR EINS
+applied to the output of said inverse permutator: respective said data block in a pseudo-random man-
+and 10 net. |
+(2) a deinterleaver having an input and an output, 13. The apparatus of claim 12, wherein each said data
+the input of said deinterleaver being connected block is of equal length. | |
+to the output of said inverse permutator, said 14. The apparatus of claim 12, wherein the length of
+deinterleaver deinterleaving said bits in the re- each said data block is varied in a pseudo-random man-
+verse order in which they were interleaved by 15 ner.
+said interleaver so as to reconstitute the original * ok * * #
+20
+25
+30
+| 35
+40 |
+45
+50
+| 55
+60 |
+65

@@ -9109,6 +9109,13 @@ body.reading .msg .body {
 .stol-md-hit:hover .stol-md-pt { fill: var(--warn); }
 .stol-md-pt.is-selected { fill: var(--warn); stroke: var(--text); stroke-width: 0.02; }
 .stol-md-pt.is-bad, .stol-md-lbl.is-bad { fill: var(--danger, #c0392b); }
+/* Созвездие холстом (от 128 точек): квадрат, масштаб колесом, метка по наведению — строкой под холстом. */
+.stol-md-canvas-box { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stol-md-canvas { display: block; width: 100%; max-width: 420px; aspect-ratio: 1; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    cursor: crosshair; touch-action: none; }
+.stol-md-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Высота строки наведения постоянна (две строки): иначе окно по центру экрана прыгает при каждом наведении. */
+.stol-md-hover { font-family: var(--font-mono); height: 2.9em; overflow: hidden; overflow-wrap: anywhere; line-height: 1.45em; }
 .stol-md-iq { display: block; width: 100%; max-width: 420px; aspect-ratio: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .stol-md-iq[hidden] { display: none; }
 .stol-md-text { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }

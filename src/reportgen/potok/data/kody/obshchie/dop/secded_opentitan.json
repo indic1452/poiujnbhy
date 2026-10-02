@@ -1,0 +1,203 @@
+{
+ "hsiao": [
+  {
+   "n": 22,
+   "k": 16,
+   "m": 6,
+   "маски_hex": [
+    "0x496E",
+    "0xF20B",
+    "0x8ED8",
+    "0x7714",
+    "0xACA5",
+    "0x11F3"
+   ],
+   "инверсия_inv_hex": "0x2A0000",
+   "веса_столбцов_данных": [
+    3
+   ],
+   "d": 4,
+   "файл": "istochniki/dop/opentitan/prim_secded_22_16_enc.sv"
+  },
+  {
+   "n": 28,
+   "k": 22,
+   "m": 6,
+   "маски_hex": [
+    "0x3003FF",
+    "0x10FC0F",
+    "0x271C71",
+    "0x3B6592",
+    "0x3DAAA4",
+    "0x3ED348"
+   ],
+   "инверсия_inv_hex": "0xA800000",
+   "веса_столбцов_данных": [
+    3,
+    5
+   ],
+   "d": 4,
+   "файл": "istochniki/dop/opentitan/prim_secded_28_22_enc.sv"
+  },
+  {
+   "n": 39,
+   "k": 32,
+   "m": 7,
+   "маски_hex": [
+    "0x2606BD25",
+    "0xDEBA8050",
+    "0x413D89AA",
+    "0x31234ED1",
+    "0xC2C1323B",
+    "0x2DCC624C",
+    "0x98505586"
+   ],
+   "инверсия_inv_hex": "0x2A00000000",
+   "веса_столбцов_данных": [
+    3
+   ],
+   "d": 4,
+   "файл": "istochniki/dop/opentitan/prim_secded_39_32_enc.sv"
+  },
+  {
+   "n": 64,
+   "k": 57,
+   "m": 7,
+   "маски_hex": [
+    "0x103FFF800007FFF",
+    "0x17C1FF801FF801F",
+    "0x1BDE1F87E0781E1",
+    "0x1DEEE3B8E388E22",
+    "0x1EF76CDB2C93244",
+    "0x1F7BB56D5525488",
+    "0x1FBDDA769A46910"
+   ],
+   "инверсия_inv_hex": "0x5400000000000000",
+   "веса_столбцов_данных": [
+    3,
+    5,
+    7
+   ],
+   "d": 4,
+   "файл": "istochniki/dop/opentitan/prim_secded_64_57_enc.sv"
+  },
+  {
+   "n": 72,
+   "k": 64,
+   "m": 8,
+   "маски_hex": [
+    "0xB9000000001FFFFF",
+    "0x5E00000FFFE0003F",
+    "0x67003FF003E007C1",
+    "0xCD0FC0F03C207842",
+    "0xB671C711C4438884",
+    "0xB5B65926488C9108",
+    "0xCBDAAA4A91152210",
+    "0x7AED348D221A4420"
+   ],
+   "инверсия_inv_hex": "0xAA0000000000000000",
+   "веса_столбцов_данных": [
+    3,
+    5
+   ],
+   "d": 4,
+   "файл": "istochniki/dop/opentitan/prim_secded_72_64_enc.sv"
+  }
+ ],
+ "hamming": [
+  {
+   "n": 22,
+   "k": 16,
+   "m": 6,
+   "маски_hex": [
+    "0xAD5B",
+    "0x366D",
+    "0xC78E",
+    "0x7F0",
+    "0xF800",
+    "0x1FFFFF"
+   ],
+   "инверсия_inv_hex": "0x2A0000",
+   "веса_столбцов_данных": [
+    3,
+    4,
+    5
+   ],
+   "d": 4,
+   "файл": "istochniki/dop/opentitan/prim_secded_hamming_22_16_enc.sv"
+  },
+  {
+   "n": 39,
+   "k": 32,
+   "m": 7,
+   "маски_hex": [
+    "0x56AAAD5B",
+    "0x9B33366D",
+    "0xE3C3C78E",
+    "0x3FC07F0",
+    "0x3FFF800",
+    "0xFC000000",
+    "0x3FFFFFFFFF"
+   ],
+   "инверсия_inv_hex": "0x2A00000000",
+   "веса_столбцов_данных": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "d": 4,
+   "файл": "istochniki/dop/opentitan/prim_secded_hamming_39_32_enc.sv"
+  },
+  {
+   "n": 72,
+   "k": 64,
+   "m": 8,
+   "маски_hex": [
+    "0xAB55555556AAAD5B",
+    "0xCD9999999B33366D",
+    "0xF1E1E1E1E3C3C78E",
+    "0x1FE01FE03FC07F0",
+    "0x1FFFE0003FFF800",
+    "0x1FFFFFFFC000000",
+    "0xFE00000000000000",
+    "0x7FFFFFFFFFFFFFFFFF"
+   ],
+   "инверсия_inv_hex": "0xAA0000000000000000",
+   "веса_столбцов_данных": [
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "d": 4,
+   "файл": "istochniki/dop/opentitan/prim_secded_hamming_72_64_enc.sv"
+  },
+  {
+   "n": 76,
+   "k": 68,
+   "m": 8,
+   "маски_hex": [
+    "0xAAB55555556AAAD5B",
+    "0xCCD9999999B33366D",
+    "0xF1E1E1E1E3C3C78E",
+    "0xF01FE01FE03FC07F0",
+    "0x1FFFE0003FFF800",
+    "0x1FFFFFFFC000000",
+    "0xFFE00000000000000",
+    "0x7FFFFFFFFFFFFFFFFFF"
+   ],
+   "инверсия_inv_hex": "0xAA00000000000000000",
+   "веса_столбцов_данных": [
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "d": 4,
+   "файл": "istochniki/dop/opentitan/prim_secded_hamming_76_68_enc.sv"
+  }
+ ]
+}

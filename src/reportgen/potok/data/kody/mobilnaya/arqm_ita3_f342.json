@@ -1,0 +1,150 @@
+{
+ "имя": "arqm_ita3_f342",
+ "описание": "ITU-R F.342-2 прил. I табл. I: ИТА-2 (5 эл.) → ИТА-3 (7 эл., 3Z/4A)",
+ "источник": [
+  {
+   "файл": "istochniki/morskaya/ARQ-M_342_sigidwiki.pdf",
+   "страница": 2,
+   "url": "https://www.sigidwiki.com/images/4/41/ARQ_M_342_reccommendation.pdf",
+   "что": "табл. I"
+  }
+ ],
+ "проверка": "35 слов, все веса 3 и различны (= все C(7,3)); порядок ИТА-2 сверен по A, E, T",
+ "данные": {
+  "ИТА2→ИТА3": {
+   "A": [
+    "ZZAAA",
+    "AAZZAZA"
+   ],
+   "B": [
+    "ZAAZZ",
+    "AAZZAAZ"
+   ],
+   "C": [
+    "AZZZA",
+    "ZAAZZAA"
+   ],
+   "D": [
+    "ZAAZA",
+    "AAZZZAA"
+   ],
+   "E": [
+    "ZAAAA",
+    "AZZZAAA"
+   ],
+   "F": [
+    "ZAZZA",
+    "AAZAAZZ"
+   ],
+   "G": [
+    "AZAZZ",
+    "ZZAAAAZ"
+   ],
+   "H": [
+    "AAZAZ",
+    "ZAZAAZA"
+   ],
+   "I": [
+    "AZZAA",
+    "ZZZAAAA"
+   ],
+   "J": [
+    "ZZAZA",
+    "AZAAAZZ"
+   ],
+   "K": [
+    "ZZZZA",
+    "AAAZAZZ"
+   ],
+   "L": [
+    "AZAAZ",
+    "ZZAAAZA"
+   ],
+   "M": [
+    "AAZZZ",
+    "ZAZAAAZ"
+   ],
+   "N": [
+    "AAZZA",
+    "ZAZAZAA"
+   ],
+   "O": [
+    "AAAZZ",
+    "ZAAAZZA"
+   ],
+   "P": [
+    "AZZAZ",
+    "ZAAZAZA"
+   ],
+   "Q": [
+    "ZZZAZ",
+    "AAAZZAZ"
+   ],
+   "R": [
+    "AZAZA",
+    "ZZAAZAA"
+   ],
+   "S": [
+    "ZAZAA",
+    "AZAZAZA"
+   ],
+   "T": [
+    "AAAAZ",
+    "ZAAAZAZ"
+   ],
+   "U": [
+    "ZZZAA",
+    "AZZAAZA"
+   ],
+   "V": [
+    "AZZZZ",
+    "ZAAZAAZ"
+   ],
+   "W": [
+    "ZZAAZ",
+    "AZAAZAZ"
+   ],
+   "X": [
+    "ZAZZZ",
+    "AAZAZZA"
+   ],
+   "Y": [
+    "ZAZAZ",
+    "AAZAZAZ"
+   ],
+   "Z": [
+    "ZAAAZ",
+    "AZZAAAZ"
+   ],
+   "ВК": [
+    "AAAZA",
+    "ZAAAAZZ"
+   ],
+   "ПС": [
+    "AZAAA",
+    "ZAZZAAA"
+   ],
+   "Цифры": [
+    "ZZAZZ",
+    "AZAAZZA"
+   ],
+   "Буквы": [
+    "ZZZZZ",
+    "AAAZZZA"
+   ],
+   "Пробел": [
+    "AAZAA",
+    "ZZAZAAA"
+   ],
+   "Пустая лента": [
+    "AAAAA",
+    "AAAAZZZ"
+   ]
+  },
+  "служебные": {
+   "RQ": "AZZAZAA",
+   "α": "AZAZAAZ",
+   "β": "AZAZZAA"
+  }
+ }
+}

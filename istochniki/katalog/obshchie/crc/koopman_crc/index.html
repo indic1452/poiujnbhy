@@ -1,0 +1,1020 @@
+<!DOCTYPE HTML PUBLIC "-//SoftQuad//DTD HoTMetaL PRO 5.0::19981022::extensions to HTML 4.0//EN" "hmpro5.dtd"> 
+ 
+<HTML>
+ 
+<HEAD>
+<META NAME="viewport" CONTENT="width=device-width, initial-scale=1.0"> 
+<TITLE>Best CRC Polynomials</TITLE>
+</HEAD>
+
+<BODY>
+<H1 ALIGN="CENTER">Best CRC Polynomials</H1>
+<P ALIGN="CENTER"><B>Philip Koopman, Carnegie Mellon University</B></P>
+<H3>Best CRCs | <A HREF="details.html">CRC Selection</A> | <A
+HREF="crc32.html">CRC Zoo</A> | <A
+HREF="http://checksumcrc.blogspot.com/">Checksum and CRC Blog</A></H3>
+<P><B><FONT COLOR="#FF00FF">***<A HREF="book/index.html">CRC &amp; Checksum
+Book</A>***</FONT></B> | <A HREF="hdlen.html">Get software to compute HD
+lengths for yourself.</A> |
+<A HREF="https://betterembsw.blogspot.com/p/crc-resources.html">Pointers to CRC
+Resources</A></P>
+<P>These are the &quot;Best&quot; general-purpose CRC polynomials with specific
+Hamming Distance Properties. (See also: <A HREF="#notation">Notation</A> and
+copyright statement). IMPORTANT NOTE: <FONT COLOR="#FF0000"><U>These are
+&quot;BEST&quot; polynomials under an assumption of a low, constant random
+independent BER</U></FONT>such as you'd find in communication networks. If you
+have a BER that is higher than, say, 1 bit in 100,000, or is non-constant, or
+is non-random/non-independent, then you need to understand more before using
+these polynomials.</P>
+<P><B><U><I>This data includes work-in-progress results.</I></U></B></P>
+<HR>
+<H2><A NAME="summary">CRC Summary Tables</A></H2>
+<P>Below is a table of CRC Polynomial performance by Hamming Distance. Click a
+CRC size for detailed information about CRC polynomials.</P>
+<TABLE BORDER="1">
+<TR>
+<TD ROWSPAN="2"> Max length<BR>
+at HD /<BR>
+<B>Polynomial</B></TD>
+<TD COLSPAN="14" ALIGN="CENTER"><B>CRC Size (bits)</B></TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER"><A HREF="crc3.html"><B>3</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc4.html"><B>4</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc5.html"><B>5</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc6.html"><B>6</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc7.html"><B>7</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc8.html"><B>8</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc9.html"><B>9</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc10.html"><B>10</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc11.html"><B>11</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc12.html"><B>12</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc13.html"><B>13</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc14.html"><B>14</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc15.html"><B>15</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc16.html"><B>16</B></A></TD>
+</TR>
+<TR>
+<TD><B>HD=2</B></TD>
+<TD ALIGN="CENTER"><B>0x5</B></TD>
+<TD ALIGN="CENTER"><B>0x9</B></TD>
+<TD ALIGN="CENTER"><B>0x12</B></TD>
+<TD ALIGN="CENTER"><B>0x33</B></TD>
+<TD ALIGN="CENTER"><B>0x65</B></TD>
+<TD ALIGN="CENTER"><B>0xe7</B></TD>
+<TD ALIGN="CENTER"><B>0x119</B></TD>
+<TD ALIGN="CENTER"><B>0x327</B></TD>
+<TD ALIGN="CENTER"><B>0x5db</B></TD>
+<TD ALIGN="CENTER"><B>0x987</B></TD>
+<TD ALIGN="CENTER"><B>0x1abf</B></TD>
+<TD ALIGN="CENTER"><B>0x27cf</B></TD>
+<TD ALIGN="CENTER"><B>0x4f23</B></TD>
+<TD ALIGN="CENTER"><B>0x8d95</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd3.html">HD=3</A></B></TD>
+<TD ALIGN="CENTER">4<BR>
+&nbsp;<B>0x5</B>&nbsp;</TD>
+<TD ALIGN="CENTER">11<BR>
+&nbsp;<B>0x9</B>&nbsp;</TD>
+<TD ALIGN="CENTER">26<BR>
+&nbsp;<B>0x12</B>&nbsp;</TD>
+<TD ALIGN="CENTER">57<BR>
+&nbsp;<B>0x33</B>&nbsp;</TD>
+<TD ALIGN="CENTER">120<BR>
+&nbsp;<B>0x65</B>&nbsp;</TD>
+<TD ALIGN="CENTER">247<BR>
+&nbsp;<B>0xe7</B>&nbsp;</TD>
+<TD ALIGN="CENTER">502<BR>
+&nbsp;<B>0x119</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;1013&nbsp;<BR>
+&nbsp;<B>0x327</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;2036&nbsp;<BR>
+&nbsp;<B>0x5db</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;4083&nbsp;<BR>
+&nbsp;<B>0x987</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;8178&nbsp;<BR>
+&nbsp;<B>0x1abf</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;16369&nbsp;<BR>
+&nbsp;<B>0x27cf</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;32752&nbsp;<BR>
+&nbsp;<B>0x4f23</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;65519&nbsp;<BR>
+&nbsp;<B>0x8d95</B>&nbsp;</TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd4.html">HD=4</A></B></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">10<BR>
+<B>0x15</B></TD>
+<TD ALIGN="CENTER">25<BR>
+<B>0x23</B></TD>
+<TD ALIGN="CENTER">56<BR>
+<B>0x5b</B></TD>
+<TD ALIGN="CENTER">119<BR>
+<B>0x98</B></TD>
+<TD ALIGN="CENTER">246<BR>
+<B>0x17d</B></TD>
+<TD ALIGN="CENTER">501<BR>
+<B>0x247</B></TD>
+<TD ALIGN="CENTER">1012<BR>
+<B>0x583</B></TD>
+<TD ALIGN="CENTER">2035<BR>
+<B>0x8f3</B></TD>
+<TD ALIGN="CENTER">4082<BR>
+<B>0x12e6</B></TD>
+<TD ALIGN="CENTER">8177<BR>
+<B>0x2322</B></TD>
+<TD ALIGN="CENTER">16368<BR>
+<B>0x4306</B></TD>
+<TD ALIGN="CENTER">32751<BR>
+<B>0xd175</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd5.html">HD=5</A></B></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">4<BR>
+<B>0x72</B></TD>
+<TD ALIGN="CENTER">9<BR>
+<B>0xeb</B></TD>
+<TD ALIGN="CENTER">13<BR>
+<B>0x185</B></TD>
+<TD ALIGN="CENTER">21<BR>
+<B>0x2b9</B></TD>
+<TD ALIGN="CENTER">26<BR>
+<B>0x5d7</B></TD>
+<TD ALIGN="CENTER">53<BR>
+<B>0xbae</B></TD>
+<TD ALIGN="CENTER">52<BR>
+<B>0x1e97</B></TD>
+<TD ALIGN="CENTER">113<BR>
+<B>0x212d</B></TD>
+<TD ALIGN="CENTER">136<BR>
+<B>0x6a8d</B></TD>
+<TD ALIGN="CENTER">241<BR>
+<B>0xac9a</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd6.html">HD=6 </A></B></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">4<BR>
+<B>0x9b</B></TD>
+<TD ALIGN="CENTER">8<BR>
+<B>0x13c</B></TD>
+<TD ALIGN="CENTER">12<BR>
+<B>0x28e</B></TD>
+<TD ALIGN="CENTER">22<BR>
+<B>0x532</B></TD>
+<TD ALIGN="CENTER">27<BR>
+<B>0xb41</B></TD>
+<TD ALIGN="CENTER">52<BR>
+<B>0x1e97</B></TD>
+<TD ALIGN="CENTER">57<BR>
+<B>0x372b</B></TD>
+<TD ALIGN="CENTER">114<BR>
+<B>0x573a</B></TD>
+<TD ALIGN="CENTER">135<BR>
+<B>0x9eb2</B></TD>
+</TR>
+<TR>
+<TD><B>HD=7</B></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x29b</B></TD>
+<TD ALIGN="CENTER">12<BR>
+<B>0x571</B></TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0xa4f</B></TD>
+<TD ALIGN="CENTER">12<BR>
+<B>0x12a5</B></TD>
+<TD ALIGN="CENTER">13<BR>
+<B>0x28a9</B></TD>
+<TD ALIGN="CENTER">16<BR>
+<B>0x5bd5</B></TD>
+<TD ALIGN="CENTER">19<BR>
+<B>0x968b</B></TD>
+</TR>
+<TR>
+<TD><B>HD=8</B></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">4<BR>
+<B>0x4f5</B></TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0xa4f</B></TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0x10b7</B></TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0x2371</B></TD>
+<TD ALIGN="CENTER">12<BR>
+<B>0x630b</B></TD>
+<TD ALIGN="CENTER">15<BR>
+<B>0x8fdb</B></TD>
+</TR>
+<TR>
+<TD><B>HD=9</B></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x5a47</B></TD>
+<TD ALIGN="CENTER">6<BR>
+<B>0xe92f </B></TD>
+</TR>
+<TR>
+<TD><B>HD=10</B></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0xed2f </B></TD>
+</TR>
+<TR>
+<TD><B>HD=11</B></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+</TR>
+</TABLE>
+<P></P>
+<HR>
+<P></P>
+<TABLE BORDER="1">
+<TR>
+<TD ROWSPAN="2"> Max length<BR>
+at HD /<BR>
+<B>Polynomial</B></TD>
+<TD ALIGN="CENTER" COLSPAN="8"><B>CRC Size (bits)</B></TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER"><A HREF="crc17.html"><B>17</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc24.html"><B>24</B></A></TD>
+</TR>
+<TR>
+<TD><B>HD=2</B></TD>
+<TD ALIGN="CENTER">&nbsp;<B>0x16fa7</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;<B>0x23979</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;<B>0x6fb57</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;<B>0xb5827</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;<B>0x1707ea</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;<B>0x308fd3</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;<B>0x540df0 </B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;<B>0x8f90e3</B>&nbsp;</TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd3.html">HD=3</A></B></TD>
+<TD ALIGN="CENTER">&nbsp;131054&nbsp;<BR>
+<B>0x16fa7</B></TD>
+<TD ALIGN="CENTER">&nbsp;262125&nbsp;<BR>
+<B>0x23979</B></TD>
+<TD ALIGN="CENTER">&nbsp;524268&nbsp;<BR>
+<B>0x6fb57</B></TD>
+<TD ALIGN="CENTER">&nbsp;1048555&nbsp;<BR>
+<B>0xb5827</B></TD>
+<TD ALIGN="CENTER">&nbsp;2097130&nbsp;<BR>
+<B>0x1707ea</B></TD>
+<TD ALIGN="CENTER">&nbsp;4194281&nbsp;<BR>
+<B>0x308fd3</B></TD>
+<TD ALIGN="CENTER">&nbsp;8388584&nbsp;<BR>
+<B>0x540df0 </B> </TD>
+<TD ALIGN="CENTER">&nbsp;16777191&nbsp;<BR>
+<B>0x8f90e3</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd4.html">HD=4</A></B></TD>
+<TD ALIGN="CENTER">65518<BR>
+<B>0x1165d</B></TD>
+<TD ALIGN="CENTER">131053<BR>
+<B>0x25f53</B></TD>
+<TD ALIGN="CENTER">262124<BR>
+<B>0x77b0f </B></TD>
+<TD ALIGN="CENTER">524267<BR>
+<B>0xc1acf</B></TD>
+<TD ALIGN="CENTER">1048554<BR>
+<B>0x10df8f</B></TD>
+<TD ALIGN="CENTER">2097129<BR>
+<B>0x248794</B></TD>
+<TD ALIGN="CENTER">4194280<BR>
+<B>0x400154</B></TD>
+<TD ALIGN="CENTER">8388583<BR>
+<B>0x9945b1</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd5.html">HD=5</A></B></TD>
+<TD ALIGN="CENTER">240<BR>
+<B>0x1724e</B></TD>
+<TD ALIGN="CENTER">493<BR>
+<B>0x39553</B></TD>
+<TD ALIGN="CENTER">494<BR>
+<B>0x5685a</B> </TD>
+<TD ALIGN="CENTER">1005<BR>
+<B>0xc8a89</B></TD>
+<TD ALIGN="CENTER">1004<BR>
+<B>0x1edfb7</B></TD>
+<TD ALIGN="CENTER">2025<BR>
+<B>0x2a952a</B></TD>
+<TD ALIGN="CENTER">2026<BR>
+<B>0x6bc0f5</B></TD>
+<TD ALIGN="CENTER">4073<BR>
+<B> 0x98ff8c</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd6.html">HD=6 </A></B></TD>
+<TD ALIGN="CENTER">240<BR>
+<B>0x1724e</B></TD>
+<TD ALIGN="CENTER">240<BR>
+<B>0x32c69</B></TD>
+<TD ALIGN="CENTER">494<BR>
+<B>0x5685a</B></TD>
+<TD ALIGN="CENTER">494<BR>
+<B>0xe2023</B></TD>
+<TD ALIGN="CENTER">1004<BR>
+<B>0x1edfb7</B></TD>
+<TD ALIGN="CENTER">1004<BR>
+<B>0x395b53</B></TD>
+<TD ALIGN="CENTER">2026<BR>
+<B>0x6bc0f5</B></TD>
+<TD ALIGN="CENTER">2026<BR>
+<B>0xbd80de</B></TD>
+</TR>
+<TR>
+<TD><B>HD=7</B></TD>
+<TD ALIGN="CENTER">46<BR>
+<B>0x1751b</B></TD>
+<TD ALIGN="CENTER">45<BR>
+<B>0x25f6a</B></TD>
+<TD ALIGN="CENTER">46<BR>
+<B> 0x50b49</B></TD>
+<TD ALIGN="CENTER">49<BR>
+<B>0x8810e</B></TD>
+<TD ALIGN="CENTER">106<BR>
+<B>0x12faa5</B></TD>
+<TD ALIGN="CENTER">105<BR>
+<B>0x289cfe</B></TD>
+<TD ALIGN="CENTER">106<BR>
+<B>0x5e2419</B></TD>
+<TD ALIGN="CENTER">231<BR>
+<B>0x880ee6</B></TD>
+</TR>
+<TR>
+<TD><B>HD=8</B></TD>
+<TD ALIGN="CENTER">22<BR>
+<B>0x11bf5</B></TD>
+<TD ALIGN="CENTER">45<BR>
+<B>0x25f6a</B></TD>
+<TD ALIGN="CENTER">45<BR>
+<B>0x779c7</B></TD>
+<TD ALIGN="CENTER">45<BR>
+<B>0xd41cf </B></TD>
+<TD ALIGN="CENTER">48<BR>
+<B>0x198313</B></TD>
+<TD ALIGN="CENTER">105<BR>
+<B>0x289cfe</B></TD>
+<TD ALIGN="CENTER">105<BR>
+<B>0x469d7c</B></TD>
+<TD ALIGN="CENTER">105<BR>
+<B>0xcba785</B></TD>
+</TR>
+<TR>
+<TD><B>HD=9</B></TD>
+<TD ALIGN="CENTER">8<BR>
+<B>0x123bd</B></TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0x27bbc</B></TD>
+<TD ALIGN="CENTER">13<BR>
+<B> 0x7573f</B></TD>
+<TD ALIGN="CENTER">21<BR>
+<B>0xbe73e</B></TD>
+<TD ALIGN="CENTER">20<BR>
+<B>0x16e976</B></TD>
+<TD ALIGN="CENTER">22<BR>
+<B>0x2aedd3 </B></TD>
+<TD ALIGN="CENTER">26<BR>
+<B>0x53df6e</B></TD>
+<TD ALIGN="CENTER">39<BR>
+<B>0xed93bb</B></TD>
+</TR>
+<TR>
+<TD><B>HD=10</B></TD>
+<TD ALIGN="CENTER">6<BR>
+<B>0x176a7</B></TD>
+<TD ALIGN="CENTER">8<BR>
+<B>0x2e7de</B></TD>
+<TD ALIGN="CENTER">10<BR>
+<B> 0x44f75</B></TD>
+<TD ALIGN="CENTER">13<BR>
+<B>0xe6233</B></TD>
+<TD ALIGN="CENTER">20<BR>
+<B>0x16e976</B></TD>
+<TD ALIGN="CENTER">20<BR>
+<B>0x247bc4</B></TD>
+<TD ALIGN="CENTER">24<BR>
+<B>0x463b77</B></TD>
+<TD ALIGN="CENTER">26<BR>
+<B>0xc7ad89</B></TD>
+</TR>
+<TR>
+<TD><B>HD=11</B></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x26a3d</B></TD>
+<TD ALIGN="CENTER">7<BR>
+<B>0x6d133</B></TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0x8d3cc</B></TD>
+<TD ALIGN="CENTER">10<BR>
+<B>0x165751</B></TD>
+<TD ALIGN="CENTER">12<BR>
+<B>0x36f627 </B></TD>
+<TD ALIGN="CENTER">24<BR>
+<B>0x463b77</B></TD>
+<TD ALIGN="CENTER">23<BR>
+<B>0x8cd929</B></TD>
+</TR>
+<TR>
+<TD><B>HD=12</B></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x51d79</B> </TD>
+<TD ALIGN="CENTER">7<BR>
+<B>0x9d587</B></TD>
+<TD ALIGN="CENTER">10<BR>
+<B>0x165751</B></TD>
+<TD ALIGN="CENTER">10<BR>
+<B>0x22efb7</B></TD>
+<TD ALIGN="CENTER">13<BR>
+<B>0x49ad52 </B></TD>
+<TD ALIGN="CENTER">23<BR>
+<B>0x8cd929</B></TD>
+</TR>
+<TR>
+<TD><B>HD=13</B></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x25d467</B></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x4b79d1 </B></TD>
+<TD ALIGN="CENTER">7<BR>
+<B>0xd9588b </B></TD>
+</TR>
+<TR>
+<TD><B>HD=14</B></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x4b79d1 </B> </TD>
+<TD ALIGN="CENTER">6<BR>
+<B>0xb73e91</B></TD>
+</TR>
+<TR>
+<TD><B>HD=15</B></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#808080"></TD>
+</TR>
+</TABLE>
+<P></P>
+<HR>
+<P></P>
+<TABLE WIDTH="50%" BORDER="1">
+<TR>
+<TD ROWSPAN="2">&nbsp; Max length<BR>
+at HD /<BR>
+<B>Polynomial</B></TD>
+<TD ALIGN="CENTER" COLSPAN="4"><B>CRC Size (bits)</B></TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER"><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc28.html"><B>28</B></A></TD>
+</TR>
+<TR>
+<TD><B>HD=2</B></TD>
+<TD ALIGN="CENTER"><B>0x101690c</B></TD>
+<TD ALIGN="CENTER"><B>0x33c19ef </B></TD>
+<TD ALIGN="CENTER"><B>0x5e04635</B></TD>
+<TD ALIGN="CENTER"><B>0x91dc1e3</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd3.html">HD=3</A></B></TD>
+<TD ALIGN="CENTER">&nbsp;33554406&nbsp;<BR>
+<B>0x101690c</B></TD>
+<TD ALIGN="CENTER">&nbsp;67108837&nbsp;<BR>
+<B>0x33c19ef </B></TD>
+<TD ALIGN="CENTER">&nbsp;134217700&nbsp;<BR>
+<B>0x5e04635</B></TD>
+<TD ALIGN="CENTER">&nbsp;268435427&nbsp;<BR>
+<B>0x91dc1e3</B> </TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd4.html">HD=4</A></B></TD>
+<TD ALIGN="CENTER">16777190<BR>
+<B>0x10bba2d</B></TD>
+<TD ALIGN="CENTER">33554405<BR>
+<B>0x278b495</B></TD>
+<TD ALIGN="CENTER">67108836<BR>
+<B>0x745e8bf </B></TD>
+<TD ALIGN="CENTER">134217699<BR>
+<B>0xb67b511</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd5.html">HD=5</A></B></TD>
+<TD ALIGN="CENTER">4072<BR>
+<B>0x1b9189d</B></TD>
+<TD ALIGN="CENTER">8165<BR>
+<B>0x2c45446</B></TD>
+<TD ALIGN="CENTER">8166<BR>
+<B>0x6c3ff0d</B> </TD>
+<TD ALIGN="CENTER">16357<BR>
+<B>0x9037604</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd6.html">HD=6 </A></B></TD>
+<TD ALIGN="CENTER">4072<BR>
+<B>0x1b9189d</B></TD>
+<TD ALIGN="CENTER">4072<BR>
+<B>0x2186c30 </B></TD>
+<TD ALIGN="CENTER">8166<BR>
+<B>0x6c3ff0d</B> </TD>
+<TD ALIGN="CENTER">8166<BR>
+<B>0xd120245</B></TD>
+</TR>
+<TR>
+<TD><B>HD=7</B></TD>
+<TD ALIGN="CENTER">230<BR>
+<B>0x136fd31 </B></TD>
+<TD ALIGN="CENTER">230<BR>
+<B>0x2bd893b</B></TD>
+<TD ALIGN="CENTER">484<BR>
+<B>0x521f64b </B></TD>
+<TD ALIGN="CENTER">483<BR>
+<B> 0xb9ccb75 </B></TD>
+</TR>
+<TR>
+<TD><B>HD=8</B></TD>
+<TD ALIGN="CENTER">230<BR>
+<B>0x136fd31 </B></TD>
+<TD ALIGN="CENTER">230<BR>
+<B>0x2bd893b</B></TD>
+<TD ALIGN="CENTER">230<BR>
+<B>0x4cb658f </B></TD>
+<TD ALIGN="CENTER">483<BR>
+<B> 0xb9ccb75 </B></TD>
+</TR>
+<TR>
+<TD><B>HD=9</B></TD>
+<TD ALIGN="CENTER">40<BR>
+<B>0x12b00d4</B></TD>
+<TD ALIGN="CENTER">41<BR>
+<B>0x311e9ad</B></TD>
+<TD ALIGN="CENTER">48<BR>
+<B>0x4429686</B></TD>
+<TD ALIGN="CENTER">99<BR>
+<B>0xeaa72ab</B> </TD>
+</TR>
+<TR>
+<TD><B>HD=10</B></TD>
+<TD ALIGN="CENTER">40<BR>
+<B>0x12b00d4</B></TD>
+<TD ALIGN="CENTER">40<BR>
+<B>0x32def69</B></TD>
+<TD ALIGN="CENTER">41<BR>
+<B>0x51aff9a</B></TD>
+<TD ALIGN="CENTER">48<BR>
+<B>0xacb6aed</B></TD>
+</TR>
+<TR>
+<TD><B>HD=11</B></TD>
+<TD ALIGN="CENTER">24<BR>
+<B>0x162054b</B></TD>
+<TD ALIGN="CENTER">24<BR>
+<B>0x248d3be</B></TD>
+<TD ALIGN="CENTER">36<BR>
+<B>0x474fd47</B></TD>
+<TD ALIGN="CENTER">35<BR>
+<B>0xb094a3e </B></TD>
+</TR>
+<TR>
+<TD><B>HD=12</B></TD>
+<TD ALIGN="CENTER">23<BR>
+<B>0x15ed6a9 </B></TD>
+<TD ALIGN="CENTER">23<BR>
+<B>0x2bfbd8f</B></TD>
+<TD ALIGN="CENTER">23<BR>
+<B>0x4258c0f </B></TD>
+<TD ALIGN="CENTER">35<BR>
+<B>0xb094a3e </B></TD>
+</TR>
+<TR>
+<TD><B>HD=13</B></TD>
+<TD ALIGN="CENTER">8<BR>
+<B>0x12728bf</B></TD>
+<TD ALIGN="CENTER">9<BR>
+<B>0x2d7a067</B></TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0x6986313</B> </TD>
+<TD ALIGN="CENTER">15<BR>
+<B>0xe9dadcb</B></TD>
+</TR>
+<TR>
+<TD><B>HD=14</B></TD>
+<TD ALIGN="CENTER">7<BR>
+<B>0x1291ccf </B></TD>
+<TD ALIGN="CENTER">8<BR>
+<B>0x23bb612 </B></TD>
+<TD ALIGN="CENTER">9<BR>
+<B>0x6a611bf</B> </TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0xaf74fc7</B> </TD>
+</TR>
+<TR>
+<TD><B>HD=15</B></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x251f66b</B></TD>
+<TD ALIGN="CENTER">7<BR>
+<B>0x58695e3</B></TD>
+<TD ALIGN="CENTER">8<BR>
+<B>0xcf11b95</B></TD>
+</TR>
+<TR>
+<TD><B>HD=16</B></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x251f66b</B></TD>
+<TD ALIGN="CENTER">6<BR>
+<B>0x65bd513 </B></TD>
+<TD ALIGN="CENTER">8<BR>
+<B>0xcf11b95</B></TD>
+</TR>
+<TR>
+<TD><B>HD=17</B></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+</TR>
+</TABLE>
+<P></P>
+<HR>
+<P></P>
+<TABLE WIDTH="50%" BORDER="1">
+<TR>
+<TD ROWSPAN="2">&nbsp; Max length<BR>
+at HD /<BR>
+<B>Polynomial</B></TD>
+<TD ALIGN="CENTER" COLSPAN="4"><B>CRC Size (bits)</B></TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER"><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER"><A HREF="crc32.html"><B>32</B></A></TD>
+</TR>
+<TR>
+<TD><B>HD=2</B></TD>
+<TD ALIGN="CENTER"><B>0x16dfbf51 </B></TD>
+<TD ALIGN="CENTER"><B>0x31342a2f</B></TD>
+<TD ALIGN="CENTER"><B>0x737e312b</B></TD>
+<TD ALIGN="CENTER"><B>0xad0424f3</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd3.html">HD=3</A></B></TD>
+<TD ALIGN="CENTER">&nbsp;536870882&nbsp;<BR>
+<B>0x16dfbf51 </B></TD>
+<TD ALIGN="CENTER">&nbsp;1073741793&nbsp;<BR>
+<B>0x31342a2f</B></TD>
+<TD ALIGN="CENTER">&nbsp;2147483616&nbsp;<BR>
+<B>0x737e312b</B></TD>
+<TD ALIGN="CENTER">&nbsp;4294967263&nbsp;<BR>
+<B>0xad0424f3</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd4.html">HD=4</A></B></TD>
+<TD ALIGN="CENTER">268435426<BR>
+<B>0x11c4dfb5</B></TD>
+<TD ALIGN="CENTER">536870881<BR>
+<B>0x2254329d</B></TD>
+<TD ALIGN="CENTER">1073741792<BR>
+<B>0x52aa4332</B></TD>
+<TD ALIGN="CENTER">2147483615<BR>
+<B>0xc9d204f5</B></TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd5.html">HD=5</A></B></TD>
+<TD ALIGN="CENTER">16356<BR>
+<B>0x1cf492f3</B> </TD>
+<TD ALIGN="CENTER">32737<BR>
+<B>0x2adf3aaf</B></TD>
+<TD ALIGN="CENTER">32738<BR>
+<B>0x74f9e7cb</B></TD>
+<TD ALIGN="CENTER">65505<BR>
+<B>0xd419cc15</B> (**)</TD>
+</TR>
+<TR>
+<TD><B><A HREF="hd6.html">HD=6 </A></B></TD>
+<TD ALIGN="CENTER">16356<BR>
+<B>0x1cf492f3</B> </TD>
+<TD ALIGN="CENTER">16356<BR>
+<B>0x2ad4a56a</B></TD>
+<TD ALIGN="CENTER">32738<BR>
+<B>0x74f9e7cb</B></TD>
+<TD ALIGN="CENTER">32738<BR>
+<B>0x9960034c</B> (**)</TD>
+</TR>
+<TR>
+<TD><B>HD=7</B></TD>
+<TD ALIGN="CENTER">484<BR>
+<B>0x12e8b5b6</B> </TD>
+<TD ALIGN="CENTER">993<BR>
+<B>0x2a9b3e15</B></TD>
+<TD ALIGN="CENTER">992<BR>
+<B>0x60f2920b</B></TD>
+<TD ALIGN="CENTER">992<BR>
+<B>0xf8c9140a</B> (**)</TD>
+</TR>
+<TR>
+<TD><B>HD=8</B></TD>
+<TD ALIGN="CENTER">483<BR>
+<B>0x13a46755</B> </TD>
+<TD ALIGN="CENTER">483<BR>
+<B>0x2017ed6a </B></TD>
+<TD ALIGN="CENTER">992<BR>
+<B>0x60f2920b</B></TD>
+<TD ALIGN="CENTER">992<BR>
+<B>0xf8c9140a</B></TD>
+</TR>
+<TR>
+<TD><B>HD=9</B></TD>
+<TD ALIGN="CENTER">100<BR>
+<B>0x1e150a87</B></TD>
+<TD ALIGN="CENTER">100<BR>
+<B>0x242c0684</B></TD>
+<TD ALIGN="CENTER">100<BR>
+<B>0x6c740b8d</B></TD>
+<TD ALIGN="CENTER">223<BR>
+<B>0x9d7f97d6</B></TD>
+</TR>
+<TR>
+<TD><B>HD=10</B></TD>
+<TD ALIGN="CENTER">100<BR>
+<B>0x1e150a87</B></TD>
+<TD ALIGN="CENTER">100<BR>
+<B>0x242c0684</B></TD>
+<TD ALIGN="CENTER">100<BR>
+<B>0x6c740b8d</B></TD>
+<TD ALIGN="CENTER">100<BR>
+<B>0xb49c1c96 </B> </TD>
+</TR>
+<TR>
+<TD><B>HD=11</B></TD>
+<TD ALIGN="CENTER">35<BR>
+<B>0x1c27bd8b</B></TD>
+<TD ALIGN="CENTER">36<BR>
+<B>0x34c8e00d</B></TD>
+<TD ALIGN="CENTER">36<BR>
+<B>0x456a3501</B></TD>
+<TD ALIGN="CENTER">38<BR>
+<B>0x85b9561d </B></TD>
+</TR>
+<TR>
+<TD><B>HD=12</B></TD>
+<TD ALIGN="CENTER">35<BR>
+<B>0x1c27bd8b</B></TD>
+<TD ALIGN="CENTER">35<BR>
+<B>0x2468c69c</B></TD>
+<TD ALIGN="CENTER">35<BR>
+<B>0x6bee283f</B></TD>
+<TD ALIGN="CENTER">36<BR>
+<B>0x950ebfae</B></TD>
+</TR>
+<TR>
+<TD><B>HD=13</B></TD>
+<TD ALIGN="CENTER">14<BR>
+<B> 0x13a6f65c</B></TD>
+<TD ALIGN="CENTER">16<BR>
+<B>0x2b967ef9</B></TD>
+<TD ALIGN="CENTER">18<BR>
+<B>0x6624b2eb</B></TD>
+<TD ALIGN="CENTER">20<BR>
+<B>0x93b39b1b </B></TD>
+</TR>
+<TR>
+<TD><B>HD=14</B></TD>
+<TD ALIGN="CENTER">14<BR>
+<B> 0x13a6f65c</B></TD>
+<TD ALIGN="CENTER">14<BR>
+<B>0x3c9a0b27</B></TD>
+<TD ALIGN="CENTER">16<BR>
+<B>0x47e62564</B></TD>
+<TD ALIGN="CENTER">19<BR>
+<B>0xa094afb5</B></TD>
+</TR>
+<TR>
+<TD><B>HD=15</B></TD>
+<TD ALIGN="CENTER">9<BR>
+<B>0x12ff393a</B></TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0x290d6d0e </B></TD>
+<TD ALIGN="CENTER">12<BR>
+<B>0x52d246e1</B></TD>
+<TD ALIGN="CENTER">15<BR>
+<B>0xa2572962</B></TD>
+</TR>
+<TR>
+<TD><B>HD=16</B></TD>
+<TD ALIGN="CENTER">8<BR>
+<B>0x15e165a6 </B></TD>
+<TD ALIGN="CENTER">9<BR>
+<B>0x23136e56 </B></TD>
+<TD ALIGN="CENTER">11<BR>
+<B>0x6d094c5d</B></TD>
+<TD ALIGN="CENTER">13<BR>
+<B>0xe89061db</B></TD>
+</TR>
+<TR>
+<TD><B>HD=17</B></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD ALIGN="CENTER">4<BR>
+<B>0x229df1ac</B></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x47d2d9ab</B></TD>
+<TD ALIGN="CENTER">7<BR>
+<B> 0xa86be4db </B></TD>
+</TR>
+<TR>
+<TD><B>HD=18</B></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD ALIGN="CENTER">4<BR>
+<B> 0x46e56a7c</B></TD>
+<TD ALIGN="CENTER">5<BR>
+<B>0x973afb51 </B> </TD>
+</TR>
+<TR>
+<TD><B>HD=19</B></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+<TD BGCOLOR="#808080" ALIGN="CENTER"></TD>
+</TR>
+</TABLE>
+<P><B>(**)</B> means that this is a temporary result which has approximately
+the longest possible dataword length at the specified HD, but might not be the
+&quot;best&quot; possible value. (For example, probably there is some as yet
+unknown result with a slightly longer dataword length at that HD or with lower
+weights at the same HD.) Ongoing computations will be used to update this value
+to the &quot;best&quot; value when available. In the meantime, there's nothing
+wrong with using this polynomial as long as it provides adequate properties for
+your application.</P>
+<H2>Additional polynomials (33-64 bits; Special Properties)</H2>
+<UL>
+<LI>For details about these polynomials, and for CRCs larger than 32 bits, see
+the <A HREF="crc64.html">CRC Zoo</A></LI>
+<LI>For specialized polynomials, see the <A HREF="details.html">CRC Selection
+page</A>. This includes polynomials with combination properties and good
+polynomials with all zero terms after the lowest byte.</LI>
+</UL>
+<HR>
+<P></P>
+<P><U>To use these tables:</U> top number in each cell is maximum dataword
+length at that Hamming Distance. The bottom number in each cell is a
+&quot;good&quot; polynomial that gives at least that HD up to the indicated
+dataword length in implicit +1 notation. For example, the polynomial 0x247 is a
+10-bit CRC that provides HD=4 (or better) up to 501 bit dataword length
+(501+10=511 bit codeword length). The corresponding polynomial is: 0x247=x^10
++x^7 +x^3 +x^2 +x +1, and is alternately known as 0x48f in explicit +1
+notation. See the <A HREF="hw_data.html">Polynomial Zoo</A> for detailed
+information (or click the CRC size link at the top of each column).
+Additionally, see the tables below for more nuanced selection criteria.</P>
+<P><I>Notes: <B>Minimum dataword length evaluated for the above table is 4
+bits.</B> Grayed-out boxes mean that it has been confirmed that the HD at that
+row cannot be achived with a dataword length of 4 bits or longer. Color
+highlighted cells indicated work in progress/missing data.</I></P>
+<HR>
+<H2><A NAME="notation">Notation:</A></H2>
+<UL>
+<LI>For details on interpreting the data rows and data file formats, see
+<A HREF="notes.html">Hamming Weight Data notes section</A>.</LI>
+<LI>*p - primitive polynomial. This has optimal length for HD=3, and good HD=2
+performance above that length.</LI>
+<LI>*o - odd bit errors detected. This has a factor of (x+1) and detects all
+odd bit errors (implying that even number of bit errors have an elevated
+undetected error rate)</LI>
+<LI>*op - odd bit errors detected plus primitive. This is a primitive
+polynomial times (x+1). It has optimal length for HD=4, and detects all odd bit
+errors.</LI>
+<LI>** - HD confirmed, but minimum weight selection at maximum length has been
+approximated due to long run-time. In other words, this polynomial will perform
+as advertised, but there is a slight chance a slightly better polynomial exists
+that was not found due to less than an exhaustive search. This only applies to
+a few 32-bit and larger polynomials.</LI>
+</UL>
+<HR>
+<P>This web page and all data files are Copyrighted 2015-2018 by Philip
+Koopman, Carnegie Mellon University. </P>
+<P><A REL="license"
+HREF="http://creativecommons.org/licenses/by/4.0/"><IMG
+ALT="Creative Commons License" STYLE="border-width:0"
+SRC="https://i.creativecommons.org/l/by/4.0/88x31.png"></A><BR>
+This work is licensed under a
+<A REL="license" HREF="http://creativecommons.org/licenses/by/4.0/">Creative
+Commons Attribution 4.0 International License</A>.</P>
+<P>Please note that if any data errors or other issues are identified they will
+be updated at this page, but not necessarily anywhere that has copied these
+results. Therefore, you should always confirm at this URL:
+<A
+ HREF="http://users.ece.cmu.edu/~koopman/crc/">http://users.ece.cmu.edu/~koopman/crc/</A>
+that you have the most current version of data before using it.</P>
+<HR>
+<SCRIPT TYPE="text/javascript">
+
+
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-16383641-2']);
+  _gaq.push(['_trackPageview']);
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+
+
+  })();
+</SCRIPT>
+
+</BODY>
+</HTML>
+

@@ -1,0 +1,60 @@
+{
+ "имя": "atsc3_bootstrap_pn_seeds",
+ "описание": "Затравки ГПСП бутстрапа ATSC 3.0 по младшей версии (табл. 6.1 и 6.6 A/321)",
+ "источник": [
+  {
+   "файл": "istochniki/atsc/A321-2026-06-System-Discovery-and-Signaling.pdf",
+   "страница": 19,
+   "url": "https://www.atsc.org/wp-content/uploads/2026/06/A321-2026-06-System-Discovery-and-Signaling.pdf",
+   "что": "Table 6.1"
+  },
+  {
+   "файл": "istochniki/atsc/A321-2026-06-System-Discovery-and-Signaling.pdf",
+   "страница": 23,
+   "url": "https://www.atsc.org/wp-content/uploads/2026/06/A321-2026-06-System-Discovery-and-Signaling.pdf",
+   "что": "Table 6.6"
+  }
+ ],
+ "проверка": "разобраны из текста; ГПСП по рис. 5.2 совпадает побитно (3000 бит на каждую затравку) с init_pseudo_noise_sequence gr-atsc3",
+ "данные": {
+  "g (g16…g0)": [
+   1,
+   1,
+   1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   1
+  ],
+  "мажорная 0 (q = 137)": [
+   "0x019D",
+   "0x00ED",
+   "0x01E8",
+   "0x00E8",
+   "0x00FB",
+   "0x0021",
+   "0x0054",
+   "0x00EC"
+  ],
+  "мажорная 1 (q = 197)": [
+   "0xF110",
+   "0x3D21",
+   "0xE550",
+   "0xBD49",
+   "0x23CF",
+   "0x0B50",
+   "0x3D3C",
+   "0xA216"
+  ]
+ }
+}

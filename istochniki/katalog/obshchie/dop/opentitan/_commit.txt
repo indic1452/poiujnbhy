@@ -1,0 +1,1 @@
+opentitan https://github.com/lowRISC/opentitan.git 2d075017b9acd0f3ee5548977124e1146db90c23

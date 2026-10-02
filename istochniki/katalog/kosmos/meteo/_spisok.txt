@@ -1,0 +1,11 @@
+meteo/cgms_lrit_hrit_global_spec_v2.8.pdf 715169 PDF document, version 1.5 https://www.cgms-info.org/wp-content/uploads/2021/10/cgms-lrit-hrit-global-specification-(v2-8-of-30-oct-2013).pdf
+meteo/goes_LRIT_Transmitter-specs.pdf 572599 PDF document, version 1.6 https://pietern.github.io/goestools/_downloads/a59dc873270b4993ad7344bdc63015ce/4_LRIT_Transmitter-specs.pdf
+meteo/GK2A_LRIT_Mission_Specification_v1.0.pdf  cannot open `/tmp/claude- https://nmsc.kma.go.kr/resources/homepage/pdf/GK2A_LRIT_Mission_Specification_Document_v1.0.pdf
+meteo/CGMS_LRPT_AHRPT_Global_Spec_2.01.pdf 330353 PDF document, version 1.5 https://www.cgms-info.org/wp-content/uploads/2021/10/Direct_Broadcast_Services__LRPT_AHRPT_Global_Specification,_Issue_2_01.pdf
+meteo/EUMETSAT_EPS_HRPT_LRPT_UserStation_Req_ASPI0266.pdf 3355928 PDF document, version 1.3 https://user.eumetsat.int/s3/eup-strapi-media/pdf_aspi_0266_eps_cgs_us_requ_5740914f61.pdf
+meteo/NOAA_KLM_Users_Guide_0.0_star.pdf 37420362 PDF document, version 1.6 https://www.star.nesdis.noaa.gov/mirs/documents/0.0_NOAA_KLM_Users_Guide.pdf
+meteo/GOES-R_GRB_downlink_spec.pdf 1829683 PDF document, version 1.6 https://www.goes-r.gov/users/docs/GRB_downlink.pdf
+meteo/GOES-R_PUG_GRB_vol4.pdf 4579905 PDF document, version 1.5 https://www.goes-r.gov/users/docs/PUG-GRB-vol4.pdf
+meteo/JPSS1_HRD_RF_ICD_470-REF-00184_RevA.pdf 1087747 PDF document, version 1.5 https://www.nesdis.noaa.gov/s3/2022-03/JPSS-1SCHRDtoDBSRFICDRevA-470-REF-00184February9,2015.pdf
+meteo/JPSS2_HRD_RF_ICD_472-00340_RevC.pdf 2830952 PDF document, version 1.7 https://www.nesdis.noaa.gov/s3/2022-03/472-00340_J2_HRD_to_DBS_RF_ICD_Rev_C.pdf
+meteo/GK2A_LRIT_Mission_Specification_v1.0.pdf 591268 PDF document, version 1.5 https://nmsc.kma.go.kr/resources/homepage/pdf/GK2A_LRIT_Mission_Specification_Document_v1.0.pdf

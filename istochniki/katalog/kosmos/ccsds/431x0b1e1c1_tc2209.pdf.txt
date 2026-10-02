@@ -1,0 +1,212 @@
+
+=====PAGE 1=====
+ 
+Distribution Control Number:  TC 22-09 
+ 
+Reference Number:  CCSDS 431.1-B-1 Cor. 1 
+ 
+NOTE 
+– 
+Current versions of CCSDS documents are maintained at the CCSDS Web site: 
+ 
+https://public.ccsds.org/ 
+ 
+Correspondence regarding CCSDS documents should be addressed to 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+Email: secretariat@mailman.ccsds.org 
+ 
+ 
+ 
+Variable Coded Modulation Protocol 
+ 
+TECHNICAL CORRIGENDUM 1 
+ 
+The Management Council of the Consultative Committee for Space Data Systems (CCSDS) has 
+authorized the publication of technical corrigendum 1 to CCSDS 431.1-B-1, issued February 2021. 
+ 
+Page D-1, delete 
+ 
+“CADU 
+channel access data unit” 
+ 
+Page 3-7, note under 3.4.2, change 
+ 
+from: 
+ 
+“including CSM and pseudo-randomization” 
+to: 
+ 
+“including CSM and codeblock pseudo-randomization” 
+ 
+Page 3-6, 3.3.2.4.2, change 
+ 
+from: 
+ 
+“either H = 26 or H = 90 symbols” 
+ 
+to: 
+ 
+“H = 90 π/2 BPSK symbols comprising a 26-symbol Start of Frame and 64-symbol 
+Physical Layer Signalling (PLS) as specified in section 5 of reference [4], except that the 
+PLS portion may be omitted” 
+ 
+Recommended Standard CCSDS 431.1-B-1 
+TECHNICAL CORRIGENDUM 1 
+ 
+Issue Date: April 2022 
+
+=====PAGE 2=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 431.1-B-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-09 
+ 
+Reference Number:  CCSDS 431.1-B-1 Cor. 1 
+ 
+ 
+Page 2 of 4 
+Page 3-5, 3.3.2.4.1, change 
+ 
+from: 
+ 
+“as specified in reference [4]” 
+ 
+to: 
+ 
+“as specified in section 5 of reference [4]” 
+ 
+Page 3-5, after 3.3.2.2 Encoder Input and Output Length, add 
+ 
+3.3.2.3 Base-Band Header Insertion 
+ 
+When the VCM system uses DVB-S2 codes as given in mode table 3-4, a base-band 
+header of 10 bytes shall be inserted in front of each K-bit information block, as described 
+in subsection 5.1.6 of reference [4], to form K+80 bits. 
+ 
+3.3.2.4 Randomization 
+ 
+Each information block, together with the base-band header if present (and called 
+BBFRAME in reference [4]), shall be randomized with the scrambler described in 
+subsection 5.2.2 of reference [4]. 
+ 
+Page 3-4, 3.3.1.4.2, change 
+ 
+from: 
+ 
+“either H = 256 or H = 320 symbols” 
+ 
+to: 
+ 
+“H = 320 π/2 BPSK symbols comprising a 256-symbol Frame Marker and 64-symbol 
+Frame Descriptor as specified in section 5 of reference [2], except that the Frame 
+Descriptor portion may be omitted” 
+ 
+Page 3-4, 3.3.1.4.1, change 
+ 
+from: 
+ 
+“as specified in reference [2]” 
+to: 
+ 
+“as specified in section 5 of reference [2]” 
+
+=====PAGE 3=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 431.1-B-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-09 
+ 
+Reference Number:  CCSDS 431.1-B-1 Cor. 1 
+ 
+ 
+Page 3 of 4 
+ 
+Page 3-2, before 3.3 SPECIFICATION, add 
+ 
+3.2.3 FRAME RANDOMIZATION 
+ 
+3.2.3.1 When Type 1 VCM is used, each Transfer Frame shall be randomized with the 
+pseudo-randomizer described in section 8 of reference [2]. 
+ 
+3.2.3.2 When Type 2 VCM is used, the Transfer Frames shall not be randomized. 
+ 
+Page 3-2, note at top of page, delete 
+ 
+“  It is important to note that what is referred to here as SMTF is called CADU in 
+references [2] and [3].” 
+ 
+Page 3-1, 3.1 DISCUSSION—SLICER AND PLFRAME STRUCTURE, change 
+ 
+from: 
+ 
+“The VCM protocol operates by taking CCSDS Transfer Frames as input, adding . . .” 
+ 
+to: 
+ 
+“The VCM protocol operates by taking CCSDS Transfer Frames as input, pseudo-
+randomizing the Transfer Frames when one type of VCM is used, adding . . .” 
+ 
+Page 2-1, 2 OVERVIEW, second paragraph, change 
+ 
+from: 
+ 
+“This Recommended Standard covers functions in both the Synchronization and Channel 
+Coding Sublayer and the Physical Layer.” 
+to: 
+ 
+“This Recommended Standard covers functions in both the Synchronization and Channel 
+Coding Sublayer and the Physical Layer, the latter for what concerns the modulation 
+schemes. CCSDS 401.0-B (reference [5]) covers additional features of the Physical 
+Layer, such as frequency bands and polarizations, that are not described or referenced 
+here.” 
+ 
+[Editorially update references to current issues—these changes are not marked.] 
+ 
+
+=====PAGE 4=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 431.1-B-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-09 
+ 
+Reference Number:  CCSDS 431.1-B-1 Cor. 1 
+ 
+ 
+Page 4 of 4 
+Page 1-3, delete 
+ 
+“channel access data unit, CADU: A data unit consisting of either an ASM or a Code 
+Synchronization Marker (CSM) followed by a Transfer Frame, a codeword, or a 
+codeblock, depending on the coding scheme in use.” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

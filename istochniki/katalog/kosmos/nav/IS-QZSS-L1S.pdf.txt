@@ -1,0 +1,3388 @@
+
+=====PAGE 1=====
+ 
+ 
+Document subject to the disclaimer of liability 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Quasi-Zenith Satellite System 
+Interface Specification 
+Sub-meter Level Augmentation Service 
+(IS-QZSS-L1S-006) 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(October 25, 2023) 
+ 
+ 
+Cabinet Office 
+ 
+ 
+ 
+
+=====PAGE 2=====
+ 
+ 
+Document subject to the disclaimer of liability 
+ 
+Disclaimer of Liability 
+ 
+The Cabinet Office, Government of Japan (“CAO”) and Quasi-Zenith Satellite System Services Inc. 
+make the User Interface Specification (IS-QZSS) (“Document”) available to the public to promote the 
+services using Quasi-Zenith Satellite System (“QZSS”) by development of receivers, applications and 
+so on, and also are aiming for high accuracy and convenience with respect to satellite positioning 
+services and message services of QZSS (collectively “Services”). The Services are freely available to 
+any user. However, the receivers and/or applications developed based on this Document may not 
+receive signals or may receive incorrect signals due to no warranty of the Services. You are therefore 
+highly recommended to ensure appropriate measures to avoid accidents such as redundancy, backup and 
+fail-safe, if you develop receivers and/or applications using the Services for the purpose that will 
+possibly give an impact to human life, body and properties. The Services may be suspended or changed 
+without prior notice in accordance with the decision by Government of Japan. This Document and the 
+Services are available subject to the following terms and conditions. You may use this Document only if 
+you agree to such terms and conditions. You shall be deemed to agree such terms and conditions by 
+using this Document. 
+ 
+(1) With respect to this Document and the information included in this Document, the Cabinet Office, 
+Government of Japan (“CAO”) and Quasi-Zenith Satellite System Services Inc. (“QSS”) disclaim all 
+warranties of any kind, express or implied, including but not limited to, the followings: 
+i) warranty of accuracy, completeness, usefulness, and fitness for a particular request or purpose;  
+ii) warranty that this Document and the information included in this Document will not be changed in 
+to the future; and 
+iii) warranty that this Document and the information included in this Document do not infringe any third 
+party’s intellectual property rights. 
+ 
+(2) With respect to satellite positioning services and message services (collectively “Services”), CAO and 
+QSS disclaim all warranties of any kind, express or implied, from any cause whether it is related to Quasi-
+Zenith Satellite System, other outside systems or not, including but not limited to, the followings: 
+ i) warranty as to service area, accuracy, availability, continuity, and integrity described in this Document; 
+ ii) warranty of usefulness, and fitness for a particular request or purpose; and 
+ iii) warranty that the use of Services does not infringe any third party’s intellectual property rights. 
+ 
+(3) To the extent permitted by applicable laws, CAO and QSS shall not be responsible and liable for any 
+damages and losses, including but not limited to, direct, indirect, incidental, special or consequential 
+damages, whether under contractual liability, product liability, strict liability, tort liability or otherwise 
+(including intent or negligence), caused by the use of this Document, the information included in this 
+Document and the Services, the inability to use the Services, or the change of this Document and the 
+information included in this Document. 
+ 
+ 
+ 
+
+=====PAGE 3=====
+ 
+ 
+Document subject to the disclaimer of liability 
+ 
+Revision History 
+ 
+Rev. No. 
+Date 
+Page Revisions 
+001 
+Draft 
+Edition 
+January 
+10,2017 
+ 
+Change from 001 Draft(2016/07/12)(Japanese) 
+－ 
+Separate related DC Report Service 
+－ 
+Delete Orbit and time Forecast (MT40,41) 
+22 
+Table 4.1.2-9 
+  (ID_5)Change Monitoring Station Gifu to Komatsu. 
+ (ID_63)Add not applicable value (N/A) to GMS_ID. 
+  Add coordinate value of each Monitoring Station 
+27 
+Adds the correspondence between Message Type 48 and 
+Message Type 49. 
+30 
+Adds the correspondence between Message Type 48 and 
+Message Type 50. 
+001 
+March 
+28,2017 
+－ 
+First release 
+002 
+April 
+13,2018 
+14 
+Table 4.1.1 1 
+Correct Maximum Transmission Intervals (MT0,47). 
+20 
+Table 4.1.2 3 
+Correct Effective range of GMS Hgt (MT47). 
+38 
+Add subsection (5.5.3.3.). 
+003 
+November 
+5,2018 
+18,19 
+Adds DC Report message output from a receiver 
+(MT43,44). 
+Corrects description of Applicable Document. 
+004 
+November 
+26,2019 
+10 
+Table 3.2.1-1 
+ (PRN186)Change Block Assignment Undetermined to 
+Block IIA-Q. 
+005 
+February 
+3, 2023 
+14 
+Table 4.1.1-2 
+Corrects the table heading from “Update Interval” to 
+“Nominal Update Interval”. 
+23 
+Table 4.1.2-6 
+Deletes the first and last rows of the table. 
+26 
+Figure 4.1.2-7 
+Corrects the number of “Satellite to be augmented” from 
+15 to 14. 
+Separates Type 49 and Type 50 in the figure. 
+27 
+Table 4.1.2-8 
+Corrects the description under of the table “~ and may 
+not be ~” to “~and shall not be ~”. 
+32 
+5.2 Coordinate System 
+Deletes the phrase of “used for PNT”. 
+Adds the description of “This is the same coordinate 
+system described in 5.2 of IS-QZSS-PNT.”. 
+34 
+Corrects the word “IOD” to ”IODP and IODI” in the 
+first sentence. 
+Adds and modifies the description. 
+35 
+Corrects the word “The user position (S)” to ”The user 
+position (POS)”. 
+Formula 5.5-4 
+Corrects the character of the variable “S” to 
+“POS” 
+Formula 5.5-5 
+Correct the elements in G matrix.  
+
+=====PAGE 4=====
+ 
+ 
+Document subject to the disclaimer of liability 
+ 
+36 
+Formula 5.5-9 Corrects the description of 
+component “multi” to “multi”.  
+Corrects description of “Fpp, i”. 
+37 
+Formula 5.5-10 Corrects the component “2iono,i” 
+to “iono,i”. 
+  
+37 
+(4)Alert information (Message Type 51) 
+ Modifies the description. 
+38 
+Formula 5.5-13 Corrects the component “n” to 
+“PRnmeasured”. 
+006 
+October 
+25, 2023 
+10 
+Table 3.2.1-1 Assignment of the PRN Number by 
+Satellite categories 
+Deletes the undetermined PRN codes. 
+12 
+Table 3.2.1-2 L1S PRN Code phase assignment 
+Deletes the undetermined PRN codes. 
+39-
+41 
+Add subsection (5.5.3.4.). 
+ 
+In this the text "TBD" is an abbreviation for "To be determined" meaning that the item 
+referred to is undetermined at present but will be determined in the future. 
+ 
+
+=====PAGE 5=====
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+i 
+ 
+Table of Contents 
+ 
+1. Scope .............................................................................................................................................. 1 
+2. Relevant Documents and Definition of Terms .......................................................................... 2 
+2.1. Applicable Documents .......................................................................................................... 2 
+2.2. Reference Documents .......................................................................................................... 3 
+2.3. Abbreviations .......................................................................................................................... 4 
+3. Signal Specifications .................................................................................................................... 6 
+3.1. RF Characteristics ................................................................................................................. 6 
+3.1.1. Signal Structure .............................................................................................................. 6 
+3.1.2. Frequency ........................................................................................................................ 6 
+3.1.3. Modulation Methods ....................................................................................................... 7 
+3.1.3.1. L1S ............................................................................................................................ 7 
+3.1.4. Correlation Loss.............................................................................................................. 7 
+3.1.5. Carrier Phase Noise ....................................................................................................... 7 
+3.1.6. Spurious ........................................................................................................................... 7 
+3.1.7. Phase Relationship within Signals .............................................................................. 8 
+3.1.7.1. L1 ............................................................................................................................... 8 
+3.1.8. Minimum Signal Strength .............................................................................................. 8 
+3.1.9. Polarization Property ..................................................................................................... 8 
+3.1.10. Group Delay Property .................................................................................................. 8 
+3.1.10.1. Group Delay Between Signals............................................................................ 8 
+3.1.10.2. Group Delay Between Signals of Same Frequency ....................................... 8 
+3.1.11. PRN Code Jitter ............................................................................................................ 9 
+3.1.12. Code Carrier Coherence ............................................................................................. 9 
+3.2. PRN Codes ........................................................................................................................... 10 
+3.2.1. PRN Number Assignment ........................................................................................... 10 
+3.2.2. L1S Codes ..................................................................................................................... 11 
+3.2.3. Non-Standard Codes ................................................................................................... 12 
+4. Message Specifications ............................................................................................................. 13 
+4.1. L1S ......................................................................................................................................... 13 
+4.1.1. Message Configuration ............................................................................................... 13 
+4.1.1.1. Overview ................................................................................................................. 13 
+4.1.1.2. Timing ...................................................................................................................... 13 
+4.1.1.3. Cyclic Redundancy Check (CRC) ...................................................................... 15 
+4.1.1.4. Forward Error Correction (FEC) ......................................................................... 15 
+4.1.2. Message Contents ....................................................................................................... 16 
+4.1.2.1. Overview ................................................................................................................. 16 
+4.1.2.2. Common Section ................................................................................................... 16 
+4.1.2.3. Message Type 0: Test Mode ............................................................................... 17 
+4.1.2.4. Message Type 43: DC Report (JMA Disaster Prevention Information) ....... 18 
+
+=====PAGE 6=====
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+ii 
+ 
+4.1.2.5. Message Type 44: DC Report (Other Organization) ....................................... 19 
+4.1.2.6. Message Type 47: Monitoring Station Information .......................................... 20 
+4.1.2.7. Message Type 48: PRN Mask ............................................................................ 22 
+4.1.2.8. Message Type 49：Data Issue Number ........................................................... 24 
+4.1.2.9. Message Type 50: DGPS Correction ................................................................ 27 
+4.1.2.10. Message Type 51: Satellite Health .................................................................. 29 
+4.1.2.11. Message Type 63: Null Message ..................................................................... 31 
+5. User Algorithm ............................................................................................................................. 32 
+5.1. Time System ......................................................................................................................... 32 
+5.2. Coordinate System .............................................................................................................. 32 
+5.3. Constants .............................................................................................................................. 33 
+5.4. Health and Alert Flag ........................................................................................................... 33 
+5.5. Procedure for Applying Correction Information .............................................................. 33 
+5.5.1. Selection of the SLAS messages transmitted satellite .......................................... 33 
+5.5.2. Augmentation Using DGPS Correction..................................................................... 34 
+5.5.3. Accuracy ......................................................................................................................... 38 
+5.5.3.1. Smoothing .............................................................................................................. 38 
+5.5.3.2. Quality Monitoring ................................................................................................. 38 
+5.5.3.3. Differential ISB Correction ................................................................................... 39 
+5.5.3.4. Differential Tropospheric Delay Correction ....................................................... 39 
+
+=====PAGE 7=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+1 
+ 
+1.  Scope 
+This document describes the interface specifications of the sub-meter level augmentation service 
+(SLAS) between the space segment of QZSS and the user segment. The interface specifications 
+described herein include the signal characteristics, message specifications and user algorithms. 
+ 
+The content of system, service, accuracy, availability, continuity, integrity, and other user 
+performance characteristics are described in the applicable document (1)PS-QZSS Quasi-Zenith 
+Satellite System Performance Standard. 
+ 
+ 
+ 
+ 
+
+=====PAGE 8=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+2 
+ 
+2.  Relevant Documents and Definition of Terms 
+ 
+2.1.  Applicable Documents 
+The following documents constitute part of this document within the scope defined in this 
+document. 
+ 
+(1) PS-QZSS Quasi-Zenith Satellite System Performance Standard 
+(2) Quasi-Zenith Satellite System Interface Specification DC Report Service (IS-QZSS-
+DCR) 
+ 
+ 
+ 
+ 
+
+=====PAGE 9=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+3 
+ 
+ 
+2.2.  Reference Documents 
+The reference document are as follows. 
+(1) Quasi-Zenith Satellite System Interface Specification Satellite Positioning, Navigation 
+and Timing Service (IS-QZSS-PNT)  
+(2) Global Positioning Systems Directorate Systems Engineering & Integration Interface 
+Specification IS-GPS-200, Navstar GPS Space Segment/Navigation User Interfaces, 
+Revision H, 24-SEP-2013 
+ 
+ 
+ 
+
+=====PAGE 10=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+4 
+ 
+2.3.  Abbreviations 
+-A- 
+-B- 
+bps 
+ 
+bits per second 
+BPSK 
+ 
+Binary phase-shift keying 
+-C- 
+CPS 
+ 
+Chips per Second 
+CRC 
+ 
+Cyclic Redundancy Check 
+-D- 
+-E- 
+ECEF 
+ 
+Earth Center Earth Fixed 
+ECI 
+ 
+Earth Centerd Inertial 
+EOP 
+ 
+Earth Orientation Parameters 
+-F- 
+FEC 
+ 
+Forward Error Correction 
+-G- 
+GEO 
+ 
+Geostationary Orbits 
+GPS 
+ 
+Global Positioning System 
+GPST 
+ 
+GPS Time 
+-H- 
+-I- 
+IERS 
+ 
+International Earth Rotation and Reference Systems Service 
+IODE 
+ 
+Issue of Data Ephemeris 
+IODP 
+ 
+Issue of Data PRN Mask 
+-J- 
+-K- 
+-L- 
+LSB 
+ 
+Least Significant Bit 
+-M- 
+MSB 
+ 
+Most Significant Bit 
+-N- 
+-O- 
+-P- 
+PLL 
+ 
+Phase Locked Loop 
+PRN 
+ 
+Pseudorandom Noise 
+-Q- 
+QZO 
+ 
+Quasi-Zenith Orbits 
+QZS 
+ 
+Quasi-Zenith Satellite 
+QZSS 
+ 
+Quasi-Zenith Satellite System 
+-R- 
+RF 
+ 
+Radio Frequency 
+
+=====PAGE 11=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+5 
+ 
+RMS 
+ 
+Root Mean Square 
+-S- 
+SIS 
+ 
+Signal-In-Space 
+SIS-URE 
+Signal-In-Space User Range Error 
+sps 
+ 
+symbols par second 
+SV 
+ 
+Satellite Vehicle 
+-T- 
+TAI 
+ 
+Time of Interval 
+TTA 
+ 
+Time-To-Alert 
+-U- 
+URA 
+ 
+User Range Accuracy 
+UT1 
+ 
+Universal Time1 
+UTC 
+ 
+Coordinated Universal Time 
+-V- 
+-W- 
+-X- 
+-Y- 
+-Z- 
+ 
+ 
+ 
+
+=====PAGE 12=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+6 
+ 
+3.  Signal Specifications 
+3.1.  RF Characteristics 
+3.1.1.  Signal Structure 
+The signal structure, PRN code characteristic and message characteristics are as shown in Table 
+3.1.1-1, Table 3.1.1-2 and Table 3.1.1-3.  
+ 
+Table 3.1.1-1 Signal Structure 
+Frequency 
+Band 
+Signal 
+Name 
+Modulation 
+Method 
+PRN Code 
+Name 
+Overlay Code 
+Name 
+Message Name 
+L1 
+L1S 
+BPSK 
+L1S 
+- 
+L1S 
+ 
+Table 3.1.1-2 PRN Code Characteristics 
+PRN Code Name 
+Chip Rate 
+Length 
+Period 
+Overlay Code 
+L1S 
+1.023 Mcps 
+1023 chips 
+1 millisecond 
+- 
+ 
+Table 3.1.1-3 Message Characteristics 
+Message Name 
+Bit Rate 
+Symbol Rate 
+Period 
+(Minimum Frame) 
+Encoding Method  
+L1S 
+250 bps 
+500 sps 
+1 second 
+CRC 
+convolutional code 
+ 
+ 
+3.1.2.  Frequency 
+The frequency band, nominal center frequency and occupied bandwidth of L1S signals are shown 
+in Table 3.1.2-1. 
+However, the reference frequency (f0) = 10.23 MHz is offset by the nominal Δf/f0 = -5.399E-10 to 
+compensate for the frequency difference between the ground surface and satellite orbit due to the 
+relativistic effect. For this reason, the center frequency in the satellite orbit is not exactly precise. For 
+example, the L1 band signal is offset by -0.8506 Hz (nominal). 
+ 
+Table 3.1.2-1 Center Frequency and Occupied Bandwidth 
+Frequency Band (Signal 
+Name) 
+Nominal center frequency 
+Block I 
+Block II 
+L1 band (L1S) 
+1575.42 MHz 
+24.0 MHz 
+(±12.0 MHz) 
+30.69 MHz 
+(±15.345 MHz) 
+ 
+ 
+ 
+
+=====PAGE 13=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+7 
+ 
+3.1.3.  Modulation Methods 
+3.1.3.1. L1S 
+L1S signals are modulated by BPSK. The modulation method is shown in Figure 3.1.3-1. 
+L1S navigation messages and PRN codes are modulated by exclusive-OR (modulo 2 addition) and 
+then modulated with L1 carrier waves by BPSK. 
+ 
+ 
+Figure 3.1.3-1 L1S Modulation 
+ 
+ 
+3.1.4.  Correlation Loss 
+Correlation loss is defined as the energy ratio of carrier wave to output signals obtained by 
+theoretically modulating the output signals by reverse diffusion. 
+The correlation loss values are as shown below: 
+• 
+Block I:  0.6 dB or less 
+• 
+Block II:  0.6 dB or less 
+ 
+ 
+3.1.5.  Carrier Phase Noise 
+For L1S signals, the spectral density of the phase noise of the unmodulated carrier wave before 
+superposition of the PRN code and navigation message, shall be such that a phase-locked loop (PLL) 
+with single-sided bandwidth of 10Hz will be able to track the carrier phase to the following values: 
+ 
+• 
+Block I: 0.1 rad (RMS) 
+• 
+Block II: 0.1 rad (RMS) 
+3.1.6.  Spurious 
+For L1S signals, the spurious transmission of the unmodulated carrier wave before superposition 
+
+=====PAGE 14=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+8 
+ 
+of the PRN code and navigation message, shall be as follows: 
+• 
+Block I   -40 dB or less 
+• 
+Block II:  -40 dB or less 
+ 
+ 
+3.1.7.  Phase Relationship within Signals 
+3.1.7.1. L1 
+No specifications are defined for the L1S phase relationship between L1 signals. 
+ 
+ 
+3.1.8.  Minimum Signal Strength 
+The minimum received power is measured at a ground-based isotropic antenna with a gain of 0dBi 
+for circularly polarized wave reception, when L1S signals are received from a satellite with an 
+elevation angle of 10 or more. The power is shown in Table 3.1.8-1. 
+ 
+Table 3.1.8-1 Minimum received power 
+Signal Name 
+Block I 
+Block II 
+L1S 
+-161.0 dBW 
+-158.5 dBW 
+ 
+ 
+3.1.9.  Polarization Property 
+L1S signals are right-hand circularly polarized. 
+At the center frequency of each signal, the axial ratio (power ratio of the long axis to short axis) 
+of the ellipse of the circularly polarized wave is within the beam range ± 10° from the boresight 
+direction and is shown in Table 3.1.9-1. 
+ 
+Table 3.1.9-1 Axis Ratio of the ellipse of the Circularly Polarized Wave 
+Signal Name 
+Block I 
+Block II 
+L1S 
+2.0 dB or less 
+2.0 dB or less 
+ 
+3.1.10.  Group Delay Property 
+3.1.10.1. Group Delay Between Signals 
+L1S signals have no specification of group delay between signals. 
+ 
+ 
+3.1.10.2. Group Delay Between Signals of Same Frequency 
+L1S signals have no specification of group delay between signals of same frequency. 
+ 
+ 
+
+=====PAGE 15=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+9 
+ 
+3.1.11.  PRN Code Jitter 
+The jitter with the PRN code zero-crossing interval shall be as follows: 
+ 
+2.0 ns or less (3σ) 
+ 
+For PRN codes, the average time difference between the rising edge and the falling edge shall be 
+as follows: 
+ 
+1.0 ns or less 
+ 
+ 
+3.1.12.  Code Carrier Coherence 
+(1) Short-term code carrier coherence 
+The short-term (less than 10 seconds) difference between the code pseudorange rate and 
+the Doppler frequency shall be less than 0.015 m/second (1σ). 
+ 
+(2) Long-term code carrier coherence 
+The long-term (less than 100 seconds) difference between the code pseudorange and the 
+carrier phase pseudorange shall be less than 0.19 m (1σ). 
+ 
+ 
+ 
+
+=====PAGE 16=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+10 
+ 
+3.2.  PRN Codes 
+3.2.1.  PRN Number Assignment 
+The assignment of the PRN numbers by satellite categories are shown in Table 3.2.1-1. 
+ 
+Table 3.2.1-1 Assignment of the PRN Number by Satellite categories 
+PRN 
+Satellite Type 
+Block Assignment 
+Remarks 
+183 
+QZO 
+Block IQ 
+ 
+184 
+QZO 
+Block IIQ 
+ 
+185 
+QZO 
+Block IIQ 
+ 
+186 
+QZO 
+Block IIA-Q 
+ 
+189 
+GEO 
+Block IIG 
+ 
+ 
+ 
+ 
+
+=====PAGE 17=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+11 
+ 
+3.2.2.  L1S Codes 
+The PRN code of L1S has a chipping rate of 1.023 Mbps and length of 1 ms (1023 chips) and are 
+modulated by BPSK. The PRN codes are generated as shown in Figure 3.2.2-1 The code pattern of 
+each PRN number is generated with the G2 shift register delay and the initial value shown in Table 
+3.2.2-1. 
+The PRN code has the same code sequence as that of the L1C/A signal described in 3.2.2 of IS-
+QZSS-PNT. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Figure 3.2.2-1 L1S Code Generator 
+ 
+ 
+1 2 3 4 5 6 7 8 9 10 
++ 
+G1 CODER 
+SET TO 
+ALL 1'S 
+CODE 
+CLOCK 
+INITIAL G2 STATE 
+INITIALIZE 
+G2 STATE
+＋ 
+G1(𝑡) 
+G1(𝑡)G2(𝑡+ 𝑛𝑖𝑇𝐶) 
+G2(𝑡+ 𝑛𝑖𝑇𝐶) 
+1 2 3 4 5 6 7 8 9 10 
++ 
+G2 CODER 
+
+=====PAGE 18=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+12 
+ 
+ 
+Table 3.2.2-1 L1S PRN Code phase assignment 
+PRN Number 
+G2 Delay 
+(chips) 
+G2 Initial Value 
+(octal) 
+First 10 Chips 
+(octal) 
+183 
+144 
+0215 
+1562 
+184 
+476 
+1003 
+0774 
+185 
+193 
+1454 
+0323 
+186 
+109 
+1665 
+0112 
+189 
+87 
+0307 
+1470 
+ 
+ 
+3.2.3.  Non-Standard Codes 
+L1S signals have no non-standard codes. 
+ 
+ 
+
+=====PAGE 19=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+13 
+ 
+4.  Message Specifications 
+4.1.  L1S 
+4.1.1.  Message Configuration 
+4.1.1.1. Overview 
+Each message are transmitted by L1S signal, consist of 250 bits format shown in Figure 4.1.1-1. 
+The single message is transmitted in one second (250 bps). 
+ 
+Each message consist of 8-bit preamble (PAB), 6-bit message type ID (MT), 212-bit data field 
+(DATA FIELD) and 24-bit CRC (CRC) . The message transmission sequence is not specified; each 
+message may be transmitted in any one-second period. 
+ 
+ 
+Figure 4.1.1-1 Message Block Format 
+ 
+4.1.1.2. Timing 
+(1) Transmission Satellite 
+Normally, all satellites have the same SLAS message transmitted by L1S signal without 
+some failure. 
+ 
+ 
+ 
+ 
+PAB 
+8 
+BITS 
+ 
+MT 
+6 
+BITS 
+ 
+CRC 
+ 
+24 BITS 
+ 
+DIRECTION OF DATA FLOW FROM SATELLITE; MOST SIGNIFICANT BIT (MSB) TRANSMITTED FIRST 
+250 BITS – 1 SECOND 
+DATA FIELD 
+ 
+212 BITS 
+ 
+1 
+9 
+15 
+227 
+
+=====PAGE 20=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+14 
+ 
+(2) Transmission Interval 
+Table 4.1.1-1 shows the maximum transmission intervals. 
+ 
+Table 4.1.1-1 Maximum Transmission Intervals  
+Message Data 
+MT 
+Maximum 
+Transmission 
+Intervals [second] 
+Test mode 
+0 
+30* 
+DC Report 
+43, 44 
+4** 
+Monitoring station information 
+47 
+60*** 
+PRN mask 
+48 
+30 
+IOD information 
+49 
+60 
+DGPS correction 
+50 
+30 
+Satellite health 
+51 
+(N/A)**** 
+Null message 
+63 
+(N/A) 
+* Test mode 
+Transmitted at test mode only. 
+** DC report 
+ Transmitted either MT 43 or 44. MT 63 is transmitted if there is no DC Report. 
+*** Monitoring station information 
+MT47 contains 5 Monitoring station information at maximum, in one message. 
+In case that Monitoring station information are 13, the cycle of a Monitoring station 
+information is 180 seconds (3 messages). 
+**** Satellite health 
+MT 51 is transmitted three times at 2 second intervals to prevent receiving failure. 
+ 
+(3) Update Interval and Validity Period 
+Table 4.1.1-2 shows the nominal update intervals and validity periods. 
+Table 4.1.1-2 Effective Period  
+Message Data 
+MT 
+Nominal 
+Update 
+Interval 
+Validity period 
+[second] 
+Test mode 
+0 
+- 
+(N/A)* 
+DC Report 
+43, 44 
+- 
+(N/A) 
+Monitoring station information 
+47 
+- 
+86400 
+PRN mask 
+48 
+30sec 
+60 
+IOD information 
+49 
+30sec 
+60 
+DGPS correction 
+50 
+30sec 
+60 
+Satellite health 
+51 
+30sec 
+30 
+Null message 
+63 
+- 
+(N/A) 
+* See Section 4.1.2.3. for details. 
+ 
+ 
+ 
+
+=====PAGE 21=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+15 
+ 
+4.1.1.3. Cyclic Redundancy Check (CRC) 
+The 24-bit CRC bit string is generated by the following generator polynomial g(X). 
+ 
+g(𝑋) = 𝑋24 + 𝑋23 + 𝑋18 + 𝑋17 + 𝑋14 + 𝑋11 + 𝑋10 + 𝑋7 + 𝑋6 + 𝑋5 + 𝑋4 + 𝑋3 + 𝑋+ 1 
+ 
+4.1.1.4. Forward Error Correction (FEC) 
+The bit string will be Forward Error Correction (FEC) encoded by a 1/2 rate convolutional code. 
+250-bps messages are encoded to 500-sps symbols. The convolutional coding will be constraint 
+length 7, with a convolutional encoder logic arrangement as shown in Figure 4.1.1-2. The G1 
+symbol is selected on the output as the first half of a 4-millisecond data bit period and the G2 
+symbol is the second half. 
+ 
+Figure 4.1.1-2 FEC Generation Method 
+ 
+ 
+ 
+DATA INPUT 
+(250 BPS) 
+ 
+ 
+ 
+ 
+ 
+ 
+SYMBOL CLOCK 
+G2 (133 OCTAL) 
+OUTPUT SYMBOLS 
+(500 SPS) 
+ALTERNATING G1/G2 
+G1 (171 OCTAL) 
+ 
+ 
+ 
+
+=====PAGE 22=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+16 
+ 
+4.1.2.  Message Contents 
+4.1.2.1. Overview 
+The content shown in Table 4.1.2-1 are stored in each MT of messages. 
+The ephemeris data required for the user to calculate the orbit of QZSS and GPS shall be received 
+from the L1C/A navigation messages. 
+ 
+Table 4.1.2-1 Message Type 
+MT 
+Description 
+0 
+Test Mode 
+43, 44 
+DC Report 
+47 
+Monitoring Station Information 
+48 
+PRN Mask 
+49 
+Data Issue Number 
+50 
+DGPS Correction 
+51 
+Satellite Health 
+63 
+Null message 
+ 
+ 
+4.1.2.2. Common Section 
+All MT of L1S messages contain the common parameters shown in Figure 4.1.2-1 and Table 
+4.1.2-2. 
+ 
+Figure 4.1.2-1 Common Sections of Sub-meter Level Augmentation Messages 
+ 
+Table 4.1.2-2 Parameter Definitions of Common Sections of Sub-meter Level 
+Augmentation Messages 
+Parameter 
+Description 
+Effective 
+Range 
+Number 
+of Bits 
+LSB 
+Units 
+PAB 
+Preamble 
+- 
+8 
+- 
+- 
+MT 
+Message Type ID 
+0-63 
+6 
+1 
+- 
+ 
+ 
+ 
+PAB 
+ 
+8 BITS 
+MT 
+ 
+6 BITS 
+1 
+9 
+
+=====PAGE 23=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+17 
+ 
+(1) Preamble 
+The beginning of each message is the 8-bit preamble consists of the following three 
+patterns repeated in sequence: 
+Pattern A  
+01010011 
+Pattern B  
+10011010 
+Pattern C  
+11000110 
+ 
+The first bit in the "Pattern A" preamble is synchronous with the epoch of the 6-second 
+L1C/A signal (signal for GPS and QZSS satellite positioning services) navigation message 
+subframe."Pattern B" comes after "Pattern A" . "Pattern C" comes after "Pattern B". After 
+that, the sequence returns to "Pattern A". 
+ 
+FEC encoding is transformed for preambles in the same coding (See Section 4.1.1.4). 
+Accordingly, while the preamble indicates the beginning of the message block, it cannot be 
+used for signal acquisition prior to FEC decoding or for bit synchronization. 
+ 
+(2) Message Type 
+The types of this message are shown below. See Table 4.1.2-1 for details about the message 
+types. 
+ 
+ 
+4.1.2.3. Message Type 0: Test Mode 
+MT 0 indicates that L1S signal of the QZS is in test mode. When receiving MT 0, the receiver 
+should delete all SLAS messages of the QZS in the past, and SLAS messages of the QZS for the 
+subsequent 60 seconds must also not be used. 
+ 
+ 
+
+=====PAGE 24=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+18 
+ 
+ 
+4.1.2.4. Message Type 43: DC Report (JMA Disaster Prevention Information) 
+This is DC Report of the Japan Meteolorogial Agency Disaster Prevention Information (JMA-
+DCR). 
+Figure4.1.2-2 shows the data format. Refer to Section 2.1(2) for the "DATA FIELD" in Figure 
+4.1.2-2 and its data definition. 
+See chapter 4.3 of the applicable document (2) about DC Report message output from a receiver. 
+ 
+Figure 4.1.2-2 Format (Disaster Prevention Information) 
+ 
+ 
+ 
+DATA FIELD 
+212 BITS 
+15 
+250 BITS – 1 SECOND 
+DIRECTION OF DATA FLOW FROM SATELLITE; MOST SIGNIFICANT BIT (MSB) TRANSMITTED FIRST 
+9 
+1 
+227 
+CRC 
+24 
+BITS 
+PAB 
+8 
+BITS 
+MT 
+6 
+BITS 
+
+=====PAGE 25=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+19 
+ 
+4.1.2.5. Message Type 44: DC Report (Other Organization)  
+Message Type 44 is DC Report for the organization other than JMA. 
+Figure 4.1.2-3 shows the data format. Refer to Section 2.1(2) for the "DATA FIELD" in Figure 
+4.1.2-3 and its data definition. 
+See chapter 4.3 of the applicable document (2) about DC Report message output from a receiver. 
+ 
+ 
+Figure 4.1.2-3 Format (Other Organization) 
+ 
+ 
+ 
+ 
+DATA FIELD 
+212 BITS 
+15 
+250 BITS – 1 SECOND 
+DIRECTION OF DATA FLOW FROM SATELLITE; MOST SIGNIFICANT BIT (MSB) TRANSMITTED FIRST 
+9 
+1 
+227 
+CRC 
+24 
+BITS 
+PAB 
+8 
+BITS 
+MT 
+6 
+BITS 
+
+=====PAGE 26=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+20 
+ 
+ 
+4.1.2.6. Message Type 47: Monitoring Station Information 
+Figure 4.1.2-4 shows the data format and Table 4.1.2-3 shows its parameter definitions. 
+ 
+ 
+Figure 4.1.2-4 Message type 47: Monitoring station information Format 
+Table 4.1.2-3 Parameter definitions 
+Parameter 
+Description 
+Effective range 
+Number 
+of Bits 
+LSB 
+Units 
+- 
+PAB and MT (See section 
+4.1.2.2. ) 
+- 
+- 
+- 
+- 
+GMS code1 
+Monitoring station code (1) 
+0 - 63 
+6 
+1 
+- 
+GMS 
+Loc1 
+GMS Lat1 
+Monitoring 
+station location 
+latitude (1) 
+-80.00- 
++80.00 
+15*** 
+0.005 
+deg 
+GMS Lon1 
+longitude (1) 
+-65.00- 
++65.00* 
+15*** 
+0.005 
+deg 
+GMS Hgt1 
+ellipsoidal 
+height (1) 
+0 - +3150** 
+6 
+50 
+m 
+: 
+: 
+ 
+ 
+ 
+ 
+GMS code5 
+Monitoring station code (5) 
+0 - 63 
+6 
+1 
+- 
+GMS Loc5 
+Monitoring station location (5) 
+ 
+36 
+ 
+ 
+Spare 
+Spare 
+- 
+2 
+- 
+- 
+- 
+CRC (See section4.1.1.3. ) 
+- 
+- 
+- 
+- 
+* Note that the difference is from the standard value +115.00. 
+** Note that the difference is from the standard value -100. 
+*** Signed parameter 
+ 
+ 
+ 
+ 
+ 
+  
+PAB 
+8 
+BITS 
+MT 
+6 
+BITS 
+CRC 
+ 
+24 BITS 
+DIRECTION OF DATA FLOW FROM SATELLITE; MOST SIGNIFICANT BIT (MSB) TRANSMITTED FIRST 
+250 BITS – 1 SECOND 
+1 
+9 
+227 
+15 
+  
+42 BITS 
+・・・ 
+5×42 BITS 
+Spare – 2BITS 
+225 
+GMS codei – 6 BITS 
+GMS Hgti – 6 BITS 
+GMS 
+Loni 
+15 
+BITS 
+GMS 
+Lati 
+15 
+BITS 
+
+=====PAGE 27=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+21 
+ 
+(1) Monitoring station code 
+See Table 4.1.2-4. 
+In the case of GMS ID "63", the Monitoring station location is not applicable. 
+ 
+Table 4.1.2-4 GMS ID 
+ID 
+Monitoring Station 
+Coordinate value 
+Lat[deg] 
+Lon[deg] 
+Hgt[m] 
+0 
+Sapporo 
+43.15  
+141.22  
+50 
+1 
+Sendai 
+38.27  
+140.74  
+200 
+2 
+Spare 
+－ 
+－ 
+－ 
+3 
+Hitachiota 
+36.58  
+140.55  
+150 
+4 
+Spare 
+－ 
+－ 
+－ 
+5 
+Komatsu 
+36.40  
+136.41  
+50 
+6 
+Kobe 
+34.71  
+135.04  
+200 
+7 
+Hiroshima 
+34.35  
+132.45  
+50 
+8 
+Fukuoka 
+33.60  
+130.23  
+50 
+9 
+Tanegashima 
+30.55  
+130.94  
+100 
+10 
+Amami 
+28.42  
+129.69  
+50 
+11 
+Itoman 
+26.15  
+127.69  
+100 
+12 
+Miyako 
+24.73  
+125.35  
+100 
+13 
+Ishigaki 
+24.37  
+124.13  
+100 
+14 
+Chichijima 
+27.09  
+142.19  
+100 
+15 to 62 
+Spare 
+－ 
+－ 
+－ 
+63 
+(N/A) 
+－ 
+－ 
+－ 
+ 
+ 
+(2) Monitoring station location 
+The latitude, the longitude and the ellipsoidal height of the monitoring station. 
+ 
+ 
+ 
+
+=====PAGE 28=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+22 
+ 
+4.1.2.7. Message Type 48: PRN Mask 
+Figure 4.1.2-5 shows the data format and Table 4.1.2-5 shows its parameter definition. 
+ 
+Figure 4.1.2-5 Message Type 48: PRN mask Format 
+ 
+Table 4.1.2-5 Parameter Definitions 
+Parameter 
+Description 
+Effective 
+Range 
+Number 
+of Bits 
+LSB 
+Unit 
+- 
+PAB and MT (See 4.1.2.2. ) 
+- 
+- 
+- 
+- 
+IODP 
+PRN mask updating number 
+0 - 3 
+2 
+1 
+- 
+PRN Mask 
+Number17 
+PRN 
+mask  
+GPS (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+: 
+ 
+ 
+ 
+ 
+Number80 
+GPS (64) 
+0 - 1 
+1 
+1 
+- 
+Number81 
+QZSS (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+: 
+ 
+ 
+ 
+ 
+Number89 
+QZSS (9) 
+0 - 1 
+1 
+1 
+- 
+Number90 
+GLONASS (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+: 
+ 
+ 
+ 
+ 
+Number125 
+GLONASS (36) 
+0 - 1 
+1 
+1 
+- 
+Number126 
+Galileo (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+: 
+ 
+ 
+ 
+ 
+Number161 
+Galileo (36) 
+0 - 1 
+1 
+1 
+- 
+Number162 
+BeiDou (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+: 
+ 
+ 
+ 
+ 
+Number197 
+BeiDou (36) 
+0 - 1 
+1 
+1 
+- 
+Spare 
+Spare 
+- 
+29 
+- 
+- 
+- 
+CRC (See 4.1.1.3. ) 
+- 
+- 
+- 
+- 
+ 
+ 
+(1) PRN mask updating number (IODP) 
+The incremented number when the PRN mask is updated and is cyclically used as 0 after 
+3. This IODP corresponds to IODP of Message Type 49 and 50. 
+ 
+  
+PAB 
+8 
+BITS 
+MT 
+6 
+BITS 
+CRC 
+ 
+24 BITS 
+DIRECTION OF DATA FLOW FROM SATELLITE; MOST SIGNIFICANT BIT (MSB) TRANSMITTED FIRST 
+250 BITS – 1 SECOND 
+1 
+9 
+227 
+15 
+PRN Mask 
+GPS 
+64BITS 
+81 90 
+Spare 
+29 
+BITS 
+126 
+162 
+198 
+PRN Mask 
+GLONASS 
+36BITS 
+PRN Mask 
+Galileo 
+36BITS 
+PRN Mask 
+BeiDou 
+36BITS 
+IODP – 2 BITS 
+PRN Mask QZSS – 9BITS 
+・・・ 
+17 
+
+=====PAGE 29=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+23 
+ 
+(2) PRN Mask Number 
+1-bit flag of a selected satellite for augmentation. The correspondence between Mask 
+number and PRN number or Slot number is shown in Table 4.1.2-6.  
+Mask numbers are set to "1" for up to 23 satellites.  
+ 
+Table 4.1.2-6 Correspondence between Mask number and PRN number or Slot number 
+Mask Number 
+Satellite System 
+Correspondence 
+17 to 80 
+GPS 
+PRN number = Mask number -16 
+81 to 89 
+QZSS 
+PRN number = Mask number +112 
+90 to 125 
+GLONASS 
+Slot number = Mask number -89 
+126 to 161 
+Galileo 
+PRN number = Mask number -125 
+162 to 197 
+BeiDou 
+PRN number = Mask number -161 
+ 
+ 
+ 
+
+=====PAGE 30=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+24 
+ 
+4.1.2.8. Message Type 49：Data Issue Number 
+Figure 4.1.2-6 shows the data format and Table 4.1.2-7 shows its parameter definitions. 
+ 
+ 
+Figure 4.1.2-6 Message Type 49: IOD information Format 
+Table 4.1.2-7 Parameter definitions 
+Parameter 
+Description 
+Effective 
+Range 
+Number 
+of Bits 
+LSB 
+Unit 
+- 
+PAB and MT (See 4.1.2.2. ) 
+- 
+- 
+- 
+- 
+IODI 
+IOD updating number 
+0 - 3 
+2 
+1 
+- 
+Mask-SV1 
+Mask Selected Satellite (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+ 
+ 
+ 
+ 
+ 
+Mask-SV23 
+Mask Selected Satellite(23) 
+0 - 1 
+1 
+1 
+- 
+IOD1 
+Data issue number (1) 
+0 - 255 
+8 
+1 
+- 
+: 
+ 
+ 
+ 
+ 
+ 
+IOD23 
+Data issue number (23) 
+0 - 255 
+8 
+1 
+- 
+IODP 
+PRN mask updating number 
+0 - 3 
+2 
+1 
+- 
+Spare 
+Spare 
+- 
+1 
+- 
+- 
+- 
+CRC (See 4.1.1.3. ) 
+- 
+- 
+- 
+- 
+ 
+(1) IOD updating number (IODI) 
+The incremented number when IOD or IODP are updated and is cyclically used as 0 after 
+3. This IODI corresponds to IODI of the Message Type 50.  
+ 
+(2) Mask Selected Satellite (Mask-SV) 
+The selected satellites by PRN Mask of Message Type 48 in order. The augmentation 
+possible satellite is set to "1" and the augmentation impossible satellite is set to "0" if PRN 
+Mask of Message Type 48 is set to "1". 
+This BIT-SV corresponds to BIT-SV of the Message Type 50.  
+ 
+ 
+  
+PAB 
+8 
+BITS 
+MT 
+6 
+BITS 
+CRC 
+ 
+24 BITS 
+DIRECTION OF DATA FLOW FROM SATELLITE; MOST SIGNIFICANT BIT (MSB) TRANSMITTED FIRST 
+250 BITS – 1 SECOND 
+1 
+9 
+227 
+15 
+40 
+226 
+・・・ 
+IODI – 2 BITS 
+8×23 BITS 
+IODi 
+8 
+BITS 
+Spare – 1 BIT 
+・・・ 
+1×23BITS 
+17 
+PRN Mask Number– 1 BIT 
+IODP – 2 BITS 
+224 
+
+=====PAGE 31=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+25 
+ 
+(3) Data issue number (IOD) 
+This is the data issue number that corresponding to "BIT-1" of each Mask-SV. The 
+relationship between Message Type 48 and Message Type 49 is shown in Figure 4.1.2-7.  
+This data issue number is given so that they correspond to the IODE of the satellite 
+Ephemeris, respectively.  
+ 
+・・・ Augmentation Impossible Satellite
+・・・ Augmentation Possible Satellite
+PRN
+1
+PRN
+2
+PRN
+3
+PRN
+4
+PRN
+5
+PRN
+6
+PRN
+7
+PRN
+8
+PRN
+9
+PRN
+10
+PRN
+11
+PRN
+12
+PRN
+13
+Type48
+PRN mask
+GPS
+17
+PRN
+14
+PRN
+15
+PRN
+16
+･･･
+PRN
+64
+80
+PRN
+17
+PRN
+193
+PRN
+194
+PRN
+195
+PRN
+196
+PRN
+197
+PRN
+198
+PRN
+199
+PRN
+200
+Type48
+PRN mask
+QZSS
+81
+PRN
+201
+89
+Slot
+1
+Slot
+2
+Slot
+3
+Slot
+4
+Slot
+5
+Slot
+6
+Slot
+7
+Slot
+8
+Slot
+9
+Type48
+PRN mask
+GLONASS
+90
+･･･
+Slot
+36
+125
+PRN
+1
+PRN
+2
+PRN
+3
+PRN
+4
+PRN
+5
+PRN
+6
+PRN
+7
+PRN
+8
+PRN
+9
+Type48
+PRN mask
+Galileo
+126
+･･･
+PRN
+36
+161
+PRN
+1
+PRN
+2
+PRN
+3
+PRN
+4
+PRN
+5
+PRN
+6
+PRN
+7
+PRN
+8
+PRN
+9
+Type48
+PRN mask
+BeiDou
+162
+･･･
+PRN
+36
+197
+ 
+Figure 4.1.2-7 (1/2) Correspondence between PRN Mask and Mask-SV 
+ 
+ 
+
+=====PAGE 32=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+26 
+ 
+ 
+GPS
+PRN
+1
+GPS
+PRN
+3
+GPS
+PRN
+4
+GPS
+PRN
+5
+GPS
+PRN
+6
+GPS
+PRN
+9
+GPS
+PRN
+10
+GPS
+PRN
+11
+GPS
+PRN
+12
+GPS
+PRN
+13
+GPS
+PRN
+15
+GPS
+PRN
+17
+QZSS
+PRN
+193
+Type49 
+Satellite 
+Identification 
+Information
+17
+SV
+#1
+SV
+#2
+SV
+#3
+SV
+#4
+SV
+#5
+SV
+#6
+SV
+#7
+SV
+#10
+SV
+#8
+SV
+#9
+Type49
+IODE Information
+QZSS
+PRN
+194
+QZSS
+PRN
+195
+QZSS
+PRN
+199
+39
+SV
+#11
+SV
+#12
+SV
+#13
+SV
+#14
+・・・ Satellite to be augmented
+・・・ Satellite not to be augmented
+GPS
+PRN
+1
+GPS
+PRN
+3
+GPS
+PRN
+4
+GPS
+PRN
+5
+GPS
+PRN
+6
+GPS
+PRN
+9
+GPS
+PRN
+10
+GPS
+PRN
+11
+GPS
+PRN
+12
+GPS
+PRN
+13
+GPS
+PRN
+15
+GPS
+PRN
+17
+QZSS
+PRN
+193
+Type50 
+Satellite 
+Identification 
+Information
+26
+PRC
+#1
+PRC
+#2
+PRC
+#3
+PRC
+#4
+PRC
+#5
+PRC
+#6
+PRC
+#7
+Type50
+DGPS Information
+QZSS
+PRN
+194
+QZSS
+PRN
+195
+QZSS
+PRN
+199
+48
+PRC
+#8
+PRC
+#9
+PRC
+#10
+PRC
+#11
+SV
+#15
+SV
+#16
+PRC
+#12
+PRC
+#13
+PRC
+#14
+ 
+ 
+Figure 4.1.2-7 (2/2) Correspondence between PRN Mask and Mask-SV 
+ 
+(4) PRN mask updating number (IODP) 
+This IODP corresponds to IODP of Message Type 48 and 50. See Section 4.1.2.7(1) . 
+ 
+
+=====PAGE 33=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+27 
+ 
+4.1.2.9. Message Type 50: DGPS Correction 
+Figure 4.1.2-8 shows the data format and Table 4.1.2-8 shows its parameter definitions. 
+ 
+ 
+Figure 4.1.2-8 Message Type 50: DGPS Correction Format 
+Table 4.1.2-8 Parameter Definitions 
+Parameter 
+Description 
+Effective 
+Range 
+Number 
+of Bits 
+LSB 
+Units 
+- 
+PAB and MT (See Section 
+4.1.2.2. ) 
+- 
+- 
+- 
+- 
+IODP 
+PRN mask updating number 
+0 - 3 
+2 
+1 
+- 
+IODI 
+IOD updating number 
+0 - 3 
+2 
+1 
+- 
+GMS code 
+Monitoring Station Code 
+0-63 
+6 
+1 
+- 
+GMS Health 
+Monitoring Station Health  
+0-1 
+1 
+1 
+- 
+Mask-SV1 
+Mask Selected Satellite (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+ 
+ 
+ 
+ 
+ 
+Mask-SV23 
+Mask Selected Satellite (23) 
+0 - 1 
+1 
+1 
+- 
+PRC1 
+Pseudorange correction (1) 
+-81.92* - 
++81.88 
+12** 
+0.04 
+m 
+: 
+ 
+ 
+ 
+ 
+ 
+PRC14 
+Pseudorange correction (14) 
+-81.92* - 
++81.88 
+12** 
+0.04 
+m 
+- 
+CRC (See Section 4.1.1.3. ) 
+- 
+- 
+- 
+- 
+* The satellite shall be deemed as unhealthy and shall not be used for 30 seconds. 
+**Signed parameter 
+ 
+(1) PRN mask updating number (IODP) 
+This IODP corresponds to IODP of Message Type 48 and 49. See Section 4.1.2.7. (1) . 
+ 
+  
+PAB 
+8 
+BITS 
+MT 
+6 
+BITS 
+CRC 
+ 
+24 BITS 
+DIRECTION OF DATA FLOW FROM SATELLITE; MOST SIGNIFICANT BIT (MSB) TRANSMITTED FIRST 
+250 BITS – 1 SECOND 
+・・・ 
+IODI – 2 BITS 
+IODP – 2 BITS 
+1 
+9 
+227 
+15 
+GMS Health – 1 BIT 
+GMS code– 6BITS 
+12×14BITS 
+PRCi 
+12 
+BITS 
+49 
+217 
+Spare 
+10 
+BITS 
+・・・ 
+1×23BITS 
+26 
+PRN Mask Number– 1 BIT 
+
+=====PAGE 34=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+28 
+ 
+(2) IOD updating number (IODI) 
+This IODI corresponds to IODI of Message Type 49. See Section 4.1.2.8(1) 
+ 
+(3) Monitoring Station Code (GMS code) 
+See Section 4.1.2.6. (1)  
+ 
+(4) Monitoring Station Health (GMS Health) 
+1-bit health of the monitoring station as follows: "0: Healthy", "1: Unhealthy" 
+ 
+(5) Mask Selected Satellite (Mask-SV) 
+See Section 4.1.2.8. (2)  
+ 
+(6) Pseudorange correction (PRC) 
+This is the PRC that corresponding to "BIT-1" of each Mask-SV. The relationship between 
+Message Type 48 and Message Type 50 is shown in Figure 4.1.2-7. This PRC is sent by a 
+Message Type 50 each Monitoring Station.  
+ 
+ 
+
+=====PAGE 35=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+29 
+ 
+4.1.2.10. Message Type 51: Satellite Health 
+Figure 4.1.2-9 shows the data format and Table 4.1.2-9 shows its parameter definitions. 
+ 
+ 
+Figure 4.1.2-9 Message Type 51: Satellite health information Format 
+Table 4.1.2-9 Parameter Definition 
+Parameter 
+Description 
+Effective 
+Range 
+Number 
+of Bits 
+LSB 
+Unit 
+- 
+PAB and MT (See 4.1.2.2. ) 
+- 
+- 
+- 
+- 
+Spare 
+Spare 
+0 
+2 
+- 
+- 
+Satellite 
+Health 
+Number17 
+Satellite 
+Health 
+nGPS (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+ 
+ 
+ 
+ 
+ 
+Number80 
+GPS (64) 
+0 - 1 
+1 
+1 
+- 
+Number81 
+ QZSS (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+ 
+ 
+ 
+ 
+ 
+Number89 
+QZSS (9) 
+0 - 1 
+1 
+1 
+- 
+Number90 
+GLONASS (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+ 
+ 
+ 
+ 
+ 
+Number125 
+GLONASS (36) 
+0 - 1 
+1 
+1 
+- 
+Number126 
+Galileo (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+ 
+ 
+ 
+ 
+ 
+Number161 
+Galileo (36) 
+0 - 1 
+1 
+1 
+- 
+Number162 
+BeiDou (1) 
+0 - 1 
+1 
+1 
+- 
+: 
+ 
+ 
+ 
+ 
+ 
+Number197 
+BeiDou (36) 
+0 - 1 
+1 
+1 
+- 
+Spare 
+Spare 
+0 
+29 
+- 
+- 
+- 
+CRC (See 4.1.1.3. ) 
+- 
+- 
+- 
+- 
+ 
+ 
+ 
+  
+PAB 
+8 
+BITS 
+MT 
+6 
+BITS 
+CRC 
+ 
+24 BITS 
+DIRECTION OF DATA FLOW FROM SATELLITE; MOST SIGNIFICANT BIT (MSB) TRANSMITTED FIRST 
+250 BITS – 1 SECOND 
+1 
+9 
+227 
+15 
+1×64 BITS 
+BeiDou Healthi– 1 BIT 
+・・・ 
+81 90 
+Spare 
+29 
+BITS 
+126 
+162 
+198 
+・・・ 
+・・・ 
+・・・ 
+Spare – 2 BITS 
+GLONASS Healthi– 1 BIT 
+Galileo Health – 1 BIT 
+GPS Healthi– 1 BIT 
+QZS Healthi– 1 BIT 
+1×36 BITS 
+1×36 BITS 
+1×36 BITS 
+・・・ 
+1×9 BITS 
+
+=====PAGE 36=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+30 
+ 
+ 
+(1) Satellite Health 
+The operating status of satellites as follows:. "0: Healthy", "1: Unhealthy". Note that these 
+"0" and "1" is opposite to Mask-SV. 
+ 
+Do not use the augmentation data of the satellite until Message Type 48 is updated next 
+time (maximum 30 seconds) if it is unhealthy. 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 37=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+31 
+ 
+4.1.2.11. Message Type 63: Null Message 
+Figure 4.1.2-10 shows the data format and Table 4.1.2-10 shows its parameter definitions. 
+ 
+Figure 4.1.2-10 Message Type 63: Null Message Format 
+Table 4.1.2-10 Parameter Definitions 
+Parameter 
+Description 
+Effective 
+Range 
+Number 
+of Bits 
+LSB 
+Units 
+- 
+PAB and MT (See Section 4.1.2.2. ) 
+- 
+- 
+- 
+- 
+Spare 
+Spare 
+- 
+212 
+1 
+- 
+- 
+CRC (See Section 4.1.1.3. ) 
+- 
+- 
+- 
+- 
+ 
+ 
+(1) Spare 
+Fix to "0" for spare. 
+ 
+ 
+ 
+ 
+PAB 
+8 
+BITS 
+ 
+MT 
+6 
+BITS 
+ 
+CRC 
+ 
+24 BITS 
+ 
+DIRECTION OF DATA FLOW FROM SATELLITE; MOST SIGNIFICANT BIT (MSB) TRANSMITTED FIRST 
+250 BITS – 1 SECOND 
+1 
+9 
+227 
+15 
+SPARE 
+ 
+212 BITS 
+ 
+
+=====PAGE 38=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+32 
+ 
+5.  User Algorithm 
+ 
+5.1.  Time System 
+The SLAS time system shall be the QZSS time system (QZSST) shown below. 
+ 
+(1) Definitions 
+(a) Length of 1 second 
+The length of one second in QZSST shall be identical to the International Atomic Time 
+(TAI). 
+ 
+(b) Offset between QZSST and TAI 
+QZSST shall be delayed from TAI by 19 second. 
+ 
+(c) Starting point of week number for QZSST 
+The starting point of the week number for QZSST shall be the same as that of the GPS 
+time system (GPST), which is 0:00 a.m. (UTC) on January 6, 1980. 
+ 
+(2) Parameter Reference Time  
+Parameters represented by time-function parameters transmitted on L1S signals by QZS 
+shall all be expressed by using QZSST as reference time.  
+ 
+ 
+5.2.  Coordinate System 
+The SLAS coordinate system is defined as follows. 
+ 
+• Origin: Mass center of the earth 
+• Z axis: the IERS Reference north pole 
+• X axis: intersection of the IERS Reference Meridian (IRM) and the equatorial plane. 
+• Y axis: complete a right-handed, Earth-centered, Earth-Fixed (ECEF) orthogonal 
+coordinate system 
+ 
+This is the same coordinate system described in 5.2 of IS-QZSS-PNT. 
+ 
+ 
+
+=====PAGE 39=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+33 
+ 
+5.3.  Constants 
+(1) Circular Constant 
+ = 3.1415926535898. 
+ 
+(2) Earth’s Equatorial Radius 
+𝑅𝑒6378137 m. 
+ 
+(3) Ionospheric Altitude 
+ℎ𝑖350,000 m. 
+ 
+5.4.  Health and Alert Flag 
+The health and Alert flags indicate the information of L1S messages used for augmentation. The 
+following table shows the types and descriptions of the health and alert information contained in the 
+messages. 
+The unhealthy conditions of SLAS are shown in Table 5.4-1 of Applicable Document (1) "PS-
+QZSS". 
+Table 5.4-1 Information of L1S messages used for augmentation 
+Alert Information 
+Message 
+Type 
+Description 
+Monitoring station health  
+(GMS Health) 
+50 
+Indicate the condition of augmentation  
+When GMS Health = 1, do not use all 
+augmentation data of the related monitoring 
+station.  
+Pseudorange 
+correction 
+value 
+(PRC) 
+50 
+Indicate the condition of augmentation  
+When PRC = -81.92, do not use the 
+augmentation data of the related satellite.  
+Satellite health 
+(SV health) 
+51 
+Indicate the condition of augmentation  
+When SV Health = 1, do not use the 
+augmentation data of the related satellite.  
+ 
+ 
+5.5.  Procedure for Applying Correction Information 
+SLAS messages used to calculate the augmented position contain message type 47, 48, 49, 50 and 
+51. 
+ 
+5.5.1.  Selection of the SLAS messages transmitted satellite 
+SLAS shall be selected one QZS to receive the SLAS messages. 
+For switching from one QZS to another, SLAS messages from the two QZS shall be received 
+independently before the switching; the switching shall be performed when all messages for 
+augmentation has been received. 
+When receiving two or more QZSs, it is recommended to receive two QZSs at the same time and 
+to switch the satellite to maximize the continuity. 
+ 
+
+=====PAGE 40=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+34 
+ 
+5.5.2.  Augmentation Using DGPS Correction 
+User positions are calculated by using message type 50 (DGPS correction). Pseudorange 
+correction values to be applied must be those contained within message type 50 with the same IODP 
+and IODI as that contained in the ephemeris of the target satellite. The last received message type 50 
+shall be used for computing SLAS position solution. 
+The ionospheric delay correction and the tropospheric delay correction are included in the 
+pseudorange correction value. Users shall adapt the following additional corrections: 
+ 
+The correction of SV clock broadcasting from GPS and QZSS 
+ 
+The correction of TGD(Timing Group Delay) 
+ 
+The correction of residual relativistic effect of orbit eccentricity 
+ 
+The correction of Sagnac effect 
+ 
+(1) Selection of the monitoring station (Message Type 47) 
+Users select the nearest monitoring station to the receiver point calculated by single point 
+positioning. Users select the second nearest monitoring station if GMS Health of the selected 
+station is "1: unhealthy". 
+ 
+(2) Selection of the augmented satellites (Message Type 48 and 49) 
+SLAS Positioning shall be calculated using healthy satellites (GPS and QZS) at elevation 
+angles of more than 5 degrees.  
+As the result of satellite selection, the following number of satellites is output. 
+ 
+  N(t, p): The number of satellites at receiver point "p" at time "t" 
+ 
+Users store IODP and IODI of the selected satellites in order to select corresponding 
+correction in message type 50. 
+ 
+(3) Calculation of the correction value (Message Type 50) 
+Corrected Pseudoranges (𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑) are calculated from Pseudorange Correction (PRCi) of 
+Message Type 50 and observed Pseudorange (𝑃𝑅𝑖
+𝑚𝑒𝑎𝑠𝑢𝑟𝑒𝑑) by receivers follows. 
+ 
+𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑= 𝑃𝑅𝑖
+𝑚𝑒𝑎𝑠𝑢𝑟𝑒𝑑+ 𝑃𝑅𝐶𝑖 
+Formula 5.5-1 
+ 
+𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑 
+: Corrected Pseudorange 
+𝑃𝑅𝑖
+𝑚𝑒𝑎𝑠𝑢𝑟𝑒𝑑 
+: Measured Pseudorange 
+𝑃𝑅𝐶𝑖 
+: Pseudorange correction (PRC) 
+𝑖 
+: PRN number 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 41=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+35 
+ 
+ 
+The geometric distance between the receiver and the satellite (Ri) is calculated as follows. 
+ 
+𝑅𝑖= √(𝑥𝑖−𝑥𝑟𝑐)2 + (𝑦𝑖−𝑦𝑟𝑐)2 + (𝑧𝑖−𝑧𝑟𝑐)2 
+Formula 5.5-2 
+ 
+𝑅𝑖 
+: Geometric satellite-user distance  
+𝑥𝑟𝑐,𝑦𝑟𝑐, 𝑧𝑟𝑐 
+: Approximate user position  
+𝑥𝑖, 𝑦𝑖, 𝑧𝑖 
+: Satellite position by ephemeris 
+𝑖 
+: PRN number 
+ 
+Pseudorange Difference (d𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑) is calculated from Formula 5.5-1 and Formula 5.5-2 
+as follows. 
+ 
+𝑑𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑= 𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑−𝑅𝑖 
+Formula 5.5-3 
+ 
+𝑑𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑 
+: Pseudorange Difference 
+𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑 
+: Corrected Pseudorange 
+𝑅𝑖 
+: Geometric satellite-user distance  
+𝑖 
+: PRN number 
+ 
+The user position (POS) is calculated by the weighted least squares method shown as follows. 
+ 
+POS = (𝐺𝑇∙𝑊∙𝐺)−1 ∙𝐺𝑇∙𝑊∙𝑑𝑃𝑅𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑 
+Formula 
+5.5-4 
+G = [
+−cos 𝐸𝐿1 sin 𝐴𝑍1
+−cos 𝐸𝐿1 cos 𝐴𝑍1
+−sin 𝐸𝐿1
+1
+−cos 𝐸𝐿2 sin 𝐴𝑍2
+−cos 𝐸𝐿2 cos 𝐴𝑍2
+−sin 𝐸𝐿2
+1
+⋮
+⋮
+⋮
+⋮
+−cos 𝐸𝐿𝑁sin 𝐴𝑍𝑁
+−cos 𝐸𝐿𝑁cos 𝐴𝑍𝑁
+−sin 𝐸𝐿𝑁
+1
+] 
+Formula 
+5.5-5 
+𝑊=
+[
+ 
+ 
+ 
+ 
+ 
+ 
+ 1
+𝜎1
+2
+0
+⋯
+0
+0
+1
+𝜎2
+2
+⋯
+0
+⋮
+⋮
+⋱
+⋮
+0
+0
+⋯
+1
+𝜎𝑁
+2]
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Formula 
+5.5-6 
+ 
+ 
+
+=====PAGE 42=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+36 
+ 
+POS 
+: User position 
+G 
+: Observation matrix 
+W 
+: Weighting matrix 
+𝑑𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑 
+: Pseudorange difference 
+𝐸𝐿𝑖 
+: Satellite elevation angle 
+𝐴𝑍𝑖 
+: Satellite azimuth 
+𝜎𝑖
+2 
+: Error variance 
+𝑖 
+: PRN number 
+ 
+𝜎𝑖
+2 = 𝜎𝑝𝑟_𝑔𝑛𝑑,𝑖
+2
++ 𝜎𝑎𝑖𝑟,𝑖
+2
++ 𝜎𝑖𝑜𝑛𝑜,𝑖
+2
+ 
+Formula 5.5-7 
+ 
+𝜎𝑝𝑟_𝑔𝑛𝑑,𝑖
+2
+ 
+: Error component of pseudorange correction value 
+𝜎𝑎𝑖𝑟,𝑖
+2
+ 
+: Receiver noise error and multipath error component 
+𝜎𝑖𝑜𝑛𝑜,𝑖
+2
+ 
+: Ionospheric error component 
+𝑖 
+: PRN number 
+ 
+ 
+𝜎𝑝𝑟𝑔𝑛𝑑,𝑖
+2
+= (𝑎0 + 𝑎1𝑒−𝐸𝐿𝑖/𝑇ℎ0)2
+𝑛
++ 𝑎2
+2 
+Formula 5.5-8 
+ 
+𝑎0 = 0.16
+𝑎1 = 1.07
+𝑎2 = 0.08
+𝑇ℎ0 = 15.5
+𝑛= 1
+}  
+  
+ 
+: Setting parameters 
+𝐸𝐿𝑖 
+: Satellite elevation angle deg 
+𝑖 
+: PRN number 
+ 
+𝜎𝑎𝑖𝑟,𝑖
+2
+= 𝜎𝑛𝑜𝑖𝑠𝑒
+2
++ 𝜎𝑚𝑢𝑙𝑡𝑖,𝑖
+2
+ 
+Formula 5.5-9 
+ 
+𝜎𝑛𝑜𝑖𝑠𝑒= 0.11 
+: Receiver noise error component 
+𝜎𝑚𝑢𝑙𝑡𝑖= 0.13 + 0.53𝑒−𝐸𝐿𝑖10
+⁄
+ 
+: Multipath error component 
+𝐸𝐿𝑖 
+: Satellite elevation angle deg 
+𝑖 
+: PRN number 
+ 
+𝜎𝑖𝑜𝑛𝑜,𝑖= 𝐹𝑝𝑝,𝑖∙𝜎𝑣𝑖𝑔(𝑑𝑖𝑠𝑡+ 2𝜏𝑣𝑎𝑖𝑟) 
+Formula 5.5-10 
+ 
+𝜎𝑣𝑖𝑔= 0.004
+𝜏= 100
+𝑣𝑎𝑖𝑟= 0.07
+} : Setting parameter 
+𝐹𝑝𝑝,𝑖 
+: Vertical-to-slant obliquity factor 
+dist 
+: Monitoring station-user distance km 
+𝑖 
+: PRN number 
+ 
+
+=====PAGE 43=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+37 
+ 
+𝐹𝑝𝑝,𝑖= [1 −(𝑅𝑒cos 𝐸𝐿𝑖
+𝑅𝑒+ ℎ𝑖
+)
+2
+]
+−1 2
+⁄
+ 
+Formula 5.5-11 
+ 
+ 
+𝐸𝐿𝑖 
+: Satellite elevation angle 
+𝑅𝑒 
+: Earth equatorial radius 
+ℎ𝑖 
+: Ionospheric height 
+𝑖 
+: PRN number 
+ 
+(4) Alert information (Message Type 51) 
+If Users receive Message Type 51, they shall exclude unhealthy satellites immediately. 
+ 
+ 
+ 
+
+=====PAGE 44=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+38 
+ 
+5.5.3.  Accuracy 
+5.5.3.1. Smoothing 
+In the presence of a code-carrier divergence rate of up to 0.018m/s, the smoothing filter output 
+shall achieve an error less than 0.25m within 200 seconds after initialization, relative to the steady-
+state response of the following filter. 
+ 
+𝑃𝑝𝑟𝑜𝑗= 𝑃𝑛−1 + 𝜆
+2𝜋(𝜙𝑛−𝜙𝑛−1) 
+Formula 5.5-12 
+𝑃𝑛= 𝛼𝑃𝑅𝑛𝑚𝑒𝑎𝑠𝑢𝑟𝑒𝑑+ (1 −𝛼)𝑃𝑝𝑟𝑜𝑗 
+Formula 5.5-13 
+ 
+Pn 
+: Pseudorange smoothed by a carrier [m] 
+Pn-1 
+: The preceding value of pseudorange smoothed by a carrier [m] 
+Pproj 
+: Projected pseudorange [m] 
+ 
+: Wavelength [m] 
+n 
+: Accumulated measured carrier phase [rad] 
+n-1 
+: The preceding value of accumulated measured carrier phase [rad] 
+ 
+: Weighting factor of the filter [dimensionless value] 
+ is calculated by dividing the sampling interval [s] at a time 
+constant of 100s 
+n 
+: specific time [s] 
+ 
+ 
+5.5.3.2. Quality Monitoring 
+The augmented satellite signal quality shall be monitored to reduce integrity risks caused by 
+undetected cycle slips or other errors. 
+ 
+Do not use if the measured pseudorange is significantly different from projected pseudorange. The 
+following is a recommended method. 
+ 
+𝐼𝐹 |(𝑃𝑅𝑛𝑚𝑒𝑎𝑠𝑢𝑟𝑒𝑑−𝑃𝑝𝑟𝑜𝑗)| < 10𝑚 
+𝑡ℎ𝑒𝑛 𝑃𝑛= 𝑃𝑝𝑟𝑜𝑗+ 𝛼(𝑃𝑅𝑛𝑚𝑒𝑎𝑠𝑢𝑟𝑒𝑑−𝑃𝑝𝑟𝑜𝑗) 
+Otherwise 𝑃𝑛= 𝑃𝑝𝑟𝑜𝑗 
+Formula5.5-14 
+ 
+ 
+ 
+ 
+
+=====PAGE 45=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+39 
+ 
+ 
+5.5.3.3. Differential ISB Correction 
+In SLAS which adopts Differential GNSS (DGNSS) using GPS and QZSS, following correction 
+may be needed by combination of user receiver and base receiver (Monitoring station of Sub-meter 
+Level Augmentation). 
+i) Correction of Differential Inter System Bias (DISB) between GPS and QZSS. 
+ii) Correction of bias to each satellite in GPS and QZSS in case that bias arises to each satellite in 
+GPS and QZSS. 
+ 
+For details, refer to IS-QZSS-L1S, which will be revised later. Please contact to the following 
+URL (Contact Us). 
+URL：https://qzss.go.jp/en/inquiry/ 
+ 
+5.5.3.4. Differential Tropospheric Delay Correction 
+User can improve positioning accuracy by utilizing Differential Tropospheric Delay Correction 
+(DTDC) to correct tropospheric delay errors included in the PRCi. The tropospheric delay depends 
+on the elevation angle difference and height difference between the selected monitoring station and 
+the user's position. In this sense, the effectiveness of DTDC increases with a longer baselines from 
+the selected monitoring station to the user’s position.  
+To calculate Corrected Pseudorange (𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑) with DTDC, Formula 5.5-15 should 
+be used instead of Formula 5.5-1. 
+ 
+𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑= 𝑃𝑅𝑖
+𝑚𝑒𝑎𝑠𝑢𝑟𝑒𝑑+ 𝑃𝑅𝐶𝑖+ (𝑇𝑟𝑜𝑝𝑖
+𝑢𝑠𝑒𝑟   −𝑇𝑟𝑜𝑝𝑖
+𝑀𝑆 ) 
+Formula5.5-15 
+ 
+𝑃𝑅𝑖
+𝑐𝑜𝑟𝑟𝑒𝑐𝑡𝑒𝑑 
+: Corrected Pseudorange with additional  
+tropospheric delay correction 
+𝑃𝑅𝑖
+𝑚𝑒𝑎𝑠𝑢𝑟𝑒𝑑 
+: Measured Pseudorange 
+𝑃𝑅𝐶𝑖 
+: Pseudorange correction (PRC) 
+𝑇𝑟𝑜𝑝𝑖
+𝑠 
+: Tropospheric delay correction 
+s = user: at the user receiver position 
+s = MS: at the monitoring station position 
+𝑖 
+: PRN number 
+ 
+ 
+5.5.3.4.1. Tropospheric delay model 
+This section provides the calculation model for DTDC that can be used in SLAS. 
+The tropospheric delay correction ( 𝑇𝑟𝑜𝑝𝑖
+𝑠) for satellite i and receiver s takes the form 
+Formula5.5-16.  
+ 
+𝑇𝑟𝑜𝑝𝑖
+𝑠= −(𝑑ℎ𝑦𝑑+ 𝑑𝑤𝑒𝑡) ∙𝑚(𝐸𝑙𝑖) 
+Formula5.5-16 
+ 
+
+=====PAGE 46=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+40 
+ 
+d 
+: Estimated zenith tropospheric range delays 
+hyd 
+: Hydrostatic equilibrium gases 
+wet 
+: Water vapor 
+𝑚(𝐸𝑙𝑖) 
+: Tropospheric delay mapping function for a satellite  
+elevation angle 
+𝑖 
+: PRN Number 
+ 
+[dhyd, dwet(m)] are calculated using the receiver’s height and the five meteorological parameters: 
+pressure [P (hPa)], temperature [T (K)], water vapor pressure [e (hPa)], temperature lapse rate 
+[(K/m)] and water vapor “lapse rate” [ (dimensionless)]. 
+The values of these five meteorological parameters, which apply to the receiver latitude [𝜑] and 
+day-of-year [D] (starting with 1 January), are computed using average and seasonal variation values 
+shown in Table 5.5.3-1. 
+Each parameter value [] is computed as: 
+ 
+𝜉(𝜑, 𝐷) = 𝜉０(𝜑) −Δ𝜉(𝜑) ∙cos (2𝜋(𝐷− 28)
+365.25
+) 
+Formula5.5-17 
+ 
+𝜉 
+: Meteorological parameter value (pressure,  
+temperature, water vapor pressure, temperature lapse 
+rate, water vapor lapse rate) 
+𝜉０ 
+: Average meteorological parameter value shown in  
+Table 5.5.3-1 
+Δ𝜉 
+: Seasonal variation meteorological parameter value  
+shown in Table 5.5.3-1 
+𝜑 
+: Receiver latitude, where 15 ≤ 𝜑 ≤ 60 
+𝐷 
+: Day of year 
+ 
+𝜉０(𝜑) = 𝜉０(𝜑1) + [𝜉０(𝜑2) −𝜉０(𝜑1)] ∙( 𝜑−𝜑1
+𝜑2 −𝜑1
+) 
+Formula5.5-18 
+ 
+∆𝜉(𝜑) = ∆𝜉(𝜑1) + [∆𝜉(𝜑2) −∆𝜉(𝜑1)] ∙( 𝜑−𝜑1
+𝜑2 −𝜑1
+) 
+Formula5.5-19 
+ 
+𝜑1, 𝜑2 
+: The two latitudes among those listed in Table 5.5.3-1 
+that are closest to the receiver latitude 𝜑,  
+where 𝜑1 < 𝜑2 
+ 
+ 
+ 
+ 
+
+=====PAGE 47=====
+ 
+ 
+ 
+ 
+Document subject to the disclaimer of liability 
+41 
+ 
+ 
+Table 5.5.3-1 Meteorological parameters as a function of Latitude for Tropospheric delay 
+ 
+Latitude 
+(°) 
+Average Parameter (ξ0) 
+P0 
+(hPa) 
+T0 
+(K) 
+e0 
+(hPa) 
+β0 
+(K/m) 
+λ0 
+15 
+1013.25 
+299.65 
+26.31 
+6.30 × 10-3 
+2.77 
+30 
+1017.25 
+294.15 
+21.79 
+6.05 × 10-3 
+3.15 
+45 
+1015.75 
+283.15 
+11.66 
+5.58 × 10-3 
+2.57 
+60 
+1011.75 
+272.15 
+6.78 
+5.39 × 10-3 
+1.81 
+ 
+Latitude 
+(°) 
+Seasonal Variation Parameter (Δξ) 
+ΔP 
+(hPa) 
+ΔT 
+(K) 
+Δe 
+(hPa) 
+Δβ 
+(K/m) 
+Δλ 
+15 
+0.00 
+0.00 
+0.00 
+0.00 
+0.00 
+30 
+-3.75 
+7.00 
+8.85 
+0.25 × 10-3 
+0.33 
+45 
+-2.25 
+11.00 
+7.24 
+0.32 × 10-3 
+0.46 
+60 
+-1.75 
+15.00 
+5.36 
+0.81 × 10-3 
+0.74 
+ 
+𝑑ℎ𝑦𝑑= (1 −𝛽𝐻
+𝑇)
+𝑔
+𝑅𝑑𝛽
+∙𝑧ℎ𝑦𝑑 
+Formula5.5-20 
+ 
+𝑑𝑤𝑒𝑡= (1 −𝛽𝐻
+𝑇)
+(𝜆+1)𝑔
+𝑅𝑑𝛽 − 1
+∙𝑧𝑤𝑒𝑡 
+Formula5.5-21 
+ 
+𝑔 
+: 9.80665 [m/s2] 
+𝐻 
+: Receiver’s height expressed in units of meters above  
+mean-sea-level [m] 
+ 
+𝑧ℎ𝑦𝑑= (10−6𝑘1𝑅𝑑𝑃
+𝑔𝑚
+) 
+Formula5.5-22 
+ 
+𝑧𝑤𝑒𝑡= (
+10−6𝑘2𝑅𝑑
+𝑔𝑚(𝜆+ 1) −𝛽𝑅𝑑
+) ∙𝑒
+𝑇 
+Formula5.5-23 
+ 
+𝑧 
+: Zero-altitude zenith tropospheric delays 
+𝑘1 
+: 77.604 [K/hPa] 
+𝑘2 
+: 382000 [K2/hPa] 
+𝑅𝑑 
+: 287.054 [J/(kg⸱K)] 
+𝑔𝑚 
+: 9.784 [m/s2] 
+ 
+𝑚(𝐸𝑙𝑖) =
+1.001
+√0.002001 + sin2(𝐸𝑙𝑖)
+ 
+Formula5.5-24 
+ 

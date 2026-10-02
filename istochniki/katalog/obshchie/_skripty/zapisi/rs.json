@@ -1,0 +1,695 @@
+[
+ {
+  "имя": "РС QR Code: GF(256) x^8+x^4+x^3+x^2+1 (0x11D), fcr=0",
+  "семейство": "РС штрихкодов (ISO/IEC 18004)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "поле": "0x11D, α=2",
+   "корни": "α^0…α^(2t−1) (generatorBase = 0)",
+   "n,k": "по версии/уровню QR (до 255 байт), блоки перемежаются",
+   "векторов ZXing": 2
+  },
+  "где применяется": "QR Code (ISO/IEC 18004; сам стандарт платный — параметры из ZXing, Apache-2.0)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/zxing/GenericGF.java",
+    "страница|строки": "строки 33–40",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/GenericGF.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonTestCase.java",
+    "страница|строки": "тестовые векторы testQRCode/testDataMatrix/testAztec",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/test/java/com/google/zxing/common/reedsolomon/ReedSolomonTestCase.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonEncoder.java",
+    "страница|строки": "строки 39–46 (generatorBase)",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/ReedSolomonEncoder.java"
+   }
+  ],
+  "проверка": "тестовые векторы ZXing перекодированы своим кодером (rs_gf.py) — проверочные байты совпали",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС Data Matrix ECC 200 / Aztec 8-бит: GF(256) x^8+x^5+x^3+x^2+1 (0x12D), fcr=1",
+  "семейство": "РС штрихкодов (ISO/IEC 16022, 24778)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "поле": "0x12D",
+   "корни": "α^1…α^(2t)",
+   "векторов ZXing": 3
+  },
+  "где применяется": "Data Matrix ECC 200, Aztec (слова 8 бит)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/zxing/GenericGF.java",
+    "страница|строки": "строки 33–40",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/GenericGF.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonTestCase.java",
+    "страница|строки": "тестовые векторы testQRCode/testDataMatrix/testAztec",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/test/java/com/google/zxing/common/reedsolomon/ReedSolomonTestCase.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonEncoder.java",
+    "страница|строки": "строки 39–46 (generatorBase)",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/ReedSolomonEncoder.java"
+   }
+  ],
+  "проверка": "тестовые векторы ZXing (Data Matrix и Aztec-8) совпали",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС Aztec/MaxiCode: GF(16) x^4+x+1 — служебное сообщение Aztec (0x13), fcr=1",
+  "семейство": "РС штрихкодов (ISO/IEC 24778, 16023)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "поле": "0x13 (16 элементов)",
+   "корни": "α^1…α^(2t)",
+   "векторов ZXing": 3
+  },
+  "где применяется": "Aztec Code",
+  "источник": [
+   {
+    "файл": "istochniki/rs/zxing/GenericGF.java",
+    "страница|строки": "строки 33–40",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/GenericGF.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonTestCase.java",
+    "страница|строки": "тестовые векторы testQRCode/testDataMatrix/testAztec",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/test/java/com/google/zxing/common/reedsolomon/ReedSolomonTestCase.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonEncoder.java",
+    "страница|строки": "строки 39–46 (generatorBase)",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/ReedSolomonEncoder.java"
+   }
+  ],
+  "проверка": "тестовые векторы ZXing совпали (3)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС Aztec/MaxiCode: GF(64) x^6+x+1 — Aztec 6-бит, MaxiCode (0x43), fcr=1",
+  "семейство": "РС штрихкодов (ISO/IEC 24778, 16023)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "поле": "0x43 (64 элементов)",
+   "корни": "α^1…α^(2t)",
+   "векторов ZXing": 1
+  },
+  "где применяется": "Aztec Code, MaxiCode",
+  "источник": [
+   {
+    "файл": "istochniki/rs/zxing/GenericGF.java",
+    "страница|строки": "строки 33–40",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/GenericGF.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonTestCase.java",
+    "страница|строки": "тестовые векторы testQRCode/testDataMatrix/testAztec",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/test/java/com/google/zxing/common/reedsolomon/ReedSolomonTestCase.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonEncoder.java",
+    "страница|строки": "строки 39–46 (generatorBase)",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/ReedSolomonEncoder.java"
+   }
+  ],
+  "проверка": "тестовые векторы ZXing совпали (1)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС Aztec/MaxiCode: GF(1024) x^10+x^3+1 — Aztec 10-бит (0x409), fcr=1",
+  "семейство": "РС штрихкодов (ISO/IEC 24778, 16023)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "поле": "0x409 (1024 элементов)",
+   "корни": "α^1…α^(2t)",
+   "векторов ZXing": 1
+  },
+  "где применяется": "Aztec Code",
+  "источник": [
+   {
+    "файл": "istochniki/rs/zxing/GenericGF.java",
+    "страница|строки": "строки 33–40",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/GenericGF.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonTestCase.java",
+    "страница|строки": "тестовые векторы testQRCode/testDataMatrix/testAztec",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/test/java/com/google/zxing/common/reedsolomon/ReedSolomonTestCase.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonEncoder.java",
+    "страница|строки": "строки 39–46 (generatorBase)",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/ReedSolomonEncoder.java"
+   }
+  ],
+  "проверка": "тестовые векторы ZXing совпали (1)",
+  "сложность внедрения": "ЧАСТИЧНО: rs_bch.py — поля до GF(256)/GF(2^m) по символам; 10/12-бит символы штрихкода в потоке не встречаются"
+ },
+ {
+  "имя": "РС Aztec/MaxiCode: GF(4096) x^12+x^6+x^5+x^3+1 — Aztec 12-бит (0x1069), fcr=1",
+  "семейство": "РС штрихкодов (ISO/IEC 24778, 16023)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "поле": "0x1069 (4096 элементов)",
+   "корни": "α^1…α^(2t)",
+   "векторов ZXing": 1
+  },
+  "где применяется": "Aztec Code",
+  "источник": [
+   {
+    "файл": "istochniki/rs/zxing/GenericGF.java",
+    "страница|строки": "строки 33–40",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/GenericGF.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonTestCase.java",
+    "страница|строки": "тестовые векторы testQRCode/testDataMatrix/testAztec",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/test/java/com/google/zxing/common/reedsolomon/ReedSolomonTestCase.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ReedSolomonEncoder.java",
+    "страница|строки": "строки 39–46 (generatorBase)",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/common/reedsolomon/ReedSolomonEncoder.java"
+   }
+  ],
+  "проверка": "тестовые векторы ZXing совпали (1)",
+  "сложность внедрения": "ЧАСТИЧНО: rs_bch.py — поля до GF(256)/GF(2^m) по символам; 10/12-бит символы штрихкода в потоке не встречаются"
+ },
+ {
+  "имя": "РС PDF417 над простым полем GF(929), генератор ∏(x − 3^i), i=1…2^(L+1)",
+  "семейство": "РС штрихкодов (ISO/IEC 15438)",
+  "область": "obshchie",
+  "вид": "РС (над простым полем)",
+  "параметры": {
+   "поле": "целые mod 929, примитивный элемент 3",
+   "уровни": "0…8: 2…512 проверочных слов",
+   "таблица": "EC_COEFFICIENTS (ZXing) — пересчитана"
+  },
+  "где применяется": "PDF417",
+  "источник": [
+   {
+    "файл": "istochniki/rs/zxing/ErrorCorrection_pdf417.java",
+    "страница|строки": "строки 35–… (EC_COEFFICIENTS)",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/pdf417/encoder/PDF417ErrorCorrection.java"
+   },
+   {
+    "файл": "istochniki/rs/zxing/ModulusGF.java",
+    "страница|строки": "весь файл",
+    "url": "https://raw.githubusercontent.com/zxing/zxing/master/core/src/main/java/com/google/zxing/pdf417/decoder/ec/ModulusGF.java"
+   }
+  ],
+  "проверка": "все 9 уровней коэффициентов = ∏(x − 3^i) mod 929 (расчёт)",
+  "сложность внедрения": "НЕТ: в проекте только поля GF(2^m)"
+ },
+ {
+  "имя": "РС CCSDS (255,223) в libfec: GF(256) 0x187, fcr=112, prim=11 (двойной базис)",
+  "семейство": "РС CCSDS (реализация Karn)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "поле": "x^8+x^7+x^2+x+1 (0x187)",
+   "корни": "α^(11·(112+i)), i=0…31",
+   "двойной базис": "Berlekamp (таблицы gen_ccsds_tal.c)",
+   "перемежение": "I=1…8 (CCSDS 131.0)"
+  },
+  "где применяется": "телеметрия CCSDS (запись области kosmos — по стандарту); здесь — открытая реализация как второй источник",
+  "источник": [
+   {
+    "файл": "istochniki/kod/libfec/gen_ccsds.c",
+    "страница|строки": "строка 16",
+    "url": "https://github.com/quiet/libfec/blob/master/gen_ccsds.c"
+   },
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 56",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "порождающий многочлен симметричен (свойство fcr=112, prim=11, 2t=32 — расчёт); те же параметры в test_rslib.c ядра Linux",
+  "сложность внедрения": "ЕСТЬ в проекте: dlinnye.py (_TAL — двойной базис), rs_bch.py"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 2 бит, поле 0x7, fcr=1, prim=1, 2t=1",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "3,2",
+   "поле": "0x7",
+   "fcr": 1,
+   "prim": 1,
+   "проверочных": 1
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 47",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 3 бит, поле 0xB, fcr=1, prim=1, 2t=2",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "7,5",
+   "поле": "0xB",
+   "fcr": 1,
+   "prim": 1,
+   "проверочных": 2
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 48",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 3 бит, поле 0xB, fcr=1, prim=1, 2t=3",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "7,4",
+   "поле": "0xB",
+   "fcr": 1,
+   "prim": 1,
+   "проверочных": 3
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 48",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 3 бит, поле 0xB, fcr=2, prim=1, 2t=4",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "7,3",
+   "поле": "0xB",
+   "fcr": 2,
+   "prim": 1,
+   "проверочных": 4
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 50",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 4 бит, поле 0x13, fcr=1, prim=1, 2t=4",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "15,11",
+   "поле": "0x13",
+   "fcr": 1,
+   "prim": 1,
+   "проверочных": 4
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 51",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 5 бит, поле 0x25, fcr=1, prim=1, 2t=6",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "31,25",
+   "поле": "0x25",
+   "fcr": 1,
+   "prim": 1,
+   "проверочных": 6
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 52",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 6 бит, поле 0x43, fcr=3, prim=1, 2t=8",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "63,55",
+   "поле": "0x43",
+   "fcr": 3,
+   "prim": 1,
+   "проверочных": 8
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 53",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 7 бит, поле 0x89, fcr=1, prim=1, 2t=14",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "127,113",
+   "поле": "0x89",
+   "fcr": 1,
+   "prim": 1,
+   "проверочных": 14
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 54",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 8 бит, поле 0x11D, fcr=1, prim=1, 2t=30",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "255,225",
+   "поле": "0x11D",
+   "fcr": 1,
+   "prim": 1,
+   "проверочных": 30
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 55",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 8 бит, поле 0x187, fcr=112, prim=11, 2t=32",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "255,223",
+   "поле": "0x187",
+   "fcr": 112,
+   "prim": 11,
+   "проверочных": 32
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 56",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "РС тестовый кодек ядра Linux: символ 9 бит, поле 0x211, fcr=1, prim=1, 2t=33",
+  "семейство": "РС lib/reed_solomon (Linux)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "511,478",
+   "поле": "0x211",
+   "fcr": 1,
+   "prim": 1,
+   "проверочных": 33
+  },
+  "где применяется": "набор проверки rslib (используется NAND, DM-verity FEC, rs-ecc драйверов)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/linux/test_rslib.c",
+    "страница|строки": "строка 57",
+    "url": "https://github.com/torvalds/linux/blob/master/lib/reed_solomon/test_rslib.c"
+   }
+  ],
+  "проверка": "поле примитивно (таблица логарифмов строится полностью — rs_gf.GF)",
+  "сложность внедрения": "ЕСТЬ в проекте: rs_bch.py (опознание поля, fcr и шага вслепую по корням; исправление с стираниями), dlinnye.рс_в_блоке"
+ },
+ {
+  "имя": "CIRC компакт-диска: C2 (28,24) и C1 (32,28) над GF(256) 0x11D, корни α^0…α^3",
+  "семейство": "Оптические диски (ECMA-130 / IEC 60908)",
+  "область": "obshchie",
+  "вид": "каскадный: РС + перемежитель (CIRC)",
+  "параметры": {
+   "поле": "P(x) = x^8+x^4+x^3+x^2+1, α=(00000010)",
+   "C2": "(28,24), 4 байта Q",
+   "C1": "(32,28), 4 байта P",
+   "проверочные матрицы": "H_P, H_Q: строки 1, α^i, α^2i, α^3i (корни α^0…α^3)",
+   "перемежение": "вторая секция задержек 0…27·D, D=4 F1-кадра; третья — задержка 1 кадр через байт; макс. задержка 108 кадров",
+   "инверсия": "все биты P и Q инвертируются на выходе",
+   "укорочение": "из (255,251)"
+  },
+  "где применяется": "CD-DA, CD-ROM (уровень F1→F2 кадров)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/ecma/ECMA-130_2nd_edition_june_1996.pdf",
+    "страница|строки": "стр. 43 PDF (строка 1639 в ECMA-130_2nd_edition_june_1996.pdf.txt)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-130_2nd_edition_june_1996.pdf"
+   },
+   {
+    "файл": "istochniki/rs/ecma/ECMA-130_2nd_edition_june_1996.pdf",
+    "страница|строки": "стр. 44 PDF (H_P, H_Q — изображение, risunki/ecma130_p44.png)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-130_2nd_edition_june_1996.pdf"
+   }
+  ],
+  "проверка": "H_P/H_Q переписаны с изображения стр. 44; поле примитивно (rs_gf)",
+  "сложность внедрения": "ЧАСТИЧНО: rs_bch.py найдёт C1/C2 при выровненных словах; перемежение CIRC (задержки D) — нет"
+ },
+ {
+  "имя": "RSPC CD-ROM: P (26,24) и Q (45,43) над GF(256) 0x11D, корни α^0, α^1",
+  "семейство": "Оптические диски (ECMA-130)",
+  "область": "obshchie",
+  "вид": "произведение РС (RSPC)",
+  "параметры": {
+   "поле": "0x11D",
+   "P": "43 столбца по 26 (24 + 2 P), H_P = [1…1; α^25…α^1 1]",
+   "Q": "26 диагоналей по 45 (43 + 2 Q)",
+   "вход": "байты 12…2075 сектора, слова по 2 байта (MSB/LSB раздельно)"
+  },
+  "где применяется": "CD-ROM Mode 1 (сектор 2352)",
+  "источник": [
+   {
+    "файл": "istochniki/rs/ecma/ECMA-130_2nd_edition_june_1996.pdf",
+    "страница|строки": "стр. 35 PDF (строка 1210 в ECMA-130_2nd_edition_june_1996.pdf.txt)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-130_2nd_edition_june_1996.pdf"
+   },
+   {
+    "файл": "istochniki/rs/ecma/ECMA-130_2nd_edition_june_1996.pdf",
+    "страница|строки": "стр. 37 PDF (H_P, изображение risunki/ecma130_p37.png)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-130_2nd_edition_june_1996.pdf"
+   }
+  ],
+  "проверка": "H_P переписана с изображения",
+  "сложность внедрения": "ЧАСТИЧНО: rs_bch.py по словам; раскладка RSPC сектора — нет"
+ },
+ {
+  "имя": "EDC CD-ROM: CRC-32 (x^16+x^15+x^2+1)(x^16+x^2+x+1)",
+  "семейство": "Оптические диски (ECMA-130)",
+  "область": "obshchie",
+  "вид": "CRC-подобный",
+  "параметры": {
+   "многочлен": "0x8001801B (произведение)",
+   "порядок": "младший бит байта первым; x^0 — в старшем бите байта 2067",
+   "охват": "байты 0…2063"
+  },
+  "где применяется": "CD-ROM Mode 1",
+  "источник": [
+   {
+    "файл": "istochniki/rs/ecma/ECMA-130_2nd_edition_june_1996.pdf",
+    "страница|строки": "стр. 26 PDF (строка 838 в ECMA-130_2nd_edition_june_1996.pdf.txt)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-130_2nd_edition_june_1996.pdf"
+   }
+  ],
+  "проверка": "произведение многочленов = poly модели RevEng CRC-32/CD-ROM-EDC",
+  "сложность внедрения": "ЕСТЬ в проекте: crc_katalog (CRC-32/CD-ROM-EDC), crc.py"
+ },
+ {
+  "имя": "Скремблер CD-ROM: x^15 + x + 1, предустановка 0x0001 после синхрослова сектора",
+  "семейство": "Оптические диски (ECMA-130)",
+  "область": "obshchie",
+  "вид": "скремблер",
+  "параметры": {
+   "тип": "аддитивный, младший бит байта первым",
+   "охват": "байты 12…2351 сектора",
+   "предустановка": "0000 0000 0000 0001"
+  },
+  "где применяется": "CD-ROM",
+  "источник": [
+   {
+    "файл": "istochniki/rs/ecma/ECMA-130_2nd_edition_june_1996.pdf",
+    "страница|строки": "стр. 41 PDF (строка 1604 в ECMA-130_2nd_edition_june_1996.pdf.txt)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-130_2nd_edition_june_1996.pdf"
+   }
+  ],
+  "проверка": "x^15+x+1 примитивен",
+  "сложность внедрения": "ЧАСТИЧНО: skrembler.найти_по_кадру находит кадровую ПСП; подписи CD-ROM нет"
+ },
+ {
+  "имя": "RS-PC DVD: внешний (208,192,17) и внутренний (182,172,11) над GF(256) 0x11D, корни α^0…α^15 / α^0…α^9",
+  "семейство": "Оптические диски (ECMA-267)",
+  "область": "obshchie",
+  "вид": "произведение РС (RS-PC)",
+  "параметры": {
+   "поле": "0x11D",
+   "PO": "16 байт на столбец (j=0…171)",
+   "PI": "10 байт на строку (i=0…207)",
+   "блок ECC": "16 скремблированных кадров, 192×172 байт → 208×182",
+   "перемежение": "16 строк PO вставляются по одной после каждых 12 строк (кадры записи)"
+  },
+  "где применяется": "DVD-ROM (ECMA-267), DVD±R/RW",
+  "источник": [
+   {
+    "файл": "istochniki/rs/ecma/ECMA-267_3rd_edition_april_2001.pdf",
+    "страница|строки": "стр. 36 PDF (строка 2113 в ECMA-267_3rd_edition_april_2001.pdf.txt)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-267_3rd_edition_april_2001.pdf"
+   },
+   {
+    "файл": "istochniki/rs/ecma/ECMA-267_3rd_edition_april_2001.pdf",
+    "страница|строки": "стр. 36 PDF (строка 2149 в ECMA-267_3rd_edition_april_2001.pdf.txt)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-267_3rd_edition_april_2001.pdf"
+   }
+  ],
+  "проверка": "формулы GPO = ∏(x+α^k), k=0…15; GPI — k=0…9 прочитаны из текста",
+  "сложность внедрения": "ЧАСТИЧНО: rs_bch.py; раскладка RS-PC — нет"
+ },
+ {
+  "имя": "EDC DVD: CRC-32 x^32 + x^31 + x^4 + 1",
+  "семейство": "Оптические диски (ECMA-267)",
+  "область": "obshchie",
+  "вид": "CRC-подобный",
+  "параметры": {
+   "охват": "ID + IED + CPR_MAI + данные 2048 (16 512 бит)"
+  },
+  "где применяется": "DVD-ROM",
+  "источник": [
+   {
+    "файл": "istochniki/rs/ecma/ECMA-267_3rd_edition_april_2001.pdf",
+    "страница|строки": "стр. 34 PDF (строка 1922 в ECMA-267_3rd_edition_april_2001.pdf.txt)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-267_3rd_edition_april_2001.pdf"
+   }
+  ],
+  "проверка": "многочлен прочитан из текста",
+  "сложность внедрения": "ЧАСТИЧНО: crc.py найдёт вслепую; в каталоге RevEng модели нет"
+ },
+ {
+  "имя": "Скремблер DVD: 15-бит регистр, r0 ← r14 ⊕ r10 (рекуррента x^15 + x^4 + 1), предустановка по табл. 3 (16 значений по ID)",
+  "семейство": "Оптические диски (ECMA-267)",
+  "область": "obshchie",
+  "вид": "скремблер",
+  "параметры": {
+   "тип": "аддитивный байтовый (r7…r0 → байт S_k после каждого 8-битового сдвига)",
+   "предустановки": "0001, 5500, 0002, 2A00, 0004, 5400, 0008, 2800, 0010, 5000, 0020, 2001, 0040, 4002, 0080, 0005 (номер = биты b7…b4 ID)"
+  },
+  "где применяется": "DVD-ROM",
+  "источник": [
+   {
+    "файл": "istochniki/rs/ecma/ECMA-267_3rd_edition_april_2001.pdf",
+    "страница|строки": "стр. 35 PDF (строка 1929 в ECMA-267_3rd_edition_april_2001.pdf.txt)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-267_3rd_edition_april_2001.pdf"
+   },
+   {
+    "файл": "istochniki/rs/ecma/ECMA-267_3rd_edition_april_2001.pdf",
+    "страница|строки": "стр. 35 PDF (рис. 19, risunki/ecma267_fig19.png)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-267_3rd_edition_april_2001.pdf"
+   }
+  ],
+  "проверка": "отводы r14, r10 — по рисунку 19; многочлен примитивен: True",
+  "сложность внедрения": "ЧАСТИЧНО: skrembler.найти_по_кадру"
+ },
+ {
+  "имя": "РС JT65 (63,12) над GF(64)",
+  "семейство": "Любительская связь (WSJT, K1JT)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "n,k": "63,12",
+   "поле": "0x43 (x^6+x+1)",
+   "корни (все подходящие наборы)": "fcr=3, prim=62; fcr=10, prim=1 — одно и то же множество корней",
+   "порядок слова": "51 проверочный символ, затем 12 информационных",
+   "после кодера": "перемежение 7×9 (запись по строкам, чтение по столбцам) и код Грея символов; 64-FSK",
+   "сообщение": "72 бита (12 × 6 бит)"
+  },
+  "где применяется": "JT65 (EME, КВ), WSJT/WSJT-X",
+  "источник": [
+   {
+    "файл": "istochniki/rs/jt65_qex2005_arrl.pdf",
+    "страница|строки": "стр. 6 PDF (строка 248 в jt65_qex2005_arrl.pdf.txt)",
+    "url": "https://www.arrl.org/files/file/18JT65.pdf"
+   },
+   {
+    "файл": "istochniki/rs/jt65_qex2005_arrl.pdf",
+    "страница|строки": "стр. 7 PDF (строка 310 в jt65_qex2005_arrl.pdf.txt)",
+    "url": "https://www.arrl.org/files/file/18JT65.pdf"
+   }
+  ],
+  "проверка": "параметры поля и корней подобраны перебором (все примитивные многочлены 6-й степени, fcr, prim): три примера рис. 2 статьи кодируются точно — подходящих наборов 2",
+  "сложность внедрения": "ЧАСТИЧНО: rs_bch.py (GF(64) — да); перемежение и Грей JT65 — нет"
+ }
+]
