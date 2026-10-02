@@ -15138,19 +15138,25 @@
                     '«Чисто» — доля слов с нулевыми синдромами до исправления.'));
             const кнПоиск = h('button', { class: 'btn', onclick: () => (идёт ? (стоп = true) : искать()) }, 'Стоп');
             const кнОбработка = h('button', { class: 'btn btn--primary', onclick: () => обработать() }, 'Обработка');
+            const автоИтог = h('div', { class: 'small stol-auto-result', 'aria-live': 'polite', hidden: true });
             const окно = openModal({
-                title: 'Код Рида — Соломона: поиск вслепую — массив ' + у.номер, wide: true,
+                title: 'Код Рида — Соломона: поиск вслепую — массив ' + у.номер, wide: true, плавающее: true, место: 'рс',
                 body: h('div', { class: 'stol-dialog stol-md stol-tkb stol-rs' },
                     h('div', { class: 'stol-md-params' },
                         h('label', { class: 'stol-md-row' }, h('span', {}, 'Профиль'), профиль),
                         h('div', { class: 'stol-md-row stol-tkb-progress' }, ход, процент),
-                        состояние, помощь),
+                        состояние, помощь, автоИтог),
                     h('div', { class: 'stol-md-result' },
                         h('div', { class: 'stol-pane-head' }, 'Найденные коды'),
                         h('div', { class: 'stol-results-wrap stol-md-variants' }, таблица),
                         h('div', { class: 'stol-pane-head' }, 'Подробно'), подробно)),
-                footer: [h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Выход'),
+                footer: [h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Закрыть'),
                     h('button', { class: 'btn btn--ghost', onclick: () => { помощь.hidden = !помощь.hidden; } }, 'Помощь'),
+                    h('button', { class: 'btn', title: 'Тот же поиск, что у автомата: план и срок профиля разбора этого массива; ' +
+                        'находка — со слоем «рс N K …» и кнопкой «Снять → новый массив»', onclick: () => {
+                        стоп = true;
+                        какВАвтомате(у, 'рс', {}, автоИтог);
+                    } }, 'Как в автомате'),
                     кнПоиск, кнОбработка],
                 onClose: () => { стоп = true; },
             });

@@ -1409,9 +1409,11 @@ class ПунктыСтолаTests(unittest.TestCase):
         self.assertIn("case 'поиск-рс': окноПоискаРс(у); return null;", текст)
         окно = текст[текст.index("function окноПоискаРс("):текст.index("function окноПоискаПериода(")]
         for кусок in ("'/rs/'", "path + 'search'".replace("path", "путь"), "стоп = true", "'Обработка'", "/derive",
-                      "x.ключ === в.ключ"):
+                      "x.ключ === в.ключ", "плавающее: true, место: 'рс'", "какВАвтомате(у, 'рс', {}, автоИтог)",
+                      "'Как в автомате'", "'Закрыть'"):
             self.assertIn(кусок, окно)
         self.assertNotIn("accept", окно)
+        self.assertNotIn("'Выход'", окно)
 
 
 class ОкноЧерезСерверTests(unittest.TestCase):
@@ -1470,6 +1472,69 @@ class ОкноЧерезСерверTests(unittest.TestCase):
         self.assertEqual(404, self.к.post("/api/potok/20200101-000000-abcdef/rs/search", json={"stage": 0}).status_code)
         self.к.post("/api/auth/logout")
         self.assertEqual(401, self.к.post(путь, json={"stage": 0}).status_code)
+
+
+class КакВАвтоматеTests(unittest.TestCase):
+    """Шаг «рс» кнопки «Как в автомате» и слой находки: RS(255, 223) над данными под ПСП блока — через API
+    стола по шагам то же, что автомат."""
+
+    def setUp(self):
+        from test_potok_ruchnoy import Стол  # noqa: PLC0415
+
+        class Сеть(Стол):
+            def runTest(себя):
+                pass
+
+        self.с = Сеть()
+        self.с.setUp()
+        self.addCleanup(self.с.tearDown)
+
+    def test_рс_и_скремблер_блока_как_автомат(self):
+        from test_potok_blok import НАЧАЛЬНОЕ, ОТВОДЫ, лрп  # noqa: PLC0415
+        from test_potok_ruchnoy import hdlc_биты  # noqa: PLC0415
+        hdlc = hdlc_биты(пакетов=60, флагов=40)
+        k = 223 * 8
+        блоков = len(hdlc) // k
+        данные = hdlc[:блоков * k].reshape(блоков, k) ^ лрп(ОТВОДЫ, НАЧАЛЬНОЕ, k)
+        F = Поле(0x11D)
+        слова = [кодировать(np.packbits(б).tolist(), 0x11D, 0, 32, 1, F) for б in данные]
+        поток = np.unpackbits(np.array(слова, dtype=np.uint8).reshape(-1))
+        ид = self.с.файл("rs.bin", np.packbits(поток).tobytes(), "msb")
+        рс = self.с.шаг(ид, "рс")
+        self.assertEqual(рс["параметры"]["профиль"], "обычно")
+        self.assertEqual(рс["слои"], ["рс 255 223 поле 0x11D fcr 0 шаг 1 глубина 1 базис обычный порядок старший сдвиг 0"])
+        self.assertEqual(рс["сведения"], {"блок": k})
+        ид2, _ = self.с.снять(ид, рс["слои"])
+        скр = self.с.шаг(ид2, "скремблер")
+        self.assertEqual(скр["параметры"]["блок"], k)                # блок данных — из свойств узла после РС
+        ид3, _ = self.с.снять(ид2, скр["слои"])
+        авто = razbor.разобрать(данные=np.packbits(поток).tobytes(), имя="rs.bin", профиль="обычно")
+        self.assertEqual(["код", "скремблер"], [н.уровень for н in авто.находки[:2]])
+        self.assertEqual(razbor.слои_находки(авто.находки[0]), рс["слои"])
+        self.assertEqual(razbor.слои_находки(авто.находки[1]), скр["слои"])
+        self.assertTrue(np.array_equal(np.asarray(авто.находки[0].дальше, np.uint8), self.с.биты(ид2)))
+        self.assertTrue(np.array_equal(np.asarray(авто.находки[1].дальше, np.uint8), self.с.биты(ид3)))
+        self.assertTrue(np.array_equal(self.с.биты(ид3), hdlc[:блоков * k]))
+
+    def test_шаг_без_кода_и_слои(self):
+        шум = np.random.default_rng(2).integers(0, 2, 1 << 15).astype(np.uint8)
+        итог = razbor.шаг_как_автомат(шум, "рс", профиль="быстро")
+        self.assertEqual(итог["найдено"], [])
+        self.assertIn("кода Рида — Соломона не найдено (план «быстро»)", итог["подсказка"])
+        self.assertIn("рс", razbor.ШАГИ_КАК_АВТОМАТ)
+        биты, _ = поток(204, 188, I=2, блоков=40)
+        итог = razbor.шаг_как_автомат(биты, "рс", профиль="нет такого")
+        self.assertEqual(итог["слои"], ["рс 204 188 поле 0x11D fcr 0 шаг 1 глубина 2 базис обычный порядок старший сдвиг 0"])
+        н = razbor.Находка(уровень="код", что="x", уверенность=1, мера="", свойства={"слой": "ткб …"})
+        self.assertEqual(razbor.слои_находки(н), [])
+        # Код РС в блоке (быстрый путь) — тоже со слоем.
+        from reportgen.potok import dlinnye
+        биты, д = поток(255, 223, I=4, блоков=12, сид=4)
+        н = dlinnye.рс_в_блоке(биты, 4 * 255 * 8)
+        self.assertEqual(razbor.слои_находки(н),
+                         ["рс 255 223 поле 0x11D fcr 0 шаг 1 глубина 4 базис обычный порядок старший сдвиг 0"])
+        ряд, _ = razbor.снять_вручную(биты, razbor.слои_находки(н)[0])
+        self.assertTrue(np.array_equal(ряд, н.дальше))
 
 
 if __name__ == "__main__":
