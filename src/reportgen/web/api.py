@@ -5181,7 +5181,7 @@ def potok_moddecoder_as_auto(request: Request, job_id: str) -> dict[str, Any]:
         return _potok(request).запомнить(job_id, этап, ключ, lambda: _посчитать(
             request, user, stol_raschety.моддекодер_равноценные, источник, параметры, list(набор.values()),
             {к: в for к, в in известные.items() if к in набор}, тело.get("кадр"), int(длина), int(начало),
-            МОДДЕКОДЕР_ПРОБА_СРОК, срок=МОДДЕКОДЕР_ПРОБА_СРОК + 30))
+            МОДДЕКОДЕР_ПРОБА_СРОК, заранее, срок=МОДДЕКОДЕР_ПРОБА_СРОК + 30))
 
     try:
         факты = факты_для(таблицы)
