@@ -507,6 +507,14 @@ class УскоренияTests(unittest.TestCase):
             self.assertEqual(np.float64, итог.dtype)
         дробный = rng.normal(size=64)
         self.assertTrue(np.allclose(kod.уолш(kod.уолш(дробный)) / 64, дробный))
+        # Сумма не меньше 2²⁴ — float32 был бы неточен: только float64, итог точный.
+        большой = np.array([(1 << 24) + 1, 1, 0, 3], dtype=np.float64)
+        self.assertEqual([16777221.0, 16777213.0, 16777215.0, 16777219.0], kod.уолш(большой).tolist())
+        self.assertEqual([16777221.0, 16777213.0, 16777215.0, 16777219.0], kod.уолш(большой.astype(np.int64)).tolist())
+        # Дробные значения — не целые: тоже float64 (во float32 0,1 + 0,2 — не то).
+        мелкие = np.array([0.1, 0.2, 1e-9, 3.3], dtype=np.float64)
+        a, b, c, d = мелкие.tolist()
+        self.assertEqual([a + b + (c + d), (a - b) + (c - d), (a + b) - (c + d), (a - b) - (c - d)], kod.уолш(мелкие).tolist())
 
 
 class ЗагрузкиTests(unittest.TestCase):
