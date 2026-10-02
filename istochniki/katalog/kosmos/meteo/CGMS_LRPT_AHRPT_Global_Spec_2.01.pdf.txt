@@ -1,0 +1,514 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 1 of 14 
+Issue 2.0, 26 February 2014 
+ 
+Coordination Group for Meteorological 
+Satellites 
+ 
+Direct Broadcast Services: LRPT/AHRPT 
+Global Specification  
+Written by EUMETSAT on behalf of CGMS 
+ 
+CGMS Secretariat c/o EUMETSAT 
+EUMETSAT Allee 1, 64295 Darmstadt, Germany 
+www.cgms-info.org cgmssec@eumetsat.int 
+
+=====PAGE 2=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 2 of 14 
+Issue 2.0, 26 February 2014 
+DOCUMENT CHANGE RECORD 
+Issue 
+Date 
+DCN No. 
+Changed Pages/Paragraphs 
+1.0 Draft A 
+12 May 1998 
+ 
+presented to CGMS-XXVI 
+1.0 
+5 October 1998  
+initial release 
+editorial modifications (sect. 4) 
+2.0 
+26 February 
+2014 
+CGMS-40 
+EUM-WP-08 
+All, implementation of new version as 
+approved by CGMS-40 (as per EUM-WP-08)  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 3=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 3 of 14 
+Issue 2.0, 26 February 2014 
+TABLE OF CONTENTS 
+1 
+Introduction .................................................................................................................................. 6 
+1.1 
+Purpose and Scope ............................................................................................................. 6 
+1.2 
+Applicable Documents ......................................................................................................... 6 
+1.3 
+Reference Documents ......................................................................................................... 6 
+2 
+Adopted Architecture .................................................................................................................. 7 
+2.1 
+Application Processing Layer .............................................................................................. 8 
+2.2 
+Packetisation Layer ............................................................................................................. 8 
+2.3 
+Transfer Frame Layer .......................................................................................................... 9 
+2.4 
+Channel Coding Layer ......................................................................................................... 9 
+2.5 
+Physical Layer ..................................................................................................................... 9 
+3 
+Direct Broadcast Services (LRPT/AHRPT) Global specification .......................................... 10 
+3.1 
+Application Processing Layer ............................................................................................ 10 
+3.2 
+Packetisation Layer ........................................................................................................... 10 
+3.3 
+Transfer Frame Layer ........................................................................................................ 11 
+3.4 
+Channel Coding Layer ....................................................................................................... 13 
+3.5 
+Physical Layer ................................................................................................................... 13 
+3.5.1 
+Modulation ............................................................................................................ 13 
+3.5.2 
+Frequency ............................................................................................................. 13 
+3.5.3 
+Polarisation ........................................................................................................... 14 
+ 
+
+=====PAGE 4=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 4 of 14 
+Issue 2.0, 26 February 2014 
+LIST OF FIGURES 
+FIGURE 1 – REFERENCE TO OSI MODEL ............................................................................................................. 7 
+FIGURE 2 – CCSDS SERVICE LAYERS ............................................................................................................... 8 
+FIGURE 3 – SOURCE PACKET STRUCTURE ........................................................................................................11 
+FIGURE 4 – TRANSFER FRAME STRUCTURAL COMPONENTS ..............................................................................12 
+FIGURE 5 – TRANSFER FRAME HEADER ............................................................................................................12 
+ 
+
+=====PAGE 5=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 5 of 14 
+Issue 2.0, 26 February 2014 
+LIST OF TABLES 
+No table of figures entries found. 
+
+=====PAGE 6=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 6 of 14 
+Issue 2.0, 26 February 2014 
+1 
+INTRODUCTION 
+1.1 
+Purpose and Scope 
+This document defines the LRPT/AHRPT Global Specification of the Direct 
+Broadcast Services. It provides an architectural specification of the LRPT/AHRPT 
+Direct Broadcast mission from a telecommunication point of view. Thus it does 
+neither define meteorological (or other) application relying on this standard nor 
+specifies a user station for LRPT/AHRPT Direct Broadcast. 
+1.2 
+Applicable Documents 
+The subsequently listed documents form an integral part of this specification. 
+ 
+[AD.1] CCSDS: "Advanced orbiting systems, networks and data links: 
+architectural specification", CCSDS recommendation 701.0-B-2, November 
+1992. 
+ 
+[AD.2] ISO: "Information processing systems - open systems interconnection - 
+basic reference model", ISO standard 7498-1, 1994. 
+ 
+[AD.3] CCSDS: "Time code formats", CCSDS recommendation 301.0-B-2, April 
+1990 
+ 
+[AD.4] CCSDS TM Synchronization and Channel Coding 131.0-B02. 
+ 
+[AD.5] AOS Space Data Link Protocol. Recommendation for Space Data 
+System Standards, CCSDS 732.0-B-2. Blue Book. Issue 2. Washington, D.C.: 
+CCSDS, July 2006. 
+ 
+[AD.6] Space Packet Protocol, Blue Book. Issue 1. September 2003 133.0-B-1. 
+ 
+[AD.7] CCSDS: "Radio frequency and modulation systems, part-1: earth 
+stations and spacecraft", CCSDS recommendation 401.0-B, Issue 2, November 
+1994. 
+1.3 
+Reference Documents 
+The subsequently listed documents do not form and integral part of this specification. 
+They are referenced to provide extended background information. 
+ 
+[RD.3] ITU Radio Regulations. 
+
+=====PAGE 7=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 7 of 14 
+Issue 2.0, 26 February 2014 
+2 
+ADOPTED ARCHITECTURE 
+The architectural model presented in the [AD.1] Advanced Orbiting Systems (AOS), 
+Networks and Data Links: Architectural Specification is used as a basis to specify the 
+LRPT/AHRPT Direct Broadcast Services global specifications. The main purpose of 
+[AD.1] is to specify an architectural framework within which the Agencies 
+participating in the CCSDS may implement compatible space mission data handling 
+systems, so that opportunities for inter-Agency cross support and cooperation are 
+maximized. The Architectural Specification document organises AOS, Networks and 
+Data Links as a set of services operated with the different used networks.  
+ 
+Figure 1 – Reference to OSI model 
+The figure above extracted from (CCSDS Recommendation for TM Space Data Link 
+Protocol) shows the different existing CCSDS layers as well as its relationship to the 
+OSI reference model.  
+For the LRPT/AHRPT global specification definition, a more detailed layered model 
+called the “CCSDS Service layer model” is used in order to better describe the key 
+functionalities and data units of the CCSDS specifications. 
+
+=====PAGE 8=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 8 of 14 
+Issue 2.0, 26 February 2014 
+ 
+Figure 2 – CCSDS Service Layers 
+In the subsequent sections (2.1 to 2.5) the different service layers are outlined. 
+In section 3, each service layer is specified in detail when applicable. 
+2.1 
+Application Processing Layer 
+The application processing layer provides users a method to investigate physical 
+phenomena by transforming satellite measuring instruments into sets of application 
+data units. The application data units are data structures that are mission 
+dependant and therefore are not defined in the present document. Examples of 
+application data units could be radiances products coming from remote sensing data, 
+meteorological bulletins, etc. 
+2.2 
+Packetisation Layer 
+Spacecraft generated application data are formatted into end-to-end transportable 
+data units called ‘Source Packets’. These data are encapsulated within a primary 
+header which contains identification, sequence control and packet length 
+information. A Source Packet is the basic data unit sent to the user by the spacecraft 
+
+=====PAGE 9=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 9 of 14 
+Issue 2.0, 26 February 2014 
+and generally contains a meaningful quantity of related measurements from a 
+particular source. 
+2.3 
+Transfer Frame Layer 
+The Transfer Frame layer is used to transport source packets within space-to-ground 
+communication links. The transfer frame layer uses transfer frames, to transport 
+Source Packets through the satellite communication channels to the receiving 
+telecommunication network. Transfer Frames are fixed length units which were 
+chosen to improve the ability to synchronize the frame within weak signals such as 
+those found on space-ground links, and for compatibility with certain block oriented 
+channel coding schemes.  
+As the heart of the CCSDS AOS system, the Transfer Frame protocols offer a range 
+of delivery service options. An example of such a service option is the multiplexing of 
+Transfer Frames into ‘Virtual Channels’ (VCs). 
+2.4 
+Channel Coding Layer 
+Synchronization and Channel Coding is used to protect the transfer frames against 
+telemetry 
+channel 
+noise-induced 
+errors. 
+Reference 
+[AD.4] 
+CCSDS 
+TM 
+Synchronization and Channel Coding describes the CCSDS Recommended 
+Standard for Synchronization and Channel Coding, including specification of a 
+convolutional code, a Reed-Solomon block-oriented code, a concatenated coding 
+system consisting of a convolutional inner code and a Reed-Solomon outer code, 
+and of turbo codes and/or other codes.  
+The basic data units of the CCSDS TM Synchronization and Channel Coding which 
+interface with the physical layer below are the Channel Symbols output by the 
+channel encoder. Within the error detecting and correcting capability of the channel 
+code chosen, errors which occur as a result of the physical transmission process 
+may be detected and corrected by the receiving entity. 
+Full advantage of all CCSDS Telemetry System services could be realized if a 
+project complies with all CCSDS Recommended Standards. Alternatively, projects 
+can interface with any layer of the AOS CCSDS System as long as they meet the 
+interface requirements as specified in the recommended standards (references 
+[AD.4], [AD.5]). 
+2.5 
+Physical Layer 
+The Physical layer provides the “physical connection” via radio frequency signals 
+between a transmitting spacecraft and the receiving station.  
+The physical layer transforms the bit stream received from the Channel coding layer 
+into physical waveforms. It physically modulates the channel symbols (bit stream) 
+into RF signal patterns. 
+
+=====PAGE 10=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 10 of 14 
+Issue 2.0, 26 February 2014 
+3 
+DIRECT BROADCAST SERVICES (LRPT/AHRPT) GLOBAL 
+SPECIFICATION 
+This section details the Direct Broadcast Services (LRPT/AHRPT) global 
+specification using the CCSDS service layers as a basis. Each of the sub sections 
+details in which context each individual service layer with their associated CCSDS 
+services, protocols and data units are relevant for the LRPT/AHRPT global 
+specification. 
+3.1 
+Application Processing Layer 
+The application processing layer defines how the satellite services data is 
+transformed into data units that can be handled by the satellite users. The produced 
+data units are passed to the communication layers in order to be transmitted. For 
+Direct Broadcast Services (LRPT/AHRPT), the possible application of data 
+forwarded through the communication layer has been outlined in “2.1 Application 
+Processing Layer”. 
+For Direct Broadcast Services (LRPT/AHRPT), there are no global specifications 
+related to the application processing layer as it is mission dependant. 
+3.2 
+Packetisation Layer 
+The Packetisation Layer provides means for timely transporting application 
+information (files, application packets) while preserving its integrity and sequencing.  
+The Packetisation Layer for CCSDS advanced orbiting systems contains a single 
+service, the so-called packet service that creates CCSDS Source packets.  
+The packet service receives application data units from the Application Processing 
+Layer, integrate them into Source packets and forward these packets to the Transfer 
+layer. 
+The packet service implements the protocols, services and procedure pertaining to 
+the CCSDS Packets that are specified in [AD.6] Space Packet Protocol, Blue Book.  
+Below is described the structure of the Source Packets: 
+ 
+
+=====PAGE 11=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 11 of 14 
+Issue 2.0, 26 February 2014 
+version 
+Set to 0 to specify version-1 CCSDS packet 
+type 
+Set to 0, irrelevant for AOS 
+secondary 
+header 
+flag 
+set to 1 if the user data begins with a header field (this is the 
+case if sequence flags equals to one or three); set to 0 else 
+APID 
+set to 0 ... 2015, specifying the logical data path and implicitly 
+the link priority (see explanations in 7.2.2) 
+Sequence flags 
+a) ‘00’ if the Space Packet contains a continuation segment of 
+User Data; 
+b) ‘01’ if the Space Packet contains the first segment of User 
+Data; 
+c) ‘10’ if the Space Packet contains the last segment of User 
+Data; 
+d) ‘11’ if the Space Packet contains unsegmented User Data. 
+Packet 
+sequence 
+counter 
+sequential count modulo 16384, numbering the packets on the 
+specified logical data path specified by the APID. 
+Packet length 
+sequential count modulo 16384, numbering the packets on the 
+specified logical data path specified by the APID. 
+Figure 3 – Source Packet Structure 
+For a detailed specification of the CCSDS Source packets used by the Direct 
+Broadcast Services (LRPT/AHRPT) global specifications refer to [AD.10] TM Packet 
+Telemetry. 
+3.3 
+Transfer Frame Layer 
+The Transfer Frame Layer receives Source Packets from the Packetisation Layer 
+and generates as output fixed length data units called Transfer Frames. The 
+Transfer Frame Layer provides services to reliably transport Source Packets within 
+space-to-ground communication links. The Transfer Frame Layer also includes 
+optional services allowing the multiplexing of data units coming from multiple 
+processing applications into one stream of transfer frames. This done by multiplexing 
+Transfer frames into ‘Virtual Channels’ via the Virtual Channel Generation Function 
+and the Virtual Channel Multiplexing function. 
+The Transfer Frame Layer of the Direct Broadcast Services (LRPT/AHRPT) Global 
+specification implements the services as defined in CCSDS document [AD.5] AOS 
+Space Data Link Protocol.   
+
+=====PAGE 12=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 12 of 14 
+Issue 2.0, 26 February 2014 
+Section 4.1 of [AD.5] defines the structure of the Transfer Frame supported by the 
+current global specifications. The Transfer Frame main structural Components are 
+present in the diagram below: 
+ 
+Figure 4 – Transfer Frame Structural Components 
+The Transfer Frame Primary Header is mandatory and shall consist of the following 
+five fields, positioned contiguously, in the following sequence: 
+1. 
+Master Channel Identifier (10 bits; mandatory). 
+2. 
+Virtual Channel Identifier (6 bits; mandatory). 
+3. 
+Virtual Channel Frame Count (3 octets; mandatory). 
+4. 
+Signaling Field (1 octet; mandatory). 
+5. 
+Frame Header Error Control (2 octets, optional). 
+ 
+Figure 5 – Transfer Frame Header 
+
+=====PAGE 13=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 13 of 14 
+Issue 2.0, 26 February 2014 
+Parts of the Transfer Frame structure are meant to be mission dependant. 
+For a full specification of the Transfer Frame Layer services, procedures 
+implemented by the service and the Transfer Frame structures, refer to [AD.5] AOS 
+Space Data Link Protocol. 
+3.4 
+Channel Coding Layer 
+The Channel Coding Layer provides functions necessary for transferring Transfer 
+Frames over a space link. The functions provided by the Synchronization and 
+Channel Coding Recommendation are: 
+ Error control encoding and decoding functions, 
+ Bit transition generation and removal functions, 
+ Delimiting and synchronizing functions. 
+The Channel Coding layer receives Transfer Frames and return to the Physical 
+Layer a serial bitstream. 
+[AD.4] CCSDS TM Synchronization and Channel Coding is the specification that 
+must be used as the recommendation for implementing the Channel Coding Layer of 
+Direct Broadcast Services (LRPT/AHRPT) global specification. [AD.4] provides 
+different synchronization and channel coding techniques and the choice of a 
+particular one is mission specific. 
+3.5 
+Physical Layer 
+The physical layer provides the physical channel service. It receives a serial bits 
+stream from the Channel Coding Layer and transforms it into a RF signal. 
+The 
+Direct 
+Broadcast 
+Services 
+(LRPT/AHRPT) 
+Global 
+specification 
+recommendations for implementing the physical layer are based on [AD.7] CCSDS 
+Radio Frequency and Modulation Systems. Details regarding the main services of 
+the Physical layer are given below. 
+3.5.1 Modulation 
+The choice of modulation scheme is mission specific. 
+3.5.2 Frequency 
+“Typical” frequency ranges used for Direct Broadcast transmissions of LEO satellites 
+are as follows: 
+1. 137-138 MHz to support Low Rate Transmissions (LRPT). 
+2. 1698-1710 MHz to support High Rate Transmissions (AHRPT). 
+
+=====PAGE 14=====
+ 
+ 
+ 
+ 
+ 
+Document No. CGMS 04 
+CGMS/SPE/14/748867 
+Page 14 of 14 
+Issue 2.0, 26 February 2014 
+3. 7750-7900 MHz to support Very High Rate Transmissions of Meteorological 
+Satellites. 
+4. 8025-8400 MHz to support Very High Rate Transmissions of Earth Observation 
+Satellites. 
+These frequency ranges are defined according to [RD.3].  
+The choice of frequency range is mission specific and depends, among other 
+things, on the data rate.  It is recommended to select frequencies from point 2 as first 
+option and from points 3 or 4 in cases of higher data rate needs. 
+3.5.3 Polarisation 
+Typical polarisation is RHCP, but the choice is mission specific.  

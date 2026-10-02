@@ -1,0 +1,2874 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+ 
+ETSI TS 102 721-3 V1.2.1 (2013-08) 
+Satellite Earth Stations and Systems (SES); 
+Air Interface for S-band Mobile Interactive Multimedia (S-MIM); 
+Part 3: Physical Layer Specification, 
+Return Link Asynchronous Access 
+ 
+ 
+ 
+Technical Specification 
+
+=====PAGE 2=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+2
+ 
+ 
+ 
+ 
+Reference 
+RTS/SES-00335 
+Keywords 
+MSS, satellite 
+ETSI 
+650 Route des Lucioles 
+F-06921 Sophia Antipolis Cedex - FRANCE 
+ 
+Tel.: +33 4 92 94 42 00   Fax: +33 4 93 65 47 16 
+ 
+Siret N° 348 623 562 00017 - NAF 742 C 
+Association à but non lucratif enregistrée à la 
+Sous-Préfecture de Grasse (06) N° 7803/88 
+ 
+Important notice 
+Individual copies of the present document can be downloaded from: 
+http://www.etsi.org 
+The present document may be made available in more than one electronic version or in print. In any case of existing or 
+perceived difference in contents between such versions, the reference version is the Portable Document Format (PDF). 
+In case of dispute, the reference shall be the printing on ETSI printers of the PDF version kept on a specific network drive 
+within ETSI Secretariat. 
+Users of the present document should be aware that the document may be subject to revision or change of status. 
+Information on the current status of this and other ETSI documents is available at 
+http://portal.etsi.org/tb/status/status.asp 
+If you find errors in the present document, please send your comment to one of the following services: 
+http://portal.etsi.org/chaircor/ETSI_support.asp 
+Copyright Notification 
+No part may be reproduced except as authorized by written permission. 
+The copyright and the foregoing restriction extend to reproduction in all media. 
+ 
+© European Telecommunications Standards Institute 2013. 
+All rights reserved. 
+ 
+DECTTM, PLUGTESTSTM, UMTSTM and the ETSI logo are Trade Marks of ETSI registered for the benefit of its Members. 
+3GPPTM and LTE™ are Trade Marks of ETSI registered for the benefit of its Members and 
+of the 3GPP Organizational Partners. 
+GSM® and the GSM logo are Trade Marks registered and owned by the GSM Association. 
+
+=====PAGE 3=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+3
+ 
+Contents 
+Foreword ............................................................................................................................................................. 5 
+Introduction ........................................................................................................................................................ 5 
+1 
+Scope ........................................................................................................................................................ 6 
+2 
+References ................................................................................................................................................ 6 
+2.1 
+Normative references ......................................................................................................................................... 6 
+2.2 
+Informative references ........................................................................................................................................ 6 
+3 
+Definitions, symbols and abbreviations ................................................................................................... 7 
+3.1 
+Definitions .......................................................................................................................................................... 7 
+3.2 
+Symbols .............................................................................................................................................................. 7 
+3.3 
+Abbreviations ..................................................................................................................................................... 8 
+4 
+General description................................................................................................................................... 8 
+4.1 
+Relationship to other layers ................................................................................................................................ 9 
+4.1.1 
+General Protocol Architecture ...................................................................................................................... 9 
+4.1.2 
+Services provided to higher layers .............................................................................................................. 10 
+4.2 
+Transmitter functional architecture .................................................................................................................. 10 
+4.3 
+Channel descriptions ........................................................................................................................................ 10 
+4.3.1 
+Transport channel ....................................................................................................................................... 10 
+4.3.2 
+Physical channels ........................................................................................................................................ 10 
+5 
+Physical Channel Structure .................................................................................................................... 11 
+5.1 
+PDCH structure ................................................................................................................................................ 11 
+5.1.1 
+CRC format ................................................................................................................................................. 12 
+5.2 
+PCCH structure ................................................................................................................................................ 13 
+5.2.1 
+Pilot symbols format ................................................................................................................................... 13 
+5.2.2 
+Transport Format Indication format ............................................................................................................ 14 
+5.3 
+Transport-to-Physical Channel Mapping .......................................................................................................... 14 
+6 
+Channel Coding and Interleaving ........................................................................................................... 15 
+6.1 
+Channel Coding ................................................................................................................................................ 15 
+6.1.1 
+Constituent code ......................................................................................................................................... 15 
+6.1.2 
+Trellis termination for turbo coder .............................................................................................................. 16 
+6.1.3 
+Turbo code internal interleaver ................................................................................................................... 16 
+6.1.3.1 
+Bits-input to rectangular matrix ............................................................................................................ 17 
+6.2 
+Intra-row and inter-row permutations............................................................................................................... 18 
+6.2.1 
+Bits-output from rectangular matrix with pruning ...................................................................................... 19 
+6.2.2 
+Rate matching ............................................................................................................................................. 20 
+6.3 
+Channel Interleaving ........................................................................................................................................ 21 
+7 
+Spreading and Modulation ..................................................................................................................... 23 
+7.1 
+PDCH and PCCH spreading ............................................................................................................................. 23 
+7.1.1 
+PDCH and PCCH channelization ............................................................................................................... 24 
+7.1.2 
+PDCH and PCCH scrambling ..................................................................................................................... 25 
+7.2 
+Up-Link Burst Preamble .................................................................................................................................. 26 
+7.2.1 
+Sequence s1 ................................................................................................................................................. 27 
+7.2.2 
+Sequence s2 ................................................................................................................................................. 27 
+7.2.2.1 
+SF = 16 .................................................................................................................................................. 27 
+7.2.2.2 
+SF = 128 ................................................................................................................................................ 28 
+7.2.2.3 
+SF = 256 ................................................................................................................................................ 28 
+7.3 
+Modulation ....................................................................................................................................................... 29 
+8 
+Radio transmission ................................................................................................................................. 29 
+8.1 
+Frequency bands and channel arrangement ...................................................................................................... 29 
+8.2 
+Stability and accuracy requirements ................................................................................................................. 29 
+8.2.1 
+Frequency and symbol timing stability and accuracy ................................................................................. 30 
+8.2.2 
+Power stability and accuracy ...................................................................................................................... 30 
+
+=====PAGE 4=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+4
+ 
+8.3 
+Transmitter characteristics................................................................................................................................ 30 
+8.3.1 
+Power output characteristics and power class ............................................................................................. 30 
+8.3.2 
+Transmit polarization .................................................................................................................................. 30 
+8.3.2.1 
+Satellite Access ..................................................................................................................................... 30 
+8.3.2.2 
+Terrestrial Access .................................................................................................................................. 31 
+8.3.3 
+Unwanted emissions ................................................................................................................................... 31 
+8.4 
+Transmit procedure........................................................................................................................................... 31 
+8.5 
+Tx/Rx states ...................................................................................................................................................... 32 
+9 
+Physical layer measurements .................................................................................................................. 33 
+Annex A (informative): 
+Generation of Complex Complementary Golay Codes .............................. 34 
+History .............................................................................................................................................................. 35 
+ 
+
+=====PAGE 5=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+5
+ 
+Intellectual Property Rights 
+IPRs essential or potentially essential to the present document may have been declared to ETSI. The information 
+pertaining to these essential IPRs, if any, is publicly available for ETSI members and non-members, and can be found 
+in ETSI SR 000 314: "Intellectual Property Rights (IPRs); Essential, or potentially Essential, IPRs notified to ETSI in 
+respect of ETSI standards", which is available from the ETSI Secretariat. Latest updates are available on the ETSI Web 
+server (http://ipr.etsi.org). 
+Pursuant to the ETSI IPR Policy, no investigation, including IPR searches, has been carried out by ETSI. No guarantee 
+can be given as to the existence of other IPRs not referenced in ETSI SR 000 314 (or the updates on the ETSI Web 
+server) which are, or may be, or may become, essential to the present document. 
+Foreword 
+This Technical Specification (TS) has been produced by ETSI Technical Committee Satellite Earth Stations and 
+Systems (SES). 
+The present document is part 3 of a multi-part deliverable. Full details of the entire series can be found in part 1 [i.11]. 
+Introduction 
+The S-MIM system specified herein is designed to provide: 
+• 
+Interactive mobile broadcast services enhancing DVB-SH services. 
+• 
+Messaging services for handhelds and vehicular terminals, capable of serving millions of terminals due to a 
+novel optimized radio-interface in the RTN link.  
+• 
+Real-time emergency services such as voice and file transfer, mainly addressing institutional users  
+on-the-move such as fire brigades, civil protection, etc.  
+Inside the S-band, the 2 GHz MSS band is of particular interest for interactive multimedia, since it allows two-way 
+transmission. Typically, the DVB-SH standard [i.7] is applied for broadcast transmission; ETSI SDR [i.3] or 
+DVB-NGH [i.8] standards are other alternatives. Essential requirements under the R&TTE directive are covered by the 
+harmonized standard EN 302 574 [i.4], [i.5] and [i.6]. 
+The technology applied has been developed in the framework of the ESA funded project "DENISE" (ESTEC/Contract 
+Number 22439/09/NL/US).  
+
+=====PAGE 6=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+6
+ 
+1 
+Scope 
+The present document specifies the S-MIM (S-band Mobile Interactive Multimedia) system in which a standardized 
+S-band satellite mobile broadcast system is complemented by the addition of a return channel 
+The present document is part 3 of the multi-part deliverable and concerns aspects of the air interface for the S-band 
+Mobile Interactive Multimedia (S-MIM) system, and in particular it specifies the Physical Layer for Return Link 
+Asynchronous Access. 
+The other parts are listed in the foreword of part 1 [i.11]. 
+2 
+References 
+References are either specific (identified by date of publication and/or edition number or version number) or 
+non-specific. For specific references, only the cited version applies. For non-specific references, the latest version of the 
+referenced document (including any amendments) applies. 
+Referenced documents which are not found to be publicly available in the expected location might be found at 
+http://docbox.etsi.org/Reference. 
+NOTE: 
+While any hyperlinks included in this clause were valid at the time of publication ETSI cannot guarantee 
+their long term validity. 
+2.1 
+Normative references 
+The following referenced documents are necessary for the application of the present document. 
+[1] 
+ETSI TS 102 721-6: "Satellite Earth Stations and Systems (SES); Air interface for S-band Mobile 
+Interactive Multimedia (S-MIM); Part 6: Protocol Specifications, System Signalling". 
+2.2 
+Informative references 
+The following referenced documents are not necessary for the application of the present document but they assist the 
+user with regard to a particular subject area. 
+[i.1] 
+IEEE Journal on Selected Areas in Communications: "Bandlimited Quasi-Synchronous CDMA: A 
+Novel Satellite Access Technique for Mobile and Personal Communications Systems", R. De 
+Gaudenzi, C. Elia, R. Viola, 1992. 
+[i.2] 
+Patent: US201 010054131 A 1: "Methods, Apparatuses and System for Asynchronous Spread-
+Spectrum Communication". 
+[i.3] 
+ETSI EN 302 550 (all parts and sub-parts): "Satellite Earth Stations and Systems (SES); Satellite 
+Digital Radio (SDR) Systems". 
+[i.4] 
+ETSI EN 302 574-1: "Satellite Earth Stations and Systems (SES); Harmonized standard for 
+satellite earth stations for MSS operating in the 1 980 MHz to 2 010 MHz (earth-to-space) and 
+2 170 MHz to 2 200 MHz (space-to-earth) frequency bands; Part 1: Complementary Ground 
+Component (CGC) for wideband systems: Harmonized EN covering the essential requirements of 
+article 3.2 of the R&TTE Directive". 
+[i.5] 
+ETSI EN 302 574-2: "Satellite Earth Stations and Systems (SES); Harmonized standard for 
+satellite earth stations for MSS operating in the 1 980 MHz to 2 010 MHz (earth-to-space) and 
+2 170 MHz to 2 200 MHz (space-to-earth) frequency bands; Part 2: User Equipment (UE) for 
+wideband systems: Harmonized EN covering the essential requirements of article 3.2 of the 
+R&TTE Directive". 
+
+=====PAGE 7=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+7
+ 
+[i.6] 
+ETSI EN 302 574-3: "Satellite Earth Stations and Systems (SES); Harmonized standard for 
+satellite earth stations for MSS operating in the 1 980 MHz to 2 010 MHz (earth-to-space) and 
+2 170 MHz to 2 200 MHz (space-to-earth) frequency bands; Part 3: User Equipment (UE) for 
+narrowband systems: Harmonized EN covering the essential requirements of article 3.2 of the 
+R&TTE Directive". 
+[i.7] 
+ETSI TS 102 585: "Digital Video Broadcasting (DVB); System Specifications for Satellite 
+services to Handheld devices (SH) below 3 GHz". 
+[i.8] 
+DVB BlueBook A160: "Next Generation broadcasting system to Handheld, physical layer 
+specification (DVB-NGH)". 
+[i.9] 
+ETSI TS 125 212: "Universal Mobile Telecommunications System (UMTS); Multiplexing and 
+channel coding (FDD) (3GPP TS 25.212)". 
+[i.10] 
+ETSI TS 125 213: "Universal Mobile Telecommunications System (UMTS); Spreading and 
+modulation (FDD) (3GPP TS 25.213)". 
+[i.11] 
+ETSI TS 102 721-1: "Satellite Earth Stations and Systems (SES); Air Interface for S-band Mobile 
+Interactive Multimedia (S-MIM); Part 1: General System Architecture and Configurations". 
+3 
+Definitions, symbols and abbreviations 
+3.1 
+Definitions 
+For the purposes of the present document, the following terms and definitions apply: 
+2 GHz MSS band: 1 980 MHz to 2 010 MHz (earth-to-space) and 2 170 MHz to 2 200 MHz (space-to-earth) frequency 
+bands 
+NOTE: 
+These paired bands are assigned to MSS. 
+architecture: abstract representation of a communications system 
+NOTE: 
+Three complementary types of architecture are defined: 
+  
+Functional Architecture: the discrete functional elements of the system and the associated logical 
+interfaces. 
+  
+Network Architecture: the discrete physical (network) elements of the system and the associated 
+physical interfaces. 
+  
+Protocol Architecture: the protocol stacks involved in the operation of the system and the 
+associated peering relationships. 
+collector: terrestrial components that "collect" return link transmissions from terminals and forward them towards the 
+ground segment 
+control plane: plane that has a layered structure and performs the call control and connection control functions; it deals 
+with the signalling necessary to set up, supervise and release calls and connections 
+repeater: terrestrial components that (mainly) repeat the satellite signal in the forward link 
+S-band: equivalent to 2 GHz MSS band 
+3.2 
+Symbols 
+For the purposes of the present document, the following symbols apply: 
+N0 
+Single-sided noise power spectral density 
+I0 
+Single-sided interference power spectral density 
+
+=====PAGE 8=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+8
+ 
+3.3 
+Abbreviations 
+For the purposes of the present document, the following abbreviations apply: 
+ACK 
+Acknowledgement signalling 
+ACLR 
+Adjacent Channel Leakage power Ratio 
+C 
+number of Columns 
+C 
+Received signal (carrier) power 
+CDMA 
+Code Division Multiple Access 
+CGC 
+Complementary Ground Component 
+CRC 
+Cyclic Redundancy Check 
+DL 
+Down-Link 
+DVB-SH 
+Digital Video Broadcasting, Satellites services to Handhelds 
+EIRP 
+Effective Isotropic Radiated Power 
+FEC 
+Forward Error Correction 
+FL 
+Forward-Link 
+GF 
+Gallois Field 
+GW 
+Gateway 
+LOS 
+Line Of Sight 
+ML 
+Maximal Length 
+MSB 
+Most Significant Bit 
+MSS 
+Mobile Satellite Services 
+OVSF  
+Orthogonal Variable Spreading Factor 
+PCCC  
+Parallel Concatenated Convolutional Code 
+PCCH 
+Physical Control Channel 
+PDCH 
+Physical Data Channel  
+PN 
+Pseudo-Noise 
+PPM 
+Parts Per Million 
+RACH 
+Random Access Channel 
+RF 
+Radio Frequency 
+RL 
+Return-Link 
+RTN 
+Return (link) 
+Rx 
+Receive 
+SAT 
+SSA Access Table 
+SCT 
+SSA Configuration Table 
+SDR 
+Satellite Digital Radio 
+SDT 
+SSA Dynamic Configuration Table 
+SF 
+Spreading Factor 
+S-MIM 
+S-band Mobile Interactive Multimedia 
+SNR 
+Signal to Noise Ratio 
+SRRC 
+Square Root Raised Cosine 
+SSA 
+Spread Spectrum Aloha 
+TFI 
+Transport Format Indication 
+TTI 
+Transmission Time Interval 
+Tx 
+Transmitter 
+UL 
+Up-Link 
+ULB 
+Up-Link Burst 
+WCDMA 
+Wideband CDMA 
+4 
+General description 
+The present document specifies the physical layer for the Asynchronous Access option of the Return Link using the 
+Spread Spectrum Aloha (SSA) technique [i.1] and [i.2].  
+The present document has similarities with 3GPP specifications [i.9], [i.10] and the differences are described. 
+The present document covers the Return-Link (RL) satellite transmission and the Up-Link (UL) transmission to the 
+terrestrial collectors. Although different configurations and parameters may apply to the RL and to UL, the radio 
+interface is in both cases the one defined in the present document. 
+
+=====PAGE 9=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+9
+ 
+S-MIM asynchronous access is intended for access to interactive messaging services, since it does not require 
+coordination between users thus minimizing the signalling overhead required for the access control. Other advantages 
+of S-MIM asynchronous access are:  
+• 
+Ability for the space segment to operate with full frequency reuse. This will contribute to further improvement 
+of the system efficiency. 
+• 
+Feasibility of band sharing with other access schemes due to the spread spectrum characteristics.  
+4.1 
+Relationship to other layers 
+4.1.1 
+General Protocol Architecture 
+The overall protocol architecture for the return link of S-MIM asynchronous access is shown in Figure 4.1.  
+USER PLANE
+MANAGEMENT PLANE
+CONTROL PLANE
+Modulation &
+Transmission
+Header
+Compression
+Encryption (LL)
+Encapsulation &
+Addressing
+Transmission
+Mode
+PHY
+Link Layer
+EC
+NEC
+RLE
+NCC
+ACK Mode
+U-ACK Mode
+UsCC
+PCCH
+PDCH
+C-ACK Mode
+ARQ
+Management 
+& Congestion 
+Control
+Header 
+Compression 
+Control
+LL 
+Authentication 
+Control
+Mobility 
+Management
+Mutual 
+Authentication 
+Control
+Network / 
+Terminal 
+Management
+IP
+UDP/TCP
+IP Datacast / 
+SNM
+P / DM
+P
+Subscriber 
+Management
+Service 
+Protection
+IPsec 
+Authentication 
+Control
+Traffic 
+Monitoring
+Signalling 
+Management
+RACH
+M
+AC
+RLC
+ 
+Figure 4.1: Protocol Architecture for the Asynchronous Return Link 
+The circles between different layer/sub-layers indicate Service Access Points (SAPs).  
+The physical layer provides an interface to the Medium Access Control (MAC) sub-layer via Transport channel(s). A 
+transport channel is characterized by how and which information is transferred over the radio interface.  
+Physical Channels are defined in the physical layer and are characterized by the physical resources (time, frequency, 
+code, and space) that are used to transport data/control/signalling to/from a single user or a multitude of users.  
+The Control Plane is concerned with all aspects of signalling, for example the signalling of the Return Link scrambling 
+sequence to the user terminal as described in TS 102 721-6 [1]. 
+The present document is concerned with the Physical Layer. 
+
+=====PAGE 10=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+10
+ 
+4.1.2 
+Services provided to higher layers 
+The physical layer offers data transport services to higher layers. The physical layer is expected to perform the 
+following functions in order to provide the data transport service: 
+- 
+Error detection on transport channel and indication to higher layers. 
+- 
+FEC encoding/decoding of transport channels. 
+- 
+Rate matching of coded transport channel to physical data channel. 
+- 
+Mapping of coded transport channel on physical data channel. 
+- 
+Power weighting and combining of physical channels. 
+- 
+Modulation and spreading/demodulation and de-spreading of physical channels. 
+- 
+Frequency and time (chip, bit, burst) synchronization. 
+- 
+Radio characteristics measurements and indication to higher layers (for further study). 
+- 
+RF processing. 
+4.2 
+Transmitter functional architecture 
+In the transmission direction Physical Layer functional block diagram is shown in Figure 4.2.  
+ 
+Figure 4.2: Transmitter Functional Block Diagram 
+4.3 
+Channel descriptions 
+4.3.1 
+Transport channel 
+There is a single transport channel: the Random Access Channel (RACH). The RACH is characterized by limited size 
+data burst length, a collision risk and by the use of open loop power control. 
+Three possible nominal sizes of the RACH data burst length are supported, namely 300, 600 and 1 200 bits. Depending 
+on the effective size of the RACH data burst length and of the size of the optional CRC, rate matching will be 
+performed after FEC encoding.  
+NOTE: 
+It is recommended to keep the effective size of the RACH data burst length within ±10 % of the nominal 
+sizes. 
+4.3.2 
+Physical channels  
+Two physical channels are defined, namely the PDCH (Physical Data Channel) used to carry the RACH data burst and 
+the PCCH (Physical Control Channel) used to carry physical layer signalling information. The PDCH and the PCCH are 
+I/Q code multiplexed to form an Up-Link Burst (ULB), composed of three parts (Figure 4.3): 
+• 
+a preamble; 
+
+=====PAGE 11=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+11
+ 
+• 
+a Physical Data Channel (PDCH), uniquely determined by its chip rate, spreading factor and data burst length 
+as detailed in clause 5.1; 
+• 
+the Physical Control Channel (PCCH), uniquely determined by its chip rate as detailed in clause 5.2. 
+The preamble is transmitted before the start of the PDCH and PCCH. 
+ 
+ 
+Figure 4.3: The Up-Link Burst and its constituent parts 
+The PDCH will carry the RACH data burst followed by an optional CRC defined in clause 5.1.1.  
+The PCCH carries physical layer signalling and reference symbols to allow coherent demodulation of the PDCH 
+channel. The physical layer signalling conveys the Transport Format Indication (TFI) to the receiving side as defined in 
+clause 5.2.1. 
+For Radio Channel details see clause 8. 
+5 
+Physical Channel Structure 
+5.1 
+PDCH structure 
+As shown in Figure 5.1, the PDCH data burst (after channel encoding according to clause 6.1), is divided into a variable 
+number of frames ranging from 3 (Option 1) up to 24 (Option 4). Each frame has a fixed duration of 10 ms. The PDCH 
+length (in time or, equivalently, in frames) is indicated with the term TTI (Transmission Time Interval). 
+ 
+ 
+Figure 5.1: PDCH Composition 
+Figure 5.2 shows the structure of the 10 ms frame, which is split into 15 slots, each of length Tslot = 0,667 ms. Each slot 
+consists of 10 × 2k bits, where k=0 or 1 (k only equal to 0 for chip rate 240 kchip/s).  
+The set of allowed parameters of the PDCH is reported in Table 5.1. Note that the number of info bits reported in 
+Table 5.1 is only indicative. Exploiting the rate matching mechanism, the code rate can be changed to accommodate 
+variations in the RACH data burst length without impacting the PDCH data burst length. Clearly for not penalizing 
+system performance it is expected that the code rate is not increased significantly above the 1/3 nominal code rate. 
+Rate matching as specified in clause 6.2 may thus be used to adapt the code rate to the RACH data burst length, as 
+defined in TS 102 721-6 [1]. 
+
+=====PAGE 12=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+12
+ 
+ 
+ 
+Figure 5.2: Structure of the PDCH and PCCH  
+Table 5.1: Allowed PDCH configurations 
+PDCH 
+Configuration ID 
+TFI 
+Code 
+(bin.) 
+Chip rate 
+(kchip/s) 
+Ch. Bit 
+Rate 
+(kbps) 
+SF 
+Info Bits/ 
+Burst 
+Ch. Bits/ 
+Burst 
+Ch. Bits/ 
+Frame 
+Ch. Bits/ 
+Slot 
+Data Burst 
+Length 
+(Frames) 
+CR3 840SF256DBL24 00000 
+3 840 
+15 
+256 
+1 200 
+3 600 
+150 
+10 
+24 
+CR3 840SF256DBL12 00001 
+3 840 
+15 
+256 
+600 
+1 800 
+150 
+10 
+12 
+CR3 840SF256DBL6 
+00010 
+3 840 
+15 
+256 
+300 
+900 
+150 
+10 
+6 
+CR3 840SF128DBL12 00011 
+3 840 
+30 
+128 
+1 200 
+3 600 
+300 
+20 
+12 
+CR3 840SF128DBL6 
+00100 
+3 840 
+30 
+128 
+600 
+1 800 
+300 
+20 
+6 
+CR3 840SF128DBL3 
+00101 
+3 840 
+30 
+128 
+300 
+900 
+300 
+20 
+3 
+CR1 920SF128DBL24 00110 
+1 920 
+15 
+128 
+1 200 
+3 600 
+150 
+10 
+24 
+CR1 920SF128DBL12 00111 
+1 920 
+15 
+128 
+600 
+1 800 
+150 
+10 
+12 
+CR1 920SF128DBL6 
+01000 
+1 920 
+15 
+128 
+300 
+900 
+150 
+10 
+6 
+CR1 920SF64DBL12 
+01001 
+1 920 
+30 
+64 
+1 200 
+3 600 
+300 
+20 
+12 
+CR1 920SF64DBL6 
+01010 
+1 920 
+30 
+64 
+600 
+1 800 
+300 
+20 
+6 
+CR1 920SF64DBL3 
+01011 
+1 920 
+30 
+64 
+300 
+900 
+300 
+20 
+3 
+CR240SF16DBL24 
+01100 
+240 
+15 
+16 
+1 200 
+3 600 
+150 
+10 
+24 
+CR240SF16DBL12 
+01101 
+240 
+15 
+16 
+600 
+1 800 
+150 
+10 
+12 
+CR240SF16DBL6 
+01110 
+240 
+15 
+16 
+300 
+900 
+150 
+10 
+6 
+ 
+5.1.1 
+CRC format 
+The PDCH includes an optional 16 bit or 8 bit CRC. If a CRC is used the parity bits are generated by one of the 
+following cyclic generator polynomials: 
+ 
+gCRC16(D) = D16 + D12 + D5 + 1 
+ 
+gCRC8(D) = D8 + D7 + D4 + D3 + D + 1 
+
+=====PAGE 13=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+13
+ 
+Denote the bits in a RACH data burst delivered to layer 1 by b1, b2, b3, … bN, and the parity bits by p1,p2, … pL. N is 
+the length of message unit and L is 16, 8, or 0 depending on what is signalled from higher layers. 
+The encoding is performed in a systematic form, which means that in GF(2), the polynomial 
+ 
+b1DN+15 + b2DN+14 + … + bND16 + p1D15 + p2D14 + … + p15D1 + p16 
+yields a remainder equal to 0 when divided by gCRC16(D). Similarly, 
+ 
+b1DN+7 + b2DN+6 + … + bND8 + p1D7 + p2D6 + … + p7D1 + p8 
+yields a remainder equal to 0 when divided by gCRC8(D). 
+If the CRC is used, rate matching as described in clause 6.2.2 might become necessary in order to keep the number of 
+channel bits per burst equal to values reported in Table 5.1. The use (and length) of the CRC is broadcast in the SCT 
+table in TS 102 721-6 [1] for each possible TFI. 
+CRC shift register shall be initialized to 0x0000. 
+NOTE: 
+For operation with interference cancellation (which is the baseline for SSA, at least when used on satellite 
+links) CRC is to be regarded as mandatory in practice. In absence of CRC the turbo decoder should be 
+used to provide a likelihood of the correct decoding. Given the uncertainty about the quality of such 
+indication it appears safer to rely always on CRC when interference cancellation is considered. 
+5.2 
+PCCH structure 
+The PCCH consists of Np known pilot bits to support channel estimation for coherent detection and NF bits for the TFI 
+(Transport Format Indication) message per slot. The size of each PCCH slot is always 10 bits, as shown in Table 5.2.  
+The TFI carries information associated with the packet format and packet length. The value of Np is broadcast in the 
+SCT table in TS 102 721-6 [1]. Its complement to ten are the TFI bits per slot.  
+Table 5.2: Allowed PCCH configurations 
+PCCH 
+Configuration 
+ID 
+Chip rate 
+(kchip/s) 
+Symbol 
+Rate 
+(kbaud) 
+SF 
+Symbols/ 
+Frame 
+Symbols/ 
+Slot 
+Data Burst 
+Length 
+(Frames) 
+NF 
+CR3 840 
+3 840 
+15 
+256 
+150 
+10 
+depends on 
+PDCH 
+10-Np 
+CR1 920 
+1 920 
+15 
+128 
+150 
+10 
+CR240 
+240 
+15 
+16 
+150 
+10 
+ 
+NOTE: 
+According to the actual value of the parameter control_spread signalled in the SCT table defined in 
+TS 102 721-6 [1], the PCCH might not be transmitted over all frames. 
+5.2.1 
+Pilot symbols format 
+Pilot symbols transmitted on the PCCH are obtained through a ML PN generator.  
+The scrambling sequence is a segment of an ML sequence defined by polynomial 1+X4+X9. The initial loading of the 
+shift register shall be equal to 101000000 as indicated in Figure 5.3. The shift register shall be reset at the initial loading 
+at the start of each PDCH data burst. 
+The pilot symbol generator is clocked in correspondence to every pilot symbols in PCCH. The generated sequence 
+corresponds to the pilot pattern of the PCCH. 
+
+=====PAGE 14=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+14
+ 
+ 
+Figure 5.3: Pilot symbols generation 
+5.2.2 
+Transport Format Indication format  
+The TFI message carries 5 information bits which are thus able to address up to 32 different PDCH configurations. 
+This message is encoded in a (15, 5) codeword obtained extending an ML code (15, 4) generated by the primitive 
+polynomial h(x)=x4+x+1 with the antipodal codewords. 
+NOTE: 
+The generator polynomial is thus g(x)=(x15-1)/h(x)=x11+x8+x7+x5+x3+x2+x+1. 
+The mapping of info bit field to codeword is: 
+• 
+The MSB of the Format message referred to as TFI(5) determine if the set of antipodal codewords has to be 
+selected (a 1 select the antipodal set). 
+• 
+The remaining four bits select the zero codeword (or its antipodal) in case they are all zero, or the ML 
+sequence generated by the given primitive polynomial when the shift register is initialized with the four info 
+bits (Figure 5.4). 
+ 
+Figure 5.4: ML code generation 
+The coding procedure is performed independently for each frame. As each frame contains 15 slots, one bit per slot is 
+thus generated. If more than one bit per slot is allocated to the TFI (i.e. NF > 1), the bit is repeated multiple times as 
+required. 
+The entire codeword is then repeated within each frame of the PDCH data burst. As the minimum PDCH data burst size 
+is 3 frames, a terminal may softly combine bits over three frames before decoding. 
+5.3 
+Transport-to-Physical Channel Mapping 
+The mapping between the transport channel defined in clause 4.3.1 and the physical channels defined in clause 4.3.2 is 
+unambiguously determined through Table 5.1 depending on the chip rate, the spreading factor and the required PDCH 
+data burst length (or equivalently, the required info bits per burst). These parameters are selected by the system operator 
+and broadcast in the SCT table in TS 102 721-6 [1]. 
+
+=====PAGE 15=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+15
+ 
+6 
+Channel Coding and Interleaving 
+6.1 
+Channel Coding 
+The Turbo-coder has a nominal code rate of 1/3, but may slightly differ from 1/3 owing to the rate matching capability 
+as defined in clause 6.2.2. The following turbo-code specifications are taken from the 3GPP [i.9] specifications. 
+The scheme of Turbo coder is a Parallel Concatenated Convolutional Code (PCCC) with two 8-state constituent 
+encoders and one Turbo code internal interleaver. The coding rate of Turbo coder is 1/3. The structure of Turbo coder is 
+illustrated in Figure 6.1. 
+6.1.1 
+Constituent code 
+The transfer function of the 8-state constituent code for PCCC is: 
+ 
+G(D) = 
+⎥
+⎦
+⎤
+⎢⎣
+⎡
+)
+(
+)
+(
+,1
+0
+1
+D
+g
+D
+g
+, 
+where 
+ 
+g0(D) = 1 + D2 + D3, 
+ 
+g1(D) = 1 + D + D3.  
+The initial value of the shift registers of the 8-state constituent encoders shall be all zeros when starting to encode the 
+input bits. 
+Output from the Turbo coder is: 
+ 
+ x1, z1, z'1, x2, z2, z'2, …, xK, zK, z'K, 
+where x1, x2, …, xK are the bits input to the Turbo coder i.e. both first 8-state constituent encoder and Turbo code 
+internal interleaver, and K is the number of bits, and z1, z2, …, zK and z'1, z'2, …, z'K are the bits output from first and 
+second 8-state constituent encoders, respectively. 
+The bits output from Turbo code internal interleaver are denoted by x'1, x'2, …, x'K, and these bits are to be input to the 
+second 8-state constituent encoder. 
+
+=====PAGE 16=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+16
+ 
+xk
+xk
+zk
+Turbo code
+internal interleaver
+x’k
+z’k
+D
+D
+D
+D
+D
+D
+Input
+Output
+Input
+Output
+x’k
+1st constituent encoder
+2nd constituent encoder
+ 
+Figure 6.1: Structure of rate 1/3 Turbo coder (dotted lines apply for trellis termination only) 
+6.1.2 
+Trellis termination for turbo coder 
+Trellis termination is performed by taking the tail bits from the shift register feedback after all information bits are 
+encoded. Tail bits are padded after the encoding of information bits. 
+The first three tail bits shall be used to terminate the first constituent encoder (upper switch of Figure 6.1 in lower 
+position) while the second constituent encoder is disabled. The last three tail bits shall be used to terminate the second 
+constituent encoder (lower switch of Figure 6.1 in lower position) while the first constituent encoder is disabled. 
+The transmitted bits for trellis termination shall then be: 
+ 
+xK+1, zK+1, xK+2, zK+2, xK+3, zK+3, x'K+1, z'K+1, x'K+2, z'K+2, x'K+3, z'K+3. 
+6.1.3 
+Turbo code internal interleaver 
+The Turbo code internal interleaver consists of bits-input to a rectangular matrix, intra-row and inter-row permutations 
+of the rectangular matrix, and bits-output from the rectangular matrix with pruning. The bits input to the Turbo code 
+internal interleaver are denoted by 
+K
+x
+x
+x
+x
+,
+,
+,
+,
+3
+2
+1
+K
+, where K is the integer number of the bits and takes one value of 
+40 ≤ K ≤ 5 114. The relation between the bits input to the Turbo code internal interleaver and the bits input to the 
+channel coding is defined by 
+irk
+k
+o
+x =
+ and K = Ki. 
+The following specific symbols are used in clauses 6.1.3.1 to 6.2.1: 
+K 
+Number of bits input to Turbo code internal interleaver 
+R 
+Number of rows of rectangular matrix 
+C 
+Number of columns of rectangular matrix 
+p 
+Prime number 
+v 
+Primitive root 
+s(i) Base sequence for intra-row permutation 
+qj 
+Minimum prime integers 
+rj 
+Permuted prime integers 
+
+=====PAGE 17=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+17
+ 
+T(j) Inter-row permutation pattern 
+Uj(i) Intra-row permutation pattern 
+i 
+Index of matrix 
+j 
+Index of matrix 
+k 
+Index of bit sequence 
+6.1.3.1 
+Bits-input to rectangular matrix 
+The bit sequence input to the Turbo code internal interleaver 
+kx is written into the rectangular matrix as follows. 
+(1) 
+Determine the number of rows R of the rectangular matrix such that: 
+ 
+⎪⎩
+⎪⎨
+⎧
+=
+≤
+≤
+≤
+≤
+≤
+≤
+=
+     
+          
+          
+e)
+other valu
+any 
+( 
+if
+ 
+20,
+ 
+ 
+))
+530
+481
+(
+or 
+ )
+200
+160
+((
+ 
+if
+ 
+10,
+  
+      
+          
+          
+          
+)
+159
+40
+( 
+if
+ 
+5,
+K
+K
+K
+K
+R
+ 
+where the rows of rectangular matrix are numbered 0, 1, 2, …, R - 1 from top to bottom. 
+(2) 
+Determine the number of columns C of rectangular matrix such that: 
+if (481 ≤ K ≤ 530) then 
+p = 53 and C = p. 
+else 
+Find minimum prime p such that 
+(p + 1) - K/R ≥ 0,  
+and determine C such that 
+if (p - K/R ≥ 0) then 
+if (p - 1 - K/R ≥ 0) then 
+C = p - 1. 
+else 
+C = p. 
+end if  
+else 
+C = p + 1 
+end if 
+end if 
+where the columns of rectangular matrix are numbered 0, 1, 2, …, C - 1 from left to right. 
+(3) 
+Write the input bit sequence xk into the R×C rectangular matrix row by row starting with bit x1 in column 0 of 
+row 0: 
+
+=====PAGE 18=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+18
+ 
+ 
+⎥
+⎥
+⎥
+⎥
+⎦
+⎤
+⎢
+⎢
+⎢
+⎢
+⎣
+⎡
++
+−
++
+−
++
+−
++
++
++
+RC
+C
+C
+C
+R
+C
+R
+C
+R
+C
+C
+C
+x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+M
+K
+K
+M
+M
+M
+K
+K
+2
+)
+3
+)
+1
+((
+)
+2
+)
+1
+((
+)
+1
+)
+1
+((
+)
+3
+(
+)
+2
+(
+)
+1
+(
+3
+2
+1
+ 
+6.2 
+Intra-row and inter-row permutations 
+After the bits-input to the R×C rectangular matrix, the intra-row and inter-row permutations for the R×C rectangular 
+matrix are performed by using the following algorithm: 
+(1) 
+Select a primitive root v from Table 6.1. 
+(2) 
+Construct the base sequence s(i) for intra-row permutation as: 
+s(i) = [v × s(i - 1)] mod p, 
+i = 1, 2,…, (p - 2)., and s(0) = 1. 
+(3) 
+Let q0 = 1 be the first prime integer in {qj}, and select the consecutive minimum prime integers {qj} (j = 1, 2, 
+…, R -  1) such that: 
+g.c.d. {qj, p - 1} = 1, qj > 6, and qj > q(j-1),  
+where g.c.d. is greatest common divisor. 
+(4) 
+Permute {qj} to make {rj} such that 
+rT(j) = qj , j = 0, 1, …, R - 1, 
+ 
+where T(j) (j = 0, 1, 2, …, R - 1) is the inter-row permutation pattern defined as the one of the following four 
+kinds of patterns: Pat1, Pat2, Pat3 and Pat4 depending on the number of input bits K. 
+ 
+{
+}
+)1
+(
+),...,
+2
+(
+),
+1(
+),
+0
+(
+−
+R
+T
+T
+T
+T
+⎪
+⎪
+⎪
+⎪
+⎪
+⎩
+⎪⎪
+⎪
+⎪
+⎪
+⎨
+⎧
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+≤
+=
+)
+5114
+3211
+(
+if
+    
+)
+3210
+3161
+(
+if
+    
+)
+3160
+2481
+(
+if
+    
+)
+2480
+2281
+(
+if
+    
+)
+2280
+531
+(
+if
+    
+)
+530
+481
+(
+if
+    
+)
+480
+201
+(
+if
+    
+)
+200
+160
+(
+if
+    
+)
+159
+40
+(
+if
+    
+1
+2
+1
+2
+1
+3
+1
+3
+4
+K
+Pat
+K
+Pat
+K
+Pat
+K
+Pat
+K
+Pat
+K
+Pat
+K
+Pat
+K
+Pat
+K
+Pat
+, 
+ 
+where Pat1, Pat2, Pat3 and Pat4 have the following patterns respectively. 
+Pat1: {19, 9, 14, 4, 0, 2, 5, 7, 12, 18, 10, 8, 13, 17, 3, 1, 16, 6, 15, 11} 
+Pat2: {19, 9, 14, 4, 0, 2, 5, 7, 12, 18, 16, 13, 17, 15, 3, 1, 6, 11, 8, 10} 
+Pat3: {9, 8, 7, 6, 5, 4, 3, 2, 1, 0} 
+Pat4: {4, 3, 2, 1, 0} 
+(5) 
+Perform the j-th (j = 0, 1, 2, …, R - 1) intra-row permutation as: 
+ 
+if (C = p) then 
+Uj(i) = s([i× rj]mod(p - 1)), i = 0, 1, 2, …, (p - 2)., and Uj(p - 1) = 0, 
+
+=====PAGE 19=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+19
+ 
+where Uj(i) is the input bit position of i-th output after the permutation of j-th row. 
+end if 
+if (C = p + 1) then 
+Uj(i) = s([i× rj]mod(p - 1)), i = 0, 1, 2, …, (p - 2)., Uj(p - 1) = 0, and Uj(p) = p, 
+where Uj(i) is the input bit position of i-th output after the permutation of j-th row, and  
+if (K = C × R) then 
+Exchange UR-1(p) with UR-1(0). 
+end if 
+end if 
+if (C = p - 1) then  
+Uj(i) = s([i× rj]mod(p - 1)) - 1, i = 0, 1, 2, …, (p - 2),  
+where Uj(i) is the input bit position of i-th output after the permutation of j-th row. 
+end if 
+(6) 
+Perform the inter-row permutation based on the pattern T(j) (j = 0, 1, 2, …, R - 1), 
+ 
+where T(j) is the original row position of the j-th permuted row. 
+Table 6.1: Table of prime p and associated primitive root v 
+p 
+v 
+p 
+v 
+p 
+v 
+p 
+v 
+p 
+v 
+7 
+3 
+47 
+5 
+101 
+2 
+157 
+5 
+223 
+3 
+11 
+2 
+53 
+2 
+103 
+5 
+163 
+2 
+227 
+2 
+13 
+2 
+59 
+2 
+107 
+2 
+167 
+5 
+229 
+6 
+17 
+3 
+61 
+2 
+109 
+6 
+173 
+2 
+233 
+3 
+19 
+2 
+67 
+2 
+113 
+3 
+179 
+2 
+239 
+7 
+23 
+5 
+71 
+7 
+127 
+3 
+181 
+2 
+241 
+7 
+29 
+2 
+73 
+5 
+131 
+2 
+191 
+19 
+251 
+6 
+31 
+3 
+79 
+3 
+137 
+3 
+193 
+5 
+257 
+3 
+37 
+2 
+83 
+2 
+139 
+2 
+197 
+2 
+ 
+ 
+41 
+6 
+89 
+3 
+149 
+2 
+199 
+3 
+ 
+ 
+43 
+3 
+97 
+5 
+151 
+6 
+211 
+2 
+ 
+ 
+ 
+6.2.1 
+Bits-output from rectangular matrix with pruning 
+After intra-row and inter-row permutations, the bits of the permuted rectangular matrix are denoted by y'k: 
+ 
+⎥
+⎥
+⎥
+⎥
+⎦
+⎤
+⎢
+⎢
+⎢
+⎢
+⎣
+⎡
++
+−
++
+−
++
++
++
++
+CR
+R
+C
+R
+C
+R
+R
+R
+R
+R
+R
+R
+y
+y
+y
+y
+y
+y
+y
+y
+y
+y
+y
+y
+'
+'
+'
+'
+'
+'
+'
+'
+'
+'
+'
+'
+)
+2
+)
+1
+((
+)
+1
+)1
+((
+3
+2
+)
+2
+2
+(
+)
+2
+(
+2
+)
+1
+2
+(
+)
+1
+(
+1
+M
+K
+K
+M
+M
+M
+K
+K
+ 
+
+=====PAGE 20=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+20
+ 
+The output of the Turbo code internal interleaver is the bit sequence read out column by column from the intra-row and 
+inter-row permuted R × C matrix starting with bit y'1 in row 0 of column 0 and ending with bit y'CR in row R - 1 of 
+column C - 1. The output is pruned by deleting bits that were not present in the input bit sequence, i.e. bits y'k that 
+corresponds to bits xk with k > K are removed from the output. The bits output from Turbo code internal interleaver are 
+denoted by x'1, x'2, …, x'K, where x'1 corresponds to the bit y'k with smallest index k after pruning, x'2 to the bit y'k with 
+second smallest index k after pruning, and so on. The number of bits output from Turbo code internal interleaver is K 
+and the total number of pruned bits is: 
+R × C – K. 
+6.2.2 
+Rate matching 
+The rate matching algorithm described below is used to adapt the number of bits at the output of the turbo encoder 
+(which is three times the input block length in bits plus 12 bits for the encoder tails) to the available channel bits. If the 
+CRC (see clause 5.1.1) is used, rate matching might become necessary in order to keep the number of info bits equal to 
+values reported in Table 5.1 and thus ensuring consistency with the transport channel definition (see clause 4.3.1). 
+The systematic bits of turbo encoded codewords shall not be punctured, the other bits may be punctured. The systematic 
+bits, first parity bits, and second parity bits in the bit sequence input to the rate matching block are therefore separated 
+into three sequences if puncturing is required (see Figure 6.2). 
+ 
+Figure 6.2: Rate Matching in case of puncturing 
+The first sequence contains: 
+• 
+All of the systematic bits from the turbo encoded block. 
+• 
+Some of the systematic, first parity and second parity bits that are for trellis termination. 
+The second sequence contains: 
+• 
+All of the first parity bits from the turbo encoded block. 
+• 
+Some of the systematic, first parity and second parity bits that are for trellis termination. 
+The third sequence contains: 
+• 
+All of the second parity bits from the turbo encoded block. 
+• 
+Some of the systematic, first parity and second parity bits that are for trellis termination. 
+Puncturing is applied only to the second and third sequence. Bit Collection is the inverse operation than Bit Separation. 
+After Bit Collection the bits marked for puncturing by the rate matching algorithm are removed. 
+In case repetition is required instead of puncturing no bit separation/collection is done (Figure 6.3). 
+
+=====PAGE 21=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+21
+ 
+ 
+Figure 6.3: Rate Matching in case of repetition 
+The Rate Matching algorithm operates as follows: 
+• 
+Let B and A respectively be the number of available bits before puncturing or repetition and the number of bits 
+which fits the system requirements (i.e. the number of bits after the puncturing or repetition). Clearly no 
+puncturing or repetition is needed if A=B. If B>A a puncturing shall be performed, whilst repetition is to be 
+done if A>B. 
+• 
+Let div= Max Common Divisor (abs(A-B), B) where abs stands for absolute value. 
+• 
+Then the period of the repetition or puncturing pattern is P = B / div. 
+• 
+The number of bits to be punctured or repeated in such a period is: 
+x= abs (A-B) / div; 
+To determine the puncturing pattern or repetition, i.e. a binary vector of size P containing 1 in correspondence of the 
+bits to be punctured or repeated the following pseudo-C algorithm can be used, where pattern is the binary vector to be 
+computed. 
+control=x/P; 
+counter=0; 
+for (i=0; i<P; i++) 
+{ 
+ 
+if((i*control-counter)>0) 
+ 
+{ 
+ 
+ 
+pattern[i]=1; 
+ 
+ 
+counter++; 
+ 
+} 
+ 
+else   pattern[i]=0; 
+} 
+if((x>counter)  
+pattern[0]=1;  
+6.3 
+Channel Interleaving 
+The channel interleaver is specified as the cascade of two separate channel interleavers. This allows to have the second 
+interleaver always operating on a single frame. The first inteleaver will then take care of dispersing bits on the full 
+PDCH data burst.  
+The 1st interleaver can be implemented as a block interleaver with inter-column permutations.  
+The output bit sequence is derived as follows: 
+(1) 
+Select the number of columns CI from Table 6.2. 
+(2) 
+Determine the number of rows RI defined as: 
+ 
+RI = Xi/CI 
+
+=====PAGE 22=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+22
+ 
+(3) 
+Write the input bit sequence into the RI × CI rectangular matrix row by row.  
+(4) 
+Perform the inter-column permutation based on the pattern {P1 (j)} (j=0,1, ..., C-1) shown in the Table 6.2.  
+(5) 
+Read the output bit sequence column by column from the inter-column permuted RI × CI matrix.  
+Table 6.2: 1st Channel Interleaver 
+TTI 
+Number of columns CI 
+Inter-column permutation patterns 
+3 frames 
+3 
+{0, 2, 1} 
+6 frames 
+6 
+{0, 4, 2, 1, 5, 3} 
+12 frames 
+12 
+{0, 8, 4, 2, 10, 6, 1, 9, 5, 3, 11, 7} 
+24 frames 
+24 
+{0, 16, 8, 4, 20, 12, 2, 18, 10, 6, 22, 14, 1, 17, 9, 5, 21, 13, 3, 19, 11, 7, 
+23, 15} 
+ 
+The second channel interleaver acts over a single frame. It consists of two stages. In the first stage, the input sequence is 
+written into a rectangular matrix row by row. The second stage is inter-column permutation. The two-stage operations 
+are described as follows, the input block length is assumed to be K2. 
+First Stage:  
+(1) 
+Set a column number C2 = 30. 
+(2) 
+Determine a row number R2 by finding minimum integer R2 such that: 
+K2 ≤ R2 × C2. 
+(3) 
+The input sequence of the 2nd interleaving is written into the R2× C2 rectangular matrix row by row. 
+Second Stage: 
+(1) 
+Perform the inter-column permutation based on the pattern {P2 (j)} (j=0,1, ..., C-1) that is shown in Table 6.3, 
+where P2 (j) is the original column position of the j-th permuted column. 
+(2) 
+The output of the 2nd interleaving is the sequence read out column by column from the inter-column permuted 
+R2 × C2 matrix and the output is pruned by deleting the non-existence bits in the input sequence, where the 
+deleting bits number l2 is defined as: 
+l2 = R2 × C2 – K2. 
+Table 6.3: 2nd Interleaving column permutation 
+Number of column C2 
+Inter-column permutation pattern 
+30 
+{0, 20, 10, 5, 15, 25, 3, 13, 23, 8, 18, 28, 1, 11, 21, 6, 16, 26, 4, 14, 24, 19, 9, 29, 12, 
+2, 7, 22, 27, 17} 
+ 
+
+=====PAGE 23=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+23
+ 
+7 
+Spreading and Modulation 
+7.1 
+PDCH and PCCH spreading 
+Figure 7.1 illustrates the spreading and scrambling of the PDCH and PCCH. 
+Spreading is applied after mapping the control and data binary values 0 and 1 to +1 and -1 respectively and before pulse 
+shaping. It consists of two operations: 
+1) 
+the channelization operation, which transforms every symbol into a number of chips, thus increasing the 
+bandwidth of the signal; 
+2) 
+the scrambling operation, where a scrambling code is applied to the spread signal obtained by I/Q multiplexing 
+of the data and control branches. 
+With the channelization operation, data symbols in the so-called I- and Q-branches are independently multiplied with an 
+OVSF code. With the scrambling operation, the resultant signals on the I- and Q-branches are further multiplied by 
+complex-valued scrambling code, where I and Q denote real and imaginary parts, respectively.  
+The real-valued signals of the I- and Q-branches are then summed and treated as a complex signal. This complex signal 
+is then scrambled by the complex-valued scrambling code, Cscramb. The control channel may be adjusted by the gain 
+factor β ≤ 1. 
+The values of β are quantized into 4 bits, and the quantization steps are given in Table 7.1. 
+Table 7.1: Quantization of the gain parameters. 
+Signalling values for β 
+Quantized amplitude ratios (β) 
+15 
+1,0 
+14 
+0,9333 
+13 
+0,8666 
+12 
+0,8000 
+11 
+0,7333 
+10 
+0,6667 
+9 
+0,6000 
+8 
+0,5333 
+7 
+0,4667 
+6 
+0,4000 
+5 
+0,3333 
+4 
+0,2667 
+3 
+0,2000 
+2 
+0,1333 
+1 
+0,0667 
+0 
+Switch off 
+ 
+The channelization codes to be used for the PCCH and for the PDCH are signalled in the SCT table in 
+TS 102 721-6 [1]. 
+NOTE 1:  For the sake of clarity, the average power of the preamble and of the data + control channel part should 
+always be the same. However for the preamble the amplitude of both I and Q component is equal, 
+whereas for the data + control channel part the amplitude ratio should be PDCH:PCCH=1:ß. 
+NOTE 2: Such signalling could be eliminated if fixed sequences are specified i.e. the all 1 sequences for the PCCH 
+and the {1, -1, 1, -1, …} sequence for the PDCH). 
+
+=====PAGE 24=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+24
+ 
+Cch,d
+PDCH
+(BPSK mapping)
+Channelization code 
+(OVSF)
+Cch,c
+PCCH
+(BPSK mapping)
+β
+*j
+Cscramb
+I+jQ
+Control Channel 
+Gain Factor
+Channelization code 
+(OVSF)
+S
+Preamble 
+insertion
+Preamble 
+Generator
+ 
+Figure 7.1: Spreading, scrambling and preamble insertion for PDCH and PCCH 
+7.1.1 
+PDCH and PCCH channelization 
+The PCCH is spread by the channelization code Cch,c and the PDCH is spread by a different channelization codes, Cch,d. 
+Symbols of both channels are BPSK-modulated. 
+The channelization codes are Orthogonal Variable Spreading Factor (OVSF) codes that preserve the orthogonality 
+between different physical channels (dedicated physical channels only). The OVSF codes can be defined using the code 
+tree of the Figure 7.2. 
+ 
+Figure 7.2: Code-tree for generation of Orthogonal Variable Spreading Factor (OVSF) codes 
+Channelization codes are uniquely described as Cch,SF,k, where SF is the spreading factor of the code and k is the code 
+number, 0 ≤ k ≤ SF-1. 
+Each level in the code tree defines channelization codes of the length SF, corresponding to a spreading factor of SF in 
+Figure 7.2. 
+
+=====PAGE 25=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+25
+ 
+The generation method for the channelization code is defined as: 
+1
+0
+,1,
+=
+ch
+C
+ 
+⎥⎦
+⎤
+⎢⎣
+⎡
+−
+=
+⎥
+⎦
+⎤
+⎢
+⎣
+⎡
+−
+=
+⎥
+⎦
+⎤
+⎢
+⎣
+⎡
+1
+1
+1
+1
+0
+,1,
+0
+,1,
+0,1,
+0
+,1,
+1,2
+,
+0
+,2
+,
+ch
+ch
+ch
+ch
+ch
+ch
+C
+C
+C
+C
+C
+C
+ 
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+⎥
+⎥
+⎥
+⎥
+⎥
+⎥
+⎥
+⎥
+⎥
+⎦
+⎤
+⎢
+⎢
+⎢
+⎢
+⎢
+⎢
+⎢
+⎢
+⎢
+⎣
+⎡
+−
+−
+−
+=
+⎥
+⎥
+⎥
+⎥
+⎥
+⎥
+⎥
+⎥
+⎥
+⎦
+⎤
+⎢
+⎢
+⎢
+⎢
+⎢
+⎢
+⎢
+⎢
+⎢
+⎣
+⎡
+−
+−
+−
+−
+−
+−
++
++
++
++
++
++
++
++
+1
+2
+,
+2
+,
+1
+2
+,
+2
+,
+1,
+2
+,
+1,
+2
+,
+0,
+2
+,
+0
+,
+2
+,
+1
+2
+,
+2
+,
+1
+2
+,
+2
+,
+1,
+2
+,
+1,
+2
+,
+0
+,
+2
+,
+0
+,
+2
+,
+1
+2
+,
+2
+,
+2
+2
+,
+2
+,
+3,
+2
+,
+2
+,
+2
+,
+1,
+2
+,
+0
+,
+2
+,
+1
+1
+1
+1
+1
+1
+1
+1
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+n
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+ch
+C
+C
+C
+C
+C
+C
+C
+C
+C
+C
+C
+C
+C
+C
+C
+C
+C
+C
+M
+M
+M
+ 
+The leftmost value in each channelization code word corresponds to the chip transmitted first in time. 
+7.1.2 
+PDCH and PCCH scrambling 
+The same scrambling solution is based on the one used in 3GPP WCDMA (long code option of 3GPP) [i.10]. However, 
+differently from 3GPP the scrambling code period is not limited to 38 400 chips. In fact a period equal to the entire 
+PDCH burst length (see clause 5.1) is selected to minimize code collision probability between random access users. 
+There are 224 scrambling codes. The codes are complex valued and are formed as follows:  
+ 
+(
+)
+(
+)
+(
+)
+1,
+2,
+( )
+( ) 1
+1
+2
+/ 2
+i
+scramb
+n
+n
+C
+i
+c
+i
+j
+c
+i
+=
++
+−
+⎢
+⎥
+⎣
+⎦
+ 
+ 
+The scrambling sequences c1,n and c2,n are constructed from position wise modulo 2 sum of segments of two binary 
+m-sequences generated by means of two generator polynomials of degree 25. Let x, and y be the two m-sequences 
+respectively. The x sequence is constructed using the primitive (over GF(2)) polynomial X25+X3+1. The y sequence is 
+constructed using the polynomial X25+X3+X2+X+1. The resulting sequences thus constitute segments of a set of Gold 
+sequences. 
+Let n23 … n0 be the 24 bit binary representation of the scrambling sequence number n with n0 being the least significant 
+bit. The x sequence depends on the chosen scrambling sequence number n and is denoted xn, in the sequel. Furthermore, 
+let xn(i) and y(i) denote the i:th symbol of the sequence xn and y, respectively. 
+The m-sequences xn and y are constructed as: 
+Initial conditions: 
+xn(0) = n0 , xn(1)= n1 , … = xn(22) = n22 ,xn(23) = n23, xn(24) = 1. 
+y(0) = y(1) = … = y(23) = y(24) = 1. 
+Recursive definition of subsequent symbols: 
+xn(i + 25) = xn(i + 3) + xn(i) modulo 2, i = 0,…, 225 - 27. 
+y(i + 25) = y(i + 3) + y(i + 2) +y(i + 1) + y(i) modulo 2, i = 0,…, 225 - 27. 
+Define the binary Gold sequence zn by: 
+zn(i) = xn(i) + y(i) modulo 2, i = 0, 1, 2, …, 225 - 2. 
+
+=====PAGE 26=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+26
+ 
+The real valued Gold sequence Zn is defined by: 
+ 
+.2
+2,
+,1,0
+1
+)
+(
+1
+0
+)
+(
+1
+)
+(
+25 −
+=
+⎩
+⎨
+⎧
+=
+−
+=
++
+=
+K
+i
+for
+i
+z
+if
+i
+z
+if
+i
+Z
+n
+n
+n
+ 
+Now, the real-valued long scrambling sequences clong,1,n and clong,2,n are defined as follows: 
+c1,n(i) = Zn(i), i = 0, 1, 2, …, 225 – 2 and 
+c2,n(i) = Zn((i + 16777232) modulo (225 – 1)), i = 0, 1, 2, …, 225 – 2. 
+The code, c2,n used in generating the quadrature component of the complex spreading code is a 16,777,232 chip shifted 
+version of the code, c1,n used in generating the in phase component. 
+Code construction for c1,n and c2,n is shown in Figure 7.3. 
+ 
+c1,n 
+c2,n 
+MSB 
+LSB 
+ 
+Figure 7.3: Configuration of uplink scrambling code generator 
+Different scrambling code can be used in the system. In practice allowing different signatures s1 for the preamble is 
+equivalent to use multiple scrambling/spreading codes for packets of a given beam. 
+7.2 
+Up-Link Burst Preamble 
+The preamble processing is illustrated in Figure 7.1. 
+The ULB complex quaternary preamble p is composed as follows: 
+p(k) = s1(k div Nc) s2(k mod Nc)    k = 0, 1, 2, … P·Nc - 1 
+where the 'div' operator is the integer division and the 'mod' operator is the modulus operator 8 i.e. the rest of an integer 
+division). 
+The number of symbols, P, is 96.  
+The value of Nc depends on the chip rate, i.e.: 
+• 
+Nc = 256 for the 3,84 Mchip/s option {correct comma and dot decimal separator in all documents} 
+• 
+Nc = 128 for the 1,92 Mchip/s option 
+• 
+Nc = 16 for the 240 kchip/s option 
+The preamble can thus be thought as composed of a sequence s1 of length P = 96 symbols and symbol rate 
+15 ksymbol/s spread by a PN code s2 of period Nc and spreading factor Nc. 
+
+=====PAGE 27=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+27
+ 
+7.2.1 
+Sequence s1 
+The sequence s1 is a quaternary sequence with period equal to 96 constructed by combining two real binary sequences 
+into a complex one.  
+Each of the two real sequences is constructed as the position-wise modulo 2 sum of P chip segments of two binary  
+m-sequences generated by means of two generator polynomials of degree 9. The resulting sequences thus constitute 
+segments of a set of Gold sequences.  
+Let x and y be the two binary m-sequences respectively. The x sequence is constructed using the primitive (over GF(2)) 
+polynomial 1+X4+X9 . The y sequence is constructed using the polynomial 1+X+X3+X4+X9 . 
+The Gold sequence z is actually a function of the chosen sequence index n and is thus denoted as zn, in the sequel. 
+Furthermore, let x(i), y(i) and zn(i) denote the i:th symbol of the sequence x, y, and zn, respectively. 
+The m-sequences x and y are constructed as: 
+Initial conditions: 
+x (0) = 1, x(1) = x(2) =...= x (8) = 0 
+y(0) = y(1)= … = y(8) = 1 
+Recursive definition of subsequent symbols: 
+x(i + 9) =x(i + 4) + x(i) modulo 2, 
+y(i + 9) = y(i + 4) + y(i + 3) + y(i + 1) + y(i) modulo 2. 
+The n:th Gold code sequence zn, n = 0,1,2,…,29 - 2, is then defined as: 
+zn(i) = x((i+n) modulo 29 - 1) + y(i) modulo 2, i = 0,…, 29 - 2. 
+These binary code words are converted to real valued sequences by the transformation '0' -> '+1', '1' -> '-1'. 
+Finally, the n:th complex scrambling code sequence s1,n is defined as (the lowest index corresponding to the chip 
+scrambled first in each frame): 
+s1,n(i) = zn(i) + j zn(i + 256)      i = 0,1,…,P-1. 
+7.2.2 
+Sequence s2 
+The sequence s2 is of length 256, or 128 or 16 depending on the PDCH chip rate (3,94 Mchip/s, or 1,92 Mchip/s or 
+240 kchip/s respectively. 
+We will assume that only a single s2 sequence is used in a given beam. If multiple preambles are required in a given 
+beam to reduce the collision probability then this may be obtained by using multiple s1 signatures. 
+The sequence s2 reported below for the different spreading factors are quaternary Golay sequences generated with the 
+algorithm specified in Annex A. The actual sequence to be used is signalled in the SCT table in TS 102 721-6 [1]. 
+7.2.2.1 
+SF = 16 
+The two sequences are obtained with weight [+j; +j; +j ; +j] and permutation [2; 1; 8; 4;]: 
+Sequence 1 is: [1, j, j ,1, j, -1, -1, j, j, 1, -1, -j, 1, -j, j, -1],   * exp(j π/4) 
+Sequence 2 is: [1, j, -j, -1, j, -1, 1, -j, j, 1, 1, j, 1, -j, -j, 1] * exp(j π/4) 
+
+=====PAGE 28=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+28
+ 
+7.2.2.2 
+SF = 128  
+The two sequences are obtained with weight [+j; -1; +j; -1; j; -1; -1] and permutation [64; 1; 32; 4; 8; 2; 16]: 
+Sequence 1 is: 
+[+1, -1, -1, +1, -1, +1 ,+1 ,-1, +j, -j, +j, -j, +j, -j, +j, -j, 
+-1, +1, -1, +1, +1, -1, +1, -1, -j, +j, +j, -j, -j, +j, +j, -j, 
++j, +j, -j, -j, +j, +j, -j, -j, -1, -1, -1, -1, +1, +1, +1, +1, 
+-j, -j, -j, -j, -j, -j, -j, -j, +1, +1, -1, -1, -1, -1, +1, +1, 
++j, +j, -j, -j, -j, -j, +j, +j, -1, -1, -1, -1, -1, -1, -1, -1, 
+-j, -j, -j, -j, +j, +j, +j, +j, +1, +1, -1, -1, +1, +1, -1, -1, 
+-1, +1, +1, -1, -1, +1, +1, -1, -j, +j, -j, +j, +j, -j, +j, -j, 
++1, -1, +1, -1, +1, -1, +1, -1, +j, -j, -j, +j, -j, +j,+ j, -j] *exp(jπ/4) 
+ 
+Sequence 2 is: 
+[+1, -1, -1, +1, -1, +1, +1, -1, +j, -j, +j, -j, +j, -j, +j, -j, 
+-1, +1,-+1, +1, +1, -1, +1, -1, -j, +j, +j, -j, -j, +j, +j, -j, 
++j, +j, -j, -j, +j, +j, -j, -j, -1, -1, -1, -1, +1, +1, +1, +1,  
+-j, -j, -j, -j, -j, -j, -j, -j, +1, +1, -1, -1, -1, -1, +1, +1, 
+-j, -j, +j, +j, +j, +j, -j, -j, +1, +1, +1, +1, +1, +1, +1, +1,  
++j, +j, +j, +j, -j, -j, -j, -j, -1, -1, +1, +1, -1, -1, +1, +1, 
+ +1, -1, -1, +1, +1, -1, -1, +1, +j, -j, +j, -j, -j, +j, -j, +j, 
+ -1, +1, -1, +1, -1, +1, -1, +1, -j, +j, +j, -j, +j, -j, -j, +j] *exp(jπ/4) 
+7.2.2.3 
+SF = 256 
+The two sequences are obtained with weight [+j; +j; +j; +j; -1; +j; +j; -1] and permutation [16; 8; 4; 32; 2; 64; 1; 128]: 
+Sequence 1 is: 
+[+1, +j, -1, -j, +j, -1, -j,+1, +j, -1, -j,+1,+1, +j, -1, -j, +j, -1, -j,+1, -1, 
+-j,+1, +j,+1, +j, -1, -j, -j,+1, +j, -1, +j, -1, +j, -1,+1, +j,+1, +j, -1, -j, -
+1, -j, -j,+1, -j,+1, -1, -j, -1, -j, +j, -1, +j, -1, +j, -1, +j, -1, -1, -j, -1, 
+-j, +j,+1, +j,+1, -1, +j, -1, +j, -1, +j, -1, +j, +j,+1, +j,+1, -1, +j, -1, +j, 
+-j, -1, -j, -1, +j,+1, +j,+1,+1, -j,+1, -j, -1, +j,+1, -j, +j,+1, -j, -1, -j, -
+1, +j,+1,+1, -j, -1, +j, -j, -1, +j,+1, -1, +j,+1, -j, -1, +j,+1, -j, -j, -1, 
++j,+1, -1, +j,+1, -j, -j, -1, +j,+1, -j, -1, +j,+1, -1, +j,+1, -j, -j, -1, 
++j,+1,+1, -j, -1, +j, -1, +j,+1, -j, +j,+1, -j, -1, -j, -1, -j, -1, -1, +j, -1, 
++j,+1, -j,+1, -j, +j,+1, +j,+1,+1, -j,+1, -j, -j, -1, -j, -1, -j, -1, -j, -1,+1, 
+-j,+1, -j, -j,+1, -j,+1,+1, +j,+1, +j,+1, +j,+1, +j, -j,+1, -j,+1,+1, +j,+1, +j, 
++j, -1, +j, -1, -j,+1, -j,+1, -1, -j, -1, -j,+1, +j, -1, -j, -j,+1, +j, -1, +j, 
+-1, -j,+1, -1, -j,+1, +j, +j, -1, -j,+1,+1, +j, -1, -j,+1, +j, -1, -j, +j, -1, -
+j,+1] *exp(j π/4) 
+ 
+Sequence 2 is: 
+[+1, +j, -1, -j, +j, -1, -j, +1, +j, -1, -j, +1, +1, +j, -1, -j,  
+ -j, +1, +j, -1, +1, +j, -1, -j, -1, -j, +1, +j, +j, -1, -j, +1, 
+ +j, -1, +j, -1, +1, +j, +1, +j, -1, -j, -1, -j, -j, +1, -j, +1, 
+ +1, +j, +1, +j, -j, +1, -j, +1, -j, +1, -j, +1, +1, +j, +1, +j, 
+ +j, +1, +j, +1, -1, +j, -1, +j, -1, +j, -1, +j, +j, +1, +j, +1, 
+ +1, -j, +1, -j, +j, +1, +j, +1, -j, -1, -j, -1, -1, +j, -1, +j, 
+ -1, +j, +1, -j, +j, +1, -j, -1, -j, -1, +j, +1, +1, -j, -1, +j, 
+ +j, +1, -j, -1, +1, -j, -1, +j, +1, -j, -1, +j, +j, +1, -j, -1, 
+ -1, +j, +1, -j, -j, -1, +j, +1, -j, -1, +j, +1, -1, +j, +1, -j, 
+ +j, +1, -j, -1, -1, +j, +1, -j, +1, -j, -1, +j, -j, -1, +j, +1, 
+ -j, -1, -j, -1, -1, +j, -1, +j, +1, -j, +1, -j, +j, +1, +j, +1, 
+ -1, +j, -1, +j, +j, +1, +j, +1, +j, +1, +j, +1, -1, +j, -1, +j, 
+ -j, +1, -j, +1, +1, +j, +1, +j, +1, +j, +1, +j, -j,+1, -j, +1, 
+ -1, -j, -1, -j, -j, +1, -j, +1, +j, -1, +j, -1, +1, +j, +1, +j, 
+
+=====PAGE 29=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+29
+ 
+ +1, +j, -1, -j, -j, +1, +j, -1, +j, -1, -j, +1, -1, -j, +1, +j, 
+ -j, +1, +j, -1, -1, -j, +1, +j, -1, -j, +1, +j, -j, +1, +j, -1] *exp(jπ/4) 
+ 
+7.3 
+Modulation 
+Modulation of the complex-valued chip sequence S generated by the spreading process described in clause 7.1 is shown 
+below in Figure 7.4 for a given uplink frequency ω. 
+S
+Im{S}
+Re{S}
+cos(ωt)
+Complex-valued
+chip sequence
+from spreading
+operations
+-sin(ωt)
+Split
+real &
+imag.
+parts
+Pulse-
+shaping
+Pulse-
+shaping
+ 
+Figure 7.4: Uplink modulation and pulse shaping 
+Pulse shaping is performed through square root raised cosine filters with roll-off α=0,22 as shown in figure 7.4. 
+The impulse response of the pulse shaping is thus equal to: 
+ 
+(
+)
+(
+)
+2
+sin
+1
+4
+cos
+1
+( )
+1
+4
+c
+c
+c
+c
+c
+t
+t
+t
+T
+T
+T
+p t
+t
+t
+T
+T
+π
+α
+α
+π
+α
+π
+α
+⎛
+⎞
+⎛
+⎞
+−
++
++
+⎜
+⎟
+⎜
+⎟
+⎝
+⎠
+⎝
+⎠
+=
+⎛
+⎞
+⎛
+⎞
+⎜
+⎟
+−⎜
+⎟
+⎜
+⎟
+⎝
+⎠
+⎝
+⎠
+  
+Where Tc is the chip period. 
+8 
+Radio transmission 
+8.1 
+Frequency bands and channel arrangement  
+The nominal channel spacing is either 5 MHz or 2,5 MHz or 325 kHz respectively for the 3,84 Mchip/s, 1,92 Mchip/s 
+and 240 kchip/s.  
+The terminal shall be able to transmit on any frequency signalled in the SCT table in TS 102 721-6 [1]. The granularity 
+for the frequency signalled in the SCT is 100 Hz. 
+8.2 
+Stability and accuracy requirements 
+For stability the terminal shall be locked either on a satellite Forward-Link (FL) carrier or on a Down-Link (DL) carrier 
+from a terrestrial repeater.  
+
+=====PAGE 30=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+30
+ 
+It is assumed here that the terminal will generate the Tx carrier and clock frequencies based on a reference locked on the 
+recovered FL (or DL) carrier clock. The relative accuracy with which the FL carrier clock frequency shall be recovered 
+should be better than 3 × 10-7. This would allow the GW demodulator to reduce the search range for packet detection. 
+At this regard it is assumed that the transmitted FL (or DL) carrier clock frequency is known with an accuracy of 10-8. 
+Also the GW knows and can pre-compensate the satellite Doppler and the frequency conversion error of the satellite 
+transponders. It is thus expected that the major contributions to the frequency error seen by the GW demodulator are the 
+reference clock accuracy of the terminal and the terminal caused Doppler. 
+The total frequency error at the GW side can be estimated as: 
+• 
+Error in the FL reference clock recovered at the terminal: 3 × 10-7 
+• 
+Uncompensated satellite Doppler: 10-8 
+• 
+Frequency accuracy of the transmitted FL carrier: 10-8 
+• 
+Gateway reference frequency accuracy: 10-8 
+• 
+Uncompensated Satellite Frequency Translation Error: 1,5 × 10-7 
+• 
+Uncompensated Terminal Doppler: 2,4 × 10-7 
+NOTE:  
+This assumes no Doppler compensation for vehicle speed up to 130 km/h. Further, Doppler from both the 
+FL and RL is considered. Faster vehicles (i.e. trains) are assumed to have Doppler pre-compensation. 
+The total relative frequency error of return link carriers relative to GW demodulator reference is 7,2 × 10-7 which 
+amounts to a maximum carrier frequency error of less than 1,5 kHz for the MSS S-band. 
+8.2.1 
+Frequency and symbol timing stability and accuracy 
+The modulated carrier frequency shall be accurate to within ±0,5 PPM observed over a period of one frame compared to 
+the carrier frequency received from the satellite or a terrestrial repeater. The terminal shall use the same frequency 
+source for both RF frequency generation and the chip clock. 
+8.2.2 
+Power stability and accuracy 
+The accuracy with which the output power is set shall be better than 2 dB. 
+The terminal shall be able to set its output power in a range of 30 dB with monotonic steps of 0,5 dB from [Pmax -30 dB 
+to Pmax]. 
+When not transmitting, the output power shall be below -56 dBm.  
+8.3 
+Transmitter characteristics 
+8.3.1 
+Power output characteristics and power class 
+NOTE:  
+Typical EIRP values are defined in TS 102 721-1 [i.11].  
+8.3.2 
+Transmit polarization 
+8.3.2.1 
+Satellite Access 
+Circular polarization shall be supported by vehicular terminals. Hand-held terminals, if allowed by the system operator 
+may use linear polarization but QoS may be reduced with respect to vehicular terminals. 
+
+=====PAGE 31=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+31
+ 
+8.3.2.2 
+Terrestrial Access 
+Linear polarization will be used by the CGC. This does not imply that vehicular terminals shall use an ad-hoc antenna 
+for CGC (although this may improve the link budget as the optimal antenna patterns for satellite and terrestrial paths are 
+different).  
+8.3.3 
+Unwanted emissions 
+Adjacent Channel Leakage power Ratio (ACLR) (defined as the ratio of the Square Root Raised Cosine (SRRC) filtered 
+mean power centred on the assigned channel frequency to the SRRC filtered mean power centred on an adjacent 
+channel frequency) shall be higher than 33 dB for the first adjacent channel slot and higher than 43 dB for the 2nd 
+adjacent channel slot. The channel slot widths are 5 MHz, 2,5 MHz and 325 kHz respectively for the 3,84 Mchip/s, 
+1,92 Mchip/s and 240 kchip/s options. 
+8.4 
+Transmit procedure 
+The following transmit procedure is foreseen. 
+(1) 
+The terminal randomly selects a preamble spreading code from the set of available spreading codes (if more 
+than one is available). The random function shall provide a uniform distribution of the selected codes. 
+(2) 
+The terminal sets the transmit power in order to get an EIRP value depending on the value of parameter 
+Rl_tx_EIRP_flag broadcasted through the SAT table in TS 102 721-6 [1] according to the following options: 
+- 
+Rl_tx_EIRP = 00 
+  
+No terminal can transmit 
+- 
+Rl_tx_EIRP = 01: 
+  
+The terminal shall set its transmitted EIRP to the value P computed as P [dBm] = L + NSAT + K – 
+Rrand. 
+  
+where L is the path loss [in dB] (also including fading due to e.g. shadowing), estimated from the 
+SNR measured on the FL carrier using the value of the forward link EIRP which is broadcasted 
+through the SAT Table; NSAT is the noise+interference power level at the satellite receiver input 
+expressed in dBm, which is broadcasted through the SDT Table. K is a value broadcasted through 
+the SAT Table.  
+NOTE: 
+The parameters in the above definition of the EIRP are system-dependent and depend on the 
+type of signal processing implemented at the gateway side (which is not part of this multi-part 
+deliverable). 
+  
+The path loss, L, actually also implicitly includes the geographic advantage of the terminal (i.e. the 
+position of the terminal within the Tx antenna beam).  
+  
+The parameter K [in dB] is equal to C/(N0+ I0)|T - GS where C/(N0+ I0)|T is the target value used 
+for the desired C/(N0+ I0) at the satellite transponder input. GS is the satellite antenna gain at edge 
+of coverage. 
+  
+Rrand [in dB] is a random value between 0 and Rmax which is extracted by the terminal according to 
+a uniform distribution. Rmax is also designated on the SAT Table broadcasted on the FL with the 
+purpose of optimizing the demodulator performance. If the value of P exceeds the terminal 
+capability no transmission shall take place as this is an indication of excessive channel fading. A 
+CGC could be used in such a case if available. 
+
+=====PAGE 32=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+32
+ 
+- 
+Rl_tx_EIRP = 10 
+  
+The terminal shall transmit with maximum EIRP if the measured SNR from the FL carrier is 
+greater than SNRLOS - Rmax, being Rmax a parameter broadcasted through the SAT table and 
+ 
+LOS
+ref
+1
+1
+SNR
+max SNR
+;
+SNR
+=
+⎧
+⎫
+=
+⎨
+⎬
+⎩
+⎭
+∑
+N
+N
+i
+N
+ 
+  
+where SNRref is a pre-configured minimum system guaranteed LOS received signal power value 
+and SNRN are the last N best SNR estimates. N = 10 is recommended value. If the above condition 
+is not satisfied, the terminal shall not transmit. 
+- 
+Rl_tx_EIRP = 11 
+  
+The terminal shall transmit always with maximum EIRP 
+(3) 
+Once a packet has been transmitted, the transmission time of next packet depends whether an acknowledgment 
+is required or not and, if required, if cumulative acknowledgments are allowed. 
+If no acknowledgment is required, the next packet transmission shall not be done before a time interval computed by 
+using the given persistence value and back-off time which are signalled for the terminal user group and for the given 
+congestion status on the SAT table. 
+If an ACK per packet is required no further packet transmission may happen before the reception of the ACK.  
+If no ACK is received before the associated message Time_Out, a random draw using the current dynamic persistence 
+value and the actual back-off time is done for computing the packet retransmission time. If the retransmitted packet is 
+not acknowledged and the number of allowed retransmission is less than the allowed retransmission number, the 
+dynamic persistence value is halved.  
+8.5 
+Tx/Rx states 
+The terminal transmit/receive states are as follows: 
+• 
+Idle (terminal disabled or switched off). 
+• 
+Search (transmission disabled). 
+• 
+Satellite Rx synchronized status (transmission enabled upon reception of the SCT, SAT and SDT signalling 
+tables, see [1]). 
+• 
+CGC Rx Synchronized status (transmission enabled upon reception of the SCT, SAT and SDT signalling 
+tables, see [1]). 
+An additional state may be considered for terminals able to monitor both satellite and repeater carriers at the same time. 
+Figure 8.1 shows the state transitions (transitions to the Idle state are not shown for simplicity). 
+The Search state is the initial state of the terminal after switch-on. In that state a search of FL satellite or terrestrial 
+carriers is performed. Priority is to search for satellite first, then revert to terrestrial if no satellite carrier is found. The 
+search state is re-entered after loss of Rx Synchronization (i.e. carrier outage) lasting for more than TSat or TCGC 
+seconds. Suggested values for TSat and TCGC are respectively 3 s and 1 s. 
+
+=====PAGE 33=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+33
+ 
+ 
+Figure 8.1: Tx/Rx states 
+9 
+Physical layer measurements 
+Radio characteristics are measured and reported to higher layers and the network. Such measurements are for further 
+study. 
+
+=====PAGE 34=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+34
+ 
+Annex A (informative): 
+Generation of Complex Complementary Golay Codes 
+The pair of complementary sequences can be generated by the following Haskell code: 
+golayAux n w p a b  
+     |(n < 0) = ([],[]) 
+     |(n == 0) = (a,b) 
+     |otherwise = golayAux (n-1) w p d e 
+ 
+ 
+where 
+ 
+ 
+ 
+i = n-1 
+ 
+ 
+ 
+c = map (\x -> x*(w!!i)) (rightCyclicShift (p!!i) b) 
+ 
+ 
+ 
+d = zipWith (+) a c 
+ 
+ 
+ 
+e = zipWith (-) a c 
+ 
+golay n w p = golayAux n w p 
+([1] ++ [0 | i<- [1 .. (2^n)-1]])  
+                     
+([1] ++ [0 | i<- [1 .. (2^n)-1]]) 
+ 
+The function golay uses a helper function golayAux for doing the actual computation. Functions used in golayAux are 
+Haskell standard library functions (map and zipWith) or function whose purpose is self evident (i.e. rightCyclicShift). 
+The sequences in the specifications were generated by calling the golay function with the following arguments (and 
+successive 45° rotation): 
+N = 16 
+golay 4 [0:+1 , 0:+1, 0:+1, 0:+1] [2, 1, 8, 4] 
+N = 128 
+golay 7 [0:+1 , -1, 0:+1, -1, 0:+1, -1, -1] [64; 1; 32; 4; 8; 2; 16] 
+N = 256 
+golay 8 [0:+1,0:+1,0:+1,0:+1, -1, 0:+1,0:+1, -1] [16,8,4,32,2,64,1,128] 
+
+=====PAGE 35=====
+ 
+ETSI 
+ETSI TS 102 721-3 V1.2.1 (2013-08)
+35
+ 
+History 
+Document history 
+V1.1.1 
+December 2011 
+Publication 
+V1.2.1 
+August 2013 
+Publication 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

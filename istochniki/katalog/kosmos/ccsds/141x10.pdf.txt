@@ -1,0 +1,2482 @@
+
+=====PAGE 1=====
+Research and Development for 
+Space Data System Standards 
+OPTICAL HIGH DATA 
+RATE (HDR) 
+COMMUNICATION—
+1550 NM 
+EXPERIMENTAL SPECIFICATION 
+CCSDS 141.10-O-1 
+ORANGE BOOK 
+June 2022 
+
+=====PAGE 2=====
+ 
+Research and Development for 
+Space Data System Standards 
+OPTICAL HIGH DATA 
+RATE (HDR) 
+COMMUNICATION—
+1550 NM 
+EXPERIMENTAL SPECIFICATION 
+CCSDS 141.10-O-1 
+ORANGE BOOK 
+June 2022 
+
+=====PAGE 3=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page i 
+June 2022 
+AUTHORITY 
+ 
+ 
+ 
+Issue: 
+Orange Book, Issue 1 
+ 
+ 
+Date: 
+June 2022 
+ 
+ 
+Location: 
+Washington, DC, USA 
+ 
+ 
+This document has been approved for publication by the Consultative Committee for Space 
+Data Systems (CCSDS).  The procedure for review and authorization of CCSDS documents 
+is detailed in Organization and Processes for the Consultative Committee for Space Data 
+Systems (CCSDS A02.1-Y-4). 
+ 
+This document is published and maintained by: 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+Email: secretariat@mailman.ccsds.org 
+ 
+
+=====PAGE 4=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page ii 
+June 2022 
+FOREWORD 
+This document is a CCSDS Experimental Specification for the channel coding, 
+synchronization, and physical layer of high data rate signals to be used in free-space optical 
+communications of space systems.  It was authored and contributed to CCSDS by NASA, 
+CNES, JAXA, and NICT. 
+Through the process of normal evolution, it is expected that expansion, deletion, or 
+modification of this document may occur.  This Recommended Standard is therefore subject 
+to CCSDS document management and change control procedures, which are defined in the 
+Organization and Processes for the Consultative Committee for Space Data Systems 
+(CCSDS A02.1-Y-4).  Current versions of CCSDS documents are maintained at the CCSDS 
+Web site: 
+http://www.ccsds.org/ 
+Questions relating to the contents or status of this document should be sent to the CCSDS 
+Secretariat at the email address indicated on page i. 
+
+=====PAGE 5=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page iii 
+June 2022 
+At time of publication, the active Member and Observer Agencies of the CCSDS were: 
+Member Agencies 
+– Agenzia Spaziale Italiana (ASI)/Italy. 
+– Canadian Space Agency (CSA)/Canada. 
+– Centre National d’Etudes Spatiales (CNES)/France. 
+– China National Space Administration (CNSA)/People’s Republic of China. 
+– Deutsches Zentrum für Luft- und Raumfahrt (DLR)/Germany. 
+– European Space Agency (ESA)/Europe. 
+– Federal Space Agency (FSA)/Russian Federation. 
+– Instituto Nacional de Pesquisas Espaciais (INPE)/Brazil. 
+– Japan Aerospace Exploration Agency (JAXA)/Japan. 
+– National Aeronautics and Space Administration (NASA)/USA. 
+– UK Space Agency/United Kingdom. 
+Observer Agencies 
+– 
+Austrian Space Agency (ASA)/Austria. 
+– 
+Belgian Science Policy Office (BELSPO)/Belgium. 
+– 
+Central Research Institute of Machine Building (TsNIIMash)/Russian Federation. 
+– 
+China Satellite Launch and Tracking Control General, Beijing Institute of Tracking and 
+Telecommunications Technology (CLTC/BITTT)/China. 
+– 
+Chinese Academy of Sciences (CAS)/China. 
+– 
+China Academy of Space Technology (CAST)/China. 
+– 
+Commonwealth Scientific and Industrial Research Organization (CSIRO)/Australia. 
+– 
+Danish National Space Center (DNSC)/Denmark. 
+– 
+Departamento de Ciência e Tecnologia Aeroespacial (DCTA)/Brazil. 
+– 
+Electronics and Telecommunications Research Institute (ETRI)/Korea. 
+– 
+European Organization for the Exploitation of Meteorological Satellites (EUMETSAT)/Europe. 
+– 
+European Telecommunications Satellite Organization (EUTELSAT)/Europe. 
+– 
+Geo-Informatics and Space Technology Development Agency (GISTDA)/Thailand. 
+– 
+Hellenic National Space Committee (HNSC)/Greece. 
+– 
+Hellenic Space Agency (HSA)/Greece. 
+– 
+Indian Space Research Organization (ISRO)/India. 
+– 
+Institute of Space Research (IKI)/Russian Federation. 
+– 
+Korea Aerospace Research Institute (KARI)/Korea. 
+– 
+Ministry of Communications (MOC)/Israel. 
+– 
+Mohammed Bin Rashid Space Centre (MBRSC)/United Arab Emirates. 
+– 
+National Institute of Information and Communications Technology (NICT)/Japan. 
+– 
+National Oceanic and Atmospheric Administration (NOAA)/USA. 
+– 
+National Space Agency of the Republic of Kazakhstan (NSARK)/Kazakhstan. 
+– 
+National Space Organization (NSPO)/Chinese Taipei. 
+– 
+Naval Center for Space Technology (NCST)/USA. 
+– 
+Netherlands Space Office (NSO)/The Netherlands. 
+– 
+Research Institute for Particle & Nuclear Physics (KFKI)/Hungary. 
+– 
+Scientific and Technological Research Council of Turkey (TUBITAK)/Turkey. 
+– 
+South African National Space Agency (SANSA)/Republic of South Africa. 
+– 
+Space and Upper Atmosphere Research Commission (SUPARCO)/Pakistan. 
+– 
+Swedish Space Corporation (SSC)/Sweden. 
+– 
+Swiss Space Office (SSO)/Switzerland. 
+– 
+United States Geological Survey (USGS)/USA. 
+
+=====PAGE 6=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page iv 
+June 2022 
+PREFACE 
+This document is a CCSDS Experimental Specification.  Its Experimental status indicates 
+that it is part of a research or development effort based on prospective requirements, and as 
+such it is not considered a Standards Track document.  Experimental Specifications are 
+intended to demonstrate technical feasibility in anticipation of a ‘hard’ requirement that has 
+not yet emerged.  Experimental work may be rapidly transferred onto the Standards Track 
+should a hard requirement emerge in the future. 
+
+=====PAGE 7=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page v 
+June 2022 
+DOCUMENT CONTROL 
+ 
+Document 
+Title 
+Date 
+Status 
+CCSDS 
+141.10-O-1 
+Optical High Data Rate (HDR) 
+Communication—1550 NM, 
+Experimental Specification, Issue 1 
+June 2022 
+Original issue 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 8=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page vi 
+June 2022 
+CONTENTS 
+Section 
+Page 
+1 INTRODUCTION .......................................................................................................... 1-1 
+ 
+1.1 PURPOSE ............................................................................................................... 1-1 
+1.2 SCOPE .................................................................................................................... 1-1 
+1.3 APPLICABILITY ................................................................................................... 1-1 
+1.4 RATIONALE .......................................................................................................... 1-2 
+1.5 DOCUMENT STRUCTURE ................................................................................. 1-2 
+1.6 NOMENCLATURE ............................................................................................... 1-2 
+1.7 CONVENTIONS .................................................................................................... 1-3 
+1.8 PATENTED TECHNOLOGIES ............................................................................ 1-4 
+1.9 REFERENCES ....................................................................................................... 1-4 
+ 
+2 OVERVIEW ................................................................................................................... 2-1 
+ 
+2.1 ARCHITECTURAL CONSIDERATIONS ............................................................ 2-1 
+2.2 LAYER ARCHITECTURE .................................................................................... 2-3 
+ 
+3 CODING AND SYNCHRONIZATION ...................................................................... 3-1 
+ 
+3.1 OVERVIEW ........................................................................................................... 3-1 
+3.2 INPUT FRAMES .................................................................................................... 3-2 
+3.3 SYNCHRONIZATION-MARKED FRAMES ....................................................... 3-2 
+3.4 SLICER ................................................................................................................... 3-5 
+3.5 CYCLIC REDUNDANCY CHECK ATTACHMENT .......................................... 3-7 
+3.6 FORWARD ERROR CORRECTION .................................................................. 3-10 
+3.7 CHANNEL INTERLEAVER ............................................................................... 3-10 
+3.8 REPEAT ............................................................................................................... 3-13 
+3.9 PHYSICAL LAYER FRAMING ......................................................................... 3-13 
+3.10 PSEUDO-RANDOMIZER ................................................................................... 3-18 
+3.11 FRAME VALIDATION USING DECODER ...................................................... 3-19 
+3.12 SEQUENCE INDICATOR ................................................................................... 3-19 
+ 
+4 PHYSICAL LAYER ...................................................................................................... 4-1 
+ 
+4.1 CENTER FREQUENCY ........................................................................................ 4-1 
+4.2 LASER LINEWIDTH ............................................................................................ 4-1 
+4.3 POLARIZATION ................................................................................................... 4-1 
+4.4 MODULATION ..................................................................................................... 4-2 
+ 
+
+=====PAGE 9=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page vii 
+June 2022 
+CONTENTS (continued) 
+Section 
+Page 
+5 MANAGED PARAMETERS ....................................................................................... 5-1 
+ 
+5.1 OVERVIEW ........................................................................................................... 5-1 
+5.2 MANAGED PARAMETERS FOR CODING AND SYNCHRONIZATION ....... 5-1 
+5.3 MANAGED PARAMETERS FOR PHYSICAL LAYER ..................................... 5-2 
+ 
+ANNEX A SERVICE  (NORMATIVE) .......................................................................... A-1 
+ANNEX B SECURITY, SANA, AND PATENT CONSIDERATIONS   
+(INFORMATIVE) ..........................................................................................B-1 
+ANNEX C PHYSICAL LAYER AND CODING AND SYNCHRONIZATION 
+SUBLAYER IMPLEMENTATION  (INFORMATIVE)........................... C-1 
+ANNEX D INFORMATIVE REFERENCES  (INFORMATIVE) .............................. D-1 
+ANNEX E ACRONYMS AND ABBREVIATIONS  (INFORMATIVE) .....................E-1 
+Figure 
+1-1 Bit Numbering Convention ........................................................................................... 1-3 
+2-1 Link Scenarios Showing Possible Optical (Red) and  
+Radio-Frequency (Black) Links ................................................................................... 2-1 
+2-2 Architecture of the Optical Communications Type 1 System ...................................... 2-2 
+2-3 Architecture of the Optical Communications Type 2 System ...................................... 2-2 
+2-4 Relationship with OSI Layers ....................................................................................... 2-4 
+3-1 Functional Diagram for Coding and Synchronization Signaling ................................. 3-1 
+3-2 ASM Attachment .......................................................................................................... 3-3 
+3-3 Slicer ............................................................................................................................. 3-5 
+3-4 Shift Register Implementation of CRC Attachment ..................................................... 3-9 
+3-5 Convolutional Channel Interleaver ............................................................................. 3-10 
+3-6 Physical Layer Frame ................................................................................................. 3-14 
+3-7 Pseudo-randomizer Implementation Example ............................................................ 3-19 
+4-1 QPSK Constellation Map ............................................................................................. 4-3 
+4-2 Reference RZ50 and RZ33 Pulse Shapes for a Slot Rate of 10.0 GHz ........................ 4-5 
+Table 
+3-1 Information Block Sizes for BCH + LDPC Coding ..................................................... 3-7 
+3-2 Information Block Sizes for RS Coding ....................................................................... 3-7 
+3-3 Channel State Information Value Based on Correlation Results ................................ 3-15 
+3-4 (127,8) BCH Generator Polynomial Coefficients ...................................................... 3-16 
+3-5 (127,22) BCH Generator Polynomial Coefficients .................................................... 3-17 
+5-1 Managed Parameters for Coding and Synchronization ................................................ 5-1 
+5-2 Managed Parameters for Physical Layer ...................................................................... 5-2 
+ 
+
+=====PAGE 10=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 1-1 
+June 2022 
+1 INTRODUCTION 
+1.1 
+PURPOSE 
+The purpose of this Experimental Specification is to specify channel coding, synchronization 
+schemes, and Physical Layer modulation for free-space optical communications systems used by 
+space missions.  The applications addressed with this Experimental Specification include space-to-
+space, space-to-air, air-to-space, space-to-ground, and ground-to-space links in which optical 
+communications at high data rates (possibly through an atmospheric channel, which can distort the 
+received optical signal) using a modulated carrier wavelength of around 1550 nm are employed.  
+When provided with a set of fixed-length, fixed-rate CCSDS Transfer Frames produced by the 
+Data Link Protocol Sublayer (as specified, for example, in references [1], [2], and [3]) or 
+potentially variable-length variable-rate transfer frames, which may be defined by CCSDS or by 
+other methods, this Experimental Specification describes the applied coding and synchronization 
+signaling as well as the Physical Layer optical signal that is generated for transmission. 
+1.2 
+SCOPE 
+This Experimental Specification defines coding and synchronization sublayer (section 3) and 
+Physical Layer (section 4) schemes in terms of the signal characteristics and procedures 
+involved in the encoding, synchronization, and physical transmission of optical signals.  It 
+does not specify: 
+a) individual implementations or products; 
+b) the methods or technologies required to perform the procedures; or 
+c) the management activities required to configure and control the system. 
+This Experimental Specification describes High Data Rate (HDR) optical communications in 
+which the data rate of the link is of primary concern. 
+1.3 
+APPLICABILITY 
+This Experimental Specification may be applied to future data communications over optical links 
+between CCSDS Agencies in cross-support situations.  It includes comprehensive specifications of 
+the data formats and procedures for interagency cross support.  It is neither a specification of, nor a 
+design for, real systems that may be implemented for existing or future missions. 
+The Experimental Specification described in this document may be invoked through the 
+normal standards program of each CCSDS Agency and is applicable to those missions for 
+which cross support based on capabilities described in this Experimental Specification is 
+anticipated.  Where mandatory capabilities are clearly indicated in sections of this 
+Experimental Specification, they must be implemented when this document is used as a basis 
+for cross support.  Where options are allowed or implied, implementation of these options is 
+subject to specific bilateral cross support agreements between the Agencies involved. 
+
+=====PAGE 11=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 1-2 
+June 2022 
+1.4 
+RATIONALE 
+This Experimental Specification facilitates cross support at the coding and synchronization 
+sublayer and Physical Layer of optical communications systems used by CCSDS member 
+agencies.  Such cross support requires specification of the slicing of transfer frames, 
+synchronization markers, channel encoding, channel interleaving, Physical Layer framing, 
+modulation on an allowable set of center frequencies, and other details of the coding and 
+synchronization sublayer and Physical Layer. 
+The CCSDS believes it is important to document the rationale underlying the 
+recommendations chosen, so that future evaluations of proposed changes or improvements 
+will not lose sight of previous decisions.  Where appropriate, rationale has been included in 
+the description of the signaling characteristics. 
+1.5 
+DOCUMENT STRUCTURE 
+This document is divided into five numbered sections and five annexes. 
+a) section 1 presents the purpose, scope, applicability, rationale, document structure, 
+conventions, and references; 
+b) section 2 provides an overview of the architecture and summary of functions of the 
+optical coding and synchronization sublayer and Physical Layer; 
+c) section 3 specifies the HDR optical coding and synchronization sublayer; 
+d) section 4 specifies the HDR Physical Layer; 
+e) section 5 lists the managed parameters; 
+f) annex A defines the service provided to the users; 
+g) annex B discusses security and Space Assigned Numbers Authority (SANA) 
+considerations; 
+h) annex C discusses Physical Layer and coding and synchronization sublayer 
+implementation; 
+i) annex D provides a list of informative references; 
+j) annex E lists acronyms and terms used within this document. 
+1.6 
+NOMENCLATURE 
+1.6.1 NORMATIVE TEXT 
+The following conventions apply throughout this specification: 
+a) the words ‘shall’ and ‘must’ imply a binding and verifiable specification; 
+
+=====PAGE 12=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 1-3 
+June 2022 
+b) the word ‘should’ implies an optional, but desirable, specification; 
+c) the word ‘may’ implies an optional specification; 
+d) the words ‘is’, ‘are’, and ‘will’ imply statements of fact. 
+1.6.2 INFORMATIVE TEXT 
+In the normative sections of this document, informative text is set off from the normative 
+specifications either in notes or under one of the following subsection headings: 
+– Overview; 
+– Background; 
+– Rationale; 
+– Discussion. 
+1.7 
+CONVENTIONS 
+In this document, the following convention is used to identify each bit in an N-bit field. The 
+first bit in the field to be transmitted (i.e., the most left-justified when drawing a figure) is 
+defined to be ‘Bit 0’, the following bit is defined to be ‘Bit 1’, and so on up to ‘Bit N−1’. 
+When the field is used to express a binary value (such as a counter), the Most Significant Bit 
+(MSB) shall be the first transmitted bit of the field, that is, ‘Bit 0’ (see figure 1-1). 
+ 
+Figure 1-1:  Bit Numbering Convention 
+In accordance with standard data-communications practice, data fields are often grouped into 8-
+bit ‘words’, which conform to the above convention. Throughout this Specification, such an 8-
+bit word is called an ‘octet’. The numbering for octets within a data structure starts with ‘0’. 
+NOTE – Throughout this document, ‘bit’ refers to the contents of the transfer frames. A bit 
+is a binary digit transferred between the data link protocol sublayer and the coding 
+and synchronization sublayer. Other symbols, whether binary or nonbinary, will be 
+referred to by other names, such as ‘binary digits’. It should be understood that the 
+ordering conventions described above apply equally to other types of symbols. 
+N-Bit Data Field
+Bit 0
+Bit N−1
+First Bit Transmitted = MSB
+
+=====PAGE 13=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 1-4 
+June 2022 
+1.8 
+PATENTED TECHNOLOGIES 
+The CCSDS draws attention to the fact that it is claimed that compliance with this document 
+may involve the use of patents. 
+The CCSDS takes no position concerning the evidence, validity, and scope of these patent 
+rights. 
+The holders of these patent rights have assured the CCSDS that they are willing to negotiate 
+licenses under reasonable and non-discriminatory terms and conditions with applicants 
+throughout the world. In this respect, the statements of the holders of these patent rights are 
+registered with CCSDS. Information can be obtained from the CCSDS Secretariat at the 
+address indicated on page i. Contact information for the holders of these patent rights is 
+provided in annex B. 
+Attention is drawn to the possibility that some of the elements of this document may be the 
+subject of patent rights other than those identified above. The CCSDS shall not be held 
+responsible for identifying any or all such patent rights. 
+1.9 
+REFERENCES 
+The following publications contain provisions which, through reference in this text, 
+constitute provisions of this Experimental Specification. At the time of publication, the 
+editions indicated were valid. All publications are subject to revision, and users of this 
+Experimental Specification are encouraged to investigate the possibility of applying the most 
+recent editions of the documents indicated below. The CCSDS Secretariat maintains a 
+register of currently valid CCSDS publications. 
+[1] 
+TM Space Data Link Protocol. Issue 3. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 132.0-B-3. Washington, D.C.: CCSDS, October 2021. 
+[2] 
+AOS Space Data Link Protocol. Issue 4. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 732.0-B-4. Washington, D.C.: CCSDS, October 2021. 
+[3] 
+Unified Space Data Link Protocol. Issue 2. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 732.1-B-2. Washington, D.C.: CCSDS, October 2021. 
+[4] 
+Information Technology—Open Systems Interconnection—Basic Reference Model: The 
+Basic Model. 2nd ed. International Standard, ISO/IEC 7498-1:1994. Geneva: ISO, 
+1994. 
+[5] 
+Generic Framing Procedure. ITU-T G.7041/Y.1303. Geneva: ITU, 2016. 
+[6] 
+Digital Video Broadcasting (DVB); Second Generation Framing Structure, Channel 
+Coding and Modulation Systems for Broadcasting, Interactive Services, News 
+Gathering and Other Broadband Satellite Applications. ETSI EN 302 307 V1.2.1 
+(2009-08). Sophia-Antipolis: ETSI, 2009. 
+
+=====PAGE 14=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 1-5 
+June 2022 
+[7] 
+TM Synchronization and Channel Coding. Issue 4. Recommendation for Space Data 
+System Standards (Blue Book), CCSDS 131.0-B-4. Washington, D.C.: CCSDS, April 
+2022. 
+[8] 
+IEEE Standard Test Procedures for Antennas. ANSI/IEEE Std 149-1979. Piscataway, 
+New Jersey: IEEE, 1979. 
+ 
+
+=====PAGE 15=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 2-1 
+June 2022 
+2 OVERVIEW 
+2.1 
+ARCHITECTURAL CONSIDERATIONS 
+This Experimental Specification aims to address a variety of near-Earth optical 
+communications link applications, including relay, crosslink, and direct-to-Earth links from 
+ground, airborne, and space users, as depicted in figure 2-1, using fiber-telecommunications-
+compatible wavelengths in the 1550-nm regime. To support such a wide array of applications, 
+the optical signaling must be very flexible.  For relay applications, data transfer to and from 
+users on the ground, in the air, or in low- to medium-Earth orbit to a ground terminal via a relay 
+satellite (or multiple satellites) in geosynchronous orbit is envisioned.  This Experimental 
+Specification supports operation of such links at user rates of ~15 Mb/s to ~100 Gb/s.  For 
+direct-to-Earth links, the specification aims to support the higher link rates afforded by short 
+link distances from, say, low Earth orbit to ground.  Such links are expected to operate at rates 
+~100 Gb/s to support large data transfers with short contact times. 
+ 
+Figure 2-1: Link Scenarios Showing Possible Optical (Red) and Radio-Frequency 
+(Black) Links 
+High-level features of the Experimental Specification include: acceptance of transfer frames 
+at the data link interface, use of multiple high-efficiency Forward Error Correction (FEC) 
+codes, Physical Layer framing that supports multi-hop edge-to-edge forward error correction, 
+and variable-rate burst-mode phase-shift keying modulation on a 1550-nm carrier, which can 
+be demodulated with either a non-coherent (e.g., differential phase-shift keying) or a 
+coherent (e.g., homodyne or heterodyne binary phase-shift keying) receiver.  Data rate 
+flexibility required for the various link applications is provided by varying the code and 
+modulation rates as well as using standard fiber telecommunications approaches such as 
+Wavelength Division Multiplexing (WDM). 
+The optical links supported by the Experimental Specification may be either unidirectional or 
+bidirectional.  For bidirectional links, wavelength and polarization are used to distinguish 
+transmit and receive signals that may share a common terminal aperture, as described in 
+section 4.  Such systems requiring a separate signal for spatial acquisition are referred to as 
+
+=====PAGE 16=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 2-2 
+June 2022 
+Type 1 systems, as depicted in figure 2-2.  Such an acquisition signal would be modulated on 
+a carrier frequency in the Acquisition Band, defined in 4.1.1.  Systems that do not require a 
+separate signal for spatial acquisition are referred to as Type 2 systems, as depicted in 
+figure 2-3. Each system involves two terminals, a Type A and a Type B.  As depicted in 
+figures 2-2 and 2-3 and defined in 4.1.1, Type A1 and Type A2 terminals transmit signals 
+with carrier frequencies selected from a range of frequencies in Data Communications Band 
+A, and Type B1 and Type B2 terminals transmit signals with carrier frequencies selected 
+from a range of frequencies in Data Communications Band B. 
+ 
+Figure 2-2:  Architecture of the Optical Communications Type 1 System 
+ 
+Figure 2-3:  Architecture of the Optical Communications Type 2 System 
+Type B1 Terminal
+Transmitter
+Receiver
+Transmitter
+Type A1 Terminal
+Receiver
+Transmitter
+Receiver
+Data
+Communications
+Band B
+Data
+Communications
+Band A
+Acquisition
+Signal
+Type B2 Terminal
+Transmitter
+Receiver
+Type A2 Terminal
+Receiver
+Transmitter
+Data
+Communications
+Band B
+Data
+Communications
+Band A
+
+=====PAGE 17=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 2-3 
+June 2022 
+This Experimental Specification does not address system-specific requirements that would be 
+addressed in an Interface Control Document (ICD). For example, it does not include details of 
+Physical Layer frame multiplexing and possible required insertion of idle frames at edge 
+terminals to enable multiplexing functionality at a relay. Such details are expected to be 
+specific to particular system implementations and therefore would be addressed in system-
+specific ICDs. 
+Optical communications systems often require sophisticated methods for pointing and spatial 
+acquisition and tracking.  The uncertainty of the pointing direction from one terminal to 
+another terminal, which is derived from the positional knowledge of terminals and their 
+pointing accuracy, is often larger than the divergence angle of the transmitted light or the 
+field of view of the receiver.  The details of methods for spatial acquisition of optical 
+communications links and their implementation are not addressed in this Experimental 
+Specification beyond the allocation of certain transmission frequencies that may be used for 
+spatial acquisition.  It is expected that a system-specific ICD or interface control 
+specification would address details such as: 
+– specifics of the transmitted signals used for acquisition, including carrier frequency, 
+frequency stability, polarization, and modulation; 
+– requirements for position accuracy of the terminals involved in the link and how that 
+position is communicated prior to the establishment of the link; 
+– a description of the process or sequence of steps for performing spatial acquisition 
+between the terminals, including the size and duration of scans associated with 
+pointing uncertainties; and 
+– the required irradiances (minimum and maximum) at the receiving terminals for the 
+various steps of the acquisition process. 
+2.2 
+LAYER ARCHITECTURE 
+Figure 2-4 illustrates the relationship of this Experimental Specification to the Open Systems 
+Interconnection (OSI) reference model (reference [4]). Two sublayers of the Data Link Layer 
+are defined for CCSDS space link protocols. The data link protocol sublayer provides 
+functions for producing frames; examples include the TM Space Data Link Protocol 
+(reference [1]), the AOS Space Data Link Protocol (reference [2]), and the Unified Space 
+Data Link Protocol (reference [3]).  The optical coding and synchronization protocol and 
+Physical Layer specified in this Experimental Specification provide the functions of the 
+synchronization and channel coding sublayer of the Data Link Layer and the Physical Layer 
+for transferring frames over an optical space link. 
+
+=====PAGE 18=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 2-4 
+June 2022 
+ 
+Figure 2-4:  Relationship with OSI Layers 
+ 
+Network and
+Upper Layers
+Data Link Protocol
+Sublayer
+Synchronization
+and Channel
+Coding Sublayer
+Physical Layer
+Transfer Frame
+Generation (e.g.,
+TM, AOS, USLP)
+Optical Coding
+and
+Synchronization
+Optical Physical
+Layer
+Network and
+Upper Layers
+Data Link Layer
+Physical Layer
+OSI Layers
+CCSDS Layers
+CCSDS Protocols
+Experimental
+Specification Content
+
+=====PAGE 19=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-1 
+June 2022 
+3 CODING AND SYNCHRONIZATION 
+3.1 
+OVERVIEW 
+This Experimental Specification operates by taking frames and producing a modulated 
+optical carrier for transmission.  This section of the Experimental Specification describes the 
+coding and synchronization sublayer, which produces a binary vector for transmission based 
+on an input stream of frames.  The functional blocks of the coding and synchronization 
+signaling architecture are shown in figure 3-1. 
+ 
+Figure 3-1:  Functional Diagram for Coding and Synchronization Signaling 
+Attached Sync
+Marker
+Slicer
+CRC
+Attachment
+Forward Error
+Correction
+Channel
+Interleaver
+Physical Layer
+Framing
+Pseudo-
+Randomizer
+Fixed-Length Fixed-Rate Frames
+a0, a1, … , aA−1
+b0, b1, … , bA−1
+c0, c1, … , cC−1
+e0, e1, … , eC−1
+n0, n1, … , nC−1
+r0, r1, … , rR−1
+s0, s1, … , sR−1
+t0, t1, … , tR−1
+To Physical Layer
+Frames
+Generic Frame
+Procedure
+a0, a1, … , aA−1
+
+=====PAGE 20=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-2 
+June 2022 
+3.2 
+INPUT FRAMES 
+The input to the coding and synchronization sublayer shall be a sequence of input frames. 
+The input frames may be CCSDS Transfer Frames conforming to the structure as defined in 
+references [1], [2], or [3].  Alternatively, octet-aligned input frames defined by other 
+standards or methods may be used.  The sequence of input frames is denoted 
+𝒂0,  𝒂1, … , 𝒂𝐴−1, 
+and for i ∈ {0, 1, … , A−1}, the i
+th input frame is denoted 
+𝒂𝑖= 𝑎0
+𝑖,  𝑎1
+𝑖, … ,  𝑎𝑇𝑖−1
+𝑖
+, 
+where 
+{
+}
+0,1
+∈
+i
+ja
+ is the j
+th bit of the i
+th input frame, and Ti is the number of bits in the i
+th input 
+frame. 
+NOTES 
+1 
+This integrated approach for space data link encoding enables arbitrary octet-aligned 
+input frame types to be provided to the coding and synchronization sublayer, 
+including CCSDS transfer frames such as TM, AOS, and Unified Space Data Link 
+Protocol (USLP), as well as non-CCSDS octet-aligned frame types such as Internet 
+Protocol/Point-to-Point Protocol or Ethernet media access control frames defined in 
+clause 3.1 of reference [D1]. 
+2 
+The input frames may be fixed length or variable length. 
+3 
+When using the Generic Frame Procedure method for generating Synchronization-
+Marked Frames (see 3.3.3), the number of bits in the input frames must be divisible 
+by 8 and in the range of 0 to 524,280 – Y bits, where Y is the number of bits in the 
+Generic Frame Procedure Payload Header described in reference [5]. 
+4 
+The encoding described in this subsection may be performed in a streaming fashion; 
+that is, not all A input frames of a full communications session need be available at 
+the time encoding is begun, and the value of A need not be known a priori. 
+3.3 
+SYNCHRONIZATION-MARKED FRAMES 
+3.3.1 GENERAL 
+Synchronization-Marked Frames (SMFs) shall be formed using either the Attached 
+Synchronization Marker method described in 3.3.2 or the Generic Frame Procedure method 
+described in 3.3.3.  If the input frames are variable length, then the method described in 3.3.3 
+shall be used.  The method for generating SMFs is a managed parameter. 
+
+=====PAGE 21=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-3 
+June 2022 
+3.3.2 ATTACHED SYNCHRONIZATION MARKER 
+3.3.2.1 Attachment Method 
+A 32-binary-digit Attached Synchronization Marker (ASM) shall be prepended to each input 
+frame, resulting in an SMF, as follows: for i ∈ {0, 1, … , A−1} the i
+th SMF is denoted 
+𝒃𝑖= 𝑏0
+𝑖, 𝑏1
+𝑖, … , 𝑏𝐵𝑖−1
+𝑖
+, 
+where Bi = Ti + 32 and 
+𝑏𝑗
+𝑖= ቊ
+𝑠𝑗,
+if 0 ≤𝑗< 32
+𝑎𝑗−32
+𝑖
+,
+if 32 ≤𝑗< 𝐵𝑖
+. 
+NOTE – Construction of SMFs is shown in figure 3-2. 
+ 
+Figure 3-2:  ASM Attachment 
+3.3.2.2 Sequence Specification 
+The ASM shall be the sequence s = s0, s1, … , s31, represented in hexadecimal notation as 
+s = 1ACFFC1D. 
+SMFs
+Frames
+a0
+a1
+a2
+aA−1
+b0
+b1
+b2
+bA−1
+ASMs
+
+=====PAGE 22=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-4 
+June 2022 
+3.3.3 GENERIC FRAME PROCEDURE 
+3.3.3.1 General 
+When Generic Frame Procedure (GFP) is used, SMFs shall be formed using the short GFP 
+mode or the full GFP mode defined in this subsection.  The selected GFP mode is a managed 
+parameter. 
+For i ∈ {0, 1, …, A−1}, the i
+th SMF is denoted 
+𝒃𝑖= 𝑏0
+𝑖, 𝑏1
+𝑖, … ,  𝑏𝐵𝑖−1
+𝑖
+ , 
+where Bi is number of bits in the ith SMF. 
+NOTE – When using short or full GFP mode, the number of bits in each SMF, Bi, can vary 
+from frame to frame.  The lengths of GFP SMFs are divisible by 8 and can vary 
+from 32 bits (for GFP idle frames, see 3.3.3.4) to a maximum of 524,312 bits, as 
+described in reference [5]. 
+3.3.3.2 Short GFP Mode 
+When the short GFP mode is used, SMFs shall be formed by preceding each input frame with 
+the core header as defined in section 6.1.1 of reference [5], where the term ‘payload area’ in 
+reference [5] is to be understood as referring to the input frame. 
+NOTE – The short GFP mode has the same overhead as the ASM approach defined in 3.3.2. 
+3.3.3.3 Full GFP Mode 
+3.3.3.3.1 General 
+When the full GFP mode is used, each SMF shall be the GFP client data frame that results 
+from designating an input frame as the GFP payload information field and applying the 
+frame-mapped GFP encapsulation methods defined in sections 6 and 7 of reference [5]. 
+NOTES 
+1 
+The full GFP mode might be useful for multiplexed trunk lines with fixed- or 
+variable-length input frames with the added overhead present in the payload headers. 
+2 
+Reference [5] describes two modes of GFP: Frame-mapped (GFP-F) and Transparent-
+mapped (GFP-T).  This Experimental Specification utilizes only the GFP-F mode. 
+
+=====PAGE 23=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-5 
+June 2022 
+3.3.3.3.2 Payload Frame Check Sequence 
+The Payload Frame Check Sequence field of GFP shall not be used. 
+3.3.3.3.3 User Payload Identifier 
+When CCSDS transfer frames are used, the user payload identifier within the payload header 
+shall be set to 1111 0000. 
+NOTE – As provided for by the GFP standard, this setting can be used to indicate data 
+types not enumerated in the GFP standard, such as the CCSDS client data type. 
+3.3.3.4 GFP Idle Frame 
+In either the short or long GFP modes, when an input frame is not available, an SMF may be 
+formed using a GFP idle frame, that is, a core header only, with no payload area, as defined 
+in section 6.2.1 of reference [5]. 
+NOTE – The addition of GFP idle frames will result in more than A SMFs.  For simplicity 
+in the description below, the notation A is still used to refer to the number of 
+SMFs. 
+3.4 
+SLICER 
+The sequence of SMFs shall be zero-padded and sliced into information blocks of length 𝑘, as 
+shown in figure 3-3 and described herein. 
+ 
+Figure 3-3:  Slicer 
+SMFs
+b0
+b1
+b2
+bA−1
+Slicer Output
+(information blocks)
+c0
+cC−1
+0…0
+zero
+fill
+k digits
+k digits
+c1
+k digits
+
+=====PAGE 24=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-6 
+June 2022 
+The sequence of SMFs,  
+𝒃0,  𝒃1, … , 𝒃𝐴−1 , 
+is a vector of vectors that can be viewed as a single vector with binary digits in the same 
+order, 
+𝒃෡= 𝑏෠0, 𝑏෠1, … ,  𝑏෡𝐵−1 , 
+where 
+𝑩= ෍𝑩𝒊 .
+𝑨−𝟏
+𝒊=𝟎
+ 
+The FEC code (Digital Video Broadcast Second Generation [DVB-S2] Bose–Chaudhuri–
+Hocquenghem [BCH] + Low-Density Parity-Check [LDPC] or Reed Solomon [RS]) is a 
+managed parameter.  Additionally, for the DVB-S2 code, the code rate, 𝑟, is a managed 
+parameter.  The choice of code and code rate, 𝑟, determines the information block size, 𝑘. 
+Tables 3-1 and 3-2 give the information block sizes for the various code and code rate 
+options, including the 32-bit Cyclic Redundancy Check (CRC) described in 3.5. The 
+sequence 𝒃෡ shall be padded at its end with the minimum number of zeroes so that its length is 
+a multiple of 𝑘. The sequence 𝒃෩ is denoted 
+𝒃෩= 𝑏෠0, 𝑏෠1, … ,  𝑏෡𝐵−1, 0,  0, … , 0 
+ᇣᇧᇧᇤᇧᇧᇥ
+𝑃
+  , 
+where 
+𝑏෨𝑖= ൜𝑏෠𝑖,
+if 0 ≤𝑖< 𝐵
+0,
+if 𝐵≤𝑖< 𝐵+ 𝑃, 
+and 
+𝑃= min{ 𝑝∶𝑘 |  𝐵+ 𝑝 }. 
+The slicer re-indexes 𝒃෩ into 𝐶 = (𝐵+ 𝑃)/𝑘 blocks each of length 𝑘: 
+𝒄0, 𝒄1, … , 𝒄𝐶−1 , 
+where for 𝑖∈{0,1, … ,  𝐶−1}, the 𝑖𝑡ℎ block is denoted 𝒄𝑖= 𝑐0
+𝑖, 𝑐1
+𝑖, … ,  𝑐𝑘−1
+𝑖
+, and for  
+𝑗∈{0,  1, … ,  𝑘−1}, the 𝑗𝑡ℎ symbol of the 𝑖𝑡ℎ block is 
+𝑐𝑗
+𝑖= 𝑏෨𝑘𝑘+𝑗 . 
+
+=====PAGE 25=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-7 
+June 2022 
+Table 3-1:  Information Block Sizes for BCH + LDPC Coding 
+LDPC 
+Code Rate 
+Information 
+block size  
+Length of information block 
+with CRC-32 added 
+𝑟 
+𝑘 
+𝑘෠ 
+1/4 
+15976 
+16008 
+1/3 
+21376 
+21408 
+2/5 
+25696 
+25728 
+1/2 
+32176 
+32208 
+3/5 
+38656 
+38688 
+2/3 
+43008 
+43040 
+3/4 
+48376 
+48408 
+4/5 
+51616 
+51648 
+5/6 
+53808 
+53840 
+8/9 
+57440 
+57472 
+9/10 
+58160 
+58192 
+Table 3-2:  Information Block Sizes for RS Coding 
+Information 
+block size  
+Length of information block 
+with CRC-32 added 
+𝑘 
+𝑘෠ 
+60160 
+60192 
+3.5 
+CYCLIC REDUNDANCY CHECK ATTACHMENT 
+3.5.1 DESCRIPTION 
+Thirty-two CRC binary digits shall be appended to the end of each information block to 
+produce FEC as described herein. 
+The 𝑖𝑡ℎ FEC input frame is 𝒆𝑖= 𝑒0
+𝑖, 𝑒1
+𝑖, … ,𝑒𝑘+31
+𝑖
+, where 
+𝑒𝑗
+𝑖= ቊ
+𝑐𝑗
+𝑖,
+if 0 ≤𝑗< 𝑘
+𝑧𝑗−𝑘
+𝑖
+,
+if 𝑘≤𝑗< 𝑘+ 32 , 
+and where 𝑧𝑗−𝑘
+𝑖
+ is defined in 3.5.2. 
+
+=====PAGE 26=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-8 
+June 2022 
+3.5.2 CYCLIC REDUNDANCY CHECK SEQUENCE SPECIFICATION 
+The CRC parity binary digits shall be computed as follows. For 𝑖∈{0, 1, … , 𝐶−1}, the 𝑖𝑡ℎ 
+block 𝒄𝑖 is padded with 32 zeroes and expressed in polynomial notation as 
+𝑐𝑖(𝑋) = 𝑐0
+𝑖𝑋𝑘+31 + 𝑐1
+𝑖𝑋𝑘+30 + … + 𝑐𝑘−2
+𝑖
+𝑋33 + 𝑐𝑘−1
+𝑖
+𝑋32. 
+The polynomial notation for the thirty-two binary digit CRC is 
+𝑧𝑖(𝑋) = 𝑧0
+𝑖𝑋31 + 𝑧1
+𝑖𝑋30 + … + 𝑧30
+𝑖𝑋+ 𝑧31
+𝑖 
+and is given by 
+𝑧𝑖(𝑋) = ቎ 𝑐𝑖(𝑋) + ෍𝑋𝑘+𝑗
+31
+𝑗=0
+቏ mod ℎ(𝑋), 
+where all arithmetic is modulo 2 and ℎ(𝑋) is the generator polynomial given by 
+ℎ(𝑋) = 𝑋32 + 𝑋29 + 𝑋18 + 𝑋14 + 𝑋3 + 1. 
+NOTE – In the expression for 𝑧𝑖(𝑋), the ∑
+𝑋𝑘+𝑗
+31
+𝑗=0
+ term has the effect of presetting the 
+shift registers to ‘1’ prior to encoding. 
+A possible technique for generating the CRC binary digits is given in figure 3-4. For each 
+block, the shift register cells are initialized to ‘1’. The ganged switch is in position (1) while 
+the 𝑘 binary digits from the block are being transferred and is in position (2) for the thirty-
+two CRC digits. 
+
+=====PAGE 27=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-9 
+June 2022 
+ 
+Figure 3-4:  Shift Register Implementation of CRC Attachment 
+0
+1
+k−1
+ci, c i, …, ci
+0
+1
+k+31
+ei, e i, …, ei
+(1)
+(2)
+(1)
+(2)
+Initialize to ‘all
+ones’ state prior to
+feeding in an
+information block
+Information block,
+Information
+block with CRC
+attachment,
+…
+…
+…
+…
+…
+X 0
+X 1
+X 2
+X 4
+X 13
+X 14
+X 17
+X 18
+X 28
+X 29
+X 30
+X 31
+
+=====PAGE 28=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-10 
+June 2022 
+3.6 
+FORWARD ERROR CORRECTION 
+3.6.1 GENERAL 
+An FEC code shall be applied to the FEC input frames, 𝒆𝑖= 𝑒0
+𝑖, 𝑒1
+𝑖, … , 𝑒𝑘+31
+𝑖
+, to produce 
+FEC output frames, 𝒏𝑖= 𝑛0
+𝑖, 𝑛1
+𝑖, … , 𝑛64799
+𝑖
+, as described herein.  This Experimental 
+Specification describes two possible approaches for FEC: a BCH code followed by an LDPC 
+code based on the DVB-S2 signaling (reference [6]), or a Reed Solomon code.  The choice of 
+code is a managed parameter.  It should be noted that all of the codes described herein 
+produce FEC output frames comprising 64800 binary digits. 
+3.6.2 DVB-S2 BCH + LDPC CODE 
+When DVB-S2 BCH + LDPC coding is used, the FEC output frames shall be computed from 
+the FEC input frames as described in section 5.3 of reference [6]. 
+3.6.3 REED SOLOMON CODE 
+When Reed Solomon coding is used, the FEC output frames shall be computed from the FEC 
+input frames as described in section 4 of reference [7]. When used as part of this 
+Experimental Specification, the Reed Solomon code shall have the following parameters: 
+J=8, E=8, I=36, and Q=1080, producing a (8100,7524) Reed Solomon code block containing 
+64800 bits. 
+3.7 
+CHANNEL INTERLEAVER 
+3.7.1 GENERAL 
+The sequence of FEC output frames shall be channel-interleaved as symbols with a 
+convolutional interleaver as shown in figure 3-5 and described herein. 
+ 
+Figure 3-5:  Convolutional Channel Interleaver 
+...
+...
+...
+...
+...
+...
+output
+input
+row
+row 3
+row 1
+row 0
+row 2
+N −1
+B
+2B
+3B
+(N −1)B
+
+=====PAGE 29=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-11 
+June 2022 
+3.7.2 CHANNEL INTERLEAVER INPUT NOTATION 
+The sequence of FEC output frames, 𝒏= 𝒏0, 𝒏1, … ,  𝒏𝐶−1, is a vector of vectors that can be 
+viewed as a single vector of interleaver binary digits, 
+𝒏ෝ= 𝑛ො0, 𝑛ෝ1, … ,  𝑛ො64800𝐶−1, 
+where for 𝑖∈{0,1, … ,  𝐶−1} and 𝑗∈{0,  1, … ,  64799}, 
+𝑛ො64800𝑖+𝑗= 𝑛𝑗
+𝑖. 
+3.7.3 CHANNEL INTERLEAVER PARAMETERS 
+The interleaver is parameterized with three managed parameters: 𝑚, the number of binary 
+digits per interleaver symbol; 𝑁, the number of tap delay lines in the channel interleaver; and 
+𝐵, the relative delay between the tap delay arms, expressed in 𝑚-bit symbols.  The number of 
+binary digits per interleaver symbol, 𝑚, is a managed parameter and shall be 1 or 8.  
+Parameters 𝑁 and 𝐵 shall be chosen so that 𝐵𝐵 is a multiple of 64800/𝑚, which in turn is a 
+multiple of 𝑁. The interleaver has 𝑁 rows, with the 𝑖𝑡ℎ row containing a shift register of 
+length 𝑖𝑖, meaning that it holds 𝑖𝑖 interleaver symbols. 
+NOTE – The parameter 𝑚 is used to improve performance of the channel interleaver on 
+channels with burst errors when an FEC code that operates on symbols is used.  
+For example, the Reed Solomon code described in 3.6.3 operates on 8-bit 
+symbols.  In this case, setting 𝑚= 8 ensures that burst errors on the channel are 
+confined to the minimum number of symbols entering the FEC decoder after 
+deinterleaving. 
+3.7.4 CHANNEL INTERLEAVER INITIALIZATION 
+Prior to channel interleaving, the shift registers shown in figure 3-5 may be in any state. 
+3.7.5 CHANNEL INTERLEAVER OPERATION 
+3.7.5.1 Channel Interleaver Arm Positions 
+The input interleaver binary digits 𝒏ෝ are de-multiplexed 𝑚 bits at a time into the 𝑁 rows, 
+sequentially and in circular fashion, beginning with row 0. The outputs of the 𝑁 shift 
+registers are multiplexed 𝑚 bits at a time, sequentially and in circular fashion, beginning 
+with row 0. During each step of the operation of the channel interleaver, the de-multiplexer 
+arm shall be positioned at the same row as the multiplexer arm. 
+
+=====PAGE 30=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-12 
+June 2022 
+The 𝑖𝑡ℎ interleaver output is 
+𝑟̂𝑖= 𝑛ො𝜎ቀቔ𝑖
+𝑚ቕቁ𝑚+ቀ𝑖−ቔ𝑖
+𝑚ቕ𝑚ቁ , 
+where 𝜎(𝑖) is defined recursively by 
+𝜎(𝑖) = ൜
+𝑖,   if 𝑖= 0  mod 𝑁
+𝜎(𝑖−1) −𝑁𝑁+ 1,   otherwise
+ . 
+Negative values of 𝜎(𝑖) refer to initial interleaver register contents, and values of 𝜎(𝑖) 
+greater than 64800𝐶−1 refer to terminal register contents. In these cases, 𝑟̂𝑖 may be any 
+value. 
+NOTE – For example, when 𝑚= 1,   𝑁= 4, and 𝐵= 1, the input 𝑛ො0, 𝑛ෝ1, 𝑛ො2, … will 
+produce an interleaver output of 
+𝑟̂0, 𝑟̂1, 𝑟̂2,  𝑟̂3, 𝑟ෝ4, 𝑟̂5, 𝑟̂6, 𝑟ෝ7, 𝑟ෝ8, 𝑟̂9,  𝑟̂10, …
+= 𝑛ො0, 𝑛ෝ−3, 𝑛ො−6,  𝑛ො−9,  𝑛ො4,  𝑛ො1,  𝑛ෝ−2,  𝑛ෝ−5,  𝑛ෝ8,  𝑛ො5,  𝑛ො2, … 
+3.7.5.2 Completion of the Channel Interleaver Operations 
+After the last symbol, 𝑛ො64800𝐶−1, is input, the interleaver shall be operated another 𝐵𝐵(𝑁−1) 
+steps before 𝑛ො64800𝐶−1 appears at the output. Thus the output contains 𝐵𝐵(𝑁−1) more 
+symbols than the input. This output of the channel interleaver is 
+𝒓ො= 𝑟̂0, 𝑟̂1, … ,  𝑟ෝ64800𝐶+𝐵𝐵(𝑁−1)−1. 
+For 𝑖∈{0, 1, … , 64800𝐶+ 𝐵𝐵(𝑁−1) −1}, the 𝑖𝑡ℎ interleaver output is as defined in 
+3.7.5.1. 
+3.7.5.3 Re-indexing Channel Interleaver Output to Form Interleaved Codewords 
+The sequence 𝒓ො can be re-indexed into 𝑅= 𝐶+ 𝐵𝐵(𝑁−1)/64800 blocks, each containing 
+64800 binary digits: 
+𝒓0,  𝒓1, … ,  𝒓𝑅−1 , 
+where for 𝑖∈{0,  1, … ,  𝑅−1}, the 𝑖𝑡ℎ block is denoted 𝒓𝑖= 𝑟0
+𝑖, 𝑟1
+𝑖, … ,  𝑟64799
+𝑖
+, and for 
+𝑗∈{0,  1, … ,  64799}, 
+𝑟𝑗
+𝑖= 𝑟̂64800𝑖+𝑗 . 
+Each 𝒓𝑖 is called an interleaved codeword (notwithstanding the fact that it contains binary 
+digits from many different codewords). 
+
+=====PAGE 31=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-13 
+June 2022 
+NOTE – Since 𝐵𝐵(𝑁−1) is a multiple of 64800, there are no leftover symbols in the 
+last interleaved codeword. 
+3.8 
+REPEAT 
+[This subsection is currently omitted.] 
+3.9 
+PHYSICAL LAYER FRAMING 
+3.9.1 GENERAL 
+Interleaved codewords shall be transmitted in Physical Layer frames, which include Physical 
+Layer Frame Markers (PLFMs), to enable some Physical Layer functions such as switching 
+in relay nodes or coordinated link control between terminals. 
+3.9.2 DESCRIPTION 
+3.9.2.1 A PLFM consisting of 1024 binary digits shall be prepended to each interleaved 
+codeword to create a Physical Layer frame. After PLFM attachment, the 𝑗𝑡ℎ symbol of the 
+𝑖𝑡ℎ interleaved codeword is 
+𝑠̂𝑗
+𝑖= ቊ
+𝑤𝑗
+𝑖,               if  0 ≤𝑗< 1024
+𝑟𝑗−1024
+𝑖
+,   if 1024 ≤𝑗< 65824 . 
+3.9.2.2 The sequence of Physical Layer frames is 𝒔ො= 𝒔ො0,   𝒔ෝ1, … ,  𝒔ො𝑅−1 . 
+3.9.2.3 The 1024-bit PLFM contains four fields as shown in figure 3-6 and described 
+herein: 
+a) unique word field (384 bits); 
+b) channel state information field (128 bits); 
+c) frame sequence number field (384 bits); 
+d) Physical Layer control information field (128 bits). 
+
+=====PAGE 32=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-14 
+June 2022 
+ 
+Figure 3-6:  Physical Layer Frame 
+3.9.3 UNIQUE WORD FIELD 
+3.9.3.1 The first 384 binary digits of the PLFM ൫𝑤0
+𝑖, 𝑤1
+𝑖, … , 𝑤383
+𝑖
+൯ constitute a unique 
+word, which may be used for codeword synchronization, channel state estimation, and 
+identification of frame data content.  The first 96 binary digits of the unique word 
+൫𝑤0
+𝑖,𝑤1
+𝑖,…,𝑤95
+𝑖൯ shall be a fixed frame alignment sequence represented in hexadecimal 
+notation as 
+0xEBE2 587B 22EE 5319 A15A A382. 
+3.9.3.2 The remaining 288 binary digits of the unique word ൫𝑤96
+𝑖, 𝑤97
+𝑖, … , 𝑤383
+𝑖
+൯ are a 
+managed parameter selected by the mission.  This managed parameter may be used to specify 
+link details such as data source and destination or modulation and coding used in the 
+interleaved codeword within the Physical Layer frame. 
+NOTE – The 288-bit identifier, while not specified here, should be selected to minimize 
+possible correlations with the first 96 bits of the unique word and with other 
+288-bit identifiers in use by the system in the presence of noise. 
+3.9.4 CHANNEL STATE INFORMATION FIELD 
+3.9.4.1 The 128 binary digits in the PLFM ൫𝑤384
+𝑖
+, 𝑤385
+𝑖
+, …, 𝑤511
+𝑖
+൯, which follow the unique 
+word, provide channel state information, which may be useful for decoding the frame 
+contents in multi-hop link scenarios. In such scenarios, the quality of the channel is estimated 
+by comparing the received unique word field for a given frame against the set of known 
+unique words that could be present on that link. The correlation (i.e., number of matching 
+bits) between the received unique word field and the correct unique word provides an 
+estimate of the quality of the channel. Since the correct unique word is not known a priori, 
+the highest two correlation values are placed into the sub-fields. 
+3.9.4.2 The correlation values shall be mapped to 4-bit channel state values, as shown in 
+table 3-3. 
+Unique
+Word
+384 bits
+Frame Sequence
+Number
+384 bits
+Channel State
+Information
+128 bits
+Physical
+Layer Control
+128 bits
+Interleaved Codeword
+64800 bits
+Physical Layer Frame (65824 bits)
+Physical Layer Frame Marker (1024 bits)
+
+=====PAGE 33=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-15 
+June 2022 
+Table 3-3:  Channel State Information Value Based on Correlation Results 
+Number 
+Correlated 
+Greater than or 
+Equal to 
+Number 
+Correlated Less 
+than or Equal to 
+Channel State 
+Value 
+373 
+384 
+1111 
+361 
+372 
+1110 
+349 
+360 
+1101 
+337 
+348 
+1100 
+325 
+336 
+1011 
+313 
+324 
+1010 
+301 
+312 
+1001 
+289 
+300 
+1000 
+277 
+288 
+0111 
+265 
+276 
+0110 
+253 
+264 
+0101 
+241 
+252 
+0100 
+229 
+240 
+0011 
+217 
+228 
+0010 
+205 
+216 
+0001 
+0 
+204 
+0000 
+3.9.4.3 An 8-bit channel state sequence, (𝑚7, 𝑚6, … , 𝑚0), shall be used to represent the 
+channel state estimate based on channel state values for the two most likely unique words, 
+with (𝑚7, 𝑚6, 𝑚5, 𝑚4) being the channel state value for the most likely unique word and 
+(𝑚3, 𝑚2, 𝑚1, 𝑚0) being the channel state value for the second most likely unique word.  For 
+the first hop in a multi-hop link, where the unique word is certain, the channel state sequence 
+shall be (1,1,1,1,0,0,0,0). 
+3.9.4.4 The channel state parity bits shall be obtained by BCH encoding the 8-bit channel 
+state sequence as follows: 
+a) the message channel state sequence polynomial 𝑚(𝑥) = 𝑚7𝑥7 + 𝑚6𝑥6 + … +
+𝑚1𝑥+ 𝑚0 shall be multiplied by 𝑥119; 
+b) 𝑥119𝑚(𝑥) shall be divided by 𝑔(𝑥), the generator polynomial with coefficients defined 
+in table 3-4, with remainder 𝑑(𝑥) = 𝑑118𝑥118 + 𝑑117𝑥117 + … + 𝑑1𝑥+ 𝑑0. 
+
+=====PAGE 34=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-16 
+June 2022 
+Table 3-4:  (127,8) BCH Generator Polynomial Coefficients 
+MSB 
+g 
+g119 g118 g117 g116 g115 g114 g113 g112 g111 g110 g109 g108 g107 g106 g105 
+binary 
+1 
+1 
+1 
+0 
+0 
+0 
+1 
+0 
+0 
+1 
+1 
+1 
+0 
+1 
+0 
+g 
+g104 g103 g102 g101 g100 g99 g98 g97 g96 g95 g94 g93 g92 g91 g90 
+binary 
+1 
+1 
+0 
+1 
+0 
+0 
+0 
+0 
+0 
+1 
+0 
+1 
+0 
+1 
+0 
+g 
+g89 g88 g87 g86 g85 g84 g83 g82 g81 g80 g79 g78 g77 g76 g75 
+binary 
+1 
+1 
+1 
+1 
+0 
+1 
+0 
+0 
+1 
+0 
+0 
+0 
+0 
+1 
+1 
+g 
+g74 g73 g72 g71 g70 g69 g68 g67 g66 g65 g64 g63 g62 g61 g60 
+binary 
+0 
+0 
+0 
+1 
+1 
+0 
+1 
+0 
+1 
+0 
+0 
+1 
+1 
+0 
+0 
+g 
+g59 g58 g57 g56 g55 g54 g53 g52 g51 g50 g49 g48 g47 g46 g45 
+binary 
+1 
+1 
+1 
+1 
+1 
+0 
+0 
+1 
+0 
+0 
+1 
+0 
+1 
+0 
+0 
+g 
+g44 g43 g42 g41 g40 g39 g38 g37 g36 g35 g34 g33 g32 g31 g30 
+binary 
+0 
+1 
+0 
+1 
+1 
+1 
+0 
+0 
+1 
+1 
+0 
+1 
+1 
+1 
+0 
+g 
+g29 g28 g27 g26 g25 g24 g23 g22 g21 g20 g19 g18 g17 g16 g15 
+binary 
+1 
+1 
+1 
+1 
+1 
+1 
+0 
+1 
+1 
+0 
+1 
+1 
+0 
+0 
+1 
+g 
+g14 g13 g12 g11 g10 
+g9 
+g8 
+g7 
+g6 
+g5 
+g4 
+g3 
+g2 
+g1 
+g0 
+binary 
+0 
+1 
+1 
+0 
+0 
+0 
+0 
+1 
+0 
+0 
+0 
+1 
+1 
+1 
+1 
+LSB 
+3.9.4.5 The 128-binary-digit channel state information field of the PLFM shall be defined as: 
+𝑤𝑗
+𝑖= ൞
+0,               if  𝑗= 384
+𝑑503−𝑗
+𝑖
+,   if 385 ≤𝑗< 504
+𝑚511−𝑗
+𝑖
+,   if 504 ≤𝑗< 512
+ . 
+3.9.5 FRAME SEQUENCE NUMBER FIELD 
+3.9.5.1 The 384 binary digits in the PLFM ൫𝑤512
+𝑖
+, 𝑤513
+𝑖
+, … ,  𝑤895
+𝑖
+൯, which follow the 
+channel state information, provide a frame sequence number. The frame sequence number 
+may be useful in identifying dropped frames in a multi-hop link scenario. The frame 
+sequence number field is generated as follows: 
+a) ൫𝑚21
+𝑖, 𝑚20
+𝑖, … ,  𝑚0
+𝑖൯ shall be a 22-bit frame sequence number for the ith frame, with 
+MSB 𝑚21
+𝑖; 
+b) the frame sequence number polynomial 𝑚𝑖(𝑥) = 𝑚21
+𝑖𝑥21 + 𝑚20
+𝑖𝑥20 + … + 𝑚1
+𝑖𝑥+
+𝑚0
+𝑖 shall be multiplied by 𝑥105; 
+
+=====PAGE 35=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-17 
+June 2022 
+c) 𝑥105𝑚𝑖(𝑥) shall be divided by 𝑔(𝑥), the generator polynomial with coefficients defined in 
+table 3-5, with remainder 𝑑𝑖(𝑥) = 𝑑104
+𝑖
+𝑥104 + 𝑑103
+𝑖
+𝑥103 + … + 𝑑1
+𝑖𝑥+ 𝑑0
+𝑖 . 
+Table 3-5:  (127,22) BCH Generator Polynomial Coefficients 
+MSB 
+g 
+g105 g104 g103 g102 g101 g100 g99 g98 g97 g96 g95 g94 g93 g92 g91 
+binary 
+1 
+0 
+1 
+0 
+0 
+1 
+1 
+0 
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+g 
+g90 g89 g88 g87 g86 g85 g84 g83 g82 g81 g80 g79 g78 g77 g76 
+binary 
+0 
+0 
+0 
+0 
+1 
+1 
+1 
+0 
+0 
+0 
+1 
+0 
+0 
+0 
+0 
+g 
+g75 g74 g73 g72 g71 g70 g69 g68 g67 g66 g65 g64 g63 g62 g61 
+binary 
+0 
+1 
+0 
+0 
+1 
+1 
+1 
+0 
+1 
+0 
+0 
+1 
+0 
+1 
+0 
+g 
+g60 g59 g58 g57 g56 g55 g54 g53 g52 g51 g50 g49 g48 g47 g46 
+binary 
+1 
+0 
+1 
+0 
+0 
+1 
+0 
+1 
+0 
+0 
+0 
+1 
+1 
+1 
+0 
+g 
+g45 g44 g43 g42 g41 g40 g39 g38 g37 g36 g35 g34 g33 g32 g31 
+binary 
+1 
+1 
+0 
+0 
+1 
+0 
+0 
+1 
+0 
+1 
+1 
+1 
+0 
+0 
+1 
+g 
+g30 g29 g28 g27 g26 g25 g24 g23 g22 g21 g20 g19 g18 g17 g16 
+binary 
+0 
+1 
+1 
+0 
+1 
+1 
+0 
+0 
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+g 
+g15 g14 g13 g12 g11 g10 
+g9 
+g8 
+g7 
+g6 
+g5 
+g4 
+g3 
+g2 
+g1 
+g0 
+binary 
+0 
+1 
+0 
+0 
+1 
+1 
+1 
+0 
+0 
+0 
+1 
+0 
+0 
+0 
+1 
+1 
+LSB 
+3.9.5.2 The 384-binary-digit frame sequence number field of the PLFM shall be defined as 
+𝑤𝑗
+𝑖=
+⎩
+⎪
+⎪
+⎪
+⎪
+⎨
+⎪
+⎪
+⎪
+⎪
+⎧
+0,               if  𝑗= 512
+𝑑617−𝑗
+𝑖
+,   if 513 ≤𝑗< 618
+𝑚639−𝑗
+𝑖
+,   if 618 ≤𝑗< 640
+0,               if  𝑗= 640
+𝑑745−𝑗
+𝑖
+,   if 641 ≤𝑗< 746
+𝑚767−𝑗
+𝑖
+,   if 746 ≤𝑗< 768
+0,               if  𝑗= 768
+𝑑873−𝑗
+𝑖
+,   if 769 ≤𝑗< 874
+𝑚895−𝑗
+𝑖
+,   if 874 ≤𝑗< 896
+  . 
+3.9.5.3 The 22-bit frame sequence number represented by the frame sequence number field 
+shall be incremented with each transmitted frame at the data source for a particular unique 
+word. 
+
+=====PAGE 36=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-18 
+June 2022 
+3.9.6 PHYSICAL LAYER CONTROL FIELD 
+3.9.6.1 The 128 binary digits in the PLFM ൫𝑤896
+𝑖
+, 𝑤897
+𝑖
+, … ,  𝑤1023
+𝑖
+൯, which follow the 
+frame sequence number field, provide a Physical Layer control field. The Physical Layer 
+control field may be used for a reliable, low-rate bidirectional communication channel 
+between two terminals over the optical link. This channel transports messages with 
+acknowledgements. The purpose of the channel is to support end-to-end feedback loops 
+involving the cooperation of both terminals. The frame sequence number field is generated as 
+follows: 
+a) ൫𝑚21
+𝑖, 𝑚20
+𝑖, … ,  𝑚0
+𝑖൯ shall be a 22-bit Physical Layer control message for the ith 
+frame, with MSB 𝑚21
+𝑖; 
+b) the Physical Layer control message polynomial 𝑚𝑖(𝑥) = 𝑚21
+𝑖𝑥21 + 𝑚20
+𝑖𝑥20 + … +
+𝑚1
+𝑖𝑥+ 𝑚0
+𝑖 shall be multiplied by 𝑥105; 
+c) 𝑥105𝑚𝑖(𝑥) shall be divided by 𝑔(𝑥), the generator polynomial with coefficients defined in 
+table 3-5, with remainder 𝑑𝑖(𝑥) = 𝑑104
+𝑖
+𝑥104 + 𝑑103
+𝑖
+𝑥103 + … + 𝑑1
+𝑖𝑥+ 𝑑0
+𝑖. 
+3.9.6.2 The 128-binary-digit frame sequence number field of the PLFM shall be defined as 
+𝑤𝑗
+𝑖= ൞
+0,               if  𝑗= 896
+𝑑1001−𝑗
+𝑖
+,   if 897 ≤𝑗< 1002
+𝑚1023−𝑗
+𝑖
+,   if 1002 ≤𝑗< 1024
+ . 
+3.10 PSEUDO-RANDOMIZER 
+3.10.1 GENERAL 
+3.10.1.1 Each Physical Layer frame shall be pseudo-randomized by performing the digit-
+wise modulo-2 addition with a pseudo-random sequence as shown in figure 3-7 and 
+described herein. 
+3.10.1.2 For 𝑖∈{0, 1, … , 𝑅−1}, the 𝑖𝑡ℎ pseudo-randomized Physical Layer frame is 
+denoted 𝒕𝑖= 𝑡0
+𝑖,  𝑡1
+𝑖, … ,  𝑡𝑘−1
+𝑖
+, where for 𝑗∈{0, 1, … , 65823}, the 𝑗𝑡ℎ symbol of the 𝑖𝑡ℎ 
+block is 
+𝑡𝑗
+𝑖= ቊ
+𝑠̂𝑗
+𝑖,               if  0 ≤𝑗< 384
+𝑠̂𝑗
+𝑖⊕𝑝𝑗−384,   if 384 ≤𝑗< 65824  , 
+where ⊕ represents modulo-2 addition. 
+
+=====PAGE 37=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 3-19 
+June 2022 
+ 
+Figure 3-7:  Pseudo-randomizer Implementation Example 
+3.10.2 SEQUENCE SPECIFICATION 
+The pseudo-random sequence 𝑝0, 𝑝1, … , 𝑝65439 shall be generated by the polynomial: 
+𝑔(𝐷) = 𝐷16 + 𝐷12 + 𝐷3 + 𝐷+ 1. 
+3.10.3 SEQUENCE INITIALIZATION 
+This pseudo-random sequence shall begin at the first digit of the channel state information 
+field in the Physical Layer frame. The registers in the sequence generator shall be initialized 
+to ‘1’ at the start of the channel state information field. 
+3.11 FRAME VALIDATION USING DECODER 
+A transfer frame shall be marked valid if its associated SMF is recovered from correctly 
+decoded DVB-S2 or RS codeword(s); a transfer frame shall be marked invalid if it is recovered 
+from one or more incorrectly decoded codewords. 
+NOTE – For the CCSDS transfer frame types defined in references [1], [2], or [3], the use 
+of the Frame Error Control Field is optional, and the system designer may choose 
+to use it for additional frame validation. 
+3.12 SEQUENCE INDICATOR 
+A sequence indicator shall be ‘zero’ when a frame is the direct successor of the previous frame, 
+and ‘one’ when a gap has been detected. 
+Initialize to ‘all ones’ state
+prior to feeding in channel
+state information field.
+Physical
+Layer Frame
+Pseudo-
+random
+Sequence
+Pseudo-
+randomized
+Physical
+Layer Frame
+(1)
+(2)
+X 0
+X 1
+X 2
+X 3
+X 11
+X 12
+X 15
+…
+…
+
+=====PAGE 38=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 4-1 
+June 2022 
+4 PHYSICAL LAYER 
+4.1 
+CENTER FREQUENCY 
+4.1.1 CENTER FREQUENCY SPECIFICATION 
+4.1.1.1 The center frequency of the optical carrier shall be 193.1 + n × 0.1 THz, where n is 
+an integer ranging from −15 to 18. 
+NOTE – These center frequencies in the optical C-band are a subset of those defined in the 
+ITU-T G.694.1 frequency grid with 100 GHz channel spacing (reference [D2]). 
+The frequencies range from 191.6 THz to 194.9 THz and correspond to 
+wavelengths in vacuum ranging from 1538.19 nm to 1564.68 nm. 
+4.1.1.2 Center frequencies between 191.6 THz and 193.2 THz, inclusive, (𝑛= −15 to 1) are 
+designated as Data Communications Band A and shall be used by transmitters in Type A 
+terminals. 
+4.1.1.3 
+Center frequencies between 193.3 THz and 194.9 THz, inclusive, (𝑛= 2 to 18) are 
+designated as Data Communications Band B and shall be used by transmitters in Type B 
+terminals. 
+NOTE – To achieve high data rates, some systems may simultaneously modulate and 
+transmit signals on multiple center frequencies within Data Communications 
+Band A or B. This is commonly referred to as WDM. 
+4.1.1.4 For systems utilizing an acquisition signal at a separate frequency from the 
+communications frequency (Type 1 systems), acquisition signal frequencies shall be selected 
+between 195.0 THz and 195.6 THz. 
+4.1.2 CENTER FREQUENCY TOLERANCE 
+The transmitter center frequency shall be accurate to within a tolerance of ±1.5 GHz. 
+4.2 
+LASER LINEWIDTH 
+The laser linewidth shall be less than 300 MHz for noncoherent systems and less than 100 
+kHz for coherent systems. 
+4.3 
+POLARIZATION 
+4.3.1 POLARIZATION TYPE 
+4.3.1.1 For systems transmitting a single polarized signal, the following shall apply: 
+
+=====PAGE 39=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 4-2 
+June 2022 
+a) Type A terminals shall transmit right-hand circularly polarized signals, as defined in 
+reference [8]. 
+b) Type B terminals shall transmit left-hand circularly polarized signals, as defined in 
+reference [8]. 
+4.3.1.2 For systems transmitting in two orthogonal polarizations simultaneously, the 
+transmitted polarization is unspecified. 
+4.3.2 POLARIZATION EXTINCTION RATIO 
+The polarization extinction ratio shall be greater than 10 dB. 
+4.4 
+MODULATION 
+4.4.1 GENERAL 
+The vector of pseudo-randomized Physical Layer frames received from the coding and 
+synchronization sublayer defined in section 3 shall be used to modulate the emitted light 
+within each transmission slot using a combination of phase and intensity modulation. 
+4.4.2 PHASE MODULATION 
+4.4.2.1 General 
+The choice of phase modulation format is a managed parameter and may be either 
+Differential Phase-Shift Keying (DPSK), Differential Quadrature Phase-Shift Keying 
+(DQPSK), Binary Phase-Shift Keying (BPSK), or Quadrature Phase-Shift Keying (QPSK) as 
+described herein. 
+4.4.2.2 Differential Phase-Shift Keying 
+For systems employing DPSK, each binary digit in the pseudo-randomized Physical Layer 
+frame, 𝑑𝑗
+𝑖, shall be modulated onto the optical carrier such that the difference in modulated 
+carrier phase between successive slot modulation intervals is 0 radians for a binary 0 and π 
+radians for a binary 1. 
+4.4.2.3 Differential Quadrature Phase-Shift Keying 
+For systems employing DQPSK, the sequence of binary digits in the pseudo-randomized 
+Physical Layer frame shall be divided so that even bits (i.e., bits 2i, where i = 0, 1, 2, … , 
+32911) are modulated onto the I-channel and odd bits (i.e., bits 2i + 1, where i = 0, 1, 2, … , 
+32911) are modulated onto the Q-channel.  The angular difference in the IQ plane of the 
+
+=====PAGE 40=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 4-3 
+June 2022 
+modulated carrier phase between successive slot modulation intervals shall have the 
+following meanings: 
+a) 0 degrees represents a ‘00’ IQ binary digit pair; 
+b) 90 degrees represents a ‘10’ IQ binary digit pair; 
+c) 180 degrees represents a ‘11’ IQ binary digit pair; and 
+d) −90 degrees represents a ‘01’ IQ binary digit pair. 
+4.4.2.4 Binary Phase-Shift Keying 
+For systems employing BPSK, each binary digit in the pseudo-randomized Physical Layer 
+frame, 𝑑𝑗
+𝑖, shall be modulated onto the optical carrier with a phase shift of 0 radians for a 
+binary 0 and π radians for a binary 1. 
+4.4.2.5 Quadrature Phase-Shift Keying 
+For systems employing QPSK, the sequence of binary digits in the pseudo-randomized 
+Physical Layer frame shall be divided so that even bits (i.e., bits 2i, where i = 0, 1, 2, … , 
+32911) are modulated onto the I-channel and odd bits (i.e., bits 2i + 1, where i = 0, 1, 2, … , 
+32911) are modulated onto the Q-channel. The modulated carrier phase shall have the 
+following meanings as shown in figure 4-1: 
+a) 45 degrees represents a ‘00’ IQ binary digit pair; 
+b) 135 degrees represents a ‘10’ IQ binary digit pair; 
+c) 225 degrees represents a ‘11’ IQ binary digit pair; and 
+d) 315 degrees represents a ‘01’ IQ binary digit pair. 
+ 
+Figure 4-1:  QPSK Constellation Map 
+I
+Q
+00
+01
+11
+10
+I=MSB Q=LSB
+
+=====PAGE 41=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 4-4 
+June 2022 
+4.4.3 INTENSITY MODULATION 
+4.4.3.1 General 
+The intensity modulation pulse shape shall be either Non-Return-to-Zero (NRZ), Return-to-
+Zero 50 (RZ50), or Return-to-Zero 33 (RZ33). 
+4.4.3.2 RZ50 Modulation 
+For RZ50 modulation, the reference pulse intensity shape of the modulated communications 
+beam transmitted by a terminal is a single period of a 50-percent return-to-zero waveform 
+defined by 
+𝐼𝑅𝑅𝑅,𝑅𝑅50 = ቊcos2 ቀ𝜋
+𝑉(𝑡)
+𝑉𝜋ቁ
+0 ≤𝑡≤𝑇
+0
+otherwi𝑠e
+ , 
+where 𝑉(𝑡) =
+𝑉𝜋
+4 cos(2𝜋𝜋𝜋) +
+𝑉𝜋
+4 ; 
+ 
+Vπ is a voltage; and 
+ 
+ƒ = 1/T is the symbol modulation rate. 
+NOTES 
+1 
+Figure 4-2 shows the intensity profile for the reference RZ50 pulse. 
+2 
+The laser transmitter is not necessarily required to implement the exact reference 
+pulse shape; however, transmitter implementation loss may be assessed relative to the 
+reference waveform. 
+
+=====PAGE 42=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 4-5 
+June 2022 
+ 
+Figure 4-2:  Reference RZ50 and RZ33 Pulse Shapes for a Slot Rate of 10.0 GHz 
+4.4.3.3 RZ33 Modulation 
+For RZ33 modulation, the reference pulse intensity shape of the modulated communications 
+beam transmitted by a terminal is a single period of a 33-percent return-to-zero waveform 
+defined by: 
+𝐼𝑅𝑅𝑅,𝑅𝑅33 = ቊcos2 ቀ𝜋
+𝑉(𝑡)
+𝑉𝜋ቁ
+0 ≤𝑡≤𝑇
+0
+otherwi𝑠e
+ , 
+where 𝑉(𝑡) =
+𝑉𝜋
+2 cos(𝜋𝜋𝜋); 
+ 
+Vπ  is a voltage; and 
+ 
+ƒ = 1/T is the symbol modulation rate. 
+NOTES 
+1 
+Figure 4-2 shows the intensity profile for the reference RZ33 pulse. 
+2 
+The laser transmitter is not necessarily required to implement the exact reference 
+pulse shape; however, transmitter implementation loss may be assessed relative to the 
+reference waveform. 
+
+=====PAGE 43=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 4-6 
+June 2022 
+4.4.4 BURST MODE MODULATION 
+4.4.4.1 Modulated data shall be transmitted in bursts, which are characterized by the burst 
+parameter, 𝐷∈{0, 1 , 3, 7, 23, 39}, as described herein. 
+4.4.4.2 For 𝐷= 0, the data shall be transmitted as a continuous stream with one phase-and-
+intensity modulated symbol, as defined in 4.4, transmitted in each transmission slot. 
+4.4.4.3 
+For 𝐷> 0, the data shall be transmitted as a series of bursts with each burst containing 
+176 phase-and-intensity modulated symbols, as defined in 4.4, with one modulated symbol 
+transmitted in each transmission slot. The bursts shall be aligned such that the first transmitted 
+binary digit in a burst corresponds to the first binary digit in the payload frame header. 
+NOTE – There are 374 bursts in a Physical Layer frame when BPSK or DPSK modulation 
+format is used. There are 187 bursts in a Physical Layer frame when QPSK or 
+DQPSK modulation format is used. 
+4.4.4.4 For 𝐷> 0 and BPSK and QPSK modulation formats, the transmission of a 176-
+symbol burst shall be followed by a period of 176 × 𝐷 transmission slots during which the 
+intensity of the transmitted signal is 0. 
+4.4.4.5 For 𝐷> 0 and DPSK and DQPSK modulation formats, the transmission of a 176-
+symbol burst shall be followed by a period of (176 × 𝐷) −1 transmission slots during which 
+the intensity of the transmitted signal is 0. This period shall be followed by a single 
+transmitted optical pulse with an intensity profile as defined in 4.4.3. 
+NOTE – This single pulse, which precedes the next burst transmission, provides a phase 
+reference for the next transmitted symbol with the differential modulation formats. 
+4.4.5 SYMBOL MODULATION RATE 
+The symbol modulation rate shall be 2.5 GHz or 10.0 GHz. 
+4.4.6 DOPPLER COMPENSATION 
+Transmitters are not required to pre-compensate for Doppler shifts on the symbol modulation 
+rate. 
+4.4.7 SYMBOL MODULATION RATE TOLERANCE 
+The symbol modulation rate shall be accurate to within a tolerance of ± 10 ppm. 
+4.4.8 TIMING JITTER 
+The root mean square jitter on the symbol modulation clock at frequencies higher than 10 Hz 
+shall be less than 5 percent of the period of the symbol modulation clock. 
+
+=====PAGE 44=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 5-1 
+June 2022 
+5 MANAGED PARAMETERS 
+5.1 
+OVERVIEW 
+Some parameters for high data rate optical signaling are handled by management rather than 
+by an inline communications protocol. The managed parameters are those that tend to be 
+static for long periods of time, and whose change generally signifies a major reconfiguration 
+of the high data rate signaling associated with a particular mission. A management system 
+conveys the required information to the high data rate optical signaling systems. 
+This section lists the managed parameters used by synchronization and channel coding 
+systems. These parameters are defined in an abstract sense and are not intended to imply any 
+particular implementation of a management system. 
+5.2 
+MANAGED PARAMETERS FOR CODING AND SYNCHRONIZATION 
+The managed parameters for coding and synchronization shall be those specified in table 5-1. 
+Table 5-1:  Managed Parameters for Coding and Synchronization 
+Managed Parameter 
+Allowed Values 
+SMF generation method 
+ASM or GFP 
+CCSDS Transfer Frame Length for ASM 
+SMF generation method  
+Integer (max 65536) 
+GFP mode 
+Short or full 
+FEC Code 
+BCH + LDPC, RS 
+LDPC Code rate, r 
+1/4, 1/3, 2/5, 1/2, 3/5, 2/3, 3/4, 
+4/5, 5/6, 8/9, 9/10 
+Interleaver Symbol Size, m 
+1 or 8 
+Number of rows in channel interleaver, N 
+The parameters N and B shall 
+satisfy the following constraints: 
+– BN shall be a multiple of 
+64800/m, and 
+– 64800/m shall be a  
+multiple of N 
+Shift register length increment in channel 
+interleaver, B 
+Unique word content identifier 
+288-bit sequence of binary 
+digits, as described in 3.9.3 
+
+=====PAGE 45=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page 5-2 
+June 2022 
+5.3 
+MANAGED PARAMETERS FOR PHYSICAL LAYER 
+The managed parameters for the Physical Layer shall be those specified in table 5-2. 
+Table 5-2:  Managed Parameters for Physical Layer 
+Managed Parameter 
+Allowed Values 
+Terminal Type 
+A1, A2, B1, or B2 
+Transmitted Center frequency parameter, n 
+n = 17 to 33 for Type B terminals 
+n = 0 to 16 for Type A terminals 
+Polarization 
+Dual or Single Polarization 
+Modulation 
+DPSK, DQPSK, BPSK, QPSK 
+Intensity Modulation Pulse Shape 
+NRZ, RZ50, or RZ33 
+Symbol Clock Rate 
+2.5 GHz or 10.0 GHz 
+Burst Parameter, D 
+0, 1, 3, 7, 23, or 39 
+ 
+
+=====PAGE 46=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page A-1 
+June 2022 
+ANNEX A 
+ 
+SERVICE 
+  
+(NORMATIVE) 
+A1.1 OVERVIEW 
+A1.1.1 Introduction 
+This annex provides service definition in the form of primitives, which present an abstract 
+model of the logical exchange of data and control information between the service provider 
+and the service user. The definitions of primitives are independent of specific implementation 
+approaches. 
+The parameters of the primitives are specified in an abstract sense and specify the 
+information to be made available to the user of the primitives. The way in which a specific 
+implementation makes this information available is not constrained by this specification. In 
+addition to the parameters specified in this annex, an implementation can provide other 
+parameters to the service user (e.g., parameters for controlling the service, monitoring 
+performance, facilitating diagnosis, and so on). 
+A1.1.2 Overview of the Services 
+This Experimental Specification provides unidirectional (one-way) transfer of a sequence of 
+frames over a Physical Channel across a space link, using one of a number of specified 
+channel coding and modulation methods. 
+Two types of services can be provided, but both types of service cannot be provided 
+simultaneously: 
+a) ASM Generation Service—unidirectional transfer of a sequence of fixed-length TM, 
+AOS, or USLP Transfer Frames at a constant frame rate over a Physical Channel 
+across a space link; or 
+b) GFP Generation Service—unidirectional transfer of a sequence of variable-length 
+octet-aligned frames defined by other standards over a Physical Channel across a 
+space link. 
+The ASM Generation Service is provided when the SMF generation method described in 
+table 5-1 is set to ASM. 
+The GFP Generation Service is provided when the SMF generation method described in 
+table 5-1 is set to GFP. 
+
+=====PAGE 47=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page A-2 
+June 2022 
+A2 FRAME SERVICE PARAMETERS 
+A2.1 OPTICAL FRAME 
+A2.1.1 The Optical Frame (OF) parameter is the service data unit of the two services. 
+A2.1.2 When the ASM Generation Service is provided, as described in 3.3.2, the OF shall 
+be a CCSDS transfer frame as defined in references [1], [2], or [3]. 
+A2.1.3 When the GFP Generation Service is provided, as described in 3.3.3, the OF shall 
+be an octet-aligned frame defined by other standards or methods. 
+A2.1.4 When the ASM Generation Service is provided, as described in 3.3.2, the length of 
+any frame transferred on a Physical Channel shall be established by management. 
+A2.1.5 When the GFP Generation Service is provided, as described in 3.3.3, the length of 
+any frame transferred on a Physical Channel is unspecified and may vary from frame to 
+frame. 
+A2.2 QUALITY INDICATOR 
+The Quality Indicator parameter shall be used to notify the user at the receiving end of the 
+service that the received frame was not able to be successfully decoded. 
+A2.3 SEQUENCE INDICATOR 
+The Sequence Indicator parameter shall be used to notify the user at the receiving end of the 
+service that one or more frames of the Physical Channel have been lost as the result of a loss 
+of frame synchronization. 
+A3 SERVICE PRIMITIVES 
+A3.1 GENERAL 
+A3.1.1 The service primitives associated with this service are 
+a) OF ChannelAccess.request; and 
+b) OF ChannelAccess.indication. 
+A3.1.2 The OF ChannelAccess.request primitive shall be passed from the service user at 
+the sending end to the service provider to request that a Frame be transferred through the 
+Physical Channel to the user at the receiving end. 
+A3.1.3 The OF ChannelAccess.indication shall be passed from the service provider to the 
+service user at the receiving end to deliver a Frame. 
+
+=====PAGE 48=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page A-3 
+June 2022 
+A3.2 OF ChannelAccess.request 
+A3.2.1 Function 
+The OF ChannelAccess.request primitive is the service request primitive for this service. 
+A3.2.2 Semantics 
+The OF ChannelAccess.request primitive shall provide a parameter as follows: 
+OF ChannelAccess.request (OF Frame) 
+A3.2.3 When Generated 
+The OF ChannelAccess.request primitive shall be passed to the service provider to request it 
+to process and send the Frame. 
+A3.2.4 Effect on Receipt 
+Receipt of the OF ChannelAccess.request primitive shall cause the service provider to perform 
+the functions described in sections 3 and 4 and to transfer the resulting pulsed slot sequence. 
+A3.3 OF ChannelAccess.indication 
+A3.3.1 Function 
+The OF ChannelAccess.indication primitive is the service indication primitive for this service. 
+A3.3.2 Semantics 
+The OF ChannelAccess.indication primitive shall provide parameters as follows: 
+OF ChannelAccess.indication (OF Frame, Quality Indicator, Sequence Indicator) 
+A3.3.3 When Generated 
+The OF ChannelAccess.indication primitive shall be passed from the service provider to the 
+service user to deliver a Frame. 
+A3.3.4 Effect on Receipt 
+The effect of receipt of the OF ChannelAccess.indication primitive by the service user is 
+undefined. 
+
+=====PAGE 49=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page B-1 
+June 2022 
+ANNEX B 
+ 
+SECURITY, SANA, AND PATENT CONSIDERATIONS  
+  
+(INFORMATIVE) 
+B1 
+SECURITY CONSIDERATIONS 
+B1.1 
+SECURITY BACKGROUND 
+It is assumed that security is provided by encryption, authentication methods, and access 
+control to be performed at a layer above the Physical Layer and Coding and Synchronization 
+Sublayer. Mission and service providers are expected to select from recommended security 
+methods, suitable to the specific application profile. Specification of these security methods 
+and other security provisions is outside the scope of this Recommended Standard. 
+The coding layer has the objective of delivering data with the minimum possible amount of 
+residual errors. An LDPC, Reed-Solomon, or other code with CRC code needs to be used to 
+ensure that residual errors are detected and the frame flagged. There is an extremely low 
+probability of additional undetected errors that may escape this scrutiny. These errors may 
+affect the encryption process in unpredictable ways, possibly affecting the decryption stage 
+and producing data loss, but will not compromise the security of the data. 
+B1.2 
+SECURITY CONCERNS 
+Security concerns in the areas of data privacy, authentication, access control, availability of 
+resources, and auditing are to be addressed in higher layers and are not related to this 
+Recommended Standard. 
+B1.3 
+CONSEQUENCES OF NOT APPLYING SECURITY 
+There are no specific security measures prescribed for the coding layer. Therefore 
+consequences of not applying security are only imputable to the lack of proper security 
+measures in other layers. Residual undetected errors may produce additional data loss when 
+the link carries encrypted data. 
+B2 
+SANA CONSIDERATIONS 
+The recommendations of this document do not require any action from SANA. 
+
+=====PAGE 50=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page B-2 
+June 2022 
+B3 
+PATENT CONSIDERATIONS 
+Implementers of this Recommended Standard should be aware that DVB -S2 is covered by a 
+set of patents for which licensing information may be obtained from Sisvel: 
+https://www.sisvel.com/licensing-programs/digital-video-display-technology/dvb-s2/introduction 
+ 
+
+=====PAGE 51=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page C-1 
+June 2022 
+ANNEX C 
+ 
+PHYSICAL LAYER AND CODING AND SYNCHRONIZATION 
+SUBLAYER IMPLEMENTATION 
+  
+(INFORMATIVE) 
+The Experimental Specification described in this document was developed in coordination 
+with multiple space agencies as an extension of existing systems in development that will 
+enable interoperability between future systems. Thus it includes adaptations to those existing 
+systems such that those systems themselves do not implement the specification. However, 
+those adaptations are based on existing standards and capabilities that have been 
+demonstrated via standards development processes, in existing system implementations, in 
+academic publications, in software simulations, and/or in commonly available commercial 
+products. 
+There is a corresponding CCSDS Yellow Book, Independent Implementations for Optical 
+High Data Rate (HDR) Communication –1550 nm, CCSDS 720.4-Y-1. That document is a 
+record of implementations of the coding and synchronization and Physical Layer 
+requirements for optical communications proposed in this Experimental Specification. 
+ 
+
+=====PAGE 52=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page D-1 
+June 2022 
+ANNEX D 
+ 
+INFORMATIVE REFERENCES 
+  
+(INFORMATIVE) 
+[D1] IEEE Standard for Ethernet. IEEE Std 802.3-2018. New York: IEEE, 2018. 
+[D2] Spectral 
+Grids 
+for 
+WDM 
+Applications: 
+DWDM 
+Frequency 
+Grid. 
+ITU-T 
+Recommendation G.694.1. Geneva: ITU, 2012. 
+ 
+
+=====PAGE 53=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page E-1 
+June 2022 
+ANNEX E 
+ 
+ACRONYMS AND ABBREVIATIONS 
+  
+(INFORMATIVE) 
+ 
+Term 
+Meaning 
+AOS 
+Advanced Orbiting Systems 
+ASM 
+attached synchronization marker 
+BCH 
+Bose–Chaudhuri–Hocquenghem 
+BPSK 
+binary phase-shift keying 
+CRC 
+cyclic redundancy check 
+DPSK 
+differential phase-shift keying 
+DQPSK 
+differential quadrature phase-shift keying 
+DVB-S2 
+Digital Video Broadcasting, Second Generation 
+FEC 
+forward error correction 
+GFP 
+generic frame procedure 
+GFP-F 
+generic frame procedure frame-mapped 
+GFP-T 
+generic frame procedure transparent-mapped 
+HDR 
+high data rate 
+ICD 
+interface control document 
+LDPC 
+low-density parity-check 
+LSB 
+least significant bit 
+MSB 
+most significant bit 
+NRZ 
+non-return-to-zero 
+OSI 
+Open Systems Interconnection 
+
+=====PAGE 54=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION—1550 NM 
+CCSDS 141.10-O-1 
+Page E-2 
+June 2022 
+Term 
+Meaning 
+PLFM 
+Physical Layer frame marker 
+QPSK 
+quadrature phase-shift keying 
+RS 
+Reed Solomon 
+RZ50 
+return-to-zero 50 
+RZ33 
+return-to-zero 33 
+SANA 
+Space Assigned Numbers Authority 
+SMF 
+synchronization-marked frame 
+TM 
+telemetry 
+USLP 
+Unified Space Data Link Protocol 
+WDM 
+wavelength division multiplexing 
+ 

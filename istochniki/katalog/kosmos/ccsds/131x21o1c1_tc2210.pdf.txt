@@ -1,0 +1,143 @@
+
+=====PAGE 1=====
+ 
+Distribution Control Number:  TC 22-10 
+ 
+Reference Number:  CCSDS 131.21-O-1 Cor. 1 
+ 
+NOTE 
+– 
+Current versions of CCSDS documents are maintained at the CCSDS Web site: 
+ 
+https://public.ccsds.org/ 
+ 
+Correspondence regarding CCSDS documents should be addressed to 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+Email: secretariat@mailman.ccsds.org 
+ 
+ 
+ 
+Serially Concatenated Convolutional Codes—Extension 
+(SCCC-X) 
+ 
+TECHNICAL CORRIGENDUM 1 
+ 
+The Management Council of the Consultative Committee for Space Data Systems (CCSDS) has 
+authorized the publication of technical corrigendum 1 to CCSDS 131.21-O-1, issued May 2021. 
+ 
+Page D-1, add 
+ 
+SMTF 
+synch-marked transfer frame 
+ 
+Page D-1, Delete 
+ 
+CADU 
+channel access data unit 
+ 
+ 
+Page 3-1, 3.2.6, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Recommended Standard CCSDS 131.21-O-1
+TECHNICAL CORRIGENDUM 1 
+ 
+Issue Date: April 2022 
+
+=====PAGE 2=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 131.21-O-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-10 
+ 
+Reference Number:  CCSDS 131.21-O-1 Cor. 1 
+ 
+ 
+Page 2 of 3 
+Page 3-1, 3.2.5, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 3-1, 3.2.4, change 
+ 
+from: 
+ 
+“Channel Access Data Unit (CADU)” 
+ 
+to: 
+ 
+“Synch-Marked Transfer Frame (SMTF)” 
+ 
+Page 2-4, figure 2-3, change 
+ 
+from: 
+ 
+“CADU stream” 
+ 
+to: 
+ 
+“SMTF stream” 
+ 
+Page 2-3, last paragraph under 2.3.1 SENDING END, change 
+ 
+from: 
+ 
+“(8100 symbols)” 
+ 
+to: 
+ 
+“(8100 channel symbols)” 
+ 
+
+=====PAGE 3=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 131.21-O-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-10 
+ 
+Reference Number:  CCSDS 131.21-O-1 Cor. 1 
+ 
+ 
+Page 3 of 3 
+Page 2-1, at end of last paragraph under 2.1 ARCHITECTURE, add 
+ 
+“, the latter for what concerns the modulation schemes. CCSDS 401.0-B  (reference [5]) 
+covers additional features of the Physical Layer, such as frequency bands and 
+polarizations, that are not described or referenced here” 
+ 
+Page 1-5, add reference 
+ 
+[5] 
+Radio Frequency and Modulation Systems—Part 1: Earth Stations and 
+Spacecraft. Issue 32. Recommendations for Space Data System Standards (Blue 
+Book), CCSDS 401.0-B-32. Washington, D.C.: CCSDS, October 2021. 
+ 
+[Editorially update references to current issues—these changes are not marked.] 
+ 
+Page 1-1, at end of second paragraph under 1.1 PURPOSE, add 
+ 
+“, as long as compliance to CCSDS recommendations for radio frequency modulations in 
+reference [5] is ensured” 
+ 
+ 
+ 

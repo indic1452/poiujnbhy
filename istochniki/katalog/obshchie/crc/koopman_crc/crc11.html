@@ -1,0 +1,116 @@
+<!DOCTYPE HTML PUBLIC "-//SoftQuad Software//DTD HoTMetaL PRO 5.0::19981217::extensions to HTML 4.0//EN" "hmpro5.dtd"> 
+ 
+<HTML>
+ 
+<HEAD>
+<META NAME="viewport" CONTENT="width=device-width, initial-scale=1.0"> 
+<TITLE>11 Bit CRC Zoo</TITLE>
+</HEAD>
+
+<BODY>
+<H1 ALIGN="CENTER">CRC Polynomial Zoo</H1>
+<P ALIGN="CENTER"><B>Philip Koopman, Carnegie Mellon University</B></P>
+<H3><A HREF="index.html">Best CRCs</A> | <A HREF="details.html">CRC
+Selection</A> | CRC Zoo | <A HREF="http://checksumcrc.blogspot.com/">Checksum
+and CRC Blog</A><BR>
+<BR>
+Select # Bits in CRC below (see also
+<A HREF="http://users.ece.cmu.edu/~koopman/crc/notes.html">NOTES PAGE</A>):<BR>
+<A HREF="crc3.html">3</A>,&nbsp; <A HREF="crc4.html">4</A>,&nbsp;
+<A HREF="crc5.html">5</A>,&nbsp; <A HREF="crc6.html">6</A>,&nbsp;
+<A HREF="crc7.html">7</A>,&nbsp; <A HREF="crc8.html">8</A>,&nbsp;
+<A HREF="crc9.html">9</A>,&nbsp; <A HREF="crc10.html">10</A>,&nbsp;
+<A HREF="crc11.html">11</A>,&nbsp; <A HREF="crc12.html">12</A>,&nbsp;
+<A HREF="crc13.html">13</A>,&nbsp; <A HREF="crc14.html">14</A>,&nbsp;
+<A HREF="crc15.html">15</A>, <BR>
+<A HREF="crc16.html">16</A>,&nbsp; <A HREF="crc17.html">17</A>,&nbsp;
+<A HREF="crc18.html">18</A>,&nbsp; <A HREF="crc19.html">19</A>,&nbsp;
+<A HREF="crc20.html">20</A>,&nbsp; <A HREF="crc21.html">21</A>,&nbsp;
+<A HREF="crc22.html">22</A>,&nbsp; <A HREF="crc23.html">23</A>,&nbsp;
+<A HREF="crc24.html">24</A>,&nbsp; <A HREF="crc25.html">25</A>,&nbsp;
+<A HREF="crc26.html">26</A>,&nbsp; <A HREF="crc27.html">27</A>,&nbsp;
+<A HREF="crc28.html">28</A>,&nbsp; <A HREF="crc29.html">29</A>,&nbsp;
+<A HREF="crc30.html">30</A>,&nbsp; <A HREF="crc31.html">31</A>,<BR>
+<A HREF="crc32.html">32</A>,&nbsp; <A HREF="crc36.html">33-36</A>,&nbsp;
+<A HREF="crc40.html">37-40</A>,&nbsp; <A HREF="crc44.html">41-44</A>,&nbsp;
+<A HREF="crc48.html">45-48</A>,&nbsp; <A HREF="crc52.html">49-52</A>,&nbsp;
+<A HREF="crc56.html">53-56</A>,&nbsp; <A HREF="crc60.html">57-60</A>,&nbsp;
+<A HREF="crc63.html">61-63</A>,&nbsp; <A HREF="crc64.html">64</A></H3>
+<HR>
+<H2> <A NAME="crc11">11 Bit CRCs:</A></H2>
+<UL>
+<LI><TT>(<A HREF="c11/0x5db.txt">0x5db</A>; 0xbb7) &lt;=&gt; (0x76e; 0xedd)
+<A HREF="c11/0x5db_len.txt">{<B>2036</B>,132,16,2,2,2,1}</A> |
+<A HREF="c11/0x5db.gold">gold</A> | (*p) CRC-11F/3 &quot;5667p&quot;</TT></LI>
+<LI><TT>(<A HREF="c11/0x64d.txt">0x64d</A>; 0xc9b) &lt;=&gt; (0x6c9; 0xd93)
+<A HREF="c11/0x64d_len.txt">{<B>2036</B>,131,6,6,3}</A> |
+<A HREF="c11/0x64d.gold">gold</A> | (*p) CRC-11K/3.1</TT></LI>
+<LI><TT>(<A HREF="c11/0x62b.txt">0x62b</A>; 0xc57) &lt;=&gt; (0x751; 0xea3)
+<A HREF="c11/0x62b_len.txt">{<B>2036</B>,53,17,5,5}</A> |
+<A HREF="c11/0x62b.gold">gold</A> | (*p) CRC-11K/3.2</TT></LI>
+<LI><TT>(<A HREF="c11/0x473.txt">0x473</A>; 0x8e7) &lt;=&gt; (0x738; 0xe71)
+<A HREF="c11/0x473_len.txt">{<B>2036</B>,46,9,9,1}</A> |
+<A HREF="c11/0x473.gold">gold</A> | (*p) CRC-11K/3.3</TT></LI>
+<LI><TT>(<A HREF="c11/0x5d7.txt">0x5d7</A>; 0xbaf) &lt;=&gt; (0x7ae; 0xf5d)
+<A HREF="c11/0x5d7_len.txt">{<B>2036</B>,28,<B>26</B>,3,2,2,1}</A> |
+<A HREF="c11/0x5d7.gold">gold</A> | (*p) CRC-11F/5 &quot;5657p&quot;</TT></LI>
+<LI><TT>(<A HREF="c11/0x402.txt">0x402</A>; 0x805) &lt;=&gt; (0x500; 0xa01)
+<A HREF="c11/0x402_len.txt">{<B>2036</B>}</A> | <A
+HREF="c11/0x402.gold">gold</A> | (*p) FP-11</TT></LI>
+</UL>
+<UL>
+<LI><TT>(<A HREF="c11/0x7df.txt">0x7df</A>; 0xfbf) &lt;=&gt; (0x7ef; 0xfdf)
+<A HREF="c11/0x7df_len.txt">{1942,48,1,1,1,1,1,1,1}</A> |
+<A HREF="c11/0x7df.gold">gold</A> | CRC-11F/7 &quot;7677&quot;</TT></LI>
+</UL>
+<UL>
+<LI><TT>(<A HREF="c11/0x583.txt">0x583</A>; 0xb07) &lt;=&gt; (0x706; 0xe0d)
+<A HREF="c11/0x583_len.txt">{1012,<B>1012</B>,17,17}</A> |
+<A HREF="c11/0x583.gold">gold</A> | (*op) CRC-11F/4.2 &quot;7015&quot;</TT> 
+</LI>
+<LI><TT>(<A HREF="c11/0x5ef.txt">0x5ef</A>; 0xbdf) &lt;=&gt; (0x7de; 0xfbd)
+<A HREF="c11/0x5ef_len.txt">{1012,<B>1012</B>,7,7,1,1,1,1}</A> |
+<A HREF="c11/0x5ef.gold">gold</A> | (*op) CRC-11F/10 &quot;5737&quot;</TT> 
+</LI>
+<LI><TT>(<A HREF="c11/0x4f5.txt">0x4f5</A>; 0x9eb) &lt;=&gt; (0x6bc; 0xd79)
+<A HREF="c11/0x4f5_len.txt">{1012,<B>1012</B>,6,6,4,<B>4</B>}</A> |
+<A HREF="c11/0x4f5.gold">gold</A> | (*op) CRC-11F/8 &quot;4753&quot;</TT></LI>
+<LI><TT>(<A HREF="c11/0x405.txt">0x405</A>; 0x80b) &lt;=&gt; (0x680; 0xd01)
+<A HREF="c11/0x405_len.txt">{1012,<B>1012</B>}</A> | <A
+HREF="c11/0x405.gold">gold</A> | (*op) FOP-11</TT></LI>
+</UL>
+<UL>
+<LI><TT>(<A HREF="c11/0x6bb.txt">0x6bb</A>; 0xd77) &lt;=&gt; (0x775; 0xeeb)
+<A HREF="c11/0x6bb_len.txt">{624,624,9,2,2,2,1}</A> | <A
+HREF="c11/0x6bb.gold">gold</A> | CRC-11F/4.1 &quot;6567&quot;</TT></LI>
+<LI><TT>(<A HREF="c11/0x532.txt">0x532</A>; 0xa65) &lt;=&gt; (0x532; 0xa65)
+<A HREF="c11/0x532_len.txt">{22,22,22,<B>22</B>}</A> | <A
+HREF="c11/0x532.gold">gold</A> | (*o) CRC-11K/6.1</TT> </LI>
+<LI><TT>(<A HREF="c11/0x6fd.txt">0x6fd</A>; 0xdfb) &lt;=&gt; (0x6fd; 0xdfb)
+<A HREF="c11/0x6fd_len.txt">{22,22,22,<B>22</B>,1,1,1,1}</A> |
+<A HREF="c11/0x6fd.gold">gold</A> | (*o) CRC-11F/6.2 &quot;6773s&quot;</TT> 
+</LI>
+<LI><TT>(<A HREF="c11/0x5c2.txt">0x5c2</A>; 0xb85) &lt;=&gt; (0x50e; 0xa1d)
+<A HREF="c11/0x5c2_len.txt">{20,20,20,20}</A> | <A
+HREF="c11/0x5c2.gold">gold</A> | (*o) FlexRay-11</TT> </LI>
+<LI><TT>(<A HREF="c11/0x433.txt">0x433</A>; 0x867) &lt;=&gt; (0x730; 0xe61)
+<A HREF="c11/0x433_len.txt">{20,20,20,<B>20</B>}</A> | <A
+HREF="c11/0x433.gold">gold</A> | (*o) CRC-11K/6sub8 </TT></LI>
+<LI><TT>(<A HREF="c11/0x571.txt">0x571</A>; 0xae3) &lt;=&gt; (0x63a; 0xc75)
+<A HREF="c11/0x571_len.txt">{12,12,12,12,<B>12</B>}</A> |
+<A HREF="c11/0x571.gold">gold</A> | CRC-11F/6.1 &quot;5343&quot;</TT></LI>
+</UL>
+<P><A HREF="c11/c11_hd.out">HD profile for all unique 11-bit CRCs</A></P>
+<HR>
+<P>See the <A HREF="http://users.ece.cmu.edu/~koopman/crc/notes.html">NOTES
+PAGE</A> for interpreting this data. Last update 3/5/2024.</P>
+<P><A REL="license"
+HREF="http://creativecommons.org/licenses/by/4.0/"><IMG SRC="../gif/ccby4.gif"
+ALT="{CC BY 4.0}" WIDTH="157" HEIGHT="40" BORDER="0"></A><BR>
+This work is copyright 2015-2024 by Philip Koopman. Licensed under a
+<A REL="license" HREF="http://creativecommons.org/licenses/by/4.0/">Creative
+Commons Attribution 4.0 International License</A>.</P>
+<HR>
+</BODY>
+</HTML>
+

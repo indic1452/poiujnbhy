@@ -1,0 +1,2951 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+ETSI TS 102 551-2 V2.1.1 (2007-08)
+Technical Specification 
+Satellite Earth Stations and Systems (SES);
+Satellite Digital Radio (SDR) Systems;
+Inner Physical Layer of the Radio Interface;
+Part 2: Multiple carrier transmission
+ 
+ 
+
+=====PAGE 2=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+2 
+ 
+ 
+ 
+ 
+Reference 
+RTS/SES-00287-2 
+Keywords 
+digital, layer 1, radio, satellite 
+ETSI 
+650 Route des Lucioles 
+F-06921 Sophia Antipolis Cedex - FRANCE 
+ 
+Tel.: +33 4 92 94 42 00   Fax: +33 4 93 65 47 16 
+ 
+Siret N° 348 623 562 00017 - NAF 742 C 
+Association à but non lucratif enregistrée à la 
+Sous-Préfecture de Grasse (06) N° 7803/88 
+ 
+Important notice 
+Individual copies of the present document can be downloaded from: 
+http://www.etsi.org 
+The present document may be made available in more than one electronic version or in print. In any case of existing or 
+perceived difference in contents between such versions, the reference version is the Portable Document Format (PDF). 
+In case of dispute, the reference shall be the printing on ETSI printers of the PDF version kept on a specific network drive 
+within ETSI Secretariat. 
+Users of the present document should be aware that the document may be subject to revision or change of status. 
+Information on the current status of this and other ETSI documents is available at 
+http://portal.etsi.org/tb/status/status.asp 
+If you find errors in the present document, please send your comment to one of the following services: 
+http://portal.etsi.org/chaircor/ETSI_support.asp 
+Copyright Notification 
+No part may be reproduced except as authorized by written permission. 
+The copyright and the foregoing restriction extend to reproduction in all media. 
+ 
+© European Telecommunications Standards Institute 2007. 
+All rights reserved. 
+ 
+DECTTM, PLUGTESTSTM and UMTSTM are Trade Marks of ETSI registered for the benefit of its Members. 
+TIPHONTM and the TIPHON logo are Trade Marks currently being registered by ETSI for the benefit of its Members. 
+3GPPTM is a Trade Mark of ETSI registered for the benefit of its Members and of the 3GPP Organizational Partners. 
+
+=====PAGE 3=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+3 
+ 
+Contents 
+Intellectual Property Rights................................................................................................................................5 
+Foreword.............................................................................................................................................................5 
+1 
+Scope........................................................................................................................................................6 
+2 
+References................................................................................................................................................6 
+3 
+Definitions, symbols and abbreviations ...................................................................................................6 
+3.1 
+Definitions..........................................................................................................................................................6 
+3.2 
+Symbols..............................................................................................................................................................6 
+3.3 
+Abbreviations .....................................................................................................................................................6 
+4 
+Inner physical layer - Multi Carrier..........................................................................................................7 
+4.1 
+Interfacing to OPL (Outer Physical Layer) ........................................................................................................8 
+4.2 
+The profile approach - different multi carrier modes .........................................................................................8 
+4.2.1 
+Profile definition...........................................................................................................................................8 
+4.2.2 
+Modes definition...........................................................................................................................................9 
+4.2.3 
+Parameters for QPSK subcarrier mapping....................................................................................................9 
+4.2.4 
+Parameters for 16QAM subcarrier mapping...............................................................................................10 
+4.3 
+Generation of one Phy section..........................................................................................................................11 
+4.3.1 
+Overview ....................................................................................................................................................11 
+4.3.1.1 
+Overview of mode 1..............................................................................................................................12 
+4.3.1.2 
+Overview of mode 2, 3 and 4................................................................................................................13 
+4.3.2 
+Puncturing of capacity units........................................................................................................................13 
+4.3.3 
+RFU section insertion .................................................................................................................................14 
+4.3.4 
+Energy dispersal (scrambling) ....................................................................................................................14 
+4.3.5 
+Accumulation of CU into one Phy section..................................................................................................14 
+4.4 
+Pilot tone insertion and signalling ....................................................................................................................15 
+4.4.1 
+Mode 1: 2k@5MHz; identical to DVB-T...................................................................................................15 
+4.4.1.1 
+Signal constellation and mapping .........................................................................................................15 
+4.4.1.2 
+Symbol interleaver ................................................................................................................................15 
+4.4.1.3 
+IPL-MC frame structure........................................................................................................................16 
+4.4.1.4 
+Reference signals ..................................................................................................................................17 
+4.4.1.4.1 
+Functions and derivation .................................................................................................................17 
+4.4.1.4.2 
+Definition of reference sequence.....................................................................................................17 
+4.4.1.4.3 
+Location of scattered pilot cells.......................................................................................................18 
+4.4.1.4.4 
+Location of continual pilot carriers..................................................................................................18 
+4.4.1.4.5 
+Amplitudes of all reference information..........................................................................................19 
+4.4.1.5 
+TPS transmission format.......................................................................................................................19 
+4.4.1.5.1 
+Scope of the TPS .............................................................................................................................19 
+4.4.1.5.2 
+TPS transmission format .................................................................................................................20 
+4.4.1.5.3 
+TPS modulation...............................................................................................................................23 
+4.4.2 
+Mode 2: 2k@5MHz....................................................................................................................................23 
+4.4.2.1 
+Preamble insertion.................................................................................................................................24 
+4.4.2.2 
+Scattered pilots......................................................................................................................................25 
+4.4.2.3 
+Continuous pilots ..................................................................................................................................26 
+4.4.3 
+Mode 3: 1k@1,7MHz.................................................................................................................................27 
+4.4.3.1 
+Preamble insertion.................................................................................................................................27 
+4.4.3.2 
+Scattered pilots......................................................................................................................................28 
+4.4.3.3 
+Continuous pilots ..................................................................................................................................29 
+4.4.4 
+Mode 4: 0,5k@1,7MHz..............................................................................................................................30 
+4.4.4.1 
+Preamble insertion.................................................................................................................................30 
+4.4.4.2 
+Scattered pilots......................................................................................................................................31 
+4.4.4.3 
+Continuous pilots ..................................................................................................................................32 
+4.5 
+Bit mapping to constellation.............................................................................................................................33 
+4.5.1 
+QPSK Modulation ......................................................................................................................................33 
+4.5.2 
+16QAM Modulation (non-hierarchical)......................................................................................................33 
+4.5.3 
+16QAM Modulation (hierarchical).............................................................................................................34 
+
+=====PAGE 4=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+4 
+ 
+4.5.4 
+Normalization of power levels....................................................................................................................35 
+4.6 
+Pulse shaping and guard interval insertion.......................................................................................................35 
+Annex A (informative): 
+Bibliography...................................................................................................36 
+History..............................................................................................................................................................37 
+ 
+
+=====PAGE 5=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+5 
+ 
+Intellectual Property Rights 
+IPRs essential or potentially essential to the present document may have been declared to ETSI. The information 
+pertaining to these essential IPRs, if any, is publicly available for ETSI members and non-members, and can be found 
+in ETSI SR 000 314: "Intellectual Property Rights (IPRs); Essential, or potentially Essential, IPRs notified to ETSI in 
+respect of ETSI standards", which is available from the ETSI Secretariat. Latest updates are available on the ETSI Web 
+server (http://webapp.etsi.org/IPR/home.asp). 
+Pursuant to the ETSI IPR Policy, no investigation, including IPR searches, has been carried out by ETSI. No guarantee 
+can be given as to the existence of other IPRs not referenced in ETSI SR 000 314 (or the updates on the ETSI Web 
+server) which are, or may be, or may become, essential to the present document. 
+Foreword 
+This Technical Specification (TS) has been produced by ETSI Technical Committee Satellite Earth Stations and 
+Systems (SES). 
+An SDR system enables broadcast to fixed and mobile receivers through satellites and complementary terrestrial 
+transmitters. Functionalities, architecture and technologies of such systems are described in TR 102 525 
+(see bibliography). 
+The present document is part 2 of a multi-part deliverable covering the Satellite Digital Radio (SDR) Systems; Inner 
+Physical Layer of the Radio Interface, as identified below: 
+Part 1: 
+"Single carrier transmission"; 
+Part 2: 
+"Multiple carrier transmission"; 
+Part 3: 
+"Multiple carrier transmission Mode 1". 
+Several existing and planned ETSI standards specify parts of the SDR system, with the aim of interoperable 
+implementations. The physical layer of the radio interface (air interface) is divided up into the outer physical layer, the 
+inner physical layer with a single carrier transmission, and the inner physical layer with multiple carriers transmission. 
+These parts can be used all together in SDR compliant equipment, or in conjunction with other existing and future 
+specifications. 
+The present document specifies the inner physical layer with multiple carrier transmission. The inner physical layer 
+with single carrier transmission is specified in TS 102 551-1 (see bibliography), and the outer physical layer in 
+TS 102 550 (see bibliography). 
+The present version 2.1.1 supersedes version 1.1.1 and is not compatible with it.  
+Changes from version 1.1.1 are: 
+1) 
+Notes saying that the "AMSS preamble" is under study have been removed, since this technical element is no 
+longer foreseen. 
+2) 
+The description of the Mode 1 has been changed in order to make the standard easier to use. The current 
+version makes reference to an ETSI DVB standard and lists the differences. In the revised version the relevant 
+part of the ETSI DVB standard EN 301 744 is copied. 
+3) 
+The Mode 1 has been changed in order to increase commonalities with the DVB-SH EN 302 583 standard. 
+4) 
+The pilot structure for Modes 2 to 4 has been changed. 
+The items 1 and 2 are editorial changes, while 3 and 4 are non-backward compatible technical changes. 
+
+=====PAGE 6=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+6 
+ 
+1 
+Scope 
+The present document concerns the radio interface of SDR broadcast receivers. It specifies functionality of the inner 
+physical layer. It allows implementing this part of the system in an interoperable way. The present document specifies 
+the case of multiple carrier transmission, whereas TS 102 551-1 (see bibliography) specifies single carrier transmission. 
+2 
+References 
+The following documents contain provisions which, through reference in this text, constitute provisions of the present 
+document. 
+• 
+References are either specific (identified by date of publication and/or edition number or version number) or 
+non-specific. 
+• 
+For a specific reference, subsequent revisions do not apply. 
+• 
+For a non-specific reference, the latest version applies. 
+Referenced documents which are not found to be publicly available in the expected location might be found at 
+http://docbox.etsi.org/Reference. 
+NOTE: 
+While any hyperlinks included in this clause were valid at the time of publication ETSI cannot guarantee 
+their long term validity. 
+[1] 
+ETSI EN 300 744 (V1.5.1): "Digital Video Broadcasting (DVB); Framing structure, channel 
+coding and modulation for digital terrestrial television". 
+3 
+Definitions, symbols and abbreviations 
+3.1 
+Definitions 
+For the purposes of the present document, the following terms and definitions apply: 
+α: constellation ratio which determines the QAM constellation for the modulation for hierarchical transmission 
+3.2 
+Symbols 
+For the purposes of the present document, the following symbols apply: 
+2k@5MHz 
+OFDM with 2k (i.e. 2 048 length) IFFT in 5 MHz channel spacing 
+α 
+hierarchical constellation scaling factor 
+3.3 
+Abbreviations 
+For the purposes of the present document, the following abbreviations apply: 
+16QAM 
+16 Quadrature Amplitude Modulation 
+AMSS 
+Amplitude Modulated Spreading Sequence 
+C-TS 
+Channel Transport Stream 
+CU 
+Capacity Unit 
+DBPSK 
+Differential Binary Phase Shift Keying 
+DVB 
+Digital Video Broadcasting 
+FFT 
+Fast Fourier Transform 
+IFFT 
+Inverse Fast Fourier Transform 
+IPL 
+Inner Physical Layer 
+
+=====PAGE 7=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+7 
+ 
+IPL-MC 
+Inner Physical Layer, Multiple Carrier 
+IPL-SC 
+Inner Physical Layer, Single Carrier 
+OFDM 
+Orthogonal Frequency Division Multiplex 
+OPL 
+Outer Physical Layer 
+PRBS 
+Pseudo Random Binary Sequence 
+QAM 
+Quadrature Amplitude Modulation 
+QPSK 
+Quaternary Phase Shift Keying 
+RF 
+Radio Frequency 
+RFU 
+Reserved for Future Use 
+TPS 
+Transmission Parameter Signalling 
+XOR 
+EXclusive OR 
+4 
+Inner physical layer - Multi Carrier 
+The functionality of the Inner Physical Layer (Multi Carrier), in the following denoted IPL-MC, is to provide a robust 
+modulation scheme for multi carrier transmission. The multi carrier transmission is applicable either to satellite or 
+terrestrial transmission.  
+The IPL-MC is embedded between the OPL (C-TS delivery) and the RF frontend (modulation) as depicted in Figure 1.  
+ 
+Figure 1: General block diagram of the ETSI SES SDR system concept with selection of IPL-MC 
+The general block diagram of the IPL-MC functionality for either modes 1 or modes 2, 3 and 4 are given in figures 2 
+and 3.  
+ 
+Figure 2: Block diagram of the ETSI SES SDR compliant IPL-MC in mode 1 
+ 
+Figure 3: Block diagram of the ETSI SES SDR compliant IPL-MC in mode 2, 3 and 4 
+To achieve maximum commonalities with existing, wide-spread standards like DVB-T and its successor DVB-H, one 
+profile is based on EN 300 744 [1]. To increase the robustness in rapidly changing channels or high delay spread 
+scenarios, three modes using a higher pilot density together with a distinct frequency-domain preamble are introduced.  
+
+=====PAGE 8=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+8 
+ 
+4.1 
+Interfacing to OPL (Outer Physical Layer) 
+Its interface to the OPL (Outer Physical Layer) is the C-TS (channel transport stream), which is defined in TS 102 550 
+(see bibliography). For this special IPL-MC, the parameters which are passed to the OPL are derived within TS 102 550 
+(see bibliography).  
+Two types of IPL-MC exist: One providing a single-input C-TS interface, another providing double-input interface to 
+allow hierarchical modulation. In the latter case, both C-TS need to be aligned in time, framing and throughput.  
+If more than one carrier needs to be supported, multiple instances of the IPL-MC need to be instantiated in parallel.  
+The parameters that are passed to the OPL are as follows: 
+• 
+IPL-MC frame length in integer number of CU (capacity units); 
+• 
+IPL-MC frame length in number of IPL-MC symbols; 
+• 
+number of inputs (to distinguish between normal and hierarchical transmission). 
+For mode 1, the length of one IPL-MC frame equals the length of the DVB-T superframe, whereas the length of one 
+Phy sections equals the length of one DVB-T frame. Four Phy sections compose on IPL-MC frame in mode 1. The 
+notations "IPL-MC frame" and "Phy sections" will be used throughout the document instead of "DVB-T superframe" 
+and "DVB-T frame". 
+For modes 2 to 4, one IPL-MC frame is composed of five Phy sections and preceded by one preamble. Their parameters 
+are defined in clause 4.2.2.  
+With these parameters, the exact throughput of the IPL-MC can be derived in CU per time. The smallest unit to be 
+processed by the IPL-MC is one CU.  
+To be able to benefit from the gain of hybrid configurations (e.g. using IPL-SC together with IPL-MC), it is mandatory 
+to have equal frame lengths on both IPLs.  
+If modes 2, 3 or 4 of the IPL-MC are used, a joint frame length of 432 ms is chosen. For mode 1 of the IPL-MC, the 
+joint frame length is 487,424 ms (4 × 121,856 ms) or 438,68 ms (4 × 109,67 ms), dependent on the selection of the 
+guard interval. This is achieved by concatenation of an integer number of IPL-MC frames. 
+4.2 
+The profile approach - different multi carrier modes 
+4.2.1 
+Profile definition 
+To cope with different design constraints that arise from the possible use scenarios of the IPL-MC, it has been decided 
+within SES SDR to define different profiles. The main target frequency bands and channel bandwidths are: 
+Table 1: Definition of different profiles 
+Profile name 
+IPL-MC-A 
+IPL-MC-B 
+IPL-MC-C 
+IPL-MC-D 
+Typical use 
+S-Band DVB-T 
+S-Band SDR 
+L-Band SDR 
+S-Band SDR 
+Supported modes 
+1 
+2 
+3 and 4 
+3 and 4 
+Carrier frequency 
+2,0 GHz to 2,3 GHz 
+2,0 GHz to 2,3 GHz 
+1,4 GHz to 1,5 GHz 
+2,0 GHz to 2,3 GHz 
+Channel bandwidth 
+4,76 MHz 
+4,76 MHz 
+1,536 MHz 
+1,536 MHz 
+Channel spacing 
+5 MHz 
+5 MHz 
+1,712 MHz 
+1,712 MHz 
+ 
+The present document does not restrict its use to the application scenarios as denoted above. Other frequency bands or 
+channel bandwidths may be used but the parameter selection may not be optimal. Due to the definition of a framing 
+adaptation layer towards the IPL of DVB-T, the complete IPL of DVB-T can be reused without any changes. However, 
+only the 2k mode of DVB-T is considered here.  
+
+=====PAGE 9=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+9 
+ 
+4.2.2 
+Modes definition 
+The different modes that are defined are as follows. 
+Table 2: Definition of different modes 
+Mode 1 
+2k@5MHz  
+pilots equal to DVB-T 
+IPL identical to IPL of DVB-T. Parameter set inline with DVB-T  
+5 MHz mode (4,76 MHz bandwidth, 2k number of sub-carriers) 
+Mode 2 
+2k@5MHz  
+new pilot pattern 
+Mode optimized for requirements of frequency bands using channel 
+spacing of 5 MHz with 2k number of carriers. Parameter set 
+recommended for networks with high delay spread and high vehicle 
+speed 
+Mode 3 
+1k@1,7MHz 
+new pilot pattern 
+Mode optimized for requirements of frequency bands using channel 
+spacing of 1,7 MHz. Parameter set recommended for networks with very 
+high delay spread (e.g. SFN network with high power repeater), 1k 
+number of carriers, preamble symbol, continuous and scattered pilots 
+with pilot density of approximately 17 % 
+Mode 4 
+0,5k@1,7MHz 
+new pilot pattern 
+Similar to mode 3. Support of higher vehicle speed (carrier spacing 
+doubled, shorter guard interval), 0,5k number of carriers 
+ 
+While mode 1 is identical to DVB-T, the other modes use a completely new pilot pattern. 
+The parameters for all modes are denoted in Table 3 and Table 4. 
+4.2.3 
+Parameters for QPSK subcarrier mapping 
+The following table displays the parameters defined for the QPSK modulation of the OFDM subcarriers. 
+
+=====PAGE 10=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+10
+ 
+Table 3: Parameters derived in modes 1 to 4 for QPSK modulation of the OFDM subcarriers 
+  
+unit 
+DVB-T 2k 
+(unchanged) 
+SES SDR 2k  
+(with preamble) 
+SES SDR 1k 
+(with preamble) 
+SES SDR 0,5k 
+(with preamble) 
+Mode Identifier 
+  
+1 
+2 
+3 
+4 
+FFT length 
+  
+2 048 
+2 048 
+1 024 
+512 
+Used sub-carriers 
+  
+1 705 
+1 509 
+729 
+365 
+Guard interval ratio 
+  
+0,25 
+0,25 
+0,25 
+0,25 
+Sampling Frequency (fractional) 
+MHz 
+40/7 
+484/75 
+484/225 
+484/225 
+Sampling Frequency (rounded) 
+MHz 
+5,714 3 
+6,453 3 
+2,1511 
+2,1511 
+Pilots per OFDM symbol 
+  
+193 
+262 
+127 
+64 
+Capacity unit size incl. RFU 
+bits 
+(Punctured) 2 
+016 
+2 064 
+2 064 
+2 064 
+Modulation index 
+  
+2 
+2 
+2 
+2 
+  
+  
+  
+  
+  
+  
+Signal Bandwidth 
+MHz 
+4,7573 
+4,754 9 
+1,531 4 
+1,533 5 
+Samples per symbol 
+  
+2 560 
+2 560 
+1 280 
+640 
+Symbol length incl. guard interval 
+µs 
+448,00 
+396,69 
+595,04 
+297,52 
+Guard interval length 
+µs 
+89,60 
+79,34 
+119,01 
+59,50 
+sub-carrier distance in kHz 
+kHz 
+2,79 
+3,15 
+2,10 
+4,20 
+  
+  
+  
+  
+  
+  
+Data sub-carriers per symbol 
+  
+1 512 
+1 247 
+602 
+301 
+OFDM Symbols per Phy section 
+  
+68 
+24 
+24 
+24 
+Data sub-carriers per Phy section 
+  
+102 816 
+29 928 
+14 448 
+7 224 
+Bit per Phy section 
+  
+205 632 
+59 856 
+28 896 
+14 448 
+CU per Phy section 
+  
+102 
+29 
+14 
+7 
+Length of Phy section 
+ms 
+30,46 
+9,52 
+14,28 
+7,14 
+Padding bits 
+  
+0 
+0 
+0 
+0 
+  
+  
+  
+  
+  
+  
+preamble per IPL-MC frame 
+  
+0 
+1 
+1 
+1 
+Phy sections per IPL-MC frame 
+  
+4 
+5 
+5 
+5 
+sub-carrier per IPL-MC frame 
+  
+411 264 
+150 887 
+72 842 
+36 421 
+Bit per IPL-MC frame 
+  
+822 528 
+301 774 
+145 684 
+72 842 
+Length of IPL-MC frame 
+ms 
+121,86 
+48,00 
+72,00 
+36,00 
+CU per IPL-MC frame 
+  
+408 
+145 
+70 
+35 
+Padding bits (informative only) 
+  
+0 
+0 
+0 
+0 
+ 
+4.2.4 
+Parameters for 16QAM subcarrier mapping 
+The following table displays the parameters defined for the 16QAM modulation of the OFDM subcarriers. 
+
+=====PAGE 11=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+11
+ 
+Table 4: Parameters derived in modes 1 to 4 for 16QAM modulation of the OFDM subcarriers 
+ 
+unit 
+DVB-T 2k 
+(unchanged) 
+SES SDR 2k 
+(with preamble) 
+SES SDR 1k 
+(with preamble) 
+SES SDR 0.5k 
+(with preamble) 
+Mode Identifier 
+  
+1 
+2 
+3 
+4 
+FFT length 
+  
+2 048 
+2 048 
+1 024 
+512 
+Used sub-carriers 
+  
+1 705 
+1 509 
+729 
+365 
+Guard interval ratio 
+  
+0,25 
+0,25 
+0,25 
+0,25 
+Sampling Frequency (fractional) 
+MHz 
+40/7 
+484/75 
+484/225 
+484/225 
+Sampling Frequency (rounded) 
+MHz 
+5,714 3 
+6,453 3 
+2,151 1 
+2,151 1 
+Pilots per OFDM symbol 
+  
+193 
+262 
+127 
+64 
+Capacity unit size incl. RFU 
+bits 
+(Punctured) 2 
+016 
+2 064 
+2 064 
+2 064 
+Modulation index 
+  
+4 
+4 
+4 
+4 
+  
+  
+  
+  
+  
+  
+Signal Bandwidth 
+MHz 
+4,757 3 
+4,754 9 
+1,531 4 
+1,533 5 
+Samples per symbol 
+  
+2 560 
+2 560 
+1 280 
+640 
+Symbol length incl. guard interval 
+µs 
+448,00 
+396,69 
+595,04 
+297,52 
+Guard interval length 
+µs 
+89,60 
+79,34 
+119,01 
+59,50 
+sub-carrier distance in kHz 
+kHz 
+2,79 
+3,15 
+2,10 
+4,20 
+  
+  
+  
+  
+  
+  
+Data sub-carriers per symbol 
+  
+1 512 
+1 247 
+602 
+301 
+OFDM Symbols per Phy section 
+  
+68 
+24 
+24 
+24 
+Data sub-carriers per Phy section 
+  
+102 816 
+29 928 
+14 448 
+7 224 
+Bit per Phy section 
+  
+411 264 
+119 712 
+57 792 
+28 896 
+CU per Phy section 
+  
+204 
+58 
+28 
+14 
+Length of Phy section 
+ms 
+30,46 
+9,52 
+14,28 
+7,14 
+Padding bits 
+  
+0 
+0 
+0 
+0 
+  
+  
+  
+  
+  
+  
+preamble per IPL-MC frame 
+  
+0 
+1 
+1 
+1 
+Phy sections per IPL-MC frame 
+  
+4 
+5 
+5 
+5 
+sub-carrier per IPL-MC frame 
+  
+411 264 
+150 887 
+72 842 
+36 421 
+Bit per IPL-MC frame 
+  
+1 645 056 
+603 548 
+291 368 
+145 684 
+Length of IPL-MC frame 
+ms 
+121,86 
+48,00 
+72,00 
+36,00 
+CU per IPL-MC frame 
+  
+816 
+290 
+140 
+70 
+Padding bits (informative only) 
+  
+0 
+0 
+0 
+0 
+ 
+4.3 
+Generation of one Phy section 
+4.3.1 
+Overview 
+The generation of one Phy section is performed as follows: 
+• 
+handling of data payload (capacity units, CU, etc.); 
+• 
+puncturing of capacity units, applicable only to mode 1; 
+• 
+handling of signalling bits (RFU: reserved for future use), applicable only to modes 2, 3 and 4; 
+• 
+scrambling for energy dispersal; 
+• 
+accumulation of CU for one Phy section. 
+
+=====PAGE 12=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+12
+ 
+4.3.1.1 
+Overview of mode 1 
+Figure 4 displays the generation of one Phy section in mode 1. 
+ 
+Figure 4: Overview of the generation of one Phy section for mode 1 
+
+=====PAGE 13=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+13
+ 
+4.3.1.2 
+Overview of mode 2, 3 and 4 
+Figure 5 displays the generation of one Phy section in mode 2, 3 and 4. 
+Phy section overall length: 59 856 bit
+Mode 2, 
+QPSK
+Mode 2, 
+16QAM
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+Phy section overall length: 119 712 bit
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+29 CU per Phy section for mode 2, QPSK
+58 CU per Phy section for mode 2, 16QAM
+1 CU = 2 048 bit
+16 bit
+RFU
+Scrambling sequence generator
+16 bit
+RFU
+Grouping of several CU 
+to generate one Phy section
+feedback
+0
+0
+0
+1
+1
+1
+0
+0
+1
+1
+1
++
+1 CU = 2 048 bit
+Phy section overall length: 28 896 bit
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+14 CU per Phy section for mode 3, QPSK
+Phy section overall length: 57 792 bit
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+28 CU per Phy section for mode 3, 16QAM
+Phy section overall length: 14 448 bit
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+7 CU per Phy section for mode 4, QPSK
+Phy section overall length: 28 896 bit
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+1 CU = 2 048 bit
+16 bit
+RFU
+14 CU per Phy section for mode 4, 16QAM
+Mode 3, 
+QPSK
+Mode 3, 
+16QAM
+Mode 4, 
+QPSK
+Mode 4, 
+16QAM
+ 
+Figure 5: Overview of the generation of one Phy section for modes 2, 3 and 4 
+4.3.2 
+Puncturing of capacity units 
+NOTE: 
+The present clause 4.3.2 only applies to mode 1 transmission. 
+In transmission mode 1, the sequence of CU as generated in TS 102 550 (V1.2.1, see bibliography) has to be modified 
+to be transported using the mode 1 symbol structure. Each capacity unit comprising 2048 bits is punctured as depicted 
+in Figure 6. The puncturing is applied to all capacity units, including capacity units containing the signalling pipe and 
+the start-of-frame preamble. The block size for one pCU is 2 016 bits after puncturing, see also Figure 4. 
+
+=====PAGE 14=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+14
+ 
+2048 bit
+126 bit
+2
+128 bit
+128 bit
+128 bit
+128 bit
+128 bit
+128 bit
+126 bit
+126 bit
+126 bit
+126 bit
+126 bit
+126 bit
+1 Capacity unit (CU) with 2048 bit each
+16 blocks with 128 bit each
+126 bit
+2
+126 bit
+2
+126 bit
+2
+126 bit
+2
+126 bit
+2
+Puncturing of the last 2 bit out of every block of 128 bit
+16 blocks with 126 bit each
+2016 bit
+1 punctured Capacity unit (pCU) with 2016 bit each
+ 
+Figure 6: Adaptation of C-TS bitstream to mode 1 transmission 
+4.3.3 
+RFU section insertion 
+NOTE: 
+the present clause 4.3.3 only applies to mode 2, 3 and 4 transmission 
+In modes 2, 3 and 4, each CU is followed by 16 signalling bits which are currently not used but are reserved for future 
+use. All bits are set to zero. The block size for one CU after RFU insertion is 2 064 bits, see also Figure 5. 
+4.3.4 
+Energy dispersal (scrambling) 
+Energy dispersal is applied to the data payload and the RFU bits. The energy dispersal is performed using a length 
+2 047 (211 - 1) scrambler with an internal shift register of length 11. The scrambler is described using the following 
+generator polynomial as derived from ITU-T Recommendation O.153 (see bibliography). 
+X11 + X9 + 1, initial state is set to "11001110001" (see Figure 7): 
+ 
+Figure 7: Scrambler used for energy dispersal 
+The output of the scrambler of length 2 016 (in mode 1) or 2 064 (in mode 2-4) is XOR-ed with the first 2 016 bit or 
+2 064 bit of the bitstream as depicted in Figure 4 and Figure 5. The scrambler is initialized at each start of one CU. If 
+the size of the data that has to be scrambled exceeds one cycle of the scrambler, then the scrambler just continues 
+periodically. 
+4.3.5 
+Accumulation of CU into one Phy section 
+According to the transport capability of the different modes and different modulation orders, the Phy sections are 
+generated. Refer to Table 3 and Table 4 for details. 
+CU padding at the end of the IPL-MC frame: As it is a mandatory requirement of the C-TS multiplexer at the output of 
+the OPL to adapt the number of CU to the transport capability of the IPL-MC frame, no additional padding of empty 
+CU is necessary; however, padding of empty CU may be foreseen to support such erroneous situations. 
+
+=====PAGE 15=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+15
+ 
+4.4 
+Pilot tone insertion and signalling 
+The present clause specifies the reference signals for the different modes.  
+4.4.1 
+Mode 1: 2k@5MHz; identical to DVB-T 
+Mode 1 is directly adapted from [1]. 
+4.4.1.1 
+Signal constellation and mapping 
+The system uses Orthogonal Frequency Division Multiplex (OFDM) transmission. All data carriers in one Phy section 
+are modulated using either QPSK, 16-QAM or non-uniform 16-QAM constellations. The constellations, and the details 
+of the Gray mapping applied to them, are illustrated in Figure 17 to Figure 20. 
+The exact proportions of the constellations depend on a parameter α, which can take the two values 2 or 4. The 
+parameter α is the minimum distance separating two constellation points carrying different HP-bit values divided by the 
+minimum distance separating any two constellation points. 
+4.4.1.2 
+Symbol interleaver 
+The purpose of the symbol interleaver is to rearrange the 1 512 data symbols of the active carriers per OFDM symbol, 
+and therefore acts on vectors of 1 512 data symbols. 
+The 1 512 data symbols are grouped in a vector Y' = (y"0, y"1, y"2, ...y"1511). 21 symbols of Y" form a group of 
+symbols, thus the 1 512 data symbols are split into 72 groups.  
+The interleaved vector Y = (y0, y1, y2, ...yNmax-1) at the output of the symbol interleaver is defined by: 
+yH(q) = y'q for even symbols for q = 0, ..., 1 511 
+yq = y'H(q) for odd symbols for q = 0, ..., 1 511 
+The symbol index, defining the position of the current OFDM symbol in the Phy section, is defined in clause 4.4.1.3. 
+An (N r – 1) bit binary word R'ii is defined, where R'ii takes the following values for N r =11: 
+ii = 0,1: 
+ 
+ 
+R'ii [Nr-2, Nr-3, ..., 1, 0] = 0, 0, ..., 0, 0 
+ii = 2:  
+ 
+ 
+R'ii [Nr-2, Nr-3, ..., 1, 0] = 0, 0, ..., 0, 1 
+2 < ii < 2 048: 
+ 
+R'ii [Nr-3, Nr-4, ..., 1, 0] = R'ii-1 [Nr -2, Nr -3, ..., 2, 1]; 
+ 
+ 
+ 
+ 
+ 
+in the 2K mode: R'ii [9] = R'ii-1 [0] ⊕ R'ii-1 [3] 
+A vector Rii is derived from the vector R'ii by the bit permutations given in Table 5. 
+Table 5: Bit permutations for the 2K mode 
+R'ii bit positions 
+9 
+8 
+7 
+6 
+5 
+4 
+3 
+2 
+1 
+0 
+Rii bit positions 
+0 
+7 
+5 
+1 
+8 
+2 
+6 
+9 
+3 
+4 
+ 
+
+=====PAGE 16=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+16
+ 
+The permutation function H(q) is defined by the following algorithm: 
+r
+r
+N
+2
+N
+1
+j
+i
+j 0
+q=0;
+for (ii = 0; ii < 2048; ii = ii + 1) {
+   H(q)
+(ii mod 2) 2
+R (j) 2 ;
+   if (H(q) < 1512) {
+      q = q + 1;
+   }
+}
+−
+−
+=
+=
+⋅
++
+⋅
+∑
+; 
+A schematic block diagram of the algorithm used to generate the permutation function is represented in Figure 8. 
+MSB
+wires permutation
+address
+check
+10
+11
+toggle
+T
+Control
+Unit
+skip
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+H(q)
+R'
+R
+ 
+Figure 8: Symbol interleaver address generation scheme for mode 1 
+4.4.1.3 
+IPL-MC frame structure  
+The present clause specifies the OFDM frame structure to use for transmission mode 1.  
+The transmitted signal is organized in Phy sections. Each Phy section has a duration of TF, and consists of 68 OFDM 
+symbols. Four Phy sections constitute one IPL-MC frame. Each symbol is constituted by a set of K = 1 705 carriers and 
+transmitted with a duration TS. It is composed of two parts: a useful part with duration TU and a guard interval with a 
+duration Δ. The guard interval consists in a cyclic continuation of the useful part, TU, and is inserted before it. Two 
+values of guard intervals may be used according to Table 22. 
+The symbols in one Phy section are numbered from 0 to 67. All symbols contain data and reference information. 
+Since the OFDM signal comprises many separately-modulated carriers, each symbol can in turn be considered to be 
+divided into cells, each corresponding to the modulation carried on one carrier during one symbol. 
+In addition to the transmitted data the following reference information is contained: 
+• 
+scattered pilot cells; 
+• 
+continual pilot carriers; 
+• 
+TPS carriers. 
+The pilots can be used for frame synchronization, frequency synchronization, time synchronization, channel estimation, 
+transmission mode identification and can also be used to follow the phase noise. 
+The carriers are indexed by k ∈ [Kmin; Kmax] and determined by Kmin = 0 and Kmax = 1 704. The spacing between 
+adjacent carriers is 1/TU while the spacing between carriers Kmin and Kmax are determined by (K-1)/TU. 
+The numerical values for the OFDM parameters for mode 1 are given in Table 6 for 5 MHz channels. 
+
+=====PAGE 17=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+17
+ 
+The values for the various time-related parameters are given in multiples of the elementary period T and in 
+microseconds. 
+The elementary period T is 7/40 μs for 5 MHz channels. 
+Table 6: Numerical values for the OFDM parameters for mode 1 in 5 MHz channels 
+Parameter 
+Mode 1 
+Number of carriers K 
+1 705 
+Value of carrier number Kmin  
+0 
+Value of carrier number Kmax 
+1 704 
+Duration TU 
+358,40 µs 
+Carrier spacing 1/TU  
+2 790,179 Hz 
+Spacing between carriers Kmin and Kmax (K-1)/TU 
+4,75 MHz 
+ 
+4.4.1.4 
+Reference signals 
+This clause specifies the mode independent Reference signals processes and the parameters to use for transmission 
+mode 1. 
+4.4.1.4.1 
+Functions and derivation 
+Various cells within the IPL-MC frame are modulated with reference information whose transmitted value is known to 
+the receiver. Cells containing reference information are transmitted at "boosted" power level (see clause 4.4.1.4.5). 
+The information transmitted in these cells are scattered or continual pilot cells. 
+Each continual pilot coincides with a scattered pilot every fourth symbol; the number of useful data carriers is constant 
+from symbol to symbol: 1 512 useful carriers in mode 1. 
+The value of the scattered or continual pilot information is derived from a Pseudo Random Binary Sequence (PRBS) 
+which is a series of values, one for each of the transmitted carriers (see clause 4.4.1.4.2). 
+4.4.1.4.2 
+Definition of reference sequence 
+The continual and scattered pilots are modulated according to a PRBS sequence, wk, corresponding to their respective 
+carrier index k. This sequence also governs the starting phase of the TPS information (described in clause 4.4.1.4.2). 
+The PRBS sequence is generated according to Figure 9. 
+The PRBS is initialized so that the first output bit from the PRBS coincides with the first active carrier. A new value is 
+generated by the PRBS on every used carrier (whether or not it is a pilot). 
+Initialization sequence. 
+  
+1 - bit  
+delay     
+1 - bit  
+delay     
+1 - bit  
+delay     
+1  
+1  
+1  
+1  
+1  
+1  
+1  
+1  
+1  
+1  
+1  
+PRBS sequence starts: 1111111111100... 
+1 - bit  
+delay     
+1 - bit  
+delay     
+1 - bit  
+delay     
+1 - bit  
+delay     
+1 - bit  
+delay     
+1 - bit  
+delay     
+1 - bit  
+delay     
+1 - bit  
+delay     
+ 
+Figure 9: Generation of PRBS sequence 
+The polynomial for the Pseudo Random Binary Sequence (PRBS) generator shall be: 
+ 
+X11 + X2 + 1 (see Figure 9) 
+
+=====PAGE 18=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+18
+ 
+4.4.1.4.3 
+Location of scattered pilot cells 
+Reference information, taken from the reference sequence, is transmitted in scattered pilot cells in every symbol. 
+Scattered pilot cells are always transmitted at the "boosted" power level (see clause 4.4.1.3.4). Thus the corresponding 
+modulation is given by: 
+ 
+Re{cm,l,k} = 4 / 3 × 2 (1/2 - wk) 
+ 
+Im{cm,l,k,} = 0 
+Where m is the frame index, k is the frequency index of the carriers and l is the time index of the symbols. 
+For the symbol of index l ( ranging from 0 to 67), carriers for which index k belongs to the subset 
+{k = Kmin + 3 × (l mod 4) + 12p ⎜ p integer, p ≥ 0, k ∈ [Kmin; Kmax] } are scattered pilots. 
+Where p is an integer that takes all possible values greater than or equal to zero, provided that the resulting 
+value for k does not exceed the valid range [Kmin; Kmax]. 
+The pilot insertion pattern is shown in Figure 10. 
+ 
+Figure 10: Frame structure showing pilot insertion pattern 
+4.4.1.4.4 
+Location of continual pilot carriers 
+In addition to the scattered pilots described above, 45 continual (see note) pilots in mode 1 are inserted according to 
+Table 7. 
+NOTE: 
+Where "continual" means that they occur on all symbols. 
+Table 7: Continual pilot carrier positions (index number k) 
+Mode 1 
+0 
+48 
+54 
+87 
+141 
+156 
+192 
+201 
+255 
+279 
+282 
+333 
+432 
+450 
+483 
+525 
+531 
+618 
+636 
+714 
+759 
+765 
+780 
+804 
+873 
+888 
+918 
+939 
+942 
+969 
+984 
+1 050 
+1 101 
+1 107 
+1 110 
+1 137 
+1 140 
+1 146 
+1 206 
+1 269 
+1 323 
+1 377 
+1 491 
+1 683 
+1 704 
+ 
+ 
+ 
+ 
+ 
+All continual pilots are modulated according to the reference sequence, see clause 4.4.1.3.2. 
+The continual pilots are transmitted at "boosted" power level. 
+
+=====PAGE 19=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+19
+ 
+Thus the corresponding modulation is given by: 
+ 
+Re{cm,l,k} = 4 / 3 × 2 (1/2 - wk) 
+ 
+Im{cm,l,k} = 0 
+4.4.1.4.5 
+Amplitudes of all reference information 
+The modulation of all data cells is normalized so that E[c × c∗] = 1. 
+All cells which are continual or scattered pilots, i.e. they are members of the sets defined in clause 4.4.1.3.3 or 
+clause 4.4.1.3.4, are transmitted at boosted power so that for these E[c × c∗] = 16/9. 
+4.4.1.5 
+TPS transmission format 
+The present clause specifies the Transmission Parameter Signalling (TPS).  
+The TPS carriers are used for the purpose of signalling parameters related to the transmission scheme, i.e. to channel 
+modulation. The TPS is transmitted in parallel on 17 TPS carriers for mode 1. Every TPS carrier in the same symbol 
+conveys the same differentially encoded information bit. The following carrier indices contain TPS carriers. 
+Table 8: Carrier indices for TPS carriers 
+Mode 1 
+34 
+50 
+209 
+346 
+413 
+569 
+595 
+688 
+790 
+901 
+1 073 
+1 219 
+1 262 
+1 286 
+1 469 
+1 594 
+1 687 
+ 
+ 
+ 
+ 
+The TPS carriers convey information on: 
+a) 
+modulation including the α value of the QAM constellation pattern; 
+b) 
+hierarchy information; 
+c) 
+guard interval (not for initial acquisition but for supporting initial response of the receiver in case of 
+reconfiguration); 
+d) 
+SDR indicator; 
+e) 
+transmission mode (2K); 
+f) 
+Phy section number in an IPL-MC frame; 
+g) 
+cell identification. 
+NOTE: 
+The α value defines the modulation based on the cloud spacing of a generalized QAM constellation. 
+It allows specification of uniform and non-uniform modulation schemes, covering QPSK and 16-QAM. 
+4.4.1.5.1 
+Scope of the TPS 
+The TPS is defined over 68 consecutive OFDM symbols, referred to as one Phy section. Four consecutive Phy sections 
+correspond to one IPL-MC frame. 
+The reference sequence corresponding to the TPS carriers of the first symbol of each Phy section are used to initialize 
+the TPS modulation on each TPS carrier (see clause 4.4.1.3.2). 
+
+=====PAGE 20=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+20
+ 
+Each OFDM symbol conveys one TPS bit. Each TPS block (corresponding to one Phy section) contains 68 bits, defined 
+as follows: 
+• 
+1 initialization bit; 
+• 
+16 synchronization bits; 
+• 
+37 information bits; 
+• 
+14 redundancy bits for error protection. 
+Of the 37 information bits, 31 are used. The remaining 6 bits shall be set to zero. 
+4.4.1.5.2 
+TPS transmission format 
+The transmission parameter information shall be transmitted as shown in Table 9. 
+The mapping of each of the transmission parameters: constellation characteristics, α value, code rate(s), Phy section 
+indicator and guard interval onto the bit combinations is performed according to clauses TPS_01 to TPS_11. 
+The left most bit is sent first. 
+Table 9: TPS signalling information and format 
+Bit number 
+Format 
+Purpose/Content 
+s0 
+See clause TPS_01 
+Initialization 
+s1to s16 
+See clause TPS_02 
+Synchronization word 
+s17 to s22 
+See clause TPS_03 
+Length indicator 
+s23, s24 
+See clause TPS_04 
+Phy section number 
+s25, s26 
+See clause TPS_05 
+Constellation 
+s27, s28, s29 
+See clause TPS_06 
+Hierarchy information 
+s30, s31, s32 
+See clause TPS_07 
+[fixed to "111"] 
+SDR indicator 
+s33, s34, s35 
+See clause TPS_07 
+[fixed to "111"] 
+SDR indicator 
+s36, s37 
+See clause TPS_08 
+Guard interval 
+s38, s39 
+See clause TPS_09 
+[fixed to "00"] 
+Transmission mode 
+s40 to s47 
+See clause TPS_10 
+Cell identifier 
+s48 to s53 
+[all set to "0"] 
+Not used 
+s54 to s67 
+See clause TPS_11 
+BCH code 
+Error protection 
+ 
+The TPS information transmitted in the IPL-MC frame m' bits s25 - s39 always apply to IPL-MC frame m' + 1, whereas 
+all other bits refer to IPL-MC frame m'. 
+Clause TPS_01:  
+The first bit, s0, is an initialization bit for the differential 2-PSK modulation. The modulation of the TPS initialization 
+bit is derived from the PRBS sequence defined in chapter 4.4.1.3.2. This process is described in chapter 4.4.1.4.3. 
+Clause TPS_02:  
+Bits 1 to 16 of the TPS is a synchronization word.  
+The first and third TPS block in each IPL-MC frame have the following synchronization word: 
+ 
+s1 - s16 = 0011010111101110. 
+The second and fourth TPS block have the following synchronization word: 
+ 
+s1 - s16 = 1100101000010001. 
+
+=====PAGE 21=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+21
+ 
+Clause TPS_03:  
+The first 6 bits of the TPS information is used as a TPS length indicator (binary count starting from and including 
+bit s17) to signal the number of used bits of the TPS. 
+The transmission of the Cell Identification (see clause TPS_10) is optional. The TPS length indicator carries then the 
+values: 
+• 
+"010111" when Cell Identification information is not transmitted (23 TPS bits in use);  
+• 
+"011111" when Cell Identification information is transmitted (31 TPS bits in use). 
+Clause TPS_04:  
+Four Phy sections constitute one IPL-MC frame. The frames inside the IPL-MC frame are numbered from 1 to 4. The 
+mapping from bits s23, s24 to the frame number is given in Table 10. 
+Table 10: Signalling format for Phy section number 
+Bits s23, s24 
+Frame number 
+00 
+Phy section 1 in the IPL-MC frame 
+01 
+Phy section 2 in the IPL-MC frame 
+10 
+Phy section 3 in the IPL-MC frame 
+11 
+Phy section 4 in the IPL-MC frame 
+ 
+Clause TPS_05:  
+The constellation shall be signalled by 2 bits according to Table 11. In order to determine the modulation scheme, the 
+receiver shall also decode the hierarchy information given in Table 12. 
+Table 11: Signalling format for the possible constellation patterns 
+Bits s25, s26 
+Constellation characteristics 
+00 
+QPSK 
+01 
+16-QAM 
+10 
+Reserved 
+11 
+Reserved 
+ 
+Clause TPS_06:  
+The hierarchy information specifies whether the transmission is hierarchical and, if so, what the α value is. The QAM 
+constellation diagrams which correspond to various α values are shown in Figure 18 to Figure 20, where α is signalled 
+by three bits according to Table 12. 
+Table 12: Signalling format for the α values 
+Bits s27, s28, s29 
+α value 
+000 
+Non hierarchical 
+001 
+Reserved 
+010 
+α = 2 
+011 
+α = 4 
+100 
+Reserved 
+101 
+Reserved 
+110 
+Reserved 
+111 
+Reserved 
+ 
+Clause TPS_07:  
+The SDR standard does not make use of signalling the code rate through the TPS bits, but this information is contained 
+in the signalling pipe as described in TS 102 550 (see bibliography). 
+Respecting the TPS structure introduced in [1], the code rate selector bits s30 to s35 are all set to "1". This is the so-
+called "SDR indicator" and is not in conflict with the definition in [1]. 
+
+=====PAGE 22=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+22
+ 
+Table 13: Signalling format for each of the code rates 
+Bits 
+s30, s31, s32 (HP stream) 
+s33, s34, s35 (LP stream) 
+Code rate 
+000 
+Reserved 
+001 
+Reserved 
+010 
+Reserved 
+011 
+Reserved 
+100 
+Reserved 
+101 
+Reserved 
+110 
+Reserved 
+111 
+SDR indicator 
+ 
+Clause TPS_08:  
+The value of the guard interval is signalled according to Table 14: 
+Table 14: Signalling format for each of the guard interval values 
+Bits s36, s37 
+Guard interval values (Δ/TU) 
+00 
+Reserved 
+01 
+Reserved 
+10 
+1/8  
+11 
+1/4  
+ 
+Clause TPS_09:  
+Two bits are used to signal the transmission mode. Only 2K mode is used. 
+Table 15: Signalling format for transmission mode 
+Bits s38, s39 
+Transmission mode 
+00 
+2K mode 
+01 
+Reserved 
+10 
+Reserved 
+11 
+Reserved 
+ 
+Clause TPS_10:  
+The eight bits s40 to s47 are used to identify the cell from which the signal comes from. The most significant byte of the 
+cell_id [4], i.e. b15 - b8, shall be transmitted in Phy sections with number 1 and 3. The least significant byte of the 
+cell_id, i.e. b7 - b0, shall be transmitted in Phy sections with number 2 and 4. The mapping of bits is according to 
+Table 16. If the provision of the cell_id is not foreseen the eight bits shall be set to zero. 
+Table 16: Mapping of the cell_id on the TPS bits 
+TPS bit number 
+Phy section number 1 or 3 
+Phy section number 2 or 4 
+s40 
+cell_id b15 
+cell_id b7 
+s41 
+cell_id b14 
+cell_id b6 
+s42 
+cell_id b13 
+cell_id b5 
+s43 
+cell_id b12 
+cell_id b4 
+s44 
+cell_id b11 
+cell_id b3 
+s45 
+cell_id b10 
+cell_id b2 
+s46 
+cell_id b9 
+cell_id b1 
+s47 
+cell_id b8 
+cell_id b0 
+ 
+
+=====PAGE 23=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+23
+ 
+Clause TPS_11: 
+The 53 bits containing the TPS synchronization and information (bits s1 - s53) are extended with 14 parity bits of the 
+BCH (67,53, t = 2) shortened code, derived from the original systematic BCH (127,113, t = 2) code. 
+Code generator polynomial: 
+ 
+h(x) = x14 + x9 + x8 + x6 + x5 + x4 + x2 + x + 1. 
+The shortened BCH code may be implemented by adding 60 bits, all set to zero, before the information bits input of an 
+BCH(127,113, t = 2) encoder. After the BCH encoding these null bits shall be discarded, leading to a BCH code word 
+of 67 bits. 
+4.4.1.5.3 
+TPS modulation 
+TPS cells are transmitted at the "normal" power level, i.e. they are transmitted with energy equal to that of the mean of 
+all data cells, i.e. E[c × c∗] = 1. 
+Every TPS carrier is DBPSK modulated and conveys the same message. The DBPSK is initialized at the beginning of 
+each TPS block.  
+The following rule applies for the differential modulation of carrier k of symbol l ( l > 0 ) in frame m: 
+- 
+if sl = 0, then Re{cm,l,k} = Re{cm,l-1,k}; Im{cm,l,k} = 0; 
+- 
+if sl = 1, then Re{cm,l,k} = -Re{cm,l-1,k}; Im{cm,l,k} = 0. 
+The absolute modulation of the TPS carriers in the first symbol in a frame is derived from the reference sequence wk as 
+follows: 
+ 
+Re{cm,l,k} = 2 (1/2 - wk) 
+ 
+Im{cm,l,k} = 0 
+4.4.2 
+Mode 2: 2k@5MHz 
+Mode 2 is designed to work in a channel grid of 5 MHz. Using an FFT of 2 048 points with 1 509 active carriers, this 
+leads to a carrier spacing of roughly 3,2 kHz and a guard interval length of 79 μs. Mode 2 provides a pilot density of 
+approximately 17 %. The pilots are arranged in groups, each having a length of 52 carriers.  
+Each IPL-MC frame is generated by the combination of one frequency domain preamble (one entire OFDM symbol) 
+and five Phy sections, each having a length of 24 OFDM symbols. Therefore, each IPL-MC frame consists of 
+121 OFDM symbols that are denoted from index l = 0 to l = 120. 
+ 
+Figure 11: Framing structure of one IPL-MC frame consisting of one preamble and five Phy sections 
+
+=====PAGE 24=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+24
+ 
+4.4.2.1 
+Preamble insertion 
+The first OFDM symbol (l = 0) of each IPL-MC frame is dedicated to be used as a preamble sequence. This 
+preamble is called "frequency domain preamble".  
+The following sequence is inserted. The notation is made in the frequency domain. Each subcarrier of this preamble is a 
+priori known to the receiver. 
+The preamble is defined as a vector of modulation symbols in the frequency domain from carrier Kmin to Kmax. The 
+parameters are as follows: 
+First active carrier:  
+Kmin = 0; 
+Last active carrier:  
+Kmax = 1508; 
+The preamble is set to the following values in the frequency domain; the amplitude of each active subcarrier is then 
+boosted by 4/3. The average power of one active subcarrier of the preamble symbol is E[c×c∗] = 16/9. 
+0, -1, 0, -1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, -1, 0, 1, 0, -1,   
+ 
+0, 1, 0, 1, 0, -1, 0, 1,  
+ 
+0, 1, 0, 1, 0, -1, 0, 1,  
+ 
+0, 1, 0, 1, 0, -1, 0, 1,  
+ 
+0, 1, 0, 1, 0, 1, 0, 1,  
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, -1,   
+0, 1, 0, 1, 0, -1, 0, 1,  
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, -1, 0, -1,  
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, -1, 0, 1, 0, -1,   
+ 
+0, -1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+ 
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, -1,  
+ 
+ 
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, -1,  
+ 
+ 
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, -1,  
+ 
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, -1,   
+ 
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, 1, 0, 1,  
+ 
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, 1, 0, -1,   
+ 
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, -1,  
+ 
+0, 1, 0, -1, 0, 1, 0, 1,  
+ 
+ 
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+ 
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, 1, 0, 1, 0, -1,  
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+ 
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, 1, 0, -1, 0, -1, 0, -1,   
+ 
+0, 1, 0, -1, 0, 1, 0, 1,  
+ 
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, 1,   
+ 
+0, 1, 0, -1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, -1, 0, 1, 0, 1,  
+ 
+ 
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+ 
+0, 1, 0, 1, 0, 1, 0, -1,  
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+ 
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, -1,  
+ 
+0, -1, 0, 1, 0, 1, 0, -1,   
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, -1, 0, -1, 0, -1,   
+ 
+0, -1, 0, -1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, 1,  
+ 
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, -1, 0, 1,   
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, -1,  
+ 
+ 
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+ 
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, -1,   
+ 
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, 1, 0, -1, 0, -1,   
+ 
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+ 
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, -1, 0, -1,   
+ 
+0, 1, 0, -1, 0, -1, 0, -1,   
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+ 
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, -1, 0, -1,   
+ 
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+ 
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, -1, 0, 1, 0, 1,  
+ 
+0, 1, 0, -1, 0, -1, 0, 1,   
+ 
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+ 
+0, 1, 0, -1, 0, 1, 0, 1,  
+ 
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+ 
+0, 1, 0, -1, 0, -1, 0, -1,   
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+ 
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, -1,   
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+ 
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, -1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, -1, 0, -1,  
+ 
+ 
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, -1,   
+ 
+0, 1, 0, 1, 0, -1, 0, 1,  
+ 
+0, 1, 0, 1, 0, -1, 0, 1,  
+ 
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+ 
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, 1, 0, -1, 0, 1,  
+ 
+0, -1, 0, 1, 0, -1, 0, 1,   
+ 
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+ 
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, 1, 0, 1,  
+ 
+0, -1, 0, -1, 0, -1, 0, -1,  
+ 
+ 
+0, -1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, -1, 0, -1,  
+ 
+ 
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, -1, 0, 1, 0, 1,   
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, -1,   
+ 
+0, 1, 0, -1, 0; 
+
+=====PAGE 25=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+25
+ 
+ 
+ 
+First carriers of the preamble around Kmin = 0 
+(start) 
+Last carriers of the preamble around Kmax =
+1 508 (end) 
+4.4.2.2 
+Scattered pilots 
+Scattered pilots are introduced with a repetition pattern of 24 OFDM symbols into the Phy sections. Therefore this pilot 
+pattern repeats five times within the 120 OFDM symbols (excluding the preamble) that form one IPL-MC frame.  
+In the frequency domain, the scattered pilots have a period of 52 symbols. Following the notation introduced before, the 
+parameters for pilot tone insertion are as stated below: 
+Number of different segments in the frequency domain:  
+NumberOfSegments = 29; 
+Carrier increment per segment: 
+SegmentIncrement = 52; 
+Carrier offset per OFDM symbol: 
+SymbolOffset = ... 
+ 
+{2, 4, 6, 2, 4, 6, 2, 4, 6, 2, 4, 6,  
+ 2, 4, 6, 2, 4, 6, 2, 4, 6, 2, 4, 6}; 
+OFDM symbol count (per OFDM frame): 
+l = {1, 2, 3, ... , 118, 119, 120}; 
+The index of scattered pilots of segment m in an OFDM symbol at time index l is denoted using the following formula: 
+Idx(l,m)=[1 7 13 19 25 31 37 43]+SymbolOffset[(l-1) mod 24]+m × SegmentIncrement; 
+{m ∈ [0; 28]; l ∈ [1; 120]} 
+ 
+The amplitude of the scattered pilots are chosen to 4/3. The average power of the scattered pilots (E[c×c∗] = 16/9) 
+is higher than the average power of the data symbols which are normalized to power 1, therefore the pilots are denoted 
+as boosted pilots.  
+The phase of the scattered pilots (within one segment) is described using the following vector:  
+ScatPilotPhase = [ 0 
+0 
+π 
+π 
+0 
+π 
+0 
+π ] 
+ 
+The entity of all scattered pilots per segment are further phase-rotated by the vector GroupPhase, dependent on the 
+selection of the mapping scheme of the data subcarriers as defined in Table 17. 
+Table 17: GroupPhase definition for mode 2 
+GroupPhase 
+Selected mapping scheme 
+[ 0 π 0 0 π 0 0 π 0 0 π π 0 π π ... 
+  0 0 π 0 π π π π 0 π 0 π 0 0 π] 
+QPSK 
+[ π π π 0 π 0 π π π 0 0 π 0 π 0 ... 
+  0 0 π 0 0 π 0 0 π π π 0 π 0 π] 
+16QAM, non-hierarchical 
+[ π 0 0 0 0 π 0 π 0 π 0 π 0 π 0 ... 
+  π 0 π π π 0 π 0 0 0 π 0 π π 0] 
+16QAM, hierarchical, α=2 
+[ π 0 0 0 π π 0 π π π 0 π 0 π π ... 
+  0 0 π 0 π π 0 π 0 0 π π 0 π 0] 
+16QAM, hierarchical, α=4 
+ 
+
+=====PAGE 26=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+26
+ 
+For informative purpose, the whole vector of the position of the scattered pilots for an OFDM symbol at time index 
+l=1 (first OFDM with scattered pilots after the preamble symbol) is denoted here: 
+   Idx = {     3     9    15    21    27    33    39    45 
+    55    61    67    73    79    85    91    97 
+   107   113   119   125   131   137   143   149 
+   159   165   171   177   183   189   195   201 
+   211   217   223   229   235   241   247   253 
+   263   269   275   281   287   293   299   305 
+   315   321   327   333   339   345   351   357 
+   367   373   379   385   391   397   403   409 
+   419   425   431   437   443   449   455   461 
+   471   477   483   489   495   501   507   513 
+   523   529   535   541   547   553   559   565 
+   575   581   587   593   599   605   611   617 
+   627   633   639   645   651   657   663   669 
+   679   685   691   697   703   709   715   721 
+   731   737   743   749   755   761   767   773 
+   783   789   795   801   807   813   819   825 
+   835   841   847   853   859   865   871   877 
+   887   893   899   905   911   917   923   929 
+   939   945   951   957   963   969   975   981 
+   991   997  1003  1009  1015  1021  1027  1033 
+  1043  1049  1055  1061  1067  1073  1079  1085 
+  1095  1101  1107  1113  1119  1125  1131  1137 
+  1147  1153  1159  1165  1171  1177  1183  1189 
+  1199  1205  1211  1217  1223  1229  1235  1241 
+  1251  1257  1263  1269  1275  1281  1287  1293 
+  1303  1309  1315  1321  1327  1333  1339  1345 
+  1355  1361  1367  1373  1379  1385  1391  1397 
+  1407  1413  1419  1425  1431  1437  1443  1449 
+  1459  1465  1471  1477  1483  1489  1495  1501}; 
+ 
+4.4.2.3 
+Continuous pilots 
+The index of continuous pilots does not change from OFDM symbol l to OFDM symbol l+1. Its indices are denoted 
+using the following description: 
+Idx = 0:SegmentIncrement:Kmax; 
+ 
+which is equivalent to: 
+Idx = [  0    52   104   156   208   260   312   364   416   468 
+       520   572   624   676   728   780   832   884   936   988 
+      1040  1092  1144  1196  1248  1300  1352  1404  1456  1508]; 
+ 
+The amplitude of the continuous pilots is chosen to 4/3. The average power of the continuous pilots 
+(E[c×c∗] = 16/9) is higher than the average power of the data symbols which are normalized to power 1, therefore 
+the pilots are denoted as boosted pilots.  
+The phase of the continuous pilot (within one segment) is set to the following value:  
+ContPilotPhase = [ 0 ] 
+ 
+Each continuous pilot (one per segment) is phase-rotated by the vector GroupPhase, dependent on the selection of the 
+mapping scheme of the data subcarriers. The definition of GroupPhase can be derived from Table 17. 
+An illustration of the scattered and continuous pilots is given in Figure 12. 
+ 
+Figure 12: Pilot pattern (scattered and continuous pilots) for 
+the first segment and the first symbols l=1 to l=4 
+
+=====PAGE 27=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+27
+ 
+4.4.3 
+Mode 3: 1k@1,7MHz 
+Mode 3 is designed to work in a channel spacing of 1,7 MHz. Using an FFT of 1 024 points with 729 active carriers, 
+this leads to a carrier spacing of roughly 2,1 kHz and a guard interval length of 120 μs. Mode 3 provides a pilot density 
+of approximately 17 %. The pilots are arranged in groups, each having a length of 52 carriers. 
+Note that for maximizing throughput on bandwidth limited carriers, the structure of mode 3 may be complemented by 
+the selection of different parameters. To increase throughput, additional carriers may be introduced on the band edges, 
+e.g. 44 additional carriers including 8 pilot carriers. This "overlay mode" will not change the structure of the modes 
+defined here within. 
+Each IPL-MC frame is generated by the combination of one frequency domain preamble (one entire OFDM symbol) 
+and five Phy sections, each having a length of 24 OFDM symbols. Therefore, each IPL-MC frame consists of 
+121 OFDM symbols that are denoted from index l = 0 to l = 120. 
+ 
+Figure 13: Framing structure of one IPL-MC frame consisting of one preamble and five Phy sections 
+4.4.3.1 
+Preamble insertion 
+The first OFDM symbol (l = 0) of each IPL-MC frame is dedicated to be used as a preamble sequence. This 
+preamble is the so-called "frequency domain preamble".  
+The following sequence is inserted. The notation is made in the frequency domain. Each subcarrier of this preamble is a 
+priori known to the receiver.  
+The preamble is defined as a vector of modulation symbols in the frequency domain from carrier Kmin to Kmax. The 
+parameters are as follows:  
+First active carrier:  
+Kmin = 0; 
+Last active carrier:  
+Kmax = 728. 
+
+=====PAGE 28=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+28
+ 
+The preamble is set to the following values in the frequency domain; the amplitude of each active subcarrier is then 
+boosted by 4/3. The average power of one active subcarrier of the preamble symbol is E[c×c∗] = 16/9. 
+0, -1, 0, 1, 0, -1, 0, -1,  
+0, 1, 0, -1, 0, -1, 0, -1,  
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+ 
+0, 1, 0, -1, 0, -1, 0, -1,  
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, -1,  
+0, 1, 0, -1, 0, -1, 0, -1,  
+  
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, 1, 0, 1,   
+0, -1, 0, -1, 0, -1, 0, 1,  
+  
+0, -1, 0, -1, 0, -1, 0, 1,  
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, -1,  
+  
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+ 
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, -1, 0, -1, 0, 1,  
+0, -1, 0, 1, 0, 1, 0, -1,   
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, 1, 0, 1, 0, 1,   
+ 
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, -1,  
+  
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, -1, 0, 1,   
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, -1,  
+  
+0, -1, 0, -1, 0, -1, 0, 1,  
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+ 
+0, -1, 0, -1, 0, 1, 0, -1,  
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, -1, 0, -1, 0, -1,  
+  
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, 1,  
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, 1, 0, 1, 0, 1,   
+ 
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+ 
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, -1, 0, 1, 0, 1,   
+ 
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, -1, 0, 1, 0, 1, 0, 1,   
+ 
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, -1,  
+  
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, -1, 0, 1, 0, -1,  
+  
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,  
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, 1, 0, 1,   
+ 
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, -1, 0, -1, 0, -1,  
+  
+0, -1, 0, -1, 0, 1, 0, -1,  
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,  
+  
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, -1, 0, 1,  
+0, -1, 0, -1, 0, -1, 0, 1,  
+0; 
+ 
+ 
+ 
+First carriers of the preamble around Kmin = 0 
+(start) 
+Last carriers of the preamble around Kmax = 728 
+(end) 
+4.4.3.2 
+Scattered pilots 
+Scattered pilots are introduced with a repetition pattern of 24 OFDM symbols into the Phy sections. Therefore this pilot 
+pattern repeats five times within the 120 OFDM symbols (excluding the preamble) that form one IPL-MC frame.  
+In the frequency domain, the scattered pilots have a period of 52 symbols. Following the notation introduced before, the 
+parameters for pilot tone insertion are as stated below: 
+Number of different segments in the frequency domain:  
+NumberOfSegments = 14; 
+Carrier increment per segment: 
+SegmentIncrement = 52; 
+Carrier offset per OFDM symbol: 
+SymbolOffset = ... 
+ 
+{2, 4, 6, 2, 4, 6, 2, 4, 6, 2, 4, 6,  
+ 2, 4, 6, 2, 4, 6, 2, 4, 6, 2, 4, 6}; 
+OFDM symbol count (per OFDM frame): 
+l = {1, 2, 3, ... , 118, 119, 120}. 
+The index of scattered pilots of segment m in an OFDM symbol at time index l is denoted using the following formula:  
+Idx(l,m)=[1 7 13 19 25 31 37 43]+SymbolOffset[(l-1) mod 24]+m×SegmentIncrement; 
+{m ∈ [0; 13]; l ∈ [1; 120]} 
+ 
+The amplitude of the scattered pilots is chosen to 4/3. The average power of the scattered pilots (E[c×c∗] = 16/9) 
+is higher than the average power of the data symbols which are normalized to power 1, therefore the pilots are denoted 
+as boosted pilots.  
+
+=====PAGE 29=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+29
+ 
+The phase of the scattered pilots (within one segment) is described using the following vector:  
+ScatPilotPhase = [ 0 
+0 
+π 
+π 
+0 
+π 
+0 
+π ] 
+ 
+The entity of all scattered pilots per segment are further phase-rotated by the vector GroupPhase, dependent on the 
+selection of the mapping scheme of the data subcarriers as defined in table 18. 
+Table 18: GroupPhase definition for mode 3 
+GroupPhase 
+Selected mapping scheme 
+[ π π 0 0 π 0 π π 0 π 0 π 0 0 π] 
+QPSK 
+[ 0 π 0 π 0 0 π 0 π 0 π π π 0 π] 
+16QAM, non-hierarchical 
+[ 0 0 π π 0 0 π π π 0 0 0 π π 0]  
+16QAM, hierarchical, α=2 
+[ 0 π 0 0 π π 0 0 π 0 π π 0 π 0] 
+16QAM, hierarchical, α=4 
+ 
+For informative purpose, the whole vector of the positions of the scattered pilots for the OFDM symbol at time index 
+l=1 (first OFDM with scattered pilots after the preamble symbol) is denoted here: 
+   Idx = {     3     9    15    21    27    33    39    45 
+    55    61    67    73    79    85    91    97 
+   107   113   119   125   131   137   143   149 
+   159   165   171   177   183   189   195   201 
+   211   217   223   229   235   241   247   253 
+   263   269   275   281   287   293   299   305 
+   315   321   327   333   339   345   351   357 
+   367   373   379   385   391   397   403   409 
+   419   425   431   437   443   449   455   461 
+   471   477   483   489   495   501   507   513 
+   523   529   535   541   547   553   559   565 
+   575   581   587   593   599   605   611   617 
+   627   633   639   645   651   657   663   669 
+   679   685   691   697   703   709   715   721}; 
+ 
+4.4.3.3 
+Continuous pilots 
+The index of continuous pilots does not change from OFDM symbol l to OFDM symbol l+1. Its indices are denoted 
+using the following description: 
+Idx = 0:SegmentIncrement:Kmax; 
+ 
+which is equivalent to: 
+Idx = [0 52 104 156 208 260 312 364 416 468 520 572 624 676 728]; 
+ 
+The amplitude of the continuous pilots is chosen to 4/3. The average power of the continuous pilots 
+(E[c×c∗] = 16/9) is higher than the average power of the data symbols which are normalized to power 1, therefore 
+the pilots are denoted as boosted pilots.  
+The phase of the continuous pilot is set to the following value: 
+ContPilotPhase = [ 0 ] 
+ 
+Each continuous pilot (one per segment) is phase-rotated by the vector GroupPhase, dependent on the selection of the 
+mapping scheme of the data subcarriers. The definition of GroupPhase can be derived from Table 18. 
+
+=====PAGE 30=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+30
+ 
+An illustration of the scattered and continuous pilots is given in Figure 14. 
+ 
+Figure 14: Pilot pattern (scattered and continuous pilots) for the first segment and 
+the first symbols l=1 to l=4 
+4.4.4 
+Mode 4: 0,5k@1,7MHz 
+Mode 4 is designed to work in a channel spacing of 1,7 MHz. Using an FFT of 512 points with 365 active carriers, this 
+leads to a carrier spacing of roughly 4,2 kHz and a guard Interval length of 60 μs. Mode 4 provides a pilot density of 
+approximately 17 %. The pilots are arranged in groups, each having a length of 52 carriers. 
+Note that for maximizing throughput on bandwidth limited carriers, the structure of mode 4 may be complemented by 
+the selection of different parameters. To increase throughput, additional carriers may be introduced on the band edges, 
+e.g. 22 additional carriers including 4 pilot carriers. This "overlay mode" will not change the structure of the modes 
+defined here within. 
+Each IPL-MC frame is generated by the combination of one frequency domain preamble (one entire OFDM symbol) 
+and five Phy sections, each having a length of 24 OFDM symbols. Therefore, each IPL-MC frame consists of 
+121 OFDM symbols that are denoted from index l = 0 to l = 120. 
+ 
+Figure 15: Framing structure of one IPL-MC frame consisting of one preamble and five Phy sections 
+4.4.4.1 
+Preamble insertion 
+The first OFDM symbol (l = 0) of each IPL-MC frame is dedicated to be used as a preamble sequence. This 
+preamble is called "frequency domain preamble". 
+The following sequence is inserted. The notation is made in the frequency domain. Each subcarrier of this preamble is a 
+priori known to the receiver. 
+
+=====PAGE 31=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+31
+ 
+The preamble is defined as a vector of modulation symbols in the frequency domain from carrier Kmin to Kmax. The 
+parameters are as follows: 
+First active carrier:  
+Kmin = 0; 
+Last active carrier:  
+Kmax = 364. 
+The preamble is set to the following values in the frequency domain; the amplitude of each active subcarrier is then 
+boosted by 4/3. The average power of one active subcarrier of the preamble symbol is E[c×c∗] = 16/9. 
+0, -1, 0, 1, 0, 1, 0, 1,   
+0, 1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, 1, 0, 1, 0, 1,   
+ 
+0, -1, 0, -1, 0, -1, 0, 1,  
+0, 1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, -1, 0, -1, 0, -1,  
+0, -1, 0, 1, 0, -1, 0, 1,   
+ 
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, 1,   
+0, -1, 0, -1, 0, -1, 0, 1,  
+  
+0, -1, 0, 1, 0, 1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, -1, 0, 1,  
+  
+0, -1, 0, -1, 0, -1, 0, 1,  
+0, -1, 0, 1, 0, -1, 0, -1,  
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, -1,  
+  
+0, -1, 0, -1, 0, 1, 0, -1,  
+0, 1, 0, -1, 0, -1, 0, 1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, 1,  
+ 
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, -1, 0, -1,  
+0, 1, 0, 1, 0, -1, 0, 1,   
+ 
+0, -1, 0, -1, 0, -1, 0, 1,  
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, -1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, -1, 0, 1,   
+ 
+0, 1, 0, -1, 0, 1, 0, -1,   
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, 1, 0, -1, 0, 1,   
+0, 1, 0, -1, 0, 1, 0, 1,   
+ 
+0, 1, 0, 1, 0, -1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,  
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, -1,  
+  
+0, -1, 0, 1, 0, 1, 0, -1,   
+0, -1, 0, -1, 0, 1, 0, 1,   
+0, 1, 0, 1, 0, 1, 0, -1,   
+0, 1, 0, -1, 0, -1, 0, 1,   
+ 
+0, -1, 0, -1, 0, 1, 0, -1,  
+0, 1, 0, 1, 0; 
+ 
+ 
+ 
+First carriers of the preamble around Kmin = 0 
+(start) 
+Last carriers of the preamble around Kmax = 
+364 (end) 
+4.4.4.2 
+Scattered pilots 
+Scattered pilots are introduced with a repetition pattern of 24 OFDM symbols into the Phy sections. Therefore this pilot 
+pattern repeats five times within the 120 OFDM symbols (excluding the preamble) that form one IPL-MC frame.  
+In the frequency domain, the scattered pilots have a period of 52 symbols. Following the notation introduced before, the 
+parameters for pilot tone insertion are as stated below: 
+First active carrier:  
+Kmin = 0; 
+Last active carrier:  
+Kmax = 364; 
+Number of different segments in the frequency domain:  
+NumberOfSegments = 7; 
+Carrier increment per segment: 
+SegmentIncrement = 52; 
+Carrier offset per OFDM symbol: 
+SymbolOffset = ... 
+ 
+{2, 4, 6, 2, 4, 6, 2, 4, 6, 2, 4, 6,  
+ 2, 4, 6, 2, 4, 6, 2, 4, 6, 2, 4, 6}; 
+OFDM symbol count (per OFDM frame): 
+l = {1, 2, 3, ... , 118, 119, 120}. 
+The index of scattered pilots of segment m in an OFDM symbol at time index l is denoted using the following formula:  
+Idx(l,m)=[1 7 13 19 25 31 37 43]+SymbolOffset[(l-1) mod 24]+m×SegmentIncrement; 
+{m ∈ [0; 6]; l ∈ [1; 120]} 
+ 
+The amplitude of the scattered pilots is chosen to 4/3. The average power of the scattered pilots (E[c×c∗] = 16/9) 
+is higher than the average power of the data symbols which are normalized to power 1, therefore the pilots are denoted 
+as boosted pilots.  
+
+=====PAGE 32=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+32
+ 
+The phase of the scattered pilots (within one segment) is described using the following vector:  
+ScatPilotPhase = [ 0 
+0 
+π 
+π 
+0 
+π 
+0 
+π ] 
+ 
+The entity of all scattered pilots per segment are further phase-rotated by the vector GroupPhase, dependent on the 
+selection of the mapping scheme of the data subcarriers as defined in table 19. 
+Table 19: GroupPhase definition for mode 4 
+GroupPhase 
+Selected mapping scheme 
+[ 0 0 
+π 
+0 
+π 
+π 
+π 
+0 ] 
+QPSK 
+[ π 0 
+0 
+0 
+π 
+0 
+π 
+0 ] 
+16QAM, non-hierarchical 
+[ 0 π 
+π 
+0 
+0 
+π 
+0 
+π ] 
+16QAM, hierarchical, α=2 
+[ π π 
+0 
+π 
+π 
+0 
+0 
+π ] 
+16QAM, hierarchical, α=4 
+ 
+For informative purpose, the whole vector of scattered pilots for the OFDM symbol at time index l=1 (first OFDM 
+with scattered pilots after the preamble symbol) is denoted here: 
+   Idx = {     3     9    15    21    27    33    39    45 
+    55    61    67    73    79    85    91    97 
+   107   113   119   125   131   137   143   149 
+   159   165   171   177   183   189   195   201 
+   211   217   223   229   235   241   247   253 
+   263   269   275   281   287   293   299   305 
+   315   321   327   333   339   345   351   357}. 
+ 
+4.4.4.3 
+Continuous pilots 
+The index of continuous pilots does not change from OFDM symbol l to OFDM symbol l+1. Its indices are denoted 
+using the following description: 
+Idx = 0:SegmentIncrement:Kmax. 
+ 
+which is equivalent to 
+Idx = [0 52 104 156 208 260 312 364]; 
+ 
+The amplitude of the continuous pilots is chosen to 4/3. The average power of the continuous pilots 
+(E[c×c∗] = 16/9) is higher than the average power of the data symbols which are normalized to power 1, therefore 
+the pilots are denoted as boosted pilots.  
+The phase of the continuous pilot (within one segment) is set to the following value:  
+ContPilotPhase = [ 0 ] 
+ 
+Each continuous pilot (one per segment) is phase-rotated by the vector GroupPhase, dependent on the selection of the 
+mapping scheme of the data subcarriers. The definition of GroupPhase can be derived from Table 19.  
+An illustration of the scattered and continuous pilots is given in Figure 16. 
+ 
+Figure 16: Pilot pattern (scattered and continuous pilots) for the first segment and 
+the first symbols l=1 to l=4 
+
+=====PAGE 33=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+33
+ 
+4.5 
+Bit mapping to constellation 
+The remaining carriers which are not indexed to be scattered or continuous pilots or TPS carriers, are loaded with data 
+symbols according to the mapping scheme derived from [1]. The notation of the bits is as follows: 
+The leftmost bit is to be extracted from the input bitstream first, whereas the rightmost bit is to be extracted from the 
+input bitstream as the last one. 
+4.5.1 
+QPSK Modulation 
+The following mapping scheme is used in QPSK modulation mode, denoted as modulation index 2. The transmission 
+order is {bit[i] bit[i+1]} where i denotes the current time index. 
++1
++1
+-1
+-1
+Q
+I
+00
+01
+10
+11
+ 
+Figure 17: QPSK modulation 
+4.5.2 
+16QAM Modulation (non-hierarchical) 
+The following mapping scheme is used in 16QAM non-hierarchical modulation mode, denoted as modulation index 4. 
+The transmission order is {bit[i] bit[i+1] bit[i+2] bit[i+3]} where i denotes the current time index. 
+ 
+Figure 18: 16QAM modulation 
+
+=====PAGE 34=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+34
+ 
+4.5.3 
+16QAM Modulation (hierarchical) 
+The following mapping scheme is used in 16QAM hierarchical modulation mode and α = 2. The transmission order is 
+{bit[i] bit[i+1] bit[i+2] bit[i+3]} where i denotes the current time index. 
+ 
+Figure 19: 16QAM hierarchical modulation with α = 2 
+The following mapping scheme is used in 16QAM hierarchical modulation mode and α = 4. The transmission order is 
+{bit[i] bit[i+1] bit[i+2] bit[i+3]} where i denotes the current time index. 
++6
++6
+-6
+-6
+Q
+I
++4
+-4
+-4
++4
+1010
+1011
+1000
+1001
+0000
+0001
+0010
+0011
+1111
+1110
+1101
+1100
+0101
+0100
+0111
+0110
+ 
+Figure 20: 16QAM hierarchical modulation with α = 4 
+
+=====PAGE 35=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+35
+ 
+4.5.4 
+Normalization of power levels 
+To ensure equal average power of the data subcarriers, all modulated symbols need to be normalized. Normalization is 
+performed by multiplying the mapped symbol with a normalization factor c. This normalization factor depends on the 
+modulation and the hierarchical scaling factor α, if applicable, according to Table 20. 
+Please notify that this normalization is only applied to the data subcarriers. 
+Table 20: Normalization factors for different modulations 
+Modulation 
+Normalization factor 
+QPSK 
+2
+1
+=
+c
+ 
+16QAM non-hierarchical 
+10
+1
+=
+c
+ 
+16QAM hierarchical, α = 2 
+20
+1
+=
+c
+ 
+16QAM hierarchical, α = 4 
+52
+1
+=
+c
+ 
+ 
+4.6 
+Pulse shaping and guard interval insertion 
+Pulse shaping is performed using an IFFT of length 512, 1 024 or 2 048, dependent on the chosen mode. The 
+subcarriers are arranged so that the following subcarrier numbers coincide with the RF carrier frequency (or DC in the 
+complex baseband representation). 
+Table 21: Mode-dependent active subcarriers and center frequency 
+Mode 
+FFTLength 
+Kmin 
+Kmax 
+Number of  
+active carriers 
+carrier number at 
+DC or RF frequency 
+1 
+2 048 
+0 
+1 704 
+1 705 
+852 
+2 
+2 048 
+0 
+1 508 
+1 509 
+754 
+3 
+1 024 
+0 
+728 
+729 
+364 
+4 
+512 
+0 
+364 
+365 
+182 
+ 
+Dependent on the choice of the guard interval length, the last GuardIntervalRatio×FFTLength time domain 
+samples of each OFDM symbol are transmitted first, directly consecuted by the FFTLength time domain samples.  
+Additional guard interval ratios may be included in future versions of this specification resulting in other frame lengths 
+than specified herein. 
+The parameter GuardIntervalRatio can be extracted from Table 22. Using these parameters, the following 
+OFDM symbol lengths apply. 
+Table 22: Guard Interval Ratios and their respective time duration 
+Mode 
+FFTLength 
+GuardIntervalRatio 
+Guard Interval length  
+(in time domain samples) 
+OFDM symbol length  
+(in time domain samples) 
+1 
+2 048 
+1/4 
+512 
+2 560 
+1 
+2 048 
+1/8 
+256 
+2 304 
+2 
+2 048 
+1/4 
+512 
+2 560 
+3 
+1 024 
+1/4 
+256 
+1 280 
+4 
+512 
+1/4 
+128 
+640 
+ 
+
+=====PAGE 36=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+36
+ 
+Annex A (informative): 
+Bibliography 
+ITU-T Recommendation O.153 (1992): "Basic parameters for the measurement of error performance at bit rates below 
+the primary rate". 
+ETSI TS 102 551-1 (V1.1.1): "Satellite Earth Stations and Systems (SES); Satellite Digital Radio (SDR) Systems; Inner 
+Physical Layer of the Radio Interface; Part 1: Single carrier transmission". 
+ETSI TS 102 550 (V1.1.1): "Satellite Earth Stations and Systems (SES); Satellite Digital Radio (SDR) Systems; Outer 
+Physical Layer of the Radio Interface". 
+ETSI EN 301 744 (V1.2.1): "Fixed Radio Systems; Point-to-multipoint equipment; Direct Sequence Code 
+Division/Time Division Multiple Access (DS-CD/TDMA); Point-to-multipoint digital packet radio systems in 
+frequency bands in the range 3 GHz to 11 GHz". 
+ETSI EN 302 583: "Digital Video Broadcasting (DVB); Framing Structure, channel coding and modulation for Satellite 
+Services to Handheld devices (DVB-SH) below 3 GHz". 
+
+=====PAGE 37=====
+ 
+ETSI 
+ETSI TS 102 551-2 V2.1.1 (2007-08) 
+37
+ 
+History 
+Document history 
+V1.1.1 
+December 2006 
+Publication 
+V2.1.1 
+August 2007 
+Publication 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

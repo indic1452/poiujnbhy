@@ -1,0 +1,524 @@
+
+=====PAGE 1=====
+_ United States Patent 119 11] Patent Number: 4,462,101
+Yasuda et al. ) [45] Date of Patent: Jul, 24, 1984
+[54] MAXIMUM LIKELIHOOD ERROR Translations on Information Theory, vol. IT-25, No. 1,
+CORRECTING TECHNIQUE Jan. 1979, pp. 97-100.
+| [75] Inventors: Yutaka Yasuda, Tanashi; Yasuo Primary Examiner—Charles E. Atkinson
+| Hirata, Mitaka; Akira Ogawa, Attorney, Agent, or Firm-——-Armstrong, Nikaido, 7
+Machida, all of Japan | Marmelstein & Kubovcik
+: [73] Assignee: Kokusai Denshin Denwa Co., Ltd., [57] ABSTRACT
+Tokyo, Japan A maximum likelihood error correcting technique for a
+[21] Appl. No.: 355,200 - digital communication in which a transmit side provides
+[22] Filed: Mar. 5. 1982 coded data with some redundancy through a convolu-
+| — Co _ tional coding circuit, and a receive side corrects trans- _
+[30] | Foreign Application Priority Data mission errors automatically through a maximum likeli-
+Mar. 23, 1981 [JP] Japan weeccesccescessessecereeseeeeee 56-40419 hood error correcting circuit has been improved by
+: deleting some symbols at a transmit side to increase a -
+a me vat WeETeTICTCOPeTIererreerrrvrertrrrer rrr e reir irr Seer 43 coding rate close to 1, and inserting dummy symbols at .
+2] Fi, ld f Search ........................ 371/43, 44 45.37 a receive side into each bit position where a symbol has
+. [58] Field of Search .......-.----sss. eres been deleted at a transmit side. A likelihood value for
+[56] References Cited that dummy symbol inserted at a receive side for the ©
+U.S. PATENT DOCUMENTS maximum likelihood decoding is a fixed predetermined
+3.373.404 3/1968 W bb : 371/37 value. Thus, both a coding circuit in a transmit side and
+o73, a] 0 ree : nat | so sas
+3305232 4/1974 Allen-.... 371737 2 decoding circuit in a receiving circuit have only to
+- handle original low rate code, while keeping a coding
+4,291,406 9/1981 Bahlet al. .....0.00 J 7T/44 . — . . . | |
+4,404,674 9/1983 RhOdeS ....seesssssssssssssssesssss. 371/43‘ Tate ina transmission line high. Then, the codec for high
+| rate code obtained merely by adding the simple circuits |
+OTHER PUBLICATIONS to the simple codec for low rate code provides an excel-
+E. R. Berlekamp, Algebraic Coding Theory, McGraw lent error correcting capability compared with other
+Hill, Inc., 1968, pp. 334-336. conventional error correcting techniques of the same
+Punctured Convolutional Codes of Rate (n-1)/n and Sim- coding rate. :
+plified Maximum Likelihood Decoding, by J. Bibb Cain, | |
+George C. Clark, Jr., and John M. Geist, in TEEE | 4 Claims, 6 Drawing Figures
+SHIFT CLOCK | ~ READ CLOCK
+| 53 2 ~~ ¥2 CONVOLUTIONAL | (BLM py
+i 24 / CODING CIRCUIT | OL
+-f--2--2 ao Hh nn enn ani h34
+; 1
+ty tf fF | 26 i7
+INPUT} —EEELELL. ME : OUTPUT
+| |
+telLgaa | WRITE CLOCK
+7 O-—-)—+ S ; | |
+wan nn nn oe ane CLOCK(2R)
+N22 FF 39 __—if-ag
+|DELETING PATTERN L_JADDRESS
+3) MEMORY OUNTER
+a
+| | {| ~~~~~~=" Q }
+1. |
+
+=====PAGE 2=====
+U.S. Patent Jul. 24, 1984 Sheet 1 of 6 4,462,101
+Fig. |
+|
+INPUT es ee
+_--{INPUT DATA 7
+10 2 bdo Og --------= An-ifan--- |
+CONVOLUTIONAL] Wg
+CIRCUIT |--4 CODED DATA
+1" dd md Dy Day --------- Po Pa
+—  & 4 Dox Di _De2-------- Dn-t2i bn
+©| SYMBOL DELET INCI 5
+STNs bee) oof
+oe CIRCUIT _} MEMORY} vf
+fo ~ 7777 TRANSMISSION DATA |
+‘Dip
+we gh te Bon Bie Bea Bret. fpbnd
+=; NOISE —oIS
+— _! IV Aly ;
+| f ot _--- An. 1
+ag ig [Pale Bee Bee br. rib
+DUMMY [INSERTING 5
+[| SRS. LEERY! Om P
+wi|LINSERTER J [MEMORY -I7
+Q\e0'5y fF -ADATA TO BE DECODED 7
+WHLIKELIHOOD Lj9 vate Xm-m---= Dae ee
+DECODER pA WD e Dearsos= X ney
+210 Pe 8
+“DECODED DATA :
+OUTPUT dg] a------ ahs fan!
+Lo Ld
+
+=====PAGE 3=====
+U.S. Patent sul. 24, 1984 Sheet 2 of 6 4,462,101
+©
+L—
+_ ©
+=<
+O
+Y) —
+= Ir
+tld
+ak
+~ Ui) a
+: xs
+v= ? Q QO
+i = ~~ |
+i Wl O
+| ON
+Qy | | 3
+DY _ L 2.
+» ttenas
+Ly ” = "
+in
+m eS e
+is ! O-
+| < ~~ oO . —
+<{ o (ft
+G = | °o re
+(5
+=<
+3 O
+Qonth N -O
+
+=====PAGE 4=====
+U.S. Patent Sul. 24, 1984 Sheet 3 of 6 4,462,101
+a
+vY wt at Ai Ok
+| & f 3 ‘_ _ ~ ’
+Oa ,
+3 «BIS ° BE
+or © O >
+NHS} Oo MRA
+6 | Zs: -O
+rile wy DM 4
+| —— \ a =
+4 i
+a: ©
+>
+= N 2 oc L— 5
+Sef EES
+: a) | “fo
+a5) eS! gl | B=
+SO! MAH my | {i
+Zz OT | 1 lan :
+QZ | ar _
+= _ OF =
+SST LTP
+} oO
+an
+| |
+TT fis
+OSS
+| @= _ 9 |
+eit Ft
+|
+, a . : Cy
+s ail He
+OO NT | SO : >
+Oo Lt | Ly
+SAL
+ee ee
+fl = a
+r “Ver
+Y} =
+
+=====PAGE 5=====
+U.S. Patent Jul 24,1984  § Sheet4of6 $4,462,101
+| a hit — N)
+nm rim OM
+" RS O°
+g so *2 GB
+LOA ~ 2g Li
+de & G& Se x
+()
+~ 6H SN
+| ) | ) |
+L_ i 3 PLL
+| e :
+| ©
+Ni O
+| . e' |
+2
+O |
+- =
+| __
+i oF :
+<{ oO O a n
+
+=====PAGE 6=====
+U.S. Patent sul. 24, 1984 Sheet 5 of 6 4,462,101
+F/g. 5A Fig. 5
+WRITE CLOCK
+(RR)
+j DUVIMY DATA :
+2. 8 : MEMORY _
+- 26 [43 17
+INPUT FIFO ~~ ——
+3 MEMORY ] |
+METRIC ;
+"384 Lan | (SBRBATON
+20
+CLOCK(2R)
+--- ‘
+a9 INV-45 37 39—~*”d
+, INSERTING
+ADDRESS
+IMEMORY (7 COUNTER
+RTING PATTERN) I5 ADDRESS CONTROL
+(INSERTI | RDDRE
+1— 56
+(NUMBER TO BE INSERTED: mBITS)
+
+=====PAGE 7=====
+U.S. Patent Jul. 24, 1984 Sheet 6 of 6 4,462,101
+Fig. 5B
+CLOCK(R)
+| 19 i 50
+ees SEE OO
+(one arent . 53 2
+2-1) CODE (K= |
+[EYRNIVED ' DECODED
+1 4a 48  ‘|IMEMORY DATA
+SEF METRIC ~s |
+—=FIZE FHCALCULATION Sy VED !
+! Spence! RCUIT ao .
+| | |
+FL [PATH] > |
+| METRIC [92 |
+: MEMORY |
+en reeeeeen eee
+55
+54
+SYNCHRONIZATION
+MONITOR METRIC INFORMATION
+
+=====PAGE 8=====
+4,462,101
+1 2
+: - a : - and/or the code constraint length K increases. The
+MAXIMUM LIKELIHOOD ERROR CORRECTING main reason for that resides in the fact that the number
+TECHNIQUE | ce of the internal states and the number of the necessary
+BACKGROUND OF THE INVENTION 5 code constraint length bevomes large Acowdinely a
+The present invention relates to an error correcting decoding hardware for the code with the coding rate of
+technique for reducing error bits in a digital communi- _ higher than ? has been almost impossible.
+cation system, in particular, relates to such a system On the other hand, the improved error correcting
+| utilizing a maximum likelihood’ error correcting tech- to technique with the low redundance and the large cor- |
+| nique. oo, ae | recting capability has been desired for the effective use
+In a recent digitalized communication system, an of a communication line, which has the limited fre-
+error correcting technique has been introduced for
+” | ch: be a quency band.
+improving the communication quality. There have been |
+sown many error correcting techniques, and among 15 “SUMMARY OF THE INVENTION
+them, the error correcting lique havi i- . + ) oo,
+nation of the convolutional coding and the maximum  _ 2¢i8 an object, therefore, of the present invention to
+likelihood decoding is very promising. a overcome the disadvantages and limitations ofa prior
+According to the maximum likelihood decoding TF correcting technique by providing a new and
+technique, a receive side calculates a likelihood (which | %™Proved error correcting technique. _
+corresponds to the possibility that each symbol has been 20 _It is also an object of the present invention to provide
+sent from a transmit side) for all possible symbols trans- 4 error spa “lity. teenniqne having a are error cor-
+: mittable from a transmit side, according to the actual recting capability with small amount of hardware.
+receive symbols at the receive side. Then, the receive ‘The above and other objects are attained by an error
+side determines or presumes the symbol which has the correcting technique having a convolutional coding
+maximum likelihood as the code which is possibly trans- 25 circuit for performing a convolutional coding with
+mitted from the Seth side. pasticular, me sort some redundancy to an input cat, means for oo ching
+lecision maximum likelihood decoding, in which a some symbols of the output of said convolutional cod-
+ody thea, iketi Precise possipauty ° cae Sy . ing circuit to increase a coding rate close to one, means
+, then, €linood for a series Of decoded symbols, or inserting dummy symbols into each bit position of a
+| is very effective in correcting the transmission errors. 30 receive data sequence where a symbol! has been deleted
+_ However, when the length of the signal sequence to _—at_a transmit side, means for designating a fixed prede-
+RAR he eee ans ed ncn eine ocd vu fo id mere dummy sym
+pat le Tecetv stp bol, and maximum likelihood decoding technique for
+| rapidly or exponentially, the capacity of the hardware decoding a receive data sequence with said inserted
+for decoding circuit is not practical. 35 q a:
+The Viterbi decoding technique has been known to Samy symbols. an a maximum likelihood decoding
+| cone que a technique, a likelihood value for the symbols transmit-
+solve the above problem. According to the Viterbi aN tgs y
+decoding circuit, the unnecessary calculation for the ted from a transmit side ‘s calculated in the decoding
+likelihood is‘ temoved, and it uses the algorithm for Process itself, and a likelihood value for dummy sym-
+performing the maximum likelihood decoding effec- 40 bols inserted in a receive side is a fixed and predeter-
+tively. The hardware for that Viterbi decoding tech- mined value. |
+| nique has been realized for the convolutional coding- BRIEF DESCRIPTION OF THE DRAWINGS
+/maximum likelihood decoding, for the code with the |
+low coding rate and with the short constraint length. __ The foregoing and other objects, features, and atten- :
+A coding rate is defined as the ratio of the number of 45 dant ve vantages rene aon invention will be appre-
+: input bits to the number of output bits of the encoder, ciated as the same become better understood by means
+for instance, the coding rate is } when the number of the of the following description and accompanying draw-
+output bits is 2 for each input bit. The difference of the ings wherein: ,
+number of the output bits and that of the input bits) = FIG. 1 shows a conceptual diagram of the communi-
+corresponds to the reoundant bits of the coed signa 0 cation system utilizing the present maximum likelihood
+- sequence. When the coding rate is large, or is close to error correcting technique, |
+(for instance §), the redundancy of the coded symbol is FIG. 2 shows the curve (a) of the coding gain of the
+MA code constraint length is defined as the length of _ (hag Convolutional codes at the bit error rate of
+| : 10—°in case of the 8-level soft decision decoding based
+the input signal for constructing each coded output bit. 95.) the invented error correcting technique, in rich an
+It has been known that the amount of the hardware of original code has the coding rate } and the code con-
+the Viterbi decoder for decoding the coded signal se- gy ning length 7, together with the curve (b) of that of
+quence with the coding rate ko/no and the code con- _-conventional double error correcting self-orthogonal
+} straint length K, is proportional to the value 8, which is © |
+er re en codes,
+defined by the following equation (see “Viterbi Decod- 69 FIC. 3is a block dj eth d dine t
+ing for Satellite and Space Communications” by J. A. fy 21S 2 DNOCK Clagran OF tile encoder according to
+Heller and I. M. Jacobs, in IEEE Trans. Commun. “© Present invention, |
+Technol., vol. COM-19, pp. 835-847, October 1971). FIG. 4 shows a timing chart of the clock signals for
+i operating the device of FIG. 3 in the case of coding rate
+— §=2K0(K~1y (1) 65 §, and . lock
+| _ a FIG. 5 comprised of FIGS. 5A and 5B 1s a bloc
+The equation (1) shows that the amount of the hard- diagram of the decoder according to the present inven-
+ware increases exponentially as the coding rate ko/no _ tion.
+
+=====PAGE 9=====
+4,462,101
+3 4
+DESCRIPTION OF THE PREFERRED mentioned operation to provide a decoded data 8 from
+“EMBODIMENTS a received data 13. oe a
+| | ” | Now, the coding rate of the present invention 1s de-
+_ FIG. 1 shows a conceptual diagram of the communi- scribed.
+cation system utilizing the maximum likelihood error 5 Assuming that the coding rate of the convolutional
+correcting technique according to the present inven- _— coding circuit 2 is ko/no, and the deleting pattern 5
+tion. The input data sequence 1 is converted to the deletes m symbols in each L blocks each of which has
+coded data 3 by the convolutional coding circuit 2, and no symbols, then, the coding rate of the input data 1 to
+said coded data 3 is applied to the symbol deleting cir- the transmission data 7.is shown below.
+cuit 4. The coded data 3 is shown in the table in FIG. 1 10 |
+for the case that the coding rate of the original code is Ko'/no' = (koL)/(nok — m) | (2)
+4 in the parallel form. The symbol deleting circuit 4 _ Accordingly, the coding rate of the resultant code
+deletes some symbols according to the content of the _ according to the present invention is either equal to
+deleting pattern memory 6 which stores the predeter- ko/no (in case of m=0), or higher than that value. And,
+mined deleting pattern 5, and said circuit 4 provides the !> by suitably choosing the values of L and/or m in the
+transmission data sequence 7 which has the predeter- equation (2), any desired coding rate higher than Ko/no
+_ mined transmission speed. In the deleting pattern 5, the and close to | is obtained for performing the maximum
+symbol “1” shows that the corresponding input data is likelihood error correction. 7
+not deleted, and the symbol “0” shows that the corre- The error correcting capability, or the bit error rate
+sponding input data is deleted. The coder 10 in FIG. 1 20 of a decoded data according to the present invention
+performs the above operation and provides the trans- | 4¢pends upon the deleting symbol rate (m/(noL)) desig-
+mission data 7 from the input data sequence 1. ~ _ nated by the deleting symbol pattern 5, and the position
+The data 7 is transmitted to the receive side through Of the m number of the deleted symbols. |
+the communication line 12 in which signal quality is _. t's assumed here that the convolutional coding cir-
+degraded by the noise 11. 25 cuit 2 in the coder 10 in FIG. .1 handles the convolu-
+In the receive side, the received data 13 correspond- tional code with the coding rate 2 and the code con-
+ing to the transmitted data 7 is obtained either through straint length 7, for instance. It should be noted that a
+the hard decision scheme or the multi-level soft decision - Viterbi decoder for that code has already been realized
+scheme. The soft decision scheme provides not only the ,, at present. The desired optimum deleting pattern for
+conventional decoded symbol (1 or 0), but also the providing the code with the coding rate higher than 2
+reliability of each decoded symbol, and then, in case of for the maximum likelihood error correction, 1s Ob-
+the 8-level soft decision, each decoded symbol is com- tained by calculating the distance between each code-
+posed of 3 bits. As described before, said soft decision word for all the possible deleting patterns 5 by using a
+scheme together with the maximum likelihood decod- 3, computer, and by selecting one deleting pattern which
+_ ing technique improves remarkably the error correcting ~  &!Y°* the best error performance, for each given coding
+capability. | - rate. The table | shows the best deleting pattern, in
+
+The received data 13 is entered into the dummy sym- _ which the original code has the coding rate 2 and the
+
+bol inserter 14, in which a dummy symbol is inserted in code constraint length.7, and the r esultant coding rate 1s
+each bit position where a symbo! was deleted in the 4 § through é in the table, the deleting pattern is shown
+transmit side, according to the content of the inserting «© ™ the parallel form after 2 coding operation. Therefore,
+pattern memory 16. Thus, the transmission speed ofthe when a pattern is shown in a serial form, it is shown as
+data 17 which is the output of the dummy symbol in-  __ 111001".for a 4 code, for instance. —
+serter 14 is the same as that of the coded data sequence = TABLE 1
+3. A dummy symbol may either be 1 or 0. Incase of a 45 " Codingrate. Optimum deleting —Sst=<CSs~Sst‘CS~S~S
+soft decision system, each dummy symbol has of course = —(n-1/n)) SL sm _pattern od Ck
+a plurality of bits. The pattern “x” in the data 17 in FIG. ——SCSSSCOCd original code) «10sti8—
+1 shows the dummy symbol thus inserted. The data17 = = =~ 1 | :
+is applied to the maximum likelihood decoder 19, which = 82 FD 6 + 3
+is implemented by the Viterbi decoding circuit in the 59 y yy No | 5 lw
+present embodiment..In this case, a dummy symbol == 101 | —_
+must have a fixed likelihood value (so-called “‘metric”) = 4/5 4 30 LD ) 4 12
+for easy error correcting calculation hereinafter. ‘There- oS eo - $000 |
+fore, the dummy symbol inserter 14 provides an addi- 8 ¢ ‘orot | 4 72
+tional pulse 20 which prohibits the maximum likelihood 55 = = 6/7, 6 —s5-—s«11010 3 5
+
+- galculation to a dummy symbol is a decoder 19. | . oo 100101 )
+
+The maximum likelihood decoder 19 may be acon- = 8 —©—= 7 © TILIOIO 3 9
+ventional Viterbi decoder corresponding to a convolu- OOOO
+tional circuit at a transmit side, except that a likelihood 7 oo
+calculation is not performed for each inserted dummy 60 — In the above table, L and m indicate that m bits in the
+symbol, but a fixed likelihood value is appointed when L number of blocks (2L symbols) after 3 coding are
+
+| a pulse 20 which prohibits a likelihood calculation 1s ‘deleted periodically. The table also shows the minimum
+received from a dummy symbol inserter 14. Therefore, distance d for each code, and the total number C; of the
+the maximum likelihood (Viterbi) decoding operation is error bits in all the incorrect paths which have the dis-
+performed by appointing a fixed predetermined likeli- 65 tance d from the correct path. It has been known in
+hood value to a dummy symbol, and then, the decoded general that the bit error performance of the output data
+data sequence 8 is obtained as the output of the likeli- . sequence of a Viterbi decoder is better when d 1s larger,
+hood decoder 19. The decoder 21 performs the above _. and when d is fixed that error rate performance is better
+
+=====PAGE 10=====
+: 4,462,101
+J 6
+as Cx is smaller. Accordingly, it is apparent that as the FIG. 4 shows the timing chart of the clock pulses
+coding rate is larger (that is to say, as the deleting rate —_—utilized in FIG. 3 for the § code (L=7, m=6, and then
+of 4 coded symbol is larger), the bit error rate perfor- 2L—m/L=8/7) of the previously mentioned table 1. In
+mance of the Viterbi decoding is worse. —s_— | FIG. 4, the signal (A) shows the clock pulse 24 with the
+FIG. 2 shows the calculated curve (curve a) of the 5 speed R, (B) shows the clock 29 with the speed 2R, (C)
+coding gain at the obtained bit error rate 10-° in an — shows the output signal 31 of the deleting pattern mem-
+8-level soft decision Viterbi decoding, together with | ory 28 when the deleting pattern 5 is read in a serial
+that (curve b) of a conventional double error correcting § mode, (D) shows the semi-deleted clock 33 which is the
+___ gself-orthogonal code. In FIG. 2, the horizontal axis _—_ logical product of the (B) and the (C), and (E) shows
+| _ shows the decibel value (dB) of the band width expan- 10 the read clock 34 with the speed 8/7 R.
+— gion ratio of each of the codes (which is the inverse FIG. 5 shows a block diagram of a decoder 21 which
+—— number of the coding rate n—1/n). The coding gain is | corresponds to a coder 10 of FIG. 3. The decoder 21
+Oo | defined as tne difference of E,/No (Ea is an energy per Operates in the opposite manner of the transmit side.
+each information bit, and No is a single sided noise § Thus, the decoder inserts a dummy symbol at the posi-
+ae power density) with no coding, and that value (E,/No) 15 tion where a code symbol is deleted in the transmit side,
+-. . With coding, keeping the information. transmission to generate the data with the speed 2R which is the
+: oo speed constant. It is apparent in FIG. 2 that the coding same as the speed of the output data from the coding
+ss gain of the present invention is higher than that of a circuit 2. Then, the maximum likelihood decoding is
+-.- gonventional double error correcting self-orthogonal —_ performed by the Viterbi decoder 19 for the 3 convolu-
+| . code, when the present error correcting technique is 20 tional code (code constraint length is 7). It is assumed
+—-. —s gombined with. the 8-level soft decision scheme. For that the received data sequence 13 is a soft decision
+- - instance, in the case of § code, the coding gain of the data, and the Viterbi decoder 19 is capable of calculat-
+ae present invention is superior to a conventional coding ing the likelihood or the metric for the soft decision
+a . by 1.3 dB at the bit error rate 10-6 Thus, it is quite input data.
+; '  .. glear that the present invention provides the excellent 25 The received data 13 is stored in the FIFO memory
+. . bit error rate performance even for the high rate code. 36 with the write clock pulse 35 with the pulse speed
+4 When a hardware for a convolutional coding circuit ((2L—m)/L)R. An inserting pattern memory 37 which
+. anda Viterbi decoding circuit for acode with acoding stores the inserting pattern 15 corresponding to the
+a - rate higher than 4 and the code constraint length larger deleting pattern 5 in the transmit side which provides
+7 than 7, is realized in future, due to the development of 30 the content of the same, the address of which is desig-
+a _. . LSI (large scale integrated circuit), the error correcting nated by the address counter 39 with the clock pulse 38
+: -—._- @apability will be further improved than those shownin of the speed 2R. The address counter 39 functions to
+ee ot | © ay | — | designate periodically the address of the inserting pat-
+Oe _ FIG. 3 shows a block diagram of a coding circuit 10, tern memory 37, which stores the inserting pattern 15
+-.. in which a convolutional coding circuit 2 handles a 35 each having L length of blocks. The AND gate 41
+: code with the coding rate 4 and the code constraint provides the logical product of the output signal 40 of
+.. -. Iength 7. The convolutional coding circuit 2 is com- the inserting pattern memory 37 and the continuous
+~.--.... posed of a shift register 22 with seven bit stages and an _—_ clock signal 38 with the speed 2R, and provides the
+| os exclusive-OR circuit 23. The shift clock 24 with the — semi-deleted output clock pulse 42, which has no active
+: _ _ speed R is supplied to the circuit in the case that the 40 pulse on some bit positions. The output clock pulse 42 is
+; transmission speed of the input data series is R. The applied to the FIFO memory 36 as a read clock pulse,
+| -~ parallel-serial converter 25 converts the parallel data3 = and a data is read out from the FIFO memory 36, syn-
+3... t9 a serial data 26, which is fed into the first-in-first-out | chronized with that clock pulse 42.
+-  ... ” . - memory (FIFO) 27. The deleting pattern memory 28 The output signal 40 of the inserting pattern memory :
+3... Which stores the deleting pattern 5 set from an external 45 37 operates further to steer a switch 43, which couples
+“2... *. gircuit (not shown) sends the contents of the memory __ the output line 17 either with the output of the FIFO |
+bit by bit according to the indication pulse from the memory 36, or the output of the dummy data memory
+oy." address counter 30 which operates with the clock pulse 44. The switch 43 couples the output line with the
+coi -. 29 having the speed 2R. The address counter 30 desig- © FIFO memory 36 when a data is read out from the
+“i+. nates the address of the deleting pattern memory 28 50 FIFO memory 36, and couples the output line 17 with
+io . . Which stores the deleting symbol pattern 5in the length =the dummy data memory 44 when the dummy data
+/ Of L. blocks (having the 2L number of symbols), periodi- should be inserted into a received data. The output 17,
+ST cally. | tO | which is the input signal to be decoded, is fed into the |
+—.. . - ' "Fhe AND gate 32 provides the logical product of the | Viterbi decoder 19. The output 40 of said inserting
+os - output signal 31 from the deleting pattern memory 28 55 pattern memory 37 is also applied to the Viterbi de-
+| a _ and the continuous clock signal 29 with the speed 2R, coder 19 through the sign inverter 45 as the inhibit pulse
+| -.. and the output clock 33 of the AND gate 32 with some of the metric calculation for an inserted dummy symbol.
+glock pulses deleted is applied to the FIFO memory 27 The Viterbi decoder 19 has a metric calculation cir-
+oe -.aS a writing clock pulse. Accordingly, the FIFO mem- _ cuit 48, which receives the input data 17 through a first
+— ory 27 stores the coding data 26 only when the write 60 serial-parallel converter 47, and the inhibit pulse 20
+| clock pulse 33 ‘is applied to’ that FIFO memory 27. through the second serial-parallel converter 48, for
+>, ‘When the deleting pattern 5 shows that the deleting performing the metric calculation for the input signal.
+) a period is L blocks, and the number of deleting symbols §_ The metric calculation circuit 48 operates providing a
+7 | __ is m, the read clock'34 for reading data from the FIFO _ predetermined fixed metric value to the inserted
+| memory 27 has the speed of ((2L—m)/L)R. Then, the 65 dummy symbo! which is supplied simultaneously with
+data speed is converted to (2L—m)/L)R in the FIFO the metric calculation inhibit pulse 20. When the metric
+SO memory, and the output data of the FIFO memory is __ calculation is inhibited, the metric calculation circuit 48
+= provided as the transmission data sequence 7. may give the same metric value to both the data “1” and
+
+=====PAGE 11=====
+4,462,101
+7 8
+| “OQ” to reduce the influence to a maximum likelihood proved by using a soft decision decoding technique.
+path selection function in a Viterbi decoding, alterna- Then, the signal quality of a digital communication |
+tively, said metric calculation circuit 48 may give the system is improved. |
+intermediate value between the maximum symbol met- The present error correcting technique has the ad-
+ric value and the minimum symbol metric value in order 5 vantage that the coding rate of a resultant code can be
+to minimize the influence to the self synchronization determined only by the deleting pattern. Therefore, an
+function (which is described later). adaptive error correction system which selects the |
+The metric value 49 calculated in the circuit 48 is proper coding rate according to the instantaneous chan-
+transferred to the survived path selector 51 by the clock nel condition may be possible, and then, the system
+pulse 50 having the speed R. The survived path selector 19 design of a digital communication system may have
+Si selects the survived path for each internal states much feasibility. |
+according to the content of the path metric memory 52 From the foregoing, it will now be apparent that a
+which stores the path metric value of the survived path new and improved error correcting technique has been
+until that time for each internal state of a code, the found. It should be understood of course that the em-
+content of the survived path memory which stores the 15 bodiment disclosed is merely illustrative and is not in-
+bit sequence of each survived path, and the metric value tended to limit the scope of the invention. Reference
+49 at that time, then, said survived path selector 51 should be made to the appended claims, therefore, |
+revises the path metric memory 52 and the survived rather than the specification as indicating the scope of
+path memory 53. The survived path memory 53 pro- the invention. |
+vides the decoded data 8 with some delay time which is | What is claimed is: | |
+determined by the length of the truncation path. The 72 1. A coder for minimum likelihood error correcting |
+decoding procedure in the circuit 19 is described in technique in a digital communication system in which a
+detail in “The Viterbi Algorithm” by G. D. Forney, transmit side encodes original data through convolu- |
+JR., in Proceedings of the IEEE. Vol-61, No. 3, March tional coding with some redundancy, and a receives
+1973, pp. 268-276. The length of the truncation path in side decodes received data through maximum likeli-
+the survived path memory 55 in the decoder 19 in- 2° hood decoding, comprising:
+creases as the coding rate becomes high, for instance, in (a) a convolutional coding circuit means for perform- |
+the case of 7 code in the Table 1 said length is about 60 ing a convolutional coding of input data:
+bits, and in the case of § code in said Table 1 the length (b) a deleting pattern memory storing a deleting pat-
+is about 100 bits. tern which designates symbols to be deleted in
+_ When the present decoder handles a continuous data, 30 output data of said convolutional coding circuit -
+in order to assure the correct position of a dummy sym- means; and
+bol to be inserted into a received data sequence 13, the (c) a code deleting circuit means for deleting symbols
+self synchronization function to every period of a delet- in Output data of said convolutional coding circuit
+ing pattern is necessary. The self synchronization in a means according to the content of said deleting
+receive side is performed as follows, for example. 35 pattern memory, to provide transmission data hav-
+Generally speaking, in a synchronized condition, ing a predetermined speed and a coding rate close
+when a signal to noise ratio exceeds a predetermined to 1.
+threshold value, the metric value in Viterbi-decoding 2. A decoder for a maximum likelihood error correct-
+process is enough large for the particular path, but that ing technique in a digital communication system in
+metric value is considerably small for other paths. On 49 which a transmit side encodes original data through a
+the other hand, in an asynchronous condition, tne met- convolutional coding with some redundancy and de-
+ric value in all the paths becomes almost constant me- letes some symbols thus encoded according to a prede-
+dium value. Accordingly, the metric information which termined deleting pattern to increase a coding rate close
+shows the grade of the synchronization of a code can be to 1, and a receive side decodes received data through a
+produced in a Viterbi decoder according to the metric 45 maximum likelihood decoding, comprising:
+values in each path. For that purpose, the metric infor- (a) an inserting pattern memory storing an inserting :
+mation 54 produced in the path metric memory 52 is symbol pattern which corresponds to a deleting
+transferred to the synchronization monitor 55, which pattern in a transmit side;
+produces an address control pulse 56 to the address (b) a dummy symbol inserter means for inserting a
+counter 39 when the metric value 54 is out of range of dummy sysmbol into a received signal at each
+the synchronization. The address counter 39 shifts the >2 proper bit position where a code is deleted in a
+address of the inserting pattern memory 37 by one sym- transmit side, according to the content of said in-
+bol upon receipt of said address control pulse 56. The serting pattern memory; and |
+synchronization monitor 55 repeats said control opera- (c) a maximum likelihood decoder which decodes a
+tion for every predetermined time interval until the received signal through a calculation of metric, in
+metric value 54 reaches a synchronization range. Thus, >> which a conventional metric calculation is not
+the receive side can automatically monitor the asyn- performed for a dummy symbol inserted in said
+chronous status, and recover the synchronization status. dummy symbol insert means and a predetermined
+The timing chart or the phase of the clock pulses fixed likelihood value is designated to a dummy
+utilized in the apparatus of FIG. 5 is similar to those of symbol irrespective of its value.
+FIG. 4. 60 3. A coder according to claim 1, wherein a coding
+Although the above embodiment handles only a se- rate of an original data is 4 and a coding rate of a resul-
+rial continuous data, a parallel and/or burst data with tant code after deleting is in the range between % and 2.
+predetermined speed may also be handled by the pres- 4. A decoder according to claim 2, wherein the fixed
+ent apparatus. likelihood value for a dummy data is in the range be-
+As described above, according to the present inven- 65 tween the maximum symbol metric value for a soft
+tion, a maximum likelihood error correction for a high decision data and the minimum symbol metric value for |
+rate code can be realized with reasonable hardware asoftdecisiondata. ~~. —
+amount. Further, the error correcting capability is im- ee ee

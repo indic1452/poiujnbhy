@@ -1,0 +1,1340 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+ 
+ETSI TS 102 721-2 V1.2.1 (2013-08) 
+Satellite Earth Stations and Systems (SES); 
+Air Interface for S-band Mobile Interactive Multimedia (S-MIM); 
+Part 2: Forward Link Subsystem Requirements 
+ 
+ 
+ 
+Technical Specification 
+
+=====PAGE 2=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+2
+ 
+ 
+ 
+ 
+Reference 
+RTS/SES-00334 
+Keywords 
+MSS, satellite 
+ETSI 
+650 Route des Lucioles 
+F-06921 Sophia Antipolis Cedex - FRANCE 
+ 
+Tel.: +33 4 92 94 42 00   Fax: +33 4 93 65 47 16 
+ 
+Siret N° 348 623 562 00017 - NAF 742 C 
+Association à but non lucratif enregistrée à la 
+Sous-Préfecture de Grasse (06) N° 7803/88 
+ 
+Important notice 
+Individual copies of the present document can be downloaded from: 
+http://www.etsi.org 
+The present document may be made available in more than one electronic version or in print. In any case of existing or 
+perceived difference in contents between such versions, the reference version is the Portable Document Format (PDF). 
+In case of dispute, the reference shall be the printing on ETSI printers of the PDF version kept on a specific network drive 
+within ETSI Secretariat. 
+Users of the present document should be aware that the document may be subject to revision or change of status. 
+Information on the current status of this and other ETSI documents is available at 
+http://portal.etsi.org/tb/status/status.asp 
+If you find errors in the present document, please send your comment to one of the following services: 
+http://portal.etsi.org/chaircor/ETSI_support.asp 
+Copyright Notification 
+No part may be reproduced except as authorized by written permission. 
+The copyright and the foregoing restriction extend to reproduction in all media. 
+ 
+© European Telecommunications Standards Institute 2013. 
+All rights reserved. 
+ 
+DECTTM, PLUGTESTSTM, UMTSTM and the ETSI logo are Trade Marks of ETSI registered for the benefit of its Members. 
+3GPPTM and LTE™ are Trade Marks of ETSI registered for the benefit of its Members and 
+of the 3GPP Organizational Partners. 
+GSM® and the GSM logo are Trade Marks registered and owned by the GSM Association. 
+
+=====PAGE 3=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+3
+ 
+Contents 
+Intellectual Property Rights ................................................................................................................................ 4 
+Foreword ............................................................................................................................................................. 4 
+Introduction ........................................................................................................................................................ 4 
+1 
+Scope ........................................................................................................................................................ 5 
+2 
+References ................................................................................................................................................ 5 
+2.1 
+Normative references ......................................................................................................................................... 5 
+2.1 
+Informative references ........................................................................................................................................ 5 
+3 
+Definitions and abbreviations ................................................................................................................... 6 
+3.1 
+Definitions .......................................................................................................................................................... 6 
+3.2 
+Abbreviations ..................................................................................................................................................... 6 
+4 
+General Description .................................................................................................................................. 7 
+4.1 
+Physical Layer .................................................................................................................................................... 8 
+5 
+Forward Link Radio Interface Requirements ........................................................................................... 9 
+5.1 
+Service Requirements ......................................................................................................................................... 9 
+5.1.1 
+Service Segment 1 ........................................................................................................................................ 9 
+5.1.2 
+Service Segment 2 ...................................................................................................................................... 10 
+5.1.3 
+Service Segment 3 ...................................................................................................................................... 11 
+5.1.4 
+Signalling .................................................................................................................................................... 11 
+5.1.5 
+Interaction between the Services ................................................................................................................ 12 
+5.1.6 
+Service Distribution .................................................................................................................................... 12 
+5.2 
+System Requirements ....................................................................................................................................... 12 
+5.2.1 
+Interface Requirements ............................................................................................................................... 12 
+5.2.2 
+Interoperability Requirements .................................................................................................................... 13 
+5.2.3 
+Addressed Spectrum ................................................................................................................................... 13 
+5.2.4 
+Operational Requirements .......................................................................................................................... 13 
+5.2.5 
+Design Requirements .................................................................................................................................. 14 
+Annex A (informative): 
+Granularity for real-time traffic allocation for DVB-SH Usage ................ 15 
+History .............................................................................................................................................................. 16 
+ 
+
+=====PAGE 4=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+4
+ 
+Intellectual Property Rights 
+IPRs essential or potentially essential to the present document may have been declared to ETSI. The information 
+pertaining to these essential IPRs, if any, is publicly available for ETSI members and non-members, and can be found 
+in ETSI SR 000 314: "Intellectual Property Rights (IPRs); Essential, or potentially Essential, IPRs notified to ETSI in 
+respect of ETSI standards", which is available from the ETSI Secretariat. Latest updates are available on the ETSI Web 
+server (http://ipr.etsi.org). 
+Pursuant to the ETSI IPR Policy, no investigation, including IPR searches, has been carried out by ETSI. No guarantee 
+can be given as to the existence of other IPRs not referenced in ETSI SR 000 314 (or the updates on the ETSI Web 
+server) which are, or may be, or may become, essential to the present document. 
+Foreword 
+This Technical Specification (TS) has been produced by ETSI Technical Committee Satellite Earth Stations and 
+Systems (SES). 
+The present document is part 2 of a multi-part deliverable. Full details of the entire series can be found in part 1 [1]. 
+Introduction 
+The S-MIM system specified herein is designed to provide: 
+• 
+Interactive mobile broadcast services. 
+• 
+Messaging services for handhelds and vehicular terminals, capable of serving millions of terminals due to a 
+novel optimized radio-interface in the RTN link. 
+• 
+Real-time emergency services such as voice and file transfer, mainly addressing institutional users on-the-
+move such as fire brigades, civil protection, etc.  
+Inside the S-band, the 2 GHz MSS band is of particular interest for interactive multimedia, since it allows two-way 
+transmission. Typically, the DVB-SH standard [i.7] is applied for broadcast transmission; ETSI SDR [i.2] or  
+DVB-NGH [i.8] standards are other alternatives. Essential requirements under the R&TTE directive are covered by the 
+harmonized standard EN 302 574 [i.4], [i.5] and [i.6]. 
+The technology applied has been developed in the framework of the ESA funded project "DENISE" (ESTEC/Contract 
+Number 22439/09/NL/US).  
+
+=====PAGE 5=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+5
+ 
+1 
+Scope 
+The present document specifies the S-MIM (S-band Mobile Interactive Multimedia) system in which a standardized  
+S-band satellite mobile broadcast system is complemented by the addition of a return channel.  
+The present document is part 2 of the multi-part deliverable and concerns the requirements for a forward link radio 
+interface in the S-band Mobile Interactive Multimedia (S-MIM) system; it focuses in particular on DVB-SH usage. 
+The other parts are listed in the foreword of part 1 [1]. 
+2 
+References 
+References are either specific (identified by date of publication and/or edition number or version number) or 
+non-specific. For specific references, only the cited version applies. For non-specific references, the latest version of the 
+reference document (including any amendments) applies. 
+Referenced documents which are not found to be publicly available in the expected location might be found at 
+http://docbox.etsi.org/Reference. 
+NOTE: 
+While any hyperlinks included in this clause were valid at the time of publication, ETSI cannot guarantee 
+their long term validity. 
+2.1 
+Normative references 
+The following referenced documents are necessary for the application of the present document. 
+[1] 
+ETSI TS 102 721-1: "Satellite Earth Stations and Systems (SES); Air Interface for S-band Mobile 
+Interactive Multimedia (S-MIM); Part 1: General System Architecture and Configurations". 
+[2] 
+ETSI TS 102 721-5: "Satellite Earth Stations and Systems; Air Interface for S-band Mobile 
+Interactive Multimedia (S-MIM); Part 5: Protocol Specifications, Link Layer". 
+[3] 
+ETSI TS 102 721-6: "Satellite Earth Stations and Systems; Air Interface for S-band Mobile 
+Interactive Multimedia (S-MIM); Part 6: Protocol Specifications, System Signalling". 
+2.1 
+Informative references 
+The following referenced documents are not necessary for the application of the present document but they assist the 
+user with regard to a particular subject area. 
+[i.1] 
+ETSI TS 102 584: "Digital Video Broadcasting (DVB); DVB-SH Implementation Guidelines". 
+[i.2] 
+ETSI EN 302 550 (all parts and sub-parts): "Satellite Earth Stations and Systems (SES); Satellite 
+Digital Radio (SDR) Systems". 
+[i.3] 
+ETSI EN 302 583: "Digital Video Broadcasting (DVB); Framing Structure, channel coding and 
+modulation for Satellite Services to Handheld devices (SH) below 3 GHz". 
+[i.4] 
+ETSI EN 302 574-1: "Satellite Earth Stations and Systems (SES); Harmonized standard for 
+satellite earth stations for MSS operating in the 1 980 MHz to 2 010 MHz (earth-to-space) and  
+2 170 MHz to 2 200 MHz (space-to-earth) frequency bands; Part 1: Complementary Ground 
+Component (CGC) for wideband systems: Harmonized EN covering the essential requirements of 
+article 3.2 of the R&TTE Directive". 
+[i.5] 
+ETSI EN 302 574-2: "Satellite Earth Stations and Systems (SES); Harmonized standard for 
+satellite earth stations for MSS operating in the 1 980 MHz to 2 010 MHz (earth-to-space) and  
+2 170 MHz to 2 200 MHz (space-to-earth) frequency bands; Part 2: User Equipment (UE) for 
+wideband systems: Harmonized EN covering the essential requirements of article 3.2 of the 
+R&TTE Directive". 
+
+=====PAGE 6=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+6
+ 
+[i.6] 
+ETSI EN 302 574-3: "Satellite Earth Stations and Systems (SES); Harmonized standard for 
+satellite earth stations for MSS operating in the 1 980 MHz to 2 010 MHz (earth-to-space) and  
+2 170 MHz to 2 200 MHz (space-to-earth) frequency bands; Part 3: User Equipment (UE) for 
+narrowband systems: Harmonized EN covering the essential requirements of article 3.2 of the 
+R&TTE Directive". 
+[i.7] 
+ETSI TS 102 585: "Digital Video Broadcasting (DVB); System Specifications for Satellite 
+services to Handheld devices (SH) below 3 GHz". 
+[i.8] 
+DVB BlueBook A160: "Next Generation broadcasting system to Handheld, physical layer 
+specification (DVB-NGH)". 
+3 
+Definitions and abbreviations 
+3.1 
+Definitions 
+For the purposes of the present document, the following terms and definitions apply: 
+2 GHz MSS band: 1 980 MHz to 2 010 MHz (earth-to-space) and 2 170 MHz to 2 200 MHz (space-to-earth) frequency 
+bands 
+NOTE: 
+These paired bands are assigned to MSS. 
+architecture: abstract representation of a communications system 
+NOTE: 
+Three complementary types of architecture are defined: 
+  
+Functional Architecture: the discrete functional elements of the system and the associated logical 
+interfaces. 
+  
+Network Architecture: the discrete physical (network) elements of the system and the associated 
+physical interfaces. 
+  
+Protocol Architecture: the protocol stacks involved in the operation of the system and the 
+associated peering relationships. 
+ESR(5): percentage of the 20 second periods that contain 1 erroneous second or less 
+flow (of IP packets): traffic associated with a given connection-oriented, or connectionless, packet sequence having the 
+same 5-tuple of source address, destination address, Source Port, Destination Port and Protocol type 
+global content: content that is intended for the whole coverage area of a satellite beam 
+local content: content that is intended for a part of the coverage area of a satellite beam 
+S-band: equivalent to 2 GHz MSS band 
+3.2 
+Abbreviations 
+For the purposes of the present document, the following abbreviations apply: 
+ACK 
+Acknowledgement 
+APSK 
+Amplitude and Phase Shift Keying 
+BCH 
+Broadcast Channel 
+CCH 
+Common Channel 
+CGC  
+Complementary Ground Component 
+CU 
+Channel Unit 
+DCH 
+Dedicated Channel 
+DVB-SH 
+Digital Video Broadcasting, Satellites services to Handhelds 
+EIRP 
+Equivalent Isotropic Radiated Power 
+ESR 
+Erroneous Second Ratio 
+
+=====PAGE 7=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+7
+ 
+FWD 
+Forward (link) 
+GHz 
+Giga Hertz 
+GNSS 
+Global Navigation Satellite System 
+IP 
+Internet Protocol 
+LL 
+Low Latency 
+LLCT 
+Link Layer Configuration Table 
+LOS 
+Line of Sight 
+MFN 
+Multi-Frequency Network 
+MLR 
+Message Loss Ratio 
+MPEG 
+Moving Pictures Experts Group 
+MPEG-TS 
+MPEG Transport Stream 
+MSS 
+Mobile Satellite Services 
+NRT 
+Non-Real Time 
+OFDM 
+Orthogonal Frequency Division Multiplex 
+PCH 
+Physical Channel 
+PLR 
+Packet Loss Ratio 
+QAM 
+Quadrature Amplitude Modulation 
+QoS 
+Quality of Service 
+QPSK 
+Quadrature Phase-Shift Keying 
+QSCT 
+QS-CDMA Configuration Table 
+QSDT 
+QS-CDMA Dynamic Table 
+QSPCT 
+QS-CDMA Power Correction Table 
+QSTIM 
+QS-CDMA Terminal Information Message 
+R&TTE 
+Radio and Telecommunications Terminal Equipment 
+RL 
+Regular Latency 
+RMS 
+Root Mean Square 
+RT 
+Real Time 
+RTN 
+Return (link) 
+SAT 
+SSA Access Table 
+SCT 
+SSA Configuration Table 
+ 
+SDR  
+Satellite Digital Radio 
+SDT 
+SSA Dynamic Configuration Table 
+SFN 
+Single Frequency Network 
+S-MIM 
+S-band Mobile Interactive Multimedia 
+SMS 
+Short Message Service 
+SS1 
+Service Segment 1 
+SS2 
+Service Segment 2 
+SS3 
+Service Segment 3 
+SSA 
+Spread Spectrum ALOHA 
+TDM 
+Time Division Multiplex 
+VoIP 
+Voice over IP 
+4 
+General Description 
+The Forward Link S-MIM protocol stack for access to SS1, SS2 and SS3 services is depicted in Figure 4.1. 
+
+=====PAGE 8=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+8
+ 
+USER PLANE
+MANAGEMENT PLANE
+CONTROL PLANE
+Coding,
+Modulation &
+Transmission
+Header Compression
+Encryption (LL)
+MPE Encapsulation
+& Addressing
+PHY
+Link Layer
+nrt-CCH
+UCC
+BCC
+EC
+NEC
+MPE
+nrt-BCH
+rt-PCH
+nrt-PCH
+NCC
+MPE-iFEC
+rt-DCH
+rt-CCH
+Encryption (IPSEC)  
+Header 
+Compression 
+Management
+Resource 
+Management
+Mutual 
+Authentication 
+Ctrl
+LL 
+Authentication 
+Ctrl
+IPsec 
+Authentication 
+Ctrl
+EC
+NEC
+Mobility 
+Management
+Content 
+Management
+Network / 
+Terminal 
+Management
+IP
+UDP/TCP
+IP Datacast / 
+SNM
+P / DM
+P
+Subscriber 
+Management
+Service 
+Protection
+Traffic 
+Monitoring
+Signalling 
+Management
+UsCC
+MPEG-TS Encapsulation
+& Addressing
+MPEG-TS
+RLC
+M
+AC
+ 
+Figure 4.1: Protocol stack for the Forward Link 
+The present document is concerned with the Physical Layer shown above. A general description of this layer follows 
+and requirements are given in clause 5.  
+4.1 
+Physical Layer 
+Several transport channels are provided in the Forward Link: 
+• 
+rt-DCH: real time Dedicated Channel. It shall be reserved to flows that correspond to services under SS3. 
+• 
+rt-CCH: real time Common Channel. It shall be reserved to unicast flows corresponding to SS1 and SS2 with 
+real-time requirements. 
+• 
+nrt-CCH: non-real time Common Channel. It shall be reserved to unicast flows corresponding to SS1 and SS2 
+without real-time requirements. 
+• 
+nrt-BCH: non-real time Broadcast Channel. It shall be reserved to broadcast/multicast flows. 
+These transport channels are used in practice to manage the multiplexing of various user data with different QoS 
+requirements. Given a number of transport channels, the resource management function will be in charge of 
+determining the share of the multiplex that corresponds to each of the logical channels to perform the multiplex. The 
+share of the multiplex among these logical channels is flexible to accommodate flows dynamically on demand. 
+These transport channels can be mapped onto 2 different physical channels: 
+• 
+rt-PCH: real time Physical Channel. 
+• 
+nrt-PCH: non-real time Physical Channel. 
+The transport channels are hence mapped into the corresponding physical layer channel according to the real-time 
+requirements of each transport channel and the capacity share amongst them. 
+
+=====PAGE 9=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+9
+ 
+At minimum the two physical channels specified above are required. In case the transmission technology adopted for 
+the forward link allows more than two physical channels, a higher number of transport channels with different QoS 
+characteristics could be defined. 
+5 
+Forward Link Radio Interface Requirements  
+5.1 
+Service Requirements 
+5.1.1 
+Service Segment 1 
+Req-SR-10 
+The S-MIM system shall provide a radio interface in the forward link that addresses the services 
+grouped under Service Segment 1 in TS 102 721-1 [1] for mobile terminals. 
+Req-SR-20 
+This forward link radio interface shall comply with requirements of broadcast and interactive mobile 
+services described in Table 5.1. 
+Table 5.1: Service Requirements - Service Segment 1 
+ 
+Streaming 
+Data Distribution 
+Interactivity Support for 
+Broadcast/Multicast and Data Distribution 
+Type of terminal 
+A, B0, B2, B3, C 
+A, B0, B2, B3, C 
+A, B0, B2, B3, C 
+Forward link use 
+Multimedia stream 
+Transmission of data Application ACK 
+Content repair (for data distribution) 
+Main requirement 
+Delay Jitter 
+Reliability of data 
+Reliability of data 
+Real time service 
+NO 
+NO 
+NO 
+Max. overall latency 
+(see note 1) 
+(95th percentile) 
+N/A 
+N/A 
+PayPerView message:  
+< 2 min 
+Teleshopping message:  
+< 2 min 
+Televoting message: 
+< 5 min 
+PayPerUse message:  
+< 2 min 
+Request for content repair message: < 2 min 
+QoS 
+Typical 
+throughput 
+Sport/ Music: 300 kbps 
+News: 
+256 kbps 
+Radio: 
+96 kbps 
+432 kbps (cumulative 
+fast carrousel) 
+532 kbps (cumulative 
+medium carrousel) 
+72 kbps (cumulative 
+slow carrousel) 
+N/A 
+Losses 
+ESR(5): > 90 % 
+(satellite link)  
+(see note 2) 
+ESR(5): > 99 % 
+(terrestrial link) 
+Quasi Error Free 
+(see note 3) 
+MLR < 5 % 
+Max. one-
+way-delay 
+(95th 
+percentile) 
+< 12 s 
+< 12 s 
+PayPerView message:  
+< 20 s 
+Teleshopping message:  
+< 20 s 
+Televoting message:  
+< 1 min 
+PayPerUse message:  
+< 20 s 
+Request for content repair message: < 20 s 
+RMS Delay 
+Jitter  
+(see 
+note 4) 
+< 1 ms 
+N/A 
+N/A 
+NOTE 1:  Overall latency refers to the time experienced by the user since he/she sends a request (e.g. for PayPerUse, 
+PayPerView, content repair, Tele-shopping order until he/she receives the confirmation from the system to 
+have processed the request. 
+NOTE 2:  These exemplary ESR (5) performance values correspond to the implementation guidelines of DVB-SH [i.1].  
+NOTE 3: Refers to the application layer: the application layer shall be isolated from packet losses/bit errors at lower 
+layers by recovery mechanism. The IP layer shall deliver PLR < 10-4. It should be noted that for interactive 
+data distribution, the user can request content repair if errors are detected. 
+NOTE 4:  Delay jitter at application layer, after de-jitter buffer. 
+ 
+
+=====PAGE 10=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+10
+ 
+5.1.2 
+Service Segment 2 
+Req-SR-30 
+The S-MIM system shall provide a radio interface in the forward link that addresses the services 
+grouped under Service Segment 2 in TS 102 721-1 [1] for mobile terminals. 
+Req-SR-40 
+This forward link radio interface shall comply with requirements of data acquisition mobile services 
+described in Table 5.2. 
+Table 5.2: Service Requirements - Service Segment 2 
+ 
+Messaging 
+Messaging + GNSS 
+SMS 
+Vehicle 
+Telemetry 
+Env. Monitoring 
+Position 
+Messages 
+Distress 
+Beacon 
+Interactive 
+Distress 
+Beacon 
+Type of terminal 
+B0, B1, B2, B3 F 
+A, B0, B1, B2, 
+B3 
+B0, B1, B2, 
+B3, C 
+B0, B1, B2, 
+B3, C 
+A, B0, B1, 
+B2, B3, C 
+Forward link use 
+Command & control messages 
+N/A 
+Speech 
+message 
+Messages 
+received by 
+the user 
+Main requirement 
+Fast and 
+reliable ACK 
+warning 
+sending 
+Fast data 
+delivery in 
+emergency 
+mode 
+Reliability of 
+delivery 
+Reliability of 
+delivery 
+Reliability and 
+overall latency 
+Reliability of 
+delivery 
+Real time service 
+NO 
+YES 
+(emergency 
+mode) 
+NO 
+NO 
+NO 
+NO 
+Max. overall 
+latency(see note 1) 
+(95th percentile) 
+< 30 s 
+< 30 s 
+< 30 s 
+N/A 
+< 12 s 
+N/A(see 
+note 3) 
+QoS 
+Typical 
+amount of 
+data per 
+message 
+~140 bytes 
+~140 bytes 
+~30 bytes 
+~30 bytes 
+62 kbytes 
+~140 bytes 
+Information 
+Loss(see 
+note 2) 
+< 5 % MLR 
+< 5 % MLR 
+< 5 % MLR 
+< 2 % MLR 
+(see note 4) 
+< 2 % MLR 
+(see note 4) 
+< 5 % MLR 
+Max. one 
+way delay 
+(95th 
+percentile) 
+< 10 s 
+< 10 s (normal 
+mode) 
+< 1 s 
+(emergency 
+mode) 
+< 10 s 
+< 20 s 
+< 1 s 
+< 1 min 
+RMS Delay 
+Jitter 
+N/A 
+N/A 
+N/A 
+N/A 
+< 1ms 
+N/A 
+NOTE 1:  Reception of a command & control message from service centre in < 30 s in case of critical diagnostic. 
+NOTE 2: Message Loss Ratio. 
+NOTE 3:  ACK of SMS delivery depends on when the recipient receives the message, and if the recipient has the 
+terminal switched on, which cannot be guaranteed here. 
+NOTE 4:  This performance is to be confirmed: in general, it can be expected that a certain percentage of the cases will 
+be affected by shadowing. In such cases, only a high penetration mode would allow the given MLR. Especially 
+for the interactive distress beacon, it will be difficult to achieve, since the delay constraint is more stringent to 
+provide an interactivity perception to the user. 
+ 
+
+=====PAGE 11=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+11
+ 
+5.1.3 
+Service Segment 3 
+Req-SR-50 
+The S-MIM system shall provide a radio interface in the forward link that addresses the services 
+grouped under Service Segment 3 in TS 102 721-1 [1]. 
+Req-SR-60 
+This forward link radio interface shall comply with requirements of real-time (emergency) services 
+described in Table 5.3. 
+Table 5.3: Service Requirements - Service Segment 3 
+ 
+Public Safety and Emergency 
+Mobile 
+Broadband for 
+Professional 
+Consumer 
+eCalls 
+2-way IP Connection 
+for Emergency 
+Services 
+Broadcast of Common 
+Interest Messages 
+Type of terminal 
+C, B3 
+D 
+All 
+E 
+Forward link use 
+Audio stream 
+Data 
+Data 
+Data 
+Main requirement 
+Availability in LOS and reliability of service 
+Reliability of delivery 
+QoS 
+Availability in LOS 
+conditions 
+≥ 99,8 % 
+≥ 99,8 % 
+≥ 99,8 % 
+≥ 99 % 
+Real time service 
+YES 
+NO (interactive) 
+NO 
+NO (Interactive) 
+QoS 
+Typical 
+throughput/message 
+length 
+4 kbps to  
+64 kbps 
+4 kbps to 512 kbps 
+246 kbps to 65 642 bytes 
+128 kbps 
+Loss (see note 1) 
+Audio: < 3 % 
+PLR 
+< 1 % PLR 
+< 1 % PLR 
+< 1 % PLR 
+Max. one way Delay 
+(95th percentile) 
+< 800 ms  
+(1 satellite hop) 
+< 800 ms (VoIP) 
+2 s to 4 s (interactive 
+services) 
+< 10 s (high priority alert) 
+< 1 hour (low priority 
+message) 
+2 s to 4 s 
+RMS Delay 
+Jitter(see note 4) 
+< 40 ms 
+N/A 
+N/A 
+N/A 
+Max. session setup 
+time (see note 2) 
+< 6,5 s 
+< 6.5 s 
+N/A 
+< 6,5 s 
+Session admission 
+probability  
+< 99,8 % 
+< 99,8 % 
+N/A 
+< 99 % 
+Session dropping 
+probability  
+(see note 3) 
+< 10-4 
+< 10-4 
+N/A 
+< 10-3 
+NOTE 1:  PLR delivered to the transport layer. 
+NOTE 2:  Setup time assuming terminal already deployed an authenticated in the network. 
+NOTE 3:  Probability that an existing session in the system is dropped. The probability is calculated as number of call 
+dropped over number of total calls. 
+NOTE 4:  Jitter at the IP layer (before the de-jitter buffer). 
+ 
+5.1.4 
+Signalling 
+Req-SR-70 
+The S-MIM system shall provide a radio interface in the forward link able to transport the S-MIM 
+signalling tables defined in [3]. 
+Req-SR-80 
+This forward link radio interface shall include in the signalling sufficient means to allow the S-MIM 
+terminal to identify its managing hub, satellite beam and (if applicable) terrestrial cell.  
+Req-SR-90 
+This forward link radio interface shall comply with requirements of signalling services described in 
+Table 5.4. 
+NOTE:  
+These requirements apply to signalling for QS-CDMA, SSA and the common link layer. 
+
+=====PAGE 12=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+12
+ 
+Table 5.4: Service Requirements - FWD Link Signalling 
+S-MIM 
+Table 3 
+Periodicity 
+(Min/Typical/Max)  
+Volume 
+(Min/Typical/Max) 
+Average 
+Loss Ratio  
+Critical Loss 
+Pattern 
+Max Excess 
+Delay 
+RMS Delay 
+Jitter 
+SCT 
+3/10/30 s 
+320/4 200/46 696 bits 
+A: 10-4 
+B: 10-1 
+N.A. 
+N.A. 
+N.A. 
+SAT 
+3/10/30 s 
+240/2 560/ 
+1 060 992 bits 
+A: 10-4 
+B: 10-1 
+N.A. 
+N.A. 
+N.A. 
+SDT 
+0,5/1/2 s 
+144/2 536/ 
+131 944 bits 
+A: 10-4 
+B: 10-1 
+2 consecutive 
+losses 
+750 ms 
+100 ms 
+QSCT 
+3/10/30 s 
+448/2 680/ 
+13 641 928 bits 
+A: 10-4 
+N.A. 
+N.A. 
+N.A. 
+QSDT 
+0,5/1/2 s 
+168/600/ 
+1 048 696 bits 
+A: 10-4 
+ 
+2 consecutive 
+losses 
+500 ms 
+50 ms 
+QSPCT 
+64 ms 
+128/512/262 256 bits 
+A: 10-4 
+ 
+2 consecutive 
+losses 
+500 ms 
+50 ms 
+QSTIM 
+0,5/1/2 s 
+-/1 744/- bits 
+A: 10-4 
+ 
+2 consecutive 
+losses 
+500 ms 
+50 ms 
+LLCT 
+3/10/30 s 
+312/816/43 152 bits 
+A: 10-4 
+B: 10-1 
+N.A. 
+N.A. 
+N.A. 
+A: nrt-PCH or rt-PCH in LOS conditions. 
+B: rt-PCH in non-LOS conditions. 
+Excess delay does not include latency due to interleaving and deinterleaving in FWD link radio interface and propagation 
+delay. 
+ 
+5.1.5 
+Interaction between the Services 
+Req-SR-100 
+Services from all service segments shall be able to coexist at any given moment. 
+Req-SR-110 
+Services corresponding to different service segments may be provided by: 
+- 
+a dedicated radio interface per service segment in the forward link.  
+- 
+a dedicated radio interface for any combination of service segments in the forward link.  
+- 
+a common radio interface for all service segments in the forward link. 
+Req-SR-120 
+If a common radio interface is applied to distribute any combination of service segments in the 
+forward link, the radio interface shall provide at least two transport channels: one transport channel 
+that complies with the requirements of streaming and data distribution (non-delay sensitive) traffic 
+and one transport channel that complies with the requirements of real time (delay sensitive) traffic. 
+Req-SR-130 
+That radio interface shall be configurable to support flexible capacity share between the transport 
+channels. 
+Req-SR-140 
+The forward link radio interface shall implement mechanisms to update on demand the capacity 
+allocation share for delay-sensitive traffic from non-delay sensitive traffic. 
+5.1.6 
+Service Distribution 
+Req-SR-150 
+The satellite link shall distribute global content through the forward link radio interface. 
+Req-SR-160 
+The FWD CGC, if present, shall repeat through its forward radio link the same global content 
+distributed through the satellite link related to SS1 and SS2. 
+Req-SR-170 
+The FWD CGC, if present, may distribute, additionally to the global content, local content through its 
+forward radio link. 
+5.2 
+System Requirements 
+5.2.1 
+Interface Requirements 
+Req-IR-10 
+The forward link radio interface shall interface to the S-MIM link layer specified in  
+TS 102 721-5 [2]. 
+
+=====PAGE 13=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+13
+ 
+Req-IR-20 
+The link layer shall deliver MPEG-TS to the forward link radio interface for user, control and 
+management data. 
+Req-IR-30 
+All types of terminals shall interface with the hub through the satellite(s) link in the forward 
+directions via a dedicated radio interface, for example the forward link radio interface specified 
+here. 
+Req-IR-40 
+Terminals of type A, B0, B1, B2, B3, C and F shall interface with Complementary Ground 
+Components (CGCs) through the same radio interface as for the satellite forward link. 
+Req-IR-50 
+Terminals of type A, B0, B1, B2, B3, C and F may interface with Complementary Ground 
+Components (CGCs) through the same radio interface as for the satellite forward link, with a 
+different configuration than the satellite link. 
+Req-IR-60 
+The configuration of the forward radio interface between terminals and CGCs shall be optimized for 
+terrestrial links. 
+5.2.2 
+Interoperability Requirements 
+Req-IOR-10 
+If DVB-SH is used as forward link radio interface, TDM or OFDM may be supported for the 
+satellite link. 
+Req-IOR-20 
+If DVB-SH is used as forward link radio interface, OFDM shall be supported for the terrestrial link. 
+Req-IOR-30 
+The FWD CGC shall support MFN operation for the forward link in conjunction with the space 
+segment. 
+Req-IOR-40 
+The FWD CGC may support SFN operation for the forward link in conjunction with the space 
+segment with reduced performance. 
+Req-IOR-50 
+The FWD CGC shall support SFN operation for the forward link in conjunction with the other FWD 
+CGCs. 
+5.2.3 
+Addressed Spectrum 
+Req-SpR-10 
+The forward link radio interface shall use frequencies below 3 GHz. 
+Req-SpR-20 
+Specifically, the forward link radio interface shall operate in the 2 170 MHz to 2 200 MHz 
+frequency band. 
+Req-SpR-30 
+The following channelizations shall be supported in the forward link: 5 MHz. 
+Req-SpR-40 
+The following channelizations might be supported in the forward link: 3,3 MHz, 1,7 MHz, and 
+2,5 MHz. 
+Req-SpR-50 
+The baseline frequency use of the forward link radio interface is of 5 MHz for hybrid use (satellite 
+and terrestrial). Other frequency allocations may be possible and are not excluded. 
+Req-SpR-60 
+The global coverage region of the satellite shall be split into a number of local coverage regions, 
+where different frequency plans may be used. 
+5.2.4 
+Operational Requirements 
+Req-OR-10 
+The terminals shall be able to receive in any valid sub-band of the forward link. 
+Req-OR-20 
+CGCs shall operate in the whole frequency range available in the corresponding region. 
+Req-OR-30 
+The forward link radio interface shall be able to operate with reduced coverage or performance in 
+the absence of CGCs. 
+Req-OR-40 
+The use of either network element (satellite or CGCs) to access the forward link services shall be 
+transparent to the user. 
+Req-OR-50 
+The forward link radio interface shall allow switching from satellite to terrestrial link, and vice 
+versa, in a seamless manner from the point of view of the user. 
+Req-OR-60 
+The forward link radio interface may allow combining the satellite and CGC signal at the terminal 
+side to increase the system availability. 
+
+=====PAGE 14=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+14
+ 
+Req-OR-70 
+The forward link radio interface shall allow reallocation of the capacity share between delay-
+sensitive and non-delay sensitive traffic. 
+Req-OR-80 
+The forward link radio interface shall be able to operate despite a basic Doppler drift of 7 kHz, plus 
+daily variation in frequency of 200 Hz and in time of 192 μs. 
+5.2.5 
+Design Requirements 
+The design requirements express guidelines to help the communications system design and specification. In particular, 
+the design requirements will provide useful criteria to perform trade-offs in the specification and design of the 
+communications system. 
+Req-DR-10 
+Primarily, the forward link radio interface shall be designed so as to maximize the global capacity of 
+the satellite, in terms of bitrate and number of terminals supported. 
+Req-DR-20 
+Secondarily, the forward link radio interface shall be designed so as to maximize the global capacity 
+of the satellite and terrestrial links. 
+Req-DR-30 
+The baseline frequency use of the forward link radio interface is of 5 MHz for hybrid use (satellite 
+and terrestrial).  
+Req-DR-40 
+The forward link radio interface shall be scalable and allow progressive network deployment of 
+satellite and terrestrial components (CGCs). 
+NOTE: 
+In the case of deploying further satellites, the frequency resource will remain stable, while the EIRP or 
+overall G/T of the satellite constellation and possibly the degree of space diversity will increase. The 
+scaling should comprise: number of users, frequency of messages. 
+Req-DR-50 
+The main target of the CGCs is to increase coverage in area where line-of-sight with satellite is 
+difficult in order to guarantee continuity of service to mobile users. 
+Req-DR-60 
+The secondary target of the CGCs is to increase the total capacity of the network in the forward 
+direction and allow more unicast transmission and/or broadcast of local content. 
+Req-DR-70 
+The forward link radio interface may implement functions to allow the terminals switching off in 
+suitable periods to save battery (e.g. time slicing). 
+
+=====PAGE 15=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+15
+ 
+Annex A (informative): 
+Granularity for real-time traffic allocation for DVB-SH Usage 
+In case DVB-SH is used for the FWD link the NRT and RT profiles are mapped onto the RL (regular latency) and LL 
+(low latency) profiles respectively, which are defined in version 1.2.1 of the DVB-SH waveform standard [i.3]. 
+Table A.1 shows the granularity for partitioning the DVB-SH frames between RL and LL profiles for worst, typical and 
+best case configurations. Note that when a worst case TDM configuration is considered, the associated OFDM 
+configuration does in general not produce a worst case granularity for OFDM, i.e. the OFDM configuration was chosen 
+as displayed in order to generate a worst case granularity for TDM only. 
+For the case 1,7 MHz/3,3 MHz, it is assumed that the TDM mode is simply a scaling in frequency by a factor of 2 with 
+respect to a 1,7 MHz TDM mode, such that the DVB-SH frame capacity (in CUs) is simply doubled. 
+Table A.1: LL Profile "Worst/Best case" in terms of granularity in percent 
+Configuration 
+Worst case 
+OFDM 
+Worst 
+case 
+TDM 
+Typical case 
+5/5 MHz 
+Typical 
+case 1.7/3.3 
+MHz 
+Best case 
+OFDM 
+Best case 
+TDM 
+OFDM 
+ 
+ 
+ 
+ 
+ 
+ 
+Bandwidth [MHz] 
+1,7 
+1,7 
+5 
+1,7 
+8 
+8 
+Sig. const. 
+QPSK 
+16-QAM 
+16-QAM 
+16-QAM 
+16-QAM 
+QPSK 
+Guard interval 
+1/4 
+1/32 
+1/4 
+1/4 
+1/32 
+1/4 
+Num. CUs per DVB-
+SH frame 
+816 
+816 
+816 
+816 
+816 
+816 
+Frame duration [ms] 
+762 
+314 
+122 
+380 
+63 
+152 
+Code rate for LL 
+profile 
+1/5 
+N.A. 
+1/3 
+1/2 
+2/3 
+N.A. 
+Num. legacy 
+codewords per DVB-
+SH frame 
+27 
+N.A. 
+45 
+68 
+90 
+N.A. 
+Total legacy 
+throughput [kbps] 
+426 
+N.A. 
+4 438 
+2 150 
+17 189 
+N.A. 
+Throughput 
+granularity for LL 
+profile 
+3,7 % 
+N.A. 
+2,2 % 
+1,5 % 
+1,1 % 
+N.A. 
+Throughput 
+granularity for LL 
+profile [kbps] 
+15,8 
+N.A. 
+98,6 
+31,6 
+191,5 
+N.A. 
+TDM 
+ 
+ 
+ 
+ 
+ 
+ 
+Bandwidth [MHz] 
+N.A. 
+1.7 
+5 
+3.3 
+N.A. 
+8 
+Sig. const. 
+N.A. 
+QPSK 
+QPSK 
+QPSK 
+N.A. 
+16-APSK 
+Roll-off 
+N.A. 
+0,35 
+0,15 
+0,15 
+N.A. 
+0,15 
+Num. CUs per DVB-
+SH frame 
+N.A. 
+336 
+476 
+952 
+N.A. 
+1 904 
+Code rate for LL 
+profile 
+N.A. 
+1/5 
+1/4 
+2/5 
+N.A. 
+2/3 
+Num. legacy 
+codewords per DVB-
+SH frame 
+N.A. 
+11 
+19 
+63 
+N.A. 
+211 
+Total legacy 
+throughput [kbps] 
+N.A. 
+422 
+1 874 
+1 995 
+N.A. 
+16 702 
+Throughput 
+granularity for LL 
+profile 
+N.A. 
+9,1 % 
+5,3 % 
+1,6 % 
+N.A. 
+0,47 % 
+Throughput 
+granularity for LL 
+profile [kbps] 
+N.A. 
+38,3 
+98,6 
+31,6 
+N.A. 
+79 
+ 
+
+=====PAGE 16=====
+ 
+ETSI 
+ETSI TS 102 721-2 V1.2.1 (2013-08)
+16
+ 
+History 
+Document history 
+V1.1.1 
+December 2011 
+Publication 
+V1.2.1 
+August 2013 
+Publication 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

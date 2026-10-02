@@ -1,0 +1,218 @@
+{
+ "ietf:rmt:fec:encoding - Fully-Specified FEC schemes (0-127)": [
+  {
+   "значение": "0",
+   "описание": "Compact No-Code",
+   "ссылки": [
+    "rfc5445"
+   ]
+  },
+  {
+   "значение": "1",
+   "описание": "Raptor",
+   "ссылки": [
+    "rfc5053"
+   ]
+  },
+  {
+   "значение": "2",
+   "описание": "Reed-Solomon Codes over GF(2^^m)",
+   "ссылки": [
+    "rfc5510"
+   ]
+  },
+  {
+   "значение": "3",
+   "описание": "LDPC Staircase Codes",
+   "ссылки": [
+    "rfc5170"
+   ]
+  },
+  {
+   "значение": "4",
+   "описание": "LDPC Triangle Codes",
+   "ссылки": [
+    "rfc5170"
+   ]
+  },
+  {
+   "значение": "5",
+   "описание": "Reed-Solomon Codes over GF(2^^8)",
+   "ссылки": [
+    "rfc5510"
+   ]
+  },
+  {
+   "значение": "6",
+   "описание": "RaptorQ Code",
+   "ссылки": [
+    "rfc6330"
+   ]
+  },
+  {
+   "значение": "7-127",
+   "описание": "Unassigned",
+   "ссылки": []
+  }
+ ],
+ "ietf:rmt:fec:encoding - Under-Specified FEC schemes (128-255)": [
+  {
+   "значение": "128",
+   "описание": "Small Block, Large Block and Expandable FEC Codes",
+   "ссылки": [
+    "rfc5445"
+   ]
+  },
+  {
+   "значение": "129",
+   "описание": "Small Block Systematic FEC Codes",
+   "ссылки": [
+    "rfc5445"
+   ]
+  },
+  {
+   "значение": "130",
+   "описание": "Compact FEC",
+   "ссылки": [
+    "rfc5445"
+   ]
+  },
+  {
+   "значение": "131-255",
+   "описание": "Unassigned",
+   "ссылки": []
+  }
+ ],
+ "ietf:rmt:fec:encoding:instance:128": [
+  {
+   "значение": "0",
+   "описание": "Digital Fountain LT Code",
+   "ссылки": [
+    "Michael_Luby"
+   ]
+  },
+  {
+   "значение": "1-65535",
+   "описание": "Unassigned",
+   "ссылки": []
+  }
+ ],
+ "ietf:rmt:fec:encoding:instance:129": [
+  {
+   "значение": "0",
+   "описание": "Reed-Solomon Codes over GF(2^^8)",
+   "ссылки": [
+    "rfc5510"
+   ]
+  },
+  {
+   "значение": "1-65535",
+   "описание": "Unassigned",
+   "ссылки": []
+  }
+ ],
+ "ietf:rmt:fec:encoding:instance:130": [
+  {
+   "значение": "0-65535",
+   "описание": "Unassigned",
+   "ссылки": []
+  }
+ ],
+ "FEC Framework (FECFRAME) FEC Encoding IDs": [
+  {
+   "значение": "0",
+   "описание": "Reserved",
+   "ссылки": [
+    "rfc6363"
+   ]
+  },
+  {
+   "значение": "1",
+   "описание": "Raptor FEC Scheme for Arbitrary Packet Flows",
+   "ссылки": [
+    "rfc6681",
+    "rfc5053"
+   ]
+  },
+  {
+   "значение": "2",
+   "описание": "RaptorQ FEC Scheme for Arbitrary Packet Flows",
+   "ссылки": [
+    "rfc6681",
+    "rfc6330"
+   ]
+  },
+  {
+   "значение": "3",
+   "описание": "Raptor FEC Scheme Optimised for Arbitrary Packet Flows",
+   "ссылки": [
+    "rfc6681",
+    "rfc5053"
+   ]
+  },
+  {
+   "значение": "4",
+   "описание": "RaptorQ FEC Scheme Optimised for Arbitrary Packet Flows",
+   "ссылки": [
+    "rfc6681",
+    "rfc6330"
+   ]
+  },
+  {
+   "значение": "5",
+   "описание": "Raptor FEC Scheme for a Single Sequence Flow",
+   "ссылки": [
+    "rfc6681",
+    "rfc5053"
+   ]
+  },
+  {
+   "значение": "6",
+   "описание": "RaptorQ FEC Scheme for a Single Sequence Flow",
+   "ссылки": [
+    "rfc6681",
+    "rfc6330"
+   ]
+  },
+  {
+   "значение": "7",
+   "описание": "Simple LDPC-Staircase FEC Scheme for Arbitrary Packet Flows",
+   "ссылки": [
+    "rfc6816"
+   ]
+  },
+  {
+   "значение": "8",
+   "описание": "Simple Reed-Solomon FEC Scheme over GF(2^^m) for Arbitrary Packet Flows",
+   "ссылки": [
+    "rfc6865"
+   ]
+  },
+  {
+   "значение": "9",
+   "описание": "Sliding Window Random Linear Codes (RLC) over GF(2) FEC Scheme for Arbitrary Packet Flows",
+   "ссылки": [
+    "rfc8681"
+   ]
+  },
+  {
+   "значение": "10",
+   "описание": "Sliding Window Random Linear Codes (RLC) over GF(2^^8) FEC Scheme for Arbitrary Packet Flows",
+   "ссылки": [
+    "rfc8681"
+   ]
+  },
+  {
+   "значение": "11-254",
+   "описание": "Unassigned",
+   "ссылки": []
+  },
+  {
+   "значение": "255",
+   "описание": "Reserved",
+   "ссылки": [
+    "rfc6363"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,2636 @@
+
+=====PAGE 1=====
+Hamming Quasi-Cyclic (HQC)
+22/08/2025
+Submitters (by joining date then alphabetical order):
+• Philippe Gaborit (University of Limoges, FR)
+• Carlos Aguilar-Melchor (SandboxAQ, USA)
+• Nicolas Aragon (Naquidis Center, FR)
+• Slim Bettaieb (Technology Innovation Institute, UAE)
+• Loïc Bidoux (Technology Innovation Institute, UAE)
+• Olivier Blazy (Ecole Polytechnique, FR)
+• Jean-Christophe Deneuville (ENAC, University of Toulouse, FR)
+• Edoardo Persichetti (Florida Atlantic University, USA)
+• Gilles Zémor (IMB, University of Bordeaux, FR)
+• Jurjen Bos (Worldline, NL)
+• Arnaud Dion (ISAE-SUPAERO, University of Toulouse, FR)
+• Jérôme Lacan (ISAE-SUPAERO, University of Toulouse, FR)
+• Jean-Marc Robert (University of Toulon, FR)
+• Pascal Véron (University of Toulon, FR)
+• Paulo L. Barreto (University of Washington Tacoma, USA)
+• Santosh Ghosh (Intel, USA)
+• Shay Gueron (University of Haifa, Israel and Meta, USA)
+• Tim Güneysu (Ruhr-Universität Bochum, DE and DFKI, DE)
+• Rafael Misoczki (Meta, USA)
+• Jan Richter-Brokmann (Ruhr-Universität Bochum, DE)
+• Nicolas Sendrier (INRIA, FR)
+• Jean-Pierre Tillich (INRIA, FR)
+• Valentin Vasseur (Thales, FR)
+Contact: team@pqc-hqc.org
+
+=====PAGE 2=====
+Changelog
+Hereafter, we list the main modifications made to HQC design. Modifications related to
+implementations are provided with the source code (available at https://pqc-hqc.org).
+2025/08/22
+• We have refactored this document to improve its readability notably adding detailed
+figures describing HQC-PKE and HQC-KEM and fixing several typographical errors.
+• We have updated the Fujisaki-Okamoto used to construct HQC-KEM from HQC-PKE
+by fixing the rejection of the scheme [34], using the salted SFO̸⊥
+m transform instead of
+the FO̸⊥one [18] and adding (ekKEM, salt) within K and θ derivation.
+• We have updated HQC keypair format by adding seedKEM in the decapsulation key
+dkKEM so that the keypair can be easily checked if it is received from a third party
+and removing x from dkKEM as it is not used in HQC-KEM.Decaps. In addition, an
+alternative compressed format dkKEM = (seedKEM) have been included.
+• We have updated fixed weight vectors sampling in HQC-PKE.Keygen by using a
+sampler that outputs uniformly distributed vectors but rely on rejection sampling
+(SampleFixedWeightVect$) instead of a sampler that don’t rely on rejection sampling
+but output a a slightly biased distribution (SampleFixedWeightVect).
+• We have made several minor modifications to align HQC specifications with design
+choices made in FIPS-203 such as computing (seedPKE.dk, seedPKE.ek) using SHA3-512
+instead of SHAKE256, absorbing all the bytes of ekKEM in the computation of (K, θ)
+and reducing the sizes of K and θ from 40 to 32 bytes.
+• Paulo L. Barreto, Santosh Ghosh, Shay Gueron, Tim Güneysu, Rafael Misoczki, Jan
+Richter-Brokmann, Nicolas Sendrier, Jean-Pierre Tillich, Valentin Vasseur have joined
+the HQC team.
+2024/10/30
+• We have modified the order of variable sampling in both key generation and encryption
+as this results in performance gains in hardware implementation as suggested by [2].
+• We have updated the countermeasure against multi-target attacks by including only
+the first 32 bytes of the public key instead of the entire public key.
+2
+
+=====PAGE 3=====
+2023/04/30
+• We have updated the Fujisaki-Okamoto used to construct HQC-KEM from HQC-PKE
+by considering the FO̸⊥transform with implicit rejection for the scheme.
+• We have provided an analysis showing that sampling small weights vectors non-
+uniformly, yet close to uniform, has a negligible effect on HQC security following [36].
+2022/10/01
+• We have updated the computation of the randomness θ used in HQC-PKE.Encrypt to
+include a salt and ekKEM as a counter-measure to multi-ciphertext attacks [32].
+• We have updated constant-weight words sampling using the technique from [36] as a
+counter-measure to the timing attack from [20].
+2020/10/01
+• We have removed the HQC variant using the BCH-Repetition decoder as the newly
+introduced RMRS decoder is strictly better.
+• We have updated the sizes of the decoded messages for the concatenated RMRS code
+to the targeted security levels (i.e. 128 and 192 rather than 256) for level 1 and 3 which
+improves the decoding capacity of the RMRS code and improves our parameters.
+• We have improved the theoretical lower bound for the Reed-Muller decoder which
+permits to lower our theoretical bound for the DFR and improve our parameters.
+• Jérôme Lacan and Arnaud Dion have joined the HQC team.
+2020/05/04
+• We have provided a more precise analysis of the modelization of the error distribution
+which permits to lower the DFR of HQC and decrease the sizes of its public keys.
+• We have introduced a new decoding algorithm based on Reed-Muller and Reed-
+Solomon codes which permits to decrease the sizes of public keys.
+A new set of
+parameters denoted HQC-RMRS has been provided.
+• We have removed parameter sets providing a DFR lower than the security parameter
+thus we now only consider parameters with a DFR corresponding to the security level.
+• Jean-Marc Robert and Pascal Véron have joined the HQC team.
+3
+
+=====PAGE 4=====
+2019/04/10
+• We have introduced the DQCSD problems with parity as a counter-measure to dis-
+tinguishers from parity. In addition, we are using tensor product code of length n1n2
+while working with vectors of size n with n the primitive prime immediately greater
+than n1n2 to avoid algebraic attacks. The proof has been updated to take into account
+the DQCSD problem with parity along with the ℓ= n −n1n2 truncated bits.
+• We have removed parameter sets providing a DFR higher than 2−128.
+• Jurjen Bos has joined the HQC team.
+4
+
+=====PAGE 5=====
+Contents
+1
+Introduction
+6
+2
+Preliminaries
+7
+2.1
+Notations
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+2.2
+Coding theory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+2.3
+Security assumptions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+9
+2.4
+Security definitions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+11
+3
+Specifications
+13
+3.1
+XOF and Hash functions . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+13
+3.2
+Vector sampling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+13
+3.3
+Vector multiplication . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+14
+3.4
+Concatenated Reed-Muller and Reed-Solomon codes . . . . . . . . . . . . . .
+17
+3.5
+HQC-PKE . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+22
+3.6
+HQC-KEM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+26
+4
+Parameters and Sizes
+29
+4.1
+Parameter sets
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+29
+4.2
+Ciphertext and key sizes . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+29
+5
+Performance Analysis
+30
+5.1
+Reference implementation
+. . . . . . . . . . . . . . . . . . . . . . . . . . . .
+30
+5.2
+Optimized implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+30
+5.3
+Known Answer Test values . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+31
+6
+Security Analysis
+32
+6.1
+Decoding Failure Rate analysis
+. . . . . . . . . . . . . . . . . . . . . . . . .
+32
+6.2
+Security proof . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+40
+6.3
+Known attacks
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+45
+7
+Advantages and Limitations
+47
+7.1
+Advantages
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+47
+7.2
+Limitations
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+47
+References
+48
+5
+
+=====PAGE 6=====
+1
+Introduction
+HQC is a code-based IND-CCA2 secure Key Exchange Mechanism (KEM) scheme whose
+security is based on the Quasi-Cyclic Syndrome Decoding (QCSD) problem. In contrast
+with many code-based cryptosystems, the family of codes being used is not required to be
+indistinguishable among random codes. HQC is built from an IND-CPA secure Public Key
+Encryption (PKE) scheme that was first described in [1] along with the HHK transform [22].
+In order to avoid any ambiguity, the PKE and KEM constructions will be denoted as
+HQC-PKE and HQC-KEM respectively.
+Organization. We provide the required background in Section 2 and present the specifi-
+cations of HQC in Section 3. Parameter sets are given in Section 4 while Sections 5 and 6
+provide a performance analysis and a security analysis of the scheme respectively. Finally,
+advantages and limitations of HQC are discussed in Section 7.
+6
+
+=====PAGE 7=====
+2
+Preliminaries
+2.1
+Notations
+Let Z denote the ring of integers, F2 denote the binary finite field and B denote the set
+{0, . . . , 255} of unsigned 8-bits integers. Given a set S, let s ←$ S denote that s is chosen
+uniformly at random from S.
+Let V denote a vector space of dimension n over F2 for
+some positive n ∈Z. Elements of V can be interchangeably considered as row vectors or
+polynomials in R = F2[X]/(Xn −1). Vectors and polynomials (respectively, matrices) are
+represented by lower-case (respectively upper-case) bold letters. A prime integer n is said
+primitive if the polynomial (Xn −1)/(X −1) is irreducible in R. For u, v ∈V, we define
+their product as in R i.e. w = uv ∈V with:
+wk =
+X
+i+j ≡k
+(mod n)
+ui · vj ∀k ∈{0, 1, . . . , n −1}.
+Given v ∈Fn
+2, let rot(v) denotes the circulant matrix induced by v namely:
+rot(v) =
+
+
+
+
+
+v0
+vn−1
+. . .
+v1
+v1
+v0
+. . .
+v2
+...
+...
+...
+...
+vn−1
+vn−2
+. . .
+v0
+
+
+
+
+∈Fn×n
+2
+.
+One can see that the product of any two elements u, v ∈R can be expressed as a usual
+vector-matrix (or matrix-vector) product using the rot(·) operator as:
+u · v = u × rot(v)⊤=
+ rot(u) × v⊤⊤= v × rot(u)⊤= v · u.
+Let denote ω(·) the Hamming weight of a vector i.e. by the number of its nonzero
+coordinates. For a given positive integer ω, let Rω := {v ∈R such that ω(v) = ω} denote
+the set of vectors having Hamming weight ω.
+Let v = (v0, . . . , vn−1) ∈{0, 1}n with index 0 the least-significant bit. For 0 ≤n′ ≤n,
+we define Truncate(v, n′) as the function that discards the n −n′ most-significant bits of v
+and keep the n′ least-significant ones.
+2.2
+Coding theory
+In the following, we provide basic definitions and properties about coding theory and refer
+the reader to [23] for a complete survey.
+Definition 2.2.1 (Linear Code). A linear code C of length n and dimension k (denoted
+[n, k]) is a subspace of R of dimension k. Elements of C are referred to as codewords.
+7
+
+=====PAGE 8=====
+Definition 2.2.2 (Generator Matrix). Given an [n, k] code C, a matrix G ∈Fk×n
+2
+is a
+generator matrix for C if:
+C =
+
+mG, ∀m ∈Fk
+2
+	
+.
+Definition 2.2.3 (Parity-Check Matrix). Given an [n, k] code C, a matrix H ∈F(n−k)×n
+2
+is
+a parity-check matrix for C if H is a generator matrix of the dual code C⊥:
+C =
+
+v ∈Fn
+2 such that Hv⊤= 0
+	
+or equivalently C⊥=
+
+uH, ∀u ∈Fn−k
+2
+	
+.
+Definition 2.2.4 (Syndrome). Let H ∈F(n−k)×n
+2
+be a parity-check matrix of some [n, k]
+code C, and v ∈Fn
+2 be a word. The syndrome of v is Hv⊤, and one has v ∈C ⇔Hv⊤= 0.
+Definition 2.2.5 (Minimum Distance). Let C be an [n, k] linear code over R and let ω be
+a norm on R. The minimum distance of C is:
+d =
+min
+u,v∈C,u̸=v ω(u −v).
+A code of length n and dimension k with minimum distance d is capable of decoding
+arbitrary patterns of up to ∆= ⌊d−1
+2 ⌋errors and is denoted as an [n, k, d] code.
+HQC relies on Quasi-Cyclic codes in order to shorten its keys as suggested in [15].
+Definition 2.2.6 (Quasi-Cyclic Codes [31]). View a vector c = (c0, . . . , cs−1) of Fsn
+2
+as s
+successive blocks (n-tuples). An [sn, k, d] linear code C is Quasi-Cyclic (QC) of index s if,
+for any c = (c0, . . . , cs−1) ∈C, the vector obtained after applying a simultaneous circular
+shift to every block c0, . . . , cs−1 is also a codeword. More formally, by considering each
+block ci as a polynomial in R = F2[X]/(Xn −1), the code C is QC of index s if for any
+c = (c0, . . . , cs−1) ∈C it holds that (X · c0, . . . , X · cs−1) ∈C.
+Definition 2.2.7 (Systematic Quasi-Cyclic Codes). A systematic Quasi-Cyclic [sn, n] code
+of index s and rate 1/s is a quasi-cyclic code with an (s −1)n × sn parity-check matrix of
+the form:
+H =
+
+
+In
+0
+· · ·
+0
+A0
+0
+In
+A1
+...
+...
+0
+· · ·
+In
+As−2
+
+
+where A0, . . . , As−2 are circulant n × n matrices.
+The definition of systematic quasi-cyclic codes of index s can be generalized to all rates ℓ/s,
+ℓ= 1 . . . s −1, but we shall only use systematic QC-codes of rates 1/2 and 1/3. Hereafter,
+referring to a systematic QC-code will imply by default that it is of rate 1/s. Note that
+arbitrary QC-codes are not necessarily equivalent to a systematic QC-code.
+8
+
+=====PAGE 9=====
+2.3
+Security assumptions
+In this section we describe difficult problems which are relevant for HQC and discuss their
+complexity. All problems are variants of the decoding problem, which consists of looking for
+the closest codeword to a given vector. When dealing with linear codes, it is readily seen
+that the decoding problem stays the same when one is given the syndrome of the received
+vector rather than the received vector. We therefore speak of Syndrome Decoding (SD).
+Definition 2.3.1 (SD Distribution). Let n, k and ω be positive integers. The Syndrome
+Decoding Distribution SD(n, k, ω) samples H ←$ F(n−k)×n
+2
+and x ←$ Fn
+2 such that ω(x) = ω,
+computes y⊤= Hx⊤and outputs (H, y).
+Definition 2.3.2 (Computational SD Problem). Let n, k and ω be positive integers. Given
+(H,y) ∈F(n−k)×n
+2
+×Fn−k
+2
+from the SD(n, k, ω) distribution, the Syndrome Decoding Problem
+SD(n, k, ω) asks to find x ∈Fn
+2 such that y⊤= Hx⊤and ω(x) = ω.
+Definition 2.3.3 (DSD Problem). Let n, k and ω be positive integers. Given (H, y) ∈
+F(n−k)×n
+2
+× Fn−k
+2
+, the Decisional Syndrome Decoding Problem DSD(n, k, ω) asks to decide
+with non-negligible advantage whether (H, y) came from the SD(n, k, ω) distribution or the
+uniform distribution over F(n−k)×n
+2
+× Fn−k
+2
+.
+For the Hamming distance, the SD problem has been proven NP-complete [7]. This problem
+can also be seen as the Learning Parity with Noise (LPN) problem with a fixed number of
+samples [3]. The DSD problem has been shown to be polynomially equivalent to its search
+version in [3]. As mentioned above, this problem is the problem of decoding random linear
+codes from random errors. The random errors are often taken as independent Bernoulli
+variables acting independently on vector coordinates, rather than uniformly chosen from
+the set of errors of a given weight, but this hardly makes any difference and one model
+rather than the other is a question of convenience.
+As our cryptosystem use QC-codes, the following definitions describe the DSD problems
+in the QC setting. In particular, the case s = 2 corresponds to double circulant codes with
+generator matrices of the form (In A) for A a circulant matrix. Such double circulant codes
+have been used for more than 15 years in cryptography [16].
+Definition 2.3.4 (s-QCSD Distribution). Let n, s and ω be positive integers.
+The s-
+Quasi-Cyclic Syndrome Decoding Distribution s-QCSD(n, ω) samples a parity-check matrix
+H ←$ F(sn−n)×sn
+2
+of a systematic Quasi Cyclic code C of index s and rate 1/s and a vector
+x = (x0, . . . , xs−1) ←$ Fsn
+2
+such that ω(xi) = ω ∀i ∈[0, s −1], computes y⊤= Hx⊤and
+outputs (H, y).
+Definition 2.3.5 (s-DQCSD Problem). Let n, s and ω be positive integers. Given (H, y) ∈
+F(sn−n)×sn
+2
+×Fsn−n
+2
+, the Decisional s-Quasi-Cyclic Syndrome Decoding Problem s-DQCSD(n, ω)
+asks to decide with non-negligible advantage whether (H, y) came from the s-QCSD(n, ω)
+distribution or the uniform distribution over F(sn−n)×sn
+2
+× Fsn−n
+2
+.
+9
+
+=====PAGE 10=====
+It would be somewhat more natural to choose the parity-check matrix H to be made up
+of independent uniformly random circulant submatrices, rather than with the special form
+required by Definition (2.2.7). We choose this distribution to make the security reduction
+that follows less technical. It is readily seen that, for fixed s, when choosing QC codes with
+this more general distribution, one obtains with non-negligible probability, a QC code that
+admits a parity-check matrix of the form given in Definition (2.2.7). Therefore, requiring
+QC codes to be systematic does not hurt the generality of the decoding problem for QC
+codes. A similar remark holds for the slightly special form of weight distribution of the
+vector x.
+Although there is no general complexity result for QC codes, decoding these codes is con-
+sidered hard by the community. There exist general attacks that use the cyclic structure
+of the code [35] but these attacks have only a small impact (sublinear in code length) on
+the complexity of the problem. The conclusion is that, in practice, the best attacks are the
+same as those for non-circulant codes up to a small factor.
+In order to avoid trivial distinguishers, an additional condition on the parity of the
+syndrome is added to the problem. For b1 ∈{0, 1}, we define the finite set Fn
+2,b1 = {h ∈
+Fn
+2 s.t. h(1) = b1 mod 2} i.e. binary vectors of length n and parity b1.
+Similarly for
+matrices, we define the finite sets:
+Fn×2n
+2,b1
+=
+
+H = (In rot (h)) ∈Fn×2n
+2
+s.t. h ∈Fn
+2,b1
+	
+, and
+F2n×3n
+2,b1,b2 =
+
+H =
+In
+0
+rot(h1)
+0
+In
+rot(h2)
+
+∈F2n×3n
+2
+s.t. h1 ∈Fn
+2,b1 and h2 ∈Fn
+2,b2
+
+.
+This is pure technicality and has almost no effect on the parameters of our proposal as it
+results in a security loss of at most 1 bit. Meanwhile, this permits to discard attacks such
+as [19, 25, 26]1.
+Definition 2.3.6 (2-QCSD-P Distribution). Let n, ω, b1 be positive integers and let
+b2 =
+ω + b1 × ω
+mod 2. The 2-Quasi-Cyclic Syndrome Decoding with Parity Dis-
+tribution 2-QCSD-P(n, ω, b1, b2) samples H ∈Fn×2n
+2,b1
+and x = (x1, x2) ←$ F2n
+2
+such that
+ω(x1) = ω(x2) = ω, compute y⊤= Hx⊤and outputs (H, y) ∈Fn×2n
+2,b1
+× Fn
+2,b2.
+Definition 2.3.7 (2-DQCSD-P Problem). Let n, ω, b1 be positive integers and let b2 =
+ω + b1 × ω mod 2. Given (H, y) ∈Fn×2n
+2,b1
+× Fn
+2,b2, the Decisional 2-Quasi-Cyclic Syndrome
+Decoding with Parity Problem 2-DQCSD-P(n, ω, b1, b2) asks to decide with non-negligible
+advantage whether (H, y) came from the 2-QCSD-P(n, ω, b1, b2) distribution or the uniform
+distribution over Fn×2n
+2,b1
+× Fn
+2,b2.
+1The authors chose to use a parity version of the 2-DQCSD problem rather than a variable weight version
+as suggested in [26] for efficiency considerations.
+10
+
+=====PAGE 11=====
+In order to thwart structural attacks, one needs to work with a code of primitive prime
+length n, so that Xn −1 has only two irreducible factors mod 2. However for the considered
+parameters and codes (concatenated Reed-Muller and Reed-Solomon codes), the encoding of
+a message m has size n1n2 which is obviously not prime. Therefore, we use as ambient length
+n which is the first primitive prime greater than n1n2 and truncate the last ℓ= n −n1n2
+bits wherever needed. This results in a slightly modified version of the 3-DQCSD problem
+that we define hereafter.
+Definition 2.3.8 (3-QCSD-PT Distribution). Let n, ω, b1, b2, ℓbe positive integers and let
+b3 = ω+b1×ω mod 2. The 3-Quasi-Cyclic Syndrome Decoding with Parity and Truncation
+Distribution 3-QCSD-PT (n, ω, b1, b2, b3, ℓ) samples H ←$ F2n×3n
+2,b1,b2 and x = (x1, x2, x3) ←$
+F3n
+2
+such that ω(x1) = ω(x2) = ω(x3) = ω, computes y⊤= Hx⊤where y = (y1, y2) and
+outputs (H, (y1, Truncate(y2, ℓ))) ∈F2n×3n
+2,b1,b2 × (Fn
+2,b3 × Fn−ℓ
+2
+).
+Definition 2.3.9 (3-QCSD-PT Problem). Let n, ω, b1, b2, ℓbe positive integers and let
+b3 = ω+b1×ω mod 2. Given (H, (y1, y2)) ∈F2n×3n
+2,b1,b2 ×(Fn
+2,b3×Fn−ℓ
+2
+), the Decisional 3-Quasi-
+Cyclic Syndrome Decoding with Parity and Truncation Problem 3-DQCSD-PT(n, ω, b1, b2, b3, ℓ)
+asks to decide with non-negligible advantage whether (H, (y1, y2)) came from the 3-QCSD-PT
+(n, ω, b1, b2, b3, ℓ) distribution or the uniform distribution over F2n×3n
+2,b1,b2 × (Fn
+2,b3 × Fn−ℓ
+2
+).
+Regarding the security of the 3-DQCSD-PT problem with parity and truncation, whenever
+the number of truncated positions is very small compared to the block length n, the impact
+on the security is negligible with respect to the 3-DQCSD problem since the best attack is
+the ISD attack. Moreover since the truncation breaks the quasi-cyclicity, it also weaknesses
+the advantage of quasi-cyclicity for the attacker.
+2.4
+Security definitions
+In this section, we introduce the security definitions that are used for the security analysis
+of HQC-PKE and HQC-KEM provided in Section 6.
+Definition 2.4.1. Let PKE = (Keygen, Encrypt, Decrypt) be a public-key encryption scheme.
+The PKE.IND-CPA game is defined as in Figure 1 and the IND-CPA advantage of an adver-
+sary A = (ACHOOSE, AGUESS) against a PKE is defined as:
+AdvIND-CPA
+PKE
+(A) =
+Pr[PKE.IND-CPA(A) = 1] −1
+2
+.
+11
+
+=====PAGE 12=====
+Exp PKE.IND-CPA(A)
+1.
+(ekPKE, dkPKE) ←Keygen()
+2.
+(m0, m1) ←ACHOOSE(ekPKE)
+3.
+b ←$ {0, 1}
+4.
+θ ←$ B|θ|, cPKE ←Encrypt(ekPKE, mb, θ)
+5.
+b′ ←AGUESS(ekPKE, cPKE)
+6.
+return (b = b′)
+Figure 1: Experiment for the IND-CPA security of a PKE
+Definition 2.4.2. Let KEM = (Keygen, Encaps, Decaps) be a key encapsulation mechanism.
+The KEM.IND-CCA2 game is defined as in Figure 2 and the IND-CCA2 advantage of an
+adversary A = (ACHOOSE, AGUESS) against a KEM is defined as:
+AdvIND-CCA2
+KEM
+(A) =
+Pr[KEM.IND-CCA2(A) ⇒1] −1
+2
+.
+Exp KEM.IND-CCA2(A)
+1.
+(ekKEM, dkKEM) ←Keygen()
+2.
+b ←$ {0, 1}
+3.
+(K0, cKEM) ←Encaps(ekKEM)
+4.
+K1 ←$ B|K|
+5.
+b′ ←ADecaps(·)
+GUESS
+(Kb, cKEM)
+6.
+return (b = b′)
+Figure 2: Experiment for the IND-CCA2 security of a KEM
+12
+
+=====PAGE 13=====
+3
+Specifications
+3.1
+XOF and Hash functions
+Representation of objects. Seeds and salt are represented as byte strings while elements
+of Fk
+2, Fn1n2
+2
+and Fn
+2 are represented as binary arrays.
+XOF. The XOF is instantiated using SHAKE256 along with appropriate domain separation
+as described in Table 1.
+Hash functions.
+Hash functions G and I are instantiated using SHA3-512 while hash
+function H and J are instantiated using SHA3-256. Each hash function uses its own domain
+separator as described in Table 1.
+Function
+Instantiation
+ctx ←XOF.Init(seed)
+ctx ←SHAKE256.Init()
+in ←seed || XOF_DOMAIN_SEPARATOR
+SHAKE256.Absorb(ctx, in, |in|)
+(ctx, out) ←XOF.GetBytes(ctx, |out|)
+SHAKE256.Squeeze(ctx, out, |out|)
+G(str)
+SHA3-512(str || G_DOMAIN_SEPARATOR)
+I(str)
+SHA3-512(str || I_DOMAIN_SEPARATOR)
+H(str)
+SHA3-256(str || H_DOMAIN_SEPARATOR)
+J(str)
+SHA3-256(str || J_DOMAIN_SEPARATOR)
+Table 1: Instantiation of XOF and Hash functions
+3.2
+Vector sampling
+Sampling random vectors. Random vectors are sampled from Fk
+2 and Fn
+2 either uni-
+formly or using SampleVect. For SampleVect, the random bits are derived from a seed using
+XOF.GetBytes. Unused bits within the vector representation are set to zero.
+Sampling random fixed weight vectors. Sampling vectors from Fn
+2 of given Hamming
+weight is done using the SampleFixedWeightVect$ and SampleFixedWeightVect functions.
+SampleFixedWeightVect$ outputs uniformly distributed fixed weight vectors but rely on re-
+jection sampling while SampleFixedWeightVect don’t rely on rejection sampling but the
+13
+
+=====PAGE 14=====
+distribution of the sampled vectors is slightly biased with respect to the uniform distribu-
+tion. However, it is shown in Section 6.2.3 that this bias does not significantly affect the
+security of the scheme. The SampleFixedWeightVect function follows Algorithm 5 from [36].
+Let rand(n, ctx) be a function that produces a random integer uniformly distributed in
+{0, 1, · · · , n −1} from uniformly distributed integers in {0, 1, · · · , 2B −1} produced by
+randBits(B, ctx) for some integer B and XOF context ctx. The SampleFixedWeightVect rou-
+tine starts by generating the vector support as described in GenerateRandomSupport, then
+convert it to an n-dimensional array.
+GenerateRandomSupport(ctx, Rω)
+1.
+for i = ω −1 to 0 do
+2.
+l ←i + rand(n −i, ctx)
+3.
+pos[i] ←(l ∈{pos[j], i < j < ω}) ? i : l
+4.
+return pos[0], · · · , pos[ω −1]
+rand(n, ctx)
+1.
+x ←randBits(B, ctx)
+2.
+return x mod n
+Sampling order in HQC-PKE.Encrypt. During encryption, the randomness values are
+sampled in the following sequence: r2, then e, and finally r1 which allows some speed-up
+for hardware implementations as suggested in [2].
+3.3
+Vector multiplication
+Multiplications over F2[X]/(Xn −1) are performed without taking account the sparsity the
+considered polynomials in order to avoid potential leakage of information. Multiplications
+are computed using a combination of Toom-Cook and Karatsuba algorithms.
+Toom-Cook multiplication over F2[X]. One wants to multiply two arbitrary polynomi-
+als over F2[X] of degree at most N −1, using the Toom-Cook algorithm. Several approaches
+have been extensively detailed in the literature. Let A and B be two binary polynomials of
+degree at most N −1. These polynomials are packed into a table of 64 bit words, whose size
+is ⌈N/64⌉. Let t = 3n with n a value ensuring t ⩾⌈N/64⌉. Now, A and B are considered
+as polynomials of degree at most 64 · t −1. A and B are split into three parts. One wants
+now to evaluate the result C = A · B with
+A = a0 + a1 · X64n + a2 · X2·64n ∈F2[X],
+B = b0 + b1 · X64n + b2 · X2·64n ∈F2[X],
+(of maximum degree 64t −1, and ai, bi of maximum degree 64n −1) and,
+C = c0 + c1 · X64n + c2 · X2·64n + c3 · X3·64n + c4 · X4·64n ∈F2[X]
+of maximum degree 6 · 64n −2.
+14
+
+=====PAGE 15=====
+The “word-aligned” version evaluates the polynomial for the values 0, 1, x = Xw, x+1 =
+Xw + 1, ∞, w being the word size, typically 64 in modern processors. Furthermore, on
+Intel processors, one can set w = 256 to take advantage of the vectorized instruction set
+AVX-AVX2 at the cost of a slight size reduction. After the evaluation phase, one performs
+an interpolation to get the result coefficients.
+For the evaluation phase, one has:
+C(0)
+=
+a0 · b0
+C(1)
+=
+(a0 + a1 + a2) · (b0 + b1 + b2)
+C(x)
+=
+(a0 + a1 · x + a2 · x2) · (b0 + b1 · x + b2 · x2)
+C(x + 1)
+=
+(a0 + a1 · (x + 1) + a2 · (x2 + 1)) · (b0 + b1 · (x + 1) + b2 · (x2 + 1))
+C(∞)
+=
+a2 · b2
+The implementation of this phase is straightforward, providing that the multiplications
+ai · bi is either another Toom-Cook or Karatsuba multiplication. One may notice that the
+multiplications by x or x2 are virtually free word shifts.
+Finally, the interpolation phase gives :
+c0
+=
+C(0)
+c1
+=
+(x2 + x + 1)/(x2 + x) · C(0) + C(1) + C(x)/x + C(x + 1)/(x + 1) + (x2 + x) · C(∞)
+c2
+=
+C(1)/(x2 + x) + C(x)/(x + 1) + C(x + 1)/x + (x2 + x + 1) · C(∞)
+c3
+=
+C(0)/(x2 + x) + C(1)/(x2 + x) + C(x)/(x2 + x) + C(x + 1)/(x2 + x)
+c4
+=
+C(∞)
+Karatsuba algorithm. Let A and B be two binary polynomials of degree at most N −1.
+These polynomials are packed into a table of 64 bit words, whose size is ⌈N/64⌉.
+Let
+t = 2r with r the minimum value ensuring t ⩾⌈N/64⌉. Now, A and B are considered
+as polynomials of degree at most 64 · t −1. The corresponding multiplication algorithm
+is described in Karatsuba. In this algorithm, the polynomials A and B are split into two
+parts, however, variants with other splits can be extrapolated. In particular, we used a
+3-part split (3-Karatsuba) as the Toom-Cook elementary multiplication for HQC-128 and
+HQC-192, and a 5-part split (5-Karatsuba) as the Toom-Cook elementary multiplication
+for HQC-256. The multiplication line 2 (denoted Mult64) can be performed using a single
+processor instruction (pclmul for carry-less multiplier).
+Application to HQC multiplications. The HQC parameters lead to the construction
+of the multiplications over F2[X] depicted in Table 2.
+15
+
+=====PAGE 16=====
+Karatsuba(A, B, t)
+Input: A and B on t = 2r computer words.
+Output: R = A × B.
+1.
+if t = 1
+2.
+return Mult64(A, B)
+3.
+else
+▷Split in two halves of word size t/2
+4.
+A = A0 + x64t/2A1
+5.
+B = B0 + x64t/2B1
+▷Recursive multiplication
+6.
+R0 ←Karatsuba(A0, B0, t/2)
+7.
+R1 ←Karatsuba(A1, B1, t/2)
+8.
+R2 ←Karatsuba(A0 + A1, B0 + B1, t/2)
+▷Reconstruction
+9.
+R ←R0 + (R0 + R1 + R2)X64t/2 + R1X64t
+10.
+return R
+11.
+endif
+Instance
+HQC-1
+HQC-3
+HQC-5
+HQC Size (bits)
+17 669
+35 851
+57 637
+Main multiplication
+Toom3-Karatsuba3
+Toom3-Karatsuba3
+Toom-Cook3
+Size (bits)
+18 048
+36 480
+59 904
+Elementary multiplication
+3-Karatsuba
+3-Karatsuba
+5-Karatsuba
+Size (bits)
+6144
+12 288
+20 480
+Table 2: Implementation of HQC multiplications over F2[X]
+16
+
+=====PAGE 17=====
+3.4
+Concatenated Reed-Muller and Reed-Solomon codes
+HQC relies on a code C and associated C.Encode and C.Decode algorithms that are instan-
+tiated using concatenated Reed-Muller and Reed-Solomon codes as described in [4].
+3.4.1
+Concatenated codes
+Definition 3.4.1 (Concatenated codes). A concatenated code consists of an external code
+[ne, ke, de] over Fq and an internal code [ni, ki, di] over F2, with q = 2ki. We use a bijection
+between elements of Fq and the words of the internal code to obtain a transformation:
+Fne
+q →FN
+2
+where N = neni. The external code is thus transformed into a binary code of parameters
+[N = neni, K = keki, D ⩾dedi].
+For the external code, we use a Reed-Solomon code of dimension 32 over F256. For
+the internal code, we use the Reed-Muller code [128, 8, 64] that we duplicate 3 or 5 times
+(i.e. duplicating each bit to obtain codes of parameters [384, 8, 192] and [640, 8, 320]). We
+perform maximum likelihood decoding on the internal code. Doing that, we obtain a vector
+of Fne
+q
+that is then decoded using an algebraic decoder for the Reed-Solomon code.
+3.4.2
+Reed-Solomon codes
+Let p be a prime number and q is any power of p. Following [24], a Reed-Solomon code
+RS[n, k, dmin] with symbols in Fq has the following parameters:
+• Block length n = q −1 ;
+• Number of parity-check digits n −k = 2δ, with δ, the correcting capacity of the code
+and k the number of information bits ;
+• Minimum distance dmin = 2δ + 1.
+Let α be a primitive element in F2m, the generator polynomial g(x) of the RS[n, k, δ] code
+is given by:
+g(x) = (x + α)(x + α2) · · · (x + α2δ).
+Shortened Reed-Solomon codes used in HQC. Depending on HQC parameters, we
+construct shortened Reed-Solomon (RS-S1, RS-S2 and RS-S3) codes such that k is equal
+to 16, 24 or 32 from the following RS codes RS-1, RS-2 and RS-3 from [24]. The shortened
+codes are obtained by subtracting 209 from the parameters n and k of the code RS-1,
+subtracting 199 from the parameters n and k of the code RS-2 and by subtracting 165 from
+the parameters n and k of the code RS-3. As a result, we obtain the following shortened
+Reed-Solomon codes:
+17
+
+=====PAGE 18=====
+• RS-S1[46 = 255 −209, 16 = 225 −209, 31] ;
+• RS-S2[56 = 255 −199, 24 = 223 −199, 33] ;
+• RS-S3[90 = 255 −165, 32 = 197 −165, 49].
+One should note that shortening the Reed-Solomon code does not affect its error correcting
+capacity. Table 3 provides the code parameters for both the original and resulting shortened
+Reed-Solomon codes.
+Code
+n
+k
+δ
+RS-1
+255
+225
+15
+RS-2
+255
+223
+16
+RS-3
+255
+197
+29
+RS-S1
+46
+16
+15
+RS-S2
+56
+24
+16
+RS-S3
+90
+32
+29
+Table 3: Original and shortened Reed-Solomon codes.
+Generator polynomials. For HQC, we are working in F2m with m = 8. To do so, we
+use the primitive polynomial 1 + α2 + α3 + α4 + α8 of degree 8 to build this field [24]. We
+denote by g1(x), g2(x) and g3(x) the generator polynomials of RS-S1, RS-S2 and RS-S3
+respectively, which are identical to the generator polynomials of Reed-Solomon codes RS-1,
+RS-2 and RS-3 respectively. The generator polynomials g1(x), g2(x) and g3(x) of the codes
+RS-S1, RS-S2 and RS-S3 have been precomputed and are given hereafter. One can use the
+functions provided in the file reed_solomon.h to reconstruct these generator polynomials.
+Generator polynomial of RS-S1. g1(x) = 89+69x+153x2+116x3+176x4+117x5+111x6+
+75x7 +73x8 +233x9 +242x10 +233x11 +65x12 +210x13 +21x14 +139x15 +103x16 +173x17 +
+67x18 + 118x19 + 105x20 + 210x21 + 174x22 + 110x23 + 74x24 + 69x25 + 228x26 + 82x27 +
+255x28 + 181x29 + x30.
+Generator polynomial of RS-S2. g2(x) = 45+216x+239x2 +24x3 +253x4 +104x5 +27x6 +
+40x7 +107x8 +50x9 +163x10 +210x11 +227x12 +134x13 +224x14 +158x15 +119x16 +13x17 +
+158x18 + x19 + 238x20 + 164x21 + 82x22 + 43x23 + 15x24 + 232x25 + 246x26 + 142x27 + 50x28 +
+189x29 + 29x30 + 232x31 + x32.
+Generator polynomial of RS-S3. g3(x) = 49+167x+49x2 +39x3 +200x4 +121x5 +124x6 +
+91x7 + 240x8 + 63x9 + 148x10 + 71x11 + 150x12 + 123x13 + 87x14 + 101x15 + 32x16 + 215x17 +
+18
+
+=====PAGE 19=====
+159x18 + 71x19 + 201x20 + 115x21 + 97x22 + 210x23 + 186x24 + 183x25 + 141x26 + 217x27 +
+123x28 + 12x29 + 31x30 + 243x31 + 180x32 + 219x33 + 152x34 + 239x35 + 99x36 + 141x37 +
+4x38 +246x39 +191x40 +144x41 +8x42 +232x43 +47x44 +27x45 +141x46 +178x47 +130x48 +
+64x49 + 124x50 + 47x51 + 39x52 + 188x53 + 216x54 + 48x55 + 199x56 + 187x57 + x58.
+Encoding shortened Reed-Solomon codes. In the following we present the encoding
+of Reed-Solomon codes which can also be used to encode shortened Reed-Solomon codes.
+We denote by u(x) = u0 + · · · + uk−1xk−1 the polynomial corresponding to the message u =
+(u0, · · · , uk−1) to be encoded and g(x) the generator polynomial. We use the systematic form
+of encoding where the rightmost k elements of the codeword polynomial are the message
+bits and the leftmost n −k bits are the parity-check bits. Following [24], the code word is
+given by c(x) = b(x)+xn−ku(x), where b(x) is the reminder of the division of the polynomial
+xn−ku(x) by g(x). In consequence, the encoding in systematic form consists of three steps :
+1. Multiply the message u(x) by xn−k.
+2. Compute the remainder b(x) by dividing xn−ku(x) by the generator polynomial g(x).
+3. Combine b(x) and xn−ku(x) to obtain the code polynomial c(x) = b(x) + xn−ku(x).
+Decoding shortened Reed-Solomon codes The decoding of classical Reed-Solomon
+codes can be used to decode shortened Reed-Solomon codes. For sake of simplicity, we will
+detail the process of decoding classical Reed-Solomon codes. Following [24], consider the
+Reed-Solomon code defined by [n, k, dmin], with n = 2m −1 (m ≥0 of positive integer)
+and suppose that a codeword v(x) = v0 + v1x + · · · + vn−1xn−1 is transmitted. We denote
+r(x) = r0 + r1x + · · · + rn−1xn−1 the received word, potentially altered by some errors.
+We denote the error polynomial e(x) = e0 + e1x + · · · + en−1xn−1, meaning that there
+is an error in position j whenever ej̸ = 0. Hence, r(x) = v(x) + e(x). We define the set
+of syndromes S1, S2, · · · , S2δ as Si = r(αi), with α being a primitive element in F2m. We
+have r(αi) = e(αi), since v(αi) = 0 (v is a codeword). Suppose that e(x) has t errors at
+locations j1, · · · , jt, i.e. e(x) = ej1xj1 + ej2xj2 + · · · + ejtxjt. We obtain the following set of
+equations, where αj1, αj2, · · · , αjt are unknown:
+
+
+
+
+
+
+
+
+
+
+
+
+
+S1
+=
+ej1αj1 + ej2αj2 + · · · + ejtαjt
+S2
+=
+ej1(αj1)2 + ej2(αj2)2 + · · · + ejt(αjt)2
+S3
+=
+ej1(αj1)3 + ej2(αj2)3 + · · · + ejt(αjt)3
+...
+S2δ
+=
+ej1(αj1)2δ + ej2(αj2)2δ + · · · + ejt(αjt)2δ
+The goal of a Reed-Solomon decoding algorithm is to solve this system of equations.
+We define the error location numbers by βi = αji, which indicate the location of the errors.
+The equations above can be expressed as follows:
+19
+
+=====PAGE 20=====
+
+
+
+
+
+
+
+
+
+
+
+
+
+S1
+=
+ej1β1 + ej2β2 + · · · + ejtβt
+S2
+=
+ej1β2
+1 + ej2β2
+2 + · · · + ejtβ2
+t
+S3
+=
+ej1β3
+1 + ej2β3
+2 + · · · + ejtβ3
+t
+...
+S2δ
+=
+ej1β2δ
+1 + ej2β2δ
+2 + · · · + ejtβ2δ
+t
+We define the error location polynomial as:
+σ(x)
+=
+(1 + β1x)(1 + β2x) · · · (1 + βtx)
+=
+1 + σ1x + σ2x2 + · · · + σtxt
+One can see that the roots of σ(x) are β−1
+1 , β−1
+2 , · · · , β−1
+t
+which are the inverses of the error
+location numbers. After retrieving the coefficients of σ(x), one can compute the error values.
+Let Z(x) = 1 + (S1 + σ1)x + (S2 + σ1S1 + σ2)x2 + · · · + (St + σ1St−1 + σ2St−2 + · · · + σt)xt,
+the error value at location βl is given [6] by:
+ejl =
+Z(β−1
+l )
+tY
+i=1
+i̸=l
+(1 + βiβ−1
+l )
+.
+The decoding is completed by computing r(x) −e(x).
+One can summarize the decoding procedure by the following steps:
+1. Compute the 2δ syndromes using the received polynomial. The syndromes are com-
+puted in a classical way by evaluating r(αi) for each value of i.
+2. Compute the error-location polynomial σ(x) from the 2δ syndromes computed in the
+first step. Here we use Berlekamp’s algorithm [24].
+3. Find the error-location numbers by calculating the roots of the polynomial σ(x) and
+returning their inverses. We implement this step with an additive Fast Fourier Trans-
+form algorithm from [17].
+4. Compute the polynomial Z(x).
+5. Compute the error values.
+6. Correct the errors in the received polynomial.
+20
+
+=====PAGE 21=====
+3.4.3
+Duplicated Reed-Muller codes
+For any positive integers m and r with 0 ≤r ≤m, there exists a binary rth order Reed-
+Muller code denoted by RM(r, m) with the following parameters:
+• Code length n = 2m ;
+• Dimension k = Pr
+i=0
+ m
+i
+
+;
+• Minimum distance dmin = 2m−r.
+HQC uses duplicated Reed-Muller codes. In particular, we are using first-order Reed-
+Muller denoted RM(1, 7) which is the binary code [128, 8, 64].
+Decoding the internal Reed-Muller code. The Reed-Muller code of order 1 can be
+decoded using a fast Hadamard transform (see chapter 14 of [28] for example). The algo-
+rithm needs to be slightly adapted when decoding duplicated codes. For example, if the
+Reed-Muller is duplicated three times, we create the function F : F3
+2 →{3, 1, −1, −3} where
+we started with transforming each block of three bits x1x2x3 of the received vector in:
+(−1)x1 + (−1)x2 + (−1)x3
+We then apply the Hadamard transform to the function F. We take the maximum value in
+ˆF and x ∈F3
+2 that maximizes the value of | ˆF|. If ˆF(x) is positive, then the closest codeword
+is xG where G is the generator matrix of the Hadamard code (without the all-one-vector).
+If ˆF(x) is negative, then we need to add the all-one-vector to it.
+Encoding Duplicated Reed-Muller codes.
+Following [28], the encoding is done in
+classical way by using a matrix vector multiplication. The codeword is then duplicated
+depending on the used parameter as described in Table 4.
+Instance
+Reed-Muller Code
+Multiplicity
+Duplicated Reed-Muller Code
+HQC-1
+[128, 8, 64]
+3
+[384, 8, 192]
+HQC-3
+[128, 8, 64]
+5
+[640, 8, 320]
+HQC-5
+[128, 8, 64]
+5
+[640, 8, 320]
+Table 4: Duplicated Reed-Muller codes.
+Decoding Duplicated Reed-Muller codes. Following [28], the decoding of duplicated
+Reed-Muller codes is done in three steps:
+1. Compute the function F described and apply it on the received codeword.
+We
+give details about how this process is done where the multiplicity is equal to 2,
+21
+
+=====PAGE 22=====
+as an example.
+Let v be a duplicated Reed-Muller codeword, it can be seen as
+v = (a1b1, · · · , an2bn2) where each ai, bi has 128 bits size (ai = (ai0, · · · , ai128) and
+bi = (bi0, · · · , bi128)). The transformation F is applied to each element in v as follows
+((−1)ai0 + (−1)bi0, · · · , (−1)ai128 + (−1)bi128). The cases when multiplicity is equal to
+3 or 5 follow a similar process.
+2. Compute the Hadamard transform which is the first phase of the Green machine.
+3. Compute the location of the highest value on the output of the previous step. This
+is the second phase of the Green machine. When the peak is positive we add the
+all-one-vector and if there are two identical peaks, the peak with smallest value in the
+lowest 7 bits it taken.
+3.5
+HQC-PKE
+HQC uses a decodable [n1n2, k] code C which can correct at least ∆errors as well as a
+random double-circulant [2n, n] code with parity-check matrix (In rot(h)). The code C is
+instantiated using concatenated Reed-Muller and Reed-Solomon codes which are described
+in Section 3.4. The codewords of C are in Fn1n2
+2
+while other vectors are in Fn
+2 where n is
+the smallest primitive prime greater than n1n2. All computations are made in Fn
+2 and the
+remaining ℓ= n −n1n2 bits are truncated whenever required.
+Correctness. The correctness of HQC relies on the decoding capability of the code C.
+Specifically, C correctly decodes v −u · y whenever:
+ω(s · r2 −u · y + e) ≤∆
+ω((x + h · y) · r2 −(r1 + h · r2) · y + e) ≤∆
+ω(x · r2 −r1 · y + e) ≤∆
+An analysis of the distribution of the error vector e′ = x · r2 −r1 · y + e and the resulting
+decoding failure rate of the scheme is provided in Section 6.1.
+Keypair format. The decapsulation key dkKEM can be stored using the default format
+dkKEM = (ekKEM, dkPKE, σ, seedKEM) or the compressed format dkKEM = (seedKEM). In both
+cases, the keypair (ekKEM, dkKEM) can be checked using seedKEM to derive (seedPKE, σ) which
+in turn can be used to derive (ekPKE, dkPKE) where ekKEM = ekPKE.
+22
+
+=====PAGE 23=====
+HQC-PKE.Keygen(seedPKE)
+Input: Seed seedPKE.
+Output: Encryption key ekPKE, decryption key dkPKE.
+▷Compute dkPKE and ekPKE seeds
+1.
+(seedPKE.dk, seedPKE.ek) ←I(seedPKE)
+▷Compute decryption key dkPKE
+2.
+ctxPKE.dk ←XOF.Init(seedPKE.dk)
+3.
+(ctxPKE.dk, y) ←SampleFixedWeightVect$(ctxPKE.dk, Rω)
+4.
+(ctxPKE.dk, x) ←SampleFixedWeightVect$(ctxPKE.dk, Rω)
+5.
+dkPKE ←seedPKE.dk
+▷Compute encryption key ekPKE
+6.
+ctxPKE.ek ←XOF.Init(seedPKE.ek)
+7.
+(ctxPKE.ek, h) ←SampleVect(ctxPKE.ek, R)
+8.
+s ←x + h · y
+9.
+ekPKE ←(seedPKE.ek, s)
+10.
+return (ekPKE, dkPKE)
+23
+
+=====PAGE 24=====
+HQC-PKE.Encrypt(ekPKE, m, θ)
+Input: Encryption key ekPKE, message m, randomness θ.
+Output: Ciphertext cPKE.
+▷Parse encryption key ekPKE
+1.
+seedPKE.ek ←ekPKE[0 : |seed|]
+2.
+ctxPKE.ek ←XOF.Init(seedPKE.ek)
+3.
+(ctxPKE.ek, h) ←SampleVect(ctxPKE.ek, R)
+4.
+s ←ekPKE[|seed| : |seed| + |s|]
+▷Compute ciphertext cPKE
+5.
+ctxθ ←XOF.Init(θ)
+6.
+(ctxθ, r2) ←SampleFixedWeightVect(ctxθ, Rωr)
+7.
+(ctxθ, e) ←SampleFixedWeightVect(ctxθ, Rωe)
+8.
+(ctxθ, r1) ←SampleFixedWeightVect(ctxθ, Rωr)
+9.
+u ←r1 + h · r2
+10.
+v ←C.Encode(m) + Truncate(s · r2 + e, ℓ)
+11.
+cPKE ←(u, v)
+12.
+return cPKE
+24
+
+=====PAGE 25=====
+HQC-PKE.Decrypt(dkPKE, cPKE)
+Input: Decryption key dkPKE, ciphertext cPKE.
+Output: Message m.
+▷Parse decryption key dkPKE
+1.
+seedPKE.dk ←dkPKE[0 : |seed|]
+2.
+ctxPKE.dk ←XOF.Init(seedPKE.dk)
+3.
+(ctxPKE.dk, y) ←SampleFixedWeightVect$(ctxPKE.dk, Rω)
+▷Parse ciphertext cPKE
+4.
+u ←cPKE[0 : |u|]
+5.
+v ←cPKE[|u| : |u| + |v|]
+▷Compute plaintext m
+6.
+m ←C.Decode(v −Truncate(u · y, ℓ))
+7.
+return m
+25
+
+=====PAGE 26=====
+3.6
+HQC-KEM
+HQC-KEM is derived from HQC-PKE using the Fujisaki-Okamoto transformation [14] in-
+stantiated following the HHK framework with implicit rejection [22].
+HQC-KEM.Keygen()
+Input: None.
+Output: Encapsulation key ekKEM, decapsulation key dkKEM.
+▷Sample seedKEM
+1.
+seedKEM ←$ B|seed|
+▷Compute seedPKE and randomness σ
+2.
+ctxKEM ←XOF.Init(seedKEM)
+3.
+(ctxKEM, seedPKE) ←XOF.GetBytes(ctxKEM, |seed|)
+4.
+(ctxKEM, σ) ←XOF.GetBytes(ctxKEM, |k|)
+▷Compute HQC-PKE keypair
+5.
+(ekPKE, dkPKE) ←HQC-PKE.Keygen(seedPKE)
+▷Compute HQC-KEM keypair
+6.
+ekKEM ←ekPKE
+7.
+dkKEM ←(ekKEM, dkPKE, σ, seedKEM)
+8.
+return (ekKEM, dkKEM)
+26
+
+=====PAGE 27=====
+HQC-KEM.Encaps(ekKEM)
+Input: Encapsulation key ekKEM.
+Output: Shared secret key K, ciphertext cKEM.
+▷Sample message m and salt
+1.
+m ←$ B|k|
+2.
+salt ←$ B|salt|
+▷Compute shared key K and ciphertext cKEM
+3.
+(K, θ) ←G(H(ekKEM)∥m∥salt)
+4.
+cPKE ←HQC-PKE.Encrypt(ekKEM, m, θ)
+5.
+cKEM ←(cPKE, salt)
+6.
+return (K, cKEM)
+27
+
+=====PAGE 28=====
+HQC-KEM.Decaps(dkKEM, cKEM)
+Input: Decapsulation key dkKEM, ciphertext cKEM.
+Output: Shared secret key K′.
+▷Parse decapsulation key dkKEM
+1.
+ekKEM ←dkKEM[0 : |ekKEM|]
+2.
+dkPKE ←dkKEM[|ekKEM| : |ekKEM| + |dkPKE|]
+3.
+σ ←dkKEM[|ekKEM| + |dkPKE| : |ekKEM| + |dkPKE| + |σ|]
+▷Parse ciphertext cKEM
+4.
+cPKE ←cKEM[0 : |cPKE|]
+5.
+salt ←cKEM[|cPKE| : |cPKE| + |salt|]
+▷Compute message m′
+6.
+m′ ←HQC-PKE.Decrypt(dkPKE, cPKE)
+▷Compute shared key K′ and ciphertext c′
+KEM
+7.
+(K′, θ′) ←G(H(ekKEM)∥m′∥salt)
+8.
+c′
+PKE ←HQC-PKE.Encrypt(ekKEM, m′, θ′)
+9.
+c′
+KEM ←(c′
+PKE, salt)
+▷Compute rejection key ¯K
+10.
+¯K ←J(H(ekKEM)∥σ∥cKEM)
+11.
+if m′ = ⊥or if c′
+KEM̸ = cKEM
+12.
+K′ ←¯K
+13.
+endif
+14.
+return K′
+28
+
+=====PAGE 29=====
+4
+Parameters and Sizes
+This section provides parameters sets for HQC and resulting ciphertext and key sizes. For
+each parameter set, the parameters are chosen so that the minimal workfactor of the best
+known attack exceeds the security parameter (see Section 6.3 for more details).
+4.1
+Parameter sets
+The parameters sets of HQC are given in Table 5 where n1 denote the length of the external
+Reed-Solomon code and n2 denote the length of the internal Reed-Muller code so that the
+length of the concatenated code C is n1n2, its dimension is k and its decoding failure rate
+(DFR) is adjusted for each security level.
+The parameter n denotes the length of the
+ambient space namely the smallest primitive prime greater than n1n2. The parameters ω,
+ωr and ωe denote the weight of the vectors (x, y), (r1, r2) and e respectively.
+Instance
+Security
+n1
+n2
+n
+k
+ω
+ωr = ωe
+DFR
+HQC-1
+NIST-1
+46
+384
+17 669
+128
+66
+75
+< 2−128
+HQC-3
+NIST-3
+56
+640
+35 851
+192
+100
+114
+< 2−192
+HQC-5
+NIST-5
+90
+640
+57 637
+256
+131
+149
+< 2−256
+Table 5: Parameter sets for HQC
+4.2
+Ciphertext and key sizes
+The encapsulation key ekKEM has size |ekKEM| = |seed| + ⌈n/8⌉while the decapsulation
+key dkKEM has size |dkKEM| = |ekKEM| + |seed| + ⌈k/8⌉+ |seed| or |dkKEM| = |seed| if the
+compressed format is used. The ciphertext cKEM has size |cKEM| = ⌈n/8⌉+⌈(n1n2)/8⌉+|salt|
+while the shared key K has size |K|. The seeds, salt and shared key have size |seed| = 32 B,
+|salt| = 16 B, |K| = 32 B respectively. The resulting sizes are given in bytes in Table 6.
+Instance
+Security
+|ekKEM|
+|dkKEM|
+|cKEM|
+|K|
+HQC-1
+NIST-1
+2 241
+2 321
+32
+4 433
+32
+HQC-3
+NIST-3
+4 514
+4 602
+32
+8 978
+32
+HQC-5
+NIST-5
+7 237
+7 333
+32
+14 421
+32
+Table 6: HQC keypair (ekKEM, dkKEM), ciphertext cKEM and shared key K sizes (in Bytes)
+29
+
+=====PAGE 30=====
+5
+Performance Analysis
+This section provides performance measurements of our HQC.KEM implementations.
+Benchmark platform.
+The benchmarks have been performed on a machine running
+Ubuntu 22.04.2 LTS, that has 32 GB of memory and an Intel® Core™i7-11850H CPU
+@ 2.50GHz for which the Hyper-Threading and Turbo Boost features were disabled. The
+scheme have been compiled with gcc (version 11.4.0). All benchmarks were conducted
+using the default key format, where the decapsulation key is represented as dkKEM =
+(ekKEM, dkPKE, σ, seedKEM). For each parameter set, the results have been obtained by com-
+puting the mean from 1000 random instances. In order to minimize biases from background
+tasks running on the benchmark platform, each instances have been repeated 100 times and
+averaged.
+Constant time. Both the reference and the optimized AVX2 implementations have been
+implemented in constant time. We have thoroughly analyzed the code to ensure that only
+unused randomness (i.e., rejected based on public criteria) or otherwise non-sensitive data
+may be leaked.
+5.1
+Reference implementation
+The performances of our reference implementation on the aforementioned benchmark plat-
+form are given in Table 7. The reference implementation is written in C and have been
+compiled with gcc (version 11.4.0) using the flags -O3 -std=c99 -funroll-all-loops
+-flto -pedantic -Wall -Wextra.
+Instance
+KeyGen
+Encaps
+Decaps
+HQC-1
+4 557
+9 116
+13 918
+HQC-3
+13 783
+27 571
+41 669
+HQC-5
+33 123
+66 261
+100 213
+Table 7: Performances (in kiloCycles) of the reference implementation of HQC
+5.2
+Optimized implementation
+The performances of our optimized implementation on the aforementioned benchmark plat-
+form are given in Table 8. Our optimized implementation leverages AVX2 instructions and
+have been compiled using gcc (version 8.2.1) using the flags -O3 -std=c99 -funroll-all
+-loops -mavx -mavx2 -mpclmul -pedantic -Wall -Wextra.
+30
+
+=====PAGE 31=====
+Instance
+KeyGen
+Encaps
+Decaps
+HQC-1
+76
+150
+353
+HQC-3
+181
+355
+732
+HQC-5
+363
+720
+1 435
+Table 8: Performance (in kiloCycles) of the optimized implementation of HQC
+5.3
+Known Answer Test values
+Known Answer Test (KAT) values have been generated using the script provided by the
+NIST. They are available in the folders KATs/Reference_Implementation/ and KATs/Op
+timized_Implementation/.In addition, examples with intermediate values have also been
+provided in these folders. One should note that one can generate the aforementioned test
+files using respectively the kat and verbose modes of our implementation. The procedure
+to follow in order to do so is detailed in the technical documentation.
+31
+
+=====PAGE 32=====
+6
+Security Analysis
+6.1
+Decoding Failure Rate analysis
+We analyze the distribution of the error vector e′ = x · r2 −r1 · y + e in Section 6.1.1 and
+the Decoding Failure Rate (DFR) of the internal Reed-Muller code in Section 6.1.2. The
+resulting DFR of the scheme is studied in Section 6.1.3.
+6.1.1
+Analysis of the error vector distribution
+We provide a precise analysis of the error distribution approximation following [4]. We first
+compute exactly the probability distribution of each fixed coordinate e′
+k of the error vector
+e′ = x · r2 −r1 · y + e = (e′
+0, . . . e′
+n−1).
+We obtain that every coordinate e′
+k is Bernoulli distributed with parameter p∗= P[e′
+k = 1]
+given by Proposition 6.1.2.
+To compute decoding error probabilities, we will then need the probability distribution
+of the weight of the error vector e′ restricted to given sets of coordinates that correspond
+to codeword supports. We will make the simplifying assumption that the coordinates e′
+k
+of e′ are independent variables, which will let us work with the binomial distribution of
+parameter p∗for the weight distributions of e′. In other words we modelize the error vector
+as a binary symmetric channel with parameters p∗. This working assumption is justified
+by remarking that, in the high weight regime relevant to us, since the component vectors
+x, y, e have fixed weights, the probability that a given coordinate e′
+k takes the value 1
+conditioned on abnormally many others equalling 1 can realistically only be ≤p∗. We
+support this modeling of the otherwise intractable weight distribution of e′ by extensive
+simulations. These simulations back up our assumption that our computations of decoding
+error probabilities and DFRs can only be upper bounds on their real values.
+The vectors x, y, r1, r2, e have been taken uniformly random and independently chosen
+among vectors of weight ω, ωr and ωe. We first evaluate the distributions of the products
+x · r2 and r1 · y.
+Proposition 6.1.1. Let x = (x0, . . . xn−1) be a random vector chosen uniformly among all
+binary vectors of weight ω and let r = (r0, . . . , rn−1) be a random vector chosen uniformly
+among all vectors of weight ωr and independently of x. Then, denoting z = x · r, we have
+that for every k ∈{0, . . . n −1}, the k-th coordinate zk of z is Bernoulli distributed with
+parameter ˜p = P(zk = 1) equal to:
+˜p =
+1
+ n
+ω
+  n
+ωr
+
+X
+1⩽ℓ⩽min(ω,ωr)
+ℓodd
+Cℓ
+where Cℓ=
+ n
+ℓ
+ n−ℓ
+ω−ℓ
+ n−ω
+ωr−ℓ
+
+.
+32
+
+=====PAGE 33=====
+Proof. The total number of ordered pairs (x, r) is
+ n
+ω
+  n
+ωr
+
+. Among those, we need to count
+how many are such that zk = 1. We note that
+zk =
+X
+i+j=k mod n
+0≤i,j≤n−1
+xirj.
+We need therefore to count the number of couples (x, r) such that we have xirk−i = 1 an
+odd number of times when i ranges over {0, . . . , n −1} (and k −i is understood modulo
+n). Let us count the number Cℓof couples (x, r) such that xirk−i = 1 exactly ℓtimes. For
+ℓ> min(w, wr) we clearly have Cℓ= 0. For ℓ≤min(ω, ωr) we have
+ n
+ℓ
+
+choices for the
+set of coordinates i such that xi = rk−i = 1, then
+ n−ℓ
+ω−ℓ
+
+remaining choices for the set of
+coordinates i such that xi = 1 and rk−i = 0, and finally
+ n−ω
+ωr−ℓ
+
+remaining choices for the set
+of coordinates i such that xi = 0 and rk−i = 1. Hence Cℓ=
+ n
+ℓ
+ n−ℓ
+ω−ℓ
+ n−ω
+ωr−ℓ
+
+. The formula
+for ˜p follows.
+Let x, y (respectively r1, r2) be independent random vectors chosen uniformly among
+all binary vectors of weight ω (respectively ωr). By independence of (x, r2) with (y, r1), the
+k-th coordinates of x · r2 and of r1 · y are independent, and they are Bernoulli distributed
+with parameter ˜p by Proposition 6.1.1. Therefore their modulo 2 sum t = x · r2 −r1 · y is
+Bernoulli distributed with:
+(
+Pr[tk = 1] = 2˜p(1 −˜p),
+Pr[tk = 0] = (1 −˜p)2 + ˜p2.
+(1)
+Finally, by adding modulo 2 coordinate-wise the two independent vectors e and t, we obtain
+the distribution of the coordinates of the error vector e′ = x · r2 −r1 · y + e.
+Proposition 6.1.2. Let x, y,r1, r2, e be independent random vectors with uniform distribu-
+tions among vectors of fixed weight w for x, y, among vectors of weight ωr for r1, r2, and
+among vectors of weight ωe for e. Let e′ = x · r2 −r1 · y + e = (e′
+0, . . . , e′
+n−1). Then for any
+k = 0 . . . n −1, the coordinate e′
+k has distribution:
+(
+Pr[e′
+k = 1] = 2˜p(1 −˜p)(1 −ωe
+n ) + ((1 −˜p)2 + ˜p2) ωe
+n ,
+Pr[e′
+k = 0] = ((1 −˜p)2 + ˜p2) (1 −ωe
+n ) + 2˜p(1 −˜p)ωe
+n .
+(2)
+Proposition 6.1.2 gives us the probability that a coordinate of the error vector e′ is 1.
+In our simulations, which occur in the regime ω = α√n with constant α, we make the
+simplifying assumption that the coordinates of e′ are independent, meaning that the weight
+of e′ follows a binomial distribution of parameter p⋆, where p⋆is defined as in Eq. (2):
+p⋆= 2˜p(1 −˜p)(1 −ωe
+n ) + ((1 −˜p)2 + ˜p2) ωe
+n . This approximation will give us, for 0 ≤d ≤
+min(2 × ω × ωr + ωe, n),
+Pr[ω(e′) = d] =
+n
+d
+
+(p⋆)d(1 −p⋆)(n−d).
+(3)
+33
+
+=====PAGE 34=====
+Simulation results. We provide simulations of the distribution of the weight of the error
+vector together with the distribution of the associated binomial law of parameters p⋆. These
+simulations show that error vectors are more likely to have a weight close to the mean than
+predicted by the binomial distribution, and that on the contrary the error is less likely to be
+of large weight than if it were binomially distributed. This is illustrated on the parameter
+set corresponding to HQC-1. For cryptographic purposes we are mainly interested by very
+small DFR and large weight occurrences which are more likely to induce decoding errors.
+These tables show that the probability of obtaining a large weight is close but smaller for the
+error weight distribution of e′ rather than for the binomial approximation. This supports
+our modelization and the fact that computing the decoding failure probability with this
+binomial approximation permits to obtain an upper bound on the real DFR. This will be
+confirmed hereafter by simulations with real weight parameters (but smaller lengths).
+We consider a parameter set that corresponds to cryptographic parameters and for which
+we simulate the error distribution versus the binomial approximation together with the
+probability of obtaining large error weights. We computed vectors of length n and then
+truncated the last l = n −n1n2 bits before measuring the Hamming weight of the vectors.
+Parameter set
+ω
+ωe = ωr
+n
+n1n2
+p⋆
+HQC-1
+66
+75
+17 669
+17 664
+0.3398
+Table 9: Probability p∗for HQC-1 parameter set
+Simulation results are shown in Figure 3. We computed the weights such that 0.1%, 0.01%
+and 0.001% of the vectors are of weight greater than this value, to study how often extreme
+weight values occur. Results are presented table 10.
+0.1%
+0.01%
+0.001%
+0.0001%
+Error vectors
+6 169
+6 203
+6 232
+6 257
+Binomial approximation
+6 197
+6 237
+6 272
+6 301
+Table 10: Simulated probabilities of large weight vectors for HQC-1 for the error vector
+distribution and the binomial approximation
+34
+
+=====PAGE 35=====
+ 0
+ 20000
+ 40000
+ 60000
+ 80000
+ 100000
+ 120000
+ 140000
+ 5800
+ 5850
+ 5900
+ 5950
+ 6000
+ 6050
+ 6100
+ 6150
+ 6200
+Occurences
+Weight
+HQC simulation
+Binomial distribution
+Figure 3: Comparison between error e′ generated using HQC-1 parameter set and its bino-
+mial approximation
+6.1.2
+Upper bound for the DFR of the internal Reed-Muller code
+It is only possible to obtain an exact decoding probability formula for the Reed-Solomon
+codes as for Reed-Muller codes we consider a maximum-likelihood decoding for which there
+is no exact formula. We provide in the following proposition a lower bound on the decoding
+probability in that case.
+Proposition 6.1.3 (Simple Upper Bound for the DFR of the internal code). Let p be
+the transition probability of the binary symmetric channel. Then the DFR of a duplicated
+Reed-Muller code of dimension 8 and minimal distance di can be upper bounded by:
+pi = 255
+di
+X
+j=di/2
+di
+j
+
+pj(1 −p)di−j
+Proof. For any linear code C of length n, when transmitting a codeword c, the probability
+that the channel makes the received word y at least as close to a word c′ = c + x as c (for
+35
+
+=====PAGE 36=====
+x a non-zero word of C and ω(x) the weight of x) is:
+X
+j⩾ω(x)/2
+ω(x)
+j
+
+pj(1 −p)n−j.
+By the union bound applied on the different non-zero codewords x of C, we obtain that the
+probability of a decryption failure can thus be upper bounded by:
+X
+x∈C,x̸=0
+X
+j⩾ω(x)/2
+ω(x)
+j
+
+pj(1 −p)n−j.
+There are 255 non-zero words in a [128,8,64] Reed-Muller code, 254 of weight 64 and one
+of weight 128. The contribution of the weight 128 vector is smaller than the weight 64
+vectors, hence by applying the previous bound to duplicated Reed-Muller codes we obtain
+the result.
+Better upper bound for the DFR of the internal code. The previous simple bound
+pessimistically assumes that decoding fails when more than one codeword minimizes the
+distance to the received vector. The following bound improves the previous one by taking
+into account the fact that decoding can still succeed with probability 1/2 when exactly two
+codewords minimize the distance to the received vector.
+Proposition 6.1.4 (Improved Upper Bound for the DFR of the internal code). Let p be
+the transition probability of the binary symmetric channel. Then the DFR of a Reed-Muller
+code of dimension 8 and minimal distance di can be upper bounded by:
+pi =
+n
+X
+ω=di/2
+Aωpω(1 −p)n−ω
+where
+Aω = min
+"n
+ω
+
+,1
+2255
+ di
+di/2
+
+di
+ω −di/2
+
++ 255
+di
+X
+j=di/2+1
+di
+j
+ di
+ω −j
+
++
+1
+2
+255
+2
+ di/2
+X
+j=0
+di/2
+j
+3
+di/2
+ω −di + j
+#
+.
+Proof. Let E be the decoding error event. Let e be the error vector.
+• Let A be the event where the closest non-zero codeword c to the error is such that
+d(e, c) = d(e, 0) = ω(e).
+• Let B be the event where the closest non-zero codeword c to the error vector is such
+that d(e, c) < ω(e).
+36
+
+=====PAGE 37=====
+• Let A′ ⊂A be the event where the closest non-zero codeword c to the error vector
+is such that d(e, c) = ω(e) and such a vector is unique, meaning that for every
+c′ ∈C, c′̸ = c, c′̸ = 0, we have d(e, c′) > ω(e).
+• Finally, let A′′ be the event that is the complement of A′ in A, meaning the event
+where the closest non-zero codeword c to the error is at distance |e| from e, and there
+exists at least one codeword c′, c′̸ = c, c′̸ = 0, such that d(e, c′) = d(e, c) = ω(e).
+The probability space is partitioned as Ω= A ∪B ∪C = A′ ∪A′′ ∪B ∪C, where C
+is the complement of A ∪B. When C occurs, the decoder always decodes correctly, i.e.
+P(E|C) = 0. We therefore write:
+P(E) = P(E|A′)P(A′) + P(E|A′′)P(A′′) + P(E|B)P(B)
+When the event A′ occurs, the decoder chooses at random between the two closest
+codewords and is correct with probability 1/2, i.e. P(E|A′) = 1/2. We have P(E|B) = 1
+and writing P(E|A′′) ⩽1, we have:
+P(Eω) ⩽1
+2P(A′
+ω) + P(A′′
+ω) + P(Bω)
+= 1
+2(P(A′
+ω) + P(A′′
+ω)) + 1
+2P(A′′
+ω) + P(Bω)
+P(Ew) ⩽1
+2P(Aω) + 1
+2P(A′′
+ω) + P(Bω)
+(4)
+where for X = A, A′, A′′, E, the event Xω signifies the intersection of the event X with the
+event “ω(e) = ω”. Now we have the straightforward union bounds:
+P(Bω) ⩽255
+di
+X
+j=di/2+1
+di
+j
+
+di
+weight −j
+
+pω(1 −p)n−ω
+(5)
+with n = 2di the length of the inner code, and where we use the convention that a binomial
+coefficient
+ ℓ
+k
+
+= 0 whenever k < 0 or k > ℓ.
+P(Aω) ⩽255
+ di
+di/2
+
+di
+ω −di/2
+
+pω(1 −p)n−ω
+(6)
+and it remains to find an upper bound on P(A′′). We have:
+P(A′′) ⩽
+X
+c,c′
+P(Ac,c′)
+where the sum is over pairs of distinct non-zero codewords and where:
+Ac,c′ = {d(e, c) = d(e, c′) = ω(e)}
+37
+
+=====PAGE 38=====
+This event is equivalent to the error meeting the supports of c and c′ on exactly half
+their coordinates. All codewords except the all-one vector have weight di, and any two
+codewords of weight di either have non-intersecting supports or intersect in exactly d/2
+positions. P(Ac,c′) is largest when c and c′ have weight d and non-zero intersection. In this
+case we have:
+P(Aω
+c,c′) =
+di/2
+X
+j=0
+di/2
+j
+3
+di/2
+ω −di + j
+
+pω(1 −p)n−ω.
+Hence,
+P(A′′
+ω) ⩽
+X
+c,c′
+P(Ac,c′) ⩽
+255
+2
+ di/2
+X
+j=0
+di/2
+j
+3
+di/2
+ω −di + j
+
+pω(1 −p)n−ω.
+(7)
+Plugging 6, 5 and 7 into 4 we obtain the result.
+The previous formula permits to obtain a lower bound on the decoding probability.
+When the error rate gets smaller, the bound becomes closer to the real value of the decoding
+probability. For cryptographic parameters the approximation is less precise, which means
+that the DFR obtained will be conservative compared to what happens in practice.
+Simulation results. We performed simulations to compare the real decryption failure rate
+with the theoretical one from proposition 6.1.3 for [512, 8, 256] and [640, 8, 320] duplicated
+Reed-Muller codes using p⋆values from actual parameters. Simulation results are presented
+table 11.
+Security level
+p⋆
+Reed-Muller code
+DFR from 6.1.4
+Observed DFR
+NIST-1
+0.3398
+[384, 8, 192]
+-10.79
+-10.96
+NIST-3
+0.3618
+[640, 8, 320]
+-14.14
+-14.39
+NIST-5
+0.3725
+[640, 8, 320]
+-11.30
+-11.48
+Table 11: Comparison between the observed Decryption Failure Rate and the formula from
+proposition 6.1.3. Results are presented as log2(DFR).
+6.1.3
+Decoding failure rate analysis
+Using the lower bound pi on the decoding probability of the Reed-Muller codes given in
+Section 6.1.2, one can deduce the DFR of the concatenated code used in HQC.
+Theorem 6.1 (DFR of the concatenated code). The DFR of the concatenated code using a
+Reed-Solomon code [ne, ke, de]F256 as the external code and a Reed-Muller code as the internal
+code can be upper bounded by:
+38
+
+=====PAGE 39=====
+ne
+X
+l=δe+1
+ne
+l
+
+pl
+i(1 −pi)ne−l
+where de = 2δe + 1 and pi is defined as in proposition 6.1.3.
+Simulation results. In Figure 4, we tested the DFR of the concatenated codes against
+both symmetric binary channels and HQC vectors, and compared the results with the
+theoretical value obtained using Proposition 6.1.3 and Theorem 6.1.
+-22
+-20
+-18
+-16
+-14
+-12
+-10
+-8
+-6
+-4
+-2
+ 32
+ 32.5
+ 33
+ 33.5
+ 34
+ 34.5
+ 35
+ 35.5
+ 36
+DFR
+NRS
+DFR comparison
+Theoretical
+Binomial
+HQC
+Figure 4: Comparison between the DFR from Theorem 6.1 (Theoretical) and the actual
+DFR of concatenated codes against approximation by a binary symmetric channel (Bino-
+mial) and against HQC error vectors (HQC). Parameters simulated are derived from those
+of HQC for NIST-1 security level: ω = 66, ωr = ωe = 75, a [384, 8, 192] duplicated Reed-
+Muller code for internal code and a [NRS, 16] Reed-Solomon code for external code.
+39
+
+=====PAGE 40=====
+6.2
+Security proof
+Hereafter, we present the approach used to prove the security of HQC. We provide an
+IND-CPA security proof for HQC-PKE in Section 6.2.1. Then, we prove the IND-CCA2 secu-
+rity of HQC-KEM using the salted Fujisaki-Okamoto transformation with implicit rejection
+(SFO̸⊥) [14, 22, 18] in Section 6.2.2. For the sake of simplicity, we assume in Sections 6.2.1
+and 6.2.2 that the vectors r1, r2 and e are generated using SampleFixedWeightVect$ instead
+of SampleFixedWeightVect (see Section 3.2). Finally, we show in Section 6.2.3 that replacing
+SampleFixedWeightVect$ with SampleFixedWeightVect has a minimal impact on the validity
+of the aforementioned security proofs.
+6.2.1
+IND-CPA security
+In this section we prove the IND-CPA security of the HQC-PKE scheme. Let b1 = h(1) mod
+2, b2 = ω +b1 ×ω mod 2, b3 = ωr +b1 ×ωr mod 2 = ωe +b1 ×ωe mod 2 and ℓ= n−n1 ×n2.
+Theorem 6.2. For any IND-CPA adversary A against the HQC-PKE scheme, there exists
+adversaries B1 and B2 such that:
+AdvIND-CPA
+HQC-PKE(A) ≤Adv2-DQCSD-P(B1) + Adv3-DQCSD-PT(B2).
+(8)
+Proof of Theorem 6.2. We build a sequence of games transitioning from the PKE.IND-CPA
+game to a similar game in which the distribution of cPKE is independent of b and show that
+if the adversary manages to distinguish one from the other, then one can build a simula-
+tor breaking the 2-DQCSD-P assumption or the 3-DQCSD-PT assumption. For simplicity,
+we introduce a small variation in both distinguishers regarding the encryption key ekPKE.
+Instead of using as input the seed seedPKE.ek used to generate h and subsequently H, we
+directly use the matrix H as input of the distinguishers.
+Game1: This game is the PKE.IND-CPA game following the protocol.
+Game1(λ)
+1.
+seedPKE ←$ B|seed|
+2.
+(ekPKE, dkPKE) ←HQC-PKE.Keygen(seedPKE)
+3.
+(m0, m1) ←ACHOOSE(ekPKE)
+4.
+b ←$ {0, 1}
+5.
+θ ←$ B|θ|, cPKE ←HQC-PKE.Encrypt(ekPKE, mb, θ)
+6.
+b′ ←AGUESS(ekPKE, cPKE)
+7.
+return (b = b′)
+Game2: In this game, we forget the decryption key dkPKE, take s at random with parity b2
+and then follow the protocol as in Game1 for the remaining steps:
+40
+
+=====PAGE 41=====
+Game2(λ)
+1.
+seedPKE ←$ B|seed|
+2.
+1.
+(ekPKE, dkPKE) ←HQC-PKE.Keygen(seedPKE)
+2.
+s ←$ Fn
+2,b2
+3.
+(ekPKE, dkPKE) ←((seedPKE.ek, s), 0)
+3.
+(m0, m1) ←ACHOOSE(ekPKE)
+4.
+b ←$ {0, 1}
+5.
+θ ←$ B|θ|, cPKE ←HQC-PKE.Encrypt(ekPKE, mb, θ)
+6.
+b′ ←AGUESS(ekPKE, cPKE)
+7.
+return (b = b′)
+Suppose that an adversary B1 is able to distinguish Game1 from Game2 with advantage ϵ
+for some security parameter λ. Then one can build an algorithm Dλ
+2-DQCSD-P solving the
+2-DQCSD-P problem with the same advantage ϵ.
+Dλ
+2-DQCSD-P (H, s)
+1.
+Compute h from H = (In rot(h))
+2.
+Compute ekPKE ←(h, s)
+3.
+Get (m0, m1) ←B1,CHOOSE(ekPKE)
+4.
+Sample b ←$ {0, 1} and θ ←$ B|θ|
+5.
+Compute cPKE ←HQC-PKE.Encrypt(ekPKE, mb, θ)
+6.
+Get b′ ←B1,GUESS(ekPKE, cPKE)
+7.
+If b′ = Game1, output 2-QCSD-P(n, ω, b1, b2) distribution
+8.
+If b′ = Game2, output U(Fn×2n
+2,b1
+× Fn
+2,b2) distribution
+Note that ekPKE is sampled from the 2-QCSD-P(n, ω, b1, b2) distribution in Game1 while it is
+sampled from the uniform distribution over Fn×2n
+2,b1
+× Fn
+2,b2 in Game2 therefore the advantage
+of Dλ
+2-DQCSD-P is the same as the advantage of B1.
+Game3: In this game, instead of picking correctly weighted r1, r2, e, the simulator picks
+random vectors in Fn
+2 thus generating a random ciphertext with expected parity.
+41
+
+=====PAGE 42=====
+Game3(λ)
+1.
+seedPKE ←$ B|seed|
+2.
+1.
+(ekPKE, dkPKE) ←HQC-PKE.Keygen(seedPKE)
+2.
+s ←$ Fn
+2,b2
+3.
+(ekPKE, dkPKE) ←((seedPKE.ek, s), 0)
+3.
+(m0, m1) ←ACHOOSE(ekPKE)
+4.
+b ←$ {0, 1}
+5.
+1.
+e ←$ Fn
+2, (r1, r2) ←$ Fn
+2,ωr × Fn
+2,ωr
+2.
+u ←r1 + hr2
+3.
+v ←C.Encode(mb) + Truncate(s · r2 + e, ℓ)
+4.
+cPKE ←(u, v)
+6.
+b′ ←AGUESS(ekPKE, cPKE)
+7.
+return (b = b′)
+Suppose that an adversary B2 is able to distinguish Game2 from Game3 with advantage ϵ
+for some security parameter λ. Then one can build an algorithm Dλ
+3-DQCSD-PT solving the
+3-DQCSD-PT problem with the same advantage ϵ.
+Dλ
+3-DQCSD-PT(H, (u, v))
+1.
+Compute h and s from H =
+In
+0
+rot(h)
+0
+In
+rot(s)
+
+2.
+Compute ekPKE ←(h, s)
+3.
+Get (m0, m1) ←B2,CHOOSE(ekPKE)
+4.
+Sample b ←$ {0, 1}
+5.
+Compute cPKE ←(u, C.Encode(mb) + v)
+6.
+Get b′ ←B2,GUESS(ekPKE, cPKE)
+7.
+If b′ = Game2, output 3-QCSD-PT (n, ω, b1, b2, b3, ℓ) distribution
+8.
+If b′ = Game3, output U(F2n×3n
+2,b1,b2 × (Fn
+2,b3 × Fn−ℓ
+2
+)) distribution
+As we have:
+ u, v−C.Encode(mb)
+⊤=
+ (In 0 rot(h))·(r1 e r2)⊤, Truncate((0 In rot(s))·(r1 e r2)⊤, ℓ)
+
+the difference between Game2 and Game3 is that in the former
+In
+0
+rot(h)
+0
+In
+rot(s)
+
+, (u, v −C.Encode(mb))
+
+follows the 3-QCSD-PT (n, ω, b1, b2, b3, ℓ) distribution while in the latter it follows a uniform
+distribution with parity over F2n×3n
+2,b1,b2 × (Fn
+2,b3 × Fn−ℓ
+2
+). Hence, the advantage of Dλ
+3-DQCSD-PT
+is the same as the advantage of B2.
+42
+
+=====PAGE 43=====
+One can see that in Game3, the distribution of cPKE is independent of b as u is computed
+independently of b and v is masked by the random vector s·r2+e hence Pr[Game3 ⇒1] = 1
+2.
+As a result, the advantage of any IND-CPA adversary A against the HQC-PKE scheme is
+bounded by:
+AdvIND-CPA
+HQC-PKE(A) ≤Adv2-DQCSD-P(B1) + Adv3-DQCSD-PT(B2).
+6.2.2
+IND-CCA2 security
+HQC-KEM is obtained by applying the salted Fujisaki–Okamoto (SFO̸⊥) [14, 22, 18] trans-
+form to HQC-PKE. In this section, we discuss the IND-CCA2 security of HQC-KEM.
+Definition 6.2.1 (δ-correct PKE [22]). A PKE = (PKE.Keygen, PKE.Encrypt, PKE.Decrypt)
+is δ-correct if:
+E
+
+max
+m∈M Pr [PKE.Decrypt(dkPKE, cPKE)̸ = m | cPKE ←PKE.Encrypt(ekPKE, m)]
+
+≤δ.
+(9)
+where the expectation is taken over (ekPKE, dkPKE) ←PKE.Keygen(param).
+Definition 6.2.2 (δ-correct KEM [22]). A KEM = (KEM.Keygen, KEM.Encaps, KEM.Decaps)
+is δ-correct if:
+Pr =
+
+KEM.Decaps(dkKEM, cKEM)̸ = K
+
+(ekKEM, dkKEM) ←KEM.Keygen();
+(K, cKEM) ←KEM.Encaps(ekKEM)
+
+≤δ.
+(10)
+In HQC-PKE the failure to decrypt a ciphertext cPKE occurs if and only if
+ω (x · r2 −r1 · y + e) > ∆.
+Note that the aforementioned equation does not depend on the message m. Therefore, the
+probability in Equation 9 simplifies to
+Pr [PKE.Decrypt(dkPKE, cPKE)̸ = m | cPKE ←PKE.Encrypt(ekPKE, m)] ≤δ.
+(11)
+This probability is equivalent to the probability that is analyzed in section 6.1 namely:
+Pr
+
+
+ω (x · r2 −r1 · y + e) > ∆
+
+ctxPKE.dk ←XOF.Init(seedPKE.dk);
+(ctxPKE.dk, y) ←SampleFixedWeightVect$(ctxPKE.dk, Rω);
+(ctxPKE.dk, x) ←SampleFixedWeightVect$(ctxPKE.dk, Rω);
+ctxθ ←XOF.Init(θ);
+(ctxθ, r2) ←SampleFixedWeightVect$(ctxθ, Rωr);
+(ctxθ, e) ←SampleFixedWeightVect$(ctxθ, Rωe);
+(ctxθ, r1) ←SampleFixedWeightVect$(ctxθ, Rωr)
+
+
+≤δ.
+(12)
+The next theorem shows that HQC-KEM achieves IND-CCA2 security in the random-
+oracle model, with its concrete advantage bound obtained by combining the estimates of
+Theorem 13 from [18] and Theorem 6.2.
+43
+
+=====PAGE 44=====
+Theorem 6.3. If HQC-PKE is δ correct, for any IND-CCA2 adversary A against the
+HQC-KEM scheme issuing at most qRO queries to G and qD queries to the HQC-KEM.Decaps
+oracle, there exists adversaries B1 and B2 such that:
+AdvIND-CCA2
+HQC-KEM(A) ≤
+1
+2|k| · 2|salt| + 3qRO
+2|k| + (qRO + qD) · δ
++ 2 · (Adv2-DQCSD-P(B1) + Adv3-DQCSD-PT(B2)) .
+(13)
+6.2.3
+Security proof with non uniform randomness sampling
+In this section, we show that replacing the uniform sampling from SampleFixedWeightVect$
+with the biased distribution from SampleFixedWeightVect has a minimal impact on the
+IND-CCA2 security of HQC-KEM following the approach described in [36].
+Proposition 6.2.1 ([36]). When x ←randbits(B, prng) behaves as a random oracle which
+yields uniformly distributed integers 0 ≤x < 2B for any integer B > 0, one has:
+w−1
+Y
+i=0
+
+1 −ni
+2B
+
+= τ ω
+min ≤Pr [e | e ←SampleFixedWeightVect(ctxe, Rω)]
+Pr [e | e ←SampleFixedWeightVect$(ctxe, Rω)] ≤τ ω
+max =
+w−1
+Y
+i=0
+
+1 + (n −i) −ni
+2B
+
+(14)
+where ni = 2B mod (n −i) for all i, 0 ≤i < w.
+For HQC-KEM, (τ ω
+min, τ ω
+max) and (τ ωr
+min, τ ωr
+max) are very close to 1 as shown in Table 12.
+Security
+n
+w
+τ ω
+min
+τ ω
+max
+ωr = ωe
+τ ωr
+min
+τ ωr
+max
+NIST-1
+17,669
+66
+0.99987
+1.00014
+75
+0.99985
+1.00015
+NIST-3
+35,851
+100
+0.99958
+1.00041
+114
+0.99952
+1.00047
+NIST-5
+57,637
+131
+0.99913
+1.00089
+149
+0.99901
+1.00101
+Table 12:
+Bias between the uniform distribution and the output of Algorithm
+SampleFixedWeightVect (using B = 32) for the vectors of weight ω and ωr = ωe.
+The following lemma (Equation 5 from [36]) shows that the advantage of any adversary
+when a vector e of weight w is sampled following Algorithm SampleFixedWeightVect instead
+of the uniform distribution cannot increase by a factor larger than τ ω
+max.
+Lemma 6.4. For any real-valued random variable V : Rω →R, one has:
+X
+e∈Rω
+Pr [e | e ←SampleFixedWeightVect(ctxe, Rω)] V (e) ≤τ ω
+max ·
+X
+e∈Rω
+Pr [e | e ←SampleFixedWeightVect$(ctxe, Rω)] V (e).
+Impact of the security proof. Following [36], we explain how to modify the Equation 13
+to take into account the non uniform randomness sampling:
+44
+
+=====PAGE 45=====
+• The first two terms
+1
+2|k|·2|salt| and 3qRO
+2|k| remain unchanged since they are independent
+of the output of the sampler ;
+• The third term (qRO + qD) · δ is related to the δ-correctness of the scheme. When
+(x, y) and (r1, r2, e) are sampled using SampleFixedWeightVect rather than the uniform
+distribution, δ must be such that:
+Pr
+
+
+ω (x · r2 −r1 · y + e) > ∆
+
+ctxPKE.dk ←XOF.Init(seedPKE.dk);
+(ctxPKE.dk, y) ←SampleFixedWeightVect$(ctxPKE.dk, Rω);
+(ctxPKE.dk, x) ←SampleFixedWeightVect$(ctxPKE.dk, Rω);
+ctxθ ←XOF.Init(θ);
+(ctxθ, r2) ←SampleFixedWeightVect(ctxθ, Rωr);
+(ctxθ, e) ←SampleFixedWeightVect(ctxθ, Rωe);
+(ctxθ, r1) ←SampleFixedWeightVect(ctxθ, Rωr)
+
+
+≤δ.
+Using Lemma 6.4, the above probability increases by at most (τ ωr
+max)3 ;
+• The fourth term 2 · (Adv2-DQCSD-P(B1) + Adv3-DQCSD-PT(B2)) must be adjusted to ac-
+count for a slight change in the sequence of games. One can add a game Game0 where
+the small Hamming weight vectors are sampled according to the biased distribution
+rather than uniformly at random before resuming with Game1. Using Lemma 6.4, the
+advantage related to this term increases by a factor at most (τ ωr
+max)3.
+6.3
+Known attacks
+Attacks against Syndrome Decoding. The practical complexity of the SD problem for
+the Hamming metric has been widely studied for more than 50 years. Most efficient attacks
+are based on Information Set Decoding, a technique first introduced by Prange in 1962 [33]
+and improved later by Stern [37], then Dumer [12]. Recent works [29, 5, 30] suggest a
+complexity of order 2cω(1+negl(1)), for some constant c. A particular work focusing on the
+regime ω = negl(n) confirms this formula, with a close dependence between c and the rate
+k/n of the code being used [11].
+Specific structural attacks.
+Quasi-cyclic codes have a special structure which may
+potentially open the door to specific structural attacks. A first generic attack is the DOOM
+attack [35] which because of cyclicity implies a gain of O(√n) (when the gain is in O(n) for
+MDPC codes, since the code is generated by a small weight vector basis). It is also possible
+to consider attacks on the form of the polynomial generating the cyclic structure. Such
+attacks have been studied in [21, 27, 35], and are especially efficient when the polynomial
+xn −1 has many low degree factors. These attacks become inefficient as soon as xn −1 has
+only two irreducible factors of the form (x −1) and xn−1 + xn−2 + ... + x + 1, which is the
+case when n is prime and q generates the multiplicative group (Z/nZ)∗. Such numbers are
+known up to very large values. We consider such primitive n for our parameters.
+Security of the 2-DQCSD-P and 3-DQCSD-PT problems. Concerning the security of
+the 2-DQCSD-P problem, there is one security bit lost in the reduction to the 2-DQCSD
+45
+
+=====PAGE 46=====
+problem. Regarding the security of the 3-DQCSD-PT problem, whenever the number of
+truncated positions is very small compared to the block length n, the impact on the security
+is negligible with respect to the 3-DQCSD problem since the best attack is the ISD attack.
+Moreover since the truncation breaks the quasi-cyclicity, it also weakens the advantage of
+quasi-cyclicity for the attacker.
+Choice of parameters.
+We proposed different sets of parameters in Section 4 that fit
+security levels 1, 3 and 5, as defined by NIST. The quantum-safe security is obtained by
+dividing the security bits by two (taking the square root of the complexity) [8]. Best known
+attacks include the works from [10, 9, 13, 29, 5, 30] and for quantum attacks, the work
+of [8]. In the setting ω = O (√n), best known attacks have a complexity in 2−t ln(1−R)(1+o(1))
+where t = O(ω) and R is the rate of the code [11]. In our configuration, we have t = 2ω
+and R = 1/2 for the reduction to the 2-DQCSD-P problem, and t = 3ωr and R = 1/3
+for the 3-DQCSD-PT problem. By taking into account the DOOM attack [35], and also
+the fact that we consider balanced vectors (x, y) and (r1, e, r2) for the attack (which costs
+only a very small factor, since random words have a good probability to be balanced on
+each block), we need to divide this complexity by approximately √n (up to polylog factor).
+The term o(1) is respectively log
+ n
+ω
+2/
+ 2n
+2ω
+
+and log
+  n
+ωr
+3/
+  3n
+3ωr
+
+for the 2-DQCSD-P and
+3-DQCSD-PT problems.
+46
+
+=====PAGE 47=====
+7
+Advantages and Limitations
+7.1
+Advantages
+The HQC scheme features several advantages:
+• Immunity against attacks aiming at recovering the hidden structure of the code being
+used contrarily to many code-based cryptosystems;
+• A security reduction to a well-understood problem on coding theory (the Quasi-Cyclic
+Syndrome Decoding problem) along with a precise estimate of its decoding failure rate;
+• Efficient implementations based on classical decoding algorithms;
+• Reasonably small ciphertext and key sizes.
+7.2
+Limitations
+The HQC scheme has also some limitations:
+• HQC-PKE has a low encryption rate hence encrypting large plaintexts require to in-
+crease the parameters;
+• In contrast with lattices and the Ring Learning With Errors problem, code-based
+cryptography does not benefit from search to decision reduction for structured codes;
+• In comparison with some lattice-based KEM such as ML-KEM, HQC features larger
+ciphertext and key sizes as well as less efficient implementations.
+47
+
+=====PAGE 48=====
+References
+[1] Carlos Aguilar-Melchor, Olivier Blazy, Jean-Christophe Deneuville, Philippe Gaborit,
+and Gilles Zémor. Efficient encryption from random quasi-cyclic codes. IEEE Trans-
+actions on Information Theory, 64(5):3927–3943, 2018.
+[2] Francesco Antognazza, Alessandro Barenghi, Gerardo Pelosi, and Ruggero Susella. A
+High Efficiency Hardware Design for the Post-Quantum KEM HQC. In 2024 IEEE
+International Symposium on Hardware Oriented Security and Trust (HOST), pages
+431–441. IEEE, 2024.
+[3] Benny Applebaum, Yuval Ishai, and Eyal Kushilevitz. Cryptography with constant
+input locality. In Alfred Menezes, editor, CRYPTO 2007, volume 4622 of LNCS, pages
+92–110. Springer, Berlin, Heidelberg, August 2007.
+[4] Nicolas Aragon, Philippe Gaborit, and Gilles Zémor. HQC-RMRS, an instantiation of
+the HQC encryption framework with a more efficient auxiliary error-correcting code.
+https://arxiv.org/abs/2005.10741.
+[5] Anja Becker, Antoine Joux, Alexander May, and Alexander Meurer. Decoding random
+binary linear codes in 2n/20: How 1 + 1 = 0 improves information set decoding. In
+David Pointcheval and Thomas Johansson, editors, EUROCRYPT 2012, volume 7237
+of LNCS, pages 520–536. Springer, Berlin, Heidelberg, April 2012.
+[6] Elwyn Berlekamp. Algebraic coding theory. World Scientific, 1968.
+[7] Elwyn R Berlekamp, Robert J McEliece, and Henk CA van Tilborg.
+On the in-
+herent intractability of certain coding problems.
+IEEE Transactions on Informa-
+tion Theory, 24(3):384–386, 1978. http://authors.library.caltech.edu/5607/1/
+BERieeetit78.pdf.
+[8] Daniel J Bernstein. Grover vs. McEliece. In Post-Quantum Cryptography, pages 73–80.
+Springer, 2010. https://cr.yp.to/codes/grovercode-20091123.pdf.
+[9] Daniel J Bernstein, Tanja Lange, and Christiane Peters. Attacking and defending the
+McEliece cryptosystem. In Post-Quantum Cryptography, pages 31–46. Springer, 2008.
+https://cr.yp.to/codes/mceliece-20080807.pdf.
+[10] Anne Canteaut and Florent Chabaud. A new algorithm for finding minimum weight
+words in a linear code: application to McEliece cryptosystem and to narrow-sense BCH
+codes of length 511. IEEE Transactions on Information Theory, 44(1):367–378, 1998.
+http://ieeexplore.ieee.org/document/651067/.
+[11] Rodolfo Canto Torres and Nicolas Sendrier. Analysis of information set decoding for a
+sub-linear error weight. In Tsuyoshi Takagi, editor, Post-Quantum Cryptography - 7th
+48
+
+=====PAGE 49=====
+International Workshop, PQCrypto 2016, Fukuoka, Japan, February 24-26, 2016, Pro-
+ceedings, volume 9606 of Lecture Notes in Computer Science, pages 144–161. Springer,
+2016. https://hal.inria.fr/hal-01244886.
+[12] Ilya
+Dumer.
+On
+minimum
+distance
+decoding
+of
+linear
+codes.
+In
+Proc.
+5th Joint Soviet-Swedish Int. Workshop Inform. Theory,
+pages
+50–52,
+1991.
+https://www.researchgate.net/publication/296573348_On_minimum_distance_
+decoding_of_linear_codes.
+[13] Matthieu Finiasz and Nicolas Sendrier. Security bounds for the design of code-based
+cryptosystems. In Mitsuru Matsui, editor, ASIACRYPT 2009, volume 5912 of LNCS,
+pages 88–105. Springer, Berlin, Heidelberg, December 2009.
+[14] Eiichiro Fujisaki and Tatsuaki Okamoto. Secure integration of asymmetric and sym-
+metric encryption schemes. In Michael J. Wiener, editor, CRYPTO’99, volume 1666
+of LNCS, pages 537–554. Springer, Berlin, Heidelberg, August 1999.
+[15] Philippe Gaborit. Shorter keys for code based cryptography. In Proceedings of the
+2005 International Workshop on Coding and Cryptography (WCC 2005), pages 81–91,
+2005. http://www.unilim.fr/pages_perso/philippe.gaborit/shortIC.ps.
+[16] Philippe Gaborit and Marc Girault. Lightweight code-based identification and sig-
+nature. In 2007 IEEE International Symposium on Information Theory, pages 191–
+195. IEEE, 2007. https://www.unilim.fr/pages_perso/philippe.gaborit/isit_
+short_rev.pdf.
+[17] Shuhong Gao and Todd Mateer. Additive fast Fourier transforms over finite fields.
+IEEE Transactions on Information Theory, 56(12):6265–6272, 2010.
+[18] Lewis Glabush, Kathrin Hövelmanns, and Douglas Stebila. Tight Multi-challenge Secu-
+rity Reductions for Key Encapsulation Mechanisms. Cryptology ePrint Archive, Paper
+2025/343, 2025. https://eprint.iacr.org/2025/343.
+[19] Danilo Gligoroski.
+PQC forum, official comment on BIKE submission.
+NIST
+PQC forum, December 2017.
+https://csrc.nist.gov/CSRC/media/Projects/
+Post-Quantum-Cryptography/documents/round-1/official-comments/
+BIKE-official-comment.pdf.
+[20] Qian Guo, Clemens Hlauschek, Thomas Johansson, Norman Lahr, Alexander Nilsson,
+and Robin Leander Schröder. Don’t reject this: Key-recovery timing attacks due to
+rejection-sampling in HQC and BIKE. IACR TCHES, 2022(3):223–263, 2022.
+[21] Qian Guo, Thomas Johansson, and Carl Löndahl.
+A new algorithm for solving
+Ring-LPN with a reducible polynomial. IEEE Transactions on Information Theory,
+61(11):6204–6212, 2015. https://arxiv.org/abs/1409.0472.
+49
+
+=====PAGE 50=====
+[22] Dennis Hofheinz, Kathrin Hövelmanns, and Eike Kiltz. A modular analysis of the
+Fujisaki-Okamoto transformation. In Theory of Cryptography Conference, pages 341–
+371. Springer, 2017.
+[23] W
+Cary
+Huffman
+and
+Vera
+Pless.
+Fundamentals
+of
+error-correcting
+codes.
+Cambridge
+university
+press,
+2010.
+https://www.amazon.fr/
+Fundamentals-Error-Correcting-Codes-Cary-Huffman/dp/0521131707.
+[24] Shu Lin and Daniel J Costello. Error control coding, volume 2. Prentice Hall Englewood
+Cliffs, 2004.
+[25] Zhen Liu and Yanbin Pan. PQC forum, official comment on HQC submission. NIST
+PQC
+forum,
+January
+2018.
+https://csrc.nist.gov/CSRC/media/Projects/
+Post-Quantum-Cryptography/documents/round-1/official-comments/
+HQC-official-comment.pdf.
+[26] Zhen Liu, Yanbin Pan, and Tianyuan Xie. Breaking the hardness assumption and IND-
+CPA security of HQC submitted to NIST PQC project. In International Conference
+on Cryptology and Network Security, pages 344–356. Springer, 2018.
+[27] Carl Löndahl,
+Thomas Johansson,
+Masoumeh Koochak Shooshtari,
+Mahmoud
+Ahmadian-Attari, and Mohammad Reza Aref. Squaring attacks on McEliece public-
+key cryptosystems using quasi-cyclic codes of even dimension.
+Designs, Codes
+and Cryptography, 80(2):359–377, 2016. https://link.springer.com/article/10.
+1007/s10623-015-0099-x.
+[28] Florence Jessie MacWilliams and Neil James Alexander Sloane. The theory of error-
+correcting codes, volume 16. Elsevier, 1977.
+[29] Alexander May, Alexander Meurer, and Enrico Thomae.
+Decoding random linear
+codes in ˜O(20.054n). In Asiacrypt, volume 7073, pages 107–124. Springer, 2011. https:
+//link.springer.com/chapter/10.1007/978-3-642-25385-0_6.
+[30] Alexander May and Ilya Ozerov. On computing nearest neighbors with applications
+to decoding of binary linear codes. In EUROCRYPT (1), pages 203–228, 2015. http:
+//www.cits.rub.de/imperia/md/content/may/paper/codes.pdf.
+[31] Rafael Misoczki, Jean-Pierre Tillich, Nicolas Sendrier, and Paulo SLM Barreto.
+MDPC-McEliece: New McEliece variants from moderate density parity-check codes.
+In Information Theory Proceedings (ISIT), 2013 IEEE International Symposium on,
+pages 2069–2073. IEEE, 2013. https://eprint.iacr.org/2012/409.pdf.
+[32] Ray Perlner. Security strength categories for Code Based Crypto. Public comment on
+NIST pqc-forum mailing list, 2021.
+50
+
+=====PAGE 51=====
+[33] Eugene Prange. The use of information sets in decoding cyclic codes. IRE Transactions
+on Information Theory, 8(5):5–9, 1962.
+http://ieeexplore.ieee.org/document/
+1057777/.
+[34] Markku-Juhani O. Saarinen. IND-CCA2 issue in HQC. Public comment on NIST
+pqc-forum mailing list, 2025.
+[35] Nicolas Sendrier. Decoding one out of many. In International Workshop on Post-
+Quantum Cryptography, pages 51–67. Springer, 2011.
+https://eprint.iacr.org/
+2011/367.pdf.
+[36] Nicolas Sendrier. Secure Sampling of Constant Weight Words – Application to BIKE.
+Cryptology ePrint Archive, Report 2021/1631, 2021.
+https://eprint.iacr.org/
+2021/1631.
+[37] Jacques Stern.
+A method for finding codewords of small weight.
+In International
+Colloquium on Coding Theory and Applications, pages 106–113. Springer, 1988. https:
+//link.springer.com/chapter/10.1007/BFb0019850.
+51

@@ -1,0 +1,340 @@
+<!DOCTYPE HTML PUBLIC "-//SoftQuad Software//DTD HoTMetaL PRO 5.0::19981217::extensions to HTML 4.0//EN" "hmpro5.dtd"> 
+ 
+<HTML>
+ 
+<HEAD>
+<META NAME="viewport" CONTENT="width=device-width, initial-scale=1.0"> 
+<TITLE> CRC Zoo Notes</TITLE>
+</HEAD>
+
+<BODY>
+<H1 ALIGN="CENTER">CRC Polynomial Zoo</H1>
+<P ALIGN="CENTER"><B>Philip Koopman, Carnegie Mellon University</B></P>
+<H3><A HREF="index.html">Best CRCs</A> | <A HREF="details.html">CRC
+Selection</A> | CRC Zoo | <A HREF="http://checksumcrc.blogspot.com/">Checksum
+and CRC Blog</A><BR>
+<BR>
+Select # Bits in CRC below (see also
+<A HREF="http://users.ece.cmu.edu/~koopman/crc/notes.html">NOTES PAGE</A>):<BR>
+<A HREF="crc3.html">3</A>,&nbsp; <A HREF="crc4.html">4</A>,&nbsp;
+<A HREF="crc5.html">5</A>,&nbsp; <A HREF="crc6.html">6</A>,&nbsp;
+<A HREF="crc7.html">7</A>,&nbsp; <A HREF="crc8.html">8</A>,&nbsp;
+<A HREF="crc9.html">9</A>,&nbsp; <A HREF="crc10.html"> 10</A>,&nbsp;
+<A HREF="crc11.html">11</A>,&nbsp; <A HREF="crc12.html">12</A>,&nbsp;
+<A HREF="crc13.html">13</A>,&nbsp; <A HREF="crc14.html">14</A>,&nbsp;
+<A HREF="crc15.html">15</A>, <BR>
+<A HREF="crc16.html">16</A>,&nbsp; <A HREF="crc17.html">17</A>,&nbsp;
+<A HREF="crc18.html">18</A>,&nbsp; <A HREF="crc19.html">19</A>,&nbsp;
+<A HREF="crc20.html">20</A>,&nbsp; <A HREF="crc21.html">21</A>,&nbsp;
+<A HREF="crc22.html">22</A>,&nbsp; <A HREF="crc23.html">23</A>,&nbsp;
+<A HREF="crc24.html">24</A>,&nbsp; <A HREF="crc25.html">25</A>,&nbsp;
+<A HREF="crc26.html">26</A>,&nbsp; <A HREF="crc27.html">27</A>,&nbsp;
+<A HREF="crc28.html">28</A>,&nbsp; <A HREF="crc29.html">29</A>,&nbsp;
+<A HREF="crc30.html">30</A>,&nbsp; <A HREF="crc31.html">31</A>,<BR>
+<A HREF="crc32.html">32</A>,&nbsp; <A HREF="crc36.html">33-36</A>,&nbsp;
+<A HREF="crc40.html">37-40</A>,&nbsp; <A HREF="crc44.html">41-44</A>,&nbsp;
+<A HREF="crc48.html">45-48</A>,&nbsp; <A HREF="crc52.html">49-52</A>,&nbsp;
+<A HREF="crc56.html">53-56</A>,&nbsp; <A HREF="crc60.html">57-60</A>,&nbsp;
+<A HREF="crc63.html">61-63</A>,&nbsp; <A HREF="crc64.html">64</A></H3>
+<UL>
+<LI><A HREF="6sub8.html">Good /6sub8 Polynomials</A></LI>
+<LI><A HREF="hd3.html">Good HD=3 Polynomials</A></LI>
+<LI><A HREF="hd4.html">Good HD=4 Polynomials</A></LI>
+<LI><A HREF="hd5.html">Good HD=5 Polynomials</A></LI>
+<LI><A HREF="hd6.html">Good HD=6 Polynomials</A></LI>
+<LI><B>Notation</B> and copyright statement</LI>
+</UL>
+<HR>
+<H2><U><FONT COLOR="#FF0000"><A NAME="notes">NOTES SECTION:</A></FONT></U></H2>
+<H3><B>Interpret the table entries as follows:</B></H3>
+<UL>
+<LI><TT>(<A HREF="c08/0xea.txt">0xea</A>; 0x1d5) &lt;=&gt; (0xab; 0x157)
+<A HREF="c08/0xea_len.txt">{85,85,2,2}</A> [@177:proper,4.2x] |
+<A HREF="c08/0xea.gold">gold</A> | (*o) CRC-8</TT><UL>
+<LI>&quot;0xea&quot; is an implicit +1 value of the polynomial, followed by the
+long version (explicit +1). The notation is admittedly slightly quirky, but has
+the advantage that machine words don't overflow on the polynomial value, and
+matches with my publications, so I decided not to change it. The link points to
+Hamming Weights for a variety of lengths, usually starting from length of 1 bit
+through 64KBytes. At longer lengths weights are given for every 8 bits or every
+32 bits. If you have an intermediate length you can always just use the next
+higher table entry as a conservative approximation. See notes below on how to
+interpret the file format.</LI>
+<LI>0x1d5 is the explicit +1 notation of the same polynomial. In this
+representation of the same polynomial value, each &quot;1&quot; bit corresponds
+to a term in the polynomial, including the +1 at the end.</LI>
+<LI>0xab is the bit-reversed polynomial in implicit +1 notation. (<A
+HREF="http://en.wikipedia.org/wiki/Cyclic_redundancy_check">Wikipedia calls
+this &quot;reversed reciprocal&quot; notation</A>; and &quot;<A
+HREF="https://en.wikipedia.org/wiki/Mathematics_of_cyclic_redundancy_checks#Polynomial_representations">Koopman
+notation</A>&quot; and I guess it is my fault for creating a divergent
+notation, but I did the original work before there was even a Wikipedia article
+on this, so that's just how things go. I appreciate that folks have
+accommodated this notation.) Bit-reversed polynomials have the same error
+detection characteristics in terms of having the same Hamming Weights. Thus,
+the data and corresponding bit flip error detection capability for 0xea is
+identical to the data for 0xab. So I only list one of the two alternative
+values in my tables. Usually it is the lexicographically smaller one, but there
+are a few exceptions to match widely published reversed values. </LI>
+<LI>0x157 is the explicit +1 notation 0xab of the bit-reversed polynomial.</LI>
+<LI>&quot;{85,85,2,2}&quot; gives the dataword lengths for Hamming Distance
+(HD) values <B><U>starting with HD=3</U></B>. Polynomial 0xEA has HD=6 at
+dataword length 1-2, no lengths for HD=5, HD=4 at dataword lengths 3-85, and
+HD=2 at 86 bits and above. The repeating numbers in the list mean that this
+polynomial skips directly from HD=2 to HD=4 to HD=6. Clicking on the link gives
+machine-generated output to confirm the lengths.<UL>
+<LI>A notation of &quot;{}&quot; with no numbers within the braces means HD=2
+at all lengths. HD=2 lengths are always infinite, and so are always left out of
+this list.</LI>
+<LI>A boldfaced number means this has been confirmed to be the longest length
+dataword at that HD for the given CRC size for all possible polynomials, not
+just the ones listed. Sometimes the bolding does not show up when rendered, but
+that is an html/browser issue.</LI>
+<LI>The notation &quot;<FONT COLOR="#FF0000">?</FONT>&quot; means that this HW
+is still scheduled for computation and not yet available for posting.</LI>
+<LI>Note that while computations were automated, web page construction was
+semi-automated, and in particular annotating the name of the polynomial was cut
+and paste, so please always check underlying data files for accuracy.</LI>
+</UL>
+</LI>
+<LI>[@177:proper,4.2x] gives the proper polynomial characteristics for both low
+(up to 50% BER) and high (above 50% BER) bit fault rates.<UL>
+<LI>@177 indicates that these characteristics apply up to and including 177 bit
+data word lengths. Unless otherwise noted, at one greater this length (in this
+case at data word length 178 data bits) there is a vulnerability to high BER
+corruptions, including specifically an all &quot;1&quot; bit data word yields
+and all &quot;1&quot; bit check value, meaning that 100% BER faults are
+undetectable (0% fault detection effectiveness). Other high BERs similarly have
+an elevated rate of undetected faults, in large part because they will by
+chance create an all &quot;1&quot; bit code word due to chance far more often
+than a 50% BER would.</LI>
+<LI>&quot;proper&quot; in the first position after the length indicates that
+all BERs examined showed an undetected fault fraction no worse than
+1/2<SUP>k</SUP>, for BERs up to and including 50%.</LI>
+<LI>&quot;4.2x&quot; in the second position after the length indicates that
+BERs above 50% had a worse case of 4.2/2<SUP>k</SUP> (i.e., 4.2x worse than a
+proper polynomial) maximum for all data word lengths between 1 and the
+indicated data word length (in this case 177). </LI>
+<LI>NOTE: alternate notation [256:proper,4.2x][@1020] would mean: proper up to
+50% up to 256 bit data word; 4.2x worse than the proper limit above 50% up to a
+256 bit data word; and 100% BER faults undetectable at 1021 bit data word, with
+the &quot;properness&quot; of data word lengths between 257 and 1020 not
+evaluated other than to check that there are no 100% BER vulnerabilities up to
+length 1020 and that there is definitely one such vulnerability at length 1021
+bits.</LI>
+</UL>
+</LI>
+<LI>The &quot;gold&quot; entry is an abbreviated set of computations performed
+by brute force computation without optimization as an integrity check. The main
+tables are created by very highly optimized code (if we didn't we'd never get
+done). The gold tables are the data used for regression testing the optimized
+computation and are provided for reference.</LI>
+<LI>The final field, if present, is one or more &quot;nicknames&quot; for the
+polynomial from various sources. See
+<A HREF="http://en.wikipedia.org/wiki/Cyclic_redundancy_check">Wikipedia</A>for
+more formal references. It also includes salient factorization information:<UL>
+<LI>*p - primitive polynomial. This has optimal length for HD=3, and good HD=2
+performance above that length.</LI>
+<LI>*o - odd bit errors detected. This has a factor of (x+1) and detects all
+odd bit errors (implying that even number of bit errors have an elevated
+undetected error rate)</LI>
+<LI>*op - odd bit errors detected plus primitive. This is a primitive
+polynomial times (x+1). It has optimal length for HD=4, and detects all odd bit
+errors.</LI>
+<LI>Other factorizations are sometimes of interest, but are less directly
+coupled to CRC performance. If you want to know the factorization of a
+polynomial you are interested in, we recommend using
+<A HREF="http://www.wolframalpha.com/">Wolfram Alpha</A>, for example enter the
+following to see the factorization over 0xea (with the polynomial found on the
+first line of the Hamming Weight file <A HREF="c08/0xea.txt">0xea</A>):<BR>
+<TT>factor x^8 +x^7 +x^6 +x^4 +x^2 +1 over GF(2)</TT><BR>
+or alternately in open code:<BR>
+<TT><A
+HREF="http://www.wolframalpha.com/input/?i=Factor%5Bx%5E8+%2B+x%5E7+%2B+x%5E6+%2B+x%5E4+%2B+x%5E2+%2B+1,+Modulus+-%3E+2%5D">Factor[x^8
++ x^7 + x^6 + x^4 + x^2 + 1, Modulus -&gt; 2]</A></TT><BR>
+which gives a result of:<BR>
+<TT>(x+1)(x^2+x+1)(x^5+x^4+x^3+x^2+1) (mod 2)</TT><BR>
+(Note that Wolfram could change their interface at any time, so I have not
+attempted to build these factorization links for the data tables.)</LI>
+</UL>
+</LI>
+</UL>
+</LI>
+</UL>
+<H3><B>Interpret the Hamming weight data files as follows:</B></H3>
+<UL>
+<LI><B># 0xea=x^8 +x^7 +x^6 +x^4 +x^2 +1 (0x1d5) &lt;=&gt; (0xab; 0x157)</B> 
+<UL>
+<LI>&quot;#&quot; is a comment indicator so that you can grep to remove
+comments</LI>
+<LI>&quot;0xea&quot; is an implicit +1 value of the polynomial (see above). 
+</LI>
+<LI>&quot;x^8 +x^7 +x^6 +x^4 +x^2 +1&quot; is the explicit polynomial
+representation.</LI>
+<LI>0x1d5 is the explicit +1 notation of the same polynomial (see above).</LI>
+<LI>0xab is the bit-reversed polynomial in implicit +1 notation (see above). 
+</LI>
+<LI>0x157 is the explicit +1 notation 0xab of the bit-reversed polynomial (see
+above).</LI>
+</UL>
+</LI>
+<LI><B>#Length Poly HW(2) HW(3) HW(4) HW(5) HW(6) HW(7) HW(8) ...</B><UL>
+<LI>The &quot;#Length&quot; line is a comment indicating that the data format
+is length of the data word (<B><U>in bits</U></B>), the polynomial (implicit +1
+notation), followed by a list of Hamming Weights starting with HW(2). HW(1) is
+always zero for a CRC, and is omitted. HW(5), for example, is the number of
+undetected 5-bit errors out of all possible 5-bit errors affecting the codeword
+(both corruptions to dataword and the check sequence are considered). The
+number of HWs varies, but always includes at least the first non-zero HW, and
+often additional HWs. When the Hamming Distance changes as the dataword size
+increases, additional HW values are carried for a while to avoid protential
+problems with so called &quot;improper&quot; polynomial situations.</LI>
+</UL>
+</LI>
+<LI><B>88 0xea 3 0 26313</B><UL>
+<LI>This is an actual data entry. Each data file has HW values for many
+different dataword lengths.</LI>
+<LI>88=&gt; the dataword length in bits, corresponding to an 11-byte dataword.
+To be sure, CRC check sequence bits are NOT included in this number. For
+smaller CRCs and dataword lengths values are given for every length, but in
+larger data files entries may only be given for every 8 or 32 bits of dataword
+length for longer lengths</LI>
+<LI>0xea=&gt; each line has the polynomial value to facilitate processing the
+data with scripts</LI>
+<LI>3=&gt; this is the HW(2) value. This means that out of all possible 2-bit
+errors, only 3 are undetected by this CRC for this dataword length.</LI>
+<LI>0=&gt; this is the HW(3) value. All 3-bit errors are detected (zero
+undetected errors).</LI>
+<LI>26313=&gt; this is the HW(4) value. There are 26,313 undetected 4-bit
+errors.</LI>
+<LI>Note that no HW(5) and higher HW values are given. How many HWs are given
+depends on the HD at that dataword length. Be careful with integer size if you
+are processing this data -- many of the HW values exceed 32 bit integer
+capacity. I strongly recommend you use unsigned 64-bit integers when handling
+HW values (which is how it is done in my tools) or you'll get some weird
+results and potentially waste a lot of time tracking down the problem.</LI>
+</UL>
+</LI>
+</UL>
+<H3><B>Interpret the Hamming distance data files as follows:</B></H3>
+<UL>
+<LI><B># 0xea HD=3 len=85 Example: Len=86 {0} (0x80) (Bits=2)</B><UL>
+<LI>This polynomial has HD=3 up to and including dataword length 85.</LI>
+<LI>An example of a codeword that violates HD=3 is as follows:<UL>
+<LI>Length of dataword is 86 (codeword is therefore 86+8=94 bits long). The
+example length is always one bit longer than the maximum HD dataword length
+shown (i.e., 85+1=86). The last line of the per-HD data has a length of NONE,
+providing an example showing that the indicated HD cannot be supported by the
+polynomial at any length.</LI>
+<LI>Bit 0 is set (note that dataword bits are numbered 0..85). This is the
+first bit in the dataword, making it the bit furthest away from the FCS field.
+In other words, this bit has been cycled through a CRC shift register 86 times.
+The examples always have bit 0 set.</LI>
+<LI>The FCS from computing the CRC for this dataword is 0x80. In other words,
+this is the residual CRC computation value after computing the CRC over an 86
+bit data word with all zeros except the first bit (bit 0)</LI>
+<LI>There are two bits set in this codeword (one bit from {0} plus one bit in
+the FCS value of 0x80=two bits), confirming HD=2 for this codeword</LI>
+</UL>
+</LI>
+</UL>
+</LI>
+<LI><B>0xea {85,85,2,2}</B><UL>
+<LI>0xea is the polynomial</LI>
+<LI>{85,85,2,2} is the list of all lengths, and is a summary of the preceding
+lines.</LI>
+</UL>
+</LI>
+</UL>
+<H3><B>Nomenclature:</B> </H3>
+<P><A HREF="http://en.wikipedia.org/wiki/Cyclic_redundancy_check">See Wikipedia
+for citations and sources of most names.</A></P>
+<UL>
+<LI> &quot;CRC-nK/m.v&quot; notation is for polynomials that as far as I know I
+am the first to report as being &quot;good&quot; for a particular purpose. Some
+I have previously published, and some are working results that haven't been in
+a scholarly paper yet. The &quot;n&quot; means &quot;n-bit CRC.&quot; The
+&quot;m&quot; is the smallest &quot;interesting&quot; Hamming Distance for that
+polynomial. Sometimes there is a &quot;.v&quot; if I've published two
+polynomials for that HD with different properties that are still useful.Thus,
+CRC-32K/6.1 is a 32-bit CRC that has good HD=6 performance and is version 1 (as
+opposed another HD=6 polynomial CRC-32K/6.2 that is also good for HD=6 but
+either published separately or has different but desirable secondary HD
+properties). </LI>
+<LI>Similarly, CRC-nF/m.v refers to polynomials from: G. Funk,
+&quot;Determination of best shortened linear codes,&quot; Transactions Letters,
+IEEE Trans. on Comms., 44(1), Jan 1996, pp. 1-6. (Note that in some cases the
+&quot;/m&quot; part of the notation refers to HD performance at shorter than 4
+bits of dataword length, so the data reported above might not appear to match
+the notation.)</LI>
+<LI>&quot;FP-n&quot; is the &quot;First Primitive&quot; polynomial for an n-bit
+CRC, meaning it is the smallest value polynomial that is primitive for that
+size CRC. This polynomial always has the longest possible HD=3 length, and also
+has all its &quot;1&quot; bits down near the bottom, which can make it more
+efficient to compute that polynomials with more randomly distributed 1 bits in
+the polynomial. It is often a poor choice if you care about anything better
+than HD=3, but is a reasonable baseline for comparison with other polynomials.
+The HD=3 length of any primitive polynomial of size n bits is ((2**n)-(n+1)) 
+</LI>
+<LI>&quot;FOP-n&quot; is the &quot;First Odd+Primitive&quot; polynomial for an
+n-bit CRC, meaning it is the lexicographically smallest polynomial that is
+(x+1) times a primitive (n-1)-bit CRC. This corresponds to the smallest n-bit
+CRC that has &quot;(*op)&quot; annotation for factorization. This polynomial
+always has the longest possible HD=4 length, and also has all its &quot;1&quot;
+bits down near the bottom, which can make it more efficient to compute that
+polynomials with more randomly distributed 1 bits in the polynomial. It is also
+divisible by (x+1) and therefore detects all odd number of bit errors (at the
+cost of even numbers of bit errors being undetected at an elevated rate). It is
+often a poor choice if you care about anything better than HD=4, but is a
+reasonable baseline for comparison with other polynomials. The HD=3 and HD=4
+lengths of any primitive polynomial of size n bits is ((2**(n-1))-(n+1))</LI>
+<LI>&quot;CRC-nK/DsubS&quot; is for polynomials that have the property of only
+the bottom S bits set. Most are previously unpublished, but to make it easier
+to find I've added that notation in a few cases to previously discovered
+polynomials. As an example: CRC-32K/6sub8 is a 32-bit polynomial with the best
+HD=6 length for all polynomials that have bits set in only the lowest 8 bit
+positions. Polynomials with only low bits set and no bits in the middle (except
+for the highest bit) can be computed more quickly and with smaller lookup
+tables than polynomials with bits set throughout the polynomial, albeit often
+at the tradeoff of a shorter length than the best possible polynomial of that
+size.</LI>
+</UL>
+<P>I'll try to update Wikipedia with citations as they become formalized if
+nobody beats me to it. I have checked pretty thoroughly, but a lot of work in
+this area is pretty obscure. If I find out one of them was published before me
+I will of course be happy to update the attribution.</P>
+<P>I welcome correspondence and especially notification of any errors that
+might have crept into the work. However, I cannot provide free individual
+advice on CRCs via e-mail. From time to time I'll augment the data, but
+research funding for this topic is scarce, so it mostly gets done more or less
+as a hobby.</P>
+<P>If you know of a standard polynomial (e.g., one in an ISO, IEC, or IEEE
+standard) not in the &quot;zoo&quot; above, please let me know and I'll add it
+as I have time. (Ideally, you should
+<A HREF="http://en.wikipedia.org/wiki/Cyclic_redundancy_check">add it to
+Wikipedia</A> and then let me know it is there so I can do a data run for it.)
+While I have spent significant effort on getting things right, this data is
+provided as-is and provide with out any warranty whatsoever, no matter what
+might occur on an e-mail or other communication exchange. <B>USE AT YOUR OWN
+RISK!</B></P>
+<P><B><U>Thanks to:</U></B></P>
+<UL>
+<LI>Prof. B. Gick for many enlightening discussions and data for Jones CRC-64. 
+</LI>
+<LI>Bernhard Lindner for pointing out some manual transcription errors. I have
+since reworked everything with automated scripts so that all the entries on the
+pages oranized by CRC size are automatically generated.</LI>
+</UL>
+<HR>
+<P>Last update 5/2018.</P>
+<P><A REL="license"
+HREF="http://creativecommons.org/licenses/by/4.0/"><IMG
+ALT="Creative Commons License" STYLE="border-width:0"
+SRC="https://i.creativecommons.org/l/by/4.0/88x31.png"></A><BR>
+This work is copyright 2015-2018 by Philip Koopman. Licensed under a
+<A REL="license" HREF="http://creativecommons.org/licenses/by/4.0/">Creative
+Commons Attribution 4.0 International License</A>.</P>
+<HR>
+</BODY>
+</HTML>
+
