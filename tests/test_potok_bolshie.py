@@ -295,13 +295,60 @@ class ЧтениеБольшихTests(unittest.TestCase):
                     путь = Path(tmp) / "a.sig"
                     путь.write_bytes(данные)
                     в_памяти = chtenie.прочитать(данные=данные, имя="a.sig")
-                    with mock.patch.object(chtenie, "ГОЛОВА_SIG", 4096), mock.patch.object(chtenie, "КУСОК_SIG", 1000):
+                    with mock.patch.object(chtenie, "ГОЛОВА_SIG", 140_000), mock.patch.object(chtenie, "КУСОК_SIG", 1000):
                         начала, длины, формат, _ = chtenie.разобрать_sig_файл(путь)
                     self.assertEqual(в_памяти.формат, формат)
                     chtenie.тела_в_файл(путь, начала, длины, Path(tmp) / "т.bin", 700, 9000)
                     self.assertEqual(в_памяти.данные[700:9700], (Path(tmp) / "т.bin").read_bytes())
             путь.write_bytes(np.random.default_rng(1).bytes(300_000))
             self.assertIsNone(chtenie.разобрать_sig_файл(путь))
+
+    def test_sig_с_диска_края(self):
+        """Заголовок файла, пустой последний пакет, неоднозначные длины, обрыв, малый файл — как в памяти."""
+        rng = np.random.default_rng(3)
+        тела = [rng.bytes(int(n)) for n in rng.integers(20, 400, 900)]
+        варианты = {
+            "заголовок": rng.bytes(10) + с.sig(тела, порядок="big"),
+            "пустой_последний": с.sig(тела + [b""], порядок="little"),
+            "включает": с.sig(тела, порядок="big", включает=True),
+            "неоднозначно": с.sig([rng.bytes(257) for _ in range(800)], порядок="big"),
+            "обрыв": с.sig(тела, порядок="big")[:-7],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            for имя, данные in варианты.items():
+                путь = Path(tmp) / f"{имя}.sig"
+                путь.write_bytes(данные)
+                в_памяти = chtenie.разобрать_sig(данные)
+                # Голова не меньше пробы (64 КБ) с самым длинным пакетом — иначе проба по ней не та же.
+                for голова, кусок in ((140_000, 1000), (1 << 20, 1 << 20), (140_000, 7)):
+                    with self.subTest(имя, голова=голова, кусок=кусок), \
+                            mock.patch.object(chtenie, "ГОЛОВА_SIG", голова), mock.patch.object(chtenie, "КУСОК_SIG", кусок):
+                        с_диска = chtenie.разобрать_sig_файл(путь)
+                        if в_памяти is None:
+                            self.assertIsNone(с_диска)
+                            continue
+                        пакеты, формат, заметки = в_памяти
+                        self.assertEqual((формат, заметки), (с_диска[2], с_диска[3]))
+                        self.assertEqual([н for н, _ in пакеты], с_диска[0].tolist())
+                        self.assertEqual([д for _, д in пакеты], с_диска[1].tolist())
+            self.assertIsNone(chtenie.разобрать_sig(варианты["обрыв"]))
+            self.assertIn("неоднозначна", " ".join(chtenie.разобрать_sig(варианты["неоднозначно"])[2]))
+
+    def test_тела_в_файл_части(self):
+        тела = [bytes([i]) * (10 + i) for i in range(30)]
+        данные = с.sig(тела)
+        поток = b"".join(тела)
+        with tempfile.TemporaryDirectory() as tmp:
+            путь = Path(tmp) / "т.sig"
+            путь.write_bytes(данные)
+            начала, длины, _, _ = chtenie.разобрать_sig_файл(путь)
+            for от, сколько in ((0, 0), (0, 5), (3, 7), (10, 1), (11, 30), (100, 0), (len(поток) - 1, 0),
+                                (len(поток) - 3, 100), (len(поток), 0), (5, 10**9)):
+                with self.subTest(от=от, сколько=сколько):
+                    записано = chtenie.тела_в_файл(путь, начала, длины, Path(tmp) / "о.bin", от, сколько)
+                    ждём = поток[от:от + сколько] if сколько else поток[от:]
+                    self.assertEqual(ждём, (Path(tmp) / "о.bin").read_bytes())
+                    self.assertEqual(len(ждём), записано)
 
     def test_статистика_по_кускам(self):
         данные = с.e1(3000)
