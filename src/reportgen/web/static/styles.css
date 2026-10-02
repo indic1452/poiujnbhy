@@ -9676,3 +9676,6 @@ div.stol-decoder-op { border: 0; padding: 0; }
 .stol-auto-find:first-of-type { border-top: 0; }
 .stol-auto-find .mono { overflow-wrap: anywhere; white-space: normal; }
 .stol-auto-find .btn { justify-self: start; }
+/* «Дек. всех»: вариант, который выбрал бы автомат (из равноценных — кодом в кадрах), и итог пробы. */
+.stol-md-auto-pick { font-weight: 600; color: var(--accent); white-space: normal; min-width: 16em; }
+.stol-md-auto { overflow-wrap: anywhere; }
