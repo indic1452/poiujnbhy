@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -117,6 +118,18 @@ class ВыборПоПростоте(unittest.TestCase):
             else:
                 self.assertEqual(list(range(n)), вызовы["отрыв"])
                 self.assertEqual(ступень == 0, "ни под одним не проще" in пояснение)
+
+    def test_данные_под_кодом_первые_2_в_20(self):
+        """Автомат судит по первым 2^20 бит данных под кодом — как прежде: структура дальше не в счёт."""
+        rng = np.random.default_rng(1)
+        М = 1 << 20
+        # A: 2^20 случайных, дальше нули (структура — за пределом); B: последняя четверть 2^20 — нули.
+        a = np.concatenate([rng.integers(0, 2, М), np.zeros(М)]).astype(np.uint8)
+        b = np.concatenate([rng.integers(0, 2, 3 * М // 4), np.zeros(М // 4)]).astype(np.uint8)
+        равные = [(None, SimpleNamespace(дальше=x, свойства={})) for x in (a, b)]
+        i, пояснение = modem._выбрать_равноценный(равные)
+        self.assertEqual(1, i)
+        self.assertIn("открываются сразу", пояснение)
 
     def test_пояснения(self):
         _, п = modem.выбрать_по_простоте(2, [0.1, 0.05].__getitem__, [False, True].__getitem__, None)
