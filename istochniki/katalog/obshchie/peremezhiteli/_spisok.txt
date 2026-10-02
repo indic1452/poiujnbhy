@@ -1,0 +1,4 @@
+peremezhiteli/US4547887_pseudorandom_conv_interleaving.pdf 434085 PDF_document,_version_1.2 https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/4547887
+peremezhiteli/US5764649_conv_interleaver_address.pdf 1541610 PDF_document,_version_1.2 https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/5764649
+peremezhiteli/US6697975_generalized_conv_interleaver.pdf 615466 PDF_document,_version_1.2 https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/6697975
+peremezhiteli/jpl_42-122B_turbo_permutations.pdf 307707 PDF_document,_version_1.1 https://ipnpr.jpl.nasa.gov/progress_report/42-122/122B.pdf

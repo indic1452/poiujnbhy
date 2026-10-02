@@ -1,0 +1,422 @@
+
+=====PAGE 1=====
+arXiv:0803.1217v1  [cs.DM]  8 Mar 2008
+Hsiao-Code Check Matrices and Recursively Balanced Matrices
+Li Chen
+Department of Computer Science and Information Technology
+University of the District of Columbia
+Washington, DC 20008
+lchen@udc.edu
+February 13, 2013
+Abstract
+The key step of generating the well-known Hsiao code is to construct a {0, 1}-check-matrix in
+which each column contains the same odd-number of 1’s and each row contains the same number
+of 1’s or diﬀers at most by one for the number of 1’s. We also require that no two columns
+are identical in the matrix. The author solved this problem in 1986 by introducing a type of
+recursively balanced matrices. However, since the paper was published in Chinese, the solution
+for such an important problem was not known by international researchers in coding theory. In
+this note, we focus on how to practically generate the check matrix of Hsiao codes. We have
+modiﬁed the original algorithm to be more eﬃcient and eﬀective. We have also corrected an
+error in algorithm analysis presented in the earlier paper. The result shows that the algorithm
+attained optimum in average cases if a divide-and-conquer technique must be involved in the
+algorithm.
+1
+Introduction
+Error-detections and corrections are required for computer main memory and secondary storages. In
+recent years, trusted computing and computing reliability have become more and more important in
+theory and practice. Data recovery is at the center of concerns. Error-corrections codes, especially
+Hamming codes and Hsiao codes are still essential to this type of technology [10][9] .
+The well-known Hsiao code is the most energy saving Hamming Codes [7][9][4][5][6]. It has
+been widely used in memory fault tolerance for more than thirty decades.
+As a type of SEC-
+DED codes, i.e. single error correction and double-error detection codes, Hsiao codes attained the
+optimal in minimum odd-weight of columns. Even though there was an observation indicating that
+cellular automata-based codes might be better than Hsiao codes in terms of check bits for cellular
+automata –a future computing device [4][2] . However, Hsiao code is still the most eﬃcient code
+used in industry [9][6].
+1
+
+=====PAGE 2=====
+After a code is designed, the most important task is to ﬁnd its check matrix.
+The author
+introduced an algorithm that recursively constructed the check-matrix to Hsiao codes in 1986 [1].
+Unfortunately, the published paper was written in Chinese and the title of the paper did not
+mention the SEC-DED code. This algorithm was not known by international researchers in coding
+theory.
+In this paper, we ﬁrst explain the algorithm described in [1] where it was addressed in an
+abstract and in a brief manner. Then, we modiﬁed some steps to show a more detailed algorithm.
+Finally, we corrected an error in the algorithm analysis of [1] and provided a more precise time
+analysis for general cases. Theoretically, both original algorithm and the modiﬁed algorithm are
+very eﬃcient and fast in terms of complexity theory. We have proved that the modiﬁed algorithm
+is optimal in average cases. However, in practice, we may ﬁnd an even more eﬃcient algorithm.
+2
+Major Steps of Generating Check Matrix H for Hsiao Code
+The deﬁnition of Hsiao code is a type of SEC-DED codes whose check matrix H deﬁned on GF(2)
+satisﬁes:
+(1) Every column contains an odd number of 1’s.
+(2) The total number of 1’s reaches the minimum.
+(3) The diﬀerence of the number of 1’s in any two rows is not greater than 1.
+(4) No two columns are the same.
+Therefore, Hsiao called this code an optimal minimum odd-weight-column SEC-DED code.
+Now, we will discuss how to generate H. Assume that we want to generate the SEC-DED Code
+with k information (data) bits, ﬁrst according to the general requirement of Hsiao codes [7],
+R ≥1 + log2 (k + R)
+(1)
+From this, we can determine R. After R is determined, we deﬁne ∆(R, J, m) a {0, 1}-type R × m
+matrix with column weight J, 0 ≤J ≤R. No two columns are the same in ∆(R, J, m).
+∆(R, 2 · i + 1, C2·i+1
+R
+), i = 0, 1, ..., I −1.
+(2)
+Where, C2·i+1
+R
+=
+ 
+R
+2 · i + 1
+!
+is the combinatorial number. Assume,
+2
+
+=====PAGE 3=====
+ΣI−1
+i=0 C2·i+1
+R
+≤(k + R) ≤ΣI
+i=0C2·i+1
+R
+.
+(3)
+Let m = (k + R) −ΣI−1
+i=0 C2·i+1
+R
+. We can see that the most important task is to generate
+∆(R, 2 · I + 1, m)
+because the other cases are the special cases of it.
+Thus,
+H = [⊕I−1
+i=0 ∆(R, 2 · i + 1, C2·i+1
+R
+)] ⊕∆(R, 2 · I + 1, m),
+(4)
+where ⊕is to union these arrays together, horizontally.
+3
+The Algorithm of Generating ∆(R, J, m)
+According to Section 2, it is not diﬃcult to see that obtaining the matrix ∆(R, J, m) is the key to
+the check matrix H, especially when m̸ = C2·i+1
+R
+.
+Let’s ﬁrst deﬁne some notations:
+(a) ∆(R, J, m): a {0, 1}-type R × m matrix with column weight J, 0 ≤J ≤R.
+(b) < t > (m): a {0, 1}-type 1 × m matrix in which every component is t. For example, < 1 >
+(2) = (1, 1).
+(c) ◦: the matrix up-down union operator, i.e. N ◦M =
+"
+a
+b
+#
+(d) ⊕: the matrix left-right union operator, i.e. N ⊕M = [NM]
+(e) ⊕: N⊕M is to place the matrix M upside down, do “⊕,” and then move the rows that
+contain more 1’s to the top of the matrix.
+(f) L −condition: ∆(R, J, m) is said to satisfy the condition if 0 ≤J ≤R & 0 ≤m ≤CJ
+R.
+(g) Matrices with equal-weight-columns/rows: Matrices have equal-weight columns and
+quasi-equal-weight rows. In other words, in these matrices, each column has the same number
+of 1’s and each row has almost the same number of 1’s. (The diﬀerence of the numbers of 1’s
+is less than 1.) We will also call such a matrix a (weighted) Balanced matrix.
+We also deﬁne the following special ∆(R, J, m) that will keep the rows with more 1’s at the top
+of the array:
+3
+
+=====PAGE 4=====
+(1) If m = 0, ∆(R, J, m) = ∅.
+(2) If J = 0, ∆(R, J, m) = (0, ..., 0)T .
+(3) If J = R, ∆(R, J, m) = (1, ..., 1)T .
+(4) If m = 1, ∆(R, J, m) = (1, ..., 1, 0, ..., 0)T , where the number of 1’s is J.
+(5) If J = 1, ∆(R, J, m) =
+
+
+
+
+
+
+
+
+
+1
+0
+...
+0
+...
+...
+...
+0
+...
+0
+1
+0
+...
+0
+...
+...
+...
+0
+...
+0
+
+
+
+
+
+
+
+
+
+, there are m 1’s in the matrix.
+(6) If J = R −1, ∆(R, J, m) =
+
+
+
+
+
+
+
+
+
+
+
+
+1
+1
+...
+1
+...
+...
+...
+1
+...
+1
+1
+0
+1
+...
+1
+1
+0
+...
+1
+...
+...
+...
+1
+1
+...
+0
+
+
+
+
+
+
+
+
+
+
+
+
+, there are m 1’s in the matrix.
+The above matrices are called the ending-states. So we can assume that 2 ≤J ≤R −2 for later
+discussion.
+Let ∆(R, J, m) satisfy the L-condition. We can represent ∆(R, J, m) in the following form.
+∆(R, J, m) =
+"
+1
+...............
+1
+0
+...............
+0
+∆1(R −1, J −1, m1)
+∆2(R −1, J, m −m1)
+#
+(5)
+Theorem 1 [1] Assume ∆(R, J, m) satisfy the L-condition.
+Let m1 = [m·J
+R
++ R−1
+R ], then
+∆1(R −1, J −1, m1) and ∆2(R −1, J, m −m1) also satisfy L-condition.
+Theorem 2 [1] Suppose that ∆1(R −1, J −1, m1) and ∆2(R −1, J, m −m1) are Matrices with
+equal-weight-columns/rows, where m1 = [m·J
+R + R−1
+R ]. Then,
+∆′(R, J, m) = [< 1 > (m1)⊕< 0 > (m −m1)] ◦[∆1(R −1, J −1, m1)⊕∆2(R −1, J, m −m1)] (6)
+is a matrix with equal-weight-columns/rows.
+The above two theorems indicate a recursive process of generating a matrix with equal-weight
+columns and quasi-equal-weight rows: The Theorem 2 provides the union process that guarantees
+that each row after the union has about the same weight. ⊕, to place the matrix on the right side
+of the operator upside down, is to avoid one row containing more than one 1’s after the merge. It
+is the simplest mathematical way of solving the problem. The recursive matrice in (5) is also called
+a recursively balanced matrix.
+4
+
+=====PAGE 5=====
+However, by “placing a matrix upside down” and then moving rows with more 1’s to the top
+of the matrix after merging takes more computational time. In [1], the author made a mistake by
+simply stating that this process is optimum O(R · m). This is because some of the parts in the
+array may need to be “placed upside down” many times (say min{R, m}). So , in the worst case,
+the complexity of the procedure given in Theorem 2 is O(R · m · min{R, m}). This is still a very
+fast algorithm for generating such a matrix. Other generating algorithms for these check matrices
+were discussed in [11][5][6]. However, these algorithms are not in polynomial time.
+It is obvious that if m · J is divisible by R, the procedure of ”placing a matrix upside down”
+can be ignored. So,
+Corollary 1 Let m·J be divisible by R. Suppose that ∆1(R−1, J−1, m1) and ∆2(R−1, J, m−
+m1) are matrices with equal-weight-columns and equal-weight-rows, where m1 = [m·J
+R + R−1
+R ]. Then,
+∆′(R, J, m) = [< 1 > (m1)⊕< 0 > (m −m1)] ◦[∆1(R −1, J −1, m1) ⊕∆2(R −1, J, m −m1)]. (7)
+is a matrix with equal-weight-columns and equal-weight-rows.
+Corollary 2 There is O(m · R) algorithm for generating ∆(R, J, m = CJ
+R)
+Based on the above discussion, we can obtain two algorithms below:
+Algorithm A: the none-recursive algorithm
+Step 1
+Check if ∆(R, J, m) satisﬁes the L-condition.
+Step 2
+Decompose ∆(R, J, m) into ∆(R1, J1, m1),
+∆(R2, J2, m2), ..., ∆(Rn, Jn, mn),
+where each ∆(Ri, Ji, mi),(i=1,2,...,n) is a ending-state.
+Step 3
+Merge ∆(Ri, Ji, mi),(i = 1, 2, ..., n)
+using ⊕operator.
+Note: ”decomposition” and ”merge” use the same objects.
+Algorithm A’: the recursive algorithm
+Step 1
+Check if ∆(R, J, m) satisﬁes L-condition.
+Step 2
+Decompose ∆(R, J, m) into ∆1(R −1, J −1, m1)
+and ∆(R −1, J, m −m1).
+Step 3
+Merge ∆1(R −1, J −1, m1) and ∆(R −1, J, m −m1) based on (6).
+4
+A Better Algorithm for Generating ∆(R, J, m)
+Even though Theorem 2 did not give an O(R · m) algorithm, it provides a great hint to design a
+(virtually) optimum algorithm. The key is to keep more 1’s rows at the top of the matrix and to
+5
+
+=====PAGE 6=====
+avoid putting more as it needed.
+The following simple calculations can be used to improve the process. We would be able to
+know how many rows have the extra 1’s in each of ∆1(R −1, J −1, m1) and ∆2(R −1, J, m −m1)
+before the merge. After the merge, the array will not change.
+Suppose that ∆1(R −1, J −1, m1) and ∆2(R −1, J, m −m1) are Matrices with equal-weight-
+columns/rows, where m1 = [m·J
+R + R−1
+R ].
+First, calculate
+r1 = (J −1) · (m1)
+(mod R −1), 0 ≤r1 < (R −1),
+(8)
+r2 = J · (m −m1)
+(mod R −1), 0 ≤r2 < (R −1).
+(9)
+If (r1 + r2 > (R −1)), let r′ = r1 + r2 −(R −1). Because r1 < (R −1) and r2 < (R −1), r1 > r′
+and r2 > r′. Shift r2 −r′ rows in ∆2 to the bottom to obtain a ∆′
+2. If (r1 + r2 ≤(R −1)), then
+move the ﬁrst r2 rows to r1 + 1 to r1 + r2, so
+∆′(R, J, m) = [< 1 > (m1)⊕< 0 > (m −m1)] ◦[∆1(R −1, J −1, m1) ⊕∆′
+2(R −1, J, m −m1)] (10)
+is a matrix with equal-weight-columns/rows.
+The time complexity of the above process is
+T(m) = T(m1) + T(m −m1) + O(m · R).
+(11)
+Using the same technique to analyze the average case of Quick-Sort [3], we have
+T(m) = R · m log (m · R) = T(m) = R · m log (m).
+(12)
+For the detail analysis, we could view T(m) as the average time required by the randomized
+m1. That means m1 could be any number between 1 to m −1. So
+T(m) = (T(1) + T(m −1) + T(2) + T(m −2) + ... + T(m −1) + T(1) + O(R · m · m))/(m −1), (13)
+T(m) =
+2
+m −1Σm−1
+k=1 T(k) + O(R · m).
+(14)
+Using the method of the mathematical induction, we can prove that T(m) ≤R · m · log(R · m) [3].
+We know that R ≤m is held in most of cases. Therefore, we have:
+Theorem 3 The time complexity of generating ∆(R, J, m) is O(R·m(log R+log m)) for average
+cases, or O(R · m · log m) for most cases.
+6
+
+=====PAGE 7=====
+5
+More Eﬃcient Algorithms for Generating ∆(R, J, m)?
+To avoid using extra time to build ∆(R, J, m), we have to know exactly where to put the extra
+1’s if r = J · m
+(mod R) is not zero. Except in the case of m = CJ
+R, even though r = J · m
+(mod R), we may have an unbalanced number of 1’s at the next level. For example, let R = 6,
+J = 3, and m = 10. m1 = [(J · m)/R + (R −1)/R] = 6 and (m −m1) = 6. r = (J −1) · m1)
+(mod (R −1)) = 12
+(mod 5) = 2. Therefore, it seems impossible to design an O(R · m) algorithm
+for generating ∆(R, J, m). In other words, it is reasonable to say that the best algorithm should use
+the divide-and-conquer to reach the time complexity O(R·m log m). Moreover, to set up a dividing
+point in the middle of the length of the array might break the L-condition, it seems hard to design
+an algorithm that makes a matrix based on two equal sized arrays without the L-condition. We
+have provided an analysis of average cases in Section 4. We have the reason to believe that the
+algorithms discussed in this note attain the optimal in theory. However, practically one can still
+develop more eﬃcient algorithms for generating such a matrix.
+6
+Conclusion
+This note translates the major steps of the author’s earlier paper written in Chinese for optimal
+Hsiao codes. An algorithm analysis error was found and corrected. The original algorithm has been
+modiﬁed and improved. A brief analysis shows that the algorithm reached optimum in average cases
+if a divide-and-conquer technique was involved in the algorithm.
+Acknowledgements The author would like to present thanks to Dr. W. Stallings and Dr. Nur
+Touba for their interests in his research that motivated the author to write this note.
+References
+[1] L. Chen, An optimal generating algorithm for a matrix of equal-weight columns and quasi-
+equal-weight rows. Journal of Nanjing Inst. Technol. 16, No.2, 33-39 (1986). [ISSN 0254-4180]
+[2] D. R. Chowdhury, S. Basu, I. S. Gupta, and P. Pal Chaudhuri. Design of CAECC: Cellular
+Automata based Error Correcting Code. IEEE Trans. on Computers, 43(6):759-764, June 1994.
+[3] T. H. Cormem etal, Introduction to Algorithms, MIT PRESS, 1993.
+[4] Niloy Ganguly,et al, A Survey on Cellular Automata, Manuscript, Technical report, Centre
+for High Performance Computing, Dresden University of Technology, December 2003.
+[5] S. Ghosh, S. Basu, N.A. Touba, Reducing Power Consumption in Memory ECC Checkers,
+Proceedings of IEEE International Test Conference, 2004. pp 1322-1331
+[6] S. Ghosh, S. Basu, N.A. Touba, Selecting Error Correcting Codes to Minimize Power in Mem-
+ory Checker Circuits , J. Low Power Electronics 1, pp.63-72(2005)
+7
+
+=====PAGE 8=====
+[7] M.Y. Hsiao. A Class of Optimal Minimum Odd-weight-column SEC-DED Codes. IBM J. of
+Res. and Develop., vol. 14, no. 4, pp. 395-401 (1970)
+[8] Jien-Chung Lo, Yu-Lun Wan, Eiji Fujiwara, ”Transient Behavior of the Encoding/Decoding
+Circuits of Error Correcting Codes,” , pp. 120-130, 20th IEEE International Symposium on
+Defect and Fault Tolerance in VLSI Systems (DFT’05), 2005.
+[9] Parag Lala, Self-Checking and Fault-Tolerant Digital Design,Morgan Kaufmann, 2000.
+[10] W. Stallings, Computer Organization and Architecture, 7ed, Prentice Hall, Upper Saddle
+River, NJ, 2006.
+[11] H.G. Zhang, A generating algorithm for optimal minimum odd-weight-column codes, Journal
+of Wuhan University (Natural Science), No 4, 1980.
+Appendix
+———————————
+Zbl 0629.65046
+Chen, Li
+An optimal generating algorithm for a matrix of equal-weight columns and quasi-
+equal-weight rows.
+(Chinese.
+English summary) [J] J. Nanjing Inst.
+Technol.
+16,
+No.2, 33-39 (1986). [ISSN 0254-4180]
+According to a recursive matrix which is introduced in this paper, an algorithm for a
+matrix of equal-weight columns which are inequal each other and quasi-equal-weight
+rows is given.
+The algorithm is optimal in time and space, and it can be applied
+to generate check matrices of optimal minimum odd-weight-column SEC-DED codes.
+Finally, this algorithm is extended to a set of n elements.
+MSC 2000: *65F30 Other matrix algorithms
+Keywords: recursive matrix; equal-weight columns; quasi-equal-weight rows; optimal
+minimum odd-weight-column SEC-DED codes
+———————————–
+8

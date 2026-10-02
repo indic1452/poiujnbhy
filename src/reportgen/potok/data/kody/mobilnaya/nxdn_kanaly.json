@@ -1,0 +1,338 @@
+{
+ "имя": "nxdn_kanaly",
+ "описание": "NXDN: параметры кодирования функциональных каналов (TS 1-A, TS 1-E)",
+ "источник": [
+  {
+   "файл": "istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "страница": 43,
+   "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "что": "Type-C/конв. CAC (Outbound)"
+  },
+  {
+   "файл": "istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "страница": 45,
+   "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "что": "Type-C/конв. Long CAC (Inbound)"
+  },
+  {
+   "файл": "istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "страница": 47,
+   "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "что": "Type-C/конв. Short CAC (Inbound)"
+  },
+  {
+   "файл": "istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "страница": 49,
+   "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "что": "Type-C/конв. SACCH"
+  },
+  {
+   "файл": "istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "страница": 51,
+   "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "что": "Type-C/конв. FACCH1"
+  },
+  {
+   "файл": "istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "страница": 53,
+   "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+   "что": "Type-C/конв. UDCH/ FACCH2"
+  },
+  {
+   "файл": "istochniki/nxdn/NXDN-TS-1-E_v0101.pdf",
+   "страница": 28,
+   "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-E_v0101.pdf",
+   "что": "Type-D SCCH"
+  },
+  {
+   "файл": "istochniki/nxdn/NXDN-TS-1-E_v0101.pdf",
+   "страница": 30,
+   "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-E_v0101.pdf",
+   "что": "Type-D FACCH1"
+  },
+  {
+   "файл": "istochniki/nxdn/NXDN-TS-1-E_v0101.pdf",
+   "страница": 32,
+   "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-E_v0101.pdf",
+   "что": "Type-D UDCH2 / FACCH3"
+  },
+  {
+   "файл": "istochniki/kod/MMDVMHost/NXDNSACCH.cpp",
+   "строки": "30",
+   "url": "https://github.com/g4klx/MMDVMHost/blob/590c531391dfd3146073afbc3956f70d42c62a46/NXDNSACCH.cpp#L30"
+  },
+  {
+   "файл": "istochniki/kod/dsd-fme/src/nxdn_deperm.c",
+   "строки": "410",
+   "url": "https://github.com/lwvmobile/dsd-fme/blob/4fe32db7f5affb0484aa0e4f8bbc50eabe3c8531/src/nxdn_deperm.c#L410"
+  }
+ ],
+ "проверка": "перемежение SACCH/FACCH1/UDCH: запись строками D1…Dглубина, чтение столбцами — совпало с INTERLEAVE_TABLE MMDVMHost; выколотые позиции по матрицам = PUNCTURE_LIST MMDVMHost; матрицы SACCH/FACCH1/FACCH2/CAC = массивы *_puncture dsd-fme (чтение верх-низ); CRC-6/12/15 и начальное «все единицы» = MMDVMHost NXDNCRC.cpp",
+ "данные": {
+  "Type-C/конв. CAC (Outbound)": {
+   "тип": "Type-C/конв.",
+   "CRC": {
+    "бит": 16,
+    "g": "X16 + X12 + X5 + 1"
+   },
+   "свёрточный": "K=5 1/2 G1=1+D3+D4, G2=1+D+D2+D4",
+   "хвост": 4,
+   "перемежение_(бит,глубина)": [
+    155,
+    25
+   ],
+   "выкалывание_G1_G2": [
+    [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    [
+     1,
+     0,
+     1,
+     1,
+     1,
+     0,
+     1
+    ]
+   ],
+   "страница": 43
+  },
+  "Type-C/конв. Long CAC (Inbound)": {
+   "тип": "Type-C/конв.",
+   "CRC": {
+    "бит": 16,
+    "g": "X16 + X12 + X5 + 1"
+   },
+   "свёрточный": "K=5 1/2 G1=1+D3+D4, G2=1+D+D2+D4",
+   "хвост": 4,
+   "перемежение_(бит,глубина)": [
+    136,
+    21
+   ],
+   "выкалывание_G1_G2": [
+    [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    [
+     0,
+     1,
+     1,
+     0,
+     0,
+     0,
+     1,
+     1,
+     1,
+     0,
+     1,
+     1,
+     1
+    ]
+   ],
+   "страница": 45
+  },
+  "Type-C/конв. Short CAC (Inbound)": {
+   "тип": "Type-C/конв.",
+   "CRC": {
+    "бит": 16,
+    "g": "X16 + X12 + X5 + 1"
+   },
+   "свёрточный": "K=5 1/2 G1=1+D3+D4, G2=1+D+D2+D4",
+   "хвост": 4,
+   "перемежение_(бит,глубина)": [
+    106,
+    21
+   ],
+   "выкалывание_G1_G2": null,
+   "страница": 47
+  },
+  "Type-C/конв. SACCH": {
+   "тип": "Type-C/конв.",
+   "CRC": {
+    "бит": 6,
+    "g": "X6 + X5 + X2 + X1 + 1"
+   },
+   "свёрточный": "K=5 1/2 G1=1+D3+D4, G2=1+D+D2+D4",
+   "хвост": 4,
+   "перемежение_(бит,глубина)": [
+    26,
+    5
+   ],
+   "выкалывание_G1_G2": [
+    [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    [
+     1,
+     1,
+     0,
+     1,
+     1,
+     0
+    ]
+   ],
+   "страница": 49
+  },
+  "Type-C/конв. FACCH1": {
+   "тип": "Type-C/конв.",
+   "CRC": {
+    "бит": 12,
+    "g": "X12 + X11 + X3 + X2 + X1 + 1"
+   },
+   "свёрточный": "K=5 1/2 G1=1+D3+D4, G2=1+D+D2+D4",
+   "хвост": 4,
+   "перемежение_(бит,глубина)": [
+    80,
+    9
+   ],
+   "выкалывание_G1_G2": [
+    [
+     1,
+     1
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "страница": 51
+  },
+  "Type-C/конв. UDCH/ FACCH2": {
+   "тип": "Type-C/конв.",
+   "CRC": {
+    "бит": 15,
+    "g": "X15 + X14 + X11 + X10 + X7 + X6 + X2 + 1"
+   },
+   "свёрточный": "K=5 1/2 G1=1+D3+D4, G2=1+D+D2+D4",
+   "хвост": 4,
+   "перемежение_(бит,глубина)": [
+    184,
+    29
+   ],
+   "выкалывание_G1_G2": [
+    [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    [
+     1,
+     0,
+     1,
+     1,
+     1,
+     0,
+     1
+    ]
+   ],
+   "страница": 53
+  },
+  "Type-D SCCH": {
+   "тип": "Type-D",
+   "CRC": {
+    "бит": 7,
+    "g": "X7 + X3 + 1"
+   },
+   "свёрточный": "K=5 1/2 G1=1+D3+D4, G2=1+D+D2+D4",
+   "хвост": 4,
+   "перемежение_(бит,глубина)": [
+    25,
+    5
+   ],
+   "выкалывание_G1_G2": [
+    [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    [
+     1,
+     1,
+     0,
+     1,
+     1,
+     0
+    ]
+   ],
+   "страница": 28
+  },
+  "Type-D FACCH1": {
+   "тип": "Type-D",
+   "CRC": {
+    "бит": 12,
+    "g": "X12 + X11 + X3 + X2 + X1 + 1"
+   },
+   "свёрточный": "K=5 1/2 G1=1+D3+D4, G2=1+D+D2+D4",
+   "хвост": 4,
+   "перемежение_(бит,глубина)": [
+    80,
+    9
+   ],
+   "выкалывание_G1_G2": [
+    [
+     1,
+     1
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "страница": 30
+  },
+  "Type-D UDCH2 / FACCH3": {
+   "тип": "Type-D",
+   "CRC": {
+    "бит": 12,
+    "g": "X12 + X11 + X3 + X2 + X1 + 1"
+   },
+   "свёрточный": "K=5 1/2 G1=1+D3+D4, G2=1+D+D2+D4",
+   "хвост": null,
+   "перемежение_(бит,глубина)": [
+    80,
+    9
+   ],
+   "выкалывание_G1_G2": [
+    [
+     1,
+     1
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "страница": 32
+  }
+ }
+}

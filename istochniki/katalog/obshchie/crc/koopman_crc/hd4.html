@@ -1,0 +1,322 @@
+<!DOCTYPE HTML PUBLIC "-//SoftQuad//DTD HoTMetaL PRO 5.0::19981022::extensions to HTML 4.0//EN" "hmpro5.dtd"> 
+ 
+<HTML>
+ 
+<HEAD>
+<TITLE>HD=4 CRC Selection</TITLE>
+</HEAD>
+
+<BODY>
+<H1 ALIGN="CENTER">CRC Polynomial Selection</H1>
+<P ALIGN="CENTER"><B>Philip Koopman, Carnegie Mellon University</B></P>
+<H3><A HREF="index.html">Best CRCs</A> | <A HREF="details.html">CRC
+Selection</A> | <A HREF="crc32.html">CRC Zoo</A> |
+<A HREF="http://checksumcrc.blogspot.com/">Checksum and CRC Blog</A></H3>
+<UL>
+<LI><A HREF="6sub8.html">Good /6sub8 Polynomials</A></LI>
+<LI><A HREF="hd3.html">Good HD=3 Polynomials</A></LI>
+<LI><B>Good HD=4 Polynomials</B></LI>
+<LI><A HREF="hd5.html">Good HD=5 Polynomials</A></LI>
+<LI><A HREF="hd6.html">Good HD=6 Polynomials</A></LI>
+<LI><A HREF="notes.html">Notation</A> and copyright statement</LI>
+</UL>
+<HR>
+<H2><A NAME="hd4">Good HD=4 Polynomials</A></H2>
+<P><U>Selection rules:</U></P>
+<OL>
+<LI>Pick an optimal HD=4 length.</LI>
+</OL>
+<OL>
+<LI>Pick longest secondary property length available for that HD=4 length</LI>
+</OL>
+<P>Note that all primitive polynomials times (x+1) annoted as (*op) have HD=4
+up to length ((2**(k-1))-CrcSize-1). HD=3 secondary property was not selected
+because all such polynomials have the same length for HD=3 as for HD=4.</P>
+<TABLE BORDER="1">
+<TR>
+<TD ALIGN="CENTER">&nbsp;<B>CRC</B>&nbsp;<BR>
+<B>Bits</B></TD>
+<TD ALIGN="CENTER"><B>&nbsp;HD=4</B>&nbsp;<BR>
+<B>Length<BR>
+(Bits)</B></TD>
+<TD ALIGN="CENTER"><B>&nbsp;Secondary&nbsp;<BR>
+Property</B></TD>
+<TD ALIGN="CENTER">&nbsp;<B>Polynomial</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;<B>Nickname</B>&nbsp;</TD>
+<TD ALIGN="CENTER"><B>HD</B><BR>
+&nbsp;<B>Lengths</B>&nbsp;</TD>
+</TR>
+<TR>
+<TD><A HREF="crc5.html"><B>5</B></A></TD>
+<TD ALIGN="CENTER">10</TD>
+<TD>none</TD>
+<TD>(<A HREF="c05/0x15.txt">0x15</A>; 0x2b) </TD>
+<TD>CRC-5; CRC-5-ITU;<BR>
+CRC-5F/4 (*op)</TD>
+<TD><A HREF="c05/0x15_len.txt">{10,<B>10</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc6.html"><B>6</B></A></TD>
+<TD ALIGN="CENTER">25</TD>
+<TD>none</TD>
+<TD>(<A HREF="c06/0x23.txt">0x23</A>; 0x47)</TD>
+<TD>CRC-6-CDMA2000-B (*op)</TD>
+<TD><A HREF="c06/0x23_len.txt">{25,<B>25</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc7.html"><B>7</B></A></TD>
+<TD ALIGN="CENTER">56</TD>
+<TD>none</TD>
+<TD>(<A HREF="c07/0x5b.txt">0x5b</A>; 0xb7)</TD>
+<TD>CRC-7F/4.2 (*op)</TD>
+<TD><A HREF="c07/0x5b_len.txt">{56,<B>56</B>,2,2}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc8.html"><B>8</B></A></TD>
+<TD ALIGN="CENTER">119</TD>
+<TD>none</TD>
+<TD>(<A HREF="c08/0x83.txt">0x83</A>; 0x107)</TD>
+<TD>ATM-8; CRC-8P (*op)</TD>
+<TD><A HREF="c08/0x83_len.txt">{119,<B>119</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc9.html"><B>9</B></A></TD>
+<TD ALIGN="CENTER">246</TD>
+<TD>HD=5,6@ 5</TD>
+<TD>(<A HREF="c09/0x17d.txt">0x17d</A>; 0x2fb)</TD>
+<TD>CRC-9F/4.2 (*op)</TD>
+<TD><A HREF="c09/0x17d_len.txt">{246,<B>246</B>,5,<B>5</B>,1,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc10.html"><B>10</B></A></TD>
+<TD ALIGN="CENTER">501</TD>
+<TD>HD=5,6@ 10</TD>
+<TD>(<A HREF="c10/0x247.txt">0x247</A>; 0x48f)</TD>
+<TD> CRC-10F/4.2 (*op)</TD>
+<TD><A HREF="c10/0x247_len.txt">{501,<B>501</B>,10,<B>10</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc11.html"><B>11</B></A></TD>
+<TD ALIGN="CENTER">1012</TD>
+<TD>HD=5,6@ 17</TD>
+<TD>(<A HREF="c11/0x583.txt">0x583</A>; 0xb07)</TD>
+<TD>CRC-11F/4.2 (*op)</TD>
+<TD><A HREF="c11/0x583_len.txt">{1012,<B>1012</B>,17,<B>17</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc12.html"><B>12</B></A></TD>
+<TD ALIGN="CENTER">2035</TD>
+<TD>HD=5,6@ 25</TD>
+<TD>(<A HREF="c12/0x8f3.txt">0x8f3</A>; 0x11e7)</TD>
+<TD>CRC-12F/4.2 (*op)</TD>
+<TD><A HREF="c12/0x8f3_len.txt">{2035,<B>2035</B>,25,<B>25</B>,1,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc13.html"><B>13</B></A></TD>
+<TD ALIGN="CENTER">4082</TD>
+<TD>HD=5,6@ 32</TD>
+<TD>(<A HREF="c13/0x12e6.txt">0x12e6</A>; 0x25cd)</TD>
+<TD>CRC-13F/4.2 (*op)</TD>
+<TD><A HREF="c13/0x12e6_len.txt">{4082,<B>4082</B>,32,<B>32</B>,4,4}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc14.html"><B>14</B></A></TD>
+<TD ALIGN="CENTER">8177</TD>
+<TD>HD=5,6@ 57</TD>
+<TD>(<A HREF="c14/0x2322.txt">0x2322</A>; 0x4645)</TD>
+<TD>CRC-14K/4.2 (*op)</TD>
+<TD><A HREF="c14/0x2322_len.txt">{8177<B>,8177</B>,57,<B>57</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc15.html"><B>15</B></A></TD>
+<TD ALIGN="CENTER">16368</TD>
+<TD>HD=5,6@ 68</TD>
+<TD>(<A HREF="c15/0x4306.txt">0x4306</A>; 0x860d)</TD>
+<TD>CRC-15F/4.2 (*op)</TD>
+<TD><A HREF="c15/0x4306_len.txt">{16368,<B>16368</B>,68,<B>68</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc16.html"><B>16</B></A></TD>
+<TD ALIGN="CENTER">32751</TD>
+<TD>HD=5,6@ 93</TD>
+<TD>(<A HREF="c16/0xd175.txt">0xd175</A>; 0x1a2eb)</TD>
+<TD>C5; CRC-16F/4.2 (*op)</TD>
+<TD><A
+HREF="c16/0xd175_len.txt">{32751,<B>32751</B>,93,<B>93</B>,11,11,2,2}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc17.html"><B>17</B></A></TD>
+<TD ALIGN="CENTER">65518</TD>
+<TD>HD=5,6@ 118</TD>
+<TD>(<A HREF="c17/0x1165d.txt">0x1165d</A>; 0x22cbb)</TD>
+<TD>CRC-17K/4 (*op)</TD>
+<TD><A
+HREF="c17/0x1165d_len.txt">{65518,<B>65518</B>,118,<B>118</B>,10,10,3,3}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER">131053</TD>
+<TD>HD=5,6@ 167</TD>
+<TD>(<A HREF="c18/0x25f53.txt">0x25f53</A>; 0x4bea7)</TD>
+<TD>CRC-18K/4 (*op)</TD>
+<TD><A
+HREF="c18/0x25f53_len.txt">{131053,<B>131053</B>,167,<B>167</B>,10,10,5,5,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER">262124</TD>
+<TD>HD=5,6@ 206</TD>
+<TD>(<A HREF="c19/0x77b0f.txt">0x77b0f</A>; 0xef61f)</TD>
+<TD>CRC-19K/4 (*op)</TD>
+<TD><A
+HREF="c19/0x77b0f_len.txt">{262124,<B>262124</B>,206,<B>206</B>,15,15,1,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER">524267</TD>
+<TD>HD=5,6@ 294</TD>
+<TD>(<A HREF="c20/0xc1acf.txt">0xc1acf</A>; 0x18359f)</TD>
+<TD>CRC-20K/4 (*op)</TD>
+<TD><A
+HREF="c20/0xc1acf_len.txt">{524267,<B>524267</B>,294,<B>294</B>,24,24,3,3,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">1048554</TD>
+<TD>HD=5,6@ 370</TD>
+<TD>(<A HREF="c21/0x10df8f.txt">0x10df8f</A>; 0x21bf1f)</TD>
+<TD>CRC-21K/4 (*op)</TD>
+<TD><A
+HREF="c21/0x10df8f_len.txt">{1048554,<B>1048554</B>,370,<B>370</B>,26,26,1,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">2097129</TD>
+<TD>HD=5,6@ 509</TD>
+<TD>(<A HREF="c22/0x248794.txt">0x248794</A>; 0x490f29)</TD>
+<TD>CRC-22K/4 (*op)</TD>
+<TD><A
+HREF="c22/0x248794_len.txt">{2097129,<B>2097129</B>,509,<B>509</B>,26,26,12,12}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">4194280</TD>
+<TD>HD=5,6@ 601</TD>
+<TD>(<A HREF="c23/0x400154.txt">0x400154</A>; 0x8002a9) </TD>
+<TD>CRC-23K/4 (*op)</TD>
+<TD><A HREF="c23/0x400154_len.txt">{4194280,<B>4194280</B>,601,<B>601</B>}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">8388583</TD>
+<TD>HD=5,6@ 822</TD>
+<TD>(<A HREF="c24/0x9945b1.txt">0x9945b1</A>; 0x1328b63)</TD>
+<TD>CRC-24/4 (*op)</TD>
+<TD><A
+HREF="c24/0x9945b1_len.txt">{8388583,<B>8388583</B>,822,<B>822</B>,37,37,12,12,6,6}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">16777190</TD>
+<TD>HD=5,6@ 1059</TD>
+<TD>(<A HREF="c25/0x10bba2d.txt">0x10bba2d</A>; 0x217745b)</TD>
+<TD>CRC-25K/4 (*op)</TD>
+<TD><A
+HREF="c25/0x10bba2d_len.txt">16777190,<B>16777190</B>,1059,<B>1059</B>,38,38,8,8,6,6,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">33554405</TD>
+<TD>HD=5,6@ 1493</TD>
+<TD>(<A HREF="c26/0x278b495.txt">0x278b495</A>; 0x4f1692b)</TD>
+<TD>CRC-26K/4 (*op)</TD>
+<TD><A
+HREF="c26/0x278b495_len.txt">{33554405,<B>33554405</B>,1493,<B>1493</B>,24,24,18,18,9,9,4,4}
+</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">67108836 </TD>
+<TD>HD=5,6@ 1785</TD>
+<TD>(<A HREF="c27/0x745e8bf.txt">0x745e8bf</A>; 0xe8bd17f)</TD>
+<TD>CRC-27K/4 (*op)</TD>
+<TD><A
+HREF="c27/0x745e8bf_len.txt">{67108836,<B>67108836</B>,1785,<B>1785</B>,45,45,10,10,6,6,2,2,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><B><A HREF="crc28.html">28</A></B></TD>
+<TD ALIGN="CENTER">134217699</TD>
+<TD>HD=5,6@ 2311</TD>
+<TD>(<A HREF="c28/0xb67b511.txt">0xb67b511</A>; 0x16cf6a23)</TD>
+<TD>CRC-28K/4 (*op)</TD>
+<TD><A
+HREF="c28/0xb67b511_len.txt">{134217699,<B>134217699</B>,2311,<B>2311</B>,92,92,24,24,8,8,4,4,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><B><A HREF="crc29.html">29</A></B></TD>
+<TD ALIGN="CENTER">268435426 </TD>
+<TD>HD=5,6@ 2859</TD>
+<TD>(<A HREF="c29/0x11c4dfb5.txt">0x11c4dfb5</A>; 0x2389bf6b)</TD>
+<TD>CRC-29K/4 (*op)</TD>
+<TD><A
+HREF="c29/0x11c4dfb5_len.txt">{268435426,<B>268435426</B>,2859,<B>2859</B>,116,116,30,30,6,6,6,6,4,4,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><B><A HREF="crc30.html">30</A></B></TD>
+<TD ALIGN="CENTER">536870881</TD>
+<TD>HD=5,6@ 3769</TD>
+<TD>(<A HREF="c30g/0x2254329d.txt">0x2254329d</A>; 0x44a8653b)</TD>
+<TD>CRC-30K/4 (*op)</TD>
+<TD><A
+HREF="c30/0x2254329d_len.txt">{536870881,<B>536870881</B>,3769,<B>3769</B>,99,99,44,44,10,10,6,6}</A>
+</TD>
+</TR>
+<TR>
+<TD><B><A HREF="crc31.html">31</A></B></TD>
+<TD ALIGN="CENTER">1073741792</TD>
+<TD>HD=5,6@ 4957</TD>
+<TD>(<A HREF="c31/0x52aa4332.txt">0x52aa4332</A>; 0xa5548665)</TD>
+<TD>CRC-31K/4 (*op)</TD>
+<TD><A
+HREF="c31/0x52aa4332_len.txt">{1073741792,<B>1073741792</B>,4957,<B>4957</B>,157,157,35,35,9,9,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">&nbsp;2147483615&nbsp;</TD>
+<TD>HD=5,6@ 6167</TD>
+<TD>(<A HREF="c32a/0xc9d204f5.txt">0xc9d204f5</A>; 0x193a409eb)</TD>
+<TD>CRC-32K/4.2 (*op)</TD>
+<TD><A
+HREF="c32a/0xc9d204f5_len.txt">{2147483615,<B>2147483615</B>,6167,<B>6167</B>,148,148,44,44,25,25,8,8,3,3}</A>
+</TD>
+</TR>
+</TABLE>
+<HR>
+<P><I>Note: minimum dataword length evaluated is 4 bits. Yellow highlighted
+cells indicated work in progress/missing data.</I></P>
+<P>See the <A HREF="http://users.ece.cmu.edu/~koopman/crc/notes.html">NOTES
+PAGE</A> for interpreting this data. Last update 12/2017.</P>
+<P><A REL="license"
+HREF="http://creativecommons.org/licenses/by/4.0/"><IMG
+ALT="Creative Commons License" STYLE="border-width:0"
+SRC="https://i.creativecommons.org/l/by/4.0/88x31.png"></A><BR>
+This work is copyright 2015 by Philip Koopman. Licensed under a
+<A REL="license" HREF="http://creativecommons.org/licenses/by/4.0/">Creative
+Commons Attribution 4.0 International License</A>.</P>
+<HR>
+</BODY>
+</HTML>
+

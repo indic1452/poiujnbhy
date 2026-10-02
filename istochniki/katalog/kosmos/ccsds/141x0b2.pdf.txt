@@ -1,0 +1,1623 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ Recommendation for Space Data System Standards 
+ 
+ 
+RECOMMENDED STANDARD 
+CCSDS 141.0-B-2 
+BLUE BOOK 
+March 2026 
+NON-COHERENT 
+OPTICAL 
+COMMUNICATIONS 
+PHYSICAL LAYER 
+
+=====PAGE 2=====
+ 
+ Recommendation for Space Data System Standards 
+RECOMMENDED STANDARD 
+CCSDS 141.0-B-2 
+BLUE BOOK 
+March 2026 
+NON-COHERENT 
+OPTICAL 
+COMMUNICATIONS 
+PHYSICAL LAYER 
+
+=====PAGE 3=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page i 
+March 2026 
+AUTHORITY 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Issue: 
+Blue Book, Issue 2 
+ 
+ 
+Date: 
+March 2026 
+ 
+ 
+Location: 
+Not Applicable 
+ 
+ 
+ 
+ 
+ 
+This document has been approved for publication by the Management Council of the 
+Consultative Committee for Space Data Systems (CCSDS) and represents the consensus 
+technical agreement of the participating CCSDS Member Agencies. The procedure for review 
+and authorization of CCSDS documents is detailed in Organization and Processes for the 
+Consultative Committee for Space Data Systems (CCSDS A02.1-Y-4), and the record of 
+Agency participation in the authorization of this document can be obtained from the CCSDS 
+Secretariat at the email address below. 
+ 
+ 
+This document is published and maintained by: 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+Email: secretariat@mailman.ccsds.org 
+
+=====PAGE 4=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page ii 
+March 2026 
+STATEMENT OF INTENT 
+The Consultative Committee for Space Data Systems (CCSDS) is an organization officially 
+established by the management of its members. The Committee meets periodically to address 
+data systems problems that are common to all participants, and to formulate sound technical 
+solutions to these problems. Inasmuch as participation in the CCSDS is completely voluntary, 
+the results of Committee actions are termed Recommended Standards and are not considered 
+binding on any Agency. 
+This Recommended Standard is issued by, and represents the consensus of, the CCSDS 
+members. Endorsement of this Recommendation is entirely voluntary. Endorsement, 
+however, indicates the following understandings: 
+o Whenever a member establishes a CCSDS-related standard, this standard will be in 
+accord with the relevant Recommended Standard. Establishing such a standard does 
+not preclude other provisions which a member may develop. 
+o Whenever a member establishes a CCSDS-related standard, that member will provide 
+other CCSDS members with the following information: 
+ 
+-- The standard itself. 
+ 
+-- The anticipated date of initial operational capability. 
+ 
+-- The anticipated duration of operational service. 
+o Specific service arrangements shall be made via memoranda of agreement. Neither this 
+Recommended Standard nor any ensuing standard is a substitute for a memorandum 
+of agreement. 
+No later than five years from its date of issuance, this Recommended Standard will be 
+reviewed by the CCSDS to determine whether it should: (1) remain in effect without change; 
+(2) be changed to reflect the impact of new technologies, new requirements, or new directions; 
+or (3) be retired or canceled. 
+In those instances when a new version of a Recommended Standard is issued, existing 
+CCSDS-related member standards and implementations are not negated or deemed to be non-
+CCSDS compatible. It is the responsibility of each member to determine when such standards 
+or implementations are to be modified. Each member is, however, strongly encouraged to 
+direct planning for its new standards and implementations towards the later version of the 
+Recommended Standard. 
+
+=====PAGE 5=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page iii 
+March 2026 
+FOREWORD 
+This document is a CCSDS Recommended Standard for the Physical Layer of signals to be 
+used in optical communications systems of space missions. The Physical Layer concepts 
+described herein are intended for missions that are cross supported between Agencies of the 
+CCSDS. 
+Through the process of normal evolution, it is expected that expansion, deletion, or 
+modification of this document may occur. This Recommended Standard is therefore subject to 
+CCSDS document management and change control procedures, which are defined in the 
+Organization and Processes for the Consultative Committee for Space Data Systems (CCSDS 
+A02.1-Y-4). Current versions of CCSDS documents are maintained at the CCSDS Web site: 
+https://www.ccsds.org/ 
+Questions relating to the contents or status of this document should be sent to the CCSDS 
+Secretariat at the email address indicated on page i. 
+
+=====PAGE 6=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page iv 
+March 2026 
+At time of publication, the active Member and Observer Agencies of the CCSDS were: 
+Member Agencies 
+– Agenzia Spaziale Italiana (ASI)/Italy. 
+– Canadian Space Agency (CSA)/Canada. 
+– Centre National d’Etudes Spatiales (CNES)/France. 
+– China National Space Administration (CNSA)/People’s Republic of China. 
+– Deutsches Zentrum für Luft- und Raumfahrt (DLR)/Germany. 
+– European Space Agency (ESA)/Europe. 
+– Federal Space Agency (FSA)/Russian Federation. 
+– Instituto Nacional de Pesquisas Espaciais (INPE)/Brazil. 
+– Japan Aerospace Exploration Agency (JAXA)/Japan. 
+– National Aeronautics and Space Administration (NASA)/USA. 
+– UK Space Agency/United Kingdom. 
+Observer Agencies 
+– 
+Austrian Space Agency (ASA)/Austria. 
+– 
+Belgian Federal Science Policy Office (BFSPO)/Belgium. 
+– 
+Central Research Institute of Machine Building (TsNIIMash)/Russian Federation. 
+– 
+China Satellite Launch and Tracking Control General, Beijing Institute of Tracking and 
+Telecommunications Technology (CLTC/BITTT)/China. 
+– 
+Chinese Academy of Sciences (CAS)/China. 
+– 
+China Academy of Space Technology (CAST)/China. 
+– 
+Commonwealth Scientific and Industrial Research Organization (CSIRO)/Australia. 
+– 
+Danish National Space Center (DNSC)/Denmark. 
+– 
+Departamento de Ciência e Tecnologia Aeroespacial (DCTA)/Brazil. 
+– 
+Electronics and Telecommunications Research Institute (ETRI)/Korea. 
+– 
+European Organization for the Exploitation of Meteorological Satellites 
+(EUMETSAT)/Europe. 
+– 
+European Telecommunications Satellite Organization (EUTELSAT)/Europe. 
+– 
+Geo-Informatics and Space Technology Development Agency (GISTDA)/Thailand. 
+– 
+Hellenic National Space Committee (HNSC)/Greece. 
+– 
+Hellenic Space Agency (HSA)/Greece. 
+– 
+Indian Space Research Organization (ISRO)/India. 
+– 
+Institute of Space Research (IKI)/Russian Federation. 
+– 
+Korea Aerospace Research Institute (KARI)/Korea. 
+– 
+Ministry of Communications (MOC)/Israel. 
+– 
+Mohammed Bin Rashid Space Centre (MBRSC)/United Arab Emirates. 
+– 
+National Institute of Information and Communications Technology (NICT)/Japan. 
+– 
+National Oceanic and Atmospheric Administration (NOAA)/USA. 
+– 
+National Space Agency of the Republic of Kazakhstan (NSARK)/Kazakhstan. 
+– 
+National Space Organization (NSPO)/Chinese Taipei. 
+– 
+Naval Center for Space Technology (NCST)/USA. 
+– 
+Research Institute for Particle & Nuclear Physics (KFKI)/Hungary. 
+– 
+Scientific and Technological Research Council of Turkey (TUBITAK)/Turkey. 
+– 
+South African National Space Agency (SANSA)/Republic of South Africa. 
+– 
+Space and Upper Atmosphere Research Commission (SUPARCO)/Pakistan. 
+– 
+Swedish Space Corporation (SSC)/Sweden. 
+– 
+Swiss Space Office (SSO)/Switzerland. 
+– 
+United States Geological Survey (USGS)/USA. 
+
+=====PAGE 7=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page v 
+March 2026 
+DOCUMENT CONTROL 
+ 
+Document 
+Title 
+Date 
+Status 
+CCSDS 
+141.0-B-1 
+Optical Communications Physical 
+Layer, Recommended Standard, 
+Issue 1 
+August 
+2019 
+Original issue 
+CCSDS 
+141.0-B-2 
+Non-Coherent Optical 
+Communications Physical Layer, 
+Recommended Standard, Issue 2 
+March 2026 Adds specifications for 
+optical on-off keying 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 8=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page vi 
+March 2026 
+CONTENTS 
+Section 
+Page 
+1 INTRODUCTION.......................................................................................................... 1-1 
+1.1 
+PURPOSE ............................................................................................................... 1-1 
+1.2 
+SCOPE .................................................................................................................... 1-1 
+1.3 
+APPLICABILITY ................................................................................................... 1-1 
+1.4 
+RATIONALE.......................................................................................................... 1-2 
+1.5 
+DOCUMENT STRUCTURE ................................................................................. 1-2 
+1.6 
+TERMS ................................................................................................................... 1-2 
+1.7 
+NOMENCLATURE ............................................................................................... 1-3 
+1.8 
+CONVENTIONS .................................................................................................... 1-3 
+1.9 
+REFERENCES ....................................................................................................... 1-4 
+2 OVERVIEW ................................................................................................................... 2-1 
+2.1 
+ARCHITECTURE .................................................................................................. 2-1 
+2.2 
+SUMMARY OF FUNCTIONS .............................................................................. 2-1 
+3 HPE TELEMETRY SIGNAL CHARACTERISTICS............................................... 3-1 
+3.1 
+OVERVIEW ........................................................................................................... 3-1 
+3.2 
+CENTER FREQUENCY ........................................................................................ 3-1 
+3.3 
+CENTER FREQUENCY TOLERANCE ............................................................... 3-1 
+3.4 
+LASER LINEWIDTH ............................................................................................ 3-1 
+3.5 
+IN-BAND AND SPILLOVER EMISSIONS ......................................................... 3-1 
+3.6 
+POLARIZATION ................................................................................................... 3-1 
+3.7 
+MODULATION ..................................................................................................... 3-2 
+3.8 
+TIMING JITTER .................................................................................................... 3-2 
+3.9 
+SLOT WIDTH ........................................................................................................ 3-2 
+3.10 PULSE REPETITION RATES .............................................................................. 3-2 
+4 HPE BEACON AND OPTIONAL ACCOMPANYING DATA TRANSMISSION 
+SIGNAL CHARACTERISTICS .................................................................................. 4-1 
+4.1 
+OVERVIEW ........................................................................................................... 4-1 
+4.2 
+CENTER FREQUENCY ........................................................................................ 4-1 
+4.3 
+CENTER FREQUENCY TOLERANCE ............................................................... 4-1 
+4.4 
+LASER LINEWIDTH ............................................................................................ 4-1 
+4.5 
+IN-BAND AND SPILLOVER EMISSIONS ......................................................... 4-1 
+4.6 
+MODULATION ..................................................................................................... 4-1 
+4.7 
+TIMING JITTER .................................................................................................... 4-2 
+5 OPTICAL ON-OFF KEYING TELEMETRY SIGNAL CHARACTERSTICS..... 5-1 
+5.1 
+OVERVIEW ........................................................................................................... 5-1 
+5.2 
+CENTER FREQUENCIES ..................................................................................... 5-1 
+5.3 
+CENTER FREQUENCY TOLERANCE ............................................................... 5-1 
+5.4 
+LASER LINEWIDTH ............................................................................................ 5-1 
+5.5 
+IN-BAND AND SPILLOVER EMISSIONS ......................................................... 5-1 
+5.6 
+MODULATION ..................................................................................................... 5-2 
+5.7 
+SLOT WIDTH ........................................................................................................ 5-3 
+
+=====PAGE 9=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page vii 
+March 2026 
+6 OPTICAL ON-OFF KEYING BEACON AND OPTIONAL ACCOMPANYING 
+DATA TRANSMISSION SIGNAL CHARACTERISTICS ...................................... 6-1 
+6.1 
+OVERVIEW ........................................................................................................... 6-1 
+6.2 
+CENTER FREQUENCIES ..................................................................................... 6-1 
+6.3 
+CENTER FREQUENCY TOLERANCE ............................................................... 6-1 
+6.4 
+LASER LINEWIDTH ............................................................................................ 6-1 
+6.5 
+IN-BAND AND SPILLOVER EMISSIONS ......................................................... 6-1 
+6.6 
+MODULATION ..................................................................................................... 6-1 
+7 MANAGED PARAMETERS ....................................................................................... 7-1 
+7.1 
+HPE SIGNALING .................................................................................................. 7-1 
+7.2 
+O3K SIGNALING .................................................................................................. 7-1 
+ 
+ANNEX A PROTOCOL IMPLEMENTATION  CONFORMANCE  
+STATEMENT PROFORMA  (NORMATIVE) .......................................... A-1 
+ANNEX B SECURITY, SANA, AND PATENT CONSIDERATIONS  
+(INFORMATIVE) ..........................................................................................B-1 
+ANNEX C ABBREVIATIONS AND ACRONYMS  (INFORMATIVE) .................... C-1 
+ANNEX D INFORMATIVE REFERENCES ................................................................ D-1 
+Figure 
+1-1 Bit Numbering Convention ........................................................................................... 1-4 
+2-1 Relationship with OSI Layers ....................................................................................... 2-1 
+2-2 Overall Architecture of the Optical Communications System ..................................... 2-2 
+5-1 Transmit Eye-Pattern .................................................................................................... 5-2 
+Table 
+7-1 Managed Parameters for HPE ....................................................................................... 7-1 
+7-2 Managed Parameters for Optical On-Off Keying ......................................................... 7-1 
+ 
+
+=====PAGE 10=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 1-1 
+March 2026 
+1 INTRODUCTION 
+1.1 
+PURPOSE 
+The purpose of this Recommended Standard is to specify the Physical Layer characteristics of 
+free-space optical communications systems used by space missions. This issue of the 
+Recommended Standard primarily applies to space-to-ground and ground-to-space  links 
+through atmospheric channels, but it may also be applied to other operating conditions. When 
+provided with a sequence of pulsed and non-pulsed slots produced by the Coding and 
+Synchronization sublayer (see reference [1]), this specification describes the required Physical 
+Layer characteristics of the signal transmission.  
+1.2 
+SCOPE 
+This Recommended Standard defines Physical Layer schemes in terms of the signal 
+characteristics and procedures involved in the physical transmission of the optical signals. It 
+does not specify: 
+a) individual implementations or products; 
+b) methods or technologies required to perform the procedures; or 
+c) management activities required to configure and control the system. 
+This Recommended Standard provides a specification for two regimes of optical 
+communications. In one regime, High Photon Efficiency (HPE) optical communications,  the 
+photon-efficiency of the link is of primary concern. Details of the design and implementation of 
+HPE systems can be found in references [D5], [D6], and [D7]. In the second regime, Optical 
+On-Off-Keying (O3K), low complexity is of primary concern. The primary application of O3K 
+focusses on optical downlinks from Low Earth Orbiting satellites. 
+1.3 
+APPLICABILITY 
+This Recommended Standard applies to the creation of Agency standards and to the future data 
+communications over optical space links between CCSDS Agencies in cross-support 
+situations. It includes comprehensive specifications of the data formats and procedures for 
+inter-Agency cross support. It is neither a specification of, nor a design for, real systems that 
+may be implemented for existing or future missions. 
+The Recommended Standard specified in this document is to be invoked through the normal 
+standards program of each CCSDS Agency and is applicable to those missions for which cross 
+support based on capabilities described in this Recommended Standard is anticipated. Where 
+mandatory capabilities are clearly indicated in sections of this Recommended Standard, they 
+must be implemented when this document is used as a basis for cross support. Where options 
+are allowed or implied, implementation of these options is subject to specific bilateral cross 
+support agreements between the Agencies involved. 
+
+=====PAGE 11=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 1-2 
+March 2026 
+1.4 
+RATIONALE 
+The rationale for producing this Recommended Standard stems from the need to facilitate cross 
+support at the physical layer of optical communications systems used by CCSDS member 
+agencies. Such cross support requires specifying allowable center frequencies of transmission 
+and other physical layer characteristics of the signal. 
+The CCSDS believes it is important to document the rationale underlying the recommendations 
+chosen, so that future evaluations of proposed changes or improvements will not lose sight of 
+previous decisions. The rationale for the specifications making up this Recommended Standard 
+is expected to be documented in a forthcoming CCSDS Informational Report. 
+1.5 
+DOCUMENT STRUCTURE 
+This document is divided into seven numbered sections and four annexes: 
+a) section 1 presents the purpose, scope, applicability, rationale, document structure, 
+definitions, and references; 
+b) section 2 provides an overview of the architecture and summary of functions of the 
+Physical Layer; 
+c) section 3 specifies HPE telemetry signal characteristics; 
+d) section 4 specifies HPE beacon and optional accompanying data transmission signal 
+characteristics; 
+e) section 5 specifies O3K telemetry signal characteristics; 
+f) section 6 specifies O3K beacon and optional data transmission signal characteristics; 
+g) section 7 lists the managed parameters; 
+h) annex A is a Protocol Implementation Conformance Statement (PICS) Proforma; 
+i) annex B discusses security issues; 
+j) annex C lists acronyms used within this document; 
+k) annex D provides a list of informative references. 
+1.6 
+TERMS 
+For the purposes of this document, the following definitions apply. 
+center frequency: The central frequency of a laser beam occupying a range of frequencies. 
+laser linewidth: The spectral linewidth of a laser beam. 
+
+=====PAGE 12=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 1-3 
+March 2026 
+optical pulse: An emission of photons, often constrained with respect to its amplitude, shape, 
+and duration. 
+polarization extinction ratio: The ratio of optical powers of perpendicular polarization. 
+pulse repetition rate, PRR: The number of emitted pulses per second, or the inverse temporal 
+pulse spacing. 
+right-hand circular polarization, RHCP: A circularly polarized wave in which the electric 
+field vector rotates in a right-hand sense, with respect to the direction of propagation. 
+spillover emissions: The energy of an emission that is outside of a defined spectral band. 
+1.7 
+NOMENCLATURE 
+1.7.1 NORMATIVE TEXT 
+The following conventions apply throughout this Specification: 
+a) the words ‘shall’ and ‘must’ imply a binding and verifiable specification; 
+b) the word ‘should’ implies an optional, but desirable, specification; 
+c) the word ‘may’ implies an optional specification; 
+d) the words ‘is’, ‘are’, and ‘will’ imply statements of fact. 
+1.7.2 INFORMATIVE TEXT 
+In the normative sections of this document, informative text is set off from the normative 
+specifications either in notes or under one of the following subsection headings: 
+– Overview; 
+– Background; 
+– Rationale; 
+– Discussion. 
+1.8 
+CONVENTIONS 
+In this document, the following convention identifies each bit in an N-bit field. The first bit in 
+the field to be transmitted (i.e., the most left-justified when drawing a figure) is defined to be 
+‘Bit 0’, the following bit is defined to be ‘Bit 1’, and so on up to ‘Bit N-1’. When the field is 
+used to express a binary value, such as a counter, the Most Significant Bit (MSB) shall be the 
+first transmitted bit of the field, i.e., ‘Bit 0’ (see figure 1-1). 
+
+=====PAGE 13=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 1-4 
+March 2026 
+ 
+Figure 1-1:  Bit Numbering Convention 
+In accordance with standard data-communications practice, data fields are often grouped into 8-
+bit ‘words’ which conform to the above convention. Throughout this specification, such an 8-bit 
+word is called an ‘octet’. The numbering for octets within a data structure starts with ‘0’. 
+NOTE – Throughout this document, ‘bit’ refers to the contents of the transfer frames. A bit 
+is a binary digit transferred between the Data Link Protocol sublayer and the 
+Coding and Synchronization sublayer. Other symbols, whether binary or nonbinary, 
+will be referred to by other names, such as ‘binary digits’. It should be understood 
+that the ordering conventions described above apply equally to other types of 
+symbols. 
+1.9 
+REFERENCES 
+The following publications contain provisions which, through reference in this text, constitute 
+provisions of this document. At the time of publication, the editions indicated were valid. All 
+publications are subject to revision, and users of this document are encouraged to investigate 
+the possibility of applying the most recent editions of the publications indicated below. The 
+CCSDS Secretariat maintains a register of currently valid CCSDS publications. 
+[1] 
+Non-Coherent Optical Communications Coding and Synchronization. Issue 2. 
+Recommendation for Space Data System Standards (Blue Book), CCSDS 142.0-B-2. 
+Washington, D.C.: CCSDS, March 2026. 
+[2] 
+IEEE Standard for Definitions of Terms for Antennas. Revision of IEEE Std 145-1993. 
+IEEE Std 145-2013. New York: IEEE, 2014. 
+ 
+N-BIT DATA FIELD
+BIT 0
+BIT N-1
+FIRST BIT TRANSMITTED = MSB
+
+=====PAGE 14=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 2-1 
+March 2026 
+2 OVERVIEW 
+2.1 
+ARCHITECTURE 
+Figure 2-1 illustrates the relationship of this Recommended Standard to the Open Systems 
+Interconnection (OSI) reference model (reference [D1]). Two sublayers of the Data Link Layer 
+are defined for CCSDS space link protocols. The Data Link Protocol sublayer provides 
+functions for producing Transfer Frames; possible Space Data Link Protocols using optical 
+communications are the Telemetry (TM) Space Data Link Protocol (reference [D2]), the 
+Advanced Orbiting Systems (AOS) Space Data Link Protocol (reference [D3]), and the Unified 
+Space Data Link Protocol (USLP) (reference [D8]). The Non-Coherent Optical Coding and 
+Synchronization protocol (reference [1]) provides the functions of the Coding and 
+Synchronization sublayer of the Data Link Layer for transferring Transfer Frames over an 
+optical space link. The Non-Coherent Optical Communications Physical Layer specified in 
+this Recommended Standard provides the required characteristics of the Physical Layer 
+transmission from space to ground and from ground to space. 
+  
+Figure 2-1:  Relationship with OSI Layers 
+2.2 
+SUMMARY OF FUNCTIONS 
+The Optical Communications Physical Layer specifies the physical characteristics of the 
+telemetry signal and, separately, the physical characteristics of the beacon and optional 
+Network and
+Upper Layers
+Synchronization and
+Channel Coding
+Sublayer
+Data Link
+Protocol
+Sublayer
+CCSDS Layers
+Physical Layer
+Network and
+Upper Layers
+OSI Layers
+Physical Layer
+Data Link Layer
+Optical Coding &
+Synchronization
+CCSDS Space
+Data Link Protocol
+Recommended
+Standard Content
+CCSDS Protocols
+Optical
+Physical Layer
+( e.g., TM, AOS,
+TC, USLP)
+
+=====PAGE 15=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 2-2 
+March 2026 
+telecommand signal. In a typical application, a spacecraft transmits telemetry to a ground 
+station, and a ground station transmits a beacon and optional transfer frames to the spacecraft. 
+For each of the telemetry, beacon, and optional data transmission specifications, this 
+Recommended Standard defines the transmission laser’s required center frequency, tuning 
+range, linewidth, in-band and spillover emissions, polarization, modulation, pulse shape, 
+timing jitter, and supported slot widths. 
+The overall architecture of the optical communications system is shown in figure 2-2. 
+Throughout the communications session, the optical Terminal A transmits a beacon, together 
+with optional AOS or USLP transfer frames. The Terminal B receiver locks onto the beacon 
+and uses it to assist in pointing its optical transmitter accurately. Additionally, any AOS/USLP 
+transfer frames are decoded onboard. Telemetry is transmitted from terminal B and received 
+by Terminal A. This Recommended Standard specifies the physical characteristics of the 
+Terminal A and Terminal B transmitters. In a typical application, Terminal A on the ground 
+transmits an uplink beacon and optional AOS/USLP transfer frames to Terminal B in space, 
+and Terminal B transmits a downlink telemetry signal to Terminal A. 
+ 
+Figure 2-2:  Overall Architecture of the Optical Communications System 
+ 
+Terminal B
+Telemetry
+Data
+Transmitter
+Transmitter
+Receiver
+Receiver
+Beacon
+and (Optional)
+AOS or USLP
+Transfer Frames
+Terminal A
+
+=====PAGE 16=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 3-1 
+March 2026 
+3 HPE TELEMETRY SIGNAL CHARACTERISTICS 
+3.1 
+OVERVIEW 
+The sending end receives a binary vector from the Coding and Synchronization sublayer, as 
+defined in reference [1], indicating a sequence of slots in which light pulses are to be present 
+(1) or absent (0). The physical characteristics of these pulses at the sending end are described 
+below. At the receiving end, the Physical Layer delivers slot measurements to the Coding and 
+Synchronization sublayer. 
+3.2 
+CENTER FREQUENCY 
+The center frequency shall be 193.1 + n×0.1 THz, where n is an integer ranging from −18 to 
+28. 
+NOTE – These center frequencies in the optical C-band are a subset of those defined by the 
+International Telecommunication Union (ITU) in ITU-T G.694.1 frequency grid 
+with 100 GHz channel spacing (reference [D4]). The frequencies range from 191.3 
+THz to 195.9 THz and correspond to wavelengths in a vacuum ranging from 
+1530.33 nm to 1567.13 nm. 
+3.3 
+CENTER FREQUENCY TOLERANCE 
+The transmitter center frequency shall be accurate to within a tolerance of  10 GHz. 
+3.4 
+LASER LINEWIDTH 
+The modulated laser linewidth shall be less than 6.25 GHz, measured at full width, 1/e2 of 
+maximum, over a time scale of 100 ms. 
+3.5 
+IN-BAND AND SPILLOVER EMISSIONS 
+The laser shall transmit 95 percent of its energy within  10 GHz of its center frequency. 
+3.6 
+POLARIZATION 
+3.6.1 POLARIZATION TYPE 
+Polarized laser emission is optional. When polarized, the laser emission exiting the terminal 
+aperture shall be Right-Hand Circularly Polarized (RHCP) as defined in reference [2]. 
+
+=====PAGE 17=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 3-2 
+March 2026 
+3.6.2 POLARIZATION EXTINCTION RATIO 
+When polarized emission is used, the polarization extinction ratio shall be greater than 10 dB. 
+3.7 
+MODULATION 
+The binary vector received from the Coding and Synchronization sublayer defined in reference 
+[1] shall be used to modulate the intensity of emitted light within each slot, using On-Off 
+Keying (OOK). 
+NOTE – A modulation of Pulse Position Modulation (PPM) at the Coding and Synchronization 
+sublayer gives rise to OOK at the Physical Layer, in the sense that a light pulse is 
+present or absent in each slot. 
+3.8 
+TIMING JITTER 
+The Root Mean Square (RMS) pulse timing jitter shall be less than 10 percent of the slot width. 
+3.9 
+SLOT WIDTH 
+The slot width T shall be 0.125, 0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, or 512 ns. 
+3.10 PULSE REPETITION RATES 
+The laser shall support a range of Pulse Repetition Rates (PRRs) corresponding to the slot 
+width(s) and PPM order(s) used by the communications link. 
+NOTE – For example, in a system using 1 ns slots with 16-PPM and 4 slots of guard time, 
+pulses could be as close as 5 ns and as far apart as 35 ns, center to center, 
+corresponding to a PRR range of 28.57 to 200 MHz. 
+ 
+
+=====PAGE 18=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 4-1 
+March 2026 
+4 HPE BEACON AND OPTIONAL ACCOMPANYING DATA 
+TRANSMISSION SIGNAL CHARACTERISTICS 
+4.1 
+OVERVIEW 
+When data transmission accompanies the HPE beacon signal, the sending end receives a binary 
+vector from the Coding and Synchronization sublayer, as defined in reference [1], indicating a 
+sequence of slots in which light pulses are to be present (1) or absent (0). The physical 
+characteristics of these pulses at the sending end are described below. At the receiving end, the 
+Physical Layer delivers slot measurements to the Coding and Synchronization sublayer. 
+4.2 
+CENTER FREQUENCY 
+The center frequency shall be tunable to any frequency within ±26 GHz of 280.18 THz, 281.72 
+THz, or 291.06 THz. 
+NOTE – These center frequencies correspond to wavelengths in vacuum of 1070 nm, 
+1064.15 nm, and 1030 nm, respectively. 
+4.3 
+CENTER FREQUENCY TOLERANCE 
+The transmitter center frequency shall be accurate to within a tolerance of ±26.5 GHz. 
+4.4 
+LASER LINEWIDTH 
+The laser linewidth shall not exceed 53 GHz, measured at full width 1/e2 of maximum, over a 
+time scale of 100 ms. 
+4.5 
+IN-BAND AND SPILLOVER EMISSIONS 
+The laser shall transmit 95 percent of its energy within ±50 GHz of its center frequency. 
+4.6 
+MODULATION 
+4.6.1 OVERVIEW 
+Data transmission is optional. 
+4.6.2 WHEN DATA TRANSMISSION IS NOT USED 
+When data transmission is not used, the beacon transmission shall be a 3.8145 kHz square 
+wave. The period of the square wave is 262,144 ns, that is, an alternating sequence of pulsed 
+and non-pulsed slots of duration 131,072 ns. 
+
+=====PAGE 19=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 4-2 
+March 2026 
+4.6.3 WHEN DATA TRANSMISSION IS USED 
+4.6.3.1 General 
+When data transmission is used, the binary vector received from the Coding and 
+Synchronization sublayer defined in reference [1] shall be used to modulate the intensity of 
+emitted light within each slot, using OOK. 
+NOTES 
+1 
+A modulation of PPM at the Coding and Synchronization sublayer gives rise to OOK at 
+the Physical Layer, in the sense that a light pulse is present or absent in each slot. 
+2 
+The transmission is not required to be polarized. 
+4.6.3.2 Slot Widths 
+The slot width shall be 65,536 ns. 
+NOTE – This Recommended Standard can be compatible with systems using substantially 
+narrower pulse shapes that convey additional, higher-rate telecommand data than 
+is specified in this Recommended Standard. Such ‘nested outer modulations’ are 
+not specified by this Recommended Standard, but they are not necessarily 
+precluded by it. 
+4.7 
+TIMING JITTER 
+The RMS pulse timing jitter shall be less than 10 percent of the slot width. 
+ 
+
+=====PAGE 20=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 5-1 
+March 2026 
+5 OPTICAL ON-OFF KEYING TELEMETRY SIGNAL 
+CHARACTERSTICS 
+5.1 
+OVERVIEW  
+Sections 5 and 6 are intended to enable vendors and operators to provide compatible laser 
+communication equipment and services for O3K systems, mainly for use with, but not limited 
+to, high-speed optical direct-to-Earth telemetry data downlinks. At the sending end, a binary 
+vector is received from the Coding and Synchronization sublayer, as defined in reference [1], 
+indicating a sequence of slots in which light pulses are to be present (1) or absent (0). The 
+physical characteristics of these transmitted pulses are described below. At the receiver, the 
+Physical Layer demodulates the data and delivers statistics to the Coding and Synchronization 
+sublayer for its use in decoding. 
+5.2 
+CENTER FREQUENCIES 
+The center frequency shall be 193.1 + n×0.1 THz, where n is an integer ranging from −18 to 
+28 for choosing one of 47 optional bands for communications downlink.  
+NOTES 
+1 
+The value of n is a managed parameter. 
+2 
+These center frequencies in the optical C-band are a subset of those defined in the ITU-
+T G.694.1 frequency grid with 100 GHz channel spacing (reference [D4]). The 
+frequencies range from 191.3 THz to 195.9 THz, corresponding to wavelengths in a 
+vacuum ranging from 1530.33 nm to 1567.13 nm. 
+5.3 
+CENTER FREQUENCY TOLERANCE 
+The transmitter center frequency shall be accurate to within a tolerance of ±10 GHz. 
+5.4 
+LASER LINEWIDTH  
+The modulated laser linewidth shall be less than 10 GHz, measured as full width at half-
+maximum, over a time scale of 100 ms. 
+5.5 
+IN-BAND AND SPILLOVER EMISSIONS 
+The laser shall transmit 95 percent of its energy within 20 GHz of its center frequency. 
+
+=====PAGE 21=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 5-2 
+March 2026 
+5.6 
+MODULATION 
+5.6.1 MODULATION SCHEME 
+On-Off Keying Non-Return-to-Zero (OOK-NRZ) with equal lengths of ones and zeros slots 
+shall be used as the modulation scheme for telemetry.  
+5.6.2 PULSE SHAPE/EYE DIAGRAM 
+The eye-pattern of the transmission shall not impinge on the geometrical shape shown in figure 
+5-1. 
+ 
+Figure 5-1:  Transmit Eye-Pattern 
+T denotes the OOK slot width. In the figure, 𝑥1 = 0.1𝑇, 𝑥2 = 0.15𝑇, 𝑥3 = 0.85𝑇, 𝑥4 =
+0.9𝑇, 𝑦1 = 0.1 of the mean level of logical 0, and 𝑦2 = 0.9 of the mean level of logical 1. 
+5.6.3 TIMING JITTER  
+The RMS pulse timing jitter shall be less than 10 percent of the slot width. 
+5.6.4 EXTINCTION RATIO 
+The extinction ratio shall be greater than 10 dB. The ratio is defined to be the ratio of the mean 
+ON level to the mean OFF level. 
+1+y1
+y2
+1
+0.5
+0
+0
+−y1
+y1
+x1
+x2
+x3
+T
+UI
+Time
+Mean level
+of logical ‘0’
+Mean level
+of logical ‘1’
+x4
+
+=====PAGE 22=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 5-3 
+March 2026 
+5.7 
+SLOT WIDTH 
+The slot width T shall be one of 0.1 × 2𝑘 ns, with 0 ≤ k ≤ 13. 
+NOTES 
+1 
+The value of T is a managed parameter.  
+2 
+These slot widths correspond to channel symbol rates of r = 10/2k Gsym/s, with 
+0 ≤ k ≤ 13. 
+ 
+
+=====PAGE 23=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 6-1 
+March 2026 
+6 OPTICAL ON-OFF KEYING BEACON AND OPTIONAL 
+ACCOMPANYING DATA TRANSMISSION SIGNAL 
+CHARACTERISTICS 
+6.1 
+OVERVIEW 
+The counter terminal transmits a beacon to the satellite terminal for better pointing accuracy. 
+This beacon signal can optionally be used for data transmission.  
+6.2 
+CENTER FREQUENCIES 
+The center frequency shall be one of the following three choices: 
+a) between 188.350 THz (1591.68 nm) to 188.750 THz (1588.30 nm); 
+b) between 195.000 THz (1537.40 nm) to 195.900 THz (1530.33 nm); 
+c) between 370.112 THz (810 nm) to 371.948 THz (806 nm). 
+6.3 
+CENTER FREQUENCY TOLERANCE 
+For basic uplink beacon operations, the center frequency tolerance shall be ±50 GHz for 
+options a) and b), and ±918 GHz for option c). 
+6.4 
+LASER LINEWIDTH 
+Measured as full width at half maximum over a time scale of 100 ms, the laser linewidth shall 
+not exceed 50 GHz for uplink center frequency options a) and b), and shall be in the range 
+from 50 GHz to 300 GHz for option c). 
+6.5 
+IN-BAND AND SPILLOVER EMISSIONS 
+The laser shall transmit 95 percent of its energy within 100 GHz of its center frequency for 
+options a) and b), and 1218 GHz for option c). 
+6.6 
+MODULATION  
+6.6.1 MODULATION SCHEME 
+Terminal-A shall transmit its beacon signal unmodulated (Continuous Wave [CW]) or 
+modulated using rectangular or sinusoidal pulses with a major spectral component at one 
+predefined frequency.  
+
+=====PAGE 24=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 6-2 
+March 2026 
+6.6.2 BEACON PULSE REPETITION RATE 
+6.6.2.1 The beacon signal shall be unmodulated (i.e., CW) or modulated. 
+6.6.2.2 If the beacon signal is modulated, the modulating frequency shall be in the interval 
+of 1 kHz to 10 MHz for options a) and b), and 0 Hz to 10 kHz for option c). 
+NOTE – The beacon pulse repetition rate is a managed parameter. 
+6.6.3 TIMING JITTER 
+The RMS pulse timing jitter shall be less than 10 percent of the slot width. 
+6.6.4 EXTINCTION RATIO 
+The extinction ratio shall be greater than 10 dB. The extinction ratio is defined as the ratio of 
+the mean ON level to the mean OFF level.  
+ 
+
+=====PAGE 25=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page 7-1 
+March 2026 
+7 MANAGED PARAMETERS 
+7.1 
+HIGH PHOTON EFFICIENCY SIGNALING 
+The managed parameters for HPE signaling shall be those specified in table 7-1. 
+Table 7-1:  Managed Parameters for HPE 
+Managed Parameter 
+Allowed Values 
+n, the telemetry signaling center 
+frequency selection parameter 
+Integer in {−18, −17, …, 27, 28}  
+Telemetry signaling slot width 
+0.125, 0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 
+256, or 512 ns 
+Telemetry signaling polarized 
+transmission 
+Used or Not Used 
+Beacon frequency 
+280.18, 281.72, or 291.06 THz 
+Data transmission 
+Used or Not Used 
+7.2 
+OPTICAL ON-OFF KEYING SIGNALING 
+The managed parameters for O3K signaling shall be those specified in table 7-2. 
+Table 7-2:  Managed Parameters for Optical On-Off Keying 
+Managed Parameter 
+Allowed Values 
+n, the telemetry signaling center 
+frequency selection parameter 
+Integer in {−18, −17, …, 27, 28}  
+Telemetry signaling slot width  
+0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 
+51.2, 102.4, 204.8, 409.6, 819.2. ns 
+Beacon frequency  
+a) 188.350 THz to 188.750 THz   
+b) 195.000 THz to 195.900 THz  
+c) 370.112 THz to 371.948 THz 
+Beacon pulse repetition rate 
+1 kHz to 10 MHz, for options a) and b), and 
+0 Hz to 10 kHz for option c). 
+ 
+
+=====PAGE 26=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page A-1 
+March 2026 
+ANNEX A 
+ 
+PROTOCOL IMPLEMENTATION  
+CONFORMANCE STATEMENT PROFORMA 
+ 
+(NORMATIVE) 
+A1 INTRODUCTION 
+A1.1 OVERVIEW 
+This annex provides the Protocol Implementation Conformance Statement (PICS) 
+Requirements List (RL) for an implementation of Optical Communications Physical Layer, 
+(CCSDS 141.0-B-2). The ICS for an implementation is generated by completing the RL in 
+accordance with the instructions below. An implementation claiming conformance must 
+satisfy the mandatory requirements referenced in the RL. 
+The RL support column in this annex is blank. An implementation’s completed RL is called 
+the ICS. The ICS states which capabilities and options have been implemented. The following 
+can use the ICS: 
+– the implementer, as a checklist to reduce the risk of failure to conform to the standard 
+through oversight; 
+– a supplier or potential acquirer of the implementation, as a detailed indication of the 
+capabilities of the implementation, stated relative to the common basis for 
+understanding provided by the standard ICS proforma; 
+– a user or potential user of the implementation, as a basis for initially checking the 
+possibility of interworking with another implementation (it should be noted that, while 
+interworking can never be guaranteed, failure to interwork can often be predicted from 
+incompatible PICSes); 
+– a tester, as the basis for selecting appropriate tests against which to assess the claim for 
+conformance of the implementation. 
+A1.2 ABBREVIATIONS AND CONVENTIONS 
+The RL consists of information in tabular form. The status of features is indicated using the 
+abbreviations and conventions described below. 
+Item Column 
+The item column contains sequential numbers for items in the table. 
+
+=====PAGE 27=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page A-2 
+March 2026 
+Description Column 
+The description column contains a brief description of the item. It implicitly means ‘Is this 
+item supported by the implementation?’ 
+Reference Column 
+The reference column indicates the relevant subsection of Optical Communications Coding 
+and Synchronization, CCSDS 141.0-B-2 (this document). 
+Status Column 
+The status column uses the following notations: 
+M  
+ 
+mandatory. 
+O  
+ 
+optional. 
+O.i  
+ 
+qualified optional – for a group of related optional items labeled by the same 
+numeral i, it is mandatory to support at least one of the items. 
+C:<status>  
+indicates that the status applies for the given subordinate item when 
+the parent item is supported, and is not applicable otherwise. 
+1+ 
+ 
+One or more of the allowed values must be supported. 
+N/A   
+not applicable. 
+Support Column Symbols 
+The support column is to be used by the implementer to state whether a feature is supported 
+by entering Y, N, or N/A, indicating: 
+Y  
+Yes, supported by the implementation. 
+N  
+No, not supported by the implementation. 
+N/A  Not applicable. 
+The support column should also be used, when appropriate, to enter values supported for a 
+given capability. 
+A1.3 INSTRUCTIONS FOR COMPLETING THE RL 
+An implementer shows the extent of compliance to the Recommended Standard by completing 
+the RL; that is, the state of compliance with all mandatory requirements and the options 
+supported are shown. The resulting completed RL is called an ICS. The implementer shall 
+complete the RL by entering appropriate responses in the support or values supported column, 
+
+=====PAGE 28=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page A-3 
+March 2026 
+using the notation described in A1.2. If a conditional requirement is inapplicable, N/A should 
+be used. If a mandatory requirement is not satisfied, exception information must be supplied 
+by entering a reference Xi, where i is a unique identifier, to an accompanying rationale for the 
+noncompliance. 
+A2 ICS PROFORMA FOR OPTICAL COMMUNICATIONS CODING AND 
+SYNCHRONIZATION (CCSDS 142.0-B-1) 
+A2.1 GENERAL INFORMATION 
+A2.1.1 Identification of ICS 
+Date of Statement (DD/MM/YYYY) 
+ 
+ICS serial number 
+ 
+System Conformance statement cross-reference 
+ 
+A2.1.2 Identification of Implementation Under Test (IUT) 
+Implementation Name 
+ 
+Implementation Version 
+ 
+Special Configuration 
+ 
+Other Information 
+ 
+A2.1.3 Identification of Supplier 
+Supplier 
+ 
+Contact Point for Queries 
+ 
+Implementation Name(s) and Versions 
+ 
+Other information necessary for full identification, 
+e.g., name(s) and version(s) for machines and/or 
+operating systems; 
+System Name(s) 
+ 
+
+=====PAGE 29=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page A-4 
+March 2026 
+A2.1.4 Identification of Specification 
+CCSDS 142.0-B-1 
+Have any exceptions been required? 
+ 
+NOTE – A YES answer means that the 
+implementation does not conform to the 
+Recommended Standard. Non-
+supported mandatory capabilities are to 
+be identified in the ICS, with an 
+explanation of why the implementation 
+is nonconforming. 
+Yes [  ]      No [  ] 
+A2.1.5 Requirements list 
+Item 
+Description 
+Reference 
+Status 
+Values 
+Allowed 
+Item or 
+Values 
+Supported 
+PHY-1 
+HPE or O3K supported 
+3, 4, 5, 6 
+1+ 
+N/A 
+HPE, O3K 
+ 
+HPE Telemetry signaling: 
+Item 
+Description 
+Reference 
+Status 
+Values 
+Allowed 
+Item or 
+Values 
+Supported 
+HPE-1 
+Center frequency index 
+3.2 
+1+ 
+Integer in 
+{−18, −17, 
+…, 27, 28} 
+ 
+HPE-2 
+Center frequency 
+tolerance 
+3.3 
+M 
+10 GHz 
+ 
+HPE-3 
+Laser linewidth 
+3.4 
+M 
+< 6.25 GHz 
+ 
+HPE-4 
+In-band and spillover 
+emissions 
+3.5 
+M 
+95% within 
+10 GHz 
+ 
+HPE-5 
+Polarized emission 
+3.6 
+O 
+N/A 
+ 
+HPE-5.1 
+Polarization type 
+3.6.1 
+C:M 
+RHCP 
+ 
+HPE-5.2 
+Polarization extinction 
+ratio 
+3.6.2 
+C:M 
+> 10 dB 
+ 
+HPE-6 
+Modulation 
+3.7 
+M 
+OOK 
+ 
+
+=====PAGE 30=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page A-5 
+March 2026 
+Item 
+Description 
+Reference 
+Status 
+Values 
+Allowed 
+Item or 
+Values 
+Supported 
+HPE-7 
+Timing jitter 
+3.8 
+M 
+<10% of 
+slot 
+ 
+HPE-8 
+Slot width 
+3.9 
+M 
+0.125, 0.25, 
+0.5, 1, 2, 4, 
+8, 16, 32, 
+64, 128, 
+256, or 512 
+ns 
+ 
+HPE-9 
+PRRs 
+3.10 
+M 
+N/A 
+ 
+HPE beacon and optional accompanying data transmission signaling: 
+Item 
+Description 
+Reference 
+Status 
+Values 
+Allowed 
+Item or 
+Values 
+Supported 
+HPE-10 
+Center frequency 
+4.2 
+1+ 
+within ±26 
+GHz of 280.18, 
+281.72, 291.06 
+THz 
+ 
+HPE-11 
+Center frequency 
+tolerance 
+4.3 
+M 
+±26.5 GHz 
+ 
+HPE-12 
+Laser linewidth 
+4.4 
+M 
+53 GHz 
+ 
+HPE-13 
+In-band and spillover 
+emissions 
+4.5 
+M 
+95% within 
+50 GHz 
+ 
+HPE-14 
+Telecommand data 
+transmission not used 
+4.6.2 
+O.1 
+N/A 
+ 
+HPE-14.1 
+Beacon 
+4.6.2 
+C:M 
+3.8145 kHz 
+square wave 
+ 
+HPE-15 
+Telecommand data 
+transmission used 
+4.6.3 
+O.1 
+N/A 
+ 
+HPE-15.1 
+Slot width 
+4.6.3.2 
+C:M 
+65,536 ns 
+ 
+HPE-16 
+Timing jitter 
+4.7 
+M 
+< 10% of slot 
+ 
+
+=====PAGE 31=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page A-6 
+March 2026 
+O3K Telemetry signaling:  
+Item 
+Description 
+Reference Status 
+Values Allowed 
+Item or 
+Values 
+Supported 
+O3K-1 
+Center 
+frequency 
+index 
+5.2 
+1+ 
+Integer in {−18, 
+−17, …, 27, 28} 
+ 
+O3K -2 
+Center frequency 
+tolerance 
+5.3 
+M 
+10 GHz 
+ 
+O3K -3 
+Laser linewidth 
+5.4 
+M 
+< 10 GHz 
+ 
+O3K -4 
+In-band and 
+spillover emissions 
+5.5 
+M 
+95% within 20 
+GHz 
+ 
+O3K -5.1 
+Modulation 
+5.6.1 
+M 
+OOK 
+ 
+O3K -5.2 
+Timing jitter 
+5.6.3 
+M 
+< 10% of slot 
+ 
+O3K-5.3 
+Extinction Ratio 
+5.6.4 
+M 
+> 10 dB ON/OFF 
+ratio 
+ 
+O3K -6 
+Slot width      
+5.7 
+1+ 
+0.1, 0.2, 0.4, 0.8, 
+1.6, 3.2, 6.4, 12.8, 
+25.6, 51.2, 102.4, 
+204.8, 409.6, or 
+819.2 ns 
+ 
+When O3K telemetry signaling is used, the beacon signaling described in Section 6 is optional. 
+When O3K beacon signaling is used, the following table applies:  
+Item 
+Description 
+Reference 
+Status 
+Values Allowed 
+Item or 
+Values 
+Supported 
+O3K-1 
+Center frequency  
+6.2 
+1+ 
+a) 188.350 THz to 
+188.750 THz   
+b) 195.000THz to 
+195.900THz  
+c) 370.112 THz to 
+371.948 THz 
+ 
+O3K -2 
+Center frequency 
+tolerance 
+6.3 
+M 
+50 GHz for 
+options a) and b) 
+and 918 GHz for 
+option c) 
+ 
+
+=====PAGE 32=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page A-7 
+March 2026 
+Item 
+Description 
+Reference 
+Status 
+Values Allowed 
+Item or 
+Values 
+Supported 
+O3K -3 
+Laser linewidth 
+6.4 
+M 
+50 GHz for 
+options a) and b), 
+and 50 GHz to 
+300 GHz for 
+option c) 
+ 
+O3K -4 
+In-band and spillover 
+emissions 
+6.5 
+M 
+95% within 100 
+GHz for options 
+a) and b), and 
+1218 GHz for 
+option c) 
+ 
+O3K -5.1 
+Modulation 
+6.6.1 
+M 
+Unmodulated or 
+OOK 
+ 
+O3K-5.2 
+Beacon Pulse 
+Repetition Rate 
+6.6.2 
+M 
+1 kHz to 10 MHz 
+for options a) and 
+b), and 0 to 10 
+kHz for option c) 
+ 
+O3K -5.3 
+Timing jitter 
+6.6.3 
+M 
+< 10% of slot 
+ 
+O3K -5.4 
+Extinction Ratio 
+6.6.4 
+M 
+> 10 dB max/min 
+ratio 
+ 
+
+=====PAGE 33=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page B-1 
+March 2026 
+ANNEX B 
+ 
+SECURITY, SANA, AND PATENT CONSIDERATIONS 
+ 
+(INFORMATIVE) 
+B1 
+SECURITY CONSIDERATIONS 
+B1.1 
+SECURITY BACKGROUND 
+It is assumed that security is provided by encryption, authentication methods, and access 
+control performed at a layer above the physical layer and coding and synchronization sublayer. 
+Mission and service providers are expected to select from recommended security methods, 
+suitable to the specific application profile. Specification of these security methods and other 
+security provisions is outside the scope of this Recommended Standard. The Physical Layer 
+has the objective of delivering data with the minimum possible amount of residual errors. The 
+associated channel coding as described in reference [1] must be used to ensure that residual 
+errors are detected and the frame is flagged. There is an extremely low probability of additional 
+undetected errors that may escape this scrutiny. These errors may impact the encryption 
+process in unpredictable ways, possibly affecting the decryption stage and producing data loss, 
+but will not compromise the security of the data. 
+B1.2 
+SECURITY CONCERNS 
+Security concerns in the areas of data privacy, authentication, access control, availability of 
+resources, and auditing are addressed in higher layers and are outside the scope of this 
+Recommended Standard. 
+B1.3 
+CONSEQUENCES OF NOT APPLYING SECURITY 
+There are no specific security measures prescribed for the Physical Layer. Therefore, 
+consequences of not applying security are only imputable to the lack of proper security 
+measures in other layers. Residual undetected errors may produce additional data loss when 
+the link carries encrypted data. 
+B2 
+SANA CONSIDERATIONS 
+The recommendations of this document do not require any action from SANA. 
+B3 
+PATENT CONSIDERATIONS 
+No patents are known to relate to this Recommended Standard. 
+
+=====PAGE 34=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page C-1 
+March 2026 
+ANNEX C 
+ 
+ABBREVIATIONS AND ACRONYMS 
+ 
+(INFORMATIVE) 
+AOS  
+Advanced Orbiting Systems 
+CW 
+ 
+continuous wave 
+HPE 
+ 
+high photon efficiency 
+ITU 
+ 
+International Telecommunication Union 
+MSB  
+most significant bit 
+NRZ  
+non-return-to-zero 
+O3K 
+ 
+optical on-off-keying 
+OOK  
+on-off keying  
+OSI 
+ 
+Open Systems Interconnection 
+PPM   
+pulse position modulation 
+PRR 
+ 
+pulse repetition rate 
+RHCP  
+right-hand circular polarization 
+RL 
+ 
+Requirements List 
+RMS  
+root mean square 
+TM 
+ 
+telemetry 
+USLP  
+Unified Space Data Link Protocol 
+ 
+
+=====PAGE 35=====
+RECOMMENDED STANDARD FOR NON-COHERENT OPTICAL COMMUNICATIONS 
+PHYSICAL LAYER 
+CCSDS 141.0-B-2 
+Page D-1 
+March 2026 
+ANNEX D 
+ 
+INFORMATIVE REFERENCES 
+[D1] Information Technology—Open Systems Interconnection—Basic Reference Model: The 
+Basic Model. 2nd ed. International Standard, ISO/IEC 7498-1:1994. Geneva: ISO, 1994. 
+[D2] TM Space Data Link Protocol. Issue 3. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 132.0-B-3. Washington, D.C.: CCSDS, October 2021. 
+[D3] AOS Space Data Link Protocol. Issue 5. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 732.0-B-5. Washington, D.C.: CCSDS, October 2025. 
+[D4] Spectral 
+Grids 
+for 
+WDM 
+Applications: 
+DWDM 
+Frequency 
+Grid. 
+ITU-T 
+Recommendation G.694.1. Geneva: ITU, 2020. 
+[D5] B. Moision and J. Hamkins. “Coded Modulation for the Deep-Space Optical Channel: 
+Serially Concatenated Pulse-Position Modulation.” IPN Progress Report 42-161 (May 
+15, 2005). 
+[D6] Robert M. Gagliardi and Sherman Karp. Optical Communications. 2nd ed. Hoboken, 
+New Jersey: Wiley, March 1995. 
+[D7] Hamid Hemmati, ed. Deep Space Optical Communications. Hoboken, New Jersey: 
+Wiley, June 2006. 
+[D8] Unified Space Data Link Protocol. Issue 3. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 732.1-B-3. Washington, D.C.: CCSDS, June 2024. 

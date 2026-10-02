@@ -1,0 +1,4122 @@
+
+=====PAGE 1=====
+ 
+Research and Development for 
+Space Data System Standards 
+OPTICAL HIGH DATA 
+RATE (HDR) 
+COMMUNICATION—
+1064 NM 
+EXPERIMENTAL SPECIFICATION 
+CCSDS 141.11-O-1 
+ORANGE BOOK 
+December 2018 
+
+=====PAGE 2=====
+ 
+Research and Development for 
+Space Data System Standards 
+OPTICAL HIGH DATA 
+RATE (HDR) 
+COMMUNICATION—
+1064 NM 
+EXPERIMENTAL SPECIFICATION 
+CCSDS 141.11-O-1 
+ORANGE BOOK 
+December 2018 
+
+=====PAGE 3=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+AUTHORITY 
+ 
+ 
+ 
+Issue: 
+Orange Book, Issue 1 
+ 
+ 
+Date: 
+December 2018 
+ 
+ 
+Location: 
+Washington, DC, USA 
+ 
+ 
+This document has been approved for publication by the Consultative Committee for Space 
+Data Systems (CCSDS).  The procedure for review and authorization of CCSDS documents 
+is detailed in Organization and Processes for the Consultative Committee for Space Data 
+Systems (CCSDS A02.1-Y-4). 
+ 
+This document is published and maintained by: 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+E-mail: secretariat@mailman.ccsds.org 
+ 
+CCSDS 141.11-O-1 
+Page i 
+December 2018 
+
+=====PAGE 4=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+FOREWORD 
+Attention is drawn to the possibility that some of the elements of this document may be the 
+subject of patent rights. CCSDS has processes for identifying patent issues and for securing 
+from the patent holder agreement that all licensing policies are reasonable and non-
+discriminatory.  However, CCSDS does not have a patent law staff, and CCSDS shall not be 
+held responsible for identifying any or all such patent rights. 
+Through the process of normal evolution, it is expected that expansion, deletion, or 
+modification of this document may occur.  This Experimental Specification is therefore 
+subject to CCSDS document management and change control procedures, which are defined 
+in Organization and Processes for the Consultative Committee for Space Data Systems 
+(CCSDS A02.1-Y-4).  Current versions of CCSDS documents are maintained at the CCSDS 
+Web site: 
+http://www.ccsds.org/ 
+Questions relating to the contents or status of this document should be sent to the CCSDS 
+Secretariat at the e-mail address indicated on page i. 
+CCSDS 141.11-O-1 
+Page ii 
+December 2018 
+
+=====PAGE 5=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+At time of publication, the active Member and Observer Agencies of the CCSDS were: 
+Member Agencies 
+– Agenzia Spaziale Italiana (ASI)/Italy. 
+– Canadian Space Agency (CSA)/Canada. 
+– Centre National d’Etudes Spatiales (CNES)/France. 
+– China National Space Administration (CNSA)/People’s Republic of China. 
+– Deutsches Zentrum für Luft- und Raumfahrt (DLR)/Germany. 
+– European Space Agency (ESA)/Europe. 
+– Federal Space Agency (FSA)/Russian Federation. 
+– Instituto Nacional de Pesquisas Espaciais (INPE)/Brazil. 
+– Japan Aerospace Exploration Agency (JAXA)/Japan. 
+– National Aeronautics and Space Administration (NASA)/USA. 
+– UK Space Agency/United Kingdom. 
+Observer Agencies 
+– 
+Austrian Space Agency (ASA)/Austria. 
+– 
+Belgian Federal Science Policy Office (BFSPO)/Belgium. 
+– 
+Central Research Institute of Machine Building (TsNIIMash)/Russian Federation. 
+– 
+China Satellite Launch and Tracking Control General, Beijing Institute of Tracking and 
+Telecommunications Technology (CLTC/BITTT)/China. 
+– 
+Chinese Academy of Sciences (CAS)/China. 
+– 
+China Academy of Space Technology (CAST)/China. 
+– 
+Commonwealth Scientific and Industrial Research Organization (CSIRO)/Australia. 
+– 
+Danish National Space Center (DNSC)/Denmark. 
+– 
+Departamento de Ciência e Tecnologia Aeroespacial (DCTA)/Brazil. 
+– 
+Electronics and Telecommunications Research Institute (ETRI)/Korea. 
+– 
+European Organization for the Exploitation of Meteorological Satellites (EUMETSAT)/Europe. 
+– 
+European Telecommunications Satellite Organization (EUTELSAT)/Europe. 
+– 
+Geo-Informatics and Space Technology Development Agency (GISTDA)/Thailand. 
+– 
+Hellenic National Space Committee (HNSC)/Greece. 
+– 
+Hellenic Space Agency (HSA)/Greece. 
+– 
+Indian Space Research Organization (ISRO)/India. 
+– 
+Institute of Space Research (IKI)/Russian Federation. 
+– 
+Korea Aerospace Research Institute (KARI)/Korea. 
+– 
+Ministry of Communications (MOC)/Israel. 
+– 
+Mohammed Bin Rashid Space Centre (MBRSC)/United Arab Emirates. 
+– 
+National Institute of Information and Communications Technology (NICT)/Japan. 
+– 
+National Oceanic and Atmospheric Administration (NOAA)/USA. 
+– 
+National Space Agency of the Republic of Kazakhstan (NSARK)/Kazakhstan. 
+– 
+National Space Organization (NSPO)/Chinese Taipei. 
+– 
+Naval Center for Space Technology (NCST)/USA. 
+– 
+Research Institute for Particle & Nuclear Physics (KFKI)/Hungary. 
+– 
+Scientific and Technological Research Council of Turkey (TUBITAK)/Turkey. 
+– 
+South African National Space Agency (SANSA)/Republic of South Africa. 
+– 
+Space and Upper Atmosphere Research Commission (SUPARCO)/Pakistan. 
+– 
+Swedish Space Corporation (SSC)/Sweden. 
+– 
+Swiss Space Office (SSO)/Switzerland. 
+– 
+United States Geological Survey (USGS)/USA. 
+CCSDS 141.11-O-1 
+Page iii 
+December 2018 
+
+=====PAGE 6=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+CCSDS 141.11-O-1 
+Page iv 
+ 
+DOCUMENT CONTROL 
+ 
+Document 
+Title 
+Date 
+Status 
+CCSDS 
+141.11-O-1 
+Optical High Data Rate (HDR) 
+Communication—1064 NM, 
+Experimental Specification, Issue 1 
+December 
+2018 
+Original issue 
+EC1 
+Editorial change 1 
+January 
+2019 
+Corrects graphics display 
+problems 
+EC2 
+Editorial change 2 
+September 
+2019
+Corrects equation 
+typography 
+ 
+ 
+September 2019
+
+=====PAGE 7=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+CONTENTS 
+Section 
+Page 
+1 INTRODUCTION .......................................................................................................... 1-1 
+ 
+1.1 PURPOSE AND SCOPE ........................................................................................ 1-1 
+1.2 DOCUMENT STRUCTURE ................................................................................. 1-1 
+1.3 NOMENCLATURE ............................................................................................... 1-2 
+1.4 REFERENCES ....................................................................................................... 1-3 
+ 
+2 OVERVIEW ................................................................................................................... 2-1 
+ 
+2.1 GENERAL .............................................................................................................. 2-1 
+2.2 ARCHITECTURE .................................................................................................. 2-1 
+2.3 SPATIAL ACQUISITION ..................................................................................... 2-3 
+2.4 DATA LINK LAYER ............................................................................................ 2-8 
+2.5 ARCHITECTURE OF LIA .................................................................................. 2-15 
+ 
+3 PHYSICAL LAYER ...................................................................................................... 3-1 
+ 
+3.1 TERMINAL A OPTICAL TRANSMIT SIGNAL CHARACTERISTICS ............ 3-1 
+3.2 TERMINAL B OPTICAL SIGNAL CHARACTERISTICS ................................. 3-2 
+3.3 COMMUNICATIONS SIGNAL ............................................................................ 3-2 
+3.4 TERMINAL B OPTICAL COMMUNICATIONS SIGNAL  
+CHARACTERISTICS .......................................................................................... 3-21 
+ 
+4 CODING AND SYNCHRONIZATION ...................................................................... 4-1 
+ 
+4.1 TERMINAL A DATA LINK LAYER CHARACTERISTICS .............................. 4-1 
+4.2 TERMINAL B DATA LINK LAYER CHARACTERISTICS .............................. 4-5 
+ 
+ANNEX A SECURITY, SANA, AND PATENT CONSIDERATIONS  
+(INFORMATIVE) ......................................................................................... A-1 
+ANNEX B PHYSICAL LAYER AND CODING AND SYNCHRONIZATION 
+SUBLAYER IMPLEMENTATION  (INFORMATIVE)............................B-1 
+ANNEX C ABBREVIATIONS AND ACRONYMS  (INFORMATIVE) .................... C-1 
+Figure 
+2-1 Relationship with OSI and CCSDS Layers .................................................................. 2-2 
+2-2 Modes of Beaconless Acquisition According to a Master-Slave Approach ................ 2-6 
+2-3 Simplified Flow Chart of the Beaconless Spatial Acquisition Algorithm .................... 2-7 
+2-4 Layer Overview for the Example of EDRS Application .............................................. 2-8 
+CCSDS 141.11-O-1 
+Page v 
+December 2018 
+
+=====PAGE 8=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+CONTENTS (continued) 
+Figure 
+Page 
+2-5 Layer Overview for the Example of a Symmetrical OISL between  
+Two GEO Relays ........................................................................................................ 2-10 
+2-6 Block Diagram with Reference Points and Data Rates for the  
+Example of EDRS Application ................................................................................... 2-11 
+2-7 Block Diagram with Reference Points and Data Rates for the  
+Example of EDRS Application with Optimized Throughput  
+(Denoted As 600 Mb/s Mode or Sentinel Mode) ....................................................... 2-12 
+2-8 Requirements on LIA=LIAU for Flexible Relay Network ......................................... 2-14 
+2-9 Architecture of LIA .................................................................................................... 2-15 
+2-10 Sequence of Operations in LIA for Framing .............................................................. 2-16 
+2-11 Backpressure Concept for LIA=LIAU to Adapt to Given Data Rates  
+on RF Downlink.......................................................................................................... 2-17 
+3-1 Upper Limit for the Frequency Noise of the Tx Laser ................................................. 3-4 
+3-2 Mapping of LPC Encoder Input to 5-by-5 Input Matrix .............................................. 3-9 
+3-3 Mapping of 5-by-5 Output Matrix to Encoder Output ............................................... 3-10 
+3-4 Calculation of e(0,0) to e(3,3) ..................................................................................... 3-11 
+3-5 Definition of Subblocks within 5-by-5 Output Matrix ............................................... 3-13 
+3-6 System Channel Frame ............................................................................................... 3-16 
+3-7 Insertion of Inverted Unique Word, Scrambler Reset and Alignment  
+of 3-Tuples .................................................................................................................. 3-17 
+3-8 Format of Service Channel Frame .............................................................................. 3-18 
+3-9 Serial Output Data Frame DatSerOut ......................................................................... 3-19 
+3-10 Spectral Mask of the Modulated Base-Band Tx Signal .............................................. 3-19 
+3-11 Transmit Eye Pattern .................................................................................................. 3-20 
+4-1 Data Rates in Flexible Relay Network ......................................................................... 4-1 
+4-2 LIA Frame Header for the General Case ...................................................................... 4-2 
+4-3 LIA Frame Header for the Specific Case of LIA=DRAU ............................................ 4-3 
+ 
+Table 
+3-1 Mux and Align Modes .................................................................................................. 3-5 
+3-2 Illustration of the Building Rule for the Parallel PRBS Generator .............................. 3-7 
+3-3 Scrambler Reset Definition ........................................................................................... 3-7 
+3-4 Disparity Calculation .................................................................................................. 3-14 
+3-5 Definition of Subblock Inversion ............................................................................... 3-15 
+3-6 Definition of Unique Word and Reserved Pattern ...................................................... 3-16 
+3-7 Short Scrambler Reset Mode Definition ..................................................................... 3-16 
+3-8 Service Channel Bit Encoding .................................................................................... 3-17 
+3-9 Definitions for the Transmit Eye Pattern in Figure 3-11 ............................................ 3-20 
+ 
+CCSDS 141.11-O-1 
+Page vi 
+December 2018 
+
+=====PAGE 9=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+1 INTRODUCTION 
+1.1 
+PURPOSE AND SCOPE 
+The purpose of this Experimental Specification is to define a recommendation for optical 
+communication, taking as reference the implementation in ESA missions (EDRS series, 
+Sentinel series) and the original DLR development. The key technical features are the use of 
+the 1064 nm wavelength with Binary Phase-Shift Keying (BPSK) modulation. In addition, 
+future evolutions with regard to dual-wavelength (1064 nm and 1550 nm), increased data 
+rates (3.6 Gb/s with Reed-Solomon codes and BPSK and up to 10 Gb/s with QPSK), 
+modulation, and coding schemes will be specified in the context of the ESA ScyLight 
+program, a dedicated new ESA framework on optical communication technology, and in the 
+frame of the ESA GlobeNet project. 
+The Experimental Specification contains the technical specification for implementing the 
+Physical Layer and the Coding and Synchronization (sub)layer of optical systems supporting 
+the High Data Rate (HDR) scenario. 
+ESA and DLR consider this Experimental Specification to be a candidate for a future 
+CCSDS Recommended Standard for optical systems interoperable with the European Data 
+Relay System (EDRS), for complementary missions like ESA GlobeNet, or even for other 
+dedicated scenarios. 
+The described optical communications mechanisms will be useful in particular for LEO-GEO 
+and GEO-GEO Inter-Satellite Link (ISL) operational scenarios. However, they can also be 
+used for space-ground and airborne-space links if additional measures are taken, for example, 
+adaptive optics, interleaving, and erasure coding. 
+This Experimental Specification provides additional proven options for the implementation 
+of optical communication in cases of HDR transmissions, and it should be adopted by ESA 
+for the above-mentioned missions and beyond. 
+Furthermore, this Experimental Specification will complement the optical communication 
+Recommended Standards for High Photon Efficiency (HPE) and Low Complexity (LC), 
+without overlapping them, but adding a sound candidate for future standardization. 
+1.2 
+DOCUMENT STRUCTURE 
+This document is structured as follows: 
+– Section 2 provides a brief description of the application scenarios and an overview of 
+the selected Physical Layer characteristics and modulation, coding, and 
+synchronization schemes. 
+– Section 3 contains the specification of the Physical Layer characteristics of both the 
+transmit and receive terminal implementations. 
+CCSDS 141.11-O-1 
+Page 1-1 
+December 2018 
+
+=====PAGE 10=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+– Section 4 contains the specification of the coding and synchronization sublayers of 
+the transmit and receive terminal implementations. 
+– Annex A discusses security, Space Assigned Numbers Authority (SANA), and patent 
+considerations. 
+– Annex B identifies existing implementations that demonstrate the technologies 
+expounded in this Experimental Specification. 
+– Annex C is a glossary of abbreviations used in this document. 
+1.3 
+NOMENCLATURE 
+1.3.1 NORMATIVE TEXT 
+The following conventions apply for the normative specifications in this Experimental 
+Specification: 
+a) the words ‘shall’ and ‘must’ imply a binding and verifiable specification; 
+b) the word ‘should’ implies an optional, but desirable, specification; 
+c) the word ‘may’ implies an optional specification; 
+d) the words ‘is’, ‘are’, and ‘will’ imply statements of fact. 
+NOTE – These conventions do not imply constraints on diction in text that is clearly 
+informative in nature. 
+1.3.2 INFORMATIVE TEXT 
+In the normative sections of this document, informative text is set off from the normative 
+specifications either in notes or under one of the following subsection headings: 
+– Overview; 
+– Background; 
+– Rationale; 
+– Discussion. 
+CCSDS 141.11-O-1 
+Page 1-2 
+December 2018 
+
+=====PAGE 11=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+1.4 
+REFERENCES 
+The following publications contain provisions which, through reference in this text, 
+constitute provisions of this Experimental Specification. At the time of publication, the 
+editions indicated were valid. All publications are subject to revision, and users of this 
+Experimental Specification are encouraged to investigate the possibility of applying the most 
+recent editions of the documents indicated below. The CCSDS Secretariat maintains a 
+register of currently valid CCSDS publications. 
+[1] 
+Information Technology—Open Systems Interconnection—Basic Reference Model: The 
+Basic Model. 2nd ed. International Standard, ISO/IEC 7498-1:1994. Geneva: ISO, 
+1994. 
+[2] 
+TM Synchronization and Channel Coding. Issue 3. Recommendation for Space Data 
+System Standards (Blue Book), CCSDS 131.0-B-3. Washington, D.C.: CCSDS, 
+September 2017. 
+[3] 
+TM Space Data Link Protocol. Issue 2. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 132.0-B-2. Washington, D.C.: CCSDS, September 
+2015. 
+[4] 
+TC Space Data Link Protocol. Issue 3. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 232.0-B-3. Washington, D.C.: CCSDS, September 
+2015. 
+[5] 
+AOS Space Data Link Protocol. Issue 3. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 732.0-B-3. Washington, D.C.: CCSDS, September 
+2015. 
+ 
+CCSDS 141.11-O-1 
+Page 1-3 
+December 2018 
+
+=====PAGE 12=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+2 OVERVIEW 
+2.1 
+GENERAL 
+ESA and DLR consider this Experimental Specification to be a candidate for a future 
+CCSDS Recommended Standard for optical systems interoperable with the EDRS, 
+complementary missions like ESA GlobeNet, or even for other dedicated scenarios. 
+The described optical communications mechanisms will be particularly useful for LEO-GEO 
+and GEO-GEO Inter-Satellite Link (ISL) operational scenarios. However, they can also be 
+used for space-ground and airborne-space links if additional measures are taken, for example, 
+adaptive optics, interleaving, and erasure coding. 
+This Experimental Specification provides additional proven options for the implementation 
+of optical communication in cases of HDR transmissions, which option should be adopted by 
+ESA for the above-mentioned missions and beyond. 
+Furthermore, this Experimental Specification will complement the optical communication 
+Recommended Standards for High Photon Efficiency (HPE) and Low Complexity (LC), 
+without overlapping them, but adding a sound candidate for future standardization. 
+2.2 
+ARCHITECTURE 
+Figure 2-1 illustrates the relationship of this Recommended Standard to the Open Systems 
+Interconnection reference model (reference [1]). Two sublayers of the Data Link Layer are 
+defined for CCSDS space link protocols. The Data Link Protocol sublayer provides functions 
+for producing Transfer Frames; examples are the TM Space Data Link Protocol 
+(reference [3]), the AOS Space Data Link Protocol (reference [5]), and the TC Space Data 
+Link Protocol (reference [4]). 
+The Optical Communications Coding and Synchronization protocol specified in this 
+Recommended Standard provides the functions of the synchronization and channel coding 
+sublayer of the Data Link Layer for transferring Transfer Frames over an optical space link. 
+CCSDS 141.11-O-1 
+Page 2-1 
+December 2018 
+
+=====PAGE 13=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+ 
+Figure 2-1:  Relationship with OSI and CCSDS Layers 
+CCSDS 141.11-O-1 
+Page 2-2 
+December 2018 
+
+=====PAGE 14=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+2.3 
+SPATIAL ACQUISITION 
+2.3.1 BACKGROUND 
+In order to establish communication between two optical communication terminals, the 
+communication terminals are required to perform a so-called ‘spatial acquisition’ sequence, 
+which ends when spatial tracking is achieved. In coherent optical communication modes, a 
+transition to coherent (frequency) tracking needs to be further executed by locking the 
+transmit laser frequency coherently to the received frequency. In the specific case of 
+homodyne communication modes, the frequency of the local oscillator needs to be adjusted 
+to the signal carrier frequency (frequency acquisition), such that received signal and local 
+oscillator are phase-locked to each other. If this state of homodyne tracking is reached, 
+communication can be started. 
+Spatial acquisition is the process of co-aligning the receiver line of sight and the transmit-
+beam of the optical communication terminal precisely with the direction of the counter 
+terminal’s position. If the direction of the counter terminal is known to a sufficient degree of 
+precision, co-alignment can be achieved by pointing the terminal to the known direction by 
+direct open-loop pointing. The estimated error on the counter terminal direction is called an 
+‘Uncertainty Cone’ (UC) and is available (usually) to a precision of a few milliradians. A 
+constant of the propagation of electromagnetic waves is the so-called beam parameter 
+product. For near-infrared light, the beam parameter product is in the order of ~mm mrad. As 
+it is beneficial for the link budget to maximize the communication beam aperture, the UC of 
+the terminal is often orders of magnitude larger than the beam divergence of the 
+communication beam. Thus a direct open-loop pointing is in many cases not feasible, leading 
+to reliance in the acquisition process on an optical feedback signal to which the counter 
+terminal can align. Either an additional beam with a beam divergence larger than the 
+communication beam (a so-called beacon) is employed for this purpose, or the 
+communication beam with small beam divergence scans the UC to provide the necessary 
+feedback to the counter terminal. Literature distinguishes between acquisition with beacon 
+and beaconless acquisition if only the communication signal is employed to achieve spatial 
+acquisition, either by direct pointing or scanning. 
+In beacon-based systems, a 2-D sensor is utilized to detect and center the beacon signal. 
+Mechanical co-alignment of the pixel and communication sensors’ coordinate systems needs 
+to be guaranteed in space over a wide range of operating temperatures, which guarantee 
+requires a balance between mechanical stability and light-weight construction. Quadrant 
+photodiodes are an alternative design option, which can be used simultaneously as a receiver 
+for acquisition and for communication. Avoiding pixel sensors has the advantage of reduced 
+power and mass, and higher reliability since the part count is lower and quadrant photodiodes 
+have better FIT rates than pixel sensors. If the wavelength of the beacon differs from the 
+communication beam, then the optical system (e.g., coatings) has to be optimized for both 
+wavelengths, which results in compromises and reduces system performance for the 
+communication wavelength. The higher divergence of a beacon laser requires higher optical 
+transmit power than a beaconless system, which increases the requirements of the system to 
+cope with high optical power densities. For example, keeping receive-signal power constant, 
+CCSDS 141.11-O-1 
+Page 2-3 
+December 2018 
+
+=====PAGE 15=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+transmit power has to be 100 times higher if the beacon divergence is 10 times higher than 
+the beaconless transmit beam, which increases the optical power from 0.7W to 70W for a 
+LEO-LEO system. 
+Before designing a specific Pointing, Acquisition, and Tracking (PAT) scheme, it is 
+important in any case to analyze and, if possible, to reduce the UC of the link. If a link is to 
+be established between two different terminals, the link acquisition will be influenced by two 
+main factors: 
+The first factor to be considered is the so-called Host Uncertainty Cone (HUC), which is 
+derived from the position, attitude, and timing knowledge of the transmitting optical 
+terminal. To determine the second factor, the so-called Total Uncertainty Cone (TUC), the 
+position uncertainty of the receiving counter terminal, also needs to be taken into 
+consideration. 
+Parameters that influence HUC and TUC and are recommended to be optimized for mission 
+planning of optical links in context, for example, of an ICD are the following: 
+a) Timing accuracy 
+ 
+The precision of timing data determines how well the position of terminal and counter 
+terminal are known. 
+b) Position knowledge 
+ 
+Depending on the location of the terminal (e.g., Earth, geostationary S/C, low orbit 
+Earth observation S/C), the accuracy of position knowledge will differ. The position 
+accuracy directly influences the size of the UC. 
+c) Attitude knowledge 
+ 
+Precision of the knowledge of orientation in space directly influences the size of the 
+UC. To determine the attitude knowledge, internal contributors such as pointing 
+precision of the Optics and external contributors such as alignment knowledge aboard 
+a S/C and attitude knowledge of a S/C have to be determined. 
+d) (Micro)-vibration 
+ 
+In-orbit vibration is to be considered in the design of the beaconless spatial 
+acquisition algorithm, so that spatial-acquisition probability and spatial-acquisition 
+duration requirements are met. The design of the algorithm depends on the magnitude 
+and frequency of vibrations.. The greatest contributors to in-orbit vibrations are 
+reaction wheels and solar arrays. The design of the beaconless spatial acquisition 
+algorithm is based on the predicted in-orbit vibration of both S/Cs, and therefore the 
+performance of the algorithm depends on the in-orbit vibration conditions of not only 
+the local S/C but of the counter S/C as well. 
+CCSDS 141.11-O-1 
+Page 2-4 
+December 2018 
+
+=====PAGE 16=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+e) Planning cycle and telecommand opportunities 
+ 
+The precision of position knowledge may depend on the link planning cycle, since the 
+position knowledge will degrade over time. The longer the planning cycle, the more 
+safety margins have to be applied to counterbalance increasing TUC. Predicted S/Cs 
+positions on ground are also used to inform the optical terminal where the counter 
+terminal is at the time of a requested data transmission. The error of the predicted 
+terminal position can be kept small using updated predictions. 
+2.3.2 ACQUISITION SEQUENCE 
+2.3.2.1 Introduction 
+The following beaconless PAT scheme is implemented in the EDRS and has previously been 
+reliably verified in orbit with the TerraSar-X NFire optical LEO intersatellite links. It uses 
+the communication beam (i.e., identical wavelength and beam divergence as the 
+communication signal) and scans the UC to achieve spatial acquisition. Because of the 
+scanning methodology, a time-tagged sequence has been chosen. Additionally, the 
+transmitted beam is modulated to facilitate terminal identification and to improve the PAT 
+link budget. To establish a link acquisition with the EDRS optical terminals, only the 
+normative characteristics of the optical signal (wavelength, modulation, etc.—see below) are 
+required. However, the knowledge of the time-tagged acquisition sequence is helpful and 
+recommended to be agreed upon in a mission-specific ICD. 
+2.3.2.2 Beaconless PAT 
+In the first phase of the time-tagged PAT sequence, both optical terminals point in the 
+estimated direction of their respective counter terminal in open loop. The estimated direction 
+needs to be known, with limited accuracy, of the total UC, which will typically be in the 
+order of milliradians; larger UCs increase the duration of the spatial acquisition. After initial 
+open-loop pointing, the spatial acquisition starts in master-slave mode. The master and slave 
+roles are determined during mission planning. The master optical terminal emits light and 
+spirals the UC with its low divergent transmit beam, and the counter (slave) Laser 
+Communication Terminal (LCT) should receive a light pulse once per scan. The receiving 
+optical terminal in slave mode will successively reduce its UC with each light pulse, as it 
+corrects its pointing with each received light pulse with a decreasing step size. Because of 
+vibrations, the probability of hitting the counter terminal might be below 100 percent for a 
+single scan. 
+After a predefined number of scans, the master terminal stops scanning and transmitting. The 
+number of necessary scans depends on overall system characteristics, which define the total 
+UC. 
+The slave terminal is at this point well aligned to the master terminal, and the roles of master 
+and slave are reversed: the former slave terminal takes on the role of master and starts to scan 
+CCSDS 141.11-O-1 
+Page 2-5 
+December 2018 
+
+=====PAGE 17=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+the remaining UC. Since the UC is small during this second phase of acquisition, much 
+shorter single scans allow the former master terminal (now slave) to align quickly by the 
+same algorithm. At a predefined fine alignment—the remaining UC may be defined in the 
+context of mission-specific ICDs—the former master also restarts to emit light and to scan. 
+Both terminals are now scanning the UC while reducing the scan angle from scan to scan. 
+The alignment is further improved until the tracking sensor responds. The terminal then stops 
+scanning and stably tracks its counter terminal. At this point in time, spatial tracking is 
+accomplished. Figure 2-2 shows a simplified flow chart of the beaconless spatial acquisition 
+algorithm. 
+S
+S
+S
+S
+S
+S
+M
+M
+M
+M
+M
+M
+Coarse Acquisition
+Phase 1
+Coarse Acquisition
+Phase 2
+Fine Acquisition
+Pointing
+Pointing Error
+Slave Terminal
+Pointing Error
+Master Terminal
+…
+M: master terminal, S: slave terminal
+ 
+Figure 2-2:  Modes of Beaconless Acquisition According to a Master-Slave Approach 
+Figure 2-3 shows a simplified flow chart of the beaconless spatial acquisition algorithm. 
+CCSDS 141.11-O-1 
+Page 2-6 
+December 2018 
+
+=====PAGE 18=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+BEACONLESS SPATIAL ACQUISITION ALGORITHM
+Start heterodyne tracking
+Stop spiraling
+Align to direction of receive signal
+Align to receive signal
+Spiral UC with Tx-beam
+Adapt spiral and UC when hit
+Spiraling UC with Tx-beam
+LCT B
+Align to receive signal
+Spiral UC with Tx-beam
+Adapt spiral and UC when hit
+Spiraling UC with Tx-beam
+Align to direction of receive signal
+Start heterodyne tracking
+Stop spiraling
+LCT A
+ 
+Figure 2-3:  Simplified Flow Chart of the Beaconless Spatial Acquisition Algorithm 
+The acquisition sequence then continues to achieve homodyne tracking by performing 
+frequency acquisition. The laser frequencies of the respective local oscillators must be 
+adjusted so they are phase-locked to the received signal. Each terminal is now coherently 
+phase locked to the counter terminal; homodyne tracking is thus achieved and the terminals 
+are ready to initiate communication. 
+2.3.3 ACQUISITION TIME 
+For the beacon-less acquisition method, the acquisition time is a time-tagged parameter. It is 
+recommended to agree on the acquisition time within the context of an ICD, as it will depend 
+strongly on the mission scenario. Determining factors for the acquisition time are the size of 
+the total UC of the link. Based on the size of the UC, a trade-off between reliable link 
+acquisition and fast acquisition will be done. In a highly dynamic LEO-LEO intersatellite 
+link, configuration acquisition times of 8 s (and in specific cases, 2 s) have been 
+demonstrated in orbit. For UCs of 1 milliradian, acquisition times of 55 s are guaranteed for 
+the EDRS intersatellite and ground link (including a safety margin). In actuality, smaller 
+acquisition times can be expected after initial in-orbit verification. 
+CCSDS 141.11-O-1 
+Page 2-7 
+December 2018 
+
+=====PAGE 19=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+2.4 
+DATA LINK LAYER 
+2.4.1 TERMINAL A DATA LINK LAYER CHARACTERISTICS 
+2.4.1.1 General Layer Structure 
+The description of the coding and synchronization schemes for optical communication is 
+compliant with the CCSDS layer structure as stated in 2.2 of this document. 
+2.4.1.2 Application Examples 
+Figure 2-4 displays an example of how the optical communication is embedded in a satellite 
+network. The example is based on the EDRS, with which data is transmitted over an Optical 
+Inter-Satellite Link (OISL), from a LEO satellite via laser to a GEO relay satellite, and from 
+Relay to Ground via RF links. The communication is bidirectional, at least on the OISL (the 
+uplink from ground to GEO is outside the scope of this document). Both LEO and GEO 
+satellites contain one LCT each. 
+Mod
+Demod
+Mux
+Encod.
+Shaping
+Demux
+Demod
+Mux
+Demux
+Mux
+Stuffing
+Encoding
+Interleav.
+Scrambling
+Encoding
+Interleav.
+Scrambling
+Encap-
+sulation
+Encap-
+sulation
+MM Ch 1
+MM Ch N
+Encapsulation
+Stuffing
+Encoding
+Encryp-
+tion
+Encryp-
+tion
+Encoding
+DRAU
+Demod
+Demod
+GEO frame
+sync
+GEO frame
+sync
+Decrypt.
+LIAU Frame sync
+Decoding
+Demux
+MM Ch 1
+MM Ch N
+Anti-
+DRAU
+LIAU frames
+Bitstream
+Bitstream
+Bitstream
+Session-wise permanent OISL
+bidirectional, 2812.5 Mb/s gross
+Immediate
+forward
+ 
+MM frames
+Async.
+Bitstreams
+Packets [= data content of GEO frames]
+Packets
+Permanent Ka-band downlinks
+unidirectional, each channel with 600 Mb/s gross
+DRAU
+frames
+ 
+Bitstream
+LEO
+Ground Network/User
+GS
+GEO
+LCT
+LIAU
+Anti-LIAU
+Anti-GIA
+GIA
+provides
+session-wise
+permanent
+forward link,
+up to 1676 Mb/s
+(depending on UL feeder
+and continuous/block mode)
+SCh
+logic
+SCh
+logic
+Optical I/F
+Optical I/F
+De-
+coding
+Demux
+Decoding
+Frame
+type ident.
+Frame
+type ident.
+De-stuff.
+De-stuff.
+Decrypt.
+Decoding
+Frame type identif.
+De-stuffing
+LCT
+Mux
+Place of MM frame re-
+establishment and network I/F tbd.
+GEO frames
+provides
+session-wise
+permanent
+return link,
+data rate =
+rOISL-net=
+1800 Mb/s
+ 
+provides
+permanent
+return link,
+data rate =
+rDL-net
+ 
+provides return link with
+unlimited integrity,
+data rate = rMM
+Encoding
+De-
+coding
+Encoding
+Encoding
+Encod.
+Shaping
+Encoding
+data rate
+< 600/1800
+Mb/s
+Mod
+Mod
+Mod
+[= data content
+of LIAU frames]
+ 
+Figure 2-4:  Layer Overview for the Example of EDRS Application 
+As shown in figure 2-4, the data stream is not fed directly into the LCT: 
+– On the LEO satellite, the data from the source(s), also denoted as mass memory 
+(MM), is fed into a device denoted as an LCT Interface Adaptation Unit (LIAU). This 
+is called return service. The reverse counterpart to LIAU is denoted as Anti-LIAU 
+(located on ground, but this is not relevant in this context). 
+CCSDS 141.11-O-1 
+Page 2-8 
+December 2018 
+
+=====PAGE 20=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+– On the GEO satellite, the data to be transmitted as forward service is fed into a device 
+denoted as Data Rate Adaptation Unit (DRAU). The reverse counterpart to DRAU is 
+denoted as Anti-DRAU and is located in the LEO satellite. 
+The term LIA (LCT Interface Adaptation) is used here as a generic term for both LIAU and 
+DRAU; the generic term for the reverse units is Anti-LIA. 
+It should be noted that the LIA accepts CCSDS frames as input data, but does not actually 
+demand a specific formatting of the input data, as the LIA and Anti-LIA transparently 
+encapsulate any input data for transport over the optical link, regardless of the source data 
+format (e.g., raw mass-memory dumps or CCSDS frames). 
+The LCTs on LEO and GEO are denoted here as type A and type B, respectively. Typically, 
+there is LIA=LIAU for type A and LIA=DRAU for type B, but in order not to exclude other 
+scenarios, and for the sake of simplification and generality, a more general architecture for 
+LIA is specified. 
+As a general principle, a lower layer provides a service to the layer above via a Service 
+Access Point (SAP). The lower layer should be independent, as much as possible, from the 
+higher layer. The term ‘layer’ does not exactly reflect the original OSI meaning, since all 
+‘layers’ mentioned here are basically Physical and Data Link Layers in the OSI sense. 
+For the sake of layer independence and technology independence, any data structures present 
+in the input signal to LIA are ignored, and the input data is encapsulated into frames (known 
+as bitstream service from CCSDS 732.0.B-3, subsection 3.4—reference [5]). 
+CCSDS 141.11-O-1 
+Page 2-9 
+December 2018 
+
+=====PAGE 21=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+Onboard Processing
+Mod
+Demod
+Mux
+Encod.
+Shaping
+Demux
+Mux
+Stuffing
+Encoding
+Interleav.
+Scrambling
+Encoding
+Interleav.
+Scrambling
+Encap-
+sulation
+Encap-
+sulation
+LIAU Frame sync
+Decoding
+Demux
+LIA frames
+A→B bitstream
+Permanent OISL
+bidirectional, 2812.5 Mb/s gross
+NA async.
+streams
+NA async.
+streams
+GEOA
+LCTA
+LCTB
+LIAA
+provides NB permanent
+B→A links
+provides NA permanent
+A→B links
+total rate =rMM
+total rate =rMM
+SCh logic
+Optical I/F
+De-
+coding
+Mod
+Demod
+Mux
+Encod.
+Shaping
+Demux
+SCh logic
+Optical I/F
+De-
+coding
+Frame type identif.
+De-stuffing
+Mux
+Stuffing
+Encoding
+Interleav.
+Scrambling
+Encoding
+Interleav.
+Scrambling
+Encap-
+sulation
+Encap-
+sulation
+LIAU Frame sync
+Decoding
+Demux
+Frame type identif.
+De-stuffing
+provides permanent
+bidirectional link,
+data rate =
+rOISL-net= 1800 Mb/s
+(each direction)
+Anti-LIAB
+LIAB
+Anti-LIAA
+NB async.
+streams
+NB async.
+streams
+Onboard Processing
+LIA frames
+B→A bitstream
+GEOB
+Encoding
+Encoding
+Encoding
+Encoding
+ 
+Figure 2-5: Layer Overview for the Example of a Symmetrical OISL between Two 
+GEO Relays 
+In figure 2-5, an OISL between two GEO relays is considered as a further example, in which 
+a fully symmetrical relation between both satellites is assumed. NA independent and 
+asynchronous links are supported from A to B. Vice versa, NB independent and asynchronous 
+links are supported from A to B. Of course, NA and NB could be equal to 1 and LIA/Anti-LIA 
+functions could be physically integrated into the ‘Onboard Processing’ block. 
+The next two figures display the EDRS satellite network architecture in terms of block 
+diagrams. This information is provided for a better overview and to introduce reference 
+points and data rates. 
+CCSDS 141.11-O-1 
+Page 2-10 
+December 2018 
+
+=====PAGE 22=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+LEO Satellite
+(e.g., Sentinel)
+Ground Segment
+MM
+Source
+LIAU
+Anti‐LIAU
+MM
+Sink
+Relay Satellite
+(e.g., EDRS)
+Ka‐Band DL
+n channels
+DPU
+Mod
+Anti‐
+DPU
+A
+C
+C2'
+C1'
+C1''
+E1
+A'
+potential MM
+frames ignored
+LIAU
+frames
+1800
+Mb/s
+1800
+Mb/s
+n*rs Mb/s
+C2
+OISL
+Line
+Dec.
+Line
+Enc.
+LCT‐TX
+Mod
+LCT‐RX
+Mod
+Mod
+n*rs Mb/s
+rOISL‐gross = 2812.5
+Mb/s
+ 
+2812.5
+Mb/s
+F
+E1'
+F'
+perhaps
+GEO frames
+rMM<1650
+Mb/s
+rOISL‐net =1800
+Mb/s
+ 
+Figure 2-6:  Block Diagram with Reference Points and Data Rates for the Example of 
+EDRS Application 
+Figure 2-6 shows the EDRS application with maximum data rates. 
+NOTE – As shown in the figure 2-7, there are also other EDRS applications in which the 
+throughput on the DownLink (DL) from Relay to Ground is limited to a net value 
+of 600 Mb/s. It is possible to design the LIAU frames with a reduced header (of 2 
+bytes only instead of 8 bytes) such that the combination of rMM=560 Mb/s and 
+rDL-net=600 Mb/s is supported. This mode is called ‘throughput optimized’ (also 
+denoted as 600 Mb/s mode or Sentinel mode) and is included here to demonstrate 
+the flexibility of the concept. However, the reduced header of 2 bytes is not 
+possible for all cases. 
+CCSDS 141.11-O-1 
+Page 2-11 
+December 2018 
+
+=====PAGE 23=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+LEO Satellite
+(e.g., Sentinel)
+Ground Segment
+MM
+Source
+LIAU
+Anti‐LIAU
+RS
+Enc.
+Inter-
+leaver
+Rep.
+Enc.
+ 
+Rep.
+Dec.
+MM
+Sink
+RS
+Dec.
+De‐
+Inter-
+leaver
+Relay Satellite
+(e.g., EDRS, Alphasat)
+Ka‐Band DL
+n channels
+LIAU
+framing
+Mux
+DPU
+Mod
+Anti‐
+DPU
+Frame
+search
+ 
+Demux
+&
+LIAU
+defram.
+A'
+A
+C''''
+C''
+potential MM
+frames ignored
+LIAU
+frames
+C''
+C
+C1
+C2
+C2'
+C1'
+E1
+E1'
+F
+F'
+C'
+C'''
+C''
+2*280
+Mb/s
+2*299.56
+Mb/s
+600
+Mb/s
+600
+Mb/s
+ 
+n*rs Mb/s
+OISL
+Line
+Dec.
+Line
+Enc.
+1800
+Mb/s
+1800
+Mb/s
+LCT‐TX
+Mod
+LCT‐RX
+Mod
+Mod
+n*rs Mb/s
+2812.5
+Mb/s
+2812.5
+Mb/s
+B1
+B2
+B3
+perhaps
+GEO frames
+ 
+Figure 2-7: Block Diagram with Reference Points and Data Rates for the Example of 
+EDRS Application with Optimized Throughput (Denoted As 600 Mb/s 
+Mode or Sentinel Mode) 
+The most important reference points from the two figures above are summarized below (all 
+data rates mentioned below refer to the current LCT technology): 
+– A is the interface between source (MM) and LIA=LIAU. The maximum data rate rMM 
+is limited to a value slightly below 1800 Mb/s; for example, rMM = 1676 Mb/s, 
+denoted as user data rate or MM data rate. The corresponding interface on the 
+receiver side is denoted ‘A’. 
+– C is the (internal) interface between LIA and LCT. The data rate here is always 
+exactly rOISL-net = 1800 Mb/s (or an integer multiple of 112.5 = 1800/16 Mb/s), 
+denoted as OISL net data rate. The corresponding interface on the receiver side is 
+denoted ‘C’. 
+– C2 is the ‘space (air)’ interface between the LCTs, including all overhead for coding 
+and synchronization and control. The data rate here is always exactly rOISL-gross = 
+2812.5 = 1800 × 25/16 Mb/s, denoted as OISL gross data rate. By definition, a 
+corresponding interface on the receiver side does not exist. 
+NOTES 
+1 
+For LIA=LIAU, the maximum user data rate @ A is in the order of 560 Mb/s, and the 
+net OISL data rate @ C is 600 Mb/s (or an integer multiple of 37.5 = 600/16 Mb/s). 
+However, the gross OISL data rate @ C2 is always 2812.5 Mb/s. 
+CCSDS 141.11-O-1 
+Page 2-12 
+December 2018 
+
+=====PAGE 24=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+2 
+For LIA = DRAU and the EDRS example, the data rate at the input to DRAU is very 
+small (in the order of some kb/s), and the OISL net data rate is 112.5 Mb/s. 
+In summary, for the EDRS application with 600 Mb/s, LIA=LIAU on the LEO satellite and 
+LIA=DRAU on the GEO satellite are different. For all other cases (like EDRS with 
+1800 Mb/s or the GEO-GEO link), a general concept for LIA is specified with no need to 
+distinguish between different applications. 
+2.4.1.3 Objectives for LIA Design 
+The objectives for the LIA design are summarized as follows: 
+– main functions/output side (I/F to LCT): 
+• 
+usage of the 1800 Mb/s mode of the LCT (rOISL-net = 1800 Mb/s); 
+• 
+user-data rate as high as possible—but with support of 
+▫ 
+enhanced coding gain together with LCT internal coding, 
+▫ 
+adaptation (fix or variable) to µW-feeder DL capabilities; 
+• 
+compatibility with EDRS relay and DTE setups and minimized footprint on relay; 
+• 
+support of robust receiver operation; 
+– main function / input side (I/F to mass memory): 
+• 
+support of 1...N data streams (multiplexing prior to or within LIA); 
+• 
+support of variable (or switch on/off) data rates; 
+• 
+support of LIA=LIAU integration into mass memory; 
+• 
+support of unconstrained user-data integrity; 
+• 
+additional requirements (e.g., very small data rates); 
+– clock concept: 
+• 
+LIA to clock LCT-TX; 
+– LIA clock is available in LCT-RX. In case of LIA=LIAU, it can be either terminated 
+(like EDRS) or forwarded (like Alphasat) in the relay satellite; conformity to CCSDS 
+data processing schemes as far as possible. 
+CCSDS 141.11-O-1 
+Page 2-13 
+December 2018 
+
+=====PAGE 25=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+2.4.2 DISCUSSION 
+Figure 2-8 shows more details for the support of DL channels with variable throughput. The 
+basic idea is summarized as follows: 
+The input data rate from MM to LIA is reduced to a value such that after addition of 
+overhead (because of LIA encapsulation and frame structure), the resulting data rate does not 
+exceed the DL throughput. 
+Stuffing with LIA idle frames is required in LIA to achieve the fixed throughput rate on the 
+OISL. This stuffing needs to be removed in the Relay satellite (this is somehow a footprint 
+on GEO; details are outside the scope of this document). 
+If the available data rate from MM is even lower than the capacity of the DL, further stuffing 
+is required. Hence, a part of the LIA idle frames has to be removed in GEO, and another part 
+has to be transmitted in DL (to minimize the footprint on GEO, LIA can introduce two types 
+of idle frames). 
+LEO Satellite
+MM
+NextGen Relay
+Ka‐Band
+DL (1/2)
+LIAU
+GIA
+Mod 
+(TeTra: 2...6 bit/symb)
+OISL User View
+(1800 Mb/s)
+OISL
+2812.5 Mb/s
+Line
+Dec.
+Line
+Enc.
+rOISL-net = 1800 Mb/s
+rOISL-gross = 2812.5 Mb/s
+rMM < rDL*(0.8...0.9...0.99)
+– MM protection (LIA could be part of MM);
+– size of footprint on MIA.
+variable in case of ACM/VCM,
+overhead depending on
+rDL-net < (1..2)*(113...862) Mb/s
+variable in case of ACM/VCM
+ 
+General Considerations 
+– 
+If the TeTra modulator is used with VCM/ACM to adapt to propagation conditions (e.g., rain, elevation): 
+• 
+rDL-net is variable (selectable @ VCM, adaptive @ ACM); 
+• 
+rMM is variable. 
+– 
+OISL throughput is large enough to feed up to two TeTra DLs with 216 MHz (see below for exceptions). 
+– 
+OISL throughput is fixed (to rOISL-net = 1800 Mb/s > rDL-net): 
+• 
+stuffing in LIAU is required; 
+• 
+de-stuffing in GIA is required → LEO leaves a footprint in MEO. 
+– 
+Split of data to 2 DL channels in GIA → Framing is required, preferably together with stuffing in LIAU → Again, footprint in 
+MEO. 
+– 
+Option: LIAU and MM could be integrated into one box. 
+Conclusions on LIAU Overhead 
+– 
+Minimal overhead in LIAU is to be added for framing (framing enables stuffing in LIAU and split in GIA). 
+– 
+More overhead in LIAU is to be added for OISL protection if not done in MM. 
+Figure 2-8:  Requirements on LIA=LIAU for Flexible Relay Network 
+In summary, LIA frames and the concept of encapsulation are introduced for coding 
+purposes (to enhance the link budget margin of the OISL) and for flexibility purposes (the 
+stuffing concept does allow for the transmission of arbitrary user data rates over a link with 
+fixed data rates). 
+The following subsections describe the specification of the LCT Interface Adapter (LIA). 
+CCSDS 141.11-O-1 
+Page 2-14 
+December 2018 
+
+=====PAGE 26=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+2.5 
+ARCHITECTURE OF LIA 
+The general architecture of the LIA is displayed in the figure 2-9. 
+A number of N sources (mass memories) are connected to LIA on the input side, and a data 
+stream of rOISL-net = 1800 Mb/s is created on the output side. If the incoming data stream has a 
+frame structure like LIA frames, this structure is fully ignored in LIA. 
+Examples are N=1 for LIA=DRAU or N=2 for LIA=LIAU. The upper bound for N is given 
+by the implementation only, but a general limit does not exist (however, the recommended 
+LIA header provides 6 bits for the source ID, so 64 different sources can be distinguished). 
+The N inputs can have independent time-variant data rates (including on-off operation), 
+supposing the aggregate rate is limited: 
+aggregated LIA input rate 
+= rMM < rOISL-net × 1904/2044 
+ 
+ 
+ 
+ 
+ 
+ 
+= 1676 Mb/s (for rOISL-net = 1800 Mb/s). 
+The data rate at the output is always constant with rOISL-net = 1800 Mb/s, even in cases in 
+which all inputs sources are inactive with rMM = 0. 
+rOISL-net= 1800 Mb/s
+Source
+1
+LCT-TX
+LIA
+variable
+data rate
+allowed
+variable
+data rate
+allowed
+Divide stream in
+blocks of 1904 bytes
+Interleaving
+Scrambling
+Buffer
+Mux
+Add ASM (4)
+Add Header (8)
+Add RS (128)
+Divide stream in
+blocks of 1904 bytes
+ 
+Interleaving
+Scrambling
+Interleaving
+Scrambling
+Buffer
+Add ASM (4)
+Add Header (8)
+Add RS (128)
+Add ASM (4)
+Add Header (8)
+Add RS (128)
+LIAU frames with
+data from Source 1 
+Idle frame content
+(fixed PN sequence
+of 1904 bytes)
+ 
+Received clock(s) from source
+LIA local clock
+Source
+N
+ 
+aggregated LIAU input rate = rMM is limited:
+rMM < min{rOISL-net, rDL-net}*1904/2044 < 1676 Mb/s
+LIAU frames with
+data from Source N
+LIAU idle frames
+Backpressure on rMM to respect rDL-net
+rMM
+(fixed)
+ 
+Figure 2-9:  Architecture of LIA 
+CCSDS 141.11-O-1 
+Page 2-15 
+December 2018 
+
+=====PAGE 27=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+As shown in the figure 2-9, the input data streams are divided (packetized) in data blocks. 
+These data blocks are equipped with a frame header. Then the concatenated field [data block, 
+frame header] is together encoded with an R-S code, followed by interleaving and 
+scrambling. The N chains are operated independently and asynchronously. 
+Another chain produces idle frames, as many as required, to generate at LIA output a 
+constant data rate of rOISL-net = 1800 Mb/s. The multiplexer operates on N+1 chains, where 
+the first N chains are served on a first-come-first-transmit basis, and the idle frames from the 
+last chain have lowest priority (i.e., are inserted and transmitted only to increase the data rate 
+to rOISL-net). This is denoted as a stuffing operation. 
+ASM
+4
+Content after Scrambling
+8+1904+128 = 2040
+ASM
+4
+CADU frame
+2040 = 8 (header) + 1904 (TM data) + 128 (RS)
+RS encoding
+CADU frames
+ignored for LIA
+ASM
+4
+CADU frame
+2040 = 8 (header) + 1904 (TM data) + 128 (RS)
+LIAU Superframe Data
+1904
+Header
+8
+LIA frames
+Division into blocks of length 1904
+(independent of any present structure)
+Superframe Data
+1904
+Header
+8
+Content after Interleaving
+8+1904+128 = 2040
+RS checksum
+128
+Interleaving
+Scrambling
+ 
+Figure 2-10:  Sequence of Operations in LIA for Framing 
+The figure 2-10 shows the sequence of operations to build up a LIA frame. The structure of 
+the incoming data stream is fully ignored, and the data stream is divided into blocks of 1904 
+bytes (a byte structure of the incoming data shall be observed). Then a header of 8 bytes is 
+added resulting in 1904+8=239×8 bytes, corresponding to 8 codewords of an R-S(255,239) 
+code, in accordance with section 4 of reference [2]. The R-S parity symbols with a total 
+length of 8×(255−239)=128 bytes are added. The resulting packet of 2040 bytes is 
+interleaved and scrambled. Finally, an Attached Synchronization Marker (ASM) word of 
+4 bytes is added. 
+The concept of backpressure is described in more detail in the figure 2-11. 
+CCSDS 141.11-O-1 
+Page 2-16 
+December 2018 
+
+=====PAGE 28=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+Adaptation to available date rate in μW-DL 
+– 
+Basic idea: 
+• 
+The source (or the aggregated sources) is commanded to present data with a limited rate to the LIAU 
+→ Backpressure from μW-DL to MM 
+• 
+The LIAU generates a data rate of 1800 Mb/s by stuffing with idle frames 
+• 
+The GEO relay removes the stuffing (partly) to reduce the data to the net rate of the μW-DL 
+– 
+Note: this leaves a footprint of the LIAU on the GEO relay (drawback!) 
+• 
+The GEO relay has to detect the LIAU frame structure 
+• 
+The GEO relay has to remove the LIAU idle frames 
+Details 
+– 
+Net rate of μW-DL = rDL-net [Mb/s] 
+– 
+Each source @ LIAU input may have different and time-variant data rate, but rMM shall be bounded as 
+Aggregated LIAU input rate = rMM < min{rOISL-net, rDL-net} × 1904/2044 Mb/s 
+– 
+Several alternatives/modifications are possible (see below) 
+– 
+Alternatives for idle frame extraction in GEO relay 
+• 
+Remove LIAU idle frames automatically as much as needed 
+• 
+Introduce two types of idle frames in LIAU, one for extraction in relay and one for stuffing in LIAU 
+• 
+GEO relay may introduce additional frame structure for coding purposes or for clock termination 
+Figure 2-11: Backpressure Concept for LIA=LIAU to Adapt to Given Data Rates on 
+RF Downlink 
+ 
+CCSDS 141.11-O-1 
+Page 2-17 
+December 2018 
+
+=====PAGE 29=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3 PHYSICAL LAYER 
+3.1 
+TERMINAL A OPTICAL TRANSMIT SIGNAL CHARACTERISTICS 
+3.1.1 OVERVIEW 
+Optical transmit signal characteristics are valid for coarse and fine spatial acquisition. For 
+tracking, communications signal characteristics apply (direct detection on acquisition 
+sensors, but coherent detection on tracking sensor). 
+3.1.2 CENTER FREQUENCIES 
+The center frequency shall be equal to 281594.0 GHz ± 3 GHz. 
+NOTE – During the spatial acquisition process, there are no specific requirements for the 
+Laser Tuning Range, Laser Tuning Range Rate, Laser Line Width, Laser 
+Relative Intensity Noise, Laser Frequency Noise, and Laser Phase Noise. 
+3.1.3 POLARIZATION 
+3.1.3.1 Polarization Type 
+The transmit beam shall have a Left-hand Circular Polarization (LCP), where the E-vector 
+rotates counter-clockwise as viewed from the transmitter in the direction of propagation. 
+3.1.3.2 Polarization Extinction Ratio 
+NOTE – While there is no specification of the polarization extinction ratio as such, the 
+minimum irradiance levels refer to the nominal polarization state. 
+3.1.4 MODULATION 
+3.1.4.1 Modulation Scheme 
+During spatial acquisition, the transmit signal shall be amplitude modulated with a frequency 
+of 1.0045 MHz ± 200 ppm and a modulation index higher than 95 percent. 
+3.1.4.2 Spectral Mask (LPC) Pulse Shape 
+The modulation waveform shall be sinusoidal. 
+NOTE – There are no special requirements for the Symbol Synchronization. 
+CCSDS 141.11-O-1 
+Page 3-1 
+December 2018 
+
+=====PAGE 30=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.2 
+TERMINAL B OPTICAL SIGNAL CHARACTERISTICS 
+3.2.1 CENTER FREQUENCIES 
+The center frequency shall be equal to 281566.0 GHz ± 3 GHz. 
+NOTE – Same as Terminal A. There are no specific requirements for Laser Tuning Range, 
+Laser Tuning Range Rate, Laser Line Width, Laser Relative Intensity Noise, 
+Laser Frequency Noise, and Laser Phase Noise. 
+3.2.2 POLARIZATION TYPE 
+The transmit beam shall have a Right-hand Circular Polarization (RCP), where the E-vector 
+rotates clockwise as viewed from the transmitter in the direction of propagation. 
+NOTE – This is the same as Terminal A. There are no special requirements for 
+Polarization Extinction Ratio. 
+3.2.3 MODULATION 
+3.2.3.1 Modulation Scheme 
+During spatial acquisition, the transmit signal shall be amplitude modulated with a frequency 
+of 1.7578 MHz ± 200 ppm and a modulation index higher than 95 percent. 
+3.2.3.2 Spectral Mask (LPC) Pulse Shape 
+The pulse shape shall be the same as Terminal A. 
+NOTE – There are no specific requirements for Symbol Synchronization, Pulse Repetition 
+Rate, and Extinction Ratio. 
+3.3 
+COMMUNICATIONS SIGNAL 
+3.3.1 BAND PLAN 
+NOTE – A Band Plan is not specified because it is not applicable to this Experimental 
+Specification. 
+CCSDS 141.11-O-1 
+Page 3-2 
+December 2018 
+
+=====PAGE 31=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.3.2 TERMINAL A OPTICAL COMMUNICATIONS SIGNAL 
+CHARACTERISTICS 
+3.3.2.1 Center Frequencies 
+3.3.2.1.1 General 
+The center frequency shall be equal to 281594.0 GHz ± 3 GHz. 
+3.3.2.1.2 Laser Tuning Range 
+The TX laser shall be tunable within a range of ±10 GHz. 
+NOTE – The tunability serves to compensate the Doppler shift. 
+3.3.2.1.3 Laser Tuning Range Rate 
+The maximum laser tuning range rate shall be 120 MHz/s in communication mode. 
+3.3.2.1.4 Laser Line Width 
+The unmodulated TX laser shall have a line width of less than 100 kHz over a time scale of 
+100 msec. 
+3.3.2.1.5 Laser Relative Intensity Noise 
+The TX laser Relative Intensity Noise (RIN) shall be less than −30 dB in the frequency range 
+between 0.01 Hz and 3 GHz. 
+3.3.2.1.6 Laser Frequency Noise 
+The frequency noise of the free running TX laser shall be less than the limit defined in 
+figure 3-1. 
+CCSDS 141.11-O-1 
+Page 3-3 
+December 2018 
+
+=====PAGE 32=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+10 kHz
+40 dB/decade
+1 Hz /
+rtHz
+noise
+frequency
+frequency
+noise
+100 Hz
+100 kHz
+20 dB/decade
+500 MHz
+ 
+Figure 3-1:  Upper Limit for the Frequency Noise of the Tx Laser 
+3.3.2.1.7 Laser Phase Noise 
+The change rate of the laser phase noise (Δφ/Δt) shall be less than 6400 rad/s. 
+3.3.2.2 Polarization 
+3.3.2.2.1 Polarization Type 
+The transmit beam shall have an LCP, where the E-vector rotates in a counter-clockwise 
+direction as viewed from the transmitter in the direction of propagation. 
+3.3.2.2.2 Polarization Extinction Ratio 
+NOTE – While there is no specification of the polarization extinction ratio as such, the 
+minimum irradiance levels refer to the nominal polarization state. 
+3.3.2.3 Modulation 
+3.3.2.3.1 Modulation Scheme 
+The modulation scheme shall be BPSK with Non-Return to Zero (NRZ). The nominal 
+symbol rate shall be 2812.5 Megasymbols/sec (Ms/s). 
+CCSDS 141.11-O-1 
+Page 3-4 
+December 2018 
+
+=====PAGE 33=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.3.2.3.2 Symbol Synchronization, System Channel, and Spectral Shaping (LPC) 
+3.3.2.3.2.1 Mux and Align 
+The Mux and Align mode adaptation block is the interface to incoming code symbol units (in 
+case a LIA/LIAU is implemented) or user data bits (when directly supplied to the LPC), 
+respectively. For ease of nomenclature, incoming code symbols are assumed in table 3-1. 
+The block works on parallel data units of 1 to 16 symbols/bit. The recommended numbers of 
+parallel data units are 8 and 16. 
+Table 3-1:  Mux and Align Modes 
+Mode 
+Bit 
+Word Rate [Mb/s] 
+Bitrate [Mb/s] 
+ 
+1 
+N 
+37.5 
+N ×37.5 
+General Low Rate 
+2 
+8 
+37.5 
+300 
+Recommended 
+3 
+16 
+37.5 
+600 
+Recommended 
+4 
+N 
+112.5 
+N × 112.5 
+General High Rate 
+5 
+8 
+112.5 
+900 
+Recommended 
+6 
+16 
+112.5 
+1800 
+Recommended 
+NOTE – On the optical Physical Layer, the bit rate is always 2812.5 Mb/s (see 3.3.2.3.1). 
+3.3.2.3.2.2 Mode 1: N × 37.5 Mb/s User Data Transmission Mode 
+The mapping of DatIn[N:0] to the inputs of the parallel scrambler, ScrIn[24:0], shall be 
+ScrIn[23:N+1] = 00HEX and ScrIn[N:0] = DatIn[N:0]. 
+In order to adapt the input clock rate to the output clock rate, each channel bit of DatIn[N:0] 
+shall be repeated three times. That is, every sample of DatIn[N:0] shall be triplicated to a 3-
+tuple DatIn[N:0]1, DatIn[N:0]2 and DatIn[N:0]3. These 3-tuples shall be aligned to the 
+scrambler reset in such way that the initialized scrambler always operates on DatIn[N:0]1 (cf. 
+figure 3-7). 
+NOTE – When in 37.5 Mb/s operation mode, the user data rate is reduced by sending the 
+same user data three times over the optical link; that is, the user data is triplicated 
+on the transmit side. Triplication is not performed on system channel data, but 
+only for user channels 0 to 15. 
+ 
+ 
+The reset period for the scrambler of 4095 system channel frames has been 
+chosen in order to make it a multiple of three channel bit durations. Therefore it 
+is possible to align the 3-tuples of identical samples in a way that enables the 
+receive side to group the 3-tuples correctly, to allow a majority vote. 
+CCSDS 141.11-O-1 
+Page 3-5 
+December 2018 
+
+=====PAGE 34=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.3.2.3.2.3 Mode 4: N × 112.5 Mb/s User Data Transmission Mode 
+In the N × 112.5 Mb/s mode N channels DatIn[N:0] carry user data. 
+The mapping of DatIn[N:0] to the inputs of the parallel scrambler, ScrIn[24:0], shall be 
+ScrIn[23:N+1] = 00HEX and ScrIn[N:0] = DatIn[N:0]. 
+3.3.2.3.3 Scrambler 
+3.3.2.3.3.1 The scrambler shall provide a Pseudorandom Binary Sequence (PRBS) 
+generator with 25 stages named X[24:0]. 
+NOTE – The Scrambler produces the same PRBS as a shift register with feedback 
+according to the following equation: 
+[ ](
+)
+[
+]( )
+[
+]( )
+0
++1
+21
+24
+X
+t'
+X
+t'
+X
+t'
+=
+⊕
+ 
+ 
+ 
+where ⊕ = XOR, and t' indicates the time index for bit-shifts. 
+ 
+ 
+The time index t' differs from the time index t in equation (1), since t' refers to 
+the bit-serial implementation of the scrambler, while t refers to the parallel 
+implementation. A serial scrambler would have to run 24 times faster than the 
+equivalent parallel scrambler and thus t' corresponds to t/24. 
+3.3.2.3.3.2 The scrambler shall process all 24 input bits ScrIn[23:0] within one clock cycle. 
+Therefore a parallel PRBS generator that performs 24 steps of the equivalent serial PRBS 
+generator within one clock cycle must be implemented according to the following scheme: 
+[ ](
+)
+[ ]( )
+[
+]( )
+[
+]( )
+[ ](
+)
+[ ]( )
+[
+]( )
+[
+]( )
+[
+](
+)
+[ ]( )
+[ ](
+)
+[
+]( )
+[
+]( )
+{
+}
+0
++1
+1
+20
+23
+0
++1
+2
+21
+24
+24
++1
+0
++1
+2
+1
+2,3,
+,23
+X
+t
+X
+t
+X
+t
+X
+t
+X
+t
+X
+t
+X
+t
+X
+t
+X
+t
+X
+t
+X n
+t
+X n
+t
+X n
+t
+n
+=
+⊕
+⊕
+=
+⊕
+⊕
+=
+=
+−
+⊕
++
+∀∈
+
+ 
+where ⊕ = XOR and t indicates the time index. 
+3.3.2.3.3.3 The data bits ScrIn[23:0] shall be processed by applying the following scheme 
+in equation (2). 
+(1)
+CCSDS 141.11-O-1 
+Page 3-6 
+December 2018 
+
+=====PAGE 35=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+[
+]
+[
+]
+[
+]
+[
+]
+[
+]
+[ ]
+[
+]
+[
+]
+[ ]
+[ ]
+[ ]
+[
+]
+[ ]
+[ ]
+[
+]
+23:0
+23:0
+0: 23
+or explictly:
+23
+23
+0
+22
+22
+1
+1
+1
+22
+0
+0
+23
+LPCEncIn
+ScrIn
+X
+LPCEncIn
+ScrIn
+X
+LPCEncIn
+ScrIn
+X
+LPCEncIn
+ScrIn
+X
+LPCEncIn
+ScrIn
+X
+=
+⊕
+=
+⊕
+=
+⊕
+=
+⊕
+=
+⊕
+
+
+. 
+NOTE – Table 3-2 shows how the initial register contents B0 to B24 are processed and 
+shifted through a serial PRBS generator as defined above. The row for time step 
+t' = 24 (i.e., t = 1) shows the register contents of the PRBS generator after 24 
+time steps t' and therefore defines the building rule for the parallel 
+implementation of the PRBS generator. 
+ 
+ 
+Time steps t' do not correspond to system clock cycles but only help to illustrate 
+the building rule for the parallel implementation of the scrambler. 
+Table 3-2:  Illustration of the Building Rule for the Parallel PRBS Generator 
+Time Step 
+X[0] 
+X[1] 
+X[2] 
+... 
+X[21] 
+X[22] 
+X[23] 
+X[24] 
+t' 
+t 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+0 
+0 
+B0 
+B1 
+B2 
+... 
+B21 
+B22 
+B23 
+B24 
+1 
+ 
+B21 ⊕ B24 
+B0 
+B1 
+... 
+B20 
+B21 
+B22 
+B23 
+2 
+ 
+B20 ⊕ B23 
+B21 ⊕ B24 
+B0 
+... 
+B19 
+B20 
+B21 
+B22 
+: 
+ 
+: 
+: 
+: 
+... 
+: 
+: 
+: 
+: 
+21 
+ 
+B1 ⊕ B4 
+B2 ⊕ B5 
+B3 ⊕ B6 
+... 
+B0 
+B1 
+B2 
+B3 
+22 
+ 
+B0 ⊕ B3 
+B1 ⊕ B4 
+B2 ⊕ B5 
+... 
+B21 ⊕ B24 
+B0 
+B1 
+B2 
+23 
+ 
+B21 ⊕ B24 ⊕ B2 
+B0 ⊕ B3 
+B1 ⊕ B4 
+... 
+B20 ⊕ B23 
+B21 ⊕ B24 
+B0 
+B1 
+24 
+1 
+B20 ⊕ B23 ⊕ B1 
+B21 ⊕ B24 ⊕ B2 
+B0 ⊕ B3 
+... 
+B19 ⊕ B22 
+B20 ⊕ B23 
+B21 ⊕ B24 
+B0 
+3.3.2.3.3.4 The scrambler shall provide a reset input signal ScrRes which initializes the 
+PRBS generator stages with the values defined in table 3-3. The reset mechanism shall be 
+implemented as defined in 3.3.2.3.5. 
+Table 3-3:  Scrambler Reset Definition 
+ScrRes 
+X[24:0](t) 
+Remarks 
+low 
+ 
+ 
+high 
+X[0] = 1 
+X[24:1] = 0 
+‘Initialization pattern’ 
+(2)
+CCSDS 141.11-O-1 
+Page 3-7 
+December 2018 
+
+=====PAGE 36=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.3.2.3.3.5 After a system reset, the PRBS generator shall start with the initialization 
+pattern as defined in table 3-3. 
+3.3.2.3.4 LPC Encoder 
+3.3.2.3.4.1 Overview 
+The LPC encoder operates on blocks of 25 bits that can be seen as a 5-by-5 matrix. The LPC 
+encoder discards LPCEncIn[23:16] (legacy implementation detail of the LCT encoding 
+process), maps LPCEncIn[15:0] to a 4-by-4-matrix, performs differential encoding, 
+calculates 4 horizontal and 4 vertical parity bits and finally adds one bit of SysChnDat* to 
+obtain a 5-by-5-matrix-block. 
+3.3.2.3.4.2 Input mapping 
+LPCEncIn[15:0] and SysChnDat* shall be mapped to a 5-by-5-input matrix as shown in 
+figure 3-2. 
+CCSDS 141.11-O-1 
+Page 3-8 
+December 2018 
+
+=====PAGE 37=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+u(0,3)
+u(1,3)
+u(2,3)
+u(3,0) u(3,1) u(3,2) u(3,3)
+u(0,0)
+u(0,1)
+u(0,2)
+u(0,3)
+u(1,0)
+u(1,1)
+u(1,2)
+u(1,3)
+u(2,0)
+u(2,1)
+u(2,2)
+u(2,3)
+u(3,0)
+u(3,1)
+u(3,2)
+u(3,3)
+u(0,4)
+u(1,4)
+u(2,4)
+u(3,4)
+u(4,0) u(4,1) u(4,2) u(4,3)
+S
+LPCEncIn[2]
+LPCEncIn[3]
+LPCEncIn[0]
+LPCEncIn[1]
+LPCEncIn[6]
+LPCEncIn[7]
+LPCEncIn[4]
+LPCEncIn[5]
+LPCEncIn[10]
+LPCEncIn[11]
+LPCEncIn[8]
+LPCEncIn[9]
+LPCEncIn[14]
+LPCEncIn[15]
+LPCEncIn[12]
+LPCEncIn[13]
+LPCEncIn[16]
+LPCEncIn[17]
+LPCEncIn[18]
+LPCEncIn[19]
+LPCEncIn[20]
+LPCEncIn[21]
+LPCEncIn[22]
+LPCEncIn[23]
+S
+SysChnDat*
+u(0,4)
+u(1,4)
+u(2,4)
+u(3,4)
+u(4,0)
+u(4,1)
+u(4,2)
+u(4,3)
+u(0,0) u(0,1) u(0,2)
+u(1,0) u(1,1)
+u(1,2)
+u(2,0) u(2,1) u(2,2)
+5-by-5 input matrix (uncoded)
+ 
+Figure 3-2:  Mapping of LPC Encoder Input to 5-by-5 Input Matrix 
+3.3.2.3.4.3 Output Mapping 
+The 5-by-5 output matrix shall be mapped to the outputs DataOut[24:0] as shown in 
+figure 3-3. 
+CCSDS 141.11-O-1 
+Page 3-9 
+December 2018 
+
+=====PAGE 38=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+e(0,0) e(0,1) e(0,2) e(0,3)
+e(1,0) e(1,1)
+e(1,2) e(1,3)
+e(2,0) e(2,1) e(2,2) e(2,3)
+e(3,0) e(3,1) e(3,2) e(3,3)
+ph(0)
+ph(1)
+ph(2)
+ph(3)
+pv(0)
+pv(1)
+pv(2)
+pv(3)
+S
+ph(0)
+ph(1)
+ph(2)
+ph(3)
+pv(0)
+pv(1)
+pv(2)
+pv(3)
+DatOut[16]
+DatOut[17]
+DatOut[18]
+DatOut[19]
+DatOut[20]
+DatOut[21]
+DatOut[22]
+DatOut[23]
+e(0,0)
+e(0,1)
+e(0,2)
+e(0,3)
+e(1,0)
+e(1,1)
+e(1,2)
+e(1,3)
+e(2,0)
+e(2,1)
+e(2,2)
+e(2,3)
+e(3,0)
+e(3,1)
+e(3,2)
+e(3,3)
+DatOut[2]
+DatOut[3]
+DatOut[0]
+DatOut[1]
+DatOut[6]
+DatOut[7]
+DatOut[4]
+DatOut[5]
+DatOut[10]
+DatOut[11]
+DatOut[8]
+DatOut[9]
+DatOut[14]
+DatOut[15]
+DatOut[12]
+DatOut[13]
+S
+DatOut[24]
+5-by-5 output matrix (encoded)
+ 
+Figure 3-3:  Mapping of 5-by-5 Output Matrix to Encoder Output 
+3.3.2.3.4.4 Differential Encoding 
+3.3.2.3.4.4.1 General 
+e(0,0) to e(3,3) shall be calculated according to equation (3). 
+NOTE – The calculation is also illustrated in figure 3-4. 
+CCSDS 141.11-O-1 
+Page 3-10 
+December 2018 
+
+=====PAGE 39=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+0,0
+0,0
+0,1
+0,1
+0,0
+0,1
+0,0
+0,2
+0,2
+0,1
+0,2
+0,1
+0,0
+0,3
+0,3
+0,2
+0,3
+0,2
+0,1
+0,0
+1,0
+1,0
+0,3
+1,0
+0,3
+0,2
+0,1
+0,0
+1,1
+1,1
+1,0
+1,1
+1,0
+0,3
+0,2
+0,1
+0,0
+1,2
+1,2
+1,1
+1,2
+e
+u
+e
+u
+e
+u
+u
+e
+u
+e
+u
+u
+u
+e
+u
+e
+u
+u
+u
+u
+e
+u
+e
+u
+u
+u
+u
+u
+e
+u
+e
+u
+u
+u
+u
+u
+u
+e
+u
+e
+u
+u
+=
+=
+⊕
+=
+⊕
+=
+⊕
+=
+⊕
+⊕
+=
+⊕
+=
+⊕
+⊕
+⊕
+=
+⊕
+=
+⊕
+⊕
+⊕
+⊕
+=
+⊕
+=
+⊕
+⊕
+⊕
+⊕
+⊕
+=
+⊕
+=
+⊕(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+1,1
+1,0
+0,3
+0,2
+0,1
+0,0
+1,3
+1,3
+1,2
+1,3
+1,2
+1,1
+1,0
+0,3
+0,2
+0,1
+0,0
+2,0
+2,0
+2,1
+2,1
+2,0
+2,1
+2,0
+2,2
+2,2
+2,1
+2,2
+2,1
+2,0
+2,3
+2,3
+2,2
+2,3
+2,2
+2,1
+2,0
+3,0
+3,0
+2,3
+3,0
+2
+u
+u
+u
+u
+u
+e
+u
+e
+u
+u
+u
+u
+u
+u
+u
+u
+e
+u
+e
+u
+e
+u
+u
+e
+u
+e
+u
+u
+u
+e
+u
+e
+u
+u
+u
+u
+e
+u
+e
+u
+u
+⊕
+⊕
+⊕
+⊕
+⊕
+=
+⊕
+=
+⊕
+⊕
+⊕
+⊕
+⊕
+⊕
+⊕
+=
+=
+⊕
+=
+⊕
+=
+⊕
+=
+⊕
+⊕
+=
+⊕
+=
+⊕
+⊕
+⊕
+=
+⊕
+=
+⊕(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+(
+)
+,3
+2,2
+2,1
+2,0
+3,1
+3,1
+3,0
+3,1
+3,0
+2,3
+2,2
+2,1
+2,0
+3,2
+3,2
+3,1
+3,2
+3,1
+3,0
+2,3
+2,2
+2,1
+2,0
+3,3
+3,3
+3,2
+3,3
+3,2
+3,1
+3,0
+2,3
+2,2
+2,1
+2,0
+u
+u
+u
+e
+u
+e
+u
+u
+u
+u
+u
+u
+e
+u
+e
+u
+u
+u
+u
+u
+u
+u
+e
+u
+e
+u
+u
+u
+u
+u
+u
+u
+u
+⊕
+⊕
+⊕
+=
+⊕
+=
+⊕
+⊕
+⊕
+⊕
+⊕
+=
+⊕
+=
+⊕
+⊕
+⊕
+⊕
+⊕
+⊕
+=
+⊕
+=
+⊕
+⊕
+⊕
+⊕
+⊕
+⊕
+⊕
+ 
+where ⊕ = logical XOR. 
+u(0,0)
+u(0,1)
+u(0,2)
+u(0,3)
+u(1,0)
+u(1,1)
+u(1,2)
+u(1,3)
+e(0,0)
+e(0,1)
+e(0,2)
+e(0,3)
+e(1,0)
+e(1,1)
+e(1,2)
+e(1,3)
+u(2,0)
+u(2,1)
+u(2,2)
+u(2,3)
+u(3,0)
+u(3,1)
+u(3,2)
+u(3,3)
+e(2,0)
+e(2,1)
+e(2,2)
+e(2,3)
+e(3,0)
+e(3,1)
+e(3,2)
+e(3,3)
+ 
+Figure 3-4:  Calculation of e(0,0) to e(3,3) 
+(3)
+CCSDS 141.11-O-1 
+Page 3-11 
+December 2018 
+
+=====PAGE 40=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.3.2.3.4.4.2 Horizontal Parity 
+3.3.2.3.4.4.2.1 The LPC encoder shall determine the horizontal parity bits ph(0) to ph(3). 
+3.3.2.3.4.4.2.2 ph(0) shall always be calculated for odd parity; that is, 
+( )
+(
+)
+3
+0
+0
+0,
+mod 2
+1
+k
+ph
+e
+k
+=
+
+
++
+=
+
+
+
+
+∑
+ 
+where ‘mod 2’ signifies the remainder after division by 2. 
+3.3.2.3.4.4.2.3 If e(0,0) = 0, odd parity shall be used for ph(1), ph(2) and ph(3); that is, 
+( )
+(
+)
+( )
+(
+)
+( )
+(
+)
+3
+3
+3
+0
+0
+0
+1
+1,
+mod 2
+2
+2,
+mod 2
+3
+3,
+mod 2
+1
+k
+k
+k
+ph
+e
+k
+ph
+e
+k
+ph
+e
+k
+=
+=
+=
+
+
+
+
+
+
++
+=
++
+=
++
+=
+
+
+
+
+
+
+
+
+
+
+
+
+∑
+∑
+∑
+. 
+If e(0,0) = 1, even parity shall be used for ph(1), ph(2) and ph(3); that is, 
+( )
+(
+)
+( )
+(
+)
+( )
+(
+)
+3
+3
+3
+0
+0
+0
+1
+1,
+mod 2
+2
+2,
+mod 2
+3
+3,
+mod 2
+0
+k
+k
+k
+ph
+e
+k
+ph
+e
+k
+ph
+e
+k
+=
+=
+=
+
+
+
+
+
+
++
+=
++
+=
++
+=
+
+
+
+
+
+
+
+
+
+
+
+
+∑
+∑
+∑
+. 
+3.3.2.3.4.4.3 Vertical Parity 
+3.3.2.3.4.4.3.1 The LPC encoder shall determine the vertical parity bits pv(0) to pv(3). 
+3.3.2.3.4.4.3.2 pv(0) shall always be calculated for even parity; that is, 
+( )
+(
+)
+3
+0
+0
+,0
+mod 2
+1
+k
+pv
+e k
+=
+
+
++
+=
+
+
+
+
+∑
+ 
+where ‘mod 2’ signifies the remainder after division by 2. 
+3.3.2.3.4.4.3.3 If e(2,0) = 0, even parity shall be used for pv(1), pv(2), and pv(3); that is, 
+( )
+(
+)
+( )
+(
+)
+( )
+(
+)
+3
+3
+3
+0
+0
+0
+1
+,1
+mod 2
+2
+,2
+mod 2
+3
+,3
+mod 2
+0
+k
+k
+k
+pv
+e k
+pv
+e k
+pv
+e k
+=
+=
+=
+
+
+
+
+
+
++
+=
++
+=
++
+=
+
+
+
+
+
+
+
+
+
+
+
+
+∑
+∑
+∑
+. 
+If e(2,0) = 1, odd parity shall be used for ph(1), ph(2), and ph(3); that is, 
+( )
+(
+)
+( )
+(
+)
+( )
+(
+)
+3
+3
+3
+0
+0
+0
+1
+,1
+mod 2
+2
+,2
+mod 2
+3
+,3
+mod 2
+1
+k
+k
+k
+pv
+e k
+pv
+e k
+pv
+e k
+=
+=
+=
+
+
+
+
+
+
++
+=
++
+=
++
+=
+
+
+
+
+
+
+
+
+
+
+
+
+∑
+∑
+∑
+. 
+CCSDS 141.11-O-1 
+Page 3-12 
+December 2018 
+
+=====PAGE 41=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.3.2.3.4.5 Minimization of Disparity 
+3.3.2.3.4.5.1 The difference between the number of transmitted ones and zeros, called 
+disparity, shall be determined and eventually varied by bitwise inversion of sub-blocks to 
+minimize the overall disparity. The resulting overall disparity shall be stored in a dedicated 
+memory. 
+3.3.2.3.4.5.2 The LPC encoder shall use DisparitySum[23:0] to store the value of the 
+accumulated disparity. 
+3.3.2.3.4.5.3 A positive value indicates that more ‘1’s than ‘0’s have been transmitted. A 
+negative value indicates that more ‘0’s than ‘1’s have been transmitted. 
+3.3.2.3.4.5.4 The LPC encoder shall calculate the disparity DISP1 of subblock 1 of the LPC 
+encoder output matrix according to figure 3-5 and table 3-4. 
+3.3.2.3.4.5.5 The LPC encoder shall calculate the disparity DISP2 of subblock 2 of the LPC 
+encoder output matrix according to figure 3-5 and table 3-4. 
+3.3.2.3.4.5.6 The LPC encoder shall calculate the disparity DISP3 of the horizontal and 
+vertical parity bits and S according to figure 3-5 and table 3-4. 
+e(0,0) e(0,1) e(0,2) e(0,3)
+e(1,0) e(1,1) e(1,2) e(1,3)
+e(2,0) e(2,1) e(2,2) e(2,3)
+e(3,0) e(3,1) e(3,2) e(3,3)
+ph(0)
+ph(1)
+ph(2)
+ph(3)
+pv(0)
+pv(1)
+pv(2)
+pv(3)
+S
+Subblock 1
+Subblock 2
+ 
+Figure 3-5:  Definition of Subblocks within 5-by-5 Output Matrix 
+CCSDS 141.11-O-1 
+Page 3-13 
+December 2018 
+
+=====PAGE 42=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+Table 3-4:  Disparity Calculation 
+Number of ‘1’s in subblock Number of ‘0’s in subblock 
+Disparity Value 
+m 
+n 
+m-n 
+ 
+ 
+ 
+E.g., for DISP1 and DISP2: 
+ 
+ 
+8 
+0 
+8 
+7 
+1 
+6 
+6 
+2 
+4 
+5 
+3 
+2 
+4 
+4 
+0 
+3 
+5 
+−2 
+2 
+6 
+−4 
+1 
+7 
+−6 
+0 
+8 
+−8 
+ 
+ 
+ 
+E.g., for DISP3: 
+ 
+ 
+9 
+0 
+9 
+8 
+1 
+7 
+7 
+2 
+5 
+6 
+3 
+3 
+5 
+4 
+1 
+4 
+5 
+−1 
+3 
+6 
+−3 
+2 
+7 
+−5 
+1 
+8 
+−7 
+0 
+9 
+−9 
+NOTE – As can be seen from table 3-4, according to this definition of disparity, a bitwise 
+inversion of subblock 1 or subblock 2 results in inverse values of DISP1 or 
+DISP2, respectively. 
+3.3.2.3.4.5.7 The LPC encoder shall calculate the sums DispSum[1], DispSum[2], 
+DispSum[3] and DispSum[4] according to the following equation (4). 
+DispSum[1] = + DISP1 + DISP2 + DISP3 
+No subblock inversion 
+DispSum[2] = − DISP1 +  DISP2 + DISP3 
+Inversion of subblock 1 
+DispSum[3] = + DISP1 −  DISP2 + DISP3 
+Inversion of subblock 2 
+DispSum[4] = − DISP1 − DISP2 + DISP3 
+Inversion of both subblocks 
+3.3.2.3.4.5.8 Depending on the chosen ‘winner’ (see equations (5) and (6)), the LPC 
+encoder shall possibly invert none, one, or both subblocks of the corresponding LPC block as 
+defined in table 3-5. 
+(4)
+CCSDS 141.11-O-1 
+Page 3-14 
+December 2018 
+
+=====PAGE 43=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+Table 3-5:  Definition of Subblock Inversion 
+Winner(t) 
+Inversion of Subblock 1 
+corresponding to time t 
+Inversion of Subblock 2 
+corresponding to time t 
+DispSum[0] 
+no 
+no 
+DispSum[1] 
+yes 
+no 
+DispSum[2] 
+no 
+yes 
+DispSum[3] 
+yes 
+yes 
+3.3.2.3.4.5.9 The Winner of the four DispSum[1..4] cases shall be selected by minimum of 
+the absolute value of DisparitySum[1..4]: 
+DisparitySum[0…3](t) = DisparitySum(t) + DispSum[0…3] (t). 
+3.3.2.3.4.5.10 The new DisparitySum shall then be calculated as 
+DisparitySum(t +1) = DisparitySum(t) + DispSum[Winner](t). 
+3.3.2.3.4.5.11 If inversion of subblock 1 is required, this inversion shall be performed 
+bitwise according to equation (7): 
+(
+) {
+}
+(
+)
+(
+)
+(
+)
+{
+}
+{
+}
+,
+0,1
+Inversion of subblock 1
+,
+,
+1
+,
+for 
+0,1 ,
+0,1,2,3
+∈
+⇒
+⇔
+=
+= −
+∈
+∈
+e j k
+e j k
+e j k
+e j k
+j
+k
+. 
+3.3.2.3.4.5.12 If, according table 3-5, inversion of subblock 2 is required, the inversion shall 
+be performed bitwise according to equation (8): 
+(
+) {
+}
+(
+)
+(
+)
+(
+)
+{
+}
+{
+}
+,
+0,1
+Inversion of subblock 2
+,
+,
+1
+,
+for 
+2,3 ,
+0,1,2,3
+∈
+⇒
+⇔
+=
+= −
+∈
+∈
+e j k
+e j k
+e j k
+e j k
+j
+k
+. 
+3.3.2.3.4.5.13 DisparitySum[23:0] shall be set to 000000HEX whenever encoding is disabled, 
+that is, whenever EncodingOn is ‘high’. 
+3.3.2.3.4.5.14 On a system reset, DisparitySum[23:0] shall be reset to 000000HEX. 
+3.3.2.3.5 System Channel Builder 
+3.3.2.3.5.1 Overview 
+The system channel is used to perform the synchronization of the transmitter and the receiver 
+of the communication partners. The receiver searches a unique word, as a part of the system 
+channel, within the data streams and performs channel reordering and scrambler 
+synchronization depending on the results. The optional service channel is a subchannel of the 
+system channel and enables the linked terminals to exchange data relevant to the system. 
+(5)
+(6)
+(7)
+(8)
+CCSDS 141.11-O-1 
+Page 3-15 
+December 2018 
+
+=====PAGE 44=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.3.2.3.5.2 System Channel Synchronization Frame 
+NOTE – The format of the system channel frame is depicted in figure 3-6. 
+Service Channel Bit Pattern
+Optional
+Reserved
+MSB
+LSB
+MSB
+LSB
+LSB
+LSB
+MSB
+MSB
+32 bit
+15 bit
+Unique Word
+13 bit
+4 bit
+ 
+Figure 3-6:  System Channel Frame 
+3.3.2.3.5.2.1 The system channel builder shall generate the frame structure as shown in 
+figure 3-6. The frame shall be transmitted as the 25th data channel. This channel will be 
+further referenced as system channel SysChnDat. 
+3.3.2.3.5.2.2 The data rate shall be 112.5 Mb/s, and the clock frequency shall be 
+112.5 MHz. 
+3.3.2.3.5.2.3 The unique word shall contain the fixed patterns defined in table 3-6. 
+Table 3-6:  Definition of Unique Word and Reserved Pattern 
+Field 
+Pattern 
+Unique Word [14:0] 
+100110101111000BIN = 4D78HEX 
+Unique Word [14:0] inverted 
+011001010000111BIN = 3287HEX 
+Service_Channel_Bit_Pattern[12:0] 
+encoding as defined in table 3-8 
+Reserved 
+0000BIN = 0HEX 
+3.3.2.3.5.2.4 The scrambler (i.e., the PRBS generator) shall be reset after each 4095 (!) 
+system channel frame. 
+3.3.2.3.5.2.5 The scrambler shall evaluate the optional signal ScrResShort that sets the 
+system channel builder into short scrambler reset mode. In this mode, the scrambler (i.e., the 
+PRBS generator) shall be reset every 9 system channel frames. 
+NOTE – Table 3-7 defines the logic levels for the ScrResShort signal. 
+Table 3-7:  Short Scrambler Reset Mode Definition 
+ScrResShort 
+Number of system channel frames between 2 ScrRes signals 
+low 
+4095 
+high 
+9 
+3.3.2.3.5.2.6 The reset of the scrambler shall be performed without loss of data; that is, the 
+reset must be performed between two subsequent data samples. If the reset occurs between 
+CCSDS 141.11-O-1 
+Page 3-16 
+December 2018 
+
+=====PAGE 45=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+time index t−1 and time index t, the data ScrIn[23:0](t−1) shall be scrambled with the state of 
+the scrambler at time index t−1, and the data ScrIn[23:0](t) shall be scrambled with the 
+reinitialized state of the scrambler. 
+3.3.2.3.5.2.7 The initialization of the scrambler shall be indicated by the insertion of the 
+inverted unique word in the system channel frame. The reset of the scrambler’s PRBS 
+generator shall be performed 36 system channel bits after the last bit of the inverted unique 
+word. 
+NOTE – Figure 3-7 shows the timing. This entails that every 4095th unique word (or 
+every 9th unique word when in short scrambler reset mode) of the system 
+channel has to be inverted. 
+LPCEncIn[23:0](t)
+...
+...
+...
+35 bits
+LSB
+positive time t
+Bit 36
+Bit 37
+LPCEncIn[23:0](t-1)
+System Channel Bit
+#36 after inverted
+unique word
+System Channel Bit
+#37 after inverted
+unique word
+...
+...
+inverted unique word
+System
+Channel
+Data
+Channels
+Scrambler initialized
+Scrambler running normally
+shall correspond to the first of three triplicated
+samples, DatIn[15:0]1, when in n × 37.5 Mb/s mode.
+ 
+Figure 3-7: Insertion of Inverted Unique Word, Scrambler Reset and Alignment of 3-
+Tuples 
+3.3.2.3.5.2.8 The service channel bit pattern field (cf. figure 3-6) shall be used to transmit a 
+single bit of the service channel frame. The encoding is defined in table 3-8. 
+Table 3-8:  Service Channel Bit Encoding 
+Service channel bit 
+Service channel bit pattern 
+0 (‘low’) 
+0000000000000BIN (i.e., 0000HEX) 
+1 (‘high’) 
+1111111111111BIN (i.e., 1FFFHEX) 
+3.3.2.3.5.2.9 After a system reset, the system channel builder shall start with a new system 
+channel frame. The first frame shall contain an inverted unique word. 
+3.3.2.3.6 Optional Service Channel Frame 
+NOTE – The format of the service channel frame is shown in figure 3-8. 
+CCSDS 141.11-O-1 
+Page 3-17 
+December 2018 
+
+=====PAGE 46=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+96 bit
+Unique Word
+MSB
+Service Channel Word 0
+Service Channel Word 1
+Service Channel Word 2
+Fixed Pattern
+MSB
+MSB
+LSB
+15 bit
+24 bit
+24 bit
+24 bit
+9 bit
+LSB
+MSB
+LSB
+LSB
+MSB
+LSB
+ 
+Figure 3-8:  Format of Service Channel Frame 
+3.3.2.3.6.1 General 
+3.3.2.3.6.1.1 The unique word field shall always contain the unique word as defined in 
+table 3-6. 
+NOTE – The service channel field carries a 24 bit service channel word that has to be 
+transmitted over the service channel. 
+3.3.2.3.6.1.2 All three service channel word fields shall contain the same service channel 
+word; that is, service channel words 0, 1, and 2 in figure 3-8 are identical. 
+3.3.2.3.6.1.3 The last 9 bits of the service channel frame are reserved for future use and 
+shall be set to 155HEX, or 101010101BIN. 
+3.3.2.3.6.1.4 Each time a service channel frame has been transmitted, a new service 
+channel word shall be requested from the service channel FiFo, to build the next frame. 
+3.3.2.3.6.1.5 After a system reset, the system channel builder shall start with a new service 
+channel frame. 
+3.3.2.3.6.2 Differential Encoder 
+The differential encoder shall apply the following encoding to the system channel data 
+SysChnDat: 
+SysChnDat*(t) = SysChnDat(t) XOR SysChnDat*(t − 1) 
+(t = time index). 
+NOTE – The value of the state memory within the differential encoder will be low after a 
+system reset. 
+3.3.2.3.7 Serializer 25/1 
+3.3.2.3.7.1 The Serializer shall convert the 25 parallel bits DataOut[24:0] to one serial 
+bitstream DatSerOut. 
+CCSDS 141.11-O-1 
+Page 3-18 
+December 2018 
+
+=====PAGE 47=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.3.2.3.7.2 The data bits in the serial output stream shall be sorted as follows: The first bit 
+in the serial data stream shall come from DataOut[0], the second bit shall come from 
+DataOut[1], and so on. This will continue until 24th data bit. That data bit will appear as the 
+second data bit from DataOut[0], and the process will repeat itself. 
+Frame n+1
+Frame n
+time
+D0
+D1
+D2
+D3
+D4
+D5
+D6
+D7
+D8
+D9
+D10
+D0
+D1
+D2
+D3
+D4
+D5
+D6
+D7
+D8
+D9 D10
+D24
+D0
+D1
+D2
+D3
+D4
+D5
+D24
+...
+...
+...
+ 
+Figure 3-9:  Serial Output Data Frame DatSerOut 
+3.3.2.4 Spectral Mask (LPC) 
+NOTE – The following specification ensures that the optical transmitter will remain 
+within the safe operating envelope of the optical amplifier. 
+The modulating base-band spectrum of the transmit signal shall fulfill the spectral mask 
+defined in figure 3-10. This spectrum shall be generated by the Line Product Code (LPC) as 
+defined above. 
+22.4 MHz
+−7 dB
+−27 dB
+−20 dB/decade
+Frequency
+Power
+Density
+Spectrum
+(normed to
+maximum)
+0 dB
+1 MHz
+10 MHz
+ 
+Figure 3-10:  Spectral Mask of the Modulated Base-Band Tx Signal 
+CCSDS 141.11-O-1 
+Page 3-19 
+December 2018 
+
+=====PAGE 48=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.3.2.5 Pulse Shape/Eye Diagram 
+The base-band eye-pattern shall fulfill the requirements listed in table 3-1 and as defined by 
+figure 3-11. 
+1
+x
+0
+0
+1
+1
+x 2
+x 3
+x 4
+−y1
+y1
+y2
+1+y1
+UI
+0.5
+Time
+Mean level
+of logical ‘1’
+Mean level
+of logical ‘0’
+ 
+Figure 3-11:  Transmit Eye Pattern 
+Table 3-9:  Definitions for the Transmit Eye Pattern in Figure 3-11 
+Symbol 
+Definition 
+UI (Unit Interval) 
+1 / 2812.5 Mb/s (≈ 355.55/s) 
+x1 
+0.1 × UI 
+x2 
+0.15 × UI 
+x3 
+0.85 × UI 
+x4 
+0.9 × UI 
+y1 
+0.10 × mean level of logical 1 
+y2 
+0.90 × mean level of logical 1 
+NOTE – There are no specific requirements for the Pulse Repetition Rate, Accuracy, and 
+Stability (e.g., jitter), and the Extinction Ratio and Data Rates (Range of Rates, 
+Discrete Set, etc.). 
+CCSDS 141.11-O-1 
+Page 3-20 
+December 2018 
+
+=====PAGE 49=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+3.4 
+TERMINAL B OPTICAL COMMUNICATIONS SIGNAL 
+CHARACTERISTICS 
+3.4.1 CENTER FREQUENCIES 
+The center frequency shall be 281566.0 GHz ± 3 GHz. 
+NOTE – The requirements for the Laser Tuning Range, Laser Tuning Range Rate, Laser 
+Line Width, Laser Relative Intensity Noise, Laser Frequency Noise, and Laser 
+Phase Noise are the same as for Terminal A. 
+3.4.2 POLARIZATION 
+3.4.2.1 Polarization Type 
+The transmit beam shall have an RCP, where the E-vector rotates clockwise as viewed from 
+the transmitter in the direction of propagation. 
+3.4.2.2 Polarization Extinction Ratio 
+The polarization extinction ratio shall be the same as for Terminal A. 
+3.4.3 MODULATION 
+The modulation shall be the same as for Terminal A. 
+ 
+CCSDS 141.11-O-1 
+Page 3-21 
+December 2018 
+
+=====PAGE 50=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+4 CODING AND SYNCHRONIZATION 
+4.1 
+TERMINAL A DATA LINK LAYER CHARACTERISTICS 
+4.1.1 SUPPORT OF VARIABLE DL THROUGHPUT 
+Although the OISL is operated with a fixed data rate, the concept of the LIA=LIAU shall 
+support variable (i.e., selectable or adaptive) data rates on the DL. 
+NOTE – This is achieved by stuffing with idle frames which are removed in the GEO 
+relay. Some details are shown in the next two figures; the first figure provides an 
+overview in terms of data rates. 
+Fixed DL
+throughput
+(like EDRS-A/C)
+LEO Satellite
+MM
+Enc
+LIAU
+RS
+Enc.
+Inter-
+leaver
+Rep.
+Enc.
+ 
+Enc
+En-
+cryption
+RS
+Enc.
+Inter-
+leaver
+CC
+Enc.
+Rep.
+Dec.
+EDRS‐A/C
+Ka‐Band
+DL (2..4)
+LIAU
+framing
+Mux
+GEO
+framing
+&
+Split
+QPSK
+Mod
+GEO frames
+EDRS:
+MM frames
+LIAU frames
+DPU
+OISL User View
+(1800 Mb/s)
+OISL
+2812.5 Mb/s
+Line
+Dec.
+Line
+Enc.
+ 
+Throughput
+optimized
+(like EDRS-A/C Sent.Mode)
+rMM = 2*280 Mb/s
+LEO Satellite
+MM
+NextGen Relay
+Ka‐Band
+DL (1..2)
+LIA
+GIA
+Mod 
+(TeTra: 2...6 bit/symb)
+OISL User View
+(1800 Mb/s)
+OISL
+2812.5 Mb/s
+Line
+Dec.
+Line
+Enc.
+rDL‐gross = 2*600 Mb/s
+2*300 Mbaud
+rOISL‐net = 600 Mb/s
+rOISL‐net = 1800 Mb/s
+rMM <1650 Mb/s (tbc.)
+rOISL‐gross = 2812.5 Mb/s
+Variable DL
+throughput
+(general case)
+rMM < rDL‐net*1904/2044
+– MM protection (LIA could be part of MM);
+– size of footprint on NextGen Relay.
+rOISL‐net = 1800 Mb/s
+rDL‐net < (1..2)*(113...862) Mb/s
+variable in case of ACM/VCM
+(2..4*450 MHz)
+Example:
+(1..2*216 MHz)
+n/a
+n/a
+rDL‐gross =(1..2)*(2...6)*160 Mb/s
+(1..2)*160 Mbaud
+rMM
+rOISL‐net
+rLOISL‐net
+rDL‐net
+rOISL‐gross
+rDL‐gross
+rDL‐gross =
+ 
+4*600 Mb/s
+4*300 Mbaud
+only for
+600 mode
+only for
+600 mode
+variable in case of ACM/VCM,
+overhead depending on
+ 
+Figure 4-1:  Data Rates in Flexible Relay Network 
+DISCLAIMER – For the general case with variable throughput, a bandwidth of 216 MHz 
+and TeTra modulator are assumed. These are just examples and are not 
+intended to represent Globenet. 
+CCSDS 141.11-O-1 
+Page 4-1 
+December 2018 
+
+=====PAGE 51=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+4.1.2 FRAME STRUCTURE, SLICER, AND HEADER WITHIN LIA 
+4.1.2.1 The input data to LIA shall be divided into blocks of 1904 bytes. A header of 
+8 bytes shall be added, resulting in 1904+8 = 1912 = 8×239 bytes. 
+4.1.2.2 The header structure is in a proprietary format and shall be constructed as follows: 
+– 1 byte for frame type and source ID; 
+• 
+bits for frame type (full data frame, partly filled data frame, idle frame for 
+removal in GEO, idle frame for forwarding in GEO), 
+• 
+bits for Source ID and idle frame tagging; 
+– 1 byte for S/C ID; 
+– 1 byte for cyclic counter (per frame type and source ID), provides a period of about 
+>10 hours at 1800 Mb/s and supports GS diversity; 
+– 14 bits for PN pointer (position of first filling bit in case of partly filled data frames); 
+– spare bits. 
+ 
+Bit 1 
+Bit 2 
+Bit 3 
+Bit 4 
+Bit 5 
+Bit 6 
+Bit 7 
+Bit 8 
+Byte 1 
+Frame type ID 
+Data source ID 
+Byte 2 
+Spacecraft ID 
+Byte 3 
+Cyclic frame counter 
+Byte 4 
+Byte 5 
+Byte 6 
+Byte 7 
+PN pointer 
+Byte 8 
+PN pointer 
+Spare 
+Figure 4-2:  LIA Frame Header for the General Case 
+NOTES 
+1 
+This header matches neither the TM Header defined in reference [3] )see figure 4-2 of 
+reference [3], ‘Transfer Frame Primary Header’), nor the AOS Header defined in 
+reference [5] (see figure 4-2 of reference [5], ‘Transfer Frame Primary Header’). 
+2 
+Figure 4-3 shows the specific case of LIA=DRAU and EDRS-A/C application, where 
+N=1 for the number of input sources. The frame header could be the same as in the 
+general case; however, the specific header was selected at the time of the EDRS-A/C 
+design, as shown below. 
+CCSDS 141.11-O-1 
+Page 4-2 
+December 2018 
+
+=====PAGE 52=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+ 
+Bit 1 
+Bit 2 
+Bit 3 
+Bit 4 
+Bit 5 
+Bit 6 
+Bit 7 
+Bit 8 
+Byte 1 
+Cyclic frame counter 
+Byte 2 
+Byte 3 
+PN pointer 
+Byte 4 
+PN pointer 
+Spare 
+Byte 5 
+Frame type ID 
+Spare 
+Byte 6 
+Spare 
+Byte 7 
+Byte 8 
+Figure 4-3:  LIA Frame Header for the Specific Case of LIA=DRAU 
+4.1.2.3 Idle frames are characterized by the source ID field of the header. The data content 
+of idle frames shall be fixed and identical for all idle frames. 
+4.1.2.4 Idle frames shall be filled by a pseudo-random sequence generated by the 
+polynomial 
+h(x) = x14 + x13 + x8 + x4 + 1. 
+4.1.2.5 This sequence shall begin at the first bit of the data block. 
+NOTE – Since the sequence is longer than 1910×8=15280 bits, the rest of the sequence is 
+not used. 
+4.1.2.6 The sequence generator shall be initialized to the ‘all-ones’ state at the start of idle 
+frame. 
+4.1.3 DISCUSSION—NOTES ON RECEIVER OPERATION 
+The receiver has to identify between frames from different sources and idle frames. 
+The discrimination between different sources is based on the source ID, but is additionally 
+supported by the source-individual frame counters. 
+The determination between data frames and idle frame is based on the source ID, but 
+additionally supported by the statistical properties of the known and constant idle data. 
+CCSDS 141.11-O-1 
+Page 4-3 
+December 2018 
+
+=====PAGE 53=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+4.1.4 CHANNEL CODING, INTERLEAVING, AND SCRAMBLING WITHIN LIA 
+4.1.4.1 Reed-Solomon Encoding 
+NOTE – The channel coding (error-control coding) of LIA frames is based on Reed-
+Solomon (R-S) codes and byte-wise interleaving over 8 R-S codewords that 
+encompass exactly one LIA frame. This is a standard and well-known coding 
+scheme for channels with long burst errors. Such burst-error structures occur, for 
+instance, in cases of concatenated coding at the output of an inner decoder. 
+The block of frame header and data field containing 1912 = 8×239 bytes in total shall be R-S 
+encoded. 
+NOTE – The ASM field is not encoded. 
+4.1.4.2 Discussion 
+The 1912 bytes are divided into 8 blocks (denoted R-S infowords) of length 239 bytes. These 
+infowords are individually R-S encoded. The R-S(255,239) encoder computes for each R-S 
+infoword 16 parity-check bytes (systematic encoding). In total, 8×16 = 128 parity-check 
+bytes are appended to the R-S infowords resulting in a block of 1912 + 128 = 2040 bytes. 
+The operation of the R-S(255,239) encoder is specified in detail in section 4 of CCSDS 
+131.0-B-3 (reference [2]). Only the mode with 239 information bytes and blocklength 255 
+(implying minimum distance = 17, number of parity-check bytes = 16, number of correctable 
+byte errors = E =8) is used here. The Galois field GF(256) is generated by the polynomial 
+F(x) = x8 + x7 + x2 + x + 1. 
+Let α be a primitive element, F(α) = 0. The generator polynomial is defined as 
+( )
+(
+)
+127
+11
+128
+α
++
+=
+−
+=
+−
+∏
+E
+j
+j
+E
+g x
+x
+. 
+The interleaving operation with depth I=8 is also specified in section 4 of reference [2]. The 
+interleaving is on a per-byte basis. The interleaving is applied within a LIA frame, there is no 
+interleaving over several LIAU superframes. The interleaving depth I=8 and number of 
+codewords per LIAU superframe is identical, and none of the codewords is shortened. 
+The block of 2040 bytes is subjected to additive scrambling (also called randomizing); that 
+is, the complete LIA frame (except the ASM field) is scrambled by modulo-2 adding of a 
+pseudo-random sequence. The pseudo-random sequence shall be generated using the 
+polynomial 
+h(x) = x8 + x7 + x5 + x3 + 1 
+CCSDS 141.11-O-1 
+Page 4-4 
+December 2018 
+
+=====PAGE 54=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+according to subsection 10.4 of reference [2]. This sequence begins at the first bit of the data 
+block of 2040 bytes after interleaving. The sequence is repeated after 255 bits, continuing 
+repeatedly until the end of the block. The sequence generator is initialized to the all-ones 
+state at the start of LIA frame. 
+4.1.4.3 Frame Synchronization Marker within LIA 
+4.1.4.3.1 After scrambling, an ASM field shall be added to end up with an output frame of 
+2040 + 4 = 2044 bytes. 
+4.1.4.3.2 The ASM field shall be 1A CF FC 1D in hexadecimal notation according to 
+subsection 9.3 of reference [2]. 
+4.1.4.4 Multiplexing within LIA 
+The multiplexer shall operate on N+1 chains, where the first N chains are served on a first-
+come-first-transmit basis, and the idle frames from the last chain have lowest priority (i.e., 
+are inserted and transmitted only to increase the data rate to rOISL-net). 
+NOTE – This operation is termed a stuffing operation. 
+4.1.4.5 Mapping (Bit-Byte Conversions) within LIA 
+All operations within LIA shall be byte-oriented. 
+4.2 
+TERMINAL B DATA LINK LAYER CHARACTERISTICS 
+Terminal B characteristics shall be the same as those of Terminal A. 
+ 
+CCSDS 141.11-O-1 
+Page 4-5 
+December 2018 
+
+=====PAGE 55=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+ANNEX A 
+ 
+SECURITY, SANA, AND PATENT CONSIDERATIONS 
+ 
+(INFORMATIVE) 
+A1 SECURITY CONSIDERATIONS 
+A1.1 SECURITY BACKGROUND 
+It is assumed that security is provided by encryption, authentication methods, and access 
+control to be performed at a layer above the Physical Layer and coding sublayer. Mission and 
+service providers are expected to select from recommended security methods, suitable to the 
+specific application profile. Specification of these security methods and other security 
+provisions is outside the scope of this Experimental Specification. The Physical Layer has 
+the objective of delivering data with the minimum possible amount of residual errors. The 
+associated channel coding, as described in section 4 above, must be used to insure that 
+residual errors are detected and the frame flagged. There is an extremely low probability of 
+additional undetected errors that may escape this scrutiny. These errors may affect the 
+encryption process in unpredictable ways, possibly affecting the decryption stage and 
+producing data loss, but will not compromise the security of the data. 
+A1.2 SECURITY CONCERNS 
+Security concerns in the areas of data privacy, authentication, access control, availability of 
+resources, and auditing are to be addressed in higher layers and are not related to this 
+Experimental Specification. 
+A1.3 CONSEQUENCES OF NOT APPLYING SECURITY 
+There are no specific security measures prescribed for the Physical Layer or the coding 
+sublayer. Therefore consequences of not applying security are only imputable to the lack of 
+proper security measures in other layers. Residual undetected errors may produce additional 
+data loss when the link carries encrypted data. 
+A2 SANA CONSIDERATIONS 
+The recommendations of this document do not require any action from SANA. 
+A3 PATENT CONSIDERATIONS 
+No patents are known to relate to this Experimental Specification. 
+CCSDS 141.11-O-1 
+Page A-1 
+December 2018 
+
+=====PAGE 56=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+ANNEX B 
+ 
+PHYSICAL LAYER AND 
+CODING AND SYNCHRONIZATION SUBLAYER 
+IMPLEMENTATION 
+ 
+(INFORMATIVE) 
+The Experimental Specification described in this document is fully implemented and 
+operational in the joint ESA and Airbus SpaceDataHighway, which employs the LCT 135 
+optical communication terminals manufactured by TESAT Spacecom on the EDRS-A 
+satellite launched in 2016.  
+The Sentinel-1 and Sentinel-2 satellites of the European Union’s Copernicus program also 
+carry an LCT and are currently using the EDRS-A relay satellite to transfer high volume data 
+to ground at a data rate of 1.8 Gb/s:  
+– First tests for optical inter-satellite links with Sentinel satellites and EDRS-A started 
+in early 2016.  
+– The operational service started in late 2016 with Sentinel-1A. 
+– As of January 2018 all four Sentinel satellites are served by EDRS-A, and more than 
+18,000 links have been performed up to October 2018. 
+ 
+CCSDS 141.11-O-1 
+Page B-1 
+December 2018 
+
+=====PAGE 57=====
+EXPERIMENTAL SPECIFICATION FOR OPTICAL HIGH DATA RATE COMMUNICATION 
+ANNEX C 
+ 
+ABBREVIATIONS AND ACRONYMS 
+ 
+(INFORMATIVE) 
+Term  
+Meaning 
+ASM  
+attached synchronization marker 
+BPSK  
+binary phase-shift keying 
+CADU  
+channel access data unit 
+DL 
+ 
+downlink 
+DRAU  
+data rate adaptation unit 
+EDRS  
+European Data Relay System 
+Gb/s 
+ 
+gigabits per second 
+GEO  
+geostationary orbit 
+HDR  
+high data rate 
+kb/s 
+ 
+kilobits per second 
+LCP 
+ 
+left-hand circular polarization 
+LCT 
+ 
+laser communication terminal 
+LEO 
+ 
+low Earth orbit 
+LIA 
+ 
+LCT interface adapter 
+LIAU  
+LCT interface adapter unit 
+LPC 
+ 
+line product code 
+Mb/s  
+megabits per second 
+OISL  
+optical inter-satellite link 
+PAT 
+ 
+pointing, acquisition, and tracking 
+PRBS  
+pseudorandom binary sequence 
+QPSK  
+quadrature phase-shift keying 
+RCP 
+ 
+right-hand circular polarization 
+S/C    
+spacecraft 
+UC 
+ 
+uncertainty cone 
+CCSDS 141.11-O-1 
+Page C-1 
+December 2018 

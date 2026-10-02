@@ -1,0 +1,281 @@
+[
+ {
+  "имя": "РС над GF(2^m) для стираний (RFC 5510, FEC Encoding ID 2; ID 5 — m = 8; ID 129 — Small Block Systematic)",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "поле": "GF(2^m), m = 2…16, многочлены разд. 8.1 (m=8: 1+x^2+x^3+x^4+x^8 = 0x11D); таблица tablicy/dop/rfc5510_rs.json",
+   "кодер": "e = s·GM, GM = V_{k,k}^{-1}·V_{k,n}, V_{i,j} = α^(i·j), i < k, j < n = 2^m − 1 — систематический МДР-код (Вандермонд, как fec.c Риццо); укорочение — первые n′ столбцов",
+   "параметры передачи": "FEC OTI: m (8 бит, по умолч. 8), G (символов в пакете), E (длина символа), B (макс. длина блока), max_n; FEC Payload ID ID2: SBN (32−m бит) + ESI (m бит); ID5: SBN 24 + ESI 8",
+   "декодер": "любые k принятых символов → обращение k×k-подматрицы GM"
+  },
+  "где применяется": "FLUTE/ALC (файловое вещание: 3GPP MBMS, DVB-IPDC, ATSC 3.0 ROUTE — как альтернатива Raptor), NORM",
+  "источник": [
+   {
+    "файл": "istochniki/dop/rfc/rfc5510.txt",
+    "страница|строки": "строки 885–921 (разд. 8.1, многочлены), 930–970 (разд. 8.2, GM)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5510.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc5510.txt",
+    "страница|строки": "строки 358 (ID 2), 578 (ID 5), 817 (ID 129)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5510.txt"
+   }
+  ],
+  "проверка": "все 15 многочленов разд. 8.1 примитивны (свой тест, assert), двоичная и формульная записи совпали; GM для m=4, k=5, n=15 систематична и МДР (все 3003 подматрицы 5×5 обратимы)",
+  "сложность внедрения": "НЕТ: прикладные FEC IETF (над пакетами/символами, не над битами) проект не снимает; для опознания — поле FEC Encoding ID и FEC Payload ID в заголовках ALC/FLUTE/FECFRAME"
+ },
+ {
+  "имя": "Simple Reed-Solomon FEC Scheme для FECFRAME (RFC 6865, FECFRAME FEC Encoding ID 8)",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "РС",
+  "параметры": {
+   "код": "тот же РС RFC 5510 (поле и GM разд. 8), m = 8 по умолчанию",
+   "применение": "FEC Framework RFC 6363: исходные пакеты потока (ADU) → блок символов, ремонтные пакеты отдельным потоком"
+  },
+  "где применяется": "FECFRAME (RTP/UDP-потоки реального времени)",
+  "источник": [
+   {
+    "файл": "istochniki/dop/rfc/rfc6865.txt",
+    "страница|строки": "весь текст (разд. 4–5)",
+    "url": "https://www.rfc-editor.org/rfc/rfc6865.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc6363.txt",
+    "страница|строки": "архитектура FECFRAME",
+    "url": "https://www.rfc-editor.org/rfc/rfc6363.txt"
+   }
+  ],
+  "проверка": "определение кода — ссылкой на RFC 5510 (проверен выше); номер ID — реестр IANA (tablicy/dop/iana_fec_encoding_id.json)",
+  "сложность внедрения": "НЕТ: прикладные FEC IETF (над пакетами/символами, не над битами) проект не снимает; для опознания — поле FEC Encoding ID и FEC Payload ID в заголовках ALC/FLUTE/FECFRAME"
+ },
+ {
+  "имя": "LDPC-Staircase (RFC 5170, FEC Encoding ID 3)",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "LDPC",
+  "параметры": {
+   "H": "(n−k)×n = [H1 | H2]; H1 — k столбцов по N1 единиц (N1 = 3…10, по умолч. 3), расставленных ГПСЧ (разд. 5.3), строки с <2 единиц дополняются; H2 — «лестница»: диагональ и поддиагональ (двухдиагональная)",
+   "ГПСЧ": "Park–Miller «minimal standard»: I(j+1) = 16807·I(j) mod (2^31 − 1); pmms_rand(maxv) — масштабирование в [0, maxv); seed из FEC OTI",
+   "параметры передачи": "FEC OTI (EXT_FTI, HET=64): L 48 бит, E 16, N1m3 3 (N1 = N1m3 + 3), G 5, B 20, max_n 16, seed ГПСЧ 32 (1…2^31−2); FEC Payload ID: SBN 12 бит + ESI 20 бит",
+   "кодирование": "ремонтные символы — XOR-суммы по строкам (лестница решается последовательно)",
+   "таблица": "tablicy/dop/ietf_prng.json"
+  },
+  "где применяется": "FLUTE/ALC, NORM (файловое многоадресное вещание)",
+  "источник": [
+   {
+    "файл": "istochniki/dop/rfc/rfc5170.txt",
+    "страница|строки": "строки 938–943 (ГПСЧ и критерий), 1071 (построение H1)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5170.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc5170.txt",
+    "страница|строки": "строки 324 (ID 3/4), 294 (Payload ID), 430 (EXT_FTI)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5170.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc5170.txt",
+    "страница|строки": "строка 1247 (треугольник)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5170.txt"
+   }
+  ],
+  "проверка": "свой ГПСЧ Park–Miller: при seed = 1 10 000-е значение = 1043618065 — критерий RFC 5170 (assert)",
+  "сложность внедрения": "НЕТ: прикладные FEC IETF (над пакетами/символами, не над битами) проект не снимает; для опознания — поле FEC Encoding ID и FEC Payload ID в заголовках ALC/FLUTE/FECFRAME"
+ },
+ {
+  "имя": "LDPC-Triangle (RFC 5170, FEC Encoding ID 4)",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "LDPC",
+  "параметры": {
+   "H": "(n−k)×n = [H1 | H2]; H1 — k столбцов по N1 единиц (N1 = 3…10, по умолч. 3), расставленных ГПСЧ (разд. 5.3), строки с <2 единиц дополняются; H2 — нижнетреугольная (right_matrix_staircase_init разд. 7): лестница + в строке i единицы в столбцах k+j, j выбирается pmms_rand убывающей цепочкой",
+   "ГПСЧ": "Park–Miller «minimal standard»: I(j+1) = 16807·I(j) mod (2^31 − 1); pmms_rand(maxv) — масштабирование в [0, maxv); seed из FEC OTI",
+   "параметры передачи": "FEC OTI (EXT_FTI, HET=64): L 48 бит, E 16, N1m3 3 (N1 = N1m3 + 3), G 5, B 20, max_n 16, seed ГПСЧ 32 (1…2^31−2); FEC Payload ID: SBN 12 бит + ESI 20 бит",
+   "кодирование": "ремонтные символы — XOR-суммы по строкам (лестница решается последовательно)",
+   "таблица": "tablicy/dop/ietf_prng.json"
+  },
+  "где применяется": "FLUTE/ALC, NORM (файловое многоадресное вещание)",
+  "источник": [
+   {
+    "файл": "istochniki/dop/rfc/rfc5170.txt",
+    "страница|строки": "строки 938–943 (ГПСЧ и критерий), 1071 (построение H1)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5170.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc5170.txt",
+    "страница|строки": "строки 324 (ID 3/4), 294 (Payload ID), 430 (EXT_FTI)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5170.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc5170.txt",
+    "страница|строки": "строка 1247 (треугольник)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5170.txt"
+   }
+  ],
+  "проверка": "свой ГПСЧ Park–Miller: при seed = 1 10 000-е значение = 1043618065 — критерий RFC 5170 (assert)",
+  "сложность внедрения": "НЕТ: прикладные FEC IETF (над пакетами/символами, не над битами) проект не снимает; для опознания — поле FEC Encoding ID и FEC Payload ID в заголовках ALC/FLUTE/FECFRAME"
+ },
+ {
+  "имя": "Simple LDPC-Staircase для FECFRAME (RFC 6816, FECFRAME FEC Encoding ID 7)",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "LDPC",
+  "параметры": {
+   "код": "LDPC-Staircase RFC 5170 (H и ГПСЧ те же)",
+   "отличие": "параметры и идентификаторы для FECFRAME RFC 6363"
+  },
+  "где применяется": "FECFRAME",
+  "источник": [
+   {
+    "файл": "istochniki/dop/rfc/rfc6816.txt",
+    "страница|строки": "весь текст",
+    "url": "https://www.rfc-editor.org/rfc/rfc6816.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc5170.txt",
+    "страница|строки": "определение кода (разд. 5–6)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5170.txt"
+   }
+  ],
+  "проверка": "ссылкой на RFC 5170 (ГПСЧ проверен выше)",
+  "сложность внедрения": "НЕТ: прикладные FEC IETF (над пакетами/символами, не над битами) проект не снимает; для опознания — поле FEC Encoding ID и FEC Payload ID в заголовках ALC/FLUTE/FECFRAME"
+ },
+ {
+  "имя": "RLC — случайный линейный код со скользящим окном над GF(2) (RFC 8681, FECFRAME FEC Encoding ID 9)",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "случайный линейный (скользящее окно)",
+  "параметры": {
+   "кодер": "ремонтный символ = Σ c_i·S_i по символам окна кодирования (до ew_size); c_i — generate_coding_coefficients(repair_key, cc_nb, DT, m) (рис. 3)",
+   "ГПСЧ": "TinyMT32 (RFC 8682: mat1 = 0x8f7011ee, mat2 = 0xfc78ff1f, tmat = 0x3793fdff), seed = repair_key; rand16 = выход & 0xF, rand256 = выход & 0xFF",
+   "плотность": "DT 0…15: вероятность ненулевого коэффициента (DT+1)/16; DT = 15 — все ненулевые",
+   "поле": "GF(2) — XOR",
+   "FEC Payload ID ремонтного пакета": "repair_key 16, DT 4, NSS 12, ESI первого символа окна 32",
+   "таблица": "tablicy/dop/ietf_prng.json"
+  },
+  "где применяется": "FECFRAME для потоков реального времени (видео/аудио, малая задержка)",
+  "источник": [
+   {
+    "файл": "istochniki/dop/rfc/rfc8681.txt",
+    "страница|строки": "строки 642 (рис. 3), 718 (поле), 1360–1403 (прил. A, векторы rand256/rand16)",
+    "url": "https://www.rfc-editor.org/rfc/rfc8681.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc8682.txt",
+    "страница|строки": "строки 215–336 (рис. 1, TinyMT32), 376 (рис. 2, 50 значений)",
+    "url": "https://www.rfc-editor.org/rfc/rfc8682.txt"
+   }
+  ],
+  "проверка": "своя TinyMT32 по рис. 1 RFC 8682: первые 50 значений при seed=1 = рис. 2 RFC 8682; rand256 и rand16 = рис. 9 и 10 RFC 8681 (assert)",
+  "сложность внедрения": "НЕТ: прикладные FEC IETF (над пакетами/символами, не над битами) проект не снимает; для опознания — поле FEC Encoding ID и FEC Payload ID в заголовках ALC/FLUTE/FECFRAME"
+ },
+ {
+  "имя": "RLC — случайный линейный код со скользящим окном над GF(2^8) (RFC 8681, FECFRAME FEC Encoding ID 10)",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "случайный линейный (скользящее окно)",
+  "параметры": {
+   "кодер": "ремонтный символ = Σ c_i·S_i по символам окна кодирования (до ew_size); c_i — generate_coding_coefficients(repair_key, cc_nb, DT, m) (рис. 3)",
+   "ГПСЧ": "TinyMT32 (RFC 8682: mat1 = 0x8f7011ee, mat2 = 0xfc78ff1f, tmat = 0x3793fdff), seed = repair_key; rand16 = выход & 0xF, rand256 = выход & 0xFF",
+   "плотность": "DT 0…15: вероятность ненулевого коэффициента (DT+1)/16; DT = 15 — все ненулевые",
+   "поле": "GF(2^8) по x^8+x^4+x^3+x^2+1 (0x11D) — как RFC 5510",
+   "FEC Payload ID ремонтного пакета": "repair_key 16, DT 4, NSS 12, ESI первого символа окна 32",
+   "таблица": "tablicy/dop/ietf_prng.json"
+  },
+  "где применяется": "FECFRAME для потоков реального времени (видео/аудио, малая задержка)",
+  "источник": [
+   {
+    "файл": "istochniki/dop/rfc/rfc8681.txt",
+    "страница|строки": "строки 642 (рис. 3), 718 (поле), 1360–1403 (прил. A, векторы rand256/rand16)",
+    "url": "https://www.rfc-editor.org/rfc/rfc8681.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc8682.txt",
+    "страница|строки": "строки 215–336 (рис. 1, TinyMT32), 376 (рис. 2, 50 значений)",
+    "url": "https://www.rfc-editor.org/rfc/rfc8682.txt"
+   }
+  ],
+  "проверка": "своя TinyMT32 по рис. 1 RFC 8682: первые 50 значений при seed=1 = рис. 2 RFC 8682; rand256 и rand16 = рис. 9 и 10 RFC 8681 (assert)",
+  "сложность внедрения": "НЕТ: прикладные FEC IETF (над пакетами/символами, не над битами) проект не снимает; для опознания — поле FEC Encoding ID и FEC Payload ID в заголовках ALC/FLUTE/FECFRAME"
+ },
+ {
+  "имя": "XOR-чётность RTP: ULPFEC (RFC 5109; заменяет RFC 2733)",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "CRC-подобный (XOR-чётность пакетов)",
+  "параметры": {
+   "код": "FEC-пакет = XOR выбранных медиапакетов (по маске mask/offset mask), включая «восстановительные» поля заголовка RTP (P, X, CC, M, PT, TS, длина)",
+   "уровни": "неравная защита (ULP): уровень k защищает первые L_k байт полезной нагрузки, своя маска",
+   "вид": "одиночная чётность — восстанавливает 1 потерянный пакет из группы"
+  },
+  "где применяется": "RTP (видеоконференции, SIP/WebRTC: формат ulpfec)",
+  "источник": [
+   {
+    "файл": "istochniki/dop/rfc/rfc5109.txt",
+    "страница|строки": "строки 343 (разд. 4, Parity Codes), 309 (offset mask)",
+    "url": "https://www.rfc-editor.org/rfc/rfc5109.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc2733.txt",
+    "страница|строки": "исходная версия (устарела)",
+    "url": "https://www.rfc-editor.org/rfc/rfc2733.txt"
+   }
+  ],
+  "проверка": "определение прочитано из текста RFC (XOR — тождественно)",
+  "сложность внедрения": "ЧАСТИЧНО: XOR-чётность тривиальна; разбор RTP есть в анализаторе пакетов, FEC-пакеты не восстанавливаются"
+ },
+ {
+  "имя": "Чередующаяся (1-D) чётность RTP (RFC 6015) и 2-D строки/столбцы FlexFEC (RFC 8627) — модель SMPTE 2022-1",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "CRC-подобный (XOR-чётность пакетов)",
+  "параметры": {
+   "1-D": "блок L столбцов × D строк исходных пакетов; ремонтный пакет = XOR столбца (пакеты i, i+L, …, i+(D−1)L) — против пачек потерь до L",
+   "2-D (FlexFEC)": "XOR по строкам и по столбцам, итеративное восстановление; маски или (L, D) в заголовке FEC-пакета",
+   "SMPTE 2022-1": "та же схема строк/столбцов для MPEG-TS по IP (Pro-MPEG CoP3) — сам стандарт платный"
+  },
+  "где применяется": "IPTV/контрибуция видео (SMPTE 2022-1/-5), WebRTC (flexfec-03)",
+  "источник": [
+   {
+    "файл": "istochniki/dop/rfc/rfc6015.txt",
+    "страница|строки": "строки 304 (рис. 3, столбцы), 441 (L, D)",
+    "url": "https://www.rfc-editor.org/rfc/rfc6015.txt"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc8627.txt",
+    "страница|строки": "строки 255 (1-D строки), 86 (2-D)",
+    "url": "https://www.rfc-editor.org/rfc/rfc8627.txt"
+   }
+  ],
+  "проверка": "определение прочитано из текста RFC",
+  "сложность внедрения": "ЧАСТИЧНО: перемежение L×D (peremezhenie.py) и XOR есть; восстановление RTP-пакетов — нет"
+ },
+ {
+  "имя": "Реестр IANA FEC Encoding ID (RMT и FECFRAME)",
+  "семейство": "Прикладные FEC IETF (стирания пакетов)",
+  "область": "obshchie",
+  "вид": "справочно: реестр идентификаторов кодов",
+  "параметры": {
+   "таблица": "tablicy/dop/iana_fec_encoding_id.json",
+   "RMT 0–127": "0 — Compact No-Code; 1 — Raptor; 2 — Reed-Solomon Codes over GF(2^^m); 3 — LDPC Staircase Codes; 4 — LDPC Triangle Codes; 5 — Reed-Solomon Codes over GF(2^^8); 6 — RaptorQ Code; 7-127 — Unassigned",
+   "RMT 128–255": "128 — Small Block, Large Block and Expandable FEC Codes; 129 — Small Block Systematic FEC Codes; 130 — Compact FEC; 131-255 — Unassigned"
+  },
+  "где применяется": "опознание схемы FEC по полю FEC Encoding ID в LCT/ALC/FLUTE (EXT_FTI), FECFRAME (SDP fec-repair-flow)",
+  "источник": [
+   {
+    "файл": "istochniki/dop/iana/rmt-fec-parameters.xml",
+    "страница|строки": "весь файл (реестры rmt-fec-parameters-1…5, fecframe-fec-encoding-ids)",
+    "url": "https://www.iana.org/assignments/rmt-fec-parameters/rmt-fec-parameters.xml"
+   },
+   {
+    "файл": "istochniki/dop/rfc/rfc5445.txt",
+    "страница|строки": "FEC Building Block: правила ID",
+    "url": "https://www.rfc-editor.org/rfc/rfc5445.txt"
+   }
+  ],
+  "проверка": "XML реестра разобран; ID 2 = Reed-Solomon RFC 5510 (assert), ID 3/4 — RFC 5170, ID 1/6 — Raptor/RaptorQ (область efir)",
+  "сложность внедрения": "НЕТ (справочно)"
+ }
+]

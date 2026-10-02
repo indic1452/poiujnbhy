@@ -1,0 +1,136 @@
+{
+ "G.709.3 FlexO-x-DO / OIF 800ZR, 1600ZR: OFEC": {
+  "источник+": [
+   {
+    "файл": "istochniki/oif/openzrplus_rev3p0_final2.pdf",
+    "страница|строки": "стр. 44 (номер страницы PDF)",
+    "url": "https://openzrplus.org/wp-content/uploads/2024/04/openzrplus_rev3p0_final2.pdf",
+    "что": "второй источник: OpenZR+ MSA 3.0, 7.4 — тот же g(t) и структура слова"
+   }
+  ],
+  "проверка+": "проверяющий: g(t) из OpenZR+ 7.4 = m1·m3 над 0x11D (свой расчёт) — второй независимый первоисточник подтвердил компонентный код"
+ },
+ "PCI Express 6.0/7.0 FEC": {
+  "семейство": "Интерфейсы (USB4, CPRI, JESD204, FC)",
+  "вид": "РС (перемеженный) + CRC — частично (структура без многочленов)",
+  "параметры": {
+   "флит (Flit Mode, PCIe 6.0 64 GT/s PAM4)": "256 байт = 236 TLP + 6 DLP + 8 CRC + 6 FEC",
+   "FEC": "3 перемеженных кода по 2 байта (check + parity), исправление одного символа — пачка до 3 байт; задержка < 2 нс",
+   "CRC": "8 байт, «на основе РС», гарантированное обнаружение до 8 ошибочных байт, далее 2^−64",
+   "ранний вариант (патент)": "флиты 324/648 символов с тройным перемежением и парами check/parity по полосам",
+   "не найдено": "многочлены поля и порождающие многочлены FEC/CRC — только в спецификации PCI-SIG (для членов)"
+  },
+  "где применяется": "PCIe 6.0/7.0 (Flit Mode), CXL 3.x",
+  "источник": [
+   {
+    "файл": "istochniki/interfeisy/206_DDasSharma_PCIe6.pdf",
+    "страница|строки": "стр. 10 (номер страницы PDF)",
+    "url": "https://www.openfabrics.org/wp-content/uploads/2022-workshop/2022-workshop-presentations/206_DDasSharma.pdf",
+    "что": "Das Sharma, PCIe 6.0 (OpenFabrics 2022): Flit Mode"
+   },
+   {
+    "файл": "istochniki/interfeisy/US10997111B2_google.html",
+    "страница|строки": "описание, фиг. 5–6",
+    "url": "https://patents.google.com/patent/US10997111B2/en",
+    "что": "US10997111B2 Flit-based packetization (Intel)"
+   },
+   {
+    "файл": "istochniki/interfeisy/US10997111B2.pdf",
+    "страница|строки": "весь документ (скан)",
+    "url": "https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/10997111",
+    "что": "PDF патента USPTO"
+   }
+  ],
+  "проверка": "структура флита — по презентации автора спецификации и патенту (две независимые формы); многочлены не опубликованы — проверка кода невозможна",
+  "сложность внедрения": "нет: без многочленов — только слепой поиск РС по 2-байтовым проверкам (rs_bch.py) при известной раскладке флита"
+ },
+ "OpenROADM MSA W-port": {
+  "параметры+": {
+   "замена": "OFEC W-порта OpenROADM описан в открытой OpenZR+ MSA 3.0 (стр. 39–44) — см. запись OpenZR+"
+  },
+  "источник": [
+   {
+    "файл": "istochniki/oif/openzrplus_rev3p0_final2.pdf",
+    "страница|строки": "стр. 39–44 (номер страницы PDF)",
+    "url": "https://openzrplus.org/wp-content/uploads/2024/04/openzrplus_rev3p0_final2.pdf",
+    "что": "открытая замена: OFEC в OpenZR+ MSA 3.0"
+   }
+  ]
+ },
+ "DisplayPort 2.0/2.1": {
+  "источник": [
+   {
+    "файл": "istochniki/ne_naydeno/vesa_dp.html",
+    "страница|строки": "снимок страницы",
+    "url": "https://vesa.org/displayport-developer/about-displayport/",
+    "что": "VESA: спецификации — для членов (Member Login)"
+   }
+  ]
+ },
+ "HDMI 2.1 FRL": {
+  "источник": [
+   {
+    "файл": "istochniki/ne_naydeno/hdmi21.html",
+    "страница|строки": "снимок страницы",
+    "url": "https://www.hdmi.org/spec/hdmi2_1",
+    "что": "HDMI Forum: Adopter-Only Extranet"
+   }
+  ]
+ },
+ "InfiniBand": {
+  "источник": [
+   {
+    "файл": "istochniki/ne_naydeno/ibta.html",
+    "страница|строки": "снимок страницы",
+    "url": "https://www.infinibandta.org/ibta-specification/",
+    "что": "IBTA: «MEMBERS … login required»"
+   }
+  ]
+ },
+ "SAS-4/SAS-5": {
+  "источник": [
+   {
+    "файл": "istochniki/ne_naydeno/t10.html",
+    "страница|строки": "снимок страницы",
+    "url": "https://www.t10.org/drafts.htm",
+    "что": "T10: «Only T10 members are permitted to access this document»"
+   }
+  ]
+ },
+ "IEEE 802.3: утверждённые тексты": {
+  "источник": [
+   {
+    "файл": "istochniki/ieee8023/standart/802.3-2012_section4.pdf",
+    "страница|строки": "стр. 729 (номер страницы PDF)",
+    "url": "http://ebook.pldworld.com/_eBook/IEEE/802/3/802.3-2012_section4.pdf",
+    "что": "Annex 55A: матрицы G/H 10GBASE-T вынесены в matrices.zip (standards.ieee.org/downloads/802.3/) — архив недоступен"
+   },
+   {
+    "файл": "istochniki/ieee8023/bs/gustlin_3bs_03_0317.pdf",
+    "страница|строки": "стр. 15–17 (номер страницы PDF)",
+    "url": "https://www.ieee802.org/3/bs/public/17_03/gustlin_3bs_03_0317.pdf",
+    "что": "вместо утверждённого текста использованы черновики/презентации (здесь — P802.3bs D3.1, Cl.119)"
+   }
+  ]
+ },
+ "G.975.1 I.6 LDPC — значения наклонов": {
+  "источник": [
+   {
+    "файл": "istochniki/itu/T-REC-G.975.1-200402-I.pdf",
+    "страница|строки": "стр. 31 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.975.1-200402-I!!PDF-E&type=items",
+    "что": "I.6.2: определение через 7 наклонов без их значений"
+   }
+  ]
+ },
+ "Blu-ray: многочлены LDC/BIS": {
+  "источник": [
+   {
+    "файл": "istochniki/nositeli/US20060282614A1.pdf",
+    "страница|строки": "стр. 8 (номер страницы PDF)",
+    "url": "https://patentimages.storage.googleapis.com/b2/f6/75/86d7216c7e24e0/US20060282614A1.pdf",
+    "что": "патент: структура LDC/BIS без порождающих многочленов"
+   }
+  ]
+ }
+}

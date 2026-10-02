@@ -1,0 +1,8223 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+BeiDou Navigation Satellite System 
+Signal In Space 
+Interface Control Document 
+Open Service Signal B1I (Version 1.0) 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+China Satellite Navigation Office 
+December 2012
+
+=====PAGE 2=====
+ 
+ 
+
+=====PAGE 3=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+I
+Content 
+ 
+1 Statement ........................................................................................... 1 
+2 Scope ................................................................................................. 1 
+3 BeiDou System Overview .................................................................. 1 
+3.1 Space Constellation .................................................................... 1 
+3.2 Coordinate System ...................................................................... 1 
+3.3 Time System ............................................................................... 2 
+4 Signal Specifications .......................................................................... 3 
+4.1 Signal Structure .......................................................................... 3 
+4.2 Signal Characteristics ................................................................. 3 
+4.2.1 Carrier Frequency ............................................................. 3 
+4.2.2 Modulation Mode ............................................................. 3 
+4.2.3 Polarization Mode ............................................................ 4 
+4.2.4 Carrier Phase Noise .......................................................... 4 
+4.2.5 User-Received Signal Power Level ................................... 4 
+4.2.6 Signal Multiplexing Mode ................................................ 4 
+4.2.7 Satellite Signal Bandwidth and Out-band Suppression ..... 5 
+4.2.8 Spurious ........................................................................... 5 
+4.2.9 Signal Coherence .............................................................. 5 
+4.2.10 Equipment Group Delay Differential ................................ 5 
+4.3 Ranging Code on B1I ................................................................. 6 
+
+=====PAGE 4=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+II
+5 NAV Message .................................................................................... 8 
+5.1 General ....................................................................................... 8 
+5.1.1 NAV Message Classification ............................................ 8 
+5.1.2 NAV Message Information Type and Broadcasting ........... 9 
+5.1.3 Data Error Correction Coding Mode ............................... 11 
+5.2 D1 NAV Message ..................................................................... 15 
+5.2.1 Secondary Code Modulated on D1 ................................. 15 
+5.2.2 D1 NAV Message Frame Structure ................................. 16 
+5.2.3 D1 NAV Message Detailed Structure .............................. 17 
+5.2.4 D1 NAV Message Content and Algorithm ...................... 24 
+5.3 D2 NAV Message ..................................................................... 42 
+5.3.1 D2 NAV Message Frame Structure ................................. 42 
+5.3.2 D2 NAV Message Detailed structure .............................. 43 
+5.3.3 D2 NAV Message Content and Algorithm ...................... 67 
+6 Acronyms......................................................................................... 76 
+
+=====PAGE 5=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+1
+1 Statement 
+BeiDou Navigation Satellite System Signal-In-Space Interface Control 
+Document (hereafter referred to as ICD) is issued by the China Satellite 
+Navigation Office, which reserves the right for final explanation. 
+2 Scope 
+This ICD defines the specification related to open service signal B1I 
+between the space segment and the user segment of the BeiDou Navigation 
+Satellite System. 
+3 BeiDou System Overview 
+3.1 
+Space Constellation 
+BeiDou Navigation Satellite System is called BeiDou System for short, 
+with the abbreviation as BDS. When fully deployed, the space constellation of 
+BDS consists of five Geostationary Earth Orbit (GEO) satellites, twenty-seven 
+Medium Earth Orbit (MEO) satellites and three Inclined Geosynchronous 
+Satellite Orbit (IGSO) satellites. The GEO satellites are operating in orbit at an 
+altitude of 35,786 kilometers and positioned at 58.75°E, 80°E, 110.5°E, 140°E 
+and 160°E respectively. The MEO satellites are operating in orbit at an altitude 
+of 21,528 kilometers and an inclination of 55° to the equatorial plane. The IGSO 
+satellites are operating in orbit at an altitude of 35,786 kilometers and an 
+inclination of 55° to the equatorial plane. 
+By the end of 2012, there are five GEO, four MEO and five IGSO BeiDou 
+navigation satellites in orbit. 
+3.2 
+Coordinate System 
+BDS adopts the China Geodetic Coordinate System 2000 (CGCS2000), 
+
+=====PAGE 6=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+2
+and the definition is listed below: 
+The origin is located at the mass center of the Earth; 
+The Z-axis is in the direction of the IERS (International Earth Rotation and 
+Reference System Service) Reference Pole (IRP); 
+The X-axis is directed to the intersection of IERS Reference Meridian 
+(IRM) and the plane passing the origin and normal to the Z-axis; 
+The Y-axis, together with Z-axis and X-axis, constitutes a right handed 
+orthogonal coordinate system. 
+The origin of the CGCS2000 is also the geometric center of the CGCS2000 
+ellipsoid, and the Z-axis is the rotation axis of the CGCS2000 ellipsoid. The 
+parameters of the CGCS2000 ellipsoid are as follows: 
+Semi-major axis:  
+ 
+ 
+ 
+ 
+ 
+a = 6378137.0 m 
+Geocentric gravitational constant (mass of the earth atmosphere included):
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+μ = 3.9860044181014 m3/s2 
+Flattening: 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+f = 1/298.257222101 
+Rate of earth rotation: 
+ 
+ 
+ 
+ 
+e
+= 7.292115010-5 rad/s 
+3.3 
+Time System 
+The time reference for the BDS uses the BeiDou navigation satellite 
+system Time (BDT). BDT adopts international system of units (SI) seconds, 
+rather than leap seconds, as the basic unit for continuous accumulation. The 
+start epoch of BDT was 00:00:00 on January 1, 2006 of Coordinated Universal 
+Time (UTC). BDT is counted with week and seconds of week (SOW). BDT is 
+related to the UTC through UTC(NTSC). BDT offset with respect to UTC is 
+controlled within 100 nanoseconds (modulo 1 second). The leap seconds are 
+broadcast in navigation (NAV) message. 
+
+=====PAGE 7=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+3
+4 Signal Specifications 
+4.1 
+Signal Structure 
+The B1 signal is the sum of channel I and Q which are in phase quadrature 
+of each other. The ranging code and NAV message are modulated on carrier. 
+The signal is composed of the carrier frequency, ranging code and NAV 
+message. 
+The B1 signal is expressed as follows: 
+j
+j
+j
+j
+j
+j
+j
+I
+I
+I
+0
+Q
+Q
+Q
+0
+S (t)
+A C (t)D (t)cos(2 f t
+)
+A C (t)D (t)sin(2 f t
+)
+
+
+
+
+ 
+Where, 
+Superscript j: satellite number; 
+Subscript I: channel I; 
+Subscript Q: channel Q； 
+A: signal amplitude; 
+C: ranging code; 
+D: data modulated on ranging code; 
+f0: carrier frequency; 
+υ: carrier initial phase. 
+4.2 
+Signal Characteristics 
+4.2.1 Carrier Frequency 
+The nominal frequency of B1I signal is 1561.098 MHz. 
+4.2.2 Modulation Mode 
+The transmitted signal is modulated by Quadrature Phase Shift Keying 
+(QPSK). 
+
+=====PAGE 8=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+4
+4.2.3 Polarization Mode 
+The transmitted signal shall be Right-Handed Circularly Polarized (RHCP). 
+The signal polarization ellipticity is specified in Table 4-1. 
+Tab 4-1  Signal polarization ellipticity 
+Satellite type 
+Signal polarization ellipticity 
+GEO 
+Ellipticity is no worse than 2.9 dB, angular range: 10 from boresight. 
+MEO 
+Ellipticity is no worse than 2.9 dB, angular range: 15 from boresight. 
+IGSO 
+Ellipticity is no worse than 2.9 dB, angular range: 10 from boresight. 
+4.2.4 Carrier Phase Noise 
+The phase noise spectral density of the unmodulated carrier is as follows: 
+-60 dBc/Hz    @ f0±10 Hz 
+-75 dBc/Hz    @ f0±100 Hz 
+-80 dBc/Hz    @ f0±1 kHz 
+-85 dBc/Hz    @ f0±10 kHz 
+-95 dBc/Hz    @ f0±100 kHz 
+Where f0 is the carrier frequency of B1I. 
+4.2.5 User-Received Signal Power Level 
+The minimum user-received signal power level is specified to be -163 
+dBW for B1I, which is measured at the output of a 0 dB RHCP receiving 
+antenna (located near ground), when the satellite’s elevation angle is higher than 
+5 degree. 
+4.2.6 Signal Multiplexing Mode 
+The signal multiplexing mode is Code Division Multiple Access (CDMA). 
+
+=====PAGE 9=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+5
+4.2.7 Satellite Signal Bandwidth and Out-band Suppression 
+（1）Bandwidth (1 dB): 4.092 MHz (centered at carrier frequency of B1I); 
+Bandwidth (3 dB): 16 MHz (centered at carrier frequency of B1I). 
+（2）Out-band suppression: no less than 15 dB on f0±30 MHz, where f0 is 
+the carrier frequency of B1I signal. 
+4.2.8 Spurious 
+In-band spurious shall be at least 50 dB below the unmodulated carrier of 
+B1I over the satellite signal bandwidth (1 dB). 
+4.2.9 Signal Coherence 
+(1) 
+The random jitter of the initial phase difference between the ranging 
+code modulated on carrier and carrier is less than 3° (1σ) (relative to the carrier) 
+for B1I signal. 
+(2) 
+Carrier phase quadrature difference between channel I and Q is less 
+than 5° (1σ). 
+4.2.10 Equipment Group Delay Differential 
+Equipment group delay is defined as the delay between the antenna phase 
+center of a satellite and the output of the satellite onboard frequency source. 
+The equipment group delay differential of B1I is given as TGD1 in NAV 
+message with uncertainty less than 1 nanosecond (1σ). 
+ 
+
+=====PAGE 10=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+6
+4.3 
+Ranging Code on B1I 
+The chip rate of the B1I ranging code is 2.046 Mcps, and the length is 
+2046 chips. 
+The B1I ranging code (hereinafter referred to as CB1I) is a balanced Gold 
+code truncated with the last one chip. The Gold code is generated by means of 
+Modulo-2 addition of G1 and G2 sequences which are respectively derived 
+from two 11-bit linear shift registers.  
+The generator polynomials for G1 and G2 are as follows: 
+G1(X)=1+X+X7+X8+X9+X10+X11  
+G2(X)=1+X+X2+X3+X4+X5+X8+X9+X11 
+The initial phases of G1 and G2 are: 
+G1: 01010101010 
+G2: 01010101010 
+The generator of CB1I is shown in Figure 4-1. 
+Reset control clock
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+Ranging code
+G1 sequence
+Set to initial phases
+Shift control clock
+Phase selection logic
+G2 sequence
+ 
+Figure 4-1  The generator of CB1I 
+The different phase shift of G2 sequence is accomplished by respective 
+tapping in the shift register generating G2 sequence. By means of Modulo-2 
+addition of G2 with different phase shift and G1, a ranging code is generated for 
+
+=====PAGE 11=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+7
+each satellite. 
+The phase assignment of G2 sequence is shown in Table 4-2. 
+Table 4-2  Phase assignment of G2 sequence 
+No. 
+Satellite type 
+Ranging code 
+number 
+Phase assignment of 
+G2 sequence 
+1 
+GEO satellite 
+1 
+1⊕3 
+2 
+GEO satellite  
+2 
+1⊕4 
+3 
+GEO satellite  
+3 
+1⊕5 
+4 
+GEO satellite  
+4 
+1⊕6 
+5 
+GEO satellite  
+5 
+1⊕8 
+6 
+MEO/IGSO satellite 
+6 
+1⊕9 
+7 
+MEO/IGSO satellite  
+7 
+1⊕10 
+8 
+MEO/IGSO satellite  
+8 
+1⊕11 
+9 
+MEO/IGSO satellite  
+9 
+2⊕7 
+10 
+MEO/IGSO satellite  
+10 
+3⊕4 
+11 
+MEO/IGSO satellite  
+11 
+3⊕5 
+12 
+MEO/IGSO satellite  
+12 
+3⊕6 
+13 
+MEO/IGSO satellite  
+13 
+3⊕8 
+14 
+MEO/IGSO satellite  
+14 
+3⊕9 
+15 
+MEO/IGSO satellite  
+15 
+3⊕10 
+16 
+MEO/IGSO satellite  
+16 
+3⊕11 
+17 
+MEO/IGSO satellite  
+17 
+4⊕5 
+18 
+MEO/IGSO satellite  
+18 
+4⊕6 
+19 
+MEO/IGSO satellite  
+19 
+4⊕8 
+20 
+MEO/IGSO satellite  
+20 
+4⊕9 
+21 
+MEO/IGSO satellite  
+21 
+4⊕10 
+22 
+MEO/IGSO satellite  
+22 
+4⊕11 
+23 
+MEO/IGSO satellite  
+23 
+5⊕6 
+24 
+MEO/IGSO satellite  
+24 
+5⊕8 
+25 
+MEO/IGSO satellite  
+25 
+5⊕9 
+
+=====PAGE 12=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+8
+No. 
+Satellite type 
+Ranging code 
+number 
+Phase assignment of 
+G2 sequence 
+26 
+MEO/IGSO satellite  
+26 
+5⊕10 
+27 
+MEO/IGSO satellite  
+27 
+5⊕11 
+28 
+MEO/IGSO satellite  
+28 
+6⊕8 
+29 
+MEO/IGSO satellite  
+29 
+6⊕9 
+30 
+MEO/IGSO satellite  
+30 
+6⊕10 
+31 
+MEO/IGSO satellite  
+31 
+6⊕11 
+32 
+MEO/IGSO satellite  
+32 
+8⊕9 
+33 
+MEO/IGSO satellite  
+33 
+8⊕10 
+34 
+MEO/IGSO satellite  
+34 
+8⊕11 
+35 
+MEO/IGSO satellite  
+35 
+9⊕10 
+36 
+MEO/IGSO satellite  
+36 
+9⊕11 
+37 
+MEO/IGSO satellite  
+37 
+10⊕11 
+5 NAV Message 
+5.1 
+General 
+5.1.1 NAV Message Classification 
+NAV messages are formatted in D1 and D2 based on their rate and 
+structure. The rate of D1 NAV message which is modulated with 1 kbps 
+secondary code is 50 bps. D1 NAV message contains basic NAV information 
+(fundamental NAV information of the broadcasting satellites, almanac 
+information for all satellites as well as the time offsets from other systems); 
+while D2 NAV message contains basic NAV and augmentation service 
+information (the BDS integrity, differential and ionospheric grid information) 
+and its rate is 500 bps. 
+The NAV message broadcast by MEO/IGSO and GEO satellites is D1 and 
+D2 respectively.  
+
+=====PAGE 13=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+9
+5.1.2 NAV Message Information Type and Broadcasting 
+The NAV message information type and broadcasting are shown in Table 
+5-1. The detailed structure, bits allocations, contents and algorithms will be 
+described in later chapters.
+
+=====PAGE 14=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+10
+Tab 5-1  NAV message information contents and their broadcasting 
+Message information content 
+No. of 
+Bits 
+Broadcasting 
+Preamble (Pre) 
+11 
+Occurring every subframe 
+Basic NAV information, broadcast in every satellite 
+Subframe ID (FraID) 
+3 
+Seconds of week (SOW) 
+20 
+Fundamental NAV information of the broadcasting satellite 
+Week number (WN) 
+13 
+D1: broadcast in subframes 1, 2 and 3, 
+repeated every 30 seconds. 
+ 
+D2: broadcast in the first five words 
+of pages 1~10 of subframe 1, repeated 
+every 30 seconds. 
+ 
+Updating rate: every 1 hour. 
+User range accuracy index 
+(URAI) 
+4 
+Autonomous satellite health 
+flag (SatH1) 
+1 
+Equipment 
+group 
+delay 
+differential (TGD1) 
+10 
+Issue of data, clock (IODC) 
+5 
+Clock correction parameters 
+(toc, a0, a1, a2) 
+74 
+Issue of data, ephemeris  
+(IODE) 
+5 
+Ephemeris parameters 
+(toe,
+A , e, ω, Δn, M0, Ω0, , 
+i0, IDOT, Cuc, Cus, Crc, Crs, Cic, 
+Cis) 
+371 
+Ionosphere model parameters 
+(αn, βn, n=0~3) 
+64 
+Page number (Pnum) 
+7 
+D1: broadcast in subframe 4 and 
+subframe 5. 
+D2: broadcast in subframe 5. 
+Almanac 
+Alamanac parameters 
+(toa, A , e, ω, M0, Ω0, , δi, 
+a0, a1) 
+176 
+D1: broadcasting in pages 1~24 of 
+subframe 4 and pages 1~6 of 
+subframe 
+5, 
+repeated 
+every 
+12 
+minutes. 
+D2: 
+broadcast 
+in 
+pages 
+37~60, 
+95~100 of subframe 5, repeated every 
+6 minutes. 
+Updating period: less than 7 days. 
+Week number of alamanac  
+(WNa) 
+8 
+D1: broadcast in pages 7~8 of 
+subframe 
+5, 
+repeated 
+every 
+12 
+minutes. 
+D2: broadcast in pages 35~36 of 
+subframe 5, repeated every 6 minutes. 
+Updating period: less than 7 days. 
+Health 
+information 
+for 30 
+satellites（Heai, i=1~30） 
+9×30 
+
+=====PAGE 15=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+11
+Message information content 
+No. of 
+Bits 
+Broadcasting 
+Time offsets from other 
+systems 
+Time parameters relative to 
+UTC (A0UTC, A1UTC, ΔtLS, 
+ΔtLSF,WNLSF, DN) 
+88 
+D1: broadcast in pages 9~10 of 
+subframe 5, repeating every 12 
+minutes. 
+D2: broadcast in pages 101~102 of 
+subframe 5, repeated every 6 minutes. 
+Updating period: less than 7 days. 
+Time parameters relative to 
+GPS time (A0GPS, A1GPS） 
+30 
+Time parameters relative to 
+Galileo time (A0Gal, A1Gal) 
+30 
+Time parameters relative to 
+GLONASS time(A0GLO, A1GLO) 
+30 
+Page 
+number 
+for 
+basic 
+NAV 
+information (Pnum1) 
+4 
+D2: broadcast in pages 1~10 of 
+subframe 1. 
+Integrity and differential correction information and ionospheric grid information are 
+broadcast by GEO satellites only. 
+Page 
+number 
+for 
+integrity 
+and 
+differential correction information 
+(Pnum2) 
+4 
+D2: broadcast in pages 1~6 of 
+subframe 2. 
+Satellite health flag for integrity and 
+differential correction information 
+(SatH2) 
+2 
+D2: broadcast in pages 1~6 of 
+subframe 2. 
+Updating rate: every 3 seconds. 
+BDS Satellite identification for 
+integrity and differential correction 
+information (BDIDi, i=1~30) 
+1×30 
+D2: broadcast in pages 1~6 of 
+subframe 2. 
+Updating rate: every 3 seconds. 
+Integrity and differential 
+correction information of BDS 
+User differential range error 
+index (UDREIi, i=1~18) 
+4×18 
+D2: broadcast in subframe 2. 
+Updating rate: every 3 seconds. 
+Regional user range accuracy 
+index (RURAIi, i=1~18) 
+4×18 
+D2: broadcast in subframe 2 and 
+subframe 3. 
+Updating rate: every 18 seconds. 
+Equivalent clock correction 
+(Δti, i=1~18) 
+13×18 
+Ionospherc grid 
+informatioin 
+Vertical ionospheric delay at 
+grid point (dτ) 
+9×320 D2: broadcast in pages 1~13, 61~73 
+of subframe 5. 
+Updating rate: every 6 minutes. 
+Grid ionospheric vertical delay 
+error indiex (GIVEI) 
+4×320 
+5.1.3 Data Error Correction Coding Mode 
+The NAV message encoding involves both error control of BCH(15,11,1) 
+and interleaving. The BCH code is 15 bits long with 11 information bits and 
+
+=====PAGE 16=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+12
+error correction capability of 1 bit. The generator polynomial is g(X)=X4+X+1. 
+The NAV message bits are grouped every 11 bits in sequence first. The 
+serial/parallel conversion is made and the BCH(15,11,1) error correction 
+encoding is performed in parallel. Parallel/serial conversion is then carried out 
+for every two parallel blocks of BCH codes by turns of 1 bit to form an 
+interleaved code of 30 bits length. The implementation is shown in Figure 5-1. 
+Serial/
+parallel 
+converting 
+for each 
+block of 
+11 bits
+BCH(15,11,1) encoding
+BCH(15,11,1) encoding
+Parallel/
+serial 
+converting 
+by turns 
+of 1 bit
+Input 
+Output
+ 
+Fig 5-1  Error correction encoding and interleaving of down-link NAV message 
+The implementation of BCH (15,11,1) encoder is shown in Figure 5-2. 
+Initially the four stages of the shift register are all reset to zero, Gate1 is on and 
+Gate2 is off. The 11 bits of information block X are sent into a dividing circuit 
+g(X). Meantime the information bits are sent out of the encoder through gate 
+―or‖ as the output. The dividing operation finishes when all the 11 bits have 
+been sent in and then the states of the four register stages represent the parity 
+check bits. Now switch Gate 1 off and Gate 2 on. The four parity check bits are 
+shifted out of the encoder through gate ―or‖ to form a 15 bits code in 
+combination with the output 11 bits of information block. Then switch Gate1 on 
+and Gate2 off and send in the next information block and the procedure above is 
+repeated again. 
+
+=====PAGE 17=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+13
+Gate1
+OR
+Gate2
+D0
+D1
+D2
+D3
+Input information block X
+Output
+ 
+Fig 5-2  BCH(15, 11, 1) encoder 
+For the received NAV message by receivers near ground a serial/parallel 
+conversion by turns of 1 bit is required first, followed by an error correction 
+decoding of BCH(15,11,1) in parallel. Then a parallel/serial conversion is 
+carried out for each 11 bits block to form a 22 bits information code in sequence. 
+The processing is shown in Figure 5-3. 
+Serial/ 
+parallel 
+converting 
+by turns 
+of 1 bit
+BCH(15,11,1) decoding
+BCH(15,11,1) decoding
+parallel/ 
+Serial 
+transforming 
+for each 11 
+bits
+Input
+Output
+ 
+Fig 5-3  Processing of received down-link NAV message 
+The decoding logic of BCH(15,11,1) is shown in Figure 5-4. The initial 
+states of the four register stages are all zeros. BCH codes are sent in bit by bit 
+into a division circuit and a fifteen stages buffer simultaneously. When all 
+fifteen bits of a BCH code are inputted, the ROM list circuit forms a fifteen-bit 
+table based on the states D3, D2, D1 and D0 of the four register stages. Then the 
+15 bits in the table and 15 bits in the buffer are Modulo-2 added and an error 
+corrected information code obtained is output. The ROM table list is shown in 
+Table 5-2. 
+
+=====PAGE 18=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+14
+Gate1
+D0
+D1
+D2
+D3
+ROM list circuit
+15 stage buffer
+BCH code input
+Decoder output
+ 
+Fig 5-4  BCH(15,11,1) decoding logic 
+Tab 5-2  ROM table list for error correction 
+D3D2D1D0 
+15 bits data for error correction 
+0000 
+000000000000000 
+0001 
+000000000000001 
+0010 
+000000000000010 
+0011 
+000000000010000 
+0100 
+000000000000100 
+0101 
+000000100000000 
+0110 
+000000000100000 
+0111 
+000010000000000 
+1000 
+000000000001000 
+1001 
+100000000000000 
+1010 
+000001000000000 
+1011 
+000000010000000 
+1100 
+000000001000000 
+1101 
+010000000000000 
+1110 
+000100000000000 
+1111 
+001000000000000 
+
+=====PAGE 19=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+15
+The interleaving pattern of 30 bits code is as follows: 
+1
+1
+X 
+1
+2
+X 
+2
+1
+X 
+2
+2
+X 
+ 
+11
+1
+X
+ 
+11
+2
+X
+ 
+1
+1P 
+1
+2P 
+2
+1P 
+2
+2P 
+3
+1P 
+3
+2P 
+4
+1P 
+4
+2P 
+where Xi
+j is the information bit, subscript i stands for the bit in BCH code 
+of block i and i=1 or 2; superscript j stands for the information bit j in block i 
+and j=1 to 11; Pi
+m is the check parity bit, subscript i stands for the bit in BCH 
+code of block i and i=1 or 2; superscript m stands for the parity bit m in BCH 
+code of block i and m=1 to 4. 
+5.2 
+D1 NAV Message 
+5.2.1 Secondary Code Modulated on D1 
+For D1 NAV message in format D1 of rate 50 bps a secondary code of 
+Neumann-Hoffman (NH) code is modulated on ranging code. The period of NH 
+code is selected as long as the duration of a NAV message bit. The bit duration 
+of NH code is the same as one period of the ranging code. Shown as in Figure 
+5-5, the duration of one NAV message bit is 20 milliseconds and the ranging 
+code period is 1 millisecond. Thus the NH code (0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 
+1, 0, 0, 1, 1, 1, 0) with length of 20 bits, rate 1 kbps and bit duration of 1 
+millisecond is adopted. It is modulated on the ranging code synchronously with 
+NAV message bit. 
+
+=====PAGE 20=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+16
+NH code
+Ranging 
+code
+NAV message
+NAV 
+message
+NH 
+code
+Ranging 
+code
+1
+1
+20 ms
+1ms
+Ranging code period (1 bit duration of NH code）
+Period (1 bit duration of NAV message)
+0
+0
+0
+0 0 0 0 0
+0 0 1 1 0 1 0 1 0 0 1 1 1 0
+1
+ 
+Fig 5-5  Secondary code and its timing 
+5.2.2 D1 NAV Message Frame Structure 
+The NAV message in format D1 is structured in the superframe, frame and 
+subframe. Every superframe has 36000 bits and lasts 12 minutes. Every 
+superframe is composed of 24 frames (24 pages). Every frame has 1500 bits and 
+lasts 30 seconds. Every frame is composed of 5 subframes. Every subframe has 
+300 bits and lasts 6 seconds. Every subframe is composed of 10 words. Every 
+word has 30 bits and lasts 0.6 second. 
+Every word consists of NAV message data and parity bits. In the first word 
+of every subframe, the first 15 bits is not encoded and the following 11 bits are 
+encoded in BCH(15,11,1) for error correction. So there is only one group of 
+BCH code contained and there are altogether 26 information bits in the word. 
+For all the other 9 words in the subframe both BCH(15,11,1) encoding for error 
+control and interleaving are involved. Each of the 9 words of 30 bits contains 
+two blocks of BCH codes and there are altogether 22 information bits in it. 
+(reference paragraph 5.1.3) 
+
+=====PAGE 21=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+17
+The frame structure in format D1 is shown in Figure 5-6. 
+Frame 1
+Frame 2
+……
+Frame n
+……
+Frame 24
+Superframe 36000 bits, 12 min
+Word 1,  30 bits,  0.6 sec
+Word 1
+Word 2
+……
+Word 10
+Subframe 300 bits,  6 sec
+Subframe 1 Subframe 2 Subframe 3 Subframe 4 Subframe 5
+Frame 1500 bits, 30 sec
+26 information bits
+4 parity bits
+Word 2~10,  30 bits,  0.6 sec
+22 information bits
+8 parity bits
+ 
+Fig 5-6  Frame structure of NAV message in format D1 
+5.2.3 D1 NAV Message Detailed Structure 
+The main information contents of NAV message in format D1 are basic 
+NAV information, including fundamental NAV information of the broadcasting 
+satellites (seconds of week, week number, user range accuracy index, 
+autonomous satellite health flag, ionospheric delay model parameters, satellite 
+ephemeris parameters and their age, satellite clock correction parameters and 
+their age and equipment group delay differential), almanac and BDT offsets 
+from other systems (UTC and other navigation satellite systems). It takes 12 
+minutes to transmit the whole NAV message. 
+The D1 frame structure and information contents are shown in Figure 5-7. 
+The fundamental NAV information of the broadcasting satellite is in subframes 
+1, 2 and 3. The information contents in subframes 4 and 5 are subcommutated 
+24 times each via 24 pages. Pages 1~24 of subframe 4 and pages 1~10 of 
+subframe 5 shall be used to broadcast almanac and time offsets from other 
+
+=====PAGE 22=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+18
+systems. Pages 11~24 of subframe 5 are reserved. 
+Subframe 1
+Subframe 2
+Subframe 3
+Subframe 4                     Subframe 5
+Almanac and 
+time offsets from other systems 
+Fundamental NAV information 
+of the broadcasting satellite
+… 
+… 
+… 
+ 
+Fig 5-7  Frame structure and information contents of NAV message in format D1 
+The bits allocations of format D1 are shown in Figure 5-8~5-11.
+
+=====PAGE 23=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+19
+IODE
+5bits
+Pre
+11bits
+WN
+13bits
+SOW
+8bits
+FraID
+3bits
+Subframe 1（300 bits）bits allocation 
+Direction  of data flow 
+MSB  first
+MSB
+LSB
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+URAI
+4bits
+SatH1
+1bit
+P
+8MSBs
+toc
+9bits
+91
+12LSBs
+61
+P
+a1
+17bits
+P
+a2
+11bits
+P
+271
+241
+TGD1
+10bits
+IODC
+5bits
+Subframe 
+No.
+Page 
+No.
+1
+N/A
+α0
+8bits
+P
+4MSBs
+P
+α1
+8bits
+6MSBs
+2LSBs
+α2
+8bits
+α3
+8bits
+β0
+6bits
+4LSBs
+β1
+8bits
+β2
+8bits
+β3
+4bits
+121
+Rev
+4bits
+27
+P
+9MSBs
+toc
+8bits
+8LSBs
+Rev
+4bits
+Rev
+6bits
+151
+β0
+2bits
+181
+β3
+4bits
+a0
+7bits
+7MSBs
+P
+P
+a0
+17bits
+17LSBs
+a1
+5bits
+5MSBs
+17LSBs
+211
+ 
+Fig 5-8  Bits allocation of subframe 1 in format D1 
+ 
+ 
+ 
+Subframe 2 （300 bits）  bits allocation 
+MSB first
+Direction of data flow 
+MSB
+LSB
+P
+61
+P
+91
+10MSBs
+P
+121
+P
+211
+P
+4MSBs
+241
+10MSBs
+12LSBs
+e
+22bits
+M0
+20bits
+P
+P
+P
+271
+P
+20MSBs
+Crc
+4bits
+M0
+12bits
+Crs
+10bits
+Cuc
+16bits
+Cus
+18bits
+Δn
+10bits
+12bits
+Δn
+6bits
+6LSBs
+16MSBs
+Cuc
+2bits
+2LSBs
+151
+22LSBs
+Crc
+14bits
+14LSBs
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+8MSBs
+12LSBs
+Subframe 
+No.
+Page 
+No.
+2
+N/A
+Rev
+4bit
+27
+20bits
+10LSBs
+12MSBs
+20LSBs
+toe
+2bits
+2MSBs
+e
+10bits
+181
+Crs
+8bits
+8MSBs
+A
+A
+ 
+Fig 5-9  Bits allocation of subframe 2 in format D1 
+
+=====PAGE 24=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+20
+toe
+10bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+8MSBs
+12LSBs
+Subframe 
+No.
+Page 
+No.
+3
+N/A
+Rev
+4bits
+27
+i0
+17bits
+IDOT
+13bits
+ω
+21bits
+11MSBs
+21LSBs
+13LSBs
+9MSBs
+Ω0
+11bits
+Ω0
+21bits
+11bits
+Subframe 3 （300 bits） bits allocation 
+MSB first
+Direction of data flow 
+MSB
+LSB
+P
+61
+P
+91
+P
+211
+P
+241
+P
+271
+P
+P
+P
+P
+Cic
+7bits
+15LSBs
+7MSBs
+Cis
+9bit
+11MSBs
+9LSBs
+181
+i0
+15bits
+11LSBs
+ω
+11bits
+13bits
+Cic
+11bits
+*
+toe
+5bits
+5LSBs
+17MSBs
+121
+151
+Cis
+9bits
+21MSBs
+11LSBs
+13MSBs
+Rev
+1bit
+IDOT
+1bit
+1LSB
+
+
+ 
+* These are data bits next to MSBs and before LSBs. 
+Fig 5-10  Bits allocation of subframe 3 in format D1 
+ 
+ 
+ 
+Subframe 4、5（300 bits）bits allocation 
+MSB first
+Direction of data flow 
+MSB
+LSB
+P
+P
+91
+121
+P
+151
+22LSBs
+P
+2bits
+ω 
+6bits
+18LSBs
+M0
+20bits
+P
+2bits
+181
+22bits
+22bits
+2LSBs
+22MSBs
+6MSBs
+P
+P
+a1
+11bits
+Rev
+2bits
+20LSBs
+M0
+4bits
+3bits
+e
+17bits
+1bit
+Pnum
+7bits
+211
+2MSBs
+P
+Subframe 
+No.
+Page 
+No.
+4
+5
+1~24
+1~6
+toa
+8bits
+271
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+53 61
+a0
+11bits
+241
+Rev
+1bit
+3MSBs
+13bits
+13LSBs
+1MSB
+16bits
+16LSBs
+ω
+18bits
+4MSBs
+
+
+i
+i
+0
+
+0
+
+A
+A
+ 
+Fig 5-11-1  Bits allocation of pages 1 through 24 in subframe 4 and pages 1 through 6 in subframe 5 of format D1 
+
+=====PAGE 25=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+21
+Subframe 5 (300 bits) bits allocation 
+MSB first 
+Direction of data flow 
+MSB
+LSB
+P
+91
+7LSBs
+151
+P
+P
+Hea1
+2bits
+2MSBs
+Hea1
+7bits
+6MSBs
+3LSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+5
+7
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+53
+Hea2
+9bits
+Hea3
+6bits
+Hea4
+9bits
+P
+61
+Hea3
+3bits
+…
+P
+P
+P
+121
+1LSB
+Hea16
+9bits
+Hea15
+1bit
+Hea17
+9bits
+Hea18
+3bits
+3MSBs
+Hea18
+6bits
+Hea19
+9bits
+271
+P
+6LSBs
+Rev
+1bit
+…
+…
+…
+…
+Rev
+7bits
+ 
+Fig 5-11-2  Bits allocation of page 7 in subframe 5 of format D1 
+ 
+ 
+ 
+Subframe 5（300 bits）bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+7LSBs
+151
+181
+Subframe 
+No.
+Page 
+No.
+5
+8
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+53
+P
+61
+P
+4LSBs
+P
+121
+Hea29
+9bits
+Hea20
+7bits
+Hea21
+9bits
+Hea28
+9bits
+Rev
+63bits
+P  24bits
+Parity of 3 words 
+Hea20
+2bits
+2MSBs
+Hea27
+4bits
+WNa
+8bits
+5MSBs
+toa
+5bits
+Rev
+1bit
+…
+…
+…
+Hea30
+9bits
+P
+211
+toa
+3bits
+3LSBs
+ 
+Fig 5-11-3  Bits allocation of page 8 in subframe 5 of format D1 
+
+=====PAGE 26=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+22
+P
+A0GPS
+14bits
+6LSBs
+A1GPS
+2bits
+A1Gal
+16bits
+A0Gal
+8bits
+P
+121
+2MSBs
+14LSBs
+8MSBs
+A0Gal
+6bits
+151
+P
+Subframe 5（300 bits）  bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+Subframe 
+No.
+Page 
+No.
+5
+9
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+61
+P
+91
+Rev
+22bits
+181
+Rev
+2bits
+Rev
+6bits
+A1GPS
+14bits
+P
+211
+Rev
+1bit
+A0GLO
+14bits
+A1GLO
+8bits
+A1GLO
+8bits
+8MSBs
+8LSBs
+Rev
+58bits
+P   24bits
+Parity of 3 words
+ 
+Fig 5-11-4  Bits allocation of page 9 in subframe 5 of format D1 
+ 
+ 
+ 
+ΔtLS
+2bits
+DN
+8bits
+ΔtLSF
+8bits
+A0UTC
+22bits
+A1UTC
+12bits
+12MSBs
+22MSBs
+10LSBs
+12LSBs
+WNLSF
+8bits
+2MSBs
+P
+6LSBs
+P
+121
+151
+Subframe 5（300bits）  bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+Subframe 
+No.
+Page 
+No.
+5
+10
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+61
+P
+91
+Rev
+1bit
+Rev
+90bits
+P   40bits
+Parity of 5 words
+ΔtLS
+6bits
+A0UTC
+10bits
+A1UTC
+12bits
+ 
+Fig 5-11-5  Bits allocation of page 10 in subframe 5 of format D1 
+
+=====PAGE 27=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+23
+Rev 
+178 bits
+  
+MSB first 
+Direction data of flow
+MSB
+LSB
+Subframe 
+No.
+5
+11~24
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P  72bits
+Parity of 9 words 
+Rev
+1bit
+Pnum
+7bits
+Subframe 5（300 bits）bits allocation
+Page 
+No.
+ 
+Fig 5-11-6  Bits allocation of reserved pages 11~24 in format D1 subframe  
+ 
+
+=====PAGE 28=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+24
+5.2.4 D1 NAV Message Content and Algorithm 
+5.2.4.1 Preamble (Pre) 
+The bits 1~11 of every subframe are preamble (Pre) of 
+―11100010010‖ from modified Barker code of 11 bits. SOW count occurs 
+at the leading edge of the preamble first bit which is for time scale 
+synchronization. 
+5.2.4.2 Subframe identification (FraID) 
+The bits 16, 17 and 18 of every subframe are for subframe 
+identification (FraID). The detailed definitions are as follows: 
+Tab 5-3  FraID definitions 
+Code 
+001 
+010 
+011 
+100 
+101 
+110 
+111 
+Identification of 
+subframe 
+1 
+2 
+3 
+4 
+5 
+Rev 
+Rev 
+5.2.4.3 Seconds of Week (SOW) 
+The bits 19~26 and bits 31~42, altogether 20 bits of the each 
+subframe are for seconds of week (SOW) which is defined as the number 
+of seconds that have occurred since the last Sunday, 00:00:00 of BDT. 
+The SOW count occurs at the leading edge of preamble first bit of the 
+subframe. 
+5.2.4.4 Week Number (WN) 
+There are altogether 13 bits for week number (WN) which is the 
+integral week count of BDT with the range of 0 through 8191. Week 
+number count started from zero at 00:00:00 on Jan. 1, 2006 of BDT.  
+
+=====PAGE 29=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+25
+5.2.4.5 User Range Accuracy Index (URAI) 
+The user range accuracy (URA) is used to describe the 
+signal-in-space accuracy in meters. There are 4 bits for the user range 
+accuracy index (URAI).  The range of URAI is from 0 to 15. See Table 
+5-4 for the corresponding relationship between URAI and URA. 
+Tab 5-4  Corresponding relationship between URAI and URA 
+Code 
+URAI (N) 
+URA range (meters, 1σ) 
+0000 
+0 
+0.00 < URA ≤ 2.40 
+0001 
+1 
+2.40 < URA ≤ 3.40 
+0010 
+2 
+3.40 < URA ≤ 4.85 
+0011 
+3 
+4.85 < URA ≤ 6.85 
+0100 
+4 
+6.85 < URA ≤ 9.65 
+0101 
+5 
+9.65 < URA ≤ 13.65 
+0110 
+6 
+13.65 < URA ≤ 24.00 
+0111 
+7 
+24.00 < URA ≤ 48.00 
+1000 
+8 
+48.00 < URA ≤ 96.00 
+1001 
+9 
+96.00 < URA ≤ 192.00 
+1010 
+10 
+192.00 < URA ≤ 384.00 
+1011 
+11 
+384.00 < URA ≤ 768.00 
+1100 
+12 
+768.00 < URA ≤ 1536.00 
+1101 
+13 
+1536.00 < URA ≤ 3072.00 
+1110 
+14 
+3072.00 < URA ≤ 6144.00 
+1111 
+15 
+URA > 6144.00 
+When an URAI is received by the user, the corresponding URA (X) 
+is computed by the following equations: 
+If 0 ≤ N < 6, X = 2N/2+1; 
+If 6 ≤ N < 15, X = 2N-2; 
+If N=15, it means the satellite is in maneuver or there is no accuracy 
+
+=====PAGE 30=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+26
+prediction; 
+If N=1, 3 and 5, X should be rounded to 2.8, 5.7, and 11.3 meters, 
+respectively. 
+5.2.4.6 Autonomous Satellite Health flag (SatH1) 
+The autonomous satellite health flag (SatH1) occupies 1 bit. ―0‖ 
+means broadcasting satellite is good and ―1‖ means not. 
+5.2.4.7 Ionospheric Delay Model Parameters (αn, βn) 
+There are 8 parameters, altogether 64 bits for ionospheric delay 
+model. All the 8 parameters are in two’s complement. See Table 5-5 for 
+details. 
+Tab 5-5  Ionospheric delay model parameters 
+Parameter 
+No. of bits 
+Scale factor (LSB) 
+Units 
+α0 
+8* 
+2-30 
+s 
+α1 
+8* 
+2-27 
+s/π 
+α2 
+8* 
+2-24 
+s/π2 
+α3 
+8* 
+2-24 
+s/π3 
+β0 
+8* 
+211 
+s 
+β1 
+8* 
+214 
+s/π 
+β2 
+8* 
+216 
+s/π2 
+β3 
+8* 
+216 
+s/π3 
+*  Parameters so indicated are two’s complement, with the sign bit (+ or –) 
+occupying the MSB. 
+The user computers the vertical ionospheric delay correction 
+'
+zI (t) 
+with the 8 parameters and Klobuchar model as follows: 
+9
+2
+4
+'
+4
+z
+9
+4
+2 (t
+50400)
+5 10
+A cos[
+],| t
+50400| A / 4
+A
+I (t)
+5 10
+,| t
+50400| A / 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+=====PAGE 31=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+27
+Where 
+'
+zI (t) is the vertical ionospheric delay in seconds for B1I, t is 
+the local time (range 0~86400 sec) for the place under the intersection 
+point (M) of ionosphere and the direction from receiver to satellite. 
+A2 is the amplitude of Klobuchar cosine curve in the day time 
+computed from the αn. 
+M
+3
+n
+n
+2
+n 0
+2
+2
+A
+,
+A
+0
+0
+,
+A
+0
+
+
+
+
+
+
+
+
+
+
+
+ 
+A4 is the period of cosine curve in seconds. It is computed from the 
+βn.. 
+M
+4
+3
+n
+n
+4
+4
+n 0
+4
+172800
+,
+A
+172800
+A
+,
+172800
+A
+72000
+72000
+,
+A
+72000
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+Where 
+M
+ is the geographic latitude of earth projection of the 
+ionosphere intersection point in semi-circles (π). The geographic latitude 
+M
+ and longitude 
+M
+ of the intersection point M are computed as:  
+
+
+A
+cos
+sin
+cos
+cos
+sin
+arcsin
+u
+u
+M
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+M
+u
+M
+cos
+A
+sin
+sin
+arcsin
+ 
+Where 
+u
+ is the user’s geographic latitude in radians. A is the 
+satellte azimuth from the user location in radians.  is the earth’s 
+central angle in radians between the user location and ionospheric 
+intersection point. It is computed as: 
+
+
+
+
+
+
+
+
+
+
+
+E
+cos
+h
+R
+R
+arcsin
+E
+2
+ 
+Where R is the mean radius of the earth (6378 km). E is the satellite 
+elevation from the user’s location in radians. h is the height of ionosphere 
+(375 km). 
+
+=====PAGE 32=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+28
+)t(
+I
+'
+z
+ can be converted to the ionospheric delay along the B1I 
+propagation path 
+)t(
+I
+I
+1
+B
+ through the equation as follows and the unit is 
+seconds. 
+'
+z
+B1I
+2
+1
+I
+(t)
+I (t)
+R
+1
+cosE
+R
+h
+
+
+
+
+
+
+
+
+
+
+
+ 
+Note: When user adopt this model in the south hemisphere, the 
+ionospheric correction accuracy is slightly lower than that in the north. 
+5.2.4.8 Equipment Group Delay Differential (TGD1) 
+The equipment group delay differential (TGD1) in the satellite is 
+given in 10 bits. It is in two’s complement with sign bit (+ or –) 
+occupying MSB. Sign bit ―0‖ means positive and ―1‖ means negative. 
+The scale factor is 0.1 and the unit is nanoseconds. 
+5.2.4.9 Issue of Data, Clock (IODC) 
+Issue of data, clock (IODC) is 5 bits long with definitions as follows: 
+Tab 5-6  IODC definitions 
+IODC 
+Definition 
+< 25 
+Age of the satellite clock correction parameters in hours 
+25 
+Age of the satellite clock correction parameters is two days 
+26 
+Age of the satellite clock correction parameters is three days 
+27 
+Age of the satellite clock correction parameters is four days 
+28 
+Age of the satellite clock correction parameters is five days 
+29 
+Age of the satellite clock correction parameters is six days 
+30 
+Age of the satellite clock correction parameters is seven days 
+31 
+Age of the satellite clock correction parameters is over seven days 
+
+=====PAGE 33=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+29
+5.2.4.10 Clock Correction Parameters (toc, a0, a1, a2) 
+Clock correction parameters are toc, a0, a1 and a2 in 74 bits altogether. 
+toc is the reference time of clock parameters in seconds with the effective 
+range of 0~604792. Other 3 parameters are two’s complement. 
+The definitions of clock correction parameters are listed in Table 
+5-7. 
+Tab 5-7  Clock correction parameters 
+Parameter 
+No. of bits 
+Scale factor (LSB) 
+Effective range 
+Units 
+toc 
+17 
+23 
+604792 
+s 
+a0 
+24* 
+2-33 
+— 
+s 
+a1 
+22* 
+2-50 
+— 
+s/s 
+a2 
+11* 
+2-66 
+— 
+s/s2 
+*  Parameters so indicated are two’s complement, with the sign bit (+ or –) 
+occupying the MSB. 
+The system time computation is as follows: 
+The user is able to compute BDT at time of signal transmission as: 
+t = tsv – Δtsv 
+where, t is BDT in seconds at time of signal transmission; 
+tsv is the effective satellite ranging code phase time in seconds at 
+time of signal transmission; 
+Δtsv is the offset of satellite ranging code phase time in seconds and 
+is given by the equation: 
+Δtsv = a0 + a1(t – toc) + a2(t – toc)2 + Δtr 
+Where, t can be replaced by tsv regardless of its sensitivity. 
+Δtr is the correction term to relativistic effect with value of 
+k
+r
+E
+sin
+A
+e
+F
+t
+
+
+
+
+
+ 
+e is the orbit eccentricity, which is given in ephemeris of the 
+broadcasting satellite; 
+
+=====PAGE 34=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+30
+A is the square root of semi-major axis of satellite orbit, which is 
+given in ephemeris of the broadcasting satellite; 
+Ek is eccentric anomaly of satellite orbit, which is given in 
+ephemeris of the broadcasting satellite; 
+F = -2μ1/2/C2 = -4.442807633×10-10 s/m1/2; 
+μ = 3.986004418×1014 m3/s2, is the value of earth’s universal 
+gravitational constant; 
+C = 2.99792458×108 m/s, is the light speed. 
+The user working on B1I should make a further correction as 
+follows: 
+(Δtsv)B1I = Δtsv－TGD1 
+5.2.4.11 Issue of Data, Ephemeris (IODE) 
+The issue of data, ephemeris (IODE) is 5 bits long with definitions 
+as follows: 
+Tab 5-8  IODE definitions 
+IODE 
+Definition 
+< 25 
+Age of the satellite ephemeris parameters in hours 
+25 
+Age of the satellite ephemeris parameters is two days 
+26 
+Age of the satellite ephemeris parameters is three days 
+27 
+Age of the satellite ephemeris parameters is four days 
+28 
+Age of the satellite ephemeris parameters is five days 
+29 
+Age of the satellite ephemeris parameters is six days 
+30 
+Age of the satellite ephemeris parameters is seven days 
+31 
+Age of the satellite ephemeris parameters is over seven days 
+ 
+ 
+
+=====PAGE 35=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+31
+5.2.4.12 Ephemeris Parameters (toe,
+A , e, ω, Δn, M0, Ω0, , i0, 
+IDOT, Cuc, Cus, Crc, Crs, Cic, Cis) 
+The ephemeris parameters describe the satellite orbit during the 
+curve fit interval, including 15 orbit parameters and an ephemeris 
+reference time. The update rate of ephemeris parameters is one hour. 
+The definitions of ephemeris parameters are listed in Table 5-9. 
+Tab 5-9  Ephemeris Parameters definitions 
+Parameter 
+Definition 
+toe 
+Ephemeris reference time 
+A 
+Square root of semi-major axis 
+e 
+Eccentricity 
+ω 
+Argument of perigee 
+Δn 
+Mean motion difference from computed value 
+M0 
+Mean anomaly at reference time 
+Ω0 
+Longitude of ascending node of orbital of plane computed 
+according to reference time 
+ 
+Rate of right ascension 
+i0 
+Inclination angle at reference time 
+IDOT 
+Rate of inclination angle 
+Cuc 
+Amplitude of cosine harmonic correction term to the argument of 
+latitude  
+Cus 
+Amplitude of sine harmonic correction term to the argument of 
+latitude  
+Crc 
+Amplitude of cosine harmonic correction term to the orbit radius 
+Crs 
+Amplitude of sine harmonic correction term to the orbit radius 
+Cic 
+Amplitude of cosine harmonic correction term to the angle of 
+inclination 
+Cis 
+Amplitude of sine harmonic correction term to the angle of 
+inclination 
+Characteristics of ephemeris parameters are shown in Table 5-10. 
+ 
+
+=====PAGE 36=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+32
+Tab 5-10  Ephemeris parameters characteristics 
+Parameter 
+No. of Bits 
+Scale factor (LSB) 
+Effective Range 
+Units 
+toe 
+17 
+23 
+604792 
+s 
+A 
+32 
+2-19 
+8192 
+m1/2 
+e 
+32 
+33
+2 
+0.5 
+— 
+ω 
+32* 
+31
+2 
+1 
+π 
+Δn 
+16* 
+43
+2 
+3.7310-9 
+π/s 
+M0 
+32* 
+31
+2 
+1 
+π 
+Ω0 
+32* 
+31
+2 
+1 
+π 
+ 
+24* 
+43
+2 
+9.5410-7 
+π/s 
+i0 
+32* 
+31
+2 
+1 
+π 
+IDOT 
+14* 
+43
+2 
+9.3110-10 
+π/s 
+Cuc 
+18* 
+31
+2 
+6.1010-5 
+rad 
+Cus 
+18* 
+31
+2 
+6.1010-5 
+rad 
+Crc 
+18* 
+6
+2 
+2048 
+m 
+Crs 
+18* 
+6
+2 
+2048 
+m 
+Cic 
+18* 
+31
+2 
+6.1010-5 
+rad 
+Cis 
+18* 
+31
+2 
+6.1010-5 
+rad 
+*  Parameters so indicated are two’s complement, with the sign bit (+ or –) 
+occupying the MSB. 
+The user receiver shall compute the satellite antenna phase center 
+position in coordinate system CGCS2000 according to the received 
+ephemeris parameters. The algorithms are listed in Table 5-11. 
+Tab 5-11  Ephemeris algorithm for user 
+Computation 
+Description 
+μ = 3.986004418×1014 m3/s2 
+Value of the earth’s universal gravitational 
+constant of CGCS2000 
+rad/s
+ 
+10
+2921150
+.7
+5
+e
+
+
+
+
+ 
+Value of the earth’s rotation rate of 
+CGCS2000 
+π = 3.1415926535898 
+ 
+
+=====PAGE 37=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+33
+Computation 
+Description 
+
+
+2
+A
+A 
+ 
+Computed semi-major axis 
+3
+0
+A
+n
+
+
+ 
+Computed mean motion (radians/sec) 
+oe
+k
+t
+t
+t
+
+
+* 
+Computed time from ephemeris reference 
+time 
+n
+n
+n
+0
+
+
+
+ 
+Corrected mean motion 
+k
+0
+k
+nt
+M
+M
+
+
+ 
+Computed mean anomaly 
+k
+k
+k
+E
+sin
+e
+E
+M
+
+
+ 
+Kepler’s Equation for Eccentric anomaly 
+solved by iteration (radians) 
+
+
+
+
+
+
+
+
+
+
+
+
+k
+k
+k
+k
+k
+2
+k
+E
+cos
+e
+1
+e
+E
+cos
+v
+cos
+E
+cos
+e
+1
+E
+sin
+e
+1
+v
+sin
+ 
+Computed true anomaly 
+
+
+
+
+k
+k
+v
+ 
+Computed argument of latitude 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+k
+ic
+k
+is
+k
+k
+rc
+k
+rs
+k
+k
+uc
+k
+us
+k
+2
+cos
+C
+2
+sin
+C
+i
+2
+cos
+C
+2
+sin
+C
+r
+2
+cos
+C
+2
+sin
+C
+u
+ 
+Argument of latitude correction 
+Radius correction 
+Inclination correction 
+k
+k
+k
+u
+u
+
+
+
+
+ 
+Corrected Argument of latitude parameters 
+
+
+k
+k
+k
+r
+E
+cos
+e
+1
+A
+r
+
+
+
+
+ 
+Corrected radius 
+k
+k
+0
+k
+i
+t
+IDOT
+i
+i
+
+
+
+
+
+ 
+Corrected inclination 
+
+
+
+
+
+k
+k
+k
+k
+k
+k
+u
+sin
+r
+y
+u
+cos
+r
+x
+ 
+Computed satellite positions in orbital plane 
+
+
+oe
+e
+k
+e
+0
+k
+t
+t
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+i
+sin
+y
+Z
+cos
+i
+cos
+y
+sin
+x
+Y
+sin
+i
+cos
+y
+cos
+x
+X
+ 
+Corrected longitude of ascending node in 
+CGCS2000; 
+MEO/IGSO 
+satellite 
+coordinates 
+in 
+CGCS2000  
+
+=====PAGE 38=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+34
+Computation 
+Description 
+oe
+e
+k
+0
+k
+t
+t
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+k
+k
+GK
+k
+k
+k
+k
+k
+GK
+k
+k
+k
+k
+k
+GK
+i
+sin
+y
+Z
+cos
+i
+cos
+y
+sin
+x
+Y
+sin
+i
+cos
+y
+cos
+x
+X
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GK
+GK
+GK
+X
+k
+e
+Z
+k
+k
+k
+Z
+Y
+X
+)
+5
+(
+R
+)
+t
+(
+R
+Z
+Y
+X
+
+
+ 
+Where, 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cos
+sin
+0
+sin
+cos
+0
+0
+0
+1
+)
+(
+R X
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+0
+0
+0
+cos
+sin
+0
+sin
+cos
+)
+(
+R Z
+ 
+Corrected longitude of ascending node in 
+inertial coordinate system; 
+GEO satellite coordinates in user-defined 
+inertial system; 
+ 
+GEO satellite coordinates in CGCS2000 
+*  In the equations, ―t‖ is the time of signal transmission in BDT. ―tk‖ is the total 
+time difference between t and ephemeris reference time toe after taking account of 
+beginning or end of a week crossovers. That is, subtract 604800 seconds from tk if tk 
+is greater than 302400, add 604800 seconds to tk if tk
+ is less than -302400 seconds. 
+5.2.4.13 Page number (Pnum) 
+The bits 44 through 50, 7 bits altogether of subframe 4 and subframe 
+5 are for page numbers (Pnum). subframe 4 and subframe 5 are 
+subcommutated 24 times via pages 1 through 24. Pnum identifies the 
+page number of the subframe. 
+The almanac information of SV ID 1 through 24 is arranged in pages 
+1 through 24 of subframe 4. The almanac information of SV ID 25 
+through 30 is arranged in pages 1 through 6 of subframe 5. The page 
+number corresponds to the SV ID one by one. 
+5.2.4.14 Almanac Parameters （toa,
+A , e, ω, M0, Ω0, , δi, a0, a1） 
+Almanac parameters are updated within every 7 days. 
+
+=====PAGE 39=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+35
+Definitions, characteristics and user algorithms of almanac 
+parameters are listed in Tables 5-12, 5-13 and 5-14 respectively. 
+Tab 5-12  Almanac parameters definitions 
+Parameter 
+Definition 
+toa 
+Almanac reference time 
+A 
+Square root of semi-major axis 
+e 
+Eccentricity 
+ω 
+Argument of Perigee 
+M0 
+Mean anomaly at reference time 
+Ω0 
+Longitude of ascending node of orbital plane computed according 
+to reference time 
+ 
+Rate of right ascension  
+δi 
+Correction of orbit reference inclination at reference time  
+a0 
+Satellite clock bias 
+a1 
+Satellite clock rate 
+Tab 5-13  Almanac parameters characteristics 
+Parameter 
+No. of Bits 
+Scale factor (LSB) 
+Effective range 
+Units 
+toa 
+8 
+212 
+602112 
+s 
+A 
+24 
+2-11 
+8192 
+m1/2 
+e 
+17 
+2-21 
+0.0625 
+— 
+ω 
+24* 
+2-23 
+1 
+π 
+M0 
+24* 
+2-23 
+1 
+π 
+Ω0 
+24* 
+2-23 
+1 
+π 
+ 
+17* 
+2-38 
+— 
+π/s 
+δi 
+16* 
+2-19 
+— 
+π 
+a0 
+11* 
+2-20 
+— 
+s 
+a1 
+11* 
+2-38 
+— 
+s/s 
+*  Parameters so indicated are two’s complement, with the sign bit (+ or –) 
+occupying the MSB. 
+ 
+
+=====PAGE 40=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+36
+Tab 5-14  Almanac algorithms for users 
+Computation 
+Description 
+μ = 3.986004418×1014 m3/s2 
+Earth’s universal gravitational constant of 
+CGCS2000 
+rad/s
+ 
+10
+2921150
+.7
+5
+e
+
+
+
+
+ 
+Value of the earth’s rotation rate of CGCS2000 
+2)
+A
+(
+A 
+ 
+Computed semi-major axis 
+3
+0
+A
+n
+
+
+ 
+Computed mean motion (rad/sec)  
+oa
+k
+t
+t
+t
+
+
+* 
+Computed time from Almanac reference time  
+k
+0
+0
+k
+t
+n
+M
+M
+
+
+ 
+Computed mean anomaly  
+k
+k
+k
+E
+sin
+e
+E
+M
+
+
+ 
+Kepler’s equation for eccentric anomaly by 
+iteration (radians)  
+
+
+
+
+
+
+
+
+
+
+
+
+k
+k
+k
+k
+k
+2
+k
+E
+cos
+e
+1
+e
+E
+cos
+v
+cos
+E
+cos
+e
+1
+E
+sin
+e
+1
+v
+sin
+ 
+Computed true anomaly 
+
+
+
+
+k
+k
+v
+ 
+Computed argument of latitude 
+)
+E
+cos
+e
+1(
+A
+r
+k
+k
+
+
+ 
+Corrected radius  
+k
+k
+k
+k
+k
+k
+x
+r cos
+y
+r sin
+
+
+
+
+
+
+
+ 
+Computed satellite positions in orbital plane  
+oa
+e
+k
+e
+0
+k
+t
+t)
+(
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+Corrected longitude of ascending node in 
+CGCS2000 
+i
+0i
+i
+
+
+
+** 
+Orbit inclination at reference time 
+
+
+
+
+
+
+
+
+
+
+
+
+i
+sin
+y
+Z
+cos
+i
+cos
+y
+sin
+x
+Y
+sin
+i
+cos
+y
+cos
+x
+X
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+k
+ 
+Computed 
+GEO/MEO/IGSO 
+satellite 
+coordinates in CGCS2000 
+*  In the equations, ―t‖ is the time of signal transmission in BDT. ―tk‖ is the total 
+time offset between time t and Almanac reference time toa taking account of beginning 
+or end of a week crossover. That is, subtract 604800 seconds from tk if tk is greater 
+than 302400, add 604800 seconds to tk if tk is less than -302400.  
+**  For MEO/IGSO satellites, i0=0.30 semi-circles; for GEO satellites, i0=0.00. 
+
+=====PAGE 41=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+37
+Almanac time computation is as follows: 
+t = tsv – Δtsv 
+where 
+t is BDT in seconds at time of signal transmission; 
+tsv is the effective satellite ranging code phase time in seconds at 
+time of signal transmission; 
+Δtsv is the offset of satellite ranging code phase time in seconds and 
+is given by the equation: 
+Δtsv = a0 + a1(t – toa) 
+Where t can be replaced by tsv regardless of its sensitivity. The 
+almanac reference time toa is counted from the starting time of almanac 
+week number (WNa). 
+5.2.4.15 Almanac Week Number (WNa) 
+Almanac week number (WNa) of 8 bits is the BDT integer week 
+count (Modulo 256) with effective range of 0 to 255. 
+5.2.4.16 Satellite Health Information (Heai, i=1~30) 
+The satellite health information (Heai) occupies 9 bits. The 9th bit 
+indicates the satellite clock health flag, while the 8th bit indicates the B1I 
+signal health status and the 2th bit indicates the information health status. 
+The definitions are in Table 5-15. 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 42=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+38
+Tab 5-15  Satellite health information definitions 
+Bit allocation 
+Information code 
+Health information definition 
+Bit 9 
+(MSB) 
+0 
+Satellite clock OK 
+1 
+* 
+Bit 8 
+0 
+B1I Signal OK 
+1 
+B1I Signal Weak** 
+Bit 7~3 
+0 
+Reserved 
+1 
+Reserved 
+Bit 2 
+0 
+NAV Message OK 
+1 
+NAV Message Bad (IOD over limit) 
+Bit 1 
+(LSB) 
+0 
+Reserved 
+1 
+Reserved 
+*  the satellite clock is unavailable if the other 8 bits are all ―0‖; the satellite is in 
+failure or permanently shut off if the last 8bits are all ―1‖; the definition is reserved 
+if the other 8 bits are in other values. 
+**  The signal power is 10 dB lower than nominal value. 
+5.2.4.17 Time Parameters relative to UTC （A0UTC, A1UTC, ΔtLS, 
+WNLSF, DN, ΔtLSF） 
+These parameters indicate the relationship between BDT and UTC. 
+Definition of the parameters are listed in Table 5-16. 
+Tab 5-16  Parameters relative to UTC 
+Parameter 
+No. of bits 
+Scale factor(LSB) 
+Effective range 
+Units 
+A0UTC 
+32* 
+2-30 
+— 
+s 
+A1UTC 
+24* 
+2-50 
+— 
+s/s 
+ΔtLS 
+8* 
+1 
+— 
+s 
+WNLSF 
+8 
+1 
+— 
+week 
+DN 
+8 
+1 
+6 
+day 
+ΔtLSF 
+8* 
+1 
+— 
+s 
+*  Parameters so indicated are two’s complement, with the sign bit (+ or –) 
+occupying the MSB. 
+A0UTC: BDT clock bias relative to UTC; 
+
+=====PAGE 43=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+39
+A1UTC: BDT clock rate relative to UTC; 
+ΔtLS: Delta time due to leap seconds before the new leap second 
+effective; 
+WNLSF: Week number of the new leap second; 
+DN: Day number of week of the new leap second; 
+ΔtLSF: Delta time due to leap seconds after the new leap second 
+effective; 
+Conversion from BDT into UTC: 
+The broadcast UTC parameters, the WNLSF and DN values make 
+users compute UTC with error not greater than 1 microsecond. 
+Depending upon the relationship of the effectivity time of leap 
+second event and user’s current BDT, the following three different cases 
+of UTC/BDT conversion exist. 
+1) Whenever the effectivity time indicated by the WNLSF and the DN 
+values is not in the past (relative to the user’s present time), and 
+the user’s current time tE is prior to DN+2/3, the UTC/BDT 
+relationship is given by: 
+tUTC = (tE – ΔtUTC)[modulo 86400], seconds 
+ΔtUTC = ΔtLS + A0UTC + A1UTC × tE, seconds 
+Where, tE: SOW computed by users in BDT. 
+2) Whenever the user’s current time tE falls within the time span of 
+DN+2/3 to DN+5/4, proper accommodation of leap second event 
+with possible week number transition is provided by the following 
+equation for UTC: 
+tUTC =W[modulo(86400 + ΔtLSF – ΔtLS)], seconds 
+where,  
+W=( tE – ΔtUTC – 43200)[modulo 86400] + 43200, seconds 
+ΔtUTC = ΔtLS + A0OUT + A1UTC × tE, seconds 
+3) Whenever the effectivity time of leap second event, as indicated 
+
+=====PAGE 44=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+40
+by the WNLSF and DN values, is in the past (relative to the user’s 
+current time), and the user’s current time tE is after DN+5/4, the 
+UTC/BDT relationship is given by: 
+tUTC = (tE – ΔtUTC)[modulo86400], seconds 
+ΔtUTC = ΔtLSF + A0UTC + A1UTC × tE, seconds 
+The parameter definitions are the same with those in case 1). 
+5.2.4.18 Time Parameters relative to GPS time （A0GPS, A1GPS） 
+These parameters indicate the relationship between BDT and GPS 
+time as in Table 5-17. (Not broadcast temporarily) 
+Tab 5-17  Time parameters relative to GPS time 
+Parameter 
+No. of Bits 
+Scale factor (LSB) 
+Units  
+A0GPS 
+14* 
+0.1 
+ns 
+A1GPS 
+16* 
+0.1 
+ns/s 
+*  Parameters so indicated are two’s complement, with the sign bit (+ or –) 
+occupying the MSB. 
+A0GPS: BDT clock bias relative to GPS time; 
+A1GPS: BDT clock rate relative to GPS time. 
+The relationship between BDT and GPS time is as follows: 
+tGPS = tE – ΔtGPS 
+where ΔtGPS = A0GPS + A1GPS×tE; 
+tE is SOW in BDT computed by user. 
+5.2.4.19 Time Parameters relative to Galileo time(A0Gal, A1Gal) 
+These parameters indicate the relationship between BDT and Galileo 
+time as in Table 5-18. (Not broadcast temporarily) 
+ 
+ 
+
+=====PAGE 45=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+41
+Tab 5-18  Time parameters relative to Galileo time 
+Parameter 
+No. of Bits 
+Scale factor (LSB) 
+Units 
+A0Gal 
+14* 
+0.1 
+ns 
+A1Gal 
+16* 
+0.1 
+ns/s 
+*  Parameters so indicated are two’s complement, with the sign bit (+ or –) 
+occupying the MSB. 
+A0Gal: BDT clock bias relative to Galileo system time; 
+A1Gal: BDT clock rate relative to Galileo system time. 
+Relationship between BDT and Galileo system time is as follows: 
+tGal = tE – ΔtGal 
+where ΔtGal = A0Gal + A1Gal×tE; 
+tE is user computed SOW in BDT. 
+5.2.4.20 Time Parameters relative to GLONASS time (A0GLO, A1GLO) 
+These parameters indicate the relationship between BDT and 
+GLONASS time as in Table 5-19. (Not broadcast temporarily) 
+Tab 5-19  Time parameters relative to GLONASS time 
+Parameter 
+No. of Bits 
+Scale factor (LSB) 
+Units 
+A0GLO 
+14* 
+0.1 
+ns 
+A1GLO 
+16* 
+0.1 
+ns/s 
+*  Parameters so indicated are two’s complement, with the sign bit (+ or –) 
+occupying the MSB. 
+A0GLO: BDT clock bias relative to GLONASS time; 
+A1GLO: BDT clock rate relative to GLONASS time. 
+Relationship between BDT and Glonass time is as follows: 
+tGLO = tE – ΔtGLO 
+where ΔtGLO = A0GLO + A1GLO×tE; 
+tE is user computed SOW in BDT. 
+
+=====PAGE 46=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+42
+5.3 
+D2 NAV Message 
+5.3.1 D2 NAV Message Frame Structure 
+The NAV message in format D2 is structured with superframe, frame 
+and subframe. Every superframe is 180000 bits long, lasting 6 minutes. 
+Every superframe is composed of 120 frames each with 1500 bits and 
+lasting 3 seconds. Every frame is composed of 5 subframes, each with 
+300 bits and lasting 0.6 second. Every subframe is composed of 10 words, 
+each with 30 bits and lasting 0.06 second.  
+Every word is composed of NAV message data and parity bits. The 
+first 15 bits in word 1 of every subframe is not encoded, and the last 11 
+bits is encoded in BCH(15,11,1) for error correction. For the other 9 
+words of the subframe both BCH(15,11,1) encoding and interleaving are 
+involved. Thus there are 22 information bits and 8 parity bits in each 
+word. See Figure 5-12 for the detailed structure. 
+Frame 1
+Frame 2
+…
+Frame n
+…
+Frame120
+Subframe1 Subframe2 Subframe3 Subframe4 Subframe5
+Word 1
+Word 2
+…
+Word 10
+NAV message data, 26 bits
+4 Parity bits
+Superframe of 180000 bits, 6 min
+Frame of 1500 bits,  3 sec
+Subframe of 300bits,  0.6 sec
+Word 1, 30 bits, 0.06 sec
+NAV message data, 22 bits
+8 Parity bits
+Word 2~10,  30 bits, 0.06 sec
+ 
+Fig 5-12  Structure of NAV message in format D2 
+
+=====PAGE 47=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+43
+5.3.2 D2 NAV Message Detailed structure  
+Information in format D2 includes: the basic NAV information of the 
+broadcasting satellite, almanac, time offset from other systems, integrity 
+and differential correction information of BDS and ionospheric grid 
+information as shown in Figure 5-13. The subframe 1 shall be 
+subcommutated 10 times via 10 pages. The subframe 2, subframe 3 and 
+subframe 4 shall be subcommutated 6 times each via 6 pages. The 
+subframe 5 shall be subcommutated 120 times via 120 pages. 
+Almanac, ionospheric grid points and 
+time offsets from other systems
+Integrity and differential correction 
+information of BDS
+Basic NAV information of 
+the broadcating satellite
+Subframe 5
+Subframe 1
+Subframe 2
+Subframe 3
+Subframe 4
+…
+…
+…
+ 
+Fig 5-13 Frame structure and information contents of NAV message in format D2 
+The bit allocation of each subframe in format D2 is shown in Figures 
+5-14 through 5-18. The 150 LSBs of pages 1 through 10 in subframe 1, 
+pages 1 through 6 of subframe 4, pages 14 through 34, pages 74 through 
+94 pages and 103 through 120 of subframe 5 in format D2 are to be 
+reserved.
+
+=====PAGE 48=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+44
+Rev
+22bits
+Pnum1
+4bits
+Pre
+11bits
+WN
+13bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+URAI
+4bits
+SatH1
+1bit
+P
+8MSBs
+toc
+5bits
+91
+12LSBs
+61
+P
+P
+TGD1
+10bits
+IODC
+5bits
+Subframe 
+No.
+Page 
+No.
+1
+1
+121
+Rev
+4bits
+27
+P
+5MSBs
+toc
+12bits
+12LSBs
+150 MSBs of Subframe 1 (300bits)
+MSB first 
+Direction of data flow 
+MSB
+LSB
+ 
+Fig 5-14-1  Bits allocation of 150 MSBs of page 1 in subframe 1 of format D2 
+ 
+ 
+ 
+β3
+8bits
+α0
+6bits
+6MSBs 
+2LSBs
+α1
+8bits
+α2
+8bits
+β0
+8bits
+β1
+8bits
+β2
+6bits
+Pnum1
+4bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+P
+8MSBs 
+91
+12LSBs
+61
+P
+P
+Subframe 
+No.
+Page 
+No.
+1
+2
+121
+Rev
+4bits
+27
+P
+α0
+2bits
+2MSBs
+6LSBs
+β2
+2bits
+α3
+4bits
+4MSBs
+α3
+4bits
+4LSBs
+Rev
+8bits
+150 MSBs of Subframe 1 (300bits)
+MSB first 
+Direction of data flow 
+MSB
+LSB
+ 
+Fig 5-14-2  Bits allocation of 150 MSBs of page 2 in subframe 1 of format D2 
+ 
+
+=====PAGE 49=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+45
+a1
+4bits
+a0
+12bits
+a0
+12bits
+Pnum1
+4bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+P
+8MSBs 
+91
+12LSBs 
+61
+P
+Subframe 
+No.
+Page 
+No.
+1
+3
+121
+Rev
+4bits
+27
+P
+Rev
+22bits
+Rev
+10bits
+12MSBs 
+12LSBs 
+4MSBs 
+Rev
+6bits
+P
+Rev
+6bits
+150 bits MSBs of Subframe 1 (300bits)
+Direction of data flow 
+MSB
+LSB
+MSB first 
+ 
+Fig 5-14-3  Bits allocation of 150 MSBs of page 3 in subframe 1 of format D2 
+ 
+ 
+*
+12LSBs
+Pnum1
+4bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+P
+8MSBs
+12LSBs
+61
+P
+P
+Subframe 
+No.
+Page 
+No.
+1
+4
+121
+Rev
+4bits
+27
+P
+Rev
+8bits
+Cuc
+14bits
+Δn
+16bits
+IODE
+5bits
+a1
+6bits
+a1
+12bits
+91
+a2
+10bits
+10MSBs
+a2
+1bit
+1LSB
+14MSBs
+150 bits MSBs of Subframe 1 (300bits)
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+*  These are data bits next to MSBs and before LSBs. 
+Fig 5-14-4  Bits allocation of 150 MSBs of page 4 in subframe 1 of format D2 
+ 
+
+=====PAGE 50=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+46
+M0
+22bits
+*
+4LSBs
+Pnum1
+4bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+P
+8MSBs
+91
+12LSBs
+61
+P
+P
+Subframe 
+No.
+Page 
+No.
+1
+5
+121
+Rev
+4bits
+27
+P
+Rev
+8bits
+Cus
+14bits
+8LSBs
+4LSBs
+M0
+8bits
+14MSBs
+Cuc
+4bits
+Cus
+4bits
+e
+10bits
+10MSBs
+M0
+2bits
+2MSBs
+150 bits MSBs of Subframe 1 (300bits)
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+*  These are data bits next to MSBs and before LSBs. 
+Fig 5-14-5  Bits allocation of 150 MSBs of page 5 in subframe 1 of format D2 
+ 
+ 
+ 
+6MSBs
+*
+16LSBs
+Pnum1
+4bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+P
+8MSBs
+91
+12LSBs
+61
+P
+Subframe 
+No.
+Page 
+No.
+1
+6
+Rev
+4bits
+27
+P
+Rev
+8bits
+Cic
+10bits
+6bits
+*
+e
+6bits
+e
+16bits
+22bits
+4bits
+4LSBs
+121
+10MSBs
+150 bits MSBs of Subframe 1 (300bits)
+MSB first
+Direction of data flow
+MSB
+LSB
+A
+A
+A
+P
+ 
+*  These are data bits next to MSBs and before LSBs. 
+Fig 5-14-6  Bits allocation of 150 MSBs of page 6 in subframe 1 of format D2 
+ 
+ 
+
+=====PAGE 51=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+47
+*
+2LSBs
+Pnum1
+4bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+P
+8MSBs
+91
+12LSBs
+61
+P
+P
+Subframe 
+No.
+Page 
+No.
+1
+7
+121
+Rev
+4bits
+27
+P
+Rev
+8bits
+*
+7MSBs
+toe
+15bits
+i0
+7bits
+Cis
+18bits
+Cic
+6bits
+Cic
+2bits
+i0
+14bits
+toe
+2bits
+2MSBs
+15LSBs
+150 bits MSBs of Subframe 1 (300bits)
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+*  These are data bits next to MSBs and before LSBs. 
+Fig 5-14-7  Bits allocation of 150 MSBs of page 7 in subframe 1 of format D2 
+ 
+ 
+ 
+16bits
+Crc
+17bits
+5LSBs
+Pnum1
+4bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+P
+8MSBs
+91
+12LSBs
+61
+P
+Subframe 
+No.
+Page 
+No.
+1
+8
+121
+Rev
+4bits
+27
+Rev
+6bits
+*
+i0
+6bits
+Crs
+18bits
+*
+P
+i0
+5bits
+3bits
+3MSBs
+P
+17MSBs
+Crc
+1bit
+1LSB
+150 bits MSBs of Subframe 1 (300bits)
+MSB first
+Direction of data flow
+MSB
+LSB
+
+
+ 
+* These are data bits next to MSBs and before LSBs. 
+Fig 5-14-8  Bits allocation of 150 MSBs of page 8 in subframe 1 of format D2 
+ 
+
+=====PAGE 52=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+48
+Ω0
+22bits
+5bits
+ω
+13bits
+*
+5LSBs
+Pnum1
+4bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+P
+8MSBs
+91
+12LSBs
+61
+P
+P
+Subframe 
+No.
+Page 
+No.
+1
+9
+121
+Rev
+4bits
+27
+P
+Rev
+8bits
+*
+9LSBs 13MSBs
+Ω0
+9bits
+ω
+14bits
+Ω0
+1bit
+1MSB
+150 bits MSBs of Subframe 1 (300bits)
+MSB first
+Direction of data flow
+MSB
+LSB
+
+ 
+* These are data bits next to MSBs and before LSBs. 
+Fig 5-14-9  Bits allocation of 150 MSBs of page 9 in subframe 1 of format D2 
+ 
+ 
+ 
+IDOT
+13bits
+5LSBs
+1MSB
+Pnum1
+4bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+P
+8MSBs
+91
+12LSBs
+61
+P
+P
+Subframe 
+No.
+Page 
+No.
+1
+10
+121
+Rev
+4bits
+27
+P
+Rev
+22bits
+Rev
+9bits
+Rev
+22bits
+ω
+5bits
+IDOT
+1bit
+13LSBs
+150 bits MSBs of Subframe 1 (300bits)
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+Fig 5-14-10  Bits allocation of 150 MSBs of page 10 in subframe 1 of format D2 
+ 
+ 
+
+=====PAGE 53=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+49
+Subframe 2 (300 bits) bits allocation 
+MSB first
+Direction of data flow
+MSB
+LSB
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+RURAI and Δt of BDS   
+where   i1=3(i-1)+1
+Rev
+1bit
+Pnum2
+4bits
+SatH2
+2bits
+P
+P
+61
+121
+172
+P
+…
+BDID30
+1bit
+…
+Rev
+17bits
+…
+BDID1
+1bit
+Satellite Identification for 
+Integrity and differential 
+correction information of BDS
+UDREI of BDS (18 Parameters altogether)
+UDREI1
+1bit
+P
+91
+…
+151
+1MSB
+P
+181
+…
+P
+211
+…
+P
+241
+…
+P
+271
+UDREI18
+4bits
+276
+RURAIi1
+4bits
+Δti1
+13bits
+P
+Rev
+22bits
+Rev
+21bits
+Subframe 
+No.
+2
+i
+(i=1~6)
+Page 
+No.
+96
+ 
+Fig 5-15  Bits allocation of subframe 2 of format D2 
+ 
+ 
+ 
+Subframe 
+No.
+P
+Page 
+No.
+3
+i
+(i=1~6)
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+12
+16
+SOW
+12bits
+19
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+241
+RURAIi2
+4bits
+61
+P
+P
+91
+121
+Rev
+19bits
+P
+P
+Rev
+22bits
+181
+151
+P
+211
+P
+RURAI and Δt of BDS
+where i2=3(i-1)+2；i3=3(i-1)+3
+Rev
+1bit
+Δti2
+5bits
+5MSBs
+Δti2
+8bits
+8LSBs
+RURAIi3
+4bits
+Δti3
+10bits
+10MSBs
+Δti3
+3bits
+3LSBs
+Rev
+22bits
+P
+271
+Rev
+22bits
+Subframe 3 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+Rev
+22bits
+Rev
+22bits
+Rev
+22bits
+ 
+Fig 5-16  Bits allocation of subframe 3 of format D2 
+ 
+
+=====PAGE 54=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+50
+Rev
+178bits
+Subframe 
+No.
+Page 
+No.
+4
+i
+(i=1~6)
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+72bits Parity for 9 words
+Rev
+1bit
+Pnum
+7bits
+Subframe 4 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+Fig 5-17  Bits allocation of subframe 4 of format D2 
+ 
+ 
+Ion1
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+1
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion1
+11bits
+Ion2
+11bits
+11MSBs
+Ion2
+2bits
+Ion3
+13bits
+Ion4
+7bits
+Ion4
+6bits
+…
+Ion11
+9bits
+9LSBs
+Ion12
+13bits
+Ion13
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+dτ 3
+9bits
+GIVE 3
+4bits
+ 
+Fig 5-18-1  Bits allocation of page 1 of subframe 5 in format D2 
+
+=====PAGE 55=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+51
+Ion161
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+61
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion161
+11bits
+Ion162
+11bits
+11MSBs
+Ion162
+2bits
+Ion163
+13bits
+Ion164
+7bits
+Ion164
+6bits
+…
+Ion171
+9bits
+9LSBs
+Ion172
+13bits
+Ion173
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+dτ 163
+9bits
+GIVE 163
+4bits
+ 
+Fig 4-18-2  Bits allocation of page 61 of subframe 5 in format D2 
+ 
+ 
+Ion14
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+2
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion14
+11bits
+Ion15
+11bits
+11MSBs
+Ion15
+2bits
+Ion16
+13bits
+Ion17
+7bits
+Ion17
+6bits
+…
+Ion24
+9bits
+9LSBs
+Ion25
+13bits
+Ion26
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-3  Bits allocation of page 2 of subframe 5 in format D2 
+
+=====PAGE 56=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+52
+Ion174
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+62
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion174
+11bits
+Ion175
+11bits
+11MSBs
+Ion175
+2bits
+Ion176
+13bits
+Ion177
+7bits
+Ion177
+6bits
+…
+Ion184
+9bits
+9LSBs
+Ion185
+13bits
+Ion186
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-4  Bits allocation of page 62 of subframe 5 in format D2 
+ 
+ 
+Ion27
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+3
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion27
+11bits
+Ion28
+11bits
+11MSBs
+Ion28
+2bits
+Ion29
+13bits
+Ion30
+7bits
+Ion30
+6bits
+…
+Ion37
+9bits
+9LSBs
+Ion38
+13bits
+Ion39
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-5  Bits allocation of page 3 of subframe 5 in format D2 
+
+=====PAGE 57=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+53
+Ion187
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+63
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion187
+11bits
+Ion188
+11bits
+11MSBs
+Ion188
+2bits
+Ion189
+13bits
+Ion190
+7bits
+Ion190
+6bits
+…
+Ion197
+9bits
+9LSBs
+Ion198
+13bits
+Ion199
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-6  Bits allocation of page 63 of subframe 5 in format D2 
+ 
+ 
+Ion40
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+4
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion40
+11bits
+Ion41
+11bits
+11MSBs
+Ion41
+2bits
+Ion42
+13bits
+Ion43
+7bits
+Ion43
+6bits
+…
+Ion50
+9bits
+9LSBs
+Ion51
+13bits
+Ion52
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-7  Bits allocation of page 4 of subframe 5 in format D2 
+
+=====PAGE 58=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+54
+Ion200
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+64
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion200
+11bits
+Ion201
+11bits
+11MSBs
+Ion201
+2bits
+Ion202
+13bits
+Ion203
+7bits
+Ion203
+6bits
+…
+Ion210
+9bits
+9LSBs
+Ion211
+13bits
+Ion212
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-8  Bits allocation of page 64 of subframe 5 in format D2 
+ 
+ 
+Ion53
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+5
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion53
+11bits
+Ion54
+11bits
+11MSBs
+Ion54
+2bits
+Ion55
+13bits
+Ion56
+7bits
+Ion56
+6bits
+…
+Ion63
+9bits
+9LSBs
+Ion64
+13bits
+Ion65
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-9  Bits allocation of page 5 of subframe 5 in format D2 
+
+=====PAGE 59=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+55
+Ion213
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+65
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion213
+11bits
+Ion214
+11bits
+11MSBs
+Ion214
+2bits
+Ion215
+13bits
+Ion216
+7bits
+Ion216
+6bits
+…
+Ion223
+9bits
+9LSBs
+Ion224
+13bits
+Ion225
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-10  Bits allocation of page 65 of subframe 5 in format D2 
+ 
+ 
+Ion66
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+6
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion66
+11bits
+Ion67
+11bits
+11MSBs
+Ion67
+2bits
+Ion68
+13bits
+Ion69
+7bits
+Ion69
+6bits
+…
+Ion76
+9bits
+9LSBs
+Ion77
+13bits
+Ion78
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-11  Bits allocation of page 6 of subframe 5 in format D2 
+
+=====PAGE 60=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+56
+Ion226
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+66
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion226
+11bits
+Ion227
+11bits
+11MSBs
+Ion227
+2bits
+Ion228
+13bits
+Ion229
+7bits
+Ion229
+6bits
+…
+Ion236
+9bits
+9LSBs
+Ion237
+13bits
+Ion238
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-12  Bits allocation of page 66 of subframe 5 in format D2 
+ 
+ 
+Ion79
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+7
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion79
+11bits
+Ion80
+11bits
+11MSBs
+Ion80
+2bits
+Ion81
+13bits
+Ion82
+7bits
+Ion82
+6bits
+…
+Ion89
+9bits
+9LSBs
+Ion90
+13bits
+Ion91
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-13  Bits allocation of page 7 of subframe 5 in format D2 
+
+=====PAGE 61=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+57
+Ion239
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+67
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion239
+11bits
+Ion240
+11bits
+11MSBs
+Ion240
+2bits
+Ion241
+13bits
+Ion242
+7bits
+Ion242
+6bits
+…
+Ion249
+9bits
+9LSBs
+Ion250
+13bits
+Ion251
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-14  Bits allocation of page 67 of subframe 5 in format D2 
+ 
+ 
+Ion92
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+8
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion92
+11bits
+Ion93
+11bits
+11MSBs
+Ion93
+2bits
+Ion94
+13bits
+Ion95
+7bits
+Ion95
+6bits
+…
+Ion102
+9bits
+9LSBs
+Ion103
+13bits
+Ion104
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-15  Bits allocation of page 8 of subframe 5 in format D2 
+
+=====PAGE 62=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+58
+Ion252
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+68
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion252
+11bits
+Ion253
+11bits
+11MSBs
+Ion253
+2bits
+Ion254
+13bits
+Ion255
+7bits
+Ion255
+6bits
+…
+Ion262
+9bits
+9LSBs
+Ion263
+13bits
+Ion264
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-16  Bits allocation of page 68 of subframe 5 in format D2 
+ 
+ 
+Ion105
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+9
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion105
+11bits
+Ion106
+11bits
+11MSBs
+Ion106
+2bits
+Ion107
+13bits
+Ion108
+7bits
+Ion108
+6bits
+…
+Ion115
+9bits
+9LSBs
+Ion116
+13bits
+Ion117
+13bits
+Rev
+9bits
+EncF5
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-17  Bits allocation of page 9 of subframe 5 in format D2 
+
+=====PAGE 63=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+59
+Ion265
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+69
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion265
+11bits
+Ion266
+11bits
+11MSBs
+Ion266
+2bits
+Ion267
+13bits
+Ion268
+7bits
+Ion268
+6bits
+…
+Ion275
+9bits
+9LSBs
+Ion276
+13bits
+Ion277
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-18  Bits allocation of page 69 of subframe 5 in format D2 
+ 
+ 
+Ion118
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+10
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion118
+11bits
+Ion119
+11bits
+11MSBs
+Ion119
+2bits
+Ion120
+13bits
+Ion121
+7bits
+Ion121
+6bits
+…
+Ion128
+9bits
+9LSBs
+Ion129
+13bits
+Ion130
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-19  Bits allocation of page 10 of subframe 5 in format D2 
+
+=====PAGE 64=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+60
+Ion278
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+70
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion278
+11bits
+Ion279
+11bits
+11MSBs
+Ion279
+2bits
+Ion280
+13bits
+Ion281
+7bits
+Ion281
+6bits
+…
+Ion288
+9bits
+9LSBs
+Ion289
+13bits
+Ion290
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-20  Bits allocation of page 70 of subframe 5 in format D2 
+ 
+ 
+Ion131
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+11
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion131
+11bits
+Ion132
+11bits
+11MSBs
+Ion132
+2bits
+Ion133
+13bits
+Ion134
+7bits
+Ion134
+6bits
+…
+Ion141
+9bits
+9LSBs
+Ion142
+13bits
+Ion143
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-21  Bits allocation of page 11 of subframe 5 in format D2 
+
+=====PAGE 65=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+61
+Ion291
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+71
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion291
+11bits
+Ion292
+11bits
+11MSBs
+Ion292
+2bits
+Ion293
+13bits
+Ion294
+7bits
+Ion294
+6bits
+…
+Ion201
+9bits
+9LSBs
+Ion202
+13bits
+Ion203
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-22  Bits allocation of page 71 of subframe 5 in format D2 
+ 
+ 
+ 
+Ion144
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+12
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion144
+11bits
+Ion145
+11bits
+11MSBs
+Ion145
+2bits
+Ion146
+13bits
+Ion147
+7bits
+Ion147
+6bits
+…
+Ion154
+9bits
+9LSBs
+Ion155
+13bits
+Ion156
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-23  Bits allocation of page 12 of subframe 5 in format D2 
+
+=====PAGE 66=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+62
+Ion304
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+72
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+P
+Ion304
+11bits
+Ion305
+11bits
+11MSBs
+Ion305
+2bits
+Ion306
+13bits
+Ion307
+7bits
+Ion307
+6bits
+…
+Ion314
+9bits
+9LSBs
+Ion315
+13bits
+Ion316
+13bits
+Rev
+9bits
+Rev
+1bit
+…
+…
+…
+5
+ 
+Fig 5-18-24  Bits allocation of page 72 of subframe 5 in format D2 
+ 
+ 
+ 
+Ion157
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+13
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+Ion157
+11bits
+Ion158
+11bits
+11MSBs
+Ion158
+2bits
+Ion159
+13bits
+Ion160
+7bits
+Ion160
+6bits
+Rev
+16bits
+Rev
+1bit
+Rev
+22bits
+Rev
+22bits
+Rev
+22bits
+5
+P
+Rev
+22bits
+P
+Rev
+22bits
+ 
+Fig 5-18-25  Bits allocation of page 13 of subframe 5 in format D2 
+
+=====PAGE 67=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+63
+Ion317
+2bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+11LSBs
+151
+P
+2MSBs
+211
+181
+241
+Subframe 
+No.
+Page 
+No.
+73
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+P
+61
+2LSBs
+P
+7MSBs
+6LSBs
+P
+P
+121
+271
+Ion317
+11bits
+Ion318
+11bits
+11MSBs
+Ion318
+2bits
+Ion319
+13bits
+Ion320
+7bits
+Ion320
+6bits
+Rev
+16bits
+Rev
+1bit
+Rev
+22bits
+Rev
+22bits
+Rev
+22bits
+5
+P
+Rev
+22bits
+P
+Rev
+22bits
+ 
+Fig 5-18-26  Bits allocation of page 73 of subframe 5 in format D2 
+ 
+ 
+ 
+P
+91
+7LSBs
+151
+P
+P
+Hea1
+2bits
+2MSBs
+Hea1
+7bits
+6MSBs
+3LSBs
+211
+181
+241
+SubFrame 
+No.
+Page 
+No.
+5
+35
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+53
+Hea2
+9bits
+Hea3
+6bits
+Hea4
+9bits
+P
+61
+Hea3
+3bits
+…
+P
+P
+P
+121
+1LSB
+Hea16
+9bits
+Hea15
+1bit
+Hea17
+9bits
+Hea18
+3bits
+3MSBs
+Hea18
+6bits
+Hea19
+9bits
+271
+P
+6LSBs
+Rev
+1bit
+…
+…
+…
+…
+Rev
+7bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+Fig 5-18-27  Bits allocation of page 35 of subframe 5 in format D2 
+ 
+ 
+ 
+
+=====PAGE 68=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+64
+P
+91
+7LSBs
+151
+181
+Subframe 
+No.
+Page 
+No.
+5
+36
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+53
+P
+61
+P
+4LSBs
+P
+121
+Hea29
+9bits
+Hea20
+7bits
+Hea21
+9bits
+Hea28
+9bits
+Rev
+63bits
+24bits Parity for 3 
+words
+Hea20
+2bits
+2MSBs
+Hea27
+4bits
+WNa
+8bits
+5MSBs
+toa
+5bits
+Rev
+1bit
+…
+…
+…
+Hea30
+9bits
+P
+211
+toa
+3bits
+3LSBs
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+Fig 5-18-28  Bits allocation of page 36 of subframe 5 in format D2 
+ 
+ 
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+P
+91
+121
+P
+151
+22LSBs
+P
+Ω0
+2bits
+2bits
+22bits
+Ω0
+22bits
+2LSBs
+22MSBs
+a1
+11bits
+Pnum
+7bits
+2MSBs
+Subframe 
+No.
+Page 
+No.
+5
+37~60
+95~100
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+53
+61
+a0
+11bits
+Rev
+1bit
+P
+ω
+6bits
+18LSBs
+M0
+20bits
+P
+181
+6MSBs
+P
+P
+Rev
+2bits
+20LSBs
+M0
+4bits
+3bits
+e
+17bits
+1bit
+211
+P
+toa
+8bits
+271
+241
+3MSBs
+13bits
+13LSBs
+1MSB
+16bits
+16LSBs
+ω
+18bits
+4MSBs
+
+
+i
+i
+A
+A
+ 
+Fig 5-18-29  Bits allocation of pages 37 through 60 and pages 95 through 100 of subframe 5 in format D2 
+ 
+
+=====PAGE 69=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+65
+P
+A0GPS
+14bits
+6LSBs
+A1GPS
+2bits
+A1Gal
+16bits
+A0Gal
+8bits
+P
+121
+2MSBs
+14LSBs
+8MSBs
+A0Gal
+6bits
+151
+P
+Subframe 
+No.
+Page 
+No.
+5
+101
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+61
+P
+91
+Rev
+22bits
+181
+Rev
+2bits
+Rev
+6bits
+A1GPS
+14bits
+P
+211
+Rev
+1bit
+A0GLO
+14bits
+A1GLO
+8bits
+A1GLO
+8bits
+8MSBs
+8LSBs
+Rev
+58bits
+24bits Parity for 3 
+words
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+Fig 5-18-30  Bits allocation of page 101 of subframe 5 in format D2 
+ 
+ 
+ΔtLS
+2bits
+DN
+8bits
+ΔtLSF
+8bits
+A0UTC
+22bits
+A1UTC
+12bits
+12MSBs
+22MSBs
+10LSBs
+12LSBs
+WNLSF
+8bits
+2MSBs
+P
+6LSBs
+P
+121
+151
+Subframe 
+No.
+Page 
+No.
+5
+102
+Pnum
+7bits
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+P
+61
+P
+91
+Rev
+1bit
+Rev
+90bits
+40bits Parity for 5 
+words
+ΔtLS
+6bits
+A0UTC
+10bits
+A1UTC
+12bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+Fig 5-18-31  Bits allocation of page 102 of subframe 5 in format D2 
+ 
+
+=====PAGE 70=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+66
+Rev
+178bits
+Subframe 
+No.
+Page 
+No.
+5
+14~34
+74~94
+103~120
+Pre
+11bits
+SOW
+8bits
+FraID
+3bits
+1
+SOW
+12bits
+31
+P
+Word 1
+8MSBs
+12LSBs
+Rev
+4bits
+27
+72bits Parity for 9 words
+Rev
+1bit
+Pnum
+7bits
+Subframe 5 (300 bits) bits allocation
+MSB first
+Direction of data flow
+MSB
+LSB
+ 
+Fig 5-18-32  Bits allocation of reserved pages 14 through 34, pages 74 through 94 and pages103 through 120 of subframe 5 in format D2 
+ 
+
+=====PAGE 71=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+67
+5.3.3 D2 NAV Message Content and Algorithm 
+D2 NAV message contains basic NAV information and augmentation 
+service information. 
+5.3.3.1 Basic NAV Information 
+D2 NAV message contains all the basic NAV information as follows: 
+Fundamental NAV information of the broadcasting satellite: 
+ Preamble (Pre) 
+ Subframe identification (FraID) 
+ Seconds of week (SOW) 
+ Week number (WN) 
+ User range accuracy index (URAI) 
+ Autonomous satellite health flag (SatHl) 
+ Ionospheric delay model parameters (αn, βn, n=0~3) 
+ Equipment group delay differential (TGD1) 
+ Issue of data, clock (IODC) 
+ Clock correction parameters (toc, a0, a1, a2) 
+ Issue of data, ephemeris (IODE) 
+ Ephemeris parameters (toe, A , e, ω, Δn, M0, Ω0, , i0, IDOT, Cuc，
+Cus, Crc, Crs, Cic, Cis) 
+Page number (Pnum) 
+Almanac information: 
+ Almanac parameters (toa, A , e, ω, M0, Ω0, , δi, a0, a1) 
+ Almanac week number (WNa) 
+ Satellite health information (Heai, i=1~30) 
+Time offsets from other systems: 
+ Time parameters relative to UTC (A0UTC, A1UTC, ΔtLS, WNLSF, DN, 
+
+=====PAGE 72=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+68
+ΔtLSF) 
+ Time parameters relative to GPS time (A0GPS, A1GPS) 
+ Time parameters relative to Galileo time (A0Gal, A1Gal) 
+ Time parameters relative to GLONASS time (A0GLO, A1GLO) 
+The definition of basic NAV information is the same as that in format D1, 
+except the page number (Pnum), seconds of week (SOW), which are different 
+from those in format D1. Thus only the meanings of Pnum and SOW are given 
+as follows. 
+(1) 
+Page number (Pnum) 
+In format D2, the information of subframe 5 is broadcast via 120 pages and 
+the page number is identified by Pnum. 
+(2) 
+Seconds of week (SOW) 
+In format D2, the bits 19 through 26 and the bits 31 through 42, altogether 
+20 bits of every subframe are for the seconds of week (SOW). SOW count starts 
+from zero at 00:00:00 of BDT on every Sunday. 
+In format D2, SOW refers to the leading edge of preamble first bit in 
+subframe 1 of each frame. 
+5.3.3.2 Page Number for Basic NAV Information (Pnum1) 
+The bits 43 through 46, altogether 4 bits of subframe 1 are for page number 
+of the basic NAV information (Pnum1). Pnum1 is broadcast in pages 1 through 
+10 of subframe 1. 
+5.3.3.3 Page 
+Number 
+for 
+Integrity 
+and 
+Differential 
+Correction 
+Information (Pnum2) 
+The bits 44 through 47, altogether 4 bits of the subframe 2 are for the page 
+number of the integrity and differential correction information (Pnum2). Pnum2 
+are broadcast in pages 1 through 6 of subframe 2. 
+
+=====PAGE 73=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+69
+5.3.3.4 Satellite Health Flag for Integrity and Differential Correction 
+Information (SatH2) 
+The satellite health flag for integrity and differential correction information 
+SatH2 is in 2 bits. The MSB indicates the check result of the satellite for the 
+received up-link regional user range accuracy (RURA), user differential range 
+error (UDRE) and equivalent clock correction (Δt). The LSB indicates the check 
+result of the satellite for received up-link ionospheric grid information. 
+See Table 5-20 for detailed definitions. 
+Tab 5-20  SatH2 definitions 
+Bit allocation 
+Code 
+Definition of SatH2 
+MSB 
+0 
+RURA, UDRE and Δt are good by check 
+1 
+RURA, UDRE and Δt are bad by check 
+LBS 
+0 
+Ionospheric grid information is good by check 
+1 
+Ionospheric grid information is bad by check 
+5.3.3.5 BDS Satellite Identification for Integrity and differential 
+correction information (BDIDi) 
+The BDS satellite identification for integrity and differential correction 
+information (BDIDi, i=1~30) is in 30 bits to identify BDS satellites for which 
+the integrity and differential information are broadcast. Every bit identifies one 
+satellite. ―1‖ means the integrity and differential correction information for the 
+satellite are broadcast and ―0‖ means not. 
+For BDS the integrity and differential correction information of 18 
+satellites at most can be broadcast once continuously. Integrity and differential 
+correction information are allocated in ascending order of the SV ID. 
+5.3.3.6 BDS Regional User Range Accuracy Index (RURAI) 
+Regional User Range Accuracy (RURA), the BDS satellite signal integrity 
+information, is used to describe the satellite signal pseudo-range error in meters. 
+
+=====PAGE 74=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+70
+The satellite signal integrity information is indicated with the Regional User 
+Range Accuracy Index (RURAI). It occupies 4 bits for each satellite so the 
+effective range of RURAI is 0 to 15. The update rate is 18 seconds. See Table 
+5-21 for the corresponding relationship between RURAI and RURA. 
+Tab 5-21  RURAI definitions 
+RURAI  
+RURA（meters, 99.9%） 
+0 
+0.75 
+1 
+1.0 
+2 
+1.25 
+3 
+1.75 
+4 
+2.25 
+5 
+3.0 
+6 
+3.75 
+7 
+4.5 
+8 
+5.25 
+9 
+6.0 
+10 
+7.5 
+11 
+15.0 
+12 
+50.0 
+13 
+150.0 
+14 
+300.0 
+15 
+> 300.0 
+5.3.3.7 BDS Differential Correction and Differential Correction Integrity 
+Information (Δt, UDREI) 
+5.3.3.7.1 Equivalent Clock Correction (Δt) 
+The BDS differential correction information is expressed in equivalent 
+clock correction (Δt). It occupies 13 bits for each satellite with the unit and scale 
+factor of meter and 0.1 respectively and is expressed with two’s complement. 
+The MSB is for the sign bit (+ or –). The update rate of Δt is every 18 seconds. 
+The user adds the value of Δt to the observed pseudo-range to correct the 
+
+=====PAGE 75=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+71
+effect caused by the satellite clock offset and ephemeris error. 
+It means the Δt is not available if the value is -4096. 
+5.3.3.7.2 User Differential Range Error Index (UDREI) 
+User differential range error (UDRE), the BDS differential correction 
+integrity, is used to describe the error of equivalent clock correction in meters. It 
+is indicated by user differential range error index (UDREI). It occupies 4 bits 
+for each satellite within the range of 1~15 and the update rate is 3 seconds. The 
+corresponding relationship between UDRE and UDREI is shown in Table 5-22. 
+The user shall lookup UDRE in the table to determine the accuracy of the 
+differential correction for the satellite.  
+Tab 5-22 UDREI definitions 
+UDREI 
+UDRE（meters, 99.9％） 
+0 
+1.0 
+1 
+1.5 
+2 
+2.0 
+3 
+3.0 
+4 
+4.0 
+5 
+5.0 
+6 
+6.0 
+7 
+8.0 
+8 
+10.0 
+9 
+15.0 
+10 
+20.0 
+11 
+50.0 
+12 
+100.0 
+13 
+150.0 
+14 
+Not monitored 
+15 
+Not available 
+
+=====PAGE 76=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+72
+5.3.3.8 Ionospheric Grid Information (Ion) 
+The information about each ionospheric grid point (Ion) consists of the 
+vertical delay at grid point (dτ) and its error index (GIVEI), occupying 13 bits 
+altogether. The data arrangement and definitions are as follows. 
+Tab 5-23  Ion definitions 
+Parameter 
+dτ 
+GIVEI 
+No. of bits 
+9 
+4 
+The ionospheric grid covers 70 to 145 degrees east longitude and 7.5 to 55 
+degrees north latitude. The area from 70 to 145 degrees east longitude and 10 to 
+55 degrees north latitude is divided into 160 grids of 5×5 degrees. The 
+definition of ionospheric grid point (IGP) numbers is listed in Table 5-24-1. 
+Pages 1 through 13 broadcast ionospheric grid correction information according 
+to this table. 
+Tab 5-24-1  IGP numbers 
+E-Log. 
+N-Lat. 
+70 75 
+80 
+85 
+90 
+95 100 105 110 115 120 125 130 135 140 145 
+55 
+10 20 
+30 
+40 
+50 
+60 
+70 
+80 
+90 100 110 120 130 140 150 160 
+50 
+9 
+19 
+29 
+39 
+49 
+59 
+69 
+79 
+89 
+99 109 119 129 139 149 159 
+45 
+8 
+18 
+28 
+38 
+48 
+58 
+68 
+78 
+88 
+98 108 118 128 138 148 158 
+40 
+7 
+17 
+27 
+37 
+47 
+57 
+67 
+77 
+87 
+97 107 117 127 137 147 157 
+35 
+6 
+16 
+26 
+36 
+46 
+56 
+66 
+76 
+86 
+96 106 116 126 136 146 156 
+30 
+5 
+15 
+25 
+35 
+45 
+55 
+65 
+75 
+85 
+95 105 115 125 135 145 155 
+25 
+4 
+14 
+24 
+34 
+44 
+54 
+64 
+74 
+84 
+94 104 114 124 134 144 154 
+20 
+3 
+13 
+23 
+33 
+43 
+53 
+63 
+73 
+83 
+93 103 113 123 133 143 153 
+15 
+2 
+12 
+22 
+32 
+42 
+52 
+62 
+72 
+82 
+92 102 112 122 132 142 152 
+10 
+1 
+11 
+21 
+31 
+41 
+51 
+61 
+71 
+81 
+91 101 111 121 131 141 151 
+When IGP≤160, the corresponding longitudes and latitudes are: 
+5
+)
+10
+/)1
+IGP
+((
+INT
+70
+L
+
+
+
+
+ 
+5
+)
+10
+)
+10
+/)1
+IGP
+((
+INT
+IGP
+(
+5
+B
+
+
+
+
+
+
+ 
+
+=====PAGE 77=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+73
+Where INT(*) refers to round down. 
+The area from 70 to 145 degrees east longitude and 7.5 to 52.5 degrees 
+north latitude is divided into 160 grids of 5×5 degrees. The definition of IGP 
+numbers is shown in Table 5-24-2. Pages 60 through 73 broadcast grid 
+ionospheric correction information according to this table. 
+Tab 5-24-2  IGP numbers 
+E-Log. 
+N-Lat. 
+70 75 
+80 
+85 
+90 
+95 100 105 110 115 120 125 130 135 140 145 
+52.5 
+170 180 190 200 210 220 230 240 250 260 270 280 290 300 310 320 
+47.5 
+169 179 189 199 209 219 229 239 249 259 269 279 289 299 309 319 
+42.5 
+168 178 188 198 208 218 228 238 248 258 268 278 288 298 308 318 
+37.5 
+167 177 187 197 207 217 227 237 247 257 267 277 287 297 307 317 
+32.5 
+166 176 186 196 206 216 226 236 246 256 266 276 286 296 306 316 
+27.5 
+165 175 185 195 205 215 225 235 245 255 265 275 285 295 305 315 
+22.5 
+164 174 184 194 204 214 224 234 244 254 264 274 284 294 304 314 
+17.5 
+163 173 183 193 203 213 223 233 243 253 263 273 283 293 303 313 
+12.5 
+162 172 182 192 202 212 222 232 242 252 262 272 282 292 302 312 
+7.5 
+161 171 181 191 201 211 221 231 241 251 261 271 281 291 301 311 
+When IGP > 160, the corresponding longitudes and latitudes are: 
+5
+)
+10
+/)
+161
+IGP
+((
+INT
+70
+L
+
+
+
+
+ 
+5
+)
+10
+)
+10
+/)
+161
+IGP
+((
+INT
+160
+IGP
+(
+5.2
+B
+
+
+
+
+
+
+
+ 
+Where INT(*) refers to round down. 
+5.3.3.8.1 Vertical Delay at Ionospheric Grid Points (dτ) 
+dτi is the vertical ionosphere delay on B1I signal at the ith grid point, 
+expressed in scale factor of 0.125 and with unit of meters. The effective range of 
+dτi is between 0 to 63.625 meters. IGP is not monitored when the dτi is 
+111111110 (= 63.750 meters) and vertical ionosphere delay is not available 
+when the dτi is 111111111 (= 63.875 meters). 
+Making use of the ionospheric correction at grid points, the users compute 
+the ionospheric correction for the intersection point of ionosphere and direction 
+
+=====PAGE 78=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+74
+from user to observed satellite by interpolation and add it to the observed 
+pseudo-range. The reference altitude of ionosphere is 375 km. 
+5.3.3.8.2 Grid Ionospheric Vertical Error Index (GIVEI) 
+The grid ionosphere vertical error (GIVE) describes the delay correction 
+accuracy at ionosphere grid points and is indicated with GIVEI. See Table 5-25 
+for the relationship between GIVEI and GIVE. 
+Tab 5-25  GIVEI definitions 
+GIVEI  
+GIVE (meters, 99.9%) 
+0 
+0.3 
+1 
+0.6 
+2 
+0.9 
+3 
+1.2 
+4 
+1.5 
+5 
+1.8 
+6 
+2.1 
+7 
+2.4 
+8 
+2.7 
+9 
+3.0 
+10 
+3.6 
+11 
+4.5 
+12 
+6.0 
+13 
+9.0 
+14 
+15.0 
+15 
+45.0 
+5.3.3.8.3 Suggestions on User Grid Ionospheric Correction Algorithm 
+The user can select effective data of the grid points adjacent to or nearby 
+the observed intersection point with dτi and GIVEI to design the model and 
+compute the delay correction for ionospherc pierce point (IPP) by interpolation. 
+
+=====PAGE 79=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+75
+The guiding fitting algorithm for user grid ionospheric correction is given as 
+follows:  
+4
+3
+1
+2
+IPP
+ 
+Fig 5-19  User IPP and Grid Points 
+Fig 5-19 illustrates the user IPP and its surrounding grid points. IPP, 
+represented with geographic latitudes and longitudes as (
+p
+,
+p
+), is the 
+geographic location where the line-of-sight between the user and the satellite 
+intersects with the ionospheric layer. The positions of the four surrounding grid 
+points are represented with (
+i,
+i, i=1~4) and the vertical ionospheric delays 
+on the grid points are represented with VTECi(i=1~4) respectively. And ωi(i=i~4) 
+shows the distance weight between IPP and the four grid points.  
+As long as there are at least three grid points surrounding the user IPP are 
+available and effective, the IPP ionospheric delay can be calculated from the 
+vertical ionospheric delay of these effective grid points through the bilinear 
+interpolation algorithm.  
+
+
+
+
+
+
+
+
+4
+1
+i
+i
+4
+1
+i
+i
+i
+p
+VTEC
+Ionodelay
+ 
+Where, 
+ 
+1
+2
+1
+p
+p
+x
+
+
+
+
+
+
+
+，
+1
+4
+1
+p
+py
+
+
+
+
+
+
+
+， 
+)
+y
+1(
+)
+x
+1(
+p
+p
+1
+
+
+
+
+
+，
+)
+y
+1(
+x
+p
+p
+2
+
+
+
+
+，
+p
+p
+3
+y
+x 
+
+
+，
+p
+p
+4
+y
+)
+x
+1(
+
+
+
+
+ 
+If any grid point of this observation epoch is marked as ineffective, its 
+weight is zero.
+
+=====PAGE 80=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+76
+6 Acronyms 
+BDS 
+BeiDou Navigation Satellite System 
+BDT 
+BeiDou Navigation Satellite System Time 
+bps 
+bits per second 
+CDMA 
+Code Division Multiple Access 
+CGCS2000 
+China Geodetic Coordinate System 2000 
+dBW 
+Decibel with respect to 1 watt 
+GEO 
+Geostationary Earth Orbit 
+GIVE 
+Grid point Ionospheric Vertical delay Error 
+GIVEI 
+Grid point Ionospheric Vertical delay Error Index 
+GLONASS 
+GLObal Navigation Satellite System 
+GPS 
+Global Positioning System 
+ICD 
+Interface Control Document 
+ID 
+Identification 
+IERS 
+International Earth Rotation and Reference Systems Service 
+IGP 
+Ionospheric Grid Point 
+IGSO 
+Inclined Geosynchronous Satellite Orbit 
+IODC 
+Issue of Data, Clock 
+IODE 
+Issue of Data, Ephemeris 
+IPP 
+Ionospheric Pierce Point 
+IRM 
+IERS Reference Meridian 
+IRP 
+IERS Reference Pole 
+Mcps 
+Mega chips per second 
+MEO 
+Medium Earth Orbit 
+MHz 
+Megahertz 
+N/A 
+Not Applicable 
+NAV 
+Navigation 
+MSB 
+Most Significant Bit 
+NTSC 
+National Time Service Center 
+QPSK 
+Quadrature Phase Shift Keying 
+
+=====PAGE 81=====
+ 2012 China Satellite Navigation Office 
+BDS-SIS-ICD-B1I-1.0 
+2012-12 
+77
+RHCP 
+Right-Handed Circularly Polarized 
+RURA 
+Regional User Range Accuracy 
+RURAI 
+Regional User Range Accuracy Index 
+SOW 
+Seconds of Week 
+SV 
+Space Vehicle 
+UDRE 
+User Differential Range Error 
+UDREI 
+User Differential Range Error Index 
+URA 
+User Range Accuracy 
+UTC 
+Coordinated Universal Time  
+WN 
+Week Number 
+ 

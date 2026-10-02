@@ -1,0 +1,647 @@
+
+=====PAGE 1=====
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+Technical Specification
+GEO-Mobile Radio Interface Specifications;
+Part 5: Radio interface physical layer specifications;
+Sub-part 4: Modulation;
+GMR-2 05.004
+
+=====PAGE 2=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+2
+GMR-2 05.004
+Reference
+DTS/SES-002-05004
+Keywords
+GMR, MSS, MES, satellite, GSO, S-PCN, GSM,
+interface, mobile, modulation, radio
+ETSI
+650 Route des Lucioles
+F-06921 Sophia Antipolis Cedex - FRANCE
+Tel.: +33 4 92 94 42 00
+Fax: +33 4 93 65 47 16
+Siret N° 348 623 562 00017 - NAF 742 C
+Association à but non lucratif enregistrée à la
+Sous-Préfecture de Grasse (06) N° 7803/88
+Important notice
+Individual copies of the present document can be downloaded from:
+http://www.etsi.org
+The present document may be made available in more than one electronic version or in print. In any case of existing or
+perceived difference in contents between such versions, the reference version is the Portable Document Format (PDF).
+In case of dispute, the reference shall be the printing on ETSI printers of the PDF version kept on a specific network drive
+within ETSI Secretariat.
+Users of the present document should be aware that the document may be subject to revision or change of status.
+Information on the current status of this and other ETSI documents is available at http://www.etsi.org/tb/status/
+If you find errors in the present document, send your comment to:
+editor@etsi.fr
+Copyright Notification
+No part may be reproduced except as authorized by written permission.
+The copyright and the foregoing restriction extend to reproduction in all media.
+© European Telecommunications Standards Institute 2001.
+All rights reserved.
+
+=====PAGE 3=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+3
+GMR-2 05.004
+Contents
+Intellectual Property Rights ..........................................................................................................................4
+Foreword......................................................................................................................................................6
+Introduction..................................................................................................................................................7
+1
+Scope..................................................................................................................................................8
+2
+References..........................................................................................................................................8
+3
+Abbreviations .....................................................................................................................................8
+4
+Modulation Format.............................................................................................................................9
+4.1
+Modulating Bit Rate.................................................................................................................................... 9
+4.2
+Start and Stop of the Burst........................................................................................................................... 9
+4.3
+Pre-Coding................................................................................................................................................ 10
+4.4
+Filtering .................................................................................................................................................... 11
+4.5
+Output Phase............................................................................................................................................. 12
+4.6
+Modulation................................................................................................................................................ 13
+History .......................................................................................................................................................14
+
+=====PAGE 4=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+4
+GMR-2 05.004
+Intellectual Property Rights
+The information pertaining to essential IPRs is publicly available for ETSI members and non-members, and can be
+found in ETSI SR 000 314: "Intellectual Property Rights (IPRs); Essential, or potentially Essential, IPRs notified to
+ETSI in respect of ETSI standards", which is available from the ETSI Secretariat. Latest updates are available on the
+ETSI Web server (http://www.etsi.org/ipr).
+The attention of ETSI has been drawn to the Intellectual Property Rights (IPRs) listed below which are, or may be, or
+may become, Essential to the present document. The IPR owner has undertaken to grant irrevocable licences, on fair,
+reasonable and non-discriminatory terms and conditions under these IPRs pursuant to the ETSI IPR Policy. Further
+details pertaining to these IPRs can be obtained directly from the IPR owner.
+The present IPR information has been submitted to ETSI and pursuant to the ETSI IPR Policy, no investigation,
+including IPR searches, has been carried out by ETSI. No guarantee can be given as to the existence of other IPRs not
+referenced in ETSI SR 000 314 (or the updates on the ETSI Web server) which are, or may be, or may become,
+essential to the present document.
+IPRs:
+Project
+Company
+Title
+Country of
+Origin
+Patent n°
+Countries
+Applicable
+TS 101 377 V1.1.1
+Digital Voice
+Systems Inc
+US
+US 5,715,365
+US
+TS 101 377 V1.1.1
+Digital Voice
+Systems Inc
+US
+US 5,754,974
+US
+TS 101 377 V1.1.1
+Digital Voice
+Systems Inc
+US
+US 5,226,084
+US
+TS 101 377 V1.1.1
+Digital Voice
+Systems Inc
+US
+US 5,701,390
+US
+TS 101 377 V1.1.1
+Digital Voice
+Systems Inc
+US
+US 5,826,222
+US
+IPR Owner:
+Digital Voice Systems Inc
+One Van de Graaff Drive Burlington,
+MA 01803
+USA
+Contact:
+John C. Hardwick
+Tel.: +1 781-270-1030
+Fax: +1 781-270-0166
+Project
+Company
+Title
+Country of
+Origin
+Patent n°
+Countries
+Applicable
+TS 101 377 V1.1.1
+Ericsson Mobile
+Communication
+Improvements in, or in relation
+to, equalisers
+GB
+GB 2 215 567
+GB
+TS 101 377 V1.1.1
+Ericsson Mobile
+Communication
+Power Booster
+GB
+GB 2 251 768
+GB
+TS 101 377 V1.1.1
+Ericsson Mobile
+Communication
+Receiver Gain
+GB
+GB 2 233 846
+GB
+TS 101 377 V1.1.1
+Ericsson Mobile
+Communication
+Transmitter Power Control for
+Radio Telephone System
+GB
+GB 2 233 517
+GB
+IPR Owner:
+Ericsson Mobile Communications (UK) Limited
+The Keytech Centre, Ashwood Way
+Basingstoke
+Hampshire RG23 8BG
+United Kingdom
+Contact:
+John Watson
+Tel.: +44 1256 864821
+
+=====PAGE 5=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+5
+GMR-2 05.004
+Project
+Company
+Title
+Country of
+Origin
+Patent n°
+Countries
+Applicable
+TS 101 377 V1.1.1
+Hughes Network
+Systems
+US
+Pending
+US
+IPR Owner:
+Hughes Network Systems
+11717 Exploration Lane
+Germantown, Maryland 20876
+USA
+Contact:
+John T. Whelan
+Tel: +1 301-428-7172
+Fax: +1 301-428-2802
+Project
+Company
+Title
+Country of
+Origin
+Patent n°
+Countries
+Applicable
+TS 101 377 V1.1.1
+Lockheed Martin
+Global
+Telecommunic. Inc
+2.4-to-3 KBPS Rate Adaptation
+Apparatus for Use in
+Narrowband Data and
+Facsimile Communication
+Systems
+US
+US 6,108,348
+US
+TS 101 377 V1.1.1
+Lockheed Martin
+Global
+Telecommunic. Inc
+Cellular Spacecraft TDMA
+Communications System with
+Call Interrupt Coding System
+for Maximizing Traffic
+ThroughputCellular Spacecraft
+TDMA Communications
+System with Call Interrupt
+Coding System for Maximizing
+Traffic Throughput
+US
+US 5,717,686
+US
+TS 101 377 V1.1.1
+Lockheed Martin
+Global
+Telecommunic. Inc
+Enhanced Access Burst for
+Random Access Channels in
+TDMA Mobile Satellite System
+US
+US 5,875,182
+TS 101 377 V1.1.1
+Lockheed Martin
+Global
+Telecommunic. Inc
+Spacecraft Cellular
+Communication System
+US
+US 5,974,314
+US
+TS 101 377 V1.1.1
+Lockheed Martin
+Global
+Telecommunic. Inc
+Spacecraft Cellular
+Communication System
+US
+US 5,974,315
+US
+TS 101 377 V1.1.1
+Lockheed Martin
+Global
+Telecommunic. Inc
+Spacecraft Cellular
+Communication System with
+Mutual Offset High-argin
+Forward Control Signals
+US
+US 6,072,985
+US
+TS 101 377 V1.1.1
+Lockheed Martin
+Global
+Telecommunic. Inc
+Spacecraft Cellular
+Communication System with
+Spot Beam Pairing for
+Reduced Updates
+US
+US 6,118,998
+US
+IPR Owner:
+Lockheed Martin Global Telecommunications, Inc.
+900 Forge Road
+Norristown, PA. 19403
+USA
+Contact:
+R.F. Franciose
+Tel.: +1 610.354.2535
+Fax: +1 610.354.7244
+
+=====PAGE 6=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+6
+GMR-2 05.004
+Foreword
+This Technical Specification (TS) has been produced by ETSI Technical Committee Satellite Earth Stations and
+Systems (SES).
+The contents of the present document are subject to continuing work within TC-SES and may change following formal
+TC-SES approval. Should TC-SES modify the contents of the present document, it will then be republished by ETSI
+with an identifying change of release date and an increase in version number as follows:
+Version 1.m.n
+where:
+-
+the third digit (n) is incremented when editorial only changes have been incorporated in the specification;
+-
+the second digit (m) is incremented for all other types of changes, i.e. technical enhancements, corrections,
+updates, etc.
+The present document is part 5, sub-part 4 of a multi-part deliverable covering the GEO-Mobile Radio Interface
+Specifications, as identified below:
+Part 1:
+"General specifications";
+Part 2:
+"Service specifications";
+Part 3:
+"Network specifications";
+Part 4:
+"Radio interface protocol specifications";
+Part 5:
+"Radio interface physical layer specifications";
+Sub-part 1:
+"Physical Layer on the Radio Path; GMR-2 05.001";
+Sub-part 2:
+"Multiplexing and Multiple Access on the Radio Path; GMR-2 05.002";
+Sub-part 3:
+"Channel Coding; GMR-2 05.003";
+Sub-part 4: "Modulation; GMR-2 05.004";
+Sub-part 5:
+"Radio Transmission and Reception; GMR-2 05.005";
+Sub-part 6:
+"Radio Subsystem Link Control; GMR-2 05.008";
+Sub-part 7:
+"Radio Subsystem Synchronization; GMR-2 05.010";
+Part 6:
+"Speech coding specifications".
+
+=====PAGE 7=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+7
+GMR-2 05.004
+Introduction
+GMR stands for GEO (Geostationary Earth Orbit) Mobile Radio interface, which is used for mobile satellite services
+(MSS) utilizing geostationary satellite(s). GMR is derived from the terrestrial digital cellular standard GSM and
+supports access to GSM core networks.
+Due to the differences between terrestrial and satellite channels, some modifications to the GSM standard are necessary.
+Some GSM specifications are directly applicable, whereas others are applicable with modifications. Similarly, some
+GSM specifications do not apply, while some GMR specifications have no corresponding GSM specification.
+Since GMR is derived from GSM, the organization of the GMR specifications closely follows that of GSM. The GMR
+numbers have been designed to correspond to the GSM numbering system. All GMR specifications are allocated a
+unique GMR number as follows:
+GMR-n xx.zyy
+where:
+xx.0yy (z = 0) is used for GMR specifications that have a corresponding GSM specification. In this case, the
+numbers xx and yy correspond to the GSM numbering scheme.
+xx.2yy (z = 2) is used for GMR specifications that do not correspond to a GSM specification. In this case,
+only the number xx corresponds to the GSM numbering scheme and the number yy is allocated by GMR.
+n denotes the first (n = 1) or second (n = 2) family of GMR specifications.
+A GMR system is defined by the combination of a family of GMR specifications and GSM specifications as follows:
+• If a GMR specification exists it takes precedence over the corresponding GSM specification (if any). This
+precedence rule applies to any references in the corresponding GSM specifications.
+NOTE:
+Any references to GSM specifications within the GMR specifications are not subject to this precedence
+rule. For example, a GMR specification may contain specific references to the corresponding GSM
+specification.
+• If a GMR specification does not exist, the corresponding GSM specification may or may not apply. The
+applicability of the GSM specifications is defined in GMR-n 01.201.
+
+=====PAGE 8=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+8
+GMR-2 05.004
+1
+Scope
+The modulator receives the bits from the encryption unit, (see GMR-2 05.001 [2]), and produces an RF signal. The
+filtering of the RF signal, necessary to obtain the spectral purity, is not defined, neither are the tolerances associated
+with the theoretical filter requirements specified. These are contained in GMR-2 05.005 [4].
+2
+References
+The following documents contain provisions which, through reference in this text, constitute provisions of the present
+document.
+• References are either specific (identified by date of publication and/or edition number or version number) or
+non-specific.
+• For a specific reference, subsequent revisions do not apply.
+• For a non-specific reference, the latest version applies.
+[1]
+GMR-2 01.004 (ETSI TS 101 377-1-1): "GEO-Mobile Radio Interface Specifications;
+Part 1: General specifications; Sub-part 1: Abbreviations and Acronyms; GMR-2 01.004".
+[2]
+GMR-2 05.001 (ETSI TS 101 377-5-1): "GEO-Mobile Radio Interface Specifications;
+Part 5: Radio interface physical layer specifications; Sub-part 1: Physical Layer on the Radio Path;
+GMR-2 05.001".
+[3]
+GMR-2 05.002 (ETSI TS 101 377-5-2): "GEO-Mobile Radio Interface Specifications;
+Part 5: Radio interface physical layer specifications; Sub-part 2: Multiplexing and Multiple Access
+on the Radio Path; GMR-2 05.002".
+[4]
+GMR-2 05.005 (ETSI TS 101 377-5-5): "GEO-Mobile Radio Interface Specifications;
+Part 5: Radio interface physical layer specifications; Sub-part 5: Radio Transmission and
+Reception; GMR-2 05.005".
+3
+Abbreviations
+For the purposes of the present document, the abbreviations given in GMR-2 01.004 [1] apply.
+
+=====PAGE 9=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+9
+GMR-2 05.004
+4
+Modulation Format
+a) RETURN Link (MES-to-Ground Station):
+the return link modulation format is constant-envelope GMSK with a BT of 0,3.
+b) FORWARD Link (Ground Station-to-MES):
+the forward link modulation format is linear, filtered OQPSK which is pre-coded such that it is compatible with
+GMSK-type demodulator.
+c) Single Hop Link (MES-to-MES):
+transmit: MESs will transmit GMSK (BT = 0,3) signals with characteristics as described in the RETURN Link
+(MES-to-Ground Station) sections in the present document;
+receive: MES will receive both GMSK (BT = 0,3) signals and filtered OQPSK with characteristics as described
+in the RETURN Link (MES-to-Ground Station) and FORWARD Link (Ground Station-to-MES) sections in the
+present document. Signals received from the connected MES (S-TCH, S-FACCH) will have GMSK (BT = 0,3)
+modulation format and signals received from a Ground Station (S-SACCH) will have filtered OQPSK
+modulation format.
+4.1
+Modulating Bit Rate
+a) RETURN Link (MES-to-Ground Station):
+the modulating bit rate is 1/Treturn = 1 625/24 kbit/s (i.e. ≈67,70833 kbit/s).
+b) FORWARD Link (Ground Station-to-MES):
+the modulating bit rate is 1/Tforward = 1 625/6 kbit/s (i.e. ≈270,833 kbit/s).
+c) Single Hop Link (MES-to-MES):
+-
+the modulating bit rate of signals transmitted by a MES is 1/T return = 1 625/24 kbit/s (i.e. ≈67,7083 kbit/s);
+-
+the modulating bit rate of signals received by a MES is 1/T forward = 1 625/6 kbit/s (i.e. ≈270,833 kbit/s).
+4.2
+Start and Stop of the Burst
+a) RETURN Link (MES-to-Ground Station):
+before the first bit of the bursts as defined in GMR-2 05.002 [3] enters the modulator, the modulator has an
+internal state as if a modulating bit stream consisting of consecutive ones (di = 1) had entered the differential
+encoder. Also after the last bit of the time slot, the modulator has an internal state as if a modulating bit stream
+consisting of consecutive ones (di = 1) had continued to enter the differential encoder. These bits are called
+dummy bits and define the start and the stop of the active part of the burst as illustrated in figure 4.2.1. Nothing
+is specified about the actual phase of the modulator output signal outside the useful part of the burst.
+
+=====PAGE 10=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+10
+GMR-2 05.004
+b) FORWARD Link (Ground Station-to-MES):
+not applicable.
+c) Single Hop Link (MES-to-MES):
+the start and stop of bursts during single hop connections is determined based on the modulation format of a
+burst. The start and stop of bursts with GMSK modulation format (received from the connecting MES) are as
+previously described for the RETURN Link, and the start and stop of bursts with filtered OQPSK modulation
+format (received from a Ground Station) are as previously described for the FORWARD Link.
+Active Part
+Useful Part
+1/2 bit
+1/2 bit
+3 tail bits
+.… 000
+3 tail bits
+000 ….
+dummy bits
+111111 ….
+dummy bits
+…..111111
+Output Phase
+NOTE:
+For the normal burst, the useful part lasts for 147 modulating bits.
+Figure 4.2.1: Relation Between Active Part of Burst, Tail Bits and Dummy Bits
+4.3
+Pre-Coding
+a) RETURN Link (MES-to-Ground Station):
+each data value di = [0,1] is differentially encoded;
+the output of the differential encoder is:
+d'i = di ⊕di-1 (d'i ε {0, 1}),
+where ⊕denotes modulo 2 addition.
+The modulating data value αi input to the modulator is:
+αi = 1-2 d'i (αi ε {-1, +1}).
+b) FORWARD Link (Ground Station-to-MES):
+data values di = [0,1] are not differentially encoded;
+the modulating data value αi input to the modulator is:
+αi = (1-2di) (-1)[i/2] (αi ε {-1, +1}),
+where [x] represents the integer part of x.
+c) Single Hop Link (MES-to-MES):
+data bits are pre-coded to be consistent with the modulation format. Bits which will be GMSK modulated are
+pre-coded as previously described for the RETURN Link, and bits which will be OQPSK modulated are pre-
+coded as previously described for the FORWARD Link.
+
+=====PAGE 11=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+11
+GMR-2 05.004
+4.4
+Filtering
+a) RETURN Link (MES-to-Ground Station):
+the modulating data values αi as represented by Dirac pulses excite a linear filter with impulse response defined
+by:
+g(t) = h(t) * rect(t/T)
+rect(t/T) = 1/T for [t] < T/2
+0 otherwise,
+and * means convolution. h(t) is defined by:
+h(t) = exp(-t2/(2δ2T2))/((2π)0,5δT),
+where:
+δ = (ln(2))0,5/(2πBT) and BT = 0,3,
+where B is the 3 dB bandwidth of the filter with impulse response h(t), and T = Treturn is the duration of one
+input data bit as defined in clause 4.1. This theoretical filter is associated with tolerances defined in
+GMR-2 05.005 [4].
+b) FORWARD Link (Ground Station-to-MES):
+Dirac impulses of timing corresponding to the even-numbered modulating data values are applied to αi to
+provide mi(t). In other words, the Dirac impulses are spaced at intervals of 2T or T'. Similarly, Dirac impulses of
+timing corresponding to the odd-numbered modulating data values are applied to αi to provide mq(t). mi(t) and
+mq(t) excite a linear filter with the impulse response h(t) of a square root raised cosine filter with a rolloff factor
+of 0,35. h(t) may be expressed as the inverse Fourier transform of the transfer function H(f). H(f) is defined to
+be:
+H(f) = [ 0,5 {1-sin[ (π/(2r)) (2|f|T'-1)] } ]0,5,
+(1-r)/(2T') ≤|f| ≤(1+r)/(2T')
+1,
+0 ≤|f| ≤(1-r)/(2T')
+0,
+|f| ≥(1+r)/(2T'),
+where r is the rolloff factor and T' = 2Tforward is the duration of one input data symbol with Tforward as defined in
+clause 4.1. This filter is associated with tolerances as defined in GMR-2 05.005 [4]. Figure 4.5.1 illustrates a
+theoretical raised cosine filter.
+c) Single Hop Link (MES-to-MES):
+filtering will be consistent with modulation format. Data which is GMSK modulated will be filtered as
+previously described for the RETURN Link, and data which is OQPSK modulated will be filtered as previously
+described for the FORWARD Link.
+
+=====PAGE 12=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+12
+GMR-2 05.004
+4.5
+Output Phase
+a) RETURN Link (MES to-Ground Station):
+the phase of the modulated signal is:
+ϕ(t') = Σi αi πh ∫-∞t'-iT g (u)du,
+where the modulating index h is 1/2 (a maximum phase change in radians is π/2 per data interval).
+The time reference t' = 0 is the start of the active part of the burst a shown in figure 4.2.1. This is also the start of
+the bit period of bit number 0 ( the first tail bit) as defined in GMR-2 05.002 [3].
+b) FORWARD Link (Ground Station-to-MES):
+not applicable.
+c) Single Hop Link (MES-to-MES):
+the output phase for a signal which is GMSK modulated will be as previously described for the RETURN Link,
+and the output phase for a signal which is OQPSK modulated will be as previously described for the
+FORWARD Link.
+0.5 {1-sin[(π /(2r))(2|f|T'-1)]}
+f
+H2(f)
+(1-r)/(2T')
+(1+r)/(2T')
+0
+0.5
+1.0
+Figure 4.5.1: Raised Cosine Filter [H2(f)]
+
+=====PAGE 13=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+13
+GMR-2 05.004
+4.6
+Modulation
+a) RETURN Link (MES-to-Ground Station):
+the modulated RF carrier, except for start and stop of the TDMA burst may therefore be expressed as:
+x(t') = (2Ec/T) 0,5 cos (2 πf0t' + ϕ (t') + ϕ0),
+where Ec is the energy per modulating bit, f0 is the centre frequency and ϕ0 is a random phase and is constant
+during one burst.
+b) FORWARD Link (Ground Station-to-MES):
+the OQPSK carrier is obtained by modulating a cosine carrier with mi(t) to provide and in-phase (I) channel and
+by modulating a sine carrier with mq(t) one-half symbol period later to provide a quadrature (Q) channel. The
+modulated RF carrier is defined as the sum of the I and Q channels, or:
+x(t') = (2Ec/T) 0,5 [mi(t) cos (2 πf0t' + ϕ0) - mq(t) sin (2 πf0t' + ϕ0)],
+where Ec is the energy per modulating bit, f0 is the centre frequency and ϕ0 is a random phase and is constant
+during one burst.
+The basic functionality of this modulation scheme is illustrated in figure 4.6.1.
+c) Single Hop Link (MES-to-MES):
+modulation will be consistent with the source of each data burst. Bursts received from the connecting MES will
+be modulated as previously described for the RETURN Link, and bursts received from a Ground Station will be
+modulated as previously described for the FORWARD Link.
+mq(t)
+mi(t)
++
++
+α 0
+α 2
+α 4
+.....
+α 1
+α 3
+α 5
+.....
+t = 0
+t = 2T
+t = 4T
+t = 1T
+t = 3T
+t = 5T
+H(f)
+H(f)
+~
+cos(2πf0t)
+π /2
+OQPSK
+T denotes the forward bit interval of 6/1 625 sec.
+α i is described in clause 4.3.
+Figure 4.6.1: Basic Functionality of Forward-Link Modulator
+
+=====PAGE 14=====
+ETSI
+ETSI TS 101 377-5-4 V1.1.1 (2001-03)
+14
+GMR-2 05.004
+History
+Document history
+V1.1.1
+March 2001
+Publication

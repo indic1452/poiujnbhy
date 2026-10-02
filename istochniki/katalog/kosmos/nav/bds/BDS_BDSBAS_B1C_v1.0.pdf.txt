@@ -1,0 +1,4156 @@
+
+=====PAGE 1=====
+ China Satellite Navigation Office 2020 
+ 
+ 
+BeiDou Navigation Satellite System 
+Signal In Space 
+Interface Control Document 
+Satellite Based Augmentation System 
+Service Signal BDSBAS-B1C  
+(Version 1.0) 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+China Satellite Navigation Office 
+July, 2020 
+ 
+ 
+
+=====PAGE 2=====
+ 
+
+=====PAGE 3=====
+ China Satellite Navigation Office 2020 
+I 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+TABLE OF CONTENTS 
+1  Statement ····························································································· 1 
+2  Scope ·································································································· 2 
+3  BDSBAS SF Service Overview ··································································· 3 
+3.1  Space Constellation ········································································· 3 
+3.2  Coordinate System ·········································································· 3 
+3.3  Time System ················································································· 3 
+4  Signal Characteristics ··············································································· 4 
+4.1  Carrier Frequency ··········································································· 4 
+4.2  Spurious Transmissions ····································································· 4 
+4.3  Modulation ··················································································· 4 
+4.4  Carrier Phase Noise ········································································· 4 
+4.5  Signal Spectrum ············································································· 4 
+4.6  Doppler Shift ················································································· 4 
+4.7  Carrier Frequency Stability ································································· 4 
+4.8  Polarization ··················································································· 5 
+4.9  Code/Carrier Frequency Coherence ······················································· 5 
+4.10  User Received Signal Levels ····························································· 5 
+4.11  Correlation Loss ············································································ 5 
+4.12  Maximum Code Phase Deviation ························································ 5 
+4.13  Signal Codes ················································································ 5 
+5  Message Structure ··················································································· 7 
+5.1  Data Code ···················································································· 7 
+5.2  Message Types ··············································································· 7 
+5.3  Message Format ············································································· 8 
+5.3.1  Message Type 0 ······································································ 8 
+5.3.2  Message Type 1 ······································································ 8 
+5.3.3  Message Types 2-5 ·································································· 9 
+
+=====PAGE 4=====
+ China Satellite Navigation Office 2020 
+II 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+5.3.4  Message Type 6 ····································································· 11 
+5.3.5  Message Type 7 ····································································· 12 
+5.3.6  Message Type 9 ····································································· 13 
+5.3.7  Message Type 10 ··································································· 15 
+5.3.8  Message Type 12 ··································································· 15 
+5.3.9  Message Type 17 ··································································· 17 
+5.3.10  Message Type 18 ·································································· 18 
+5.3.11  Message Type 24 ·································································· 20 
+5.3.12  Message Type 25 ·································································· 21 
+5.3.13  Message Type 26 ·································································· 23 
+5.3.14  Message Type 28 ·································································· 31 
+5.3.15  Message Type 62 ·································································· 33 
+5.3.16  Message Type 63 ·································································· 33 
+5.4  Degradation Parameters ··································································· 33 
+5.4.1  Fast and Long-Term Correction Degradation ··································· 33 
+5.4.2  Degradation of Ionospheric Corrections ········································ 36 
+6  Abbreviations ······················································································· 38 
+ 
+ 
+
+=====PAGE 5=====
+ China Satellite Navigation Office 2020 
+III 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+LIST OF FIGURES 
+Figure 5-1  Rate 1/2 Convolutional Encoding ······················································ 7 
+Figure 5-2  BDSBAS-B1C Message Format ························································ 8 
+Figure 5-3  Message Type 1 ··········································································· 8 
+Figure 5-4  An example of the relationship among PRN mask, PRN code number and PRN 
+mask number ·············································································· 9 
+Figure 5-5  Message Types 2-5 ······································································ 10 
+Figure 5-6  Message Type 6 ·········································································· 12 
+Figure 5-7  Message Type 7 ·········································································· 12 
+Figure 5-8  Message Type 9 ·········································································· 14 
+Figure 5-9  Message Type 10 ········································································· 15 
+Figure 5-10  Message Type 12 ······································································· 16 
+Figure 5-11  Message Type 17 ······································································· 17 
+Figure 5-12  Message Type 18 ······································································· 19 
+Figure 5-13  Predefined Global IGP Grid ·························································· 20 
+Figure 5-14  Message Type 24 ······································································· 20 
+Figure 5-15  Message Type 25 with Velocity Code=0 ············································ 21 
+Figure 5-16  Message Type 25 with Velocity Code=1 ············································ 22 
+Figure 5-17  Message Type 26 ······································································· 24 
+Figure 5-18  Ionospheric Correction Processing Flow ············································ 25 
+Figure 5-19  Ionospheric Pierce Point Geometry ·················································· 26 
+Figure 5-20  IGP Interpolation ······································································· 28 
+Figure 5-21  Four-Point Interpolation Definitions ················································· 29 
+Figure 5-22  Three-Point Interpolation Definitions ··············································· 30 
+Figure 5-23  Message Type 28 ······································································· 31 
+Figure 5-24  Processing Flow of Fast and Long-Term Correction Degradation ··············· 34 
+ 
+
+=====PAGE 6=====
+ China Satellite Navigation Office 2020 
+IV 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+LIST OF TABLES 
+Table 4-1  The signal codes of BDSBAS-B1C ····················································· 6 
+Table 5-1  Message Types Broadcast by BDSBAS-B1C ·········································· 7 
+Table 5-2  PRN Mask Assignments ·································································· 9 
+Table 5-3  Evaluation of UDREI ····································································· 10 
+Table 5-4  UDRE Degradation Factor and User Time-Out Interval Evaluation ··············· 13 
+Table 5-5  Message Type 9 Parameters ····························································· 14 
+Table 5-6  Message Type 10 Degradation Parameters ············································ 15 
+Table 5-7  Message Type 12 Parameters ···························································· 16 
+Table 5-8  UTC Standard Identifier ································································· 16 
+Table 5-9  Message Type 17 Parameters ···························································· 17 
+Table 5-10  Definition of 8-bit Health and Status ················································· 18 
+Table 5-11  Definition of Service Provider ID ····················································· 18 
+Table 5-12  IGP Bands 0-8 ··········································································· 19 
+Table 5-13  IGP Bands 9-10 ·········································································· 19 
+Table 5-14  Definition of 106-bit with Velocity Code=0 ········································· 22 
+Table 5-15  Definition of 106-bit with Velocity Code=1 ········································· 23 
+Table 5-16  Message Type 26 Parameters ·························································· 24 
+Table 5-17  Evaluation of GIVEI ···································································· 24 
+Table 5-18  Message Type 28 Parameters ·························································· 31 
+ 
+ 
+ 
+
+=====PAGE 7=====
+ China Satellite Navigation Office 2020 
+1 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+1  Statement 
+China Satellite Navigation Office is responsible for the preparation, revision, distribution, 
+and retention of the BeiDou Navigation Satellite System (BDS) Signal In Space Interface 
+Control Documents (hereinafter referred to as SIS ICD), and reserves the rights for final 
+interpretation of this document. 
+
+=====PAGE 8=====
+ China Satellite Navigation Office 2020 
+2 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+2  Scope 
+The construction and development of the BeiDou Navigation Satellite System is divided 
+into three phases: BDS-1, BDS-2, and BDS-3 in sequence. 
+The BeiDou Satellite Based Augmentation System (“BDSBAS”) is an important part of 
+BDS, and will provide the Single Frequency (SF) service through BDSBAS-B1C signal and 
+the Dual-Frequency Multi-Constellation (DFMC) service through BDSBAS-B2a signal for 
+users in China and surrounding areas, in accordance with the International Civil Aviation 
+Organization (ICAO) standards.  
+Based on the Satellite Based Augmentation System (SBAS) Standards And 
+Recommended Practices (SARPs) of ICAO “Convention on International Civil Aviation” 
+Annex 10 Aeronautical Telecommunications Volume I Radio Navigation Aids, this document 
+defines the characteristics of the BDSBAS SF service signal BDSBAS-B1C transmitted by 
+the BDS Geostationary Earth Orbit (GEO) satellites. 
+
+=====PAGE 9=====
+ China Satellite Navigation Office 2020 
+3 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+3  BDSBAS SF Service Overview 
+3.1  Space Constellation 
+The space constellation of BDSBAS includes 3 BDS GEO satellites. The 3 GEO 
+satellites operate in orbit at an altitude of 35,786 kilometers and are located at 80°E, 110.5°E, 
+and 140°E, which are using Pseudo Random Noise (PRN) code 144, 143 and 130, 
+respectively. 
+3.2  Coordinate System 
+The coordinate system of BDSBAS is WGS-84. 
+3.3  Time System 
+The BeiDou Navigation Satellite System Time (BDT) is adopted by the BDS as time 
+reference. The deviation of BDSBAS SF service network time (
+14
+SNT
+BDT
+s
+
+
+) to GPS 
+Time (GPST) is within 50 nanoseconds (
+50
+SNT
+GPST
+ns
+
+
+).  
+
+=====PAGE 10=====
+ China Satellite Navigation Office 2020 
+4 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+4  Signal Characteristics 
+4.1  Carrier Frequency 
+The carrier frequency is 1575.42MHz. 
+4.2  Spurious Transmissions 
+Spurious transmissions will be at least 40dB below the unmodulated carrier power. 
+4.3  Modulation 
+Message symbols at a rate of 500 symbols per second (sps) will be added modulo-2 to a 
+1023-bit PRN code, which will then be Bi-Phase Shift-Keyed (BPSK) modulated onto the 
+carrier at a rate of 1.023 M-chips per second. 
+4.4  Carrier Phase Noise 
+The phase noise spectral density of the unmodulated carrier will be such that a phase-
+locked loop of 10Hz one-sided noise bandwidth will be able to track the carrier to an accuracy 
+of 0.1 radians rms. 
+4.5  Signal Spectrum 
+The broadcast signal will be at 1575.42MHz. At least 95% of the broadcast power will 
+be contained within a ±12MHz band centered at the carrier frequency. The bandwidth of the 
+signal transmitted by a BDS GEO satellite will be at least 2.2MHz. 
+4.6  Doppler Shift 
+The Doppler shift on the signal broadcast by BDS GEO satellites will be less than 40 
+meters per second (about 210Hz at 1575.42MHz). 
+4.7  Carrier Frequency Stability 
+The short-term stability of the carrier frequency (square root of the Allan Variance) at the 
+input of the user's receiver antenna will be better than 5×10–11 over 1 to 10 seconds, excluding 
+the effects of the ionosphere and Doppler. 
+
+=====PAGE 11=====
+ China Satellite Navigation Office 2020 
+5 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+4.8  Polarization 
+The broadcast signal will be Right-Handed Circularly Polarized (RHCP). The ellipticity 
+will be no worse than 2dB for the angular range of ±9.1° from bore sight. 
+4.9  Code/Carrier Frequency Coherence 
+The short-term (<10 seconds) fractional frequency difference between the code phase 
+rate and the carrier frequency will be less than 5×10–11 (one sigma). Over the long term (<100 
+seconds), the difference between the change in the broadcast code phase, converted to carrier 
+cycles by multiplying the number of code chips by 1540, and the change in the broadcast 
+carrier phase, in cycles, will be within one carrier cycle, one sigma. 
+4.10  User Received Signal Levels 
+At all unobstructed locations near the ground from which the BDS GEO satellite is 
+observed at an elevation angle of 5 degrees or higher, the level of the received BDSBAS-B1C 
+signal at the antenna port of a 3dBi linearly polarized antenna is within the range of -161dBW 
+to -153dBW for all antenna orientations orthogonal to the direction of propagation. 
+4.11  Correlation Loss 
+The correlation loss resulting from modulation imperfections and filtering inside the 
+BDS GEO satellite payload will be less than 1dB. 
+4.12  Maximum Code Phase Deviation 
+The maximum uncorrected code phase of the BDSBAS-B1C signal will not deviate from 
+the equivalent SNT by more than 2-20 seconds. 
+4.13  Signal Codes 
+The signal codes of BDSBAS-B1C are defined by PRN code, G2 delay in chips and 
+initial G2 state, which are listed in Table 4-1. 
+ 
+ 
+ 
+
+=====PAGE 12=====
+ China Satellite Navigation Office 2020 
+6 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+Table 4-1  The signal codes of BDSBAS-B1C 
+PRN Code 
+G2 Delay (Chips) 
+Initial G2 state (Octal) 
+First 10 Chips (Octal) 
+130 
+355 
+0341 
+1436 
+143 
+307 
+1312 
+0465 
+144 
+127 
+1060 
+0717 
+
+=====PAGE 13=====
+ China Satellite Navigation Office 2020 
+7 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+5  Message Structure 
+5.1  Data Code 
+The message data rate will be 250 bits per second (bps). The data will always be rate 1/2 
+convolutional encoded with a Forward Error Correction (FEC) code, as shown in Figure 5-1. 
+Therefore, the symbol rate of output is 500 symbols per second (sps). 
+ 
+Figure 5-1  Rate 1/2 Convolutional Encoding 
+5.2  Message Types 
+Message types broadcast by BDSBAS-B1C signal are shown in Table 5-1. 
+Table 5-1  Message Types Broadcast by BDSBAS-B1C 
+Type 
+Contents 
+0 
+Don’t use for safety application (BDSBAS testing) 
+1 
+PRN Mask Assignments 
+2-5 
+Fast Corrections 
+6 
+Integrity Information 
+7 
+Fast Correction Degradation Factor 
+9 
+GEO Satellite Ephemeris 
+10 
+Degradation Parameters 
+12 
+SNT/UTC Offset Parameters 
+17 
+GEO Satellite Almanacs 
+18 
+Ionospheric Grid Point Masks 
+24 
+Mixed Fast Corrections/Long Term Satellite Error Corrections 
+25 
+Long Term Satellite Error Corrections 
+26 
+Ionospheric Delay Corrections 
+28 
+Clock-Ephemeris Covariance Matrix Message 
+62 
+Internal Test Message 
+63 
+Null Message 
+
+=====PAGE 14=====
+ China Satellite Navigation Office 2020 
+8 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+5.3  Message Format 
+Each type of message broadcast by BDSBAS-B1C signal is 250 bits with a broadcasting 
+time of 1 second. The 8-bit preamble starts at bit 0 of the 250-bit message followed by the 6-
+bit message type identifier at bit 8. The 212-bit data field then starts at bit 14, followed by 24-
+bit of Cyclic Redundancy Check (CRC) parity. The message format is shown in Figure 5-2. 
+ 
+Figure 5-2  BDSBAS-B1C Message Format 
+5.3.1  Message Type 0 
+Message Type 0 will be used primarily during system testing. The receipt of a Message 
+Type 0 will result in the cessation of the use of BDSBAS-B1C signal for safety applications. 
+In addition, that BDSBAS-B1C signal will be deselected for at least one minute. 
+5.3.2  Message Type 1 
+The PRN Mask is given in Message Type 1, the message format is shown in Figure 5-3. 
+ 
+Figure 5-3  Message Type 1 
+210-bit data field consists of 210 PRN masks, each of which indicates if data is provided 
+for the corresponding satellite as defined in Table 5-2. PRN mask is 1 meaning that the 
+corresponding satellite is monitored by BDSBAS; otherwise, that satellite isn’t monitored by 
+BDSBAS. The number of PRN mask equaling 1 is the PRN Mask Number, which indicates 
+
+=====PAGE 15=====
+ China Satellite Navigation Office 2020 
+9 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+the order of monitored satellites in other messages. An example of the relationship among 
+PRN mask, PRN code number and PRN mask number is shown in Figure 5-4. 
+ 
+Figure 5-4  An example of the relationship among PRN mask, PRN code number and PRN mask number 
+Table 5-2  PRN Mask Assignments 
+PRN Slot 
+Assignment 
+1-37 
+GPS 
+38-61 
+GLONASS 
+62-119 
+Future GNSS 
+120-158 
+GEO/SBAS PRN 
+159-210 
+Future GNSS 
+ 
+The transition of the PRN Mask to a new one (which will be infrequent) will be 
+controlled with the 2-bit IODP, which will sequence to a number between 0 and 3. The same 
+IODP will appear in the applicable Message Types 2-5, 7, 24, 25 and 28. If the IODP in 
+Message Types 2-5, 7, 24, 25 and 28 does not equal to the one in Message Type 1, the user 
+will not use the applicable message until a mask with the matching IODPs agree. During a 
+change-over of the IODP in the PRN mask, the user equipment continues to use the old mask 
+to decode messages until a corrections message using the new mask is received, and stores the 
+new mask so that there are no interruptions to service when the new mask becomes effective. 
+5.3.3  Message Types 2-5 
+Message Types 2-5 contain the fast corrections, and the message format is illustrated in 
+Figure 5-5. 
+
+=====PAGE 16=====
+ China Satellite Navigation Office 2020 
+10 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+Figure 5-5  Message Types 2-5 
+Message Types 2-5 contain a 2-bit IODFj. The IODFj, where j is the fast corrections 
+Message Type (2-5), is used to associate the UDRE Indicator (UDREI) contained in a 
+Message Type 6. When there is no alert condition for any of the satellites in a Message Types 
+2-5, the range of each IODFj counter is only 0 to 2. When an alert occurs in one or more of 
+the satellites in a Message Types 2-5, IODFj=3. The IODP in Message Types 2-5 should be 
+same as the one in Message Type 1. 
+Message Type 2 contains the data sets for the first 13 satellites designated in the PRN 
+mask. Message Type 3 contains the data sets for satellites 14-26 designated in the PRN mask. 
+Message Type 4 contains the data sets for satellites 27-39 designated in the PRN mask. And 
+Message Type 5 contains the data sets for satellites 40-51 designated in the PRN mask. In 
+Message Types 2-5, the fast data for each satellite is 16-bit, including a 12-bit fast correction 
+and a 4-bit UDREI. The evaluation of UDREI is listed in Table 5-3. 
+Table 5-3  Evaluation of UDREI 
+UDREI 
+UDRE (m) 
+
+2
+UDRE (m2) 
+0 
+0.75 
+0.0520 
+1 
+1.0 
+0.0924 
+2 
+1.25 
+0.1444 
+3 
+1.75 
+0.2830 
+4 
+2.25 
+0.4678 
+5 
+3.0 
+0.8315 
+6 
+3.75 
+1.2992 
+7 
+4.5 
+1.8709 
+8 
+5.25 
+2.5465 
+9 
+6.0 
+3.3260 
+10 
+7.5 
+5.1968 
+11 
+15.0 
+20.7870 
+
+=====PAGE 17=====
+ China Satellite Navigation Office 2020 
+11 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+UDREI 
+UDRE (m) 
+
+2
+UDRE (m2) 
+12 
+50.0 
+230.9661 
+13 
+150.0 
+2078.695 
+14 
+Not Monitored 
+Not Monitored 
+15 
+Do Not Use 
+Do Not Use 
+ 
+The 12-bit fast correction (PRCf) has a 0.125m resolution, for a valid range of -256.000m 
+to +255.875m. If the range is exceeded, a “Do Not Use” indication will be inserted into the 
+UDREI field (UDREI=15). The time of applicability (tof) of the PRCf is the start of the epoch 
+of the SNT second that is coincident with the transmission at the GEO satellite of the first bit 
+of the message block. 
+The user will compute the current 
+( )
+PRC t by using the 
+(
+)
+of
+PRC t
+, which is applied as 
+ 
+( )
+(
+)
+(
+)
+(
+)
+of
+of
+of
+PRC t
+PRC t
+RRC t
+t
+t
+
+
+
+
+                   (5-1) 
+If ai 0 (broadcast by Message Type 7)，the RRC is computed by the user differencing 
+fast corrections: 
+ 
+(
+)
+current
+previous
+of
+PRC
+PRC
+RRC t
+t
+
+
+
+                       (5-2) 
+where，PRCcurrent is the most recent fast correction (broadcast by Message Types 2-5 
+and 24); PRCprevious is a previous fast correction (broadcast by Message Types 2-5 and 24); 
+t= (tof - tof,previous); tof is time of applicability of PRCcurrent; tof,previous is time of applicability of 
+PRCprevious. 
+If ai= 0 (broadcast by Message Type 7), RRC(tof)=0. 
+Then add the PRC(t) to the pseudo-range measurement through Equation (5-3). 
+ 
+( )
+( )
+( )
+corrected
+measured
+PR
+t
+PR
+t
+PRC t
+
+
+                    (5-3) 
+where, PRmeasured(t) is the pseudo-range measurement at time t, PRcorrected(t) is the 
+measurement corrected by the fast corrections. 
+5.3.4  Message Type 6 
+Message Type 6 contains integrity information (only UDRE without GIVE), and the 
+message format is illustrated in Figure 5-6. Message Type 6 includes 4 2-bit IODFs for each 
+fast corrections Message Types 2-5. The remaining 204 bits are divided into 51 slots of 4-bit 
+UDREIs, one for each satellite in the mask. The evaluation of UDREI is listed in Table 5-3. 
+
+=====PAGE 18=====
+ China Satellite Navigation Office 2020 
+12 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+For example, if IODF3=1, then the UDREI for satellites 14-26 apply to the corrections 
+provided in a previously broadcast Message Type 3 that had the IODF=1. 
+ 
+Figure 5-6  Message Type 6 
+5.3.5  Message Type 7 
+Message Type 7 specifies the applicable IODP, system latency time (tlat) and the UDRE 
+degradation factor indicator (aii) for computing the degradation of fast and long-term 
+corrections, the message format is shown in Figure 5-7. 
+6-bit Message Type Identifier (7)
+8-bit Preamble
+24-bit
+CRC
+250 bits – 1 second
+Direction of data flow from satellite; Most Significant Bit (MSB) transmitted first
+4-bit System Latency (tlat)
+51 4-bit UDRE Degradation Factor Indicators
+2-bit IODP
+2-bit Spare
+ 
+Figure 5-7  Message Type 7 
+Message Type 7 is to allow users to estimate the current accuracy and integrity by using 
+the old-but-active corrections and integrity information when they do not receive the latest 
+information. The IODP in Message Type 7 should be same as the one in Message Type 1, and 
+the UDRE degradation factor indicators are determined by the PRN mask number of Message 
+Type 1. The UDRE degradation factor and user time-out interval evaluation are listed in Table 
+5-4. The time-out interval for fast corrections is reckoned from the end of reception of the fast 
+correction message. 
+ 
+
+=====PAGE 19=====
+ China Satellite Navigation Office 2020 
+13 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+Table 5-4  UDRE Degradation Factor and User Time-Out Interval Evaluation 
+UDRE 
+Degradation 
+Factor 
+Indicator 
+UDRE 
+Degradation 
+Factor 
+(m/s2) 
+User Time-Out Interval 
+for Fast Corrections – 
+seconds 
+En Route through LNAV 
+Approach (Ifc) 
+User Time-Out Interval 
+for Fast Corrections – 
+seconds 
+LNAV/VNAV, LPV, LP 
+Approach 
+(Ifc) 
+Maximum 
+Fast 
+Correction 
+Update 
+Interval 
+(seconds) 
+0 
+0.00000 
+180 
+120 
+60 
+1 
+0.00005 
+180 
+120 
+60 
+2 
+0.00009 
+153 
+102 
+51 
+3 
+0.00012 
+135 
+90 
+45 
+4 
+0.00015 
+135 
+90 
+45 
+5 
+0.00020 
+117 
+78 
+39 
+6 
+0.00030 
+99 
+66 
+33 
+7 
+0.00045 
+81 
+54 
+27 
+8 
+0.00060 
+63 
+42 
+21 
+9 
+0.00090 
+45 
+30 
+15 
+10 
+0.00150 
+45 
+30 
+15 
+11 
+0.00210 
+27 
+18 
+9 
+12 
+0.00270 
+27 
+18 
+9 
+13 
+0.00330 
+27 
+18 
+9 
+14 
+0.00460 
+18 
+12 
+6 
+15 
+0.00580 
+18 
+12 
+6 
+ 
+5.3.6  Message Type 9 
+Message Type 9 contains GEO satellite ephemeris representing the position, velocity and 
+acceleration of the geostationary satellite, in ECEF Coordinates, and its apparent clock time 
+and frequency offsets. It also includes the time of applicability (t0) and an accuracy exponent 
+(URA) representing the health of the GEO ranging signal. aGf0 and aGf1 will be the estimate of 
+the time offset and drift with respect to BDSBAS SNT. The message format and parameters 
+are shown in Figure 5-8 and Table 5-5, respectively. 
+
+=====PAGE 20=====
+ China Satellite Navigation Office 2020 
+14 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+Figure 5-8  Message Type 9 
+Table 5-5  Message Type 9 Parameters 
+Parameter 
+No. of Bits 
+Scale Factor (LSB) 
+Effective Range 
+Units 
+Reserved 
+8 
+-- 
+-- 
+-- 
+t0 
+13 
+16 
+0-86384 
+s 
+URA 
+4 
+-- 
+-- 
+unitless 
+XG (ECEF) 
+30 
+0.08 
+±42,949,673 
+m 
+YG (ECEF) 
+30 
+0.08 
+±42,949,673 
+m 
+ZG (ECEF) 
+25 
+0.4 
+±6,710,886.4 
+m 
+XG Rate of Change 
+17 
+0.000625 
+±40.96 
+m/s 
+YG Rate of Change 
+17 
+0.000625 
+±40.96 
+m/s 
+ZG Rate of Change 
+18 
+0.004 
+±524.288 
+m/s 
+XG Acceleration 
+10 
+0.0000125 
+±0.0064 
+m/s 2 
+YG Acceleration 
+10 
+0.0000125 
+±0.0064 
+m/s 2 
+ZG Acceleration 
+10 
+0.0000625 
+±0.032 
+m/s 2 
+aGf0 
+12 
+2-31 
+±0.9537×10-6 
+s 
+aGf1 
+8 
+2-40 
+±1.1642×10-10 
+s/s 
+ 
+The position and time of the GEO will be propagated to time-of-day t as: 
+ 
+0
+1
+0
+[
+(
+)]
+G
+G
+G
+Gf
+Gf
+G
+t
+t
+t
+t
+a
+a
+t
+t
+
+
+
+
+
+
+                  (5-4) 
+ 
+2
+0
+0
+1
+(
+)
+(
+)
+2
+GK
+G
+G
+G
+GK
+G
+G
+G
+GK
+G
+G
+G
+X
+X
+X
+X
+Y
+Y
+Y
+t
+t
+Y
+t
+t
+Z
+Z
+Z
+Z
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            (5-5) 
+where, tG is the (uncorrected) time at which the signal left the GEO, expressed in that 
+GEO’s reference time; t0 is the time of applicability of the message; 
+
+T
+GK
+GK
+GK
+X
+Y
+Z
+ is 
+the location of GEO at t; 
+
+T
+G
+G
+G
+X
+Y
+Z
+ is the location of GEO at t0; 
+T
+G
+G
+G
+X
+Y
+Z
+
+
+
+
+
+
+
+ is 
+the rate of change at t0; 
+T
+G
+G
+G
+X
+Y
+Z
+
+
+
+
+
+
+
+ is the acceleration at t0; 
+0
+Gf
+a
+ and 
+1
+Gf
+a
+ are the 
+time offset and drift。 
+
+=====PAGE 21=====
+ China Satellite Navigation Office 2020 
+15 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+5.3.7  Message Type 10 
+Message Type 10 contains degradation parameters, the message format and 210-bit data 
+field are shown in Figure 5-9 and Table 5-6, respectively. 
+ 
+Figure 5-9  Message Type 10 
+Table 5-6  Message Type 10 Degradation Parameters 
+Parameter 
+No. of Bits 
+Scale Factor (LSB) 
+Effective Range 
+Units 
+Brrc 
+10 
+0.002 
+0-2.046 
+m 
+Cltc lsb 
+10 
+0.002 
+0-2.046 
+m 
+Cltc v1 
+10 
+0.00005 
+0-0.05115 
+m/s 
+Iltc v1 
+9 
+1 
+0-511 
+s 
+Cltc v0 
+10 
+0.002 
+0-2.046 
+m 
+Iltc v0 
+9 
+1 
+0-511 
+s 
+Cgeo lsb 
+10 
+0.0005 
+0-0.5115 
+m 
+Cgeo v 
+10 
+0.00005 
+0-0.05115 
+m/s 
+Igeo 
+9 
+1 
+0-511 
+s 
+Cer 
+6 
+0.5 
+0-31.5 
+m 
+Ciono step 
+10 
+0.001 
+0-1.023 
+m 
+Iiono 
+9 
+1 
+0-511 
+s 
+Ciono ramp 
+10 
+0.000005 
+0-0.005115 
+m/s 
+RSSUDRE 
+1 
+-- 
+0-1 
+unitless 
+RSSiono 
+1 
+-- 
+0-1 
+unitless 
+Ccovariance 
+7 
+0.1 
+0-12.7 
+unitless 
+Spare 
+81 
+-- 
+-- 
+-- 
+ 
+5.3.8  Message Type 12 
+Message Type 12 contains the offset parameters of BDSBAS SNT and UTC. It consists 
+of the 8-bit preamble, a 6-bit message type identifier followed by 104 information bits for the 
+UTC parameters, then followed by 3-bit to indicate the UTC time standard from which the 
+offset is determined. The next 20-bit is the GPS Time of Week (TOW) in seconds of the 
+beginning of the message, followed by a 10-bit GPS Week Number (WN). The final 75 bits 
+
+=====PAGE 22=====
+ China Satellite Navigation Office 2020 
+16 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+are spare bits. The message format and parameters are shown in Figure 5-10 and Table 5-7, 
+respectively. 
+ 
+Figure 5-10  Message Type 12 
+Table 5-7  Message Type 12 Parameters 
+Parameter 
+No. of Bits 
+Scale Factor (LSB) 
+Effective Range 
+Units 
+A1SNT 
+24 
+2-50 
+±7.45×10-9 
+s/s 
+A0SNT 
+32 
+2-30 
+±1 
+s 
+t0t 
+8 
+212 
+0-602,112 
+s 
+WNt 
+8 
+1 
+0-255 
+week 
+ΔtLS 
+8 
+1 
+±128 
+s 
+WNLSF 
+8 
+1 
+0-255 
+week 
+DN 
+8 
+1 
+1-7 
+day 
+ΔtLSF 
+8 
+1 
+±128 
+s 
+UTC standard 
+Identifier 
+3 
+-- 
+-- 
+unitless 
+TOW 
+20 
+1 
+0-604,799 
+s 
+WN 
+10 
+1 
+0-1023 
+week 
+Table 5-8  UTC Standard Identifier 
+UTC Identifier 
+UTC Standard 
+0 
+Japanese National Institute of Information and Communications Technology, 
+NICT 
+1 
+U. S. National Institute of Standards and Technology, NIST 
+2 
+U. S. Naval Observatory, USNO 
+3 
+International Bureau of Weights and Measures, BIPM 
+4 
+European Laboratory (TBD) 
+5 
+National Time Service Center Chinese Academy of Sciences, NTSC 
+6 
+Reserved for future definition 
+7 
+UTC not provided 
+ 
+The time offset between SNT and UTC can be calculated as below: 
+
+
+0
+1
+0
+604800(
+)
+UTC
+LS
+SNT
+SNT
+t
+t
+t
+t
+A
+A
+t
+t
+WN
+WN
+
+
+
+
+
+
+
+          (5-6) 
+
+=====PAGE 23=====
+ China Satellite Navigation Office 2020 
+17 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+where, 
+t
+WN and 
+0tt are the week number and time of week of UTC, respectively; WN 
+and t are the current week number and time of week, respectively; 
+0SNT
+A
+ and 
+1SNT
+A
+ are the 
+constant and first order terms of polynomial; 
+LS
+t
+
+ is the delta time due to leap seconds. 
+5.3.9  Message Type 17 
+Almanacs for GEOs will be broadcast periodically to alert the user of their existence, 
+location, health and status. The message format and parameters are shown in Figure 5-11 and 
+Table 5-9, respectively. Unused almanacs will have a PRN number of 0 and should be ignored. 
+ 
+Figure 5-11  Message Type 17 
+Table 5-9  Message Type 17 Parameters 
+Parameter 
+No. of Bits
+Scale Factor (LSB)
+Effective Range 
+Units 
+For each of 3 satellites 
+67 
+-- 
+-- 
+-- 
+Data ID 
+2 
+1 
+0-3 
+unitless 
+PRN Number 
+8 
+1 
+0-210 
+unitless 
+Health and Status  
+(Table 5-10) 
+8 
+-- 
+-- 
+-- 
+XG (ECEF) 
+15 
+2,600 
+±42,595,800 
+m 
+YG (ECEF) 
+15 
+2,600 
+±42,595,800 
+m 
+ZG (ECEF) 
+9 
+26,000 
+±6,630,000 
+m 
+XG Rate of Change 
+3 
+10 
+±40 
+m/s 
+YG Rate of Change 
+3 
+10 
+±40 
+m/s 
+ZG Rate of Change 
+4 
+60 
+±480 
+m/s 
+t0 (Time of Day) 
+11 
+64 
+0-86,336 
+s 
+ 
+ 
+ 
+ 
+
+=====PAGE 24=====
+ China Satellite Navigation Office 2020 
+18 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+Table 5-10  Definition of 8-bit Health and Status 
+Bit (LSB) 
+Meaning 
+Set to 0 
+Set to 1 
+0 
+Ranging 
+On 
+Off 
+1 
+Precision Corrections 
+On 
+Off 
+2 
+Satellite Status and Basic 
+Corrections 
+On 
+Off 
+3 
+Reserved 
+-- 
+-- 
+4-7 
+Service Provider ID (Table 5-11) 
+-- 
+-- 
+Table 5-11  Definition of Service Provider ID 
+ID 
+Service Provider 
+0 
+WAAS 
+1 
+EGNOS 
+2 
+MSAS 
+3 
+GAGAN 
+4 
+SDCM 
+5 
+BDSBAS 
+6 
+KASS 
+7 
+A-SBAS 
+8 
+SPAN 
+9-13 
+Not Yet Assigned 
+14-15 
+Reserved 
+ 
+The position of the GEO will be propagated to time-of-day t as: 
+ 
+0
+(
+)
+GK
+G
+G
+GK
+G
+G
+GK
+G
+G
+X
+X
+X
+Y
+Y
+Y
+t
+t
+Z
+Z
+Z
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        (5-7) 
+where, 
+0t is the time of applicability of the message; 
+
+T
+GK
+GK
+GK
+X
+Y
+Z
+ is the 
+location of GEO at t; 
+
+T
+G
+G
+G
+X
+Y
+Z
+ is the location of GEO at 
+0t ; 
+T
+G
+G
+G
+X
+Y
+Z
+
+
+
+
+
+
+
+ is the 
+rate of change at 
+0t . 
+5.3.10  Message Type 18 
+Message Type 18 contains Ionospheric Grid Point (IGP) masks, message format is 
+shown in Table 5-12. 
+
+=====PAGE 25=====
+ China Satellite Navigation Office 2020 
+19 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+Figure 5-12  Message Type 18 
+The predefined IGPs are contained in 11 bands (numbered 0 to 10). Bands 0-8 are 
+vertical bands on a Mercator projection map, and bands 9-10 are horizontal bands on a 
+Mercator projection map. The density of these predefined IGPs, given in Table 5-12 for bands 
+0-8 and Table 5-13 for bands 9-10. There are total 2192 IGPs, these IGP locations must be 
+stored permanently by the user. If the IGP mask is 1, it indicates that the IGP is effective, and 
+corresponding ionospheric delay information will be broadcast in Message Type 26. 
+Otherwise, the IGP is not effective. The users only use the IGPs with mask=1. 
+Table 5-12  IGP Bands 0-8 
+Latitudes (degrees) 
+Latitude Spacing (degrees) 
+Longitude Spacing (degrees) 
+N85 
+10 
+90 
+N75 to N65 
+10 
+10 
+S55 to N55 
+5 
+5 
+S75 to S65 
+10 
+10 
+S85 
+10 
+90 
+Table 5-13  IGP Bands 9-10 
+Latitudes (degrees) 
+Latitude Spacing (degrees) 
+Longitude Spacing (degrees) 
+N85 
+10 
+30 
+N75 to N65 
+5 
+10 
+N60 
+5 
+5 
+S60 
+5 
+5 
+S75 to S65 
+5 
+10 
+S85 
+10 
+30 
+ 
+Within bands 0 through 7, the IGPs are numbered from 1 to 201. Within band 8, the IGPs 
+are numbered from 1 through 200. Within bands 9 and 10, the IGPs are numbered from 1 
+
+=====PAGE 26=====
+ China Satellite Navigation Office 2020 
+20 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+through 192. In bands 0 to 8, the IGPs are numbered counting up from the southwest corner 
+(bottom-left) up each longitude column of the band (from south to north) and continuing for 
+each column from west to east (left-to-right) from the bottom of each column. In bands 9 and 
+10, the IGPs are numbered counting eastward from the western corner closest to the equator 
+along each latitude row of the band (from west to east) and continuing for each row towards 
+the poles. 
+ 
+Figure 5-13  Predefined Global IGP Grid 
+5.3.11  Message Type 24 
+Message Type 24 contains mixed fast corrections/long term satellite error corrections, 
+and message format is shown in Figure 5-14. 
+ 
+Figure 5-14  Message Type 24 
+N75
+N65
+N55
+0
+0
+W180
+N85
+W100
+E100
+W140
+W60
+W20
+E20
+E60
+E140
+N50
+S75
+S65
+S55
+S85
+S50
+0
+1
+2
+3
+4
+5
+6
+7
+8
+
+=====PAGE 27=====
+ China Satellite Navigation Office 2020 
+21 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+The first half of the message consists of six fast data sets according to the PRN mask 
+sequence, followed by the 2-bit IODP, a 2-bit Block ID indicating which corrections block is 
+provided, and the 2-bit IODF, leaving 4 spare bits, for a total of 106 bits. The Block ID (0, 1, 
+2, 3) will indicate whether the Message Type 24 contains the fast corrections associated with a 
+Message Type 2, Message Type 3, Message Type 4, or Message Type 5, respectively. The 
+final 106 bits of the data field are composed of a 106-bit half message as described in 
+Message Type 25. 
+5.3.12  Message Type 25 
+Message Type 25 will be broadcast to provide error estimates for slow varying satellite 
+ephemeris and clock errors. 212-bit data field of Message Type 25 are split into two 106-bit 
+parts, these two parts have the same definition. The following focuses on the definition of the 
+first 106-bit data field. The first bit of 106-bit data field is velocity code, and the definition of 
+the last 105-bit is depending on the velocity code. When the velocity code is 0 or 1, the 
+definitions of Message Type 25 are shown in Figure 5-15 and Figure 5-16, respectively. 
+Message Type 25 can consist of error estimates for 1, 2, 3 or 4 satellites, depending upon the 
+velocity codes in both halves of the message and how many satellites are being corrected. 
+ 
+Figure 5-15  Message Type 25 with Velocity Code=0 
+
+=====PAGE 28=====
+ China Satellite Navigation Office 2020 
+22 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+Figure 5-16  Message Type 25 with Velocity Code=1 
+When the velocity code is 0, the first half of Message Type 25 message contains the 
+corrections for the long-term satellite position and clock offset errors of two satellites, without 
+velocity and clock drift errors. The definition of 106-bit with velocity code=0 is listed in Table 
+5-14. 
+Table 5-14  Definition of 106-bit with Velocity Code=0 
+Parameter 
+No. of Bits 
+Scale Factor(LSB)
+Effective Range 
+Units 
+Velocity Code=0 
+1 
+1 
+-- 
+unitless 
+PRN Mask No. 
+6 
+1 
+0-51 
+unitless 
+IOD 
+8 
+1 
+0-255 
+unitless 
+Δx (ECEF) 
+9 
+0.125 
+±32 
+m 
+Δy (ECEF) 
+9 
+0.125 
+±32 
+m 
+Δz (ECEF) 
+9 
+0.125 
+±32 
+m 
+δaf0 
+10 
+2-31 
+±2-22 
+s 
+PRN Mask No. 
+6 
+1 
+0-51 
+unitless 
+IOD 
+8 
+1 
+0-255 
+unitless 
+Δx (ECEF) 
+9 
+0.125 
+±32 
+m 
+Δy (ECEF) 
+9 
+0.125 
+±32 
+m 
+Δz (ECEF) 
+9 
+0.125 
+±32 
+m 
+δaf0 
+10 
+2-31 
+±2-22 
+s 
+IODP 
+2 
+1 
+0-3 
+unitless 
+Spare 
+1 
+-- 
+-- 
+-- 
+ 
+When the velocity code is 1, the first half of Message Type 25 message contains the 
+corrections for the long-term satellite position, velocity, clock offset and drift errors of one 
+satellite. The definition of 106-bit with velocity code=1 is listed in Table 5-15. 
+
+=====PAGE 29=====
+ China Satellite Navigation Office 2020 
+23 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+Table 5-15  Definition of 106-bit with Velocity Code=1 
+Parameter 
+No. of Bits 
+Scale Factor (LSB)
+Effective Range 
+Units 
+Velocity Code=1 
+1 
+1 
+-- 
+unitless 
+PRN Mask No. 
+6 
+1 
+0-51 
+unitless 
+IOD 
+8 
+1 
+0-255 
+unitless 
+Δx (ECEF) 
+11 
+0.125 
+±128 
+m 
+Δy (ECEF) 
+11 
+0.125 
+±128 
+m 
+Δz (ECEF) 
+11 
+0.125 
+±128 
+m 
+δaf0 
+11 
+2-31 
+±2-21 
+s 
+δx rate-of-change (ECEF) 
+8 
+2-11 
+±0.0625 
+m/s 
+δy rate-of-change (ECEF) 
+8 
+2-11 
+±0.0625 
+m/s 
+δz rate-of-change (ECEF) 
+8 
+2-11 
+±0.0625 
+m/s 
+δaf1 
+8 
+2-39 
+±2-32 
+s/s 
+Time-of-Day Applicability t0 
+13 
+16 
+0-86384 
+s 
+IODP 
+2 
+1 
+0-3 
+unitless 
+ 
+The computation of the clock time error estimate ߜΔݐௌ௏ at time-of-day t as: 
+ 
+0
+1
+0
+0
+( )
+(
+)
+SV
+f
+f
+fG
+t
+t
+a
+a
+t
+t
+a
+
+
+
+
+
+
+
+
+
+                  (5-8) 
+where, 
+0
+fa
+
+ is the clock offset error correction; 
+1
+fa
+
+ is the clock drift error correction 
+(when velocity code=0, 
+1
+fa
+
+=0); ݐ଴ is the time of day applicability; 
+0
+fG
+a
+
+ is an additional 
+correction for the GLONASS satellites provided in Message Type 12, and it is set to 0 for non 
+GLONASS satellites. 
+The computation of the position error correction vector (WGS-84 ECEF) at time-of-day t 
+as: 
+ 
+0
+(
+)
+k
+k
+k
+x
+x
+x
+y
+y
+y
+t
+t
+z
+z
+z
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                       (5-9) 
+When velocity code=0, the velocity vector in Equation (5-9) is 0. 
+5.3.13  Message Type 26 
+Message Type 26 contains ionospheric delay corrections and their accuracy (GIVEI) at 
+geographically defined IGPs, and the message format is shown in Figure 5-17. 
+
+=====PAGE 30=====
+ China Satellite Navigation Office 2020 
+24 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+Figure 5-17  Message Type 26 
+Each message contains a band number and a block ID that indicates the location of the 
+IGPs in the respective band mask, following is the data field which can store IGP corrections 
+and GIVEI for 15 IGPs in the band mask. The definitions of Message Type 26 Parameters are 
+listed in Table 5-16. 
+Table 5-16  Message Type 26 Parameters 
+Parameter 
+No. of Bits
+Scale Factor (LSB) 
+Effective Range 
+Units 
+Band Number 
+4 
+1 
+0-10 
+unitless 
+Block ID 
+4 
+1 
+0-13 
+unitless 
+For Each of 15 Grid Points 
+13 
+-- 
+-- 
+-- 
+IGP Vertical Delay Estimate 
+9 
+0.125 
+0-63.875 
+m 
+GIVEI 
+4 
+1 
+0-15 
+unitless 
+IODI 
+2 
+1 
+0-3 
+unitless 
+Spare 
+7 
+-- 
+-- 
+-- 
+ 
+The 9-bit IGP vertical delays have a 0.125m resolution, for a 0-63.750m valid range. A 
+vertical delay of “111111111” will indicate “don't use” for that IGP. The evaluation of GIVEI 
+is shown in Table 5-17. 
+Table 5-17  Evaluation of GIVEI 
+GIVEI 
+GIVE (m) 
+
+2
+GIVE (m2) 
+0 
+0.3 
+0.0084 
+1 
+0.6 
+0.0333 
+2 
+0.9 
+0.0749 
+3 
+1.2 
+0.1331 
+4 
+1.5 
+0.2079 
+
+=====PAGE 31=====
+ China Satellite Navigation Office 2020 
+25 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+GIVEI 
+GIVE (m) 
+
+2
+GIVE (m2) 
+5 
+1.8 
+0.2994 
+6 
+2.1 
+0.4075 
+7 
+2.4 
+0.5322 
+8 
+2.7 
+0.6735 
+9 
+3.0 
+0.8315 
+10 
+3.6 
+1.1974 
+11 
+4.5 
+1.8709 
+12 
+6.0 
+3.3260 
+13 
+15.0 
+20.7870 
+14 
+45.0 
+187.0826 
+15 
+Not Monitored 
+Not Monitored 
+ 
+The ionospheric correction processing flow is shown in Figure 5-18. 
+POSITION
+SBAS Based
+Corrections 
+Are Available?
+Yes
+No
+RANGE 
+SOURCE
+IS NOT 
+USABLE
+ICi
+COMPUTE 
+SBAS-BASED 
+IONOSPHERIC 
+CORRECTIONS
+2
+,UIRE
+i
+
+MT 26, MT18, 
+A.4.4.10
+APPLY
+DEGRADATION
+PARAMETERS
+2
+,ionogrid
+i
+
+MT 26, MT 18, MT 10, 
+A.4.5.2
+MT18,MT26, 
+2.1.4.10.2
+LPV, LP, OR LNAV/VNAV OPERATIONS
+POSITION
+SBAS Based
+Corrections 
+Are Available?
+Yes
+Yes or No*
+COMPUTE 
+GPS-BASED 
+IONOSPHERIC 
+CORRECTIONS
+ICi= -c×Tiono
+2
+,UIRE
+i
+
+J.2.3 
+20.3.3.5.2.5 (IS-GPS-200
+COMPUTE 
+SBAS-BASED 
+IONOSPHERIC 
+CORRECTIONS
+ICi
+2
+,UIRE
+i
+
+MT 26, MT 18
+A.4.4.10
+APPLY
+DEGRADATION
+PARAMETERS
+2
+,ionogrid
+i
+
+MT 26, MT 18, MT 10, 
+A.4.5.2
+MT18,MT26, 
+GPS: 2.1.1.2 
+GEO: 2.1.1.3.1
+ENROUTE, TERMINAL OR LNAV OPERATION
+POSITION
+SBAS Based
+Corrections 
+Are Available?
+Yes
+No
+RANGE 
+SOURCE
+IS NOT 
+USABLE
+ICi
+COMPUTE 
+SBAS-BASED 
+IONOSPHERIC 
+CORRECTIONS
+2
+,UIRE
+i
+
+MT 26, MT18, 
+A.4.4.10
+APPLY
+DEGRADATION
+PARAMETERS
+2
+,ionogrid
+i
+
+MT 26, MT 18, MT 10, 
+A.4.5.2
+MT18,MT26, 
+2.1.4.10.2
+LPV, LP, OR LNAV/VNAV OPERATIONS
+POSITION
+SBAS Based
+Corrections 
+Are Available?
+Yes
+Yes or No*
+COMPUTE 
+GPS-BASED 
+IONOSPHERIC 
+CORRECTIONS
+ICi= -c×Tiono
+2
+,UIRE
+i
+
+J.2.3 
+20.3.3.5.2.5 (IS-GPS-200
+COMPUTE 
+SBAS-BASED 
+IONOSPHERIC 
+CORRECTIONS
+ICi
+2
+,UIRE
+i
+
+MT 26, MT 18
+A.4.4.10
+APPLY
+DEGRADATION
+PARAMETERS
+2
+,ionogrid
+i
+
+MT 26, MT 18, MT 10, 
+A.4.5.2
+MT18,MT26, 
+GPS: 2.1.1.2 
+GEO: 2.1.1.3.1
+ENROUTE, TERMINAL OR LNAV OPERATION
+ 
+Figure 5-18  Ionospheric Correction Processing Flow 
+5.3.13.1  Pierce Point Location Determination 
+First, the latitude of ionospheric pierce point (IPP) 
+pp
+
+ is computed as: 
+ 
+1
+sin (sin
+cos
+cos
+sin
+cos )
+pp
+u
+pp
+u
+pp
+A
+
+
+
+
+
+
+
+
+            (5-10) 
+
+=====PAGE 32=====
+ China Satellite Navigation Office 2020 
+26 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+1
+sin
+cos
+2
+e
+pp
+e
+I
+R
+E
+E
+R
+h
+
+
+
+
+
+
+
+
+
+
+
+
+                 (5-11) 
+where, 
+pp
+
+ is the earth's central angle between the user position and the earth 
+projection of the pierce point; ܣ is the azimuth angle of the satellite from the user’s location; 
+ܧ is the elevation angle of the satellite from the user's location; 
+e
+R is the approximate radius 
+of the earth’s ellipsoid (taken to be 6378.1363km); 
+Ih is the height of the maximum electron 
+density (taken to be equal to 350km). 
+ 
+Figure 5-19  Ionospheric Pierce Point Geometry 
+The longitude of the IPP ߣ௣௣ is: 
+（1）If 
+70
+u
+
+, and tan
+cos
+tan(
+/ 2
+)
+pp
+u
+A
+
+
+
+
+
+, or if 
+70
+u
+
+, and 
+tan
+cos(
+)
+tan(
+/ 2
+)
+pp
+u
+A
+
+
+
+
+
+
+
+ 
+ 
+1 sin
+sin
+sin
+cos
+pp
+pp
+u
+pp
+A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                  (5-12) 
+（2）Otherwise, 
+ 
+1 sin
+sin
+sin
+cos
+pp
+pp
+u
+pp
+A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   (5-13) 
+5.3.13.2  Selection of Ionospheric Grid Points 
+After determining the location of the user ionospheric pierce point, the user must select 
+the IGPs to be used to interpolate the ionospheric correction and model variance. This 
+selection is done based only on the information provided in the mask, and must be done 
+without regard to whether or not the selected IGPs are monitored, not monitored, or don’t use. 
+The selection process will take place as described below. 
+
+=====PAGE 33=====
+ China Satellite Navigation Office 2020 
+27 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+（1）For an IPP between N60° and S60°:  
+if four IGPs that define a  5° ൈ5° cell around the IPP are set to one in the IGP mask, 
+they are selected; else, 
+if any three IGPs that define a  5° ൈ5° triangle that circumscribes the IPP are set to 
+one in the IGP mask, they are selected; else, 
+if any four IGPs that define a  10° ൈ10° cell around the IPP are set to one in the 
+IGP mask, they are selected; else, 
+if any three IGPs that define a  10° ൈ10° triangle that circumscribes the IPP are set 
+to one in the IGP mask, they are selected; else, an ionospheric correction is not available. 
+（2）For an IPP between N60° and N75° or between S60° and S75°: 
+if four IGPs that define a 5°ሺlatitudeሻൈ10°ሺlongitudeሻ cell around the IPP are set 
+to one in the IGP mask, they are selected; else, 
+if any three IGPs that define a 5°ሺlatitudeሻൈ10°ሺlongitudeሻ triangle that 
+circumscribes the IPP are set to one in the IGP mask, they are selected; else, 
+if any four IGPs that define a 10° ൈ10° cell around the IPP are set to one in the IGP 
+mask, they are selected; else, 
+if any three IGPs that define a 10° ൈ10° triangle that circumscribes the IPP are set 
+to one in the IGP mask, they are selected; else, an ionospheric correction is not available. 
+（3）For an IPP between N75° and N85° or between S75° and S85°: 
+if the two nearest IGPs at 75° and the two nearest IGPs at 85° (separated by 30° 
+longitude if Band 9 or 10 is used, separated by 90° otherwise) are set to one in the IGP mask, 
+a 10° ൈ10° cell is created by linearly interpolating between the IGPs at 85° to obtain 
+virtual IGPs at longitudes equal to the longitudes of the IGPs at 75°; else, an ionospheric 
+correction is not available. 
+（4）For an IPP north of N85°: 
+if the four IGPs at N85° latitude and longitudes of W180°, W90°, 0° and E90° 
+are set to one in the IGP mask, they are selected; else, an ionospheric correction is not 
+available. 
+（5）For an IPP south of S85°: 
+if the four IGPs at S85° latitude and longitudes of W140°, W50°, E40° and 
+
+=====PAGE 34=====
+ China Satellite Navigation Office 2020 
+28 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+E130° are set to one in the IGP mask, they are selected; else, an ionospheric correction is 
+not available. 
+ 
+Figure 5-20  IGP Interpolation 
+5.3.13.3  Ionospheric Pierce Point Vertical Delay Calculation 
+Although the data broadcast to the user is in the form of vertical IGP delays, these points 
+do not generally correspond with his computed IPP locations. Thus, it is necessary for the user 
+to interpolate from the broadcast IGP delays to that at his computed IPP locations. 
+（1）Four-point interpolation 
+For four-point interpolation, the mathematical formulation for interpolated vertical IPP 
+delay 
+
+
+,
+vpp
+pp
+pp
+
+
+
+ as a function of IPP latitude and longitude is  
+ 
+
+
+
+
+4
+1
+,
+,
+vpp
+pp
+pp
+i
+pp
+pp
+vi
+i
+W
+x
+y
+
+
+
+
+
+
+                  (5-14) 
+where, 
+pp
+
+ and 
+pp
+
+ are the latitude and longitude of IPP, respectively; 
+vi
+ are the 
+broadcast grid point vertical delay values at four corners of the IGP grid; 
+
+
+,
+i
+pp
+pp
+W
+x
+y
+ are 
+the weighting function of IGP grids. 
+ 
+
+
+1
+,
+pp
+pp
+pp
+pp
+W
+x
+y
+x
+y
+
+                        (5-15) 
+
+=====PAGE 35=====
+ China Satellite Navigation Office 2020 
+29 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+
+
+2
+,
+(1
+)
+pp
+pp
+pp
+pp
+W
+x
+y
+x
+y
+
+
+                        (5-16) 
+ 
+
+
+3
+,
+(1
+)(1
+)
+pp
+pp
+pp
+pp
+W
+x
+y
+x
+y
+
+
+
+                       (5-17) 
+ 
+
+
+4
+,
+(1
+)
+pp
+pp
+pp
+pp
+W
+x
+y
+x
+y
+
+
+                        (5-18) 
+ 
+1
+pp
+pp
+
+
+
+
+
+
+                             (5-19) 
+ 
+1
+pp
+pp
+
+
+
+
+
+
+                             (5-20) 
+The definitions of four-point interpolation are shown in Figure 5-21. 
+ 
+Figure 5-21  Four-Point Interpolation Definitions 
+For IPP’s between N85° and S85°, 
+ 
+2
+1
+pp
+pp
+x
+
+
+
+
+
+
+                             (5-21) 
+ 
+2
+1
+pp
+pp
+y
+
+
+
+
+
+
+                             (5-22) 
+where, 
+1 is longitude of IGPs west of IPP; 
+2
+ is longitude of IGPs east of IPP; 
+1 is 
+latitude of IGPs south of IPP; 
+2 is latitude of IGPs north of IPP. 
+For IPPs north of N85° or south of S85°, 
+ 
+85
+10
+pp
+pp
+y
+
+
+
+
+
+                           (5-23) 
+ 
+
+
+3 1 2
+90
+pp
+pp
+pp
+pp
+x
+y
+y
+
+
+
+
+
+
+
+                   (5-24) 
+where, 
+1 is longitude of the second IGP to the east of the IPP; 
+2
+ is longitude of the 
+
+=====PAGE 36=====
+ China Satellite Navigation Office 2020 
+30 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+second IGP to the west of the IPP; 
+3 is longitude of the closest IGP to the west of the IPP; 
+4
+ is longitude of the closest IGP to the east of the IPP. 
+The 
+2
+UIVE
+
+ will be interpolated by the users from the 
+2
+,
+n ionogrid
+
+’s defined at the IGPs to 
+the IPP as follows: 
+ 
+
+
+4
+2
+2
+,
+1
+,
+UIVE
+n
+pp
+pp
+n ionogrid
+n
+W
+x
+y
+
+
+
+
+                   (5-25) 
+（2）Three-point interpolation 
+For three-point interpolation between S75°and N75°, a similar algorithm is used: 
+ 
+
+
+
+
+3
+1
+,
+,
+vpp
+pp
+pp
+i
+pp
+pp
+vi
+i
+W
+x
+y
+
+
+
+
+
+
+                    (5-26) 
+where, 
+pp
+
+ and 
+pp
+
+ are the latitude and longitude of IPP, respectively; 
+vi
+ are the 
+broadcast grid point vertical delay values at four corners of the IGP grid; 
+
+
+,
+i
+pp
+pp
+W
+x
+y
+ are 
+the weighting function of IGP grids. 
+ 
+
+
+1
+,
+pp
+pp
+pp
+W
+x
+y
+y
+
+                           (5-27) 
+ 
+
+
+2
+,
+1
+pp
+pp
+pp
+pp
+W
+x
+y
+x
+y
+
+
+                       (5-28) 
+ 
+
+
+3
+,
+pp
+pp
+pp
+W
+x
+y
+x
+
+                           (5-29) 
+The definitions of three-point interpolation are shown in Figure 5-22： 
+ 
+Figure 5-22  Three-Point Interpolation Definitions 
+The 
+2
+UIVE
+
+ will be interpolated by the users from the 
+2
+,
+n ionogrid
+
+’s defined at the IGPs to 
+the IPP as follows: 
+
+=====PAGE 37=====
+ China Satellite Navigation Office 2020 
+31 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+
+
+3
+2
+2
+,
+1
+,
+UIVE
+n
+pp
+pp
+n ionogrid
+n
+W
+x
+y
+
+
+
+
+                    (5-30) 
+5.3.13.4  Slant Ionospheric Delay Calculation 
+Once the user establishes the vertical delay at the pierce point, the user can then multiply 
+that vertical delay by the obliquity factor to obtain the ionospheric correction (ܫܥ௜) to be 
+added to the pseudorange measurement: 
+ 
+(
+,
+)
+(
+,
+)
+i
+spp
+pp
+pp
+pp
+vpp
+pp
+pp
+IC
+F
+
+
+
+
+
+
+
+
+
+               (5-31) 
+where, 
+(
+,
+)
+spp
+pp
+pp
+
+
+
+ is the interpolated vertical delay at the user-to-satellite IPP derived 
+as described above; 
+pp
+F is obliquity factor. 
+ 
+1
+2
+2
+cos
+1
+e
+pp
+e
+I
+R
+E
+F
+R
+h
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                         (5-32) 
+The 
+2
+UIRE
+
+ is computed as: 
+ 
+2
+2
+2
+UIRE
+pp
+UIVE
+F
+
+
+
+
+                            (5-33) 
+5.3.14  Message Type 28 
+Message Type 28 contains the clock-ephemeris covariance matrix for clock and 
+ephemeris errors. The message format and parameters are shown in Table 5-23 and Table 5-18. 
+The IODP in Message Type 28 should be same as the one in Message Type 1, and the PRN 
+mask number is determined by Message Type 1. 
+ 
+Figure 5-23  Message Type 28 
+Table 5-18  Message Type 28 Parameters 
+Parameter 
+No. of Bits 
+Scale Factor (LSB) 
+Effective Range 
+Units 
+IODP 
+2 
+1 
+0-3 
+unitless 
+PRN Mask No. 
+6 
+1 
+0-51 
+unitless 
+
+=====PAGE 38=====
+ China Satellite Navigation Office 2020 
+32 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+Parameter 
+No. of Bits 
+Scale Factor (LSB) 
+Effective Range 
+Units 
+Scale Exponent 
+3 
+1 
+0-7 
+unitless 
+E1,1 
+9 
+1 
+0-511 
+unitless 
+E2,2 
+9 
+1 
+0-511 
+unitless 
+E3,3 
+9 
+1 
+0-511 
+unitless 
+E4,4 
+9 
+1 
+0-511 
+unitless 
+E1,2 
+10 
+1 
+±512 
+unitless 
+E1,3 
+10 
+1 
+±512 
+unitless 
+E1,4 
+10 
+1 
+±512 
+unitless 
+E2,3 
+10 
+1 
+±512 
+unitless 
+E2,4 
+10 
+1 
+±512 
+unitless 
+E3,4 
+10 
+1 
+±512 
+unitless 
+PRN Mask No. 
+6 
+1 
+0-51 
+unitless 
+Scale Exponent 
+3 
+1 
+0-7 
+unitless 
+E1,1 
+9 
+1 
+0-511 
+unitless 
+E2,2 
+9 
+1 
+0-511 
+unitless 
+E3,3 
+9 
+1 
+0-511 
+unitless 
+E4,4 
+9 
+1 
+0-511 
+unitless 
+E1,2 
+10 
+1 
+±512 
+unitless 
+E1,3 
+10 
+1 
+±512 
+unitless 
+E1,4 
+10 
+1 
+±512 
+unitless 
+E2,3 
+10 
+1 
+±512 
+unitless 
+E2,4 
+10 
+1 
+±512 
+unitless 
+E3,4 
+10 
+1 
+±512 
+unitless 
+ 
+The elements of R can be written as： 
+ 
+R
+SF E
+
+
+                             (5-34) 
+where, SF = 2(scale exponent-5), 
+1,1
+1,2
+1,3
+1,4
+2,2
+2,3
+2,4
+3,3
+3,4
+4,4
+0
+0
+0
+0
+0
+0
+E
+E
+E
+E
+E
+E
+E
+E
+E
+E
+E
+
+
+
+
+
+
+
+
+
+
+
+
+. 
+The relative covariance matrix C can be gotten by R as: 
+ 
+T
+C
+R
+R
+
+
+                             (5-35) 
+The UDRE degradation parameter 
+UDRE
+
+ is specified as:  
+ 
+T
+c
+UDRE
+I
+C I
+
+
+
+
+
+
+                      (5-36) 
+where, ܫ is the 4-D line of sight vector from the user to the satellite (the first three 
+
+=====PAGE 39=====
+ China Satellite Navigation Office 2020 
+33 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+components are the unit vector from the user to the satellite and the fourth component is a 
+one); ߝ௖ൌܥ௖௢௩௔௥௜௔௡௖௘∙ܵܨ, ܥ௖௢௩௔௥௜௔௡௖௘ is broadcast by Message Type 10, if ܥ௖௢௩௔௥௜௔௡௖௘ in 
+Message Type 10 is not available, ߝ௖ is set to 0.  
+5.3.15  Message Type 62 
+Message Type 62 is used for internal testing purposes. 
+5.3.16  Message Type 63 
+Message Type 63 is a null message, it is used as a filler message if no other message is 
+available for broadcast for the one-second time slot. 
+5.4  Degradation Parameters 
+5.4.1  Fast and Long-Term Correction Degradation 
+The residual error associated with the fast and long-term corrections is characterized by 
+the variance (
+2
+flt
+
+) of a model distribution. This term is computed as: 
+
+
+
+
+2
+2
+2
+2
+2
+2
+2
+,
+0
+,
+1
+UDRE
+fc
+rrc
+ltc
+er
+UDRE
+flt
+UDRE
+fc
+rrc
+ltc
+er
+UDRE
+UDRE
+RSS
+UDRE
+RSS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      (5-37) 
+where, 
+UDRE
+RSS
+ is the root-sum-square flag in Message Type 10; 
+UDRE
+
+ is the model 
+parameter from Message Types 2-6, 24; 
+UDRE
+
+ is defined in Message Type 28; 
+fc
+
+ is the 
+degradation parameter for fast correction data; 
+rrc
+
+ is the degradation parameter for range 
+rate correction data; 
+ltc
+
+ is the degradation parameter for long term correction; 
+er
+ is the 
+degradation parameter for en route through NPA applications. 
+
+=====PAGE 40=====
+ China Satellite Navigation Office 2020 
+34 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+Is Sat. SBAS
+UNHEALTHY?
+Is Sat. SBAS
+UNMONITORED?
+RANGE 
+SOURCE
+IS NOT 
+USABLE
+Yes
+Yes
+No
+2.1.1.4.13
+COMPUTE
+MT27 δUDRE
+COMPUTE
+MT28 δUDRE
+δUDRE=1
+MT27, A.4.4.13
+MT28, A.4.4.16
+MT 28 
+AVAILABLE
+FOR THIS 
+SAT?
+RECEIVED
+A FULL SET OF 
+MT27 ?
+HAS 
+MT27 or MT28 
+FOR ANY  SATELLITE
+BEEN RECEIVED 
+FROM THIS
+GEO?
+No
+No
+Yes
+ARE 
+MT7 / MT10
+DEGRADATION 
+PARAMETERS 
+USED?
+
+
+
+
+
+2
+,
+2
+,
+8m
+UDRE
+UDRE
+i
+flt
+i
+
+
+
+
+
+
+MT27,MT28, MT6, MT2-5, MT24  J.2.2
+ARE
+APPROPRIATE*
+FAST, LONG TERM 
+AND RANGE RATE 
+CORRECTIONS
+AVAILABLE?
+No
+Yes
+Calculate
+PRCi(ti,of), RRCi(ti,of)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+0
+2
+2
+2
+2
+2
+,
+2
+,
+2
+,
+,
+2
+,
+UDRE
+er
+ltc
+rrc
+FC
+UDRE
+i
+UDRE
+i
+UDRE
+er
+ltc
+rrc
+FC
+UDRE
+i
+UDRE
+i
+flt
+i
+RSS
+if
+RSS
+if
+
+
+
+
+
+
+
+
+
+
+
+
+
+MT6, MT2-5, MT24, MT7, MT10  
+A.4.5.1
+Yes
+No
+MT2-5, MT24
+A.4.4.3
+MT7, 
+MT10
+A.4.5  
+PRCi(ti,of) + RRCi(ti,of) × (t-ti,of)
+2
+, flt
+i
+
+UDREI>=12 & 
+LPV, LP
+or LNAV/VNAV
+OPERATION?
+MT2-5,24,6   
+2.1.4.11
+No
+No
+Yes
+MT2-5,6,24,25   
+2.1.1.5.3
+2.1.1.4.12
+MT2-5,24,6   
+2.1.1.5.2
+2.1.4.11
+2.1.2.2.2.1
+2.1.1.4.12
+Yes
+Yes
+MT2-5, MT24, MT25
+2.1.1.4.3
+2.1.1.4.11
+2.1.1.4.12
+No
+1
+1
+2.1.1.4.13
+2.1.1.4.8
+1
+Is Sat. SBAS
+UNHEALTHY?
+Is Sat. SBAS
+UNMONITORED?
+RANGE 
+SOURCE
+IS NOT 
+USABLE
+Yes
+Yes
+No
+2.1.1.4.13
+COMPUTE
+MT27 δUDRE
+COMPUTE
+MT28 δUDRE
+δUDRE=1
+MT27, A.4.4.13
+MT28, A.4.4.16
+MT 28 
+AVAILABLE
+FOR THIS 
+SAT?
+RECEIVED
+A FULL SET OF 
+MT27 ?
+HAS 
+MT27 or MT28 
+FOR ANY  SATELLITE
+BEEN RECEIVED 
+FROM THIS
+GEO?
+No
+No
+Yes
+ARE 
+MT7 / MT10
+DEGRADATION 
+PARAMETERS 
+USED?
+
+
+
+
+
+2
+,
+2
+,
+8m
+UDRE
+UDRE
+i
+flt
+i
+
+
+
+
+
+
+
+
+
+
+
+2
+,
+2
+,
+8m
+UDRE
+UDRE
+i
+flt
+i
+
+
+
+
+
+
+MT27,MT28, MT6, MT2-5, MT24  J.2.2
+ARE
+APPROPRIATE*
+FAST, LONG TERM 
+AND RANGE RATE 
+CORRECTIONS
+AVAILABLE?
+No
+Yes
+Calculate
+PRCi(ti,of), RRCi(ti,of)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+0
+2
+2
+2
+2
+2
+,
+2
+,
+2
+,
+,
+2
+,
+UDRE
+er
+ltc
+rrc
+FC
+UDRE
+i
+UDRE
+i
+UDRE
+er
+ltc
+rrc
+FC
+UDRE
+i
+UDRE
+i
+flt
+i
+RSS
+if
+RSS
+if
+
+
+
+
+
+
+
+
+
+
+
+
+
+MT6, MT2-5, MT24, MT7, MT10  
+A.4.5.1
+Yes
+No
+MT2-5, MT24
+A.4.4.3
+MT7, 
+MT10
+A.4.5  
+PRCi(ti,of) + RRCi(ti,of) × (t-ti,of)
+2
+, flt
+i
+
+PRCi(ti,of) + RRCi(ti,of) × (t-ti,of)
+2
+, flt
+i
+
+UDREI>=12 & 
+LPV, LP
+or LNAV/VNAV
+OPERATION?
+MT2-5,24,6   
+2.1.4.11
+No
+No
+Yes
+MT2-5,6,24,25   
+2.1.1.5.3
+2.1.1.4.12
+MT2-5,24,6   
+2.1.1.5.2
+2.1.4.11
+2.1.2.2.2.1
+2.1.1.4.12
+Yes
+Yes
+MT2-5, MT24, MT25
+2.1.1.4.3
+2.1.1.4.11
+2.1.1.4.12
+No
+1
+1
+2.1.1.4.13
+2.1.1.4.8
+1
+ 
+Figure 5-24  Processing Flow of Fast and Long-Term Correction Degradation 
+5.4.1.1  Fast Correction Degradation 
+The degradation parameter for fast correction data is defined as: 
+
+=====PAGE 41=====
+ China Satellite Navigation Office 2020 
+35 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+ 
+2
+(
+) / 2
+fc
+u
+lat
+a t
+t
+t
+
+
+
+
+                        (5-38) 
+where, a is the fast correction degradation factor determined from Message Type 7. t is 
+the current time. 
+ut is the application time of fast correction; For UDREIs broadcast in Types 
+2-5 and 24, 
+ut equals the time of applicability of the fast corrections; For UDREIs broadcast 
+in Type 6 and if the IODF=3, 
+ut also equals the time of applicability of the fast corrections; 
+For UDREIs broadcast in Type 6 and IODF ്
+ 3, ݐ௨ is defined to be the time of 
+transmission of the first bit of Message Type 6 at the GEO. 
+lat
+t
+ is the system latency 
+determined from Message Type 7. 
+5.4.1.2  Range-Rate Correction Degradation 
+If aii =0, then the range-rate correction degradation (
+rrc
+
+) is equal to 0. Otherwise, 
+rrc
+
+ 
+is divided into two cases.  
+（1）The IODFs of both the current and previous fast corrections are not equal to 3 
+
+
+3
+,
+3
+0
+,
+1
+,
+1
+4
+current
+previous
+rrc
+fc j
+rrc
+of
+current
+previous
+IODF
+IODF
+aI
+B
+t
+t
+IODF
+IODF
+t
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        (5-39) 
+（2）At least one of the IODFs is equal to 3 
+
+
+,
+2
+,
+,
+2
+0
+,
+/ 2
+0
+/ 2
+,
+/ 2
+0
+2
+fc j
+rrc
+fc j
+rrc
+of
+fc j
+t
+I
+a
+t
+I
+B
+t
+t
+t
+I
+t
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+           (5-40) 
+where, a (aii) is the fast corrections degradation factor determined from Message Type 7; 
+t is the current time; Ifc,j is the shortest time-out interval for any satellite included in the 
+associated fast corrections in Message Type 2-5 or 24; Brrc is derived from Message Type 10; 
+IODFcurrent is the IODF associated with most recent fast correction; IODFprevious is the IODF 
+associated with previous fast correction; tof is the time of applicability of the most recent fast 
+correction; tof,previous is the time of applicability of the previous fast correction; Δt=tof - tof,previous. 
+5.4.1.3  Long Term Correction Degradation 
+The degradation associated with long-term corrections is covered by two cases 
+depending on whether both offset and velocity (Type 24 or 25 with velocity code=1) or only 
+offset (Type 24 or 25 with velocity code=0) is included in the message. 
+ 
+
+=====PAGE 42=====
+ China Satellite Navigation Office 2020 
+36 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+（1）velocity code=1 
+0
+0
+_
+_
+_
+0
+0
+_
+0
+,
+max(0,
+,
+)
+,
+ltc vl
+ltc
+ltc lsb
+ltc vl
+ltc vl
+t
+t
+t
+I
+C
+C
+t
+t t
+t
+I
+otherwise
+
+
+
+
+
+
+
+
+
+
+         (5-41) 
+where, t is the current time; t0 is the time of applicability for the long term correction; 
+Iltc_v1 is the update interval determined from Message Type 10; Cltc_lsb is the maximum round-
+off error determined from Message Type 10; Cltc_v1 is the velocity error determined from 
+Message Type 10. 
+（2）velocity code=0 
+ 
+_ 0
+_ 0
+ltc
+ltc
+ltc
+v
+ltc
+v
+t
+t
+C
+I
+
+
+
+
+
+
+
+
+
+
+
+                         (5-42) 
+where, t is the current time; tltc is the time of transmission of the first bit of the long term 
+correction message at the GEO; Iltc_v0 is the minimum update interval determined from 
+Message Type 10；Cltc_v0 is determined from Message Type 10; ہݔۂ means the floor or 
+greatest integer less than x function. 
+（3）GEO Navigation Message Degradation 
+0
+0
+_
+_
+0
+0
+0
+,
+max(0,
+,
+)
+,
+geo
+ltc
+geo lsb
+geo v
+geo
+t
+t
+t
+I
+C
+C
+t
+t t
+t
+I
+otherwise
+
+
+
+
+
+
+
+
+
+
+      (5-43) 
+where, t is the current time; t0 is the time of applicability for the GEO navigation 
+message; Igeo is the update interval for GEO navigation messages determined from Message 
+Type 10; Cgeo_lsb is the maximum round-off error determined from Message Type 10; Cgeo_v is 
+the velocity error determined from Message Type 10. 
+5.4.1.4  Degradation for En Route Through LNAV 
+When using fast or long term corrections which have timed out for LNAV/VNAV, LP, or 
+LPV approach, but have not timed out for other navigation modes, an extra “catch-all” 
+degradation factor is applied. This degradation is: 
+ 
+εer= ൞
+0,
+neither fast nor long term corrections
+have timed out for approach  ሺLNAV / VNAV,LP,LPVሻ
+Cer,
+if fast or long term corrections
+have timed out for approach  ሺLNAV / VNAV,LP,LPVሻ
+     (5-44) 
+where, Cer is determined from Message Type 10. 
+5.4.2  Degradation of Ionospheric Corrections 
+The residual error associated with the ionospheric corrections is characterized by the 
+
+=====PAGE 43=====
+ China Satellite Navigation Office 2020 
+37 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+variance (
+2
+ionogrid
+
+). This term is computed as: 
+ 
+
+
+2
+2
+2
+2
+,
+0
+,
+0
+GIVE
+iono
+iono
+ionogrid
+GIVE
+iono
+iono
+RSS
+RSS
+
+
+
+
+
+
+
+
+
+
+
+
+
+                (5-45) 
+ 
+
+
+_
+_
+iono
+iono
+iono step
+iono ramp
+iono
+iono
+t
+t
+C
+C
+t
+t
+I
+
+
+
+
+
+
+
+
+
+
+
+               (5-46) 
+where, RSSiono is determined from Message Type 10; σGIVE is determined from Message 
+Type 26; t is the current time; tiono is the time of transmission of the first bit of the ionospheric 
+correction message at the GEO; Ciono_step is determined from Message Type 10; Ciono_ramp is 
+determined from Message Type 10; Iiono is the minimum update interval for ionospheric 
+correction messages determined from Message Type 10; ہݔۂ means the floor or greatest 
+integer less than x function. 
+ 
+ 
+
+=====PAGE 44=====
+ China Satellite Navigation Office 2020 
+38 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+6  Abbreviations 
+A-SBAS 
+African SBAS 
+BDS 
+BeiDou Navigation Satellite System 
+BDSBAS 
+BeiDou Satellite Based Augmentation System 
+BDT 
+BeiDou Navigation Satellite System Time 
+BIPM 
+International Bureau of Weights and Measures 
+BPSK 
+Binary Phase Shift Keying 
+CRC 
+Cyclic Redundancy Check 
+DFMC 
+Dual-Frequency Multi-Constellation 
+ECEF 
+Earth Centered Earth Fixed 
+EGNOS 
+European Geostationary Navigation Overlay System 
+FEC 
+Forward Error Correction 
+GAGAN 
+GPS Aided GEO Augmented Navigation system 
+GEO 
+Geostationary Earth Orbit 
+GIVE 
+Grid Ionospheric Vertical Error 
+GIVEI 
+Grid Ionospheric Vertical Error Indicator 
+GLONASS 
+Global Navigation Satellite System 
+GPS 
+Global Positioning System 
+GPST 
+GPS Time 
+ICAO 
+International Civil Aviation Organization 
+ICD 
+Interface Control Document 
+IGP 
+Ionospheric Grid Point 
+IOD 
+Issue of Data 
+IODF 
+Issue of Data Fast correction 
+IODP 
+Issue of Data, PRN mask 
+KASS 
+Korean Augmentation Satellite System 
+LSB 
+Least Significant Bit 
+LNAV 
+Lateral NAVigation 
+LP 
+Localizer Performance 
+LPV 
+Localizer Performance with Vertical guidance 
+
+=====PAGE 45=====
+ China Satellite Navigation Office 2020 
+39 
+BDS-SIS-ICD-BDSBAS-B1C-1.0 
+2020-07 
+MSAS 
+MTSAT Satellite-based Augmentation System 
+MSB 
+Most Significant Bit 
+NICT 
+National Institute of Information and Communications Technology 
+NIST 
+National Institute of Standards and Technology 
+NTSC 
+National Time Service Center Chinese Academy Of Sciences 
+PRN 
+Pseudo Random Noise 
+SARPs 
+Standards And Recommended Practices 
+SBAS 
+Satellite Based Augmentation System 
+SDCM 
+System of Differential Correction and Monitoring 
+SF 
+Single Frequency 
+SIS 
+Signal-In-Space 
+SNT 
+SBAS Network Time 
+SPAN 
+Southern Positioning Augmentation Network 
+TOW 
+Time Of Week 
+UDRE 
+User Differential Range Error 
+UDREI 
+User Differential Range Error Indicator 
+URA 
+User Range Accuracy 
+USNO 
+U. S. Naval Observatory 
+UTC 
+Universal Time Coordinated 
+VNAV 
+Vertical NAVigation 
+WAAS 
+Wide Area Augmentation System 
+WGS-84 
+World Geodetic System 84 
+WN 
+Week Number 
+ 

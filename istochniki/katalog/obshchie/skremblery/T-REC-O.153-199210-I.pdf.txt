@@ -1,0 +1,326 @@
+
+=====PAGE 1=====
+INTERNATIONAL  TELECOMMUNICATION  UNION
+CCITT
+O.153
+THE  INTERNATIONAL
+(10/92)
+TELEGRAPH  AND  TELEPHONE
+CONSULTATIVE  COMMITTEE
+SPECIFICATIONS  OF  MEASURING  EQUIPMENT
+BASIC  PARAMETERS  FOR  THE
+MEASUREMENT  OF  ERROR  PERFORMANCE
+AT  BIT  RATES  BELOW  THE  PRIMARY  RATE
+Recommendation  O.153
+
+=====PAGE 2=====
+FOREWORD
+The CCITT (the International Telegraph and Telephone Consultative Committee) is a permanent organ of the
+International Telecommunication Union (ITU). CCITT is responsible for studying technical, operating and tariff
+questions and issuing Recommendations on them with a view to standardizing telecommunications on a worldwide
+basis.
+The Plenary Assembly of CCITT which meets every four years, establishes the topics for study and approves
+Recommendations prepared by its Study Groups. The approval of Recommendations by the members of CCITT between
+Plenary Assemblies is covered by the procedure laid down in CCITT Resolution No. 2 (Melbourne, 1988).
+Recommendation O.153 was revised by Study Group IV and was approved under the Resolution No. 2
+procedure on the 5th of October 1992.
+___________________
+CCITT  NOTE
+In this Recommendation, the expression “Administration” is used for conciseness to indicate both a
+telecommunication administration and a recognized private operating agency.
+  ITU  1993
+All rights reserved. No part of this publication may be reproduced or utilized in any form or by any means, electronic or
+mechanical, including photocopying and microfilm, without permission in writing from the ITU.
+
+=====PAGE 3=====
+Recommendation O.153     (10/92)
+1
+Recommendation O.153
+Recommendation O.153     (10/92)
+BASIC  PARAMETERS  FOR  THE  MEASUREMENT  OF  ERROR  PERFORMANCE
+AT  BIT  RATES  BELOW  THE  PRIMARY  RATE
+(Melbourne, 1988; revised 1992)
+Abstract
+Defines the requirements for equipment to measure error performance at bit rates between 0.050 and 168 kbit/s
+Keywords
+–
+digital error detector;
+–
+digital pattern generator;
+–
+error performance measurement;
+–
+measurement;
+–
+tester.
+PREAMBLE
+The requirements for the characteristics of error measuring equipment which are described below must be
+adhered to in order to ensure compatibility between equipment produced by different manufacturers.
+While requirements are given for the equipment, the realization of the equipment configuration is not covered
+and should be given careful consideration by the designer and user. In particular, it is not required that all features listed
+below shall be provided in one piece of equipment. Administrations may select those functions which correspond best to
+their applications.
+When selecting functions, administrations may also consider other Recommendations dealing with error
+measuring equipment, e.g. Recommendations O.151 [17] and O.152 [18].
+1
+General
+The equipment is designed to measure the error performance on circuits operating at bit rates as defined in § 3.
+The measurement is based on the direct comparison of specified test patterns which are transmitted through the circuit
+under test, with identical patterns generated at the receive side. Synchronous and asynchronous operation shall be
+possible.
+2
+Test patterns
+The following test patterns are recommended (see also Recommendation O.150 [16]).
+Note – The use of certain test patterns may be restricted to synchronous or asynchronous operation only. It
+shall be possible to transmit the patterns for an unlimited time.
+2.1
+511-bit pseudo-random test pattern
+This pattern is primarily intended for error measurements at bit rates up to 14.4 kbit/s (see § 3.1).
+The pattern may be generated in a nine-stage shift-register whose 5th and 9th stage outputs are added in a
+modulo-two addition stage, and the result is fed back to the input of the first stage. The pattern begins with the first ONE
+of 9 consecutive ONES.
+
+=====PAGE 4=====
+2
+Recommendation O.153     (10/92)
+Number of shift-register stages
+9
+Length of the pseudo-random sequence 
+29 – 1 = 511 bits
+Longest sequence of ZEROs 
+8 (non-inverted signal)
+2.2
+2047-bit pseudo-random test pattern
+If provided, this pattern is primarily intended for error measurements at bit rates of 64 kbit/s and N × 64 kbit/s
+(see § 3.3).
+The pattern may be generated in an eleven-stage shift-register whose 9th and 11th stage outputs are added in a
+modulo-two addition stage, and the result is fed back to the input of the first stage (see also Recommen–
+dation O.152 [18]).
+Number of shift-register stages 
+11
+Length of the pseudo-random sequence 
+211 – 1 = 2047 bits
+Longest sequence of ZEROs 
+10 (non-inverted signal)
+2.3
+1 048 575 bits pseudo-random test pattern
+This pattern is primarily intended for error measurements at bit rates up to 72 kbit/s (see § 3.2 below).
+The pattern may be generated in a twenty-stage shift-register whose 3rd and 20th stage outputs are added in a
+modulo-two addition stage, and the result is fed back to the input of the first stage.
+Number of shift-register stages 
+20
+Length of the pseudo-random sequence 
+220 – 1 = 1 048 575 bits
+Longest sequence of ZEROs 
+19 (non-inverted signal)
+Note – This test pattern is not identical with the pattern of the same length specified in Recommen–
+dation O.151 [17].
+2.4
+Fixed test patterns (for continuity tests)
+–
+Permanent space;
+–
+Permanent mark;
+–
+Alternating space/mark with a ratio of: 1 : 1, 1 : 3, 1 : 7, 3 : 1, 7 : 1;
+–
+“Quick brown fox” – text (QBF) (see Recommendation R.52 [1]) (asynchronous mode only).
+2.5
+Programmable test patterns
+A freely programmable pattern with a length of at least 1024 bits is recommended.
+2.6
+Loss of sequence synchronization
+Sequence synchronization shall be considered to be lost and resynchronization shall be started if
+a)
+the bit error ratio is  ≥  0.20 during an integration interval of 1 second; or
+b)
+it can be unambiguously identified that the test pattern and the reference pattern are out of phase.
+Note – One method to recognize the out-of-phase condition is the evaluation of the error pattern resulting from
+a bit-by-bit comparison. If the error pattern has the same structure as the pseudo-random test pattern, the out-of-phase
+condition can be recognized.
+This sub-section requires further study.
+
+=====PAGE 5=====
+Recommendation O.153     (10/92)
+3
+3
+Bit rates
+The instrumentation shall provide for measurements at bit rate ranges as specified in the categories below.
+3.1
+Data transmission via telephone-type circuits using modems
+–
+Bit rate range 50 bit/s to 19 200 bit/s.
+See Recommendations V.5 [2] and V.6 [3] for details.
+Note – Modems operating at bit rates above 14 400 bit/s are not covered by CCITT Recommendations.
+3.2
+Data transmission via group-band circuits using wideband modems
+–
+Bit rate range 48 kbit/s to 168 kbit/s.
+See Recommendations V.36 [4] and V.37 [5] for details.
+3.3
+Data transmission at and above 64 kbit/s
+With regard to error performance measurements at 64 kbit/s, and N ×  64 kbit/s, relevant information can be
+found in Recommendation O.152 [18].
+Information on measurements at higher bit rates is contained in Recommendation O.151 [17].
+3.4
+Deviation from nominal bit rate
+For bit rates up to 9600 bit/s the maximum deviation from the nominal bit rate shall be  ≤  0.01% if timing is
+not derived from the object under test.
+For the higher bit rates the maximum deviation shall be  ≤  0.002% if timing is not derived from the object
+under test.
+3.5
+Clock sources
+Clock signals are provided through the interface, via an external synchronisation input or from an internal
+clock generator.
+4
+Interfaces
+Depending on the application and the bit rate, one or several of the following interfaces shall be provided:
+–
+Interface according to Recommendation V.10 (X.26) [6]
+–
+Interface according to Recommendation V.11 (X.27) [7]
+–
+Interface according to Recommendations V.24 [8] and V.28 [9]
+–
+Interface according to Recommendation V.35 [10]
+–
+Interface according to Recommendation V.36 [4]
+–
+Interface according to Recommendations X.21 [11] and X.24 [12].
+5
+Modes of operation
+The instrumentation must fully simulate the characteristics of a DTE and/or a DCE in half duplex and/or full
+duplex mode. This includes the relevant software or hardware handshaking procedures. In synchronous half duplex
+mode, the test pattern shall be preceded by two or more leading pads (i.e. characters with alternating mark and space
+bits) to enable clock recovery. These pads shall be followed by two or more block-synchronization characters.
+
+=====PAGE 6=====
+4
+Recommendation O.153     (10/92)
+If the mode of operation requires, it shall be possible to select the parity check conditions even, odd, mark and
+space.
+Note – The insertion of parity check bits is normally not possible when using pseudo-random test patterns.
+6
+Bit of synchronization
+Two modes of synchronization shall be possible:
+–
+Synchronization by means of a timing signal derived from the object under test (e.g. from a modem
+operating in the synchronous mode).
+–
+Synchronization from the transitions of the received test signal (e.g. when a modem is operating in the
+nonsynchronous mode).
+7
+Codes
+For encoding the QBF-text (Recommendation R.52 [1]) or a freely programmable pattern, the following data
+signal code shall be provided:
+–
+CCITT Alphabet No. 5 with 7 bits/character (Recommendation T.50 [13]).
+For asynchronous operation 1 or 2 stop bits shall be selectable.
+8
+Error measurements and error evaluation
+8.1
+Bit error measurements
+The range for error ratio measurements shall be 10–2 to 10–7. The measurement time shall be sufficiently long
+to achieve accurate results.
+Error ratios smaller than 10–7 can be observed by providing the capability to count cumulative errors.
+8.2
+Block error measurements
+It shall be possible to perform block error measurements. The block length shall be selectable to 1000 or
+10 000 bits or shall be equal to the length of the pseudo-random sequence used for the error test. In addition, a block
+length of 32 768 bits shall be provided for measurements at bit rates above 14.4 kbit/s.
+The range for block error ratio measurements shall be 100 to 10–5 with measurement times being sufficiently
+long to achieve accurate results.
+8.3
+Simultaneous measurements
+It shall be possible to perform bit error ratio and block error ratio measurements simultaneously.
+8.4
+Error performance evaluation
+The instrumentation shall be capable of detecting errored seconds. The number of errored and error-free time
+intervals in a selectable time period from 1 minute to 24 hours, or continuous, shall be counted and displayed.
+For this measurement the error detection circuits of the instrumentation shall be controlled by an internal timer
+which sets intervals of equal length and which operates independently of the occurrence of errors.
+The measurement of other error performance parameters and the application of Recommendation G.821 [14]
+are under study.
+
+=====PAGE 7=====
+Recommendation O.153     (10/92)
+5
+9
+Measurement of distortion
+If the instrumentation provides for distortion measurements, the following specifications are applicable.
+9.1
+Measurement of individual distortion
+The degrees of early and late individual distortion shall be measured when the instrumentation is operating in
+the mode in which synchronization is derived from transitions in the received test signal.
+When using pseudo-random test signals, the measuring error shall be less than  ± 3%.
+9.2
+Measurement of bias distortion
+The instrumentation shall measure bias distortion on reversals (alternating space/mark with a ratio of 1 : 1).
+In this mode, the measuring error shall be less than  ± 2%.
+10
+Remote control, recording of measurement results
+As an option, an interface shall be provided which allows remote control of the instrumentation and further
+processing of the measuring results.
+If provided, the interface shall comply with the interface bus according to IEC Publication 625 [15] or with
+Recommendation V.24 [8].
+11
+Operating environment
+The electrical performance requirements shall be met when operating at climatic conditions as specified in
+§ 2.1 of Recommendation O.3 [19].
+References
+[1]
+CCITT Recommendation R.52 Standardization of international texts for the measurement of the margin of
+start-stop equipment.
+[2]
+CCITT Recommendation V.5 Standardization of data signalling rates for synchronous data transmission in
+the general switched telephone network.
+[3]
+CCITT Recommendation V.6 Standardization of data signalling rates for synchronous data transmission on
+leased telephone-type circuits.
+[4]
+CCITT Recommendation V.36 Modems for synchronous data transmission using 60-108 kHz group band
+circuits.
+[5]
+CCITT Recommendation V.37 Synchronous data transmission at a data signalling rate higher than 72 kbit/s
+using 60-108 kHz group band circuits.
+[6]
+CCITT Recommendation V.10 Electrical characteristics for unbalanced double-current interchange circuits
+for general use with integrated circuit equipment in the field of data communications.
+[7]
+CCITT Recommendation V.11 Electrical characteristics for balanced double-current interchange circuits for
+general use with integrated circuit equipment in the field of data communications.
+[8]
+CCITT Recommendation V.24 List of definitions for interchange circuits between data terminal equipment
+and data circuit-terminating equipment.
+[9]
+CCITT Recommendation V.28 Electrical characteristics for unbalanced double-current interchange circuits.
+
+=====PAGE 8=====
+6
+Recommendation O.153     (10/92)
+[10]
+CCITT Recommendation V.35 Data transmission at 48 kbit/s using 60-108 kHz group band circuits.
+[11]
+CCITT Recommendation X.21 Interface between data terminal equipment (DTE and data circuit-terminating
+equipment (DCE) for synchronous operation on public data networks.
+[12]
+CCITT Recommendation X.24 List of definitions for interchange circuits between data terminal equipment
+(DTE) and data circuit-terminating equipment (DCE) on public data networks.
+[13]
+CCITT Recommendation T.50 International Alphabet No. 5.
+[14]
+CCITT Recommendation G.821 Error performance of an international digital connection forming part of an
+integrated digital network.
+[15]
+IEC Publication 625 An interface system for programmable measuring instruments (byte serial, bit parallel).
+[16]
+CCITT Recommendation O.150 Digital test patterns for performance measurements on digital transmission
+equipment.
+[17]
+CCITT Recommendation O.151 Error performance measuring equipment operating at the primary bit rate
+and above.
+[18]
+CCITT Recommendation O.152 Error performance measuring equipment for bit rates of 64 kbit/s and
+N  × 64 kbit/s.
+[19]
+CCITT Recommendation O.3 Climatic conditions and relevant tests for measuring equipment.

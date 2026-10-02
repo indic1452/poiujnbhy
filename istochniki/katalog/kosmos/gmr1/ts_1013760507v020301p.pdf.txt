@@ -1,0 +1,1111 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08)
+Technical Specification 
+GEO-Mobile Radio Interface Specifications (Release 2);
+General Packet Radio Service;
+Part 5: Radio interface physical layer specifications;
+Sub-part 7: Radio Subsystem Synchronization;
+GMPRS-1 05.010
+ 
+ 
+
+=====PAGE 2=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+2 
+GMPRS-1 05.010 
+ 
+ 
+ 
+ 
+Reference 
+RTS/SES-00303-5-7 
+Keywords 
+GMPRS, GMR, GPRS, GSM, GSO, interface, 
+MES, mobile, MSS, radio, satellite, S-PCN, 
+synchronization, terminal 
+ETSI 
+650 Route des Lucioles 
+F-06921 Sophia Antipolis Cedex - FRANCE 
+ 
+Tel.: +33 4 92 94 42 00   Fax: +33 4 93 65 47 16 
+ 
+Siret N° 348 623 562 00017 - NAF 742 C 
+Association à but non lucratif enregistrée à la 
+Sous-Préfecture de Grasse (06) N° 7803/88 
+ 
+Important notice 
+Individual copies of the present document can be downloaded from: 
+http://www.etsi.org 
+The present document may be made available in more than one electronic version or in print. In any case of existing or 
+perceived difference in contents between such versions, the reference version is the Portable Document Format (PDF). 
+In case of dispute, the reference shall be the printing on ETSI printers of the PDF version kept on a specific network drive 
+within ETSI Secretariat. 
+Users of the present document should be aware that the document may be subject to revision or change of status. 
+Information on the current status of this and other ETSI documents is available at 
+http://portal.etsi.org/tb/status/status.asp 
+If you find errors in the present document, please send your comment to one of the following services: 
+http://portal.etsi.org/chaircor/ETSI_support.asp 
+Copyright Notification 
+No part may be reproduced except as authorized by written permission. 
+The copyright and the foregoing restriction extend to reproduction in all media. 
+ 
+© European Telecommunications Standards Institute 2008. 
+All rights reserved. 
+ 
+DECTTM, PLUGTESTSTM, UMTSTM, TIPHONTM, the TIPHON logo and the ETSI logo are Trade Marks of ETSI registered 
+for the benefit of its Members. 
+3GPPTM is a Trade Mark of ETSI registered for the benefit of its Members and of the 3GPP Organizational Partners. 
+
+=====PAGE 3=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+3 
+GMPRS-1 05.010 
+ 
+Contents 
+Intellectual Property Rights................................................................................................................................5 
+Foreword.............................................................................................................................................................5 
+Introduction ........................................................................................................................................................6 
+1 
+Scope........................................................................................................................................................7 
+2 
+References................................................................................................................................................7 
+2.1 
+Normative references .........................................................................................................................................7 
+2.2 
+Informative references........................................................................................................................................8 
+3 
+Definitions and abbreviations...................................................................................................................8 
+3.1 
+Definitions..........................................................................................................................................................8 
+3.2 
+Abbreviations .....................................................................................................................................................9 
+4 
+General description of synchronization system........................................................................................9 
+4.1 
+System timing structure......................................................................................................................................9 
+4.2 
+Timebase counter ...............................................................................................................................................9 
+4.3 
+General requirement...........................................................................................................................................9 
+4.3.1 
+Timing and frequency reference point..........................................................................................................9 
+4.3.2 
+MES requirement..........................................................................................................................................9 
+4.3.3 
+Network requirement ....................................................................................................................................9 
+4.3.4 
+Measurement conditions.............................................................................................................................10 
+5 
+Timing synchronization, TtG/GtT call...................................................................................................10 
+5.1 
+General description...........................................................................................................................................10 
+5.2 
+Timing of forward link common channels .......................................................................................................10 
+5.2.1 
+FCCH/BCCH timing...................................................................................................................................10 
+5.2.2 
+CCCH timing..............................................................................................................................................10 
+5.3 
+Idle mode timing synchronization....................................................................................................................10 
+5.3.1 
+Initial timing acquisition.............................................................................................................................10 
+5.3.2 
+Paging mode ...............................................................................................................................................10 
+5.3.3 
+Alerting mode .............................................................................................................................................10 
+5.4 
+Synchronization at initial access ......................................................................................................................10 
+5.4.1 
+Synchronization process .............................................................................................................................10 
+5.4.2 
+RACH timing pre-correction ......................................................................................................................11 
+5.4.3 
+Description of parameters...........................................................................................................................11 
+5.4.4 
+Timing accuracy .........................................................................................................................................11 
+5.5 
+Dedicated mode synchronization .....................................................................................................................11 
+5.5.1 
+In-call timing relationship...........................................................................................................................11 
+5.5.2 
+In-call synchronization scenario .................................................................................................................11 
+5.5.3 
+Transmission timing drift rate.....................................................................................................................11 
+5.5.4 
+RX/TX guard time violation.......................................................................................................................12 
+5.5.5 
+Packet transfer mode time slot synchronization..........................................................................................12 
+5.6 
+Packet transfer mode synchronization..............................................................................................................12 
+5.6.1 
+Packet transfer mode timing relationship....................................................................................................12 
+5.6.2 
+Time synchronization for Packet switched channels ..................................................................................13 
+5.6.3 
+Transmission timing drift rate.....................................................................................................................14 
+6 
+Frequency synchronization, TtG/GtT call..............................................................................................14 
+6.1 
+General description...........................................................................................................................................14 
+6.2 
+Frequency of common channels.......................................................................................................................14 
+6.3 
+Idle mode frequency synchronization...............................................................................................................15 
+6.3.1 
+Initial frequency acquisition .......................................................................................................................15 
+6.3.2 
+Paging mode ...............................................................................................................................................15 
+6.3.3 
+Alerting mode .............................................................................................................................................15 
+6.4 
+Synchronization at initial access ......................................................................................................................15 
+6.4.1 
+Frequency compensation strategy...............................................................................................................15 
+6.4.2 
+Parameter description .................................................................................................................................15 
+
+=====PAGE 4=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+4 
+GMPRS-1 05.010 
+ 
+6.5 
+Dedicated mode synchronization .....................................................................................................................15 
+6.6 
+Frequency synchronization for the packet switched channels..........................................................................15 
+7 
+Frame and message synchronization, TtG/GtT call ...............................................................................16 
+7.1 
+Frame synchronization .....................................................................................................................................16 
+7.1.1 
+Frame number definition ............................................................................................................................16 
+7.1.2 
+Frame synchronization scenario .................................................................................................................16 
+7.2 
+Message synchronization .................................................................................................................................17 
+7.2.1 
+Power control message synchronization.....................................................................................................17 
+7.2.1.1 
+Synchronization in master-to-slave direction........................................................................................17 
+7.2.1.2 
+Synchronization in slave-to-master direction........................................................................................17 
+7.2.2 
+SACCH message synchronization, TCH6/TCH9 call ................................................................................17 
+8 
+Synchronization for TtT call ..................................................................................................................17 
+9 
+Aeronautical terminal synchronization scheme......................................................................................17 
+Annex A (informative): 
+Worst-case delay and Doppler features.......................................................18 
+Annex B (informative): 
+Range of timing correction factor ................................................................19 
+Annex C (informative): 
+Differential Doppler frequency.....................................................................20 
+Annex D (informative): 
+SACCH message synchronization, TtG/GtT call........................................21 
+Annex E (normative): 
+Timer T3202 for packet mode of operation.................................................22 
+Annex F (normative): 
+PTCCH/U and PTCCH/D scheduling..........................................................23 
+Annex G (informative): 
+Bibliography...................................................................................................24 
+History..............................................................................................................................................................25 
+ 
+
+=====PAGE 5=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+5 
+GMPRS-1 05.010 
+ 
+Intellectual Property Rights 
+IPRs essential or potentially essential to the present document may have been declared to ETSI. The information 
+pertaining to these essential IPRs, if any, is publicly available for ETSI members and non-members, and can be found 
+in ETSI SR 000 314: "Intellectual Property Rights (IPRs); Essential, or potentially Essential, IPRs notified to ETSI in 
+respect of ETSI standards", which is available from the ETSI Secretariat. Latest updates are available on the ETSI Web 
+server (http://webapp.etsi.org/IPR/home.asp). 
+Pursuant to the ETSI IPR Policy, no investigation, including IPR searches, has been carried out by ETSI. No guarantee 
+can be given as to the existence of other IPRs not referenced in ETSI SR 000 314 (or the updates on the ETSI Web 
+server) which are, or may be, or may become, essential to the present document. 
+Foreword 
+This Technical Specification (TS) has been produced by ETSI Technical Committee Satellite Earth Stations and 
+Systems (SES). 
+The contents of the present document are subject to continuing work within TC-SES and may change following formal 
+TC-SES approval. Should TC-SES modify the contents of the present document it will then be republished by ETSI 
+with an identifying change of release date and an increase in version number as follows: 
+Version 2.m.n 
+where: 
+• 
+the third digit (n) is incremented when editorial only changes have been incorporated in the specification; 
+• 
+the second digit (m) is incremented for all other types of changes, i.e. technical enhancements, corrections, 
+updates, etc. 
+The present document is part 5, sub-part 7 of a multi-part deliverable covering the GEO-Mobile Radio Interface 
+Specifications (Release 2) General Packet Radio Service, as identified below: 
+Part 1: 
+"General specifications"; 
+Part 2: 
+"Service specifications"; 
+Part 3: 
+"Network specifications"; 
+Part 4: 
+"Radio interface protocol specifications"; 
+Part 5: 
+"Radio interface physical layer specifications"; 
+Sub-part 1: 
+"Physical Layer on the Radio Path: General Description"; 
+Sub-part 2: 
+"Multiplexing and Multiple Access; Stage 2 Service Description"; 
+Sub-part 3: 
+"Channel Coding"; 
+Sub-part 4: 
+"Modulation"; 
+Sub-part 5: 
+"Radio Transmission and Reception"; 
+Sub-part 6: 
+"Radio Subsystem Link Control"; 
+Sub-part 7: 
+"Radio Subsystem Synchronization"; 
+Part 6: 
+"Speech coding specifications"; 
+Part 7: 
+"Terminal adaptor specifications". 
+
+=====PAGE 6=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+6 
+GMPRS-1 05.010 
+ 
+Introduction 
+GMR stands for GEO (Geostationary Earth Orbit) Mobile Radio interface, which is used for mobile satellite services 
+(MSS) utilizing geostationary satellite(s). GMR is derived from the terrestrial digital cellular standard GSM and 
+supports access to GSM core networks. 
+The present document is part of the GMR Release 2 specifications. Release 2 specifications are identified in the title 
+and can also be identified by the version number: 
+• 
+Release 1 specifications have a GMR-1 prefix in the title and a version number starting with "1" (V1.x.x.). 
+• 
+Release 2 specifications have a GMPRS-1 prefix in the title and a version number starting with "2" (V2.x.x.). 
+The GMR release 1 specifications introduce the GEO-Mobile Radio interface specifications for circuit mode mobile 
+satellite services (MSS) utilizing geostationary satellite(s). GMR release 1 is derived from the terrestrial digital cellular 
+standard GSM (phase 2) and it supports access to GSM core networks. 
+The GMR release 2 specifications add packet mode services to GMR release 1. The GMR release 2 specifications 
+introduce the GEO-Mobile Packet Radio Service (GMPRS). GMPRS is derived from the terrestrial digital cellular 
+standard GPRS (included in GSM Phase 2+) and it supports access to GSM/GPRS core networks. 
+Due to the differences between terrestrial and satellite channels, some modifications to the GSM standard are necessary. 
+Some GSM specifications are directly applicable, whereas others are applicable with modifications. Similarly, some 
+GSM specifications do not apply, while some GMR specifications have no corresponding GSM specification.  
+Since GMR is derived from GSM, the organization of the GMR specifications closely follows that of GSM. The GMR 
+numbers have been designed to correspond to the GSM numbering system. All GMR specifications are allocated a 
+unique GMR number. This GMR number has a different prefix for Release 2 specifications as follows: 
+• 
+Release 1: GMR-n xx.zyy. 
+• 
+Release 2: GMPRS-n xx.zyy. 
+where: 
+- 
+xx.0yy (z = 0) is used for GMR specifications that have a corresponding GSM specification. In this case, 
+the numbers xx and yy correspond to the GSM numbering scheme. 
+- 
+xx.2yy (z = 2) is used for GMR specifications that do not correspond to a GSM specification. In this 
+case, only the number xx corresponds to the GSM numbering scheme and the number yy is allocated by 
+GMR. 
+- 
+n denotes the first (n = 1) or second (n = 2) family of GMR specifications. 
+A GMR system is defined by the combination of a family of GMR specifications and GSM specifications as follows: 
+• 
+If a GMR specification exists it takes precedence over the corresponding GSM specification (if any). This 
+precedence rule applies to any references in the corresponding GSM specifications. 
+NOTE: 
+Any references to GSM specifications within the GMR specifications are not subject to this precedence 
+rule. For example, a GMR specification may contain specific references to the corresponding GSM 
+specification. 
+• 
+If a GMR specification does not exist, the corresponding GSM specification may or may not apply. The 
+applicability of the GSM specifications is defined in GMPRS-1 01.201 [8]. 
+The clause numbering and the table and figure numbering in the present document are aligned to the numbering of the 
+corresponding Release 1 specification GMR-1 05.010 [6] as far as possible. The table and figure numbering in the 
+present document has been adjusted in order to maintain this alignment as follows: 
+• 
+A table that uses the same table number replaces the corresponding table in GMR-1 05.010 [6]; 
+• 
+A table that uses a different table number is a new additional table. 
+
+=====PAGE 7=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+7 
+GMPRS-1 05.010 
+ 
+1 
+Scope 
+The present document presents the requirements for synchronizing timing and frequency between the MES and the 
+Gateway Station (GS) in the GMR-1 Mobile Satellite System for circuit switch and packet switch modes of operation. 
+2 
+References 
+References are either specific (identified by date of publication and/or edition number or version number) or 
+non-specific. 
+• 
+For a specific reference, subsequent revisions do not apply. 
+• 
+Non-specific reference may be made only to a complete document or a part thereof and only in the following 
+cases:  
+- 
+if it is accepted that it will be possible to use all future changes of the referenced document for the 
+purposes of the referring document;  
+- 
+for informative references. 
+Referenced documents which are not found to be publicly available in the expected location might be found at 
+http://docbox.etsi.org/Reference. 
+For online referenced documents, information sufficient to identify and locate the source shall be provided. Preferably, 
+the primary source of the referenced document should be cited, in order to ensure traceability. Furthermore, the 
+reference should, as far as possible, remain valid for the expected life of the document. The reference shall include the 
+method of access to the referenced document and the full network address, with the same punctuation and use of upper 
+case and lower case letters. 
+NOTE: 
+While any hyperlinks included in this clause were valid at the time of publication ETSI cannot guarantee 
+their long term validity. 
+2.1 
+Normative references 
+The following referenced documents are indispensable for the application of the present document. For dated 
+references, only the edition cited applies. For non-specific references, the latest edition of the referenced document 
+(including any amendments) applies. 
+[1] 
+ETSI TS 101 376-1-1: "GEO-Mobile Radio Interface Specifications (Release 2) General Packet 
+Radio Service; Part 1: General specifications; Sub-part 1: Abbreviations and acronyms; 
+GMPRS-1 01.004". 
+[2] 
+ETSI TS 101 376-4-8: "GEO-Mobile Radio Interface Specifications (Release 2) General Packet 
+Radio Service; Part 4: Radio interface protocol specifications; Sub-part 8: Mobile Radio Interface 
+Layer 3 Specifications; GMPRS-1 04.008". 
+[3] 
+ETSI TS 101 376-5-2: "GEO-Mobile Radio Interface Specifications (Release 2) General Packet 
+Radio Service; Part 5: Radio interface physical layer specifications; Sub-part 2: Multiplexing and 
+Multiple Access; Stage 2 Service Description; GMPRS-1 05.002". 
+[4] 
+ETSI TS 101 376-5-5: "GEO-Mobile Radio Interface Specifications (Release 2) General Packet 
+Radio Service; Part 5: Radio interface physical layer specifications; Sub-part 5: Radio 
+Transmission and Reception; GMPRS-1 05.005". 
+[5] 
+ETSI TS 101 376-5-6: "GEO-Mobile Radio Interface Specifications (Release 2) General Packet 
+Radio Service; Part 5: Radio interface physical layer specifications; Sub-part 6: Radio Subsystem 
+Link Control; GMPRS-1 05.008". 
+
+=====PAGE 8=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+8 
+GMPRS-1 05.010 
+ 
+[6] 
+ETSI TS 101 376-5-7 (V1.3.1): "GEO-Mobile Radio Interface Specifications (Release 1); 
+Part 5: Radio interface physical layer specifications; Sub-part 7: Radio Subsystem 
+Synchronization; GMR-1 05.010". 
+NOTE: 
+This is a reference to a GMR-1 Release 1 specification. See the introduction for more details. 
+[7] 
+ETSI TS 101 376-4-12: "GEO-Mobile Radio Interface Specifications (Release 2) General Packet 
+Radio Service; Part 4: Radio interface protocol specifications; Sub-part 12: Mobile Earth Station 
+(MES) - Base Station System (BSS) interface; Radio Link Control/Medium Access Control 
+(RLC/MAC) protocol; GMPRS-1 04.060". 
+[8] 
+ETSI TS 101 376-1-2: "GEO-Mobile Radio Interface Specifications (Release 2) General Packet 
+Radio Service; Part 1: General specifications; Sub-part 2: Introduction to the GMR-1 family; 
+GMPRS-1 01.201". 
+2.2 
+Informative references 
+The following referenced documents are not essential to the use of the present document but they assist the user with 
+regard to a particular subject area. For non-specific references, the latest version of the referenced document (including 
+any amendments) applies. 
+Not applicable. 
+3 
+Definitions and abbreviations 
+3.1 
+Definitions 
+For the purposes of the present document, the terms and definitions given in GMPRS-1 01.201 [8] and the following 
+apply: 
+Frequency Correction (FC): in-call frequency correction sent over FACCH channel 
+frequency offset: frequency correction sent over AGCH channel 
+guard time violation: message to indicate the violation of Rx/Tx burst guard time 
+MAC_FORWARD_TS_OFFSET: offset in number of timeslots of MAC-slot 0 or D-MAC-slot 0 relative to the start 
+of the downlink frame 
+MAC_RETURN_TS_OFFSET: offset in number of timeslots of MAC-slot 0 or D-MAC-slot 0 relative to the start of 
+the uplink frame 
+Precorrection Indication (PI): timing delay pre-compensated by the MES in the RACH transmission 
+RACH_TS_OFFSET: RACH window offset relative to the start of BCCH window within the same frame, measured in 
+number of timeslots 
+RACH_SYMBOL_OFFSET: RACH timing offset in symbols 
+NOTE: 
+The offset between RACH window and the start of the reference frame seen from the MES. Measured in 
+number of symbols. 
+SA_BCCH_STN: BCCH window offset relative to the start of the frame, in number of timeslots 
+SA_FREQ_OFFSET: twice of the downlink beam center Doppler due to satellite motion only 
+SA_SIRFN_DELAY: within each multiframe, the first FCCH channel frame number relative to the start of the 
+multiframe 
+SB_FRAME_TS_OFFSET: offset between downlink frame N and uplink frame N + 7 at the spot-beam center, 
+measured in number of timeslots 
+
+=====PAGE 9=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+9 
+GMPRS-1 05.010 
+ 
+SB_SYMBOL_OFFSET: additional offset between downlink frame N and uplink frame N + 7 at the spot beam center, 
+measured in number of symbols 
+Timing Correction (TC): in-call timing correction sent over FACCH channel 
+timing offset: timing correction sent over AGCH channel 
+USF Delay Value: if an MES receives a USF in its receive downlink frame N, it applies the USF (i.e. transmits 
+corresponding to the received USF grant) on the uplink frame numbered (N + USF Delay Value) 
+NOTE: 
+USF Delay Value is decoded from USF_DELAY and USF_DELAY Adjustment parameters in BCCH 
+System Information, and it can take values of 6, 7, 8, 9 or 10. 
+3.2 
+Abbreviations 
+For the purposes of the present document, the abbreviations given in GMPRS-1 01.004 [1] apply. 
+4 
+General description of synchronization system 
+Same as clause 4 in GMR-1 05.010 [6]. 
+4.1 
+System timing structure 
+Same as clause 4.1 in GMR-1 05.010 [6]. 
+4.2 
+Timebase counter 
+Same as clause 4.2 in GMR-1 05.010 [6]. 
+4.3 
+General requirement 
+4.3.1 
+Timing and frequency reference point 
+Same as clause 4.3.1 in GMR-1 05.010 [6]. 
+4.3.2 
+MES requirement 
+Same as clause 4.3.2 in GMR-1 05.010 [6], with the addition of the following: 
+MES receiver's time and frequency search ranges (apertures) shall be large enough to accommodate the variations 
+(specified in clause 4.3.3) in the network transmit time and frequency in addition to the satellite-MES relative motion 
+induced time and frequency shifts (see annex A for an informative description), MES oscillator drifts, etc. The MES 
+receiver, operating with such values of time and frequency apertures, shall achieve the performance requirements 
+(i.e. BER, FER, time and frequency estimation accuracies, etc.) specified in GMPRS-1 05.005 [4]. 
+4.3.3 
+Network requirement 
+Same as clause 4.3.3 in GMR-1 05.010 [6], with the addition of the following: 
+The network shall ensure that the maximum variation between the transmit time of a CCCH burst and the transmit time 
+of a PDCH burst does not exceed 12 μs. Similarly, the maximum burst-to-burst variation in the PDCH transmit time 
+shall not exceed 4 μs. Burst-to-burst variations in the network transmit frequency shall not exceed 10 Hz. 
+
+=====PAGE 10=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+10
+GMPRS-1 05.010 
+ 
+4.3.4 
+Measurement conditions 
+Same as clause 4.3.4 in GMR-1 05.010 [6]. 
+5 
+Timing synchronization, TtG/GtT call 
+Same as clause 5 in GMR-1 05.010 [6], except for the addition of the next paragraph, which follows the second 
+paragraph. 
+For the case in which the MES operates in the packet mode, receive timing shall be corrected by monitoring BCCH, 
+PCH or PDCH and transmission timing shall be corrected with factors provided by the Gateway Station (GS). The GS 
+provides correction factors via AGCH or PACCH based on the MES mode and situation, which is explained here. 
+5.1 
+General description 
+Same as clause 5.1 in GMR-1 05.010 [6], except for the addition of the next paragraph, which follows the fifth 
+paragraph. 
+If packet transfer mode is initiated via the RACH then the procedure is identical to that described for circuit switched 
+service in clause 5.3.1. Packet switched time and frequency synchronization for the PDCH and the PRACH is described 
+in clause 5.6. 
+5.2 
+Timing of forward link common channels 
+Same as clause 5.2 in GMR-1 05.010 [6]. 
+5.2.1 
+FCCH/BCCH timing 
+Same as clause 5.2.1 in GMR-1 05.010 [6]. 
+5.2.2 
+CCCH timing 
+Same as clause 5.2.2 in GMR-1 05.010 [6]. 
+5.3 
+Idle mode timing synchronization 
+5.3.1 
+Initial timing acquisition 
+Same as clause 5.3.1 in GMR-1 05.010 [6]. 
+5.3.2 
+Paging mode 
+Same as clause 5.3.2 in GMR-1 05.010 [6]. 
+5.3.3 
+Alerting mode 
+Same as clause 5.3.3 in GMR-1 05.010 [6]. 
+5.4 
+Synchronization at initial access 
+5.4.1 
+Synchronization process 
+Same as clause 5.4.1 in GMR-1 05.010 [6]. 
+
+=====PAGE 11=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+11
+GMPRS-1 05.010 
+ 
+5.4.2 
+RACH timing pre-correction 
+Same as clause 5.4.2 in GMR-1 05.010 [6], with the following additions: 
+The network may send on the AGCH the Immediate Assignment Reject (IAR) message with a reject cause that 
+indicates that the class-2 information bits of the RACH burst are incorrect (e.g. if the RACH burst from the MES does 
+not entirely fit within the RACH window at the network). The IAR message shall contain Timing Correction and 
+Frequency Correction fields (see clauses 5.6.2 and 6.6, and GMPRS-1 04.008 [2]). 
+The MES shall retransmit RACH when it receives the IAR message with the reject cause indicating incorrect 
+class-2 bits. 
+The MES shall apply entire value of the received Frequency Correction to the re-transmitted RACH. 
+An MES of Terminal Type A shall apply entire value of the received Timing Correction to the re-transmitted RACH. 
+An MES of Terminal Type C shall retransmit RACH with a new value of Precorrection Indication that is derived from 
+the received Timing Correction, as described below: 
+The MES of Terminal Type C shall select one of the seven (non-reserved) values of Precorrection Indication shown in 
+the Compensation column of table 5.2 of GMR-1 05.010 [6] such that the selected value, in symbols, is the one closest 
+to one-half of the received Timing Correction converted to units of a symbol (the received Timing Correction is in units 
+of TSB/40, whereas the Precorrection Indication is in units of TSB (i.e. 1/23,4 milliseconds)). Equivalently, the selected 
+value of Precorrection Indication, in symbols, shall be the one which is the closest to (1/80)th of the received Timing 
+Correction in units of TSB/40. The selected value shall be used as the new value of Precorrection Indication in 
+calculation of RACH_SYMBOL_OFFSET (refer to clause 5.4.3 of GMR-1 05.010 [6]). Furthermore, the MES shall 
+send, in the retransmitted RACH, the applied value of Precorrection Indication by converting it to one of the seven 
+(non-reserved) values of the three-bit code shown in table 5.2 of GMR-1 05.010 [6]. 
+5.4.3 
+Description of parameters 
+Same as clause 5.4.3 in GMR-1 05.010 [6], with the following additions for MES of Terminal Type C: 
+For a retransmitted RACH resulting from receipt of Immediate Assignment Reject message from the network, the MES 
+of Type C shall apply transmit timing offset based on computation of RACH_SYMBOL_OFFSET derived as described 
+in clause 5.4.2. For all other RACH transmissions, an MES of Terminal Type C shall apply transmit timing offset based 
+on computation of RACH_SYMBOL_OFFSET as described in clause 5.4.3 of GMR-1 05.010 [6]. This offset is relative 
+to the start of timeslot 0 of the received TDMA frame in the forward direction. 
+5.4.4 
+Timing accuracy 
+Same as clause 5.4.4 in GMR-1 05.010 [6]. 
+5.5 
+Dedicated mode synchronization 
+Same as clause 5.5 in GMR-1 05.010 [6]. 
+5.5.1 
+In-call timing relationship 
+Same as clause 5.5.1 in GMR-1 05.010 [6]. 
+5.5.2 
+In-call synchronization scenario 
+Same as clause 5.5.2 in GMR-1 05.010 [6]. 
+5.5.3 
+Transmission timing drift rate 
+Same as clause 5.5.3 in GMR-1 05.010 [6]. 
+
+=====PAGE 12=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+12
+GMPRS-1 05.010 
+ 
+5.5.4 
+RX/TX guard time violation 
+Same as clause 5.5.4 in GMR-1 05.010 [6] except for the following changes: 
+For a terminal type C MES in the packet data mode, the available RX/TX guard time shall be monitored at least once 
+every 15 s. If the guard time is found to be smaller than a predefined threshold of 2 200 μs, the MES shall abort the 
+TBF and send RACH for requesting new packet resource. 
+5.5.5 
+Packet transfer mode time slot synchronization 
+An MES receiving PDCH(4,3), PDCH(5,3) or PDCH(5,12) shall read MAC_FORWARD_TS_OFFSET and 
+MAC_RETURN_TS_OFFSET parameters in the BCCH. These parameters have the unit of time slot (duration 
+1,667 ms). The MES shall offset the position of MAC-slot 0 by MAC_FORWARD_TS_OFFSET from the starting of 
+absolute frame reference in the forward link. Similarly an MES transmitting PDCH(4,3), PDCH(5,3), or PDCH(5,12) 
+shall derive the position of MAC-slot 0 in a frame in the return link by adding MAC_RETURN_TS_OFFSET to the 
+starting point of absolute frame reference. 
+MAC-slot has values 0, 1, …, 7. Thus last few MAC-slots will continue to the next frame. When the MES requires 
+frame reference for any calculation, it will use the frame number associated with the MAC-slot 0 as reference. 
+An MES receiving PDCH(2,6) shall offset the position of D-MAC-slot 0 by MAC_FORWARD_TS_OFFSET from the 
+starting of absolute frame reference in the forward link. Similarly an MES transmitting PDCH(1,6) shall derive the 
+position of D-MAC-slot 0 in a frame in the return link by adding MAC_RETURN_TS_OFFSET to the starting point of 
+absolute frame reference.  
+D-MAC-slot has values 0, 1, 2 and 3. Thus last few D-MAC-slots will continue to the next frame. When the MES 
+requires frame reference for any calculation, it will use the frame number associated with the D-MAC-slot 0 as 
+reference. 
+5.6 
+Packet transfer mode synchronization 
+In packet transfer mode, either the PDCH channel or the PRACH channel is used. The synchronization scheme 
+addressed below applies to both of these two channels. 
+5.6.1 
+Packet transfer mode timing relationship 
+The uplink and downlink frame timing relationship described in clause 5.5.1 shall apply to packet transfer mode. The 
+time between the start of receive frame N and the start of transmit frame N + 7 at the MES is given by, 
+OF
+T
+Δ
+. 
+To interpret the Uplink State Flag (USF) in the downlink PUI (see GMPRS-1 04.060 [7]), the MES shall apply the 
+following rule. If the MES receives a USF in its receive downlink frame N, it shall apply the USF to the uplink frame 
+numbered (N + USF DELAY Value), where the USF Delay Value is decoded from the USF_DELAY and 
+USF_DELAY_Adjustment parameters that are contained in System Information (see GMPRS-1 04.008 [2]). The USF 
+Delay Value, after adjustment if any, decodes to values of 6, 7, 8, 9 or 10.  
+Thus the MES response time defined as the time measured from the end of the time slot in which the MES received a 
+PNB(m,3) or PNB2(m,3) or PNB2(m,12), containing the USF assigned to the MES, and the start of the time slot in 
+which the MES is granted uplink access by the USF (see GMPRS-1 04.060 [7]): 
+For terminals assigned carrier type PDTCH(4,3), PDTCH(5,3), or PDTCH(5,12) the response time is given by: 
+ 
+TRESP-1 = 
+OF
+T
+Δ
+ - TS × MAC_FORWARD_TS_OFFSET + TS × MAC_RETURN_TS_OFFSET- 5 ms + 
+ 
+(USF Delay Value - 7) × 40 ms. 
+An MES receiving a PDTCH(5,12) shall decode additional USF values in the Extension PUI. Refer to 
+GMPRS-1 04.060 [7]) for TRESP-1 calculation for the USF values assigned through the Extension PUI. 
+
+=====PAGE 13=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+13
+GMPRS-1 05.010 
+ 
+For terminals assigned carrier type PDTCH(2,6) and PDTCH(1,6) the response time is given by: 
+TRESP-2 = 
+OF
+T
+Δ
+ - TS × MAC_FORWARD_TS_OFFSET + TS × MAC_RETURN_TS_OFFSET- 10 ms + 
+ 
+(USF Delay Value - 7) × 40 ms 
+The range of values for MAC_FORWARD_TS_OFFSET and MAC_RETURN_TS_OFFSET is given in 
+GMPRS-1 04.008 [2]. 
+The MES shall be able to transmit a PNB in the assigned time slot and frame provided the response time, TRESP-2, is 
+greater than or equal to 40 ms. 
+The value of TRESP-2 may be such that the terminal type C MES can only partially receive PNB(2,6) when it transmits 
+PNB(1,6) on the uplink. Consider a value TRESP-2 such that the terminal type C MES can receive burst-header of 
+downlink PNB(2,6), but not the PRI. For such values of TRESP-2, the MES of terminal type C shall receive, decode and 
+interpret the burst header of PNB(2,6) (see also GMPRS-1 05.002 [3] and GMPRS-1 04.060 [7]). 
+The GS shall determine USF_DELAY and USF_DELAY Adjustment (if applicable) values for a spot beam such than 
+for every MES within the boundary of the spot beam, the above requirement shall be satisfied. 
+During the packet transfer mode, the value of [
+]
+0
+2
+T
+TU −
+ may be updated via PTCCH/D or PACCH messages to 
+compensate for any timing drift caused by MES oscillator and MES-satellite relative motion as described in 
+clause 5.6.2. 
+5.6.2 
+Time synchronization for Packet switched channels 
+The MES receiver timing shall be derived from its internal timebase, but frequently corrected by timing detection of the 
+received PDCH bursts during packet transfer mode. The task of receiver timing correction has to be performed often 
+enough to handle the worst case timing drift rate specified in clause 4.3.2. The target timing accuracy is to achieve 
+demodulation performances specified by GMPRS-1 05.005 [4]. 
+In the uplink, a closed-loop synchronization scheme is used. The synchronization process is detailed below: 
+The GS shall perform the scheduled timing advance mechanism for all MES working in packet transfer mode for which 
+a PTCCH/U is assigned. Therefore the GS shall monitor the delay of the PNB bursts sent by the MES on PTCCH/U and 
+respond with timing advance values for all MES performing the procedure on that PDCH. These timing advance values 
+shall be sent via a downlink signalling message on PTCCH/D (see GMPRS-1 04.060 [7]). These are scheduled timing 
+corrections. 
+The PTCCH/U and PTCCH/D shall be transmitted using the most conservative modulation and coding rate supported 
+by the MES for the shortest duration PDCH burst. The MCS values to be used for different terminal types are defined in 
+table 5.4. For MCS definitions, refer to GMPRS-1 04.060 [7]. 
+Table 5.4: MCS values and burst types for PTCCH/U and PTCCH/D 
+Downlink 
+Channel type 
+PDTCH 
+Terminal type 
+MCS for 
+PTCCH/D 
+(binary) 
+(see note) 
+PTCCH/D burst 
+MCS for 
+PTCCH/U 
+(binary) 
+(see note) 
+PTCCH/U burst 
+(2,6) 
+C 
+000 
+PDCH(2,6) 
+000 
+PDCH (1,6) 
+(4,3) 
+A 
+0000 
+PDCH(4,3) 
+0000 
+PDCH(4,3) 
+(5,3) 
+A 
+0000 
+PDCH(5,3) 
+0000 
+PDCH(5,3) 
+(5,3) 
+D 
+0011 
+PDCH(5,3) 
+0011 
+PDCH(5,3) 
+NOTE: 
+MCS coding (3 bits or 4 bits) is dependent on channel type, see GMPRS-1 04.060 [7]. 
+ 
+The GS shall update the timing advance values for a MES in the next downlink signalling message addressed to that 
+MES following the reception of a packet access burst from the MES. These are initial timing corrections. 
+The GS may also monitor the delay of the packet normal bursts sent by the MES on PDTCH and PACCH. Whenever an 
+updating of Timing Advance (TA) is needed, the GS may send the new TA value in a link synchronization message 
+(see GMPRS-1 04.060 [7]). This is unsolicited timing correction. 
+
+=====PAGE 14=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+14
+GMPRS-1 05.010 
+ 
+An MES transmitting PDCH(4,3), PDCH(5,3), or PDCH(5,12) shall apply the received timing correction to all 
+transmitted bursts within TRESP-1 of the end of the downlink burst in which the timing correction was received. An 
+MES transmitting PDCH(1,6) shall apply the received timing correction to all transmitted bursts within TRESP-2 of the 
+end of the downlink burst in which the timing correction was received. 
+The adjustment shall be applied to the MES transmission in such a way: if the Control Flag associated with the Timing 
+Correction message is 1, then this message overrides all previous messages; Otherwise, if the Control Flag is 0, the 
+adjustment shall be made in addition to any previous messages. Refer to GMPRS-1 04.060 [7] for further description on 
+the timing correction message. 
+During an active TBF the network should not send to the MES a new timing correction message with control flag set to 
+0 within 2 seconds of sending a prior timing correction message with control flag set to 0. 
+The MES shall ignore a Timing Correction message with Control Flag set to 0 if a previous Timing Correction message 
+with Control Flag set to 0 was received within two seconds of the latest message. 
+The range of the timing adjustment sent by the network shall be from -0,4 ms to +0,4 ms or -375
+SB
+T
+/40 to 
++375
+SB
+T
+/40, with a unit of 
+SB
+T
+/40. 
+In the initial, unsolicited or scheduled correction, the network sends the timing offset of the signal received from the 
+MES. Therefore, the MES shall apply negative of the received value in the timing correction message from the network.  
+EXAMPLE: 
+If the timing correction value received from the network is +10, the MES shall change the time of 
+the start of the uplink frame relative to the start of the downlink frame by 
+40
+10
+SB
+T
+×
+−
+. 
+Refer to annexes E and F for a description of timer T3202 and for derivation of assigned PTCCH/U and PTCCH/D, 
+respectively. 
+5.6.3 
+Transmission timing drift rate 
+In packet transfer mode, to reduce the number of PTCCH and PRACH messages and to improve timing accuracy and 
+stability of MES transmission, the MES timing drift rate shall be used for transmission timing correction. This timing 
+drift rate R shall be derived from the Frequency Correction message received from AGCH channel as well as PACCH 
+according to clause 5.5.3. 
+6 
+Frequency synchronization, TtG/GtT call 
+Same as clause 6 in GMR-1 05.010 [6], except add the following sentence at the end of the clause. 
+In the case of data service, PDCH frequency is corrected with corrective factors given over the AGCH. During packet 
+transfer mode, frequency correction shall be provided to the MES by the GS through the PTCCH in the same way as 
+timing correction. 
+6.1 
+General description 
+Same as clause 6.1 in GMR-1 05.010 [6]. 
+6.2 
+Frequency of common channels 
+Same as clause 6.2 in GMR-1 05.010 [6]. 
+
+=====PAGE 15=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+15
+GMPRS-1 05.010 
+ 
+6.3 
+Idle mode frequency synchronization 
+6.3.1 
+Initial frequency acquisition 
+Same as clause 6.3.1 in GMR-1 05.010 [6]. 
+6.3.2 
+Paging mode 
+Same as clause 6.3.2 in GMR-1 05.010 [6]. 
+6.3.3 
+Alerting mode 
+Same as clause 6.3.3 in GMR-1 05.010 [6]. 
+6.4 
+Synchronization at initial access 
+Same as clause 6.4 in GMR-1 05.010 [6]. 
+6.4.1 
+Frequency compensation strategy 
+Same as clause 6.4.1 in GMR-1 05.010 [6], except add PDCH to the last bullet item in the clause. 
+6.4.2 
+Parameter description 
+Same as clause 6.4.2 in GMR-1 05.010 [6], except for the addition of the next paragraph, which follows the second 
+paragraph. 
+For packet switched service, receiving the frequency correction from the AGCH, the MES shall adjust its frequency of 
+PDCH transmission to an accuracy better than 10 Hz 1-sigma under the conditions defined in GMPRS-1 05.005 [4]. 
+6.5 
+Dedicated mode synchronization 
+Same as clause 6.5 in GMR-1 05.010 [6]. 
+6.6 
+Frequency synchronization for the packet switched 
+channels 
+Packet transfer mode synchronization is maintained in the same way as for dedicated mode as described in clause 6.5 
+with the following modifications. 
+The MES receiver frequency shall be derived from its internal oscillator, which shall be disciplined by frequency 
+detection of the received PDCH bursts during packet transfer mode. The MES shall maintain the receiver frequency 
+lock so as to handle the worst case frequency drift rate specified in clause 4.3.2. The target frequency accuracy is to 
+achieve demodulation performances specified by GMPRS-1 05.005 [4]. 
+In the uplink, a closed-loop frequency synchronization scheme is used. The frequency synchronization process is 
+detailed below: 
+• 
+The GS shall perform the scheduled frequency correction mechanism for all MES working in packet transfer 
+mode for which a PTCCH/U is assigned. Therefore the GS shall monitor the frequency offset of the PNB 
+bursts sent by the MES on PTCCH/U and respond with frequency correction values for all MES performing 
+the procedure on that PDCH. These frequency correction values shall be sent via a downlink signalling 
+message on PTCCH/D (see GMPRS-1 04.060 [7]). These are scheduled frequency corrections. 
+
+=====PAGE 16=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+16
+GMPRS-1 05.010 
+ 
+• 
+The GS shall update the frequency correction values for a MES in the next downlink signalling message 
+addressed to that MES following the reception of a packet access burst from the MES. These are initial 
+frequency corrections. 
+• 
+The GS may also monitor the frequency offset of the packet normal bursts sent by the MES on PDTCH and 
+PACCH. Whenever a frequency correction is needed, the GS may send the frequency correction value in a link 
+synchronization message (see GMPRS-1 04.060 [7]). This is unsolicited frequency correction. 
+As described in clause 6.5 these solicited and unsolicited Frequency Corrections shall be relative to the currently used 
+frequency offset. 
+The adjustment shall be applied to the MES transmission in such a way: if the Control Flag (CF) associated with the 
+Frequency Correction message is 1, then this message overrides all previous messages. Otherwise, if the Control Flag is 
+0, the adjustment shall be made in addition to any previous messages. Refer to GMPRS-1 04.060 [7] for further 
+description on the Frequency Correction (FC) message. 
+During active TBF the network should not send to the MES a new frequency correction message with control flag set to 
+0 within two seconds of sending a prior frequency correction message with control flag set to 0.  
+The MES shall ignore a Frequency Correction (FC) message with Control Flag (CF)set to 0 if a previous Frequency 
+Correction message with Control Flag (CF)set to 0 was received within two seconds of the latest message. 
+The Frequency Correction shall have a range from -2 048 Hz to +2 047 Hz, with accuracy better than 1 Hz. For both 
+uplink and downlink signals, the MES tracking loop needs to handle the worst case Doppler frequency change.  
+An MES transmitting PDCH(4,3), PDCH(5,3), or PDCH(5,12) shall apply the received Frequency Correction value 
+within TRESP-1 after the end of the burst in which it received the correction. An MES transmitting PDCH(1,6) shall 
+apply the received frequency correction to all transmitted bursts within TRESP-2 of the end of the downlink burst in 
+which the frequency correction was received.  
+In the initial, unsolicited or scheduled correction, the network sends the frequency offset of the signal received from the 
+MES. Therefore, the MES shall apply negative of the received value in the frequency correction message from the 
+network.  
+EXAMPLE: 
+If the frequency correction value received from the network is +100 Hz, the MES shall change its 
+transmit frequency by -100 Hz. 
+7 
+Frame and message synchronization, TtG/GtT call 
+7.1 
+Frame synchronization 
+7.1.1 
+Frame number definition 
+Same as clause 7.1.1 in GMR-1 05.010 [6]. 
+7.1.2 
+Frame synchronization scenario 
+Same as clause 7.1.2 in GMR-1 05.010 [6]. 
+
+=====PAGE 17=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+17
+GMPRS-1 05.010 
+ 
+7.2 
+Message synchronization 
+7.2.1 
+Power control message synchronization 
+Same as clause 7.2.1 in GMR-1 05.010 [6]. 
+7.2.1.1 
+Synchronization in master-to-slave direction 
+Same as clause 7.2.1.1 in GMR-1 05.010 [6]. 
+7.2.1.2 
+Synchronization in slave-to-master direction 
+Same as clause 7.2.1.2 in GMR-1 05.010 [6]. 
+7.2.2 
+SACCH message synchronization, TCH6/TCH9 call 
+Same as clause 7.2.2 in GMR-1 05.010 [6]. 
+8 
+Synchronization for TtT call 
+Same as clause 8 in GMR-1 05.010 [6]. 
+9 
+Aeronautical terminal synchronization scheme 
+Same as clause 9 in GMR-1 05.010 [6]. 
+
+=====PAGE 18=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+18
+GMPRS-1 05.010 
+ 
+Annex A (informative): 
+Worst-case delay and Doppler features 
+Same as annex A in GMR-1 05.010 [6]. 
+
+=====PAGE 19=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+19
+GMPRS-1 05.010 
+ 
+Annex B (informative): 
+Range of timing correction factor 
+Same as annex B in GMR-1 05.010 [6]. 
+
+=====PAGE 20=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+20
+GMPRS-1 05.010 
+ 
+Annex C (informative): 
+Differential Doppler frequency 
+Same as annex C in GMR-1 05.010 [6]. 
+
+=====PAGE 21=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+21
+GMPRS-1 05.010 
+ 
+Annex D (informative): 
+SACCH message synchronization, TtG/GtT call 
+Same as annex D in GMR-1 05.010 [6]. 
+
+=====PAGE 22=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+22
+GMPRS-1 05.010 
+ 
+Annex E (normative): 
+Timer T3202 for packet mode of operation 
+After every reception of a scheduled timing correction, an unsolicited timing correction or an initial timing correction, 
+the MES shall restart a timer, T3202 = PACKET_RANDOM_ACCESS_TIMER. For random access, the MES may use 
+a PAB in any PRACH or a RACH burst in any RACH provided its timer T3202 has not expired. There are procedures 
+requiring to use RACH to access the network even if T3202 is not expired (see GMPRS-1 04.008 [2]).  
+If an MES transitions to the circuit-switched operation from packet data operation, it shall continue running timer 
+T3202 during the circuit-switched call duration. After reverting back to the packet mode after the close of the 
+circuit-switched call, if the timer T3202 has not expired, the MES may use a PAB in any PRACH or a RACH burst in 
+any RACH.  
+For random access after T3202 has expired, the MES shall use a RACH burst in a RACH. The GS shall broadcast the 
+value of PACKET_RANDOM_ACCESS_TIMER in system information (see GMPRS-1 04.008 [2] and 
+GMPRS-1 04.060 [7]). 
+
+=====PAGE 23=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+23
+GMPRS-1 05.010 
+ 
+Annex F (normative): 
+PTCCH/U and PTCCH/D scheduling 
+The MES shall derive its assigned PTCCH/U from the TAI value (see GMPRS-1 04.060 [7]) and the value of 
+PKT_TIMING_CORR_CYCLE parameter broadcast by the GS in system information. (see GMPRS-1 04.008 [2]). 
+Using: 
+ 
+P = TAI mod 4 
+ 
+RMF = INT (TAI/4) 
+The MES shall have an assigned PTCCH/U in every uplink frame number, UFN, which satisfies the following 
+equations: 
+ 
+RMF = INT(UFN/16) mod (PKT_TIMING_CORR_CYCLE) 
+and 
+ 
+UFN mod 16 = 15 
+For an MES transmitting PTCCH/U on a PDCH(4,3) or PDCH(5,3), the MES shall calculate the MAC-slot number for 
+its assigned PTCCH/U from the following equations: 
+ 
+MAC-slot number = 2 × P + (RMF mod 2).  
+For an MES transmitting PTCCH/U on a PDCH(1,6), the MES shall calculate the D-MAC-slot number for its assigned 
+PTCCH/U from the following equation: 
+D-MAC-slot number = P. 
+The MES shall transmit a PNB in every assigned PTCCH/U. 
+The GS shall transmit timing and frequency corrections in every downlink frame number, DFN = UFN + 10 in timeslot 
+number equal to 0. 
+On the PDCH downlink burst corresponding to an assigned PTCCH/U timeslot, the GS shall set the USF to the reserved 
+value (see GMPRS-1 04.060 [7]). In order to send the PTCCH/U burst, the MES shall confirm that the received USF 
+value is set to the reserved value on the PDCH downlink timeslot which corresponds to the PTCCH/U timeslot. If the 
+MES receives two consecutive downlink bursts in the PDCH corresponding to its assigned PTCCH/U time slot in which 
+the USF is set to another value than reserved, the MES shall declare the link dead (see GMPRS-1 05.008 [5]). 
+The GS shall not reassign any Timing Advance Indicator (TAI) (see GMPRS-1 04.060 [7]) value which it has assigned 
+to an MES before completion of at least three timing correction cycles or three PKT_TIMING_CORR_CYCLE 
+multiframes. 
+A network supporting multiplexing of terminal type A and D on a PDCH-Carrier shall assign TAIs such that all TAIs 
+that map to the same RMF value are assigned to MESs belonging to the same terminal type. This ensures that all MESs 
+addressed in a PTCCH/D message are of the same terminal type.  
+Refer to GMPRS-1 05.002 [3] for PTCCH/D scheduling rules. 
+
+=====PAGE 24=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+24
+GMPRS-1 05.010 
+ 
+Annex G (informative): 
+Bibliography 
+ETSI TS 101 376-5-3: "GEO-Mobile Radio Interface Specifications (Release 2) General Packet Radio Service; 
+Part 5: Radio interface physical layer specifications; Sub-part 3: Channel Coding; GMPRS-1 05.003". 
+
+=====PAGE 25=====
+ 
+ETSI 
+ETSI TS 101 376-5-7 V2.3.1 (2008-08) 
+25
+GMPRS-1 05.010 
+ 
+History 
+Document history 
+V2.1.1 
+March 2003 
+Publication 
+V2.2.1 
+March 2005 
+Publication 
+V2.3.1 
+August 2008 
+Publication 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

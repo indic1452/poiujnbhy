@@ -1,0 +1,3 @@
+globalstar/Moore_BH15_Globalstar_Simplex_wp.pdf 208060 PDF document, version 1.3 https://blackhat.com/docs/us-15/materials/us-15-Moore-Spread-Spectrum-Satcom-Hacking-Attacking-The-GlobalStar-Simplex-Data-Service-wp.pdf
+globalstar/PoCorGTFO_09-03_Breaking_Globalstar.pdf 751719 PDF document, version 1.5 https://mcfp.felk.cvut.cz/publicDatasets/pocorgtfo/contents/articles/09-03.pdf
+globalstar/US9225383.pdf 1657062 PDF document, version 1.2 https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/9225383

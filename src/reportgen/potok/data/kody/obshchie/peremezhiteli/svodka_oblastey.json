@@ -1,0 +1,3336 @@
+[
+ {
+  "область": "efir",
+  "имя": "DVB-T внешний код: рандомизатор + РС(204,188) + перемежитель Форни I=12",
+  "вид": "каскадный: РС (204,188) t=8, укороченный (255,239) над GF(256)",
+  "перемежитель": {
+   "перемежитель": "свёрточный байтовый Форни, I = 12 ветвей, M = 17 (ветвь j — задержка 17·j байт); синхробайт по ветви 0"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dvb_t/en_300744v010602p.pdf",
+    "страница|строки": "стр. 11 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300700_300799/300744/01.06.02_60/en_300744v010602p.pdf",
+    "что": "4.3.1 рандомизатор 1+X14+X15"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_t/en_300744v010602p.pdf",
+    "страница|строки": "стр. 11 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300700_300799/300744/01.06.02_60/en_300744v010602p.pdf",
+    "что": "загрузка 100101010000000"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_t/en_300744v010602p.pdf",
+    "страница|строки": "стр. 12 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300700_300799/300744/01.06.02_60/en_300744v010602p.pdf",
+    "что": "4.3.2 РС g(x)"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_t/en_300744v010602p.pdf",
+    "страница|строки": "стр. 12 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300700_300799/300744/01.06.02_60/en_300744v010602p.pdf",
+    "что": "p(x)"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_t/en_300744v010602p.pdf",
+    "страница|строки": "стр. 12 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300700_300799/300744/01.06.02_60/en_300744v010602p.pdf",
+    "что": "перемежитель I=12, M=17"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gnuradio/gr-dtv/lib/dvbt/dvbt_energy_dispersal_impl.cc",
+    "страница|строки": "строки 21",
+    "url": "https://github.com/gnuradio/gnuradio/blob/aee9fd3f79389c4282a98e8d62c8405c73fd91df/gr-dtv/lib/dvbt/dvbt_energy_dispersal_impl.cc#L21",
+    "что": "gr-dtv energy dispersal"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "DVB-T битовый внутренний перемежитель (6 × 126 бит)",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dvb_t/en_300744v010602p.pdf",
+    "страница|строки": "стр. 19 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300700_300799/300744/01.06.02_60/en_300744v010602p.pdf",
+    "что": "4.3.4.1"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "DVB-T символьный перемежитель 2K/8K (H(q))",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dvb_t/en_300744v010602p.pdf",
+    "страница|строки": "стр. 19 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300700_300799/300744/01.06.02_60/en_300744v010602p.pdf",
+    "что": "Table 3a"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_t/en_300744v010602p.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300700_300799/300744/01.06.02_60/en_300744v010602p.pdf",
+    "что": "Table 3b"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_t/en_300744v010602p.pdf",
+    "страница|строки": "стр. 19 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300700_300799/300744/01.06.02_60/en_300744v010602p.pdf",
+    "что": "R' 8K"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "DVB-T2 битовый перемежитель: чётность + столбцовый со скручиванием + демультиплексор бит в ячейки",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dvb_t2/en_302755v010401p.pdf",
+    "страница|строки": "стр. 43 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/302700_302799/302755/01.04.01_60/en_302755v010401p.pdf",
+    "что": "Table 10"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_t2/en_302755v010401p.pdf",
+    "страница|строки": "стр. 44 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/302700_302799/302755/01.04.01_60/en_302755v010401p.pdf",
+    "что": "Table 13(a)"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gnuradio/gr-dtv/lib/dvbt2/dvbt2_interleaver_bb_impl.cc",
+    "страница|строки": "строки 509",
+    "url": "https://github.com/gnuradio/gnuradio/blob/aee9fd3f79389c4282a98e8d62c8405c73fd91df/gr-dtv/lib/dvbt2/dvbt2_interleaver_bb_impl.cc#L509",
+    "что": "gr-dtv"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "DVB-T2 частотный перемежитель: ГПСП с перестановкой бит H0/H1 (1K…32K)",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dvb_t2/en_302755v010401p.pdf",
+    "страница|строки": "стр. 101 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/302700_302799/302755/01.04.01_60/en_302755v010401p.pdf",
+    "что": "Table 53"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gnuradio/gr-dtv/lib/dvbt2/dvbt2_freqinterleaver_cc_impl.cc",
+    "страница|строки": "строки 140",
+    "url": "https://github.com/gnuradio/gnuradio/blob/aee9fd3f79389c4282a98e8d62c8405c73fd91df/gr-dtv/lib/dvbt2/dvbt2_freqinterleaver_cc_impl.cc#L140",
+    "что": "gr-dtv"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "DVB-C (J.83 Annex A/C): RS(204,188) + Форни I=12 + дифференциальное кодирование 2 старших бит, 16…256-QAM",
+  "вид": "каскадный: РС + перемежитель (без внутреннего кода)",
+  "перемежитель": {
+   "перемежитель": "Форни I = 12, M = 17"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dvb_c/en_300429v010201p.pdf",
+    "страница|строки": "стр. 8 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300400_300499/300429/01.02.01_60/en_300429v010201p.pdf",
+    "что": "4.? перемежитель I=12"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_c/en_300429v010201p.pdf",
+    "страница|строки": "стр. 8 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300400_300499/300429/01.02.01_60/en_300429v010201p.pdf",
+    "что": "дифференциальное кодирование"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "J.83 Annex B кадр FEC: синхрохвост (75 2C 0D 6C / 71 E8 4D D4), перемежитель (I,J), рандомизатор GF(128) x^3+x+α^3",
+  "вид": "кадр/синхрослово + перемежитель + скремблер",
+  "перемежитель": {
+   "перемежитель": "свёрточный по 7-битным символам: (I,J) = (128,1),(64,2),(32,4),(16,8),(8,16), расширенный I=128, J=1…8; коммутатор сбрасывается в начале кадра"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/itu/T-REC-J.83-200712-I.pdf",
+    "страница|строки": "стр. 22 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-J.83-200712-I!!PDF-E&type=items",
+    "что": "B.5.3 64-QAM"
+   },
+   {
+    "файл": "../efir/istochniki/itu/T-REC-J.83-200712-I.pdf",
+    "страница|строки": "стр. 22 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-J.83-200712-I!!PDF-E&type=items",
+    "что": "256-QAM"
+   },
+   {
+    "файл": "../efir/istochniki/itu/T-REC-J.83-200712-I.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-J.83-200712-I!!PDF-E&type=items",
+    "что": "B.5.2 (I,J)"
+   },
+   {
+    "файл": "../efir/istochniki/itu/T-REC-J.83-200712-I.pdf",
+    "страница|строки": "стр. 23 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-J.83-200712-I!!PDF-E&type=items",
+    "что": "B.5.4"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gnuradio/gr-dtv/lib/catv/catv_frame_sync_enc_bb_impl.cc",
+    "страница|строки": "строки 79",
+    "url": "https://github.com/gnuradio/gnuradio/blob/aee9fd3f79389c4282a98e8d62c8405c73fd91df/gr-dtv/lib/catv/catv_frame_sync_enc_bb_impl.cc#L79",
+    "что": "gr-dtv"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gnuradio/gr-dtv/lib/catv/catv_randomizer_bb_impl.cc",
+    "страница|строки": "строки 48",
+    "url": "https://github.com/gnuradio/gnuradio/blob/aee9fd3f79389c4282a98e8d62c8405c73fd91df/gr-dtv/lib/catv/catv_randomizer_bb_impl.cc#L48",
+    "что": "gr-dtv"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "DVB-SH турбокод 3GPP2: RSC 8 состояний d = 1+D²+D³, n0 = 1+D+D³, n1 = 1+D+D²+D³; 12 шаблонов 1/5…2/3 (стандартные и дополнительные); L = 12 282 (данные) / 1 146 (сигнализация)",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежитель": "3GPP2: счётчик n+5 бит; (старшие n бит + 1)·LUT[5 мл. бит] mod 2^n, старшая часть адреса — реверс 5 мл. бит; отбрасывание ≥ L; n = 9 для 12 282, n = 6 для 1 146"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dvb_h/en_302583v010201p.pdf",
+    "страница|строки": "стр. 15 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/302500_302599/302583/01.02.01_60/en_302583v010201p.pdf",
+    "что": "5.3.1"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_h/en_302583v010201p.pdf",
+    "страница|строки": "стр. 15 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/302500_302599/302583/01.02.01_60/en_302583v010201p.pdf",
+    "что": "табл. 5.2"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_h/en_302583v010201p.pdf",
+    "страница|строки": "стр. 17 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/302500_302599/302583/01.02.01_60/en_302583v010201p.pdf",
+    "что": "табл. 5.3"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_h/en_302583v010201p.pdf",
+    "страница|строки": "стр. 17 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/302500_302599/302583/01.02.01_60/en_302583v010201p.pdf",
+    "что": "5.3.3"
+   },
+   {
+    "файл": "../efir/istochniki/dvb_h/en_302583v010201p.pdf",
+    "страница|строки": "стр. 19 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/302500_302599/302583/01.02.01_60/en_302583v010201p.pdf",
+    "что": "табл. 5.5"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "ATSC 1.0 свёрточный байтовый перемежитель B=52, M=4",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/atsc/A53-Part-2-2011.pdf",
+    "страница|строки": "стр. 13 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2021/04/A53-Part-2-2011.pdf",
+    "что": "5.2.3"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gnuradio/gr-dtv/lib/atsc/atsc_interleaver_impl.cc",
+    "страница|строки": "строки 29",
+    "url": "https://github.com/gnuradio/gnuradio/blob/aee9fd3f79389c4282a98e8d62c8405c73fd91df/gr-dtv/lib/atsc/atsc_interleaver_impl.cc#L29",
+    "что": "gr-dtv atsc_interleaver"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "ATSC-M/H SCCC: внешний 4-состояний свёрточный 1/2 или 1/4 + символьный перемежитель + решётчатый кодер 8-VSB",
+  "вид": "турбо SCCC (последовательный каскад)",
+  "перемежитель": {
+   "перемежитель": "символьный, B = 4·SOBL; P'(i) = (89·i·(i+1)/2) mod L, L = 2^m ≥ B, значения ≥ B выбрасываются"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/atsc/A153-Part-2-2011.pdf",
+    "страница|строки": "стр. 42 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2021/04/A153-Part-2-2011.pdf",
+    "что": "Table 5.7"
+   },
+   {
+    "файл": "../efir/istochniki/atsc/A153-Part-2-2011.pdf",
+    "страница|строки": "стр. 44 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2021/04/A153-Part-2-2011.pdf",
+    "что": "5.3.2.3.3"
+   },
+   {
+    "файл": "../efir/istochniki/atsc/A153-Part-2-2011.pdf",
+    "страница|строки": "стр. 45 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2021/04/A153-Part-2-2011.pdf",
+    "что": "Table 5.11 пример P(i)"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "ATSC-M/H сигнализация: RS(18,10) TPC + RS(51,37) FIC + блочный перемежитель 51×TNoG + PCCC 1/4",
+  "вид": "каскадный: РС + турбо PCCC",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/atsc/A153-Part-2-2011.pdf",
+    "страница|строки": "стр. 47 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2021/04/A153-Part-2-2011.pdf",
+    "что": "5.3.2.4.1"
+   },
+   {
+    "файл": "../efir/istochniki/atsc/A153-Part-2-2011.pdf",
+    "страница|строки": "стр. 47 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2021/04/A153-Part-2-2011.pdf",
+    "что": "5.3.2.4.2"
+   },
+   {
+    "файл": "../efir/istochniki/atsc/A153-Part-2-2011.pdf",
+    "страница|строки": "стр. 48 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2021/04/A153-Part-2-2011.pdf",
+    "что": "5.3.2.4.6"
+   },
+   {
+    "файл": "../efir/istochniki/atsc/A153-Part-2-2011.pdf",
+    "страница|строки": "стр. 48 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2021/04/A153-Part-2-2011.pdf",
+    "что": "5.3.2.4.6.2"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "ATSC 3.0 битовый перемежитель: перемежение чётности + групповое π(j) + блочный (тип A/B)",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/atsc/A322-2026-06-Physical-Layer-Protocol.pdf",
+    "страница|строки": "стр. 43 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2026/06/A322-2026-06-Physical-Layer-Protocol.pdf",
+    "что": "6.2"
+   },
+   {
+    "файл": "../efir/istochniki/atsc/A322-2026-06-Physical-Layer-Protocol.pdf",
+    "страница|строки": "стр. 167 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2026/06/A322-2026-06-Physical-Layer-Protocol.pdf",
+    "что": "Annex B"
+   },
+   {
+    "файл": "../efir/istochniki/atsc/A322-2026-06-Physical-Layer-Protocol.pdf",
+    "страница|строки": "стр. 45 (номер страницы PDF)",
+    "url": "https://www.atsc.org/wp-content/uploads/2026/06/A322-2026-06-Physical-Layer-Protocol.pdf",
+    "что": "Table 6.10"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gr-atsc3/lib/interleaver_bb_impl.cc",
+    "страница|строки": "строки 43",
+    "url": "https://github.com/drmpeg/gr-atsc3/blob/000b86a325e2506eb063a25cd182d79c4b57acdd/lib/interleaver_bb_impl.cc#L43",
+    "что": "gr-atsc3"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "ISDB-T внешний код: RS(204,188) + рандомизатор X^15+X^14+1 (сброс на кадр OFDM) + байтовый перемежитель 12",
+  "вид": "каскадный: РС + перемежитель",
+  "перемежитель": {
+   "перемежитель": "свёрточный байтовый, 12 ветвей, 17·j байт (как DVB), плюс выравнивание задержек слоёв (табл. 3-7)"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/isdb/ARIB-STD-B31v2_2-E1.pdf",
+    "страница|строки": "стр. 32 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/6-STD-B31v2_2-E1.pdf",
+    "что": "p(x)"
+   },
+   {
+    "файл": "../efir/istochniki/isdb/ARIB-STD-B31v2_2-E1.pdf",
+    "страница|строки": "стр. 32 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/6-STD-B31v2_2-E1.pdf",
+    "что": "g(x) RS"
+   },
+   {
+    "файл": "../efir/istochniki/isdb/ARIB-STD-B31v2_2-E1.pdf",
+    "страница|строки": "стр. 34 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/6-STD-B31v2_2-E1.pdf",
+    "что": "рис. 3-8 ПСП"
+   },
+   {
+    "файл": "../efir/istochniki/isdb/ARIB-STD-B31v2_2-E1.pdf",
+    "страница|строки": "стр. 34 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/6-STD-B31v2_2-E1.pdf",
+    "что": "начальное"
+   },
+   {
+    "файл": "../efir/istochniki/isdb/ARIB-STD-B31v2_2-E1.pdf",
+    "страница|строки": "стр. 36 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/6-STD-B31v2_2-E1.pdf",
+    "что": "3.? байтовое перемежение"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gr-isdbt/lib/energy_dispersal_impl.cc",
+    "страница|строки": "строки 41",
+    "url": "https://github.com/git-artes/gr-isdbt/blob/56b2556c14ecc5d710070f969fda7a2deae65d8b/lib/energy_dispersal_impl.cc#L41",
+    "что": "gr-isdbt energy_dispersal"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "ISDB-T перемежители: битовый (задержки 120 бит по разрядам), временной внутрисегментный mi = 5i mod 96, частотный",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/isdb/ARIB-STD-B31v2_2-E1.pdf",
+    "страница|строки": "стр. 46 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/6-STD-B31v2_2-E1.pdf",
+    "что": "рис. 3-23"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gr-isdbt/lib/time_interleaver_impl.cc",
+    "страница|строки": "строки 13",
+    "url": "https://github.com/git-artes/gr-isdbt/blob/56b2556c14ecc5d710070f969fda7a2deae65d8b/lib/time_interleaver_impl.cc#L13",
+    "что": "gr-isdbt time_interleaver"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "DTMB свёрточный перемежитель символов: B = 52, M = 240 (режим 1) / 720 (режим 2); частотный — для C=3780",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dtmb/keysight-ads2011-dtmb.pdf",
+    "страница|строки": "стр. 9 (номер страницы PDF)",
+    "url": "https://edadownload.software.keysight.com/eedl/ads/2011/pdf/dtmb.pdf",
+    "что": "параметры"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "CMMB внешний код RS(240,K), K = 240/224/192/176, укороченный из RS(255,K+15), с байтовым блочным перемежителем",
+  "вид": "РС",
+  "перемежитель": {
+   "перемежитель": "блочный: 240 столбцов (длина RS) × MI строк (табл. 2), запись по столбцам, RS — по строкам"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/cmmb/GYT_220.1-2006.pdf",
+    "страница|строки": "стр. 14 (номер страницы PDF)",
+    "url": "https://www.nrta.gov.cn/module/download/downfile.jsp?classid=0&filename=daaa44ae5b16421492004e87c8caad0c.pdf",
+    "что": "5.1"
+   },
+   {
+    "файл": "../efir/istochniki/cmmb/GYT_220.1-2006.pdf",
+    "страница|строки": "стр. 14 (номер страницы PDF)",
+    "url": "https://www.nrta.gov.cn/module/download/downfile.jsp?classid=0&filename=daaa44ae5b16421492004e87c8caad0c.pdf",
+    "что": "4 режима K"
+   },
+   {
+    "файл": "../efir/istochniki/cmmb/GYT_220.1-2006.pdf",
+    "страница|строки": "стр. 34 (номер страницы PDF)",
+    "url": "https://www.nrta.gov.cn/module/download/downfile.jsp?classid=0&filename=daaa44ae5b16421492004e87c8caad0c.pdf",
+    "что": "RS(240,224) табл. B"
+   },
+   {
+    "файл": "../efir/istochniki/cmmb/GYT_220.1-2006.pdf",
+    "страница|строки": "стр. 34 (номер страницы PDF)",
+    "url": "https://www.nrta.gov.cn/module/download/downfile.jsp?classid=0&filename=daaa44ae5b16421492004e87c8caad0c.pdf",
+    "что": "RS(240,192) табл. B"
+   },
+   {
+    "файл": "../efir/istochniki/cmmb/GYT_220.1-2006.pdf",
+    "страница|строки": "стр. 35 (номер страницы PDF)",
+    "url": "https://www.nrta.gov.cn/module/download/downfile.jsp?classid=0&filename=daaa44ae5b16421492004e87c8caad0c.pdf",
+    "что": "RS(240,176) табл. B"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "DAB временной (16 ветвей, задержки 0,8,4,12,…) и частотный (Π(i)=13Π(i−1)+V1 mod Tu) перемежители",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dab/en_300401v020201p.pdf",
+    "страница|строки": "стр. 100 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300400_300499/300401/02.02.01_60/en_300401v020201p.pdf",
+    "что": "Table 21"
+   },
+   {
+    "файл": "../efir/istochniki/dab/en_300401v020201p.pdf",
+    "страница|строки": "стр. 114 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300400_300499/300401/02.02.01_60/en_300401v020201p.pdf",
+    "что": "14.6"
+   },
+   {
+    "файл": "../efir/istochniki/dab/en_300401v020201p.pdf",
+    "страница|строки": "стр. 114 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300400_300499/300401/02.02.01_60/en_300401v020201p.pdf",
+    "что": "Table 25"
+   },
+   {
+    "файл": "../efir/istochniki/kod/welle.io/src/backend/dab-audio.cpp",
+    "страница|строки": "строки 113",
+    "url": "https://github.com/AlbrechtL/welle.io/blob/512558d1f8ac4c524d3c63e97510ea36c1bd7a70/src/backend/dab-audio.cpp#L113",
+    "что": "welle.io"
+   },
+   {
+    "файл": "../efir/istochniki/kod/welle.io/src/backend/freq-interleaver.cpp",
+    "страница|строки": "строки 44",
+    "url": "https://github.com/AlbrechtL/welle.io/blob/512558d1f8ac4c524d3c63e97510ea36c1bd7a70/src/backend/freq-interleaver.cpp#L44",
+    "что": "welle.io"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "T-DMB внешний код: RS(204,188) + свёрточный перемежитель I=12 (поток MPEG-TS в подканале DAB)",
+  "вид": "каскадный: РС + перемежитель",
+  "перемежитель": {
+   "перемежитель": "Форни I = 12, M = 17"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/dab/ts_102427v010101p.pdf",
+    "страница|строки": "стр. 7 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/102400_102499/102427/01.01.01_60/ts_102427v010101p.pdf",
+    "что": "RS(204,188)"
+   },
+   {
+    "файл": "../efir/istochniki/dab/ts_102427v010101p.pdf",
+    "страница|строки": "стр. 7 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/102400_102499/102427/01.01.01_60/ts_102427v010101p.pdf",
+    "что": "Форни I=12, M=17"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "STIC (FM-поднесущая 72,2 кГц): RS(243,228) над GF(256) + блочный перемежитель 243×6 + свёрточный 1/2 K=7 «554, 744» (= 133, 171) + свёрточный перемежитель 72 ветви + ПСП-покрытие; номер кадра — БЧХ(15,7)",
+  "вид": "каскадный (РС + свёрточный)",
+  "перемежитель": {
+   "блочный перемежитель": "243 строки × 6 столбцов байтов, запись по столбцам, чтение по строкам",
+   "свёрточный перемежитель": "72 ветви, ветвь i — (71−i)·J разрядов, J = 18/36/72/144 (табл. 8)"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BS.1194-2-199812-I.pdf",
+    "страница|строки": "стр. 50 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1194-2-199812-I!!PDF-E.pdf",
+    "что": "RS(243,228)"
+   },
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BS.1194-2-199812-I.pdf",
+    "страница|строки": "стр. 50 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1194-2-199812-I!!PDF-E.pdf",
+    "что": "блочный перемежитель"
+   },
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BS.1194-2-199812-I.pdf",
+    "страница|строки": "стр. 50 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1194-2-199812-I!!PDF-E.pdf",
+    "что": "свёрточный"
+   },
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BS.1194-2-199812-I.pdf",
+    "страница|строки": "стр. 50 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1194-2-199812-I!!PDF-E.pdf",
+    "что": "свёрточный перемежитель"
+   },
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BS.1194-2-199812-I.pdf",
+    "страница|строки": "стр. 50 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1194-2-199812-I!!PDF-E.pdf",
+    "что": "покрытие"
+   },
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BS.1194-2-199812-I.pdf",
+    "страница|строки": "стр. 50 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1194-2-199812-I!!PDF-E.pdf",
+    "что": "БЧХ(15,7)"
+   },
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BS.1194-2-199812-I.pdf",
+    "страница|строки": "стр. 51 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1194-2-199812-I!!PDF-E.pdf",
+    "что": "табл. 8"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "AT-DMB (Корея): иерархическая модуляция поверх T-DMB — базовый слой как T-DMB (свёрточный DAB), слой улучшения — турбокод 1/2, 2/5, 1/3, 1/4 (TTAK.KO-07.0070/R2)",
+  "вид": "турбо PCCC",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BT.2016-4-202502-I.pdf",
+    "страница|строки": "стр. 8 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.2016-4-202502-I!!PDF-E.pdf",
+    "что": "табл. 1A"
+   },
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BT.2016-4-202502-I.pdf",
+    "страница|строки": "стр. 27 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.2016-4-202502-I!!PDF-E.pdf",
+    "что": "прил. 1 A.3"
+   },
+   {
+    "файл": "../efir/istochniki/itu/R-REC-BT.1833-5-202305-I.pdf",
+    "страница|строки": "стр. 8 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.1833-5-202305-I!!PDF-E.pdf",
+    "что": "BT.1833"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "Wi-Fi BCC: свёрточный K=7 (133, 171) с выкалыванием 2/3, 3/4, 5/6",
+  "вид": "свёрточный с выкалыванием",
+  "перемежитель": {
+   "перемежитель": "двухступенчатый по NCBPS: i = (NCBPS/16)(k mod 16) + ⌊k/16⌋; j = s·⌊i/s⌋ + (i + NCBPS − ⌊16i/NCBPS⌋) mod s (17.3.5.7); HT/VHT — табл. 19-17/21-17 (NCOL, NROW, NROT)"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/wifi/802.11-2020.pdf",
+    "страница|строки": "стр. 2821 (номер страницы PDF)",
+    "url": "https://github.com/WeitaoZhu/wi-fi_books/blob/88618683e50f314bbd5c298b28508758a3216d73/IEEE_802.11_Specification/802.11-2020.pdf",
+    "что": "17.3.5.6"
+   },
+   {
+    "файл": "../efir/istochniki/wifi/802.11-2020.pdf",
+    "страница|строки": "стр. 4165 (номер страницы PDF)",
+    "url": "https://github.com/WeitaoZhu/wi-fi_books/blob/88618683e50f314bbd5c298b28508758a3216d73/IEEE_802.11_Specification/802.11-2020.pdf",
+    "что": "Table I-16"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gr-ieee802-11/lib/utils.cc",
+    "страница|строки": "строки 183",
+    "url": "https://github.com/bastibl/gr-ieee802-11/blob/ad0598e4a874f4b8e1f391a1e0323e80df2b34ff/lib/utils.cc#L183",
+    "что": "gr-ieee802-11"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "LoRa диагональный перемежитель: блок SF кодовых слов × (4+CR) бит → 4+CR символов по SF бит; символ i, бит j = слово[(i − j − 1) mod SF], бит i",
+  "вид": "перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../efir/istochniki/lora/arxiv_2002.08208_Tapparel_open-source_LoRa_PHY.pdf",
+    "страница|строки": "стр. 2 (номер страницы PDF)",
+    "url": "https://arxiv.org/pdf/2002.08208",
+    "что": "Interleaving"
+   },
+   {
+    "файл": "../efir/istochniki/lora/US9252834B2.pdf",
+    "страница|строки": "стр. 5 (номер страницы PDF)",
+    "url": "https://patentimages.storage.googleapis.com/d3/7f/b1/66978013a6d7c6/US9252834.pdf",
+    "что": "патент Semtech: схемы перемежения"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gr-lora_sdr/lib/interleaver_impl.cc",
+    "страница|строки": "строки 203",
+    "url": "https://github.com/tapparelj/gr-lora_sdr/blob/862746dd1cf635c9c8a4bfbaa2c3a0ec3a5306c9/lib/interleaver_impl.cc#L203",
+    "что": "gr-lora_sdr"
+   },
+   {
+    "файл": "../efir/istochniki/kod/LoRaPHY/LoRaPHY.m",
+    "страница|строки": "строки 494",
+    "url": "https://github.com/jkadbear/LoRaPHY/blob/4fddd9a7b47682781c663608bfc4f196e4bf656d/LoRaPHY.m#L494",
+    "что": "LoRaPHY"
+   },
+   {
+    "файл": "../efir/istochniki/kod/gr-lora_sdr/lib/gray_mapping_impl.cc",
+    "страница|строки": "строки 70",
+    "url": "https://github.com/tapparelj/gr-lora_sdr/blob/862746dd1cf635c9c8a4bfbaa2c3a0ec3a5306c9/lib/gray_mapping_impl.cc#L70",
+    "что": "gr-lora_sdr Грей"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "WiMAX 802.16 OFDM (256): RS-CC — RS(255,239) T=8 укороченный/выколотый + свёрточный 171/133 K=7 (1/2, 2/3, 3/4, 5/6) с хвостовым байтом 0x00",
+  "вид": "каскадный (РС + свёрточный)",
+  "перемежитель": {
+   "перемежитель": "двухступенчатый блочный на Ncbps: m_k = (Ncbps/12)(k mod 12) + ⌊k/12⌋, j_k = s⌊m_k/s⌋ + (m_k + Ncbps − ⌊12 m_k/Ncbps⌋) mod s, s = ⌈Ncpc/2⌉"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 470 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "8.3.3.2.1 RS"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 470 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "выкалывание РС"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 471 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "Table 214"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 478 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "8.3.3.3"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 482 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "8.3.3.5.1"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 483 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "8.3.3.5.2"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 484 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "8.3.3.5.3"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "WiMAX 802.16 OFDMA: свёрточный 171/133 K=7 с циклическим хвостом (tail-biting), выкалывание 1/2…5/6, перемежитель d = 16",
+  "вид": "свёрточный",
+  "перемежитель": {
+   "перемежитель": "m_k = (Ncbps/16)(k mod 16) + ⌊k/16⌋; j_k = s⌊m_k/s⌋ + (m_k + Ncbps − ⌊16 m_k/Ncbps⌋) mod s, s = Ncpc/2"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 628 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "8.4.9.2.1"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 629 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "Table 319"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 653 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "8.4.9.3"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "WiMAX 802.16e OFDMA CTC: дуобинарный циклический RSC-турбокод 1/3 (8 состояний), перемежитель P0…P3, подблочное перемежение и выбор символов (HARQ IR)",
+  "вид": "турбо PCCC дуобинарный (CRSC)",
+  "перемежитель": {
+   "перемежитель": "шаг 1: в нечётных парах (A,B) → (B,A); шаг 2: u2(j) = u1(P(j)), P(j) = (P0·j + P + 1) mod N, P = 0, N/2+P1, P2, N/2+P3 для j mod 4 = 0,1,2,3"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 632 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "8.4.9.2.3.1"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 632 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "многочлены"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 635 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "Table 326"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/80216e-2005_berkeley.pdf",
+    "страница|строки": "стр. 662 (номер страницы PDF)",
+    "url": "https://ptolemy.berkeley.edu/projects/ofdm/ergen/docs/80216e.pdf",
+    "что": "16e Table 327"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 637 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "Table 328"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 638 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "подблоки"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 640 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "группировка"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/80216e-2005_berkeley.pdf",
+    "страница|строки": "стр. 665 (номер страницы PDF)",
+    "url": "https://ptolemy.berkeley.edu/projects/ofdm/ergen/docs/80216e.pdf",
+    "что": "CRC HARQ"
+   },
+   {
+    "файл": "../efir/istochniki/kod/CML/mat/CreateWimaxInterleaver.m",
+    "страница|строки": "строки 42",
+    "url": "https://github.com/wvu-wcrl/CML/blob/45c64c4f3c9e0375ac9439a02ed4f84d4e67411f/mat/CreateWimaxInterleaver.m#L42",
+    "что": "CML P0…P3"
+   },
+   {
+    "файл": "../efir/istochniki/kod/CML/mat/CreateWimaxInterleaver.m",
+    "страница|строки": "строки 60",
+    "url": "https://github.com/wvu-wcrl/CML/blob/45c64c4f3c9e0375ac9439a02ed4f84d4e67411f/mat/CreateWimaxInterleaver.m#L60",
+    "что": "CML m, J"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "WiMAX 802.16 OFDM (256) CTC: дуобинарный CRSC 8 состояний, только чётность Y, N = 6…27 × Nsub, P0 по табл. 220, P1 = 3N/4",
+  "вид": "турбо PCCC дуобинарный (CRSC)",
+  "перемежитель": {
+   "перемежитель": "i = (P0·j + 1) mod N, (+N/4, +N/2+P1, … по j mod 4); P1 = 3N/4"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 475 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "8.3.3.2.3.1"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 476 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "Table 220"
+   },
+   {
+    "файл": "../efir/istochniki/wimax/802.16-2004_usf.pdf",
+    "страница|строки": "стр. 33 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20240604194337id_/http://magrawal.myweb.usf.edu/dcom/Ch8_802.16-2004.pdf",
+    "что": "Table 221"
+   }
+  ]
+ },
+ {
+  "область": "efir",
+  "имя": "ECMA-368 свёрточный 1/3 K=7 (g0 = 133, g1 = 165, g2 = 171) с выкалыванием 1/2, 5/8, 3/4; перемежитель: символьный (6 символов), тоновый (NTint × 10), циклический сдвиг",
+  "вид": "свёрточный",
+  "перемежитель": {
+   "перемежитель": "a_S[i] = a[⌊i/N_CBPS⌋ + (6/N_TDS)·mod(i, N_CBPS)]-типа (формула 15), тоновый a_T[j] = a_S[⌊j/N_Tint⌋ + 10·mod(j, N_Tint)], затем циклический сдвиг по символу (табл. 30)"
+  },
+  "источник": [
+   {
+    "файл": "../efir/istochniki/uwb/ECMA-368.pdf",
+    "страница|строки": "стр. 69 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20200731040242id_/http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-368.pdf",
+    "что": "10.7"
+   },
+   {
+    "файл": "../efir/istochniki/uwb/ECMA-368.pdf",
+    "страница|строки": "стр. 72 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20200731040242id_/http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-368.pdf",
+    "что": "рис. 20"
+   },
+   {
+    "файл": "../efir/istochniki/uwb/ECMA-368.pdf",
+    "страница|строки": "стр. 72 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20200731040242id_/http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-368.pdf",
+    "что": "рис. 21"
+   },
+   {
+    "файл": "../efir/istochniki/uwb/ECMA-368.pdf",
+    "страница|строки": "стр. 73 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20200731040242id_/http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-368.pdf",
+    "что": "рис. 22"
+   },
+   {
+    "файл": "../efir/istochniki/uwb/ECMA-368.pdf",
+    "страница|строки": "стр. 73 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20200731040242id_/http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-368.pdf",
+    "что": "10.8"
+   },
+   {
+    "файл": "../efir/istochniki/uwb/ECMA-368.pdf",
+    "страница|строки": "стр. 74 (номер страницы PDF)",
+    "url": "https://web.archive.org/web/20200731040242id_/http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-368.pdf",
+    "что": "табл. 30"
+   },
+   {
+    "файл": "../efir/istochniki/uwb/ts_102455v010101p.pdf",
+    "страница|строки": "стр. 1 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/102400_102499/102455/01.01.01_60/ts_102455v010101p.pdf",
+    "что": "ETSI TS 102 455 — та же спецификация"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "CCSDS турбокод 16 состояний, k=1784/3568/7136/8920, r=1/2,1/3,1/4,1/6",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежитель": "π(s)=2(t+c·k1/2+1)−m; m=(s−1) mod 2, i=⌊(s−1)/(2k2)⌋, j=⌊(s−1)/2⌋−i·k2, t=(19i+1) mod (k1/2), q=t mod 8+1, c=(p_q·j+21m) mod k2; k1=8, k2=223·I; p=31,37,43,47,53,59,61,67",
+   "канальный перемежитель (B-6)": "строка–столбец, Nc=4/r, Nr=n/Nc"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/ccsds/131x0b6ec1.pdf",
+    "страница|строки": "стр. 45 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2026/06/131x0b6ec1.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/ccsds/131x0b6ec1.pdf",
+    "страница|строки": "стр. 47 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2026/06/131x0b6ec1.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/ccsds/131x0b6ec1.pdf",
+    "страница|строки": "стр. 52 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2026/06/131x0b6ec1.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "CCSDS SCCC (131.2-B-2), 27 форматов ACM",
+  "вид": "турбо SCCC",
+  "перемежитель": {
+   "перемежитель": "π(i)=W·[(⌊i/W⌋+β(i mod W)) mod 120]+α(i mod W), W=I/120, 19 размеров I=8640…65520 (табл. B-1/B-2)"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/ccsds/131x2b2.pdf",
+    "страница|строки": "стр. 29 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2025/01//131x2b2.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/ccsds/131x2b2.pdf",
+    "страница|строки": "стр. 9 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2025/01//131x2b2.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/ccsds/131x2b2.pdf",
+    "страница|строки": "стр. 37 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2025/01//131x2b2.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "CCSDS SCPPM (оптика HPE): свёрточный [5,7,7] + аккумулятор + PPM",
+  "вид": "каскадный",
+  "перемежитель": {
+   "перемежитель": "π(j)=(11j+210j²) mod 15120"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/ccsds/142x0b2.pdf",
+    "страница|строки": "стр. 34 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2026/03/142x0b2.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/ccsds/142x0b2.pdf",
+    "страница|строки": "стр. 30 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2026/03/142x0b2.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "CCSDS O3K: LDPC PBRL r=1/2 и ARA r=9/10 (n=30720), RS(255,223)",
+  "вид": "LDPC",
+  "перемежитель": {
+   "перемежитель": "блочный канальный K,N,L"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/ccsds/142x0b2.pdf",
+    "страница|строки": "стр. 11 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2026/03/142x0b2.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "CCSDS оптика HDR 1550 нм (141.10-O): DVB-S2 BCH+LDPC или RS (8100,7524), свёрточный канальный перемежитель",
+  "вид": "каскадный",
+  "перемежитель": {
+   "перемежитель": "свёрточный, m, N, B"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/ccsds/141x10.pdf",
+    "страница|строки": "стр. 28 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2025/01//141x10.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "CCSDS TM 131.0-B-5 (предыдущая редакция) — LDPC на поток SMTF и 255-бит рандомизатор",
+  "вид": "справочно",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/ccsds/131x0b5s.pdf",
+    "страница|строки": "стр. 12 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2026/05/131x0b5s.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "DVB-RCS дуобинарный турбокод CRSC 8 состояний (15/13/11₈)",
+  "вид": "дуобинарный",
+  "перемежитель": {
+   "перемежитель": "j чётное — (A,B)→(B,A); i=P0·j+P+1 mod N, P=0, N/2+P1, P2, N/2+P3"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/dvb/en_301790v010501p.pdf",
+    "страница|строки": "стр. 30 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/301700_301799/301790/01.05.01_60/en_301790v010501p.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/dvb/en_301790v010501p.pdf",
+    "страница|строки": "стр. 31 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/301700_301799/301790/01.05.01_60/en_301790v010501p.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/dvb/en_301790v010501p.pdf",
+    "страница|строки": "стр. 32 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/301700_301799/301790/01.05.01_60/en_301790v010501p.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "DVB-RCS2 дуобинарный турбокод 16 состояний (23/35/27₈), волны A-1/A-2",
+  "вид": "дуобинарный",
+  "перемежитель": {
+   "перемежитель": "Q(j)=0, 4Q1, 4Q0·P+4Q2, 4Q0·P+4Q3; i=(P·j+Q(j)+3) mod N"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/dvb/en_30154502v010501p.pdf",
+    "страница|строки": "стр. 157 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/301500_301599/30154502/01.05.01_60/en_30154502v010501p.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/dvb/en_30154502v010501p.pdf",
+    "страница|строки": "стр. 240 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/301500_301599/30154502/01.05.01_60/en_30154502v010501p.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/dvb/en_30154502v010501p.pdf",
+    "страница|строки": "стр. 158 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/301500_301599/30154502/01.05.01_60/en_30154502v010501p.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "Inmarsat BGAN (Family SL): турбокод 16 состояний 23/35₈ с S-перемежителями по таблицам",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежители": "266 таблиц TCI (N=156…5284) — прил. C.1 (официальное вложение)",
+   "выкалывание/канальное перемежение/отображение": "266 таблиц CIPM (QPSK, 16/32/64QAM) — прил. C.2"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/inmarsat/ts_1027440201v010101p.pdf",
+    "страница|строки": "стр. 28 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/102700_102799/1027440201/01.01.01_60/ts_1027440201v010101p.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/inmarsat/ts_1027440201v010101p.pdf",
+    "страница|строки": "стр. 29 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/102700_102799/1027440201/01.01.01_60/ts_1027440201v010101p.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/inmarsat/ts_1027440201v010101p.pdf",
+    "страница|строки": "стр. 27 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/102700_102799/1027440201/01.01.01_60/ts_1027440201v010101p.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "Inmarsat Aero (AMS(R)S): свёрточный 171/133 K=7, перемежитель 64×N, скремблер 15 бит, UW E15AE893",
+  "вид": "свёрточный",
+  "перемежитель": {
+   "перемежитель": "M=64 столбца, перестановка строк (i·27) mod 64, N строк (блоков)"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/kod/JAERO/JAERO/aerol.h",
+    "страница|строки": "строки 581",
+    "url": "https://github.com/jontio/JAERO/blob/1d4e515921244aec1d85a03f5f38b4e7818fdbe6/JAERO/aerol.h#L581"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/JAERO/JAERO/aerol.cpp",
+    "страница|строки": "строки 533",
+    "url": "https://github.com/jontio/JAERO/blob/1d4e515921244aec1d85a03f5f38b4e7818fdbe6/JAERO/aerol.cpp#L533"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/JAERO/JAERO/aerol.h",
+    "страница|строки": "строки 402",
+    "url": "https://github.com/jontio/JAERO/blob/1d4e515921244aec1d85a03f5f38b4e7818fdbe6/JAERO/aerol.h#L402"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/JAERO/JAERO/aerol.cpp",
+    "страница|строки": "строки 947",
+    "url": "https://github.com/jontio/JAERO/blob/1d4e515921244aec1d85a03f5f38b4e7818fdbe6/JAERO/aerol.cpp#L947"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "S-MIM (Eutelsat, S-диапазон) обратный канал: турбо 3GPP r=1/3 + CRC-16/8 + скремблер 1+X^4+X^9",
+  "вид": "турбо PCCC",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/smim/ts_10272103v010201p.pdf",
+    "страница|строки": "стр. 13 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/102700_102799/10272103/01.02.01_60/ts_10272103v010201p.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/smim/ts_10272103v010201p.pdf",
+    "страница|строки": "стр. 15 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/102700_102799/10272103/01.02.01_60/ts_10272103v010201p.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "WorldSpace (Digital System DS, МСЭ-R BO.1130): РС(255,223) + блочный перемежитель + свёрточный 1/2",
+  "вид": "каскадный",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/itu/R-REC-BO.1130-5-202602-I.pdf",
+    "страница|строки": "стр. 32 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bo/R-REC-BO.1130-5-202602-I!!PDF-E.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/itu/R-REC-BO.1130-5-202602-I.pdf",
+    "страница|строки": "стр. 47 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/bo/R-REC-BO.1130-5-202602-I!!PDF-E.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "GPS CNAV-2 (L1C): BCH(51,8) TOI + CRC-24Q + LDPC (1200,600)/(548,274) + перемежитель 38×46",
+  "вид": "LDPC",
+  "перемежитель": {
+   "перемежитель": "блочный 38 строк × 46 столбцов для 1748 символов: запись по строкам (слева направо, SF2 затем SF3), чтение по столбцам сверху вниз"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/nav/IS-GPS-800J.pdf",
+    "страница|строки": "стр. 30 (номер страницы PDF)",
+    "url": "https://navcen.uscg.gov/sites/default/files/pdf/gps/IS-GPS-800J.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/nav/IS-GPS-800J.pdf",
+    "страница|строки": "стр. 36 (номер страницы PDF)",
+    "url": "https://navcen.uscg.gov/sites/default/files/pdf/gps/IS-GPS-800J.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/nav/IS-GPS-800J.pdf",
+    "страница|строки": "стр. 12 (номер страницы PDF)",
+    "url": "https://navcen.uscg.gov/sites/default/files/pdf/gps/IS-GPS-800J.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "Galileo I/NAV и F/NAV: свёрточный K=7 171/133 (инверсия G2) + блочный перемежитель + CRC-24Q, синхрошаблоны",
+  "вид": "свёрточный",
+  "перемежитель": {
+   "перемежитель": "запись по столбцам, чтение по строкам: I/NAV 30 столбцов × 8 строк (240 символов), F/NAV 61×8 (488)"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/nav/Galileo_OS_SIS_ICD_v2.1.pdf",
+    "страница|строки": "стр. 50 (номер страницы PDF)",
+    "url": "https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_OS_SIS_ICD_v2.1.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/nav/Galileo_OS_SIS_ICD_v2.1.pdf",
+    "страница|строки": "стр. 43 (номер страницы PDF)",
+    "url": "https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_OS_SIS_ICD_v2.1.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/nav/Galileo_OS_SIS_ICD_v2.1.pdf",
+    "страница|строки": "стр. 10 (номер страницы PDF)",
+    "url": "https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_OS_SIS_ICD_v2.1.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/gnss-sdr/src/core/system_parameters/Galileo_INAV.h",
+    "страница|строки": "строки 36",
+    "url": "https://github.com/gnss-sdr/gnss-sdr/blob/0f4dba13865bbed38a586678b1af75479f3c2411/src/core/system_parameters/Galileo_INAV.h#L36"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "BeiDou B-CNAV1 (B1C): 64-ичный LDPC (200,100) и (88,44) над GF(64) + BCH(21,6)/(51,8) + перемежитель 36×48",
+  "вид": "LDPC",
+  "перемежитель": {
+   "перемежитель": "блочный 36 строк × 48 столбцов для 1728 символов подкадров 2 и 3"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/nav/bds/BDS_B1C_v1.0.pdf",
+    "страница|строки": "стр. 26 (номер страницы PDF)",
+    "url": "http://en.beidou.gov.cn/SYSTEMS/ICD/201806/P020180608519640359959.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/nav/bds/BDS_B1C_v1.0.pdf",
+    "страница|строки": "стр. 25 (номер страницы PDF)",
+    "url": "http://en.beidou.gov.cn/SYSTEMS/ICD/201806/P020180608519640359959.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/nav/bds/BDS_B1C_v1.0.pdf",
+    "страница|строки": "стр. 31 (номер страницы PDF)",
+    "url": "http://en.beidou.gov.cn/SYSTEMS/ICD/201806/P020180608519640359959.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/PocketSDR/src/sdr_ldpc.c",
+    "страница|строки": "строки 1078",
+    "url": "https://github.com/tomojitakasu/PocketSDR/blob/03787da53c65a8eb291eec571b6412ec470aeb17/src/sdr_ldpc.c#L1078"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "NavIC/IRNSS L5 и S: свёрточный K=7 171/133 + перемежитель 73×8 + CRC-24Q, синхрослово EB90h",
+  "вид": "свёрточный",
+  "перемежитель": {
+   "перемежитель": "блочный 73 столбца × 8 строк, запись по столбцам, чтение по строкам"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/nav/IRNSS_SPS_ICD_v1.1_2017.pdf",
+    "страница|строки": "стр. 24 (номер страницы PDF)",
+    "url": "https://www.isro.gov.in/media_isro/pdf/SateliteNavigation/irnss_sps_icd_version1.1-2017.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "NavIC L1 SPS: BCH(52,9) TOI + LDPC r=1/2 (1200,600)/(548,274) + перемежитель 46×38",
+  "вид": "LDPC",
+  "перемежитель": {
+   "перемежитель": "1748 символов, 46 столбцов × 38 строк"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/nav/NavIC_SPS_ICD_L1_final.pdf",
+    "страница|строки": "стр. 43 (номер страницы PDF)",
+    "url": "https://www.isro.gov.in/media_isro/pdf/SateliteNavigation/NavIC_SPS_ICD_L1_final.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/nav/NavIC_SPS_ICD_L1_final.pdf",
+    "страница|строки": "стр. 42 (номер страницы PDF)",
+    "url": "https://www.isro.gov.in/media_isro/pdf/SateliteNavigation/NavIC_SPS_ICD_L1_final.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/PocketSDR/src/sdr_ldpc.c",
+    "страница|строки": "строки 21",
+    "url": "https://github.com/tomojitakasu/PocketSDR/blob/03787da53c65a8eb291eec571b6412ec470aeb17/src/sdr_ldpc.c#L21"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "METEOR-M LRPT (72k/80k): свёрточный r=1/2 K=7 + РС(255,223) I=4 (обычный базис) + рандомизатор CCSDS; 80k — свёрточный перемежитель 36×2048 с маркером 27h",
+  "вид": "каскадный",
+  "перемежитель": {
+   "перемежитель 80k": "свёрточный, 36 ветвей, задержка 2048 × ветвь; каждые 80 символов — маркер 8 бит 27h (варианты поворота 27h/4Eh/D8h/B1h), 72 символа данных; размер = x·10/9 + 8"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/kod/SatDump/plugins/meteor_support/meteor/deint.h",
+    "страница|строки": "строки 19",
+    "url": "https://github.com/SatDump/SatDump/blob/f3d82adbfe04e57c596b93479d687f4b830ee26c/plugins/meteor_support/meteor/deint.h#L19"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/SatDump/plugins/meteor_support/meteor/deint.cpp",
+    "страница|строки": "строки 11",
+    "url": "https://github.com/SatDump/SatDump/blob/f3d82adbfe04e57c596b93479d687f4b830ee26c/plugins/meteor_support/meteor/deint.cpp#L11"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/SatDump/plugins/meteor_support/meteor/module_meteor_lrpt_decoder.cpp",
+    "страница|строки": "строки 184",
+    "url": "https://github.com/SatDump/SatDump/blob/f3d82adbfe04e57c596b93479d687f4b830ee26c/plugins/meteor_support/meteor/module_meteor_lrpt_decoder.cpp#L184"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/SatDump/plugins/meteor_support/meteor/module_meteor_lrpt_decoder.cpp",
+    "страница|строки": "строки 201",
+    "url": "https://github.com/SatDump/SatDump/blob/f3d82adbfe04e57c596b93479d687f4b830ee26c/plugins/meteor_support/meteor/module_meteor_lrpt_decoder.cpp#L201"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/SatDump/resources/pipelines/Meteor-M.json",
+    "страница|строки": "строки 195",
+    "url": "https://github.com/SatDump/SatDump/blob/f3d82adbfe04e57c596b93479d687f4b830ee26c/resources/pipelines/Meteor-M.json#L195"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "AO-40 FEC (KA9Q): 2× РС(160,128) укороченных CCSDS + скремблер + свёрточный K=7 r=1/2 + перемежитель 80×65 с синхровектором 65 бит",
+  "вид": "каскадный",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/lyubit/ka9q_ao40_encode_ref.c",
+    "страница|строки": "строки 6",
+    "url": "https://www.ka9q.net/ao40/encode_ref.c"
+   },
+   {
+    "файл": "../kosmos/istochniki/lyubit/ka9q_ao40tlm.html",
+    "страница|строки": "строки 169",
+    "url": "https://www.ka9q.net/papers/ao40tlm.html"
+   },
+   {
+    "файл": "../kosmos/istochniki/lyubit/ka9q_ao40tlm.html",
+    "страница|строки": "строки 225",
+    "url": "https://www.ka9q.net/papers/ao40tlm.html"
+   },
+   {
+    "файл": "../kosmos/istochniki/lyubit/ka9q_ao40_encode_ref.c",
+    "страница|строки": "строки 110",
+    "url": "https://www.ka9q.net/ao40/encode_ref.c"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/gr-satellites/python/components/deframers/ao40_fec_deframer.py",
+    "страница|строки": "строки 21",
+    "url": "https://github.com/daniestevez/gr-satellites/blob/4210dc45c9725e30d8f612eeec614f3f353cd09c/python/components/deframers/ao40_fec_deframer.py#L21"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "TI CC1101/CC1110/CC2500 FEC: свёрточный K=4 r=1/2 (15/17₈) + перемежитель 4×4 + отбеливание PN9 (x^9+x^5+1) + CRC-16 0x8005",
+  "вид": "свёрточный",
+  "перемежитель": {
+   "перемежитель": "матрица 4×4 символов по 2 бита (32 бита = 4 байта)"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/lyubit/TI_DN504_FEC_swra113a.pdf",
+    "страница|строки": "стр. 8 (номер страницы PDF)",
+    "url": "https://www.ti.com/lit/an/swra113a/swra113a.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/lyubit/TI_DN504_FEC_swra113a.pdf",
+    "страница|строки": "стр. 4 (номер страницы PDF)",
+    "url": "https://www.ti.com/lit/an/swra113a/swra113a.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/lyubit/TI_DN509_PN9_swra322.pdf",
+    "страница|строки": "стр. 3 (номер страницы PDF)",
+    "url": "https://www.ti.com/lit/an/swra322/swra322.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/lyubit/TI_CC1101_datasheet_swrs061i.pdf",
+    "страница|строки": "стр. 37 (номер страницы PDF)",
+    "url": "https://www.ti.com/lit/ds/symlink/cc1101.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/gr-satellites/python/components/deframers/openlst_deframer.py",
+    "страница|строки": "строки 31",
+    "url": "https://github.com/daniestevez/gr-satellites/blob/4210dc45c9725e30d8f612eeec614f3f353cd09c/python/components/deframers/openlst_deframer.py#L31"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "Прочие форматы кадров кубсатов (gr-satellites): синхрослова и ПКЗ",
+  "вид": "каскадный",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/kod/gr-satellites/python/components/deframers/aalto1_deframer.py",
+    "страница|строки": "строки 20",
+    "url": "https://github.com/daniestevez/gr-satellites/blob/4210dc45c9725e30d8f612eeec614f3f353cd09c/python/components/deframers/aalto1_deframer.py#L20"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/gr-satellites/python/components/deframers/eseo_deframer.py",
+    "страница|строки": "строки 50",
+    "url": "https://github.com/daniestevez/gr-satellites/blob/4210dc45c9725e30d8f612eeec614f3f353cd09c/python/components/deframers/eseo_deframer.py#L50"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/gr-satellites/python/components/deframers/sat_3cat_1_deframer.py",
+    "страница|строки": "строки 53",
+    "url": "https://github.com/daniestevez/gr-satellites/blob/4210dc45c9725e30d8f612eeec614f3f353cd09c/python/components/deframers/sat_3cat_1_deframer.py#L53"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/gr-satellites/python/components/deframers/swiatowid_deframer.py",
+    "страница|строки": "строки 52",
+    "url": "https://github.com/daniestevez/gr-satellites/blob/4210dc45c9725e30d8f612eeec614f3f353cd09c/python/components/deframers/swiatowid_deframer.py#L52"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/gr-satellites/python/components/deframers/tt64_deframer.py",
+    "страница|строки": "строки 49",
+    "url": "https://github.com/daniestevez/gr-satellites/blob/4210dc45c9725e30d8f612eeec614f3f353cd09c/python/components/deframers/tt64_deframer.py#L49"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/gr-satellites/python/components/deframers/hsu_sat1_deframer.py",
+    "страница|строки": "строки 83",
+    "url": "https://github.com/daniestevez/gr-satellites/blob/4210dc45c9725e30d8f612eeec614f3f353cd09c/python/components/deframers/hsu_sat1_deframer.py#L83"
+   },
+   {
+    "файл": "../kosmos/istochniki/kod/gr-satellites/python/components/deframers/ax5043_deframer.py",
+    "страница|строки": "строки 28",
+    "url": "https://github.com/daniestevez/gr-satellites/blob/4210dc45c9725e30d8f612eeec614f3f353cd09c/python/components/deframers/ax5043_deframer.py#L28"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "VDES (МСЭ-R M.2092-2, в т. ч. VDE-SAT): турбокод с RSC n0=1+D+D³, n1=1+D+D²+D³, d=1+D²+D³, перемежитель CCSDS по табл. 4, скремблирование",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежитель": "по CCSDS 131.0-B-2: k=k1·k2, простые p1…p8 из табл. 4 (напр. Link ID 4: k=952 = 4·238, p = 113,31,59,163,29,181,101,11)"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/itu/R-REC-M.2092-2-202602-I.pdf",
+    "страница|строки": "стр. 17 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/m/R-REC-M.2092-2-202602-I!!PDF-E.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/itu/R-REC-M.2092-2-202602-I.pdf",
+    "страница|строки": "стр. 18 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/m/R-REC-M.2092-2-202602-I!!PDF-E.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/itu/R-REC-M.2092-2-202602-I.pdf",
+    "страница|строки": "стр. 14 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/m/R-REC-M.2092-2-202602-I!!PDF-E.pdf"
+   }
+  ]
+ },
+ {
+  "область": "kosmos",
+  "имя": "LunaNet AFS (NASA LSIS Vol. A, 2025): кадр 12 с — SP 68 + BCH(51,8) + LDPC r=1/2 (= 5G NR базовый граф 2) + CRC-24Q, перемежитель 60×98",
+  "вид": "каскадный",
+  "перемежитель": {
+   "перемежитель": "блочный 60 строк × 98 столбцов (5880 символов SB2–SB4): запись по строкам слева направо (MSB первым), чтение по столбцам"
+  },
+  "источник": [
+   {
+    "файл": "../kosmos/istochniki/dop2/LSIS_AFS_volA_2025.pdf",
+    "страница|строки": "стр. 25 (номер страницы PDF)",
+    "url": "https://www.nasa.gov/wp-content/uploads/2025/02/lunanet-signal-in-space-recommended-standard-augmented-forward-signal-vol-a.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/dop2/LSIS_AFS_volA_2025.pdf",
+    "страница|строки": "стр. 31 (номер страницы PDF)",
+    "url": "https://www.nasa.gov/wp-content/uploads/2025/02/lunanet-signal-in-space-recommended-standard-augmented-forward-signal-vol-a.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/dop2/LSIS_AFS_volA_2025.pdf",
+    "страница|строки": "стр. 70 (номер страницы PDF)",
+    "url": "https://www.nasa.gov/wp-content/uploads/2025/02/lunanet-signal-in-space-recommended-standard-augmented-forward-signal-vol-a.pdf"
+   },
+   {
+    "файл": "../kosmos/istochniki/dop2/lsis_vlozheniya/003a_lunanet_sf2_ldpc_submatrix_a_ind.csv",
+    "страница|строки": "строки 1",
+    "url": "https://www.nasa.gov/wp-content/uploads/2025/02/lunanet-signal-in-space-recommended-standard-augmented-forward-signal-vol-a.pdf#вложение:003a_lunanet_sf2_ldpc_submatrix_a_ind.csv"
+   },
+   {
+    "файл": "../kosmos/istochniki/dop2/lsis_vlozheniya/002_LNIS-AD1-Vol-A-Annex2-LDPC-Submatrices-CSV-README.pdf",
+    "страница|строки": "стр. 1 (номер страницы PDF)",
+    "url": "https://www.nasa.gov/wp-content/uploads/2025/02/lunanet-signal-in-space-recommended-standard-augmented-forward-signal-vol-a.pdf#вложение:002_LNIS-AD1-Vol-A-Annex2-LDPC-Submatrices-CSV-README.pdf"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "EGPRS2 (UAS/UBS/DAS/DBS) и EC-GSM-IoT",
+  "вид": "свёрточный K=7 (UAS/UBS) / турбо G8,G9 (DAS/DBS) / РМ-подобные для EC",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/gsm/ts_145003v190000p.pdf",
+    "страница|строки": "стр. 348 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/145000_145099/145003/19.00.00_60/ts_145003v190000p.pdf",
+    "что": "Annex B: G8, G9"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "UMTS турбокод PCCC 1/3 (перемежитель на простых числах)",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежитель": "4.2.3.2.3: R = 5/10/20 строк, простое p и первообразный корень v (табл. 2, 52 пары), C ∈ {p−1, p, p+1}, s(j) = v·s(j−1) mod p, q_i — простые > 6 взаимно простые с p−1, межстрочные шаблоны (табл. 3), выход по столбцам с выкидыванием пустых"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125212v190000p.pdf",
+    "страница|строки": "стр. 26 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125212/19.00.00_60/ts_125212v190000p.pdf",
+    "что": "Table 2"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125212v190000p.pdf",
+    "страница|строки": "стр. 27 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125212/19.00.00_60/ts_125212v190000p.pdf",
+    "что": "Table 3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/arxiv_0802.0808_turbo_interleaving_cdma2000_wcdma.pdf",
+    "страница|строки": "стр. 15 (номер страницы PDF)",
+    "url": "https://arxiv.org/pdf/0802.0808",
+    "что": "пример K=250, Table 15"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/srsRAN_4G/lib/src/phy/fec/turbo/tc_interl_umts.c",
+    "страница|строки": "строки 44",
+    "url": "https://github.com/srsran/srsRAN_4G/blob/bef8680d5f9714f3e040e6f9cbc88d7888439b6d/lib/src/phy/fec/turbo/tc_interl_umts.c#L44"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "UMTS перемежители 1-й (TTI) и 2-й (30 столбцов)",
+  "вид": "перемежитель (блочный)",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125212v190000p.pdf",
+    "страница|строки": "стр. 29 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125212/19.00.00_60/ts_125212v190000p.pdf",
+    "что": "Table 4"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125212v190000p.pdf",
+    "страница|строки": "стр. 50 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125212/19.00.00_60/ts_125212v190000p.pdf",
+    "что": "Table 7"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "LTE турбокод PCCC 1/3 с QPP",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежитель": "QPP Π(i) = (f1·i + f2·i²) mod K, 188 размеров K = 40…6144 — tablicy/lte_qpp_36212_t5.1.3-3.json"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/lte/ts_136212v190300p.pdf",
+    "страница|строки": "стр. 15 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/136200_136299/136212/19.03.00_60/ts_136212v190300p.pdf",
+    "что": "5.1.3.2"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/lte/ts_136212v190300p.pdf",
+    "страница|строки": "стр. 18 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/136200_136299/136212/19.03.00_60/ts_136212v190300p.pdf",
+    "что": "Table 5.1.3-3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/lte/ts_136212v190300p.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/136200_136299/136212/19.03.00_60/ts_136212v190300p.pdf",
+    "что": "Table 5.1.4-1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/srsRAN_4G/lib/src/phy/fec/turbo/tc_interl_lte.c",
+    "страница|строки": "строки 39",
+    "url": "https://github.com/srsran/srsRAN_4G/blob/bef8680d5f9714f3e040e6f9cbc88d7888439b6d/lib/src/phy/fec/turbo/tc_interl_lte.c#L39"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "5G NR полярный код (PBCH, DCI, UCI)",
+  "вид": "полярный",
+  "перемежитель": {
+   "перемежитель входа": "I_IL = 1 (PBCH, DCI): Π_IL^max 164 значения (табл. 5.3.1.1-1); I_IL = 0 для UCI",
+   "перемежитель канала": "5.4.1.3: треугольный, I_BIL = 1 только UCI (T·(T+1)/2 ≥ E)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 17 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "5.3.1.2 Polar encoding"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 19 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "Table 5.3.1.2-1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 17 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "Table 5.3.1.1-1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 27 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "5.4.1.1 sub-block interleaving"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 28 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "5.4.1.3 channel interleaving"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 141 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "7.1.4: n_max = 9, I_IL = 1, n_PC = 0, n_PC^wm = 0"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 308 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "7.3.3: те же параметры для DCI"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 75 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "6.3.1.3.1: n_max = 10, I_IL = 0, n_PC = 3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 140 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "Table 7.1.1-1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/srsRAN_4G/lib/include/srsran/phy/fec/polar/polar_code.h",
+    "страница|строки": "строки 139",
+    "url": "https://github.com/srsran/srsRAN_4G/blob/bef8680d5f9714f3e040e6f9cbc88d7888439b6d/lib/include/srsran/phy/fec/polar/polar_code.h#L139"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/srsRAN_4G/lib/src/phy/fec/polar/polar_interleaver.c",
+    "страница|строки": "строки 29",
+    "url": "https://github.com/srsran/srsRAN_4G/blob/bef8680d5f9714f3e040e6f9cbc88d7888439b6d/lib/src/phy/fec/polar/polar_interleaver.c#L29"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "5G NR LDPC (базовые графы 1 и 2) и согласование скорости",
+  "вид": "LDPC (квазициклический)",
+  "перемежитель": {
+   "перемежитель бит": "5.4.2.2: построчная запись в Q_m строк, чтение по столбцам (Q_m — порядок модуляции)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 21 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "Table 5.3.2-1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 22 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "Table 5.3.2-2 (BG1)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 24 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "Table 5.3.2-3 (BG2)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 31 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "Table 5.4.2.1-1 LBRM"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 33 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "Table 5.4.2.1-2 k0"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 33 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "5.4.2.2 bit interleaving"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nr/ts_138212v190400p.pdf",
+    "страница|строки": "стр. 14 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/138200_138299/138212/19.04.00_60/ts_138212v190400p.pdf",
+    "что": "5.2.2 segmentation"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "cdma2000/EV-DO турбокод PCCC (8 состояний, 1/2…1/5) и перемежитель с таблицей",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежитель": "счётчик n+5 бит: старшие n бит +1, умножение на LUT[5 младших][n] mod 2^n, 5 младших — обращение бит → адрес; адреса ≥ N отбрасываются"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/cdma2000/ARIB_STD-T64-C.S0002-Ev2.0.pdf",
+    "страница|строки": "стр. 191 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/Specification/ARIB_STD-T64-C.S0002-Ev2.0.pdf",
+    "что": "2.1.3.1.5.2.1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/cdma2000/ARIB_STD-T64-C.S0002-Ev2.0.pdf",
+    "страница|строки": "стр. 197 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/Specification/ARIB_STD-T64-C.S0002-Ev2.0.pdf",
+    "что": "Table 2.1.3.1.5.2.3-2"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/cdma2000/ARIB_STD-T64-C.S0024-Av3.0.pdf",
+    "страница|строки": "стр. 960 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/STD-T64v6_90/Specification/ARIB_STD-T64-C.S0024-Av3.0.pdf",
+    "что": "C.S0024-A 12.2.1.3.4.2"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/1xbts/crates/cdma-bts/src/lib/phy/hrpd/turbo.rs",
+    "страница|строки": "строки 139",
+    "url": "https://github.com/chrismoos/1xbts/blob/fc497c0d02dd3f9cf516c34d8aff6663e905a919/crates/cdma-bts/src/lib/phy/hrpd/turbo.rs#L139"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "cdma2000 перемежитель с обращением бит (Ai = 2^m·(i mod J) + BRO_m(⌊i/J⌋))",
+  "вид": "перемежитель (блочный, обращение бит)",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/cdma2000/ARIB_STD-T64-C.S0002-Ev2.0.pdf",
+    "страница|строки": "стр. 206 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/Specification/ARIB_STD-T64-C.S0002-Ev2.0.pdf",
+    "что": "2.1.3.1.8"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "TETRA (K,a)-блочный перемежитель и перемежение на N блоков",
+  "вид": "перемежитель (блочный)",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039202v030801p.pdf",
+    "страница|строки": "стр. 134 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039202/03.08.01_60/en_30039202v030801p.pdf",
+    "что": "8.2.4.1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039202v030801p.pdf",
+    "страница|строки": "стр. 135 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039202/03.08.01_60/en_30039202v030801p.pdf",
+    "что": "8.2.4.3"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "TETRA TEDS PCCC (турбо) 8 состояний",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежитель": "квадратично-конгруэнтный: c0 = 0, cm = (cm−1 + m) mod S, S — степень 2 ≥ K2−3, затем попарные перестановки (8.26)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039202v030801p.pdf",
+    "страница|строки": "стр. 132 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039202/03.08.01_60/en_30039202v030801p.pdf",
+    "что": "8.2.3.4.1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039202v030801p.pdf",
+    "страница|строки": "стр. 132 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039202/03.08.01_60/en_30039202v030801p.pdf",
+    "что": "8.2.3.4.2"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "TETRA речевой канал ACELP (EN 300 395-2)",
+  "вид": "каскадный: CRC + RCPC K=5 1/3 (8/12, 8/18, 8/17) + матричное перемежение",
+  "перемежитель": {
+   "перемежение": "C4(i·24 + j) = C3(j·18 + i) — транспонирование 24×18 (432 бита)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039502v010303p.pdf",
+    "страница|строки": "стр. 31 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039502/01.03.03_60/en_30039502v010303p.pdf",
+    "что": "5.4.3.1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039502v010303p.pdf",
+    "страница|строки": "стр. 49 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039502/01.03.03_60/en_30039502v010303p.pdf",
+    "что": "5.5.3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039502_kod/C-CODE/ARRAYS.TAB",
+    "страница|строки": "строки 48–65",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039502/01.03.03_60/en_30039502v010303p0.zip"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "DMR BPTC(196,96)",
+  "вид": "блочный произведение (Хэмминг (15,11)×(13,9)) + перемежение",
+  "перемежитель": {
+   "перемежение": "табл. B.2: Index·181 mod 196"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/dmr/ts_10236101v020701p.pdf",
+    "страница|строки": "стр. 123 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/102300_102399/10236101/02.07.01_60/ts_10236101v020701p.pdf",
+    "что": "B.1.1"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "NXDN Type-C/конв. CAC (Outbound)",
+  "вид": "каскадный: CRC-16 + свёрточный K=5 1/2 с выкалыванием + блочное перемежение",
+  "перемежитель": {
+   "перемежение": "155 инф. бит, глубина 25 — запись строками D1…D25, чтение столбцами"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 43 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "CAC (Outbound)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 59 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "4.5.5 CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "NXDN Type-C/конв. Long CAC (Inbound)",
+  "вид": "каскадный: CRC-16 + свёрточный K=5 1/2 с выкалыванием + блочное перемежение",
+  "перемежитель": {
+   "перемежение": "136 инф. бит, глубина 21 — запись строками D1…D21, чтение столбцами"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 45 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "Long CAC (Inbound)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 59 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "4.5.5 CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "NXDN Type-C/конв. Short CAC (Inbound)",
+  "вид": "каскадный: CRC-16 + свёрточный K=5 1/2 с выкалыванием + блочное перемежение",
+  "перемежитель": {
+   "перемежение": "106 инф. бит, глубина 21 — запись строками D1…D21, чтение столбцами"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 47 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "Short CAC (Inbound)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 59 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "4.5.5 CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "NXDN Type-C/конв. SACCH",
+  "вид": "каскадный: CRC-6 + свёрточный K=5 1/2 с выкалыванием + блочное перемежение",
+  "перемежитель": {
+   "перемежение": "26 инф. бит, глубина 5 — запись строками D1…D5, чтение столбцами; T[i] = (i mod 12)·5 + ⌊i/12⌋ (номер в канале для i-го кодового бита)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 49 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "SACCH"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 59 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "4.5.5 CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "NXDN Type-C/конв. FACCH1",
+  "вид": "каскадный: CRC-12 + свёрточный K=5 1/2 с выкалыванием + блочное перемежение",
+  "перемежитель": {
+   "перемежение": "80 инф. бит, глубина 9 — запись строками D1…D9, чтение столбцами; T[i] = (i mod 16)·9 + ⌊i/16⌋ (номер в канале для i-го кодового бита)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 51 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "FACCH1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 59 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "4.5.5 CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "NXDN Type-C/конв. UDCH/ FACCH2",
+  "вид": "каскадный: CRC-15 + свёрточный K=5 1/2 с выкалыванием + блочное перемежение",
+  "перемежитель": {
+   "перемежение": "184 инф. бит, глубина 29 — запись строками D1…D29, чтение столбцами; T[i] = (i mod 12)·29 + ⌊i/12⌋ (номер в канале для i-го кодового бита)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 53 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "UDCH/ FACCH2"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 59 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "4.5.5 CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "NXDN Type-D SCCH",
+  "вид": "каскадный: CRC-7 + свёрточный K=5 1/2 с выкалыванием + блочное перемежение",
+  "перемежитель": {
+   "перемежение": "25 инф. бит, глубина 5 — запись строками D1…D5, чтение столбцами"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-E_v0101.pdf",
+    "страница|строки": "стр. 28 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-E_v0101.pdf",
+    "что": "SCCH"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 59 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "4.5.5 CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "NXDN Type-D FACCH1",
+  "вид": "каскадный: CRC-12 + свёрточный K=5 1/2 с выкалыванием + блочное перемежение",
+  "перемежитель": {
+   "перемежение": "80 инф. бит, глубина 9 — запись строками D1…D9, чтение столбцами; T[i] = (i mod 16)·9 + ⌊i/16⌋ (номер в канале для i-го кодового бита)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-E_v0101.pdf",
+    "страница|строки": "стр. 30 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-E_v0101.pdf",
+    "что": "FACCH1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 59 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "4.5.5 CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "NXDN Type-D UDCH2 / FACCH3",
+  "вид": "каскадный: CRC-12 + свёрточный K=5 1/2 с выкалыванием + блочное перемежение",
+  "перемежитель": {
+   "перемежение": "80 инф. бит, глубина 9 — запись строками D1…D9, чтение столбцами"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-E_v0101.pdf",
+    "страница|строки": "стр. 32 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-E_v0101.pdf",
+    "что": "UDCH2 / FACCH3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "страница|строки": "стр. 59 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/nxdn/NXDN-TS-1-A_v0103.pdf",
+    "что": "4.5.5 CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "P25 речь IMBE: ПСП маскирования и перемежение 144 бит",
+  "вид": "скремблер (линейный конгруэнтный) + перемежитель",
+  "перемежитель": {
+   "перемежение": "табл. 5-1"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/p25/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
+    "страница|строки": "стр. 24 (номер страницы PDF)",
+    "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
+    "что": "5.3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/p25/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
+    "страница|строки": "стр. 25 (номер страницы PDF)",
+    "url": "https://archive.org/download/TIA-102_Series_Documents/TIA-102-BAAA-A_Project_25_FDMA_CAI.pdf",
+    "что": "Table 5-1"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "YSF VCH/VeCH (V/D тип 2): мажоритарное тройное повторение 27 бит + обеление + перемежение 26×4",
+  "вид": "повторение (3,1) + перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/ysf/Yaesu_Amateur_Radio_Digital_Specs_1V02.pdf",
+    "страница|строки": "стр. 34 (номер страницы PDF)",
+    "url": "https://www.qsl.net/kb9mwr/projects/dv/yaesu/Yaesu_Amateur%20Radio%20Digital%20Specs_1V02_EN-GB.pdf",
+    "что": "4.5(3)"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "DECT-2020 NR: CRC24A/24B/16 + турбокод PCCC 1/3 (8 состояний, QPP, сегменты ≤ 2048)",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежитель": "QPP Π(i) = (f1·i + f2·i²) mod K, табл. 6.1.4.2.3-1: все 188 размеров K = 40…6144 — та же таблица, что LTE 36.212 табл. 5.1.3-3 (используются K ≤ Z = 2048)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/dect/ts_10363603v020201p.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/103600_103699/10363603/02.02.01_60/ts_10363603v020201p.pdf",
+    "что": "6.1.2 CRC"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/dect/ts_10363603v020201p.pdf",
+    "страница|строки": "стр. 22 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/103600_103699/10363603/02.02.01_60/ts_10363603v020201p.pdf",
+    "что": "6.1.4.2 Turbo"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/dect/ts_10363603v020201p.pdf",
+    "страница|строки": "стр. 24 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/103600_103699/10363603/02.02.01_60/ts_10363603v020201p.pdf",
+    "что": "Table 6.1.4.2.3-1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/dect/ts_10363603v020201p.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/103600_103699/10363603/02.02.01_60/ts_10363603v020201p.pdf",
+    "что": "Z = 2048"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "MIL-STD-188-110 последовательный (single-tone) 75–4800 бит/с",
+  "вид": "свёрточный K=7 1/2 (133,171) + блочный перемежитель + скремблер",
+  "перемежитель": {
+   "перемежитель": "матрица 40×(576/288/144) длинный, ×(72/36/18) короткий; загрузка по столбцам со строкой +9 mod 40; выборка: строка +1, столбец −17; 75 бит/с фикс.: +7/−7, 20×36 / 10×9"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 33 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "5.3.2.3.3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 6 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "5.3.2.3.4–5"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 42 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "5.3.2.3.8"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 6 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "табл. XI"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-110B_everyspec.pdf",
+    "страница|строки": "стр. 42 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL_STD_188_110B.1702.pdf",
+    "что": "110B рис. 4"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "MIL-STD-188-110 прил. C (= STANAG 4539) 3200–12800 бит/с",
+  "вид": "свёрточный K=7 с кольцевым хвостом + выкалывание 3/4 + блочный перемежитель",
+  "перемежитель": {
+   "перемежитель": "одномерный: позиция загрузки B(n) = n·шаг mod размер (табл. C-XV размер, C-XVI шаг)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 113 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "C.5.3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 134 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "C.5.3.2.3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 113 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "C-XV"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 113 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "C-XVI"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 123 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "C.5.1.3"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "MIL-STD-188-110 прил. D (WBHF 3–24 кГц, волновые формы 0–13)",
+  "вид": "свёрточный K=7 или K=9 с кольцевым хвостом, выкалывание/повтор + перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 206 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "D.5.3.2.2"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "страница|строки": "стр. 146 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C_CHG_NOTICE-1.047598.pdf",
+    "что": "табл. D-XLII"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "ALE 3G (STANAG 4538): BW0 — Уолш + свёрточный K=7",
+  "вид": "свёрточный K=7 1/2 + Уолш-модуляция + PN-расширение",
+  "перемежитель": {
+   "перемежитель": "табл. C-VII"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-141B.pdf",
+    "страница|строки": "стр. 298 (номер страницы PDF)",
+    "url": "https://hflink.com/standards/ALE_standard_188_141B.pdf",
+    "что": "C.5.1.3.3"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-141B.pdf",
+    "страница|строки": "стр. 300 (номер страницы PDF)",
+    "url": "https://hflink.com/standards/ALE_standard_188_141B.pdf",
+    "что": "табл. C-IX"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "ALE 3G BW1 — свёрточный K=9 1/3 + Уолш",
+  "вид": "свёрточный K=9 1/3",
+  "перемежитель": {
+   "перемежитель": "табл. C-XII"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-141B.pdf",
+    "страница|строки": "стр. 304 (номер страницы PDF)",
+    "url": "https://hflink.com/standards/ALE_standard_188_141B.pdf",
+    "что": "C.5.1.4.3"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "ALE 3G BW3 — свёрточный K=7 1/2 + CRC-32 (LDL)",
+  "вид": "свёрточный K=7 1/2 + CRC-32",
+  "перемежитель": {
+   "перемежитель": "табл. C-XVI"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-141B.pdf",
+    "страница|строки": "стр. 316 (номер страницы PDF)",
+    "url": "https://hflink.com/standards/ALE_standard_188_141B.pdf",
+    "что": "C.5.1.6"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "MIL-STD-188-165B (СВЧ SATCOM модемы): внешний RS(126,112)/(219,201)/(225,205) + перемежение 4/8 + свёрточный K=7 (1/2, 3/4, 7/8) или ТКМ 2/3 8PSK",
+  "вид": "каскадный: РС + перемежитель + свёрточный",
+  "перемежитель": {
+   "перемежение": "глубина 4 или 8 (по IESS-308/309)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_165B.055806.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_165B.055806.pdf",
+    "что": "5.4.3 c(1)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_165B.055806.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_165B.055806.pdf",
+    "что": "перемежение"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_165B.055806.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_165B.055806.pdf",
+    "что": "свёрточный"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_165B.055806.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_165B.055806.pdf",
+    "что": "ТКМ"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "MIL-STD-188-220D (боевые радиосети CNR): Голей (24,12) + TDC-перемежение 16×24 + синхро 64 бит + CRC-32 + V.36",
+  "вид": "каскадный: Голей + блочный перемежитель + CRC",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-220D.024816.pdf",
+    "страница|строки": "стр. 102 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188-220D.024816.pdf",
+    "что": "5.3.14.1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-220D.024816.pdf",
+    "страница|строки": "стр. 431 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188-220D.024816.pdf",
+    "что": "прил. F разложение x23+1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-220D.024816.pdf",
+    "страница|строки": "стр. 103 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188-220D.024816.pdf",
+    "что": "5.3.14.3 TDC"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-220D.024816.pdf",
+    "страница|строки": "стр. 37 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188-220D.024816.pdf",
+    "что": "рис. 6 синхро"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-220D.024816.pdf",
+    "страница|строки": "стр. 64 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188-220D.024816.pdf",
+    "что": "FCS"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188-220D.024816.pdf",
+    "страница|строки": "стр. 105 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188-220D.024816.pdf",
+    "что": "V.36"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "Link-16 / JTIDS / MIDS: RS(31,15) над GF(32) + перемежение символов + CCSK 32 элемента + ПСП, MSK 5 Мэлем/с со скачками",
+  "вид": "каскадный: РС + перемежитель + CCSK",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/archive_org/DTIC_ADA508987.pdf",
+    "страница|строки": "стр. 16 (номер страницы PDF)",
+    "url": "https://archive.org/download/DTIC_ADA508987/DTIC_ADA508987.pdf",
+    "что": "RS(31,15)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/archive_org/DTIC_ADA508987.pdf",
+    "страница|строки": "стр. 26 (номер страницы PDF)",
+    "url": "https://archive.org/download/DTIC_ADA508987/DTIC_ADA508987.pdf",
+    "что": "перемежитель"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/archive_org/DTIC_ADA508987.pdf",
+    "страница|строки": "стр. 26 (номер страницы PDF)",
+    "url": "https://archive.org/download/DTIC_ADA508987/DTIC_ADA508987.pdf",
+    "что": "CCSK"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/archive_org/DTIC_ADA508987.pdf",
+    "страница|строки": "стр. 27 (номер страницы PDF)",
+    "url": "https://archive.org/download/DTIC_ADA508987/DTIC_ADA508987.pdf",
+    "что": "ПСП"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "STANAG 5066 прил. G (ВЧ модем 3200–9600 бит/с): свёрточный K=7 → 3/4 + свёрточный перемежитель 48 строк + скремблер x9+x4+1",
+  "вид": "каскадный: свёрточный с выкалыванием + свёрточный перемежитель + скремблер",
+  "перемежитель": {
+   "перемежитель": "свёрточный, 48 строк (используются 32), приращение j: 3200 — 2/30, 4800 — 3/45, 6400 — 4/60, 9600 — 6/90 (корот. 0,72 с / длин. 10,8 с); вход по строкам 19·i mod 48; таблица tablicy/stanag5066G_peremezhitel_preambula.json"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_5066_v2.pdf",
+    "страница|строки": "стр. 130 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_5066_v2.006298.pdf",
+    "что": "G.5.1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_5066_v2.pdf",
+    "страница|строки": "стр. 131 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_5066_v2.006298.pdf",
+    "что": "G.5.2 маска"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_5066_v2.pdf",
+    "страница|строки": "стр. 133 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_5066_v2.006298.pdf",
+    "что": "G.5.3 вход"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_5066_v2.pdf",
+    "страница|строки": "стр. 132 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_5066_v2.006298.pdf",
+    "что": "Table G-6"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_5066_v2.pdf",
+    "страница|строки": "стр. 126 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_5066_v2.006298.pdf",
+    "что": "G.2.3 скремблер"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_5066_v2.pdf",
+    "страница|строки": "стр. 127 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_5066_v2.006298.pdf",
+    "что": "G.3.0 кадр"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_5066_v2.pdf",
+    "страница|строки": "стр. 128 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_5066_v2.006298.pdf",
+    "что": "G.4.1 преамбула"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "STANAG 4285 (и 4481 морское вещание): 8PSK 2400 Бод, кадр 256 символов с 80-символьной синхро, свёрточный K=7 (прил. E) + перемежитель",
+  "вид": "каскадный: свёрточный + перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4481_sigidwiki.pdf",
+    "страница|строки": "стр. 12 (номер страницы PDF)",
+    "url": "https://www.sigidwiki.com/images/b/ba/STANAG_4481.pdf",
+    "что": "4481 п.4(b) — прил. E"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/HF_modems_explained_stanag_Jorgenson.pdf",
+    "страница|строки": "стр. 3 (номер страницы PDF)",
+    "url": "https://hflink.com/standards/HF_modems_explained_stanag.pdf",
+    "что": "80 символов"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MT_2009_Demystifying_STANAG4285.pdf",
+    "страница|строки": "стр. 1 (номер страницы PDF)",
+    "url": "https://www.cryptomuseum.com/intel/nato/stanag/4285/200907_MT_NV6H_p28.pdf",
+    "что": "8PSK 1800 Гц"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_5066_v2.pdf",
+    "страница|строки": "стр. 130 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_5066_v2.006298.pdf",
+    "что": "«тот же, что прил. E 4285»"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "UAT восходящее (наземное) сообщение: 6 × RS(92,72) с перемежением по столбцам матрицы 6×92",
+  "вид": "каскадный: РС + блочный перемежитель",
+  "перемежитель": {
+   "перемежитель": "матрица 6×92 (строка = блок A–F), передача по столбцам с левого верхнего; таблица tablicy/uat_uplink_peremezhitel.json"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/aviaciya/ICAO_Annex10_Amdt82_UAT_SARP.pdf",
+    "страница|строки": "стр. 15 (номер страницы PDF)",
+    "url": "https://www.ads-b.com/PDF/UAT%20SARP.pdf",
+    "что": "12.4.4.2.1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/aviaciya/ICAO_Annex10_Amdt82_UAT_SARP.pdf",
+    "страница|строки": "стр. 16 (номер страницы PDF)",
+    "url": "https://www.ads-b.com/PDF/UAT%20SARP.pdf",
+    "что": "RS(92,72)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/aviaciya/ICAO_Annex10_Amdt82_UAT_SARP.pdf",
+    "страница|строки": "стр. 16 (номер страницы PDF)",
+    "url": "https://www.ads-b.com/PDF/UAT%20SARP.pdf",
+    "что": "P = 139"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/aviaciya/ICAO_Annex10_Amdt82_UAT_SARP.pdf",
+    "страница|строки": "стр. 16 (номер страницы PDF)",
+    "url": "https://www.ads-b.com/PDF/UAT%20SARP.pdf",
+    "что": "перемежение"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/dump978/uat_protocol.h",
+    "страница|строки": "строки 49",
+    "url": "https://github.com/flightaware/dump978/blob/f40aa9a0d2d0a0067c0c628b44ba316f7049b8ce/uat_protocol.h#L49",
+    "что": "dump978"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "HFDL (ARINC 635): свёрточный K=7 1/2 + повтор ×2/×4 + перемежитель 40 строк + скремблер 15 бит",
+  "вид": "каскадный: свёрточный + повторение + перемежитель + скремблер",
+  "перемежитель": {
+   "перемежитель": "40 строк; запись по строкам со сдвигом столбца −17 (одиночный слот 1,8 с) / −23 (двойной 4,2 с), чтение с шагом строки 9"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/kod/dumphfdl/src/hfdl.c",
+    "страница|строки": "строки 360",
+    "url": "https://github.com/szpajder/dumphfdl/blob/bb7234bdf12ff1ca5f1dc99a5710555f968c4e6e/src/hfdl.c#L360",
+    "что": "перемежитель"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/dumphfdl/src/hfdl.c",
+    "страница|строки": "строки 341",
+    "url": "https://github.com/szpajder/dumphfdl/blob/bb7234bdf12ff1ca5f1dc99a5710555f968c4e6e/src/hfdl.c#L341",
+    "что": "скремблер"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/dumphfdl/src/hfdl.c",
+    "страница|строки": "строки 86",
+    "url": "https://github.com/szpajder/dumphfdl/blob/bb7234bdf12ff1ca5f1dc99a5710555f968c4e6e/src/hfdl.c#L86",
+    "что": "повтор"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/dumphfdl/src/libfec/fec.h",
+    "страница|строки": "строки 10",
+    "url": "https://github.com/szpajder/dumphfdl/blob/bb7234bdf12ff1ca5f1dc99a5710555f968c4e6e/src/libfec/fec.h#L10",
+    "что": "многочлены"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "VDES (VDE-TER/SAT): CRC-32/16 + турбокод PCCC (CCSDS-перемежитель, DVB-SH выкалывание) + скремблер 1+x^-14+x^-15 + ID канала RM(32,6)",
+  "вид": "турбо PCCC",
+  "перемежитель": {
+   "перемежитель": "CCSDS 131.0-B: π(s) = 2(t + c·k1/2 + 1) − m (параметры k1|k2, p1…p8 по табл. 4)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/morskaya/R-REC-M.2092-2-202602.pdf",
+    "страница|строки": "стр. 17 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/m/R-REC-M.2092-2-202602-I!!PDF-E.pdf",
+    "что": "A2-1.2.4.2"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/morskaya/R-REC-M.2092-2-202602.pdf",
+    "страница|строки": "стр. 18 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/m/R-REC-M.2092-2-202602-I!!PDF-E.pdf",
+    "что": "Table 4"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/morskaya/R-REC-M.2092-2-202602.pdf",
+    "страница|строки": "стр. 22 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/m/R-REC-M.2092-2-202602-I!!PDF-E.pdf",
+    "что": "A2-1.2.5 CRC"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/morskaya/R-REC-M.2092-2-202602.pdf",
+    "страница|строки": "стр. 22 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/m/R-REC-M.2092-2-202602-I!!PDF-E.pdf",
+    "что": "A2-1.2.6"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/morskaya/R-REC-M.2092-2-202602.pdf",
+    "страница|строки": "стр. 14 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/m/R-REC-M.2092-2-202602-I!!PDF-E.pdf",
+    "что": "(32,6)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/morskaya/R-REC-M.2092-2-202602.pdf",
+    "страница|строки": "стр. 68 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pubrec/itu-r/rec/m/R-REC-M.2092-2-202602-I!!PDF-E.pdf",
+    "что": "A3-8 тестовый вектор"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/ccsds/131x0b5s.pdf",
+    "страница|строки": "стр. 43 (номер страницы PDF)",
+    "url": "https://ccsds.org/wp-content/uploads/gravity_forms/5-448e85c647331d9cbaf66c096458bdd5/2026/05/131x0b5s.pdf",
+    "что": "CCSDS 131.0-B-5 6.3 — та же формула перемежителя"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "FLEX (Motorola): БЧХ(31,21)+чётность, блочное перемежение 8×32 бит, кадр 11 блоков",
+  "вид": "каскадный: БЧХ + блочный перемежитель",
+  "перемежитель": {
+   "перемежение": "блок 8 слов (1600 бит/с) / 16 / 32: передаются первые биты всех слов, затем вторые … (матрица 8×32 по столбцам); 4-FSK: пара бит из одного столбца соседних слов"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/peydzhing/FLEX_Thesis_sigidwiki.pdf",
+    "страница|строки": "стр. 18 (номер страницы PDF)",
+    "url": "https://www.sigidwiki.com/images/d/d0/FLEX_Thesis.pdf",
+    "что": "2.3.3 g(x)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/peydzhing/FLEX_Thesis_sigidwiki.pdf",
+    "страница|строки": "стр. 17 (номер страницы PDF)",
+    "url": "https://www.sigidwiki.com/images/d/d0/FLEX_Thesis.pdf",
+    "что": "2.3.2 перемежение"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/peydzhing/FLEX_Thesis_sigidwiki.pdf",
+    "страница|строки": "стр. 16 (номер страницы PDF)",
+    "url": "https://www.sigidwiki.com/images/d/d0/FLEX_Thesis.pdf",
+    "что": "Sync1"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/peydzhing/FLEX_Thesis_sigidwiki.pdf",
+    "страница|строки": "стр. 17 (номер страницы PDF)",
+    "url": "https://www.sigidwiki.com/images/d/d0/FLEX_Thesis.pdf",
+    "что": "блоки"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "MOBITEX: укороченный Хэмминг (12,8) на каждый байт + перемежение по столбцам + скремблер V.52 (9 разрядов)",
+  "вид": "каскадный: Хэмминг + перемежитель + скремблер + CRC",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/trank/MOBITEX_Architecture.pdf",
+    "страница|строки": "стр. 8 (номер страницы PDF)",
+    "url": "https://www.sigidwiki.com/images/f/fc/Mobile_Packet_Data_Technology_An_Insight_into_MOBITEX_Architecture.pdf",
+    "что": "Хэмминг (12,8)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/trank/MOBITEX_Architecture.pdf",
+    "страница|строки": "стр. 8 (номер страницы PDF)",
+    "url": "https://www.sigidwiki.com/images/f/fc/Mobile_Packet_Data_Technology_An_Insight_into_MOBITEX_Architecture.pdf",
+    "что": "скремблер V.52"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/trank/MOBITEX_Architecture.pdf",
+    "страница|строки": "стр. 7 (номер страницы PDF)",
+    "url": "https://www.sigidwiki.com/images/f/fc/Mobile_Packet_Data_Technology_An_Insight_into_MOBITEX_Architecture.pdf",
+    "что": "преамбула"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/trank/MOBITEX_Architecture.pdf",
+    "страница|строки": "стр. 5 (номер страницы PDF)",
+    "url": "https://www.sigidwiki.com/images/f/fc/Mobile_Packet_Data_Technology_An_Insight_into_MOBITEX_Architecture.pdf",
+    "что": "блок+CRC"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "PDC каналы управления (BCCH/PCH/SCCH): укороченный БЧХ(15,11) → (14,10)/(12,8) + CRC-16 + перемежение в слоте",
+  "вид": "каскадный: БЧХ + CRC + блочный перемежитель",
+  "перемежитель": {
+   "перемежение": "в пределах слота, глубина = число блоков БЧХ (вниз: 136 бит → 16; вверх 1-й: 104 → 13 — табл. 4.1.5.1-1)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/yaponiya/ARIB_RCR_STD-27L_1of3.pdf",
+    "страница|строки": "стр. 119 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/5-STD-27_L-1p3-E.pdf",
+    "что": "4.1.5.1 (1)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/yaponiya/ARIB_RCR_STD-27L_1of3.pdf",
+    "страница|строки": "стр. 119 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/5-STD-27_L-1p3-E.pdf",
+    "что": "g(X)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/yaponiya/ARIB_RCR_STD-27L_1of3.pdf",
+    "страница|строки": "стр. 119 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/5-STD-27_L-1p3-E.pdf",
+    "что": "CRC-16"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/yaponiya/ARIB_RCR_STD-27L_1of3.pdf",
+    "страница|строки": "стр. 119 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/5-STD-27_L-1p3-E.pdf",
+    "что": "перемежение"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/yaponiya/ARIB_RCR_STD-27L_1of3.pdf",
+    "страница|строки": "стр. 120 (номер страницы PDF)",
+    "url": "https://www.arib.or.jp/english/html/overview/doc/5-STD-27_L-1p3-E.pdf",
+    "что": "табл. 4.1.5.1-1"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "STANAG 4529 (узкополосный ВЧ модем НАТО, 1240 Гц): 4285-кадр 1200 Бод + свёрточный K=7 1/2 (→2/3, повтор ×2/×4) + свёрточный перемежитель 32 строки",
+  "вид": "каскадный: свёрточный + свёрточный перемежитель + скремблер 8PSK",
+  "перемежитель": {
+   "перемежитель": "как 4285 прил. E разд. 3: I = 32 строки, приращение j: 1200 — 48/4, 600 — 24/2, 300–75 — 12/1 (длинный 20,48 с / короткий 1,706 с)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 9 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "1.2 a"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 9 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "1.2 b"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 11 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "1.2 d"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 11 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "1.2 e кадр"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 12 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "1.2 f синхро"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 12 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "начальное 11010"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 13 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "1.2 g скремблер"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 60 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "начальное"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 13 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "n = 4x2+2x1+x0"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 14 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "1.2 j K=7"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 15 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "табл. 1.5"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 15 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "перемежитель"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_4529_conformance_2004.pdf",
+    "страница|строки": "стр. 15 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_4529_4_02_04_v3.006297.pdf",
+    "что": "нули сброса"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/STANAG_5066_v2.pdf",
+    "страница|строки": "стр. 130 (номер страницы PDF)",
+    "url": "https://everyspec.com/NATO/NATO-STANAG/download.php?spec=STANAG_5066_v2.006298.pdf",
+    "что": "5066 G: K=7 тот же, что 4285 прил. E"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "STANAG 4415 (робастный ВЧ 75 бит/с) = волновая форма 75 бит/с MIL-STD-188-110 (Уолш-модуляция 8PSK, K=7 1/2)",
+  "вид": "свёрточный K=7 1/2 + Уолш-модуляция (ссылка)",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C.037889.PDF",
+    "страница|строки": "стр. 22 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C.037889.PDF",
+    "что": "5.3.1.3 f"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/MIL-STD-188_110C.037889.PDF",
+    "страница|строки": "стр. 44 (номер страницы PDF)",
+    "url": "https://everyspec.com/MIL-STD/MIL-STD-0100-0299/download.php?spec=MIL-STD-188_110C.037889.PDF",
+    "что": "5.3.4"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/mil/HF_modems_explained_stanag_Jorgenson.pdf",
+    "страница|строки": "стр. 2 (номер страницы PDF)",
+    "url": "https://hflink.com/standards/HF_modems_explained_stanag.pdf",
+    "что": "4415 и 110A: 75 бит/с с расширением спектра"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "UTRA TDD / TD-SCDMA (3GPP TS 25.222): свёрточные K=9, турбо 1/3 как FDD + бит-скремблер 1+D11+D13+D14+D16 + 2-й перемежитель 30 столбцов (кадр/слот), TFCI (32,10)/(16,5)/(48,10)",
+  "вид": "каскадный: CRC + свёрточный/турбо + согласование скорости + перемежение + скремблер",
+  "перемежитель": {
+   "2-й перемежитель": "30 столбцов, перестановка табл. 7 = FDD; на весь кадр или по каждому слоту (выбор верхнего уровня); 1,28 Мчип/с: сегментация на 2 подкадра по 5 мс"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125222v190000p.pdf",
+    "страница|строки": "стр. 38 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125222/19.00.00_60/ts_125222v190000p.pdf",
+    "что": "4.2.9 бит-скремблер (g в формуле)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125212v190000p.pdf",
+    "страница|строки": "стр. 67 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125212/19.00.00_60/ts_125212v190000p.pdf",
+    "что": "25.212 4.5.1A HS-DSCH: тот же g"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125222v190000p.pdf",
+    "страница|строки": "стр. 22 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125222/19.00.00_60/ts_125222v190000p.pdf",
+    "что": "4.2.3.1 K=9"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125222v190000p.pdf",
+    "страница|строки": "стр. 42 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125222/19.00.00_60/ts_125222v190000p.pdf",
+    "что": "табл. 7"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125222v190000p.pdf",
+    "страница|строки": "стр. 47 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125222/19.00.00_60/ts_125222v190000p.pdf",
+    "что": "4.3.1.1 (32,10)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125222v190000p.pdf",
+    "страница|строки": "стр. 48 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125222/19.00.00_60/ts_125222v190000p.pdf",
+    "что": "(16,5)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125222v190000p.pdf",
+    "страница|строки": "стр. 52 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125222/19.00.00_60/ts_125222v190000p.pdf",
+    "что": "4.4.2.1 (48,10)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/umts/ts_125222v190000p.pdf",
+    "страница|строки": "стр. 42 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_ts/125200_125299/125222/19.00.00_60/ts_125222v190000p.pdf",
+    "что": "4.2.11A подкадры"
+   },
+   {
+    "файл": "../mobilnaya/risunki/umts_tdd_skrembler_25222_4.2.9.png",
+    "страница|строки": "снимок",
+    "url": ""
+   },
+   {
+    "файл": "../mobilnaya/risunki/umts_hsdsch_skrembler_25212_4.5.1a.png",
+    "страница|строки": "снимок",
+    "url": ""
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "TETRA DMO (прямой режим, EN 300 396-2): коды V+D (RCPC 16 состояний, CRC-16, (K,a)-перемежение) + скремблер от 30-битного цветового кода DM",
+  "вид": "каскадный: CRC-16 + RCPC + блочный перемежитель + скремблер",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039602v010401p.pdf",
+    "страница|строки": "стр. 37 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039602/01.04.01_60/en_30039602v010401p.pdf",
+    "что": "8.2.3.1 RCPC"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039602v010401p.pdf",
+    "страница|строки": "стр. 40 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039602/01.04.01_60/en_30039602v010401p.pdf",
+    "что": "8.2.5.2 c(x)"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039602v010401p.pdf",
+    "страница|строки": "стр. 40 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039602/01.04.01_60/en_30039602v010401p.pdf",
+    "что": "цветовой код DM"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039602v010401p.pdf",
+    "страница|строки": "стр. 40 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039602/01.04.01_60/en_30039602v010401p.pdf",
+    "что": "DSB — нули"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039602v010401p.pdf",
+    "страница|строки": "стр. 41 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039602/01.04.01_60/en_30039602v010401p.pdf",
+    "что": "8.3.1.1 SCH/S"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/tetra/en_30039602v010401p.pdf",
+    "страница|строки": "стр. 50 (номер страницы PDF)",
+    "url": "https://www.etsi.org/deliver/etsi_en/300300_300399/30039602/01.04.01_60/en_30039602v010401p.pdf",
+    "что": "рис. 12 пакеты"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "Motorola SmartNet/SmartZone (Type II): OSW 84 бита = синхро 0xAC + 76: перемежение 19×4, свёрточный 1/2 (i, i⊕i₋₁), CRC-10 (0x393/0x36E/0x225), маски 0x33C7/0x32A",
+  "вид": "каскадный: CRC + свёрточный 1/2 + блочный перемежитель",
+  "перемежитель": {
+   "перемежение": "76 бит, запись по 4 столбцам длиной 19: d[4k+l] = r[k+19l]"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/kod/op25/op25/gr-op25_repeater/lib/rx_smartnet.cc",
+    "страница|строки": "строки 109",
+    "url": "https://github.com/boatbod/op25/blob/71abcd0ead32f86f51615ea6cc8a6a4dba4c949a/op25/gr-op25_repeater/lib/rx_smartnet.cc#L109",
+    "что": "op25: перемежение"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/op25/op25/gr-op25_repeater/lib/rx_smartnet.cc",
+    "страница|строки": "строки 118",
+    "url": "https://github.com/boatbod/op25/blob/71abcd0ead32f86f51615ea6cc8a6a4dba4c949a/op25/gr-op25_repeater/lib/rx_smartnet.cc#L118",
+    "что": "op25: синдром"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/op25/op25/gr-op25_repeater/lib/rx_smartnet.cc",
+    "страница|строки": "строки 148",
+    "url": "https://github.com/boatbod/op25/blob/71abcd0ead32f86f51615ea6cc8a6a4dba4c949a/op25/gr-op25_repeater/lib/rx_smartnet.cc#L148",
+    "что": "op25: CRC"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/op25/op25/gr-op25_repeater/lib/rx_smartnet.h",
+    "страница|строки": "строки 49",
+    "url": "https://github.com/boatbod/op25/blob/71abcd0ead32f86f51615ea6cc8a6a4dba4c949a/op25/gr-op25_repeater/lib/rx_smartnet.h#L49",
+    "что": "маски"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/op25/op25/gr-op25_repeater/lib/frame_sync_magics.h",
+    "страница|строки": "строки 62",
+    "url": "https://github.com/boatbod/op25/blob/71abcd0ead32f86f51615ea6cc8a6a4dba4c949a/op25/gr-op25_repeater/lib/frame_sync_magics.h#L62",
+    "что": "синхро 0xAC"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/gr-smartnet/src/lib/smartnet_crc.cc",
+    "страница|строки": "строки 94",
+    "url": "https://github.com/bistromath/gr-smartnet/blob/5d4538051df6b99d321c04512f54307b7b328f0f/src/lib/smartnet_crc.cc#L94",
+    "что": "gr-smartnet: CRC"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/indri/lib/indri/smartnet/deframer.py",
+    "страница|строки": "строки 110",
+    "url": "https://github.com/jbm9/indri/blob/da1a89cb4d8e007b46e20e76cf98b22714b00721/lib/indri/smartnet/deframer.py#L110",
+    "что": "indri: CRC (Python)"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "C-Netz (C-450, ФРГ/Португалия/ЮАР): блочный (15,7) d = 5 (циклический БЧХ) ×10 + перемежение 10×15 + синхро 3 × Баркер-11",
+  "вид": "БЧХ + блочный перемежитель",
+  "перемежитель": {},
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/kod/osmocom-analog/src/cnetz/telegramm.c",
+    "страница|строки": "строки 1044",
+    "url": "https://github.com/osmocom/osmocom-analog/blob/0c726775f999ae602d70b144d685b6fe1a4ecd3c/src/cnetz/telegramm.c#L1044",
+    "что": "таблица 128 слов"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/osmocom-analog/src/cnetz/telegramm.c",
+    "страница|строки": "строки 1294",
+    "url": "https://github.com/osmocom/osmocom-analog/blob/0c726775f999ae602d70b144d685b6fe1a4ecd3c/src/cnetz/telegramm.c#L1294",
+    "что": "кодер"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/osmocom-analog/src/cnetz/telegramm.c",
+    "страница|строки": "строки 1411",
+    "url": "https://github.com/osmocom/osmocom-analog/blob/0c726775f999ae602d70b144d685b6fe1a4ecd3c/src/cnetz/telegramm.c#L1411",
+    "что": "перемежение"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/osmocom-analog/src/cnetz/telegramm.c",
+    "страница|строки": "строки 1040",
+    "url": "https://github.com/osmocom/osmocom-analog/blob/0c726775f999ae602d70b144d685b6fe1a4ecd3c/src/cnetz/telegramm.c#L1040",
+    "что": "синхро"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/analog/R-REP-M.742-4-1995.pdf",
+    "страница|строки": "стр. 8 (номер страницы PDF)",
+    "url": "https://www.itu.int/dms_pub/itu-r/opb/rep/R-REP-M.742-4-1995-PDF-E.pdf",
+    "что": "M.742 табл. 1: (15:7) BCH"
+   }
+  ]
+ },
+ {
+  "область": "mobilnaya",
+  "имя": "MDC-1200 (Motorola): CRC-16 (0x1021 отражённый, нач. 0, инверсия) + систематический свёрточный K=7 1/2 (1+D²+D⁵+D⁶) + перемежение 16×7, синхро 0x07092A446F",
+  "вид": "каскадный: CRC + свёрточный систематический + блочный перемежитель",
+  "перемежитель": {
+   "перемежение": "112 бит: 16 строк × 7 столбцов (бит n = 16m + i)"
+  },
+  "источник": [
+   {
+    "файл": "../mobilnaya/istochniki/kod/sdrtrunk/src/main/java/io/github/dsheirer/module/decode/mdc1200/MDCDecoder.java",
+    "страница|строки": "строки 30",
+    "url": "https://github.com/DSheirer/sdrtrunk/blob/a9120ed65e5b9f91cf460544efdab4863d7e4b45/src/main/java/io/github/dsheirer/module/decode/mdc1200/MDCDecoder.java#L30",
+    "что": "SDRTrunk: 1200 Бод 2FSK"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/uvk5/mdc1200.c",
+    "страница|строки": "строки 18",
+    "url": "https://github.com/OneOfEleven/uv-k5-firmware-custom/blob/5bdbf3fd4b61647a66542c38fe57abd667627921/mdc1200.c#L18",
+    "что": "синхро"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/uvk5/mdc1200.c",
+    "страница|строки": "строки 88",
+    "url": "https://github.com/OneOfEleven/uv-k5-firmware-custom/blob/5bdbf3fd4b61647a66542c38fe57abd667627921/mdc1200.c#L88",
+    "что": "CRC"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/uvk5/mdc1200.c",
+    "страница|строки": "строки 287",
+    "url": "https://github.com/OneOfEleven/uv-k5-firmware-custom/blob/5bdbf3fd4b61647a66542c38fe57abd667627921/mdc1200.c#L287",
+    "что": "FEC + вектор"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/uvk5/mdc1200.c",
+    "страница|строки": "строки 207",
+    "url": "https://github.com/OneOfEleven/uv-k5-firmware-custom/blob/5bdbf3fd4b61647a66542c38fe57abd667627921/mdc1200.c#L207",
+    "что": "перемежение 16×7"
+   },
+   {
+    "файл": "../mobilnaya/istochniki/kod/sdrtrunk/src/main/java/io/github/dsheirer/bits/SyncPattern.java",
+    "страница|строки": "строки 70",
+    "url": "https://github.com/DSheirer/sdrtrunk/blob/a9120ed65e5b9f91cf460544efdab4863d7e4b45/src/main/java/io/github/dsheirer/bits/SyncPattern.java#L70",
+    "что": "SDRTrunk: синхро"
+   }
+  ]
+ },
+ {
+  "область": "provod",
+  "имя": "ITU-T G.709 OTUk FEC: 16 перемеженных RS(255,239) на строку + кадровый скремблер",
+  "вид": "РС (перемеженный)",
+  "перемежитель": {
+   "перемежение": "строка OTU 4080 байт → 16 подстрок; подстрока X: байты X + 16·(i−1), i = 1…255; проверочные — байты 240…255 подстроки (столбцы 3825–4080)"
+  },
+  "источник": [
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.709-202006-I.pdf",
+    "страница|строки": "стр. 188 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.709-202006-I!!PDF-E&type=items",
+    "что": "Annex A"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.709-202006-I.pdf",
+    "страница|строки": "стр. 188 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.709-202006-I!!PDF-E&type=items",
+    "что": "подстроки"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.709-202006-I.pdf",
+    "страница|строки": "стр. 44 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.709-202006-I!!PDF-E&type=items",
+    "что": "11.2 скремблер"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.709-202006-I.pdf",
+    "страница|строки": "стр. 43 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.709-202006-I!!PDF-E&type=items",
+    "что": "OTU4 SC-FEC"
+   }
+  ]
+ },
+ {
+  "область": "provod",
+  "имя": "G.975.1 I.3: БЧХ(3860,3824) внешний + БЧХ(2040,1930) внутренний",
+  "вид": "каскадный: БЧХ + БЧХ",
+  "перемежитель": {
+   "перемежитель": "между кодами (рис. I.9–I.11)"
+  },
+  "источник": [
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.975.1-200402-I.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.975.1-200402-I!!PDF-E&type=items",
+    "что": "I.3.2.1"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.975.1-201307-I_Cor2.pdf",
+    "страница|строки": "стр. 3 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin.asp?lang=e&id=T-REC-G.975.1-201307-I!Cor2!PDF-E&type=items",
+    "что": "Cor.2: исправление минимальных многочленов"
+   },
+   {
+    "файл": "../provod/istochniki/oif/OIF_FEC_100G-01.0.pdf",
+    "страница|строки": "стр. 16 (номер страницы PDF)",
+    "url": "https://www.oiforum.com/wp-content/uploads/2019/01/OIF_FEC_100G-01.0.pdf",
+    "что": "OIF FEC 100G WP: обзор"
+   }
+  ]
+ },
+ {
+  "область": "provod",
+  "имя": "DMT-DSL РС-код (ADSL/ADSL2/2+/VDSL/VDSL2/G.fast/MGfast): GF(256), G(D) = ∏_{i=0}^{R−1}(D + α^i), R = 0…16",
+  "вид": "РС (переменные N,K) + свёрточное перемежение",
+  "перемежитель": {
+   "перемежение": "свёрточное: байт i слова задерживается на (D−1)·i; D — степень 2 (ADSL); VDSL: до 64 слов при N = 255"
+  },
+  "источник": [
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.992.1-199907-I.pdf",
+    "страница|строки": "стр. 6 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.992.1-199907-I!!PDF-E&type=items",
+    "что": "G.992.1 7.6.1"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.992.1-199907-I.pdf",
+    "страница|строки": "стр. 52 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.992.1-199907-I!!PDF-E&type=items"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.992.1-199907-I.pdf",
+    "страница|строки": "стр. 53 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.992.1-199907-I!!PDF-E&type=items",
+    "что": "7.6.3 перемежение"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.992.2-199907-I.pdf",
+    "страница|строки": "стр. 5 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.992.2-199907-I!!PDF-E&type=items",
+    "что": "G.992.2"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.993.1-200406-I.pdf",
+    "страница|строки": "стр. 23 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.993.1-200406-I!!PDF-E&type=items",
+    "что": "G.993.1 8.3"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.993.2-201902-I.pdf",
+    "страница|строки": "стр. 72 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.993.2-201902-I!!PDF-E&type=items",
+    "что": "G.993.2"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.9701-201903-I.pdf",
+    "страница|строки": "стр. 77 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.9701-201903-I!!PDF-E&type=items",
+    "что": "G.9701"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-G.9711-202104-I.pdf",
+    "страница|строки": "стр. 87 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.9711-202104-I!!PDF-E&type=items",
+    "что": "G.9711"
+   }
+  ]
+ },
+ {
+  "область": "provod",
+  "имя": "J.83 Annex B: кадр FEC, свёрточное перемежение (I,J) и рандомизатор GF(128)",
+  "вид": "кадровая структура + перемежитель + рандомизатор",
+  "перемежитель": {
+   "перемежение": "свёрточное, символы 7 бит; уровень 1: I = 128, J = 1; уровень 2: (128,1…8), (64,2), (32,4), (16,8), (8,16) по 4-бит слову (табл. B.2)"
+  },
+  "источник": [
+   {
+    "файл": "../provod/istochniki/itu/T-REC-J.83-200712-I.pdf",
+    "страница|строки": "стр. 20 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-J.83-200712-I!!PDF-E&type=items",
+    "что": "B.5.2 рис. B.8"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-J.83-200712-I.pdf",
+    "страница|строки": "стр. 22 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-J.83-200712-I!!PDF-E&type=items",
+    "что": "B.5.3"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-J.83-200712-I.pdf",
+    "страница|строки": "стр. 24 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-J.83-200712-I!!PDF-E&type=items",
+    "что": "B.5.4"
+   }
+  ]
+ },
+ {
+  "область": "provod",
+  "имя": "DOCSIS 1.x–3.0 восходящий: RS над GF(256), T = 1…16 (корни α^0…α^(2T−1)), скремблер x^15 + x^14 + 1",
+  "вид": "РС (переменный) + скремблер",
+  "перемежитель": {
+   "перемежение": "байтовый перемежитель TDMA (табл. 6–2), кадровщик/перемежитель S-CDMA"
+  },
+  "источник": [
+   {
+    "файл": "../provod/istochniki/cablelabs/CM-SP-PHYv3.0-C01-171207.pdf",
+    "страница|строки": "стр. 36 (номер страницы PDF)",
+    "url": "https://account.cablelabs.com/server/alfresco/52c04a05-d1c2-4384-a642-a7891aaabf7f",
+    "что": "6.2.4.1"
+   },
+   {
+    "файл": "../provod/istochniki/cablelabs/CM-SP-PHYv3.0-C01-171207.pdf",
+    "страница|строки": "стр. 41 (номер страницы PDF)",
+    "url": "https://account.cablelabs.com/server/alfresco/52c04a05-d1c2-4384-a642-a7891aaabf7f",
+    "что": "6.2.x скремблер"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-J.112-200403-I_AnnB.pdf",
+    "страница|строки": "стр. 37 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-J.112-200403-I!AnnB!PDF-E&type=items",
+    "что": "J.112 Annex B"
+   },
+   {
+    "файл": "../provod/istochniki/itu/T-REC-J.122-200712-I.pdf",
+    "страница|строки": "стр. 23 (номер страницы PDF)",
+    "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-J.122-200712-I!!PDF-E&type=items",
+    "что": "J.122"
+   }
+  ]
+ },
+ {
+  "область": "provod",
+  "имя": "HomePlug AV / AV2 / IEEE 1901 FFT-PHY / Green PHY: дуобинарный турбокод (2 × RSC 2/3, 8 состояний, кольцевое завершение)",
+  "вид": "турбо дуобинарный",
+  "перемежитель": {
+   "перемежитель": "дибитовый: I(x) = [S(x mod N) − (x div N)·N + L] mod L; при чётном x пара переставляется; PB16/136/520: N = 8/34/40, L = 64/544/2080; AV2 — ещё PB32"
+  },
+  "источник": [
+   {
+    "файл": "../provod/istochniki/plc/homeplug_av11_specification_final_public.pdf",
+    "страница|строки": "стр. 67 (номер страницы PDF)",
+    "url": "https://docbox.etsi.org/Reference/homeplug_av11/homeplug_av11_specification_final_public.pdf",
+    "что": "3.4.2"
+   },
+   {
+    "файл": "../provod/istochniki/plc/homeplug_av11_specification_final_public.pdf",
+    "страница|строки": "стр. 69 (номер страницы PDF)",
+    "url": "https://docbox.etsi.org/Reference/homeplug_av11/homeplug_av11_specification_final_public.pdf",
+    "что": "3.4.2.2 завершение"
+   },
+   {
+    "файл": "../provod/istochniki/plc/homeplug_av11_specification_final_public.pdf",
+    "страница|строки": "стр. 70 (номер страницы PDF)",
+    "url": "https://docbox.etsi.org/Reference/homeplug_av11/homeplug_av11_specification_final_public.pdf",
+    "что": "3.4.2.4 перемежитель"
+   },
+   {
+    "файл": "../provod/istochniki/plc/homeplug_av11_specification_final_public.pdf",
+    "страница|строки": "стр. 67 (номер страницы PDF)",
+    "url": "https://docbox.etsi.org/Reference/homeplug_av11/homeplug_av11_specification_final_public.pdf",
+    "что": "3.4.1 скремблер"
+   },
+   {
+    "файл": "../provod/istochniki/plc/homeplug_av21_specification_final_public.pdf",
+    "страница|строки": "стр. 28 (номер страницы PDF)",
+    "url": "https://docbox.etsi.org/Reference/homeplug_av21/homeplug_av21_specification_final_public.pdf",
+    "что": "AV2 16/18"
+   }
+  ]
+ },
+ {
+  "область": "provod",
+  "имя": "CD (ECMA-130 / IEC 908): CIRC — C2 RS(28,24) и C1 RS(32,28) с перекрёстным перемежением",
+  "вид": "каскадный: РС + РС (перекрёстное перемежение)",
+  "перемежитель": {
+   "перемежение": "1-я секция: половина слов задерживается на 2 кадра F1; 2-я: 28 задержек 0…27·D, D = 4 кадра; 3-я: каждый второй байт после C1 задержан на 1 кадр; все биты P и Q инвертируются (C.8–C.9)"
+  },
+  "источник": [
+   {
+    "файл": "../provod/istochniki/ecma/ECMA-130_2nd_edition_june_1996.pdf",
+    "страница|строки": "стр. 43 (номер страницы PDF)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-130_2nd_edition_june_1996.pdf",
+    "что": "Annex C"
+   },
+   {
+    "файл": "../provod/istochniki/ecma/ECMA-130_2nd_edition_june_1996.pdf",
+    "страница|строки": "стр. 43 (номер страницы PDF)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-130_2nd_edition_june_1996.pdf",
+    "что": "C.6"
+   }
+  ]
+ },
+ {
+  "область": "provod",
+  "имя": "UDO (ECMA-380): 38 перемеженных RS(248,216) (корни α^0…α^31) + CRC — RS 4 байта (α^32…α^35)",
+  "вид": "РС (перемеженный)",
+  "перемежитель": {
+   "перемежение": "38-кратное (Annex G.1)"
+  },
+  "источник": [
+   {
+    "файл": "../provod/istochniki/ecma/ECMA-380_1st_edition_december_2007.pdf",
+    "страница|строки": "стр. 106 (номер страницы PDF)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-380_1st_edition_december_2007.pdf",
+    "что": "G.2 CRC"
+   },
+   {
+    "файл": "../provod/istochniki/ecma/ECMA-380_1st_edition_december_2007.pdf",
+    "страница|строки": "стр. 106 (номер страницы PDF)",
+    "url": "https://ecma-international.org/wp-content/uploads/ECMA-380_1st_edition_december_2007.pdf",
+    "что": "G.3 ECC"
+   }
+  ]
+ }
+]
